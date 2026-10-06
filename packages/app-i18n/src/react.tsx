@@ -30,6 +30,17 @@ type AppI18nContextValue = Readonly<{
   locale: AppLocale;
   locales: readonly AppLocale[];
   setLocale: (locale: string | null) => void;
+  loadFailure: ShownLoadFailure | undefined;
+}>;
+
+/**
+ * A language that could not be loaded (`locale`) and the language on screen
+ * in its place (`shown`), both as registry entries, so a notice can name them.
+ */
+type ShownLoadFailure = Readonly<{
+  locale: AppLocale;
+  shown: AppLocale;
+  error: unknown;
 }>;
 
 const AppI18nContext = createContext<AppI18nContextValue | null>(null);
@@ -80,6 +91,12 @@ export type AppI18nProviderProps = Readonly<{
   messages?: CatalogMessages;
   /** The host's persistence hook; `null` means "revert to negotiation". */
   onLocaleChange?: (locale: string | null) => void;
+  /**
+   * The requested language whose catalog could not be loaded, while `locale`
+   * stands in for it: `useLocaleCatalog`'s `failure`. Components read it with
+   * `useLocaleLoadFailure` to tell the user.
+   */
+  loadFailure?: LocaleLoadFailure;
   /** Write `<html lang>`/`<html dir>` for the active locale. Default true. */
   manageDocument?: boolean;
   onError?: AppIntlErrorHandler;
@@ -99,6 +116,7 @@ export function AppI18nProvider(props: AppI18nProviderProps) {
     locales,
     messages,
     onLocaleChange,
+    loadFailure,
     manageDocument = true,
     onError,
     timeZone,
@@ -143,9 +161,21 @@ export function AppI18nProvider(props: AppI18nProviderProps) {
     root.dir = active.direction;
   }, [manageDocument, active.locale, active.direction]);
 
+  const failedLocale = locales.find(
+    (entry) => entry.locale === loadFailure?.locale,
+  );
+  const failedWith = loadFailure?.error;
+  const failure = useMemo(
+    () =>
+      failedLocale === undefined
+        ? undefined
+        : { locale: failedLocale, shown: active, error: failedWith },
+    [failedLocale, active, failedWith],
+  );
+
   const value = useMemo<AppI18nContextValue>(
-    () => ({ intl, locale: active, locales, setLocale }),
-    [intl, active, locales, setLocale],
+    () => ({ intl, locale: active, locales, setLocale, loadFailure: failure }),
+    [intl, active, locales, setLocale, failure],
   );
 
   return (
@@ -155,24 +185,50 @@ export function AppI18nProvider(props: AppI18nProviderProps) {
 
 type RenderedCatalog = Readonly<{ locale: string; messages: CatalogMessages }>;
 
+/** A requested language whose catalog could not be loaded. */
+type LocaleLoadFailure = Readonly<{ locale: string; error: unknown }>;
+
+/**
+ * Every package's descriptors are written in English, so English renders with
+ * no catalog at all and is always there to fall back to.
+ */
+const SOURCE_LANGUAGE: RenderedCatalog = Object.freeze({
+  locale: 'en',
+  messages: Object.freeze({}),
+});
+
+type LoadOutcome = Readonly<{ messages: CatalogMessages } | { error: unknown }>;
+
+const outcomes = new WeakMap<Promise<CatalogMessages>, Promise<LoadOutcome>>();
+
+/**
+ * A load as a promise that settles either way and is the same promise for the
+ * same load, so a render can `use` it and read a failure rather than throw it.
+ */
+function outcomeOf(load: Promise<CatalogMessages>): Promise<LoadOutcome> {
+  let outcome = outcomes.get(load);
+  if (outcome === undefined) {
+    outcome = load.then(
+      (messages) => ({ messages }),
+      (error: unknown) => ({ error }),
+    );
+    outcomes.set(load, outcome);
+  }
+  return outcome;
+}
+
 const FIRST_RETRY_MS = 1000;
 const LONGEST_RETRY_MS = 30_000;
 
 /**
  * Which locale to render, and its messages, for a host whose catalogs load on
- * demand from a `CatalogSource`. Pass the result to `AppI18nProvider` in place
- * of the requested locale: the two differ while a switch is loading.
+ * demand from a `CatalogSource`. Pass `locale`, `messages` and `failure` to
+ * `AppI18nProvider` (`failure` as `loadFailure`) in place of the requested
+ * locale: the two differ while a switch is loading, and when a load fails.
  *
  * A switch keeps the language already on screen until the new one has
  * loaded, then changes over in one render — never through English, and
- * never with half the interface in each language. A switch that fails to
- * load (offline, say) stays in the current language and keeps trying: at once
- * when the device comes back online, otherwise after a wait that doubles with
- * each failure, up to 30 seconds. The new language arrives without being
- * chosen again, and choosing a different one abandons it. A browser that
- * keeps a failed module import for the life of the page, as Chrome does,
- * answers each retry from that failure, so there it completes only after a
- * reload.
+ * never with half the interface in each language.
  *
  * With nothing on screen yet there is no language to keep, so the first load
  * suspends rather than render English it would replace a moment later. A
@@ -180,8 +236,17 @@ const LONGEST_RETRY_MS = 30_000;
  * first render; anywhere else (a component that mounts in a locale the page
  * has not loaded yet) needs a Suspense boundary above it. A server render
  * suspends the same way and streams the result, and hydration waits for the
- * same catalog instead of rendering a mismatch. A failed first load throws to
- * the nearest error boundary.
+ * same catalog instead of rendering a mismatch.
+ *
+ * A load that fails (offline, say) never stops the interface: a switch stays
+ * in the language on screen, and a first load falls back to English. Either
+ * way `failure` names the language that could not be loaded, for the host to
+ * tell the user, and the hook keeps trying: at once when the device comes back
+ * online, otherwise after a wait that doubles with each failure, up to 30
+ * seconds. The language arrives without being chosen again, and choosing a
+ * different one abandons it. A browser that keeps a failed module import for
+ * the life of the page, as Chrome does, answers each retry from that failure,
+ * so there it completes only after a reload.
  *
  * `preloaded` is a catalog delivered some other way — a server passing the
  * request locale's messages down as props — which renders without a load
@@ -191,7 +256,7 @@ export function useLocaleCatalog(
   source: CatalogSource,
   locale: string,
   preloaded?: RenderedCatalog,
-): RenderedCatalog {
+): RenderedCatalog & Readonly<{ failure?: LocaleLoadFailure }> {
   const peek = () => source.peek(locale);
   const loaded = useSyncExternalStore(source.subscribe, peek, peek);
   const ready = preloaded?.locale === locale ? preloaded.messages : loaded;
@@ -209,20 +274,36 @@ export function useLocaleCatalog(
   // A host keeps the requested locale in its own state, so choosing the same
   // language again changes nothing here. Counting failures is what re-arms the
   // load below; any change of locale, even to one already loaded, starts the
-  // count again.
-  const [failed, setFailed] = useState({ locale, count: 0 });
+  // count again and forgets the last failure.
+  const [failed, setFailed] = useState<{
+    locale: string;
+    count: number;
+    failure?: LocaleLoadFailure;
+  }>({ locale, count: 0 });
   if (failed.locale !== locale) setFailed({ locale, count: 0 });
-  const failures = failed.locale === locale ? failed.count : 0;
+  const current: { count: number; failure?: LocaleLoadFailure } =
+    failed.locale === locale ? failed : { count: 0 };
+  const failures = current.count;
 
   useEffect(() => {
     if (ready !== undefined) return;
     let active = true;
     let timer: ReturnType<typeof setTimeout> | undefined;
     const retry = () => {
-      if (active) setFailed({ locale, count: failures + 1 });
-    };
-    source.load(locale).catch(() => {
       if (!active) return;
+      setFailed((state) =>
+        state.locale === locale ? { ...state, count: failures + 1 } : state,
+      );
+    };
+    source.load(locale).catch((error: unknown) => {
+      if (!active) return;
+      // The first failure is the one reported; a retry failing again does not
+      // tell the host anything new.
+      setFailed((state) =>
+        state.locale !== locale || state.failure !== undefined
+          ? state
+          : { ...state, failure: { locale, error } },
+      );
       timer = setTimeout(
         retry,
         Math.min(FIRST_RETRY_MS * 2 ** failures, LONGEST_RETRY_MS),
@@ -237,8 +318,19 @@ export function useLocaleCatalog(
   }, [source, locale, ready, failures]);
 
   if (ready !== undefined) return { locale, messages: ready };
-  if (rendered !== null) return rendered;
-  return { locale, messages: use(source.attempt(locale)) };
+  if (rendered !== null) {
+    return current.failure === undefined
+      ? rendered
+      : { ...rendered, failure: current.failure };
+  }
+  const outcome = use(outcomeOf(source.attempt(locale)));
+  if ('messages' in outcome) return { locale, messages: outcome.messages };
+  // From here English is on screen, so a later render must not suspend
+  // again while the retries above are in flight.
+  const failure = { locale, error: outcome.error };
+  setRendered(SOURCE_LANGUAGE);
+  setFailed({ locale, count: 0, failure });
+  return { ...SOURCE_LANGUAGE, failure };
 }
 
 /**
@@ -272,6 +364,14 @@ export function useAppLocale(): Readonly<{
     locales: context.locales,
     setLocale: context.setLocale,
   };
+}
+
+/**
+ * The language the user asked for whose catalog could not be loaded, and the
+ * one on screen in its place; undefined otherwise, and without a provider.
+ */
+export function useLocaleLoadFailure(): ShownLoadFailure | undefined {
+  return useContext(AppI18nContext)?.loadFailure;
 }
 
 /**

@@ -198,6 +198,7 @@ function LocaleSession({
         locale={catalog.locale}
         locales={frescoLocales}
         messages={catalog.messages}
+        loadFailure={catalog.failure}
         timeZone={frescoTimeZone}
         onLocaleChange={setLocale}
       >

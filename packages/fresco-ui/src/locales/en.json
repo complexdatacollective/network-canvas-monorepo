@@ -631,6 +631,22 @@
     "defaultMessage": "Select value on scale",
     "description": "Accessible name of the scale’s slider thumb, when the caller named neither the field nor the control."
   },
+  "frescoUi.localeLoadFailure.description": {
+    "defaultMessage": "Showing {current} instead.",
+    "description": "Body of the notice that the chosen interface language could not be downloaded, where reloading is not offered, such as during an interview. {current} is the name of the language on screen instead, written in that language."
+  },
+  "frescoUi.localeLoadFailure.reload": {
+    "defaultMessage": "Reload",
+    "description": "Button on the notice that the chosen interface language could not be downloaded. Reloads the page, which tries the download again."
+  },
+  "frescoUi.localeLoadFailure.reloadDescription": {
+    "defaultMessage": "Showing {current} instead. Check your connection, then reload to try again.",
+    "description": "Body of the notice that the chosen interface language could not be downloaded, shown with a Reload button. {current} is the name of the language on screen instead, written in that language."
+  },
+  "frescoUi.localeLoadFailure.title": {
+    "defaultMessage": "Couldn’t load {language}",
+    "description": "Title of a notice shown when the interface language the user chose could not be downloaded. {language} is the name of that language, written in that language (for example \"Español\")."
+  },
   "frescoUi.localeSwitcher.automaticCurrent": {
     "defaultMessage": "Automatic ({language})",
     "description": "The automatic entry and the switcher button’s accessible name while it is chosen; {language} is the own name of the language the browser resolves to."

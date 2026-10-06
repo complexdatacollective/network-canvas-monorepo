@@ -10,6 +10,7 @@ import { AnimationProvider } from '@codaco/fresco-ui/AnimationProvider';
 import { applyFreshLoadServiceWorkerUpdate } from '@codaco/fresco-ui/appUpdate/applyFreshLoadServiceWorkerUpdate';
 import { registerPwaBuildLease } from '@codaco/fresco-ui/appUpdate/registerPwaBuildLease';
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
+import LocaleLoadFailureToast from '@codaco/fresco-ui/LocaleLoadFailureToast';
 import { PortalContainerProvider } from '@codaco/fresco-ui/PortalContainer';
 import { Toaster } from '@codaco/fresco-ui/Toast';
 
@@ -33,12 +34,14 @@ import {
   requestPersistentStorage,
   requestPersistentStorageOnFirstInteraction,
 } from './utils/pwa';
+import { reportError } from './utils/reportError';
 
 // The researcher's language is its own chunk. Fetch it now, alongside the
 // service-worker and storage awaits in startApp, rather than after them; the
 // boot screen stays in the English index.html ships with until it lands. A
 // failed load leaves startup in English instead of stopping it: the provider
-// tries again, and a second failure reaches its error boundary.
+// tries again, and if that fails too Architect runs in English and a notice
+// says so.
 const startupLocaleReady = loadStartupLocale()
   .catch(() => undefined)
   .then(() => initializeArchitectDocument());
@@ -125,6 +128,12 @@ async function startApp(): Promise<void> {
                     <AppView />
                   </div>
                 </DialogProvider>
+                <LocaleLoadFailureToast
+                  onReload={() => window.location.reload()}
+                  onFailure={(error, locale) =>
+                    reportError(error, { operation: 'locale-load', locale })
+                  }
+                />
                 <Toaster />
               </Toast.Provider>
             </PortalContainerProvider>

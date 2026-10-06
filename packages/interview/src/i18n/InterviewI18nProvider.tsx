@@ -47,7 +47,8 @@ export const useInterviewLocale = () => useContext(InterviewLocaleContext);
  * under a Suspense boundary (`Shell` brings its own) or passes the matching
  * `catalog` from `loadInterviewCatalog`. Once mounted it never suspends again:
  * a later switch keeps the current language on screen until the new one is
- * ready.
+ * ready. A language that cannot be loaded leaves English (or, after a switch,
+ * the current language) on screen and is reported as `useLocaleLoadFailure`.
  */
 export function InterviewI18nProvider({
   requestedLocale,
@@ -127,6 +128,7 @@ export function InterviewI18nProvider({
       locale={rendered.locale}
       locales={interviewLocales}
       messages={rendered.messages}
+      loadFailure={rendered.failure}
       manageDocument={false}
       onLocaleChange={setPreference}
     >

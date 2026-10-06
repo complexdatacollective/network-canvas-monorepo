@@ -125,8 +125,7 @@ The source merges and caches one locale at a time:
 - `attempt(locale)` returns the load the locale already has, including its
   last failed attempt, and starts one only if there is none. Suspend on this
   rather than `load`: a render that suspends on `load` would start a new
-  attempt every time React retries it, and never reach its error boundary. A
-  failed `load` (a preload before the first render, say) is not handed on, so
+  attempt every time React retries it, and never settle. A failed `load` (a preload before the first render, say) is not handed on, so
   the first attempt after one still tries afresh.
 - `peek(locale)` returns the merged catalog once it has loaded, otherwise
   `undefined`. A locale no package translates (English, the pseudo-locale) is
@@ -134,9 +133,9 @@ The source merges and caches one locale at a time:
 - `subscribe(onLoad)` reports each finished load and returns the unsubscribe.
 
 `useLocaleCatalog(source, locale, preloaded?)` from `@codaco/app-i18n/react`
-returns the `{ locale, messages }` to give `AppI18nProvider`. Pass its result in
-place of the requested locale, because the two differ while a switch is
-loading:
+returns the `{ locale, messages, failure }` to give `AppI18nProvider`. Pass its
+result in place of the requested locale, because the two differ while a switch
+is loading and when a load fails:
 
 ```tsx
 import { AppI18nProvider, useLocaleCatalog } from '@codaco/app-i18n/react';
@@ -158,6 +157,7 @@ export function I18n({
       locale={rendered.locale}
       locales={appLocales}
       messages={rendered.messages}
+      loadFailure={rendered.failure}
     >
       {children}
     </AppI18nProvider>
@@ -167,16 +167,25 @@ export function I18n({
 
 The hook keeps the current language on screen until the new one has loaded,
 then changes over in one render, so a switch never passes through English or
-shows a half-translated interface. A switch that fails to load stays in the
-current language and keeps trying: at once when the device comes back online,
+shows a half-translated interface. With nothing on screen yet there is no
+language to keep, so the first load suspends: render the provider under a
+Suspense boundary, or await `source.load(locale)` before the first render so it
+never suspends.
+
+A load that fails never stops the interface. A switch stays in the current
+language, and a first load falls back to English, which every descriptor
+carries. Either way the hook returns the language it could not load as
+`failure`, and keeps trying: at once when the device comes back online,
 otherwise after a wait that doubles with each failure, up to 30 seconds. A
 browser that keeps a failed module import for the life of the page, as Chrome
 does, answers each of those retries from the failure without a request, so
-there the switch completes only after a reload. With nothing on screen yet
-there is no language to keep, so the first load suspends: render the provider
-under a Suspense boundary, or await `source.load(locale)` before the first
-render so it never suspends. A failed first load throws to the nearest error
-boundary.
+there the language arrives only after a reload. Give `failure` to the provider
+as `loadFailure`, and tell the user: `useLocaleLoadFailure()` returns the
+registry entries of the language that could not be loaded (`locale`) and the
+one on screen in its place (`shown`), with the `error`, and
+`LocaleLoadFailureToast` from
+`@codaco/fresco-ui` shows it as a toast that stays until it is dismissed or the
+language arrives.
 
 A server host loads the request's catalog, formats with it, and sends the same
 messages to the client as props. Passing them as the hook's `preloaded` argument

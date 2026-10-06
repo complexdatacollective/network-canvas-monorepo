@@ -16,12 +16,15 @@ import {
 } from 'react';
 import { Provider } from 'react-redux';
 
-import { useAppLocale } from '@codaco/app-i18n/react';
+import { useAppLocale, useLocaleLoadFailure } from '@codaco/app-i18n/react';
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import { DndStoreProvider } from '@codaco/fresco-ui/dnd/dnd';
+import LocaleLoadFailureToast from '@codaco/fresco-ui/LocaleLoadFailureToast';
 import Spinner from '@codaco/fresco-ui/Spinner';
 import { ThemedRegion } from '@codaco/fresco-ui/ThemedRegion';
+import { Toaster } from '@codaco/fresco-ui/Toast';
 import { cx } from '@codaco/fresco-ui/utils/cva';
+import { ensureError } from '@codaco/shared-consts';
 
 import { AnalyticsProvider } from './analytics/AnalyticsProvider';
 import {
@@ -30,6 +33,7 @@ import {
   type Tracker,
 } from './analytics/tracker';
 import { useStageNavigationAnalytics } from './analytics/useStageNavigationAnalytics';
+import { useCaptureException } from './analytics/useTrack';
 import { GeospatialOfflineIndicator } from './components/GeospatialOfflineIndicator';
 import Navigation, { TEXT_SCALE_OPTIONS } from './components/Navigation';
 import StageErrorBoundary from './components/StageErrorBoundary';
@@ -294,9 +298,36 @@ function Interview({
           <Toast.Provider toastManager={toastManager}>
             <InterviewToastViewport />
           </Toast.Provider>
+          <LanguageUnavailableNotice />
         </DndStoreProvider>
       </DialogProvider>
     </ThemedRegion>
+  );
+}
+
+/**
+ * A third toast channel, mounted only while the interview's language cannot be
+ * loaded, so an interview that has its language carries no extra notification
+ * region. Interview toasts anchor to the navigation and take focus, and a
+ * host's toasts may be in another language. It offers no reload, which would
+ * cost the participant more than the language.
+ */
+function LanguageUnavailableNotice() {
+  const failure = useLocaleLoadFailure();
+  const captureException = useCaptureException();
+  if (failure === undefined) return null;
+  return (
+    <Toast.Provider>
+      <LocaleLoadFailureToast
+        onFailure={(error, locale) =>
+          captureException(ensureError(error), {
+            feature: 'locale-load',
+            locale,
+          })
+        }
+      />
+      <Toaster />
+    </Toast.Provider>
   );
 }
 
@@ -589,7 +620,8 @@ const Shell = ({
   // committed while the fallback shows, so nothing is lost or created twice
   // when the interview mounts. A server render suspends here too and streams
   // the interview once the catalog is in, and hydration waits for the same
-  // catalog rather than mismatch. A host that passes `catalog` skips both.
+  // catalog rather than mismatch. A host that passes `catalog` skips both. A
+  // catalog that cannot be loaded ends the wait in English, with a notice.
   return (
     <Suspense fallback={<LoadingInterview />}>
       <InterviewI18nProvider

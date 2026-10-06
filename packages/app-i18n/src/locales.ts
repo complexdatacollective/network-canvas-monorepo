@@ -158,11 +158,10 @@ export type CatalogSource = Readonly<{
   /**
    * The load a locale already has — finished, in flight, or the last attempt
    * to fail — or a new one if it has none. A render that suspends on a load
-   * needs this rather than `load`: it is handed the failure, which reaches its
-   * error boundary, where `load` would start another attempt on every retry
-   * and the render would never settle. Only a failed attempt is handed on: a
-   * failed `load`, such as a preload before the first render, leaves the next
-   * attempt to try afresh.
+   * needs this rather than `load`: it is handed the failure, where `load`
+   * would start another attempt on every retry and the render would never
+   * settle. Only a failed attempt is handed on: a failed `load`, such as a
+   * preload before the first render, leaves the next attempt to try afresh.
    */
   attempt: (locale: string) => Promise<CatalogMessages>;
   /** Called after any locale finishes loading. Returns the unsubscribe. */

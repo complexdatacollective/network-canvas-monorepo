@@ -27,9 +27,12 @@ vi.mock('../interfaces', () => {
 
 // The interview's German and French catalogs arrive only when a test lets
 // them, so the Shell can be looked at while one is still on its way. Dutch
-// never arrives: only a server can supply it.
+// never arrives: only a server can supply it. Italian cannot be downloaded.
 const neverLoadsDutch = vi.hoisted(() =>
   vi.fn(() => new Promise<never>(() => {})),
+);
+const italianUnavailable = vi.hoisted(() =>
+  vi.fn(() => Promise.reject(new Error('Failed to fetch'))),
 );
 const gates = vi.hoisted(() => {
   const gate = () => {
@@ -59,6 +62,7 @@ vi.mock('../locales/catalogs', async (importOriginal) => {
       de: heldBack('de'),
       fr: heldBack('fr'),
       nl: neverLoadsDutch,
+      it: italianUnavailable,
     },
   };
 });
@@ -190,6 +194,34 @@ describe('Shell catalog loading', () => {
     } finally {
       observer.disconnect();
     }
+  });
+
+  it('runs in English, and says so, when the language it mounts in cannot be downloaded', async () => {
+    await act(async () => {
+      render(
+        <Shell
+          {...handlers}
+          payload={payload}
+          requestedLocale="it"
+          disableAnalytics
+        />,
+      );
+    });
+
+    expect(
+      await screen.findByRole('button', { name: 'Next Step' }),
+    ).toBeVisible();
+    const region = screen.getByRole('main');
+    expect(region).toHaveAttribute('lang', 'en');
+    expect(region).not.toHaveAttribute('aria-busy');
+    expect(
+      screen.getByRole('heading', { name: 'Couldn’t load Italiano' }),
+    ).toBeVisible();
+    expect(screen.getByText('Showing English instead.')).toBeVisible();
+    expect(
+      screen.queryByRole('button', { name: 'Reload' }),
+    ).not.toBeInTheDocument();
+    expect(italianUnavailable).toHaveBeenCalled();
   });
 
   it('renders a server-delivered catalog at once, without loading it again', async () => {

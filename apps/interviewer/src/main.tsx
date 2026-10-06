@@ -59,7 +59,7 @@ async function startApp(): Promise<void> {
     // Load the startup language before the first render, alongside the update
     // check rather than after it, so a non-English device never paints English
     // first. A failure here must not stop the app mounting: the provider tries
-    // again, and a second failure reaches its error boundary.
+    // again, and if that fails too the app runs in English and says so.
     interviewerCatalogSource.load(startupLocale()).catch(() => undefined),
   ]);
 

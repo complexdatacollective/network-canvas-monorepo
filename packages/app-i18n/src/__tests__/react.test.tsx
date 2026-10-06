@@ -1,7 +1,6 @@
 // @vitest-environment jsdom
 import { act, cleanup, render, screen, within } from '@testing-library/react';
-import { Component, Suspense, useEffect } from 'react';
-import type { ReactNode } from 'react';
+import { Suspense, useEffect } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { commonMessages } from '../common.ts';
@@ -18,6 +17,7 @@ import {
   useAppIntl,
   useAppLocale,
   useLocaleCatalog,
+  useLocaleLoadFailure,
 } from '../react.tsx';
 
 const registry = defineAppLocales([
@@ -47,6 +47,13 @@ const messages = defineMessages({
 function Greeting(props: { name: string }) {
   const intl = useAppIntl();
   return <p>{intl.formatMessage(messages.greeting, { name: props.name })}</p>;
+}
+
+function Unavailable() {
+  const failure = useLocaleLoadFailure();
+  return failure === undefined ? null : (
+    <p>Could not load {failure.locale.label}</p>
+  );
 }
 
 function Count(props: { count: number }) {
@@ -354,6 +361,13 @@ describe('AppI18nProvider', () => {
   });
 });
 
+describe('useLocaleLoadFailure without a provider', () => {
+  it('reports nothing', () => {
+    render(<Unavailable />);
+    expect(screen.queryByText(/Could not load/)).toBeNull();
+  });
+});
+
 describe('useAppLocale without a provider', () => {
   it('throws a descriptive error', () => {
     function Bare() {
@@ -443,8 +457,10 @@ describe('useLocaleCatalog', () => {
         locale={catalog.locale}
         locales={translated}
         messages={catalog.messages}
+        loadFailure={catalog.failure}
       >
         <Greeting name="Ada" />
+        <Unavailable />
       </AppI18nProvider>
     );
   }
@@ -517,18 +533,8 @@ describe('useLocaleCatalog', () => {
 
   describe('when the first load fails', () => {
     afterEach(() => {
-      vi.restoreAllMocks();
+      vi.useRealTimers();
     });
-
-    class Recovery extends Component<{ children: ReactNode }> {
-      override state = { failed: false };
-      static getDerivedStateFromError() {
-        return { failed: true };
-      }
-      override render() {
-        return this.state.failed ? <p>Recovered</p> : this.props.children;
-      }
-    }
 
     // A browser answers a repeated import of a module that failed to load
     // with that failure, at once. Past a few calls the loader stops settling,
@@ -543,24 +549,44 @@ describe('useLocaleCatalog', () => {
       });
     };
 
-    function renderInBoundary(source: CatalogSource) {
+    function renderFirst(source: CatalogSource) {
       return act(async () => {
         render(
-          <Recovery>
-            <Suspense fallback={<p>Waiting</p>}>
-              <Host source={source} locale="es" />
-            </Suspense>
-          </Recovery>,
+          <Suspense fallback={<p>Waiting</p>}>
+            <Host source={source} locale="es" />
+          </Suspense>,
         );
       });
     }
 
-    it('reaches the error boundary instead of loading again on every retry', async () => {
-      vi.spyOn(console, 'error').mockImplementation(() => {});
+    it('falls back to English and reports the language it could not load', async () => {
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
       const es = failingSpanish();
-      await renderInBoundary(createCatalogSource({ es }));
-      expect(screen.getByText('Recovered')).toBeDefined();
-      expect(es).toHaveBeenCalledOnce();
+      await renderFirst(createCatalogSource({ es }));
+      expect(screen.getByText('Hello Ada')).toBeDefined();
+      expect(screen.getByText('Could not load Español')).toBeDefined();
+      expect(document.documentElement.lang).toBe('en');
+      // The render's own attempt, then the first retry once English is up:
+      // not a new load every time React renders again.
+      expect(es).toHaveBeenCalledTimes(2);
+    });
+
+    it('switches to the language once a retry loads it', async () => {
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+      const es = vi
+        .fn<() => Promise<{ default: CatalogMessages }>>()
+        .mockRejectedValueOnce(new Error('offline'))
+        .mockRejectedValueOnce(new Error('offline'))
+        .mockResolvedValue({ default: spanish });
+      await renderFirst(createCatalogSource({ es }));
+      expect(screen.getByText('Hello Ada')).toBeDefined();
+
+      await act(() => vi.advanceTimersByTimeAsync(999));
+      expect(screen.getByText('Hello Ada')).toBeDefined();
+      await act(() => vi.advanceTimersByTimeAsync(1));
+      expect(screen.getByText('Hola Ada')).toBeDefined();
+      expect(screen.queryByText(/Could not load/)).toBeNull();
+      expect(document.documentElement.lang).toBe('es');
     });
 
     it('tries afresh on its first render when the load before it failed', async () => {
@@ -570,18 +596,9 @@ describe('useLocaleCatalog', () => {
         .mockResolvedValue({ default: spanish });
       const source = createCatalogSource({ es });
       await source.load('es').catch(() => undefined);
-      await renderInBoundary(source);
+      await renderFirst(source);
       expect(screen.getByText('Hola Ada')).toBeDefined();
-      expect(es).toHaveBeenCalledTimes(2);
-    });
-
-    it('reaches the error boundary when that fresh try fails too', async () => {
-      vi.spyOn(console, 'error').mockImplementation(() => {});
-      const es = failingSpanish();
-      const source = createCatalogSource({ es });
-      await source.load('es').catch(() => undefined);
-      await renderInBoundary(source);
-      expect(screen.getByText('Recovered')).toBeDefined();
+      expect(screen.queryByText(/Could not load/)).toBeNull();
       expect(es).toHaveBeenCalledTimes(2);
     });
   });
@@ -635,6 +652,7 @@ describe('useLocaleCatalog', () => {
         expect(fr).toHaveBeenCalledOnce();
         expect(unhandled).not.toHaveBeenCalled();
         expect(screen.getByText('Hola Ada')).toBeDefined();
+        expect(screen.getByText('Could not load Français')).toBeDefined();
         expect(document.documentElement.lang).toBe('es');
 
         await act(() => vi.advanceTimersByTimeAsync(999));
@@ -648,6 +666,7 @@ describe('useLocaleCatalog', () => {
         await act(() => vi.advanceTimersByTimeAsync(1));
         expect(fr).toHaveBeenCalledTimes(3);
         expect(screen.getByText('Bonjour Ada')).toBeDefined();
+        expect(screen.queryByText(/Could not load/)).toBeNull();
         expect(document.documentElement.lang).toBe('fr');
       } finally {
         process.off('unhandledRejection', unhandled);
@@ -670,6 +689,8 @@ describe('useLocaleCatalog', () => {
       expect(fr).toHaveBeenCalledTimes(3);
 
       await act(async () => rerender(<Host source={source} locale="es" />));
+      // Choosing another language abandons the failed one.
+      expect(screen.queryByText(/Could not load/)).toBeNull();
       await act(async () => rerender(<Host source={source} locale="fr" />));
       expect(fr).toHaveBeenCalledTimes(4);
       await act(() => vi.advanceTimersByTimeAsync(999));

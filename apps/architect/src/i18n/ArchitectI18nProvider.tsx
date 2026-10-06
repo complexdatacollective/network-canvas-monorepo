@@ -102,6 +102,7 @@ export function ArchitectI18nProvider({ children }: { children: ReactNode }) {
         locale={catalog.locale}
         locales={architectLocales}
         messages={catalog.messages}
+        loadFailure={catalog.failure}
         onLocaleChange={setLocale}
       >
         <ImperativeFormatter />

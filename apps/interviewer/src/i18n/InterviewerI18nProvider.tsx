@@ -102,8 +102,8 @@ export function InterviewerI18nProvider({ children }: { children: ReactNode }) {
   const automaticLocale = negotiateLocale(null, requested);
   // main.tsx loads the startup locale before the first render, so this only
   // suspends if that load failed (it retries here) or the preference changed
-  // in between; a second failure reaches the error boundary App mounts above
-  // this provider, which recovers in English.
+  // in between. If the retry fails too, Interviewer runs in English and
+  // AppProviders tells the user.
   const catalog = useLocaleCatalog(interviewerCatalogSource, requestedLocale);
 
   return (
@@ -111,6 +111,7 @@ export function InterviewerI18nProvider({ children }: { children: ReactNode }) {
       locale={catalog.locale}
       locales={interviewerLocales}
       messages={catalog.messages}
+      loadFailure={catalog.failure}
       onLocaleChange={setPreference}
     >
       <PreferenceContext.Provider
