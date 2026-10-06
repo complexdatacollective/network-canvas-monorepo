@@ -211,8 +211,12 @@ if [ -n "$ready" ] && [ -f "$PROBE_JOB_FILE" ]; then
 fi
 if [ "$state" = completed ]; then
   say "probe job $(cat "$PROBE_JOB_FILE") completed after the upgrade"
+elif [ -z "$ready" ]; then
+  fail 'the probe job was not checked: the instance never reopened'
+elif [ ! -f "$PROBE_JOB_FILE" ]; then
+  fail 'the probe job was never enqueued'
 else
-  fail "the probe job queued during the window is '${state:-not enqueued or gone}' after the instance reopened"
+  fail "the probe job queued during the window is '${state:-gone}' after the instance reopened"
 fi
 
 # ── The window ────────────────────────────────────────────────────────────
