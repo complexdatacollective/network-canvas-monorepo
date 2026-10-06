@@ -20,7 +20,7 @@
   },
   "News": {
     "label": "最新消息：",
-    "fullStory": "[阅读全文]"
+    "readMore": "[阅读更多]"
   },
   "Tools": {
     "heading": "一系列助力研究的工具",

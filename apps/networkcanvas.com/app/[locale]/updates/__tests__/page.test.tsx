@@ -205,15 +205,18 @@ describe('updates page', () => {
   it('narrows the list to updates that match every search word', async () => {
     const updates = await loadUpdates('en-US');
     const titles = updates.map((update) => update.title);
-    const [newest, older] = updates;
+    const [newest] = updates;
+    const summer = updates.find((update) => update.id === 'summer-2026');
     await renderPage();
 
     fireEvent.change(screen.getByRole('searchbox', { hidden: true }), {
       target: { value: 'schema  TABLETS' },
     });
 
-    expect(entryTitles(titles)).toEqual([older!.title]);
-    expect(screen.getByText('1 of 2 updates')).toBeInTheDocument();
+    expect(entryTitles(titles)).toEqual([summer!.title]);
+    expect(
+      screen.getByText(`1 of ${updates.length} updates`),
+    ).toBeInTheDocument();
     expect(entryTitles(titles)).not.toContain(newest!.title);
   });
 

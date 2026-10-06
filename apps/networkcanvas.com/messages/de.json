@@ -20,7 +20,7 @@
   },
   "News": {
     "label": "Aktuelles:",
-    "fullStory": "[Weiterlesen]"
+    "readMore": "[Weiterlesen]"
   },
   "Tools": {
     "heading": "Werkzeuge, die Ihre Forschung erleichtern",

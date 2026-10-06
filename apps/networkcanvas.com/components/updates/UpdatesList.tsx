@@ -304,21 +304,23 @@ export function UpdatesList({ updates }: { updates: readonly Update[] }) {
                         : 'tablet-portrait:p-8 p-6'
                     }
                   >
-                    <div
-                      className={cx(
-                        'flex flex-wrap items-center gap-2',
-                        mini ? 'mb-2' : 'mb-3',
-                      )}
-                    >
-                      {update.apps.map((id) => (
-                        <Fragment key={id}>
-                          {' '}
-                          <Tag size="sm" uppercase={false}>
-                            {appName(id)}
-                          </Tag>
-                        </Fragment>
-                      ))}
-                    </div>
+                    {update.apps.length > 0 ? (
+                      <div
+                        className={cx(
+                          'flex flex-wrap items-center gap-2',
+                          mini ? 'mb-2' : 'mb-3',
+                        )}
+                      >
+                        {update.apps.map((id) => (
+                          <Fragment key={id}>
+                            {' '}
+                            <Tag size="sm" uppercase={false}>
+                              {appName(id)}
+                            </Tag>
+                          </Fragment>
+                        ))}
+                      </div>
+                    ) : null}
                     <Heading
                       level="h2"
                       variant="subheading"

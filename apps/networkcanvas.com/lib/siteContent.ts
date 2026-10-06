@@ -55,7 +55,6 @@ export type Update = {
 };
 
 export type SiteContent = {
-  newsItems: NewsItem[];
   publications: Publication[];
   grants: Grant[];
   coreTeam: TeamMember[];
@@ -77,22 +76,6 @@ const publicationYear = z
   .string()
   .trim()
   .regex(/^\d{4}$/, 'must be a four-digit year');
-
-const newsRowSchema = z
-  .object({
-    id,
-    'title_en': requiredText,
-    'title_es': requiredText,
-    'title_zh-Hans': requiredText,
-    'title_zh-Hant': requiredText,
-    'title_de': requiredText,
-    'title_nl': requiredText,
-    'title_pt-BR': requiredText,
-    'title_it': requiredText,
-    'title_fr': requiredText,
-    'href': z.union([httpsUrl, internalPath]),
-  })
-  .strict();
 
 const publicationRowSchema = z
   .object({
@@ -197,11 +180,15 @@ const updateRowSchema = z
     prominence: z.enum(updateProminences),
     apps: z
       .string()
-      .transform((value) => value.split('|').map((app) => app.trim()))
+      .transform((value) =>
+        value
+          .split('|')
+          .map((app) => app.trim())
+          .filter(Boolean),
+      )
       .pipe(
         z
           .array(z.enum(updateAppIds))
-          .min(1)
           .refine(
             (apps) => new Set(apps).size === apps.length,
             'must not repeat an app',
@@ -313,30 +300,13 @@ export async function loadSiteContent(
   locale: Locale,
   contentDirectory = join(process.cwd(), 'content'),
 ): Promise<SiteContent> {
-  const [newsRows, publicationRows, grantRows, teamRows] = await Promise.all([
-    parseCsv(contentDirectory, 'latest-news.csv', newsRowSchema),
+  const [publicationRows, grantRows, teamRows] = await Promise.all([
     parseCsv(contentDirectory, 'publications.csv', publicationRowSchema),
     parseCsv(contentDirectory, 'grants.csv', grantRowSchema),
     parseCsv(contentDirectory, 'core-team.csv', teamMemberRowSchema),
   ]);
 
   return {
-    newsItems: newsRows.map((row) => ({
-      id: row.id,
-      title: localized(
-        locale,
-        row.title_en,
-        row.title_es,
-        row['title_zh-Hans'],
-        row['title_zh-Hant'],
-        row.title_de,
-        row.title_nl,
-        row['title_pt-BR'],
-        row.title_it,
-        row.title_fr,
-      ),
-      href: row.href,
-    })),
     publications: publicationRows.map((row) => ({
       id: row.id,
       title: localized(
@@ -543,4 +513,14 @@ export async function loadUpdates(
   );
 
   return updates.toSorted((a, b) => b.date.localeCompare(a.date));
+}
+
+const LATEST_NEWS_COUNT = 5;
+
+export function latestNewsItems(updates: readonly Update[]): NewsItem[] {
+  return updates.slice(0, LATEST_NEWS_COUNT).map((update) => ({
+    id: update.id,
+    title: update.title,
+    href: `/updates#${update.id}`,
+  }));
 }

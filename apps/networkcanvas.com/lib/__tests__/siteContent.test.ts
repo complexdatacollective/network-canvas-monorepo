@@ -4,13 +4,14 @@ import { join } from 'node:path';
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { loadSiteContent, loadUpdates } from '~/lib/siteContent';
+import {
+  latestNewsItems,
+  loadSiteContent,
+  loadUpdates,
+  type Update,
+} from '~/lib/siteContent';
 
 const validFiles = {
-  'latest-news.csv': `id,title_en,title_es,title_zh-Hans,title_zh-Hant,title_de,title_nl,title_pt-BR,title_it,title_fr,href
-second,Second news,Segunda noticia,第二条新闻,第二則新聞,Zweite Meldung,Tweede nieuwsbericht,Segunda notícia,Seconda notizia,Deuxième actualité,https://example.com/second
-first,First news,Primera noticia,第一条新闻,第一則新聞,Erste Meldung,Eerste nieuwsbericht,Primeira notícia,Prima notizia,Première actualité,https://example.com/first
-`,
   'publications.csv': `id,title_en,title_es,title_zh-Hans,title_zh-Hant,title_de,title_nl,title_pt-BR,title_it,title_fr,source_en,source_es,source_zh-Hans,source_zh-Hant,source_de,source_nl,source_pt-BR,source_it,source_fr,authors,href,year
 p1,Publication 1,Publicación 1,出版物 1,出版品 1,Publikation 1,Publicatie 1,Publicação 1,Pubblicazione 1,Publication 1,Journal 1,Revista 1,期刊 1,刊物 1,Zeitschrift 1,Tijdschrift 1,Periódico 1,Rivista 1,Revue 1,Author 1,https://example.com/p1,2021
 p2,Publication 2,Publicación 2,出版物 2,出版品 2,Publikation 2,Publicatie 2,Publicação 2,Pubblicazione 2,Publication 2,Journal 2,Revista 2,期刊 2,刊物 2,Zeitschrift 2,Tijdschrift 2,Periódico 2,Rivista 2,Revue 2,Author 2,https://example.com/p2,2022
@@ -51,31 +52,27 @@ describe('loadSiteContent', () => {
     await rm(directory, { recursive: true, force: true });
   });
 
-  it('selects Spanish fields and preserves CSV row order', async () => {
+  it('selects Spanish fields', async () => {
     const content = await loadSiteContent('es', directory);
 
-    expect(content.newsItems.map(({ id, title }) => ({ id, title }))).toEqual([
-      { id: 'second', title: 'Segunda noticia' },
-      { id: 'first', title: 'Primera noticia' },
-    ]);
+    expect(content.publications[0]).toMatchObject({
+      title: 'Publicación 1',
+      source: 'Revista 1',
+    });
   });
 
-  it('selects Simplified Chinese fields and preserves CSV row order', async () => {
+  it('selects Simplified Chinese fields', async () => {
     const content = await loadSiteContent('zh-Hans', directory);
 
-    expect(content.newsItems.map(({ id, title }) => ({ id, title }))).toEqual([
-      { id: 'second', title: '第二条新闻' },
-      { id: 'first', title: '第一条新闻' },
-    ]);
+    expect(content.publications[0]).toMatchObject({
+      title: '出版物 1',
+      source: '期刊 1',
+    });
   });
 
-  it('selects Traditional Chinese fields and preserves CSV row order', async () => {
+  it('selects Traditional Chinese fields', async () => {
     const content = await loadSiteContent('zh-Hant', directory);
 
-    expect(content.newsItems.map(({ id, title }) => ({ id, title }))).toEqual([
-      { id: 'second', title: '第二則新聞' },
-      { id: 'first', title: '第一則新聞' },
-    ]);
     expect(content.publications[0]).toMatchObject({
       title: '出版品 1',
       source: '刊物 1',
@@ -89,50 +86,50 @@ describe('loadSiteContent', () => {
     expect(content.coreTeam[0]?.institution).toBe('機構');
   });
 
-  it('selects German fields and preserves CSV row order', async () => {
+  it('selects German fields', async () => {
     const content = await loadSiteContent('de', directory);
 
-    expect(content.newsItems.map(({ id, title }) => ({ id, title }))).toEqual([
-      { id: 'second', title: 'Zweite Meldung' },
-      { id: 'first', title: 'Erste Meldung' },
-    ]);
+    expect(content.publications[0]).toMatchObject({
+      title: 'Publikation 1',
+      source: 'Zeitschrift 1',
+    });
   });
 
-  it('selects Dutch fields and preserves CSV row order', async () => {
+  it('selects Dutch fields', async () => {
     const content = await loadSiteContent('nl', directory);
 
-    expect(content.newsItems.map(({ id, title }) => ({ id, title }))).toEqual([
-      { id: 'second', title: 'Tweede nieuwsbericht' },
-      { id: 'first', title: 'Eerste nieuwsbericht' },
-    ]);
+    expect(content.publications[0]).toMatchObject({
+      title: 'Publicatie 1',
+      source: 'Tijdschrift 1',
+    });
   });
 
-  it('selects Brazilian Portuguese fields and preserves CSV row order', async () => {
+  it('selects Brazilian Portuguese fields', async () => {
     const content = await loadSiteContent('pt-BR', directory);
 
-    expect(content.newsItems.map(({ id, title }) => ({ id, title }))).toEqual([
-      { id: 'second', title: 'Segunda notícia' },
-      { id: 'first', title: 'Primeira notícia' },
-    ]);
+    expect(content.publications[0]).toMatchObject({
+      title: 'Publicação 1',
+      source: 'Periódico 1',
+    });
   });
 
-  it('selects Italian fields and preserves CSV row order', async () => {
+  it('selects Italian fields', async () => {
     const content = await loadSiteContent('it', directory);
 
-    expect(content.newsItems.map(({ id, title }) => ({ id, title }))).toEqual([
-      { id: 'second', title: 'Seconda notizia' },
-      { id: 'first', title: 'Prima notizia' },
-    ]);
+    expect(content.publications[0]).toMatchObject({
+      title: 'Pubblicazione 1',
+      source: 'Rivista 1',
+    });
     expect(content.grants[0]?.pis).toBe('Responsabile scientifico: Persona');
   });
 
-  it('selects French fields and preserves CSV row order', async () => {
+  it('selects French fields', async () => {
     const content = await loadSiteContent('fr', directory);
 
-    expect(content.newsItems.map(({ id, title }) => ({ id, title }))).toEqual([
-      { id: 'second', title: 'Deuxième actualité' },
-      { id: 'first', title: 'Première actualité' },
-    ]);
+    expect(content.publications[0]).toMatchObject({
+      title: 'Publication 1',
+      source: 'Revue 1',
+    });
   });
 
   it('returns every publication row in file order', async () => {
@@ -163,30 +160,21 @@ describe('loadSiteContent', () => {
     const content = await loadSiteContent('en-US');
 
     expect(
-      [
-        content.newsItems,
-        content.publications,
-        content.grants,
-        content.coreTeam,
-      ].every((records) => records.length > 0),
+      [content.publications, content.grants, content.coreTeam].every(
+        (records) => records.length > 0,
+      ),
     ).toBe(true);
-    expect(content.newsItems).toContainEqual(
-      expect.objectContaining({
-        id: 'summer-2026-app-release',
-        href: '/summer-2026-update',
-      }),
-    );
   });
 
   it.each([
     {
       name: 'duplicate id',
-      filename: 'latest-news.csv',
+      filename: 'core-team.csv',
       row: 'row 3',
       field: 'id',
-      source: `id,title_en,title_es,title_zh-Hans,title_zh-Hant,title_de,title_nl,title_pt-BR,title_it,title_fr,href
-duplicate,First,Primera,第一,第一,Erste,Eerste,Primeira,Prima,Premier,https://example.com/first
-duplicate,Second,Segunda,第二,第二,Zweite,Tweede,Segunda,Seconda,Deuxième,https://example.com/second
+      source: `id,name,institution_en,institution_es,institution_zh-Hans,institution_zh-Hant,institution_de,institution_nl,institution_pt-BR,institution_it,institution_fr,photo
+duplicate,First Person,Institution,Institución,机构,機構,Institution,Instelling,Instituição,Istituzione,Établissement,/images/first.jpg
+duplicate,Second Person,Institution,Institución,机构,機構,Institution,Instelling,Instituição,Istituzione,Établissement,/images/second.jpg
 `,
     },
     {
@@ -217,15 +205,6 @@ p1,Publication,Publicación,出版物,出版品,Publikation,Publicatie,Publicaç
 `,
     },
     {
-      name: 'unsafe internal URL',
-      filename: 'latest-news.csv',
-      row: 'row 2',
-      field: 'href',
-      source: `id,title_en,title_es,title_zh-Hans,title_zh-Hant,title_de,title_nl,title_pt-BR,title_it,title_fr,href
-unsafe,Unsafe news,Noticia insegura,不安全的新闻,不安全的新聞,Unsichere Meldung,Onveilig nieuws,Notícia insegura,Notizia non sicura,Actualité non sûre,/\\evil.com
-`,
-    },
-    {
       name: 'invalid image',
       filename: 'core-team.csv',
       row: 'row 2',
@@ -246,21 +225,21 @@ person,Person Name,Institution,Institución,机构,機構,Institution,Instelling
   );
 
   it('reports a missing file as an empty dataset', async () => {
-    await rm(join(directory, 'latest-news.csv'));
+    await rm(join(directory, 'core-team.csv'));
 
     await expect(loadSiteContent('en-US', directory)).rejects.toThrow(
-      'latest-news.csv: dataset must contain at least one row',
+      'core-team.csv: dataset must contain at least one row',
     );
   });
 
   it('rejects a header-only dataset', async () => {
     await writeFile(
-      join(directory, 'latest-news.csv'),
-      'id,title_en,title_es,title_zh-Hans,title_zh-Hant,title_de,title_nl,title_pt-BR,title_it,title_fr,href\n',
+      join(directory, 'core-team.csv'),
+      'id,name,institution_en,institution_es,institution_zh-Hans,institution_zh-Hant,institution_de,institution_nl,institution_pt-BR,institution_it,institution_fr,photo\n',
     );
 
     await expect(loadSiteContent('en-US', directory)).rejects.toThrow(
-      'latest-news.csv: dataset must contain at least one row',
+      'core-team.csv: dataset must contain at least one row',
     );
   });
 });
@@ -362,6 +341,22 @@ newer,2026-03-10,featured,architect|interviewer,
     ]);
   });
 
+  it('accepts project news that covers no app', async () => {
+    await writeUpdates('award,2026-01-05,normal,,\n');
+    await writeText('award.en-US.md', '# An award\n\nSummary\n');
+
+    await expect(loadUpdates('en-US', directory)).resolves.toEqual([
+      {
+        id: 'award',
+        date: '2026-01-05',
+        prominence: 'normal',
+        apps: [],
+        title: 'An award',
+        summary: 'Summary',
+      },
+    ]);
+  });
+
   it.each([
     [
       'an unknown prominence',
@@ -445,6 +440,42 @@ newer,2026-03-10,featured,architect|interviewer,
 
     await expect(loadUpdates('en-US', directory)).rejects.toThrow(
       'updates.csv: row 2: date:',
+    );
+  });
+});
+
+describe('latestNewsItems', () => {
+  const update = (id: string): Update => ({
+    id,
+    date: '2026-01-05',
+    prominence: 'mini',
+    apps: [],
+    title: `Title ${id}`,
+  });
+
+  it('links the newest five update titles to their Updates entries', () => {
+    const updates = ['a', 'b', 'c', 'd', 'e', 'f'].map(update);
+
+    expect(latestNewsItems(updates)).toEqual(
+      ['a', 'b', 'c', 'd', 'e'].map((id) => ({
+        id,
+        title: `Title ${id}`,
+        href: `/updates#${id}`,
+      })),
+    );
+  });
+
+  it('carries the stories the ticker used to hold as shipped updates', async () => {
+    const ids = (await loadUpdates('en-US')).map((entry) => entry.id);
+
+    expect(ids).toEqual(
+      expect.arrayContaining([
+        'language-localization',
+        'summer-2026',
+        'network-canvas-maintenance-funding',
+        'social-network-influence-public-health',
+        'network-canvas-insna-award',
+      ]),
     );
   });
 });

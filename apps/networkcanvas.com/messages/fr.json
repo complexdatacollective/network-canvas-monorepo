@@ -20,7 +20,7 @@
   },
   "News": {
     "label": "Dernières actualités :",
-    "fullStory": "[Lire la suite]"
+    "readMore": "[Lire la suite]"
   },
   "Tools": {
     "heading": "Une sélection d’outils pour faciliter vos recherches",

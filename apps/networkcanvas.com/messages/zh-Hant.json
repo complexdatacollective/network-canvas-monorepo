@@ -20,7 +20,7 @@
   },
   "News": {
     "label": "最新消息：",
-    "fullStory": "[閱讀全文]"
+    "readMore": "[閱讀更多]"
   },
   "Tools": {
     "heading": "協助您進行研究的一系列工具",
