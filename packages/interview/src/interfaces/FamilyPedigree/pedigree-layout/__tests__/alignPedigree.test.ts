@@ -1026,6 +1026,92 @@ describe('partnership chains', () => {
     });
   });
 
+  it('puts a chain recorded from its far end on one row', () => {
+    // mum + dad → c2, sib. Partnerships recorded c0 – c1, c1 – c2, c2 – c3.
+    expectEveryCoupleAdjacent({
+      id: ['mum', 'dad', 'c0', 'c1', 'c2', 'c3', 'sib'],
+      parents: [[], [], [], [], [sp(0), sp(1)], [], [sp(0), sp(1)]],
+      partners: [couple(0, 1), couple(2, 3), couple(3, 4), couple(4, 5)],
+    });
+  });
+
+  it('seats a donor to an interior couple outside the chain', () => {
+    // a – b – c – d; b + c → kid, with an egg donor.
+    expectEveryCoupleAdjacent({
+      id: ['a', 'b', 'c', 'd', 'donor', 'kid'],
+      parents: [
+        [],
+        [],
+        [],
+        [],
+        [],
+        [sp(1), sp(2), { parentIndex: 4, edgeType: 'donor' }],
+      ],
+      partners: [couple(0, 1), couple(1, 2), couple(2, 3)],
+    });
+  });
+
+  it('moves a chain member to a join without splitting the rest of its chain', () => {
+    // m1 + f1 → c, sibC; m2 + f2 → x, sibX. a – b – c – d – e, and c – x.
+    // c has three partners, so exactly one partnership is drawn apart.
+    const ped: PedigreeInput = {
+      id: [
+        'm1',
+        'f1',
+        'm2',
+        'f2',
+        'c',
+        'sibC',
+        'x',
+        'sibX',
+        'a',
+        'b',
+        'd',
+        'e',
+      ],
+      parents: [
+        [],
+        [],
+        [],
+        [],
+        [sp(0), sp(1)],
+        [sp(0), sp(1)],
+        [sp(2), sp(3)],
+        [sp(2), sp(3)],
+        [],
+        [],
+        [],
+        [],
+      ],
+      partners: [
+        couple(0, 1),
+        couple(2, 3),
+        couple(8, 9),
+        couple(9, 4),
+        couple(4, 10),
+        couple(10, 11),
+        couple(4, 6),
+      ],
+    };
+    const result = alignPedigree(ped);
+    const apart = (ped.partners ?? []).filter(
+      ({ partnerIndex1: a, partnerIndex2: b }) => {
+        const level = result.nid.findIndex((row) => row.includes(a));
+        return (
+          !result.nid[level]!.includes(b) ||
+          Math.abs(
+            result.nid[level]!.indexOf(a) - result.nid[level]!.indexOf(b),
+          ) !== 1
+        );
+      },
+    );
+    expect(
+      apart.map(
+        (pc) => `${ped.id[pc.partnerIndex1]}–${ped.id[pc.partnerIndex2]}`,
+      ),
+    ).toHaveLength(1);
+  });
+
   it('seats a donor beside a couple without splitting the chain', () => {
     // you – alex – alexsFormer; you + alex → child, with an egg donor.
     expectEveryCoupleAdjacent({

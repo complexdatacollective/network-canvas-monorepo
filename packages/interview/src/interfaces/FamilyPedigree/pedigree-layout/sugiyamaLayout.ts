@@ -183,11 +183,20 @@ function buildPedigreeGraph(ped: PedigreeInput): PedigreeGraph {
 
   const partnerGroups = [...groupMap.values()];
 
-  // 3b. Align partner group members to the same layer
-  for (const group of partnerGroups) {
-    const maxLayer = Math.max(...group.members.map((m) => layers[m]!));
-    for (const m of group.members) {
-      layers[m] = maxLayer;
+  // 3b. Align partner group members to the same layer. Raising one couple can
+  // move a partner away from another of their partnerships (a chain recorded
+  // from its far end), so repeat until every couple shares a layer.
+  let layerChanged = true;
+  while (layerChanged) {
+    layerChanged = false;
+    for (const group of partnerGroups) {
+      const maxLayer = Math.max(...group.members.map((m) => layers[m]!));
+      for (const m of group.members) {
+        if (layers[m] !== maxLayer) {
+          layers[m] = maxLayer;
+          layerChanged = true;
+        }
+      }
     }
   }
 
@@ -522,15 +531,32 @@ function buildConstraintBlocks(
     anchor: number,
     boundary: 'left' | 'right',
   ): number[] => {
-    const levels = partnerLevels(anchor, (node) => nodes.includes(node));
-    const boundaryNodes = new Set([anchor, ...levels.flat()]);
-    const remaining = nodes.filter((node) => !boundaryNodes.has(node));
+    // Each of the anchor's partners in the block leads one arm of its chain:
+    // the partner, then everyone beyond them, nearest first. Arms are kept
+    // whole and placed one after another, so the only partnership drawn apart
+    // is between the anchor and a second arm, which it cannot sit beside once
+    // it is on the boundary.
+    const carried = new Set([anchor]);
+    const arms: number[][] = [];
+    for (const partner of spousesOf.get(anchor) ?? []) {
+      if (!nodes.includes(partner) || carried.has(partner)) continue;
+      carried.add(partner);
+      const beyond = inRealSibship.has(partner)
+        ? []
+        : partnerLevels(
+            partner,
+            (node) => nodes.includes(node) && !carried.has(node),
+          ).flat();
+      for (const node of beyond) carried.add(node);
+      arms.push([partner, ...beyond]);
+    }
+    const remaining = nodes.filter((node) => !carried.has(node));
 
     if (boundary === 'left') {
-      return [anchor, ...levels.flat(), ...remaining];
+      return [anchor, ...arms.flat(), ...remaining];
     }
 
-    return [...remaining, ...levels.toReversed().flat(), anchor];
+    return [...remaining, ...arms.flat().toReversed(), anchor];
   };
 
   for (const pg of graph.partnerGroups) {
@@ -681,10 +707,26 @@ function buildConstraintBlocks(
       const rightPos = Math.max(...couplePositions);
       const distToLeftEdge = leftPos;
       const distToRightEdge = targetBlock.nodes.length - 1 - rightPos;
+      // Never seat it between two partners: when the couple sits inside a
+      // chain of partnerships, go out past the end of the chain.
+      const nodes = targetBlock.nodes;
+      const partnered = (a: number, b: number) =>
+        (spousesOf.get(a) ?? []).includes(b);
       if (distToRightEdge <= distToLeftEdge) {
-        targetBlock.nodes.splice(rightPos + 1, 0, aux);
+        let end = rightPos;
+        while (
+          end + 1 < nodes.length &&
+          partnered(nodes[end]!, nodes[end + 1]!)
+        ) {
+          end++;
+        }
+        nodes.splice(end + 1, 0, aux);
       } else {
-        targetBlock.nodes.splice(leftPos, 0, aux);
+        let start = leftPos;
+        while (start > 0 && partnered(nodes[start - 1]!, nodes[start]!)) {
+          start--;
+        }
+        nodes.splice(start, 0, aux);
       }
       assigned.add(aux);
     }
