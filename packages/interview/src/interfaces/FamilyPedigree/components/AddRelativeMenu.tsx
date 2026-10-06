@@ -1,10 +1,11 @@
 'use client';
 
 import { Toolbar } from '@base-ui/react/toolbar';
-import { motion, useReducedMotion } from 'motion/react';
+import { useReducedMotion } from 'motion/react';
 
 import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
+import { MotionButton } from '@codaco/fresco-ui/Button';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 
 import { messages } from '../messages';
@@ -72,31 +73,37 @@ export default function AddRelativeMenu({
       className="pointer-events-none absolute inset-0"
     >
       {ITEMS.map((item, index) => (
-        <Toolbar.Button
-          key={item.relation}
-          onClick={() => onAdd(item.relation)}
-          data-testid={`pedigree-menu-${item.relation}`}
-          render={
-            <motion.button
-              type="button"
-              initial={reduceMotion ? false : { opacity: 0, scale: 0.6 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{
-                type: 'spring',
-                stiffness: 500,
-                damping: 30,
-                delay: reduceMotion ? 0 : index * 0.02,
-              }}
-              className={cx(
-                'focusable pointer-events-auto absolute flex size-18 items-center justify-center rounded-full text-sm font-semibold',
-                'bg-surface-1 text-text elevation-medium hover:bg-primary hover:text-primary-contrast',
-                item.placement,
-              )}
-            />
-          }
-        >
-          <AppMessage message={item.label} />
-        </Toolbar.Button>
+        // Placed by a wrapper, so the button's own pressed nudge does not
+        // replace the translate that centres it.
+        <div key={item.relation} className={cx('absolute', item.placement)}>
+          <Toolbar.Button
+            onClick={() => onAdd(item.relation)}
+            data-testid={`pedigree-menu-${item.relation}`}
+            render={
+              <MotionButton
+                size="sm"
+                initial={reduceMotion ? false : { opacity: 0, scale: 0.6 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{
+                  type: 'spring',
+                  stiffness: 500,
+                  damping: 30,
+                  delay: reduceMotion ? 0 : index * 0.02,
+                }}
+                className={cx(
+                  'pointer-events-auto size-18 max-w-none shrink-0 rounded-full p-0 whitespace-nowrap',
+                  // No Button colour fills with one colour and hovers to
+                  // another: the text colour at rest, primary on hover. The
+                  // fill changes at once, so the hover does not read as lag.
+                  'bg-text text-background ui-enabled:hover:bg-primary ui-enabled:hover:text-primary-contrast',
+                  'transition-[box-shadow,opacity,translate]',
+                )}
+              />
+            }
+          >
+            <AppMessage message={item.label} />
+          </Toolbar.Button>
+        </div>
       ))}
     </Toolbar.Root>
   );
