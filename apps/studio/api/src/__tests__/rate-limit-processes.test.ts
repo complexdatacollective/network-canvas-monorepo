@@ -1,7 +1,6 @@
 import { Effect } from 'effect';
 import { afterAll, describe, expect, it } from 'vitest';
 
-import { renderSchemaDdl } from '../../scripts/render-schema-ddl.ts';
 import { OwnerDatabase } from '../db/client.ts';
 import { migrateDatabaseEffect } from '../db/migrate.ts';
 import { RATE_LIMITS } from '../rate-limit/scopes.ts';
@@ -10,6 +9,7 @@ import {
   freePort,
   startEntrypoint,
 } from './support/entrypoint.ts';
+import { committedMigrations } from './support/migrations.ts';
 import { createScratchDatabase, reachableDb } from './support/postgres.ts';
 import { reachableRedis, REDIS_DATABASES } from './support/valkey.ts';
 
@@ -66,9 +66,8 @@ describe.skipIf(!db || !redis)('two API processes on one limiter', () => {
       if (!db || !redis) throw new Error('unreachable: the probes guaranteed');
       const scratch = await createScratchDatabase(db);
       try {
-        const ddl = await renderSchemaDdl();
         await Effect.runPromise(
-          migrateDatabaseEffect(ddl).pipe(
+          migrateDatabaseEffect(committedMigrations()).pipe(
             Effect.provide(OwnerDatabase.layer({ url: scratch.db.url })),
           ),
         );
