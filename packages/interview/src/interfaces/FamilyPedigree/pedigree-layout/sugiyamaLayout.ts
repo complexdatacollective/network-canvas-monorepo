@@ -443,31 +443,29 @@ function buildConstraintBlocks(
       .filter((pg) => pg.members.every((m) => nodes.includes(m)))
       .map((pg) => pg.members);
 
-  // People joined to `start` by partnerships, nearest first, one array per
-  // step away. The first step takes any partner `canJoin` admits; later steps
-  // continue only through people who are not in a real sibship, since a
-  // sibling's own sibship holds it in place.
-  const partnerLevels = (
+  // People joined to `start` by partnerships, nearest first, among those
+  // `canJoin` admits. Only partnerships are followed, so a sibling comes along
+  // only when they are a partner on the way.
+  const partnersBeyond = (
     start: number,
     canJoin: (node: number) => boolean,
-  ): number[][] => {
+  ): number[] => {
     const seen = new Set([start]);
-    const levels: number[][] = [];
+    const found: number[] = [];
     let frontier = [start];
     while (frontier.length > 0) {
       const next: number[] = [];
       for (const node of frontier) {
-        if (node !== start && inRealSibship.has(node)) continue;
         for (const partner of spousesOf.get(node) ?? []) {
           if (seen.has(partner) || !canJoin(partner)) continue;
           seen.add(partner);
           next.push(partner);
         }
       }
-      if (next.length > 0) levels.push(next);
+      found.push(...next);
       frontier = next;
     }
-    return levels;
+    return found;
   };
 
   // 1. One block per real sibship: siblings in index order, with each married
@@ -566,12 +564,10 @@ function buildConstraintBlocks(
     for (const partner of spousesOf.get(anchor) ?? []) {
       if (!nodes.includes(partner) || carried.has(partner)) continue;
       carried.add(partner);
-      const beyond = inRealSibship.has(partner)
-        ? []
-        : partnerLevels(
-            partner,
-            (node) => nodes.includes(node) && !carried.has(node),
-          ).flat();
+      const beyond = partnersBeyond(
+        partner,
+        (node) => nodes.includes(node) && !carried.has(node),
+      );
       for (const node of beyond) carried.add(node);
       arms.push([partner, ...beyond]);
     }
