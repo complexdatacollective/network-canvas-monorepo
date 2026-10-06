@@ -83,6 +83,39 @@ export function decide({ authenticated, token, tags }) {
       };
 }
 
+/**
+ * The runs a lane must perform: the ones asked for, plus C whenever a release
+ * is published — an upgrade path that exists is never left untested.
+ */
+export function requiredRuns(requested, release) {
+  const runs = requested.filter((run) => run !== '');
+  return release.status === 'published' && !runs.includes('C')
+    ? [...runs, 'C']
+    : runs;
+}
+
+/**
+ * The lane's verdict. Every run that ran must have passed, at least one must
+ * have run, and a published release must have been upgraded from (run C):
+ * the lane fails closed rather than report an upgrade it did not perform.
+ */
+export function laneVerdict({ release, runs }) {
+  const ranC = runs.some((run) => run.run === 'C');
+  return {
+    ok:
+      runs.length > 0 &&
+      runs.every((run) => run.ok) &&
+      (release.status !== 'published' || ranC),
+    previousRelease: release.status === 'published' ? release.newest : 'none',
+    runC:
+      release.status === 'published'
+        ? ranC
+          ? 'ran'
+          : 'did not run'
+        : 'not applicable: no migration-era release is published, so there is no published upgrade path to test',
+  };
+}
+
 async function answer(response) {
   const text = await response.text();
   try {

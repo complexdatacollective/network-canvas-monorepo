@@ -85,12 +85,11 @@ previous="$(node "$RELEASE_TEST_DIR/previous-release.mjs")" \
 previous_status="$(node -e 'process.stdout.write(JSON.parse(process.argv[1]).status)' "$previous")"
 previous_newest="$(node -e 'process.stdout.write(JSON.parse(process.argv[1]).newest ?? "")' "$previous")"
 say "previous release: $previous"
-if [ "$previous_status" = published ]; then
-  case ",$RUNS," in
-    *,C,*) ;;
-    *) RUNS="$RUNS,C" ;;
-  esac
-fi
+RUNS="$(node --input-type=module -e '
+  const { requiredRuns } = await import(process.argv[1]);
+  process.stdout.write(requiredRuns(process.argv[2].split(","), JSON.parse(process.argv[3])).join(","));
+' "$RELEASE_TEST_DIR/previous-release.mjs" "$RUNS" "$previous")"
+say "runs: $RUNS"
 
 # ── Images ────────────────────────────────────────────────────────────────
 if [ "$SKIP_BUILD" -eq 0 ]; then
@@ -354,7 +353,6 @@ NODE
 }
 
 # ── The runs ──────────────────────────────────────────────────────────────
-ran_c=false
 IFS=',' read -r -a selected <<< "$RUNS"
 for run in "${selected[@]}"; do
   case "$run" in
@@ -376,27 +374,20 @@ for run in "${selected[@]}"; do
         "ghcr.io/complexdatacollective/studio-web:$previous_newest" \
         "$CANDIDATE_API" "$CANDIDATE_WEB" "$previous_tree"
       git -C "$REPO_ROOT" worktree remove --force "$previous_tree" > /dev/null 2>&1 || true
-      ran_c=true
       ;;
     *) die "unknown run '$run' (A, B or C)" ;;
   esac
 done
 
 # ── Summary ───────────────────────────────────────────────────────────────
-node - "$SUMMARY" "$previous" "$ran_c" "${RESULTS[@]}" <<'NODE'
-const fs = require('node:fs');
-const [out, previous, ranC, ...files] = process.argv.slice(2);
+node --input-type=module - "$RELEASE_TEST_DIR/previous-release.mjs" "$SUMMARY" "$previous" "${RESULTS[@]}" <<'NODE'
+import fs from 'node:fs';
+const [module, out, previous, ...files] = process.argv.slice(2);
+const { laneVerdict } = await import(module);
 const runs = files.map((file) => JSON.parse(fs.readFileSync(file, 'utf8')));
 const release = JSON.parse(previous);
-const summary = {
-  previousRelease: release.status === 'published' ? release.newest : 'none',
-  previousReleaseDetail: release.detail,
-  runC: release.status === 'published'
-    ? (ranC === 'true' ? 'ran' : 'did not run')
-    : 'not applicable: no migration-era release is published, so there is no published upgrade path to test',
-  ok: runs.length > 0 && runs.every((run) => run.ok) && (release.status !== 'published' || ranC === 'true'),
-  runs,
-};
+const verdict = laneVerdict({ release, runs });
+const summary = { ...verdict, previousReleaseDetail: release.detail, runs };
 fs.writeFileSync(out, `${JSON.stringify(summary, null, 2)}\n`);
 console.log(`\n[release-test] previousRelease: ${summary.previousRelease} — ${summary.previousReleaseDetail}`);
 console.log(`[release-test] run C: ${summary.runC}`);
