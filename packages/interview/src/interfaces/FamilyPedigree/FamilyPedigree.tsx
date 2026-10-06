@@ -110,7 +110,7 @@ import {
   nearestInDirection,
   type Point,
 } from './spatialNavigation';
-import { usePanZoom, useZoomLimits } from './usePanZoom';
+import { usePanZoom, useZoomLimits, type View } from './usePanZoom';
 
 /**
  * What selecting a person does: open their details (with their add menu on
@@ -331,26 +331,29 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   const promptRef = useRef<HTMLDivElement>(null);
   const toolbarAreaRef = useRef<HTMLDivElement>(null);
   // The whole family, clear of the prompt above and the toolbar below.
+  // How far in from each edge of the canvas the prompt and the toolbar leave
+  // it clear.
+  const clearInsets = useCallback(() => {
+    const viewport = viewportRef.current;
+    const toolbarTop = toolbarAreaRef.current?.getBoundingClientRect().top;
+    const viewportBottom = viewport?.getBoundingClientRect().bottom;
+    return {
+      top: promptRef.current?.offsetHeight ?? 0,
+      bottom:
+        toolbarTop === undefined || viewportBottom === undefined
+          ? 32
+          : viewportBottom - toolbarTop + 16,
+      left: 32,
+      right: 32,
+    };
+  }, []);
   const showWholeFamily = useCallback(
     ({ animated = true }: { animated?: boolean } = {}) => {
       const layout = contentRef.current?.firstElementChild;
-      const viewport = viewportRef.current;
-      if (!(layout instanceof HTMLElement) || !viewport) return;
-      const toolbarTop = toolbarAreaRef.current?.getBoundingClientRect().top;
-      const viewportBottom = viewport.getBoundingClientRect().bottom;
-      panZoom.fitToView(
-        layout,
-        {
-          top: promptRef.current?.offsetHeight ?? 0,
-          bottom:
-            toolbarTop === undefined ? 32 : viewportBottom - toolbarTop + 16,
-          left: 32,
-          right: 32,
-        },
-        { animated },
-      );
+      if (!(layout instanceof HTMLElement)) return;
+      panZoom.fitToView(layout, clearInsets(), { animated });
     },
-    [panZoom],
+    [panZoom, clearInsets],
   );
 
   // No menu while the panel is open: it would offer to add to someone else
@@ -491,25 +494,8 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   // The person selected moves to the middle of the part of the screen the
   // side panel leaves uncovered. Someone being added, and the panel itself,
   // are drawn a moment after the panel opens, so this waits for both.
-  // Closing the panel takes back the room made for it: the person moves to
-  // the middle of the whole canvas. (While it is open, the panel holds
-  // pointer input away from the canvas, so the view is as it left it.)
-  // Someone whose addition was cancelled is gone by then, so the person they
-  // were being added to takes their place.
-  const panelAnchorId =
-    panel?.mode.kind === 'add' ? panel.mode.anchor.id : selectedId;
-  const panelCentred = useRef<{ id: string; anchorId: string } | null>(null);
   useEffect(() => {
-    if (!selectedId) {
-      const centred = panelCentred.current;
-      panelCentred.current = null;
-      if (!centred) return;
-      const element =
-        nodeRefs.current.get(centred.id) ??
-        nodeRefs.current.get(centred.anchorId);
-      if (element) panZoom.centreOn(element);
-      return;
-    }
+    if (!selectedId) return;
     let frame = 0;
     let framesLeft = 30;
     const centre = () => {
@@ -521,30 +507,87 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       }
       if (!element) return;
       // A panel as wide as the screen leaves nothing beside it, so the
-      // person is centred on the whole canvas, ready for when it closes.
+      // person is centred on the whole canvas.
       const visibleRight = window.innerWidth - (drawer?.offsetWidth ?? 0);
       const canvasLeft = viewportRef.current?.getBoundingClientRect().left ?? 0;
       panZoom.centreOn(element, {
         visibleRight:
           visibleRight - canvasLeft > 160 ? visibleRight : undefined,
       });
-      panelCentred.current = {
-        id: selectedId,
-        anchorId: panelAnchorId ?? selectedId,
-      };
     };
     frame = requestAnimationFrame(centre);
     return () => cancelAnimationFrame(frame);
-  }, [selectedId, panelAnchorId, panZoom]);
+  }, [selectedId, panZoom]);
 
-  const openAddPanel = (relation: Relation, anchor: Person) =>
+  // Closing the panel puts the view back as it was when the panel opened:
+  // the same zoom, with the person it was opened from where they were on
+  // screen. (While it is open, the panel holds pointer input away from the
+  // canvas, so nothing else has moved it.) An addition grows the family
+  // around that person; if the one added would be out of sight, the view
+  // moves just far enough to show them.
+  const viewBeforePanel = useRef<{
+    view: View;
+    anchorId: string;
+    anchorAt: Point;
+    subjectId: string;
+  } | null>(null);
+  const rememberView = (anchorId: string, subjectId: string) => {
+    if (panel?.open) return;
+    const anchor = nodeRefs.current.get(anchorId);
+    viewBeforePanel.current = anchor
+      ? {
+          view: panZoom.view(),
+          anchorId,
+          anchorAt: panZoom.contentPositionOf(anchor),
+          subjectId,
+        }
+      : null;
+  };
+  useEffect(() => {
+    if (selectedId) return;
+    const before = viewBeforePanel.current;
+    viewBeforePanel.current = null;
+    const viewport = viewportRef.current;
+    if (!before || !viewport) return;
+    const { scale } = before.view;
+    let { x, y } = before.view;
+    const anchor = nodeRefs.current.get(before.anchorId);
+    if (anchor) {
+      const now = panZoom.contentPositionOf(anchor);
+      x += (before.anchorAt.x - now.x) * scale;
+      y += (before.anchorAt.y - now.y) * scale;
+    }
+    const subject = nodeRefs.current.get(before.subjectId);
+    if (subject && subject !== anchor) {
+      const at = panZoom.contentPositionOf(subject);
+      const halfWidth = (subject.offsetWidth / 2) * scale;
+      const halfHeight = (subject.offsetHeight / 2) * scale;
+      const insets = clearInsets();
+      const left = insets.left + halfWidth;
+      const right = viewport.clientWidth - insets.right - halfWidth;
+      const top = insets.top + halfHeight;
+      const bottom = viewport.clientHeight - insets.bottom - halfHeight;
+      const screenX = x + at.x * scale;
+      const screenY = y + at.y * scale;
+      if (screenX < left) x += left - screenX;
+      else if (screenX > right) x -= screenX - right;
+      if (screenY < top) y += top - screenY;
+      else if (screenY > bottom) y -= screenY - bottom;
+    }
+    panZoom.goTo({ x, y, scale });
+  }, [selectedId, panZoom, clearInsets]);
+
+  const openAddPanel = (relation: Relation, anchor: Person) => {
+    // The new person, and up to two unnamed parents for a sibling.
+    const ids = [uuid(), uuid(), uuid()];
+    rememberView(anchor.id, ids[0] ?? anchor.id);
     setPanel({
       open: true,
       key: uuid(),
       mode: { kind: 'add', relation, anchor },
-      // The new person, and up to two unnamed parents for a sibling.
-      ids: [uuid(), uuid(), uuid()],
+      ids,
     });
+  };
 
   const openAdd = (relation: Relation) => {
     if (menuPerson) openAddPanel(relation, menuPerson);
@@ -661,6 +704,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   const openEdit = (personId: string) => {
     const person = family.byId.get(personId);
     if (!person) return;
+    rememberView(personId, personId);
     setPanel({
       open: true,
       key: uuid(),

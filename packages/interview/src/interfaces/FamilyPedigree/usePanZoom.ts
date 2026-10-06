@@ -44,6 +44,9 @@ function wheelZoom(event: WheelEvent) {
   return clamp(-event.deltaY * perUnit * (event.ctrlKey ? 10 : 1), -1, 1);
 }
 
+/** Where the content sits: its offset in the viewport, and its scale. */
+export type View = { x: number; y: number; scale: number };
+
 export type PanZoom = {
   x: MotionValue<number>;
   y: MotionValue<number>;
@@ -73,6 +76,10 @@ export type PanZoom = {
   ) => void;
   /** Where an element's centre sits in the content, unscaled. */
   contentPositionOf: (element: HTMLElement) => { x: number; y: number };
+  /** The view as it stands. */
+  view: () => View;
+  /** Glides to a view. */
+  goTo: (view: View) => void;
 };
 
 /**
@@ -338,6 +345,15 @@ export function usePanZoom({
     [contentPositionOf, stopAnimating, x, y, scale],
   );
 
+  const view = useCallback(
+    () => ({ x: x.get(), y: y.get(), scale: scale.get() }),
+    [x, y, scale],
+  );
+  const goTo = useCallback(
+    (target: View) => moveTo(target.x, target.y, target.scale, true),
+    [moveTo],
+  );
+
   // Stable, so effects that use it run for their own reasons only.
   return useMemo(
     () => ({
@@ -350,8 +366,12 @@ export function usePanZoom({
       fitToView,
       holdInPlace,
       contentPositionOf,
+      view,
+      goTo,
     }),
     [
+      view,
+      goTo,
       fitToView,
       x,
       y,

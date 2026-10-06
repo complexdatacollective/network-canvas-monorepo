@@ -250,23 +250,28 @@ const describedFamily: Family = {
   ],
 };
 
-/** How far an element's centre is from the middle of the canvas. */
-const offCentre = (element: HTMLElement, canvasElement: HTMLElement) => {
-  const box = within(canvasElement)
-    .getByTestId('pedigree-canvas')
-    .getBoundingClientRect();
-  const shown = element.getBoundingClientRect();
-  return {
-    x: shown.left + shown.width / 2 - (box.left + box.width / 2),
-    y: shown.top + shown.height / 2 - (box.top + box.height / 2),
-  };
-};
+/** Where each person's centre is on screen, by their id. */
+const positionsOf = (canvasElement: HTMLElement) =>
+  new Map(
+    within(canvasElement)
+      .getAllByTestId('pedigree-person')
+      .map((person) => {
+        const shown = person.getBoundingClientRect();
+        return [
+          person.dataset.personId ?? '',
+          {
+            x: shown.left + shown.width / 2,
+            y: shown.top + shown.height / 2,
+          },
+        ] as const;
+      }),
+  );
 
 /**
- * Opening someone's details moves them beside the panel; closing it moves
- * them back to the middle of the canvas.
+ * Opening someone's details moves them beside the panel; closing it puts the
+ * view back as it was.
  */
-export const PanelClosesRecentred: Story = {
+export const PanelCloseRestoresView: Story = {
   render: (args) => (
     <PedigreeStory {...settings(args)} family={unnamedParents} />
   ),
@@ -277,20 +282,30 @@ export const PanelClosesRecentred: Story = {
       canvasElement.ownerDocument.querySelector(
         '[data-testid="pedigree-person-panel"]',
       );
+    const before = positionsOf(canvasElement);
 
     await userEvent.click(father);
     await waitFor(() => expect(panel()).not.toBeNull());
-    // Beside the panel, so left of the canvas's middle.
     await waitFor(
-      () => expect(offCentre(father, canvasElement).x).toBeLessThan(-100),
+      () =>
+        expect(
+          Math.abs(
+            (positionsOf(canvasElement).get('dad')?.x ?? 0) -
+              (before.get('dad')?.x ?? 0),
+          ),
+        ).toBeGreaterThan(50),
       { timeout: 3000 },
     );
+
     await userEvent.keyboard('{Escape}');
     await waitFor(
       () => {
-        const { x, y } = offCentre(father, canvasElement);
-        expect(Math.abs(x)).toBeLessThan(2);
-        expect(Math.abs(y)).toBeLessThan(2);
+        for (const [id, now] of positionsOf(canvasElement)) {
+          const then = before.get(id);
+          expect(then).toBeDefined();
+          expect(Math.abs(now.x - (then?.x ?? 0))).toBeLessThan(2);
+          expect(Math.abs(now.y - (then?.y ?? 0))).toBeLessThan(2);
+        }
       },
       { timeout: 3000 },
     );
