@@ -34,13 +34,7 @@ export const StatusHandlers = (deps: RpcDeps) =>
         const installation = yield* Effect.promise(() =>
           deps.readInstallation(),
         );
-        if (
-          installation === null ||
-          installation.ownerUserId === null ||
-          installation.ownerUserId !== principal.userId
-        ) {
-          return null;
-        }
+        if (installation?.ownerUserId !== principal.userId) return null;
         const latest = yield* Effect.orDie(readLatestRelease());
         if (latest === null || !isNewer(latest.version, STUDIO_VERSION)) {
           return null;
