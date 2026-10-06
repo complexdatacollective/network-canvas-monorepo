@@ -238,7 +238,7 @@ describe.skipIf(!testDb)('deployment_state', () => {
             yield* ownerAffected(CLEAR_UPDATE_STATE);
             const writes = {
               'the release columns': recordUpdateCheck(RELEASE),
-              'the claim': claimNotification('1.2.3'),
+              'the claim': Effect.asVoid(claimNotification('1.2.3')),
               'the claim’s release': releaseNotificationClaim('1.2.3', {
                 previous: null,
               }),
