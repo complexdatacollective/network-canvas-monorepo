@@ -948,20 +948,34 @@ describe('schema problem message', () => {
     const message = schemaProblemMessage({ kind: 'absent' }, 'deployed');
     expect(message).toContain('studio-api migrate');
     expect(message).toContain('docker compose run --rm migrate');
+    // A deployed process waits for the schema; it is not started again.
+    expect(message).not.toContain('start again');
     for (const remedy of PNPM_REMEDIES) expect(message).not.toContain(remedy);
   });
 
-  it('refuses a stale database in a deployment with what migrate says', () => {
-    // One verdict, one wording: `studio-api migrate` throws this exact text
-    // (src/db/migrate.ts), so an operator who reads the boot refusal and then
-    // runs migrate is not left working out whether they mean the same thing.
-    expect(schemaProblemMessage(stale, 'deployed')).toBe(
-      staleDatabaseMessage(stale),
+  it('names migrate as the upgrade for a stale database in a deployment', () => {
+    // One verdict, one wording: a deployed process logs this while it waits
+    // closed, and it is the same text wherever else a deployment describes a
+    // stale database (`staleDatabaseMessage`).
+    const message = schemaProblemMessage(stale, 'deployed');
+    expect(message).toBe(staleDatabaseMessage(stale));
+    expect(message).toContain('studio-api migrate');
+    expect(message).toContain('docker compose run --rm migrate');
+    expect(message).toContain(
+      'If migrate refuses, follow the remedy it prints.',
     );
-    expect(schemaProblemMessage(stale, 'deployed')).toContain('#1901');
-    for (const remedy of PNPM_REMEDIES) {
-      expect(schemaProblemMessage(stale, 'deployed')).not.toContain(remedy);
-    }
+    // The pre-release wording told an operator to recreate the database: with
+    // a migration system that loses every row for no reason.
+    expect(message).not.toMatch(/recreate|no migration system|#1901/i);
+    for (const remedy of PNPM_REMEDIES) expect(message).not.toContain(remedy);
+  });
+
+  it('tells a checkout what each of its remedies is for', () => {
+    const message = schemaProblemMessage(stale, 'development');
+    expect(message).toContain(
+      'a database carrying migration history is upgraded by migrate instead',
+    );
+    expect(message).not.toMatch(/no migration system/i);
   });
 
   it('explains an unstamped database differently', () => {
