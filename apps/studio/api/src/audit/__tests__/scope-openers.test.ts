@@ -255,6 +255,16 @@ const OPENERS: Record<string, { count: number; why: string }> = {
     count: 1,
     why: 'resolving a presented participant session token to its session, read-only, before any procedure runs',
   },
+  [`${SERVER}/src/interview/session.ts › interview.readParticipantSession › TenantScope.open`]:
+    {
+      count: 1,
+      why: '`participant.session`: reading a session and claiming it for the page that opens it, unaudited by policy',
+    },
+  [`${SERVER}/src/interview/sync.ts › interview.syncParticipantSession › TenantScope.open`]:
+    {
+      count: 1,
+      why: '`participant.sync`: one of an interview’s many writes, unaudited by policy; the session row carries its activity',
+    },
   [`${SERVER}/src/rpc/handlers/studies.ts › TenantScope.open`]: {
     count: 2,
     why: '`studies.list` and `studies.counts`, reads',

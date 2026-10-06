@@ -262,8 +262,9 @@ seconds, minutes or hours:
 | `sign_in_email`              | `5/10m`   | One account, against attempts spread across many addresses                |
 | `invitation_accept`          | `10/10m`  | A team invitation token, against being brute-forced through its link      |
 | `participant_redeem_address` | `20/10m`  | Participation links, loosely: a lab runs several interviews from one host |
-| `participant_redeem_link`    | `5/10m`   | One participation link, against its identifier being guessed              |
+| `participant_redeem_link`    | `5/10m`   | One participant's own link, against repeated redemption                   |
 | `participant_sync`           | `600/1m`  | Interview sync, against a script replaying a session                      |
+| `participant_session`        | `60/1m`   | Reading an interview, against a script repeating the protocol's assembly  |
 | `rpc_user`                   | `600/1m`  | The instance, against one runaway client                                  |
 | `rpc_team`                   | `3000/1m` | The instance, against a whole team at once                                |
 | `storage_read`               | `2000/5m` | Asset delivery, generously: an interview fetches every stimulus it shows  |
@@ -273,9 +274,8 @@ seconds, minutes or hours:
 
 <!-- rate-limits end -->
 
-The three participant scopes are declared now and take effect when the
-participant routes land
-([#1899](https://github.com/complexdatacollective/network-canvas-monorepo/issues/1899)).
+An anonymous study's link is shared by everyone who takes part, so it is
+counted against the redeeming address only, never per link.
 If one of these costs you something real — a teaching lab behind a single
 address, a cohort redeeming links together — that is worth telling us about,
 because the number is then probably wrong for everyone in your position and not

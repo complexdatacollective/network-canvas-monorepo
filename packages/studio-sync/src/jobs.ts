@@ -118,6 +118,12 @@ export const JOB_QUEUES = [
       deleteAfterSeconds: 24 * 3600,
     },
   },
+  {
+    name: 'session-completed',
+    options: {
+      policy: 'standard',
+    },
+  },
 ] as const satisfies readonly JobQueueDeclaration[];
 
 export type JobQueueName = (typeof JOB_QUEUES)[number]['name'];
@@ -184,6 +190,11 @@ export const SignInEmailJobSchema = Schema.Struct({
 });
 export type SignInEmailJob = typeof SignInEmailJobSchema.Type;
 
+export const SessionCompletedJobSchema = Schema.Struct({
+  sessionId: RowId,
+});
+export type SessionCompletedJob = typeof SessionCompletedJobSchema.Type;
+
 /** The sweep visits every tenant; there is nothing to address it at. */
 export const ProtocolStoreGcJobSchema = Schema.Struct({}).check(isEmptyObject);
 export type ProtocolStoreGcJob = typeof ProtocolStoreGcJobSchema.Type;
@@ -208,6 +219,7 @@ export const JOB_PAYLOAD_SCHEMAS = {
   'protocol-store-gc': ProtocolStoreGcJobSchema,
   'denied-attempts-summary': DeniedAttemptsSummaryJobSchema,
   'update-check': UpdateCheckJobSchema,
+  'session-completed': SessionCompletedJobSchema,
 } as const satisfies Record<JobQueueName, Schema.Struct<Schema.Struct.Fields>>;
 
 export type JobPayload<Queue extends JobQueueName> =
@@ -246,4 +258,5 @@ export const JOB_PAYLOAD_POLICY = {
   'protocol-store-gc': { kind: 'identifiers' },
   'denied-attempts-summary': { kind: 'identifiers' },
   'update-check': { kind: 'identifiers' },
+  'session-completed': { kind: 'identifiers' },
 } as const satisfies Record<JobQueueName, JobPayloadPolicy>;

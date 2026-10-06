@@ -465,7 +465,7 @@ function suites(...keys) {
 export const SUITES_BY_RELEASE_REF = {
   'changeset-release/documentation': suites(),
   'changeset-release/main': suites('interview', 'interviewer', 'architect'),
-  'changeset-release/studio': suites(),
+  'changeset-release/studio': suites('interview'),
   'changeset-release/website': suites('interview'),
 };
 

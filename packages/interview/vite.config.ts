@@ -117,7 +117,8 @@ const interfaceImagesNoInlinePlugin = (): Plugin => ({
 // serialized from the render, leaving every mapping a line short).
 //
 // Deciding per chunk from its constituent modules, rather than by naming
-// entries, is what pins the `contract` and `protocol-schema-version` bundles'
+// entries, is what pins the `contract`, `protocol-schema-version` and
+// `protocol-payload` bundles'
 // server safety: they stay unmarked only for as long as no module carrying the
 // directive is reachable from them, and the moment one is, the emitted file
 // says so.
@@ -233,8 +234,9 @@ export default defineConfig({
       // letting server (RSC) code import them without evaluating any
       // module-level `createContext`. `catalog` and `index` share one catalog
       // source through a common chunk, so a language loaded through either is
-      // loaded for both. The `protocol-schema-version` entry is its own bundle
-      // so a host's Node scripts can import just that constant.
+      // loaded for both. The `protocol-schema-version` and `protocol-payload`
+      // entries are their own bundles so a host's Node-loaded code can import
+      // just that constant or the payload converter.
       entry: {
         'locales': resolve(__dirname, 'src/locales/catalogs.ts'),
         'catalog': resolve(__dirname, 'src/i18n/catalog.ts'),
@@ -243,6 +245,10 @@ export default defineConfig({
         'protocol-schema-version': resolve(
           __dirname,
           'src/protocolSchemaVersion.ts',
+        ),
+        'protocol-payload': resolve(
+          __dirname,
+          'src/contract/protocolPayload.ts',
         ),
       },
       formats: ['es'],

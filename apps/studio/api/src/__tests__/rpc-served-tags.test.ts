@@ -22,6 +22,10 @@ const STUDIO_TAGS = [
   'audit.get',
   'audit.list',
   'me',
+  'participant.finish',
+  'participant.redeem',
+  'participant.session',
+  'participant.sync',
   'protocols.addInformationStage',
   'protocols.create',
   'protocols.draft',
@@ -95,6 +99,7 @@ const middlewareContext = await Effect.runPromise(
       StudioRpcMiddleware(deps).pipe(
         Layer.provide(
           Layer.mergeAll(
+            DatabaseAbsent,
             AuthServiceStub(),
             RateLimiter.layer.pipe(Layer.provide(RateLimitStore.layerAbsent)),
           ),

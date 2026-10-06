@@ -20,7 +20,7 @@ export const HolderId = Schema.String.check(
   Schema.isMaxLength(128),
 );
 
-const StageId = Schema.String.check(
+const NetworkIdentifier = Schema.String.check(
   Schema.isMinLength(1),
   Schema.isMaxLength(128),
 );
@@ -36,7 +36,7 @@ const SecureAttributesMeta = Schema.Record(
 );
 
 const entityFields = {
-  _uid: Schema.String,
+  _uid: NetworkIdentifier,
   attributes: EntityAttributes,
   _secureAttributes: Schema.optionalKey(SecureAttributesMeta),
 };
@@ -45,16 +45,16 @@ export const NetworkEgo = Schema.Struct(entityFields);
 
 export const NetworkNode = Schema.Struct({
   ...entityFields,
-  type: Schema.String,
-  stageId: Schema.optionalKey(Schema.String),
+  type: NetworkIdentifier,
+  stageId: Schema.optionalKey(NetworkIdentifier),
   promptIDs: Schema.optionalKey(Schema.Array(Schema.String)),
 });
 
 export const NetworkEdge = Schema.Struct({
   ...entityFields,
-  type: Schema.String,
-  from: Schema.String,
-  to: Schema.String,
+  type: NetworkIdentifier,
+  from: NetworkIdentifier,
+  to: NetworkIdentifier,
 });
 
 export const InterviewNetwork = Schema.Struct({
@@ -77,7 +77,6 @@ export const InterviewSession = Schema.Struct({
 
 export const RedeemInput = Schema.Struct({
   linkToken: LinkToken,
-  occurrence: Schema.optionalKey(Schema.String),
 });
 
 export const RedeemResult = Schema.Struct({
@@ -94,7 +93,7 @@ export const SessionPayload = Schema.Struct({
   holderEpoch: NonNegativeInt,
   revision: DecimalSequence,
   stageIndex: NonNegativeInt,
-  stageId: Schema.NullOr(StageId),
+  stageId: Schema.NullOr(NetworkIdentifier),
   session: InterviewSession,
   protocol: Schema.Unknown,
 });
@@ -103,7 +102,7 @@ export const SyncInput = Schema.Struct({
   holderEpoch: NonNegativeInt,
   revision: DecimalSequence,
   stageIndex: NonNegativeInt,
-  stageId: Schema.NullOr(StageId),
+  stageId: Schema.NullOr(NetworkIdentifier),
   network: InterviewNetwork,
   stageMetadata: StageMetadata,
 });
@@ -139,11 +138,21 @@ export class SessionTakenOver extends Schema.TaggedError<SessionTakenOver>()(
   { httpApiStatus: 409 },
 ) {}
 
+export class SessionOutOfDate extends Schema.TaggedError<SessionOutOfDate>()(
+  'SessionOutOfDate',
+  {
+    ...problemFields('Session out of date', 409),
+    revision: DecimalSequence,
+  },
+  { httpApiStatus: 409 },
+) {}
+
 export class LinkUnavailable extends Schema.TaggedError<LinkUnavailable>()(
   'LinkUnavailable',
   {
     ...problemFields('Link unavailable', 410),
     state: Schema.Literals([
+      'not_open',
       'expired',
       'revoked',
       'paused',

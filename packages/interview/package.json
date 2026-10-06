@@ -21,6 +21,7 @@
     ".": "./src/index.ts",
     "./contract": "./src/contract/index.ts",
     "./protocol-schema-version": "./src/protocolSchemaVersion.ts",
+    "./protocol-payload": "./src/contract/protocolPayload.ts",
     "./locales": "./src/locales/catalogs.ts",
     "./catalog": "./src/i18n/catalog.ts",
     "./styles.css": "./src/styles.css"
@@ -38,6 +39,10 @@
       "./protocol-schema-version": {
         "types": "./dist/protocol-schema-version.d.ts",
         "default": "./dist/protocol-schema-version.js"
+      },
+      "./protocol-payload": {
+        "types": "./dist/protocol-payload.d.ts",
+        "default": "./dist/protocol-payload.js"
       },
       "./locales": {
         "types": "./dist/locales/catalogs.d.ts",
