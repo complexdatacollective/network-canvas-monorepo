@@ -333,6 +333,10 @@ const ALLOWLIST: Record<string, { count: number; why: string }> = {
     count: 17,
     why: 'the scratch-schema harness: create, apply, grant and drop, and the one-statement fixtures and oracles every suite shares — as the owner, a tenant, the maintenance role, and under the erasure marker',
   },
+  [`${SERVER}/interview/__tests__/fixture.ts`]: {
+    count: 11,
+    why: 'the interview suites’ owner fixtures: a team with a pinned protocol version, a live study, its wave, a participant and both link kinds, a session, and the completion the finalization triggers demand',
+  },
   [`${SERVER}/jobs/__tests__/support.ts`]: {
     count: 14,
     why: 'the queue suites’ scratch job schema and fixtures, and `holding`’s BEGIN, statements, lock probe and COMMIT/ROLLBACK on a reserved connection, and the `sql.literal` that stands for no queue filter',

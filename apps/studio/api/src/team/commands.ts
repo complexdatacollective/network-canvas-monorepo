@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { Effect, Schema } from 'effect';
 import type { SqlError } from 'effect/sql';
 
+import type { AuditActor } from '@codaco/studio-contract/middleware/audit-actor';
 import { Principal } from '@codaco/studio-contract/middleware/authenticated';
 import type { NotFound } from '@codaco/studio-contract/schema/errors';
 import { TeamInvitationId } from '@codaco/studio-contract/schema/ids';
@@ -130,7 +131,7 @@ export const updateTeamMemberRole: (
 ) => Effect.Effect<
   UpdatedTeamMember,
   TeamCommandError | NotFound | SqlError.SqlError,
-  Database | Principal | RequestId | AuditSignal | DeniedAttempts
+  Database | Principal | AuditActor | RequestId | AuditSignal | DeniedAttempts
 > = Effect.fn('team.updateMemberRole')(function* (
   access: TeamAccess,
   input: { memberId: string; role: TeamRole },
@@ -234,7 +235,13 @@ export const createTeamInvitation: (
 ) => Effect.Effect<
   CreatedTeamInvitation,
   TeamCommandError | NotFound | SqlError.SqlError,
-  Database | Principal | RequestId | AuditSignal | Jobs | DeniedAttempts
+  | Database
+  | Principal
+  | AuditActor
+  | RequestId
+  | AuditSignal
+  | Jobs
+  | DeniedAttempts
 > = Effect.fn('team.createInvitation')(function* (
   access: TeamAccess,
   input: { email: string; role: TeamRole },
@@ -348,7 +355,7 @@ export const cancelTeamInvitation: (
 ) => Effect.Effect<
   CancelledTeamInvitation,
   TeamCommandError | NotFound | SqlError.SqlError,
-  Database | Principal | RequestId | AuditSignal | DeniedAttempts
+  Database | Principal | AuditActor | RequestId | AuditSignal | DeniedAttempts
 > = Effect.fn('team.cancelInvitation')(function* (
   access: TeamAccess,
   input: { invitationId: string },
@@ -458,7 +465,7 @@ export const acceptTeamInvitation: (input: {
 }) => Effect.Effect<
   AcceptedTeamInvitation,
   TeamCommandError | NotFound | SqlError.SqlError,
-  Database | Principal | RequestId | AuditSignal | DeniedAttempts
+  Database | Principal | AuditActor | RequestId | AuditSignal | DeniedAttempts
 > = Effect.fn('team.acceptInvitation')(function* (input: {
   invitationId: string;
 }) {

@@ -3,6 +3,7 @@ import type { RpcGroup } from 'effect/rpc';
 import { RpcTest } from 'effect/rpc';
 import { onTestFinished } from 'vitest';
 
+import { AuditActor } from '@codaco/studio-contract/middleware/audit-actor';
 import {
   Authenticated,
   Principal,
@@ -84,7 +85,17 @@ const authenticatedLayer = (
     Authenticated.of((effect) =>
       principal === null
         ? Effect.fail(new Unauthorized({}))
-        : Effect.provideService(effect, Principal, principal),
+        : effect.pipe(
+            Effect.provideService(Principal, principal),
+            Effect.provideService(
+              AuditActor,
+              AuditActor.of({
+                kind: 'user',
+                id: principal.userId,
+                label: principal.name,
+              }),
+            ),
+          ),
     ),
   );
 

@@ -29,6 +29,7 @@
     "./schema/participant": "./src/schema/participant.ts",
     "./middleware/authenticated": "./src/middleware/authenticated.ts",
     "./middleware/team-administration": "./src/middleware/teamAdministration.ts",
+    "./middleware/audit-actor": "./src/middleware/auditActor.ts",
     "./middleware/session": "./src/middleware/session.ts",
     "./rpc/status": "./src/rpc/status.ts",
     "./rpc/setup": "./src/rpc/setup.ts",
@@ -54,6 +55,7 @@
     "effect": "catalog:"
   },
   "devDependencies": {
+    "@codaco/shared-consts": "workspace:^",
     "@codaco/tsconfig": "workspace:^",
     "@effect/vitest": "catalog:",
     "typescript": "catalog:",

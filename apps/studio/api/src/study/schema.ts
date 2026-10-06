@@ -469,6 +469,15 @@ const interviewSessions = pgTable(
       .notNull()
       .default(0n),
 
+    // The participant's credential once a link is redeemed, stored as the
+    // SHA-256 of its secret like a link token. Kept after completion, so
+    // reopening a finished session is recognised rather than refused as an
+    // unknown token.
+    sessionTokenHash: bytea('session_token_hash'),
+    clientRevision: bigint('client_revision', { mode: 'bigint' })
+      .notNull()
+      .default(0n),
+
     startedAt: timestamp('started_at', { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -523,6 +532,9 @@ const interviewSessions = pgTable(
     uniqueIndex('interview_sessions_wave_id_participant_id_idx')
       .on(table.waveId, table.participantId)
       .where(sql`${table.participantId} IS NOT NULL`),
+    uniqueIndex('interview_sessions_team_id_session_token_hash_idx')
+      .on(table.teamId, table.sessionTokenHash)
+      .where(sql`${table.sessionTokenHash} IS NOT NULL`),
     // The abandonment sweep is the second cross-team maintenance query in the
     // domain, so it gets a partial index that does not lead with team_id.
     index('interview_sessions_abandonment_scan_idx')
@@ -553,6 +565,14 @@ const interviewSessions = pgTable(
       'interview_sessions_holder_check',
       sql`${table.holderEpoch} >= 0
           AND (${table.holderId} IS NULL OR char_length(${table.holderId}) BETWEEN 1 AND 128)`,
+    ),
+    check(
+      'interview_sessions_session_token_hash_check',
+      sql`${table.sessionTokenHash} IS NULL OR octet_length(${table.sessionTokenHash}) = 32`,
+    ),
+    check(
+      'interview_sessions_client_revision_check',
+      sql`${table.clientRevision} >= 0`,
     ),
     check(
       'interview_sessions_ego_check',

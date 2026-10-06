@@ -73,6 +73,10 @@ const MINTS: Record<string, { count: number; why: string }> = {
     count: 1,
     why: 'an invitee who is not yet a member; minted before the scope opens, and the locked invitation re-read inside it is the proof',
   },
+  [`${SERVER}/src/interview/access.ts`]: {
+    count: 1,
+    why: '`presentedTokenTeamAccess`: a participant holds a link or session token, not a membership; the token-hash lookup inside the scope it opens is the proof',
+  },
   [`${SERVER}/src/jobs/team-access.ts`]: {
     count: 1,
     why: '`maintenanceTeamAccess`: the worker acting as the deployment, with no member to check; the web process cannot reach it (process-separation)',

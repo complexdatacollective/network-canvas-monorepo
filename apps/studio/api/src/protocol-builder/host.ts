@@ -42,6 +42,7 @@ import {
   type ProtocolSectionId,
 } from '@codaco/studio-sync/taxonomy';
 
+import { provideCaller } from '../audit/actor.ts';
 import {
   audited,
   changed,
@@ -369,7 +370,7 @@ export const readSection: (
     Effect.andThen(
       requireProtocol(session.access, session.protocolId),
       headSection(session, sectionId),
-    ).pipe(Effect.provideService(Principal)(session.principal)),
+    ).pipe(provideCaller(session.principal)),
   );
 });
 
@@ -409,7 +410,7 @@ export const listSectionIds: (
           makeSectionId(parseSectionId(id)),
         );
       }).pipe(sqlErrorsOnly),
-    ).pipe(Effect.provideService(Principal)(session.principal)),
+    ).pipe(provideCaller(session.principal)),
   );
 });
 
@@ -589,7 +590,7 @@ export const acquireLock: (
         events,
         lease: { epoch: lease.epoch },
       };
-    }).pipe(Effect.provideService(Principal)(session.principal)),
+    }).pipe(provideCaller(session.principal)),
   );
 });
 
@@ -647,7 +648,7 @@ export const releaseLock: (
         { kind: 'lock', sectionId },
       ]);
       return { outcome: undefined, events };
-    }).pipe(Effect.provideService(Principal)(session.principal)),
+    }).pipe(provideCaller(session.principal)),
   );
 });
 
@@ -858,7 +859,7 @@ const auditedCommand = <A, E, R>(
   body: Effect.Effect<AuditedResult<A>, E, R>,
 ) =>
   audited(name, session.access, body).pipe(
-    Effect.provideService(Principal)(session.principal),
+    provideCaller(session.principal),
     Effect.provideService(RequestId)(session.requestId),
   );
 

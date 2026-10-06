@@ -3,6 +3,7 @@ import { RpcMiddleware } from 'effect/rpc';
 
 import { RateLimited, Unauthorized } from '../schema/errors.ts';
 import type { UserId } from '../schema/ids.ts';
+import type { AuditActor } from './auditActor.ts';
 
 export class Principal extends Context.Service<
   Principal,
@@ -23,7 +24,7 @@ export class Principal extends Context.Service<
  */
 export class Authenticated extends RpcMiddleware.Service<
   Authenticated,
-  { provides: Principal }
+  { provides: Principal | AuditActor }
 >()('@studio/Authenticated', {
   error: Schema.Union([Unauthorized, RateLimited]),
   requiredForClient: false,

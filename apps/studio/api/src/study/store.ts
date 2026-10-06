@@ -9,7 +9,7 @@ import {
 } from '@codaco/studio-contract/schema/study';
 
 import { sqlErrorsOnly } from '../db/errors.ts';
-import { Transaction } from '../db/tenant.ts';
+import { tenantTeamId, Transaction } from '../db/tenant.ts';
 import { PROTOCOL_TABLES } from '../protocol/schema.ts';
 import { STUDY_ROLE_TABLES } from './roles-schema.ts';
 import { STUDY_TABLES } from './schema.ts';
@@ -105,25 +105,13 @@ function toStudyRow(row: SelectedStudy): StudyRow {
   };
 }
 
-const tenantTeam: Effect.Effect<string, never, Transaction> = Effect.flatMap(
-  Transaction,
-  ({ teamId }) =>
-    teamId === null
-      ? Effect.die(
-          new Error(
-            'the study store requires a tenant scope; this transaction stamps no team',
-          ),
-        )
-      : Effect.succeed(teamId),
-);
-
 export const listStudies: (
   visibility: StudyVisibility,
 ) => Effect.Effect<StudyRow[], SqlError.SqlError, Transaction> = Effect.fn(
   'study.store.listStudies',
 )(function* (visibility: StudyVisibility) {
   const { tx } = yield* Transaction;
-  const teamId = yield* tenantTeam;
+  const teamId = yield* tenantTeamId;
   const rows = yield* tx
     .select(STUDY_COLUMNS)
     .from(studies)
@@ -141,7 +129,7 @@ export const getStudy: (
     visibility: StudyVisibility,
   ) {
     const { tx } = yield* Transaction;
-    const teamId = yield* tenantTeam;
+    const teamId = yield* tenantTeamId;
     const rows = yield* tx
       .select({ ...STUDY_COLUMNS, protocolDraftId: newestDraft.draftId })
       .from(studies)

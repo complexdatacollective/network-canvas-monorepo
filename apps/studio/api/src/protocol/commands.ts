@@ -2,6 +2,7 @@ import { and, eq } from 'drizzle-orm';
 import { Effect, Schema } from 'effect';
 import type { SqlError } from 'effect/sql';
 
+import type { AuditActor } from '@codaco/studio-contract/middleware/audit-actor';
 import { Principal } from '@codaco/studio-contract/middleware/authenticated';
 import type {
   Forbidden,
@@ -165,7 +166,7 @@ export const createAuditedProtocol: (
   | SectionValidationFailedError
   | NotFound
   | SqlError.SqlError,
-  Database | Principal | RequestId | AuditSignal | SecretsCipher
+  Database | Principal | AuditActor | RequestId | AuditSignal | SecretsCipher
 > = Effect.fn('protocol.create')(function* (
   access: TeamAccess,
   input: { name: string; protocolId: string; draftId: string },
@@ -221,7 +222,7 @@ export const addAuditedInformationStage: (
   | Forbidden
   | NotFound
   | SqlError.SqlError,
-  Database | Principal | RequestId | AuditSignal
+  Database | Principal | AuditActor | RequestId | AuditSignal
 > = Effect.fn('protocol.addInformationStage')(function* (
   access: TeamAccess,
   input: { protocolId: string; draftId: string; stageId: string },
@@ -294,7 +295,7 @@ export const moveAuditedProtocolStage: (
   | Forbidden
   | NotFound
   | SqlError.SqlError,
-  Database | Principal | RequestId | AuditSignal
+  Database | Principal | AuditActor | RequestId | AuditSignal
 > = Effect.fn('protocol.moveStage')(function* (
   access: TeamAccess,
   input: {

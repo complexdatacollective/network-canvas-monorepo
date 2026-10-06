@@ -13,6 +13,7 @@ import {
 } from '@codaco/studio-contract/client-session';
 import { Principal } from '@codaco/studio-contract/middleware/authenticated';
 
+import { provideCaller } from '../audit/actor.ts';
 import { principalFromHeaders } from '../auth/principal.ts';
 import { AuthService } from '../auth/service.ts';
 import type { Database } from '../db/client.ts';
@@ -93,7 +94,7 @@ export const HostSessionLive: Layer.Layer<HostSession, never, AuthService> =
                 displayName: displayName.slice(0, 320),
               }),
             ),
-            Effect.provideService(Principal, principal.value),
+            provideCaller(principal.value),
           );
         });
     }),

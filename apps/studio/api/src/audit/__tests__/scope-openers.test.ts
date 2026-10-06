@@ -247,6 +247,10 @@ const OPENERS: Record<string, { count: number; why: string }> = {
     count: 2,
     why: '`protocols.list` and `protocols.draft`, reads (the draft read with its #1257 check in the same transaction)',
   },
+  [`${SERVER}/src/rpc/require-session.ts › TenantScope.open`]: {
+    count: 1,
+    why: 'resolving a presented participant session token to its session, read-only, before any procedure runs',
+  },
   [`${SERVER}/src/rpc/handlers/studies.ts › TenantScope.open`]: {
     count: 2,
     why: '`studies.list` and `studies.counts`, reads',

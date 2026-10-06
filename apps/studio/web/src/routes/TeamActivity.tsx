@@ -146,11 +146,18 @@ const actorKindMessages = defineMessages({
     defaultMessage: 'System',
     description: 'Kind label for an audit actor that is Studio itself.',
   },
+  participant: {
+    id: 'studio.teamActivity.actorKindParticipant',
+    defaultMessage: 'Participant',
+    description:
+      'Kind label for an audit actor that is a study participant taking an interview, named by their participant code.',
+  },
 });
 
 const ACTOR_KIND_LABELS: Record<string, MessageDescriptor> = {
   api_token: actorKindMessages.apiToken,
   system: actorKindMessages.system,
+  participant: actorKindMessages.participant,
 };
 
 const messages = defineMessages({

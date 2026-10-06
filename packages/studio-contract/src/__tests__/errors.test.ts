@@ -260,7 +260,7 @@ const SAMPLES = new Map<string, ErrorSample>([
   [
     'SessionEnded',
     {
-      make: () => new SessionEnded({ state: 'expired' }),
+      make: () => new SessionEnded({ state: 'completed' }),
       isInstance: (value) => value instanceof SessionEnded,
     },
   ],

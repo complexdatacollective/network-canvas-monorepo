@@ -4,19 +4,76 @@ import { LinkToken, SessionToken, StudyId } from './ids.ts';
 import { DecimalSequence, NonNegativeInt } from './primitives.ts';
 import { problemFields } from './problem.ts';
 
-/**
- * A dedicated header, never `Authorization` and never a cookie: a credential
- * the browser attaches by itself would let a signed-in researcher answer for
- * the participant.
- */
-export const PARTICIPANT_SESSION_HEADER = 'x-studio-participant-session';
-
-export const ParticipantSessionState = Schema.Literals([
-  'active',
+export const PARTICIPANT_SESSION_STATUSES = [
+  'in_progress',
   'completed',
   'abandoned',
-  'expired',
-]);
+] as const;
+export const ParticipantSessionStatus = Schema.Literals(
+  PARTICIPANT_SESSION_STATUSES,
+);
+export type ParticipantSessionStatus =
+  (typeof ParticipantSessionStatus)['Type'];
+
+export const HolderId = Schema.String.check(
+  Schema.isMinLength(1),
+  Schema.isMaxLength(128),
+);
+
+const StageId = Schema.String.check(
+  Schema.isMinLength(1),
+  Schema.isMaxLength(128),
+);
+
+const EntityAttributes = Schema.Record(Schema.String, Schema.Unknown);
+
+const SecureAttributesMeta = Schema.Record(
+  Schema.String,
+  Schema.Struct({
+    iv: Schema.Array(Schema.Number),
+    salt: Schema.Array(Schema.Number),
+  }),
+);
+
+const entityFields = {
+  _uid: Schema.String,
+  attributes: EntityAttributes,
+  _secureAttributes: Schema.optionalKey(SecureAttributesMeta),
+};
+
+export const NetworkEgo = Schema.Struct(entityFields);
+
+export const NetworkNode = Schema.Struct({
+  ...entityFields,
+  type: Schema.String,
+  stageId: Schema.optionalKey(Schema.String),
+  promptIDs: Schema.optionalKey(Schema.Array(Schema.String)),
+});
+
+export const NetworkEdge = Schema.Struct({
+  ...entityFields,
+  type: Schema.String,
+  from: Schema.String,
+  to: Schema.String,
+});
+
+export const InterviewNetwork = Schema.Struct({
+  nodes: Schema.Array(NetworkNode),
+  edges: Schema.Array(NetworkEdge),
+  ego: NetworkEgo,
+});
+
+const StageMetadata = Schema.Record(Schema.String, Schema.Unknown);
+
+export const InterviewSession = Schema.Struct({
+  id: Schema.String,
+  startTime: Schema.String,
+  finishTime: Schema.Null,
+  exportTime: Schema.Null,
+  lastUpdated: Schema.String,
+  network: InterviewNetwork,
+  stageMetadata: StageMetadata,
+});
 
 export const RedeemInput = Schema.Struct({
   linkToken: LinkToken,
@@ -28,23 +85,27 @@ export const RedeemResult = Schema.Struct({
   sessionId: Schema.String,
 });
 
+export const SessionInput = Schema.Struct({
+  holderId: HolderId,
+});
+
 export const SessionPayload = Schema.Struct({
-  sessionId: Schema.String,
   studyId: StudyId,
   holderEpoch: NonNegativeInt,
   revision: DecimalSequence,
-  state: ParticipantSessionState,
-  network: Schema.Record(Schema.String, Schema.Unknown),
-  stage: Schema.NullOr(Schema.String),
-  ego: Schema.Record(Schema.String, Schema.Unknown),
+  stageIndex: NonNegativeInt,
+  stageId: Schema.NullOr(StageId),
+  session: InterviewSession,
+  protocol: Schema.Unknown,
 });
 
 export const SyncInput = Schema.Struct({
   holderEpoch: NonNegativeInt,
   revision: DecimalSequence,
-  network: Schema.Record(Schema.String, Schema.Unknown),
-  stage: Schema.NullOr(Schema.String),
-  ego: Schema.Record(Schema.String, Schema.Unknown),
+  stageIndex: NonNegativeInt,
+  stageId: Schema.NullOr(StageId),
+  network: InterviewNetwork,
+  stageMetadata: StageMetadata,
 });
 
 export const SyncResult = Schema.Struct({
@@ -64,7 +125,7 @@ export class SessionEnded extends Schema.TaggedError<SessionEnded>()(
   'SessionEnded',
   {
     ...problemFields('Session ended', 410),
-    state: Schema.Literals(['completed', 'abandoned', 'expired']),
+    state: Schema.Literals(['completed', 'abandoned']),
   },
   { httpApiStatus: 410 },
 ) {}
