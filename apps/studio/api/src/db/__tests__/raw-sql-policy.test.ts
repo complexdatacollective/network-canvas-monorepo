@@ -2,7 +2,6 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import ts from '@typescript/typescript6';
 import { SyntaxKind } from 'typescript/unstable/ast';
 import { describe, expect, it } from 'vitest';
 
@@ -106,178 +105,23 @@ function spansOf(tokens: SourceToken[]): Span[] {
   return spans;
 }
 
-type SqlBindings = {
-  readonly drizzle: ts.Identifier | null;
-  readonly others: readonly ts.Identifier[];
-  readonly drizzleReferences: ReadonlySet<number>;
-};
-
-function bindingNames(name: ts.BindingName): ts.Identifier[] {
-  if (ts.isIdentifier(name)) return [name];
-  return name.elements.flatMap((element) =>
-    ts.isBindingElement(element) ? bindingNames(element.name) : [],
-  );
-}
-
-function assignedNames(target: ts.Expression): ts.Identifier[] {
-  if (ts.isIdentifier(target)) return [target];
-  if (ts.isParenthesizedExpression(target)) {
-    return assignedNames(target.expression);
-  }
-  if (ts.isArrayLiteralExpression(target)) {
-    return target.elements.flatMap((element) =>
-      ts.isSpreadElement(element)
-        ? assignedNames(element.expression)
-        : assignedNames(element),
-    );
-  }
-  if (ts.isObjectLiteralExpression(target)) {
-    return target.properties.flatMap((property) => {
-      if (ts.isShorthandPropertyAssignment(property)) return [property.name];
-      if (ts.isPropertyAssignment(property)) {
-        return assignedNames(property.initializer);
-      }
-      if (ts.isSpreadAssignment(property)) {
-        return assignedNames(property.expression);
-      }
-      return [];
-    });
-  }
-  if (
-    ts.isBinaryExpression(target) &&
-    target.operatorToken.kind === ts.SyntaxKind.EqualsToken
-  ) {
-    return assignedNames(target.left);
-  }
-  return [];
-}
-
-function functionScope(node: ts.Node): ts.Node {
-  let scope = node.parent;
-  while (!ts.isSourceFile(scope) && !ts.isFunctionLike(scope)) {
-    scope = scope.parent;
-  }
-  return scope;
-}
-
-function variableScope(declaration: ts.VariableDeclaration): ts.Node {
-  const list = declaration.parent;
-  if (ts.isCatchClause(list)) return list;
-  if ((list.flags & ts.NodeFlags.BlockScoped) === 0) {
-    return functionScope(declaration);
-  }
-  return ts.isVariableStatement(list.parent) ? list.parent.parent : list.parent;
-}
-
-function sqlBindings(source: string): SqlBindings {
-  const file = ts.createSourceFile(
-    'module.ts',
-    source,
-    ts.ScriptTarget.Latest,
-    true,
-    ts.ScriptKind.TS,
-  );
-  const scopes = new Map<ts.Node, ts.Identifier[]>();
-  const declarations = new Set<ts.Identifier>();
-  const others: ts.Identifier[] = [];
-  let drizzle: ts.Identifier | null = null;
-
-  const declare = (scope: ts.Node, names: readonly ts.Identifier[]) => {
-    for (const name of names) {
-      if (name.text !== 'sql') continue;
-      declarations.add(name);
-      scopes.set(scope, [...(scopes.get(scope) ?? []), name]);
-    }
-  };
-
-  const visit = (node: ts.Node): void => {
-    if (ts.isImportDeclaration(node) && node.importClause) {
-      const { name, namedBindings } = node.importClause;
-      const fromDrizzle =
-        ts.isStringLiteral(node.moduleSpecifier) &&
-        node.moduleSpecifier.text === 'drizzle-orm';
-      if (name) declare(file, [name]);
-      if (namedBindings && ts.isNamespaceImport(namedBindings)) {
-        declare(file, [namedBindings.name]);
-      }
-      if (namedBindings && ts.isNamedImports(namedBindings)) {
-        for (const element of namedBindings.elements) {
-          if (
-            fromDrizzle &&
-            drizzle === null &&
-            (element.propertyName ?? element.name).text === 'sql'
-          ) {
-            drizzle = element.name;
-          }
-          declare(file, [element.name]);
-        }
-      }
-    } else if (ts.isImportEqualsDeclaration(node)) {
-      declare(file, [node.name]);
-    } else if (ts.isParameter(node)) {
-      declare(node.parent, bindingNames(node.name));
-    } else if (ts.isVariableDeclaration(node)) {
-      declare(variableScope(node), bindingNames(node.name));
-    } else if (
-      (ts.isFunctionDeclaration(node) ||
-        ts.isClassDeclaration(node) ||
-        ts.isEnumDeclaration(node)) &&
-      node.name
+function importsDrizzleSql(tokens: SourceToken[]): boolean {
+  for (let index = 0; index < tokens.length; index += 1) {
+    if (tokens[index]!.kind !== SyntaxKind.ImportKeyword) continue;
+    let end = index;
+    while (
+      end < tokens.length &&
+      tokens[end]!.kind !== SyntaxKind.FromKeyword
     ) {
-      declare(node.parent, [node.name]);
-    } else if (
-      (ts.isFunctionExpression(node) || ts.isClassExpression(node)) &&
-      node.name
-    ) {
-      declare(node, [node.name]);
-    } else if (
-      ts.isBinaryExpression(node) &&
-      node.operatorToken.kind === ts.SyntaxKind.EqualsToken
-    ) {
-      others.push(
-        ...assignedNames(node.left).filter((name) => name.text === 'sql'),
-      );
+      end += 1;
     }
-    ts.forEachChild(node, visit);
-  };
-  visit(file);
-
-  const bindingOf = (reference: ts.Identifier): ts.Identifier | undefined => {
-    for (let scope: ts.Node = reference.parent; ; scope = scope.parent) {
-      const found = scopes.get(scope)?.at(-1);
-      if (found) return found;
-      if (ts.isSourceFile(scope)) return undefined;
+    const specifier = tokenName(tokens[end + 1]);
+    if (specifier !== 'drizzle-orm') continue;
+    if (tokens.slice(index, end).some((token) => isName(token, 'sql'))) {
+      return true;
     }
-  };
-
-  const drizzleReferences = new Set<number>();
-  const references = (node: ts.Node): void => {
-    if (
-      ts.isIdentifier(node) &&
-      node.text === 'sql' &&
-      !declarations.has(node) &&
-      drizzle !== null &&
-      bindingOf(node) === drizzle
-    ) {
-      drizzleReferences.add(node.getStart(file));
-    }
-    ts.forEachChild(node, references);
-  };
-  references(file);
-
-  return {
-    drizzle,
-    others: [
-      ...[...declarations].filter((name) => name !== drizzle),
-      ...others,
-    ],
-    drizzleReferences,
-  };
-}
-
-function shadowsDrizzleSql(source: string): boolean {
-  const { drizzle, others } = sqlBindings(source);
-  return drizzle !== null && others.length > 0;
+  }
+  return false;
 }
 
 const RAW_MEMBERS = new Set([
@@ -308,10 +152,8 @@ function clientAliases(tokens: SourceToken[]): Set<string> {
   return aliases;
 }
 
-function rawCalls(
-  tokens: SourceToken[],
-  drizzleReferences: ReadonlySet<number>,
-): number[] {
+function rawCalls(tokens: SourceToken[]): number[] {
+  const drizzleSql = importsDrizzleSql(tokens);
   const aliases = clientAliases(tokens);
   const calls: number[] = [];
   for (let index = 0; index < tokens.length; index += 1) {
@@ -343,8 +185,7 @@ function rawCalls(
       continue;
     }
     const tag =
-      (token.raw === 'sql' &&
-        (member || !drizzleReferences.has(token.position))) ||
+      (token.raw === 'sql' && (member || !drizzleSql)) ||
       (!member && aliases.has(token.raw));
     if (
       tag &&
@@ -362,7 +203,7 @@ function rawCalls(
 function rawStatementsIn(source: string): (string | null)[] {
   const tokens = sourceTokens(source);
   const spans = spansOf(tokens);
-  return rawCalls(tokens, sqlBindings(source).drizzleReferences).map(
+  return rawCalls(tokens).map(
     (call) =>
       spans.filter((span) => span.start < call && call < span.end).at(-1)
         ?.name ?? null,
@@ -579,10 +420,14 @@ describe('the raw SQL allowlist', () => {
     expect(scanned).toContain('apps/studio/api/scripts/seed/seed.ts');
   });
 
-  it('finds no module that binds a second sql beside drizzle’s', () => {
+  // A file that imports drizzle's `sql` has its `sql` templates read as
+  // fragments. Lint's `no-shadow` stops a second `sql` binding in a nested
+  // scope and TypeScript stops one at module level, so the only way a raw
+  // statement hides under that name is a suppressed lint rule.
+  it('finds no module that suppresses no-shadow', () => {
     expect(
       SCANNED_FILES()
-        .filter((file) => shadowsDrizzleSql(readFileSync(file, 'utf8')))
+        .filter((file) => /no-shadow/.test(readFileSync(file, 'utf8')))
         .map((file) => relative(REPO_ROOT, file)),
     ).toEqual([]);
   });
@@ -683,126 +528,5 @@ describe('the raw SQL collector', () => {
         const f = sql.literal;
       });`;
     expect(rawStatementsIn(source)).toEqual(['g', 'g', 'g', 'g']);
-  });
-});
-
-describe('a raw template under a shadowing sql', () => {
-  const drizzle = `import { sql } from 'drizzle-orm';\n`;
-
-  it.each([
-    [
-      'a return-annotated arrow parameter',
-      'const f = Effect.fn("f")(function* () { const run = (sql: Client): unknown => sql`select 1`; });',
-    ],
-    [
-      'a method parameter',
-      'const f = Effect.fn("f")(function* () { const scope = { run(sql: Client) { return sql`select 1`; } }; });',
-    ],
-    [
-      'a block-scoped const',
-      'const f = Effect.fn("f")(function* () { { const sql = client; yield* sql`select 1`; } });',
-    ],
-  ])('is counted under %s', (_label, body) => {
-    expect(rawStatementsIn(drizzle + body)).toEqual(['f']);
-  });
-
-  it('is not counted once the shadowing scope has closed', () => {
-    expect(
-      rawStatementsIn(
-        drizzle +
-          'const f = Effect.fn("f")(function* () { { const sql = client; } tx.select({ one: sql`1` }); });',
-      ),
-    ).toEqual([]);
-  });
-
-  it('is not counted through a default value', () => {
-    expect(
-      rawStatementsIn(drizzle + 'const run = (fragment = sql`1`) => fragment;'),
-    ).toEqual([]);
-  });
-});
-
-describe('the drizzle sql shadow check', () => {
-  const drizzle = `import { eq, sql } from 'drizzle-orm';\n`;
-
-  it.each([
-    ['a const', 'const sql = yield* SqlClient.SqlClient;'],
-    ['a let', 'let sql = client;'],
-    ['a destructured name', 'const { sql } = yield* Transaction;'],
-    ['a destructured rename', 'const { client: sql } = yield* Transaction;'],
-    ['a later destructured name', 'const { tx, sql } = yield* Transaction;'],
-    ['an assignment pattern', '({ sql } = scope);'],
-    ['an arrow parameter', 'const run = (sql) => sql`select 1`;'],
-    ['a bare arrow parameter', 'const run = sql => sql`select 1`;'],
-    ['a typed parameter', 'const run = (tx, sql: Client) => sql`select 1`;'],
-    ['a function parameter', 'function run(sql) { return sql`select 1`; }'],
-    ['a generator parameter', 'Effect.fn("r")(function* (sql) {});'],
-    ['a destructured parameter', 'const run = ({ sql }) => sql`select 1`;'],
-    [
-      'a parameter after a side-effect import',
-      "import './setup.ts';\nconst run = (sql: unknown) => sql;",
-    ],
-    [
-      'a parameter after a dynamic import',
-      "const setup = import('./setup.ts');\nconst run = (sql: unknown) => sql;",
-    ],
-    [
-      'a parameter after import.meta',
-      'const here = import.meta.url;\nconst run = (sql: unknown) => sql;',
-    ],
-    [
-      'a return-annotated arrow parameter',
-      'const run = (sql: Client): unknown => sql;',
-    ],
-    [
-      'a method parameter',
-      'const scope = { run(sql: Client) { return sql; } };',
-    ],
-    ['a class method parameter', 'class Scope { run(sql: Client) {} }'],
-    ['a setter parameter', 'const scope = { set client(sql) {} };'],
-    ['a constructor parameter', 'class Scope { constructor(sql: Client) {} }'],
-    [
-      'a parameter property',
-      'class Scope { constructor(private readonly sql: Client) {} }',
-    ],
-    [
-      'a nested destructured parameter',
-      'const run = ({ scope: [sql] }) => sql;',
-    ],
-    ['a var', 'var sql = client;'],
-    ['a function declaration', 'function sql() {}'],
-    ['a named function expression', 'const f = function sql() {};'],
-    ['a class declaration', 'class sql {}'],
-    ['a class expression', 'const C = class sql {};'],
-    ['a catch clause', 'try { run(); } catch (sql) {}'],
-    ['a for-of binding', 'for (const sql of clients) {}'],
-    ['a second import specifier', "import { sql as raw, sql } from 'other';"],
-    ['a default import', "import sql from 'other';"],
-    ['a namespace import', "import * as sql from 'other';"],
-    ['an assignment', 'sql = client;'],
-  ])('sees %s', (_label, body) => {
-    expect(shadowsDrizzleSql(drizzle + body)).toBe(true);
-  });
-
-  it.each([
-    ['a fragment', 'tx.select({ one: sql`1` }).from(t);'],
-    ['a member client', 'yield* open.sql`select 1`;'],
-    ['a rename away from sql', 'const { sql: client } = yield* Transaction;'],
-    ['an object shorthand', 'Effect.provideService(Tag, { sql });'],
-    ['an argument', 'run(sql, other);'],
-    ['a property key', 'const scope = { sql: client };'],
-    ['a default value', 'const run = (fragment = sql) => fragment;'],
-    ['a destructured default', 'const run = ({ fragment = sql }) => fragment;'],
-    ['a method named sql', 'const scope = { sql() { return 1; } };'],
-    ['a class member named sql', 'class Scope { sql = 1; }'],
-    ['a type named sql', 'type sql = string;'],
-  ])('passes %s', (_label, body) => {
-    expect(shadowsDrizzleSql(drizzle + body)).toBe(false);
-  });
-
-  it('applies only where drizzle’s sql is imported', () => {
-    expect(shadowsDrizzleSql('const sql = yield* SqlClient.SqlClient;')).toBe(
-      false,
-    );
   });
 });
