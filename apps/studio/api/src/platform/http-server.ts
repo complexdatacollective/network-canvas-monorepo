@@ -10,7 +10,8 @@ import { MAX_SOCKET_FRAME_BYTES } from '@codaco/studio-contract/limits';
 
 import { Environment } from '../env.ts';
 
-const GRACEFUL_SHUTDOWN_TIMEOUT = '10 seconds';
+/** How long the listener waits for accepted requests to finish once it stops. */
+export const GRACEFUL_SHUTDOWN_TIMEOUT = '10 seconds';
 
 type StudioHttpServer = Layer.Layer<
   | HttpServer.HttpServer

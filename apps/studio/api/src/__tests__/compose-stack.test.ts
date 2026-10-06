@@ -1,8 +1,12 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
+import { Duration } from 'effect';
 import { describe, expect, it } from 'vitest';
 import { parse } from 'yaml';
+
+import { GRACEFUL_SHUTDOWN_TIMEOUT } from '../platform/http-server.ts';
+import { DRAIN_TIMEOUT } from '../platform/ws-drain.ts';
 
 // The drift guard between `apps/studio/docker-compose.yml` and the
 // `.env.example` beside it — the two files a self-hoster downloads, and the
@@ -202,6 +206,36 @@ describe('the reference compose stack', () => {
       expect({ name, grace: worker.stop_grace_period }).toEqual({
         name,
         grace: '40s',
+      });
+    }
+  });
+
+  it('gives the api time to finish its own shutdown before Docker kills it', () => {
+    // The upgrade stops `api` before its backup and relies on the stop
+    // finishing the requests already accepted (docs/self-host/upgrade.md,
+    // step 2). The server's shutdown is the WebSocket drain, then the
+    // listener's graceful close, one after the other; Docker's 10s default is
+    // shorter than the two together and would SIGKILL a request partway.
+    const shutdownMs =
+      Duration.toMillis(DRAIN_TIMEOUT) +
+      Duration.toMillis(GRACEFUL_SHUTDOWN_TIMEOUT);
+    const graceOf = (value: string | undefined) => {
+      const seconds = /^(\d+)s$/.exec(value ?? '')?.[1];
+      return seconds === undefined ? null : Number(seconds) * 1000;
+    };
+    expect(compose.services.api!.stop_grace_period).toBe('20s');
+    expect(graceOf(compose.services.api!.stop_grace_period)).toBeGreaterThan(
+      shutdownMs,
+    );
+
+    // As for the worker: an overlay that mentions the key must say 20s.
+    for (const [name, source] of composeOverlays()) {
+      const overlay = parse(source, { logLevel: 'silent' }) as ComposeFile;
+      const api = overlay.services?.api;
+      if (!api || !('stop_grace_period' in api)) continue;
+      expect({ name, grace: api.stop_grace_period }).toEqual({
+        name,
+        grace: '20s',
       });
     }
   });

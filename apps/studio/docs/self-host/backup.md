@@ -78,10 +78,13 @@ copy.
 Studio's release test runs this block as written, inside the upgrade sequence,
 for every release that changes the upgrade path.
 
-**Take it while the instance is closed** where you can — step 1 of
-[the upgrade sequence](./upgrade.md) exists partly for this. A scheduled backup
-of a live instance is fine for the database, which is dumped in one consistent
-snapshot, and fine for the object store, which is written additively.
+**The backup an upgrade rolls back to is taken with nothing running that
+writes to the database** — step 2 of [the upgrade sequence](./upgrade.md)
+stops `api` and `worker` first, so that backup holds every write the instance
+accepted before it closed. A scheduled backup of a live instance is fine for
+the database, which is dumped in one consistent snapshot, and fine for the
+object store, which is written additively; it is a copy as of the moment the
+dump started.
 
 ## How often, and the deadline that sets it
 

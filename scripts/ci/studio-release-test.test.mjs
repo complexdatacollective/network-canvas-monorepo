@@ -56,7 +56,7 @@ test('the upgrade guide carries the block the lane executes, in the sequence the
   assert.deepEqual(lines, [
     'docker compose run --rm --no-deps api maintenance on',
     '# wait until /readyz names maintenance mode — see step 2',
-    "until docker compose logs worker | grep -E 'stopped claiming jobs|claiming jobs again' | tail -n 1 | grep -q 'stopped claiming jobs'; do sleep 1; done",
+    'docker compose stop api worker',
     '# take your backup now — see ./backup.md',
     'docker compose pull',
     'docker compose up -d web api worker',
@@ -91,44 +91,6 @@ test('the restore block ends by reopening the instance, after starting the relea
   assert.ok(lines.every((line) => !/\bstudio\.example\.org\b/.test(line)));
 });
 
-test('the guide waits for the worker pause the way the worker logs it', () => {
-  const wait = guideBlock(guide('upgrade.md'), 'upgrade-sequence').find(
-    (line) => line.startsWith('until '),
-  );
-  const worker = readFileSync(
-    new URL('../../apps/studio/api/src/jobs/maintenance.ts', import.meta.url),
-    'utf8',
-  );
-  // The two transitions the wait tells apart, as the gate words them.
-  for (const words of ['stopped claiming jobs', 'claiming jobs again']) {
-    assert.ok(wait.includes(words), `the wait looks for '${words}'`);
-    assert.ok(worker.includes(words), `the worker logs '${words}'`);
-  }
-  const check = (log) =>
-    spawnSync(
-      'bash',
-      ['-c', wait.replace('docker compose logs worker', 'cat')],
-      {
-        input: log,
-        encoding: 'utf8',
-        timeout: 3000,
-      },
-    );
-  const paused =
-    '{"message":"maintenance is over: the job worker is claiming jobs again"}\n' +
-    '{"message":"the deployment is in maintenance: the job worker has stopped claiming jobs on every queue"}\n';
-  assert.equal(
-    check(paused).status,
-    0,
-    'returns once the last transition is the pause',
-  );
-  const resumed =
-    '{"message":"the deployment is in maintenance: the job worker has stopped claiming jobs on every queue"}\n' +
-    '{"message":"maintenance is over: the job worker is claiming jobs again"}\n';
-  // Still looping when the bound kills it: an earlier pause does not count.
-  assert.notEqual(check(resumed).status, 0, 'keeps waiting after a resume');
-});
-
 // ── The window oracle ─────────────────────────────────────────────────────
 
 const ready = (reason) =>
@@ -141,10 +103,12 @@ const ready = (reason) =>
 const tick = (ts, readyStatus, readyBody, probeStatus, probeKind) =>
   [ts, readyStatus, readyBody, probeStatus, probeKind].join('\t');
 
+// The guide's sequence as upgrade.sh records it, less the two steps the
+// oracle never reads (the /readyz wait and `pull`).
 const SEQUENCE = [
   'docker compose run --rm --no-deps api maintenance on',
+  'docker compose stop api worker',
   'backup (docs/self-host/backup.md)',
-  'docker compose pull',
   'docker compose up -d web api worker',
   'docker compose run --rm migrate',
   'docker compose run --rm --no-deps api maintenance off',
@@ -152,8 +116,8 @@ const SEQUENCE = [
 
 /**
  * Steps 2 s apart, each lasting 1.8 s, from t = 2000: maintenance on is
- * 2000-3800, up -d 8000-9800, migrate 10000-11800, maintenance off
- * 12000-13800.
+ * 2000-3800, stop 4000-5800, backup 6000-7800, up -d 8000-9800, migrate
+ * 10000-11800, maintenance off 12000-13800.
  */
 function events(commands = SEQUENCE) {
   return commands
@@ -370,6 +334,59 @@ test('a silent observer is refused, and so is an instance that never reopens', (
   const stuck = analyse(observation(closedForever));
   assert.equal(stuck.ok, false);
   assert.match(stuck.failures.join('\n'), /never both answered 200/);
+});
+
+/** `events()` with maintenance off moved to start at `offStart`. */
+function eventsWithOffAt(offStart) {
+  const off = SEQUENCE.length;
+  return events()
+    .split('\n')
+    .map((line) => {
+      const [, kind, index, ...rest] = line.split('\t');
+      if (Number(index) !== off) return line;
+      const at = kind === 'start' ? offStart : offStart + 1800;
+      return [at, kind, index, ...rest].join('\t');
+    })
+    .join('\n');
+}
+
+/**
+ * The fixture's ticks up to `lastClosed` (closed from 2250, so migrate is
+ * watched), then nothing until the instance is open again from `reopenAt`.
+ */
+function observationEndingAt(lastClosed, reopenAt) {
+  const lines = observation()
+    .split('\n')
+    .filter((line) => Number(line.split('\t')[0]) <= lastClosed);
+  for (let ts = reopenAt; ts <= reopenAt + 1000; ts += 250) {
+    lines.push(tick(ts, '200', OPEN, '200', 'other'));
+  }
+  return lines.join('\n');
+}
+
+test('an observer that stalls before maintenance off is refused, though every gap between its ticks is short', () => {
+  // The last tick is at 11750 (inside migrate) and maintenance off starts at
+  // 18000: 6250 ms with no reading, and no two ticks further apart than
+  // 250 ms.
+  const stalled = analyse(
+    observationEndingAt(11750, 20000),
+    eventsWithOffAt(18000),
+  );
+  assert.equal(stalled.ok, false);
+  assert.deepEqual(stalled.failures, [
+    'the observer was silent for 6250 ms inside the window (from +9500 ms until maintenance off started)',
+  ]);
+
+  // The same tail inside the bound — 4750 ms — passes: the rule is the
+  // bound, not "a tick right before maintenance off".
+  const within = analyse(
+    observationEndingAt(11750, 18500),
+    eventsWithOffAt(16500),
+  );
+  assert.deepEqual(within.failures, []);
+
+  // And the fixture's own tail, 250 ms, passes.
+  assert.deepEqual(analyse(observationEndingAt(11750, 14000)).failures, []);
 });
 
 test('readiness reasons are matched exactly, never by a word inside them', () => {

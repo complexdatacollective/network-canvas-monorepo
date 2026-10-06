@@ -24,11 +24,17 @@
 #   - observe.sh records /readyz and a probe four times a second (faster while
 #     `migrate` runs), and window.mjs then decides whether the instance was
 #     closed throughout;
-#   - once the guide's own wait says the worker has paused, one
-#     `protocol-store-gc` job is enqueued as the application role. It must
-#     still be `created` after `migrate`, and still `created` once the NEW
-#     worker — the one `up -d` started — is running with the flag on, and it
-#     must be completed after `maintenance off` cleared the flag;
+#   - once the guide's `stop api worker` has returned — no worker of the old
+#     release is left to claim it — one `protocol-store-gc` job is enqueued as
+#     the application role. It must still be `created` after `migrate`, and
+#     still `created` once the NEW worker — the one `up -d` started — is
+#     running with the flag on, and it must be completed after `maintenance
+#     off` cleared the flag;
+#   - when the backup starts, no `api` or `worker` container may be running
+#     (the guide's rule: the backup is taken with nothing running that can
+#     write to the database), and the ones `stop` stopped must have exited
+#     through their own shutdown rather than been killed at the end of their
+#     stop grace period — stopped.json records what was seen;
 #   - before `maintenance off`, the lane waits for that new worker to start,
 #     and for the new api to answer /readyz naming maintenance mode, so the
 #     new build's own maintenance gates are live inside the window. The
@@ -52,11 +58,13 @@ OBSERVED="$RUN_DIR/observe.tsv"
 FAST="$RUN_DIR/observe-fast"
 PROBE_JOB_FILE="$RUN_DIR/probe-job"
 NEW_WORKER_FILE="$RUN_DIR/new-worker.json"
+STOPPED_FILE="$RUN_DIR/stopped.json"
 READY_BOUND=180
 STEP_BOUND=900
 WAIT_STEP_BOUND=30
 NEW_WORKER_BOUND=120
-rm -f "$EVENTS" "$OBSERVED" "$FAST" "$PROBE_JOB_FILE" "$NEW_WORKER_FILE" "$RUN_DIR/pause-lag-ms"
+STOP_LINE='docker compose stop api worker'
+rm -f "$EVENTS" "$OBSERVED" "$FAST" "$PROBE_JOB_FILE" "$NEW_WORKER_FILE" "$STOPPED_FILE"
 
 now_ms() { perl -MTime::HiRes=time -e 'printf "%d\n", time * 1000'; }
 
@@ -64,12 +72,18 @@ SEQUENCE="$(guide_block "$STUDIO_DIR/docs/self-host/upgrade.md" upgrade-sequence
 BACKUP="$(guide_block "$STUDIO_DIR/docs/self-host/backup.md" backup-take)"
 [ -n "$SEQUENCE" ] || die 'docs/self-host/upgrade.md has no <!-- upgrade-sequence --> bash block'
 [ -n "$BACKUP" ] || die 'docs/self-host/backup.md has no <!-- backup-take --> bash block'
-grep -q '^# take your backup' <<< "$SEQUENCE" \
-  || die "the upgrade sequence no longer has its '# take your backup' line, which is where backup.md's block runs"
-grep -q '^# wait until /readyz names maintenance mode' <<< "$SEQUENCE" \
-  || die "the upgrade sequence no longer has its '# wait until /readyz names maintenance mode' line"
-grep -q '^until .*stopped claiming jobs' <<< "$SEQUENCE" \
-  || die "the upgrade sequence no longer waits for the worker's pause before the backup"
+# The three lines the proof hangs on, in the order the guide's rule needs
+# them: the flag has landed, then nothing that writes is running, then the
+# backup.
+line_of() { grep -n -m 1 -x -e "$1" <<< "$SEQUENCE" | cut -d: -f1; }
+wait_at="$(grep -n -m 1 '^# wait until /readyz names maintenance mode' <<< "$SEQUENCE" | cut -d: -f1)"
+stop_at="$(line_of "$STOP_LINE")"
+backup_at="$(grep -n -m 1 '^# take your backup' <<< "$SEQUENCE" | cut -d: -f1)"
+[ -n "$wait_at" ] || die "the upgrade sequence no longer has its '# wait until /readyz names maintenance mode' line"
+[ -n "$stop_at" ] || die "the upgrade sequence no longer stops api and worker ('$STOP_LINE') before the backup"
+[ -n "$backup_at" ] || die "the upgrade sequence no longer has its '# take your backup' line, which is where backup.md's block runs"
+[ "$wait_at" -lt "$stop_at" ] && [ "$stop_at" -lt "$backup_at" ] \
+  || die "the upgrade sequence must wait for /readyz, then '$STOP_LINE', then take the backup — in that order"
 
 job_state() {
   [ -f "$PROBE_JOB_FILE" ] || return 0
@@ -132,6 +146,36 @@ enqueue_probe() {
 
 worker_container() { docker compose ps -q worker; }
 
+# The guide's rule for the backup, checked as it starts: no `api` or
+# `worker` container is running — the release's own or a one-off `run` of
+# either — and every one that was running before the sequence exited through
+# its own shutdown. A graceful stop interrupts the process's main fiber, which
+# exits 130; Docker's SIGKILL at the end of the stop grace period is 137.
+check_nothing_writes() { # old container ids…
+  local running ids=("$@") id state stopped=() problem=''
+  running="$(docker ps --filter "label=com.docker.compose.project=$PROJECT" \
+    --format '{{.ID}} {{.Label "com.docker.compose.service"}} {{.Image}}' \
+    | awk '$2 == "api" || $2 == "worker" || $2 == "migrate"')"
+  if [ -n "$running" ]; then
+    problem="still running when the backup started: $(tr '\n' ';' <<< "$running")"
+  fi
+  for id in "${ids[@]}"; do
+    state="$(docker inspect --format '{{.Name}} {{.State.Status}} {{.State.ExitCode}} {{.State.OOMKilled}}' "$id" 2> /dev/null || echo "$id gone - false")"
+    stopped+=("$state")
+    case "$state" in
+      *' exited 130 false') ;;
+      *) problem="${problem:+$problem; }$state did not exit through its own shutdown (want: exited 130)" ;;
+    esac
+  done
+  node -e 'const [running, ...stopped] = process.argv.slice(1); console.log(JSON.stringify({ runningAtBackup: running.split("\n").filter(Boolean), stopped }, null, 2))' \
+    "$running" "${stopped[@]}" > "$STOPPED_FILE"
+  if [ -n "$problem" ]; then
+    fail "the backup started with something that writes to the database not cleanly stopped — $problem"
+    return 1
+  fi
+  say "  nothing that writes is running at the backup; stopped: $(printf '%s, ' "${stopped[@]}" | sed 's/, $//')"
+}
+
 # The api `up -d` started has taken its first reading of the flag: /readyz
 # names maintenance mode. Only the new api is running by now (`up -d`
 # replaced the old one), so any api answer is its. Until it has read the flag
@@ -191,6 +235,11 @@ for _ in $(seq 1 40); do
 done
 [ -s "$OBSERVED" ] || die 'the observer recorded nothing'
 
+# The api and worker of the release being replaced, which the sequence must
+# have stopped by the time it takes the backup.
+read -r -a OLD_WRITERS <<< "$(docker compose ps -q api worker | tr '\n' ' ')"
+[ "${#OLD_WRITERS[@]}" -eq 2 ] || die "expected one running api and one running worker before the upgrade, found: ${OLD_WRITERS[*]:-none}"
+
 # ── The sequence ──────────────────────────────────────────────────────────
 index=0
 run_step() { # bound-seconds label command…
@@ -209,7 +258,6 @@ run_step() { # bound-seconds label command…
   }
 }
 
-on_returned_ms=''
 old_worker=''
 new_worker=''
 up_returned_ms=''
@@ -217,6 +265,7 @@ while IFS= read -r line; do
   case "$line" in
     '' | ' '*) continue ;;
     '# take your backup'*)
+      check_nothing_writes "${OLD_WRITERS[@]}" || true
       run_step "$STEP_BOUND" 'backup (docs/self-host/backup.md)' bash -eo pipefail -c "$BACKUP" || break
       ;;
     '# wait until /readyz names maintenance mode'*)
@@ -227,8 +276,9 @@ while IFS= read -r line; do
     *)
       bound="$STEP_BOUND"
       case "$line" in
-        'until '*) bound="$WAIT_STEP_BOUND" ;;
-        *'up -d'*) old_worker="$(worker_container)" ;;
+        # `-a`: step 2 stopped it, and a stopped container is still the one
+        # `up -d` must replace.
+        *'up -d'*) old_worker="$(docker compose ps -a -q worker)" ;;
         *'run --rm migrate'*) touch "$FAST" ;;
         *'maintenance off'*)
           # The new worker's gate, live inside the window: it started with
@@ -250,12 +300,10 @@ while IFS= read -r line; do
       esac
       run_step "$bound" "$line" bash -eo pipefail -c "$line" || break
       case "$line" in
-        *'maintenance on'*) on_returned_ms="$(now_ms)" ;;
-        'until '*'stopped claiming jobs'*)
-          # The guide's own wait for the worker's pause has returned, so a
-          # job queued now must wait out the window.
-          echo $(($(now_ms) - on_returned_ms)) > "$RUN_DIR/pause-lag-ms"
-          say "  the guide's wait saw the worker's pause $(cat "$RUN_DIR/pause-lag-ms") ms after maintenance on returned"
+        "$STOP_LINE")
+          # No worker of the old release is left to claim it, so a job queued
+          # now waits for the new worker's gate — and that gate must hold it
+          # until `maintenance off`.
           enqueue_probe
           ;;
         *'up -d'*)

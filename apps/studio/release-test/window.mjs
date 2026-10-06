@@ -35,8 +35,9 @@
 //     `maintenance off`; the proof does, so upgrade.sh waits for it there.
 //  6. After `maintenance off` returned, /readyz and the probe both reached 200.
 //
-// It also checks the observer was alive throughout: no two ticks inside the
-// window more than MAX_GAP_MS apart, so silence cannot pass for closure.
+// It also checks the observer was alive throughout: no stretch of the window,
+// from the closing tick to `maintenance off` starting, longer than MAX_GAP_MS
+// without a tick, so silence cannot pass for closure.
 
 import { readFileSync, writeFileSync } from 'node:fs';
 import process from 'node:process';
@@ -188,10 +189,16 @@ export function analyseWindow(ticks, steps) {
     ...tally(window),
   };
 
-  for (let i = 1; i < window.length; i += 1) {
-    const gap = window[i].ts - window[i - 1].ts;
+  // Every stretch of the window, from the closing tick to `maintenance off`
+  // starting, is measured — the tail after the last tick included, so an
+  // observer that stalled near the end cannot pass for one that saw closure.
+  const marks = [...window.map((tick) => tick.ts), off.start];
+  for (let i = 1; i < marks.length; i += 1) {
+    const gap = marks[i] - marks[i - 1];
     if (gap > MAX_GAP_MS) {
-      failures.push(`the observer was silent for ${gap} ms inside the window`);
+      failures.push(
+        `the observer was silent for ${gap} ms inside the window (from +${marks[i - 1] - closedTick.ts} ms${i === marks.length - 1 ? ' until maintenance off started' : ''})`,
+      );
       break;
     }
   }

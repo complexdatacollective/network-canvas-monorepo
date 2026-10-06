@@ -19,7 +19,7 @@ Put the new image digests in `.env` (`STUDIO_API_IMAGE` and
 ```bash
 docker compose run --rm --no-deps api maintenance on
 # wait until /readyz names maintenance mode — see step 2
-until docker compose logs worker | grep -E 'stopped claiming jobs|claiming jobs again' | tail -n 1 | grep -q 'stopped claiming jobs'; do sleep 1; done
+docker compose stop api worker
 # take your backup now — see ./backup.md
 docker compose pull
 docker compose up -d web api worker
@@ -43,50 +43,61 @@ While they run it reads `/readyz` and one API route a few times a second, and
 fails if, from the moment `/readyz` first names maintenance mode (it must
 within three seconds of the first command returning) until the last command
 starts, either answered 200, the API route answered with anything but the
-maintenance page, or `/readyz` gave a reason other than maintenance mode. It
-checks what those two routes answered when it asked, not every request.
+maintenance page, `/readyz` gave a reason other than maintenance mode, or the
+readings stopped for more than five seconds. It checks what those two routes
+answered when it asked, not every request. It also fails if an `api` or
+`worker` container is still running when the backup starts, or if the ones
+`stop` stopped had to be killed rather than finishing on their own.
 
 Step by step:
 
 1. **`maintenance on`** closes the instance to users. Every API, RPC, WebSocket
    and storage request except `/healthz` and `/readyz` receives the maintenance
-   page with 503, no procedure runs, and the worker stops fetching jobs while
-   in-flight ones finish. The API reads the flag within a second; the worker
-   checks it every second, so it can claim a job for up to about two seconds
-   after the command returns — a job that then runs to completion, like any
-   other in flight. `--no-deps` because this only writes a flag to the
-   database: it needs no other service started on its account. A reason is
-   optional — `maintenance on Upgrading to 1.4` — and `/readyz` repeats it.
-2. **Wait for the window to close, then back up.** `maintenance on` returns
-   before every process has read the flag, so wait for both before you copy
-   anything:
+   page with 503, no procedure runs, and the worker stops fetching jobs. The
+   API reads the flag within a second; the worker checks it every second.
+   `--no-deps` because this only writes a flag to the database: it needs no
+   other service started on its account. A reason is optional —
+   `maintenance on Upgrading to 1.4` — and `/readyz` repeats it.
+2. **Wait for the flag to land, stop `api` and `worker`, then back up.** The
+   rule for the backup: **take it when nothing that can write to the database
+   is running.** Closing the instance is not enough for that. The flag stops
+   the API admitting new requests and the worker claiming new jobs, but a
+   request the API accepted just before it read the flag, or a job the worker
+   was already running, still runs to its end, and can commit after the dump
+   has started. The live database would then hold a write the backup lacks:
+   a rollback would lose it, and restoring a mail job that was mid-send can
+   send it again.
 
-   - the API: `curl https://studio.example.org/readyz` names maintenance mode
-     (the first line of the table below), which takes up to a second;
-   - the worker: its log says it has stopped claiming jobs, which takes up to
-     about two. The `until` line waits for exactly that: it reads the worker's
-     most recent pause or resume line and returns once that line is the
-     pause. `docker compose logs worker` shows the same line.
+   So, in order:
 
-   From then on no request is served and no job is claimed. Two things can
-   still write, and neither matters to the backup: a job the worker claimed
-   just before it paused runs to its end, and the worker's schedule can still
-   queue its routine jobs, unclaimed, until the instance reopens. The job log
-   (`docker compose logs worker`) shows the last claimed job finishing if you
-   want to wait for that too. [Back up and restore](./backup.md) is the order
-   to take the backup in.
+   - wait until `curl https://studio.example.org/readyz` names maintenance
+     mode (the first line of the table below), which takes up to a second. It
+     proves the API has read the flag, so from here it answers every new
+     request with the maintenance page, and the stop below waits only for the
+     requests already running;
+   - `docker compose stop api worker` stops both processes, and each finishes
+     what it is doing before it exits: the API the requests it has already
+     accepted, the worker the jobs it is running. The command returns once
+     both have exited. The worker gives a job 25 seconds; one still running
+     then is interrupted, and runs again once the instance reopens. While
+     `api` is down Traefik serves the maintenance page from `web`, so users
+     see no difference.
+
+   Then nothing that writes to the database is running, and the backup holds
+   every write the instance accepted. [Back up and restore](./backup.md) is
+   the order to take it in.
 
 3. **`pull`** fetches the image digests `.env` names. Change
    `STUDIO_API_IMAGE` and `STUDIO_WEB_IMAGE` before this step, not after.
 4. **`up -d web api worker`** replaces the three containers built from those
-   images. Named rather than a bare `up -d` so the backing services are not
-   touched. While `api` is being replaced it answers nothing, and Traefik
-   serves the static maintenance page from `web` — which depends on nothing
-   that is being upgraded — so the page is visible for the whole window however
-   it started. The new `api` and `worker` start against a database `migrate`
-   has not moved yet. They do not crash or restart over it: they wait, closed
-   — `api` answers with the maintenance page and `worker` claims no jobs —
-   until the schema is theirs.
+   images, and starts the two step 2 stopped. Named rather than a bare `up -d`
+   so the backing services are not touched. Until the new `api` answers,
+   Traefik serves the static maintenance page from `web` — which depends on
+   nothing that is being upgraded — so the page is visible for the whole window
+   however it started. The new `api` and `worker` start against a database
+   `migrate` has not moved yet. They do not crash or restart over it: they
+   wait, closed — `api` answers with the maintenance page and `worker` claims
+   no jobs — until the schema is theirs.
 
    **If you replaced Traefik with a proxy of your own, reload it here.** A
    replacement is a new container with a new address, and a proxy that reaches
@@ -143,7 +154,13 @@ is not a fault: `migrate` is the remedy.
 
 The flag is checked first, so during an upgrade you see the first line until
 step 6, whatever else is true. The other four close the instance on their own
-whenever the flag was not set — a half-upgraded database is never served.
+whenever the flag was not set: under any of them the API refuses every new
+HTTP and WebSocket request, so a half-upgraded database is never served. A
+protocol-builder WebSocket that was already open closes when the flag is set
+or the schema changes. It stays open while only the migration lock is held —
+a `migrate` with nothing to apply holds it for milliseconds on every deploy —
+because a write it sends then runs before or after the migration's
+transaction, never inside a half-applied one.
 
 ## When `migrate` refuses
 

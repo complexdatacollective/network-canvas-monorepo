@@ -1,7 +1,8 @@
 import { Context, Effect, Latch, Layer, Ref, type Scope } from 'effect';
 import { HttpServer } from 'effect/http';
 
-const DRAIN_TIMEOUT = '5 seconds';
+/** How long a stop waits for open WebSockets to close, before the listener stops. */
+export const DRAIN_TIMEOUT = '5 seconds';
 
 export class WebSocketDrain extends Context.Service<
   WebSocketDrain,
