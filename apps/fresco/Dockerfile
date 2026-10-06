@@ -88,8 +88,15 @@ RUN addgroup --system --gid 1001 nodejs && \
 # Copy public assets
 COPY --from=builder /app/public ./public
 
-# Create .next directory with correct permissions
-RUN mkdir .next && chown nextjs:nodejs .next
+# Create the .next directory, including the `cache` subdirectory Next writes
+# its runtime incremental cache into (the fetch cache and ISR). Creating it at
+# build time means the non-root runtime user never has to mkdir inside /app:
+# that mkdir fails on a read-only root filesystem or when a volume is mounted
+# over .next, and Next surfaces the failure as an unhandled rejection rather
+# than a cache miss, so it is reported as a crash on a deployment that is only
+# running without a cache. Seen in the wild as
+# `EACCES: permission denied, mkdir '/app/.next/cache'` and the ENOENT variant.
+RUN mkdir -p .next/cache && chown -R nextjs:nodejs .next
 
 # Copy built application with correct permissions
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./

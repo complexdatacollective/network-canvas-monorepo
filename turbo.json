@@ -74,6 +74,13 @@
         "CONTEXT",
         "REVIEW_ID",
         "SITE_URL",
+        // The footer's copyright year. `next.config.ts` falls back to the
+        // build machine's year when this is unset, and that value is baked into
+        // the static export — so without declaring it here a build cached
+        // before 1 January could be replayed for a deployment made after it,
+        // publishing the previous year. Setting it in the deploy environment is
+        // what makes a new year invalidate the cache.
+        "NEXT_PUBLIC_BUILD_YEAR",
         // See the note on the generic build task's `env`.
         "POSTHOG_PERSONAL_API_KEY",
         "POSTHOG_PROJECT_ID"
@@ -238,6 +245,13 @@
         "NODE_ENV",
         "NEXT_PUBLIC_DOCUMENTATION_URL",
         "NEXT_PUBLIC_PROTOCOL_GALLERY_URL",
+        // The footer's copyright year. `next.config.ts` falls back to the
+        // build machine's year when this is unset, and that value is baked into
+        // the static export — so without declaring it here a build cached
+        // before 1 January could be replayed for a deployment made after it,
+        // publishing the previous year. Setting it in the deploy environment is
+        // what makes a new year invalidate the cache.
+        "NEXT_PUBLIC_BUILD_YEAR",
         "CONTEXT",
         "REVIEW_ID",
         // See the note on the generic build task's `env`.
