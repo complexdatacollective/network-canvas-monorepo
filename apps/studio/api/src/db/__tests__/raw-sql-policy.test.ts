@@ -291,6 +291,10 @@ const ALLOWLIST: Record<string, { count: number; why: string }> = {
     count: 1,
     why: 'a transaction-local `statement_timeout` via `set_config` (no FROM), so a read queued behind a migration’s lock ends on the server rather than holding its connection',
   },
+  [`${SERVER}/db/deployment-state.ts › db.deploymentState.readLatestRelease`]: {
+    count: 1,
+    why: 'the same transaction-local `statement_timeout` on the release-state read, kept separate from the flag read so a new image can read the flag against an older schema (#1901 R-1)',
+  },
   [`${SERVER}/db/readiness.ts › db.readiness.alive`]: {
     count: 1,
     why: 'the liveness probe’s `select 1`, no FROM clause',

@@ -120,8 +120,8 @@ const OPENERS: Record<string, { count: number; why: string }> = {
     why: 'the deployment-status read of the installation row, which belongs to no team',
   },
   [`${SERVER}/src/db/deployment-state.ts › UntenantedScope.open`]: {
-    count: 1,
-    why: '`readDeploymentState`: one untenanted row, read-only',
+    count: 2,
+    why: '`readDeploymentState` and `readLatestRelease`: the one untenanted row, read-only, as two selects so the flag read never names the release columns (#1901 R-1)',
   },
   [`${SERVER}/src/db/deployment-state.ts › MaintenanceScope.open`]: {
     count: 1,
