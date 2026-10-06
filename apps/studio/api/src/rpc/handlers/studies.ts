@@ -3,7 +3,7 @@ import type { SqlError } from 'effect/sql';
 
 import { Principal } from '@codaco/studio-contract/middleware/authenticated';
 import { StudiesRpcs } from '@codaco/studio-contract/rpc/studies';
-import { NotFound } from '@codaco/studio-contract/schema/errors';
+import { Forbidden, NotFound } from '@codaco/studio-contract/schema/errors';
 import {
   CreateStudyResult,
   StudyCommandError,
@@ -20,10 +20,10 @@ import {
 } from '../../study/commands.ts';
 import { readStudyCounts } from '../../study/counts.ts';
 import { listStudies } from '../../study/store.ts';
-import { seesEveryTeamStudy } from '../../study/tenancy.ts';
+import { reachableStudy, seesEveryTeamStudy } from '../../study/tenancy.ts';
 import { withRequestId } from '../bridge.ts';
 import type { RpcDeps } from '../deps.ts';
-import { openTeam, resolveStudy } from '../team-scope.ts';
+import { openTeam, requireLockedRole, resolveStudy } from '../team-scope.ts';
 
 const refusals = <A, R>(
   command: Effect.Effect<
@@ -59,15 +59,16 @@ export const StudiesHandlers = (deps: RpcDeps) =>
         const principal = yield* Principal;
         const access = yield* openTeam(deps, principal, payload.teamId);
         return decodeSummaries(
-          yield* Effect.orDie(
-            TenantScope.open(
-              access,
-              listStudies({
+          yield* TenantScope.open(
+            access,
+            Effect.gen(function* () {
+              const role = yield* requireLockedRole(access);
+              return yield* listStudies({
                 actorUserId: principal.userId,
-                seesEveryStudy: seesEveryTeamStudy(access.role),
-              }),
-            ),
-          ),
+                seesEveryStudy: seesEveryTeamStudy(role),
+              });
+            }),
+          ).pipe(Effect.catchTag('SqlError', Effect.die)),
         );
       }),
     'studies.get': (payload) =>
@@ -82,10 +83,20 @@ export const StudiesHandlers = (deps: RpcDeps) =>
       }),
     'studies.counts': (payload) =>
       Effect.gen(function* () {
-        const resolved = yield* resolveStudy(yield* Principal, payload.studyId);
-        const counts = yield* Effect.orDie(
-          TenantScope.open(resolved.access, readStudyCounts(resolved.study.id)),
-        );
+        const principal = yield* Principal;
+        const resolved = yield* resolveStudy(principal, payload.studyId);
+        const counts = yield* TenantScope.open(
+          resolved.access,
+          Effect.gen(function* () {
+            const reached = yield* reachableStudy({
+              teamId: resolved.access.teamId,
+              studyId: resolved.study.id,
+              actorUserId: principal.userId,
+            });
+            if (reached === null) return yield* new Forbidden({});
+            return yield* readStudyCounts(resolved.study.id);
+          }),
+        ).pipe(Effect.catchTag('SqlError', Effect.die));
         if (!counts) return yield* new NotFound({});
         return counts;
       }),

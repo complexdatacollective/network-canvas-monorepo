@@ -3,6 +3,7 @@ import { Context, Effect, Layer, Option } from 'effect';
 import type { Headers } from 'effect/http';
 import type { SqlError } from 'effect/sql';
 
+import { AUTH_NOT_CONFIGURED_PROBLEM_TYPE } from '@codaco/studio-contract/schema/problem';
 import type { SignInEmailJob } from '@codaco/studio-sync/jobs';
 
 import { AUTH_TABLES } from '../db/auth-schema.ts';
@@ -85,7 +86,11 @@ export class AuthService extends Context.Service<
     handler: () =>
       Effect.succeed(
         Response.json(
-          { title: 'Authentication Not Configured', status: 503 },
+          {
+            type: AUTH_NOT_CONFIGURED_PROBLEM_TYPE,
+            title: 'Authentication Not Configured',
+            status: 503,
+          },
           {
             status: 503,
             headers: { 'Content-Type': 'application/problem+json' },

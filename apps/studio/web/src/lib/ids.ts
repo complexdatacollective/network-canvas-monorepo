@@ -1,3 +1,6 @@
+import { notFound } from '@tanstack/react-router';
+import { Schema } from 'effect';
+
 import {
   MemberId,
   StudyId,
@@ -5,8 +8,24 @@ import {
   TeamInvitationId,
 } from '@codaco/studio-contract/schema/ids';
 
-// Branded without re-running the schema's checks, deliberately: the payload
-// schema checks it when the call carrying it is encoded.
+const isTeamId = Schema.is(TeamId);
+const isStudyId = Schema.is(StudyId);
+
+export const parseTeamParams = (params: {
+  teamId: string;
+}): { teamId: string } => {
+  if (!isTeamId(params.teamId)) throw notFound();
+  return { teamId: params.teamId };
+};
+
+export const parseStudyParams = (params: {
+  studyId: string;
+}): { studyId: string } => {
+  if (!isStudyId(params.studyId)) throw notFound();
+  return { studyId: params.studyId };
+};
+
+// Unchecked: route params passed params.parse; other values come from the server.
 
 export const toTeamId = (value: string): TeamId =>
   TeamId.make(value, { disableChecks: true });

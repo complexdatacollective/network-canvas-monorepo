@@ -1,6 +1,8 @@
 import { Context, Effect, Layer, Option } from 'effect';
 import { HttpRouter, HttpServerRequest, HttpServerResponse } from 'effect/http';
 
+import { MAINTENANCE_PROBLEM_TYPE } from '@codaco/studio-contract/schema/problem';
+
 import { Database } from '../../db/client.ts';
 import { migrationLockHeld } from '../../db/readiness.ts';
 import type { SchemaState } from '../../db/schema.ts';
@@ -122,7 +124,11 @@ const pathOf = (url: string): string => {
 };
 
 const MAINTENANCE_RESPONSE = HttpServerResponse.jsonUnsafe(
-  { title: 'Down for maintenance', status: 503 },
+  {
+    type: MAINTENANCE_PROBLEM_TYPE,
+    title: 'Down for maintenance',
+    status: 503,
+  },
   {
     status: 503,
     contentType: 'application/problem+json',

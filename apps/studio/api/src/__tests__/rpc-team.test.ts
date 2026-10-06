@@ -201,6 +201,20 @@ describe.skipIf(!testDb)('team-scoped procedures', () => {
     'refuses a caller who has spent their per-user budget, with the interval to wait',
     async () => {
       const userId = `budget-${randomUUID()}`;
+      await database.run(
+        ownerAffected(
+          `INSERT INTO "user" (id, name, email, "emailVerified")
+           VALUES ($1, $2, $3, true)`,
+          [userId, PRINCIPAL.name, `${userId}@example.com`],
+        ),
+      );
+      await database.run(
+        ownerAffected(
+          `INSERT INTO team_members (id, team_id, user_id, role)
+           VALUES ($1, $2, $3, 'admin')`,
+          [`membership-${userId}`, TEAM_A, userId],
+        ),
+      );
       const limits = await openRateLimitStore(redis);
       const limited = await createRpcClient(
         createStudio(

@@ -7,6 +7,7 @@ import { Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 import { parse as parseYaml } from 'yaml';
 
+import { productionFiles } from './support/source-spans.ts';
 import { sourceTokens } from './support/source-tokens.ts';
 
 const SERVER_ROOT = resolve(
@@ -83,6 +84,10 @@ const JOB_EXECUTION = [
   'src/jobs/handlers/denied-attempts-summary.ts',
 ];
 
+const foreign = (name: string) =>
+  /^(?:hono|ws)(?:\/|$)/.test(name) || /^@(?:hono|orpc)\//.test(name);
+const zod = (name: string) => /^zod(?:\/|$)/.test(name);
+
 const ENTRIES = {
   'src/index.ts': './programs/serve.ts',
   'src/worker.ts': './programs/worker.ts',
@@ -138,8 +143,6 @@ describe('every entry', () => {
     }
   });
   it('reaches no Hono, no oRPC and no WebSocket library of its own', () => {
-    const foreign = (name: string) =>
-      /^(?:hono|ws)(?:\/|$)/.test(name) || /^@(?:hono|orpc)\//.test(name);
     for (const entry of Object.keys(ENTRIES)) {
       expect([...moduleGraph(entry).packages].filter(foreign), entry).toEqual(
         [],
@@ -147,10 +150,32 @@ describe('every entry', () => {
     }
   });
   it('imports no zod from its own modules', () => {
-    const zod = (name: string) => /^zod(?:\/|$)/.test(name);
     for (const entry of Object.keys(ENTRIES)) {
       expect([...moduleGraph(entry).packages].filter(zod), entry).toEqual([]);
     }
+  });
+});
+
+describe('the contract package', () => {
+  const CONTRACT_SRC = resolve(REPO_ROOT, 'packages/studio-contract/src');
+  const imports = productionFiles(CONTRACT_SRC).flatMap((file) =>
+    moduleSpecifiers(readFileSync(file, 'utf8')).map(
+      (specifier) => `${relative(REPO_ROOT, file)}: ${specifier}`,
+    ),
+  );
+  const named = (match: (name: string) => boolean) =>
+    imports.filter((line) => match(line.slice(line.lastIndexOf(': ') + 2)));
+
+  it('is scanned module by module', () => {
+    expect(named((name) => name === 'effect/rpc').length).toBeGreaterThan(0);
+  });
+
+  it('imports no Hono, no oRPC and no WebSocket library', () => {
+    expect(named(foreign)).toEqual([]);
+  });
+
+  it('imports no zod', () => {
+    expect(named(zod)).toEqual([]);
   });
 });
 
@@ -222,6 +247,37 @@ describe('the worker process', () => {
       'src/auth/service.ts',
       'src/auth/better-auth.ts',
     ]);
+  });
+
+  it('builds its job worker paused, for the maintenance gate to open', () => {
+    const tokens = sourceTokens(
+      readFileSync(resolve(SERVER_ROOT, 'src/programs/worker.ts'), 'utf8'),
+    );
+    const configs = tokens.flatMap((token, index) => {
+      if (
+        token.raw !== 'JobWorker' ||
+        tokens[index + 1]?.raw !== '.' ||
+        tokens[index + 2]?.raw !== 'layer' ||
+        tokens[index + 3]?.raw !== '('
+      ) {
+        return [];
+      }
+      let depth = 0;
+      let end = index + 3;
+      for (; end < tokens.length; end += 1) {
+        if (tokens[end]?.raw === '(') depth += 1;
+        if (tokens[end]?.raw === ')') depth -= 1;
+        if (depth === 0) break;
+      }
+      return [
+        tokens
+          .slice(index + 4, end)
+          .map((part) => part.raw)
+          .join(' '),
+      ];
+    });
+    expect(configs).toHaveLength(1);
+    expect(configs[0]).toMatch(/(?:^|[{,] )startPaused : true(?: [,}]|$)/);
   });
 
   it('is the process that holds the maintenance TeamAccess', () => {

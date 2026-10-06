@@ -10,6 +10,7 @@ import {
   ownerRows,
   refusalOf,
   tenantAffected,
+  TestDatabase,
   TestDatabaseLive,
   testDb,
 } from '../../__tests__/support/database.ts';
@@ -49,6 +50,31 @@ describe.skipIf(!testDb)('deployment_state', () => {
           );
           assert.strictEqual(refusal.state, '42501');
         }),
+      );
+
+      it.effect(
+        'gives up a read queued behind a held lock on the server, within its second',
+        () =>
+          Effect.scoped(
+            Effect.gen(function* () {
+              const harness = yield* TestDatabase;
+              const held = yield* harness.owner.sql.reserve;
+              yield* Effect.acquireRelease(held.executeRaw('BEGIN', []), () =>
+                Effect.ignore(held.executeRaw('ROLLBACK', [])),
+              );
+              yield* held.executeRaw(
+                'LOCK TABLE deployment_state IN ACCESS EXCLUSIVE MODE',
+                [],
+              );
+
+              const refusal = yield* refusalOf(
+                readDeploymentState().pipe(Effect.timeout('5 seconds')),
+              );
+              assert.strictEqual(refusal.state, '57014');
+              assert.match(refusal.message, /statement timeout/);
+            }),
+          ),
+        { timeout: 30_000 },
       );
 
       it.effect('is not written by the application role', () =>

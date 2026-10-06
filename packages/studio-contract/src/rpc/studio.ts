@@ -15,8 +15,6 @@ export class StudioRpcs extends StatusRpcs.merge(
   AuditRpcs,
 ) {}
 
-export { StudioStreams } from '../sync/protocolBuilder.ts';
-
 export const RPC_PATH = '/rpc';
 
 export const WS_PATH = '/ws';

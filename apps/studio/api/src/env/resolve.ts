@@ -190,9 +190,7 @@ function assertPinnedRoleSurvives(url: string): void {
 const SOCKET_URL_EXAMPLE =
   'postgres://studio@localhost/studio?host=/var/run/postgresql';
 
-/**
- * The `sslmode` values `@effect/sql-pg` accepts without an explicit `ssl` option.
- */
+/** `prefer` and `allow` are refused: both fall back to plaintext. */
 const CLIENT_SSL_MODES = new Set([
   'disable',
   'require',
@@ -216,12 +214,18 @@ function assertClientCanParse(url: string): void {
     );
   }
   const sslmode = parsed.searchParams.get('sslmode');
-  if (sslmode !== null && !CLIENT_SSL_MODES.has(sslmode)) {
+  if (sslmode === null || CLIENT_SSL_MODES.has(sslmode)) return;
+  const accepted = [...CLIENT_SSL_MODES].join(', ');
+  if (sslmode === 'prefer' || sslmode === 'allow') {
     throw new Error(
-      `DATABASE_URL has sslmode=${sslmode}, which the server's database ` +
-        `client does not accept. Use one of ${[...CLIENT_SSL_MODES].join(', ')}.`,
+      `DATABASE_URL has sslmode=${sslmode}, which Studio refuses: it can ` +
+        `connect without TLS when the server declines it. Use one of ${accepted}.`,
     );
   }
+  throw new Error(
+    `DATABASE_URL has sslmode=${sslmode}, which is not a supported sslmode. ` +
+      `Use one of ${accepted}.`,
+  );
 }
 
 /**

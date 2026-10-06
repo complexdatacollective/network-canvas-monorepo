@@ -295,7 +295,7 @@ function toSectionAtRevision(row: SectionRow): SectionAtRevision | undefined {
   };
 }
 
-const headSection: (
+export const headSection: (
   session: ProtocolBuilderSession,
   sectionId: ProtocolSectionId,
 ) => Effect.Effect<
@@ -340,28 +340,52 @@ const headSection: (
   return row === undefined ? undefined : toSectionAtRevision(row);
 }, sqlErrorsOnly);
 
+export const authorizeCaller: (
+  session: ProtocolBuilderSession,
+) => Effect.Effect<void, Forbidden | SqlError.SqlError, Database> = Effect.fn(
+  'protocolBuilder.authorizeCaller',
+)(function* (session: ProtocolBuilderSession) {
+  return yield* TenantScope.open(
+    session.access,
+    requireProtocol(session.access, session.protocolId).pipe(
+      Effect.provideService(Principal)(session.principal),
+    ),
+  );
+});
+
 export const readSection: (
   session: ProtocolBuilderSession,
   sectionId: ProtocolSectionId,
-) => Effect.Effect<SectionAtRevision | undefined, SqlError.SqlError, Database> =
-  Effect.fn('protocolBuilder.readSection')(function* (
-    session: ProtocolBuilderSession,
-    sectionId: ProtocolSectionId,
-  ) {
-    return yield* TenantScope.open(
-      session.access,
+) => Effect.Effect<
+  SectionAtRevision | undefined,
+  Forbidden | SqlError.SqlError,
+  Database
+> = Effect.fn('protocolBuilder.readSection')(function* (
+  session: ProtocolBuilderSession,
+  sectionId: ProtocolSectionId,
+) {
+  return yield* TenantScope.open(
+    session.access,
+    Effect.andThen(
+      requireProtocol(session.access, session.protocolId),
       headSection(session, sectionId),
-    );
-  });
+    ).pipe(Effect.provideService(Principal)(session.principal)),
+  );
+});
 
 export const listSectionIds: (
   session: ProtocolBuilderSession,
-) => Effect.Effect<ProtocolSectionId[], SqlError.SqlError, Database> =
-  Effect.fn('protocolBuilder.listSectionIds')(function* (
-    session: ProtocolBuilderSession,
-  ) {
-    return yield* TenantScope.open(
-      session.access,
+) => Effect.Effect<
+  ProtocolSectionId[],
+  Forbidden | SqlError.SqlError,
+  Database
+> = Effect.fn('protocolBuilder.listSectionIds')(function* (
+  session: ProtocolBuilderSession,
+) {
+  return yield* TenantScope.open(
+    session.access,
+    Effect.andThen(
+      requireProtocol(session.access, session.protocolId),
       Effect.gen(function* () {
         const { tx } = yield* Transaction;
         const rows = yield* tx
@@ -385,8 +409,9 @@ export const listSectionIds: (
           makeSectionId(parseSectionId(id)),
         );
       }).pipe(sqlErrorsOnly),
-    );
-  });
+    ).pipe(Effect.provideService(Principal)(session.principal)),
+  );
+});
 
 type LeaseRow = { owner: string; epoch: bigint; live: boolean };
 
@@ -597,7 +622,7 @@ export const releaseLock: (
   sectionId: ProtocolSectionId,
 ) => Effect.Effect<
   Published<undefined>,
-  DraftStructureError | SqlError.SqlError,
+  DraftStructureError | Forbidden | SqlError.SqlError,
   Database
 > = Effect.fn('protocolBuilder.releaseLock')(function* (
   session: ProtocolBuilderSession,
@@ -609,6 +634,7 @@ export const releaseLock: (
     'protocolBuilder.releaseLock',
     session.access,
     Effect.gen(function* () {
+      yield* requireProtocol(session.access, session.protocolId);
       yield* lockDraftHead(teamId, session.draftId);
       const lease = yield* lockLease(teamId, session.draftId, sectionId);
       if (lease === undefined || !lease.live || lease.owner !== owner) {
@@ -621,7 +647,7 @@ export const releaseLock: (
         { kind: 'lock', sectionId },
       ]);
       return { outcome: undefined, events };
-    }),
+    }).pipe(Effect.provideService(Principal)(session.principal)),
   );
 });
 

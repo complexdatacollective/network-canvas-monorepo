@@ -234,27 +234,29 @@ export function computeConnectors(
 
   // --- Parent-child lines ---
   for (let i = 1; i < maxlev; i++) {
-    const familyIds = [...new Set(layout.fam[i]!.filter((v) => v > 0))];
+    const familyIds = [...new Set(layout.fam[i]!.filter((v) => v !== 0))];
 
     for (const fam of familyIds) {
-      const coupleLeft = fam - 1;
-      const parentLevelN = layout.n[i - 1] ?? 0;
-      const hasPartnerRight =
-        coupleLeft + 1 < parentLevelN &&
-        (layout.group[i - 1]?.[coupleLeft] ?? 0) > 0;
-      const coupleRight = hasPartnerRight ? coupleLeft + 1 : coupleLeft;
+      const { left: coupleLeft, right: coupleRight } = familyParentColumns(
+        layout,
+        i,
+        fam,
+      );
 
       // Determine descent point: genetic contributor or couple midpoint
       const descentX = computeDescentX(
         layout,
         parents,
         i,
+        fam,
         coupleLeft,
         coupleRight,
       );
 
+      // A single parent's children descend from the parent, not from a
+      // partner line they may also be on.
       const glKey = `${i - 1},${coupleLeft}`;
-      const glIdx = groupLineIndex.get(glKey);
+      const glIdx = fam > 0 ? groupLineIndex.get(glKey) : undefined;
       if (glIdx !== undefined) {
         const gl = groupLines[glIdx]!;
         gl.descentXPositions ??= [];
@@ -599,10 +601,8 @@ export function computeConnectors(
       // A child without a family (its couple could not sit together) has no
       // sibling bar, so each of its donors and surrogates joins it directly.
       const famId = layout.fam[i]?.[j] ?? 0;
-      if (famId < 0) continue;
-
       const famKey = `${i},${famId}`;
-      if (famId > 0) {
+      if (famId !== 0) {
         familyChildCount.set(famKey, (familyChildCount.get(famKey) ?? 0) + 1);
       }
 
@@ -769,22 +769,14 @@ export function computeConnectors(
       // are not a couple, or their couple could not sit together) is joined
       // to every parent directly, whether or not they are partners.
       if (partneredParents.size === 0 && childFam !== 0) continue;
-      const primaryCoupleLeft = childFam > 0 ? childFam - 1 : -1;
-      const primaryParentLevelN = layout.n[i - 1] ?? 0;
-      const primaryHasRight =
-        primaryCoupleLeft >= 0 &&
-        primaryCoupleLeft + 1 < primaryParentLevelN &&
-        (layout.group[i - 1]?.[primaryCoupleLeft] ?? 0) > 0;
-      const primaryLeftId =
-        primaryCoupleLeft >= 0
-          ? layout.nid[i - 1]?.[primaryCoupleLeft]
-          : undefined;
-      const primaryRightId = primaryHasRight
-        ? layout.nid[i - 1]?.[primaryCoupleLeft + 1]
-        : undefined;
       const primaryFamilyIds = new Set<number>();
-      if (primaryLeftId !== undefined) primaryFamilyIds.add(primaryLeftId);
-      if (primaryRightId !== undefined) primaryFamilyIds.add(primaryRightId);
+      if (childFam !== 0) {
+        const { left, right } = familyParentColumns(layout, i, childFam);
+        for (const col of new Set([left, right])) {
+          const parentId = layout.nid[i - 1]?.[col];
+          if (parentId !== undefined) primaryFamilyIds.add(parentId);
+        }
+      }
 
       const famId = layout.fam[i]?.[j] ?? 0;
 
@@ -933,6 +925,26 @@ export function computeConnectors(
 }
 
 /**
+ * The columns, on the level above, of a family's parents: a couple's left and
+ * right partners, or a single parent twice. See `PedigreeLayout.fam`.
+ */
+function familyParentColumns(
+  layout: PedigreeLayout,
+  childLevel: number,
+  famId: number,
+): { left: number; right: number } {
+  if (famId < 0) {
+    const col = -famId - 1;
+    return { left: col, right: col };
+  }
+  const left = famId - 1;
+  const hasPartnerRight =
+    left + 1 < (layout.n[childLevel - 1] ?? 0) &&
+    (layout.group[childLevel - 1]?.[left] ?? 0) > 0;
+  return { left, right: hasPartnerRight ? left + 1 : left };
+}
+
+/**
  * Determine the x-coordinate for the line of descent from parents to children.
  *
  * When both parents in the couple have biological edges to the children,
@@ -943,6 +955,7 @@ function computeDescentX(
   layout: PedigreeLayout,
   parents: ParentConnection[][],
   childLevel: number,
+  famId: number,
   coupleLeft: number,
   coupleRight: number,
 ): number {
@@ -957,7 +970,6 @@ function computeDescentX(
   const rightId = layout.nid[childLevel - 1]![coupleRight]!;
 
   // Check children in this family for their parent edge types
-  const famId = coupleLeft + 1;
   let leftIsBiological = false;
   let rightIsBiological = false;
 

@@ -3,6 +3,8 @@
 // icons, every critical chunk (the interview engine, the entry), and every
 // responsive stage-preview image must be precached. A missing critical asset
 // breaks either the offline boot or the first offline opening of the menu.
+// Chunks loaded on demand (the bundled sample protocol, the synthetic data
+// generator and its faker dependency) must stay out of the initial load.
 import { readFileSync } from 'node:fs';
 import { readdir } from 'node:fs/promises';
 import path from 'node:path';
@@ -167,6 +169,99 @@ if (excluded.length > 0) {
   fail(`critical chunk(s) excluded from precache: ${excluded.join(', ')}`);
 }
 
+// The initial load: the scripts index.html loads or preloads, plus every chunk
+// they import statically. Dynamic `import()` targets are not followed.
+const indexHtml = readFileSync(path.join(dist, 'index.html'), 'utf8');
+const initialLoad = new Set(
+  [
+    ...indexHtml.matchAll(
+      /<(?:script[^>]*\bsrc|link[^>]*\bhref)="\/assets\/([^"]+\.js)"/g,
+    ),
+  ].map((m) => m[1]),
+);
+for (const chunk of initialLoad) {
+  const source = readFileSync(path.join(assetsDir, chunk), 'utf8');
+  for (const m of source.matchAll(
+    /\b(?:import|export)\s*(?:[\w$*{}\s,]*?\bfrom\s*)?["']\.\/([^"']+\.js)["']/g,
+  )) {
+    initialLoad.add(m[1]);
+  }
+}
+// The entry imports the interview engine statically, so a walk that misses it
+// has stopped matching the HTML or the import syntax, and the check below
+// would pass vacuously.
+const initialLoadChunks = [...initialLoad];
+if (
+  !initialLoadChunks.some((f) => f.startsWith('main-')) ||
+  !initialLoadChunks.some((f) => f.startsWith('interview-engine-'))
+) {
+  fail(
+    `could not resolve the initial-load chunks (found: ${initialLoadChunks.join(', ') || 'none'})`,
+  );
+}
+
+// Modules the app loads on demand to keep them out of the initial load. Each
+// must stay its own chunk (a static import anywhere folds it into the entry,
+// and the chunk disappears) outside the initial load, and must be precached
+// exactly when the feature it serves has to work offline. The Development
+// protocol's ~33 MB chunk is dev-only, so it must never be precached.
+const deferredChunks = [
+  {
+    prefix: 'bundledSampleProtocol-',
+    purpose: 'installing the sample protocol',
+    precache: true,
+  },
+  {
+    prefix: 'generate-',
+    purpose: 'generating synthetic interviews',
+    precache: true,
+  },
+  {
+    prefix: 'bundledDevelopmentProtocol-',
+    purpose: 'installing the development protocol',
+    precache: false,
+  },
+];
+for (const { prefix, purpose, precache } of deferredChunks) {
+  const matches = jsAssets.filter((f) => f.startsWith(prefix));
+  if (matches.length !== 1) {
+    fail(
+      `expected one on-demand ${prefix}*.js chunk for ${purpose}, found ${matches.length}`,
+    );
+  }
+  const [chunk] = matches;
+  if (initialLoad.has(chunk)) {
+    fail(`${chunk} (${purpose}) is part of the initial load`);
+  }
+  if (precached.has(`assets/${chunk}`) !== precache) {
+    fail(
+      precache
+        ? `${chunk} is excluded from precache, so ${purpose} fails offline`
+        : `${chunk} is precached, so every install downloads it`,
+    );
+  }
+}
+
+// Faker should reach the bundle only through the synthetic generator chunk.
+// Its core module carries this deprecation-warning prefix. Finding it in the
+// initial load means something imports the generator statically, or that
+// @codaco/protocol-utilities lost `"sideEffects": false` (a module-level
+// invariant in its ValueGenerator.ts otherwise keeps faker alive). Not finding
+// it anywhere means Faker reworded the message and the marker needs updating.
+const FAKER_MARKER = '[@faker-js/faker]: ';
+const fakerChunks = jsAssets.filter((f) =>
+  readFileSync(path.join(assetsDir, f), 'utf8').includes(FAKER_MARKER),
+);
+if (fakerChunks.length === 0) {
+  fail(`no chunk contains the faker marker ${FAKER_MARKER}; update it`);
+}
+const fakerInInitialLoad = fakerChunks.filter((f) => initialLoad.has(f));
+if (fakerInInitialLoad.length > 0) {
+  fail(
+    `@faker-js/faker is part of the initial load (${fakerInInitialLoad.join(', ')})`,
+  );
+}
+
 const interviewRouteMatches = [
   ...sw.matchAll(/!?[$\w]+\.pathname\.startsWith\("\/interview\/"\)/g),
 ];
@@ -316,5 +411,5 @@ if (/index\.html/.test(assetHandoffRouteSource)) {
 }
 
 console.log(
-  `PWA build ok: ${precachePrefix} retained independently; active-precache navigation fallbacks + exact-hash old-bundle JS/CSS and stage-preview handoff; no client claim; lease-gated old-precache cleanup; ${critical.length} critical chunk(s) and ${stagePreviewAssets.length} stage-preview asset(s) precached`,
+  `PWA build ok: ${precachePrefix} retained independently; active-precache navigation fallbacks + exact-hash old-bundle JS/CSS and stage-preview handoff; no client claim; lease-gated old-precache cleanup; ${critical.length} critical chunk(s) and ${stagePreviewAssets.length} stage-preview asset(s) precached; ${deferredChunks.length} on-demand chunk(s) and faker outside the ${initialLoad.size}-chunk initial load`,
 );

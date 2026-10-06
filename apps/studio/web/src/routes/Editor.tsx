@@ -55,13 +55,13 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 import { createUuid } from '../lib/createUuid.ts';
 import { toStudyId } from '../lib/ids.ts';
 import { isForbidden } from '../runtime/errors.ts';
+import { HostClient } from '../runtime/hostClient.ts';
 import { hostRuntime } from '../runtime/hostSession.ts';
 import {
   reportUnauthorizedFailure,
   rpcCall,
   rpcQuery,
 } from '../runtime/rpc.ts';
-import { HostClient } from '../runtime/runtime.ts';
 
 // The route id carries the area layout it sits under (§5.3), so it moved with
 // the screen onto `/study/$studyId/editor`.

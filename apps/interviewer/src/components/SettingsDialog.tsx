@@ -60,7 +60,6 @@ import {
   isStoragePersisted,
   type StorageEstimate,
 } from '~/lib/storage';
-import { generateSyntheticSessions } from '~/lib/synthetic/generate';
 
 // Decorative unknown-value marker; the adjacent description names the state.
 const EMPTY_STORAGE_VALUE = '—';
@@ -667,6 +666,10 @@ export function SettingsDialog({
     setIsGenerating(true);
     setProgress({ current: 0, total: count });
     try {
+      // Dynamically imported so the generator (and the faker data it
+      // bundles) stays out of the initial load; the chunk is precached.
+      const { generateSyntheticSessions } =
+        await import('~/lib/synthetic/generate');
       const created = await generateSyntheticSessions({
         protocolHash: selectedProtocolHash,
         count,
