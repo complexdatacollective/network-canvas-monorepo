@@ -1949,7 +1949,7 @@ function runUpgradeSelection({ packageFlag, headRef = '', changed = [] }) {
   }
 }
 
-test('detect selects the upgrade lane for release PRs and upgrade inputs only', () => {
+test('detect selects the upgrade lane whenever what the api image is built from changes, and for its own inputs', () => {
   const detectJob = job('detect');
   assert.match(
     detectJob,
@@ -1965,63 +1965,55 @@ test('detect selects the upgrade lane for release PRs and upgrade inputs only', 
   // Every Studio release PR, whatever it changed.
   assert.equal(
     runUpgradeSelection({
-      packageFlag: true,
+      packageFlag: false,
       headRef: 'changeset-release/studio',
     }),
     'true',
   );
-  // Each path that performs or describes an upgrade selects it on its own,
-  // whether or not the package graph saw the change: the lane, the seed and
-  // the maintenance page are outside the graph the studio flag walks, and the
-  // rest must not depend on it either.
+  // Anything in the api image's package graph: the package flag is the rule,
+  // so the keyring check, the fingerprint sync and the schema applier are
+  // covered without being listed.
   for (const file of [
     'apps/studio/api/migrations/0002_next/delta.sql',
-    'apps/studio/release-test/run.sh',
-    'apps/studio/release-test/window.mjs',
-    'apps/studio/release-test/diff-export.mjs',
+    'apps/studio/api/src/secrets/verify.ts',
+    'apps/studio/api/src/study/handlers.ts',
+    'apps/studio/api/scripts/sync-fingerprint.ts',
+    'apps/studio/api/scripts/apply.ts',
+    'packages/studio-sync/src/jobs.ts',
+  ]) {
+    assert.equal(
+      runUpgradeSelection({ packageFlag: true, changed: [file] }),
+      'true',
+      `a change to ${file} selects the upgrade lane through the package flag`,
+    );
+  }
+  // The stack's own files outside the package graph, which the studio flag
+  // adds, and the lane's own inputs, which only this flag adds.
+  for (const file of [
     'apps/studio/docs/self-host/upgrade.md',
     'apps/studio/docs/self-host/backup.md',
     'apps/studio/Dockerfile',
     'apps/studio/docker-compose.yml',
     'apps/studio/docker-compose.local.yml',
+    'apps/studio/release-test/run.sh',
+    'apps/studio/release-test/window.mjs',
+    'apps/studio/release-test/diff-export.mjs',
     'apps/studio/web/public/maintenance.html',
-    'apps/studio/api/src/db/migrate.ts',
-    'apps/studio/api/src/platform/schema-gate.ts',
-    'apps/studio/api/src/programs/migrate.ts',
-    'apps/studio/api/src/http/middleware/maintenance.ts',
-    'apps/studio/api/src/http/health.ts',
-    'apps/studio/api/src/jobs/maintenance.ts',
-    'apps/studio/api/src/jobs/worker.ts',
-    'apps/studio/api/src/maintenance.ts',
-    'apps/studio/api/src/migrate.ts',
-    'apps/studio/api/bin/studio-api',
-    'apps/studio/api/scripts/seed.ts',
-    'apps/studio/api/scripts/seed/seed.ts',
-    'apps/studio/api/scripts/render-migrations.ts',
-    'apps/studio/api/scripts/migrate-generate.ts',
-  ]) {
-    for (const packageFlag of [true, false]) {
-      assert.equal(
-        runUpgradeSelection({ packageFlag, changed: [file] }),
-        'true',
-        `a change to ${file} selects the upgrade lane (package flag ${packageFlag})`,
-      );
-    }
-  }
-  // A Studio change off the upgrade's path does not pay for it, whatever
-  // selected the stack job.
-  for (const file of [
-    'apps/studio/api/src/study/handlers.ts',
-    'apps/studio/docs/self-host/swap.md',
-    'apps/studio/stack-test/up.sh',
-    'apps/studio/web/src/main.tsx',
   ]) {
     assert.equal(
-      runUpgradeSelection({ packageFlag: true, changed: [file] }),
-      'false',
-      `a change to ${file} alone does not select the upgrade lane`,
+      runUpgradeSelection({ packageFlag: false, changed: [file] }),
+      'true',
+      `a change to ${file} selects the upgrade lane with the package flag down`,
     );
   }
+  // Studio's web app is not in the api image's graph and does not select it.
+  assert.equal(
+    runUpgradeSelection({
+      packageFlag: false,
+      changed: ['apps/studio/web/src/main.tsx'],
+    }),
+    'false',
+  );
   // Nothing outside Studio selects it.
   assert.equal(
     runUpgradeSelection({
@@ -2030,7 +2022,6 @@ test('detect selects the upgrade lane for release PRs and upgrade inputs only', 
     }),
     'false',
   );
-  // Each case is a throwaway git repository: about fifty of them.
 }, 120_000);
 
 test('studio-upgrade runs the lane and is required by the quality gate', () => {
