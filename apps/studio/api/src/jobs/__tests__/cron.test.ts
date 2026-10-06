@@ -186,7 +186,10 @@ describe.skipIf(!db)('recurring work', () => {
             'protocol-store-gc',
             {},
           );
-          assert.strictEqual((yield* schedules()).length, 3);
+          assert.strictEqual(
+            (yield* schedules()).length,
+            JOB_SCHEDULES.length + 1,
+          );
 
           const dropped = yield* worker.dropUndeclaredSchedules(
             JOB_SCHEDULES.map(({ queue }) => queue),
