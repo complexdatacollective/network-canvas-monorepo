@@ -437,6 +437,16 @@
         "tooling/vitest/**",
         "!**/node_modules/**"
       ],
+      "outputs": [],
+      "dependsOn": ["@codaco/studio-api#test:released-migrations"]
+    },
+    // The released-migration guard (#1901 S-4) again, on its own and never
+    // cached: its verdict depends on origin/main, which no input describes, so
+    // a tree whose migrations match an earlier passing tree (a conflict over
+    // the same 0002_* resolved "ours") would otherwise replay that green. It
+    // also runs inside //#test:scripts, whose cached replay is then harmless.
+    "@codaco/studio-api#test:released-migrations": {
+      "cache": false,
       "outputs": []
     },
     "dev": {
@@ -685,7 +695,7 @@
         ".env.example",
         "$TURBO_ROOT$/apps/studio/README.md",
         "$TURBO_ROOT$/apps/studio/docs/**",
-        "$TURBO_ROOT$/apps/studio/docker-compose*.yml",
+        "$TURBO_ROOT$/apps/studio/*.yml",
         "$TURBO_ROOT$/apps/studio/stack-test/**",
         "$TURBO_ROOT$/apps/studio/release-test/**",
         "$TURBO_ROOT$/.oxfmtrc.json",

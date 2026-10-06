@@ -13,11 +13,21 @@ import { splitStatements } from './statements.ts';
 // drizzle-kit and no node-postgres, because the migrate bundle carries
 // neither.
 
-/** Executed in this order inside one migration (#1901 D-2). */
+/**
+ * Executed in this order inside one migration. The backfill runs last, after
+ * the sidecars (#1901 E-2, 6 Oct 2026, replacing D-2's delta → backfill →
+ * sidecars): only then does a table the delta created carry its policies and
+ * its grants to `studio_maintenance`, so one recipe fills a new table and an
+ * existing one alike. An existing table's triggers, policies and FORCE are the
+ * previous release's whichever order runs, so nothing a backfill writes to
+ * one escapes a check by running earlier. And no sidecar `ALTER TABLE` then
+ * follows a backfill inside its migration, where a deferred trigger event the
+ * backfill queued would refuse it.
+ */
 export const EXECUTED_ARTEFACTS = [
   'delta.sql',
-  'backfill.sql',
   'sidecars.sql',
+  'backfill.sql',
 ] as const;
 
 /** Hashed into the manifest, never executed and never shipped in the image. */
@@ -133,17 +143,74 @@ function withoutComments(statement: string): string {
   return statement.replace(/--[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
 }
 
+/** Past whitespace and comments, block comments nesting as Postgres nests them. */
+function commandStart(statement: string): string {
+  let index = 0;
+  while (index < statement.length) {
+    if (/\s/.test(statement[index]!)) {
+      index += 1;
+    } else if (statement.startsWith('--', index)) {
+      const end = statement.indexOf('\n', index);
+      index = end === -1 ? statement.length : end + 1;
+    } else if (statement.startsWith('/*', index)) {
+      let depth = 1;
+      index += 2;
+      while (index < statement.length && depth > 0) {
+        if (statement.startsWith('/*', index)) {
+          depth += 1;
+          index += 2;
+        } else if (statement.startsWith('*/', index)) {
+          depth -= 1;
+          index += 2;
+        } else {
+          index += 1;
+        }
+      }
+    } else {
+      break;
+    }
+  }
+  return statement.slice(index);
+}
+
+/**
+ * Every statement that opens, ends, nests or reconfigures a transaction. The
+ * runner owns the one transaction a run applies in: an inner `COMMIT` would
+ * commit half an upgrade and run the rest outside any transaction, and an
+ * inner `ROLLBACK` would record a migration whose statements were undone.
+ */
+const TRANSACTION_CONTROL =
+  /^(?:BEGIN|START\s+TRANSACTION|COMMIT|END|ROLLBACK|ABORT|SAVEPOINT|RELEASE|PREPARE\s+TRANSACTION|SET\s+(?:(?:LOCAL|SESSION)\s+)?TRANSACTION|SET\s+SESSION\s+CHARACTERISTICS)\b/i;
+
+export type ForbiddenStatement = {
+  readonly statement: string;
+  /** What to do instead, as the end of a sentence. */
+  readonly remedy: string;
+};
+
+const SPLIT_ACROSS_RELEASES = 'split it across two releases';
+
+const NO_TRANSACTION_CONTROL =
+  'remove it: migrate applies every pending migration in one transaction of its own, so a file never begins, ends or nests one';
+
 /**
  * A statement the runner's one transaction cannot carry: Postgres refuses
- * `CREATE INDEX CONCURRENTLY` inside a transaction block, and a value added by
+ * `CREATE INDEX CONCURRENTLY` inside a transaction block, a value added by
  * `ALTER TYPE … ADD VALUE` cannot be used before the transaction that added it
- * commits. Either one is split across two releases instead.
+ * commits, and transaction control would break the transaction itself.
  */
-export function forbiddenStatement(script: string): string | null {
+export function forbiddenStatement(script: string): ForbiddenStatement | null {
   for (const statement of splitStatements(script)) {
+    if (TRANSACTION_CONTROL.test(commandStart(statement))) {
+      return { statement, remedy: NO_TRANSACTION_CONTROL };
+    }
     const text = withoutComments(statement);
-    if (/\bCONCURRENTLY\b/i.test(text)) return statement;
-    if (/\bALTER\s+TYPE\b[\s\S]*\bADD\s+VALUE\b/i.test(text)) return statement;
+    if (/\bCONCURRENTLY\b/i.test(text)) {
+      return { statement, remedy: SPLIT_ACROSS_RELEASES };
+    }
+    if (/\bALTER\s+TYPE\b[\s\S]*\bADD\s+VALUE\b/i.test(text)) {
+      return { statement, remedy: SPLIT_ACROSS_RELEASES };
+    }
   }
   return null;
 }
@@ -233,7 +300,7 @@ function verifyMigration(migration: DocumentMigration, index: number): void {
     const forbidden = forbiddenStatement(sql);
     if (forbidden !== null) {
       refuse(
-        `Migration ${version}'s ${name} carries a statement one transaction cannot run; split it into two releases: ${forbidden}`,
+        `Migration ${version}'s ${name} carries a statement one transaction cannot run; ${forbidden.remedy}: ${forbidden.statement}`,
       );
     }
   }

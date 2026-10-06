@@ -24,8 +24,10 @@ import { MaintenanceDatabase, OwnerDatabase } from '../client.ts';
 import { SCHEMA_FINGERPRINT } from '../fingerprint.generated.ts';
 import { MigrationHistoryRefused } from '../history.ts';
 import {
+  assertSessionState,
   migrateDatabaseEffect,
   type MigrateOptions,
+  readSessionState,
   readVerifiedMigrations,
 } from '../migrate.ts';
 import {
@@ -34,6 +36,7 @@ import {
   verifyMigrations,
 } from '../migrations-document.ts';
 import { checkSchema, SCHEMA_LOCK_KEY } from '../schema.ts';
+import { OwnerScope, Transaction } from '../tenant.ts';
 
 const db = await reachableDb();
 
@@ -306,22 +309,24 @@ describe.skipIf(!db)('migrate', () => {
         );
         running.catch(() => undefined);
 
+        // Advisory locks are per database, and other suites take the same
+        // keys in their own scratch databases on this cluster.
+        const waiters = async () =>
+          (
+            await scratch.admin.query<{ pid: number }>(
+              `select pid from pg_locks
+                where locktype = 'advisory' and not granted
+                  and database = (select oid from pg_database where datname = current_database())
+                  and objid = ($1::bigint & 4294967295)::oid
+                  and classid = ($1::bigint >> 32)::oid`,
+              [gateKey],
+            )
+          ).rows.map((row) => row.pid);
         await expect
-          .poll(
-            async () =>
-              (
-                await scratch.admin.query<{ waiting: boolean }>(
-                  `select exists (
-                     select 1 from pg_locks
-                      where locktype = 'advisory' and not granted
-                        and objid = ($1::bigint & 4294967295)::oid
-                   ) as waiting`,
-                  [gateKey],
-                )
-              ).rows[0]?.waiting,
-            { timeout: 60_000, interval: 100 },
-          )
-          .toBe(true);
+          .poll(waiters, { timeout: 60_000, interval: 100 })
+          .toHaveLength(1);
+        // The backend waiting on the gate is the migration transaction's.
+        const [transactionPid] = await waiters();
 
         const contender = await scratch.admin.query<{ free: boolean }>(
           'select pg_try_advisory_lock($1) as free',
@@ -333,15 +338,21 @@ describe.skipIf(!db)('migrate', () => {
           'select 1 as one',
         );
         expect(ordinary.rows[0]?.one).toBe(1);
-        // The lock and the transaction are on different sessions.
-        const holders = await scratch.admin.query<{ count: number }>(
-          `select count(distinct pid)::int as count from pg_locks
+        // The lock and the transaction are on different sessions: one
+        // backend holds the schema lock in this database, and it is not the
+        // one running the transaction (an xact lock taken inside the
+        // transaction would be held by the waiting backend itself).
+        const holders = await scratch.admin.query<{ pid: number }>(
+          `select distinct pid from pg_locks
             where locktype = 'advisory' and granted
+              and database = (select oid from pg_database where datname = current_database())
               and objid = ($1::bigint & 4294967295)::oid
               and classid = ($1::bigint >> 32)::oid`,
           [SCHEMA_LOCK_KEY],
         );
-        expect(holders.rows[0]?.count).toBe(1);
+        expect(holders.rows).toHaveLength(1);
+        expect(transactionPid).toEqual(expect.any(Number));
+        expect(holders.rows[0]?.pid).not.toBe(transactionPid);
 
         await gate.query('select pg_advisory_unlock($1)', [gateKey]);
         expect((await running).kind).toBe('applied');
@@ -354,6 +365,57 @@ describe.skipIf(!db)('migrate', () => {
         [SCHEMA_LOCK_KEY],
       );
       expect(released.rows[0]?.free).toBe(true);
+    },
+    CASE_TIMEOUT_MS,
+  );
+
+  it(
+    'stamps the fingerprint inside the transaction that records the history',
+    async () => {
+      const scratch = await emptyDatabase();
+      await run(scratch.db.url);
+      const before = await history(scratch.pool);
+
+      // A second session holds the stamp row, so the run is caught at the
+      // stamp; a third reads what the run has committed so far.
+      const holder = await scratch.admin.connect();
+      try {
+        await holder.query('begin');
+        await holder.query('select * from "schemaFingerprint" for update');
+        const running = run(
+          scratch.db.url,
+          next({
+            slug: 'stamped',
+            delta: 'ALTER TABLE deployment_state ADD COLUMN probe text;',
+            fingerprint: NEXT,
+          }),
+        );
+        running.catch(() => undefined);
+
+        await expect
+          .poll(
+            async () =>
+              (
+                await scratch.admin.query<{ query: string }>(
+                  `select query from pg_stat_activity
+                    where datname = current_database() and wait_event_type = 'Lock'`,
+                )
+              ).rows.map((row) => row.query),
+            { timeout: 60_000, interval: 100 },
+          )
+          .toEqual([expect.stringMatching(/"schemaFingerprint"/)]);
+
+        // Were the stamp written in a later transaction, the history row
+        // would already be committed while that one waits.
+        expect(await history(scratch.pool)).toEqual(before);
+
+        await holder.query('rollback');
+        expect((await running).kind).toBe('applied');
+      } finally {
+        holder.release();
+      }
+      expect((await history(scratch.pool)).length).toBe(before.length + 1);
+      expect(await stamp(scratch.pool)).toEqual([NEXT]);
     },
     CASE_TIMEOUT_MS,
   );
@@ -648,6 +710,185 @@ describe.skipIf(!db)('migrate', () => {
             where table_name = 'drafts' and column_name = 'probe'`,
         );
         expect(column.rowCount).toBe(0);
+      },
+      CASE_TIMEOUT_MS,
+    );
+
+    // #1901 E-2: the backfill runs after the sidecars, so a table the same
+    // migration creates already carries its grants when the backfill fills it.
+    it(
+      'fills a table the same migration creates, from every row of an existing one',
+      async () => {
+        const scratch = await emptyDatabase();
+        await withDrafts(scratch);
+        const sidecars = committed.migrations
+          .at(-1)
+          ?.artefacts.find(({ name }) => name === 'sidecars.sql')?.sql;
+        expect(sidecars).toBeDefined();
+
+        await run(
+          scratch.db.url,
+          next({
+            slug: 'draft_labels',
+            delta: [
+              'CREATE TABLE "draft_labels" ("draft_id" uuid PRIMARY KEY, "team_id" text NOT NULL, "label" text NOT NULL);',
+              'ALTER TABLE "draft_labels" ENABLE ROW LEVEL SECURITY;',
+              `CREATE POLICY "team_isolation" ON "draft_labels" AS PERMISSIVE FOR ALL TO public USING (team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance') WITH CHECK (team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance');`,
+            ].join('\n'),
+            sidecars: `${sidecars}\nALTER TABLE draft_labels FORCE ROW LEVEL SECURITY;\n`,
+            backfill: [
+              'SET LOCAL ROLE studio_maintenance;',
+              `INSERT INTO draft_labels (draft_id, team_id, label) SELECT id, team_id, 'copied' FROM drafts;`,
+              'RESET ROLE;',
+            ].join('\n'),
+            fingerprint: NEXT,
+          }),
+        );
+        const copied = await scratch.admin.query<{ count: number }>(
+          `select count(*)::int as count from draft_labels where label = 'copied'`,
+        );
+        expect(copied.rows[0]?.count).toBe(3);
+      },
+      CASE_TIMEOUT_MS,
+    );
+  });
+
+  describe('what one file leaves for the next', () => {
+    it(
+      'refuses, at the next check, a session whose transaction an artefact ended',
+      async () => {
+        const scratch = await emptyDatabase();
+        await run(scratch.db.url);
+
+        const outcome = await Effect.runPromise(
+          OwnerScope.open(
+            Effect.gen(function* () {
+              const { sql } = yield* Transaction;
+              const baseline = yield* readSessionState(sql);
+              // The positive control: an untouched session passes.
+              yield* assertSessionState(sql, baseline, 'control');
+              yield* sql.unsafe('COMMIT');
+              return yield* Effect.flip(
+                assertSessionState(sql, baseline, '0002_x/backfill.sql'),
+              );
+            }),
+          ).pipe(Effect.provide(ownerLayer(scratch.db.url))),
+        );
+        expect(outcome).toBeInstanceOf(MigrationHistoryRefused);
+        expect(outcome).toMatchObject({ verdict: 'transaction' });
+        expect(outcome.message).toMatch(
+          /^0002_x\/backfill\.sql ended the migration's transaction/,
+        );
+        expect(outcome.message).toMatch(/Restore the backup/);
+      },
+      CASE_TIMEOUT_MS,
+    );
+
+    it.each([
+      [
+        'search_path changed',
+        `SELECT set_config('search_path', '${JOB_SCHEMA}, public', true);`,
+        /left search_path set to "studio_jobs, public" rather than /,
+      ],
+      [
+        'the team setting set',
+        `SELECT set_config('app.team_id', 'some-team', true);`,
+        /left app\.team_id set to "some-team" rather than ""/,
+      ],
+      [
+        'a guard trigger disabled',
+        'ALTER TABLE studies DISABLE TRIGGER studies_closed_read_only;',
+        /left the disabled triggers as \[studies_closed_read_only on studies\] rather than \[\]: .* must ENABLE it again/,
+      ],
+      [
+        'the erasure marker set',
+        `SELECT set_config('app.erasing_participant_id', 'someone', true);`,
+        /left app\.erasing_participant_id set to "someone" rather than ""/,
+      ],
+    ])(
+      'refuses a backfill that leaves %s, and rolls everything back',
+      async (_name, backfill, message) => {
+        const scratch = await emptyDatabase();
+        await run(scratch.db.url);
+
+        const failure = await refusal(
+          scratch.db.url,
+          next({
+            slug: 'leaks',
+            delta: 'ALTER TABLE deployment_state ADD COLUMN probe text;',
+            backfill,
+            fingerprint: NEXT,
+          }),
+        );
+        expect(failure).toMatchObject({ verdict: 'session' });
+        expect(failure.message).toMatch(/_leaks\/backfill\.sql /);
+        expect(failure.message).toMatch(message);
+        const column = await scratch.pool.query(
+          `select 1 from information_schema.columns
+            where table_name = 'deployment_state' and column_name = 'probe'`,
+        );
+        expect(column.rowCount).toBe(0);
+      },
+      CASE_TIMEOUT_MS,
+    );
+
+    // #1901 E-3: each file's deferred checks fire at its end, and the
+    // constraints declared INITIALLY DEFERRED are deferred again after, so a
+    // later file can still write a row before the partner it points at.
+    it(
+      'leaves an INITIALLY DEFERRED constraint deferred for the files after the first',
+      async () => {
+        const scratch = await emptyDatabase();
+        await run(scratch.db.url);
+
+        await run(
+          scratch.db.url,
+          next({
+            slug: 'pairs',
+            delta:
+              'CREATE TABLE probe_pairs (id int PRIMARY KEY, partner int NOT NULL REFERENCES probe_pairs (id) DEFERRABLE INITIALLY DEFERRED);',
+            backfill: [
+              'INSERT INTO probe_pairs VALUES (1, 2);',
+              'INSERT INTO probe_pairs VALUES (2, 1);',
+            ].join('\n'),
+            fingerprint: NEXT,
+          }),
+        );
+        const pairs = await scratch.pool.query(
+          'select id, partner from probe_pairs order by id',
+        );
+        expect(pairs.rows).toEqual([
+          { id: 1, partner: 2 },
+          { id: 2, partner: 1 },
+        ]);
+      },
+      CASE_TIMEOUT_MS,
+    );
+
+    it(
+      'fails a file whose deferred check fails at the file, naming it',
+      async () => {
+        const scratch = await emptyDatabase();
+        await run(scratch.db.url);
+
+        const failure = await refusal(
+          scratch.db.url,
+          next({
+            slug: 'orphan',
+            delta:
+              'CREATE TABLE probe_pairs (id int PRIMARY KEY, partner int NOT NULL REFERENCES probe_pairs (id) DEFERRABLE INITIALLY DEFERRED);',
+            backfill: 'INSERT INTO probe_pairs VALUES (1, 2);',
+            fingerprint: NEXT,
+          }),
+        );
+        expect(failure).toMatchObject({
+          _tag: 'MigrationStatementFailed',
+          artefact: 'backfill.sql',
+          position: 'at the end of the file',
+          code: '23503',
+          rolledBack: true,
+        });
+        expect(await publicTables(scratch.pool)).not.toContain('probe_pairs');
       },
       CASE_TIMEOUT_MS,
     );

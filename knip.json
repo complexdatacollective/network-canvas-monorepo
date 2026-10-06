@@ -258,7 +258,10 @@
       "entry": [
         "scripts/auth-cli-config.ts!",
         "src/migrate.ts!",
-        "src/maintenance.ts!"
+        "src/maintenance.ts!",
+        // Spawned by path from migrate-program.test.ts: the migrate one-shot
+        // over a document the suite hands it.
+        "src/__tests__/support/migrate-entry.ts"
       ],
       "project": ["src/**/*.ts", "scripts/**/*.ts"]
     },

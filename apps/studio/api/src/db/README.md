@@ -141,19 +141,23 @@ There are two lanes, and they never meet on one database.
 **Deployments migrate.** A deployed database is only ever changed by
 `studio-api migrate`, from the numbered migrations under
 [`migrations/`](../../migrations/README.md) (#1901). Each migration directory
-carries the drizzle-kit delta from the previous one, an optional hand-written
-backfill, the complete sidecars at that version (the job schema among them),
+carries the drizzle-kit delta from the previous one, the complete sidecars at
+that version (the job schema among them), an optional hand-written backfill,
 the Drizzle snapshot, and a manifest of their hashes.
 
 - `scripts/migrate-generate.ts` (`pnpm --filter @codaco/studio-api
 migrate:generate --name <slug>`) writes the next directory. It refuses a
   stale fingerprint, an ambiguous drop-and-create it would have to guess a
-  rename for, and a dropped table or column the author did not name with
-  `--drop`. The authoring guide is `migrations/README.md`.
+  rename for, a dropped table or column the author did not name with
+  `--drop` (hand-written ones too, at `--seal`), a column made NOT NULL with
+  no default on a table that already exists, and transaction control in any
+  file. Generating twice from one tree writes the same bytes. The authoring
+  guide is `migrations/README.md`.
 - `scripts/render-migrations.ts` runs in `build` after vite and writes
   `dist/migrations.json`. It refuses the build when the fingerprint is stale,
   when a directory does not re-hash to its manifest, when the ordinals are
-  not contiguous, or when the newest migration is not this build's schema — a
+  not contiguous, when `migrations/` holds a directory that is not a
+  migration, or when the newest migration is not this build's schema — a
   schema change with no migration fails the image build.
 - `migrations-document.ts` is what both scripts and the image share: the
   document's shape, how artefacts hash, and `verifyMigrations`, which the image
@@ -170,13 +174,20 @@ migrate:generate --name <slug>`) writes the next directory. It refuses a
 - `migrateDatabaseEffect()` (`migrate.ts`) takes `pg_advisory_lock` on a
   reserved connection, then opens one transaction on the pool: probe, read the
   history, decide, apply every pending migration's artefacts in order (delta,
-  backfill, sidecars), revoke, record, and stamp the fingerprint last. The lock
-  spans the history read and the transaction, so two migrates serialise and
-  the second applies nothing. A current database is a read and nothing else. A
+  sidecars, backfill), revoke, record, stamp the fingerprint, and check the
+  keyring (the `migrate` program's `beforeCommit`) — all before the one
+  commit, so a refusal anywhere leaves the previous release. The lock spans
+  the history read and the transaction, so two migrates serialise and the
+  second applies nothing. A current database is a read and nothing else. A
   database with Studio tables and no history (one `apply-schema` built, or a
   pre-release image) is refused: there is no baseline. After each artefact it
-  checks `current_user = session_user`, so a backfill's `SET LOCAL ROLE
-studio_maintenance` must end with `RESET ROLE`.
+  refuses a file that ended the transaction (the transaction id moved), left
+  the role switched (`current_user <> session_user`, so a backfill's `SET
+LOCAL ROLE studio_maintenance` must end with `RESET ROLE`), changed
+  `search_path` or the team or erasure setting, or left a trigger disabled;
+  then it fires the file's deferred checks (`SET CONSTRAINTS ALL IMMEDIATE`)
+  and defers the `INITIALLY DEFERRED` ones again. A statement Postgres refuses
+  is reported with its migration, file, position, text, SQLSTATE and message.
 - It runs on `@effect/sql-pg`, which has **no simple-query path**: every
   statement goes through Parse/Bind/Execute, and a multi-command string is
   refused (SQLSTATE 42601). So every artefact is cut by `splitStatements`

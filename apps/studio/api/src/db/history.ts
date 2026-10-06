@@ -186,6 +186,8 @@ export class MigrationHistoryRefused extends Schema.TaggedError<MigrationHistory
       'foreign',
       'inconsistent',
       'role',
+      'transaction',
+      'session',
     ]),
     message: Schema.String,
   },

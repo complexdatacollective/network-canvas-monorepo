@@ -2,7 +2,6 @@ import { execFileSync } from 'node:child_process';
 import {
   existsSync,
   mkdirSync,
-  readdirSync,
   readFileSync,
   renameSync,
   rmSync,
@@ -28,13 +27,18 @@ import {
   MIGRATION_VERSION,
   type MigrationManifest,
   migrationVersion,
+  sha256,
   SNAPSHOT_ARTEFACT,
 } from '../src/db/migrations-document.ts';
 import { SCHEMA, SIDECARS } from '../src/db/schema.ts';
 import { splitStatements } from '../src/db/statements.ts';
 import { renderJobStatements } from '../src/jobs/queues.ts';
 import { schemaFingerprintOf } from './apply.ts';
-import { MIGRATIONS_DIR } from './render-migrations.ts';
+import {
+  MIGRATIONS_DIR,
+  migrationVersions,
+  MigrationsUnreadable,
+} from './render-migrations.ts';
 
 // `pnpm --filter @codaco/studio-api migrate:generate --name <slug>` (#1901).
 //
@@ -223,6 +227,67 @@ export function dataDrops(prev: Snapshot, cur: Snapshot): string[] {
     .toSorted();
 }
 
+function hasValue(entity: Entity, name: string): boolean {
+  const value: unknown = Reflect.get(entity, name);
+  return value !== null && value !== undefined;
+}
+
+/**
+ * Columns (`schema.table.column`) of a table the previous snapshot has that
+ * become NOT NULL with no default: added that way, or tightened. The
+ * generated `ALTER` passes on the empty database every suite builds and fails
+ * on any deployment whose table has a row, so each one needs a backfill that
+ * fills it before the constraint is set.
+ */
+export function unfilledColumns(prev: Snapshot, cur: Snapshot): string[] {
+  const before = tablesIn(prev);
+  const previous = new Map(
+    prev.ddl
+      .filter((entity) => entity.entityType === 'columns')
+      .map((entity) => [entityKey(entity), entity]),
+  );
+  return cur.ddl
+    .filter(
+      (entity) =>
+        entity.entityType === 'columns' &&
+        before.has(`${field(entity, 'schema')}.${field(entity, 'table')}`) &&
+        Reflect.get(entity, 'notNull') &&
+        !hasValue(entity, 'default') &&
+        !hasValue(entity, 'generated') &&
+        !hasValue(entity, 'identity'),
+    )
+    .filter((entity) => {
+      const was = previous.get(entityKey(entity));
+      return was === undefined || !Reflect.get(was, 'notNull');
+    })
+    .map(qualified)
+    .toSorted();
+}
+
+const NOT_NULL_RECIPE =
+  'In delta.sql add the column without NOT NULL; in backfill.sql fill it (as studio_maintenance, see migrations/README.md) and then ALTER TABLE … ALTER COLUMN … SET NOT NULL.';
+
+function unfilledRefusal(columns: readonly string[]): GenerateRefused {
+  return new GenerateRefused(
+    [
+      `This change makes [${columns.join(', ')}] NOT NULL with no default on a table a deployed database already has rows in, where the generated ALTER would fail.`,
+      `Re-run with --hand-written --name <slug>. ${NOT_NULL_RECIPE} Then run --seal.`,
+    ].join('\n'),
+  );
+}
+
+function dropsRefusal(
+  drops: readonly string[],
+  named: readonly string[],
+): GenerateRefused {
+  return new GenerateRefused(
+    [
+      `This change drops ${drops.length === 0 ? 'no table or column' : `[${drops.join(', ')}]`}, and --drop names ${named.length === 0 ? 'nothing' : `[${named.join(', ')}]`}.`,
+      'A dropped table or column takes its data with it, so each one must be named: re-run with --drop <schema.table> or --drop <schema.table.column> for exactly the drops above. A hand-written rename shows here as a drop of the old name: name it too.',
+    ].join('\n'),
+  );
+}
+
 function ambiguityRefusal(lines: readonly string[]): GenerateRefused {
   return new GenerateRefused(
     [
@@ -275,6 +340,36 @@ const SnapshotShape = Schema.Struct({
   ),
 });
 
+/** The chain's root: the empty database every first migration starts from. */
+const EMPTY_SNAPSHOT_ID = '00000000-0000-0000-0000-000000000000';
+
+/**
+ * drizzle-kit names each snapshot with a random UUID and chains it to the
+ * previous one's. Derived from the version instead, so generating twice from
+ * the same tree writes the same bytes, and "regenerate and diff" can audit a
+ * committed migration (#1901 E-10). A UUID's shape (version nibble 8, RFC
+ * 9562's custom-format version), because drizzle-kit's snapshots carry one.
+ */
+function snapshotId(version: string): string {
+  const hex = sha256(`studio-migration-snapshot:${version}`);
+  const variant = ((Number.parseInt(hex[16]!, 16) & 0x3) | 0x8).toString(16);
+  return [
+    hex.slice(0, 8),
+    hex.slice(8, 12),
+    `8${hex.slice(13, 16)}`,
+    `${variant}${hex.slice(17, 20)}`,
+    hex.slice(20, 32),
+  ].join('-');
+}
+
+function withSnapshotIds(
+  snapshot: Snapshot,
+  version: string,
+  previous: string,
+): Snapshot {
+  return { ...snapshot, id: snapshotId(version), prevIds: [previous] };
+}
+
 function readSnapshot(path: string): Snapshot {
   const text = readFileSync(path, 'utf8');
   Schema.decodeUnknownSync(Schema.fromJsonString(SnapshotShape))(text);
@@ -290,22 +385,20 @@ type Directory = {
 };
 
 function migrationDirectories(dir: string): Directory[] {
-  if (!existsSync(dir)) return [];
-  const found = readdirSync(dir, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory())
-    .flatMap((entry) => {
-      const match = MIGRATION_VERSION.exec(entry.name);
-      return match === null
-        ? []
-        : [
-            {
-              version: entry.name,
-              ordinal: Number(match[1]),
-              path: join(dir, entry.name),
-            },
-          ];
-    })
-    .toSorted((left, right) => left.ordinal - right.ordinal);
+  let versions: string[];
+  try {
+    versions = migrationVersions(dir);
+  } catch (error) {
+    if (error instanceof MigrationsUnreadable) {
+      throw new GenerateRefused(error.message);
+    }
+    throw error;
+  }
+  const found = versions.map((version) => ({
+    version,
+    ordinal: Number(MIGRATION_VERSION.exec(version)?.[1]),
+    path: join(dir, version),
+  }));
   found.forEach((directory, index) => {
     if (directory.ordinal !== index + 1) {
       throw new GenerateRefused(
@@ -342,7 +435,7 @@ function refuseForbidden(name: string, script: string): void {
   const forbidden = forbiddenStatement(script);
   if (forbidden !== null) {
     throw new GenerateRefused(
-      `${name} carries a statement the migration's one transaction cannot run; split it across two releases:\n${forbidden}`,
+      `${name} carries a statement the migration's one transaction cannot run; ${forbidden.remedy}:\n${forbidden.statement}`,
     );
   }
 }
@@ -374,6 +467,40 @@ function manifestJson(manifest: MigrationManifest): string {
 
 function sameNames(left: readonly string[], right: readonly string[]): boolean {
   return isDeepStrictEqual(left.toSorted(), right.toSorted());
+}
+
+/**
+ * Whether a delta statement adds `schema.table.column` NOT NULL without a
+ * default, or sets it NOT NULL: either fails on a populated table before the
+ * backfill runs. A reading of the SQL, so it errs towards refusing.
+ */
+function setsNotNullUnfilled(delta: string, column: string): boolean {
+  const [, table, name] = column.split('.');
+  const identifier = (value: string | undefined) =>
+    `"?${(value ?? '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}"?`;
+  const onTable = new RegExp(
+    `\\bALTER\\s+TABLE\\s+(?:IF\\s+EXISTS\\s+)?(?:ONLY\\s+)?(?:"?\\w+"?\\.)?${identifier(table)}(?=[\\s;]|$)`,
+    'i',
+  );
+  const added = new RegExp(
+    `\\bADD\\s+(?:COLUMN\\s+)?(?:IF\\s+NOT\\s+EXISTS\\s+)?${identifier(name)}\\s([^,]*)`,
+    'i',
+  );
+  const tightened = new RegExp(
+    `\\bALTER\\s+(?:COLUMN\\s+)?${identifier(name)}\\s+SET\\s+NOT\\s+NULL\\b`,
+    'i',
+  );
+  return splitStatements(delta).some((statement) => {
+    const text = statement.replace(/--[^\n]*/g, '');
+    if (!onTable.test(text)) return false;
+    if (tightened.test(text)) return true;
+    const clause = added.exec(text)?.[1];
+    return (
+      clause !== undefined &&
+      /\bNOT\s+NULL\b/i.test(clause) &&
+      !/\bDEFAULT\b/i.test(clause)
+    );
+  });
 }
 
 async function generate(
@@ -408,12 +535,18 @@ async function generate(
     newest === undefined
       ? await generateDrizzleJson({})
       : readSnapshot(join(newest.path, SNAPSHOT_ARTEFACT));
-  const cur = await generateDrizzleJson(inputs.schema, prev.id);
   const version = migrationVersion(directories.length + 1, request.name);
+  const cur = withSnapshotIds(
+    await generateDrizzleJson(inputs.schema),
+    version,
+    newest === undefined ? EMPTY_SNAPSHOT_ID : prev.id,
+  );
   const sidecars = sidecarsSql(inputs);
   const snapshot = `${JSON.stringify(cur, null, 2)}\n`;
   const from = newest?.version ?? 'an empty database';
   const ambiguous = ambiguousChanges(prev, cur);
+
+  const unfilled = unfilledColumns(prev, cur);
 
   if (request.handWritten) {
     writeDirectory(inputs.dir, version, {
@@ -422,6 +555,12 @@ async function generate(
         ...(ambiguous.length === 0
           ? ['drizzle-kit found nothing ambiguous here.']
           : ambiguous.map((line) => `${line}.`)),
+        ...(unfilled.length === 0
+          ? []
+          : [
+              `NOT NULL with no default on an existing table: ${unfilled.join(', ')}.`,
+              NOT_NULL_RECIPE,
+            ]),
         'Write the statements below, then run:',
         '  pnpm --filter @codaco/studio-api migrate:generate --seal',
       ])}\n`,
@@ -435,14 +574,8 @@ async function generate(
 
   const drops = dataDrops(prev, cur);
   const named = request.drops ?? [];
-  if (!sameNames(drops, named)) {
-    throw new GenerateRefused(
-      [
-        `This change drops ${drops.length === 0 ? 'no table or column' : `[${drops.join(', ')}]`}, and --drop names ${named.length === 0 ? 'nothing' : `[${named.join(', ')}]`}.`,
-        'A dropped table or column takes its data with it, so each one must be named: re-run with --drop <schema.table> or --drop <schema.table.column> for exactly the drops above.',
-      ].join('\n'),
-    );
-  }
+  if (!sameNames(drops, named)) throw dropsRefusal(drops, named);
+  if (unfilled.length > 0) throw unfilledRefusal(unfilled);
 
   const statements = await diffStatements(prev, cur);
   const delta = `${deltaHeader([
@@ -484,10 +617,12 @@ async function seal(
     throw new GenerateRefused(STALE_FINGERPRINT);
   }
 
-  const newest = migrationDirectories(inputs.dir).at(-1);
+  const directories = migrationDirectories(inputs.dir);
+  const newest = directories.at(-1);
   if (newest === undefined) {
     throw new GenerateRefused('There is no migration to seal.');
   }
+  const before = directories.at(-2);
   const isReleased = inputs.isReleased ?? releasedOnMain;
   if (isReleased(newest.version)) {
     throw new GenerateRefused(
@@ -526,6 +661,33 @@ async function seal(
     refuseForbidden(`${newest.version}/backfill.sql`, backfill);
   }
 
+  // The same two refusals the generated path makes, against the same diff: a
+  // delta written by hand is no more able to drop data unnamed, or to set a
+  // column NOT NULL over rows nothing filled.
+  const prev =
+    before === undefined
+      ? await generateDrizzleJson({})
+      : readSnapshot(join(before.path, SNAPSHOT_ARTEFACT));
+  const drops = dataDrops(prev, snapshot);
+  const named = request.drops ?? previous?.drops ?? [];
+  if (!sameNames(drops, named)) throw dropsRefusal(drops, named);
+  const unfilled = unfilledColumns(prev, snapshot);
+  if (unfilled.length > 0) {
+    if (backfill === undefined) {
+      throw new GenerateRefused(
+        `${newest.version} makes [${unfilled.join(', ')}] NOT NULL with no default on an existing table, and has no backfill.sql to fill it. ${NOT_NULL_RECIPE}`,
+      );
+    }
+    const constrained = unfilled.filter((column) =>
+      setsNotNullUnfilled(delta, column),
+    );
+    if (constrained.length > 0) {
+      throw new GenerateRefused(
+        `${newest.version}/delta.sql makes [${constrained.join(', ')}] NOT NULL before the backfill can fill it. ${NOT_NULL_RECIPE}`,
+      );
+    }
+  }
+
   const { artefacts, combined } = hashArtefacts({
     'delta.sql': delta,
     ...(backfill === undefined ? {} : { 'backfill.sql': backfill }),
@@ -538,7 +700,7 @@ async function seal(
       version: newest.version,
       ordinal: newest.ordinal,
       fingerprint,
-      drops: [...(request.drops ?? previous?.drops ?? [])].toSorted(),
+      drops: [...named].toSorted(),
       artefacts,
       combined,
     }),
