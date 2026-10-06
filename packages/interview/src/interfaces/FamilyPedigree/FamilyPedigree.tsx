@@ -6,6 +6,7 @@ import {
   useCallback,
   useEffect,
   useId,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -100,6 +101,7 @@ import {
   nearestInDirection,
   type Point,
 } from './spatialNavigation';
+import { usePanZoom } from './usePanZoom';
 
 /**
  * What selecting a person does: open their details (with their add menu on
@@ -295,6 +297,9 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   // Why the last selection was refused, shown in place of the instruction.
   const [connectNotice, setConnectNotice] = useState<string | null>(null);
   const contentRef = useRef<HTMLDivElement>(null);
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const drawerRef = useRef<HTMLDivElement>(null);
+  const panZoom = usePanZoom({ viewportRef, contentRef });
 
   // No menu while the panel is open: it would offer to add to someone else
   // mid-way through describing this person. Nor while connecting or
@@ -405,8 +410,54 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     const egoNode = nodeRefs.current.get(family.egoId);
     if (!egoNode) return;
     centredOnEgo.current = true;
-    egoNode.scrollIntoView({ block: 'center', inline: 'center' });
+    panZoom.centreOn(egoNode, { animated: false });
   });
+
+  // Adding someone can move everyone else in the layout. The person in
+  // question (the one selected, focused, or else the participant) stays where
+  // they are on screen, and the family moves around them.
+  const heldPosition = useRef<{ id: string; x: number; y: number } | null>(
+    null,
+  );
+  useLayoutEffect(() => {
+    const id = selectedId ?? focusedId ?? family.egoId;
+    const element = id ? nodeRefs.current.get(id) : undefined;
+    if (!id || !element) {
+      heldPosition.current = null;
+      return;
+    }
+    const previous = heldPosition.current;
+    if (previous?.id === id) panZoom.holdInPlace(element, previous);
+    heldPosition.current = { id, ...panZoom.contentPositionOf(element) };
+  });
+
+  // The person selected moves to the middle of the part of the screen the
+  // side panel leaves uncovered. Someone being added, and the panel itself,
+  // are drawn a moment after the panel opens, so this waits for both.
+  useEffect(() => {
+    if (!selectedId) return;
+    let frame = 0;
+    let framesLeft = 30;
+    const centre = () => {
+      const element = nodeRefs.current.get(selectedId);
+      const drawer = drawerRef.current;
+      if ((!element || !drawer) && framesLeft-- > 0) {
+        frame = requestAnimationFrame(centre);
+        return;
+      }
+      if (!element) return;
+      // A panel as wide as the screen leaves nothing beside it, so the
+      // person is centred on the whole canvas, ready for when it closes.
+      const visibleRight = window.innerWidth - (drawer?.offsetWidth ?? 0);
+      const canvasLeft = viewportRef.current?.getBoundingClientRect().left ?? 0;
+      panZoom.centreOn(element, {
+        visibleRight:
+          visibleRight - canvasLeft > 160 ? visibleRight : undefined,
+      });
+    };
+    frame = requestAnimationFrame(centre);
+    return () => cancelAnimationFrame(frame);
+  }, [selectedId, panZoom]);
 
   const openAddPanel = (relation: Relation, anchor: Person) =>
     setPanel({
@@ -549,8 +600,12 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     if (
       event.target instanceof Element &&
       event.target.matches(':focus-visible')
-    )
+    ) {
       setFocusedId(personId);
+      // The canvas does not scroll; keyboard focus pans to the person.
+      const element = nodeRefs.current.get(personId);
+      if (element) panZoom.bringIntoView(element);
+    }
   };
 
   // The mouse shows a person's menu while it is over them. Leaving waits a
@@ -919,6 +974,19 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   // Escape in the add menu returns focus to its person; Escape on the person
   // hides the menu.
   const handleCanvasKeyDown = (event: React.KeyboardEvent) => {
+    // + and − zoom about the middle of the canvas.
+    if (!event.metaKey && !event.ctrlKey && !event.altKey) {
+      if (event.key === '+' || event.key === '=') {
+        event.preventDefault();
+        panZoom.zoomBy(0.5);
+        return;
+      }
+      if (event.key === '-' || event.key === '_') {
+        event.preventDefault();
+        panZoom.zoomBy(-0.5);
+        return;
+      }
+    }
     if (event.key === 'Escape' && linkingId) {
       event.preventDefault();
       setLinkingId(null);
@@ -994,27 +1062,38 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         />
       </div>
       {measurementContainer}
-      <div className="relative flex min-h-0 flex-1 flex-col">
+      <div className="relative flex min-h-0 w-full flex-1 flex-col">
+        {/* Drag to pan, wheel or pinch to zoom. Clipped rather than
+            scrollable, so focusing someone off screen pans to them instead
+            of scrolling. */}
         <div
+          ref={viewportRef}
           role="region"
           aria-label={intl.formatMessage(messages.canvasLabel)}
-          className="relative min-h-0 w-full flex-1 overflow-auto"
+          className="relative min-h-0 w-full flex-1 cursor-grab touch-none overflow-clip select-none"
           onKeyDown={handleCanvasKeyDown}
           onBlur={handleCanvasBlur}
           data-testid="pedigree-canvas"
         >
-          <div
+          {connectorFrom && tool === 'connect' && (
+            <ConnectorPreview
+              container={viewportRef}
+              transform={panZoom}
+              from={connectorFrom}
+              to={connectorTo}
+              color={edgeColor}
+            />
+          )}
+          <motion.div
             ref={contentRef}
-            className="relative flex min-h-full min-w-max items-center justify-center p-40"
+            className="absolute top-0 left-0 w-max p-40"
+            style={{
+              x: panZoom.x,
+              y: panZoom.y,
+              scale: panZoom.scale,
+              transformOrigin: '0 0',
+            }}
           >
-            {connectorFrom && tool === 'connect' && (
-              <ConnectorPreview
-                container={contentRef}
-                from={connectorFrom}
-                to={connectorTo}
-                color={edgeColor}
-              />
-            )}
             <PedigreeLayout
               nodeIds={nodeIds}
               edgeColor={edgeColor}
@@ -1076,7 +1155,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                 );
               }}
             />
-          </div>
+          </motion.div>
         </div>
         <div className="pointer-events-none absolute inset-x-0 bottom-6 z-20 flex flex-col items-center gap-2 px-4">
           {tool !== 'pointer' && (
@@ -1204,6 +1283,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         {announcement}
       </div>
       <PersonDrawer
+        popupRef={drawerRef}
         open={panel?.open ?? false}
         formKey={panel?.key ?? 'closed'}
         onClose={cancelPanel}

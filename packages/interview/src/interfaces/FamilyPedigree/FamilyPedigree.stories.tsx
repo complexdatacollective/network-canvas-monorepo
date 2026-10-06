@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useMemo } from 'react';
-import { expect, userEvent, waitFor, within } from 'storybook/test';
+import { expect, fireEvent, userEvent, waitFor, within } from 'storybook/test';
 import SuperJSON from 'superjson';
 
 import { SyntheticInterview } from '@codaco/protocol-utilities';
@@ -228,6 +228,85 @@ const unnamedParents: Family = {
     { from: 'dad', to: 'ego', kind: 'biological' },
   ],
 };
+
+/**
+ * The family can be zoomed with the mouse wheel or a pinch, and dragged to
+ * pan. A drag that starts on a person or a button pans rather than pressing
+ * it.
+ */
+export const PanAndZoom: Story = {
+  render: (args) => (
+    <PedigreeStory {...settings(args)} family={unnamedParents} />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const viewport = canvas.getByTestId('pedigree-canvas');
+    const content = viewport.lastElementChild as HTMLElement;
+    const you = await canvas.findByRole('button', { name: /^You/ });
+    const transform = () => getComputedStyle(content).transform;
+
+    // Three notches of a mouse wheel zoom out.
+    const before = new DOMMatrix(transform());
+    const box = viewport.getBoundingClientRect();
+    for (let notch = 0; notch < 3; notch++) {
+      fireEvent.wheel(viewport, {
+        deltaY: 100,
+        clientX: box.left + box.width / 2,
+        clientY: box.top + box.height / 2,
+      });
+    }
+    await waitFor(() =>
+      expect(new DOMMatrix(transform()).a).toBeLessThan(before.a),
+    );
+
+    // A drag pans even when it starts on a button, and the click that ends
+    // it does nothing. (A person ignores a click after a drag themselves;
+    // the add menu's buttons rely on the canvas.)
+    await userEvent.hover(you);
+    const addSibling = await canvas.findByTestId('pedigree-menu-sibling');
+    const start = addSibling.getBoundingClientRect();
+    const from = {
+      x: start.left + start.width / 2,
+      y: start.top + start.height / 2,
+    };
+    const pointer = { pointerId: 1, pointerType: 'mouse', isPrimary: true };
+    const panned = new DOMMatrix(transform());
+    fireEvent.pointerDown(addSibling, {
+      ...pointer,
+      ...clientOf(from),
+      buttons: 1,
+    });
+    for (let step = 1; step <= 10; step++) {
+      fireEvent.pointerMove(addSibling, {
+        ...pointer,
+        ...clientOf({ x: from.x + step * 10, y: from.y + step * 4 }),
+        buttons: 1,
+      });
+    }
+    fireEvent.pointerUp(addSibling, {
+      ...pointer,
+      ...clientOf({ x: from.x + 100, y: from.y + 40 }),
+    });
+    fireEvent.click(addSibling);
+    await waitFor(() =>
+      expect(new DOMMatrix(transform()).e).toBeGreaterThan(panned.e + 50),
+    );
+    // Two frames, for anything the click opened to render; opening the add
+    // panel would take the menu away.
+    for (let frame = 0; frame < 2; frame++) {
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+    }
+    await expect(addSibling).toBeInTheDocument();
+    // A click that is not the end of a drag still works.
+    fireEvent.click(addSibling);
+    await waitFor(() => expect(addSibling).not.toBeInTheDocument());
+  },
+};
+
+const clientOf = ({ x, y }: { x: number; y: number }) => ({
+  clientX: x,
+  clientY: y,
+});
 
 /**
  * The stage leaves the framing to the participant. The choice opens from the

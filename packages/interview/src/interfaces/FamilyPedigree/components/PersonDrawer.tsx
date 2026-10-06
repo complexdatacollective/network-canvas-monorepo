@@ -1,7 +1,7 @@
 'use client';
 
 import { Drawer } from '@base-ui/react/drawer';
-import type { ReactNode } from 'react';
+import type { ReactNode, Ref } from 'react';
 
 import { commonMessages } from '@codaco/app-i18n/common';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -21,6 +21,8 @@ type PersonDrawerProps = {
   title: string;
   children: ReactNode;
   footer: ReactNode;
+  /** The panel itself, to measure how much of the screen it covers. */
+  popupRef?: Ref<HTMLDivElement>;
 };
 
 /**
@@ -37,6 +39,7 @@ export default function PersonDrawer({
   title,
   children,
   footer,
+  popupRef,
 }: PersonDrawerProps) {
   const intl = useAppIntl();
   const portalContainer = usePortalContainer();
@@ -55,6 +58,7 @@ export default function PersonDrawer({
       <Drawer.Portal container={portalContainer ?? undefined}>
         <Drawer.Viewport className="pointer-events-none fixed inset-y-0 right-0 w-full max-w-md">
           <Drawer.Popup
+            ref={popupRef}
             finalFocus={() => returnFocus()}
             className={[
               'bg-surface-1 publish-colors text-text elevation-high pointer-events-auto absolute inset-0 flex flex-col',

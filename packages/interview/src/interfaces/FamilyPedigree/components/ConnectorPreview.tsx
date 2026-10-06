@@ -1,5 +1,6 @@
 'use client';
 
+import type { MotionValue } from 'motion/react';
 import { type RefObject, useEffect, useState } from 'react';
 
 import {
@@ -10,8 +11,15 @@ import {
 type Point = { x: number; y: number };
 
 type ConnectorPreviewProps = {
-  /** The element the line is drawn in; it scrolls with the family. */
+  /** The element the line is drawn in, which does not move with the
+   * family. */
   container: RefObject<HTMLElement | null>;
+  /** The family's pan and zoom, which move the people under a still mouse. */
+  transform: {
+    x: MotionValue<number>;
+    y: MotionValue<number>;
+    scale: MotionValue<number>;
+  };
   /** The first person selected. */
   from: HTMLElement;
   /** The person the line ends on — hovered, focused or chosen — or null to
@@ -33,28 +41,37 @@ const centreOf = (element: HTMLElement): Point => {
  */
 export default function ConnectorPreview({
   container,
+  transform,
   from,
   to,
   color,
 }: ConnectorPreviewProps) {
   const [pointer, setPointer] = useState<Point | null>(null);
-  // Scrolling moves the people under a still mouse.
-  const [, setScrolled] = useState(0);
+  // Panning and zooming move the people under a still mouse. The motion
+  // values change before the frame that draws them, so the line is redrawn
+  // on the frame after.
+  const [, setMoved] = useState(0);
 
   useEffect(() => {
     const handleMove = (event: PointerEvent) => {
       if (event.pointerType !== 'mouse') return;
       setPointer({ x: event.clientX, y: event.clientY });
     };
-    const handleScroll = () => setScrolled((count) => count + 1);
-    window.addEventListener('pointermove', handleMove);
-    // Scroll events do not bubble; capture catches the family's scroller.
-    window.addEventListener('scroll', handleScroll, true);
-    return () => {
-      window.removeEventListener('pointermove', handleMove);
-      window.removeEventListener('scroll', handleScroll, true);
+    let frame = 0;
+    const handleTransform = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => setMoved((count) => count + 1));
     };
-  }, []);
+    const unsubscribe = [transform.x, transform.y, transform.scale].map(
+      (value) => value.on('change', handleTransform),
+    );
+    window.addEventListener('pointermove', handleMove);
+    return () => {
+      cancelAnimationFrame(frame);
+      for (const stop of unsubscribe) stop();
+      window.removeEventListener('pointermove', handleMove);
+    };
+  }, [transform.x, transform.y, transform.scale]);
 
   const box = container.current?.getBoundingClientRect();
   const end = to ? centreOf(to) : pointer;
