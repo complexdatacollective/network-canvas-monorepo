@@ -129,7 +129,10 @@ export default defineConfig(() =>
           // ever fetched via a DEV-gated dynamic import(); production users
           // never load it. It also exceeds MAX_PRECACHE_BYTES, which makes
           // generateSW hard-fail the build (not just skip the file) unless
-          // it's excluded from the precache glob outright.
+          // it's excluded from the precache glob outright. The Sample
+          // protocol's chunk (bundledSampleProtocol.ts) is the opposite: it
+          // is also lazy, but must stay precached so the sample installs
+          // offline. assert-pwa-build.mjs checks both properties.
           globIgnores: ['**/assets/bundledDevelopmentProtocol-*.js'],
           // vite-plugin-pwa defaults this to index.html; disable it so it
           // cannot shadow the runtime navigation route below.

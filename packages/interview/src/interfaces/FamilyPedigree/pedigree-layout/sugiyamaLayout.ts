@@ -1310,11 +1310,13 @@ function encodePedigreeLayout(
         }
         layerFam.push(famCol);
       } else {
-        // Single parent
+        // Single parent: the negated column, so the parent's own children
+        // stay apart from any they have with a partner (keyed by the
+        // couple's left column).
         const parentIdx = parentsAbove[0]!;
         const parentLoc = nodeLocation.get(parentIdx);
         if (parentLoc) {
-          layerFam.push(parentLoc.col + 1); // 1-based
+          layerFam.push(-(parentLoc.col + 1)); // 1-based, negated
         } else {
           layerFam.push(0);
         }
