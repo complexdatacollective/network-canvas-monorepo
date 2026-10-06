@@ -6,7 +6,7 @@
   "artefacts": {
     "delta.sql": "c461167fd6dd3b41951f975dbb2a2118f8cee85742f6d28cce9f517643199453",
     "sidecars.sql": "f767807f824ff3f7c725ea1d7b7f4b83f795cb31b8cc8026880bee77858669d0",
-    "snapshot.json": "1aaf6ecc204eb91b30a83b1c35e9d5bea2e1c5bd025fbcc57078a964dd193ef6"
+    "snapshot.json": "0f866cf406bb43b829d735e538bd71487514300a8dbd3face6ba605d2ec07d4e"
   },
-  "combined": "50b8cfc2ade37a5fbc6ff08ecf3003b44235d371eb1d683c322f07a272d38213"
+  "combined": "effbf32b2895eb753f7c36c1518d760a5275e6d3f72d854a2b8cabec8396c2c8"
 }
