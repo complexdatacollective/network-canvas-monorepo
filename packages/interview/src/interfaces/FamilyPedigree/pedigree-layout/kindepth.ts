@@ -1,5 +1,5 @@
 import type { ParentConnection } from './types';
-import { chaseup } from './utils';
+import { chaseup, layerConstraints } from './utils';
 
 /**
  * Compute the generational depth of each subject in a pedigree.
@@ -78,23 +78,36 @@ export function kindepth(
   };
 
   // Collect all parent groups (unique sets of parents who share children).
-  // A child sits below each of its parents, so a parent who descends from
-  // another of the same child's parents (a daughter carrying her mother's
-  // baby) can never share their row; they are left out of the group.
+  // A child sits below each of its parents, so parents who would have to be
+  // level with, or above, their own descendants cannot all share a row: a
+  // daughter carrying her mother's baby, or two groups that cross one
+  // another's lines of descent. Each parent joins its group only if the
+  // groups kept so far can still all be aligned; the parents are tried from
+  // the shallowest, so an ancestor is kept ahead of a descendant.
+  const { constrain } = layerConstraints(n);
+  for (let i = 0; i < n; i++) {
+    for (const p of parents[i]!) constrain([[p.parentIndex, i]], 1);
+  }
   const groupSet = new Set<string>();
   const groups: number[][] = [];
 
   for (let i = 0; i < n; i++) {
     if (parents[i]!.length < 2) continue;
-    const parentIndices = parents[i]!.map((p) => p.parentIndex);
-    const memberIndices = parentIndices
-      .filter((m) => {
-        const ancestors = chaseup([m], parents);
-        return parentIndices.every(
-          (other) => other === m || !ancestors.includes(other),
-        );
-      })
-      .toSorted((a, b) => a - b);
+    const [anchor, ...rest] = [
+      ...new Set(parents[i]!.map((p) => p.parentIndex)),
+    ].toSorted((a, b) => depth[a]! - depth[b]! || a - b);
+    const memberIndices = [
+      anchor!,
+      ...rest.filter((m) =>
+        constrain(
+          [
+            [anchor!, m],
+            [m, anchor!],
+          ],
+          0,
+        ),
+      ),
+    ].toSorted((a, b) => a - b);
     if (memberIndices.length < 2) continue;
     const key = memberIndices.join(',');
     if (!groupSet.has(key)) {

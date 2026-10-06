@@ -1778,6 +1778,12 @@ describe('a parent who descends from a co-parent', () => {
   // Every person is drawn exactly once, on a row below each of their parents.
   const expectEveryChildBelowItsParents = (ped: PedigreeInput) => {
     const result = alignPedigree(ped);
+    const drawn = result.nid.flatMap((row, level) =>
+      row.slice(0, result.n[level]),
+    );
+    expect(drawn.toSorted((a, b) => a - b)).toStrictEqual(
+      ped.id.map((_, i) => i),
+    );
     ped.parents.forEach((conns, child) => {
       const childAt = positionOf(result, child);
       expect(childAt).toBeDefined();
