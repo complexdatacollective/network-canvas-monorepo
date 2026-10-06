@@ -10,6 +10,7 @@ import {
   ownedScratchDatabaseForTest,
   type OwnedScratchDatabase,
   type SyntheticMigration,
+  TEST_OWNER,
   withMigrations,
 } from '../../__tests__/support/migrations.ts';
 import {
@@ -828,6 +829,17 @@ describe.skipIf(!db)('migrate', () => {
         `SELECT set_config('app.erasing_participant_id', 'someone', true);`,
         /left app\.erasing_participant_id set to "someone" rather than ""/,
       ],
+      // Any setting, not a list: one left behind governs the rest of the run.
+      [
+        'a statement timeout set',
+        'SET LOCAL statement_timeout = 1234;',
+        /left statement_timeout set to "1234" rather than "0"/,
+      ],
+      [
+        'row security switched off',
+        'SET LOCAL row_security = off;',
+        /left row_security set to "off" rather than "on"/,
+      ],
     ])(
       'refuses a backfill that leaves %s, and rolls everything back',
       async (_name, backfill, message) => {
@@ -851,6 +863,36 @@ describe.skipIf(!db)('migrate', () => {
             where table_name = 'deployment_state' and column_name = 'probe'`,
         );
         expect(column.rowCount).toBe(0);
+      },
+      CASE_TIMEOUT_MS,
+    );
+
+    // #2098 review: replica mode switches off every ordinary and constraint
+    // trigger without a row of pg_trigger changing, so the trigger snapshot
+    // alone would pass it. Superuser-only, so the owner is granted it here,
+    // as an owner login that is a superuser holds it already.
+    it(
+      'refuses a backfill that leaves session_replication_role at replica',
+      async () => {
+        const scratch = await emptyDatabase();
+        await run(scratch.db.url);
+        await scratch.admin.query(
+          `GRANT SET ON PARAMETER session_replication_role TO ${TEST_OWNER}`,
+        );
+
+        const failure = await refusal(
+          scratch.db.url,
+          next({
+            slug: 'replica_role',
+            delta: 'ALTER TABLE deployment_state ADD COLUMN probe text;',
+            backfill: 'SET LOCAL session_replication_role = replica;',
+            fingerprint: NEXT,
+          }),
+        );
+        expect(failure).toMatchObject({ verdict: 'session' });
+        expect(failure.message).toMatch(
+          /_replica_role\/backfill\.sql left session_replication_role set to "replica" rather than "origin"/,
+        );
       },
       CASE_TIMEOUT_MS,
     );

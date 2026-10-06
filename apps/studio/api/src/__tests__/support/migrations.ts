@@ -100,7 +100,7 @@ export function withMigrations(
  * application roles because, in a real deployment, it is the login that
  * created them.
  */
-const TEST_OWNER = 'studio_test_migrate_owner';
+export const TEST_OWNER = 'studio_test_migrate_owner';
 
 /** A local test cluster's fixture credential, never a deployment's. */
 const TEST_OWNER_PASSWORD = 'studio-test-migrate-owner';

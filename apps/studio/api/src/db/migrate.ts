@@ -102,16 +102,37 @@ const readStamp = Effect.fn('db.migrate.readStamp')(function* (
  * the upgrade as that role. A `search_path` left changed would install the
  * next sidecars, and their broad grants, in another schema. A team or erasure
  * setting left behind would silently narrow, or widen, what the next file's
- * statements can see. A guard trigger a file disabled, or switched to fire
- * only under replication (`ENABLE REPLICA`), must fire again, or every later
- * write escapes it. And the transaction id must not move: a file that ended
- * the runner's transaction has committed part of the upgrade.
+ * statements can see. The same holds for every other setting: one left
+ * behind governs the rest of the upgrade — `session_replication_role =
+ * replica` switches off every ordinary and constraint trigger without
+ * touching `pg_trigger` — so the whole of `pg_settings` is compared, not a
+ * list of the settings someone thought of. A guard trigger a file disabled,
+ * or switched to fire only under replication (`ENABLE REPLICA`), must fire
+ * again, or every later write escapes it. And the transaction id must not
+ * move: a file that ended the runner's transaction has committed part of the
+ * upgrade.
  */
 type SessionState = {
   readonly xid: string;
   readonly current: string;
   readonly session: string;
-  readonly searchPath: string;
+  /**
+   * Every setting the session can see, one per line: its name, a tab, and
+   * its value.
+   */
+  readonly settings: string;
+  /**
+   * The same settings' values as `RESET` would restore them. A setting can
+   * appear part-way through a run — plpgsql registers its own the first time
+   * a file uses it, and a custom one (the team and erasure markers) exists
+   * once something sets it — and such a setting is left changed only if it
+   * differs from this, not from a baseline that never named it.
+   */
+  readonly resets: string;
+  /**
+   * Studio's own custom settings, read by name: Postgres leaves a custom
+   * setting out of `pg_settings`, so the comparison above cannot see them.
+   */
   readonly team: string;
   readonly erasing: string;
   /**
@@ -131,7 +152,10 @@ export const readSessionState = Effect.fn('db.migrate.readSessionState')(
     const rows = yield* client.unsafe<SessionState>(
       `select pg_current_xact_id()::text as xid,
             current_user as current, session_user as session,
-            current_setting('search_path') as "searchPath",
+            (select string_agg(name || chr(9) || coalesce(setting, ''), chr(10) order by name)
+               from pg_settings) as settings,
+            (select string_agg(name || chr(9) || coalesce(reset_val, ''), chr(10) order by name)
+               from pg_settings) as resets,
             coalesce(current_setting('${TEAM_GUC}', true), '') as team,
             coalesce(current_setting('${ERASURE_GUC}', true), '') as erasing,
             (select coalesce(string_agg(
@@ -275,8 +299,20 @@ export const assertSessionState = Effect.fn('db.migrate.assertSessionState')(
         message: `${where} changed row-level security: ${describeChanges(security)}. A backfill that lifts FORCE ROW LEVEL SECURITY around its write must FORCE it again before the file ends.`,
       });
     }
+    const resets = new Map(
+      now.resets.split('\n').map((line) => {
+        const tab = line.lastIndexOf('\t');
+        return [line.slice(0, tab), line.slice(tab + 1)] as const;
+      }),
+    );
     const changed = [
-      ['search_path', baseline.searchPath, now.searchPath],
+      ...changesBetween(baseline.settings, now.settings).map(
+        ({ subject, before, after }) => [
+          subject,
+          before ?? resets.get(subject) ?? '',
+          after ?? '',
+        ],
+      ),
       [TEAM_GUC, baseline.team, now.team],
       [ERASURE_GUC, baseline.erasing, now.erasing],
     ].filter(([, before, after]) => before !== after);
