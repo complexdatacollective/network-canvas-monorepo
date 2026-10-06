@@ -106,7 +106,7 @@ describe('the exclusive-variant containers of a stage document', () => {
     ['skipLogic'],
     ['form'],
     ['behaviours'],
-    ['personAttributes'],
+    ['nodeConfiguration'],
     ['edges'],
   ])('does not claim %s, whose members are not rivals', (key) => {
     expect(isExclusiveVariantContainer([key])).toBe(false);

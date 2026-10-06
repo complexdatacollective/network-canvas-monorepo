@@ -74,7 +74,7 @@ const protocol = {
       id: 'ped',
       type: 'FamilyPedigree',
       subject: { entity: 'node', type: 'family-member' },
-      relationship: { type: 'partnership' },
+      edgeConfiguration: { type: 'partnership' },
     },
   ],
 };

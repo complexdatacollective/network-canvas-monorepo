@@ -5,7 +5,7 @@ import { defineStageEditor } from '../defineStageEditor.tsx';
 import {
   completeness,
   pedigreePrompt,
-  personAttributes,
+  nodeConfiguration,
   personFormFields,
   relationships,
 } from './sections/familyPedigreeSections.tsx';
@@ -22,7 +22,7 @@ import {
  */
 export const familyPedigreeStageEditor = defineStageEditor('FamilyPedigree', [
   subjectPicker({ entity: 'node' }),
-  personAttributes(),
+  nodeConfiguration(),
   relationships(),
   completeness(),
   pedigreePrompt(),

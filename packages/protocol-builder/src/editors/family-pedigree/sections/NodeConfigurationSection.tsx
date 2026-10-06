@@ -5,7 +5,7 @@ import SlotVariableField from '../../../fields/SlotVariableField.tsx';
 import BuilderSection from '../../../sections/BuilderSection.tsx';
 import { familyPedigreeMessages as messages } from './pedigreeMessages.ts';
 import {
-  PERSON_ATTRIBUTE_PATHS,
+  NODE_CONFIGURATION_PATHS,
   usePedigreeDraftBindings,
 } from './pedigreeSlots.ts';
 
@@ -21,7 +21,7 @@ import {
  * Gender identity and sex assigned at birth use value sets the interface owns;
  * the participant marker is exclusive to its slot.
  */
-export default function PersonAttributesSection() {
+export default function NodeConfigurationSection() {
   const intl = useAppIntl();
   const {
     personSubject,
@@ -33,18 +33,18 @@ export default function PersonAttributesSection() {
 
   return (
     <BuilderSection
-      title={intl.formatMessage(messages.personAttributesTitle)}
+      title={intl.formatMessage(messages.nodeConfigurationTitle)}
       description={intl.formatMessage(
         waiting
-          ? messages.personAttributesWaiting
-          : messages.personAttributesDescription,
+          ? messages.nodeConfigurationWaiting
+          : messages.nodeConfigurationDescription,
       )}
       disabled={waiting}
     >
       {!waiting && (
         <>
           <SlotVariableField
-            name={PERSON_ATTRIBUTE_PATHS.nameVariable}
+            name={NODE_CONFIGURATION_PATHS.nameVariable}
             label={messages.nameLabel}
             hint={messages.nameHint}
             createLabel={messages.nameCreateLabel}
@@ -56,7 +56,7 @@ export default function PersonAttributesSection() {
             offerValidation
           />
           <SlotVariableField
-            name={PERSON_ATTRIBUTE_PATHS.genderIdentityVariable}
+            name={NODE_CONFIGURATION_PATHS.genderIdentityVariable}
             label={messages.genderIdentityLabel}
             hint={messages.genderIdentityHint}
             createLabel={messages.genderIdentityCreateLabel}
@@ -68,7 +68,7 @@ export default function PersonAttributesSection() {
             draftSlotMap={draftSlotMap}
           />
           <SlotVariableField
-            name={PERSON_ATTRIBUTE_PATHS.sexAssignedAtBirthVariable}
+            name={NODE_CONFIGURATION_PATHS.sexAssignedAtBirthVariable}
             label={messages.sexAssignedAtBirthLabel}
             hint={messages.sexAssignedAtBirthHint}
             createLabel={messages.sexAssignedAtBirthCreateLabel}
@@ -80,7 +80,7 @@ export default function PersonAttributesSection() {
             draftSlotMap={draftSlotMap}
           />
           <SlotVariableField
-            name={PERSON_ATTRIBUTE_PATHS.egoVariable}
+            name={NODE_CONFIGURATION_PATHS.egoVariable}
             label={messages.egoLabel}
             hint={messages.egoHint}
             createLabel={messages.egoCreateLabel}

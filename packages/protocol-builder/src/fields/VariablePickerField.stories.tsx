@@ -59,7 +59,7 @@ function AttributePicker({
   const options = useAttributeOptions(PERSON);
   return (
     <Field<typeof VariablePickerField>
-      name="personAttributes.egoVariable"
+      name="nodeConfiguration.egoVariable"
       component={VariablePickerField}
       label={FIELD_LABEL}
       hint="Every answer to this question is stored under this attribute."
@@ -137,14 +137,14 @@ export const NothingChosen: Story = {
     seedEdit: (host) => {
       const stage = sectionId({ kind: 'stage', stageId: 'family-pedigree-1' });
       const { document: stageDocument } = host.store.read(stage);
-      const personAttributes =
-        typeof stageDocument.personAttributes === 'object' &&
-        stageDocument.personAttributes !== null
-          ? stageDocument.personAttributes
+      const nodeConfiguration =
+        typeof stageDocument.nodeConfiguration === 'object' &&
+        stageDocument.nodeConfiguration !== null
+          ? stageDocument.nodeConfiguration
           : {};
       host.store.applyAsCollaborator(stage, {
         ...stageDocument,
-        personAttributes: { ...personAttributes, egoVariable: undefined },
+        nodeConfiguration: { ...nodeConfiguration, egoVariable: undefined },
       });
     },
   },
@@ -187,14 +187,14 @@ export const Unanswered: Story = {
     seedEdit: (host) => {
       const stage = sectionId({ kind: 'stage', stageId: 'family-pedigree-1' });
       const { document: stageDocument } = host.store.read(stage);
-      const personAttributes =
-        typeof stageDocument.personAttributes === 'object' &&
-        stageDocument.personAttributes !== null
-          ? stageDocument.personAttributes
+      const nodeConfiguration =
+        typeof stageDocument.nodeConfiguration === 'object' &&
+        stageDocument.nodeConfiguration !== null
+          ? stageDocument.nodeConfiguration
           : {};
       host.store.applyAsCollaborator(stage, {
         ...stageDocument,
-        personAttributes: { ...personAttributes, egoVariable: undefined },
+        nodeConfiguration: { ...nodeConfiguration, egoVariable: undefined },
       });
     },
   },
@@ -310,14 +310,14 @@ export const AChoiceThatIsRuledOut: Story = {
     seedEdit: (host) => {
       const stage = sectionId({ kind: 'stage', stageId: 'family-pedigree-1' });
       const { document: stageDocument } = host.store.read(stage);
-      const personAttributes =
-        typeof stageDocument.personAttributes === 'object' &&
-        stageDocument.personAttributes !== null
-          ? stageDocument.personAttributes
+      const nodeConfiguration =
+        typeof stageDocument.nodeConfiguration === 'object' &&
+        stageDocument.nodeConfiguration !== null
+          ? stageDocument.nodeConfiguration
           : {};
       host.store.applyAsCollaborator(stage, {
         ...stageDocument,
-        personAttributes: { ...personAttributes, egoVariable: 'layout' },
+        nodeConfiguration: { ...nodeConfiguration, egoVariable: 'layout' },
       });
     },
   },
@@ -343,15 +343,15 @@ export const AChoiceNothingOffers: Story = {
     seedEdit: (host) => {
       const stage = sectionId({ kind: 'stage', stageId: 'family-pedigree-1' });
       const { document: stageDocument } = host.store.read(stage);
-      const personAttributes =
-        typeof stageDocument.personAttributes === 'object' &&
-        stageDocument.personAttributes !== null
-          ? stageDocument.personAttributes
+      const nodeConfiguration =
+        typeof stageDocument.nodeConfiguration === 'object' &&
+        stageDocument.nodeConfiguration !== null
+          ? stageDocument.nodeConfiguration
           : {};
       host.store.applyAsCollaborator(stage, {
         ...stageDocument,
-        personAttributes: {
-          ...personAttributes,
+        nodeConfiguration: {
+          ...nodeConfiguration,
           egoVariable: 'deleted_attribute',
         },
       });

@@ -18,13 +18,13 @@ const pedigreeStage = (form?: { variable: string; prompt: string }[]) => ({
   type: 'FamilyPedigree' as const,
   subject: { entity: 'node' as const, type: 'person' },
   prompt: 'Build your family',
-  personAttributes: {
+  nodeConfiguration: {
     nameVariable: 'name',
     genderIdentityVariable: 'gender',
     sexAssignedAtBirthVariable: 'sab',
     egoVariable: 'isEgo',
   },
-  relationship: {
+  edgeConfiguration: {
     type: 'knows',
     kindVariable: 'kind',
     gestationalCarrierVariable: 'carrier',

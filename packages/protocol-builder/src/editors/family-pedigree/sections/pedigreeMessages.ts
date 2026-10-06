@@ -9,20 +9,20 @@ import { defineMessages } from '@codaco/app-i18n/messages';
  * configuring it.
  */
 export const familyPedigreeMessages = defineMessages({
-  personAttributesTitle: {
+  nodeConfigurationTitle: {
     id: 'protocolBuilder.pedigree.personAttributesTitle',
     defaultMessage: 'Person attributes',
     description:
       'Heading of the section where a researcher chooses the codebook attributes a Family Pedigree records about every family member the participant adds.',
   },
-  personAttributesDescription: {
+  nodeConfigurationDescription: {
     id: 'protocolBuilder.pedigree.personAttributesDescription',
     defaultMessage:
       'Choose where the interface records what it asks about every family member. Pick an existing attribute, or create a new one from the picker.',
     description:
       'Description of the person attributes section. An attribute is a codebook variable.',
   },
-  personAttributesWaiting: {
+  nodeConfigurationWaiting: {
     id: 'protocolBuilder.pedigree.personAttributesWaiting',
     defaultMessage: 'Choose the node type before choosing its attributes.',
     description:

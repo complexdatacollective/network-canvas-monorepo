@@ -301,8 +301,8 @@ export type StageEntry = {
   edgeType?: { entity: 'edge'; type: string };
   // FamilyPedigree
   prompt?: string;
-  personAttributes?: FamilyPedigreePersonAttributesEntry;
-  relationship?: FamilyPedigreeRelationshipEntry;
+  nodeConfiguration?: FamilyPedigreeNodeConfigurationEntry;
+  edgeConfiguration?: FamilyPedigreeEdgeConfigurationEntry;
   completeness?: FamilyPedigreeCompletenessEntry;
   framing?: FramingSetting;
   nominationPrompts?: FamilyPedigreeNominationPromptEntry[];
@@ -316,7 +316,7 @@ export type StageEntry = {
 };
 
 /** The person-node variable ids a FamilyPedigree stage binds. */
-export type FamilyPedigreePersonAttributesEntry = {
+export type FamilyPedigreeNodeConfigurationEntry = {
   nameVariable: string;
   genderIdentityVariable: string;
   sexAssignedAtBirthVariable: string;
@@ -340,7 +340,7 @@ export type FamilyPedigreeNominationPromptEntry = {
 };
 
 /** The family edge type and edge variable ids a FamilyPedigree stage binds. */
-export type FamilyPedigreeRelationshipEntry = {
+export type FamilyPedigreeEdgeConfigurationEntry = {
   type: string;
   kindVariable: string;
   gestationalCarrierVariable: string;

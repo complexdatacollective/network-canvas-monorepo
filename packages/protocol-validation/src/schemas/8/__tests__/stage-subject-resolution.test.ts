@@ -20,13 +20,13 @@ const familyPedigree = (overrides: Stage = {}): Stage => ({
   type: 'FamilyPedigree',
   subject: { entity: 'node', type: 'family_member' },
   prompt: 'Build your family',
-  personAttributes: {
+  nodeConfiguration: {
     nameVariable: 'fmName',
     genderIdentityVariable: 'genderIdentity',
     sexAssignedAtBirthVariable: 'sexAssignedAtBirth',
     egoVariable: 'isEgo',
   },
-  relationship: {
+  edgeConfiguration: {
     type: 'family_edge',
     kindVariable: 'relationshipKind',
     gestationalCarrierVariable: 'isGestationalCarrier',
@@ -112,7 +112,7 @@ describe('stage subjects resolve during collection', () => {
   it('existence-checks a FamilyPedigree person attribute', () => {
     const protocol = protocolWith([
       familyPedigree({
-        personAttributes: {
+        nodeConfiguration: {
           nameVariable: 'notInCodebook',
           genderIdentityVariable: 'genderIdentity',
           sexAssignedAtBirthVariable: 'sexAssignedAtBirth',
@@ -124,7 +124,7 @@ describe('stage subjects resolve during collection', () => {
       issueMessagesAt(protocol, [
         'stages',
         0,
-        'personAttributes',
+        'nodeConfiguration',
         'nameVariable',
       ]),
     ).toContain('The attribute "notInCodebook" does not exist in the codebook');
@@ -157,10 +157,12 @@ describe('stage subjects resolve during collection', () => {
       entity: 'node',
       type: 'family_member',
     });
-    expect(subjectAt(['stages', 0, 'personAttributes', 'egoVariable'])).toEqual(
-      { entity: 'node', type: 'family_member' },
-    );
-    expect(subjectAt(['stages', 0, 'relationship', 'kindVariable'])).toEqual({
+    expect(
+      subjectAt(['stages', 0, 'nodeConfiguration', 'egoVariable']),
+    ).toEqual({ entity: 'node', type: 'family_member' });
+    expect(
+      subjectAt(['stages', 0, 'edgeConfiguration', 'kindVariable']),
+    ).toEqual({
       entity: 'edge',
       type: 'family_edge',
     });

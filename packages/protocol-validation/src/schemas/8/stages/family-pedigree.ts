@@ -20,20 +20,21 @@ import { baseStageSchema } from './base.ts';
  * themselves from the exclusivity check.
  */
 export const FAMILY_PEDIGREE_SLOTS = {
-  egoVariable: 'familyPedigree.person.egoVariable',
-  relationshipKindVariable: 'familyPedigree.relationship.kindVariable',
+  egoVariable: 'familyPedigree.nodeConfiguration.egoVariable',
+  relationshipKindVariable: 'familyPedigree.edgeConfiguration.kindVariable',
   gestationalCarrierVariable:
-    'familyPedigree.relationship.gestationalCarrierVariable',
-  currentPartnerVariable: 'familyPedigree.relationship.currentPartnerVariable',
+    'familyPedigree.edgeConfiguration.gestationalCarrierVariable',
+  currentPartnerVariable:
+    'familyPedigree.edgeConfiguration.currentPartnerVariable',
   relativesNotRecordedVariable:
     'familyPedigree.completeness.relativesNotRecordedVariable',
 } as const;
 
 /**
- * The attributes on the person node type that the interface collects for
+ * Binds the interface to the person node type: the attributes it collects for
  * every family member, in the side panel, before any researcher-defined field.
  */
-export const PersonAttributesSchema = z.strictObject({
+export const NodeConfigurationSchema = z.strictObject({
   // Text attribute holding the person's name, shown beneath their symbol.
   nameVariable: entityAttributeReference({
     subject: 'stageSubject',
@@ -69,10 +70,10 @@ export const PersonAttributesSchema = z.strictObject({
 });
 
 /**
- * The edge type every family relationship is stored as, and the attributes the
- * interface writes onto it.
+ * Binds the interface to the edge type every family relationship is stored as,
+ * and the attributes the interface writes onto it.
  */
-export const RelationshipConfigSchema = z.strictObject({
+export const EdgeConfigurationSchema = z.strictObject({
   type: entityTypeReference({ entity: 'edge' }),
   // Categorical attribute holding the relationship's kind: partner, or the
   // kind of parent the edge's source is to its target.
@@ -171,15 +172,15 @@ const NominationPromptSchema = z.strictObject({
  *
  * The canvas opens on the participant. Selecting anyone offers to add their
  * parent, sibling, partner or child; each new person is described in a side
- * panel that collects the interface's own person attributes, the attributes
- * the new relationship needs, and then the researcher's `form` fields.
+ * panel that collects the interface's own node configuration attributes, the
+ * attributes the new relationship needs, and then the researcher's `form` fields.
  */
 export const familyPedigreeStage = baseStageSchema.extend({
   type: z.literal('FamilyPedigree'),
   subject: NodeStageSubjectSchema,
   prompt: z.string().min(1),
-  personAttributes: PersonAttributesSchema,
-  relationship: RelationshipConfigSchema,
+  nodeConfiguration: NodeConfigurationSchema,
+  edgeConfiguration: EdgeConfigurationSchema,
   // Which words describe family members, or `participantPreference` to let
   // the participant choose. Absent: `gendered`.
   framing: z.enum(FRAMING_SETTINGS).optional(),
@@ -196,11 +197,11 @@ export const familyPedigreeStage = baseStageSchema.extend({
 });
 
 export type FamilyPedigreeStageDefinition = z.infer<typeof familyPedigreeStage>;
-export type FamilyPedigreePersonAttributes = z.infer<
-  typeof PersonAttributesSchema
+export type FamilyPedigreeNodeConfiguration = z.infer<
+  typeof NodeConfigurationSchema
 >;
-export type FamilyPedigreeRelationshipConfig = z.infer<
-  typeof RelationshipConfigSchema
+export type FamilyPedigreeEdgeConfiguration = z.infer<
+  typeof EdgeConfigurationSchema
 >;
 export type FamilyPedigreeCompleteness = z.infer<typeof CompletenessSchema>;
 export type FamilyPedigreeNominationPrompt = z.infer<

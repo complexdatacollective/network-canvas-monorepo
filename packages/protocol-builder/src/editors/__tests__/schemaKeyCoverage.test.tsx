@@ -50,13 +50,13 @@ const FAMILY_PEDIGREE_FIELDS: SectionDoc = {
   skipLogic: SKIP_LOGIC,
   subject: { entity: 'node', type: 'family_member' },
   prompt: 'Add the members of your family.',
-  personAttributes: {
+  nodeConfiguration: {
     nameVariable: 'fm_name',
     genderIdentityVariable: 'genderIdentity',
     sexAssignedAtBirthVariable: 'sexAssignedAtBirth',
     egoVariable: 'is_ego',
   },
-  relationship: {
+  edgeConfiguration: {
     type: 'family_edge',
     kindVariable: 'relationshipKind',
     gestationalCarrierVariable: 'isGestationalCarrier',
@@ -130,7 +130,7 @@ describe.each(MAXIMAL)(
      * mounts — `unowned` is empty, so a key no section renders fails rather
      * than surviving untouched — and the save gives back exactly what it was
      * given, which is where a nested key is caught: a slot inside
-     * `personAttributes` or `relationship`. Those are inside a value a
+     * `nodeConfiguration` or `edgeConfiguration`. Those are inside a value a
      * section already owns, so only the comparison notices when one stops
      * being rendered.
      */

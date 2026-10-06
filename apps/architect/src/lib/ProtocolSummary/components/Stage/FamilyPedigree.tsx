@@ -139,14 +139,14 @@ const SCOPE_MESSAGES: Record<PedigreeCompletenessScope, MessageDescriptor> = {
   thirdDegree: messages.scopeThirdDegree,
 };
 
-type PersonAttributes = {
+type NodeConfiguration = {
   nameVariable?: string;
   genderIdentityVariable?: string;
   sexAssignedAtBirthVariable?: string;
   egoVariable?: string;
 };
 
-type RelationshipConfig = {
+type EdgeConfiguration = {
   type?: string;
   kindVariable?: string;
   gestationalCarrierVariable?: string;
@@ -161,8 +161,8 @@ type Completeness = {
 
 type FamilyPedigreeProps = {
   prompt: string | null;
-  personAttributes: PersonAttributes | null;
-  relationship: RelationshipConfig | null;
+  nodeConfiguration: NodeConfiguration | null;
+  edgeConfiguration: EdgeConfiguration | null;
   completeness: Completeness | null;
 };
 
@@ -181,15 +181,15 @@ const variableRow = (
  */
 const FamilyPedigree = ({
   prompt,
-  personAttributes,
-  relationship,
+  nodeConfiguration,
+  edgeConfiguration,
   completeness,
 }: FamilyPedigreeProps) => {
   const intl = useAppIntl();
   if (
     prompt === null &&
-    personAttributes === null &&
-    relationship === null &&
+    nodeConfiguration === null &&
+    edgeConfiguration === null &&
     completeness === null
   ) {
     return null;
@@ -207,24 +207,24 @@ const FamilyPedigree = ({
     ...variableRow(
       intl.formatMessage(messages.name),
       'name',
-      personAttributes?.nameVariable,
+      nodeConfiguration?.nameVariable,
     ),
     ...variableRow(
       intl.formatMessage(messages.genderIdentity),
       'gender-identity',
-      personAttributes?.genderIdentityVariable,
+      nodeConfiguration?.genderIdentityVariable,
     ),
     ...variableRow(
       intl.formatMessage(messages.sexAssignedAtBirth),
       'sex-assigned-at-birth',
-      personAttributes?.sexAssignedAtBirthVariable,
+      nodeConfiguration?.sexAssignedAtBirthVariable,
     ),
     ...variableRow(
       intl.formatMessage(messages.participantMarker),
       'participant-marker',
-      personAttributes?.egoVariable,
+      nodeConfiguration?.egoVariable,
     ),
-    ...(relationship?.type
+    ...(edgeConfiguration?.type
       ? ([
           [
             intl.formatMessage(messages.relationshipEdgeType),
@@ -232,7 +232,7 @@ const FamilyPedigree = ({
               key="relationship-type"
               small
               iconSize="tiny"
-              type={relationship.type}
+              type={edgeConfiguration.type}
               entity="edge"
               link
             />,
@@ -242,17 +242,17 @@ const FamilyPedigree = ({
     ...variableRow(
       intl.formatMessage(messages.relationshipKind),
       'relationship-kind',
-      relationship?.kindVariable,
+      edgeConfiguration?.kindVariable,
     ),
     ...variableRow(
       intl.formatMessage(messages.gestationalCarrier),
       'gestational-carrier',
-      relationship?.gestationalCarrierVariable,
+      edgeConfiguration?.gestationalCarrierVariable,
     ),
     ...variableRow(
       intl.formatMessage(messages.currentPartner),
       'current-partner',
-      relationship?.currentPartnerVariable,
+      edgeConfiguration?.currentPartnerVariable,
     ),
     ...(completeness?.scope
       ? ([

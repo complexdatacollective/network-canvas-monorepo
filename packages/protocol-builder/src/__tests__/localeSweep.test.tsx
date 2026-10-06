@@ -1,8 +1,8 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import NodeConfigurationSection from '../editors/family-pedigree/sections/NodeConfigurationSection.tsx';
 import PedigreePromptSection from '../editors/family-pedigree/sections/PedigreePromptSection.tsx';
-import PersonAttributesSection from '../editors/family-pedigree/sections/PersonAttributesSection.tsx';
 import PersonFormFieldsSection from '../editors/family-pedigree/sections/PersonFormFieldsSection.tsx';
 import RelationshipsSection from '../editors/family-pedigree/sections/RelationshipsSection.tsx';
 import {
@@ -371,7 +371,7 @@ describe('the interface families under es, at rest', () => {
       locale: 'es',
       sections: (
         <>
-          <PersonAttributesSection />
+          <NodeConfigurationSection />
           <RelationshipsSection />
           <PedigreePromptSection />
           <PersonFormFieldsSection />

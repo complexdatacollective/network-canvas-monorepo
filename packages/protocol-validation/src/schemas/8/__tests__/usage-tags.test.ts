@@ -108,13 +108,13 @@ describe('attribute-writer usage tags', () => {
           label: 'Family',
           subject: { entity: 'node', type: 'person' },
           prompt: 'Build your family',
-          personAttributes: {
+          nodeConfiguration: {
             nameVariable: 'name',
             genderIdentityVariable: 'gender',
             sexAssignedAtBirthVariable: 'sab',
             egoVariable: 'isEgo',
           },
-          relationship: {
+          edgeConfiguration: {
             type: 'family',
             kindVariable: 'kind',
             gestationalCarrierVariable: 'carrier',

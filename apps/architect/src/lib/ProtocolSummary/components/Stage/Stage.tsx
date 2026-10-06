@@ -193,7 +193,7 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
     type === 'FamilyPedigree' && typeof configuration.prompt === 'string'
       ? configuration.prompt
       : null;
-  const personAttributes = configuration.personAttributes as
+  const nodeConfiguration = configuration.nodeConfiguration as
     | {
         nameVariable?: string;
         genderIdentityVariable?: string;
@@ -201,7 +201,7 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
         egoVariable?: string;
       }
     | undefined;
-  const relationship = configuration.relationship as
+  const edgeConfiguration = configuration.edgeConfiguration as
     | {
         type?: string;
         kindVariable?: string;
@@ -356,8 +356,8 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
       />
       <FamilyPedigree
         prompt={pedigreePrompt}
-        personAttributes={personAttributes ?? null}
-        relationship={relationship ?? null}
+        nodeConfiguration={nodeConfiguration ?? null}
+        edgeConfiguration={edgeConfiguration ?? null}
         completeness={completeness ?? null}
       />
       <ScaffoldingStep scaffoldingStep={scaffoldingStep ?? null} />

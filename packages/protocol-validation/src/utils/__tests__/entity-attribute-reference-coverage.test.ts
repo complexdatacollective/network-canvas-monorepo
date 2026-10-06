@@ -58,10 +58,10 @@ const EXPECTED_TAGGED_FIELD_COUNT = 38;
 // one that no longer exists — fails.
 const EXPECTED_EXCLUSIVE_SLOTS = [
   'familyPedigree.completeness.relativesNotRecordedVariable',
-  'familyPedigree.person.egoVariable',
-  'familyPedigree.relationship.currentPartnerVariable',
-  'familyPedigree.relationship.gestationalCarrierVariable',
-  'familyPedigree.relationship.kindVariable',
+  'familyPedigree.edgeConfiguration.currentPartnerVariable',
+  'familyPedigree.edgeConfiguration.gestationalCarrierVariable',
+  'familyPedigree.edgeConfiguration.kindVariable',
+  'familyPedigree.nodeConfiguration.egoVariable',
 ];
 
 const EXPECTED_OWNED_OPTION_SETS = [

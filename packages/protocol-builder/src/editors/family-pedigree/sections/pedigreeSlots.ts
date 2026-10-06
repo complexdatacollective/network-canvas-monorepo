@@ -8,21 +8,21 @@ import { useStageValue } from '../../../form/stageFormHooks.ts';
 import type { CodebookSubject } from '../../../protocol-context.ts';
 import { useStageSubject } from '../../../sections/useStageSubject.ts';
 
-/** Where the stage keeps each person attribute slot. */
-export const PERSON_ATTRIBUTE_PATHS = Object.freeze({
-  nameVariable: 'personAttributes.nameVariable',
-  genderIdentityVariable: 'personAttributes.genderIdentityVariable',
-  sexAssignedAtBirthVariable: 'personAttributes.sexAssignedAtBirthVariable',
-  egoVariable: 'personAttributes.egoVariable',
+/** Where the stage keeps each node configuration slot. */
+export const NODE_CONFIGURATION_PATHS = Object.freeze({
+  nameVariable: 'nodeConfiguration.nameVariable',
+  genderIdentityVariable: 'nodeConfiguration.genderIdentityVariable',
+  sexAssignedAtBirthVariable: 'nodeConfiguration.sexAssignedAtBirthVariable',
+  egoVariable: 'nodeConfiguration.egoVariable',
 });
 
-export const RELATIONSHIP_TYPE_PATH = 'relationship.type';
+export const EDGE_CONFIGURATION_TYPE_PATH = 'edgeConfiguration.type';
 
-/** Where the stage keeps each relationship attribute slot. */
-export const RELATIONSHIP_ATTRIBUTE_PATHS = Object.freeze({
-  kindVariable: 'relationship.kindVariable',
-  gestationalCarrierVariable: 'relationship.gestationalCarrierVariable',
-  currentPartnerVariable: 'relationship.currentPartnerVariable',
+/** Where the stage keeps each edge configuration slot. */
+export const EDGE_CONFIGURATION_PATHS = Object.freeze({
+  kindVariable: 'edgeConfiguration.kindVariable',
+  gestationalCarrierVariable: 'edgeConfiguration.gestationalCarrierVariable',
+  currentPartnerVariable: 'edgeConfiguration.currentPartnerVariable',
 });
 
 /** Where the stage keeps its completeness requirement, and its one slot. */
@@ -65,24 +65,26 @@ export function usePedigreeDraftBindings(): Readonly<{
   formFieldVariables: readonly string[];
 }> {
   const personSubject = useStageSubject('node') ?? null;
-  const relationshipType = useStageValue(RELATIONSHIP_TYPE_PATH);
-  const name = asVariableId(useStageValue(PERSON_ATTRIBUTE_PATHS.nameVariable));
+  const relationshipType = useStageValue(EDGE_CONFIGURATION_TYPE_PATH);
+  const name = asVariableId(
+    useStageValue(NODE_CONFIGURATION_PATHS.nameVariable),
+  );
   const gender = asVariableId(
-    useStageValue(PERSON_ATTRIBUTE_PATHS.genderIdentityVariable),
+    useStageValue(NODE_CONFIGURATION_PATHS.genderIdentityVariable),
   );
   const sex = asVariableId(
-    useStageValue(PERSON_ATTRIBUTE_PATHS.sexAssignedAtBirthVariable),
+    useStageValue(NODE_CONFIGURATION_PATHS.sexAssignedAtBirthVariable),
   );
-  const ego = asVariableId(useStageValue(PERSON_ATTRIBUTE_PATHS.egoVariable));
+  const ego = asVariableId(useStageValue(NODE_CONFIGURATION_PATHS.egoVariable));
   const relativesNotRecorded = asVariableId(
     useStageValue(RELATIVES_NOT_RECORDED_PATH),
   );
-  const kind = useStageValue(RELATIONSHIP_ATTRIBUTE_PATHS.kindVariable);
+  const kind = useStageValue(EDGE_CONFIGURATION_PATHS.kindVariable);
   const carrier = useStageValue(
-    RELATIONSHIP_ATTRIBUTE_PATHS.gestationalCarrierVariable,
+    EDGE_CONFIGURATION_PATHS.gestationalCarrierVariable,
   );
   const partner = useStageValue(
-    RELATIONSHIP_ATTRIBUTE_PATHS.currentPartnerVariable,
+    EDGE_CONFIGURATION_PATHS.currentPartnerVariable,
   );
   const formRows = useStageValue(PERSON_FORM_FIELDS_PATH);
 

@@ -99,7 +99,7 @@ const STILL_NEEDED: Readonly<Record<string, readonly string[]>> = {
   CategoricalBin: ['prompts', 'subject'],
   DyadCensus: ['introductionPanel', 'prompts', 'subject'],
   EgoForm: ['form', 'introductionPanel'],
-  FamilyPedigree: ['personAttributes', 'relationship', 'subject'],
+  FamilyPedigree: ['edgeConfiguration', 'nodeConfiguration', 'subject'],
   Geospatial: ['mapOptions', 'prompts', 'subject'],
   Information: ['items', 'title'],
   NameGenerator: ['form', 'prompts', 'subject'],

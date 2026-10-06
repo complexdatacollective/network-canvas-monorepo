@@ -10,14 +10,14 @@ import { findExclusiveVariableConflicts } from '../findExclusiveVariableConflict
 
 type Stage = Record<string, unknown>;
 
-const personAttributes = {
+const nodeConfiguration = {
   nameVariable: 'fmName',
   genderIdentityVariable: 'genderIdentity',
   sexAssignedAtBirthVariable: 'sexAssignedAtBirth',
   egoVariable: 'isEgo',
 };
 
-const relationship = {
+const edgeConfiguration = {
   type: 'family_edge',
   kindVariable: 'relationshipKind',
   gestationalCarrierVariable: 'isGestationalCarrier',
@@ -30,8 +30,8 @@ const familyPedigree = (overrides: Stage = {}): Stage => ({
   type: 'FamilyPedigree',
   subject: { entity: 'node', type: 'family_member' },
   prompt: 'Build your family',
-  personAttributes,
-  relationship,
+  nodeConfiguration,
+  edgeConfiguration,
   ...overrides,
 });
 
@@ -94,7 +94,7 @@ describe('findExclusiveVariableConflicts', () => {
 
   // A Sociogram prompt that sets `highlight.variable` without
   // `allowHighlighting` colours nodes by a value it never writes — the same
-  // kind of read as grouping a narrative map by relationship. Rejecting it
+  // kind of read as grouping a narrative map by edgeConfiguration. Rejecting it
   // would forbid showing the participant their own node on a map of the family
   // the pedigree built.
   it('accepts a display-only sociogram highlight on an interface-owned variable', () => {
@@ -161,7 +161,9 @@ describe('findExclusiveVariableConflicts', () => {
     expect(conflicts.map((conflict) => conflict.path)).toEqual([
       ['stages', 0, 'form', 'fields', 0, 'variable'],
     ]);
-    expect(conflicts[0]?.owner.slot).toBe('familyPedigree.person.egoVariable');
+    expect(conflicts[0]?.owner.slot).toBe(
+      'familyPedigree.nodeConfiguration.egoVariable',
+    );
     expect(conflicts[0]?.variableName).toBe('is_ego');
     expect(ProtocolSchemaV8.safeParse(protocol).success).toBe(false);
   });
@@ -178,8 +180,8 @@ describe('findExclusiveVariableConflicts', () => {
   it('reports one variable claimed by two DIFFERENT exclusive slots', () => {
     const protocol = protocolWith([
       familyPedigree({
-        relationship: {
-          ...relationship,
+        edgeConfiguration: {
+          ...edgeConfiguration,
           currentPartnerVariable: 'isGestationalCarrier',
         },
       }),
@@ -189,7 +191,7 @@ describe('findExclusiveVariableConflicts', () => {
     expect(conflicts[0]?.path).toEqual([
       'stages',
       0,
-      'relationship',
+      'edgeConfiguration',
       'currentPartnerVariable',
     ]);
   });

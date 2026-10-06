@@ -56,7 +56,7 @@ describe('a required value the stage no longer holds', () => {
       sections: (
         <BuilderSection title="Person attributes">
           <Field
-            name="personAttributes.egoVariable"
+            name="nodeConfiguration.egoVariable"
             label="Ego variable"
             component={InputField}
             required={REQUIRED}

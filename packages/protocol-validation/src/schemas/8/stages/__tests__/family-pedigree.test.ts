@@ -18,13 +18,13 @@ const base = {
   type: 'FamilyPedigree' as const,
   subject: { entity: 'node' as const, type: 'person' },
   prompt: 'Draw your family',
-  personAttributes: {
+  nodeConfiguration: {
     nameVariable: 'name',
     genderIdentityVariable: 'gender',
     sexAssignedAtBirthVariable: 'sab',
     egoVariable: 'isEgo',
   },
-  relationship: {
+  edgeConfiguration: {
     type: 'family',
     kindVariable: 'kind',
     gestationalCarrierVariable: 'carrier',
@@ -108,23 +108,23 @@ describe('familyPedigreeStage', () => {
     ).toBe(true);
   });
 
-  it('requires personAttributes', () => {
-    const { personAttributes: _omitted, ...withoutPersonAttributes } = base;
-    expect(familyPedigreeStage.safeParse(withoutPersonAttributes).success).toBe(
-      false,
-    );
+  it('requires nodeConfiguration', () => {
+    const { nodeConfiguration: _omitted, ...withoutNodeConfiguration } = base;
+    expect(
+      familyPedigreeStage.safeParse(withoutNodeConfiguration).success,
+    ).toBe(false);
   });
 
   it('requires every person attribute', () => {
-    const { egoVariable: _omitted, ...incomplete } = base.personAttributes;
+    const { egoVariable: _omitted, ...incomplete } = base.nodeConfiguration;
     expect(
-      familyPedigreeStage.safeParse({ ...base, personAttributes: incomplete })
+      familyPedigreeStage.safeParse({ ...base, nodeConfiguration: incomplete })
         .success,
     ).toBe(false);
   });
 
   it('requires a relationship configuration', () => {
-    const { relationship: _omitted, ...withoutRelationship } = base;
+    const { edgeConfiguration: _omitted, ...withoutRelationship } = base;
     expect(familyPedigreeStage.safeParse(withoutRelationship).success).toBe(
       false,
     );

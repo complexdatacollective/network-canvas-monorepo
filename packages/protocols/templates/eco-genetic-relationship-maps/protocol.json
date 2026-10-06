@@ -466,13 +466,13 @@
         "type": "person"
       },
       "prompt": "Let's map out your family. Who is in it?",
-      "personAttributes": {
+      "nodeConfiguration": {
         "nameVariable": "name",
         "genderIdentityVariable": "genderIdentity",
         "sexAssignedAtBirthVariable": "sexAssignedAtBirth",
         "egoVariable": "is_ego"
       },
-      "relationship": {
+      "edgeConfiguration": {
         "type": "family_relationship",
         "kindVariable": "relationshipKind",
         "gestationalCarrierVariable": "isGestationalCarrier",

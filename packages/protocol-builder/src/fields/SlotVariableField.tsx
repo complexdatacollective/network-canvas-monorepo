@@ -40,7 +40,7 @@ const NO_VARIABLES: Readonly<Variables> = Object.freeze({});
 const NO_CLAIMS: ExclusiveVariableSlotMap = Object.freeze({});
 
 export type SlotVariableFieldProps = Readonly<{
-  /** The slot's path in the stage document, e.g. `personAttributes.egoVariable`. */
+  /** The slot's path in the stage document, e.g. `nodeConfiguration.egoVariable`. */
   name: string;
   /**
    * What this slot is called, and what it is for. Descriptors, because the

@@ -31,7 +31,7 @@ const BIN_STAGE_ID = 'bin-stage';
 const SUBJECT = { entity: 'node', type: 'person' } as const;
 const FAMILY_SUBJECT = { entity: 'node', type: 'family-member' } as const;
 const FAMILY_STAGE_ID = 'family-stage';
-const EGO_SLOT = 'familyPedigree.person.egoVariable';
+const EGO_SLOT = 'familyPedigree.nodeConfiguration.egoVariable';
 
 const sections = (): Record<string, SectionDoc> => ({
   [sectionId({ kind: 'codebookNode', typeId: 'person' })]: {
@@ -78,13 +78,13 @@ const familySections = (): Record<string, SectionDoc> => ({
     label: 'Family Pedigree',
     subject: FAMILY_SUBJECT,
     prompt: 'Build your family',
-    personAttributes: {
+    nodeConfiguration: {
       nameVariable: 'name',
       genderIdentityVariable: 'genderIdentity',
       sexAssignedAtBirthVariable: 'sexAssignedAtBirth',
       egoVariable: 'isEgo',
     },
-    relationship: {
+    edgeConfiguration: {
       type: 'family-edge',
       kindVariable: 'relationshipKind',
       gestationalCarrierVariable: 'isGestationalCarrier',

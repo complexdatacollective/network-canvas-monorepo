@@ -17,14 +17,14 @@ import BuilderSection from '../../../sections/BuilderSection.tsx';
 import { useOnResearcherChange } from '../../../sections/researcherChange.ts';
 import { familyPedigreeMessages as messages } from './pedigreeMessages.ts';
 import {
-  RELATIONSHIP_ATTRIBUTE_PATHS,
-  RELATIONSHIP_TYPE_PATH,
+  EDGE_CONFIGURATION_PATHS,
+  EDGE_CONFIGURATION_TYPE_PATH,
   usePedigreeDraftBindings,
 } from './pedigreeSlots.ts';
 
 /** Every slot naming an attribute of the edge type, lost when it changes. */
 const EDGE_TYPE_DEPENDENT_PATHS: readonly string[] = Object.freeze(
-  Object.values(RELATIONSHIP_ATTRIBUTE_PATHS),
+  Object.values(EDGE_CONFIGURATION_PATHS),
 );
 
 /**
@@ -39,9 +39,9 @@ function useEdgeTypeChange(): () => EntityTypeChangeConfirmation | undefined {
   const hasAnyValue = useAskStageHasAnyValue();
   const discardStageValues = useDiscardStageValues();
 
-  useOnResearcherChange(RELATIONSHIP_TYPE_PATH, (value) => {
+  useOnResearcherChange(EDGE_CONFIGURATION_TYPE_PATH, (value) => {
     discardStageValues(EDGE_TYPE_DEPENDENT_PATHS, {
-      path: RELATIONSHIP_TYPE_PATH,
+      path: EDGE_CONFIGURATION_TYPE_PATH,
       value,
     });
   });
@@ -76,7 +76,7 @@ export default function RelationshipsSection() {
       description={intl.formatMessage(messages.relationshipsDescription)}
     >
       <Field<typeof EntityTypePickerField>
-        name={RELATIONSHIP_TYPE_PATH}
+        name={EDGE_CONFIGURATION_TYPE_PATH}
         component={EntityTypePickerField}
         entityType="edge"
         confirmChange={confirmTypeChange}
@@ -87,7 +87,7 @@ export default function RelationshipsSection() {
       {relationshipSubject !== null && (
         <>
           <SlotVariableField
-            name={RELATIONSHIP_ATTRIBUTE_PATHS.kindVariable}
+            name={EDGE_CONFIGURATION_PATHS.kindVariable}
             label={messages.kindLabel}
             hint={messages.kindHint}
             createLabel={messages.kindCreateLabel}
@@ -99,7 +99,7 @@ export default function RelationshipsSection() {
             draftSlotMap={draftSlotMap}
           />
           <SlotVariableField
-            name={RELATIONSHIP_ATTRIBUTE_PATHS.gestationalCarrierVariable}
+            name={EDGE_CONFIGURATION_PATHS.gestationalCarrierVariable}
             label={messages.gestationalCarrierLabel}
             hint={messages.gestationalCarrierHint}
             createLabel={messages.gestationalCarrierCreateLabel}
@@ -110,7 +110,7 @@ export default function RelationshipsSection() {
             draftSlotMap={draftSlotMap}
           />
           <SlotVariableField
-            name={RELATIONSHIP_ATTRIBUTE_PATHS.currentPartnerVariable}
+            name={EDGE_CONFIGURATION_PATHS.currentPartnerVariable}
             label={messages.currentPartnerLabel}
             hint={messages.currentPartnerHint}
             createLabel={messages.currentPartnerCreateLabel}

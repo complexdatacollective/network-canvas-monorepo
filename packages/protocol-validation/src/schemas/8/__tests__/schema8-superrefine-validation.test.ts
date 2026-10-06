@@ -2681,13 +2681,13 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
           label: 'Family Pedigree',
           subject: { entity: 'node' as const, type: 'person' },
           prompt: 'Build your family',
-          personAttributes: {
+          nodeConfiguration: {
             nameVariable: 'name',
             genderIdentityVariable: 'gender',
             sexAssignedAtBirthVariable: 'sab',
             egoVariable: 'isEgo',
           },
-          relationship: {
+          edgeConfiguration: {
             type: 'family',
             kindVariable: 'kind',
             gestationalCarrierVariable: 'carrier',
@@ -2730,7 +2730,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         expect(issue?.path).toEqual([
           'stages',
           0,
-          'personAttributes',
+          'nodeConfiguration',
           'genderIdentityVariable',
         ]);
       }
@@ -2775,7 +2775,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         expect(issue?.path).toEqual([
           'stages',
           0,
-          'personAttributes',
+          'nodeConfiguration',
           'sexAssignedAtBirthVariable',
         ]);
       }
@@ -2802,7 +2802,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         expect(issue?.path).toEqual([
           'stages',
           0,
-          'relationship',
+          'edgeConfiguration',
           'kindVariable',
         ]);
       }

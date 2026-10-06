@@ -142,13 +142,13 @@ const familyPedigreeProtocol = () => ({
       label: 'Family',
       subject: { entity: 'node', type: 'person' },
       prompt: 'Build your family',
-      personAttributes: {
+      nodeConfiguration: {
         nameVariable: 'label',
         genderIdentityVariable: 'genderIdentity',
         sexAssignedAtBirthVariable: 'sexAssignedAtBirth',
         egoVariable: 'isEgo',
       },
-      relationship: {
+      edgeConfiguration: {
         type: 'family',
         kindVariable: 'relationshipKind',
         gestationalCarrierVariable: 'isGestationalCarrier',

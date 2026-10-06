@@ -62,10 +62,10 @@ const SECTION_LIST_EDITORS: SectionListEditorCase[] = [
       'Interviewer guidance',
     ],
     ownedKeys: [
+      'edgeConfiguration',
       'label',
-      'personAttributes',
+      'nodeConfiguration',
       'prompt',
-      'relationship',
       'subject',
     ],
   },

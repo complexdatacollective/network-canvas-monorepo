@@ -37,13 +37,13 @@ const familyPedigreeStage = (formVariable: string) => ({
   label: 'Family Pedigree',
   subject: { entity: 'node', type: 'person' },
   prompt: 'Who is related to you?',
-  personAttributes: {
+  nodeConfiguration: {
     nameVariable: 'pedigreeName',
     genderIdentityVariable: 'pedigreeGender',
     sexAssignedAtBirthVariable: 'pedigreeSab',
     egoVariable: 'pedigreeEgo',
   },
-  relationship: {
+  edgeConfiguration: {
     type: 'knows',
     kindVariable: 'pedigreeKind',
     gestationalCarrierVariable: 'pedigreeGestCarrier',

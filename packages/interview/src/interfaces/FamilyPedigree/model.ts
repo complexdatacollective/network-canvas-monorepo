@@ -39,20 +39,21 @@ export type PedigreeConfig = {
 export function pedigreeConfigFromStage(
   stage: Pick<
     FamilyPedigreeStageDefinition,
-    'subject' | 'personAttributes' | 'relationship' | 'completeness'
+    'subject' | 'nodeConfiguration' | 'edgeConfiguration' | 'completeness'
   >,
 ): PedigreeConfig {
   return {
     personType: stage.subject.type,
-    nameVariable: stage.personAttributes.nameVariable,
-    genderIdentityVariable: stage.personAttributes.genderIdentityVariable,
+    nameVariable: stage.nodeConfiguration.nameVariable,
+    genderIdentityVariable: stage.nodeConfiguration.genderIdentityVariable,
     sexAssignedAtBirthVariable:
-      stage.personAttributes.sexAssignedAtBirthVariable,
-    egoVariable: stage.personAttributes.egoVariable,
-    relationshipType: stage.relationship.type,
-    kindVariable: stage.relationship.kindVariable,
-    gestationalCarrierVariable: stage.relationship.gestationalCarrierVariable,
-    currentPartnerVariable: stage.relationship.currentPartnerVariable,
+      stage.nodeConfiguration.sexAssignedAtBirthVariable,
+    egoVariable: stage.nodeConfiguration.egoVariable,
+    relationshipType: stage.edgeConfiguration.type,
+    kindVariable: stage.edgeConfiguration.kindVariable,
+    gestationalCarrierVariable:
+      stage.edgeConfiguration.gestationalCarrierVariable,
+    currentPartnerVariable: stage.edgeConfiguration.currentPartnerVariable,
     relativesNotRecordedVariable:
       stage.completeness?.relativesNotRecordedVariable,
   };

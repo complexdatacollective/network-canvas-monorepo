@@ -910,13 +910,13 @@ describe('SyntheticInterview', () => {
         type: stage.personType,
       });
       expect(typeof config.prompt).toBe('string');
-      expect(config.personAttributes).toEqual({
+      expect(config.nodeConfiguration).toEqual({
         nameVariable: stage.name,
         genderIdentityVariable: stage.genderIdentity,
         sexAssignedAtBirthVariable: stage.sexAssignedAtBirth,
         egoVariable: stage.ego,
       });
-      expect(config.relationship).toEqual({
+      expect(config.edgeConfiguration).toEqual({
         type: stage.edgeType,
         kindVariable: stage.kind,
         gestationalCarrierVariable: stage.gestationalCarrier,

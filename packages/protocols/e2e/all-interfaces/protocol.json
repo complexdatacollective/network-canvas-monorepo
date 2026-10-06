@@ -610,13 +610,13 @@
         "type": "family_member"
       },
       "prompt": "Who is in your family?",
-      "personAttributes": {
+      "nodeConfiguration": {
         "nameVariable": "fm_name",
         "genderIdentityVariable": "genderIdentity",
         "sexAssignedAtBirthVariable": "sexAssignedAtBirth",
         "egoVariable": "is_ego"
       },
-      "relationship": {
+      "edgeConfiguration": {
         "type": "family_edge",
         "kindVariable": "relationshipKind",
         "gestationalCarrierVariable": "isGestationalCarrier",

@@ -730,13 +730,13 @@ const variablesOf = (section: Readonly<SectionDoc> | undefined): SectionDoc =>
 function pedigreeClaimsTheScale(harness: StageEditorHarness): void {
   const sections = harness.protocolSections();
   const pedigree = sections[PEDIGREE_SECTION];
-  const relationship = isRecord(pedigree?.relationship)
-    ? pedigree.relationship
+  const edgeConfiguration = isRecord(pedigree?.edgeConfiguration)
+    ? pedigree.edgeConfiguration
     : undefined;
   const censusEdge = sections[CENSUS_EDGE_SECTION];
-  if (pedigree === undefined || relationship === undefined) {
+  if (pedigree === undefined || edgeConfiguration === undefined) {
     throw new Error(
-      'the fixture protocol has no "family-pedigree-1" stage with a relationship configuration, so nothing here can claim the scale.',
+      'the fixture protocol has no "family-pedigree-1" stage with an edge configuration, so nothing here can claim the scale.',
     );
   }
   if (censusEdge === undefined) {
@@ -744,7 +744,7 @@ function pedigreeClaimsTheScale(harness: StageEditorHarness): void {
       `the fixture protocol has no "${CENSUS_EDGE}" edge type, which is the one this census's prompt asks about.`,
     );
   }
-  if (relationship.type === CENSUS_EDGE) {
+  if (edgeConfiguration.type === CENSUS_EDGE) {
     throw new Error(
       `the fixture pedigree already records "${CENSUS_EDGE}" connections, so pointing it there proves nothing.`,
     );
@@ -764,8 +764,8 @@ function pedigreeClaimsTheScale(harness: StageEditorHarness): void {
   act(() => {
     harness.host.store.applyAsCollaborator(PEDIGREE_SECTION, {
       ...pedigree,
-      relationship: {
-        ...relationship,
+      edgeConfiguration: {
+        ...edgeConfiguration,
         type: CENSUS_EDGE,
         currentPartnerVariable: SCALE_VARIABLE,
       },

@@ -50,7 +50,7 @@ function AttributePicker() {
   );
   return (
     <Field<typeof VariablePickerField>
-      name="personAttributes.nameVariable"
+      name="nodeConfiguration.nameVariable"
       component={VariablePickerField}
       label="Attribute this question records"
       options={options}
@@ -217,7 +217,7 @@ describe('the attribute picker', () => {
 
     expect(
       (
-        saved?.stageDocument.personAttributes as
+        saved?.stageDocument.nodeConfiguration as
           | Record<string, unknown>
           | undefined
       )?.nameVariable,

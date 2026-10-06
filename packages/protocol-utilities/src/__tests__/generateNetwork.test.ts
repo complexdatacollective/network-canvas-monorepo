@@ -155,13 +155,13 @@ function makeFamilyPedigreeStage(overrides?: Record<string, unknown>): Stage {
     type: 'FamilyPedigree',
     subject: { entity: 'node', type: 'node-type-1' },
     prompt: 'Tell us about your family',
-    personAttributes: {
+    nodeConfiguration: {
       nameVariable: 'var-name',
       genderIdentityVariable: 'var-gender',
       sexAssignedAtBirthVariable: 'var-sex',
       egoVariable: 'var-ego',
     },
-    relationship: {
+    edgeConfiguration: {
       type: 'edge-type-1',
       kindVariable: 'var-kind',
       gestationalCarrierVariable: 'var-gestational',

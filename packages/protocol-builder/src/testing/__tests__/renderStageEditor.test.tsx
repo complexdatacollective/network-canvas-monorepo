@@ -884,7 +884,7 @@ describe('a codebook change the harness seeds', () => {
   };
 
   /** A section reading the codebook, the way every attribute picker does. */
-  function PersonAttributesSection() {
+  function NodeConfigurationSection() {
     const { codebook } = useProtocolContext();
     const names = Object.keys(codebook.node?.person?.variables ?? {});
     return (
@@ -900,7 +900,7 @@ describe('a codebook change the harness seeds', () => {
       sections: (
         <>
           {commonSections}
-          <PersonAttributesSection />
+          <NodeConfigurationSection />
         </>
       ),
     });

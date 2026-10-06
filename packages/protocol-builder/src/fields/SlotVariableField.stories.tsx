@@ -29,7 +29,7 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 function ParticipantSlot() {
   return (
     <SlotVariableField
-      name="personAttributes.egoVariable"
+      name="nodeConfiguration.egoVariable"
       label={familyPedigreeMessages.egoLabel}
       hint={familyPedigreeMessages.egoHint}
       createLabel={familyPedigreeMessages.egoCreateLabel}
@@ -45,7 +45,7 @@ function ParticipantSlot() {
 function SexAssignedAtBirthSlot() {
   return (
     <SlotVariableField
-      name="personAttributes.sexAssignedAtBirthVariable"
+      name="nodeConfiguration.sexAssignedAtBirthVariable"
       label={familyPedigreeMessages.sexAssignedAtBirthLabel}
       hint={familyPedigreeMessages.sexAssignedAtBirthHint}
       createLabel={familyPedigreeMessages.sexAssignedAtBirthCreateLabel}
@@ -57,8 +57,8 @@ function SexAssignedAtBirthSlot() {
   );
 }
 
-const personAttributesOf = (document: SectionDoc): Record<string, unknown> =>
-  isRecord(document.personAttributes) ? document.personAttributes : {};
+const nodeConfigurationOf = (document: SectionDoc): Record<string, unknown> =>
+  isRecord(document.nodeConfiguration) ? document.nodeConfiguration : {};
 
 /** A pedigree whose person attribute slot at this key names this attribute. */
 const holdingPersonAttribute =
@@ -66,7 +66,10 @@ const holdingPersonAttribute =
     const { document } = host.store.read(PEDIGREE_STAGE);
     host.store.applyAsCollaborator(PEDIGREE_STAGE, {
       ...document,
-      personAttributes: { ...personAttributesOf(document), [key]: variableId },
+      nodeConfiguration: {
+        ...nodeConfigurationOf(document),
+        [key]: variableId,
+      },
     });
   };
 

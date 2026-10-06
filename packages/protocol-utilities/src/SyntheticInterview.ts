@@ -258,14 +258,14 @@ type AnonymisationHandle = StageHandleBase;
 type FamilyPedigreeHandle = StageHandleBase & {
   /** The person node type id (the stage's `subject.type`). */
   personType: string;
-  /** The family edge type id (`relationship.type`). */
+  /** The family edge type id (`edgeConfiguration.type`). */
   edgeType: string;
-  /** Person variable ids, bound by `personAttributes`. */
+  /** Person variable ids, bound by `nodeConfiguration`. */
   name: string;
   genderIdentity: string;
   sexAssignedAtBirth: string;
   ego: string;
-  /** Edge variable ids, bound by `relationship`. */
+  /** Edge variable ids, bound by `edgeConfiguration`. */
   kind: string;
   gestationalCarrier: string;
   currentPartner: string;
@@ -691,7 +691,7 @@ export class SyntheticInterview {
         varOpts: Omit<AddVariableInput, 'name'>,
       ) => this.addVariableToNodeType(personType, { name, ...varOpts }).id;
 
-      entry.personAttributes = {
+      entry.nodeConfiguration = {
         nameVariable: personVariable('name', { type: 'text' }),
         genderIdentityVariable: personVariable('genderIdentity', {
           type: 'categorical',
@@ -711,7 +711,7 @@ export class SyntheticInterview {
         varOpts: Omit<AddVariableInput, 'name'>,
       ) => this.addVariableToEdgeType(edgeTypeId, { name, ...varOpts }).id;
 
-      entry.relationship = {
+      entry.edgeConfiguration = {
         type: edgeTypeId,
         kindVariable: edgeVariable('kind', {
           type: 'categorical',
@@ -1089,8 +1089,8 @@ export class SyntheticInterview {
         return base as StageHandleMap[T];
 
       case 'FamilyPedigree': {
-        const person = entry.personAttributes;
-        const relationship = entry.relationship;
+        const person = entry.nodeConfiguration;
+        const relationship = entry.edgeConfiguration;
         invariant(
           person !== undefined && relationship !== undefined,
           'FamilyPedigree stage is missing its bound variables',
@@ -2526,8 +2526,8 @@ export class SyntheticInterview {
     // FamilyPedigree
     if (stage.type === 'FamilyPedigree') {
       config.prompt = stage.prompt;
-      config.personAttributes = stage.personAttributes;
-      config.relationship = stage.relationship;
+      config.nodeConfiguration = stage.nodeConfiguration;
+      config.edgeConfiguration = stage.edgeConfiguration;
       if (stage.completeness) config.completeness = stage.completeness;
       if (stage.framing) config.framing = stage.framing;
       if (stage.nominationPrompts) {

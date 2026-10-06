@@ -88,8 +88,8 @@ function variableIdByName(
   )?.[0];
 }
 
-const personAttributesOf = (document: SectionDoc | undefined) =>
-  isRecord(document?.personAttributes) ? document.personAttributes : {};
+const nodeConfigurationOf = (document: SectionDoc | undefined) =>
+  isRecord(document?.nodeConfiguration) ? document.nodeConfiguration : {};
 
 describe('the family pedigree stage editor', () => {
   it('claims exactly this interface', () => {
@@ -170,13 +170,13 @@ describe('the family pedigree stage editor', () => {
       subject: { entity: 'node', type: 'family_member' },
       prompt:
         'Add the members of your family. Select a person to add their relatives.',
-      personAttributes: {
+      nodeConfiguration: {
         nameVariable: 'fm_name',
         genderIdentityVariable: 'genderIdentity',
         sexAssignedAtBirthVariable: 'sexAssignedAtBirth',
         egoVariable: 'is_ego',
       },
-      relationship: {
+      edgeConfiguration: {
         type: 'family_edge',
         kindVariable: 'relationshipKind',
         gestationalCarrierVariable: 'isGestationalCarrier',
@@ -204,7 +204,7 @@ describe('the family pedigree stage editor', () => {
   it('refuses a stage with an unbound slot', async () => {
     const harness = renderStageEditor({
       stage: familyPedigreeStageWith({
-        personAttributes: {
+        nodeConfiguration: {
           nameVariable: 'fm_name',
           genderIdentityVariable: 'genderIdentity',
           sexAssignedAtBirthVariable: 'sexAssignedAtBirth',
@@ -274,7 +274,7 @@ describe('the attribute slots', () => {
     const created = variableIdByName(harness, 'nickname');
     expect(created).toEqual(expect.any(String));
     const request = await harness.submit();
-    expect(personAttributesOf(request?.stageDocument).nameVariable).toBe(
+    expect(nodeConfigurationOf(request?.stageDocument).nameVariable).toBe(
       created,
     );
   });
@@ -296,7 +296,7 @@ describe('the attribute slots', () => {
   it('withholds an attribute another exclusive slot has just taken', async () => {
     const harness = renderStageEditor({
       stage: familyPedigreeStageWith({
-        relationship: {
+        edgeConfiguration: {
           type: 'family_edge',
           kindVariable: 'relationshipKind',
         },
