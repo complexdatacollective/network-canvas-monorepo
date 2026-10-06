@@ -88,7 +88,7 @@ test('the restore block ends by reopening the instance, after starting the relea
   assert.equal(lines.at(-2), 'docker compose up -d web api worker');
   assert.ok(lines.some((line) => line.includes('pg_restore')));
   // Run by the lane as one script: nothing in it may need a real hostname.
-  assert.ok(lines.every((line) => !line.includes('studio.example.org')));
+  assert.ok(lines.every((line) => !/\bstudio\.example\.org\b/.test(line)));
 });
 
 test('the guide waits for the worker pause the way the worker logs it', () => {
