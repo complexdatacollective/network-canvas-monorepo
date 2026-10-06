@@ -82,6 +82,13 @@ export type SlotVariableFieldProps = Readonly<{
   /** Told which attribute a create from this picker bound to the slot. */
   onCreated?: (variableId: string) => void;
   /**
+   * Told which existing attribute the researcher chose from the picker, when
+   * that replaces what the slot held. Not called for the attribute the slot
+   * already holds, for a saved stage opening, or for a create (that is
+   * `onCreated`), so it is the place to set what follows a binding.
+   */
+  onBound?: (variableId: string) => void;
+  /**
    * Attributes this stage's own unsaved draft already claims in the OPPOSITE
    * writer class.
    */
@@ -116,6 +123,7 @@ export default function SlotVariableField({
   ownedOptions,
   seedOptions,
   onCreated,
+  onBound,
   draftConflicting,
   draftSlotMap = NO_CLAIMS,
   offerValidation = false,
@@ -281,6 +289,13 @@ export default function SlotVariableField({
         options={pickerOptions}
         emptyMessage={intl.formatMessage(slotVariableMessages.emptyState)}
         custom={slotValidation}
+        {...(onBound === undefined
+          ? {}
+          : {
+              onSelectExisting: (variableId: string) => {
+                if (variableId !== currentValue) onBound(variableId);
+              },
+            })}
         {...createProps}
       />
       {editor}

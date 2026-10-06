@@ -1,6 +1,11 @@
 import { useMemo } from 'react';
 
-import { FAMILY_PEDIGREE_SLOTS } from '@codaco/protocol-validation';
+import {
+  FAMILY_PEDIGREE_SLOTS,
+  PEDIGREE_DEFAULT_GENDER_IDENTITIES,
+  type PedigreeGenderWords,
+  type VariableOption,
+} from '@codaco/protocol-validation';
 
 import type { ExclusiveVariableSlotMap } from '../../../codebook/variableRoles.ts';
 import { draftExclusiveSlotClaims } from '../../../fields/slotVariableWiring.ts';
@@ -186,3 +191,20 @@ export function usePedigreeDraftBindings(): Readonly<{
     formFieldVariables,
   };
 }
+
+/**
+ * The words each option of an existing gender identity attribute starts with:
+ * an option whose value is one of the interface's defaults takes that
+ * default's words, and every other option takes neutral words. One entry per
+ * option, in the attribute's option order.
+ */
+export const genderTermsFromDefaults = (
+  options: readonly VariableOption[],
+): { value: VariableOption['value']; words: PedigreeGenderWords }[] =>
+  options.map(({ value }) => ({
+    value,
+    words:
+      PEDIGREE_DEFAULT_GENDER_IDENTITIES.find(
+        (candidate) => candidate.value === value,
+      )?.words ?? 'neutral',
+  }));

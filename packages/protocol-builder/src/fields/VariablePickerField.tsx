@@ -86,6 +86,17 @@ export type VariablePickerFieldProps = CreateFormFieldProps<
      * they typed.
      */
     onCreateOption?: (variableName: string) => Promise<CreateOptionOutcome>;
+    /**
+     * Told which attribute the researcher chose from the list, after the value
+     * has been written.
+     *
+     * Only a choice made here: an attribute created from the window reaches
+     * the caller through its own create, and a value that arrives any other way
+     * (a saved stage opening, a re-render) is not a choice. For a caller whose
+     * slot has something that follows the attribute and must be set once, when
+     * the researcher binds it, and left alone when the stage is merely opened.
+     */
+    onSelectExisting?: (variableId: string) => void;
   }
 >;
 
@@ -403,6 +414,7 @@ export default function VariablePickerField({
   emptyMessage,
   namesInUse,
   onCreateOption,
+  onSelectExisting,
   disabled = false,
   readOnly = false,
   className,
@@ -587,9 +599,10 @@ export default function VariablePickerField({
       answeredRef.current = true;
       setNotice(undefined);
       onChange?.(next);
+      onSelectExisting?.(next);
       setOpen(false);
     },
-    [disabled, onChange, readOnly],
+    [disabled, onChange, onSelectExisting, readOnly],
   );
 
   const handleCreate = useCallback(

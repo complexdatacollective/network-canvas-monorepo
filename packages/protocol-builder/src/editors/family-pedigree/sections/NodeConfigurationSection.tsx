@@ -19,6 +19,7 @@ import BuilderSection from '../../../sections/BuilderSection.tsx';
 import { useProtocolContext } from '../../../state/protocolContext.ts';
 import { familyPedigreeMessages as messages } from './pedigreeMessages.ts';
 import {
+  genderTermsFromDefaults,
   NODE_CONFIGURATION_PATHS,
   usePedigreeDraftBindings,
 } from './pedigreeSlots.ts';
@@ -143,6 +144,21 @@ export default function NodeConfigurationSection() {
                 })),
               )
             }
+            onBound={(variableId) => {
+              // An existing attribute arrives with no mapping: prefill it from
+              // the defaults by value, so options named for one of them keep
+              // that meaning and the researcher edits the rest.
+              const bound = variablesForSubject(protocolContext, personSubject)[
+                variableId
+              ];
+              if (bound?.type !== 'categorical') return;
+              storeApi
+                .getState()
+                .setFieldValue(
+                  NODE_CONFIGURATION_PATHS.genderIdentityTerms,
+                  genderTermsFromDefaults(bound.options),
+                );
+            }}
             draftConflicting={validatedPersonVariables}
             draftSlotMap={draftSlotMap}
           />

@@ -174,9 +174,11 @@ describe('the family pedigree stage editor', () => {
       nodeConfiguration: {
         nameVariable: 'fm_name',
         genderIdentityVariable: 'genderIdentity',
-        // Nothing mapped yet: every option takes neutral words until the
-        // researcher chooses otherwise.
-        genderIdentityTerms: [],
+        // The fixture attribute's options are the interface's defaults, so
+        // binding it maps each to the words its default takes.
+        genderIdentityTerms: PEDIGREE_DEFAULT_GENDER_IDENTITIES.map(
+          ({ value, words }) => ({ value, words }),
+        ),
         sexAssignedAtBirthVariable: 'sexAssignedAtBirth',
         egoVariable: 'is_ego',
       },
@@ -673,5 +675,117 @@ describe('the gender identity words', () => {
     expect(
       await screen.findByText('Words for each gender identity'),
     ).toBeVisible();
+  });
+
+  describe('when an existing attribute is bound to the slot', () => {
+    const CUSTOM_GENDER = {
+      name: 'customGender',
+      type: 'categorical',
+      options: [
+        { value: 'woman', label: 'Female' },
+        { value: 'agender', label: 'Agender' },
+        { value: 'man', label: 'Male' },
+        { value: 'unknown', label: 'Unsure' },
+      ],
+    };
+    const OTHER_GENDER = {
+      name: 'otherGender',
+      type: 'categorical',
+      options: [
+        { value: 'preferNotToSay', label: 'No answer' },
+        { value: 'woman', label: 'W' },
+        { value: 'nonbinary', label: 'NB' },
+      ],
+    };
+
+    /** A person type with no gender identity bound yet. */
+    const openUnbound = async () => {
+      const harness = renderStageEditor({
+        stage: familyPedigreeStageWith({
+          nodeConfiguration: {
+            nameVariable: 'fm_name',
+            sexAssignedAtBirthVariable: 'sexAssignedAtBirth',
+            egoVariable: 'is_ego',
+          },
+        }),
+        editor: familyPedigreeEditor,
+      });
+      addFamilyMemberVariables(harness, {
+        customGender: CUSTOM_GENDER,
+        otherGender: OTHER_GENDER,
+      });
+      await harness.opened();
+      return harness;
+    };
+
+    it('prefills the words of the default each option’s value names, and neutral for the rest', async () => {
+      const harness = await openUnbound();
+
+      await bindSlot(harness, 'Gender identity', 'customGender');
+
+      expect(
+        await screen.findByRole('combobox', { name: 'Words for Female' }),
+      ).toHaveValue('feminine');
+      expect(
+        screen.getByRole('combobox', { name: 'Words for Agender' }),
+      ).toHaveValue('neutral');
+      expect(
+        screen.getByRole('combobox', { name: 'Words for Male' }),
+      ).toHaveValue('masculine');
+      expect(
+        screen.getByRole('combobox', { name: 'Words for Unsure' }),
+      ).toHaveValue('unknown');
+
+      const request = await harness.submit();
+      expect(termsOf(request?.stageDocument)).toEqual([
+        { value: 'woman', words: 'feminine' },
+        { value: 'agender', words: 'neutral' },
+        { value: 'man', words: 'masculine' },
+        { value: 'unknown', words: 'unknown' },
+      ]);
+    });
+
+    it('does not rewrite a saved mapping when the stage is opened', async () => {
+      const harness = renderStageEditor({
+        stage: withTerms([
+          { value: 'woman', words: 'neutral' },
+          { value: 'man', words: 'feminine' },
+        ]),
+        editor: familyPedigreeEditor,
+      });
+      await harness.opened();
+      expect(
+        await screen.findByRole('combobox', { name: 'Words for Woman' }),
+      ).toHaveValue('neutral');
+
+      const request = await harness.submit();
+      expect(termsOf(request?.stageDocument)).toEqual(
+        expect.arrayContaining([
+          { value: 'woman', words: 'neutral' },
+          { value: 'man', words: 'feminine' },
+        ]),
+      );
+    });
+
+    it('replaces the mapping with one for the new options when another attribute is chosen', async () => {
+      const harness = await openUnbound();
+      await bindSlot(harness, 'Gender identity', 'customGender');
+      await harness.user.selectOptions(
+        await screen.findByRole('combobox', { name: 'Words for Agender' }),
+        'masculine',
+      );
+
+      await bindSlot(harness, 'Gender identity', 'otherGender');
+
+      expect(
+        await screen.findByRole('combobox', { name: 'Words for NB' }),
+      ).toHaveValue('neutral');
+      const request = await harness.submit();
+      expect(termsOf(request?.stageDocument)).toEqual([
+        { value: 'preferNotToSay', words: 'neutral' },
+        { value: 'woman', words: 'feminine' },
+        { value: 'nonbinary', words: 'neutral' },
+      ]);
+    });
   });
 });
