@@ -156,11 +156,13 @@ export type CatalogSource = Readonly<{
    */
   load: (locale: string) => Promise<CatalogMessages>;
   /**
-   * The load a locale already has — finished, in flight, or the last one to
-   * fail — or a new one if it has none. A render that suspends on a load needs
-   * this rather than `load`: it is handed the failure, which reaches its error
-   * boundary, where `load` would start another attempt on every retry and the
-   * render would never settle.
+   * The load a locale already has — finished, in flight, or the last attempt
+   * to fail — or a new one if it has none. A render that suspends on a load
+   * needs this rather than `load`: it is handed the failure, which reaches its
+   * error boundary, where `load` would start another attempt on every retry
+   * and the render would never settle. Only a failed attempt is handed on: a
+   * failed `load`, such as a preload before the first render, leaves the next
+   * attempt to try afresh.
    */
   attempt: (locale: string) => Promise<CatalogMessages>;
   /** Called after any locale finishes loading. Returns the unsubscribe. */
@@ -187,7 +189,10 @@ export function createCatalogSource(
     return inFlight.get(locale);
   };
 
-  const start = (locale: string): Promise<CatalogMessages> => {
+  const start = (
+    locale: string,
+    keepFailure: boolean,
+  ): Promise<CatalogMessages> => {
     failed.delete(locale);
     const request: Promise<CatalogMessages> = loadCatalog(
       locale,
@@ -201,7 +206,7 @@ export function createCatalogSource(
       },
       (error: unknown) => {
         inFlight.delete(locale);
-        failed.set(locale, request);
+        if (keepFailure) failed.set(locale, request);
         throw error;
       },
     );
@@ -211,8 +216,9 @@ export function createCatalogSource(
 
   return {
     peek: (locale) => (translated(locale) ? loaded.get(locale) : NO_CATALOG),
-    load: (locale) => current(locale) ?? start(locale),
-    attempt: (locale) => current(locale) ?? failed.get(locale) ?? start(locale),
+    load: (locale) => current(locale) ?? start(locale, false),
+    attempt: (locale) =>
+      current(locale) ?? failed.get(locale) ?? start(locale, true),
     subscribe: (onLoad) => {
       listeners.add(onLoad);
       return () => {

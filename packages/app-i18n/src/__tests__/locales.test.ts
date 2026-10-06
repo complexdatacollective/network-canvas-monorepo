@@ -106,7 +106,7 @@ describe('createCatalogSource', () => {
     expect(onLoad).toHaveBeenCalledOnce();
   });
 
-  it('hands a failed load to attempt, rather than starting another, until load tries again', async () => {
+  it('hands a failed attempt to the next attempt, rather than starting another, until load tries again', async () => {
     const es = vi
       .fn<() => Promise<{ default: CatalogMessages }>>()
       .mockRejectedValueOnce(new Error('offline'))
@@ -121,6 +121,18 @@ describe('createCatalogSource', () => {
     const retry = source.load('es');
     expect(source.attempt('es')).toBe(retry);
     expect(await retry).toEqual({ 'a.x': 'uno' });
+    expect(es).toHaveBeenCalledTimes(2);
+  });
+
+  it('leaves the attempt after a failed load to try afresh', async () => {
+    const es = vi
+      .fn<() => Promise<{ default: CatalogMessages }>>()
+      .mockRejectedValueOnce(new Error('offline'))
+      .mockImplementation(() => moduleOf({ 'a.x': 'uno' }));
+    const source = createCatalogSource({ es });
+
+    await expect(source.load('es')).rejects.toThrow('offline');
+    expect(await source.attempt('es')).toEqual({ 'a.x': 'uno' });
     expect(es).toHaveBeenCalledTimes(2);
   });
 

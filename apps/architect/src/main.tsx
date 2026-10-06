@@ -38,7 +38,7 @@ import {
 // service-worker and storage awaits in startApp, rather than after them; the
 // boot screen stays in the English index.html ships with until it lands. A
 // failed load leaves startup in English instead of stopping it: the provider
-// meets the same failure, which reaches its error boundary.
+// tries again, and a second failure reaches its error boundary.
 const startupLocaleReady = loadStartupLocale()
   .catch(() => undefined)
   .then(() => initializeArchitectDocument());

@@ -563,14 +563,26 @@ describe('useLocaleCatalog', () => {
       expect(es).toHaveBeenCalledOnce();
     });
 
-    it('reaches the error boundary at once when the load before the first render already failed', async () => {
+    it('tries afresh on its first render when the load before it failed', async () => {
+      const es = vi
+        .fn<() => Promise<{ default: CatalogMessages }>>()
+        .mockRejectedValueOnce(new Error('offline'))
+        .mockResolvedValue({ default: spanish });
+      const source = createCatalogSource({ es });
+      await source.load('es').catch(() => undefined);
+      await renderInBoundary(source);
+      expect(screen.getByText('Hola Ada')).toBeDefined();
+      expect(es).toHaveBeenCalledTimes(2);
+    });
+
+    it('reaches the error boundary when that fresh try fails too', async () => {
       vi.spyOn(console, 'error').mockImplementation(() => {});
       const es = failingSpanish();
       const source = createCatalogSource({ es });
       await source.load('es').catch(() => undefined);
       await renderInBoundary(source);
       expect(screen.getByText('Recovered')).toBeDefined();
-      expect(es).toHaveBeenCalledOnce();
+      expect(es).toHaveBeenCalledTimes(2);
     });
   });
 
@@ -640,6 +652,31 @@ describe('useLocaleCatalog', () => {
       } finally {
         process.off('unhandledRejection', unhandled);
       }
+    });
+
+    it('waits from the first interval again when a language it gave up on is chosen again', async () => {
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+      const fr = failingFrench(4);
+      const source = createCatalogSource({
+        es: () => Promise.resolve({ default: spanish }),
+        fr,
+      });
+      await source.load('es');
+
+      const { rerender } = render(<Host source={source} locale="es" />);
+      await act(async () => rerender(<Host source={source} locale="fr" />));
+      await act(() => vi.advanceTimersByTimeAsync(1000));
+      await act(() => vi.advanceTimersByTimeAsync(2000));
+      expect(fr).toHaveBeenCalledTimes(3);
+
+      await act(async () => rerender(<Host source={source} locale="es" />));
+      await act(async () => rerender(<Host source={source} locale="fr" />));
+      expect(fr).toHaveBeenCalledTimes(4);
+      await act(() => vi.advanceTimersByTimeAsync(999));
+      expect(fr).toHaveBeenCalledTimes(4);
+      await act(() => vi.advanceTimersByTimeAsync(1));
+      expect(fr).toHaveBeenCalledTimes(5);
+      expect(screen.getByText('Bonjour Ada')).toBeDefined();
     });
 
     it('tries again as soon as the device is back online', async () => {

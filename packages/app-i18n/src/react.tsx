@@ -208,8 +208,10 @@ export function useLocaleCatalog(
 
   // A host keeps the requested locale in its own state, so choosing the same
   // language again changes nothing here. Counting failures is what re-arms the
-  // load below; a different locale starts from none.
+  // load below; any change of locale, even to one already loaded, starts the
+  // count again.
   const [failed, setFailed] = useState({ locale, count: 0 });
+  if (failed.locale !== locale) setFailed({ locale, count: 0 });
   const failures = failed.locale === locale ? failed.count : 0;
 
   useEffect(() => {
