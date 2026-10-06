@@ -243,9 +243,13 @@ const ALLOWLIST: Record<string, { count: number; why: string }> = {
     count: 2,
     why: 'the same, for every tenant table’s policy',
   },
+  [`${SERVER}/db/migrate.ts`]: {
+    count: 2,
+    why: 'each split statement of a pending migration’s artefacts, and the `select 1` that tells, after one fails, whether the transaction is still open',
+  },
   [`${SERVER}/db/migrate.ts › db.migrate`]: {
-    count: 3,
-    why: 'the session advisory lock, its release, and each split statement of a pending migration’s artefacts',
+    count: 2,
+    why: 'the session advisory lock and its release',
   },
   [`${SERVER}/db/migrate.ts › db.migrate.probe`]: {
     count: 1,
@@ -255,9 +259,17 @@ const ALLOWLIST: Record<string, { count: number; why: string }> = {
     count: 1,
     why: 'the stamp read the probe gates, on a table that may not exist yet when the module is written',
   },
-  [`${SERVER}/db/migrate.ts › db.migrate.assertRole`]: {
+  [`${SERVER}/db/migrate.ts › db.migrate.readSessionState`]: {
     count: 1,
-    why: '`current_user` against `session_user` after each artefact (no FROM), so a backfill cannot leave the upgrade running as another role',
+    why: 'the transaction id, roles, settings and disabled triggers each artefact must leave as it found them: session functions and a `pg_trigger` aggregate, no application table',
+  },
+  [`${SERVER}/db/migrate.ts › db.migrate.settleDeferredChecks`]: {
+    count: 2,
+    why: 'the `INITIALLY DEFERRED` constraints read from `pg_constraint`, and `SET CONSTRAINTS … DEFERRED` naming them: a catalog read and a transaction setting the builder has no form for',
+  },
+  [`${SERVER}/programs/migrate.ts`]: {
+    count: 2,
+    why: '`SET LOCAL ROLE studio_maintenance` and `RESET ROLE` around the keyring check inside the migration transaction',
   },
   [`${SERVER}/db/history.ts › db.history.create`]: {
     count: 1,
