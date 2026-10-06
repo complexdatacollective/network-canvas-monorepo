@@ -46,6 +46,9 @@ const WAITING_CASE_TIMEOUT_MS = 120_000;
 /** The schema gate re-reads the fingerprint every three seconds. */
 const SCHEMA_WAIT_MS = 60_000;
 
+/** One schema retry (three seconds) and a margin; see the worker case. */
+const NOTHING_BUILT_WINDOW_MS = 5_000;
+
 /** The maintenance flag is read through a one-second cache. */
 const FLAG_WAIT_MS = 10_000;
 
@@ -416,15 +419,24 @@ describe.skipIf(!db)('waiting closed for a schema that is not current', () => {
         await whileRunning(
           worker.waitForOutput(/The database schema is not this build’s\./),
         );
-        const waiting = await whileRunning(readReadiness(healthPort));
-        expect(waiting.status).toBe(503);
-        expect(waiting.body.status).toBe('failing');
-        expect(waiting.body.checks.jobs).toBe('failed: not started');
-        expect(waiting.body.checks.schema).toMatch(
-          /^failed: not this build's schema/,
-        );
-        expect(await queueConnections()).toBe(0);
-        expect(worker.output()).not.toMatch(WORKER_STARTED);
+        // "Builds nothing" has no event to wait on, so it is held for a
+        // window instead: longer than one schema retry, and longer than a
+        // worker that had passed the gate takes to build its queue and say so.
+        // A single read straight after the warning would race that build and
+        // pass against a worker that builds on a stale schema.
+        const heldUntil = Date.now() + NOTHING_BUILT_WINDOW_MS;
+        while (Date.now() < heldUntil) {
+          const waiting = await whileRunning(readReadiness(healthPort));
+          expect(waiting.status).toBe(503);
+          expect(waiting.body.status).toBe('failing');
+          expect(waiting.body.checks.jobs).toBe('failed: not started');
+          expect(waiting.body.checks.schema).toMatch(
+            /^failed: not this build's schema/,
+          );
+          expect(await queueConnections()).toBe(0);
+          expect(worker.output()).not.toMatch(WORKER_STARTED);
+          await new Promise((settled) => setTimeout(settled, 250));
+        }
 
         await stamp(current.pool, SCHEMA_FINGERPRINT);
         await whileRunning(
