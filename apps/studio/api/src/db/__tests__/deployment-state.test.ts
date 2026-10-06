@@ -239,7 +239,9 @@ describe.skipIf(!testDb)('deployment_state', () => {
             const writes = {
               'the release columns': recordUpdateCheck(RELEASE),
               'the claim': claimNotification('1.2.3'),
-              'the claim’s release': releaseNotificationClaim('1.2.3'),
+              'the claim’s release': releaseNotificationClaim('1.2.3', {
+                previous: null,
+              }),
             };
             for (const [name, write] of Object.entries(writes)) {
               const refusal = yield* refusalOf(UntenantedScope.open(write));
@@ -250,38 +252,69 @@ describe.skipIf(!testDb)('deployment_state', () => {
           }),
       );
 
-      it.effect('claims a version once, and a later version again', () =>
-        Effect.gen(function* () {
-          yield* ownerAffected(CLEAR_UPDATE_STATE);
-          const claim = (version: string) =>
-            MaintenanceScope.open(claimNotification(version));
+      it.effect(
+        'claims a version once, a later version again, and never one older than the newest claimed',
+        () =>
+          Effect.gen(function* () {
+            yield* ownerAffected(CLEAR_UPDATE_STATE);
+            const claim = (version: string) =>
+              MaintenanceScope.open(claimNotification(version));
 
-          assert.isTrue(yield* claim('1.2.3'));
-          assert.isFalse(yield* claim('1.2.3'));
-          assert.isTrue(yield* claim('1.2.4'));
-          assert.isFalse(yield* claim('1.2.4'));
-          yield* ownerAffected(CLEAR_UPDATE_STATE);
-        }),
+            assert.deepStrictEqual(yield* claim('1.2.3'), { previous: null });
+            assert.isNull(yield* claim('1.2.3'));
+            assert.deepStrictEqual(yield* claim('1.2.4'), {
+              previous: '1.2.3',
+            });
+            assert.isNull(yield* claim('1.2.4'));
+            // The manifest went back — a stale CDN answer, a withdrawn
+            // release — to one already mailed: not again.
+            assert.isNull(yield* claim('1.2.3'));
+            assert.isNull(yield* claim('1.1.9'));
+            assert.strictEqual(
+              (yield* storedNotified)[0]?.notified_version,
+              '1.2.4',
+            );
+            yield* ownerAffected(CLEAR_UPDATE_STATE);
+          }),
       );
 
-      it.effect('gives back only the claim it is asked about', () =>
-        Effect.gen(function* () {
-          yield* ownerAffected(CLEAR_UPDATE_STATE);
-          yield* MaintenanceScope.open(claimNotification('1.2.4'));
+      it.effect(
+        'gives back only the claim it is asked about, to the version mailed before it',
+        () =>
+          Effect.gen(function* () {
+            yield* ownerAffected(CLEAR_UPDATE_STATE);
+            yield* MaintenanceScope.open(claimNotification('1.2.3'));
+            const taken = yield* MaintenanceScope.open(
+              claimNotification('1.2.4'),
+            );
+            assert.deepStrictEqual(taken, { previous: '1.2.3' });
+            if (taken === null) throw new Error('unreachable');
 
-          yield* MaintenanceScope.open(releaseNotificationClaim('1.2.3'));
-          assert.strictEqual(
-            (yield* storedNotified)[0]?.notified_version,
-            '1.2.4',
-          );
+            yield* MaintenanceScope.open(
+              releaseNotificationClaim('1.2.5', taken),
+            );
+            assert.strictEqual(
+              (yield* storedNotified)[0]?.notified_version,
+              '1.2.4',
+            );
 
-          yield* MaintenanceScope.open(releaseNotificationClaim('1.2.4'));
-          assert.isNull((yield* storedNotified)[0]?.notified_version);
-          assert.isTrue(
-            yield* MaintenanceScope.open(claimNotification('1.2.4')),
-          );
-          yield* ownerAffected(CLEAR_UPDATE_STATE);
-        }),
+            yield* MaintenanceScope.open(
+              releaseNotificationClaim('1.2.4', taken),
+            );
+            assert.strictEqual(
+              (yield* storedNotified)[0]?.notified_version,
+              '1.2.3',
+            );
+            // Given back, 1.2.4 can be claimed again; 1.2.3 still cannot.
+            assert.isNull(
+              yield* MaintenanceScope.open(claimNotification('1.2.3')),
+            );
+            assert.deepStrictEqual(
+              yield* MaintenanceScope.open(claimNotification('1.2.4')),
+              { previous: '1.2.3' },
+            );
+            yield* ownerAffected(CLEAR_UPDATE_STATE);
+          }),
       );
 
       it.effect(

@@ -1,12 +1,5 @@
 import { eq } from 'drizzle-orm';
-import {
-  Cause,
-  Duration,
-  Effect,
-  Exit,
-  MutableHashSet,
-  Schedule,
-} from 'effect';
+import { Cause, Duration, Effect, Exit, MutableHashSet } from 'effect';
 import { FetchHttpClient, HttpClient, HttpClientResponse } from 'effect/http';
 import type { SqlError } from 'effect/sql';
 
@@ -16,6 +9,7 @@ import { AUTH_TABLES } from '../../db/auth-schema.ts';
 import type { MaintenanceDatabase } from '../../db/client.ts';
 import {
   claimNotification,
+  type NotificationClaim,
   type LatestRelease,
   recordUpdateCheck,
   releaseNotificationClaim,
@@ -44,7 +38,7 @@ const QUEUE = 'update-check';
 const COMPLETED: JobOutcome = 'completed';
 
 /**
- * The whole fetch, retries included. The queue's `expireInSeconds` is declared
+ * The whole fetch. The queue's `expireInSeconds` is declared
  * above this plus the SMTP transport's own bounds, so a slow send is never
  * reaped while it is still running.
  */
@@ -66,7 +60,9 @@ type Delivery = 'sent' | 'not-sent' | 'not-claimed';
 
 /**
  * One GET of one fixed URL, carrying nothing about the instance: the only
- * header is `Accept`, there is no query, no body and no cookie.
+ * header is `Accept`, there is no query, no body and no cookie. There is no
+ * retry: a failed fetch settles the run as suppressed, and the next daily run
+ * is the retry, so a run makes exactly one request.
  *
  * Trace propagation is switched off for the request. Effect's client adds
  * `traceparent` and `b3` to every request by default, and with telemetry on
@@ -75,13 +71,7 @@ type Delivery = 'sent' | 'not-sent' | 'not-claimed';
  * be a second host.
  */
 const fetchManifest = Effect.gen(function* () {
-  const client = (yield* HttpClient.HttpClient).pipe(
-    HttpClient.filterStatusOk,
-    HttpClient.retryTransient({
-      schedule: Schedule.exponential('500 millis'),
-      times: 2,
-    }),
-  );
+  const client = (yield* HttpClient.HttpClient).pipe(HttpClient.filterStatusOk);
   const response = yield* client.get(UPDATE_MANIFEST_URL, {
     headers: { accept: 'application/json' },
   });
@@ -125,8 +115,8 @@ const record = (release: LatestRelease) =>
 
 const claim = (version: string) => inMaintenance(claimNotification(version));
 
-const giveBack = (version: string) =>
-  inMaintenance(releaseNotificationClaim(version));
+const giveBack = (version: string, taken: NotificationClaim) =>
+  inMaintenance(releaseNotificationClaim(version, taken));
 
 export const updateCheck = (options: UpdateCheckOptions) => {
   const runningVersion = options.runningVersion ?? STUDIO_VERSION;
@@ -166,8 +156,8 @@ export const updateCheck = (options: UpdateCheckOptions) => {
     // in-app notice is the durable channel for that.
     return yield* Effect.acquireUseRelease(
       claim(release.version),
-      (claimed): Effect.Effect<Delivery, MailFailed> =>
-        claimed
+      (taken): Effect.Effect<Delivery, MailFailed> =>
+        taken !== null
           ? mailer
               .sendUpdateNotice({
                 email: owner.email,
@@ -186,9 +176,9 @@ export const updateCheck = (options: UpdateCheckOptions) => {
                 ),
               )
           : Effect.succeed<Delivery>('not-claimed'),
-      (claimed, exit) =>
-        claimed && !(Exit.isSuccess(exit) && exit.value === 'sent')
-          ? giveBack(release.version).pipe(
+      (taken, exit) =>
+        taken !== null && !(Exit.isSuccess(exit) && exit.value === 'sent')
+          ? giveBack(release.version, taken).pipe(
               Effect.catchCause((cause) =>
                 Effect.logWarning(
                   `${QUEUE}: the notification claim for ${release.version} could not be released; this version may not be emailed.`,

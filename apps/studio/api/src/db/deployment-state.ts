@@ -12,6 +12,7 @@ import type { SqlError } from 'effect/sql';
 
 import { TENANT_ROLES } from '@codaco/studio-sync/rls';
 
+import { isNewer } from '../update/manifest.ts';
 import type { Database, MaintenanceDatabase } from './client.ts';
 import { sqlErrorsOnly } from './errors.ts';
 import { MaintenanceScope, Transaction, UntenantedScope } from './tenant.ts';
@@ -225,45 +226,53 @@ export const recordUpdateCheck: (
     .where(eq(deploymentState.id, 1));
 }, sqlErrorsOnly);
 
+/** A claim this call took, and the version it replaced. */
+export type NotificationClaim = { readonly previous: string | null };
+
 /**
- * Take the right to email the owner about `version`. True exactly once per
- * version: the row is claimed only when it does not already name this version,
- * and the `RETURNING` is what says whether this call was the one that did.
+ * Take the right to email the owner about `version`. Granted only for a
+ * version newer than every one already emailed, so each version is mailed at
+ * most once even when the manifest goes back — a stale CDN answer, or a
+ * withdrawn release — to one the owner has already heard about. The row is
+ * read `FOR UPDATE`, so two runs cannot both claim. `null` when the claim is
+ * not this call's to take.
  */
 export const claimNotification: (
   version: string,
-) => Effect.Effect<boolean, SqlError.SqlError, Transaction> = Effect.fn(
-  'db.deploymentState.claimNotification',
-)(function* (version: string) {
-  const { tx } = yield* Transaction;
-  const rows = yield* tx
-    .update(deploymentState)
-    .set({ notifiedVersion: version })
-    .where(
-      and(
-        eq(deploymentState.id, 1),
-        sql`${deploymentState.notifiedVersion} IS DISTINCT FROM ${version}`,
-      ),
-    )
-    .returning({ notifiedVersion: deploymentState.notifiedVersion });
-  return rows.length === 1;
-}, sqlErrorsOnly);
+) => Effect.Effect<NotificationClaim | null, SqlError.SqlError, Transaction> =
+  Effect.fn('db.deploymentState.claimNotification')(function* (
+    version: string,
+  ) {
+    const { tx } = yield* Transaction;
+    const [row] = yield* tx
+      .select({ notifiedVersion: deploymentState.notifiedVersion })
+      .from(deploymentState)
+      .where(eq(deploymentState.id, 1))
+      .for('update');
+    if (row === undefined) return null;
+    const previous = row.notifiedVersion;
+    if (previous !== null && !isNewer(version, previous)) return null;
+    yield* tx
+      .update(deploymentState)
+      .set({ notifiedVersion: version })
+      .where(eq(deploymentState.id, 1));
+    return { previous };
+  }, sqlErrorsOnly);
 
 /**
- * Give a claim back because the email was not sent. Compare-and-reset: only a
- * row still naming `version` is cleared, so it cannot undo a later claim. NULL
- * rather than the version before it is equivalent, because only the latest
- * version is ever claimed.
+ * Give a claim back because the email was not sent: the row names the version
+ * emailed before it again. Compare-and-reset, so it cannot undo a later claim.
  */
 export const releaseNotificationClaim: (
   version: string,
+  claim: NotificationClaim,
 ) => Effect.Effect<void, SqlError.SqlError, Transaction> = Effect.fn(
   'db.deploymentState.releaseNotificationClaim',
-)(function* (version: string) {
+)(function* (version: string, claim: NotificationClaim) {
   const { tx } = yield* Transaction;
   yield* tx
     .update(deploymentState)
-    .set({ notifiedVersion: null })
+    .set({ notifiedVersion: claim.previous })
     .where(
       and(
         eq(deploymentState.id, 1),

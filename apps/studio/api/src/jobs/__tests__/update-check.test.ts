@@ -73,8 +73,7 @@ const stored = Effect.map(
 const notifiedVersion = Effect.map(stored, (row) => row?.notified_version);
 
 describe.skipIf(!testDb)('the update check', () => {
-  // Real clock: the unreachable-manifest case waits out the fetch's retry
-  // backoff, and the interruption case polls for the handler to reach the send.
+  // Real clock: the interruption case polls for the handler to reach the send.
   layer(suiteLayer, { excludeTestServices: true })(
     'over Studio and the queue',
     (it) => {
@@ -188,8 +187,8 @@ describe.skipIf(!testDb)('the update check', () => {
 
             const step = yield* run;
             assert.strictEqual(outcomeOf(step), 'suppressed');
-            // One try and two retries: the fetch is bounded.
-            assert.strictEqual(http.requests.length, 3);
+            // One request, no retry: the next daily run is the retry.
+            assert.strictEqual(http.requests.length, 1);
 
             const row = yield* stored;
             assert.isNull(row?.latest_version);
