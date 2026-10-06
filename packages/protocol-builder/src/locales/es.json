@@ -283,7 +283,7 @@
   "protocolBuilder.codebookVariable.heldAnswersLegend": "Las respuestas que ofrece este atributo",
   "protocolBuilder.codebookVariable.interfaceOwnedOptions": "La interfaz que utiliza este atributo establece estas opciones, que no se pueden cambiar aquí. Vuelve a abrir esta fila para partir de las opciones actuales.",
   "protocolBuilder.codebookVariable.interfaceOwnedPick": "{owner} establece este atributo, por lo que no se puede usar aquí. Elige otro atributo.",
-  "protocolBuilder.codebookVariable.labelHint": "Una etiqueta legible para este atributo. No se traduce. Un campo del Compositor de redes sin título propio muestra esta etiqueta a los participantes. Si se deja vacío, se usa el nombre del atributo.",
+  "protocolBuilder.codebookVariable.labelHint": "Una etiqueta legible para este atributo. No se traduce. Si se deja en blanco, se usa el nombre del atributo.",
   "protocolBuilder.codebookVariable.labelLabel": "Etiqueta del atributo",
   "protocolBuilder.codebookVariable.lockedOptionLabelHeader": "Etiqueta",
   "protocolBuilder.codebookVariable.lockedOptionValueHeader": "Valor",

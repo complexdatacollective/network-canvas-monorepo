@@ -283,7 +283,7 @@
   "protocolBuilder.codebookVariable.heldAnswersLegend": "The answers this attribute offers",
   "protocolBuilder.codebookVariable.interfaceOwnedOptions": "These options are set by the interface that uses this attribute and cannot be changed here. Reopen this row to start from the current options.",
   "protocolBuilder.codebookVariable.interfaceOwnedPick": "This attribute is set by {owner}, so it cannot be used here. Choose a different attribute.",
-  "protocolBuilder.codebookVariable.labelHint": "A readable label for this attribute. It is not translated. A Network Composer field with no caption of its own shows this label to participants. Left empty, the attribute name is used.",
+  "protocolBuilder.codebookVariable.labelHint": "A readable label for this attribute. It is not translated. Left empty, the attribute name is used.",
   "protocolBuilder.codebookVariable.labelLabel": "Attribute label",
   "protocolBuilder.codebookVariable.lockedOptionLabelHeader": "Label",
   "protocolBuilder.codebookVariable.lockedOptionValueHeader": "Value",

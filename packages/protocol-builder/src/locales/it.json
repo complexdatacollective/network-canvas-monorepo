@@ -283,7 +283,7 @@
   "protocolBuilder.codebookVariable.heldAnswersLegend": "Le risposte offerte da questo attributo",
   "protocolBuilder.codebookVariable.interfaceOwnedOptions": "Queste opzioni sono impostate dall’interfaccia che usa questo attributo e non possono essere modificate qui. Riapri questa riga per ripartire dalle opzioni attuali.",
   "protocolBuilder.codebookVariable.interfaceOwnedPick": "Questo attributo è impostato da {owner}, quindi non può essere usato qui. Scegli un attributo diverso.",
-  "protocolBuilder.codebookVariable.labelHint": "Un’etichetta leggibile per questo attributo. Non viene tradotta. Un campo del Compositore di reti senza una didascalia propria mostra questa etichetta alle persone partecipanti. Se lasciata vuota, viene usato il nome dell’attributo.",
+  "protocolBuilder.codebookVariable.labelHint": "Un’etichetta leggibile per questo attributo. Non viene tradotta. Se lasciata vuota, viene usato il nome dell’attributo.",
   "protocolBuilder.codebookVariable.labelLabel": "Etichetta dell’attributo",
   "protocolBuilder.codebookVariable.lockedOptionLabelHeader": "Etichetta",
   "protocolBuilder.codebookVariable.lockedOptionValueHeader": "Valore",

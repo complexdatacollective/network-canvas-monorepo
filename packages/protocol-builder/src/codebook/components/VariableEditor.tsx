@@ -145,9 +145,9 @@ const messages = defineMessages({
   labelHint: {
     id: 'protocolBuilder.codebookVariable.labelHint',
     defaultMessage:
-      'A readable label for this attribute. It is not translated. A Network Composer field with no caption of its own shows this label to participants. Left empty, the attribute name is used.',
+      'A readable label for this attribute. It is not translated. Left empty, the attribute name is used.',
     description:
-      'Guidance under the attribute label field. The attribute name is the field above it, holding the researcher’s own name for the attribute. Network Composer is the name of an interview stage type; a caption is the text shown beside a form field.',
+      'Guidance under the attribute label field. The attribute name is the field above it, holding the researcher’s own name for the attribute.',
   },
   typeLabel: {
     id: 'protocolBuilder.codebookVariable.typeLabel',
