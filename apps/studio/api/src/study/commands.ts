@@ -4,6 +4,7 @@ import { and, eq } from 'drizzle-orm';
 import { Effect, Schema } from 'effect';
 import type { SqlError } from 'effect/sql';
 
+import type { AuditActor } from '@codaco/studio-contract/middleware/audit-actor';
 import { Principal } from '@codaco/studio-contract/middleware/authenticated';
 import type { NotFound } from '@codaco/studio-contract/schema/errors';
 import {
@@ -161,6 +162,7 @@ export const createAuditedStudy: (
   | SqlError.SqlError,
   | Database
   | Principal
+  | AuditActor
   | RequestId
   | AuditSignal
   | SecretsCipher

@@ -379,16 +379,11 @@ the variants, what each stub stands in for, and how to add one.
 
 ### Changing the schema
 
-A schema change is a migration. Change the table definitions (or a sidecar, or
-the job schema), run `sync-fingerprint` and then `migrate:generate`, and commit
-the numbered directory it writes under `api/migrations/`. The build refuses a
-schema change that has no migration, and a migration that has merged never
-changes again, because every deployed database records the hash of each one it
-applied. [`api/migrations/README.md`](./api/migrations/README.md) is the
-authoring guide: renames and drops, backfills, and what a migration may not
-contain. Development databases are pushed from the definitions instead
-(`apply-schema`, `db:reset`), and a test holds the two paths to the same
-result.
+There is deliberately no migration system yet. Pre-release, a schema change
+means reconciling or recreating the database rather than migrating it —
+`drizzle-kit push` semantics. Real migrations (`drizzle-kit generate`, from
+the same table definitions) must land before a release carries data worth
+keeping.
 
 Studio has one schema, defined as Drizzle tables in seventeen modules that live
 with their owners, plus the queue declarations beside them:
@@ -432,11 +427,11 @@ exports that `api/scripts/apply.ts` applies. Sidecar order carries a rule
 the test suite pins: the broad grant over every table runs first, right after
 the roles are created, and every narrower revocation (the outboxes, the audit
 log) runs after it, because a revocation placed before the broad grant is
-silently undone by it. A deployed database is built and upgraded only by
-`studio-api migrate`, from the numbered migrations under `api/migrations/`,
-each of which carries these statements as they stood at its version; a
-development database whose schema is not this build's is reset and reseeded
-(`db:reset`, and every `pnpm dev` boot) rather than migrated.
+silently undone by it. There are no migrations: Studio is in active
+development with no live data, so a database whose schema is not this build's
+is reset and reseeded (`db:reset`, and every `pnpm dev` boot) rather than
+migrated. The versioned migration system arrives with the first release that
+has data to keep.
 The policies themselves are `pgPolicy` entries on the table definitions, which
 is why `drizzle-kit` is pinned to the 1.0 release candidate: the stable line's
 `push` silently drops their `USING`/`WITH CHECK` expressions.
@@ -447,9 +442,9 @@ grants that divide them between the two roles — the application may create a
 job and read back its id, the worker runs as maintenance and owns the tables.
 Its DDL and grants are hashed into the fingerprint like everything else, so a
 column added to `studio_jobs.jobs` or a widened grant is a schema change like
-any other: it needs a migration, and until `migrate` has applied it every
-process waits, closed, rather than a worker discovering it at its first claim.
-The DDL is idempotent, so reapplying it leaves whatever is queued where it is.
+any other: applied once by `apply-schema`, and refused at boot by every process
+until it has been, rather than discovered by a worker at its first claim. The
+DDL is idempotent, so reapplying it leaves whatever is queued where it is.
 
 <!-- generated:schema-docs start -->
 
@@ -461,7 +456,7 @@ The DDL is idempotent, so reapplying it leaves whatever is queued where it is.
 
 Open the image for the full-size diagram. Tables with row-level security or trigger sidecars carry those details as SVG tooltips. The diagram shows physical foreign-key constraints; deliberately unconstrained logical references are not drawn as relationships. The renderer uses `1`/`*` edge endpoints, so optionality remains visible through each column's not-null marker rather than the edge.
 
-Schema fingerprint: `1b9b81525c379f0ca345b27c00d0bdaf2667a133a9faf5be8f8aa69f8a13ec9e`.
+Schema fingerprint: `3591929961fd37ec95efd20da86f4cfcdd0b6b7fccf2ef8d55008cbb9d8edd68`.
 
 Sidecar behavior that cannot be represented as ERD relationships:
 
@@ -526,10 +521,9 @@ Sidecar behavior that cannot be represented as ERD relationships:
 
 <!-- generated:schema-docs end -->
 
-The server never applies schema — it only verifies. A deployment's schema
-comes from `migrate` and its migrations (above). In a checkout, application is
-`drizzle-kit push`, run programmatically by `apply-schema` and `db:reset`: it
-introspects the live database, applies whatever delta
+The server never applies schema — it only verifies. Application is
+`drizzle-kit push`, run programmatically by `apply-schema` and `db:reset` from
+a repo checkout: it introspects the live database, applies whatever delta
 brings it to the definitions, re-runs the sidecars, and stamps a fingerprint —
 the hash of the DDL that describes this build. Boot compares that stamp
 against the fingerprint committed in `api/src/db/fingerprint.generated.ts`.
@@ -554,8 +548,8 @@ needs no database, and a per-test budget shared with the suites that do is the
 wrong bound for it. The test suite still holds the section to the current
 fingerprint and to naming every sidecar, both read from the committed files.
 
-On a mismatch the server waits, closed, and names the remedies: `apply-schema`
-reconciles the database in place, or
+A mismatch stops the server with the remedies: `apply-schema` reconciles the
+database in place, or
 
 ```bash
 pnpm --filter @codaco/studio-api db:reset
@@ -568,20 +562,16 @@ reset of a managed database never picks up the development marker. It also
 sweeps up any `studio_test_*` schemas and databases an interrupted test run
 left behind.
 
-A database carrying the tables but no fingerprint is never adopted — the SQL
-that built it is unknown. The server waits on it, closed, and `migrate` refuses
-it; in a checkout, `db:reset` (or a deliberate `apply-schema`, which reconciles
-whatever it finds) is the remedy.
+A database carrying the tables but no fingerprint is refused rather than
+adopted by boot — the SQL that built it is unknown — and `db:reset` (or a
+deliberate `apply-schema`, which reconciles whatever it finds) is the remedy.
 
-A database built by the pre-release migration system this repository once
-carried is recognisable by a `studio_migrations` **schema** — not to be
-confused with today's `public.studio_migrations` **table**, the history
-`migrate` writes. `apply-schema` cannot reconcile one: it would stamp the
-current fingerprint and leave that schema, and the roles and grants that came
-with it, standing behind it, so `db:reset` is the remedy. Only developer
-databases can be in that state, because that system was never deployed. A
-database carrying the table is one `migrate` built, and `apply-schema` refuses
-it, naming `migrate`; `db:reset` still recreates it.
+A database built by the versioned migration system this repository used to
+carry — recognisable by a `studio_migrations` schema — is not one
+`apply-schema` can reconcile. It would stamp the current fingerprint and leave
+the migration schema, and the roles and grants that came with it, standing
+behind it, so `db:reset` is the remedy. Only developer databases can be in
+that state, because that system was never deployed.
 
 The fingerprint compares the database against the DDL this build renders. It
 cannot tell you that a `better-auth` upgrade expects a shape these definitions
@@ -1035,13 +1025,13 @@ docker build -f apps/studio/Dockerfile --target studio-web -t studio-web .
 argument, so one image runs every Studio process and a deployment names a
 command rather than a path into the bundle:
 
-| Command                  | What it is                                                                                                                            |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------- |
-| `serve` (the default)    | HTTP, the RPC surface and the WebSocket endpoint; a single replica (#1247)                                                            |
-| `worker`                 | background jobs and cron schedules; scalable (see [Background work](#background-work))                                                |
-| `migrate`                | applies every migration the database has not recorded, creating the schema in an empty one; once per deployment, not once per replica |
-| `maintenance on` / `off` | closes the instance to users for an upgrade, and reopens it; see [Upgrade](./docs/self-host/upgrade.md)                               |
-| `rotate-secrets`         | re-encrypts every stored secret under the keyring's current entry; once per rotation                                                  |
+| Command                  | What it is                                                                                  |
+| ------------------------ | ------------------------------------------------------------------------------------------- |
+| `serve` (the default)    | HTTP, the RPC surface and the WebSocket endpoint; a single replica (#1247)                  |
+| `worker`                 | background jobs and cron schedules; scalable (see [Background work](#background-work))      |
+| `migrate`                | creates this build's schema in an empty database; once per deployment, not once per replica |
+| `maintenance on` / `off` | closes the instance to users. A stub that exits 64 until #1901 merges                       |
+| `rotate-secrets`         | re-encrypts every stored secret under the keyring's current entry; once per rotation        |
 
 ```bash
 docker run --rm --env-file .env studio-api migrate
@@ -1092,11 +1082,7 @@ schema fingerprint, and the object store where one is configured; the worker
 checks its maintenance pool, the schema, and whether its queue is working. A
 surface this deployment has not configured is left out rather than reported
 failed: it refuses by design, and a check for it would make an instance that
-never wanted one permanently unready. Before the first `migrate` both processes
-report `db` and `schema` as `failed: the database has not been set up for
-Studio yet`, and `api` reports `maintenance` as `failed: the server is
-starting`, until `migrate` has run (see
-[Database schema and seeding](#database-schema-and-seeding)).
+never wanted one permanently unready.
 
 The worker's listener binds `127.0.0.1` and nothing else. It is not a service
 anything routes to, and `WORKER_HEALTH_PORT` (default 3001) exists so the
@@ -1150,30 +1136,23 @@ them:
 
 - **The two schema commands are not interchangeable, and both are honest about
   which they are.** `apply-schema` is `drizzle-kit push`: it reconciles a
-  development database to this build's definitions, whatever state it was in,
-  and it needs a repository checkout because drizzle-kit is a development
-  dependency that must never reach the bundle. It refuses a database that
-  carries migration history, naming `migrate`. `migrate` is the deployed half:
-  in one transaction it applies every migration under `api/migrations/` that
-  the database has not recorded — all of them to an empty database, none to a
-  current one — from `dist/migrations.json`, which the build renders and
-  hashes. It **refuses** a database whose history is newer than the image,
-  whose recorded migrations were edited or reordered, or that has Studio's
-  tables and no history at all, and changes nothing when it does; each refusal
-  names its remedy. Both stamp the same fingerprint.
-- **No deployment applies schema by booting.** The server only reads the
-  fingerprint at boot. A database whose schema is absent or not this build's
-  does not stop it: `api` answers every request with the maintenance page,
-  the worker claims no jobs, and `/readyz` names the reason, until `migrate`
-  makes the schema current. On a database `migrate` has never set up, the
-  roles the processes connect as do not exist yet, so `/readyz` reports `db`
-  and `schema` as `failed: the database has not been set up for Studio yet`
-  and `maintenance` as `failed: the server is starting` until `migrate` runs.
-  Waiting rather than refusing is what lets an upgrade start the new image
-  before it migrates ([Upgrade](./docs/self-host/upgrade.md)). A configured
-  database it cannot reach still fails the boot. The development lane waits
-  the same way, naming `db:reset` rather than `migrate` (`dev.ts --prepare`
-  applies the schema itself when the database has none).
+  database to this build's definitions, whatever state it was in, and it needs
+  a repository checkout because drizzle-kit is a development dependency that
+  must never reach the bundle. `migrate` is the deployed half, and pre-release
+  it can do less: the build renders the statements push would have produced
+  into `dist/schema-ddl.json`, and the command executes them into an _empty_
+  database, is a no-op against a current one, and **refuses** a database some
+  other build created rather than reconciling it — recreate it, or wait for the
+  migration system (#1901), which replaces the internals of this command
+  without changing the command. Both stamp the same fingerprint, and every
+  process refuses a database that does not carry this build's.
+- **No deployment applies schema by booting.** The server only verifies the
+  fingerprint at boot. A stale or never-provisioned database stops the boot
+  with the remedy; a configured database it cannot reach fails it too. Only the
+  development lane comes up anyway and keeps retrying, because only there is
+  the cause a container that has not finished starting or a boot reset that
+  has not landed yet (`dev.ts --prepare` applies the schema itself when the
+  database has none).
 - **The login needs `CREATEROLE` the first time.** `apply-schema` creates the
   `studio_app` and `studio_maintenance` roles the server runs as (see
   [Tenancy](#tenancy)) and grants the login the right to assume them. The
@@ -1186,9 +1165,7 @@ them:
   GRANT studio_app, studio_maintenance TO <login> WITH SET TRUE;
   ```
 
-- **`seed` wipes every table but the schema's own bookkeeping** (the
-  fingerprint, the migration history and the maintenance flag) **and
-  repopulates synthetic content** (faker,
+- **`seed` wipes every table and repopulates synthetic content** (faker,
   `scripts/seed/`): five teams with a mix of members
   across every team role, and one fixed admin account —
   `admin@studio.test` / `studio-admin-not-for-production` — who owns every
@@ -1230,7 +1207,7 @@ them:
 A fresh instance has nobody in it, so there is no account to sign in with and
 no way to authenticate the person who should have the first one. The schema
 step closes that gap: `apply-schema` — and, in a container, the image's
-`migrate` command, while the instance has no owner — issues a **bootstrap token** and prints it, once, in the
+`migrate` command — issues a **bootstrap token** and prints it, once, in the
 output an operator is already reading:
 
 ```text

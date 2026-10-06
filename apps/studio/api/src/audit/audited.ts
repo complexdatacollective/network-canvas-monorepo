@@ -1,6 +1,6 @@
 import { Cause, Effect, Exit, Option, Predicate } from 'effect';
 
-import { Principal } from '@codaco/studio-contract/middleware/authenticated';
+import { AuditActor } from '@codaco/studio-contract/middleware/audit-actor';
 
 import { deepestMessage } from '../db/errors.ts';
 import { savepoint, type TeamAccess, TenantScope } from '../db/tenant.ts';
@@ -92,7 +92,7 @@ export const stamp = (
     ...body,
     teamId: context.teamId,
     teamLabel: context.teamLabel,
-    actorKind: 'user',
+    actorKind: context.actorKind,
     actorId: context.actorId,
     actorLabel: context.actorLabel,
     requestId: context.requestId,
@@ -125,7 +125,7 @@ export const audited = <A, E, R>(
   body: Effect.Effect<AuditedResult<A>, E, R>,
 ) =>
   Effect.gen(function* () {
-    const principal = yield* Principal;
+    const actor = yield* AuditActor;
     const requestId = yield* RequestId;
 
     const outcome = yield* TenantScope.open(
@@ -139,8 +139,9 @@ export const audited = <A, E, R>(
         const context = AuditContext.of({
           teamId: access.teamId,
           teamLabel,
-          actorId: principal.userId,
-          actorLabel: (principal.name.trim() || principal.email).slice(0, 320),
+          actorKind: actor.kind,
+          actorId: actor.id,
+          actorLabel: actor.label,
           requestId,
         });
 

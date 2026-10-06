@@ -22,7 +22,12 @@ export const AUDIT_OUTCOMES = ['succeeded', 'denied', 'failed'] as const;
 export const AuditOutcome = Schema.Literals(AUDIT_OUTCOMES);
 export type AuditOutcome = (typeof AuditOutcome)['Type'];
 
-export const AUDIT_ACTOR_KINDS = ['user', 'api_token', 'system'] as const;
+export const AUDIT_ACTOR_KINDS = [
+  'user',
+  'api_token',
+  'system',
+  'participant',
+] as const;
 export const AuditActorKind = Schema.Literals(AUDIT_ACTOR_KINDS);
 
 export const AuditActorFilter = Schema.Struct({

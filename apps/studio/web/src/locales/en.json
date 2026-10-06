@@ -1243,6 +1243,10 @@
     "defaultMessage": "API token",
     "description": "Kind label for an audit actor that is an API token."
   },
+  "studio.teamActivity.actorKindParticipant": {
+    "defaultMessage": "Participant",
+    "description": "Kind label for an audit actor that is a study participant taking an interview, named by their participant code."
+  },
   "studio.teamActivity.actorKindSystem": {
     "defaultMessage": "System",
     "description": "Kind label for an audit actor that is Studio itself."

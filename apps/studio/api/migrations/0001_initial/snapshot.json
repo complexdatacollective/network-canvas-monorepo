@@ -3209,6 +3209,32 @@
       "table": "interview_sessions"
     },
     {
+      "type": "bytea",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "session_token_hash",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "interview_sessions"
+    },
+    {
+      "type": "bigint",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "0",
+      "generated": null,
+      "identity": null,
+      "name": "client_revision",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "interview_sessions"
+    },
+    {
       "type": "timestamp with time zone",
       "typeSchema": null,
       "notNull": true,
@@ -9303,6 +9329,34 @@
       "nameExplicit": true,
       "columns": [
         {
+          "value": "team_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "session_token_hash",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": true,
+      "where": "\"session_token_hash\" IS NOT NULL",
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "interview_sessions_team_id_session_token_hash_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "interview_sessions"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
           "value": "last_activity_at",
           "isExpression": false,
           "asc": true,
@@ -13841,6 +13895,20 @@
       "table": "interview_sessions"
     },
     {
+      "value": "\"session_token_hash\" IS NULL OR octet_length(\"session_token_hash\") = 32",
+      "name": "interview_sessions_session_token_hash_check",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "interview_sessions"
+    },
+    {
+      "value": "\"client_revision\" >= 0",
+      "name": "interview_sessions_client_revision_check",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "interview_sessions"
+    },
+    {
       "value": "char_length(\"ego_uid\") BETWEEN 1 AND 128\n          AND jsonb_typeof(\"ego_attributes\") = 'object'\n          AND jsonb_typeof(\"stage_metadata\") = 'object'\n          AND (\"ego_secure_attributes\" IS NULL\n               OR jsonb_typeof(\"ego_secure_attributes\") = 'object')",
       "name": "interview_sessions_ego_check",
       "entityType": "checks",
@@ -14555,7 +14623,7 @@
       "table": "audit_events"
     },
     {
-      "value": "\"actor_kind\" IN ('user', 'api_token', 'system')",
+      "value": "\"actor_kind\" IN ('user', 'api_token', 'system', 'participant')",
       "name": "audit_events_actor_kind_check",
       "entityType": "checks",
       "schema": "public",

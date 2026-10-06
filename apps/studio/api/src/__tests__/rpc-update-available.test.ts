@@ -16,6 +16,7 @@ import {
 import { StatusRpcs } from '@codaco/studio-contract/rpc/status';
 import { UserId } from '@codaco/studio-contract/schema/ids';
 
+import { provideCaller } from '../audit/actor.ts';
 import { DatabaseAbsent } from '../db/client.ts';
 import type { LatestRelease } from '../db/deployment-state.ts';
 import { getDeploymentStatus } from '../domain.ts';
@@ -77,9 +78,7 @@ async function askAs(
     readInstallation,
   };
   const authenticated = Layer.succeed(Authenticated)(
-    Authenticated.of((effect) =>
-      Effect.provideService(effect, Principal, principalFor(userId)),
-    ),
+    Authenticated.of(provideCaller(principalFor(userId))),
   );
   return Effect.runPromise(
     Effect.scoped(

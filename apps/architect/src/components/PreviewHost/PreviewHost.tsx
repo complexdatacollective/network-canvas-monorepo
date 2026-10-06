@@ -23,6 +23,7 @@ import {
   Shell,
 } from '@codaco/interview';
 import { loadInterviewCatalog } from '@codaco/interview/catalog';
+import { currentProtocolToPayload } from '@codaco/interview/contract';
 import {
   type ConstraintConflict,
   generateNetwork,
@@ -36,7 +37,6 @@ import { assetKey } from '~/utils/assetDB';
 import { hydrateMemoryAsset } from '~/utils/inMemoryAssetStore';
 import { reportError } from '~/utils/reportError';
 
-import { currentProtocolToPayload } from './currentProtocolToPayload';
 import { isPreviewMessage, type PreviewPayload } from './messages';
 import { collectPreviewRosterData } from './previewRosterData';
 import { useAssetResolver } from './useAssetResolver';
@@ -288,7 +288,10 @@ export function PreviewHost() {
         const previewProtocol = previewPayload.respectSkipLogic
           ? previewPayload.protocol
           : protocolWithoutSkipLogic(previewPayload.protocol);
-        const protocol = currentProtocolToPayload(previewProtocol);
+        const protocol = currentProtocolToPayload(previewProtocol, {
+          id: uuid(),
+          importedAt: new Date().toISOString(),
+        });
         const session = await buildSession(previewPayload);
         if (cancelled) return;
         nextPayload = { protocol, session };

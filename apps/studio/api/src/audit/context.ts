@@ -5,6 +5,7 @@ export class AuditContext extends Context.Service<
   {
     readonly teamId: string;
     readonly teamLabel: string;
+    readonly actorKind: 'user' | 'participant';
     readonly actorId: string;
     readonly actorLabel: string;
     readonly requestId: string;

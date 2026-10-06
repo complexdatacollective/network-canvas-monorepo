@@ -4,27 +4,15 @@ import path from 'node:path';
 import { v4 as uuid } from 'uuid';
 
 import {
-  type Codebook,
   CURRENT_SCHEMA_VERSION,
   type CurrentProtocol,
   CurrentProtocolSchema,
   extractProtocol,
-  hashProtocol,
   missingAssetsError,
 } from '@codaco/protocol-validation';
 
-import type {
-  ProtocolPayload,
-  ResolvedAsset,
-} from '../../src/contract/types.ts';
+import { currentProtocolToPayload } from '../../src/contract/protocolPayload.ts';
 import { SILOS_PROTOCOL_PATH } from '../helpers/protocol-paths.ts';
-
-type AssetEntry = {
-  name: string;
-  type: string;
-  source?: string;
-  value?: string;
-};
 
 const HOST_URL = 'http://localhost:4101';
 const ASSET_SERVER_URL = 'http://localhost:4200';
@@ -87,18 +75,12 @@ async function main(): Promise<void> {
     JSON.parse(rewrittenStr),
   );
 
-  const assets: ResolvedAsset[] = buildResolvedAssets(rewrittenProtocol);
   const assetUrls = buildAssetUrls(rewrittenProtocol, slug);
 
-  const payload: ProtocolPayload = {
-    ...(rewrittenProtocol as Omit<CurrentProtocol, 'assetManifest'> & {
-      codebook: Codebook;
-    }),
+  const payload = currentProtocolToPayload(rewrittenProtocol, {
     id: protocolId,
-    hash: hashProtocol(rewrittenProtocol),
     importedAt: new Date().toISOString(),
-    assets,
-  };
+  });
 
   const bootstrapPath = path.join(protocolAssetDir, 'bootstrap.json');
   await fs.writeFile(
@@ -112,37 +94,6 @@ async function main(): Promise<void> {
   process.stdout.write(
     `Open ${HOST_URL}/?bootstrap=${slug} to enter the interview.\n`,
   );
-}
-
-function buildResolvedAssets(protocol: CurrentProtocol): ResolvedAsset[] {
-  if (!protocol.assetManifest) return [];
-  const validTypes = ['image', 'video', 'audio', 'network', 'geojson'] as const;
-  type ValidType = (typeof validTypes)[number];
-
-  function isAssetEntry(entry: unknown): entry is AssetEntry {
-    return typeof entry === 'object' && entry !== null && 'type' in entry;
-  }
-  function isValidType(t: string): t is ValidType {
-    return (validTypes as readonly string[]).includes(t);
-  }
-
-  const assets: ResolvedAsset[] = [];
-  for (const [assetId, entry] of Object.entries(protocol.assetManifest)) {
-    if (!isAssetEntry(entry)) continue;
-    if (entry.type === 'apikey') {
-      assets.push({
-        assetId,
-        name: entry.name,
-        type: 'apikey',
-        value: typeof entry.value === 'string' ? entry.value : undefined,
-      });
-      continue;
-    }
-    if (!entry.source) continue;
-    if (!isValidType(entry.type)) continue;
-    assets.push({ assetId, name: entry.name, type: entry.type });
-  }
-  return assets;
 }
 
 function buildAssetUrls(

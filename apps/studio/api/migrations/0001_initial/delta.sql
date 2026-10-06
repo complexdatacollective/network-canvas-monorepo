@@ -442,6 +442,8 @@ CREATE TABLE "interview_sessions" (
 	"ego_secure_attributes" jsonb,
 	"holder_id" text,
 	"holder_epoch" bigint DEFAULT 0 NOT NULL,
+	"session_token_hash" bytea,
+	"client_revision" bigint DEFAULT 0 NOT NULL,
 	"started_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"last_activity_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"completed_at" timestamp with time zone,
@@ -459,6 +461,8 @@ CREATE TABLE "interview_sessions" (
                OR char_length("current_stage_id") BETWEEN 1 AND 128)),
 	CONSTRAINT "interview_sessions_holder_check" CHECK ("holder_epoch" >= 0
           AND ("holder_id" IS NULL OR char_length("holder_id") BETWEEN 1 AND 128)),
+	CONSTRAINT "interview_sessions_session_token_hash_check" CHECK ("session_token_hash" IS NULL OR octet_length("session_token_hash") = 32),
+	CONSTRAINT "interview_sessions_client_revision_check" CHECK ("client_revision" >= 0),
 	CONSTRAINT "interview_sessions_ego_check" CHECK (char_length("ego_uid") BETWEEN 1 AND 128
           AND jsonb_typeof("ego_attributes") = 'object'
           AND jsonb_typeof("stage_metadata") = 'object'
@@ -1216,7 +1220,7 @@ CREATE TABLE "audit_events" (
 	CONSTRAINT "audit_events_alert_identity_unique" UNIQUE("id","team_id","sequence","event_type","event_version"),
 	CONSTRAINT "audit_events_category_check" CHECK ("category" IN ('team_access', 'protocol', 'study', 'participant_data', 'data_egress', 'credential', 'integration', 'security', 'audit')),
 	CONSTRAINT "audit_events_outcome_check" CHECK ("outcome" IN ('succeeded', 'denied', 'failed')),
-	CONSTRAINT "audit_events_actor_kind_check" CHECK ("actor_kind" IN ('user', 'api_token', 'system')),
+	CONSTRAINT "audit_events_actor_kind_check" CHECK ("actor_kind" IN ('user', 'api_token', 'system', 'participant')),
 	CONSTRAINT "audit_events_actor_id_check" CHECK ("actor_kind" = 'system' OR "actor_id" IS NOT NULL),
 	CONSTRAINT "audit_events_sequence_check" CHECK ("sequence" > 0 AND "event_version" > 0),
 	CONSTRAINT "audit_events_identifier_lengths_check" CHECK (char_length("team_id") BETWEEN 1 AND 255
@@ -1452,6 +1456,8 @@ CREATE INDEX "interview_sessions_team_id_wave_id_status_idx" ON "interview_sessi
 CREATE INDEX "interview_sessions_team_id_participant_id_wave_id_idx" ON "interview_sessions" ("team_id","participant_id","wave_id") WHERE "participant_id" IS NOT NULL;
 
 CREATE UNIQUE INDEX "interview_sessions_wave_id_participant_id_idx" ON "interview_sessions" ("wave_id","participant_id") WHERE "participant_id" IS NOT NULL;
+
+CREATE UNIQUE INDEX "interview_sessions_team_id_session_token_hash_idx" ON "interview_sessions" ("team_id","session_token_hash") WHERE "session_token_hash" IS NOT NULL;
 
 CREATE INDEX "interview_sessions_abandonment_scan_idx" ON "interview_sessions" ("last_activity_at") WHERE "status" = 'in_progress';
 

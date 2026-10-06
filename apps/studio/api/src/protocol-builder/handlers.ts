@@ -19,13 +19,13 @@ import {
   SectionsLocked,
 } from '@codaco/protocol-builder-core/contract/errors';
 import type { ProtocolEvent } from '@codaco/protocol-builder-core/contract/schemas';
-import { Principal } from '@codaco/studio-contract/middleware/authenticated';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import {
   sectionId as makeSectionId,
   parseSectionId,
 } from '@codaco/studio-sync/taxonomy';
 
+import { provideCaller } from '../audit/actor.ts';
 import { type AuthService } from '../auth/service.ts';
 import { Database } from '../db/client.ts';
 import { TenantScope } from '../db/tenant.ts';
@@ -231,7 +231,7 @@ export const ProtocolBuilderHandlers: Layer.Layer<
               status: 'ok' as const,
               data: { ...outcome.data, value },
             };
-          }).pipe(Effect.provideService(Principal)(session.principal)),
+          }).pipe(provideCaller(session.principal)),
         ),
       );
 
@@ -350,7 +350,7 @@ export const ProtocolBuilderHandlers: Layer.Layer<
                     session.draftId,
                     from,
                   ),
-                ).pipe(Effect.provideService(Principal)(session.principal)),
+                ).pipe(provideCaller(session.principal)),
               ),
             );
             yield* leases.connect(
@@ -428,7 +428,7 @@ export const ProtocolBuilderHandlers: Layer.Layer<
                 session.access.teamId,
                 writeKey(session, 'submit', requestId),
               ),
-            ).pipe(Effect.provideService(Principal)(session.principal)),
+            ).pipe(provideCaller(session.principal)),
           ),
         );
         if (already !== undefined) return submitted(already);
@@ -515,7 +515,7 @@ export const ProtocolBuilderHandlers: Layer.Layer<
                 session.access.teamId,
                 writeKey(session, 'create', requestId),
               ),
-            ).pipe(Effect.provideService(Principal)(session.principal)),
+            ).pipe(provideCaller(session.principal)),
           ),
         );
         if (already !== undefined) return yield* created(already);
