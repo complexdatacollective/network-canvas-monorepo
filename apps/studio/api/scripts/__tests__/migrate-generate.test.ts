@@ -16,6 +16,7 @@ import {
 } from 'drizzle-kit/api-postgres';
 import { sql } from 'drizzle-orm';
 import { check, index, integer, pgTable, text } from 'drizzle-orm/pg-core';
+import { Schema } from 'effect';
 import { afterAll, describe, expect, it } from 'vitest';
 
 import {
@@ -188,6 +189,50 @@ describe('migrate:generate', () => {
     expect(
       readMigrationsDocument(dir, await fingerprintOf(V1)).migrations,
     ).toHaveLength(1);
+  });
+
+  // #1901 E-10: "regenerate and diff" is an audit only if generating twice
+  // from one tree writes the same bytes.
+  it('writes the same bytes every time from the same tree, chaining each snapshot to the last', async () => {
+    const contents = async () => {
+      const dir = migrationsDir();
+      await initial(dir);
+      await generateMigrationDirectory(
+        await inputsFor(dir, {
+          teams: teams(),
+          notes: notes('body'),
+          extra: extra(),
+        }),
+        { kind: 'generate', name: 'extra' },
+      );
+      return Object.fromEntries(
+        readdirSync(dir, { recursive: true })
+          .map(String)
+          .filter((path) => statSync(join(dir, path)).isFile())
+          .toSorted()
+          .map((path) => [path, readFileSync(join(dir, path), 'utf8')]),
+      );
+    };
+    const first = await contents();
+    expect(Object.keys(first)).toHaveLength(8);
+    expect(await contents()).toEqual(first);
+
+    const snapshot = (version: string) =>
+      Schema.decodeUnknownSync(
+        Schema.fromJsonString(
+          Schema.Struct({
+            id: Schema.String,
+            prevIds: Schema.Array(Schema.String),
+          }),
+        ),
+      )(first[join(version, 'snapshot.json')]);
+    expect(snapshot('0001_initial').prevIds).toEqual([
+      '00000000-0000-0000-0000-000000000000',
+    ]);
+    expect(snapshot('0002_extra').prevIds).toEqual([
+      snapshot('0001_initial').id,
+    ]);
+    expect(snapshot('0002_extra').id).not.toBe(snapshot('0001_initial').id);
   });
 
   it('writes nothing, and succeeds, when nothing changed', async () => {

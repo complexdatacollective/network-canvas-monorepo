@@ -27,6 +27,7 @@ import {
   MIGRATION_VERSION,
   type MigrationManifest,
   migrationVersion,
+  sha256,
   SNAPSHOT_ARTEFACT,
 } from '../src/db/migrations-document.ts';
 import { SCHEMA, SIDECARS } from '../src/db/schema.ts';
@@ -339,6 +340,36 @@ const SnapshotShape = Schema.Struct({
   ),
 });
 
+/** The chain's root: the empty database every first migration starts from. */
+const EMPTY_SNAPSHOT_ID = '00000000-0000-0000-0000-000000000000';
+
+/**
+ * drizzle-kit names each snapshot with a random UUID and chains it to the
+ * previous one's. Derived from the version instead, so generating twice from
+ * the same tree writes the same bytes, and "regenerate and diff" can audit a
+ * committed migration (#1901 E-10). A UUID's shape (version nibble 8, RFC
+ * 9562's custom-format version), because drizzle-kit's snapshots carry one.
+ */
+function snapshotId(version: string): string {
+  const hex = sha256(`studio-migration-snapshot:${version}`);
+  const variant = ((Number.parseInt(hex[16]!, 16) & 0x3) | 0x8).toString(16);
+  return [
+    hex.slice(0, 8),
+    hex.slice(8, 12),
+    `8${hex.slice(13, 16)}`,
+    `${variant}${hex.slice(17, 20)}`,
+    hex.slice(20, 32),
+  ].join('-');
+}
+
+function withSnapshotIds(
+  snapshot: Snapshot,
+  version: string,
+  previous: string,
+): Snapshot {
+  return { ...snapshot, id: snapshotId(version), prevIds: [previous] };
+}
+
 function readSnapshot(path: string): Snapshot {
   const text = readFileSync(path, 'utf8');
   Schema.decodeUnknownSync(Schema.fromJsonString(SnapshotShape))(text);
@@ -504,8 +535,12 @@ async function generate(
     newest === undefined
       ? await generateDrizzleJson({})
       : readSnapshot(join(newest.path, SNAPSHOT_ARTEFACT));
-  const cur = await generateDrizzleJson(inputs.schema, prev.id);
   const version = migrationVersion(directories.length + 1, request.name);
+  const cur = withSnapshotIds(
+    await generateDrizzleJson(inputs.schema),
+    version,
+    newest === undefined ? EMPTY_SNAPSHOT_ID : prev.id,
+  );
   const sidecars = sidecarsSql(inputs);
   const snapshot = `${JSON.stringify(cur, null, 2)}\n`;
   const from = newest?.version ?? 'an empty database';
