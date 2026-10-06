@@ -83,13 +83,13 @@ const codebook = {
       variables: {
         name: {
           name: 'Name',
-          label: { en: 'Name' },
+          label: 'Name',
           type: 'text',
           component: 'Text',
         },
         met_on: {
           name: 'Met on',
-          label: { en: 'Met on' },
+          label: 'Met on',
           type: 'datetime',
           component: 'DatePicker',
           parameters: { type: 'full' },
@@ -110,7 +110,7 @@ const requiredNameCodebook = {
         ...codebook.node.person.variables,
         name: {
           name: 'Name',
-          label: { en: 'Name' },
+          label: 'Name',
           type: 'text',
           component: 'Text',
           validation: { required: true },

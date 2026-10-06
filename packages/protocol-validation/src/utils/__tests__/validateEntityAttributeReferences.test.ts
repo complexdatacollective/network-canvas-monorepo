@@ -15,8 +15,8 @@ const codebook = {
       color: 'node-color-seq-1',
       shape: { default: 'circle' },
       variables: {
-        age: { name: 'age', label: localized('age'), type: 'number' },
-        rank: { name: 'rank', label: localized('rank'), type: 'ordinal' },
+        age: { name: 'age', label: 'age', type: 'number' },
+        rank: { name: 'rank', label: 'rank', type: 'ordinal' },
       },
     },
   },

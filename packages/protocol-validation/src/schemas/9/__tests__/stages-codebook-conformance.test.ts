@@ -593,7 +593,7 @@ describe('Codebook cross-entity record-key collision (#663)', () => {
           color: 'node-color-seq-1',
           shape: { default: 'circle' },
           variables: {
-            v1: { name: 'Age', label: localized('Age'), type: 'number' },
+            v1: { name: 'Age', label: 'Age', type: 'number' },
           },
         },
       },
@@ -604,7 +604,7 @@ describe('Codebook cross-entity record-key collision (#663)', () => {
           variables: {
             v2: {
               name: 'Closeness',
-              label: localized('Closeness'),
+              label: 'Closeness',
               type: 'number',
             },
           },
@@ -623,7 +623,7 @@ describe('Codebook cross-entity record-key collision (#663)', () => {
           color: 'node-color-seq-1',
           shape: { default: 'circle' },
           variables: {
-            shared: { name: 'Age', label: localized('Age'), type: 'number' },
+            shared: { name: 'Age', label: 'Age', type: 'number' },
           },
         },
       },
@@ -634,7 +634,7 @@ describe('Codebook cross-entity record-key collision (#663)', () => {
           variables: {
             shared: {
               name: 'Weight',
-              label: localized('Weight'),
+              label: 'Weight',
               type: 'text',
             },
           },
@@ -659,7 +659,7 @@ describe('Codebook cross-entity record-key collision (#663)', () => {
           color: 'node-color-seq-1',
           shape: { default: 'circle' },
           variables: {
-            shared: { name: 'Age', label: localized('Age'), type: 'number' },
+            shared: { name: 'Age', label: 'Age', type: 'number' },
           },
         },
         place: {
@@ -668,7 +668,7 @@ describe('Codebook cross-entity record-key collision (#663)', () => {
           color: 'node-color-seq-2',
           shape: { default: 'circle' },
           variables: {
-            shared: { name: 'Label', label: localized('Label'), type: 'text' },
+            shared: { name: 'Label', label: 'Label', type: 'text' },
           },
         },
       },
@@ -685,7 +685,7 @@ describe('Codebook cross-entity record-key collision (#663)', () => {
           color: 'node-color-seq-1',
           shape: { default: 'circle' },
           variables: {
-            shared: { name: 'Age', label: localized('Age'), type: 'number' },
+            shared: { name: 'Age', label: 'Age', type: 'number' },
           },
         },
       },
@@ -693,7 +693,7 @@ describe('Codebook cross-entity record-key collision (#663)', () => {
         variables: {
           shared: {
             name: 'Income',
-            label: localized('Income'),
+            label: 'Income',
             type: 'number',
           },
         },

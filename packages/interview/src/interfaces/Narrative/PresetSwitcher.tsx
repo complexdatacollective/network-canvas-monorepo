@@ -126,13 +126,6 @@ export default function PresetSwitcher({
         getSubjectType,
         getNetworkNodes,
         (codebook, subjectType, nodes) => {
-          const highlightLabels = (currentPreset?.highlight ?? []).map(
-            (variableId: string) =>
-              subjectType
-                ? codebook?.node?.[subjectType]?.variables?.[variableId]?.label
-                : undefined,
-          );
-
           const edges = (currentPreset?.edges?.display ?? []).map(
             (type: string) => ({
               label: codebook?.edge?.[type]?.label,
@@ -162,14 +155,14 @@ export default function PresetSwitcher({
             }
           }
 
-          return { categoricalOptions, groupValues, edges, highlightLabels };
+          return { categoricalOptions, groupValues, edges };
         },
       ),
     [currentPreset],
   );
 
-  const { categoricalOptions, groupValues, edges, highlightLabels } =
-    useStageSelector(selector);
+  const { categoricalOptions, groupValues, edges } = useStageSelector(selector);
+  const highlights = currentPreset?.highlight ?? [];
 
   const groupLegend = useMemo(
     () =>
@@ -181,7 +174,7 @@ export default function PresetSwitcher({
     [categoricalOptions, groupValues, toPresentationalText],
   );
 
-  const hasHighlights = highlightLabels.length > 0;
+  const hasHighlights = highlights.length > 0;
   const hasEdges = edges.length > 0;
   const hasGroups = groupLegend.length > 0;
 
@@ -289,14 +282,14 @@ export default function PresetSwitcher({
                     onValueChange={(v) => onChangeHighlightIndex(Number(v))}
                     className="flex flex-col gap-2"
                   >
-                    {highlightLabels.map((label, index) => {
+                    {highlights.map((highlight, index) => {
                       const radioId = `highlight-radio-${index}`;
                       return (
                         <RadioItem
                           key={index}
                           id={radioId}
                           value={String(index)}
-                          label={label ? toPresentationalText(label) : ''}
+                          label={toPresentationalText(highlight.label)}
                         />
                       );
                     })}

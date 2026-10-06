@@ -28,22 +28,22 @@ describe('Validation Functions', () => {
           variables: {
             testAttribute: {
               name: 'Test Attribute',
-              label: { en: 'Test Attribute' },
+              label: 'Test Attribute',
               type: 'text',
             },
             numberAttribute: {
               name: 'Number Attribute',
-              label: { en: 'Number Attribute' },
+              label: 'Number Attribute',
               type: 'number',
             },
             dateAttribute: {
               name: 'Date Attribute',
-              label: { en: 'Date Attribute' },
+              label: 'Date Attribute',
               type: 'datetime',
             },
             toString: {
               name: 'Prototype-named Attribute',
-              label: { en: 'Prototype-named Attribute' },
+              label: 'Prototype-named Attribute',
               type: 'number' as const,
             },
           },
@@ -1128,7 +1128,7 @@ describe('Validation Functions', () => {
                 variables: {
                   displayName: {
                     name: 'Display name',
-                    label: { en: 'Display name' },
+                    label: 'Display name',
                     type: 'text',
                   },
                 },
@@ -1662,7 +1662,7 @@ describe('Validation Functions', () => {
               variables: {
                 testAttribute: {
                   name: 'Test Attribute',
-                  label: { en: 'Test Attribute' },
+                  label: 'Test Attribute',
                   type: 'text',
                 },
               },

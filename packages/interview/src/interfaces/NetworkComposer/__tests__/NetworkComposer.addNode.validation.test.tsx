@@ -79,14 +79,14 @@ function buildCodebook(
         variables: {
           [QUICK_ADD_VAR]: {
             name: 'Name',
-            label: { en: 'Name' },
+            label: 'Name',
             type: 'text',
             ...(omitComponent ? {} : { component: 'Text' }),
             ...(validation ? { validation } : {}),
           },
           [LAYOUT_VAR]: {
             name: 'position',
-            label: { en: 'Position' },
+            label: 'Position',
             type: 'layout',
           },
         },

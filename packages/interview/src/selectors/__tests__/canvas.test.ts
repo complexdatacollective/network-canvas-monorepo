@@ -38,7 +38,7 @@ describe('Sociogram placement selectors', () => {
             variables: {
               layout: {
                 name: 'Layout',
-                label: { en: 'Layout' },
+                label: 'Layout',
                 type: 'layout',
               },
             },

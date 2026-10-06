@@ -10,7 +10,7 @@
       "variables": {
         "ego_hiv_status": {
           "name": "ego_hiv_status",
-          "label": { "en-US": "ego_hiv_status" },
+          "label": "ego_hiv_status",
           "type": "categorical",
           "component": "ToggleButtonGroup",
           "validation": {
@@ -31,7 +31,7 @@
         },
         "on_prep": {
           "name": "on_prep",
-          "label": { "en-US": "on_prep" },
+          "label": "on_prep",
           "type": "boolean",
           "component": "Boolean",
           "options": [
@@ -41,7 +41,7 @@
         },
         "on_art": {
           "name": "on_art",
-          "label": { "en-US": "on_art" },
+          "label": "on_art",
           "type": "boolean",
           "component": "Boolean",
           "options": [
@@ -51,7 +51,7 @@
         },
         "last_hiv_test": {
           "name": "last_hiv_test",
-          "label": { "en-US": "last_hiv_test" },
+          "label": "last_hiv_test",
           "type": "datetime",
           "component": "DatePicker",
           "parameters": {
@@ -60,7 +60,7 @@
         },
         "injects_drugs": {
           "name": "injects_drugs",
-          "label": { "en-US": "injects_drugs" },
+          "label": "injects_drugs",
           "type": "boolean",
           "component": "Boolean",
           "options": [
@@ -80,7 +80,7 @@
         "variables": {
           "partner_label": {
             "name": "partner_label",
-            "label": { "en-US": "partner_label" },
+            "label": "partner_label",
             "type": "text",
             "component": "Text",
             "encrypted": true,
@@ -91,7 +91,7 @@
           },
           "partner_type": {
             "name": "partner_type",
-            "label": { "en-US": "partner_type" },
+            "label": "partner_type",
             "type": "categorical",
             "component": "ToggleButtonGroup",
             "validation": {
@@ -112,7 +112,7 @@
           },
           "partner_age": {
             "name": "partner_age",
-            "label": { "en-US": "partner_age" },
+            "label": "partner_age",
             "type": "number",
             "component": "Number",
             "validation": {
@@ -122,7 +122,7 @@
           },
           "partner_gender": {
             "name": "partner_gender",
-            "label": { "en-US": "partner_gender" },
+            "label": "partner_gender",
             "type": "categorical",
             "component": "ToggleButtonGroup",
             "validation": {
@@ -145,7 +145,7 @@
           },
           "partner_serostatus": {
             "name": "partner_serostatus",
-            "label": { "en-US": "partner_serostatus" },
+            "label": "partner_serostatus",
             "type": "categorical",
             "component": "ToggleButtonGroup",
             "validation": {
@@ -159,7 +159,7 @@
           },
           "condom_use": {
             "name": "condom_use",
-            "label": { "en-US": "condom_use" },
+            "label": "condom_use",
             "type": "ordinal",
             "component": "LikertScale",
             "options": [
@@ -172,7 +172,7 @@
           },
           "shared_injection_equipment": {
             "name": "shared_injection_equipment",
-            "label": { "en-US": "shared_injection_equipment" },
+            "label": "shared_injection_equipment",
             "type": "boolean",
             "component": "Boolean",
             "options": [
@@ -182,7 +182,7 @@
           },
           "partnership_start": {
             "name": "partnership_start",
-            "label": { "en-US": "partnership_start" },
+            "label": "partnership_start",
             "type": "datetime",
             "component": "DatePicker",
             "parameters": {
@@ -191,7 +191,7 @@
           },
           "partnership_end": {
             "name": "partnership_end",
-            "label": { "en-US": "partnership_end" },
+            "label": "partnership_end",
             "type": "datetime",
             "component": "DatePicker",
             "parameters": {
@@ -200,7 +200,7 @@
           },
           "layout": {
             "name": "layout",
-            "label": { "en-US": "layout" },
+            "label": "layout",
             "type": "layout"
           }
         }

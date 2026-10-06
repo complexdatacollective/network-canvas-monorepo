@@ -357,12 +357,12 @@ describe('buildGraphML', () => {
             ...representedNodeType.variables,
             unansweredNumber: {
               name: 'unansweredNumber',
-              label: { en: 'Unanswered number' },
+              label: 'Unanswered number',
               type: 'number',
             },
             unansweredNumericOrdinal: {
               name: 'unansweredNumericOrdinal',
-              label: { en: 'Unanswered numeric ordinal' },
+              label: 'Unanswered numeric ordinal',
               type: 'ordinal',
               options: [
                 { label: { en: 'One' }, value: 1 },
@@ -379,12 +379,12 @@ describe('buildGraphML', () => {
           variables: {
             unrepresentedNumber: {
               name: 'unrepresentedNumber',
-              label: { en: 'Unrepresented number' },
+              label: 'Unrepresented number',
               type: 'number',
             },
             unrepresentedNumericOrdinal: {
               name: 'unrepresentedNumericOrdinal',
-              label: { en: 'Unrepresented numeric ordinal' },
+              label: 'Unrepresented numeric ordinal',
               type: 'ordinal',
               options: [
                 { label: { en: 'One' }, value: 1 },
@@ -393,7 +393,7 @@ describe('buildGraphML', () => {
             },
             stringOrdinal: {
               name: 'stringOrdinal',
-              label: { en: 'String ordinal' },
+              label: 'String ordinal',
               type: 'ordinal',
               options: [
                 { label: { en: 'One' }, value: 'one' },
@@ -402,19 +402,19 @@ describe('buildGraphML', () => {
             },
             emptyOrdinal: {
               name: 'emptyOrdinal',
-              label: { en: 'Empty ordinal' },
+              label: 'Empty ordinal',
               type: 'ordinal',
               options: [],
             },
-            text: { name: 'text', label: { en: 'Text' }, type: 'text' },
+            text: { name: 'text', label: 'Text', type: 'text' },
             boolean: {
               name: 'boolean',
-              label: { en: 'Boolean' },
+              label: 'Boolean',
               type: 'boolean',
             },
             categorical: {
               name: 'categorical',
-              label: { en: 'Categorical' },
+              label: 'Categorical',
               type: 'categorical',
               options: [
                 { label: { en: 'One' }, value: 1 },
@@ -537,7 +537,7 @@ describe('buildGraphML', () => {
           variables: {
             shared: {
               name: 'declaredShared',
-              label: { en: 'Declared shared' },
+              label: 'Declared shared',
               type: 'text',
             },
           },

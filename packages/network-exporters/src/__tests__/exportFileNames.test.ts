@@ -61,7 +61,7 @@ const codebook: Codebook = {
         variables: {
           [`${id}-label`]: {
             name: 'Label',
-            label: { en: 'Label' },
+            label: 'Label',
             type: 'text' as const,
           },
         },

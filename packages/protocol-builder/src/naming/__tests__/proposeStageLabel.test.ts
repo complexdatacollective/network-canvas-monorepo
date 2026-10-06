@@ -42,10 +42,10 @@ const contextWith = (
       variables: {
         diabetes: {
           name: 'Diabetes',
-          label: { en: 'Diabetes' },
+          label: 'Diabetes',
           type: 'boolean',
         },
-        asthma: { name: 'Asthma', label: { en: 'Asthma' }, type: 'boolean' },
+        asthma: { name: 'Asthma', label: 'Asthma', type: 'boolean' },
       },
     },
     [sectionId({ kind: 'codebookEdge', typeId: 'friendship' })]: {
@@ -54,7 +54,7 @@ const contextWith = (
       variables: {
         closeness: {
           name: 'Closeness',
-          label: { en: 'Closeness' },
+          label: 'Closeness',
           type: 'scalar',
         },
       },

@@ -20,8 +20,8 @@ const makeNode = (
 describe('resolveRosterNodeLabel', () => {
   it('returns the value found by the name heuristic when one matches', () => {
     const codebookVariables: NodeDefinition['variables'] = {
-      'var-name': { name: 'name', label: { en: 'Name' }, type: 'text' },
-      'var-age': { name: 'age', label: { en: 'Age' }, type: 'number' },
+      'var-name': { name: 'name', label: 'Name', type: 'text' },
+      'var-age': { name: 'age', label: 'Age', type: 'number' },
     };
 
     const node = makeNode({ 'var-name': 'John Doe', 'var-age': 30 });
@@ -43,7 +43,7 @@ describe('resolveRosterNodeLabel', () => {
     const codebookVariables: NodeDefinition['variables'] = {
       'codebook-name-uuid': {
         name: 'name',
-        label: { en: 'Name' },
+        label: 'Name',
         type: 'text',
       },
     };
@@ -87,7 +87,7 @@ describe('resolveRosterNodeLabel', () => {
       codebookVariables: {
         'codebook-name-uuid': {
           name: 'name',
-          label: { en: 'Name' },
+          label: 'Name',
           type: 'text',
         },
       },

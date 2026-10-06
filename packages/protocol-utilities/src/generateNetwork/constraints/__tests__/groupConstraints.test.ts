@@ -35,13 +35,13 @@ function chain(minValue: number, maxValue: number): EntityConstraints {
     {
       a: {
         name: 'A',
-        label: { 'en-US': 'A' },
+        label: 'A',
         type: 'number',
         validation: { minValue, maxValue },
       },
       b: {
         name: 'B',
-        label: { 'en-US': 'B' },
+        label: 'B',
         type: 'number',
         validation: {
           minValue,
@@ -51,7 +51,7 @@ function chain(minValue: number, maxValue: number): EntityConstraints {
       },
       c: {
         name: 'C',
-        label: { 'en-US': 'C' },
+        label: 'C',
         type: 'number',
         validation: {
           minValue,
@@ -75,7 +75,7 @@ function dateChain(
     const previous = ids[index - 1];
     variables[id] = {
       name: id.toUpperCase(),
-      label: { 'en-US': id.toUpperCase() },
+      label: id.toUpperCase(),
       type: 'datetime',
       parameters,
       ...(previous === undefined
@@ -129,13 +129,13 @@ function heldEqualOrdinals(a: number[], b: number[]): EntityConstraints {
     {
       a: {
         name: 'Rating A',
-        label: { 'en-US': 'Rating A' },
+        label: 'Rating A',
         type: 'ordinal',
         options: labelled(a),
       },
       b: {
         name: 'Rating B',
-        label: { 'en-US': 'Rating B' },
+        label: 'Rating B',
         type: 'ordinal',
         options: labelled(b),
         validation: { sameAs: asEntityAttributeReference('a') },
@@ -153,14 +153,14 @@ function heldEqualBooleans(a: boolean[], b: boolean[]): EntityConstraints {
     {
       a: {
         name: 'Flag A',
-        label: { 'en-US': 'Flag A' },
+        label: 'Flag A',
         type: 'boolean',
         component: 'Boolean',
         options: choices(a),
       },
       b: {
         name: 'Flag B',
-        label: { 'en-US': 'Flag B' },
+        label: 'Flag B',
         type: 'boolean',
         component: 'Boolean',
         options: choices(b),
@@ -190,13 +190,13 @@ describe('intersectGroupConstraints', () => {
       {
         a: {
           name: 'Rating A',
-          label: { 'en-US': 'Rating A' },
+          label: 'Rating A',
           type: 'ordinal',
           options: labelled([1, 2]),
         },
         b: {
           name: 'Note',
-          label: { 'en-US': 'Note' },
+          label: 'Note',
           type: 'text',
           validation: { sameAs: asEntityAttributeReference('a') },
         },
@@ -220,13 +220,13 @@ describe('intersectGroupConstraints', () => {
       {
         a: {
           name: 'Flag A',
-          label: { 'en-US': 'Flag A' },
+          label: 'Flag A',
           type: 'boolean',
           component: 'Toggle',
         },
         b: {
           name: 'Flag B',
-          label: { 'en-US': 'Flag B' },
+          label: 'Flag B',
           type: 'boolean',
           component: 'Boolean',
           options: [{ label: { 'en-US': 'Yes' }, value: true }],
@@ -272,13 +272,13 @@ describe('emptyGroupBounds', () => {
       {
         a: {
           name: 'Rating A',
-          label: { 'en-US': 'Rating A' },
+          label: 'Rating A',
           type: 'ordinal',
           options: labelled([1, 2]),
         },
         b: {
           name: 'Note',
-          label: { 'en-US': 'Note' },
+          label: 'Note',
           type: 'text',
           validation: { sameAs: asEntityAttributeReference('a') },
         },
@@ -297,14 +297,14 @@ describe('emptyGroupBounds', () => {
       {
         a: {
           name: 'Foods A',
-          label: { 'en-US': 'Foods A' },
+          label: 'Foods A',
           type: 'categorical',
           options: labelled([1, 2]),
           validation: { minSelected: 3 },
         },
         b: {
           name: 'Note',
-          label: { 'en-US': 'Note' },
+          label: 'Note',
           type: 'text',
           validation: { sameAs: asEntityAttributeReference('a') },
         },
@@ -320,14 +320,14 @@ describe('emptyGroupBounds', () => {
       {
         a: {
           name: 'Foods A',
-          label: { 'en-US': 'Foods A' },
+          label: 'Foods A',
           type: 'categorical',
           options: labelled([1, 2, 3]),
           validation: { minSelected: 2 },
         },
         b: {
           name: 'Foods B',
-          label: { 'en-US': 'Foods B' },
+          label: 'Foods B',
           type: 'categorical',
           options: labelled([3, 4, 5]),
           validation: { sameAs: asEntityAttributeReference('a') },
@@ -350,14 +350,14 @@ describe('emptyGroupBounds', () => {
       {
         a: {
           name: 'Foods A',
-          label: { 'en-US': 'Foods A' },
+          label: 'Foods A',
           type: 'categorical',
           options: labelled([1, 2]),
           validation: { minSelected: 3 },
         },
         b: {
           name: 'Foods B',
-          label: { 'en-US': 'Foods B' },
+          label: 'Foods B',
           type: 'categorical',
           options: labelled([1, 2]),
           validation: { sameAs: asEntityAttributeReference('a') },
@@ -381,10 +381,10 @@ describe('emptyGroupBounds', () => {
     // leaves the boolean's attribute holding the text value.
     const entity = buildEntityConstraints(
       {
-        a: { name: 'Note', label: { 'en-US': 'Note' }, type: 'text' },
+        a: { name: 'Note', label: 'Note', type: 'text' },
         b: {
           name: 'Flag',
-          label: { 'en-US': 'Flag' },
+          label: 'Flag',
           type: 'boolean',
           validation: { sameAs: asEntityAttributeReference('a') },
         },
@@ -408,13 +408,13 @@ describe('emptyGroupBounds', () => {
       {
         a: {
           name: 'Rating',
-          label: { 'en-US': 'Rating' },
+          label: 'Rating',
           type: 'ordinal',
           options: labelled([1, 2]),
         },
         b: {
           name: 'Foods',
-          label: { 'en-US': 'Foods' },
+          label: 'Foods',
           type: 'categorical',
           options: labelled([1, 2]),
           validation: { sameAs: asEntityAttributeReference('a') },
@@ -435,10 +435,10 @@ describe('emptyGroupBounds', () => {
   it('reports nothing about the types of a group that shares one', () => {
     const entity = buildEntityConstraints(
       {
-        a: { name: 'Note A', label: { 'en-US': 'Note A' }, type: 'text' },
+        a: { name: 'Note A', label: 'Note A', type: 'text' },
         b: {
           name: 'Note B',
-          label: { 'en-US': 'Note B' },
+          label: 'Note B',
           type: 'text',
           validation: { sameAs: asEntityAttributeReference('a') },
         },
@@ -456,10 +456,10 @@ describe('emptyGroupBounds', () => {
     // rule because the schema gives `scalar` no `sameAs` of its own.
     const entity = buildEntityConstraints(
       {
-        a: { name: 'Weight', label: { 'en-US': 'Weight' }, type: 'scalar' },
+        a: { name: 'Weight', label: 'Weight', type: 'scalar' },
         b: {
           name: 'Count',
-          label: { 'en-US': 'Count' },
+          label: 'Count',
           type: 'number',
           validation: { sameAs: asEntityAttributeReference('a') },
         },
@@ -473,10 +473,10 @@ describe('emptyGroupBounds', () => {
   it('reports a number whose declared range the scalar scale excludes', () => {
     const entity = buildEntityConstraints(
       {
-        a: { name: 'Weight', label: { 'en-US': 'Weight' }, type: 'scalar' },
+        a: { name: 'Weight', label: 'Weight', type: 'scalar' },
         b: {
           name: 'Count',
-          label: { 'en-US': 'Count' },
+          label: 'Count',
           type: 'number',
           validation: {
             minValue: 5,
@@ -507,13 +507,13 @@ describe('emptyGroupBounds', () => {
       {
         start: {
           name: 'Start month',
-          label: { 'en-US': 'Start month' },
+          label: 'Start month',
           type: 'datetime',
           parameters: { type: 'month', min: '2026-01', max: '2026-12' },
         },
         finish: {
           name: 'Finish day',
-          label: { 'en-US': 'Finish day' },
+          label: 'Finish day',
           type: 'datetime',
           parameters: { type: 'full', min: '2026-01-01', max: '2026-12-31' },
           validation: { sameAs: asEntityAttributeReference('start') },
@@ -539,13 +539,13 @@ describe('emptyGroupBounds', () => {
       {
         start: {
           name: 'Start day',
-          label: { 'en-US': 'Start day' },
+          label: 'Start day',
           type: 'datetime',
           parameters: { type: 'full', min: '2026-01-01', max: '2026-12-31' },
         },
         finish: {
           name: 'Finish year',
-          label: { 'en-US': 'Finish year' },
+          label: 'Finish year',
           type: 'datetime',
           parameters: { type: 'year', min: '2026', max: '2026' },
           validation: { sameAs: asEntityAttributeReference('start') },
@@ -568,13 +568,13 @@ describe('emptyGroupBounds', () => {
       {
         start: {
           name: 'Start',
-          label: { 'en-US': 'Start' },
+          label: 'Start',
           type: 'datetime',
           parameters: { type: 'month', min: '2026-01', max: '2026-12' },
         },
         finish: {
           name: 'Finish',
-          label: { 'en-US': 'Finish' },
+          label: 'Finish',
           type: 'datetime',
           parameters: { type: 'month', min: '2026-03', max: '2026-09' },
           validation: { sameAs: asEntityAttributeReference('start') },
@@ -594,13 +594,13 @@ describe('emptyGroupBounds', () => {
       {
         start: {
           name: 'Start',
-          label: { 'en-US': 'Start' },
+          label: 'Start',
           type: 'datetime',
           parameters: { type: 'month', min: '2026-07', max: '2026-12' },
         },
         finish: {
           name: 'Finish',
-          label: { 'en-US': 'Finish' },
+          label: 'Finish',
           type: 'datetime',
           parameters: { type: 'month', min: '2026-01', max: '2026-03' },
           validation: { sameAs: asEntityAttributeReference('start') },
@@ -625,13 +625,13 @@ describe('emptyGroupBounds', () => {
       {
         start: {
           name: 'Start',
-          label: { 'en-US': 'Start' },
+          label: 'Start',
           type: 'datetime',
           parameters: { type: 'month', min: '2026-01', max: '2026-12' },
         },
         note: {
           name: 'Note',
-          label: { 'en-US': 'Note' },
+          label: 'Note',
           type: 'text',
           validation: { sameAs: asEntityAttributeReference('start') },
         },
@@ -661,13 +661,13 @@ describe('propagateComparatorBounds', () => {
       {
         score: {
           name: 'Score',
-          label: { 'en-US': 'Score' },
+          label: 'Score',
           type: 'number',
           validation: { minValue: 0, maxValue: 10 },
         },
         baseline: {
           name: 'Baseline',
-          label: { 'en-US': 'Baseline' },
+          label: 'Baseline',
           type: 'number',
           validation: { lessThanVariable: asEntityAttributeReference('score') },
         },
@@ -702,13 +702,13 @@ describe('propagateComparatorBounds', () => {
       {
         a: {
           name: 'A',
-          label: { 'en-US': 'A' },
+          label: 'A',
           type: 'number',
           validation: { minValue: 50, maxValue: 20 },
         },
         b: {
           name: 'B',
-          label: { 'en-US': 'B' },
+          label: 'B',
           type: 'number',
           validation: {
             minValue: 0,
@@ -781,13 +781,13 @@ describe('propagateComparatorBounds', () => {
       {
         start: {
           name: 'Start',
-          label: { 'en-US': 'Start' },
+          label: 'Start',
           type: 'datetime',
           parameters: { type: 'full', min: '2026-01-15', max: '2026-12-31' },
         },
         end: {
           name: 'End',
-          label: { 'en-US': 'End' },
+          label: 'End',
           type: 'datetime',
           parameters: { type: 'month', min: '2026-01', max: '2026-12' },
           validation: {
@@ -821,14 +821,14 @@ describe('propagateComparatorBounds', () => {
       {
         s: {
           name: 'S',
-          label: { 'en-US': 'S' },
+          label: 'S',
           type: 'scalar',
           component: 'VisualAnalogScale',
           validation: { lessThanVariable: asEntityAttributeReference('n') },
         },
         n: {
           name: 'N',
-          label: { 'en-US': 'N' },
+          label: 'N',
           type: 'number',
           validation: { minValue: 1, maxValue: 1 },
         },
@@ -849,14 +849,14 @@ describe('propagateComparatorBounds', () => {
       {
         s: {
           name: 'S',
-          label: { 'en-US': 'S' },
+          label: 'S',
           type: 'scalar',
           component: 'VisualAnalogScale',
           validation: { lessThanVariable: asEntityAttributeReference('n') },
         },
         n: {
           name: 'N',
-          label: { 'en-US': 'N' },
+          label: 'N',
           type: 'number',
           validation: { minValue: 0, maxValue: 3 },
         },
@@ -881,13 +881,13 @@ describe('propagateComparatorBounds', () => {
       {
         born: {
           name: 'Born',
-          label: { 'en-US': 'Born' },
+          label: 'Born',
           type: 'datetime',
           parameters: { type: 'full', min: '2000-01-01', max: '2010-12-31' },
         },
         age: {
           name: 'Age',
-          label: { 'en-US': 'Age' },
+          label: 'Age',
           type: 'number',
           validation: {
             minValue: 1,
@@ -924,13 +924,13 @@ describe('propagateComparatorBounds', () => {
       {
         count: {
           name: 'Count',
-          label: { 'en-US': 'Count' },
+          label: 'Count',
           type: 'number',
           validation: { minValue: 0, maxValue: 10 },
         },
         seen: {
           name: 'Seen',
-          label: { 'en-US': 'Seen' },
+          label: 'Seen',
           type: 'datetime',
           parameters: { type: 'month', min: '2026-01', max: '2026-12' },
           validation: {
@@ -952,13 +952,13 @@ describe('propagateComparatorBounds', () => {
       {
         seen: {
           name: 'Seen',
-          label: { 'en-US': 'Seen' },
+          label: 'Seen',
           type: 'datetime',
           parameters: { type: 'full', min: '2026-01-01', max: '2026-12-31' },
         },
         weight: {
           name: 'Weight',
-          label: { 'en-US': 'Weight' },
+          label: 'Weight',
           type: 'scalar',
           component: 'VisualAnalogScale',
           validation: {
@@ -993,13 +993,13 @@ describe('propagateComparatorBounds', () => {
       {
         start: {
           name: 'Start',
-          label: { 'en-US': 'Start' },
+          label: 'Start',
           type: 'datetime',
           parameters: { type: 'full', min: '2026-01-15', max: '2026-12-31' },
         },
         end: {
           name: 'End',
-          label: { 'en-US': 'End' },
+          label: 'End',
           type: 'datetime',
           parameters: { type: 'month', min: '2026-01', max: '2026-12' },
           validation: {
@@ -1023,13 +1023,13 @@ describe('propagateComparatorBounds', () => {
       {
         a: {
           name: 'A',
-          label: { 'en-US': 'A' },
+          label: 'A',
           type: 'datetime',
           parameters: a,
         },
         b: {
           name: 'B',
-          label: { 'en-US': 'B' },
+          label: 'B',
           type: 'datetime',
           parameters: b,
           validation: { [rule]: asEntityAttributeReference('a') },
@@ -1106,13 +1106,13 @@ describe('propagateComparatorBounds', () => {
       {
         a: {
           name: 'A',
-          label: { 'en-US': 'A' },
+          label: 'A',
           type: 'number',
           validation: a,
         },
         b: {
           name: 'B',
-          label: { 'en-US': 'B' },
+          label: 'B',
           type: 'number',
           validation: {
             ...b,
@@ -1192,13 +1192,13 @@ describe('propagateComparatorBounds', () => {
       {
         a: {
           name: 'A',
-          label: { 'en-US': 'A' },
+          label: 'A',
           type: 'number',
           validation: { minValue: 0.1, maxValue: 0.11 },
         },
         b: {
           name: 'B',
-          label: { 'en-US': 'B' },
+          label: 'B',
           type: 'number',
           validation: {
             minValue: 0.1,
@@ -1208,7 +1208,7 @@ describe('propagateComparatorBounds', () => {
         },
         c: {
           name: 'C',
-          label: { 'en-US': 'C' },
+          label: 'C',
           type: 'number',
           validation: {
             minValue: 0.1,

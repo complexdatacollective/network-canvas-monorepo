@@ -61,13 +61,13 @@ function makeWrapper(
               variables: {
                 age: {
                   name: 'age_years',
-                  label: { en: 'Age', fr: 'Âge' },
+                  label: 'Age',
                   type: 'number',
                   component: 'Number',
                 },
                 siblings: {
                   name: 'sibling_count',
-                  label: { en: 'Siblings', fr: 'Frères et sœurs' },
+                  label: 'Siblings',
                   type: 'number',
                   component: 'Number',
                 },
@@ -178,7 +178,7 @@ describe('the caption and the validator name come from one rule', () => {
     expect(screen.getByLabelText('How many siblings?')).toBeInTheDocument();
   });
 
-  it('captions and names a field in the interview language', () => {
+  it('captions and names a field in the interview language, and falls back to the untranslated attribute label', () => {
     const fields = [
       field('age', { en: 'How old are you?', fr: 'Quel âge avez-vous ?' }),
       field('siblings', { en: '' }),
@@ -187,7 +187,7 @@ describe('the caption and the validator name come from one rule', () => {
     render(<Fields fields={fields} />, { wrapper });
 
     expect(screen.getByLabelText('Quel âge avez-vous ?')).toBeInTheDocument();
-    expect(screen.getByLabelText('Frères et sœurs')).toBeInTheDocument();
+    expect(screen.getByLabelText('Siblings')).toBeInTheDocument();
     expect(variableLabelsOf(fields, wrapper)).toEqual({
       age: 'Quel âge avez-vous ?',
     });

@@ -311,7 +311,7 @@ test('formats printed attribute order and updates linked-list grammar live while
         variables: Object.fromEntries(
           names.map((name, index) => [
             `attribute-${index}`,
-            { name, label: { en: name }, type: 'text', component: 'Text' },
+            { name, label: name, type: 'text', component: 'Text' },
           ]),
         ),
       },

@@ -144,7 +144,7 @@ function buildCodebook(
         variables: {
           [CATEGORY_VARIABLE]: {
             name: 'Category',
-            label: { en: 'Category' },
+            label: 'Category',
             type: 'categorical',
             component: 'CheckboxGroup',
             // The schema's categoricalOptionsSchema requires >= 2 options at
@@ -160,7 +160,7 @@ function buildCodebook(
             : {
                 [otherVariable]: {
                   name: 'Other reason',
-                  label: { en: 'Other reason' },
+                  label: 'Other reason',
                   type: 'text' as const,
                   ...(omitOtherComponent ? {} : { component: 'Text' as const }),
                   ...(otherValidation ? { validation: otherValidation } : {}),
@@ -168,13 +168,13 @@ function buildCodebook(
               }),
           [NOTE_VARIABLE]: {
             name: 'Existing note',
-            label: { en: 'Existing note' },
+            label: 'Existing note',
             type: 'text',
             component: 'Text',
           },
           [COLLIDING_SIBLING_VARIABLE]: {
             name: 'Collision-prone sibling',
-            label: { en: 'Collision-prone sibling' },
+            label: 'Collision-prone sibling',
             type: 'text',
             component: 'Text',
           },

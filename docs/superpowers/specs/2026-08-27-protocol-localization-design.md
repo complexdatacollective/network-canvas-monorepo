@@ -79,6 +79,16 @@ where the repository records one.
 12. **Studio stores new protocols as `und`.** A protocol created in Studio
     declares the undetermined language because Studio does not yet ask which
     language the researcher is writing in (§8.7).
+13. **Attribute labels are plain text, and Narrative highlights carry their own
+    localized labels.** The proposal gave every codebook variable a localized
+    `label`. The product owner revised this: participants never read an
+    attribute's label except as a fallback caption, so it is a plain,
+    non-empty string that is not translated. The one place participants did
+    read attribute labels, the Narrative preset switcher, now takes its text
+    from the preset: `highlight` is a list of `{ variable, label }` whose
+    `label` is localized and edited in the Narrative stage editor (§5.5, §9.2,
+    §10.1). A Network Composer field with no caption of its own still shows the
+    attribute's label, untranslated.
 
 ## 1. Summary
 
@@ -234,8 +244,8 @@ published until the combined contract is complete.
 ```
 
 `name` remains stable researcher/export metadata. `label` is participant
-copy. The same separation is introduced for node definitions, edge
-definitions, and variables.
+copy. The same separation is introduced for node and edge definitions.
+Variables gain a `label` too, but it is plain text and not localized (§5.5).
 
 ### 5.2 Localization declaration
 
@@ -358,25 +368,37 @@ translation.
 Schema 9 changes the following fields from `string` to `LocalizedString`, adds
 a localized `label` beside a stable `name`, or adds a localized field:
 
-| Area                  | Localized fields                                                                                                    |
-| --------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| All stages            | Stage `label`, as rendered in the participant Stages menu and Narrative Pedigree snapshot title                     |
-| Codebook definitions  | New required `label` on every node and edge definition                                                              |
-| Variables             | New required, non-empty `label`; boolean, ordinal, and categorical option `label`; scalar `minLabel` and `maxLabel` |
-| Shared prompts        | `text`, Tie Strength `negativeLabel`, Categorical Bin `otherVariablePrompt` and `otherOptionLabel`                  |
-| Shared forms          | Field `prompt` and `hint`; Name Generator form `title`                                                              |
-| Shared presentation   | Introduction panel `title` and `text`; panel `title`                                                                |
-| Information           | Stage `title`, text-item `content`, and asset-item `description`; asset `content` remains an asset id               |
-| Anonymisation         | Explanation `title` and `body`                                                                                      |
-| Family Pedigree       | Intro text-item `content` and asset-item `description`, `censusPrompt`, and nomination prompt `text`                |
-| Network Composer      | Form-field `label` and `hint`; Visual Analog Scale override `parameters.minLabel` and `parameters.maxLabel`         |
-| Name Generator Roster | Card-property and sort-property `label`                                                                             |
-| Narrative             | Preset `label`                                                                                                      |
-| Narrative Pedigree    | Disease `label`                                                                                                     |
+| Area                  | Localized fields                                                                                            |
+| --------------------- | ----------------------------------------------------------------------------------------------------------- |
+| All stages            | Stage `label`, as rendered in the participant Stages menu and Narrative Pedigree snapshot title             |
+| Codebook definitions  | New required `label` on every node and edge definition                                                      |
+| Variables             | Boolean, ordinal, and categorical option `label`; scalar `minLabel` and `maxLabel`                          |
+| Shared prompts        | `text`, Tie Strength `negativeLabel`, Categorical Bin `otherVariablePrompt` and `otherOptionLabel`          |
+| Shared forms          | Field `prompt` and `hint`; Name Generator form `title`                                                      |
+| Shared presentation   | Introduction panel `title` and `text`; panel `title`                                                        |
+| Information           | Stage `title`, text-item `content`, and asset-item `description`; asset `content` remains an asset id       |
+| Anonymisation         | Explanation `title` and `body`                                                                              |
+| Family Pedigree       | Intro text-item `content` and asset-item `description`, `censusPrompt`, and nomination prompt `text`        |
+| Network Composer      | Form-field `label` and `hint`; Visual Analog Scale override `parameters.minLabel` and `parameters.maxLabel` |
+| Name Generator Roster | Card-property and sort-property `label`                                                                     |
+| Narrative             | Preset `label`; the `label` of each `highlight` entry                                                       |
+| Narrative Pedigree    | Disease `label`                                                                                             |
 
 A text item's `description`, in an Information stage or a Family Pedigree intro
 screen, is never shown to a participant, so it stays a plain researcher note.
 Only an asset item's `description`, the media's alt text, is localized.
+
+A Narrative preset's `highlight` is a list of `{ variable, label }` entries
+rather than a list of variable ids. The preset switcher lists the highlighted
+attributes for the participant to choose among, so each entry carries its own
+localized `label`. The stage editor starts a newly ticked attribute's label as
+the attribute's name in the default language, and requires one.
+
+A variable's `label` is a required, non-empty plain string, not a
+`LocalizedString`. It is a readable name for researchers and is not
+translated. The interview shows it to a participant only as the caption of a
+Network Composer field that has no `label` of its own, marked as written in the
+protocol's default language.
 
 A Network Composer form field is a union on `component`. The Visual Analog
 Scale branch gives `parameters.minLabel` and `parameters.maxLabel` typed,
@@ -406,6 +428,7 @@ data, or researcher-facing metadata:
 - protocol `name` and `description`;
 - `interviewScript`;
 - the `description` of an Information or Family Pedigree text item;
+- a codebook variable's `label`;
 - ids, entity type keys, variable names, references, asset ids, asset names,
   URLs, filter operands, and option `value` fields;
 - ISO date constraints and other machine parameters;
@@ -1048,9 +1071,12 @@ missing translation without making the form invalid.
   remounted per language, so an editor holding one language's document never
   writes it into another's.
 
-Node type, edge type, and attribute labels are edited with Architect's
-`LabelField` on the Codebook page. The field opens in the default language and
-requires text there; any other language may be left untranslated.
+Node type and edge type labels are edited with Architect's `LabelField` on the
+Codebook page. The field opens in the default language and requires text there;
+any other language may be left untranslated. An attribute's label is edited on
+the same page as plain text, with no language menu, and never counts as a
+missing translation. The label of each attribute a Narrative preset highlights
+is a localized field in the preset dialog of the Narrative stage editor.
 
 Coverage warnings are owned by the actual field when editing that field. Global
 aggregation is added to `selectors/issues.ts`, whose existing contract already
@@ -1097,16 +1123,21 @@ guess English from the product's history or the device locale. It therefore:
    preserves an empty value where the schema-8 field accepted it as data, and
    wraps an empty required field so that validation reports what schema 8
    already rejected;
-4. adds a `label` to every node type, edge type, and variable, including ego
-   variables, from the existing stable `name` as `{ "und": name }`, using the
-   codebook key when the name is missing or empty;
-5. drops a Network Composer scale end label that is not a string, because the
+4. adds a `label` to every node type and edge type from the existing stable
+   `name` as `{ "und": name }`, and to every variable, including ego variables,
+   as the plain `name`, using the codebook key when the name is missing or
+   empty;
+5. turns each id in a Narrative preset's `highlight` list into
+   `{ variable, label }`, the label being `{ "und": name }` from the variable's
+   name on the stage subject's node type, or the id when that name is missing
+   or empty, since schema 8 showed the name in the preset switcher;
+6. drops a Network Composer scale end label that is not a string, because the
    interview only ever rendered string labels there;
-6. keeps existing attribute names exactly as they are, because schema 9 also
+7. keeps existing attribute names exactly as they are, because schema 9 also
    allows names in any script;
-7. preserves option values, ids, references, stage count and order, codebook
+8. preserves option values, ids, references, stage count and order, codebook
    keys, and collected answer shapes; and
-8. records two migration notes: what the new version allows in attribute names,
+9. records two migration notes: what the new version allows in attribute names,
    and that Architect's Languages page identifies the language.
 
 This obeys the migration invariants already documented in the migration
@@ -1262,6 +1293,8 @@ language does not change analysis schema.
 - Locale-resolved disease label collisions.
 - v8-to-v9 migration purity, notes, invariants, and exact target-version
   post-validation.
+- Migration gives variables a plain label and turns each Narrative highlight
+  id into `{ variable, label }`, labelled from the variable's name or its id.
 - Migrator caching separates the same caller key by target version and clears
   every target variant predictably.
 - Hash changes for translations, default locale, and locale order, but not
@@ -1299,6 +1332,8 @@ language does not change analysis schema.
   language following the browser's languages, an incomplete translation with
   fallback, and an RTL locale.
 - Tests prove semantic comparisons use option values and ids, not labels.
+- The Narrative preset switcher lists each highlighted attribute by its
+  highlight's resolved label.
 
 ### 13.3 Architect and the protocol builder
 
@@ -1317,6 +1352,9 @@ language does not change analysis schema.
 - Preview opens in the browser's language, the Preview language menu switches the
   running interview without resetting it, and the choice is not saved.
 - The printed summary renders in each declared language.
+- An attribute label saves as plain text and is never listed as a missing
+  translation. A newly highlighted Narrative attribute starts with its name as
+  its label, and an empty highlight label is refused.
 
 ### 13.4 Hosts and exports
 

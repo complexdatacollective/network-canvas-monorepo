@@ -17,13 +17,13 @@ const PERSON: SectionDoc = {
   variables: {
     name: {
       name: 'Name',
-      label: { en: 'Name' },
+      label: 'Name',
       type: 'text',
       component: 'Text',
     },
     ethnicity: {
       name: 'Ethnicity',
-      label: { en: 'Ethnicity' },
+      label: 'Ethnicity',
       type: 'categorical',
       component: 'CheckboxGroup',
       options: [

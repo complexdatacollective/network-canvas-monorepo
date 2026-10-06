@@ -314,7 +314,7 @@ describe('protocol.stages', () => {
                 variables: {
                   ssn: {
                     name: 'ssn',
-                    label: localized('ssn'),
+                    label: 'ssn',
                     type: 'text',
                     encrypted: true,
                   },

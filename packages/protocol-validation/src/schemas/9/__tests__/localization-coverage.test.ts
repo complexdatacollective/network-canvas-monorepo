@@ -32,12 +32,8 @@ const site = (
 
 const person = ['codebook', 'node', 'person'] as const;
 const personVariable = (id: string) => [...person, 'variables', id] as const;
-const relativeVariable = (id: string) =>
-  ['codebook', 'node', 'relative', 'variables', id] as const;
 const knowsVariable = (id: string) =>
   ['codebook', 'edge', 'knows', 'variables', id] as const;
-const familyVariable = (id: string) =>
-  ['codebook', 'edge', 'family', 'variables', id] as const;
 const stage = (index: number, ...rest: (string | number)[]) => [
   'stages',
   index,
@@ -45,20 +41,8 @@ const stage = (index: number, ...rest: (string | number)[]) => [
 ];
 
 const EXPECTED_SITES: readonly ExpectedSite[] = [
-  // Codebook entity and variable labels, and variable option copy.
-  site(['codebook', 'ego', 'variables', 'egoName', 'label'], 'plain'),
+  // Codebook entity type labels, and variable option copy.
   site([...person, 'label'], 'plain', true),
-  ...[
-    'name',
-    'nickname',
-    'layoutPosition',
-    'category',
-    'other',
-    'strength',
-    'closeness',
-    'flag',
-    'region',
-  ].map((id) => site([...personVariable(id), 'label'], 'plain')),
   site(
     [...personVariable('category'), 'options', 0, 'label'],
     'markdown',
@@ -92,17 +76,7 @@ const EXPECTED_SITES: readonly ExpectedSite[] = [
   site([...personVariable('flag'), 'options', 0, 'label'], 'markdown', true),
   site([...personVariable('flag'), 'options', 1, 'label'], 'markdown', true),
   site(['codebook', 'node', 'relative', 'label'], 'plain', true),
-  ...[
-    'isEgo',
-    'displayName',
-    'relationship',
-    'sex',
-    'birthYear',
-    'affected',
-    'nominated',
-  ].map((id) => site([...relativeVariable(id), 'label'], 'plain')),
   site(['codebook', 'edge', 'knows', 'label'], 'plain', true),
-  site([...knowsVariable('tieStrength'), 'label'], 'plain'),
   site(
     [...knowsVariable('tieStrength'), 'options', 0, 'label'],
     'markdown',
@@ -113,11 +87,7 @@ const EXPECTED_SITES: readonly ExpectedSite[] = [
     'markdown',
     true,
   ),
-  site([...knowsVariable('note'), 'label'], 'plain'),
   site(['codebook', 'edge', 'family', 'label'], 'plain', true),
-  ...['relType', 'isActive', 'isGc', 'gameteRole'].map((id) =>
-    site([...familyVariable(id), 'label'], 'plain'),
-  ),
 
   // Every stage's label.
   ...Array.from({ length: 20 }, (_, index) =>
@@ -195,6 +165,7 @@ const EXPECTED_SITES: readonly ExpectedSite[] = [
   site(stage(13, 'prompts', 0, 'otherOptionLabel'), 'markdown'),
 
   site(stage(14, 'presets', 0, 'label'), 'plain'),
+  site(stage(14, 'presets', 0, 'highlight', 0, 'label'), 'plain'),
 
   site(stage(15, 'explanationText', 'title'), 'plain'),
   site(stage(15, 'explanationText', 'body'), 'markdown'),
@@ -317,6 +288,23 @@ describe('localized string coverage', () => {
       );
     },
   );
+});
+
+describe('attribute labels', () => {
+  const nameLabel = [...personVariable('name'), 'label'] as const;
+
+  it('are plain text rather than copy', () => {
+    expect(failurePaths(withValueAt(nameLabel, 'Full name'))).toEqual([]);
+    expect(failurePaths(withValueAt(nameLabel, { en: 'Full name' }))).toContain(
+      pathKey(nameLabel),
+    );
+  });
+
+  it('may not be empty', () => {
+    expect(failurePaths(withValueAt(nameLabel, ''))).toContain(
+      pathKey(nameLabel),
+    );
+  });
 });
 
 describe('Network Composer scale end labels', () => {

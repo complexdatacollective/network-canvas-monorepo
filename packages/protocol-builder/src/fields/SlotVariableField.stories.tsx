@@ -439,7 +439,7 @@ export const AnAttributeWhoseValuesChanged: Story = {
           // One option short of the set the interface owns.
           biologicalSex: {
             name: 'biologicalSex',
-            label: { 'en-US': 'biologicalSex' },
+            label: 'biologicalSex',
             type: 'categorical',
             options: [
               { value: 'female', label: { 'en-US': 'Female' } },

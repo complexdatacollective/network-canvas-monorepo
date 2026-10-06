@@ -60,6 +60,29 @@ export const Editing: Story = {
   },
 };
 
+/**
+ * Each attribute a preset highlights carries the label a participant reads for
+ * it, written in every language the protocol is in. A newly ticked attribute's
+ * label starts as the attribute's name.
+ */
+export const HighlightLabels: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await awaitPassiveEffects();
+
+    const [editPreset] = canvas.getAllByRole('button', { name: 'Edit preset' });
+    if (editPreset === undefined) throw new Error('the stage has no preset');
+    await userEvent.click(editPreset);
+
+    const preset = within(
+      await within(canvasElement.ownerDocument.body).findByRole('dialog'),
+    );
+    await expect(
+      preset.getByRole('textbox', { name: 'Label for “flagged”' }),
+    ).toHaveValue('Flagged');
+  },
+};
+
 /** Someone else holds the stage: every control is inert. */
 export const Spectating: Story = {
   args: { readOnly: true },

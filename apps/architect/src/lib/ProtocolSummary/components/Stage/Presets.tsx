@@ -26,7 +26,7 @@ type PresetsProps = {
     layoutVariable?: string;
     groupVariable?: string;
     edges?: { display?: string[] };
-    highlight?: string[];
+    highlight?: { variable: string; label: LocalizedString }[];
   }> | null;
 };
 
@@ -71,11 +71,14 @@ const Presets = ({ presets = null }: PresetsProps) => {
                   ],
                   [
                     intl.formatMessage(summaryMessages.highlightAttributes),
-                    <ul key="highlight">
-                      {get(preset, 'highlight', []).map((id: string) => (
-                        <li key={id}>
-                          <Variable id={id} />
-                          <br />
+                    <ul key="highlight" className="flex flex-col gap-1">
+                      {(preset.highlight ?? []).map(({ variable, label }) => (
+                        <li
+                          key={variable}
+                          className="flex flex-wrap items-center gap-2"
+                        >
+                          <SummaryText value={label} />
+                          <Variable id={variable} />
                         </li>
                       ))}
                     </ul>,

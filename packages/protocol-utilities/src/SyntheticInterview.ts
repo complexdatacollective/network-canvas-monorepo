@@ -1453,16 +1453,21 @@ export class SyntheticInterview {
     }
 
     // Resolve highlight
-    let highlight: string[] | undefined;
+    let highlightIds: string[] | undefined;
     if (opts?.highlight === true) {
       const ref = this.addVariableToNodeType(nodeTypeId, {
         type: 'boolean',
         name: 'Highlighted',
       });
-      highlight = [ref.id];
+      highlightIds = [ref.id];
     } else if (Array.isArray(opts?.highlight)) {
-      highlight = opts.highlight;
+      highlightIds = opts.highlight;
     }
+    const variables = this.nodeTypes.get(nodeTypeId)?.variables;
+    const highlight = highlightIds?.map((variable) => ({
+      variable,
+      label: variables?.get(variable)?.name ?? variable,
+    }));
 
     // Resolve edges
     let edges: PresetEntry['edges'];
@@ -2399,7 +2404,7 @@ export class SyntheticInterview {
   private buildVariable(entry: VariableEntry): Record<string, unknown> {
     const variable: Record<string, unknown> = {
       name: entry.name,
-      label: this.localized(entry.label ?? entry.name),
+      label: entry.label ?? entry.name,
       type: entry.type,
     };
     if (entry.component) variable.component = entry.component;
@@ -2558,6 +2563,10 @@ export class SyntheticInterview {
       config.presets = stage.presets.map((preset) => ({
         ...preset,
         label: this.localized(preset.label),
+        highlight: preset.highlight?.map((highlight) => ({
+          ...highlight,
+          label: this.localized(highlight.label),
+        })),
       }));
     }
 

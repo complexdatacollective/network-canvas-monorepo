@@ -294,7 +294,7 @@ function generatedFixture(seed: number): Variables {
     return {
       a: {
         name: 'Cycle A',
-        label: { en: 'Cycle A' },
+        label: 'Cycle A',
         type: 'number',
         validation: required({
           minValue: 0,
@@ -304,7 +304,7 @@ function generatedFixture(seed: number): Variables {
       },
       b: {
         name: 'Cycle B',
-        label: { en: 'Cycle B' },
+        label: 'Cycle B',
         type: 'number',
         validation: required({
           minValue: 0,
@@ -320,7 +320,7 @@ function generatedFixture(seed: number): Variables {
     return {
       a: {
         name: 'Pinned A',
-        label: { en: 'Pinned A' },
+        label: 'Pinned A',
         type: 'ordinal',
         component: 'RadioGroup',
         options: [option(value)],
@@ -328,7 +328,7 @@ function generatedFixture(seed: number): Variables {
       },
       b: {
         name: 'Pinned B',
-        label: { en: 'Pinned B' },
+        label: 'Pinned B',
         type: 'ordinal',
         component: 'RadioGroup',
         options: [option(value)],
@@ -341,7 +341,7 @@ function generatedFixture(seed: number): Variables {
     return {
       a: {
         name: 'Odd A',
-        label: { en: 'Odd A' },
+        label: 'Odd A',
         type: 'boolean',
         component: 'Toggle',
         validation: required({
@@ -350,7 +350,7 @@ function generatedFixture(seed: number): Variables {
       },
       b: {
         name: 'Odd B',
-        label: { en: 'Odd B' },
+        label: 'Odd B',
         type: 'boolean',
         component: 'Toggle',
         validation: required({
@@ -359,7 +359,7 @@ function generatedFixture(seed: number): Variables {
       },
       c: {
         name: 'Odd C',
-        label: { en: 'Odd C' },
+        label: 'Odd C',
         type: 'boolean',
         component: 'Toggle',
         validation: required({
@@ -373,7 +373,7 @@ function generatedFixture(seed: number): Variables {
     return {
       a: {
         name: 'External pin',
-        label: { en: 'External pin' },
+        label: 'External pin',
         type: 'datetime',
         component: 'DatePicker',
         parameters: { type: 'full', min: ymd(0), max: ymd(0) },
@@ -383,7 +383,7 @@ function generatedFixture(seed: number): Variables {
       },
       b: {
         name: 'Comparator pin',
-        label: { en: 'Comparator pin' },
+        label: 'Comparator pin',
         type: 'datetime',
         component: 'DatePicker',
         parameters: { type: 'full', min: ymd(0), max: ymd(0) },
@@ -393,7 +393,7 @@ function generatedFixture(seed: number): Variables {
       },
       c: {
         name: 'Collapsed range',
-        label: { en: 'Collapsed range' },
+        label: 'Collapsed range',
         type: 'datetime',
         component: 'DatePicker',
         parameters: { type: 'full', min: ymd(0), max: ymd(1) },
@@ -409,7 +409,7 @@ function generatedFixture(seed: number): Variables {
     return {
       a: {
         name: 'Ceiling range',
-        label: { en: 'Ceiling range' },
+        label: 'Ceiling range',
         type: 'datetime',
         component: 'DatePicker',
         parameters: { type: 'year', min: '9999' },
@@ -419,7 +419,7 @@ function generatedFixture(seed: number): Variables {
       },
       b: {
         name: 'Ceiling pin',
-        label: { en: 'Ceiling pin' },
+        label: 'Ceiling pin',
         type: 'datetime',
         component: 'DatePicker',
         parameters: { type: 'year', min: '9999', max: '9999' },
@@ -434,7 +434,7 @@ function generatedFixture(seed: number): Variables {
     return {
       a: {
         name: 'Cascade A',
-        label: { en: 'Cascade A' },
+        label: 'Cascade A',
         type: 'datetime',
         component: 'DatePicker',
         parameters: { type: 'full', min: ymd(0), max: ymd(0) },
@@ -444,7 +444,7 @@ function generatedFixture(seed: number): Variables {
       },
       b: {
         name: 'Cascade B',
-        label: { en: 'Cascade B' },
+        label: 'Cascade B',
         type: 'datetime',
         component: 'DatePicker',
         parameters: { type: 'full', min: ymd(0), max: ymd(1) },
@@ -454,7 +454,7 @@ function generatedFixture(seed: number): Variables {
       },
       c: {
         name: 'Cascade C',
-        label: { en: 'Cascade C' },
+        label: 'Cascade C',
         type: 'datetime',
         component: 'DatePicker',
         parameters: { type: 'full', min: ymd(1), max: ymd(2) },
@@ -464,7 +464,7 @@ function generatedFixture(seed: number): Variables {
       },
       d: {
         name: 'Cascade D',
-        label: { en: 'Cascade D' },
+        label: 'Cascade D',
         type: 'datetime',
         component: 'DatePicker',
         parameters: { type: 'full', min: ymd(2), max: ymd(2) },
@@ -477,7 +477,7 @@ function generatedFixture(seed: number): Variables {
     return {
       a: {
         name: 'Too many choices',
-        label: { en: 'Too many choices' },
+        label: 'Too many choices',
         type: 'categorical',
         component: 'CheckboxGroup',
         options: [option(`x-${variant}`), option(`y-${variant}`)],
@@ -491,7 +491,7 @@ function generatedFixture(seed: number): Variables {
       ? {
           a: {
             name: 'Required empty text',
-            label: { en: 'Required empty text' },
+            label: 'Required empty text',
             type: 'text',
             component: 'Text',
             validation: required({ maxLength: 0 }),
@@ -500,7 +500,7 @@ function generatedFixture(seed: number): Variables {
       : {
           a: {
             name: 'Required empty selection',
-            label: { en: 'Required empty selection' },
+            label: 'Required empty selection',
             type: 'categorical',
             component: 'CheckboxGroup',
             options: [option(`x-${variant}`), option(`y-${variant}`)],
@@ -512,7 +512,7 @@ function generatedFixture(seed: number): Variables {
   return {
     a: {
       name: 'Inverted',
-      label: { en: 'Inverted' },
+      label: 'Inverted',
       type: 'number',
       validation: required({ minValue: variant + 2, maxValue: variant + 1 }),
     },

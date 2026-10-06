@@ -218,7 +218,7 @@ describe('Validation Utils', () => {
           variables: {
             yearsHere: {
               name: 'yearsHere',
-              label: { en: 'Years here' },
+              label: 'Years here',
               type: 'number',
             },
           },

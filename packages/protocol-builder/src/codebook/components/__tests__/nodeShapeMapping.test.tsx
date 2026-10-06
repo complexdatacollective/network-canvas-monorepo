@@ -46,7 +46,7 @@ const PERSON_SECTION = sectionId({ kind: 'codebookNode', typeId: 'person' });
 const VARIABLES: Record<string, unknown> = {
   ethnicity: {
     name: 'Ethnicity',
-    label: { en: 'Ethnicity' },
+    label: 'Ethnicity',
     type: 'categorical',
     component: 'CheckboxGroup',
     options: [
@@ -56,7 +56,7 @@ const VARIABLES: Record<string, unknown> = {
   },
   contact: {
     name: 'Contact',
-    label: { en: 'Contact' },
+    label: 'Contact',
     type: 'categorical',
     component: 'CheckboxGroup',
     options: [
@@ -66,26 +66,26 @@ const VARIABLES: Record<string, unknown> = {
   },
   alive: {
     name: 'Alive',
-    label: { en: 'Alive' },
+    label: 'Alive',
     type: 'boolean',
     component: 'Toggle',
   },
   age: {
     name: 'Age',
-    label: { en: 'Age' },
+    label: 'Age',
     type: 'number',
     component: 'Number',
     validation: { minValue: 0, maxValue: 120 },
   },
   closeness: {
     name: 'Closeness',
-    label: { en: 'Closeness' },
+    label: 'Closeness',
     type: 'scalar',
     component: 'VisualAnalogScale',
   },
   notes: {
     name: 'Notes',
-    label: { en: 'Notes' },
+    label: 'Notes',
     type: 'text',
     component: 'Text',
   },

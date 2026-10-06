@@ -45,7 +45,11 @@ Schema 9:
   `localization: { defaultLocale: 'und', locales: ['und'] }` and wraps every
   participant-facing string as `{ und: <text> }`, escaped as an ICU literal
   message. Codebook node types, edge types and variables get a `label` taken
-  from their name, or from their codebook ID when the name is empty. An empty
+  from their name, or from their codebook ID when the name is empty: a node
+  or edge type's label is wrapped like any other text, and a variable's stays
+  plain text. A Narrative preset's `highlight` list of variable IDs becomes a
+  list of `{ variable, label }`, each label taken from the variable's name (or
+  its ID) and wrapped as `{ und: <text> }`. An empty
   optional text that schema 9 requires to be non-empty is removed, as are
   Network Composer scale end labels that were not strings. Its two migration
   notes tell researchers what the new version allows and how to set the
@@ -75,9 +79,13 @@ Localization:
   refused, and markup is read as literal text. `escapeMessageText` turns plain
   text into such a message (escaping `{`, `}` and quoting apostrophes) and
   `messageText` turns it back, so an editor can show and save plain text.
-- Codebook node types, edge types and variables have a required localized
-  `label`, which participants see, beside the `name` that exports and rules
-  use.
+- Codebook node types and edge types have a required localized `label`, which
+  participants see, beside the `name` that exports and rules use. Codebook
+  variables have a required `label` too, a non-empty plain string that is not
+  translated.
+- A Narrative preset's optional `highlight` is a list of
+  `{ variable, label }`, where `label` is the localized text the preset
+  switcher shows participants for that attribute.
 - A new `LanguageChooser` stage lets the participant choose among the
   protocol's languages.
 - Disease labels in a Narrative Pedigree stage must be unique in every

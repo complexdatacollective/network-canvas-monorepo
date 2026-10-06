@@ -1136,12 +1136,12 @@
     "description": "Refusal shown when a researcher picks an attribute (a codebook variable) that one kind of interview step writes for itself. owner is the name of that step, which is the researcher’s own or a built-in interface name and is not translated here."
   },
   "protocolBuilder.codebookVariable.labelHint": {
-    "defaultMessage": "The words participants are shown for this attribute. Left empty, the attribute name is used.",
-    "description": "Guidance under the attribute label field. The attribute name is the field above it, holding the researcher’s own name for the attribute."
+    "defaultMessage": "A readable label for this attribute. It is not translated. A Network Composer field with no caption of its own shows this label to participants. Left empty, the attribute name is used.",
+    "description": "Guidance under the attribute label field. The attribute name is the field above it, holding the researcher’s own name for the attribute. Network Composer is the name of an interview stage type; a caption is the text shown beside a form field."
   },
   "protocolBuilder.codebookVariable.labelLabel": {
     "defaultMessage": "Attribute label",
-    "description": "Label of the field holding the words participants are shown for this attribute (a codebook variable), as opposed to the attribute name the researcher and the exported data use."
+    "description": "Label of the field holding a readable label for this attribute (a codebook variable), as opposed to the attribute name the exported data uses."
   },
   "protocolBuilder.codebookVariable.lockedOptionLabelHeader": {
     "defaultMessage": "Label",
@@ -3162,6 +3162,18 @@
   "protocolBuilder.networkCanvas.presetHighlightLabel": {
     "defaultMessage": "Highlight attributes",
     "description": "Label of the tick list choosing which true-or-false codebook attributes make a node stand out."
+  },
+  "protocolBuilder.networkCanvas.presetHighlightLegendHint": {
+    "defaultMessage": "Shown during the interview, in the list of attributes this preset can highlight.",
+    "description": "Guidance under the text box naming one highlighted attribute, saying where the label appears."
+  },
+  "protocolBuilder.networkCanvas.presetHighlightLegendLabel": {
+    "defaultMessage": "Label for “{attribute}”",
+    "description": "Label of the text box naming one highlighted attribute in the interview. attribute is the attribute’s name in the protocol’s codebook, which is not translated."
+  },
+  "protocolBuilder.networkCanvas.presetHighlightLegendRequired": {
+    "defaultMessage": "Enter a label for this attribute.",
+    "description": "Shown when the label of a highlighted attribute is left empty."
   },
   "protocolBuilder.networkCanvas.presetHighlightTitle": {
     "defaultMessage": "Node highlighting",

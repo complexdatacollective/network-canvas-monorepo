@@ -124,13 +124,13 @@ const personHolding = (type: string) => ({
       variables: {
         story: {
           name: 'story',
-          label: { 'en-US': 'story' },
+          label: 'story',
           type,
           component: COMPONENTS[type],
         },
         retelling: {
           name: 'retelling',
-          label: { 'en-US': 'retelling' },
+          label: 'retelling',
           type,
           component: COMPONENTS[type],
         },
@@ -377,7 +377,7 @@ describe('rules written while the codebook is moving', () => {
         variables: {
           ego_name: {
             name: 'ego_name',
-            label: { 'en-US': 'ego_name' },
+            label: 'ego_name',
             type: 'text',
             validation: { maxLength: 9 },
           },
@@ -545,7 +545,7 @@ describe('the switch, while a collaborator is changing the same attribute', () =
         variables: {
           ego_name: {
             name: 'ego_name',
-            label: { 'en-US': 'ego_name' },
+            label: 'ego_name',
             type: 'text',
             validation: { required: true },
           },
@@ -568,7 +568,7 @@ describe('the switch, while a collaborator is changing the same attribute', () =
         variables: {
           ego_name: {
             name: 'ego_name',
-            label: { 'en-US': 'ego_name' },
+            label: 'ego_name',
             type: 'text',
             validation: { required: true },
           },
@@ -585,7 +585,7 @@ describe('the switch, while a collaborator is changing the same attribute', () =
         variables: {
           ego_name: {
             name: 'ego_name',
-            label: { 'en-US': 'ego_name' },
+            label: 'ego_name',
             type: 'text',
           },
         },
@@ -614,7 +614,7 @@ describe('the switch, while a collaborator is changing the same attribute', () =
         variables: {
           ego_name: {
             name: 'ego_name',
-            label: { 'en-US': 'ego_name' },
+            label: 'ego_name',
             type: 'text',
             validation: { required: true },
           },
@@ -806,7 +806,7 @@ describe('the marker a refused write leaves behind', () => {
         variables: {
           ego_name: {
             name: 'ego_name',
-            label: { 'en-US': 'ego_name' },
+            label: 'ego_name',
             type: 'text',
             validation: { required: true },
           },
@@ -832,7 +832,7 @@ describe('the marker a refused write leaves behind', () => {
         variables: {
           ego_name: {
             name: 'ego_name',
-            label: { 'en-US': 'ego_name' },
+            label: 'ego_name',
             type: 'text',
           },
         },

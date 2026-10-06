@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   analyzeProtocolLocalization,
   CurrentProtocolSchema,
+  escapeMessageText,
   type Filter,
   type LocalizedString,
   messageText,
@@ -362,7 +363,7 @@ describe('SyntheticInterview', () => {
         label: LocalizedString;
         layoutVariable: string;
         groupVariable: string;
-        highlight: string[];
+        highlight: { variable: string; label: LocalizedString }[];
       }[];
       expect(presets).toHaveLength(1);
 
@@ -370,7 +371,35 @@ describe('SyntheticInterview', () => {
       expect(preset.label).toEqual({ 'en-US': 'Full View' });
       expect(preset.layoutVariable).toBeTruthy();
       expect(preset.groupVariable).toBeTruthy();
-      expect(preset.highlight).toHaveLength(1);
+      expect(preset.highlight).toEqual([
+        { variable: expect.any(String), label: { 'en-US': 'Highlighted' } },
+      ]);
+    });
+
+    it("labels each highlight with its attribute's name, as copy in the default language", () => {
+      const si = new SyntheticInterview();
+      const person = si.addNodeType({ name: 'Person' });
+      const close = person.addVariable({
+        type: 'boolean',
+        name: "Friend's {nickname}",
+      });
+      const stage = si.addStage('Narrative', {
+        subject: { entity: 'node', type: person.id },
+      });
+      stage.addPreset({ highlight: [close.id] });
+
+      const { stages } = expectValid(si);
+      const narrative = stages[0];
+      expect(narrative?.type === 'Narrative' && narrative.presets[0]).toEqual(
+        expect.objectContaining({
+          highlight: [
+            {
+              variable: close.id,
+              label: { 'en-US': escapeMessageText("Friend's {nickname}") },
+            },
+          ],
+        }),
+      );
     });
 
     it('creates presets with explicit edge display', () => {
@@ -2870,18 +2899,16 @@ describe('localization', () => {
     const personType = codebook.node?.[person.id];
     const friendType = codebook.edge?.[friend.id];
     expect(personType?.label).toEqual({ 'en-US': 'Person' });
-    expect(personType?.variables?.[age.id]?.label).toEqual({ 'en-US': 'age' });
+    expect(personType?.variables?.[age.id]?.label).toBe('age');
     expect(friendType?.label).toEqual({ 'en-US': 'Close friend' });
     expect(friendType?.variables?.[closeness.id]).toMatchObject({
-      label: { 'en-US': 'How close?' },
+      label: 'How close?',
       options: [
         { label: { 'en-US': 'Very close' }, value: 1 },
         { label: { 'en-US': 'Distant' }, value: 2 },
       ],
     });
-    expect(codebook.ego?.variables?.[mood.id]?.label).toEqual({
-      'en-US': 'mood',
-    });
+    expect(codebook.ego?.variables?.[mood.id]?.label).toBe('mood');
   });
 
   it('writes plain text in a default language set after it was added', () => {

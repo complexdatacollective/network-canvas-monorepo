@@ -269,7 +269,7 @@ describe('makeMultiSelectValidation', () => {
 describe('makeAssignAttributesValidation', () => {
   const { custom } = makeAssignAttributesValidation({
     allVariables: {
-      worried: { name: 'Worried', label: { en: 'Worried' }, type: 'boolean' },
+      worried: { name: 'Worried', label: 'Worried', type: 'boolean' },
     },
     committedVariableIds: new Set(['worried']),
     draftValidatedVariables: new Set(['worried']),
@@ -321,7 +321,7 @@ describe('makeAssignAttributesValidation', () => {
     // unchanged introduces nothing new to refuse.
     const { custom: settled } = makeAssignAttributesValidation({
       allVariables: {
-        worried: { name: 'Worried', label: { en: 'Worried' }, type: 'boolean' },
+        worried: { name: 'Worried', label: 'Worried', type: 'boolean' },
       },
       committedVariableIds: new Set(['worried']),
       draftValidatedVariables: new Set(),
@@ -335,7 +335,7 @@ describe('makeAssignAttributesValidation', () => {
   it('refuses a NEW pick of a variable this stage validates', async () => {
     const { custom: strict } = makeAssignAttributesValidation({
       allVariables: {
-        worried: { name: 'Worried', label: { en: 'Worried' }, type: 'boolean' },
+        worried: { name: 'Worried', label: 'Worried', type: 'boolean' },
       },
       committedVariableIds: new Set(),
       draftValidatedVariables: new Set(['worried']),

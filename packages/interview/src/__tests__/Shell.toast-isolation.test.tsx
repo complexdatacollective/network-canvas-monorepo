@@ -144,7 +144,7 @@ function makePayload(id: string): InterviewPayload {
             shape: { default: 'circle' },
             icon: 'add-a-person',
             variables: {
-              name: { name: 'Name', label: { und: 'Name' }, type: 'text' },
+              name: { name: 'Name', label: 'Name', type: 'text' },
             },
           },
         },

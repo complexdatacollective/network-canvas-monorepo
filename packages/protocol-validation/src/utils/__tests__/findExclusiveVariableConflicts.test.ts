@@ -68,39 +68,39 @@ const protocolWith = (stages: Stage[]) => ({
         variables: {
           fmName: {
             name: 'fm_name',
-            label: localized('fm_name'),
+            label: 'fm_name',
             type: 'text',
             component: 'Text',
           },
           isEgo: {
             name: 'is_ego',
-            label: localized('is_ego'),
+            label: 'is_ego',
             type: 'boolean',
           },
           relationshipToEgo: {
             name: 'fm_relationship_to_ego',
-            label: localized('fm_relationship_to_ego'),
+            label: 'fm_relationship_to_ego',
             type: 'text',
           },
           biologicalSex: {
             name: 'biologicalSex',
-            label: localized('biologicalSex'),
+            label: 'biologicalSex',
             type: 'categorical',
             options: localizedOptions<string>(BIOLOGICAL_SEX_OPTIONS),
           },
           hasConditionX: {
             name: 'hasConditionX',
-            label: localized('hasConditionX'),
+            label: 'hasConditionX',
             type: 'boolean',
           },
           hadTesting: {
             name: 'hadTesting',
-            label: localized('hadTesting'),
+            label: 'hadTesting',
             type: 'boolean',
           },
           fmLayout: {
             name: 'fmLayout',
-            label: localized('fmLayout'),
+            label: 'fmLayout',
             type: 'layout',
           },
         },
@@ -114,23 +114,23 @@ const protocolWith = (stages: Stage[]) => ({
         variables: {
           relationshipType: {
             name: 'relationshipType',
-            label: localized('relationshipType'),
+            label: 'relationshipType',
             type: 'categorical',
             options: localizedOptions(RELATIONSHIP_TYPE_OPTIONS),
           },
           isActive: {
             name: 'isActive',
-            label: localized('isActive'),
+            label: 'isActive',
             type: 'boolean',
           },
           isGestationalCarrier: {
             name: 'isGestationalCarrier',
-            label: localized('isGestationalCarrier'),
+            label: 'isGestationalCarrier',
             type: 'boolean',
           },
           gameteRole: {
             name: 'gameteRole',
-            label: localized('gameteRole'),
+            label: 'gameteRole',
             type: 'categorical',
             options: localizedOptions(GAMETE_ROLE_OPTIONS),
           },
@@ -397,7 +397,7 @@ describe('findExclusiveVariableConflicts', () => {
     ]);
     protocol.codebook.node.family_member.variables.biologicalSex = {
       name: 'biologicalSex',
-      label: localized('biologicalSex'),
+      label: 'biologicalSex',
       type: 'categorical',
       options: localizedOptions(BIOLOGICAL_SEX_OPTIONS).map((option) =>
         option.value === 'female' ? { ...option, value: 'woman' } : option,

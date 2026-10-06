@@ -196,7 +196,7 @@ describe('attribute-writer usage tags', () => {
               label: localized('Preset'),
               layoutVariable: 'layoutPosition',
               groupVariable: 'category',
-              highlight: ['strength'],
+              highlight: [{ variable: 'strength', label: localized('Strong') }],
             },
           ],
         },

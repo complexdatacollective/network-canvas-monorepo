@@ -402,7 +402,7 @@ describe('the answers shown after the row is pointed somewhere else', () => {
   /** A second attribute of the same kind, for the row to be moved onto. */
   const MOOD = {
     name: 'mood',
-    label: en('mood'),
+    label: 'mood',
     type: 'categorical',
     component: 'CheckboxGroup',
     options: [

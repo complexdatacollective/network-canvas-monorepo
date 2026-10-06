@@ -13,8 +13,8 @@ describe('getNodeLabelAttribute', () => {
       color: 'node-color-seq-6',
       shape: { default: 'circle' },
       variables: {
-        'var-123': { name: 'name', label: { en: 'Name' }, type: 'text' },
-        'var-456': { name: 'age', label: { en: 'Age' }, type: 'number' },
+        'var-123': { name: 'name', label: 'Name', type: 'text' },
+        'var-456': { name: 'age', label: 'Age', type: 'number' },
       },
     };
 
@@ -41,7 +41,7 @@ describe('getNodeLabelAttribute', () => {
       color: 'node-color-seq-5',
       shape: { default: 'circle' },
       variables: {
-        'var-123': { name: 'NAME', label: { en: 'NAME' }, type: 'text' }, // Upper case
+        'var-123': { name: 'NAME', label: 'NAME', type: 'text' }, // Upper case
       },
     };
 
@@ -67,7 +67,7 @@ describe('getNodeLabelAttribute', () => {
       color: 'node-color-seq-4',
       shape: { default: 'circle' },
       variables: {
-        'var-456': { name: 'age', label: { en: 'Age' }, type: 'number' },
+        'var-456': { name: 'age', label: 'Age', type: 'number' },
       },
     };
 
@@ -94,7 +94,7 @@ describe('getNodeLabelAttribute', () => {
       color: 'node-color-seq-3',
       shape: { default: 'circle' },
       variables: {
-        'var-456': { name: 'age', label: { en: 'Age' }, type: 'number' },
+        'var-456': { name: 'age', label: 'Age', type: 'number' },
       },
     };
 
@@ -123,15 +123,15 @@ describe('getNodeLabelAttribute', () => {
       variables: {
         'var-123': {
           name: 'firstName',
-          label: { en: 'First name' },
+          label: 'First name',
           type: 'text',
         },
         'var-456': {
           name: 'lastName',
-          label: { en: 'Last name' },
+          label: 'Last name',
           type: 'text',
         },
-        'var-789': { name: 'age', label: { en: 'Age' }, type: 'number' },
+        'var-789': { name: 'age', label: 'Age', type: 'number' },
       },
     };
 
@@ -163,12 +163,12 @@ describe('getNodeLabelAttribute', () => {
       variables: {
         'var-aaa': {
           name: 'description',
-          label: { en: 'Description' },
+          label: 'Description',
           type: 'text',
         },
         'var-bbb': {
           name: 'full_name',
-          label: { en: 'Full name' },
+          label: 'Full name',
           type: 'text',
         },
       },
@@ -208,7 +208,7 @@ describe('getNodeLabelAttribute', () => {
       color: 'node-color-seq-1',
       shape: { default: 'circle' },
       variables: {
-        'var-123': { name: 'name', label: { en: 'Name' }, type: 'text' },
+        'var-123': { name: 'name', label: 'Name', type: 'text' },
       },
     };
 

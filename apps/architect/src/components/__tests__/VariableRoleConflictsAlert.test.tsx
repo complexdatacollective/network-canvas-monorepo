@@ -19,7 +19,7 @@ const codebook = {
       variables: {
         category: {
           name: 'Category',
-          label: { en: 'Category' },
+          label: 'Category',
           type: 'categorical',
           options: [
             { label: { en: 'Friend' }, value: 'friend' },

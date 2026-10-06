@@ -90,10 +90,10 @@ describe('attributeListRows', () => {
           color: 'node-color-seq-1',
           shape: { default: 'circle' },
           variables: {
-            'v-total': { name: '=total', label: { en: 'Total' }, type: 'text' },
+            'v-total': { name: '=total', label: 'Total', type: 'text' },
             'v-score': {
               name: '-score, adjusted',
-              label: { en: 'Score adjusted' },
+              label: 'Score adjusted',
               type: 'text',
             },
           },

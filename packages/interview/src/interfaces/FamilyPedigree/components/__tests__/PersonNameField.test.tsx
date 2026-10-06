@@ -26,14 +26,14 @@ const fixtures = vi.hoisted(() => {
         variables: {
           name: {
             name: 'name',
-            label: { en: 'Name' },
+            label: 'Name',
             type: 'text' as const,
             component: 'Text' as const,
             validation: { required: true, unique: true },
           },
           alias: {
             name: 'Alias',
-            label: { en: 'Alias' },
+            label: 'Alias',
             type: 'text' as const,
             component: 'Text' as const,
           },

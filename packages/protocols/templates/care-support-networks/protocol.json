@@ -9,7 +9,7 @@
       "variables": {
         "care_stage": {
           "name": "care_stage",
-          "label": { "en-US": "care_stage" },
+          "label": "care_stage",
           "type": "categorical",
           "component": "ToggleButtonGroup",
           "options": [
@@ -23,14 +23,14 @@
         },
         "weeks_since_birth": {
           "name": "weeks_since_birth",
-          "label": { "en-US": "weeks_since_birth" },
+          "label": "weeks_since_birth",
           "type": "number",
           "component": "Number",
           "validation": { "minValue": 0, "maxValue": 104 }
         },
         "living_situation": {
           "name": "living_situation",
-          "label": { "en-US": "living_situation" },
+          "label": "living_situation",
           "type": "categorical",
           "component": "ToggleButtonGroup",
           "options": [
@@ -51,7 +51,7 @@
         },
         "epds_1": {
           "name": "epds_1",
-          "label": { "en-US": "epds_1" },
+          "label": "epds_1",
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
@@ -63,7 +63,7 @@
         },
         "epds_2": {
           "name": "epds_2",
-          "label": { "en-US": "epds_2" },
+          "label": "epds_2",
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
@@ -78,7 +78,7 @@
         },
         "epds_3": {
           "name": "epds_3",
-          "label": { "en-US": "epds_3" },
+          "label": "epds_3",
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
@@ -90,7 +90,7 @@
         },
         "epds_4": {
           "name": "epds_4",
-          "label": { "en-US": "epds_4" },
+          "label": "epds_4",
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
@@ -102,7 +102,7 @@
         },
         "epds_5": {
           "name": "epds_5",
-          "label": { "en-US": "epds_5" },
+          "label": "epds_5",
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
@@ -114,7 +114,7 @@
         },
         "epds_6": {
           "name": "epds_6",
-          "label": { "en-US": "epds_6" },
+          "label": "epds_6",
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
@@ -144,7 +144,7 @@
         },
         "epds_7": {
           "name": "epds_7",
-          "label": { "en-US": "epds_7" },
+          "label": "epds_7",
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
@@ -156,7 +156,7 @@
         },
         "epds_8": {
           "name": "epds_8",
-          "label": { "en-US": "epds_8" },
+          "label": "epds_8",
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
@@ -168,7 +168,7 @@
         },
         "epds_9": {
           "name": "epds_9",
-          "label": { "en-US": "epds_9" },
+          "label": "epds_9",
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
@@ -180,7 +180,7 @@
         },
         "epds_10": {
           "name": "epds_10",
-          "label": { "en-US": "epds_10" },
+          "label": "epds_10",
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
@@ -202,14 +202,14 @@
         "variables": {
           "supporter_name": {
             "name": "supporter_name",
-            "label": { "en-US": "supporter_name" },
+            "label": "supporter_name",
             "type": "text",
             "component": "Text",
             "validation": { "required": true, "unique": true }
           },
           "relationship": {
             "name": "relationship",
-            "label": { "en-US": "relationship" },
+            "label": "relationship",
             "type": "categorical",
             "component": "ToggleButtonGroup",
             "options": [
@@ -236,7 +236,7 @@
           },
           "formal_informal": {
             "name": "formal_informal",
-            "label": { "en-US": "formal_informal" },
+            "label": "formal_informal",
             "type": "categorical",
             "component": "ToggleButtonGroup",
             "options": [
@@ -254,7 +254,7 @@
           },
           "support_functions": {
             "name": "support_functions",
-            "label": { "en-US": "support_functions" },
+            "label": "support_functions",
             "type": "categorical",
             "component": "CheckboxGroup",
             "options": [
@@ -276,7 +276,7 @@
           },
           "proximity": {
             "name": "proximity",
-            "label": { "en-US": "proximity" },
+            "label": "proximity",
             "type": "categorical",
             "component": "ToggleButtonGroup",
             "options": [
@@ -291,7 +291,7 @@
           },
           "contact_frequency": {
             "name": "contact_frequency",
-            "label": { "en-US": "contact_frequency" },
+            "label": "contact_frequency",
             "type": "ordinal",
             "component": "RadioGroup",
             "options": [
@@ -304,7 +304,7 @@
           },
           "reliance": {
             "name": "reliance",
-            "label": { "en-US": "reliance" },
+            "label": "reliance",
             "type": "ordinal",
             "component": "LikertScale",
             "options": [
@@ -317,7 +317,7 @@
           },
           "layout": {
             "name": "layout",
-            "label": { "en-US": "layout" },
+            "label": "layout",
             "type": "layout"
           }
         }

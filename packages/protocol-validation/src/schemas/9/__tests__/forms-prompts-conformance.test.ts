@@ -26,7 +26,7 @@ const createProtocol = (stages: unknown[]) => ({
       variables: {
         egoName: {
           name: 'EgoName',
-          label: localized('EgoName'),
+          label: 'EgoName',
           type: 'text',
           component: 'Text',
         },
@@ -41,18 +41,18 @@ const createProtocol = (stages: unknown[]) => ({
         variables: {
           personName: {
             name: 'Name',
-            label: localized('Name'),
+            label: 'Name',
             type: 'text',
             component: 'Text',
           },
           personOther: {
             name: 'Other',
-            label: localized('Other'),
+            label: 'Other',
             type: 'text',
           },
           personCategory: {
             name: 'Category',
-            label: localized('Category'),
+            label: 'Category',
             type: 'categorical',
             options: [
               { label: localized('Friend'), value: 'friend' },
@@ -61,7 +61,7 @@ const createProtocol = (stages: unknown[]) => ({
           },
           personRating: {
             name: 'Rating',
-            label: localized('Rating'),
+            label: 'Rating',
             type: 'ordinal',
             options: [
               { label: localized('Low'), value: 1 },
@@ -79,7 +79,7 @@ const createProtocol = (stages: unknown[]) => ({
         variables: {
           closeness: {
             name: 'Closeness',
-            label: localized('Closeness'),
+            label: 'Closeness',
             type: 'ordinal',
             options: [
               { label: localized('Not Close'), value: 1 },

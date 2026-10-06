@@ -169,13 +169,13 @@ export function baseProtocol(): CurrentProtocol {
           variables: {
             personName: {
               name: 'Name',
-              label: { en: 'Name' },
+              label: 'Name',
               type: 'text',
               component: 'Text',
             },
             layoutPosition: {
               name: 'Layout_Position',
-              label: { en: 'Layout position' },
+              label: 'Layout position',
               type: 'layout',
             },
           },

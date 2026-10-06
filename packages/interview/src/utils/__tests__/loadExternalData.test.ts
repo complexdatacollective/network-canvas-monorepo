@@ -317,15 +317,15 @@ describe('makeVariableUUIDReplacer column names', () => {
         variables: {
           'id-name': {
             name: 'Full name',
-            label: { en: 'Full name' },
+            label: 'Full name',
             type: 'text',
           },
-          'id-age': { name: '年龄', label: { en: '年龄' }, type: 'number' },
-          'id-cafe': { name: 'Café', label: { en: 'Café' }, type: 'text' },
-          'id-dotted': { name: 'a.b', label: { en: 'a.b' }, type: 'text' },
+          'id-age': { name: '年龄', label: '年龄', type: 'number' },
+          'id-cafe': { name: 'Café', label: 'Café', type: 'text' },
+          'id-dotted': { name: 'a.b', label: 'a.b', type: 'text' },
           'id-proto': {
             name: '__proto__',
-            label: { en: '__proto__' },
+            label: '__proto__',
             type: 'text',
           },
         },
@@ -412,7 +412,7 @@ describe('a roster heading, from import to the variable it fills', () => {
         color: 'node-color-seq-1',
         shape: { default: 'circle' },
         variables: {
-          'id-cafe': { name: cafe, label: { en: cafe }, type: 'text' },
+          'id-cafe': { name: cafe, label: cafe, type: 'text' },
         },
       },
     },

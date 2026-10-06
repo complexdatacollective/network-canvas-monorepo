@@ -9,7 +9,7 @@
       "variables": {
         "activity_minutes_week": {
           "name": "activity_minutes_week",
-          "label": { "en-US": "activity_minutes_week" },
+          "label": "activity_minutes_week",
           "type": "number",
           "component": "Number",
           "validation": {
@@ -19,7 +19,7 @@
         },
         "smoking_status": {
           "name": "smoking_status",
-          "label": { "en-US": "smoking_status" },
+          "label": "smoking_status",
           "type": "categorical",
           "component": "ToggleButtonGroup",
           "options": [
@@ -48,7 +48,7 @@
         },
         "vaping_status": {
           "name": "vaping_status",
-          "label": { "en-US": "vaping_status" },
+          "label": "vaping_status",
           "type": "categorical",
           "component": "ToggleButtonGroup",
           "options": [
@@ -66,7 +66,7 @@
         },
         "diet_quality": {
           "name": "diet_quality",
-          "label": { "en-US": "diet_quality" },
+          "label": "diet_quality",
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
@@ -82,7 +82,7 @@
         },
         "alcohol_frequency": {
           "name": "alcohol_frequency",
-          "label": { "en-US": "alcohol_frequency" },
+          "label": "alcohol_frequency",
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
@@ -108,7 +108,7 @@
         "variables": {
           "alter_name": {
             "name": "alter_name",
-            "label": { "en-US": "alter_name" },
+            "label": "alter_name",
             "type": "text",
             "component": "Text",
             "validation": {
@@ -118,7 +118,7 @@
           },
           "relationship": {
             "name": "relationship",
-            "label": { "en-US": "relationship" },
+            "label": "relationship",
             "type": "categorical",
             "component": "ToggleButtonGroup",
             "options": [
@@ -135,7 +135,7 @@
           },
           "closeness": {
             "name": "closeness",
-            "label": { "en-US": "closeness" },
+            "label": "closeness",
             "type": "ordinal",
             "component": "LikertScale",
             "options": [
@@ -147,7 +147,7 @@
           },
           "alter_smokes": {
             "name": "alter_smokes",
-            "label": { "en-US": "alter_smokes" },
+            "label": "alter_smokes",
             "type": "categorical",
             "component": "ToggleButtonGroup",
             "options": [
@@ -158,7 +158,7 @@
           },
           "alter_activity": {
             "name": "alter_activity",
-            "label": { "en-US": "alter_activity" },
+            "label": "alter_activity",
             "type": "ordinal",
             "component": "LikertScale",
             "options": [
@@ -170,7 +170,7 @@
           },
           "alter_diet": {
             "name": "alter_diet",
-            "label": { "en-US": "alter_diet" },
+            "label": "alter_diet",
             "type": "ordinal",
             "component": "LikertScale",
             "options": [
@@ -183,7 +183,7 @@
           },
           "alter_drinks": {
             "name": "alter_drinks",
-            "label": { "en-US": "alter_drinks" },
+            "label": "alter_drinks",
             "type": "categorical",
             "component": "ToggleButtonGroup",
             "options": [
@@ -196,7 +196,7 @@
           },
           "shared_domains": {
             "name": "shared_domains",
-            "label": { "en-US": "shared_domains" },
+            "label": "shared_domains",
             "type": "categorical",
             "component": "CheckboxGroup",
             "options": [
@@ -220,7 +220,7 @@
           },
           "layout": {
             "name": "layout",
-            "label": { "en-US": "layout" },
+            "label": "layout",
             "type": "layout"
           }
         }

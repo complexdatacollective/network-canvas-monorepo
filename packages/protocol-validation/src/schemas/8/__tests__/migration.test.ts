@@ -5705,7 +5705,7 @@ describe('Migration V7 to V8', () => {
         };
         expected[`v${index}`] = {
           name: `v${index}`,
-          label: und(`v${index}`),
+          label: `v${index}`,
           type: 'number',
           validation: { required: true },
         };
@@ -5777,7 +5777,7 @@ describe('Migration V7 to V8', () => {
       for (let index = 0; index < 50; index++) {
         expect(parsedVariables?.[`v${index}`]).toEqual({
           name: `v${index}`,
-          label: und(`v${index}`),
+          label: `v${index}`,
           type: 'number',
           validation: { required: true },
         });

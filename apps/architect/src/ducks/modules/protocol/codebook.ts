@@ -131,8 +131,8 @@ const defaultTypeTemplate: Partial<EntityDefinition> = {
 const normalizedName = (name: unknown) =>
   typeof name === 'string' ? { name: normalizeCodebookName(name) } : {};
 
-// Participants see the label, not the name. A new type or variable starts with
-// its name as the label in the protocol's default language; a label the caller
+// Participants see a type's label, not its name. A new type starts with its
+// name as the label in the protocol's default language; a label the caller
 // supplies replaces it.
 const labelFromName = (state: RootState, name: string | undefined) => {
   const localization = getProtocol(state)?.localization;
@@ -274,8 +274,9 @@ export const createVariableAsync = createAppAsyncThunk(
     }
 
     const state = getState();
+    // An attribute's label is not translated, so it starts as the name itself.
     const safeConfiguration = prune({
-      ...labelFromName(state, name),
+      label: name,
       ...configuration,
       name,
     }) as Variable;

@@ -24,7 +24,11 @@ import { getLocalizedStringDescriptor } from '../localized-string.ts';
 import migrationV8toV9 from '../migration.ts';
 import ProtocolSchemaV9 from '../schema.ts';
 import { completeProtocol } from './complete-localized-protocol.ts';
-import { asSchema8Protocol, codebookDefinitions } from './schema-8-protocol.ts';
+import {
+  asSchema8Protocol,
+  codebookTypes,
+  codebookVariables,
+} from './schema-8-protocol.ts';
 
 type Path = readonly (string | number)[];
 
@@ -65,6 +69,28 @@ const schema8Protocol = (rewrite?: (text: string) => string) =>
 
 const migrateStep = (document: unknown) =>
   migrationV8toV9.migrate(ProtocolSchemaV8.parse(document), {});
+
+/**
+ * Schema 8 held no label for a codebook definition or a Narrative highlight,
+ * so the migrated label is the name of what it labels: the sibling `name` of
+ * a codebook definition, and the highlighted attribute's name.
+ */
+const nameBehindLabel = (document: unknown, at: Path): unknown => {
+  const owner = getAt(document, at.slice(0, -1));
+  if (typeof owner !== 'string') {
+    return getAt(document, [...at.slice(0, -1), 'name']);
+  }
+  const subject = getAt(document, [...at.slice(0, 2), 'subject', 'type']);
+  if (typeof subject !== 'string') return undefined;
+  return getAt(document, [
+    'codebook',
+    'node',
+    subject,
+    'variables',
+    owner,
+    'name',
+  ]);
+};
 
 const isUndeterminedOnly = (value: unknown) =>
   isRecord(value) &&
@@ -160,9 +186,17 @@ describe('v8 to v9 localization migration', () => {
     for (const { path: at, value } of collectLocalizedStrings(expected)) {
       setAt(expected, at, { und: escapeMessageText(value.en ?? '') });
     }
-    for (const definition of codebookDefinitions(expected)) {
+    for (const definition of codebookTypes(expected)) {
       definition.label = { und: definition.name };
     }
+    for (const definition of codebookVariables(expected)) {
+      definition.label = definition.name;
+    }
+    setAt(
+      expected,
+      [...stagePath(expected, 'narrative'), 'presets', 0, 'highlight', 0],
+      { variable: 'flag', label: { und: 'Flag' } },
+    );
     if (!isRecord(expected) || !Array.isArray(expected.stages)) {
       throw new Error('Fixture has no stages');
     }
@@ -196,16 +230,14 @@ describe('v8 to v9 localization migration', () => {
     for (const { path: at, value } of hits) {
       const source = getAt(document, at);
       const expectedText =
-        typeof source === 'string'
-          ? source
-          : getAt(document, [...at.slice(0, -1), 'name']);
+        typeof source === 'string' ? source : nameBehindLabel(document, at);
       expect(Object.keys(value)).toEqual(['und']);
       expect(messageText(value.und ?? '')).toBe(expectedText);
     }
   });
 
   describe('codebook labels', () => {
-    it('starts each label as the name participants already saw', () => {
+    it('starts each type label as the name participants already saw', () => {
       const document = schema8Protocol();
       setAt(
         document,
@@ -232,13 +264,86 @@ describe('v8 to v9 localization migration', () => {
       ).toEqual({ und: 'knows' });
     });
 
+    it('starts each attribute label as its name, as plain text', () => {
+      const document = schema8Protocol();
+      const variable = ['codebook', 'node', 'person', 'variables', 'nickname'];
+      setAt(document, [...variable, 'name'], "Friend's {nickname}");
+      expect(getAt(migrateProtocol(document, 9), [...variable, 'label'])).toBe(
+        "Friend's {nickname}",
+      );
+    });
+
+    it('uses the codebook key for an attribute with no name', () => {
+      const document = schema8Protocol();
+      const variable = ['codebook', 'ego', 'variables', 'egoName'];
+      setAt(document, [...variable, 'name'], '');
+      expect(getAt(migrateStep(document), [...variable, 'label'])).toBe(
+        'egoName',
+      );
+    });
+
     it('keeps a label a document already carries', () => {
       const document = schema8Protocol();
       const variable = ['codebook', 'ego', 'variables', 'egoName'];
       setAt(document, [...variable, 'label'], 'Your name');
-      expect(getAt(migrateStep(document), [...variable, 'label'])).toEqual({
-        und: 'Your name',
-      });
+      expect(getAt(migrateStep(document), [...variable, 'label'])).toBe(
+        'Your name',
+      );
+    });
+  });
+
+  describe('Narrative highlights', () => {
+    const presetPath = (document: unknown) => [
+      ...stagePath(document, 'narrative'),
+      'presets',
+      0,
+    ];
+
+    it('labels each highlight with its attribute name, in the undetermined language', () => {
+      const document = schema8Protocol();
+      const preset = presetPath(document);
+      setAt(document, [...preset, 'highlight'], ['flag', 'nickname']);
+      setAt(
+        document,
+        ['codebook', 'node', 'person', 'variables', 'nickname', 'name'],
+        "Friend's {nickname}",
+      );
+
+      const migrated = migrateProtocol(document, 9);
+      expect(getAt(migrated, [...preset, 'highlight'])).toEqual([
+        { variable: 'flag', label: { und: 'Flag' } },
+        {
+          variable: 'nickname',
+          label: { und: escapeMessageText("Friend's {nickname}") },
+        },
+      ]);
+    });
+
+    it('uses the attribute id when the attribute has no name or is missing', () => {
+      const document = schema8Protocol();
+      const preset = presetPath(document);
+      setAt(document, [...preset, 'highlight'], ['flag', 'removed']);
+      setAt(
+        document,
+        ['codebook', 'node', 'person', 'variables', 'flag', 'name'],
+        '',
+      );
+
+      expect(getAt(migrateStep(document), [...preset, 'highlight'])).toEqual([
+        { variable: 'flag', label: { und: 'flag' } },
+        { variable: 'removed', label: { und: 'removed' } },
+      ]);
+    });
+
+    it('leaves a preset with no highlight without one', () => {
+      const document = schema8Protocol();
+      const preset = presetPath(document);
+      const presetDocument = getAt(document, preset);
+      if (!isRecord(presetDocument)) throw new Error('Fixture has no preset');
+      delete presetDocument.highlight;
+
+      const migrated = migrateProtocol(document, 9);
+      expect(getAt(migrated, preset)).not.toHaveProperty('highlight');
     });
   });
 

@@ -27,12 +27,14 @@ Every text that participants see can be translated. This includes:
 - form titles, and the questions and hints of form fields
 - the labels of response options, and the labels at each end of a slider
 - the titles, text and resource descriptions of Information screens
-- the text of other interfaces, such as the introduction of a [Language Chooser](/en/design-protocols/interface-documentation/language-chooser) or the explanation on an [Anonymisation](/en/design-protocols/interface-documentation/anonymisation) screen
-- the labels of node types, edge types and attributes (see [Labels for node types, edge types and attributes](#labels-for-node-types-edge-types-and-attributes))
+- the text of other interfaces, such as the explanation on an [Anonymisation](/en/design-protocols/interface-documentation/anonymisation) screen
+- the labels of node types and edge types (see [Labels for node types and edge types](#labels-for-node-types-and-edge-types))
+- the labels of the attributes a [Narrative](/en/design-protocols/interface-documentation/narrative) preset highlights (see [Labels for highlighted attributes on a Narrative stage](#labels-for-highlighted-attributes-on-a-narrative-stage))
 
 Some parts of a protocol are the same in every language:
 
 - **Names and values.** Attribute names, node and edge type names, and option values are what your exported data uses, so they don't change between languages. Only the labels participants see are translated.
+- **Attribute labels.** An attribute's label is a readable name for it, in plain text, and it isn't translated. Participants only see it on a [Network Composer](/en/design-protocols/interface-documentation/network-composer) field that has no label of its own, so give those fields a label if you want participants to read it in their language.
 - **Resources.** Images, videos, audio, rosters and maps are the same in every language. If a resource contains words, choose one that works for all of your participants, or explain it in text that you can translate.
 - **The interview's own buttons and messages**, such as navigation, help and validation messages. Network Canvas provides these itself, in a fixed set of languages (see [How participants get their language](#how-participants-get-their-language)).
 
@@ -107,16 +109,21 @@ The language menu tells you how each text is doing:
 
 To remove a translation, delete all of its text. A protocol with only one language doesn't show language menus at all.
 
-### Labels for node types, edge types and attributes
+### Labels for node types and edge types
 
-Each node type, edge type and attribute has a label: the words participants are shown for it. The label is kept separate from the name, which your exported data uses, so you can translate the label without changing your data. A new node type, edge type or attribute starts with its name as its label.
+Each node type and edge type has a label: the words participants are shown for it. The label is kept separate from the name, which your exported data uses, so you can translate the label without changing your data. A new node type or edge type starts with its name as its label.
 
-You edit labels on the **Codebook** page:
-
-- For a node type or edge type, click **Edit entity** on the type. The label is under the type's name.
-- For an attribute, click the label button (a tag icon) next to the attribute. This works for the attributes of node types, edge types and the ego.
+To edit a type's label, open the **Codebook** page and click **Edit entity** on the type. The label is under the type's name.
 
 When your protocol has more than one language, a label has a language menu like any other text. A label needs text in at least one language. Any language you leave empty counts as a missing translation, just like other text.
+
+Attributes have labels too, which you edit on the **Codebook** page with the label button (a tag icon) next to the attribute. An attribute's label is plain text, so it has no language menu and is never a missing translation.
+
+### Labels for highlighted attributes on a Narrative stage
+
+A [Narrative](/en/design-protocols/interface-documentation/narrative) preset can highlight the nodes that have one or more true-or-false attributes. During the interview, the preset switcher lists these attributes by their labels, so that participants can choose which one to highlight.
+
+You write these labels in the Narrative stage editor. Open the preset, and under **Node highlighting**, each attribute you tick has a **Label for "…"** field, named after the attribute. The label starts as the attribute's name, and it has a language menu like any other text. Every highlighted attribute needs a label.
 
 ## Identifying the language of an older protocol
 

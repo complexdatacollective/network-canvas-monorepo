@@ -16,7 +16,7 @@ describe('findValidationContradictions — local checks', () => {
     const result = findValidationContradictions({
       a: {
         name: 'first_name',
-        label: localized('first_name'),
+        label: 'first_name',
         type: 'text',
         validation: { minLength: 10, maxLength: 2 },
       },
@@ -37,13 +37,13 @@ describe('findValidationContradictions — local checks', () => {
     const result = findValidationContradictions({
       a: {
         name: 'age',
-        label: localized('age'),
+        label: 'age',
         type: 'number',
         validation: { minValue: 10, maxValue: 2 },
       },
       b: {
         name: 'colors',
-        label: localized('colors'),
+        label: 'colors',
         type: 'categorical',
         options: [
           { label: localized('Red'), value: 'red' },
@@ -63,7 +63,7 @@ describe('findValidationContradictions — local checks', () => {
     const result = findValidationContradictions({
       a: {
         name: 'colors',
-        label: localized('colors'),
+        label: 'colors',
         type: 'categorical',
         options: [
           { label: localized('Red'), value: 'red' },
@@ -133,7 +133,7 @@ describe('findValidationContradictions — local checks', () => {
     const result = findValidationContradictions({
       a: {
         name: 'colors',
-        label: localized('colors'),
+        label: 'colors',
         type: 'categorical',
         options: [
           { label: localized('Red'), value: 'x' },
@@ -158,7 +158,7 @@ describe('findValidationContradictions — local checks', () => {
       findValidationContradictions({
         a: {
           name: 'colors',
-          label: localized('colors'),
+          label: 'colors',
           type: 'categorical',
           options: [
             { label: localized('Red'), value: 'x' },
@@ -176,13 +176,13 @@ describe('findValidationContradictions — local checks', () => {
       findValidationContradictions({
         a: {
           name: 'age',
-          label: localized('age'),
+          label: 'age',
           type: 'number',
           validation: { minValue: 5, maxValue: 5 },
         },
         b: {
           name: 'colors',
-          label: localized('colors'),
+          label: 'colors',
           type: 'categorical',
           options: [
             { label: localized('Red'), value: 'red' },
@@ -197,10 +197,10 @@ describe('findValidationContradictions — local checks', () => {
   it('ignores variables with no validation and non-numeric rule values', () => {
     expect(
       findValidationContradictions({
-        a: { name: 'layout', label: localized('layout'), type: 'layout' },
+        a: { name: 'layout', label: 'layout', type: 'layout' },
         b: {
           name: 'age',
-          label: localized('age'),
+          label: 'age',
           type: 'number',
           validation: { minValue: 'ten' },
         },
@@ -212,7 +212,7 @@ describe('findValidationContradictions — local checks', () => {
 describe('findValidationContradictions — reference structure', () => {
   const number = (name: string, validation: Record<string, unknown> = {}) => ({
     name,
-    label: localized(name),
+    label: name,
     type: 'number',
     validation,
   });
@@ -322,7 +322,7 @@ describe('findValidationContradictions — reference structure', () => {
       findValidationContradictions({
         a: number('a', { greaterThanVariable: 'missing' }),
         b: number('b', { sameAs: 'c', differentFrom: 'c' }),
-        c: { name: 'c', label: localized('c'), type: 'text' },
+        c: { name: 'c', label: 'c', type: 'text' },
       }),
     ).toEqual([
       // sameAs+differentFrom is reported on raw values even when the target's
@@ -337,13 +337,13 @@ describe('findValidationContradictions — bound disjointness', () => {
     const result = findValidationContradictions({
       a: {
         name: 'a',
-        label: localized('a'),
+        label: 'a',
         type: 'number',
         validation: { minValue: 10, lessThanVariable: 'b' },
       },
       b: {
         name: 'b',
-        label: localized('b'),
+        label: 'b',
         type: 'number',
         validation: { maxValue: 5 },
       },
@@ -362,13 +362,13 @@ describe('findValidationContradictions — bound disjointness', () => {
     const strict = findValidationContradictions({
       a: {
         name: 'a',
-        label: localized('a'),
+        label: 'a',
         type: 'number',
         validation: { maxValue: 5, greaterThanVariable: 'b' },
       },
       b: {
         name: 'b',
-        label: localized('b'),
+        label: 'b',
         type: 'number',
         validation: { minValue: 5 },
       },
@@ -378,13 +378,13 @@ describe('findValidationContradictions — bound disjointness', () => {
     const nonStrict = findValidationContradictions({
       a: {
         name: 'a',
-        label: localized('a'),
+        label: 'a',
         type: 'number',
         validation: { maxValue: 5, greaterThanOrEqualToVariable: 'b' },
       },
       b: {
         name: 'b',
-        label: localized('b'),
+        label: 'b',
         type: 'number',
         validation: { minValue: 5 },
       },
@@ -396,13 +396,13 @@ describe('findValidationContradictions — bound disjointness', () => {
     const result = findValidationContradictions({
       a: {
         name: 'a',
-        label: localized('a'),
+        label: 'a',
         type: 'number',
         validation: { maxValue: 5, sameAs: 'b' },
       },
       b: {
         name: 'b',
-        label: localized('b'),
+        label: 'b',
         type: 'number',
         validation: { minValue: 10 },
       },
@@ -419,13 +419,13 @@ describe('findValidationContradictions — bound disjointness', () => {
     const result = findValidationContradictions({
       a: {
         name: 'a',
-        label: localized('a'),
+        label: 'a',
         type: 'text',
         validation: { maxLength: 3, sameAs: 'b' },
       },
       b: {
         name: 'b',
-        label: localized('b'),
+        label: 'b',
         type: 'text',
         validation: { minLength: 10 },
       },
@@ -438,7 +438,7 @@ describe('findValidationContradictions — bound disjointness', () => {
     const disjoint = findValidationContradictions({
       a: {
         name: 'a',
-        label: localized('a'),
+        label: 'a',
         type: 'datetime',
         component: 'DatePicker',
         parameters: { type: 'year', max: '2020' },
@@ -446,7 +446,7 @@ describe('findValidationContradictions — bound disjointness', () => {
       },
       b: {
         name: 'b',
-        label: localized('b'),
+        label: 'b',
         type: 'datetime',
         component: 'DatePicker',
         parameters: { type: 'year', min: '2021' },
@@ -464,7 +464,7 @@ describe('findValidationContradictions — bound disjointness', () => {
     const sameYear = findValidationContradictions({
       a: {
         name: 'a',
-        label: localized('a'),
+        label: 'a',
         type: 'datetime',
         component: 'DatePicker',
         parameters: { type: 'year', max: '2020' },
@@ -472,7 +472,7 @@ describe('findValidationContradictions — bound disjointness', () => {
       },
       b: {
         name: 'b',
-        label: localized('b'),
+        label: 'b',
         type: 'datetime',
         component: 'DatePicker',
         parameters: { type: 'year', min: '2020' },
@@ -486,7 +486,7 @@ describe('findValidationContradictions — bound disjointness', () => {
     const overlapping = findValidationContradictions({
       a: {
         name: 'a',
-        label: localized('a'),
+        label: 'a',
         type: 'datetime',
         component: 'DatePicker',
         parameters: { type: 'year', max: '2021' },
@@ -494,7 +494,7 @@ describe('findValidationContradictions — bound disjointness', () => {
       },
       b: {
         name: 'b',
-        label: localized('b'),
+        label: 'b',
         type: 'datetime',
         component: 'DatePicker',
         parameters: { type: 'year', min: '2020' },
@@ -507,19 +507,19 @@ describe('findValidationContradictions — bound disjointness', () => {
     const result = findValidationContradictions({
       a: {
         name: 'a',
-        label: localized('a'),
+        label: 'a',
         type: 'number',
         validation: { maxValue: 5, sameAs: 'b', lessThanVariable: 'c' },
       },
       b: {
         name: 'b',
-        label: localized('b'),
+        label: 'b',
         type: 'number',
         validation: { minValue: 10 },
       },
       c: {
         name: 'c',
-        label: localized('c'),
+        label: 'c',
         type: 'number',
         validation: { maxValue: 0 },
       },
@@ -532,23 +532,23 @@ describe('findValidationContradictions — bound disjointness', () => {
       findValidationContradictions({
         a: {
           name: 'a',
-          label: localized('a'),
+          label: 'a',
           type: 'number',
           validation: { minValue: 0, lessThanVariable: 'b' },
         },
         b: {
           name: 'b',
-          label: localized('b'),
+          label: 'b',
           type: 'number',
           validation: { maxValue: 100 },
         },
         c: {
           name: 'c',
-          label: localized('c'),
+          label: 'c',
           type: 'scalar',
           validation: { lessThanVariable: 'd' },
         },
-        d: { name: 'd', label: localized('d'), type: 'scalar' },
+        d: { name: 'd', label: 'd', type: 'scalar' },
       }),
     ).toEqual([]);
   });
@@ -561,7 +561,7 @@ describe('findValidationContradictions — Finding D: sameAs option-set disjoint
     validation: Record<string, unknown> = {},
   ) => ({
     name,
-    label: localized(name),
+    label: name,
     type: 'categorical',
     options: optionValues.map((value) => ({ label: String(value), value })),
     validation,
@@ -595,7 +595,7 @@ describe('findValidationContradictions — Finding D: sameAs option-set disjoint
         a: categorical('a', ['red', 'blue'], { sameAs: 'b' }),
         b: {
           name: 'b',
-          label: localized('b'),
+          label: 'b',
           type: 'categorical',
           validation: {},
         },
@@ -611,7 +611,7 @@ describe('findValidationContradictions — eighth-wave Finding 1: boolean domain
     options?: { label: Record<string, string>; value: boolean }[],
   ) => ({
     name,
-    label: localized(name),
+    label: name,
     type: 'boolean',
     validation,
     ...(options !== undefined ? { options } : {}),
@@ -703,7 +703,7 @@ describe('findValidationContradictions — second-wave Finding 1: shared-option 
     validation: Record<string, unknown> = {},
   ) => ({
     name,
-    label: localized(name),
+    label: name,
     type: 'categorical',
     options: optionValues.map((value) => ({ label: String(value), value })),
     validation,
@@ -756,7 +756,7 @@ describe('findValidationContradictions — second-wave Finding 1: shared-option 
 describe('findValidationContradictions — Finding E: comparator-forced equality groups', () => {
   const number = (name: string, validation: Record<string, unknown> = {}) => ({
     name,
-    label: localized(name),
+    label: name,
     type: 'number',
     validation,
   });
@@ -829,7 +829,7 @@ describe('findValidationContradictions — Finding E: comparator-forced equality
 describe('findValidationContradictions — Twenty-first-wave Finding 6: comparator cycles closed only by sameAs contraction', () => {
   const number = (name: string, validation: Record<string, unknown> = {}) => ({
     name,
-    label: localized(name),
+    label: name,
     type: 'number',
     validation,
   });
@@ -937,7 +937,7 @@ describe('findValidationContradictions — Twenty-second-wave Finding 3: compara
     validation: Record<string, unknown> = {},
   ) => ({
     name,
-    label: localized(name),
+    label: name,
     type: 'datetime',
     component: 'DatePicker',
     parameters,
@@ -1038,7 +1038,7 @@ describe('findValidationContradictions — Twenty-second-wave Finding 3: compara
     const result = findValidationContradictions({
       a: {
         name: 'a',
-        label: localized('a'),
+        label: 'a',
         type: 'number',
         validation: {
           greaterThanOrEqualToVariable: 'b',
@@ -1047,7 +1047,7 @@ describe('findValidationContradictions — Twenty-second-wave Finding 3: compara
       },
       b: {
         name: 'b',
-        label: localized('b'),
+        label: 'b',
         type: 'number',
         validation: { greaterThanOrEqualToVariable: 'a' },
       },
@@ -1071,7 +1071,7 @@ describe('findValidationContradictions — Twenty-second-wave Finding 3: compara
     const result = findValidationContradictions({
       a: {
         name: 'a',
-        label: localized('a'),
+        label: 'a',
         type: 'number',
         parameters: { type: 'month' },
         validation: {
@@ -1081,7 +1081,7 @@ describe('findValidationContradictions — Twenty-second-wave Finding 3: compara
       },
       b: {
         name: 'b',
-        label: localized('b'),
+        label: 'b',
         type: 'number',
         validation: { greaterThanOrEqualToVariable: 'a' },
       },
@@ -1094,7 +1094,7 @@ describe('findValidationContradictions — Twenty-second-wave Finding 3: compara
 describe('findValidationContradictions — second-wave Finding 4: odd boolean differentFrom cycles', () => {
   const boolean = (name: string, validation: Record<string, unknown> = {}) => ({
     name,
-    label: localized(name),
+    label: name,
     type: 'boolean',
     validation,
   });
@@ -1162,7 +1162,7 @@ describe('findValidationContradictions — second-wave Finding 4: odd boolean di
   it('accepts a differentFrom triangle over text variables (unbounded domain)', () => {
     const text = (name: string, validation: Record<string, unknown> = {}) => ({
       name,
-      label: localized(name),
+      label: name,
       type: 'text',
       validation,
     });
@@ -1179,7 +1179,7 @@ describe('findValidationContradictions — second-wave Finding 4: odd boolean di
 describe('findValidationContradictions — third-wave Finding 1: odd-cycle strips scope to the cycle', () => {
   const boolean = (name: string, validation: Record<string, unknown> = {}) => ({
     name,
-    label: localized(name),
+    label: name,
     type: 'boolean',
     validation,
   });
@@ -1213,7 +1213,7 @@ describe('findValidationContradictions — third-wave Finding 1: odd-cycle strip
 describe('findValidationContradictions — Twenty-third-wave Finding 1: minimal odd-cycle strips', () => {
   const boolean = (name: string, validation: Record<string, unknown> = {}) => ({
     name,
-    label: localized(name),
+    label: name,
     type: 'boolean',
     validation,
   });
@@ -1300,7 +1300,7 @@ describe('findValidationContradictions — Twenty-third-wave Finding 2: domain-a
     component = 'Boolean',
   ) => ({
     name,
-    label: localized(name),
+    label: name,
     type: 'boolean',
     component,
     validation,
@@ -1456,7 +1456,7 @@ describe('findValidationContradictions — fifth-wave Finding 5: singleton boole
     options?: { label: Record<string, string>; value: boolean }[],
   ) => ({
     name,
-    label: localized(name),
+    label: name,
     type: 'boolean',
     validation,
     ...(options !== undefined ? { options } : {}),
@@ -1581,7 +1581,7 @@ describe('findValidationContradictions — fifth-wave Finding 5: singleton boole
 describe('findValidationContradictions — sixth-wave Finding 2: pinned-equal differentFrom', () => {
   const number = (name: string, validation: Record<string, unknown> = {}) => ({
     name,
-    label: localized(name),
+    label: name,
     type: 'number',
     validation,
   });
@@ -1592,7 +1592,7 @@ describe('findValidationContradictions — sixth-wave Finding 2: pinned-equal di
     validation: Record<string, unknown> = {},
   ) => ({
     name,
-    label: localized(name),
+    label: name,
     type: 'datetime',
     component: 'DatePicker',
     parameters,
@@ -1687,7 +1687,7 @@ describe('findValidationContradictions — seventeenth-wave Finding 1: coarse Da
     validation: Record<string, unknown> = {},
   ) => ({
     name,
-    label: localized(name),
+    label: name,
     type: 'datetime',
     component: 'DatePicker',
     parameters,
@@ -1781,7 +1781,7 @@ describe('findValidationContradictions — seventeenth-wave Finding 2: component
     validation: Record<string, unknown> = {},
   ) => ({
     name,
-    label: localized(name),
+    label: name,
     type: 'datetime',
     component: 'DatePicker',
     parameters,
@@ -1794,7 +1794,7 @@ describe('findValidationContradictions — seventeenth-wave Finding 2: component
     validation: Record<string, unknown> = {},
   ) => ({
     name,
-    label: localized(name),
+    label: name,
     type: 'datetime',
     ...(parameters === undefined ? {} : { parameters }),
     validation,
@@ -1854,7 +1854,7 @@ describe('findValidationContradictions — seventeenth-wave Finding 3: pinned ca
     validation: Record<string, unknown> = {},
   ) => ({
     name,
-    label: localized(name),
+    label: name,
     type: 'categorical',
     options: optionValues.map((value) => ({ label: String(value), value })),
     validation,
@@ -1904,7 +1904,7 @@ describe('findValidationContradictions — tenth-wave Finding 2: pinned option-d
     validation: Record<string, unknown> = {},
   ) => ({
     name,
-    label: localized(name),
+    label: name,
     type: 'categorical',
     options: optionValues.map((value) => ({ label: String(value), value })),
     validation,
@@ -1916,7 +1916,7 @@ describe('findValidationContradictions — tenth-wave Finding 2: pinned option-d
     validation: Record<string, unknown> = {},
   ) => ({
     name,
-    label: localized(name),
+    label: name,
     type: 'ordinal',
     options: optionValues.map((value) => ({ label: String(value), value })),
     validation,
@@ -2002,7 +2002,7 @@ describe('findValidationContradictions — Twenty-third-wave Finding 9 (reverted
     validation: Record<string, unknown> = {},
   ) => ({
     name,
-    label: localized(name),
+    label: name,
     type: 'categorical',
     options: optionValues.map((value) => ({ label: String(value), value })),
     validation,
@@ -2014,7 +2014,7 @@ describe('findValidationContradictions — Twenty-third-wave Finding 9 (reverted
     validation: Record<string, unknown> = {},
   ) => ({
     name,
-    label: localized(name),
+    label: name,
     type: 'ordinal',
     options: optionValues.map((value) => ({ label: String(value), value })),
     validation,
@@ -2111,7 +2111,7 @@ describe('findValidationContradictions — third-wave Finding 3: mixed-resolutio
     validation: Record<string, unknown> = {},
   ) => ({
     name,
-    label: localized(name),
+    label: name,
     type: 'datetime',
     component: 'DatePicker',
     parameters,
@@ -2164,7 +2164,7 @@ describe('findValidationContradictions — seventh-wave Finding 1: comparator-on
     validation: Record<string, unknown> = {},
   ) => ({
     name,
-    label: localized(name),
+    label: name,
     type: 'datetime',
     component: 'DatePicker',
     parameters,
@@ -2236,7 +2236,7 @@ describe('findValidationContradictions — tenth-wave Finding 5: resolution unif
     validation: Record<string, unknown> = {},
   ) => ({
     name,
-    label: localized(name),
+    label: name,
     type: 'datetime',
     component: 'DatePicker',
     parameters,
@@ -2300,7 +2300,7 @@ describe('findValidationContradictions — fifth-wave Finding 3: fixed-anchor Re
     validation: Record<string, unknown> = {},
   ) => ({
     name,
-    label: localized(name),
+    label: name,
     type: 'datetime',
     component: 'RelativeDatePicker',
     parameters,
@@ -2313,7 +2313,7 @@ describe('findValidationContradictions — fifth-wave Finding 3: fixed-anchor Re
     validation: Record<string, unknown> = {},
   ) => ({
     name,
-    label: localized(name),
+    label: name,
     type: 'datetime',
     component: 'DatePicker',
     parameters,
@@ -2405,7 +2405,7 @@ describe('findValidationContradictions — fourteenth-wave Finding 1: anchorless
     validation: Record<string, unknown> = {},
   ) => ({
     name,
-    label: localized(name),
+    label: name,
     type: 'datetime',
     component: 'RelativeDatePicker',
     parameters,
@@ -2418,7 +2418,7 @@ describe('findValidationContradictions — fourteenth-wave Finding 1: anchorless
     validation: Record<string, unknown> = {},
   ) => ({
     name,
-    label: localized(name),
+    label: name,
     type: 'datetime',
     component: 'DatePicker',
     parameters,
@@ -2528,7 +2528,7 @@ describe('findValidationContradictions — fourteenth-wave Finding 1: anchorless
     const result = VariablesSchema.safeParse({
       a: {
         name: 'a',
-        label: localized('a'),
+        label: 'a',
         type: 'datetime',
         component: 'RelativeDatePicker',
         parameters: { before: 0, after: 0 },
@@ -2536,7 +2536,7 @@ describe('findValidationContradictions — fourteenth-wave Finding 1: anchorless
       },
       b: {
         name: 'b',
-        label: localized('b'),
+        label: 'b',
         type: 'datetime',
         component: 'RelativeDatePicker',
         parameters: { before: 0, after: 0 },
@@ -2566,7 +2566,7 @@ describe('findValidationContradictions — eighteenth-wave Finding 3: componentl
     validation: Record<string, unknown> = {},
   ) => ({
     name,
-    label: localized(name),
+    label: name,
     type: 'datetime',
     component: 'RelativeDatePicker',
     parameters,
@@ -2579,7 +2579,7 @@ describe('findValidationContradictions — eighteenth-wave Finding 3: componentl
     validation: Record<string, unknown> = {},
   ) => ({
     name,
-    label: localized(name),
+    label: name,
     type: 'datetime',
     component: 'DatePicker',
     parameters,
@@ -2723,7 +2723,7 @@ describe('findValidationContradictions — fifteenth-wave Finding 1: equality gr
     validation: Record<string, unknown> = {},
   ) => ({
     name,
-    label: localized(name),
+    label: name,
     type: 'datetime',
     component: 'RelativeDatePicker',
     parameters,
@@ -2736,7 +2736,7 @@ describe('findValidationContradictions — fifteenth-wave Finding 1: equality gr
     validation: Record<string, unknown> = {},
   ) => ({
     name,
-    label: localized(name),
+    label: name,
     type: 'datetime',
     component: 'DatePicker',
     parameters: { min: day, max: day },
@@ -2809,7 +2809,7 @@ describe('record schema conformance — contradiction refinement', () => {
     const result = VariablesSchema.safeParse({
       a: {
         name: 'age',
-        label: localized('age'),
+        label: 'age',
         type: 'number',
         component: 'Number',
         validation: { minValue: 10, maxValue: 2 },
@@ -2830,14 +2830,14 @@ describe('record schema conformance — contradiction refinement', () => {
     const result = EgoVariablesSchema.safeParse({
       a: {
         name: 'start',
-        label: localized('start'),
+        label: 'start',
         type: 'number',
         component: 'Number',
         validation: { greaterThanVariable: 'b' },
       },
       b: {
         name: 'end',
-        label: localized('end'),
+        label: 'end',
         type: 'number',
         component: 'Number',
         validation: { greaterThanVariable: 'a' },
@@ -2850,14 +2850,14 @@ describe('record schema conformance — contradiction refinement', () => {
     const result = VariablesSchema.safeParse({
       a: {
         name: 'start',
-        label: localized('start'),
+        label: 'start',
         type: 'number',
         component: 'Number',
         validation: { lessThanVariable: 'b' },
       },
       b: {
         name: 'end',
-        label: localized('end'),
+        label: 'end',
         type: 'number',
         component: 'Number',
         validation: { greaterThanVariable: 'a' },
@@ -2879,7 +2879,7 @@ describe('record schema conformance — contradiction refinement', () => {
     const result = VariablesSchema.safeParse({
       a: {
         name: 'a',
-        label: localized('a'),
+        label: 'a',
         type: 'boolean',
         component: 'Boolean',
         options: [{ label: localized('Yes'), value: true }],
@@ -2887,14 +2887,14 @@ describe('record schema conformance — contradiction refinement', () => {
       },
       b: {
         name: 'b',
-        label: localized('b'),
+        label: 'b',
         type: 'boolean',
         component: 'Boolean',
         validation: { differentFrom: 'c' },
       },
       c: {
         name: 'c',
-        label: localized('c'),
+        label: 'c',
         type: 'boolean',
         component: 'Boolean',
         options: [{ label: localized('No'), value: false }],
@@ -2910,7 +2910,7 @@ describe('R1 — absolute floors on count-valued rules', () => {
     expect(
       VariableSchema.safeParse({
         name: 'first_name',
-        label: localized('first_name'),
+        label: 'first_name',
         type: 'text',
         component: 'Text',
         validation: { maxLength: 0 },
@@ -2920,7 +2920,7 @@ describe('R1 — absolute floors on count-valued rules', () => {
       VariablesSchema.safeParse({
         first_name: {
           name: 'first_name',
-          label: localized('first_name'),
+          label: 'first_name',
           type: 'text',
           component: 'Text',
           validation: { required: true, maxLength: 0 },
@@ -2930,7 +2930,7 @@ describe('R1 — absolute floors on count-valued rules', () => {
     expect(
       VariableSchema.safeParse({
         name: 'first_name',
-        label: localized('first_name'),
+        label: 'first_name',
         type: 'text',
         component: 'Text',
         validation: { minLength: -1 },
@@ -2941,7 +2941,7 @@ describe('R1 — absolute floors on count-valued rules', () => {
   it('accepts selection-count boundaries and rejects negative minSelected', () => {
     const categorical = (validation: Record<string, number | boolean>) => ({
       name: 'colors',
-      label: localized('colors'),
+      label: 'colors',
       type: 'categorical',
       component: 'CheckboxGroup',
       options: [
@@ -2971,7 +2971,7 @@ describe('R1 — absolute floors on count-valued rules', () => {
     expect(
       VariableSchema.safeParse({
         name: 'first_name',
-        label: localized('first_name'),
+        label: 'first_name',
         type: 'text',
         component: 'Text',
         validation: { minLength: 0, maxLength: 1 },
@@ -2980,7 +2980,7 @@ describe('R1 — absolute floors on count-valued rules', () => {
     expect(
       VariableSchema.safeParse({
         name: 'temperature',
-        label: localized('temperature'),
+        label: 'temperature',
         type: 'number',
         component: 'Number',
         validation: { minValue: -40, maxValue: -1 },
@@ -3016,14 +3016,14 @@ describe('R2 — reference target type must equal the source type', () => {
       protocolWith({
         a: {
           name: 'first_name',
-          label: localized('first_name'),
+          label: 'first_name',
           type: 'text',
           component: 'Text',
           validation: { sameAs: 'b' },
         },
         b: {
           name: 'age',
-          label: localized('age'),
+          label: 'age',
           type: 'number',
           component: 'Number',
         },
@@ -3044,14 +3044,14 @@ describe('R2 — reference target type must equal the source type', () => {
       protocolWith({
         a: {
           name: 'start_age',
-          label: localized('start_age'),
+          label: 'start_age',
           type: 'number',
           component: 'Number',
           validation: { lessThanVariable: 'b' },
         },
         b: {
           name: 'end_age',
-          label: localized('end_age'),
+          label: 'end_age',
           type: 'number',
           component: 'Number',
         },
@@ -3064,7 +3064,7 @@ describe('R2 — reference target type must equal the source type', () => {
 describe('DatePicker parameters refinement', () => {
   const datePicker = (parameters: Record<string, string>) => ({
     name: 'birth_date',
-    label: localized('birth_date'),
+    label: 'birth_date',
     type: 'datetime',
     component: 'DatePicker',
     parameters,
@@ -3273,7 +3273,7 @@ describe('findValidationContradictions — large comparator graphs', () => {
     for (let i = 0; i < count; i++) {
       variables[`v${i}`] = {
         name: `v${i}`,
-        label: localized(`v${i}`),
+        label: `v${i}`,
         type: 'number',
         validation: i < count - 1 ? { [rule]: `v${i + 1}` } : {},
       };
@@ -3286,7 +3286,7 @@ describe('findValidationContradictions — large comparator graphs', () => {
     for (let i = 0; i < count; i++) {
       variables[`v${i}`] = {
         name: `v${i}`,
-        label: localized(`v${i}`),
+        label: `v${i}`,
         type: 'number',
         validation: { [rule]: `v${(i + 1) % count}` },
       };
@@ -3343,7 +3343,7 @@ describe('findValidationContradictions — large boolean differentFrom graphs', 
     const variables: Record<string, unknown> = {
       hub: {
         name: 'hub',
-        label: localized('hub'),
+        label: 'hub',
         type: 'boolean',
         validation: {},
       },
@@ -3351,7 +3351,7 @@ describe('findValidationContradictions — large boolean differentFrom graphs', 
     for (let i = 0; i < leafCount; i++) {
       variables[`leaf${i}`] = {
         name: `leaf${i}`,
-        label: localized(`leaf${i}`),
+        label: `leaf${i}`,
         type: 'boolean',
         validation: { differentFrom: 'hub' },
       };
@@ -3394,7 +3394,7 @@ describe('findValidationContradictions — twentieth-wave Finding 1: coarse date
     validation: Record<string, unknown> = {},
   ) => ({
     name,
-    label: localized(name),
+    label: name,
     type: 'datetime',
     component: 'DatePicker',
     parameters,
@@ -3557,7 +3557,7 @@ describe('findValidationContradictions — twenty-first-wave Finding 2: coarse p
     validation: Record<string, unknown> = {},
   ) => ({
     name,
-    label: localized(name),
+    label: name,
     type: 'datetime',
     component: 'DatePicker',
     parameters,
@@ -3751,7 +3751,7 @@ describe('findValidationContradictions — twenty-first-wave Finding 2: coarse p
         ),
         b: {
           name: 'b',
-          label: localized('b'),
+          label: 'b',
           type: 'datetime',
           component: 'RelativeDatePicker',
           parameters: {},
@@ -3779,7 +3779,7 @@ describe('findValidationContradictions — twenty-first-wave Finding 2: coarse p
       validation: Record<string, unknown> = {},
     ) => ({
       name,
-      label: localized(name),
+      label: name,
       type: 'categorical',
       options: [{ label: localized('X'), value: 'x' }],
       // Stray fields a prior schema revision or hand-edited fixture could
@@ -3800,7 +3800,7 @@ describe('findValidationContradictions — twenty-first-wave Finding 2: coarse p
 describe('findValidationContradictions — twentieth-wave Finding 2: hybrid group repairs target the causing constraints', () => {
   const number = (name: string, validation: Record<string, unknown> = {}) => ({
     name,
-    label: localized(name),
+    label: name,
     type: 'number',
     validation,
   });
@@ -3933,7 +3933,7 @@ describe('findValidationContradictions — Audit sweep: an explicitly null compo
     validation: Record<string, unknown> = {},
   ) => ({
     name,
-    label: localized(name),
+    label: name,
     type: 'datetime',
     component: 'DatePicker',
     parameters,
@@ -4019,7 +4019,7 @@ describe('findValidationContradictions — Audit sweep: an explicitly null compo
         ),
         b: {
           name: 'b',
-          label: localized('b'),
+          label: 'b',
           type: 'datetime',
           component: 'RelativeDatePicker',
           parameters: { before: 0, after: 0 },
@@ -4057,7 +4057,7 @@ describe('findValidationContradictions — Audit sweep: a boolean domain follows
     validation: Record<string, unknown> = {},
   ) => ({
     name,
-    label: localized(name),
+    label: name,
     type: 'boolean',
     validation,
     ...(component === undefined ? {} : { component }),
@@ -4172,7 +4172,7 @@ describe('findValidationContradictions — Audit sweep: a boolean domain follows
 describe('findValidationContradictions — twenty-first-wave Finding 3: bounds propagate along comparator chains', () => {
   const number = (name: string, validation: Record<string, unknown> = {}) => ({
     name,
-    label: localized(name),
+    label: name,
     type: 'number',
     validation,
   });
@@ -4183,7 +4183,7 @@ describe('findValidationContradictions — twenty-first-wave Finding 3: bounds p
     validation: Record<string, unknown> = {},
   ) => ({
     name,
-    label: localized(name),
+    label: name,
     type: 'datetime',
     component: 'DatePicker',
     parameters,
@@ -4196,7 +4196,7 @@ describe('findValidationContradictions — twenty-first-wave Finding 3: bounds p
     validation: Record<string, unknown> = {},
   ) => ({
     name,
-    label: localized(name),
+    label: name,
     type: 'datetime',
     component: 'RelativeDatePicker',
     parameters,
@@ -4561,19 +4561,19 @@ describe('findValidationContradictions — twenty-first-wave Finding 3: bounds p
     const result = VariablesSchema.safeParse({
       a: {
         name: 'a',
-        label: localized('a'),
+        label: 'a',
         type: 'number',
         validation: { maxValue: 1, greaterThanVariable: 'b' },
       },
       b: {
         name: 'b',
-        label: localized('b'),
+        label: 'b',
         type: 'number',
         validation: { greaterThanVariable: 'c' },
       },
       c: {
         name: 'c',
-        label: localized('c'),
+        label: 'c',
         type: 'number',
         validation: { minValue: 1 },
       },
@@ -4598,7 +4598,7 @@ describe('findValidationContradictions — twenty-first-wave Finding 3: large ch
     for (let i = 0; i < count; i++) {
       variables[`v${i}`] = {
         name: `v${i}`,
-        label: localized(`v${i}`),
+        label: `v${i}`,
         type: 'number',
         validation: {
           ...(i < count - 1 ? { [rule]: `v${i + 1}` } : {}),
@@ -4682,7 +4682,7 @@ describe('findValidationContradictions — Twenty-first-wave Finding 1: componen
 
   const booleanVariable = (name: string, component: 'Boolean' | undefined) => ({
     name,
-    label: localized(name),
+    label: name,
     type: 'boolean',
     ...(component !== undefined ? { component } : {}),
     options: [{ label: localized('Yes'), value: true }],
@@ -4872,14 +4872,14 @@ describe('findValidationContradictions — Twenty-first-wave Finding 1: componen
               },
               boolB: {
                 name: 'BoolB',
-                label: localized('BoolB'),
+                label: 'BoolB',
                 type: 'boolean',
                 component: 'Boolean',
                 validation: { differentFrom: 'boolC' },
               },
               boolC: {
                 name: 'BoolC',
-                label: localized('BoolC'),
+                label: 'BoolC',
                 type: 'boolean',
                 component: 'Boolean',
                 options: [{ label: localized('No'), value: false }],
@@ -4936,7 +4936,7 @@ describe('findValidationContradictions — Twenty-first-wave Finding 1: componen
 describe('findValidationContradictions — Twenty-second-wave Finding 1: propagated bounds inform pinned-equality', () => {
   const number = (name: string, validation: Record<string, unknown> = {}) => ({
     name,
-    label: localized(name),
+    label: name,
     type: 'number',
     validation,
   });
@@ -5012,13 +5012,13 @@ describe('findValidationContradictions — Twenty-second-wave Finding 1: propaga
       findValidationContradictions({
         a: {
           name: 'a',
-          label: localized('a'),
+          label: 'a',
           type: 'text',
           validation: { maxLength: 3, differentFrom: 'd' },
         },
         d: {
           name: 'd',
-          label: localized('d'),
+          label: 'd',
           type: 'text',
           validation: {
             minLength: 3,
@@ -5038,7 +5038,7 @@ describe('findValidationContradictions — Twenty-second-wave Finding 2: chain p
     validation: Record<string, unknown> = {},
   ) => ({
     name,
-    label: localized(name),
+    label: name,
     type: 'datetime',
     component: 'DatePicker',
     parameters,
@@ -5155,7 +5155,7 @@ describe('findValidationContradictions — Twenty-third-wave Finding 6: relative
     validation: Record<string, unknown> = {},
   ) => ({
     name,
-    label: localized(name),
+    label: name,
     type: 'datetime',
     component: 'RelativeDatePicker',
     parameters,
@@ -5168,7 +5168,7 @@ describe('findValidationContradictions — Twenty-third-wave Finding 6: relative
     validation: Record<string, unknown> = {},
   ) => ({
     name,
-    label: localized(name),
+    label: name,
     type: 'datetime',
     component: 'DatePicker',
     parameters,
@@ -5288,7 +5288,7 @@ describe('findValidationContradictions — Twenty-third-wave Finding 6: relative
 describe('findValidationContradictions — Twenty-fourth-wave Finding 1: sameAs groups propagate pinned values into differentFrom', () => {
   const number = (name: string, validation: Record<string, unknown> = {}) => ({
     name,
-    label: localized(name),
+    label: name,
     type: 'number',
     validation,
   });
@@ -5299,7 +5299,7 @@ describe('findValidationContradictions — Twenty-fourth-wave Finding 1: sameAs 
     validation: Record<string, unknown> = {},
   ) => ({
     name,
-    label: localized(name),
+    label: name,
     type: 'datetime',
     component: 'DatePicker',
     parameters,
@@ -5409,14 +5409,14 @@ describe('findValidationContradictions — Twenty-fourth-wave Finding 1: sameAs 
     const result = findValidationContradictions({
       a: {
         name: 'a',
-        label: localized('a'),
+        label: 'a',
         type: 'categorical',
         options: [{ label: localized('X'), value: 'x' }],
         validation: { sameAs: 'c' },
       },
       c: {
         name: 'c',
-        label: localized('c'),
+        label: 'c',
         type: 'categorical',
         options: [
           { label: localized('X'), value: 'x' },
@@ -5426,7 +5426,7 @@ describe('findValidationContradictions — Twenty-fourth-wave Finding 1: sameAs 
       },
       d: {
         name: 'd',
-        label: localized('d'),
+        label: 'd',
         type: 'categorical',
         options: [{ label: localized('X'), value: 'x' }],
       },
@@ -5467,7 +5467,7 @@ describe('findValidationContradictions — Twenty-fourth-wave Finding 1: sameAs 
       findValidationContradictions({
         a: {
           name: 'a',
-          label: localized('a'),
+          label: 'a',
           type: 'datetime',
           component: 'RelativeDatePicker',
           parameters: { anchor: '1970-01-01', before: 0, after: 0 },
@@ -5475,7 +5475,7 @@ describe('findValidationContradictions — Twenty-fourth-wave Finding 1: sameAs 
         },
         c: {
           name: 'c',
-          label: localized('c'),
+          label: 'c',
           type: 'datetime',
           component: 'DatePicker',
           parameters: {},
@@ -5483,7 +5483,7 @@ describe('findValidationContradictions — Twenty-fourth-wave Finding 1: sameAs 
         },
         d: {
           name: 'd',
-          label: localized('d'),
+          label: 'd',
           type: 'datetime',
           component: 'RelativeDatePicker',
           parameters: { before: 0, after: 0 },
@@ -5506,7 +5506,7 @@ describe('findValidationContradictions — Twenty-fourth-wave Finding 1: sameAs 
       ),
       c: {
         name: 'c',
-        label: localized('c'),
+        label: 'c',
         type: 'datetime',
         component: 'DatePicker',
         parameters: {},
@@ -5530,7 +5530,7 @@ describe('findValidationContradictions — Twenty-fourth-wave Finding 2: an abse
     validation: Record<string, unknown> = {},
   ) => ({
     name,
-    label: localized(name),
+    label: name,
     type: 'datetime',
     component: 'RelativeDatePicker',
     ...(parameters !== undefined ? { parameters } : {}),
@@ -5634,7 +5634,7 @@ describe('findValidationContradictions — Twenty-fourth-wave Finding 2: an abse
       findValidationContradictions({
         a: {
           name: 'a',
-          label: localized('a'),
+          label: 'a',
           type: 'datetime',
           validation: { greaterThanVariable: 'b' },
         },
@@ -5682,7 +5682,7 @@ describe('findValidationContradictions — Twenty-fifth wave: one-sided out-of-w
     validation: Record<string, unknown> = {},
   ) => ({
     name,
-    label: localized(name),
+    label: name,
     type: 'datetime',
     component: 'DatePicker',
     parameters,
@@ -5968,7 +5968,7 @@ describe('findValidationContradictions — Twenty-fifth wave: derivation fidelit
     validation: Record<string, unknown> = {},
   ) => ({
     name,
-    label: localized(name),
+    label: name,
     type: 'datetime',
     component: 'DatePicker',
     parameters,
@@ -6260,7 +6260,7 @@ describe('findValidationContradictions — Twenty-sixth-wave Finding 2: unbounde
     validation: Record<string, unknown> = {},
   ) => ({
     name,
-    label: localized(name),
+    label: name,
     type: 'datetime',
     component: 'DatePicker',
     ...(parameters !== undefined ? { parameters } : {}),
@@ -6319,7 +6319,7 @@ describe('findValidationContradictions — Twenty-sixth-wave Finding 2: unbounde
       findValidationContradictions({
         a: {
           name: 'a',
-          label: localized('a'),
+          label: 'a',
           type: 'datetime',
           validation: { required: true, lessThanVariable: 'b' },
         },
@@ -6334,7 +6334,7 @@ describe('findValidationContradictions — Twenty-sixth-wave Finding 2: unbounde
     const result = findValidationContradictions({
       a: {
         name: 'a',
-        label: localized('a'),
+        label: 'a',
         type: 'datetime',
         parameters: {},
         validation: { required: true, lessThanVariable: 'b' },
@@ -6384,7 +6384,7 @@ describe('findValidationContradictions — Twenty-sixth-wave Finding 2: unbounde
 describe('findValidationContradictions — Twenty-seventh-wave Finding 1: sameAs group intersections derive an inheritable pin', () => {
   const number = (name: string, validation: Record<string, unknown> = {}) => ({
     name,
-    label: localized(name),
+    label: name,
     type: 'number',
     validation,
   });
@@ -6395,7 +6395,7 @@ describe('findValidationContradictions — Twenty-seventh-wave Finding 1: sameAs
     validation: Record<string, unknown> = {},
   ) => ({
     name,
-    label: localized(name),
+    label: name,
     type: 'datetime',
     component: 'DatePicker',
     parameters,
@@ -6505,7 +6505,7 @@ describe('findValidationContradictions — Twenty-seventh-wave Finding 1: sameAs
         d: datePicker('d', { min: '2020-01-05', max: '2020-01-05' }),
         e: {
           name: 'e',
-          label: localized('e'),
+          label: 'e',
           type: 'datetime',
           component: 'RelativeDatePicker',
           parameters: { before: 5, after: 0 },
@@ -6520,7 +6520,7 @@ describe('findValidationContradictions — Twenty-seventh-wave Finding 1: sameAs
     const result = findValidationContradictions({
       a: {
         name: 'a',
-        label: localized('a'),
+        label: 'a',
         type: 'ordinal',
         options: [
           { label: localized('One'), value: 1 },
@@ -6530,13 +6530,13 @@ describe('findValidationContradictions — Twenty-seventh-wave Finding 1: sameAs
       },
       d: {
         name: 'd',
-        label: localized('d'),
+        label: 'd',
         type: 'ordinal',
         options: [{ label: localized('Two'), value: 2 }],
       },
       e: {
         name: 'e',
-        label: localized('e'),
+        label: 'e',
         type: 'ordinal',
         options: [
           { label: localized('Two'), value: 2 },
@@ -6584,7 +6584,7 @@ describe('findValidationContradictions — Twenty-seventh-wave Finding 2: propag
     validation: Record<string, unknown> = {},
   ) => ({
     name,
-    label: localized(name),
+    label: name,
     type: 'datetime',
     component: 'DatePicker',
     parameters,
@@ -6667,7 +6667,7 @@ describe('findValidationContradictions — Twenty-seventh-wave Finding 3: mixed-
     validation: Record<string, unknown> = {},
   ) => ({
     name,
-    label: localized(name),
+    label: name,
     type: 'datetime',
     component: 'DatePicker',
     parameters,
@@ -6816,7 +6816,7 @@ describe('findValidationContradictions — Twenty-eighth wave: pinned disequalit
     validation: Record<string, unknown> = {},
   ) => ({
     name,
-    label: localized(name),
+    label: name,
     type: 'datetime',
     component: 'DatePicker',
     parameters,
@@ -6956,7 +6956,7 @@ describe('findValidationContradictions — Twenty-eighth wave: pinned disequalit
         e: datePicker('e', { min: '1970-01-02', max: '1970-01-02' }),
         r: {
           name: 'r',
-          label: localized('r'),
+          label: 'r',
           type: 'datetime',
           component: 'RelativeDatePicker',
           parameters: { before: 0, after: 0 },
@@ -7043,7 +7043,7 @@ describe('findValidationContradictions — Twenty-ninth wave: uniformly coarse s
     validation: Record<string, unknown> = {},
   ) => ({
     name,
-    label: localized(name),
+    label: name,
     type: 'datetime',
     component: 'DatePicker',
     parameters,
@@ -7166,7 +7166,7 @@ describe('findValidationContradictions — Twenty-ninth wave: uniformly coarse s
       c: datePicker('c', { type: 'year', min: '2021', max: '2021' }),
       r: {
         name: 'r',
-        label: localized('r'),
+        label: 'r',
         type: 'datetime',
         component: 'RelativeDatePicker',
         parameters: { before: 5, after: 0 },
@@ -7249,7 +7249,7 @@ describe('findValidationContradictions — Thirtieth wave Fix 1: categorical sam
     validation: Record<string, unknown> = {},
   ) => ({
     name,
-    label: localized(name),
+    label: name,
     type: 'categorical',
     options: values.map((value) => ({ label: value.toUpperCase(), value })),
     validation,
@@ -7408,7 +7408,7 @@ describe('findValidationContradictions — Thirtieth wave Fix 2, corrected by th
     validation: Record<string, unknown> = {},
   ) => ({
     name,
-    label: localized(name),
+    label: name,
     type: 'datetime',
     component: 'DatePicker',
     parameters,
@@ -7526,7 +7526,7 @@ describe('findValidationContradictions — Thirtieth wave Fix 3: two-valued ordi
     validation: Record<string, unknown> = {},
   ) => ({
     name,
-    label: localized(name),
+    label: name,
     type: 'ordinal',
     options: values.map((value) => ({ label: String(value), value })),
     validation,
@@ -7649,7 +7649,7 @@ describe('findValidationContradictions — Thirtieth wave Fix 3: two-valued ordi
       findValidationContradictions({
         x: {
           name: 'x',
-          label: localized('x'),
+          label: 'x',
           type: 'categorical',
           options: [
             { label: localized('X'), value: 'x' },
@@ -7659,7 +7659,7 @@ describe('findValidationContradictions — Thirtieth wave Fix 3: two-valued ordi
         },
         y: {
           name: 'y',
-          label: localized('y'),
+          label: 'y',
           type: 'categorical',
           options: [
             { label: localized('X'), value: 'x' },
@@ -7669,7 +7669,7 @@ describe('findValidationContradictions — Thirtieth wave Fix 3: two-valued ordi
         },
         z: {
           name: 'z',
-          label: localized('z'),
+          label: 'z',
           type: 'categorical',
           options: [
             { label: localized('X'), value: 'x' },
@@ -7689,7 +7689,7 @@ describe('findValidationContradictions — Thirtieth wave Fix 4: coarse DatePick
     validation: Record<string, unknown> = {},
   ) => ({
     name,
-    label: localized(name),
+    label: name,
     type: 'datetime',
     component: 'DatePicker',
     parameters,
@@ -7876,7 +7876,7 @@ describe('findValidationContradictions — Thirty-first wave: two-instant dateti
     validation: Record<string, unknown> = {},
   ) => ({
     name,
-    label: localized(name),
+    label: name,
     type: 'datetime',
     component: 'DatePicker',
     parameters,
@@ -8070,7 +8070,7 @@ describe('findValidationContradictions — Thirty-first wave: two-instant dateti
         ),
         c: {
           name: 'c',
-          label: localized('c'),
+          label: 'c',
           type: 'datetime',
           component: 'RelativeDatePicker',
           validation: { required: true, differentFrom: 'a' },
@@ -8183,7 +8183,7 @@ describe('findValidationContradictions — Thirty-second wave Fix 1: exactly-two
     validation: Record<string, unknown> = {},
   ) => ({
     name,
-    label: localized(name),
+    label: name,
     type: 'categorical',
     options: values.map((value) => ({ label: String(value), value })),
     validation,
@@ -8424,7 +8424,7 @@ describe('findValidationContradictions — Thirty-second wave Fix 2: ordinal par
     validation: Record<string, unknown> = {},
   ) => ({
     name,
-    label: localized(name),
+    label: name,
     type: 'ordinal',
     options: values.map((value) => ({ label: String(value), value })),
     validation,
@@ -8591,7 +8591,7 @@ describe('findValidationContradictions — Thirty-second wave Fix 2: ordinal par
       validation: Record<string, unknown> = {},
     ) => ({
       name,
-      label: localized(name),
+      label: name,
       type: 'datetime',
       component: 'DatePicker',
       parameters,
@@ -8644,7 +8644,7 @@ describe('findValidationContradictions — Thirty-second wave Fix 3, re-justifie
     validation: Record<string, unknown> = {},
   ) => ({
     name,
-    label: localized(name),
+    label: name,
     type: 'datetime',
     component: 'DatePicker',
     parameters,
@@ -8768,7 +8768,7 @@ describe("findValidationContradictions — Thirty-third wave: scalar chains resp
     for (let i = 0; i < count; i++) {
       variables[`v${i}`] = {
         name: `v${i}`,
-        label: localized(`v${i}`),
+        label: `v${i}`,
         type: 'scalar',
         ...(options.component ? { component: 'VisualAnalogScale' } : {}),
         validation: {
@@ -8856,13 +8856,13 @@ describe("findValidationContradictions — Thirty-third wave: scalar chains resp
     const result = findValidationContradictions({
       a: {
         name: 'a',
-        label: localized('a'),
+        label: 'a',
         type: 'scalar',
         validation: { greaterThanVariable: 'b' },
       },
       b: {
         name: 'b',
-        label: localized('b'),
+        label: 'b',
         type: 'scalar',
         validation: { greaterThanVariable: 'a' },
       },
@@ -8879,7 +8879,7 @@ describe("findValidationContradictions — Thirty-third wave: scalar chains resp
     const variables = scalarChainOf(1_002, 'greaterThanVariable');
     variables.twin = {
       name: 'twin',
-      label: localized('twin'),
+      label: 'twin',
       type: 'scalar',
       validation: {
         required: true,
@@ -8901,7 +8901,7 @@ describe("findValidationContradictions — Thirty-third wave: scalar chains resp
     for (let i = 0; i < 1_002; i++) {
       variables[`v${i}`] = {
         name: `v${i}`,
-        label: localized(`v${i}`),
+        label: `v${i}`,
         type: 'number',
         validation: i < 1_001 ? { greaterThanVariable: `v${i + 1}` } : {},
       };
@@ -8947,7 +8947,7 @@ describe('findValidationContradictions — Thirty-fourth wave Fix 1: one-sided f
     validation: Record<string, unknown> = {},
   ) => ({
     name,
-    label: localized(name),
+    label: name,
     type: 'datetime',
     component: 'DatePicker',
     parameters,
@@ -9046,7 +9046,7 @@ describe('findValidationContradictions — Thirty-fourth wave Fix 1: one-sided f
   it('keeps an anchored RelativeDatePicker window submission-hard on both sides', () => {
     const relative = (validation: Record<string, unknown>) => ({
       name: 'a',
-      label: localized('a'),
+      label: 'a',
       type: 'datetime',
       component: 'RelativeDatePicker',
       parameters: { anchor: '2020-06-15', before: 10, after: 0 },
@@ -9080,7 +9080,7 @@ describe('findValidationContradictions — Thirty-fourth wave Fix 1: one-sided f
 describe('findValidationContradictions — Thirty-fourth wave Fix 2: comparator-merged number groups derive inherited pins', () => {
   const number = (name: string, validation: Record<string, unknown> = {}) => ({
     name,
-    label: localized(name),
+    label: name,
     type: 'number',
     validation,
   });
@@ -9091,7 +9091,7 @@ describe('findValidationContradictions — Thirty-fourth wave Fix 2: comparator-
     validation: Record<string, unknown> = {},
   ) => ({
     name,
-    label: localized(name),
+    label: name,
     type: 'datetime',
     component: 'DatePicker',
     parameters,
@@ -9269,7 +9269,7 @@ describe('findValidationContradictions — Thirty-fourth wave Fix 3: comparator-
     validation: Record<string, unknown> = {},
   ) => ({
     name,
-    label: localized(name),
+    label: name,
     type: 'datetime',
     component: 'DatePicker',
     parameters: { min: '2020-01-02', max: '2020-01-03' },
@@ -9345,7 +9345,7 @@ describe('findValidationContradictions — coarse synthesized singleton pins', (
     validation: Record<string, unknown> = {},
   ) => ({
     name,
-    label: localized(name),
+    label: name,
     type: 'datetime',
     component: 'DatePicker',
     parameters,
@@ -9417,7 +9417,7 @@ describe('findValidationContradictions — comparator-merged full-date pins', ()
     validation: Record<string, unknown> = {},
   ) => ({
     name,
-    label: localized(name),
+    label: name,
     type: 'datetime',
     component: 'DatePicker',
     parameters,
@@ -9481,7 +9481,7 @@ describe('findValidationContradictions — comparator-merged full-date pins', ()
       validation: Record<string, unknown> = {},
     ) => ({
       name,
-      label: localized(name),
+      label: name,
       type: 'datetime',
       component: 'RelativeDatePicker',
       parameters: { before: 0, after: 0 },
@@ -9557,7 +9557,7 @@ describe('findValidationContradictions — disequality singleton fixpoint', () =
     validation: Record<string, unknown> = {},
   ) => ({
     name,
-    label: localized(name),
+    label: name,
     type: 'datetime',
     component: 'DatePicker',
     parameters,

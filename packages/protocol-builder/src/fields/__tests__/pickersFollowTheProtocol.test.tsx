@@ -190,7 +190,7 @@ describe('the attribute picker', () => {
           variables: {
             nominated_early: {
               name: 'nominated_early',
-              label: { 'en-US': 'nominated_early' },
+              label: 'nominated_early',
               type: 'boolean',
               component: 'Boolean',
             },

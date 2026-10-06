@@ -73,32 +73,32 @@ const makeProtocol = (overrides?: {
         variables: {
           egoIsEgo: {
             name: 'EgoIsEgo',
-            label: localized('EgoIsEgo'),
+            label: 'EgoIsEgo',
             type: 'boolean',
           },
           personLabel: {
             name: 'PersonLabel',
-            label: localized('PersonLabel'),
+            label: 'PersonLabel',
             type: 'text',
           },
           personRel: {
             name: 'PersonRel',
-            label: localized('PersonRel'),
+            label: 'PersonRel',
             type: 'text',
           },
           personBioSex: {
             name: 'PersonBioSex',
-            label: localized('PersonBioSex'),
+            label: 'PersonBioSex',
             type: 'text',
           },
           hasBreastCancer: {
             name: 'HasBreastCancer',
-            label: localized('HasBreastCancer'),
+            label: 'HasBreastCancer',
             type: 'boolean',
           },
           hasOvarianCancer: {
             name: 'HasOvarianCancer',
-            label: localized('HasOvarianCancer'),
+            label: 'HasOvarianCancer',
             type: 'boolean',
           },
         },
@@ -112,22 +112,22 @@ const makeProtocol = (overrides?: {
         variables: {
           familyRelType: {
             name: 'FamilyRelType',
-            label: localized('FamilyRelType'),
+            label: 'FamilyRelType',
             type: 'text',
           },
           familyIsActive: {
             name: 'FamilyIsActive',
-            label: localized('FamilyIsActive'),
+            label: 'FamilyIsActive',
             type: 'boolean',
           },
           familyIsGc: {
             name: 'FamilyIsGc',
-            label: localized('FamilyIsGc'),
+            label: 'FamilyIsGc',
             type: 'boolean',
           },
           familyGameteRole: {
             name: 'FamilyGameteRole',
-            label: localized('FamilyGameteRole'),
+            label: 'FamilyGameteRole',
             type: 'text',
           },
         },
@@ -673,28 +673,28 @@ describe('NarrativePedigree protocol-level cross-references', () => {
               variables: {
                 egoIsEgo: {
                   name: 'EgoIsEgo',
-                  label: localized('EgoIsEgo'),
+                  label: 'EgoIsEgo',
                   type: 'boolean',
                 },
                 personLabel: {
                   name: 'PersonLabel',
-                  label: localized('PersonLabel'),
+                  label: 'PersonLabel',
                   type: 'text',
                   component: 'Text',
                 },
                 personRel: {
                   name: 'PersonRel',
-                  label: localized('PersonRel'),
+                  label: 'PersonRel',
                   type: 'text',
                 },
                 personBioSex: {
                   name: 'PersonBioSex',
-                  label: localized('PersonBioSex'),
+                  label: 'PersonBioSex',
                   type: 'text',
                 },
                 hasBreastCancer: {
                   name: 'HasBreastCancer',
-                  label: localized('HasBreastCancer'),
+                  label: 'HasBreastCancer',
                   type: 'boolean',
                 },
               },
@@ -708,22 +708,22 @@ describe('NarrativePedigree protocol-level cross-references', () => {
               variables: {
                 familyRelType: {
                   name: 'FamilyRelType',
-                  label: localized('FamilyRelType'),
+                  label: 'FamilyRelType',
                   type: 'text',
                 },
                 familyIsActive: {
                   name: 'FamilyIsActive',
-                  label: localized('FamilyIsActive'),
+                  label: 'FamilyIsActive',
                   type: 'boolean',
                 },
                 familyIsGc: {
                   name: 'FamilyIsGc',
-                  label: localized('FamilyIsGc'),
+                  label: 'FamilyIsGc',
                   type: 'boolean',
                 },
                 familyGameteRole: {
                   name: 'FamilyGameteRole',
-                  label: localized('FamilyGameteRole'),
+                  label: 'FamilyGameteRole',
                   type: 'text',
                 },
               },

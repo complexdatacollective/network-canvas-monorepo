@@ -1784,7 +1784,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
                 ...baseValidProtocol.codebook.node.person.variables,
                 confirmAge: {
                   name: 'ConfirmAge',
-                  label: localized('ConfirmAge'),
+                  label: 'ConfirmAge',
                   type: 'number',
                   validation: {
                     sameAs: 'age',
@@ -1812,7 +1812,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
                 ...baseValidProtocol.codebook.node.person.variables,
                 confirmAge: {
                   name: 'ConfirmAge',
-                  label: localized('ConfirmAge'),
+                  label: 'ConfirmAge',
                   type: 'number',
                   validation: {
                     sameAs: 'nonexistentVariable',
@@ -1857,7 +1857,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
                 ...baseValidProtocol.codebook.node.person.variables,
                 uniqueId: {
                   name: 'UniqueID',
-                  label: localized('UniqueID'),
+                  label: 'UniqueID',
                   type: 'text',
                   validation: {
                     differentFrom: 'name',
@@ -1885,7 +1885,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
                 ...baseValidProtocol.codebook.node.person.variables,
                 uniqueId: {
                   name: 'UniqueID',
-                  label: localized('UniqueID'),
+                  label: 'UniqueID',
                   type: 'text',
                   validation: {
                     differentFrom: 'nonexistentVariable',
@@ -1930,7 +1930,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
                 ...baseValidProtocol.codebook.node.person.variables,
                 maxAge: {
                   name: 'MaximumAge',
-                  label: localized('MaximumAge'),
+                  label: 'MaximumAge',
                   type: 'number',
                   validation: {
                     greaterThanVariable: 'age',
@@ -1958,7 +1958,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
                 ...baseValidProtocol.codebook.node.person.variables,
                 minAge: {
                   name: 'MinimumAge',
-                  label: localized('MinimumAge'),
+                  label: 'MinimumAge',
                   type: 'number',
                   validation: {
                     lessThanVariable: 'age',
@@ -1986,7 +1986,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
                 ...baseValidProtocol.codebook.node.person.variables,
                 minAge: {
                   name: 'MinimumAge',
-                  label: localized('MinimumAge'),
+                  label: 'MinimumAge',
                   type: 'number',
                   validation: {
                     greaterThanOrEqualToVariable: 'age',
@@ -2014,7 +2014,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
                 ...baseValidProtocol.codebook.node.person.variables,
                 minAge: {
                   name: 'MinimumAge',
-                  label: localized('MinimumAge'),
+                  label: 'MinimumAge',
                   type: 'number',
                   validation: {
                     greaterThanOrEqualToVariable: 'nonexistentVariable',
@@ -2059,7 +2059,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
                 ...baseValidProtocol.codebook.node.person.variables,
                 maxAge: {
                   name: 'MaximumAge',
-                  label: localized('MaximumAge'),
+                  label: 'MaximumAge',
                   type: 'number',
                   validation: {
                     lessThanOrEqualToVariable: 'age',
@@ -2087,7 +2087,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
                 ...baseValidProtocol.codebook.node.person.variables,
                 maxAge: {
                   name: 'MaximumAge',
-                  label: localized('MaximumAge'),
+                  label: 'MaximumAge',
                   type: 'number',
                   validation: {
                     lessThanOrEqualToVariable: 'nonexistentVariable',
@@ -2130,7 +2130,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
               ...baseValidProtocol.codebook.ego.variables,
               confirmName: {
                 name: 'ConfirmName',
-                label: localized('ConfirmName'),
+                label: 'ConfirmName',
                 type: 'text',
                 validation: {
                   sameAs: 'egoName',
@@ -2157,7 +2157,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
                 ...baseValidProtocol.codebook.edge.knows.variables,
                 maxDuration: {
                   name: 'MaximumDuration',
-                  label: localized('MaximumDuration'),
+                  label: 'MaximumDuration',
                   type: 'number',
                   validation: {
                     greaterThanVariable: 'duration',
@@ -2183,7 +2183,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
               ...baseValidProtocol.codebook.ego.variables,
               invalidRef: {
                 name: 'InvalidReference',
-                label: localized('InvalidReference'),
+                label: 'InvalidReference',
                 type: 'text',
                 validation: {
                   sameAs: 'nonexistentEgoVar',
@@ -2415,7 +2415,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
               ...baseValidProtocol.codebook.node.person.variables,
               homeLocation: {
                 name: 'Home_Location',
-                label: localized('Home_Location'),
+                label: 'Home_Location',
                 type: 'location',
               },
             },
@@ -2580,7 +2580,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
                 ...baseValidProtocol.codebook.node.person.variables,
                 minAge: {
                   name: 'MinimumAge',
-                  label: localized('MinimumAge'),
+                  label: 'MinimumAge',
                   type: 'number',
                   validation: {
                     greaterThanOrEqualToVariable: 'age',
@@ -2613,7 +2613,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
                   baseValidProtocol.codebook.node.person.variables.strength,
                 minAge: {
                   name: 'MinimumAge',
-                  label: localized('MinimumAge'),
+                  label: 'MinimumAge',
                   type: 'number',
                   validation: {
                     greaterThanOrEqualToVariable: 'age',
@@ -2785,14 +2785,14 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
             variables: {
               isEgo: {
                 name: 'IsEgo',
-                label: localized('IsEgo'),
+                label: 'IsEgo',
                 type: 'boolean',
               },
-              label: { name: 'Label', label: localized('Label'), type: 'text' },
-              rel: { name: 'Rel', label: localized('Rel'), type: 'text' },
+              label: { name: 'Label', label: 'Label', type: 'text' },
+              rel: { name: 'Rel', label: 'Rel', type: 'text' },
               bioSex: {
                 name: 'BioSex',
-                label: localized('BioSex'),
+                label: 'BioSex',
                 type: biologicalSexType,
                 readOnly: true,
                 options: biologicalSexOptions,
@@ -2808,19 +2808,19 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
             variables: {
               isActive: {
                 name: 'IsActive',
-                label: localized('IsActive'),
+                label: 'IsActive',
                 type: 'boolean',
               },
-              isGc: { name: 'IsGc', label: localized('IsGc'), type: 'boolean' },
+              isGc: { name: 'IsGc', label: 'IsGc', type: 'boolean' },
               relType: {
                 name: 'RelType',
-                label: localized('RelType'),
+                label: 'RelType',
                 type: 'categorical',
                 options: relationshipTypeOptions,
               },
               gameteRole: {
                 name: 'GameteRole',
-                label: localized('GameteRole'),
+                label: 'GameteRole',
                 type: 'categorical',
                 options: gameteRoleOptions,
               },

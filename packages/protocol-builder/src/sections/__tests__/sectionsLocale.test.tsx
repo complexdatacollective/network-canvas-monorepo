@@ -306,7 +306,7 @@ describe('the form-fields section, read in Spanish', () => {
     seedPersonVariables(harness, {
       closeness: {
         name: 'closeness',
-        label: en('closeness'),
+        label: 'closeness',
         type: 'scalar',
         parameters: { minLabel: en('Nada cerca'), maxLabel: en('Muy cerca') },
       },
@@ -703,7 +703,7 @@ describe('the form-fields row dialog, read in Spanish', () => {
     seedPersonVariables(harness, {
       met_on: {
         name: 'met_on',
-        label: en('met_on'),
+        label: 'met_on',
         type: 'datetime',
         component: 'DatePicker',
       },
@@ -864,7 +864,7 @@ describe('a codebook write a Spanish form field needs, refused', () => {
     seedPersonVariables(harness, {
       lugar_de_contacto: {
         name: 'lugar_de_contacto',
-        label: en('lugar_de_contacto'),
+        label: 'lugar_de_contacto',
         type: 'categorical',
         component: 'CheckboxGroup',
         // Not the researcher's to change, so the values are shown rather than

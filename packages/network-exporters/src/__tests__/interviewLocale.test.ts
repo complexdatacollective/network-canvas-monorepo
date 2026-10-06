@@ -30,17 +30,17 @@ const codebook: Codebook = {
     variables: {
       'ego-camel': {
         name: 'interviewLocale',
-        label: { en: 'Interview locale' },
+        label: 'Interview locale',
         type: 'text',
       },
       'ego-snake': {
         name: 'INTERVIEW_LOCALE',
-        label: { en: 'INTERVIEW LOCALE' },
+        label: 'INTERVIEW LOCALE',
         type: 'text',
       },
       'ego-printed': {
         name: 'networkCanvasInterviewLocale',
-        label: { en: 'Network canvas interview locale' },
+        label: 'Network canvas interview locale',
         type: 'text',
       },
     },
@@ -52,7 +52,7 @@ const codebook: Codebook = {
       color: 'node-color-seq-1',
       shape: { default: 'circle' },
       variables: {
-        'p-nick': { name: 'Nickname', label: { en: 'Nickname' }, type: 'text' },
+        'p-nick': { name: 'Nickname', label: 'Nickname', type: 'text' },
       },
     },
   },

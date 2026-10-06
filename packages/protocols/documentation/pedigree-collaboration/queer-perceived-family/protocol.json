@@ -16,7 +16,7 @@
         "variables": {
           "name": {
             "name": "name",
-            "label": { "en-US": "name" },
+            "label": "name",
             "type": "text",
             "component": "Text",
             "validation": {
@@ -26,13 +26,13 @@
           },
           "relationship_words": {
             "name": "relationship_words",
-            "label": { "en-US": "relationship_words" },
+            "label": "relationship_words",
             "type": "text",
             "component": "TextArea"
           },
           "family_categories": {
             "name": "family_categories",
-            "label": { "en-US": "family_categories" },
+            "label": "family_categories",
             "type": "categorical",
             "component": "CheckboxGroup",
             "options": [
@@ -56,37 +56,37 @@
           },
           "category_words": {
             "name": "category_words",
-            "label": { "en-US": "category_words" },
+            "label": "category_words",
             "type": "text",
             "component": "Text"
           },
           "feels_family": {
             "name": "feels_family",
-            "label": { "en-US": "feels_family" },
+            "label": "feels_family",
             "type": "boolean",
             "component": "Toggle"
           },
           "emotional_support": {
             "name": "emotional_support",
-            "label": { "en-US": "emotional_support" },
+            "label": "emotional_support",
             "type": "boolean",
             "component": "Toggle"
           },
           "practical_support": {
             "name": "practical_support",
-            "label": { "en-US": "practical_support" },
+            "label": "practical_support",
             "type": "boolean",
             "component": "Toggle"
           },
           "identity_affirming": {
             "name": "identity_affirming",
-            "label": { "en-US": "identity_affirming" },
+            "label": "identity_affirming",
             "type": "boolean",
             "component": "Toggle"
           },
           "closeness": {
             "name": "closeness",
-            "label": { "en-US": "closeness" },
+            "label": "closeness",
             "type": "ordinal",
             "component": "RadioGroup",
             "options": [
@@ -106,7 +106,7 @@
           },
           "family_layout": {
             "name": "family_layout",
-            "label": { "en-US": "family_layout" },
+            "label": "family_layout",
             "type": "layout"
           }
         }
@@ -379,10 +379,22 @@
           "layoutVariable": "family_layout",
           "groupVariable": "family_categories",
           "highlight": [
-            "feels_family",
-            "emotional_support",
-            "practical_support",
-            "identity_affirming"
+            {
+              "variable": "feels_family",
+              "label": { "en-US": "feels_family" }
+            },
+            {
+              "variable": "emotional_support",
+              "label": { "en-US": "emotional_support" }
+            },
+            {
+              "variable": "practical_support",
+              "label": { "en-US": "practical_support" }
+            },
+            {
+              "variable": "identity_affirming",
+              "label": { "en-US": "identity_affirming" }
+            }
           ],
           "edges": {
             "display": ["knows"]

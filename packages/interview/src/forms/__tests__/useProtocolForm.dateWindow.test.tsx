@@ -65,7 +65,7 @@ function makeWrapper(
               variables: {
                 [VAR]: {
                   name: VAR,
-                  label: { en: 'Born on' },
+                  label: 'Born on',
                   type: 'datetime',
                   component,
                   ...(parameters !== undefined ? { parameters } : {}),

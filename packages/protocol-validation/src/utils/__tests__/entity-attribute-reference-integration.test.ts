@@ -22,14 +22,14 @@ const protocol = {
         label: localized('Person'),
         color: 'node-color-seq-1',
         variables: {
-          age: { name: 'age', label: localized('age'), type: 'number' },
+          age: { name: 'age', label: 'age', type: 'number' },
           end: {
             name: 'end',
-            label: localized('end'),
+            label: 'end',
             type: 'datetime',
             validation: { greaterThanOrEqualToVariable: 'start' },
           },
-          start: { name: 'start', label: localized('start'), type: 'datetime' },
+          start: { name: 'start', label: 'start', type: 'datetime' },
         },
       },
     },

@@ -6,7 +6,6 @@ vi.mock('../../../hooks/useStageSelector', () => ({
     categoricalOptions: undefined,
     groupValues: [],
     edges: [],
-    highlightLabels: [],
   }),
 }));
 

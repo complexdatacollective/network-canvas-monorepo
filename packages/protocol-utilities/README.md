@@ -21,7 +21,7 @@ Participant-facing text accepts either a plain string or a locale map:
 - A plain string is written in `defaultLocale` and escaped as an ICU literal message, so `{` and `'` appear to the participant exactly as typed.
 - A locale map (`{ en: '...', es: '...' }`) passes through as written. Its values must already be ICU literal messages, and a language missing from the map has no translation for that string.
 
-This covers stage labels, prompts, form fields, panels, options, and codebook entries. Every node type, edge type, and variable (ego variables included) gets a `label`, which is the entry's `name` unless you pass one.
+This covers stage labels, prompts, form fields, panels, options, and node and edge types. Every node type, edge type, and variable (ego variables included) gets a `label`, which is the entry's `name` unless you pass one. A variable's label is not translated, so it takes a plain string only. Each attribute a Narrative preset highlights is labelled with the attribute's name, as text in the default language.
 
 `addStage('LanguageChooser')` adds a language chooser stage. It has no subject and adds nothing to the generated network.
 

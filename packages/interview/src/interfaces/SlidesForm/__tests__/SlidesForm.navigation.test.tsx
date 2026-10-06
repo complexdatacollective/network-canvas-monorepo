@@ -87,7 +87,7 @@ const codebook = {
       variables: {
         name: {
           name: 'Name',
-          label: { en: 'Name' },
+          label: 'Name',
           type: 'text',
           component: 'Text',
         },
@@ -106,7 +106,7 @@ const requiredNameCodebook = {
       variables: {
         name: {
           name: 'Name',
-          label: { en: 'Name' },
+          label: 'Name',
           type: 'text',
           component: 'Text',
           validation: { required: true },
@@ -144,7 +144,7 @@ describe('SlidesForm navigation ownership', () => {
                 variables: {
                   name: {
                     name: 'Name',
-                    label: { en: 'Name' },
+                    label: 'Name',
                     type: 'text',
                     component: 'Text',
                   },

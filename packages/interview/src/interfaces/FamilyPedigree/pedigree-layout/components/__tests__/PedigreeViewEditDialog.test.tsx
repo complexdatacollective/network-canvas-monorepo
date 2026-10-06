@@ -105,7 +105,7 @@ const fixtures = vi.hoisted(() => {
         variables: {
           label: {
             name: 'label',
-            label: { en: 'Label' },
+            label: 'Label',
             type: 'text' as const,
             component: 'Text' as const,
             validation: { unique: true },

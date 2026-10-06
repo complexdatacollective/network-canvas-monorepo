@@ -17,7 +17,7 @@ const context: ProtocolBuilderProtocolContext = {
         variables: {
           age: {
             name: 'Age',
-            label: { en: 'Age' },
+            label: 'Age',
             type: 'number',
             component: 'Number',
           },
@@ -32,7 +32,7 @@ const context: ProtocolBuilderProtocolContext = {
         variables: {
           closeness: {
             name: 'Closeness',
-            label: { en: 'Closeness' },
+            label: 'Closeness',
             type: 'number',
           },
         },
@@ -40,7 +40,7 @@ const context: ProtocolBuilderProtocolContext = {
     },
     ego: {
       variables: {
-        consent: { name: 'Consent', label: { en: 'Consent' }, type: 'boolean' },
+        consent: { name: 'Consent', label: 'Consent', type: 'boolean' },
       },
     },
   },

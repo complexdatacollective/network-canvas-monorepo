@@ -167,7 +167,7 @@ export type VariableOptionValue = VariableOption['value'];
 // Variable Schema
 const baseVariableSchema = z.strictObject({
   name: CodebookNameSchema,
-  label: localizedString(z.string().min(1), 'plain'),
+  label: z.string().min(1),
   encrypted: z.boolean().optional(),
   // Marks a variable whose options an interface owns and the researcher may not
   // edit (e.g. a FamilyPedigree biological-sex/relationship-type/gamete-role

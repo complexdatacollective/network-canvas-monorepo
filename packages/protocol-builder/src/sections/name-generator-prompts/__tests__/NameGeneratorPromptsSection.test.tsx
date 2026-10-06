@@ -263,19 +263,19 @@ describe("a name generator's prompts", () => {
         person: personDefinition({
           name: {
             name: 'name',
-            label: en('name'),
+            label: 'name',
             type: 'text',
             component: 'Text',
           },
           highlighted: {
             name: 'highlighted',
-            label: en('highlighted'),
+            label: 'highlighted',
             type: 'boolean',
             component: 'Boolean',
           },
           contacted: {
             name: 'contacted',
-            label: en('contacted'),
+            label: 'contacted',
             type: 'boolean',
           },
         }),

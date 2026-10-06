@@ -40,12 +40,12 @@ export const namesCodebook = {
     variables: {
       'ego-name': {
         name: 'Nom (prénom)',
-        label: { en: 'Name (first name)' },
+        label: 'Name (first name)',
         type: 'text',
       },
       'ego-answer': {
         name: 'Réponse oui/non',
-        label: { en: 'Yes/no answer' },
+        label: 'Yes/no answer',
         type: 'categorical',
         options: [
           { label: { en: 'Yes' }, value: 'oui' },
@@ -64,22 +64,22 @@ export const namesCodebook = {
       variables: {
         'p-name': {
           name: 'Full name',
-          label: { en: 'Full name' },
+          label: 'Full name',
           type: 'text',
         },
         'p-age': {
           name: '年齢 (years)',
-          label: { en: 'Age (years)' },
+          label: 'Age (years)',
           type: 'number',
         },
         'p-pos': {
           name: 'map position',
-          label: { en: 'Map position' },
+          label: 'Map position',
           type: 'layout',
         },
         'p-eyes': {
           name: 'Eye colour, "natural"',
-          label: { en: 'Eye colour' },
+          label: 'Eye colour',
           type: 'categorical',
           options: [
             { label: { en: 'Light blue' }, value: 'light blue' },
@@ -89,7 +89,7 @@ export const namesCodebook = {
         },
         'p-rank': {
           name: 'Rank #',
-          label: { en: 'Rank' },
+          label: 'Rank',
           type: 'ordinal',
           options: [
             { label: { en: 'Low' }, value: 1 },
@@ -98,7 +98,7 @@ export const namesCodebook = {
         },
         'p-close': {
           name: 'Is this person close?',
-          label: { en: 'Is this person close?' },
+          label: 'Is this person close?',
           type: 'boolean',
         },
       },
@@ -111,12 +111,12 @@ export const namesCodebook = {
       variables: {
         'pl-name': {
           name: 'Full name',
-          label: { en: 'Full name' },
+          label: 'Full name',
           type: 'text',
         },
         'pl-note': {
           name: 'Note / remarks',
-          label: { en: 'Note' },
+          label: 'Note',
           type: 'text',
         },
       },
@@ -130,7 +130,7 @@ export const namesCodebook = {
       variables: {
         'k-kind': {
           name: 'Kind of tie',
-          label: { en: 'Kind of tie' },
+          label: 'Kind of tie',
           type: 'categorical',
           options: [
             { label: { en: 'Family' }, value: 'family member' },
@@ -139,7 +139,7 @@ export const namesCodebook = {
         },
         'k-weight': {
           name: 'weight (%)',
-          label: { en: 'Weight (%)' },
+          label: 'Weight (%)',
           type: 'number',
         },
       },

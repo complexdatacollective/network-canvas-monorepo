@@ -46,19 +46,18 @@ const createdVariable = (draft: Record<string, unknown>) => {
 };
 
 describe('the label a new attribute is created with', () => {
-  it('is its name, written in the protocol’s default language', () => {
+  it('is its name, as plain text', () => {
     expect(createdVariable({ name: '  cercanía ', type: 'text' })).toEqual({
       name: 'cercanía',
-      label: { es: 'cercanía' },
+      label: 'cercanía',
       type: 'text',
     });
   });
 
   it('is the one the researcher wrote, when they wrote one', () => {
-    const label = { es: 'Cercanía', en: 'Closeness' };
     expect(
-      createdVariable({ name: 'cercania', label, type: 'text' }),
-    ).toMatchObject({ label });
+      createdVariable({ name: 'cercania', label: 'Cercanía', type: 'text' }),
+    ).toMatchObject({ label: 'Cercanía' });
   });
 });
 

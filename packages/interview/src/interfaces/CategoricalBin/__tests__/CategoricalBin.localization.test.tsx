@@ -85,7 +85,7 @@ const protocolPayload: ProtocolPayload = {
         variables: {
           [CATEGORY_VARIABLE]: {
             name: 'Category',
-            label: { en: 'Category', ar: 'فئة' },
+            label: 'Category',
             type: 'categorical',
             component: 'CheckboxGroup',
             options: [

@@ -56,7 +56,7 @@ type SurfaceCase = Readonly<{
 
 const CLOSENESS: SectionDoc = {
   name: 'closeness',
-  label: { en: 'closeness' },
+  label: 'closeness',
   type: 'ordinal',
   options: [
     { label: { en: 'Not close' }, value: 1 },
@@ -80,7 +80,7 @@ const SURFACES = {
     variableId: 'consent',
     committed: {
       name: 'consent',
-      label: { en: 'consent' },
+      label: 'consent',
       type: 'boolean',
       component: 'Boolean',
       options: [
@@ -90,7 +90,7 @@ const SURFACES = {
     },
     draft: {
       name: 'consent',
-      label: { en: 'consent' },
+      label: 'consent',
       type: 'boolean',
       component: 'Boolean',
       options: [
@@ -109,7 +109,7 @@ const SURFACES = {
     variableId: 'consent',
     committed: {
       name: 'consent',
-      label: { en: 'consent' },
+      label: 'consent',
       type: 'boolean',
       component: 'Boolean',
       options: [
@@ -120,7 +120,7 @@ const SURFACES = {
     },
     draft: {
       name: 'consent',
-      label: { en: 'consent' },
+      label: 'consent',
       type: 'boolean',
       component: 'Boolean',
       options: [
@@ -140,7 +140,7 @@ const SURFACES = {
     variableId: 'consent',
     committed: {
       name: 'consent',
-      label: { en: 'consent' },
+      label: 'consent',
       type: 'boolean',
       component: 'Boolean',
       options: [
@@ -150,7 +150,7 @@ const SURFACES = {
     },
     draft: {
       name: 'consent',
-      label: { en: 'consent' },
+      label: 'consent',
       type: 'boolean',
       component: 'Boolean',
       options: [
@@ -164,14 +164,14 @@ const SURFACES = {
     variableId: 'met',
     committed: {
       name: 'met',
-      label: { en: 'met' },
+      label: 'met',
       type: 'datetime',
       component: 'DatePicker',
       parameters: { type: 'full', min: '2020-01-01', max: '2024-12-31' },
     },
     draft: {
       name: 'met',
-      label: { en: 'met' },
+      label: 'met',
       type: 'datetime',
       component: 'DatePicker',
       parameters: { type: 'full', min: '2024-01-01', max: '2020-01-01' },
@@ -182,7 +182,7 @@ const SURFACES = {
     variableId: 'rapport',
     committed: {
       name: 'rapport',
-      label: { en: 'rapport' },
+      label: 'rapport',
       type: 'scalar',
       component: 'VisualAnalogScale',
       parameters: {
@@ -192,7 +192,7 @@ const SURFACES = {
     },
     draft: {
       name: 'rapport',
-      label: { en: 'rapport' },
+      label: 'rapport',
       type: 'scalar',
       component: 'VisualAnalogScale',
       parameters: {
@@ -215,7 +215,7 @@ const SURFACES = {
     variableId: 'preference',
     committed: {
       name: 'preference',
-      label: { en: 'preference' },
+      label: 'preference',
       type: 'categorical',
       options: [
         { label: { en: 'Low' }, value: 'low' },
@@ -226,7 +226,7 @@ const SURFACES = {
     },
     draft: {
       name: 'preference',
-      label: { en: 'preference' },
+      label: 'preference',
       type: 'categorical',
       options: [
         { label: { en: 'Low' }, value: 'low' },
@@ -244,7 +244,7 @@ type DemoProps = Readonly<{
   surface: SurfaceName;
   locked: boolean;
   readOnly: boolean;
-  /** Whether the protocol is translated, which puts a language switch on every label. */
+  /** Whether the protocol is translated, which puts a language switch on every option label. */
   translated: boolean;
 }>;
 
@@ -379,9 +379,10 @@ export const ReadOnly: Story = {
 };
 
 /**
- * An attribute in a protocol written in two languages. Its label and the
- * labels of its options are written in each, through the language switch each
- * field carries, and a field with no Spanish yet says so.
+ * An attribute in a protocol written in two languages. The labels of its
+ * options are written in each, through the language switch each option field
+ * carries, and a field with no Spanish yet says so. The attribute's own label
+ * is plain text, in no particular language.
  */
 export const Translated: Story = {
   args: { mode: 'update', translated: true },

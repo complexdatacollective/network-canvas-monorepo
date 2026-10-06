@@ -40,17 +40,11 @@ import {
 import { normalizeCodebookName, toCanonicalText } from '@codaco/shared-consts';
 import { canonicalize, type SectionDoc } from '@codaco/studio-sync/apply';
 
-import {
-  LocalizedInputField,
-  LocalizedOptionLabelField,
-} from '../../fields/LocalizedStringField.tsx';
+import { LocalizedOptionLabelField } from '../../fields/LocalizedStringField.tsx';
 import { optionLabelIssues } from '../../form/arrayFields/cellRules.ts';
 import { useEditedCells } from '../../form/arrayFields/useEditedCells.ts';
 import { asLocalizedString } from '../../localization/localizedText.ts';
-import {
-  useLocalizedText,
-  useProtocolLocalization,
-} from '../../localization/ProtocolLocalization.tsx';
+import { useLocalizedText } from '../../localization/ProtocolLocalization.tsx';
 import type { ProtocolBuilderProtocolContext } from '../../protocol-context.ts';
 import {
   variableParametersMessages,
@@ -66,7 +60,7 @@ import {
   type CodebookDraftIssue,
   type CodebookSubject,
   type CodebookVariableDraft,
-  withSeededLabel,
+  withSeededVariableLabel,
 } from '../editing.ts';
 import {
   type BooleanAnswer,
@@ -146,14 +140,14 @@ const messages = defineMessages({
     id: 'protocolBuilder.codebookVariable.labelLabel',
     defaultMessage: 'Attribute label',
     description:
-      'Label of the field holding the words participants are shown for this attribute (a codebook variable), as opposed to the attribute name the researcher and the exported data use.',
+      'Label of the field holding a readable label for this attribute (a codebook variable), as opposed to the attribute name the exported data uses.',
   },
   labelHint: {
     id: 'protocolBuilder.codebookVariable.labelHint',
     defaultMessage:
-      'The words participants are shown for this attribute. Left empty, the attribute name is used.',
+      'A readable label for this attribute. It is not translated. A Network Composer field with no caption of its own shows this label to participants. Left empty, the attribute name is used.',
     description:
-      'Guidance under the attribute label field. The attribute name is the field above it, holding the researcher’s own name for the attribute.',
+      'Guidance under the attribute label field. The attribute name is the field above it, holding the researcher’s own name for the attribute. Network Composer is the name of an interview stage type; a caption is the text shown beside a form field.',
   },
   typeLabel: {
     id: 'protocolBuilder.codebookVariable.typeLabel',
@@ -424,7 +418,6 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
     onCancel,
   } = props;
   const intl = useAppIntl();
-  const localization = useProtocolLocalization();
   const title =
     props.title ??
     intl.formatMessage(
@@ -483,7 +476,7 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
   );
   // A label left empty is written from the name, as every other way of
   // creating an attribute writes it.
-  const labelledDraft = withSeededLabel(draft, localization);
+  const labelledDraft = withSeededVariableLabel(draft);
   const submittedDraft =
     props.mode === 'create'
       ? draftWithOwnedBlocks(
@@ -907,12 +900,12 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
             name="variable-label"
             label={intl.formatMessage(messages.labelLabel)}
             hint={intl.formatMessage(messages.labelHint)}
-            component={LocalizedInputField}
+            component={InputField}
             placeholder={
               typeof draft.name === 'string' ? draft.name : undefined
             }
-            value={asLocalizedString(draft.label)}
-            onChange={(label) => replaceProperty('label', label)}
+            value={typeof draft.label === 'string' ? draft.label : ''}
+            onChange={(label) => replaceProperty('label', label ?? '')}
             readOnly={interactionDisabled}
             errors={labelErrors}
             showErrors={labelErrors.length > 0}

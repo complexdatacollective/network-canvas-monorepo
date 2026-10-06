@@ -29,7 +29,7 @@ function makeCodebook(): Codebook {
         variables: {
           [CAT_NODE]: {
             name: 'closeness',
-            label: { und: 'Closeness' },
+            label: 'Closeness',
             type: 'categorical',
             component: 'CheckboxGroup',
             options: [
@@ -39,7 +39,7 @@ function makeCodebook(): Codebook {
           },
           [ORD_NODE]: {
             name: 'frequency',
-            label: { und: 'Frequency' },
+            label: 'Frequency',
             type: 'ordinal',
             component: 'LikertScale',
             options: [
@@ -49,7 +49,7 @@ function makeCodebook(): Codebook {
           },
           [TEXT_NODE]: {
             name: 'nickname',
-            label: { und: 'Nickname' },
+            label: 'Nickname',
             type: 'text',
             component: 'Text',
           },
@@ -64,7 +64,7 @@ function makeCodebook(): Codebook {
         variables: {
           [CAT_EDGE]: {
             name: 'context',
-            label: { und: 'Context' },
+            label: 'Context',
             type: 'categorical',
             component: 'ToggleButtonGroup',
             options: [
@@ -79,7 +79,7 @@ function makeCodebook(): Codebook {
       variables: {
         [CAT_EGO]: {
           name: 'identity',
-          label: { und: 'Identity' },
+          label: 'Identity',
           type: 'categorical',
           component: 'CheckboxGroup',
           options: [

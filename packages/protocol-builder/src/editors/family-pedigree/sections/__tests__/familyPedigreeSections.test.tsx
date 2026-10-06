@@ -406,7 +406,7 @@ const addFamilyEdgeVariable = (
 const seedTheOtherCandidate = (harness: StageEditorHarness): void => {
   addFamilyMemberVariable(harness, 'recordedSex', {
     name: 'recordedSex',
-    label: { 'en-US': 'recordedSex' },
+    label: 'recordedSex',
     type: 'categorical',
     options: asAttributeOptions(BIOLOGICAL_SEX_OPTIONS),
   });
@@ -434,7 +434,7 @@ const SEEDED_UNWELL = 'seeded-unwell';
 const seedCollectableBoolean = (harness: StageEditorHarness): string => {
   addFamilyMemberVariable(harness, SEEDED_UNWELL, {
     name: 'unwell',
-    label: { 'en-US': 'unwell' },
+    label: 'unwell',
     type: 'boolean',
     component: 'Boolean',
   });
@@ -846,7 +846,7 @@ describe('the attributes a pedigree may bind', () => {
     const harness = renderStageEditor(openFixture());
     addFamilyMemberVariable(harness, 'name', {
       name: 'preferred_name',
-      label: { 'en-US': 'preferred_name' },
+      label: 'preferred_name',
       type: 'text',
       component: 'Text',
     });
@@ -884,7 +884,7 @@ describe('the attributes a pedigree may bind', () => {
     const harness = renderStageEditor(openFixture());
     addFamilyMemberVariable(harness, 'preferred_name', {
       name: 'preferred_name',
-      label: { 'en-US': 'preferred_name' },
+      label: 'preferred_name',
       type: 'text',
       component: 'Text',
     });
@@ -931,7 +931,7 @@ describe('the attributes a pedigree may bind', () => {
     const collectable = seedCollectableBoolean(harness);
     addFamilyMemberVariable(harness, 'kinship', {
       name: 'kinship',
-      label: { 'en-US': 'kinship' },
+      label: 'kinship',
       type: 'text',
     });
     await awaitOffered(harness, 'Relationship to participant', 'kinship');
@@ -971,7 +971,7 @@ describe('the attributes a pedigree may bind', () => {
     const harness = renderStageEditor(openFixture());
     addFamilyMemberVariable(harness, 'kinship', {
       name: 'kinship',
-      label: { 'en-US': 'kinship' },
+      label: 'kinship',
       type: 'text',
     });
     // On offer while nothing has claimed it, so the exclusion below is a
@@ -1021,7 +1021,7 @@ describe('the attributes a pedigree may bind', () => {
     const harness = renderStageEditor(openFixture());
     addFamilyMemberVariable(harness, 'preferred_name', {
       name: 'preferred_name',
-      label: { 'en-US': 'preferred_name' },
+      label: 'preferred_name',
       type: 'text',
     });
 
@@ -1317,7 +1317,7 @@ describe('a codebook that changes while the pedigree is open', () => {
     // is read below is the reference the deletion left behind.
     addFamilyMemberVariable(harness, 'housebound', {
       name: 'housebound',
-      label: { 'en-US': 'housebound' },
+      label: 'housebound',
       type: 'boolean',
       component: 'Boolean',
     });
@@ -1358,7 +1358,7 @@ describe('a codebook that changes while the pedigree is open', () => {
     // would take the dangling pick's own name with it.
     addFamilyMemberVariable(harness, 'preferred_name', {
       name: 'preferred_name',
-      label: { 'en-US': 'preferred_name' },
+      label: 'preferred_name',
       type: 'text',
     });
 
@@ -1379,7 +1379,7 @@ describe('a codebook that changes while the pedigree is open', () => {
     const harness = renderStageEditor(openFixture());
     addFamilyMemberVariable(harness, 'preferred_name', {
       name: 'preferred_name',
-      label: { 'en-US': 'preferred_name' },
+      label: 'preferred_name',
       type: 'text',
     });
     removeFamilyMemberVariable(harness, 'fm_name');
@@ -1388,7 +1388,7 @@ describe('a codebook that changes while the pedigree is open', () => {
 
     addFamilyMemberVariable(harness, 'fm_name', {
       name: 'fm_name',
-      label: { 'en-US': 'fm_name' },
+      label: 'fm_name',
       type: 'text',
     });
 
@@ -1437,7 +1437,7 @@ describe('a codebook that changes while the pedigree is open', () => {
 
     redefineFamilyMemberVariable(harness, 'biologicalSex', {
       name: 'biologicalSex',
-      label: { 'en-US': 'biologicalSex' },
+      label: 'biologicalSex',
       type: 'categorical',
       options: [
         { value: 'female', label: { 'en-US': 'Female' } },
@@ -1483,7 +1483,7 @@ describe('a codebook that changes while the pedigree is open', () => {
 
     redefineFamilyMemberVariable(harness, 'biologicalSex', {
       name: 'biologicalSex',
-      label: { 'en-US': 'biologicalSex' },
+      label: 'biologicalSex',
       type: 'categorical',
       options: [
         { value: 'female', label: { 'en-US': 'Female' } },
@@ -1528,14 +1528,14 @@ describe('a codebook that changes while the pedigree is open', () => {
     // `seedTheOtherCandidate` gives about the node one.
     addFamilyEdgeVariable(harness, 'donorGamete', {
       name: 'donorGamete',
-      label: { 'en-US': 'donorGamete' },
+      label: 'donorGamete',
       type: 'categorical',
       options: asAttributeOptions(GAMETE_ROLE_OPTIONS),
     });
 
     redefineFamilyEdgeVariable(harness, 'gameteRole', {
       name: 'gameteRole',
-      label: { 'en-US': 'gameteRole' },
+      label: 'gameteRole',
       type: 'categorical',
       options: [
         { value: 'egg', label: { 'en-US': 'Egg' } },
@@ -1885,7 +1885,7 @@ describe('what a family member form field’s attribute holds', () => {
   const seedCategorical = (harness: StageEditorHarness): string => {
     addFamilyMemberVariable(harness, 'seeded-household-role', {
       name: 'household_role',
-      label: { 'en-US': 'household_role' },
+      label: 'household_role',
       type: 'categorical',
       component: 'CheckboxGroup',
       options: [
@@ -1903,7 +1903,7 @@ describe('what a family member form field’s attribute holds', () => {
   const seedDatetime = (harness: StageEditorHarness): string => {
     addFamilyMemberVariable(harness, 'seeded-diagnosed-on', {
       name: 'diagnosed_on',
-      label: { 'en-US': 'diagnosed_on' },
+      label: 'diagnosed_on',
       type: 'datetime',
       component: 'DatePicker',
     });
@@ -2055,7 +2055,7 @@ describe('what a family member form field’s attribute holds', () => {
           : {},
       ).toMatchObject({
         name: 'diagnosed_on',
-        label: { 'en-US': 'diagnosed_on' },
+        label: 'diagnosed_on',
         type: 'datetime',
         component: 'DatePicker',
         parameters: { type: 'year' },
@@ -2675,7 +2675,7 @@ describe('picks this session has already claimed', () => {
     const harness = renderStageEditor(openWithNominationPrompts());
     addFamilyMemberVariable(harness, 'unwell', {
       name: 'unwell',
-      label: { 'en-US': 'unwell' },
+      label: 'unwell',
       type: 'boolean',
       component: 'Boolean',
     });
@@ -2684,7 +2684,7 @@ describe('picks this session has already claimed', () => {
     // this type carries is written unvalidated somewhere.
     addFamilyMemberVariable(harness, 'housebound', {
       name: 'housebound',
-      label: { 'en-US': 'housebound' },
+      label: 'housebound',
       type: 'boolean',
       component: 'Boolean',
     });
@@ -2735,7 +2735,7 @@ describe('picks this session has already claimed', () => {
     const harness = renderStageEditor(openFixture());
     addFamilyEdgeVariable(harness, 'together', {
       name: 'together',
-      label: { 'en-US': 'together' },
+      label: 'together',
       type: 'boolean',
     });
 

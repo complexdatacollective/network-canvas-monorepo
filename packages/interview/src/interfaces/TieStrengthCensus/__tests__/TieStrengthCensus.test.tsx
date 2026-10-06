@@ -83,7 +83,7 @@ const makeCodebook = (
       variables: {
         [EDGE_VAR]: {
           name: EDGE_VAR,
-          label: { en: 'Strength' },
+          label: 'Strength',
           type: 'ordinal',
           component: 'RadioGroup',
           options,

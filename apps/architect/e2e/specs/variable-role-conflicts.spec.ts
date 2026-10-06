@@ -56,7 +56,7 @@ function conflictProtocol(): CurrentProtocol {
           variables: {
             sharedVar: {
               name: 'sharedVar',
-              label: { en: 'sharedVar' },
+              label: 'sharedVar',
               type: 'categorical',
               // Referenced by an AlterForm field below — schema.ts's
               // logic refinements reject a form-field variable with no
@@ -67,20 +67,20 @@ function conflictProtocol(): CurrentProtocol {
             },
             formOnlyVar: {
               name: 'formOnlyVar',
-              label: { en: 'formOnlyVar' },
+              label: 'formOnlyVar',
               type: 'categorical',
               component: 'CheckboxGroup',
               options: categoricalOptions,
             },
             binOnlyVar: {
               name: 'binOnlyVar',
-              label: { en: 'binOnlyVar' },
+              label: 'binOnlyVar',
               type: 'categorical',
               options: categoricalOptions,
             },
             cleanVar: {
               name: 'cleanVar',
-              label: { en: 'cleanVar' },
+              label: 'cleanVar',
               type: 'categorical',
               options: categoricalOptions,
             },

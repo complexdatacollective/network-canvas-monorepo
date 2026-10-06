@@ -160,7 +160,7 @@ describe.each(MAXIMAL)(
       });
       addFamilyMemberVariable(harness, MEMBER_FORM_ATTRIBUTE, {
         name: MEMBER_FORM_ATTRIBUTE,
-        label: { 'en-US': MEMBER_FORM_ATTRIBUTE },
+        label: MEMBER_FORM_ATTRIBUTE,
         type: 'text',
         component: 'Text',
       });

@@ -462,7 +462,7 @@ describe('the attributes a passphrase protects', () => {
     const person = personDocument(harness);
     const variables = {
       ...(person.variables as Record<string, unknown>),
-      name: { name: 'name', label: { 'en-US': 'name' }, type: 'number' },
+      name: { name: 'name', label: 'name', type: 'number' },
     };
 
     harness.receiveCodebookUpdate({
@@ -693,7 +693,7 @@ describe('the attributes a passphrase protects', () => {
               ...(person.variables as Record<string, unknown>),
               relationship_to_ego: {
                 name: 'relationship_to_ego',
-                label: { 'en-US': 'relationship_to_ego' },
+                label: 'relationship_to_ego',
                 type: 'text',
                 encrypted: true,
               },
@@ -807,7 +807,7 @@ describe('the attributes a passphrase protects', () => {
 
       collaboratorSets(harness, 'person', 'name', {
         name: 'name',
-        label: { 'en-US': 'name' },
+        label: 'name',
         type: 'text',
         encrypted: true,
       });
@@ -832,7 +832,7 @@ describe('the attributes a passphrase protects', () => {
 
       collaboratorSets(harness, 'person', 'name', {
         name: 'name',
-        label: { 'en-US': 'name' },
+        label: 'name',
         type: 'text',
       });
 
@@ -854,7 +854,7 @@ describe('the attributes a passphrase protects', () => {
 
       collaboratorSets(harness, 'person', 'relationship_to_ego', {
         name: 'relationship_to_ego',
-        label: { 'en-US': 'relationship_to_ego' },
+        label: 'relationship_to_ego',
         type: 'text',
       });
       await waitFor(() =>
@@ -927,7 +927,7 @@ describe('the attributes a passphrase protects', () => {
         'fm_name',
         {
           name: 'fm_name',
-          label: { 'en-US': 'fm_name' },
+          label: 'fm_name',
           type: 'text',
           encrypted: true,
         },
@@ -976,7 +976,7 @@ describe('the attributes a passphrase protects', () => {
         harness,
         'family_member',
         'fm_name',
-        { name: 'fm_name', label: { 'en-US': 'fm_name' }, type: 'text' },
+        { name: 'fm_name', label: 'fm_name', type: 'text' },
         { name: 'household member' },
       );
       expect(

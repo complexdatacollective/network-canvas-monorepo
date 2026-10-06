@@ -85,15 +85,15 @@ const codebook = {
       color: 'node-color-seq-1',
       shape: { default: 'circle' as const },
       variables: {
-        [QUICK_ADD_VAR]: { name: 'name', label: { en: 'Name' }, type: 'text' },
+        [QUICK_ADD_VAR]: { name: 'name', label: 'Name', type: 'text' },
         [LAYOUT_VAR]: {
           name: 'position',
-          label: { en: 'Position' },
+          label: 'Position',
           type: 'layout',
         },
         [GROUP_VAR]: {
           name: 'Team',
-          label: { en: 'Team' },
+          label: 'Team',
           type: 'categorical',
           options: [
             { value: 'red', label: { en: 'Team Red' } },

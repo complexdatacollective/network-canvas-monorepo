@@ -76,13 +76,13 @@ const codebook = {
     variables: {
       nickname: {
         name: 'Nickname',
-        label: { en: 'Nickname' },
+        label: 'Nickname',
         type: 'text',
         component: 'Text',
       },
       born_on: {
         name: 'Born on',
-        label: { en: 'Born on' },
+        label: 'Born on',
         type: 'datetime',
         component: 'DatePicker',
         parameters: { type: 'full' },
@@ -98,7 +98,7 @@ const requiredNicknameCodebook = {
       ...codebook.ego.variables,
       nickname: {
         name: 'Nickname',
-        label: { en: 'Nickname' },
+        label: 'Nickname',
         type: 'text',
         component: 'Text',
         validation: { required: true },

@@ -103,27 +103,27 @@ function protocolWithFamilyPedigreeStage(): CurrentProtocol {
           color: 'node-color-seq-1',
           shape: { default: 'circle' },
           variables: {
-            name: { name: 'name', label: { en: 'Name' }, type: 'text' },
+            name: { name: 'name', label: 'Name', type: 'text' },
             is_ego: {
               name: 'is_ego',
-              label: { en: 'Is ego' },
+              label: 'Is ego',
               type: 'boolean',
             },
             relationship_to_ego: {
               name: 'relationship_to_ego',
-              label: { en: 'Relationship to ego' },
+              label: 'Relationship to ego',
               type: 'text',
             },
             biologicalSex: {
               name: 'biologicalSex',
-              label: { en: 'Biological sex' },
+              label: 'Biological sex',
               type: 'categorical',
               options: localizedOptions(BIOLOGICAL_SEX_OPTIONS),
               readOnly: true,
             },
             hasConditionX: {
               name: 'hasConditionX',
-              label: { en: 'Has condition X' },
+              label: 'Has condition X',
               type: 'boolean',
             },
           },
@@ -137,24 +137,24 @@ function protocolWithFamilyPedigreeStage(): CurrentProtocol {
           variables: {
             relationshipType: {
               name: 'relationshipType',
-              label: { en: 'Relationship type' },
+              label: 'Relationship type',
               type: 'categorical',
               options: localizedOptions(RELATIONSHIP_TYPE_OPTIONS),
               readOnly: true,
             },
             isActive: {
               name: 'isActive',
-              label: { en: 'Is active' },
+              label: 'Is active',
               type: 'boolean',
             },
             isGestationalCarrier: {
               name: 'isGestationalCarrier',
-              label: { en: 'Is gestational carrier' },
+              label: 'Is gestational carrier',
               type: 'boolean',
             },
             gameteRole: {
               name: 'gameteRole',
-              label: { en: 'Gamete role' },
+              label: 'Gamete role',
               type: 'categorical',
               options: localizedOptions(GAMETE_ROLE_OPTIONS),
               readOnly: true,

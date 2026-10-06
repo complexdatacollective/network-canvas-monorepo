@@ -11,7 +11,7 @@ import { resolveRenderedControl } from '../resolveRenderedControl';
 
 const REQUIRED_BOOLEAN = {
   name: 'Consented',
-  label: { en: 'Consented' },
+  label: 'Consented',
   type: 'boolean' as const,
   component: 'Toggle' as const,
   options: [{ label: { en: 'Yes' }, value: true }],

@@ -128,7 +128,7 @@ describe('findVariableRoleConflicts', () => {
       ...base.codebook.ego.variables,
       category: {
         name: 'ego_category',
-        label: localized('ego_category'),
+        label: 'ego_category',
         type: 'categorical',
         options: [
           { label: localized('A'), value: 'a' },

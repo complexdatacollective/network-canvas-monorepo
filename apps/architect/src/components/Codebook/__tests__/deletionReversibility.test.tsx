@@ -62,7 +62,7 @@ const makeStore = () => {
   if (!personVariables) throw new Error('fixture is missing the person type');
   personVariables[SPARE_VARIABLE] = {
     name: 'spare_variable',
-    label: { en: 'spare_variable' },
+    label: 'spare_variable',
     type: 'text',
   };
 

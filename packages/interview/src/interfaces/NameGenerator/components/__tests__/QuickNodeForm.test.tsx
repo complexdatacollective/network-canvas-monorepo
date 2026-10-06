@@ -56,14 +56,14 @@ function buildCodebook(
         variables: {
           [TARGET_VARIABLE]: {
             name: 'Name',
-            label: { en: 'Name' },
+            label: 'Name',
             type: 'text',
             ...(omitComponent ? {} : { component: 'Text' }),
             ...(validation ? { validation } : {}),
           },
           [SIBLING_VARIABLE]: {
             name: 'Flag',
-            label: { en: 'Flag' },
+            label: 'Flag',
             type: 'boolean',
             component: 'Toggle',
           },

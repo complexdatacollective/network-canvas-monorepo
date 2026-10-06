@@ -40,7 +40,7 @@ const ComposerComponentSchema = z.enum([
 // controls in different stages. The runtime side panel reads the control from
 // this field (see interview/src/selectors/forms.ts). `label` captions the
 // field in the drawer; it is optional — the drawer falls back to the codebook
-// variable's name.
+// variable's label, which is plain text and not translated.
 const composerFormFieldShape = {
   // Architect assigns a stable id (uuid) on creation so the editor's
   // OrderedList / motion Reorder keying survives reorder + delete; it is

@@ -14,7 +14,11 @@
   in the default language, or a `LocalizedString` locale map, which is used as
   written.
 - Codebook node types, edge types and variables get a `label`, taken from
-  their name unless you pass one.
+  their name unless you pass one. A node or edge type's label is a
+  `TextInput`; a variable's is a plain string, which is not translated.
+- A Narrative preset still takes `highlight` as a list of variable IDs, and
+  writes each one as `{ variable, label }`, with the variable's name as the
+  label in the default language.
 - `addStage('LanguageChooser')` adds a language chooser stage.
 
 **Breaking:** the text in a built protocol is a `LocalizedString`, not a

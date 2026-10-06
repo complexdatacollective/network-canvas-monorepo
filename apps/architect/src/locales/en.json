@@ -675,17 +675,17 @@
     "defaultMessage": "not in use",
     "description": "Visible text in components / Codebook / UsageColumn."
   },
-  "architect.codebook.variableLabelDialog.hint": {
-    "defaultMessage": "The words participants are shown for the attribute “{name}”.",
-    "description": "Hint under the attribute label field. name is the attribute’s name, which the researcher and the exported data use and which stays the same in every language."
-  },
   "architect.codebook.variableLabelDialog.label": {
     "defaultMessage": "Attribute label",
-    "description": "Label of the field holding the words participants are shown for an attribute, as opposed to the attribute name the researcher and the exported data use."
+    "description": "Label of the field holding the readable label of an attribute, as opposed to the attribute name the exported data uses."
+  },
+  "architect.codebook.variableLabelDialog.labelHint": {
+    "defaultMessage": "A readable label for the attribute “{name}”. It is not translated. A Network Composer field with no caption of its own shows this label to participants.",
+    "description": "Hint under the attribute label field. name is the attribute’s name, which the exported data uses. Network Composer is the name of an interview interface."
   },
   "architect.codebook.variableLabelDialog.title": {
     "defaultMessage": "Edit attribute label",
-    "description": "Title of the dialog that edits the words participants are shown for an attribute (a codebook variable), in each of the protocol’s languages."
+    "description": "Title of the dialog that edits the readable label of an attribute (a codebook variable)."
   },
   "architect.codebook.variableList.name": {
     "defaultMessage": "Name",

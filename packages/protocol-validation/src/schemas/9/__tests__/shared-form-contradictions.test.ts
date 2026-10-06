@@ -15,7 +15,7 @@ import ProtocolSchemaV9 from '../schema.ts';
 const booleanPair = {
   boolA: {
     name: 'BoolA',
-    label: localized('BoolA'),
+    label: 'BoolA',
     type: 'boolean',
     component: 'Boolean',
     options: [{ label: localized('Yes'), value: true }],
@@ -23,7 +23,7 @@ const booleanPair = {
   },
   boolB: {
     name: 'BoolB',
-    label: localized('BoolB'),
+    label: 'BoolB',
     type: 'boolean',
     component: 'Boolean',
     options: [{ label: localized('Yes'), value: true }],
@@ -110,19 +110,19 @@ const familyPedigreeProtocol = () => ({
         variables: {
           label: {
             name: 'Label',
-            label: localized('Label'),
+            label: 'Label',
             type: 'text',
             component: 'Text',
           },
-          isEgo: { name: 'IsEgo', label: localized('IsEgo'), type: 'boolean' },
+          isEgo: { name: 'IsEgo', label: 'IsEgo', type: 'boolean' },
           relationship: {
             name: 'Relationship',
-            label: localized('Relationship'),
+            label: 'Relationship',
             type: 'text',
           },
           biologicalSex: {
             name: 'BiologicalSex',
-            label: localized('BiologicalSex'),
+            label: 'BiologicalSex',
             type: 'categorical',
             options: localizedOptions(BIOLOGICAL_SEX_OPTIONS),
           },
@@ -138,23 +138,23 @@ const familyPedigreeProtocol = () => ({
         variables: {
           relationshipType: {
             name: 'RelationshipType',
-            label: localized('RelationshipType'),
+            label: 'RelationshipType',
             type: 'categorical',
             options: localizedOptions(RELATIONSHIP_TYPE_OPTIONS),
           },
           isActive: {
             name: 'IsActive',
-            label: localized('IsActive'),
+            label: 'IsActive',
             type: 'boolean',
           },
           isGestationalCarrier: {
             name: 'IsGestationalCarrier',
-            label: localized('IsGestationalCarrier'),
+            label: 'IsGestationalCarrier',
             type: 'boolean',
           },
           gameteRole: {
             name: 'GameteRole',
-            label: localized('GameteRole'),
+            label: 'GameteRole',
             type: 'categorical',
             options: localizedOptions(GAMETE_ROLE_OPTIONS),
           },
@@ -410,14 +410,14 @@ describe('shared form stage-effective validation contradictions', () => {
               ...person.variables,
               boolA: {
                 name: 'BoolA',
-                label: localized('BoolA'),
+                label: 'BoolA',
                 type: 'boolean',
                 component: 'Toggle',
                 validation: { differentFrom: 'boolB' },
               },
               boolB: {
                 name: 'BoolB',
-                label: localized('BoolB'),
+                label: 'BoolB',
                 type: 'boolean',
                 component: 'Toggle',
               },

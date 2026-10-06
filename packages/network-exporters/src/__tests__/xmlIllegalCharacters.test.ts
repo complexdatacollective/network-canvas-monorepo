@@ -36,7 +36,7 @@ const graphmlAndCsv: ExportOptions = {
 const codebook: Codebook = {
   ego: {
     variables: {
-      'ego-note': { name: 'Ego note', label: { en: 'Ego note' }, type: 'text' },
+      'ego-note': { name: 'Ego note', label: 'Ego note', type: 'text' },
     },
   },
   node: {
@@ -47,15 +47,15 @@ const codebook: Codebook = {
       color: 'node-color-seq-1',
       shape: { default: 'circle' },
       variables: {
-        'p-nick': { name: 'Nickname', label: { en: 'Nickname' }, type: 'text' },
+        'p-nick': { name: 'Nickname', label: 'Nickname', type: 'text' },
         'p-odd': {
           name: `Odd${control}name`,
-          label: { en: 'Odd name' },
+          label: 'Odd name',
           type: 'text',
         },
         'p-colour': {
           name: 'Colour',
-          label: { en: 'Colour' },
+          label: 'Colour',
           type: 'categorical',
           options: [
             { label: { en: 'Red' }, value: 'red' },
@@ -73,7 +73,7 @@ const codebook: Codebook = {
       variables: {
         'e-note': {
           name: 'Edge note',
-          label: { en: 'Edge note' },
+          label: 'Edge note',
           type: 'text',
         },
       },

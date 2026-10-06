@@ -15,7 +15,7 @@ type LabelFieldProps = {
 };
 
 /**
- * The words participants are shown for a codebook entry, in each of the
+ * The words participants are shown for a node or edge type, in each of the
  * protocol's languages. The field opens in the default language. A label needs
  * text in at least one language; a language left empty is a missing
  * translation, which participants see in another language.

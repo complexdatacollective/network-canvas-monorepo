@@ -8,7 +8,7 @@ describe('selectFieldMetadataFromVariables', () => {
       // no codebook component
       closeness: {
         name: 'closeness',
-        label: { en: 'Closeness' },
+        label: 'Closeness',
         type: 'scalar' as const,
       },
     };
@@ -31,7 +31,7 @@ describe('selectFieldMetadataFromVariables', () => {
     const variables = {
       age: {
         name: 'age',
-        label: { en: 'Age' },
+        label: 'Age',
         type: 'number' as const,
         component: 'Number',
       },
@@ -49,7 +49,7 @@ describe('selectFieldMetadataFromVariables', () => {
     const variables = {
       'var-uuid-1': {
         name: 'age_years',
-        label: { en: 'Age' },
+        label: 'Age',
         type: 'number' as const,
       },
     };
@@ -58,7 +58,7 @@ describe('selectFieldMetadataFromVariables', () => {
       variables as never,
       fields as never,
     );
-    expect(meta?.label).toEqual({ en: 'Age' });
+    expect(meta?.label).toBe('Age');
     expect(meta?.authoredLabel).toBeUndefined();
   });
 });

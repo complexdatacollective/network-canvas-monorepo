@@ -1320,8 +1320,14 @@
             "display": ["friend_edge_type", "professional_edge_type"]
           },
           "highlight": [
-            "03b03617-46ae-41cb-9462-9acd8a17edd6",
-            "ae44b6ba-ad49-4ecf-bf38-b65decfce000"
+            {
+              "variable": "03b03617-46ae-41cb-9462-9acd8a17edd6",
+              "label": { "en-US": "has_given_advice", "es": "ha dado consejos" }
+            },
+            {
+              "variable": "ae44b6ba-ad49-4ecf-bf38-b65decfce000",
+              "label": { "en-US": "close_friend", "es": "amigo cercano" }
+            }
           ]
         },
         {
@@ -1335,7 +1341,12 @@
           "edges": {
             "display": ["professional_edge_type"]
           },
-          "highlight": ["03b03617-46ae-41cb-9462-9acd8a17edd6"]
+          "highlight": [
+            {
+              "variable": "03b03617-46ae-41cb-9462-9acd8a17edd6",
+              "label": { "en-US": "has_given_advice", "es": "ha dado consejos" }
+            }
+          ]
         }
       ],
       "background": {
@@ -1570,7 +1581,7 @@
           "name_variable": {
             "encrypted": true,
             "name": "name",
-            "label": { "en-US": "name", "es": "nombre" },
+            "label": "name",
             "component": "Text",
             "type": "text",
             "validation": {
@@ -1580,12 +1591,12 @@
           },
           "0ff25001-a2b8-46de-82a9-53143aa00d10": {
             "name": "last_name",
-            "label": { "en-US": "last_name", "es": "apellido" },
+            "label": "last_name",
             "type": "text"
           },
           "c5fee926-855d-4419-b5bb-54e89010cea6": {
             "name": "age",
-            "label": { "en-US": "age", "es": "edad" },
+            "label": "age",
             "type": "number",
             "component": "Number",
             "validation": {
@@ -1594,7 +1605,7 @@
           },
           "0e75ec18-2cb1-4606-9f18-034d28b07c19": {
             "name": "nickname",
-            "label": { "en-US": "nickname", "es": "apodo" },
+            "label": "nickname",
             "component": "Text",
             "type": "text",
             "validation": {
@@ -1603,28 +1614,28 @@
           },
           "ae44b6ba-ad49-4ecf-bf38-b65decfce000": {
             "name": "close_friend",
-            "label": { "en-US": "close_friend", "es": "amigo cercano" },
+            "label": "close_friend",
             "component": "Toggle",
             "type": "boolean"
           },
           "94e2dee9-1c25-4b64-b8bb-4946465c3c07": {
             "name": "support_friend",
-            "label": { "en-US": "support_friend", "es": "amigo de apoyo" },
+            "label": "support_friend",
             "type": "boolean"
           },
           "ec5b462e-a033-4cbc-8b73-82d90938ec82": {
             "name": "advice_friend",
-            "label": { "en-US": "advice_friend", "es": "amigo consejero" },
+            "label": "advice_friend",
             "type": "boolean"
           },
           "03b03617-46ae-41cb-9462-9acd8a17edd6": {
             "name": "has_given_advice",
-            "label": { "en-US": "has_given_advice", "es": "ha dado consejos" },
+            "label": "has_given_advice",
             "type": "boolean"
           },
           "1096204b-48fe-444c-b642-4ab211f7f57c": {
             "name": "contactFreq",
-            "label": { "en-US": "contactFreq", "es": "frecuencia de contacto" },
+            "label": "contactFreq",
             "type": "ordinal",
             "options": [
               {
@@ -1660,10 +1671,7 @@
           },
           "23c5a7b9-b553-4ff1-b515-6a81999773d2": {
             "name": "discussFreq",
-            "label": {
-              "en-US": "discussFreq",
-              "es": "frecuencia de conversación"
-            },
+            "label": "discussFreq",
             "type": "ordinal",
             "component": "RadioGroup",
             "validation": {
@@ -1690,7 +1698,7 @@
           },
           "e343a91f-628d-4175-870c-957beffa0152": {
             "name": "catvar2",
-            "label": { "en-US": "catvar2", "es": "varcat2" },
+            "label": "catvar2",
             "type": "categorical",
             "options": [
               {
@@ -1705,7 +1713,7 @@
           },
           "e343a91f-628d-4175-870c-957beffa0153": {
             "name": "catvar3",
-            "label": { "en-US": "catvar3", "es": "varcat3" },
+            "label": "catvar3",
             "type": "categorical",
             "options": [
               {
@@ -1720,7 +1728,7 @@
           },
           "e343a91f-628d-4175-870c-957beffa0154": {
             "name": "catvar4",
-            "label": { "en-US": "catvar4", "es": "varcat4" },
+            "label": "catvar4",
             "type": "categorical",
             "component": "ToggleButtonGroup",
             "validation": {
@@ -1747,7 +1755,7 @@
           },
           "e343a91f-628d-4175-870c-957beffa0151": {
             "name": "contactType",
-            "label": { "en-US": "contactType", "es": "tipo de contacto" },
+            "label": "contactType",
             "type": "categorical",
             "options": [
               {
@@ -1774,7 +1782,7 @@
           },
           "4ccba4e2-a246-46ee-a3ff-1c70fb4c449c": {
             "name": "discussType",
-            "label": { "en-US": "discussType", "es": "tipo de conversación" },
+            "label": "discussType",
             "type": "categorical",
             "component": "ToggleButtonGroup",
             "validation": {
@@ -1819,30 +1827,27 @@
           },
           "layout_variable": {
             "name": "closenessLayout",
-            "label": {
-              "en-US": "closenessLayout",
-              "es": "disposición por cercanía"
-            },
+            "label": "closenessLayout",
             "type": "layout"
           },
           "layout_variable_manual": {
             "name": "manualLayout",
-            "label": { "en-US": "manualLayout", "es": "disposición manual" },
+            "label": "manualLayout",
             "type": "layout"
           },
           "e13ca72d-aefe-4f48-841d-09f020e0e987": {
             "name": "anotherLayout",
-            "label": { "en-US": "anotherLayout", "es": "otra disposición" },
+            "label": "anotherLayout",
             "type": "layout"
           },
           "d2d8091e-8170-42c1-9dc0-c0d54553b3e6": {
             "name": "talk_friend",
-            "label": { "en-US": "talk_friend", "es": "amigo para hablar" },
+            "label": "talk_friend",
             "type": "boolean"
           },
           "04298634-eb5f-450a-84dd-95d2708e10c1": {
             "name": "dataSource",
-            "label": { "en-US": "dataSource", "es": "fuente de datos" },
+            "label": "dataSource",
             "type": "text"
           },
           "490db003-3289-4969-b426-919cefb4cdf0": {
@@ -1863,23 +1868,23 @@
               }
             ],
             "name": "likertScaleTwo",
-            "label": { "en-US": "likertScaleTwo", "es": "escala Likert dos" }
+            "label": "likertScaleTwo"
           },
           "9b56bc6d-6b20-4e38-9aab-4057e78e1130": {
             "type": "datetime",
             "component": "DatePicker",
             "name": "compactdate",
-            "label": { "en-US": "compactdate", "es": "fecha compacta" }
+            "label": "compactdate"
           },
           "246c4d84-ebd7-41a6-8c1a-ef83938227ba": {
             "type": "text",
             "component": "TextArea",
             "name": "bio",
-            "label": { "en-US": "bio", "es": "biografía" }
+            "label": "bio"
           },
           "979c9ad7-74cb-402d-8574-3f0a91c9174d": {
             "name": "other_variable",
-            "label": { "en-US": "other_variable", "es": "otra variable" },
+            "label": "other_variable",
             "type": "text",
             "validation": {
               "required": true
@@ -1887,7 +1892,7 @@
           },
           "e1dda563-f6f6-47b7-91cb-31b4c2fdb73a": {
             "name": "homework_friend",
-            "label": { "en-US": "homework_friend", "es": "amigo de tareas" },
+            "label": "homework_friend",
             "type": "boolean"
           }
         }
@@ -1900,28 +1905,25 @@
         "variables": {
           "2377af3f-3c79-41da-9b0b-6570fb519b93": {
             "name": "label",
-            "label": { "en-US": "label", "es": "etiqueta" },
+            "label": "label",
             "component": "Text",
             "type": "text"
           },
           "e3eb5f0b-84ad-43f0-8db5-9f83cd3a56de": {
             "name": "numberVariable",
-            "label": { "en-US": "numberVariable", "es": "variable numérica" },
+            "label": "numberVariable",
             "component": "Number",
             "type": "number"
           },
           "57fefac9-561f-454a-8f78-81bd9470efaa": {
             "name": "booleanVariable",
-            "label": { "en-US": "booleanVariable", "es": "variable booleana" },
+            "label": "booleanVariable",
             "component": "Toggle",
             "type": "boolean"
           },
           "683ad529-66c6-4c84-8e31-a31452dsf74k": {
             "name": "booleanVariable3",
-            "label": {
-              "en-US": "booleanVariable3",
-              "es": "variable booleana 3"
-            },
+            "label": "booleanVariable3",
             "type": "boolean",
             "component": "Boolean",
             "validation": {
@@ -1940,23 +1942,17 @@
           },
           "d7b5f733-bec1-49be-8c33-f3c772ca0653": {
             "name": "booleanVariable2",
-            "label": {
-              "en-US": "booleanVariable2",
-              "es": "variable booleana 2"
-            },
+            "label": "booleanVariable2",
             "type": "boolean"
           },
           "3eaad411-0530-41ca-bb43-9fb6ea846d6e": {
             "name": "checkboxVariable",
-            "label": {
-              "en-US": "checkboxVariable",
-              "es": "variable de casillas"
-            },
+            "label": "checkboxVariable",
             "type": "boolean"
           },
           "583ad529-66c6-4c84-8e31-a31452d6b5e9": {
             "name": "ordinalVariable",
-            "label": { "en-US": "ordinalVariable", "es": "variable ordinal" },
+            "label": "ordinalVariable",
             "type": "ordinal",
             "component": "RadioGroup",
             "validation": {
@@ -1993,10 +1989,7 @@
           },
           "e3537457-41a2-4fbf-a1f8-9235b3c1edc6": {
             "name": "categoricalVariable",
-            "label": {
-              "en-US": "categoricalVariable",
-              "es": "variable categórica"
-            },
+            "label": "categoricalVariable",
             "type": "categorical",
             "component": "CheckboxGroup",
             "validation": {
@@ -2033,10 +2026,7 @@
           },
           "6c647977-f2d1-426f-b0c5-6d44c795c554": {
             "name": "categoricalVariable2",
-            "label": {
-              "en-US": "categoricalVariable2",
-              "es": "variable categórica 2"
-            },
+            "label": "categoricalVariable2",
             "type": "categorical",
             "component": "ToggleButtonGroup",
             "validation": {
@@ -2124,7 +2114,7 @@
               "required": true
             },
             "name": "likertScale",
-            "label": { "en-US": "likertScale", "es": "escala Likert" }
+            "label": "likertScale"
           },
           "720224a3-e2d3-4729-968a-29d3f3e4fca6": {
             "type": "scalar",
@@ -2140,10 +2130,7 @@
               "required": true
             },
             "name": "visualAnalogScale",
-            "label": {
-              "en-US": "visualAnalogScale",
-              "es": "escala visual analógica"
-            }
+            "label": "visualAnalogScale"
           }
         }
       },
@@ -2156,7 +2143,7 @@
         "variables": {
           "venue_name_variable": {
             "name": "name",
-            "label": { "en-US": "name", "es": "nombre" },
+            "label": "name",
             "type": "text",
             "validation": {
               "required": true
@@ -2164,12 +2151,12 @@
           },
           "7316d500-6c1e-4188-a531-b2ef587721e0": {
             "name": "location",
-            "label": { "en-US": "location", "es": "ubicación" },
+            "label": "location",
             "type": "location"
           },
           "venueVisitFreqVariable": {
             "name": "visitfreq",
-            "label": { "en-US": "visitfreq", "es": "frecuencia de visitas" },
+            "label": "visitfreq",
             "type": "ordinal",
             "options": [
               {
@@ -2196,60 +2183,57 @@
           },
           "55f1fbbe-2fe5-42a7-88fb-9a8e5e659d2f": {
             "name": "primary_venue",
-            "label": { "en-US": "primary_venue", "es": "lugar principal" },
+            "label": "primary_venue",
             "type": "boolean"
           },
           "8a35cd77-7bc4-4c7e-b98a-673b6a21321f": {
             "name": "parentorg",
-            "label": { "en-US": "parentorg", "es": "organización matriz" },
+            "label": "parentorg",
             "type": "text"
           },
           "8ee3a187-d4be-458e-8abb-71efcc071949": {
             "name": "subsidiary",
-            "label": { "en-US": "subsidiary", "es": "filial" },
+            "label": "subsidiary",
             "type": "text"
           },
           "1e9ce62c-44c5-484d-9c26-0d20cc7d7238": {
             "name": "Abbreviated_Name",
-            "label": { "en-US": "Abbreviated_Name", "es": "nombre abreviado" },
+            "label": "Abbreviated_Name",
             "type": "text"
           },
           "18fbc928-d027-42de-bc96-ff5c09bf4944": {
             "name": "standardwordabbrev",
-            "label": {
-              "en-US": "standardwordabbrev",
-              "es": "abreviatura estándar"
-            },
+            "label": "standardwordabbrev",
             "type": "text"
           },
           "67132d2b-c371-4c57-a5eb-6520083f9d22": {
             "name": "addr",
-            "label": { "en-US": "addr", "es": "dirección" },
+            "label": "addr",
             "type": "text"
           },
           "bdc60147-fe7a-4c3c-a164-e5b370f6a281": {
             "name": "lat",
-            "label": { "en-US": "lat", "es": "latitud" },
+            "label": "lat",
             "type": "number"
           },
           "931a7b23-e433-4e7e-8e13-48b72e5f0549": {
             "name": "long",
-            "label": { "en-US": "long", "es": "longitud" },
+            "label": "long",
             "type": "number"
           },
           "0a5f7952-a9a7-4e87-9353-2d17a59284ee": {
             "name": "rawaddr",
-            "label": { "en-US": "rawaddr", "es": "dirección sin procesar" },
+            "label": "rawaddr",
             "type": "text"
           },
           "venue_layout_variable": {
             "name": "Layout",
-            "label": { "en-US": "Layout", "es": "Disposición" },
+            "label": "Layout",
             "type": "layout"
           },
           "venue_layout_variable_manual": {
             "name": "Layout_Manual",
-            "label": { "en-US": "Layout_Manual", "es": "Disposición manual" },
+            "label": "Layout_Manual",
             "type": "layout"
           }
         }
@@ -2263,7 +2247,7 @@
         "variables": {
           "fm_name": {
             "name": "fm_name",
-            "label": { "en-US": "fm_name", "es": "nombre del familiar" },
+            "label": "fm_name",
             "type": "text",
             "component": "Text",
             "validation": {
@@ -2272,22 +2256,19 @@
           },
           "is_ego": {
             "name": "is_ego",
-            "label": { "en-US": "is_ego", "es": "es ego" },
+            "label": "is_ego",
             "type": "boolean",
             "component": "Toggle"
           },
           "fm_relationship_to_ego": {
             "name": "fm_relationship_to_ego",
-            "label": {
-              "en-US": "fm_relationship_to_ego",
-              "es": "relación del familiar con ego"
-            },
+            "label": "fm_relationship_to_ego",
             "type": "text",
             "component": "Text"
           },
           "biologicalSex": {
             "name": "biologicalSex",
-            "label": { "en-US": "biologicalSex", "es": "sexo biológico" },
+            "label": "biologicalSex",
             "type": "categorical",
             "options": [
               {
@@ -2320,7 +2301,7 @@
           },
           "hasConditionX": {
             "name": "hasConditionX",
-            "label": { "en-US": "hasConditionX", "es": "tiene la condición X" },
+            "label": "hasConditionX",
             "type": "boolean"
           }
         }
@@ -2330,7 +2311,7 @@
       "variables": {
         "3377af3f-3c79-41da-9b0b-6570fb519b93": {
           "name": "name",
-          "label": { "en-US": "name", "es": "nombre" },
+          "label": "name",
           "type": "text",
           "component": "Text",
           "validation": {
@@ -2339,7 +2320,7 @@
         },
         "f3eb5f0b-84ad-43f0-8db5-9f83cd3a56de": {
           "name": "numberVariable",
-          "label": { "en-US": "numberVariable", "es": "variable numérica" },
+          "label": "numberVariable",
           "type": "number",
           "component": "Number",
           "validation": {
@@ -2348,26 +2329,23 @@
         },
         "67fefac9-561f-454a-8f78-81bd9470efaa": {
           "name": "booleanVariable",
-          "label": { "en-US": "booleanVariable", "es": "variable booleana" },
+          "label": "booleanVariable",
           "component": "Toggle",
           "type": "boolean"
         },
         "e7b5f733-bec1-49be-8c33-f3c772ca0653": {
           "name": "booleanVariable2",
-          "label": { "en-US": "booleanVariable2", "es": "variable booleana 2" },
+          "label": "booleanVariable2",
           "type": "boolean"
         },
         "4eaad411-0530-41ca-bb43-9fb6ea846d6e": {
           "name": "checkboxVariable",
-          "label": {
-            "en-US": "checkboxVariable",
-            "es": "variable de casillas"
-          },
+          "label": "checkboxVariable",
           "type": "boolean"
         },
         "683ad529-66c6-4c84-8e31-a31452d6b5e9": {
           "name": "ordinalVariable",
-          "label": { "en-US": "ordinalVariable", "es": "variable ordinal" },
+          "label": "ordinalVariable",
           "type": "ordinal",
           "component": "RadioGroup",
           "validation": {
@@ -2404,10 +2382,7 @@
         },
         "f3537457-41a2-4fbf-a1f8-9235b3c1edc6": {
           "name": "categoricalVariable",
-          "label": {
-            "en-US": "categoricalVariable",
-            "es": "variable categórica"
-          },
+          "label": "categoricalVariable",
           "type": "categorical",
           "component": "CheckboxGroup",
           "validation": {
@@ -2444,10 +2419,7 @@
         },
         "7c647977-f2d1-426f-b0c5-6d44c795c554": {
           "name": "categoricalVariable2",
-          "label": {
-            "en-US": "categoricalVariable2",
-            "es": "variable categórica 2"
-          },
+          "label": "categoricalVariable2",
           "type": "categorical",
           "component": "ToggleButtonGroup",
           "validation": {
@@ -2504,7 +2476,7 @@
           "type": "text",
           "component": "TextArea",
           "name": "bio",
-          "label": { "en-US": "bio", "es": "biografía" }
+          "label": "bio"
         },
         "300a798f-d11b-4195-91ee-3221bc586c0a": {
           "type": "ordinal",
@@ -2524,10 +2496,7 @@
             }
           ],
           "name": "Choose_from_a_scale",
-          "label": {
-            "en-US": "Choose_from_a_scale",
-            "es": "elegir de una escala"
-          }
+          "label": "Choose_from_a_scale"
         },
         "03c54247-aa12-497a-b8f8-c4cb69048455": {
           "type": "scalar",
@@ -2537,7 +2506,7 @@
             "maxLabel": { "en-US": "There", "es": "Allí" }
           },
           "name": "vas_scale",
-          "label": { "en-US": "vas_scale", "es": "escala EVA" }
+          "label": "vas_scale"
         },
         "23a10bcb-bd71-46a1-a36d-4ab80cb5a1d1": {
           "type": "datetime",
@@ -2550,7 +2519,7 @@
             "required": true
           },
           "name": "dob",
-          "label": { "en-US": "dob", "es": "fecha de nacimiento" }
+          "label": "dob"
         },
         "9c47f32e-b72f-4b1b-93a2-e29766dc3012": {
           "type": "datetime",
@@ -2559,7 +2528,7 @@
             "before": 60
           },
           "name": "favourite_day",
-          "label": { "en-US": "favourite_day", "es": "día favorito" },
+          "label": "favourite_day",
           "validation": {
             "differentFrom": "23a10bcb-bd71-46a1-a36d-4ab80cb5a1d1"
           }
@@ -2574,10 +2543,7 @@
             "greaterThanVariable": "9c47f32e-b72f-4b1b-93a2-e29766dc3012"
           },
           "name": "favourite_day_later",
-          "label": {
-            "en-US": "favourite_day_later",
-            "es": "día favorito posterior"
-          }
+          "label": "favourite_day_later"
         }
       }
     },
@@ -2589,10 +2555,7 @@
         "variables": {
           "e343a91f-628d-4175-870c-75429857399e": {
             "name": "friendship-strength",
-            "label": {
-              "en-US": "friendship-strength",
-              "es": "intensidad de la amistad"
-            },
+            "label": "friendship-strength",
             "type": "ordinal",
             "options": [
               {
@@ -2611,7 +2574,7 @@
           },
           "e343a91f-628d-4175-870c-957beffa0002": {
             "name": "catvar2",
-            "label": { "en-US": "catvar2", "es": "varcat2" },
+            "label": "catvar2",
             "type": "categorical",
             "component": "ToggleButtonGroup",
             "options": [
@@ -2627,7 +2590,7 @@
           },
           "e343a91f-628d-4175-870c-957beffa0003": {
             "name": "catvar3",
-            "label": { "en-US": "catvar3", "es": "varcat3" },
+            "label": "catvar3",
             "type": "categorical",
             "component": "ToggleButtonGroup",
             "options": [
@@ -2650,7 +2613,7 @@
           },
           "e343a91f-628d-4175-870c-957beffa0004": {
             "name": "catvar4",
-            "label": { "en-US": "catvar4", "es": "varcat4" },
+            "label": "catvar4",
             "type": "categorical",
             "component": "ToggleButtonGroup",
             "options": [
@@ -2681,10 +2644,7 @@
         "variables": {
           "f984jk23-628d-4175-870c-ejd8e7al8vc3": {
             "name": "professional-strength",
-            "label": {
-              "en-US": "professional-strength",
-              "es": "intensidad profesional"
-            },
+            "label": "professional-strength",
             "type": "ordinal",
             "options": [
               {
@@ -2714,7 +2674,7 @@
           },
           "d343a91f-628d-4175-870c-957beffa0002": {
             "name": "catvar2",
-            "label": { "en-US": "catvar2", "es": "varcat2" },
+            "label": "catvar2",
             "type": "categorical",
             "component": "ToggleButtonGroup",
             "options": [
@@ -2742,7 +2702,7 @@
         "variables": {
           "relationshipType": {
             "name": "relationshipType",
-            "label": { "en-US": "relationshipType", "es": "tipo de relación" },
+            "label": "relationshipType",
             "type": "categorical",
             "options": [
               {
@@ -2773,17 +2733,17 @@
           },
           "isActive": {
             "name": "isActive",
-            "label": { "en-US": "isActive", "es": "está activa" },
+            "label": "isActive",
             "type": "boolean"
           },
           "isGestationalCarrier": {
             "name": "isGestationalCarrier",
-            "label": { "en-US": "isGestationalCarrier", "es": "es gestante" },
+            "label": "isGestationalCarrier",
             "type": "boolean"
           },
           "gameteRole": {
             "name": "gameteRole",
-            "label": { "en-US": "gameteRole", "es": "función del gameto" },
+            "label": "gameteRole",
             "type": "categorical",
             "options": [
               {

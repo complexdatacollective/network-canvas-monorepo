@@ -67,7 +67,7 @@ describe('validation layering', () => {
         variables: {
           personName: {
             name: 'OtherName',
-            label: { en: 'Other name' },
+            label: 'Other name',
             type: 'text',
           },
         },

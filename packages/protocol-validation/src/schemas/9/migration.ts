@@ -16,19 +16,22 @@ const inUndeterminedLocale = (text: string) => ({
   [UNDETERMINED_LOCALE]: escapeMessageText(text),
 });
 
+const nameOrKey = (definition: unknown, key: string) => {
+  const name = isRecord(definition) ? definition.name : undefined;
+  return typeof name === 'string' && name !== '' ? name : key;
+};
+
 /**
- * Schema 8 had no participant-facing name for an entity type or attribute, so
- * its label starts as the name participants already saw. The codebook key
- * stands in for a missing or empty name, because a variable label may not be
- * empty.
+ * Schema 8 had no label for an entity type or attribute, so its label starts
+ * as its name. The codebook key stands in for a missing or empty name,
+ * because a label may not be empty.
  */
 const addLabels = (definitions: unknown) => {
   if (!isRecord(definitions)) return;
   for (const [key, definition] of Object.entries(definitions)) {
     if (!isRecord(definition)) continue;
     if (definition.label === undefined) {
-      const { name } = definition;
-      definition.label = typeof name === 'string' && name !== '' ? name : key;
+      definition.label = nameOrKey(definition, key);
     }
   }
 };
@@ -44,6 +47,40 @@ const addCodebookLabels = (codebook: unknown) => {
     }
   }
   if (isRecord(codebook.ego)) addLabels(codebook.ego.variables);
+};
+
+/**
+ * A schema 8 Narrative legend showed each highlighted attribute's name, so
+ * each highlight keeps that name as its label. The attribute is looked up on
+ * the stage subject's node type, and its id stands in for a missing or empty
+ * name.
+ */
+const addHighlightLabels = (protocol: unknown) => {
+  if (!isRecord(protocol) || !Array.isArray(protocol.stages)) return;
+  const { codebook } = protocol;
+  const nodeTypes =
+    isRecord(codebook) && isRecord(codebook.node) ? codebook.node : {};
+  for (const stage of protocol.stages) {
+    if (!isRecord(stage) || stage.type !== 'Narrative') continue;
+    if (!Array.isArray(stage.presets)) continue;
+    const subjectType = isRecord(stage.subject)
+      ? stage.subject.type
+      : undefined;
+    const nodeType =
+      typeof subjectType === 'string' ? nodeTypes[subjectType] : undefined;
+    const variables =
+      isRecord(nodeType) && isRecord(nodeType.variables)
+        ? nodeType.variables
+        : {};
+    for (const preset of stage.presets) {
+      if (!isRecord(preset) || !Array.isArray(preset.highlight)) continue;
+      preset.highlight = preset.highlight.map((variable: unknown) =>
+        typeof variable === 'string'
+          ? { variable, label: nameOrKey(variables[variable], variable) }
+          : variable,
+      );
+    }
+  }
 };
 
 type SiteChange =
@@ -99,6 +136,7 @@ const migrationV8toV9 = createMigration({
   migrate: (doc) => {
     const migrated = structuredClone(doc);
     addCodebookLabels(migrated.codebook);
+    addHighlightLabels(migrated);
 
     // Every site is found before any is rewritten, so the walk reads the
     // document as schema 8 left it.

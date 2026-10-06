@@ -9,7 +9,7 @@
       "variables": {
         "living_situation": {
           "name": "living_situation",
-          "label": { "en-US": "living_situation" },
+          "label": "living_situation",
           "type": "categorical",
           "component": "ToggleButtonGroup",
           "options": [
@@ -39,7 +39,7 @@
         },
         "self_rated_health": {
           "name": "self_rated_health",
-          "label": { "en-US": "self_rated_health" },
+          "label": "self_rated_health",
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
@@ -53,7 +53,7 @@
         },
         "ucla_1": {
           "name": "ucla_1",
-          "label": { "en-US": "ucla_1" },
+          "label": "ucla_1",
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
@@ -65,7 +65,7 @@
         },
         "ucla_2": {
           "name": "ucla_2",
-          "label": { "en-US": "ucla_2" },
+          "label": "ucla_2",
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
@@ -77,7 +77,7 @@
         },
         "ucla_3": {
           "name": "ucla_3",
-          "label": { "en-US": "ucla_3" },
+          "label": "ucla_3",
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
@@ -89,7 +89,7 @@
         },
         "djg_1": {
           "name": "djg_1",
-          "label": { "en-US": "djg_1" },
+          "label": "djg_1",
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
@@ -101,7 +101,7 @@
         },
         "djg_2": {
           "name": "djg_2",
-          "label": { "en-US": "djg_2" },
+          "label": "djg_2",
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
@@ -113,7 +113,7 @@
         },
         "djg_3": {
           "name": "djg_3",
-          "label": { "en-US": "djg_3" },
+          "label": "djg_3",
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
@@ -125,7 +125,7 @@
         },
         "djg_4": {
           "name": "djg_4",
-          "label": { "en-US": "djg_4" },
+          "label": "djg_4",
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
@@ -137,7 +137,7 @@
         },
         "djg_5": {
           "name": "djg_5",
-          "label": { "en-US": "djg_5" },
+          "label": "djg_5",
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
@@ -149,7 +149,7 @@
         },
         "djg_6": {
           "name": "djg_6",
-          "label": { "en-US": "djg_6" },
+          "label": "djg_6",
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
@@ -161,7 +161,7 @@
         },
         "lsns_1": {
           "name": "lsns_1",
-          "label": { "en-US": "lsns_1" },
+          "label": "lsns_1",
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
@@ -176,7 +176,7 @@
         },
         "lsns_2": {
           "name": "lsns_2",
-          "label": { "en-US": "lsns_2" },
+          "label": "lsns_2",
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
@@ -191,7 +191,7 @@
         },
         "lsns_3": {
           "name": "lsns_3",
-          "label": { "en-US": "lsns_3" },
+          "label": "lsns_3",
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
@@ -206,7 +206,7 @@
         },
         "lsns_4": {
           "name": "lsns_4",
-          "label": { "en-US": "lsns_4" },
+          "label": "lsns_4",
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
@@ -221,7 +221,7 @@
         },
         "lsns_5": {
           "name": "lsns_5",
-          "label": { "en-US": "lsns_5" },
+          "label": "lsns_5",
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
@@ -236,7 +236,7 @@
         },
         "lsns_6": {
           "name": "lsns_6",
-          "label": { "en-US": "lsns_6" },
+          "label": "lsns_6",
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
@@ -261,14 +261,14 @@
         "variables": {
           "alter_name": {
             "name": "alter_name",
-            "label": { "en-US": "alter_name" },
+            "label": "alter_name",
             "type": "text",
             "component": "Text",
             "validation": { "required": true, "unique": true }
           },
           "relationship": {
             "name": "relationship",
-            "label": { "en-US": "relationship" },
+            "label": "relationship",
             "type": "categorical",
             "component": "ToggleButtonGroup",
             "options": [
@@ -285,7 +285,7 @@
           },
           "contact_frequency": {
             "name": "contact_frequency",
-            "label": { "en-US": "contact_frequency" },
+            "label": "contact_frequency",
             "type": "ordinal",
             "component": "LikertScale",
             "options": [
@@ -298,7 +298,7 @@
           },
           "contact_mode": {
             "name": "contact_mode",
-            "label": { "en-US": "contact_mode" },
+            "label": "contact_mode",
             "type": "categorical",
             "component": "CheckboxGroup",
             "options": [
@@ -311,7 +311,7 @@
           },
           "lives_with": {
             "name": "lives_with",
-            "label": { "en-US": "lives_with" },
+            "label": "lives_with",
             "type": "boolean",
             "component": "Boolean",
             "options": [
@@ -321,7 +321,7 @@
           },
           "support_emotional": {
             "name": "support_emotional",
-            "label": { "en-US": "support_emotional" },
+            "label": "support_emotional",
             "type": "boolean",
             "component": "Boolean",
             "options": [
@@ -331,7 +331,7 @@
           },
           "support_practical": {
             "name": "support_practical",
-            "label": { "en-US": "support_practical" },
+            "label": "support_practical",
             "type": "boolean",
             "component": "Boolean",
             "options": [
@@ -341,7 +341,7 @@
           },
           "age_band": {
             "name": "age_band",
-            "label": { "en-US": "age_band" },
+            "label": "age_band",
             "type": "ordinal",
             "component": "LikertScale",
             "options": [
@@ -355,7 +355,7 @@
           },
           "closeness": {
             "name": "closeness",
-            "label": { "en-US": "closeness" },
+            "label": "closeness",
             "type": "ordinal",
             "component": "LikertScale",
             "options": [

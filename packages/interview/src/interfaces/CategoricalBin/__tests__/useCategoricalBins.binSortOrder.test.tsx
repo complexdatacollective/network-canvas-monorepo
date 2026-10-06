@@ -63,7 +63,7 @@ function makeWrapper() {
               variables: {
                 [CAT_VAR]: {
                   name: CAT_VAR,
-                  label: { en: 'Category' },
+                  label: 'Category',
                   type: 'categorical',
                   options: [
                     { label: { en: 'A' }, value: 'a' },
@@ -72,12 +72,12 @@ function makeWrapper() {
                 },
                 [NAME_VAR]: {
                   name: NAME_VAR,
-                  label: { en: 'Name' },
+                  label: 'Name',
                   type: 'text',
                 },
                 [AGE_VAR]: {
                   name: AGE_VAR,
-                  label: { en: 'Age' },
+                  label: 'Age',
                   type: 'number',
                 },
               },

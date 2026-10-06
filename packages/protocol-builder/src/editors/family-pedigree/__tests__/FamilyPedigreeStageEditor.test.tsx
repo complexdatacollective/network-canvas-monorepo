@@ -407,7 +407,7 @@ describe('a codebook that changes while the pedigree is open', () => {
     // deletion left behind.
     variables.fm_nickname = {
       name: 'fm_nickname',
-      label: { 'en-US': 'fm_nickname' },
+      label: 'fm_nickname',
       type: 'text',
     };
 
@@ -446,7 +446,7 @@ describe('a codebook that changes while the pedigree is open', () => {
             ...(definition.variables as Record<string, unknown>),
             fm_nickname: {
               name: 'fm_nickname',
-              label: { 'en-US': 'fm_nickname' },
+              label: 'fm_nickname',
               type: 'text',
             },
           },

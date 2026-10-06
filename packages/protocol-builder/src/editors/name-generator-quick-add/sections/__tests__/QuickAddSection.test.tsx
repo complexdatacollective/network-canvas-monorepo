@@ -207,7 +207,7 @@ describe('what a quick-add name generator records', () => {
     // with the rule on, where the researcher can take it off deliberately.
     expect(created[1]).toEqual({
       name: 'nickname',
-      label: { 'en-US': 'nickname' },
+      label: 'nickname',
       type: 'text',
       validation: { required: true },
     });
@@ -279,13 +279,13 @@ describe('what a quick-add name generator records', () => {
           variables: {
             name: {
               name: 'name',
-              label: { 'en-US': 'name' },
+              label: 'name',
               type: 'text',
               component: 'Text',
             },
             alias: {
               name: 'alias',
-              label: { 'en-US': 'alias' },
+              label: 'alias',
               type: 'text',
               component: 'Text',
             },

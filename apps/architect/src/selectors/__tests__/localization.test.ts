@@ -34,13 +34,13 @@ const protocolIn = (
     node: {
       person: {
         name: 'Person',
-        label: { en: 'Person', fr: 'Personne', de: 'Person' },
+        label: { en: 'Person' },
         color: 'node-color-seq-1',
         shape: { default: 'circle' },
         variables: {
           closeness: {
             name: 'closeness',
-            label: { en: 'Closeness' },
+            label: 'Closeness',
             type: 'text',
           },
         },
@@ -67,11 +67,13 @@ describe('getLocalizationCoverage()', () => {
   it('counts the texts translated into each declared language', () => {
     const coverage = getLocalizationCoverage(stateWith(trilingual()));
 
-    expect(coverage.total).toBe(4);
+    // The node type's label, the stage's label and its title. The attribute's
+    // label is not translated, so it is not counted.
+    expect(coverage.total).toBe(3);
     expect(coverage.locales).toEqual([
-      { locale: 'en', isDefault: true, translated: 4, missing: 0 },
-      { locale: 'fr', isDefault: false, translated: 3, missing: 1 },
-      { locale: 'de', isDefault: false, translated: 2, missing: 2 },
+      { locale: 'en', isDefault: true, translated: 3, missing: 0 },
+      { locale: 'fr', isDefault: false, translated: 2, missing: 1 },
+      { locale: 'de', isDefault: false, translated: 1, missing: 2 },
     ]);
   });
 
@@ -97,7 +99,7 @@ describe('getMissingTranslationGroups()', () => {
         place: { kind: 'codebook', entity: 'node', entityType: 'person' },
         fields: [
           {
-            field: ['variables', 'closeness', 'label'],
+            field: ['label'],
             gaps: [
               { locale: 'fr', fallbackLocale: 'en' },
               { locale: 'de', fallbackLocale: 'en' },

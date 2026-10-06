@@ -25,7 +25,7 @@ describe('variable schema conformance', () => {
       const result = EgoVariablesSchema.safeParse({
         egoId: {
           name: 'ego_id',
-          label: localized('ego_id'),
+          label: 'ego_id',
           type: 'text',
           component: 'Text',
           validation: { unique: true },
@@ -38,7 +38,7 @@ describe('variable schema conformance', () => {
       const result = EgoVariablesSchema.safeParse({
         egoId: {
           name: 'ego_id',
-          label: localized('ego_id'),
+          label: 'ego_id',
           type: 'text',
           component: 'Text',
           validation: { required: true },
@@ -50,7 +50,7 @@ describe('variable schema conformance', () => {
     it('still allows unique on a node variable', () => {
       const result = VariableSchema.safeParse({
         name: 'node_id',
-        label: localized('node_id'),
+        label: 'node_id',
         type: 'text',
         component: 'Text',
         validation: { unique: true },
@@ -63,7 +63,7 @@ describe('variable schema conformance', () => {
     it('rejects an ordinal variable declaring minSelected', () => {
       const result = VariableSchema.safeParse({
         name: 'ord',
-        label: localized('ord'),
+        label: 'ord',
         type: 'ordinal',
         component: 'RadioGroup',
         options: [
@@ -78,7 +78,7 @@ describe('variable schema conformance', () => {
     it('rejects an ordinal variable declaring maxSelected', () => {
       const result = VariableSchema.safeParse({
         name: 'ord',
-        label: localized('ord'),
+        label: 'ord',
         type: 'ordinal',
         component: 'RadioGroup',
         options: [
@@ -93,7 +93,7 @@ describe('variable schema conformance', () => {
     it('still allows minSelected/maxSelected on a categorical variable', () => {
       const result = VariableSchema.safeParse({
         name: 'cat',
-        label: localized('cat'),
+        label: 'cat',
         type: 'categorical',
         component: 'CheckboxGroup',
         options: [
@@ -108,7 +108,7 @@ describe('variable schema conformance', () => {
     it('accepts an ordinal variable with required-only validation', () => {
       const result = VariableSchema.safeParse({
         name: 'ord',
-        label: localized('ord'),
+        label: 'ord',
         type: 'ordinal',
         component: 'RadioGroup',
         options: [
@@ -125,7 +125,7 @@ describe('variable schema conformance', () => {
     it('rejects a categorical option with a boolean value', () => {
       const result = VariableSchema.safeParse({
         name: 'cat',
-        label: localized('cat'),
+        label: 'cat',
         type: 'categorical',
         component: 'CheckboxGroup',
         options: [
@@ -139,7 +139,7 @@ describe('variable schema conformance', () => {
     it('rejects an ordinal option with a boolean value', () => {
       const result = VariableSchema.safeParse({
         name: 'ord',
-        label: localized('ord'),
+        label: 'ord',
         type: 'ordinal',
         component: 'RadioGroup',
         options: [
@@ -153,7 +153,7 @@ describe('variable schema conformance', () => {
     it('accepts string- and number-valued options', () => {
       const result = VariableSchema.safeParse({
         name: 'cat',
-        label: localized('cat'),
+        label: 'cat',
         type: 'categorical',
         component: 'CheckboxGroup',
         options: [
@@ -169,7 +169,7 @@ describe('variable schema conformance', () => {
     it('rejects a categorical variable with one option', () => {
       const result = VariableSchema.safeParse({
         name: 'cat',
-        label: localized('cat'),
+        label: 'cat',
         type: 'categorical',
         component: 'CheckboxGroup',
         options: [{ label: localized('only'), value: 'only' }],
@@ -180,7 +180,7 @@ describe('variable schema conformance', () => {
     it('rejects a categorical variable with zero options', () => {
       const result = VariableSchema.safeParse({
         name: 'cat',
-        label: localized('cat'),
+        label: 'cat',
         type: 'categorical',
         component: 'CheckboxGroup',
         options: [],
@@ -191,7 +191,7 @@ describe('variable schema conformance', () => {
     it('rejects an ordinal variable with one option', () => {
       const result = VariableSchema.safeParse({
         name: 'ord',
-        label: localized('ord'),
+        label: 'ord',
         type: 'ordinal',
         component: 'RadioGroup',
         options: [{ label: localized('only'), value: 'only' }],
@@ -202,7 +202,7 @@ describe('variable schema conformance', () => {
     it('accepts a categorical variable with two options', () => {
       const result = VariableSchema.safeParse({
         name: 'cat',
-        label: localized('cat'),
+        label: 'cat',
         type: 'categorical',
         component: 'CheckboxGroup',
         options: [
@@ -216,7 +216,7 @@ describe('variable schema conformance', () => {
     it('accepts an ordinal variable with two options', () => {
       const result = VariableSchema.safeParse({
         name: 'ord',
-        label: localized('ord'),
+        label: 'ord',
         type: 'ordinal',
         component: 'RadioGroup',
         options: [
@@ -233,7 +233,7 @@ describe('variable schema conformance', () => {
       const result = VariablesSchema.safeParse({
         secret: {
           name: 'secret',
-          label: localized('secret'),
+          label: 'secret',
           type: 'text',
           component: 'Text',
           encrypted: true,
@@ -246,7 +246,7 @@ describe('variable schema conformance', () => {
       const result = VariablesSchema.safeParse({
         count: {
           name: 'count',
-          label: localized('count'),
+          label: 'count',
           type: 'number',
           component: 'Number',
           encrypted: true,
@@ -259,7 +259,7 @@ describe('variable schema conformance', () => {
       const result = VariablesSchema.safeParse({
         when: {
           name: 'when',
-          label: localized('when'),
+          label: 'when',
           type: 'datetime',
           component: 'DatePicker',
           encrypted: true,
@@ -272,7 +272,7 @@ describe('variable schema conformance', () => {
       const result = EgoVariablesSchema.safeParse({
         egoSecret: {
           name: 'ego_secret',
-          label: localized('ego_secret'),
+          label: 'ego_secret',
           type: 'text',
           component: 'Text',
           encrypted: true,
@@ -285,7 +285,7 @@ describe('variable schema conformance', () => {
       const result = EdgeVariablesSchema.safeParse({
         edgeSecret: {
           name: 'edge_secret',
-          label: localized('edge_secret'),
+          label: 'edge_secret',
           type: 'text',
           component: 'Text',
           encrypted: true,
@@ -298,7 +298,7 @@ describe('variable schema conformance', () => {
       const result = EdgeVariablesSchema.safeParse({
         edgeNote: {
           name: 'edge_note',
-          label: localized('edge_note'),
+          label: 'edge_note',
           type: 'text',
           component: 'Text',
           validation: { unique: true },
@@ -310,7 +310,7 @@ describe('variable schema conformance', () => {
     it('accepts a node text variable without encrypted', () => {
       const result = VariableSchema.safeParse({
         name: 'note',
-        label: localized('note'),
+        label: 'note',
         type: 'text',
         component: 'Text',
       });
@@ -321,7 +321,7 @@ describe('variable schema conformance', () => {
       const result = EgoVariablesSchema.safeParse({
         egoNote: {
           name: 'ego_note',
-          label: localized('ego_note'),
+          label: 'ego_note',
           type: 'text',
           component: 'Text',
         },
@@ -334,7 +334,7 @@ describe('variable schema conformance', () => {
     const scalarVariables = (validation: Record<string, unknown>) => ({
       closeness: {
         name: 'closeness',
-        label: localized('closeness'),
+        label: 'closeness',
         type: 'scalar',
         component: 'VisualAnalogScale',
         validation,
@@ -365,14 +365,14 @@ describe('variable schema conformance', () => {
       const result = VariablesSchema.safeParse({
         closeness: {
           name: 'closeness',
-          label: localized('closeness'),
+          label: 'closeness',
           type: 'scalar',
           component: 'VisualAnalogScale',
           validation: { required: true, greaterThanVariable: 'trust' },
         },
         trust: {
           name: 'trust',
-          label: localized('trust'),
+          label: 'trust',
           type: 'scalar',
           component: 'VisualAnalogScale',
         },
@@ -384,7 +384,7 @@ describe('variable schema conformance', () => {
       const result = VariablesSchema.safeParse({
         age: {
           name: 'age',
-          label: localized('age'),
+          label: 'age',
           type: 'number',
           component: 'Number',
           validation: { minValue: 18 },
@@ -411,7 +411,7 @@ describe('variable schema conformance', () => {
     const booleanVariable = (options?: unknown) => ({
       isClose: {
         name: 'is_close',
-        label: localized('is_close'),
+        label: 'is_close',
         type: 'boolean',
         component: 'Boolean',
         validation: { required: true },
@@ -470,7 +470,7 @@ describe('variable schema conformance', () => {
     const componentlessBooleanVariable = (options?: unknown) => ({
       isClose: {
         name: 'is_close',
-        label: localized('is_close'),
+        label: 'is_close',
         type: 'boolean',
         ...(options !== undefined ? { options } : {}),
       },

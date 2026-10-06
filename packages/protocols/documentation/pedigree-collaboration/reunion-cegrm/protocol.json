@@ -9,7 +9,7 @@
       "variables": {
         "participant_consent": {
           "name": "participant_consent",
-          "label": { "en-US": "participant_consent" },
+          "label": "participant_consent",
           "type": "boolean",
           "component": "Boolean",
           "validation": {
@@ -30,13 +30,13 @@
         },
         "ego_age": {
           "name": "ego_age",
-          "label": { "en-US": "ego_age" },
+          "label": "ego_age",
           "type": "number",
           "component": "Number"
         },
         "ego_education": {
           "name": "ego_education",
-          "label": { "en-US": "ego_education" },
+          "label": "ego_education",
           "type": "ordinal",
           "component": "RadioGroup",
           "options": [
@@ -86,7 +86,7 @@
         "variables": {
           "name": {
             "name": "name",
-            "label": { "en-US": "name" },
+            "label": "name",
             "type": "text",
             "component": "Text",
             "validation": {
@@ -96,19 +96,19 @@
           },
           "is_ego": {
             "name": "is_ego",
-            "label": { "en-US": "is_ego" },
+            "label": "is_ego",
             "type": "boolean",
             "component": "Toggle"
           },
           "relationship_to_ego": {
             "name": "relationship_to_ego",
-            "label": { "en-US": "relationship_to_ego" },
+            "label": "relationship_to_ego",
             "type": "text",
             "component": "Text"
           },
           "biologicalSex": {
             "name": "biologicalSex",
-            "label": { "en-US": "biologicalSex" },
+            "label": "biologicalSex",
             "type": "categorical",
             "options": [
               {
@@ -137,12 +137,12 @@
           },
           "layout": {
             "name": "layout",
-            "label": { "en-US": "layout" },
+            "label": "layout",
             "type": "layout"
           },
           "tie_type": {
             "name": "tie_type",
-            "label": { "en-US": "tie_type" },
+            "label": "tie_type",
             "type": "categorical",
             "component": "ToggleButtonGroup",
             "options": [
@@ -174,7 +174,7 @@
           },
           "tie_type_other": {
             "name": "tie_type_other",
-            "label": { "en-US": "tie_type_other" },
+            "label": "tie_type_other",
             "type": "text",
             "component": "Text",
             "validation": {
@@ -183,19 +183,19 @@
           },
           "has_condition": {
             "name": "has_condition",
-            "label": { "en-US": "has_condition" },
+            "label": "has_condition",
             "type": "boolean",
             "component": "Toggle"
           },
           "had_testing": {
             "name": "had_testing",
-            "label": { "en-US": "had_testing" },
+            "label": "had_testing",
             "type": "boolean",
             "component": "Toggle"
           },
           "living_status": {
             "name": "living_status",
-            "label": { "en-US": "living_status" },
+            "label": "living_status",
             "type": "categorical",
             "component": "ToggleButtonGroup",
             "options": [
@@ -215,13 +215,13 @@
           },
           "birth_year": {
             "name": "birth_year",
-            "label": { "en-US": "birth_year" },
+            "label": "birth_year",
             "type": "number",
             "component": "Number"
           },
           "closeness": {
             "name": "closeness",
-            "label": { "en-US": "closeness" },
+            "label": "closeness",
             "type": "ordinal",
             "component": "LikertScale",
             "options": [
@@ -245,7 +245,7 @@
           },
           "contact_frequency": {
             "name": "contact_frequency",
-            "label": { "en-US": "contact_frequency" },
+            "label": "contact_frequency",
             "type": "ordinal",
             "component": "LikertScale",
             "options": [
@@ -277,49 +277,49 @@
           },
           "exch_information": {
             "name": "exch_information",
-            "label": { "en-US": "exch_information" },
+            "label": "exch_information",
             "type": "boolean",
             "component": "Toggle"
           },
           "exch_tangible": {
             "name": "exch_tangible",
-            "label": { "en-US": "exch_tangible" },
+            "label": "exch_tangible",
             "type": "boolean",
             "component": "Toggle"
           },
           "exch_emotional": {
             "name": "exch_emotional",
-            "label": { "en-US": "exch_emotional" },
+            "label": "exch_emotional",
             "type": "boolean",
             "component": "Toggle"
           },
           "exch_spiritual": {
             "name": "exch_spiritual",
-            "label": { "en-US": "exch_spiritual" },
+            "label": "exch_spiritual",
             "type": "boolean",
             "component": "Toggle"
           },
           "role_gatherer": {
             "name": "role_gatherer",
-            "label": { "en-US": "role_gatherer" },
+            "label": "role_gatherer",
             "type": "boolean",
             "component": "Toggle"
           },
           "role_disseminator": {
             "name": "role_disseminator",
-            "label": { "en-US": "role_disseminator" },
+            "label": "role_disseminator",
             "type": "boolean",
             "component": "Toggle"
           },
           "role_blocker": {
             "name": "role_blocker",
-            "label": { "en-US": "role_blocker" },
+            "label": "role_blocker",
             "type": "boolean",
             "component": "Toggle"
           },
           "gender_identity": {
             "name": "gender_identity",
-            "label": { "en-US": "gender_identity" },
+            "label": "gender_identity",
             "type": "categorical",
             "component": "CheckboxGroup",
             "options": [
@@ -359,7 +359,7 @@
         "variables": {
           "relationshipType": {
             "name": "relationshipType",
-            "label": { "en-US": "relationshipType" },
+            "label": "relationshipType",
             "type": "categorical",
             "options": [
               {
@@ -390,17 +390,17 @@
           },
           "isActive": {
             "name": "isActive",
-            "label": { "en-US": "isActive" },
+            "label": "isActive",
             "type": "boolean"
           },
           "isGestationalCarrier": {
             "name": "isGestationalCarrier",
-            "label": { "en-US": "isGestationalCarrier" },
+            "label": "isGestationalCarrier",
             "type": "boolean"
           },
           "gameteRole": {
             "name": "gameteRole",
-            "label": { "en-US": "gameteRole" },
+            "label": "gameteRole",
             "type": "categorical",
             "options": [
               {
@@ -1015,10 +1015,22 @@
             "display": ["knows"]
           },
           "highlight": [
-            "exch_information",
-            "exch_tangible",
-            "exch_emotional",
-            "exch_spiritual"
+            {
+              "variable": "exch_information",
+              "label": { "en-US": "exch_information" }
+            },
+            {
+              "variable": "exch_tangible",
+              "label": { "en-US": "exch_tangible" }
+            },
+            {
+              "variable": "exch_emotional",
+              "label": { "en-US": "exch_emotional" }
+            },
+            {
+              "variable": "exch_spiritual",
+              "label": { "en-US": "exch_spiritual" }
+            }
           ]
         },
         {
@@ -1028,7 +1040,17 @@
           "edges": {
             "display": ["knows"]
           },
-          "highlight": ["role_gatherer", "role_disseminator", "role_blocker"]
+          "highlight": [
+            {
+              "variable": "role_gatherer",
+              "label": { "en-US": "role_gatherer" }
+            },
+            {
+              "variable": "role_disseminator",
+              "label": { "en-US": "role_disseminator" }
+            },
+            { "variable": "role_blocker", "label": { "en-US": "role_blocker" } }
+          ]
         }
       ],
       "filter": {

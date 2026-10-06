@@ -55,7 +55,7 @@ const codebook = {
       color: 'node-color-seq-1',
       shape: { default: 'circle' },
       variables: {
-        [NAME_VAR]: { name: 'name', label: { en: 'Name' }, type: 'text' },
+        [NAME_VAR]: { name: 'name', label: 'Name', type: 'text' },
       },
     },
   },

@@ -381,11 +381,11 @@ const withNormalizedEntityName = (document: SectionDoc): SectionDoc => {
 /**
  * `draft` with a label written from its name where it holds none.
  *
- * A node type, edge type or attribute needs participant-facing wording beside
- * its name, but the researcher names it first and may never word it
- * separately, so the name stands in — in the protocol's default language —
- * until they do. Until the protocol's languages are known nothing can be
- * written, and the schema refuses the missing label.
+ * A node type or edge type needs participant-facing wording beside its name,
+ * but the researcher names it first and may never word it separately, so the
+ * name stands in — in the protocol's default language — until they do. Until
+ * the protocol's languages are known nothing can be written, and the schema
+ * refuses the missing label.
  */
 export const withSeededLabel = <
   Draft extends Readonly<Record<string, unknown>>,
@@ -400,6 +400,23 @@ export const withSeededLabel = <
   return name === ''
     ? draft
     : { ...draft, label: localizedFromText(localization, name) };
+};
+
+/**
+ * An attribute `draft` with its name standing in for a label it does not
+ * hold. An attribute's label is not translated, so it is plain text.
+ */
+export const withSeededVariableLabel = <
+  Draft extends Readonly<Record<string, unknown>>,
+>(
+  draft: Draft,
+): Draft => {
+  if (typeof draft.label === 'string' && draft.label.trim() !== '') {
+    return draft;
+  }
+  const name =
+    typeof draft.name === 'string' ? normalizeCodebookName(draft.name) : '';
+  return name === '' ? draft : { ...draft, label: name };
 };
 
 const validateVariableDraft = (draft: CodebookVariableDraft): Variable => {
@@ -718,9 +735,7 @@ export function documentWithCreatedVariable(
   if (Object.hasOwn(variables, input.variableId)) {
     throw new DuplicateVariableIdError(input.variableId);
   }
-  const variable = validateVariableDraft(
-    withSeededLabel(input.draft, input.protocolContext.localization),
-  );
+  const variable = validateVariableDraft(withSeededVariableLabel(input.draft));
   assertVariableNameAvailable(variables, variable);
   assertNoExportColumnConflict(input.subject, variables, variable);
   defineOwn(variables, input.variableId, cloneValue(variable));

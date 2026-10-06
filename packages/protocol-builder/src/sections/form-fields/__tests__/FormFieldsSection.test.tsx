@@ -532,19 +532,19 @@ describe('the fields a form collects', () => {
           variables: {
             relationship_to_ego: {
               name: 'relationship_to_ego',
-              label: en('relationship_to_ego'),
+              label: 'relationship_to_ego',
               type: 'text',
               component: 'Text',
             },
             flagged: {
               name: 'flagged',
-              label: en('flagged'),
+              label: 'flagged',
               type: 'boolean',
               component: 'Boolean',
             },
             nickname: {
               name: 'nickname',
-              label: en('nickname'),
+              label: 'nickname',
               type: 'text',
               component: 'Text',
             },
@@ -565,7 +565,7 @@ describe('the fields a form collects', () => {
     expect(await harness.submit()).not.toBeNull();
     expect(asRecord(personVariables(harness).nickname)).toEqual({
       name: 'nickname',
-      label: en('nickname'),
+      label: 'nickname',
       type: 'text',
       component: 'Text',
     });
@@ -1598,7 +1598,7 @@ const collectNotesInATextArea = (
           ...personVariables(harness),
           notes: {
             name: 'notes',
-            label: en('notes'),
+            label: 'notes',
             type: 'text',
             component: 'TextArea',
           },
@@ -1647,7 +1647,7 @@ const seedContactSetting = (
           ...personVariables(harness),
           [SEEDED_CONTACT_SETTING]: {
             name: 'contact_setting',
-            label: en('contact_setting'),
+            label: 'contact_setting',
             type: 'categorical',
             // One of the two controls the schema lets a categorical be
             // collected with. A control belonging to another type — `RadioGroup`
@@ -1695,7 +1695,7 @@ const seedDateAttribute = (
           ...personVariables(harness),
           [SEEDED_MET_ON]: {
             name: 'met_on',
-            label: en('met_on'),
+            label: 'met_on',
             type: 'datetime',
             component: 'DatePicker',
             ...(parameters === undefined ? {} : { parameters }),
@@ -1956,7 +1956,7 @@ describe('the codebook an attribute a form field collects lives in', () => {
             ...personVariables(harness),
             [SEEDED_CONTACT_SETTING]: {
               name: 'contact_setting',
-              label: en('contact_setting'),
+              label: 'contact_setting',
               type: 'categorical',
               //  is one of the two a categorical may be
               // collected with; a control belonging to another kind makes the
@@ -2141,7 +2141,7 @@ describe('the codebook an attribute a form field collects lives in', () => {
                 ...asRecord(current.variables),
                 [COLLABORATORS_ATTRIBUTE]: {
                   name: 'metThrough',
-                  label: en('metThrough'),
+                  label: 'metThrough',
                   type: 'text',
                   component: 'Text',
                 },
@@ -2399,7 +2399,7 @@ describe('the codebook an attribute a form field collects lives in', () => {
 
     expect(asRecord(personVariables(harness).flagged)).toEqual({
       name: 'flagged',
-      label: en('flagged'),
+      label: 'flagged',
       type: 'boolean',
       component: 'Boolean',
       options: [
@@ -2442,7 +2442,7 @@ describe('the codebook an attribute a form field collects lives in', () => {
 
     expect(asRecord(personVariables(harness).flagged)).toEqual({
       name: 'flagged',
-      label: en('flagged'),
+      label: 'flagged',
       type: 'boolean',
       component: 'Toggle',
     });
@@ -2899,7 +2899,7 @@ describe('an attribute id that collides with the create option', () => {
             ...personVariables(harness),
             [COLLIDING_ID]: {
               name: 'nickname',
-              label: en('nickname'),
+              label: 'nickname',
               type: 'text',
               component: 'Text',
             },
@@ -3055,7 +3055,7 @@ describe('an attribute that stops being collectable under an open row', () => {
             ...personVariables(harness),
             relationship_to_ego: {
               name: 'relationship_to_ego',
-              label: en('relationship_to_ego'),
+              label: 'relationship_to_ego',
               type: 'layout',
             },
           },
@@ -3722,7 +3722,7 @@ describe('rules for the attribute a field is inventing', () => {
     // The row saved, and what it wrote is the rule a number answer does take.
     expect(inventedNickname(harness)?.[1]).toEqual({
       name: 'nickname',
-      label: en('nickname'),
+      label: 'nickname',
       type: 'number',
       component: 'Number',
       validation: { required: true },
@@ -3774,7 +3774,7 @@ describe('rules for the attribute a field is inventing', () => {
 
     expect(inventedNickname(harness)?.[1]).toEqual({
       name: 'nickname',
-      label: en('nickname'),
+      label: 'nickname',
       type: 'text',
       component: 'Text',
       validation: { sameAs: 'composerName' },
@@ -4069,7 +4069,7 @@ describe('inventing an attribute whose control takes settings', () => {
     const created = savedAttribute(harness, 'closeness');
     expect(created?.[1]).toEqual({
       name: 'closeness',
-      label: en('closeness'),
+      label: 'closeness',
       type: 'scalar',
       component: 'VisualAnalogScale',
       parameters: {
@@ -4140,7 +4140,7 @@ describe('inventing an attribute whose control takes settings', () => {
 
     expect(savedAttribute(harness, 'last_contact')?.[1]).toEqual({
       name: 'last_contact',
-      label: en('last_contact'),
+      label: 'last_contact',
       type: 'datetime',
       component: 'RelativeDatePicker',
       parameters: { before: 30, after: 7 },
@@ -4548,7 +4548,7 @@ describe('the live preview beside a form field’s settings', () => {
             ...personVariables(harness),
             [FOLLOW_UP]: {
               name: 'follow_up',
-              label: en('follow_up'),
+              label: 'follow_up',
               type: 'boolean',
               component: 'Boolean',
             },

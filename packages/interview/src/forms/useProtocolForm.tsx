@@ -16,7 +16,10 @@ import type {
 } from '@codaco/protocol-validation';
 
 import { useStageSelector } from '../hooks/useStageSelector';
-import { useResolveLocalizedString } from '../localization/ProtocolLocalizationProvider';
+import {
+  useResolveLocalizedString,
+  useUntranslatedText,
+} from '../localization/ProtocolLocalizationProvider';
 import {
   getValidationContext,
   type Subject,
@@ -199,16 +202,17 @@ export default function useProtocolForm({
   }, [fieldsMetadata, namespace]);
 
   const resolve = useResolveLocalizedString();
+  const untranslated = useUntranslatedText();
 
   const renderedFields = fieldsMetadata.map((field, index) => {
     // A caption that is blank in the interview language counts as unauthored,
     // by the same rule `variableLabels` applies, so the field falls back to
-    // the codebook variable's own label.
+    // the codebook variable's own label, which is not translated.
     const label =
       field.authoredLabel !== undefined &&
       authoredFieldLabel(resolve(field.authoredLabel).text) !== undefined
         ? field.authoredLabel
-        : field.label;
+        : untranslated(field.label);
     const initialValue =
       initialValues &&
       Object.hasOwn(initialValues, field.variable) &&

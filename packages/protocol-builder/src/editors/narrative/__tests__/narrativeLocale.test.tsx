@@ -117,7 +117,9 @@ describe('the narrative sections, read in Spanish', () => {
         id: 'narrative-preset-1',
         label: { 'en-US': 'Vista por defecto' },
         layoutVariable: 'layout',
-        highlight: [LOST_HIGHLIGHT],
+        highlight: [
+          { variable: LOST_HIGHLIGHT, label: { 'en-US': 'Antes marcado' } },
+        ],
       }),
       locale: 'es',
     });

@@ -218,11 +218,11 @@ describe('the attributes of one type as the rule reads them', () => {
       variableNameScope('edge', {
         'v-a': {
           name: 'closeness',
-          label: { en: 'Closeness' },
+          label: 'Closeness',
           type: 'ordinal',
           options: [{ label: { en: 'Close' }, value: 1 }],
         },
-        'v-b': { name: 'note', label: { en: 'Note' }, type: 'text' },
+        'v-b': { name: 'note', label: 'Note', type: 'text' },
       }),
     ).toEqual({
       entity: 'edge',

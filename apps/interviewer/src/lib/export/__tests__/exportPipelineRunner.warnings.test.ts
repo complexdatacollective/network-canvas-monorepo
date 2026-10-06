@@ -30,7 +30,7 @@ const codebook: Codebook = {
       color: 'node-color-seq-1',
       shape: { default: 'circle' },
       variables: {
-        nickname: { name: 'Nickname', label: { en: 'Nickname' }, type: 'text' },
+        nickname: { name: 'Nickname', label: 'Nickname', type: 'text' },
       },
     },
   },

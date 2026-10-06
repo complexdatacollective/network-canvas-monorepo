@@ -46,8 +46,8 @@ const protocolSections = (): Record<string, SectionDoc> => ({
     color: 'node-color-seq-1',
     shape: { default: 'circle' },
     variables: {
-      age: { name: 'Age', label: text('Age'), type: 'number' },
-      nickname: { name: 'Nickname', label: text('Nickname'), type: 'text' },
+      age: { name: 'Age', label: 'Age', type: 'number' },
+      nickname: { name: 'Nickname', label: 'Nickname', type: 'text' },
     },
   },
   [sectionId({ kind: 'codebookEdge', typeId: 'knows' })]: {
@@ -55,14 +55,14 @@ const protocolSections = (): Record<string, SectionDoc> => ({
     label: text('Knows'),
     color: 'edge-color-seq-1',
     variables: {
-      strength: { name: 'Strength', label: text('Strength'), type: 'number' },
+      strength: { name: 'Strength', label: 'Strength', type: 'number' },
     },
   },
   [sectionId({ kind: 'codebookEgo' })]: {
     variables: {
       consented: {
         name: 'Consented',
-        label: text('Consented'),
+        label: 'Consented',
         type: 'boolean',
       },
     },
@@ -99,7 +99,7 @@ describe('protocolContextFromSections', () => {
     sections[nodeId] = {
       ...sections[nodeId],
       variables: {
-        nickname: { name: 'Nickname', label: text('Nickname'), type: 'text' },
+        nickname: { name: 'Nickname', label: 'Nickname', type: 'text' },
       },
     };
 
@@ -147,14 +147,14 @@ describe('protocolContextFromSections', () => {
       variables: {
         age: {
           name: 'RelationshipAge',
-          label: text('RelationshipAge'),
+          label: 'RelationshipAge',
           type: 'number',
         },
       },
     };
     sections[egoId] = {
       variables: {
-        age: { name: 'EgoAge', label: text('EgoAge'), type: 'number' },
+        age: { name: 'EgoAge', label: 'EgoAge', type: 'number' },
       },
     };
 

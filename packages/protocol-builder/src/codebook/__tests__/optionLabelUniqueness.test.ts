@@ -18,7 +18,7 @@ const personDocument = (options: readonly unknown[]): SectionDoc => ({
   variables: {
     closeness: {
       name: 'closeness',
-      label: { en: 'closeness' },
+      label: 'closeness',
       type: 'ordinal',
       options,
     },

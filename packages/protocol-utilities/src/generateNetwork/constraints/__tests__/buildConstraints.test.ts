@@ -984,7 +984,7 @@ describe('a date field whose floor is later than today, through feasibility', ()
           variables: {
             due: {
               name: 'Due',
-              label: { 'en-US': 'Due' },
+              label: 'Due',
               type: 'datetime',
               component: 'DatePicker',
               parameters,
@@ -1022,13 +1022,13 @@ describe('buildEntityConstraints', () => {
       {
         v1: {
           name: 'Name',
-          label: { 'en-US': 'Name' },
+          label: 'Name',
           type: 'text',
           validation: { required: true },
         },
         v2: {
           name: 'Age',
-          label: { 'en-US': 'Age' },
+          label: 'Age',
           type: 'number',
           validation: { minValue: 18 },
         },

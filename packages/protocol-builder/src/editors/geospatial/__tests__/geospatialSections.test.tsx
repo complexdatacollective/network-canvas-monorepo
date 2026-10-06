@@ -95,7 +95,7 @@ const addLocationAttribute = (
       ...(typeof person.variables === 'object' && person.variables !== null
         ? person.variables
         : {}),
-      [id]: { name: id, label: { 'en-US': id }, type: 'location' },
+      [id]: { name: id, label: id, type: 'location' },
     },
   }));
 };
@@ -548,13 +548,13 @@ describe('the places a geospatial stage asks about', () => {
           : {}),
         nickname: {
           name: 'nickname',
-          label: { 'en-US': 'nickname' },
+          label: 'nickname',
           type: 'text',
           component: 'Text',
         },
         workplace: {
           name: 'workplace',
-          label: { 'en-US': 'workplace' },
+          label: 'workplace',
           type: 'location',
         },
       },

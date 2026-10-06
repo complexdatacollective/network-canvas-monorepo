@@ -24,7 +24,7 @@ const protocolIn = (
     stage: Record<string, string>;
     title: Record<string, string>;
     nodeType: Record<string, string>;
-    variable: Record<string, string>;
+    variable: string;
     options: [Record<string, string>, Record<string, string>];
   },
 ): CurrentProtocol => ({
@@ -74,7 +74,7 @@ const migrated = () =>
       stage: { und: 'Welcome' },
       title: { und: 'Hello' },
       nodeType: { und: 'Person' },
-      variable: { und: 'Closeness' },
+      variable: 'Closeness',
       options: [{ und: 'Close' }, { und: 'Distant' }],
     },
   );
@@ -86,7 +86,7 @@ const bilingual = () =>
       stage: { en: 'Welcome', fr: 'Bienvenue' },
       title: { en: 'Hello', fr: 'Bonjour' },
       nodeType: { en: 'Person', fr: 'Personne' },
-      variable: { en: 'Closeness' },
+      variable: 'Closeness',
       options: [{ en: 'Close', fr: 'Proche' }, { en: 'Distant' }],
     },
   );
@@ -165,7 +165,7 @@ describe('removeLocale', () => {
       stage: { en: 'Welcome' },
       title: { en: 'Hello' },
       nodeType: { en: 'Person' },
-      variable: { en: 'Closeness' },
+      variable: 'Closeness',
       options: [{ en: 'Close' }, { en: 'Distant' }],
     });
     expect((await validateProtocol(protocol)).success).toBe(true);
@@ -179,14 +179,14 @@ describe('removeLocale', () => {
   });
 
   it('refuses to remove a language that some text exists only in', () => {
-    // The variable label and the "Distant" option are written only in English.
+    // The "Distant" option is written only in English.
     const frenchDefault = protocolOf(setDefaultLocale(bilingual(), 'fr'));
 
     expect(
       getLocaleRemovalImpact(frenchDefault, 'en').strandedStrings.map(
         ({ value }) => value,
       ),
-    ).toEqual([{ en: 'Closeness' }, { en: 'Distant' }]);
+    ).toEqual([{ en: 'Distant' }]);
     expect(removeLocale(frenchDefault, 'en')).toEqual({
       ok: false,
       reason: 'would-empty',
@@ -252,7 +252,7 @@ describe('relabelLocale', () => {
       stage: { en: 'Welcome' },
       title: { en: 'Hello' },
       nodeType: { en: 'Person' },
-      variable: { en: 'Closeness' },
+      variable: 'Closeness',
       options: [{ en: 'Close' }, { en: 'Distant' }],
     });
     expect((await validateProtocol(protocol)).success).toBe(true);

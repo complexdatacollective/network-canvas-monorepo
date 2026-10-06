@@ -381,9 +381,9 @@ export default function FieldPreviewPane({
   const authoredCopy = isAuthored(localize(authored).text)
     ? asLocalizedString(authored)
     : undefined;
-  const codebookLabel = asLocalizedString(
-    Reflect.get(codebookVariable ?? {}, 'label'),
-  );
+  const heldLabel: unknown = Reflect.get(codebookVariable ?? {}, 'label');
+  const codebookLabel =
+    typeof heldLabel === 'string' && heldLabel !== '' ? heldLabel : undefined;
   const caption: LocalizedString | string =
     authoredCopy ??
     (mode === 'composer'

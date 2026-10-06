@@ -14,7 +14,7 @@
         "variables": {
           "c7053a78-bcd5-44bb-bfca-36c8aefa793f": {
             "name": "name",
-            "label": { "en-US": "name" },
+            "label": "name",
             "type": "text",
             "validation": {
               "required": true
@@ -22,17 +22,17 @@
           },
           "ee090c9b-2b70-4648-a6db-328d4ef4dbfe": {
             "name": "sociogram_layout",
-            "label": { "en-US": "sociogram_layout" },
+            "label": "sociogram_layout",
             "type": "layout"
           },
           "88271ba2-301d-402c-8407-cfa89446ca1d": {
             "name": "box_layout",
-            "label": { "en-US": "box_layout" },
+            "label": "box_layout",
             "type": "layout"
           },
           "6637c4a8-c383-4a54-bfd8-7f093a1cb4e1": {
             "name": "communication_freq",
-            "label": { "en-US": "communication_freq" },
+            "label": "communication_freq",
             "type": "ordinal",
             "options": [
               {
@@ -59,17 +59,17 @@
           },
           "7e84034b-9aa5-4996-a1c4-2deb3e38c645": {
             "name": "provides_advice",
-            "label": { "en-US": "provides_advice" },
+            "label": "provides_advice",
             "type": "boolean"
           },
           "20cf8ab4-9356-4568-81e2-8460258e1b45": {
             "name": "provides_material_support",
-            "label": { "en-US": "provides_material_support" },
+            "label": "provides_material_support",
             "type": "boolean"
           },
           "132ad372-2ef2-4eec-820e-9eae91829e53": {
             "name": "group",
-            "label": { "en-US": "group" },
+            "label": "group",
             "type": "categorical",
             "options": [
               {
@@ -92,7 +92,7 @@
           },
           "1380a661-ae08-4477-8e53-253f6c928ed9": {
             "name": "group_other",
-            "label": { "en-US": "group_other" },
+            "label": "group_other",
             "type": "text",
             "validation": {
               "required": true
@@ -100,12 +100,12 @@
           },
           "1d6a2675-3cff-4740-8c56-d5f26982eaeb": {
             "name": "discuss_network_research",
-            "label": { "en-US": "discuss_network_research" },
+            "label": "discuss_network_research",
             "type": "boolean"
           },
           "52138688-e1e9-418b-9c33-ec9f3def499b": {
             "name": "social_networks_research_relationship",
-            "label": { "en-US": "social_networks_research_relationship" },
+            "label": "social_networks_research_relationship",
             "type": "categorical",
             "options": [
               {
@@ -128,7 +128,7 @@
           },
           "2bee574a-a12e-4ee0-8610-263130299a2d": {
             "name": "social_network_research_relationship_other",
-            "label": { "en-US": "social_network_research_relationship_other" },
+            "label": "social_network_research_relationship_other",
             "type": "text",
             "validation": {
               "required": true
@@ -147,7 +147,7 @@
         "variables": {
           "45a62b9c-42ec-4735-bf1a-4074a2001d2c": {
             "name": "name",
-            "label": { "en-US": "name" },
+            "label": "name",
             "type": "text",
             "component": "Text",
             "validation": {
@@ -156,7 +156,7 @@
           },
           "1d1460f2-8c11-4f66-8647-83801116aebf": {
             "name": "last_visit",
-            "label": { "en-US": "last_visit" },
+            "label": "last_visit",
             "type": "datetime",
             "component": "DatePicker",
             "parameters": {
@@ -166,7 +166,7 @@
           },
           "37fb19da-3ec0-4427-bb4b-3b59003a7e60": {
             "name": "visit_purpose",
-            "label": { "en-US": "visit_purpose" },
+            "label": "visit_purpose",
             "type": "text",
             "component": "TextArea"
           }
@@ -183,7 +183,7 @@
         "variables": {
           "d91ca102-954d-4da1-b8b8-d9490c7bca44": {
             "name": "overall_review",
-            "label": { "en-US": "overall_review" },
+            "label": "overall_review",
             "type": "ordinal",
             "component": "LikertScale",
             "options": [
@@ -211,7 +211,7 @@
           },
           "95c5bb4d-5ac2-4ddd-8dd9-fca518f15748": {
             "name": "visited",
-            "label": { "en-US": "visited" },
+            "label": "visited",
             "type": "boolean",
             "component": "Boolean",
             "options": [
@@ -258,7 +258,7 @@
       "variables": {
         "4ab18994-a252-47cb-ba19-20b6ffc0e927": {
           "name": "first_name",
-          "label": { "en-US": "first_name" },
+          "label": "first_name",
           "type": "text",
           "component": "Text",
           "validation": {
@@ -267,7 +267,7 @@
         },
         "3b5197a9-d024-421c-8663-1e06e0587999": {
           "name": "last_name",
-          "label": { "en-US": "last_name" },
+          "label": "last_name",
           "type": "text",
           "component": "Text",
           "validation": {
@@ -276,7 +276,7 @@
         },
         "198bdb95-9556-4775-9c82-22531a382aa5": {
           "name": "dob",
-          "label": { "en-US": "dob" },
+          "label": "dob",
           "type": "datetime",
           "component": "DatePicker",
           "parameters": {
@@ -285,7 +285,7 @@
         },
         "92326a8e-f5a1-4918-8717-a4d6917a9264": {
           "name": "languages_spoken",
-          "label": { "en-US": "languages_spoken" },
+          "label": "languages_spoken",
           "type": "categorical",
           "component": "ToggleButtonGroup",
           "options": [
@@ -325,7 +325,7 @@
         },
         "aa418971-ce17-4f0f-8060-438197298a82": {
           "name": "existing_software",
-          "label": { "en-US": "existing_software" },
+          "label": "existing_software",
           "type": "ordinal",
           "component": "RadioGroup",
           "options": [
@@ -353,7 +353,7 @@
         },
         "d2ac00d6-337a-4ce4-87de-028eccd81617": {
           "name": "research_support",
-          "label": { "en-US": "research_support" },
+          "label": "research_support",
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
@@ -381,7 +381,7 @@
         },
         "3609188b-dfbe-482a-995c-d71387e22054": {
           "name": "operation_pain",
-          "label": { "en-US": "operation_pain" },
+          "label": "operation_pain",
           "type": "scalar",
           "component": "VisualAnalogScale",
           "parameters": {
@@ -391,13 +391,13 @@
         },
         "5a77b483-8120-4a64-aff1-c8c5d4ac33d1": {
           "name": "other_info",
-          "label": { "en-US": "other_info" },
+          "label": "other_info",
           "type": "text",
           "component": "TextArea"
         },
         "835ea5b5-1fbf-472d-ad3a-df74ec1d6870": {
           "name": "preferred_contact_method",
-          "label": { "en-US": "preferred_contact_method" },
+          "label": "preferred_contact_method",
           "type": "categorical",
           "component": "CheckboxGroup",
           "options": [
@@ -421,7 +421,7 @@
         },
         "09306238-68e4-498c-8c12-923eb2eec760": {
           "name": "participant_consent",
-          "label": { "en-US": "participant_consent" },
+          "label": "participant_consent",
           "type": "boolean",
           "component": "Boolean",
           "validation": {
@@ -1409,8 +1409,14 @@
             ]
           },
           "highlight": [
-            "7e84034b-9aa5-4996-a1c4-2deb3e38c645",
-            "20cf8ab4-9356-4568-81e2-8460258e1b45"
+            {
+              "variable": "7e84034b-9aa5-4996-a1c4-2deb3e38c645",
+              "label": { "en-US": "provides_advice" }
+            },
+            {
+              "variable": "20cf8ab4-9356-4568-81e2-8460258e1b45",
+              "label": { "en-US": "provides_material_support" }
+            }
           ]
         }
       ],

@@ -38,7 +38,7 @@ const PERSON: SectionDoc = {
   variables: {
     ethnicity: {
       name: 'Ethnicity',
-      label: { en: 'Ethnicity' },
+      label: 'Ethnicity',
       type: 'categorical',
       component: 'CheckboxGroup',
       options: [

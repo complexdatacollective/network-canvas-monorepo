@@ -5,18 +5,18 @@ import type { EntityDefinition } from '@codaco/protocol-validation';
 import getParentKeyByNameValue from '../getParentKeyByNameValue';
 
 const variables: NonNullable<EntityDefinition['variables']> = {
-  'id-name': { name: 'Full name', label: { en: 'Full name' }, type: 'text' },
-  'id-dotted': { name: 'a.b', label: { en: 'a.b' }, type: 'text' },
+  'id-name': { name: 'Full name', label: 'Full name', type: 'text' },
+  'id-dotted': { name: 'a.b', label: 'a.b', type: 'text' },
   'id-position': {
     name: 'Position',
-    label: { en: 'Position' },
+    label: 'Position',
     type: 'layout',
   },
-  'id-cjk': { name: '年龄', label: { en: '年龄' }, type: 'number' },
-  'id-cafe': { name: 'Café', label: { en: 'Café' }, type: 'text' },
+  'id-cjk': { name: '年龄', label: '年龄', type: 'number' },
+  'id-cafe': { name: 'Café', label: 'Café', type: 'text' },
   'id-contacts': {
     name: 'Contacts_kind',
-    label: { en: 'Contacts kind' },
+    label: 'Contacts kind',
     type: 'categorical',
     options: [
       { label: { en: 'Close friend' }, value: 'close friend' },
@@ -28,7 +28,7 @@ const variables: NonNullable<EntityDefinition['variables']> = {
   },
   'id-rating': {
     name: 'Rating',
-    label: { en: 'Rating' },
+    label: 'Rating',
     type: 'ordinal',
     options: [
       { label: { en: 'Low' }, value: 1 },
@@ -75,7 +75,7 @@ describe('getParentKeyByNameValue', () => {
 
   it('matches an NFC header against a name stored in NFD', () => {
     const decomposedVariables: NonNullable<EntityDefinition['variables']> = {
-      'id-cafe': { name: 'Café', label: { en: 'Café' }, type: 'text' },
+      'id-cafe': { name: 'Café', label: 'Café', type: 'text' },
     };
 
     expect(getParentKeyByNameValue(decomposedVariables, 'Café')).toBe(
@@ -95,12 +95,12 @@ describe('getParentKeyByNameValue', () => {
       const named: NonNullable<EntityDefinition['variables']> = {
         'id-proto': {
           name: '__proto__',
-          label: { en: '__proto__' },
+          label: '__proto__',
           type: 'text',
         },
         'id-constructor': {
           name: 'constructor',
-          label: { en: 'Constructor' },
+          label: 'Constructor',
           type: 'text',
         },
       };
@@ -118,7 +118,7 @@ describe('getParentKeyByNameValue', () => {
             '__proto__',
             {
               name: 'Anything',
-              label: { en: 'Anything' },
+              label: 'Anything',
               type: 'text' as const,
             },
           ],
@@ -142,7 +142,7 @@ describe('getParentKeyByNameValue', () => {
       const named: NonNullable<EntityDefinition['variables']> = {
         'id-place': {
           name: 'Café position',
-          label: { en: 'Café position' },
+          label: 'Café position',
           type: 'layout',
         },
       };
@@ -179,7 +179,7 @@ describe('getParentKeyByNameValue', () => {
       const named: NonNullable<EntityDefinition['variables']> = {
         'id-cafe': {
           name: 'Café',
-          label: { en: 'Café' },
+          label: 'Café',
           type: 'categorical',
           options: [{ label: { en: 'Open' }, value: 'open' }],
         },

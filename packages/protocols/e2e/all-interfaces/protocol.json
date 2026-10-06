@@ -17,7 +17,7 @@
         "variables": {
           "name": {
             "name": "name",
-            "label": { "en-US": "name" },
+            "label": "name",
             "type": "text",
             "component": "Text",
             "validation": {
@@ -26,29 +26,29 @@
           },
           "relationship_to_ego": {
             "name": "relationship_to_ego",
-            "label": { "en-US": "relationship_to_ego" },
+            "label": "relationship_to_ego",
             "type": "text",
             "component": "Text"
           },
           "composerName": {
             "name": "composerName",
-            "label": { "en-US": "composerName" },
+            "label": "composerName",
             "type": "text",
             "component": "Text"
           },
           "layout": {
             "name": "layout",
-            "label": { "en-US": "layout" },
+            "label": "layout",
             "type": "layout"
           },
           "location": {
             "name": "location",
-            "label": { "en-US": "location" },
+            "label": "location",
             "type": "location"
           },
           "contactFreq": {
             "name": "contactFreq",
-            "label": { "en-US": "contactFreq" },
+            "label": "contactFreq",
             "type": "ordinal",
             "options": [
               {
@@ -67,7 +67,7 @@
           },
           "contactType": {
             "name": "contactType",
-            "label": { "en-US": "contactType" },
+            "label": "contactType",
             "type": "categorical",
             "options": [
               {
@@ -86,19 +86,19 @@
           },
           "flagged": {
             "name": "flagged",
-            "label": { "en-US": "flagged" },
+            "label": "flagged",
             "type": "boolean",
             "component": "Boolean"
           },
           "highlighted": {
             "name": "highlighted",
-            "label": { "en-US": "highlighted" },
+            "label": "highlighted",
             "type": "boolean",
             "component": "Boolean"
           },
           "age": {
             "name": "age",
-            "label": { "en-US": "age" },
+            "label": "age",
             "type": "number"
           }
         }
@@ -114,7 +114,7 @@
         "variables": {
           "fm_name": {
             "name": "fm_name",
-            "label": { "en-US": "fm_name" },
+            "label": "fm_name",
             "type": "text",
             "component": "Text",
             "validation": {
@@ -123,19 +123,19 @@
           },
           "is_ego": {
             "name": "is_ego",
-            "label": { "en-US": "is_ego" },
+            "label": "is_ego",
             "type": "boolean",
             "component": "Toggle"
           },
           "fm_relationship_to_ego": {
             "name": "fm_relationship_to_ego",
-            "label": { "en-US": "fm_relationship_to_ego" },
+            "label": "fm_relationship_to_ego",
             "type": "text",
             "component": "Text"
           },
           "biologicalSex": {
             "name": "biologicalSex",
-            "label": { "en-US": "biologicalSex" },
+            "label": "biologicalSex",
             "type": "categorical",
             "options": [
               {
@@ -164,7 +164,7 @@
           },
           "hasConditionX": {
             "name": "hasConditionX",
-            "label": { "en-US": "hasConditionX" },
+            "label": "hasConditionX",
             "type": "boolean"
           }
         }
@@ -174,7 +174,7 @@
       "variables": {
         "ego_name": {
           "name": "ego_name",
-          "label": { "en-US": "ego_name" },
+          "label": "ego_name",
           "type": "text",
           "component": "Text"
         }
@@ -188,7 +188,7 @@
         "variables": {
           "relationshipType": {
             "name": "relationshipType",
-            "label": { "en-US": "relationshipType" },
+            "label": "relationshipType",
             "type": "categorical",
             "options": [
               {
@@ -219,17 +219,17 @@
           },
           "isActive": {
             "name": "isActive",
-            "label": { "en-US": "isActive" },
+            "label": "isActive",
             "type": "boolean"
           },
           "isGestationalCarrier": {
             "name": "isGestationalCarrier",
-            "label": { "en-US": "isGestationalCarrier" },
+            "label": "isGestationalCarrier",
             "type": "boolean"
           },
           "gameteRole": {
             "name": "gameteRole",
-            "label": { "en-US": "gameteRole" },
+            "label": "gameteRole",
             "type": "categorical",
             "options": [
               {
@@ -251,7 +251,7 @@
         "variables": {
           "closeness": {
             "name": "closeness",
-            "label": { "en-US": "closeness" },
+            "label": "closeness",
             "type": "ordinal",
             "options": [
               {
@@ -270,7 +270,7 @@
           },
           "edgeNotes": {
             "name": "edgeNotes",
-            "label": { "en-US": "edgeNotes" },
+            "label": "edgeNotes",
             "type": "text",
             "component": "TextArea"
           }
@@ -625,7 +625,9 @@
           "edges": {
             "display": ["knows"]
           },
-          "highlight": ["flagged"]
+          "highlight": [
+            { "variable": "flagged", "label": { "en-US": "Flagged" } }
+          ]
         }
       ],
       "background": {

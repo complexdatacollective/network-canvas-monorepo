@@ -232,7 +232,7 @@ const cases: Record<string, UniqueCase> = {
   text: {
     variable: {
       name: 'Name',
-      label: { en: 'Name' },
+      label: 'Name',
       type: 'text',
       component: 'Text',
       validation: { unique: true },
@@ -245,7 +245,7 @@ const cases: Record<string, UniqueCase> = {
     // input hands the form '12' while the first alter stores 12.
     variable: {
       name: 'Alter ID',
-      label: { en: 'Alter ID' },
+      label: 'Alter ID',
       type: 'number',
       component: 'Number',
       validation: { unique: true },
@@ -256,7 +256,7 @@ const cases: Record<string, UniqueCase> = {
   datetime: {
     variable: {
       name: 'Birthday',
-      label: { en: 'Birthday' },
+      label: 'Birthday',
       type: 'datetime',
       component: 'DatePicker',
       validation: { unique: true },
@@ -267,7 +267,7 @@ const cases: Record<string, UniqueCase> = {
   boolean: {
     variable: {
       name: 'Employed',
-      label: { en: 'Employed' },
+      label: 'Employed',
       type: 'boolean',
       component: 'Boolean',
       validation: { unique: true },
@@ -278,7 +278,7 @@ const cases: Record<string, UniqueCase> = {
   ordinal: {
     variable: {
       name: 'Closeness',
-      label: { en: 'Closeness' },
+      label: 'Closeness',
       type: 'ordinal',
       component: 'RadioGroup',
       options: [
@@ -293,7 +293,7 @@ const cases: Record<string, UniqueCase> = {
   categorical: {
     variable: {
       name: 'Contexts',
-      label: { en: 'Contexts' },
+      label: 'Contexts',
       type: 'categorical',
       component: 'CheckboxGroup',
       options: [

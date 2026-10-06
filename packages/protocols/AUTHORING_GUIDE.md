@@ -93,15 +93,15 @@ Every participant-facing field holds an object keyed by those tags, one entry pe
 
 Localized fields include: stage `label`; prompt `text`; form `title`; form field `prompt` and `hint`;
 `introductionPanel.title` and `.text`; panel `title`; Information `title` and item `content` /
-`description`; Narrative preset `label`; variable `options[].label` and scalar `minLabel` /
-`maxLabel`; TieStrengthCensus `negativeLabel`; CategoricalBin `otherVariablePrompt` and
-`otherOptionLabel`; Anonymisation `explanationText.title` and `.body`; FamilyPedigree
-`censusPrompt`; LanguageChooser `introduction`; and the codebook `label` of every node type,
-edge type and variable (§3, §4). The validator reports any participant-facing field left as a
+`description`; Narrative preset `label` and each `highlight[].label`; variable
+`options[].label` and scalar `minLabel` / `maxLabel`; TieStrengthCensus `negativeLabel`;
+CategoricalBin `otherVariablePrompt` and `otherOptionLabel`; Anonymisation
+`explanationText.title` and `.body`; FamilyPedigree `censusPrompt`; and the codebook `label` of
+every node type and edge type (§3). The validator reports any participant-facing field left as a
 plain string.
 
 Researcher-facing fields stay plain strings: the protocol `name` and `description`, codebook
-`name`s, `interviewScript`, ids, and asset references.
+`name`s, a variable's `label` (§4), `interviewScript`, ids, and asset references.
 
 ## 3. Codebook (strict: `{ node?, edge?, ego? }`)
 
@@ -133,9 +133,9 @@ All three are optional, but you must define any type a stage references.
 
 ## 4. Variable definitions (strict per type)
 
-A variable is `{ "name": <slug>, "label": <localized string>, "type": <type>, "component"?: <component>, … }`.
-`label` is REQUIRED and non-empty; the simplest choice is the same text as `name`
-(`"label": { "en-US": "alter_name" }`). `component` is optional but include it. The component
+A variable is `{ "name": <slug>, "label": <string>, "type": <type>, "component"?: <component>, … }`.
+`label` is REQUIRED, non-empty plain text, and is not translated; the simplest choice is the same
+text as `name` (`"label": "alter_name"`). `component` is optional but include it. The component
 MUST match the type:
 
 | type          | allowed `component`                    | extra keys                                                 | notes                                                                |
@@ -158,20 +158,20 @@ non-ascending integer values are allowed). Option `label`s, and a scalar's `minL
 `maxLabel`, are localized strings. Examples:
 
 ```jsonc
-"alter_name":   { "name": "alter_name", "label": {"en-US":"alter_name"}, "type": "text", "component": "Text",
+"alter_name":   { "name": "alter_name", "label": "alter_name", "type": "text", "component": "Text",
   "validation": { "required": true } },
-"close_feeling":{ "name": "close_feeling", "label": {"en-US":"close_feeling"}, "type": "ordinal", "component": "LikertScale",
+"close_feeling":{ "name": "close_feeling", "label": "close_feeling", "type": "ordinal", "component": "LikertScale",
   "options": [ {"label":{"en-US":"Not close"},"value":1}, {"label":{"en-US":"Somewhat close"},"value":2},
                {"label":{"en-US":"Very close"},"value":3} ],
   "validation": { "required": true } },
-"relationship": { "name": "relationship", "label": {"en-US":"relationship"}, "type": "categorical", "component": "CheckboxGroup",
+"relationship": { "name": "relationship", "label": "relationship", "type": "categorical", "component": "CheckboxGroup",
   "options": [ {"label":{"en-US":"Family"},"value":"family"}, {"label":{"en-US":"Friend"},"value":"friend"} ] },
-"lives_with":   { "name": "lives_with", "label": {"en-US":"lives_with"}, "type": "boolean", "component": "Boolean",
+"lives_with":   { "name": "lives_with", "label": "lives_with", "type": "boolean", "component": "Boolean",
   "options": [ {"label":{"en-US":"Yes"},"value":true}, {"label":{"en-US":"No"},"value":false} ] },
-"start_date":   { "name": "start_date", "label": {"en-US":"start_date"}, "type": "datetime", "component": "DatePicker",
+"start_date":   { "name": "start_date", "label": "start_date", "type": "datetime", "component": "DatePicker",
   "parameters": { "type": "month" } },
-"layout":       { "name": "layout", "label": {"en-US":"layout"}, "type": "layout" },
-"alter_loc":    { "name": "alter_loc", "label": {"en-US":"alter_loc"}, "type": "location" }
+"layout":       { "name": "layout", "label": "layout", "type": "layout" },
+"alter_loc":    { "name": "alter_loc", "label": "alter_loc", "type": "location" }
 ```
 
 **Avoiding duplicate alters.** When the same person may be named under more than one prompt, or
@@ -202,7 +202,7 @@ Required keys per stage type used by these templates:
 - **OrdinalBin**: `subject`(node) + `prompts:[{id,text, variable:"<ordinal node key>", color?, bucketSortOrder?, binSortOrder?}]` (≥1).
 - **CategoricalBin**: `subject`(node) + `prompts:[{id,text, variable:"<categorical node key>", otherVariable?, otherVariablePrompt?, otherOptionLabel?}]` (≥1).
 - **Sociogram**: `subject`(node) + `prompts:[{id,text, layout:{layoutVariable:"<layout node key>"}, edges?:{create?:"<edge key>", display?:["<edge key>"]}, highlight?:{allowHighlighting?:bool, variable?:"<boolean node key>"}}]` (≥1) + `background?:{concentricCircles?:int, skewedTowardCenter?:bool, image?}`.
-- **Narrative**: `subject`(node) + `presets:[{id, label, layoutVariable:"<layout node key>", groupVariable?:"<node key>", edges?:{display?:["<edge key>"]}, highlight?:["<boolean/categorical node key>"]}]` (≥1) + `background?` + `behaviours?:{freeDraw?,allowRepositioning?}`.
+- **Narrative**: `subject`(node) + `presets:[{id, label, layoutVariable:"<layout node key>", groupVariable?:"<node key>", edges?:{display?:["<edge key>"]}, highlight?:[{variable:"<boolean node key>", label:{"en-US":"…"}}]}]` (≥1) + `background?` + `behaviours?:{freeDraw?,allowRepositioning?}`.
 - **DyadCensus**: `subject`(node) + `introductionPanel` + `prompts:[{id,text, createEdge:"<edge key>"}]` (≥1).
 - **TieStrengthCensus**: `subject`(node) + `introductionPanel` + `prompts:[{id,text, createEdge:"<edge key>", edgeVariable:"<ordinal edge key>", negativeLabel:"…"}]` (≥1).
 - **Geospatial**: `subject`(node) + `prompts:[{id,text, variable:"<location node key>"}]` (≥1) + `mapOptions` (all REQUIRED):

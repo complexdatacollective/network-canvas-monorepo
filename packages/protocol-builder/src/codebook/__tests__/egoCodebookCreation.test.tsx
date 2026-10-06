@@ -31,7 +31,7 @@ const SUBJECT = { entity: 'ego' } as const;
 const ANA = { sessionId: 'session-ana', userId: 'ana', displayName: 'Ana' };
 
 const AGE = {
-  age: { name: 'age', label: { 'en-US': 'Age' }, type: 'number' },
+  age: { name: 'age', label: 'Age', type: 'number' },
 } as const;
 
 /** The protocol as it is before the researcher has asked the participant anything. */
@@ -207,7 +207,7 @@ function racedByACollaborator(host: InMemoryHost): ProtocolBuilderAdapter {
         variables: {
           pronouns: {
             name: 'pronouns',
-            label: { 'en-US': 'Pronouns' },
+            label: 'Pronouns',
             type: 'text',
           },
         },

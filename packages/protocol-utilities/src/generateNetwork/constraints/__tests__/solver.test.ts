@@ -85,26 +85,26 @@ describe('solvableComponents', () => {
     const entity = build({
       a: {
         name: 'A',
-        label: { 'en-US': 'A' },
+        label: 'A',
         type: 'number',
         validation: { minValue: 0, maxValue: 3 },
       },
       b: {
         name: 'B',
-        label: { 'en-US': 'B' },
+        label: 'B',
         type: 'number',
         validation: { minValue: 0, maxValue: 3, greaterThanVariable: ref('a') },
       },
-      c: { name: 'C', label: { 'en-US': 'C' }, type: 'boolean' },
+      c: { name: 'C', label: 'C', type: 'boolean' },
       d: {
         name: 'D',
-        label: { 'en-US': 'D' },
+        label: 'D',
         type: 'boolean',
         validation: { differentFrom: ref('c') },
       },
       lone: {
         name: 'Lone',
-        label: { 'en-US': 'Lone' },
+        label: 'Lone',
         type: 'number',
         validation: { minValue: 0, maxValue: 1 },
       },
@@ -123,28 +123,28 @@ describe('solvableComponents', () => {
     const entity = build({
       n: {
         name: 'N',
-        label: { 'en-US': 'N' },
+        label: 'N',
         type: 'number',
         validation: { minValue: 3, maxValue: 5, differentFrom: ref('m') },
       },
       m: {
         name: 'M',
-        label: { 'en-US': 'M' },
+        label: 'M',
         type: 'number',
         validation: { minValue: 4, maxValue: 4 },
       },
       flag: {
         name: 'Flag',
-        label: { 'en-US': 'Flag' },
+        label: 'Flag',
         type: 'boolean',
         component: 'Boolean',
         options: [{ label: { 'en-US': 'Yes' }, value: true }],
         validation: { differentFrom: ref('other') },
       },
-      other: { name: 'Other', label: { 'en-US': 'Other' }, type: 'boolean' },
+      other: { name: 'Other', label: 'Other', type: 'boolean' },
       band: {
         name: 'Band',
-        label: { 'en-US': 'Band' },
+        label: 'Band',
         type: 'ordinal',
         options: [
           { label: { 'en-US': 'Low' }, value: 1 },
@@ -154,7 +154,7 @@ describe('solvableComponents', () => {
       },
       twin: {
         name: 'Twin',
-        label: { 'en-US': 'Twin' },
+        label: 'Twin',
         type: 'ordinal',
         options: [
           { label: { 'en-US': 'Low' }, value: 1 },
@@ -163,20 +163,20 @@ describe('solvableComponents', () => {
       },
       s: {
         name: 'S',
-        label: { 'en-US': 'S' },
+        label: 'S',
         type: 'scalar',
         component: 'VisualAnalogScale',
         validation: { lessThanVariable: ref('cap') },
       },
       cap: {
         name: 'Cap',
-        label: { 'en-US': 'Cap' },
+        label: 'Cap',
         type: 'number',
         validation: { minValue: 1, maxValue: 1 },
       },
       when: {
         name: 'When',
-        label: { 'en-US': 'When' },
+        label: 'When',
         type: 'datetime',
         component: 'DatePicker',
         parameters: { type: 'full', min: '2020-01-01', max: '2020-01-03' },
@@ -184,7 +184,7 @@ describe('solvableComponents', () => {
       },
       then: {
         name: 'Then',
-        label: { 'en-US': 'Then' },
+        label: 'Then',
         type: 'datetime',
         component: 'DatePicker',
         parameters: { type: 'full', min: '2020-01-01', max: '2020-01-03' },
@@ -224,13 +224,13 @@ describe('solvableComponents', () => {
     const entity = build({
       frac: {
         name: 'Frac',
-        label: { 'en-US': 'Frac' },
+        label: 'Frac',
         type: 'number',
         validation: { ...bounds, differentFrom: ref('twin') },
       },
       twin: {
         name: 'Twin',
-        label: { 'en-US': 'Twin' },
+        label: 'Twin',
         type: 'number',
         validation: bounds,
       },
@@ -253,13 +253,13 @@ describe('solvableComponents', () => {
     const entity = build({
       tiny: {
         name: 'Tiny',
-        label: { 'en-US': 'Tiny' },
+        label: 'Tiny',
         type: 'number',
         validation: { ...bounds, differentFrom: ref('twin') },
       },
       twin: {
         name: 'Twin',
-        label: { 'en-US': 'Twin' },
+        label: 'Twin',
         type: 'number',
         validation: bounds,
       },
@@ -277,13 +277,13 @@ describe('solvableComponents', () => {
     const entity = build({
       frac: {
         name: 'Frac',
-        label: { 'en-US': 'Frac' },
+        label: 'Frac',
         type: 'number',
         validation: { minValue: 0.1, maxValue: 0.9 },
       },
       whole: {
         name: 'Whole',
-        label: { 'en-US': 'Whole' },
+        label: 'Whole',
         type: 'number',
         validation: {
           minValue: 1,
@@ -314,7 +314,7 @@ describe('solvableComponents', () => {
     const entity = build({
       tags: {
         name: 'Tags',
-        label: { 'en-US': 'Tags' },
+        label: 'Tags',
         type: 'categorical',
         options,
         validation: {
@@ -325,7 +325,7 @@ describe('solvableComponents', () => {
       },
       twin: {
         name: 'Twin',
-        label: { 'en-US': 'Twin' },
+        label: 'Twin',
         type: 'categorical',
         options,
         validation: { minSelected: 2, maxSelected: 2 },
@@ -346,20 +346,20 @@ describe('solvableComponents', () => {
     const unboundedNumber = build({
       a: {
         name: 'A',
-        label: { 'en-US': 'A' },
+        label: 'A',
         type: 'number',
         validation: { differentFrom: ref('b') },
       },
-      b: { name: 'B', label: { 'en-US': 'B' }, type: 'number' },
+      b: { name: 'B', label: 'B', type: 'number' },
     });
     const text = build({
       a: {
         name: 'A',
-        label: { 'en-US': 'A' },
+        label: 'A',
         type: 'text',
         validation: { differentFrom: ref('b') },
       },
-      b: { name: 'B', label: { 'en-US': 'B' }, type: 'text' },
+      b: { name: 'B', label: 'B', type: 'text' },
     });
 
     for (const entity of [unboundedNumber, text]) {
@@ -373,13 +373,13 @@ describe('solvableComponents', () => {
     const entity = build({
       a: {
         name: 'A',
-        label: { 'en-US': 'A' },
+        label: 'A',
         type: 'number',
         validation: { minValue: 0, maxValue: 999, differentFrom: ref('b') },
       },
       b: {
         name: 'B',
-        label: { 'en-US': 'B' },
+        label: 'B',
         type: 'number',
         validation: { minValue: 0, maxValue: 999 },
       },
@@ -396,7 +396,7 @@ describe('solvableComponents', () => {
     for (let i = 0; i < 9; i++) {
       variables[`v${i}`] = {
         name: `V${i}`,
-        label: { 'en-US': `V${i}` },
+        label: `V${i}`,
         type: 'number',
         validation: {
           minValue: 0,
@@ -423,14 +423,14 @@ describe('solvableComponents', () => {
     const entity = build({
       tags: {
         name: 'Tags',
-        label: { 'en-US': 'Tags' },
+        label: 'Tags',
         type: 'categorical',
         options,
         validation: { differentFrom: ref('twin') },
       },
       twin: {
         name: 'Twin',
-        label: { 'en-US': 'Twin' },
+        label: 'Twin',
         type: 'categorical',
         options,
       },
@@ -453,14 +453,14 @@ describe('solvableComponents', () => {
     const entity = build({
       tags: {
         name: 'Tags',
-        label: { 'en-US': 'Tags' },
+        label: 'Tags',
         type: 'categorical',
         options,
         validation: { unique: true, differentFrom: ref('twin') },
       },
       twin: {
         name: 'Twin',
-        label: { 'en-US': 'Twin' },
+        label: 'Twin',
         type: 'categorical',
         options,
       },
@@ -482,14 +482,14 @@ describe('solvableComponents', () => {
     const entity = build({
       tags: {
         name: 'Tags',
-        label: { 'en-US': 'Tags' },
+        label: 'Tags',
         type: 'categorical',
         options,
         validation: { minSelected: 3, differentFrom: ref('twin') },
       },
       twin: {
         name: 'Twin',
-        label: { 'en-US': 'Twin' },
+        label: 'Twin',
         type: 'categorical',
         options,
       },
@@ -516,14 +516,14 @@ describe('solvableComponents', () => {
     const entity = build({
       tags: {
         name: 'Tags',
-        label: { 'en-US': 'Tags' },
+        label: 'Tags',
         type: 'categorical',
         options,
         validation: { differentFrom: ref('twin') },
       },
       twin: {
         name: 'Twin',
-        label: { 'en-US': 'Twin' },
+        label: 'Twin',
         type: 'categorical',
         options,
       },
@@ -549,7 +549,7 @@ describe('solvableComponents', () => {
     const entity = build({
       wide: {
         name: 'Wide',
-        label: { 'en-US': 'Wide' },
+        label: 'Wide',
         type: 'categorical',
         options,
         validation: {
@@ -560,7 +560,7 @@ describe('solvableComponents', () => {
       },
       narrow: {
         name: 'Narrow',
-        label: { 'en-US': 'Narrow' },
+        label: 'Narrow',
         type: 'categorical',
         options: [
           { label: { 'en-US': 'A' }, value: 'a' },
@@ -584,14 +584,14 @@ describe('solvableComponents', () => {
     const entity = build({
       tags: {
         name: 'Tags',
-        label: { 'en-US': 'Tags' },
+        label: 'Tags',
         type: 'categorical',
         options,
         validation: { maxSelected: 12, differentFrom: ref('twin') },
       },
       twin: {
         name: 'Twin',
-        label: { 'en-US': 'Twin' },
+        label: 'Twin',
         type: 'categorical',
         options,
         validation: { maxSelected: 2 },
@@ -621,13 +621,13 @@ describe('solvableComponents', () => {
     const entity = build({
       a: {
         name: 'A',
-        label: { 'en-US': 'A' },
+        label: 'A',
         type: 'number',
         validation: { minValue: 2, maxValue: 9 },
       },
       b: {
         name: 'B',
-        label: { 'en-US': 'B' },
+        label: 'B',
         type: 'number',
         validation: {
           minValue: 0,
@@ -637,14 +637,14 @@ describe('solvableComponents', () => {
       },
       s1: {
         name: 'S1',
-        label: { 'en-US': 'S1' },
+        label: 'S1',
         type: 'scalar',
         component: 'VisualAnalogScale',
         validation: { lessThanVariable: ref('s2') },
       },
       s2: {
         name: 'S2',
-        label: { 'en-US': 'S2' },
+        label: 'S2',
         type: 'scalar',
         component: 'VisualAnalogScale',
       },
@@ -654,7 +654,7 @@ describe('solvableComponents', () => {
       // clamped ends alone.
       fracLow: {
         name: 'Frac Low',
-        label: { 'en-US': 'Frac Low' },
+        label: 'Frac Low',
         type: 'number',
         validation: {
           minValue: 0.1,
@@ -664,13 +664,13 @@ describe('solvableComponents', () => {
       },
       fracHigh: {
         name: 'Frac High',
-        label: { 'en-US': 'Frac High' },
+        label: 'Frac High',
         type: 'number',
         validation: { minValue: 0.1, maxValue: 0.9 },
       },
       narrowHi: {
         name: 'Narrow Hi',
-        label: { 'en-US': 'Narrow Hi' },
+        label: 'Narrow Hi',
         type: 'number',
         validation: {
           minValue: 0.001,
@@ -680,20 +680,20 @@ describe('solvableComponents', () => {
       },
       narrowLo: {
         name: 'Narrow Lo',
-        label: { 'en-US': 'Narrow Lo' },
+        label: 'Narrow Lo',
         type: 'number',
         validation: { minValue: 0.001, maxValue: 0.009 },
       },
-      w: { name: 'W', label: { 'en-US': 'W' }, ...window },
+      w: { name: 'W', label: 'W', ...window },
       x: {
         name: 'X',
-        label: { 'en-US': 'X' },
+        label: 'X',
         ...window,
         validation: { greaterThanVariable: ref('w') },
       },
       band: {
         name: 'Band',
-        label: { 'en-US': 'Band' },
+        label: 'Band',
         type: 'ordinal',
         options,
         validation: { differentFrom: ref('flag') },
@@ -705,7 +705,7 @@ describe('solvableComponents', () => {
       // a fixture of distinct values cannot expose.
       repeated: {
         name: 'Repeated',
-        label: { 'en-US': 'Repeated' },
+        label: 'Repeated',
         type: 'ordinal',
         options: [
           { label: { 'en-US': 'One' }, value: 1 },
@@ -713,17 +713,17 @@ describe('solvableComponents', () => {
         ],
         validation: { differentFrom: ref('band') },
       },
-      flag: { name: 'Flag', label: { 'en-US': 'Flag' }, type: 'boolean' },
+      flag: { name: 'Flag', label: 'Flag', type: 'boolean' },
       tags: {
         name: 'Tags',
-        label: { 'en-US': 'Tags' },
+        label: 'Tags',
         type: 'categorical',
         options,
         validation: { unique: true, differentFrom: ref('twin') },
       },
       twin: {
         name: 'Twin',
-        label: { 'en-US': 'Twin' },
+        label: 'Twin',
         type: 'categorical',
         options,
       },
@@ -770,14 +770,14 @@ describe('solvableComponents', () => {
     const entity = build({
       start: {
         name: 'Start',
-        label: { 'en-US': 'Start' },
+        label: 'Start',
         type: 'datetime',
         component: 'DatePicker',
         parameters: { type: 'full', min: '2026-01-01', max: '2026-01-20' },
       },
       end: {
         name: 'End',
-        label: { 'en-US': 'End' },
+        label: 'End',
         type: 'datetime',
         component: 'DatePicker',
         parameters: { type: 'month', min: '2026-01', max: '2026-06' },
@@ -795,7 +795,7 @@ describe('solvableComponents', () => {
     const entity = build({
       a: {
         name: 'A',
-        label: { 'en-US': 'A' },
+        label: 'A',
         type: 'ordinal',
         options: [
           { label: { 'en-US': 'One' }, value: 1 },
@@ -805,7 +805,7 @@ describe('solvableComponents', () => {
       },
       b: {
         name: 'B',
-        label: { 'en-US': 'B' },
+        label: 'B',
         type: 'ordinal',
         options: [
           { label: { 'en-US': 'Two' }, value: 2 },
@@ -816,7 +816,7 @@ describe('solvableComponents', () => {
       },
       c: {
         name: 'C',
-        label: { 'en-US': 'C' },
+        label: 'C',
         type: 'ordinal',
         options: [
           { label: { 'en-US': 'Two' }, value: 2 },
@@ -838,7 +838,7 @@ describe('solvableComponents', () => {
     const entity = build({
       n: {
         name: 'N',
-        label: { 'en-US': 'N' },
+        label: 'N',
         type: 'number',
         validation: {
           minValue: 0,
@@ -848,7 +848,7 @@ describe('solvableComponents', () => {
       },
       when: {
         name: 'When',
-        label: { 'en-US': 'When' },
+        label: 'When',
         type: 'datetime',
         component: 'DatePicker',
         parameters: { type: 'full', min: '2020-01-01', max: '2020-01-03' },
@@ -869,19 +869,19 @@ describe('solveComponent', () => {
     const entity = build({
       a: {
         name: 'A',
-        label: { 'en-US': 'A' },
+        label: 'A',
         type: 'number',
         validation: { minValue: 3, maxValue: 4, differentFrom: ref('b') },
       },
       b: {
         name: 'B',
-        label: { 'en-US': 'B' },
+        label: 'B',
         type: 'number',
         validation: { minValue: 3, maxValue: 4 },
       },
       d: {
         name: 'D',
-        label: { 'en-US': 'D' },
+        label: 'D',
         type: 'number',
         validation: {
           minValue: 2,
@@ -913,13 +913,13 @@ describe('solveComponent', () => {
     const entity = build({
       a: {
         name: 'A',
-        label: { 'en-US': 'A' },
+        label: 'A',
         type: 'number',
         validation: { minValue: 3, maxValue: 4, differentFrom: ref('b') },
       },
       b: {
         name: 'B',
-        label: { 'en-US': 'B' },
+        label: 'B',
         type: 'number',
         validation: {
           minValue: 4,
@@ -940,19 +940,19 @@ describe('solveComponent', () => {
     const entity = build({
       a: {
         name: 'A',
-        label: { 'en-US': 'A' },
+        label: 'A',
         type: 'number',
         validation: { ...bounds, differentFrom: ref('b') },
       },
       b: {
         name: 'B',
-        label: { 'en-US': 'B' },
+        label: 'B',
         type: 'number',
         validation: { ...bounds, differentFrom: ref('c') },
       },
       c: {
         name: 'C',
-        label: { 'en-US': 'C' },
+        label: 'C',
         type: 'number',
         validation: { ...bounds, differentFrom: ref('a') },
       },
@@ -967,13 +967,13 @@ describe('solveComponent', () => {
     const entity = build({
       a: {
         name: 'A',
-        label: { 'en-US': 'A' },
+        label: 'A',
         type: 'number',
         validation: { minValue: 0, maxValue: 5, differentFrom: ref('b') },
       },
       b: {
         name: 'B',
-        label: { 'en-US': 'B' },
+        label: 'B',
         type: 'number',
         validation: { minValue: 0, maxValue: 5 },
       },
@@ -1015,13 +1015,13 @@ describe('solveComponent', () => {
     const entity = build({
       a: {
         name: 'A',
-        label: { 'en-US': 'A' },
+        label: 'A',
         type: 'number',
         validation: { minValue: 0, maxValue: 5, differentFrom: ref('b') },
       },
       b: {
         name: 'B',
-        label: { 'en-US': 'B' },
+        label: 'B',
         type: 'number',
         validation: { minValue: 0, maxValue: 5 },
       },
@@ -1044,13 +1044,13 @@ describe('solveComponent', () => {
     const entity = build({
       a: {
         name: 'A',
-        label: { 'en-US': 'A' },
+        label: 'A',
         type: 'number',
         validation: { minValue: 0, maxValue: 0, differentFrom: ref('b') },
       },
       b: {
         name: 'B',
-        label: { 'en-US': 'B' },
+        label: 'B',
         type: 'number',
         validation: { minValue: 0, maxValue: 0 },
       },
@@ -1075,7 +1075,7 @@ describe('solveComponent', () => {
     for (let i = 0; i < 6; i++) {
       variables[`v${i}`] = {
         name: `V${i}`,
-        label: { 'en-US': `V${i}` },
+        label: `V${i}`,
         type: 'number',
         validation: {
           minValue: 0,
@@ -1099,13 +1099,13 @@ describe('solveComponent', () => {
     const entity = build({
       m: {
         name: 'M',
-        label: { 'en-US': 'M' },
+        label: 'M',
         type: 'number',
         validation: { minValue: 0, maxValue: 0 },
       },
       s: {
         name: 'S',
-        label: { 'en-US': 'S' },
+        label: 'S',
         type: 'scalar',
         component: 'VisualAnalogScale',
         validation: {
@@ -1115,7 +1115,7 @@ describe('solveComponent', () => {
       },
       n: {
         name: 'N',
-        label: { 'en-US': 'N' },
+        label: 'N',
         type: 'number',
         validation: { minValue: 1, maxValue: 1 },
       },
@@ -1138,16 +1138,16 @@ describe('solveComponent', () => {
       parameters: { type: 'full', min: '2020-01-01', max: '2020-01-03' },
     } as const;
     const entity = build({
-      w: { name: 'W', label: { 'en-US': 'W' }, ...window },
+      w: { name: 'W', label: 'W', ...window },
       x: {
         name: 'X',
-        label: { 'en-US': 'X' },
+        label: 'X',
         ...window,
         validation: { greaterThanVariable: ref('w') },
       },
       y: {
         name: 'Y',
-        label: { 'en-US': 'Y' },
+        label: 'Y',
         ...window,
         validation: { greaterThanVariable: ref('x') },
       },
@@ -1171,19 +1171,19 @@ describe('solveComponent', () => {
     const entity = build({
       lo: {
         name: 'Lo',
-        label: { 'en-US': 'Lo' },
+        label: 'Lo',
         type: 'number',
         validation: bounds,
       },
       mid: {
         name: 'Mid',
-        label: { 'en-US': 'Mid' },
+        label: 'Mid',
         type: 'number',
         validation: { ...bounds, greaterThanVariable: ref('lo') },
       },
       hi: {
         name: 'Hi',
-        label: { 'en-US': 'Hi' },
+        label: 'Hi',
         type: 'number',
         validation: { ...bounds, greaterThanVariable: ref('mid') },
       },
@@ -1212,13 +1212,13 @@ describe('solveComponent', () => {
     const entity = build({
       a: {
         name: 'A',
-        label: { 'en-US': 'A' },
+        label: 'A',
         type: 'number',
         validation: { minValue: 0, maxValue: 9, differentFrom: ref('b') },
       },
       b: {
         name: 'B',
-        label: { 'en-US': 'B' },
+        label: 'B',
         type: 'number',
         validation: { minValue: 0, maxValue: 9 },
       },
@@ -1248,13 +1248,13 @@ describe('fractional number components in generation', () => {
     return {
       b: {
         name: 'B',
-        label: { 'en-US': 'B' },
+        label: 'B',
         type: 'number',
         validation: pair,
       },
       d: {
         name: 'D',
-        label: { 'en-US': 'D' },
+        label: 'D',
         type: 'number',
         validation: {
           minValue: 0.09,
@@ -1265,7 +1265,7 @@ describe('fractional number components in generation', () => {
       },
       a: {
         name: 'A',
-        label: { 'en-US': 'A' },
+        label: 'A',
         type: 'number',
         validation: { ...pair, differentFrom: ref('b') },
       },
@@ -1305,19 +1305,19 @@ describe('fractional number components in generation', () => {
     const entity = build({
       a: {
         name: 'A',
-        label: { 'en-US': 'A' },
+        label: 'A',
         type: 'number',
         validation: { ...bounds, differentFrom: ref('b') },
       },
       b: {
         name: 'B',
-        label: { 'en-US': 'B' },
+        label: 'B',
         type: 'number',
         validation: { ...bounds, differentFrom: ref('c') },
       },
       c: {
         name: 'C',
-        label: { 'en-US': 'C' },
+        label: 'C',
         type: 'number',
         validation: { ...bounds, differentFrom: ref('a') },
       },

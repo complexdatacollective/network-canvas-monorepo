@@ -1237,7 +1237,7 @@ describe('processProtocolSortRule', () => {
 
   it('is idempotent: re-processing an already-processed rule does not clobber its type', () => {
     const codebookVariables: EntityDefinition['variables'] = {
-      age: { type: 'number', name: 'age', label: { en: 'Age' } },
+      age: { type: 'number', name: 'age', label: 'Age' },
     };
     const process = processProtocolSortRule(codebookVariables);
 
@@ -1262,8 +1262,8 @@ describe('processProtocolSortRule', () => {
 
   describe('looks the property up as a variable key, not as a path', () => {
     const codebookVariables: EntityDefinition['variables'] = {
-      'name': { type: 'text', name: 'name', label: { en: 'Name' } },
-      'a.b': { type: 'number', name: 'a.b', label: { en: 'a.b' } },
+      'name': { type: 'text', name: 'name', label: 'Name' },
+      'a.b': { type: 'number', name: 'a.b', label: 'a.b' },
     };
 
     it('finds a variable whose key contains a dot', () => {
@@ -1300,7 +1300,7 @@ describe('processProtocolSortRule', () => {
       } as SortRule;
 
       const codebookVariables: EntityDefinition['variables'] = {
-        name: { type: 'text', name: 'name', label: { en: 'Name' } },
+        name: { type: 'text', name: 'name', label: 'Name' },
       };
       const result = processProtocolSortRule(codebookVariables)(rule);
       expect(result.property).toEqual([entityAttributesProperty, 'name']);
@@ -1313,7 +1313,7 @@ describe('processProtocolSortRule', () => {
       } as SortRule;
 
       const codebookVariables: EntityDefinition['variables'] = {
-        type: { type: 'text', name: 'type', label: { en: 'Type' } },
+        type: { type: 'text', name: 'type', label: 'Type' },
       };
       const result = processProtocolSortRule(codebookVariables)(rule);
       expect(result.property).toEqual('type');
@@ -1322,14 +1322,14 @@ describe('processProtocolSortRule', () => {
 
   describe('adds a type property to the rule based on the codebook variable type', () => {
     const codebookVariables: EntityDefinition['variables'] = {
-      name: { type: 'text', name: 'name', label: { en: 'Name' } },
-      age: { type: 'number', name: 'age', label: { en: 'Age' } },
-      date: { type: 'datetime', name: 'date', label: { en: 'Date' } },
-      isAlive: { type: 'boolean', name: 'isAlive', label: { en: 'Is alive' } },
+      name: { type: 'text', name: 'name', label: 'Name' },
+      age: { type: 'number', name: 'age', label: 'Age' },
+      date: { type: 'datetime', name: 'date', label: 'Date' },
+      isAlive: { type: 'boolean', name: 'isAlive', label: 'Is alive' },
       category: {
         type: 'categorical',
         name: 'category',
-        label: { en: 'Category' },
+        label: 'Category',
         options: [
           {
             label: { en: 'One' },
@@ -1343,7 +1343,7 @@ describe('processProtocolSortRule', () => {
       },
       order: {
         name: 'order',
-        label: { en: 'Order' },
+        label: 'Order',
         type: 'ordinal',
         options: [
           {
@@ -1356,8 +1356,8 @@ describe('processProtocolSortRule', () => {
           },
         ],
       },
-      scale: { type: 'scalar', name: 'scale', label: { en: 'Scale' } },
-      layout: { type: 'layout', name: 'layout', label: { en: 'Layout' } },
+      scale: { type: 'scalar', name: 'scale', label: 'Scale' },
+      layout: { type: 'layout', name: 'layout', label: 'Layout' },
     };
 
     it('ignores fifo (*) rules', () => {
@@ -1646,11 +1646,11 @@ describe('processProtocolSortRule', () => {
       name_variable: {
         type: 'text',
         name: 'name_variable',
-        label: { en: 'Name variable' },
+        label: 'Name variable',
       },
       venueVisitFreqVariable: {
         name: 'visitfreq',
-        label: { en: 'Visitfreq' },
+        label: 'Visitfreq',
         type: 'ordinal',
         options: [
           {

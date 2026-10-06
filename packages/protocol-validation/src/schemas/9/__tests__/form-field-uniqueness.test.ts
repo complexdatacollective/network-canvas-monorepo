@@ -54,17 +54,17 @@ const pedigreeProtocol = (form?: ReturnType<typeof field>[]) => {
             ...protocol.codebook.node.person.variables,
             isEgo: {
               name: 'IsEgo',
-              label: localized('IsEgo'),
+              label: 'IsEgo',
               type: 'boolean',
             },
             relationship: {
               name: 'Relationship',
-              label: localized('Relationship'),
+              label: 'Relationship',
               type: 'text',
             },
             bioSex: {
               name: 'BioSex',
-              label: localized('BioSex'),
+              label: 'BioSex',
               type: 'text',
             },
           },
@@ -78,18 +78,18 @@ const pedigreeProtocol = (form?: ReturnType<typeof field>[]) => {
             ...protocol.codebook.edge.knows.variables,
             relType: {
               name: 'RelType',
-              label: localized('RelType'),
+              label: 'RelType',
               type: 'text',
             },
             isActive: {
               name: 'IsActive',
-              label: localized('IsActive'),
+              label: 'IsActive',
               type: 'boolean',
             },
-            isGc: { name: 'IsGc', label: localized('IsGc'), type: 'boolean' },
+            isGc: { name: 'IsGc', label: 'IsGc', type: 'boolean' },
             gameteRole: {
               name: 'GameteRole',
-              label: localized('GameteRole'),
+              label: 'GameteRole',
               type: 'text',
             },
           },

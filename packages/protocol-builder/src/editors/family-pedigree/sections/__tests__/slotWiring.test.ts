@@ -26,15 +26,15 @@ const NO_ROLES: VariableRoleMap = Object.freeze({});
 const NO_SLOTS: ExclusiveVariableSlotMap = Object.freeze({});
 
 const VARIABLES: Readonly<Variables> = Object.freeze({
-  is_ego: { name: 'is_ego', label: { en: 'is_ego' }, type: 'boolean' },
+  is_ego: { name: 'is_ego', label: 'is_ego', type: 'boolean' },
   hasConditionX: {
     name: 'hasConditionX',
-    label: { en: 'hasConditionX' },
+    label: 'hasConditionX',
     type: 'boolean',
   },
-  unwell: { name: 'unwell', label: { en: 'unwell' }, type: 'boolean' },
-  fm_name: { name: 'fm_name', label: { en: 'fm_name' }, type: 'text' },
-  kinship: { name: 'kinship', label: { en: 'kinship' }, type: 'text' },
+  unwell: { name: 'unwell', label: 'unwell', type: 'boolean' },
+  fm_name: { name: 'fm_name', label: 'fm_name', type: 'text' },
+  kinship: { name: 'kinship', label: 'kinship', type: 'text' },
 });
 
 const optionFor = (value: string): SlotVariableOption => {

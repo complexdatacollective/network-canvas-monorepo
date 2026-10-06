@@ -203,7 +203,7 @@ describe('the pedigree’s own configuration, read in Spanish', () => {
             ...variables,
             biologicalSex: {
               name: 'biologicalSex',
-              label: { 'en-US': 'biologicalSex' },
+              label: 'biologicalSex',
               type: 'categorical',
               options: [
                 { value: 'female', label: { 'en-US': 'Female' } },
@@ -218,7 +218,7 @@ describe('the pedigree’s own configuration, read in Spanish', () => {
             // read below is the attribute the slot is still bound to.
             recordedSex: {
               name: 'recordedSex',
-              label: { 'en-US': 'recordedSex' },
+              label: 'recordedSex',
               type: 'categorical',
               options: BIOLOGICAL_SEX_OPTIONS.map(({ value, label }) => ({
                 value,

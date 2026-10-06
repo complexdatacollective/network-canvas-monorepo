@@ -37,7 +37,7 @@ const record = <Value>(entries: readonly (readonly [string, Value])[]) =>
   Object.fromEntries(entries);
 
 const textVariable = (name: string) =>
-  ({ name, label: { en: name }, type: 'text' }) satisfies Variable;
+  ({ name, label: name, type: 'text' }) satisfies Variable;
 
 const hazardVariables = (nameOf: (id: string) => string) =>
   record(hazards.map((id) => [id, textVariable(nameOf(id))]));
@@ -314,7 +314,7 @@ describe('categorical variables named after Object.prototype keys', () => {
               id,
               {
                 name: id,
-                label: { en: id },
+                label: id,
                 type: 'categorical',
                 options: [
                   { label: { en: 'A' }, value: 'constructor' },

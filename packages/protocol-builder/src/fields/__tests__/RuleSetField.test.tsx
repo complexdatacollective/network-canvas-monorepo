@@ -42,10 +42,10 @@ const personDefinition: SectionDoc = {
   color: 'node-color-seq-2',
   shape: { default: 'square' },
   variables: {
-    age: { name: 'Age', label: { en: 'Age' }, type: 'number' },
+    age: { name: 'Age', label: 'Age', type: 'number' },
     mood: {
       name: 'Mood',
-      label: { en: 'Mood' },
+      label: 'Mood',
       type: 'categorical',
       options: [
         { label: { en: 'Happy' }, value: 'happy' },
@@ -77,7 +77,7 @@ const baseSections: Record<string, SectionDoc> = {
   },
   [egoSection]: {
     variables: {
-      egoName: { name: 'EgoName', label: { en: 'EgoName' }, type: 'text' },
+      egoName: { name: 'EgoName', label: 'EgoName', type: 'text' },
     },
   },
 };
@@ -731,7 +731,7 @@ describe('a codebook that changes underneath the editor', () => {
         // number where the runtime now compares a list.
         age: {
           name: 'Age',
-          label: { en: 'Age' },
+          label: 'Age',
           type: 'categorical',
           options: [
             { label: { en: 'Young' }, value: 30 },
@@ -771,7 +771,7 @@ describe('a codebook that changes underneath the editor', () => {
 
     harness.collaboratorWrites(personSection, {
       ...personDefinition,
-      variables: { age: { name: 'Age', label: { en: 'Age' }, type: 'number' } },
+      variables: { age: { name: 'Age', label: 'Age', type: 'number' } },
     });
 
     expect(

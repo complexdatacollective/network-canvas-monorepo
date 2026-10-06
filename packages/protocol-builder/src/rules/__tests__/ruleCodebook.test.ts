@@ -138,20 +138,20 @@ describe('the date picker a rule’s operand inherits', () => {
   const variables: Readonly<Variables> = Object.freeze({
     born: {
       name: 'Born',
-      label: { en: 'Born' },
+      label: 'Born',
       type: 'datetime',
       component: 'DatePicker',
       parameters: { type: 'year', min: '1800', max: '1810' },
     },
     seen: {
       name: 'Seen',
-      label: { en: 'Seen' },
+      label: 'Seen',
       type: 'datetime',
       component: 'DatePicker',
     },
     met: {
       name: 'Met',
-      label: { en: 'Met' },
+      label: 'Met',
       type: 'datetime',
       component: 'RelativeDatePicker',
       parameters: { anchor: '2020-01-01', before: 30, after: 30 },
@@ -160,7 +160,7 @@ describe('the date picker a rule’s operand inherits', () => {
     // is derived from the clock rather than from the codebook.
     called: {
       name: 'Called',
-      label: { en: 'Called' },
+      label: 'Called',
       type: 'datetime',
       component: 'RelativeDatePicker',
       parameters: { before: 30 },
@@ -170,7 +170,7 @@ describe('the date picker a rule’s operand inherits', () => {
     // the one the control synthesises.
     joined: {
       name: 'Joined',
-      label: { en: 'Joined' },
+      label: 'Joined',
       type: 'datetime',
       component: 'DatePicker',
       parameters: { type: 'month' },
@@ -178,12 +178,12 @@ describe('the date picker a rule’s operand inherits', () => {
     // The same, one resolution coarser: a bare year dropdown.
     graduated: {
       name: 'Graduated',
-      label: { en: 'Graduated' },
+      label: 'Graduated',
       type: 'datetime',
       component: 'DatePicker',
       parameters: { type: 'year' },
     },
-    age: { name: 'Age', label: { en: 'Age' }, type: 'number' },
+    age: { name: 'Age', label: 'Age', type: 'number' },
   });
 
   it('carries every bound the attribute’s own picker honours', () => {
@@ -448,10 +448,10 @@ describe('codebook entries that are legal but sparse', () => {
         color: 'node-color-seq-4',
         shape: { default: 'circle' },
         variables: {
-          unnamed: { name: '', label: { en: 'Unnamed' }, type: 'text' },
+          unnamed: { name: '', label: 'Unnamed', type: 'text' },
           agrees: {
             name: 'Agrees',
-            label: { en: 'Agrees' },
+            label: 'Agrees',
             type: 'boolean',
             options: [
               { label: { en: 'Yes' }, value: true },
@@ -460,7 +460,7 @@ describe('codebook entries that are legal but sparse', () => {
           },
           rank: {
             name: 'Rank',
-            label: { en: 'Rank' },
+            label: 'Rank',
             type: 'ordinal',
             options: [{ label: { en: '' }, value: 1 }],
           },
@@ -628,7 +628,7 @@ describe('an operand naming an option the attribute no longer offers', () => {
           variables: {
             strength: {
               name: 'Strength',
-              label: { en: 'Strength' },
+              label: 'Strength',
               type: 'ordinal',
               options: [
                 { label: { en: 'Weak' }, value: 1 },

@@ -290,13 +290,13 @@ describe('validated protocol commit persistence', () => {
           variables: {
             first: {
               name: 'first',
-              label: { en: 'first' },
+              label: 'first',
               type: 'text',
               encrypted: true,
             },
             second: {
               name: 'second',
-              label: { en: 'second' },
+              label: 'second',
               type: 'text',
               encrypted: true,
             },

@@ -2055,7 +2055,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
           variables: {
             ego_age: {
               name: 'ego_age',
-              label: enUS('Age'),
+              label: 'Age',
               type: 'number',
               component: 'Number',
             },
@@ -3078,7 +3078,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
               ...(held.document.variables as Record<string, unknown>),
               [variableId]: {
                 name: variableId,
-                label: enUS('Interrupted'),
+                label: 'Interrupted',
                 type: 'text',
               },
             },

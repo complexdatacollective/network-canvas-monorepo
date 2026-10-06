@@ -166,7 +166,7 @@ describe('Cross-reference conformance', () => {
                 ...base.codebook.node.person.variables,
                 homeLocation: {
                   name: 'Home',
-                  label: localized('Home'),
+                  label: 'Home',
                   type: 'location',
                 },
               },

@@ -50,7 +50,7 @@ const PERSON: SectionDoc = {
   variables: {
     [ATTRIBUTE]: {
       name: 'relationshipToEgo',
-      label: { en: 'Relationship to you' },
+      label: 'Relationship to you',
       type: 'text',
       component: 'Text',
     },

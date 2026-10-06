@@ -23,7 +23,7 @@
       "variables": {
         "participant_consent": {
           "name": "participant_consent",
-          "label": { "en-US": "participant_consent" },
+          "label": "participant_consent",
           "type": "boolean",
           "component": "Boolean",
           "validation": { "required": true },
@@ -42,7 +42,7 @@
         },
         "birth_country": {
           "name": "birth_country",
-          "label": { "en-US": "birth_country" },
+          "label": "birth_country",
           "type": "categorical",
           "component": "CheckboxGroup",
           "validation": {
@@ -62,7 +62,7 @@
         },
         "arrival_year": {
           "name": "arrival_year",
-          "label": { "en-US": "arrival_year" },
+          "label": "arrival_year",
           "type": "datetime",
           "component": "DatePicker",
           "parameters": {
@@ -72,7 +72,7 @@
         },
         "residency_status": {
           "name": "residency_status",
-          "label": { "en-US": "residency_status" },
+          "label": "residency_status",
           "type": "categorical",
           "component": "ToggleButtonGroup",
           "validation": {
@@ -107,7 +107,7 @@
         },
         "language_proficiency": {
           "name": "language_proficiency",
-          "label": { "en-US": "language_proficiency" },
+          "label": "language_proficiency",
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
@@ -131,7 +131,7 @@
         },
         "years_since_migration": {
           "name": "years_since_migration",
-          "label": { "en-US": "years_since_migration" },
+          "label": "years_since_migration",
           "type": "number",
           "component": "Number",
           "validation": {
@@ -141,7 +141,7 @@
         },
         "acculturative_stress": {
           "name": "acculturative_stress",
-          "label": { "en-US": "acculturative_stress" },
+          "label": "acculturative_stress",
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
@@ -181,7 +181,7 @@
         "variables": {
           "alter_name": {
             "name": "alter_name",
-            "label": { "en-US": "alter_name" },
+            "label": "alter_name",
             "type": "text",
             "component": "Text",
             "validation": {
@@ -191,7 +191,7 @@
           },
           "relationship": {
             "name": "relationship",
-            "label": { "en-US": "relationship" },
+            "label": "relationship",
             "type": "categorical",
             "component": "ToggleButtonGroup",
             "validation": {
@@ -226,7 +226,7 @@
           },
           "origin_country": {
             "name": "origin_country",
-            "label": { "en-US": "origin_country" },
+            "label": "origin_country",
             "type": "categorical",
             "component": "ToggleButtonGroup",
             "validation": {
@@ -253,7 +253,7 @@
           },
           "shared_language": {
             "name": "shared_language",
-            "label": { "en-US": "shared_language" },
+            "label": "shared_language",
             "type": "categorical",
             "component": "ToggleButtonGroup",
             "validation": {
@@ -280,7 +280,7 @@
           },
           "how_met": {
             "name": "how_met",
-            "label": { "en-US": "how_met" },
+            "label": "how_met",
             "type": "categorical",
             "component": "ToggleButtonGroup",
             "validation": {
@@ -315,7 +315,7 @@
           },
           "co_ethnic": {
             "name": "co_ethnic",
-            "label": { "en-US": "co_ethnic" },
+            "label": "co_ethnic",
             "type": "boolean",
             "component": "Boolean",
             "options": [
@@ -331,7 +331,7 @@
           },
           "support_type": {
             "name": "support_type",
-            "label": { "en-US": "support_type" },
+            "label": "support_type",
             "type": "categorical",
             "component": "CheckboxGroup",
             "validation": {
@@ -366,7 +366,7 @@
           },
           "closeness": {
             "name": "closeness",
-            "label": { "en-US": "closeness" },
+            "label": "closeness",
             "type": "ordinal",
             "component": "LikertScale",
             "options": [
@@ -394,12 +394,12 @@
           },
           "alter_location": {
             "name": "alter_location",
-            "label": { "en-US": "alter_location" },
+            "label": "alter_location",
             "type": "location"
           },
           "layout": {
             "name": "layout",
-            "label": { "en-US": "layout" },
+            "label": "layout",
             "type": "layout"
           }
         }
@@ -779,7 +779,9 @@
           "edges": {
             "display": ["knows"]
           },
-          "highlight": ["co_ethnic"]
+          "highlight": [
+            { "variable": "co_ethnic", "label": { "en-US": "co_ethnic" } }
+          ]
         },
         {
           "id": "preset-support",

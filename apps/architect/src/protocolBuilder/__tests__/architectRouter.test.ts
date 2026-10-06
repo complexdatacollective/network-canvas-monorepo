@@ -465,7 +465,7 @@ describe("Architect's in-process protocol-builder host", () => {
           ...committed?.variables,
           spare: {
             name: 'spare',
-            label: { [FIXTURE_LANGUAGE]: 'Spare' },
+            label: 'Spare',
             type: 'text',
             component: 'Text',
           },
@@ -1380,7 +1380,7 @@ describe("Architect's in-process protocol-builder host", () => {
         variables: {
           ego_age: {
             name: 'ego_age',
-            label: { [FIXTURE_LANGUAGE]: 'Age' },
+            label: 'Age',
             type: 'number',
             component: 'Number',
           },
@@ -1418,7 +1418,7 @@ describe("Architect's in-process protocol-builder host", () => {
       variables: {
         f: {
           name: 'f',
-          label: { [FIXTURE_LANGUAGE]: 'F' },
+          label: 'F',
           type: 'ordinal',
           options,
         },

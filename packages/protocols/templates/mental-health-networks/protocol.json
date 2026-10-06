@@ -12,7 +12,7 @@
       "variables": {
         "participant_consent": {
           "name": "participant_consent",
-          "label": { "en-US": "participant_consent" },
+          "label": "participant_consent",
           "type": "boolean",
           "component": "Boolean",
           "validation": { "required": true },
@@ -31,7 +31,7 @@
         },
         "k6_1": {
           "name": "k6_1",
-          "label": { "en-US": "k6_1" },
+          "label": "k6_1",
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
@@ -45,7 +45,7 @@
         },
         "k6_2": {
           "name": "k6_2",
-          "label": { "en-US": "k6_2" },
+          "label": "k6_2",
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
@@ -59,7 +59,7 @@
         },
         "k6_3": {
           "name": "k6_3",
-          "label": { "en-US": "k6_3" },
+          "label": "k6_3",
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
@@ -73,7 +73,7 @@
         },
         "k6_4": {
           "name": "k6_4",
-          "label": { "en-US": "k6_4" },
+          "label": "k6_4",
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
@@ -87,7 +87,7 @@
         },
         "k6_5": {
           "name": "k6_5",
-          "label": { "en-US": "k6_5" },
+          "label": "k6_5",
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
@@ -101,7 +101,7 @@
         },
         "k6_6": {
           "name": "k6_6",
-          "label": { "en-US": "k6_6" },
+          "label": "k6_6",
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
@@ -115,7 +115,7 @@
         },
         "self_rated_mental_health": {
           "name": "self_rated_mental_health",
-          "label": { "en-US": "self_rated_mental_health" },
+          "label": "self_rated_mental_health",
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
@@ -129,7 +129,7 @@
         },
         "in_treatment": {
           "name": "in_treatment",
-          "label": { "en-US": "in_treatment" },
+          "label": "in_treatment",
           "type": "boolean",
           "component": "Boolean",
           "options": [
@@ -149,14 +149,14 @@
         "variables": {
           "alter_name": {
             "name": "alter_name",
-            "label": { "en-US": "alter_name" },
+            "label": "alter_name",
             "type": "text",
             "component": "Text",
             "validation": { "required": true, "unique": true }
           },
           "relationship": {
             "name": "relationship",
-            "label": { "en-US": "relationship" },
+            "label": "relationship",
             "type": "categorical",
             "component": "CheckboxGroup",
             "options": [
@@ -187,7 +187,7 @@
           },
           "support_emotional": {
             "name": "support_emotional",
-            "label": { "en-US": "support_emotional" },
+            "label": "support_emotional",
             "type": "boolean",
             "component": "Boolean",
             "options": [
@@ -197,7 +197,7 @@
           },
           "support_practical": {
             "name": "support_practical",
-            "label": { "en-US": "support_practical" },
+            "label": "support_practical",
             "type": "boolean",
             "component": "Boolean",
             "options": [
@@ -207,7 +207,7 @@
           },
           "support_informational": {
             "name": "support_informational",
-            "label": { "en-US": "support_informational" },
+            "label": "support_informational",
             "type": "boolean",
             "component": "Boolean",
             "options": [
@@ -217,7 +217,7 @@
           },
           "is_clinical": {
             "name": "is_clinical",
-            "label": { "en-US": "is_clinical" },
+            "label": "is_clinical",
             "type": "boolean",
             "component": "Boolean",
             "options": [
@@ -227,7 +227,7 @@
           },
           "knows_about_mh": {
             "name": "knows_about_mh",
-            "label": { "en-US": "knows_about_mh" },
+            "label": "knows_about_mh",
             "type": "boolean",
             "component": "Boolean",
             "options": [
@@ -237,7 +237,7 @@
           },
           "is_source_of_stress": {
             "name": "is_source_of_stress",
-            "label": { "en-US": "is_source_of_stress" },
+            "label": "is_source_of_stress",
             "type": "boolean",
             "component": "Boolean",
             "options": [
@@ -247,7 +247,7 @@
           },
           "help_source_type": {
             "name": "help_source_type",
-            "label": { "en-US": "help_source_type" },
+            "label": "help_source_type",
             "type": "categorical",
             "component": "ToggleButtonGroup",
             "options": [
@@ -266,7 +266,7 @@
           },
           "contact_frequency": {
             "name": "contact_frequency",
-            "label": { "en-US": "contact_frequency" },
+            "label": "contact_frequency",
             "type": "ordinal",
             "component": "RadioGroup",
             "options": [
@@ -279,7 +279,7 @@
           },
           "closeness": {
             "name": "closeness",
-            "label": { "en-US": "closeness" },
+            "label": "closeness",
             "type": "ordinal",
             "component": "LikertScale",
             "options": [
@@ -292,7 +292,7 @@
           },
           "layout": {
             "name": "layout",
-            "label": { "en-US": "layout" },
+            "label": "layout",
             "type": "layout"
           }
         }
@@ -668,13 +668,28 @@
           "id": "preset-support-strain",
           "label": { "en-US": "Supportive vs difficult ties" },
           "layoutVariable": "layout",
-          "highlight": ["support_emotional", "is_source_of_stress"]
+          "highlight": [
+            {
+              "variable": "support_emotional",
+              "label": { "en-US": "support_emotional" }
+            },
+            {
+              "variable": "is_source_of_stress",
+              "label": { "en-US": "is_source_of_stress" }
+            }
+          ]
         },
         {
           "id": "preset-disclosure",
           "label": { "en-US": "Who knows about your mental health" },
           "layoutVariable": "layout",
-          "highlight": ["knows_about_mh", "is_clinical"]
+          "highlight": [
+            {
+              "variable": "knows_about_mh",
+              "label": { "en-US": "knows_about_mh" }
+            },
+            { "variable": "is_clinical", "label": { "en-US": "is_clinical" } }
+          ]
         }
       ],
       "background": {

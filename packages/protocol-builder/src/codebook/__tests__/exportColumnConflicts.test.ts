@@ -63,7 +63,7 @@ const sectionOf = (
   variables: Object.fromEntries(
     Object.entries(variables).map(([id, variable]) => [
       id,
-      { label: { en: String(variable.name) }, ...variable },
+      { label: String(variable.name), ...variable },
     ]),
   ),
 });
@@ -197,7 +197,7 @@ describe('creating an attribute', () => {
     expect(() =>
       create(section, {
         name: 'foo',
-        label: { en: 'foo' },
+        label: 'foo',
         type: 'ordinal',
         component: 'RadioGroup',
         options: [
@@ -438,7 +438,7 @@ describe('the names the write stores', () => {
     const written = create(sectionOf({}), text('  first_name  '));
     expect(storedVariable(written, 'new-variable')).toMatchObject({
       name: 'first_name',
-      label: { en: 'first_name' },
+      label: 'first_name',
     });
   });
 

@@ -32,7 +32,7 @@ const state = {
           variables: {
             1: {
               name: 'name',
-              label: { en: 'name' },
+              label: 'name',
               type: 'text' as const,
             },
           },
@@ -46,7 +46,7 @@ const state = {
             variables: {
               2: {
                 name: 'name',
-                label: { en: 'name' },
+                label: 'name',
                 type: 'text' as const,
               },
             },
@@ -60,7 +60,7 @@ const state = {
             variables: {
               3: {
                 name: 'name',
-                label: { en: 'name' },
+                label: 'name',
                 type: 'text' as const,
               },
             },
@@ -296,13 +296,13 @@ describe('Codebook usage labels survive a dot inside a codebook record key', () 
                 variables: {
                   'owner.id': {
                     name: 'Owner',
-                    label: { en: 'Owner' },
+                    label: 'Owner',
                     type: 'number',
                     validation: { sameAs: 'target.id' },
                   },
                   'target.id': {
                     name: 'Target',
-                    label: { en: 'Target' },
+                    label: 'Target',
                     type: 'number',
                   },
                 },
@@ -349,7 +349,7 @@ describe('Codebook usage labels survive a dot inside a codebook record key', () 
                 variables: {
                   category: {
                     name: 'Category',
-                    label: { en: 'Category' },
+                    label: 'Category',
                     type: 'categorical',
                     options: [{ label: { en: 'A' }, value: 'a' }],
                   },

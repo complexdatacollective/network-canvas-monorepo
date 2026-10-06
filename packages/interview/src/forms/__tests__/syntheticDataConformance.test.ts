@@ -330,14 +330,14 @@ const MONTH_PARAMETERS = {
 const egoVariables: Variables = {
   egoName: {
     name: 'Name',
-    label: { en: 'Name' },
+    label: 'Name',
     type: 'text',
     component: 'Text',
     validation: { required: true, minLength: 3, maxLength: 12 },
   },
   egoAlias: {
     name: 'Alias',
-    label: { en: 'Alias' },
+    label: 'Alias',
     type: 'text',
     component: 'Text',
     validation: { required: true, differentFrom: ref('egoName') },
@@ -347,21 +347,21 @@ const egoVariables: Variables = {
   // a seed happens to produce.
   egoInitials: {
     name: 'Initials',
-    label: { en: 'Initials' },
+    label: 'Initials',
     type: 'text',
     component: 'Text',
     validation: { required: true, minLength: 2, maxLength: 4 },
   },
   egoCode: {
     name: 'Code',
-    label: { en: 'Code' },
+    label: 'Code',
     type: 'text',
     component: 'Text',
     validation: { required: true, minLength: 8, maxLength: 8 },
   },
   egoCodeConfirm: {
     name: 'Confirm code',
-    label: { en: 'Confirm code' },
+    label: 'Confirm code',
     type: 'text',
     component: 'TextArea',
     validation: {
@@ -374,26 +374,26 @@ const egoVariables: Variables = {
 
   egoAge: {
     name: 'Age',
-    label: { en: 'Age' },
+    label: 'Age',
     type: 'number',
     component: 'Number',
     validation: { required: true, minValue: 18, maxValue: 65 },
   },
   egoAgeCopy: {
     name: 'Age again',
-    label: { en: 'Age again' },
+    label: 'Age again',
     type: 'number',
     validation: { minValue: 18, maxValue: 65, sameAs: ref('egoAge') },
   },
   egoYearsAtAddress: {
     name: 'Years at address',
-    label: { en: 'Years at address' },
+    label: 'Years at address',
     type: 'number',
     validation: { minValue: 0, maxValue: 40, lessThanVariable: ref('egoAge') },
   },
   egoRetirementAge: {
     name: 'Retirement age',
-    label: { en: 'Retirement age' },
+    label: 'Retirement age',
     type: 'number',
     validation: {
       minValue: 40,
@@ -403,7 +403,7 @@ const egoVariables: Variables = {
   },
   egoAgeAtLeast: {
     name: 'Age at least',
-    label: { en: 'Age at least' },
+    label: 'Age at least',
     type: 'number',
     validation: {
       minValue: 0,
@@ -413,7 +413,7 @@ const egoVariables: Variables = {
   },
   egoAgeAtMost: {
     name: 'Age at most',
-    label: { en: 'Age at most' },
+    label: 'Age at most',
     type: 'number',
     validation: {
       minValue: 18,
@@ -423,13 +423,13 @@ const egoVariables: Variables = {
   },
   egoOtherNumber: {
     name: 'Other number',
-    label: { en: 'Other number' },
+    label: 'Other number',
     type: 'number',
     validation: { minValue: 1, maxValue: 3 },
   },
   egoLuckyNumber: {
     name: 'Lucky number',
-    label: { en: 'Lucky number' },
+    label: 'Lucky number',
     type: 'number',
     validation: {
       minValue: 1,
@@ -443,35 +443,35 @@ const egoVariables: Variables = {
   // value bounds of its own. Every rule it does accept is below.
   egoCloseness: {
     name: 'Closeness',
-    label: { en: 'Closeness' },
+    label: 'Closeness',
     type: 'scalar',
     component: 'VisualAnalogScale',
     validation: { required: true },
   },
   egoTrust: {
     name: 'Trust',
-    label: { en: 'Trust' },
+    label: 'Trust',
     type: 'scalar',
     component: 'VisualAnalogScale',
     validation: { greaterThanVariable: ref('egoCloseness') },
   },
   egoDoubt: {
     name: 'Doubt',
-    label: { en: 'Doubt' },
+    label: 'Doubt',
     type: 'scalar',
     component: 'VisualAnalogScale',
     validation: { lessThanVariable: ref('egoCloseness') },
   },
   egoHopeAtLeast: {
     name: 'Hope at least',
-    label: { en: 'Hope at least' },
+    label: 'Hope at least',
     type: 'scalar',
     component: 'VisualAnalogScale',
     validation: { greaterThanOrEqualToVariable: ref('egoCloseness') },
   },
   egoHopeAtMost: {
     name: 'Hope at most',
-    label: { en: 'Hope at most' },
+    label: 'Hope at most',
     type: 'scalar',
     component: 'VisualAnalogScale',
     validation: { lessThanOrEqualToVariable: ref('egoCloseness') },
@@ -479,7 +479,7 @@ const egoVariables: Variables = {
 
   egoBirthMonth: {
     name: 'Birth month',
-    label: { en: 'Birth month' },
+    label: 'Birth month',
     type: 'datetime',
     component: 'DatePicker',
     parameters: MONTH_PARAMETERS,
@@ -487,7 +487,7 @@ const egoVariables: Variables = {
   },
   egoBirthMonthCopy: {
     name: 'Birth month again',
-    label: { en: 'Birth month again' },
+    label: 'Birth month again',
     type: 'datetime',
     component: 'DatePicker',
     parameters: MONTH_PARAMETERS,
@@ -495,7 +495,7 @@ const egoVariables: Variables = {
   },
   egoOtherMonth: {
     name: 'Other month',
-    label: { en: 'Other month' },
+    label: 'Other month',
     type: 'datetime',
     component: 'DatePicker',
     parameters: MONTH_PARAMETERS,
@@ -503,7 +503,7 @@ const egoVariables: Variables = {
   },
   egoLaterMonth: {
     name: 'Later month',
-    label: { en: 'Later month' },
+    label: 'Later month',
     type: 'datetime',
     component: 'DatePicker',
     parameters: MONTH_PARAMETERS,
@@ -511,7 +511,7 @@ const egoVariables: Variables = {
   },
   egoEarlierMonth: {
     name: 'Earlier month',
-    label: { en: 'Earlier month' },
+    label: 'Earlier month',
     type: 'datetime',
     component: 'DatePicker',
     parameters: MONTH_PARAMETERS,
@@ -519,7 +519,7 @@ const egoVariables: Variables = {
   },
   egoMonthAtLeast: {
     name: 'Month at least',
-    label: { en: 'Month at least' },
+    label: 'Month at least',
     type: 'datetime',
     component: 'DatePicker',
     parameters: MONTH_PARAMETERS,
@@ -527,7 +527,7 @@ const egoVariables: Variables = {
   },
   egoMonthAtMost: {
     name: 'Month at most',
-    label: { en: 'Month at most' },
+    label: 'Month at most',
     type: 'datetime',
     component: 'DatePicker',
     parameters: MONTH_PARAMETERS,
@@ -535,7 +535,7 @@ const egoVariables: Variables = {
   },
   egoStartYear: {
     name: 'Start year',
-    label: { en: 'Start year' },
+    label: 'Start year',
     type: 'datetime',
     component: 'DatePicker',
     parameters: { type: 'year', min: '1990-01-01', max: '2005-12-31' },
@@ -544,7 +544,7 @@ const egoVariables: Variables = {
 
   egoLastVisit: {
     name: 'Last visit',
-    label: { en: 'Last visit' },
+    label: 'Last visit',
     type: 'datetime',
     component: 'RelativeDatePicker',
     parameters: { before: 90, after: 0 },
@@ -552,7 +552,7 @@ const egoVariables: Variables = {
   },
   egoLastVisitCopy: {
     name: 'Last visit again',
-    label: { en: 'Last visit again' },
+    label: 'Last visit again',
     type: 'datetime',
     component: 'RelativeDatePicker',
     parameters: { before: 90, after: 0 },
@@ -560,7 +560,7 @@ const egoVariables: Variables = {
   },
   egoOtherVisit: {
     name: 'Other visit',
-    label: { en: 'Other visit' },
+    label: 'Other visit',
     type: 'datetime',
     component: 'RelativeDatePicker',
     parameters: { before: 90, after: 0 },
@@ -568,7 +568,7 @@ const egoVariables: Variables = {
   },
   egoFirstVisit: {
     name: 'First visit',
-    label: { en: 'First visit' },
+    label: 'First visit',
     type: 'datetime',
     component: 'RelativeDatePicker',
     parameters: { before: 365, after: 0 },
@@ -576,7 +576,7 @@ const egoVariables: Variables = {
   },
   egoNextVisit: {
     name: 'Next visit',
-    label: { en: 'Next visit' },
+    label: 'Next visit',
     type: 'datetime',
     component: 'RelativeDatePicker',
     parameters: { before: 90, after: 30 },
@@ -584,7 +584,7 @@ const egoVariables: Variables = {
   },
   egoVisitAtLeast: {
     name: 'Visit at least',
-    label: { en: 'Visit at least' },
+    label: 'Visit at least',
     type: 'datetime',
     component: 'RelativeDatePicker',
     parameters: { before: 90, after: 30 },
@@ -592,7 +592,7 @@ const egoVariables: Variables = {
   },
   egoVisitAtMost: {
     name: 'Visit at most',
-    label: { en: 'Visit at most' },
+    label: 'Visit at most',
     type: 'datetime',
     component: 'RelativeDatePicker',
     parameters: { before: 120, after: 0 },
@@ -601,42 +601,42 @@ const egoVariables: Variables = {
 
   egoConsent: {
     name: 'Consent',
-    label: { en: 'Consent' },
+    label: 'Consent',
     type: 'boolean',
     component: 'Boolean',
     validation: { required: true },
   },
   egoConsentCopy: {
     name: 'Consent again',
-    label: { en: 'Consent again' },
+    label: 'Consent again',
     type: 'boolean',
     component: 'Boolean',
     validation: { sameAs: ref('egoConsent') },
   },
   egoRefused: {
     name: 'Refused',
-    label: { en: 'Refused' },
+    label: 'Refused',
     type: 'boolean',
     component: 'Boolean',
     validation: { differentFrom: ref('egoConsent') },
   },
   egoNotify: {
     name: 'Notify',
-    label: { en: 'Notify' },
+    label: 'Notify',
     type: 'boolean',
     component: 'Toggle',
     validation: { required: true },
   },
   egoNotifyCopy: {
     name: 'Notify again',
-    label: { en: 'Notify again' },
+    label: 'Notify again',
     type: 'boolean',
     component: 'Toggle',
     validation: { sameAs: ref('egoNotify') },
   },
   egoOptOut: {
     name: 'Opt out',
-    label: { en: 'Opt out' },
+    label: 'Opt out',
     type: 'boolean',
     component: 'Toggle',
     validation: { differentFrom: ref('egoNotify') },
@@ -644,7 +644,7 @@ const egoVariables: Variables = {
 
   egoBand: {
     name: 'Band',
-    label: { en: 'Band' },
+    label: 'Band',
     type: 'ordinal',
     component: 'RadioGroup',
     options: THREE_OPTIONS,
@@ -652,7 +652,7 @@ const egoVariables: Variables = {
   },
   egoBandCopy: {
     name: 'Band again',
-    label: { en: 'Band again' },
+    label: 'Band again',
     type: 'ordinal',
     component: 'RadioGroup',
     options: THREE_OPTIONS,
@@ -660,7 +660,7 @@ const egoVariables: Variables = {
   },
   egoOtherBand: {
     name: 'Other band',
-    label: { en: 'Other band' },
+    label: 'Other band',
     type: 'ordinal',
     component: 'RadioGroup',
     options: THREE_OPTIONS,
@@ -668,7 +668,7 @@ const egoVariables: Variables = {
   },
   egoFrequency: {
     name: 'Frequency',
-    label: { en: 'Frequency' },
+    label: 'Frequency',
     type: 'ordinal',
     component: 'LikertScale',
     options: FIVE_OPTIONS,
@@ -677,7 +677,7 @@ const egoVariables: Variables = {
 
   egoContexts: {
     name: 'Contexts',
-    label: { en: 'Contexts' },
+    label: 'Contexts',
     type: 'categorical',
     component: 'CheckboxGroup',
     options: FOUR_OPTIONS,
@@ -685,7 +685,7 @@ const egoVariables: Variables = {
   },
   egoContextsCopy: {
     name: 'Contexts again',
-    label: { en: 'Contexts again' },
+    label: 'Contexts again',
     type: 'categorical',
     component: 'CheckboxGroup',
     options: FOUR_OPTIONS,
@@ -693,7 +693,7 @@ const egoVariables: Variables = {
   },
   egoOtherContexts: {
     name: 'Other contexts',
-    label: { en: 'Other contexts' },
+    label: 'Other contexts',
     type: 'categorical',
     component: 'ToggleButtonGroup',
     options: FOUR_OPTIONS,
@@ -708,49 +708,49 @@ const egoVariables: Variables = {
 const personVariables: Variables = {
   personName: {
     name: 'Person name',
-    label: { en: 'Person name' },
+    label: 'Person name',
     type: 'text',
     component: 'Text',
     validation: { required: true, minLength: 2, maxLength: 20 },
   },
   personTag: {
     name: 'Person tag',
-    label: { en: 'Person tag' },
+    label: 'Person tag',
     type: 'text',
     component: 'Text',
     validation: { required: true, minLength: 2, maxLength: 4 },
   },
   personCode: {
     name: 'Person code',
-    label: { en: 'Person code' },
+    label: 'Person code',
     type: 'text',
     component: 'Text',
     validation: { required: true, unique: true, minLength: 6, maxLength: 6 },
   },
   personCodeCopy: {
     name: 'Person code again',
-    label: { en: 'Person code again' },
+    label: 'Person code again',
     type: 'text',
     component: 'Text',
     validation: { minLength: 6, maxLength: 6, sameAs: ref('personCode') },
   },
   personNickname: {
     name: 'Person nickname',
-    label: { en: 'Person nickname' },
+    label: 'Person nickname',
     type: 'text',
     component: 'Text',
     validation: { required: true, differentFrom: ref('personName') },
   },
   personAge: {
     name: 'Person age',
-    label: { en: 'Person age' },
+    label: 'Person age',
     type: 'number',
     component: 'Number',
     validation: { required: true, unique: true, minValue: 18, maxValue: 80 },
   },
   personYearsKnown: {
     name: 'Years known',
-    label: { en: 'Years known' },
+    label: 'Years known',
     type: 'number',
     validation: {
       minValue: 0,
@@ -760,21 +760,21 @@ const personVariables: Variables = {
   },
   personCloseness: {
     name: 'Person closeness',
-    label: { en: 'Person closeness' },
+    label: 'Person closeness',
     type: 'scalar',
     component: 'VisualAnalogScale',
     validation: { required: true },
   },
   personRegard: {
     name: 'Person regard',
-    label: { en: 'Person regard' },
+    label: 'Person regard',
     type: 'scalar',
     component: 'VisualAnalogScale',
     validation: { greaterThanVariable: ref('personCloseness') },
   },
   personMet: {
     name: 'Met on',
-    label: { en: 'Met on' },
+    label: 'Met on',
     type: 'datetime',
     component: 'DatePicker',
     parameters: { type: 'month', min: '2000-01-01', max: '2024-12-31' },
@@ -782,7 +782,7 @@ const personVariables: Variables = {
   },
   personLastSeen: {
     name: 'Last seen',
-    label: { en: 'Last seen' },
+    label: 'Last seen',
     type: 'datetime',
     component: 'RelativeDatePicker',
     parameters: { before: 90, after: 0 },
@@ -797,7 +797,7 @@ const personVariables: Variables = {
   // this fixture is what most real protocols exercise.
   personDefaultVisit: {
     name: 'Person default visit',
-    label: { en: 'Person default visit' },
+    label: 'Person default visit',
     type: 'datetime',
     component: 'RelativeDatePicker',
     parameters: {},
@@ -805,7 +805,7 @@ const personVariables: Variables = {
   },
   personContexts: {
     name: 'Person contexts',
-    label: { en: 'Person contexts' },
+    label: 'Person contexts',
     type: 'categorical',
     component: 'CheckboxGroup',
     options: FOUR_OPTIONS,
@@ -818,7 +818,7 @@ const personVariables: Variables = {
   },
   personBand: {
     name: 'Person band',
-    label: { en: 'Person band' },
+    label: 'Person band',
     type: 'ordinal',
     component: 'RadioGroup',
     options: THREE_OPTIONS,
@@ -826,12 +826,12 @@ const personVariables: Variables = {
   },
   personLayout: {
     name: 'Person layout',
-    label: { en: 'Person layout' },
+    label: 'Person layout',
     type: 'layout',
   },
   personPlace: {
     name: 'Person place',
-    label: { en: 'Person place' },
+    label: 'Person place',
     type: 'location',
   },
 };
@@ -844,21 +844,21 @@ const personVariables: Variables = {
 const tokenVariables: Variables = {
   tokenFlag: {
     name: 'Token flag',
-    label: { en: 'Token flag' },
+    label: 'Token flag',
     type: 'boolean',
     component: 'Boolean',
     validation: { required: true, unique: true },
   },
   tokenSwitch: {
     name: 'Token switch',
-    label: { en: 'Token switch' },
+    label: 'Token switch',
     type: 'boolean',
     component: 'Toggle',
     validation: { required: true, unique: true },
   },
   tokenRank: {
     name: 'Token rank',
-    label: { en: 'Token rank' },
+    label: 'Token rank',
     type: 'ordinal',
     component: 'RadioGroup',
     options: FOUR_OPTIONS,
@@ -866,7 +866,7 @@ const tokenVariables: Variables = {
   },
   tokenRankCopy: {
     name: 'Token rank again',
-    label: { en: 'Token rank again' },
+    label: 'Token rank again',
     type: 'ordinal',
     component: 'RadioGroup',
     options: FOUR_OPTIONS,
@@ -874,7 +874,7 @@ const tokenVariables: Variables = {
   },
   tokenOtherRank: {
     name: 'Token other rank',
-    label: { en: 'Token other rank' },
+    label: 'Token other rank',
     type: 'ordinal',
     component: 'RadioGroup',
     options: FOUR_OPTIONS,
@@ -885,42 +885,42 @@ const tokenVariables: Variables = {
 const friendVariables: Variables = {
   edgeLabel: {
     name: 'Edge label',
-    label: { en: 'Edge label' },
+    label: 'Edge label',
     type: 'text',
     component: 'Text',
     validation: { required: true, unique: true, minLength: 4, maxLength: 8 },
   },
   edgeNote: {
     name: 'Edge note',
-    label: { en: 'Edge note' },
+    label: 'Edge note',
     type: 'text',
     component: 'TextArea',
     validation: { required: true, differentFrom: ref('edgeLabel') },
   },
   edgeStrength: {
     name: 'Edge strength',
-    label: { en: 'Edge strength' },
+    label: 'Edge strength',
     type: 'number',
     component: 'Number',
     validation: { required: true, minValue: 1, maxValue: 5 },
   },
   edgeWeight: {
     name: 'Edge weight',
-    label: { en: 'Edge weight' },
+    label: 'Edge weight',
     type: 'scalar',
     component: 'VisualAnalogScale',
     validation: { required: true },
   },
   edgeWeightFloor: {
     name: 'Edge weight floor',
-    label: { en: 'Edge weight floor' },
+    label: 'Edge weight floor',
     type: 'scalar',
     component: 'VisualAnalogScale',
     validation: { lessThanOrEqualToVariable: ref('edgeWeight') },
   },
   edgeSince: {
     name: 'Edge since',
-    label: { en: 'Edge since' },
+    label: 'Edge since',
     type: 'datetime',
     component: 'DatePicker',
     parameters: { type: 'year', min: '2000-01-01', max: '2024-12-31' },
@@ -928,7 +928,7 @@ const friendVariables: Variables = {
   },
   edgeSinceCopy: {
     name: 'Edge since again',
-    label: { en: 'Edge since again' },
+    label: 'Edge since again',
     type: 'datetime',
     component: 'DatePicker',
     parameters: { type: 'year', min: '2000-01-01', max: '2024-12-31' },
@@ -936,14 +936,14 @@ const friendVariables: Variables = {
   },
   edgeIsClose: {
     name: 'Edge is close',
-    label: { en: 'Edge is close' },
+    label: 'Edge is close',
     type: 'boolean',
     component: 'Boolean',
     validation: { required: true },
   },
   edgeKind: {
     name: 'Edge kind',
-    label: { en: 'Edge kind' },
+    label: 'Edge kind',
     type: 'categorical',
     component: 'CheckboxGroup',
     options: THREE_OPTIONS,
@@ -1166,7 +1166,7 @@ describe('synthetic data conformance', () => {
 const hazardVariables: Variables = {
   binBand: {
     name: 'Bin band',
-    label: { en: 'Bin band' },
+    label: 'Bin band',
     type: 'ordinal',
     component: 'RadioGroup',
     options: THREE_OPTIONS,
@@ -1174,7 +1174,7 @@ const hazardVariables: Variables = {
   },
   binRank: {
     name: 'Bin rank',
-    label: { en: 'Bin rank' },
+    label: 'Bin rank',
     type: 'ordinal',
     component: 'RadioGroup',
     options: THREE_OPTIONS,
@@ -1182,7 +1182,7 @@ const hazardVariables: Variables = {
   },
   binContexts: {
     name: 'Bin contexts',
-    label: { en: 'Bin contexts' },
+    label: 'Bin contexts',
     type: 'categorical',
     component: 'CheckboxGroup',
     options: FOUR_OPTIONS,
@@ -1343,7 +1343,7 @@ describe('a variable used by both a form and a binning stage', () => {
 const crossResolutionVariables: Variables = {
   xrMonth: {
     name: 'Start month',
-    label: { en: 'Start month' },
+    label: 'Start month',
     type: 'datetime',
     component: 'DatePicker',
     parameters: { type: 'month', min: '2000-01-01', max: '2010-12-31' },
@@ -1353,7 +1353,7 @@ const crossResolutionVariables: Variables = {
   // to reach past the first of the month, not merely into it.
   xrDayAfterMonth: {
     name: 'Day after month',
-    label: { en: 'Day after month' },
+    label: 'Day after month',
     type: 'datetime',
     component: 'DatePicker',
     parameters: { type: 'full', min: '2000-01-01', max: '2010-12-31' },
@@ -1363,7 +1363,7 @@ const crossResolutionVariables: Variables = {
   // needs a window opening before the counterpart's.
   xrDayBeforeMonth: {
     name: 'Day before month',
-    label: { en: 'Day before month' },
+    label: 'Day before month',
     type: 'datetime',
     component: 'DatePicker',
     parameters: { type: 'full', min: '1995-01-01', max: '2010-12-31' },
@@ -1371,7 +1371,7 @@ const crossResolutionVariables: Variables = {
   },
   xrDayAtLeastMonth: {
     name: 'Day at least month',
-    label: { en: 'Day at least month' },
+    label: 'Day at least month',
     type: 'datetime',
     component: 'DatePicker',
     parameters: { type: 'full', min: '2000-01-01', max: '2010-12-31' },
@@ -1379,7 +1379,7 @@ const crossResolutionVariables: Variables = {
   },
   xrDayAtMostMonth: {
     name: 'Day at most month',
-    label: { en: 'Day at most month' },
+    label: 'Day at most month',
     type: 'datetime',
     component: 'DatePicker',
     parameters: { type: 'full', min: '1995-01-01', max: '2010-12-31' },
@@ -1391,7 +1391,7 @@ const crossResolutionVariables: Variables = {
   // the first of June — before the day it must follow.
   xrDay: {
     name: 'Anchor day',
-    label: { en: 'Anchor day' },
+    label: 'Anchor day',
     type: 'datetime',
     component: 'DatePicker',
     parameters: { type: 'full', min: '2000-01-01', max: '2009-12-31' },
@@ -1399,7 +1399,7 @@ const crossResolutionVariables: Variables = {
   },
   xrMonthAfterDay: {
     name: 'Month after day',
-    label: { en: 'Month after day' },
+    label: 'Month after day',
     type: 'datetime',
     component: 'DatePicker',
     parameters: { type: 'month', min: '2000-01-01', max: '2010-12-31' },
@@ -1409,7 +1409,7 @@ const crossResolutionVariables: Variables = {
   // `2009-06 >= 2009-06-17` is false, the month having started first.
   xrMonthAtLeastDay: {
     name: 'Month at least day',
-    label: { en: 'Month at least day' },
+    label: 'Month at least day',
     type: 'datetime',
     component: 'DatePicker',
     parameters: { type: 'month', min: '2000-01-01', max: '2010-12-31' },
@@ -1417,7 +1417,7 @@ const crossResolutionVariables: Variables = {
   },
   xrMonthBeforeDay: {
     name: 'Month before day',
-    label: { en: 'Month before day' },
+    label: 'Month before day',
     type: 'datetime',
     component: 'DatePicker',
     parameters: { type: 'month', min: '1995-01-01', max: '2009-12-31' },
@@ -1427,7 +1427,7 @@ const crossResolutionVariables: Variables = {
   // Two steps apart: a year reads as its own first of January.
   xrYear: {
     name: 'Anchor year',
-    label: { en: 'Anchor year' },
+    label: 'Anchor year',
     type: 'datetime',
     component: 'DatePicker',
     parameters: { type: 'year', min: '2000-01-01', max: '2009-12-31' },
@@ -1435,7 +1435,7 @@ const crossResolutionVariables: Variables = {
   },
   xrDayAfterYear: {
     name: 'Day after year',
-    label: { en: 'Day after year' },
+    label: 'Day after year',
     type: 'datetime',
     component: 'DatePicker',
     parameters: { type: 'full', min: '2000-01-01', max: '2010-12-31' },
@@ -1443,7 +1443,7 @@ const crossResolutionVariables: Variables = {
   },
   xrYearBeforeDay: {
     name: 'Year before day',
-    label: { en: 'Year before day' },
+    label: 'Year before day',
     type: 'datetime',
     component: 'DatePicker',
     parameters: { type: 'year', min: '1995-01-01', max: '2009-12-31' },
@@ -1458,7 +1458,7 @@ const crossResolutionVariables: Variables = {
   // the first place — which is propagation's job, not the fold's.
   xrTightMonth: {
     name: 'Tight month',
-    label: { en: 'Tight month' },
+    label: 'Tight month',
     type: 'datetime',
     component: 'DatePicker',
     parameters: { type: 'month', min: '2010-01-01', max: '2010-12-31' },
@@ -1466,7 +1466,7 @@ const crossResolutionVariables: Variables = {
   },
   xrTightDay: {
     name: 'Tight day',
-    label: { en: 'Tight day' },
+    label: 'Tight day',
     type: 'datetime',
     component: 'DatePicker',
     parameters: { type: 'full', min: '2010-01-01', max: '2010-12-01' },
@@ -1615,7 +1615,7 @@ describe('date comparators across picker resolutions', () => {
 const coarseBoundVariables: Variables = {
   coarseFullDate: {
     name: 'Coarse full date',
-    label: { en: 'Coarse full date' },
+    label: 'Coarse full date',
     type: 'datetime',
     component: 'DatePicker',
     parameters: { type: 'full', min: '2020', max: '2022-06' },
@@ -1623,7 +1623,7 @@ const coarseBoundVariables: Variables = {
   },
   coarseMonthDate: {
     name: 'Coarse month date',
-    label: { en: 'Coarse month date' },
+    label: 'Coarse month date',
     type: 'datetime',
     component: 'DatePicker',
     parameters: { type: 'month', min: '2020', max: '2021' },
@@ -1725,14 +1725,14 @@ describe('a DatePicker bound coarser than its own picker resolution', () => {
 const rosterDateVariables: Variables = {
   rosterYear: {
     name: 'Started',
-    label: { en: 'Started' },
+    label: 'Started',
     type: 'datetime',
     component: 'DatePicker',
     parameters: { type: 'year', min: '2000-01-01', max: '2030-12-31' },
   },
   rosterDay: {
     name: 'Finished',
-    label: { en: 'Finished' },
+    label: 'Finished',
     type: 'datetime',
     component: 'DatePicker',
     parameters: { type: 'full', min: '2000-01-01', max: '2030-12-31' },
@@ -1801,14 +1801,14 @@ function rosterDateRows(): NcNode[] {
 const rosterPinVariables: Variables = {
   pinnedAge: {
     name: 'Pinned age',
-    label: { en: 'Pinned age' },
+    label: 'Pinned age',
     type: 'number',
     component: 'Number',
     validation: { required: true, minValue: 0, maxValue: 1 },
   },
   drawnRetired: {
     name: 'Drawn retired',
-    label: { en: 'Drawn retired' },
+    label: 'Drawn retired',
     type: 'number',
     component: 'Number',
     validation: {
@@ -1930,7 +1930,7 @@ describe('a roster pinning one end of a comparator', () => {
 const narrowVariables: Variables = {
   narrowPair: {
     name: 'Narrow pair',
-    label: { en: 'Narrow pair' },
+    label: 'Narrow pair',
     type: 'number',
     component: 'Number',
     validation: {
@@ -1942,14 +1942,14 @@ const narrowVariables: Variables = {
   },
   narrowGrid: {
     name: 'Narrow grid',
-    label: { en: 'Narrow grid' },
+    label: 'Narrow grid',
     type: 'number',
     component: 'Number',
     validation: { required: true, minValue: 0.001, maxValue: 0.099 },
   },
   narrowOther: {
     name: 'Narrow other',
-    label: { en: 'Narrow other' },
+    label: 'Narrow other',
     type: 'number',
     component: 'Number',
     validation: {

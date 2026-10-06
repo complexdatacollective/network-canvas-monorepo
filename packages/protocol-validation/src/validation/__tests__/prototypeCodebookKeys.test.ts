@@ -21,7 +21,7 @@ const nodeType = {
   color: 'node-color-seq-3',
   shape: { default: 'circle' },
 };
-const textVariable = { name: 'Proto', label: localized('Proto'), type: 'text' };
+const textVariable = { name: 'Proto', label: 'Proto', type: 'text' };
 
 const cases = [
   {

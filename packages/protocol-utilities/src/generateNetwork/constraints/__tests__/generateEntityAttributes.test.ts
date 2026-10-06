@@ -102,7 +102,7 @@ describe('generateEntityAttributes', () => {
       {
         name: {
           name: 'name',
-          label: { 'en-US': 'name' },
+          label: 'name',
           type: 'text',
           validation: { unique: true },
         },
@@ -134,12 +134,12 @@ describe('generateEntityAttributes', () => {
       {
         preferredName: {
           name: 'name',
-          label: { 'en-US': 'name' },
+          label: 'name',
           type: 'text',
         },
         legalName: {
           name: 'Name',
-          label: { 'en-US': 'Name' },
+          label: 'Name',
           type: 'text',
           validation: {
             differentFrom: asEntityAttributeReference('preferredName'),
@@ -166,13 +166,13 @@ describe('generateEntityAttributes', () => {
       {
         a: {
           name: 'A',
-          label: { 'en-US': 'A' },
+          label: 'A',
           type: 'text',
           validation: { required: true, minLength: 24, maxLength: 24 },
         },
         b: {
           name: 'B',
-          label: { 'en-US': 'B' },
+          label: 'B',
           type: 'text',
           validation: {
             required: true,
@@ -204,13 +204,13 @@ describe('generateEntityAttributes', () => {
       {
         a: {
           name: 'A',
-          label: { 'en-US': 'A' },
+          label: 'A',
           type: 'text',
           validation: { maxLength: 24 },
         },
         b: {
           name: 'B',
-          label: { 'en-US': 'B' },
+          label: 'B',
           type: 'text',
           validation: {
             minLength: 24,
@@ -235,10 +235,10 @@ describe('generateEntityAttributes', () => {
   it('pins a sameAs group to a member it is not regenerating', () => {
     const entity = buildEntityConstraints(
       {
-        a: { name: 'A', label: { 'en-US': 'A' }, type: 'text' },
+        a: { name: 'A', label: 'A', type: 'text' },
         b: {
           name: 'B',
-          label: { 'en-US': 'B' },
+          label: 'B',
           type: 'text',
           validation: { sameAs: asEntityAttributeReference('a') },
         },
@@ -263,10 +263,10 @@ describe('generateEntityAttributes', () => {
   it('satisfies differentFrom', () => {
     const entity = buildEntityConstraints(
       {
-        a: { name: 'A', label: { 'en-US': 'A' }, type: 'text' },
+        a: { name: 'A', label: 'A', type: 'text' },
         b: {
           name: 'B',
-          label: { 'en-US': 'B' },
+          label: 'B',
           type: 'text',
           validation: { differentFrom: asEntityAttributeReference('a') },
         },
@@ -290,7 +290,7 @@ describe('generateEntityAttributes', () => {
       {
         a: {
           name: 'A',
-          label: { 'en-US': 'A' },
+          label: 'A',
           type: 'categorical',
           options: [
             { label: { 'en-US': 'X' }, value: 'x' },
@@ -300,7 +300,7 @@ describe('generateEntityAttributes', () => {
         },
         b: {
           name: 'B',
-          label: { 'en-US': 'B' },
+          label: 'B',
           type: 'categorical',
           options: [
             { label: { 'en-US': 'X' }, value: 'x' },
@@ -335,7 +335,7 @@ describe('generateEntityAttributes', () => {
       {
         a: {
           name: 'A',
-          label: { 'en-US': 'A' },
+          label: 'A',
           type: 'categorical',
           options: [
             { label: { 'en-US': 'X' }, value: 'x' },
@@ -345,7 +345,7 @@ describe('generateEntityAttributes', () => {
         },
         b: {
           name: 'Second Choice',
-          label: { 'en-US': 'Second Choice' },
+          label: 'Second Choice',
           type: 'categorical',
           options: [
             { label: { 'en-US': 'X' }, value: 'x' },
@@ -408,13 +408,13 @@ describe('generateEntityAttributes', () => {
       {
         low: {
           name: 'Low',
-          label: { 'en-US': 'Low' },
+          label: 'Low',
           type: 'number',
           validation: { minValue: 0, maxValue: 50 },
         },
         high: {
           name: 'High',
-          label: { 'en-US': 'High' },
+          label: 'High',
           type: 'number',
           validation: {
             minValue: 0,
@@ -442,13 +442,13 @@ describe('generateEntityAttributes', () => {
       {
         cap: {
           name: 'Cap',
-          label: { 'en-US': 'Cap' },
+          label: 'Cap',
           type: 'number',
           validation: { minValue: 10, maxValue: 100 },
         },
         used: {
           name: 'Used',
-          label: { 'en-US': 'Used' },
+          label: 'Used',
           type: 'number',
           validation: {
             minValue: 0,
@@ -479,13 +479,13 @@ describe('generateEntityAttributes', () => {
       {
         a: {
           name: 'A',
-          label: { 'en-US': 'A' },
+          label: 'A',
           type: 'number',
           validation: { minValue: 0, maxValue: 100 },
         },
         b: {
           name: 'B',
-          label: { 'en-US': 'B' },
+          label: 'B',
           type: 'number',
           validation: {
             minValue: 0,
@@ -513,13 +513,13 @@ describe('generateEntityAttributes', () => {
       {
         a: {
           name: 'A',
-          label: { 'en-US': 'A' },
+          label: 'A',
           type: 'number',
           validation: { minValue: 0, maxValue: 1 },
         },
         b: {
           name: 'B',
-          label: { 'en-US': 'B' },
+          label: 'B',
           type: 'number',
           validation: {
             minValue: 0,
@@ -548,7 +548,7 @@ describe('generateEntityAttributes', () => {
       {
         band: {
           name: 'Band',
-          label: { 'en-US': 'Band' },
+          label: 'Band',
           type: 'ordinal',
           options: [
             { label: { 'en-US': 'A' }, value: 1 },
@@ -580,7 +580,7 @@ describe('generateEntityAttributes', () => {
       {
         band: {
           name: 'Band',
-          label: { 'en-US': 'Band' },
+          label: 'Band',
           type: 'ordinal',
           options: [
             { label: { 'en-US': 'A' }, value: 1 },
@@ -614,13 +614,13 @@ describe('generateEntityAttributes', () => {
       {
         low: {
           name: 'Low',
-          label: { 'en-US': 'Low' },
+          label: 'Low',
           type: 'number',
           validation: { minValue: 0, maxValue: 100 },
         },
         high: {
           name: 'High',
-          label: { 'en-US': 'High' },
+          label: 'High',
           type: 'number',
           validation: {
             minValue: 0,
@@ -652,19 +652,19 @@ describe('generateEntityAttributes', () => {
       {
         a: {
           name: 'A',
-          label: { 'en-US': 'A' },
+          label: 'A',
           type: 'number',
           validation: { minValue: 0, maxValue: 100 },
         },
         x: {
           name: 'X',
-          label: { 'en-US': 'X' },
+          label: 'X',
           type: 'number',
           validation: { minValue: 0, maxValue: 100 },
         },
         b: {
           name: 'B',
-          label: { 'en-US': 'B' },
+          label: 'B',
           type: 'number',
           validation: {
             minValue: 0,
@@ -694,13 +694,13 @@ describe('generateEntityAttributes', () => {
       {
         a: {
           name: 'A',
-          label: { 'en-US': 'A' },
+          label: 'A',
           type: 'number',
           validation: { minValue: 0, maxValue: 100 },
         },
         b: {
           name: 'B',
-          label: { 'en-US': 'B' },
+          label: 'B',
           type: 'number',
           validation: {
             minValue: 0,
@@ -710,7 +710,7 @@ describe('generateEntityAttributes', () => {
         },
         c: {
           name: 'C',
-          label: { 'en-US': 'C' },
+          label: 'C',
           type: 'number',
           validation: {
             minValue: 0,
@@ -739,19 +739,19 @@ describe('generateEntityAttributes', () => {
       {
         a: {
           name: 'A',
-          label: { 'en-US': 'A' },
+          label: 'A',
           type: 'number',
           validation: { minValue: 0, maxValue: 10 },
         },
         d: {
           name: 'D',
-          label: { 'en-US': 'D' },
+          label: 'D',
           type: 'number',
           validation: { minValue: 0, maxValue: 10 },
         },
         b: {
           name: 'B',
-          label: { 'en-US': 'B' },
+          label: 'B',
           type: 'number',
           validation: {
             minValue: 0,
@@ -783,13 +783,13 @@ describe('generateEntityAttributes', () => {
       {
         a: {
           name: 'A',
-          label: { 'en-US': 'A' },
+          label: 'A',
           type: 'number',
           validation: { minValue: 0, maxValue: 2 },
         },
         b: {
           name: 'B',
-          label: { 'en-US': 'B' },
+          label: 'B',
           type: 'number',
           validation: {
             minValue: 0,
@@ -799,7 +799,7 @@ describe('generateEntityAttributes', () => {
         },
         c: {
           name: 'C',
-          label: { 'en-US': 'C' },
+          label: 'C',
           type: 'number',
           validation: {
             minValue: 0,
@@ -832,13 +832,13 @@ describe('generateEntityAttributes', () => {
       {
         score: {
           name: 'Score',
-          label: { 'en-US': 'Score' },
+          label: 'Score',
           type: 'number',
           validation: { minValue: 0, maxValue: 10 },
         },
         baseline: {
           name: 'Baseline',
-          label: { 'en-US': 'Baseline' },
+          label: 'Baseline',
           type: 'number',
           validation: { lessThanVariable: asEntityAttributeReference('score') },
         },
@@ -863,13 +863,13 @@ describe('generateEntityAttributes', () => {
       {
         a: {
           name: 'A',
-          label: { 'en-US': 'A' },
+          label: 'A',
           type: 'number',
           validation: { minValue: 0, maxValue: 3 },
         },
         b: {
           name: 'B',
-          label: { 'en-US': 'B' },
+          label: 'B',
           type: 'number',
           validation: {
             minValue: 0,
@@ -879,7 +879,7 @@ describe('generateEntityAttributes', () => {
         },
         c: {
           name: 'C',
-          label: { 'en-US': 'C' },
+          label: 'C',
           type: 'number',
           validation: {
             minValue: 0,
@@ -889,7 +889,7 @@ describe('generateEntityAttributes', () => {
         },
         d: {
           name: 'D',
-          label: { 'en-US': 'D' },
+          label: 'D',
           type: 'number',
           validation: {
             minValue: 0,
@@ -923,13 +923,13 @@ describe('generateEntityAttributes', () => {
       {
         a: {
           name: 'A',
-          label: { 'en-US': 'A' },
+          label: 'A',
           type: 'number',
           validation: { minValue: 0, maxValue: 1 },
         },
         b: {
           name: 'B',
-          label: { 'en-US': 'B' },
+          label: 'B',
           type: 'number',
           validation: {
             minValue: 0,
@@ -939,7 +939,7 @@ describe('generateEntityAttributes', () => {
         },
         c: {
           name: 'C',
-          label: { 'en-US': 'C' },
+          label: 'C',
           type: 'number',
           validation: {
             minValue: 0,
@@ -963,19 +963,19 @@ describe('generateEntityAttributes', () => {
       {
         a: {
           name: 'A',
-          label: { 'en-US': 'A' },
+          label: 'A',
           type: 'number',
           validation: { minValue: 0, maxValue: 1 },
         },
         far: {
           name: 'Far',
-          label: { 'en-US': 'Far' },
+          label: 'Far',
           type: 'number',
           validation: { minValue: 50, maxValue: 60 },
         },
         b: {
           name: 'B',
-          label: { 'en-US': 'B' },
+          label: 'B',
           type: 'number',
           validation: {
             minValue: 0,
@@ -1011,19 +1011,19 @@ describe('generateEntityAttributes', () => {
       {
         a: {
           name: 'A',
-          label: { 'en-US': 'A' },
+          label: 'A',
           type: 'number',
           validation: { minValue: 0, maxValue: 5 },
         },
         far: {
           name: 'Far',
-          label: { 'en-US': 'Far' },
+          label: 'Far',
           type: 'number',
           validation: { minValue: 50, maxValue: 60 },
         },
         b: {
           name: 'B',
-          label: { 'en-US': 'B' },
+          label: 'B',
           type: 'number',
           validation: {
             minValue: 0,
@@ -1064,19 +1064,19 @@ describe('generateEntityAttributes', () => {
     const bounds = { minValue: 0, maxValue: 1 };
     const a = {
       name: 'A',
-      label: { 'en-US': 'A' },
+      label: 'A',
       type: 'number',
       validation: bounds,
     } as const;
     const d = {
       name: 'D',
-      label: { 'en-US': 'D' },
+      label: 'D',
       type: 'number',
       validation: bounds,
     } as const;
     const b = {
       name: 'B',
-      label: { 'en-US': 'B' },
+      label: 'B',
       type: 'number',
       validation: {
         ...bounds,
@@ -1110,13 +1110,13 @@ describe('generateEntityAttributes', () => {
     const variables = {
       w: {
         name: 'W',
-        label: { 'en-US': 'W' },
+        label: 'W',
         type: 'number',
         validation: { minValue: 8, maxValue: 8 },
       },
       x: {
         name: 'X',
-        label: { 'en-US': 'X' },
+        label: 'X',
         type: 'number',
         validation: {
           minValue: 8,
@@ -1127,7 +1127,7 @@ describe('generateEntityAttributes', () => {
       },
       y: {
         name: 'Y',
-        label: { 'en-US': 'Y' },
+        label: 'Y',
         type: 'number',
         validation: {
           minValue: 0,
@@ -1137,7 +1137,7 @@ describe('generateEntityAttributes', () => {
       },
       z: {
         name: 'Z',
-        label: { 'en-US': 'Z' },
+        label: 'Z',
         type: 'number',
         validation: { minValue: 0, maxValue: 10 },
       },
@@ -1167,7 +1167,7 @@ describe('generateEntityAttributes', () => {
         ...variables,
         w: {
           name: 'W',
-          label: { 'en-US': 'W' },
+          label: 'W',
           type: 'number',
           validation: { minValue: 8, maxValue: 9 },
         },
@@ -1199,7 +1199,7 @@ describe('generateEntityAttributes', () => {
       {
         a: {
           name: 'A',
-          label: { 'en-US': 'A' },
+          label: 'A',
           type: 'number',
           validation: {
             minValue: 1,
@@ -1209,7 +1209,7 @@ describe('generateEntityAttributes', () => {
         },
         b: {
           name: 'B',
-          label: { 'en-US': 'B' },
+          label: 'B',
           type: 'number',
           validation: { minValue: 3, maxValue: 8 },
         },
@@ -1235,7 +1235,7 @@ describe('generateEntityAttributes', () => {
       {
         b: {
           name: 'B',
-          label: { 'en-US': 'B' },
+          label: 'B',
           type: 'number',
           validation: {
             minValue: 0,
@@ -1245,7 +1245,7 @@ describe('generateEntityAttributes', () => {
         },
         d: {
           name: 'D',
-          label: { 'en-US': 'D' },
+          label: 'D',
           type: 'number',
           validation: {
             minValue: 0,
@@ -1283,13 +1283,13 @@ describe('generateEntityAttributes', () => {
       {
         born: {
           name: 'Born',
-          label: { 'en-US': 'Born' },
+          label: 'Born',
           type: 'datetime',
           ...window,
         },
         diagnosed: {
           name: 'Diagnosed',
-          label: { 'en-US': 'Diagnosed' },
+          label: 'Diagnosed',
           type: 'datetime',
           ...window,
           validation: {
@@ -1298,7 +1298,7 @@ describe('generateEntityAttributes', () => {
         },
         died: {
           name: 'Died',
-          label: { 'en-US': 'Died' },
+          label: 'Died',
           type: 'datetime',
           ...window,
           validation: {
@@ -1331,13 +1331,13 @@ describe('generateEntityAttributes', () => {
       {
         start: {
           name: 'Start',
-          label: { 'en-US': 'Start' },
+          label: 'Start',
           type: 'datetime',
           ...window,
         },
         finish: {
           name: 'Finish',
-          label: { 'en-US': 'Finish' },
+          label: 'Finish',
           type: 'datetime',
           ...window,
           validation: {
@@ -1364,14 +1364,14 @@ describe('generateEntityAttributes', () => {
       {
         start: {
           name: 'Start',
-          label: { 'en-US': 'Start' },
+          label: 'Start',
           type: 'datetime',
           component: 'DatePicker',
           parameters: { type: 'month', min: '2026-01', max: '2026-12' },
         },
         finish: {
           name: 'Finish',
-          label: { 'en-US': 'Finish' },
+          label: 'Finish',
           type: 'datetime',
           component: 'DatePicker',
           parameters: { type: 'full', min: '2026-01-15', max: '2026-12-31' },
@@ -1410,13 +1410,13 @@ describe('generateEntityAttributes', () => {
       {
         a: {
           name: 'A',
-          label: { 'en-US': 'A' },
+          label: 'A',
           type: 'number',
           validation: { minValue: 0, maxValue: 2 },
         },
         c: {
           name: 'C',
-          label: { 'en-US': 'C' },
+          label: 'C',
           type: 'number',
           validation: {
             minValue: 0,
@@ -1427,7 +1427,7 @@ describe('generateEntityAttributes', () => {
         },
         d: {
           name: 'D',
-          label: { 'en-US': 'D' },
+          label: 'D',
           type: 'number',
           validation: { minValue: 0, maxValue: 2 },
         },
@@ -1452,13 +1452,13 @@ describe('generateEntityAttributes', () => {
       {
         a: {
           name: 'A',
-          label: { 'en-US': 'A' },
+          label: 'A',
           type: 'number',
           validation: { minValue: 0, maxValue: 100 },
         },
         b: {
           name: 'B',
-          label: { 'en-US': 'B' },
+          label: 'B',
           type: 'number',
           validation: {
             minValue: 0,
@@ -1495,13 +1495,13 @@ describe('generateEntityAttributes', () => {
       {
         a: {
           name: 'A',
-          label: { 'en-US': 'A' },
+          label: 'A',
           type: 'number',
           validation: { minValue: 0, maxValue: 3 },
         },
         b: {
           name: 'B',
-          label: { 'en-US': 'B' },
+          label: 'B',
           type: 'number',
           validation: {
             minValue: 0,
@@ -1551,7 +1551,7 @@ describe('generateEntityAttributes', () => {
       {
         badge: {
           name: 'Badge',
-          label: { 'en-US': 'Badge' },
+          label: 'Badge',
           type: 'number',
           validation: { minValue: 0, maxValue: 99_999, unique: true },
         },
@@ -1585,7 +1585,7 @@ describe('generateEntityAttributes', () => {
       {
         badge: {
           name: 'Badge',
-          label: { 'en-US': 'Badge' },
+          label: 'Badge',
           type: 'number',
           validation: { minValue: 0, maxValue: size - 1, unique: true },
         },
@@ -1634,14 +1634,14 @@ describe('generateEntityAttributes', () => {
       {
         a: {
           name: 'A',
-          label: { 'en-US': 'A' },
+          label: 'A',
           type: 'ordinal',
           options,
           validation: { unique: true },
         },
         b: {
           name: 'B',
-          label: { 'en-US': 'B' },
+          label: 'B',
           type: 'ordinal',
           options,
           validation: { sameAs: asEntityAttributeReference('a') },
@@ -1687,7 +1687,7 @@ describe('generateEntityAttributes', () => {
       {
         band: {
           name: 'Band',
-          label: { 'en-US': 'Band' },
+          label: 'Band',
           type: 'ordinal',
           options: [{ label: { 'en-US': 'A' }, value: 1 }],
           validation: { unique: true },
@@ -1738,7 +1738,7 @@ describe('generateEntityAttributes', () => {
       {
         band: {
           name: 'Band',
-          label: { 'en-US': 'Band' },
+          label: 'Band',
           type: 'ordinal',
           options: [
             { label: { 'en-US': 'A' }, value: 1 },
@@ -1799,8 +1799,8 @@ describe('generateEntityAttributes', () => {
   it('is deterministic for a given seed', () => {
     const entity = buildEntityConstraints(
       {
-        a: { name: 'A', label: { 'en-US': 'A' }, type: 'text' },
-        b: { name: 'B', label: { 'en-US': 'B' }, type: 'number' },
+        a: { name: 'A', label: 'A', type: 'text' },
+        b: { name: 'B', label: 'B', type: 'number' },
       },
       TODAY,
     );
@@ -1829,7 +1829,7 @@ describe('generateEntityAttributes', () => {
       {
         a: {
           name: 'A',
-          label: { 'en-US': 'A' },
+          label: 'A',
           type: 'number',
           validation: {
             minValue: 3,
@@ -1839,13 +1839,13 @@ describe('generateEntityAttributes', () => {
         },
         b: {
           name: 'B',
-          label: { 'en-US': 'B' },
+          label: 'B',
           type: 'number',
           validation: { minValue: 3, maxValue: 4 },
         },
         d: {
           name: 'D',
-          label: { 'en-US': 'D' },
+          label: 'D',
           type: 'number',
           validation: {
             minValue: 2,
@@ -1884,13 +1884,13 @@ describe('generateEntityAttributes', () => {
       {
         a: {
           name: 'A',
-          label: { 'en-US': 'A' },
+          label: 'A',
           type: 'number',
           validation: { minValue: 0, maxValue: 9 },
         },
         b: {
           name: 'B',
-          label: { 'en-US': 'B' },
+          label: 'B',
           type: 'number',
           validation: {
             minValue: 0,
@@ -1925,7 +1925,7 @@ describe('generateEntityAttributes', () => {
       {
         u: {
           name: 'U',
-          label: { 'en-US': 'U' },
+          label: 'U',
           type: 'number',
           validation: {
             minValue: 0,
@@ -1936,7 +1936,7 @@ describe('generateEntityAttributes', () => {
         },
         v: {
           name: 'V',
-          label: { 'en-US': 'V' },
+          label: 'V',
           type: 'number',
           validation: { minValue: 0, maxValue: 9 },
         },
@@ -1967,7 +1967,7 @@ describe('generateEntityAttributes', () => {
       {
         u: {
           name: 'U',
-          label: { 'en-US': 'U' },
+          label: 'U',
           type: 'number',
           validation: {
             minValue: 0,
@@ -1978,7 +1978,7 @@ describe('generateEntityAttributes', () => {
         },
         v: {
           name: 'V',
-          label: { 'en-US': 'V' },
+          label: 'V',
           type: 'number',
           validation: { minValue: 5, maxValue: 9 },
         },
@@ -2023,13 +2023,13 @@ describe('generateEntityAttributes', () => {
       {
         u: {
           name: 'U',
-          label: { 'en-US': 'U' },
+          label: 'U',
           type: 'number',
           validation: { minValue: 0, maxValue: 1, unique: true },
         },
         v: {
           name: 'V',
-          label: { 'en-US': 'V' },
+          label: 'V',
           type: 'number',
           validation: {
             minValue: 1,
@@ -2067,7 +2067,7 @@ describe('generateEntityAttributes', () => {
       {
         a: {
           name: 'A',
-          label: { 'en-US': 'A' },
+          label: 'A',
           type: 'number',
           validation: {
             minValue: 0,
@@ -2078,7 +2078,7 @@ describe('generateEntityAttributes', () => {
         },
         b: {
           name: 'B',
-          label: { 'en-US': 'B' },
+          label: 'B',
           type: 'number',
           validation: { minValue: 0, maxValue: 2, unique: true },
         },
@@ -2114,13 +2114,13 @@ describe('generateEntityAttributes', () => {
       {
         a: {
           name: 'A',
-          label: { 'en-US': 'A' },
+          label: 'A',
           type: 'number',
           validation: { minValue: 0, maxValue: 9 },
         },
         b: {
           name: 'B',
-          label: { 'en-US': 'B' },
+          label: 'B',
           type: 'number',
           validation: {
             minValue: 0,
@@ -2150,7 +2150,7 @@ describe('generateEntityAttributes', () => {
       {
         a: {
           name: 'A',
-          label: { 'en-US': 'A' },
+          label: 'A',
           type: 'number',
           validation: {
             minValue: 3,
@@ -2160,7 +2160,7 @@ describe('generateEntityAttributes', () => {
         },
         b: {
           name: 'B',
-          label: { 'en-US': 'B' },
+          label: 'B',
           type: 'number',
           validation: { minValue: 3, maxValue: 4 },
         },
@@ -2208,10 +2208,10 @@ describe('a fixed value the greedy draw can only complete by breaking a rule', (
   type Codebook = Parameters<typeof generateNetwork>[0]['codebook'];
 
   const unboundedPair: Variables = {
-    age: { name: 'Age', label: { 'en-US': 'Age' }, type: 'number' },
+    age: { name: 'Age', label: 'Age', type: 'number' },
     retired: {
       name: 'Retired',
-      label: { 'en-US': 'Retired' },
+      label: 'Retired',
       type: 'number',
       validation: {
         maxValue: 0,
@@ -2292,10 +2292,10 @@ describe('a fixed value the greedy draw can only complete by breaking a rule', (
   it('accepts a pin in an unenumerable component with no ceiling to cross', () => {
     const entity = buildEntityConstraints(
       {
-        age: { name: 'Age', label: { 'en-US': 'Age' }, type: 'number' },
+        age: { name: 'Age', label: 'Age', type: 'number' },
         retired: {
           name: 'Retired',
-          label: { 'en-US': 'Retired' },
+          label: 'Retired',
           type: 'number',
           validation: {
             greaterThanVariable: asEntityAttributeReference('age'),

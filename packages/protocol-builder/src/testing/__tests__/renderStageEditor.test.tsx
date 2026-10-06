@@ -860,7 +860,7 @@ describe('a codebook change the harness seeds', () => {
   const PERSON_SECTION = sectionId({ kind: 'codebookNode', typeId: 'person' });
   const NICKNAME = Object.freeze({
     name: 'nickname',
-    label: { 'en-US': 'Nickname' },
+    label: 'Nickname',
     type: 'text',
     component: 'Text',
   });

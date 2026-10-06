@@ -8,7 +8,6 @@ import Codebook from '~/components/Codebook/Codebook';
 import { readCodebookLink } from '~/components/Codebook/codebookLinks';
 import EntityTypeDialog from '~/components/Codebook/EntityTypeDialog';
 import UnusedVariablesAlert from '~/components/Codebook/UnusedVariablesAlert';
-import VariableLabelDialog from '~/components/Codebook/VariableLabelDialog';
 import PageHeading from '~/components/ProjectNav/PageHeading';
 import { pageInsetClasses } from '~/components/ProjectNav/pageInset';
 import { useAppSelector } from '~/ducks/hooks';
@@ -45,12 +44,10 @@ const CodebookPage = () => {
   // otherwise write a new type under the stale id.
   const linkedTypeExists = useAppSelector(
     (state) =>
-      link?.kind === 'type' &&
+      link !== undefined &&
       getCodebook(state)?.[link.entity]?.[link.type] !== undefined,
   );
-  const linkedType =
-    link?.kind === 'type' && linkedTypeExists ? link : undefined;
-  const linkedVariable = link?.kind === 'variable' ? link.variable : undefined;
+  const linkedType = linkedTypeExists ? link : undefined;
 
   const handleOpenEntityDialog = useCallback(
     (entity: string, type?: string) => {
@@ -87,11 +84,6 @@ const CodebookPage = () => {
         type={linkedType?.type ?? dialogState.type}
         onClose={linkedType ? handleCloseLink : handleCloseDialog}
         finalFocus={linkedType ? returnFocusToHeading : undefined}
-      />
-      <VariableLabelDialog
-        variable={linkedVariable}
-        onClose={handleCloseLink}
-        finalFocus={returnFocusToHeading}
       />
     </>
   );

@@ -120,16 +120,6 @@ type PlaceDetails = {
   fieldHref: (field: FieldPath) => string | null;
 };
 
-const variableLabelHref = (field: FieldPath) => {
-  const [root, variable, property] = field;
-  return field.length === 3 &&
-    root === 'variables' &&
-    typeof variable === 'string' &&
-    property === 'label'
-    ? codebookHref({ kind: 'variable', variable })
-    : null;
-};
-
 const describePlace = (
   intl: IntlShape,
   protocol: CurrentProtocol,
@@ -151,7 +141,6 @@ const describePlace = (
     case 'codebook': {
       const definition = codebook[place.entity]?.[place.entityType];
       const typeHref = codebookHref({
-        kind: 'type',
         entity: place.entity,
         type: place.entityType,
       });
@@ -166,9 +155,7 @@ const describePlace = (
         href: typeHref,
         variableNames: (id) => definition?.variables?.[id]?.name,
         fieldHref: (field) =>
-          field.length === 1 && field[0] === 'label'
-            ? typeHref
-            : variableLabelHref(field),
+          field.length === 1 && field[0] === 'label' ? typeHref : null,
       };
     }
     case 'ego':
@@ -177,7 +164,7 @@ const describePlace = (
         name: '',
         href: codebookHref(),
         variableNames: (id) => codebook.ego?.variables?.[id]?.name,
-        fieldHref: variableLabelHref,
+        fieldHref: () => null,
       };
     case 'protocol':
       return {

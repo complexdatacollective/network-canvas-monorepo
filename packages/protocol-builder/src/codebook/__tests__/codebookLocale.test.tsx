@@ -73,7 +73,7 @@ const context: ProtocolBuilderProtocolContext = {
         variables: {
           age: {
             name: 'Age',
-            label: { en: 'Age' },
+            label: 'Age',
             type: 'number',
             component: 'Number',
           },
@@ -88,7 +88,7 @@ const context: ProtocolBuilderProtocolContext = {
         variables: {
           closeness: {
             name: 'Closeness',
-            label: { en: 'Closeness' },
+            label: 'Closeness',
             type: 'number',
           },
         },
@@ -98,7 +98,7 @@ const context: ProtocolBuilderProtocolContext = {
       variables: {
         consent: {
           name: 'Consent',
-          label: { en: 'Consent' },
+          label: 'Consent',
           type: 'boolean',
         },
       },
@@ -269,7 +269,7 @@ const PERSON_DOCUMENT: SectionDoc = {
     // is something the sweep can actually open.
     ethnicity: {
       name: 'Ethnicity',
-      label: { en: 'Ethnicity' },
+      label: 'Ethnicity',
       type: 'categorical',
       component: 'CheckboxGroup',
       options: [
@@ -279,7 +279,7 @@ const PERSON_DOCUMENT: SectionDoc = {
     },
     age: {
       name: 'Age',
-      label: { en: 'Age' },
+      label: 'Age',
       type: 'number',
       component: 'Number',
     },
@@ -693,13 +693,13 @@ describe('the codebook editors swept for English', () => {
     const user = userEvent.setup();
     const localVariable = {
       name: 'comment',
-      label: { en: 'Comment' },
+      label: 'Comment',
       type: 'text',
       component: 'Text',
     };
     const remoteVariable = {
       name: 'comment',
-      label: { en: 'Comment' },
+      label: 'Comment',
       type: 'number',
       component: 'NumberInput',
     };
@@ -761,14 +761,14 @@ describe('the codebook editors swept for English', () => {
     const variables: Readonly<Record<string, unknown>> = {
       age: {
         name: 'Age',
-        label: { en: 'Age' },
+        label: 'Age',
         type: 'number',
         component: 'Number',
         validation: { minValue: 0 },
       },
       height: {
         name: 'Height',
-        label: { en: 'Height' },
+        label: 'Height',
         type: 'number',
         component: 'Number',
       },

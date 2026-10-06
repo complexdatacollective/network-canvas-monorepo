@@ -251,13 +251,13 @@ describe('the editor for a form about each person', () => {
         person: personDefinition({
           relationship_to_ego: {
             name: 'how_they_know_each_other',
-            label: { 'en-US': 'how_they_know_each_other' },
+            label: 'how_they_know_each_other',
             type: 'text',
             component: 'Text',
           },
           flagged: {
             name: 'flagged',
-            label: { 'en-US': 'flagged' },
+            label: 'flagged',
             type: 'boolean',
             component: 'Boolean',
           },

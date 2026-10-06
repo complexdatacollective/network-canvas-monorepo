@@ -397,7 +397,7 @@ describe('making and changing a codebook type from the control that names it', (
 
     collaboratorAddsFamilyMemberVariable(harness, 'shoe_size', {
       name: 'shoe_size',
-      label: { 'en-US': 'shoe_size' },
+      label: 'shoe_size',
       type: 'number',
       component: 'Number',
     });

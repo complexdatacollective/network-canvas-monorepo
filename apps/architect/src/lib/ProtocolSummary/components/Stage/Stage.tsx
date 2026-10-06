@@ -141,7 +141,7 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
         edges?: {
           display?: string[];
         };
-        highlight?: string[];
+        highlight?: { variable: string; label: LocalizedString }[];
       }[]
     | undefined;
   const title = configuration.title as LocalizedString | undefined;

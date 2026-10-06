@@ -454,7 +454,7 @@ describe('the name generator editor', () => {
           variables: {
             colleague_name: {
               name: 'colleague_name',
-              label: { 'en-US': 'colleague_name' },
+              label: 'colleague_name',
               type: 'text',
               component: 'Text',
             },
@@ -534,7 +534,7 @@ describe('a form field and a prompt stamp reaching for the same attribute', () =
             ...(person.variables as Record<string, unknown>),
             [FREE_ATTRIBUTE]: {
               name: FREE_ATTRIBUTE,
-              label: { 'en-US': FREE_ATTRIBUTE },
+              label: FREE_ATTRIBUTE,
               type: 'boolean',
               component: 'Boolean',
             },

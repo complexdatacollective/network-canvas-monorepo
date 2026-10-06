@@ -97,12 +97,12 @@ const codebook = {
       variables: {
         [QUICK_ADD_VAR]: {
           name: 'name',
-          label: { en: 'Name' },
+          label: 'Name',
           type: 'text' as const,
         },
         [LAYOUT_VAR]: {
           name: 'position',
-          label: { en: 'Position' },
+          label: 'Position',
           type: 'layout' as const,
         },
       },

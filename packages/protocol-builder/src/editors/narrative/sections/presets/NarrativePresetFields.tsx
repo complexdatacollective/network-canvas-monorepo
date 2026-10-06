@@ -4,16 +4,25 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
+import { formatObjectPath } from '@codaco/fresco-ui/form/utils/objectPath';
 import Section from '@codaco/fresco-ui/Section';
+import type { LocalizedString } from '@codaco/protocol-validation';
 
 import { LocalizedInputField } from '../../../../fields/LocalizedStringField.tsx';
 import VariablePickerField from '../../../../fields/VariablePickerField.tsx';
 import type {
   RowEditorProps,
   RowPreviewProps,
+  RowValues,
 } from '../../../../form/rowDialog.tsx';
-import { asLocalizedString } from '../../../../localization/localizedText.ts';
-import { useLocalizedText } from '../../../../localization/ProtocolLocalization.tsx';
+import {
+  asLocalizedString,
+  localizedFromText,
+} from '../../../../localization/localizedText.ts';
+import {
+  useLocalizedText,
+  useProtocolLocalization,
+} from '../../../../localization/ProtocolLocalization.tsx';
 import { canvasMessages } from '../../../../sections/canvas/canvasMessages.ts';
 import {
   BOOLEAN_TYPES,
@@ -40,6 +49,66 @@ const LAYOUT_VARIABLE_FIELD = 'layoutVariable';
 const GROUP_VARIABLE_FIELD = 'groupVariable';
 const DISPLAY_EDGES_FIELD = 'edges.display';
 const HIGHLIGHT_FIELD = 'highlight';
+const HIGHLIGHT_LABELS_FIELD = 'highlightLabels';
+
+type Highlight = Readonly<{ variable: string; label: unknown }>;
+
+const highlightsOf = (value: unknown): Highlight[] =>
+  Array.isArray(value)
+    ? value.flatMap((entry: unknown) => {
+        if (typeof entry !== 'object' || entry === null) return [];
+        const variable = asText(Reflect.get(entry, 'variable'));
+        return variable === undefined
+          ? []
+          : [{ variable, label: Reflect.get(entry, 'label') }];
+      })
+    : [];
+
+const labelIn = (labels: unknown, variable: string): unknown =>
+  typeof labels === 'object' &&
+  labels !== null &&
+  Object.hasOwn(labels, variable)
+    ? Reflect.get(labels, variable)
+    : undefined;
+
+/**
+ * Opens a preset with its highlights held in two slots: the tick list holds
+ * the attribute ids, and each attribute's label sits under its id. A label
+ * field then comes and goes with its tick, and keeps what was typed into it
+ * while the box is unticked. Keyed by id rather than by position, because a
+ * tick anywhere in the list would otherwise move every label after it.
+ */
+export function expandNarrativePreset(row: RowValues): RowValues {
+  if (!Object.hasOwn(row, HIGHLIGHT_FIELD)) return row;
+  const highlights = highlightsOf(row[HIGHLIGHT_FIELD]);
+  return {
+    ...row,
+    [HIGHLIGHT_FIELD]: highlights.map(({ variable }) => variable),
+    [HIGHLIGHT_LABELS_FIELD]: Object.fromEntries(
+      highlights.map(({ variable, label }) => [variable, label]),
+    ),
+  };
+}
+
+/**
+ * The preset as the protocol holds it: one highlight per ticked attribute, in
+ * tick order, carrying that attribute's label. A label left behind by an
+ * attribute that was unticked is dropped with it.
+ */
+export function collapseNarrativePreset(row: RowValues): RowValues {
+  const {
+    [HIGHLIGHT_FIELD]: ticked,
+    [HIGHLIGHT_LABELS_FIELD]: labels,
+    ...preset
+  } = row;
+  const highlight = (asIdList(ticked) ?? []).map((variable) => ({
+    variable,
+    label: labelIn(labels, variable),
+  }));
+  return highlight.length === 0
+    ? preset
+    : { ...preset, [HIGHLIGHT_FIELD]: highlight };
+}
 
 /** The picker takes an open prop bag from the field wrapper. */
 const VariablePicker = VariablePickerField as ComponentType<
@@ -48,6 +117,48 @@ const VariablePicker = VariablePickerField as ComponentType<
 
 /** A tick list's choices, in the shape the control registers with. */
 type TickChoice = Readonly<{ value: string; label: string }>;
+
+/**
+ * What the interview calls one highlighted attribute. The attribute's own
+ * label is not translated, so the preset carries one that is; a new tick
+ * starts it at the attribute's name, as text in the protocol's default
+ * language.
+ */
+function HighlightLabelField({
+  variable,
+  attributeName,
+  committed,
+}: Readonly<{
+  variable: string;
+  attributeName: string;
+  committed: LocalizedString | undefined;
+}>) {
+  const intl = useAppIntl();
+  const localization = useProtocolLocalization();
+  // Memoized: a field's starting value is part of its registration, and a new
+  // object every render would re-register it.
+  const initialValue = useMemo(
+    () =>
+      committed ??
+      (localization === undefined
+        ? undefined
+        : localizedFromText(localization, attributeName)),
+    [attributeName, committed, localization],
+  );
+  return (
+    <Field<typeof LocalizedInputField>
+      name={formatObjectPath([HIGHLIGHT_LABELS_FIELD, variable])}
+      nameMode="path"
+      label={intl.formatMessage(messages.presetHighlightLegendLabel, {
+        attribute: attributeName,
+      })}
+      hint={intl.formatMessage(messages.presetHighlightLegendHint)}
+      component={LocalizedInputField}
+      initialValue={initialValue}
+      required={intl.formatMessage(messages.presetHighlightLegendRequired)}
+    />
+  );
+}
 
 /**
  * One saved way of looking at the network.
@@ -152,6 +263,10 @@ export function NarrativePresetFields({ item }: RowEditorProps) {
     () => new Set(highlightOptions.map((option) => option.value)),
     [highlightOptions],
   );
+  const attributeNames = useMemo(
+    () => new Map(highlightOptions.map(({ value, label }) => [value, label])),
+    [highlightOptions],
+  );
   const lostHighlights = useLostReferences(
     highlightedAttributes,
     knownHighlights,
@@ -252,6 +367,16 @@ export function NarrativePresetFields({ item }: RowEditorProps) {
           options={highlightChoices}
           initialValue={committedHighlight}
         />
+        {highlightedAttributes.map((variable) => (
+          <HighlightLabelField
+            key={variable}
+            variable={variable}
+            attributeName={attributeNames.get(variable) ?? variable}
+            committed={asLocalizedString(
+              labelIn(item[HIGHLIGHT_LABELS_FIELD], variable),
+            )}
+          />
+        ))}
       </Section>
     </>
   );

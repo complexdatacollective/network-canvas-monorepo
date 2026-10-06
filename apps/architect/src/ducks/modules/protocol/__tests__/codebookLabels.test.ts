@@ -97,7 +97,7 @@ describe('labels of new codebook entries', () => {
     expect(codebookOf(store)?.edge?.[type]?.label).toEqual({ fr: 'Connaît' });
   });
 
-  it('labels a new variable with its name, kept as literal text', async () => {
+  it('labels a new variable with its name, as plain text', async () => {
     const store = makeStore();
 
     const { variable } = await store
@@ -110,8 +110,8 @@ describe('labels of new codebook entries', () => {
       )
       .unwrap();
 
-    expect(
-      codebookOf(store)?.node?.person?.variables?.[variable]?.label,
-    ).toEqual({ fr: "âge '{'années'}'" });
+    expect(codebookOf(store)?.node?.person?.variables?.[variable]?.label).toBe(
+      'âge {années}',
+    );
   });
 });

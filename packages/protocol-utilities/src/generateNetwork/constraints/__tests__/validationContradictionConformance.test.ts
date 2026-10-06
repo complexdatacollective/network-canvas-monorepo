@@ -50,7 +50,7 @@ const fixtures: Fixture[] = [
     variables: {
       a: {
         name: 'Inverted',
-        label: { 'en-US': 'Inverted' },
+        label: 'Inverted',
         type: 'number',
         validation: {
           minValue: 2,
@@ -60,7 +60,7 @@ const fixtures: Fixture[] = [
       },
       b: {
         name: 'Counterpart',
-        label: { 'en-US': 'Counterpart' },
+        label: 'Counterpart',
         type: 'number',
         validation: { minValue: 0, maxValue: 3 },
       },
@@ -71,7 +71,7 @@ const fixtures: Fixture[] = [
     variables: {
       a: {
         name: 'Too many',
-        label: { 'en-US': 'Too many' },
+        label: 'Too many',
         type: 'categorical',
         options: [option('x')],
         validation: {
@@ -82,7 +82,7 @@ const fixtures: Fixture[] = [
       },
       b: {
         name: 'Other selection',
-        label: { 'en-US': 'Other selection' },
+        label: 'Other selection',
         type: 'categorical',
         options: [option('x'), option('y')],
         validation: { minSelected: 1, maxSelected: 1 },
@@ -94,7 +94,7 @@ const fixtures: Fixture[] = [
     variables: {
       a: {
         name: 'Both',
-        label: { 'en-US': 'Both' },
+        label: 'Both',
         type: 'number',
         validation: {
           minValue: 0,
@@ -105,7 +105,7 @@ const fixtures: Fixture[] = [
       },
       b: {
         name: 'Target',
-        label: { 'en-US': 'Target' },
+        label: 'Target',
         type: 'number',
         validation: { minValue: 0, maxValue: 1 },
       },
@@ -116,7 +116,7 @@ const fixtures: Fixture[] = [
     variables: {
       a: {
         name: 'Cycle A',
-        label: { 'en-US': 'Cycle A' },
+        label: 'Cycle A',
         type: 'number',
         validation: {
           minValue: 0,
@@ -126,7 +126,7 @@ const fixtures: Fixture[] = [
       },
       b: {
         name: 'Cycle B',
-        label: { 'en-US': 'Cycle B' },
+        label: 'Cycle B',
         type: 'number',
         validation: {
           minValue: 0,
@@ -141,7 +141,7 @@ const fixtures: Fixture[] = [
     variables: {
       a: {
         name: 'Group A',
-        label: { 'en-US': 'Group A' },
+        label: 'Group A',
         type: 'number',
         validation: {
           minValue: 0,
@@ -152,7 +152,7 @@ const fixtures: Fixture[] = [
       },
       b: {
         name: 'Group B',
-        label: { 'en-US': 'Group B' },
+        label: 'Group B',
         type: 'number',
         validation: { minValue: 0, maxValue: 3 },
       },
@@ -163,7 +163,7 @@ const fixtures: Fixture[] = [
     variables: {
       a: {
         name: 'Lower range',
-        label: { 'en-US': 'Lower range' },
+        label: 'Lower range',
         type: 'number',
         validation: {
           minValue: 0,
@@ -173,7 +173,7 @@ const fixtures: Fixture[] = [
       },
       b: {
         name: 'Upper range',
-        label: { 'en-US': 'Upper range' },
+        label: 'Upper range',
         type: 'number',
         validation: { minValue: 2, maxValue: 3 },
       },
@@ -184,19 +184,19 @@ const fixtures: Fixture[] = [
     variables: {
       a: {
         name: 'Odd A',
-        label: { 'en-US': 'Odd A' },
+        label: 'Odd A',
         type: 'boolean',
         validation: { differentFrom: reference('b') },
       },
       b: {
         name: 'Odd B',
-        label: { 'en-US': 'Odd B' },
+        label: 'Odd B',
         type: 'boolean',
         validation: { differentFrom: reference('c') },
       },
       c: {
         name: 'Odd C',
-        label: { 'en-US': 'Odd C' },
+        label: 'Odd C',
         type: 'boolean',
         validation: { differentFrom: reference('a') },
       },
@@ -207,7 +207,7 @@ const fixtures: Fixture[] = [
     variables: {
       a: {
         name: 'Pinned A',
-        label: { 'en-US': 'Pinned A' },
+        label: 'Pinned A',
         type: 'number',
         validation: {
           minValue: 1,
@@ -217,7 +217,7 @@ const fixtures: Fixture[] = [
       },
       b: {
         name: 'Pinned B',
-        label: { 'en-US': 'Pinned B' },
+        label: 'Pinned B',
         type: 'number',
         validation: { minValue: 1, maxValue: 1 },
       },
@@ -228,20 +228,20 @@ const fixtures: Fixture[] = [
     variables: {
       a: {
         name: 'Parity A',
-        label: { 'en-US': 'Parity A' },
+        label: 'Parity A',
         type: 'ordinal',
         options: [option(1)],
         validation: { differentFrom: reference('b') },
       },
       b: {
         name: 'Parity B',
-        label: { 'en-US': 'Parity B' },
+        label: 'Parity B',
         type: 'ordinal',
         options: [option(1), option(2)],
       },
       c: {
         name: 'Parity C',
-        label: { 'en-US': 'Parity C' },
+        label: 'Parity C',
         type: 'ordinal',
         options: [option(2)],
         validation: { differentFrom: reference('b') },
@@ -376,7 +376,7 @@ describe('validation contradiction delegation conformance', () => {
     const variables: Variables = {
       year: {
         name: 'Year',
-        label: { 'en-US': 'Year' },
+        label: 'Year',
         type: 'datetime',
         component: 'DatePicker',
         parameters: { type: 'year', min: '2020', max: '2021' },
@@ -384,7 +384,7 @@ describe('validation contradiction delegation conformance', () => {
       },
       day: {
         name: 'Day',
-        label: { 'en-US': 'Day' },
+        label: 'Day',
         type: 'datetime',
         component: 'DatePicker',
         parameters: {
@@ -412,7 +412,7 @@ describe('validation contradiction delegation conformance', () => {
     const choiceRendered: Variables = {
       a: {
         name: 'Choice A',
-        label: { 'en-US': 'Choice A' },
+        label: 'Choice A',
         type: 'boolean',
         component: 'Boolean',
         options: trueOnly,
@@ -420,7 +420,7 @@ describe('validation contradiction delegation conformance', () => {
       },
       b: {
         name: 'Choice B',
-        label: { 'en-US': 'Choice B' },
+        label: 'Choice B',
         type: 'boolean',
         component: 'Boolean',
         options: trueOnly,
@@ -464,7 +464,7 @@ describe('validation contradiction delegation conformance', () => {
     const variables: Variables = {
       [ageId]: {
         name: 'Age',
-        label: { 'en-US': 'Age' },
+        label: 'Age',
         type: 'number',
         validation: {
           minValue: 65,
@@ -474,7 +474,7 @@ describe('validation contradiction delegation conformance', () => {
       },
       [retiredId]: {
         name: 'Retired at',
-        label: { 'en-US': 'Retired at' },
+        label: 'Retired at',
         type: 'number',
         validation: { minValue: 20, maxValue: 30 },
       },

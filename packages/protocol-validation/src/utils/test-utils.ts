@@ -20,13 +20,13 @@ export const createBaseProtocol = () => ({
       variables: {
         egoName: {
           name: 'EgoName',
-          label: localized('EgoName'),
+          label: 'EgoName',
           type: 'text',
           component: 'Text',
         },
         egoAge: {
           name: 'EgoAge',
-          label: localized('EgoAge'),
+          label: 'EgoAge',
           type: 'number',
           component: 'Number',
         },
@@ -41,19 +41,19 @@ export const createBaseProtocol = () => ({
         variables: {
           name: {
             name: 'Name',
-            label: localized('Name'),
+            label: 'Name',
             type: 'text',
             component: 'Text',
           },
           age: {
             name: 'Age',
-            label: localized('Age'),
+            label: 'Age',
             type: 'number',
             component: 'Number',
           },
           category: {
             name: 'Category',
-            label: localized('Category'),
+            label: 'Category',
             type: 'categorical',
             options: [
               { label: localized('Friend'), value: 'friend' },
@@ -62,7 +62,7 @@ export const createBaseProtocol = () => ({
           },
           strength: {
             name: 'Relationship_Strength',
-            label: localized('Relationship_Strength'),
+            label: 'Relationship_Strength',
             type: 'ordinal',
             options: [
               { label: localized('Weak'), value: 1 },
@@ -72,7 +72,7 @@ export const createBaseProtocol = () => ({
           },
           layoutPosition: {
             name: 'Layout_Position',
-            label: localized('Layout_Position'),
+            label: 'Layout_Position',
             type: 'layout',
           },
         },
@@ -85,12 +85,12 @@ export const createBaseProtocol = () => ({
         variables: {
           colleagueName: {
             name: 'Name',
-            label: localized('Name'),
+            label: 'Name',
             type: 'text',
           },
           department: {
             name: 'Department',
-            label: localized('Department'),
+            label: 'Department',
             type: 'text',
           },
         },
@@ -104,7 +104,7 @@ export const createBaseProtocol = () => ({
         variables: {
           closeness: {
             name: 'Closeness',
-            label: localized('Closeness'),
+            label: 'Closeness',
             type: 'ordinal',
             component: 'RadioGroup',
             options: [
@@ -115,7 +115,7 @@ export const createBaseProtocol = () => ({
           },
           duration: {
             name: 'Duration',
-            label: localized('Duration'),
+            label: 'Duration',
             type: 'number',
             component: 'Number',
           },
@@ -128,7 +128,7 @@ export const createBaseProtocol = () => ({
         variables: {
           frequency: {
             name: 'Frequency',
-            label: localized('Frequency'),
+            label: 'Frequency',
             type: 'ordinal',
             options: [
               { label: localized('Rarely'), value: 1 },

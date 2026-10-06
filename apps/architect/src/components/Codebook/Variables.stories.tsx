@@ -143,7 +143,7 @@ const createBilingualStore = () => {
               [SHORT_NAME_ID]: {
                 name: 'age',
                 type: 'number',
-                label: { en: 'Age' },
+                label: 'Age',
               },
             },
           },

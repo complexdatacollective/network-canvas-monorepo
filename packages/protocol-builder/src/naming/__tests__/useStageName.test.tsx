@@ -42,8 +42,8 @@ const personNode = (name: string): SectionDoc => ({
   color: 'node-color-seq-1',
   shape: { default: 'circle' },
   variables: {
-    diabetes: { name: 'Diabetes', label: { en: 'Diabetes' }, type: 'boolean' },
-    asthma: { name: 'Asthma', label: { en: 'Asthma' }, type: 'boolean' },
+    diabetes: { name: 'Diabetes', label: 'Diabetes', type: 'boolean' },
+    asthma: { name: 'Asthma', label: 'Asthma', type: 'boolean' },
   },
 });
 
@@ -301,7 +301,7 @@ describe('useStageName', () => {
           variables: {
             closeness: {
               name: 'Closeness',
-              label: { en: 'Closeness' },
+              label: 'Closeness',
               type: 'scalar',
             },
           },

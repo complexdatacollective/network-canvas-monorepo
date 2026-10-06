@@ -77,8 +77,8 @@ export type VariableOptionInput = {
 export type VariableEntry = {
   id: string;
   name: string;
-  // Codebook label; the variable's name when omitted.
-  label?: TextInput;
+  // Codebook label; the variable's name when omitted. Not translated.
+  label?: string;
   type: VariableType;
   component?: ComponentType;
   options?: VariableOptionInput[];
@@ -231,7 +231,7 @@ export type PresetEntry = {
     display: string[];
   };
   groupVariable?: string;
-  highlight?: string[];
+  highlight?: { variable: string; label: TextInput }[];
 };
 
 type FormFieldEntry = {
@@ -446,7 +446,7 @@ export type AddEdgeTypeInput = {
 export type AddVariableInput = {
   id?: string;
   name?: string;
-  label?: TextInput;
+  label?: string;
   type?: VariableType;
   component?: ComponentType;
   options?: VariableOptionInput[];

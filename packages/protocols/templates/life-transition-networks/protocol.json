@@ -9,7 +9,7 @@
       "variables": {
         "participant_consent": {
           "name": "participant_consent",
-          "label": { "en-US": "participant_consent" },
+          "label": "participant_consent",
           "type": "boolean",
           "component": "Boolean",
           "options": [
@@ -30,7 +30,7 @@
         },
         "transition_type": {
           "name": "transition_type",
-          "label": { "en-US": "transition_type" },
+          "label": "transition_type",
           "type": "categorical",
           "component": "CheckboxGroup",
           "options": [
@@ -89,7 +89,7 @@
         },
         "transition_when": {
           "name": "transition_when",
-          "label": { "en-US": "transition_when" },
+          "label": "transition_when",
           "type": "datetime",
           "component": "DatePicker",
           "parameters": {
@@ -98,7 +98,7 @@
         },
         "transition_summary": {
           "name": "transition_summary",
-          "label": { "en-US": "transition_summary" },
+          "label": "transition_summary",
           "type": "text",
           "component": "TextArea"
         }
@@ -116,7 +116,7 @@
         "variables": {
           "social_circle": {
             "name": "social_circle",
-            "label": { "en-US": "social_circle" },
+            "label": "social_circle",
             "type": "categorical",
             "component": "CheckboxGroup",
             "options": [
@@ -160,7 +160,7 @@
           },
           "knew_before": {
             "name": "knew_before",
-            "label": { "en-US": "knew_before" },
+            "label": "knew_before",
             "type": "boolean",
             "component": "Boolean",
             "options": [
@@ -176,7 +176,7 @@
           },
           "arrived_with_change": {
             "name": "arrived_with_change",
-            "label": { "en-US": "arrived_with_change" },
+            "label": "arrived_with_change",
             "type": "boolean",
             "component": "Boolean",
             "options": [
@@ -192,7 +192,7 @@
           },
           "lost_touch": {
             "name": "lost_touch",
-            "label": { "en-US": "lost_touch" },
+            "label": "lost_touch",
             "type": "boolean",
             "component": "Boolean",
             "options": [
@@ -208,7 +208,7 @@
           },
           "helped_through": {
             "name": "helped_through",
-            "label": { "en-US": "helped_through" },
+            "label": "helped_through",
             "type": "boolean",
             "component": "Boolean",
             "options": [
@@ -224,7 +224,7 @@
           },
           "made_it_harder": {
             "name": "made_it_harder",
-            "label": { "en-US": "made_it_harder" },
+            "label": "made_it_harder",
             "type": "boolean",
             "component": "Boolean",
             "options": [
@@ -240,7 +240,7 @@
           },
           "closeness_before": {
             "name": "closeness_before",
-            "label": { "en-US": "closeness_before" },
+            "label": "closeness_before",
             "type": "ordinal",
             "component": "LikertScale",
             "options": [
@@ -268,7 +268,7 @@
           },
           "closeness_now": {
             "name": "closeness_now",
-            "label": { "en-US": "closeness_now" },
+            "label": "closeness_now",
             "type": "ordinal",
             "component": "LikertScale",
             "options": [
@@ -296,18 +296,18 @@
           },
           "how_we_met": {
             "name": "how_we_met",
-            "label": { "en-US": "how_we_met" },
+            "label": "how_we_met",
             "type": "text",
             "component": "TextArea"
           },
           "layout": {
             "name": "layout",
-            "label": { "en-US": "layout" },
+            "label": "layout",
             "type": "layout"
           },
           "ea198045-6a3a-44e9-86b7-a02263b9f891": {
             "name": "name",
-            "label": { "en-US": "name" },
+            "label": "name",
             "type": "text",
             "validation": {
               "required": true,
@@ -531,13 +531,28 @@
           "id": "preset-before-since",
           "label": { "en-US": "Before and since" },
           "layoutVariable": "layout",
-          "highlight": ["knew_before", "arrived_with_change"]
+          "highlight": [
+            { "variable": "knew_before", "label": { "en-US": "knew_before" } },
+            {
+              "variable": "arrived_with_change",
+              "label": { "en-US": "arrived_with_change" }
+            }
+          ]
         },
         {
           "id": "preset-help-and-strain",
           "label": { "en-US": "Who helped, and who didn't" },
           "layoutVariable": "layout",
-          "highlight": ["helped_through", "made_it_harder"]
+          "highlight": [
+            {
+              "variable": "helped_through",
+              "label": { "en-US": "helped_through" }
+            },
+            {
+              "variable": "made_it_harder",
+              "label": { "en-US": "made_it_harder" }
+            }
+          ]
         },
         {
           "id": "preset-fell-away",
@@ -547,7 +562,9 @@
           "edges": {
             "display": ["knows"]
           },
-          "highlight": ["lost_touch"]
+          "highlight": [
+            { "variable": "lost_touch", "label": { "en-US": "lost_touch" } }
+          ]
         },
         {
           "id": "preset-close-to-whom",

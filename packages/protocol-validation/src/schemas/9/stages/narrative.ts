@@ -35,7 +35,12 @@ export const narrativeStage = baseStageSchema.extend({
           })
           .optional(),
         highlight: z
-          .array(entityAttributeReference({ subject: 'stageSubject' }))
+          .array(
+            z.strictObject({
+              variable: entityAttributeReference({ subject: 'stageSubject' }),
+              label: localizedString(z.string().min(1), 'plain'),
+            }),
+          )
           .optional(),
       }),
     )

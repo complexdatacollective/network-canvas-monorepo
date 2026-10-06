@@ -52,7 +52,7 @@ const NODE_DOCUMENT: SectionDoc = {
   variables: {
     age: {
       name: 'Age',
-      label: { en: 'Age' },
+      label: 'Age',
       type: 'number',
       component: 'Number',
     },

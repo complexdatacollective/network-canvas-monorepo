@@ -48,7 +48,7 @@ const codebookFor = (type: VariableType): Codebook =>
         variables: {
           v: {
             name: 'V',
-            label: { en: 'V' },
+            label: 'V',
             type,
             ...(type === 'categorical' || type === 'ordinal'
               ? { options: OPTIONS }

@@ -162,7 +162,7 @@ function renderAttributeEditor(
   const onSubmitDocument = vi.fn<SubmitDocument>(async () => APPLIED);
   const committed = {
     name: 'closeness',
-    label: { [LOCALE]: 'closeness' },
+    label: 'closeness',
     type: 'ordinal',
     options,
   };

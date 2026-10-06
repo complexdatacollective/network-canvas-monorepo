@@ -301,7 +301,7 @@ const CALLS: readonly Call[] = [
           variables: {
             ego_age: {
               name: 'ego_age',
-              label: { 'en-US': 'Age' },
+              label: 'Age',
               type: 'number',
               component: 'Number',
             },

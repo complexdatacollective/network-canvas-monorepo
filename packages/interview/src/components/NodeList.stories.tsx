@@ -27,7 +27,7 @@ const mockProtocol = {
         variables: {
           name: {
             name: 'Name',
-            label: { en: 'Name' },
+            label: 'Name',
             type: 'text',
           },
         },
@@ -41,7 +41,7 @@ const mockProtocol = {
         variables: {
           name: {
             name: 'Name',
-            label: { en: 'Name' },
+            label: 'Name',
             type: 'text',
           },
         },

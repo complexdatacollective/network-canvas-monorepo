@@ -44,7 +44,7 @@ const bilingual: CurrentProtocol = {
         color: 'node-color-seq-1',
         shape: { default: 'circle' },
         variables: {
-          age: { name: 'age', type: 'number', label: { en: 'Age' } },
+          age: { name: 'age', type: 'number', label: 'Age' },
         },
       },
     },
@@ -114,21 +114,21 @@ afterEach(() => {
 });
 
 describe('Editing labels from the Codebook', () => {
-  it('writes an attribute label in the second language', async () => {
+  it('writes an attribute label as plain text, in no particular language', async () => {
     const store = makeStore();
     const user = userEvent.setup();
     renderAttributeTable(store);
 
-    expect(await openAgeLabel(user)).toHaveValue('Age');
-    await chooseLanguage(user, /^français/);
-    const input = screen.getByRole('textbox', { name: 'Attribute label' });
-    expect(input).toHaveValue('');
-    await user.type(input, 'Âge');
+    const input = await openAgeLabel(user);
+    expect(input).toHaveValue('Age');
+    expect(
+      screen.queryByRole('button', { name: /Editing language/ }),
+    ).not.toBeInTheDocument();
+    await user.clear(input);
+    await user.type(input, 'Age in years');
     await user.click(screen.getByRole('button', { name: 'Save' }));
 
-    await waitFor(() =>
-      expect(ageLabel(store)).toEqual({ en: 'Age', fr: 'Âge' }),
-    );
+    await waitFor(() => expect(ageLabel(store)).toBe('Age in years'));
   });
 
   it('writes a type label in the second language from a codebook link', async () => {
@@ -164,7 +164,7 @@ describe('Editing labels from the Codebook', () => {
     expect(window.location.search).toBe('');
   });
 
-  it('refuses a label left empty in every language', async () => {
+  it('refuses an attribute label left empty', async () => {
     const store = makeStore();
     const user = userEvent.setup();
     renderAttributeTable(store);
@@ -175,56 +175,19 @@ describe('Editing labels from the Codebook', () => {
     expect(
       await screen.findByText('This field is required.'),
     ).toBeInTheDocument();
-    expect(ageLabel(store)).toEqual({ en: 'Age' });
+    expect(ageLabel(store)).toBe('Age');
   });
 
-  it('accepts a label that is missing only in the default language', async () => {
+  it('lists the type label under Missing translations, and no attribute label', () => {
     const store = makeStore();
-    const user = userEvent.setup();
     renderAttributeTable(store);
 
-    await openAgeLabel(user);
-    await chooseLanguage(user, /^français/);
-    await user.type(
-      screen.getByRole('textbox', { name: 'Attribute label' }),
-      'Âge',
+    expect(screen.getByRole('link', { name: 'label' })).toHaveAttribute(
+      'href',
+      '/protocol/codebook?entity=node&type=person',
     );
-    await chooseLanguage(user, /^English/);
-    await user.clear(screen.getByRole('textbox', { name: 'Attribute label' }));
-
     expect(
-      screen.getByText(
-        'Not translated into English yet. Participants using English will see the français text.',
-      ),
-    ).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Save' }));
-
-    await waitFor(() => expect(ageLabel(store)).toEqual({ fr: 'Âge' }));
-    expect(screen.queryByText('This field is required.')).toBeNull();
-    const entry = screen.getByRole('link', { name: 'variables.age.label' });
-    expect(entry.closest('li')).toHaveTextContent(/English: shows /);
-  });
-
-  it('clears the Missing translations entry once the translation is written', async () => {
-    const store = makeStore();
-    const user = userEvent.setup();
-    renderAttributeTable(store);
-
-    const entry = screen.getByRole('link', { name: 'variables.age.label' });
-    expect(entry).toHaveAttribute('href', '/protocol/codebook?variable=age');
-
-    await openAgeLabel(user);
-    await chooseLanguage(user, /^français/);
-    await user.type(
-      screen.getByRole('textbox', { name: 'Attribute label' }),
-      'Âge',
-    );
-    await user.click(screen.getByRole('button', { name: 'Save' }));
-
-    await waitFor(() =>
-      expect(
-        screen.queryByRole('link', { name: 'variables.age.label' }),
-      ).not.toBeInTheDocument(),
-    );
+      screen.queryByRole('link', { name: 'variables.age.label' }),
+    ).not.toBeInTheDocument();
   });
 });

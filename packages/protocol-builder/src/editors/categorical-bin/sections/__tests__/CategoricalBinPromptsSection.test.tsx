@@ -105,7 +105,7 @@ describe('the questions a categorical bin asks', () => {
           variables: {
             contactStyle: {
               name: 'contactStyle',
-              label: { 'en-US': 'contactStyle' },
+              label: 'contactStyle',
               type: 'categorical',
               options: [
                 { label: { 'en-US': 'In person' }, value: 'person' },
@@ -560,7 +560,7 @@ describe('a categorical bin with more bins than fit on one screen', () => {
             ...person.variables,
             contactType: {
               name: 'contactType',
-              label: { 'en-US': 'contactType' },
+              label: 'contactType',
               type: 'categorical',
               options: Array.from({ length: count }, (_unused, index) => ({
                 label: { 'en-US': `Option ${index + 1}` },

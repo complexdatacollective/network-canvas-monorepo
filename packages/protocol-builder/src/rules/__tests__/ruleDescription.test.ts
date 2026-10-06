@@ -842,7 +842,7 @@ describe('describeRule', () => {
               variables: {
                 consent: {
                   name: 'Consent',
-                  label: { en: 'Consent' },
+                  label: 'Consent',
                   type: 'categorical',
                   options: [
                     { label: { en: 'Consented' }, value: 'true' },
@@ -889,7 +889,7 @@ describe('a problem beside an operator that negates its comparison', () => {
         variables: {
           met: {
             name: 'Met on',
-            label: { en: 'Met on' },
+            label: 'Met on',
             type: 'datetime',
             component: 'DatePicker',
             parameters: { type: 'year' },
@@ -952,7 +952,7 @@ describe('a problem beside an operator that negates its comparison', () => {
           variables: {
             met: {
               name: 'Met on',
-              label: { en: 'Met on' },
+              label: 'Met on',
               type: 'datetime',
               component: 'DatePicker',
               parameters: {

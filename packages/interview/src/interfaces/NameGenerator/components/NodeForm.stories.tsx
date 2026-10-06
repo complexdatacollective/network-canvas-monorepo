@@ -34,7 +34,7 @@ const buildMockProtocol = (icon: string) => ({
         variables: {
           name: {
             name: 'Name',
-            label: { en: 'Name' },
+            label: 'Name',
             type: 'text',
             component: 'Text',
             validation: {
@@ -45,7 +45,7 @@ const buildMockProtocol = (icon: string) => ({
           },
           age: {
             name: 'Age',
-            label: { en: 'Age' },
+            label: 'Age',
             type: 'number',
             component: 'Number',
             validation: {
@@ -55,7 +55,7 @@ const buildMockProtocol = (icon: string) => ({
           },
           gender: {
             name: 'Gender',
-            label: { en: 'Gender' },
+            label: 'Gender',
             type: 'categorical',
             component: 'RadioGroup',
             options: [
@@ -70,13 +70,13 @@ const buildMockProtocol = (icon: string) => ({
           },
           occupation: {
             name: 'Occupation',
-            label: { en: 'Occupation' },
+            label: 'Occupation',
             type: 'text',
             component: 'Text',
           },
           favoriteColors: {
             name: 'Favorite Colors',
-            label: { en: 'Favorite Colors' },
+            label: 'Favorite Colors',
             type: 'categorical',
             component: 'CheckboxGroup',
             options: [
@@ -94,13 +94,13 @@ const buildMockProtocol = (icon: string) => ({
           },
           birthDate: {
             name: 'Birth Date',
-            label: { en: 'Birth Date' },
+            label: 'Birth Date',
             type: 'datetime',
             component: 'DatePicker',
           },
           happiness: {
             name: 'Happiness Level',
-            label: { en: 'Happiness Level' },
+            label: 'Happiness Level',
             type: 'scalar',
             component: 'Slider',
             parameters: {
@@ -110,13 +110,13 @@ const buildMockProtocol = (icon: string) => ({
           },
           isEmployed: {
             name: 'Currently Employed',
-            label: { en: 'Currently Employed' },
+            label: 'Currently Employed',
             type: 'boolean',
             component: 'Toggle',
           },
           bio: {
             name: 'Biography',
-            label: { en: 'Biography' },
+            label: 'Biography',
             type: 'text',
             component: 'TextArea',
             validation: {
@@ -125,7 +125,7 @@ const buildMockProtocol = (icon: string) => ({
           },
           skills: {
             name: 'Skills',
-            label: { en: 'Skills' },
+            label: 'Skills',
             type: 'categorical',
             component: 'CheckboxGroup',
             options: [
@@ -144,7 +144,7 @@ const buildMockProtocol = (icon: string) => ({
           },
           communicationPreference: {
             name: 'Communication Preference',
-            label: { en: 'Communication Preference' },
+            label: 'Communication Preference',
             type: 'categorical',
             component: 'ToggleButtonGroup',
             options: [

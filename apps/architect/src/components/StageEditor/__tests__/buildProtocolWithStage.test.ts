@@ -45,7 +45,7 @@ function makeProtocol(stageOverrides: Partial<Stage> = {}): CurrentProtocol {
           variables: {
             name: {
               name: 'Name',
-              label: { en: 'Name' },
+              label: 'Name',
               type: 'text',
               component: 'Text',
             },

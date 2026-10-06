@@ -479,7 +479,7 @@ describe('a rule this filter cannot be about', () => {
         variables: {
           ego_name: {
             name: 'ego_name',
-            label: { 'en-US': 'Name' },
+            label: 'Name',
             type: 'text',
           },
         },

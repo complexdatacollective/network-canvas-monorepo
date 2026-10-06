@@ -743,7 +743,7 @@ describe('Validation Helpers', () => {
               malformed: 'not an object' as any,
               normal: {
                 name: 'Normal Variable',
-                label: localized('Normal Variable'),
+                label: 'Normal Variable',
                 type: 'text',
               },
             },

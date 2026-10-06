@@ -14,19 +14,19 @@
         "variables": {
           "name": {
             "name": "name",
-            "label": { "en-US": "name" },
+            "label": "name",
             "type": "text",
             "component": "Text",
             "validation": { "required": true }
           },
           "layout": {
             "name": "layout",
-            "label": { "en-US": "layout" },
+            "label": "layout",
             "type": "layout"
           },
           "context": {
             "name": "context",
-            "label": { "en-US": "context" },
+            "label": "context",
             "type": "categorical",
             "options": [
               { "label": { "en-US": "Work" }, "value": "work" },
@@ -53,7 +53,7 @@
       "variables": {
         "ego_name": {
           "name": "ego_name",
-          "label": { "en-US": "ego_name" },
+          "label": "ego_name",
           "type": "text",
           "component": "Text",
           "validation": { "required": true }

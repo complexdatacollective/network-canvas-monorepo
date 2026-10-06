@@ -428,7 +428,7 @@ describe('FamilyPedigree materialization', () => {
     if (!variables) throw new Error('missing family-member variables');
     variables.egoMirror = {
       name: 'Ego mirror',
-      label: { 'en-US': 'Ego mirror' },
+      label: 'Ego mirror',
       type: 'boolean',
       validation: { sameAs: asEntityAttributeReference('isEgo') },
     };
@@ -571,7 +571,7 @@ describe('FamilyPedigree materialization', () => {
     if (!variables) throw new Error('missing family-member variables');
     variables.laterBiologicalSex = {
       name: 'Later biological sex',
-      label: { 'en-US': 'Later biological sex' },
+      label: 'Later biological sex',
       type: 'categorical',
       options: localizedOptions(BIOLOGICAL_SEX_OPTIONS),
     };
@@ -617,19 +617,19 @@ describe('FamilyPedigree materialization', () => {
     }
     variables.biologicalSex = {
       name: 'Biological sex',
-      label: { 'en-US': 'Biological sex' },
+      label: 'Biological sex',
       type: 'ordinal',
       options: localizedOptions(BIOLOGICAL_SEX_OPTIONS),
     };
     edgeVariables.relationshipType = {
       name: 'Relationship type',
-      label: { 'en-US': 'Relationship type' },
+      label: 'Relationship type',
       type: 'ordinal',
       options: localizedOptions(RELATIONSHIP_TYPE_OPTIONS),
     };
     edgeVariables.gameteRole = {
       name: 'Gamete role',
-      label: { 'en-US': 'Gamete role' },
+      label: 'Gamete role',
       type: 'ordinal',
       options: localizedOptions(GAMETE_ROLE_OPTIONS),
     };
@@ -705,12 +705,12 @@ describe('FamilyPedigree materialization', () => {
     if (!variables) throw new Error('missing family-member variables');
     variables.earlierCondition = {
       name: 'Earlier condition',
-      label: { 'en-US': 'Earlier condition' },
+      label: 'Earlier condition',
       type: 'boolean',
     };
     variables.laterCondition = {
       name: 'Later condition',
-      label: { 'en-US': 'Later condition' },
+      label: 'Later condition',
       type: 'boolean',
       validation: {
         differentFrom: asEntityAttributeReference('earlierCondition'),
@@ -768,7 +768,7 @@ describe('FamilyPedigree materialization', () => {
     if (!variables) throw new Error('missing family-member variables');
     variables.isLaterEgo = {
       name: 'Is later ego',
-      label: { 'en-US': 'Is later ego' },
+      label: 'Is later ego',
       type: 'boolean',
     };
 
@@ -819,12 +819,12 @@ describe('FamilyPedigree materialization', () => {
     if (!variables) throw new Error('missing family-member variables');
     variables.earlierCondition = {
       name: 'Earlier condition',
-      label: { 'en-US': 'Earlier condition' },
+      label: 'Earlier condition',
       type: 'boolean',
     };
     variables.laterCondition = {
       name: 'Later condition',
-      label: { 'en-US': 'Later condition' },
+      label: 'Later condition',
       type: 'boolean',
       validation: {
         sameAs: asEntityAttributeReference('earlierCondition'),
@@ -1042,7 +1042,7 @@ describe('FamilyPedigree materialization', () => {
     if (!variables) throw new Error('missing family-member variables');
     variables.generationMarker = {
       name: 'Generation marker',
-      label: { 'en-US': 'Generation marker' },
+      label: 'Generation marker',
       type: 'ordinal',
       options: Array.from({ length: 13 }, (_, index) => ({
         label: { 'en-US': `Generation ${String(index + 1)}` },
@@ -1090,7 +1090,7 @@ describe('FamilyPedigree materialization', () => {
     if (!variables) throw new Error('missing family-member variables');
     variables.laterCondition = {
       name: 'Later condition',
-      label: { 'en-US': 'Later condition' },
+      label: 'Later condition',
       type: 'boolean',
     };
     const laterFamilyStage = {
@@ -1132,7 +1132,7 @@ describe('FamilyPedigree materialization', () => {
     if (!variables) throw new Error('missing family-member variables');
     variables.generationMarker = {
       name: 'Generation marker',
-      label: { 'en-US': 'Generation marker' },
+      label: 'Generation marker',
       type: 'ordinal',
       options: Array.from({ length: 13 }, (_, index) => ({
         label: { 'en-US': `Generation ${String(index + 1)}` },
@@ -1177,7 +1177,7 @@ describe('FamilyPedigree materialization', () => {
     if (!variables) throw new Error('missing family-member variables');
     variables.generationMarker = {
       name: 'Generation marker',
-      label: { 'en-US': 'Generation marker' },
+      label: 'Generation marker',
       type: 'ordinal',
       options: Array.from({ length: 16 }, (_, index) => ({
         label: { 'en-US': `Generation ${String(index + 1)}` },
@@ -1227,7 +1227,7 @@ describe('FamilyPedigree materialization', () => {
     if (!variables) throw new Error('missing family-member variables');
     variables.generationMarker = {
       name: 'Generation marker',
-      label: { 'en-US': 'Generation marker' },
+      label: 'Generation marker',
       type: 'ordinal',
       options: Array.from({ length: 7 }, (_, index) => ({
         label: { 'en-US': `Generation ${String(index + 1)}` },
@@ -1259,7 +1259,7 @@ describe('FamilyPedigree materialization', () => {
     if (!variables) throw new Error('missing family-member variables');
     variables.generationMarker = {
       name: 'Generation marker',
-      label: { 'en-US': 'Generation marker' },
+      label: 'Generation marker',
       type: 'ordinal',
       options: Array.from({ length: 7 }, (_, index) => ({
         label: { 'en-US': `Generation ${String(index + 1)}` },
@@ -1316,7 +1316,7 @@ describe('FamilyPedigree materialization', () => {
     if (!variables) throw new Error('missing family-member variables');
     variables.generationMarker = {
       name: 'Generation marker',
-      label: { 'en-US': 'Generation marker' },
+      label: 'Generation marker',
       type: 'ordinal',
       options: Array.from({ length: 7 }, (_, index) => ({
         label: { 'en-US': `Generation ${String(index + 1)}` },

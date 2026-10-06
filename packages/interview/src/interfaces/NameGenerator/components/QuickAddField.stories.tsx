@@ -34,7 +34,7 @@ const buildMockProtocol = (icon: string, maxNodes: number) => ({
         variables: {
           name: {
             name: 'Name',
-            label: { en: 'Name' },
+            label: 'Name',
             type: 'text',
           },
         },

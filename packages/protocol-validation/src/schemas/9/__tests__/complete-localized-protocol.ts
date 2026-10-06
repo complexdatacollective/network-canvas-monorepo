@@ -35,7 +35,7 @@ export const completeProtocol = () => ({
       variables: {
         egoName: {
           name: 'EgoName',
-          label: localized('Your name'),
+          label: 'Your name',
           type: 'text',
           component: 'Text',
         },
@@ -50,41 +50,41 @@ export const completeProtocol = () => ({
         variables: {
           name: {
             name: 'Name',
-            label: localized('Name'),
+            label: 'Name',
             type: 'text',
             component: 'Text',
           },
           nickname: {
             name: 'Nickname',
-            label: localized('Nickname'),
+            label: 'Nickname',
             type: 'text',
             component: 'Text',
           },
           layoutPosition: {
             name: 'LayoutPosition',
-            label: localized('Position'),
+            label: 'Position',
             type: 'layout',
           },
           category: {
             name: 'Category',
-            label: localized('Category'),
+            label: 'Category',
             type: 'categorical',
             options: options(['Friend', 'friend'], ['Family', 'family']),
           },
           other: {
             name: 'Other',
-            label: localized('Other'),
+            label: 'Other',
             type: 'text',
           },
           strength: {
             name: 'Strength',
-            label: localized('Strength'),
+            label: 'Strength',
             type: 'ordinal',
             options: options(['Weak', 1], ['Strong', 2]),
           },
           closeness: {
             name: 'Closeness',
-            label: localized('Closeness'),
+            label: 'Closeness',
             type: 'scalar',
             component: 'VisualAnalogScale',
             parameters: {
@@ -94,7 +94,7 @@ export const completeProtocol = () => ({
           },
           flag: {
             name: 'Flag',
-            label: localized('Flag'),
+            label: 'Flag',
             type: 'boolean',
             component: 'Boolean',
             options: [
@@ -104,7 +104,7 @@ export const completeProtocol = () => ({
           },
           region: {
             name: 'Region',
-            label: localized('Region'),
+            label: 'Region',
             type: 'location',
           },
         },
@@ -115,32 +115,32 @@ export const completeProtocol = () => ({
         color: 'node-color-seq-2',
         shape,
         variables: {
-          isEgo: { name: 'IsEgo', label: localized('Is ego'), type: 'boolean' },
+          isEgo: { name: 'IsEgo', label: 'Is ego', type: 'boolean' },
           displayName: {
             name: 'DisplayName',
-            label: localized('Display name'),
+            label: 'Display name',
             type: 'text',
           },
           relationship: {
             name: 'Relationship',
-            label: localized('Relationship'),
+            label: 'Relationship',
             type: 'text',
           },
-          sex: { name: 'Sex', label: localized('Sex'), type: 'text' },
+          sex: { name: 'Sex', label: 'Sex', type: 'text' },
           birthYear: {
             name: 'BirthYear',
-            label: localized('Birth year'),
+            label: 'Birth year',
             type: 'number',
             component: 'Number',
           },
           affected: {
             name: 'Affected',
-            label: localized('Affected'),
+            label: 'Affected',
             type: 'boolean',
           },
           nominated: {
             name: 'Nominated',
-            label: localized('Nominated'),
+            label: 'Nominated',
             type: 'boolean',
           },
         },
@@ -154,13 +154,13 @@ export const completeProtocol = () => ({
         variables: {
           tieStrength: {
             name: 'TieStrength',
-            label: localized('Tie strength'),
+            label: 'Tie strength',
             type: 'ordinal',
             options: options(['Weak tie', 1], ['Strong tie', 2]),
           },
           note: {
             name: 'Note',
-            label: localized('Note'),
+            label: 'Note',
             type: 'text',
             component: 'Text',
           },
@@ -171,20 +171,20 @@ export const completeProtocol = () => ({
         label: localized('Family'),
         color: 'edge-color-seq-2',
         variables: {
-          relType: { name: 'RelType', label: localized('Kind'), type: 'text' },
+          relType: { name: 'RelType', label: 'Kind', type: 'text' },
           isActive: {
             name: 'IsActive',
-            label: localized('Current'),
+            label: 'Current',
             type: 'boolean',
           },
           isGc: {
             name: 'IsGc',
-            label: localized('Carrier'),
+            label: 'Carrier',
             type: 'boolean',
           },
           gameteRole: {
             name: 'GameteRole',
-            label: localized('Gamete'),
+            label: 'Gamete',
             type: 'text',
           },
         },
@@ -430,6 +430,7 @@ export const completeProtocol = () => ({
           id: 'preset',
           label: localized('Preset'),
           layoutVariable: 'layoutPosition',
+          highlight: [{ variable: 'flag', label: localized('Flagged') }],
         },
       ],
     },

@@ -27,7 +27,8 @@ How an interview picks its language:
 - Text that is missing in the chosen language is shown in another of the
   protocol's languages, marked so that screen readers pronounce it correctly.
 - Participants see a node or edge type's label, which can be translated,
-  rather than its name.
+  rather than its name. A Narrative preset switcher lists highlighted
+  attributes by the translated labels the preset gives them.
 
 In Architect:
 
@@ -42,7 +43,11 @@ In Architect:
 - Once a protocol has more than one language, each text field in the stage
   editors has a language menu that shows which languages its text still needs.
   All the menus switch together, so you can work through a stage in one
-  language. Node type, edge type and attribute labels can be translated too.
+  language. Node type and edge type labels can be translated too. An
+  attribute's label is plain text and is not translated.
+- Each attribute a Narrative preset highlights has a label of its own, which
+  participants see in the preset switcher. You write and translate it in the
+  Narrative stage editor; it starts as the attribute's name.
 - The printable protocol summary can be printed in any of the protocol's
   languages.
 - The Language Chooser is in the New Stage menu, under a new Utilities

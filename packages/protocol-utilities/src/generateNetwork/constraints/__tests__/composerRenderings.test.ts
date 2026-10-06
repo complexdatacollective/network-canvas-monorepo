@@ -44,18 +44,18 @@ function codebookWith(options: {
         variables: {
           name: {
             name: 'Name',
-            label: { 'en-US': 'Name' },
+            label: 'Name',
             type: 'text',
             component: 'Text',
           },
           layout: {
             name: 'Layout',
-            label: { 'en-US': 'Layout' },
+            label: 'Layout',
             type: 'layout',
           },
           born: {
             name: 'Born',
-            label: { 'en-US': 'Born' },
+            label: 'Born',
             type: 'datetime',
             component: 'DatePicker',
             ...(options.nodeParameters !== undefined
@@ -67,7 +67,7 @@ function codebookWith(options: {
           },
           flag: {
             name: 'Flag',
-            label: { 'en-US': 'Flag' },
+            label: 'Flag',
             type: 'boolean',
             component: options.booleanComponent ?? 'Boolean',
             ...(options.booleanOptions !== undefined
@@ -87,7 +87,7 @@ function codebookWith(options: {
         variables: {
           since: {
             name: 'Since',
-            label: { 'en-US': 'Since' },
+            label: 'Since',
             type: 'datetime',
             component: 'DatePicker',
           },
