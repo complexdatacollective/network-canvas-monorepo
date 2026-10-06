@@ -211,13 +211,15 @@ jobs:
           # its nginx configuration from it at run time: editing that block
           # changes what the job runs.
           studio=$(flag @codaco/studio-api)
+          studio_stack_paths=(
+            apps/studio/Dockerfile
+            'apps/studio/docker-compose*.yml'
+            apps/studio/.env.example
+            apps/studio/stack-test
+            apps/studio/docs/self-host
+          )
           if [[ "$studio" != "true" && -n "$PREV" ]] \
-            && ! git diff --quiet "$PREV" "$CURR" -- \
-              apps/studio/Dockerfile \
-              'apps/studio/docker-compose*.yml' \
-              apps/studio/.env.example \
-              apps/studio/stack-test \
-              apps/studio/docs/self-host; then
+            && ! git diff --quiet "$PREV" "$CURR" -- "${studio_stack_paths[@]}"; then
             studio=true
             echo "Studio stack inputs changed outside the package graph."
           fi
@@ -227,24 +229,35 @@ jobs:
           # carrying a migration, run through the self-host guide's own
           # commands. The lane tests the api image and the generator that
           # builds the next release's migration, so it runs whenever anything
-          # they are built from changes — which is exactly what the studio
-          # flag above answers: the studio-api package and its dependency
-          # closure, the Dockerfile, the compose files and the self-host
-          # guide. A hand-kept list of "upgrade-path" files inside the package
-          # missed the keyring check, the fingerprint sync and the schema
-          # applier in turn. On top of that, the lane's own inputs that no
-          # package graph sees: the lane itself and the maintenance page its
-          # observer reads, served by studio-web. Every Studio release PR
+          # they are built from changes: the studio-api package and its
+          # dependency closure (the package flag) and the stack's own files
+          # (`studio_stack_paths`). A hand-kept list of "upgrade-path" files
+          # inside the package missed the keyring check, the fingerprint sync
+          # and the schema applier in turn. On top of that, the lane's own
+          # inputs that no package graph sees: the lane itself and the
+          # maintenance page its observer reads, served by studio-web, and
+          # this workflow, which defines the job. Every Studio release PR
           # selects it too.
+          #
+          # Judged on the WHOLE pull request — merge base to tip — rather than
+          # push to push like the other flags. `quality` requires the job only
+          # when this flag is true, and no carry-forward keeps its verdict, so
+          # a push-to-push answer would let an unrelated push after a failed
+          # lane skip the job and pass the gate.
           studio_upgrade=false
-          if [[ "$HEAD_REF" == "changeset-release/studio" \
-            || "$studio" == "true" ]]; then
+          upgrade_prev="$PREV"
+          [[ "$GITHUB_EVENT_NAME" == "pull_request" ]] \
+            && upgrade_prev=$(git merge-base "$CURR" "origin/${GITHUB_BASE_REF}" 2>/dev/null || true)
+          if [[ "$HEAD_REF" == "changeset-release/studio" || "$FORCE_RUN" == "true" \
+              || -z "$upgrade_prev" ]] \
+            || [[ "$(PREV="$upgrade_prev" WORKFLOW_CHANGED=false flag @codaco/studio-api)" == "true" ]] \
+            || ! git diff --quiet "$upgrade_prev" "$CURR" -- \
+              "${studio_stack_paths[@]}" \
+              apps/studio/release-test \
+              apps/studio/web/public/maintenance.html \
+              .github/workflows/ci-and-release.yml; then
             studio_upgrade=true
-          elif [[ -n "$PREV" ]] && ! git diff --quiet "$PREV" "$CURR" -- \
-            apps/studio/release-test \
-            apps/studio/web/public/maintenance.html; then
-            studio_upgrade=true
-            echo "Studio upgrade lane inputs changed outside the package graph."
+            echo "Studio upgrade inputs changed in $upgrade_prev..$CURR."
           fi
 
           # Either public site can contain inbound links to routes owned by the

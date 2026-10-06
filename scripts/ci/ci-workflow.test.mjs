@@ -1883,10 +1883,13 @@ test('studio-stack is selected by detect and required by the quality gate', () =
 // that the gate cannot read a job that never ran as a pass.
 
 // Runs detect's two Studio blocks in the order detect runs them: the studio
-// flag (its package-graph half stubbed as `packageFlag`, its extra paths
-// real), then the upgrade flag. The pair is what decides, so a change the
-// package graph does not see is exercised with the package flag down.
-function runUpgradeSelection({ packageFlag, headRef = '', changed = [] }) {
+// flag (which also defines the stack's path list), then the upgrade flag.
+// `flag` is stubbed by the package's paths — studio-api and studio-sync stand
+// in for its dependency closure — and diffs over whatever PREV it is handed,
+// so the upgrade flag's merge-base range is exercised for real. Each entry of
+// `pushes` is one commit; PREV is the last push's parent, as on a
+// `synchronize`, and origin/main is the commit before the first push.
+function runUpgradeSelection({ headRef = '', pushes = [] }) {
   const detectJob = job('detect');
   const unindent = (match) =>
     match[0]
@@ -1901,13 +1904,13 @@ function runUpgradeSelection({ packageFlag, headRef = '', changed = [] }) {
     /^(?<indent> +)studio_upgrade=false\n[\s\S]*?^\k<indent>fi$/m,
   );
   assert.ok(block, 'detect computes studio_upgrade');
-  const body = [
-    unindent(studioBlock).replace(
-      'studio=$(flag @codaco/studio-api)',
-      'studio=$PACKAGE_FLAG',
-    ),
-    unindent(block),
+  const stub = [
+    'flag() {',
+    '  [[ -z "$PREV" ]] && { echo true; return; }',
+    '  git diff --quiet "$PREV" "$CURR" -- apps/studio/api packages/studio-sync && echo false || echo true',
+    '}',
   ].join('\n');
+  const body = [stub, unindent(studioBlock), unindent(block)].join('\n');
   const repo = mkdtempSync(join(tmpdir(), 'studio-upgrade-detect-'));
   try {
     const git = (...args) =>
@@ -1918,13 +1921,15 @@ function runUpgradeSelection({ packageFlag, headRef = '', changed = [] }) {
     writeFileSync(join(repo, 'README'), 'base\n');
     git('add', '-A');
     git('commit', '-qm', 'base');
-    const prev = git('rev-parse', 'HEAD');
-    for (const file of changed) {
-      mkdirSync(dirname(join(repo, file)), { recursive: true });
-      writeFileSync(join(repo, file), 'changed\n');
+    git('update-ref', 'refs/remotes/origin/main', 'HEAD');
+    for (const [index, changed] of pushes.entries()) {
+      for (const file of changed) {
+        mkdirSync(dirname(join(repo, file)), { recursive: true });
+        writeFileSync(join(repo, file), `push ${index}\n`);
+      }
+      git('add', '-A');
+      git('commit', '-q', '--allow-empty', '-m', `push ${index}`);
     }
-    git('add', '-A');
-    git('commit', '-q', '--allow-empty', '-m', 'change');
     const result = spawnSync(
       'bash',
       ['-c', `set -eo pipefail\n${body}\necho "result=$studio_upgrade"`],
@@ -1933,11 +1938,12 @@ function runUpgradeSelection({ packageFlag, headRef = '', changed = [] }) {
         encoding: 'utf8',
         env: {
           PATH: process.env.PATH,
-          PACKAGE_FLAG: String(packageFlag),
+          GITHUB_EVENT_NAME: 'pull_request',
+          GITHUB_BASE_REF: 'main',
           HEAD_REF: headRef,
           FORCE_RUN: 'false',
           WORKFLOW_CHANGED: 'false',
-          PREV: prev,
+          PREV: git('rev-parse', 'HEAD^1'),
           CURR: git('rev-parse', 'HEAD'),
         },
       },
@@ -1965,31 +1971,19 @@ test('detect selects the upgrade lane whenever what the api image is built from 
   // Every Studio release PR, whatever it changed.
   assert.equal(
     runUpgradeSelection({
-      packageFlag: false,
       headRef: 'changeset-release/studio',
+      pushes: [['README.md']],
     }),
     'true',
   );
-  // Anything in the api image's package graph: the package flag is the rule,
-  // so the keyring check, the fingerprint sync and the schema applier are
-  // covered without being listed.
+  // Anything in the api image's package graph, the stack's files, the lane's
+  // own inputs and the workflow that defines the job — each on its own.
   for (const file of [
     'apps/studio/api/migrations/0002_next/delta.sql',
     'apps/studio/api/src/secrets/verify.ts',
-    'apps/studio/api/src/study/handlers.ts',
     'apps/studio/api/scripts/sync-fingerprint.ts',
     'apps/studio/api/scripts/apply.ts',
     'packages/studio-sync/src/jobs.ts',
-  ]) {
-    assert.equal(
-      runUpgradeSelection({ packageFlag: true, changed: [file] }),
-      'true',
-      `a change to ${file} selects the upgrade lane through the package flag`,
-    );
-  }
-  // The stack's own files outside the package graph, which the studio flag
-  // adds, and the lane's own inputs, which only this flag adds.
-  for (const file of [
     'apps/studio/docs/self-host/upgrade.md',
     'apps/studio/docs/self-host/backup.md',
     'apps/studio/Dockerfile',
@@ -1997,29 +1991,32 @@ test('detect selects the upgrade lane whenever what the api image is built from 
     'apps/studio/docker-compose.local.yml',
     'apps/studio/release-test/run.sh',
     'apps/studio/release-test/window.mjs',
-    'apps/studio/release-test/diff-export.mjs',
     'apps/studio/web/public/maintenance.html',
+    '.github/workflows/ci-and-release.yml',
   ]) {
     assert.equal(
-      runUpgradeSelection({ packageFlag: false, changed: [file] }),
+      runUpgradeSelection({ pushes: [[file]] }),
       'true',
-      `a change to ${file} selects the upgrade lane with the package flag down`,
+      `a change to ${file} selects the upgrade lane`,
     );
   }
-  // Studio's web app is not in the api image's graph and does not select it.
+  // Judged on the whole pull request: a later push that touches nothing the
+  // lane reads still runs it, so a failed lane cannot be skipped past.
   assert.equal(
     runUpgradeSelection({
-      packageFlag: false,
-      changed: ['apps/studio/web/src/main.tsx'],
+      pushes: [['apps/studio/api/src/db/migrate.ts'], ['README.md']],
     }),
+    'true',
+    'an unrelated push after an upgrade-path push still selects the lane',
+  );
+  // Studio's web app is not in the api image's graph and does not select it.
+  assert.equal(
+    runUpgradeSelection({ pushes: [['apps/studio/web/src/main.tsx']] }),
     'false',
   );
   // Nothing outside Studio selects it.
   assert.equal(
-    runUpgradeSelection({
-      packageFlag: false,
-      changed: ['apps/architect/x.ts'],
-    }),
+    runUpgradeSelection({ pushes: [['apps/architect/x.ts'], ['README.md']] }),
     'false',
   );
 }, 120_000);
