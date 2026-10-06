@@ -26,9 +26,10 @@ adoptive parent's line is recorded as adoptive.
 Someone partnered with their own grandchild, or partnerships that would need a
 generation to sit both level with and above another, no longer pull people out
 of their generations. Each child stays below its parents, and a partnership
-that cannot be drawn on one row is drawn between the two rows' partners
-instead of being left out.
+that cannot be drawn on one row is drawn between the two rows' partners,
+clear of anyone between them, instead of being left out.
 
 A child whose parents are not a couple, such as a biological parent and a
 step-parent who are not partners, is now joined to each parent directly.
-Previously it was drawn with no parent lines at all.
+Previously it was drawn with no parent lines at all, or with a line from only
+one of them.

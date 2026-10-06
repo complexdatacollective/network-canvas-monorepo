@@ -48,7 +48,7 @@ export function computeConnectors(
   id?: string[],
   partnerPairs?: Set<string>,
 ): PedigreeConnectors {
-  const { boxHeight: boxh, legHeight: legh } = scaling;
+  const { boxWidth: boxw, boxHeight: boxh, legHeight: legh } = scaling;
   const maxlev = layout.nid.length;
   const maxcol = Math.max(...layout.n, 0);
 
@@ -148,7 +148,9 @@ export function computeConnectors(
   // additional recorded partnerships with a routed connector above the row,
   // rather than silently dropping the edge or connecting the two neighbouring
   // partners to one another. Partners on different rows (one partnered with
-  // their own grandchild, say) are routed above the higher of the two.
+  // their own grandchild, say) are routed above the higher partner's row,
+  // down a lane clear of everyone on the rows it crosses, and into the lower
+  // partner from above their row.
   if (partnerPairs) {
     const routedCountByLayer = new Map<number, number>();
 
@@ -165,10 +167,56 @@ export function computeConnectors(
         firstLocation.x <= secondLocation.x
           ? [first, firstLocation, second, secondLocation]
           : [second, secondLocation, first, firstLocation];
-      const layer = Math.min(left.layer, right.layer);
-      const routeIndex = routedCountByLayer.get(layer) ?? 0;
-      routedCountByLayer.set(layer, routeIndex + 1);
-      const routeY = layer - legh * (1 + routeIndex * 0.5);
+      const routeAbove = (layer: number) => {
+        const routeIndex = routedCountByLayer.get(layer) ?? 0;
+        routedCountByLayer.set(layer, routeIndex + 1);
+        return layer - legh * (1 + routeIndex * 0.5);
+      };
+      const [upper, lower] =
+        left.layer <= right.layer ? [left, right] : [right, left];
+      const routeY = routeAbove(upper.layer);
+      // The vertical x nearest the lower partner that no one on the rows
+      // from the upper partner's down to the lower partner's sits across.
+      let laneX = lower.x;
+      if (upper.layer !== lower.layer) {
+        const blocked = [...nodeLocation.values()]
+          .filter((loc) => loc.layer >= upper.layer && loc.layer < lower.layer)
+          .map((loc) => loc.x);
+        const clearance = boxw / 2 + 0.1;
+        const isClear = (x: number) =>
+          blocked.every((bx) => Math.abs(bx - x) >= clearance);
+        for (let step = 0; !isClear(laneX); step++) {
+          const offset = Math.ceil((step + 1) / 2) * 0.25;
+          laneX = lower.x + (step % 2 === 0 ? offset : -offset);
+        }
+      }
+      const lowerRouteY = laneX === lower.x ? routeY : routeAbove(lower.layer);
+      const endpointSegments: LineSegment[] = [
+        { type: 'line', x1: upper.x, y1: upper.y, x2: upper.x, y2: routeY },
+      ];
+      if (laneX !== lower.x) {
+        endpointSegments.push(
+          { type: 'line', x1: laneX, y1: routeY, x2: laneX, y2: lowerRouteY },
+          {
+            type: 'line',
+            x1: laneX,
+            y1: lowerRouteY,
+            x2: lower.x,
+            y2: lowerRouteY,
+          },
+        );
+      }
+      endpointSegments.push({
+        type: 'line',
+        x1: lower.x,
+        y1: lower.y,
+        x2: lower.x,
+        y2: lowerRouteY,
+      });
+      const [segmentLeftX, segmentRightX] =
+        upper.layer === lower.layer
+          ? [left.x, right.x]
+          : [Math.min(upper.x, laneX), Math.max(upper.x, laneX)];
 
       const ancestorsLeft = ancestor(leftIndex, parents);
       const ancestorsRight = new Set(ancestor(rightIndex, parents));
@@ -177,27 +225,12 @@ export function computeConnectors(
         type: 'parent-group',
         segment: {
           type: 'line',
-          x1: left.x,
+          x1: segmentLeftX,
           y1: routeY,
-          x2: right.x,
+          x2: segmentRightX,
           y2: routeY,
         },
-        endpointSegments: [
-          {
-            type: 'line',
-            x1: left.x,
-            y1: left.y,
-            x2: left.x,
-            y2: routeY,
-          },
-          {
-            type: 'line',
-            x1: right.x,
-            y1: right.y,
-            x2: right.x,
-            y2: routeY,
-          },
-        ],
+        endpointSegments,
         double: isDouble,
         isActive:
           activePartnerPairs === undefined || activePartnerPairs.has(pairKey),
@@ -205,9 +238,9 @@ export function computeConnectors(
           ? {
               doubleSegment: {
                 type: 'line',
-                x1: left.x,
+                x1: segmentLeftX,
                 y1: routeY + boxh / 10,
-                x2: right.x,
+                x2: segmentRightX,
                 y2: routeY + boxh / 10,
               } satisfies LineSegment,
             }
@@ -766,23 +799,7 @@ export function computeConnectors(
     }
   }
 
-  // --- Auxiliary lines for unpartnered parents ---
-  const partnerPairSet = new Set(partnerPairs ?? activePartnerPairs ?? []);
-  // Include valid implicit co-parent unions from the layout. The explicit
-  // partner set supplements these groups with non-adjacent partnerships; it
-  // does not replace the established co-parent fallback.
-  for (let i = 0; i < maxlev; i++) {
-    for (let j = 0; j < maxcol; j++) {
-      if ((layout.group[i]?.[j] ?? 0) > 0) {
-        const leftId = layout.nid[i]![j]!;
-        const rightId = layout.nid[i]![j + 1]!;
-        partnerPairSet.add(
-          `${Math.min(leftId, rightId)},${Math.max(leftId, rightId)}`,
-        );
-      }
-    }
-  }
-
+  // --- Direct lines from parents a child's family does not name ---
   const nodePosition = new Map<number, { x: number; y: number }>();
   for (let i = 0; i < maxlev; i++) {
     for (let j = 0; j < (layout.n[i] ?? 0); j++) {
@@ -793,8 +810,9 @@ export function computeConnectors(
     }
   }
 
-  // Group direct parent connections by (parentIndex, childLevel, famId) so we can decide per-parent whether to connect to the sibling bar
-  // or directly to individual children.
+  // Group direct parent connections by (parentIndex, childLevel, famId) so
+  // we can decide per-parent whether to connect to the sibling bar or
+  // directly to individual children.
   const socialConnections = new Map<
     string,
     {
@@ -817,29 +835,9 @@ export function computeConnectors(
       // Determine which parent pair the child is assigned to (primary family)
       const childFam = layout.fam[i]?.[j] ?? 0;
 
-      // A single parent's child descends from them through its family; one
-      // without a family still needs its line to that parent.
-      if (parentEdges.length === 0) continue;
-      if (parentEdges.length < 2 && childFam !== 0) continue;
-
-      const parentIds = parentEdges.map((pe) => pe.parentIndex);
-      const partneredParents = new Set<number>();
-
-      for (let a = 0; a < parentIds.length; a++) {
-        for (let b = a + 1; b < parentIds.length; b++) {
-          const key = `${Math.min(parentIds[a]!, parentIds[b]!)},${Math.max(parentIds[a]!, parentIds[b]!)}`;
-          if (partnerPairSet.has(key)) {
-            partneredParents.add(parentIds[a]!);
-            partneredParents.add(parentIds[b]!);
-          }
-        }
-      }
-
-      // A child with a family descends from it, and only its partnered other
-      // parents need a line of their own. A child without one (its parents
-      // are not a couple, or their couple could not sit together) is joined
-      // to every parent directly, whether or not they are partners.
-      if (partneredParents.size === 0 && childFam !== 0) continue;
+      // A child's family names the parents it descends from: its couple, or
+      // its single parent. Every other primary parent is joined to the child
+      // by a line of their own, whether or not they are anyone's partner.
       const primaryFamilyIds = new Set<number>();
       if (childFam !== 0) {
         const { left, right } = familyParentColumns(layout, i, childFam);
