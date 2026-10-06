@@ -102,6 +102,14 @@ describe.skipIf(!db)('migrate', () => {
   const next = (...extra: SyntheticMigration[]) =>
     withMigrations(committed, ...extra);
 
+  const committedSidecars = (): string => {
+    const sidecars = committed.migrations
+      .at(-1)
+      ?.artefacts.find(({ name }) => name === 'sidecars.sql')?.sql;
+    if (sidecars === undefined) throw new Error('no committed sidecars');
+    return sidecars;
+  };
+
   const history = async (pool: pg.Pool) =>
     (
       await pool.query<{ version: string; ordinal: number }>(
@@ -798,7 +806,33 @@ describe.skipIf(!db)('migrate', () => {
       [
         'a guard trigger disabled',
         'ALTER TABLE studies DISABLE TRIGGER studies_closed_read_only;',
-        /left the disabled triggers as \[studies_closed_read_only on studies\] rather than \[\]: .* must ENABLE it again/,
+        /changed triggers: studies_closed_read_only on public\.studies enabled → disabled\. .*ENABLE a guard trigger it disabled/,
+      ],
+      // #1901 FX-3: every change to a trigger, not only a disabled one.
+      [
+        'a guard trigger firing only under replication',
+        'ALTER TABLE studies ENABLE REPLICA TRIGGER studies_closed_read_only;',
+        /changed triggers: studies_closed_read_only on public\.studies enabled → enabled replica\./,
+      ],
+      [
+        'a guard trigger switched to ALWAYS',
+        'ALTER TABLE studies ENABLE ALWAYS TRIGGER studies_closed_read_only;',
+        /changed triggers: studies_closed_read_only on public\.studies enabled → enabled always\./,
+      ],
+      [
+        'a guard trigger dropped',
+        'DROP TRIGGER studies_closed_read_only ON studies;',
+        /changed triggers: studies_closed_read_only on public\.studies dropped\. .*create, drop or change a trigger in delta\.sql/,
+      ],
+      [
+        'a trigger it created',
+        'CREATE TRIGGER probe_guard BEFORE UPDATE ON deployment_state FOR EACH ROW EXECUTE FUNCTION audit_events_are_immutable();',
+        /changed triggers: probe_guard on public\.deployment_state created \(enabled\)\./,
+      ],
+      [
+        'FORCE ROW LEVEL SECURITY lifted',
+        'ALTER TABLE drafts NO FORCE ROW LEVEL SECURITY;',
+        /changed row-level security: public\.drafts enabled and forced → enabled, not forced\. .*must FORCE it again/,
       ],
       [
         'the erasure marker set',
@@ -828,6 +862,56 @@ describe.skipIf(!db)('migrate', () => {
             where table_name = 'deployment_state' and column_name = 'probe'`,
         );
         expect(column.rowCount).toBe(0);
+      },
+      CASE_TIMEOUT_MS,
+    );
+
+    it(
+      'refuses a delta that leaves a trigger firing only under replication',
+      async () => {
+        const scratch = await emptyDatabase();
+        await run(scratch.db.url);
+
+        const failure = await refusal(
+          scratch.db.url,
+          next({
+            slug: 'replica',
+            delta:
+              'ALTER TABLE studies ENABLE REPLICA TRIGGER studies_closed_read_only;',
+            fingerprint: NEXT,
+          }),
+        );
+        expect(failure).toMatchObject({ verdict: 'session' });
+        expect(failure.message).toMatch(
+          /_replica\/delta\.sql left triggers that no longer fire as they did: studies_closed_read_only on public\.studies enabled → enabled replica\./,
+        );
+      },
+      CASE_TIMEOUT_MS,
+    );
+
+    it(
+      'admits a delta that drops a trigger, which a schema change may do',
+      async () => {
+        const scratch = await emptyDatabase();
+        await run(scratch.db.url);
+
+        await run(
+          scratch.db.url,
+          next({
+            slug: 'drops_guard',
+            delta: 'DROP TRIGGER studies_closed_read_only ON studies;',
+            // A sidecar that no longer installs it, so the drop stands.
+            sidecars: committedSidecars().replace(
+              /CREATE OR REPLACE TRIGGER studies_closed_read_only[\s\S]*?;\n/,
+              '',
+            ),
+            fingerprint: NEXT,
+          }),
+        );
+        const guard = await scratch.pool.query(
+          `select 1 from pg_trigger where tgname = 'studies_closed_read_only'`,
+        );
+        expect(guard.rowCount).toBe(0);
       },
       CASE_TIMEOUT_MS,
     );
@@ -892,7 +976,173 @@ describe.skipIf(!db)('migrate', () => {
       },
       CASE_TIMEOUT_MS,
     );
+
+    // #1901 FX-4: a run's settling must not change how a later file's own
+    // INITIALLY DEFERRED constraint behaves. The same three statements apply
+    // as the first file of a run (an upgrade's delta), as a later file of an
+    // upgrade (its backfill), and as a later file of a fresh install.
+    const PAIRS = [
+      'CREATE TABLE probe_pairs (id int PRIMARY KEY, partner int NOT NULL REFERENCES probe_pairs (id) DEFERRABLE INITIALLY DEFERRED);',
+      'INSERT INTO probe_pairs VALUES (1, 2);',
+      'INSERT INTO probe_pairs VALUES (2, 1);',
+    ].join('\n');
+
+    it.each([
+      ['the first file of an upgrade', { delta: PAIRS }, true],
+      ['a later file of an upgrade', { backfill: PAIRS }, true],
+      ['a later file of a fresh install', { delta: PAIRS }, false],
+    ])(
+      'keeps a file’s own INITIALLY DEFERRED constraint deferred as %s',
+      async (_name, files, upgrade) => {
+        const scratch = await emptyDatabase();
+        if (upgrade) await run(scratch.db.url);
+
+        const outcome = await run(
+          scratch.db.url,
+          next({ slug: 'own_pairs', ...files, fingerprint: NEXT }),
+        );
+        expect(outcome.kind).toBe('applied');
+        const pairs = await scratch.pool.query(
+          'select id, partner from probe_pairs order by id',
+        );
+        expect(pairs.rows).toEqual([
+          { id: 1, partner: 2 },
+          { id: 2, partner: 1 },
+        ]);
+      },
+      CASE_TIMEOUT_MS,
+    );
+
+    it(
+      'refuses, by name, a deferred constraint whose name a non-deferrable one shares',
+      async () => {
+        const scratch = await emptyDatabase();
+        await run(scratch.db.url);
+
+        const failure = await refusal(
+          scratch.db.url,
+          next({
+            slug: 'shared_name',
+            delta: [
+              'CREATE TABLE probe_pairs (id int PRIMARY KEY, partner int NOT NULL, CONSTRAINT probe_pair_partner FOREIGN KEY (partner) REFERENCES probe_pairs (id) DEFERRABLE INITIALLY DEFERRED);',
+              'CREATE TABLE probe_other (id int, CONSTRAINT probe_pair_partner CHECK (id > 0));',
+            ].join('\n'),
+            fingerprint: NEXT,
+          }),
+        );
+        expect(failure).toBeInstanceOf(MigrationHistoryRefused);
+        expect(failure).toMatchObject({ verdict: 'constraint' });
+        expect(failure.message).toMatch(
+          /_shared_name\/delta\.sql, the INITIALLY DEFERRED constraint public\.probe_pair_partner shares its name .* Rename one of them\./,
+        );
+        expect(await publicTables(scratch.pool)).not.toContain('probe_pairs');
+      },
+      CASE_TIMEOUT_MS,
+    );
+
+    // #1901 FX-5: the deferred checks fire before the session checks, so they
+    // run under what the file left — here a team setting it never reset — and
+    // the report names the check rather than the setting.
+    it(
+      'fires a file’s deferred checks under the settings it ended on, before the session checks',
+      async () => {
+        const scratch = await emptyDatabase();
+        await run(scratch.db.url);
+
+        const failure = await refusal(
+          scratch.db.url,
+          next({
+            slug: 'team_check',
+            delta: [
+              'CREATE TABLE probe_rows (id int PRIMARY KEY);',
+              `CREATE FUNCTION probe_rows_team() RETURNS trigger AS $$ BEGIN RAISE EXCEPTION 'fired under team %', current_setting('app.team_id', true); END; $$ LANGUAGE plpgsql;`,
+              'CREATE CONSTRAINT TRIGGER probe_rows_team AFTER INSERT ON probe_rows DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION probe_rows_team();',
+            ].join('\n'),
+            backfill: [
+              `SELECT set_config('app.team_id', 'probe-team', true);`,
+              'INSERT INTO probe_rows VALUES (1);',
+            ].join('\n'),
+            fingerprint: NEXT,
+          }),
+        );
+        expect(failure).toMatchObject({
+          _tag: 'MigrationStatementFailed',
+          artefact: 'backfill.sql',
+          position: 'at the end of the file',
+          reason: 'fired under team probe-team',
+        });
+      },
+      CASE_TIMEOUT_MS,
+    );
   });
+
+  // #1901 FX-7: a `--` comment ends at a carriage return, so the statement
+  // after it is a statement of its own, counted and named.
+  it(
+    'names the statement after a comment a carriage return ends',
+    async () => {
+      const scratch = await emptyDatabase();
+      await run(scratch.db.url);
+
+      const failure = await refusal(
+        scratch.db.url,
+        next({
+          slug: 'carriage_return',
+          backfill:
+            '-- fill it\rUPDATE studies SET no_such_column = 1;\nSELECT 1;',
+          fingerprint: NEXT,
+        }),
+      );
+      expect(failure).toMatchObject({
+        _tag: 'MigrationStatementFailed',
+        artefact: 'backfill.sql',
+        position: 'statement 1 of 2',
+        statement: 'UPDATE studies SET no_such_column = 1',
+        code: '42703',
+      });
+    },
+    CASE_TIMEOUT_MS,
+  );
+
+  // #1901 FX-8: a run whose COMMIT fails applied nothing, so it never says
+  // it did. The delta queues a deferred check on the history row the run
+  // records last, which only COMMIT fires.
+  it(
+    'says “Applied” only once COMMIT has returned',
+    async () => {
+      const scratch = await emptyDatabase();
+      await run(scratch.db.url);
+      const before = await history(scratch.pool);
+
+      const lines: string[] = [];
+      const failure = await Effect.runPromise(
+        refusalOf(
+          migrateDatabaseEffect(
+            verifyMigrations(
+              next({
+                slug: 'fails_at_commit',
+                delta: [
+                  `CREATE FUNCTION probe_refuse_commit() RETURNS trigger AS $$ BEGIN RAISE EXCEPTION 'refused at commit'; END; $$ LANGUAGE plpgsql;`,
+                  'CREATE CONSTRAINT TRIGGER probe_refuse_commit AFTER INSERT ON studio_migrations DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION probe_refuse_commit();',
+                ].join('\n'),
+                fingerprint: NEXT,
+              }),
+              NEXT,
+            ),
+            { log: (line) => lines.push(line) },
+          ).pipe(Effect.provide(ownerLayer(scratch.db.url))),
+        ),
+      );
+      expect(failure.message).toMatch(/refused at commit/);
+      // The run got as far as the commit.
+      expect(lines).toEqual([
+        expect.stringMatching(/^Applying \d{4}_fails_at_commit /),
+      ]);
+      expect(await history(scratch.pool)).toEqual(before);
+      expect(await stamp(scratch.pool)).toEqual([SCHEMA_FINGERPRINT]);
+    },
+    CASE_TIMEOUT_MS,
+  );
 
   it(
     'leaves a job queued before a studio_jobs migration, and it is worked after',

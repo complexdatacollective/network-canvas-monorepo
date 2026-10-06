@@ -49,8 +49,8 @@ other pending migration:
 | `sidecars.sql` | The complete sidecars and job schema at this version, not a delta. Every statement is idempotent, so re-running them converges what they create. |
 | `backfill.sql` | Optional, hand-written. Data changes the new schema needs (see [Backfills](#backfills)).                                                         |
 
-After each file the runner checks that the file left the session as it found
-it, and fires the file's deferred constraint checks (see
+After each file the runner fires the file's deferred constraint checks, then
+checks that the file left the session as it found it (see
 [Backfills](#backfills)).
 
 And these, which are not run:
@@ -152,14 +152,16 @@ UPDATE public.existing_table SET new_column = old_column;
 RESET ROLE;
 ```
 
-The same recipe fills a new table and an existing one.
+The same recipe fills a new table and an existing one, on every tenant table
+except `audit_events` (below). `installation` and `deployment_state` have no
+row-level security, so the owner writes them directly.
 
 **Rows a trigger guards.** The backfill also runs under this release's
 triggers, as every write does. Some refuse every role, the maintenance role
-included: closed studies are read-only (`studies_closed_read_only`), finalized
-sessions and snapshots are immutable, audit events are append-only. To fill a
-new column on such rows, disable that one trigger around the write, as the
-owner, and enable it again before the file ends:
+included: closed studies are read-only (`studies_closed_read_only`), and
+finalized sessions and snapshots are immutable. To fill a new column on such
+rows, disable that one trigger around the write, as the owner, and enable it
+again before the file ends:
 
 ```sql
 ALTER TABLE studies DISABLE TRIGGER studies_closed_read_only;
@@ -174,6 +176,57 @@ The whole upgrade is one transaction, so no other session ever sees the
 trigger off. Disable only for a change the trigger was never meant to stop (a
 new column's value), never to rewrite what the row records.
 
+**Audit events.** `audit_events` is the one tenant table the maintenance role
+cannot write: the sidecars revoke its `UPDATE`, and the table's policy admits
+only a session whose `app.team_id` matches the row, with no maintenance
+clause. A loop over `teams` would not reach every row either, because an audit
+event deliberately outlives its team. Write them as the owner, lifting FORCE
+ROW LEVEL SECURITY (so the policy no longer binds the owner) and the
+immutability guard around the write, and restore both before the file ends:
+
+```sql
+ALTER TABLE audit_events NO FORCE ROW LEVEL SECURITY;
+ALTER TABLE audit_events DISABLE TRIGGER audit_events_immutable;
+UPDATE audit_events SET new_column = category;
+ALTER TABLE audit_events ENABLE TRIGGER audit_events_immutable;
+ALTER TABLE audit_events FORCE ROW LEVEL SECURITY;
+ALTER TABLE audit_events ALTER COLUMN new_column SET NOT NULL;
+```
+
+Use this route for `audit_events` only. On a table the maintenance role can
+write, its triggers and deferred checks read other tables as whoever wrote the
+row, and as the owner with no team set they would see nothing and pass. An
+audit event records what happened, so fill a new column with what the event
+already says; when no such value exists, give the column a default instead.
+
+**Deferred checks.** Two constraint triggers check a row only at the end of
+the file (or when told to): a session whose `status` becomes `completed` must
+carry its snapshot (`interview_sessions_completion_snapshot`), and a consent
+must answer every item of its document
+(`participant_consents_required_items_affirmed`). A file whose writes queue
+one must fire it, by name, with `SET CONSTRAINTS <name> IMMEDIATE`:
+
+- **before `ENABLE TRIGGER` on that table.** Postgres refuses to alter a
+  table with pending trigger events (55006).
+- **before resetting `app.team_id` or `app.erasing_participant_id`.** The
+  check reads the settings in force when it fires; fired after the reset, the
+  consent check sees no team's items and passes a grant that answers none of
+  them.
+
+```sql
+ALTER TABLE interview_sessions DISABLE TRIGGER interview_sessions_writable;
+SET LOCAL ROLE studio_maintenance;
+UPDATE interview_sessions SET status = 'completed', completed_at = now() WHERE …;
+INSERT INTO session_snapshots …;
+SET CONSTRAINTS interview_sessions_completion_snapshot IMMEDIATE;
+RESET ROLE;
+ALTER TABLE interview_sessions ENABLE TRIGGER interview_sessions_writable;
+```
+
+Never `SET CONSTRAINTS ALL`: it changes the transaction's default, which every
+constraint a later migration creates would then follow. The generator,
+`--seal`, the build and `migrate` refuse it.
+
 **Data a new constraint needs fixed first.** A delta's CHECK, UNIQUE or NOT
 NULL, and a sidecar's index or trigger, apply before the backfill runs. When
 existing rows would violate one, fix them in a hand-written `delta.sql`,
@@ -182,25 +235,33 @@ release's grants, so the same `SET LOCAL ROLE` recipe works there), or add a
 CHECK as `NOT VALID` in the delta and `VALIDATE CONSTRAINT` it at the end of
 the backfill.
 
-**What the runner checks after each file.** It refuses, and rolls everything
-back, when a file:
+**What the runner does after each file.** First it fires the file's deferred
+checks: it sets every deferrable constraint `IMMEDIATE` by name, so a check
+runs under the role and settings the file ended on, and a backfill that leaves
+a row its check refuses fails on that file, by name. The next migration's
+sidecars then never meet a table with pending trigger events. It then defers
+the `INITIALLY DEFERRED` constraints again, by name, so a later file may still
+write a row before the row it points at, and a constraint a later file creates
+keeps the mode it was declared with. A deferred constraint whose name another
+constraint in its schema shares cannot be told apart from it by `SET
+CONSTRAINTS`, so the run is refused (**constraint**): rename one.
 
-- leaves the role switched (a `SET LOCAL ROLE` without `RESET ROLE`);
-- leaves `search_path`, `app.team_id` or `app.erasing_participant_id`
-  changed — any setting a file changes lasts for the rest of the upgrade;
-- leaves a trigger disabled;
+Then it refuses, and rolls everything back, when a file:
+
 - ended the transaction (its id moved). Transaction control is refused before
-  a run starts (below), so this is a backstop.
-
-Then it fires the file's deferred constraint checks (`SET CONSTRAINTS ALL
-IMMEDIATE`), so a backfill that leaves a row its deferred check refuses fails
-on that file, by name, and the next migration's sidecars never meet a table
-with pending trigger events (Postgres refuses an `ALTER TABLE` on one). It then
-defers the `INITIALLY DEFERRED` constraints again, so a file may still write a
-row before the row it points at.
+  a run starts (below), so this is a backstop;
+- leaves the role switched (a `SET LOCAL ROLE` without `RESET ROLE`);
+- leaves a trigger disabled, or firing only in `REPLICA` or `ALWAYS` mode,
+  that fired normally before the file;
+- is a backfill that changed any trigger at all — created, dropped, or left in
+  another mode — or any table's row-level security. A backfill fills data:
+  create, drop or change a trigger in `delta.sql`;
+- leaves `search_path`, `app.team_id` or `app.erasing_participant_id`
+  changed — any setting a file changes lasts for the rest of the upgrade.
 
 `migrations-upgrade.test.ts` applies a generated migration to a database the
-demo seed filled; add a case there when a backfill does something new.
+demo seed filled, and runs each recipe above against it; add a case there
+when a backfill does something new.
 
 ## What re-running the sidecars does not do
 
@@ -236,6 +297,8 @@ so the generator, `--seal`, the build and `migrate` itself refuse:
   wrap a backfill in `BEGIN … COMMIT`.
 - `CREATE INDEX CONCURRENTLY`, `DROP INDEX CONCURRENTLY` and `ALTER TYPE … ADD
   VALUE`, which cannot run in a transaction.
+- `SET CONSTRAINTS ALL`, which would change the constraints of every later
+  file in the transaction (see [Backfills](#backfills)); name the constraints.
 
 For an index, create it normally in the migration; if a table is large enough
 that the lock matters, say so in `NOTES.md` for operators to build it
@@ -277,12 +340,16 @@ deliberately, then run `migrate:generate` and confirm it reports no change.
 | **edited**       | A migration's files differ from what was recorded.                                                                |
 | **inconsistent** | The schema stamp was changed outside `migrate`.                                                                   |
 | **role**         | A file left the role switched.                                                                                    |
-| **session**      | A file left `search_path`, a team or erasure setting, or a disabled trigger behind.                               |
+| **session**      | A file left `search_path`, a team or erasure setting, or a trigger not firing behind, or a backfill changed a trigger or row-level security. |
 | **transaction**  | A file ended the migration's transaction. Restore the backup taken before the upgrade.                           |
+| **constraint**   | A deferred constraint shares its name with another constraint in its schema. Rename one.                          |
 
 A statement Postgres refuses is reported with its migration, file, position
 and text, Postgres's SQLSTATE and message, and whether the transaction rolled
 back (it always has, unless a file got past the transaction-control refusal).
+A data exception (SQLSTATE class 22: a failed cast, an out-of-range value) is
+reported by its code alone, because its message can quote the stored value
+that failed. `Applied …` is printed only once the commit has returned.
 A keyring that cannot open what the upgraded database stores is refused before
 the commit, so it, too, leaves the database at its previous release.
 

@@ -140,7 +140,7 @@ export function hashArtefacts(
 }
 
 function withoutComments(statement: string): string {
-  return statement.replace(/--[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
+  return statement.replace(/--[^\n\r]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
 }
 
 /** Past whitespace and comments, block comments nesting as Postgres nests them. */
@@ -150,8 +150,9 @@ function commandStart(statement: string): string {
     if (/\s/.test(statement[index]!)) {
       index += 1;
     } else if (statement.startsWith('--', index)) {
-      const end = statement.indexOf('\n', index);
-      index = end === -1 ? statement.length : end + 1;
+      // A carriage return ends the comment too, as Postgres reads it.
+      const end = statement.slice(index).search(/[\n\r]/);
+      index = end === -1 ? statement.length : index + end + 1;
     } else if (statement.startsWith('/*', index)) {
       let depth = 1;
       index += 2;
@@ -190,6 +191,16 @@ export type ForbiddenStatement = {
 
 const SPLIT_ACROSS_RELEASES = 'split it across two releases';
 
+/**
+ * `SET CONSTRAINTS ALL` sets the transaction's default rather than the modes
+ * of the constraints that exist, so it would also govern every constraint a
+ * later file of the run creates (#1901 FX-4).
+ */
+const ALL_CONSTRAINTS = /^SET\s+CONSTRAINTS\s+ALL\b/i;
+
+const NAME_THE_CONSTRAINTS =
+  'name the constraints instead (SET CONSTRAINTS <name> IMMEDIATE): migrate applies every pending migration in one transaction, and ALL would change the constraints of every file after this one too';
+
 const NO_TRANSACTION_CONTROL =
   'remove it: migrate applies every pending migration in one transaction of its own, so a file never begins, ends or nests one';
 
@@ -201,8 +212,12 @@ const NO_TRANSACTION_CONTROL =
  */
 export function forbiddenStatement(script: string): ForbiddenStatement | null {
   for (const statement of splitStatements(script)) {
-    if (TRANSACTION_CONTROL.test(commandStart(statement))) {
+    const command = commandStart(statement);
+    if (TRANSACTION_CONTROL.test(command)) {
       return { statement, remedy: NO_TRANSACTION_CONTROL };
+    }
+    if (ALL_CONSTRAINTS.test(command)) {
+      return { statement, remedy: NAME_THE_CONSTRAINTS };
     }
     const text = withoutComments(statement);
     if (/\bCONCURRENTLY\b/i.test(text)) {
