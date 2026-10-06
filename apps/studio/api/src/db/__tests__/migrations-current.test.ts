@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -8,9 +8,9 @@ import { describe, expect, it } from 'vitest';
 import { parse as parseYaml } from 'yaml';
 
 import { MIGRATIONS_DIR } from '../../../scripts/render-migrations.ts';
-import { committedDocument } from '../../__tests__/support/migrations.ts';
 import { renderJobStatements } from '../../jobs/queues.ts';
 import { SCHEMA_FINGERPRINT } from '../fingerprint.generated.ts';
+import { decodeManifest, MIGRATION_VERSION } from '../migrations-document.ts';
 import { SCHEMA, SIDECARS } from '../schema.ts';
 import { splitStatements } from '../statements.ts';
 
@@ -21,29 +21,32 @@ import { splitStatements } from '../statements.ts';
 
 const REPO_ROOT = fileURLToPath(new URL('../../../../../../', import.meta.url));
 
-const newest = committedDocument().migrations.at(-1);
+// Read straight from the directory rather than through the verified
+// document: verification refuses exactly the lag these cases describe, and a
+// refusal at collection time would report no case at all.
+const newestVersion = readdirSync(MIGRATIONS_DIR)
+  .filter((name) => MIGRATION_VERSION.test(name))
+  .toSorted()
+  .at(-1);
+const newestFile = (name: string) =>
+  readFileSync(join(MIGRATIONS_DIR, newestVersion ?? '(none)', name), 'utf8');
 
 const sidecarsNow = () => [...SIDECARS, ...renderJobStatements()];
 
 describe('the newest migration', () => {
   it('exists', () => {
-    expect(newest).toBeDefined();
+    expect(newestVersion).toBeDefined();
   });
 
   it('records this build’s fingerprint', () => {
     expect(
-      newest?.manifest.fingerprint,
+      decodeManifest(newestFile('manifest.json')).fingerprint,
       'the schema changed without a migration; run: pnpm --filter @codaco/studio-api migrate:generate --name <slug>',
     ).toBe(SCHEMA_FINGERPRINT);
   });
 
   it('snapshots the current Drizzle schema', async () => {
-    const snapshot: unknown = JSON.parse(
-      readFileSync(
-        join(MIGRATIONS_DIR, newest?.version ?? '(none)', 'snapshot.json'),
-        'utf8',
-      ),
-    );
+    const snapshot: unknown = JSON.parse(newestFile('snapshot.json'));
     const current = await generateDrizzleJson(SCHEMA);
     expect(current.ddl.length).toBeGreaterThan(0);
     expect(snapshot).toMatchObject({ ddl: current.ddl });
@@ -53,10 +56,7 @@ describe('the newest migration', () => {
   }, 120_000);
 
   it('carries the current sidecars, verbatim', () => {
-    const sidecars = newest?.artefacts.find(
-      ({ name }) => name === 'sidecars.sql',
-    );
-    expect(sidecars?.sql).toBe(sidecarsNow().join('\n'));
+    expect(newestFile('sidecars.sql')).toBe(sidecarsNow().join('\n'));
   });
 });
 
