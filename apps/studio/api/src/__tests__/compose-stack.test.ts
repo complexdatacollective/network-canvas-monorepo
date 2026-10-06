@@ -38,11 +38,17 @@ type ComposeFile = {
 // Parsed with interpolation left alone: `${VAR}` is a plain string to the YAML
 // parser, which is what lets the checks below reason about the references
 // themselves rather than about one machine's values for them.
-/** Every overlay `stack-test/lib.sh` layers over `docker-compose.yml`. */
+const upgradeOverlaySource = read('release-test/compose.upgrade.yml');
+
+/**
+ * Every overlay `stack-test/lib.sh` or `release-test/lib.sh` layers over
+ * `docker-compose.yml`.
+ */
 function composeOverlays(): [string, string][] {
   const variants = new URL('stack-test/variants/', studioRoot);
   return [
     ['docker-compose.local.yml', localComposeSource],
+    ['release-test/compose.upgrade.yml', upgradeOverlaySource],
     ...readdirSync(fileURLToPath(variants))
       .filter((name) => name.endsWith('.yml'))
       .map((name): [string, string] => [
@@ -198,6 +204,19 @@ describe('the reference compose stack', () => {
         grace: '40s',
       });
     }
+  });
+
+  it('lets the upgrade lane add nothing to the stack but a loopback database port', () => {
+    // The lane's claim is that it upgrades the reference stack with the
+    // guide's commands. An overlay that replaced an image, a command or a
+    // service would make that claim about a different stack, so the overlay is
+    // held to the one thing the seed needs: Postgres reachable from this host,
+    // and from nowhere else.
+    const overlay = parse(upgradeOverlaySource) as ComposeFile;
+    expect(Object.keys(overlay)).toEqual(['services']);
+    expect(overlay.services).toEqual({
+      postgres: { ports: ['127.0.0.1:55433:5432'] },
+    });
   });
 
   it('lets the three swappable backing services be swapped from .env alone', () => {
