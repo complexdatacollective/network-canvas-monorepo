@@ -35,8 +35,7 @@ type PersonNodeProps = {
   linking: boolean;
   /** Adopted: drawn within brackets, as pedigree nomenclature has it. */
   adopted: boolean;
-  /** The family's connector colour, for the brackets. */
-  lineColor: string;
+
   hasMissingDetails: boolean;
   onActivate: () => void;
   /** 0 for the family's single tab stop, -1 for everyone else. */
@@ -64,7 +63,6 @@ export default function PersonNode({
   menuOpen,
   linking,
   adopted,
-  lineColor,
   hasMissingDetails,
   onActivate,
   tabIndex,
@@ -98,11 +96,10 @@ export default function PersonNode({
             key={side}
             aria-hidden
             className={cx(
-              'pointer-events-none absolute -inset-y-2 w-3 border-solid',
+              'pointer-events-none absolute -inset-y-2 w-3 border-solid border-current',
               side === 'left' ? '-left-4' : '-right-4',
             )}
             style={{
-              borderColor: lineColor,
               borderTopWidth: EDGE_WIDTH,
               borderBottomWidth: EDGE_WIDTH,
               borderLeftWidth: side === 'left' ? EDGE_WIDTH : 0,

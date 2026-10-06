@@ -19,6 +19,7 @@ import {
   PEDIGREE_GENDER_IDENTITIES,
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH,
   type FormField,
+  type FramingId,
   type PedigreeParentKind,
   type PedigreeRelationshipKind,
 } from '@codaco/protocol-validation';
@@ -117,6 +118,8 @@ type PersonFormProps = {
   mode: PersonFormMode;
   family: Family;
   config: PedigreeConfig;
+  /** The stage's words for family members, gendered or by gamete. */
+  framing: FramingId;
   formFields: FormField[];
   displayName: (personId: string) => string;
   /** Edit only: ask whether the person has siblings, and children. */
@@ -144,6 +147,7 @@ export default function PersonForm({
   mode,
   family,
   config,
+  framing,
   formFields,
   displayName,
   askAbout,
@@ -336,6 +340,7 @@ export default function PersonForm({
               family={family}
               displayName={displayName}
               config={config}
+              framing={framing}
             />
           </section>
         )}
@@ -755,18 +760,18 @@ function readRequest(
     }
     case 'sibling': {
       const shared = asStringArray(values[ROLE.sharedParents]);
-      const count = asString(values[ROLE.sharedParentCount]);
+      const placeholders = asString(values[ROLE.sharedParentCount]);
       return {
         relation,
         sharedParentIds: shared.filter((id) => id !== UNKNOWN),
-        unshownSharedParents:
-          count === '1'
-            ? 1
-            : count === '2'
-              ? 2
+        sharesUnshown:
+          placeholders === 'eggParent' || placeholders === 'spermParent'
+            ? placeholders
+            : placeholders === 'both'
+              ? 'both'
               : shared.includes(UNKNOWN)
-                ? 1
-                : 0,
+                ? 'other'
+                : 'none',
       };
     }
   }
@@ -778,12 +783,14 @@ function RelationshipFields({
   family,
   displayName,
   config,
+  framing,
 }: {
   relation: Relation;
   anchor: Person;
   family: Family;
   displayName: (personId: string) => string;
   config: PedigreeConfig;
+  framing: FramingId;
 }) {
   switch (relation) {
     case 'parent':
@@ -811,6 +818,7 @@ function RelationshipFields({
           anchor={anchor}
           family={family}
           displayName={displayName}
+          framing={framing}
         />
       );
   }
@@ -1113,10 +1121,12 @@ function SiblingFields({
   anchor,
   family,
   displayName,
+  framing,
 }: {
   anchor: Person;
   family: Family;
   displayName: (personId: string) => string;
+  framing: FramingId;
 }) {
   const intl = useAppIntl();
   const parents = primaryParentsOf(family, anchor.id);
@@ -1125,27 +1135,35 @@ function SiblingFields({
     name: displayName(anchor.id),
   };
 
-  // Two unnamed parents are added for someone with none; the sibling may
-  // share one of them or both.
+  // Someone with no parents is given an egg parent and a sperm parent,
+  // unnamed; the sibling may share both or one of them.
   if (parents.length === 0) {
     return (
       <Field
         component={RadioGroupField}
         name={ROLE.sharedParentCount}
         label={intl.formatMessage(messages.sharedParentCountLabel, args)}
-        hint={intl.formatMessage(messages.placeholderParentsNote)}
+        hint={intl.formatMessage(messages.placeholderParentsNote, { framing })}
         options={[
           {
-            value: '2',
+            value: 'both',
             label: intl.formatMessage(messages.sharedParentCountBoth),
           },
           {
-            value: '1',
-            label: intl.formatMessage(messages.sharedParentCountOne),
+            value: 'eggParent',
+            label: intl.formatMessage(messages.sharedParentEggOnly, {
+              framing,
+            }),
+          },
+          {
+            value: 'spermParent',
+            label: intl.formatMessage(messages.sharedParentSpermOnly, {
+              framing,
+            }),
           },
         ]}
         required
-        initialValue="2"
+        initialValue="both"
       />
     );
   }

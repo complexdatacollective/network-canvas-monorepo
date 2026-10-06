@@ -125,6 +125,29 @@ describe('labelFamily', () => {
     });
   });
 
+  test('a biological parent with no gender identity is named by sex at birth in the gendered framing', () => {
+    const nodes = [
+      person('ego', { isEgo: true }),
+      person('eggParent', { sex: ['female'] }),
+      person('spermParent', { sex: ['male'], gender: ['unknown'] }),
+      person('nonBinary', { sex: ['female'], gender: ['nonBinary'] }),
+    ];
+    const edges = [
+      link('eggParent', 'ego', 'biological'),
+      link('spermParent', 'ego', 'biological'),
+      link('nonBinary', 'ego', 'social'),
+    ];
+    expect(labelsOf(nodes, edges)).toMatchObject({
+      eggParent: 'Bio\u00ADlogical mother',
+      spermParent: 'Bio\u00ADlogical father',
+      nonBinary: 'Step-parent',
+    });
+    expect(labelsOf(nodes, edges, 'gamete')).toMatchObject({
+      eggParent: 'Egg parent',
+      spermParent: 'Sperm parent',
+    });
+  });
+
   test('step, half and in-law relatives', () => {
     const labels = labelsOf(
       [

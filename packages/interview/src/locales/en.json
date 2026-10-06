@@ -100,8 +100,8 @@
     "description": "Question in the side panel for adding a child: how the child is related to their parents. Followed by the options below."
   },
   "interview.familyPedigree.childrenAnsweredAnnouncement": {
-    "defaultMessage": "{answer, select, none {{isYou, select, true {Recorded that you have no biological children.} other {Recorded that “{name}” has no biological children.}}} other {{isYou, select, true {Recorded that you don’t know whether you have biological children.} other {Recorded that you don’t know whether “{name}” has biological children.}}}}",
-    "description": "Screen reader announcement after answering, from the list of family members still needed, that a person has no children or that the participant does not know. name is the person’s name or how they are related to the participant."
+    "defaultMessage": "{isYou, select, true {Recorded that you have no biological children.} other {Recorded that “{name}” has no biological children.}}",
+    "description": "Screen reader announcement after answering, from the list of family members still needed, that a person has no children. name is the person’s name or how they are related to the participant."
   },
   "interview.familyPedigree.connectAlreadyConnected": {
     "defaultMessage": "{firstIsYou, select, true {You and “{second}” are already connected.} other {“{first}” and “{second}” are already connected.}}",
@@ -328,7 +328,7 @@
     "description": "Accessible name of a family member’s symbol in the family tree. {name} is the person’s name or, when it is not known, how they are related to the participant. The second part is read out when required details about the person have not been given yet."
   },
   "interview.familyPedigree.placeholderParentsNote": {
-    "defaultMessage": "Two parents will be added for you to fill in later, so the family tree can show these siblings together.",
+    "defaultMessage": "{framing, select, gamete {An egg parent and a sperm parent will be added for you to fill in later, so the family tree can show these siblings together.} other {A biological mother and a biological father will be added for you to fill in later, so the family tree can show these siblings together.}}",
     "description": "Note in the side panel for adding a sibling, shown when the selected person has no parents yet."
   },
   "interview.familyPedigree.pointerTool": {
@@ -348,12 +348,12 @@
     "description": "Heading above the questions about a family member’s existing partnerships and parents, in the panel showing their details."
   },
   "interview.familyPedigree.relativeOf": {
-    "defaultMessage": "{owner}'s {term, select, mother {mother} father {father} parent {parent} eggParent {egg parent} spermParent {sperm parent} adoptiveMother {adoptive mother} adoptiveFather {adoptive father} adoptiveParent {adoptive parent} stepmother {stepmother} stepfather {stepfather} stepparent {step-parent} eggDonor {egg donor} spermDonor {sperm donor} donor {donor} surrogate {surrogate} daughter {daughter} son {son} child {child} stepdaughter {stepdaughter} stepson {stepson} stepchild {stepchild} donorConceivedChild {donor-conceived child} surrogacyChild {child born through surrogacy} sister {sister} brother {brother} sibling {sibling} halfSister {half-sister} halfBrother {half-brother} halfSibling {half-sibling} stepsister {stepsister} stepbrother {stepbrother} stepsibling {step-sibling} partner {partner} formerPartner {former partner} other {relative}}",
+    "defaultMessage": "{owner}'s {term, select, mother {mother} father {father} parent {parent} eggParent {egg parent} spermParent {sperm parent} biologicalMother {bio­logical mother} biologicalFather {bio­logical father} adoptiveMother {adoptive mother} adoptiveFather {adoptive father} adoptiveParent {adoptive parent} stepmother {stepmother} stepfather {stepfather} stepparent {step-parent} eggDonor {egg donor} spermDonor {sperm donor} donor {donor} surrogate {surrogate} daughter {daughter} son {son} child {child} stepdaughter {stepdaughter} stepson {stepson} stepchild {stepchild} donorConceivedChild {donor-conceived child} surrogacyChild {child born through surrogacy} sister {sister} brother {brother} sibling {sibling} halfSister {half-sister} halfBrother {half-brother} halfSibling {half-sibling} stepsister {stepsister} stepbrother {stepbrother} stepsibling {step-sibling} partner {partner} formerPartner {former partner} other {relative}}",
     "description": "Label for a family member whose name is not known and who has no everyday kinship word, described through a relative of theirs: owner is that relative’s label (for example “Cousin”), and term is how this person is related to them. Translate the possessive grammar as a whole; owner stays verbatim. Display only."
   },
   "interview.familyPedigree.relativeTerm": {
-    "defaultMessage": "{term, select, mother {Mother} father {Father} parent {Parent} eggParent {Egg parent} spermParent {Sperm parent} adoptiveMother {Adoptive mother} adoptiveFather {Adoptive father} adoptiveParent {Adoptive parent} stepmother {Stepmother} stepfather {Stepfather} stepparent {Step-parent} eggDonor {Egg donor} spermDonor {Sperm donor} donor {Donor} surrogate {Surrogate} daughter {Daughter} son {Son} child {Child} stepdaughter {Stepdaughter} stepson {Stepson} stepchild {Stepchild} donorConceivedChild {Donor-conceived child} surrogacyChild {Child born through surrogacy} sister {Sister} brother {Brother} sibling {Sibling} halfSister {Half-sister} halfBrother {Half-brother} halfSibling {Half-sibling} stepsister {Stepsister} stepbrother {Stepbrother} stepsibling {Step-sibling} partner {Partner} formerPartner {Former partner} grandmother {Grandmother} grandfather {Grandfather} grandparent {Grandparent} maternalGrandmother {Maternal grandmother} maternalGrandfather {Maternal grandfather} maternalGrandparent {Maternal grandparent} paternalGrandmother {Paternal grandmother} paternalGrandfather {Paternal grandfather} paternalGrandparent {Paternal grandparent} greatGrandmother {Great-grandmother} greatGrandfather {Great-grandfather} greatGrandparent {Great-grandparent} granddaughter {Granddaughter} grandson {Grandson} grandchild {Grandchild} greatGranddaughter {Great-granddaughter} greatGrandson {Great-grandson} greatGrandchild {Great-grandchild} aunt {Aunt} uncle {Uncle} maternalAunt {Maternal aunt} maternalUncle {Maternal uncle} paternalAunt {Paternal aunt} paternalUncle {Paternal uncle} parentsSibling {Parent's sibling} greatAunt {Great-aunt} greatUncle {Great-uncle} grandparentsSibling {Grandparent's sibling} niece {Niece} nephew {Nephew} siblingsChild {Sibling's child} cousin {Cousin} motherInLaw {Mother-in-law} fatherInLaw {Father-in-law} parentInLaw {Parent-in-law} sisterInLaw {Sister-in-law} brotherInLaw {Brother-in-law} siblingInLaw {Sibling-in-law} daughterInLaw {Daughter-in-law} sonInLaw {Son-in-law} childInLaw {Child-in-law} other {Relative}}",
-    "description": "Label for a family member whose name is not known: their kinship to the participant (for example, the participant’s maternal grandmother). Depending on the study, either gendered words (mother, aunt) or words that do not assume gender (egg parent, parent’s sibling) are used. Display only; nothing here is saved as research data."
+    "defaultMessage": "{term, select, mother {Mother} father {Father} parent {Parent} eggParent {Egg parent} spermParent {Sperm parent} biologicalMother {Bio­logical mother} biologicalFather {Bio­logical father} adoptiveMother {Adoptive mother} adoptiveFather {Adoptive father} adoptiveParent {Adoptive parent} stepmother {Stepmother} stepfather {Stepfather} stepparent {Step-parent} eggDonor {Egg donor} spermDonor {Sperm donor} donor {Donor} surrogate {Surrogate} daughter {Daughter} son {Son} child {Child} stepdaughter {Stepdaughter} stepson {Stepson} stepchild {Stepchild} donorConceivedChild {Donor-conceived child} surrogacyChild {Child born through surrogacy} sister {Sister} brother {Brother} sibling {Sibling} halfSister {Half-sister} halfBrother {Half-brother} halfSibling {Half-sibling} stepsister {Stepsister} stepbrother {Stepbrother} stepsibling {Step-sibling} partner {Partner} formerPartner {Former partner} grandmother {Grandmother} grandfather {Grandfather} grandparent {Grandparent} maternalGrandmother {Maternal grandmother} maternalGrandfather {Maternal grandfather} maternalGrandparent {Maternal grandparent} paternalGrandmother {Paternal grandmother} paternalGrandfather {Paternal grandfather} paternalGrandparent {Paternal grandparent} greatGrandmother {Great-grandmother} greatGrandfather {Great-grandfather} greatGrandparent {Great-grandparent} granddaughter {Granddaughter} grandson {Grandson} grandchild {Grandchild} greatGranddaughter {Great-granddaughter} greatGrandson {Great-grandson} greatGrandchild {Great-grandchild} aunt {Aunt} uncle {Uncle} maternalAunt {Maternal aunt} maternalUncle {Maternal uncle} paternalAunt {Paternal aunt} paternalUncle {Paternal uncle} parentsSibling {Parent's sibling} greatAunt {Great-aunt} greatUncle {Great-uncle} grandparentsSibling {Grandparent's sibling} niece {Niece} nephew {Nephew} siblingsChild {Sibling's child} cousin {Cousin} motherInLaw {Mother-in-law} fatherInLaw {Father-in-law} parentInLaw {Parent-in-law} sisterInLaw {Sister-in-law} brotherInLaw {Brother-in-law} siblingInLaw {Sibling-in-law} daughterInLaw {Daughter-in-law} sonInLaw {Son-in-law} childInLaw {Child-in-law} other {Relative}}",
+    "description": "Label for a family member whose name is not known: their kinship to the participant (for example, the participant’s maternal grandmother). Depending on the study, either gendered words (mother, aunt) or words that do not assume gender (egg parent, parent’s sibling) are used. Display only; nothing here is saved as research data. Labels sit inside a small circle, so a long word carries a soft hyphen (U+00AD) where it may break; add one to long words in your language."
   },
   "interview.familyPedigree.remove": {
     "defaultMessage": "Remove from family",
@@ -404,12 +404,16 @@
     "description": "Option: the new sibling shares both parents (a full sibling)."
   },
   "interview.familyPedigree.sharedParentCountLabel": {
-    "defaultMessage": "{isYou, select, true {How many parents do they share with you?} other {How many parents do they share with “{name}”?}}",
+    "defaultMessage": "{isYou, select, true {Which parents do they share with you?} other {Which parents do they share with “{name}”?}}",
     "description": "Question in the side panel for adding a sibling to someone with no parents yet. name is that person’s name or how they are related to the participant."
   },
-  "interview.familyPedigree.sharedParentCountOne": {
-    "defaultMessage": "One parent",
-    "description": "Option: the new sibling shares one parent (a half-sibling)."
+  "interview.familyPedigree.sharedParentEggOnly": {
+    "defaultMessage": "{framing, select, gamete {Only the egg parent} other {Only the biological mother}}",
+    "description": "Option: the new sibling shares only the parent who provided the egg (a half-sibling). Gendered or gamete wording depends on the study."
+  },
+  "interview.familyPedigree.sharedParentSpermOnly": {
+    "defaultMessage": "{framing, select, gamete {Only the sperm parent} other {Only the biological father}}",
+    "description": "Option: the new sibling shares only the parent who provided the sperm (a half-sibling). Gendered or gamete wording depends on the study."
   },
   "interview.familyPedigree.sharedParentUnshown": {
     "defaultMessage": "{isYou, select, true {Your other parent, not shown yet} other {The other parent of “{name}”, not shown yet}}",
@@ -420,8 +424,8 @@
     "description": "Question in the side panel for adding a sibling: which parents the two siblings have in common. Options are the parents’ names."
   },
   "interview.familyPedigree.siblingsAnsweredAnnouncement": {
-    "defaultMessage": "{answer, select, none {{isYou, select, true {Recorded that you have no biological brothers or sisters.} other {Recorded that “{name}” has no biological brothers or sisters.}}} other {{isYou, select, true {Recorded that you don’t know whether you have biological brothers or sisters.} other {Recorded that you don’t know whether “{name}” has biological brothers or sisters.}}}}",
-    "description": "Screen reader announcement after answering, from the list of family members still needed, that a person has no siblings or that the participant does not know. name is the person’s name or how they are related to the participant."
+    "defaultMessage": "{isYou, select, true {Recorded that you have no biological brothers or sisters.} other {Recorded that “{name}” has no biological brothers or sisters.}}",
+    "description": "Screen reader announcement after answering, from the list of family members still needed, that a person has no siblings. name is the person’s name or how they are related to the participant."
   },
   "interview.familyPedigree.stillTogetherLabel": {
     "defaultMessage": "{personIsYou, select, true {Are you still together with {partner}?} other {{partnerIsYou, select, true {Are you still together?} other {Are they still together with {partner}?}}}}",
@@ -435,13 +439,17 @@
     "defaultMessage": "Family tree tools",
     "description": "Accessible name of the toolbar above the family tree, which switches between adding or editing people, connecting two people, and removing the connection between two people."
   },
-  "interview.familyPedigree.trackerAnswerNone": {
-    "defaultMessage": "None",
-    "description": "Button under an item in the list of family members still needed, for siblings or children: there are none. The item’s text names the person and the relatives."
-  },
   "interview.familyPedigree.trackerComplete": {
     "defaultMessage": "Your family tree has everything needed. You can continue.",
     "description": "Shown in the list of family members still needed once nothing more is needed."
+  },
+  "interview.familyPedigree.trackerNoChildren": {
+    "defaultMessage": "{isYou, select, true {I have no biological children} other {“{name}” has no biological children}}",
+    "description": "Button under an item in the list of family members still needed: records that the person has no biological children. name is the person’s name or how they are related to the participant."
+  },
+  "interview.familyPedigree.trackerNoSiblings": {
+    "defaultMessage": "{isYou, select, true {I have no biological siblings} other {“{name}” has no biological siblings}}",
+    "description": "Button under an item in the list of family members still needed: records that the person has no siblings who share a biological parent. name is the person’s name or how they are related to the participant."
   },
   "interview.familyPedigree.trackerProgressLabel": {
     "defaultMessage": "{complete, select, true {Your family tree has everything needed} other {Family tree {percent, number, percent} complete}}. Show what’s still needed.",

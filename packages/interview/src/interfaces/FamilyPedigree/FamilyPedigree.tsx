@@ -129,6 +129,7 @@ const linkAttributesFor = (config: PedigreeConfig, link: PlannedLink) => ({
 /** Everything to create to add a relative, under the panel's ids. */
 const planAddition = (
   family: Family,
+  config: PedigreeConfig,
   anchorId: string,
   ids: readonly string[],
   details: PersonDraft['details'],
@@ -142,6 +143,7 @@ const planAddition = (
     details,
     request,
     createId: () => ids[next++] ?? uuid(),
+    sexVariable: config.sexAssignedAtBirthVariable,
   });
 };
 
@@ -172,6 +174,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     if (!draft) return family;
     const plan = planAddition(
       family,
+      config,
       draft.anchorId,
       draft.ids,
       draft.details,
@@ -419,13 +422,10 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   // Each item in the list leads to where it is resolved: adding the missing
   // parent, or the person's details, which ask about their siblings and
   // children.
-  // Answering from the list that a person has no siblings or children, or
-  // that the participant doesn't know, records it as the details panel's
-  // question would.
-  const handleTrackerAnswer = async (
-    item: CompletenessItem,
-    answer: 'none' | 'unknown',
-  ) => {
+  // Answering from the list that a person has no siblings or children
+  // records it as the details panel's question would. "Don't know" is
+  // answered in the panel.
+  const handleTrackerAnswer = async (item: CompletenessItem) => {
     const variable = config.relativesNotRecordedVariable;
     const person = family.byId.get(item.personId);
     if (!variable || !person) return;
@@ -438,7 +438,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       updateNode({
         nodeId: person.id,
         attributePatch: {
-          set: { [variable]: [...recorded, group[answer]] },
+          set: { [variable]: [...recorded, group.none] },
           unset: [],
         },
         currentStep,
@@ -450,7 +450,6 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
           ? messages.siblingsAnsweredAnnouncement
           : messages.childrenAnsweredAnnouncement,
         {
-          answer,
           isYou: person.isEgo ? 'true' : 'false',
           name: displayName(person.id),
         },
@@ -696,6 +695,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     }
     const plan = planAddition(
       family,
+      config,
       mode.anchor.id,
       panel.ids,
       result.set,
@@ -1007,7 +1007,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                       (link) =>
                         link.kind === 'adoptive' && link.target === personId,
                     )}
-                    lineColor={edgeColor}
+
                     onActivate={() => handleActivate(personId)}
                     tabIndex={personId === tabStopId ? 0 : -1}
                     onFocus={(event) => handleFocusPerson(personId, event)}
@@ -1104,7 +1104,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                 onItemSelect={handleTrackerItem}
                 onItemAnswer={
                   config.relativesNotRecordedVariable
-                    ? (item, answer) => void handleTrackerAnswer(item, answer)
+                    ? (item) => void handleTrackerAnswer(item)
                     : undefined
                 }
               />
@@ -1171,6 +1171,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
             mode={panel.mode}
             family={family}
             config={config}
+            framing={framing}
             formFields={formFields}
             displayName={displayName}
             askAbout={

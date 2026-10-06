@@ -17,6 +17,8 @@ export const KIN_TERMS = [
   'parent',
   'eggParent',
   'spermParent',
+  'biologicalMother',
+  'biologicalFather',
   'adoptiveMother',
   'adoptiveFather',
   'adoptiveParent',
@@ -101,6 +103,8 @@ type StepTerm =
   | 'parent'
   | 'eggParent'
   | 'spermParent'
+  | 'biologicalMother'
+  | 'biologicalFather'
   | 'adoptiveMother'
   | 'adoptiveFather'
   | 'adoptiveParent'
@@ -240,6 +244,16 @@ function stepTerm(
             if (sex === 'female') return 'eggParent';
             if (sex === 'male') return 'spermParent';
             return 'parent';
+          }
+          if (gender === 'other') {
+            // With their gender identity not known, a biological parent is
+            // named by the gamete they gave, in gendered words.
+            const identity = person?.genderIdentity;
+            const sex = person?.sexAssignedAtBirth;
+            if (identity === undefined || identity === 'unknown') {
+              if (sex === 'female') return 'biologicalMother';
+              if (sex === 'male') return 'biologicalFather';
+            }
           }
           return pick(gender, {
             woman: 'mother',

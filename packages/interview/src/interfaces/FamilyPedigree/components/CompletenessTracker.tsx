@@ -26,10 +26,9 @@ type CompletenessTrackerProps = {
   family: Family;
   displayName: (personId: string) => string;
   onItemSelect: (item: CompletenessItem) => void;
-  /** Answers, for an item about siblings or children, that there are none
-   * or that the participant doesn't know. Without it, those items can only
-   * be selected. */
-  onItemAnswer?: (item: CompletenessItem, answer: 'none' | 'unknown') => void;
+  /** Answers, for an item about siblings or children, that there are none.
+   * Without it, those items can only be selected. */
+  onItemAnswer?: (item: CompletenessItem) => void;
   /** Forwarded to the ring, the toolbar's control. */
   ref?: Ref<HTMLButtonElement>;
 };
@@ -115,7 +114,6 @@ function CompletenessTracker({
 }: CompletenessTrackerProps) {
   const intl = useAppIntl();
   const titleId = useId();
-  const itemIdPrefix = useId();
   const triggerRef = useRef<HTMLButtonElement>(null);
   const popupRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -184,14 +182,16 @@ function CompletenessTracker({
     wasOpen.current = open;
   }, [open]);
 
-  const fraction = progress.total === 0 ? 1 : progress.done / progress.total;
-  const complete = progress.items.length === 0;
+  // Nothing is counted until the participant is in the family, a moment
+  // after the stage opens; the ring starts empty rather than full.
+  const fraction = progress.total === 0 ? 0 : progress.done / progress.total;
+  const complete = progress.total > 0 && progress.items.length === 0;
 
   // The answered item leaves the list, taking focus with it: focus moves to
   // the list, or to the ring once nothing is left.
-  const answer = (item: CompletenessItem, value: 'none' | 'unknown') => {
+  const answer = (item: CompletenessItem) => {
     const last = progress.items.length === 1;
-    onItemAnswer?.(item, value);
+    onItemAnswer?.(item);
     (last ? triggerRef : listRef).current?.focus();
   };
 
@@ -273,55 +273,42 @@ function CompletenessTracker({
           >
             <ul className="flex flex-col gap-2">
               {progress.items.map((item) => {
-                const key = `${item.kind}:${item.personId}`;
-                const textId = `${itemIdPrefix}-${key}`;
-                const answerable =
-                  onItemAnswer !== undefined &&
-                  (item.kind === 'siblings' || item.kind === 'children');
+                const args = {
+                  isYou: family.byId.get(item.personId)?.isEgo
+                    ? 'true'
+                    : 'false',
+                  name: displayName(item.personId),
+                };
+                const noneAnswer =
+                  onItemAnswer && item.kind === 'siblings'
+                    ? messages.trackerNoSiblings
+                    : onItemAnswer && item.kind === 'children'
+                      ? messages.trackerNoChildren
+                      : null;
                 return (
-                  <li key={key} className="flex items-baseline gap-2">
+                  <li
+                    key={`${item.kind}:${item.personId}`}
+                    className="flex items-baseline gap-2"
+                  >
                     <span
                       aria-hidden
                       className="size-1.5 shrink-0 -translate-y-0.5 rounded-full bg-current"
                     />
                     <div className="flex flex-col items-start gap-2">
                       <button
-                        id={textId}
                         type="button"
                         className="focusable text-left underline-offset-4 hover:underline"
                         onClick={() => onItemSelect(item)}
                       >
                         {intl.formatMessage(ITEM_MESSAGES[item.kind], {
-                          isYou: family.byId.get(item.personId)?.isEgo
-                            ? 'true'
-                            : 'false',
-                          name: displayName(item.personId),
+                          ...args,
                           missing: item.kind === 'parents' ? item.missing : 0,
                         })}
                       </button>
-                      {answerable && (
-                        // Named by the item, so "None" is heard with what
-                        // there is none of.
-                        <div
-                          role="group"
-                          aria-labelledby={textId}
-                          className="flex flex-wrap gap-2"
-                        >
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => answer(item, 'none')}
-                          >
-                            <AppMessage message={messages.trackerAnswerNone} />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => answer(item, 'unknown')}
-                          >
-                            <AppMessage message={messages.dontKnow} />
-                          </Button>
-                        </div>
+                      {noneAnswer && (
+                        <Button size="sm" onClick={() => answer(item)}>
+                          {intl.formatMessage(noneAnswer, args)}
+                        </Button>
                       )}
                     </div>
                   </li>

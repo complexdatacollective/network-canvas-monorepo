@@ -52,6 +52,7 @@ const plan = (
     details: { name: 'New' },
     request,
     createId,
+    sexVariable: config.sexAssignedAtBirthVariable,
   });
 };
 
@@ -239,10 +240,12 @@ describe('planAddRelative', () => {
     const result = plan(family, 'ego', {
       relation: 'sibling',
       sharedParentIds: [],
-      unshownSharedParents: 2,
+      sharesUnshown: 'both',
     });
     expect(result.people.map((p) => p.id)).toEqual(['added', 'new-1', 'new-2']);
-    expect(result.people[1]!.details).toEqual({});
+    // An egg parent and a sperm parent.
+    expect(result.people[1]!.details).toEqual({ sex: ['female'] });
+    expect(result.people[2]!.details).toEqual({ sex: ['male'] });
     expect(result.links).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ source: 'new-1', target: 'new-2' }),
@@ -258,7 +261,7 @@ describe('planAddRelative', () => {
     const result = plan(family, 'ego', {
       relation: 'sibling',
       sharedParentIds: [],
-      unshownSharedParents: 1,
+      sharesUnshown: 'eggParent',
     });
     expect(result.people.map((p) => p.id)).toEqual(['added', 'new-1', 'new-2']);
     const parentsOf = (id: string) =>
@@ -273,16 +276,18 @@ describe('planAddRelative', () => {
 
   test('a sibling can share a parent not yet shown', () => {
     const family = readFamily(
-      [person('ego'), person('mum')],
+      [person('ego'), person('mum', { sex: ['female'] })],
       [link('mum', 'ego', 'biological')],
       config,
     );
     const result = plan(family, 'ego', {
       relation: 'sibling',
       sharedParentIds: [],
-      unshownSharedParents: 1,
+      sharesUnshown: 'other',
     });
     expect(result.people.map((p) => p.id)).toEqual(['added', 'new-1']);
+    // Mum, female at birth, gave the egg; the parent added gave the sperm.
+    expect(result.people[1]!.details).toEqual({ sex: ['male'] });
     expect(result.links).toEqual([
       { source: 'new-1', target: 'ego', kind: 'biological' },
       {
@@ -299,7 +304,7 @@ describe('planAddRelative', () => {
     const result = plan(nuclearFamily(), 'ego', {
       relation: 'sibling',
       sharedParentIds: ['mum'],
-      unshownSharedParents: 0,
+      sharesUnshown: 'none',
     });
     expect(result.links).toEqual([
       { source: 'mum', target: 'added', kind: 'biological' },
