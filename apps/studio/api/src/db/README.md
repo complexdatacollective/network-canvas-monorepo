@@ -181,13 +181,16 @@ migrate:generate --name <slug>`) writes the next directory. It refuses a
   second applies nothing. A current database is a read and nothing else. A
   database with Studio tables and no history (one `apply-schema` built, or a
   pre-release image) is refused: there is no baseline. After each artefact it
-  refuses a file that ended the transaction (the transaction id moved), left
-  the role switched (`current_user <> session_user`, so a backfill's `SET
-LOCAL ROLE studio_maintenance` must end with `RESET ROLE`), changed
-  `search_path` or the team or erasure setting, or left a trigger disabled;
-  then it fires the file's deferred checks (`SET CONSTRAINTS ALL IMMEDIATE`)
-  and defers the `INITIALLY DEFERRED` ones again. A statement Postgres refuses
-  is reported with its migration, file, position, text, SQLSTATE and message.
+  fires the file's deferred checks, naming every deferrable constraint
+  `IMMEDIATE` and deferring the `INITIALLY DEFERRED` ones again (never `SET
+CONSTRAINTS ALL`), then refuses a file that ended the transaction (the
+  transaction id moved), left the role switched (`current_user <>
+session_user`, so a backfill's `SET LOCAL ROLE studio_maintenance` must end
+  with `RESET ROLE`), changed `search_path` or the team or erasure setting, or
+  left a trigger not firing; a backfill may change no trigger and no table's
+  row-level security. A statement Postgres refuses is reported with its
+  migration, file, position, text, SQLSTATE and message (a data exception by
+  its code alone).
 - It runs on `@effect/sql-pg`, which has **no simple-query path**: every
   statement goes through Parse/Bind/Execute, and a multi-command string is
   refused (SQLSTATE 42601). So every artefact is cut by `splitStatements`
