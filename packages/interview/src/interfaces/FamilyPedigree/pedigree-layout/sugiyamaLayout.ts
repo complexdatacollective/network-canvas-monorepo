@@ -197,7 +197,7 @@ function buildPedigreeGraph(ped: PedigreeInput): PedigreeGraph {
   // parent's partner who is a social parent); it descends from the group most
   // strongly its parents — a social parent weighs less than a biological or
   // adoptive one — and from the first such group on a tie.
-  const parentWeight = (edgeType: RelationshipType) =>
+  const parentWeight = (edgeType: PedigreeEdgeType) =>
     edgeType === 'social' ? 1 : 2;
   const familyGroupOf = new Map<number, PartnerGroup>();
   for (let i = 0; i < n; i++) {
