@@ -1,14 +1,16 @@
 import { Effect, Option } from 'effect';
 import { HttpRouter, HttpServerResponse } from 'effect/http';
 
-import { Principal } from '@codaco/studio-contract/middleware/authenticated';
+import type { AuditActor } from '@codaco/studio-contract/middleware/audit-actor';
+import type { Principal } from '@codaco/studio-contract/middleware/authenticated';
 
+import { provideCaller } from '../../audit/actor.ts';
 import { principalFromRequest } from '../../auth/principal.ts';
 import { AuthService } from '../../auth/service.ts';
 import { principalOf } from '../../rpc/authenticated.ts';
 
 export const requirePrincipal = HttpRouter.middleware<{
-  provides: Principal;
+  provides: Principal | AuditActor;
 }>()(
   Effect.gen(function* () {
     const auth = yield* AuthService;
@@ -25,11 +27,7 @@ export const requirePrincipal = HttpRouter.middleware<{
             { status: 401, contentType: 'application/problem+json' },
           );
         }
-        return yield* Effect.provideService(
-          httpEffect,
-          Principal,
-          principalOf(principal.value),
-        );
+        return yield* provideCaller(principalOf(principal.value))(httpEffect);
       });
   }),
 );

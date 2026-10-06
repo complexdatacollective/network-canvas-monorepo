@@ -13,6 +13,7 @@ import { UnaryBodyLimit } from '../../http/body.ts';
 import type { HealthChecks } from '../../http/health.ts';
 import { MaintenanceTriggers } from '../../http/middleware/maintenance.ts';
 import { Routes } from '../../http/router.ts';
+import { RedactedHeadersLive } from '../../platform/http-server.ts';
 import { WebSocketDrain } from '../../platform/ws-drain.ts';
 import { studioServices } from './services.ts';
 
@@ -41,7 +42,7 @@ export async function startStudioServer(
   const ServeLive = HttpRouter.serve(Routes(studio, checks), {
     disableLogger: true,
     disableListenLog: true,
-  });
+  }).pipe(Layer.provide(RedactedHeadersLive));
   const layer = WebSocketDrain.layerShutdown.pipe(
     Layer.provideMerge(ServeLive),
     Layer.provideMerge(WebSocketDrain.layer),

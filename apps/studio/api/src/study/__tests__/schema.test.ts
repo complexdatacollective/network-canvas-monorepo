@@ -1240,7 +1240,8 @@ describe.skipIf(!testDb)('study spine schema', () => {
               `SELECT status, delivery_mode, current_stage_index, current_stage_id,
                       stage_metadata, ego_attributes, ego_secure_attributes,
                       holder_id, holder_epoch::text AS holder_epoch, completed_at,
-                      abandoned_at
+                      abandoned_at, session_token_hash,
+                      client_revision::text AS client_revision
                FROM interview_sessions WHERE id = $1`,
               [sessionId],
             );
@@ -1256,6 +1257,8 @@ describe.skipIf(!testDb)('study spine schema', () => {
               holder_epoch: '0',
               completed_at: null,
               abandoned_at: null,
+              session_token_hash: null,
+              client_revision: '0',
             });
           }),
         );
@@ -1317,6 +1320,16 @@ describe.skipIf(!testDb)('study spine schema', () => {
             { stage_metadata: JSON.stringify('x') },
             'interview_sessions_ego_check',
           ],
+          [
+            'a session token hash that is not 32 bytes',
+            { session_token_hash: randomBytes(31) },
+            'interview_sessions_session_token_hash_check',
+          ],
+          [
+            'a negative client revision',
+            { client_revision: '-1' },
+            'interview_sessions_client_revision_check',
+          ],
         ])('rejects %s', ([, overrides, constraint]) =>
           Effect.gen(function* () {
             const { studyId, waveId } = yield* newTrio();
@@ -1328,6 +1341,64 @@ describe.skipIf(!testDb)('study spine schema', () => {
                 ),
               )).constraint,
             ).toBe(constraint);
+          }),
+        );
+
+        it.effect('refuses a duplicate session token hash inside a team', () =>
+          Effect.gen(function* () {
+            const { studyId, waveId } = yield* newTrio();
+            const tokenHash = randomBytes(32);
+            yield* newSession(studyId, waveId, {
+              session_token_hash: tokenHash,
+            });
+
+            expect(
+              (yield* refusalOf(
+                newSession(studyId, waveId, { session_token_hash: tokenHash }),
+              )).constraint,
+            ).toBe('interview_sessions_team_id_session_token_hash_idx');
+          }),
+        );
+
+        it.effect('lets two teams hold the same session token hash', () =>
+          Effect.gen(function* () {
+            const tokenHash = randomBytes(32);
+            const { studyId, waveId } = yield* newTrio();
+            yield* newSession(studyId, waveId, {
+              session_token_hash: tokenHash,
+            });
+
+            const otherStudy = yield* newStudy({
+              team_id: TEAM_B,
+              protocol_id: protocolOf[TEAM_B],
+            });
+            const otherWave = yield* newWave(otherStudy, {
+              team_id: TEAM_B,
+              protocol_version_id: versionOf[TEAM_B],
+            });
+            expect(
+              yield* ownerInsert(
+                'interview_sessions',
+                sessionRow(otherStudy, otherWave, {
+                  team_id: TEAM_B,
+                  protocol_version_id: versionOf[TEAM_B],
+                  session_token_hash: tokenHash,
+                }),
+              ),
+            ).toBe(1);
+          }),
+        );
+
+        it.effect('lets any number of sessions hold no token', () =>
+          Effect.gen(function* () {
+            const { studyId, waveId } = yield* newTrio();
+            yield* newSession(studyId, waveId);
+            expect(
+              yield* ownerInsert(
+                'interview_sessions',
+                sessionRow(studyId, waveId),
+              ),
+            ).toBe(1);
           }),
         );
 

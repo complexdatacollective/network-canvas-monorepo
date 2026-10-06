@@ -1,0 +1,171 @@
+import { Schema } from 'effect';
+import { describe, expect, it } from 'vitest';
+
+import { NcNetworkSchema } from '@codaco/shared-consts';
+
+import {
+  FinishInput,
+  FinishResult,
+  InterviewNetwork,
+  LinkUnavailable,
+  NetworkEdge,
+  NetworkEgo,
+  NetworkNode,
+  RedeemInput,
+  RedeemResult,
+  SessionEnded,
+  SessionInput,
+  SessionPayload,
+  SessionTakenOver,
+  SyncInput,
+  SyncResult,
+} from '../schema/participant.ts';
+
+const network = {
+  nodes: [
+    {
+      _uid: 'node-1',
+      type: 'person',
+      attributes: { name: 'Ada', closeness: 3 },
+      stageId: 'stage-1',
+      promptIDs: ['prompt-1'],
+    },
+  ],
+  edges: [
+    {
+      _uid: 'edge-1',
+      type: 'friend',
+      from: 'node-1',
+      to: 'node-1',
+      attributes: {},
+    },
+  ],
+  ego: {
+    _uid: 'ego-1',
+    attributes: { age: 41 },
+    _secureAttributes: { age: { iv: [1, 2], salt: [3, 4] } },
+  },
+};
+
+const sessionPayload = {
+  studyId: '0b6f7d4e-3c2a-4f1e-9a8b-7c6d5e4f3a2b',
+  holderEpoch: 2,
+  revision: '7',
+  stageIndex: 1,
+  stageId: 'stage-1',
+  session: {
+    id: 'session-1',
+    startTime: '2026-10-06T09:00:00.000Z',
+    finishTime: null,
+    exportTime: null,
+    lastUpdated: '2026-10-06T09:05:00.000Z',
+    network,
+    stageMetadata: { 'stage-1': { step: 1 } },
+  },
+  protocol: { schemaVersion: 8, stages: [], codebook: {} },
+};
+
+const roundTrips = <S extends Schema.Codec<unknown, unknown>>(
+  schema: S,
+  value: unknown,
+) => {
+  const decoded = Schema.decodeUnknownSync(schema)(value);
+  return Schema.encodeSync(schema)(decoded);
+};
+
+describe('the participant payloads', () => {
+  it.each([
+    ['RedeemInput', RedeemInput, { linkToken: 'team-1.secret-secret-secret' }],
+    [
+      'RedeemResult',
+      RedeemResult,
+      { sessionToken: 'team-1.secret-secret-secret', sessionId: 'session-1' },
+    ],
+    ['SessionInput', SessionInput, { holderId: 'page-1' }],
+    ['SessionPayload', SessionPayload, sessionPayload],
+    [
+      'SyncInput',
+      SyncInput,
+      {
+        holderEpoch: 2,
+        revision: '8',
+        stageIndex: 1,
+        stageId: null,
+        network,
+        stageMetadata: {},
+      },
+    ],
+    ['SyncResult', SyncResult, { revision: '8' }],
+    ['FinishInput', FinishInput, { holderEpoch: 2, revision: '9' }],
+    ['FinishResult', FinishResult, { state: 'completed' }],
+  ] as const)('%s round-trips', (_name, schema, value) => {
+    expect(roundTrips(schema, value)).toEqual(value);
+  });
+
+  it('strips a key the contract does not declare, at every level', () => {
+    const encoded = Schema.encodeSync(SessionPayload)({
+      ...Schema.decodeUnknownSync(SessionPayload)(sessionPayload),
+      sessionTokenHash: 'leaked',
+      session: {
+        ...Schema.decodeUnknownSync(SessionPayload)(sessionPayload).session,
+        holderId: 'leaked',
+        network: {
+          ...network,
+          nodes: [{ ...network.nodes[0], internalRowId: 'leaked' }],
+        },
+      },
+    } as unknown as typeof SessionPayload.Type);
+
+    expect(JSON.stringify(encoded)).not.toContain('leaked');
+    expect(encoded).toEqual(sessionPayload);
+  });
+
+  it('keeps the protocol document whole', () => {
+    expect(roundTrips(SessionPayload, sessionPayload)).toHaveProperty(
+      'protocol',
+      sessionPayload.protocol,
+    );
+  });
+});
+
+describe('the participant errors', () => {
+  it.each([
+    ['SessionEnded', SessionEnded, new SessionEnded({ state: 'completed' })],
+    [
+      'SessionTakenOver',
+      SessionTakenOver,
+      new SessionTakenOver({ holderEpoch: 3 }),
+    ],
+    [
+      'LinkUnavailable',
+      LinkUnavailable,
+      new LinkUnavailable({ state: 'finished' }),
+    ],
+  ] as const)('%s round-trips', (_name, schema, error) => {
+    const decoded = Schema.decodeUnknownSync(schema)(
+      Schema.encodeSync(schema)(error as never),
+    );
+    expect(decoded).toBeInstanceOf(schema);
+    expect(decoded).toEqual(error);
+  });
+});
+
+const zodKeys = (shape: object) => Object.keys(shape).toSorted();
+const contractKeys = (schema: { fields: object }) =>
+  Object.keys(schema.fields).toSorted();
+
+describe('the network the contract declares', () => {
+  const zod = NcNetworkSchema.shape;
+
+  it('has exactly the network keys @codaco/shared-consts defines', () => {
+    expect(contractKeys(InterviewNetwork)).toEqual(zodKeys(zod));
+    expect(contractKeys(NetworkNode)).toEqual(zodKeys(zod.nodes.element.shape));
+    expect(contractKeys(NetworkEdge)).toEqual(zodKeys(zod.edges.element.shape));
+    expect(contractKeys(NetworkEgo)).toEqual(zodKeys(zod.ego.shape));
+  });
+
+  it('accepts what NcNetworkSchema accepts, unchanged', () => {
+    const parsed = NcNetworkSchema.parse(network);
+    expect(roundTrips(InterviewNetwork, parsed)).toEqual(parsed);
+  });
+});

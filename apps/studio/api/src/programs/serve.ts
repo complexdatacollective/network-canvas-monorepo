@@ -16,7 +16,10 @@ import { Routes } from '../http/router.ts';
 import { JobClock } from '../jobs/clock.ts';
 import { Jobs } from '../jobs/jobs.ts';
 import { JOB_SCHEMA } from '../jobs/queues.ts';
-import { HttpServerLive } from '../platform/http-server.ts';
+import {
+  HttpServerLive,
+  RedactedHeadersLive,
+} from '../platform/http-server.ts';
 import { LoggerLive } from '../platform/logger.ts';
 import { MaintenanceState } from '../platform/maintenance-state.ts';
 import { SchemaStatus } from '../platform/schema-gate.ts';
@@ -52,7 +55,7 @@ function Serve(studio: Studio, checks: HealthChecks) {
         // The default logger would print a second request log line.
         disableLogger: true,
         disableListenLog: true,
-      }),
+      }).pipe(Layer.provide(RedactedHeadersLive)),
     ),
     Layer.provideMerge(WebSocketDrain.layer),
     Layer.provideMerge(HttpServerLive),

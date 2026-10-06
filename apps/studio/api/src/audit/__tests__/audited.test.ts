@@ -5,6 +5,7 @@ import { Cause, Effect, Exit, Fiber, Layer, Schema } from 'effect';
 import { TestClock } from 'effect/testing';
 import { describe } from 'vitest';
 
+import { AuditActor } from '@codaco/studio-contract/middleware/audit-actor';
 import { Principal } from '@codaco/studio-contract/middleware/authenticated';
 import { UserId } from '@codaco/studio-contract/schema/ids';
 
@@ -13,6 +14,7 @@ import {
   TestDatabaseLive,
   testDb,
 } from '../../__tests__/support/database.ts';
+import { userAuditActor } from '../../audit/actor.ts';
 import { Database } from '../../db/client.ts';
 import {
   type TeamAccess,
@@ -95,6 +97,7 @@ const Harness = Layer.mergeAll(
   TestDatabaseLive,
   AuditSignal.layerRecording,
   Layer.succeed(Principal, principal),
+  Layer.succeed(AuditActor, userAuditActor(principal)),
   Layer.succeed(RequestId, RequestId.of(REQUEST_ID)),
 );
 

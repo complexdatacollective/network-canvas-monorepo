@@ -46,6 +46,7 @@ const TIED: Record<string, readonly string[]> = {
   audit_events_outcome_check: audit.AUDIT_OUTCOMES,
   audit_events_actor_kind_check: audit.AUDIT_ACTOR_KINDS,
   team_invitation_deliveries_role_check: team.TEAM_ROLES,
+  interview_sessions_status_check: participant.PARTICIPANT_SESSION_STATUSES,
 };
 
 const DECLARED_ONLY_HERE = new Set([
@@ -55,7 +56,6 @@ const DECLARED_ONLY_HERE = new Set([
   'assets_origin_check',
   'asset_references_referrer_kind_check',
   'studies_wave_progression_check',
-  'interview_sessions_status_check',
   'interview_sessions_delivery_mode_check',
   'interview_links_kind_check',
   'study_role_grants_role_check',

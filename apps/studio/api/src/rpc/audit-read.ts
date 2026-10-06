@@ -1,6 +1,7 @@
 import { Cause, Effect, Exit, Schema } from 'effect';
 import type { SqlError } from 'effect/sql';
 
+import type { AuditActor } from '@codaco/studio-contract/middleware/audit-actor';
 import { Principal } from '@codaco/studio-contract/middleware/authenticated';
 import { AuditReadDenied } from '@codaco/studio-contract/schema/audit';
 import type { NotFound } from '@codaco/studio-contract/schema/errors';
@@ -151,7 +152,13 @@ export const guardAuditRead = <A, R>(
 ): Effect.Effect<
   A,
   AuditReadDenied | NotFound | SqlError.SqlError,
-  R | Database | Principal | RequestId | AuditSignal | DeniedAttempts
+  | R
+  | Database
+  | Principal
+  | AuditActor
+  | RequestId
+  | AuditSignal
+  | DeniedAttempts
 > => {
   const predictsDenial = !grantsAuditRead(access.role);
   const decided = Effect.catchTag(read, 'AuditReadRefused', () =>

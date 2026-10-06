@@ -10,6 +10,7 @@ import {
   RedeemInput,
   RedeemResult,
   SessionEnded,
+  SessionInput,
   SessionPayload,
   SessionTakenOver,
   SyncInput,
@@ -23,6 +24,7 @@ const redeem = Rpc.make('participant.redeem', {
 });
 
 const session = Rpc.make('participant.session', {
+  payload: SessionInput,
   success: SessionPayload,
   error: Schema.Union([SessionEnded, SessionTakenOver]),
 });

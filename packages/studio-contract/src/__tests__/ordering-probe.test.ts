@@ -8,6 +8,7 @@ import { Effect, Exit, Layer, Schema } from 'effect';
 import { Rpc, RpcGroup, RpcMiddleware, RpcTest } from 'effect/rpc';
 import { describe, expect } from 'vitest';
 
+import { AuditActor } from '../middleware/auditActor.ts';
 import { Authenticated, Principal } from '../middleware/authenticated.ts';
 import { Forbidden } from '../schema/errors.ts';
 import { UserId } from '../schema/ids.ts';
@@ -28,7 +29,17 @@ const PROBE_PRINCIPAL = Principal.of({
 });
 
 const AuthenticatedLayer = Layer.succeed(Authenticated, (effect) =>
-  Effect.provideService(effect, Principal, PROBE_PRINCIPAL),
+  effect.pipe(
+    Effect.provideService(Principal, PROBE_PRINCIPAL),
+    Effect.provideService(
+      AuditActor,
+      AuditActor.of({
+        kind: 'user',
+        id: 'probe-user',
+        label: 'Probe Researcher',
+      }),
+    ),
+  ),
 );
 
 const teamAdministrationLayer = (seen: Array<Principal['Service']>) =>

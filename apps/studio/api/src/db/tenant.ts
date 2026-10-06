@@ -135,6 +135,17 @@ export const OwnerScope = {
   > => OwnerDatabase.use((service) => openOn(service, null, body, options)),
 } as const;
 
+export const tenantTeamId: Effect.Effect<string, never, Transaction> =
+  Effect.flatMap(Transaction, ({ teamId }) =>
+    teamId === null
+      ? Effect.die(
+          new Error(
+            'this store requires a tenant scope; the transaction stamps no team',
+          ),
+        )
+      : Effect.succeed(teamId),
+  );
+
 export const savepoint = <A, E, R>(
   body: Effect.Effect<A, E, R>,
 ): Effect.Effect<A, E | SqlError.SqlError, Transaction | R> =>
