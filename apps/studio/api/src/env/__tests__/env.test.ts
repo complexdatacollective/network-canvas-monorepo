@@ -45,8 +45,10 @@ describe('development defaults', () => {
   it('configures the whole stack from the committed file', () => {
     const env = readEnv();
     expect(env.db).toEqual({ url: DEV_DATABASE_URL });
-    expect(env.s3?.endpoint).toBe(DEV_S3_ENDPOINT);
-    expect(env.s3?.bucket).toBe(DEV.s3Bucket);
+    expect(env.objectStore).toMatchObject({
+      provider: 's3',
+      s3: { endpoint: DEV_S3_ENDPOINT, bucket: DEV.s3Bucket },
+    });
     expect(env.auth?.baseUrl).toBe(DEV.baseUrl);
     expect(env.redis).toBe(DEV_REDIS_URL);
     expect(env.devDefaults).toBe(true);
@@ -394,31 +396,187 @@ describe('OAuth sign-in providers', () => {
   });
 });
 
+const S3_VARIABLES = [
+  'S3_ENDPOINT',
+  'S3_REGION',
+  'S3_BUCKET',
+  'S3_ACCESS_KEY_ID',
+  'S3_SECRET_ACCESS_KEY',
+] as const;
+
+function clearS3(): void {
+  for (const name of S3_VARIABLES) vi.stubEnv(name, '');
+}
+
 describe('object storage', () => {
-  it('is undefined when no S3 variable is set', () => {
-    for (const name of [
-      'S3_ENDPOINT',
-      'S3_REGION',
-      'S3_BUCKET',
-      'S3_ACCESS_KEY_ID',
-      'S3_SECRET_ACCESS_KEY',
-    ]) {
-      vi.stubEnv(name, '');
-    }
-    expect(readEnv().s3).toBeUndefined();
+  it('is undefined when no provider is named', () => {
+    clearS3();
+    vi.stubEnv('STUDIO_OBJECT_STORE', '');
+    expect(readEnv().objectStore).toBeUndefined();
+  });
+
+  it('refuses S3 variables without the provider named', () => {
+    vi.stubEnv('STUDIO_OBJECT_STORE', '');
+    expect(() => readEnv()).toThrow(
+      /S3_ENDPOINT, S3_REGION, S3_BUCKET, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY are set, but STUDIO_OBJECT_STORE is not/,
+    );
+  });
+
+  it('refuses the S3 provider named with nothing to connect to', () => {
+    clearS3();
+    expect(() => readEnv()).toThrow(
+      /Incomplete S3 configuration; missing: S3_ENDPOINT, S3_REGION, S3_BUCKET, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY/,
+    );
+  });
+
+  it('refuses a provider it does not know', () => {
+    vi.stubEnv('STUDIO_OBJECT_STORE', 'gcs');
+    expect(() => readEnv()).toThrow(/STUDIO_OBJECT_STORE/);
   });
 
   it('refuses a partial configuration rather than half-configuring a store', () => {
     vi.stubEnv('S3_BUCKET', '');
     vi.stubEnv('S3_SECRET_ACCESS_KEY', '');
     expect(() => readEnv()).toThrow(
-      /Incomplete S3 configuration; missing: bucket, secretAccessKey/,
+      /Incomplete S3 configuration; missing: S3_BUCKET, S3_SECRET_ACCESS_KEY/,
     );
   });
 
   it('rejects a non-URL endpoint', () => {
     vi.stubEnv('S3_ENDPOINT', 'localhost:9100');
     expect(() => readEnv()).toThrow();
+  });
+
+  describe('on Azure Blob Storage', () => {
+    beforeEach(() => {
+      clearS3();
+      vi.stubEnv('STUDIO_OBJECT_STORE', 'azure-blob');
+      vi.stubEnv('AZURE_STORAGE_CONTAINER', 'studio-assets');
+    });
+
+    it('authenticates as the host identity through the account URL', () => {
+      vi.stubEnv(
+        'AZURE_STORAGE_ACCOUNT_URL',
+        'https://studioassets.blob.core.windows.net',
+      );
+      expect(readEnv().objectStore).toEqual({
+        provider: 'azure-blob',
+        azureBlob: {
+          container: 'studio-assets',
+          auth: {
+            kind: 'identity',
+            accountUrl: 'https://studioassets.blob.core.windows.net',
+            clientId: undefined,
+          },
+        },
+      });
+    });
+
+    it('names a user-assigned managed identity by its client ID', () => {
+      vi.stubEnv(
+        'AZURE_STORAGE_ACCOUNT_URL',
+        'https://studioassets.blob.core.windows.net',
+      );
+      vi.stubEnv('AZURE_CLIENT_ID', '00000000-0000-0000-0000-000000000001');
+      expect(readEnv().objectStore).toMatchObject({
+        azureBlob: {
+          auth: {
+            kind: 'identity',
+            clientId: '00000000-0000-0000-0000-000000000001',
+          },
+        },
+      });
+    });
+
+    it('accepts a connection string outside Azure', () => {
+      vi.stubEnv(
+        'AZURE_STORAGE_CONNECTION_STRING',
+        'UseDevelopmentStorage=true',
+      );
+      expect(readEnv().objectStore).toEqual({
+        provider: 'azure-blob',
+        azureBlob: {
+          container: 'studio-assets',
+          auth: {
+            kind: 'connection-string',
+            connectionString: 'UseDevelopmentStorage=true',
+          },
+        },
+      });
+    });
+
+    it('refuses a configuration with no container', () => {
+      vi.stubEnv('AZURE_STORAGE_CONTAINER', '');
+      vi.stubEnv(
+        'AZURE_STORAGE_CONNECTION_STRING',
+        'UseDevelopmentStorage=true',
+      );
+      expect(() => readEnv()).toThrow(
+        /Incomplete Azure Blob Storage configuration; missing: AZURE_STORAGE_CONTAINER/,
+      );
+    });
+
+    it('refuses a configuration with nothing to authenticate with', () => {
+      expect(() => readEnv()).toThrow(
+        /Incomplete Azure Blob Storage configuration; missing: AZURE_STORAGE_ACCOUNT_URL/,
+      );
+    });
+
+    it('refuses both an account URL and a connection string', () => {
+      vi.stubEnv(
+        'AZURE_STORAGE_ACCOUNT_URL',
+        'https://studioassets.blob.core.windows.net',
+      );
+      vi.stubEnv(
+        'AZURE_STORAGE_CONNECTION_STRING',
+        'UseDevelopmentStorage=true',
+      );
+      expect(() => readEnv()).toThrow(/are both set; set exactly one/);
+    });
+
+    it('refuses a managed identity beside a connection string', () => {
+      vi.stubEnv(
+        'AZURE_STORAGE_CONNECTION_STRING',
+        'UseDevelopmentStorage=true',
+      );
+      vi.stubEnv('AZURE_CLIENT_ID', '00000000-0000-0000-0000-000000000001');
+      expect(() => readEnv()).toThrow(
+        /AZURE_CLIENT_ID names a managed identity/,
+      );
+    });
+
+    it('refuses S3 variables left beside it', () => {
+      vi.stubEnv(
+        'AZURE_STORAGE_CONNECTION_STRING',
+        'UseDevelopmentStorage=true',
+      );
+      vi.stubEnv('S3_BUCKET', 'studio');
+      expect(() => readEnv()).toThrow(
+        /S3_BUCKET is set, but STUDIO_OBJECT_STORE is azure-blob/,
+      );
+    });
+
+    it('refuses Azure variables beside the S3 provider', () => {
+      vi.stubEnv('STUDIO_OBJECT_STORE', 's3');
+      vi.stubEnv(
+        'AZURE_STORAGE_ACCOUNT_URL',
+        'https://studioassets.blob.core.windows.net',
+      );
+      expect(() => readEnv()).toThrow(
+        /AZURE_STORAGE_ACCOUNT_URL, AZURE_STORAGE_CONTAINER are set, but STUDIO_OBJECT_STORE is s3/,
+      );
+    });
+
+    it('refuses Azure variables without the provider named', () => {
+      vi.stubEnv('STUDIO_OBJECT_STORE', '');
+      vi.stubEnv(
+        'AZURE_STORAGE_CONNECTION_STRING',
+        'UseDevelopmentStorage=true',
+      );
+      expect(() => readEnv()).toThrow(
+        /AZURE_STORAGE_CONTAINER, AZURE_STORAGE_CONNECTION_STRING are set, but STUDIO_OBJECT_STORE is not/,
+      );
+    });
   });
 });
 
@@ -507,7 +665,8 @@ describe('the refusal a bad environment gets', () => {
     vi.stubEnv('S3_BUCKET', '');
     vi.stubEnv('S3_ACCESS_KEY_ID', '');
     vi.stubEnv('S3_SECRET_ACCESS_KEY', '');
-    expect(readEnv().s3).toBeUndefined();
+    vi.stubEnv('STUDIO_OBJECT_STORE', '');
+    expect(readEnv().objectStore).toBeUndefined();
   });
 });
 

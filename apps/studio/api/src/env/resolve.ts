@@ -15,6 +15,17 @@ export type S3Env = {
   secretAccessKey: string;
 };
 
+export type AzureBlobEnv = {
+  container: string;
+  auth:
+    | { kind: 'identity'; accountUrl: string; clientId: string | undefined }
+    | { kind: 'connection-string'; connectionString: string };
+};
+
+export type ObjectStoreEnv =
+  | { provider: 's3'; s3: S3Env }
+  | { provider: 'azure-blob'; azureBlob: AzureBlobEnv };
+
 export type DbEnv = {
   url: string;
   passwordFile?: string | undefined;
@@ -38,14 +49,14 @@ export type AuthEnv = {
   socialProviders: SocialProvidersEnv;
 };
 
-// An undefined s3, db, or auth means that surface is not configured and
-// refuses with 503; the server still boots.
+// An undefined objectStore, db, or auth means that surface is not configured
+// and refuses with 503; the server still boots.
 export type StudioEnv = {
   port: number;
   host: string;
   /** The worker's loopback health listener; the web process never binds it. */
   workerHealthPort: number;
-  s3: S3Env | undefined;
+  objectStore: ObjectStoreEnv | undefined;
   db: DbEnv | undefined;
   auth: AuthEnv | undefined;
   /**
@@ -287,7 +298,29 @@ function resolveDatabaseUrl(raw: EnvironmentVariables): string | undefined {
   return parsed.toString();
 }
 
-function resolveS3(raw: EnvironmentVariables): S3Env | undefined {
+const S3_VARIABLES = [
+  'S3_ENDPOINT',
+  'S3_REGION',
+  'S3_BUCKET',
+  'S3_ACCESS_KEY_ID',
+  'S3_SECRET_ACCESS_KEY',
+] as const;
+
+const AZURE_BLOB_VARIABLES = [
+  'AZURE_STORAGE_ACCOUNT_URL',
+  'AZURE_STORAGE_CONTAINER',
+  'AZURE_STORAGE_CONNECTION_STRING',
+  'AZURE_CLIENT_ID',
+] as const;
+
+function namesSet(
+  raw: EnvironmentVariables,
+  names: readonly (keyof EnvironmentVariables)[],
+): string[] {
+  return names.filter((name) => raw[name] !== undefined);
+}
+
+function resolveS3(raw: EnvironmentVariables): S3Env {
   const values = {
     endpoint: raw.S3_ENDPOINT,
     region: raw.S3_REGION,
@@ -300,15 +333,83 @@ function resolveS3(raw: EnvironmentVariables): S3Env | undefined {
     return { endpoint, region, bucket, accessKeyId, secretAccessKey };
   }
 
-  const missing = Object.entries(values)
-    .filter(([, value]) => !value)
-    .map(([key]) => key);
-  if (missing.length === Object.keys(values).length) return undefined;
   // Partial configuration is a deployment mistake, not a request for
   // defaults — fail fast rather than half-configuring a store.
+  const missing = S3_VARIABLES.filter((name) => raw[name] === undefined);
   throw new Error(
     `Incomplete S3 configuration; missing: ${missing.join(', ')}`,
   );
+}
+
+function resolveAzureBlob(raw: EnvironmentVariables): AzureBlobEnv {
+  const container = raw.AZURE_STORAGE_CONTAINER;
+  const accountUrl = raw.AZURE_STORAGE_ACCOUNT_URL;
+  const connectionString = raw.AZURE_STORAGE_CONNECTION_STRING;
+  if (!container) {
+    throw new Error(
+      'Incomplete Azure Blob Storage configuration; missing: AZURE_STORAGE_CONTAINER',
+    );
+  }
+  if (accountUrl && connectionString) {
+    throw new Error(
+      'AZURE_STORAGE_ACCOUNT_URL and AZURE_STORAGE_CONNECTION_STRING are both set; set exactly one. The account URL authenticates with a managed identity, and is the one to keep on Azure.',
+    );
+  }
+  if (connectionString) {
+    if (raw.AZURE_CLIENT_ID) {
+      throw new Error(
+        'AZURE_CLIENT_ID names a managed identity, but AZURE_STORAGE_CONNECTION_STRING authenticates with the account key it carries. Remove one of them.',
+      );
+    }
+    return { container, auth: { kind: 'connection-string', connectionString } };
+  }
+  if (!accountUrl) {
+    throw new Error(
+      'Incomplete Azure Blob Storage configuration; missing: AZURE_STORAGE_ACCOUNT_URL (or AZURE_STORAGE_CONNECTION_STRING outside Azure)',
+    );
+  }
+  return {
+    container,
+    auth: { kind: 'identity', accountUrl, clientId: raw.AZURE_CLIENT_ID },
+  };
+}
+
+/**
+ * One provider, chosen here and nowhere later (#2077). The other provider's
+ * variables are refused rather than ignored: a deployment carrying both says
+ * two things about where its assets live, and only one of them can be true.
+ * Unset, there is no object store, and a provider's variables without the
+ * provider named are refused for the same reason.
+ */
+function resolveObjectStore(
+  raw: EnvironmentVariables,
+): ObjectStoreEnv | undefined {
+  const provider = raw.STUDIO_OBJECT_STORE;
+  const s3 = namesSet(raw, S3_VARIABLES);
+  const azure = namesSet(raw, AZURE_BLOB_VARIABLES);
+  const stray =
+    provider === 's3'
+      ? azure
+      : provider === 'azure-blob'
+        ? s3
+        : [...s3, ...azure];
+  if (stray.length > 0) {
+    throw new Error(
+      `${stray.join(', ')} ${stray.length === 1 ? 'is' : 'are'} set, but ${
+        provider === undefined
+          ? 'STUDIO_OBJECT_STORE is not'
+          : `STUDIO_OBJECT_STORE is ${provider}`
+      }. Set STUDIO_OBJECT_STORE to the provider they configure (s3 or azure-blob), and remove the other provider's variables.`,
+    );
+  }
+  switch (provider) {
+    case 's3':
+      return { provider, s3: resolveS3(raw) };
+    case 'azure-blob':
+      return { provider, azureBlob: resolveAzureBlob(raw) };
+    case undefined:
+      return undefined;
+  }
 }
 
 function resolveMailer(
@@ -525,7 +626,7 @@ export function resolve(
     port: raw.PORT ?? DEFAULT_PORT,
     host: raw.HOST ?? DEFAULT_HOST,
     workerHealthPort: raw.WORKER_HEALTH_PORT ?? DEFAULT_WORKER_HEALTH_PORT,
-    s3: resolveS3(raw),
+    objectStore: resolveObjectStore(raw),
     db,
     auth: resolveAuth(raw, db),
     mail: options.withMail ? resolveMailer(raw, devDefaults) : undefined,

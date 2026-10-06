@@ -448,7 +448,7 @@ describe('unconfigured auth', () => {
     port: 3000,
     host: '0.0.0.0',
     workerHealthPort: 3001,
-    s3: undefined,
+    objectStore: undefined,
     db: undefined,
     auth: undefined,
     mail: undefined,

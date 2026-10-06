@@ -1,0 +1,153 @@
+# The Azure Blob Storage swap (#2077): docs/self-host/swap.md, "Azure Blob
+# Storage".
+#
+# Azurite, Microsoft's Blob Storage emulator, stands in for a storage account,
+# on a network of its own. It serves one GENERATED account rather than the
+# emulator's well-known `devstoreaccount1` — the analogue of external-bucket's
+# deliberately different region: a request signed with any other key, or for
+# any other account, is refused rather than passing by coincidence. Setting
+# `AZURITE_ACCOUNTS` disables the well-known account outright.
+#
+# The environment file `up.sh` writes is the whole swap: `STUDIO_OBJECT_STORE`,
+# the container, a connection string, and every `S3_*` value emptied
+# exactly as the guide tells an Azure deployer to — which is also what stops
+# the compose file's `S3_ENDPOINT` defaulting to Garage. A connection string
+# rather than an account URL because there is no managed identity off Azure;
+# the guide offers the same fallback to any non-Azure host. Everything below
+# is the tidying the guide describes as following it.
+
+services:
+  external-azurite:
+    image: mcr.microsoft.com/azure-storage/azurite:3.37.0@sha256:830430c1da1a2d537e08f3e6764dd1f5ae00cf0346bcaf625b968ec3f0971fd5
+    restart: unless-stopped
+    # Blob only: Studio uses no queue or table. `--skipApiVersionCheck`
+    # because the SDK in the image may be newer than the emulator, and a
+    # version the emulator has not heard of is not what this tests. Addressed
+    # path-style (`http://external-azurite:10000/<account>`), which is what an
+    # undotted hostname gets.
+    command:
+      - azurite-blob
+      - --blobHost
+      - 0.0.0.0
+      - --blobPort
+      - '10000'
+      - --skipApiVersionCheck
+    environment:
+      AZURITE_ACCOUNTS: ${EXTERNAL_AZURITE_ACCOUNT}:${EXTERNAL_AZURITE_KEY}
+    # No published port and only the external network: the stack reaches it
+    # across that boundary, as it would a storage account.
+    networks:
+      - external
+
+  # Creates the container. A storage account's container exists before Studio
+  # is pointed at it — Studio never creates one — and this is the stub reaching
+  # that state. Profile `migrate` like the `garage-init` it replaces, so it
+  # runs as part of `docker compose run --rm migrate` and not on a plain `up`.
+  #
+  # The studio-api image, because it already carries `@azure/storage-blob` in
+  # /app/node_modules; the script is mounted beside them so the import
+  # resolves there. The image's own entrypoint dispatches on Studio commands,
+  # so it is replaced with plain `node`.
+  external-azurite-init:
+    image: ${STUDIO_API_IMAGE}
+    profiles: [migrate]
+    working_dir: /app
+    entrypoint: ['node', '/app/external-azurite-init.mjs']
+    environment:
+      AZURE_STORAGE_CONNECTION_STRING: ${AZURE_STORAGE_CONNECTION_STRING}
+      AZURE_STORAGE_CONTAINER: ${AZURE_STORAGE_CONTAINER}
+    configs:
+      - source: external-azurite-init
+        target: /app/external-azurite-init.mjs
+    networks:
+      - external
+    depends_on:
+      external-azurite:
+        condition: service_started
+
+  # "Then delete the `garage` and `garage-init` services…" — a profile no
+  # command enables, which `assert.sh` holds by asserting neither container
+  # exists.
+  garage:
+    profiles: [unused]
+  garage-init:
+    profiles: [unused]
+
+  api:
+    # The base file's `garage: service_started` entry would survive a merging
+    # override and then fail the command, because no profile enables it.
+    depends_on: !override
+      postgres:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+    networks:
+      - default
+      - external
+
+  worker:
+    depends_on: !override
+      postgres:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+    networks:
+      - default
+      - external
+
+  # "…and the `garage-init` entry in `migrate`'s `depends_on`". Replaced by the
+  # stub's own one-shot.
+  migrate:
+    depends_on: !override
+      postgres:
+        condition: service_healthy
+      external-azurite-init:
+        condition: service_completed_successfully
+    networks:
+      - default
+      - external
+
+configs:
+  # Compose interpolates a config's content exactly as it does the rest of this
+  # file, so the script is written without a single `$` rather than with every
+  # one escaped as `$$`.
+  external-azurite-init:
+    content: |
+      import { BlobServiceClient } from '@azure/storage-blob';
+
+      const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING;
+      const name = process.env.AZURE_STORAGE_CONTAINER;
+      if (!connectionString || !name) {
+        console.error('external-azurite-init: AZURE_STORAGE_CONNECTION_STRING and AZURE_STORAGE_CONTAINER are both required');
+        process.exit(1);
+      }
+
+      const container = BlobServiceClient.fromConnectionString(connectionString).getContainerClient(name);
+
+      // Retries only while nothing answers. An HTTP error — a refused
+      // signature, an unknown account — carries a status code, and waiting
+      // would not change it.
+      for (let attempt = 1; ; attempt += 1) {
+        try {
+          const { succeeded } = await container.createIfNotExists();
+          console.log('external-azurite-init: container ' + name + (succeeded ? ' created' : ' already exists'));
+          break;
+        } catch (error) {
+          if (error.statusCode !== undefined) {
+            console.error('external-azurite-init: creating container ' + name + ' returned ' + error.statusCode + ': ' + error.message);
+            process.exit(1);
+          }
+          if (attempt >= 60) {
+            console.error('external-azurite-init: Azurite did not answer after 60 attempts: ' + error.message);
+            process.exit(1);
+          }
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+        }
+      }
+
+networks:
+  external:
+    name: ${EXTERNAL_NETWORK}
+    ipam:
+      config:
+        - subnet: ${EXTERNAL_SUBNET}
