@@ -1,14 +1,7 @@
-import {
-  Context,
-  DateTime,
-  Duration,
-  Effect,
-  Layer,
-  MutableRef,
-  Schedule,
-} from 'effect';
+import { Context, DateTime, Duration, Effect, Layer, MutableRef } from 'effect';
 
 import { type Database, type MaintenanceDatabase } from '../db/client.ts';
+import { logFailedReading } from '../db/errors.ts';
 import {
   MaintenanceScope,
   Transaction,
@@ -87,21 +80,20 @@ const makeLayer = <R>(
         if (warning !== null) yield* Effect.logWarning(warning);
       }).pipe(
         Effect.catchCause((cause) =>
-          Effect.logWarning(
+          logFailedReading(
             'the job clock could not be measured against the database; keeping the last correction',
             cause,
           ),
         ),
       );
 
+      // Measured once now, so the first job is stamped with a corrected clock,
+      // then again every interval: the monitor sleeps before its first pass,
+      // so a failing database is reported once at boot, not twice.
+      const interval = config.clockMonitorInterval ?? CLOCK_MONITOR_INTERVAL;
       yield* remeasure;
       yield* Effect.forkScoped(
-        Effect.repeat(
-          remeasure,
-          Schedule.spaced(
-            config.clockMonitorInterval ?? CLOCK_MONITOR_INTERVAL,
-          ),
-        ),
+        Effect.forever(Effect.andThen(Effect.sleep(interval), remeasure)),
       );
 
       return {

@@ -2,7 +2,7 @@ import { Cause, Duration, Effect, type Layer, Record } from 'effect';
 import { HttpRouter, HttpServerResponse } from 'effect/http';
 import type { SqlClient } from 'effect/sql';
 
-import { deepestMessage } from '../db/errors.ts';
+import { deepestMessage, isMissingRole } from '../db/errors.ts';
 import { databaseAlive } from '../db/readiness.ts';
 import { checkSchemaEffect, type SchemaState } from '../db/schema.ts';
 
@@ -21,7 +21,16 @@ export type Readiness = {
 
 const CHECK_TIMEOUT_MS = 1000;
 
+/**
+ * What `/readyz` says when the database has never been provisioned: the
+ * connection is refused because the Studio roles do not exist yet. The raw
+ * driver text names a role, and `/readyz` is reachable by anyone who can reach
+ * the instance, so the reason is the state, not the error (#1901).
+ */
+const NOT_SET_UP = 'the database has not been set up for Studio yet';
+
 function reasonOf(error: unknown): string {
+  if (isMissingRole(error)) return NOT_SET_UP;
   const message = deepestMessage(error) ?? String(error);
   const single = message.replaceAll(/\s+/g, ' ').trim();
   return single.length > 200 ? `${single.slice(0, 197)}...` : single;

@@ -4,6 +4,7 @@ import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert } from '@codaco/fresco-ui/Alert';
 import { NativeLink } from '@codaco/fresco-ui/NativeLink';
+import { UPGRADE_GUIDE_URL } from '@codaco/studio-contract/surfaces';
 
 import { rpcKey, rpcQuery } from '../runtime/rpc.ts';
 
@@ -35,14 +36,6 @@ const messages = defineMessages({
       'The link, beside the update notice, to the steps for upgrading a self-hosted Studio.',
   },
 });
-
-/**
- * Where the self-host upgrade guide is published. A constant, not a value the
- * server supplies: the guide is a page in this repository, and it is the same
- * page for every self-hosted instance whichever release it is on.
- */
-const UPGRADE_GUIDE_URL =
-  'https://github.com/complexdatacollective/network-canvas-monorepo/blob/main/apps/studio/docs/self-host/upgrade.md';
 
 /**
  * Tells the owner of this Studio that a newer release is out (#1901).

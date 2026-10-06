@@ -1,6 +1,8 @@
 import { describe, expect, it } from '@effect/vitest';
 import { Effect, type Layer, Logger } from 'effect';
 
+import { UPGRADE_GUIDE_URL } from '@codaco/studio-contract/surfaces';
+
 import {
   Mailer,
   type TeamInvitationInput,
@@ -103,11 +105,16 @@ describe('the update notice', () => {
     expect(changing.text).not.toContain('does not change the database');
   });
 
-  it('points a self-hosted owner at the upgrade guide and a managed one nowhere', () => {
-    expect(updateNoticeMessage(UPDATE_NOTICE).text).toContain('upgrade guide');
-    expect(
-      updateNoticeMessage({ ...UPDATE_NOTICE, deploymentMode: 'managed' }).text,
-    ).not.toContain('upgrade guide');
+  it('points a self-hosted owner at the upgrade guide, by the address the in-app notice uses, and a managed one nowhere', () => {
+    const selfHosted = updateNoticeMessage(UPDATE_NOTICE).text;
+    expect(selfHosted).toContain('upgrade guide');
+    expect(selfHosted).toContain(UPGRADE_GUIDE_URL);
+    const managed = updateNoticeMessage({
+      ...UPDATE_NOTICE,
+      deploymentMode: 'managed',
+    }).text;
+    expect(managed).not.toContain('upgrade guide');
+    expect(managed).not.toContain(UPGRADE_GUIDE_URL);
   });
 });
 

@@ -114,29 +114,41 @@ const theRow = <Row>(rows: ReadonlyArray<Row>) =>
 const READ_STATEMENT_TIMEOUT = '1s';
 
 /**
- * The whole row in one statement, so the flag and the recorded release share
- * the one bounded read and the one scope that opens it.
+ * The flag and the release are two reads, each selecting only its own columns.
+ * A new image's api boots against the older schema between `up -d` and
+ * `migrate`; if the flag read named the `latest_*` columns, a release that
+ * added or renamed one would make the flag unreadable exactly when the window
+ * is open, and the gate would report the schema instead of the maintenance
+ * window (#1901). The flag read must depend on nothing a later release can
+ * change.
  */
-const readRow = Effect.fn('db.deploymentState.read')(function* () {
+const readFlag = Effect.fn('db.deploymentState.read')(function* () {
   const { tx, sql: client } = yield* Transaction;
   yield* client`select set_config('statement_timeout', ${READ_STATEMENT_TIMEOUT}, true)`;
   const rows = yield* tx
-    .select({ ...STATE_COLUMNS, release: RELEASE_COLUMNS })
+    .select(STATE_COLUMNS)
     .from(deploymentState)
     .where(eq(deploymentState.id, 1));
   return yield* theRow(rows);
 }, sqlErrorsOnly);
 
-type Snapshot = Effect.Success<ReturnType<typeof readRow>>;
+const readRelease = Effect.fn('db.deploymentState.readLatestRelease')(
+  function* () {
+    const { tx, sql: client } = yield* Transaction;
+    yield* client`select set_config('statement_timeout', ${READ_STATEMENT_TIMEOUT}, true)`;
+    const rows = yield* tx
+      .select(RELEASE_COLUMNS)
+      .from(deploymentState)
+      .where(eq(deploymentState.id, 1));
+    return yield* theRow(rows);
+  },
+  sqlErrorsOnly,
+);
 
-const stateOf = ({
-  maintenance,
-  reason,
-  updatedAt,
-}: Snapshot): DeploymentState => ({ maintenance, reason, updatedAt });
+type Release = Effect.Success<ReturnType<typeof readRelease>>;
 
 /** Null until a check has recorded a release; the four columns move together. */
-const releaseOf = ({ release }: Snapshot): LatestRelease | null =>
+const releaseOf = (release: Release): LatestRelease | null =>
   release.version === null ||
   release.releasedAt === null ||
   release.notesUrl === null ||
@@ -149,20 +161,17 @@ const releaseOf = ({ release }: Snapshot): LatestRelease | null =>
         schemaChange: release.schemaChange,
       };
 
-const readSnapshot = (): Effect.Effect<Snapshot, SqlError.SqlError, Database> =>
-  UntenantedScope.open(readRow());
-
 export const readDeploymentState = (): Effect.Effect<
   DeploymentState,
   SqlError.SqlError,
   Database
-> => Effect.map(readSnapshot(), stateOf);
+> => UntenantedScope.open(readFlag());
 
 export const readDeploymentStateAsMaintenance = (): Effect.Effect<
   DeploymentState,
   SqlError.SqlError,
   MaintenanceDatabase
-> => Effect.map(MaintenanceScope.open(readRow()), stateOf);
+> => MaintenanceScope.open(readFlag());
 
 /**
  * What the worker's update check last recorded, or null when it has recorded
@@ -173,7 +182,7 @@ export const readLatestRelease = (): Effect.Effect<
   LatestRelease | null,
   SqlError.SqlError,
   Database
-> => Effect.map(readSnapshot(), releaseOf);
+> => Effect.map(UntenantedScope.open(readRelease()), releaseOf);
 
 export const setMaintenance: (
   window: MaintenanceWindow,

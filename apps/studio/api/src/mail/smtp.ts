@@ -1,6 +1,8 @@
 import { Effect, Layer } from 'effect';
 import nodemailer from 'nodemailer';
 
+import { UPGRADE_GUIDE_URL } from '@codaco/studio-contract/surfaces';
+
 import {
   MailFailed,
   Mailer,
@@ -36,7 +38,8 @@ export function updateNoticeMessage({
       ...(deploymentMode === 'self-hosted'
         ? [
             '',
-            'To upgrade, follow the upgrade guide in the self-hosting documentation.',
+            'To upgrade, follow the upgrade guide in the self-hosting documentation:',
+            UPGRADE_GUIDE_URL,
           ]
         : []),
       '',

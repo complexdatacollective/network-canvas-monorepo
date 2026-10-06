@@ -1,5 +1,12 @@
 import { eq } from 'drizzle-orm';
-import { Cause, Duration, Effect, Exit, Schedule } from 'effect';
+import {
+  Cause,
+  Duration,
+  Effect,
+  Exit,
+  MutableHashSet,
+  Schedule,
+} from 'effect';
 import { FetchHttpClient, HttpClient, HttpClientResponse } from 'effect/http';
 import type { SqlError } from 'effect/sql';
 
@@ -53,6 +60,9 @@ export type UpdateCheckOptions = {
 };
 
 type Owner = { readonly email: string; readonly name: string };
+
+/** What became of the one send this run was entitled to make. */
+type Delivery = 'sent' | 'not-sent' | 'not-claimed';
 
 /**
  * One GET of one fixed URL, carrying nothing about the instance: the only
@@ -120,6 +130,20 @@ const giveBack = (version: string) =>
 
 export const updateCheck = (options: UpdateCheckOptions) => {
   const runningVersion = options.runningVersion ?? STUDIO_VERSION;
+  // The versions this process has already said "no mail transport" about. The
+  // claim is given back in that case (below), so the next daily run reaches the
+  // same line again; this is what keeps it to one line per process per version.
+  const mentionedWithoutMail = MutableHashSet.empty<string>();
+
+  const mentionMissingTransport = (version: string) =>
+    MutableHashSet.has(mentionedWithoutMail, version)
+      ? Effect.void
+      : Effect.suspend(() => {
+          MutableHashSet.add(mentionedWithoutMail, version);
+          return Effect.logInfo(
+            `${QUEUE}: Studio ${version} is available, but no mail transport is configured, so the owner was not emailed. The in-app notice still shows it, and the owner is emailed at the next daily check after mail is configured.`,
+          );
+        });
 
   const notifyOwner = Effect.fnUntraced(function* (
     owner: Owner,
@@ -132,16 +156,17 @@ export const updateCheck = (options: UpdateCheckOptions) => {
     const mailer = yield* Mailer;
     // The claim is what makes the email once per version, and it is taken
     // before the send so that a replay finds it taken. It is given back on
-    // every way out that is not a success — a refused send, a defect, and an
-    // interruption alike — because a claim left standing after no email went
-    // out would mean the version is never mailed at all. Acquiring it inside
-    // `acquireUseRelease` is what keeps an interruption from landing between
-    // the claim and the release that undoes it. The window left open is the
-    // process being killed outright between the two; the in-app notice is the
-    // durable channel for that.
+    // every way out that is not an email sent — a refused send, a defect, an
+    // interruption, and an instance with no mail transport alike — because a
+    // claim left standing after no email went out would mean the version is
+    // never mailed at all, including after the operator configures SMTP.
+    // Acquiring it inside `acquireUseRelease` is what keeps an interruption
+    // from landing between the claim and the release that undoes it. The window
+    // left open is the process being killed outright between the two; the
+    // in-app notice is the durable channel for that.
     return yield* Effect.acquireUseRelease(
       claim(release.version),
-      (claimed) =>
+      (claimed): Effect.Effect<Delivery, MailFailed> =>
         claimed
           ? mailer
               .sendUpdateNotice({
@@ -153,18 +178,16 @@ export const updateCheck = (options: UpdateCheckOptions) => {
                 deploymentMode: options.deploymentMode,
               })
               .pipe(
+                Effect.as<Delivery>('sent'),
                 Effect.catchTag('MailNotConfigured', () =>
-                  // The claim stays, which is what makes this one line per
-                  // version rather than one per day.
-                  Effect.logInfo(
-                    `${QUEUE}: Studio ${release.version} is available, but no mail transport is configured, so the owner was not emailed. The in-app notice still shows it.`,
+                  mentionMissingTransport(release.version).pipe(
+                    Effect.as<Delivery>('not-sent'),
                   ),
                 ),
-                Effect.as(COMPLETED),
               )
-          : Effect.succeed(COMPLETED),
+          : Effect.succeed<Delivery>('not-claimed'),
       (claimed, exit) =>
-        claimed && !Exit.isSuccess(exit)
+        claimed && !(Exit.isSuccess(exit) && exit.value === 'sent')
           ? giveBack(release.version).pipe(
               Effect.catchCause((cause) =>
                 Effect.logWarning(
@@ -178,7 +201,7 @@ export const updateCheck = (options: UpdateCheckOptions) => {
               ),
             )
           : Effect.void,
-    );
+    ).pipe(Effect.as(COMPLETED));
   });
 
   return Effect.fn('job.update-check')(function* (

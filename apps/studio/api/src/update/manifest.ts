@@ -61,6 +61,15 @@ const isHttpsUrl = Schema.makeFilter<string>(
  * untouched and rolling back is redeploying the previous image. A publisher that
  * cannot compare the two lists must emit `true`.
  *
+ * `version` is `@codaco/studio-api`'s version, the one `STUDIO_VERSION` and
+ * `/api/v1/status` report, because that is what an instance compares it with.
+ * The Studio lane versions its packages independently (`studio-web` and
+ * `studio-api` ship as separate images), so a publisher that emitted
+ * `studio-web`'s version would be comparing two unrelated lines. A release
+ * that changes only `studio-web` is announced by the publisher also bumping
+ * `studio-api`: a release that leaves `studio-api` where it was is not newer
+ * than the running version, so it produces no notice and no email.
+ *
  * Keys it does not know are dropped rather than refused, so the publisher can
  * add one without breaking instances already deployed.
  */

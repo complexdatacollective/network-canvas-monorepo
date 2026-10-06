@@ -1,5 +1,5 @@
 import { assert, layer } from '@effect/vitest';
-import { Effect } from 'effect';
+import { Effect, Exit } from 'effect';
 import { describe } from 'vitest';
 
 import { TENANT_ROLES } from '@codaco/studio-sync/rls';
@@ -18,6 +18,7 @@ import {
   claimNotification,
   type LatestRelease,
   readDeploymentState,
+  readDeploymentStateAsMaintenance,
   readLatestRelease,
   recordUpdateCheck,
   releaseNotificationClaim,
@@ -144,6 +145,47 @@ describe.skipIf(!testDb)('deployment_state', () => {
             assert.deepStrictEqual(yield* storedRow, [
               { maintenance: false, reason: null },
             ]);
+          }),
+      );
+
+      // The api of a new image boots between `up -d` and `migrate`, against the
+      // older schema. A release that adds or renames a `latest_*` column must
+      // not make the maintenance flag unreadable then: the gate would answer
+      // OFF and readiness would name the schema, not the window (#1901).
+      it.effect(
+        'reads the flag against a schema whose release columns have changed',
+        () =>
+          Effect.gen(function* () {
+            yield* ownerAffected(CLEAR_UPDATE_STATE);
+            yield* MaintenanceScope.open(
+              setMaintenance({ maintenance: true, reason: 'Upgrading' }),
+            );
+            yield* ownerAffected(
+              'alter table deployment_state rename column latest_schema_change to latest_schema_change_renamed',
+            );
+            const restore = Effect.orDie(
+              ownerAffected(
+                'alter table deployment_state rename column latest_schema_change_renamed to latest_schema_change',
+              ),
+            );
+            const [flag, asMaintenance, release] = yield* Effect.all([
+              Effect.exit(readDeploymentState()),
+              Effect.exit(readDeploymentStateAsMaintenance()),
+              Effect.exit(readLatestRelease()),
+            ]).pipe(Effect.ensuring(restore));
+            yield* ownerAffected(CLEAR_UPDATE_STATE);
+
+            assert.isTrue(Exit.isSuccess(flag), 'the application role read');
+            assert.isTrue(
+              Exit.isSuccess(asMaintenance),
+              'the maintenance role read',
+            );
+            if (Exit.isSuccess(flag)) {
+              assert.strictEqual(flag.value.maintenance, true);
+              assert.strictEqual(flag.value.reason, 'Upgrading');
+            }
+            // The release read is the one that depends on the release columns.
+            assert.isTrue(Exit.isFailure(release));
           }),
       );
 

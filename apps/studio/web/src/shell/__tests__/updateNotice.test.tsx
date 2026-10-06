@@ -10,7 +10,10 @@ import type {
   InstanceStatus,
   UpdateAvailable,
 } from '@codaco/studio-contract/schema/status';
-import type { DeploymentMode } from '@codaco/studio-contract/surfaces';
+import {
+  type DeploymentMode,
+  UPGRADE_GUIDE_URL,
+} from '@codaco/studio-contract/surfaces';
 
 import { StudioI18nProvider } from '../../i18n/StudioI18nProvider.tsx';
 import { createAppRouter } from '../../router.tsx';
@@ -151,9 +154,10 @@ describe('the update notice', () => {
     renderNotice();
 
     const guide = await screen.findByRole('link', { name: 'Upgrade guide' });
-    expect(guide).toHaveAttribute(
-      'href',
-      expect.stringContaining('/apps/studio/docs/self-host/upgrade.md'),
+    expect(guide).toHaveAttribute('href', UPGRADE_GUIDE_URL);
+    // The page itself, not just the address: the guide the repository ships.
+    expect(UPGRADE_GUIDE_URL).toContain(
+      '/apps/studio/docs/self-host/upgrade.md',
     );
     expect(screen.getByRole('link', { name: 'Release notes' })).toHaveAttribute(
       'href',
