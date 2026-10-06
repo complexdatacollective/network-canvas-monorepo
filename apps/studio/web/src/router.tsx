@@ -58,6 +58,7 @@ import ScreenMain from './shell/ScreenMain.tsx';
 import SiteLayout from './shell/SiteLayout.tsx';
 import StudyArea from './shell/StudyArea.tsx';
 import TeamArea from './shell/TeamArea.tsx';
+import UpdateNotice from './shell/UpdateNotice.tsx';
 
 const isTeamInvitationId = Schema.is(TeamInvitationId);
 
@@ -953,13 +954,17 @@ const noTeamRoute = createRoute({
   // the cookie by hand. And so the language, which is a per-account preference
   // with nothing to do with teams: the header that carries the switcher is
   // behind the same redirect, and a researcher waiting on an invitation would
-  // otherwise read this screen in a language they cannot change.
+  // otherwise read this screen in a language they cannot change. And so the
+  // update notice (#1901): setup ends here for the installation's owner, who
+  // has no team until they create one, and the app shell that carries it
+  // elsewhere is behind the same redirect.
   component: screenPlaceholder({
     title: screens.noTeamTitle,
     description: screens.noTeamDescription,
     issue: '#1249',
     action: (
       <>
+        <UpdateNotice className="m-0" />
         <NoTeamSignOut />
         <StudioLocaleSwitcher />
       </>

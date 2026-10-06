@@ -16,6 +16,7 @@ import {
 } from '@codaco/studio-contract/surfaces';
 
 import { StudioI18nProvider } from '../../i18n/StudioI18nProvider.tsx';
+import { authClient } from '../../lib/auth.ts';
 import { createAppRouter } from '../../router.tsx';
 import { installRpcHarness } from '../../test/rpcHarness.ts';
 import UpdateNotice from '../UpdateNotice.tsx';
@@ -266,5 +267,47 @@ describe('the update notice in the app shell', () => {
     expect(
       await within(banner).findByText(/Studio 1\.3\.0 is available/),
     ).toBeInTheDocument();
+  });
+});
+
+describe('the update notice on the no-team screen', () => {
+  it('is shown to the owner setup leaves there, who has no team yet', async () => {
+    vi.mocked(authClient.organization.list).mockResolvedValue({
+      data: [],
+      error: null,
+    });
+    installRpcHarness({
+      'me': () =>
+        Effect.succeed({
+          userId: 'user-1',
+          email: 'owner@example.org',
+          emailVerified: true,
+          name: 'Owner',
+          locale: null,
+          teams: [],
+        }),
+      'status': () => Effect.succeed(statusIn('self-hosted')),
+      'status.updateAvailable': () => Effect.succeed(UPDATE),
+    });
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const router = createAppRouter(
+      createMemoryHistory({ initialEntries: ['/no-team'] }),
+      queryClient,
+    );
+    render(
+      <QueryClientProvider client={queryClient}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>,
+    );
+
+    expect(
+      await screen.findByText(/Studio 1\.3\.0 is available/),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByRole('link', { name: 'Upgrade guide' }),
+    ).toHaveAttribute('href', UPGRADE_GUIDE_URL);
+    expect(router.state.location.pathname).toBe('/no-team');
   });
 });
