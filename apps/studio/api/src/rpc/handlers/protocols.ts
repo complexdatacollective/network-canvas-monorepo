@@ -29,7 +29,7 @@ import { getProtocolDraft, listProtocols } from '../../protocol/store.ts';
 import { seesEveryTeamStudy } from '../../study/tenancy.ts';
 import { withRequestId } from '../bridge.ts';
 import type { RpcDeps } from '../deps.ts';
-import { openTeam, requireProtocol } from '../team-scope.ts';
+import { openTeam, requireLockedRole, requireProtocol } from '../team-scope.ts';
 
 const protocolRefusal = (
   error: unknown,
@@ -109,15 +109,16 @@ export const ProtocolsHandlers = (deps: RpcDeps) =>
         const principal = yield* Principal;
         const access = yield* openTeam(deps, principal, payload.teamId);
         return decodeSummaries(
-          yield* Effect.orDie(
-            TenantScope.open(
-              access,
-              listProtocols(access.teamId, {
+          yield* TenantScope.open(
+            access,
+            Effect.gen(function* () {
+              const role = yield* requireLockedRole(access);
+              return yield* listProtocols(access.teamId, {
                 actorUserId: principal.userId,
-                seesEveryStudy: seesEveryTeamStudy(access.role),
-              }),
-            ),
-          ),
+                seesEveryStudy: seesEveryTeamStudy(role),
+              });
+            }),
+          ).pipe(Effect.catchTag('SqlError', Effect.die)),
         );
       }),
     'protocols.draft': (payload) =>

@@ -30,6 +30,11 @@ class AuditReadRefused extends Schema.TaggedError<AuditReadRefused>()(
   {},
 ) {}
 
+class AuditReadDenialSuppressed extends Schema.TaggedError<AuditReadDenialSuppressed>()(
+  'AuditReadDenialSuppressed',
+  {},
+) {}
+
 class AuditReadDenialRecorded extends Schema.TaggedError<AuditReadDenialRecorded>()(
   'AuditReadDenialRecorded',
   {},
@@ -80,9 +85,7 @@ const denyAuditRead = Effect.fnUntraced(function* (
           {
             operation: 'audit.read',
             teamId: access.teamId,
-            // Still a denial, not a rate-limit refusal, so the suppression
-            // stays unobservable.
-            refusal: () => new AuditReadDenied({}),
+            refusal: () => new AuditReadDenialSuppressed(),
             isDenial: (error) => error instanceof AuditReadRefused,
           },
           append,
@@ -94,6 +97,9 @@ const denyAuditRead = Effect.fnUntraced(function* (
     // the combinator re-raised.
     if (error instanceof AuditReadRefused) {
       return yield* new AuditReadDenialRecorded();
+    }
+    if (error instanceof AuditReadDenialSuppressed) {
+      return yield* new AuditReadDenied({});
     }
     yield* signal.warn('STUDIO_AUDIT_DENIAL_EVENT_LOST', {
       eventType: 'audit.read_denied',

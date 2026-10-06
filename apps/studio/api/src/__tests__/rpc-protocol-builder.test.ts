@@ -49,6 +49,7 @@ import {
 } from '../protocol-builder/leases.ts';
 import { Presence } from '../protocol-builder/presence.ts';
 import { ProtocolEvents } from '../protocol-builder/publisher.ts';
+import { StagedImports } from '../protocol-builder/resources.ts';
 import { ASSET_KEY_PLACEHOLDER, openAssetKey } from '../protocol/asset-keys.ts';
 import { createProtocol, latestDraftId } from '../protocol/store.ts';
 import type { StudioServices } from '../rpc/deps.ts';
@@ -246,6 +247,21 @@ function holdingLeases() {
       });
     }),
   ).pipe(Layer.provide(Leases.layer));
+  return { layer, next: hold.next };
+}
+
+function holdingStaging() {
+  const hold = holdOnce<string>();
+  const layer = Layer.effect(
+    StagedImports,
+    Effect.gen(function* () {
+      const real = yield* StagedImports;
+      return StagedImports.of({
+        ...real,
+        opened: (key) => hold.around(key, real.opened(key)),
+      });
+    }),
+  ).pipe(Layer.provide(StagedImports.layer));
   return { layer, next: hold.next };
 }
 
@@ -2557,6 +2573,309 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       async () => !(await heldSections(owner)).includes(stage.sectionId),
       'the stranded lease to be given back',
     );
+  });
+
+  const removedAfterOpening = async (slug: string) => {
+    const who = researcher(slug);
+    await database.run(
+      ownerAffected(
+        `INSERT INTO "user" (id, name, email, "emailVerified")
+         VALUES ($1, $2, $3, true) ON CONFLICT (id) DO NOTHING`,
+        [who.principal.userId, who.principal.name, who.principal.email],
+      ),
+    );
+    const restore = () =>
+      database.run(
+        ownerAffected(
+          `INSERT INTO team_members (id, team_id, user_id, role)
+           VALUES ($1, $2, $3, 'owner') ON CONFLICT (id) DO NOTHING`,
+          [who.memberId, TEAM_ID, who.principal.userId],
+        ),
+      );
+    const remove = () =>
+      database.run(
+        ownerAffected(`DELETE FROM team_members WHERE id = $1`, [who.memberId]),
+      );
+    await restore();
+    return { who, remove, restore };
+  };
+
+  const removedReads: ReadonlyArray<
+    readonly [string, () => Effect.Effect<unknown, unknown>]
+  > = [
+    [
+      'GetSection',
+      () =>
+        host.rpc('GetSection', {
+          protocolId,
+          sectionId: stageSection(reference.stageId),
+        }),
+    ],
+    ['ListSections', () => host.rpc('ListSections', { protocolId })],
+    ['ResourcesList', () => host.rpc('ResourcesList', { protocolId })],
+    [
+      'ResourcesInspect',
+      () => host.rpc('ResourcesInspect', { protocolId, resourceId: 'no-such' }),
+    ],
+    [
+      'ResourcesPreview',
+      () => host.rpc('ResourcesPreview', { protocolId, resourceId: 'no-such' }),
+    ],
+    [
+      'ResourcesStage',
+      () =>
+        host.rpc('ResourcesStage', {
+          protocolId,
+          editId: EDIT,
+          requestId: randomUUID(),
+          request: { kind: 'secret', name: 'Staged', value: 'pk.removed' },
+        }),
+    ],
+    [
+      'ResourcesDiscard',
+      () =>
+        host.rpc('ResourcesDiscard', {
+          protocolId,
+          editId: EDIT,
+          resourceId: 'no-such',
+        }),
+    ],
+  ];
+
+  it.each(removedReads)(
+    'refuses a %s from a caller removed after its session was opened',
+    async (name, read) => {
+      const { who, remove } = await removedAfterOpening(`removed-${name}`);
+      await remove();
+      await expectRpcFailure(callExit(who, read()), 'ProtocolNotFound');
+    },
+  );
+
+  it('refuses a watch from a caller removed after its session was opened', async () => {
+    const { who, remove } = await removedAfterOpening('removed-watch');
+    await remove();
+    const channel = watch(who, protocolId);
+    const ended = await Promise.race([
+      channel.ended,
+      new Promise<undefined>((resolve) =>
+        setTimeout(() => resolve(undefined), 2_000),
+      ),
+    ]);
+    if (ended === undefined) {
+      await channel.stop();
+      throw new Error('the watch replayed the protocol to a removed caller');
+    }
+    await expectRpcFailure(Promise.resolve(ended), 'ProtocolNotFound');
+  });
+
+  it('never shows a caller removed after its session was opened in presence', async () => {
+    const { who, remove } = await removedAfterOpening('removed-presence');
+    const colleague = await watching(GRACE, protocolId);
+    try {
+      await remove();
+      const refused = watch(who, protocolId);
+      await expectRpcFailure(refused.ended, 'ProtocolNotFound');
+      const written = await createStage(ADA, 'Written after a refused watch');
+      await until(
+        () => revisionsOf(colleague.events, written.sectionId).length > 0,
+        'the colleague to see the write',
+      );
+      const listed = colleague.events.flatMap((event) =>
+        event.type === 'presence'
+          ? event.present.map((entry) => entry.userId)
+          : [],
+      );
+      expect(listed).not.toContain(who.principal.userId);
+    } finally {
+      await colleague.stop();
+    }
+  });
+
+  it('ends a watch at its next reauthorization once the locked role no longer reaches the protocol', async () => {
+    const { who, remove, restore } = await removedAfterOpening('demoted-watch');
+    const channel = await watching(who, protocolId);
+    let ended: Exit.Exit<void, unknown> | undefined;
+    try {
+      await database.run(
+        ownerAffected(`UPDATE team_members SET role = 'member' WHERE id = $1`, [
+          who.memberId,
+        ]),
+      );
+      clock.advance(REAUTHORIZE_MS);
+      await createStage(ADA, 'Written after the demotion');
+      ended = await Promise.race([
+        channel.ended,
+        new Promise<undefined>((resolve) =>
+          setTimeout(() => resolve(undefined), 2_000),
+        ),
+      ]);
+    } finally {
+      await channel.stop();
+      await remove();
+      await restore();
+    }
+    if (ended === undefined) {
+      throw new Error('the watch went on delivering to a demoted caller');
+    }
+    await expectRpcFailure(Promise.resolve(ended), 'ProtocolNotFound');
+  });
+
+  it('hands no committed API key to a caller removed while the inspection runs', async () => {
+    const { who, remove, restore } =
+      await removedAfterOpening('removed-inspect');
+    const stage = await createStage(ADA, 'Commits a key');
+    const staged = await call(
+      ADA,
+      host.rpc('ResourcesStage', {
+        protocolId,
+        editId: OTHER_EDIT,
+        requestId: randomUUID(),
+        request: { kind: 'secret', name: 'Committed', value: 'pk.committed' },
+      }),
+    );
+    if (staged.status !== 'ok') throw new Error('staging failed');
+    const resourceId = staged.data.descriptor.id;
+    const held = await call(
+      ADA,
+      host.rpc('AcquireLock', { protocolId, sectionId: stage.sectionId }),
+    );
+    await call(
+      ADA,
+      host.rpc('Submit', {
+        protocolId,
+        requestId: randomUUID(),
+        sectionId: stage.sectionId,
+        document: held.document,
+        revision: held.revision,
+        promote: { editId: OTHER_EDIT, resourceIds: [resourceId] },
+      }),
+    );
+    await call(
+      ADA,
+      host.rpc('ReleaseLock', { protocolId, sectionId: stage.sectionId }),
+    );
+
+    const staging = holdingStaging();
+    const other = await createProtocolBuilderClient(studio, {
+      objectStore,
+      staged: staging.layer,
+    });
+    try {
+      const reading = staging.next();
+      const inspected = other.callExit(
+        callerOf(who),
+        other.rpc('ResourcesInspect', { protocolId, editId: EDIT, resourceId }),
+      );
+      await reading.reached;
+      await remove();
+      reading.release();
+      await expectRpcFailure(inspected, 'ProtocolNotFound');
+    } finally {
+      await restore();
+      await other.dispose();
+    }
+  });
+
+  it('gives back the lock of a removed caller whose connection drops', async () => {
+    const { who, remove, restore } =
+      await removedAfterOpening('removed-disconnect');
+    const owner = `${who.principal.userId}:${who.clientSessionId}`;
+    const stage = await createStage(ADA, 'Held by a caller who disconnects');
+    const sectionId = stage.sectionId;
+    const channel = await watching(who, protocolId);
+    let gracesBefore = 0;
+    try {
+      await call(who, host.rpc('AcquireLock', { protocolId, sectionId }));
+      expect(await heldSections(owner)).toContain(sectionId);
+      await remove();
+      gracesBefore = clock.pending(RECONNECT_GRACE_MS);
+      await channel.stop();
+      await until(
+        () => clock.pending(RECONNECT_GRACE_MS) > gracesBefore,
+        'the reconnect grace to start',
+      );
+      clock.advance(RECONNECT_GRACE_MS + 1);
+      await until(
+        async () => !(await heldSections(owner)).includes(sectionId),
+        'the removed caller’s lease to be given back',
+      );
+      expect((await present()).map((entry) => entry.userId)).not.toContain(
+        who.principal.userId,
+      );
+      const taken = await call(
+        GRACE,
+        host.rpc('AcquireLock', { protocolId, sectionId }),
+      );
+      expect(taken.lock).toBe('held');
+      await call(GRACE, host.rpc('ReleaseLock', { protocolId, sectionId }));
+    } finally {
+      await restore();
+    }
+  });
+
+  it('refuses a retried submit from a caller removed since it wrote', async () => {
+    const { who, remove, restore } = await removedAfterOpening('removed-retry');
+    const stage = await createStage(ADA, 'Written before a removal');
+    const sectionId = stage.sectionId;
+    const requestId = randomUUID();
+    const held = await call(
+      who,
+      host.rpc('AcquireLock', { protocolId, sectionId }),
+    );
+    const submit = host.rpc('Submit', {
+      protocolId,
+      requestId,
+      sectionId,
+      document: { ...held.document, label: 'Renamed before the removal' },
+      revision: held.revision,
+    });
+    try {
+      await call(who, submit);
+      await remove();
+      await expectRpcFailure(callExit(who, submit), 'ProtocolNotFound');
+    } finally {
+      await restore();
+      await call(who, host.rpc('ReleaseLock', { protocolId, sectionId }));
+    }
+  });
+
+  it('refuses a retried create from a caller removed since it wrote', async () => {
+    const { who, remove, restore } =
+      await removedAfterOpening('removed-create');
+    const label = 'Created before a removal';
+    const create = host.rpc('Create', {
+      protocolId,
+      requestId: randomUUID(),
+      kind: 'stage',
+      document: { type: 'Information', label, title: label, items: [] },
+    });
+    try {
+      await call(who, create);
+      await remove();
+      await expectRpcFailure(callExit(who, create), 'ProtocolNotFound');
+    } finally {
+      await restore();
+    }
+  });
+
+  it('refuses a release from a caller removed after its session was opened', async () => {
+    const { who, remove, restore } =
+      await removedAfterOpening('removed-release');
+    const owner = `${who.principal.userId}:${who.clientSessionId}`;
+    const stage = await createStage(ADA, 'Held by a caller who is removed');
+    const sectionId = stage.sectionId;
+    await call(who, host.rpc('AcquireLock', { protocolId, sectionId }));
+    try {
+      await remove();
+      await expectRpcFailure(
+        callExit(who, host.rpc('ReleaseLock', { protocolId, sectionId })),
+        'ProtocolNotFound',
+      );
+      expect(await heldSections(owner)).toContain(sectionId);
+    } finally {
+      await restore();
+      await call(who, host.rpc('ReleaseLock', { protocolId, sectionId }));
+    }
   });
 
   const createOn = (over: ProtocolBuilderTestClient, label: string) =>
