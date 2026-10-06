@@ -155,7 +155,8 @@ is not a fault: `migrate` is the remedy.
 The flag is checked first, so during an upgrade you see the first line until
 step 6, whatever else is true. The other four close the instance on their own
 whenever the flag was not set: under any of them the API refuses every new
-HTTP and WebSocket request, so a half-upgraded database is never served. A
+HTTP and WebSocket request but `/healthz` and `/readyz`, so a half-upgraded
+database is never served. A
 protocol-builder WebSocket that was already open closes when the flag is set
 or the schema changes. It stays open while only the migration lock is held —
 a `migrate` with nothing to apply holds it for milliseconds on every deploy —
