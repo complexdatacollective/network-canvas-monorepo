@@ -44,7 +44,7 @@ import {
   MaintenanceTriggers,
 } from '../../http/middleware/maintenance.ts';
 import { JobClock } from '../../jobs/clock.ts';
-import { MaintenanceState } from '../maintenance-state.ts';
+import { cachedReading, MaintenanceState } from '../maintenance-state.ts';
 import { SchemaStatus } from '../schema-gate.ts';
 
 const ABSENT_ROLE = `${TENANT_ROLES.app}_absent`;
@@ -209,3 +209,28 @@ describe.skipIf(!testDb)(
     );
   },
 );
+
+describe('a reading the gate takes that fails for any other reason', () => {
+  it.live(
+    'logs one warning for the failure, with the reason in it and no stack',
+    () => {
+      const logs = capture();
+      return Effect.gen(function* () {
+        const reading = yield* cachedReading({
+          name: 'the thing',
+          read: Effect.fail(new Error('connect ECONNREFUSED 127.0.0.1:1')),
+          initial: false,
+        });
+        for (let pass = 0; pass < 3; pass += 1) yield* reading;
+
+        const warnings = logs.lines.filter((line) => line.level === 'Warn');
+        assert.strictEqual(warnings.length, 1);
+        assert.include(warnings[0]?.text, 'could not read the thing');
+        assert.include(warnings[0]?.text, 'connect ECONNREFUSED 127.0.0.1:1');
+        for (const line of logs.lines) {
+          assert.notMatch(line.text, STACK_FRAME, line.text.slice(0, 120));
+        }
+      }).pipe(Effect.provide(logs.layer));
+    },
+  );
+});
