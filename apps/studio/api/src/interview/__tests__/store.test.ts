@@ -1,8 +1,14 @@
 import { randomBytes, randomUUID } from 'node:crypto';
 
 import { layer } from '@effect/vitest';
-import { Effect, Option } from 'effect';
+import { Effect, Option, Schema } from 'effect';
 import { describe, expect, test } from 'vitest';
+
+import {
+  LinkToken,
+  SessionToken,
+  TeamId,
+} from '@codaco/studio-contract/schema/ids';
 
 import {
   ownerRows,
@@ -37,6 +43,16 @@ describe('a presented token', () => {
     const minted = mintSessionToken('team.with.dots');
     expect(parsePresentedToken(minted.token)).toEqual(
       Option.some({ teamId: 'team.with.dots', secretHash: minted.secretHash }),
+    );
+  });
+
+  test('fits the token schemas for the longest valid team id', () => {
+    const teamId = Schema.decodeUnknownSync(TeamId)('t'.repeat(255));
+    const minted = mintSessionToken(teamId);
+    expect(Schema.is(SessionToken)(minted.token)).toBe(true);
+    expect(Schema.is(LinkToken)(minted.token)).toBe(true);
+    expect(parsePresentedToken(minted.token)).toEqual(
+      Option.some({ teamId, secretHash: minted.secretHash }),
     );
   });
 

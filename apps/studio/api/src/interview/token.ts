@@ -2,7 +2,11 @@ import { createHash, randomBytes } from 'node:crypto';
 
 import { Option } from 'effect';
 
-const PRESENTED_TOKEN = /^(.+)\.([A-Za-z0-9_-]{43})$/;
+import { PRESENTED_TOKEN_SECRET_LENGTH } from '@codaco/studio-contract/schema/ids';
+
+const PRESENTED_TOKEN = new RegExp(
+  `^(.+)\\.([A-Za-z0-9_-]{${PRESENTED_TOKEN_SECRET_LENGTH}})$`,
+);
 
 export type PresentedToken = {
   readonly teamId: string;
