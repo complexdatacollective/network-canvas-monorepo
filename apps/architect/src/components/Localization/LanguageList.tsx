@@ -60,14 +60,14 @@ const messages = defineMessages({
   description: {
     id: 'architect.localization.languageList.description',
     defaultMessage:
-      'Participants choose from these languages, in this order. Drag a language to change its place. Text not translated into a participant’s language is shown in the default language, or else in the first language in this list that has it.',
+      'Participants are offered these languages in this order. Drag a language to move it. Text with no translation in a participant’s language is shown in the default language or, if the default language lacks it too, in the first language in this list that has it.',
     description:
       'Explanation of the list of protocol languages, shown when the protocol has more than one. The order of the list is the order participants see the languages in, and the order in which untranslated text falls back after the default language.',
   },
   descriptionSingle: {
     id: 'architect.localization.languageList.descriptionSingle',
     defaultMessage:
-      'Participants take the protocol in this language. Add languages to let participants choose.',
+      'Participants take the interview in this language. Add more languages to let them choose one.',
     description:
       'Explanation of the list of protocol languages, shown when the protocol has only one language.',
   },

@@ -20,7 +20,7 @@ const messages = defineMessages({
   description: {
     id: 'architect.pages.localizationPage.description',
     defaultMessage:
-      'Choose the languages participants can take this protocol in, and see which text still needs translating.',
+      'Choose the languages participants can take the interview in, and see which text still needs translating.',
     description: 'Description of the page that manages protocol languages.',
   },
 });

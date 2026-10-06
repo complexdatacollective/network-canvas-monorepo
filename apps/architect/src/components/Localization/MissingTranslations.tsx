@@ -141,7 +141,7 @@ const messages = defineMessages({
   savedLanguageComplete: {
     id: 'architect.localization.missingTranslations.savedLanguageComplete',
     defaultMessage:
-      '{language} translation saved. Every text now has a {language} translation, so the missing {next} translations are shown.',
+      '{language} translation saved. Every text now has a {language} translation, so the list shows texts with no {next} translation instead.',
     description:
       'Screen-reader announcement after the last missing translation in one language is written, when the list moves on to another language. language is the language just completed; next is the language now listed.',
   },
@@ -155,9 +155,9 @@ const messages = defineMessages({
   saveFailed: {
     id: 'architect.localization.missingTranslations.saveFailed',
     defaultMessage:
-      'This translation could not be saved, because the text or its language has changed since this field was opened. Cancel, then try again.',
+      'This translation could not be saved, because the original text or this language has been removed from the protocol. Select Cancel to close it.',
     description:
-      'Error shown in a missing-translation field when the protocol no longer accepts the translation, for example because the language was removed.',
+      'Error shown in a missing-translation field when the protocol no longer accepts the translation: the text it translates, or the language it is written in, was removed from the protocol. Cancel is the label of the button that closes the field.',
   },
 });
 

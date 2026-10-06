@@ -277,7 +277,7 @@ describe('MissingTranslations', () => {
     expect(onLanguageChange).toHaveBeenLastCalledWith('fr');
     expect(
       await screen.findByText(
-        'Spanish translation saved. Every text now has a Spanish translation, so the missing French translations are shown.',
+        'Spanish translation saved. Every text now has a Spanish translation, so the list shows texts with no French translation instead.',
       ),
     ).toBeInTheDocument();
     expect(headingRef.current).toHaveFocus();

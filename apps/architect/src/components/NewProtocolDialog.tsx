@@ -140,7 +140,7 @@ const languageMessages = defineMessages({
   protocolLanguagesHint: {
     id: 'architect.newProtocolDialog.protocolLanguagesHint',
     defaultMessage:
-      'The languages participants can take this protocol in. You can change them later on the Languages page.',
+      'The languages participants can take the interview in. You can change them later on the Languages page.',
     description:
       'Hint for the new protocol languages. "Languages page" is the protocol tab where languages are managed.',
   },

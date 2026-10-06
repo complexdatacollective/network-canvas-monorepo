@@ -1680,7 +1680,7 @@
     "description": "Researcher-facing Architect control or feedback."
   },
   "architect.localization.languageActions.addDescription": {
-    "defaultMessage": "Participants can take the protocol in any of its languages. Until you translate a text, participants see it in the default language.",
+    "defaultMessage": "Participants can take the interview in any of the protocol’s languages. Until you translate a text, participants see it in the default language.",
     "description": "Explanation in the dialog that adds languages to a protocol."
   },
   "architect.localization.languageActions.addSubmit": {
@@ -1792,11 +1792,11 @@
     "description": "Tooltip and screen-reader description of the unavailable Remove button of the default language, saying why it cannot be removed."
   },
   "architect.localization.languageList.description": {
-    "defaultMessage": "Participants choose from these languages, in this order. Drag a language to change its place. Text not translated into a participant’s language is shown in the default language, or else in the first language in this list that has it.",
+    "defaultMessage": "Participants are offered these languages in this order. Drag a language to move it. Text with no translation in a participant’s language is shown in the default language or, if the default language lacks it too, in the first language in this list that has it.",
     "description": "Explanation of the list of protocol languages, shown when the protocol has more than one. The order of the list is the order participants see the languages in, and the order in which untranslated text falls back after the default language."
   },
   "architect.localization.languageList.descriptionSingle": {
-    "defaultMessage": "Participants take the protocol in this language. Add languages to let participants choose.",
+    "defaultMessage": "Participants take the interview in this language. Add more languages to let them choose one.",
     "description": "Explanation of the list of protocol languages, shown when the protocol has only one language."
   },
   "architect.localization.languageList.identifyLanguage": {
@@ -1916,8 +1916,8 @@
     "description": "Error shown when a missing translation is saved with no text. language is the language of the translation."
   },
   "architect.localization.missingTranslations.saveFailed": {
-    "defaultMessage": "This translation could not be saved, because the text or its language has changed since this field was opened. Cancel, then try again.",
-    "description": "Error shown in a missing-translation field when the protocol no longer accepts the translation, for example because the language was removed."
+    "defaultMessage": "This translation could not be saved, because the original text or this language has been removed from the protocol. Select Cancel to close it.",
+    "description": "Error shown in a missing-translation field when the protocol no longer accepts the translation: the text it translates, or the language it is written in, was removed from the protocol. Cancel is the label of the button that closes the field."
   },
   "architect.localization.missingTranslations.saved": {
     "defaultMessage": "{language} translation saved.",
@@ -1928,7 +1928,7 @@
     "description": "Screen-reader announcement after the last missing translation in the protocol is written. language is the language of the translation."
   },
   "architect.localization.missingTranslations.savedLanguageComplete": {
-    "defaultMessage": "{language} translation saved. Every text now has a {language} translation, so the missing {next} translations are shown.",
+    "defaultMessage": "{language} translation saved. Every text now has a {language} translation, so the list shows texts with no {next} translation instead.",
     "description": "Screen-reader announcement after the last missing translation in one language is written, when the list moves on to another language. language is the language just completed; next is the language now listed."
   },
   "architect.localization.missingTranslations.singleLanguage": {
@@ -1984,7 +1984,7 @@
     "description": "Label for the choice of the languages a new protocol is written in."
   },
   "architect.newProtocolDialog.protocolLanguagesHint": {
-    "defaultMessage": "The languages participants can take this protocol in. You can change them later on the Languages page.",
+    "defaultMessage": "The languages participants can take the interview in. You can change them later on the Languages page.",
     "description": "Hint for the new protocol languages. \"Languages page\" is the protocol tab where languages are managed."
   },
   "architect.newProtocolDialog.protocolName": {
@@ -2124,7 +2124,7 @@
     "description": "Visible text in components / pages / ExperimentsPage."
   },
   "architect.pages.localizationPage.description": {
-    "defaultMessage": "Choose the languages participants can take this protocol in, and see which text still needs translating.",
+    "defaultMessage": "Choose the languages participants can take the interview in, and see which text still needs translating.",
     "description": "Description of the page that manages protocol languages."
   },
   "architect.pages.localizationPage.title": {
