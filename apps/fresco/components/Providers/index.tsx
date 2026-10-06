@@ -39,7 +39,12 @@ export default function Providers({
             </TooltipProvider>
             <LocaleLoadFailureToast
               onReload={() => window.location.reload()}
-              onFailure={captureClientException}
+              onFailure={(error, locale) =>
+                captureClientException(error, {
+                  operation: 'locale-load',
+                  locale,
+                })
+              }
             />
             <Toaster />
           </Toast.Provider>
