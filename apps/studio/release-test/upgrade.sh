@@ -79,10 +79,11 @@ BACKUP="$(guide_block "$STUDIO_DIR/docs/self-host/backup.md" backup-take)"
 # The three lines the proof hangs on, in the order the guide's rule needs
 # them: the flag has landed, then nothing that writes is running, then the
 # backup.
-line_of() { grep -n -m 1 -x -e "$1" <<< "$SEQUENCE" | cut -d: -f1; }
-wait_at="$(grep -n -m 1 '^# wait until /readyz names maintenance mode' <<< "$SEQUENCE" | cut -d: -f1)"
-stop_at="$(line_of "$STOP_LINE")"
-backup_at="$(grep -n -m 1 '^# take your backup' <<< "$SEQUENCE" | cut -d: -f1)"
+# `|| true`: a line that is missing is the guard's to report, not `set -e`'s.
+line_of() { { grep -n -m 1 "$@" <<< "$SEQUENCE" || true; } | cut -d: -f1; }
+wait_at="$(line_of '^# wait until /readyz names maintenance mode')"
+stop_at="$(line_of -x -e "$STOP_LINE")"
+backup_at="$(line_of '^# take your backup')"
 [ -n "$wait_at" ] || die "the upgrade sequence no longer has its '# wait until /readyz names maintenance mode' line"
 [ -n "$stop_at" ] || die "the upgrade sequence no longer stops api and worker ('$STOP_LINE') before the backup"
 [ -n "$backup_at" ] || die "the upgrade sequence no longer has its '# take your backup' line, which is where backup.md's block runs"
