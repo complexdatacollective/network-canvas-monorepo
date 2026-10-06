@@ -83,9 +83,17 @@ function scanDoubleQuoted(script: string, open: number): number {
   return script.length;
 }
 
+/** Postgres ends a `--` comment at a carriage return as well as a newline. */
 function scanLineComment(script: string, open: number): number {
-  const end = script.indexOf('\n', open + 2);
-  return end === -1 ? script.length : end;
+  let index = open + 2;
+  while (
+    index < script.length &&
+    script[index] !== '\n' &&
+    script[index] !== '\r'
+  ) {
+    index += 1;
+  }
+  return index;
 }
 
 /** Postgres block comments nest: an inner opener needs its own closer. */
