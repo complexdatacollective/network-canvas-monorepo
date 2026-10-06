@@ -62,4 +62,22 @@ describe('UpdatesList', () => {
     search('hiddenword');
     expect(screen.queryAllByRole('article', { hidden: true })).toHaveLength(0);
   });
+
+  it('matches words inside raw HTML the card displays', () => {
+    renderWithIntl(
+      <UpdatesList
+        updates={[
+          {
+            ...update,
+            summary: 'Intro\n\n<p>New <em>localisation</em> support</p>',
+          },
+        ]}
+      />,
+    );
+
+    expect(screen.getByText('localisation')).toBeInTheDocument();
+
+    search('localisation');
+    expect(screen.getAllByRole('article', { hidden: true })).toHaveLength(1);
+  });
 });

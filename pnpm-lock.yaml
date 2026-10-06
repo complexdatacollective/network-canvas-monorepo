@@ -1842,9 +1842,6 @@ importers:
       lucide-react:
         specifier: 'catalog:'
         version: 1.49.0(@types/react@19.3.0)(react@19.3.0)
-      mdast-util-from-markdown:
-        specifier: ^2.0.3
-        version: 2.0.3(supports-color@10.2.2)
       motion:
         specifier: 'catalog:'
         version: 13.4.6(react-dom@19.3.0(react@19.3.0))(react@19.3.0)

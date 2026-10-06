@@ -28,7 +28,6 @@
     "@posthog/react": "catalog:",
     "csvtojson": "catalog:",
     "lucide-react": "catalog:",
-    "mdast-util-from-markdown": "^2.0.3",
     "motion": "catalog:",
     "next": "catalog:",
     "next-intl": "^4.14.8",

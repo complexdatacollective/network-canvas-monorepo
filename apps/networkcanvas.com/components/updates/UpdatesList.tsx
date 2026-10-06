@@ -2,7 +2,6 @@
 
 import { Accordion as BaseAccordion } from '@base-ui/react/accordion';
 import { ArrowRight, ChevronDown, Search, X } from 'lucide-react';
-import { fromMarkdown } from 'mdast-util-from-markdown';
 import { useFormatter, useLocale, useTranslations } from 'next-intl';
 import { Fragment, type ReactNode, useEffect, useMemo, useState } from 'react';
 
@@ -18,6 +17,7 @@ import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import {
   ALLOWED_MARKDOWN_SECTION_TAGS,
+  getMarkdownLabelText,
   RenderMarkdown,
 } from '@codaco/fresco-ui/RenderMarkdown';
 import Tag from '@codaco/fresco-ui/Tag';
@@ -46,22 +46,15 @@ function MarkdownLink({
 
 const markdownComponents = { a: MarkdownLink };
 
-type MarkdownNode = { type: string; value?: string; children?: MarkdownNode[] };
-
 // Only what a reader sees is searchable: link destinations and definitions
-// are not, so the index is built from the parsed Markdown's visible text.
-function visibleText(node: MarkdownNode): string[] {
-  if (node.type === 'text' || node.type === 'inlineCode') {
-    return [node.value ?? ''];
-  }
-  return (node.children ?? []).flatMap(visibleText);
-}
-
+// are not.
 function searchableText(update: Update, locale: string) {
-  const markdown = [update.summary, update.details]
-    .filter(Boolean)
-    .join('\n\n');
-  const text = [update.title, ...visibleText(fromMarkdown(markdown))].join(' ');
+  const text = [
+    update.title,
+    ...[update.summary, update.details]
+      .filter((part): part is string => Boolean(part))
+      .map(getMarkdownLabelText),
+  ].join(' ');
   return foldText(text, locale);
 }
 
