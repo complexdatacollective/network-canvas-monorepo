@@ -129,6 +129,8 @@ export type OwnedScratchDatabase = {
   readonly pool: pg.Pool;
   /** Connected as the cluster's superuser, for oracles the owner cannot run. */
   readonly admin: pg.Pool;
+  /** The same database as the cluster's superuser, for code that takes a URL. */
+  readonly adminDb: DbEnv;
   readonly dispose: () => Promise<void>;
 };
 
@@ -159,12 +161,14 @@ export async function createOwnedScratchDatabase(
   };
   const owned = { url: urlAs(TEST_OWNER, TEST_OWNER_PASSWORD) };
   const pool = createOwnerPool(owned);
-  const admin = createOwnerPool({ url: urlAs(null, null) });
+  const adminDb = { url: urlAs(null, null) };
+  const admin = createOwnerPool(adminDb);
 
   return {
     db: owned,
     pool,
     admin,
+    adminDb,
     dispose: async () => {
       await pool.end();
       await admin.end();
