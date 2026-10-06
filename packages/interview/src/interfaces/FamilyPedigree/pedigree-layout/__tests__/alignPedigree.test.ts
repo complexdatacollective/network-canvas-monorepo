@@ -1125,6 +1125,79 @@ describe('a person with three partners', () => {
     expect(withoutFamily).toBe(2);
   });
 
+  // Every primary parent of a child without a family has its own line to the
+  // child, whether or not the parents were recorded as partners.
+  const expectDirectLinesForChildrenWithoutFamily = (
+    input: PedigreeInput,
+    expectedWithoutFamily: number,
+  ) => {
+    const result = alignPedigree(input);
+    const conn = computeConnectors(
+      result,
+      defaultScaling,
+      input.parents,
+      new Set(),
+      undefined,
+      undefined,
+      undefined,
+      input.id,
+      new Set(),
+    );
+    const direct = new Set(
+      conn.auxiliaryLines.map((line) => line.endpointIds?.join('→')),
+    );
+    let withoutFamily = 0;
+    for (let level = 1; level < result.n.length; level++) {
+      for (let col = 0; col < result.n[level]!; col++) {
+        if (result.fam[level]![col] !== 0) continue;
+        const child = result.nid[level]![col]!;
+        const primary = input.parents[child]!.filter(
+          (p) => p.edgeType !== 'donor' && p.edgeType !== 'surrogate',
+        );
+        if (primary.length === 0) continue;
+        withoutFamily++;
+        for (const { parentIndex } of primary) {
+          expect(direct).toContain(
+            `${input.id[parentIndex]}→${input.id[child]}`,
+          );
+        }
+      }
+    }
+    expect(withoutFamily).toBe(expectedWithoutFamily);
+  };
+
+  it('joins each parent to a child of a separated couple inferred from children', () => {
+    // No partnerships recorded: parent's three couples are inferred from the
+    // children they share, and one of them cannot sit together.
+    expectDirectLinesForChildrenWithoutFamily(
+      {
+        id: ['parent', 'a', 'b', 'c', 'kidA', 'kidB', 'kidC'],
+        parents: [
+          [],
+          [],
+          [],
+          [],
+          [sp(0), sp(1)],
+          [sp(0), sp(2)],
+          [sp(0), sp(3)],
+        ],
+      },
+      1,
+    );
+  });
+
+  it('joins each parent to a child whose parents are not a couple', () => {
+    // A biological parent and an unpartnered step-parent: no couple to
+    // descend from.
+    expectDirectLinesForChildrenWithoutFamily(
+      {
+        id: ['parent', 'step', 'kid'],
+        parents: [[], [], [sp(0), { parentIndex: 1, edgeType: 'social' }]],
+      },
+      1,
+    );
+  });
+
   it('joins a donor to a child whose couple cannot sit together', () => {
     // kidC2 of the couple left apart, conceived with an egg donor.
     const withDonor: PedigreeInput = {

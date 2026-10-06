@@ -761,10 +761,14 @@ export function computeConnectors(
         }
       }
 
-      if (partneredParents.size === 0) continue;
-
       // Determine which parent pair the child is assigned to (primary family)
       const childFam = layout.fam[i]?.[j] ?? 0;
+
+      // A child with a family descends from it, and only its partnered other
+      // parents need a line of their own. A child without one (its parents
+      // are not a couple, or their couple could not sit together) is joined
+      // to every parent directly, whether or not they are partners.
+      if (partneredParents.size === 0 && childFam !== 0) continue;
       const primaryCoupleLeft = childFam > 0 ? childFam - 1 : -1;
       const primaryParentLevelN = layout.n[i - 1] ?? 0;
       const primaryHasRight =
