@@ -126,3 +126,61 @@ export function chaseup(x: number[], parents: ParentConnection[][]): number[] {
 export function isGroupMarker(val: number): boolean {
   return val !== Math.floor(val);
 }
+
+/**
+ * Layer constraints over n people, each asking that `to` sit at least `gap`
+ * layers below `from`. Descent (gap 1) is always kept. An alignment (gap 0)
+ * is kept only if every constraint can still hold together, which fails
+ * exactly when a cycle includes a step down: someone would have to sit level
+ * with, or above, their own descendant.
+ */
+export function layerConstraints(n: number) {
+  const below: { to: number; gap: number }[][] = Array.from(
+    { length: n },
+    () => [],
+  );
+  const onDescendingCycle = (node: number) => {
+    const seen = new Set<string>();
+    const queue: [number, boolean][] = [[node, false]];
+    while (queue.length > 0) {
+      const [at, descended] = queue.shift()!;
+      for (const { to, gap } of below[at]!) {
+        const next = descended || gap > 0;
+        if (to === node && next) return true;
+        const key = `${to},${next}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        queue.push([to, next]);
+      }
+    }
+    return false;
+  };
+  return {
+    /** Adds the constraints together; returns whether they were kept. */
+    constrain(pairs: [from: number, to: number][], gap: number): boolean {
+      for (const [from, to] of pairs) below[from]!.push({ to, gap });
+      // The constraints held before, so any new cycle passes through these.
+      if (gap > 0 || !pairs.some(([from]) => onDescendingCycle(from))) {
+        return true;
+      }
+      for (const [from] of pairs) below[from]!.pop();
+      return false;
+    },
+    /** Raises layers until every kept constraint holds. Layers only ever
+     * increase, and with no cycle left to climb this settles within n
+     * passes. */
+    settle(layers: number[]) {
+      for (let changed = true, pass = 0; changed && pass <= n; pass++) {
+        changed = false;
+        for (let from = 0; from < n; from++) {
+          for (const { to, gap } of below[from]!) {
+            if (layers[to]! < layers[from]! + gap) {
+              layers[to] = layers[from]! + gap;
+              changed = true;
+            }
+          }
+        }
+      }
+    },
+  };
+}
