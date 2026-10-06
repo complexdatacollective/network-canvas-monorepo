@@ -26,10 +26,8 @@ import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 import type { NcNode } from '@codaco/shared-consts';
 
-import {
-  InterviewI18nProvider,
-  interviewCatalogSource,
-} from '../../../../../i18n/InterviewI18nProvider';
+import { interviewCatalogSource } from '../../../../../i18n/catalog';
+import { InterviewI18nProvider } from '../../../../../i18n/InterviewI18nProvider';
 import { FamilyPedigreeContext } from '../../../FamilyPedigreeContext';
 import { createFamilyPedigreeStore, type VariableConfig } from '../../../store';
 

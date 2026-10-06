@@ -3,14 +3,17 @@ import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
+import { commonCatalogLoaders } from '@codaco/app-i18n/common';
+import { createCatalogSource } from '@codaco/app-i18n/locales';
 import { AnimationProvider } from '@codaco/fresco-ui/AnimationProvider';
+import { frescoUiCatalogLoaders } from '@codaco/fresco-ui/locales';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
 } from '@codaco/shared-consts';
 
 import type { InterviewPayload } from '../contract/types';
-import { interviewCatalogSource } from '../i18n/InterviewI18nProvider';
+import { interviewCatalogSource } from '../i18n/catalog';
 import Shell from '../Shell';
 
 vi.mock('../hooks/useMediaQuery', () => ({ default: () => false }));
@@ -23,7 +26,11 @@ vi.mock('../interfaces', () => {
 });
 
 // The interview's German and French catalogs arrive only when a test lets
-// them, so the Shell can be looked at while one is still on its way.
+// them, so the Shell can be looked at while one is still on its way. Dutch
+// never arrives: only a server can supply it.
+const neverLoadsDutch = vi.hoisted(() =>
+  vi.fn(() => new Promise<never>(() => {})),
+);
 const gates = vi.hoisted(() => {
   const gate = () => {
     let open = () => {};
@@ -51,6 +58,7 @@ vi.mock('../locales/catalogs', async (importOriginal) => {
       ...interviewCatalogLoaders,
       de: heldBack('de'),
       fr: heldBack('fr'),
+      nl: neverLoadsDutch,
     },
   };
 });
@@ -182,6 +190,40 @@ describe('Shell catalog loading', () => {
     } finally {
       observer.disconnect();
     }
+  });
+
+  it('renders a server-delivered catalog at once, without loading it again', async () => {
+    // The server's module instance, not this page's: nothing it loaded is in
+    // the source the Shell reads.
+    const { interviewCatalogLoaders } = await vi.importActual<
+      typeof import('../locales/catalogs')
+    >('../locales/catalogs');
+    const catalog = {
+      locale: 'nl',
+      messages: await createCatalogSource(
+        commonCatalogLoaders,
+        frescoUiCatalogLoaders,
+        interviewCatalogLoaders,
+      ).load('nl'),
+    };
+
+    render(
+      <Shell
+        {...handlers}
+        payload={payload}
+        requestedLocale="nl-BE"
+        catalog={catalog}
+        disableAnalytics
+      />,
+    );
+
+    const region = screen.getByRole('main');
+    expect(region).toHaveAttribute('lang', 'nl');
+    expect(region).not.toHaveAttribute('aria-busy');
+    const next = screen.getByRole('button', { name: 'Volgende stap' });
+    await settle();
+    expect(next).toBeVisible();
+    expect(neverLoadsDutch).not.toHaveBeenCalled();
   });
 
   it('keeps the current language while a newly chosen one loads, with the menu already showing the choice', async () => {

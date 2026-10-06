@@ -58,10 +58,8 @@ vi.mock('react-redux', () => ({
   useSelector: (selector: (state: unknown) => unknown) => selector({}),
 }));
 
-import {
-  InterviewI18nProvider,
-  interviewCatalogSource,
-} from '../../../i18n/InterviewI18nProvider';
+import { interviewCatalogSource } from '../../../i18n/catalog';
+import { InterviewI18nProvider } from '../../../i18n/InterviewI18nProvider';
 // The hook under test (imported after mocks are declared)
 import {
   type ExtendedMapOptions,

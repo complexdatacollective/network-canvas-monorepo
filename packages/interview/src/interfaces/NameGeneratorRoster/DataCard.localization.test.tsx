@@ -1,10 +1,8 @@
 import { render, screen, within } from '@testing-library/react';
 import { beforeAll, describe, expect, it } from 'vitest';
 
-import {
-  InterviewI18nProvider,
-  interviewCatalogSource,
-} from '../../i18n/InterviewI18nProvider';
+import { interviewCatalogSource } from '../../i18n/catalog';
+import { InterviewI18nProvider } from '../../i18n/InterviewI18nProvider';
 import DataCard from './DataCard';
 
 const details = {

@@ -54,10 +54,8 @@ vi.mock('es-toolkit', () => ({
 
 import type { Map as MapboxMap } from 'mapbox-gl/esm';
 
-import {
-  InterviewI18nProvider,
-  interviewCatalogSource,
-} from '../../../i18n/InterviewI18nProvider';
+import { interviewCatalogSource } from '../../../i18n/catalog';
+import { InterviewI18nProvider } from '../../../i18n/InterviewI18nProvider';
 import GeospatialSearch from '../GeospatialSearch';
 
 // jsdom has neither, and fresco-ui's Collection/ScrollArea construct both on

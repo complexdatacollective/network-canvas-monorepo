@@ -1,10 +1,8 @@
 import { render, screen } from '@testing-library/react';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
-import {
-  InterviewI18nProvider,
-  interviewCatalogSource,
-} from '../../i18n/InterviewI18nProvider';
+import { interviewCatalogSource } from '../../i18n/catalog';
+import { InterviewI18nProvider } from '../../i18n/InterviewI18nProvider';
 import useItems from './useItems';
 
 const { sourceNodes, typeDefinition } = vi.hoisted(() => ({

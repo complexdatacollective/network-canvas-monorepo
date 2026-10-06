@@ -8,10 +8,8 @@ import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 
 import { ContractProvider } from '../../contract/context';
 import type { FinishHandler, InterviewPayload } from '../../contract/types';
-import {
-  InterviewI18nProvider,
-  interviewCatalogSource,
-} from '../../i18n/InterviewI18nProvider';
+import { interviewCatalogSource } from '../../i18n/catalog';
+import { InterviewI18nProvider } from '../../i18n/InterviewI18nProvider';
 import { store as createStore } from '../../store/store';
 import { SyncFlushProvider } from '../../store/SyncFlushContext';
 import FinishSession from '../FinishSession';

@@ -14,6 +14,7 @@ import { commonMessages } from '@codaco/app-i18n/common';
 import type { CatalogMessages } from '@codaco/app-i18n/locales';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import type { InterviewPayload } from '@codaco/interview';
+import { loadInterviewCatalog } from '@codaco/interview/catalog';
 import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
 import InterviewClient from '~/app/(interview)/interview/[interviewId]/InterviewClient';
 import ParticipantLayout from '~/app/(interview)/layout';
@@ -98,6 +99,8 @@ const originalPayload = structuredClone(payload);
 const en = await frescoCatalogSource.load('en');
 const es = await frescoCatalogSource.load('es');
 await frescoCatalogSource.load('en-GB');
+// What the interview page loads on the server for a Spanish request.
+const interviewCatalog = await loadInterviewCatalog('es');
 
 const spanish: FrescoI18nInitialization = {
   locale: 'es',
@@ -131,6 +134,7 @@ function Host({
           initialSyncRevision={0}
           installationId="test-installation"
           disableAnalytics
+          catalog={interviewCatalog}
         />
       </ParticipantLayout>
     </FrescoI18nProvider>
@@ -157,7 +161,11 @@ describe('Fresco passes its resolved host request to the interview package', () 
       screen.getByRole('button', { name: 'Continue' }).closest('[lang]'),
     ).toHaveAttribute('lang', 'en');
     expect(shell).toHaveBeenLastCalledWith(
-      expect.objectContaining({ requestedLocale: 'es', payload }),
+      expect.objectContaining({
+        requestedLocale: 'es',
+        catalog: interviewCatalog,
+        payload,
+      }),
     );
     // Omitting this callback keeps a participant menu choice out of the
     // researcher preference persistence path.

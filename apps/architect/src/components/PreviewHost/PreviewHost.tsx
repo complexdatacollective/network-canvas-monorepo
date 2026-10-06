@@ -22,6 +22,7 @@ import {
   type SessionPayload,
   Shell,
 } from '@codaco/interview';
+import { loadInterviewCatalog } from '@codaco/interview/catalog';
 import {
   type ConstraintConflict,
   generateNetwork,
@@ -266,6 +267,12 @@ export function PreviewHost() {
     number | null
   >(null);
   const onRequestAsset = useAssetResolver(protocolId);
+  // The interview's messages load during the handshake and the synthetic
+  // network build, rather than once the Shell mounts. A failure here is
+  // retried by the Shell itself.
+  useEffect(() => {
+    loadInterviewCatalog(intl.locale).catch(() => undefined);
+  }, [intl.locale]);
   useEffect(() => {
     const opener = window.opener as Window | null;
     if (!opener) return;

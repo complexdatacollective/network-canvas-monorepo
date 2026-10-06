@@ -18,7 +18,7 @@ import {
 
 import ActionButton from '../components/ActionButton';
 import type { InterviewPayload } from '../contract/types';
-import { interviewCatalogSource } from '../i18n/InterviewI18nProvider';
+import { interviewCatalogSource } from '../i18n/catalog';
 import Shell from '../Shell';
 import { updateStageMetadata } from '../store/modules/session';
 

@@ -10,33 +10,15 @@ import {
   useState,
 } from 'react';
 
-import { commonCatalogLoaders } from '@codaco/app-i18n/common';
-import { createCatalogSource } from '@codaco/app-i18n/locales';
 import { AppI18nProvider, useLocaleCatalog } from '@codaco/app-i18n/react';
-import { frescoUiCatalogLoaders } from '@codaco/fresco-ui/locales';
 
-import { interviewCatalogLoaders } from '../locales/catalogs';
+import { type InterviewCatalog, interviewCatalogSource } from './catalog';
 import {
   interviewLocales,
   negotiateInterviewLocale,
   type RequestedLocale,
   resolveInterviewLocale,
 } from './locales';
-
-// Every interface language, merged common → fresco-ui → interview and loaded
-// one language at a time: each is its own chunk, so an interview downloads
-// and parses only the language it shows. Offline hosts still have every
-// language because their service workers precache every chunk of the build,
-// not because this module carries them. One source serves every Shell on the
-// page, so a language is fetched once however many interviews show it, while
-// each provider keeps its own locale and formatter: no parent catalog or
-// mutable global locale can leak a researcher's language into another
-// interview on the same page.
-export const interviewCatalogSource = createCatalogSource(
-  commonCatalogLoaders,
-  frescoUiCatalogLoaders,
-  interviewCatalogLoaders,
-);
 
 /**
  * The menu's side of the locale: what the participant asked for, not what is
@@ -62,19 +44,22 @@ export const useInterviewLocale = () => useContext(InterviewLocaleContext);
  *
  * Mounting in a language whose catalog this page has not loaded yet suspends
  * until it has, rather than render English and swap, so a host renders this
- * under a Suspense boundary (`Shell` brings its own). Once mounted it never
- * suspends again: a later switch keeps the current language on screen until
- * the new one is ready.
+ * under a Suspense boundary (`Shell` brings its own) or passes the matching
+ * `catalog` from `loadInterviewCatalog`. Once mounted it never suspends again:
+ * a later switch keeps the current language on screen until the new one is
+ * ready.
  */
 export function InterviewI18nProvider({
   requestedLocale,
   localePreference,
   onLocaleChange,
+  catalog,
   children,
 }: {
   requestedLocale?: RequestedLocale;
   localePreference?: string | null;
   onLocaleChange?: (locale: string | null) => void;
+  catalog?: InterviewCatalog;
   children: ReactNode;
 }) {
   const requestKey = JSON.stringify(requestedLocale ?? null);
@@ -132,7 +117,7 @@ export function InterviewI18nProvider({
     () => ({ preference, setPreference }),
     [preference, setPreference],
   );
-  const rendered = useLocaleCatalog(interviewCatalogSource, locale);
+  const rendered = useLocaleCatalog(interviewCatalogSource, locale, catalog);
   const direction = interviewLocales.find(
     (entry) => entry.locale === rendered.locale,
   )!.direction;

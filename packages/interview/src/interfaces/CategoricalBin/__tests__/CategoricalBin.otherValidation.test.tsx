@@ -27,10 +27,8 @@ import {
 
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import type { ProtocolPayload } from '../../../contract/types';
-import {
-  InterviewI18nProvider,
-  interviewCatalogSource,
-} from '../../../i18n/InterviewI18nProvider';
+import { interviewCatalogSource } from '../../../i18n/catalog';
+import { InterviewI18nProvider } from '../../../i18n/InterviewI18nProvider';
 import protocol from '../../../store/modules/protocol';
 import session, { type SessionState } from '../../../store/modules/session';
 import ui from '../../../store/modules/ui';

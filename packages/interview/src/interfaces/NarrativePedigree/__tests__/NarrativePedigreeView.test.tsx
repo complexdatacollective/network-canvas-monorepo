@@ -16,10 +16,8 @@ import {
 } from '@codaco/shared-consts';
 
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
-import {
-  InterviewI18nProvider,
-  interviewCatalogSource,
-} from '../../../i18n/InterviewI18nProvider';
+import { interviewCatalogSource } from '../../../i18n/catalog';
+import { InterviewI18nProvider } from '../../../i18n/InterviewI18nProvider';
 import protocol from '../../../store/modules/protocol';
 import session from '../../../store/modules/session';
 import type { StageProps } from '../../../types';

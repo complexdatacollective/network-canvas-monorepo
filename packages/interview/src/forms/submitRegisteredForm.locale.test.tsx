@@ -8,10 +8,8 @@ import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import Form from '@codaco/fresco-ui/form/Form';
 import { FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider';
 
-import {
-  InterviewI18nProvider,
-  interviewCatalogSource,
-} from '../i18n/InterviewI18nProvider';
+import { interviewCatalogSource } from '../i18n/catalog';
+import { InterviewI18nProvider } from '../i18n/InterviewI18nProvider';
 import { submitRegisteredForm } from './submitRegisteredForm';
 
 type FormStoreApi = NonNullable<ContextType<typeof FormStoreContext>>;

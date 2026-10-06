@@ -24,6 +24,7 @@ import {
   type SyncHandler,
   getLastAvailableAuthoredStageIndex,
 } from '@codaco/interview';
+import { loadInterviewCatalog } from '@codaco/interview/catalog';
 import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
 import { InterviewComplete } from '~/components/InterviewComplete';
 import { useInterviewerLocale } from '~/i18n/InterviewerI18nProvider';
@@ -215,6 +216,13 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
     },
     [textScaleStorageKey],
   );
+
+  // The interview's messages load while the session below is unlocked and
+  // decrypted, rather than once the Shell mounts. A failure here is retried by
+  // the Shell itself.
+  useEffect(() => {
+    loadInterviewCatalog(intl.locale, preference).catch(() => undefined);
+  }, [intl.locale, preference]);
 
   // Gated exit shared by the Shell exit button and the completion screen.
   const handleExit = useCallback(async () => {

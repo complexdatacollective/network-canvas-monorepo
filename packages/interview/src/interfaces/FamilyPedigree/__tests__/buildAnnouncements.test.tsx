@@ -5,10 +5,8 @@ import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { asEntityAttributeReference } from '@codaco/protocol-validation';
 import type { NcEdge, NcNode } from '@codaco/shared-consts';
 
-import {
-  InterviewI18nProvider,
-  interviewCatalogSource,
-} from '../../../i18n/InterviewI18nProvider';
+import { interviewCatalogSource } from '../../../i18n/catalog';
+import { InterviewI18nProvider } from '../../../i18n/InterviewI18nProvider';
 import type * as sessionSelectors from '../../../selectors/session';
 import type * as interviewStore from '../../../store/store';
 import type { StageProps } from '../../../types';

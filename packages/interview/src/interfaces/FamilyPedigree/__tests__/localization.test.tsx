@@ -11,10 +11,8 @@ import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import type { NcEdge, NcNode } from '@codaco/shared-consts';
 
-import {
-  InterviewI18nProvider,
-  interviewCatalogSource,
-} from '../../../i18n/InterviewI18nProvider';
+import { interviewCatalogSource } from '../../../i18n/catalog';
+import { InterviewI18nProvider } from '../../../i18n/InterviewI18nProvider';
 import { interviewCatalogLoaders } from '../../../locales/catalogs';
 import BiologicalSexField from '../components/BiologicalSexField';
 import ParentPartnershipsStep from '../components/quickStartWizard/ParentPartnershipsStep';

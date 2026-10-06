@@ -29,7 +29,7 @@ import {
 
 import type { InterviewPayload, SyncHandler } from '../contract/types';
 import useStageValidation from '../hooks/useStageValidation';
-import { interviewCatalogSource } from '../i18n/InterviewI18nProvider';
+import { interviewCatalogSource } from '../i18n/catalog';
 import { runtimeMessages } from '../i18n/runtimeMessages';
 import Shell from '../Shell';
 import {

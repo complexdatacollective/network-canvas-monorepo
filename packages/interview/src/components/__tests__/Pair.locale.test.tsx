@@ -7,10 +7,8 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
-import {
-  InterviewI18nProvider,
-  interviewCatalogSource,
-} from '../../i18n/InterviewI18nProvider';
+import { interviewCatalogSource } from '../../i18n/catalog';
+import { InterviewI18nProvider } from '../../i18n/InterviewI18nProvider';
 import Pair from '../Pair';
 
 // Isolate the pair's accessible name from decryption and graphical nodes;

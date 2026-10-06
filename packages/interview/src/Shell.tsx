@@ -47,6 +47,7 @@ import type {
 } from './contract/types';
 import useInterviewNavigation from './hooks/useInterviewNavigation';
 import useMediaQuery from './hooks/useMediaQuery';
+import type { InterviewCatalog } from './i18n/catalog';
 import { InterviewI18nProvider } from './i18n/InterviewI18nProvider';
 import type { RequestedLocale } from './i18n/locales';
 import { getLastAvailableAuthoredStageIndex } from './selectors/skip-logic';
@@ -348,6 +349,15 @@ type ShellProps = {
    * Choosing a language never changes the payload or collected answers.
    */
   onLocaleChange?: (locale: string | null) => void;
+  /**
+   * The interface language's messages, from `loadInterviewCatalog` given the
+   * same `requestedLocale` and `localePreference`. Without it, a Shell opening
+   * in a language this page has not loaded shows its loading screen while that
+   * language downloads; a server host passes it so the interview renders, and
+   * hydrates, without waiting. Used only while it matches the negotiated
+   * language, so a later switch loads normally.
+   */
+  catalog?: InterviewCatalog;
   /** Show the interface-language chooser in the settings menu. Default true. */
   allowLanguageSelection?: boolean;
   payload: InterviewPayload;
@@ -420,6 +430,7 @@ const Shell = ({
   requestedLocale,
   localePreference,
   onLocaleChange,
+  catalog,
   allowLanguageSelection = true,
   payload,
   onSync,
@@ -578,13 +589,14 @@ const Shell = ({
   // committed while the fallback shows, so nothing is lost or created twice
   // when the interview mounts. A server render suspends here too and streams
   // the interview once the catalog is in, and hydration waits for the same
-  // catalog rather than mismatch.
+  // catalog rather than mismatch. A host that passes `catalog` skips both.
   return (
     <Suspense fallback={<LoadingInterview />}>
       <InterviewI18nProvider
         requestedLocale={requestedLocale}
         localePreference={localePreference}
         onLocaleChange={onLocaleChange}
+        catalog={catalog}
       >
         <AnalyticsProvider
           analytics={analytics}

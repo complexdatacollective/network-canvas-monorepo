@@ -227,6 +227,7 @@ different stages without re-creating the Redux store: only the
 | `requestedLocale`               | `string \| readonly string[] \| null`                                 | no       | A user preference, resolved host locale, or ordered locale requests. The package negotiates against its own supported interface languages; unmatched requests use English.                                                                                                                                                 |
 | `localePreference`              | `string \| null`                                                      | no       | Optional controlled menu choice, paired with `onLocaleChange`. A string selects the best supported match; `null` follows `requestedLocale`. Omit it to keep menu selection local to the package.                                                                                                                           |
 | `onLocaleChange`                | `(locale: string \| null) => void`                                    | no       | Called after a menu selection so the host can persist it. `null` means follow the host request again.                                                                                                                                                                                                                      |
+| `catalog`                       | `InterviewCatalog`                                                    | no       | The interface language's messages from `loadInterviewCatalog`, given the same `requestedLocale` and `localePreference`. Lets the interview render, and hydrate, without waiting for that language to download. Used only while it matches the negotiated language.                                                         |
 | `allowLanguageSelection`        | `boolean`                                                             | no       | Show the interface language chooser in the settings menu. Defaults to `true`.                                                                                                                                                                                                                                              |
 | `flags`                         | `{ isE2E?, isDevelopment? }`                                          | no       | `isE2E: true` exposes `window.__interviewStore` for Playwright fixtures. `isDevelopment: true` enables redux-logger.                                                                                                                                                                                                       |
 
@@ -247,6 +248,15 @@ rather than render English first, and a later switch keeps the current
 language on screen until the new one is ready. An offline host keeps every
 language available by precaching every chunk of its build, as a PWA's service
 worker does.
+
+A host can take that download off the interview's path with
+`loadInterviewCatalog(requestedLocale, localePreference)` from
+`@codaco/interview/catalog`, which negotiates exactly as `Shell` does and
+resolves to `{ locale, messages }`. The entry carries no React, so a server
+can import it: a server-rendered host awaits it and passes the result as
+`catalog`, and the interview renders and hydrates in that language with no
+spinner and no request. A client host calls it without awaiting while it
+prepares the payload; the Shell then finds the language already loaded.
 
 The setting controls package-provided buttons, menus, validation, accessibility
 labels, help, and stage controls. Protocol-authored titles, prompts, labels,
@@ -442,8 +452,9 @@ so persistence and export do not reintroduce nullish attribute values.
 ## Public API reference
 
 Everything below is exported from `'@codaco/interview'`. Additional public
-subpaths expose the contract, protocol schema version, locale catalogs and
-styles; host code should not reach into package internals.
+subpaths expose the contract, protocol schema version, locale catalogs, the
+interview catalog loader (`@codaco/interview/catalog`) and styles; host code
+should not reach into package internals.
 
 ### Components
 
