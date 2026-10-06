@@ -16,7 +16,7 @@ import {
   ProtocolSummary,
 } from '../schema/protocol.ts';
 import { CompleteSetupResult } from '../schema/setup.ts';
-import { InstanceStatus } from '../schema/status.ts';
+import { InstanceStatus, UpdateAvailable } from '../schema/status.ts';
 import { StudyDetail, StudySummary } from '../schema/study.ts';
 import {
   AcceptTeamInvitationResult,
@@ -134,6 +134,32 @@ const ENCODED_AUDIT_EVENT = {
 };
 
 describe('the documents the rpc plane puts on the wire', () => {
+  it('round-trips UpdateAvailable, and the null that answers everyone else', () => {
+    const answer = Schema.NullOr(UpdateAvailable);
+    const available = {
+      version: '1.3.0',
+      releasedAt: OCCURRED_AT,
+      notesUrl: 'https://releases.networkcanvas.com/studio/1.3.0',
+      schemaChange: true,
+    };
+    const encoded = {
+      ...available,
+      releasedAt: OCCURRED_AT_ISO,
+    };
+
+    expect(encode(answer)(available)).toStrictEqual(encoded);
+    expect(decode(answer)(encoded)).toStrictEqual(available);
+    expect(encode(answer)(null)).toBeNull();
+    expect(decode(answer)(null)).toBeNull();
+    // The wire shape is the four fields and no more: nothing about the
+    // instance's own state rides along with the notice.
+    expect(
+      Object.keys(
+        encode(answer)(available) as Record<string, unknown>,
+      ).toSorted(),
+    ).toEqual(['notesUrl', 'releasedAt', 'schemaChange', 'version']);
+  });
+
   it('encodes InstanceStatus', () => {
     expect(encode(InstanceStatus)(VALID_STATUS)).toStrictEqual(ENCODED_STATUS);
   });
