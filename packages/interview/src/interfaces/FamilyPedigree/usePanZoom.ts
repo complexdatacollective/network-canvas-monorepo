@@ -63,6 +63,7 @@ export type PanZoom = {
   fitToView: (
     element: HTMLElement,
     insets: { top: number; right: number; bottom: number; left: number },
+    options?: { animated?: boolean },
   ) => void;
   /** Keeps an element where it is on screen across a change of layout,
    * given where it was in the content before the change. */
@@ -298,7 +299,7 @@ export function usePanZoom({
   );
 
   const fitToView = useCallback<PanZoom['fitToView']>(
-    (element, insets) => {
+    (element, insets, { animated = true } = {}) => {
       const viewport = viewportRef.current;
       if (!viewport) return;
       const width = element.offsetWidth;
@@ -317,7 +318,7 @@ export function usePanZoom({
         insets.left + availableWidth / 2 - centre.x * nextScale,
         insets.top + availableHeight / 2 - centre.y * nextScale,
         nextScale,
-        true,
+        animated,
       );
     },
     [viewportRef, contentPositionOf, moveTo],

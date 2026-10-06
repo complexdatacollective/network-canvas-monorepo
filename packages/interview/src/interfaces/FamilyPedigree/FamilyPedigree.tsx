@@ -330,19 +330,27 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   const promptRef = useRef<HTMLDivElement>(null);
   const toolbarAreaRef = useRef<HTMLDivElement>(null);
   // The whole family, clear of the prompt above and the toolbar below.
-  const showWholeFamily = useCallback(() => {
-    const layout = contentRef.current?.firstElementChild;
-    const viewport = viewportRef.current;
-    if (!(layout instanceof HTMLElement) || !viewport) return;
-    const toolbarTop = toolbarAreaRef.current?.getBoundingClientRect().top;
-    const viewportBottom = viewport.getBoundingClientRect().bottom;
-    panZoom.fitToView(layout, {
-      top: promptRef.current?.offsetHeight ?? 0,
-      bottom: toolbarTop === undefined ? 32 : viewportBottom - toolbarTop + 16,
-      left: 32,
-      right: 32,
-    });
-  }, [panZoom]);
+  const showWholeFamily = useCallback(
+    ({ animated = true }: { animated?: boolean } = {}) => {
+      const layout = contentRef.current?.firstElementChild;
+      const viewport = viewportRef.current;
+      if (!(layout instanceof HTMLElement) || !viewport) return;
+      const toolbarTop = toolbarAreaRef.current?.getBoundingClientRect().top;
+      const viewportBottom = viewport.getBoundingClientRect().bottom;
+      panZoom.fitToView(
+        layout,
+        {
+          top: promptRef.current?.offsetHeight ?? 0,
+          bottom:
+            toolbarTop === undefined ? 32 : viewportBottom - toolbarTop + 16,
+          left: 32,
+          right: 32,
+        },
+        { animated },
+      );
+    },
+    [panZoom],
+  );
 
   // No menu while the panel is open: it would offer to add to someone else
   // mid-way through describing this person. Nor while connecting or
@@ -447,31 +455,19 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     component: <Node size="sm" />,
   });
 
-  // Bring the participant into view once their symbol is first laid out, so a
-  // large family opens centred on them rather than on its top-left corner.
-  const centredOnEgo = useRef(false);
+  // Each prompt opens on the whole family, once the participant's symbol is
+  // laid out. The stage's first appears there at once; moving between
+  // prompts glides to it.
+  const fittedForPrompt = useRef<string | null>(null);
   useEffect(() => {
-    if (centredOnEgo.current || !family.egoId || nodeWidth === 0) return;
-    const egoNode = nodeRefs.current.get(family.egoId);
-    if (!egoNode) return;
-    centredOnEgo.current = true;
-    panZoom.centreOn(egoNode, { animated: false });
+    if (fittedForPrompt.current === prompt.id) return;
+    if (!family.egoId || nodeWidth === 0) return;
+    if (!nodeRefs.current.has(family.egoId)) return;
+    const first = fittedForPrompt.current === null;
+    fittedForPrompt.current = prompt.id;
+    showWholeFamily({ animated: !first });
   });
-
-  // Answering a nomination prompt, everyone is someone it might apply to, so
-  // the first one shown opens on the whole family.
   const nominating = nomination !== undefined;
-  const fittedForNomination = useRef(false);
-  useEffect(() => {
-    if (!nominating) {
-      fittedForNomination.current = false;
-      return;
-    }
-    if (fittedForNomination.current || nodeWidth === 0) return;
-    fittedForNomination.current = true;
-    centredOnEgo.current = true;
-    showWholeFamily();
-  }, [nominating, nodeWidth, showWholeFamily]);
 
   // Adding someone can move everyone else in the layout. The person in
   // question (the one selected, focused, or else the participant) stays where
@@ -1376,7 +1372,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
               <ToolbarIconButton
                 aria-label={intl.formatMessage(messages.showWholeFamily)}
                 icon={<Scan />}
-                onClick={showWholeFamily}
+                onClick={() => showWholeFamily()}
                 data-testid="pedigree-zoom-fit"
               />
               {progress && completeness && !nomination && <ToolbarSeparator />}

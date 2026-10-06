@@ -276,9 +276,22 @@ export const NominatingConditions: Story = {
     const father = () => canvas.getByRole('button', { name: /^Father/ });
     const mother = () => canvas.getByRole('button', { name: /^Mother/ });
     await canvas.findByText(PROMPT);
+    // Each new prompt brings back the whole family, wherever it was left.
+    const viewport = canvas.getByTestId('pedigree-canvas');
+    dragFamilyRight(viewport);
+    await waitFor(() =>
+      expect(
+        canvas
+          .getAllByTestId('pedigree-person')
+          .some(
+            (person) => !isInView(person, viewport.getBoundingClientRect()),
+          ),
+      ).toBe(true),
+    );
     await userEvent.click(canvas.getByTestId('next-button'));
 
     await canvas.findByText(HEART_PROMPT);
+    await waitFor(() => expectWholeFamilyInView(canvasElement));
     // Selecting is all there is: no tools, and no details panel.
     await waitFor(() =>
       expect(canvas.queryByTestId('pedigree-tool-connect')).toBeNull(),
@@ -330,6 +343,41 @@ export const NominatingConditions: Story = {
   },
 };
 
+/** Drags the canvas 600 pixels to the right with the mouse. */
+function dragFamilyRight(viewport: HTMLElement) {
+  const box = viewport.getBoundingClientRect();
+  const at = (step: number) => ({
+    pointerId: 1,
+    pointerType: 'mouse',
+    isPrimary: true,
+    clientX: box.left + 40 + step * 60,
+    clientY: box.top + 300,
+  });
+  fireEvent.pointerDown(viewport, { ...at(0), buttons: 1 });
+  for (let step = 1; step <= 10; step++) {
+    fireEvent.pointerMove(viewport, { ...at(step), buttons: 1 });
+  }
+  fireEvent.pointerUp(viewport, at(10));
+}
+
+const isInView = (person: HTMLElement, box: DOMRect) => {
+  const shown = person.getBoundingClientRect();
+  return (
+    shown.left >= box.left &&
+    shown.right <= box.right &&
+    shown.top >= box.top &&
+    shown.bottom <= box.bottom
+  );
+};
+
+function expectWholeFamilyInView(canvasElement: HTMLElement) {
+  const canvas = within(canvasElement);
+  const box = canvas.getByTestId('pedigree-canvas').getBoundingClientRect();
+  for (const person of canvas.getAllByTestId('pedigree-person')) {
+    expect(isInView(person, box)).toBe(true);
+  }
+}
+
 /**
  * The family can be zoomed with the mouse wheel or a pinch, and dragged to
  * pan. A drag that starts on a person or a button pans rather than pressing
@@ -367,43 +415,11 @@ export const PanAndZoom: Story = {
       expect(new DOMMatrix(transform()).a).toBeGreaterThan(zoomedOut),
     );
     // Pushed off to one side, the family comes back whole.
-    fireEvent.pointerDown(viewport, {
-      pointerId: 1,
-      pointerType: 'mouse',
-      isPrimary: true,
-      clientX: box.left + 40,
-      clientY: box.top + 300,
-      buttons: 1,
-    });
-    for (let step = 1; step <= 10; step++) {
-      fireEvent.pointerMove(viewport, {
-        pointerId: 1,
-        pointerType: 'mouse',
-        isPrimary: true,
-        clientX: box.left + 40 + step * 60,
-        clientY: box.top + 300,
-        buttons: 1,
-      });
-    }
-    fireEvent.pointerUp(viewport, {
-      pointerId: 1,
-      pointerType: 'mouse',
-      isPrimary: true,
-      clientX: box.left + 640,
-      clientY: box.top + 300,
-    });
+    dragFamilyRight(viewport);
     await userEvent.click(
       canvas.getByRole('button', { name: 'Show the whole family' }),
     );
-    await waitFor(() => {
-      for (const person of canvas.getAllByTestId('pedigree-person')) {
-        const shown = person.getBoundingClientRect();
-        expect(shown.left).toBeGreaterThanOrEqual(box.left);
-        expect(shown.right).toBeLessThanOrEqual(box.right);
-        expect(shown.top).toBeGreaterThanOrEqual(box.top);
-        expect(shown.bottom).toBeLessThanOrEqual(box.bottom);
-      }
-    });
+    await waitFor(() => expectWholeFamilyInView(canvasElement));
 
     // A drag pans even when it starts on a button, and the click that ends
     // it does nothing. (A person ignores a click after a drag themselves;
