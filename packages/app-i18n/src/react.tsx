@@ -169,7 +169,10 @@ const LONGEST_RETRY_MS = 30_000;
  * load (offline, say) stays in the current language and keeps trying: at once
  * when the device comes back online, otherwise after a wait that doubles with
  * each failure, up to 30 seconds. The new language arrives without being
- * chosen again, and choosing a different one abandons it.
+ * chosen again, and choosing a different one abandons it. A browser that
+ * keeps a failed module import for the life of the page, as Chrome does,
+ * answers each retry from that failure, so there it completes only after a
+ * reload.
  *
  * With nothing on screen yet there is no language to keep, so the first load
  * suspends rather than render English it would replace a moment later. A
@@ -233,7 +236,7 @@ export function useLocaleCatalog(
 
   if (ready !== undefined) return { locale, messages: ready };
   if (rendered !== null) return rendered;
-  return { locale, messages: use(source.load(locale)) };
+  return { locale, messages: use(source.attempt(locale)) };
 }
 
 /**

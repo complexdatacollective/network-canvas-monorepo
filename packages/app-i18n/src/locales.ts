@@ -151,10 +151,18 @@ export type CatalogSource = Readonly<{
   peek: (locale: string) => CatalogMessages | undefined;
   /**
    * Loads a locale once: concurrent and repeated calls share the one request.
-   * A failed load is not remembered, so the next call tries again rather than
+   * A failed load is replaced by a fresh one on the next call, rather than
    * replaying the failure for the rest of the session.
    */
   load: (locale: string) => Promise<CatalogMessages>;
+  /**
+   * The load a locale already has — finished, in flight, or the last one to
+   * fail — or a new one if it has none. A render that suspends on a load needs
+   * this rather than `load`: it is handed the failure, which reaches its error
+   * boundary, where `load` would start another attempt on every retry and the
+   * render would never settle.
+   */
+  attempt: (locale: string) => Promise<CatalogMessages>;
   /** Called after any locale finishes loading. Returns the unsubscribe. */
   subscribe: (onLoad: () => void) => () => void;
 }>;
@@ -168,16 +176,23 @@ export function createCatalogSource(
 ): CatalogSource {
   const loaded = new Map<string, CatalogMessages>();
   const inFlight = new Map<string, Promise<CatalogMessages>>();
+  const failed = new Map<string, Promise<CatalogMessages>>();
   const listeners = new Set<() => void>();
   const translated = (locale: string) =>
     packages.some((loaders) => loaders[locale] !== undefined);
 
-  const load = (locale: string): Promise<CatalogMessages> => {
+  const current = (locale: string): Promise<CatalogMessages> | undefined => {
     const ready = translated(locale) ? loaded.get(locale) : NO_CATALOG;
     if (ready !== undefined) return Promise.resolve(ready);
-    const existing = inFlight.get(locale);
-    if (existing !== undefined) return existing;
-    const request = loadCatalog(locale, ...packages).then(
+    return inFlight.get(locale);
+  };
+
+  const start = (locale: string): Promise<CatalogMessages> => {
+    failed.delete(locale);
+    const request: Promise<CatalogMessages> = loadCatalog(
+      locale,
+      ...packages,
+    ).then(
       (messages) => {
         inFlight.delete(locale);
         loaded.set(locale, messages);
@@ -186,6 +201,7 @@ export function createCatalogSource(
       },
       (error: unknown) => {
         inFlight.delete(locale);
+        failed.set(locale, request);
         throw error;
       },
     );
@@ -195,7 +211,8 @@ export function createCatalogSource(
 
   return {
     peek: (locale) => (translated(locale) ? loaded.get(locale) : NO_CATALOG),
-    load,
+    load: (locale) => current(locale) ?? start(locale),
+    attempt: (locale) => current(locale) ?? failed.get(locale) ?? start(locale),
     subscribe: (onLoad) => {
       listeners.add(onLoad);
       return () => {

@@ -121,7 +121,11 @@ export const catalogSource = createCatalogSource(
 The source merges and caches one locale at a time:
 
 - `load(locale)` resolves to the merged catalog. Concurrent and repeated calls
-  share one request, and a failed load is forgotten, so the next call retries.
+  share one request, and the call after a failed load starts a fresh one.
+- `attempt(locale)` returns the load the locale already has, a failed one
+  included, and starts one only if there is none. Suspend on this rather than
+  `load`: a render that suspends on `load` would start a new attempt every
+  time React retries it, and never reach its error boundary.
 - `peek(locale)` returns the merged catalog once it has loaded, otherwise
   `undefined`. A locale no package translates (English, the pseudo-locale) is
   always ready with an empty catalog.
@@ -163,11 +167,14 @@ The hook keeps the current language on screen until the new one has loaded,
 then changes over in one render, so a switch never passes through English or
 shows a half-translated interface. A switch that fails to load stays in the
 current language and keeps trying: at once when the device comes back online,
-otherwise after a wait that doubles with each failure, up to 30 seconds. With
-nothing on screen yet there is no language to keep, so the first load suspends:
-render the provider under a Suspense boundary, or await `source.load(locale)`
-before the first render so it never suspends. A failed first load throws to
-the nearest error boundary.
+otherwise after a wait that doubles with each failure, up to 30 seconds. A
+browser that keeps a failed module import for the life of the page, as Chrome
+does, answers each of those retries from the failure without a request, so
+there the switch completes only after a reload. With nothing on screen yet
+there is no language to keep, so the first load suspends: render the provider
+under a Suspense boundary, or await `source.load(locale)` before the first
+render so it never suspends. A failed first load throws to the nearest error
+boundary.
 
 A server host loads the request's catalog, formats with it, and sends the same
 messages to the client as props. Passing them as the hook's `preloaded` argument

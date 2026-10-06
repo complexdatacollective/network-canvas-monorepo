@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { act, cleanup, render, screen, within } from '@testing-library/react';
-import { Suspense, useEffect } from 'react';
+import { Component, Suspense, useEffect } from 'react';
+import type { ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { commonMessages } from '../common.ts';
@@ -512,6 +513,65 @@ describe('useLocaleCatalog', () => {
     );
     expect(screen.getByText('Hola Ada')).toBeDefined();
     expect(es).not.toHaveBeenCalled();
+  });
+
+  describe('when the first load fails', () => {
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    class Recovery extends Component<{ children: ReactNode }> {
+      override state = { failed: false };
+      static getDerivedStateFromError() {
+        return { failed: true };
+      }
+      override render() {
+        return this.state.failed ? <p>Recovered</p> : this.props.children;
+      }
+    }
+
+    // A browser answers a repeated import of a module that failed to load
+    // with that failure, at once. Past a few calls the loader stops settling,
+    // so a render that keeps loading again ends the test instead of spinning.
+    const failingSpanish = () => {
+      let calls = 0;
+      return vi.fn(() => {
+        calls += 1;
+        return calls > 5
+          ? new Promise<{ default: CatalogMessages }>(() => {})
+          : Promise.reject(new Error('offline'));
+      });
+    };
+
+    function renderInBoundary(source: CatalogSource) {
+      return act(async () => {
+        render(
+          <Recovery>
+            <Suspense fallback={<p>Waiting</p>}>
+              <Host source={source} locale="es" />
+            </Suspense>
+          </Recovery>,
+        );
+      });
+    }
+
+    it('reaches the error boundary instead of loading again on every retry', async () => {
+      vi.spyOn(console, 'error').mockImplementation(() => {});
+      const es = failingSpanish();
+      await renderInBoundary(createCatalogSource({ es }));
+      expect(screen.getByText('Recovered')).toBeDefined();
+      expect(es).toHaveBeenCalledOnce();
+    });
+
+    it('reaches the error boundary at once when the load before the first render already failed', async () => {
+      vi.spyOn(console, 'error').mockImplementation(() => {});
+      const es = failingSpanish();
+      const source = createCatalogSource({ es });
+      await source.load('es').catch(() => undefined);
+      await renderInBoundary(source);
+      expect(screen.getByText('Recovered')).toBeDefined();
+      expect(es).toHaveBeenCalledOnce();
+    });
   });
 
   it('switches away from a preloaded catalog by loading the new locale', async () => {
