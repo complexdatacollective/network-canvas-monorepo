@@ -180,20 +180,45 @@ function buildPedigreeGraph(ped: PedigreeInput): PedigreeGraph {
 
   const partnerGroups = [...groupMap.values()];
 
-  // 3b. Align partner group members to the same layer. Raising one couple can
-  // move a partner away from another of their partnerships (a chain recorded
-  // from its far end), so repeat until every couple shares a layer.
+  // 3b. Align partner group members to the same layer. Moving someone down to
+  // a partner's layer moves their descendants down with them, and a donor or
+  // surrogate stays on the layer of the parents they contribute alongside.
+  // Each of these can unsettle another (a chain recorded from its far end, a
+  // raised partner with children of their own), so repeat until all hold.
+  // Layers only ever increase; the cap stops a family no layering can satisfy
+  // (someone partnered with their own descendant) from looping.
+  const raise = (node: number, layer: number) => {
+    if (layers[node]! >= layer) return false;
+    layers[node] = layer;
+    return true;
+  };
   let layerChanged = true;
-  while (layerChanged) {
+  for (let pass = 0; layerChanged && pass <= n; pass++) {
     layerChanged = false;
     for (const group of partnerGroups) {
       const maxLayer = Math.max(...group.members.map((m) => layers[m]!));
       for (const m of group.members) {
-        if (layers[m] !== maxLayer) {
-          layers[m] = maxLayer;
+        if (raise(m, maxLayer)) layerChanged = true;
+      }
+    }
+    for (let i = 0; i < n; i++) {
+      const pConns = ped.parents[i]!;
+      if (pConns.length === 0) continue;
+      const primaryLayer = Math.max(
+        ...pConns
+          .filter((p) => isPrimaryEdge(p.edgeType))
+          .map((p) => layers[p.parentIndex]!),
+        -1,
+      );
+      for (const p of pConns) {
+        if (isAuxiliaryEdge(p.edgeType) && raise(p.parentIndex, primaryLayer)) {
           layerChanged = true;
         }
       }
+      const parentLayer = Math.max(
+        ...pConns.map((p) => layers[p.parentIndex]!),
+      );
+      if (raise(i, parentLayer + 1)) layerChanged = true;
     }
   }
 
