@@ -202,9 +202,13 @@ export function splitStatements(script: string): readonly string[] {
  * becomes one space, so a keyword can be searched for without matching the
  * same word inside a value, a name or a function body. Read by the same
  * scanners as `splitStatements`, so the two never disagree about where a
- * quote or a comment ends.
+ * quote or a comment ends. With `keepIdentifiers`, a quoted identifier stays
+ * as written, for a reader that matches names.
  */
-export function executableText(statement: string): string {
+export function executableText(
+  statement: string,
+  { keepIdentifiers = false }: { readonly keepIdentifiers?: boolean } = {},
+): string {
   let text = '';
   let index = 0;
   while (index < statement.length) {
@@ -222,6 +226,11 @@ export function executableText(statement: string): string {
       end = scanSingleQuoted(statement, index, escapes);
     } else if (character === '"') {
       end = scanDoubleQuoted(statement, index);
+      if (keepIdentifiers) {
+        text += statement.slice(index, end);
+        index = end;
+        continue;
+      }
     } else if (character === '$' && !isNameCharacter(statement[index - 1])) {
       const bodyStart = dollarQuoteBodyStart(statement, index);
       if (bodyStart !== -1) end = scanDollarQuoted(statement, index, bodyStart);

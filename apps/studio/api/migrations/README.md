@@ -217,14 +217,19 @@ the file (or when told to): a session whose `status` becomes `completed` must
 carry its snapshot (`interview_sessions_completion_snapshot`), and a consent
 must answer every item of its document
 (`participant_consents_required_items_affirmed`). A file whose writes queue
-one must fire it, by name, with `SET CONSTRAINTS <name> IMMEDIATE`:
+one must fire it, by name, with `SET CONSTRAINTS <name> IMMEDIATE` before
+`ENABLE TRIGGER` on that table: Postgres refuses to alter a table with pending
+trigger events (55006).
 
-- **before `ENABLE TRIGGER` on that table.** Postgres refuses to alter a
-  table with pending trigger events (55006).
-- **before resetting `app.team_id` or `app.erasing_participant_id`.** The
-  check reads the settings in force when it fires; fired after the reset, the
-  consent check sees no team's items and passes a grant that answers none of
-  them.
+A check reads the role and settings in force when it fires; fired after
+`app.team_id` is reset, the consent check would see no team's items and pass a
+grant that answers none of them. So the runner fires the checks a file has
+queued before every statement that sets the role or a setting — a `SET` or
+`RESET` command, or a `SELECT` of `set_config(…)` — under the role and
+settings their rows were written under, and a check that fails there is
+reported before that statement. Change them only that way: a file whose
+statement changes the role, `app.team_id` or `app.erasing_participant_id`
+any other way (inside a `DO` body or a function) is refused (**session**).
 
 ```sql
 ALTER TABLE interview_sessions DISABLE TRIGGER interview_sessions_writable;
@@ -250,7 +255,8 @@ the backfill.
 
 **What the runner does after each file.** First it fires the file's deferred
 checks: it sets every deferrable constraint `IMMEDIATE` by name, so a check
-runs under the role and settings the file ended on, and a backfill that leaves
+runs under the role and settings the file ended on (which, after any change
+of them, are the ones its rows were written under: see above), and a backfill that leaves
 a row its check refuses fails on that file, by name. The next migration's
 sidecars then never meet a table with pending trigger events. It then defers
 the `INITIALLY DEFERRED` constraints again, by name, so a later file may still

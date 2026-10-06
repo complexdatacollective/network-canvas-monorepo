@@ -244,8 +244,8 @@ const ALLOWLIST: Record<string, { count: number; why: string }> = {
     why: 'the same, for every tenant table’s policy',
   },
   [`${SERVER}/db/migrate.ts`]: {
-    count: 2,
-    why: 'each split statement of a pending migration’s artefacts, and the `select 1` that tells, after one fails, whether the transaction is still open',
+    count: 3,
+    why: 'each split statement of a pending migration’s artefacts, the `select 1` that tells, after one fails, whether the transaction is still open, and the role and team and erasure settings a deferred check reads (session functions, no table)',
   },
   [`${SERVER}/db/migrate.ts › db.migrate`]: {
     count: 2,

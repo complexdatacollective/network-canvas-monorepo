@@ -567,7 +567,7 @@ describe.skipIf(!db)('an upgrade of a populated database', () => {
       expect(refused).toMatchObject({
         _tag: 'MigrationStatementFailed',
         artefact: 'backfill.sql',
-        position: 'at the end of the file',
+        position: 'before statement 4 of 4, which sets the role or a setting',
         // The consent check's raise, shown by its SQLSTATE alone.
         code: 'P0001',
       });
@@ -578,7 +578,8 @@ describe.skipIf(!db)('an upgrade of a populated database', () => {
   // #1901 FX-5: a deferred check reads the settings in force when it fires.
   // Written as the owner under a team setting, a consent's check must fire
   // before that setting is reset; fired after, it would see no team's items
-  // and pass a grant that answers none of them.
+  // and pass a grant that answers none of them. The backfill does not fire it
+  // itself: the runner does, before the statement that resets the team.
   it(
     'checks a consent written under a team setting before the setting is reset',
     async () => {
@@ -590,7 +591,6 @@ describe.skipIf(!db)('an upgrade of a populated database', () => {
             `SELECT set_config('app.team_id', '${target.team}', true);`,
             target.participant,
             target.grant,
-            'SET CONSTRAINTS participant_consents_required_items_affirmed IMMEDIATE;',
             `SELECT set_config('app.team_id', '', true);`,
           ].join('\n'),
           fingerprint: releaseFingerprint(6),
@@ -599,7 +599,7 @@ describe.skipIf(!db)('an upgrade of a populated database', () => {
       expect(refused).toMatchObject({
         _tag: 'MigrationStatementFailed',
         artefact: 'backfill.sql',
-        position: 'statement 4 of 5',
+        position: 'before statement 4 of 4, which sets the role or a setting',
         // The consent check's raise, shown by its SQLSTATE alone.
         code: 'P0001',
         rolledBack: true,

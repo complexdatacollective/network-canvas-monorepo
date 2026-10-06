@@ -38,10 +38,18 @@ import { isDeepStrictEqual, parseArgs } from 'node:util';
  *   kind: Difference['kind'],
  *   table: string,
  *   column?: string,
- *   when?: (difference: Difference, context: { probeJobId: string | null, cronQueues: Set<string> }) => boolean,
+ *   when?: (difference: Difference, context: MaskContext) => boolean,
  *   reason: string,
  *   seen: string,
  * }} Mask
+ */
+
+/**
+ * @typedef {{
+ *   probeJobId: string | null,
+ *   cronQueues: Set<string>,
+ *   firedSchedules: Set<string>,
+ * }} MaskContext
  */
 
 /** @type {Mask[]} */
@@ -73,8 +81,16 @@ export const MASKS = [
     kind: 'value-changed',
     table: 'studio_jobs.job_schedules',
     column: 'next_run_at',
+    // Only a schedule that fired during the run, moving forward: the worker
+    // wrote that value when it fired. A schedule that did not fire, or moved
+    // back, was changed by something else — a backfill that pushed it into
+    // the future would also stop it firing.
+    when: (difference, { firedSchedules }) =>
+      firedSchedules.has(JSON.stringify(difference.key)) &&
+      Date.parse(String(difference.after)) >
+        Date.parse(String(difference.before)),
     reason:
-      'The worker advances each schedule every time it fires; denied-attempts-summary fires every minute, so any run longer than a minute moves it.',
+      'The worker advances each schedule every time it fires; denied-attempts-summary fires every minute, so any run longer than a minute moves it. Masked only for a schedule whose queue gained a job during the run, and only forward.',
     seen: 'run A, 6 Oct 2026: denied-attempts-summary 13:48 → 13:49',
   },
   {
@@ -112,7 +128,7 @@ export function readExport(dir) {
 }
 
 /** The queues a cron schedule enqueues, read from the export itself. */
-export function scheduledQueues(exported) {
+function scheduledQueues(exported) {
   const schedules = exported.get('studio_jobs.job_schedules');
   return new Set(
     schedules ? [...schedules.rows.values()].map((row) => row.queue) : [],
@@ -188,6 +204,34 @@ export function differences(before, after) {
   return found;
 }
 
+/**
+ * What the masks read besides the difference itself. A schedule fired during
+ * the run when its queue gained a job between the two exports.
+ * @returns {MaskContext}
+ */
+export function maskContext(found, after, probeJobId) {
+  const cronQueues = scheduledQueues(after);
+  const firedQueues = new Set(
+    found
+      .filter(
+        ({ kind, table, after: row }) =>
+          kind === 'row-added' &&
+          table === 'studio_jobs.jobs' &&
+          cronQueues.has(row?.queue),
+      )
+      .map(({ after: row }) => row.queue),
+  );
+  const schedules = after.get('studio_jobs.job_schedules');
+  const firedSchedules = new Set(
+    schedules
+      ? [...schedules.rows]
+          .filter(([, row]) => firedQueues.has(row.queue))
+          .map(([key]) => key)
+      : [],
+  );
+  return { probeJobId, cronQueues, firedSchedules };
+}
+
 /** Splits differences into those a mask accounts for and those it does not. */
 export function applyMasks(found, masks, context) {
   const hits = Object.fromEntries(masks.map((mask) => [mask.name, 0]));
@@ -223,10 +267,11 @@ function main(argv) {
   const before = readExport(beforeDir);
   const after = readExport(afterDir);
   const found = differences(before, after);
-  const { unmasked, hits } = applyMasks(found, MASKS, {
-    probeJobId: values['probe-job'] ?? null,
-    cronQueues: scheduledQueues(after),
-  });
+  const { unmasked, hits } = applyMasks(
+    found,
+    MASKS,
+    maskContext(found, after, values['probe-job'] ?? null),
+  );
   const rowsBefore = [...before.values()].reduce(
     (sum, t) => sum + t.rows.size,
     0,

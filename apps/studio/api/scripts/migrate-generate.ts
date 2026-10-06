@@ -31,7 +31,7 @@ import {
   SNAPSHOT_ARTEFACT,
 } from '../src/db/migrations-document.ts';
 import { SCHEMA, SIDECARS } from '../src/db/schema.ts';
-import { splitStatements } from '../src/db/statements.ts';
+import { executableText, splitStatements } from '../src/db/statements.ts';
 import { renderJobStatements } from '../src/jobs/queues.ts';
 import { schemaFingerprintOf } from './apply.ts';
 import {
@@ -531,7 +531,10 @@ function setsNotNullUnfilled(delta: string, column: string): boolean {
     'i',
   );
   return splitStatements(delta).some((statement) => {
-    const text = statement.replace(/--[^\n]*/g, '');
+    // Comments, string literals and dollar-quoted bodies blanked by the
+    // scanners `migrate` splits with, so no comma, keyword or quote inside
+    // one is read as syntax; quoted identifiers kept for the names below.
+    const text = executableText(statement, { keepIdentifiers: true });
     if (!onTable.test(text)) return false;
     if (tightened.test(text)) return true;
     const match = added.exec(text);
@@ -549,19 +552,17 @@ function setsNotNullUnfilled(delta: string, column: string): boolean {
 
 /**
  * The column definition starting at `from`, up to the comma that ends it: the
- * first comma outside parentheses and quotes, so a type modifier such as
- * `numeric(10,2)` or a quoted default does not cut the clause short.
+ * first comma outside parentheses and quoted identifiers, so a type modifier
+ * such as `numeric(10,2)` does not cut the clause short. `text` is executable
+ * text, with every comment and literal already blanked.
  */
 function columnClause(text: string, from: number): string {
   let depth = 0;
-  let quote: string | null = null;
+  let quoted = false;
   for (let index = from; index < text.length; index += 1) {
     const char = text[index];
-    if (quote !== null) {
-      if (char === quote) quote = null;
-      continue;
-    }
-    if (char === "'" || char === '"') quote = char;
+    if (char === '"') quoted = !quoted;
+    else if (quoted) continue;
     else if (char === '(') depth += 1;
     else if (char === ')') depth -= 1;
     else if (char === ',' && depth === 0) return text.slice(from, index);

@@ -700,6 +700,9 @@ describe('migrate:generate', () => {
       // column's clause.
       'ALTER TABLE "fx_notes" ADD COLUMN "code" numeric(10,2) NOT NULL;',
       `ALTER TABLE "fx_notes" ADD COLUMN "code" text CHECK ("code" IN ('a,b', 'c')) NOT NULL;`,
+      // Nor does one inside a comment: the delta is read as Postgres reads it.
+      'ALTER TABLE "fx_notes" ADD COLUMN "code" numeric(10,2) /* populated rows, backfill below */ NOT NULL;',
+      'ALTER TABLE "fx_notes" ADD COLUMN "code" text -- filled, below\n  NOT NULL;',
       'ALTER TABLE "fx_notes" ADD COLUMN "code" text;\nALTER TABLE "fx_notes" ALTER COLUMN "code" SET NOT NULL;',
     ]) {
       write('delta.sql', `${header}${delta}\n`);
@@ -707,6 +710,16 @@ describe('migrate:generate', () => {
         /0002_code\/delta\.sql makes \[public\.fx_notes\.code\] NOT NULL before the backfill can fill it/,
       );
     }
+
+    // A NOT NULL that only a comment or a literal mentions is not syntax.
+    write(
+      'delta.sql',
+      `${header}ALTER TABLE "fx_notes" ADD COLUMN "code" text /* NOT NULL, after the backfill */ DEFAULT NULL;\n`,
+    );
+    expect(await generateMigrationDirectory(inputs, { kind: 'seal' })).toEqual({
+      kind: 'sealed',
+      version: '0002_code',
+    });
 
     write(
       'delta.sql',

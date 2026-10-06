@@ -12,7 +12,7 @@ import {
   applyMasks,
   differences,
   MASKS,
-  scheduledQueues,
+  maskContext,
 } from '../../apps/studio/release-test/diff-export.mjs';
 import {
   decide,
@@ -527,7 +527,19 @@ test('every mask names its reason and the run that showed the change', () => {
 test('the masks cover their own rows and nothing beside them', () => {
   const before = exported({
     'studio_jobs.jobs': [],
-    'studio_jobs.job_schedules': [{ id: 'denied-attempts-summary' }],
+    'studio_jobs.job_schedules': [
+      {
+        id: 'denied-attempts-summary',
+        queue: 'denied-attempts-summary',
+        next_run_at: '2026-10-06T13:48:00+00:00',
+      },
+      // Did not fire during the run: no job of its queue was added.
+      {
+        id: 'update-check',
+        queue: 'update-check',
+        next_run_at: '2026-10-07T03:00:00+00:00',
+      },
+    ],
     'public.deployment_state': [{ id: 1, maintenance: false, updated_at: 'a' }],
   });
   const after = exported({
@@ -537,17 +549,31 @@ test('the masks cover their own rows and nothing beside them', () => {
       { id: 'stray', queue: 'invitation-delivery' },
     ],
     'studio_jobs.job_schedules': [
-      { id: 'denied-attempts-summary', queue: 'denied-attempts-summary' },
+      // Fired, and the worker moved it forward: masked.
+      {
+        id: 'denied-attempts-summary',
+        queue: 'denied-attempts-summary',
+        next_run_at: '2026-10-06T13:49:00+00:00',
+      },
+      // Moved without firing, as a backfill pushing it a year out would:
+      // a difference.
+      {
+        id: 'update-check',
+        queue: 'update-check',
+        next_run_at: '2027-10-07T03:00:00+00:00',
+      },
     ],
     'public.deployment_state': [
       // Left in maintenance: the flag is compared, only its date is masked.
       { id: 1, maintenance: true, updated_at: 'b' },
     ],
   });
-  const { unmasked, hits } = applyMasks(differences(before, after), MASKS, {
-    probeJobId: 'probe',
-    cronQueues: scheduledQueues(after),
-  });
+  const found = differences(before, after);
+  const { unmasked, hits } = applyMasks(
+    found,
+    MASKS,
+    maskContext(found, after, 'probe'),
+  );
   assert.deepEqual(
     unmasked
       .map(
@@ -558,17 +584,24 @@ test('the masks cover their own rows and nothing beside them', () => {
     [
       'row-added studio_jobs.jobs stray',
       'value-changed public.deployment_state maintenance',
+      'value-changed studio_jobs.job_schedules next_run_at',
     ],
   );
+  assert.equal(
+    unmasked.find(({ column }) => column === 'next_run_at')?.key[0],
+    'update-check',
+  );
+  assert.equal(hits['the cron schedule advancing'], 1);
   assert.equal(hits['the probe job'], 1);
   assert.equal(hits['a job the cron enqueued'], 1);
   assert.equal(hits['the maintenance flag date'], 1);
 
   // Without the probe's id, the probe row is a difference like any other.
-  const unknownProbe = applyMasks(differences(before, after), MASKS, {
-    probeJobId: null,
-    cronQueues: scheduledQueues(after),
-  });
+  const unknownProbe = applyMasks(
+    found,
+    MASKS,
+    maskContext(found, after, null),
+  );
   assert.ok(unknownProbe.unmasked.some(({ key }) => key[0] === 'probe'));
 });
 

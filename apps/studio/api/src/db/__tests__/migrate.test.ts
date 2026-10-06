@@ -1071,6 +1071,103 @@ describe.skipIf(!db)('migrate', () => {
       CASE_TIMEOUT_MS,
     );
 
+    // #1901: a check reads the role and settings in force when it fires, so
+    // the checks a file queued fire before a statement that changes them —
+    // here the reset of the team the rows were written under, with no
+    // SET CONSTRAINTS of the backfill's own.
+    const TEAM_PROBE = (body: string) =>
+      [
+        'CREATE TABLE probe_rows (id int PRIMARY KEY);',
+        `CREATE FUNCTION probe_rows_team() RETURNS trigger AS $$ BEGIN ${body} RETURN NULL; END; $$ LANGUAGE plpgsql;`,
+        'CREATE CONSTRAINT TRIGGER probe_rows_team AFTER INSERT ON probe_rows DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION probe_rows_team();',
+      ].join('\n');
+    const UNDER_TEAM_THEN_RESET = [
+      `SELECT set_config('app.team_id', 'probe-team', true);`,
+      'INSERT INTO probe_rows VALUES (1);',
+      `SELECT set_config('app.team_id', '', true);`,
+    ].join('\n');
+
+    it(
+      'fires the checks a file queued under a team before the statement that resets it',
+      async () => {
+        const scratch = await emptyDatabase();
+        await run(scratch.db.url);
+
+        // Passes only under the team its row was written under.
+        const outcome = await run(
+          scratch.db.url,
+          next({
+            slug: 'team_reset',
+            delta: TEAM_PROBE(
+              `IF current_setting('app.team_id', true) IS DISTINCT FROM 'probe-team' THEN RAISE EXCEPTION 'fired outside its team' USING ERRCODE = 'P0004'; END IF;`,
+            ),
+            backfill: UNDER_TEAM_THEN_RESET,
+            fingerprint: NEXT,
+          }),
+        );
+        expect(outcome.kind).toBe('applied');
+        const rows = await scratch.pool.query('select id from probe_rows');
+        expect(rows.rows).toEqual([{ id: 1 }]);
+      },
+      CASE_TIMEOUT_MS,
+    );
+
+    it(
+      'reports a check that fails under its team at the statement that would have reset it',
+      async () => {
+        const scratch = await emptyDatabase();
+        await run(scratch.db.url);
+
+        const failure = await refusal(
+          scratch.db.url,
+          next({
+            slug: 'team_reset_refused',
+            delta: TEAM_PROBE(
+              `IF current_setting('app.team_id', true) = 'probe-team' THEN RAISE EXCEPTION 'fired' USING ERRCODE = 'P0003'; END IF;`,
+            ),
+            backfill: UNDER_TEAM_THEN_RESET,
+            fingerprint: NEXT,
+          }),
+        );
+        expect(failure).toMatchObject({
+          _tag: 'MigrationStatementFailed',
+          artefact: 'backfill.sql',
+          position: 'before statement 3 of 3, which sets the role or a setting',
+          code: 'P0003',
+          rolledBack: true,
+        });
+      },
+      CASE_TIMEOUT_MS,
+    );
+
+    it(
+      'refuses a statement that changes the team without saying so',
+      async () => {
+        const scratch = await emptyDatabase();
+        await run(scratch.db.url);
+
+        const failure = await refusal(
+          scratch.db.url,
+          next({
+            slug: 'team_hidden',
+            delta: TEAM_PROBE(''),
+            backfill: [
+              `SELECT set_config('app.team_id', 'probe-team', true);`,
+              'INSERT INTO probe_rows VALUES (1);',
+              `DO $$ BEGIN PERFORM set_config('app.team_id', '', true); END $$;`,
+            ].join('\n'),
+            fingerprint: NEXT,
+          }),
+        );
+        expect(failure).toBeInstanceOf(MigrationHistoryRefused);
+        expect(failure).toMatchObject({ verdict: 'session' });
+        expect(failure.message).toMatch(
+          /_team_hidden\/backfill\.sql statement 3 of 3 changed the role or the team or erasure setting without saying so/,
+        );
+      },
+      CASE_TIMEOUT_MS,
+    );
+
     // #1901 FX-5: the deferred checks fire before the session checks, so they
     // run under what the file left — here a team setting it never reset — and
     // the report names the check rather than the setting.

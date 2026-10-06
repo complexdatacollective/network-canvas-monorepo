@@ -29,7 +29,7 @@ import {
   SCHEMA_TABLES,
   stampFingerprintEffect,
 } from './schema.ts';
-import { splitStatements } from './statements.ts';
+import { executableText, splitStatements } from './statements.ts';
 import { OwnerScope, Transaction } from './tenant.ts';
 
 // `studio-api migrate` (#1901): apply the numbered migrations this image
@@ -479,6 +479,29 @@ const runStatement = (
     ),
   );
 
+/**
+ * What a deferred check reads besides the rows: the role it runs as, which
+ * row-level security filters by, and the team and erasure settings the
+ * policies and triggers read. A check that fires after a file changed them
+ * reads the wrong team's rows — or none, and passes.
+ */
+const readCheckContext = (client: SqlClient.SqlClient) =>
+  client
+    .unsafe<{ readonly context: string }>(
+      `select concat_ws(E'\\t', current_user, coalesce(current_setting('${TEAM_GUC}', true), ''), coalesce(current_setting('${ERASURE_GUC}', true), '')) as context`,
+    )
+    .pipe(Effect.map(([row]) => row?.context ?? ''));
+
+/**
+ * Whether a statement sets what a deferred check reads, as Postgres reads it:
+ * a `SET` or `RESET` command, or a call of `set_config`. A change made any
+ * other way — inside a function or a `DO` body — is refused after the fact.
+ */
+const setsCheckContext = (statement: string): boolean => {
+  const text = executableText(statement).trimStart();
+  return /^(?:SET|RESET)\b/i.test(text) || /\bset_config\s*\(/i.test(text);
+};
+
 type DeferrableName = {
   /** Schema-qualified and quoted, as `SET CONSTRAINTS` takes it. */
   readonly name: string;
@@ -668,13 +691,35 @@ export const migrateDatabaseEffect = Effect.fn('db.migrate')(function* <
             for (const { name, sql: artefact } of migration.artefacts) {
               const before = yield* readSessionState(sql);
               const statements = splitStatements(artefact);
+              let context = yield* readCheckContext(sql);
               for (const [index, statement] of statements.entries()) {
+                const position = `statement ${index + 1} of ${statements.length}`;
+                // A check reads the role and settings in force when it fires
+                // (#1901), so the checks the file has queued fire before a
+                // statement that changes them, under the context their rows
+                // were written in.
+                const changesContext = setsCheckContext(statement);
+                if (changesContext) {
+                  yield* settleDeferredChecks(sql, {
+                    version: migration.version,
+                    artefact: name,
+                    position: `before ${position}, which sets the role or a setting`,
+                  });
+                }
                 yield* runStatement(sql, statement, {
                   version: migration.version,
                   artefact: name,
-                  position: `statement ${index + 1} of ${statements.length}`,
+                  position,
                   statement,
                 });
+                const now = yield* readCheckContext(sql);
+                if (now !== context && !changesContext) {
+                  return yield* new MigrationHistoryRefused({
+                    verdict: 'session',
+                    message: `${migration.version}/${name} ${position} changed the role or the team or erasure setting without saying so: a check queued before it would fire under the new one. Change them only with a statement of its own, SET or RESET or a SELECT of set_config(…), so the runner can fire the queued checks first.`,
+                  });
+                }
+                context = now;
               }
               // Before the session checks (#1901 FX-5), so the file's
               // deferred checks fire under the role and settings it ended on.

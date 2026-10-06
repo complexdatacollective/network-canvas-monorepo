@@ -180,7 +180,11 @@ migrate:generate --name <slug>`) writes the next directory. It refuses a
   the history read and the transaction, so two migrates serialise and the
   second applies nothing. A current database is a read and nothing else. A
   database with Studio tables and no history (one `apply-schema` built, or a
-  pre-release image) is refused: there is no baseline. After each artefact it
+  pre-release image) is refused: there is no baseline. Before a statement that
+  sets the role or a setting (`SET`, `RESET`, `set_config`) it fires the
+  file's queued deferred checks, under the context their rows were written in,
+  and it refuses a statement that changed the role or the team or erasure
+  setting any other way. After each artefact it
   fires the file's deferred checks, naming every deferrable constraint
   `IMMEDIATE` and deferring the `INITIALLY DEFERRED` ones again (never `SET
 CONSTRAINTS ALL`), then refuses a file that ended the transaction (the
