@@ -17,21 +17,23 @@ that make a row safe to trust.
 
 ## What is in this folder
 
-| File                       | What it is                                                                                                                                                                                                                                                                                                         |
-| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `schema.ts`                | Assembles `SCHEMA` (every Drizzle table) and `SIDECARS` (every raw-SQL block, **in order**), and holds the boot-time verdict: `checkSchema`, `stampFingerprint`, `schemaProblemMessage`, and their Effect twins `checkSchemaEffect`, `stampFingerprintEffect`.                                                     |
-| `access.ts`                | The one sidecar that lives here rather than beside a domain — the broad table grant, because it belongs to no single domain.                                                                                                                                                                                       |
-| `auth-schema.ts`           | better-auth's tables: its core five (`user`, `session`, `account`, `verification`, `rateLimit`) plus the organization plugin's `teams`, `team_members` and `team_invitations`, renamed to domain vocabulary. `rls.test.ts` treats this whole set as the tables that sit outside the tenant policy.                 |
-| `deployment-state.ts`      | The one-row `deployment_state` table, its grants, and its store: `readDeploymentState` (the application role, no `Transaction` asked of the caller) and `setMaintenance` (on the caller's `Transaction`; only the maintenance role may). No team, so no policy; the singleton check and the grants keep it honest. |
-| `fingerprint.generated.ts` | Generated. Do not edit; run `sync-fingerprint`.                                                                                                                                                                                                                                                                    |
-| `client.ts`                | The three Effect clients — `Database`, `MaintenanceDatabase`, `OwnerDatabase` — each a `PgClient` with the drizzle builder over it. See [The clients](#the-clients-and-how-a-transaction-is-opened).                                                                                                               |
-| `tenant.ts`                | The only ways a transaction is opened: `TenantScope`, `UntenantedScope`, `MaintenanceScope`, `OwnerScope`, and `savepoint` for a nested one. Re-exports `Transaction` and `TeamAccess` from `@codaco/studio-sync/tenant`.                                                                                          |
-| `errors.ts`                | One reading of a database failure: `sqlState`, `isLockUnavailable`, `uniqueViolationConstraint`, `isMissingRole`, and `sqlErrorsOnly`, which every builder span applies.                                                                                                                                           |
-| `statements.ts`            | `splitStatements`: a Postgres script cut into single commands, dollar-quote-, string- and comment-aware.                                                                                                                                                                                                           |
-| `migrate.ts`               | What `studio-api migrate` runs in the image.                                                                                                                                                                                                                                                                       |
-| `readiness.ts`             | The Effect readiness probes, each bounded to a second: `databaseAlive` (`select 1`), `schemaVerdict` (`checkSchemaEffect`) and `migrationLockHeld` (is the migration's advisory lock held now). `/readyz` runs them on `ReadinessDatabase`.                                                                        |
-| `pool.ts`                  | The node-postgres pools the scripts use for drizzle-kit and seeding. The server's processes run on the Effect clients.                                                                                                                                                                                             |
-| `__tests__/`               | The clients, scopes and errors; `rls.test.ts` (the team boundary across the whole schema); `migrate.test.ts`; `statements.test.ts`; `seed.test.ts`; `readiness.test.ts`; `deployment-state.test.ts`; and `raw-sql-policy.test.ts`.                                                                                 |
+| File                       | What it is                                                                                                                                                                                                                                                                                                                                                                         |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `schema.ts`                | Assembles `SCHEMA` (every Drizzle table) and `SIDECARS` (every raw-SQL block, **in order**), and holds the boot-time verdict: `checkSchema`, `stampFingerprint`, `schemaProblemMessage`, and their Effect twins `checkSchemaEffect`, `stampFingerprintEffect`.                                                                                                                     |
+| `access.ts`                | The one sidecar that lives here rather than beside a domain — the broad table grant, because it belongs to no single domain.                                                                                                                                                                                                                                                       |
+| `auth-schema.ts`           | better-auth's tables: its core five (`user`, `session`, `account`, `verification`, `rateLimit`) plus the organization plugin's `teams`, `team_members` and `team_invitations`, renamed to domain vocabulary. `rls.test.ts` treats this whole set as the tables that sit outside the tenant policy.                                                                                 |
+| `deployment-state.ts`      | The one-row `deployment_state` table, its grants, and its store: `readDeploymentState` (the application role, no `Transaction` asked of the caller) and `setMaintenance` (on the caller's `Transaction`; only the maintenance role may). No team, so no policy; the singleton check and the grants keep it honest.                                                                 |
+| `fingerprint.generated.ts` | Generated. Do not edit; run `sync-fingerprint`.                                                                                                                                                                                                                                                                                                                                    |
+| `client.ts`                | The three Effect clients — `Database`, `MaintenanceDatabase`, `OwnerDatabase` — each a `PgClient` with the drizzle builder over it. See [The clients](#the-clients-and-how-a-transaction-is-opened).                                                                                                                                                                               |
+| `tenant.ts`                | The only ways a transaction is opened: `TenantScope`, `UntenantedScope`, `MaintenanceScope`, `OwnerScope`, and `savepoint` for a nested one. Re-exports `Transaction` and `TeamAccess` from `@codaco/studio-sync/tenant`.                                                                                                                                                          |
+| `errors.ts`                | One reading of a database failure: `sqlState`, `isLockUnavailable`, `uniqueViolationConstraint`, `isMissingRole`, and `sqlErrorsOnly`, which every builder span applies.                                                                                                                                                                                                           |
+| `statements.ts`            | `splitStatements`: a Postgres script cut into single commands, dollar-quote-, string- and comment-aware.                                                                                                                                                                                                                                                                           |
+| `migrate.ts`               | What `studio-api migrate` runs in the image: the history-aware runner over `dist/migrations.json`. See [How they are applied](#how-they-are-applied).                                                                                                                                                                                                                              |
+| `migrations-document.ts`   | The rendered migrations document's shape, artefact hashing, and `verifyMigrations`, shared by the build scripts and the image.                                                                                                                                                                                                                                                     |
+| `history.ts`               | `public.studio_migrations`, its reads and writes, and the reordered/newer/edited verdicts with their remedies.                                                                                                                                                                                                                                                                     |
+| `readiness.ts`             | The Effect readiness probes, each bounded to a second: `databaseAlive` (`select 1`), `schemaVerdict` (`checkSchemaEffect`) and `migrationLockHeld` (is the migration's advisory lock held now). `/readyz` runs them on `ReadinessDatabase`.                                                                                                                                        |
+| `pool.ts`                  | The node-postgres pools the scripts use for drizzle-kit and seeding. The server's processes run on the Effect clients.                                                                                                                                                                                                                                                             |
+| `__tests__/`               | The clients, scopes and errors; `rls.test.ts` (the team boundary across the whole schema); `migrate.test.ts`, `history.test.ts`, `migrations-document.test.ts`, `migrations-current.test.ts`, `migrations-converge.test.ts` and `apply-schema-guard.test.ts`; `statements.test.ts`; `seed.test.ts`; `readiness.test.ts`; `deployment-state.test.ts`; and `raw-sql-policy.test.ts`. |
 
 The development seed is not here: it is `scripts/seed/`, beside the other
 scripts that write a database wholesale.
@@ -134,8 +136,56 @@ Both properties are pinned by tests rather than by comment alone — see below.
 
 ## How they are applied
 
-`scripts/apply.ts` is the only thing that writes schema; the server itself only
-verifies.
+There are two lanes, and they never meet on one database.
+
+**Deployments migrate.** A deployed database is only ever changed by
+`studio-api migrate`, from the numbered migrations under
+[`migrations/`](../../migrations/README.md) (#1901). Each migration directory
+carries the drizzle-kit delta from the previous one, an optional hand-written
+backfill, the complete sidecars at that version (the job schema among them),
+the Drizzle snapshot, and a manifest of their hashes.
+
+- `scripts/migrate-generate.ts` (`pnpm --filter @codaco/studio-api
+migrate:generate --name <slug>`) writes the next directory. It refuses a
+  stale fingerprint, an ambiguous drop-and-create it would have to guess a
+  rename for, and a dropped table or column the author did not name with
+  `--drop`. The authoring guide is `migrations/README.md`.
+- `scripts/render-migrations.ts` runs in `build` after vite and writes
+  `dist/migrations.json`. It refuses the build when the fingerprint is stale,
+  when a directory does not re-hash to its manifest, when the ordinals are
+  not contiguous, or when the newest migration is not this build's schema — a
+  schema change with no migration fails the image build.
+- `migrations-document.ts` is what both scripts and the image share: the
+  document's shape, how artefacts hash, and `verifyMigrations`, which the image
+  runs before it touches a database (a document another build rendered, or one
+  that does not re-hash, is refused).
+- `history.ts` is `public.studio_migrations` — one row per applied migration
+  with its per-artefact hashes — and the verdict over recorded against image:
+  a different migration at a recorded position (reordered), more recorded than
+  the image carries (newer), or an artefact that hashes differently (edited)
+  is refused, each naming its remedy. The table is outside `SCHEMA` and
+  `SCHEMA_TABLES`, so it does not move the fingerprint, and the runner revokes
+  every privilege on it from both application roles after each migration (the
+  sidecars' broad grant would otherwise give them DML on it).
+- `migrateDatabaseEffect()` (`migrate.ts`) takes `pg_advisory_lock` on a
+  reserved connection, then opens one transaction on the pool: probe, read the
+  history, decide, apply every pending migration's artefacts in order (delta,
+  backfill, sidecars), revoke, record, and stamp the fingerprint last. The lock
+  spans the history read and the transaction, so two migrates serialise and
+  the second applies nothing. A current database is a read and nothing else. A
+  database with Studio tables and no history (one `apply-schema` built, or a
+  pre-release image) is refused: there is no baseline. After each artefact it
+  checks `current_user = session_user`, so a backfill's `SET LOCAL ROLE
+studio_maintenance` must end with `RESET ROLE`.
+- It runs on `@effect/sql-pg`, which has **no simple-query path**: every
+  statement goes through Parse/Bind/Execute, and a multi-command string is
+  refused (SQLSTATE 42601). So every artefact is cut by `splitStatements`
+  (`statements.ts`) and sent one command at a time. A `;` split would not do:
+  several sidecars carry dollar-quoted plpgsql bodies. The fingerprint is
+  computed over the _unsplit_ strings, so splitting does not move it.
+
+**Development pushes.** `scripts/apply.ts` is the checkout lane's apply, for
+development databases and test fixtures; the server itself only verifies.
 
 - `renderSchemaStatements()` = the Drizzle DDL that `drizzle-kit` generates,
   followed by `SIDECARS`.
@@ -144,42 +194,24 @@ verifies.
   separately from the public statements because that list is the DDL the
   suites execute into a scratch schema by setting `search_path`, and these
   statements name a schema of their own instead.
-- `computeSchemaFingerprint()` is a SHA-256 over both lists joined.
-  **Sidecars are inside the hash, and whitespace counts** — editing a sidecar
-  changes the fingerprint, which is why every sidecar change needs
-  `pnpm --filter @codaco/studio-api sync-fingerprint`. So is the job
-  schema: a column on `studio_jobs.jobs`, an index, the notify trigger or a
-  job grant moves the fingerprint too, and every process refuses the database
-  until `apply-schema` has been run against it.
-- `applySchema()` takes an advisory lock, clears the stamp (so a failure
-  part-way cannot leave a drifted database reading as current), runs
+- `computeSchemaFingerprint()` is a SHA-256 over both lists joined
+  (`schemaFingerprintOf`). **Sidecars are inside the hash, and whitespace
+  counts** — editing a sidecar changes the fingerprint, which is why every
+  sidecar change needs `pnpm --filter @codaco/studio-api sync-fingerprint`,
+  and then `migrate:generate`. So is the job schema: a column on
+  `studio_jobs.jobs`, an index, the notify trigger or a job grant moves the
+  fingerprint too.
+- `applySchema()` takes the same advisory lock, **refuses a database that
+  carries migration history** (naming `migrate`), clears the stamp (so a
+  failure part-way cannot leave a drifted database reading as current), runs
   `drizzle-kit push`, executes the sidecars, installs the `studio_jobs` schema,
-  and stamps the fingerprint. The job DDL is idempotent (`IF NOT EXISTS`,
-  `OR REPLACE`), so reapplying it leaves the queued jobs where they are; a
-  database whose job schema is a different shape from this build's is refused
-  by the fingerprint, not reconciled — the same pre-release posture the public
-  schema takes.
-- `migrateDatabaseEffect()` (`src/db/migrate.ts`) is what `studio-api migrate`
-  runs in the image, where drizzle-kit does not exist, on one `OwnerDatabase`
-  client that the command then reuses for the bootstrap token. The build
-  renders the same statements into `dist/schema-ddl.json`
-  (`scripts/render-schema-ddl.ts`) and this executes them in one transaction,
-  then installs `studio_jobs` through `installJobSchemaEffect` — the Effect
-  half of `src/jobs/install.ts`, over the statement list `applySchema`'s
-  node-postgres `installJobSchema` sends — and stamps the fingerprint with
-  `stampFingerprintEffect`. It holds a session advisory lock on a reserved
-  connection across `checkSchemaEffect` and that transaction, releasing it in
-  the scope's finalizer, so two migrates serialise. It runs on
-  `@effect/sql-pg`, which has **no simple-query path**: every statement goes
-  through Parse/Bind/Execute, and a multi-command string is refused (SQLSTATE
-  42601). So every script — the rendered DDL, each sidecar, the job schema and
-  its grants — is cut by `splitStatements` (`statements.ts`) and sent one
-  command at a time, inside the one transaction. A `;` split would not do:
-  several sidecars carry dollar-quoted plpgsql bodies. The fingerprint is
-  computed over the _unsplit_ strings, so splitting does not move it. It refuses a
-  document whose statements do not hash to the fingerprint beside them, and —
-  pre-release — it refuses a database another build created rather than
-  reconciling it (#1901).
+  and stamps the fingerprint. `db:reset` drops `public` first, so it still
+  recreates a development database that `migrate` built.
+
+`migrations-converge.test.ts` holds the two lanes to one result: every
+committed migration applied from empty, and a push, must leave the same
+catalog — functions, triggers, indexes, constraints, columns, privileges,
+policies and row security.
 
 ### The `studio_jobs` schema
 
@@ -190,8 +222,9 @@ jobs table on the next push. The DDL and grants live in
 `src/jobs/schema.ts`, the install in `src/jobs/install.ts` (a
 node-postgres function for `scripts/apply.ts`, whose drizzle-kit push needs a
 node-postgres client and so keeps the whole checkout apply on it, and an Effect
-version over an open `Transaction` for `studio-api migrate` and the test
-harness, both over one statement list),
+version over an open `Transaction` for the test harness, both over one
+statement list; `studio-api migrate` installs it from each migration's
+`sidecars.sql`, which carries the same statements),
 and the schema name in `src/jobs/queues.ts`.
 
 It is fingerprinted like everything else, because the fingerprint is the only
