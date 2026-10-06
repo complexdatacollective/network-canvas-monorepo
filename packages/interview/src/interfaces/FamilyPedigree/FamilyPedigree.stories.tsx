@@ -242,7 +242,8 @@ export const ParticipantChoosesFraming: Story = {
   play: async ({ canvasElement }) => {
     // The popover is portalled outside the story's root.
     const body = within(canvasElement.ownerDocument.body);
-    await body.findByText(FRAMING_TITLE);
+    // It opens a moment after the stage loads.
+    await body.findByText(FRAMING_TITLE, {}, { timeout: 5000 });
     for (const option of body.getAllByRole('option')) {
       await expect(option).toHaveAttribute('aria-selected', 'false');
     }
@@ -269,7 +270,8 @@ export const ParticipantChangesFraming: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const body = within(canvasElement.ownerDocument.body);
-    await body.findByText(FRAMING_TITLE);
+    // It opens a moment after the stage loads.
+    await body.findByText(FRAMING_TITLE, {}, { timeout: 5000 });
     await userEvent.click(
       body.getByRole('option', { name: /Egg parent, sperm parent, sibling/ }),
     );

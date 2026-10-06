@@ -1,6 +1,7 @@
 'use client';
 
 import { MousePointer2, Unlink, Waypoints } from 'lucide-react';
+import { motion, useReducedMotion } from 'motion/react';
 import {
   useCallback,
   useEffect,
@@ -105,6 +106,11 @@ import {
  * hover or focus), or pick them as one of two people to connect, or to
  * disconnect.
  */
+// The toolbar rises in a moment after the stage appears, and the choice of
+// words, when the participant has it to make, opens once the toolbar is in.
+const TOOLBAR_ENTRANCE_DELAY = 300;
+const FRAMING_OPEN_DELAY = 1200;
+
 type Tool = 'pointer' | 'connect' | 'disconnect';
 const TOOLS: readonly string[] = ['pointer', 'connect', 'disconnect'];
 const isTool = (value: unknown): value is Tool =>
@@ -319,9 +325,18 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     : undefined;
   const framingSetting = stage.framing ?? 'gendered';
   const participantFraming = framingSetting === 'participantPreference';
-  const [framingOpen, setFramingOpen] = useState(
+  // Opened a moment after the stage loads, once the toolbar is in, so the
+  // participant sees the rest of the interface first.
+  const [framingOpen, setFramingOpen] = useState(false);
+  const askFramingOnLoad = useRef(
     participantFraming && chosenFraming === undefined,
   );
+  useEffect(() => {
+    if (!askFramingOnLoad.current) return;
+    const timer = setTimeout(() => setFramingOpen(true), FRAMING_OPEN_DELAY);
+    return () => clearTimeout(timer);
+  }, []);
+  const reduceMotion = useReducedMotion();
   const framing =
     framingSetting === 'participantPreference'
       ? (chosenFraming ?? 'gamete')
@@ -1089,65 +1104,86 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                     ))}
             </p>
           )}
-          <SegmentedToolbar
-            aria-label={intl.formatMessage(messages.toolsLabel)}
-            size="lg"
-            className="pointer-events-auto"
+          {/* Rises into place when the stage first loads. */}
+          <motion.div
+            initial={reduceMotion ? false : { y: '150%', opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            // A heavy spring, damped just short of settling straight, so it
+            // lands with a slight rebound; the fade does not bounce.
+            transition={{
+              y: {
+                type: 'spring',
+                mass: 1.4,
+                stiffness: 170,
+                damping: 20,
+                delay: TOOLBAR_ENTRANCE_DELAY / 1000,
+              },
+              opacity: {
+                duration: 0.25,
+                delay: TOOLBAR_ENTRANCE_DELAY / 1000,
+              },
+            }}
           >
-            <ToolbarToggleGroup
-              aria-label={intl.formatMessage(messages.toolGroupLabel)}
-              value={[tool]}
-              onValueChange={(value) => {
-                const next = value[0];
-                if (isTool(next)) chooseTool(next);
-              }}
+            <SegmentedToolbar
+              aria-label={intl.formatMessage(messages.toolsLabel)}
+              size="lg"
+              className="pointer-events-auto"
             >
-              <ToolbarIconButton
-                value="pointer"
-                aria-label={intl.formatMessage(messages.pointerTool)}
-                icon={<MousePointer2 />}
-                data-testid="pedigree-tool-pointer"
-              />
-              <ToolbarIconButton
-                value="connect"
-                aria-label={intl.formatMessage(messages.connectTool)}
-                icon={<Waypoints />}
-                data-testid="pedigree-tool-connect"
-              />
-              <ToolbarIconButton
-                value="disconnect"
-                aria-label={intl.formatMessage(messages.disconnectTool)}
-                icon={<Unlink />}
-                data-testid="pedigree-tool-disconnect"
-              />
-            </ToolbarToggleGroup>
-            {participantFraming && <ToolbarSeparator />}
-            {participantFraming && (
-              <FramingControl
-                value={chosenFraming}
-                onChange={chooseFraming}
-                open={framingOpen}
-                onOpenChange={setFramingOpen}
-              />
-            )}
-            {progress && completeness && <ToolbarSeparator />}
-            {progress && completeness && (
-              <CompletenessTracker
-                progress={progress}
-                enforcement={completeness.enforcement}
-                open={trackerOpen}
-                onOpenChange={setTrackerOpen}
-                family={family}
-                displayName={displayName}
-                onItemSelect={handleTrackerItem}
-                onItemAnswer={
-                  config.relativesNotRecordedVariable
-                    ? (item) => void handleTrackerAnswer(item)
-                    : undefined
-                }
-              />
-            )}
-          </SegmentedToolbar>
+              <ToolbarToggleGroup
+                aria-label={intl.formatMessage(messages.toolGroupLabel)}
+                value={[tool]}
+                onValueChange={(value) => {
+                  const next = value[0];
+                  if (isTool(next)) chooseTool(next);
+                }}
+              >
+                <ToolbarIconButton
+                  value="pointer"
+                  aria-label={intl.formatMessage(messages.pointerTool)}
+                  icon={<MousePointer2 />}
+                  data-testid="pedigree-tool-pointer"
+                />
+                <ToolbarIconButton
+                  value="connect"
+                  aria-label={intl.formatMessage(messages.connectTool)}
+                  icon={<Waypoints />}
+                  data-testid="pedigree-tool-connect"
+                />
+                <ToolbarIconButton
+                  value="disconnect"
+                  aria-label={intl.formatMessage(messages.disconnectTool)}
+                  icon={<Unlink />}
+                  data-testid="pedigree-tool-disconnect"
+                />
+              </ToolbarToggleGroup>
+              {participantFraming && <ToolbarSeparator />}
+              {participantFraming && (
+                <FramingControl
+                  value={chosenFraming}
+                  onChange={chooseFraming}
+                  open={framingOpen}
+                  onOpenChange={setFramingOpen}
+                />
+              )}
+              {progress && completeness && <ToolbarSeparator />}
+              {progress && completeness && (
+                <CompletenessTracker
+                  progress={progress}
+                  enforcement={completeness.enforcement}
+                  open={trackerOpen}
+                  onOpenChange={setTrackerOpen}
+                  family={family}
+                  displayName={displayName}
+                  onItemSelect={handleTrackerItem}
+                  onItemAnswer={
+                    config.relativesNotRecordedVariable
+                      ? (item) => void handleTrackerAnswer(item)
+                      : undefined
+                  }
+                />
+              )}
+            </SegmentedToolbar>
+          </motion.div>
         </div>
       </div>
       <ConnectMenu
