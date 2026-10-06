@@ -139,6 +139,10 @@ describe('useProtocolImport', () => {
       throw new Error('fetch must not be called during a bundled install');
     });
     vi.stubGlobal('fetch', throwingFetch);
+    // Transforming the sample's inlined media takes real time that the fake
+    // clock cannot advance. Load the module here so the hook's own import()
+    // settles from the module cache inside vi.waitFor's window.
+    await import('../bundledSampleProtocol');
     const { result } = renderHook(() =>
       useProtocolImport({ onInstalled: () => {} }),
     );

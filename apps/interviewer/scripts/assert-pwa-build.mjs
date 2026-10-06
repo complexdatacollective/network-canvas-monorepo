@@ -3,8 +3,8 @@
 // icons, every critical chunk (the interview engine, the entry), and every
 // responsive stage-preview image must be precached. A missing critical asset
 // breaks either the offline boot or the first offline opening of the menu.
-// The bundled Sample protocol chunk must be precached too (offline sample
-// install) but stay out of the initial load.
+// Chunks loaded on demand (the bundled sample protocol, the synthetic data
+// generator and its faker dependency) must stay out of the initial load.
 import { readFileSync } from 'node:fs';
 import { readdir } from 'node:fs/promises';
 import path from 'node:path';
@@ -200,25 +200,65 @@ if (
   );
 }
 
-// The bundled Sample protocol inlines ~3.5 MB of media. It must load only when
-// someone installs the sample, and it must be precached so that install still
-// works offline. If its module is imported statically anywhere, Vite folds it
-// into the entry and this chunk disappears.
-const sampleChunks = jsAssets.filter((f) =>
-  f.startsWith('bundledSampleProtocol-'),
+// Modules the app loads on demand to keep them out of the initial load. Each
+// must stay its own chunk (a static import anywhere folds it into the entry,
+// and the chunk disappears) outside the initial load, and must be precached
+// exactly when the feature it serves has to work offline. The Development
+// protocol's ~33 MB chunk is dev-only, so it must never be precached.
+const deferredChunks = [
+  {
+    prefix: 'bundledSampleProtocol-',
+    purpose: 'installing the sample protocol',
+    precache: true,
+  },
+  {
+    prefix: 'generate-',
+    purpose: 'generating synthetic interviews',
+    precache: true,
+  },
+  {
+    prefix: 'bundledDevelopmentProtocol-',
+    purpose: 'installing the development protocol',
+    precache: false,
+  },
+];
+for (const { prefix, purpose, precache } of deferredChunks) {
+  const matches = jsAssets.filter((f) => f.startsWith(prefix));
+  if (matches.length !== 1) {
+    fail(
+      `expected one on-demand ${prefix}*.js chunk for ${purpose}, found ${matches.length}`,
+    );
+  }
+  const [chunk] = matches;
+  if (initialLoad.has(chunk)) {
+    fail(`${chunk} (${purpose}) is part of the initial load`);
+  }
+  if (precached.has(`assets/${chunk}`) !== precache) {
+    fail(
+      precache
+        ? `${chunk} is excluded from precache, so ${purpose} fails offline`
+        : `${chunk} is precached, so every install downloads it`,
+    );
+  }
+}
+
+// Faker should reach the bundle only through the synthetic generator chunk.
+// Its core module carries this documentation URL. Finding it in the initial
+// load means something imports the generator statically, or that
+// @codaco/protocol-utilities lost `"sideEffects": false` (a module-level
+// invariant in its ValueGenerator.ts otherwise keeps faker alive). Not finding
+// it anywhere means Faker reworded the message and the marker needs updating.
+const FAKER_MARKER = 'https://fakerjs.dev/';
+const fakerChunks = jsAssets.filter((f) =>
+  readFileSync(path.join(assetsDir, f), 'utf8').includes(FAKER_MARKER),
 );
-if (sampleChunks.length !== 1) {
-  fail(
-    `expected one lazily loaded bundledSampleProtocol chunk, found ${sampleChunks.length}`,
-  );
+if (fakerChunks.length === 0) {
+  fail(`no chunk contains the faker marker ${FAKER_MARKER}; update it`);
 }
-const [sampleChunk] = sampleChunks;
-if (initialLoad.has(sampleChunk)) {
-  fail(`${sampleChunk} is part of the initial load`);
-}
-if (!precached.has(`assets/${sampleChunk}`)) {
+const fakerInInitialLoad = fakerChunks.filter((f) => initialLoad.has(f));
+if (fakerInInitialLoad.length > 0) {
   fail(
-    `${sampleChunk} is excluded from precache, so the sample cannot be installed offline`,
+    `@faker-js/faker is part of the initial load (${fakerInInitialLoad.join(', ')})`,
   );
 }
 
@@ -371,5 +411,5 @@ if (/index\.html/.test(assetHandoffRouteSource)) {
 }
 
 console.log(
-  `PWA build ok: ${precachePrefix} retained independently; active-precache navigation fallbacks + exact-hash old-bundle JS/CSS and stage-preview handoff; no client claim; lease-gated old-precache cleanup; ${critical.length} critical chunk(s) and ${stagePreviewAssets.length} stage-preview asset(s) precached; ${sampleChunk} precached and outside the ${initialLoad.size}-chunk initial load`,
+  `PWA build ok: ${precachePrefix} retained independently; active-precache navigation fallbacks + exact-hash old-bundle JS/CSS and stage-preview handoff; no client claim; lease-gated old-precache cleanup; ${critical.length} critical chunk(s) and ${stagePreviewAssets.length} stage-preview asset(s) precached; ${deferredChunks.length} on-demand chunk(s) and faker outside the ${initialLoad.size}-chunk initial load`,
 );
