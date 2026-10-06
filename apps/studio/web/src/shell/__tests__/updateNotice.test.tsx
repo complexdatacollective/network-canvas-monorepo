@@ -5,7 +5,7 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import { Effect } from 'effect';
 import { describe, expect, it, vi } from 'vitest';
 
-import { Forbidden } from '@codaco/studio-contract/schema/errors';
+import { Forbidden, RateLimited } from '@codaco/studio-contract/schema/errors';
 import type {
   InstanceStatus,
   UpdateAvailable,
@@ -14,10 +14,7 @@ import type { DeploymentMode } from '@codaco/studio-contract/surfaces';
 
 import { StudioI18nProvider } from '../../i18n/StudioI18nProvider.tsx';
 import { createAppRouter } from '../../router.tsx';
-import {
-  installRpcHarness,
-  type StudioHandlers,
-} from '../../test/rpcHarness.ts';
+import { installRpcHarness } from '../../test/rpcHarness.ts';
 import UpdateNotice from '../UpdateNotice.tsx';
 
 vi.mock('../../lib/auth.ts', () => ({
@@ -79,8 +76,6 @@ const UPDATE: UpdateAvailable = {
 };
 
 const SCHEMA_UPDATE: UpdateAvailable = { ...UPDATE, schemaChange: true };
-
-type Answer = ReturnType<StudioHandlers['status.updateAvailable']>;
 
 function renderNotice() {
   const queryClient = new QueryClient({
@@ -211,9 +206,10 @@ describe('the update notice', () => {
     expect(view.container).toBeEmptyDOMElement();
   });
 
-  it('renders nothing, and no error of its own, when the read is refused', async () => {
+  it('renders nothing, and no error of its own, when the read is rate limited', async () => {
     const harness = installRpcHarness({
-      'status.updateAvailable': (): Answer => Effect.fail(new Forbidden({})),
+      'status.updateAvailable': () =>
+        Effect.fail(new RateLimited({ retryAfterSeconds: 7 })),
     });
     const { view, queryClient } = renderNotice();
     await settled(harness, queryClient);
