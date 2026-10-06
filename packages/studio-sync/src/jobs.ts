@@ -99,6 +99,25 @@ export const JOB_QUEUES = [
       expireInSeconds: 3600,
     },
   },
+  {
+    // The daily check for a newer Studio release (#1901). `singleton` because
+    // two runs alongside each other would both read the same manifest and
+    // race for the one-email-per-version claim; the claim is correct on its
+    // own, but a second run has nothing to add. A missed day is picked up by
+    // tomorrow's run, so a failed fetch retries only twice. The expiry is the
+    // outer bound on one attempt and sits above the manifest fetch's own bound
+    // (20s) plus the SMTP transport's (10s connect, 10s greeting, 20s socket),
+    // so a slow send is never reaped while it is still running: a reaped
+    // attempt would release the version's claim and a second email would follow.
+    name: 'update-check',
+    options: {
+      policy: 'singleton',
+      retryLimit: 2,
+      expireInSeconds: 120,
+      retentionSeconds: 7 * 24 * 3600,
+      deleteAfterSeconds: 24 * 3600,
+    },
+  },
 ] as const satisfies readonly JobQueueDeclaration[];
 
 export type JobQueueName = (typeof JOB_QUEUES)[number]['name'];
@@ -115,6 +134,11 @@ export const JOB_SCHEDULES = [
   // longer cadence would leave a burst unrecorded for as long as the cadence,
   // and the job does nothing at all when no window was suppressed.
   { queue: 'denied-attempts-summary', cron: '* * * * *', tz: 'UTC' },
+  // Daily, at a fixed minute off the hour: every instance contacts the
+  // manifest host, and a round-number minute would land them all on the same
+  // second. A fixed minute rather than a random one so the schedule row does
+  // not change on each boot.
+  { queue: 'update-check', cron: '23 4 * * *', tz: 'UTC' },
 ] as const satisfies readonly JobSchedule[];
 
 const RowId = Schema.String.check(Schema.isUUID());
@@ -170,6 +194,10 @@ export const DeniedAttemptsSummaryJobSchema = Schema.Struct({}).check(
 export type DeniedAttemptsSummaryJob =
   typeof DeniedAttemptsSummaryJobSchema.Type;
 
+/** The check reads one fixed manifest; there is nothing to address it at. */
+export const UpdateCheckJobSchema = Schema.Struct({}).check(isEmptyObject);
+export type UpdateCheckJob = typeof UpdateCheckJobSchema.Type;
+
 export const JOB_PAYLOAD_SCHEMAS = {
   'invitation-delivery': InvitationDeliveryJobSchema,
   // A dead-lettered job is a copy of the one that failed, so the shape is the
@@ -178,6 +206,7 @@ export const JOB_PAYLOAD_SCHEMAS = {
   'sign-in-email': SignInEmailJobSchema,
   'protocol-store-gc': ProtocolStoreGcJobSchema,
   'denied-attempts-summary': DeniedAttemptsSummaryJobSchema,
+  'update-check': UpdateCheckJobSchema,
 } as const satisfies Record<JobQueueName, Schema.Struct<Schema.Struct.Fields>>;
 
 export type JobPayload<Queue extends JobQueueName> =
@@ -215,4 +244,5 @@ export const JOB_PAYLOAD_POLICY = {
   },
   'protocol-store-gc': { kind: 'identifiers' },
   'denied-attempts-summary': { kind: 'identifiers' },
+  'update-check': { kind: 'identifiers' },
 } as const satisfies Record<JobQueueName, JobPayloadPolicy>;

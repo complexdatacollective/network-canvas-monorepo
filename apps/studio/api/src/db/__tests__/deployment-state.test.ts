@@ -14,8 +14,33 @@ import {
   TestDatabaseLive,
   testDb,
 } from '../../__tests__/support/database.ts';
-import { readDeploymentState, setMaintenance } from '../deployment-state.ts';
+import {
+  claimNotification,
+  type LatestRelease,
+  readDeploymentState,
+  readLatestRelease,
+  recordUpdateCheck,
+  releaseNotificationClaim,
+  setMaintenance,
+} from '../deployment-state.ts';
 import { MaintenanceScope, UntenantedScope } from '../tenant.ts';
+
+const RELEASE: LatestRelease = {
+  version: '1.2.3',
+  releasedAt: new Date('2026-10-06T14:30:00.000Z'),
+  notesUrl: 'https://releases.networkcanvas.com/studio/1.2.3/notes',
+  schemaChange: true,
+};
+
+const CLEAR_UPDATE_STATE = `update deployment_state
+   set latest_version = null, latest_released_at = null,
+       latest_notes_url = null, latest_schema_change = null,
+       checked_at = null, notified_version = null,
+       maintenance = false, reason = null`;
+
+const storedNotified = ownerRows<{ notified_version: string | null }>(
+  'select notified_version from deployment_state',
+);
 
 const storedRow = ownerRows<{ maintenance: boolean; reason: string | null }>(
   'select maintenance, reason from deployment_state',
@@ -119,6 +144,123 @@ describe.skipIf(!testDb)('deployment_state', () => {
             assert.deepStrictEqual(yield* storedRow, [
               { maintenance: false, reason: null },
             ]);
+          }),
+      );
+
+      it.effect('reads as no release until a check has recorded one', () =>
+        Effect.gen(function* () {
+          yield* ownerAffected(CLEAR_UPDATE_STATE);
+          assert.isNull(yield* readLatestRelease());
+        }),
+      );
+
+      it.effect(
+        'records a release as the maintenance role and reads it as the application role',
+        () =>
+          Effect.gen(function* () {
+            yield* ownerAffected(CLEAR_UPDATE_STATE);
+            yield* MaintenanceScope.open(recordUpdateCheck(RELEASE));
+
+            assert.deepStrictEqual(yield* readLatestRelease(), RELEASE);
+            const rows = yield* ownerRows<{ checked_at: Date | null }>(
+              'select checked_at from deployment_state',
+            );
+            assert.instanceOf(rows[0]?.checked_at, Date);
+            yield* ownerAffected(CLEAR_UPDATE_STATE);
+          }),
+      );
+
+      it.effect(
+        'records a release without touching the flag, its reason or its date',
+        () =>
+          Effect.gen(function* () {
+            yield* ownerAffected(CLEAR_UPDATE_STATE);
+            yield* MaintenanceScope.open(
+              setMaintenance({ maintenance: true, reason: 'Upgrading' }),
+            );
+            const before = yield* readDeploymentState();
+
+            yield* MaintenanceScope.open(recordUpdateCheck(RELEASE));
+
+            assert.deepStrictEqual(yield* readDeploymentState(), before);
+            assert.strictEqual(before.maintenance, true);
+            assert.strictEqual(before.reason, 'Upgrading');
+            yield* ownerAffected(CLEAR_UPDATE_STATE);
+          }),
+      );
+
+      it.effect(
+        'is not written, in any column of it, by the application role',
+        () =>
+          Effect.gen(function* () {
+            yield* ownerAffected(CLEAR_UPDATE_STATE);
+            const writes = {
+              'the release columns': recordUpdateCheck(RELEASE),
+              'the claim': claimNotification('1.2.3'),
+              'the claim’s release': releaseNotificationClaim('1.2.3'),
+            };
+            for (const [name, write] of Object.entries(writes)) {
+              const refusal = yield* refusalOf(UntenantedScope.open(write));
+              assert.strictEqual(refusal.state, '42501', name);
+            }
+            assert.isNull(yield* readLatestRelease());
+            assert.isNull((yield* storedNotified)[0]?.notified_version);
+          }),
+      );
+
+      it.effect('claims a version once, and a later version again', () =>
+        Effect.gen(function* () {
+          yield* ownerAffected(CLEAR_UPDATE_STATE);
+          const claim = (version: string) =>
+            MaintenanceScope.open(claimNotification(version));
+
+          assert.isTrue(yield* claim('1.2.3'));
+          assert.isFalse(yield* claim('1.2.3'));
+          assert.isTrue(yield* claim('1.2.4'));
+          assert.isFalse(yield* claim('1.2.4'));
+          yield* ownerAffected(CLEAR_UPDATE_STATE);
+        }),
+      );
+
+      it.effect('gives back only the claim it is asked about', () =>
+        Effect.gen(function* () {
+          yield* ownerAffected(CLEAR_UPDATE_STATE);
+          yield* MaintenanceScope.open(claimNotification('1.2.4'));
+
+          yield* MaintenanceScope.open(releaseNotificationClaim('1.2.3'));
+          assert.strictEqual(
+            (yield* storedNotified)[0]?.notified_version,
+            '1.2.4',
+          );
+
+          yield* MaintenanceScope.open(releaseNotificationClaim('1.2.4'));
+          assert.isNull((yield* storedNotified)[0]?.notified_version);
+          assert.isTrue(
+            yield* MaintenanceScope.open(claimNotification('1.2.4')),
+          );
+          yield* ownerAffected(CLEAR_UPDATE_STATE);
+        }),
+      );
+
+      it.effect(
+        'keeps the four release columns together, the version x.y.z and the link https',
+        () =>
+          Effect.gen(function* () {
+            yield* ownerAffected(CLEAR_UPDATE_STATE);
+            const refused = [
+              "update deployment_state set latest_version = '1.2.3'",
+              "update deployment_state set latest_version = 'v1.2.3', latest_released_at = now(), latest_notes_url = 'https://x.test/', latest_schema_change = false",
+              "update deployment_state set latest_version = '1.2.3', latest_released_at = now(), latest_notes_url = 'http://x.test/', latest_schema_change = false",
+            ];
+            for (const statement of refused) {
+              const refusal = yield* refusalOf(ownerAffected(statement));
+              assert.strictEqual(
+                refusal.constraint,
+                'deployment_state_latest_release_check',
+                statement,
+              );
+            }
+            assert.isNull(yield* readLatestRelease());
           }),
       );
 

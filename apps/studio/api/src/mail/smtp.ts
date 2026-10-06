@@ -6,10 +6,44 @@ import {
   Mailer,
   type MagicLinkInput,
   type TeamInvitationInput,
+  type UpdateNoticeInput,
 } from './mailer.ts';
 
 // The only module in the server that imports nodemailer, which
 // src/__tests__/process-separation.test.ts holds.
+
+/** The update notice, as a pure function so its wording is tested without a transport. */
+export function updateNoticeMessage({
+  name,
+  version,
+  notesUrl,
+  schemaChange,
+  deploymentMode,
+}: UpdateNoticeInput): { readonly subject: string; readonly text: string } {
+  return {
+    subject: `Network Canvas Studio ${version} is available`,
+    text: [
+      `Hello ${name},`,
+      '',
+      `Network Canvas Studio ${version} has been released. You are receiving this because you own this Studio installation.`,
+      '',
+      'Release notes:',
+      notesUrl,
+      '',
+      schemaChange
+        ? 'This release changes the database. Rolling back means restoring the backup taken during the upgrade.'
+        : 'This release does not change the database.',
+      ...(deploymentMode === 'self-hosted'
+        ? [
+            '',
+            'To upgrade, follow the upgrade guide in the self-hosting documentation.',
+          ]
+        : []),
+      '',
+      'This message is sent once for each new release.',
+    ].join('\n'),
+  };
+}
 
 export function MailerSmtp(transport: {
   readonly url: string;
@@ -82,6 +116,8 @@ export function MailerSmtp(transport: {
               'If you were not expecting this invitation, you can ignore this email.',
             ].join('\n'),
           }),
+        sendUpdateNotice: (input: UpdateNoticeInput) =>
+          send({ to: input.email, ...updateNoticeMessage(input) }),
       });
     }),
   );
