@@ -11,7 +11,6 @@ import {
   primaryParentsOf,
   readFamily,
   siblingsOf,
-  symbolFor,
 } from '../model';
 import { config, link, person } from './fixtures';
 
@@ -156,15 +155,6 @@ describe('missingDetailsFor', () => {
     expect(missingDetailsFor(family.byId.get('a')!, ['age', 'notes'])).toEqual([
       { variable: 'notes' },
     ]);
-  });
-});
-
-describe('symbolFor', () => {
-  test('maps gender identity to the pedigree symbol', () => {
-    expect(symbolFor('man')).toBe('square');
-    expect(symbolFor('woman')).toBe('circle');
-    expect(symbolFor('nonBinary')).toBe('diamond');
-    expect(symbolFor(undefined)).toBe('diamond');
   });
 });
 

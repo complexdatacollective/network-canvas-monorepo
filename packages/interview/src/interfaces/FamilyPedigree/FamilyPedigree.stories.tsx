@@ -52,6 +52,8 @@ type StoryOptions = {
   completeness?: Completeness;
   framing?: FramingSetting;
   nominationPrompts?: NominationPrompt[];
+  /** The person attribute the codebook maps each person's symbol to. */
+  shapeBy?: 'genderIdentity' | 'sexAssignedAtBirth';
 };
 
 type NominationPrompt = {
@@ -65,14 +67,40 @@ function buildInterview({
   completeness,
   framing,
   nominationPrompts,
+  shapeBy = 'genderIdentity',
 }: StoryOptions) {
   const si = new SyntheticInterview(1);
   si.addInformationStage({ title: 'Welcome', text: 'Before the pedigree.' });
+  const people = si.addNodeType({ name: 'Person' });
   const stage = si.addStage('FamilyPedigree', {
+    subject: { entity: 'node', type: people.id },
     prompt: PROMPT,
     completeness,
     framing,
     nominationPrompts,
+  });
+  // The researcher's choice of symbol, made in the codebook: circles for
+  // women (or female), squares for men (or male), diamonds for anyone else.
+  people.setShape({
+    default: 'diamond',
+    dynamic:
+      shapeBy === 'genderIdentity'
+        ? {
+            variable: stage.genderIdentity,
+            type: 'discrete',
+            map: [
+              { value: 'woman', shape: 'circle' },
+              { value: 'man', shape: 'square' },
+            ],
+          }
+        : {
+            variable: stage.sexAssignedAtBirth,
+            type: 'discrete',
+            map: [
+              { value: 'female', shape: 'circle' },
+              { value: 'male', shape: 'square' },
+            ],
+          },
   });
   if (withFormFields) {
     stage.addFormField({ component: 'Number', prompt: 'Age' });
@@ -116,6 +144,7 @@ function PedigreeStory({
   completeness,
   framing,
   nominationPrompts,
+  shapeBy,
 }: StoryOptions) {
   const rawPayload = useMemo(
     () =>
@@ -126,9 +155,10 @@ function PedigreeStory({
           completeness,
           framing,
           nominationPrompts,
+          shapeBy,
         }).getInterviewPayload({ currentStep: 1 }),
       ),
-    [family, withFormFields, completeness, framing, nominationPrompts],
+    [family, withFormFields, completeness, framing, nominationPrompts, shapeBy],
   );
 
   return (
@@ -1040,6 +1070,48 @@ export const ConsanguineousParents: Story = {
   play: expectPeople(9),
 };
 
+const genderDiverseFamily: Family = {
+  people: [
+    { id: 'ego', name: 'Eli', gender: 'man', sex: 'female', ego: true },
+    { id: 'partner', name: 'Robin', gender: 'nonBinary', sex: 'male' },
+    { id: 'child', name: 'Wren', gender: 'unknown', sex: 'intersex' },
+    { id: 'sibling', name: 'Mara', gender: 'woman', sex: 'male' },
+    { id: 'mother', name: 'Ruth', gender: 'woman', sex: 'female' },
+    { id: 'father', name: 'Paul', gender: 'man', sex: 'male' },
+  ],
+  links: [
+    { from: 'mother', to: 'father', kind: 'partner' },
+    { from: 'mother', to: 'ego', kind: 'biological', carrier: true },
+    { from: 'father', to: 'ego', kind: 'biological' },
+    { from: 'mother', to: 'sibling', kind: 'biological', carrier: true },
+    { from: 'father', to: 'sibling', kind: 'biological' },
+    { from: 'ego', to: 'partner', kind: 'partner' },
+    { from: 'ego', to: 'child', kind: 'biological', carrier: true },
+    { from: 'partner', to: 'child', kind: 'biological' },
+  ],
+};
+
+/** The symbol a person is drawn with, read from the node's classes: a circle
+ * is fully rounded, and a diamond's background is turned 45 degrees. */
+const shapeOf = (person: HTMLElement) => {
+  const node = person.querySelector('button');
+  if (!node) return undefined;
+  if (node.querySelector('.rotate-45')) return 'diamond';
+  return node.classList.contains('rounded-full') ? 'circle' : 'square';
+};
+
+const expectShapes = async (
+  canvasElement: HTMLElement,
+  expected: Record<string, 'circle' | 'square' | 'diamond'>,
+) => {
+  for (const [id, shape] of Object.entries(expected)) {
+    const person = canvasElement.querySelector<HTMLElement>(
+      `[data-person-id="${id}"]`,
+    );
+    await expect(person && shapeOf(person)).toBe(shape);
+  }
+};
+
 /**
  * Gender-diverse relatives, after the inclusive nomenclature: symbols follow
  * gender identity, whatever the sex assigned at birth. The participant is a
@@ -1049,31 +1121,47 @@ export const ConsanguineousParents: Story = {
 export const GenderDiverseFamily: Story = {
   args: { requirement: 'firstDegree', enforcement: 'required' },
   render: (args) => (
+    <PedigreeStory {...settings(args)} family={genderDiverseFamily} />
+  ),
+  play: async ({ canvasElement }) => {
+    await expectPeople(6)({ canvasElement });
+    // The codebook maps the symbol to gender identity.
+    await expectShapes(canvasElement, {
+      ego: 'square',
+      partner: 'diamond',
+      child: 'diamond',
+      sibling: 'circle',
+      mother: 'circle',
+      father: 'square',
+    });
+  },
+};
+
+/**
+ * The same family, with the codebook mapping each person's symbol to their
+ * sex assigned at birth instead: the researcher chooses which attribute the
+ * symbol follows.
+ */
+export const ShapeFollowsSexAssignedAtBirth: Story = {
+  args: { requirement: 'firstDegree', enforcement: 'required' },
+  render: (args) => (
     <PedigreeStory
       {...settings(args)}
-      family={{
-        people: [
-          { id: 'ego', name: 'Eli', gender: 'man', sex: 'female', ego: true },
-          { id: 'partner', name: 'Robin', gender: 'nonBinary', sex: 'male' },
-          { id: 'child', name: 'Wren', gender: 'unknown', sex: 'intersex' },
-          { id: 'sibling', name: 'Mara', gender: 'woman', sex: 'male' },
-          { id: 'mother', name: 'Ruth', gender: 'woman', sex: 'female' },
-          { id: 'father', name: 'Paul', gender: 'man', sex: 'male' },
-        ],
-        links: [
-          { from: 'mother', to: 'father', kind: 'partner' },
-          { from: 'mother', to: 'ego', kind: 'biological', carrier: true },
-          { from: 'father', to: 'ego', kind: 'biological' },
-          { from: 'mother', to: 'sibling', kind: 'biological', carrier: true },
-          { from: 'father', to: 'sibling', kind: 'biological' },
-          { from: 'ego', to: 'partner', kind: 'partner' },
-          { from: 'ego', to: 'child', kind: 'biological', carrier: true },
-          { from: 'partner', to: 'child', kind: 'biological' },
-        ],
-      }}
+      family={genderDiverseFamily}
+      shapeBy="sexAssignedAtBirth"
     />
   ),
-  play: expectPeople(6),
+  play: async ({ canvasElement }) => {
+    await expectPeople(6)({ canvasElement });
+    await expectShapes(canvasElement, {
+      ego: 'circle',
+      partner: 'square',
+      child: 'diamond',
+      sibling: 'square',
+      mother: 'circle',
+      father: 'square',
+    });
+  },
 };
 
 /**

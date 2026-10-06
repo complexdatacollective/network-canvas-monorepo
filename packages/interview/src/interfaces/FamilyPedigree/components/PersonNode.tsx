@@ -10,7 +10,10 @@ import type {
 } from 'react';
 
 import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
-import Node, { type NodeColorSequence } from '@codaco/fresco-ui/Node';
+import Node, {
+  type NodeColorSequence,
+  type NodeShape,
+} from '@codaco/fresco-ui/Node';
 import {
   Tooltip,
   TooltipContent,
@@ -19,7 +22,7 @@ import {
 import { cx } from '@codaco/fresco-ui/utils/cva';
 
 import { messages } from '../messages';
-import { type Person, symbolFor } from '../model';
+import type { Person } from '../model';
 import { EDGE_WIDTH } from '../pedigree-layout/components/EdgeRenderer';
 
 type PersonNodeProps = {
@@ -27,6 +30,9 @@ type PersonNodeProps = {
   /** Their name, or how they are related to the participant. */
   label: string;
   color: NodeColorSequence;
+  /** From the person type's shape in the codebook, which may follow one of
+   * their attributes. */
+  shape: NodeShape;
   /** Their details are open in the side panel; or, answering a nomination
    * prompt, it applies to them. */
   selected: boolean;
@@ -62,6 +68,7 @@ export default function PersonNode({
   person,
   label,
   color,
+  shape,
   selected,
   disabled = false,
   menuOpen,
@@ -114,7 +121,7 @@ export default function PersonNode({
       <Node
         ref={nodeRef}
         size="sm"
-        shape={symbolFor(person.genderIdentity)}
+        shape={shape}
         color={color}
         label={label}
         ariaLabel={intl.formatMessage(messages.personAccessibleName, {

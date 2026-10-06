@@ -252,15 +252,6 @@ export function missingDetailsFor(
   return missing;
 }
 
-/** Pedigree symbol: square for a man, circle for a woman, otherwise diamond. */
-export function symbolFor(
-  genderIdentity: PedigreeGenderIdentity | undefined,
-): 'square' | 'circle' | 'diamond' {
-  if (genderIdentity === 'man') return 'square';
-  if (genderIdentity === 'woman') return 'circle';
-  return 'diamond';
-}
-
 export type Relation = 'parent' | 'sibling' | 'partner' | 'child';
 
 export type PersonDetails = Record<string, VariableValue>;

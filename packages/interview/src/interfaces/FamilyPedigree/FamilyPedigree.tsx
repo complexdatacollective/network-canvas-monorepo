@@ -55,6 +55,7 @@ import {
   getNetworkNodes,
   getNodeColorSelector,
   getStageMetadata,
+  resolveNodeShape,
 } from '../../selectors/session';
 import { getCodebook } from '../../store/modules/protocol';
 import {
@@ -260,6 +261,10 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   const edgeColorName = useSelector(edgeColorSelector);
   const edgeColor = `var(--edge-${edgeColorName.replace('edge-color-seq-', '')})`;
   const codebook = useSelector(getCodebook);
+  // A person's symbol is the person type's shape in the codebook, which the
+  // researcher may map to one of their attributes, such as gender identity
+  // or sex assigned at birth.
+  const shapeDefinition = codebook.node?.[config.personType]?.shape;
 
   const requiredFormVariables = useMemo(() => {
     const variables = codebook.node?.[config.personType]?.variables ?? {};
@@ -1280,6 +1285,11 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                     person={person}
                     label={displayName(personId)}
                     color={nodeColor}
+                    shape={
+                      shapeDefinition
+                        ? resolveNodeShape(shapeDefinition, person.attributes)
+                        : 'circle'
+                    }
                     selected={
                       nomination ? isNominated(person) : personId === selectedId
                     }
