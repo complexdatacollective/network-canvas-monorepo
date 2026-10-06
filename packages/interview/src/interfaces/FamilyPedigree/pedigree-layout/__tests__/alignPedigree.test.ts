@@ -1084,6 +1084,27 @@ describe('partnership chains', () => {
     expect(result.fam[kidLevel]![result.nid[kidLevel]!.indexOf(5)]).not.toBe(0);
   });
 
+  it('keeps a chain together across four sibships', () => {
+    // a, b, c and d each have parents and a sibling shown; a – b – c – d.
+    const id: string[] = [];
+    const parents: ParentConnection[][] = [];
+    const partners: NonNullable<PedigreeInput['partners']> = [];
+    const people = ['a', 'b', 'c', 'd'].map((name) => {
+      const mum = id.push(`${name}Mum`) - 1;
+      const dad = id.push(`${name}Dad`) - 1;
+      parents.push([], []);
+      partners.push(couple(mum, dad));
+      const person = id.push(name) - 1;
+      id.push(`${name}Sib`);
+      parents.push([sp(mum), sp(dad)], [sp(mum), sp(dad)]);
+      return person;
+    });
+    for (let k = 0; k + 1 < people.length; k++) {
+      partners.push(couple(people[k]!, people[k + 1]!));
+    }
+    expectEveryCoupleAdjacent({ id, parents, partners });
+  });
+
   it('seats a donor to an interior couple outside the chain', () => {
     // a – b – c – d; b + c → kid, with an egg donor.
     expectEveryCoupleAdjacent({
