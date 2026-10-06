@@ -40,7 +40,9 @@ export const PersonAttributesSchema = z.strictObject({
     usage: 'validatedAttribute',
     requireType: ['text'],
   }),
-  // Categorical attribute holding gender identity; decides the symbol.
+  // Categorical attribute holding gender identity. (A person's symbol is the
+  // person type's codebook shape, which the researcher may map to this or to
+  // sex assigned at birth.)
   genderIdentityVariable: entityAttributeReference({
     subject: 'stageSubject',
     usage: 'unvalidatedAttribute',
