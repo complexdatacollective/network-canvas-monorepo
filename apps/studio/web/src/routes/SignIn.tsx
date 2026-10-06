@@ -21,8 +21,12 @@ import type { SocialProvider } from '@codaco/studio-contract/schema/status';
 
 import { authClient } from '../lib/auth.ts';
 import { studioEmailPattern } from '../lib/emailValidation.ts';
-import { sessionQueryOptions } from '../lib/session.ts';
+import {
+  sessionQueryOptions,
+  useMaintenanceRevalidation,
+} from '../lib/session.ts';
 import { rpcQuery } from '../runtime/rpc.ts';
+import MaintenanceNotice from '../shell/MaintenanceNotice.tsx';
 import { GoogleIcon, MicrosoftIcon } from './ProviderIcons.tsx';
 
 const route = getRouteApi('/focused/sign-in');
@@ -165,6 +169,7 @@ export default function SignIn() {
   const intl = useAppIntl();
   const { error, invitationId } = route.useSearch();
   const status = useQuery(rpcQuery('status', undefined));
+  useMaintenanceRevalidation();
   const queryClient = useQueryClient();
   const router = useRouter();
   const [sentTo, setSentTo] = useState<string | null>(null);
@@ -266,6 +271,7 @@ export default function SignIn() {
         <Heading level="h1" {...routeFocusTargetProps}>
           {intl.formatMessage(messages.heading)}
         </Heading>
+        <MaintenanceNotice className="" />
         {error !== undefined && sentTo === null && (
           <Alert variant="destructive">
             {intl.formatMessage(

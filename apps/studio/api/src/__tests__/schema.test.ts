@@ -778,6 +778,29 @@ describe.skipIf(!testDb)('schema application', () => {
     });
   });
 
+  it('takes the job schema down with a stamp that fails after it', async () => {
+    await withScratch(createScratchDatabase, async (pool) => {
+      await applySchema(pool);
+      await pool.query(`drop schema ${JOB_SCHEMA} cascade`);
+      await pool.query(
+        `create function refuse_stamp() returns trigger language plpgsql as
+           $$ begin raise exception 'stamp refused'; end $$`,
+      );
+      await pool.query(
+        `create trigger refuse_stamp before insert on "schemaFingerprint"
+           for each row execute function refuse_stamp()`,
+      );
+
+      await expect(applySchema(pool)).rejects.toThrow(/stamp refused/);
+
+      const installed = await pool.query<{ present: boolean }>(
+        'select exists (select 1 from pg_namespace where nspname = $1) as present',
+        [JOB_SCHEMA],
+      );
+      expect(installed.rows[0]).toEqual({ present: false });
+    });
+  });
+
   it('is a no-op on a current database', async () => {
     await withScratch(createScratchDatabase, async (pool) => {
       await applySchema(pool);

@@ -178,6 +178,7 @@ describe('the rpc client', () => {
       ),
     ).toEqual([
       'runtime/errors.ts',
+      'runtime/hostClient.ts',
       'runtime/runtime.ts',
       'test/hostHarness.ts',
       'test/rpcHarness.ts',
@@ -194,17 +195,19 @@ describe('the editor’s host socket', () => {
       );
     }).map((file) => relative(SRC, file));
 
-  it('is dialled from the runtime module alone', () => {
+  it('is dialled from the host client module alone', () => {
     expect(filesWithTokens(['layerProtocolSocket'])).toEqual([
-      'runtime/runtime.ts',
+      'runtime/hostClient.ts',
     ]);
-    expect(filesWithTokens(['layerWebSocket'])).toEqual(['runtime/runtime.ts']);
+    expect(filesWithTokens(['layerWebSocket'])).toEqual([
+      'runtime/hostClient.ts',
+    ]);
   });
 
   it('never retries a transient error underneath the call waiting on it', () => {
     expect(filesWithTokens(['retryTransientErrors', ':', 'true'])).toEqual([]);
     expect(filesWithTokens(['retryTransientErrors', ':', 'false'])).toEqual([
-      'runtime/runtime.ts',
+      'runtime/hostClient.ts',
     ]);
   });
 });
@@ -214,5 +217,68 @@ describe('the oRPC stack', () => {
     expect(
       filesImporting((specifier) => specifier.startsWith('@orpc/')),
     ).toEqual([]);
+  });
+});
+
+describe('the protocol editor', () => {
+  const isAppSource = (file: string): boolean =>
+    !/(^|\/)(__tests__|test)\//.test(relative(SRC, file));
+
+  const staticImporters = (
+    matches: (file: string, specifier: string) => boolean,
+  ): string[] =>
+    FILES.filter(isAppSource)
+      .filter((file) =>
+        importClauses(read(file)).some((clause) =>
+          matches(file, clause.specifier),
+        ),
+      )
+      .map((file) => relative(SRC, file));
+
+  const ofModule = (target: string) => (file: string, specifier: string) =>
+    specifier.startsWith('.') && resolveRelative(file, specifier) === target;
+
+  it('is reached only through its lazy route', () => {
+    expect(staticImporters(ofModule('routes/Editor.tsx'))).toEqual([]);
+    expect(staticImporters(ofModule('runtime/hostSession.ts'))).toEqual([
+      'routes/Editor.tsx',
+    ]);
+    expect(staticImporters(ofModule('runtime/hostClient.ts'))).toEqual([
+      'routes/Editor.tsx',
+      'runtime/hostSession.ts',
+    ]);
+  });
+
+  it('keeps the protocol builder in the editor’s chunk', () => {
+    expect(
+      staticImporters(
+        (_file, specifier) =>
+          (specifier.startsWith('@codaco/protocol-builder') ||
+            specifier.startsWith('@codaco/protocol-validation')) &&
+          specifier !== '@codaco/protocol-builder/locales',
+      ),
+    ).toEqual(['routes/Editor.tsx', 'runtime/hostClient.ts']);
+  });
+});
+
+describe('the tab’s client session id', () => {
+  const appFilesWith = (token: string): string[] =>
+    FILES.filter(
+      (file) => !/(^|\/)(__tests__|test)\//.test(relative(SRC, file)),
+    )
+      .filter((file) =>
+        sourceTokens(read(file)).some(({ raw }) => raw === token),
+      )
+      .map((file) => relative(SRC, file));
+
+  it('is named on the host socket alone, never on a /rpc request', () => {
+    expect(appFilesWith('CLIENT_SESSION_HEADER')).toEqual([]);
+    expect(appFilesWith('CLIENT_SESSION_PARAM')).toEqual([
+      'runtime/hostClient.ts',
+    ]);
+    expect(appFilesWith('clientSessionId')).toEqual([
+      'lib/clientSession.ts',
+      'runtime/hostClient.ts',
+    ]);
   });
 });

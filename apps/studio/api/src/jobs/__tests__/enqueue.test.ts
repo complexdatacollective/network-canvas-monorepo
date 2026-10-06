@@ -75,5 +75,35 @@ describe.skipIf(!db)('the enqueue', () => {
         assert.isTrue(Exit.isFailure(outcome) && Cause.hasDies(outcome.cause));
       }).pipe(Effect.provide(layerJobs)),
     );
+
+    for (const queue of EMPTY_QUEUES) {
+      suite.effect(`dies rather than enqueue a payload onto ${queue}`, () =>
+        Effect.gen(function* () {
+          yield* clearQueue;
+          const { schema } = yield* QueueHarness;
+          const queued = asOwner(
+            Effect.flatMap(
+              MaintenanceDatabase,
+              ({ sql }) => sql<{ payload: unknown }>`
+                SELECT payload FROM ${sql(schema)}.jobs
+                 WHERE queue = ${queue}`,
+            ),
+          );
+
+          const outcome = yield* Effect.exit(
+            enqueue(queue, { teamId: DELIVERED_TO }),
+          );
+          assert.isTrue(
+            Exit.isFailure(outcome) && Cause.hasDies(outcome.cause),
+          );
+          assert.deepStrictEqual(yield* queued, []);
+
+          yield* enqueue(queue, {});
+          assert.deepStrictEqual(yield* queued, [{ payload: {} }]);
+        }).pipe(Effect.provide(layerJobs)),
+      );
+    }
   });
 });
+
+const EMPTY_QUEUES = ['protocol-store-gc', 'denied-attempts-summary'] as const;

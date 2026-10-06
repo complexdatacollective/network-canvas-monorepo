@@ -4,6 +4,8 @@ import { HttpRouter, HttpServerRequest, HttpServerResponse } from 'effect/http';
 import { TestClock } from 'effect/testing';
 import { describe } from 'vitest';
 
+import { MAINTENANCE_PROBLEM_TYPE } from '@codaco/studio-contract/schema/problem';
+
 import { TestDatabaseLive, testDb } from '../../__tests__/support/database.ts';
 import {
   type DeploymentState,
@@ -113,7 +115,11 @@ const REFUSAL = {
   status: 503,
   retryAfter: '30',
   contentType: 'application/problem+json',
-  body: { title: 'Down for maintenance', status: 503 },
+  body: {
+    type: MAINTENANCE_PROBLEM_TYPE,
+    title: 'Down for maintenance',
+    status: 503,
+  },
 };
 
 const flag = (maintenance: boolean, reason: string | null = null) =>

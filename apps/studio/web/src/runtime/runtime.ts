@@ -11,31 +11,22 @@ import * as FetchHttpClient from 'effect/http/FetchHttpClient';
 import type * as Headers from 'effect/http/Headers';
 import * as HttpClient from 'effect/http/HttpClient';
 import * as HttpClientError from 'effect/http/HttpClientError';
-import * as HttpClientRequest from 'effect/http/HttpClientRequest';
 import type * as HttpClientResponse from 'effect/http/HttpClientResponse';
 import * as RpcClient from 'effect/rpc/RpcClient';
 import type * as RpcClientError from 'effect/rpc/RpcClientError';
 import type * as RpcGroup from 'effect/rpc/RpcGroup';
 import * as RpcSerialization from 'effect/rpc/RpcSerialization';
-import * as Socket from 'effect/socket/Socket';
 
-import {
-  ProtocolBuilderGroup,
-  type ProtocolBuilderClient,
-} from '@codaco/protocol-builder-core/contract';
-import {
-  CLIENT_SESSION_HEADER,
-  CLIENT_SESSION_PARAM,
-} from '@codaco/studio-contract/client-session';
-import { MAX_SOCKET_FRAME_BYTES } from '@codaco/studio-contract/limits';
 import { RPC_PATH, StudioRpcs } from '@codaco/studio-contract/rpc/studio';
 import {
   Forbidden,
   Maintenance,
+  NotFound,
   RateLimited,
+  Unauthorized,
 } from '@codaco/studio-contract/schema/errors';
 
-import { clientSessionId } from '../lib/clientSession.ts';
+import { parseRetryAfter } from './errors.ts';
 
 export type StudioRpcsType = RpcGroup.Rpcs<typeof StudioRpcs>;
 
@@ -61,12 +52,8 @@ type ProblemDocument = typeof ProblemDocument.Type;
 
 const decodeProblem = Schema.decodeUnknownOption(ProblemDocument);
 
-const DELTA_SECONDS = /^\d+$/;
-
-const retryAfterHeader = (headers: Headers.Headers): number | undefined => {
-  const raw = headers['retry-after']?.trim();
-  return raw !== undefined && DELTA_SECONDS.test(raw) ? Number(raw) : undefined;
-};
+const retryAfterHeader = (headers: Headers.Headers): number | undefined =>
+  parseRetryAfter(headers['retry-after']);
 
 /**
  * The server's own limiter never sends zero: a `Retry-After: 0` invites an immediate retry.
@@ -85,15 +72,25 @@ const refusalFor = (
   status: number,
   problem: ProblemDocument | undefined,
   retryAfter: number | undefined,
-): Forbidden | Maintenance | RateLimited | undefined => {
+):
+  | Forbidden
+  | Maintenance
+  | NotFound
+  | RateLimited
+  | Unauthorized
+  | undefined => {
   const members = {
     ...(problem?.detail === undefined ? {} : { detail: problem.detail }),
     ...(problem?.instance === undefined ? {} : { instance: problem.instance }),
   };
   const interval = retryAfter ?? problem?.retryAfterSeconds;
   switch (status) {
+    case 401:
+      return new Unauthorized(members);
     case 403:
       return new Forbidden(members);
+    case 404:
+      return new NotFound(members);
     case 429:
       return new RateLimited({
         ...members,
@@ -148,21 +145,6 @@ const interceptRefusals = (
 ): HttpClient.HttpClient =>
   HttpClient.transformResponse(client, Effect.flatMap(refuse));
 
-/**
- * On the transport rather than `RpcClient.CurrentHeaders`, deliberately: a call site
- * could forget it.
- */
-const stampClientSession = <E, R>(
-  client: HttpClient.HttpClient.With<E, R>,
-): HttpClient.HttpClient.With<E, R> =>
-  HttpClient.mapRequest(client, (request) =>
-    HttpClientRequest.setHeader(
-      request,
-      CLIENT_SESSION_HEADER,
-      clientSessionId(),
-    ),
-  );
-
 const FetchLive = FetchHttpClient.layer.pipe(
   Layer.provide(
     Layer.succeed(FetchHttpClient.RequestInit)({ credentials: 'same-origin' }),
@@ -175,7 +157,6 @@ const HttpClientLive = Layer.effect(HttpClient.HttpClient)(
 
 const HttpProtocol = RpcClient.layerProtocolHttp({
   url: RPC_PATH,
-  transformClient: stampClientSession,
 }).pipe(
   Layer.provide(RpcSerialization.layerNdjson),
   Layer.provide(HttpClientLive),
@@ -253,40 +234,3 @@ export const delegatingRuntime = <R>(
 });
 
 export const runtime: WebRuntime = delegatingRuntime(() => current);
-
-/**
- * The tab names itself on the query string because a browser cannot put a
- * header on a WebSocket handshake.
- */
-function hostSocketUrl(): string {
-  const scheme = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const url = new URL(`${scheme}//${window.location.host}/ws`);
-  url.searchParams.set(CLIENT_SESSION_PARAM, clientSessionId());
-  return url.toString();
-}
-
-/**
- * `retryTransientErrors` is off, so a dead socket fails the in-flight call and
- * the open stream rather than holding them across the reconnect.
- */
-export class HostClient extends Context.Service<
-  HostClient,
-  ProtocolBuilderClient
->()('@studio/HostClient') {
-  static readonly layer: Layer.Layer<HostClient> = Layer.effect(HostClient)(
-    RpcClient.make(ProtocolBuilderGroup, { flatten: true }),
-  ).pipe(
-    Layer.provide(
-      RpcClient.layerProtocolSocket({ retryTransientErrors: false }),
-    ),
-    Layer.provide(Socket.layerWebSocket(Effect.sync(hostSocketUrl))),
-    Layer.provide(Socket.layerWebSocketConstructorGlobal),
-    // The default 16 MiB would refuse an asset the server stores, and a
-    // refused frame poisons the connection rather than closing it.
-    Layer.provide(
-      RpcSerialization.layerSchemaBinary({
-        maxFrameSize: MAX_SOCKET_FRAME_BYTES,
-      }),
-    ),
-  );
-}

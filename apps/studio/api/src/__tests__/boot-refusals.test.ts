@@ -13,7 +13,11 @@ import {
   reachableDb,
   seedTeam,
 } from './support/postgres.ts';
-import { testKeyringEntry } from './support/secrets.ts';
+import {
+  testCipher,
+  testKeyring,
+  testKeyringEntry,
+} from './support/secrets.ts';
 
 const db = await reachableDb();
 
@@ -122,6 +126,62 @@ describe.skipIf(!db)('refusing a database', () => {
       expect(output).not.toMatch(STACK_FRAME);
     });
   });
+});
+
+describe.skipIf(!db)('opening a keyring that matches the database', () => {
+  let sealed: Awaited<ReturnType<typeof createScratchDatabase>>;
+
+  beforeAll(async () => {
+    if (!db) throw new Error('unreachable: probe guaranteed a database');
+    sealed = await createScratchDatabase(db);
+    await applySchema(sealed.pool);
+    await seedTeam(sealed.pool, 'team-boot-sealed');
+    const subscriptionId = randomUUID();
+    const secret = testCipher(testKeyring(['boot-1'])).sealWebhookSecret(
+      { teamId: 'team-boot-sealed', subscriptionId },
+      'whsec-boot',
+    );
+    await sealed.pool.query(
+      `INSERT INTO webhook_subscriptions
+         (id, team_id, url, event_types, secret_ciphertext, secret_key_id, created_by_user_id)
+       VALUES ($1, 'team-boot-sealed', 'https://hooks.example.org/studio',
+               ARRAY['interview.completed'], $2, $3, 'user-boot')`,
+      [subscriptionId, secret.ciphertext, secret.keyId],
+    );
+  }, APPLY_TIMEOUT_MS);
+
+  afterAll(async () => {
+    await sealed?.dispose();
+  });
+
+  it.each([
+    ['the web process', 'src/index.ts', /listening on/],
+    ['the worker', 'src/worker.ts', /worker \S+ started/],
+  ] as const)(
+    '%s opens a stored secret and starts',
+    async (_name, entry, started) => {
+      const child = startEntrypoint(entry, {
+        NODE_ENV: 'production',
+        STUDIO_DEV_DEFAULTS: '',
+        SMTP_URL: '',
+        EMAIL_FROM: '',
+        PORT: String(await freePort()),
+        WORKER_HEALTH_PORT: String(await freePort()),
+        DATABASE_URL: sealed.db.url,
+        STUDIO_SECRETS_KEY: testKeyringEntry('boot-1'),
+      });
+      try {
+        await Promise.race([
+          child.waitForOutput(started),
+          child.exited.then(({ code }) => {
+            throw new Error(`${entry} exited ${code}:\n${child.output()}`);
+          }),
+        ]);
+      } finally {
+        child.child.kill('SIGKILL');
+      }
+    },
+  );
 });
 
 describe('a process that broke rather than refused', () => {

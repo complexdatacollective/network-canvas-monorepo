@@ -1,4 +1,4 @@
-import { Cause, Effect, Exit, Predicate } from 'effect';
+import { Cause, Effect, Exit, Option, Predicate } from 'effect';
 
 import { Principal } from '@codaco/studio-contract/middleware/authenticated';
 
@@ -171,8 +171,9 @@ export const audited = <A, E, R>(
           return yield* Effect.failCause(exit.cause);
         }
 
-        const error = Cause.squash(exit.cause);
-        const marker = auditableMarker(error);
+        const marker = auditableMarker(
+          Option.getOrUndefined(Cause.findErrorOption(exit.cause)),
+        );
         if (marker === undefined) {
           return yield* Effect.failCause(exit.cause);
         }

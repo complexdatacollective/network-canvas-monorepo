@@ -89,6 +89,24 @@ describe.skipIf(!testDb)('the database readiness probes', () => {
         ),
       );
 
+      it.effect(
+        'give up on the migration lock after a second on an exhausted pool',
+        () =>
+          Effect.scoped(
+            Effect.gen(function* () {
+              const { sql } = yield* Scratch;
+              yield* sql.reserve;
+              const bounded = yield* timedOut(migrationLockHeld(sql)).pipe(
+                Effect.timeoutOrElse({
+                  duration: '5 seconds',
+                  orElse: () => Effect.succeed(false),
+                }),
+              );
+              assert.isTrue(bounded, 'the probe waited past its own bound');
+            }),
+          ),
+      );
+
       it.effect('see the migration lock only while a session holds it', () =>
         Effect.gen(function* () {
           const { pool, sql } = yield* Scratch;

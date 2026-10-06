@@ -5,12 +5,9 @@ import { RpcSerialization, RpcServer } from 'effect/rpc';
 import { RPC_PATH, StudioRpcs } from '@codaco/studio-contract/rpc/studio';
 
 import type { StudioEnv } from '../env.ts';
-import { AuthenticatedLive } from '../rpc/authenticated.ts';
-import { ClientSessionMiddlewareLive } from '../rpc/client-session.ts';
 import type { RpcDeps, RpcServices } from '../rpc/deps.ts';
-import { StudioRpcHandlers } from '../rpc/handlers.ts';
+import { StudioRpcHandlers, StudioRpcMiddleware } from '../rpc/handlers.ts';
 import { SetCookiesMiddleware } from '../rpc/set-cookies.ts';
-import { TeamAdministrationLive } from '../rpc/team-administration.ts';
 import { boundedBody } from './body.ts';
 import { requireSameOrigin } from './middleware/origin.ts';
 
@@ -29,9 +26,7 @@ export const RpcRoutes = (
     protocol: 'http',
   }).pipe(
     Layer.provide(StudioRpcHandlers(deps)),
-    Layer.provide(AuthenticatedLive),
-    Layer.provide(TeamAdministrationLive(deps)),
-    Layer.provide(ClientSessionMiddlewareLive),
+    Layer.provide(StudioRpcMiddleware(deps)),
     Layer.provide(RpcSerialization.layerNdjson),
     Layer.provide(SetCookiesMiddleware.layer),
     Layer.provide(guards),

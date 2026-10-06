@@ -3,6 +3,7 @@ import { isTaggedError } from '@codaco/effect-query/errors';
 import type { RpcAdapter } from '@codaco/effect-query/types';
 
 import { reportUnauthorizedResponse } from '../lib/session.ts';
+import { refusalOf } from './errors.ts';
 import { runtime, StudioClient, type StudioRpcsType } from './runtime.ts';
 
 /**
@@ -11,7 +12,7 @@ import { runtime, StudioClient, type StudioRpcsType } from './runtime.ts';
  */
 export const reportUnauthorizedFailure = (error: unknown): void => {
   if (
-    isTaggedError(error, 'Unauthorized') ||
+    refusalOf(error)?.kind === 'unauthorized' ||
     isTaggedError(error, 'HostUnauthorized')
   ) {
     void reportUnauthorizedResponse();

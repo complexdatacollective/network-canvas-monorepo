@@ -248,6 +248,38 @@ describe.skipIf(!testDb)('the secret stores', () => {
         }).pipe(Effect.orDie),
       );
 
+      it.effect(
+        'reads an underscore in the current key id as itself, not as a wildcard',
+        () =>
+          Effect.gen(function* () {
+            yield* reset();
+            const current = createSecretsCipher(
+              testKeyring(['key_1', 'keyx1']),
+            );
+            const neighbour = createSecretsCipher(
+              testKeyring(['keyx1', 'key_1']),
+            );
+            yield* newAccount(current, { accessToken: 'ya29.current' });
+            yield* newAccount(neighbour, { accessToken: 'ya29.neighbour' });
+
+            expect(
+              yield* MaintenanceScope.open(
+                accountStore.remaining(current.currentKeyId),
+              ),
+            ).toBe(1);
+            expect(
+              yield* MaintenanceScope.open(
+                rotateBatchWith(current, accountStore, 10),
+              ),
+            ).toBe(1);
+            expect(
+              yield* MaintenanceScope.open(
+                accountStore.remaining(current.currentKeyId),
+              ),
+            ).toBe(0);
+          }).pipe(Effect.orDie),
+      );
+
       it.effect('leaves a row already under the current key alone', () =>
         Effect.gen(function* () {
           yield* reset();

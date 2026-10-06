@@ -15,7 +15,7 @@ import { createInMemoryHost } from '@codaco/protocol-builder/testing/host/create
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { FakeWebSocket, installSocketHost } from '../../test/hostHarness.ts';
-import { HostClient } from '../runtime.ts';
+import { HostClient } from '../hostClient.ts';
 
 const PROTOCOL_ID = 'protocol-under-test';
 const STAGE_ORDER = sectionId({ kind: 'stageOrder' });

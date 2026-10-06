@@ -26,6 +26,8 @@ const statusQueryOptions = rpcQuery('status', undefined, {
   staleTime: Infinity,
 });
 
+const guardStatusQueryOptions = { ...statusQueryOptions, retry: false };
+
 /**
  * Which of the two topologies this deployment serves (§10.4), for a
  * `beforeLoad` that has to have it before it can decide what a route even is —
@@ -35,7 +37,7 @@ const statusQueryOptions = rpcQuery('status', undefined, {
 export async function fetchDeploymentMode(
   queryClient: QueryClient,
 ): Promise<DeploymentMode> {
-  const status = await queryClient.fetchQuery(statusQueryOptions);
+  const status = await queryClient.fetchQuery(guardStatusQueryOptions);
   return status.deployment.mode;
 }
 
@@ -49,7 +51,7 @@ export async function fetchDeploymentMode(
 export async function fetchSetupRequirement(
   queryClient: QueryClient,
 ): Promise<boolean> {
-  const status = await queryClient.fetchQuery(statusQueryOptions);
+  const status = await queryClient.fetchQuery(guardStatusQueryOptions);
   return status.setup.required;
 }
 

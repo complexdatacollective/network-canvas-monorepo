@@ -336,6 +336,27 @@ describe.skipIf(!testDb)('audited', () => {
       );
     }
 
+    it.effect('appends no denial event for a marker carried on a defect', () =>
+      Effect.gen(function* () {
+        const TEAM = yield* seedTeam('Audited Team');
+        const marker = randomUUID();
+
+        const exit = yield* Effect.exit(
+          audited(
+            'team.updateMemberRole',
+            TEAM,
+            Effect.flatMap(writeMarker(marker, TEAM.teamId), () =>
+              Effect.die(denied()),
+            ),
+          ),
+        );
+
+        assert.isTrue(Exit.hasDies(exit));
+        assert.strictEqual(yield* markerCount(marker), 0);
+        assert.lengthOf(yield* auditRows(TEAM.teamId), 0);
+      }),
+    );
+
     it.effect('rolls everything back when the failure is not auditable', () =>
       Effect.gen(function* () {
         const TEAM = yield* seedTeam('Audited Team');

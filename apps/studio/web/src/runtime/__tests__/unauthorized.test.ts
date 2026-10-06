@@ -10,7 +10,7 @@ import {
   reportUnauthorizedResponse,
   setUnauthorizedResponseHandler,
 } from '../../lib/session.ts';
-import { installFetchStub } from '../../test/fetchStub.ts';
+import { installFetchStub, problemResponse } from '../../test/fetchStub.ts';
 import { HARNESS_PRINCIPAL, installRpcHarness } from '../../test/rpcHarness.ts';
 import { rpcCall } from '../rpc.ts';
 import { getWebRuntime, type StudioRpcsType } from '../runtime.ts';
@@ -41,6 +41,18 @@ describe('an Unauthorized refusal', () => {
     const error = await rejectionOf(rpcCall('me', undefined));
 
     expect(error).toBeInstanceOf(Unauthorized);
+    expect(reported).toHaveBeenCalledTimes(1);
+  });
+
+  it('is reported when the HTTP plane answers 401', async () => {
+    fetchStub.mockImplementation(() =>
+      Promise.resolve(
+        problemResponse(401, { title: 'Unauthorized', status: 401 }),
+      ),
+    );
+
+    await rejectionOf(rpcCall('me', undefined));
+
     expect(reported).toHaveBeenCalledTimes(1);
   });
 

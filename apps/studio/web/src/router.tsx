@@ -3,6 +3,7 @@ import {
   createRootRouteWithContext,
   createRoute,
   createRouter,
+  lazyRouteComponent,
   notFound,
   Outlet,
   redirect,
@@ -25,6 +26,7 @@ import {
   fetchSetupRequirement,
   topologyGuard,
 } from './lib/deployment.ts';
+import { parseStudyParams, parseTeamParams } from './lib/ids.ts';
 import {
   landingRedirect,
   resolveLandingDestination,
@@ -34,13 +36,12 @@ import { queryClient as applicationQueryClient } from './lib/queryClient.ts';
 import {
   resolveSessionState,
   revalidateSession,
-  ServerUnreachableError,
+  isSessionUnknown,
   sessionQueryOptions,
   setUnauthorizedResponseHandler,
 } from './lib/session.ts';
 import AcceptInvitation from './routes/AcceptInvitation.tsx';
 import AppLayout from './routes/AppLayout.tsx';
-import Editor from './routes/Editor.tsx';
 import ErrorScreen from './routes/ErrorScreen.tsx';
 import Marketing from './routes/Marketing.tsx';
 import NotFoundScreen from './routes/NotFoundScreen.tsx';
@@ -792,9 +793,10 @@ const signInRoute = createRoute({
       .fetchQuery(sessionQueryOptions)
       .catch((error: unknown) => {
         // This guard's only question is "are you already signed in?". An
-        // unreachable server cannot answer it, and not knowing is no reason to
-        // replace the sign-in page with the error screen.
-        if (error instanceof ServerUnreachableError) return undefined;
+        // unreachable server, or one in maintenance, cannot answer it, and not
+        // knowing is no reason to replace the sign-in page with the error
+        // screen.
+        if (isSessionUnknown(error)) return undefined;
         throw error;
       });
     if (session !== 'signedIn') return;
@@ -1164,6 +1166,7 @@ const templatesRoute = createRoute({
 const teamLayoutRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/team/$teamId',
+  params: { parse: parseTeamParams },
   component: TeamArea,
 });
 
@@ -1277,6 +1280,7 @@ const teamSettingsMessagingRoute = createRoute({
 const studyRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/study/$studyId',
+  params: { parse: parseStudyParams },
 });
 
 /** The study's own area. Sidebar: Study. */
@@ -1402,7 +1406,7 @@ const editorLayoutRoute = createRoute({
 const editorIndexRoute = createRoute({
   getParentRoute: () => editorLayoutRoute,
   path: '/',
-  component: Editor,
+  component: lazyRouteComponent(() => import('./routes/Editor.tsx')),
 });
 
 const editorCodebookRoute = createRoute({
