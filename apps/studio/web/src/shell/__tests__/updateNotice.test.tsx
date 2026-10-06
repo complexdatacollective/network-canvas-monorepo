@@ -232,7 +232,7 @@ describe('the update notice', () => {
 });
 
 describe('the update notice in the app shell', () => {
-  it('is in the header, above the screen, and absent when there is nothing to announce', async () => {
+  it('is rendered in the app shell’s header slot', async () => {
     installRpcHarness({
       'me': () =>
         Effect.succeed({
