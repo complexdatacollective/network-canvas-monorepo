@@ -305,6 +305,7 @@ export type StageEntry = {
   relationship?: FamilyPedigreeRelationshipEntry;
   completeness?: FamilyPedigreeCompletenessEntry;
   framing?: FramingSetting;
+  nominationPrompts?: FamilyPedigreeNominationPromptEntry[];
   // Geospatial
   mapOptions?: MapOptionsEntry;
   // NetworkComposer
@@ -327,6 +328,15 @@ export type FamilyPedigreeCompletenessEntry = {
   scope: PedigreeCompletenessScope;
   enforcement: 'required' | 'recommended';
   relativesNotRecordedVariable: string;
+};
+
+/** A question asked of the drawn family, and the boolean person variable
+ * recording who it applies to. */
+export type FamilyPedigreeNominationPromptEntry = {
+  id: string;
+  text: string;
+  variable: string;
+  onlyForSexAssignedAtBirth?: 'female' | 'male';
 };
 
 /** The family edge type and edge variable ids a FamilyPedigree stage binds. */
@@ -474,6 +484,13 @@ export type AddStageInput = {
   prompt?: string;
   relationshipType?: string;
   framing?: FramingSetting;
+  /** Each creates a boolean person variable, named `variableName` or
+   * `condition<n>`, recording who the prompt applies to. */
+  nominationPrompts?: {
+    text: string;
+    variableName?: string;
+    onlyForSexAssignedAtBirth?: 'female' | 'male';
+  }[];
   /** Creates the relatives-not-recorded variable when set. */
   completeness?: Omit<
     FamilyPedigreeCompletenessEntry,

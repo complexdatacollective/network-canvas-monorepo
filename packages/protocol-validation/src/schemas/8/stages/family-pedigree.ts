@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { duplicateIdRefinement } from '../../../utils/validation-helpers.ts';
 import {
   TitlelessFormSchema,
   NodeStageSubjectSchema,
@@ -132,6 +133,38 @@ export const CompletenessSchema = z.strictObject({
 });
 
 /**
+ * The prompt id the interview gives the family-building step, which comes
+ * before every nomination prompt; a nomination prompt may not reuse it.
+ */
+export const FAMILY_PEDIGREE_BUILD_PROMPT_ID = 'pedigree';
+
+/**
+ * A question asked of the whole family once it is drawn, such as "Who in
+ * your family has had heart disease?". The participant selects everyone it
+ * applies to, which sets a boolean attribute on them; anyone not selected
+ * has it unset.
+ */
+const NominationPromptSchema = z.strictObject({
+  id: z
+    .string()
+    .min(1)
+    .refine((id) => id !== FAMILY_PEDIGREE_BUILD_PROMPT_ID, {
+      message: `Nomination prompt id "${FAMILY_PEDIGREE_BUILD_PROMPT_ID}" is reserved for building the family`,
+    }),
+  text: z.string().min(1),
+  variable: entityAttributeReference({
+    subject: 'stageSubject',
+    usage: 'unvalidatedAttribute',
+    requireType: ['boolean'],
+  }),
+  // Limits the question to people of one sex assigned at birth, for a
+  // condition only they can have: people recorded as the other sex cannot be
+  // selected. Anyone else can, including people whose sex at birth is
+  // intersex, unknown, or not recorded.
+  onlyForSexAssignedAtBirth: z.enum(['female', 'male']).optional(),
+});
+
+/**
  * The stage a participant draws their family on.
  *
  * The canvas opens on the participant. Selecting anyone offers to add their
@@ -152,6 +185,12 @@ export const familyPedigreeStage = baseStageSchema.extend({
   completeness: CompletenessSchema.optional(),
   // Researcher-defined person fields, asked after the interface's own.
   form: TitlelessFormSchema.optional(),
+  // Asked in turn once the family is drawn, each its own prompt.
+  nominationPrompts: z
+    .array(NominationPromptSchema)
+    .min(1)
+    .superRefine(duplicateIdRefinement('Nomination prompts'))
+    .optional(),
 });
 
 export type FamilyPedigreeStageDefinition = z.infer<typeof familyPedigreeStage>;
@@ -162,3 +201,6 @@ export type FamilyPedigreeRelationshipConfig = z.infer<
   typeof RelationshipConfigSchema
 >;
 export type FamilyPedigreeCompleteness = z.infer<typeof CompletenessSchema>;
+export type FamilyPedigreeNominationPrompt = z.infer<
+  typeof NominationPromptSchema
+>;

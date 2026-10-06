@@ -7,7 +7,10 @@ import {
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
 } from '../../family-pedigree-values.ts';
 import ProtocolSchemaV8 from '../../schema.ts';
-import { familyPedigreeStage } from '../family-pedigree.ts';
+import {
+  FAMILY_PEDIGREE_BUILD_PROMPT_ID,
+  familyPedigreeStage,
+} from '../family-pedigree.ts';
 
 const base = {
   id: 'fp1',
@@ -47,6 +50,7 @@ const protocolWith = (
         variables: {
           name: { name: 'Name', type: 'text' as const, component: 'Text' },
           isEgo: { name: 'IsEgo', type: 'boolean' as const },
+          hd: { name: 'HeartDisease', type: 'boolean' as const },
           gender: {
             name: 'Gender',
             type: 'categorical' as const,
@@ -132,6 +136,58 @@ describe('familyPedigreeStage', () => {
     );
   });
 
+  it('accepts nomination prompts, optionally limited by sex at birth', () => {
+    expect(
+      familyPedigreeStage.safeParse({
+        ...base,
+        nominationPrompts: [
+          { id: 'heart', text: 'Who has had heart disease?', variable: 'hd' },
+          {
+            id: 'ovarian',
+            text: 'Who has had ovarian cancer?',
+            variable: 'oc',
+            onlyForSexAssignedAtBirth: 'female',
+          },
+        ],
+      }).success,
+    ).toBe(true);
+  });
+
+  it('rejects nomination prompts that reuse an id, or the family prompt id', () => {
+    const prompt = { id: 'heart', text: 'Who?', variable: 'hd' };
+    expect(
+      familyPedigreeStage.safeParse({
+        ...base,
+        nominationPrompts: [prompt, { ...prompt, variable: 'other' }],
+      }).success,
+    ).toBe(false);
+    expect(
+      familyPedigreeStage.safeParse({
+        ...base,
+        nominationPrompts: [{ ...prompt, id: FAMILY_PEDIGREE_BUILD_PROMPT_ID }],
+      }).success,
+    ).toBe(false);
+  });
+
+  it('rejects an empty list of nomination prompts, or another limit', () => {
+    expect(
+      familyPedigreeStage.safeParse({ ...base, nominationPrompts: [] }).success,
+    ).toBe(false);
+    expect(
+      familyPedigreeStage.safeParse({
+        ...base,
+        nominationPrompts: [
+          {
+            id: 'heart',
+            text: 'Who?',
+            variable: 'hd',
+            onlyForSexAssignedAtBirth: 'intersex',
+          },
+        ],
+      }).success,
+    ).toBe(false);
+  });
+
   it('rejects the keys of the retired census interface', () => {
     expect(
       familyPedigreeStage.safeParse({ ...base, censusPrompt: 'Build' }).success,
@@ -160,6 +216,21 @@ describe('FamilyPedigree in a whole protocol', () => {
         ),
       ),
     ).toBe(true);
+  });
+
+  it('requires each nomination prompt variable to be a boolean', () => {
+    const withNomination = (variable: string) =>
+      ProtocolSchemaV8.safeParse({
+        ...protocolWith({
+          ...base,
+          nominationPrompts: [{ id: 'heart', text: 'Who?', variable }],
+        }),
+      });
+    const accepted = withNomination('hd');
+    expect(accepted.success ? null : accepted.error.issues).toBeNull();
+    expect(withNomination('name').success).toBe(false);
+    // Nor can it be the variable marking the participant.
+    expect(withNomination('isEgo').success).toBe(false);
   });
 
   it('detects the participant marker being reused as a form field', () => {

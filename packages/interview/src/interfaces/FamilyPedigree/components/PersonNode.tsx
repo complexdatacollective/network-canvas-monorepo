@@ -27,8 +27,11 @@ type PersonNodeProps = {
   /** Their name, or how they are related to the participant. */
   label: string;
   color: NodeColorSequence;
-  /** Their details are open in the side panel. */
+  /** Their details are open in the side panel; or, answering a nomination
+   * prompt, it applies to them. */
   selected: boolean;
+  /** Answering a nomination prompt that cannot apply to them. */
+  disabled?: boolean;
   /** Their add menu is showing (focus or the mouse is on them). */
   menuOpen: boolean;
   /** One of the two people being connected with the connect tool. */
@@ -60,6 +63,7 @@ export default function PersonNode({
   label,
   color,
   selected,
+  disabled = false,
   menuOpen,
   linking,
   adopted,
@@ -119,6 +123,7 @@ export default function PersonNode({
           missing: hasMissingDetails ? 'true' : 'false',
         })}
         selected={selected}
+        disabled={disabled}
         linking={linking}
         onClick={onActivate}
         tabIndex={tabIndex}

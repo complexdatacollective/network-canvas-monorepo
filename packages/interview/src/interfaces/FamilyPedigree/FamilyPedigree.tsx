@@ -42,6 +42,7 @@ import {
 } from '@codaco/shared-consts';
 
 import Prompts from '../../components/Prompts/Prompts';
+import { usePrompts } from '../../components/Prompts/usePrompts';
 import { useCurrentStep } from '../../contexts/CurrentStepContext';
 import useBeforeNext from '../../hooks/useBeforeNext';
 import { useNodeMeasurement } from '../../hooks/useNodeMeasurement';
@@ -177,6 +178,24 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   const config = useMemo(() => pedigreeConfigFromStage(stage), [stage]);
   const formFields = useMemo(() => stage.form?.fields ?? [], [stage.form]);
 
+  // The stage's first prompt builds the family. Each prompt after it asks who
+  // in the family something applies to: selecting a person marks them, and
+  // selecting them again unmarks them. The family itself cannot be changed
+  // while one is showing.
+  const { prompt, prompts } = usePrompts();
+  const nomination = stage.nominationPrompts?.find(
+    (candidate) => candidate.id === prompt.id,
+  );
+  const isNominated = (person: Person) =>
+    nomination !== undefined && person.attributes[nomination.variable] === true;
+  // A prompt limited to one sex at birth leaves out people recorded as the
+  // other; anyone whose sex at birth is not known either way can be chosen.
+  const canNominate = (person: Person) => {
+    const only = nomination?.onlyForSexAssignedAtBirth;
+    const sex = person.sexAssignedAtBirth;
+    return !only || (sex !== 'female' && sex !== 'male') || sex === only;
+  };
+
   const nodes = useStageSelector(getNetworkNodes);
   const edges = useStageSelector(getNetworkEdges);
   const family = useMemo(
@@ -311,7 +330,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   const promptRef = useRef<HTMLDivElement>(null);
   const toolbarAreaRef = useRef<HTMLDivElement>(null);
   // The whole family, clear of the prompt above and the toolbar below.
-  const showWholeFamily = () => {
+  const showWholeFamily = useCallback(() => {
     const layout = contentRef.current?.firstElementChild;
     const viewport = viewportRef.current;
     if (!(layout instanceof HTMLElement) || !viewport) return;
@@ -323,13 +342,15 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       left: 32,
       right: 32,
     });
-  };
+  }, [panZoom]);
 
   // No menu while the panel is open: it would offer to add to someone else
   // mid-way through describing this person. Nor while connecting or
   // disconnecting people.
   const menuPersonId =
-    panel?.open || tool !== 'pointer' ? null : (hoveredId ?? focusedId);
+    panel?.open || tool !== 'pointer' || nomination
+      ? null
+      : (hoveredId ?? focusedId);
   const menuPerson = menuPersonId ? family.byId.get(menuPersonId) : undefined;
   const [announcement, setAnnouncement] = useState('');
 
@@ -437,6 +458,21 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     panZoom.centreOn(egoNode, { animated: false });
   });
 
+  // Answering a nomination prompt, everyone is someone it might apply to, so
+  // the first one shown opens on the whole family.
+  const nominating = nomination !== undefined;
+  const fittedForNomination = useRef(false);
+  useEffect(() => {
+    if (!nominating) {
+      fittedForNomination.current = false;
+      return;
+    }
+    if (fittedForNomination.current || nodeWidth === 0) return;
+    fittedForNomination.current = true;
+    centredOnEgo.current = true;
+    showWholeFamily();
+  }, [nominating, nodeWidth, showWholeFamily]);
+
   // Adding someone can move everyone else in the layout. The person in
   // question (the one selected, focused, or else the participant) stays where
   // they are on screen, and the family moves around them.
@@ -513,6 +549,21 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   );
   const [trackerOpen, setTrackerOpen] = useState(false);
 
+  // Reaching a nomination prompt puts away whatever was under way in
+  // building the family.
+  useEffect(() => {
+    if (!nominating) return;
+    setDraft(null);
+    setPanel((current) => (current ? { ...current, open: false } : null));
+    setTool('pointer');
+    setLinkingId(null);
+    setChosenPair(null);
+    setConnectNotice(null);
+    setHoveredId(null);
+    setFocusedId(null);
+    setTrackerOpen(false);
+  }, [nominating]);
+
   // A complete checklist tells the interview the stage is ready, which marks
   // the Next button.
   const { updateReady } = useReadyForNextStage();
@@ -529,6 +580,8 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   const shownBeforeNext = useRef(false);
   useBeforeNext((direction) => {
     if (direction !== 'forwards' || !progress || !completeness) return true;
+    // Only the family's own prompt asks for it to be complete.
+    if (nomination) return true;
     if (progress.items.length === 0) return true;
     if (completeness.enforcement === 'recommended' && shownBeforeNext.current) {
       return true;
@@ -659,6 +712,22 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   // Selecting a person (click, tap, Enter or Space) opens their details. The
   // panel returns focus to them when it closes.
   const handleActivate = (personId: string) => {
+    if (nomination) {
+      setLastFocusedId(personId);
+      const person = family.byId.get(personId);
+      if (!person || !canNominate(person)) return;
+      void dispatch(
+        updateNode({
+          nodeId: personId,
+          attributePatch: {
+            set: { [nomination.variable]: !isNominated(person) },
+            unset: [],
+          },
+          currentStep,
+        }),
+      );
+      return;
+    }
     if (tool !== 'pointer') {
       handlePairSelect(personId);
       return;
@@ -671,10 +740,16 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
 
   // Roving focus: the family is a single tab stop, and the arrow keys move
   // between people by where they sit in the tree.
-  const tabStopId =
-    (lastFocusedId && family.byId.has(lastFocusedId) ? lastFocusedId : null) ??
-    family.egoId ??
-    family.people[0]?.id;
+  // Someone a nomination prompt cannot apply to cannot be focused, so is
+  // never the tab stop.
+  const tabStopId = [
+    lastFocusedId,
+    family.egoId,
+    ...family.people.map((person) => person.id),
+  ].find((id) => {
+    const person = id ? family.byId.get(id) : undefined;
+    return person !== undefined && (!nomination || canNominate(person));
+  });
 
   const handleNodeKeyDown = (
     personId: string,
@@ -691,7 +766,9 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     if (!current) return;
     const candidates = new Map<string, Point>();
     for (const [id, element] of nodeRefs.current) {
-      if (id !== personId) candidates.set(id, centreOf(element));
+      if (id !== personId && !element.disabled) {
+        candidates.set(id, centreOf(element));
+      }
     }
     const next = nearestInDirection(centreOf(current), candidates, direction);
     if (next) nodeRefs.current.get(next)?.focus();
@@ -1086,10 +1163,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         ref={promptRef}
         className="from-background via-background/80 pointer-events-none absolute inset-x-0 top-0 z-10 bg-linear-to-b to-transparent px-4 pt-4 pb-10"
       >
-        <Prompts
-          prompts={[{ id: 'pedigree', text: stage.prompt }]}
-          currentPromptId="pedigree"
-        />
+        <Prompts prompts={prompts} currentPromptId={prompt.id} />
       </div>
       {measurementContainer}
       <div className="relative flex min-h-0 w-full flex-1 flex-col">
@@ -1144,7 +1218,10 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                     person={person}
                     label={displayName(personId)}
                     color={nodeColor}
-                    selected={personId === selectedId}
+                    selected={
+                      nomination ? isNominated(person) : personId === selectedId
+                    }
+                    disabled={nomination ? !canNominate(person) : false}
                     linking={
                       tool !== 'pointer' &&
                       (personId === linkingId || personId === connectorTargetId)
@@ -1152,6 +1229,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                     menuOpen={hasMenu}
                     // The person being added has not been asked yet.
                     hasMissingDetails={
+                      !nomination &&
                       family.byId.has(personId) &&
                       missingDetailsFor(person, requiredFormVariables).length >
                         0
@@ -1241,34 +1319,37 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
               size="lg"
               className="pointer-events-auto"
             >
-              <ToolbarToggleGroup
-                aria-label={intl.formatMessage(messages.toolGroupLabel)}
-                value={[tool]}
-                onValueChange={(value) => {
-                  const next = value[0];
-                  if (isTool(next)) chooseTool(next);
-                }}
-              >
-                <ToolbarIconButton
-                  value="pointer"
-                  aria-label={intl.formatMessage(messages.pointerTool)}
-                  icon={<MousePointer2 />}
-                  data-testid="pedigree-tool-pointer"
-                />
-                <ToolbarIconButton
-                  value="connect"
-                  aria-label={intl.formatMessage(messages.connectTool)}
-                  icon={<Waypoints />}
-                  data-testid="pedigree-tool-connect"
-                />
-                <ToolbarIconButton
-                  value="disconnect"
-                  aria-label={intl.formatMessage(messages.disconnectTool)}
-                  icon={<Unlink />}
-                  data-testid="pedigree-tool-disconnect"
-                />
-              </ToolbarToggleGroup>
-              {participantFraming && <ToolbarSeparator />}
+              {/* Answering a nomination prompt, selecting is all there is. */}
+              {!nomination && (
+                <ToolbarToggleGroup
+                  aria-label={intl.formatMessage(messages.toolGroupLabel)}
+                  value={[tool]}
+                  onValueChange={(value) => {
+                    const next = value[0];
+                    if (isTool(next)) chooseTool(next);
+                  }}
+                >
+                  <ToolbarIconButton
+                    value="pointer"
+                    aria-label={intl.formatMessage(messages.pointerTool)}
+                    icon={<MousePointer2 />}
+                    data-testid="pedigree-tool-pointer"
+                  />
+                  <ToolbarIconButton
+                    value="connect"
+                    aria-label={intl.formatMessage(messages.connectTool)}
+                    icon={<Waypoints />}
+                    data-testid="pedigree-tool-connect"
+                  />
+                  <ToolbarIconButton
+                    value="disconnect"
+                    aria-label={intl.formatMessage(messages.disconnectTool)}
+                    icon={<Unlink />}
+                    data-testid="pedigree-tool-disconnect"
+                  />
+                </ToolbarToggleGroup>
+              )}
+              {!nomination && participantFraming && <ToolbarSeparator />}
               {participantFraming && (
                 <FramingControl
                   value={chosenFraming}
@@ -1277,7 +1358,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                   onOpenChange={setFramingOpen}
                 />
               )}
-              <ToolbarSeparator />
+              {(!nomination || participantFraming) && <ToolbarSeparator />}
               <ToolbarIconButton
                 aria-label={intl.formatMessage(messages.zoomOut)}
                 icon={<ZoomOut />}
@@ -1298,8 +1379,8 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                 onClick={showWholeFamily}
                 data-testid="pedigree-zoom-fit"
               />
-              {progress && completeness && <ToolbarSeparator />}
-              {progress && completeness && (
+              {progress && completeness && !nomination && <ToolbarSeparator />}
+              {progress && completeness && !nomination && (
                 <CompletenessTracker
                   progress={progress}
                   enforcement={completeness.enforcement}

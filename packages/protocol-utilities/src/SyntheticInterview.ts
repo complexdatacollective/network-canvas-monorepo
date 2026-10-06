@@ -726,6 +726,18 @@ export class SyntheticInterview {
       };
 
       if (opts?.framing) entry.framing = opts.framing;
+      if (opts?.nominationPrompts) {
+        entry.nominationPrompts = opts.nominationPrompts.map(
+          ({ text, variableName, onlyForSexAssignedAtBirth }, index) => ({
+            id: `nomination-${index + 1}`,
+            text,
+            variable: personVariable(variableName ?? `condition${index + 1}`, {
+              type: 'boolean',
+            }),
+            ...(onlyForSexAssignedAtBirth && { onlyForSexAssignedAtBirth }),
+          }),
+        );
+      }
       if (opts?.completeness) {
         entry.completeness = {
           ...opts.completeness,
@@ -2518,6 +2530,9 @@ export class SyntheticInterview {
       config.relationship = stage.relationship;
       if (stage.completeness) config.completeness = stage.completeness;
       if (stage.framing) config.framing = stage.framing;
+      if (stage.nominationPrompts) {
+        config.nominationPrompts = stage.nominationPrompts;
+      }
     }
 
     // Geospatial

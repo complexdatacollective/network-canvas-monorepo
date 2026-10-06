@@ -51,6 +51,12 @@ type StoryOptions = {
   withFormFields?: boolean;
   completeness?: Completeness;
   framing?: FramingSetting;
+  nominationPrompts?: NominationPrompt[];
+};
+
+type NominationPrompt = {
+  text: string;
+  onlyForSexAssignedAtBirth?: 'female' | 'male';
 };
 
 function buildInterview({
@@ -58,6 +64,7 @@ function buildInterview({
   withFormFields = false,
   completeness,
   framing,
+  nominationPrompts,
 }: StoryOptions) {
   const si = new SyntheticInterview(1);
   si.addInformationStage({ title: 'Welcome', text: 'Before the pedigree.' });
@@ -65,6 +72,7 @@ function buildInterview({
     prompt: PROMPT,
     completeness,
     framing,
+    nominationPrompts,
   });
   if (withFormFields) {
     stage.addFormField({ component: 'Number', prompt: 'Age' });
@@ -107,6 +115,7 @@ function PedigreeStory({
   withFormFields,
   completeness,
   framing,
+  nominationPrompts,
 }: StoryOptions) {
   const rawPayload = useMemo(
     () =>
@@ -116,9 +125,10 @@ function PedigreeStory({
           withFormFields,
           completeness,
           framing,
+          nominationPrompts,
         }).getInterviewPayload({ currentStep: 1 }),
       ),
-    [family, withFormFields, completeness, framing],
+    [family, withFormFields, completeness, framing, nominationPrompts],
   );
 
   return (
@@ -227,6 +237,97 @@ const unnamedParents: Family = {
     { from: 'mum', to: 'ego', kind: 'biological', carrier: true },
     { from: 'dad', to: 'ego', kind: 'biological' },
   ],
+};
+
+/** The unnamed parents, with everyone's details recorded, so the family
+ * meets the stage's requirement and Next moves on. */
+const describedFamily: Family = {
+  ...unnamedParents,
+  people: [
+    { id: 'ego', name: 'Ari', gender: 'nonBinary', sex: 'intersex', ego: true },
+    { id: 'mum', gender: 'woman', sex: 'female' },
+    { id: 'dad', gender: 'man', sex: 'male' },
+  ],
+};
+
+const HEART_PROMPT = 'Who in your family has had heart disease?';
+const OVARIAN_PROMPT = 'Who in your family has had ovarian cancer?';
+
+/**
+ * Once the family is drawn, each of the stage's nomination prompts asks who
+ * in it something applies to. Next and Back step between them. Selecting a
+ * person marks them for the prompt showing, and selecting them again
+ * unmarks them; the family itself cannot be changed. A prompt limited to
+ * one sex at birth leaves out people recorded as the other.
+ */
+export const NominatingConditions: Story = {
+  render: (args) => (
+    <PedigreeStory
+      {...settings(args)}
+      family={describedFamily}
+      nominationPrompts={[
+        { text: HEART_PROMPT },
+        { text: OVARIAN_PROMPT, onlyForSexAssignedAtBirth: 'female' },
+      ]}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const father = () => canvas.getByRole('button', { name: /^Father/ });
+    const mother = () => canvas.getByRole('button', { name: /^Mother/ });
+    await canvas.findByText(PROMPT);
+    await userEvent.click(canvas.getByTestId('next-button'));
+
+    await canvas.findByText(HEART_PROMPT);
+    // Selecting is all there is: no tools, and no details panel.
+    await waitFor(() =>
+      expect(canvas.queryByTestId('pedigree-tool-connect')).toBeNull(),
+    );
+    await expect(father()).toHaveAttribute('aria-pressed', 'false');
+    await userEvent.click(father());
+    await waitFor(() =>
+      expect(father()).toHaveAttribute('aria-pressed', 'true'),
+    );
+    await expect(
+      canvasElement.ownerDocument.querySelector(
+        '[data-testid="pedigree-person-panel"]',
+      ),
+    ).toBeNull();
+    await userEvent.click(father());
+    await waitFor(() =>
+      expect(father()).toHaveAttribute('aria-pressed', 'false'),
+    );
+    await userEvent.click(father());
+    await waitFor(() =>
+      expect(father()).toHaveAttribute('aria-pressed', 'true'),
+    );
+
+    await userEvent.click(canvas.getByTestId('next-button'));
+    await canvas.findByText(OVARIAN_PROMPT);
+    // Each prompt records its own answer, and this one is not for the
+    // father.
+    await waitFor(() => expect(father()).toBeDisabled());
+    await expect(father()).toHaveAttribute('aria-pressed', 'false');
+    // Intersex, the participant can still be chosen.
+    await expect(canvas.getByRole('button', { name: /^You/ })).toBeEnabled();
+    await userEvent.click(mother());
+    await waitFor(() =>
+      expect(mother()).toHaveAttribute('aria-pressed', 'true'),
+    );
+
+    await userEvent.click(canvas.getByTestId('previous-button'));
+    await canvas.findByText(HEART_PROMPT);
+    await waitFor(() =>
+      expect(father()).toHaveAttribute('aria-pressed', 'true'),
+    );
+    await expect(mother()).toHaveAttribute('aria-pressed', 'false');
+
+    // Back on the family's own prompt, the tools return.
+    await userEvent.click(canvas.getByTestId('previous-button'));
+    await expect(
+      await canvas.findByTestId('pedigree-tool-connect'),
+    ).toBeVisible();
+  },
 };
 
 /**
