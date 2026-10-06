@@ -135,7 +135,9 @@ jobs:
           #   - synchronize (subsequent pushes): push-to-push — diff only the
           #     latest push (prior branch commit → new tip) so only impacted
           #     jobs re-run; jobs that already ran keep their prior status via
-          #     the carry-forward job below.
+          #     the carry-forward job below. That holds only for jobs the
+          #     `quality` gate does not require: the flags that decide what
+          #     the gate requires always use the cumulative range (below).
           #
           # GH Actions checks out a synthetic merge commit on PRs; HEAD^2 is
           # the actual PR tip.
@@ -201,6 +203,31 @@ jobs:
           docs=$(flag @codaco/documentation)
           website=$(flag networkcanvas.com)
 
+          # ── Flags that decide what the `quality` gate requires ──────────
+          #
+          # Every job `quality` requires on a detect flag is decided on the
+          # WHOLE pull request — merge base to tip — never push to push. The
+          # gate requires such a job only when its flag is true and reads no
+          # earlier run's verdict (carry-forward-statuses republishes check
+          # runs; it does not feed `quality`), so a push-to-push flag would let
+          # an unrelated push after a failing run skip the job and pass the
+          # gate. The flags are `studio` (studio-stack) and `studio_upgrade`
+          # (studio-upgrade); ci-workflow.test.mjs fails if `quality` comes to
+          # require a job on any other detect output. The E2E suites and the
+          # `--affected` test jobs are scoped from the PR base the same way.
+          #
+          # This workflow defines both jobs, so it is an input of both, diffed
+          # over the same range: WORKFLOW_CHANGED above is push to push and
+          # cannot stand in for it.
+          gate_base="$PREV"
+          [[ "$GITHUB_EVENT_NAME" == "pull_request" ]] \
+            && gate_base=$(git merge-base "$CURR" "origin/${GITHUB_BASE_REF}" 2>/dev/null || true)
+          echo "gate-required flags compare ${gate_base:-(no base)}..$CURR"
+          # The studio-api package and its dependency closure: what the api
+          # image is built from. A plain assignment, so a stale package name
+          # fails the step rather than reading as false inside a condition.
+          studio_api=$(PREV="$gate_base" WORKFLOW_CHANGED=false flag @codaco/studio-api)
+
           # The Studio deployment stack, for the `studio-stack` job. The
           # package flag is not enough on its own: the compose files, the
           # Dockerfile, the environment template, the stack-test scripts and
@@ -214,7 +241,6 @@ jobs:
           # too: `.dockerignore` filters the context, and `turbo prune` and
           # `pnpm install` read the root manifest, the lockfile, the workspace
           # file (its catalog and patch list), the patches and `turbo.json`.
-          studio=$(flag @codaco/studio-api)
           studio_stack_paths=(
             apps/studio/Dockerfile
             'apps/studio/docker-compose*.yml'
@@ -228,46 +254,34 @@ jobs:
             patches
             turbo.json
           )
-          if [[ "$studio" != "true" && -n "$PREV" ]] \
-            && ! git diff --quiet "$PREV" "$CURR" -- "${studio_stack_paths[@]}"; then
+          studio=false
+          if [[ "$studio_api" == "true" || -z "$gate_base" ]] \
+            || ! git diff --quiet "$gate_base" "$CURR" -- \
+              "${studio_stack_paths[@]}" \
+              .github/workflows/ci-and-release.yml; then
             studio=true
-            echo "Studio stack inputs changed outside the package graph."
+            echo "Studio stack inputs changed in ${gate_base:-(no base)}..$CURR."
           fi
 
           # The Studio upgrade lane, for the `studio-upgrade` job (#1901): an
           # upgrade from the candidate to a code-only release and to a release
           # carrying a migration, run through the self-host guide's own
           # commands. The lane tests the api image and the generator that
-          # builds the next release's migration, so it runs whenever anything
-          # they are built from changes: the studio-api package and its
-          # dependency closure (the package flag) and the stack's own files
-          # (`studio_stack_paths`). A hand-kept list of "upgrade-path" files
-          # inside the package missed the keyring check, the fingerprint sync
-          # and the schema applier in turn. On top of that, the lane's own
-          # inputs that no package graph sees: the lane itself and the
-          # maintenance page its observer reads, served by studio-web, and
-          # this workflow, which defines the job. Every Studio release PR
-          # selects it too.
-          #
-          # Judged on the WHOLE pull request — merge base to tip — rather than
-          # push to push like the other flags. `quality` requires the job only
-          # when this flag is true, and no carry-forward keeps its verdict, so
-          # a push-to-push answer would let an unrelated push after a failed
-          # lane skip the job and pass the gate.
+          # builds the next release's migration, so everything that selects
+          # the stack selects it: the studio-api package and its dependency
+          # closure, the stack's own files and this workflow. A hand-kept list
+          # of "upgrade-path" files inside the package missed the keyring
+          # check, the fingerprint sync and the schema applier in turn. On top
+          # of that, the lane's own inputs that no package graph sees: the
+          # lane itself and the maintenance page its observer reads, served by
+          # studio-web. Every Studio release PR selects it too.
           studio_upgrade=false
-          upgrade_prev="$PREV"
-          [[ "$GITHUB_EVENT_NAME" == "pull_request" ]] \
-            && upgrade_prev=$(git merge-base "$CURR" "origin/${GITHUB_BASE_REF}" 2>/dev/null || true)
-          if [[ "$HEAD_REF" == "changeset-release/studio" || "$FORCE_RUN" == "true" \
-              || -z "$upgrade_prev" ]] \
-            || [[ "$(PREV="$upgrade_prev" WORKFLOW_CHANGED=false flag @codaco/studio-api)" == "true" ]] \
-            || ! git diff --quiet "$upgrade_prev" "$CURR" -- \
-              "${studio_stack_paths[@]}" \
+          if [[ "$studio" == "true" || "$HEAD_REF" == "changeset-release/studio" ]] \
+            || ! git diff --quiet "$gate_base" "$CURR" -- \
               apps/studio/release-test \
-              apps/studio/web/public/maintenance.html \
-              .github/workflows/ci-and-release.yml; then
+              apps/studio/web/public/maintenance.html; then
             studio_upgrade=true
-            echo "Studio upgrade inputs changed in $upgrade_prev..$CURR."
+            echo "Studio upgrade inputs changed in ${gate_base:-(no base)}..$CURR."
           fi
 
           # Either public site can contain inbound links to routes owned by the
@@ -1091,9 +1105,11 @@ jobs:
   # containers are running. The scripts are `apps/studio/stack-test`, and CI
   # runs exactly what a developer runs; see that directory's README.
   #
-  # Conditional on the same `detect` flag machinery the site previews use, with
-  # `test-studio-server`'s exclusions: never on `merge_group` (PR verdicts are
-  # authoritative there) and never on `push`.
+  # Selected by detect's `studio` flag, which — because `quality` requires the
+  # job whenever it is true — is judged on the whole pull request rather than
+  # push to push like the site previews' flags. `test-studio-server`'s
+  # exclusions: never on `merge_group` (PR verdicts are authoritative there)
+  # and never on `push`.
   studio-stack:
     needs: detect
     if: >-
@@ -1240,10 +1256,10 @@ jobs:
   # lane fails if the instance served anything between `maintenance on` and
   # `maintenance off`, or if the data after differs from the data before.
   #
-  # Selected by detect's `studio_upgrade` flag: every Studio release PR, any
-  # change the studio flag sees (what the api image is built from), and the
-  # lane's own inputs outside the package graph. Never on
-  # `merge_group` or `push`, like `studio-stack`.
+  # Selected by detect's `studio_upgrade` flag, judged on the whole pull
+  # request: every Studio release PR, any change the studio flag sees (what
+  # the api image is built from), and the lane's own inputs outside the
+  # package graph. Never on `merge_group` or `push`, like `studio-stack`.
   studio-upgrade:
     needs: detect
     if: >-
@@ -4414,6 +4430,12 @@ jobs:
   # cumulative merge-base-to-head diff, while release PRs let e2e-policy
   # decide when an equivalent earlier verdict may be reused. The required
   # quality gate checks that current policy decision in both cases.
+  #
+  # Nothing here feeds `quality`, which is the only required check. A job the
+  # gate requires on a detect flag therefore cannot rely on this job to keep
+  # its verdict: its flag is judged on the cumulative PR diff instead, so the
+  # job re-runs on every push of a pull request that selects it (studio-stack,
+  # studio-upgrade).
   carry-forward-statuses:
     needs:
       - detect

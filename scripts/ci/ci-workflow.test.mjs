@@ -1816,6 +1816,173 @@ test('detect fails closed on a flag naming no workspace package', () => {
   }
 });
 
+// ── Flags that decide what the quality gate requires ──────────────────────
+//
+// `quality` requires a conditional job only when its detect flag is true and
+// reads no earlier run's verdict, so every such flag must be judged on the
+// whole pull request. A push-to-push flag would let an unrelated push after a
+// failing run skip the job and pass the gate.
+
+// The detect outputs `quality` requires a job on, each proved cumulative by
+// `runGateSelection` below.
+const GATE_FLAGS = ['studio', 'studio_upgrade'];
+
+test('every job quality requires on a detect flag is decided by a cumulative flag', () => {
+  const qualityJob = job('quality');
+  const needs = qualityJob
+    .match(/^ {4}needs:\n(?<list>(?: {6}- \S+\n)+)/m)
+    ?.groups?.list.match(/(?<=- )\S+/g);
+  assert.ok(needs?.length, 'quality lists its needs');
+  // Flags read by the `if:` of a job quality needs, and flags quality itself
+  // reads to decide whether a job is required.
+  const selecting = new Set();
+  for (const name of needs) {
+    const condition = job(name)?.match(/^ {4}if: [\s\S]*?(?=^ {4}\S)/m)?.[0];
+    for (const [, flag] of condition?.matchAll(
+      /needs\.detect\.outputs\.(\w+)/g,
+    ) ?? []) {
+      selecting.add(flag);
+    }
+  }
+  const required = new Set(
+    [...qualityJob.matchAll(/needs\.detect\.outputs\.(\w+)/g)].map(
+      ([, flag]) => flag,
+    ),
+  );
+  assert.deepEqual(
+    [...selecting].sort((a, b) => a.localeCompare(b)),
+    GATE_FLAGS,
+    'a job quality needs is selected by a detect flag not proved cumulative',
+  );
+  assert.deepEqual(
+    [...required].sort((a, b) => a.localeCompare(b)),
+    GATE_FLAGS,
+    'quality requires a job on a detect flag not proved cumulative',
+  );
+});
+
+// Runs detect's gate block — the merge base, the studio flag (which also
+// defines the stack's path list) and the upgrade flag — against a throwaway
+// repository. `flag` is stubbed by the package's paths — studio-api and
+// studio-sync stand in for its dependency closure — and diffs over whatever
+// PREV it is handed, so the block's merge-base range is exercised for real.
+// Each entry of `pushes` is one commit; PREV is the last push's parent, as on
+// a `synchronize`, and origin/main is the commit before the first push.
+function runGateSelection({ headRef = '', pushes = [] }) {
+  const detectJob = job('detect');
+  const block = detectJob.match(
+    /^(?<indent> +)gate_base="\$PREV"\n[\s\S]*?^\k<indent>studio_upgrade=false\n[\s\S]*?^\k<indent>fi$/m,
+  );
+  assert.ok(block, 'detect computes the gate flags in one block');
+  const stub = [
+    'flag() {',
+    '  [[ -z "$PREV" ]] && { echo true; return; }',
+    '  git diff --quiet "$PREV" "$CURR" -- apps/studio/api packages/studio-sync && echo false || echo true',
+    '}',
+  ].join('\n');
+  const body = [
+    stub,
+    block[0]
+      .split('\n')
+      .map((line) => line.slice(block.groups.indent.length))
+      .join('\n'),
+    ...GATE_FLAGS.map((flag) => `echo "${flag}=$${flag}"`),
+  ].join('\n');
+  const repo = mkdtempSync(join(tmpdir(), 'gate-flags-detect-'));
+  try {
+    const git = (...args) =>
+      execFileSync('git', ['-C', repo, ...args], { encoding: 'utf8' }).trim();
+    git('init', '-q');
+    git('config', 'user.email', 'ci@example.org');
+    git('config', 'user.name', 'CI');
+    writeFileSync(join(repo, 'README'), 'base\n');
+    git('add', '-A');
+    git('commit', '-qm', 'base');
+    git('update-ref', 'refs/remotes/origin/main', 'HEAD');
+    for (const [index, changed] of pushes.entries()) {
+      for (const file of changed) {
+        mkdirSync(dirname(join(repo, file)), { recursive: true });
+        writeFileSync(join(repo, file), `push ${index}\n`);
+      }
+      git('add', '-A');
+      git('commit', '-q', '--allow-empty', '-m', `push ${index}`);
+    }
+    const result = spawnSync('bash', ['-c', `set -eo pipefail\n${body}`], {
+      cwd: repo,
+      encoding: 'utf8',
+      env: {
+        PATH: process.env.PATH,
+        GITHUB_EVENT_NAME: 'pull_request',
+        GITHUB_BASE_REF: 'main',
+        HEAD_REF: headRef,
+        FORCE_RUN: 'false',
+        // The push-to-push answer, set so a flag that leans on it shows.
+        WORKFLOW_CHANGED: 'false',
+        PREV: git('rev-parse', 'HEAD^1'),
+        CURR: git('rev-parse', 'HEAD'),
+      },
+    });
+    assert.equal(result.status, 0, result.stderr);
+    return Object.fromEntries(
+      GATE_FLAGS.map((flag) => [
+        flag,
+        result.stdout.match(new RegExp(`^${flag}=(?<value>.*)$`, 'm'))?.groups
+          ?.value,
+      ]),
+    );
+  } finally {
+    rmSync(repo, { recursive: true, force: true });
+  }
+}
+
+test('detect selects studio-stack on the whole pull request', () => {
+  // Anything in the api image's package graph, the stack's files outside it,
+  // and the workflow that defines the job — each on its own.
+  for (const file of [
+    'apps/studio/api/src/server.ts',
+    'packages/studio-sync/src/jobs.ts',
+    'apps/studio/Dockerfile',
+    'apps/studio/docker-compose.yml',
+    'apps/studio/docker-compose.local.yml',
+    'apps/studio/.env.example',
+    'apps/studio/stack-test/run.sh',
+    'apps/studio/docs/self-host/upgrade.md',
+    '.github/workflows/ci-and-release.yml',
+    '.dockerignore',
+    'package.json',
+    'pnpm-lock.yaml',
+    'pnpm-workspace.yaml',
+    'patches/some-package.patch',
+    'turbo.json',
+  ]) {
+    assert.equal(
+      runGateSelection({ pushes: [[file]] }).studio,
+      'true',
+      `a change to ${file} selects studio-stack`,
+    );
+    // The gap this guards: a later push that touches nothing the stack reads
+    // still runs it, so a failed stack test cannot be skipped past.
+    assert.equal(
+      runGateSelection({ pushes: [[file], ['README.md']] }).studio,
+      'true',
+      `an unrelated push after a change to ${file} still selects studio-stack`,
+    );
+  }
+  // Studio's web app is not in the api image's graph and does not select it,
+  // nor do the upgrade lane's own inputs.
+  for (const file of [
+    'apps/studio/web/src/main.tsx',
+    'apps/studio/release-test/run.sh',
+  ]) {
+    assert.equal(runGateSelection({ pushes: [[file]] }).studio, 'false');
+  }
+  assert.equal(
+    runGateSelection({ pushes: [['apps/architect/x.ts'], ['README.md']] })
+      .studio,
+    'false',
+  );
+}, 120_000);
+
 test('studio-stack is selected by detect and required by the quality gate', () => {
   const detectJob = job('detect');
   assert.ok(detectJob, 'detect job exists');
@@ -1882,79 +2049,6 @@ test('studio-stack is selected by detect and required by the quality gate', () =
 // nothing else, so these tests pin what selects it, what it is given, and
 // that the gate cannot read a job that never ran as a pass.
 
-// Runs detect's two Studio blocks in the order detect runs them: the studio
-// flag (which also defines the stack's path list), then the upgrade flag.
-// `flag` is stubbed by the package's paths — studio-api and studio-sync stand
-// in for its dependency closure — and diffs over whatever PREV it is handed,
-// so the upgrade flag's merge-base range is exercised for real. Each entry of
-// `pushes` is one commit; PREV is the last push's parent, as on a
-// `synchronize`, and origin/main is the commit before the first push.
-function runUpgradeSelection({ headRef = '', pushes = [] }) {
-  const detectJob = job('detect');
-  const unindent = (match) =>
-    match[0]
-      .split('\n')
-      .map((line) => line.slice(match.groups.indent.length))
-      .join('\n');
-  const studioBlock = detectJob.match(
-    /^(?<indent> +)studio=\$\(flag @codaco\/studio-api\)\n[\s\S]*?^\k<indent>fi$/m,
-  );
-  assert.ok(studioBlock, 'detect computes the studio flag');
-  const block = detectJob.match(
-    /^(?<indent> +)studio_upgrade=false\n[\s\S]*?^\k<indent>fi$/m,
-  );
-  assert.ok(block, 'detect computes studio_upgrade');
-  const stub = [
-    'flag() {',
-    '  [[ -z "$PREV" ]] && { echo true; return; }',
-    '  git diff --quiet "$PREV" "$CURR" -- apps/studio/api packages/studio-sync && echo false || echo true',
-    '}',
-  ].join('\n');
-  const body = [stub, unindent(studioBlock), unindent(block)].join('\n');
-  const repo = mkdtempSync(join(tmpdir(), 'studio-upgrade-detect-'));
-  try {
-    const git = (...args) =>
-      execFileSync('git', ['-C', repo, ...args], { encoding: 'utf8' }).trim();
-    git('init', '-q');
-    git('config', 'user.email', 'ci@example.org');
-    git('config', 'user.name', 'CI');
-    writeFileSync(join(repo, 'README'), 'base\n');
-    git('add', '-A');
-    git('commit', '-qm', 'base');
-    git('update-ref', 'refs/remotes/origin/main', 'HEAD');
-    for (const [index, changed] of pushes.entries()) {
-      for (const file of changed) {
-        mkdirSync(dirname(join(repo, file)), { recursive: true });
-        writeFileSync(join(repo, file), `push ${index}\n`);
-      }
-      git('add', '-A');
-      git('commit', '-q', '--allow-empty', '-m', `push ${index}`);
-    }
-    const result = spawnSync(
-      'bash',
-      ['-c', `set -eo pipefail\n${body}\necho "result=$studio_upgrade"`],
-      {
-        cwd: repo,
-        encoding: 'utf8',
-        env: {
-          PATH: process.env.PATH,
-          GITHUB_EVENT_NAME: 'pull_request',
-          GITHUB_BASE_REF: 'main',
-          HEAD_REF: headRef,
-          FORCE_RUN: 'false',
-          WORKFLOW_CHANGED: 'false',
-          PREV: git('rev-parse', 'HEAD^1'),
-          CURR: git('rev-parse', 'HEAD'),
-        },
-      },
-    );
-    assert.equal(result.status, 0, result.stderr);
-    return result.stdout.match(/^result=(?<value>.*)$/m)?.groups?.value;
-  } finally {
-    rmSync(repo, { recursive: true, force: true });
-  }
-}
-
 test('detect selects the upgrade lane whenever what the api image is built from changes, and for its own inputs', () => {
   const detectJob = job('detect');
   assert.match(
@@ -1970,10 +2064,10 @@ test('detect selects the upgrade lane whenever what the api image is built from 
 
   // Every Studio release PR, whatever it changed.
   assert.equal(
-    runUpgradeSelection({
+    runGateSelection({
       headRef: 'changeset-release/studio',
       pushes: [['README.md']],
-    }),
+    }).studio_upgrade,
     'true',
   );
   // Anything in the api image's package graph, the stack's files, the lane's
@@ -2001,28 +2095,35 @@ test('detect selects the upgrade lane whenever what the api image is built from 
     'turbo.json',
   ]) {
     assert.equal(
-      runUpgradeSelection({ pushes: [[file]] }),
+      runGateSelection({ pushes: [[file]] }).studio_upgrade,
       'true',
       `a change to ${file} selects the upgrade lane`,
+    );
+    assert.equal(
+      runGateSelection({ pushes: [[file], ['README.md']] }).studio_upgrade,
+      'true',
+      `an unrelated push after a change to ${file} still selects the lane`,
     );
   }
   // Judged on the whole pull request: a later push that touches nothing the
   // lane reads still runs it, so a failed lane cannot be skipped past.
   assert.equal(
-    runUpgradeSelection({
+    runGateSelection({
       pushes: [['apps/studio/api/src/db/migrate.ts'], ['README.md']],
-    }),
+    }).studio_upgrade,
     'true',
     'an unrelated push after an upgrade-path push still selects the lane',
   );
   // Studio's web app is not in the api image's graph and does not select it.
   assert.equal(
-    runUpgradeSelection({ pushes: [['apps/studio/web/src/main.tsx']] }),
+    runGateSelection({ pushes: [['apps/studio/web/src/main.tsx']] })
+      .studio_upgrade,
     'false',
   );
   // Nothing outside Studio selects it.
   assert.equal(
-    runUpgradeSelection({ pushes: [['apps/architect/x.ts'], ['README.md']] }),
+    runGateSelection({ pushes: [['apps/architect/x.ts'], ['README.md']] })
+      .studio_upgrade,
     'false',
   );
 }, 120_000);
