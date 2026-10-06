@@ -91,7 +91,10 @@ async function refusalOf(
 
 /** A deployment logs one JSON object per line; anything else is skipped. */
 const LogLine = Schema.fromJsonString(
-  Schema.Struct({ message: Schema.String }),
+  Schema.Struct({
+    message: Schema.String,
+    cause: Schema.optional(Schema.String),
+  }),
 );
 
 const loggedMessages = (output: string): string[] =>
@@ -99,6 +102,26 @@ const loggedMessages = (output: string): string[] =>
     const decoded = Schema.decodeUnknownOption(LogLine)(line);
     return decoded._tag === 'Some' ? [decoded.value.message] : [];
   });
+
+/**
+ * Everything a log line carries as text, decoded: the message, and the `cause`
+ * a logger attaches. A stack inside either is escaped (`\n    at …`) in the
+ * raw output, so a pattern run over `output()` never sees one.
+ */
+const loggedText = (output: string): string[] =>
+  output.split('\n').flatMap((line) => {
+    const decoded = Schema.decodeUnknownOption(LogLine)(line);
+    return decoded._tag === 'Some'
+      ? [decoded.value.message, decoded.value.cause ?? '']
+      : [];
+  });
+
+const expectNoStackInLog = (output: string): void => {
+  const lines = loggedText(output);
+  // A decoder that reads nothing would pass for any log.
+  expect(lines.length).toBeGreaterThan(0);
+  for (const text of lines) expect(text).not.toMatch(STACK_FRAME);
+};
 
 const Readiness = Schema.Struct({
   status: Schema.String,
@@ -335,6 +358,59 @@ describe.skipIf(!db)('waiting closed for a schema that is not current', () => {
     WAITING_CASE_TIMEOUT_MS,
   );
 
+  // The new image's api starts between `up -d` and `migrate`, against the older
+  // schema. If that schema lacks a column the newer build's release read names,
+  // the maintenance flag must still be read: readiness names the operator's
+  // window for as long as the flag is set, not the schema.
+  it(
+    'the web process still reads the maintenance flag against a schema whose release columns are not this build’s',
+    async () => {
+      await stamp(current.pool, 'an-older-build');
+      await current.pool.query(
+        'alter table deployment_state rename column latest_schema_change to latest_schema_change_renamed',
+      );
+      await setFlag(current.pool, true);
+      const port = await freePort();
+      const entry = 'src/index.ts';
+      const api = startEntrypoint(
+        entry,
+        await deployed({
+          DATABASE_URL: current.db.url,
+          STUDIO_SECRETS_KEY: testKeyringEntry('boot-1'),
+          PORT: String(port),
+        }),
+      );
+      const exited = stillRunning(api, entry);
+      exited.catch(() => undefined);
+      const whileRunning = <A>(step: Promise<A>) =>
+        Promise.race([step, exited]);
+
+      try {
+        await whileRunning(
+          api.waitForOutput(/The database schema is not this build’s\./),
+        );
+        await whileRunning(
+          vi.waitFor(
+            async () =>
+              expect(await gateReason(port)).toBe(
+                'failed: maintenance mode is on: Upgrading',
+              ),
+            { timeout: FLAG_WAIT_MS, interval: 100 },
+          ),
+        );
+        expect(await whileRunning(postRpc(port))).toEqual(MAINTENANCE_ANSWER);
+      } finally {
+        api.child.kill('SIGKILL');
+        await current.pool.query(
+          'alter table deployment_state rename column latest_schema_change_renamed to latest_schema_change',
+        );
+        await setFlag(current.pool, false);
+        await stamp(current.pool, SCHEMA_FINGERPRINT);
+      }
+    },
+    WAITING_CASE_TIMEOUT_MS,
+  );
+
   it(
     'the web process serves the maintenance page for a database with no schema',
     async () => {
@@ -364,7 +440,7 @@ describe.skipIf(!db)('waiting closed for a schema that is not current', () => {
         // about it.
         const remedy = `${schemaProblemMessage({ kind: 'absent' }, 'deployed')}\n`;
         expect(warning?.slice(0, remedy.length)).toBe(remedy);
-        expect(api.output()).not.toMatch(STACK_FRAME);
+        expectNoStackInLog(api.output());
 
         expect(await whileRunning(postRpc(port))).toEqual(MAINTENANCE_ANSWER);
         const closed = await whileRunning(readReadiness(port));
