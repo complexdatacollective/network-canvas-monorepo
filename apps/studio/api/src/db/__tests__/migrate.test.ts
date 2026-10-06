@@ -24,8 +24,10 @@ import { MaintenanceDatabase, OwnerDatabase } from '../client.ts';
 import { SCHEMA_FINGERPRINT } from '../fingerprint.generated.ts';
 import { MigrationHistoryRefused } from '../history.ts';
 import {
+  assertSessionState,
   migrateDatabaseEffect,
   type MigrateOptions,
+  readSessionState,
   readVerifiedMigrations,
 } from '../migrate.ts';
 import {
@@ -34,6 +36,7 @@ import {
   verifyMigrations,
 } from '../migrations-document.ts';
 import { checkSchema, SCHEMA_LOCK_KEY } from '../schema.ts';
+import { OwnerScope, Transaction } from '../tenant.ts';
 
 const db = await reachableDb();
 
@@ -707,6 +710,180 @@ describe.skipIf(!db)('migrate', () => {
             where table_name = 'drafts' and column_name = 'probe'`,
         );
         expect(column.rowCount).toBe(0);
+      },
+      CASE_TIMEOUT_MS,
+    );
+
+    // #1901 E-2: the backfill runs after the sidecars, so a table the same
+    // migration creates already carries its grants when the backfill fills it.
+    it(
+      'fills a table the same migration creates, from every row of an existing one',
+      async () => {
+        const scratch = await emptyDatabase();
+        await withDrafts(scratch);
+        const sidecars = committed.migrations
+          .at(-1)
+          ?.artefacts.find(({ name }) => name === 'sidecars.sql')?.sql;
+        expect(sidecars).toBeDefined();
+
+        await run(
+          scratch.db.url,
+          next({
+            slug: 'draft_labels',
+            delta: [
+              'CREATE TABLE "draft_labels" ("draft_id" uuid PRIMARY KEY, "team_id" text NOT NULL, "label" text NOT NULL);',
+              'ALTER TABLE "draft_labels" ENABLE ROW LEVEL SECURITY;',
+              `CREATE POLICY "team_isolation" ON "draft_labels" AS PERMISSIVE FOR ALL TO public USING (team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance') WITH CHECK (team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance');`,
+            ].join('\n'),
+            sidecars: `${sidecars}\nALTER TABLE draft_labels FORCE ROW LEVEL SECURITY;\n`,
+            backfill: [
+              'SET LOCAL ROLE studio_maintenance;',
+              `INSERT INTO draft_labels (draft_id, team_id, label) SELECT id, team_id, 'copied' FROM drafts;`,
+              'RESET ROLE;',
+            ].join('\n'),
+            fingerprint: NEXT,
+          }),
+        );
+        const copied = await scratch.admin.query<{ count: number }>(
+          `select count(*)::int as count from draft_labels where label = 'copied'`,
+        );
+        expect(copied.rows[0]?.count).toBe(3);
+      },
+      CASE_TIMEOUT_MS,
+    );
+  });
+
+  describe('what one file leaves for the next', () => {
+    it(
+      'refuses, at the next check, a session whose transaction an artefact ended',
+      async () => {
+        const scratch = await emptyDatabase();
+        await run(scratch.db.url);
+
+        const outcome = await Effect.runPromise(
+          OwnerScope.open(
+            Effect.gen(function* () {
+              const { sql } = yield* Transaction;
+              const baseline = yield* readSessionState(sql);
+              // The positive control: an untouched session passes.
+              yield* assertSessionState(sql, baseline, 'control');
+              yield* sql.unsafe('COMMIT');
+              return yield* Effect.flip(
+                assertSessionState(sql, baseline, '0002_x/backfill.sql'),
+              );
+            }),
+          ).pipe(Effect.provide(ownerLayer(scratch.db.url))),
+        );
+        expect(outcome).toBeInstanceOf(MigrationHistoryRefused);
+        expect(outcome).toMatchObject({ verdict: 'transaction' });
+        expect(outcome.message).toMatch(
+          /^0002_x\/backfill\.sql ended the migration's transaction/,
+        );
+        expect(outcome.message).toMatch(/Restore the backup/);
+      },
+      CASE_TIMEOUT_MS,
+    );
+
+    it.each([
+      [
+        'search_path',
+        `SELECT set_config('search_path', '${JOB_SCHEMA}, public', true);`,
+        /left search_path set to "studio_jobs, public" rather than /,
+      ],
+      [
+        'the team setting',
+        `SELECT set_config('app.team_id', 'some-team', true);`,
+        /left app\.team_id set to "some-team" rather than ""/,
+      ],
+      [
+        'the erasure marker',
+        `SELECT set_config('app.erasing_participant_id', 'someone', true);`,
+        /left app\.erasing_participant_id set to "someone" rather than ""/,
+      ],
+    ])(
+      'refuses a backfill that leaves %s changed, and rolls everything back',
+      async (_name, backfill, message) => {
+        const scratch = await emptyDatabase();
+        await run(scratch.db.url);
+
+        const failure = await refusal(
+          scratch.db.url,
+          next({
+            slug: 'leaks',
+            delta: 'ALTER TABLE deployment_state ADD COLUMN probe text;',
+            backfill,
+            fingerprint: NEXT,
+          }),
+        );
+        expect(failure).toMatchObject({ verdict: 'session' });
+        expect(failure.message).toMatch(/_leaks\/backfill\.sql /);
+        expect(failure.message).toMatch(message);
+        const column = await scratch.pool.query(
+          `select 1 from information_schema.columns
+            where table_name = 'deployment_state' and column_name = 'probe'`,
+        );
+        expect(column.rowCount).toBe(0);
+      },
+      CASE_TIMEOUT_MS,
+    );
+
+    // #1901 E-3: each file's deferred checks fire at its end, and the
+    // constraints declared INITIALLY DEFERRED are deferred again after, so a
+    // later file can still write a row before the partner it points at.
+    it(
+      'leaves an INITIALLY DEFERRED constraint deferred for the files after the first',
+      async () => {
+        const scratch = await emptyDatabase();
+        await run(scratch.db.url);
+
+        await run(
+          scratch.db.url,
+          next({
+            slug: 'pairs',
+            delta:
+              'CREATE TABLE probe_pairs (id int PRIMARY KEY, partner int NOT NULL REFERENCES probe_pairs (id) DEFERRABLE INITIALLY DEFERRED);',
+            backfill: [
+              'INSERT INTO probe_pairs VALUES (1, 2);',
+              'INSERT INTO probe_pairs VALUES (2, 1);',
+            ].join('\n'),
+            fingerprint: NEXT,
+          }),
+        );
+        const pairs = await scratch.pool.query(
+          'select id, partner from probe_pairs order by id',
+        );
+        expect(pairs.rows).toEqual([
+          { id: 1, partner: 2 },
+          { id: 2, partner: 1 },
+        ]);
+      },
+      CASE_TIMEOUT_MS,
+    );
+
+    it(
+      'fails a file whose deferred check fails at the file, naming it',
+      async () => {
+        const scratch = await emptyDatabase();
+        await run(scratch.db.url);
+
+        const failure = await refusal(
+          scratch.db.url,
+          next({
+            slug: 'orphan',
+            delta:
+              'CREATE TABLE probe_pairs (id int PRIMARY KEY, partner int NOT NULL REFERENCES probe_pairs (id) DEFERRABLE INITIALLY DEFERRED);',
+            backfill: 'INSERT INTO probe_pairs VALUES (1, 2);',
+            fingerprint: NEXT,
+          }),
+        );
+        expect(failure).toMatchObject({
+          _tag: 'MigrationStatementFailed',
+          artefact: 'backfill.sql',
+          position: 'at the end of the file',
+          code: '23503',
+          rolledBack: true,
+        });
+        expect(await publicTables(scratch.pool)).not.toContain('probe_pairs');
       },
       CASE_TIMEOUT_MS,
     );

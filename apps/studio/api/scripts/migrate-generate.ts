@@ -342,7 +342,7 @@ function refuseForbidden(name: string, script: string): void {
   const forbidden = forbiddenStatement(script);
   if (forbidden !== null) {
     throw new GenerateRefused(
-      `${name} carries a statement the migration's one transaction cannot run; split it across two releases:\n${forbidden}`,
+      `${name} carries a statement the migration's one transaction cannot run; ${forbidden.remedy}:\n${forbidden.statement}`,
     );
   }
 }

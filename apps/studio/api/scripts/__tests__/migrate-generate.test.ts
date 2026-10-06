@@ -410,8 +410,8 @@ describe('migrate:generate', () => {
     ).migrations.at(-1);
     expect(migration?.artefacts.map(({ name }) => name)).toEqual([
       'delta.sql',
-      'backfill.sql',
       'sidecars.sql',
+      'backfill.sql',
     ]);
   });
 
@@ -448,5 +448,21 @@ describe('migrate:generate', () => {
     expect(
       (await refusal(await inputsFor(dir, V1), { kind: 'seal' })).message,
     ).toMatch(/split it across two releases/);
+  });
+
+  it('refuses to seal a backfill that controls the transaction itself', async () => {
+    const dir = migrationsDir();
+    await initial(dir);
+    writeFileSync(
+      join(dir, '0001_initial', 'backfill.sql'),
+      'BEGIN;\nUPDATE fx_notes SET body = team;\nCOMMIT;\n',
+    );
+    const before = listing(dir);
+    expect(
+      (await refusal(await inputsFor(dir, V1), { kind: 'seal' })).message,
+    ).toMatch(
+      /0001_initial\/backfill\.sql carries a statement the migration's one transaction cannot run; remove it: .*\nBEGIN$/,
+    );
+    expect(listing(dir)).toEqual(before);
   });
 });

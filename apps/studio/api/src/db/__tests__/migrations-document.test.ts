@@ -139,9 +139,12 @@ describe('the committed migrations document', () => {
   });
 
   it('refuses a statement one transaction cannot run', () => {
-    expect(forbiddenStatement('CREATE INDEX CONCURRENTLY i ON t (c);')).toMatch(
-      /CONCURRENTLY/,
-    );
+    expect(
+      forbiddenStatement('CREATE INDEX CONCURRENTLY i ON t (c);'),
+    ).toMatchObject({
+      statement: expect.stringMatching(/CONCURRENTLY/),
+      remedy: expect.stringMatching(/split it across two releases/),
+    });
     expect(
       forbiddenStatement(`ALTER TYPE mood ADD VALUE 'happy';`),
     ).not.toBeNull();
@@ -155,7 +158,70 @@ describe('the committed migrations document', () => {
       delta: 'CREATE INDEX CONCURRENTLY probe_idx ON drafts (team_id);',
       fingerprint: 'b'.repeat(64),
     });
-    expect(refusalOf(concurrent).message).toMatch(/split it into two releases/);
+    expect(refusalOf(concurrent).message).toMatch(
+      /split it across two releases/,
+    );
+  });
+
+  // #1901 E-1: an inner COMMIT commits half an upgrade, and an inner ROLLBACK
+  // undoes statements the history then records as applied.
+  it.each([
+    'BEGIN',
+    'begin transaction isolation level serializable',
+    'START TRANSACTION',
+    'start\n  transaction read write',
+    'COMMIT',
+    'commit and chain',
+    'END',
+    'end transaction',
+    'ROLLBACK',
+    'rollback to savepoint before_backfill',
+    'ABORT',
+    'SAVEPOINT before_backfill',
+    'release savepoint before_backfill',
+    'RELEASE before_backfill',
+    "PREPARE TRANSACTION 'upgrade'",
+    "COMMIT PREPARED 'upgrade'",
+    "ROLLBACK PREPARED 'upgrade'",
+    'SET TRANSACTION READ ONLY',
+    'set local transaction isolation level serializable',
+    'SET SESSION CHARACTERISTICS AS TRANSACTION READ ONLY',
+    '-- a habit\nCommit',
+    '/* outer /* nested */ still a comment */ COMMIT',
+    '  \t\n  rollback',
+  ])('refuses transaction control: %j', (statement) => {
+    expect(forbiddenStatement(`UPDATE t SET c = 1;\n${statement};`)).toEqual({
+      statement: statement.trim(),
+      remedy: expect.stringMatching(/one transaction of its own/),
+    });
+  });
+
+  it.each([
+    `DO $$ BEGIN RAISE NOTICE 'x'; END $$`,
+    'CREATE FUNCTION f() RETURNS int AS $$ BEGIN RETURN 1; END; $$ LANGUAGE plpgsql',
+    "SELECT 'commit'",
+    'UPDATE t SET "end" = 1, "begin" = 2',
+    '-- COMMIT\nSELECT 1',
+    '/* ROLLBACK */ SELECT 1',
+    'SET CONSTRAINTS ALL IMMEDIATE',
+    'SET LOCAL ROLE studio_maintenance',
+    'RESET ROLE',
+    'CREATE TABLE commits (id int)',
+    'ENDPOINT_PROBE',
+  ])('admits a statement that only mentions a transaction: %j', (statement) => {
+    expect(forbiddenStatement(`${statement};`)).toBeNull();
+  });
+
+  it('refuses a migration whose backfill carries transaction control', () => {
+    const wrapped = withMigrations(committed, {
+      slug: 'wrapped',
+      delta: 'ALTER TABLE deployment_state ADD COLUMN probe text;',
+      backfill: 'BEGIN;\nUPDATE deployment_state SET probe = 1;\nCOMMIT;',
+      fingerprint: 'b'.repeat(64),
+    });
+    expect(refusalOf(wrapped).message).toMatch(
+      /_wrapped's backfill\.sql carries a statement one transaction cannot run; remove it: .*: BEGIN$/,
+    );
   });
 });
 
