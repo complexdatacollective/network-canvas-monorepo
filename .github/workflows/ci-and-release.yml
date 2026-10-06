@@ -100,6 +100,7 @@ jobs:
       docs: ${{ steps.flags.outputs.docs }}
       website: ${{ steps.flags.outputs.website }}
       studio: ${{ steps.flags.outputs.studio }}
+      studio_upgrade: ${{ steps.flags.outputs.studio_upgrade }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
@@ -113,6 +114,8 @@ jobs:
           # detection (replaces the old per-workflow rerun buttons).
           FORCE_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.force_run == true }}
           EVENT_ACTION: ${{ github.event.action }}
+          # The Studio release PR always runs the upgrade lane (#1901).
+          HEAD_REF: ${{ github.head_ref }}
         run: |
           # Determine the comparison base — the commit range whose diff decides
           # which conditional jobs run. We DON'T use turbo-ignore because it
@@ -219,6 +222,47 @@ jobs:
             echo "Studio stack inputs changed outside the package graph."
           fi
 
+          # The Studio upgrade lane, for the `studio-upgrade` job (#1901): an
+          # upgrade from the candidate to a code-only release and to a release
+          # carrying a migration, run through the self-host guide's own
+          # commands. A subset of the studio flag, because it costs a second
+          # image build and two upgrade cycles: every Studio release PR, and
+          # any change to what performs or describes an upgrade — the
+          # migrations, the lane, the two guide pages it executes, the images,
+          # the compose files, and the api code on the upgrade's path (the
+          # migration runner, the boot path, the maintenance gate, the
+          # worker's pause and the readiness checks the lane reads). A
+          # forced or workflow-changing run selects it like every other job.
+          studio_upgrade=false
+          if [[ "$studio" == "true" ]]; then
+            if [[ "$HEAD_REF" == "changeset-release/studio" \
+              || "$FORCE_RUN" == "true" || "$WORKFLOW_CHANGED" == "true" \
+              || -z "$PREV" ]]; then
+              studio_upgrade=true
+            elif ! git diff --quiet "$PREV" "$CURR" -- \
+              apps/studio/api/migrations \
+              apps/studio/release-test \
+              apps/studio/docs/self-host/upgrade.md \
+              apps/studio/docs/self-host/backup.md \
+              apps/studio/Dockerfile \
+              'apps/studio/docker-compose*.yml' \
+              apps/studio/api/src/db \
+              apps/studio/api/src/platform \
+              apps/studio/api/src/programs \
+              apps/studio/api/src/http/middleware \
+              apps/studio/api/src/http/health.ts \
+              apps/studio/api/src/jobs/maintenance.ts \
+              apps/studio/api/src/jobs/worker.ts \
+              apps/studio/api/src/maintenance.ts \
+              apps/studio/api/src/migrate.ts \
+              apps/studio/api/bin \
+              apps/studio/api/scripts/render-migrations.ts \
+              apps/studio/api/scripts/migrate-generate.ts; then
+              studio_upgrade=true
+              echo "Studio upgrade inputs changed."
+            fi
+          fi
+
           # Either public site can contain inbound links to routes owned by the
           # other. Crawl both paired previews whenever either site changes so a
           # removed route cannot escape the link check on the unchanged peer.
@@ -230,6 +274,7 @@ jobs:
           echo "docs=$docs" >> "$GITHUB_OUTPUT"
           echo "website=$website" >> "$GITHUB_OUTPUT"
           echo "studio=$studio" >> "$GITHUB_OUTPUT"
+          echo "studio_upgrade=$studio_upgrade" >> "$GITHUB_OUTPUT"
 
   # Decides per suite whether E2E must run for this ref. Feature PRs select the
   # suites whose subject package or workspace dependency closure changed.
@@ -1178,6 +1223,105 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
+  # The Studio upgrade lane (#1901): `apps/studio/release-test`, run exactly as
+  # a developer runs it (see that directory's README). It deploys the
+  # candidate, seeds it, and upgrades it with the self-host guide's own
+  # commands — to a code-only release (run A), to a release carrying a real
+  # migration with a delta and a backfill (run B), and, once a release is
+  # published, from that release to the candidate (run C, which the lane adds
+  # itself and fails without). An observer reads `/readyz` throughout and the
+  # lane fails if the instance served anything between `maintenance on` and
+  # `maintenance off`, or if the data after differs from the data before.
+  #
+  # Selected by detect's `studio_upgrade` flag: every Studio release PR, and
+  # any change to what performs or describes an upgrade. Never on
+  # `merge_group` or `push`, like `studio-stack`.
+  studio-upgrade:
+    needs: detect
+    if: >-
+      github.event_name != 'merge_group'
+      && github.event_name != 'push'
+      && !(github.event_name == 'workflow_dispatch'
+      && inputs.interview_e2e_benchmark == true)
+      && needs.detect.outputs.studio_upgrade == 'true'
+    runs-on: ubuntu-latest
+    # Two image builds (the candidate pair, then the migration-bearing api)
+    # and two upgrade cycles of about a minute each. The cache below keeps the
+    # builds warm after the first run.
+    timeout-minutes: 40
+    permissions:
+      contents: read
+      # previous-release.mjs asks GHCR for the published studio-api tags with
+      # this job's token. Under CI an unauthenticated query is refused rather
+      # than read as "nothing published".
+      packages: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          persist-credentials: false
+          # build-next.sh seals the generated migration against the
+          # repository's history, and run C checks out the previous release's
+          # tag: both need the full history and tags.
+          fetch-depth: 0
+      # The seed and build-next.sh's migration generator run from the
+      # workspace's own dependencies. Not part of a self-hoster's path: the
+      # upgrade itself runs only Docker commands.
+      - uses: ./.github/actions/turbo-ci-setup
+      # The same cache-capable builder and cache exposure as `studio-stack`;
+      # see the comments there. Created but not made current (no `--use`):
+      # BUILDX_BUILDER selects it for the image builds, and build.sh's
+      # relabel step unsets that variable to build `FROM` an image only the
+      # daemon holds, which the daemon's own builder can see and this one
+      # cannot.
+      - name: Create a cache-capable builder
+        run: docker buildx create --name studio-upgrade --driver docker-container
+      - name: Expose the Actions cache service to the build
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            for (const name of [
+              'ACTIONS_RUNTIME_TOKEN',
+              'ACTIONS_CACHE_URL',
+              'ACTIONS_RESULTS_URL',
+            ]) {
+              const value = process.env[name];
+              if (value) core.exportVariable(name, value);
+            }
+      - name: Run the upgrade lane
+        env:
+          BUILDX_BUILDER: studio-upgrade
+          # The same scopes `studio-stack` writes, so either job warms the
+          # other's build of the candidate images.
+          BUILD_CACHE_FROM: type=gha,scope=studio-stack-{target}
+          BUILD_CACHE_TO: type=gha,scope=studio-stack-{target},mode=max,ignore-error=true
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: apps/studio/release-test/run.sh --runs A,B
+
+      # The lane's evidence, kept whatever the verdict: the observer's ticks,
+      # the step timings, the window and diff verdicts, and each run's
+      # `docker compose ps` and whole log. Named rather than the directory: the
+      # deployment's `.env`, the backup (which holds a copy of the keyring),
+      # the data exports and `migrate`'s output (which can carry a setup
+      # token) also live there.
+      - name: Keep the lane's evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: studio-upgrade-evidence
+          path: |
+            ${{ runner.temp }}/studio-release-test/summary.json
+            ${{ runner.temp }}/studio-release-test/run-*/summary.json
+            ${{ runner.temp }}/studio-release-test/run-*/window.json
+            ${{ runner.temp }}/studio-release-test/run-*/diff.json
+            ${{ runner.temp }}/studio-release-test/run-*/events.tsv
+            ${{ runner.temp }}/studio-release-test/run-*/observe.tsv
+            ${{ runner.temp }}/studio-release-test/run-*/ps.txt
+            ${{ runner.temp }}/studio-release-test/run-*/logs.txt
+            ${{ runner.temp }}/studio-release-test/run-*/seed.log
+            ${{ runner.temp }}/studio-release-test/run-*/up.log
+          if-no-files-found: warn
+          retention-days: 7
+
   test:
     # The workspace unit suites, one bucket of packages per parallel runner.
     #
@@ -1627,6 +1771,7 @@ jobs:
       - test
       - test-studio-server
       - studio-stack
+      - studio-upgrade
       - test-storybook
       - detect
       - e2e-policy
@@ -1650,6 +1795,8 @@ jobs:
           DETECT_RESULT: ${{ needs.detect.result }}
           STUDIO_STACK_REQUIRED: ${{ needs.detect.outputs.studio }}
           STUDIO_STACK_RESULT: ${{ needs.studio-stack.result }}
+          STUDIO_UPGRADE_REQUIRED: ${{ needs.detect.outputs.studio_upgrade }}
+          STUDIO_UPGRADE_RESULT: ${{ needs.studio-upgrade.result }}
           E2E_POLICY_RESULT: ${{ needs.e2e-policy.result }}
           E2E_INTERVIEW_REQUIRED: ${{ needs.e2e-policy.outputs.interview }}
           E2E_INTERVIEWER_REQUIRED: ${{ needs.e2e-policy.outputs.interviewer }}
@@ -1717,6 +1864,17 @@ jobs:
             echo "studio-stack passed"
           else
             echo "studio-stack is not required for this event (result: $STUDIO_STACK_RESULT)"
+          fi
+
+          # The Studio upgrade lane (#1901), keyed on its flag the same way.
+          if [[ "$STUDIO_UPGRADE_REQUIRED" == "true" ]]; then
+            if [[ "$STUDIO_UPGRADE_RESULT" != "success" ]]; then
+              echo "::error::quality gate failed — studio-upgrade concluded '$STUDIO_UPGRADE_RESULT'"
+              exit 1
+            fi
+            echo "studio-upgrade passed"
+          else
+            echo "studio-upgrade is not required for this event (result: $STUDIO_UPGRADE_RESULT)"
           fi
 
           if [[ "$E2E_POLICY_RESULT" != "success" ]]; then

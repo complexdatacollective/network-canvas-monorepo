@@ -1,6 +1,16 @@
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { execFileSync, spawnSync } from 'node:child_process';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
+import { tmpdir } from 'node:os';
+import { dirname, join } from 'node:path';
 
 import { test } from 'vitest';
 import { parse } from 'yaml';
@@ -1863,6 +1873,181 @@ test('studio-stack is selected by detect and required by the quality gate', () =
     qualityJob,
     /if \[\[ "\$STUDIO_STACK_REQUIRED" == "true" \]\]; then\n\s+if \[\[ "\$STUDIO_STACK_RESULT" != "success" \]\]; then\n\s+echo "::error::quality gate failed/,
     'quality fails when a required studio-stack did not succeed',
+  );
+});
+
+// ── The Studio upgrade lane (#1901) ────────────────────────────────────────
+//
+// `apps/studio/release-test/run.sh` is the whole lane; the job runs it and
+// nothing else, so these tests pin what selects it, what it is given, and
+// that the gate cannot read a job that never ran as a pass.
+
+function runUpgradeSelection({ studio, headRef = '', changed = [] }) {
+  const detectJob = job('detect');
+  const block = detectJob.match(
+    /^(?<indent> +)studio_upgrade=false\n[\s\S]*?^\k<indent>fi$/m,
+  );
+  assert.ok(block, 'detect computes studio_upgrade');
+  const body = block[0]
+    .split('\n')
+    .map((line) => line.slice(block.groups.indent.length))
+    .join('\n');
+  const repo = mkdtempSync(join(tmpdir(), 'studio-upgrade-detect-'));
+  try {
+    const git = (...args) =>
+      execFileSync('git', ['-C', repo, ...args], { encoding: 'utf8' }).trim();
+    git('init', '-q');
+    git('config', 'user.email', 'ci@example.org');
+    git('config', 'user.name', 'CI');
+    writeFileSync(join(repo, 'README'), 'base\n');
+    git('add', '-A');
+    git('commit', '-qm', 'base');
+    const prev = git('rev-parse', 'HEAD');
+    for (const file of changed) {
+      mkdirSync(dirname(join(repo, file)), { recursive: true });
+      writeFileSync(join(repo, file), 'changed\n');
+    }
+    git('add', '-A');
+    git('commit', '-q', '--allow-empty', '-m', 'change');
+    const result = spawnSync(
+      'bash',
+      ['-c', `set -eo pipefail\n${body}\necho "result=$studio_upgrade"`],
+      {
+        cwd: repo,
+        encoding: 'utf8',
+        env: {
+          PATH: process.env.PATH,
+          studio: String(studio),
+          HEAD_REF: headRef,
+          FORCE_RUN: 'false',
+          WORKFLOW_CHANGED: 'false',
+          PREV: prev,
+          CURR: git('rev-parse', 'HEAD'),
+        },
+      },
+    );
+    assert.equal(result.status, 0, result.stderr);
+    return result.stdout.match(/^result=(?<value>.*)$/m)?.groups?.value;
+  } finally {
+    rmSync(repo, { recursive: true, force: true });
+  }
+}
+
+test('detect selects the upgrade lane for release PRs and upgrade inputs only', () => {
+  const detectJob = job('detect');
+  assert.match(
+    detectJob,
+    /studio_upgrade: \$\{\{ steps\.flags\.outputs\.studio_upgrade \}\}/,
+    'detect publishes the studio_upgrade flag',
+  );
+  assert.match(
+    detectJob,
+    /HEAD_REF: \$\{\{ github\.head_ref \}\}/,
+    'detect receives the head ref',
+  );
+
+  // Every Studio release PR, whatever it changed.
+  assert.equal(
+    runUpgradeSelection({ studio: true, headRef: 'changeset-release/studio' }),
+    'true',
+  );
+  // Each path that performs or describes an upgrade selects it on its own.
+  for (const file of [
+    'apps/studio/api/migrations/0002_next/delta.sql',
+    'apps/studio/release-test/run.sh',
+    'apps/studio/docs/self-host/upgrade.md',
+    'apps/studio/docs/self-host/backup.md',
+    'apps/studio/Dockerfile',
+    'apps/studio/docker-compose.yml',
+    'apps/studio/docker-compose.local.yml',
+    'apps/studio/api/src/db/migrate.ts',
+    'apps/studio/api/src/platform/schema-gate.ts',
+    'apps/studio/api/src/programs/migrate.ts',
+    'apps/studio/api/src/http/middleware/maintenance.ts',
+    'apps/studio/api/src/http/health.ts',
+    'apps/studio/api/src/jobs/maintenance.ts',
+    'apps/studio/api/src/jobs/worker.ts',
+    'apps/studio/api/src/maintenance.ts',
+    'apps/studio/api/src/migrate.ts',
+    'apps/studio/api/bin/studio-api',
+    'apps/studio/api/scripts/render-migrations.ts',
+    'apps/studio/api/scripts/migrate-generate.ts',
+  ]) {
+    assert.equal(
+      runUpgradeSelection({ studio: true, changed: [file] }),
+      'true',
+      `a change to ${file} selects the upgrade lane`,
+    );
+  }
+  // A Studio change off the upgrade's path does not pay for it…
+  for (const file of [
+    'apps/studio/api/src/study/handlers.ts',
+    'apps/studio/docs/self-host/swap.md',
+    'apps/studio/web/src/main.tsx',
+  ]) {
+    assert.equal(
+      runUpgradeSelection({ studio: true, changed: [file] }),
+      'false',
+      `a change to ${file} alone does not select the upgrade lane`,
+    );
+  }
+  // …and nothing selects it when the studio flag is down.
+  assert.equal(
+    runUpgradeSelection({
+      studio: false,
+      headRef: 'changeset-release/studio',
+      changed: ['apps/studio/api/migrations/0002_next/delta.sql'],
+    }),
+    'false',
+  );
+});
+
+test('studio-upgrade runs the lane and is required by the quality gate', () => {
+  const upgrade = job('studio-upgrade');
+  assert.ok(upgrade, 'studio-upgrade job exists');
+  assert.ok(
+    existsSync(
+      new URL('../../apps/studio/release-test/run.sh', import.meta.url),
+    ),
+    'apps/studio/release-test/run.sh exists on disk',
+  );
+  assert.match(
+    upgrade,
+    /run: apps\/studio\/release-test\/run\.sh --runs A,B\n/,
+  );
+  assert.match(
+    upgrade,
+    /needs\.detect\.outputs\.studio_upgrade == 'true'/,
+    'the job is gated on its flag',
+  );
+  for (const excluded of ['merge_group', 'push']) {
+    assert.match(
+      upgrade,
+      new RegExp(`github\\.event_name != '${excluded}'`),
+      `the job never runs on ${excluded}`,
+    );
+  }
+  // previous-release.mjs refuses an anonymous query under CI, so the token
+  // and the permission to read packages are what make run C reachable.
+  assert.match(upgrade, /packages: read/);
+  assert.match(upgrade, /GITHUB_TOKEN: \$\{\{ secrets\.GITHUB_TOKEN \}\}/);
+  // build-next.sh seals against history and run C checks out a tag.
+  assert.match(upgrade, /fetch-depth: 0/);
+
+  const qualityJob = job('quality');
+  assert.match(qualityJob, /^ {6}- studio-upgrade$/m, 'quality needs the job');
+  assert.match(
+    qualityJob,
+    /STUDIO_UPGRADE_REQUIRED: \$\{\{ needs\.detect\.outputs\.studio_upgrade \}\}/,
+  );
+  assert.match(
+    qualityJob,
+    /STUDIO_UPGRADE_RESULT: \$\{\{ needs\.studio-upgrade\.result \}\}/,
+  );
+  assert.match(
+    qualityJob,
+    /if \[\[ "\$STUDIO_UPGRADE_REQUIRED" == "true" \]\]; then\n\s+if \[\[ "\$STUDIO_UPGRADE_RESULT" != "success" \]\]; then\n\s+echo "::error::quality gate failed/,
+    'quality fails when a required studio-upgrade did not succeed',
   );
 });
 
