@@ -5,11 +5,9 @@
 
 Studio now ships as two container images instead of one. `studio-api` carries
 the server, and its entrypoint chooses the process: `serve` for HTTP, RPC and
-the WebSocket endpoint, `worker` for background jobs, and `migrate`, which
-creates the schema in an empty database from statements the build renders — so
-a deployment no longer needs a repository checkout to provision one.
-`maintenance on|off` and `rotate-secrets` are named but not yet implemented and
-exit with a message saying so. `studio-web` is nginx serving the built client,
+the WebSocket endpoint, `worker` for background jobs, `migrate`, which creates
+and upgrades the schema — so a deployment no longer needs a repository checkout
+to provision one — and `maintenance on|off` and `rotate-secrets`. `studio-web` is nginx serving the built client,
 its hashed assets under a year-long immutable cache, and a static maintenance
 page for the seconds an upgrade replaces the API.
 
