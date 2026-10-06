@@ -608,7 +608,9 @@ export function computeConnectors(
       const childParents = parents[childId] ?? [];
       for (const pc of childParents) {
         if (pc.edgeType === 'donor' || pc.edgeType === 'surrogate') {
-          const key = `${pc.parentIndex},${i},${famId}`;
+          // One line carries one relationship, so a person who is a donor to
+          // one child and a surrogate to another is grouped twice.
+          const key = `${pc.parentIndex},${pc.edgeType},${i},${famId}`;
           const existing = auxConnections.get(key);
           if (existing) {
             existing.childColumns.push(j);
@@ -795,7 +797,9 @@ export function computeConnectors(
               ? 'biological'
               : 'unpartnered-parent';
 
-        const key = `${parentId},${i},${famId}`;
+        // One line carries one relationship: a parent who is biological to one
+        // child and social to another is grouped once for each.
+        const key = `${parentId},${edgeType},${i},${famId}`;
         const existing = socialConnections.get(key);
         if (existing) {
           existing.childColumns.push(j);

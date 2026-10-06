@@ -1225,6 +1225,53 @@ describe('a person with three partners', () => {
     );
   });
 
+  it('draws each direct line with its own relationship', () => {
+    // Two children without a family share parents in different roles: p is
+    // kid1's biological parent and kid2's step-parent; d is kid1's donor and
+    // kid2's surrogate.
+    const social = (parentIndex: number): ParentConnection => ({
+      parentIndex,
+      edgeType: 'social',
+    });
+    const input: PedigreeInput = {
+      id: ['p', 'q', 'r', 'd', 'kid1', 'kid2'],
+      parents: [
+        [],
+        [],
+        [],
+        [],
+        [sp(0), social(1), { parentIndex: 3, edgeType: 'donor' }],
+        [sp(2), social(0), { parentIndex: 3, edgeType: 'surrogate' }],
+      ],
+    };
+    const result = alignPedigree(input);
+    const level = result.nid.findIndex((row) => row.includes(4));
+    for (const kid of [4, 5]) {
+      expect(result.fam[level]![result.nid[level]!.indexOf(kid)]).toBe(0);
+    }
+    const conn = computeConnectors(
+      result,
+      defaultScaling,
+      input.parents,
+      new Set(),
+      undefined,
+      undefined,
+      undefined,
+      input.id,
+      new Set(),
+    );
+    const lines = new Map(
+      conn.auxiliaryLines.map((line) => [
+        line.endpointIds?.join('→'),
+        line.edgeType,
+      ]),
+    );
+    expect(lines.get('p→kid1')).toBe('biological');
+    expect(lines.get('p→kid2')).toBe('social');
+    expect(lines.get('d→kid1')).toBe('donor');
+    expect(lines.get('d→kid2')).toBe('surrogate');
+  });
+
   it('joins a donor to a child whose couple cannot sit together', () => {
     // kidC2 of the couple left apart, conceived with an egg donor.
     const withDonor: PedigreeInput = {
