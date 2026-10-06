@@ -486,11 +486,20 @@ export default function FieldPreviewPane({
   // The words the participant is shown in this field, for the language menu to
   // say which languages leave some of them untranslated. What the researcher
   // has not written is left out: an absent hint has no translations to lack,
-  // and counting it would make every language missing.
+  // and counting it would make every language missing. A scale's end labels
+  // count only on the one control that shows them.
+  const scaleLabels =
+    field?.component === 'VisualAnalogScale' && isRecord(field.parameters)
+      ? [
+          Reflect.get(field.parameters, 'minLabel'),
+          Reflect.get(field.parameters, 'maxLabel'),
+        ]
+      : [];
   const shownTexts = [
     authoredCopy,
     hint,
     ...(field?.options ?? []).map((option) => option.label),
+    ...scaleLabels,
   ].filter((text) => text !== undefined);
 
   return (

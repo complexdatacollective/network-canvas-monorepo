@@ -722,6 +722,19 @@ describe('FieldPreviewPane', () => {
       ...overrides,
     });
 
+    /** A scale attribute the row is inventing, written in both languages. */
+    const closenessRow = (parameters: Record<string, unknown> = {}) => ({
+      variable: CREATE_NEW_ATTRIBUTE,
+      _newVariableName: 'closeness',
+      _component: 'VisualAnalogScale',
+      prompt: translated('How close are you?', '¿Qué tan cerca están?'),
+      _parameters: {
+        minLabel: translated('Not close', 'Nada cerca'),
+        maxLabel: translated('Very close', 'Muy cerca'),
+        ...parameters,
+      },
+    });
+
     const languageMenu = () =>
       screen.getByRole('button', { name: /Editing language/ });
 
@@ -858,6 +871,16 @@ describe('FieldPreviewPane', () => {
           _options: [{ label: { es: 'Diario' }, value: 'daily' }],
         }),
         ['en'],
+      ],
+      [
+        'every word of a scale is written in both languages',
+        closenessRow(),
+        [],
+      ],
+      [
+        'a scale’s end label has no Spanish',
+        closenessRow({ maxLabel: en('Very close') }),
+        ['es'],
       ],
     ])(
       'tags the languages that lack a translation when %s',
