@@ -2,7 +2,7 @@ import type { RelationshipType } from '@codaco/protocol-validation';
 
 import { kindepth } from './kindepth';
 import type { ParentConnection, PedigreeInput, PedigreeLayout } from './types';
-import { ancestor } from './utils';
+import { ancestor, layerConstraints } from './utils';
 
 type PartnerGroup = {
   members: number[];
@@ -188,35 +188,7 @@ function buildPedigreeGraph(ped: PedigreeInput): PedigreeGraph {
   // only if it leaves the constraints satisfiable — in order, partnerships
   // first — and one that would need a person above their own descendant is
   // dropped: its people then sit on different layers.
-  // Each constraint asks that `to` sit at least `gap` layers below `from`.
-  const below: { to: number; gap: number }[][] = Array.from(
-    { length: n },
-    () => [],
-  );
-  // The constraints are unsatisfiable exactly when a cycle through `node`
-  // includes a parent-child step.
-  const onDescendingCycle = (node: number) => {
-    const seen = new Set<string>();
-    const queue: [number, boolean][] = [[node, false]];
-    while (queue.length > 0) {
-      const [at, descended] = queue.shift()!;
-      for (const { to, gap } of below[at]!) {
-        const next = descended || gap > 0;
-        if (to === node && next) return true;
-        const key = `${to},${next}`;
-        if (seen.has(key)) continue;
-        seen.add(key);
-        queue.push([to, next]);
-      }
-    }
-    return false;
-  };
-  const constrain = (pairs: [from: number, to: number][], gap: number) => {
-    for (const [from, to] of pairs) below[from]!.push({ to, gap });
-    // The constraints held before, so any new cycle passes through these.
-    if (gap > 0 || !pairs.some(([from]) => onDescendingCycle(from))) return;
-    for (const [from] of pairs) below[from]!.pop();
-  };
+  const { constrain, settle } = layerConstraints(n);
   for (let i = 0; i < n; i++) {
     const pConns = ped.parents[i]!;
     const primary = pConns.filter((p) => isPrimaryEdge(p.edgeType));
@@ -244,19 +216,7 @@ function buildPedigreeGraph(ped: PedigreeInput): PedigreeGraph {
       }
     }
   }
-  // Layers only ever increase, and with no cycle left to climb this settles
-  // within n passes.
-  for (let changed = true, pass = 0; changed && pass <= n; pass++) {
-    changed = false;
-    for (let from = 0; from < n; from++) {
-      for (const { to, gap } of below[from]!) {
-        if (layers[to]! < layers[from]! + gap) {
-          layers[to] = layers[from]! + gap;
-          changed = true;
-        }
-      }
-    }
-  }
+  settle(layers);
 
   // 4. Build family units. A child belongs to a partner group when every
   // member is one of its primary parents. A child with three or more primary
