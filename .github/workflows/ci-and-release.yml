@@ -209,7 +209,11 @@ jobs:
           # a change confined to any of them would leave the flag false and
           # the job unrun. The guide is in the list because own-proxy extracts
           # its nginx configuration from it at run time: editing that block
-          # changes what the job runs.
+          # changes what the job runs. The images are built from the repo
+          # root, so the root files that decide what reaches them are inputs
+          # too: `.dockerignore` filters the context, and `turbo prune` and
+          # `pnpm install` read the root manifest, the lockfile, the workspace
+          # file (its catalog and patch list), the patches and `turbo.json`.
           studio=$(flag @codaco/studio-api)
           studio_stack_paths=(
             apps/studio/Dockerfile
@@ -217,6 +221,12 @@ jobs:
             apps/studio/.env.example
             apps/studio/stack-test
             apps/studio/docs/self-host
+            .dockerignore
+            package.json
+            pnpm-lock.yaml
+            pnpm-workspace.yaml
+            patches
+            turbo.json
           )
           if [[ "$studio" != "true" && -n "$PREV" ]] \
             && ! git diff --quiet "$PREV" "$CURR" -- "${studio_stack_paths[@]}"; then

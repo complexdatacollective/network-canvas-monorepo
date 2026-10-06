@@ -1993,6 +1993,12 @@ test('detect selects the upgrade lane whenever what the api image is built from 
     'apps/studio/release-test/window.mjs',
     'apps/studio/web/public/maintenance.html',
     '.github/workflows/ci-and-release.yml',
+    '.dockerignore',
+    'package.json',
+    'pnpm-lock.yaml',
+    'pnpm-workspace.yaml',
+    'patches/some-package.patch',
+    'turbo.json',
   ]) {
     assert.equal(
       runUpgradeSelection({ pushes: [[file]] }),
