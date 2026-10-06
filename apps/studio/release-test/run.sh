@@ -434,12 +434,14 @@ const window = read('window.json');
 const diff = read('diff.json');
 const restored = read('diff-restored.json');
 const newWorker = read('new-worker.json');
+const stopped = read('stopped.json');
 const lines = (text) => text.split('\n').filter((line) => line !== '');
 console.log(JSON.stringify({
   run: name, from, to, ok: ok === 'true', seconds: Number(seconds),
   window: window && { ok: window.ok, failures: window.failures, ...window.evidence },
   diff: diff && { ok: diff.ok, tables: diff.tables, rowsBefore: diff.rowsBefore, unmasked: diff.differences.length, masked: diff.masked },
   newWorker,
+  stopped,
   restore: restored && { ok: restored.ok, tables: restored.tables, rowsBefore: restored.rowsBefore, unmasked: restored.differences.length, masked: restored.masked },
   checks: lines(checks), problems: lines(problems),
 }, null, 2));
