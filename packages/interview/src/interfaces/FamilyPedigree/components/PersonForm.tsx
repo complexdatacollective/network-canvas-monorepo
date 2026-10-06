@@ -16,7 +16,6 @@ import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import type { FormSubmitHandler } from '@codaco/fresco-ui/form/store/types';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import {
-  PEDIGREE_GENDER_IDENTITIES,
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH,
   type FormField,
   type FramingId,
@@ -51,7 +50,6 @@ import {
 import {
   BUILT_IN_DETAIL_LABELS,
   CHILD_KIND_LABELS,
-  GENDER_IDENTITY_LABELS,
   PARENT_KIND_LABELS,
   SEX_ASSIGNED_AT_BIRTH_LABELS,
 } from '../options';
@@ -115,6 +113,8 @@ const PARENT_KINDS: PedigreeParentKind[] = [
 ];
 const CHILD_KINDS = ['biological', 'adoptive', 'social'] as const;
 
+export type GenderIdentityOption = { value: string | number; label: string };
+
 type PersonFormProps = {
   formId: string;
   mode: PersonFormMode;
@@ -122,6 +122,9 @@ type PersonFormProps = {
   config: PedigreeConfig;
   /** The stage's words for family members, gendered or by gamete. */
   framing: FramingId;
+  /** The options of the codebook's gender identity attribute, as the
+   * researcher defined them. */
+  genderIdentityOptions: GenderIdentityOption[];
   formFields: FormField[];
   displayName: (personId: string) => string;
   /** Edit only: ask whether the person has siblings, and children. */
@@ -134,6 +137,8 @@ type PersonFormProps = {
 
 const asString = (value: FieldValue | undefined) =>
   typeof value === 'string' ? value : undefined;
+const asOption = (value: FieldValue | undefined) =>
+  typeof value === 'string' || typeof value === 'number' ? value : undefined;
 const asStringArray = (value: FieldValue | undefined) =>
   Array.isArray(value)
     ? value.filter((item): item is string => typeof item === 'string')
@@ -150,6 +155,7 @@ export default function PersonForm({
   family,
   config,
   framing,
+  genderIdentityOptions,
   formFields,
   displayName,
   askAbout,
@@ -243,10 +249,6 @@ export default function PersonForm({
     return { success: true };
   };
 
-  const genderOptions = PEDIGREE_GENDER_IDENTITIES.map((value) => ({
-    value,
-    label: intl.formatMessage(GENDER_IDENTITY_LABELS[value]),
-  }));
   // A person recorded as a parent cannot be given a sex at birth that
   // contradicts it; the hint says how to choose one anyway.
   const ruledOut = person ? sexesRuledOut(family, person.id) : new Set();
@@ -301,7 +303,7 @@ export default function PersonForm({
             name={config.genderIdentityVariable}
             nameMode="opaque"
             label={intl.formatMessage(messages.genderIdentityLabel)}
-            options={genderOptions}
+            options={genderIdentityOptions}
             required
             initialValue={person?.genderIdentity}
           />
@@ -650,8 +652,10 @@ function readOwnDetails(
   const details: PersonDetails = {};
   const name = asString(values[config.nameVariable])?.trim();
   if (name) details[config.nameVariable] = name;
-  const gender = asString(values[config.genderIdentityVariable]);
-  if (gender) details[config.genderIdentityVariable] = [gender];
+  const gender = asOption(values[config.genderIdentityVariable]);
+  if (gender !== undefined && gender !== '') {
+    details[config.genderIdentityVariable] = [gender];
+  }
   const sex = asString(values[config.sexAssignedAtBirthVariable]);
   if (sex) details[config.sexAssignedAtBirthVariable] = [sex];
   return details;

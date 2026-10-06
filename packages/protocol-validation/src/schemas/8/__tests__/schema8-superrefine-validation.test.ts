@@ -8,11 +8,14 @@ import {
   OrdinalColorSequence,
 } from '../color-reference.ts';
 import {
-  PEDIGREE_GENDER_IDENTITY_OPTIONS,
   PEDIGREE_RELATIONSHIP_KIND_OPTIONS,
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
 } from '../family-pedigree-values.ts';
 import ProtocolSchemaV8 from '../schema.ts';
+import {
+  GENDER_IDENTITY_OPTIONS,
+  GENDER_IDENTITY_TERMS,
+} from './pedigreeGenderFixtures.ts';
 
 /**
  * Comprehensive tests for Protocol Schema V8 superrefine validation behavior
@@ -2619,15 +2622,18 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
     // Builds a protocol whose codebook carries the FamilyPedigree person and
     // relationship types, with the gender-identity, sex-assigned-at-birth and
     // relationship-kind variables present as categorical variables carrying the
-    // supplied option sets.
+    // supplied option sets. Gender identity is the researcher's: its options
+    // and the words each takes are whatever is supplied.
     const protocolWithLockedVariables = ({
-      genderIdentityOptions = PEDIGREE_GENDER_IDENTITY_OPTIONS,
-      genderIdentityType = 'categorical',
+      genderIdentityOptions = GENDER_IDENTITY_OPTIONS,
+      genderIdentityTerms = GENDER_IDENTITY_TERMS,
+      sexAssignedAtBirthType = 'categorical',
       sexAssignedAtBirthOptions = PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
       relationshipKindOptions = PEDIGREE_RELATIONSHIP_KIND_OPTIONS,
     }: {
       genderIdentityOptions?: Options;
-      genderIdentityType?: 'categorical' | 'ordinal';
+      genderIdentityTerms?: { value: string | number; words: string }[];
+      sexAssignedAtBirthType?: 'categorical' | 'ordinal';
       sexAssignedAtBirthOptions?: Options;
       relationshipKindOptions?: Options;
     }) => ({
@@ -2644,13 +2650,12 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
               name: { name: 'Name', type: 'text' },
               gender: {
                 name: 'Gender',
-                type: genderIdentityType,
-                readOnly: true,
+                type: 'categorical',
                 options: genderIdentityOptions,
               },
               sab: {
                 name: 'Sab',
-                type: 'categorical',
+                type: sexAssignedAtBirthType,
                 readOnly: true,
                 options: sexAssignedAtBirthOptions,
               },
@@ -2684,6 +2689,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
           nodeConfiguration: {
             nameVariable: 'name',
             genderIdentityVariable: 'gender',
+            genderIdentityTerms,
             sexAssignedAtBirthVariable: 'sab',
             egoVariable: 'isEgo',
           },
@@ -2710,12 +2716,39 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       expect(lockedIssue).toBeFalsy();
     });
 
-    it('rejects a gender-identity variable whose options were edited', () => {
+    it('lets the researcher define their own gender identity options', () => {
+      const result = ProtocolSchemaV8.safeParse(
+        protocolWithLockedVariables({
+          genderIdentityOptions: [
+            { value: 'transWoman', label: 'Trans woman' },
+            { value: 'woman', label: 'Woman' },
+          ],
+          genderIdentityTerms: [
+            { value: 'transWoman', words: 'feminine' },
+            { value: 'woman', words: 'feminine' },
+          ],
+        }),
+      );
+      expect(result.success).toBe(true);
+    });
+
+    it('treats options with no words as neutral, so an empty mapping is valid', () => {
+      const result = ProtocolSchemaV8.safeParse(
+        protocolWithLockedVariables({ genderIdentityTerms: [] }),
+      );
+      expect(result.success).toBe(true);
+    });
+
+    it('rejects words for a value that is not an option of the gender identity attribute', () => {
       const result = ProtocolSchemaV8.safeParse(
         protocolWithLockedVariables({
           genderIdentityOptions: [
             { value: 'woman', label: 'Woman' },
             { value: 'man', label: 'Man' },
+          ],
+          genderIdentityTerms: [
+            { value: 'woman', words: 'feminine' },
+            { value: 'agender', words: 'neutral' },
           ],
         }),
       );
@@ -2723,7 +2756,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       if (!result.success) {
         const issue = result.error.issues.find((i) =>
           i.message.includes(
-            'FamilyPedigree gender identity attribute "gender" must use its fixed set of options',
+            'gender identity words are given for "agender", which is not one of the options of attribute "Gender"',
           ),
         );
         expect(issue).toBeDefined();
@@ -2731,27 +2764,48 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
           'stages',
           0,
           'nodeConfiguration',
-          'genderIdentityVariable',
+          'genderIdentityTerms',
+          1,
+          'value',
         ]);
       }
     });
 
-    it('rejects a gender-identity variable whose labels were edited', () => {
+    it('rejects words given twice for one option', () => {
       const result = ProtocolSchemaV8.safeParse(
         protocolWithLockedVariables({
-          genderIdentityOptions: PEDIGREE_GENDER_IDENTITY_OPTIONS.map(
-            (option) => ({ ...option, label: `${option.label}!` }),
-          ),
+          genderIdentityTerms: [
+            { value: 'woman', words: 'feminine' },
+            { value: 'woman', words: 'neutral' },
+          ],
         }),
       );
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(
-          result.error.issues.some((i) =>
-            i.message.includes('must use its fixed set of options'),
+        const issue = result.error.issues.find((i) =>
+          i.message.includes(
+            'gender identity words are given more than once for "woman"',
           ),
-        ).toBe(true);
+        );
+        expect(issue).toBeDefined();
+        expect(issue?.path).toEqual([
+          'stages',
+          0,
+          'nodeConfiguration',
+          'genderIdentityTerms',
+          1,
+          'value',
+        ]);
       }
+    });
+
+    it('rejects a kind of words that does not exist', () => {
+      const result = ProtocolSchemaV8.safeParse(
+        protocolWithLockedVariables({
+          genderIdentityTerms: [{ value: 'woman', words: 'female' }],
+        }),
+      );
+      expect(result.success).toBe(false);
     });
 
     it('rejects a sex-assigned-at-birth variable whose options were edited', () => {
@@ -2814,8 +2868,8 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       // options schema. The locked-set backstop must fire for ordinal too.
       const result = ProtocolSchemaV8.safeParse(
         protocolWithLockedVariables({
-          genderIdentityType: 'ordinal',
-          genderIdentityOptions: [
+          sexAssignedAtBirthType: 'ordinal',
+          sexAssignedAtBirthOptions: [
             { value: 'yes', label: 'Yes' },
             { value: 'no', label: 'No' },
           ],
@@ -2826,7 +2880,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         const issue = result.error.issues.find(
           (i) =>
             i.message.includes(
-              'FamilyPedigree gender identity attribute "gender"',
+              'FamilyPedigree sex assigned at birth attribute "sab"',
             ) && i.message.includes('must use its fixed set of options'),
         );
         expect(issue).toBeDefined();

@@ -3533,15 +3533,67 @@
   },
   "protocolBuilder.pedigree.genderIdentityCreateLabel": {
     "defaultMessage": "Create a new gender identity attribute",
-    "description": "Title of the dialog that creates a new categorical attribute for gender identity, seeded with the fixed options the interface owns."
+    "description": "Title of the dialog that creates a new categorical attribute for gender identity, starting from a suggested list of options the researcher can edit."
   },
   "protocolBuilder.pedigree.genderIdentityHint": {
-    "defaultMessage": "Decides the symbol each person is drawn with. The interface sets the options this attribute offers, and they cannot be changed.",
-    "description": "Guidance under the gender identity attribute control. The options are a fixed list the interface owns."
+    "defaultMessage": "Records each person’s gender identity. You choose the options this attribute offers, and below say which words each one takes.",
+    "description": "Guidance under the gender identity attribute control. The options are the researcher’s own; the control that follows chooses the kinship words each takes."
   },
   "protocolBuilder.pedigree.genderIdentityLabel": {
     "defaultMessage": "Gender identity",
     "description": "Label of the control choosing the categorical attribute that holds each family member’s gender identity."
+  },
+  "protocolBuilder.pedigree.genderOptionDifferentIdentity": {
+    "defaultMessage": "A different identity",
+    "description": "Label of the suggested option for a gender identity not named by the others, when a new gender identity attribute is created. The researcher may rename it."
+  },
+  "protocolBuilder.pedigree.genderOptionMan": {
+    "defaultMessage": "Man",
+    "description": "Label of the suggested “man” option when a new gender identity attribute is created. The researcher may rename it."
+  },
+  "protocolBuilder.pedigree.genderOptionNonBinary": {
+    "defaultMessage": "Non-binary",
+    "description": "Label of the suggested “non-binary” option when a new gender identity attribute is created. The researcher may rename it."
+  },
+  "protocolBuilder.pedigree.genderOptionPreferNotToSay": {
+    "defaultMessage": "Prefer not to say",
+    "description": "Label of the suggested option for a participant who would rather not give a gender identity, when a new gender identity attribute is created. The researcher may rename it."
+  },
+  "protocolBuilder.pedigree.genderOptionUnknown": {
+    "defaultMessage": "Don’t know",
+    "description": "Label of the suggested option for a gender identity the participant does not know, when a new gender identity attribute is created. The researcher may rename it."
+  },
+  "protocolBuilder.pedigree.genderOptionWoman": {
+    "defaultMessage": "Woman",
+    "description": "Label of the suggested “woman” option when a new gender identity attribute is created. The researcher may rename it."
+  },
+  "protocolBuilder.pedigree.genderTermsHint": {
+    "defaultMessage": "Family members are described with kinship words such as mother, brother or aunt. Choose the words each gender identity takes. An option with neutral words is described as a parent, sibling or child.",
+    "description": "Guidance under the control that chooses the kinship words each gender identity option takes. Neutral words are the ones that do not depend on gender."
+  },
+  "protocolBuilder.pedigree.genderTermsLabel": {
+    "defaultMessage": "Words for each gender identity",
+    "description": "Label of the control that chooses, for each option of the gender identity attribute, the kinship words used for a person who has it, such as mother or father."
+  },
+  "protocolBuilder.pedigree.genderTermsRowLabel": {
+    "defaultMessage": "Words for {value1}",
+    "description": "Accessible name of the control choosing which kinship words one gender identity option takes. value1 is the option’s own label, as the researcher wrote it."
+  },
+  "protocolBuilder.pedigree.genderWordsFeminine": {
+    "defaultMessage": "Feminine words (mother, sister)",
+    "description": "Choice for the kinship words a gender identity option takes: the words used for women, with examples."
+  },
+  "protocolBuilder.pedigree.genderWordsMasculine": {
+    "defaultMessage": "Masculine words (father, brother)",
+    "description": "Choice for the kinship words a gender identity option takes: the words used for men, with examples."
+  },
+  "protocolBuilder.pedigree.genderWordsNeutral": {
+    "defaultMessage": "Neutral words (parent, sibling)",
+    "description": "Choice for the kinship words a gender identity option takes: words that do not depend on gender, with examples."
+  },
+  "protocolBuilder.pedigree.genderWordsUnknown": {
+    "defaultMessage": "Not known (named from sex assigned at birth)",
+    "description": "Choice for the kinship words a gender identity option takes, for an option meaning the person’s gender is not known: a biological parent is then named from their sex assigned at birth, such as biological mother."
   },
   "protocolBuilder.pedigree.gestationalCarrierCreateLabel": {
     "defaultMessage": "Create a new gestational carrier attribute",

@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  PEDIGREE_GENDER_IDENTITIES,
-  PEDIGREE_GENDER_IDENTITY_OPTIONS,
+  PEDIGREE_DEFAULT_GENDER_IDENTITIES,
+  PEDIGREE_GENDER_WORDS,
   PEDIGREE_RELATIONSHIP_KIND_OPTIONS,
   PEDIGREE_RELATIONSHIP_KINDS,
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH,
@@ -16,22 +16,23 @@ import {
  * decide whether it belongs in a new schema version.
  */
 describe('schema 8 interface-owned values', () => {
-  it('has the canonical gender identities, with participant-facing labels', () => {
-    expect(PEDIGREE_GENDER_IDENTITIES).toEqual([
-      'woman',
-      'man',
-      'nonBinary',
-      'differentIdentity',
+  it('has the kinds of gender words an option can take', () => {
+    expect(PEDIGREE_GENDER_WORDS).toEqual([
+      'feminine',
+      'masculine',
+      'neutral',
       'unknown',
-      'preferNotToSay',
     ]);
-    expect(PEDIGREE_GENDER_IDENTITY_OPTIONS).toEqual([
-      { value: 'woman', label: 'Woman' },
-      { value: 'man', label: 'Man' },
-      { value: 'nonBinary', label: 'Non-binary' },
-      { value: 'differentIdentity', label: 'A different identity' },
-      { value: 'unknown', label: 'Don’t know' },
-      { value: 'preferNotToSay', label: 'Prefer not to say' },
+  });
+
+  it('seeds a gender identity attribute with six options and their default words', () => {
+    expect(PEDIGREE_DEFAULT_GENDER_IDENTITIES).toEqual([
+      { value: 'woman', words: 'feminine' },
+      { value: 'man', words: 'masculine' },
+      { value: 'nonBinary', words: 'neutral' },
+      { value: 'differentIdentity', words: 'neutral' },
+      { value: 'unknown', words: 'unknown' },
+      { value: 'preferNotToSay', words: 'neutral' },
     ]);
   });
 

@@ -62,6 +62,7 @@ describe('readFamily', () => {
     expect(family.byId.get('mum')).toMatchObject({
       name: 'Julie',
       genderIdentity: 'woman',
+      genderWords: 'feminine',
       sexAssignedAtBirth: 'female',
     });
     expect(family.links).toHaveLength(5);
@@ -72,6 +73,31 @@ describe('readFamily', () => {
       family.links.find((l) => l.source === 'mum' && l.target === 'ego')
         ?.isGestationalCarrier,
     ).toBe(true);
+  });
+
+  test('reads any option as the gender identity, and the words it takes', () => {
+    const family = readFamily(
+      [
+        person('a', { gender: ['transWoman'] }),
+        person('b', { gender: ['agender'] }),
+        person('c', { gender: ['unknown'] }),
+        person('d'),
+        person('e', { gender: [] }),
+      ],
+      [],
+      config,
+    );
+    const read = (id: string) => {
+      const found = family.byId.get(id);
+      return [found?.genderIdentity, found?.genderWords];
+    };
+    expect(read('a')).toEqual(['transWoman', 'feminine']);
+    // Not listed in the stage's terms, so neutral.
+    expect(read('b')).toEqual(['agender', 'neutral']);
+    expect(read('c')).toEqual(['unknown', 'unknown']);
+    // Unanswered.
+    expect(read('d')).toEqual([undefined, undefined]);
+    expect(read('e')).toEqual([undefined, undefined]);
   });
 
   test('ignores links of unknown kinds or to people of another type', () => {

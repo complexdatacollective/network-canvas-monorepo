@@ -1,46 +1,54 @@
 /**
- * Value sets the FamilyPedigree interface owns.
+ * Value sets the FamilyPedigree interface owns, and the vocabulary it offers
+ * researchers for the one it does not.
  *
- * The interface both writes and reads these values — it draws a person's
- * symbol from their gender identity, annotates it with their sex assigned at
- * birth, and lays the family out from each relationship's kind — so the
- * codebook variables bound to those slots must carry exactly these members and
- * labels. Architect locks them onto the variable.
+ * The interface both writes and reads sex assigned at birth, the relationship
+ * kind and the relatives-not-recorded answers, so the codebook variables bound
+ * to those slots must carry exactly these members and labels; Architect locks
+ * them onto the variable. A person's symbol is not decided here: it is the
+ * person type's codebook shape, which the researcher may map to any attribute.
+ *
+ * Gender identity is the researcher's. The interface only needs to know which
+ * kinship words each of the researcher's options takes, so the stage carries a
+ * mapping from option to `PEDIGREE_GENDER_WORDS`.
  */
 
 /**
- * Gender identity, which decides the person's pedigree symbol: a square for a
- * man, a circle for a woman, and a diamond for everyone else (non-binary, a
- * different identity, or not known).
+ * Which kinship words a gender identity option takes in the gendered framing.
+ *
+ * - `feminine`: mother, sister, daughter, grandmother, aunt, niece.
+ * - `masculine`: father, brother, son, grandfather, uncle, nephew.
+ * - `neutral`: parent, sibling, child, grandparent, parent's sibling.
+ * - `unknown`: the person's gender is not known, so a biological parent is
+ *   named from their sex assigned at birth ("biological mother") and every
+ *   other relative with neutral words.
  */
-export const PEDIGREE_GENDER_IDENTITIES = [
-  'woman',
-  'man',
-  'nonBinary',
-  'differentIdentity',
+export const PEDIGREE_GENDER_WORDS = [
+  'feminine',
+  'masculine',
+  'neutral',
   'unknown',
-  'preferNotToSay',
 ] as const;
 
-export type PedigreeGenderIdentity =
-  (typeof PEDIGREE_GENDER_IDENTITIES)[number];
+export type PedigreeGenderWords = (typeof PEDIGREE_GENDER_WORDS)[number];
 
-const GENDER_IDENTITY_LABELS: Record<PedigreeGenderIdentity, string> = {
-  woman: 'Woman',
-  man: 'Man',
-  nonBinary: 'Non-binary',
-  differentIdentity: 'A different identity',
-  unknown: 'Don’t know',
-  preferNotToSay: 'Prefer not to say',
-};
+/**
+ * The gender identity options Architect offers to seed a new attribute with,
+ * each with the words it takes by default. Architect supplies the translated
+ * label for each value; the researcher may then edit, add or remove options,
+ * so nothing reads these values back as the only possible ones.
+ */
+export const PEDIGREE_DEFAULT_GENDER_IDENTITIES = [
+  { value: 'woman', words: 'feminine' },
+  { value: 'man', words: 'masculine' },
+  { value: 'nonBinary', words: 'neutral' },
+  { value: 'differentIdentity', words: 'neutral' },
+  { value: 'unknown', words: 'unknown' },
+  { value: 'preferNotToSay', words: 'neutral' },
+] as const satisfies readonly { value: string; words: PedigreeGenderWords }[];
 
-export const PEDIGREE_GENDER_IDENTITY_OPTIONS: {
-  value: PedigreeGenderIdentity;
-  label: string;
-}[] = PEDIGREE_GENDER_IDENTITIES.map((value) => ({
-  value,
-  label: GENDER_IDENTITY_LABELS[value],
-}));
+export type PedigreeDefaultGenderIdentityValue =
+  (typeof PEDIGREE_DEFAULT_GENDER_IDENTITIES)[number]['value'];
 
 /**
  * Sex assigned at birth, shown beneath the symbol as AFAB, AMAB or UAAB.
@@ -182,9 +190,10 @@ export type PedigreeCompletenessScope =
 /**
  * How the interface describes family members to the participant.
  *
- * - `gendered`: the usual kinship words, chosen by each person's gender
- *   identity — mother, father, grandmother, aunt, nephew — and neutral words
- *   (parent, sibling, cousin) for anyone who is neither a woman nor a man.
+ * - `gendered`: the usual kinship words, chosen by the words each person's
+ *   gender identity option takes (see `PEDIGREE_GENDER_WORDS`) — mother,
+ *   father, grandmother, aunt, nephew — and neutral words (parent, sibling,
+ *   cousin) for anyone whose option takes neutral words.
  * - `gamete`: words that make no assumption about gender. Biological parents
  *   are described by the gamete they gave (egg parent, sperm parent, read
  *   from their recorded sex at birth), and every other relative by a neutral

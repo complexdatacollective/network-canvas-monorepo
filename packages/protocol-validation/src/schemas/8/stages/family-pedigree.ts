@@ -10,7 +10,9 @@ import { entityTypeReference } from '../entity-type-reference.ts';
 import {
   FRAMING_SETTINGS,
   PEDIGREE_COMPLETENESS_SCOPES,
+  PEDIGREE_GENDER_WORDS,
 } from '../family-pedigree-values.ts';
+import { categoricalOptionValueSchema } from '../variables/variable.ts';
 import { baseStageSchema } from './base.ts';
 
 /**
@@ -31,6 +33,15 @@ export const FAMILY_PEDIGREE_SLOTS = {
 } as const;
 
 /**
+ * Which kinship words one gender identity option takes. `value` is the option's
+ * value in the bound attribute's codebook options.
+ */
+const GenderIdentityTermSchema = z.strictObject({
+  value: categoricalOptionValueSchema,
+  words: z.enum(PEDIGREE_GENDER_WORDS),
+});
+
+/**
  * Binds the interface to the person node type: the attributes it collects for
  * every family member, in the side panel, before any researcher-defined field.
  */
@@ -41,15 +52,22 @@ export const NodeConfigurationSchema = z.strictObject({
     usage: 'validatedAttribute',
     requireType: ['text'],
   }),
-  // Categorical attribute holding gender identity. (A person's symbol is the
-  // person type's codebook shape, which the researcher may map to this or to
-  // sex assigned at birth.)
+  // Categorical attribute holding gender identity. The researcher defines its
+  // options; `genderIdentityTerms` says which kinship words each takes. (A
+  // person's symbol is the person type's codebook shape, which the researcher
+  // may map to this or to sex assigned at birth.)
   genderIdentityVariable: entityAttributeReference({
     subject: 'stageSubject',
     usage: 'unvalidatedAttribute',
     requireType: ['categorical'],
-    ownedOptions: 'pedigreeGenderIdentity',
   }),
+  // Which kinship words each option of the gender identity attribute takes
+  // (mother or father, sister or brother, parent or sibling). An option not
+  // listed takes neutral words. `unknown` marks an option meaning the person's
+  // gender is not known, so a biological parent is named from their sex
+  // assigned at birth ("biological mother"). Every `value` must be one of the
+  // attribute's options, and none may be listed twice.
+  genderIdentityTerms: z.array(GenderIdentityTermSchema),
   // Categorical attribute holding sex assigned at birth.
   sexAssignedAtBirthVariable: entityAttributeReference({
     subject: 'stageSubject',

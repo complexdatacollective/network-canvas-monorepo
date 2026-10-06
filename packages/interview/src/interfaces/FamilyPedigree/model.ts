@@ -1,10 +1,9 @@
 import {
-  PEDIGREE_GENDER_IDENTITIES,
   PEDIGREE_RELATIONSHIP_KINDS,
   PEDIGREE_RELATIVES_NOT_RECORDED,
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH,
   type FamilyPedigreeStageDefinition,
-  type PedigreeGenderIdentity,
+  type PedigreeGenderWords,
   type PedigreeParentKind,
   type PedigreeRelationshipKind,
   type PedigreeRelativesNotRecorded,
@@ -26,6 +25,14 @@ export type PedigreeConfig = {
   personType: string;
   nameVariable: string;
   genderIdentityVariable: string;
+  /**
+   * Which kinship words each option of the gender identity attribute takes. An
+   * option not listed takes neutral words.
+   */
+  genderIdentityTerms: readonly {
+    value: string | number;
+    words: PedigreeGenderWords;
+  }[];
   sexAssignedAtBirthVariable: string;
   egoVariable: string;
   relationshipType: string;
@@ -46,6 +53,7 @@ export function pedigreeConfigFromStage(
     personType: stage.subject.type,
     nameVariable: stage.nodeConfiguration.nameVariable,
     genderIdentityVariable: stage.nodeConfiguration.genderIdentityVariable,
+    genderIdentityTerms: stage.nodeConfiguration.genderIdentityTerms,
     sexAssignedAtBirthVariable:
       stage.nodeConfiguration.sexAssignedAtBirthVariable,
     egoVariable: stage.nodeConfiguration.egoVariable,
@@ -63,7 +71,12 @@ export type Person = {
   id: string;
   isEgo: boolean;
   name: string | undefined;
-  genderIdentity: PedigreeGenderIdentity | undefined;
+  /** The value of the gender identity option the person was given, whatever
+   * the researcher defined it to be. Undefined when not yet answered. */
+  genderIdentity: string | number | undefined;
+  /** The kinship words their gender identity option takes. Undefined when
+   * their gender identity has not been answered. */
+  genderWords: PedigreeGenderWords | undefined;
   sexAssignedAtBirth: PedigreeSexAssignedAtBirth | undefined;
   /** Siblings or children the participant has said there are none of, or
    * doesn't know about. */
@@ -99,6 +112,20 @@ function readCategorical<T extends string>(
   return allowed.find((member) => member === candidate);
 }
 
+/**
+ * The option a categorical attribute holds, whatever the researcher defined
+ * it to be: the first value of the stored array.
+ */
+function readOption(
+  value: VariableValue | undefined,
+): string | number | undefined {
+  const candidate = Array.isArray(value) ? value[0] : value;
+  if (typeof candidate === 'number') return candidate;
+  return typeof candidate === 'string' && candidate !== ''
+    ? candidate
+    : undefined;
+}
+
 /** Every known member of a multi-valued categorical value. */
 function readCategoricalSet<T extends string>(
   value: VariableValue | undefined,
@@ -118,14 +145,20 @@ export function readFamily(
     .map((node) => {
       const attributes = node[entityAttributesProperty];
       const name = attributes[config.nameVariable];
+      const genderIdentity = readOption(
+        attributes[config.genderIdentityVariable],
+      );
       return {
         id: node[entityPrimaryKeyProperty],
         isEgo: attributes[config.egoVariable] === true,
         name: typeof name === 'string' && name.trim() !== '' ? name : undefined,
-        genderIdentity: readCategorical(
-          attributes[config.genderIdentityVariable],
-          PEDIGREE_GENDER_IDENTITIES,
-        ),
+        genderIdentity,
+        genderWords:
+          genderIdentity === undefined
+            ? undefined
+            : (config.genderIdentityTerms.find(
+                (term) => term.value === genderIdentity,
+              )?.words ?? 'neutral'),
         sexAssignedAtBirth: readCategorical(
           attributes[config.sexAssignedAtBirthVariable],
           PEDIGREE_SEX_ASSIGNED_AT_BIRTH,

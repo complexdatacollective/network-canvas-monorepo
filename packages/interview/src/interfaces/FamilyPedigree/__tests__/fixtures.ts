@@ -12,6 +12,13 @@ export const config: PedigreeConfig = {
   personType: 'person',
   nameVariable: 'name',
   genderIdentityVariable: 'gender',
+  genderIdentityTerms: [
+    { value: 'woman', words: 'feminine' },
+    { value: 'man', words: 'masculine' },
+    { value: 'nonBinary', words: 'neutral' },
+    { value: 'unknown', words: 'unknown' },
+    { value: 'transWoman', words: 'feminine' },
+  ],
   sexAssignedAtBirthVariable: 'sex',
   egoVariable: 'isEgo',
   relationshipType: 'family',

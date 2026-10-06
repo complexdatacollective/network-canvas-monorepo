@@ -2247,6 +2247,30 @@
     "defaultMessage": "Gender identity",
     "description": "Label for the attribute that holds each family member’s gender identity, in the printable protocol summary."
   },
+  "architect.protocolSummary.stage.familyPedigree.genderIdentityTerm": {
+    "defaultMessage": "{option}: {words}",
+    "description": "One line of the printable protocol summary’s list of gender identity words. option is a gender identity option’s own label, as the researcher wrote it, and words is the name of the kinship words it takes."
+  },
+  "architect.protocolSummary.stage.familyPedigree.genderIdentityTerms": {
+    "defaultMessage": "Gender identity words",
+    "description": "Label for the list saying which kinship words each gender identity option takes, in the printable protocol summary."
+  },
+  "architect.protocolSummary.stage.familyPedigree.genderWordsFeminine": {
+    "defaultMessage": "Feminine words (mother, sister)",
+    "description": "Printable protocol summary name of the kinship words used for women, with examples."
+  },
+  "architect.protocolSummary.stage.familyPedigree.genderWordsMasculine": {
+    "defaultMessage": "Masculine words (father, brother)",
+    "description": "Printable protocol summary name of the kinship words used for men, with examples."
+  },
+  "architect.protocolSummary.stage.familyPedigree.genderWordsNeutral": {
+    "defaultMessage": "Neutral words (parent, sibling)",
+    "description": "Printable protocol summary name of the kinship words that do not depend on gender, with examples."
+  },
+  "architect.protocolSummary.stage.familyPedigree.genderWordsUnknown": {
+    "defaultMessage": "Not known (named from sex assigned at birth)",
+    "description": "Printable protocol summary name of the kinship words for an option meaning the person’s gender is not known: a biological parent is named from their sex assigned at birth, such as biological mother."
+  },
   "architect.protocolSummary.stage.familyPedigree.gestationalCarrier": {
     "defaultMessage": "Gestational carrier",
     "description": "Label for the true/false attribute marking the parent who carried a pregnancy, in the printable protocol summary."

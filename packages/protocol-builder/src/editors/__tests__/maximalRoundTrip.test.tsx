@@ -85,6 +85,12 @@ type MaximalStage = Readonly<{
   settle?: () => Promise<unknown>;
   /** Puts in place what the stage needs that the fixture protocol lacks. */
   prepare?: (harness: StageEditorHarness) => void;
+  /**
+   * Keys the interface's schema has and its editor has no section for yet.
+   * They round-trip untouched, so a researcher cannot see or change them;
+   * naming one here is the way to say so rather than to claim it is owned.
+   */
+  unowned?: readonly string[];
 }>;
 
 const stageName = () => screen.findByRole('textbox', { name: 'Stage name' });
@@ -400,7 +406,18 @@ const FIXTURE_MAXIMAL_STAGES: MaximalStage[] = [
         enforcement: 'recommended',
         relativesNotRecordedVariable: 'relativesNotRecorded',
       },
+      framing: 'participantPreference',
+      nominationPrompts: [
+        {
+          id: 'nomination-1',
+          text: 'Who in your family has had heart disease?',
+          variable: 'has_heart_disease',
+          onlyForSexAssignedAtBirth: 'female',
+        },
+      ],
     }),
+    // The editor has no section for the framing or the nomination prompts yet.
+    unowned: ['framing', 'nominationPrompts'],
     // Every attribute the fixture's person type carries is bound to one of the
     // pedigree's own slots, so the attribute its extra field collects arrives
     // the way a collaborator's would.
@@ -412,6 +429,7 @@ const FIXTURE_MAXIMAL_STAGES: MaximalStage[] = [
           component: 'Text',
         },
         relativesNotRecorded: RELATIVES_NOT_RECORDED_VARIABLE,
+        has_heart_disease: { name: 'has_heart_disease', type: 'boolean' },
       }),
   },
   {
@@ -478,7 +496,7 @@ describe('a maximal stage of each interface', () => {
 
   it.each(EVERY_MAXIMAL_STAGE)(
     '$interfaceName: is fully editable, and saves every key unchanged',
-    async ({ type, fields, settle, prepare }) => {
+    async ({ type, fields, settle, prepare, unowned = [] }) => {
       // No registry passed: every interface is claimed by the package's own,
       // so the dispatcher finding the editor is part of what the case shows.
       const harness = renderStageEditor({ stage: { type, fields } });
@@ -489,10 +507,10 @@ describe('a maximal stage of each interface', () => {
       // has not finished registering.
       await waitFor(() => expect(harness.outline().length).toBeGreaterThan(2));
 
-      // Nothing is excused: a maximal stage is the one case where every key
-      // the interface offers must be on screen, so an empty `unowned` is the
-      // whole claim about the outline.
-      await harness.roundTrip({ unowned: [] });
+      // Nothing is excused unless the case says so: a maximal stage is the one
+      // case where every key the interface offers must be on screen, so an
+      // empty `unowned` is the whole claim about the outline.
+      await harness.roundTrip({ unowned });
     },
   );
 });

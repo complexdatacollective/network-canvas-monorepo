@@ -159,13 +159,17 @@ type Step =
 type Gendered = 'woman' | 'man' | 'other';
 
 /**
- * The word to use for a person, by framing: their gender identity for the
- * gendered framing, and always neutral for the gamete framing.
+ * The word to use for a person, by framing: the words their gender identity
+ * option takes for the gendered framing (feminine words for a woman, masculine
+ * for a man, neutral for anything else), and always neutral for the gamete
+ * framing.
  */
 function genderOf(person: Person | undefined, framing: FramingId): Gendered {
   if (framing === 'gamete') return 'other';
-  const identity = person?.genderIdentity;
-  return identity === 'woman' || identity === 'man' ? identity : 'other';
+  const words = person?.genderWords;
+  if (words === 'feminine') return 'woman';
+  if (words === 'masculine') return 'man';
+  return 'other';
 }
 
 function pick<T>(gender: Gendered, terms: { woman: T; man: T; other: T }) {
@@ -248,9 +252,9 @@ function stepTerm(
           if (gender === 'other') {
             // With their gender identity not known, a biological parent is
             // named by the gamete they gave, in gendered words.
-            const identity = person?.genderIdentity;
+            const words = person?.genderWords;
             const sex = person?.sexAssignedAtBirth;
-            if (identity === undefined || identity === 'unknown') {
+            if (words === undefined || words === 'unknown') {
               if (sex === 'female') return 'biologicalMother';
               if (sex === 'male') return 'biologicalFather';
             }
@@ -338,9 +342,9 @@ function kinTermFor(
   const firstParent = family.byId.get(path[0]!.to);
   const side =
     framing === 'gendered' && path[0]!.type === 'parent'
-      ? firstParent?.genderIdentity === 'woman'
+      ? firstParent?.genderWords === 'feminine'
         ? 'maternal'
-        : firstParent?.genderIdentity === 'man'
+        : firstParent?.genderWords === 'masculine'
           ? 'paternal'
           : undefined
       : undefined;

@@ -8,6 +8,7 @@ import type {
   FramingSetting,
   OrdinalColorReference,
   PedigreeCompletenessScope,
+  PedigreeGenderWords,
   StageType,
   VariableType,
 } from '@codaco/protocol-validation';
@@ -319,6 +320,7 @@ export type StageEntry = {
 export type FamilyPedigreeNodeConfigurationEntry = {
   nameVariable: string;
   genderIdentityVariable: string;
+  genderIdentityTerms: { value: string | number; words: PedigreeGenderWords }[];
   sexAssignedAtBirthVariable: string;
   egoVariable: string;
 };
@@ -484,6 +486,15 @@ export type AddStageInput = {
   prompt?: string;
   relationshipType?: string;
   framing?: FramingSetting;
+  /** The options of the gender identity variable and the words each takes;
+   * an option with no `words` is left out of the stage's terms, so it takes
+   * neutral words. Defaults to the six options Architect seeds a new
+   * attribute with. */
+  genderIdentities?: {
+    value: string | number;
+    label: string;
+    words?: PedigreeGenderWords;
+  }[];
   /** Each creates a boolean person variable, named `variableName` or
    * `condition<n>`, recording who the prompt applies to. */
   nominationPrompts?: {

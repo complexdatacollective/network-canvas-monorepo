@@ -42,7 +42,8 @@ const countTagged = (
 // Merged total: main's NetworkComposer reference fields, plus the pedigree's
 // person attributes (name, gender identity, sex assigned at birth, ego) and
 // relationship attributes (kind, gestational carrier, current partner) and
-// completeness attribute (relatives not recorded), plus
+// completeness attribute (relatives not recorded) and each nomination
+// prompt's boolean `variable`, plus
 // the two node shape-mapping `variable` fields (discrete and breakpoints arms), plus
 // #1392's four existence-unchecked sites: the shared sort rule `property`
 // (SortRuleSchema, reached by every prompt-level sort order and the roster's
@@ -50,7 +51,7 @@ const countTagged = (
 // (cardOptions.additionalProperties[].variable,
 // sortOptions.sortableProperties[].variable, searchOptions.matchProperties[]).
 // The value is verified against the runtime count computed below.
-const EXPECTED_TAGGED_FIELD_COUNT = 38;
+const EXPECTED_TAGGED_FIELD_COUNT = 39;
 
 // Every slot an interface owns outright, and every slot whose OPTION SET it
 // owns. Both drive protocol-level rules and Architect's pickers/option
@@ -65,7 +66,6 @@ const EXPECTED_EXCLUSIVE_SLOTS = [
 ];
 
 const EXPECTED_OWNED_OPTION_SETS = [
-  'pedigreeGenderIdentity',
   'pedigreeRelationship',
   'pedigreeRelativesNotRecorded',
   'pedigreeSexAssignedAtBirth',

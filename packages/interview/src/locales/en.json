@@ -219,22 +219,6 @@
     "defaultMessage": "Wording",
     "description": "Short label of the toolbar button, shown beside its icon, that opens the choice of words used to describe family members (such as “mother” or “egg parent”). Keep it brief."
   },
-  "interview.familyPedigree.gender.differentIdentity": {
-    "defaultMessage": "A different identity",
-    "description": "Gender identity option."
-  },
-  "interview.familyPedigree.gender.man": {
-    "defaultMessage": "Man",
-    "description": "Gender identity option."
-  },
-  "interview.familyPedigree.gender.nonBinary": {
-    "defaultMessage": "Non-binary",
-    "description": "Gender identity option."
-  },
-  "interview.familyPedigree.gender.woman": {
-    "defaultMessage": "Woman",
-    "description": "Gender identity option."
-  },
   "interview.familyPedigree.genderIdentityLabel": {
     "defaultMessage": "Gender identity",
     "description": "Label of the question about a family member’s gender."

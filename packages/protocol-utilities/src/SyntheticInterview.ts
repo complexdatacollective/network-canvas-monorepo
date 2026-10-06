@@ -4,7 +4,8 @@ import {
   type ComponentType,
   CURRENT_SCHEMA_VERSION,
   type Item,
-  PEDIGREE_GENDER_IDENTITY_OPTIONS,
+  PEDIGREE_DEFAULT_GENDER_IDENTITIES,
+  type PedigreeDefaultGenderIdentityValue,
   PEDIGREE_RELATIONSHIP_KIND_OPTIONS,
   PEDIGREE_RELATIVES_NOT_RECORDED_OPTIONS,
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
@@ -254,6 +255,20 @@ type AlterEdgeFormHandle = StageHandleBase & {
 };
 
 type AnonymisationHandle = StageHandleBase;
+
+/** English labels for the default gender identity options; a synthetic
+ * protocol has no translation to draw on. */
+const DEFAULT_GENDER_IDENTITY_LABELS: Record<
+  PedigreeDefaultGenderIdentityValue,
+  string
+> = {
+  woman: 'Woman',
+  man: 'Man',
+  nonBinary: 'Non-binary',
+  differentIdentity: 'A different identity',
+  unknown: 'Don’t know',
+  preferNotToSay: 'Prefer not to say',
+};
 
 type FamilyPedigreeHandle = StageHandleBase & {
   /** The person node type id (the stage's `subject.type`). */
@@ -691,12 +706,26 @@ export class SyntheticInterview {
         varOpts: Omit<AddVariableInput, 'name'>,
       ) => this.addVariableToNodeType(personType, { name, ...varOpts }).id;
 
+      const genderIdentities =
+        opts?.genderIdentities ??
+        PEDIGREE_DEFAULT_GENDER_IDENTITIES.map(({ value, words }) => ({
+          value,
+          label: DEFAULT_GENDER_IDENTITY_LABELS[value],
+          words,
+        }));
+
       entry.nodeConfiguration = {
         nameVariable: personVariable('name', { type: 'text' }),
         genderIdentityVariable: personVariable('genderIdentity', {
           type: 'categorical',
-          options: PEDIGREE_GENDER_IDENTITY_OPTIONS,
+          options: genderIdentities.map(({ value, label }) => ({
+            value,
+            label,
+          })),
         }),
+        genderIdentityTerms: genderIdentities.flatMap(({ value, words }) =>
+          words === undefined ? [] : [{ value, words }],
+        ),
         sexAssignedAtBirthVariable: personVariable('sexAssignedAtBirth', {
           type: 'categorical',
           options: PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,

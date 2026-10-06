@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest';
 
 import { findExclusiveVariableConflicts } from '../../../../utils/findExclusiveVariableConflicts.ts';
 import {
-  PEDIGREE_GENDER_IDENTITY_OPTIONS,
+  GENDER_IDENTITY_OPTIONS,
+  GENDER_IDENTITY_TERMS,
+} from '../../__tests__/pedigreeGenderFixtures.ts';
+import {
   PEDIGREE_RELATIONSHIP_KIND_OPTIONS,
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
 } from '../../family-pedigree-values.ts';
@@ -21,6 +24,7 @@ const base = {
   nodeConfiguration: {
     nameVariable: 'name',
     genderIdentityVariable: 'gender',
+    genderIdentityTerms: GENDER_IDENTITY_TERMS,
     sexAssignedAtBirthVariable: 'sab',
     egoVariable: 'isEgo',
   },
@@ -37,7 +41,7 @@ const protocolWith = (
   genderOptions: {
     value: string;
     label: string;
-  }[] = PEDIGREE_GENDER_IDENTITY_OPTIONS,
+  }[] = GENDER_IDENTITY_OPTIONS,
 ) => ({
   name: 'Pedigree protocol',
   schemaVersion: 8 as const,
@@ -201,7 +205,7 @@ describe('FamilyPedigree in a whole protocol', () => {
     expect(result.success ? null : result.error.issues).toBeNull();
   });
 
-  it('rejects a gender-identity variable whose options differ from the owned set', () => {
+  it('rejects gender identity words for an option the attribute does not have', () => {
     const result = ProtocolSchemaV8.safeParse(
       protocolWith(base, [
         { value: 'woman', label: 'Woman' },
@@ -212,7 +216,7 @@ describe('FamilyPedigree in a whole protocol', () => {
     expect(
       result.error?.issues.some((issue) =>
         issue.message.includes(
-          'gender identity attribute "gender" must use its fixed set of options',
+          'gender identity words are given for "nonBinary", which is not one of the options of attribute "Gender"',
         ),
       ),
     ).toBe(true);

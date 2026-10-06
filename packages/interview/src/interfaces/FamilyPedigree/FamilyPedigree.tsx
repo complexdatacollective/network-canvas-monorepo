@@ -266,6 +266,16 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   // or sex assigned at birth.
   const shapeDefinition = codebook.node?.[config.personType]?.shape;
 
+  // The gender identity question offers the attribute's own options, with
+  // the labels the researcher gave them.
+  const genderIdentityOptions = useMemo(() => {
+    const definition =
+      codebook.node?.[config.personType]?.variables?.[
+        config.genderIdentityVariable
+      ];
+    return definition?.type === 'categorical' ? definition.options : [];
+  }, [codebook, config.personType, config.genderIdentityVariable]);
+
   const requiredFormVariables = useMemo(() => {
     const variables = codebook.node?.[config.personType]?.variables ?? {};
     return formFields
@@ -1541,6 +1551,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
             family={family}
             config={config}
             framing={framing}
+            genderIdentityOptions={genderIdentityOptions}
             formFields={formFields}
             displayName={displayName}
             askAbout={

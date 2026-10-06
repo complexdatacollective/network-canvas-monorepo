@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  PEDIGREE_GENDER_IDENTITY_OPTIONS,
+  GENDER_IDENTITY_OPTIONS,
+  GENDER_IDENTITY_TERMS,
+} from '../../schemas/8/__tests__/pedigreeGenderFixtures.ts';
+import {
   PEDIGREE_RELATIONSHIP_KIND_OPTIONS,
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
 } from '../../schemas/8/family-pedigree-values.ts';
@@ -13,6 +16,7 @@ type Stage = Record<string, unknown>;
 const nodeConfiguration = {
   nameVariable: 'fmName',
   genderIdentityVariable: 'genderIdentity',
+  genderIdentityTerms: GENDER_IDENTITY_TERMS,
   sexAssignedAtBirthVariable: 'sexAssignedAtBirth',
   egoVariable: 'isEgo',
 };
@@ -50,7 +54,7 @@ const protocolWith = (stages: Stage[]) => ({
           genderIdentity: {
             name: 'genderIdentity',
             type: 'categorical',
-            options: PEDIGREE_GENDER_IDENTITY_OPTIONS,
+            options: GENDER_IDENTITY_OPTIONS,
           },
           sexAssignedAtBirth: {
             name: 'sexAssignedAtBirth',
@@ -249,19 +253,23 @@ describe('findExclusiveVariableConflicts', () => {
       familyPedigree(),
       {
         id: 'cb1',
-        label: 'Sort by gender',
+        label: 'Sort by sex assigned at birth',
         type: 'CategoricalBin',
         subject: { entity: 'node', type: 'family_member' },
         prompts: [
-          { id: 'p1', text: 'Sort your family', variable: 'genderIdentity' },
+          {
+            id: 'p1',
+            text: 'Sort your family',
+            variable: 'sexAssignedAtBirth',
+          },
         ],
       },
     ]);
-    protocol.codebook.node.family_member.variables.genderIdentity = {
-      name: 'genderIdentity',
+    protocol.codebook.node.family_member.variables.sexAssignedAtBirth = {
+      name: 'sexAssignedAtBirth',
       type: 'categorical',
-      options: PEDIGREE_GENDER_IDENTITY_OPTIONS.map((option) =>
-        option.value === 'woman' ? { ...option, label: 'Female' } : option,
+      options: PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS.map((option) =>
+        option.value === 'female' ? { ...option, label: 'Woman' } : option,
       ),
     };
     const result = ProtocolSchemaV8.safeParse(protocol);
@@ -269,7 +277,7 @@ describe('findExclusiveVariableConflicts', () => {
     expect(
       result.error?.issues.some((issue) =>
         issue.message.includes(
-          'gender identity attribute "genderIdentity" must use its fixed set of options',
+          'sex assigned at birth attribute "sexAssignedAtBirth" must use its fixed set of options',
         ),
       ),
     ).toBe(true);

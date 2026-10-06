@@ -8,10 +8,15 @@ import { useStageValue } from '../../../form/stageFormHooks.ts';
 import type { CodebookSubject } from '../../../protocol-context.ts';
 import { useStageSubject } from '../../../sections/useStageSubject.ts';
 
-/** Where the stage keeps each node configuration slot. */
+/**
+ * Where the stage keeps each node configuration slot. `genderIdentityTerms` is
+ * not an attribute: it says which kinship words each option of the gender
+ * identity attribute takes.
+ */
 export const NODE_CONFIGURATION_PATHS = Object.freeze({
   nameVariable: 'nodeConfiguration.nameVariable',
   genderIdentityVariable: 'nodeConfiguration.genderIdentityVariable',
+  genderIdentityTerms: 'nodeConfiguration.genderIdentityTerms',
   sexAssignedAtBirthVariable: 'nodeConfiguration.sexAssignedAtBirthVariable',
   egoVariable: 'nodeConfiguration.egoVariable',
 });

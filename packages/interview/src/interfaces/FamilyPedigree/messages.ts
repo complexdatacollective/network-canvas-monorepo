@@ -196,26 +196,6 @@ export const messages = defineMessages({
     description:
       'Label of the question about the sex a family member was assigned at birth.',
   },
-  genderWoman: {
-    id: 'interview.familyPedigree.gender.woman',
-    defaultMessage: 'Woman',
-    description: 'Gender identity option.',
-  },
-  genderMan: {
-    id: 'interview.familyPedigree.gender.man',
-    defaultMessage: 'Man',
-    description: 'Gender identity option.',
-  },
-  genderNonBinary: {
-    id: 'interview.familyPedigree.gender.nonBinary',
-    defaultMessage: 'Non-binary',
-    description: 'Gender identity option.',
-  },
-  genderDifferentIdentity: {
-    id: 'interview.familyPedigree.gender.differentIdentity',
-    defaultMessage: 'A different identity',
-    description: 'Gender identity option.',
-  },
   dontKnow: {
     id: 'interview.familyPedigree.dontKnow',
     defaultMessage: 'Don’t know',

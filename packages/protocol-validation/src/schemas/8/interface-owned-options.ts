@@ -1,6 +1,5 @@
 import type { InterfaceOwnedOptionSetKey } from './entity-attribute-reference.ts';
 import {
-  PEDIGREE_GENDER_IDENTITY_OPTIONS,
   PEDIGREE_RELATIONSHIP_KIND_OPTIONS,
   PEDIGREE_RELATIVES_NOT_RECORDED_OPTIONS,
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
@@ -29,10 +28,6 @@ export const INTERFACE_OWNED_OPTION_SETS: Record<
   InterfaceOwnedOptionSetKey,
   InterfaceOwnedOptionSet
 > = {
-  pedigreeGenderIdentity: {
-    label: 'gender identity',
-    options: PEDIGREE_GENDER_IDENTITY_OPTIONS,
-  },
   pedigreeSexAssignedAtBirth: {
     label: 'sex assigned at birth',
     options: PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,

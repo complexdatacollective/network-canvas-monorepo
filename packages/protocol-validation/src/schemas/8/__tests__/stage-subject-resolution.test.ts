@@ -4,13 +4,16 @@ import { z } from 'zod';
 import { collectEntityAttributeReferences } from '../../../utils/collectEntityAttributeReferences.ts';
 import { getEntityAttributeReferenceDescriptor } from '../entity-attribute-reference.ts';
 import {
-  PEDIGREE_GENDER_IDENTITY_OPTIONS,
   PEDIGREE_RELATIONSHIP_KIND_OPTIONS,
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
 } from '../family-pedigree-values.ts';
 import ProtocolSchemaV8 from '../schema.ts';
 import { getStageSubjectResolution } from '../stage-subject-resolution.ts';
 import { stageSchema } from '../stages/index.ts';
+import {
+  GENDER_IDENTITY_OPTIONS,
+  GENDER_IDENTITY_TERMS,
+} from './pedigreeGenderFixtures.ts';
 
 type Stage = Record<string, unknown>;
 
@@ -23,6 +26,7 @@ const familyPedigree = (overrides: Stage = {}): Stage => ({
   nodeConfiguration: {
     nameVariable: 'fmName',
     genderIdentityVariable: 'genderIdentity',
+    genderIdentityTerms: GENDER_IDENTITY_TERMS,
     sexAssignedAtBirthVariable: 'sexAssignedAtBirth',
     egoVariable: 'isEgo',
   },
@@ -50,7 +54,7 @@ const protocolWith = (stages: Stage[]) => ({
           genderIdentity: {
             name: 'genderIdentity',
             type: 'categorical',
-            options: PEDIGREE_GENDER_IDENTITY_OPTIONS,
+            options: GENDER_IDENTITY_OPTIONS,
           },
           sexAssignedAtBirth: {
             name: 'sexAssignedAtBirth',
@@ -115,6 +119,7 @@ describe('stage subjects resolve during collection', () => {
         nodeConfiguration: {
           nameVariable: 'notInCodebook',
           genderIdentityVariable: 'genderIdentity',
+          genderIdentityTerms: GENDER_IDENTITY_TERMS,
           sexAssignedAtBirthVariable: 'sexAssignedAtBirth',
           egoVariable: 'isEgo',
         },

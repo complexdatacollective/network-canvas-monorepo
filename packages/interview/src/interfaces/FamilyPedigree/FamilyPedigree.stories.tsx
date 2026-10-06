@@ -7,7 +7,7 @@ import { SyntheticInterview } from '@codaco/protocol-utilities';
 import type {
   FramingSetting,
   PedigreeCompletenessScope,
-  PedigreeGenderIdentity,
+  PedigreeGenderWords,
   PedigreeRelationshipKind,
   PedigreeSexAssignedAtBirth,
 } from '@codaco/protocol-validation';
@@ -20,7 +20,8 @@ const PROMPT =
 type SeedPerson = {
   id: string;
   name?: string;
-  gender?: PedigreeGenderIdentity;
+  /** The value of one of the gender identity attribute's options. */
+  gender?: string;
   sex?: PedigreeSexAssignedAtBirth;
   ego?: boolean;
 };
@@ -54,7 +55,16 @@ type StoryOptions = {
   nominationPrompts?: NominationPrompt[];
   /** The person attribute the codebook maps each person's symbol to. */
   shapeBy?: 'genderIdentity' | 'sexAssignedAtBirth';
+  /** The researcher's own gender identity options, in place of the six
+   * defaults. An option with no `words` takes neutral words. */
+  genderIdentities?: GenderIdentities;
 };
+
+type GenderIdentities = {
+  value: string | number;
+  label: string;
+  words?: PedigreeGenderWords;
+}[];
 
 type NominationPrompt = {
   text: string;
@@ -68,6 +78,7 @@ function buildInterview({
   framing,
   nominationPrompts,
   shapeBy = 'genderIdentity',
+  genderIdentities,
 }: StoryOptions) {
   const si = new SyntheticInterview(1);
   si.addInformationStage({ title: 'Welcome', text: 'Before the pedigree.' });
@@ -78,6 +89,7 @@ function buildInterview({
     completeness,
     framing,
     nominationPrompts,
+    genderIdentities,
   });
   // The researcher's choice of symbol, made in the codebook: circles for
   // women (or female), squares for men (or male), diamonds for anyone else.
@@ -145,6 +157,7 @@ function PedigreeStory({
   framing,
   nominationPrompts,
   shapeBy,
+  genderIdentities,
 }: StoryOptions) {
   const rawPayload = useMemo(
     () =>
@@ -156,9 +169,18 @@ function PedigreeStory({
           framing,
           nominationPrompts,
           shapeBy,
+          genderIdentities,
         }).getInterviewPayload({ currentStep: 1 }),
       ),
-    [family, withFormFields, completeness, framing, nominationPrompts, shapeBy],
+    [
+      family,
+      withFormFields,
+      completeness,
+      framing,
+      nominationPrompts,
+      shapeBy,
+      genderIdentities,
+    ],
   );
 
   return (
@@ -1161,6 +1183,77 @@ export const ShapeFollowsSexAssignedAtBirth: Story = {
       mother: 'circle',
       father: 'square',
     });
+  },
+};
+
+/** The six options a new attribute is seeded with, plus two the researcher
+ * added: "Trans woman", mapped to feminine words, and "Agender", which they
+ * left unmapped. */
+const researcherGenderIdentities: GenderIdentities = [
+  { value: 'woman', label: 'Woman', words: 'feminine' },
+  { value: 'man', label: 'Man', words: 'masculine' },
+  { value: 'nonBinary', label: 'Non-binary', words: 'neutral' },
+  { value: 'unknown', label: 'Don’t know', words: 'unknown' },
+  { value: 'transWoman', label: 'Trans woman', words: 'feminine' },
+  { value: 'agender', label: 'Agender' },
+];
+
+const unnamedFamilyOfResearcherOptions: Family = {
+  people: [
+    { id: 'ego', name: 'Ari', gender: 'man', sex: 'female', ego: true },
+    { id: 'mum', gender: 'transWoman', sex: 'male' },
+    { id: 'dad', gender: 'man', sex: 'male' },
+    { id: 'sister', gender: 'transWoman', sex: 'male' },
+    { id: 'sibling', gender: 'agender', sex: 'female' },
+  ],
+  links: [
+    { from: 'mum', to: 'dad', kind: 'partner' },
+    { from: 'mum', to: 'ego', kind: 'biological', carrier: true },
+    { from: 'dad', to: 'ego', kind: 'biological' },
+    { from: 'mum', to: 'sister', kind: 'biological' },
+    { from: 'dad', to: 'sister', kind: 'biological' },
+    { from: 'mum', to: 'sibling', kind: 'biological' },
+    { from: 'dad', to: 'sibling', kind: 'biological' },
+  ],
+};
+
+/**
+ * The researcher defines the gender identity options and says which words each
+ * takes. A "Trans woman" option mapped to feminine words describes that person
+ * as a mother or sister; "Agender", which is not mapped, takes neutral words.
+ * The side panel asks the question with the researcher's own options.
+ */
+export const ResearcherDefinedGenderIdentities: Story = {
+  args: { requirement: 'firstDegree', enforcement: 'required' },
+  render: (args) => (
+    <PedigreeStory
+      {...settings(args)}
+      family={unnamedFamilyOfResearcherOptions}
+      genderIdentities={researcherGenderIdentities}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const mother = await canvas.findByRole('button', { name: /^Mother/ });
+    await expect(canvas.getByRole('button', { name: /^Sister/ })).toBeVisible();
+    await expect(canvas.getByRole('button', { name: /^Father/ })).toBeVisible();
+    // Unmapped, so neutral: not "Brother" or "Sister".
+    await expect(
+      canvas.getByRole('button', { name: /^Sibling/ }),
+    ).toBeVisible();
+
+    await userEvent.click(mother);
+    const page = within(canvasElement.ownerDocument.body);
+    await expect(
+      await page.findByRole('radio', { name: 'Trans woman' }),
+    ).toBeChecked();
+    await expect(
+      page.getByRole('radio', { name: 'Agender' }),
+    ).not.toBeChecked();
+    // The six defaults are gone: only the researcher's options are offered.
+    await expect(
+      page.queryByRole('radio', { name: 'A different identity' }),
+    ).toBeNull();
   },
 };
 

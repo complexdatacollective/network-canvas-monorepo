@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   type Filter,
-  PEDIGREE_GENDER_IDENTITY_OPTIONS,
+  PEDIGREE_DEFAULT_GENDER_IDENTITIES,
   PEDIGREE_RELATIONSHIP_KIND_OPTIONS,
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
   stageSchema,
@@ -913,6 +913,7 @@ describe('SyntheticInterview', () => {
       expect(config.nodeConfiguration).toEqual({
         nameVariable: stage.name,
         genderIdentityVariable: stage.genderIdentity,
+        genderIdentityTerms: [...PEDIGREE_DEFAULT_GENDER_IDENTITIES],
         sexAssignedAtBirthVariable: stage.sexAssignedAtBirth,
         egoVariable: stage.ego,
       });
@@ -925,7 +926,7 @@ describe('SyntheticInterview', () => {
       expect(config).not.toHaveProperty('form');
     });
 
-    it('gives the owned variables exactly the interface options', () => {
+    it('seeds the gender identity variable with the six default options and gives the other owned variables exactly the interface options', () => {
       const si = new SyntheticInterview();
       const stage = si.addStage('FamilyPedigree');
       const { codebook } = si.getProtocol();
@@ -937,7 +938,10 @@ describe('SyntheticInterview', () => {
       expect(person[stage.ego]).toMatchObject({ type: 'boolean' });
       expect(person[stage.genderIdentity]).toMatchObject({
         type: 'categorical',
-        options: PEDIGREE_GENDER_IDENTITY_OPTIONS,
+        options: PEDIGREE_DEFAULT_GENDER_IDENTITIES.map(({ value }) => ({
+          value,
+          label: expect.any(String),
+        })),
       });
       expect(person[stage.sexAssignedAtBirth]).toMatchObject({
         type: 'categorical',
@@ -951,6 +955,38 @@ describe('SyntheticInterview', () => {
         type: 'boolean',
       });
       expect(family[stage.currentPartner]).toMatchObject({ type: 'boolean' });
+    });
+
+    it('takes researcher-defined gender identity options and the words each takes', async () => {
+      const si = new SyntheticInterview();
+      const stage = si.addStage('FamilyPedigree', {
+        genderIdentities: [
+          { value: 'transWoman', label: 'Trans woman', words: 'feminine' },
+          { value: 'agender', label: 'Agender', words: 'neutral' },
+        ],
+      });
+      const protocol = si.getProtocol();
+      const config = protocol.stages[0] as unknown as {
+        nodeConfiguration: { genderIdentityTerms: unknown };
+      };
+      expect(config.nodeConfiguration.genderIdentityTerms).toEqual([
+        { value: 'transWoman', words: 'feminine' },
+        { value: 'agender', words: 'neutral' },
+      ]);
+      type Typed = Record<string, { variables: Record<string, unknown> }>;
+      expect(
+        (protocol.codebook.node as Typed)[stage.personType]!.variables[
+          stage.genderIdentity
+        ],
+      ).toMatchObject({
+        options: [
+          { value: 'transWoman', label: 'Trans woman' },
+          { value: 'agender', label: 'Agender' },
+        ],
+      });
+      const result = await validateSynthetic(protocol);
+      expect(result.error?.issues ?? []).toEqual([]);
+      expect(result.success).toBe(true);
     });
 
     it('reuses a supplied person type and adds researcher form fields', async () => {

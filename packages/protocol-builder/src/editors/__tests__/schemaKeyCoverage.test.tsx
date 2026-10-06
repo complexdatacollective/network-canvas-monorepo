@@ -44,6 +44,9 @@ const SKIP_LOGIC: SectionDoc = {
 /** Not in the fixture protocol, so it is added to the person type as well. */
 const RELATIVES_NOT_RECORDED_ATTRIBUTE = 'relativesNotRecorded';
 
+/** The boolean attribute the maximal pedigree's nomination prompt records. */
+const NOMINATION_ATTRIBUTE = 'has_heart_disease';
+
 const FAMILY_PEDIGREE_FIELDS: SectionDoc = {
   label: 'Family Pedigree',
   interviewScript: INTERVIEW_SCRIPT,
@@ -53,6 +56,14 @@ const FAMILY_PEDIGREE_FIELDS: SectionDoc = {
   nodeConfiguration: {
     nameVariable: 'fm_name',
     genderIdentityVariable: 'genderIdentity',
+    genderIdentityTerms: [
+      { value: 'woman', words: 'feminine' },
+      { value: 'man', words: 'masculine' },
+      { value: 'nonBinary', words: 'neutral' },
+      { value: 'differentIdentity', words: 'neutral' },
+      { value: 'unknown', words: 'unknown' },
+      { value: 'preferNotToSay', words: 'neutral' },
+    ],
     sexAssignedAtBirthVariable: 'sexAssignedAtBirth',
     egoVariable: 'is_ego',
   },
@@ -67,6 +78,15 @@ const FAMILY_PEDIGREE_FIELDS: SectionDoc = {
     enforcement: 'recommended',
     relativesNotRecordedVariable: RELATIVES_NOT_RECORDED_ATTRIBUTE,
   },
+  framing: 'participantPreference',
+  nominationPrompts: [
+    {
+      id: 'nomination-1',
+      text: 'Who in your family has had heart disease?',
+      variable: NOMINATION_ATTRIBUTE,
+      onlyForSexAssignedAtBirth: 'female',
+    },
+  ],
   // NOT one of the person attributes: the interface already collects those
   // itself, so the extra fields may not. See `MEMBER_FORM_ATTRIBUTE`.
   form: {
@@ -86,6 +106,11 @@ type MaximalStage = Readonly<{
   stageType: StageType;
   editor: StageEditorComponent;
   fields: SectionDoc;
+  /**
+   * Keys the schema has and the editor has no section for yet. They round-trip
+   * untouched, so a researcher cannot see or change them.
+   */
+  unowned: readonly string[];
 }>;
 
 /**
@@ -110,12 +135,14 @@ const MAXIMAL: readonly MaximalStage[] = [
     stageType: 'FamilyPedigree',
     editor: familyPedigreeEditor,
     fields: FAMILY_PEDIGREE_FIELDS,
+    // The editor has no section for the framing or the nomination prompts yet.
+    unowned: ['framing', 'nominationPrompts'],
   },
 ];
 
 describe.each(MAXIMAL)(
   'a $stageType stage holding every key its schema declares',
-  ({ stageType, editor, fields }: MaximalStage) => {
+  ({ stageType, editor, fields, unowned }: MaximalStage) => {
     /**
      * The stage above is the schema's key list, spelled as a stage. A key
      * added to this interface fails here first, with the key named, rather
@@ -146,9 +173,10 @@ describe.each(MAXIMAL)(
           component: 'Text',
         },
         [RELATIVES_NOT_RECORDED_ATTRIBUTE]: RELATIVES_NOT_RECORDED_VARIABLE,
+        [NOMINATION_ATTRIBUTE]: { name: NOMINATION_ATTRIBUTE, type: 'boolean' },
       });
 
-      await harness.roundTrip({ unowned: [] });
+      await harness.roundTrip({ unowned: [...unowned] });
     });
   },
 );

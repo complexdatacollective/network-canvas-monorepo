@@ -48,7 +48,6 @@ export type ExclusiveSlotDescriptor = {
  * while its options stay locked.
  */
 export type InterfaceOwnedOptionSetKey =
-  | 'pedigreeGenderIdentity'
   | 'pedigreeSexAssignedAtBirth'
   | 'pedigreeRelationship'
   | 'pedigreeRelativesNotRecorded';

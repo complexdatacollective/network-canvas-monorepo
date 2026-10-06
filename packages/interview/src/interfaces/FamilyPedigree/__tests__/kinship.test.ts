@@ -148,6 +148,64 @@ describe('labelFamily', () => {
     });
   });
 
+  test('a researcher-defined option takes the words it is mapped to', () => {
+    // "transWoman" is not one of the six default options: the researcher
+    // defined it and mapped it to feminine words.
+    const nodes = [
+      person('ego', { isEgo: true }),
+      person('mum', { gender: ['transWoman'] }),
+      person('sis', { gender: ['transWoman'] }),
+      person('nan', { gender: ['transWoman'] }),
+      person('dad', { gender: ['man'] }),
+    ];
+    const edges = [
+      link('mum', 'ego', 'biological'),
+      link('dad', 'ego', 'biological'),
+      link('mum', 'sis', 'biological'),
+      link('dad', 'sis', 'biological'),
+      link('nan', 'mum', 'biological'),
+    ];
+    expect(labelsOf(nodes, edges)).toMatchObject({
+      mum: 'Mother',
+      sis: 'Sister',
+      nan: 'Maternal grandmother',
+    });
+    // The gamete framing ignores gender words altogether.
+    expect(labelsOf(nodes, edges, 'gamete')).toMatchObject({ sis: 'Sibling' });
+  });
+
+  test('an option with no mapping takes neutral words', () => {
+    const nodes = [
+      person('ego', { isEgo: true }),
+      person('mum', { gender: ['agender'], sex: ['female'] }),
+      person('sib', { gender: ['agender'] }),
+    ];
+    const edges = [
+      link('mum', 'ego', 'biological'),
+      link('mum', 'sib', 'biological'),
+    ];
+    // Neutral, not "biological mother": that is only for an unknown gender.
+    expect(labelsOf(nodes, edges)).toMatchObject({
+      mum: 'Parent',
+      sib: 'Sibling',
+    });
+  });
+
+  test('the side of the family follows the first parent’s words, not their option', () => {
+    const nodes = [
+      person('ego', { isEgo: true }),
+      person('mum', { gender: ['transWoman'] }),
+      person('nan', { gender: ['woman'] }),
+    ];
+    const edges = [
+      link('mum', 'ego', 'biological'),
+      link('nan', 'mum', 'biological'),
+    ];
+    expect(labelsOf(nodes, edges)).toMatchObject({
+      nan: 'Maternal grandmother',
+    });
+  });
+
   test('step, half and in-law relatives', () => {
     const labels = labelsOf(
       [

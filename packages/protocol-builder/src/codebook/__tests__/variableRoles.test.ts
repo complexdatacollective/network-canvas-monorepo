@@ -81,6 +81,7 @@ const familySections = (): Record<string, SectionDoc> => ({
     nodeConfiguration: {
       nameVariable: 'name',
       genderIdentityVariable: 'genderIdentity',
+      genderIdentityTerms: [],
       sexAssignedAtBirthVariable: 'sexAssignedAtBirth',
       egoVariable: 'isEgo',
     },

@@ -1,6 +1,5 @@
 import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import type {
-  PedigreeGenderIdentity,
   PedigreeParentKind,
   PedigreeSexAssignedAtBirth,
 } from '@codaco/protocol-validation';
@@ -11,20 +10,9 @@ import type { MissingDetail } from './model';
 /**
  * Participant-facing labels for the interface-owned value sets. The codebook
  * carries fixed English labels for these values; the participant reads these
- * translated ones instead.
+ * translated ones instead. (Gender identity is not among them: its options are
+ * the researcher's, and the participant reads the labels they gave.)
  */
-export const GENDER_IDENTITY_LABELS: Record<
-  PedigreeGenderIdentity,
-  MessageDescriptor
-> = {
-  woman: messages.genderWoman,
-  man: messages.genderMan,
-  nonBinary: messages.genderNonBinary,
-  differentIdentity: messages.genderDifferentIdentity,
-  unknown: messages.dontKnow,
-  preferNotToSay: messages.preferNotToSay,
-};
-
 export const SEX_ASSIGNED_AT_BIRTH_LABELS: Record<
   PedigreeSexAssignedAtBirth,
   MessageDescriptor

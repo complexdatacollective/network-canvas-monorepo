@@ -2,11 +2,14 @@ import { describe, expect, it } from 'vitest';
 
 import { createBaseProtocol } from '../../../utils/test-utils.ts';
 import {
-  PEDIGREE_GENDER_IDENTITY_OPTIONS,
   PEDIGREE_RELATIONSHIP_KIND_OPTIONS,
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
 } from '../family-pedigree-values.ts';
 import ProtocolSchemaV8 from '../schema.ts';
+import {
+  GENDER_IDENTITY_OPTIONS,
+  GENDER_IDENTITY_TERMS,
+} from './pedigreeGenderFixtures.ts';
 
 const booleanPair = {
   boolA: {
@@ -105,7 +108,7 @@ const familyPedigreeProtocol = () => ({
           genderIdentity: {
             name: 'GenderIdentity',
             type: 'categorical',
-            options: PEDIGREE_GENDER_IDENTITY_OPTIONS,
+            options: GENDER_IDENTITY_OPTIONS,
           },
           sexAssignedAtBirth: {
             name: 'SexAssignedAtBirth',
@@ -145,6 +148,7 @@ const familyPedigreeProtocol = () => ({
       nodeConfiguration: {
         nameVariable: 'label',
         genderIdentityVariable: 'genderIdentity',
+        genderIdentityTerms: GENDER_IDENTITY_TERMS,
         sexAssignedAtBirthVariable: 'sexAssignedAtBirth',
         egoVariable: 'isEgo',
       },

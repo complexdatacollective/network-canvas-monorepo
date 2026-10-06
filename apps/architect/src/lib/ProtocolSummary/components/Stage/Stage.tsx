@@ -197,6 +197,7 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
     | {
         nameVariable?: string;
         genderIdentityVariable?: string;
+        genderIdentityTerms?: { value: string | number; words: string }[];
         sexAssignedAtBirthVariable?: string;
         egoVariable?: string;
       }
@@ -355,6 +356,7 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
         nodeIsEgoVariable={nodeIsEgoVariable}
       />
       <FamilyPedigree
+        personType={subject?.type ?? null}
         prompt={pedigreePrompt}
         nodeConfiguration={nodeConfiguration ?? null}
         edgeConfiguration={edgeConfiguration ?? null}

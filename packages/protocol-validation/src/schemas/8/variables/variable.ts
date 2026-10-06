@@ -437,11 +437,16 @@ const booleanToggleVariableSchema = baseVariableSchema.extend({
 // two options to be usable, so require a minimum of two.
 export const MINIMUM_VARIABLE_OPTIONS = 2;
 
+export const categoricalOptionValueSchema = z.union([
+  z.number().int(),
+  z.string(),
+]);
+
 const categoricalOptionsSchema = z
   .array(
     z.strictObject({
       label: z.string(),
-      value: z.union([z.number().int(), z.string()]),
+      value: categoricalOptionValueSchema,
     }),
   )
   .min(MINIMUM_VARIABLE_OPTIONS);

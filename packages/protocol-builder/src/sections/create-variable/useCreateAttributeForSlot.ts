@@ -28,6 +28,12 @@ export type CreateAttributeForSlotOptions = Readonly<{
    * to one of these slots whose options differ.
    */
   lockedOptions?: readonly VariableOption[];
+  /**
+   * Options the new attribute starts with, which the researcher may then edit,
+   * add to and remove from. For a slot whose interface suggests a starting
+   * list but does not own the values.
+   */
+  seedOptions?: readonly VariableOption[];
   /** Title of the editor's dialog, already formatted. */
   title: string;
   /**
@@ -87,6 +93,7 @@ export function useCreateAttributeForSlot({
   subject,
   variableType,
   lockedOptions,
+  seedOptions,
   title,
   seedValidation,
   onCreated,
@@ -99,6 +106,7 @@ export function useCreateAttributeForSlot({
     subject: subject ?? null,
     variableTypes: [variableType],
     ...(lockedOptions === undefined ? {} : { lockedOptions }),
+    ...(seedOptions === undefined ? {} : { seedOptions }),
     title,
     ...(seedValidation === undefined ? {} : { seedValidation }),
     onCreated,
@@ -120,7 +128,9 @@ export function useCreateAttributeForSlot({
   liveTarget.current = { subject: chosenSubject, writable: !readOnly };
 
   const escalates =
-    lockedOptions !== undefined || needsCodebookEditorToCreate(variableType);
+    lockedOptions !== undefined ||
+    seedOptions !== undefined ||
+    needsCodebookEditorToCreate(variableType);
 
   const createDirectly = useCallback(
     async (variableName: string): Promise<CreateOptionOutcome> => {

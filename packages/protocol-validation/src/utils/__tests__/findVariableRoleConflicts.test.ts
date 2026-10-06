@@ -40,6 +40,7 @@ const familyPedigreeStage = (formVariable: string) => ({
   nodeConfiguration: {
     nameVariable: 'pedigreeName',
     genderIdentityVariable: 'pedigreeGender',
+    genderIdentityTerms: [],
     sexAssignedAtBirthVariable: 'pedigreeSab',
     egoVariable: 'pedigreeEgo',
   },

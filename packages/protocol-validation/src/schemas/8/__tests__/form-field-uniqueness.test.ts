@@ -3,12 +3,15 @@ import { describe, expect, it } from 'vitest';
 import { createBaseProtocol } from '../../../utils/test-utils.ts';
 import { FormSchema, TitlelessFormSchema } from '../common/index.ts';
 import {
-  PEDIGREE_GENDER_IDENTITY_OPTIONS,
   PEDIGREE_RELATIONSHIP_KIND_OPTIONS,
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
 } from '../family-pedigree-values.ts';
 import ProtocolSchemaV8 from '../schema.ts';
 import { familyPedigreeStage } from '../stages/family-pedigree.ts';
+import {
+  GENDER_IDENTITY_OPTIONS,
+  GENDER_IDENTITY_TERMS,
+} from './pedigreeGenderFixtures.ts';
 
 const field = (variable: string, prompt: string) => ({ variable, prompt });
 
@@ -21,6 +24,7 @@ const pedigreeStage = (form?: { variable: string; prompt: string }[]) => ({
   nodeConfiguration: {
     nameVariable: 'name',
     genderIdentityVariable: 'gender',
+    genderIdentityTerms: GENDER_IDENTITY_TERMS,
     sexAssignedAtBirthVariable: 'sab',
     egoVariable: 'isEgo',
   },
@@ -49,7 +53,7 @@ const pedigreeProtocol = (form?: { variable: string; prompt: string }[]) => {
             gender: {
               name: 'Gender',
               type: 'categorical',
-              options: PEDIGREE_GENDER_IDENTITY_OPTIONS,
+              options: GENDER_IDENTITY_OPTIONS,
             },
             sab: {
               name: 'Sab',

@@ -1,16 +1,21 @@
-import type { ReactNode } from 'react';
+import { type ReactNode, useContext } from 'react';
 
 import {
   defineMessages,
   type MessageDescriptor,
 } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
-import type { PedigreeCompletenessScope } from '@codaco/protocol-validation';
+import { getMarkdownLabelText } from '@codaco/fresco-ui/RenderMarkdown';
+import type {
+  PedigreeCompletenessScope,
+  PedigreeGenderWords,
+} from '@codaco/protocol-validation';
 import Markdown from '~/components/Markdown';
 import { summaryMessages } from '~/lib/ProtocolSummary/summaryMessages';
 
 import EntityBadge from '../EntityBadge';
 import MiniTable from '../MiniTable';
+import SummaryContext from '../SummaryContext';
 import Variable from '../Variable';
 import SectionFrame from './SectionFrame';
 
@@ -32,6 +37,42 @@ const messages = defineMessages({
     defaultMessage: 'Gender identity',
     description:
       'Label for the attribute that holds each family member’s gender identity, in the printable protocol summary.',
+  },
+  genderIdentityTerms: {
+    id: 'architect.protocolSummary.stage.familyPedigree.genderIdentityTerms',
+    defaultMessage: 'Gender identity words',
+    description:
+      'Label for the list saying which kinship words each gender identity option takes, in the printable protocol summary.',
+  },
+  genderIdentityTerm: {
+    id: 'architect.protocolSummary.stage.familyPedigree.genderIdentityTerm',
+    defaultMessage: '{option}: {words}',
+    description:
+      'One line of the printable protocol summary’s list of gender identity words. option is a gender identity option’s own label, as the researcher wrote it, and words is the name of the kinship words it takes.',
+  },
+  genderWordsFeminine: {
+    id: 'architect.protocolSummary.stage.familyPedigree.genderWordsFeminine',
+    defaultMessage: 'Feminine words (mother, sister)',
+    description:
+      'Printable protocol summary name of the kinship words used for women, with examples.',
+  },
+  genderWordsMasculine: {
+    id: 'architect.protocolSummary.stage.familyPedigree.genderWordsMasculine',
+    defaultMessage: 'Masculine words (father, brother)',
+    description:
+      'Printable protocol summary name of the kinship words used for men, with examples.',
+  },
+  genderWordsNeutral: {
+    id: 'architect.protocolSummary.stage.familyPedigree.genderWordsNeutral',
+    defaultMessage: 'Neutral words (parent, sibling)',
+    description:
+      'Printable protocol summary name of the kinship words that do not depend on gender, with examples.',
+  },
+  genderWordsUnknown: {
+    id: 'architect.protocolSummary.stage.familyPedigree.genderWordsUnknown',
+    defaultMessage: 'Not known (named from sex assigned at birth)',
+    description:
+      'Printable protocol summary name of the kinship words for an option meaning the person’s gender is not known: a biological parent is named from their sex assigned at birth, such as biological mother.',
   },
   sexAssignedAtBirth: {
     id: 'architect.protocolSummary.stage.familyPedigree.sexAssignedAtBirth',
@@ -139,9 +180,20 @@ const SCOPE_MESSAGES: Record<PedigreeCompletenessScope, MessageDescriptor> = {
   thirdDegree: messages.scopeThirdDegree,
 };
 
+const GENDER_WORDS_MESSAGES: Record<PedigreeGenderWords, MessageDescriptor> = {
+  feminine: messages.genderWordsFeminine,
+  masculine: messages.genderWordsMasculine,
+  neutral: messages.genderWordsNeutral,
+  unknown: messages.genderWordsUnknown,
+};
+
+const isGenderWords = (value: string): value is PedigreeGenderWords =>
+  Object.hasOwn(GENDER_WORDS_MESSAGES, value);
+
 type NodeConfiguration = {
   nameVariable?: string;
   genderIdentityVariable?: string;
+  genderIdentityTerms?: { value: string | number; words: string }[];
   sexAssignedAtBirthVariable?: string;
   egoVariable?: string;
 };
@@ -160,6 +212,8 @@ type Completeness = {
 };
 
 type FamilyPedigreeProps = {
+  /** The node type of the people, whose attribute holds gender identity. */
+  personType: string | null;
   prompt: string | null;
   nodeConfiguration: NodeConfiguration | null;
   edgeConfiguration: EdgeConfiguration | null;
@@ -180,12 +234,14 @@ const variableRow = (
  * the stage's subject, shown in the stage heading.
  */
 const FamilyPedigree = ({
+  personType,
   prompt,
   nodeConfiguration,
   edgeConfiguration,
   completeness,
 }: FamilyPedigreeProps) => {
   const intl = useAppIntl();
+  const { protocol } = useContext(SummaryContext);
   if (
     prompt === null &&
     nodeConfiguration === null &&
@@ -194,6 +250,32 @@ const FamilyPedigree = ({
   ) {
     return null;
   }
+
+  // Every option of the gender identity attribute with the words it takes, so
+  // an option the stage does not list reads as the neutral words it gets.
+  const genderVariable =
+    personType === null || !nodeConfiguration?.genderIdentityVariable
+      ? undefined
+      : protocol.codebook?.node?.[personType]?.variables?.[
+          nodeConfiguration.genderIdentityVariable
+        ];
+  const genderOptions =
+    genderVariable?.type === 'categorical' ? genderVariable.options : undefined;
+  const genderTerms = nodeConfiguration?.genderIdentityTerms;
+  const genderWordsFor = (value: string | number): PedigreeGenderWords => {
+    const words = genderTerms?.find((term) => term.value === value)?.words;
+    return words !== undefined && isGenderWords(words) ? words : 'neutral';
+  };
+  const genderTermLines: { value: string | number; label: string }[] =
+    genderOptions !== undefined
+      ? genderOptions.map(({ value, label }) => ({
+          value,
+          label: getMarkdownLabelText(label),
+        }))
+      : (genderTerms ?? []).map(({ value }) => ({
+          value,
+          label: String(value),
+        }));
 
   const rows: [string, ReactNode][] = [
     ...(prompt
@@ -214,6 +296,25 @@ const FamilyPedigree = ({
       'gender-identity',
       nodeConfiguration?.genderIdentityVariable,
     ),
+    ...(genderTermLines.length > 0
+      ? ([
+          [
+            intl.formatMessage(messages.genderIdentityTerms),
+            <ul key="gender-identity-terms" className="m-0 list-none p-0">
+              {genderTermLines.map(({ value, label }) => (
+                <li key={String(value)}>
+                  {intl.formatMessage(messages.genderIdentityTerm, {
+                    option: label,
+                    words: intl.formatMessage(
+                      GENDER_WORDS_MESSAGES[genderWordsFor(value)],
+                    ),
+                  })}
+                </li>
+              ))}
+            </ul>,
+          ],
+        ] as [string, ReactNode][])
+      : []),
     ...variableRow(
       intl.formatMessage(messages.sexAssignedAtBirth),
       'sex-assigned-at-birth',

@@ -111,6 +111,7 @@ describe('attribute-writer usage tags', () => {
           nodeConfiguration: {
             nameVariable: 'name',
             genderIdentityVariable: 'gender',
+            genderIdentityTerms: [],
             sexAssignedAtBirthVariable: 'sab',
             egoVariable: 'isEgo',
           },

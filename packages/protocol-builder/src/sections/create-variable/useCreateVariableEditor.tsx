@@ -41,6 +41,12 @@ export type CreateVariableEditorOptions = Readonly<{
    * to one of these slots whose options differ.
    */
   lockedOptions?: readonly VariableOption[];
+  /**
+   * Options the new attribute starts with, which the researcher may edit, add
+   * to and remove from. The counterpart of `lockedOptions` for an interface
+   * that suggests a starting list but does not own the values.
+   */
+  seedOptions?: readonly VariableOption[];
   /** Title of the editor's dialog, already formatted. */
   title: string;
   /**
@@ -129,6 +135,7 @@ export function useCreateVariableEditor({
   subject,
   variableTypes,
   lockedOptions,
+  seedOptions,
   title,
   seedValidation,
   onCreated,
@@ -330,6 +337,9 @@ export function useCreateVariableEditor({
           initialDraft={{
             name: session.name,
             ...(onlyType === undefined ? {} : { type: onlyType }),
+            ...(seedOptions === undefined
+              ? {}
+              : { options: seedOptions.map((option) => ({ ...option })) }),
             ...(seedValidation === undefined
               ? {}
               : { validation: seedValidation }),

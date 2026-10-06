@@ -8,6 +8,7 @@ import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers
 import {
   INTERFACE_OWNED_OPTION_SETS,
   type InterfaceOwnedOptionSetKey,
+  type VariableOption,
   type Variables,
   type VariableType,
 } from '@codaco/protocol-validation';
@@ -72,6 +73,15 @@ export type SlotVariableFieldProps = Readonly<{
    */
   ownedOptions?: InterfaceOwnedOptionSetKey;
   /**
+   * Options a created attribute starts with, for a slot whose interface
+   * suggests a list but does not own it: unlike `ownedOptions`, the researcher
+   * may edit, add to and remove from them, and an existing attribute with other
+   * options is still offered.
+   */
+  seedOptions?: readonly VariableOption[];
+  /** Told which attribute a create from this picker bound to the slot. */
+  onCreated?: (variableId: string) => void;
+  /**
    * Attributes this stage's own unsaved draft already claims in the OPPOSITE
    * writer class.
    */
@@ -104,6 +114,8 @@ export default function SlotVariableField({
   writerClass,
   ownSlot,
   ownedOptions,
+  seedOptions,
+  onCreated,
   draftConflicting,
   draftSlotMap = NO_CLAIMS,
   offerValidation = false,
@@ -123,9 +135,12 @@ export default function SlotVariableField({
     subject,
     variableType,
     ...(lockedOptions === undefined ? {} : { lockedOptions }),
+    ...(seedOptions === undefined ? {} : { seedOptions }),
     title: intl.formatMessage(createLabel),
-    onCreated: (variableId) =>
-      storeApi.getState().setFieldValue(name, variableId),
+    onCreated: (variableId) => {
+      storeApi.getState().setFieldValue(name, variableId);
+      onCreated?.(variableId);
+    },
   });
 
   const roleMap = useMemo(
