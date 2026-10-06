@@ -10,17 +10,22 @@ import { describe, expect, it } from 'vitest';
  * the worst moment to find it. These assertions stand in for that missing build.
  *
  * What they protect is the arrangement that lets a self-hosted deployment write
- * Next's incremental cache. The image creates `.next/cache` at build time, and
- * the entrypoint starts as root purely to repair its ownership when a *bind*
- * mount has replaced it with a host-owned directory (a *named* volume inherits
- * the image's ownership, so that case needs nothing at runtime). It then drops
- * to `nextjs` before running anything else.
+ * Next's incremental cache. The image creates `.next/cache` at build time and
+ * makes it group-0 writable; the entrypoint additionally repairs its ownership
+ * when started as root on purpose, for the one case nothing else reaches — a
+ * *bind* mount, which keeps the host's ownership.
  *
- * Two silent failure modes make this worth asserting rather than trusting:
- * re-adding a `USER` directive would leave the entrypoint unable to repair
- * anything while looking perfectly correct, and dropping the `su-exec` install
- * would leave a container that refuses to boot. Neither is visible without
- * building the image. See #2090.
+ * The sharp edge, and the reason for the `USER` assertion below: that repair
+ * must NOT be bought by dropping the image's `USER` declaration. Kubernetes
+ * `runAsNonRoot: true` with no `runAsUser` validates the *image's* user and
+ * refuses to start a container whose user is root, so an image without `USER`
+ * fails to start on that posture rather than merely skipping the repair — and
+ * the declaration is also what keeps a `CMD` override non-root, since overriding
+ * the command bypasses the entrypoint entirely. An earlier revision of this PR
+ * removed it and would have broken both.
+ *
+ * None of this is visible without building the image, and nothing in this
+ * repository does. See #2090.
  */
 describe('Fresco container privilege drop', () => {
   const dockerfile = readFileSync(
@@ -38,11 +43,13 @@ describe('Fresco container privilege drop', () => {
     expect(dockerfile).toContain('apk add --no-cache su-exec');
   });
 
-  it('declares no USER, because the entrypoint drops privileges instead', () => {
-    // A `USER nextjs` here would mean the entrypoint never holds the privilege
-    // it needs to chown a bind-mounted cache directory — the whole point of
-    // this arrangement — while still appearing to work.
-    expect(dockerfile).not.toMatch(/^USER\s/m);
+  it('still declares a non-root USER', () => {
+    // Removing this to let the entrypoint start privileged breaks two things
+    // that have nothing to do with the cache: a Kubernetes pod with
+    // `runAsNonRoot: true` and no `runAsUser` fails to start, because the
+    // kubelet validates the image's user; and a `command:` override, which
+    // bypasses the entrypoint, would run as root.
+    expect(dockerfile).toMatch(/^USER nextjs$/m);
   });
 
   it('creates the cache directory so a named volume inherits its ownership', () => {
@@ -92,8 +99,9 @@ describe('Fresco container privilege drop', () => {
     it('refuses to start rather than serve as root it cannot drop', () => {
       const body = rootBranch?.[1] ?? '';
 
-      // Fail closed. Serving as root because a package went missing is worse
-      // than not serving: it is invisible, and it persists.
+      // Fail closed. An operator who starts the container as root is asking for
+      // the cache repaired, not for the application to run privileged, and
+      // silently granting that would be invisible and would persist.
       expect(body).toMatch(/command -v su-exec/);
       expect(body).toMatch(/refusing to start as root/);
     });
@@ -110,10 +118,10 @@ describe('Fresco container privilege drop', () => {
       expect(dropIndex).toBeLessThan(firstMigration);
     });
 
-    it('still serves when the deployment pinned a non-root user', () => {
-      // A deployment with `runAsNonRoot: true` never enters the root block. It
-      // must warn about an unwritable cache and carry on, not exit: running
-      // uncached is a degraded deployment, not a broken one.
+    it('still serves on a normal non-root start', () => {
+      // Which is every start that does not explicitly ask for root. It must warn
+      // about an unwritable cache and carry on, not exit: running uncached is a
+      // degraded deployment, not a broken one.
       const afterRootBranch = entrypoint.slice(
         (rootBranch?.index ?? 0) + (rootBranch?.[0]?.length ?? 0),
       );

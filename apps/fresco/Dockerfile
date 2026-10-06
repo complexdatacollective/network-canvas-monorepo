@@ -199,15 +199,24 @@ RUN mkdir -p .next/cache && \
     chgrp 0 .next .next/cache && \
     chmod g+rwX .next .next/cache
 
-# No `USER` directive: the entrypoint starts as root, repairs ownership of a
-# bind-mounted cache directory, and then drops to `nextjs` with `su-exec` before
-# running anything else — see scripts/migrate-and-start.sh. The server therefore
-# still runs as uid 1001, exactly as it did when this was `USER nextjs`.
+# Switch to non-root user.
 #
-# Starting as root is also optional, not required: a deployment that pins the
-# user (`--user 1001`, or Kubernetes `runAsNonRoot: true`) skips the repair step
-# and runs unchanged. If the entrypoint cannot drop privileges it refuses to
-# start rather than serving as root.
+# This declaration is load-bearing beyond the default uid, which is why the
+# entrypoint's root-phase repair does NOT replace it:
+#
+#  - Kubernetes `runAsNonRoot: true` with no `runAsUser` validates the *image's*
+#    user and refuses to start the container when it is root. An image without a
+#    `USER` would fail to start on that (recommended, common) posture, rather
+#    than skipping the repair.
+#  - It holds whatever the command is. Overriding `CMD` bypasses the entrypoint
+#    altogether, so without this a `command:` override or `docker run … sh` would
+#    run as root.
+#
+# The entrypoint's root phase is therefore opt-in: it runs only when an operator
+# deliberately starts the container as root (`--user 0`, or `runAsUser: 0`) to
+# have a bind-mounted cache directory repaired, and it drops to this same user
+# before anything else — see scripts/migrate-and-start.sh.
+USER nextjs
 
 EXPOSE 3000
 
