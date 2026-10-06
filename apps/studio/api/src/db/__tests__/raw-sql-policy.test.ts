@@ -261,11 +261,11 @@ const ALLOWLIST: Record<string, { count: number; why: string }> = {
   },
   [`${SERVER}/db/migrate.ts › db.migrate.readSessionState`]: {
     count: 1,
-    why: 'the transaction id, roles, settings and disabled triggers each artefact must leave as it found them: session functions and a `pg_trigger` aggregate, no application table',
+    why: 'the transaction id, roles, settings, triggers and row-level security each artefact must leave as it found them: session functions and `pg_trigger`/`pg_class` aggregates, no application table',
   },
   [`${SERVER}/db/migrate.ts › db.migrate.settleDeferredChecks`]: {
-    count: 2,
-    why: 'the `INITIALLY DEFERRED` constraints read from `pg_constraint`, and `SET CONSTRAINTS … DEFERRED` naming them: a catalog read and a transaction setting the builder has no form for',
+    count: 1,
+    why: 'the deferrable constraints, by name, read from `pg_constraint`: a catalog read the builder has no form for (the `SET CONSTRAINTS` naming them go through the file-level statement runner)',
   },
   [`${SERVER}/programs/migrate.ts`]: {
     count: 2,

@@ -188,6 +188,7 @@ export class MigrationHistoryRefused extends Schema.TaggedError<MigrationHistory
       'role',
       'transaction',
       'session',
+      'constraint',
     ]),
     message: Schema.String,
   },

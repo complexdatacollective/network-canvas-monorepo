@@ -84,6 +84,19 @@ $body$ LANGUAGE plpgsql;`;
     expect(splitStatements('/* nothing; here */')).toEqual([]);
   });
 
+  // #1901 FX-7: Postgres ends a `--` comment at a carriage return too, so a
+  // statement after a CR-only line break is a statement of its own.
+  it('ends a line comment at a carriage return, as Postgres does', () => {
+    expect(splitStatements('-- note\rCOMMIT;\nSELECT 1;')).toEqual([
+      '-- note\rCOMMIT',
+      'SELECT 1',
+    ]);
+    expect(splitStatements('select 1 -- one\r; select 2;')).toEqual([
+      'select 1 -- one',
+      'select 2',
+    ]);
+  });
+
   it('drops empty fragments and keeps an unterminated tail', () => {
     expect(splitStatements('select 1')).toEqual(['select 1']);
     expect(splitStatements('select 1;;select 2')).toEqual([

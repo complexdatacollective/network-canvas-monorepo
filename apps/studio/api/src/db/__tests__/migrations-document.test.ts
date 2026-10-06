@@ -187,6 +187,7 @@ describe('the committed migrations document', () => {
     'set local transaction isolation level serializable',
     'SET SESSION CHARACTERISTICS AS TRANSACTION READ ONLY',
     '-- a habit\nCommit',
+    '-- a carriage return ends a comment\rCOMMIT',
     '/* outer /* nested */ still a comment */ COMMIT',
     '  \t\n  rollback',
   ])('refuses transaction control: %j', (statement) => {
@@ -203,13 +204,43 @@ describe('the committed migrations document', () => {
     'UPDATE t SET "end" = 1, "begin" = 2',
     '-- COMMIT\nSELECT 1',
     '/* ROLLBACK */ SELECT 1',
-    'SET CONSTRAINTS ALL IMMEDIATE',
+    'SET CONSTRAINTS interview_sessions_completion_snapshot IMMEDIATE',
+    'SET CONSTRAINTS public.a, public.b DEFERRED',
     'SET LOCAL ROLE studio_maintenance',
     'RESET ROLE',
     'CREATE TABLE commits (id int)',
     'ENDPOINT_PROBE',
   ])('admits a statement that only mentions a transaction: %j', (statement) => {
     expect(forbiddenStatement(`${statement};`)).toBeNull();
+  });
+
+  // #1901 FX-7: read as one chunk, the COMMIT after a CR-only comment would
+  // hide behind the comment from this check.
+  it('sees a COMMIT after a comment ended by a carriage return', () => {
+    expect(forbiddenStatement('-- note\rCOMMIT;\nSELECT 1;')).toEqual({
+      statement: '-- note\rCOMMIT',
+      remedy: expect.stringMatching(/one transaction of its own/),
+    });
+    expect(
+      forbiddenStatement('-- note\rCREATE INDEX CONCURRENTLY i ON t (c);'),
+    ).toMatchObject({
+      remedy: expect.stringMatching(/split it across two releases/),
+    });
+  });
+
+  // #1901 FX-4: ALL sets the transaction's default, which a later file's own
+  // INITIALLY DEFERRED constraint would then follow.
+  it.each([
+    'SET CONSTRAINTS ALL IMMEDIATE',
+    'set constraints all deferred',
+    '-- settle\nSET  CONSTRAINTS\n  ALL IMMEDIATE',
+  ])('refuses SET CONSTRAINTS ALL: %j', (statement) => {
+    expect(forbiddenStatement(`UPDATE t SET c = 1;\n${statement};`)).toEqual({
+      statement: statement.trim(),
+      remedy: expect.stringMatching(
+        /^name the constraints instead .* every file after this one/,
+      ),
+    });
   });
 
   it('refuses a migration whose backfill carries transaction control', () => {

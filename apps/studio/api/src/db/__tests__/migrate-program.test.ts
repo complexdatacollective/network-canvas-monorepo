@@ -158,6 +158,43 @@ describe.skipIf(!db)('the migrate command', () => {
     CASE_TIMEOUT_MS,
   );
 
+  // #1901 FX-6: a data exception's message can quote the value that failed,
+  // and that value is a row of the operator's study data.
+  it(
+    'reports a data exception by its code and class, never the value Postgres quotes',
+    async () => {
+      const scratch = await releasedDatabase();
+      const before = await history(scratch.pool);
+      const value = 'Alice Example';
+      await scratch.admin.query(
+        'INSERT INTO teams (id, name, slug) VALUES ($1, $2, $1)',
+        ['team-migrate-cast', value],
+      );
+
+      const casting = release({
+        slug: 'casting',
+        delta: 'ALTER TABLE deployment_state ADD COLUMN probe text;',
+        backfill: 'SELECT name::int FROM teams;',
+      });
+      const version = casting.migrations.at(-1)?.version;
+      const { code, output } = await migrate(scratch, casting);
+
+      expect(code).toBe(1);
+      expect(output).toContain(
+        [
+          `Migration ${version} failed in backfill.sql, statement 1 of 1: SELECT name::int FROM teams`,
+          "Postgres refused it (22P02): a data exception. Postgres's message is not shown, because it can quote the value that failed; run the statement against a copy of the database to see it",
+          NOTHING_APPLIED,
+        ].join('\n'),
+      );
+      expect(output).not.toContain(value);
+      expect(output).not.toMatch(STACK_FRAME);
+      expect(await history(scratch.pool)).toEqual(before);
+      expect(await hasProbeColumn(scratch.pool)).toBe(false);
+    },
+    CASE_TIMEOUT_MS,
+  );
+
   it(
     'leaves the database at its previous release when the keyring cannot open what it stores',
     async () => {
