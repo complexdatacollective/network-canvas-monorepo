@@ -306,22 +306,24 @@ describe.skipIf(!db)('migrate', () => {
         );
         running.catch(() => undefined);
 
+        // Advisory locks are per database, and other suites take the same
+        // keys in their own scratch databases on this cluster.
+        const waiters = async () =>
+          (
+            await scratch.admin.query<{ pid: number }>(
+              `select pid from pg_locks
+                where locktype = 'advisory' and not granted
+                  and database = (select oid from pg_database where datname = current_database())
+                  and objid = ($1::bigint & 4294967295)::oid
+                  and classid = ($1::bigint >> 32)::oid`,
+              [gateKey],
+            )
+          ).rows.map((row) => row.pid);
         await expect
-          .poll(
-            async () =>
-              (
-                await scratch.admin.query<{ waiting: boolean }>(
-                  `select exists (
-                     select 1 from pg_locks
-                      where locktype = 'advisory' and not granted
-                        and objid = ($1::bigint & 4294967295)::oid
-                   ) as waiting`,
-                  [gateKey],
-                )
-              ).rows[0]?.waiting,
-            { timeout: 60_000, interval: 100 },
-          )
-          .toBe(true);
+          .poll(waiters, { timeout: 60_000, interval: 100 })
+          .toHaveLength(1);
+        // The backend waiting on the gate is the migration transaction's.
+        const [transactionPid] = await waiters();
 
         const contender = await scratch.admin.query<{ free: boolean }>(
           'select pg_try_advisory_lock($1) as free',
@@ -333,15 +335,21 @@ describe.skipIf(!db)('migrate', () => {
           'select 1 as one',
         );
         expect(ordinary.rows[0]?.one).toBe(1);
-        // The lock and the transaction are on different sessions.
-        const holders = await scratch.admin.query<{ count: number }>(
-          `select count(distinct pid)::int as count from pg_locks
+        // The lock and the transaction are on different sessions: one
+        // backend holds the schema lock in this database, and it is not the
+        // one running the transaction (an xact lock taken inside the
+        // transaction would be held by the waiting backend itself).
+        const holders = await scratch.admin.query<{ pid: number }>(
+          `select distinct pid from pg_locks
             where locktype = 'advisory' and granted
+              and database = (select oid from pg_database where datname = current_database())
               and objid = ($1::bigint & 4294967295)::oid
               and classid = ($1::bigint >> 32)::oid`,
           [SCHEMA_LOCK_KEY],
         );
-        expect(holders.rows[0]?.count).toBe(1);
+        expect(holders.rows).toHaveLength(1);
+        expect(transactionPid).toEqual(expect.any(Number));
+        expect(holders.rows[0]?.pid).not.toBe(transactionPid);
 
         await gate.query('select pg_advisory_unlock($1)', [gateKey]);
         expect((await running).kind).toBe('applied');
@@ -354,6 +362,57 @@ describe.skipIf(!db)('migrate', () => {
         [SCHEMA_LOCK_KEY],
       );
       expect(released.rows[0]?.free).toBe(true);
+    },
+    CASE_TIMEOUT_MS,
+  );
+
+  it(
+    'stamps the fingerprint inside the transaction that records the history',
+    async () => {
+      const scratch = await emptyDatabase();
+      await run(scratch.db.url);
+      const before = await history(scratch.pool);
+
+      // A second session holds the stamp row, so the run is caught at the
+      // stamp; a third reads what the run has committed so far.
+      const holder = await scratch.admin.connect();
+      try {
+        await holder.query('begin');
+        await holder.query('select * from "schemaFingerprint" for update');
+        const running = run(
+          scratch.db.url,
+          next({
+            slug: 'stamped',
+            delta: 'ALTER TABLE deployment_state ADD COLUMN probe text;',
+            fingerprint: NEXT,
+          }),
+        );
+        running.catch(() => undefined);
+
+        await expect
+          .poll(
+            async () =>
+              (
+                await scratch.admin.query<{ query: string }>(
+                  `select query from pg_stat_activity
+                    where datname = current_database() and wait_event_type = 'Lock'`,
+                )
+              ).rows.map((row) => row.query),
+            { timeout: 60_000, interval: 100 },
+          )
+          .toEqual([expect.stringMatching(/"schemaFingerprint"/)]);
+
+        // Were the stamp written in a later transaction, the history row
+        // would already be committed while that one waits.
+        expect(await history(scratch.pool)).toEqual(before);
+
+        await holder.query('rollback');
+        expect((await running).kind).toBe('applied');
+      } finally {
+        holder.release();
+      }
+      expect((await history(scratch.pool)).length).toBe(before.length + 1);
+      expect(await stamp(scratch.pool)).toEqual([NEXT]);
     },
     CASE_TIMEOUT_MS,
   );
