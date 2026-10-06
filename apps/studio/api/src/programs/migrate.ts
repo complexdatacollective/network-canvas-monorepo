@@ -120,9 +120,9 @@ const migrate = (document: Effect.Effect<string, unknown>) =>
     );
     const secrets = yield* Layer.build(SecretsCipher.layerFromEnvironment);
 
-    // A refusal of the keyring or of a statement already names itself and
-    // says that nothing was applied; anything else is reported as Postgres
-    // or the runner put it.
+    // A refusal of the keyring, of a statement or of the COMMIT already names
+    // itself and says whether anything was applied; anything else is
+    // reported as Postgres or the runner put it.
     yield* migrateDatabaseEffect(migrations, {
       log: (line) => Effect.runSync(Console.log(line)),
       appliedBy: STUDIO_VERSION,

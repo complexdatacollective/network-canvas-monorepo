@@ -1105,10 +1105,10 @@ describe.skipIf(!db)('migrate', () => {
   );
 
   // #1901 FX-8: a run whose COMMIT fails applied nothing, so it never says
-  // it did. The delta queues a deferred check on the history row the run
+  // it did, and says that it did not. The delta queues a deferred check on the history row the run
   // records last, which only COMMIT fires.
   it(
-    'says “Applied” only once COMMIT has returned',
+    'says “Applied” only once COMMIT has returned, and “Nothing was applied” when it is refused',
     async () => {
       const scratch = await emptyDatabase();
       await run(scratch.db.url);
@@ -1133,7 +1133,13 @@ describe.skipIf(!db)('migrate', () => {
           ).pipe(Effect.provide(ownerLayer(scratch.db.url))),
         ),
       );
-      expect(failure.message).toMatch(/refused at commit/);
+      // A refusal Postgres reported at COMMIT rolled everything back, and
+      // the operator is told so.
+      expect(failure.state).toBe('P0001');
+      expect(failure.message.split('\n')).toEqual([
+        "The migration's COMMIT failed (P0001): refused at commit",
+        'Nothing was applied: the transaction rolled back, and the database is as it was before migrate ran.',
+      ]);
       // The run got as far as the commit.
       expect(lines).toEqual([
         expect.stringMatching(/^Applying \d{4}_fails_at_commit /),

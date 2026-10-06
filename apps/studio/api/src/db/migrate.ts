@@ -338,6 +338,54 @@ class MigrationStatementFailed extends Schema.TaggedError<MigrationStatementFail
   }
 }
 
+/** SQLSTATE class 08, connection exception. */
+const CONNECTION_EXCEPTION_CLASS = '08';
+
+/**
+ * The migration's COMMIT failed. A refusal Postgres reported — a deferred
+ * check the last statements queued — rolled the whole transaction back. A
+ * connection that dropped without one (no SQLSTATE, or class 08) may have
+ * lost the reply to a commit that happened, so the outcome is unknown, and
+ * the history is what tells: migrate run again either reports the database
+ * current or applies the release.
+ */
+class MigrationCommitFailed extends Schema.TaggedError<MigrationCommitFailed>()(
+  'MigrationCommitFailed',
+  {
+    code: Schema.NullOr(Schema.String),
+    reason: Schema.String,
+  },
+) {
+  get rolledBack(): boolean {
+    return (
+      this.code !== null && !this.code.startsWith(CONNECTION_EXCEPTION_CLASS)
+    );
+  }
+
+  override get message(): string {
+    return [
+      `The migration's COMMIT failed${this.code === null ? '' : ` (${this.code})`}: ${this.reason}`,
+      this.rolledBack
+        ? 'Nothing was applied: the transaction rolled back, and the database is as it was before migrate ran.'
+        : 'The connection was lost at COMMIT, so whether the release was applied is unknown. Run migrate again: it reports the database as current if the commit happened, and applies the release if it did not.',
+    ].join('\n');
+  }
+}
+
+const refusalReason = (cause: unknown, code: string | null): string =>
+  code?.startsWith(DATA_EXCEPTION_CLASS)
+    ? DATA_EXCEPTION_REASON
+    : (deepestMessage(cause) ?? String(cause));
+
+const commitFailed = (cause: unknown) => {
+  if (cause instanceof MigrationCommitFailed) return cause;
+  const code = sqlState(cause) ?? null;
+  return new MigrationCommitFailed({
+    code,
+    reason: refusalReason(cause, code),
+  });
+};
+
 type StatementSite = {
   readonly version: string;
   readonly artefact: string;
@@ -359,9 +407,7 @@ const runStatement = (
             ...site,
             statement: abbreviated(site.statement),
             code,
-            reason: code?.startsWith(DATA_EXCEPTION_CLASS)
-              ? DATA_EXCEPTION_REASON
-              : (deepestMessage(cause) ?? String(cause)),
+            reason: refusalReason(cause, code),
             rolledBack: Exit.isFailure(probe),
           }),
         );
@@ -485,6 +531,8 @@ export const migrateDatabaseEffect = Effect.fn('db.migrate')(function* <
         ),
       );
 
+      // Set as the body returns, so a failure after it is the COMMIT's.
+      let committing = false;
       const outcome: MigrateOutcome = yield* OwnerScope.open(
         Effect.gen(function* () {
           const { sql } = yield* Transaction;
@@ -538,6 +586,7 @@ export const migrateDatabaseEffect = Effect.fn('db.migrate')(function* <
 
           if (verdict.pending.length === 0) {
             yield* checkBeforeCommit;
+            committing = true;
             return { kind: 'current' } satisfies MigrateOutcome;
           }
 
@@ -589,8 +638,16 @@ export const migrateDatabaseEffect = Effect.fn('db.migrate')(function* <
           yield* checkBeforeCommit;
 
           const versions = verdict.pending.map(({ version }) => version);
+          committing = true;
           return { kind: 'applied', versions } satisfies MigrateOutcome;
         }),
+      ).pipe(
+        // `SqlClient`'s transaction wrapper runs the COMMIT under
+        // `Effect.orDie`, so its failure arrives as a defect.
+        Effect.catchDefect((defect) =>
+          committing ? Effect.fail(commitFailed(defect)) : Effect.die(defect),
+        ),
+        Effect.mapError((cause) => (committing ? commitFailed(cause) : cause)),
       );
       // Only once COMMIT has returned (#1901 FX-8): a commit that fails — a
       // deferred check the last statements queued, or a connection lost —
