@@ -871,3 +871,73 @@ describe('cross-family alignment', () => {
     expect(Math.abs(childA.pos - childB.pos)).toBeLessThanOrEqual(2 + 1e-10);
   });
 });
+
+describe('a parent who descends from a co-parent', () => {
+  // Every person is drawn exactly once, on a row below each of their parents.
+  const expectEveryChildBelowItsParents = (ped: PedigreeInput) => {
+    const result = alignPedigree(ped);
+    ped.parents.forEach((conns, child) => {
+      const childAt = positionOf(result, child);
+      expect(childAt).toBeDefined();
+      for (const p of conns) {
+        expect(childAt!.layer).toBeGreaterThan(
+          positionOf(result, p.parentIndex)!.layer,
+        );
+      }
+    });
+    return result;
+  };
+
+  it('lays out a daughter who carries her mother’s baby', () => {
+    expectEveryChildBelowItsParents({
+      id: ['mum', 'daughter', 'baby'],
+      parents: [
+        [],
+        [{ parentIndex: 0, edgeType: 'biological' }],
+        [
+          { parentIndex: 0, edgeType: 'biological' },
+          { parentIndex: 1, edgeType: 'surrogate', isGestationalCarrier: true },
+        ],
+      ],
+    });
+  });
+
+  it('lays out a daughter who carries her parents’ baby', () => {
+    expectEveryChildBelowItsParents({
+      id: ['mum', 'dad', 'daughter', 'baby'],
+      parents: [
+        [],
+        [],
+        [
+          { parentIndex: 0, edgeType: 'biological' },
+          { parentIndex: 1, edgeType: 'biological' },
+        ],
+        [
+          { parentIndex: 0, edgeType: 'biological' },
+          { parentIndex: 1, edgeType: 'biological' },
+          { parentIndex: 2, edgeType: 'surrogate', isGestationalCarrier: true },
+        ],
+      ],
+      partners: [{ partnerIndex1: 0, partnerIndex2: 1, isActive: true }],
+    });
+  });
+
+  it('lays out a son who donates to his mother and her partner', () => {
+    const ped: PedigreeInput = {
+      id: ['mum', 'partner', 'son', 'baby'],
+      parents: [
+        [],
+        [],
+        [{ parentIndex: 0, edgeType: 'biological' }],
+        [
+          { parentIndex: 0, edgeType: 'biological' },
+          { parentIndex: 1, edgeType: 'social' },
+          { parentIndex: 2, edgeType: 'donor' },
+        ],
+      ],
+      partners: [{ partnerIndex1: 0, partnerIndex2: 1, isActive: true }],
+    };
+    const result = expectEveryChildBelowItsParents(ped);
+    expect(positionOf(result, 0)!.layer).toBe(positionOf(result, 1)!.layer);
+  });
+});

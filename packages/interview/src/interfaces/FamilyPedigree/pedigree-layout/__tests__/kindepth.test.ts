@@ -118,4 +118,75 @@ describe('kindepth', () => {
     ];
     expect(kindepth(parents)).toEqual([0, 0, 1, 1, 1]);
   });
+
+  describe('with align=true', () => {
+    // Every child sits below each of its parents, whatever the edge.
+    const expectChildrenBelowParents = (
+      parents: ParentConnection[][],
+      depth: number[],
+    ) => {
+      parents.forEach((conns, child) => {
+        for (const p of conns) {
+          expect(depth[child]!).toBeGreaterThan(depth[p.parentIndex]!);
+        }
+      });
+    };
+
+    it("keeps a daughter who carries her mother's baby below her mother", () => {
+      // mum=0, daughter=1, baby=2 (mum's egg, carried by daughter)
+      const parents: ParentConnection[][] = [
+        [],
+        [{ parentIndex: 0, edgeType: 'biological' }],
+        [
+          { parentIndex: 0, edgeType: 'biological' },
+          { parentIndex: 1, edgeType: 'surrogate', isGestationalCarrier: true },
+        ],
+      ];
+      const depth = kindepth(parents, true);
+      expect(depth).toEqual([0, 1, 2]);
+    });
+
+    it('keeps a son who donates to his mother below her', () => {
+      // mum=0, partner=1, son=2 (mum's), baby=3 (mum + partner, son donor)
+      const parents: ParentConnection[][] = [
+        [],
+        [],
+        [{ parentIndex: 0, edgeType: 'biological' }],
+        [
+          { parentIndex: 0, edgeType: 'biological' },
+          { parentIndex: 1, edgeType: 'social' },
+          { parentIndex: 2, edgeType: 'donor' },
+        ],
+      ];
+      const depth = kindepth(parents, true);
+      expectChildrenBelowParents(parents, depth);
+      expect(depth[0]).toBe(depth[1]);
+    });
+
+    it('keeps the single-parent children of a moved marry-in below them', () => {
+      // g1=0, g2=1, p=2 (g1+g2), q=3, c=4 (p+q), x=5, k=6 (x alone), z=7 (c+x)
+      const parents: ParentConnection[][] = [
+        [],
+        [],
+        [
+          { parentIndex: 0, edgeType: 'biological' },
+          { parentIndex: 1, edgeType: 'biological' },
+        ],
+        [],
+        [
+          { parentIndex: 2, edgeType: 'biological' },
+          { parentIndex: 3, edgeType: 'biological' },
+        ],
+        [],
+        [{ parentIndex: 5, edgeType: 'biological' }],
+        [
+          { parentIndex: 4, edgeType: 'biological' },
+          { parentIndex: 5, edgeType: 'biological' },
+        ],
+      ];
+      const depth = kindepth(parents, true);
+      expectChildrenBelowParents(parents, depth);
+      expect(depth[5]).toBe(depth[4]);
+    });
+  });
 });
