@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 import { Effect } from 'effect';
 import { SyntaxKind } from 'typescript/unstable/ast';
-import { afterAll, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 import { StudioRpcs } from '@codaco/studio-contract/rpc/studio';
 import { StudioStreams } from '@codaco/studio-contract/sync/protocol-builder';
@@ -19,7 +19,7 @@ import { verifyMigrations } from '../db/migrations-document.ts';
 import { startEntrypoint } from './support/entrypoint.ts';
 import {
   committedDocument,
-  createOwnedScratchDatabase,
+  ownedScratchDatabaseForTest,
   type OwnedScratchDatabase,
 } from './support/migrations.ts';
 import { reachableDb } from './support/postgres.ts';
@@ -165,14 +165,6 @@ const db = await reachableDb();
 const CASE_TIMEOUT_MS = 120_000;
 
 describe.skipIf(!db)('studio-api maintenance on|off', () => {
-  const scratches: OwnedScratchDatabase[] = [];
-
-  afterAll(async () => {
-    for (const scratch of scratches) {
-      await scratch.dispose().catch(() => undefined);
-    }
-  }, CASE_TIMEOUT_MS);
-
   const flag = async (scratch: OwnedScratchDatabase) =>
     (
       await scratch.admin.query<{
@@ -200,8 +192,7 @@ describe.skipIf(!db)('studio-api maintenance on|off', () => {
     'round-trips the flag through the command against a migrated database',
     async () => {
       if (!db) throw new Error('unreachable: probe guaranteed a database');
-      const scratch = await createOwnedScratchDatabase(db);
-      scratches.push(scratch);
+      const scratch = await ownedScratchDatabaseForTest(db);
       const document = committedDocument();
       await Effect.runPromise(
         migrateDatabaseEffect(

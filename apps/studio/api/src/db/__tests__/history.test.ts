@@ -1,10 +1,7 @@
 import { Effect } from 'effect';
-import { afterAll, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
-import {
-  createOwnedScratchDatabase,
-  type OwnedScratchDatabase,
-} from '../../__tests__/support/migrations.ts';
+import { ownedScratchDatabaseForTest } from '../../__tests__/support/migrations.ts';
 import { reachableDb } from '../../__tests__/support/postgres.ts';
 import { OwnerDatabase } from '../client.ts';
 import {
@@ -150,15 +147,9 @@ describe('the history verdict', () => {
 const db = await reachableDb();
 
 describe.skipIf(!db)('the history table', () => {
-  const scratches: OwnedScratchDatabase[] = [];
-  afterAll(async () => {
-    for (const scratch of scratches) await scratch.dispose();
-  }, 120_000);
-
   it('records what was applied and reads it back in order', async () => {
     if (!db) throw new Error('unreachable: probe guaranteed a database');
-    const scratch = await createOwnedScratchDatabase(db);
-    scratches.push(scratch);
+    const scratch = await ownedScratchDatabaseForTest(db);
 
     const rows = await Effect.runPromise(
       OwnerScope.open(

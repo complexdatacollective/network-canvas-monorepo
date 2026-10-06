@@ -16,7 +16,7 @@ import {
 } from '../../__tests__/support/entrypoint.ts';
 import {
   committedDocument,
-  createOwnedScratchDatabase,
+  ownedScratchDatabaseForTest,
   type OwnedScratchDatabase,
   type SyntheticMigration,
   withMigrations,
@@ -97,19 +97,13 @@ const hasProbeColumn = async (pool: pg.Pool) =>
   ).rowCount === 1;
 
 describe.skipIf(!db)('the migrate command', () => {
-  const scratches: OwnedScratchDatabase[] = [];
-
   afterAll(async () => {
-    for (const scratch of scratches) {
-      await scratch.dispose().catch(() => undefined);
-    }
     rmSync(files, { recursive: true, force: true });
   }, 120_000);
 
   async function releasedDatabase(): Promise<OwnedScratchDatabase> {
     if (!db) throw new Error('unreachable: probe guaranteed a database');
-    const scratch = await createOwnedScratchDatabase(db);
-    scratches.push(scratch);
+    const scratch = await ownedScratchDatabaseForTest(db);
     const first = await migrate(scratch, committed);
     expect(first.output).toContain(
       `Applied ${committed.migrations.map(({ version }) => version).join(', ')}.`,

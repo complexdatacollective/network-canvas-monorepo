@@ -1,9 +1,8 @@
-import { afterAll, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 import {
   committedDocument,
-  createOwnedScratchDatabase,
-  type OwnedScratchDatabase,
+  ownedScratchDatabaseForTest,
   withMigrations,
 } from '../../__tests__/support/migrations.ts';
 import { reachableDb } from '../../__tests__/support/postgres.ts';
@@ -259,15 +258,9 @@ describe('the committed migrations document', () => {
 const db = await reachableDb();
 
 describe.skipIf(!db)('every committed artefact', () => {
-  const scratches: OwnedScratchDatabase[] = [];
-  afterAll(async () => {
-    for (const scratch of scratches) await scratch.dispose();
-  }, 120_000);
-
   it('survives splitStatements and installs inside one transaction', async () => {
     if (!db) throw new Error('unreachable: probe guaranteed a database');
-    const scratch = await createOwnedScratchDatabase(db);
-    scratches.push(scratch);
+    const scratch = await ownedScratchDatabaseForTest(db);
 
     const statements = committed.migrations.flatMap((migration) =>
       migration.artefacts.flatMap((artefact) =>

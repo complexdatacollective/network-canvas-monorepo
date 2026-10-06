@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import pg from 'pg';
+import { onTestFinished } from 'vitest';
 
 import { TENANT_ROLES } from '@codaco/studio-sync/rls';
 
@@ -182,4 +183,21 @@ export async function createOwnedScratchDatabase(
       }
     },
   };
+}
+
+const DISPOSE_TIMEOUT_MS = 120_000;
+
+/**
+ * An owned scratch database for the running test, dropped when the test
+ * finishes. Each one holds two pools; a file that kept every case's database
+ * until `afterAll` held dozens of idle connections, and files running in
+ * parallel then exhausted the cluster's slots — `TEST_OWNER` is not a
+ * superuser, so the reserved ones are closed to it.
+ */
+export async function ownedScratchDatabaseForTest(
+  db: DbEnv,
+): Promise<OwnedScratchDatabase> {
+  const scratch = await createOwnedScratchDatabase(db);
+  onTestFinished(() => scratch.dispose(), DISPOSE_TIMEOUT_MS);
+  return scratch;
 }

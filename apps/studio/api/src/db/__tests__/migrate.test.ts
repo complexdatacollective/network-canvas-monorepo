@@ -2,12 +2,12 @@ import { randomUUID } from 'node:crypto';
 
 import { Effect, Layer } from 'effect';
 import type pg from 'pg';
-import { afterAll, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 import { refusalOf } from '../../__tests__/support/database.ts';
 import {
   committedDocument,
-  createOwnedScratchDatabase,
+  ownedScratchDatabaseForTest,
   type OwnedScratchDatabase,
   type SyntheticMigration,
   withMigrations,
@@ -41,7 +41,6 @@ import { OwnerScope, Transaction } from '../tenant.ts';
 const db = await reachableDb();
 
 const CASE_TIMEOUT_MS = 180_000;
-const DISPOSE_TIMEOUT_MS = 120_000;
 
 /** A fingerprint no real schema has: the target of a synthetic release. */
 const NEXT = 'b'.repeat(64);
@@ -49,22 +48,12 @@ const AFTER_NEXT = 'c'.repeat(64);
 
 describe.skipIf(!db)('migrate', () => {
   const committed = committedDocument();
-  const scratches: OwnedScratchDatabase[] = [];
 
   async function emptyDatabase(): Promise<OwnedScratchDatabase> {
     if (!db) throw new Error('unreachable: probe guaranteed a database');
-    const scratch = await createOwnedScratchDatabase(db);
-    scratches.push(scratch);
+    const scratch = await ownedScratchDatabaseForTest(db);
     return scratch;
   }
-
-  // Sequential: several force-drops at once on one cluster outran the
-  // hook budget.
-  afterAll(async () => {
-    for (const scratch of scratches) {
-      await scratch.dispose().catch(() => undefined);
-    }
-  }, DISPOSE_TIMEOUT_MS);
 
   const ownerLayer = (url: string) =>
     OwnerDatabase.layer({ url, applicationName: 'studio-migrate-test' });

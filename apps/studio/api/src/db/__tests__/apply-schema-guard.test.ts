@@ -1,5 +1,5 @@
 import { Effect } from 'effect';
-import { afterAll, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 import {
   applySchema,
@@ -7,7 +7,7 @@ import {
 } from '../../../scripts/apply.ts';
 import {
   committedMigrations,
-  createOwnedScratchDatabase,
+  ownedScratchDatabaseForTest,
   type OwnedScratchDatabase,
 } from '../../__tests__/support/migrations.ts';
 import { reachableDb } from '../../__tests__/support/postgres.ts';
@@ -25,17 +25,9 @@ const db = await reachableDb();
 const CASE_TIMEOUT_MS = 180_000;
 
 describe.skipIf(!db)('apply-schema', () => {
-  const scratches: OwnedScratchDatabase[] = [];
-  afterAll(async () => {
-    for (const scratch of scratches) {
-      await scratch.dispose().catch(() => undefined);
-    }
-  }, 120_000);
-
   async function emptyDatabase(): Promise<OwnedScratchDatabase> {
     if (!db) throw new Error('unreachable: probe guaranteed a database');
-    const scratch = await createOwnedScratchDatabase(db);
-    scratches.push(scratch);
+    const scratch = await ownedScratchDatabaseForTest(db);
     return scratch;
   }
 
