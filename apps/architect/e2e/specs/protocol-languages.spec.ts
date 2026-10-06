@@ -84,13 +84,20 @@ test('adds a language, lists its missing translations, and keeps the default lan
     'This protocol has one language. Add a language to start translating.',
   );
 
-  // Add French by its language code.
+  // Add French from the list of languages.
   await page
     .getByRole('button', { name: 'Add languages', exact: true })
     .click();
   const dialog = page.getByRole('dialog', { name: 'Add languages' });
   await expect(dialog).toBeVisible();
-  await dialog.getByRole('textbox', { name: 'Other language code' }).fill('fr');
+  await dialog
+    .getByRole('combobox', { name: 'Languages', exact: true })
+    .click();
+  const languageList = page.getByRole('listbox');
+  await languageList.getByRole('option', { name: /^French \(fr\)/ }).click();
+  await page.keyboard.press('Escape');
+  await expect(languageList).toBeHidden();
+  await expect(dialog).toBeVisible();
   await dialog
     .getByRole('button', { name: 'Add languages', exact: true })
     .click();

@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import userEvent, { type UserEvent } from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -152,14 +158,19 @@ describe('NewProtocolDialog protocol languages', () => {
     screen.queryByRole('combobox', { name: 'Default language' });
 
   // Each option is named "<name> (<tag>)", then the language's own name.
+  // Scoped to the list, because the default-language select has options too.
   const toggleLanguages = async (user: UserEvent, tags: readonly string[]) => {
     await user.click(languageList());
+    const list = await screen.findByRole('listbox');
     for (const tag of tags) {
       await user.click(
-        await screen.findByRole('option', { name: new RegExp(`\\(${tag}\\)`) }),
+        within(list).getByRole('option', { name: new RegExp(`\\(${tag}\\)`) }),
       );
     }
     await user.keyboard('{Escape}');
+    await waitFor(() =>
+      expect(screen.queryByRole('listbox')).not.toBeInTheDocument(),
+    );
   };
 
   it('starts on the language that best matches Architect’s own, and names it', () => {

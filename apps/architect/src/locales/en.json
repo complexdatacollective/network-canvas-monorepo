@@ -1691,10 +1691,6 @@
     "defaultMessage": "Add languages",
     "description": "Title of the dialog that adds languages to a protocol."
   },
-  "architect.localization.languageActions.alreadyDeclared": {
-    "defaultMessage": "{language} is already one of this protocol's languages.",
-    "description": "Error when a language the protocol already has is entered again. language is the language name."
-  },
   "architect.localization.languageActions.changeDescription": {
     "defaultMessage": "Every text marked as {language} will be marked as the language you choose. Nothing is translated or deleted.",
     "description": "Explanation in the dialog that changes a protocol language. language is its current name."
@@ -1712,24 +1708,16 @@
     "description": "Placeholder of the list of languages to change to."
   },
   "architect.localization.languageActions.chooseAtLeastOne": {
-    "defaultMessage": "Choose at least one language, or enter a language code.",
-    "description": "Error when a dialog that asks for languages is submitted with none chosen and no language code entered."
+    "defaultMessage": "Choose at least one language.",
+    "description": "Error when a dialog that asks for languages is submitted with none chosen."
   },
   "architect.localization.languageActions.chooseLanguages": {
     "defaultMessage": "Choose languages",
     "description": "Placeholder of a list of languages to choose several from."
   },
   "architect.localization.languageActions.chooseOne": {
-    "defaultMessage": "Choose a language, or enter a language code.",
+    "defaultMessage": "Choose a language.",
     "description": "Error when the change-language dialog is submitted empty."
-  },
-  "architect.localization.languageActions.codeHint": {
-    "defaultMessage": "For a language or regional variant that is not in the list, enter its language code, such as \"gsw\" or \"es-AR\".",
-    "description": "Hint for the language code field. The quoted codes are examples of language codes and are not translated."
-  },
-  "architect.localization.languageActions.codeLabel": {
-    "defaultMessage": "Other language code",
-    "description": "Label of the field for a language code that is not in the list."
   },
   "architect.localization.languageActions.identifyDescription": {
     "defaultMessage": "Protocols made before protocols declared their languages have their text marked as an unidentified language. Choose the language it is written in. Nothing is translated or deleted.",
@@ -1738,10 +1726,6 @@
   "architect.localization.languageActions.identifyTitle": {
     "defaultMessage": "Identify the language of your text",
     "description": "Title of the dialog that names the language of text whose language has not been identified."
-  },
-  "architect.localization.languageActions.invalidCode": {
-    "defaultMessage": "\"{code}\" is not a language code. Use a code such as \"es\" or \"pt-BR\".",
-    "description": "Error for a malformed language code. code is what the researcher typed; the quoted examples are not translated."
   },
   "architect.localization.languageActions.languageLabel": {
     "defaultMessage": "Language",
@@ -1782,10 +1766,6 @@
   "architect.localization.languageActions.searchLanguages": {
     "defaultMessage": "Search languages",
     "description": "Placeholder of the search box in the list of languages."
-  },
-  "architect.localization.languageActions.unspecifiedCode": {
-    "defaultMessage": "\"und\" stands for an unidentified language. Enter the code of the language itself.",
-    "description": "Error when the researcher enters the code reserved for unidentified languages. \"und\" is a code and is not translated."
   },
   "architect.localization.languageList.addLanguages": {
     "defaultMessage": "Add languages",

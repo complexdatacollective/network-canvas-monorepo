@@ -1,28 +1,14 @@
 import { useMemo } from 'react';
-import { z } from 'zod/mini';
 
-import {
-  type IntlShape,
-  type MessageDescriptor,
-  defineMessages,
-} from '@codaco/app-i18n/messages';
+import { type IntlShape, defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import ComboboxField from '@codaco/fresco-ui/form/fields/Combobox/Combobox';
 import type { ComboboxOption } from '@codaco/fresco-ui/form/fields/Combobox/shared';
-import InputField from '@codaco/fresco-ui/form/fields/InputField';
-import type {
-  CustomFieldValidation,
-  FieldValue,
-} from '@codaco/fresco-ui/form/store/types';
-import {
-  canonicalizeLocale,
-  type LocaleTag,
-} from '@codaco/protocol-validation';
-import { UNSPECIFIED_LOCALE } from '~/utils/localizedText';
+import type { FieldValue } from '@codaco/fresco-ui/form/store/types';
+import type { LocaleTag } from '@codaco/protocol-validation';
 
 import type { LanguageChoice } from './languageChoices';
-import { useLanguageName } from './useLanguageName';
 
 const messages = defineMessages({
   languageSingular: {
@@ -54,42 +40,9 @@ const messages = defineMessages({
   },
   chooseAtLeastOne: {
     id: 'architect.localization.languageActions.chooseAtLeastOne',
-    defaultMessage: 'Choose at least one language, or enter a language code.',
+    defaultMessage: 'Choose at least one language.',
     description:
-      'Error when a dialog that asks for languages is submitted with none chosen and no language code entered.',
-  },
-  codeLabel: {
-    id: 'architect.localization.languageActions.codeLabel',
-    defaultMessage: 'Other language code',
-    description:
-      'Label of the field for a language code that is not in the list.',
-  },
-  codeHint: {
-    id: 'architect.localization.languageActions.codeHint',
-    defaultMessage:
-      'For a language or regional variant that is not in the list, enter its language code, such as "gsw" or "es-AR".',
-    description:
-      'Hint for the language code field. The quoted codes are examples of language codes and are not translated.',
-  },
-  invalidCode: {
-    id: 'architect.localization.languageActions.invalidCode',
-    defaultMessage:
-      '"{code}" is not a language code. Use a code such as "es" or "pt-BR".',
-    description:
-      'Error for a malformed language code. code is what the researcher typed; the quoted examples are not translated.',
-  },
-  unspecifiedCode: {
-    id: 'architect.localization.languageActions.unspecifiedCode',
-    defaultMessage:
-      '"und" stands for an unidentified language. Enter the code of the language itself.',
-    description:
-      'Error when the researcher enters the code reserved for unidentified languages. "und" is a code and is not translated.',
-  },
-  alreadyDeclared: {
-    id: 'architect.localization.languageActions.alreadyDeclared',
-    defaultMessage: "{language} is already one of this protocol's languages.",
-    description:
-      'Error when a language the protocol already has is entered again. language is the language name.',
+      'Error when a dialog that asks for languages is submitted with none chosen.',
   },
   languageOption: {
     id: 'architect.localization.languageActions.languageOption',
@@ -97,83 +50,6 @@ const messages = defineMessages({
     description:
       'One entry in a list of languages. name is the language name in the interface language; tag is its language code, such as "de" or "pt-BR".',
   },
-});
-
-type CodeProblem = {
-  message: MessageDescriptor;
-  values: Record<string, string>;
-};
-
-const findCodeProblem = (
-  code: string,
-  declared: readonly LocaleTag[],
-  languageName: (locale: LocaleTag) => string,
-): CodeProblem | null => {
-  const locale = canonicalizeLocale(code.trim());
-  if (locale === undefined) {
-    return { message: messages.invalidCode, values: { code: code.trim() } };
-  }
-  if (locale === UNSPECIFIED_LOCALE) {
-    return { message: messages.unspecifiedCode, values: {} };
-  }
-  if (declared.includes(locale)) {
-    return {
-      message: messages.alreadyDeclared,
-      values: { language: languageName(locale) },
-    };
-  }
-  return null;
-};
-
-const isBlank = (value: FieldValue | undefined) =>
-  typeof value !== 'string' || value.trim() === '';
-
-const issue = (
-  value: unknown,
-  message: string,
-): { code: 'custom'; input: unknown; message: string; path: [] } => ({
-  code: 'custom',
-  input: value,
-  message,
-  path: [],
-});
-
-const codeValidation = (
-  intl: IntlShape,
-  declared: readonly LocaleTag[],
-  languageName: (locale: LocaleTag) => string,
-): CustomFieldValidation => ({
-  schema: () =>
-    z.unknown().check(
-      z.superRefine((value, ctx) => {
-        if (typeof value !== 'string' || value.trim() === '') return;
-        const problem = findCodeProblem(value, declared, languageName);
-        if (problem) {
-          ctx.addIssue(
-            issue(value, intl.formatMessage(problem.message, problem.values)),
-          );
-        }
-      }),
-    ),
-});
-
-// The list and the code field are alternatives, so an empty submission is
-// reported on the list, which comes first.
-export const choiceRequiredValidation = (
-  intl: IntlShape,
-  message: MessageDescriptor,
-): CustomFieldValidation => ({
-  schema: (formValues) =>
-    z.unknown().check(
-      z.superRefine((value, ctx) => {
-        const chosen = Array.isArray(value)
-          ? value.length > 0
-          : typeof value === 'string' && value !== '';
-        if (!chosen && isBlank(formValues.code)) {
-          ctx.addIssue(issue(value, intl.formatMessage(message)));
-        }
-      }),
-    ),
 });
 
 export const languageOptionText = (
@@ -219,53 +95,13 @@ const renderChosenNames = (
     );
   };
 
-/**
- * The languages chosen from a list field and the code field together, in
- * canonical form and without duplicates.
- */
-export const resolveChoice = (
+/** The languages chosen in a `LanguagePicker`, from the form's values. */
+export const chosenLanguages = (
   values: Record<string, FieldValue>,
-  listField: string,
 ): LocaleTag[] => {
-  const listed = values[listField];
-  const fromList = (Array.isArray(listed) ? listed : [listed]).filter(
-    (value): value is string => typeof value === 'string' && value !== '',
-  );
-  const code = values.code;
-  const fromCode =
-    typeof code === 'string' && code.trim() !== '' ? [code.trim()] : [];
-  return [
-    ...new Set(
-      [...fromList, ...fromCode].flatMap(
-        (tag) => canonicalizeLocale(tag) ?? [],
-      ),
-    ),
-  ];
-};
-
-/** A language code typed in, for a language the list does not offer. */
-export const LanguageCodeField = ({
-  declared,
-}: {
-  /** Languages the protocol already has, which the code may not repeat. */
-  declared: readonly LocaleTag[];
-}) => {
-  const intl = useAppIntl();
-  const languageName = useLanguageName();
-  const validation = useMemo(
-    () => codeValidation(intl, declared, languageName),
-    [intl, declared, languageName],
-  );
-  return (
-    <Field
-      name="code"
-      label={intl.formatMessage(messages.codeLabel)}
-      hint={intl.formatMessage(messages.codeHint)}
-      component={InputField}
-      initialValue=""
-      custom={validation}
-      dir="ltr"
-    />
+  const { languages } = values;
+  return (Array.isArray(languages) ? languages : []).filter(
+    (locale): locale is LocaleTag => typeof locale === 'string',
   );
 };
 
@@ -273,7 +109,6 @@ type LanguagePickerProps = {
   label: string;
   hint?: string;
   choices: readonly LanguageChoice[];
-  declared: readonly LocaleTag[];
   initialValue: LocaleTag[];
   /**
    * Name the chosen languages in the closed list, rather than count them, so
@@ -283,15 +118,13 @@ type LanguagePickerProps = {
 };
 
 /**
- * A searchable list of languages to choose several from, and a field for a
- * language code the list does not offer. Read the result with
- * `resolveChoice(values, 'languages')`.
+ * A searchable list of languages to choose several from. Read the result with
+ * `chosenLanguages(values)`.
  */
 export const LanguagePicker = ({
   label,
   hint,
   choices,
-  declared,
   initialValue,
   nameChosen = false,
 }: LanguagePickerProps) => {
@@ -312,32 +145,25 @@ export const LanguagePicker = ({
       })),
     [choices],
   );
-  const requiredValidation = useMemo(
-    () => choiceRequiredValidation(intl, messages.chooseAtLeastOne),
-    [intl],
-  );
   return (
-    <>
-      <Field<typeof ComboboxField>
-        name="languages"
-        label={label}
-        hint={hint}
-        component={ComboboxField}
-        initialValue={initialValue}
-        options={options}
-        renderOption={renderLanguageOption(choicesByLocale, intl)}
-        renderValue={
-          nameChosen ? renderChosenNames(choicesByLocale, intl) : undefined
-        }
-        placeholder={intl.formatMessage(messages.chooseLanguages)}
-        searchPlaceholder={intl.formatMessage(messages.searchLanguages)}
-        emptyMessage={intl.formatMessage(messages.noLanguagesFound)}
-        singular={intl.formatMessage(messages.languageSingular)}
-        plural={intl.formatMessage(messages.languagePlural)}
-        showSelectAll={false}
-        custom={requiredValidation}
-      />
-      <LanguageCodeField declared={declared} />
-    </>
+    <Field<typeof ComboboxField>
+      name="languages"
+      label={label}
+      hint={hint}
+      component={ComboboxField}
+      initialValue={initialValue}
+      options={options}
+      renderOption={renderLanguageOption(choicesByLocale, intl)}
+      renderValue={
+        nameChosen ? renderChosenNames(choicesByLocale, intl) : undefined
+      }
+      placeholder={intl.formatMessage(messages.chooseLanguages)}
+      searchPlaceholder={intl.formatMessage(messages.searchLanguages)}
+      emptyMessage={intl.formatMessage(messages.noLanguagesFound)}
+      singular={intl.formatMessage(messages.languageSingular)}
+      plural={intl.formatMessage(messages.languagePlural)}
+      showSelectAll={false}
+      required={intl.formatMessage(messages.chooseAtLeastOne)}
+    />
   );
 };

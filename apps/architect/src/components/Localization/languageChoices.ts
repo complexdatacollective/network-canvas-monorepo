@@ -5,7 +5,7 @@ import {
 } from '@codaco/protocol-validation';
 
 // Every ISO 639-1 language, then the regional and script variants a protocol
-// most often needs to tell apart. Any other well-formed tag can be typed in.
+// most often needs to tell apart.
 const LANGUAGE_TAGS: readonly LocaleTag[] = [
   'aa',
   'ab',

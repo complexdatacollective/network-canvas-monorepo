@@ -19,11 +19,9 @@ import { UNSPECIFIED_LOCALE } from '~/utils/localizedText';
 
 import { getLanguageChoices } from './languageChoices';
 import {
-  choiceRequiredValidation,
-  LanguageCodeField,
+  chosenLanguages,
   LanguagePicker,
   languageOptionText,
-  resolveChoice,
 } from './LanguagePicker';
 import { useLanguageName } from './useLanguageName';
 
@@ -88,7 +86,7 @@ const messages = defineMessages({
   },
   chooseOne: {
     id: 'architect.localization.languageActions.chooseOne',
-    defaultMessage: 'Choose a language, or enter a language code.',
+    defaultMessage: 'Choose a language.',
     description: 'Error when the change-language dialog is submitted empty.',
   },
   changeSubmit: {
@@ -151,13 +149,12 @@ export const useLanguageActions = (
         <LanguagePicker
           label={intl.formatMessage(messages.languagesLabel)}
           choices={availableChoices(declared)}
-          declared={declared}
           initialValue={[]}
         />
       ),
     });
     if (!values) return;
-    const locales = resolveChoice(values, 'languages');
+    const locales = chosenLanguages(values);
     if (locales.length > 0) dispatch(addProtocolLocales({ locales }));
   }, [availableChoices, declared, dispatch, finalFocus, intl, openDialog]);
 
@@ -180,26 +177,22 @@ export const useLanguageActions = (
         submitLabel: intl.formatMessage(messages.changeSubmit),
         finalFocus,
         children: (
-          <>
-            <Field<typeof NativeSelectField>
-              name="language"
-              label={intl.formatMessage(messages.languageLabel)}
-              component={NativeSelectField}
-              placeholder={intl.formatMessage(messages.chooseALanguage)}
-              options={availableChoices(declared).map((choice) => ({
-                value: choice.locale,
-                label: languageOptionText(intl, choice),
-              }))}
-              custom={choiceRequiredValidation(intl, messages.chooseOne)}
-            />
-            <LanguageCodeField declared={declared} />
-          </>
+          <Field<typeof NativeSelectField>
+            name="language"
+            label={intl.formatMessage(messages.languageLabel)}
+            component={NativeSelectField}
+            placeholder={intl.formatMessage(messages.chooseALanguage)}
+            options={availableChoices(declared).map((choice) => ({
+              value: choice.locale,
+              label: languageOptionText(intl, choice),
+            }))}
+            required={intl.formatMessage(messages.chooseOne)}
+          />
         ),
       });
       if (!values) return;
-      // A typed code is the more specific answer, so it wins over the list.
-      const [to] = resolveChoice(values, 'language').toReversed();
-      if (to !== undefined) dispatch(relabelProtocolLocale({ from, to }));
+      const to = values.language;
+      if (typeof to === 'string') dispatch(relabelProtocolLocale({ from, to }));
     },
     [
       availableChoices,

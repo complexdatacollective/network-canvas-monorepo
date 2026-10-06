@@ -35,9 +35,9 @@ import {
   matchLanguageChoice,
 } from '~/components/Localization/languageChoices';
 import {
+  chosenLanguages,
   LanguagePicker,
   languageOptionText,
-  resolveChoice,
 } from '~/components/Localization/LanguagePicker';
 import {
   PROTOCOL_NAME_MAX_LENGTH,
@@ -158,8 +158,6 @@ const languageMessages = defineMessages({
   },
 });
 
-const NO_LANGUAGES: readonly LocaleTag[] = [];
-
 // The default is derived from the chosen languages rather than trusted as
 // stored: a field that unmounts keeps its value, so after the chosen languages
 // change the stored default may no longer be one of them.
@@ -192,8 +190,8 @@ const DefaultLanguageSelect = ({
 
 const DefaultLanguageField = ({ preferred }: { preferred: LocaleTag }) => {
   const intl = useAppIntl();
-  const values = useFormValue(['languages', 'code'] as const);
-  const chosen = resolveChoice(values, 'languages');
+  const values = useFormValue(['languages']);
+  const chosen = chosenLanguages(values);
   if (chosen.length < 2) return null;
   return (
     <Field<typeof DefaultLanguageSelect>
@@ -276,7 +274,7 @@ const NewProtocolDialog = ({
       }
 
       // The languages field's own validation refuses an empty choice.
-      const locales = resolveChoice(values, 'languages');
+      const locales = chosenLanguages(values);
       const defaultLocale = pickDefaultLocale(
         locales,
         values.defaultLocale,
@@ -336,7 +334,6 @@ const NewProtocolDialog = ({
                   languageMessages.protocolLanguagesHint,
                 )}
                 choices={getLanguageChoices(intl.locale)}
-                declared={NO_LANGUAGES}
                 initialValue={[preferredLocale]}
                 nameChosen
               />
