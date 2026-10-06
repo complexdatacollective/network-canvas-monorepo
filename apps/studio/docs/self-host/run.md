@@ -126,9 +126,11 @@ rate-limit store are reachable only from the stack's own network.
 docker compose up -d
 ```
 
-**`api` and `worker` restart in a loop until the next step has run**, and
-`docker compose ps` says `Restarting (1)`. That is expected: there is no schema
-for them to verify yet. It stops the moment `migrate` has run.
+**`api` and `worker` start closed until the next step has run.** There is no
+schema yet, so `api` answers every request with the maintenance page and its
+`/readyz` fails naming the reason, and `worker` runs no jobs. That is expected.
+Both check again every few seconds and open by themselves once `migrate` has
+run, with no restart.
 
 ## 6. Create the schema, and read what it prints
 

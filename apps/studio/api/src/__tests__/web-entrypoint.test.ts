@@ -57,6 +57,12 @@ describe.skipIf(!db)('the web entrypoint', () => {
 
         await applySchema(scratch.pool);
         await web.waitForOutput(/Database schema current\./, SCHEMA_WAIT_MS);
+        // The gate stays closed until the keyring check after it has passed
+        // too (#1901); a request between the two lines would be answered 503.
+        await web.waitForOutput(
+          /Schema current and keyring verified; serving\./,
+          SCHEMA_WAIT_MS,
+        );
 
         const email = `late-schema-${Date.now()}@example.org`;
         const response = await fetch(`${origin}/api/auth/sign-in/magic-link`, {
