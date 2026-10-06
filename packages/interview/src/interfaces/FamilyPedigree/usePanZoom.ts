@@ -73,6 +73,9 @@ export type PanZoom = {
   ) => void;
   /** Where an element's centre sits in the content, unscaled. */
   contentPositionOf: (element: HTMLElement) => { x: number; y: number };
+  /** How many times the participant has panned or zoomed. Moves the
+   * interface makes itself are not counted. */
+  userMoveCount: () => number;
 };
 
 /**
@@ -96,6 +99,7 @@ export function usePanZoom({
   const reduceMotion = useReducedMotion();
   const animations = useRef<AnimationPlaybackControls[]>([]);
   const dragged = useRef(false);
+  const userMoves = useRef(0);
 
   const stopAnimating = useCallback(() => {
     for (const animation of animations.current) animation.stop();
@@ -165,6 +169,7 @@ export function usePanZoom({
       onDrag: ({ delta: [dx, dy], pinching, tap, last }) => {
         if (pinching || tap) return;
         dragged.current = true;
+        userMoves.current++;
         const viewport = viewportRef.current;
         if (viewport) viewport.style.cursor = last ? '' : 'grabbing';
         const target = clampPan(x.get() + dx, y.get() + dy, scale.get());
@@ -174,6 +179,7 @@ export function usePanZoom({
       onPinchStart: () => stopAnimating(),
       onPinch: ({ offset: [nextScale], origin: [originX, originY], event }) => {
         event.preventDefault();
+        userMoves.current++;
         zoomAt(nextScale, originX, originY);
       },
       // The gesture's closing call, a moment after the wheel stops, repeats
@@ -182,6 +188,7 @@ export function usePanZoom({
         if (last) return;
         event.preventDefault();
         stopAnimating();
+        userMoves.current++;
         zoomAt(
           scale.get() * 2 ** wheelZoom(event),
           event.clientX,
@@ -288,6 +295,8 @@ export function usePanZoom({
       const viewport = viewportRef.current;
       if (!viewport) return;
       const box = viewport.getBoundingClientRect();
+      // Only ever asked for by the participant: a button or a key.
+      userMoves.current++;
       zoomAt(
         scale.get() * 2 ** exponent,
         box.left + box.width / 2,
@@ -338,6 +347,8 @@ export function usePanZoom({
     [contentPositionOf, stopAnimating, x, y, scale],
   );
 
+  const userMoveCount = useCallback(() => userMoves.current, []);
+
   // Stable, so effects that use it run for their own reasons only.
   return useMemo(
     () => ({
@@ -350,8 +361,10 @@ export function usePanZoom({
       fitToView,
       holdInPlace,
       contentPositionOf,
+      userMoveCount,
     }),
     [
+      userMoveCount,
       fitToView,
       x,
       y,

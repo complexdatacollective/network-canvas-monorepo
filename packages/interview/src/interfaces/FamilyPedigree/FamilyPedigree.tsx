@@ -491,8 +491,28 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   // The person selected moves to the middle of the part of the screen the
   // side panel leaves uncovered. Someone being added, and the panel itself,
   // are drawn a moment after the panel opens, so this waits for both.
+  // Closing the panel takes back the room made for it: the person moves to
+  // the middle of the whole canvas, unless the participant has since moved
+  // the view themselves. Someone whose addition was cancelled is gone by
+  // then, so the person they were being added to takes their place.
+  const panelAnchorId =
+    panel?.mode.kind === 'add' ? panel.mode.anchor.id : selectedId;
+  const panelCentred = useRef<{
+    id: string;
+    anchorId: string;
+    moves: number;
+  } | null>(null);
   useEffect(() => {
-    if (!selectedId) return;
+    if (!selectedId) {
+      const centred = panelCentred.current;
+      panelCentred.current = null;
+      if (!centred || panZoom.userMoveCount() !== centred.moves) return;
+      const element =
+        nodeRefs.current.get(centred.id) ??
+        nodeRefs.current.get(centred.anchorId);
+      if (element) panZoom.centreOn(element);
+      return;
+    }
     let frame = 0;
     let framesLeft = 30;
     const centre = () => {
@@ -511,10 +531,15 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         visibleRight:
           visibleRight - canvasLeft > 160 ? visibleRight : undefined,
       });
+      panelCentred.current = {
+        id: selectedId,
+        anchorId: panelAnchorId ?? selectedId,
+        moves: panZoom.userMoveCount(),
+      };
     };
     frame = requestAnimationFrame(centre);
     return () => cancelAnimationFrame(frame);
-  }, [selectedId, panZoom]);
+  }, [selectedId, panelAnchorId, panZoom]);
 
   const openAddPanel = (relation: Relation, anchor: Person) =>
     setPanel({
