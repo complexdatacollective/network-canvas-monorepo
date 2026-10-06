@@ -473,6 +473,7 @@
   "architect.localization.missingTranslations.edgeType": "Type de lien",
   "architect.localization.missingTranslations.ego": "Ego",
   "architect.localization.missingTranslations.fallbackLabel": "Les personnes participantes qui choisissent la langue « {language} » voient à la place ce texte dans la langue « {fallback} » :",
+  "architect.localization.missingTranslations.fallbackLabelUnspecified": "Les personnes participantes qui choisissent la langue « {language} » voient à la place ce texte :",
   "architect.localization.missingTranslations.filterLabel": "Afficher les traductions manquantes pour",
   "architect.localization.missingTranslations.filterOption": "{language} ({count, number})",
   "architect.localization.missingTranslations.nodeType": "Type de nœud",

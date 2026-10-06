@@ -473,6 +473,7 @@
   "architect.localization.missingTranslations.edgeType": "Edge type",
   "architect.localization.missingTranslations.ego": "Ego",
   "architect.localization.missingTranslations.fallbackLabel": "Participants who choose {language} see this {fallback} text instead:",
+  "architect.localization.missingTranslations.fallbackLabelUnspecified": "Participants who choose {language} see this text instead:",
   "architect.localization.missingTranslations.filterLabel": "Show missing translations for",
   "architect.localization.missingTranslations.filterOption": "{language} ({count, number})",
   "architect.localization.missingTranslations.nodeType": "Node type",

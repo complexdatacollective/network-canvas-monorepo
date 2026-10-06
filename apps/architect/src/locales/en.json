@@ -1895,6 +1895,10 @@
     "defaultMessage": "Participants who choose {language} see this {fallback} text instead:",
     "description": "Caption above a text that has no translation. language is the language the text is missing in; fallback is the language of the text shown below, which participants see in its place."
   },
+  "architect.localization.missingTranslations.fallbackLabelUnspecified": {
+    "defaultMessage": "Participants who choose {language} see this text instead:",
+    "description": "Caption above a text that has no translation, when the text shown below is in a language the protocol has not identified yet. language is the language the text is missing in."
+  },
   "architect.localization.missingTranslations.filterLabel": {
     "defaultMessage": "Show missing translations for",
     "description": "Label of the menu that chooses which language’s missing translations are listed."

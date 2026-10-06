@@ -39,7 +39,7 @@ import {
   type LocalizedString,
   type LocalizedStringFormat,
 } from '@codaco/protocol-validation';
-import { translationText } from '~/utils/localizedText';
+import { translationText, UNSPECIFIED_LOCALE } from '~/utils/localizedText';
 
 import { useLanguageName } from './useLanguageName';
 
@@ -50,6 +50,12 @@ const messages = defineMessages({
       'Participants who choose {language} see this {fallback} text instead:',
     description:
       'Caption above a text that has no translation. language is the language the text is missing in; fallback is the language of the text shown below, which participants see in its place.',
+  },
+  fallbackLabelUnspecified: {
+    id: 'architect.localization.missingTranslations.fallbackLabelUnspecified',
+    defaultMessage: 'Participants who choose {language} see this text instead:',
+    description:
+      'Caption above a text that has no translation, when the text shown below is in a language the protocol has not identified yet. language is the language the text is missing in.',
   },
   addTranslation: {
     id: 'architect.localization.missingTranslations.addTranslation',
@@ -301,10 +307,14 @@ const MissingTranslationCard = ({
     >
       <figure className="flex flex-col gap-2">
         <figcaption className="text-sm text-current/70">
-          {intl.formatMessage(messages.fallbackLabel, {
-            language,
-            fallback: languageName(fallbackLocale),
-          })}
+          {fallbackLocale === UNSPECIFIED_LOCALE
+            ? intl.formatMessage(messages.fallbackLabelUnspecified, {
+                language,
+              })
+            : intl.formatMessage(messages.fallbackLabel, {
+                language,
+                fallback: languageName(fallbackLocale),
+              })}
         </figcaption>
         <blockquote
           id={quoteId}

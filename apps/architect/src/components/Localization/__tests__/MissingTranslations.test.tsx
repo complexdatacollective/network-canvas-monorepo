@@ -119,6 +119,26 @@ describe('MissingTranslations', () => {
     expect(screen.getByText('items[0].content')).toBeInTheDocument();
   });
 
+  it('leaves an unidentified language out of the caption', () => {
+    renderMissingTranslations({
+      ...trilingual,
+      localization: { defaultLocale: 'und', locales: ['und', 'fr'] },
+      stages: [
+        {
+          id: 'welcome',
+          type: 'Information',
+          label: { und: 'Welcome', fr: 'Bienvenue' },
+          title: { und: 'Hello' },
+          items: [],
+        },
+      ],
+    });
+
+    expect(
+      screen.getByText('Participants who choose French see this text instead:'),
+    ).toBeInTheDocument();
+  });
+
   it('renders markdown text as participants see it', () => {
     renderMissingTranslations();
 

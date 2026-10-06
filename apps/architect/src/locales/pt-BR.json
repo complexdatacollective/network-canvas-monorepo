@@ -473,6 +473,7 @@
   "architect.localization.missingTranslations.edgeType": "Tipo de laço",
   "architect.localization.missingTranslations.ego": "Ego",
   "architect.localization.missingTranslations.fallbackLabel": "Participantes que escolhem {language} veem, em vez disso, este texto em {fallback}:",
+  "architect.localization.missingTranslations.fallbackLabelUnspecified": "Participantes que escolhem {language} veem, em vez disso, este texto:",
   "architect.localization.missingTranslations.filterLabel": "Mostrar traduções ausentes em",
   "architect.localization.missingTranslations.filterOption": "{language} ({count, number})",
   "architect.localization.missingTranslations.nodeType": "Tipo de nó",

@@ -473,6 +473,7 @@
   "architect.localization.missingTranslations.edgeType": "关系类型",
   "architect.localization.missingTranslations.ego": "自我",
   "architect.localization.missingTranslations.fallbackLabel": "选择 {language} 的参与者将看到以下 {fallback} 文本：",
+  "architect.localization.missingTranslations.fallbackLabelUnspecified": "选择 {language} 的参与者将看到以下文本：",
   "architect.localization.missingTranslations.filterLabel": "显示以下语言缺失的翻译",
   "architect.localization.missingTranslations.filterOption": "{language}（{count, number}）",
   "architect.localization.missingTranslations.nodeType": "节点类型",

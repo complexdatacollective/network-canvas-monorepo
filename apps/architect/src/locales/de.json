@@ -473,6 +473,7 @@
   "architect.localization.missingTranslations.edgeType": "Kantentyp",
   "architect.localization.missingTranslations.ego": "Ego",
   "architect.localization.missingTranslations.fallbackLabel": "Teilnehmende, die {language} wählen, sehen stattdessen diesen Text auf {fallback}:",
+  "architect.localization.missingTranslations.fallbackLabelUnspecified": "Teilnehmende, die {language} wählen, sehen stattdessen diesen Text:",
   "architect.localization.missingTranslations.filterLabel": "Fehlende Übersetzungen anzeigen für",
   "architect.localization.missingTranslations.filterOption": "{language} ({count, number})",
   "architect.localization.missingTranslations.nodeType": "Knotentyp",

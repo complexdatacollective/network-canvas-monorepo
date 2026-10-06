@@ -473,6 +473,7 @@
   "architect.localization.missingTranslations.edgeType": "Relatietype",
   "architect.localization.missingTranslations.ego": "Ego",
   "architect.localization.missingTranslations.fallbackLabel": "Deelnemers die {language} kiezen, zien in plaats daarvan deze tekst in het {fallback}:",
+  "architect.localization.missingTranslations.fallbackLabelUnspecified": "Deelnemers die {language} kiezen, zien in plaats daarvan deze tekst:",
   "architect.localization.missingTranslations.filterLabel": "Ontbrekende vertalingen tonen voor",
   "architect.localization.missingTranslations.filterOption": "{language} ({count, number})",
   "architect.localization.missingTranslations.nodeType": "Knooppunttype",
