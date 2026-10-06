@@ -73,7 +73,7 @@ describe('golden hashes', () => {
       {
         "assets": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
         "codebook:edge:knows": "96ba2dfdd02dc597536433e6debfbdaec16f3ffc1738b0377515198ddaa30193",
-        "codebook:node:person": "d1a5f3b18ded42c5777f69897579003fe661e62a19796ad61fa56966a81576f6",
+        "codebook:node:person": "508208bef9a636733579c7062b00429e206a0410d991a505b5da78b4be9c3fd9",
         "settings": "62eb33d43a79ad953fb8d44150ef3d9388bcecb0ec4ba390695b52cdaf43f3ae",
         "stage:nameGenerator1": "da989aa0f95cc6223c4ae6e1e8eecd53698a900bae557d0dae58ba43948f9511",
         "stage:sociogram1": "f20a610875c24d940f59bd6d68d52e3b0453fe778d1a4af9a3a09a7926b0e3a9",
@@ -81,7 +81,7 @@ describe('golden hashes', () => {
       }
     `);
     expect(versionContentHash(sectionHashes)).toMatchInlineSnapshot(
-      `"0b9c4f4b5fccc2992c30c03124ef384279b5e6b3696a6b816f21c62f6d5f7bb4"`,
+      `"51bdcfc218096795c910804bbbc5841736961ef7293e6f92e2f88bafeef8d9dc"`,
     );
   });
 });
