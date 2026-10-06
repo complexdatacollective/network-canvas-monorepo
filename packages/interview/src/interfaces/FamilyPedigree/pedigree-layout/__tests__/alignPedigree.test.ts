@@ -1035,6 +1035,23 @@ describe('partnership chains', () => {
     });
   });
 
+  it('moves a raised partner’s children down with them', () => {
+    // a – b – c, where c's parents are shown, so the chain sits on c's row.
+    // a already has a child of their own, kid.
+    const ped: PedigreeInput = {
+      id: ['mum', 'dad', 'c', 'a', 'b', 'kid'],
+      parents: [[], [], [sp(0), sp(1)], [], [], [sp(3)]],
+      partners: [couple(0, 1), couple(3, 4), couple(4, 2)],
+    };
+    expectEveryCoupleAdjacent(ped);
+    const result = alignPedigree(ped);
+    const levelOf = (person: number) =>
+      result.nid.findIndex((row) => row.includes(person));
+    expect(levelOf(5)).toBe(levelOf(3) + 1);
+    const kidLevel = levelOf(5);
+    expect(result.fam[kidLevel]![result.nid[kidLevel]!.indexOf(5)]).not.toBe(0);
+  });
+
   it('seats a donor to an interior couple outside the chain', () => {
     // a – b – c – d; b + c → kid, with an egg donor.
     expectEveryCoupleAdjacent({
