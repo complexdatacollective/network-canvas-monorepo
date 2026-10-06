@@ -786,22 +786,27 @@ describe.skipIf(!db)('migrate', () => {
 
     it.each([
       [
-        'search_path',
+        'search_path changed',
         `SELECT set_config('search_path', '${JOB_SCHEMA}, public', true);`,
         /left search_path set to "studio_jobs, public" rather than /,
       ],
       [
-        'the team setting',
+        'the team setting set',
         `SELECT set_config('app.team_id', 'some-team', true);`,
         /left app\.team_id set to "some-team" rather than ""/,
       ],
       [
-        'the erasure marker',
+        'a guard trigger disabled',
+        'ALTER TABLE studies DISABLE TRIGGER studies_closed_read_only;',
+        /left the disabled triggers as \[studies_closed_read_only on studies\] rather than \[\]: .* must ENABLE it again/,
+      ],
+      [
+        'the erasure marker set',
         `SELECT set_config('app.erasing_participant_id', 'someone', true);`,
         /left app\.erasing_participant_id set to "someone" rather than ""/,
       ],
     ])(
-      'refuses a backfill that leaves %s changed, and rolls everything back',
+      'refuses a backfill that leaves %s, and rolls everything back',
       async (_name, backfill, message) => {
         const scratch = await emptyDatabase();
         await run(scratch.db.url);

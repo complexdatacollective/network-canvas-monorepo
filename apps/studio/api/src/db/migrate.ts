@@ -102,8 +102,10 @@ const readStamp = Effect.fn('db.migrate.readStamp')(function* (
  * the upgrade as that role. A `search_path` left changed would install the
  * next sidecars, and their broad grants, in another schema. A team or erasure
  * setting left behind would silently narrow, or widen, what the next file's
- * statements can see. And the transaction id must not move: a file that ended
- * the runner's transaction has committed part of the upgrade.
+ * statements can see. A guard trigger a backfill disabled around its own
+ * write must be enabled again, or every later write escapes it. And the
+ * transaction id must not move: a file that ended the runner's transaction
+ * has committed part of the upgrade.
  */
 type SessionState = {
   readonly xid: string;
@@ -112,6 +114,8 @@ type SessionState = {
   readonly searchPath: string;
   readonly team: string;
   readonly erasing: string;
+  /** Every disabled trigger, by name and table. */
+  readonly disabled: string;
 };
 
 export const readSessionState = Effect.fn('db.migrate.readSessionState')(
@@ -121,7 +125,10 @@ export const readSessionState = Effect.fn('db.migrate.readSessionState')(
             current_user as current, session_user as session,
             current_setting('search_path') as "searchPath",
             coalesce(current_setting('${TEAM_GUC}', true), '') as team,
-            coalesce(current_setting('${ERASURE_GUC}', true), '') as erasing`,
+            coalesce(current_setting('${ERASURE_GUC}', true), '') as erasing,
+            (select coalesce(string_agg(format('%s on %s', t.tgname, t.tgrelid::regclass), ', ' order by 1), '')
+               from pg_trigger t
+              where t.tgenabled = 'D' and not t.tgisinternal) as disabled`,
     );
     const row = rows[0];
     if (row === undefined) {
@@ -155,6 +162,12 @@ export const assertSessionState = Effect.fn('db.migrate.assertSessionState')(
       return yield* new MigrationHistoryRefused({
         verdict: 'role',
         message: `${where} left the session running as ${now.current} rather than ${now.session}: end a backfill's SET LOCAL ROLE with RESET ROLE.`,
+      });
+    }
+    if (now.disabled !== baseline.disabled) {
+      return yield* new MigrationHistoryRefused({
+        verdict: 'session',
+        message: `${where} left the disabled triggers as [${now.disabled}] rather than [${baseline.disabled}]: a backfill that disables a guard trigger around its write must ENABLE it again before the file ends.`,
       });
     }
     const changed = [
