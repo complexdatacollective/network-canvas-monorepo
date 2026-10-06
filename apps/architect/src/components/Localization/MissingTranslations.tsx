@@ -1,10 +1,35 @@
-import { createElement, type RefObject, useId } from 'react';
+import { CircleCheck } from 'lucide-react';
+import {
+  AnimatePresence,
+  motion,
+  type Transition,
+  useIsPresent,
+  useReducedMotion,
+} from 'motion/react';
+import {
+  createElement,
+  type ReactNode,
+  type RefObject,
+  useCallback,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import { flushSync } from 'react-dom';
 import { useSelector } from 'react-redux';
 import { Link } from 'wouter';
 
-import { type IntlShape, defineMessages } from '@codaco/app-i18n/messages';
+import {
+  createMessageError,
+  defineMessages,
+  type IntlShape,
+} from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
+import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
+import { useAccessibilityAnnouncements } from '@codaco/fresco-ui/dnd/useAccessibilityAnnouncements';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
+import type { FormSubmissionResult } from '@codaco/fresco-ui/form/store/types';
 import { Label } from '@codaco/fresco-ui/Label';
 import { NativeLink } from '@codaco/fresco-ui/NativeLink';
 import Section from '@codaco/fresco-ui/Section';
@@ -16,18 +41,22 @@ import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { CurrentProtocol, LocaleTag } from '@codaco/protocol-validation';
 import { codebookHref } from '~/components/Codebook/codebookLinks';
+import { confirmDiscardNestedDraft } from '~/components/DialogForm/confirmDiscardNestedDraft';
+import { useNestedDraft } from '~/components/DialogForm/nestedDraftRegistry';
+import { useAppDispatch, useAppStore } from '~/ducks/hooks';
+import { setProtocolTranslation } from '~/ducks/modules/activeProtocol';
 import {
   getLocalizationCoverage,
   getMissingTranslationGroups,
+  type LocaleCoverage,
   type MissingTranslationField,
   type TranslationPlace,
 } from '~/selectors/issues';
 import { getProtocol } from '~/selectors/protocol';
 import { localizedText } from '~/utils/localizedText';
 
+import MissingTranslationCard from './MissingTranslationCard';
 import { useLanguageName } from './useLanguageName';
-
-export const ALL_LANGUAGES = 'all';
 
 const messages = defineMessages({
   title: {
@@ -45,19 +74,21 @@ const messages = defineMessages({
   filterLabel: {
     id: 'architect.localization.missingTranslations.filterLabel',
     defaultMessage: 'Show missing translations for',
-    description: 'Label of the language filter of the missing translations.',
-  },
-  allLanguages: {
-    id: 'architect.localization.missingTranslations.allLanguages',
-    defaultMessage: 'All languages',
     description:
-      'Filter option that shows missing translations in every language.',
+      'Label of the menu that chooses which language’s missing translations are listed.',
   },
   filterOption: {
     id: 'architect.localization.missingTranslations.filterOption',
     defaultMessage: '{language} ({count, number})',
     description:
-      'Filter option for one language. count is how many of its translations are missing.',
+      'Option for one language in the menu that chooses which language’s missing translations are listed. count is how many of its translations are missing.',
+  },
+  summary: {
+    id: 'architect.localization.missingTranslations.summary',
+    defaultMessage:
+      '{count, plural, one {# text has no {language} translation.} other {# texts have no {language} translation.}}',
+    description:
+      'Shown above the list of missing translations for one language. count is how many texts are listed; language is the language they are missing in.',
   },
   complete: {
     id: 'architect.localization.missingTranslations.complete',
@@ -101,11 +132,32 @@ const messages = defineMessages({
     defaultMessage: 'Untitled',
     description: 'Name shown for a stage or type that has no name.',
   },
-  gap: {
-    id: 'architect.localization.missingTranslations.gap',
-    defaultMessage: '{language}: shows {fallback}',
+  saved: {
+    id: 'architect.localization.missingTranslations.saved',
+    defaultMessage: '{language} translation saved.',
     description:
-      'One missing translation. language is the missing language; fallback is the language participants see instead.',
+      'Screen-reader announcement after a missing translation is written from the list. language is the language of the translation.',
+  },
+  savedLanguageComplete: {
+    id: 'architect.localization.missingTranslations.savedLanguageComplete',
+    defaultMessage:
+      '{language} translation saved. Every text now has a {language} translation, so the missing {next} translations are shown.',
+    description:
+      'Screen-reader announcement after the last missing translation in one language is written, when the list moves on to another language. language is the language just completed; next is the language now listed.',
+  },
+  savedEverything: {
+    id: 'architect.localization.missingTranslations.savedEverything',
+    defaultMessage:
+      '{language} translation saved. Every text is now translated into every language.',
+    description:
+      'Screen-reader announcement after the last missing translation in the protocol is written. language is the language of the translation.',
+  },
+  saveFailed: {
+    id: 'architect.localization.missingTranslations.saveFailed',
+    defaultMessage:
+      'This translation could not be saved, because the text or its language has changed since this field was opened. Cancel, then try again.',
+    description:
+      'Error shown in a missing-translation field when the protocol no longer accepts the translation, for example because the language was removed.',
   },
 });
 
@@ -218,40 +270,225 @@ const PlaceHeading = ({ details }: { details: PlaceDetails }) => {
   );
 };
 
-type MissingTranslationsProps = {
-  filter: LocaleTag | typeof ALL_LANGUAGES;
-  onFilterChange: (filter: LocaleTag | typeof ALL_LANGUAGES) => void;
-  headingRef: RefObject<HTMLSpanElement | null>;
+const GROUP_TRANSITION: Transition = {
+  type: 'spring',
+  duration: 0.3,
+  bounce: 0,
 };
 
+const PlaceGroup = ({ children }: { children: ReactNode }) => {
+  const isPresent = useIsPresent();
+  const reduceMotion = useReducedMotion();
+  return (
+    <motion.li
+      className="flex flex-col gap-3"
+      aria-hidden={isPresent ? undefined : true}
+      inert={!isPresent}
+      layout="position"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={reduceMotion ? { duration: 0 } : GROUP_TRANSITION}
+    >
+      {children}
+    </motion.li>
+  );
+};
+
+/** Identifies one missing translation: a text, in one language. */
+const editorKey = (locale: LocaleTag, path: readonly (string | number)[]) =>
+  JSON.stringify([locale, path]);
+
+const withoutKey = (keys: ReadonlySet<string>, key: string) => {
+  const next = new Set(keys);
+  next.delete(key);
+  return next;
+};
+
+/** The first language after `locale`, in declared order, that still has gaps. */
+const nextLanguageWithGaps = (
+  locales: readonly LocaleCoverage[],
+  locale: LocaleTag,
+) => {
+  const index = locales.findIndex((entry) => entry.locale === locale);
+  return [...locales.slice(index + 1), ...locales.slice(0, index)].find(
+    ({ missing }) => missing > 0,
+  )?.locale;
+};
+
+// A card's entry is its Add button, or its editor while that is open.
+const focusEntry = (entry: HTMLElement | undefined) => {
+  const target =
+    entry instanceof HTMLButtonElement
+      ? entry
+      : entry?.querySelector<HTMLElement>('input, [contenteditable="true"]');
+  target?.focus();
+};
+
+type MissingTranslationsProps = {
+  /** The language to list; null, or one with no gaps, lists the first that has gaps. */
+  language: LocaleTag | null;
+  onLanguageChange: (locale: LocaleTag) => void;
+  headingRef: RefObject<HTMLElement | null>;
+};
+
+/**
+ * The texts participants see in another language, one language at a time,
+ * each with a field for writing its translation in place.
+ *
+ * Any number of editors may be open at once, and each keeps its text while
+ * another language is listed: nothing closes an editor except its own Cancel,
+ * Escape or Save, so typed text is never dropped without asking.
+ */
 const MissingTranslations = ({
-  filter,
-  onFilterChange,
+  language,
+  onLanguageChange,
   headingRef,
 }: MissingTranslationsProps) => {
   const intl = useAppIntl();
-  const filterId = useId();
+  const pickerId = useId();
+  const dispatch = useAppDispatch();
+  const store = useAppStore();
+  const { openDialog } = useDialog();
+  const { announce } = useAccessibilityAnnouncements();
   const protocol = useSelector(getProtocol);
   const coverage = useSelector(getLocalizationCoverage);
   const groups = useSelector(getMissingTranslationGroups);
   const languageName = useLanguageName();
 
-  if (!protocol) return null;
+  const [openEditors, setOpenEditors] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
+  const [autoFocusKey, setAutoFocusKey] = useState<string | null>(null);
+  const drafts = useRef(new Map<string, string>());
+  const entries = useRef(new Map<string, HTMLElement>());
 
-  const visibleGroups = groups.flatMap((group) => {
-    const fields = group.fields.flatMap((field) => {
-      const gaps =
-        filter === ALL_LANGUAGES
-          ? field.gaps
-          : field.gaps.filter(({ locale }) => locale === filter);
-      return gaps.length > 0 ? [{ ...field, gaps }] : [];
-    });
-    return fields.length > 0 ? [{ ...group, fields }] : [];
-  });
+  const gapKeys = useMemo(
+    () =>
+      new Set(
+        groups.flatMap(({ fields }) =>
+          fields.flatMap(({ path, gaps }) =>
+            gaps.map(({ locale }) => editorKey(locale, path)),
+          ),
+        ),
+      ),
+    [groups],
+  );
+  // An editor whose text has since been translated elsewhere (another tab, a
+  // redo) is set aside rather than closed, so it returns with its text if an
+  // undo brings the gap back.
+  const activeEditors = [...openEditors].filter((key) => gapKeys.has(key));
+
+  useNestedDraft(activeEditors.length > 0, () =>
+    activeEditors.some((key) => (drafts.current.get(key) ?? '').trim() !== ''),
+  );
+
+  const clearAutoFocus = useCallback(() => setAutoFocusKey(null), []);
+
+  if (!protocol) return null;
 
   const languagesWithGaps = coverage.locales.filter(
     ({ missing }) => missing > 0,
   );
+  const shown =
+    languagesWithGaps.find(({ locale }) => locale === language) ??
+    languagesWithGaps[0];
+
+  const visibleGroups =
+    shown === undefined
+      ? []
+      : groups.flatMap((group) => {
+          const details = describePlace(intl, protocol, group.place);
+          const cards = group.fields.flatMap((field) => {
+            const gap = field.gaps.find(
+              ({ locale }) => locale === shown.locale,
+            );
+            return gap
+              ? [
+                  {
+                    key: editorKey(shown.locale, field.path),
+                    field,
+                    fallbackLocale: gap.fallbackLocale,
+                  },
+                ]
+              : [];
+          });
+          return cards.length > 0 ? [{ key: group.key, details, cards }] : [];
+        });
+  const shownKeys = visibleGroups.flatMap(({ cards }) =>
+    cards.map(({ key }) => key),
+  );
+
+  const openEditor = (key: string) => {
+    setAutoFocusKey(key);
+    setOpenEditors((keys) => new Set(keys).add(key));
+  };
+
+  const closeEditor = async (key: string) => {
+    const draft = drafts.current.get(key) ?? '';
+    if (draft.trim() !== '' && !(await confirmDiscardNestedDraft(openDialog))) {
+      return;
+    }
+    drafts.current.delete(key);
+    flushSync(() => setOpenEditors((keys) => withoutKey(keys, key)));
+    focusEntry(entries.current.get(key));
+  };
+
+  const save = (
+    key: string,
+    path: readonly (string | number)[],
+    locale: LocaleTag,
+    text: string,
+  ): FormSubmissionResult => {
+    const before = getProtocol(store.getState());
+    dispatch(setProtocolTranslation({ path, locale, text }));
+    const state = store.getState();
+    if (getProtocol(state) === before) {
+      return {
+        success: false,
+        formErrors: [createMessageError(messages.saveFailed)],
+      };
+    }
+
+    drafts.current.delete(key);
+    setOpenEditors((keys) => withoutKey(keys, key));
+
+    const name = languageName(locale);
+    const remaining = getLocalizationCoverage(state).locales;
+    if (
+      remaining.some((entry) => entry.locale === locale && entry.missing > 0)
+    ) {
+      announce(intl.formatMessage(messages.saved, { language: name }));
+      const index = shownKeys.indexOf(key);
+      const neighbour = [shownKeys[index + 1], shownKeys[index - 1]].find(
+        (candidate) =>
+          candidate !== undefined && entries.current.has(candidate),
+      );
+      if (neighbour === undefined) {
+        headingRef.current?.focus();
+      } else {
+        focusEntry(entries.current.get(neighbour));
+      }
+      return { success: true };
+    }
+
+    const next = nextLanguageWithGaps(remaining, locale);
+    if (next === undefined) {
+      announce(
+        intl.formatMessage(messages.savedEverything, { language: name }),
+      );
+    } else {
+      onLanguageChange(next);
+      announce(
+        intl.formatMessage(messages.savedLanguageComplete, {
+          language: name,
+          next: languageName(next),
+        }),
+      );
+    }
+    headingRef.current?.focus();
+    return { success: true };
+  };
 
   return (
     <Section
@@ -262,91 +499,94 @@ const MissingTranslations = ({
       }
       description={intl.formatMessage(messages.description)}
     >
-      {coverage.warnings.length === 0 ? (
-        <Paragraph margin="none">
-          {intl.formatMessage(
-            protocol.localization.locales.length === 1
-              ? messages.singleLanguage
-              : messages.complete,
-          )}
-        </Paragraph>
+      {shown === undefined ? (
+        protocol.localization.locales.length === 1 ? (
+          <Paragraph margin="none">
+            {intl.formatMessage(messages.singleLanguage)}
+          </Paragraph>
+        ) : (
+          <Paragraph margin="none" className="flex items-center gap-2">
+            <CircleCheck aria-hidden className="text-success shrink-0" />
+            {intl.formatMessage(messages.complete)}
+          </Paragraph>
+        )
       ) : (
-        <div className="flex flex-col gap-8">
-          <div className="flex max-w-md flex-col gap-2">
-            <Label htmlFor={filterId}>
-              {intl.formatMessage(messages.filterLabel)}
-            </Label>
-            <NativeSelectField
-              id={filterId}
-              name="missing-translations-language"
-              value={filter}
-              onChange={(value) =>
-                onFilterChange(
-                  typeof value === 'string' ? value : ALL_LANGUAGES,
-                )
-              }
-              options={[
-                {
-                  value: ALL_LANGUAGES,
-                  label: intl.formatMessage(messages.allLanguages),
-                },
-                ...languagesWithGaps.map(({ locale, missing }) => ({
+        <div className="flex flex-col gap-6">
+          {languagesWithGaps.length > 1 && (
+            <div className="flex max-w-md flex-col gap-2">
+              <Label htmlFor={pickerId}>
+                {intl.formatMessage(messages.filterLabel)}
+              </Label>
+              <NativeSelectField
+                id={pickerId}
+                name="missing-translations-language"
+                value={shown.locale}
+                onChange={(value) => {
+                  if (typeof value === 'string') onLanguageChange(value);
+                }}
+                options={languagesWithGaps.map(({ locale, missing }) => ({
                   value: locale,
                   label: intl.formatMessage(messages.filterOption, {
                     language: languageName(locale),
                     count: missing,
                   }),
-                })),
-              ]}
-            />
-          </div>
-          <ul className="flex flex-col gap-8">
-            {visibleGroups.map(({ key, place, fields }) => {
-              const details = describePlace(intl, protocol, place);
-              return (
-                <li key={key} className="flex flex-col gap-3">
-                  <PlaceHeading details={details} />
-                  <ul className="divide-outline flex flex-col divide-y">
-                    {fields.map((field) => {
-                      const fieldPath = formatFieldPath(
-                        field.field,
-                        details.variableNames,
-                      );
-                      const fieldHref = details.fieldHref(field.field);
-                      return (
-                        <li
-                          key={field.field.join('.')}
-                          className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 py-2"
-                        >
-                          <code
-                            dir="ltr"
-                            className="font-monospace text-sm break-all"
-                          >
-                            {fieldHref ? (
-                              <NativeLink render={<Link href={fieldHref} />}>
-                                {fieldPath}
-                              </NativeLink>
-                            ) : (
-                              fieldPath
-                            )}
-                          </code>
-                          <ul className="flex flex-wrap gap-x-4 text-sm">
-                            {field.gaps.map(({ locale, fallbackLocale }) => (
-                              <li key={locale}>
-                                {intl.formatMessage(messages.gap, {
-                                  language: languageName(locale),
-                                  fallback: languageName(fallbackLocale),
-                                })}
-                              </li>
-                            ))}
-                          </ul>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </li>
-              );
+                }))}
+              />
+            </div>
+          )}
+          <Paragraph margin="none">
+            {intl.formatMessage(messages.summary, {
+              count: shown.missing,
+              language: languageName(shown.locale),
             })}
+          </Paragraph>
+          {/* Keyed by language, so switching languages swaps the list
+              outright instead of animating one language's cards out. */}
+          <ul key={shown.locale} className="flex flex-col gap-8">
+            <AnimatePresence initial={false}>
+              {visibleGroups.map(({ key: groupKey, details, cards }) => (
+                <PlaceGroup key={groupKey}>
+                  <PlaceHeading details={details} />
+                  <ul className="flex flex-col gap-3">
+                    <AnimatePresence initial={false}>
+                      {cards.map(({ key, field, fallbackLocale }) => {
+                        const editorOpen = openEditors.has(key);
+                        return (
+                          <MissingTranslationCard
+                            key={key}
+                            value={field.value}
+                            format={field.format}
+                            locale={shown.locale}
+                            fallbackLocale={fallbackLocale}
+                            fieldPath={formatFieldPath(
+                              field.field,
+                              details.variableNames,
+                            )}
+                            fieldHref={details.fieldHref(field.field)}
+                            editorOpen={editorOpen}
+                            initialText={drafts.current.get(key) ?? ''}
+                            autoFocus={autoFocusKey === key}
+                            entryRef={(element) => {
+                              if (element) entries.current.set(key, element);
+                              else entries.current.delete(key);
+                            }}
+                            onOpen={() => openEditor(key)}
+                            onAutoFocused={clearAutoFocus}
+                            onCancel={() => void closeEditor(key)}
+                            onSave={(text) =>
+                              save(key, field.path, shown.locale, text)
+                            }
+                            onDraftChange={(text) => {
+                              drafts.current.set(key, text);
+                            }}
+                          />
+                        );
+                      })}
+                    </AnimatePresence>
+                  </ul>
+                </PlaceGroup>
+              ))}
+            </AnimatePresence>
           </ul>
         </div>
       )}

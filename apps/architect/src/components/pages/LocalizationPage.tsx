@@ -1,14 +1,15 @@
+import { useReducedMotion } from 'motion/react';
 import { useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import type { LocaleTag } from '@codaco/protocol-validation';
 import LanguageList from '~/components/Localization/LanguageList';
-import MissingTranslations, {
-  ALL_LANGUAGES,
-} from '~/components/Localization/MissingTranslations';
+import MissingTranslations from '~/components/Localization/MissingTranslations';
 import PageHeading from '~/components/ProjectNav/PageHeading';
 import { pageInsetClasses } from '~/components/ProjectNav/pageInset';
+import { NAV_HEIGHT_VARIABLE } from '~/utils/navHeight';
 
 const messages = defineMessages({
   title: {
@@ -26,12 +27,20 @@ const messages = defineMessages({
 
 const LocalizationPage = () => {
   const intl = useAppIntl();
-  const [filter, setFilter] = useState<LocaleTag>(ALL_LANGUAGES);
-  const missingHeadingRef = useRef<HTMLSpanElement>(null);
+  const shouldReduceMotion = useReducedMotion();
+  const [language, setLanguage] = useState<LocaleTag | null>(null);
+  const missingSectionRef = useRef<HTMLDivElement>(null);
+  const missingHeadingRef = useRef<HTMLElement>(null);
 
   const showMissing = (locale: LocaleTag) => {
-    setFilter(locale);
-    missingHeadingRef.current?.focus();
+    // Rendered first, so the scroll lands on the section as it will look with
+    // this language's list in it.
+    flushSync(() => setLanguage(locale));
+    missingSectionRef.current?.scrollIntoView({
+      behavior: shouldReduceMotion ? 'auto' : 'smooth',
+      block: 'start',
+    });
+    missingHeadingRef.current?.focus({ preventScroll: true });
   };
 
   return (
@@ -42,11 +51,20 @@ const LocalizationPage = () => {
       />
       <div className="mx-auto my-10 w-full max-w-4xl">
         <LanguageList onShowMissing={showMissing} />
-        <MissingTranslations
-          filter={filter}
-          onFilterChange={setFilter}
-          headingRef={missingHeadingRef}
-        />
+        <div
+          ref={missingSectionRef}
+          // Keeps the section clear of the sticky navigation bar when it is
+          // scrolled to.
+          style={{
+            scrollMarginTop: `calc(var(${NAV_HEIGHT_VARIABLE}) + 1rem)`,
+          }}
+        >
+          <MissingTranslations
+            language={language}
+            onLanguageChange={setLanguage}
+            headingRef={missingHeadingRef}
+          />
+        </div>
       </div>
     </div>
   );

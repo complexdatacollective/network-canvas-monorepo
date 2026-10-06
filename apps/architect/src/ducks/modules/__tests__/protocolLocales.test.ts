@@ -11,6 +11,7 @@ import activeProtocol, {
   removeProtocolLocale,
   setActiveProtocol,
   setProtocolDefaultLocale,
+  setProtocolTranslation,
 } from '~/ducks/modules/activeProtocol';
 import app from '~/ducks/modules/app';
 import { timelineOptions } from '~/ducks/modules/root';
@@ -159,6 +160,63 @@ describe('protocol language reducers and undo', () => {
     store.dispatch(addProtocolLocales({ locales: ['und'] }));
     store.dispatch(addProtocolLocales({ locales: ['not a tag'] }));
     store.dispatch(setProtocolDefaultLocale({ locale: 'de' }));
+
+    expect(pastLength(store)).toBe(before);
+    expect(presentOf(store)).toBe(present);
+  });
+
+  it('adds a translation in one undo step that redo replays', () => {
+    store.dispatch(relabelProtocolLocale({ from: 'und', to: 'en' }));
+    store.dispatch(addProtocolLocales({ locales: ['fr'] }));
+    const untranslated = presentOf(store);
+    const before = pastLength(store);
+
+    store.dispatch(
+      setProtocolTranslation({
+        path: ['stages', 0, 'label'],
+        locale: 'fr',
+        text: 'Bienvenue',
+      }),
+    );
+
+    expect(pastLength(store)).toBe(before + 1);
+    expect(stageLabel(store)).toEqual({ en: 'Welcome', fr: 'Bienvenue' });
+    const translated = presentOf(store);
+
+    store.dispatch(timelineActions.undo());
+    expect(presentOf(store)).toEqual(untranslated);
+
+    store.dispatch(timelineActions.redo());
+    expect(presentOf(store)).toEqual(translated);
+  });
+
+  it('records nothing for a refused translation', () => {
+    store.dispatch(relabelProtocolLocale({ from: 'und', to: 'en' }));
+    store.dispatch(addProtocolLocales({ locales: ['fr'] }));
+    const before = pastLength(store);
+    const present = presentOf(store);
+
+    store.dispatch(
+      setProtocolTranslation({
+        path: ['stages', 0, 'nonexistent'],
+        locale: 'fr',
+        text: 'Bienvenue',
+      }),
+    );
+    store.dispatch(
+      setProtocolTranslation({
+        path: ['stages', 0, 'label'],
+        locale: 'de',
+        text: 'Willkommen',
+      }),
+    );
+    store.dispatch(
+      setProtocolTranslation({
+        path: ['stages', 0, 'label'],
+        locale: 'fr',
+        text: '  ',
+      }),
+    );
 
     expect(pastLength(store)).toBe(before);
     expect(presentOf(store)).toBe(present);

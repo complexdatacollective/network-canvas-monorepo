@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import {
   type CurrentProtocol,
+  escapeMessageText,
+  messageText,
   validateProtocol,
 } from '@codaco/protocol-validation';
 
@@ -13,6 +15,7 @@ import {
   relabelLocale,
   removeLocale,
   setDefaultLocale,
+  setTranslation,
 } from '../localeOperations';
 
 const NODE_TYPE = 'person';
@@ -283,5 +286,76 @@ describe('relabelLocale', () => {
       ok: false,
       reason: 'unspecified-tag',
     });
+  });
+});
+
+describe('setTranslation', () => {
+  const distantLabel = [
+    'codebook',
+    'node',
+    NODE_TYPE,
+    'variables',
+    VARIABLE,
+    'options',
+    1,
+    'label',
+  ];
+
+  it('writes one translation and keeps every other one', async () => {
+    const protocol = protocolOf(
+      setTranslation(bilingual(), distantLabel, 'fr', 'Lointain'),
+    );
+
+    expect(textOf(protocol)).toEqual({
+      ...textOf(bilingual()),
+      options: [
+        { en: 'Close', fr: 'Proche' },
+        { en: 'Distant', fr: 'Lointain' },
+      ],
+    });
+    expect(protocol.localization).toEqual(bilingual().localization);
+    expect((await validateProtocol(protocol)).success).toBe(true);
+  });
+
+  it('stores the text escaped as message syntax, as the stage editors do', () => {
+    const text = "Don't {skip} this";
+    const protocol = protocolOf(
+      setTranslation(bilingual(), ['stages', 0, 'title'], 'fr', text),
+    );
+    const stored = textOf(protocol).title?.fr;
+
+    expect(stored).toBe(escapeMessageText(text));
+    expect(messageText(stored ?? '')).toBe(text);
+  });
+
+  it('refuses a path where the protocol holds no participant-facing text', () => {
+    for (const path of [
+      ['stages', 0, 'nonexistent'],
+      ['stages', 0],
+      ['stages', '0', 'title'],
+      ['stages', 0, 'title', 'en'],
+      [],
+    ]) {
+      expect(setTranslation(bilingual(), path, 'fr', 'Bonjour')).toEqual({
+        ok: false,
+        reason: 'not-localized-string',
+      });
+    }
+  });
+
+  it('refuses a language the protocol does not declare', () => {
+    expect(setTranslation(bilingual(), distantLabel, 'de', 'Fern')).toEqual({
+      ok: false,
+      reason: 'not-declared',
+    });
+  });
+
+  it('refuses blank text', () => {
+    for (const text of ['', '   ', '\n\t']) {
+      expect(setTranslation(bilingual(), distantLabel, 'fr', text)).toEqual({
+        ok: false,
+        reason: 'blank-text',
+      });
+    }
   });
 });

@@ -54,7 +54,7 @@ function languageRow(page: Page, code: string): Locator {
     .filter({ has: page.getByText(code, { exact: true }) });
 }
 
-test('adds a language, lists its missing translations, and keeps the default language from being removed', async ({
+test('adds a language, lists its missing translations, keeps the default language from being removed, reorders languages, and translates in place', async ({
   architectPage: page,
   seed,
 }) => {
@@ -126,13 +126,13 @@ test('adds a language, lists its missing translations, and keeps the default lan
   });
   expect(added.stages).toEqual(before.stages);
 
-  // The missing translations, listed under the stage they belong to.
+  // The missing translations, listed under the stage they belong to. French is
+  // the only language with gaps, so there is no language to choose between.
   await french
     .getByRole('button', { name: 'Show 3 missing translations' })
     .click();
-  await expect(
-    missing.getByRole('combobox', { name: 'Show missing translations for' }),
-  ).toHaveValue('fr');
+  await expect(missing).toContainText('3 texts have no French translation.');
+  await expect(missing.getByRole('combobox')).toHaveCount(0);
   // Each group is headed by the kind of place and its name.
   const stageGroup = missing.getByRole('heading', {
     name: `Stage ${STAGE_NAME}`,
@@ -142,15 +142,19 @@ test('adds a language, lists its missing translations, and keeps the default lan
   await expect(
     stageGroup.getByRole('link', { name: STAGE_NAME, exact: true }),
   ).toHaveAttribute('href', '/protocol/stage/welcome');
-  for (const path of STAGE_TEXT_PATHS) {
-    // The field's own row, not the stage group around it, which holds every
-    // field path too.
-    const row = missing
+  // The text's own card, not the stage group around it, which holds every
+  // field path too.
+  const missingCard = (path: string) =>
+    missing
       .getByRole('listitem')
       .filter({ has: page.getByText(path, { exact: true }) })
       .filter({ hasNot: page.getByRole('heading') });
-    await expect(row).toContainText('French: shows English');
+  for (const path of STAGE_TEXT_PATHS) {
+    await expect(missingCard(path)).toContainText(
+      'Participants who choose French see this English text instead:',
+    );
   }
+  await expect(missingCard('title')).toContainText('Welcome to the study');
 
   // Make French the default.
   await french
@@ -172,23 +176,68 @@ test('adds a language, lists its missing translations, and keeps the default lan
   });
   expect(frenchDefault.stages).toEqual(before.stages);
 
-  // The default language cannot be removed, and the row says why.
-  await expect(
-    french.getByRole('button', { name: 'Remove', exact: true }),
-  ).toBeDisabled();
-  await expect(french).toContainText(
+  // The default language cannot be removed, and its Remove button says why.
+  // The button stays focusable, so the reason reaches keyboard users too.
+  const removeFrench = french.getByRole('button', {
+    name: 'Remove',
+    exact: true,
+  });
+  await expect(removeFrench).toBeDisabled();
+  await expect(removeFrench).toHaveAccessibleDescription(
     'To remove the default language, make another language the default first.',
   );
+  await removeFrench.focus();
+  await expect(removeFrench).toBeFocused();
   // Nor can English, though it is no longer the default: its texts exist in
   // no other language yet.
-  await expect(
-    english.getByRole('button', { name: 'Remove', exact: true }),
-  ).toBeDisabled();
-  await expect(english).toContainText(
+  const removeEnglish = english.getByRole('button', {
+    name: 'Remove',
+    exact: true,
+  });
+  await expect(removeEnglish).toBeDisabled();
+  await expect(removeEnglish).toHaveAccessibleDescription(
     '3 texts exist only in English. Translate them into another language before removing English.',
   );
   expect((await readProtocolJson(page)).localization.locales).toEqual([
     'en',
     'fr',
   ]);
+
+  // Languages reorder from the keyboard as well as by dragging. The order is
+  // the order participants are offered them in, so it is saved.
+  await french
+    .getByRole('button', { name: 'Reorder French, position 2 of 2' })
+    .press('ArrowUp');
+  const reordered = await readProtocolJson(
+    page,
+    (protocol) => protocol.localization.locales[0] === 'fr',
+  );
+  expect(reordered.localization).toEqual({
+    defaultLocale: 'fr',
+    locales: ['fr', 'en'],
+  });
+  await expect(
+    french.getByRole('button', { name: 'Reorder French, position 1 of 2' }),
+  ).toBeFocused();
+
+  // A missing translation can be written where it is listed. Saved, the text
+  // leaves the list and the language's progress counts it.
+  const nameCard = missingCard('label');
+  await nameCard
+    .getByRole('button', { name: 'Add French translation', exact: true })
+    .click();
+  await nameCard
+    .getByRole('textbox', { name: 'French translation', exact: true })
+    .fill('Bienvenue');
+  await nameCard.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(missingCard('label')).toHaveCount(0);
+  await expect(missing).toContainText('2 texts have no French translation.');
+  await expect(french).toContainText('1 of 3 texts translated');
+  const translated = await readProtocolJson(page, (protocol) =>
+    Object.hasOwn(protocol.stages[0]?.label ?? {}, 'fr'),
+  );
+  expect(translated.stages[0]?.label).toEqual({
+    en: STAGE_NAME,
+    fr: 'Bienvenue',
+  });
 });

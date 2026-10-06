@@ -8,7 +8,7 @@ import {
   type LocalizedString,
   type LocalizedStringHit,
 } from '@codaco/protocol-validation';
-import { UNSPECIFIED_LOCALE } from '~/utils/localizedText';
+import { UNSPECIFIED_LOCALE, withTranslation } from '~/utils/localizedText';
 
 export type LocaleOperationFailure =
   /** Not a well-formed BCP 47 language tag. */
@@ -20,7 +20,11 @@ export type LocaleOperationFailure =
   /** The default language cannot be removed until another is the default. */
   | 'default-locale'
   /** Removing the language would leave text with no translation at all. */
-  | 'would-empty';
+  | 'would-empty'
+  /** The path is not where the protocol holds a participant-facing text. */
+  | 'not-localized-string'
+  /** A translation participants would see as nothing. */
+  | 'blank-text';
 
 export type LocaleOperationResult =
   | { ok: true; protocol: CurrentProtocol }
@@ -210,6 +214,36 @@ export const moveLocale = (
         locales: [...others.slice(0, target), locale, ...others.slice(target)],
       },
     },
+  };
+};
+
+const isSamePath = (
+  a: readonly (string | number)[],
+  b: readonly (string | number)[],
+) => a.length === b.length && a.every((segment, index) => segment === b[index]);
+
+/**
+ * Writes one translation of one participant-facing text, stored exactly as the
+ * stage editors store it. `path` must be where `collectLocalizedStrings` finds
+ * that text, so nothing else in the protocol can be written through it.
+ */
+export const setTranslation = (
+  protocol: CurrentProtocol,
+  path: readonly (string | number)[],
+  locale: LocaleTag,
+  text: string,
+): LocaleOperationResult => {
+  if (!isDeclared(protocol, locale)) return fail('not-declared');
+  if (text.trim() === '') return fail('blank-text');
+  const hit = collectLocalizedStrings(protocol).find((candidate) =>
+    isSamePath(candidate.path, path),
+  );
+  if (!hit) return fail('not-localized-string');
+  return {
+    ok: true,
+    protocol: createNextState(protocol, (draft) => {
+      setAtPath(draft, hit.path, withTranslation(hit.value, locale, text));
+    }),
   };
 };
 

@@ -99,7 +99,10 @@ describe('getMissingTranslationGroups()', () => {
         place: { kind: 'codebook', entity: 'node', entityType: 'person' },
         fields: [
           {
+            path: ['codebook', 'node', 'person', 'label'],
             field: ['label'],
+            format: 'plain',
+            value: { en: 'Person' },
             gaps: [
               { locale: 'fr', fallbackLocale: 'en' },
               { locale: 'de', fallbackLocale: 'en' },
@@ -112,12 +115,49 @@ describe('getMissingTranslationGroups()', () => {
         place: { kind: 'stage', stageId: 'welcome' },
         fields: [
           {
+            path: ['stages', 0, 'title'],
             field: ['title'],
+            format: 'plain',
+            value: { en: 'Hello', fr: 'Bonjour' },
             gaps: [{ locale: 'de', fallbackLocale: 'en' }],
           },
         ],
       },
     ]);
+  });
+
+  it('marks text participants see as markdown', () => {
+    const protocol = trilingual();
+    const withText: CurrentProtocol = {
+      ...protocol,
+      stages: [
+        ...protocol.stages,
+        {
+          id: 'intro',
+          type: 'Information',
+          label: { en: 'Intro', fr: 'Intro', de: 'Intro' },
+          title: { en: 'About', fr: 'À propos', de: 'Über' },
+          items: [
+            {
+              id: 'text',
+              type: 'text',
+              content: { en: 'Name **people**', fr: 'Nommez' },
+            },
+          ],
+        },
+      ],
+    };
+
+    const content = getMissingTranslationGroups(stateWith(withText))
+      .find(({ key }) => key === 'stage:intro')
+      ?.fields.find(({ field }) => field.join('.') === 'items.0.content');
+
+    expect(content).toMatchObject({
+      path: ['stages', 1, 'items', 0, 'content'],
+      format: 'markdown',
+      value: { en: 'Name **people**', fr: 'Nommez' },
+      gaps: [{ locale: 'de', fallbackLocale: 'en' }],
+    });
   });
 });
 

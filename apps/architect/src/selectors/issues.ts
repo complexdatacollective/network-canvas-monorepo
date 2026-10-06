@@ -6,6 +6,8 @@ import {
   type CurrentProtocol,
   findVariableRoleConflicts,
   type LocaleTag,
+  type LocalizedString,
+  type LocalizedStringFormat,
   type ProtocolLocalizationWarning,
 } from '@codaco/protocol-validation';
 import {
@@ -169,12 +171,17 @@ const EMPTY_COVERAGE: LocalizationCoverage = {
   warnings: [],
 };
 
+/** Every participant-facing string, in protocol order, walked once per edit. */
+const getLocalizedStrings = createSelector([getProtocol], (protocol) =>
+  protocol ? collectLocalizedStrings(protocol) : [],
+);
+
 export const getLocalizationCoverage = createSelector(
-  [getProtocol],
-  (protocol): LocalizationCoverage => {
+  [getProtocol, getLocalizedStrings],
+  (protocol, strings): LocalizationCoverage => {
     if (!protocol) return EMPTY_COVERAGE;
     const { locales, defaultLocale } = protocol.localization;
-    const total = collectLocalizedStrings(protocol).filter((hit) =>
+    const total = strings.filter((hit) =>
       locales.some((locale) => Object.hasOwn(hit.value, locale)),
     ).length;
     const warnings = analyzeProtocolLocalization(protocol);
@@ -230,8 +237,14 @@ export type MissingTranslationGap = {
 };
 
 export type MissingTranslationField = {
+  /** The string's path in the protocol, which `setProtocolTranslation` takes. */
+  path: readonly (string | number)[];
   /** The string's path below its place, e.g. `['prompts', 0, 'text']`. */
   field: readonly (string | number)[];
+  /** Whether participants see the string rendered as markdown. */
+  format: LocalizedStringFormat;
+  /** Every translation the string has, including each gap's fallback. */
+  value: LocalizedString;
   gaps: readonly MissingTranslationGap[];
 };
 
@@ -278,35 +291,41 @@ const locateTranslation = (
  * them, one row per string, in the order the protocol declares them.
  */
 export const getMissingTranslationGroups = createSelector(
-  [getProtocol, getLocalizationCoverage],
-  (protocol, coverage): readonly MissingTranslationGroup[] => {
+  [getProtocol, getLocalizedStrings, getLocalizationCoverage],
+  (protocol, strings, coverage): readonly MissingTranslationGroup[] => {
     if (!protocol) return [];
-    const groups = new Map<
-      string,
-      {
-        place: TranslationPlace;
-        fields: Map<
-          string,
-          MissingTranslationField & { gaps: MissingTranslationGap[] }
-        >;
-      }
-    >();
+    const gapsByPath = new Map<string, MissingTranslationGap[]>();
     for (const warning of coverage.warnings) {
-      const { key, place, field } = locateTranslation(protocol, warning.path);
-      const group = groups.get(key) ?? { place, fields: new Map() };
-      groups.set(key, group);
-      const fieldKey = JSON.stringify(warning.path);
-      const entry = group.fields.get(fieldKey) ?? { field, gaps: [] };
-      group.fields.set(fieldKey, entry);
-      entry.gaps.push({
+      const pathKey = JSON.stringify(warning.path);
+      const gaps = gapsByPath.get(pathKey) ?? [];
+      gapsByPath.set(pathKey, gaps);
+      gaps.push({
         locale: warning.locale,
         fallbackLocale: warning.fallbackLocale,
+      });
+    }
+    const groups = new Map<
+      string,
+      { place: TranslationPlace; fields: MissingTranslationField[] }
+    >();
+    for (const hit of strings) {
+      const gaps = gapsByPath.get(JSON.stringify(hit.path));
+      if (!gaps) continue;
+      const { key, place, field } = locateTranslation(protocol, hit.path);
+      const group = groups.get(key) ?? { place, fields: [] };
+      groups.set(key, group);
+      group.fields.push({
+        path: hit.path,
+        field,
+        format: hit.format,
+        value: hit.value,
+        gaps,
       });
     }
     return [...groups].map(([key, group]) => ({
       key,
       place: group.place,
-      fields: [...group.fields.values()],
+      fields: group.fields,
     }));
   },
 );

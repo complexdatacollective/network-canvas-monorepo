@@ -6,9 +6,7 @@ import { Provider } from 'react-redux';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
-import MissingTranslations, {
-  ALL_LANGUAGES,
-} from '~/components/Localization/MissingTranslations';
+import MissingTranslations from '~/components/Localization/MissingTranslations';
 import CodebookPage from '~/components/pages/CodebookPage';
 import { setActiveProtocol } from '~/ducks/modules/activeProtocol';
 import { rootReducer } from '~/ducks/modules/root';
@@ -86,8 +84,8 @@ const renderAttributeTable = (store: Store) =>
   render(
     <Provider store={store}>
       <MissingTranslations
-        filter={ALL_LANGUAGES}
-        onFilterChange={() => {}}
+        language={null}
+        onLanguageChange={() => {}}
         headingRef={createRef()}
       />
       <Variables entity="node" type="person" variables={[ageRow]} />

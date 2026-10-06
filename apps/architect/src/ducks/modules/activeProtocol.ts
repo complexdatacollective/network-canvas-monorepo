@@ -29,6 +29,7 @@ import {
   relabelLocale,
   removeLocale,
   setDefaultLocale,
+  setTranslation,
 } from './protocol/localeOperations';
 import stages from './protocol/stages';
 
@@ -112,6 +113,22 @@ const activeProtocolSlice = createSlice({
       applyLocaleOperation(state, (protocol) =>
         relabelLocale(protocol, action.payload.from, action.payload.to),
       ),
+    setProtocolTranslation: (
+      state,
+      action: PayloadAction<{
+        path: readonly (string | number)[];
+        locale: string;
+        text: string;
+      }>,
+    ) =>
+      applyLocaleOperation(state, (protocol) =>
+        setTranslation(
+          protocol,
+          action.payload.path,
+          action.payload.locale,
+          action.payload.text,
+        ),
+      ),
     clearActiveProtocol: (_state) => {
       // Assets are namespaced per protocol and owned by the library; deleting a
       // protocol (deleteLibraryProtocol) removes its assets. Closing the active
@@ -178,6 +195,7 @@ export const {
   setProtocolDefaultLocale,
   moveProtocolLocale,
   relabelProtocolLocale,
+  setProtocolTranslation,
 } = activeProtocolSlice.actions;
 
 export const actionCreators = {
