@@ -1,13 +1,18 @@
 import { Effect, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { isNewer, ReleaseManifest, UPDATE_MANIFEST_URL } from '../manifest.ts';
+import {
+  isNewer,
+  ReleaseManifest,
+  UPDATE_MANIFEST_URL,
+  upgradeAppliesMigration,
+} from '../manifest.ts';
 
 const VALID = {
   version: '1.2.3',
   date: '2026-10-06T14:30:00Z',
   notes: 'https://releases.networkcanvas.com/studio/1.2.3/notes',
-  schemaChange: false,
+  migration: '0002_add_widgets',
 };
 
 const decodes = (value: unknown): boolean =>
@@ -22,7 +27,7 @@ describe('the release manifest', () => {
   it('admits the document #1910 publishes', () => {
     expect(decodes(VALID)).toBe(true);
     expect(decodes({ ...VALID, date: '2026-10-06T14:30:00.123Z' })).toBe(true);
-    expect(decodes({ ...VALID, schemaChange: true })).toBe(true);
+    expect(decodes({ ...VALID, migration: '0001_initial' })).toBe(true);
   });
 
   it('drops a key it does not know rather than refusing the publisher’s addition', () => {
@@ -47,10 +52,38 @@ describe('the release manifest', () => {
     ['a month that does not exist', { date: '2026-13-01T00:00:00Z' }],
     ['an http link', { notes: 'http://releases.networkcanvas.com/n' }],
     ['a link that is not a URL', { notes: 'notes' }],
-    ['a string for schemaChange', { schemaChange: 'false' }],
-    ['no schemaChange', { schemaChange: undefined }],
+    ['no migration', { migration: undefined }],
+    ['a migration that is not a string', { migration: 2 }],
+    ['a migration with no slug', { migration: '0002' }],
+    ['a migration with a short ordinal', { migration: '2_add_widgets' }],
+    ['a migration with an upper-case slug', { migration: '0002_Add' }],
+    ['a migration path', { migration: 'migrations/0002_add_widgets' }],
   ] as const)('refuses %s', (_name, change) => {
     expect(decodes({ ...VALID, ...change })).toBe(false);
+  });
+});
+
+describe('upgradeAppliesMigration', () => {
+  const release = (migration: string): ReleaseManifest => ({
+    ...VALID,
+    migration,
+  });
+
+  it('finds a migration when the release skipped to carries one the running build lacks, though the release itself is code-only', () => {
+    // Running 1.0 (newest 0001); 1.1 added 0002; the target 1.2 added none.
+    expect(
+      upgradeAppliesMigration(release('0002_add_widgets'), '0001_initial'),
+    ).toBe(true);
+  });
+
+  it('finds none when the release’s newest migration is the running build’s', () => {
+    expect(
+      upgradeAppliesMigration(release('0001_initial'), '0001_initial'),
+    ).toBe(false);
+  });
+
+  it('finds one when the running build’s migrations are unknown', () => {
+    expect(upgradeAppliesMigration(release('0001_initial'), null)).toBe(true);
   });
 });
 

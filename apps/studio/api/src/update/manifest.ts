@@ -1,5 +1,7 @@
 import { Schema } from 'effect';
 
+import { MIGRATION_VERSION } from '../db/migrations-document.ts';
+
 // The release manifest Studio's daily update check reads (#1901). #1901 defines
 // the shape and #1910's publisher conforms to it: a publisher that emits
 // anything this schema refuses makes every instance's check settle as
@@ -52,14 +54,12 @@ const isHttpsUrl = Schema.makeFilter<string>(
 /**
  * What the published manifest must carry.
  *
- * `schemaChange` is true when the newest migration version (the newest
- * directory under `apps/studio/api/migrations/`) at this release differs from
- * the newest at the previous release. A migration is generated for any change
- * to the schema fingerprint, a sidecar-only change included, so "true" means
- * "this release applies at least one migration, and rolling back therefore means
- * restoring the backup taken during the upgrade"; "false" means the database is
- * untouched and rolling back is redeploying the previous image. A publisher that
- * cannot compare the two lists must emit `true`.
+ * `migration` is the newest migration version at this release: the newest
+ * `NNNN_slug` directory under `apps/studio/api/migrations/`. The manifest does
+ * not say whether the release changes the database, because that is a
+ * property of the upgrade, not of the release: an instance on 1.0 upgrading
+ * to a code-only 1.2 still applies the migration 1.1 added. Only the instance
+ * knows where it starts, so the instance compares (`upgradeAppliesMigration`).
  *
  * `version` is `@codaco/studio-api`'s version, the one `STUDIO_VERSION` and
  * `/api/v1/status` report, because that is what an instance compares it with.
@@ -79,7 +79,7 @@ export const ReleaseManifest = Schema.Struct({
     isRealInstant,
   ),
   notes: Schema.String.check(isHttpsUrl),
-  schemaChange: Schema.Boolean,
+  migration: Schema.String.check(Schema.isPattern(MIGRATION_VERSION)),
 });
 export type ReleaseManifest = typeof ReleaseManifest.Type;
 
@@ -107,4 +107,22 @@ export function isNewer(candidate: string, running: string): boolean {
     if (latest[index] !== current[index]) return latest[index] > current[index];
   }
   return false;
+}
+
+/**
+ * Whether upgrading this instance to `manifest`'s release applies at least one
+ * migration, which decides what rolling the upgrade back means: restoring the
+ * backup taken during the upgrade rather than redeploying the previous image.
+ * `runningMigration` is the newest migration of the build that is running.
+ * Migrations only ever accrue, so for a newer release the two newest versions
+ * differ exactly when the release carries one this build does not, however
+ * many releases the upgrade skips. A running build whose
+ * migrations could not be read (`null`) answers yes, because the safe
+ * rollback advice is the one that keeps the backup.
+ */
+export function upgradeAppliesMigration(
+  manifest: ReleaseManifest,
+  runningMigration: string | null,
+): boolean {
+  return runningMigration === null || manifest.migration !== runningMigration;
 }

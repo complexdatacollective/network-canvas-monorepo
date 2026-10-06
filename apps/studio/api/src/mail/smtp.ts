@@ -33,8 +33,8 @@ export function updateNoticeMessage({
       notesUrl,
       '',
       schemaChange
-        ? 'This release changes the database. Rolling back means restoring the backup taken during the upgrade.'
-        : 'This release does not change the database.',
+        ? 'Upgrading to this release changes the database. Rolling back means restoring the backup taken during the upgrade.'
+        : 'Upgrading to this release does not change the database.',
       ...(deploymentMode === 'self-hosted'
         ? [
             '',

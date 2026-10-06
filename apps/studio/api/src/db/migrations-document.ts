@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
 
 import { Schema } from 'effect';
 
@@ -43,6 +44,17 @@ const REQUIRED_ARTEFACTS = [
 export const MIGRATION_VERSION = /^(\d{4})_([a-z0-9_]+)$/;
 
 export const MIGRATION_SLUG = /^[a-z0-9_]+$/;
+
+/**
+ * The text of `dist/migrations.json`, the document rendered beside the bundle:
+ * what `studio-api migrate` applies, and how a running process knows which
+ * migrations its build carries. Read through `import.meta.url` rather than the
+ * working directory, which a container runtime may set to anything; every
+ * emitted chunk sits beside it (see `vite.config.ts`). Unverified: pass it to
+ * `readVerifiedMigrations`.
+ */
+export const readBundledMigrations = (): Promise<string> =>
+  readFile(new URL('./migrations.json', import.meta.url), 'utf8');
 
 export function migrationVersion(ordinal: number, slug: string): string {
   return `${String(ordinal).padStart(4, '0')}_${slug}`;

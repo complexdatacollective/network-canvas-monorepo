@@ -114,7 +114,7 @@ async function settled(
 }
 
 describe('the update notice', () => {
-  it('tells the owner the version, links the release notes, and says this release does not change the database', async () => {
+  it('tells the owner the version, links the release notes, and says upgrading to it does not change the database', async () => {
     installRpcHarness({
       'status.updateAvailable': () => Effect.succeed(UPDATE),
       'status': () => Effect.succeed(statusIn('managed')),
@@ -124,7 +124,7 @@ describe('the update notice', () => {
     const notice = await screen.findByRole('status');
     expect(notice).toHaveTextContent('Studio 1.3.0 is available');
     expect(notice).toHaveTextContent(
-      'This release does not change the database.',
+      'Upgrading to it does not change the database.',
     );
     expect(notice).not.toHaveTextContent(/backup/i);
     expect(
@@ -132,7 +132,7 @@ describe('the update notice', () => {
     ).toHaveAttribute('href', NOTES_URL);
   });
 
-  it('says a release that changes the database is undone by restoring the backup taken during the upgrade', async () => {
+  it('says an upgrade that changes the database is undone by restoring the backup taken during the upgrade', async () => {
     installRpcHarness({
       'status.updateAvailable': () => Effect.succeed(SCHEMA_UPDATE),
       'status': () => Effect.succeed(statusIn('managed')),
@@ -142,7 +142,7 @@ describe('the update notice', () => {
     const notice = await screen.findByRole('status');
     expect(notice).toHaveTextContent('Studio 1.3.0 is available');
     expect(notice).toHaveTextContent(
-      'This release changes the database: rolling back means restoring the backup taken during the upgrade.',
+      'Upgrading to it changes the database: rolling back means restoring the backup taken during the upgrade.',
     );
     expect(notice).not.toHaveTextContent('does not change the database');
   });

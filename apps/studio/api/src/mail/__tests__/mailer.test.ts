@@ -92,7 +92,9 @@ describe('the update notice', () => {
     expect(plain.subject).toBe('Network Canvas Studio 1.2.3 is available');
     expect(plain.text).toContain('Hello Ada Lovelace,');
     expect(plain.text).toContain(UPDATE_NOTICE.notesUrl);
-    expect(plain.text).toContain('This release does not change the database.');
+    expect(plain.text).toContain(
+      'Upgrading to this release does not change the database.',
+    );
     expect(plain.text).not.toContain('restoring the backup');
 
     const changing = updateNoticeMessage({

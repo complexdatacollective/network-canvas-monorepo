@@ -27,16 +27,20 @@ import {
 const RUNNING = '1.0.0';
 const NEWER = '1.1.0';
 
-const manifestOf = (version: string, schemaChange = false) => ({
+/** The running build's newest migration, and one a later release added. */
+const RUNNING_MIGRATION = '0001_initial';
+const LATER_MIGRATION = '0002_add_widgets';
+
+const manifestOf = (version: string, migration = RUNNING_MIGRATION) => ({
   version,
   date: '2026-10-06T14:30:00Z',
   notes: `https://releases.networkcanvas.com/studio/${version}/notes`,
-  schemaChange,
+  migration,
 });
 
-const reply = (version: string, schemaChange = false): HttpReply => ({
+const reply = (version: string, migration = RUNNING_MIGRATION): HttpReply => ({
   kind: 'json',
-  body: manifestOf(version, schemaChange),
+  body: manifestOf(version, migration),
 });
 
 const OWNER_ID = 'update-check-owner';
@@ -44,6 +48,7 @@ const OWNER_ID = 'update-check-owner';
 const CHECK = updateCheck({
   deploymentMode: 'self-hosted',
   runningVersion: RUNNING,
+  runningMigration: RUNNING_MIGRATION,
 });
 
 const suiteLayer = Layer.mergeAll(
@@ -235,10 +240,17 @@ describe.skipIf(!testDb)('the update check', () => {
           },
         ],
         [
-          'a missing schemaChange',
+          'a missing migration',
           {
             kind: 'json',
-            body: { ...manifestOf(NEWER), schemaChange: undefined },
+            body: { ...manifestOf(NEWER), migration: undefined },
+          },
+        ],
+        [
+          'a migration that is not NNNN_slug',
+          {
+            kind: 'json',
+            body: { ...manifestOf(NEWER), migration: '2_add_widgets' },
           },
         ],
         ['a 404', { kind: 'text', body: 'not found', status: 404 }],
@@ -263,7 +275,7 @@ describe.skipIf(!testDb)('the update check', () => {
           Effect.gen(function* () {
             yield* reset();
             const http = yield* RecordedHttp;
-            yield* http.reply(reply(RUNNING, true));
+            yield* http.reply(reply(RUNNING, LATER_MIGRATION));
 
             assert.strictEqual(outcomeOf(yield* run), 'completed');
 
@@ -310,12 +322,71 @@ describe.skipIf(!testDb)('the update check', () => {
 
             // A later release is a new notification.
             const http = yield* RecordedHttp;
-            yield* http.reply(reply('1.2.0', true));
+            yield* http.reply(reply('1.2.0', LATER_MIGRATION));
             assert.strictEqual(outcomeOf(yield* run), 'completed');
             assert.deepStrictEqual(
               mail.updateNotices.map((notice) => notice.version),
               [NEWER, '1.2.0'],
             );
+          }),
+      );
+
+      it.effect(
+        'decides whether the upgrade changes the database against the running build, so a skipped release’s migration counts',
+        () =>
+          Effect.gen(function* () {
+            // Running 1.0 (newest 0001_initial); 1.1 added 0002_add_widgets;
+            // the newest, 1.2, is code-only. Upgrading 1.0 to 1.2 still
+            // applies 1.1's migration.
+            yield* reset();
+            const http = yield* RecordedHttp;
+            const mail = yield* RecordedMail;
+            yield* http.reply(reply('1.2.0', LATER_MIGRATION));
+
+            assert.strictEqual(outcomeOf(yield* run), 'completed');
+            assert.strictEqual((yield* stored)?.latest_schema_change, true);
+            assert.deepStrictEqual(
+              mail.updateNotices.map((notice) => notice.schemaChange),
+              [true],
+            );
+
+            // A release whose newest migration is the running build's.
+            yield* reset();
+            yield* http.reply(reply('1.2.0', RUNNING_MIGRATION));
+
+            assert.strictEqual(outcomeOf(yield* run), 'completed');
+            assert.strictEqual((yield* stored)?.latest_schema_change, false);
+            assert.deepStrictEqual(
+              mail.updateNotices.map((notice) => notice.schemaChange),
+              [false],
+            );
+          }),
+      );
+
+      it.effect(
+        'reports a schema change when the running build’s migrations cannot be read',
+        () =>
+          Effect.gen(function* () {
+            yield* reset();
+            const http = yield* RecordedHttp;
+            yield* http.reply(reply(NEWER, RUNNING_MIGRATION));
+
+            assert.strictEqual(
+              outcomeOf(
+                yield* Effect.flatMap(enqueue('update-check', {}), () =>
+                  drainWith(
+                    'update-check',
+                    updateCheck({
+                      deploymentMode: 'self-hosted',
+                      runningVersion: RUNNING,
+                      runningMigration: null,
+                    }),
+                  ),
+                ),
+              ),
+              'completed',
+            );
+            assert.strictEqual((yield* stored)?.latest_schema_change, true);
           }),
       );
 

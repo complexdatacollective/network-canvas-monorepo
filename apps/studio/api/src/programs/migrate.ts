@@ -1,5 +1,3 @@
-import { readFile } from 'node:fs/promises';
-
 import { Console, Effect, Layer, Schema } from 'effect';
 
 import { TENANT_ROLES } from '@codaco/studio-sync/rls';
@@ -10,6 +8,7 @@ import {
   migrateDatabaseEffect,
   readVerifiedMigrations,
 } from '../db/migrate.ts';
+import { readBundledMigrations } from '../db/migrations-document.ts';
 import { OwnerScope, Transaction } from '../db/tenant.ts';
 import { Environment } from '../env.ts';
 import { LoggerLive } from '../platform/logger.ts';
@@ -86,13 +85,11 @@ const keyringCheckedBeforeCommit = Effect.gen(function* () {
 });
 
 /**
- * Read through `import.meta.url` rather than the working directory, which a
- * container runtime may set to anything. Rendered beside the bundle at build
- * time by `scripts/render-migrations.ts`; decoded and verified by
- * `readVerifiedMigrations`.
+ * Rendered beside the bundle at build time by `scripts/render-migrations.ts`;
+ * decoded and verified by `readVerifiedMigrations`.
  */
 const readMigrations = Effect.tryPromise({
-  try: () => readFile(new URL('./migrations.json', import.meta.url), 'utf8'),
+  try: readBundledMigrations,
   catch: (cause) => new MigrateFailed({ cause }),
 });
 

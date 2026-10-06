@@ -12,16 +12,16 @@ const messages = defineMessages({
   codeOnly: {
     id: 'studio.updateNotice.codeOnly',
     defaultMessage:
-      'Studio {version} is available, released {releasedAt}. This release does not change the database.',
+      'Studio {version} is available, released {releasedAt}. Upgrading to it does not change the database.',
     description:
-      'Shown above every screen to the person who owns this Studio when a newer release is out and it needs no database change: going back means running the previous version again.',
+      'Shown above every screen to the person who owns this Studio when a newer release is out and upgrading this Studio to it applies no database migration (decided against the version running, so a release skipped over counts): going back means running the previous version again.',
   },
   schemaChange: {
     id: 'studio.updateNotice.schemaChange',
     defaultMessage:
-      'Studio {version} is available, released {releasedAt}. This release changes the database: rolling back means restoring the backup taken during the upgrade.',
+      'Studio {version} is available, released {releasedAt}. Upgrading to it changes the database: rolling back means restoring the backup taken during the upgrade.',
     description:
-      'Shown above every screen to the person who owns this Studio when a newer release is out and it changes the database, which is what makes going back a restore rather than a redeploy.',
+      'Shown above every screen to the person who owns this Studio when a newer release is out and upgrading this Studio to it applies a database migration (decided against the version running, so a release skipped over counts), which is what makes going back a restore rather than a redeploy.',
   },
   releaseNotes: {
     id: 'studio.updateNotice.releaseNotes',

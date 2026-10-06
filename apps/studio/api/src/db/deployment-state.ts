@@ -32,6 +32,9 @@ const deploymentState = pgTable(
     latestVersion: text('latest_version'),
     latestReleasedAt: timestamp('latest_released_at', { withTimezone: true }),
     latestNotesUrl: text('latest_notes_url'),
+    // Whether upgrading the build that ran the check to that release applies a
+    // migration: decided by the check against its own build, since the
+    // manifest names only the release's newest migration.
     latestSchemaChange: boolean('latest_schema_change'),
     // When a check last succeeded, whether or not it found anything new.
     checkedAt: timestamp('checked_at', { withTimezone: true }),
@@ -100,6 +103,10 @@ export type LatestRelease = {
   readonly version: string;
   readonly releasedAt: Date;
   readonly notesUrl: string;
+  /**
+   * Whether upgrading to it applies a migration, as the check decided against
+   * the build it ran in (`upgradeAppliesMigration`).
+   */
   readonly schemaChange: boolean;
 };
 

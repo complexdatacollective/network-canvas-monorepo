@@ -27,10 +27,11 @@ export default defineConfig({
       output: {
         // Beside the entries, not under `assets/`. Several entries mean rollup
         // emits chunks for what they share, and src/version.ts resolves
-        // `../package.json` against its own module URL while src/migrate.ts
-        // resolves `./migrations.json` against its — so every emitted file has
-        // to stay exactly one level below the package root, as dist/index.js
-        // always was. A shared chunk one level deeper reads dist/package.json
+        // `../package.json` against its own module URL while
+        // src/db/migrations-document.ts resolves `./migrations.json` against
+        // its (for `migrate` and the worker's update check alike) — so every
+        // emitted file has to stay exactly one level below the package root,
+        // as dist/index.js always was. A shared chunk one level deeper reads dist/package.json
         // and fails at boot in the image.
         chunkFileNames: '[name]-[hash].js',
       },

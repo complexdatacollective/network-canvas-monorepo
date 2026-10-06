@@ -40,8 +40,11 @@ export type PublicInstanceStatus = (typeof PublicInstanceStatus)['Type'];
 
 /**
  * The one release the instance's owner is told about (#1901). Deliberately
- * narrow: the version, where its notes are, when it came out, and whether it
- * changes the database, which is what decides how an upgrade can be undone.
+ * narrow: the version, where its notes are, when it came out, and whether
+ * upgrading this instance to it changes the database, which is what decides
+ * how the upgrade can be undone. The server decides that against the build it
+ * runs, because a release that changes nothing itself can still sit after one
+ * that did.
  * The question is answered `null` for everyone but the owner, and for an owner
  * whose instance is already on (or ahead of) the newest release.
  */

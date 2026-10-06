@@ -525,43 +525,52 @@ test('every mask names its reason and the run that showed the change', () => {
 });
 
 test('the masks cover their own rows and nothing beside them', () => {
+  const schedule = (name, nextRunAt) => ({
+    id: name,
+    name,
+    queue: name,
+    next_run_at: nextRunAt,
+  });
   const before = exported({
     'studio_jobs.jobs': [],
     'studio_jobs.job_schedules': [
-      {
-        id: 'denied-attempts-summary',
-        queue: 'denied-attempts-summary',
-        next_run_at: '2026-10-06T13:48:00+00:00',
-      },
-      // Did not fire during the run: no job of its queue was added.
-      {
-        id: 'update-check',
-        queue: 'update-check',
-        next_run_at: '2026-10-07T03:00:00+00:00',
-      },
+      schedule('denied-attempts-summary', '2026-10-06T13:48:00+00:00'),
+      // Did not fire during the run.
+      schedule('update-check', '2026-10-07T03:00:00+00:00'),
     ],
     'public.deployment_state': [{ id: 1, maintenance: false, updated_at: 'a' }],
   });
   const after = exported({
     'studio_jobs.jobs': [
       { id: 'probe', queue: 'protocol-store-gc' },
-      { id: 'cron', queue: 'denied-attempts-summary' },
+      // The scheduler's: its schedule's name, its queue, created once due.
+      {
+        id: 'cron',
+        queue: 'denied-attempts-summary',
+        singleton_key: 'denied-attempts-summary',
+        created_at: '2026-10-06T13:48:00.120+00:00',
+      },
       { id: 'stray', queue: 'invitation-delivery' },
+      // In a scheduled queue, as a backfill might write it: no provenance.
+      {
+        id: 'forged',
+        queue: 'update-check',
+        singleton_key: null,
+        created_at: '2026-10-06T13:48:30+00:00',
+      },
+      // The schedule's marks, but created before the schedule fell due.
+      {
+        id: 'early',
+        queue: 'denied-attempts-summary',
+        singleton_key: 'denied-attempts-summary',
+        created_at: '2026-10-06T13:40:00+00:00',
+      },
     ],
     'studio_jobs.job_schedules': [
       // Fired, and the worker moved it forward: masked.
-      {
-        id: 'denied-attempts-summary',
-        queue: 'denied-attempts-summary',
-        next_run_at: '2026-10-06T13:49:00+00:00',
-      },
-      // Moved without firing, as a backfill pushing it a year out would:
-      // a difference.
-      {
-        id: 'update-check',
-        queue: 'update-check',
-        next_run_at: '2027-10-07T03:00:00+00:00',
-      },
+      schedule('denied-attempts-summary', '2026-10-06T13:49:00+00:00'),
+      // Moved without firing, as a backfill pushing it a year out would.
+      schedule('update-check', '2027-10-07T03:00:00+00:00'),
     ],
     'public.deployment_state': [
       // Left in maintenance: the flag is compared, only its date is masked.
@@ -572,35 +581,33 @@ test('the masks cover their own rows and nothing beside them', () => {
   const { unmasked, hits } = applyMasks(
     found,
     MASKS,
-    maskContext(found, after, 'probe'),
+    maskContext(found, before, after, 'probe'),
   );
   assert.deepEqual(
     unmasked
       .map(
         ({ kind, table, column, key }) =>
-          `${kind} ${table} ${column ?? key[0]}`,
+          `${kind} ${table} ${column ?? key[0]}${column ? ` ${key[0]}` : ''}`,
       )
       .sort(),
     [
+      'row-added studio_jobs.jobs early',
+      'row-added studio_jobs.jobs forged',
       'row-added studio_jobs.jobs stray',
-      'value-changed public.deployment_state maintenance',
-      'value-changed studio_jobs.job_schedules next_run_at',
+      'value-changed public.deployment_state maintenance 1',
+      'value-changed studio_jobs.job_schedules next_run_at update-check',
     ],
   );
-  assert.equal(
-    unmasked.find(({ column }) => column === 'next_run_at')?.key[0],
-    'update-check',
-  );
-  assert.equal(hits['the cron schedule advancing'], 1);
   assert.equal(hits['the probe job'], 1);
   assert.equal(hits['a job the cron enqueued'], 1);
+  assert.equal(hits['the cron schedule advancing'], 1);
   assert.equal(hits['the maintenance flag date'], 1);
 
   // Without the probe's id, the probe row is a difference like any other.
   const unknownProbe = applyMasks(
     found,
     MASKS,
-    maskContext(found, after, null),
+    maskContext(found, before, after, null),
   );
   assert.ok(unknownProbe.unmasked.some(({ key }) => key[0] === 'probe'));
 });

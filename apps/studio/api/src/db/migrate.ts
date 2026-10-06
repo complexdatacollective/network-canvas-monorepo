@@ -391,11 +391,16 @@ class MigrationStatementFailed extends Schema.TaggedError<MigrationStatementFail
 /** SQLSTATE class 08, connection exception. */
 const CONNECTION_EXCEPTION_CLASS = '08';
 
+/** SQLSTATE 40003, statement completion unknown: Postgres itself cannot say. */
+const COMPLETION_UNKNOWN = '40003';
+
 /**
  * The migration's COMMIT failed. A refusal Postgres reported — a deferred
  * check the last statements queued — rolled the whole transaction back. A
  * connection that dropped without one (no SQLSTATE, or class 08) may have
- * lost the reply to a commit that happened, so the outcome is unknown, and
+ * lost the reply to a commit that happened, and 40003 is Postgres saying it
+ * cannot tell whether the statement completed; either way the outcome is
+ * unknown, and
  * the history is what tells: migrate run again either reports the database
  * current or applies the release.
  */
@@ -408,7 +413,9 @@ class MigrationCommitFailed extends Schema.TaggedError<MigrationCommitFailed>()(
 ) {
   get rolledBack(): boolean {
     return (
-      this.code !== null && !this.code.startsWith(CONNECTION_EXCEPTION_CLASS)
+      this.code !== null &&
+      !this.code.startsWith(CONNECTION_EXCEPTION_CLASS) &&
+      this.code !== COMPLETION_UNKNOWN
     );
   }
 

@@ -111,10 +111,11 @@ Step by step:
 
 5. **`migrate`** applies every migration this release carries that the
    database does not have yet, all in one transaction, and prints
-   `Applied <versions>.` On a code-only release there are none: it prints
-   `Schema current.` and changes nothing. Either way it exits 0. Within a few
-   seconds the new `api` and `worker` see a schema they recognise — and stay
-   closed, because the flag is still set.
+   `Applied <versions>.` When the database already has them all — an upgrade
+   from the release just before a code-only one — it prints `Schema current.`
+   and changes nothing. Either way it exits 0. Within a few seconds the new
+   `api` and `worker` see a schema they recognise — and stay closed, because
+   the flag is still set.
 6. **`maintenance off`** reopens the instance. Readiness passes again within a
    second or two.
 
@@ -204,10 +205,12 @@ the restore block as written, with the previous digests — and fails unless the
 instance reopens with every row it had before the upgrade.
 
 Putting the old digests back in `.env` and running `up -d` alone works only
-for a code-only release. When the release carried a schema change, the
-previous build does not serve a database the new `migrate` has moved forward:
-its `api` waits, closed, naming the schema, and its `migrate` refuses the
-history as newer. Rolling upgrades are not claimed either, for the same reason
+when the upgrade applied no migration — `migrate` printed `Schema current.` in
+step 5. That depends on the version you upgraded from, not only on the release:
+moving from 1.0 to a code-only 1.2 still applies whatever 1.1 added. When it
+applied one, the previous build does not serve a database the new `migrate`
+has moved forward: its `api` waits, closed, naming the schema, and its
+`migrate` refuses the history as newer. Rolling upgrades are not claimed either, for the same reason
 — the window in step 4 is real, and the maintenance page is what covers it.
 
 Keep the digests you are replacing. `docker compose config --images` before

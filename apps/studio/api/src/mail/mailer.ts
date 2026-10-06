@@ -44,7 +44,11 @@ export type UpdateNoticeInput = {
   name: string;
   version: string;
   notesUrl: string;
-  /** Whether the release changes the database, which decides what rolling back means. */
+  /**
+   * Whether upgrading this instance to the release applies a migration, as the
+   * update check decided against the running build; it decides what rolling
+   * back means.
+   */
   schemaChange: boolean;
   deploymentMode: DeploymentMode;
 };

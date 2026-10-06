@@ -15,6 +15,7 @@ describe('a failed COMMIT', () => {
     ['a socket reset', 'ECONNRESET', 'read ECONNRESET'],
     ['a broken pipe', 'EPIPE', 'write EPIPE'],
     ['a connection exception Postgres sent', '08006', 'connection failure'],
+    ['Postgres saying it cannot tell', '40003', 'statement completion unknown'],
   ])('is an unknown outcome after %s', (_, code, message) => {
     const reported = commitFailed(failure(code, message));
     expect(reported.rolledBack).toBe(false);

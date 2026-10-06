@@ -97,7 +97,7 @@ describe.skipIf(!testDb)('the worker’s handler registrations', () => {
           version: STUDIO_VERSION,
           date: '2026-10-06T14:30:00Z',
           notes: 'https://releases.networkcanvas.com/studio/notes',
-          schemaChange: false,
+          migration: '0001_initial',
         },
       }),
       DeniedAttemptsStore.layer.pipe(Layer.provide(RateLimitStore.layerAbsent)),

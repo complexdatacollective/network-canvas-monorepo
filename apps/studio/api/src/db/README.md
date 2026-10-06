@@ -162,7 +162,10 @@ migrate:generate --name <slug>`) writes the next directory. It refuses a
 - `migrations-document.ts` is what both scripts and the image share: the
   document's shape, how artefacts hash, and `verifyMigrations`, which the image
   runs before it touches a database (a document another build rendered, or one
-  that does not re-hash, is refused).
+  that does not re-hash, is refused). It also reads `dist/migrations.json`
+  beside the bundle, for `migrate` and for the worker's update check, which
+  compares the build's newest migration with the one the release manifest
+  names.
 - `history.ts` is `public.studio_migrations` — one row per applied migration
   with its per-artefact hashes — and the verdict over recorded against image:
   a different migration at a recorded position (reordered), more recorded than

@@ -47,7 +47,7 @@ import { isDeepStrictEqual, parseArgs } from 'node:util';
 /**
  * @typedef {{
  *   probeJobId: string | null,
- *   cronQueues: Set<string>,
+ *   cronJobs: Set<string>,
  *   firedSchedules: Set<string>,
  * }} MaskContext
  */
@@ -97,12 +97,10 @@ export const MASKS = [
     name: 'a job the cron enqueued',
     kind: 'row-added',
     table: 'studio_jobs.jobs',
-    when: (difference, { cronQueues }) =>
-      typeof difference.after === 'object' &&
-      difference.after !== null &&
-      cronQueues.has(difference.after.queue),
+    when: (difference, { cronJobs }) =>
+      cronJobs.has(JSON.stringify(difference.key)),
     reason:
-      'A queue with a schedule (studio_jobs.job_schedules) gets a new row every time its cron fires, upgrade or not. Rows of any other queue still need a reason.',
+      'A schedule (studio_jobs.job_schedules) enqueues a row every time its cron fires, upgrade or not. Masked only with the scheduler’s provenance: the schedule’s name as the singleton key, its queue, and a creation time from when it fell due to its next run. Any other row still needs a reason.',
     seen: 'run A, 6 Oct 2026: one denied-attempts-summary row, completed',
   },
 ];
@@ -127,11 +125,11 @@ export function readExport(dir) {
   return result;
 }
 
-/** The queues a cron schedule enqueues, read from the export itself. */
-function scheduledQueues(exported) {
-  const schedules = exported.get('studio_jobs.job_schedules');
-  return new Set(
-    schedules ? [...schedules.rows.values()].map((row) => row.queue) : [],
+/** A schedule's rows by schedule name, with their export keys. */
+function schedulesByName(exported) {
+  const table = exported.get('studio_jobs.job_schedules');
+  return new Map(
+    table ? [...table.rows].map(([key, row]) => [row.name, { key, row }]) : [],
   );
 }
 
@@ -205,31 +203,36 @@ export function differences(before, after) {
 }
 
 /**
- * What the masks read besides the difference itself. A schedule fired during
- * the run when its queue gained a job between the two exports.
+ * What the masks read besides the difference itself. A row added to the jobs
+ * table is the scheduler's only when the scheduler's marks are all on it: the
+ * worker enqueues a firing under the schedule's name as its singleton key, in
+ * the schedule's queue, after the schedule fell due (its `next_run_at` before
+ * the run) and before the next occurrence it then recorded. A schedule fired
+ * during the run when such a row exists.
  * @returns {MaskContext}
  */
-export function maskContext(found, after, probeJobId) {
-  const cronQueues = scheduledQueues(after);
-  const firedQueues = new Set(
-    found
-      .filter(
-        ({ kind, table, after: row }) =>
-          kind === 'row-added' &&
-          table === 'studio_jobs.jobs' &&
-          cronQueues.has(row?.queue),
-      )
-      .map(({ after: row }) => row.queue),
-  );
-  const schedules = after.get('studio_jobs.job_schedules');
-  const firedSchedules = new Set(
-    schedules
-      ? [...schedules.rows]
-          .filter(([, row]) => firedQueues.has(row.queue))
-          .map(([key]) => key)
-      : [],
-  );
-  return { probeJobId, cronQueues, firedSchedules };
+export function maskContext(found, before, after, probeJobId) {
+  const was = schedulesByName(before);
+  const now = schedulesByName(after);
+  const cronJobs = new Set();
+  const firedSchedules = new Set();
+  for (const { kind, table, key, after: job } of found) {
+    if (kind !== 'row-added' || table !== 'studio_jobs.jobs') continue;
+    const name = job?.singleton_key;
+    const scheduleBefore = was.get(name);
+    const scheduleAfter = now.get(name);
+    if (!scheduleBefore || !scheduleAfter) continue;
+    const created = Date.parse(String(job.created_at));
+    if (
+      job.queue === scheduleAfter.row.queue &&
+      Date.parse(String(scheduleBefore.row.next_run_at)) <= created &&
+      created < Date.parse(String(scheduleAfter.row.next_run_at))
+    ) {
+      cronJobs.add(JSON.stringify(key));
+      firedSchedules.add(scheduleAfter.key);
+    }
+  }
+  return { probeJobId, cronJobs, firedSchedules };
 }
 
 /** Splits differences into those a mask accounts for and those it does not. */
@@ -270,7 +273,7 @@ function main(argv) {
   const { unmasked, hits } = applyMasks(
     found,
     MASKS,
-    maskContext(found, after, values['probe-job'] ?? null),
+    maskContext(found, before, after, values['probe-job'] ?? null),
   );
   const rowsBefore = [...before.values()].reduce(
     (sum, t) => sum + t.rows.size,

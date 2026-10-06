@@ -15,6 +15,8 @@ import {
   releaseNotificationClaim,
 } from '../../db/deployment-state.ts';
 import { sqlErrorsOnly } from '../../db/errors.ts';
+import { readVerifiedMigrations } from '../../db/migrate.ts';
+import { readBundledMigrations } from '../../db/migrations-document.ts';
 import { MaintenanceScope, Transaction } from '../../db/tenant.ts';
 import { type MailFailed, Mailer } from '../../mail/mailer.ts';
 import { SETUP_TABLES } from '../../setup/schema.ts';
@@ -22,6 +24,7 @@ import {
   isNewer,
   ReleaseManifest,
   UPDATE_MANIFEST_URL,
+  upgradeAppliesMigration,
 } from '../../update/manifest.ts';
 import { STUDIO_VERSION } from '../../version.ts';
 import { causeError, deepestMessage } from '../errors.ts';
@@ -51,6 +54,12 @@ export type UpdateCheckOptions = {
   readonly deploymentMode: DeploymentMode;
   /** The version this process is; defaults to the build's own. */
   readonly runningVersion?: string | undefined;
+  /**
+   * The newest migration this process's build carries, `null` for one that
+   * cannot be read; defaults to the newest in the migrations document beside
+   * the bundle, read at each run.
+   */
+  readonly runningMigration?: string | null | undefined;
 };
 
 type Owner = { readonly email: string; readonly name: string };
@@ -82,11 +91,36 @@ const fetchManifest = Effect.gen(function* () {
   Effect.provideService(FetchHttpClient.RequestInit, { redirect: 'error' }),
 );
 
-const asRelease = (manifest: ReleaseManifest): LatestRelease => ({
+/**
+ * The newest migration of the running build, from the same document
+ * `studio-api migrate` applies, verified as this build's. `null` when it
+ * cannot be read — a process run from source has none beside it — which
+ * `upgradeAppliesMigration` answers conservatively.
+ */
+const newestBundledMigration = (label: string) =>
+  Effect.tryPromise(readBundledMigrations).pipe(
+    Effect.flatMap((text) => readVerifiedMigrations(text)),
+    Effect.map((verified) => verified.migrations.at(-1)?.version ?? null),
+    Effect.catch((error) =>
+      Effect.logInfo(
+        `${label}: this build's migrations could not be read (${deepestMessage(error) ?? String(error)}), so a newer release is reported as changing the database.`,
+      ).pipe(Effect.as(null)),
+    ),
+  );
+
+/**
+ * What the check records. Whether the upgrade changes the database is decided
+ * here, against the running build, because the manifest cannot know where
+ * this instance starts from.
+ */
+const asRelease = (
+  manifest: ReleaseManifest,
+  runningMigration: string | null,
+): LatestRelease => ({
   version: manifest.version,
   releasedAt: new Date(manifest.date),
   notesUrl: manifest.notes,
-  schemaChange: manifest.schemaChange,
+  schemaChange: upgradeAppliesMigration(manifest, runningMigration),
 });
 
 /** Every database touch of the check: one scope opener, so the inventory lists one site. */
@@ -217,7 +251,11 @@ export const updateCheck = (options: UpdateCheckOptions) => {
     );
     if (manifest === null) return 'suppressed';
 
-    const release = asRelease(manifest);
+    const runningMigration =
+      options.runningMigration === undefined
+        ? yield* newestBundledMigration(label)
+        : options.runningMigration;
+    const release = asRelease(manifest, runningMigration);
     yield* record(release);
     if (!isNewer(release.version, runningVersion)) return 'completed';
 
