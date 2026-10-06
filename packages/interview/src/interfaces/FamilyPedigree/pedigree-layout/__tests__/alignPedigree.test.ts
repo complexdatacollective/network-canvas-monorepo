@@ -812,3 +812,83 @@ describe('cross-family alignment', () => {
     expect(Math.abs(childA.pos - childB.pos)).toBeLessThanOrEqual(2 + 1e-10);
   });
 });
+
+describe('a participant with two partners', () => {
+  // The Multiple Partners story: You (0) had Ben (4) with a former partner,
+  // Chris (1), and Cleo (5) with a current partner, Alex (2), who is Cleo's
+  // social parent. Sky (6) is the biological child of Alex and Alex's former
+  // partner (3), and a social child of You.
+  const social = (parentIndex: number): ParentConnection => ({
+    parentIndex,
+    edgeType: 'social',
+  });
+  const ped: PedigreeInput = {
+    id: ['you', 'chris', 'alex', 'alexsFormer', 'ben', 'cleo', 'sky'],
+    parents: [
+      [],
+      [],
+      [],
+      [],
+      [sp(0), sp(1)],
+      [sp(0), social(2)],
+      [sp(2), sp(3), social(0)],
+    ],
+    partners: [
+      { partnerIndex1: 0, partnerIndex2: 1, isActive: false },
+      { partnerIndex1: 0, partnerIndex2: 2, isActive: true },
+      { partnerIndex1: 2, partnerIndex2: 3, isActive: false },
+    ],
+  };
+
+  const result = alignPedigree(ped);
+  const parentLevel = result.nid.findIndex((row) => row.includes(0));
+  const childLevel = result.nid.findIndex((row) => row.includes(4));
+  const columnOf = (person: number) => result.nid[parentLevel]!.indexOf(person);
+  const famOf = (person: number) =>
+    result.fam[childLevel]![result.nid[childLevel]!.indexOf(person)]!;
+  // A couple's family is its left partner's 1-based column, and the couple
+  // must be adjacent for the partnership line and the descent to be drawn.
+  const coupleFam = (a: number, b: number) => {
+    expect(Math.abs(columnOf(a) - columnOf(b))).toBe(1);
+    const left = Math.min(columnOf(a), columnOf(b));
+    expect(result.group[parentLevel]![left]).toBeGreaterThan(0);
+    return left + 1;
+  };
+
+  it('places each partner of the participant on either side of them', () => {
+    const you = columnOf(0);
+    expect([columnOf(1), columnOf(2)].toSorted((a, b) => a - b)).toStrictEqual([
+      you - 1,
+      you + 1,
+    ]);
+    // Alex's former partner sits on Alex's other side.
+    expect(Math.abs(columnOf(3) - columnOf(2))).toBe(1);
+    expect(columnOf(3)).not.toBe(you);
+  });
+
+  it('assigns each child to the couple they descend from', () => {
+    expect(famOf(4)).toBe(coupleFam(0, 1));
+    expect(famOf(5)).toBe(coupleFam(0, 2));
+    // Sky descends from her biological parents, not her social parent's couple.
+    expect(famOf(6)).toBe(coupleFam(2, 3));
+  });
+
+  it('draws one line of descent per couple and a social line from You to Sky', () => {
+    const conn = computeConnectors(
+      result,
+      defaultScaling,
+      ped.parents,
+      new Set(['0,2']),
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      new Set(['0,1', '0,2', '2,3']),
+    );
+    expect(conn.parentChildLines).toHaveLength(3);
+    const socialLines = conn.auxiliaryLines.filter(
+      (line) => line.edgeType === 'social',
+    );
+    expect(socialLines).toHaveLength(1);
+  });
+});

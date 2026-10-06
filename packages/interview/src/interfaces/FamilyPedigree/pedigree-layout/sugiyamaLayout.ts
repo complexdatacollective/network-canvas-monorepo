@@ -188,25 +188,42 @@ function buildPedigreeGraph(ped: PedigreeInput): PedigreeGraph {
     }
   }
 
-  // 4. Build family units
+  // 4. Build family units. A child belongs to a partner group when every
+  // member is one of its primary parents. A child with three or more primary
+  // parents can match several groups (its biological parents' couple, and a
+  // parent's partner who is a social parent); it descends from the group most
+  // strongly its parents — a social parent weighs less than a biological or
+  // adoptive one — and from the first such group on a tie.
+  const parentWeight = (edgeType: RelationshipType) =>
+    edgeType === 'social' ? 1 : 2;
+  const familyGroupOf = new Map<number, PartnerGroup>();
+  for (let i = 0; i < n; i++) {
+    const primaryEdges = ped.parents[i]!.filter((p) =>
+      isPrimaryEdge(p.edgeType),
+    );
+    let bestWeight = 0;
+    for (const group of partnerGroups) {
+      let weight = 0;
+      for (const member of group.members) {
+        const edge = primaryEdges.find((p) => p.parentIndex === member);
+        if (!edge) {
+          weight = 0;
+          break;
+        }
+        weight += parentWeight(edge.edgeType);
+      }
+      if (weight > bestWeight) {
+        bestWeight = weight;
+        familyGroupOf.set(i, group);
+      }
+    }
+  }
+
   const familyUnits: FamilyUnit[] = [];
   for (const group of partnerGroups) {
     const children: number[] = [];
-
     for (let i = 0; i < n; i++) {
-      const pConns = ped.parents[i]!;
-      if (pConns.length === 0) continue;
-      const primaryParents = new Set(
-        pConns
-          .filter((p) => isPrimaryEdge(p.edgeType))
-          .map((p) => p.parentIndex),
-      );
-
-      // Child belongs to this family if all group members are among its primary parents
-      const allMatch = group.members.every((m) => primaryParents.has(m));
-      if (allMatch) {
-        children.push(i);
-      }
+      if (familyGroupOf.get(i) === group) children.push(i);
     }
 
     if (children.length > 0) {
@@ -306,6 +323,40 @@ function getChildrenOf(node: number, graph: PedigreeGraph): number[] {
 
 function getParentsOf(node: number, graph: PedigreeGraph): number[] {
   return graph.parents[node]!.map((p) => p.parentIndex);
+}
+
+/**
+ * The people of a set of partnerships in an order that puts every couple
+ * side by side, when one exists: the partnerships must form a single chain,
+ * each person partnered with at most two others and no partnership closing a
+ * loop. The chain starts from its lower-indexed end. Returns null otherwise.
+ */
+function partnershipChain(
+  nodes: number[],
+  couples: number[][],
+): number[] | null {
+  const partnersOf = new Map<number, number[]>(nodes.map((n) => [n, []]));
+  for (const couple of couples) {
+    if (couple.length !== 2) return null;
+    const [a, b] = couple as [number, number];
+    if (!partnersOf.has(a) || !partnersOf.has(b)) continue;
+    partnersOf.get(a)!.push(b);
+    partnersOf.get(b)!.push(a);
+  }
+
+  const ends = nodes.filter((n) => partnersOf.get(n)!.length === 1);
+  if (ends.length !== 2 || nodes.some((n) => partnersOf.get(n)!.length > 2)) {
+    return null;
+  }
+
+  const chain = [Math.min(...ends)];
+  while (chain.length < nodes.length) {
+    const last = chain.at(-1)!;
+    const next = partnersOf.get(last)!.find((p) => !chain.includes(p));
+    if (next === undefined) return null;
+    chain.push(next);
+  }
+  return chain;
 }
 
 function buildConstraintBlocks(
@@ -485,7 +536,22 @@ function buildConstraintBlocks(
     const anchors = blockNodes.filter(
       (n) => (nodeToPartnerGroups.get(n)?.length ?? 0) > 1,
     );
-    if (anchors.length === 1) {
+    // Two or more anchors form a chain (a participant between a former and a
+    // current partner, the current partner beside their own former partner).
+    // Index order would split a couple, so follow the chain instead.
+    const chain =
+      anchors.length > 1
+        ? partnershipChain(
+            blockNodes,
+            [...graph.partnerGroups.entries()]
+              .filter(([gi]) => eligible.has(gi))
+              .map(([, pg]) => pg.members),
+          )
+        : null;
+    if (chain) {
+      for (const n of chain) assigned.add(n);
+      blocks.push({ nodes: chain, barycenter: 0 });
+    } else if (anchors.length === 1) {
       const anchor = anchors[0]!;
       const others = blockNodes.filter((n) => n !== anchor);
       const half = Math.floor(others.length / 2);
@@ -1289,23 +1355,26 @@ function encodePedigreeLayout(
       }
 
       if (parentsAbove.length >= 2) {
-        // Find partner group containing these parents
+        // The partner group the child descends from (see buildPedigreeGraph)
         const parentSet = new Set(parentsAbove);
+        const pg = graph.familyUnits.find(
+          (fu) =>
+            fu.children.includes(node) &&
+            fu.parentGroup.members.length > 1 &&
+            fu.parentGroup.members.every((m) => parentSet.has(m)),
+        )?.parentGroup;
         let famCol = 0;
-        for (const pg of graph.partnerGroups) {
-          if (pg.members.every((m) => parentSet.has(m))) {
-            // Find leftmost member of this group in the layer above
-            let leftCol = Number.POSITIVE_INFINITY;
-            for (const m of pg.members) {
-              const loc = nodeLocation.get(m);
-              if (loc?.layer === layer - 1 && loc.col < leftCol) {
-                leftCol = loc.col;
-              }
+        if (pg) {
+          // Find leftmost member of this group in the layer above
+          let leftCol = Number.POSITIVE_INFINITY;
+          for (const m of pg.members) {
+            const loc = nodeLocation.get(m);
+            if (loc?.layer === layer - 1 && loc.col < leftCol) {
+              leftCol = loc.col;
             }
-            if (leftCol < Number.POSITIVE_INFINITY) {
-              famCol = leftCol + 1; // 1-based
-            }
-            break;
+          }
+          if (leftCol < Number.POSITIVE_INFINITY) {
+            famCol = leftCol + 1; // 1-based
           }
         }
         layerFam.push(famCol);
