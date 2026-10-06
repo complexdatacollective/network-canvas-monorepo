@@ -29,7 +29,6 @@
 
 import { readFileSync, writeFileSync } from 'node:fs';
 import process from 'node:process';
-import { fileURLToPath } from 'node:url';
 
 /** The gate's flag cache is one second; three is the bound on closing. */
 export const CLOSE_BOUND_MS = 3000;
@@ -273,6 +272,8 @@ function main([observePath, eventsPath, outPath]) {
   process.exit(result.ok ? 0 : 1);
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+// `import.meta.main`, not argv[1]: run.sh imports these with the module's path
+// as an argument, which an argv comparison mistakes for running it.
+if (import.meta.main) {
   main(process.argv.slice(2));
 }

@@ -21,7 +21,6 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import process from 'node:process';
-import { fileURLToPath } from 'node:url';
 import { isDeepStrictEqual, parseArgs } from 'node:util';
 
 /**
@@ -244,6 +243,8 @@ function main(argv) {
   process.exit(result.ok ? 0 : 1);
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+// `import.meta.main`, not argv[1]: run.sh imports these with the module's path
+// as an argument, which an argv comparison mistakes for running it.
+if (import.meta.main) {
   main(process.argv.slice(2));
 }

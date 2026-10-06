@@ -16,7 +16,6 @@
 // token is required.
 
 import process from 'node:process';
-import { fileURLToPath } from 'node:url';
 
 export const PACKAGE = 'complexdatacollective/studio-api';
 const REGISTRY = 'https://ghcr.io';
@@ -160,7 +159,9 @@ async function main() {
   );
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+// `import.meta.main`, not argv[1]: run.sh imports these with the module's path
+// as an argument, which an argv comparison mistakes for running it.
+if (import.meta.main) {
   main().catch((error) => {
     console.error(
       `previous-release.mjs: cannot tell whether a release is published: ${error.message}`,
