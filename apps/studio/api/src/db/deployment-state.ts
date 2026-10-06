@@ -115,3 +115,23 @@ export const setMaintenance: (
     .returning(STATE_COLUMNS);
   return yield* theRow(rows);
 }, sqlErrorsOnly);
+
+/** The newest release the daily update check has recorded (#1901). */
+export type LatestRelease = {
+  readonly version: string;
+  readonly releasedAt: Date;
+  readonly notesUrl: string;
+  readonly schemaChange: boolean;
+};
+
+/**
+ * What the worker's update check last recorded, or null when it has recorded
+ * nothing yet (a fresh instance, or one whose manifest has never been
+ * reachable). Read by the application role. STUB: the body lands with the
+ * columns it reads.
+ */
+export const readLatestRelease: () => Effect.Effect<
+  LatestRelease | null,
+  SqlError.SqlError,
+  Database
+> = () => Effect.succeed(null);
