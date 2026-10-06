@@ -51,6 +51,10 @@ async function startApi(env: Record<string, string>): Promise<number> {
   });
   running.push(api);
   await api.waitForOutput(/listening on/);
+  // The gate stays closed until the boot checks pass (#1901): a sign-in
+  // before them is answered 503 and never counted, so the window would not
+  // fill and the request past it would be served.
+  await api.waitForOutput(/Schema current and keyring verified; serving\./);
   return port;
 }
 
@@ -105,7 +109,10 @@ describe.skipIf(!db || !redis)('two API processes on one limiter', () => {
         // not refused.
         for (let call = 0; call < SIGN_IN_LIMIT; call += 1) {
           const port = call % 2 === 0 ? first! : second!;
-          expect((await signIn(port)).status).not.toBe(429);
+          const status = (await signIn(port)).status;
+          // Neither refused by the limiter nor closed, which is never counted.
+          expect(status).not.toBe(429);
+          expect(status).not.toBe(503);
         }
 
         // The next one exceeds a window that neither process could see on its
