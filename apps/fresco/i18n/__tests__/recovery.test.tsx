@@ -15,14 +15,12 @@ const view = (
     </main>
   </RecoveryI18nProvider>
 );
-const previous = document.documentElement.outerHTML;
+const pristine = document.documentElement.cloneNode(true);
 
 afterEach(() => {
   vi.restoreAllMocks();
   document.cookie = 'fresco.locale=; Path=/; Max-Age=0';
-  document.open();
-  document.write(previous);
-  document.close();
+  document.replaceChild(pristine.cloneNode(true), document.documentElement);
 });
 
 // Holds every catalog download open, so a test can observe what renders while
@@ -38,9 +36,10 @@ it('renders a valid fatal-error document and hydrates its independent mirrored-l
   expect(markup).toContain('<body>');
   expect(markup).toContain('Try again');
   document.cookie = 'fresco.locale=es; Path=/';
-  document.open();
-  document.write(markup);
-  document.close();
+  document.replaceChild(
+    new DOMParser().parseFromString(markup, 'text/html').documentElement,
+    document.documentElement,
+  );
   const recoverableError = vi.fn();
   const download = holdCatalogDownloads();
   const root = hydrateRoot(document, view, {
