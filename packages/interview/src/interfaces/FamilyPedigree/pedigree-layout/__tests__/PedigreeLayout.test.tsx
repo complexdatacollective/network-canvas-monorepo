@@ -203,6 +203,72 @@ describe('PedigreeLayout', () => {
     expect(Number.parseInt(layout.style.height)).toBeGreaterThan(0);
   });
 
+  test('keeps a partnership drawn across rows inside the canvas', () => {
+    // A grandparent partnered with their grandchild is drawn across rows,
+    // down a lane beside the parent between them.
+    const nodes = makeNodes([
+      { id: 'grandparent' },
+      { id: 'parent' },
+      { id: 'grandchild', isEgo: true },
+    ]);
+    const edges = makeEdges([
+      {
+        from: 'grandparent',
+        to: 'parent',
+        relationshipType: 'biological',
+        isActive: true,
+      },
+      {
+        from: 'parent',
+        to: 'grandchild',
+        relationshipType: 'biological',
+        isActive: true,
+      },
+      {
+        from: 'grandparent',
+        to: 'grandchild',
+        relationshipType: 'partner',
+        isActive: true,
+      },
+    ]);
+
+    const { container } = render(
+      <PedigreeLayout
+        nodes={nodes}
+        edges={edges}
+        variableConfig={variableConfig}
+        {...DIMS}
+        renderNode={renderNode}
+      />,
+    );
+
+    const layout = container.firstElementChild as HTMLElement;
+    const width = Number.parseFloat(layout.style.width);
+    const height = Number.parseFloat(layout.style.height);
+    const translate = container
+      .querySelector('svg g[transform]')
+      ?.getAttribute('transform')
+      ?.match(/translate\(([-\d.]+),([-\d.]+)\)/);
+    const [offsetX, offsetY] = translate
+      ? [Number(translate[1]), Number(translate[2])]
+      : [0, 0];
+    const lines = [...container.querySelectorAll('svg line')];
+    expect(lines.length).toBeGreaterThan(0);
+    for (const line of lines) {
+      for (const [x, y] of [
+        ['x1', 'y1'],
+        ['x2', 'y2'],
+      ] as const) {
+        const px = Number(line.getAttribute(x)) + offsetX;
+        const py = Number(line.getAttribute(y)) + offsetY;
+        expect(px).toBeGreaterThanOrEqual(0);
+        expect(px).toBeLessThanOrEqual(width);
+        expect(py).toBeGreaterThanOrEqual(0);
+        expect(py).toBeLessThanOrEqual(height);
+      }
+    }
+  });
+
   test('renders an SVG element for edges', () => {
     const nodes = makeNodes([
       { id: 'father' },

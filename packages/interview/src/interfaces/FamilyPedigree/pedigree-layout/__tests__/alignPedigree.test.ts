@@ -16,6 +16,7 @@ import {
   twinFamily,
   wideFamily,
 } from './fixtures';
+import * as fixtures from './fixtures';
 
 describe('alignPedigree', () => {
   it('lays out a nuclear family', () => {
@@ -1631,5 +1632,112 @@ describe('partnerships that cannot share a row', () => {
     });
     // The partnership recorded first keeps its row.
     expect(positionOf(result, 0)!.layer).toBe(positionOf(result, 1)!.layer);
+  });
+
+  it('routes a partnership across rows clear of everyone between', () => {
+    const ped: PedigreeInput = {
+      id: ['grandparent', 'parent', 'grandchild'],
+      parents: [[], [sp(0)], [sp(1)]],
+      partners: [{ partnerIndex1: 0, partnerIndex2: 2, isActive: true }],
+    };
+    const result = alignPedigree(ped);
+    const conn = computeConnectors(
+      result,
+      defaultScaling,
+      ped.parents,
+      new Set(['0,2']),
+      undefined,
+      undefined,
+      undefined,
+      ped.id,
+      new Set(['0,2']),
+    );
+    const line = conn.groupLines.find(
+      (l) =>
+        [...(l.partnerIds ?? [])].sort().join() === 'grandchild,grandparent',
+    )!;
+    const segments = [line.segment, ...(line.endpointSegments ?? [])];
+    const parentAt = positionOf(result, 1)!;
+    const { boxWidth, boxHeight } = defaultScaling;
+    for (const seg of segments) {
+      const crossesX =
+        Math.min(seg.x1, seg.x2) < parentAt.pos + boxWidth / 2 &&
+        Math.max(seg.x1, seg.x2) > parentAt.pos - boxWidth / 2;
+      const crossesY =
+        Math.min(seg.y1, seg.y2) < parentAt.layer + boxHeight &&
+        Math.max(seg.y1, seg.y2) > parentAt.layer;
+      expect(crossesX && crossesY, JSON.stringify(seg)).toBe(false);
+    }
+    expect(line.segment.x1).not.toBe(line.segment.x2);
+  });
+});
+
+describe('every parent is joined to their child', () => {
+  // A child's family names its couple, or its single parent; each other
+  // primary parent has a line of its own, to the child or to its sibling bar.
+  const expectEveryParentJoined = (ped: PedigreeInput) => {
+    const result = alignPedigree(ped);
+    const conn = computeConnectors(
+      result,
+      defaultScaling,
+      ped.parents,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      ped.id,
+    );
+    const direct = new Set(
+      conn.auxiliaryLines.map((line) => line.endpointIds?.join('→')),
+    );
+    for (let level = 1; level < result.n.length; level++) {
+      for (let col = 0; col < result.n[level]!; col++) {
+        const child = result.nid[level]![col]!;
+        const fam = result.fam[level]![col]!;
+        const named = new Set<number>();
+        if (fam < 0) named.add(result.nid[level - 1]![-fam - 1]!);
+        if (fam > 0) {
+          named.add(result.nid[level - 1]![fam - 1]!);
+          if ((result.group[level - 1]![fam - 1] ?? 0) > 0) {
+            named.add(result.nid[level - 1]![fam]!);
+          }
+        }
+        for (const { parentIndex, edgeType } of ped.parents[child]!) {
+          if (edgeType === 'donor' || edgeType === 'surrogate') continue;
+          if (named.has(parentIndex)) continue;
+          const from = ped.id[parentIndex]!;
+          expect(
+            direct.has(`${from}→${ped.id[child]}`) || direct.has(`${from}→`),
+            `${from} to ${ped.id[child]}`,
+          ).toBe(true);
+        }
+      }
+    }
+  };
+
+  it.each(
+    Object.entries(fixtures).filter(
+      (entry): entry is [string, PedigreeInput] =>
+        typeof entry[1] === 'object' && 'parents' in entry[1],
+    ),
+  )('in %s', (_name, ped) => {
+    expectEveryParentJoined(ped);
+  });
+
+  it('when one of two parents who are not partners moves down a row', () => {
+    // x partners with y, two generations below; x and an unrelated adoptive
+    // parent a have a child together, who follows x down.
+    expectEveryParentJoined({
+      id: ['g', 'h', 'y', 'x', 'a', 'kid'],
+      parents: [
+        [],
+        [sp(0)],
+        [sp(1)],
+        [],
+        [],
+        [sp(3), { parentIndex: 4, edgeType: 'adoptive' }],
+      ],
+      partners: [{ partnerIndex1: 3, partnerIndex2: 2, isActive: true }],
+    });
   });
 });
