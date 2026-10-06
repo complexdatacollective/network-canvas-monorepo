@@ -10,7 +10,11 @@
 //     maintenance mode, in that order.
 //  2. The window closed: within CLOSE_BOUND_MS of `maintenance on` returning,
 //     /readyz named maintenance mode. The gate reads the flag through a
-//     one-second cache, so this is a bound on the cache, not a sleep.
+//     one-second cache, so this is a bound on the cache, not a sleep. Where
+//     the sequence stops `api` and `worker`, that reading came before the
+//     stop started: afterwards Traefik answers for the stopped api, so it is
+//     the only evidence that the release being replaced closed by its own
+//     gate (upgrade.sh waits for the observer to take it).
 //  3. From then until `maintenance off` started, no tick saw a 200 — not from
 //     /readyz and not from the probe — every probe got the maintenance page
 //     (or the API's own maintenance problem; a bare 503 or no answer is
@@ -35,8 +39,9 @@
 //     `maintenance off`; the proof does, so upgrade.sh waits for it there.
 //  6. After `maintenance off` returned, /readyz and the probe both reached 200.
 //
-// It also checks the observer was alive throughout: no two ticks inside the
-// window more than MAX_GAP_MS apart, so silence cannot pass for closure.
+// It also checks the observer was alive throughout: no stretch of the window,
+// from the closing tick to `maintenance off` starting, longer than MAX_GAP_MS
+// without a tick, so silence cannot pass for closure.
 
 import { readFileSync, writeFileSync } from 'node:fs';
 import process from 'node:process';
@@ -126,6 +131,7 @@ export function parseSteps(text) {
 const isMaintenance = (state) => (step) =>
   /\bmaintenance\s+(on|off)\b/.exec(step.command ?? '')?.[1] === state;
 const isMigrate = (step) => /\brun\s+--rm\s+migrate\b/.test(step.command ?? '');
+const isStop = (step) => /\bstop\s+api\s+worker\b/.test(step.command ?? '');
 
 function tally(ticks) {
   const count = (key) =>
@@ -179,6 +185,16 @@ export function analyseWindow(ticks, steps) {
     return { ok: false, failures, evidence };
   }
 
+  // Once `stop` has the api down, Traefik's page answers every probe whatever
+  // the api would have said, so the readings before it are the only ones that
+  // show the release being replaced closed by its own gate.
+  const stop = steps.find(isStop);
+  if (stop && closedTick.ts >= stop.start) {
+    failures.push(
+      'the observer did not see the old release name maintenance mode before stop api worker',
+    );
+  }
+
   const window = ticks.filter(
     (tick) => tick.ts >= closedTick.ts && tick.ts < off.start,
   );
@@ -188,10 +204,16 @@ export function analyseWindow(ticks, steps) {
     ...tally(window),
   };
 
-  for (let i = 1; i < window.length; i += 1) {
-    const gap = window[i].ts - window[i - 1].ts;
+  // Every stretch of the window, from the closing tick to `maintenance off`
+  // starting, is measured — the tail after the last tick included, so an
+  // observer that stalled near the end cannot pass for one that saw closure.
+  const marks = [...window.map((tick) => tick.ts), off.start];
+  for (let i = 1; i < marks.length; i += 1) {
+    const gap = marks[i] - marks[i - 1];
     if (gap > MAX_GAP_MS) {
-      failures.push(`the observer was silent for ${gap} ms inside the window`);
+      failures.push(
+        `the observer was silent for ${gap} ms inside the window (from +${marks[i - 1] - closedTick.ts} ms${i === marks.length - 1 ? ' until maintenance off started' : ''})`,
+      );
       break;
     }
   }

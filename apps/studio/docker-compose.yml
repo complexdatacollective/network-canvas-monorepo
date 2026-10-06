@@ -181,6 +181,10 @@ services:
     image: ${STUDIO_API_IMAGE}
     restart: unless-stopped
     command: [serve]
+    # The server's own shutdown takes up to 15s — open WebSockets get 5s to
+    # close, then accepted requests 10s to finish — and the upgrade's backup
+    # relies on it finishing. Docker's 10s default would SIGKILL it partway.
+    stop_grace_period: 20s
     environment: *studio-env
     secrets: *studio-secrets
     # Liveness, not readiness: it consults nothing, so the container runtime

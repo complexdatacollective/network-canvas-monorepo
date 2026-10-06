@@ -19,7 +19,7 @@ guide's upgrade page, for every release whether or not it changes the schema:
 ```bash
 docker compose run --rm --no-deps api maintenance on
 # wait until /readyz names maintenance mode
-until docker compose logs worker | grep -E 'stopped claiming jobs|claiming jobs again' | tail -n 1 | grep -q 'stopped claiming jobs'; do sleep 1; done
+docker compose stop api worker
 # take your backup now
 docker compose pull
 docker compose up -d web api worker
@@ -28,14 +28,15 @@ docker compose run --rm --no-deps api maintenance off
 ```
 
 `maintenance on` closes the instance: every request except `/healthz` and
-`/readyz` gets the maintenance page with 503, and the worker finishes the jobs
-it is running and claims no more. The sequence waits for both before the
-backup: the API reads the flag within a second and the worker within about
-two, and the worker logs when it has paused. An optional reason — `maintenance on
-Upgrading to 1.4` — is repeated by `/readyz`. Jobs created while the instance
-is closed wait and are worked once it reopens. `maintenance off` reopens it.
-Nothing in the app or its API can open or close an instance; only the command
-can.
+`/readyz` gets the maintenance page with 503, and the worker claims no more
+jobs. An optional reason — `maintenance on Upgrading to 1.4` — is repeated by
+`/readyz`. Once `/readyz` names maintenance mode, the sequence stops `api` and
+`worker`, which finish the requests and jobs they are already running before
+they exit, so the backup is taken with nothing running that writes to the
+database and holds every write the instance accepted. Jobs created while the
+instance is closed wait and are worked once it reopens. `maintenance off`
+reopens it. Nothing in the app or its API can open or close an instance; only
+the command can.
 
 The API and the worker no longer refuse to start on a database whose schema is
 not theirs. They start closed — the maintenance page, no jobs — and open by

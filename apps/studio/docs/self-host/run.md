@@ -231,6 +231,6 @@ swap in.
 
 - [Back up and restore](./backup.md) — do this before the instance carries
   anything you would miss.
-- [Upgrade](./upgrade.md) — the five commands, for every release.
+- [Upgrade](./upgrade.md) — the six commands, for every release.
 - [Swap an element](./swap.md) — a managed database or bucket, Azure Blob
   Storage, or your own reverse proxy.

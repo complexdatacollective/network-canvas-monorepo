@@ -77,8 +77,11 @@ applies.
    never ends fails rather than hangs. The two comments are carried out as the
    guide words them: the readiness comment by waiting (up to 10 seconds) for
    `/readyz` to name maintenance mode, and the backup comment by the backup
-   page's `backup-take` block, also as written. The guide's own `until` line
-   is the wait for the worker's pause before the backup; the lane adds none.
+   page's `backup-take` block, also as written. When the backup starts, no
+   `api` or `worker` container may be running, and the two the guide's
+   `stop api worker` stopped must have exited through their own shutdown
+   (exit code 130) rather than been killed at the end of their stop grace
+   period (`stopped.json`).
 3. Export every row again, compare, and check what the run expects: which
    images are running, which migrations the history records, and, for run B,
    that the backfill reached every seeded row, the changed sidecar is
@@ -102,19 +105,28 @@ holds that run's evidence.
 second throughout the sequence, and as fast as its requests allow while
 `migrate` runs. `window.mjs` then requires that:
 
-- the instance closed within 3 seconds of `maintenance on` finishing;
+- the instance closed within 3 seconds of `maintenance on` finishing, and
+  `/readyz` was seen naming maintenance mode before `stop api worker` started:
+  once `api` is stopped Traefik answers for it, so those readings are the only
+  ones that show the release being replaced closed by its own gate. The lane
+  waits for the observer to take one after the guide's `/readyz` wait, before
+  the stop;
 - between then and `maintenance off`, nothing answered 200, every API answer
   was the maintenance page, and `/readyz` named only maintenance mode or a
   server still starting — never a migration or a schema, which would mean the
   flag was not what kept it closed;
 - at least one reading during `migrate` named maintenance mode (about a dozen
   are taken; it is a sample, not a continuous watch);
-- no gap between readings was longer than 5 seconds;
+- no stretch of the window, from the closing reading to `maintenance off`
+  starting, went longer than 5 seconds without a reading;
 - the instance reopened after `maintenance off`.
 
-The one allowance: while `up -d` replaces `web`, the API route may answer a
-bare 503 without the page, or not answer at all, because the container that
-serves the page is the one being replaced. Any other status there — a 500, a
+While `api` is stopped — from `stop api worker` until the new one answers —
+the API route gets the page from Traefik with 503 and `/readyz` gets
+Traefik's own bare 502, which the rules above already accept; it needs no
+allowance. The one allowance: while `up -d` replaces `web`, the API route may
+answer a bare 503 without the page, or not answer at all, because the
+container that serves the page is the one being replaced. Any other status there — a 500, a
 401, a 404 — fails like it would anywhere in the window, and nothing in the
 window may answer 200.
 
@@ -126,8 +138,9 @@ the masks in `diff-export.mjs` explains it. Each mask names the rows it
 covers, gives its reason, and records the run that showed it is needed. A new
 column is compared from the next upgrade on.
 
-**The queued job.** Once the guide's wait has seen the worker's pause, the
-lane creates one `protocol-store-gc` job as the application role. It must
+**The queued job.** Once the guide's `stop api worker` has returned, so no
+worker of the old release is left to claim it, the lane creates one
+`protocol-store-gc` job as the application role. It must
 still be waiting after `migrate`; it must still be waiting once the new
 worker — the one `up -d` started — is running; and its `completed_at` must be
 later than the moment `maintenance off` cleared the flag
