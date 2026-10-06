@@ -106,12 +106,13 @@ const SLOT_INVENT_LABEL_IDS = [
   'protocolBuilder.pedigree.gestationalCarrierCreateLabel',
   'protocolBuilder.pedigree.kindCreateLabel',
   'protocolBuilder.pedigree.nameCreateLabel',
+  'protocolBuilder.pedigree.nominationVariableCreateLabel',
   'protocolBuilder.pedigree.relativesNotRecordedCreateLabel',
   'protocolBuilder.pedigree.sexAssignedAtBirthCreateLabel',
 ] as const;
 
 /**
- * Messages phrased the same way that are not one of the eighteen titles above,
+ * Messages phrased the same way that are not one of the nineteen titles above,
  * each one read and accounted for.
  *
  * The sweep covers their words like any others — `inventLabels` reads the
@@ -126,7 +127,7 @@ const SLOT_INVENT_LABEL_IDS = [
  * - `networkCanvas.formFieldVariableCreateTitle` titles the codebook editor a
  *   network composer form field's create row opens. That row is landing on
  *   this branch (spec §3.1's remaining work), and its slot is not one of the
- *   eighteen until it does.
+ *   nineteen until it does.
  *
  * An entry may be absent — one of these two is being removed and the other
  * added while this is written — so the check below is a subset rather than an

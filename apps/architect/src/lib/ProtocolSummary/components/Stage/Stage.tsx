@@ -5,7 +5,11 @@ import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import StageTypeImage from '@codaco/protocol-builder/interfaces/StageTypeImage';
-import type { PedigreeCompletenessScope } from '@codaco/protocol-validation';
+import type {
+  FamilyPedigreeNominationPrompt,
+  FramingSetting,
+  PedigreeCompletenessScope,
+} from '@codaco/protocol-validation';
 import { summaryMessages } from '~/lib/ProtocolSummary/summaryMessages';
 
 import DualLink from '../DualLink';
@@ -219,6 +223,10 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
         relativesNotRecordedVariable?: string;
       }
     | undefined;
+  const framing = configuration.framing as FramingSetting | undefined;
+  const nominationPrompts = configuration.nominationPrompts as
+    | FamilyPedigreeNominationPrompt[]
+    | undefined;
   // Anonymisation
   const explanationText = configuration.explanationText as
     | {
@@ -363,6 +371,8 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
         nodeConfiguration={nodeConfiguration ?? null}
         edgeConfiguration={edgeConfiguration ?? null}
         completeness={completeness ?? null}
+        framing={framing ?? null}
+        nominationPrompts={nominationPrompts ?? null}
       />
       <ScaffoldingStep scaffoldingStep={scaffoldingStep ?? null} />
       <NameGenerationStep nameGenerationStep={nameGenerationStep ?? null} />

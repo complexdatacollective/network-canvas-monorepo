@@ -416,8 +416,6 @@ const FIXTURE_MAXIMAL_STAGES: MaximalStage[] = [
         },
       ],
     }),
-    // The editor has no section for the framing or the nomination prompts yet.
-    unowned: ['framing', 'nominationPrompts'],
     // Every attribute the fixture's person type carries is bound to one of the
     // pedigree's own slots, so the attribute its extra field collects arrives
     // the way a collaborator's would.

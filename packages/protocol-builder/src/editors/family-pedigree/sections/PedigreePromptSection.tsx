@@ -9,7 +9,9 @@ import { familyPedigreeMessages as messages } from './pedigreeMessages.ts';
 /**
  * The one instruction shown on the canvas while the participant draws their
  * family. A single string rather than the shared rotating prompt list, because
- * the pedigree shows the same instruction for the whole stage.
+ * building the family is one step with one instruction. The questions asked
+ * once it is drawn are the nomination prompts, which are a list of their own
+ * (`NominationPromptsSection`).
  */
 export default function PedigreePromptSection() {
   const intl = useAppIntl();

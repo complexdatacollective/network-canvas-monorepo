@@ -6,7 +6,9 @@ import {
 } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { getMarkdownLabelText } from '@codaco/fresco-ui/RenderMarkdown';
+import { UnorderedList } from '@codaco/fresco-ui/typography/UnorderedList';
 import type {
+  FramingSetting,
   PedigreeCompletenessScope,
   PedigreeGenderWords,
 } from '@codaco/protocol-validation';
@@ -147,6 +149,54 @@ const messages = defineMessages({
     description:
       'Label for the attribute recording that a family member has no siblings or children, or that the participant does not know, in the printable protocol summary.',
   },
+  framing: {
+    id: 'architect.protocolSummary.stage.familyPedigree.framing',
+    defaultMessage: 'Words for family members',
+    description:
+      'Label for the setting choosing the words used to describe family members, in the printable protocol summary.',
+  },
+  framingGendered: {
+    id: 'architect.protocolSummary.stage.familyPedigree.framingGendered',
+    defaultMessage: 'Everyday kinship words (mother, father, sister, brother)',
+    description:
+      'Printable protocol summary text for the wording setting that uses the usual kinship words. It is what the stage uses when no wording is chosen.',
+  },
+  framingGamete: {
+    id: 'architect.protocolSummary.stage.familyPedigree.framingGamete',
+    defaultMessage: 'Egg parent and sperm parent',
+    description:
+      'Printable protocol summary text for the wording setting that describes biological parents by the egg or sperm they gave, without gendered words.',
+  },
+  framingParticipantPreference: {
+    id: 'architect.protocolSummary.stage.familyPedigree.framingParticipantPreference',
+    defaultMessage: 'The participant chooses between the two',
+    description:
+      'Printable protocol summary text for the wording setting that lets the participant choose between everyday kinship words and egg parent and sperm parent words.',
+  },
+  nominationPrompts: {
+    id: 'architect.protocolSummary.stage.familyPedigree.nominationPrompts',
+    defaultMessage: 'Nomination prompts',
+    description:
+      'Heading of the list, in the printable protocol summary, of the questions a Family Pedigree asks about the whole family once it is drawn.',
+  },
+  nominationLimit: {
+    id: 'architect.protocolSummary.stage.familyPedigree.nominationLimit',
+    defaultMessage: 'Who can be selected',
+    description:
+      'Label, in the printable protocol summary, for the limit a nomination prompt places on who can be selected by sex assigned at birth.',
+  },
+  nominationLimitFemale: {
+    id: 'architect.protocolSummary.stage.familyPedigree.nominationLimitFemale',
+    defaultMessage: 'Only people assigned female at birth',
+    description:
+      'Printable protocol summary text for a nomination prompt that only people whose sex assigned at birth is female can be selected for.',
+  },
+  nominationLimitMale: {
+    id: 'architect.protocolSummary.stage.familyPedigree.nominationLimitMale',
+    defaultMessage: 'Only people assigned male at birth',
+    description:
+      'Printable protocol summary text for a nomination prompt that only people whose sex assigned at birth is male can be selected for.',
+  },
   scopeParents: {
     id: 'architect.protocolSummary.stage.familyPedigree.scopeParents',
     defaultMessage: 'Both biological parents',
@@ -187,6 +237,20 @@ const SCOPE_MESSAGES: Record<PedigreeCompletenessScope, MessageDescriptor> = {
   thirdDegree: messages.scopeThirdDegree,
 };
 
+const FRAMING_MESSAGES: Record<FramingSetting, MessageDescriptor> = {
+  gendered: messages.framingGendered,
+  gamete: messages.framingGamete,
+  participantPreference: messages.framingParticipantPreference,
+};
+
+const NOMINATION_LIMIT_MESSAGES: Record<
+  NonNullable<NominationPrompt['onlyForSexAssignedAtBirth']>,
+  MessageDescriptor
+> = {
+  female: messages.nominationLimitFemale,
+  male: messages.nominationLimitMale,
+};
+
 const GENDER_WORDS_MESSAGES: Record<PedigreeGenderWords, MessageDescriptor> = {
   feminine: messages.genderWordsFeminine,
   masculine: messages.genderWordsMasculine,
@@ -221,6 +285,13 @@ type Completeness = {
   relativesNotRecordedVariable?: string;
 };
 
+type NominationPrompt = {
+  id: string;
+  text: string;
+  variable: string;
+  onlyForSexAssignedAtBirth?: 'female' | 'male';
+};
+
 type FamilyPedigreeProps = {
   /** The node type of the people, whose attribute holds gender identity. */
   personType: string | null;
@@ -228,6 +299,9 @@ type FamilyPedigreeProps = {
   nodeConfiguration: NodeConfiguration | null;
   edgeConfiguration: EdgeConfiguration | null;
   completeness: Completeness | null;
+  /** Absent when the stage stores no wording, which means everyday words. */
+  framing: FramingSetting | null;
+  nominationPrompts: NominationPrompt[] | null;
 };
 
 /** One row naming a bound attribute, or none while the slot is unbound. */
@@ -249,6 +323,8 @@ const FamilyPedigree = ({
   nodeConfiguration,
   edgeConfiguration,
   completeness,
+  framing,
+  nominationPrompts,
 }: FamilyPedigreeProps) => {
   const intl = useAppIntl();
   const { protocol } = useContext(SummaryContext);
@@ -256,7 +332,9 @@ const FamilyPedigree = ({
     prompt === null &&
     nodeConfiguration === null &&
     edgeConfiguration === null &&
-    completeness === null
+    completeness === null &&
+    framing === null &&
+    nominationPrompts === null
   ) {
     return null;
   }
@@ -398,12 +476,57 @@ const FamilyPedigree = ({
       'relatives-not-recorded',
       completeness?.relativesNotRecordedVariable,
     ),
+    // Always said, because a stage that stores no wording uses the everyday
+    // words: the summary states what participants will read, not only what
+    // the researcher chose.
+    [
+      intl.formatMessage(messages.framing),
+      intl.formatMessage(FRAMING_MESSAGES[framing ?? 'gendered']),
+    ],
   ];
 
   return (
-    <SectionFrame title={intl.formatMessage(messages.title)}>
-      <MiniTable rotated wide rows={rows} />
-    </SectionFrame>
+    <>
+      <SectionFrame title={intl.formatMessage(messages.title)}>
+        <MiniTable rotated wide rows={rows} />
+      </SectionFrame>
+      {nominationPrompts !== null && nominationPrompts.length > 0 && (
+        <SectionFrame title={intl.formatMessage(messages.nominationPrompts)}>
+          <UnorderedList>
+            {nominationPrompts.map(
+              ({ id, text, variable, onlyForSexAssignedAtBirth }) => (
+                <li className="my-5" key={id}>
+                  <div className="break-inside-avoid">
+                    <Markdown label={text} />
+                    <MiniTable
+                      rotated
+                      rows={[
+                        [
+                          intl.formatMessage(summaryMessages.attribute),
+                          <Variable key="variable" id={variable} />,
+                        ],
+                        ...(onlyForSexAssignedAtBirth
+                          ? [
+                              [
+                                intl.formatMessage(messages.nominationLimit),
+                                intl.formatMessage(
+                                  NOMINATION_LIMIT_MESSAGES[
+                                    onlyForSexAssignedAtBirth
+                                  ],
+                                ),
+                              ],
+                            ]
+                          : []),
+                      ]}
+                    />
+                  </div>
+                </li>
+              ),
+            )}
+          </UnorderedList>
+        </SectionFrame>
+      )}
+    </>
   );
 };
 

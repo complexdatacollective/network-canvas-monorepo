@@ -519,7 +519,7 @@ export const familyPedigreeMessages = defineMessages({
   promptHint: {
     id: 'protocolBuilder.pedigree.promptHint',
     defaultMessage:
-      'Shown to the participant above the canvas for the whole stage. Tell them how to add their relatives.',
+      'Shown to the participant above the canvas while they draw their family. Tell them how to add their relatives.',
     description: 'Guidance under the pedigree prompt field.',
   },
   promptPlaceholder: {
@@ -528,6 +528,227 @@ export const familyPedigreeMessages = defineMessages({
       'Add the members of your family. Select a person to add their relatives.',
     description:
       'Example shown inside the empty pedigree prompt field. Written as it would read to a participant.',
+  },
+
+  framingTitle: {
+    id: 'protocolBuilder.pedigree.framingTitle',
+    defaultMessage: 'Wording',
+    description:
+      'Heading of the section where a researcher chooses the words a Family Pedigree uses to describe family members, such as mother or egg parent.',
+  },
+  framingDescription: {
+    id: 'protocolBuilder.pedigree.framingDescription',
+    defaultMessage:
+      'Choose the words participants read for the people in their family. This changes only what is shown. Nothing it produces is recorded in the data.',
+    description:
+      'Description of the wording section. The participant is the person being interviewed; the words are kinship words such as mother, sibling or egg parent.',
+  },
+  framingLabel: {
+    id: 'protocolBuilder.pedigree.framingLabel',
+    defaultMessage: 'Words for family members',
+    description:
+      'Label of the control choosing which words describe family members: everyday kinship words, egg and sperm parent words, or whichever the participant prefers.',
+  },
+  framingHint: {
+    id: 'protocolBuilder.pedigree.framingHint',
+    defaultMessage:
+      'Everyday kinship words are used unless you choose otherwise.',
+    description:
+      'Guidance under the wording control, saying which choice applies when the researcher makes none.',
+  },
+  framingGenderedLabel: {
+    id: 'protocolBuilder.pedigree.framingGenderedLabel',
+    defaultMessage: 'Everyday kinship words',
+    description:
+      'Name of the wording choice that uses the usual kinship words, such as mother, sister and aunt.',
+  },
+  framingGenderedDescription: {
+    id: 'protocolBuilder.pedigree.framingGenderedDescription',
+    defaultMessage:
+      'Mother, father, sister, brother, aunt and uncle. Each person’s words come from their gender identity when this stage asks about it, and from their sex assigned at birth when it does not.',
+    description:
+      'Says what the everyday kinship words choice does and where each person’s words come from. The stage can be set to ask each family member’s gender identity or not to ask it.',
+  },
+  framingGameteLabel: {
+    id: 'protocolBuilder.pedigree.framingGameteLabel',
+    defaultMessage: 'Egg parent and sperm parent',
+    description:
+      'Name of the wording choice that describes biological parents by the egg or sperm they gave, without gendered words.',
+  },
+  framingGameteDescription: {
+    id: 'protocolBuilder.pedigree.framingGameteDescription',
+    defaultMessage:
+      'Biological parents are the egg parent and the sperm parent, and every other relative gets a neutral word such as grandparent, sibling or parent’s sibling.',
+    description:
+      'Says what the egg parent and sperm parent choice does. Biological parents are the people who gave the egg or the sperm.',
+  },
+  framingParticipantPreferenceLabel: {
+    id: 'protocolBuilder.pedigree.framingParticipantPreferenceLabel',
+    defaultMessage: 'Let the participant choose',
+    description:
+      'Name of the wording choice that asks the participant which of the other two sets of words they would like used.',
+  },
+  framingParticipantPreferenceDescription: {
+    id: 'protocolBuilder.pedigree.framingParticipantPreferenceDescription',
+    defaultMessage:
+      'Participants choose between the two sets of words when they first reach the stage, and can change their choice at any time.',
+    description:
+      'Says what the let-the-participant-choose wording choice does. The two sets of words are everyday kinship words and egg parent and sperm parent words.',
+  },
+
+  nominationTitle: {
+    id: 'protocolBuilder.pedigree.nominationTitle',
+    defaultMessage: 'Nomination prompts',
+    description:
+      'Heading of the optional section listing the questions a Family Pedigree asks about the whole family once it is drawn, such as who has had a condition.',
+  },
+  nominationDescription: {
+    id: 'protocolBuilder.pedigree.nominationDescription',
+    defaultMessage:
+      'Optionally ask questions about the whole family once it is drawn, such as “Who in your family has had heart disease?”. Participants answer each in turn by selecting everyone it applies to, and the interface sets a true/false attribute on them.',
+    description:
+      'Description of the nomination prompts section. A prompt is one question a participant is asked. Nominating means selecting the people a question applies to. An attribute is a codebook variable.',
+  },
+  nominationWaiting: {
+    id: 'protocolBuilder.pedigree.nominationWaiting',
+    defaultMessage:
+      'Choose the node type before writing questions about the family.',
+    description:
+      'Shown in place of the nomination prompts section’s description while no node type has been chosen for the stage.',
+  },
+  nominationFieldLabel: {
+    id: 'protocolBuilder.pedigree.nominationFieldLabel',
+    defaultMessage: 'Nomination prompts',
+    description:
+      'Label of the ordered list of questions asked about the whole family. The same words as the section heading, translated once for each: the heading names the part of the stage and this names the control.',
+  },
+  nominationListHint: {
+    id: 'protocolBuilder.pedigree.nominationListHint',
+    defaultMessage:
+      'Participants see these in order, after they have drawn their family. Drag prompts to reorder them.',
+    description:
+      'Guidance under the list of nomination prompts. The prompts are questions about the whole family.',
+  },
+  nominationAddLabel: {
+    id: 'protocolBuilder.pedigree.nominationAddLabel',
+    defaultMessage: 'Create new nomination prompt',
+    description:
+      'Button that opens the dialog for writing one more question about the whole family. Whole rather than a generic “Add”, because a stage editor shows several lists at once.',
+  },
+  nominationAddTitle: {
+    id: 'protocolBuilder.pedigree.nominationAddTitle',
+    defaultMessage: 'Create nomination prompt',
+    description:
+      'Title of the dialog a researcher fills in to write one more question about the whole family.',
+  },
+  nominationEditTitle: {
+    id: 'protocolBuilder.pedigree.nominationEditTitle',
+    defaultMessage: 'Edit nomination prompt',
+    description:
+      'Title of the dialog a researcher fills in to change a question about the whole family they have already written.',
+  },
+  nominationItemNoun: {
+    id: 'protocolBuilder.pedigree.nominationItemNoun',
+    defaultMessage: 'nomination prompt',
+    description:
+      'What one row of the nomination prompt list is called inside things said ABOUT it — “Edit nomination prompt”, “Delete this nomination prompt?” — so it is lower case and singular.',
+  },
+  nominationEmptyState: {
+    id: 'protocolBuilder.pedigree.nominationEmptyState',
+    defaultMessage:
+      'No nomination prompts yet. Create one to ask about the whole family.',
+    description:
+      'Shown in place of the nomination prompt list while the stage asks nothing about the whole family.',
+  },
+  nominationRowDescription: {
+    id: 'protocolBuilder.pedigree.nominationRowDescription',
+    defaultMessage:
+      'Write the question, then choose the attribute that records who the participant selects.',
+    description:
+      'Description under the title of the dialog for one nomination prompt. An attribute is a codebook variable.',
+  },
+  nominationTextPlaceholder: {
+    id: 'protocolBuilder.pedigree.nominationTextPlaceholder',
+    defaultMessage: 'Who in your family has had heart disease?',
+    description:
+      'Example shown inside the empty box where a researcher writes a nomination prompt. Written as it would read to a participant.',
+  },
+  nominationTextHint: {
+    id: 'protocolBuilder.pedigree.nominationTextHint',
+    defaultMessage:
+      'Phrase it so the participant can select everyone it applies to.',
+    description:
+      'Guidance under the box where a researcher writes a nomination prompt, saying how the participant answers it: by selecting the people it applies to.',
+  },
+  nominationVariableLabel: {
+    id: 'protocolBuilder.pedigree.nominationVariableLabel',
+    defaultMessage: 'Attribute',
+    description:
+      'Label of the control choosing the true/false attribute a nomination prompt sets on the people the participant selects.',
+  },
+  nominationVariableHint: {
+    id: 'protocolBuilder.pedigree.nominationVariableHint',
+    defaultMessage:
+      'A true/false attribute the interface sets to true on everyone the participant selects.',
+    description:
+      'Guidance under the attribute control of a nomination prompt. An attribute is a codebook variable.',
+  },
+  nominationVariableEmpty: {
+    id: 'protocolBuilder.pedigree.nominationVariableEmpty',
+    defaultMessage:
+      'This type has no true/false attributes yet. Create one to record who the participant selects.',
+    description:
+      'Shown in place of the attribute picker’s options when the person node type has no attribute holding true or false.',
+  },
+  nominationVariableRequired: {
+    id: 'protocolBuilder.pedigree.nominationVariableRequired',
+    defaultMessage: 'Choose the attribute that records who is selected.',
+    description:
+      'Refusal shown when a researcher saves a nomination prompt without choosing the attribute set on the people the participant selects.',
+  },
+  nominationVariableCreateLabel: {
+    id: 'protocolBuilder.pedigree.nominationVariableCreateLabel',
+    defaultMessage: 'Create a new nomination attribute',
+    description:
+      'Title of the dialog that creates a new true/false attribute for a nomination prompt to set on the people the participant selects.',
+  },
+  nominationVariableGoneRefusal: {
+    id: 'protocolBuilder.pedigree.nominationVariableGoneRefusal',
+    defaultMessage:
+      'This attribute can no longer record a nomination prompt. Choose another one.',
+    description:
+      'Refusal shown when a researcher saves a nomination prompt whose attribute has been deleted from the codebook or is no longer a true/false attribute.',
+  },
+  nominationSexLabel: {
+    id: 'protocolBuilder.pedigree.nominationSexLabel',
+    defaultMessage: 'Who can be selected',
+    description:
+      'Label of the control choosing whether a nomination prompt is open to anyone or only to people assigned one sex at birth.',
+  },
+  nominationSexHint: {
+    id: 'protocolBuilder.pedigree.nominationSexHint',
+    defaultMessage:
+      'Limit the question to one sex assigned at birth for a condition only those people can have. People recorded as the other sex cannot be selected. Anyone else can, including people whose sex assigned at birth is intersex, unknown or not recorded.',
+    description:
+      'Guidance under the control limiting a nomination prompt by sex assigned at birth, saying who is left out and who is not. The limit is for a condition only people of one sex can have, such as ovarian or prostate cancer.',
+  },
+  nominationSexAnyone: {
+    id: 'protocolBuilder.pedigree.nominationSexAnyone',
+    defaultMessage: 'Anyone',
+    description:
+      'Choice for a nomination prompt that places no limit on who can be selected.',
+  },
+  nominationSexFemale: {
+    id: 'protocolBuilder.pedigree.nominationSexFemale',
+    defaultMessage: 'Only people assigned female at birth',
+    description:
+      'Choice for a nomination prompt that only people whose sex assigned at birth is female can be selected for.',
+  },
+  nominationSexMale: {
+    id: 'protocolBuilder.pedigree.nominationSexMale',
+    defaultMessage: 'Only people assigned male at birth',
+    description:
+      'Choice for a nomination prompt that only people whose sex assigned at birth is male can be selected for.',
   },
 
   personFormTitle: {
@@ -539,9 +760,9 @@ export const familyPedigreeMessages = defineMessages({
   personFormDescription: {
     id: 'protocolBuilder.pedigree.personFormDescription',
     defaultMessage:
-      'Optionally ask more about each family member. These fields are shown in the side panel after the name, gender identity and sex assigned at birth.',
+      'Optionally ask more about each family member. These fields are shown in the side panel after the interface’s own questions: the name, sex assigned at birth and, when it is asked, gender identity.',
     description:
-      'Description of the additional person fields section. The side panel is where the participant describes each person they add.',
+      'Description of the additional person fields section. The side panel is where the participant describes each person they add. Gender identity is asked only when the stage is set to ask it.',
   },
   personFormFieldLabel: {
     id: 'protocolBuilder.pedigree.personFormFieldLabel',
@@ -584,8 +805,8 @@ export const familyPedigreeMessages = defineMessages({
   personFormReservedRefusal: {
     id: 'protocolBuilder.pedigree.personFormReservedRefusal',
     defaultMessage:
-      'The interface already records this attribute as one of its person attributes, so these fields cannot collect it as well. Choose another attribute, or remove the field.',
+      'The interface already records this attribute itself, as one of its person attributes or as the answer to a nomination prompt, so these fields cannot collect it as well. Choose another attribute, or remove the field.',
     description:
-      'Refusal shown when an additional person field collects an attribute already chosen as one of the Family Pedigree’s own person attributes (name, gender identity, sex assigned at birth or participant marker).',
+      'Refusal shown when an additional person field collects an attribute already chosen as one of the Family Pedigree’s own person attributes (name, gender identity, sex assigned at birth or participant marker) or as the attribute a nomination prompt sets.',
   },
 });

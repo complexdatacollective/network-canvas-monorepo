@@ -55,6 +55,8 @@ describe('Protocol Summary family pedigree', () => {
           }}
           edgeConfiguration={null}
           completeness={null}
+          framing={null}
+          nominationPrompts={null}
         />
       </SummaryContext.Provider>,
     );
@@ -82,6 +84,8 @@ describe('Protocol Summary family pedigree', () => {
           nodeConfiguration={{ nameVariable: 'name' }}
           edgeConfiguration={null}
           completeness={null}
+          framing={null}
+          nominationPrompts={null}
         />
       </SummaryContext.Provider>,
     );
@@ -93,5 +97,93 @@ describe('Protocol Summary family pedigree', () => {
       ),
     ).toBeInTheDocument();
     expect(screen.queryByText('Gender identity words')).toBeNull();
+  });
+
+  it('says everyday words are used when the stage stores no wording', () => {
+    render(
+      <SummaryContext.Provider
+        value={{ protocol, protocolName: protocol.name, index: [] }}
+      >
+        <FamilyPedigree
+          personType="person"
+          prompt={null}
+          nodeConfiguration={{ nameVariable: 'name' }}
+          edgeConfiguration={null}
+          completeness={null}
+          framing={null}
+          nominationPrompts={null}
+        />
+      </SummaryContext.Provider>,
+    );
+
+    expect(screen.getByText('Words for family members')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'Everyday kinship words (mother, father, sister, brother)',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('Nomination prompts')).toBeNull();
+  });
+
+  it('names the wording the stage chose', () => {
+    render(
+      <SummaryContext.Provider
+        value={{ protocol, protocolName: protocol.name, index: [] }}
+      >
+        <FamilyPedigree
+          personType="person"
+          prompt={null}
+          nodeConfiguration={{ nameVariable: 'name' }}
+          edgeConfiguration={null}
+          completeness={null}
+          framing="participantPreference"
+          nominationPrompts={null}
+        />
+      </SummaryContext.Provider>,
+    );
+
+    expect(
+      screen.getByText('The participant chooses between the two'),
+    ).toBeInTheDocument();
+  });
+
+  it('lists each nomination prompt with its attribute and any sex limit', () => {
+    render(
+      <SummaryContext.Provider
+        value={{ protocol, protocolName: protocol.name, index: [] }}
+      >
+        <FamilyPedigree
+          personType="person"
+          prompt={null}
+          nodeConfiguration={null}
+          edgeConfiguration={null}
+          completeness={null}
+          framing={null}
+          nominationPrompts={[
+            {
+              id: 'nomination-1',
+              text: 'Who has had **ovarian** cancer?',
+              variable: 'gender',
+              onlyForSexAssignedAtBirth: 'female',
+            },
+            {
+              id: 'nomination-2',
+              text: 'Who has had diabetes?',
+              variable: 'gender',
+            },
+          ]}
+        />
+      </SummaryContext.Provider>,
+    );
+
+    expect(screen.getByText('Nomination prompts')).toBeInTheDocument();
+    expect(screen.getByText('ovarian')).toBeInTheDocument();
+    expect(screen.getByText('Who has had diabetes?')).toBeInTheDocument();
+    // Said once: only the first prompt carries a limit.
+    expect(screen.getAllByText('Who can be selected')).toHaveLength(1);
+    expect(
+      screen.getByText('Only people assigned female at birth'),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText('Attribute')).toHaveLength(2);
   });
 });

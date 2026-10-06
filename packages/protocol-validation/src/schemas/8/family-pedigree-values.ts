@@ -190,10 +190,12 @@ export type PedigreeCompletenessScope =
 /**
  * How the interface describes family members to the participant.
  *
- * - `gendered`: the usual kinship words, chosen by the words each person's
- *   gender identity option takes (see `PEDIGREE_GENDER_WORDS`) — mother,
- *   father, grandmother, aunt, nephew — and neutral words (parent, sibling,
- *   cousin) for anyone whose option takes neutral words.
+ * - `gendered`: the usual kinship words — mother, father, grandmother, aunt,
+ *   nephew — and neutral words (parent, sibling, cousin) for anyone whose
+ *   words are neutral. A person's words come from their gender identity
+ *   option (see `PEDIGREE_GENDER_WORDS`) when the stage asks about gender
+ *   identity, and otherwise from their sex assigned at birth: female takes
+ *   feminine words, male masculine, and anything else or unanswered neutral.
  * - `gamete`: words that make no assumption about gender. Biological parents
  *   are described by the gamete they gave (egg parent, sperm parent, read
  *   from their recorded sex at birth), and every other relative by a neutral

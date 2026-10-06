@@ -1,5 +1,5 @@
 import { screen, waitFor, within } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
   familyPedigreeStage,
@@ -20,7 +20,9 @@ import {
   renderStageEditor,
   type StageEditorHarness,
 } from '../../../testing/renderStageEditor.tsx';
+import { writeInto } from '../../__tests__/writeInto.ts';
 import { familyPedigreeStageEditor } from '../FamilyPedigreeStageEditor.ts';
+import { newNominationPromptId } from '../sections/NominationPromptsSection.tsx';
 import {
   familyPedigreeEditor,
   shimMarkdownEditorMeasurement,
@@ -37,12 +39,14 @@ shimMarkdownEditorMeasurement();
 
 const SECTIONS = [
   'Node setup',
+  'Prompt',
   'Person attributes',
   'Ask about gender identity',
   'Relationships',
-  'Completeness',
-  'Prompt',
+  'Wording',
   'Additional person fields',
+  'Completeness',
+  'Nomination prompts',
   'Skip logic',
   'Interviewer guidance',
 ];
@@ -984,5 +988,345 @@ describe('the gender identity words', () => {
         { value: 'nonbinary', words: 'neutral' },
       ]);
     });
+  });
+});
+
+describe('the wording', () => {
+  const choice = (name: RegExp) => screen.findByRole('option', { name });
+
+  const framingOf = (document: SectionDoc | undefined): unknown =>
+    document?.framing;
+
+  it('is everyday kinship words for a stage that stores nothing, and saving it stores nothing', async () => {
+    const harness = openFixture();
+    await harness.opened();
+
+    expect(await choice(/^Everyday kinship words/)).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+    const request = await harness.submit();
+    expect(request?.stageDocument).not.toHaveProperty('framing');
+  });
+
+  it('describes each choice by where the words come from', async () => {
+    const harness = openFixture();
+    await harness.opened();
+
+    expect(await choice(/^Everyday kinship words/)).toHaveTextContent(
+      'Each person’s words come from their gender identity when this stage asks about it, and from their sex assigned at birth when it does not.',
+    );
+    expect(await choice(/^Egg parent and sperm parent/)).toHaveTextContent(
+      'every other relative gets a neutral word',
+    );
+    expect(await choice(/^Let the participant choose/)).toHaveTextContent(
+      'when they first reach the stage',
+    );
+  });
+
+  it.each([
+    ['Egg parent and sperm parent', 'gamete'],
+    ['Let the participant choose', 'participantPreference'],
+  ])('saves %s as framing "%s"', async (label, framing) => {
+    const harness = openFixture();
+    await harness.opened();
+
+    await harness.user.click(await choice(new RegExp(`^${label}`)));
+
+    const request = await harness.submit();
+    expect(framingOf(request?.stageDocument)).toBe(framing);
+    expect(familyPedigreeStage.safeParse(request?.stageDocument).success).toBe(
+      true,
+    );
+  });
+
+  it('removes the key again when the everyday words are chosen back', async () => {
+    const harness = renderStageEditor({
+      stage: familyPedigreeStageWith({ framing: 'gamete' }),
+      editor: familyPedigreeEditor,
+    });
+    await harness.opened();
+    expect(await choice(/^Egg parent and sperm parent/)).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+
+    await harness.user.click(await choice(/^Everyday kinship words/));
+
+    const request = await harness.submit();
+    expect(request?.stageDocument).not.toHaveProperty('framing');
+  });
+
+  it('keeps a saved choice when the stage is opened and saved untouched', async () => {
+    const harness = renderStageEditor({
+      stage: familyPedigreeStageWith({ framing: 'participantPreference' }),
+      editor: familyPedigreeEditor,
+    });
+    await harness.opened();
+
+    expect(await choice(/^Let the participant choose/)).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+    const request = await harness.submit();
+    expect(framingOf(request?.stageDocument)).toBe('participantPreference');
+  });
+});
+
+describe('the nomination prompts', () => {
+  const HEART_DISEASE = 'has_heart_disease';
+
+  const nominationPromptsOf = (
+    document: SectionDoc | undefined,
+  ): Record<string, unknown>[] =>
+    Array.isArray(document?.nominationPrompts)
+      ? document.nominationPrompts.filter(isRecord)
+      : [];
+
+  const savedPrompt = {
+    id: 'nomination-1',
+    text: 'Who in your family has had heart disease?',
+    variable: HEART_DISEASE,
+    onlyForSexAssignedAtBirth: 'female',
+  };
+
+  const openWithAPrompt = async () => {
+    const harness = renderStageEditor({
+      stage: familyPedigreeStageWith({ nominationPrompts: [savedPrompt] }),
+      editor: familyPedigreeEditor,
+    });
+    addFamilyMemberVariable(harness, HEART_DISEASE, {
+      name: HEART_DISEASE,
+      type: 'boolean',
+    });
+    await harness.opened();
+    return harness;
+  };
+
+  const startAPrompt = async (harness: StageEditorHarness) => {
+    await harness.user.click(
+      await screen.findByRole('button', {
+        name: 'Create new nomination prompt',
+      }),
+    );
+    await writeInto(
+      harness,
+      await screen.findByRole('textbox', { name: 'Prompt text' }),
+      'Who has had diabetes?',
+    );
+    return await screen.findByRole('dialog');
+  };
+
+  const addThePrompt = async (harness: StageEditorHarness) => {
+    await harness.user.click(screen.getByRole('button', { name: 'Add' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  };
+
+  it('asks nothing of the whole family until a prompt is created, and saves no key', async () => {
+    const harness = openFixture();
+    await harness.opened();
+
+    expect(
+      await screen.findByText(
+        'No nomination prompts yet. Create one to ask about the whole family.',
+      ),
+    ).toBeInTheDocument();
+    const request = await harness.submit();
+    expect(request?.stageDocument).not.toHaveProperty('nominationPrompts');
+  });
+
+  it('saves a schema-valid stage for a prompt with a created attribute and a sex limit', async () => {
+    const harness = openFixture();
+    await harness.opened();
+    const dialog = await startAPrompt(harness);
+
+    await inventAttribute(
+      harness.user,
+      attributeField('Attribute', dialog),
+      'has_diabetes',
+    );
+    await waitFor(() =>
+      expect(
+        within(attributeField('Attribute', dialog)).getByText('has_diabetes'),
+      ).toBeVisible(),
+    );
+    await harness.user.click(
+      within(dialog).getByRole('option', {
+        name: 'Only people assigned female at birth',
+      }),
+    );
+    await addThePrompt(harness);
+
+    const created = variableIdByName(harness, 'has_diabetes');
+    expect(created).toEqual(expect.any(String));
+    expect(
+      harness.protocolSections()[FAMILY_MEMBER_SECTION]?.variables,
+    ).toMatchObject({ [created ?? '']: { type: 'boolean' } });
+    const request = await harness.submit();
+    expect(nominationPromptsOf(request?.stageDocument)).toEqual([
+      {
+        id: expect.any(String),
+        text: 'Who has had diabetes?',
+        variable: created,
+        onlyForSexAssignedAtBirth: 'female',
+      },
+    ]);
+    expect(familyPedigreeStage.safeParse(request?.stageDocument).success).toBe(
+      true,
+    );
+  });
+
+  it('writes no limit for a prompt open to anyone', async () => {
+    const harness = renderStageEditor({
+      stage: familyPedigreeStageWith({}),
+      editor: familyPedigreeEditor,
+    });
+    addFamilyMemberVariable(harness, HEART_DISEASE, {
+      name: HEART_DISEASE,
+      type: 'boolean',
+    });
+    await harness.opened();
+    const dialog = await startAPrompt(harness);
+    expect(
+      within(dialog).getByRole('option', { name: 'Anyone' }),
+    ).toHaveAttribute('aria-selected', 'true');
+    await chooseAttributeById(
+      harness.user,
+      attributeField('Attribute', dialog),
+      HEART_DISEASE,
+    );
+    await addThePrompt(harness);
+
+    const request = await harness.submit();
+    const [prompt] = nominationPromptsOf(request?.stageDocument);
+    expect(prompt).toEqual({
+      id: expect.any(String),
+      text: 'Who has had diabetes?',
+      variable: HEART_DISEASE,
+    });
+    expect(prompt).not.toHaveProperty('onlyForSexAssignedAtBirth');
+    expect(familyPedigreeStage.safeParse(request?.stageDocument).success).toBe(
+      true,
+    );
+  });
+
+  it('opens a saved prompt on what it holds, including its limit, and saves it unchanged', async () => {
+    const harness = await openWithAPrompt();
+
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Edit nomination prompt' }),
+    );
+    const dialog = await screen.findByRole('dialog');
+    expect(
+      await within(dialog).findByRole('option', {
+        name: 'Only people assigned female at birth',
+      }),
+    ).toHaveAttribute('aria-selected', 'true');
+    await harness.user.click(
+      within(dialog).getByRole('button', { name: 'Save' }),
+    );
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+
+    const request = await harness.submit();
+    expect(nominationPromptsOf(request?.stageDocument)).toEqual([savedPrompt]);
+  });
+
+  it('drops the key when the last prompt is removed, and the stage is still valid', async () => {
+    const harness = await openWithAPrompt();
+
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Delete nomination prompt' }),
+    );
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Delete nomination prompt' }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByText('Who in your family has had heart disease?'),
+      ).toBeNull(),
+    );
+
+    const request = await harness.submit();
+    expect(request?.stageDocument).not.toHaveProperty('nominationPrompts');
+    expect(familyPedigreeStage.safeParse(request?.stageDocument).success).toBe(
+      true,
+    );
+  });
+
+  it('never gives a prompt the id the interview keeps for building the family', async () => {
+    const randomUUID = vi
+      .spyOn(crypto, 'randomUUID')
+      .mockReturnValueOnce('pedigree' as ReturnType<typeof crypto.randomUUID>);
+    try {
+      expect(newNominationPromptId()).not.toBe('pedigree');
+      // The first draw was the reserved word, so a second one was made.
+      expect(randomUUID).toHaveBeenCalledTimes(2);
+    } finally {
+      randomUUID.mockRestore();
+    }
+
+    const harness = openFixture();
+    await harness.opened();
+    const dialog = await startAPrompt(harness);
+    await inventAttribute(
+      harness.user,
+      attributeField('Attribute', dialog),
+      'has_diabetes',
+    );
+    await waitFor(() =>
+      expect(
+        within(attributeField('Attribute', dialog)).getByText('has_diabetes'),
+      ).toBeVisible(),
+    );
+    await addThePrompt(harness);
+    const request = await harness.submit();
+    const [prompt] = nominationPromptsOf(request?.stageDocument);
+    expect(prompt?.id).toEqual(expect.any(String));
+    expect(prompt?.id).not.toBe('pedigree');
+  });
+
+  it('offers only true/false attributes nothing else has claimed', async () => {
+    const harness = renderStageEditor({
+      stage: familyPedigreeStageWith({
+        form: { fields: [{ variable: 'has_pets', prompt: 'Any pets?' }] },
+      }),
+      editor: familyPedigreeEditor,
+    });
+    addFamilyMemberVariables(harness, {
+      [HEART_DISEASE]: { name: HEART_DISEASE, type: 'boolean' },
+      has_pets: { name: 'has_pets', type: 'boolean', component: 'Toggle' },
+      fm_nickname: { name: 'fm_nickname', type: 'text', component: 'Text' },
+    });
+    await harness.opened();
+    const dialog = await startAPrompt(harness);
+
+    // Not the participant marker, which the interface owns; not the attribute
+    // an additional field of this very stage collects, which is validated;
+    // and not the text one.
+    expect(
+      await offeredAttributes(
+        harness.user,
+        attributeField('Attribute', dialog),
+      ),
+    ).toEqual([HEART_DISEASE]);
+  });
+
+  it('keeps a nomination attribute out of the additional fields', async () => {
+    const harness = await openWithAPrompt();
+
+    await harness.user.click(
+      await screen.findByRole('switch', { name: 'Additional person fields' }),
+    );
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Create new person field' }),
+    );
+    const dialog = await screen.findByRole('dialog');
+
+    expect(
+      await offeredAttributes(
+        harness.user,
+        attributeField('Attribute', dialog),
+      ),
+    ).not.toContain(HEART_DISEASE);
   });
 });

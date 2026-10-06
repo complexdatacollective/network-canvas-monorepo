@@ -112,7 +112,7 @@ type MaximalStage = Readonly<{
    * Keys the schema has and the editor has no section for yet. They round-trip
    * untouched, so a researcher cannot see or change them.
    */
-  unowned: readonly string[];
+  unowned?: readonly string[];
 }>;
 
 /**
@@ -137,14 +137,12 @@ const MAXIMAL: readonly MaximalStage[] = [
     stageType: 'FamilyPedigree',
     editor: familyPedigreeEditor,
     fields: FAMILY_PEDIGREE_FIELDS,
-    // The editor has no section for the framing or the nomination prompts yet.
-    unowned: ['framing', 'nominationPrompts'],
   },
 ];
 
 describe.each(MAXIMAL)(
   'a $stageType stage holding every key its schema declares',
-  ({ stageType, editor, fields, unowned }: MaximalStage) => {
+  ({ stageType, editor, fields, unowned = [] }: MaximalStage) => {
     /**
      * The stage above is the schema's key list, spelled as a stage. A key
      * added to this interface fails here first, with the key named, rather

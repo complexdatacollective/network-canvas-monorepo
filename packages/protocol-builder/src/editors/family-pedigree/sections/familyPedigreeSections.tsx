@@ -1,7 +1,9 @@
 import type { StageSection } from '../../defineStageEditor.tsx';
 import CompletenessSection from './CompletenessSection.tsx';
+import FramingSection from './FramingSection.tsx';
 import GenderIdentitySection from './GenderIdentitySection.tsx';
 import NodeConfigurationSection from './NodeConfigurationSection.tsx';
+import NominationPromptsSection from './NominationPromptsSection.tsx';
 import PedigreePromptSection from './PedigreePromptSection.tsx';
 import PersonFormFieldsSection from './PersonFormFieldsSection.tsx';
 import RelationshipsSection from './RelationshipsSection.tsx';
@@ -19,7 +21,15 @@ export const genderIdentity = (): StageSection => () => (
 /** How relationships between family members are recorded. */
 export const relationships = (): StageSection => () => <RelationshipsSection />;
 
-/** The instruction shown on the canvas. */
+/** The words used to describe family members. */
+export const framing = (): StageSection => () => <FramingSection />;
+
+/** The questions asked of the whole family once it is drawn. */
+export const nominationPrompts = (): StageSection => () => (
+  <NominationPromptsSection />
+);
+
+/** The instruction shown while the participant draws their family. */
 export const pedigreePrompt = (): StageSection => () => (
   <PedigreePromptSection />
 );

@@ -1,7 +1,9 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import FramingSection from '../editors/family-pedigree/sections/FramingSection.tsx';
 import NodeConfigurationSection from '../editors/family-pedigree/sections/NodeConfigurationSection.tsx';
+import NominationPromptsSection from '../editors/family-pedigree/sections/NominationPromptsSection.tsx';
 import PedigreePromptSection from '../editors/family-pedigree/sections/PedigreePromptSection.tsx';
 import PersonFormFieldsSection from '../editors/family-pedigree/sections/PersonFormFieldsSection.tsx';
 import RelationshipsSection from '../editors/family-pedigree/sections/RelationshipsSection.tsx';
@@ -373,8 +375,10 @@ describe('the interface families under es, at rest', () => {
         <>
           <NodeConfigurationSection />
           <RelationshipsSection />
+          <FramingSection />
           <PedigreePromptSection />
           <PersonFormFieldsSection />
+          <NominationPromptsSection />
         </>
       ),
     });

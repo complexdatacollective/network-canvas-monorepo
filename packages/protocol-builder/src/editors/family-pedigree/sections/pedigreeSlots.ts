@@ -45,6 +45,9 @@ export const RELATIVES_NOT_RECORDED_PATH =
 
 const PERSON_FORM_FIELDS_PATH = 'form.fields';
 
+/** Where the stage keeps its questions about the whole family. */
+export const NOMINATION_PROMPTS_PATH = 'nominationPrompts';
+
 const asVariableId = (value: unknown): string | undefined =>
   typeof value === 'string' && value !== '' ? value : undefined;
 
@@ -63,8 +66,8 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
  *   participant with validation: the name attribute and every additional
  *   person field.
  * - `unvalidatedPersonVariables` is what the interface writes onto people
- *   itself: gender identity, sex assigned at birth, the participant marker and
- *   the relatives not recorded.
+ *   itself: gender identity, sex assigned at birth, the participant marker, the
+ *   relatives not recorded and the attribute each nomination prompt sets.
  */
 export function usePedigreeDraftBindings(): Readonly<{
   personSubject: CodebookSubject | null;
@@ -98,6 +101,7 @@ export function usePedigreeDraftBindings(): Readonly<{
     EDGE_CONFIGURATION_PATHS.currentPartnerVariable,
   );
   const formRows = useStageValue(PERSON_FORM_FIELDS_PATH);
+  const nominationRows = useStageValue(NOMINATION_PROMPTS_PATH);
 
   const relationshipSubject: CodebookSubject | null = useMemo(
     () =>
@@ -160,12 +164,26 @@ export function usePedigreeDraftBindings(): Readonly<{
     [formRows],
   );
 
+  const nominationVariables = useMemo(
+    () =>
+      Array.isArray(nominationRows)
+        ? nominationRows
+            .filter(isRecord)
+            .map((row) => row.variable)
+            .filter(
+              (variable): variable is string =>
+                typeof variable === 'string' && variable !== '',
+            )
+        : [],
+    [nominationRows],
+  );
+
   const unvalidatedPersonVariables = useMemo(
     () =>
-      [gender, sex, ego, relativesNotRecorded].filter(
+      [gender, sex, ego, relativesNotRecorded, ...nominationVariables].filter(
         (variable): variable is string => variable !== undefined,
       ),
-    [ego, gender, relativesNotRecorded, sex],
+    [ego, gender, nominationVariables, relativesNotRecorded, sex],
   );
 
   const personAttributeVariables = useMemo(

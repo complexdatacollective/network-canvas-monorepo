@@ -2243,6 +2243,22 @@
     "defaultMessage": "Current partner",
     "description": "Label for the true/false attribute marking a partnership as current, in the printable protocol summary."
   },
+  "architect.protocolSummary.stage.familyPedigree.framing": {
+    "defaultMessage": "Words for family members",
+    "description": "Label for the setting choosing the words used to describe family members, in the printable protocol summary."
+  },
+  "architect.protocolSummary.stage.familyPedigree.framingGamete": {
+    "defaultMessage": "Egg parent and sperm parent",
+    "description": "Printable protocol summary text for the wording setting that describes biological parents by the egg or sperm they gave, without gendered words."
+  },
+  "architect.protocolSummary.stage.familyPedigree.framingGendered": {
+    "defaultMessage": "Everyday kinship words (mother, father, sister, brother)",
+    "description": "Printable protocol summary text for the wording setting that uses the usual kinship words. It is what the stage uses when no wording is chosen."
+  },
+  "architect.protocolSummary.stage.familyPedigree.framingParticipantPreference": {
+    "defaultMessage": "The participant chooses between the two",
+    "description": "Printable protocol summary text for the wording setting that lets the participant choose between everyday kinship words and egg parent and sperm parent words."
+  },
   "architect.protocolSummary.stage.familyPedigree.genderIdentity": {
     "defaultMessage": "Gender identity",
     "description": "Label for the attribute that holds each family member’s gender identity, in the printable protocol summary."
@@ -2282,6 +2298,22 @@
   "architect.protocolSummary.stage.familyPedigree.name": {
     "defaultMessage": "Name",
     "description": "Label for the text attribute that holds each family member’s name, in the printable protocol summary."
+  },
+  "architect.protocolSummary.stage.familyPedigree.nominationLimit": {
+    "defaultMessage": "Who can be selected",
+    "description": "Label, in the printable protocol summary, for the limit a nomination prompt places on who can be selected by sex assigned at birth."
+  },
+  "architect.protocolSummary.stage.familyPedigree.nominationLimitFemale": {
+    "defaultMessage": "Only people assigned female at birth",
+    "description": "Printable protocol summary text for a nomination prompt that only people whose sex assigned at birth is female can be selected for."
+  },
+  "architect.protocolSummary.stage.familyPedigree.nominationLimitMale": {
+    "defaultMessage": "Only people assigned male at birth",
+    "description": "Printable protocol summary text for a nomination prompt that only people whose sex assigned at birth is male can be selected for."
+  },
+  "architect.protocolSummary.stage.familyPedigree.nominationPrompts": {
+    "defaultMessage": "Nomination prompts",
+    "description": "Heading of the list, in the printable protocol summary, of the questions a Family Pedigree asks about the whole family once it is drawn."
   },
   "architect.protocolSummary.stage.familyPedigree.participantMarker": {
     "defaultMessage": "Participant marker",
