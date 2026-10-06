@@ -42,6 +42,7 @@ import {
   geneticParentSexes,
   geneticParentsPossible,
   isGeneticKind,
+  otherGameteSex,
   sexesRuledOut,
   partnersOf,
   primaryParentsOf,
@@ -93,6 +94,7 @@ const ROLE = {
   alsoParentOf: 'pedigreeAlsoParentOf',
   sharedParents: 'pedigreeSharedParents',
   sharedParentCount: 'pedigreeSharedParentCount',
+  siblingKind: 'pedigreeSiblingKind',
   otherParent: 'pedigreeOtherParent',
   childKind: 'pedigreeChildKind',
   carrier: 'pedigreeCarrier',
@@ -772,6 +774,10 @@ function readRequest(
               : shared.includes(UNKNOWN)
                 ? 'other'
                 : 'none',
+        parentKind:
+          (asString(values[ROLE.siblingKind]) as
+            | (typeof CHILD_KINDS)[number]
+            | undefined) ?? 'biological',
       };
     }
   }
@@ -1129,16 +1135,51 @@ function SiblingFields({
   framing: FramingId;
 }) {
   const intl = useAppIntl();
+  const values = useFormValue([ROLE.sharedParents, ROLE.siblingKind]);
   const parents = primaryParentsOf(family, anchor.id);
   const args = {
     isYou: anchor.isEgo ? 'true' : 'false',
     name: displayName(anchor.id),
   };
 
+  // The sibling can be the biological child of the parents they share only
+  // when those parents could have given one egg and one sperm. Someone with
+  // no parents is given an egg parent and a sperm parent, who always could;
+  // a second parent not yet shown gave the other gamete when the known one
+  // gave one.
+  const sexOf = (id: string) => family.byId.get(id)?.sexAssignedAtBirth;
+  const knownLink = family.links.find(
+    (link) =>
+      link.target === anchor.id &&
+      link.kind !== 'partner' &&
+      link.source === parents[0],
+  );
+  const shared = asStringArray(values[ROLE.sharedParents]);
+  const biologicalPossible =
+    parents.length === 0 ||
+    geneticParentsPossible(
+      shared.map((id) =>
+        id !== UNKNOWN
+          ? sexOf(id)
+          : knownLink && isGeneticKind(knownLink.kind)
+            ? otherGameteSex(sexOf(knownLink.source))
+            : undefined,
+      ),
+    );
+  // Choosing parents can make a biological child impossible; the question
+  // is then asked again.
+  const setFieldValue = useFormStore((store) => store.setFieldValue);
+  const biologicalImpossible =
+    asString(values[ROLE.siblingKind]) === 'biological' && !biologicalPossible;
+  useEffect(() => {
+    if (biologicalImpossible) setFieldValue(ROLE.siblingKind, undefined);
+  }, [biologicalImpossible, setFieldValue]);
+
   // Someone with no parents is given an egg parent and a sperm parent,
-  // unnamed; the sibling may share both or one of them.
-  if (parents.length === 0) {
-    return (
+  // unnamed; the sibling may share both or one of them. A parent not yet
+  // shown can be shared too, and is added for both.
+  const sharedField =
+    parents.length === 0 ? (
       <Field
         component={RadioGroupField}
         name={ROLE.sharedParentCount}
@@ -1165,28 +1206,43 @@ function SiblingFields({
         required
         initialValue="both"
       />
+    ) : (
+      <Field
+        component={CheckboxGroupField}
+        name={ROLE.sharedParents}
+        label={intl.formatMessage(messages.sharedParentCountLabel, args)}
+        options={[
+          ...parents.map((id) => ({ value: id, label: displayName(id) })),
+          ...(parents.length < 2
+            ? [
+                {
+                  value: UNKNOWN,
+                  label: intl.formatMessage(messages.sharedParentUnshown, args),
+                },
+              ]
+            : []),
+        ]}
+        required
+        initialValue={parents.length < 2 ? [...parents, UNKNOWN] : parents}
+      />
     );
-  }
 
-  // A parent not yet shown can be shared too, and is added for both.
   return (
-    <Field
-      component={CheckboxGroupField}
-      name={ROLE.sharedParents}
-      label={intl.formatMessage(messages.sharedParentsLabel)}
-      options={[
-        ...parents.map((id) => ({ value: id, label: displayName(id) })),
-        ...(parents.length < 2
-          ? [
-              {
-                value: UNKNOWN,
-                label: intl.formatMessage(messages.sharedParentUnshown, args),
-              },
-            ]
-          : []),
-      ]}
-      required
-      initialValue={parents.length < 2 ? [...parents, UNKNOWN] : parents}
-    />
+    <>
+      {sharedField}
+      <Field
+        component={RadioGroupField}
+        name={ROLE.siblingKind}
+        label={intl.formatMessage(messages.siblingKindLabel)}
+        hint={intl.formatMessage(messages.siblingKindHint, args)}
+        options={CHILD_KINDS.map((value) => ({
+          value,
+          label: intl.formatMessage(CHILD_KIND_LABELS[value]),
+          disabled: value === 'biological' && !biologicalPossible,
+        }))}
+        required
+        initialValue="biological"
+      />
+    </>
   );
 }

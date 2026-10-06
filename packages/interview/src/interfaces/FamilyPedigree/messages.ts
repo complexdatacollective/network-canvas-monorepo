@@ -334,11 +334,18 @@ export const messages = defineMessages({
     description:
       'Question in the side panel for adding a parent: which of the selected person’s siblings share this parent. Options are the siblings’ names.',
   },
-  sharedParentsLabel: {
-    id: 'interview.familyPedigree.sharedParentsLabel',
-    defaultMessage: 'Which parents do they share?',
+  siblingKindLabel: {
+    id: 'interview.familyPedigree.siblingKindLabel',
+    defaultMessage: 'To the parents they share, are they…',
     description:
-      'Question in the side panel for adding a sibling: which parents the two siblings have in common. Options are the parents’ names.',
+      'Question in the side panel for adding a sibling: how the new sibling is related to the parents chosen above. Followed by the options "A biological child", "An adopted child", "A step-child or other child they raise".',
+  },
+  siblingKindHint: {
+    id: 'interview.familyPedigree.siblingKindHint',
+    defaultMessage:
+      '{isYou, select, true {This can differ from how you are related to them, for example if only one of you was adopted.} other {This can differ from how “{name}” is related to them, for example if only one of the two siblings was adopted.}}',
+    description:
+      'Hint under the question about how a new sibling is related to the parents they share. name is the person the sibling is being added to.',
   },
   placeholderParentsNote: {
     id: 'interview.familyPedigree.placeholderParentsNote',
@@ -714,7 +721,7 @@ export const messages = defineMessages({
     defaultMessage:
       '{isYou, select, true {Which parents do they share with you?} other {Which parents do they share with “{name}”?}}',
     description:
-      'Question in the side panel for adding a sibling to someone with no parents yet. name is that person’s name or how they are related to the participant.',
+      'Question in the side panel for adding a sibling: which parents the two siblings have in common. Options are the parents’ names, or for someone with no parents yet, both or one of the parents who will be added. name is that person’s name or how they are related to the participant.',
   },
   sharedParentCountBoth: {
     id: 'interview.familyPedigree.sharedParentCountBoth',

@@ -241,6 +241,7 @@ describe('planAddRelative', () => {
       relation: 'sibling',
       sharedParentIds: [],
       sharesUnshown: 'both',
+      parentKind: 'biological',
     });
     expect(result.people.map((p) => p.id)).toEqual(['added', 'new-1', 'new-2']);
     // An egg parent and a sperm parent.
@@ -262,6 +263,7 @@ describe('planAddRelative', () => {
       relation: 'sibling',
       sharedParentIds: [],
       sharesUnshown: 'eggParent',
+      parentKind: 'biological',
     });
     expect(result.people.map((p) => p.id)).toEqual(['added', 'new-1', 'new-2']);
     const parentsOf = (id: string) =>
@@ -284,6 +286,7 @@ describe('planAddRelative', () => {
       relation: 'sibling',
       sharedParentIds: [],
       sharesUnshown: 'other',
+      parentKind: 'biological',
     });
     expect(result.people.map((p) => p.id)).toEqual(['added', 'new-1']);
     // Mum, female at birth, gave the egg; the parent added gave the sperm.
@@ -300,14 +303,91 @@ describe('planAddRelative', () => {
     ]);
   });
 
-  test('a half sibling shares only the chosen parent, with the same kind', () => {
+  test('a half sibling shares only the chosen parent', () => {
     const result = plan(nuclearFamily(), 'ego', {
       relation: 'sibling',
       sharedParentIds: ['mum'],
       sharesUnshown: 'none',
+      parentKind: 'biological',
     });
     expect(result.links).toEqual([
       { source: 'mum', target: 'added', kind: 'biological' },
+    ]);
+  });
+
+  test('a sibling adopted by the anchor’s biological parents', () => {
+    const result = plan(nuclearFamily(), 'ego', {
+      relation: 'sibling',
+      sharedParentIds: ['mum', 'dad'],
+      sharesUnshown: 'none',
+      parentKind: 'adoptive',
+    });
+    expect(result.links).toEqual([
+      { source: 'mum', target: 'added', kind: 'adoptive' },
+      { source: 'dad', target: 'added', kind: 'adoptive' },
+    ]);
+  });
+
+  test('a biological child of the parents who adopted the anchor', () => {
+    const family = readFamily(
+      [person('ego'), person('mum'), person('dad')],
+      [link('mum', 'ego', 'adoptive'), link('dad', 'ego', 'adoptive')],
+      config,
+    );
+    const result = plan(family, 'ego', {
+      relation: 'sibling',
+      sharedParentIds: ['mum', 'dad'],
+      sharesUnshown: 'none',
+      parentKind: 'biological',
+    });
+    expect(result.links).toEqual([
+      { source: 'mum', target: 'added', kind: 'biological' },
+      { source: 'dad', target: 'added', kind: 'biological' },
+    ]);
+  });
+
+  test('a sibling of someone without parents can be adopted by both added', () => {
+    const family = readFamily([person('ego')], [], config);
+    const result = plan(family, 'ego', {
+      relation: 'sibling',
+      sharedParentIds: [],
+      sharesUnshown: 'both',
+      parentKind: 'adoptive',
+    });
+    expect(result.links).toEqual(
+      expect.arrayContaining([
+        { source: 'new-1', target: 'ego', kind: 'biological' },
+        { source: 'new-2', target: 'ego', kind: 'biological' },
+        { source: 'new-1', target: 'added', kind: 'adoptive' },
+        { source: 'new-2', target: 'added', kind: 'adoptive' },
+      ]),
+    );
+  });
+
+  test('the other parent of someone adopted is added as an adoptive parent', () => {
+    const family = readFamily(
+      [person('ego'), person('mum', { sex: ['female'] })],
+      [link('mum', 'ego', 'adoptive')],
+      config,
+    );
+    const result = plan(family, 'ego', {
+      relation: 'sibling',
+      sharedParentIds: ['mum'],
+      sharesUnshown: 'other',
+      parentKind: 'adoptive',
+    });
+    // Not a gamete parent, so their sex at birth does not follow.
+    expect(result.people[1]!.details).toEqual({});
+    expect(result.links).toEqual([
+      { source: 'new-1', target: 'ego', kind: 'adoptive' },
+      {
+        source: 'mum',
+        target: 'new-1',
+        kind: 'partner',
+        isCurrentPartner: true,
+      },
+      { source: 'mum', target: 'added', kind: 'adoptive' },
+      { source: 'new-1', target: 'added', kind: 'adoptive' },
     ]);
   });
 

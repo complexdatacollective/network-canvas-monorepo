@@ -304,6 +304,9 @@ export type AddRelativeRequest =
        * parent.
        */
       sharesUnshown: 'both' | 'eggParent' | 'spermParent' | 'other' | 'none';
+      /** The sibling's own relationship to the parents they share, which
+       * need not be the anchor's: one may be adopted and the other not. */
+      parentKind: 'biological' | 'adoptive' | 'social';
     };
 
 export type PlannedPerson = { id: string; details: PersonDetails };
@@ -448,6 +451,7 @@ export function planAddRelative({
       // second when the sibling shares them.
       let placeholders: string[] = [];
       let sharedPlaceholders: string[] = [];
+      let secondKind: 'biological' | 'adoptive' = 'biological';
       if (anchorParents.length === 0) {
         const eggParent = addPlaceholder('female');
         const spermParent = addPlaceholder('male');
@@ -465,8 +469,12 @@ export function planAddRelative({
         const [known] = anchorLinks.filter((link) =>
           anchorParents.includes(link.source),
         );
+        // The other parent of someone adopted was most likely an adoptive
+        // parent too; otherwise they are taken to be a biological parent,
+        // who gave the other gamete when the known parent gave one.
+        secondKind = known?.kind === 'adoptive' ? 'adoptive' : 'biological';
         const second = addPlaceholder(
-          known && isGeneticKind(known.kind)
+          secondKind === 'biological' && known && isGeneticKind(known.kind)
             ? otherGameteSex(family.byId.get(known.source)?.sexAssignedAtBirth)
             : undefined,
         );
@@ -474,7 +482,7 @@ export function planAddRelative({
         sharedPlaceholders = [second];
       }
       for (const id of placeholders) {
-        links.push({ source: id, target: anchorId, kind: 'biological' });
+        links.push({ source: id, target: anchorId, kind: secondKind });
       }
       const [first, second, ...others] = [...anchorParents, ...placeholders];
       if (placeholders.length > 0 && first && second && others.length === 0) {
@@ -486,18 +494,17 @@ export function planAddRelative({
         });
       }
       // A sibling shares at least one parent; with none chosen, all of them.
+      // Their relationship to those parents is their own.
       const sharesNone = shared.length === 0 && sharedPlaceholders.length === 0;
-      for (const parentId of sharesNone ? anchorParents : shared) {
+      for (const parentId of [
+        ...(sharesNone ? anchorParents : shared),
+        ...sharedPlaceholders,
+      ]) {
         links.push({
           source: parentId,
           target: newPersonId,
-          kind:
-            anchorLinks.find((link) => link.source === parentId)?.kind ??
-            'biological',
+          kind: request.parentKind,
         });
-      }
-      for (const id of sharedPlaceholders) {
-        links.push({ source: id, target: newPersonId, kind: 'biological' });
       }
       break;
     }
@@ -535,7 +542,7 @@ export const couldCarryPregnancy = (sexAssignedAtBirth: string | undefined) =>
 
 /** The sex at birth of whoever gave the other gamete to someone of this
  * sex, when that follows. */
-const otherGameteSex = (sex: string | undefined) =>
+export const otherGameteSex = (sex: string | undefined) =>
   sex === 'female' ? 'male' : sex === 'male' ? 'female' : undefined;
 
 /** Biological parents and gamete donors each gave the person an egg or a
