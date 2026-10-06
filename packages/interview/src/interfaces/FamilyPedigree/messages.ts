@@ -661,4 +661,24 @@ export const messages = defineMessages({
     description:
       'Hint under the sex assigned at birth question when some answers contradict the person’s recorded children: for example, a child cannot have two biological parents who were both assigned male at birth.',
   },
+  biologicalParentLabel: {
+    id: 'interview.familyPedigree.biologicalParentLabel',
+    defaultMessage: 'Who is the child’s biological parent?',
+    description:
+      'Question in the side panel for adding a biological child with a partner as the other parent. Options are both of them, or either one.',
+  },
+  biologicalParentHint: {
+    id: 'interview.familyPedigree.biologicalParentHint',
+    defaultMessage:
+      'A parent who is not a biological parent is added as a step or social parent.',
+    description:
+      'Hint under the question asking which parent of a new child is a biological parent.',
+  },
+  biologicalParentBoth: {
+    id: 'interview.familyPedigree.biologicalParentBoth',
+    defaultMessage:
+      '{firstIsYou, select, true {Both you and “{second}”} other {Both “{first}” and “{second}”}}',
+    description:
+      'Option: both parents of the new child are its biological parents. first and second are their names or how they are related to the participant.',
+  },
 });

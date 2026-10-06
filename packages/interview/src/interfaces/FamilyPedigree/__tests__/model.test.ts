@@ -267,6 +267,7 @@ describe('planAddRelative', () => {
       relation: 'child',
       otherParent: 'unknown',
       parentKind: 'biological',
+      biologicalParent: 'both',
       carrier: 'anchor',
     });
     expect(result.people.map((p) => p.id)).toEqual(['added', 'new-1']);
@@ -292,11 +293,36 @@ describe('planAddRelative', () => {
     ]);
   });
 
+  test('a biological child of one partner is a social child of the other', () => {
+    const result = plan(nuclearFamily(), 'mum', {
+      relation: 'child',
+      otherParent: 'dad',
+      parentKind: 'biological',
+      biologicalParent: 'otherParent',
+      carrier: 'anchor',
+    });
+    expect(result.links).toEqual([
+      {
+        source: 'mum',
+        target: 'added',
+        kind: 'social',
+        isGestationalCarrier: false,
+      },
+      {
+        source: 'dad',
+        target: 'added',
+        kind: 'biological',
+        isGestationalCarrier: false,
+      },
+    ]);
+  });
+
   test('an adopted child records no carrier', () => {
     const result = plan(nuclearFamily(), 'mum', {
       relation: 'child',
       otherParent: null,
       parentKind: 'adoptive',
+      biologicalParent: 'both',
       carrier: 'anchor',
     });
     expect(result.links).toEqual([

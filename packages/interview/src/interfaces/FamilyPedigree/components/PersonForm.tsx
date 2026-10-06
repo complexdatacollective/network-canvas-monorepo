@@ -94,6 +94,7 @@ const ROLE = {
   otherParent: 'pedigreeOtherParent',
   childKind: 'pedigreeChildKind',
   carrier: 'pedigreeCarrier',
+  biologicalParent: 'pedigreeBiologicalParent',
   hasSiblings: 'pedigreeHasSiblings',
   hasChildren: 'pedigreeHasChildren',
 } as const;
@@ -719,8 +720,18 @@ function readRequest(
         couldCarryPregnancy(
           carrierId && family.byId.get(carrierId)?.sexAssignedAtBirth,
         );
+      const biologicalAnswer = asString(values[ROLE.biologicalParent]);
+      const biologicalParent =
+        biologicalAnswer === 'anchor' || biologicalAnswer === 'otherParent'
+          ? biologicalAnswer
+          : 'both';
+      // Only a biological parent carried the pregnancy, in this form.
+      const carrierBiological =
+        biologicalParent === 'both' || biologicalParent === answer;
       const carrier =
-        (answer === 'anchor' || answer === 'otherParent') && carrierCould
+        (answer === 'anchor' || answer === 'otherParent') &&
+        carrierCould &&
+        carrierBiological
           ? answer
           : null;
       return {
@@ -735,6 +746,7 @@ function readRequest(
           (asString(values[ROLE.childKind]) as
             | (typeof CHILD_KINDS)[number]
             | undefined) ?? 'biological',
+        biologicalParent,
         carrier,
       };
     }
@@ -955,33 +967,52 @@ function ChildFields({
   displayName: (personId: string) => string;
 }) {
   const intl = useAppIntl();
-  const values = useFormValue([ROLE.childKind, ROLE.otherParent]);
+  const values = useFormValue([
+    ROLE.childKind,
+    ROLE.otherParent,
+    ROLE.biologicalParent,
+  ]);
   const partners = partnersOf(family, anchor.id);
-  const chosenKind = asString(values[ROLE.childKind]);
-  const childKind = chosenKind ?? 'biological';
+  const childKind = asString(values[ROLE.childKind]) ?? 'biological';
   const otherParent = asString(values[ROLE.otherParent]);
   const hasOtherParent = otherParent !== undefined && otherParent !== NONE;
-  // A biological child of both parents had an egg from one and a sperm from
-  // the other.
-  const canBeBiological =
-    !hasOtherParent ||
-    otherParent === UNKNOWN ||
+  // With a partner as the other parent of a biological child, either or
+  // both of them may be its biological parents. Someone not yet in the
+  // family is added as its other biological parent.
+  const otherPartner =
+    childKind === 'biological' && hasOtherParent && otherParent !== UNKNOWN
+      ? otherParent
+      : undefined;
+  // Both, only when one could have provided the egg and the other the
+  // sperm.
+  const bothPossible =
+    otherPartner === undefined ||
     geneticParentsPossible([
       anchor.sexAssignedAtBirth,
-      family.byId.get(otherParent)?.sexAssignedAtBirth,
+      family.byId.get(otherPartner)?.sexAssignedAtBirth,
     ]);
-  // Choosing another parent can make a biological child impossible; the
-  // question is then asked again.
+  const biologicalParent = otherPartner
+    ? asString(values[ROLE.biologicalParent])
+    : 'both';
+  // Choosing another parent can make "both" impossible; the question is
+  // then asked again.
   const setFieldValue = useFormStore((store) => store.setFieldValue);
-  const kindImpossible = chosenKind === 'biological' && !canBeBiological;
+  const bothImpossible = biologicalParent === 'both' && !bothPossible;
   useEffect(() => {
-    if (kindImpossible) setFieldValue(ROLE.childKind, undefined);
-  }, [kindImpossible, setFieldValue]);
-  // Neither parent is offered as having carried the pregnancy if recorded as
-  // male at birth; an unknown other parent might have.
-  const anchorCanCarry = couldCarryPregnancy(anchor.sexAssignedAtBirth);
+    if (bothImpossible) setFieldValue(ROLE.biologicalParent, undefined);
+  }, [bothImpossible, setFieldValue]);
+  // Only a biological parent is offered as having carried the pregnancy,
+  // and not one recorded as male at birth; an unknown other parent might
+  // have.
+  const isBiological = (parent: 'anchor' | 'otherParent') =>
+    biologicalParent === undefined ||
+    biologicalParent === 'both' ||
+    biologicalParent === parent;
+  const anchorCanCarry =
+    isBiological('anchor') && couldCarryPregnancy(anchor.sexAssignedAtBirth);
   const otherParentCanCarry =
     hasOtherParent &&
+    isBiological('otherParent') &&
     (otherParent === UNKNOWN ||
       couldCarryPregnancy(family.byId.get(otherParent)?.sexAssignedAtBirth));
 
@@ -1008,11 +1039,33 @@ function ChildFields({
         options={CHILD_KINDS.map((value) => ({
           value,
           label: intl.formatMessage(CHILD_KIND_LABELS[value]),
-          disabled: value === 'biological' && !canBeBiological,
         }))}
         required
         initialValue="biological"
       />
+      {otherPartner && (
+        <Field
+          component={RadioGroupField}
+          name={ROLE.biologicalParent}
+          label={intl.formatMessage(messages.biologicalParentLabel)}
+          hint={intl.formatMessage(messages.biologicalParentHint)}
+          options={[
+            {
+              value: 'both',
+              label: intl.formatMessage(messages.biologicalParentBoth, {
+                firstIsYou: anchor.isEgo ? 'true' : 'false',
+                first: displayName(anchor.id),
+                second: displayName(otherPartner),
+              }),
+              disabled: !bothPossible,
+            },
+            { value: 'anchor', label: displayName(anchor.id) },
+            { value: 'otherParent', label: displayName(otherPartner) },
+          ]}
+          required
+          initialValue="both"
+        />
+      )}
       {childKind === 'biological' &&
         (anchorCanCarry || otherParentCanCarry) && (
           <Field

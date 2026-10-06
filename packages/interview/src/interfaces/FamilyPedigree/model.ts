@@ -286,6 +286,9 @@ export type AddRelativeRequest =
       /** A partner of the anchor, `'unknown'` for someone not shown, or null. */
       otherParent: string | 'unknown' | null;
       parentKind: 'biological' | 'adoptive' | 'social';
+      /** For a biological child with another parent, which of them is a
+       * biological parent; the other is a social parent. */
+      biologicalParent: 'both' | 'anchor' | 'otherParent';
       /** Who carried the pregnancy, for a biological child. */
       carrier: 'anchor' | 'otherParent' | null;
     }
@@ -381,19 +384,30 @@ export function planAddRelative({
       } else if (request.otherParent) {
         otherParentId = request.otherParent;
       }
-      const biological = kind === 'biological';
+      // Only a biological parent is recorded as having carried the
+      // pregnancy.
+      const kindFor = (parent: 'anchor' | 'otherParent') =>
+        kind === 'biological' &&
+        request.biologicalParent !== 'both' &&
+        request.biologicalParent !== parent
+          ? 'social'
+          : kind;
+      const anchorKind = kindFor('anchor');
       links.push({
         source: anchorId,
         target: newPersonId,
-        kind,
-        isGestationalCarrier: biological && request.carrier === 'anchor',
+        kind: anchorKind,
+        isGestationalCarrier:
+          anchorKind === 'biological' && request.carrier === 'anchor',
       });
       if (otherParentId) {
+        const otherKind = kindFor('otherParent');
         links.push({
           source: otherParentId,
           target: newPersonId,
-          kind,
-          isGestationalCarrier: biological && request.carrier === 'otherParent',
+          kind: otherKind,
+          isGestationalCarrier:
+            otherKind === 'biological' && request.carrier === 'otherParent',
         });
       }
       break;
