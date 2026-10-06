@@ -1882,16 +1882,32 @@ test('studio-stack is selected by detect and required by the quality gate', () =
 // nothing else, so these tests pin what selects it, what it is given, and
 // that the gate cannot read a job that never ran as a pass.
 
-function runUpgradeSelection({ studio, headRef = '', changed = [] }) {
+// Runs detect's two Studio blocks in the order detect runs them: the studio
+// flag (its package-graph half stubbed as `packageFlag`, its extra paths
+// real), then the upgrade flag. The pair is what decides, so a change the
+// package graph does not see is exercised with the package flag down.
+function runUpgradeSelection({ packageFlag, headRef = '', changed = [] }) {
   const detectJob = job('detect');
+  const unindent = (match) =>
+    match[0]
+      .split('\n')
+      .map((line) => line.slice(match.groups.indent.length))
+      .join('\n');
+  const studioBlock = detectJob.match(
+    /^(?<indent> +)studio=\$\(flag @codaco\/studio-api\)\n[\s\S]*?^\k<indent>fi$/m,
+  );
+  assert.ok(studioBlock, 'detect computes the studio flag');
   const block = detectJob.match(
     /^(?<indent> +)studio_upgrade=false\n[\s\S]*?^\k<indent>fi$/m,
   );
   assert.ok(block, 'detect computes studio_upgrade');
-  const body = block[0]
-    .split('\n')
-    .map((line) => line.slice(block.groups.indent.length))
-    .join('\n');
+  const body = [
+    unindent(studioBlock).replace(
+      'studio=$(flag @codaco/studio-api)',
+      'studio=$PACKAGE_FLAG',
+    ),
+    unindent(block),
+  ].join('\n');
   const repo = mkdtempSync(join(tmpdir(), 'studio-upgrade-detect-'));
   try {
     const git = (...args) =>
@@ -1917,7 +1933,7 @@ function runUpgradeSelection({ studio, headRef = '', changed = [] }) {
         encoding: 'utf8',
         env: {
           PATH: process.env.PATH,
-          studio: String(studio),
+          PACKAGE_FLAG: String(packageFlag),
           HEAD_REF: headRef,
           FORCE_RUN: 'false',
           WORKFLOW_CHANGED: 'false',
@@ -1948,18 +1964,27 @@ test('detect selects the upgrade lane for release PRs and upgrade inputs only', 
 
   // Every Studio release PR, whatever it changed.
   assert.equal(
-    runUpgradeSelection({ studio: true, headRef: 'changeset-release/studio' }),
+    runUpgradeSelection({
+      packageFlag: true,
+      headRef: 'changeset-release/studio',
+    }),
     'true',
   );
-  // Each path that performs or describes an upgrade selects it on its own.
+  // Each path that performs or describes an upgrade selects it on its own,
+  // whether or not the package graph saw the change: the lane, the seed and
+  // the maintenance page are outside the graph the studio flag walks, and the
+  // rest must not depend on it either.
   for (const file of [
     'apps/studio/api/migrations/0002_next/delta.sql',
     'apps/studio/release-test/run.sh',
+    'apps/studio/release-test/window.mjs',
+    'apps/studio/release-test/diff-export.mjs',
     'apps/studio/docs/self-host/upgrade.md',
     'apps/studio/docs/self-host/backup.md',
     'apps/studio/Dockerfile',
     'apps/studio/docker-compose.yml',
     'apps/studio/docker-compose.local.yml',
+    'apps/studio/web/public/maintenance.html',
     'apps/studio/api/src/db/migrate.ts',
     'apps/studio/api/src/platform/schema-gate.ts',
     'apps/studio/api/src/programs/migrate.ts',
@@ -1970,37 +1995,43 @@ test('detect selects the upgrade lane for release PRs and upgrade inputs only', 
     'apps/studio/api/src/maintenance.ts',
     'apps/studio/api/src/migrate.ts',
     'apps/studio/api/bin/studio-api',
+    'apps/studio/api/scripts/seed.ts',
+    'apps/studio/api/scripts/seed/seed.ts',
     'apps/studio/api/scripts/render-migrations.ts',
     'apps/studio/api/scripts/migrate-generate.ts',
   ]) {
-    assert.equal(
-      runUpgradeSelection({ studio: true, changed: [file] }),
-      'true',
-      `a change to ${file} selects the upgrade lane`,
-    );
+    for (const packageFlag of [true, false]) {
+      assert.equal(
+        runUpgradeSelection({ packageFlag, changed: [file] }),
+        'true',
+        `a change to ${file} selects the upgrade lane (package flag ${packageFlag})`,
+      );
+    }
   }
-  // A Studio change off the upgrade's path does not pay for it…
+  // A Studio change off the upgrade's path does not pay for it, whatever
+  // selected the stack job.
   for (const file of [
     'apps/studio/api/src/study/handlers.ts',
     'apps/studio/docs/self-host/swap.md',
+    'apps/studio/stack-test/up.sh',
     'apps/studio/web/src/main.tsx',
   ]) {
     assert.equal(
-      runUpgradeSelection({ studio: true, changed: [file] }),
+      runUpgradeSelection({ packageFlag: true, changed: [file] }),
       'false',
       `a change to ${file} alone does not select the upgrade lane`,
     );
   }
-  // …and nothing selects it when the studio flag is down.
+  // Nothing outside Studio selects it.
   assert.equal(
     runUpgradeSelection({
-      studio: false,
-      headRef: 'changeset-release/studio',
-      changed: ['apps/studio/api/migrations/0002_next/delta.sql'],
+      packageFlag: false,
+      changed: ['apps/architect/x.ts'],
     }),
     'false',
   );
-});
+  // Each case is a throwaway git repository: about fifty of them.
+}, 120_000);
 
 test('studio-upgrade runs the lane and is required by the quality gate', () => {
   const upgrade = job('studio-upgrade');
@@ -2027,8 +2058,8 @@ test('studio-upgrade runs the lane and is required by the quality gate', () => {
       `the job never runs on ${excluded}`,
     );
   }
-  // previous-release.mjs refuses an anonymous query under CI, so the token
-  // and the permission to read packages are what make run C reachable.
+  // Run C pulls a tagged release's images from ghcr.io, logging in with the
+  // job's token, which needs the permission to read packages.
   assert.match(upgrade, /packages: read/);
   assert.match(upgrade, /GITHUB_TOKEN: \$\{\{ secrets\.GITHUB_TOKEN \}\}/);
   // build-next.sh seals against history and run C checks out a tag.

@@ -225,42 +225,48 @@ jobs:
           # The Studio upgrade lane, for the `studio-upgrade` job (#1901): an
           # upgrade from the candidate to a code-only release and to a release
           # carrying a migration, run through the self-host guide's own
-          # commands. A subset of the studio flag, because it costs a second
-          # image build and two upgrade cycles: every Studio release PR, and
-          # any change to what performs or describes an upgrade — the
-          # migrations, the lane, the two guide pages it executes, the images,
-          # the compose files, and the api code on the upgrade's path (the
+          # commands. Computed on its own, never only inside the studio flag:
+          # the lane, the seed it loads and the maintenance page its observer
+          # reads are not part of the package graph `flag` walks, so a change
+          # confined to any of them leaves `studio` false and must still
+          # select this job. It is narrower than `studio` in every other way,
+          # because it costs a second image build and two upgrade cycles:
+          # every Studio release PR, and any change to what performs or
+          # describes an upgrade — the migrations, the lane, the seed, the two
+          # guide pages it executes, the images, the compose files, the
+          # maintenance page, and the api code on the upgrade's path (the
           # migration runner, the boot path, the maintenance gate, the
-          # worker's pause and the readiness checks the lane reads). A
-          # forced or workflow-changing run selects it like every other job.
+          # worker's pause and the readiness checks the lane reads). A forced
+          # or workflow-changing run selects it like every other job.
           studio_upgrade=false
-          if [[ "$studio" == "true" ]]; then
-            if [[ "$HEAD_REF" == "changeset-release/studio" \
-              || "$FORCE_RUN" == "true" || "$WORKFLOW_CHANGED" == "true" \
-              || -z "$PREV" ]]; then
-              studio_upgrade=true
-            elif ! git diff --quiet "$PREV" "$CURR" -- \
-              apps/studio/api/migrations \
-              apps/studio/release-test \
-              apps/studio/docs/self-host/upgrade.md \
-              apps/studio/docs/self-host/backup.md \
-              apps/studio/Dockerfile \
-              'apps/studio/docker-compose*.yml' \
-              apps/studio/api/src/db \
-              apps/studio/api/src/platform \
-              apps/studio/api/src/programs \
-              apps/studio/api/src/http/middleware \
-              apps/studio/api/src/http/health.ts \
-              apps/studio/api/src/jobs/maintenance.ts \
-              apps/studio/api/src/jobs/worker.ts \
-              apps/studio/api/src/maintenance.ts \
-              apps/studio/api/src/migrate.ts \
-              apps/studio/api/bin \
-              apps/studio/api/scripts/render-migrations.ts \
-              apps/studio/api/scripts/migrate-generate.ts; then
-              studio_upgrade=true
-              echo "Studio upgrade inputs changed."
-            fi
+          if [[ "$HEAD_REF" == "changeset-release/studio" \
+            || "$FORCE_RUN" == "true" || "$WORKFLOW_CHANGED" == "true" \
+            || -z "$PREV" ]]; then
+            studio_upgrade=true
+          elif ! git diff --quiet "$PREV" "$CURR" -- \
+            apps/studio/api/migrations \
+            apps/studio/release-test \
+            apps/studio/docs/self-host/upgrade.md \
+            apps/studio/docs/self-host/backup.md \
+            apps/studio/Dockerfile \
+            'apps/studio/docker-compose*.yml' \
+            apps/studio/web/public/maintenance.html \
+            apps/studio/api/src/db \
+            apps/studio/api/src/platform \
+            apps/studio/api/src/programs \
+            apps/studio/api/src/http/middleware \
+            apps/studio/api/src/http/health.ts \
+            apps/studio/api/src/jobs/maintenance.ts \
+            apps/studio/api/src/jobs/worker.ts \
+            apps/studio/api/src/maintenance.ts \
+            apps/studio/api/src/migrate.ts \
+            apps/studio/api/bin \
+            apps/studio/api/scripts/seed.ts \
+            apps/studio/api/scripts/seed \
+            apps/studio/api/scripts/render-migrations.ts \
+            apps/studio/api/scripts/migrate-generate.ts; then
+            studio_upgrade=true
+            echo "Studio upgrade inputs changed."
           fi
 
           # Either public site can contain inbound links to routes owned by the
@@ -1251,9 +1257,10 @@ jobs:
     timeout-minutes: 40
     permissions:
       contents: read
-      # previous-release.mjs asks GHCR for the published studio-api tags with
-      # this job's token. Under CI an unauthenticated query is refused rather
-      # than read as "nothing published".
+      # Run C. The previous release is the newest `@codaco/studio-api@<x.y.z>`
+      # git tag (previous-release.mjs); with none, GHCR is never asked. With
+      # one, run.sh logs in to ghcr.io with this job's token and pulls that
+      # release's images, and any failure fails the job.
       packages: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
@@ -1294,12 +1301,15 @@ jobs:
           # other's build of the candidate images.
           BUILD_CACHE_FROM: type=gha,scope=studio-stack-{target}
           BUILD_CACHE_TO: type=gha,scope=studio-stack-{target},mode=max,ignore-error=true
+          # Used only for run C's `docker login ghcr.io`, which happens only
+          # when a release tag exists.
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: apps/studio/release-test/run.sh --runs A,B
 
       # The lane's evidence, kept whatever the verdict: the observer's ticks,
-      # the step timings, the window and diff verdicts, and each run's
-      # `docker compose ps` and whole log. Named rather than the directory: the
+      # the step timings, the window, diff and restore verdicts, what the new
+      # worker logged, and each run's `docker compose ps` and whole log, both
+      # as upgraded and after the rollback. Named rather than the directory: the
       # deployment's `.env`, the backup (which holds a copy of the keyring),
       # the data exports and `migrate`'s output (which can carry a setup
       # token) also live there.
@@ -1313,6 +1323,10 @@ jobs:
             ${{ runner.temp }}/studio-release-test/run-*/summary.json
             ${{ runner.temp }}/studio-release-test/run-*/window.json
             ${{ runner.temp }}/studio-release-test/run-*/diff.json
+            ${{ runner.temp }}/studio-release-test/run-*/diff-restored.json
+            ${{ runner.temp }}/studio-release-test/run-*/new-worker.json
+            ${{ runner.temp }}/studio-release-test/run-*/restore.log
+            ${{ runner.temp }}/studio-release-test/run-*/logs-upgraded.txt
             ${{ runner.temp }}/studio-release-test/run-*/events.tsv
             ${{ runner.temp }}/studio-release-test/run-*/observe.tsv
             ${{ runner.temp }}/studio-release-test/run-*/ps.txt

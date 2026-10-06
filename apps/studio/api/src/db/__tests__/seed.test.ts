@@ -1117,6 +1117,41 @@ describe.skipIf(!testDb)('seed', () => {
     );
 
     it.effect(
+      'keeps the migration history of a migrated database',
+      () =>
+        Effect.gen(function* () {
+          // A migrated database: `migrate` writes the history beside the
+          // schema. The scratch schema is applied without it, so the table
+          // is created here with the shape `db/history.ts` gives it.
+          yield* ownerRows(
+            `create table studio_migrations (
+               version text primary key,
+               ordinal int not null unique,
+               manifest_hash text not null,
+               artefact_hashes jsonb not null,
+               applied_at timestamptz not null default now(),
+               applied_by text not null
+             )`,
+          );
+          yield* ownerRows(
+            `insert into studio_migrations
+               (version, ordinal, manifest_hash, artefact_hashes, applied_by)
+             values ('0001_initial', 1, 'hash', '{}'::jsonb, 'seed-test')`,
+          );
+
+          yield* seed({ secrets: testKeyring(), scale: 'tiny' });
+
+          // A wiped history makes `migrate` refuse the database as one it
+          // did not create, so the seed must leave it as it found it.
+          const history = yield* ownerRows<{ version: string }>(
+            `select version from studio_migrations order by ordinal`,
+          );
+          expect(history).toEqual([{ version: '0001_initial' }]);
+        }),
+      SEEDING_TIMEOUT_MS,
+    );
+
+    it.effect(
       'hashes a per-instance admin password when one is given',
       () =>
         Effect.gen(function* () {

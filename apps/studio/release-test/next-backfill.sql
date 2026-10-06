@@ -7,9 +7,13 @@
 -- Backfills).
 --
 -- `protocols` rather than `studies`: the first run of this lane backfilled
--- `studies`, and the previous release's immutability trigger refused the
--- UPDATE ("closed studies are read-only") — a backfill runs under the triggers
--- of the release it upgrades from. `protocols` carries no UPDATE trigger.
+-- `studies`, and the immutability trigger refused the UPDATE ("closed studies
+-- are read-only"). A migration's artefacts run delta, then sidecars, then
+-- backfill, so a backfill runs under the triggers of the release it installs
+-- — and this release keeps that trigger. A backfill that has to write such
+-- rows disables the named trigger as the owner inside the migration, as
+-- api/migrations/README.md describes; `protocols` carries no UPDATE trigger,
+-- so this one needs nothing of the kind.
 SET LOCAL ROLE studio_maintenance;
 UPDATE public.protocols SET release_test_probe = 'backfilled:' || id;
 RESET ROLE;

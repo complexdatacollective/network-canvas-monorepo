@@ -8,21 +8,32 @@
 # `secrets` the stack reads, and the place the backup lands — the directory a
 # self-hoster runs `docker compose` from. The sequence is read from the
 # `<!-- upgrade-sequence -->` block of docs/self-host/upgrade.md and each of
-# its commands is run as written; its backup comment is replaced by the
-# `<!-- backup-take -->` block of docs/self-host/backup.md, also as written.
+# its commands is run as written. Its two comments are instructions, and each
+# is carried out as the guide words it: the backup comment by the
+# `<!-- backup-take -->` block of docs/self-host/backup.md, also as written,
+# and the readiness comment by waiting for /readyz to name maintenance mode.
 # Nothing in either block is edited, so a change to the guide changes what
 # this runs, and a guide that stops parsing fails here.
 #
 # What the guide asks for before the sequence — the new digests in `.env` —
 # is done first, as an operator does it. What it asks for after — `/readyz`
-# answering 200 — is waited for, bounded.
+# answering 200 — is waited for, bounded. Every step is bounded too, so a
+# wait the guide asks for that never ends fails the run rather than hanging it.
 #
 # Around the sequence:
-#   - observe.sh records /readyz and a probe four times a second, and
-#     window.mjs then decides whether the instance was closed throughout;
-#   - right after `maintenance on`, one `protocol-store-gc` job is enqueued as
-#     the application role; it must still be `created` after `migrate` and
-#     must be worked once the instance reopens.
+#   - observe.sh records /readyz and a probe four times a second (faster while
+#     `migrate` runs), and window.mjs then decides whether the instance was
+#     closed throughout;
+#   - once the guide's own wait says the worker has paused, one
+#     `protocol-store-gc` job is enqueued as the application role. It must
+#     still be `created` after `migrate`, and still `created` once the NEW
+#     worker — the one `up -d` started — is running with the flag on, and it
+#     must be completed after `maintenance off` cleared the flag;
+#   - before `maintenance off`, the lane waits for that new worker to start,
+#     so the new build's own maintenance gate is live inside the window. The
+#     guide does not need this wait (the flag keeps a late worker closed
+#     either way); the proof does, or the new worker would only ever start
+#     after the window and its gate would go untested.
 set -euo pipefail
 
 # shellcheck source=./lib.sh
@@ -36,23 +47,16 @@ use_deployment "$RUN_DIR/deploy"
 
 EVENTS="$RUN_DIR/events.tsv"
 OBSERVED="$RUN_DIR/observe.tsv"
+FAST="$RUN_DIR/observe-fast"
 PROBE_JOB_FILE="$RUN_DIR/probe-job"
+NEW_WORKER_FILE="$RUN_DIR/new-worker.json"
 READY_BOUND=180
-rm -f "$EVENTS" "$OBSERVED" "$PROBE_JOB_FILE"
+STEP_BOUND=900
+WAIT_STEP_BOUND=30
+NEW_WORKER_BOUND=120
+rm -f "$EVENTS" "$OBSERVED" "$FAST" "$PROBE_JOB_FILE" "$NEW_WORKER_FILE" "$RUN_DIR/pause-lag-ms"
 
 now_ms() { perl -MTime::HiRes=time -e 'printf "%d\n", time * 1000'; }
-
-# The fenced bash block between `<!-- <name> start -->` and
-# `<!-- <name> end -->` in a guide page.
-guide_block() { # file name
-  awk -v start="<!-- $2 start -->" -v end="<!-- $2 end -->" '
-    $0 == start { marked = 1; next }
-    $0 == end { marked = 0 }
-    marked && /^```bash$/ { fenced = 1; next }
-    marked && /^```$/ { fenced = 0; next }
-    marked && fenced { print }
-  ' "$1"
-}
 
 SEQUENCE="$(guide_block "$STUDIO_DIR/docs/self-host/upgrade.md" upgrade-sequence)"
 BACKUP="$(guide_block "$STUDIO_DIR/docs/self-host/backup.md" backup-take)"
@@ -60,11 +64,10 @@ BACKUP="$(guide_block "$STUDIO_DIR/docs/self-host/backup.md" backup-take)"
 [ -n "$BACKUP" ] || die 'docs/self-host/backup.md has no <!-- backup-take --> bash block'
 grep -q '^# take your backup' <<< "$SEQUENCE" \
   || die "the upgrade sequence no longer has its '# take your backup' line, which is where backup.md's block runs"
-
-psql_() { # sql on stdin; prints rows
-  docker compose exec -T postgres \
-    sh -c 'psql -X -q -v ON_ERROR_STOP=1 -At -U "$POSTGRES_USER" -d "$POSTGRES_DB"'
-}
+grep -q '^# wait until /readyz names maintenance mode' <<< "$SEQUENCE" \
+  || die "the upgrade sequence no longer has its '# wait until /readyz names maintenance mode' line"
+grep -q '^until .*stopped claiming jobs' <<< "$SEQUENCE" \
+  || die "the upgrade sequence no longer waits for the worker's pause before the backup"
 
 job_state() {
   [ -f "$PROBE_JOB_FILE" ] || return 0
@@ -80,24 +83,35 @@ fail() {
   FAILURES+=("$*")
 }
 
-# The worker reads the flag through a one-second cache on a one-second poll,
-# so it stops claiming up to about two seconds after `maintenance on` returns,
-# and says so in its log. The probe job is enqueued after that line: a job
-# enqueued before it may be claimed, which is the documented lag and not what
-# this proof is about. The lag is recorded in pause-lag-ms.
-wait_for_worker_pause() { # since-epoch-seconds
-  local started
-  started="$(now_ms)"
+# Runs a command and kills it after <seconds>. Not a sleep: the command ends
+# the moment it is done, and the bound only turns a wait that never ends into
+# a failed step.
+bounded() { # seconds command…
+  local seconds="$1" pid watchdog code=0
+  shift
+  "$@" &
+  pid=$!
+  (
+    sleep "$seconds"
+    kill -TERM "$pid" 2> /dev/null
+  ) &
+  watchdog=$!
+  wait "$pid" || code=$?
+  kill "$watchdog" 2> /dev/null || true
+  wait "$watchdog" 2> /dev/null || true
+  return "$code"
+}
+
+# The guide's readiness comment, as it words it: /readyz names maintenance
+# mode. Bounded at 10 s; window.mjs separately requires it within 3.
+wait_readyz_maintenance() {
   for _ in $(seq 1 40); do
-    if docker compose logs --no-color --since "$1" worker 2> /dev/null \
-      | grep -q 'the job worker has stopped claiming jobs'; then
-      echo $(($(now_ms) - started)) > "$RUN_DIR/pause-lag-ms"
-      say "  the worker reported its pause $(cat "$RUN_DIR/pause-lag-ms") ms after maintenance on returned"
-      return 0
-    fi
+    case "$(curl -k -s --max-time 1 "$URL/readyz" || true)" in
+      *'"maintenance":"failed: maintenance mode is on'*) return 0 ;;
+    esac
     sleep 0.25
   done
-  fail 'the worker never reported that it stopped claiming jobs, 10 s after maintenance on'
+  echo '/readyz did not name maintenance mode within 10 s' >&2
   return 1
 }
 
@@ -114,17 +128,42 @@ enqueue_probe() {
   say "  probe job $id enqueued as studio_app (state: $(job_state))"
 }
 
+worker_container() { docker compose ps -q worker; }
+
+# The worker `up -d` started has come up with the flag on: it logged that it
+# started, which it does only once its schema is current and its maintenance
+# gate has taken its first reading — and that reading paused it. A worker
+# that ignores the flag logs no pause. One that started before `migrate`
+# moved the schema logged "Database schema current." when it saw the change.
+wait_for_new_worker() { # container since-ms
+  local log started_ms paused schema_current
+  for _ in $(seq 1 $((NEW_WORKER_BOUND * 2))); do
+    log="$(docker logs "$1" 2>&1 || true)"
+    if grep -q 'Network Canvas Studio worker .* started' <<< "$log"; then
+      started_ms="$(now_ms)"
+      paused=false
+      schema_current=false
+      grep -q 'the job worker has stopped claiming jobs' <<< "$log" && paused=true
+      grep -q 'Database schema current\.' <<< "$log" && schema_current=true
+      printf '{"container":"%s","seenStartedMsAfterUp":%s,"paused":%s,"loggedSchemaCurrent":%s}\n' \
+        "$1" "$((started_ms - $2))" "$paused" "$schema_current" > "$NEW_WORKER_FILE"
+      say "  the new worker had started by $((started_ms - $2)) ms after up -d returned (paused: $paused; logged 'Database schema current.': $schema_current)"
+      $paused || fail 'the new worker started with maintenance mode on and did not pause'
+      return 0
+    fi
+    sleep 0.5
+  done
+  fail "the new worker did not start within ${NEW_WORKER_BOUND}s of migrate (docker logs $1)"
+  return 1
+}
+
 # ── The new digests, as the guide's step 3 asks ───────────────────────────
-sed -i.bak \
-  -e "s|^STUDIO_API_IMAGE=.*|STUDIO_API_IMAGE=$TO_API|" \
-  -e "s|^STUDIO_WEB_IMAGE=.*|STUDIO_WEB_IMAGE=$TO_WEB|" \
-  "$DEPLOY_DIR/.env"
-rm -f "$DEPLOY_DIR/.env.bak"
+set_images "$TO_API" "$TO_WEB"
 
 # ── The observer ──────────────────────────────────────────────────────────
-"$RELEASE_TEST_DIR/observe.sh" "$URL" "$OBSERVED" &
+"$RELEASE_TEST_DIR/observe.sh" "$URL" "$OBSERVED" "$FAST" &
 OBSERVER=$!
-trap 'kill "$OBSERVER" 2> /dev/null || true' EXIT
+trap 'kill "$OBSERVER" 2> /dev/null || true; rm -f "$FAST"' EXIT
 for _ in $(seq 1 40); do
   [ -s "$OBSERVED" ] && break
   sleep 0.25
@@ -133,15 +172,15 @@ done
 
 # ── The sequence ──────────────────────────────────────────────────────────
 index=0
-run_step() { # label command…
-  local label="$1" code=0
-  shift
+run_step() { # bound-seconds label command…
+  local bound="$1" label="$2" code=0
+  shift 2
   index=$((index + 1))
   printf '%s\tstart\t%s\t%s\n' "$(now_ms)" "$index" "$label" >> "$EVENTS"
   say "step $index: $label"
   # stdin from /dev/null: `docker compose run` reads it, and would otherwise
   # swallow the rest of the sequence this loop is reading.
-  (cd "$DEPLOY_DIR" && "$@") < /dev/null || code=$?
+  (cd "$DEPLOY_DIR" && bounded "$bound" "$@") < /dev/null || code=$?
   printf '%s\tend\t%s\t%s\n' "$(now_ms)" "$index" "$code" >> "$EVENTS"
   [ "$code" -eq 0 ] || {
     fail "step $index ($label) exited $code"
@@ -149,19 +188,62 @@ run_step() { # label command…
   }
 }
 
+on_returned_ms=''
+old_worker=''
+new_worker=''
+up_returned_ms=''
 while IFS= read -r line; do
   case "$line" in
     '' | ' '*) continue ;;
     '# take your backup'*)
-      run_step 'backup (docs/self-host/backup.md)' bash -eo pipefail -c "$BACKUP" || break
+      run_step "$STEP_BOUND" 'backup (docs/self-host/backup.md)' bash -eo pipefail -c "$BACKUP" || break
+      ;;
+    '# wait until /readyz names maintenance mode'*)
+      run_step "$WAIT_STEP_BOUND" 'wait until /readyz names maintenance mode (upgrade.md step 2)' \
+        wait_readyz_maintenance || break
       ;;
     '#'*) continue ;;
     *)
-      step_since="$(date +%s)"
-      run_step "$line" bash -eo pipefail -c "$line" || break
+      bound="$STEP_BOUND"
       case "$line" in
-        *'maintenance on'*) wait_for_worker_pause "$((step_since - 1))" && enqueue_probe ;;
+        'until '*) bound="$WAIT_STEP_BOUND" ;;
+        *'up -d'*) old_worker="$(worker_container)" ;;
+        *'run --rm migrate'*) touch "$FAST" ;;
+        *'maintenance off'*)
+          # The new worker's gate, live inside the window: it started with
+          # the flag on, paused, and has not claimed the job queued before
+          # the upgrade.
+          if [ -n "$new_worker" ]; then
+            wait_for_new_worker "$new_worker" "$up_returned_ms" || true
+          fi
+          state="$(job_state)"
+          if [ "$state" = created ]; then
+            say "  probe job still created with the new worker running, immediately before maintenance off"
+          else
+            fail "the probe job is '${state:-not enqueued}' immediately before maintenance off, with the new worker running; a job queued during the window must wait for the flag to clear"
+          fi
+          ;;
+      esac
+      run_step "$bound" "$line" bash -eo pipefail -c "$line" || break
+      case "$line" in
+        *'maintenance on'*) on_returned_ms="$(now_ms)" ;;
+        'until '*'stopped claiming jobs'*)
+          # The guide's own wait for the worker's pause has returned, so a
+          # job queued now must wait out the window.
+          echo $(($(now_ms) - on_returned_ms)) > "$RUN_DIR/pause-lag-ms"
+          say "  the guide's wait saw the worker's pause $(cat "$RUN_DIR/pause-lag-ms") ms after maintenance on returned"
+          enqueue_probe
+          ;;
+        *'up -d'*)
+          up_returned_ms="$(now_ms)"
+          new_worker="$(worker_container)"
+          if [ -z "$new_worker" ] || [ "$new_worker" = "$old_worker" ]; then
+            fail "up -d did not replace the worker container (${old_worker:-none} → ${new_worker:-none})"
+            new_worker=''
+          fi
+          ;;
         *'run --rm migrate'*)
+          rm -f "$FAST"
           state="$(job_state)"
           if [ "$state" = created ]; then
             say "  probe job still created after migrate"
@@ -173,6 +255,7 @@ while IFS= read -r line; do
       ;;
   esac
 done <<< "$SEQUENCE"
+rm -f "$FAST"
 
 # ── Readiness, as the guide's last line asks ──────────────────────────────
 ready=''
@@ -200,7 +283,7 @@ kill "$OBSERVER" 2> /dev/null || true
 wait "$OBSERVER" 2> /dev/null || true
 trap - EXIT
 
-# ── The probe job is worked ───────────────────────────────────────────────
+# ── The probe job is worked, and only after the flag cleared ──────────────
 state=''
 if [ -n "$ready" ] && [ -f "$PROBE_JOB_FILE" ]; then
   for _ in $(seq 1 120); do
@@ -210,7 +293,13 @@ if [ -n "$ready" ] && [ -f "$PROBE_JOB_FILE" ]; then
   done
 fi
 if [ "$state" = completed ]; then
-  say "probe job $(cat "$PROBE_JOB_FILE") completed after the upgrade"
+  # `updated_at` is when `maintenance off` cleared the flag, by the
+  # database's clock, inside that command's own transaction.
+  worked="$(echo "SELECT (j.completed_at > d.updated_at AND NOT d.maintenance)::text || ' ' || j.completed_at || ' / ' || d.updated_at FROM studio_jobs.jobs j, deployment_state d WHERE j.id = '$(cat "$PROBE_JOB_FILE")' AND d.id = 1;" | psql_)"
+  case "$worked" in
+    'true '*) say "probe job $(cat "$PROBE_JOB_FILE") completed after maintenance off cleared the flag (completed / cleared: ${worked#true })" ;;
+    *) fail "the probe job completed before maintenance off cleared the flag (completed / cleared: ${worked#* })" ;;
+  esac
 elif [ -z "$ready" ]; then
   fail 'the probe job was not checked: the instance never reopened'
 elif [ ! -f "$PROBE_JOB_FILE" ]; then
