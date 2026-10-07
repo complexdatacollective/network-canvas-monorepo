@@ -23,6 +23,7 @@ import {
   encryptionFor,
   makeEncryptedPerson,
   NODE_TYPE,
+  outOfBoundsHeader,
 } from './encryptionFixtures';
 
 afterEach(() => {
@@ -73,7 +74,7 @@ describe('unlocking an interview', () => {
     expect(store.getState().session.network.encryption).toBeUndefined();
 
     await expect(unlockEncryption(store, 'first passphrase')).resolves.toBe(
-      true,
+      'chosen',
     );
     const { encryption } = store.getState().session.network;
     expect(encryption).toMatchObject({
@@ -89,14 +90,14 @@ describe('unlocking an interview', () => {
     const resumed = resume(store);
     expect(resumed.getState().session.network.nodes).toEqual([]);
     await expect(unlockEncryption(resumed, 'second passphrase')).resolves.toBe(
-      false,
+      'incorrect',
     );
     expect(getDecryptionScope(resumed.getState)).toBeUndefined();
     expect(resumed.getState().ui.encryptionKeyId).toBeNull();
     expect(resumed.getState().session.network.encryption).toEqual(encryption);
 
     await expect(unlockEncryption(resumed, 'first passphrase')).resolves.toBe(
-      true,
+      'verified',
     );
     expect(getDecryptionScope(resumed.getState)).toBeDefined();
   });
@@ -109,9 +110,9 @@ describe('unlocking an interview', () => {
       unlockEncryption(store, 'second passphrase'),
     ]);
 
-    expect(first).toBe(true);
+    expect(first).toBe('chosen');
     // The second is checked against the header the first created.
-    expect(second).toBe(false);
+    expect(second).toBe('incorrect');
   });
 
   it('derives the key once when the passphrase is set, and once when it is entered again', async () => {
@@ -160,6 +161,16 @@ describe('unlocking an interview', () => {
 
     expect(synced.length).toBeGreaterThan(0);
     const persisted = synced.at(-1);
+    // Alice reached the session, so the checks below look at her stored
+    // answer rather than passing on a network with no one in it.
+    const storedAlice = persisted?.network.nodes[0];
+    expect(persisted?.network.nodes).toHaveLength(1);
+    expect(storedAlice?.[entityAttributesProperty].name).toEqual(
+      expect.arrayContaining([expect.any(Number)]),
+    );
+    expect(
+      Object.keys(storedAlice?.[entitySecureAttributesMeta]?.name ?? {}),
+    ).toEqual(['iv']);
     expect(cryptoKeysIn(synced)).toEqual([]);
     expect(JSON.stringify(synced)).not.toContain('DO NOT PERSIST');
     expect(JSON.stringify(synced)).not.toContain('Alice');
@@ -174,8 +185,9 @@ describe('unlocking an interview', () => {
     // validating it keeps it.
     const parsed = NcNetworkSchema.parse(persisted?.network);
     expect(parsed.encryption).toEqual(persisted?.network.encryption);
+    expect(parsed.nodes).toHaveLength(1);
     expect(parsed.nodes[0]?.[entitySecureAttributesMeta]).toEqual(
-      persisted?.network.nodes[0]?.[entitySecureAttributesMeta],
+      storedAlice?.[entitySecureAttributesMeta],
     );
   });
 
@@ -221,7 +233,9 @@ describe('an interview with answers in the schema 8 format', () => {
       reason: 'legacy-format',
     });
 
-    await expect(unlockEncryption(store, 'new passphrase')).resolves.toBe(true);
+    await expect(unlockEncryption(store, 'new passphrase')).resolves.toBe(
+      'chosen',
+    );
     expect(store.getState().session.network.encryption).toBeDefined();
 
     const result = await addPerson(store, 'Carol');
@@ -251,5 +265,27 @@ describe('an interview with answers in the schema 8 format', () => {
 
     // The old answer is left as it was.
     expect(store.getState().session.network.nodes[0]).toEqual(legacy);
+  });
+});
+
+describe('an interview whose encryption header is out of bounds', () => {
+  it('turns every passphrase away as unavailable, without deriving a key, counting a rejection or replacing the header', async () => {
+    const header = outOfBoundsHeader((await encryptionFor('pw')).header);
+    const store = createEncryptionStore([], undefined, undefined, { header });
+    const importKey = vi.spyOn(crypto.subtle, 'importKey');
+    const deriveKey = vi.spyOn(crypto.subtle, 'deriveKey');
+    const dispatch = vi.spyOn(store, 'dispatch');
+
+    await expect(unlockEncryption(store, 'pw')).resolves.toBe('unavailable');
+    await expect(unlockEncryption(store, 'another')).resolves.toBe(
+      'unavailable',
+    );
+
+    expect(importKey).not.toHaveBeenCalled();
+    expect(deriveKey).not.toHaveBeenCalled();
+    expect(dispatch).not.toHaveBeenCalled();
+    expect(store.getState().session.network.encryption).toEqual(header);
+    expect(store.getState().ui.encryptionKeyId).toBeNull();
+    expect(getDecryptionScope(store.getState)).toBeUndefined();
   });
 });

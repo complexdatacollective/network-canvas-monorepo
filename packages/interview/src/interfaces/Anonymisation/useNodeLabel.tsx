@@ -29,7 +29,7 @@ export function useNodeLabel(node: NcNode | undefined) {
   const getCodebookForNodeType = useSelector(makeGetCodebookForNodeType);
   const codebook = node ? getCodebookForNodeType(node.type) : undefined;
   const scope = useDecryptionScope();
-  const { requirePassphrase } = usePassphrase();
+  const { requirePassphrase, encryptionUnavailable } = usePassphrase();
   const reportUnreadable = useReportUnreadable();
 
   const labelAttributeId = getNodeLabelAttribute(
@@ -104,7 +104,11 @@ export function useNodeLabel(node: NcNode | undefined) {
   }, [stored, encrypted, scope, requirePassphrase, reportUnreadable]);
 
   if (syncLabel !== undefined) return syncLabel;
-  if (stored?.status === 'unreadable' || outcome?.readable === false) {
+  if (
+    stored?.status === 'unreadable' ||
+    outcome?.readable === false ||
+    (encrypted && encryptionUnavailable)
+  ) {
     return intl.formatMessage(runtimeMessages.answerUnavailable);
   }
   if (encrypted && !scope) return LOCKED_LABEL;

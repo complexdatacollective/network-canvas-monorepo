@@ -196,11 +196,15 @@ describe('analyticsListener — anonymisation', () => {
     const tracker = makeTracker();
     const store = buildStore(tracker);
 
-    await expect(unlockEncryption(store, 'DO_NOT_LEAK-1')).resolves.toBe(true);
+    await expect(unlockEncryption(store, 'DO_NOT_LEAK-1')).resolves.toBe(
+      'chosen',
+    );
     expect(tracker.track).toHaveBeenCalledWith('passphrase_set');
 
     tracker.track.mockClear();
-    await expect(unlockEncryption(store, 'DO_NOT_LEAK-2')).resolves.toBe(false);
+    await expect(unlockEncryption(store, 'DO_NOT_LEAK-2')).resolves.toBe(
+      'incorrect',
+    );
     expect(tracker.track).toHaveBeenCalledWith('passphrase_validation_failed');
     expect(tracker.track).not.toHaveBeenCalledWith('passphrase_set');
 

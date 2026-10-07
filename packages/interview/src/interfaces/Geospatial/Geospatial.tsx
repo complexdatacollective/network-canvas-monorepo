@@ -33,7 +33,6 @@ import { useAssetUrl } from '../../hooks/useAssetUrl';
 import useBeforeNext from '../../hooks/useBeforeNext';
 import useReadyForNextStage from '../../hooks/useReadyForNextStage';
 import { useStageSelector } from '../../hooks/useStageSelector';
-import { runtimeMessages } from '../../i18n/runtimeMessages';
 import { getCodebookVariablesForSubjectType } from '../../selectors/protocol';
 import { getNetworkNodesForType } from '../../selectors/session';
 import type { AttributePatch } from '../../store/entityAttributePatch';
@@ -175,7 +174,7 @@ export default function GeospatialInterface({
   const track = useTrack();
   const { showToast } = useInterviewToast();
   const variables = useStageSelector(getCodebookVariablesForSubjectType);
-  const { unlocked, requirePassphrase } = usePassphrase();
+  const { unlocked, requirePassphrase, lockedNotice } = usePassphrase();
   const promptVariable = currentPrompt.variable;
   // A location this prompt would encrypt is only taken once it could be saved.
   const locationLocked =
@@ -192,9 +191,7 @@ export default function GeospatialInterface({
       if (value !== null && locationLocked) {
         requirePassphrase();
         showToast({
-          description: intl.formatMessage(
-            runtimeMessages.protectedAnswersLocked,
-          ),
+          description: intl.formatMessage(lockedNotice),
           variant: 'info',
           anchor: 'forward',
         });
@@ -227,6 +224,7 @@ export default function GeospatialInterface({
       currentPrompt.variable,
       locationLocked,
       requirePassphrase,
+      lockedNotice,
       showToast,
       intl,
       track,

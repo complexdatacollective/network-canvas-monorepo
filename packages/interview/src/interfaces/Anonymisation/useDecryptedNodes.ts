@@ -149,7 +149,7 @@ export function useDecryptedNodes(nodes: NcNode[]): DecryptedNodes {
     makeGetCodebookVariablesForNodeType,
   );
   const scope = useDecryptionScope();
-  const { requirePassphrase } = usePassphrase();
+  const { requirePassphrase, encryptionUnavailable } = usePassphrase();
   const reportUnreadable = useReportUnreadable();
   const [, rerender] = useReducer((count: number) => count + 1, 0);
 
@@ -177,8 +177,11 @@ export function useDecryptedNodes(nodes: NcNode[]): DecryptedNodes {
     [protectedNodes],
   );
 
+  // No key is ever derived under a refused header, so its values are as
+  // unreadable as those that could never be decrypted.
   const decrypted =
     values.length === 0 ||
+    encryptionUnavailable ||
     (scope !== undefined &&
       values.every((value) => readCachedOutcome(scope, value) !== undefined));
   const decryptionFailed =

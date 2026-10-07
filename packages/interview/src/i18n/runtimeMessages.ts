@@ -189,6 +189,13 @@ export const runtimeMessages = defineMessages({
     description:
       'Shown in place of questions whose answers are protected by the interview passphrase, and as a brief notice when such an answer is asked for, until that passphrase is entered.',
   },
+  protectedAnswersUnavailable: {
+    id: 'interview.runtime.protectedAnswersUnavailable',
+    defaultMessage:
+      'Answers protected by a passphrase cannot be shown or saved in this interview. Please let the person who recruited you to this study know.',
+    description:
+      'Shown in place of questions whose answers are protected by a passphrase, and on the passphrase screen, when the information this interview needs to check a passphrase is damaged, so no passphrase can be entered.',
+  },
   protectedAnswersNotSaved: {
     id: 'interview.runtime.protectedAnswersNotSaved',
     defaultMessage:
