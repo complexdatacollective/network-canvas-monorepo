@@ -8,11 +8,9 @@ import { Database } from '../db/client.ts';
 import { resolve as resolveEnv } from '../env/resolve.ts';
 import { REAUTHORIZE_MS } from '../protocol-builder/handlers.ts';
 import {
-  Leases,
   RECONNECT_GRACE_MS,
   RENEW_INTERVAL_MS,
 } from '../protocol-builder/leases.ts';
-import { Presence } from '../protocol-builder/presence.ts';
 import { type StudioServices } from '../rpc/deps.ts';
 import { authServiceStub } from './support/auth.ts';
 import { testDb } from './support/database.ts';
@@ -21,7 +19,7 @@ import {
   callerOf,
   EDIT,
   GRACE,
-  holdingLeases,
+  holdingPresence,
   revisionsOf,
   setupProtocolBuilderSuite,
   stageSection,
@@ -32,6 +30,7 @@ import {
   type Caller,
   createProtocolBuilderClient,
   makeShiftableClock,
+  makeSpanCounter,
   type ProtocolBuilderTestClient,
 } from './support/protocol-builder.ts';
 import { expectRpcFailure } from './support/rpc.ts';
@@ -48,7 +47,8 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
     call,
     callExit,
     createStage,
-    heldSections,
+    liveLeases,
+    leaseExpiry,
     present,
     keeperTick,
     watch,
@@ -71,6 +71,64 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
     studio = suite.studio;
     services = suite.services;
   });
+
+  /**
+   * A database whose connections, once it goes down, resolve no table: the
+   * search path is a startup parameter, so the fault is a second client, not a
+   * setting.
+   */
+  const faultyDatabase = async () => {
+    if (!testDb) throw new Error('no test database');
+    const url = testDb.url;
+    let down = false;
+    const real = Context.get(services, Database);
+    const scope = await Effect.runPromise(Scope.make());
+    const unreachable = Context.get(
+      await Effect.runPromise(
+        Layer.buildWithScope(
+          Database.layer({
+            url,
+            maxConnections: 1,
+            searchPath: 'pb_unreachable',
+          }),
+          scope,
+        ),
+      ),
+      Database,
+    );
+    const database: Database['Service'] = {
+      identity: real.identity,
+      get sql() {
+        return down ? unreachable.sql : real.sql;
+      },
+      get db() {
+        return down ? unreachable.db : real.db;
+      },
+    };
+    return {
+      studio: createStudio(resolveEnv({ NODE_ENV: 'test' }), {
+        auth: authServiceStub({
+          listMemberships: memberships,
+          getMembership: membership,
+        }),
+        services: Context.add(services, Database, database),
+      }),
+      setDown: (value: boolean) => {
+        down = value;
+      },
+      close: () => Effect.runPromise(Scope.close(scope, Exit.void)),
+    };
+  };
+
+  /** A tab no other test uses, so no other client's keeper renews it. */
+  const tabOf = (slug: string) => {
+    const caller: Caller = {
+      principal: ADA.principal,
+      connection: `pb-ada-${slug}-connection`,
+      tab: `pb-ada-${slug}-tab`,
+    };
+    return { caller, owner: `${ADA.principal.userId}:pb-ada-${slug}-tab` };
+  };
 
   it('keeps a tab’s lock when its watch reconnects to a restarted server', async () => {
     const stage = await createStage(ADA, 'Edited across a restart');
@@ -102,41 +160,32 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       host.rpc('AcquireLock', { protocolId, sectionId }),
     );
     if (held.lock !== 'held') throw new Error('the section was already taken');
-    // The process that granted the lease is gone, and its keeper with it.
-    await host.run(
-      Leases.use((leases) => leases.drop(draftId, sectionId, owner)),
-    );
 
     const restartedClock = makeShiftableClock();
     const restarted = await createProtocolBuilderClient(studio, {
       clock: restartedClock.clock,
       objectStore,
     });
-    const heldOnRestarted = (who: string) =>
-      restarted.run(Leases.use((leases) => leases.heldSections(draftId, who)));
     const channels: { stop: () => Promise<void> }[] = [];
     try {
       const granted = await expiresAt();
       channels.push(await watching(otherTab, protocolId, restarted));
-      expect(await heldOnRestarted(otherOwner)).toEqual([]);
+      expect(await liveLeases(otherOwner)).toEqual([]);
       expect(await expiresAt()).toBe(granted);
 
       channels.push(await watching(tab, protocolId, restarted));
-      expect(await heldOnRestarted(owner)).toEqual([sectionId]);
+      expect(await liveLeases(owner)).toEqual([sectionId]);
       const adopted = await expiresAt();
       expect(adopted).toBeGreaterThan(granted);
-      const presentOnRestarted = await restarted.run(
-        Presence.use((presence) => presence.list(draftId)),
-      );
       expect(
-        presentOnRestarted.find(
+        (await present()).find(
           (who) => who.sessionId === 'pb-ada-restart-connection',
         ),
       ).toMatchObject({ mode: 'editing', sectionId });
 
       await keeperTick(RENEW_INTERVAL_MS, restartedClock);
       expect(await expiresAt()).toBeGreaterThan(adopted);
-      expect(await heldOnRestarted(owner)).toEqual([sectionId]);
+      expect(await liveLeases(owner)).toEqual([sectionId]);
 
       const written = await restarted.call(
         tab,
@@ -232,11 +281,11 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
     let gracesBefore = 0;
     try {
       await call(ADA, host.rpc('AcquireLock', { protocolId, sectionId }));
-      expect(await heldSections(owner)).toContain(sectionId);
+      expect(await liveLeases(owner)).toContain(sectionId);
 
       await keeperTick(6 * 60_000);
 
-      expect(await heldSections(owner)).toContain(sectionId);
+      expect(await liveLeases(owner)).toContain(sectionId);
       const behind = await call(
         GRACE,
         host.rpc('AcquireLock', { protocolId, sectionId }),
@@ -252,7 +301,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
     );
 
     await keeperTick(RECONNECT_GRACE_MS - 1_000);
-    expect(await heldSections(owner)).toContain(sectionId);
+    expect(await liveLeases(owner)).toContain(sectionId);
     const tooSoon = await call(
       GRACE,
       host.rpc('AcquireLock', { protocolId, sectionId }),
@@ -263,7 +312,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
 
     clock.advance(1_001);
     await until(
-      async () => !(await heldSections(owner)).includes(sectionId),
+      async () => !(await liveLeases(owner)).includes(sectionId),
       'the stranded lease to be given back',
     );
     const taken = await call(
@@ -274,40 +323,46 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
     await call(GRACE, host.rpc('ReleaseLock', { protocolId, sectionId }));
   });
 
-  it('keeps a lease the database never answered a renewal for', async () => {
-    const sectionId = stageSection(reference.stageId);
-    const owner = `${ADA.principal.userId}:${ADA.clientSessionId}`;
-    const held = await call(
-      ADA,
-      host.rpc('AcquireLock', { protocolId, sectionId }),
-    );
-    expect(held.lock).toBe('held');
-    expect(await heldSections(owner)).toContain(sectionId);
+  it('keeps renewing a connection after a liveness pass the database never answered', async () => {
+    const fault = await faultyDatabase();
+    const replica = makeShiftableClock();
+    const other = await createProtocolBuilderClient(fault.studio, {
+      clock: replica.clock,
+      objectStore,
+    });
+    const { caller, owner } = tabOf('unanswered');
+    try {
+      const stage = await createOn(other, 'Renewed after an unanswered pass');
+      const sectionId = stage.sectionId;
+      const channel = await watching(caller, protocolId, other);
+      try {
+        await other.call(
+          caller,
+          other.rpc('AcquireLock', { protocolId, sectionId }),
+        );
+        const granted = await leaseExpiry(owner);
+        if (granted === undefined) throw new Error('the tab holds no lease');
 
-    let attempts = 0;
-    await host.run(
-      Leases.use((leases) =>
-        leases.hold({
-          renew: Effect.suspend(() => {
-            attempts += 1;
-            return Effect.fail(new Error('ECONNREFUSED'));
-          }),
-          draftId,
-          sectionId,
-          owner,
-        }),
-      ),
-    );
+        fault.setDown(true);
+        await keeperTick(RENEW_INTERVAL_MS, replica);
+        fault.setDown(false);
+        expect(await leaseExpiry(owner)).toBe(granted);
 
-    await keeperTick();
-    expect(attempts).toBe(1);
-    expect(await heldSections(owner)).toContain(sectionId);
-    await keeperTick();
-    expect(attempts).toBe(2);
-    expect(await heldSections(owner)).toContain(sectionId);
-
-    await call(ADA, host.rpc('ReleaseLock', { protocolId, sectionId }));
-    expect(await heldSections(owner)).not.toContain(sectionId);
+        await keeperTick(RENEW_INTERVAL_MS, replica);
+        expect(await leaseExpiry(owner)).toBeGreaterThan(granted);
+        expect(await liveLeases(owner)).toEqual([sectionId]);
+        await other.call(
+          caller,
+          other.rpc('ReleaseLock', { protocolId, sectionId }),
+        );
+      } finally {
+        fault.setDown(false);
+        await channel.stop();
+      }
+    } finally {
+      await other.dispose();
+      await fault.close();
+    }
   });
 
   it('keeps a tab editing the section it still holds when it gives the other back', async () => {
@@ -350,7 +405,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         GRACE,
         host.rpc('AcquireLock', { protocolId, sectionId: stage.sectionId }),
       );
-      expect(await heldSections(owner)).toContain(stage.sectionId);
+      expect(await liveLeases(owner)).toContain(stage.sectionId);
 
       revoked.add(GRACE.principal.userId);
       clock.advance(REAUTHORIZE_MS);
@@ -377,7 +432,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
     );
     clock.advance(RECONNECT_GRACE_MS + 1);
     await until(
-      async () => !(await heldSections(owner)).includes(stage.sectionId),
+      async () => !(await liveLeases(owner)).includes(stage.sectionId),
       'the stranded lease to be given back',
     );
   });
@@ -415,7 +470,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
     let gracesBefore = 0;
     try {
       await call(who, host.rpc('AcquireLock', { protocolId, sectionId }));
-      expect(await heldSections(owner)).toContain(sectionId);
+      expect(await liveLeases(owner)).toContain(sectionId);
       await remove();
       gracesBefore = clock.pending(RECONNECT_GRACE_MS);
       await channel.stop();
@@ -425,7 +480,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       );
       clock.advance(RECONNECT_GRACE_MS + 1);
       await until(
-        async () => !(await heldSections(owner)).includes(sectionId),
+        async () => !(await liveLeases(owner)).includes(sectionId),
         'the removed caller’s lease to be given back',
       );
       expect((await present()).map((entry) => entry.userId)).not.toContain(
@@ -443,19 +498,21 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
   });
 
   it('keeps renewing a lock whose caller went away as it was taken', async () => {
-    const leases = holdingLeases();
+    const presence = holdingPresence();
+    const replica = makeShiftableClock();
     const other = await createProtocolBuilderClient(studio, {
+      clock: replica.clock,
       objectStore,
-      leases: leases.layer,
+      presence: presence.layer,
     });
-    const owner = `${ADA.principal.userId}:${ADA.clientSessionId}`;
+    const { caller, owner } = tabOf('leaving');
     try {
       const stage = await createOn(other, 'Taken by a closing tab');
       const sectionId = stage.sectionId;
-      const taken = leases.next();
+      const taken = presence.next();
       const leaving = new AbortController();
       const acquiring = other.callExit(
-        callerOf(ADA),
+        caller,
         other.rpc('AcquireLock', { protocolId, sectionId }),
         { signal: leaving.signal },
       );
@@ -464,17 +521,14 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       await new Promise((settle) => setTimeout(settle, 50));
       taken.release();
       await acquiring;
-      await until(
-        async () =>
-          (
-            await other.run(
-              Leases.use((keeper) => keeper.heldSections(draftId, owner)),
-            )
-          ).includes(sectionId),
-        'the keeper to hold the lease',
-      );
+      expect(await liveLeases(owner)).toEqual([sectionId]);
+      const granted = await leaseExpiry(owner);
+      if (granted === undefined) throw new Error('the tab holds no lease');
+
+      await keeperTick(RENEW_INTERVAL_MS, replica);
+      expect(await leaseExpiry(owner)).toBeGreaterThan(granted);
       await other.call(
-        callerOf(ADA),
+        caller,
         other.rpc('ReleaseLock', { protocolId, sectionId }),
       );
     } finally {
@@ -483,82 +537,27 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
   });
 
   it('stops renewing a stranded owner’s leases even when giving them back fails', async () => {
+    const fault = await faultyDatabase();
     const stranded = makeShiftableClock();
-    let databaseDown = false;
-    const real = Context.get(services, Database);
-    const downScope = await Effect.runPromise(Scope.make());
-    // A client whose connections resolve no table: the search path is a
-    // startup parameter, so the fault is a second client, not a setting.
-    const down = Context.get(
-      await Effect.runPromise(
-        Layer.buildWithScope(
-          Database.layer({
-            url: testDb!.url,
-            maxConnections: 1,
-            searchPath: 'pb_unreachable',
-          }),
-          downScope,
-        ),
-      ),
-      Database,
-    );
-    const faulty: Database['Service'] = {
-      identity: real.identity,
-      get sql() {
-        return databaseDown ? down.sql : real.sql;
-      },
-      get db() {
-        return databaseDown ? down.db : real.db;
-      },
-    };
-    let renewals = 0;
-    const counting = Layer.effect(
-      Leases,
-      Effect.gen(function* () {
-        const keeper = yield* Leases;
-        return Leases.of({
-          ...keeper,
-          hold: (lease) =>
-            keeper.hold({
-              ...lease,
-              renew: Effect.suspend(() => {
-                renewals += 1;
-                return lease.renew;
-              }),
-            }),
-        });
-      }),
-    ).pipe(Layer.provide(Leases.layer));
-    const other = await createProtocolBuilderClient(
-      createStudio(resolveEnv({ NODE_ENV: 'test' }), {
-        auth: authServiceStub({
-          listMemberships: memberships,
-          getMembership: membership,
-        }),
-        services: Context.add(services, Database, faulty),
-      }),
-      { clock: stranded.clock, objectStore, leases: counting },
-    );
-    const owner = `${ADA.principal.userId}:${ADA.clientSessionId}`;
-    const heldHere = () =>
-      other.run(Leases.use((keeper) => keeper.heldSections(draftId, owner)));
-    const tick = async () => {
-      await until(
-        () => stranded.pending(RENEW_INTERVAL_MS) > 0,
-        'the lease keeper to be waiting',
-      );
-      stranded.advance(RENEW_INTERVAL_MS);
-    };
+    const spans = makeSpanCounter();
+    const other = await createProtocolBuilderClient(fault.studio, {
+      clock: stranded.clock,
+      objectStore,
+      tracer: spans.tracer,
+    });
+    const { caller, owner } = tabOf('stranded');
     try {
-      const stage = await createOn(other, 'Held by a tab that never returns');
-      const channel = await watching(ADA, protocolId, other);
+      // Made through the suite's client, so the only owner this replica has
+      // seen is the stranded one, and every renewal it makes is that owner's.
+      const stage = await createStage(ADA, 'Held by a tab that never returns');
+      const channel = await watching(caller, protocolId, other);
       await other.call(
-        callerOf(ADA),
+        caller,
         other.rpc('AcquireLock', { protocolId, sectionId: stage.sectionId }),
       );
-      expect(await heldHere()).toContain(stage.sectionId);
+      expect(await liveLeases(owner)).toContain(stage.sectionId);
       const staged = await other.call(
-        callerOf(ADA),
+        caller,
         other.rpc('ResourcesStage', {
           protocolId,
           editId: EDIT,
@@ -569,7 +568,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       if (staged.status !== 'ok') throw new Error('staging failed');
       const stagedHere = async () => {
         const listed = await other.call(
-          callerOf(ADA),
+          caller,
           other.rpc('ResourcesList', {
             protocolId,
             editId: EDIT,
@@ -586,26 +585,31 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         'the reconnect grace to start',
       );
 
-      databaseDown = true;
+      const attempts = spans.count('protocolBuilder.releaseOwner');
+      fault.setDown(true);
       stranded.advance(RECONNECT_GRACE_MS);
       await until(
-        async () => !(await heldHere()).includes(stage.sectionId),
-        'the stranded lease to leave the keeper',
+        () => spans.count('protocolBuilder.releaseOwner') > attempts,
+        'the release to be attempted',
       );
-      const before = renewals;
-      await tick();
-      await tick();
       await until(
-        () => stranded.pending(RENEW_INTERVAL_MS) > 0,
-        'the lease keeper to finish its tick',
+        () => stranded.pending(RECONNECT_GRACE_MS) === 0,
+        'the grace to give up',
       );
-      expect(renewals).toBe(before);
-      databaseDown = false;
-      expect(await stagedHere()).not.toContain(staged.data.descriptor.id);
+      fault.setDown(false);
+      const renewals = spans.count('sync.renewHeld');
+      const expiry = await leaseExpiry(owner);
+      await keeperTick(RENEW_INTERVAL_MS, stranded);
+      await keeperTick(RENEW_INTERVAL_MS, stranded);
+      expect(spans.count('sync.renewHeld')).toBe(renewals);
+      expect(await leaseExpiry(owner)).toBe(expiry);
+      // Staging goes back only with the leases; what a failed release leaves
+      // behind waits for the sweep.
+      expect(await stagedHere()).toContain(staged.data.descriptor.id);
     } finally {
-      databaseDown = false;
+      fault.setDown(false);
       await other.dispose();
-      await Effect.runPromise(Scope.close(downScope, Exit.void));
+      await fault.close();
     }
   });
 });

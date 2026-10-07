@@ -1,13 +1,25 @@
-import { describe, expect, it } from '@effect/vitest';
-import { Effect, Exit, Scope } from 'effect';
-import { TestClock } from 'effect/testing';
+import { Effect, Option } from 'effect';
+import { beforeAll, describe, expect, it } from 'vitest';
 
-import type { Lease } from '@codaco/studio-sync/server';
+import { testDb } from '../../__tests__/support/database.ts';
 import {
-  sectionId,
-  type ProtocolSectionId,
-} from '@codaco/studio-sync/taxonomy';
-
+  ADA,
+  callerOf,
+  GRACE,
+  setupProtocolBuilderSuite,
+  until,
+} from '../../__tests__/support/protocol-builder-suite.ts';
+import {
+  type Caller,
+  createProtocolBuilderClient,
+  makeShiftableClock,
+  makeSpanCounter,
+} from '../../__tests__/support/protocol-builder.ts';
+import type { Studio } from '../../app.ts';
+import {
+  type Closure,
+  MaintenanceTriggers,
+} from '../../http/middleware/maintenance.ts';
 import {
   IDLE_MS,
   Leases,
@@ -15,267 +27,291 @@ import {
   RENEW_INTERVAL_MS,
 } from '../leases.ts';
 
-const SETTINGS: ProtocolSectionId = sectionId({ kind: 'settings' });
-const LEASE: Lease = { epoch: 1n, expiresAt: new Date(0) };
+/** Long enough that a unary call reaches the database again. */
+const PAST_CONTACT_INTERVAL_MS = 60_000;
 
-function renewal(
-  answer: (call: number) => Effect.Effect<Lease | null, unknown>,
-) {
-  let calls = 0;
-  return {
-    calls: () => calls,
-    renew: Effect.suspend(() => {
-      calls += 1;
-      return answer(calls);
-    }),
+describe.skipIf(!testDb)('the lease keeper', () => {
+  const suite = setupProtocolBuilderSuite();
+  const {
+    objectStore,
+    teamRows,
+    connectionRows,
+    liveLeases,
+    leaseExpiry,
+    ageLeases,
+    ageConnections,
+    keeperTick,
+    watching,
+    createOn,
+  } = suite;
+  let protocolId: string;
+  let draftId: string;
+  let studio: Studio;
+
+  beforeAll(() => {
+    protocolId = suite.protocolId;
+    draftId = suite.draftId;
+    studio = suite.studio;
+  });
+
+  /** A tab no other test uses, so no other client's keeper renews it. */
+  const tabOf = (slug: string) => {
+    const tab = `pb-ada-${slug}-tab`;
+    return {
+      owner: `${ADA.principal.userId}:${tab}`,
+      on: (connection?: string): Caller => ({
+        principal: ADA.principal,
+        tab,
+        ...(connection === undefined ? {} : { connection }),
+      }),
+    };
   };
-}
 
-const open = Effect.fnUntraced(function* (
-  owner: string,
-  end: Effect.Effect<void> = Effect.void,
-) {
-  const leases = yield* Leases;
-  const scope = yield* Scope.make();
-  yield* leases.connect(owner, 'draft', end).pipe(Scope.provide(scope));
-  return Scope.close(scope, Exit.void);
-});
+  const closable = () => {
+    let closed = false;
+    return {
+      triggers: MaintenanceTriggers.of({
+        closure: Effect.sync(() =>
+          closed
+            ? Option.some<Closure>({
+                trigger: 'maintenance',
+                detail: 'maintenance mode is on',
+              })
+            : Option.none<Closure>(),
+        ),
+      }),
+      setClosed: (value: boolean) => {
+        closed = value;
+      },
+    };
+  };
 
-describe('Leases', () => {
-  it.effect(
-    'renews a held lease every interval while a connection is open',
-    () =>
-      Effect.gen(function* () {
-        const leases = yield* Leases;
-        yield* open('tab');
-        const counter = renewal(() => Effect.succeed(LEASE));
-        yield* leases.hold({
-          renew: counter.renew,
-          draftId: 'draft',
-          sectionId: SETTINGS,
-          owner: 'tab',
-        });
+  const replica = async (maintenance?: MaintenanceTriggers['Service']) => {
+    const time = makeShiftableClock();
+    const spans = makeSpanCounter();
+    const client = await createProtocolBuilderClient(studio, {
+      clock: time.clock,
+      objectStore,
+      tracer: spans.tracer,
+      ...(maintenance === undefined ? {} : { maintenance }),
+    });
+    return {
+      client,
+      time,
+      spans,
+      connected: (owner: string) =>
+        client.run(Leases.use((leases) => leases.connected(owner))),
+    };
+  };
 
-        yield* TestClock.adjust(RENEW_INTERVAL_MS - 1);
-        expect(counter.calls()).toBe(0);
-        yield* TestClock.adjust(1);
-        expect(counter.calls()).toBe(1);
-        yield* TestClock.adjust(2 * RENEW_INTERVAL_MS);
-        expect(counter.calls()).toBe(3);
-        expect(yield* leases.heldSections('draft', 'tab')).toEqual([SETTINGS]);
-      }).pipe(Effect.provide(Leases.layer)),
-  );
+  const liveSockets = async (owner: string) =>
+    (await connectionRows()).filter(
+      (row) => row.owner === owner && row.kind === 'socket' && row.live,
+    );
 
-  it.effect('keeps a lease whose renewal went unanswered and asks again', () =>
-    Effect.gen(function* () {
-      const leases = yield* Leases;
-      yield* open('tab');
-      const counter = renewal((call) =>
-        call === 1
-          ? Effect.fail(new Error('unreachable'))
-          : Effect.succeed(LEASE),
-      );
-      yield* leases.hold({
-        renew: counter.renew,
-        draftId: 'draft',
-        sectionId: SETTINGS,
-        owner: 'tab',
-      });
+  const releasesOf = async (sectionId: string) => {
+    const [row] = await teamRows<{ releases: number }>(
+      `SELECT count(*)::int AS releases FROM protocol_events
+        WHERE draft_id = $1 AND section_id = $2
+          AND kind = 'lock' AND owner IS NULL`,
+      [draftId, sectionId],
+    );
+    return row?.releases ?? 0;
+  };
 
-      yield* TestClock.adjust(RENEW_INTERVAL_MS);
-      expect(counter.calls()).toBe(1);
-      expect(yield* leases.heldSections('draft', 'tab')).toEqual([SETTINGS]);
-      yield* TestClock.adjust(RENEW_INTERVAL_MS);
-      expect(counter.calls()).toBe(2);
-      expect(yield* leases.heldSections('draft', 'tab')).toEqual([SETTINGS]);
-    }).pipe(Effect.provide(Leases.layer)),
-  );
-
-  it.effect('drops a lease whose renewal answers that it is gone', () =>
-    Effect.gen(function* () {
-      const leases = yield* Leases;
-      yield* open('tab');
-      const counter = renewal(() => Effect.succeed(null));
-      yield* leases.hold({
-        renew: counter.renew,
-        draftId: 'draft',
-        sectionId: SETTINGS,
-        owner: 'tab',
-      });
-
-      yield* TestClock.adjust(RENEW_INTERVAL_MS);
-      expect(yield* leases.heldSections('draft', 'tab')).toEqual([]);
-      yield* TestClock.adjust(RENEW_INTERVAL_MS);
-      expect(counter.calls()).toBe(1);
-    }).pipe(Effect.provide(Leases.layer)),
-  );
-
-  it.effect(
-    'ends a stranded owner exactly when the reconnect grace runs out',
-    () =>
-      Effect.gen(function* () {
-        const leases = yield* Leases;
-        let ended = 0;
-        const close = yield* open(
-          'tab',
-          Effect.sync(() => {
-            ended += 1;
-          }),
+  it('keeps a tab’s leases while another watch on the same socket stays open', async () => {
+    const a = await replica();
+    const { owner, on } = tabOf('twin');
+    const caller = on('pb-ada-twin-connection');
+    try {
+      const stage = await createOn(a.client, 'Watched twice over one socket');
+      const sectionId = stage.sectionId;
+      const first = await watching(caller, protocolId, a.client);
+      const second = await watching(caller, protocolId, a.client);
+      try {
+        await a.client.call(
+          caller,
+          a.client.rpc('AcquireLock', { protocolId, sectionId }),
         );
-        yield* TestClock.adjust(3_000);
-        yield* close;
+        expect(await liveSockets(owner)).toHaveLength(2);
 
-        yield* TestClock.adjust(RECONNECT_GRACE_MS - 1);
-        expect(ended).toBe(0);
-        expect(yield* leases.connected('tab')).toBe(true);
-        yield* TestClock.adjust(1);
-        expect(ended).toBe(1);
-        expect(yield* leases.connected('tab')).toBe(false);
-        yield* TestClock.adjust(RECONNECT_GRACE_MS * 3);
-        expect(ended).toBe(1);
-      }).pipe(Effect.provide(Leases.layer)),
-  );
+        await first.stop();
+        await until(
+          async () => (await liveSockets(owner)).length === 1,
+          'the ended watch’s row to expire',
+        );
+        expect(await a.connected(owner)).toBe(true);
+        a.time.advance(RECONNECT_GRACE_MS + 1);
+        await keeperTick(RENEW_INTERVAL_MS, a.time);
 
-  it.effect('does not end an owner that reconnects within the grace', () =>
-    Effect.gen(function* () {
-      const leases = yield* Leases;
-      let ended = 0;
-      const end = Effect.sync(() => {
-        ended += 1;
-      });
-      const first = yield* open('tab', end);
-      yield* first;
-      yield* TestClock.adjust(RECONNECT_GRACE_MS - 1_000);
-      const second = yield* open('tab', end);
-      yield* TestClock.adjust(RECONNECT_GRACE_MS * 3);
-      expect(ended).toBe(0);
-      expect(yield* leases.connected('tab')).toBe(true);
+        expect(await liveLeases(owner)).toEqual([sectionId]);
+        expect(await releasesOf(sectionId)).toBe(0);
+        await a.client.call(
+          caller,
+          a.client.rpc('ReleaseLock', { protocolId, sectionId }),
+        );
+      } finally {
+        await second.stop();
+      }
+    } finally {
+      await a.client.dispose();
+    }
+  });
 
-      yield* second;
-      yield* TestClock.adjust(RECONNECT_GRACE_MS);
-      expect(ended).toBe(1);
-    }).pipe(Effect.provide(Leases.layer)),
-  );
+  it('waits out the grace again while the tab is connected through another replica, then gives its leases back once that lapses', async () => {
+    const a = await replica();
+    const gate = closable();
+    const b = await replica(gate.triggers);
+    const { owner, on } = tabOf('roaming');
+    const onA = on('pb-ada-roaming-a-connection');
+    const onB = on('pb-ada-roaming-b-connection');
+    try {
+      const stage = await createOn(a.client, 'Held across two replicas');
+      const sectionId = stage.sectionId;
+      const watchedOnA = await watching(onA, protocolId, a.client);
+      const watchedOnB = await watching(onB, protocolId, b.client);
+      try {
+        await a.client.call(
+          onA,
+          a.client.rpc('AcquireLock', { protocolId, sectionId }),
+        );
+        await watchedOnA.stop();
+        await until(
+          () => a.time.pending(RECONNECT_GRACE_MS) > 0,
+          'the reconnect grace to start',
+        );
 
-  it.effect(
-    'times a second disconnect’s grace from that disconnect, not the first',
-    () =>
-      Effect.gen(function* () {
-        let ended = 0;
-        const end = Effect.sync(() => {
-          ended += 1;
-        });
-        const first = yield* open('tab', end);
-        yield* first;
-        yield* TestClock.adjust(10_000);
-        const second = yield* open('tab', end);
-        yield* TestClock.adjust(5_000);
-        yield* second;
+        a.time.advance(RECONNECT_GRACE_MS);
+        await until(
+          () => a.spans.ended('protocolBuilder.releaseOwner') > 0,
+          'the release to be attempted',
+        );
+        expect(await releasesOf(sectionId)).toBe(0);
+        expect(await liveLeases(owner)).toEqual([sectionId]);
 
-        yield* TestClock.adjust(RECONNECT_GRACE_MS - 1);
-        expect(ended).toBe(0);
-        yield* TestClock.adjust(1);
-        expect(ended).toBe(1);
-      }).pipe(Effect.provide(Leases.layer)),
-  );
+        // Replica B stops renewing, as a replica that went away would.
+        gate.setClosed(true);
+        await ageConnections({ owner, kind: 'socket' }, -1_000);
+        // Past the longest wait the retry can have been given: B's whole TTL.
+        a.time.advance(RECONNECT_GRACE_MS + RENEW_INTERVAL_MS);
+        await until(
+          async () => (await releasesOf(sectionId)) === 1,
+          'the stranded lease to be given back',
+        );
+        expect(await liveLeases(owner)).toEqual([]);
+      } finally {
+        await watchedOnB.stop();
+      }
+    } finally {
+      await b.client.dispose();
+      await a.client.dispose();
+    }
+  });
 
-  it.effect(
-    'keeps an owner connected while any of its connections is open',
-    () =>
-      Effect.gen(function* () {
-        const leases = yield* Leases;
-        let ended = 0;
-        const end = Effect.sync(() => {
-          ended += 1;
-        });
-        const first = yield* open('tab', end);
-        yield* open('tab', end);
-        yield* first;
-        yield* TestClock.adjust(RECONNECT_GRACE_MS * 3);
-        expect(ended).toBe(0);
-        expect(yield* leases.connected('tab')).toBe(true);
-      }).pipe(Effect.provide(Leases.layer)),
-  );
+  it('records a watch again when its row lapsed behind the keeper’s back', async () => {
+    const a = await replica();
+    const { owner, on } = tabOf('lapsed');
+    const caller = on('pb-ada-lapsed-connection');
+    try {
+      const channel = await watching(caller, protocolId, a.client);
+      try {
+        expect(await liveSockets(owner)).toHaveLength(1);
+        await ageConnections({ owner, kind: 'socket' }, -1_000);
+        expect(await liveSockets(owner)).toHaveLength(0);
 
-  it.effect(
-    'forgets the leases of an owner with no connection after the idle bound',
-    () =>
-      Effect.gen(function* () {
-        const leases = yield* Leases;
-        const counter = renewal(() => Effect.succeed(LEASE));
-        yield* leases.hold({
-          renew: counter.renew,
-          draftId: 'draft',
-          sectionId: SETTINGS,
-          owner: 'script',
-        });
+        await keeperTick(RENEW_INTERVAL_MS, a.time);
+        expect(await liveSockets(owner)).toHaveLength(1);
+      } finally {
+        await channel.stop();
+      }
+    } finally {
+      await a.client.dispose();
+    }
+  });
 
-        yield* TestClock.adjust(IDLE_MS);
-        expect(yield* leases.heldSections('draft', 'script')).toEqual([
-          SETTINGS,
-        ]);
-        const renewedWhileIdle = counter.calls();
-        expect(renewedWhileIdle).toBe(IDLE_MS / RENEW_INTERVAL_MS);
+  it('keeps a calling tab’s lease renewed until it has been idle a while', async () => {
+    const a = await replica();
+    const { owner, on } = tabOf('calling');
+    const caller = on();
+    try {
+      const stage = await createOn(a.client, 'Held by calls alone');
+      const sectionId = stage.sectionId;
+      const held = await a.client.call(
+        caller,
+        a.client.rpc('AcquireLock', { protocolId, sectionId }),
+      );
+      expect(held.lock).toBe('held');
+      const granted = await leaseExpiry(owner);
+      if (granted === undefined) throw new Error('the tab holds no lease');
 
-        yield* TestClock.adjust(RENEW_INTERVAL_MS);
-        expect(yield* leases.heldSections('draft', 'script')).toEqual([]);
-        expect(counter.calls()).toBe(renewedWhileIdle);
-      }).pipe(Effect.provide(Leases.layer)),
-  );
+      await keeperTick(RENEW_INTERVAL_MS, a.time);
+      expect(await leaseExpiry(owner)).toBeGreaterThan(granted);
 
-  it.effect('counts a touch as a sign of life for the idle bound', () =>
-    Effect.gen(function* () {
-      const leases = yield* Leases;
-      const counter = renewal(() => Effect.succeed(LEASE));
-      yield* leases.hold({
-        renew: counter.renew,
-        draftId: 'draft',
-        sectionId: SETTINGS,
-        owner: 'script',
-      });
+      await keeperTick(IDLE_MS, a.time);
+      const renewals = a.spans.count('sync.renewHeld');
+      const idle = await leaseExpiry(owner);
+      await keeperTick(RENEW_INTERVAL_MS, a.time);
+      expect(a.spans.count('sync.renewHeld')).toBe(renewals);
+      expect(await leaseExpiry(owner)).toBe(idle);
 
-      yield* TestClock.adjust(IDLE_MS - RENEW_INTERVAL_MS);
-      yield* leases.touch('script');
-      yield* TestClock.adjust(IDLE_MS);
-      expect(yield* leases.heldSections('draft', 'script')).toEqual([SETTINGS]);
-      yield* TestClock.adjust(RENEW_INTERVAL_MS);
-      expect(yield* leases.heldSections('draft', 'script')).toEqual([]);
-    }).pipe(Effect.provide(Leases.layer)),
-  );
+      await ageLeases(owner, -1_000);
+      const taken = await a.client.call(
+        callerOf(GRACE),
+        a.client.rpc('AcquireLock', { protocolId, sectionId }),
+      );
+      expect(taken.lock).toBe('held');
+      await a.client.call(
+        callerOf(GRACE),
+        a.client.rpc('ReleaseLock', { protocolId, sectionId }),
+      );
+    } finally {
+      await a.client.dispose();
+    }
+  });
 
-  it.effect('survives an end that fails, and goes on renewing', () =>
-    Effect.gen(function* () {
-      const leases = yield* Leases;
-      let secondEnded = false;
-      const scope = yield* Scope.make();
-      yield* leases
-        .connect('tab', 'draft', Effect.die(new Error('database unreachable')))
-        .pipe(Scope.provide(scope));
-      yield* leases
-        .connect(
-          'tab',
-          'other',
-          Effect.sync(() => {
-            secondEnded = true;
-          }),
-        )
-        .pipe(Scope.provide(scope));
-      yield* Scope.close(scope, Exit.void);
+  it('neither renews nor records contact while the database is closed to it', async () => {
+    const gate = closable();
+    const a = await replica(gate.triggers);
+    const { on } = tabOf('closed');
+    const caller = on('pb-ada-closed-connection');
+    const list = () =>
+      a.client.call(
+        on(),
+        a.client.rpc('ResourcesList', {
+          protocolId,
+          editId: 'pb-closed-edit',
+          status: 'staged',
+        }),
+      );
+    try {
+      const channel = await watching(caller, protocolId, a.client);
+      try {
+        await keeperTick(RENEW_INTERVAL_MS, a.time);
+        expect(a.spans.count('protocolBuilder.liveness')).toBeGreaterThan(0);
 
-      yield* open('colleague');
-      const counter = renewal(() => Effect.succeed(LEASE));
-      yield* leases.hold({
-        renew: counter.renew,
-        draftId: 'draft',
-        sectionId: SETTINGS,
-        owner: 'colleague',
-      });
+        gate.setClosed(true);
+        const passes = a.spans.count('protocolBuilder.liveness');
+        const contacts = a.spans.count('protocolBuilder.contact');
+        await keeperTick(PAST_CONTACT_INTERVAL_MS, a.time);
+        await list();
+        await keeperTick(RENEW_INTERVAL_MS, a.time);
+        expect(a.spans.count('protocolBuilder.liveness')).toBe(passes);
+        expect(a.spans.count('protocolBuilder.contact')).toBe(contacts);
 
-      yield* TestClock.adjust(RECONNECT_GRACE_MS);
-      expect(secondEnded).toBe(true);
-      const before = counter.calls();
-      yield* TestClock.adjust(3 * RENEW_INTERVAL_MS);
-      expect(counter.calls()).toBe(before + 3);
-    }).pipe(Effect.provide(Leases.layer)),
-  );
+        gate.setClosed(false);
+        await list();
+        await keeperTick(RENEW_INTERVAL_MS, a.time);
+        expect(a.spans.count('protocolBuilder.liveness')).toBeGreaterThan(
+          passes,
+        );
+        expect(a.spans.count('protocolBuilder.contact')).toBeGreaterThan(
+          contacts,
+        );
+      } finally {
+        await channel.stop();
+      }
+    } finally {
+      await a.client.dispose();
+    }
+  });
 });

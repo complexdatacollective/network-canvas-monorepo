@@ -21,8 +21,9 @@ import {
   unsafeMakeTeamAccess,
 } from '../../db/tenant.ts';
 import { resolve as resolveEnv } from '../../env/resolve.ts';
+import { livePresence } from '../../protocol-builder/connections.ts';
 import { type LoggedProtocolEvent } from '../../protocol-builder/events.ts';
-import { Leases, RENEW_INTERVAL_MS } from '../../protocol-builder/leases.ts';
+import { RENEW_INTERVAL_MS } from '../../protocol-builder/leases.ts';
 import { Presence } from '../../protocol-builder/presence.ts';
 import { ProtocolEvents } from '../../protocol-builder/publisher.ts';
 import { StagedImports } from '../../protocol-builder/resources.ts';
@@ -42,6 +43,7 @@ import {
   type Caller,
   createProtocolBuilderClient,
   makeShiftableClock,
+  makeSpanCounter,
   type ProtocolBuilderTestClient,
 } from './protocol-builder.ts';
 import { createRpcClient, type RpcTestClient } from './rpc.ts';
@@ -168,7 +170,10 @@ function holdOnce<A>() {
       pending = { matches, reached: reached.open, released: released.opened };
       return { reached: reached.opened, release: released.open };
     },
-    around: <B>(input: A, self: Effect.Effect<B>): Effect.Effect<B> =>
+    around: <B, E, R>(
+      input: A,
+      self: Effect.Effect<B, E, R>,
+    ): Effect.Effect<B, E, R> =>
       Effect.suspend(() => {
         const current = pending;
         if (current === undefined || !current.matches(input)) return self;
@@ -198,18 +203,19 @@ export function holdingEvents() {
   return { layer, next: hold.next };
 }
 
-export function holdingLeases() {
+export function holdingPresence() {
   const hold = holdOnce<undefined>();
   const layer = Layer.effect(
-    Leases,
+    Presence,
     Effect.gen(function* () {
-      const real = yield* Leases;
-      return Leases.of({
+      const real = yield* Presence;
+      return Presence.of({
         ...real,
-        hold: (lease) => hold.around(undefined, real.hold(lease)),
+        setMode: (session, mode, sectionId) =>
+          hold.around(undefined, real.setMode(session, mode, sectionId)),
       });
     }),
-  ).pipe(Layer.provide(Leases.layer));
+  ).pipe(Layer.provide(Presence.layer));
   return { layer, next: hold.next };
 }
 
@@ -336,11 +342,91 @@ export function setupProtocolBuilderSuite() {
       }),
     );
 
-  const heldSections = (owner: string) =>
-    host.run(Leases.use((leases) => leases.heldSections(draftId, owner)));
+  // Database time is real, so these age rows rather than wait out a TTL.
+  const liveLeases = async (owner: string) =>
+    (
+      await teamRows<{ section_id: string }>(
+        `SELECT section_id FROM leases
+          WHERE draft_id = $1 AND owner = $2
+            AND expires_at > clock_timestamp()
+          ORDER BY section_id`,
+        [draftId, owner],
+      )
+    ).map((row) => row.section_id);
 
-  const present = () =>
-    host.run(Presence.use((presence) => presence.list(draftId)));
+  /** The latest expiry among the owner's lease rows, live or not. */
+  const leaseExpiry = async (owner: string) => {
+    const [row] = await teamRows<{ at: number | null }>(
+      `SELECT (extract(epoch from max(expires_at)) * 1000)::float8 AS at
+         FROM leases WHERE draft_id = $1 AND owner = $2`,
+      [draftId, owner],
+    );
+    return row?.at ?? undefined;
+  };
+
+  /** Sets every live lease of the owner to expire `expiresInMs` from now. */
+  const ageLeases = (owner: string, expiresInMs: number) =>
+    teamRows(
+      `UPDATE leases
+          SET expires_at = clock_timestamp()
+                + make_interval(secs => $3::float / 1000)
+        WHERE draft_id = $1 AND owner = $2
+          AND expires_at > clock_timestamp()
+        RETURNING section_id`,
+      [draftId, owner, expiresInMs],
+    );
+
+  type ConnectionMatch = {
+    readonly owner?: string;
+    readonly socketId?: string;
+    readonly kind?: 'socket' | 'contact';
+  };
+
+  /** Sets every live matching connection to expire `expiresInMs` from now. */
+  const ageConnections = (match: ConnectionMatch, expiresInMs: number) =>
+    teamRows(
+      `UPDATE protocol_connections
+          SET expires_at = clock_timestamp()
+                + make_interval(secs => $2::float / 1000)
+        WHERE draft_id = $1
+          AND expires_at > clock_timestamp()
+          AND ($3::text IS NULL OR owner = $3)
+          AND ($4::text IS NULL OR socket_id = $4)
+          AND ($5::text IS NULL OR kind = $5)
+        RETURNING connection_id`,
+      [
+        draftId,
+        expiresInMs,
+        match.owner ?? null,
+        match.socketId ?? null,
+        match.kind ?? null,
+      ],
+    );
+
+  type ConnectionRow = {
+    connection_id: string;
+    socket_id: string | null;
+    kind: 'socket' | 'contact';
+    owner: string;
+    mode: 'viewing' | 'editing';
+    section_id: string | null;
+    replica_id: string;
+    live: boolean;
+  };
+
+  const connectionRows = (forDraft: string = draftId) =>
+    teamRows<ConnectionRow>(
+      `SELECT connection_id, socket_id, kind, owner, mode, section_id,
+              replica_id, expires_at > clock_timestamp() AS live
+         FROM protocol_connections WHERE draft_id = $1
+        ORDER BY created_at, connection_id`,
+      [forDraft],
+    );
+
+  const present = async () =>
+    (await runEffect(livePresence(access, [draftId]))).get(draftId) ?? [];
+
+  const spans = makeSpanCounter();
 
   const stagedIds = async (editId: string) => {
     const listed = await call(
@@ -439,6 +525,7 @@ export function setupProtocolBuilderSuite() {
     host = await createProtocolBuilderClient(studio, {
       clock: clock.clock,
       objectStore,
+      tracer: spans.tracer,
     });
     adaRpc = await createRpcClient(
       createStudio(
@@ -614,8 +701,13 @@ export function setupProtocolBuilderSuite() {
     call,
     callExit,
     createStage,
-    heldSections,
+    liveLeases,
+    leaseExpiry,
+    ageLeases,
+    ageConnections,
+    connectionRows,
     present,
+    spans,
     stagedIds,
     keeperTick,
     watch,

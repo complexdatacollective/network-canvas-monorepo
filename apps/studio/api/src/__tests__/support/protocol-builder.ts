@@ -7,6 +7,7 @@ import {
   ManagedRuntime,
   Option,
   Scope,
+  Tracer,
 } from 'effect';
 import * as RpcClient from 'effect/rpc/RpcClient';
 import * as RpcServer from 'effect/rpc/RpcServer';
@@ -19,6 +20,8 @@ import { CLIENT_SESSION_HEADER } from '@codaco/studio-contract/client-session';
 
 import type { Studio } from '../../app.ts';
 import { AuthService, type SessionPrincipal } from '../../auth/service.ts';
+import type { Database } from '../../db/client.ts';
+import { MaintenanceTriggers } from '../../http/middleware/maintenance.ts';
 import { ProtocolBuilderHandlers } from '../../protocol-builder/handlers.ts';
 import { Leases } from '../../protocol-builder/leases.ts';
 import { Presence } from '../../protocol-builder/presence.ts';
@@ -174,12 +177,42 @@ export const makeShiftableClock = () => {
   };
 };
 
+/**
+ * A tracer that counts the spans it is asked for by name, so a test can tell
+ * how often the lease keeper reached the database, and whether an attempt has
+ * finished, without a seam in it.
+ */
+export const makeSpanCounter = () => {
+  const spans: Tracer.NativeSpan[] = [];
+  const tracer = Tracer.make({
+    span: (options) => {
+      const span = new Tracer.NativeSpan(options);
+      spans.push(span);
+      return span;
+    },
+  });
+  const named = (name: string) => spans.filter((span) => span.name === name);
+  return {
+    tracer,
+    count: (name: string) => named(name).length,
+    ended: (name: string) =>
+      named(name).filter((span) => span.status._tag === 'Ended').length,
+  };
+};
+
 export async function createProtocolBuilderClient(
   studio: Studio,
   options: {
     readonly clock?: Clock.Clock;
     readonly objectStore?: ObjectStore['Service'];
-    readonly leases?: Layer.Layer<Leases>;
+    readonly leases?: Layer.Layer<
+      Leases,
+      never,
+      Database | MaintenanceTriggers
+    >;
+    readonly presence?: Layer.Layer<Presence, never, Database>;
+    readonly maintenance?: MaintenanceTriggers['Service'];
+    readonly tracer?: Tracer.Tracer;
     readonly events?: Layer.Layer<ProtocolEvents>;
     readonly staged?: Layer.Layer<StagedImports>;
     readonly layer?: Layer.Layer<never>;
@@ -188,7 +221,7 @@ export async function createProtocolBuilderClient(
   const sessions: Sessions = new Map();
   const state = Layer.mergeAll(
     options.leases ?? Leases.layer,
-    Presence.layer,
+    options.presence ?? Presence.layer,
     options.events ?? ProtocolEvents.layer,
     options.staged ?? StagedImports.layer,
   );
@@ -196,18 +229,30 @@ export async function createProtocolBuilderClient(
     studioServices(studio),
     Layer.succeed(AuthService)(harnessAuth(studio.auth, sessions)),
   );
+  const triggers = Layer.merge(
+    withAuth,
+    options.maintenance === undefined
+      ? MaintenanceTriggers.layerOpen
+      : Layer.succeed(MaintenanceTriggers)(options.maintenance),
+  );
   const services =
     options.objectStore === undefined
-      ? withAuth
-      : Layer.merge(withAuth, Layer.succeed(ObjectStore)(options.objectStore));
+      ? triggers
+      : Layer.merge(triggers, Layer.succeed(ObjectStore)(options.objectStore));
   const built = Layer.mergeAll(ProtocolBuilderHandlers, HostSessionLive).pipe(
     Layer.provideMerge(state),
     Layer.provide(services),
   );
-  const clocked =
-    options.clock === undefined
+  const traced =
+    options.tracer === undefined
       ? built
       : built.pipe(
+          Layer.provideMerge(Layer.succeed(Tracer.Tracer)(options.tracer)),
+        );
+  const clocked =
+    options.clock === undefined
+      ? traced
+      : traced.pipe(
           Layer.provideMerge(Layer.succeed(Clock.Clock)(options.clock)),
         );
   const runtime = ManagedRuntime.make(

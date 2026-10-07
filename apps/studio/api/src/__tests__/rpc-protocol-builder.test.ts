@@ -50,7 +50,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
     call,
     callExit,
     createStage,
-    heldSections,
+    liveLeases,
     watch,
     watching,
     removedAfterOpening,
@@ -993,7 +993,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         callExit(who, host.rpc('ReleaseLock', { protocolId, sectionId })),
         'ProtocolNotFound',
       );
-      expect(await heldSections(owner)).toContain(sectionId);
+      expect(await liveLeases(owner)).toContain(sectionId);
     } finally {
       await restore();
       await call(who, host.rpc('ReleaseLock', { protocolId, sectionId }));
