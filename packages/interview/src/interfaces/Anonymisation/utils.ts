@@ -123,6 +123,21 @@ export function hasEncryptedAttributes(node: NcNode): boolean {
 }
 
 /**
+ * Whether storing these attribute values encrypts any of them, by the rule
+ * `generateSecureAttributes` applies: a string value of a variable the
+ * codebook marks encrypted.
+ */
+export function writesEncryptedValue(
+  attributes: Readonly<Record<string, VariableValue | undefined>>,
+  codebookVariables: Record<string, Variable>,
+): boolean {
+  return Object.entries(attributes).some(
+    ([key, value]) =>
+      !!codebookVariables[key]?.encrypted && typeof value === 'string',
+  );
+}
+
+/**
  * Returns a copy of the node with every encrypted value replaced by its
  * plaintext and that value's secure-attribute metadata removed, so the copy is
  * consistent on its own. Throws when a value cannot be decrypted, including a

@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { Variable } from '@codaco/protocol-validation';
 import type { EntityAttributesProperty, NcNode } from '@codaco/shared-consts';
 
-import { generateSecureAttributes } from './utils';
+import { generateSecureAttributes, writesEncryptedValue } from './utils';
 
 describe('generateSecureAttributes', () => {
   it('preserves encrypted __proto__ attributes and their metadata as own properties', async () => {
@@ -48,4 +48,35 @@ describe('generateSecureAttributes', () => {
       Object.getOwnPropertyDescriptor(Object.prototype, '__proto__'),
     ).toEqual(prototypeDescriptor);
   });
+});
+
+describe('writesEncryptedValue', () => {
+  const variables: Record<string, Variable> = {
+    name: { name: 'name', type: 'text', component: 'Text', encrypted: true },
+    nickname: { name: 'nickname', type: 'text', component: 'Text' },
+  };
+
+  it.each([
+    [{ name: 'Alice' }, true],
+    [{ nickname: 'Al' }, false],
+    [{ name: undefined, nickname: 'Al' }, false],
+    [{ unknown: 'value' }, false],
+  ])(
+    'agrees with generateSecureAttributes for %o',
+    async (attributes, expected) => {
+      const stored = Object.fromEntries(
+        Object.entries(attributes).filter(
+          (entry): entry is [string, string] => entry[1] !== undefined,
+        ),
+      );
+      const { secureAttributes } = await generateSecureAttributes(
+        stored,
+        variables,
+        'passphrase',
+      );
+
+      expect(writesEncryptedValue(attributes, variables)).toBe(expected);
+      expect(Object.keys(secureAttributes ?? {}).length > 0).toBe(expected);
+    },
+  );
 });
