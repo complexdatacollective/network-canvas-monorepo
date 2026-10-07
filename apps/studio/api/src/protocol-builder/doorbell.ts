@@ -19,6 +19,7 @@ import {
   describeValkeyError,
   throttledWarning,
 } from '../platform/valkey-log.ts';
+import { catchLoopDefect } from './loop-defects.ts';
 
 const DoorbellMessage = Schema.Union([
   Schema.TaggedStruct('Advanced', {
@@ -267,14 +268,7 @@ const connectValkey = Effect.fnUntraced(function* (options: {
         }),
       ),
     );
-  }).pipe(
-    Effect.catchCause((cause) =>
-      Effect.logError(
-        'Protocol-builder doorbell: probing Valkey failed',
-        cause,
-      ),
-    ),
-  );
+  }).pipe(catchLoopDefect('Protocol-builder doorbell: probing Valkey failed'));
   yield* Effect.forkScoped(
     Effect.repeat(probe, Schedule.spaced(PING_INTERVAL)),
   );
