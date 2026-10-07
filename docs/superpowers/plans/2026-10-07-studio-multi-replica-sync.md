@@ -179,9 +179,7 @@ class Leases extends Context.Service<Leases, {
 
 // pb/presence.ts (C1)
 class Presence extends Context.Service<Presence, {
-  readonly setMode: (session: S, mode: 'viewing' | 'editing', sectionId?: string)
-    => Effect<void, SqlError>
-  readonly list: (session: S) => Effect<ReadonlyArray<PresenceEntry>, SqlError>
+  readonly setMode: (session: S) => Effect<void, SqlError>  // mode from the tab's live leases
 }>()
 
 // pb/doorbell.ts (V)

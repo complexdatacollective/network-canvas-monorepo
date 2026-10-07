@@ -48,7 +48,7 @@ const SAFETY_POLL_MS = 5_000;
 
 const MAX_CONSECUTIVE_FAILURES = 5;
 
-export class SubscriberOverflow extends Schema.TaggedError<SubscriberOverflow>()(
+class SubscriberOverflow extends Schema.TaggedError<SubscriberOverflow>()(
   'SubscriberOverflow',
   { draftId: Schema.String },
 ) {}
