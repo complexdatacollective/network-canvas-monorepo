@@ -13,6 +13,7 @@ import {
   filterRuleAttributeExists,
   filterRuleEntityExists,
   findDuplicateId,
+  getFilterRuleVariable,
   getFilterRuleVariableType,
   getVariablesForSubject,
   variableExists,
@@ -66,8 +67,9 @@ type IssueReporter = (issue: {
 
 /**
  * Validate a set of filter rules against the CODEBOOK: entity and attribute
- * existence, and operator validity for the attribute's variable type. Shared
- * between an inline stage.filter, skipLogic.filter and panel filters.
+ * existence, that the attribute is not encrypted, and operator validity for
+ * the attribute's variable type. Shared between an inline stage.filter,
+ * skipLogic.filter and panel filters.
  *
  * What shape a rule's operand may have needs no codebook, so it is not asked
  * here: `filterRuleSchema` holds every rule's value to its operator's operand
@@ -77,13 +79,20 @@ type IssueReporter = (issue: {
  *
  * `allowEgoRules` is false for stage NODE/EDGE filters, where an ego rule has no
  * meaning as a node/edge filter (it is silently dropped at runtime).
+ *
+ * `readsInterview` is false for an external-data panel, whose rules read the
+ * researcher's own rows. Those rows are never encrypted, so a rule there may
+ * name an encrypted attribute.
  */
 const validateFilterRules = (
   rules: FilterRule[],
   codebook: Codebook,
   basePath: (string | number)[],
   addIssue: IssueReporter,
-  allowEgoRules: boolean,
+  {
+    allowEgoRules,
+    readsInterview,
+  }: { allowEgoRules: boolean; readsInterview: boolean },
 ) => {
   rules.forEach((rule, ruleIndex) => {
     const rulePath = [...basePath, ruleIndex];
@@ -128,6 +137,21 @@ const validateFilterRules = (
     if (!attributeExists && hasAttribute && 'attribute' in rule.options) {
       addIssue({
         message: `"${rule.options.attribute}" is not a valid attribute ID`,
+        path: [...rulePath, 'options', 'attribute'],
+      });
+    }
+
+    // An encrypted answer is stored as ciphertext that only the participant's
+    // passphrase opens. Rules are evaluated without it, so a rule on one would
+    // compare the ciphertext, and could reveal the answer through what it
+    // skips or lists.
+    const variable =
+      readsInterview && hasAttribute
+        ? getFilterRuleVariable(rule, codebook)
+        : undefined;
+    if (variable?.encrypted) {
+      addIssue({
+        message: `Attribute "${variable.name}" is encrypted, so it cannot be used in a rule: rules are checked without the participant's passphrase, so they cannot read its answers.`,
         path: [...rulePath, 'options', 'attribute'],
       });
     }
@@ -1359,7 +1383,7 @@ const ProtocolSchema = z
           protocol.codebook,
           ['stages', stageIndex, 'filter', 'rules'],
           (issue) => ctx.addIssue({ code: 'custom' as const, ...issue }),
-          false,
+          { allowEgoRules: false, readsInterview: true },
         );
       }
 
@@ -1371,7 +1395,7 @@ const ProtocolSchema = z
           protocol.codebook,
           ['stages', stageIndex, 'skipLogic', 'filter', 'rules'],
           (issue) => ctx.addIssue({ code: 'custom' as const, ...issue }),
-          true,
+          { allowEgoRules: true, readsInterview: true },
         );
       }
 
@@ -1384,7 +1408,10 @@ const ProtocolSchema = z
               protocol.codebook,
               ['stages', stageIndex, 'panels', panelIndex, 'filter', 'rules'],
               (issue) => ctx.addIssue({ code: 'custom' as const, ...issue }),
-              true,
+              {
+                allowEgoRules: true,
+                readsInterview: panel.dataSource === 'existing',
+              },
             );
           }
         });
