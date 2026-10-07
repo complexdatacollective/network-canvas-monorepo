@@ -109,6 +109,11 @@
             "type": "boolean",
             "component": "Toggle"
           },
+          "non_kin": {
+            "name": "non_kin",
+            "type": "boolean",
+            "component": "Toggle"
+          },
           "layout": {
             "name": "layout",
             "type": "layout"
@@ -395,7 +400,7 @@
         {
           "id": "researcher-notes",
           "type": "text",
-          "content": "## For researchers\n\n_Delete this screen before you field the study._\n\nThis template adapts the **Colored Eco-Genetic Relationship Map (CEGRM)**, a conjointly constructed instrument that overlays a personal support network onto a genetic pedigree. It blends the genetic pedigree, the family systems genogram and the ecomap, and is grounded in social exchange and resource theory. Published sessions run 20–60 minutes and are led by the interviewer alongside the participant.\n\n### Before you field this\n\n- **Name the condition.** Every prompt says \"this condition\". Replace it with the condition your study is about, in the words your participants use.\n- **Set the inheritance pattern.** The closing inheritance view deliberately defaults to `unknown`, and possible at-risk statuses are switched off. Only select a clinically supported inheritance pattern, and only enable inferred statuses when a qualified professional will interpret them under an approved disclosure procedure. The display is not a diagnosis and assumes full penetrance.\n- **Adapt the consent and support plan.** Replace the example consent language, participant information, confidentiality statement, referral pathways, safeguarding process and distress procedure with those approved for your setting.\n- **Review the scope.** The four support domains are asked about family and non-family contacts. Gatherer, disseminator and blocker are configured as family health-communication roles. Widen that stage only when non-family information brokerage is part of the research question.\n- **Review spiritual support.** Retain, adapt or remove the spiritual/religious prompt according to the population and study purpose.\n- **Plan how to capture reflection.** Narrative drawings and conversation are not exported. Arrange approved audio, notes or screen capture when the qualitative account is research data.\n\n### What it measures\n\nFour exchange domains (information, practical help, feelings, spiritual connection) are recorded for family and non-family contacts. Three communication roles (gatherer, disseminator, blocker) are recorded for family members. Closeness and contact frequency are collected as ordinal Network Canvas measures for the whole living network. From the exchange variables you can derive the published measures: **breadth** of support (how many people), **types** of support (which domains), and **depth** (how many domains one relationship covers, 0–4). Relationship categories are collected only for people added beyond the pedigree; family relationships are the family edges the pedigree records, and `tie_type` describes non-family contacts in analysis. People added in the pedigree are told apart from other contacts by having a gender identity recorded.\n\n**Caveat:** these counts are a discussion aid, not a validated support scale. The instrument's own literature treats the conversation the map provokes as the primary data.\n\n### The instrument's literature\n\n- Kenen R, Peters J. [The Colored, Eco-Genetic Relationship Map (CEGRM): a conceptual approach and tool for genetic counseling research.](https://doi.org/10.1023/A:1016627426430) J Genet Couns. 2001;10(4):289–309.\n- Peters JA, et al. [Exploratory study of the feasibility and utility of the CEGRM in women at high genetic risk of developing breast cancer.](https://pubmed.ncbi.nlm.nih.gov/15378540/) Am J Med Genet A. 2004.\n- Peters JA, et al. [Evolution of the CEGRM for assessing social functioning in women in hereditary breast-ovarian (HBOC) families.](https://pubmed.ncbi.nlm.nih.gov/17111216/) J Genet Couns. 2006. — adds the spiritual/religious domain.\n- Koehly LM, et al. [Characteristics of health information gatherers, disseminators, and blockers within families at risk of hereditary cancer.](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC2775786/) Am J Public Health. 2009.\n- Peters JA, et al. [Easing the burden: describing the role of social, emotional and spiritual support in research families with Li-Fraumeni syndrome.](https://pubmed.ncbi.nlm.nih.gov/26621765/) J Genet Couns. 2016. — the breadth/types/depth framework."
+          "content": "## For researchers\n\n_Delete this screen before you field the study._\n\nThis template adapts the **Colored Eco-Genetic Relationship Map (CEGRM)**, a conjointly constructed instrument that overlays a personal support network onto a genetic pedigree. It blends the genetic pedigree, the family systems genogram and the ecomap, and is grounded in social exchange and resource theory. Published sessions run 20–60 minutes and are led by the interviewer alongside the participant.\n\n### Before you field this\n\n- **Name the condition.** Every prompt says \"this condition\". Replace it with the condition your study is about, in the words your participants use.\n- **Set the inheritance pattern.** The closing inheritance view deliberately defaults to `unknown`, and possible at-risk statuses are switched off. Only select a clinically supported inheritance pattern, and only enable inferred statuses when a qualified professional will interpret them under an approved disclosure procedure. The display is not a diagnosis and assumes full penetrance.\n- **Adapt the consent and support plan.** Replace the example consent language, participant information, confidentiality statement, referral pathways, safeguarding process and distress procedure with those approved for your setting.\n- **Review the scope.** The four support domains are asked about family and non-family contacts. Gatherer, disseminator and blocker are configured as family health-communication roles. Widen that stage only when non-family information brokerage is part of the research question.\n- **Review spiritual support.** Retain, adapt or remove the spiritual/religious prompt according to the population and study purpose.\n- **Plan how to capture reflection.** Narrative drawings and conversation are not exported. Arrange approved audio, notes or screen capture when the qualitative account is research data.\n\n### What it measures\n\nFour exchange domains (information, practical help, feelings, spiritual connection) are recorded for family and non-family contacts. Three communication roles (gatherer, disseminator, blocker) are recorded for family members. Closeness and contact frequency are collected as ordinal Network Canvas measures for the whole living network. From the exchange variables you can derive the published measures: **breadth** of support (how many people), **types** of support (which domains), and **depth** (how many domains one relationship covers, 0–4). Relationship categories are collected only for people added beyond the pedigree; family relationships are the family edges the pedigree records, and `tie_type` describes non-family contacts in analysis. The people named in the **People in your life** stage are marked `non_kin`; everyone the pedigree adds, including relatives the participant did not describe and parents the interface adds automatically, is not. The beyond-family stages and the family health-communication roles are filtered on that attribute rather than on any pedigree answer, so the pedigree can leave gender identity switched off.\n\n**Caveat:** these counts are a discussion aid, not a validated support scale. The instrument's own literature treats the conversation the map provokes as the primary data.\n\n### The instrument's literature\n\n- Kenen R, Peters J. [The Colored, Eco-Genetic Relationship Map (CEGRM): a conceptual approach and tool for genetic counseling research.](https://doi.org/10.1023/A:1016627426430) J Genet Couns. 2001;10(4):289–309.\n- Peters JA, et al. [Exploratory study of the feasibility and utility of the CEGRM in women at high genetic risk of developing breast cancer.](https://pubmed.ncbi.nlm.nih.gov/15378540/) Am J Med Genet A. 2004.\n- Peters JA, et al. [Evolution of the CEGRM for assessing social functioning in women in hereditary breast-ovarian (HBOC) families.](https://pubmed.ncbi.nlm.nih.gov/17111216/) J Genet Couns. 2006. — adds the spiritual/religious domain.\n- Koehly LM, et al. [Characteristics of health information gatherers, disseminators, and blockers within families at risk of hereditary cancer.](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC2775786/) Am J Public Health. 2009.\n- Peters JA, et al. [Easing the burden: describing the role of social, emotional and spiritual support in research families with Li-Fraumeni syndrome.](https://pubmed.ncbi.nlm.nih.gov/26621765/) J Genet Couns. 2016. — the breadth/types/depth framework."
         }
       ]
     },
@@ -545,7 +550,7 @@
       "id": "ng-non-kin",
       "type": "NameGeneratorQuickAdd",
       "label": "People in your life",
-      "interviewScript": "The same person can belong in several of these questions. Add them once, then pick them from the panel of people already named rather than typing the name again.\n\nThe published instrument treats this step as widening the map to the participant's whole social universe, so do not rush it — friends and co-members of groups are where the spiritual and emotional domains usually turn out to live.",
+      "interviewScript": "The same person can belong in several of these questions. Add them once, then pick them from the panel of people already named rather than typing the name again.\n\nThe published instrument treats this step as widening the map to the participant's whole social universe, so do not rush it — friends and co-members of groups are where the spiritual and emotional domains usually turn out to live.\n\nEveryone added here is recorded as a non-kin member of the network (`non_kin`). That is how the next screens tell them apart from the family on the pedigree, so a relative who was missed in the pedigree should be added to the pedigree, not here.",
       "subject": {
         "entity": "node",
         "type": "person"
@@ -574,8 +579,9 @@
                 "type": "node",
                 "options": {
                   "type": "person",
-                  "attribute": "genderIdentity",
-                  "operator": "NOT_EXISTS"
+                  "attribute": "non_kin",
+                  "operator": "EXACTLY",
+                  "value": true
                 }
               }
             ]
@@ -585,19 +591,23 @@
       "prompts": [
         {
           "id": "p-friends",
-          "text": "Who are the **friends** who matter most to you?"
+          "text": "Who are the **friends** who matter most to you?",
+          "additionalAttributes": [{ "variable": "non_kin", "value": true }]
         },
         {
           "id": "p-work",
-          "text": "Who are the people you know through **work or study**?"
+          "text": "Who are the people you know through **work or study**?",
+          "additionalAttributes": [{ "variable": "non_kin", "value": true }]
         },
         {
           "id": "p-groups",
-          "text": "Who do you know through **groups you belong to** — a faith community, a team, a club, or a community you are part of online?"
+          "text": "Who do you know through **groups you belong to** — a faith community, a team, a club, or a community you are part of online?",
+          "additionalAttributes": [{ "variable": "non_kin", "value": true }]
         },
         {
           "id": "p-care",
-          "text": "Who is involved in looking after your **health**?"
+          "text": "Who is involved in looking after your **health**?",
+          "additionalAttributes": [{ "variable": "non_kin", "value": true }]
         }
       ]
     },
@@ -637,8 +647,9 @@
             "type": "node",
             "options": {
               "type": "person",
-              "attribute": "genderIdentity",
-              "operator": "NOT_EXISTS"
+              "attribute": "non_kin",
+              "operator": "EXACTLY",
+              "value": true
             }
           }
         ]
@@ -823,7 +834,7 @@
       "id": "socio-roles",
       "type": "Sociogram",
       "label": "Talking about the condition",
-      "interviewScript": "These three questions are the coloured stars of the paper instrument — the gatherer, disseminator and blocker roles described by Koehly and colleagues. They are configured for family members because the published roles describe communication within families at hereditary risk. Widen the filter only when non-family information brokerage is part of the research question.\n\nThis stage keeps the positions established on the preceding all-contact Sociogram. Do not enable automatic layout here: recomputing only the filtered family subset would make the relatives' coordinates incompatible with the non-family contacts when the completed map combines them again.\n\nThe third question names someone as a barrier to family communication, so frame it gently and without judgement: people usually have reasons, and those reasons are often the most useful thing the participant tells you.",
+      "interviewScript": "These three questions are the coloured stars of the paper instrument — the gatherer, disseminator and blocker roles described by Koehly and colleagues. They are configured for everyone who is not marked `non_kin`, which is the family from the pedigree, because the published roles describe communication within families at hereditary risk. Widen the filter only when non-family information brokerage is part of the research question.\n\nThis stage keeps the positions established on the preceding all-contact Sociogram. Do not enable automatic layout here: recomputing only the filtered family subset would make the relatives' coordinates incompatible with the non-family contacts when the completed map combines them again.\n\nThe third question names someone as a barrier to family communication, so frame it gently and without judgement: people usually have reasons, and those reasons are often the most useful thing the participant tells you.",
       "subject": {
         "entity": "node",
         "type": "person"
@@ -896,8 +907,9 @@
             "type": "node",
             "options": {
               "type": "person",
-              "attribute": "genderIdentity",
-              "operator": "EXISTS"
+              "attribute": "non_kin",
+              "operator": "NOT",
+              "value": true
             }
           }
         ]

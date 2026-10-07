@@ -130,10 +130,13 @@ overlapping roles through variables and relationships.
 The distinction between family and non-family is stored through variables and
 relationships:
 
-- `genderIdentity` is asked only by the Family Pedigree, so later stage filters
-  use it to tell people described in the pedigree from people added beyond it.
-  A person the interface added without describing them, such as an unnamed
-  parent, has none, so check how your study should treat those people.
+- `non_kin` is a boolean that the "People in your life" name generator sets to
+  true on every person it creates. People from the Family Pedigree never have
+  it, so later stage filters use it to tell the participant's family from the
+  non-kin members of their social network. Relatives the participant did not
+  describe, such as an unnamed parent the interface added, still count as
+  family, and the distinction does not depend on any pedigree question being
+  asked.
 - `tie_type` and `tie_type_other` classify people added beyond the pedigree.
 - `is_ego` identifies exactly one node as the participant.
 - `sexAssignedAtBirth` is used by the Family Pedigree to name biological
@@ -223,11 +226,13 @@ The same person may be a friend, colleague, and member of a faith community. The
 without creating a duplicate node.
 
 The next Categorical Bin asks how the participant knows only the people added
-beyond the pedigree. Its filter selects people other than the participant who
-have no `genderIdentity`, which only the Family Pedigree asks. This keeps the
-non-family classification from being applied to people described in the
-pedigree and makes the analytic distinction explicit: use `genderIdentity` to
-find people described in the pedigree and `tie_type` for contacts outside it.
+beyond the pedigree. Each prompt of the preceding name generator sets `non_kin`
+to true on the people it creates (through the prompt's additional attributes),
+and this stage's filter selects people other than the participant who have
+`non_kin` set to true. This keeps the non-family classification from being
+applied to people from the pedigree and makes the analytic distinction
+explicit: use `non_kin` to separate the two groups and `tie_type` to classify
+contacts outside the pedigree.
 
 Review this boundary for your study. "Family" is not exhausted by biological
 kinship, and the Family Pedigree can contain social and adoptive relationships.
@@ -307,8 +312,9 @@ person
 template therefore asks who finds the subject hard to talk about, rather than
 labelling someone as obstructive in participant-facing language.
 
-The stage is filtered to people other than the participant who have a
-`genderIdentity`, so the roles are asked about the participant's family system. Widen that filter only if
+The stage is filtered to people other than the participant who are not marked
+`non_kin`, so the roles are asked about the participant's family system,
+including relatives the participant did not describe. Widen that filter only if
 non-family brokerage is part of the research question. It also disables
 automatic layout and reuses the coordinates established by the preceding
 all-person Sociogram. Recomputing a layout for the family subset would make its
@@ -351,7 +357,7 @@ The template supports several complementary analytic representations:
 | ---------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------ |
 | Family structure             | `family_relationship` edges and their relationship variables | Reconstruct pedigree and social, adoptive, donor, gestational, and partnership relations.  |
 | Condition and testing        | `has_condition`, `had_testing`                               | Describe participant-reported incidence and testing across generations.                    |
-| Personal network composition | `genderIdentity`, `tie_type`, `tie_type_other`               | Compare kin, non-kin, professional, group, and other sources of support.                   |
+| Personal network composition | `non_kin`, `tie_type`, `tie_type_other`                      | Compare kin, non-kin, professional, group, and other sources of support.                   |
 | Relationship context         | `closeness`, `contact_frequency`                             | Relate support roles to subjective closeness and interaction frequency.                    |
 | Network structure            | `knows` edges                                                | Calculate size, density, components, brokerage, or other measures justified by the design. |
 | Support domains              | Four `exch_*` booleans                                       | Count providers by domain and identify multiplex support ties.                             |
