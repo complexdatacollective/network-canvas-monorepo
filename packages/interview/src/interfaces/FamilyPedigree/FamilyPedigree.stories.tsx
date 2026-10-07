@@ -59,7 +59,7 @@ type SeedLink = {
   carrier?: boolean;
 };
 
-type Family = { people: SeedPerson[]; links: SeedLink[] };
+export type Family = { people: SeedPerson[]; links: SeedLink[] };
 
 type Completeness = {
   scope: PedigreeCompletenessScope;
@@ -112,7 +112,7 @@ type NominationPrompt = {
   onlyForSexAssignedAtBirth?: 'female' | 'male';
 };
 
-function buildInterview({
+export function buildInterview({
   family,
   withFormFields = false,
   completeness,
@@ -316,6 +316,8 @@ type StoryArgs = {
 
 const meta: Meta<StoryArgs> = {
   title: 'Interfaces/FamilyPedigree',
+  // The interview builder is shared with the capture story.
+  excludeStories: ['buildInterview'],
   parameters: { layout: 'fullscreen' },
   // Protocol settings for the stage, each story starting from the ones that
   // suit its family.
