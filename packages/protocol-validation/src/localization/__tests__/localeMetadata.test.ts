@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { getLocaleMetadata } from '../localeMetadata.ts';
+import { getLocaleMetadata, sortByLanguageName } from '../localeMetadata.ts';
 
 const RealLocale = Intl.Locale;
 
@@ -258,5 +258,30 @@ describe('getLocaleMetadata', () => {
         },
       );
     });
+  });
+});
+
+describe('sortByLanguageName', () => {
+  it('orders languages by name, collated for the reader’s language', () => {
+    const names: Record<string, string> = {
+      fr: 'français',
+      en: 'English',
+      es: 'español',
+      ar: 'العربية',
+      de: 'Deutsch',
+    };
+    expect(
+      sortByLanguageName(
+        Object.keys(names),
+        (locale) => names[locale] ?? '',
+        'en',
+      ),
+    ).toEqual(['de', 'en', 'es', 'fr', 'ar']);
+  });
+
+  it('collates accented names with their base letters rather than after z', () => {
+    expect(
+      sortByLanguageName(['Zulu', 'Ébène', 'Eesti'], (name) => name, 'fr'),
+    ).toEqual(['Ébène', 'Eesti', 'Zulu']);
   });
 });

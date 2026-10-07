@@ -57,6 +57,7 @@ export {
 export {
   getLocaleMetadata,
   type LocaleMetadata,
+  sortByLanguageName,
 } from './localization/localeMetadata.ts';
 export {
   normalizeLocalePreferences,

@@ -138,3 +138,17 @@ export function getLocaleMetadata(
     direction: getDirection(canonical),
   };
 }
+
+/**
+ * Orders languages alphabetically by the names a reader sees, collated for the
+ * reader's language. A protocol's languages carry no order of their own, so
+ * every list of them is shown this way.
+ */
+export function sortByLanguageName<T>(
+  items: readonly T[],
+  nameOf: (item: T) => string,
+  displayLocale: string,
+): T[] {
+  const collator = new Intl.Collator(displayLocale);
+  return items.toSorted((a, b) => collator.compare(nameOf(a), nameOf(b)));
+}
