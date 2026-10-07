@@ -11,9 +11,11 @@ import {
   useRef,
   useState,
 } from 'react';
+import { useSelector } from 'react-redux';
 
 import { createMessageError } from '@codaco/app-i18n/messages';
 import { useAppIntl, AppMessage } from '@codaco/app-i18n/react';
+import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
 import { FormWithoutProvider } from '@codaco/fresco-ui/form/Form';
@@ -23,12 +25,14 @@ import FormStoreProvider, {
   FormStoreContext,
   selectIsFormDirty,
 } from '@codaco/fresco-ui/form/store/formStoreProvider';
-import type { FormSubmitHandler } from '@codaco/fresco-ui/form/store/types';
+import type {
+  FormSubmissionResult,
+  FormSubmitHandler,
+} from '@codaco/fresco-ui/form/store/types';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
 import type { TitlelessForm } from '@codaco/protocol-validation';
 import {
-  entityAttributesProperty,
   entityPrimaryKeyProperty,
   type NcEdge,
   type NcNode,
@@ -47,8 +51,10 @@ import useReadyForNextStage from '../../hooks/useReadyForNextStage';
 import { useScrolledToBottom } from '../../hooks/useScrolledToBottom';
 import { runtimeMessages } from '../../i18n/runtimeMessages';
 import type { Subject } from '../../selectors/forms';
+import { makeGetCodebookVariablesForNodeType } from '../../selectors/protocol';
 import type { AttributePatch } from '../../store/entityAttributePatch';
 import type { BeforeNextFunction, Direction } from '../../types';
+import { useProtectedFormValues } from '../Anonymisation/useProtectedFormValues';
 import { interfaceMessages } from '../messages';
 
 type FormKind = 'alter' | 'alter_edge' | 'ego' | 'slides';
@@ -61,7 +67,14 @@ type SlidesFormProps<T extends NcNode | NcEdge = NcNode | NcEdge> = {
   form: TitlelessForm;
   items: T[];
   subject: Subject;
-  updateItem: (id: string, attributePatch: AttributePatch) => void;
+  /**
+   * Saves the slide's answers. A refused save must resolve to a failed result,
+   * which keeps the slide and its answers in place with the error shown.
+   */
+  updateItem: (
+    id: string,
+    attributePatch: AttributePatch,
+  ) => Promise<FormSubmissionResult>;
   onNavigateBack?: () => void;
   moveForward: () => void | Promise<void>;
   renderHeader: (item: T) => ReactNode;
@@ -104,12 +117,16 @@ type SlideContentProps = {
   subject: Subject;
   header: ReactNode;
   submitButton: ReactNode;
-  onUpdate: (id: string, attributePatch: AttributePatch) => void;
+  onUpdate: SlidesFormProps['updateItem'];
   onReadyChange: (ready: boolean) => void;
   form_kind?: FormKind;
 };
 
-const SlideContentInner = forwardRef<SlideHandle, SlideContentProps>(
+type SlideFormProps = SlideContentProps & {
+  initialValues: Record<string, FieldValue>;
+};
+
+const SlideContentInner = forwardRef<SlideHandle, SlideFormProps>(
   function SlideContentInner(
     {
       item,
@@ -120,22 +137,12 @@ const SlideContentInner = forwardRef<SlideHandle, SlideContentProps>(
       onUpdate,
       onReadyChange,
       form_kind,
+      initialValues,
     },
     ref,
   ) {
     const track = useTrack();
     const id = item[entityPrimaryKeyProperty];
-    const rawAttributes = item[entityAttributesProperty];
-
-    const initialValues: Record<string, FieldValue> | undefined = rawAttributes
-      ? Object.entries(rawAttributes).reduce<Record<string, FieldValue>>(
-          (values, [name, value]) => {
-            values[name] = value;
-            return values;
-          },
-          {},
-        )
-      : undefined;
 
     const {
       fieldComponents,
@@ -150,7 +157,7 @@ const SlideContentInner = forwardRef<SlideHandle, SlideContentProps>(
       currentEntityId: id,
     });
 
-    const handleSubmit: FormSubmitHandler = (values) => {
+    const handleSubmit: FormSubmitHandler = async (values) => {
       const patchResult = formValuesToAttributePatch(
         coerceValues(values),
         form.fields.map((field) => field.variable),
@@ -163,7 +170,9 @@ const SlideContentInner = forwardRef<SlideHandle, SlideContentProps>(
         };
       }
 
-      onUpdate(id, patchResult.patch);
+      const saved = await onUpdate(id, patchResult.patch);
+      if (!saved.success) return saved;
+
       track('form_submitted', {
         form_kind,
         ...(form_kind === 'alter' || form_kind === 'alter_edge'
@@ -269,11 +278,105 @@ const SlideContentInner = forwardRef<SlideHandle, SlideContentProps>(
   },
 );
 
+/**
+ * Stands in for a slide whose answers are protected by the interview
+ * passphrase while that passphrase is not in force (or its answers are still
+ * being decrypted), so nothing can be entered that could not be saved.
+ */
+const ProtectedSlide = forwardRef<
+  SlideHandle,
+  {
+    header: ReactNode;
+    reason: 'pending' | 'passphrase-needed' | 'passphrase-invalid';
+    onReadyChange: (ready: boolean) => void;
+  }
+>(function ProtectedSlide({ header, reason, onReadyChange }, ref) {
+  const noticeRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    onReadyChange(false);
+  }, [onReadyChange]);
+
+  useImperativeHandle(ref, () => ({
+    validate: async () => false,
+    submit: async () => false,
+    isDirty: () => false,
+    requestErrorFocus: () => noticeRef.current?.focus(),
+    getFieldErrors: () => [],
+  }));
+
+  return (
+    <div className="flex size-full flex-col items-center gap-4 overflow-y-auto p-4">
+      <div className="my-auto flex w-full flex-col items-center gap-4">
+        <div className="flex shrink-0 justify-center">{header}</div>
+        {reason !== 'pending' && (
+          <Alert
+            ref={noticeRef}
+            tabIndex={-1}
+            variant="info"
+            className="tablet-portrait:min-w-lg focusable max-w-2xl"
+          >
+            <AlertDescription>
+              <AppMessage
+                message={
+                  reason === 'passphrase-invalid'
+                    ? runtimeMessages.decryptRetry
+                    : runtimeMessages.protectedAnswersLocked
+                }
+              />
+            </AlertDescription>
+          </Alert>
+        )}
+      </div>
+    </div>
+  );
+});
+
+const NO_VARIABLES = {};
+
 const SlideContent = forwardRef<SlideHandle, SlideContentProps>(
   function SlideContent(props, ref) {
+    const { item, form, subject } = props;
+    const getNodeVariables = useSelector(makeGetCodebookVariablesForNodeType);
+    const variables =
+      subject.entity === 'node' && subject.type
+        ? getNodeVariables(subject.type)
+        : NO_VARIABLES;
+    const protectedValues = useProtectedFormValues(
+      item,
+      form.fields,
+      variables,
+    );
+
+    if (protectedValues.status === 'pending') {
+      return (
+        <ProtectedSlide
+          ref={ref}
+          header={props.header}
+          reason="pending"
+          onReadyChange={props.onReadyChange}
+        />
+      );
+    }
+
+    if (protectedValues.status === 'locked') {
+      return (
+        <ProtectedSlide
+          ref={ref}
+          header={props.header}
+          reason={protectedValues.reason}
+          onReadyChange={props.onReadyChange}
+        />
+      );
+    }
+
     return (
       <FormStoreProvider>
-        <SlideContentInner ref={ref} {...props} />
+        <SlideContentInner
+          ref={ref}
+          {...props}
+          initialValues={protectedValues.values}
+        />
       </FormStoreProvider>
     );
   },
