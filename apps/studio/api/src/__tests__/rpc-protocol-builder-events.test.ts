@@ -6,7 +6,9 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { type ProtocolEvent } from '@codaco/protocol-builder-core/contract/schemas';
 
 import { type Studio } from '../app.ts';
+import { TenantScope } from '../db/tenant.ts';
 import { ProtocolEvents } from '../protocol-builder/publisher.ts';
+import { latestDraftId } from '../protocol/store.ts';
 import { testDb } from './support/database.ts';
 import {
   ADA,
@@ -19,36 +21,28 @@ import {
   setupProtocolBuilderSuite,
   sid,
   STAGE_ORDER,
+  TEAM_ID,
   until,
   type VariableReference,
 } from './support/protocol-builder-suite.ts';
 import {
   createProtocolBuilderClient,
+  makeSpanCounter,
   type ProtocolBuilderTestClient,
 } from './support/protocol-builder.ts';
 
 describe.skipIf(!testDb)('the protocol-builder host surface', () => {
   const suite = setupProtocolBuilderSuite();
-  const {
-    objectStore,
-    call,
-    callExit,
-    createStage,
-    watch,
-    watching,
-    drain,
-    createOn,
-  } = suite;
+  const { objectStore, call, callExit, watch, watching, drain, createOn } =
+    suite;
   let host: ProtocolBuilderTestClient;
   let protocolId: string;
-  let draftId: string;
   let reference: VariableReference;
   let studio: Studio;
 
   beforeAll(() => {
     host = suite.host;
     protocolId = suite.protocolId;
-    draftId = suite.draftId;
     reference = suite.reference;
     studio = suite.studio;
   });
@@ -95,95 +89,55 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
     expect(resumed).toEqual([]);
   });
 
-  it('never hands a live watcher an event at or before one it already has', async () => {
-    const channel = await watching(GRACE, protocolId);
-    const createOne = (label: string) =>
-      call(
-        ADA,
-        host.rpc('Create', {
-          protocolId,
-          requestId: randomUUID(),
-          kind: 'stage',
-          document: { type: 'Information', label, title: label, items: [] },
-        }),
-      );
-    const revisions = () =>
-      channel.events.filter(
-        (event): event is Extract<ProtocolEvent, { type: 'revision' }> =>
-          event.type === 'revision',
-      );
-    const first = await createOne('Seen once');
-    await until(
-      () =>
-        revisions().some((revision) => revision.sectionId === first.sectionId),
-      'the first write',
-    );
-    const seen = revisions().find(
-      (revision) => revision.sectionId === first.sectionId,
-    );
-    if (seen?.cursor === undefined)
-      throw new Error('the revision had no cursor');
-    const { cursor, ...logged } = seen;
-    await host.run(
-      ProtocolEvents.use((events) =>
-        events.publish(draftId, [{ cursor, event: logged }]),
-      ),
-    );
-    const second = await createOne('Seen after');
-    await until(
-      () =>
-        revisions().some((revision) => revision.sectionId === second.sectionId),
-      'the second write',
-    );
-    await channel.stop();
-    expect(
-      channel.events.filter(
-        (delivered) =>
-          delivered.type !== 'presence' && delivered.cursor === cursor,
-      ),
-    ).toHaveLength(1);
-  });
-
   const cursorOf = (event: ProtocolEvent) =>
     event.type === 'presence' ? undefined : event.cursor;
 
-  it('drops a live event whose cursor is the last one it delivered', async () => {
-    const channel = await watching(GRACE, protocolId);
+  const cursorsOf = (events: readonly ProtocolEvent[]) =>
+    events.flatMap((event) => {
+      const cursor = cursorOf(event);
+      return cursor === undefined ? [] : [cursor];
+    });
+
+  it('never hands a live watcher an event its backlog already gave it', async () => {
+    const events = holdingEvents();
+    const spans = makeSpanCounter();
+    const other = await createProtocolBuilderClient(studio, {
+      objectStore,
+      events: events.layer,
+      tracer: spans.tracer,
+    });
     try {
-      const first = await createStage(ADA, 'Delivered last');
-      const sequence = first.revision.sequence;
-      await until(
-        () =>
-          revisionsOf(channel.events, first.sectionId).length > 0 &&
-          revisionsOf(channel.events, STAGE_ORDER).some(
-            (revision) => revision.revision.sequence === sequence,
-          ),
-        'the create',
+      // Held once the relay has fixed its cursor and before the backlog is
+      // read, so both the relay and the backlog carry what commits here.
+      const overlap = events.nextSubscribed(
+        (session) => session.connectionId === GRACE.connectionId,
       );
-      const newest = channel.events
-        .filter((event) => cursorOf(event) !== undefined)
-        .reduce((a, b) =>
-          BigInt(cursorOf(a) ?? 0) >= BigInt(cursorOf(b) ?? 0) ? a : b,
+      const channel = watch(GRACE, protocolId, other);
+      try {
+        await overlap.reached;
+        const reads = spans.ended('protocolBuilder.relayRead');
+        const first = await createOn(other, 'Read by both, once');
+        const second = await createOn(other, 'Read by both, last');
+        await until(
+          () => spans.ended('protocolBuilder.relayRead') > reads,
+          'the relay to read the overlap',
         );
-      if (newest.type === 'presence' || newest.cursor === undefined) {
-        throw new Error('nothing with a cursor was delivered');
+        overlap.release();
+        const after = await createOn(other, 'Written after the backlog');
+        await until(
+          () => revisionsOf(channel.events, after.sectionId).length > 0,
+          'the write after the backlog',
+        );
+        expect(revisionsOf(channel.events, first.sectionId)).toHaveLength(1);
+        expect(revisionsOf(channel.events, second.sectionId)).toHaveLength(1);
+        const cursors = cursorsOf(channel.events);
+        expect(new Set(cursors).size).toBe(cursors.length);
+      } finally {
+        overlap.release();
+        await channel.stop();
       }
-      const { cursor, ...logged } = newest;
-      await host.run(
-        ProtocolEvents.use((events) =>
-          events.publish(draftId, [{ cursor, event: logged }]),
-        ),
-      );
-      const second = await createStage(ADA, 'Delivered after it');
-      await until(
-        () => revisionsOf(channel.events, second.sectionId).length > 0,
-        'the second create',
-      );
-      expect(
-        channel.events.filter((event) => cursorOf(event) === cursor),
-      ).toHaveLength(1);
     } finally {
-      await channel.stop();
+      await other.dispose();
     }
   });
 
@@ -194,14 +148,9 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       events: events.layer,
     });
     try {
-      const gap = events.next((entries) =>
-        entries.some(
-          (entry) =>
-            entry.event.type === 'presence' &&
-            entry.event.present.some(
-              (who) => who.sessionId === GRACE.connectionId,
-            ),
-        ),
+      // Held after the backlog is read and before the live stream starts.
+      const gap = events.nextPresence(
+        (session) => session.connectionId === GRACE.connectionId,
       );
       const channel = watch(GRACE, protocolId, other);
       try {
@@ -214,10 +163,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
           'the write after the gap',
         );
         expect(revisionsOf(channel.events, written.sectionId)).toHaveLength(1);
-        const cursors = channel.events.flatMap((event) => {
-          const cursor = cursorOf(event);
-          return cursor === undefined ? [] : [cursor];
-        });
+        const cursors = cursorsOf(channel.events);
         expect(new Set(cursors).size).toBe(cursors.length);
       } finally {
         gap.release();
@@ -229,11 +175,18 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
   });
 
   it('ends a watcher too far behind with a failure, for the replay path', async () => {
+    const egolessDraft = await suite.runEffect(
+      TenantScope.open(
+        suite.access,
+        latestDraftId(TEAM_ID, suite.egolessProtocolId),
+      ),
+    );
+    if (egolessDraft === undefined) throw new Error('no egoless draft');
     const stalled = latch();
     let delivered = 0;
     const ended = callExit(
       GRACE,
-      host.rpc('WatchProtocol', { protocolId }).pipe(
+      host.rpc('WatchProtocol', { protocolId: suite.egolessProtocolId }).pipe(
         Stream.runForEach(() =>
           Effect.promise(async () => {
             delivered += 1;
@@ -243,15 +196,38 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       ),
     );
     await until(() => delivered === 1, 'the first event');
-    await host.run(
-      ProtocolEvents.use((events) =>
-        events.publish(
-          draftId,
-          Array.from({ length: 1100 }, () => ({
-            event: { type: 'presence' as const, present: [] },
-          })),
-        ),
-      ),
+    // Past its cursor, and more releases than the watcher's queue and the
+    // chunk its stream has already taken hold between them.
+    await suite.teamRows(
+      `INSERT INTO protocol_events (draft_id, team_id, cursor, kind, section_id)
+       SELECT $1, $2, last.cursor + n, 'lock', 'settings'
+         FROM (SELECT coalesce(max(cursor), 0) AS cursor FROM protocol_events
+                WHERE draft_id = $1) AS last,
+              generate_series(1, 2500) AS n`,
+      [egolessDraft, TEAM_ID],
+    );
+    await call(
+      ADA,
+      host.rpc('Create', {
+        protocolId: suite.egolessProtocolId,
+        requestId: randomUUID(),
+        kind: 'stage',
+        document: {
+          type: 'Information',
+          label: 'Past the bound',
+          title: 'Past the bound',
+          items: [],
+        },
+      }),
+    );
+    // An overflowing watcher leaves the relay, though its stream has yet to
+    // drain what it was given.
+    await until(
+      async () =>
+        (await host.run(
+          ProtocolEvents.use((events) => events.subscribers(egolessDraft)),
+        )) === 0,
+      'the stalled watcher to overflow',
     );
     stalled.open();
     const exit = await ended;

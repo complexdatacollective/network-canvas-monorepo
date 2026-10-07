@@ -25,6 +25,7 @@ import { AuthService, type SessionPrincipal } from '../../auth/service.ts';
 import type { Database } from '../../db/client.ts';
 import { MaintenanceTriggers } from '../../http/middleware/maintenance.ts';
 import { ReplicaId } from '../../protocol-builder/connections.ts';
+import { Doorbell } from '../../protocol-builder/doorbell.ts';
 import { ProtocolBuilderHandlers } from '../../protocol-builder/handlers.ts';
 import { Leases } from '../../protocol-builder/leases.ts';
 import { Presence } from '../../protocol-builder/presence.ts';
@@ -216,7 +217,13 @@ export async function createProtocolBuilderClient(
     readonly presence?: Layer.Layer<Presence, never, Database>;
     readonly maintenance?: MaintenanceTriggers['Service'];
     readonly tracer?: Tracer.Tracer;
-    readonly events?: Layer.Layer<ProtocolEvents>;
+    readonly events?: Layer.Layer<
+      ProtocolEvents,
+      never,
+      Database | Doorbell | MaintenanceTriggers
+    >;
+    /** Share one `makeMemoryDoorbell` between clients to ring across them. */
+    readonly doorbell?: Doorbell['Service'];
     readonly staged?: Layer.Layer<StagedImports>;
     readonly layer?: Layer.Layer<never>;
     /** Each client is a replica of its own unless two are given one id. */
@@ -240,6 +247,9 @@ export async function createProtocolBuilderClient(
     options.maintenance === undefined
       ? MaintenanceTriggers.layerOpen
       : Layer.succeed(MaintenanceTriggers)(options.maintenance),
+    options.doorbell === undefined
+      ? Doorbell.layerMemory
+      : Layer.succeed(Doorbell)(options.doorbell),
   );
   const services =
     options.objectStore === undefined

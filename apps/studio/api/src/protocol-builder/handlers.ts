@@ -160,26 +160,10 @@ export const ProtocolBuilderHandlers: Layer.Layer<
     const publish = (
       session: ProtocolBuilderSession,
       entries: ReadonlyArray<LoggedProtocolEvent>,
-    ) =>
-      entries.length > 0
-        ? events.publish(session.draftId, entries)
-        : Effect.void;
+    ) => (entries.length > 0 ? events.publish(session, entries) : Effect.void);
 
-    // Presence is a courtesy to colleagues: failing to show it must not fail
-    // the call that changed it, whose own write has already committed.
     const publishPresence = (session: ProtocolBuilderSession) =>
-      Effect.flatMap(presence.list(session), (present) =>
-        events.publish(session.draftId, [
-          { event: { type: 'presence', present } },
-        ]),
-      ).pipe(
-        Effect.catchCause((cause) =>
-          Effect.logWarning(
-            'Publishing protocol-builder presence failed',
-            cause,
-          ),
-        ),
-      );
+      events.presenceChanged(session);
 
     // A unary caller shows no mode: its connection id is its login's, which
     // every HTTP watch of that login carries too.
@@ -334,8 +318,8 @@ export const ProtocolBuilderHandlers: Layer.Layer<
           Effect.gen(function* () {
             const session = yield* openSession(protocolId);
             // Subscribed before the backlog is read, so an event committed
-            // between the two is queued rather than lost.
-            const live = yield* events.subscribe(session.draftId);
+            // between the two is delivered rather than lost.
+            const live = yield* Effect.orDie(events.subscribe(session));
             const from = since === undefined ? undefined : BigInt(since);
             const backlog = yield* command(
               protocolId,
@@ -364,8 +348,11 @@ export const ProtocolBuilderHandlers: Layer.Layer<
             let last = lastBacklog === undefined ? from : BigInt(lastBacklog);
             let authorizedAt = yield* Clock.currentTimeMillis;
             const delivered = live.pipe(
-              Stream.catchTag('SubscriberOverflow', (overflow) =>
-                Stream.die(overflow),
+              // Either ends the watch with a defect, which the client
+              // resubscribes after, replaying from its cursor.
+              Stream.catchTag(
+                ['SubscriberOverflow', 'RelayFailed'],
+                (failure) => Stream.die(failure),
               ),
               Stream.filterMapEffect((entry) =>
                 Effect.gen(function* () {

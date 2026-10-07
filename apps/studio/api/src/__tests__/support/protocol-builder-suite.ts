@@ -34,6 +34,7 @@ import {
 import { resolve as resolveEnv } from '../../env/resolve.ts';
 import { livePresence } from '../../protocol-builder/connections.ts';
 import { type LoggedProtocolEvent } from '../../protocol-builder/events.ts';
+import { type ProtocolBuilderSession } from '../../protocol-builder/host.ts';
 import { RENEW_INTERVAL_MS } from '../../protocol-builder/leases.ts';
 import { Presence } from '../../protocol-builder/presence.ts';
 import { ProtocolEvents } from '../../protocol-builder/publisher.ts';
@@ -199,20 +200,38 @@ function holdOnce<A>() {
   };
 }
 
-export function holdingEvents() {
+/**
+ * The relay with its publish, presence change or subscribe held once on
+ * request. Its safety poll is a minute apart unless asked otherwise, so that
+ * only the hold's own publish can bring a held event to a watcher in time.
+ */
+export function holdingEvents(safetyPollMs = 60_000) {
   const hold = holdOnce<ReadonlyArray<LoggedProtocolEvent>>();
+  const presence = holdOnce<ProtocolBuilderSession>();
+  const subscribed = holdOnce<ProtocolBuilderSession>();
   const layer = Layer.effect(
     ProtocolEvents,
     Effect.gen(function* () {
       const real = yield* ProtocolEvents;
       return ProtocolEvents.of({
         ...real,
-        publish: (draft, entries) =>
-          hold.around(entries, real.publish(draft, entries)),
+        publish: (session, entries) =>
+          hold.around(entries, real.publish(session, entries)),
+        presenceChanged: (session) =>
+          presence.around(session, real.presenceChanged(session)),
+        subscribe: (session) =>
+          Effect.tap(real.subscribe(session), () =>
+            subscribed.around(session, Effect.void),
+          ),
       });
     }),
-  ).pipe(Layer.provide(ProtocolEvents.layer));
-  return { layer, next: hold.next };
+  ).pipe(Layer.provide(ProtocolEvents.layerWith({ safetyPollMs })));
+  return {
+    layer,
+    next: hold.next,
+    nextPresence: presence.next,
+    nextSubscribed: subscribed.next,
+  };
 }
 
 export function holdingPresence() {
