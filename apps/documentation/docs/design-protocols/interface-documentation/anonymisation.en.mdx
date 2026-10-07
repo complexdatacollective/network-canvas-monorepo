@@ -21,7 +21,9 @@ In the **Encrypted attributes** section of the stage editor, each node type in y
 
 By default, a participant must choose a passphrase of at least 8 characters.
 
-To set your own limits, use the **Passphrase validation** section of the stage editor. Switch on **Minimum text length** to set the shortest passphrase you will allow, and **Maximum text length** to set the longest. A minimum you set always replaces the default of 8, even if yours is shorter.
+To set your own limits, use the **Passphrase validation** section of the stage editor. Switch on **Minimum text length** to set the shortest passphrase you will allow, and **Maximum text length** to set the longest. A minimum you set always replaces the default of 8, even if yours is shorter. The minimum can't be longer than the maximum.
+
+If you set a maximum shorter than 8 and no minimum, the default minimum is lowered to your maximum, so participants can still choose a passphrase. The stage editor shows the minimum that applies.
 
 Length rules apply when a participant first chooses their passphrase, which is also when they confirm it by entering it a second time. When they come back to the interview later, they only need to enter the same passphrase again.
 
@@ -60,6 +62,14 @@ In schema 8 protocols, the Anonymisation interface was an experimental feature, 
 - New answers are protected in the way described on this page, once the participant chooses a new passphrase.
 
 If you have interviews in progress that use the experimental version, consider finishing them before you upgrade the app. See [Schema version 9](/en/get-started/protocol-schema-information#schema-version-9) for what else changes when you migrate a protocol.
+
+### If the protection details are damaged
+
+Each interview stores a small record of how its key is made, next to the answers. If that record is damaged, or was created by a newer version of Network Canvas than the one running the interview, no passphrase can open the protected answers. The interview then doesn't ask for one:
+
+- Protected answers appear as "Answer unavailable", and the participant is told they can't be shown or saved.
+- The rest of the interview carries on. Forms open with their other questions, and stages that collect protected answers don't hold the participant back with a minimum number of people.
+- The record and the stored answers are left as they are, and are exported as usual.
 
 ### Best Practices
 

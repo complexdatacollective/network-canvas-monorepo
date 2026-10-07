@@ -17,8 +17,12 @@ bound to the person and question it belongs to, and padded; and a check value
 that confirms a passphrase without storing it. It explains that a participant
 confirms the passphrase when choosing it, that it must be at least 8
 characters long unless the stage sets its own minimum, which replaces the
-default even when shorter, and that a forgotten passphrase cannot be
-recovered by anyone.
+default even when shorter, that a maximum shorter than 8 lowers the default
+minimum to match, and that a forgotten passphrase cannot be recovered by
+anyone. A new section explains what a participant sees when an interview's
+protection details are damaged or come from a newer version, and the export
+section now says that only answers saved encrypted are replaced with
+`ENCRYPTED`.
 
 The schema information page explains what upgrading a schema 8 protocol does
 to its encrypted attributes. If the experiment was on, they stay marked and

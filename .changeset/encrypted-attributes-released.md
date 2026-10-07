@@ -17,7 +17,8 @@ Upgrading a protocol to schema 9 keeps each attribute working as it did: if a
 protocol marked attributes as encrypted but had the experimental feature
 switched off, the upgrade unmarks them, so they go on being collected without
 encryption. Fresco and Interviewer carry each protocol's setting into the
-upgrade when they update the protocols they already hold.
+upgrade when they update the protocols they already hold, including Fresco
+protocols that the schema 8 alpha stored with name encryption on.
 
 Encrypted answers are now protected in a new way:
 
@@ -46,16 +47,32 @@ Encrypted answers are now protected in a new way:
   can't be pressed twice.
 - The passphrase prompt now says that a forgotten passphrase can't be
   recovered, instead of suggesting someone can help.
+- The passphrase prompt now also appears when the navigation runs along the
+  bottom of the screen, and a notice that answers are protected brings it
+  up. Password managers are asked to stay out of it too, and it can't be
+  closed while it checks a passphrase.
 - The interview checks how its key is made before making one. If that record
   is damaged, or was written by a newer version, no passphrase is asked for,
-  because none could be accepted: the protected answers show as "Answer
-  unavailable", the participant is told they can't be shown or saved, and
-  the interview can go on.
+  because none could be accepted. Protected answers show as "Answer
+  unavailable", and the participant is told they can't be shown or saved.
+  The interview can still go on: forms open with their other questions, a
+  name generator's minimum number of people no longer holds the participant
+  back, and a family pedigree that would save protected names is replaced by
+  a notice.
 - An answer that can't be read is shown as "Answer unavailable" rather than
-  asking for the passphrase again.
-- A validation rule that compares an answer with an encrypted one, such as
-  "must be different from", no longer passes while the passphrase has not
-  been entered: it compares with the decrypted answer once it has.
+  asking for the passphrase again. Saving a form keeps such an answer instead
+  of clearing it, and the participant can replace it with a new one.
+- Whether an answer is read as encrypted follows how it was saved, not the
+  protocol's current setting.
+- A validation rule that compares an answer with protected ones, such as
+  "must be different from" or "must be unique", uses the decrypted answers.
+  While the passphrase hasn't been entered, the check asks for it instead of
+  passing or comparing with encrypted text.
+- A protected name is shown decrypted in a person's label and in the "Other"
+  prompt of a categorical bin.
+- The add-a-person form can't be closed or submitted twice while it saves.
+  A family pedigree is saved all at once or not at all, and a relationship
+  that can't be saved is reported rather than skipped.
 
 Answers encrypted by the experimental feature in schema 8 can't be read after
 the upgrade, and a forgotten passphrase still can't be recovered. A schema 8
@@ -70,4 +87,6 @@ carry an `encryption` header, which must be stored and returned with the rest
 of the network; without it, the interview treats the passphrase as never
 chosen and earlier encrypted answers can no longer be read. A header outside
 the runtime's bounds is left as it is. Encrypted values' metadata is now
-`{ iv }`, and schema 8's `{ iv, salt }` is still accepted.
+`{ iv }`, and schema 8's `{ iv, salt }` is still accepted. Redux DevTools and
+the interview's action logger now connect only when the host passes
+`flags.isDevelopment`, and both show encrypted answers redacted.
