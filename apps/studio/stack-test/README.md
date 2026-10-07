@@ -2,7 +2,8 @@
 
 Four bash scripts that stand the reference stack up, exercise it, and tear it
 down — once as a self-hoster runs it, and once for each documented swap with
-the swapped element replaced by a stub. CI runs exactly these scripts, as the
+the swapped element replaced by a stub, and once with a second API replica
+added. CI runs exactly these scripts, as the
 `studio-stack` job in `.github/workflows/ci-and-release.yml`; nothing about a
 CI run differs from a run on your machine except which images are in the
 daemon's cache.
@@ -32,6 +33,7 @@ by hand needs neither.
 | `external-bucket-azure` | the `garage` and `garage-init` services | Azurite on that network, selected by `STUDIO_OBJECT_STORE=azure-blob` |
 | `external-redis`        | the `valkey` service                    | a second Valkey on that network, named by `REDIS_URL`                 |
 | `own-proxy`             | the `traefik` service and its ports     | nginx carrying the configuration block from `docs/self-host/swap.md`  |
+| `two-api`               | nothing: a second `api` is added        | `api-b`, and a Traefik server list naming `api` and `api-b`           |
 
 ## What the scripts do
 
@@ -51,7 +53,8 @@ to `.work/setup-token`, and waits for `/readyz` through the variant's ingress.
 deliberately: a swapped element has to meet the contract the element it
 replaced met, so a swap is proved by the same list passing rather than by a
 shorter one. Each variant adds only a structural check that the service it
-replaced is really gone. Every assertion prints what it checked and the value
+replaced is really gone. (`two-api` replaces nothing, so its check is that both
+replicas exist, and its maintenance window stops both.) Every assertion prints what it checked and the value
 it saw; a failure exits non-zero after printing `docker compose ps` and the
 last 200 lines of the logs.
 
@@ -143,6 +146,32 @@ rather than that some attempt was is what makes it an assertion about the
 limiter at all. The attempts use a different address each time, because
 `sign_in_email` is `5/10m` and would otherwise refuse the sixth and prove a
 different limit.
+
+**`two-api` is the multi-replica claim, tested from outside.** It adds `api-b`
+with Compose's `extends`, so the second replica is the first with nothing
+changed but its name, and replaces the Traefik server list with one naming
+both: the two edits [Run](../docs/self-host/run.md#running-more-than-one-api)
+asks of a self-hoster, and no sticky sessions. After the common assertions it
+runs one scenario with `curl` alone. The first replica is the only one up, and
+an editor's tab takes a section's lock on it. The second replica then starts,
+and the first stops, as a deploy or a lost host would stop it. The tab goes on
+working against the second replica, one call every five seconds, until forty
+seconds have passed since the first stopped. A lock's lease is thirty seconds
+and is renewed by whichever replica last heard from its owner, so a save made
+at that point is written only if the second replica really took the renewals
+over, and is refused as `NotLockHolder` if it did not.
+
+It uses the unary plane because that is the one a shell can speak, and it
+holds the same lease as a WebSocket does. A WebSocket reconnecting to another
+replica is covered by the API's own multi-replica tests, which can age rows and
+crash a replica deterministically; what only a real stack can show is that the
+ingress, the health check and the replicas agree.
+
+The scenario never sleeps to wait for state. Where it has to wait for the
+ingress to stop sending requests to the replica that was stopped, it polls for
+a run of consecutive good answers, because Traefik alternates between servers
+until its next health check and a single good answer proves nothing. The one
+team it needs is inserted as a row, because no HTTP route creates a team.
 
 ## Adding a variant
 

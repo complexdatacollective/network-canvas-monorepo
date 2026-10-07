@@ -171,6 +171,13 @@ case "$VARIANT" in
     equals "the stack's traefik container is gone" '' "$(container_id traefik)"
     differs 'the nginx ingress is running' '' "$(container_id own-proxy)"
     ;;
+  two-api)
+    # Nothing is gone here; something is added. A second replica that never
+    # started would leave every assertion below passing against one.
+    differs 'the first API replica exists' '' "$(container_id api)"
+    differs 'the second API replica exists' '' "$(container_id api-b)"
+    differs 'they are two containers' "$(container_id api)" "$(container_id api-b)"
+    ;;
 esac
 
 # ── The routing table ─────────────────────────────────────────────────────
@@ -345,29 +352,36 @@ fi
 #
 # `stop`, not `down`. Docker may still move the address, and the guide's nginx
 # block resolves upstreams once, so a moved API takes the documented reload.
+#
+# Every API replica stops: the window is the one in which nothing answers, and
+# with a replica still serving there would be no window to assert on.
 section 'the maintenance window'
 stopped_at="$(api_address)"
-compose stop api >/dev/null 2>&1
+# shellcheck disable=SC2046 # one word per service, deliberately
+compose stop $(api_services) >/dev/null 2>&1
 
 request "$URL/rpc"
 equals '/rpc is 503 while the API is stopped' 503 "$STATUS"
 contains '/rpc is the maintenance page' 'temporarily unavailable' "$BODY"
 
-# 502 or 504, not one or the other: a container that is gone takes its address
+# 502, 503 or 504, not one of them: a container that is gone takes its address
 # with it, so the ingress's connection attempt is refused on some runs and
-# times out on others. Which of the two it is says nothing about the routing;
-# that this path is NOT the maintenance page is the contract.
+# times out on others — and once Traefik's health check has marked the only
+# server down, it answers 503 itself rather than trying it. Which of the three
+# it is says nothing about the routing; that this path is NOT the maintenance
+# page is the contract.
 request "$URL/readyz"
 case "$STATUS" in
-  502 | 504) pass '/readyz bypasses the maintenance page' "$STATUS" ;;
-  *) fail '/readyz bypasses the maintenance page' "expected a gateway error (502 or 504), saw '$STATUS'" ;;
+  502 | 503 | 504) pass '/readyz bypasses the maintenance page' "$STATUS" ;;
+  *) fail '/readyz bypasses the maintenance page' "expected a gateway error (502, 503 or 504), saw '$STATUS'" ;;
 esac
 excludes '/readyz is the real status, not the page' 'temporarily unavailable' "$BODY"
 
 request "$URL/"
 equals '/ still serves the client' 200 "$STATUS"
 
-compose start api >/dev/null 2>&1
+# shellcheck disable=SC2046 # one word per service, deliberately
+compose start $(api_services) >/dev/null 2>&1
 if [ "$VARIANT" = "own-proxy" ]; then
   started_health=''
   for _ in $(seq 1 90); do
@@ -489,6 +503,162 @@ if [ "$VARIANT" = "own-proxy" ]; then
     "$PROBE_FORWARDED_FOR" "$recorded"
   equals 'the recorded address is where the proxy saw the client' \
     "$client_ip" "$recorded"
+fi
+
+# ── two-api: an editor's lock survives the replica that granted it ────────
+#
+# What running more than one API is for. An editor takes a section's lock on
+# one replica; that replica is then stopped, as a deploy or a failed host would
+# stop it; the other replica carries on serving the same editor, and the
+# editor's next save is still written.
+#
+# Through the unary plane and `curl`, because that is the one a shell can speak
+# and it holds the same lease as a socket does: every call an editor makes to a
+# replica tells the replica the editor is still there, and a replica renews the
+# leases of the editors it has heard from. The lease lasts 30 seconds and is
+# renewed every 10, so a save made after 40 seconds with nobody renewing it is
+# refused as `NotLockHolder`. A pass here means the second replica really did
+# renew what the first had granted.
+#
+# No sleeps except the spacing of the calls the scenario itself makes. Every
+# wait is a poll for the state it is waiting on.
+if [ "$VARIANT" = "two-api" ]; then
+  section 'an editor across a replica stop'
+  TAB='stack-test-tab-1'
+
+  # A version-4 UUID from openssl, which this suite already needs.
+  uuid() {
+    local h
+    h="$(openssl rand -hex 16)"
+    printf '%s-%s-4%s-8%s-%s' "${h:0:8}" "${h:8:4}" "${h:13:3}" "${h:17:3}" "${h:20:12}"
+  }
+
+  # One call on the protocol-builder plane, as the editor's tab.
+  builder() { # tag payload-json
+    RPC_ROUTE=/rpc/protocol-builder
+    rpc "$1" "$2" -b "$COOKIE_JAR" -H "x-studio-client-session: $TAB"
+    RPC_ROUTE=
+  }
+
+  # The ingress has to have stopped sending requests to a replica that is gone
+  # before the scenario can say which replica served them. Traefik notices on
+  # its next health check, and until then it alternates between a live replica
+  # and a dead one, so a single answer proves nothing: a run of them does.
+  served_in_a_row() { # label needed [tag payload-json]
+    local label="$1" needed="$2" streak=0 attempt served
+    shift 2
+    for attempt in $(seq 1 90); do
+      served=no
+      if [ "$#" -eq 2 ]; then
+        builder "$1" "$2"
+        [ "$RPC_VERDICT" = 'Success' ] && served=yes
+      else
+        request "$URL/readyz"
+        [ "$STATUS" = '200' ] && served=yes
+      fi
+      if [ "$served" = 'yes' ]; then
+        streak=$((streak + 1))
+        if [ "$streak" -ge "$needed" ]; then
+          pass "$label" "$streak answers in a row after ${attempt}s"
+          return 0
+        fi
+      else
+        streak=0
+      fi
+      sleep 1
+    done
+    fail "$label" "no run of $needed answers within 90s (last status ${STATUS:-none})"
+  }
+
+  # 1. Only the first replica is up, so it is the one that grants the lock.
+  compose stop api-b >/dev/null 2>&1
+  served_in_a_row 'the ingress serves from the first replica alone' 10
+
+  # 2. A team, a protocol, and a section to edit. There is no HTTP route that
+  # creates a team (the instance's own routes are blocked until teams have an
+  # audited command), so the owner's team is a row, exactly as `scripts/seed`
+  # writes one.
+  rpc me null -b "$COOKIE_JAR"
+  user_id="$(printf '%s' "$RPC_EXIT" | sed -n 's/.*"userId":"\([^"]*\)".*/\1/p')"
+  differs 'the owner has a user id' '' "$user_id"
+  team_id="$(uuid)"
+  compose exec -T postgres psql -U studio -d studio -v ON_ERROR_STOP=1 -q \
+    -c "insert into teams (id, name, slug) values ('$team_id', 'Stack test team', 'stack-test-team'); insert into team_members (id, team_id, user_id, role) values ('$(uuid)', '$team_id', '$user_id', 'owner');" \
+    >/dev/null 2>&1 || fail 'the owner has a team' 'the insert into teams failed'
+  pass 'the owner has a team' "$team_id"
+
+  protocol_id="$(uuid)"
+  draft_id="$(uuid)"
+  rpc protocols.create \
+    "{\"teamId\":\"$team_id\",\"name\":\"Two replicas\",\"protocolId\":\"$protocol_id\",\"draftId\":\"$draft_id\"}" \
+    -b "$COOKIE_JAR"
+  equals 'a protocol is created' Success "$RPC_VERDICT"
+
+  builder ListSections "{\"protocolId\":\"$protocol_id\"}"
+  equals 'the new protocol lists its sections' Success "$RPC_VERDICT"
+  contains 'one of them is the settings section' '"settings"' "$RPC_EXIT"
+  SECTION=settings
+
+  # 3. The tab takes the lock. Its owner is this user and this tab id, which is
+  # what the lease is held under whichever replica serves the next call.
+  builder AcquireLock "{\"protocolId\":\"$protocol_id\",\"sectionId\":\"$SECTION\"}"
+  equals 'the first replica grants the lock' Success "$RPC_VERDICT"
+  contains 'and the tab holds it' '"lock":"held"' "$RPC_EXIT"
+  document="$(printf '%s' "$RPC_EXIT" | sed -n 's/.*"document":\(.*\),"revision":{.*/\1/p')"
+  revision="$(printf '%s' "$RPC_EXIT" \
+    | sed -n 's/.*"revision":\({"sequence":"[0-9]*","contentHash":"[^"]*"}\).*/\1/p')"
+  sequence_before="$(printf '%s' "$revision" | sed -n 's/.*"sequence":"\([0-9]*\)".*/\1/p')"
+  differs 'the lock came with the section document' '' "$document"
+  differs 'and with its revision' '' "$revision"
+
+  # 4. The second replica joins, and is open before anything is taken from the
+  # first.
+  compose start api-b >/dev/null 2>&1
+  for _ in $(seq 1 120); do
+    compose exec -T api-b node -e \
+      "fetch('http://127.0.0.1:3000/readyz').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))" \
+      >/dev/null 2>&1 && break
+    sleep 1
+  done
+  compose exec -T api-b node -e \
+    "fetch('http://127.0.0.1:3000/readyz').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))" \
+    >/dev/null 2>&1 || fail 'the second replica opens' 'its /readyz did not answer 200 within 120s'
+  pass 'the second replica opens' 'its /readyz answered 200'
+
+  # 5. The replica that granted the lock stops. From here only the second
+  # replica can renew it.
+  compose stop api >/dev/null 2>&1
+  stopped_epoch="$(date +%s)"
+  served_in_a_row 'the second replica serves the editor alone' 5 \
+    ListSections "{\"protocolId\":\"$protocol_id\"}"
+
+  # 6. The editor goes on working for longer than the lease lasts: a call every
+  # five seconds, until forty have passed since the first replica stopped.
+  # Forty, not thirty-five, so the margin over the 30 second lease is the
+  # renewal interval and not a rounding.
+  while [ "$(($(date +%s) - stopped_epoch))" -lt 40 ]; do
+    sleep 5
+    builder ListSections "{\"protocolId\":\"$protocol_id\"}"
+    equals 'the editor is still served' Success "$RPC_VERDICT"
+  done
+
+  # 7. The save. Under the lease it was granted, by the second replica.
+  edited="${document/\"name\":\"Two replicas\"/\"name\":\"Two replicas, edited\"}"
+  differs 'the saved document differs from the one taken' "$document" "$edited"
+  builder Submit \
+    "{\"protocolId\":\"$protocol_id\",\"requestId\":\"$(uuid)\",\"sectionId\":\"$SECTION\",\"document\":$edited,\"revision\":$revision}"
+  if [ "$RPC_VERDICT" = 'Success' ]; then
+    pass 'the save is written after the first replica stopped' "$RPC_VERDICT"
+  else
+    fail 'the save is written after the first replica stopped' \
+      "refused with ${RPC_ERROR:-no answer}: the lock lapsed once the replica that granted it stopped"
+  fi
+  sequence_after="$(printf '%s' "$RPC_EXIT" | sed -n 's/.*"sequence":"\([0-9]*\)".*/\1/p')"
+  differs 'the write made a new revision' "$sequence_before" "$sequence_after"
+
+  builder GetSection "{\"protocolId\":\"$protocol_id\",\"sectionId\":\"$SECTION\"}"
+  equals 'the section reads back' Success "$RPC_VERDICT"
+  contains 'with the edited name' 'Two replicas, edited' "$RPC_EXIT"
 fi
 
 echo ''
