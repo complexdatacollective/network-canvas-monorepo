@@ -27,6 +27,7 @@ import {
   ToolbarSeparator,
 } from '@codaco/fresco-ui/SegmentedToolbar';
 
+import PassphraseNotice from '../Anonymisation/PassphraseNotice';
 import { interfaceMessages } from '../messages';
 import AddNodeInput from './AddNodeInput';
 import GroupPicker, {
@@ -51,6 +52,11 @@ type ToolPaletteProps = {
   /** Codebook variable the quick-add name is written to. */
   quickAddTargetVariable: string;
   onAddNode: (name: string) => Promise<void>;
+  /**
+   * The name would be stored encrypted and there is no passphrase yet, so the
+   * add-node field is replaced by an explanation.
+   */
+  addNodeLocked: boolean;
   /** Validation props derived from quickAddTargetVariable's codebook definition. */
   quickAddValidationProps?: Partial<ValidationPropsCatalogue>;
   quickAddValidationContext?: ValidationContext;
@@ -100,6 +106,7 @@ export default function ToolPalette({
   nodeLabel,
   quickAddTargetVariable,
   onAddNode,
+  addNodeLocked,
   quickAddValidationProps,
   quickAddValidationContext,
   groupVariable,
@@ -172,13 +179,17 @@ export default function ToolPalette({
             />
           }
         >
-          <AddNodeInput
-            entityLabel={nodeLabel}
-            targetVariable={quickAddTargetVariable}
-            onCreate={onAddNode}
-            validationContext={quickAddValidationContext}
-            {...quickAddValidationProps}
-          />
+          {addNodeLocked ? (
+            <PassphraseNotice status="locked" className="w-72" />
+          ) : (
+            <AddNodeInput
+              entityLabel={nodeLabel}
+              targetVariable={quickAddTargetVariable}
+              onCreate={onAddNode}
+              validationContext={quickAddValidationContext}
+              {...quickAddValidationProps}
+            />
+          )}
         </ToolbarPopover>
 
         {/* One edge button opens a menu instead of crowding the toolbar with

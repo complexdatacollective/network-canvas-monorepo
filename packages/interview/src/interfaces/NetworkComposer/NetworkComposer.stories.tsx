@@ -1,10 +1,11 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useMemo } from 'react';
-import { expect, waitFor } from 'storybook/test';
+import { expect, screen, userEvent, waitFor, within } from 'storybook/test';
 import SuperJSON from 'superjson';
 
 import { SyntheticInterview } from '@codaco/protocol-utilities';
 
+import type { NavigationOrientation } from '../../Shell';
 import StoryInterviewShell from '../../storybook-support/StoryInterviewShell';
 
 function createComposerInterview(seed: number) {
@@ -21,8 +22,10 @@ function createComposerInterview(seed: number) {
 
 function NetworkComposerStoryWrapper({
   buildFn,
+  navigationOrientation,
 }: {
   buildFn: () => SyntheticInterview;
+  navigationOrientation?: NavigationOrientation;
 }) {
   const interview = useMemo(() => buildFn(), [buildFn]);
   const rawPayload = useMemo(
@@ -33,7 +36,10 @@ function NetworkComposerStoryWrapper({
 
   return (
     <div className="flex h-dvh w-full">
-      <StoryInterviewShell rawPayload={rawPayload} />
+      <StoryInterviewShell
+        rawPayload={rawPayload}
+        navigationOrientation={navigationOrientation}
+      />
     </div>
   );
 }
@@ -279,4 +285,72 @@ const buildBackgroundImage = () => {
  */
 export const BackgroundImage: Story = {
   render: () => <NetworkComposerStoryWrapper buildFn={buildBackgroundImage} />,
+};
+
+const buildEncryptedNames = () => {
+  const si = new SyntheticInterview(10);
+  si.setExperiments({ encryptedVariables: true });
+  const nt = si.addNodeType({ name: 'Person' });
+  const quickAddVar = nt.addVariable({
+    type: 'text',
+    name: 'name',
+    encrypted: true,
+  });
+  const layoutVar = nt.addVariable({ type: 'layout', name: 'Composer Layout' });
+  const friendship = si.addEdgeType({ name: 'Friendship' });
+  si.addInformationStage({ title: 'Welcome', text: 'Before the main stage.' });
+  const stage = si.addStage('NetworkComposer', {
+    quickAdd: quickAddVar.id,
+    layoutVariable: layoutVar.id,
+  });
+  stage.addEdgeType({ type: friendship.id });
+  si.addInformationStage({ title: 'Complete', text: 'After the main stage.' });
+  return si;
+};
+
+/**
+ * The quick-add name variable is marked encrypted. Adding a person waits for
+ * the passphrase (entered from the key button in the navigation); names are
+ * then stored encrypted and shown decrypted.
+ */
+export const EncryptedNames: Story = {
+  render: () => (
+    <NetworkComposerStoryWrapper
+      buildFn={buildEncryptedNames}
+      navigationOrientation="vertical"
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const addNode = await canvas.findByRole('button', { name: /add node/i });
+
+    await userEvent.click(addNode);
+    await expect(
+      await screen.findByText(/enter your passphrase to see and change/i),
+    ).toBeInTheDocument();
+    await expect(
+      screen.queryByRole('textbox', { name: /name/i }),
+    ).not.toBeInTheDocument();
+    await userEvent.keyboard('{Escape}');
+
+    await userEvent.click(
+      await canvas.findByRole('button', { name: /^enter your passphrase$/i }),
+    );
+    await userEvent.type(
+      await screen.findByRole('textbox', { name: /passphrase/i }),
+      'storybook passphrase',
+    );
+    await userEvent.click(
+      screen.getByRole('button', { name: /submit passphrase/i }),
+    );
+
+    await userEvent.click(addNode);
+    const nameInput = await screen.findByRole('textbox', { name: /name/i });
+    await userEvent.type(nameInput, 'Alex{Enter}');
+    await userEvent.keyboard('{Escape}');
+
+    await expect(
+      await canvas.findByRole('button', { name: /alex/i }),
+    ).toBeInTheDocument();
+  },
 };
