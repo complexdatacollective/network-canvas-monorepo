@@ -41,12 +41,14 @@ How an interview picks its language:
 In Architect:
 
 - A new Languages page lists the protocol's languages alphabetically by name,
-  lets you add and remove languages and choose the default one, and shows which
-  text is still missing a translation. Languages have no order, so there is no
-  way to reorder them. Text only needs a translation in at least one language:
-  a missing translation, in the default language or any other, is a warning and
-  never an error. A language can't be removed while it is the default, or while
-  it holds the only translation of some text.
+  lets you add languages, remove one with its delete button and choose the
+  default one from a list, explains which translation participants see, and
+  shows which text is still missing a translation. Languages have no order, so
+  there is no way to reorder them. Text only needs a translation in at least
+  one language: a missing translation, in the default language or any other,
+  is a warning and never an error. A language can't be removed while it is the
+  default, or while it holds the only translation of some text, and its delete
+  button says why.
 - A translation table shows every text participants see beside its
   translation into each of the protocol's languages, one column per language.
   Open translation table, on the Languages page and in the Language Chooser's
@@ -94,8 +96,8 @@ In Architect:
   Information interface and the Language Chooser. The Language Chooser's
   editor lists the languages participants will be offered, which is every
   language the protocol is written in, and manages them the same way as the
-  Languages page: you can add languages, make one the default, and remove
-  one, under the same rules.
+  Languages page: you can add languages, choose the default, and remove one,
+  under the same rules.
 - A preview opens in the language a participant with your browser would see,
   rather than in Architect's own language. A "Preview language" menu above it
   switches the interview to any of the protocol's languages while the preview
