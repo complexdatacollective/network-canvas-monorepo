@@ -170,9 +170,9 @@ const messages = defineMessages({
   keyboardHelp: {
     id: 'architect.localization.translationTable.keyboardHelp',
     defaultMessage:
-      'Changes are saved when you leave a cell. Press Escape to undo a change before it is saved, and the up and down arrow keys to move between rows.',
+      'Changes are saved when you leave a cell, and Escape undoes a change until then. The up and down arrow keys move between rows from the first or last line of a cell. Ctrl+Enter, or ⌘+Enter on a Mac, saves and moves to the next row, as Enter does in a text of one line. In formatted text, Tab moves to the formatting buttons and then to the next cell, except in a list, where it indents the item.',
     description:
-      'Help text below the translation table, explaining how editing its cells works.',
+      'Help text for the translation table, explaining how editing its cells works. Ctrl, Enter, ⌘ and Tab are the names of keys; use the names printed on keyboards in your language. Formatted text is text with bold, italics, headings or lists, which is edited with a row of formatting buttons below it.',
   },
 });
 
@@ -651,7 +651,6 @@ const TranslationTable = () => {
                         singleLine={row.singleLine}
                         locale={locale}
                         localization={localization}
-                        rowName={row.name}
                         labelledBy={`${groupId} ${rowId} ${columnId(locale)}`}
                         rowIndex={currentRow}
                         colIndex={colIndex}

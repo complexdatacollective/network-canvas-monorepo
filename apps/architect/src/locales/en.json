@@ -2075,10 +2075,6 @@
     "defaultMessage": "Default",
     "description": "Badge beside the name of the protocol’s default language, in the heading of its column in the translation table."
   },
-  "architect.localization.translationTable.editorTitle": {
-    "defaultMessage": "{language} translation",
-    "description": "Heading of the editor that opens over a cell of the translation table for rich text. language is the language being written."
-  },
   "architect.localization.translationTable.groupHeading": {
     "defaultMessage": "<muted>{place}</muted> · <title>{name}</title>",
     "description": "Heading of a group of rows in the translation table, naming the codebook entry that holds their texts. place is the kind of entry, such as “Node type”; name is its name, which links to it. Keep the tags around the same parts."
@@ -2088,8 +2084,8 @@
     "description": "Heading of a group of rows in the translation table, naming the stage that holds their texts. place is the stage’s position, such as “Stage 4”; name is the stage’s name, which links to it; detail is the kind of stage, such as “Name Generator”. Keep the tags around the same parts."
   },
   "architect.localization.translationTable.keyboardHelp": {
-    "defaultMessage": "Changes are saved when you leave a cell. Press Escape to undo a change before it is saved, and the up and down arrow keys to move between rows.",
-    "description": "Help text below the translation table, explaining how editing its cells works."
+    "defaultMessage": "Changes are saved when you leave a cell, and Escape undoes a change until then. The up and down arrow keys move between rows from the first or last line of a cell. Ctrl+Enter, or ⌘+Enter on a Mac, saves and moves to the next row, as Enter does in a text of one line. In formatted text, Tab moves to the formatting buttons and then to the next cell, except in a list, where it indents the item.",
+    "description": "Help text for the translation table, explaining how editing its cells works. Ctrl, Enter, ⌘ and Tab are the names of keys; use the names printed on keyboards in your language. Formatted text is text with bold, italics, headings or lists, which is edited with a row of formatting buttons below it."
   },
   "architect.localization.translationTable.languages": {
     "defaultMessage": "Languages ({shown, number} of {total, number})",

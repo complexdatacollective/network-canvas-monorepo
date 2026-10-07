@@ -1,17 +1,16 @@
 import {
+  type FocusEvent,
   type KeyboardEvent,
   type ReactNode,
+  useEffect,
   useId,
   useRef,
   useState,
 } from 'react';
 
-import { commonMessages } from '@codaco/app-i18n/common';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
-import Button from '@codaco/fresco-ui/Button';
 import { useAccessibilityAnnouncements } from '@codaco/fresco-ui/dnd/useAccessibilityAnnouncements';
-import { Popover, PopoverContent } from '@codaco/fresco-ui/Popover';
 import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
 import RichTextField from '@codaco/protocol-builder/fields/RichTextField';
 import {
@@ -83,12 +82,6 @@ const messages = defineMessages({
     description:
       'Screen-reader announcement when a translation typed into the translation table cannot be saved.',
   },
-  editorTitle: {
-    id: 'architect.localization.translationTable.editorTitle',
-    defaultMessage: '{language} translation',
-    description:
-      'Heading of the editor that opens over a cell of the translation table for rich text. language is the language being written.',
-  },
 });
 
 /** What became of a translation written in a cell. */
@@ -105,8 +98,6 @@ export type TranslationCellProps = {
   singleLine: boolean;
   locale: LocaleTag;
   localization: ProtocolLocalization;
-  /** The row's name, as the editor's heading repeats it. */
-  rowName: string;
   /** The row header and column header that name the cell. */
   labelledBy: string;
   rowIndex: number;
@@ -445,146 +436,262 @@ const PlainTextCell = ({
 };
 
 /**
- * Rich text, shown as participants see it and edited in a popover anchored to
- * the cell, with the same editor the stage editor uses. Leaving the popover
- * saves; Escape or Cancel puts back what was saved.
+ * Whether the caret in a contenteditable is at the very start or end of its
+ * text, where the up and down arrow keys have no line left to move to.
  */
-const MarkdownCell = ({
+const isEditableCaretAt = (editable: HTMLElement, edge: 'start' | 'end') => {
+  const selection = editable.ownerDocument.getSelection();
+  if (!selection || selection.rangeCount === 0 || !selection.isCollapsed) {
+    return false;
+  }
+  const caret = selection.getRangeAt(0);
+  const before = editable.ownerDocument.createRange();
+  before.selectNodeContents(editable);
+  if (edge === 'start') before.setEnd(caret.startContainer, caret.startOffset);
+  else before.setStart(caret.endContainer, caret.endOffset);
+  return before.toString() === '';
+};
+
+// The stage editor's rich-text field, fitted to a cell: no frame of its own,
+// its text where the cell shows text, and its toolbar wrapped under the text,
+// in the cell, rather than over the rows below or across the next column.
+const CELL_EDITOR_CLASSES = cx(
+  'min-w-0 rounded-none border-0 bg-transparent text-current',
+  '[&>:first-child]:min-h-0 [&>:first-child]:px-3 [&>:first-child]:py-2',
+  '[&_.tiptap.ProseMirror]:min-h-0',
+  '[&_[role=toolbar]]:order-3 [&_[role=toolbar]]:w-auto [&_[role=toolbar]]:min-w-0 [&_[role=toolbar]]:flex-wrap [&_[role=toolbar]]:gap-0.5 [&_[role=toolbar]]:border-t [&_[role=toolbar]]:border-b-0 [&_[role=toolbar]]:px-1 [&_[role=toolbar]]:py-1',
+  '[&_[role=toolbar]_[role=separator]]:mx-1',
+);
+
+const EDITABLE_SELECTOR = '[contenteditable="true"]';
+
+const focusEditorIn = (cell: HTMLElement | null) =>
+  cell
+    ?.querySelector<HTMLElement>(EDITABLE_SELECTOR)
+    ?.focus({ preventScroll: true });
+
+/**
+ * Rich text, shown as participants see it until the cell has focus, then
+ * edited in the cell with the same editor the stage editor uses. Leaving the
+ * cell saves; Escape puts back what was saved.
+ */
+const RichTextCell = ({
   value,
   format,
   singleLine,
   locale,
   localization,
-  rowName,
   labelledBy,
   rowIndex,
   colIndex,
   onCommit,
   onMove,
 }: TranslationCellProps) => {
-  const intl = useAppIntl();
-  const languageName = useLanguageName();
   const contentId = useId();
   const editorId = useId();
-  const titleId = useId();
   const noteId = useId();
   const feedback = useCommitFeedback(locale);
   const cellRef = useRef<HTMLTableCellElement>(null);
-  const buttonRef = useRef<HTMLButtonElement>(null);
+  const leaveTimer = useRef<number | null>(null);
+  // Read when focus has left, a moment after the render that scheduled it.
+  const draftRef = useRef<string | null>(null);
+  const onCommitRef = useRef(onCommit);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<string | null>(null);
+  // The editor takes no new value while it has focus, so putting back what
+  // was saved replaces it with a fresh one.
+  const [revision, setRevision] = useState(0);
   const stored = translationText(value, locale);
   const text = draft ?? stored;
-  const refusing =
-    text.trim() === '' && isOnlyTranslation(value, locale, localization);
-  const dir = localeDirection(locale);
+  const empty = text.trim() === '';
+  const refusing = empty && isOnlyTranslation(value, locale, localization);
 
-  const close = (save: boolean) => {
+  const changeDraft = (next: string | null) => {
+    draftRef.current = next;
+    setDraft(next);
+  };
+
+  const commit = () => {
+    const pending = draftRef.current;
+    if (pending === null) return;
+    changeDraft(null);
+    feedback(onCommit(pending));
+  };
+
+  const leave = () => {
     setEditing(false);
-    setDraft(null);
-    if (save && draft !== null) feedback(onCommit(draft));
+    commit();
   };
 
-  // Save leaves a refused edit open beside the note that explains it, which
-  // was announced as it appeared; leaving any other way puts the text back.
-  const save = () => {
-    if (draft !== null && refusing) return;
-    close(true);
+  // The cell holds focus while the editor replaces what had it, so focus is
+  // never left nowhere in between.
+  const holdFocus = () => cellRef.current?.focus({ preventScroll: true });
+
+  const revert = () => {
+    holdFocus();
+    changeDraft(null);
+    setRevision((current) => current + 1);
   };
 
-  const handleKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
-    if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
-      if (onMove(event.key === 'ArrowUp' ? -1 : 1)) event.preventDefault();
+  useEffect(() => {
+    onCommitRef.current = onCommit;
+  });
+
+  // A cell taken away mid-edit, by leaving the page, still saves what was
+  // typed in it.
+  useEffect(
+    () => () => {
+      if (leaveTimer.current !== null) window.clearTimeout(leaveTimer.current);
+      const pending = draftRef.current;
+      if (pending !== null) onCommitRef.current(pending);
+    },
+    [],
+  );
+
+  const handleFocus = (event: FocusEvent<HTMLTableCellElement>) => {
+    if (leaveTimer.current !== null) {
+      window.clearTimeout(leaveTimer.current);
+      leaveTimer.current = null;
+    }
+    if (!editing) {
+      holdFocus();
+      setEditing(true);
+    } else if (event.target === cellRef.current) {
+      focusEditorIn(cellRef.current);
     }
   };
 
+  // Focus that moves into the editor's link form has left the cell's
+  // elements but not the cell: the form is in a portal, and its focus event
+  // reaches the cell through React before this check runs.
+  const handleBlur = (event: FocusEvent<HTMLTableCellElement>) => {
+    if (!editing) return;
+    const next = event.relatedTarget;
+    if (next instanceof Node && cellRef.current?.contains(next)) return;
+    leaveTimer.current = window.setTimeout(() => {
+      leaveTimer.current = null;
+      // The window itself lost focus, as when switching to another app; focus
+      // comes back here with it.
+      if (!document.hasFocus()) return;
+      if (cellRef.current?.contains(document.activeElement)) return;
+      leave();
+    }, 0);
+  };
+
+  // Caught before the editor sees them, and only from its text: the toolbar
+  // and the link form keep their own keys.
+  const handleKeyDownCapture = (event: KeyboardEvent<HTMLTableCellElement>) => {
+    const editable = event.target;
+    if (
+      !(editable instanceof HTMLElement) ||
+      !editable.matches(EDITABLE_SELECTOR)
+    ) {
+      return;
+    }
+    if (event.key === 'Escape') {
+      if (draftRef.current === null) return;
+      event.preventDefault();
+      event.stopPropagation();
+      revert();
+      return;
+    }
+    if (event.key === 'Enter' && !event.shiftKey && !event.altKey) {
+      const modifier = event.metaKey || event.ctrlKey;
+      if (!singleLine && !modifier) return;
+      event.preventDefault();
+      event.stopPropagation();
+      // Leaving the cell saves it; the last row has nowhere to go.
+      if (!onMove(1)) {
+        holdFocus();
+        commit();
+        setRevision((current) => current + 1);
+      }
+      return;
+    }
+    if (
+      (event.key === 'ArrowUp' && isEditableCaretAt(editable, 'start')) ||
+      (event.key === 'ArrowDown' && isEditableCaretAt(editable, 'end'))
+    ) {
+      if (onMove(event.key === 'ArrowUp' ? -1 : 1)) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    }
+  };
+
+  const fallbackDescribed = empty && !refusing;
+
   return (
-    <td ref={cellRef} lang={locale} dir={dir} className={CELL_CLASSES}>
-      <div className="grid">
-        {stored.trim() === '' ? (
-          <Fallback
-            id={contentId}
-            value={value}
-            format={format}
-            locale={locale}
-            localization={localization}
-          />
-        ) : (
-          <div
-            id={contentId}
-            className={cx(CELL_TEXT_CLASSES, 'col-start-1 row-start-1')}
-          >
-            <CellMarkdown>{stored}</CellMarkdown>
-          </div>
-        )}
-      </div>
-      <button
-        ref={buttonRef}
-        type="button"
-        aria-haspopup="dialog"
-        aria-expanded={editing}
-        aria-labelledby={labelledBy}
-        aria-describedby={contentId}
-        data-row={rowIndex}
-        data-col={colIndex}
-        onClick={() => setEditing(true)}
-        onKeyDown={handleKeyDown}
-        className="absolute inset-0 cursor-text scroll-ms-(--translation-table-names) scroll-mt-(--translation-table-sticky-top) outline-none"
-      />
-      <Popover
-        open={editing}
-        onOpenChange={(open, details) => {
-          if (!open) close(details.reason !== 'escape-key');
-        }}
-      >
-        <PopoverContent
-          anchor={cellRef}
-          side="bottom"
-          align="start"
-          sideOffset={4}
-          showArrow={false}
-          aria-labelledby={titleId}
-          finalFocus={buttonRef}
-          className="w-[min(40rem,calc(100vw-2rem))]"
-        >
-          <div className="flex flex-col gap-3">
-            <p id={titleId} className="flex flex-wrap items-baseline gap-x-2">
-              <span className="font-semibold">
-                {intl.formatMessage(messages.editorTitle, {
-                  language: languageName(locale),
-                })}
-              </span>
-              <span
-                dir="ltr"
-                className="font-monospace text-sm break-all text-current/70"
-              >
-                {rowName}
-              </span>
-            </p>
-            <div lang={locale} dir={dir}>
-              <RichTextField
-                id={editorId}
-                name={editorId}
-                aria-labelledby={titleId}
-                aria-describedby={refusing ? noteId : ''}
-                value={text}
-                onChange={(markdown) => setDraft(markdown ?? '')}
-                singleLine={singleLine}
-                autoFocus
+    <td
+      ref={cellRef}
+      tabIndex={-1}
+      lang={locale}
+      dir={localeDirection(locale)}
+      onFocus={handleFocus}
+      onBlur={handleBlur}
+      onKeyDownCapture={editing ? handleKeyDownCapture : undefined}
+      className={cx(CELL_CLASSES, 'outline-none')}
+    >
+      {editing ? (
+        <>
+          {fallbackDescribed && (
+            <div className="sr-only">
+              <Fallback
+                id={contentId}
+                value={value}
+                format={format}
+                locale={locale}
+                localization={localization}
               />
             </div>
-            {refusing && <OnlyTranslationNote id={noteId} locale={locale} />}
-            <div className="flex justify-end gap-2">
-              <Button size="sm" variant="text" onClick={() => close(false)}>
-                {intl.formatMessage(commonMessages.cancel)}
-              </Button>
-              <Button size="sm" color="primary" onClick={save}>
-                {intl.formatMessage(commonMessages.save)}
-              </Button>
-            </div>
+          )}
+          <RichTextField
+            key={revision}
+            id={editorId}
+            name={editorId}
+            aria-labelledby={labelledBy}
+            aria-describedby={
+              refusing ? noteId : fallbackDescribed ? contentId : ''
+            }
+            value={text}
+            onChange={(markdown) => changeDraft(markdown ?? '')}
+            singleLine={singleLine}
+            className={CELL_EDITOR_CLASSES}
+            autoFocus
+          />
+          {refusing && <OnlyTranslationNote id={noteId} locale={locale} />}
+        </>
+      ) : (
+        <>
+          <div className="grid">
+            {empty ? (
+              <Fallback
+                id={contentId}
+                value={value}
+                format={format}
+                locale={locale}
+                localization={localization}
+              />
+            ) : (
+              <div
+                id={contentId}
+                className={cx(CELL_TEXT_CLASSES, 'col-start-1 row-start-1')}
+              >
+                <CellMarkdown>{stored}</CellMarkdown>
+              </div>
+            )}
           </div>
-        </PopoverContent>
-      </Popover>
+          {/* Focus, by any means, turns the cell into its editor. */}
+          <button
+            type="button"
+            aria-labelledby={labelledBy}
+            aria-describedby={contentId}
+            data-row={rowIndex}
+            data-col={colIndex}
+            className="absolute inset-0 cursor-text scroll-ms-(--translation-table-names) scroll-mt-(--translation-table-sticky-top) outline-none"
+          />
+        </>
+      )}
     </td>
   );
 };
@@ -592,7 +699,7 @@ const MarkdownCell = ({
 /** One translation of one text: a cell of the translation table. */
 const TranslationCell = (props: TranslationCellProps) =>
   props.format === 'markdown' ? (
-    <MarkdownCell {...props} />
+    <RichTextCell {...props} />
   ) : (
     <PlainTextCell {...props} />
   );
