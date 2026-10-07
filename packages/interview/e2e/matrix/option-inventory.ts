@@ -152,6 +152,10 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
     'encryptedVariable.resume.persistedFormat',
     'encryptedVariable.missingPassphrase.prompter',
     'encryptedVariable.wrongPassphrase.rejected',
+    'encryptedVariable.schema8.unavailableWithoutPrompt',
+    'encryptedVariable.schema8.newPassphrase',
+    'encryptedVariable.schema8.newAnswerCurrentFormat',
+    'encryptedVariable.schema8.oldAnswerStaysUnavailable',
   ],
   DyadCensus: [
     'label',

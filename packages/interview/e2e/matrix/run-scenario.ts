@@ -20,6 +20,7 @@ export async function installScenario(
     assets: scenario.assets,
     currentStep: scenario.currentStep,
     seedNetwork: scenario.seedNetwork,
+    schema8Encryption: scenario.schema8Encryption,
     stageMetadata: scenario.stageMetadata,
   });
   const { protocolId } = await ctx.protocol.installPayload(result);
