@@ -16,13 +16,16 @@ answers; other interviews work as before.
   earlier ones. The passphrase box in the navigation also hides what is typed.
 - Protected answers stay locked when an interview is resumed, until the
   passphrase is entered again. Names that had been unlocked no longer stay
-  visible after the passphrase is cleared.
+  visible after the passphrase is replaced with one that cannot read them,
+  including in the Family Pedigree.
 - Stages no longer take protected answers they cannot save. Until a working
   passphrase is entered, the name generators, the roster, forms, the category
   "other" question and the map ask for the passphrase instead.
 - When a save is refused, the answers just typed stay on screen with a message
   that they were not saved, so the participant can enter the passphrase and
-  try again. Before, they could disappear without a word.
+  try again. Before, they could disappear without a word. The form for adding
+  or editing a person and the category "other" question offer the passphrase
+  inside the form, so the answers can be saved without closing it.
 - A saved location that is protected is shown on the map when the participant
   returns to it.
 - Replacing a protected answer with an unprotected one no longer leaves the
@@ -39,4 +42,6 @@ answers; other interviews work as before.
 - Questions that compare an answer with other answers, such as a name that
   must not repeat or an answer that must match another one, now compare with
   the protected answers as they were entered. Before, they compared with the
-  stored, scrambled form, so a repeated name was accepted.
+  stored, scrambled form, so a repeated name was accepted. If the protected
+  answers cannot be read, the question says so and asks for the passphrase
+  instead of accepting the answer.
