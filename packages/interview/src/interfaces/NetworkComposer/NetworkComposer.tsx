@@ -92,6 +92,8 @@ type DrawerEditor = {
   passphraseStatus?: PassphraseNoticeStatus;
 };
 
+const NO_ATTRIBUTES: DrawerEditor['attributes'] = {};
+
 const NetworkComposer = (stageProps: NetworkComposerProps) => {
   const intl = useAppIntl();
   const { stage } = stageProps;
@@ -653,7 +655,9 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
   const currentEditor: DrawerEditor | null = (() => {
     if (selectedNode !== null) {
       const attributes =
-        selectedNodeValues.status === 'ready' ? selectedNodeValues.values : {};
+        selectedNodeValues.status === 'ready'
+          ? selectedNodeValues.values
+          : NO_ATTRIBUTES;
       const rawName = attributes[stage.quickAdd];
       const title =
         typeof rawName === 'string' && rawName.trim() !== ''

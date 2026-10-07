@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useReducer, useState } from 'react';
+import { shallow } from 'zustand/shallow';
 
 import type { Variable } from '@codaco/protocol-validation';
 import {
@@ -31,6 +32,19 @@ type ScopedEntity = { scope: DecryptionScope; entityId: string };
 
 const isNode = (entity: NcNode | NcEdge): entity is NcNode =>
   !('from' in entity);
+
+/**
+ * `next`, or the object last returned while it holds the same entries. The
+ * values are rebuilt on every render; handing back the same object for the
+ * same answers keeps a re-render from looking like a change to anything that
+ * memoises on, or reacts to, them.
+ */
+function useSameWhileUnchanged<T extends object>(next: T): T {
+  const [kept, setKept] = useState(next);
+  const unchanged = shallow(kept, next);
+  if (!unchanged) setKept(next);
+  return unchanged ? kept : next;
+}
 
 /**
  * The values a form editing `entity` should start from, with every encrypted
@@ -150,6 +164,8 @@ export function useProtectedFormValues(
     }
   }, [ready, scope, entityId]);
 
+  const stableValues = useSameWhileUnchanged(values);
+
   if (locked) {
     return {
       status: 'locked',
@@ -157,5 +173,5 @@ export function useProtectedFormValues(
     };
   }
   if (missing) return { status: 'pending' };
-  return { status: 'ready', values };
+  return { status: 'ready', values: stableValues };
 }
