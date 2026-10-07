@@ -4,6 +4,7 @@ import {
   CurrentProtocolSchema,
   type LocalizationDeclaration,
   messageText,
+  resolveLocalizedString,
 } from '@codaco/protocol-validation';
 import { type SectionDoc, canonicalize } from '@codaco/studio-sync/apply';
 import { parseSectionId, sectionId } from '@codaco/studio-sync/taxonomy';
@@ -84,10 +85,11 @@ export function localizationOf(
 }
 
 /**
- * A label as plain text for a researcher: a localized label in the protocol's
- * default language, else in the first declared language that has text. A
- * plain-string label, which stored versions before schema 9 hold, is shown as
- * it is.
+ * A label as plain text for a researcher: a localized label as the interview
+ * falls back to it from the protocol's default language — that language, a
+ * closely related one, or else the first language by tag that has text.
+ * Blank translations are passed over. A plain-string label, which stored
+ * versions before schema 9 hold, is shown as it is.
  */
 export function displayLabel(
   label: unknown,
@@ -97,13 +99,19 @@ export function displayLabel(
   if (!Predicate.isObject(label) || localization === undefined) {
     return undefined;
   }
-  for (const locale of [localization.defaultLocale, ...localization.locales]) {
-    const message = Object.hasOwn(label, locale) ? label[locale] : undefined;
-    if (!Predicate.isString(message)) continue;
-    const text = messageText(message);
-    if (text.trim() !== '') return text;
-  }
-  return undefined;
+  const written = Object.fromEntries(
+    localization.locales.flatMap((locale): [string, string][] => {
+      const message = Object.hasOwn(label, locale) ? label[locale] : undefined;
+      return Predicate.isString(message) && messageText(message).trim() !== ''
+        ? [[locale, message]]
+        : [];
+    }),
+  );
+  if (Object.keys(written).length === 0) return undefined;
+  return messageText(
+    resolveLocalizedString(written, localization, [localization.defaultLocale])
+      .text,
+  );
 }
 
 function stageOrderOf(doc: SectionDoc | undefined): string[] {

@@ -478,6 +478,7 @@
   "architect.localization.missingTranslations.filterOption": "{language} ({count, number})",
   "architect.localization.missingTranslations.nodeType": "Type de nœud",
   "architect.localization.missingTranslations.notTranslated": "Pas encore traduit. Affiché dans la langue « {fallback} ».",
+  "architect.localization.missingTranslations.notTranslatedUnlessBrowserLists": "Pas encore traduit. Affiché dans la langue « {fallback} », sauf si le navigateur de la personne participante indique aussi une langue dans laquelle le texte est disponible.",
   "architect.localization.missingTranslations.notTranslatedUnspecified": "Pas encore traduit.",
   "architect.localization.missingTranslations.participantView": "Ce que voient les personnes participantes",
   "architect.localization.missingTranslations.placeTitle": "{place} · {name}",

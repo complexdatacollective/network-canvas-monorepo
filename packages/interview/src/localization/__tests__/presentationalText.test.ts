@@ -1,17 +1,20 @@
 import { describe, expect, it } from 'vitest';
 
-import { getLocaleMetadata } from '@codaco/protocol-validation';
+import {
+  getLocaleMetadata,
+  type ResolvedLocalizedString,
+} from '@codaco/protocol-validation';
 
 import { toPresentationalText } from '../presentationalText';
 
 const options = ['en', 'ar', 'und'].map((locale) => getLocaleMetadata(locale));
 
-const resolved = (text: string, locale: string) => ({
+const resolved = (text: string, locale: string): ResolvedLocalizedString => ({
   text,
   locale,
   selectedLocale: locale,
   usedFallback: false,
-  usedDefaultLocale: false,
+  matchedBy: 'selected',
 });
 
 describe('toPresentationalText', () => {

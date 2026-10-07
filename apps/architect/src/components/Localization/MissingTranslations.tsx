@@ -47,6 +47,7 @@ import {
   type LocaleTag,
   type LocalizedString,
   type LocalizedStringFormat,
+  sortByLanguageName,
 } from '@codaco/protocol-validation';
 import { codebookHref } from '~/components/Codebook/codebookLinks';
 import { useAppDispatch, useAppStore } from '~/ducks/hooks';
@@ -386,7 +387,10 @@ const sameTranslations = (a: LocalizedString, b: LocalizedString) => {
   );
 };
 
-/** The first language after `locale`, in declared order, that still has gaps. */
+/**
+ * The first language after `locale` in `locales`, wrapping round, that still
+ * has gaps.
+ */
 const nextLanguageWithGaps = (
   locales: readonly LocaleCoverage[],
   locale: LocaleTag,
@@ -639,7 +643,10 @@ type Editing = {
 };
 
 type MissingTranslationsProps = {
-  /** The language to list; null, or one with no gaps, lists the first that has gaps. */
+  /**
+   * The language to list; null, or one with no gaps, lists the alphabetically
+   * first that has gaps.
+   */
   language: LocaleTag | null;
   onLanguageChange: (locale: LocaleTag) => void;
   headingRef: RefObject<HTMLElement | null>;
@@ -672,7 +679,14 @@ const MissingTranslations = ({
 
   if (!protocol) return null;
 
-  const languagesWithGaps = coverage.locales.filter(
+  const byName = (locales: readonly LocaleCoverage[]) =>
+    sortByLanguageName(
+      locales,
+      ({ locale }) => languageName(locale),
+      intl.locale,
+    );
+
+  const languagesWithGaps = byName(coverage.locales).filter(
     ({ missing }) => missing > 0,
   );
   const shown =
@@ -769,7 +783,7 @@ const MissingTranslations = ({
       return;
     }
 
-    const next = nextLanguageWithGaps(locales, locale);
+    const next = nextLanguageWithGaps(byName(locales), locale);
     if (next === undefined) {
       announce(
         intl.formatMessage(messages.savedEverything, { language: name }),

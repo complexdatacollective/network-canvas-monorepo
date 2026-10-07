@@ -169,17 +169,66 @@ describe('ProtocolLocalizationProvider', () => {
     expect(onResumedRecorded).not.toHaveBeenCalled();
   });
 
-  it('refuses locale options that do not describe the declared locales in order', () => {
+  it('refuses locale options that do not describe each declared locale once', () => {
     vi.spyOn(console, 'error').mockImplementation(vi.fn());
 
     expect(() =>
-      renderLocale(makeProps({ localeOptions: [...localeOptions].reverse() })),
+      renderLocale(makeProps({ localeOptions: localeOptions.slice(0, 2) })),
     ).toThrow(
-      "localeOptions must describe the protocol's declared locales in declaration order (declared: en, es, ar; received: ar, es, en)",
+      "localeOptions must describe each of the protocol's declared locales once (declared: en, es, ar; received: en, es)",
     );
     expect(() =>
-      renderLocale(makeProps({ localeOptions: localeOptions.slice(0, 2) })),
-    ).toThrow(/declaration order/);
+      renderLocale(
+        makeProps({
+          localeOptions: [
+            ...localeOptions.slice(0, 2),
+            getLocaleMetadata('fr'),
+          ],
+        }),
+      ),
+    ).toThrow(/received: en, es, fr/);
+    expect(() =>
+      renderLocale(
+        makeProps({
+          localeOptions: [...localeOptions, getLocaleMetadata('es')],
+        }),
+      ),
+    ).toThrow(/received: en, es, ar, es/);
+  });
+
+  it('accepts locale options in any order and lists them alphabetically by name', () => {
+    const { latest } = renderLocale(
+      makeProps({
+        localization: { defaultLocale: 'en', locales: ['ar', 'es', 'en'] },
+        localeOptions: [...localeOptions].reverse(),
+      }),
+    );
+
+    expect(latest().options.map(({ locale }) => locale)).toEqual([
+      'en',
+      'es',
+      'ar',
+    ]);
+  });
+
+  it('collates the language names for the interface language', () => {
+    const names = (interfaceLocales: readonly string[]) =>
+      renderLocale(
+        makeProps({
+          localization: { defaultLocale: 'en', locales: ['en', 'es'] },
+          localeOptions: [
+            { locale: 'en', label: 'ña', direction: 'ltr' },
+            { locale: 'es', label: 'nb', direction: 'ltr' },
+          ],
+        }),
+        interfaceLocales,
+      )
+        .latest()
+        .options.map(({ label }) => label);
+
+    // Spanish sorts ñ as a letter of its own, after n; English sorts it as n.
+    expect(names(['en'])).toEqual(['ña', 'nb']);
+    expect(names(['es'])).toEqual(['nb', 'ña']);
   });
 
   it('names the unspecified language in the interface language', () => {
@@ -248,7 +297,7 @@ describe('useLocalizedString', () => {
     });
   });
 
-  it('falls back to a declared translation and reports its language', () => {
+  it('falls back to the default language and reports its language', () => {
     const resolved = resolve(
       { en: "Only '{'English'}'" },
       makeProps({ requestedLocales: ['ar'] }),
@@ -259,6 +308,36 @@ describe('useLocalizedString', () => {
       locale: 'en',
       selectedLocale: 'ar',
       usedFallback: true,
+      matchedBy: 'default',
+    });
+  });
+
+  it("falls back to the browser's other languages before the default", () => {
+    const resolved = resolve(
+      { en: 'Hello', es: 'Hola' },
+      makeProps({ requestedLocales: ['ar', 'fr', 'es-MX', 'en'] }),
+    );
+
+    expect(resolved).toMatchObject({
+      text: 'Hola',
+      locale: 'es',
+      selectedLocale: 'ar',
+      usedFallback: true,
+      matchedBy: 'requested',
+    });
+  });
+
+  it("keeps the browser's languages as fallbacks after a stated preference", () => {
+    const resolved = resolve(
+      { en: 'Hello', es: 'Hola' },
+      makeProps({ localePreference: 'ar', requestedLocales: ['es', 'en'] }),
+    );
+
+    expect(resolved).toMatchObject({
+      text: 'Hola',
+      locale: 'es',
+      selectedLocale: 'ar',
+      matchedBy: 'requested',
     });
   });
 });

@@ -6,6 +6,7 @@ import Field from '@codaco/fresco-ui/form/Field/Field';
 import Form from '@codaco/fresco-ui/form/Form';
 import {
   escapeMessageText,
+  getLocaleMetadata,
   type LocalizedString,
 } from '@codaco/protocol-validation';
 
@@ -170,7 +171,7 @@ describe('LocalizedStringField', () => {
     await chooseLanguage(/^español/);
     expect(
       screen.getByText(
-        'Not translated into español yet. Participants using español will see the English text.',
+        'Not translated into español yet. Participants using español will see the English text, unless their browser also lists a language that has it.',
       ),
     ).toBeInTheDocument();
 
@@ -178,6 +179,38 @@ describe('LocalizedStringField', () => {
     await waitFor(() =>
       expect(saved.current).toEqual({ title: { en: 'Hello' } }),
     );
+  });
+
+  it('says a closely related translation is shown, whatever the browser lists', async () => {
+    const mexican = getLocaleMetadata('es-MX').label;
+    renderTitle({
+      initialValue: { en: 'Hello', es: 'Hola' },
+      localization: { defaultLocale: 'en', locales: ['en', 'es', 'es-MX'] },
+    });
+
+    await chooseLanguage(new RegExp(`^${mexican}`));
+    expect(
+      screen.getByText(
+        `Not translated into ${mexican} yet. Participants using ${mexican} will see the español text.`,
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('lists the languages alphabetically by name', async () => {
+    renderTitle({
+      initialValue: { en: 'Hello' },
+      localization: { defaultLocale: 'en', locales: ['fr', 'en', 'de'] },
+    });
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: /Editing language/ }));
+    const languages = await screen.findAllByRole('menuitemradio');
+
+    expect(languages.map((item) => item.textContent)).toEqual([
+      'DeutschMissing',
+      'EnglishDefault',
+      'françaisMissing',
+    ]);
   });
 
   it('draws no language menu for a protocol written in one language', () => {

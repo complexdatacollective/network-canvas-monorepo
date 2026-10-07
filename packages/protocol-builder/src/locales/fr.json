@@ -594,6 +594,7 @@
   "protocolBuilder.localization.missingCount": "{count, plural, one {# traduction manquante} other {# traductions manquantes}}",
   "protocolBuilder.localization.missingTranslation": "Manquante",
   "protocolBuilder.localization.notTranslated": "Pas encore traduit en {language}. Les personnes participantes qui utilisent {language} verront le texte en {fallback}.",
+  "protocolBuilder.localization.notTranslatedUnlessBrowserLists": "Pas encore traduit en {language}. Les personnes participantes qui utilisent {language} verront le texte en {fallback}, sauf si leur navigateur indique aussi une langue dans laquelle le texte est disponible.",
   "protocolBuilder.localization.unspecifiedLanguage": "Langue non précisée",
   "protocolBuilder.multiSelect.emptyState": "Aucun élément disponible.",
   "protocolBuilder.multiSelect.incompleteRows": "Chaque ligne doit avoir une valeur dans chaque colonne.",

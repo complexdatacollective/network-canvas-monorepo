@@ -182,6 +182,18 @@ describe('selectProtocolLocale', () => {
     expect(selectProtocolLocale([requested], chinese)).toBe(expected);
   });
 
+  it.each([
+    { locales: ['en', 'fr-BE', 'fr-CH'] },
+    { locales: ['fr-CH', 'en', 'fr-BE'] },
+  ])(
+    'ignores declaration order between equally related languages ($locales)',
+    ({ locales }) => {
+      expect(
+        selectProtocolLocale(['fr-CA'], { defaultLocale: 'en', locales }),
+      ).toBe('fr-BE');
+    },
+  );
+
   it('keeps an exactly declared regional Chinese tag', () => {
     const taiwan = { defaultLocale: 'en', locales: ['en', 'zh-TW', 'zh-Hant'] };
     expect(selectProtocolLocale(['zh-TW'], taiwan)).toBe('zh-TW');

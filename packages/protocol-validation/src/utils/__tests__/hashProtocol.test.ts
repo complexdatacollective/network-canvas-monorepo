@@ -92,10 +92,18 @@ describe('hashProtocol', () => {
     expect(hashProtocol(changed)).not.toBe(hashProtocol(localizedProtocol()));
   });
 
-  it('changes when the order of languages changes', () => {
-    const changed = {
+  it('does not change when the order of languages changes', () => {
+    const reordered = {
       ...localizedProtocol(),
       localization: { defaultLocale: 'en', locales: ['fr', 'en'] },
+    };
+    expect(hashProtocol(reordered)).toBe(hashProtocol(localizedProtocol()));
+  });
+
+  it('changes when a language is added', () => {
+    const changed = {
+      ...localizedProtocol(),
+      localization: { defaultLocale: 'en', locales: ['en', 'fr', 'es'] },
     };
     expect(hashProtocol(changed)).not.toBe(hashProtocol(localizedProtocol()));
   });

@@ -47,8 +47,8 @@ export const LocaleTagSchema = z.string().superRefine((value, ctx) => {
 export const ProtocolLocalizationSchema = z
   .strictObject({
     defaultLocale: LocaleTagSchema,
-    // Order is the final per-string fallback order, so it is preserved as
-    // authored.
+    // The languages have no order: every list of them is shown alphabetically
+    // by name, and neither fallback nor the protocol hash depends on it.
     locales: z
       .array(LocaleTagSchema)
       .min(1, { message: 'A protocol must declare at least one language.' }),

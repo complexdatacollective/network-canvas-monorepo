@@ -68,7 +68,7 @@ function resolveStageLabel(
     );
   }
   const resolved = messageText(
-    resolveLocalizedString(label, localization, localization.defaultLocale)
+    resolveLocalizedString(label, localization, [localization.defaultLocale])
       .text,
   );
   if (resolved.trim() === '') {

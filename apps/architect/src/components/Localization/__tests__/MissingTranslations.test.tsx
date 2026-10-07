@@ -5,7 +5,11 @@ import { createRef, useState } from 'react';
 import { Provider } from 'react-redux';
 import { describe, expect, it, vi } from 'vitest';
 
-import type { CurrentProtocol, LocaleTag } from '@codaco/protocol-validation';
+import {
+  type CurrentProtocol,
+  getLocaleMetadata,
+  type LocaleTag,
+} from '@codaco/protocol-validation';
 import { hasDirtyNestedDraft } from '~/components/DialogForm/nestedDraftRegistry';
 import {
   removeProtocolLocale,
@@ -59,6 +63,28 @@ const trilingual: CurrentProtocol = {
       type: 'Information',
       label: { en: 'Thanks', fr: 'Merci', es: 'Gracias' },
       title: { en: 'Thank you' },
+      items: [],
+    },
+  ],
+};
+
+// German, French and Spanish each miss only the title, and are declared out of
+// alphabetical order.
+const quadrilingual: CurrentProtocol = {
+  ...trilingual,
+  localization: { defaultLocale: 'en', locales: ['en', 'de', 'fr', 'es'] },
+  codebook: { node: {}, edge: {}, ego: {} },
+  stages: [
+    {
+      id: 'welcome',
+      type: 'Information',
+      label: {
+        en: 'Welcome',
+        de: 'Willkommen',
+        fr: 'Bienvenue',
+        es: 'Bienvenida',
+      },
+      title: { en: 'Hello' },
       items: [],
     },
   ],
@@ -258,7 +284,7 @@ describe('MissingTranslations', () => {
       /^English\s*Default\s*Hello$/,
     );
     expect(french).toHaveTextContent(
-      /^French\s*Editing\s*Hello\s*Not translated yet\. Shown in English\.$/,
+      /^French\s*Editing\s*Hello\s*Not translated yet\. Shown in English, unless the participant’s browser also lists a language that has it\.$/,
     );
     expect(languageEntry(dialog, 'Spanish')).toHaveTextContent(
       /^Spanish\s*Hola$/,
@@ -301,6 +327,45 @@ describe('MissingTranslations', () => {
     expect(languageEntry(dialog, 'French')).toHaveTextContent(
       /^French\s*Editing\s*Hello\s*Not translated yet\.$/,
     );
+  });
+
+  it('says when a closely related translation is shown, whatever the browser lists', async () => {
+    const mexican = getLocaleMetadata('es-MX', 'en').label;
+    const { user } = renderMissingTranslations({
+      ...trilingual,
+      localization: { defaultLocale: 'en', locales: ['en', 'es', 'es-MX'] },
+      codebook: { node: {}, edge: {}, ego: {} },
+      stages: [
+        {
+          id: 'welcome',
+          type: 'Information',
+          label: { 'en': 'Welcome', 'es': 'Bienvenida', 'es-MX': 'Bienvenida' },
+          title: { en: 'Hello', es: 'Hola' },
+          items: [],
+        },
+      ],
+    });
+
+    const dialog = await openText(user, 'title Hola');
+
+    expect(
+      within(languageEntry(dialog, mexican)).getByText(
+        'Not translated yet. Shown in Spanish.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('lists what participants see alphabetically by language name', async () => {
+    const { user } = renderMissingTranslations(quadrilingual);
+
+    const dialog = await openText(user, 'title Hello');
+    const names = ['English', 'French', 'German', 'Spanish'];
+
+    expect(
+      participantView(dialog).map((entry) =>
+        names.find((name) => within(entry).queryByText(name) !== null),
+      ),
+    ).toEqual(names);
   });
 
   it('saves the translations, then moves focus to the next text', async () => {
@@ -488,6 +553,39 @@ describe('MissingTranslations', () => {
     ).not.toBeInTheDocument();
     expect(
       screen.getByText('5 texts have no French translation.'),
+    ).toBeInTheDocument();
+  });
+
+  it('offers the languages with gaps alphabetically, listing the first', () => {
+    renderMissingTranslations(quadrilingual);
+
+    expect(
+      within(
+        screen.getByRole('combobox', { name: 'Show missing translations for' }),
+      )
+        .getAllByRole('option')
+        .map((option) => option.textContent),
+    ).toEqual(['French (1)', 'German (1)', 'Spanish (1)']);
+    expect(
+      screen.getByText('1 text has no French translation.'),
+    ).toBeInTheDocument();
+  });
+
+  it('moves on to the alphabetically next language once one is fully translated', async () => {
+    const { onLanguageChange, user } = renderMissingTranslations(quadrilingual);
+
+    const dialog = await openText(user, 'title Hello');
+    await user.type(
+      within(dialog).getByRole('textbox', { name: 'Text' }),
+      'Bonjour',
+    );
+    await user.click(within(dialog).getByRole('button', { name: 'Save' }));
+
+    expect(onLanguageChange).toHaveBeenLastCalledWith('de');
+    expect(
+      await screen.findByText(
+        'French translation saved. Every text now has a French translation, so the list shows texts with no German translation instead.',
+      ),
     ).toBeInTheDocument();
   });
 

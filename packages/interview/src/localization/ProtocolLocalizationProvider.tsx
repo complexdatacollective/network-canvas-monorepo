@@ -22,6 +22,7 @@ import {
   type ResolvedLocalizedString,
   resolveLocalizedString,
   selectProtocolLocale,
+  sortByLanguageName,
 } from '@codaco/protocol-validation';
 
 import { languageMessages } from '../i18n/languageMessages';
@@ -33,6 +34,8 @@ import { toPresentationalText } from './presentationalText';
 
 type ProtocolLocalizationState = Readonly<{
   locale: LocaleTag;
+  /** The interview language, then the browser's: the order text falls back in. */
+  resolutionOrder: readonly [LocaleTag, ...string[]];
   metadata: LocaleMetadata;
   options: readonly LocaleMetadata[];
   setLocale: (locale: LocaleTag) => void;
@@ -54,27 +57,30 @@ const useProtocolLocalizationState = () => {
 
 const UNSPECIFIED_LOCALE = 'und';
 
+/** The options describe each declared locale once, in any order. */
 function assertOptionsMatchDeclaration(
   localization: LocalizationDeclaration,
   localeOptions: readonly LocaleMetadata[],
 ) {
+  const described = new Set(localeOptions.map((option) => option.locale));
   const matches =
     localeOptions.length === localization.locales.length &&
-    localeOptions.every(
-      (option, index) => option.locale === localization.locales[index],
-    );
+    described.size === localeOptions.length &&
+    localization.locales.every((locale) => described.has(locale));
   if (!matches) {
     throw new Error(
-      `localeOptions must describe the protocol's declared locales in declaration order (declared: ${localization.locales.join(', ')}; received: ${localeOptions.map((option) => option.locale).join(', ')}). Derive them with getLocaleMetadata.`,
+      `localeOptions must describe each of the protocol's declared locales once (declared: ${localization.locales.join(', ')}; received: ${localeOptions.map((option) => option.locale).join(', ')}). Derive them with getLocaleMetadata.`,
     );
   }
 }
 
 /**
- * Decides which protocol translation the interview shows: the participant's
+ * Decides which protocol language the interview shows: the participant's
  * stated preference when there is one, otherwise the first of the browser's
  * languages the protocol declares, otherwise the protocol's default. Without a
- * stated preference the choice is made afresh on every load.
+ * stated preference the choice is made afresh on every load. A text with no
+ * translation in that language falls back to the browser's other languages,
+ * then to the protocol's default (see `resolveLocalizedString`).
  *
  * Labels and directions come from the host's `localeOptions`, never from
  * `Intl.DisplayNames` here: display names vary between JavaScript runtimes, so
@@ -111,12 +117,13 @@ export function ProtocolLocalizationProvider({
     assertOptionsMatchDeclaration(localization, localeOptions);
     // `Intl.DisplayNames` names `und` "root", which means nothing to a
     // participant.
-    return localeOptions.map((option) =>
+    const named = localeOptions.map((option) =>
       option.locale === UNSPECIFIED_LOCALE
         ? { ...option, label: unspecifiedLabel }
         : option,
     );
-  }, [localization, localeOptions, unspecifiedLabel]);
+    return sortByLanguageName(named, (option) => option.label, intl.locale);
+  }, [localization, localeOptions, unspecifiedLabel, intl.locale]);
 
   // A stated preference is passed as the only request, so a preference the
   // protocol no longer matches yields its default rather than a browser
@@ -128,6 +135,13 @@ export function ProtocolLocalizationProvider({
         localization,
       ),
     [localePreference, requestedLocales, localization],
+  );
+
+  // A stated preference only chooses the interview language: the browser's
+  // languages still come next for text that has no translation in it.
+  const resolutionOrder = useMemo(
+    (): readonly [LocaleTag, ...string[]] => [locale, ...requestedLocales],
+    [locale, requestedLocales],
   );
 
   const metadata = options.find((option) => option.locale === locale);
@@ -151,8 +165,24 @@ export function ProtocolLocalizationProvider({
   const [format] = useState(createLocalizedMessageFormatter);
 
   const value = useMemo(
-    () => ({ locale, metadata, options, setLocale, localization, format }),
-    [locale, metadata, options, setLocale, localization, format],
+    () => ({
+      locale,
+      resolutionOrder,
+      metadata,
+      options,
+      setLocale,
+      localization,
+      format,
+    }),
+    [
+      locale,
+      resolutionOrder,
+      metadata,
+      options,
+      setLocale,
+      localization,
+      format,
+    ],
   );
 
   return (
@@ -163,9 +193,10 @@ export function ProtocolLocalizationProvider({
 }
 
 /**
- * The protocol translation the interview shows, its presentation metadata,
- * every declared locale's metadata in declaration order, and a setter that
- * records the participant's stated preference.
+ * The protocol language the interview shows, its presentation metadata, every
+ * declared locale's metadata in alphabetical order of its name, collated for
+ * the interface language, and a setter that records the participant's stated
+ * preference.
  */
 export function useProtocolLocale(): Readonly<{
   locale: LocaleTag;
@@ -182,19 +213,25 @@ export function useProtocolLocale(): Readonly<{
 }
 
 /**
- * Resolves protocol-authored strings for the interview locale. `text` is the
- * formatted message, in the locale the text is actually written in.
+ * Resolves protocol-authored strings for the interview language, falling back
+ * to the browser's other languages, then to the protocol's default. `text` is
+ * the formatted message, in the locale the text is actually written in.
  */
 export function useResolveLocalizedString(): (
   value: LocalizedString,
 ) => ResolvedLocalizedString {
-  const { localization, locale, format } = useProtocolLocalizationState();
+  const { localization, resolutionOrder, format } =
+    useProtocolLocalizationState();
   return useCallback(
     (value: LocalizedString) => {
-      const resolved = resolveLocalizedString(value, localization, locale);
+      const resolved = resolveLocalizedString(
+        value,
+        localization,
+        resolutionOrder,
+      );
       return { ...resolved, text: format(resolved.locale, resolved.text) };
     },
-    [localization, locale, format],
+    [localization, resolutionOrder, format],
   );
 }
 

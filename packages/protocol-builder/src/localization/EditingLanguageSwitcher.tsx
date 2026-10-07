@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger,
 } from '@codaco/fresco-ui/DropdownMenu';
 import { cx } from '@codaco/fresco-ui/utils/cva';
+import { sortByLanguageName } from '@codaco/protocol-validation';
 
 import { languageMessages, useLanguageName } from './languageNames.ts';
 import { localeDirection, missingLocalesAcross } from './localizedText.ts';
@@ -52,7 +53,12 @@ export function EditingLanguageSwitcher({
     return null;
   }
 
-  const missing = new Set(missingLocalesAcross(values, localization));
+  const missing = missingLocalesAcross(values, localization);
+  const languages = sortByLanguageName(
+    localization.locales,
+    languageName,
+    intl.locale,
+  );
 
   return (
     <div className={cx('flex flex-wrap items-center gap-2', className)}>
@@ -83,7 +89,7 @@ export function EditingLanguageSwitcher({
               if (typeof next === 'string') setLocale(next);
             }}
           >
-            {localization.locales.map((declared) => (
+            {languages.map((declared) => (
               <DropdownMenuRadioItem
                 key={declared}
                 value={declared}

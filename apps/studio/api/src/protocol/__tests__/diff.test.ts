@@ -176,7 +176,7 @@ describe('diffProtocolSections', () => {
     ]);
   });
 
-  it('falls back to the first declared language that has text', () => {
+  it('passes over a blank translation', () => {
     const localization = { defaultLocale: 'fr', locales: ['de', 'en', 'fr'] };
     const before = baseProtocol();
     before.localization = localization;
@@ -189,6 +189,39 @@ describe('diffProtocolSections', () => {
 
     expect(diff(before, after)).toMatchObject([
       { kind: 'stage-added', label: 'About this study' },
+    ]);
+  });
+
+  it.each<{
+    fallback: string;
+    localization: { defaultLocale: string; locales: string[] };
+    label: Record<string, string>;
+    expected: string;
+  }>([
+    {
+      fallback: 'a language closely related to the default',
+      localization: {
+        defaultLocale: 'pt-PT',
+        locales: ['pt-PT', 'en', 'pt-BR'],
+      },
+      label: { 'en': 'About this study', 'pt-BR': 'Sobre o estudo' },
+      expected: 'Sobre o estudo',
+    },
+    {
+      fallback: 'the first language by tag, whatever the declared order',
+      localization: { defaultLocale: 'fr', locales: ['fr', 'es', 'en'] },
+      label: { es: 'Sobre este estudio', en: 'About this study' },
+      expected: 'About this study',
+    },
+  ])('falls back to $fallback', ({ localization, label, expected }) => {
+    const before = baseProtocol();
+    before.localization = localization;
+    const after = baseProtocol();
+    after.localization = localization;
+    after.stages = [...after.stages, informationStage(label)];
+
+    expect(diff(before, after)).toMatchObject([
+      { kind: 'stage-added', label: expected },
     ]);
   });
 

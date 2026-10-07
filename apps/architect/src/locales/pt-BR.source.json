@@ -478,6 +478,7 @@
   "architect.localization.missingTranslations.filterOption": "{language} ({count, number})",
   "architect.localization.missingTranslations.nodeType": "Node type",
   "architect.localization.missingTranslations.notTranslated": "Not translated yet. Shown in {fallback}.",
+  "architect.localization.missingTranslations.notTranslatedUnlessBrowserLists": "Not translated yet. Shown in {fallback}, unless the participant’s browser also lists a language that has it.",
   "architect.localization.missingTranslations.notTranslatedUnspecified": "Not translated yet.",
   "architect.localization.missingTranslations.participantView": "What participants see",
   "architect.localization.missingTranslations.placeTitle": "{place} · {name}",

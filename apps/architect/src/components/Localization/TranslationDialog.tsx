@@ -32,6 +32,7 @@ import {
   type LocalizedString,
   type LocalizedStringFormat,
   messageText,
+  sortByLanguageName,
 } from '@codaco/protocol-validation';
 import DialogForm, {
   type DialogFormProps,
@@ -74,7 +75,14 @@ const messages = defineMessages({
     id: 'architect.localization.missingTranslations.notTranslated',
     defaultMessage: 'Not translated yet. Shown in {fallback}.',
     description:
-      'Note under the text participants see in a language the text has no translation for. fallback is the language of the text they see instead.',
+      'Note under the text participants see in a language the text has no translation for, when they are shown it in a closely related language instead, such as Brazilian Portuguese for European Portuguese. fallback is the language of the text they see instead.',
+  },
+  notTranslatedUnlessBrowserLists: {
+    id: 'architect.localization.missingTranslations.notTranslatedUnlessBrowserLists',
+    defaultMessage:
+      'Not translated yet. Shown in {fallback}, unless the participant’s browser also lists a language that has it.',
+    description:
+      'Note under the text participants see in a language the text has no translation for, nor a closely related one. Participants are shown it in another language their web browser lists, when the text has a translation in one, and otherwise in fallback: the protocol’s default language, or failing that another of its languages.',
   },
   notTranslatedUnspecified: {
     id: 'architect.localization.missingTranslations.notTranslatedUnspecified',
@@ -123,7 +131,10 @@ const ParticipantText = ({
     <span className="whitespace-pre-line">{text}</span>
   );
 
-/** The field's live value as each declared language's participants see it. */
+/**
+ * The field's live value as each declared language's participants see it,
+ * listed alphabetically by language name.
+ */
 const ParticipantView = ({ format }: { format: LocalizedStringFormat }) => {
   const intl = useAppIntl();
   const headingId = useId();
@@ -148,7 +159,11 @@ const ParticipantView = ({ format }: { format: LocalizedStringFormat }) => {
         {intl.formatMessage(messages.participantView)}
       </Heading>
       <ul className="flex flex-col gap-3">
-        {localization.locales.map((locale) => {
+        {sortByLanguageName(
+          localization.locales,
+          languageName,
+          intl.locale,
+        ).map((locale) => {
           const shown = resolveTranslation(value, localization, locale);
           return (
             <li
@@ -180,9 +195,14 @@ const ParticipantView = ({ format }: { format: LocalizedStringFormat }) => {
                 <p className="text-sm text-current/70">
                   {shown.lang === undefined || shown.lang === UNSPECIFIED_LOCALE
                     ? intl.formatMessage(messages.notTranslatedUnspecified)
-                    : intl.formatMessage(messages.notTranslated, {
-                        fallback: languageName(shown.lang),
-                      })}
+                    : intl.formatMessage(
+                        // Only a related language is certain: Architect cannot
+                        // know which other languages a browser lists.
+                        shown.matchedBy === 'selected'
+                          ? messages.notTranslated
+                          : messages.notTranslatedUnlessBrowserLists,
+                        { fallback: languageName(shown.lang) },
+                      )}
                 </p>
               )}
             </li>

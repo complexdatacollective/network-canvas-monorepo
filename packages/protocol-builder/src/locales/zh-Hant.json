@@ -594,6 +594,7 @@
   "protocolBuilder.localization.missingCount": "{count, plural, other {缺少 # 則翻譯}}",
   "protocolBuilder.localization.missingTranslation": "缺少翻譯",
   "protocolBuilder.localization.notTranslated": "尚未翻譯為 {language}。使用 {language} 的參與者會看到 {fallback} 文字。",
+  "protocolBuilder.localization.notTranslatedUnlessBrowserLists": "尚未翻譯為 {language}。使用 {language} 的參與者會看到 {fallback} 文字，除非其瀏覽器也列出了一種有此文字的語言。",
   "protocolBuilder.localization.unspecifiedLanguage": "未指定語言",
   "protocolBuilder.multiSelect.emptyState": "沒有可用的項目。",
   "protocolBuilder.multiSelect.incompleteRows": "每一列的每一欄都必須有值。",

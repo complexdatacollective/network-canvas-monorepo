@@ -165,8 +165,12 @@ const languageGroup = (name = 'Choose a language') =>
 const languageOf = (element: HTMLElement) => element.closest('[lang]');
 
 describe('LanguageChooser', () => {
-  it("lists exactly the protocol's languages, in declaration order, each in its own language and direction", async () => {
-    renderChooser();
+  it("lists exactly the protocol's languages, alphabetically by name, each in its own language and direction", async () => {
+    renderChooser({
+      payload: makePayload({
+        localization: { defaultLocale: 'en', locales: ['ar', 'es', 'en'] },
+      }),
+    });
     const group = await languageGroup();
 
     expect(within(group).getAllByRole('option')).toEqual(

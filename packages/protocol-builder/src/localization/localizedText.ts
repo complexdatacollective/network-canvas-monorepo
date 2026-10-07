@@ -5,6 +5,7 @@ import {
   type LocaleTag,
   type LocalizedString,
   messageText,
+  type ResolvedLocalizedString,
   resolveLocalizedString,
 } from '@codaco/protocol-validation';
 
@@ -14,11 +15,15 @@ export type ProtocolLocalization = Readonly<{
   locales: readonly LocaleTag[];
 }>;
 
-/** How a translation is shown: its text, and the language it is written in. */
+/**
+ * How a translation is shown: its text, the language it is written in, and
+ * how the interview found that language (see `resolveLocalizedString`).
+ */
 export type ResolvedTranslation = Readonly<{
   text: string;
   lang?: LocaleTag;
   dir?: 'ltr' | 'rtl';
+  matchedBy?: ResolvedLocalizedString['matchedBy'];
 }>;
 
 const NO_TRANSLATION: ResolvedTranslation = Object.freeze({ text: '' });
@@ -88,25 +93,28 @@ export function localizedFromText(
 }
 
 /**
- * The declared languages at least one of `values` has no translation for, in
- * declared order. A participant reading in such a language meets fallback text
- * somewhere in what the values make up together.
+ * The declared languages at least one of `values` has no translation for. A
+ * participant reading in such a language meets fallback text somewhere in what
+ * the values make up together. A set, because the languages have no order:
+ * anything listing them sorts them by name.
  */
 export function missingLocalesAcross(
   values: readonly unknown[],
   localization: ProtocolLocalization,
-): LocaleTag[] {
+): ReadonlySet<LocaleTag> {
   const translated = values.map((value) => asLocalizedString(value) ?? {});
-  return localization.locales.filter((locale) =>
-    translated.some((translations) => !Object.hasOwn(translations, locale)),
+  return new Set(
+    localization.locales.filter((locale) =>
+      translated.some((translations) => !Object.hasOwn(translations, locale)),
+    ),
   );
 }
 
-/** The declared languages `value` has no translation for, in declared order. */
+/** The declared languages `value` has no translation for. */
 export function missingLocales(
   value: unknown,
   localization: ProtocolLocalization,
-): LocaleTag[] {
+): ReadonlySet<LocaleTag> {
   return missingLocalesAcross([value], localization);
 }
 
@@ -116,7 +124,9 @@ export function localeDirection(locale: LocaleTag): 'ltr' | 'rtl' {
 
 /**
  * What a participant reading in `locale` would see, falling back exactly as
- * the interview does. Empty when the string has no declared translation.
+ * the interview does for a participant whose browser lists no other protocol
+ * language: the editor cannot know which others a browser lists. Empty when
+ * the string has no declared translation.
  *
  * Without a declaration — a settings section that has not arrived — the first
  * translation the string holds stands in, so a preview is never blank merely
@@ -136,15 +146,14 @@ export function resolveTranslation(
       Object.hasOwn(translations, declared),
     )
   ) {
-    const resolved = resolveLocalizedString(
-      translations,
-      localization,
+    const resolved = resolveLocalizedString(translations, localization, [
       locale ?? localization.defaultLocale,
-    );
+    ]);
     return {
       text: messageText(resolved.text),
       lang: resolved.locale,
       dir: localeDirection(resolved.locale),
+      matchedBy: resolved.matchedBy,
     };
   }
 

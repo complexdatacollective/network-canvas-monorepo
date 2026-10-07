@@ -120,7 +120,8 @@ export const SeveralLanguages: Story = {
 /**
  * A right-to-left language is edited right to left. Arabic is the default
  * language here and has no translation yet, so the note says participants
- * will see the English instead.
+ * will see the English instead unless their browser lists another language
+ * that has it.
  */
 export const RightToLeft: Story = {
   args: {

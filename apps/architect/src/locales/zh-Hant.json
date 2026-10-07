@@ -478,6 +478,7 @@
   "architect.localization.missingTranslations.filterOption": "{language}（{count, number}）",
   "architect.localization.missingTranslations.nodeType": "節點類型",
   "architect.localization.missingTranslations.notTranslated": "尚未翻譯。改為顯示 {fallback} 文字。",
+  "architect.localization.missingTranslations.notTranslatedUnlessBrowserLists": "尚未翻譯。改為顯示 {fallback} 文字，除非參與者的瀏覽器也列出了一種有此文字的語言。",
   "architect.localization.missingTranslations.notTranslatedUnspecified": "尚未翻譯。",
   "architect.localization.missingTranslations.participantView": "參與者看到的內容",
   "architect.localization.missingTranslations.placeTitle": "{place} · {name}",

@@ -1,6 +1,7 @@
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Badge } from '@codaco/fresco-ui/Badge';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import { sortByLanguageName } from '@codaco/protocol-validation';
 
 import {
   languageMessages,
@@ -17,7 +18,8 @@ import { languageChooserMessages } from './languageChooserMessages.ts';
  * Shown rather than edited: the choices are the languages the protocol is
  * written in, which belong to the whole protocol and are set in its settings.
  * A stage that kept a list of its own could offer a language nothing is
- * translated into, or leave out one that is.
+ * translated into, or leave out one that is. Listed alphabetically by the
+ * names shown, as the interview lists them.
  */
 export default function ParticipantLanguagesSection() {
   const intl = useAppIntl();
@@ -39,7 +41,11 @@ export default function ParticipantLanguagesSection() {
             )}
             className="flex flex-col gap-2"
           >
-            {localization.locales.map((locale) => (
+            {sortByLanguageName(
+              localization.locales,
+              languageName,
+              intl.locale,
+            ).map((locale) => (
               <li key={locale} className="flex items-center gap-2">
                 <span lang={locale} dir={localeDirection(locale)}>
                   {languageName(locale)}

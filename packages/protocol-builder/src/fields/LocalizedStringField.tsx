@@ -74,8 +74,14 @@ export function LocalizedStringField({
   const shown = resolveTranslation(value, localization, locale);
   const untranslated =
     localization.locales.length > 1 &&
-    missingLocales(value, localization).includes(locale) &&
+    missingLocales(value, localization).has(locale) &&
     shown.lang !== undefined;
+  // Only a related language is certain: the editor cannot know which other
+  // languages a participant's browser lists.
+  const untranslatedMessage =
+    shown.matchedBy === 'selected'
+      ? languageMessages.notTranslated
+      : languageMessages.notTranslatedUnlessBrowserLists;
 
   return (
     <div className="flex flex-col gap-2">
@@ -94,7 +100,7 @@ export function LocalizedStringField({
             aria-hidden="true"
             className="text-warning mt-0.5 size-4 shrink-0"
           />
-          {intl.formatMessage(languageMessages.notTranslated, {
+          {intl.formatMessage(untranslatedMessage, {
             language: languageName(locale),
             fallback: languageName(shown.lang),
           })}

@@ -21,7 +21,7 @@ export const languageMessages = defineMessages({
     id: 'protocolBuilder.localization.defaultLanguage',
     defaultMessage: 'Default',
     description:
-      'Tag beside the protocol language participants see when their own language has no translation.',
+      'Tag beside the protocol’s default language: the language participants start in when their browser lists none of the protocol’s languages, and the one untranslated text falls back to after the participant’s own languages.',
   },
   missingTranslation: {
     id: 'protocolBuilder.localization.missingTranslation',
@@ -41,7 +41,14 @@ export const languageMessages = defineMessages({
     defaultMessage:
       'Not translated into {language} yet. Participants using {language} will see the {fallback} text.',
     description:
-      'Shown under a text field when the text has no translation in the language being edited. language is the language being edited; fallback is the language participants are shown instead. Both are language names written in their own language.',
+      'Shown under a text field when the text has no translation in the language being edited, and participants are shown it in a closely related language instead, such as Brazilian Portuguese for European Portuguese. language is the language being edited; fallback is the related language participants are shown instead. Both are language names written in their own language.',
+  },
+  notTranslatedUnlessBrowserLists: {
+    id: 'protocolBuilder.localization.notTranslatedUnlessBrowserLists',
+    defaultMessage:
+      'Not translated into {language} yet. Participants using {language} will see the {fallback} text, unless their browser also lists a language that has it.',
+    description:
+      'Shown under a text field when the text has no translation in the language being edited, nor in a closely related language. Participants are shown it in another language their web browser lists, when the text has a translation in one, and otherwise in fallback: the protocol’s default language, or failing that another of its languages. language is the language being edited. Both are language names written in their own language.',
   },
 });
 

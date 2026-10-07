@@ -4,6 +4,7 @@ import { toScriptMatchingTag } from '@codaco/shared-consts';
 
 import {
   canonicalizeLocale,
+  compareLocaleTags,
   type LocaleTag,
   type LocalizationDeclaration,
 } from './localeTag.ts';
@@ -60,6 +61,10 @@ const NO_FIT = 'no fit';
  *
  * Chinese is matched by script (see `toScriptMatchingTag`) unless the exact
  * tag is declared, so zh-TW and zh-Hant-TW both reach a declared zh-Hant.
+ *
+ * Between equally good fits the matcher takes the first it is given, so the
+ * locales are given sorted by tag: the order they are declared in plays no
+ * part.
  */
 export function matchLocalePreference(
   preference: LocaleTag,
@@ -70,9 +75,12 @@ export function matchLocalePreference(
     : toScriptMatchingTag(preference);
   // Best fit can return a tag that is not verbatim in the available list (a
   // requested `he` against a declared `iw` returns `he`).
-  const fitted = match([matchingTag], [...declared], NO_FIT, {
-    algorithm: 'best fit',
-  });
+  const fitted = match(
+    [matchingTag],
+    declared.toSorted(compareLocaleTags),
+    NO_FIT,
+    { algorithm: 'best fit' },
+  );
   return declared.includes(fitted) ? fitted : undefined;
 }
 
@@ -84,6 +92,8 @@ export function matchLocalePreference(
  * An explicit participant or researcher choice must be passed as the only
  * requested locale: a malformed or unmatched explicit value then yields the
  * protocol default instead of a lower-priority browser preference.
+ *
+ * The order the protocol declares its locales in plays no part.
  */
 export function selectProtocolLocale(
   requestedLocales: readonly string[],

@@ -28,7 +28,8 @@ const hasDeclaredTranslation = (
 
 /**
  * The plain text a participant who selected `locale` would see, with the
- * interview's fallback. `locale` defaults to the protocol's default language.
+ * interview's fallback, when their browser lists no other protocol language.
+ * `locale` defaults to the protocol's default language.
  *
  * Unlike the runtime resolver this does not throw on a string with no declared
  * translation: Architect shows drafts that validation has not seen yet, and
@@ -46,11 +47,9 @@ export const resolveLocalizedText = (
   ) {
     return null;
   }
-  const resolved = resolveLocalizedString(
-    value,
-    localization,
+  const resolved = resolveLocalizedString(value, localization, [
     locale ?? localization.defaultLocale,
-  );
+  ]);
   return { text: messageText(resolved.text), locale: resolved.locale };
 };
 

@@ -160,7 +160,10 @@ export type LocalizationCoverage = {
    * string with none is a validation error, not a coverage gap.
    */
   total: number;
-  /** In declaration order. */
+  /**
+   * One per declared language, in declaration order, which means nothing:
+   * lists sort them by the names their reader sees.
+   */
   locales: readonly LocaleCoverage[];
   warnings: readonly ProtocolLocalizationWarning[];
 };
@@ -232,7 +235,10 @@ export type TranslationPlace =
 
 export type MissingTranslationGap = {
   locale: LocaleTag;
-  /** The translation a participant who chose `locale` sees instead. */
+  /**
+   * The translation a participant who chose `locale` sees instead, when their
+   * browser lists no other language that has the string.
+   */
   fallbackLocale: LocaleTag;
 };
 

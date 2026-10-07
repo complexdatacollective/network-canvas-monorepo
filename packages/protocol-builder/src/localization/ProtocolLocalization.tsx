@@ -85,7 +85,8 @@ export function useProtocolLocalization(): ProtocolLocalization | undefined {
 
 /**
  * Resolves protocol copy for a preview: the editing language's translation, or
- * the one a participant in that language would be shown instead.
+ * the one a participant in that language would be shown instead when their
+ * browser lists no other protocol language.
  */
 export function useLocalizedText(): (value: unknown) => ResolvedTranslation {
   const { localization, locale } = useContext(EditingLanguageContext);

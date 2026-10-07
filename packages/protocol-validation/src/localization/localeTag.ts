@@ -20,6 +20,17 @@ export function canonicalizeLocale(value: string): LocaleTag | undefined {
   }
 }
 
+/**
+ * Orders tags by their characters, which no runtime's locale data can change.
+ * A protocol's languages have no order of their own, so wherever one has to be
+ * picked from several, or their order could leak into a result, it is this.
+ */
+export function compareLocaleTags(a: LocaleTag, b: LocaleTag): number {
+  if (a < b) return -1;
+  if (a > b) return 1;
+  return 0;
+}
+
 export function isCanonicalLocale(value: string): boolean {
   return canonicalizeLocale(value) === value;
 }

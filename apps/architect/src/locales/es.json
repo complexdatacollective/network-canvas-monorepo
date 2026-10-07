@@ -478,6 +478,7 @@
   "architect.localization.missingTranslations.filterOption": "{language} ({count, number})",
   "architect.localization.missingTranslations.nodeType": "Tipo de nodo",
   "architect.localization.missingTranslations.notTranslated": "Aún sin traducir. Se muestra en {fallback}.",
+  "architect.localization.missingTranslations.notTranslatedUnlessBrowserLists": "Aún sin traducir. Se muestra en {fallback}, salvo que el navegador del participante también indique un idioma en el que el texto esté disponible.",
   "architect.localization.missingTranslations.notTranslatedUnspecified": "Aún sin traducir.",
   "architect.localization.missingTranslations.participantView": "Lo que ven los participantes",
   "architect.localization.missingTranslations.placeTitle": "{place} · {name}",

@@ -1913,7 +1913,11 @@
   },
   "architect.localization.missingTranslations.notTranslated": {
     "defaultMessage": "Not translated yet. Shown in {fallback}.",
-    "description": "Note under the text participants see in a language the text has no translation for. fallback is the language of the text they see instead."
+    "description": "Note under the text participants see in a language the text has no translation for, when they are shown it in a closely related language instead, such as Brazilian Portuguese for European Portuguese. fallback is the language of the text they see instead."
+  },
+  "architect.localization.missingTranslations.notTranslatedUnlessBrowserLists": {
+    "defaultMessage": "Not translated yet. Shown in {fallback}, unless the participant’s browser also lists a language that has it.",
+    "description": "Note under the text participants see in a language the text has no translation for, nor a closely related one. Participants are shown it in another language their web browser lists, when the text has a translation in one, and otherwise in fallback: the protocol’s default language, or failing that another of its languages."
   },
   "architect.localization.missingTranslations.notTranslatedUnspecified": {
     "defaultMessage": "Not translated yet.",

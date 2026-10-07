@@ -413,9 +413,23 @@ describe('analyzeProtocolLocalization', () => {
       expect.objectContaining({ locale: 'es-MX', fallbackLocale: 'es' }),
     ]);
     expect(warnings[0]?.fallbackLocale).toBe(
-      resolveLocalizedString(label, protocol.localization, 'es-MX').locale,
+      resolveLocalizedString(label, protocol.localization, ['es-MX']).locale,
     );
   });
+
+  // Without the default language's text, the fallback is the first language
+  // by tag that has it, whatever order the languages are declared in.
+  it.each([{ locales: ['en', 'fr', 'es'] }, { locales: ['fr', 'es', 'en'] }])(
+    'reports a fallback that does not depend on declaration order ($locales)',
+    ({ locales }) => {
+      const protocol = completeProtocol();
+      protocol.localization = { defaultLocale: 'en', locales };
+      setAt(protocol, stage(0, 'label'), { es: 'Idioma', fr: 'Langue' });
+      expect(warningsAt(protocol, stage(0, 'label'))).toEqual([
+        expect.objectContaining({ locale: 'en', fallbackLocale: 'es' }),
+      ]);
+    },
+  );
 
   it('reports nothing for a fully translated string', () => {
     const protocol = bilingual();

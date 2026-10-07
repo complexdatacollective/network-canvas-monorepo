@@ -13,8 +13,9 @@ export type ProtocolLocalizationWarning = Readonly<{
 
 /**
  * Every declared language each participant-facing string lacks, with the
- * language a participant who selected it sees instead. Missing translations
- * never make a protocol invalid, so this is separate from `validateProtocol`.
+ * language a participant who selected it sees instead when their browser lists
+ * no other language that has the string. Missing translations never make a
+ * protocol invalid, so this is separate from `validateProtocol`.
  *
  * `fallbackLocale` comes from the runtime resolver itself, so the coverage an
  * author is shown is exactly what the interview renders.
@@ -35,7 +36,7 @@ export function analyzeProtocolLocalization(
       path: hit.path,
       locale,
       isDefaultLocale: locale === localization.defaultLocale,
-      fallbackLocale: resolveLocalizedString(hit.value, localization, locale)
+      fallbackLocale: resolveLocalizedString(hit.value, localization, [locale])
         .locale,
     }));
   });

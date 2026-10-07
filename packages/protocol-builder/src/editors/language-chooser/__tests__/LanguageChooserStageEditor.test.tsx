@@ -40,9 +40,10 @@ vi.mock('../../../fields/RichTextField.tsx', () => ({
 /** The all-interfaces fixture is written in this one language. */
 const FIXTURE_LANGUAGE = 'en-US';
 
+// Declared out of alphabetical order, which the list does not follow.
 const THREE_LANGUAGES: ProtocolLocalization = {
   defaultLocale: FIXTURE_LANGUAGE,
-  locales: [FIXTURE_LANGUAGE, 'fr', 'ar'],
+  locales: ['ar', FIXTURE_LANGUAGE, 'fr'],
 };
 
 const ENGLISH_AND_FRENCH: ProtocolLocalization = {
@@ -59,7 +60,7 @@ const openStage = (fields: SectionDoc = {}) => ({
 });
 
 describe('the editor for the stage where a participant chooses a language', () => {
-  it('lists the protocol languages by their own names, without letting the stage change them', () => {
+  it('lists the protocol languages alphabetically by their own names, without letting the stage change them', () => {
     renderStageEditor({ ...openStage(), localization: THREE_LANGUAGES });
 
     const list = screen.getByRole('list', {

@@ -41,8 +41,10 @@ type DuplicateDiseaseLabel = Readonly<{
  * Each label is resolved with the runtime's own fallback before comparing, so
  * a collision that only appears through fallback (one row translated, another
  * falling back to the same default text) is caught in the locale it affects.
- * A label with no declared translation cannot be resolved and is skipped; the
- * protocol refinement already rejects it.
+ * Labels are resolved as for a participant whose browser lists no other
+ * protocol language, so a collision reached only through such a language is
+ * not caught. A label with no declared translation cannot be resolved and is
+ * skipped; the protocol refinement already rejects it.
  */
 export const findDuplicateDiseaseLabels = (
   diseases: readonly { label: LocalizedString }[],
@@ -58,7 +60,7 @@ export const findDuplicateDiseaseLabels = (
         return;
       }
       const text = messageText(
-        resolveLocalizedString(label, localization, locale).text,
+        resolveLocalizedString(label, localization, [locale]).text,
       );
       const key = diseaseLabelKey(text);
       if (seen.has(key)) duplicates.push({ index, locale, text });

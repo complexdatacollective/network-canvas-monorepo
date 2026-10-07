@@ -478,6 +478,7 @@
   "architect.localization.missingTranslations.filterOption": "{language} ({count, number})",
   "architect.localization.missingTranslations.nodeType": "Knooppunttype",
   "architect.localization.missingTranslations.notTranslated": "Nog niet vertaald. Wordt getoond in het {fallback}.",
+  "architect.localization.missingTranslations.notTranslatedUnlessBrowserLists": "Nog niet vertaald. Wordt getoond in het {fallback}, tenzij de browser van de deelnemer ook een taal opgeeft waarin de tekst beschikbaar is.",
   "architect.localization.missingTranslations.notTranslatedUnspecified": "Nog niet vertaald.",
   "architect.localization.missingTranslations.participantView": "Wat deelnemers zien",
   "architect.localization.missingTranslations.placeTitle": "{place} · {name}",

@@ -75,11 +75,12 @@ export type SessionSnapshot = {
  * What a host passes to start or resume an interview.
  *
  * `localeOptions` is presentation metadata for every locale the protocol
- * declares, in declaration order (`getLocaleMetadata` from
- * `@codaco/protocol-validation`). The host derives it rather than the engine so
- * a server-rendered host can serialise the exact labels it rendered with:
- * display names vary between JavaScript runtimes, and deriving them again on
- * the client would break hydration. It is never persisted or synchronised.
+ * declares, each once and in any order (`getLocaleMetadata` from
+ * `@codaco/protocol-validation`); the engine lists them alphabetically. The
+ * host derives it rather than the engine so a server-rendered host can
+ * serialise the exact labels it rendered with: display names vary between
+ * JavaScript runtimes, and deriving them again on the client would break
+ * hydration. It is never persisted or synchronised.
  */
 export type SessionPayload = SessionSnapshot & {
   localeOptions: readonly LocaleMetadata[];
