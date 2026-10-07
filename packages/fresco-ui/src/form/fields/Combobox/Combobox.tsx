@@ -13,6 +13,7 @@ import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 
 import Button from '../../../Button';
+import { useComboboxTriggerEscape } from '../../../hooks/useComboboxTriggerEscape';
 import Surface from '../../../layout/Surface';
 import { usePortalContainer } from '../../../PortalContainer';
 import { ScrollArea } from '../../../ScrollArea';
@@ -103,6 +104,10 @@ type ComboboxFieldProps = FieldValueProps<(string | number)[]> &
     | 'defaultValue'
     | 'name'
     | 'disabled'
+    // The field owns whether its popup is open (see
+    // `useComboboxTriggerEscape`), so neither would be honoured.
+    | 'open'
+    | 'onOpenChange'
   > &
   VariantProps<typeof comboboxTriggerVariants>;
 
@@ -151,6 +156,7 @@ function ComboboxField(props: ComboboxFieldProps) {
     'aria-required': ariaRequired,
     'aria-disabled': ariaDisabled,
     'aria-readonly': ariaReadOnly,
+    defaultOpen,
     ...rest
   } = props;
 
@@ -161,6 +167,13 @@ function ComboboxField(props: ComboboxFieldProps) {
   const [inputValue, setInputValue] = useState('');
 
   const portalContainer = usePortalContainer();
+
+  const { open, onOpenChange, onTriggerKeyDown } = useComboboxTriggerEscape({
+    defaultOpen,
+    onOpenChange: (nextOpen) => {
+      if (!nextOpen) setInputValue('');
+    },
+  });
 
   const handleValueChange = (
     newValue: unknown[] | null,
@@ -239,13 +252,13 @@ function ComboboxField(props: ComboboxFieldProps) {
       onValueChange={handleValueChange}
       inputValue={inputValue}
       onInputValueChange={handleInputValueChange}
-      onOpenChange={(open) => {
-        if (!open) setInputValue('');
-      }}
+      open={open}
+      onOpenChange={onOpenChange}
       disabled={Boolean(disabled) || Boolean(readOnly)}
       name={name}
     >
       <Combobox.Trigger
+        onKeyDown={onTriggerKeyDown}
         onBlur={onBlur}
         onFocus={onFocus}
         aria-label={ariaLabel}
