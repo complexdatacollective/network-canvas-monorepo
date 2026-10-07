@@ -14,6 +14,7 @@ import {
 import type { NcNetwork, NcNode } from '@codaco/shared-consts';
 
 import { runtimeMessages } from '../i18n/runtimeMessages';
+import { readEncryptedAttribute } from '../interfaces/Anonymisation/decryptionScope';
 import {
   decryptNodes,
   omitEncryptedValues,
@@ -30,25 +31,37 @@ const namesAnotherVariable = (rule: string) =>
 /**
  * Whether validating this variable compares with values stored encrypted:
  * `unique` reads every other person's value for it, and every rule that names
- * another variable falls back to that variable's stored value.
+ * another variable falls back to that variable's stored value. Each stored
+ * value is read as its node records it, so a value stored encrypted under a
+ * variable the codebook no longer encrypts counts, and one the codebook
+ * encrypts but that was stored in the clear does not.
  */
 function comparesEncryptedValues(
   variables: Record<string, Variable>,
   variableId: string,
+  nodes: readonly NcNode[],
 ): boolean {
   const variable = variables[variableId];
   if (!variable || !('validation' in variable) || !variable.validation) {
     return false;
   }
+  const storedEncrypted = (target: string) =>
+    nodes.some(
+      (node) => readEncryptedAttribute(node, target, variables) !== undefined,
+    );
   const { validation } = variable;
-  if ('unique' in validation && validation.unique && variable.encrypted) {
+  if (
+    'unique' in validation &&
+    validation.unique &&
+    storedEncrypted(variableId)
+  ) {
     return true;
   }
   return Object.entries(validation).some(
     ([rule, target]) =>
       namesAnotherVariable(rule) &&
       typeof target === 'string' &&
-      !!variables[target]?.encrypted,
+      storedEncrypted(target),
   );
 }
 
@@ -72,14 +85,17 @@ export function useValidationNetwork(
   subject: StageSubject | null,
   variableIds: readonly string[],
 ): Pick<ValidationContext, 'network' | 'resolveNetwork'> {
-  // Only node variables can be encrypted.
+  // Only node variables can be encrypted, and a rule compares with nodes of
+  // the subject's own type.
+  const nodeType = subject?.entity === 'node' ? subject.type : undefined;
   const variables =
-    subject?.entity === 'node'
-      ? (codebook.node?.[subject.type]?.variables ?? {})
-      : {};
-  const comparesEncrypted = variableIds.some((variableId) =>
-    comparesEncryptedValues(variables, variableId),
-  );
+    nodeType === undefined ? {} : (codebook.node?.[nodeType]?.variables ?? {});
+  const comparesEncrypted = useMemo(() => {
+    const nodesOfType = network.nodes.filter((node) => node.type === nodeType);
+    return variableIds.some((variableId) =>
+      comparesEncryptedValues(variables, variableId, nodesOfType),
+    );
+  }, [network.nodes, nodeType, variables, variableIds]);
 
   const decrypted = useDecryptedNodes(
     comparesEncrypted ? network.nodes : NO_NODES,

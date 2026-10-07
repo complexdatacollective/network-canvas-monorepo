@@ -117,19 +117,32 @@ const variables: Record<string, Variable> = {
   },
 };
 
-const codebook: Codebook = {
+// The variables as a protocol re-imported without its encryption declares
+// them: the name the interview stored encrypted is no longer marked.
+const unmarkedVariables: Record<string, Variable> = {
+  ...variables,
+  [NAME_VAR]: {
+    name: 'name',
+    label: 'name',
+    type: 'text',
+    component: 'Text',
+    validation: { unique: true },
+  },
+};
+
+const codebookWith = (nodeVariables: Record<string, Variable>): Codebook => ({
   node: {
     [NODE_TYPE]: {
       name: 'Person',
       label: { en: 'Person' },
       color: 'node-color-seq-1',
       shape: { default: 'circle' },
-      variables,
+      variables: nodeVariables,
     },
   },
   edge: {},
   ego: { variables: {} },
-};
+});
 
 function fieldFor(variable: string): FormField[] {
   return [
@@ -160,7 +173,11 @@ async function encryptedNode(boundTo = NODE_ID): Promise<NcNode> {
   };
 }
 
-async function makeStore(nodes: NcNode[], unlocked: boolean) {
+async function makeStore(
+  nodes: NcNode[],
+  unlocked: boolean,
+  nodeVariables = variables,
+) {
   const sessionState: SessionState = {
     id: 'session',
     startTime: '2026-01-01T00:00:00.000Z',
@@ -188,7 +205,7 @@ async function makeStore(nodes: NcNode[], unlocked: boolean) {
     name: 'Encrypted form protocol',
     schemaVersion: 9,
     localization: { defaultLocale: 'en', locales: ['en'] },
-    codebook,
+    codebook: codebookWith(nodeVariables),
     stages: [
       {
         id: 'stage-1',
@@ -323,6 +340,48 @@ describe('useProtocolForm validating against encrypted values', () => {
     'fails %s, asking for the passphrase, while the key is not in force, never using its ciphertext',
     async (_rule, variable, currentEntityId) => {
       const store = await makeStore([await encryptedNode()], false);
+      const { result } = renderForm(store, variable, currentEntityId);
+
+      expect(
+        validatedNode(result.current.fieldComponents)?.[
+          entityAttributesProperty
+        ],
+      ).toEqual({});
+      await expect(
+        resolveValidatedNetwork(result.current.fieldComponents),
+      ).rejects.toThrow(
+        createMessageError(runtimeMessages.protectedAnswersNotChecked),
+      );
+      expect(store.getState().ui.showPassphrasePrompter).toBe(true);
+    },
+  );
+
+  it.each(comparisons)(
+    'compares %s with the plaintext of a value its record says is encrypted, though the codebook no longer marks it',
+    async (_rule, variable, currentEntityId) => {
+      const store = await makeStore(
+        [await encryptedNode()],
+        true,
+        unmarkedVariables,
+      );
+      const { result } = renderForm(store, variable, currentEntityId);
+
+      await waitFor(() => {
+        expect(validatedValue(result.current.fieldComponents, NAME_VAR)).toBe(
+          'Alice',
+        );
+      });
+    },
+  );
+
+  it.each(comparisons)(
+    'fails %s, asking for the passphrase, while the key is not in force, though the codebook no longer marks the value encrypted',
+    async (_rule, variable, currentEntityId) => {
+      const store = await makeStore(
+        [await encryptedNode()],
+        false,
+        unmarkedVariables,
+      );
       const { result } = renderForm(store, variable, currentEntityId);
 
       expect(
