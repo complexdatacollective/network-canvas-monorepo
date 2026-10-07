@@ -34,6 +34,7 @@ import { requireProtocol } from '../rpc/team-scope.ts';
 import {
   contentHash,
   ObjectStore,
+  removeStaged,
   type StagingKey,
 } from '../storage/object-store.ts';
 import { sessionOwner, type ProtocolBuilderSession } from './host.ts';
@@ -42,10 +43,9 @@ import {
   findStagedByRequest,
   insertStaged,
   mintStagingKey,
-  releasableRows,
+  releaseStaged,
   stagedRows,
   type StagedInsert,
-  type StagedRow,
   type StagingScope,
 } from './staging-store.ts';
 
@@ -61,18 +61,16 @@ export type ResourceOutcome<TData> =
   | { status: 'failed'; failure: Failure };
 
 /** A discard has nothing to answer with, so its success is the status alone. */
-export type DiscardOutcome =
-  | { status: 'ok' }
-  | { status: 'failed'; failure: Failure };
+type DiscardOutcome = { status: 'ok' } | { status: 'failed'; failure: Failure };
 
 /** Manifest entries a promotion writes, and the descriptors it answers with. */
-export type PromotionPlan = {
+type PromotionPlan = {
   entries: Record<string, unknown>;
   promoted: Descriptor[];
 };
 
 /** One edit of one tab: what every staging call is confined to. */
-export type StagingEdit = {
+type StagingEdit = {
   readonly session: ProtocolBuilderSession;
   readonly editId: string;
 };
@@ -83,6 +81,7 @@ const SHA256_HEX = /^[0-9a-f]{64}$/;
 const FALLBACK_MEDIA_TYPE = 'application/octet-stream';
 const UNREACHABLE = 'the object store could not be reached';
 const NO_STORE = 'this deployment has no object storage configured';
+const NOT_RECORDED = 'the staged resource could not be recorded';
 const NO_BYTES = 'this host holds no bytes for that resource';
 const NOT_STAGED = 'no such staged resource';
 
@@ -197,8 +196,6 @@ const scopeOf = ({ session, editId }: StagingEdit): StagingScope => ({
   editId,
 });
 
-type RowKey = { editId: string; resourceId: string };
-
 export class StagedImports extends Context.Service<
   StagedImports,
   {
@@ -301,27 +298,39 @@ export class StagedImports extends Context.Service<
        * row never outlives the only record of the object it names. True when
        * every row went.
        */
-      const removeRows = Effect.fnUntraced(function* (
-        rows: ReadonlyArray<StagedRow & RowKey>,
-        deleteRows: (
-          removable: ReadonlyArray<RowKey>,
-        ) => Effect.Effect<number, StagingError>,
+      const discardRows = Effect.fnUntraced(function* (
+        edit: StagingEdit,
+        rows: ReadonlyArray<{
+          resourceId: string;
+          objectKey: StagingKey | undefined;
+        }>,
       ) {
-        const removable: RowKey[] = [];
+        const removable: string[] = [];
         for (const row of rows) {
-          if (row.objectKey !== undefined && store.configured) {
-            const removed = yield* Effect.exit(
-              store.deleteStaged(row.objectKey),
-            );
-            if (Exit.isFailure(removed)) continue;
+          if (
+            row.objectKey !== undefined &&
+            store.configured &&
+            !(yield* removeStaged(store, row.objectKey, 'discard'))
+          ) {
+            continue;
           }
-          removable.push({ editId: row.editId, resourceId: row.resourceId });
+          removable.push(row.resourceId);
         }
-        yield* deleteRows(removable);
+        yield* withDatabase(
+          noAuditTransaction(
+            'protocolBuilder.discardStaged',
+            edit.session.access,
+            deleteStagedRows(scopeOf(edit), removable),
+          ),
+        );
         return removable.length === rows.length;
       });
 
-      /** The descriptor holding the request id: ours, or a racing twin's. */
+      /**
+       * The descriptor holding the request id: ours, or a racing twin's.
+       * Undefined when a twin's row was gone again by the time it was read,
+       * twice over.
+       */
       const insertOrFind = (
         { session, editId }: StagingEdit,
         requestId: string,
@@ -334,26 +343,49 @@ export class StagedImports extends Context.Service<
             Effect.gen(function* () {
               yield* requireProtocol(session.access, session.protocolId);
               const scope = scopeOf({ session, editId });
-              const inserted = yield* insertStaged(
-                session.cipher,
-                scope,
-                requestId,
-                input,
-              );
-              if (inserted) return input.descriptor;
-              const winner = yield* findStagedByRequest(
-                scope,
-                input.kind,
-                requestId,
-              );
-              if (winner === undefined) {
-                return yield* Effect.die(
-                  new Error('a staging conflict left no row behind'),
+              for (let attempt = 0; attempt < 2; attempt += 1) {
+                const inserted = yield* insertStaged(
+                  session.cipher,
+                  scope,
+                  requestId,
+                  input,
                 );
+                if (inserted) return input.descriptor;
+                // The conflicting row can be discarded or released between
+                // the insert and this read; the insert is then asked again.
+                const winner = yield* findStagedByRequest(
+                  scope,
+                  input.kind,
+                  requestId,
+                );
+                if (winner !== undefined) return winner.descriptor;
               }
-              return winner.descriptor;
+              return undefined;
             }).pipe(provideCaller(session.principal)),
           ),
+        );
+
+      /**
+       * Whether a row names the object being staged. Its insert may have
+       * committed though its answer never came, so after a failure or an
+       * interruption there the row is looked for. When that read fails too
+       * the object is kept: deleting one a row names would lose the bytes,
+       * and one no row names is the orphan sweep's.
+       */
+      const namedByRow = (
+        edit: StagingEdit,
+        requestId: string,
+        objectKey: StagingKey,
+      ) =>
+        withDatabase(
+          noAuditTransaction(
+            'protocolBuilder.readStaged',
+            edit.session.access,
+            findStagedByRequest(scopeOf(edit), 'content', requestId),
+          ),
+        ).pipe(
+          Effect.map((row) => row?.objectKey === objectKey),
+          Effect.orElseSucceed(() => true),
         );
 
       const stageContent = Effect.fnUntraced(function* (
@@ -364,31 +396,49 @@ export class StagedImports extends Context.Service<
         ResourceOutcome<{ descriptor: Descriptor }>,
         StagingError
       > {
-        if (!store.configured) return failure('unavailable', NO_STORE);
+        if (!store.configured) return failure('unsupported-kind', NO_STORE);
         const objectKey = mintStagingKey(edit.session.access.teamId);
-        const put = yield* Effect.exit(
-          store.putStaged(objectKey, request.bytes, request.contentType),
-        );
-        if (Exit.isFailure(put)) return failure('unavailable', UNREACHABLE);
         const descriptor = contentDescriptor(randomUUID(), request);
-        const inserted = yield* Effect.exit(
-          insertOrFind(edit, requestId, {
+        // How far the stage got, which decides what its exit does with the
+        // object: an interrupted stage must not leave one behind either.
+        let step: 'put' | 'insert' | 'named' | 'unnamed' = 'put';
+        const settle = Effect.gen(function* () {
+          if (step === 'named') return;
+          if (
+            step === 'insert' &&
+            (yield* namedByRow(edit, requestId, objectKey))
+          ) {
+            return;
+          }
+          yield* removeStaged(store, objectKey, 'stage');
+        });
+        return yield* Effect.gen(function* () {
+          const put = yield* Effect.exit(
+            store.putStaged(objectKey, request.bytes, request.contentType),
+          );
+          if (Exit.isFailure(put)) {
+            step = 'unnamed';
+            return failure('unavailable', UNREACHABLE);
+          }
+          step = 'insert';
+          const winner = yield* insertOrFind(edit, requestId, {
             kind: 'content',
             descriptor,
             objectKey,
             contentHash: contentHash(request.bytes),
             byteLength: request.bytes.byteLength,
             contentType: request.contentType,
-          }),
-        );
-        // No row names the object unless this insert was the one that won.
-        if (Exit.isFailure(inserted) || inserted.value.id !== descriptor.id) {
-          yield* Effect.ignore(store.deleteStaged(objectKey));
-        }
-        if (Exit.isFailure(inserted)) {
-          return yield* Effect.failCause(inserted.cause);
-        }
-        return { status: 'ok', data: { descriptor: inserted.value } };
+          });
+          step = winner?.id === descriptor.id ? 'named' : 'unnamed';
+          if (winner === undefined) {
+            return failure('unavailable', NOT_RECORDED);
+          }
+          const outcome: ResourceOutcome<{ descriptor: Descriptor }> = {
+            status: 'ok',
+            data: { descriptor: winner },
+          };
+          return outcome;
+        }).pipe(Effect.onExit(() => settle));
       });
 
       return StagedImports.of({
@@ -423,6 +473,9 @@ export class StagedImports extends Context.Service<
             },
             value: request.value,
           });
+          if (descriptor === undefined) {
+            return failure('unavailable', NOT_RECORDED);
+          }
           return { status: 'ok', data: { descriptor } };
         }),
 
@@ -455,7 +508,7 @@ export class StagedImports extends Context.Service<
               continue;
             }
             if (!store.configured) {
-              return failure('unavailable', NO_STORE, resourceId);
+              return failure('unsupported-kind', NO_STORE, resourceId);
             }
             const { objectKey, contentHash: hash } = row;
             const filename = row.descriptor.source;
@@ -515,17 +568,7 @@ export class StagedImports extends Context.Service<
           if (resourceId !== undefined && rows.length === 0) {
             return failure('not-found', NOT_STAGED, resourceId);
           }
-          const complete = yield* removeRows(
-            rows.map((row) => ({ ...row, editId: edit.editId })),
-            (removable) =>
-              withDatabase(
-                noAuditTransaction(
-                  'protocolBuilder.discardStaged',
-                  session.access,
-                  deleteStagedRows(scope, removable),
-                ),
-              ),
-          );
+          const complete = yield* discardRows(edit, rows);
           return complete
             ? { status: 'ok' }
             : failure('unavailable', UNREACHABLE, resourceId);
@@ -552,7 +595,7 @@ export class StagedImports extends Context.Service<
             return failure('not-found', NO_BYTES, resourceId);
           }
           if (!store.configured) {
-            return failure('unavailable', NO_STORE, resourceId);
+            return failure('unsupported-kind', NO_STORE, resourceId);
           }
           const bytes = yield* Effect.exit(store.getStaged(row.objectKey));
           if (Exit.isFailure(bytes)) {
@@ -573,26 +616,22 @@ export class StagedImports extends Context.Service<
 
         releaseOwner: (session) =>
           Effect.gen(function* () {
-            const scope = {
-              teamId: session.access.teamId,
-              draftId: session.draftId,
-              owner: sessionOwner(session),
-            };
-            const rows = yield* withDatabase(
+            const keys = yield* withDatabase(
               noAuditTransaction(
                 'protocolBuilder.releaseStaged',
                 session.access,
-                releasableRows(scope),
+                releaseStaged({
+                  teamId: session.access.teamId,
+                  draftId: session.draftId,
+                  owner: sessionOwner(session),
+                }),
               ),
             );
-            yield* removeRows(rows, (removable) =>
-              withDatabase(
-                noAuditTransaction(
-                  'protocolBuilder.releaseStaged',
-                  session.access,
-                  deleteStagedRows(scope, removable),
-                ),
-              ),
+            if (!store.configured) return;
+            yield* Effect.forEach(
+              keys,
+              (key) => removeStaged(store, key, 'release'),
+              { discard: true },
             );
           }).pipe(
             Effect.catchCause((cause) =>
@@ -604,21 +643,9 @@ export class StagedImports extends Context.Service<
           ),
 
         removePromoted: (keys) =>
-          Effect.forEach(
-            keys,
-            (key) =>
-              store
-                .deleteStaged(key)
-                .pipe(
-                  Effect.catchCause((cause) =>
-                    Effect.logWarning(
-                      'Deleting the staged object of a promoted resource failed',
-                      cause,
-                    ),
-                  ),
-                ),
-            { discard: true },
-          ),
+          Effect.forEach(keys, (key) => removeStaged(store, key, 'promote'), {
+            discard: true,
+          }),
       });
     }),
   );

@@ -8,7 +8,7 @@
 // sealed ciphertext, into its message.
 import { randomUUID } from 'node:crypto';
 
-import { and, asc, eq, gt, inArray, notExists, or, sql } from 'drizzle-orm';
+import { and, asc, eq, gt, inArray, notExists, sql } from 'drizzle-orm';
 import { Effect, Option } from 'effect';
 
 import type { ResourceDescriptor } from '@codaco/protocol-builder-core/contract/schemas';
@@ -227,21 +227,32 @@ export const stagedRows = Effect.fn('protocolBuilder.stagedRows')(function* (
   return rows.map((row) => asStagedRow(scope, row));
 }, sqlErrorsOnly);
 
+const objectKeysOf = (rows: ReadonlyArray<{ objectKey: string | null }>) =>
+  rows.flatMap((row) =>
+    row.objectKey === null
+      ? []
+      : Option.toArray(StagingKey.option(row.objectKey)),
+  );
+
 /**
- * Every row the owner staged on the draft, in any edit, unless one of its
- * sockets is live again on some replica.
+ * Deletes every row the owner staged on the draft, in any edit, unless one of
+ * its sockets is live again on some replica, and answers the object keys they
+ * named for the caller to delete once this has committed.
  */
-export const releasableRows = Effect.fn('protocolBuilder.releasableRows')(
+export const releaseStaged = Effect.fn('protocolBuilder.releaseStaged')(
   function* (scope: Omit<StagingScope, 'editId'>) {
     const { tx } = yield* Transaction;
-    const rows = yield* tx
-      .select({ ...COLUMNS, editId: staged.editId })
+    const ofOwner = and(
+      eq(staged.teamId, scope.teamId),
+      eq(staged.draftId, scope.draftId),
+      eq(staged.owner, scope.owner),
+    );
+    const held = tx
+      .select({ editId: staged.editId, resourceId: staged.resourceId })
       .from(staged)
       .where(
         and(
-          eq(staged.teamId, scope.teamId),
-          eq(staged.draftId, scope.draftId),
-          eq(staged.owner, scope.owner),
+          ofOwner,
           notExists(
             tx
               .select({ connectionId: connections.connectionId })
@@ -257,43 +268,28 @@ export const releasableRows = Effect.fn('protocolBuilder.releasableRows')(
               ),
           ),
         ),
-      );
-    return rows.map((row) => ({
-      editId: row.editId,
-      ...asStagedRow(scope, row),
-    }));
+      )
+      .orderBy(asc(staged.editId), asc(staged.resourceId))
+      .for('update');
+    const deleted = yield* tx
+      .delete(staged)
+      .where(
+        and(ofOwner, sql`(${staged.editId}, ${staged.resourceId}) IN ${held}`),
+      )
+      .returning({ objectKey: staged.objectKey });
+    return objectKeysOf(deleted);
   },
   sqlErrorsOnly,
 );
 
-/**
- * Deletes the named rows, all in one edit or each with its own. The rows a
- * promotion consumes are deleted by `consumeStaged` instead.
- */
+/** The rows a promotion consumes are deleted by `consumeStaged` instead. */
 export const deleteStagedRows = Effect.fn('protocolBuilder.deleteStagedRows')(
-  function* (
-    scope: Omit<StagingScope, 'editId'>,
-    rows: ReadonlyArray<{ editId: string; resourceId: string }>,
-  ) {
-    if (rows.length === 0) return 0;
+  function* (scope: StagingScope, resourceIds: ReadonlyArray<string>) {
+    if (resourceIds.length === 0) return 0;
     const { tx } = yield* Transaction;
     const deleted = yield* tx
       .delete(staged)
-      .where(
-        and(
-          eq(staged.teamId, scope.teamId),
-          eq(staged.draftId, scope.draftId),
-          eq(staged.owner, scope.owner),
-          or(
-            ...rows.map((row) =>
-              and(
-                eq(staged.editId, row.editId),
-                eq(staged.resourceId, row.resourceId),
-              ),
-            ),
-          ),
-        ),
-      )
+      .where(and(inEdit(scope), inArray(staged.resourceId, [...resourceIds])))
       .returning({ resourceId: staged.resourceId });
     return deleted.length;
   },
@@ -336,11 +332,7 @@ export const consumeStaged = Effect.fn('protocolBuilder.consumeStaged')(
       .returning({ objectKey: staged.objectKey });
     const consumed: Consumed = {
       status: 'consumed',
-      objectKeys: deleted.flatMap((row) =>
-        row.objectKey === null
-          ? []
-          : Option.toArray(StagingKey.option(row.objectKey)),
-      ),
+      objectKeys: objectKeysOf(deleted),
     };
     return consumed;
   },

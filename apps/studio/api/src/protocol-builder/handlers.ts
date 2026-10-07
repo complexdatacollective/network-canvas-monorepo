@@ -148,14 +148,6 @@ export const ProtocolBuilderHandlers: Layer.Layer<
     const staged = yield* StagedImports;
     const scope = yield* Effect.scope;
 
-    const publish = (
-      session: ProtocolBuilderSession,
-      entries: ReadonlyArray<LoggedProtocolEvent>,
-    ) => (entries.length > 0 ? events.publish(session, entries) : Effect.void);
-
-    const publishPresence = (session: ProtocolBuilderSession) =>
-      events.presenceChanged(session);
-
     /**
      * Records the socket's mode from what its tab holds, then, when `announce`,
      * tells watchers. Forked once the call's events are published, so a retry
@@ -180,9 +172,9 @@ export const ProtocolBuilderHandlers: Layer.Layer<
               ),
             );
           }
-          if (announce) yield* publishPresence(session);
+          if (announce) yield* events.presenceChanged(session);
         });
-        yield* Effect.forkIn(Effect.interruptible(update), scope);
+        yield* Effect.forkIn(update, scope);
       });
 
     const assetsDocument = (session: ProtocolBuilderSession) =>
@@ -196,15 +188,17 @@ export const ProtocolBuilderHandlers: Layer.Layer<
 
     /**
      * Runs only once the tab is known to have no live socket on any replica:
-     * its staging goes with its leases, and colleagues see both.
+     * colleagues see its locks go at once, and its staging follows on its own
+     * fiber, outside the release's uninterruptible region, so a slow object
+     * store holds back neither.
      */
     const onReleased =
       (session: ProtocolBuilderSession) =>
       (entries: ReadonlyArray<LoggedProtocolEvent>) =>
         Effect.gen(function* () {
-          yield* staged.releaseOwner(session);
-          yield* publish(session, entries);
-          yield* publishPresence(session);
+          yield* events.publish(session, entries);
+          yield* events.presenceChanged(session);
+          yield* Effect.forkIn(staged.releaseOwner(session), scope);
         });
 
     const inspectWithCommittedKey = (
@@ -258,7 +252,7 @@ export const ProtocolBuilderHandlers: Layer.Layer<
             if (result.outcome === undefined) {
               return yield* new SectionNotFound({ sectionId });
             }
-            yield* publish(session, result.events);
+            yield* events.publish(session, result.events);
             if (result.outcome.lock === 'held') yield* showMode(session, true);
             return result.outcome;
           }),
@@ -276,8 +270,9 @@ export const ProtocolBuilderHandlers: Layer.Layer<
               protocolId,
               releaseLock(session, sectionId),
             );
-            yield* publish(session, result.events);
-            yield* showMode(session, result.events.length > 0);
+            if (result.events.length === 0) return;
+            yield* events.publish(session, result.events);
+            yield* showMode(session, true);
           }),
         );
       }),
@@ -330,13 +325,13 @@ export const ProtocolBuilderHandlers: Layer.Layer<
             );
             // Registered before the connection, so it runs after the
             // connection's row has been expired and no longer lists it.
-            yield* Effect.addFinalizer(() => publishPresence(session));
+            yield* Effect.addFinalizer(() => events.presenceChanged(session));
             // The tab's leases may have been granted by another replica, or
             // by this one before a restart; from here on this replica renews
             // them. A failure ends the watch, and the client's retry asks
             // again.
             yield* Effect.orDie(leases.connect(session, onReleased(session)));
-            yield* publishPresence(session);
+            yield* events.presenceChanged(session);
             const lastBacklog = backlog.at(-1)?.cursor;
             let last = lastBacklog === undefined ? from : BigInt(lastBacklog);
             let authorizedAt = yield* Clock.currentTimeMillis;
@@ -437,7 +432,7 @@ export const ProtocolBuilderHandlers: Layer.Layer<
                     }),
               }),
             );
-            yield* publish(session, result.events);
+            yield* events.publish(session, result.events);
             const outcome = result.outcome;
             if (outcome === undefined) {
               return yield* new SectionNotFound({ sectionId });
@@ -535,7 +530,7 @@ export const ProtocolBuilderHandlers: Layer.Layer<
                 mintId: randomUUID,
               }),
             );
-            yield* publish(session, result.events);
+            yield* events.publish(session, result.events);
             const outcome = result.outcome;
             if (outcome.status === 'replayed') {
               return yield* created(outcome.receipt);
@@ -587,7 +582,7 @@ export const ProtocolBuilderHandlers: Layer.Layer<
               protocolId,
               deleteStage(session, ref.stageId),
             );
-            yield* publish(session, result.events);
+            yield* events.publish(session, result.events);
             const outcome = result.outcome;
             if (outcome === undefined) {
               return yield* new SectionNotFound({ sectionId });
@@ -618,7 +613,7 @@ export const ProtocolBuilderHandlers: Layer.Layer<
               protocolId,
               deleteVariable(session, { subject, variableId }),
             ),
-            (committed) => publish(session, committed.events),
+            (committed) => events.publish(session, committed.events),
           ),
         );
         return yield* applied(result.outcome);
@@ -631,7 +626,7 @@ export const ProtocolBuilderHandlers: Layer.Layer<
         const result = yield* Effect.uninterruptible(
           Effect.tap(
             command(protocolId, deleteEntityType(session, { entity, typeId })),
-            (committed) => publish(session, committed.events),
+            (committed) => events.publish(session, committed.events),
           ),
         );
         return yield* applied(result.outcome);

@@ -4,10 +4,13 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import type { ProtocolSectionId } from '@codaco/studio-sync/taxonomy';
 
 import { ownerAffected, testDb } from '../../__tests__/support/database.ts';
+import { memoryObjectStore } from '../../__tests__/support/object-store.ts';
 import {
   ADA,
   callerOf,
   GRACE,
+  holdingEvents,
+  latch,
   setupProtocolBuilderSuite,
   until,
 } from '../../__tests__/support/protocol-builder-suite.ts';
@@ -16,13 +19,16 @@ import {
   createProtocolBuilderClient,
   makeShiftableClock,
   makeSpanCounter,
+  type ProtocolBuilderTestClient,
 } from '../../__tests__/support/protocol-builder.ts';
 import type { Studio } from '../../app.ts';
 import {
   type Closure,
   MaintenanceTriggers,
 } from '../../http/middleware/maintenance.ts';
+import { ObjectStore } from '../../storage/object-store.ts';
 import { LIVENESS_LOCK_TIMEOUT_MS } from '../connections.ts';
+import type { LoggedProtocolEvent } from '../events.ts';
 import { Leases, RECONNECT_GRACE_MS, RENEW_INTERVAL_MS } from '../leases.ts';
 import { IDLE_MS } from '../schema.ts';
 
@@ -93,6 +99,8 @@ describe.skipIf(!testDb)('the lease keeper', () => {
       readonly maintenance?: MaintenanceTriggers['Service'];
       readonly replicaId?: string;
       readonly studio?: Studio;
+      readonly objectStore?: ObjectStore['Service'];
+      readonly events?: ReturnType<typeof holdingEvents>['layer'];
     } = {},
   ) => {
     const time = makeShiftableClock();
@@ -814,5 +822,210 @@ describe.skipIf(!testDb)('the lease keeper', () => {
       await client.dispose();
       await own.close();
     }
+  });
+
+  describe('releasing what a tab staged', () => {
+    const stageOn = async (
+      client: ProtocolBuilderTestClient,
+      caller: Caller,
+      editId: string,
+    ) => {
+      const staged = await client.call(
+        caller,
+        client.rpc('ResourcesStage', {
+          protocolId,
+          editId,
+          requestId: `${editId}-file`,
+          request: {
+            kind: 'content',
+            contentKind: 'image',
+            name: 'A photograph',
+            source: 'photo.png',
+            contentType: 'image/png',
+            bytes: new Uint8Array([137, 80, 78, 71]),
+          },
+        }),
+      );
+      if (staged.status !== 'ok') throw new Error(staged.failure.message);
+      const [row] = await stagedOf(staged.data.descriptor.id);
+      if (row === undefined) throw new Error('no staged row');
+      return row.objectKey;
+    };
+
+    const stagedOf = (resourceId: string) =>
+      teamRows<{ objectKey: string }>(
+        `SELECT object_key AS "objectKey" FROM protocol_staged_resources
+          WHERE resource_id = $1`,
+        [resourceId],
+      );
+
+    const stagedBy = (owner: string) =>
+      teamRows<{ objectKey: string }>(
+        `SELECT object_key AS "objectKey" FROM protocol_staged_resources
+          WHERE draft_id = $1 AND owner = $2`,
+        [draftId, owner],
+      );
+
+    const releasing =
+      (sectionId: string) => (entries: ReadonlyArray<LoggedProtocolEvent>) =>
+        entries.some(
+          ({ event }) => event.type === 'lock' && event.sectionId === sectionId,
+        );
+
+    /** A memory store whose staged deletes wait, once reached, for `release`. */
+    const holdingDeletes = () => {
+      const objects = memoryObjectStore();
+      const reached = latch();
+      const released = latch();
+      const store = ObjectStore.of({
+        ...objects.store,
+        deleteStaged: (key) =>
+          Effect.andThen(
+            Effect.promise(() => {
+              reached.open();
+              return released.opened;
+            }),
+            objects.store.deleteStaged(key),
+          ),
+      });
+      return {
+        objects,
+        store,
+        reached: reached.opened,
+        release: released.open,
+      };
+    };
+
+    it('deletes the rows and objects of a tab whose grace ended', async () => {
+      const objects = memoryObjectStore();
+      const a = await replica({ objectStore: objects.store });
+      const { owner, on } = tabOf('released-staging');
+      const caller = on('pb-ada-released-staging-connection');
+      try {
+        const channel = await watching(caller, protocolId, a.client);
+        const objectKey = await stageOn(
+          a.client,
+          caller,
+          'pb-released-staging-edit',
+        );
+        await channel.stop();
+        await until(
+          () => a.time.pending(RECONNECT_GRACE_MS) > 0,
+          'the reconnect grace to start',
+        );
+
+        a.time.advance(RECONNECT_GRACE_MS);
+        await until(
+          () => objects.removed().includes(objectKey),
+          'the staged object to be deleted',
+        );
+        expect(await stagedBy(owner)).toEqual([]);
+        expect(objects.keys()).not.toContain(objectKey);
+      } finally {
+        await a.client.dispose();
+      }
+    });
+
+    it('keeps what a tab staged when its socket returns before the staging is released', async () => {
+      const objects = memoryObjectStore();
+      const events = holdingEvents();
+      const a = await replica({
+        objectStore: objects.store,
+        events: events.layer,
+      });
+      const b = await replica({ objectStore: objects.store });
+      const { owner, on } = tabOf('returning-staging');
+      const first = on('pb-ada-returning-staging-connection');
+      const again = on('pb-ada-returning-staging-again-connection');
+      try {
+        const stage = await createOn(a.client, 'Held by a returning tab');
+        const sectionId = stage.sectionId;
+        const channel = await watching(first, protocolId, a.client);
+        await a.client.call(
+          first,
+          a.client.rpc('AcquireLock', { protocolId, sectionId }),
+        );
+        const objectKey = await stageOn(
+          a.client,
+          first,
+          'pb-returning-staging-edit',
+        );
+        await channel.stop();
+        await until(
+          () => a.time.pending(RECONNECT_GRACE_MS) > 0,
+          'the reconnect grace to start',
+        );
+
+        const published = events.next(releasing(sectionId));
+        a.time.advance(RECONNECT_GRACE_MS);
+        await published.reached;
+        const returned = await watching(again, protocolId, b.client);
+        try {
+          published.release();
+          await until(
+            () => a.spans.ended('protocolBuilder.releaseStaged') > 0,
+            'the staging release',
+          );
+          expect(await stagedBy(owner)).toEqual([{ objectKey }]);
+          expect(objects.keys()).toContain(objectKey);
+        } finally {
+          await returned.stop();
+        }
+      } finally {
+        await b.client.dispose();
+        await a.client.dispose();
+      }
+    });
+
+    it('publishes a released tab’s locks while its staged objects are still being deleted', async () => {
+      const deletes = holdingDeletes();
+      const events = holdingEvents();
+      const a = await replica({
+        objectStore: deletes.store,
+        events: events.layer,
+      });
+      const { owner, on } = tabOf('slow-staging');
+      const caller = on('pb-ada-slow-staging-connection');
+      try {
+        const stage = await createOn(a.client, 'Held over a slow store');
+        const sectionId = stage.sectionId;
+        const channel = await watching(caller, protocolId, a.client);
+        await a.client.call(
+          caller,
+          a.client.rpc('AcquireLock', { protocolId, sectionId }),
+        );
+        const objectKey = await stageOn(
+          a.client,
+          caller,
+          'pb-slow-staging-edit',
+        );
+        await channel.stop();
+        await until(
+          () => a.time.pending(RECONNECT_GRACE_MS) > 0,
+          'the reconnect grace to start',
+        );
+
+        const published = events.next(releasing(sectionId));
+        let announced = false;
+        void published.reached.then(() => {
+          announced = true;
+          published.release();
+        });
+        a.time.advance(RECONNECT_GRACE_MS);
+        try {
+          await until(() => announced, 'the lock release to be published');
+          await deletes.reached;
+        } finally {
+          deletes.release();
+        }
+        await until(
+          () => deletes.objects.removed().includes(objectKey),
+          'the staged object to be deleted',
+        );
+        expect(await stagedBy(owner)).toEqual([]);
+      } finally {
+        await a.client.dispose();
+      }
+    });
   });
 });

@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 
+import { Effect } from 'effect';
 import { beforeAll, describe, expect, it } from 'vitest';
 
 import { MAX_UPLOAD_BYTES } from '@codaco/studio-contract/limits';
@@ -12,7 +13,9 @@ import {
 import { type Studio } from '../app.ts';
 import { TenantScope } from '../db/tenant.ts';
 import { ASSET_KEY_PLACEHOLDER, openAssetKey } from '../protocol/asset-keys.ts';
+import { ObjectStore } from '../storage/object-store.ts';
 import { testDb } from './support/database.ts';
+import { memoryObjectStore } from './support/object-store.ts';
 import {
   ADA,
   ASSETS,
@@ -21,6 +24,7 @@ import {
   GRACE,
   holdingEvents,
   holdingStaging,
+  latch,
   OTHER_EDIT,
   setupProtocolBuilderSuite,
   STAGE_ORDER,
@@ -1047,6 +1051,81 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       failure: { reason: 'unavailable', retryable: true },
     });
     expect(await stagedIds(edit)).toEqual([]);
+  });
+
+  it('refuses a file for good where no object store is configured', async () => {
+    const storeless = await createProtocolBuilderClient(studio, {
+      objectStore: ObjectStore.absent,
+    });
+    try {
+      const refused = await stageFile(
+        storeless,
+        'edit-no-store',
+        'no-store',
+        new Uint8Array([1]),
+      );
+      expect(refused).toMatchObject({
+        status: 'failed',
+        failure: { reason: 'unsupported-kind', retryable: false },
+      });
+    } finally {
+      await storeless.dispose();
+    }
+  });
+
+  it('deletes the object an interrupted stage had already put', async () => {
+    const edit = 'edit-interrupted-stage';
+    const held = memoryObjectStore();
+    const put = latch();
+    let putKey = '';
+    const other = await createProtocolBuilderClient(studio, {
+      objectStore: ObjectStore.of({
+        ...held.store,
+        putStaged: (key, bytes, mediaType) =>
+          held.store.putStaged(key, bytes, mediaType).pipe(
+            Effect.andThen(
+              Effect.sync(() => {
+                putKey = key;
+                put.open();
+              }),
+            ),
+            Effect.andThen(Effect.never),
+          ),
+      }),
+    });
+    try {
+      const abort = new AbortController();
+      const staging = other.callExit(
+        callerOf(ADA),
+        other.rpc('ResourcesStage', {
+          protocolId,
+          editId: edit,
+          requestId: 'interrupted-stage',
+          request: {
+            kind: 'content',
+            contentKind: 'image',
+            name: 'A photograph',
+            source: 'photo.png',
+            contentType: 'image/png',
+            bytes: new Uint8Array([9, 9, 9]),
+          },
+        }),
+        { signal: abort.signal },
+      );
+      await put.opened;
+      expect(held.keys()).toContain(putKey);
+
+      abort.abort();
+      await staging;
+      await until(
+        () => held.removed().includes(putKey),
+        'the interrupted stage’s object to be deleted',
+      );
+      expect(held.keys()).not.toContain(putKey);
+      expect(await stagedIds(edit)).toEqual([]);
+    } finally {
+      await other.dispose();
+    }
   });
 
   it('refuses a write whose staged resource was discarded after it was planned', async () => {
