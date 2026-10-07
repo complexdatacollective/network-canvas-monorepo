@@ -104,10 +104,10 @@
   "UpdatesPage": {
     "metadata": {
       "title": "Novedades",
-      "description": "Resúmenes en lenguaje sencillo de las nuevas versiones de Architect, Interviewer y Fresco."
+      "description": "Noticias de todo el proyecto Network Canvas: nuevas versiones del software, financiación, artículos de investigación, talleres y otros hitos."
     },
     "heading": "Novedades",
-    "introduction": "Las novedades de las aplicaciones de Network Canvas. Para ver la lista detallada de todos los cambios, consulte las <changelog>notas de la versión en GitHub</changelog>. Architect e Interviewer se actualizan automáticamente; para actualizar Fresco, siga las <upgrade>instrucciones de nuestra documentación</upgrade>.",
+    "introduction": "Noticias del proyecto Network Canvas desde sus inicios en 2013: nuevas versiones del software, financiación, artículos de investigación, talleres y otros hitos.",
     "search": {
       "label": "Buscar novedades",
       "placeholder": "Buscar novedades",
@@ -120,11 +120,7 @@
       "show": "Mostrar todos los detalles",
       "hide": "Ocultar detalles"
     },
-    "readMore": "Leer el anuncio completo",
-    "filter": {
-      "label": "Filtrar por aplicación",
-      "all": "Todas"
-    }
+    "readMore": "Leer el anuncio completo"
   },
   "Team": {
     "heading": "Equipo principal",

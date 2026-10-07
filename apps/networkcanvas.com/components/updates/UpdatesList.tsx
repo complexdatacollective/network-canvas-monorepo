@@ -3,7 +3,7 @@
 import { Accordion as BaseAccordion } from '@base-ui/react/accordion';
 import { ArrowRight, ChevronDown, Search, X } from 'lucide-react';
 import { useFormatter, useLocale, useTranslations } from 'next-intl';
-import { Fragment, type ReactNode, useEffect, useMemo, useState } from 'react';
+import { type ReactNode, useEffect, useMemo, useState } from 'react';
 
 import {
   Accordion,
@@ -20,7 +20,6 @@ import {
   getMarkdownLabelText,
   RenderMarkdown,
 } from '@codaco/fresco-ui/RenderMarkdown';
-import Tag from '@codaco/fresco-ui/Tag';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { cx } from '@codaco/fresco-ui/utils/cva';
@@ -28,10 +27,9 @@ import { foldText } from '@codaco/fresco-ui/utils/foldText';
 import { EmptyResults } from '~/components/ui/EmptyResults';
 import { SiteLink } from '~/components/ui/SiteLink';
 import { updateIllustrations } from '~/components/updates/illustrations/updateIllustrations';
-import { tools } from '~/lib/content';
 import { Link } from '~/lib/i18n/navigation';
 import type { Update, UpdateProminence } from '~/lib/siteContent';
-import { type UpdateAppId, updateAppIds } from '~/lib/updateApps';
+import { parseUpdateDate } from '~/lib/updateDates';
 
 function MarkdownLink({
   href,
@@ -58,14 +56,6 @@ function searchableText(update: Update, locale: string) {
   return foldText(text, locale);
 }
 
-type AppFilter = 'all' | UpdateAppId;
-
-const appFilters: readonly AppFilter[] = ['all', ...updateAppIds];
-
-function appName(id: UpdateAppId) {
-  return tools.find((tool) => tool.id === id)?.name ?? id;
-}
-
 const titleSizes = {
   launch: 'text-2xl',
   featured: 'text-2xl',
@@ -76,14 +66,11 @@ const titleSizes = {
 function visibleUpdatesFor(
   updates: readonly (Update & { searchText: string })[],
   query: string,
-  app: AppFilter,
   locale: string,
 ) {
   const terms = foldText(query, locale).split(/\s+/).filter(Boolean);
-  return updates.filter(
-    (update) =>
-      (app === 'all' || update.apps.includes(app)) &&
-      terms.every((term) => update.searchText.includes(term)),
+  return updates.filter((update) =>
+    terms.every((term) => update.searchText.includes(term)),
   );
 }
 
@@ -103,7 +90,6 @@ export function UpdatesList({ updates }: { updates: readonly Update[] }) {
   const locale = useLocale();
   const [openIds, setOpenIds] = useState<string[]>([]);
   const [query, setQuery] = useState('');
-  const [app, setApp] = useState<AppFilter>('all');
   const searchable = useMemo(
     () =>
       updates.map((update) => ({
@@ -112,15 +98,14 @@ export function UpdatesList({ updates }: { updates: readonly Update[] }) {
       })),
     [updates, locale],
   );
-  const visibleUpdates = visibleUpdatesFor(searchable, query, app, locale);
-  const narrowed = query.trim() !== '' || app !== 'all';
+  const visibleUpdates = visibleUpdatesFor(searchable, query, locale);
+  const narrowed = query.trim() !== '';
 
-  const showUpdates = (nextQuery: string, nextApp: AppFilter) => {
+  const showUpdates = (nextQuery: string) => {
     setQuery(nextQuery);
-    setApp(nextApp);
     setOpenIds(
       nextQuery.trim()
-        ? visibleUpdatesFor(searchable, nextQuery, nextApp, locale).map(
+        ? visibleUpdatesFor(searchable, nextQuery, locale).map(
             (update) => update.id,
           )
         : [],
@@ -133,7 +118,6 @@ export function UpdatesList({ updates }: { updates: readonly Update[] }) {
       const id = updateIdFromHash(updates);
       if (!id) return;
       setQuery('');
-      setApp('all');
       setOpenIds((current) =>
         current.includes(id) ? current : [...current, id],
       );
@@ -145,10 +129,10 @@ export function UpdatesList({ updates }: { updates: readonly Update[] }) {
   }, [updates]);
 
   return (
-    <div className="mx-auto max-w-4xl">
-      <div className="tablet-portrait:flex-row tablet-portrait:items-center flex flex-col gap-4">
+    <div className="mx-auto max-w-6xl">
+      <search className="mx-auto block max-w-2xl">
         {/* A field adds a bottom margin whenever a sibling follows it. */}
-        <div className="min-w-0 flex-1">
+        <div>
           <UnconnectedField
             name="updates-search"
             label={t('search.label')}
@@ -156,7 +140,7 @@ export function UpdatesList({ updates }: { updates: readonly Update[] }) {
             component={InputField}
             type="search"
             value={query}
-            onChange={(value) => showUpdates(value ?? '', app)}
+            onChange={(value) => showUpdates(value ?? '')}
             placeholder={t('search.placeholder')}
             prefixComponent={<Search aria-hidden />}
             suffixComponent={
@@ -166,45 +150,28 @@ export function UpdatesList({ updates }: { updates: readonly Update[] }) {
                   variant="text"
                   aria-label={t('search.clear')}
                   icon={<X aria-hidden />}
-                  onClick={() => showUpdates('', app)}
+                  onClick={() => showUpdates('')}
                 />
               ) : undefined
             }
             size="md"
           />
         </div>
-        <div
-          role="group"
-          aria-label={t('filter.label')}
-          className="tablet-portrait:flex-nowrap flex shrink-0 flex-wrap gap-2"
+        <Paragraph
+          margin="none"
+          intent="meta"
+          emphasis="muted"
+          role="status"
+          className="mt-3"
         >
-          {appFilters.map((filter) => (
-            <Tag
-              key={filter}
-              pressed={app === filter}
-              onPressedChange={() => showUpdates(query, filter)}
-              size="lg"
-              uppercase={false}
-            >
-              {filter === 'all' ? t('filter.all') : appName(filter)}
-            </Tag>
-          ))}
-        </div>
-      </div>
-      <Paragraph
-        margin="none"
-        intent="meta"
-        emphasis="muted"
-        aria-live="polite"
-        className="mt-3"
-      >
-        {narrowed
-          ? t('search.results', {
-              count: visibleUpdates.length,
-              total: updates.length,
-            })
-          : null}
-      </Paragraph>
+          {narrowed
+            ? t('search.results', {
+                count: visibleUpdates.length,
+                total: updates.length,
+              })
+            : null}
+        </Paragraph>
+      </search>
       {visibleUpdates.length === 0 ? (
         <div className="py-6">
           <EmptyResults
@@ -218,7 +185,7 @@ export function UpdatesList({ updates }: { updates: readonly Update[] }) {
         value={openIds}
         onValueChange={setOpenIds}
         render={<ol />}
-        className="mt-6 gap-0"
+        className="mt-16 gap-0"
       >
         {visibleUpdates.map((update) => {
           const illustration =
@@ -226,164 +193,159 @@ export function UpdatesList({ updates }: { updates: readonly Update[] }) {
               ? updateIllustrations[update.id]
               : undefined;
           const mini = update.prominence === 'mini';
-          const date = new Date(update.date);
+          const { date, precision } = parseUpdateDate(update.date);
           const open = openIds.includes(update.id);
           return (
             <AccordionItem
               key={update.id}
               value={update.id}
               render={<li />}
-              className="group tablet-portrait:grid-cols-[6rem_1.5rem_minmax(0,1fr)] tablet-portrait:gap-x-6 grid grid-cols-[1.5rem_minmax(0,1fr)] gap-x-4"
+              className="group"
             >
-              <time
-                dateTime={update.date}
-                className="tablet-portrait:col-start-1 tablet-portrait:row-start-1 tablet-portrait:pt-0.5 tablet-portrait:pb-0 tablet-portrait:text-right col-start-2 row-start-1 flex flex-col pb-3"
+              <article
+                aria-labelledby={update.id}
+                className="tablet-portrait:grid-cols-[6rem_1.5rem_minmax(0,1fr)] tablet-portrait:gap-x-6 grid grid-cols-[1.5rem_minmax(0,1fr)] gap-x-6"
               >
-                <Heading level="h4" margin="none" render={<span />}>
-                  {format.dateTime(date, {
-                    month: 'short',
-                    day: 'numeric',
-                    timeZone: 'UTC',
-                  })}
-                </Heading>{' '}
-                <Paragraph
-                  render={<span />}
-                  intent="smallText"
-                  emphasis="muted"
-                  margin="none"
+                <time
+                  dateTime={update.date}
+                  className="tablet-portrait:col-start-1 tablet-portrait:row-start-1 tablet-portrait:pt-0.5 tablet-portrait:pb-0 tablet-portrait:text-right col-start-2 row-start-1 flex flex-col pb-3"
                 >
-                  {format.dateTime(date, { year: 'numeric', timeZone: 'UTC' })}
-                </Paragraph>
-              </time>
-              <div
-                aria-hidden
-                className="tablet-portrait:col-start-2 relative col-start-1 row-span-2 row-start-1 flex justify-center"
-              >
-                <span
-                  className={cx(
-                    'border-text relative z-10 mt-1 size-5 rounded-full border-4',
-                    illustration?.dotClassName ?? 'bg-primary',
+                  <Heading level="h4" margin="none" render={<span />}>
+                    {format.dateTime(
+                      date,
+                      precision === 'year'
+                        ? { year: 'numeric', timeZone: 'UTC' }
+                        : {
+                            month: 'short',
+                            ...(precision === 'day' ? { day: 'numeric' } : {}),
+                            timeZone: 'UTC',
+                          },
+                    )}
+                  </Heading>
+                  {precision === 'year' ? null : (
+                    <>
+                      {' '}
+                      <Paragraph
+                        render={<span />}
+                        intent="smallText"
+                        emphasis="muted"
+                        margin="none"
+                      >
+                        {format.dateTime(date, {
+                          year: 'numeric',
+                          timeZone: 'UTC',
+                        })}
+                      </Paragraph>
+                    </>
                   )}
-                />
-                <span className="bg-text/10 absolute top-1 -bottom-2 left-1/2 w-1 -translate-x-1/2 rounded-full group-last:hidden" />
-              </div>
-              <div
-                className={cx(
-                  'tablet-portrait:col-start-3 tablet-portrait:row-start-1 tablet-portrait:row-span-2 col-start-2 row-start-2',
-                  mini ? 'pb-8' : 'pb-12',
-                )}
-              >
-                <Surface
-                  as="article"
-                  noContainer
-                  spacing="none"
-                  shadow="sm"
-                  aria-labelledby={update.id}
+                </time>
+                <div
+                  aria-hidden
+                  className="tablet-portrait:col-start-2 relative col-start-1 row-span-2 row-start-1 flex justify-center"
                 >
-                  {illustration ? (
-                    <div
-                      className={cx(
-                        'tablet-portrait:px-10 px-4 pt-4',
-                        illustration.bandClassName,
-                      )}
-                    >
-                      <illustration.Illustration />
-                    </div>
-                  ) : null}
-                  <div
-                    className={
-                      mini
-                        ? 'tablet-portrait:px-8 px-6 py-4'
-                        : 'tablet-portrait:p-8 p-6'
-                    }
-                  >
-                    {update.apps.length > 0 ? (
+                  <span
+                    className={cx(
+                      'border-text relative z-10 mt-1 size-5 rounded-full border-4',
+                      illustration?.dotClassName ?? 'bg-primary',
+                    )}
+                  />
+                  <span className="bg-text/10 absolute top-1 -bottom-2 left-1/2 w-1 -translate-x-1/2 rounded-full group-last:hidden" />
+                </div>
+                <div
+                  className={cx(
+                    'tablet-portrait:col-start-3 tablet-portrait:row-start-1 tablet-portrait:row-span-2 tablet-portrait:pl-6 col-start-2 row-start-2',
+                    mini ? 'pb-8' : 'pb-12',
+                  )}
+                >
+                  <Surface noContainer spacing="none" shadow="sm">
+                    {illustration ? (
                       <div
                         className={cx(
-                          'flex flex-wrap items-center gap-2',
-                          mini ? 'mb-2' : 'mb-3',
+                          'tablet-portrait:px-10 px-4 pt-4',
+                          illustration.bandClassName,
                         )}
                       >
-                        {update.apps.map((id) => (
-                          <Fragment key={id}>
-                            {' '}
-                            <Tag size="sm" uppercase={false}>
-                              {appName(id)}
-                            </Tag>
-                          </Fragment>
-                        ))}
+                        <illustration.Illustration />
                       </div>
                     ) : null}
-                    <Heading
-                      level="h2"
-                      variant="subheading"
-                      margin="none"
-                      id={update.id}
-                      className={cx(
-                        'scroll-mt-8',
-                        titleSizes[update.prominence],
-                      )}
+                    <div
+                      className={
+                        mini
+                          ? 'tablet-portrait:px-8 px-6 py-4'
+                          : 'tablet-portrait:p-8 p-6'
+                      }
                     >
-                      {update.title}
-                    </Heading>
-                    {update.summary ? (
-                      <div className="mt-3">
-                        <RenderMarkdown
-                          allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}
-                          components={markdownComponents}
-                        >
-                          {update.summary}
-                        </RenderMarkdown>
-                      </div>
-                    ) : null}
-                    {update.details ? (
-                      <>
-                        <AccordionPanel inert={!open}>
+                      <Heading
+                        level="h2"
+                        variant="subheading"
+                        margin="none"
+                        id={update.id}
+                        className={cx(
+                          'scroll-mt-8',
+                          titleSizes[update.prominence],
+                        )}
+                      >
+                        {update.title}
+                      </Heading>
+                      {update.summary ? (
+                        <div className="mt-3">
                           <RenderMarkdown
                             allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}
                             components={markdownComponents}
                           >
-                            {update.details}
+                            {update.summary}
                           </RenderMarkdown>
-                        </AccordionPanel>
-                        <AccordionHeader render={<div />} className="mt-4">
-                          <BaseAccordion.Trigger
-                            aria-describedby={update.id}
-                            render={
-                              <Button
-                                variant="raised"
-                                size="sm"
-                                iconPosition="right"
-                                icon={
-                                  <ChevronDown
-                                    aria-hidden
-                                    className="transition-transform [[data-panel-open]>&]:rotate-180"
-                                  />
-                                }
-                              />
-                            }
-                          >
-                            {open ? t('details.hide') : t('details.show')}
-                          </BaseAccordion.Trigger>
-                        </AccordionHeader>
-                      </>
-                    ) : null}
-                    {update.link ? (
-                      <Button
-                        asChild
-                        variant="raised"
-                        size="sm"
-                        className="mt-4"
-                      >
-                        <Link href={update.link}>
-                          {t('readMore')}
-                          <ArrowRight aria-hidden />
-                        </Link>
-                      </Button>
-                    ) : null}
-                  </div>
-                </Surface>
-              </div>
+                        </div>
+                      ) : null}
+                      {update.details ? (
+                        <>
+                          <AccordionPanel inert={!open}>
+                            <RenderMarkdown
+                              allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}
+                              components={markdownComponents}
+                            >
+                              {update.details}
+                            </RenderMarkdown>
+                          </AccordionPanel>
+                          <AccordionHeader render={<div />} className="mt-4">
+                            <BaseAccordion.Trigger
+                              aria-describedby={update.id}
+                              render={
+                                <Button
+                                  variant="raised"
+                                  size="sm"
+                                  iconPosition="right"
+                                  icon={
+                                    <ChevronDown
+                                      aria-hidden
+                                      className="transition-transform [[data-panel-open]>&]:rotate-180"
+                                    />
+                                  }
+                                />
+                              }
+                            >
+                              {open ? t('details.hide') : t('details.show')}
+                            </BaseAccordion.Trigger>
+                          </AccordionHeader>
+                        </>
+                      ) : null}
+                      {update.link ? (
+                        <Button
+                          asChild
+                          variant="raised"
+                          size="sm"
+                          className="mt-4"
+                        >
+                          <Link href={update.link}>
+                            {t('readMore')}
+                            <ArrowRight aria-hidden />
+                          </Link>
+                        </Button>
+                      ) : null}
+                    </div>
+                  </Surface>
+                </div>
+              </article>
             </AccordionItem>
           );
         })}

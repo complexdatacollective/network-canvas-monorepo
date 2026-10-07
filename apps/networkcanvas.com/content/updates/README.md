@@ -7,13 +7,16 @@ Entries on the Updates page (`/updates`). Each update is a row in
 
 `../updates.csv` holds what is the same in every language:
 
-| column       | value                                                                                 |
-| ------------ | ------------------------------------------------------------------------------------- |
-| `id`         | URL slug, also the page anchor (`/updates#<id>`)                                      |
-| `date`       | ISO date, `YYYY-MM-DD`                                                                |
-| `prominence` | `launch`, `featured`, `normal` or `mini` (see below)                                  |
-| `apps`       | `architect`, `interviewer` and/or `fresco`, separated by `\|`; empty for project news |
-| `link`       | announcement page on this site; required for `launch`, else empty                     |
+| column       | value                                                                                |
+| ------------ | ------------------------------------------------------------------------------------ |
+| `id`         | URL slug, also the page anchor (`/updates#<id>`)                                     |
+| `date`       | `YYYY-MM-DD`, or `YYYY-MM` / `YYYY` when only the month or year is known (see below) |
+| `prominence` | `launch`, `featured`, `normal` or `mini` (see below)                                 |
+| `link`       | announcement page on this site; required for `launch`, else empty                    |
+
+Date older updates only as precisely as is known: the page shows `2013` as
+just the year and `2016-07` as Jul 2016. Updates appear newest first; within a
+year, a year-only update comes after the year's dated ones.
 
 ## The text
 

@@ -20,7 +20,6 @@ const update: Update = {
   id: 'release',
   date: '2026-09-30',
   prominence: 'normal',
-  apps: ['architect'],
   title: 'A release',
   summary:
     'See [the release](https://example.test/announcements_(october)_archive).',
@@ -33,6 +32,21 @@ function search(value: string) {
 }
 
 describe('UpdatesList', () => {
+  it.each([
+    ['2020-12-15', ['Dec 15', '2020']],
+    ['2016-07', ['Jul', '2016']],
+    ['2013', ['2013']],
+  ])('shows the date %s only as precisely as it is known', (date, parts) => {
+    const { container } = renderWithIntl(
+      <UpdatesList updates={[{ ...update, date }]} />,
+    );
+
+    const time = container.querySelector(`time[datetime="${date}"]`);
+    expect(
+      Array.from(time?.children ?? [], (part) => part.textContent),
+    ).toEqual(parts);
+  });
+
   it('does not match words that only appear in a link address', () => {
     renderWithIntl(<UpdatesList updates={[update]} />);
 

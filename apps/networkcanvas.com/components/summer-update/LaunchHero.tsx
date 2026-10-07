@@ -15,6 +15,7 @@ import { SITE_NAVIGATION_SKIP_TARGET_ID } from '@codaco/fresco-ui/navigation/Sit
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Header } from '~/components/layout/Header';
+import { HeroPageLayout } from '~/components/layout/HeroPageLayout';
 import { HomepagePageBackground } from '~/components/ui/HomepagePageBackground';
 import { heroScrollSpring } from '~/components/ui/scrollDrivenMotion';
 import { cn } from '~/lib/cn';
@@ -91,13 +92,15 @@ function renderStrong(chunks: ReactNode) {
   return <strong>{chunks}</strong>;
 }
 
-export function LaunchHero() {
+// `children` is the rest of the page's main content, after the hero.
+export function LaunchHero({ children }: { children?: ReactNode }) {
   const t = useTranslations('SummerUpdate.hero');
-  const sectionRef = useRef<HTMLElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const frameRef = useRef<HTMLDivElement>(null);
   const shouldReduceMotion = useReducedMotion();
   const entranceControls = useAnimationControls();
   const { scrollYProgress } = useScroll({
-    target: sectionRef,
+    target: frameRef,
     offset: ['start start', 'end start'],
   });
   const smoothProgress = useSpring(scrollYProgress, heroScrollSpring);
@@ -130,12 +133,12 @@ export function LaunchHero() {
     }
 
     if (shouldReduceMotion) {
-      sectionRef.current?.removeAttribute('data-entrance-pending');
+      rootRef.current?.removeAttribute('data-entrance-pending');
       return undefined;
     }
 
     entranceControls.set('hidden');
-    sectionRef.current?.removeAttribute('data-entrance-pending');
+    rootRef.current?.removeAttribute('data-entrance-pending');
 
     if (window.scrollY > 24) {
       entranceControls.set('visible');
@@ -163,108 +166,122 @@ export function LaunchHero() {
   }, [entranceControls, shouldReduceMotion]);
 
   return (
-    <Section
-      ref={sectionRef}
-      data-entrance-pending
-      className="m-0! flex min-h-svh flex-col overflow-hidden px-0!"
-      aria-labelledby="summer-update-title"
-    >
-      <div className="pointer-events-none absolute inset-0" aria-hidden>
-        <div className="from-slate-blue/25 via-sea-serpent/10 absolute inset-0 bg-linear-to-b to-transparent" />
-        <motion.div
-          className="entrance-motion-item absolute inset-0"
-          initial={false}
-          animate={entranceControls}
-          variants={launchHeroWeaveVariants}
-        >
-          <HomepagePageBackground />
-        </motion.div>
-        <HeroSignalField />
-      </div>
-      <motion.div
-        className="flex min-h-svh w-full flex-col"
-        initial={false}
-        animate={entranceControls}
-      >
-        <Header
-          containerClassName="py-6!"
-          entranceVariants={launchHeroHeaderVariants}
-        />
-
-        <div
-          id={SITE_NAVIGATION_SKIP_TARGET_ID}
-          className="tablet-portrait:pt-24 tablet-portrait:pb-48 mx-auto flex w-full max-w-5xl flex-1 flex-col items-center justify-center gap-12 px-6 pt-16 pb-40 text-center"
-        >
+    <HeroPageLayout
+      ref={rootRef}
+      frameRef={frameRef}
+      entrancePending
+      fillScreen="always"
+      mainClassName="selection:bg-mustard selection:text-rich-black [counter-reset:section_subsection]"
+      backdrop={
+        <div className="absolute inset-0">
+          <div className="from-slate-blue/25 via-sea-serpent/10 absolute inset-0 bg-linear-to-b to-transparent" />
           <motion.div
-            className="w-full origin-center will-change-transform"
-            style={
-              shouldReduceMotion
-                ? undefined
-                : {
-                    opacity: headingOpacity,
-                    scale: headingScale,
-                    y: headingY,
-                  }
-            }
+            className="entrance-motion-item absolute inset-0"
+            initial={false}
+            animate={entranceControls}
+            variants={launchHeroWeaveVariants}
           >
-            <Heading
-              level="h1"
-              variant="display-heading"
-              id="summer-update-title"
-            >
-              {t.rich('heading', {
-                apps: renderHeroApps,
-                brand: renderHeroBrand,
-                lead: renderHeroLead,
-                product: renderHeroProduct,
-              })}
-            </Heading>
+            <HomepagePageBackground />
           </motion.div>
-
-          <HeroEntrance phase="copy">
-            <motion.div
-              className="will-change-transform"
-              style={
-                shouldReduceMotion
-                  ? undefined
-                  : {
-                      opacity: introductionOpacity,
-                      y: introductionY,
-                    }
-              }
-            >
-              <Paragraph
-                intent="lead"
-                className="tablet-landscape:text-xl text-center text-lg leading-relaxed"
-              >
-                {t.rich('description', {
-                  strong: renderStrong,
-                })}
-              </Paragraph>
-            </motion.div>
-          </HeroEntrance>
+          <HeroSignalField />
         </div>
-
-        <HeroEntrance
-          phase="cue"
-          className="absolute bottom-16 left-1/2 -translate-x-1/2"
+      }
+      header={
+        <motion.div initial={false} animate={entranceControls}>
+          <Header
+            containerClassName="py-6!"
+            entranceVariants={launchHeroHeaderVariants}
+          />
+        </motion.div>
+      }
+      hero={
+        <Section
+          className="m-0! flex flex-col overflow-hidden px-0!"
+          aria-labelledby="summer-update-title"
         >
           <motion.div
-            className="font-monospace flex flex-col items-center gap-3 text-center text-xs tracking-widest text-current/55 uppercase"
-            style={
-              shouldReduceMotion ? undefined : { opacity: scrollCueOpacity }
-            }
+            className="flex w-full flex-1 flex-col"
+            initial={false}
+            animate={entranceControls}
           >
-            <span className="text-pretty">{t('scrollCue')}</span>
-            <span
-              className="border-text/40 flex h-8 w-5 justify-center rounded-full border pt-2"
-              aria-hidden
+            <div
+              id={SITE_NAVIGATION_SKIP_TARGET_ID}
+              className="tablet-portrait:pt-24 tablet-portrait:pb-48 mx-auto flex w-full max-w-5xl flex-1 flex-col items-center justify-center gap-12 px-6 pt-16 pb-40 text-center"
             >
-              <span className="bg-text/70 size-1 rounded-full motion-safe:animate-bounce" />
-            </span>
+              <motion.div
+                className="w-full origin-center will-change-transform"
+                style={
+                  shouldReduceMotion
+                    ? undefined
+                    : {
+                        opacity: headingOpacity,
+                        scale: headingScale,
+                        y: headingY,
+                      }
+                }
+              >
+                <Heading
+                  level="h1"
+                  variant="display-heading"
+                  id="summer-update-title"
+                >
+                  {t.rich('heading', {
+                    apps: renderHeroApps,
+                    brand: renderHeroBrand,
+                    lead: renderHeroLead,
+                    product: renderHeroProduct,
+                  })}
+                </Heading>
+              </motion.div>
+
+              <HeroEntrance phase="copy">
+                <motion.div
+                  className="will-change-transform"
+                  style={
+                    shouldReduceMotion
+                      ? undefined
+                      : {
+                          opacity: introductionOpacity,
+                          y: introductionY,
+                        }
+                  }
+                >
+                  <Paragraph
+                    intent="lead"
+                    className="tablet-landscape:text-xl text-center text-lg leading-relaxed"
+                  >
+                    {t.rich('description', {
+                      strong: renderStrong,
+                    })}
+                  </Paragraph>
+                </motion.div>
+              </HeroEntrance>
+            </div>
+
+            <HeroEntrance
+              phase="cue"
+              className="absolute bottom-16 left-1/2 -translate-x-1/2"
+            >
+              <motion.div
+                className="font-monospace flex flex-col items-center gap-3 text-center text-xs tracking-widest text-current/55 uppercase"
+                style={
+                  shouldReduceMotion ? undefined : { opacity: scrollCueOpacity }
+                }
+              >
+                <span className="text-pretty">{t('scrollCue')}</span>
+                <span
+                  className="border-text/40 flex h-8 w-5 justify-center rounded-full border pt-2"
+                  aria-hidden
+                >
+                  <span className="bg-text/70 size-1 rounded-full motion-safe:animate-bounce" />
+                </span>
+              </motion.div>
+            </HeroEntrance>
           </motion.div>
-        </HeroEntrance>
-      </motion.div>
-    </Section>
+        </Section>
+      }
+    >
+      {children}
+    </HeroPageLayout>
   );
 }

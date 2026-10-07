@@ -1,0 +1,5 @@
+# Artículo en CHI 2016: del papel a la pantalla en los sociogramas asistidos por el participante
+
+Las medidas clave de redes para grupos de alto riesgo y de difícil acceso todavía tienen que recopilarse preguntando directamente a las personas, y hacerlo en papel es lento y gravoso. Este artículo describe netCanvas, la primera versión de Network Canvas, que convierte el sociograma en papel asistido por el participante en una herramienta para pantalla táctil. Simplifica la introducción de datos, requiere menos intervención del entrevistador y menos preparación, facilita la reutilización de los datos y muestra la red a medida que se dibuja.
+
+El equipo la probó en un estudio sobre conductas de salud con una población de alto riesgo y de difícil acceso, comparando el papel y la pantalla táctil con los mismos participantes, y concluyó que la captura de redes en pantalla táctil es ya una alternativa viable, incluso para datos muy sensibles. [Lea el artículo](https://doi.org/10.1145/2858036.2858368).

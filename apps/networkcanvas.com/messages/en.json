@@ -104,10 +104,10 @@
   "UpdatesPage": {
     "metadata": {
       "title": "Updates",
-      "description": "Plain-language summaries of new releases of Architect, Interviewer, and Fresco."
+      "description": "News from across the Network Canvas project: software releases, funding, research papers, workshops and other milestones."
     },
     "heading": "Updates",
-    "introduction": "What's new in the Network Canvas apps. For a detailed list of every change, see the <changelog>release notes on GitHub</changelog>. Architect and Interviewer update automatically; to upgrade Fresco, follow the <upgrade>instructions in our documentation</upgrade>.",
+    "introduction": "News from across the Network Canvas project since it began in 2013: software releases, funding, research papers, workshops and other milestones.",
     "search": {
       "label": "Search updates",
       "placeholder": "Search updates",
@@ -120,11 +120,7 @@
       "show": "Show full details",
       "hide": "Hide details"
     },
-    "readMore": "Read the full announcement",
-    "filter": {
-      "label": "Filter by app",
-      "all": "All"
-    }
+    "readMore": "Read the full announcement"
   },
   "Team": {
     "heading": "Core Team",

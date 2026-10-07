@@ -1,3 +1,5 @@
-# Il principale sviluppatore di Network Canvas ottiene due anni di finanziamento per la manutenzione del software
+# A Joshua Melville due anni di finanziamento NIH per la manutenzione di Network Canvas
 
-Il National Institute on Drug Abuse ha finanziato due anni di lavoro per mantenere e migliorare Network Canvas come software per la scienza aperta. [Leggi i dettagli del progetto su NIH RePORTER](https://reporter.nih.gov/search/vB-u312oGkW58r46HT8FmA/project-details/11339209).
+Il National Institute on Drug Abuse ha assegnato a Joshua Melville, sviluppatore principale di Network Canvas, un NIH Research Specialist award (R50) destinato agli ingegneri del software di ricerca. Il finanziamento copre due anni di lavoro, da luglio 2026 a giugno 2028, per mantenere Network Canvas manutenibile, sicuro e sostenibile come software per la scienza aperta.
+
+Il finanziamento si basa su quasi dieci anni di finanziamenti NIH a Network Canvas, oggi usato in almeno 55 studi finanziati dal NIH, dal disturbo da uso di oppioidi alle influenze sociali sulle comunità microbiche. Nei due anni Joshua migrerà il codice a TypeScript e risolverà i principali debiti tecnici, migliorerà Architect, supporterà le interviste offline con l’app per interviste basata sul web e farà crescere la community attorno al software con nuove risorse formative. [Leggi i dettagli del progetto su NIH RePORTER](https://reporter.nih.gov/project-details/11339209).

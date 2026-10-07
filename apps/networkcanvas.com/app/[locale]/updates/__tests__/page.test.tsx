@@ -135,20 +135,6 @@ describe('updates page', () => {
     expect(detailsTrigger(newest!.title)).toHaveTextContent('Hide details');
   });
 
-  it('links to the Fresco upgrade instructions from the introduction', async () => {
-    await renderPage();
-
-    expect(
-      screen.getByRole('link', {
-        name: 'instructions in our documentation',
-        hidden: true,
-      }),
-    ).toHaveAttribute(
-      'href',
-      expect.stringContaining('/en/collect-data/fresco/upgrading'),
-    );
-  });
-
   it('opens the update a link points at', async () => {
     const [newest] = await loadUpdates('en-US');
     window.history.replaceState(null, '', `/en-US/updates#${newest!.id}`);
@@ -241,7 +227,7 @@ describe('updates page', () => {
     await renderPage();
 
     fireEvent.change(screen.getByRole('searchbox', { hidden: true }), {
-      target: { value: 'LÓCALIZÁTION' },
+      target: { value: 'LÓCALIZÁTION SPÁNISH' },
     });
 
     expect(entryTitles(titles)).toEqual([newest!.title]);
@@ -253,7 +239,12 @@ describe('updates page', () => {
     await renderPage('es');
 
     for (const [index, update] of spanish.entries()) {
-      expect(update.title).not.toBe(english[index]!.title);
+      // A title can read the same in both languages ("Fresco 3.0"), so the
+      // title and summary together must differ.
+      expect([update.title, update.summary]).not.toEqual([
+        english[index]!.title,
+        english[index]!.summary,
+      ]);
       const heading = within(updateEntry(update.title)).getByRole('heading', {
         level: 2,
         hidden: true,
@@ -305,35 +296,6 @@ describe('updates page', () => {
       'aria-expanded',
       'false',
     );
-  });
-
-  it('filters updates by app alongside the search', async () => {
-    const updates = await loadUpdates('en-US');
-    await renderPage();
-    const filters = screen.getByRole('group', {
-      name: 'Filter by app',
-      hidden: true,
-    });
-    const all = within(filters).getByRole('button', {
-      name: 'All',
-      hidden: true,
-    });
-    const fresco = within(filters).getByRole('button', {
-      name: 'Fresco',
-      hidden: true,
-    });
-    expect(all).toHaveAttribute('aria-pressed', 'true');
-
-    fireEvent.click(fresco);
-
-    expect(fresco).toHaveAttribute('aria-pressed', 'true');
-    expect(all).toHaveAttribute('aria-pressed', 'false');
-    const frescoUpdates = updates.filter((update) =>
-      update.apps.includes('fresco'),
-    );
-    expect(
-      screen.getByText(`${frescoUpdates.length} of ${updates.length} updates`),
-    ).toBeInTheDocument();
   });
 
   it('generates Spanish metadata and language alternates', async () => {

@@ -95,10 +95,10 @@ export default async function PublicationsPage({
   );
 
   return (
-    <main className="relative isolate">
+    <div className="relative isolate">
       <HomepagePageBackground />
-      <div>
-        <Header />
+      <Header />
+      <main>
         <PageIntro
           heading={t('heading')}
           paragraphs={[
@@ -136,8 +136,8 @@ export default async function PublicationsPage({
             ))}
           </ul>
         </Container>
-        <Footer />
-      </div>
-    </main>
+      </main>
+      <Footer />
+    </div>
   );
 }

@@ -5,7 +5,7 @@ import csv from 'csvtojson';
 import { z } from 'zod';
 
 import type { Locale } from '~/lib/i18n/locales';
-import { type UpdateAppId, updateAppIds } from '~/lib/updateApps';
+import { isUpdateDate } from '~/lib/updateDates';
 
 export type NewsItem = { id: string; title: string; href: string };
 
@@ -47,7 +47,6 @@ export type Update = {
   id: string;
   date: string;
   prominence: UpdateProminence;
-  apps: UpdateAppId[];
   title: string;
   summary?: string;
   details?: string;
@@ -165,8 +164,6 @@ const teamMemberRowSchema = z
   })
   .strict();
 
-const isoDate = z.iso.date();
-
 const optionalText = z
   .string()
   .trim()
@@ -176,24 +173,10 @@ const optionalText = z
 const updateRowSchema = z
   .object({
     id: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'must be a URL slug'),
-    date: isoDate,
-    prominence: z.enum(updateProminences),
-    apps: z
+    date: z
       .string()
-      .transform((value) =>
-        value
-          .split('|')
-          .map((app) => app.trim())
-          .filter(Boolean),
-      )
-      .pipe(
-        z
-          .array(z.enum(updateAppIds))
-          .refine(
-            (apps) => new Set(apps).size === apps.length,
-            'must not repeat an app',
-          ),
-      ),
+      .refine(isUpdateDate, 'must be a date: YYYY, YYYY-MM or YYYY-MM-DD'),
+    prominence: z.enum(updateProminences),
     link: optionalText.pipe(internalPath.optional()),
   })
   .strict()
@@ -503,7 +486,6 @@ export async function loadUpdates(
         id: row.id,
         date: row.date,
         prominence: row.prominence,
-        apps: row.apps,
         title,
         ...(summary ? { summary } : {}),
         ...(details ? { details } : {}),

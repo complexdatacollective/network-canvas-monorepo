@@ -250,7 +250,7 @@ describe('loadUpdates', () => {
   async function writeUpdates(rows: string) {
     await writeFile(
       join(directory, 'updates.csv'),
-      `id,date,prominence,apps,link\n${rows}`,
+      `id,date,prominence,link\n${rows}`,
     );
   }
 
@@ -261,8 +261,8 @@ describe('loadUpdates', () => {
   beforeEach(async () => {
     directory = await mkdtemp(join(tmpdir(), 'networkcanvas-updates-'));
     await mkdir(join(directory, 'updates'));
-    await writeUpdates(`older,2026-01-05,launch,fresco,/older-announcement
-newer,2026-03-10,featured,architect|interviewer,
+    await writeUpdates(`older,2026-01-05,launch,/older-announcement
+newer,2026-03-10,featured,
 `);
     await writeText('older.en-US.md', '# Older update\n\nOlder summary\n');
     await writeText(
@@ -283,7 +283,6 @@ newer,2026-03-10,featured,architect|interviewer,
         id: 'newer',
         date: '2026-03-10',
         prominence: 'featured',
-        apps: ['architect', 'interviewer'],
         title: 'Newer update',
         summary: 'Newer summary\n\n- A list item',
         details: '### Heading\n\nNewer details',
@@ -292,7 +291,6 @@ newer,2026-03-10,featured,architect|interviewer,
         id: 'older',
         date: '2026-01-05',
         prominence: 'launch',
-        apps: ['fresco'],
         title: 'Older update',
         summary: 'Older summary',
         link: '/older-announcement',
@@ -327,7 +325,7 @@ newer,2026-03-10,featured,architect|interviewer,
   });
 
   it('accepts a mini update with only a title', async () => {
-    await writeUpdates('tiny,2026-01-05,mini,fresco,\n');
+    await writeUpdates('tiny,2026-01-05,mini,\n');
     await writeText('tiny.en-US.md', '# Tiny update\n');
 
     await expect(loadUpdates('en-US', directory)).resolves.toEqual([
@@ -335,14 +333,13 @@ newer,2026-03-10,featured,architect|interviewer,
         id: 'tiny',
         date: '2026-01-05',
         prominence: 'mini',
-        apps: ['fresco'],
         title: 'Tiny update',
       },
     ]);
   });
 
   it('accepts project news that covers no app', async () => {
-    await writeUpdates('award,2026-01-05,normal,,\n');
+    await writeUpdates('award,2026-01-05,normal,\n');
     await writeText('award.en-US.md', '# An award\n\nSummary\n');
 
     await expect(loadUpdates('en-US', directory)).resolves.toEqual([
@@ -350,35 +347,62 @@ newer,2026-03-10,featured,architect|interviewer,
         id: 'award',
         date: '2026-01-05',
         prominence: 'normal',
-        apps: [],
         title: 'An award',
         summary: 'Summary',
       },
     ]);
   });
 
+  it('accepts dates as coarse as a month or a year, ordered by their text', async () => {
+    await writeUpdates(
+      'year,2016,mini,\nday,2016-07-01,mini,\nmonth,2016-07,mini,\n',
+    );
+    for (const id of ['year', 'month', 'day']) {
+      await writeText(`${id}.en-US.md`, `# ${id}\n`);
+    }
+
+    const updates = await loadUpdates('en-US', directory);
+
+    expect(updates.map(({ id, date }) => [id, date])).toEqual([
+      ['day', '2016-07-01'],
+      ['month', '2016-07'],
+      ['year', '2016'],
+    ]);
+  });
+
+  it.each(['2016-13', '2016-02-30', '2016-7', 'Jul 2016', '16'])(
+    'rejects the date %s',
+    async (date) => {
+      await writeUpdates(`row,${date},mini,\n`);
+      await writeText('row.en-US.md', '# Title\n');
+
+      await expect(loadUpdates('en-US', directory)).rejects.toThrow(
+        'updates.csv: row 2: date:',
+      );
+    },
+  );
+
+  it('rejects a column it does not know', async () => {
+    await writeFile(
+      join(directory, 'updates.csv'),
+      'id,date,prominence,apps,link\nrow,2026-01-05,normal,fresco,\n',
+    );
+    await writeText('row.en-US.md', '# Title\n\nSummary\n');
+
+    await expect(loadUpdates('en-US', directory)).rejects.toThrow(
+      'updates.csv: row 2: apps:',
+    );
+  });
+
   it.each([
-    [
-      'an unknown prominence',
-      'major,fresco,',
-      'updates.csv: row 2: prominence:',
-    ],
-    ['a launch without a link', 'launch,fresco,', 'updates.csv: row 2: link:'],
+    ['an unknown prominence', 'major,', 'updates.csv: row 2: prominence:'],
+    ['a launch without a link', 'launch,', 'updates.csv: row 2: link:'],
     [
       'a featured update with a link',
-      'featured,fresco,/a',
+      'featured,/a',
       'updates.csv: row 2: link:',
     ],
-    [
-      'a normal update with a link',
-      'normal,fresco,/a',
-      'updates.csv: row 2: link:',
-    ],
-    [
-      'an app it does not know',
-      'normal,fresco|studio,',
-      'updates.csv: row 2: apps:',
-    ],
+    ['a normal update with a link', 'normal,/a', 'updates.csv: row 2: link:'],
   ])('rejects a row with %s', async (_, fields, message) => {
     await writeUpdates(`row,2026-01-05,${fields}\n`);
     await writeText('row.en-US.md', '# Title\n\nSummary\n');
@@ -415,7 +439,7 @@ newer,2026-03-10,featured,architect|interviewer,
     ],
   ])('rejects text %s', async (_, prominence, text, field) => {
     const link = prominence === 'launch' ? '/a' : '';
-    await writeUpdates(`row,2026-01-05,${prominence},fresco,${link}\n`);
+    await writeUpdates(`row,2026-01-05,${prominence},${link}\n`);
     await writeText('row.en-US.md', text);
 
     await expect(loadUpdates('en-US', directory)).rejects.toThrow(
@@ -425,7 +449,7 @@ newer,2026-03-10,featured,architect|interviewer,
 
   it('rejects a link that leaves the site', async () => {
     for (const link of ['//attacker.example', '/\\attacker.example']) {
-      await writeUpdates(`row,2026-01-05,launch,fresco,${link}\n`);
+      await writeUpdates(`row,2026-01-05,launch,${link}\n`);
       await writeText('row.en-US.md', '# Title\n\nSummary\n');
 
       await expect(loadUpdates('en-US', directory)).rejects.toThrow(
@@ -435,7 +459,7 @@ newer,2026-03-10,featured,architect|interviewer,
   });
 
   it('rejects a date that is not an ISO calendar date', async () => {
-    await writeUpdates('row,05/01/2026,normal,fresco,\n');
+    await writeUpdates('row,05/01/2026,normal,\n');
     await writeText('row.en-US.md', '# Title\n\nSummary\n');
 
     await expect(loadUpdates('en-US', directory)).rejects.toThrow(
@@ -449,7 +473,6 @@ describe('latestNewsItems', () => {
     id,
     date: '2026-01-05',
     prominence: 'mini',
-    apps: [],
     title: `Title ${id}`,
   });
 

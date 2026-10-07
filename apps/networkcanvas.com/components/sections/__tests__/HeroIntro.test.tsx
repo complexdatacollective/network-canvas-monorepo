@@ -59,6 +59,17 @@ function MotionDiv({
   );
 }
 
+// The header and the hero sit in different landmarks, so each has its own
+// motion root, and the one set of controls drives both.
+function expectControlledMotionRoots(container: HTMLElement) {
+  const roots = container.querySelectorAll('[data-motion-root]');
+  expect(roots).toHaveLength(2);
+  for (const root of roots) {
+    expect(root).toHaveAttribute('data-animate', 'controls');
+    expect(root).toHaveAttribute('data-initial', 'false');
+  }
+}
+
 vi.mock('motion/react', () => ({
   motion: { div: MotionDiv },
   useAnimationControls: () => animationControls,
@@ -122,31 +133,33 @@ describe('HeroIntro', () => {
     motionPreference.reduced = null;
   });
 
-  it('renders the header and hero without owning the page background', () => {
+  it('renders the header before main, with the hero and page content inside main', () => {
     motionPreference.reduced = false;
-    render(<HeroIntro newsItems={newsItems} onEntranceStart={entranceStart} />);
-    const shell =
-      screen.getByText('Header content').parentElement?.parentElement;
-    const motionRoot = shell?.firstElementChild;
+    const { container } = render(
+      <HeroIntro newsItems={newsItems} onEntranceStart={entranceStart}>
+        <p>Page content</p>
+      </HeroIntro>,
+    );
+    const header = screen.getByText('Header content');
+    const hero = screen.getByText('Hero content: Fixture-only intro news');
+    const main = screen.getByRole('main');
 
-    expect(screen.getByText('Header content')).toBeInTheDocument();
+    expect(main).not.toContainElement(header);
     expect(
-      screen.getByText('Hero content: Fixture-only intro news'),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText('Hero content: Fixture-only intro news'),
-    ).toHaveAttribute('data-hero-scroll-style', 'active');
+      header.compareDocumentPosition(main) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(main).toContainElement(hero);
+    expect(main.lastElementChild).toHaveTextContent('Page content');
+    expect(hero).toHaveAttribute('data-hero-scroll-style', 'active');
     expect(
       screen.queryByText('Network Canvas wins INSNA Award'),
     ).not.toBeInTheDocument();
     expect(backgroundProps).not.toHaveBeenCalled();
-    expect(shell).toHaveClass('tablet-portrait:min-h-svh');
-    expect(motionRoot).toHaveClass(
-      'tablet-portrait:flex',
+    // The header and the hero fill the first screen between them.
+    expect(container.querySelector('[aria-hidden]')).toHaveClass(
       'tablet-portrait:min-h-svh',
-      'tablet-portrait:flex-col',
     );
-    expect(motionRoot).not.toHaveClass('relative', 'z-10');
+    expectControlledMotionRoots(container);
   });
 
   it('renders visible static server markup before the motion preference resolves', () => {
@@ -159,18 +172,7 @@ describe('HeroIntro', () => {
     expect(container.firstElementChild).toHaveAttribute(
       'data-entrance-pending',
     );
-    expect(container.querySelector('[data-motion-root]')).toHaveAttribute(
-      'data-initial',
-      'false',
-    );
-    expect(container.querySelector('[data-motion-root]')).toHaveAttribute(
-      'data-animate',
-      'controls',
-    );
-    expect(container.querySelector('[data-motion-root]')).toHaveAttribute(
-      'data-variants',
-      'active',
-    );
+    expectControlledMotionRoots(container);
     expect(container.querySelector('[data-header-variants]')).toHaveAttribute(
       'data-header-variants',
       'active',
@@ -209,14 +211,7 @@ describe('HeroIntro', () => {
     expect(container.querySelector('[data-motion-root]')).toBe(
       serverMotionRoot,
     );
-    expect(container.querySelector('[data-motion-root]')).toHaveAttribute(
-      'data-animate',
-      'controls',
-    );
-    expect(container.querySelector('[data-motion-root]')).toHaveAttribute(
-      'data-variants',
-      'active',
-    );
+    expectControlledMotionRoots(container);
     expect(container.querySelector('[data-header-variants]')).toHaveAttribute(
       'data-header-variants',
       'active',
@@ -264,14 +259,7 @@ describe('HeroIntro', () => {
     expect(container.querySelector('[data-motion-root]')).toBe(
       serverMotionRoot,
     );
-    expect(container.querySelector('[data-motion-root]')).toHaveAttribute(
-      'data-animate',
-      'controls',
-    );
-    expect(container.querySelector('[data-motion-root]')).toHaveAttribute(
-      'data-variants',
-      'active',
-    );
+    expectControlledMotionRoots(container);
     expect(container.querySelector('[data-header-variants]')).toHaveAttribute(
       'data-header-variants',
       'active',

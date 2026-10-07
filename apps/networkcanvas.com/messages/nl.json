@@ -104,10 +104,10 @@
   "UpdatesPage": {
     "metadata": {
       "title": "Updates",
-      "description": "Begrijpelijke samenvattingen van nieuwe versies van Architect, Interviewer en Fresco."
+      "description": "Nieuws uit het hele Network Canvas-project: softwarereleases, financiering, onderzoeksartikelen, workshops en andere mijlpalen."
     },
     "heading": "Updates",
-    "introduction": "Wat er nieuw is in de Network Canvas-apps. Een gedetailleerde lijst van alle wijzigingen vind je in de <changelog>release notes op GitHub</changelog>. Architect en Interviewer worden automatisch bijgewerkt; volg de <upgrade>instructies in onze documentatie</upgrade> om Fresco bij te werken.",
+    "introduction": "Nieuws uit het hele Network Canvas-project sinds de start in 2013: softwarereleases, financiering, onderzoeksartikelen, workshops en andere mijlpalen.",
     "search": {
       "label": "Updates zoeken",
       "placeholder": "Updates zoeken",
@@ -120,11 +120,7 @@
       "show": "Alle details tonen",
       "hide": "Details verbergen"
     },
-    "readMore": "Lees de volledige aankondiging",
-    "filter": {
-      "label": "Filteren op app",
-      "all": "Alle"
-    }
+    "readMore": "Lees de volledige aankondiging"
   },
   "Team": {
     "heading": "Kernteam",

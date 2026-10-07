@@ -104,10 +104,10 @@
   "UpdatesPage": {
     "metadata": {
       "title": "更新",
-      "description": "以简明语言概述 Architect、Interviewer 和 Fresco 的新版本。"
+      "description": "来自 Network Canvas 项目各个方面的动态：软件发布、资助、研究论文、工作坊及其他里程碑。"
     },
     "heading": "更新",
-    "introduction": "Network Canvas 应用的最新动态。如需查看每项更改的详细列表，请参阅 <changelog>GitHub 上的发布说明</changelog>。Architect 和 Interviewer 会自动更新；如需升级 Fresco，请按照<upgrade>我们文档中的说明</upgrade>操作。",
+    "introduction": "自 2013 年启动以来，Network Canvas 项目各个方面的动态：软件发布、资助、研究论文、工作坊及其他里程碑。",
     "search": {
       "label": "搜索更新",
       "placeholder": "搜索更新",
@@ -120,11 +120,7 @@
       "show": "显示完整详情",
       "hide": "隐藏详情"
     },
-    "readMore": "阅读完整公告",
-    "filter": {
-      "label": "按应用筛选",
-      "all": "全部"
-    }
+    "readMore": "阅读完整公告"
   },
   "Team": {
     "heading": "核心团队",

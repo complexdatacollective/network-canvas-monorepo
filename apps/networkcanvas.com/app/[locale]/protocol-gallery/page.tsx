@@ -65,10 +65,10 @@ export default async function ProtocolGalleryPage({
   const protocols = await loadProtocolGallery();
 
   return (
-    <main className="relative isolate">
+    <div className="relative isolate">
       <Header activeItemId="protocolGallery" host="protocolGallery" />
 
-      <div className="type-scale-product">
+      <main className="type-scale-product">
         <Container maxWidth="full" margin="none" className="mt-12">
           <div
             id={SITE_NAVIGATION_SKIP_TARGET_ID}
@@ -92,9 +92,9 @@ export default async function ProtocolGalleryPage({
         </Container>
 
         <ProtocolGallery protocols={protocols} />
-      </div>
+      </main>
 
       <Footer host="protocolGallery" />
-    </main>
+    </div>
   );
 }

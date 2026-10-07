@@ -34,7 +34,7 @@ export default async function HomePage({ params }: HomePageProps) {
   ]);
 
   return (
-    <main className="relative isolate">
+    <div className="relative isolate">
       <HomepageEntrance newsItems={latestNewsItems(updates)}>
         <Tools />
         <VideoSection />
@@ -46,9 +46,8 @@ export default async function HomePage({ params }: HomePageProps) {
         <CoreTeam members={coreTeam} />
         <Institutions />
         <WhatNext />
-
-        <Footer />
       </HomepageEntrance>
-    </main>
+      <Footer />
+    </div>
   );
 }
