@@ -307,6 +307,7 @@ describe.skipIf(!testDb)('the lease keeper', () => {
         [draftId, key],
       );
       let stopping: Promise<void> | undefined;
+      let expired = 0;
       try {
         await until(
           () => a.time.pending(RENEW_INTERVAL_MS) > 0,
@@ -318,19 +319,26 @@ describe.skipIf(!testDb)('the lease keeper', () => {
           'the row to be recorded again',
         );
 
-        const expired = a.spans.ended('protocolBuilder.expireConnection');
+        const begun = a.spans.count('protocolBuilder.expireConnection');
+        expired = a.spans.ended('protocolBuilder.expireConnection');
         stopping = channel.stop();
-        // Run one at a time, the close cannot expire the row until the
-        // re-record lets go, so waiting out this deadline is the pass.
         await until(
-          () => a.spans.ended('protocolBuilder.expireConnection') > expired,
-          'the close to expire the row',
-          1_000,
-        ).catch(() => undefined);
+          async () => !(await a.connected(owner)),
+          'the close to reach the replica',
+        );
+        await settle();
+        // Run one at a time, the close waits for the re-record in the
+        // replica, and has not begun to expire the row in the database.
+        expect(a.spans.count('protocolBuilder.expireConnection')).toBe(begun);
       } finally {
         await held.release();
       }
       await stopping;
+      // The watch ends on the client before its close has finished here.
+      await until(
+        () => a.spans.ended('protocolBuilder.expireConnection') > expired,
+        'the close to expire the row',
+      );
       await until(
         () => a.time.pending(RENEW_INTERVAL_MS) > 0,
         'the lease keeper to finish its tick',
