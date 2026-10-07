@@ -980,9 +980,10 @@ export const Adoption: Story = {
  * stepfather is also a social parent to the participant.
  */
 /**
- * A relative added on their own, not yet connected to anyone: the connect
- * tool joins them to people already shown. Here Tom becomes Ella's father and
- * Rachel's partner.
+ * Connecting people already shown. Tom is recorded only as Rachel's partner;
+ * the connect tool makes him Ella's father as well. Until it does, the
+ * partnership is all that connects him to Ella, so it cannot be removed: he
+ * would leave the family tree.
  */
 export const ConnectingExistingPeople: Story = {
   args: { requirement: 'parents', enforcement: 'required' },
@@ -1001,7 +1002,10 @@ export const ConnectingExistingPeople: Story = {
           { id: 'mum', name: 'Rachel', gender: 'woman', sex: 'female' },
           { id: 'dad', name: 'Tom', gender: 'man', sex: 'male' },
         ],
-        links: [{ from: 'mum', to: 'ego', kind: 'biological', carrier: true }],
+        links: [
+          { from: 'mum', to: 'ego', kind: 'biological', carrier: true },
+          { from: 'mum', to: 'dad', kind: 'partner' },
+        ],
       }}
     />
   ),
@@ -1016,6 +1020,17 @@ export const ConnectingExistingPeople: Story = {
       return element;
     };
     await waitFor(() => expect(person('dad')).toBeVisible());
+
+    // The partnership is Tom's only connection to Ella, so it is not removed
+    // and nothing is asked.
+    await userEvent.click(canvas.getByTestId('pedigree-tool-disconnect'));
+    await userEvent.click(person('dad'));
+    await userEvent.click(person('mum'));
+    await expect(canvas.getByTestId('pedigree-connect-hint')).toHaveTextContent(
+      'Removing this connection would leave “Tom” outside your family tree. Connect them to someone else in your family first.',
+    );
+    await expect(page.queryByRole('dialog')).toBeNull();
+    await userEvent.keyboard('{Escape}');
 
     await userEvent.click(canvas.getByTestId('pedigree-tool-connect'));
     await userEvent.click(person('dad'));
@@ -1035,18 +1050,6 @@ export const ConnectingExistingPeople: Story = {
       ).toBeInTheDocument(),
     );
 
-    await userEvent.click(person('dad'));
-    await userEvent.click(person('mum'));
-    await userEvent.click(
-      await page.findByRole('menuitem', {
-        name: '“Tom” and “Rachel” are partners',
-      }),
-    );
-    await waitFor(() =>
-      expect(
-        canvas.getByText('“Tom” and “Rachel” are partners'),
-      ).toBeInTheDocument(),
-    );
     // Already connected, so no second link: the menu does not open, and the
     // already-connected person does not join the linking state.
     await userEvent.click(person('mum'));
@@ -1106,6 +1109,107 @@ export const ConnectingExistingPeople: Story = {
         canvas.getByText('“Tom” and “Rachel” were partners'),
       ).toBeInTheDocument(),
     );
+  },
+};
+
+/**
+ * Only the participant's family is drawn: the participant, and everyone
+ * connected to them through family relationships. Other stages can add
+ * people of the same type who are not family — Sam, a friend, and Leo and
+ * Hannah, a couple the participant knows — and they are neither drawn nor
+ * changed here.
+ */
+export const OnlyTheFamilyIsDrawn: Story = {
+  args: { requirement: 'none' },
+  render: (args) => (
+    <PedigreeStory
+      {...settings(args)}
+      family={{
+        people: [
+          {
+            id: 'ego',
+            name: 'Ella',
+            gender: 'woman',
+            sex: 'female',
+            ego: true,
+          },
+          { id: 'mum', name: 'Rachel', gender: 'woman', sex: 'female' },
+          { id: 'friend', name: 'Sam', gender: 'man', sex: 'male' },
+          { id: 'leo', name: 'Leo', gender: 'man', sex: 'male' },
+          { id: 'hannah', name: 'Hannah', gender: 'woman', sex: 'female' },
+        ],
+        links: [
+          { from: 'mum', to: 'ego', kind: 'biological', carrier: true },
+          { from: 'leo', to: 'hannah', kind: 'partner' },
+        ],
+      }}
+    />
+  ),
+  play: async (context) => {
+    await expectPeople(2)(context);
+    const canvas = within(context.canvasElement);
+    await expect(canvas.getByRole('button', { name: /^Rachel/ })).toBeVisible();
+    for (const name of [/^Sam/, /^Leo/, /^Hannah/]) {
+      await expect(canvas.queryByRole('button', { name })).toBeNull();
+    }
+  },
+};
+
+/**
+ * Removing someone who is the only link between the participant and other
+ * people removes those people too, as the confirmation says: they would
+ * otherwise vanish from the tree. Margaret is connected to Ella only through
+ * her daughter Rachel; Tom stays, connected to Ella as her father.
+ */
+export const RemovingSomeoneRemovesThoseConnectedOnlyThroughThem: Story = {
+  args: { requirement: 'none' },
+  render: (args) => (
+    <PedigreeStory
+      {...settings(args)}
+      family={{
+        people: [
+          {
+            id: 'ego',
+            name: 'Ella',
+            gender: 'woman',
+            sex: 'female',
+            ego: true,
+          },
+          { id: 'mum', name: 'Rachel', gender: 'woman', sex: 'female' },
+          { id: 'dad', name: 'Tom', gender: 'man', sex: 'male' },
+          { id: 'grandma', name: 'Margaret', gender: 'woman', sex: 'female' },
+        ],
+        links: [
+          { from: 'mum', to: 'dad', kind: 'partner' },
+          { from: 'mum', to: 'ego', kind: 'biological', carrier: true },
+          { from: 'dad', to: 'ego', kind: 'biological' },
+          { from: 'grandma', to: 'mum', kind: 'biological', carrier: true },
+        ],
+      }}
+    />
+  ),
+  play: async (context) => {
+    await expectPeople(4)(context);
+    const canvas = within(context.canvasElement);
+    const page = within(context.canvasElement.ownerDocument.body);
+
+    await userEvent.click(canvas.getByRole('button', { name: /^Rachel/ }));
+    await userEvent.click(
+      await page.findByRole('button', { name: 'Remove from family' }),
+    );
+    const dialog = await page.findByRole('dialog', { name: 'Remove Rachel?' });
+    await expect(dialog).toHaveTextContent(
+      '“Margaret” is connected to you only through them, so will be removed too.',
+    );
+    await userEvent.click(
+      within(dialog).getByRole('button', { name: 'Remove from family' }),
+    );
+
+    await expectPeople(2)(context);
+    await expect(canvas.getByRole('button', { name: /^Tom/ })).toBeVisible();
+    await expect(
+      canvas.queryByRole('button', { name: /^Margaret/ }),
+    ).toBeNull();
   },
 };
 

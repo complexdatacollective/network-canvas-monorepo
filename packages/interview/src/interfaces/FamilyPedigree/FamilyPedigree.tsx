@@ -67,6 +67,11 @@ import type { Direction, StageProps } from '../../types';
 import { usePassphrase } from '../Anonymisation/usePassphrase';
 import { pedigreeFraming } from '../pedigree-common/framing';
 import {
+  participantsFamily,
+  peopleCutOff,
+  planRemovePerson,
+} from '../pedigree-common/membership';
+import {
   focusNeighbourInDirection,
   PedigreeViewport,
   usePedigreeZoomButtons,
@@ -101,7 +106,6 @@ import {
   planAddRelative,
   planConnection,
   type PlannedLink,
-  planRemovePerson,
   nameFingerprint,
   readFamily,
   type Family,
@@ -250,8 +254,14 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   const decryptedNames = decryption.names;
 
   // Someone who still holds the label the stage saved for them is unnamed.
+  // Only the participant's family is drawn: other stages can add people of
+  // the same type who are not family, and they are never shown or changed
+  // here.
   const family = useMemo(
-    () => readFamily(nodes, edges, config, generatedLabels, decryptedNames),
+    () =>
+      participantsFamily(
+        readFamily(nodes, edges, config, generatedLabels, decryptedNames),
+      ),
     [nodes, edges, config, generatedLabels, decryptedNames],
   );
 
@@ -271,9 +281,15 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       draft.details,
       draft.request,
     );
-    // While the addition is being recorded, part of it is already real.
+    // While the addition is being recorded, part of it is already real. It
+    // is looked for in the network rather than in the family: someone
+    // recorded before the link that joins them to the family is not in it
+    // yet.
+    const recordedIds = new Set(
+      nodes.map((node) => node[entityPrimaryKeyProperty]),
+    );
     const draftNodes: NcNode[] = plan.people
-      .filter((person) => !family.byId.has(person.id))
+      .filter((person) => !recordedIds.has(person.id))
       .map((person) => ({
         [entityPrimaryKeyProperty]: person.id,
         type: config.personType,
@@ -282,10 +298,11 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     const draftEdges: NcEdge[] = plan.links
       .filter(
         (link) =>
-          !family.links.some(
+          !edges.some(
             (existing) =>
-              existing.source === link.source &&
-              existing.target === link.target,
+              existing.type === config.relationshipType &&
+              existing.from === link.source &&
+              existing.to === link.target,
           ),
       )
       .map((link, index) => ({
@@ -295,12 +312,14 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         to: link.target,
         [entityAttributesProperty]: linkAttributesFor(config, link),
       }));
-    return readFamily(
-      [...nodes, ...draftNodes],
-      [...edges, ...draftEdges],
-      config,
-      generatedLabels,
-      decryptedNames,
+    return participantsFamily(
+      readFamily(
+        [...nodes, ...draftNodes],
+        [...edges, ...draftEdges],
+        config,
+        generatedLabels,
+        decryptedNames,
+      ),
     );
   }, [draft, family, nodes, edges, config, generatedLabels, decryptedNames]);
   const nodeColor = useStageSelector(getNodeColorSelector);
@@ -773,7 +792,9 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         ? await decryption.decryptAll(nodes)
         : undefined;
     const current = decrypted
-      ? readFamily(nodes, edges, config, generatedLabels, decrypted.names)
+      ? participantsFamily(
+          readFamily(nodes, edges, config, generatedLabels, decrypted.names),
+        )
       : family;
     const saved = generateLabels(current, framing, intl);
     const { held, toWrite } = labelWrites(
@@ -1218,6 +1239,26 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     };
   };
 
+  // People named together, joined as the participant's language joins a
+  // list.
+  const listOfNames = (ids: readonly string[]) =>
+    intl.formatList(
+      ids.map((id) =>
+        intl.formatMessage(messages.listedName, { name: displayName(id) }),
+      ),
+      { type: 'conjunction' },
+    );
+
+  // The links between two people, in either direction.
+  const linksBetween = (a: string, b: string) =>
+    family.links
+      .filter(
+        (link) =>
+          (link.source === a && link.target === b) ||
+          (link.source === b && link.target === a),
+      )
+      .map((link) => link.id);
+
   const refuse = (notice: string) => {
     setConnectNotice(notice);
     setAnnouncement(notice);
@@ -1268,6 +1309,24 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       );
       return;
     }
+    // Only the participant's family is drawn, so a connection that is the
+    // only link between the participant and someone cannot be removed: they
+    // would vanish from the tree. The participant connects them another way
+    // first.
+    if (tool === 'disconnect') {
+      const cutOff = peopleCutOff(family, {
+        linkIds: linksBetween(linkingId, personId),
+      });
+      if (cutOff.length > 0) {
+        refuse(
+          intl.formatMessage(messages.disconnectWouldCutOff, {
+            count: cutOff.length,
+            names: listOfNames(cutOff),
+          }),
+        );
+        return;
+      }
+    }
     setChosenPair({ firstId: linkingId, secondId: personId });
     if (tool === 'disconnect') void handleDisconnect(linkingId, personId);
   };
@@ -1303,13 +1362,8 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       confirmLabel: intl.formatMessage(messages.disconnectConfirm),
       intent: 'destructive',
       onConfirm: () => {
-        for (const link of family.links) {
-          if (
-            (link.source === firstId && link.target === secondId) ||
-            (link.source === secondId && link.target === firstId)
-          ) {
-            dispatch(deleteEdge(link.id));
-          }
+        for (const linkId of linksBetween(firstId, secondId)) {
+          dispatch(deleteEdge(linkId));
         }
         setAnnouncement(
           intl.formatMessage(messages.disconnectedAnnouncement, args),
@@ -1319,24 +1373,41 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     endConnecting();
   };
 
+  // Removing someone who is the only link between the participant and other
+  // people removes those people too: only the participant's family is drawn,
+  // so they would otherwise vanish from the tree while staying in the
+  // interview. The confirmation names them.
   const handleRemove = async (personId: string) => {
     const name = displayName(personId);
+    const { cutOffIds, linkIds } = planRemovePerson(family, personId);
+    const removedIds = [personId, ...cutOffIds];
     // Close the panel first: its focus trap would otherwise hold focus away
     // from the confirmation.
     closePanel();
     await confirm({
       title: intl.formatMessage(messages.removeConfirmTitle, { name }),
-      description: intl.formatMessage(messages.removeConfirmDescription),
+      description:
+        cutOffIds.length === 0
+          ? intl.formatMessage(messages.removeConfirmDescription)
+          : intl.formatMessage(messages.removeConfirmDescriptionWithOthers, {
+              count: cutOffIds.length,
+              names: listOfNames(cutOffIds),
+            }),
       confirmLabel: intl.formatMessage(messages.remove),
       intent: 'destructive',
       onConfirm: () => {
-        for (const linkId of planRemovePerson(family, personId).linkIds) {
-          dispatch(deleteEdge(linkId));
+        for (const linkId of linkIds) dispatch(deleteEdge(linkId));
+        for (const id of removedIds) dispatch(deleteNode(id));
+        if (focusedId !== null && removedIds.includes(focusedId)) {
+          setFocusedId(null);
         }
-        dispatch(deleteNode(personId));
-        if (focusedId === personId) setFocusedId(null);
         setAnnouncement(
-          intl.formatMessage(messages.removedAnnouncement, { name }),
+          cutOffIds.length === 0
+            ? intl.formatMessage(messages.removedAnnouncement, { name })
+            : intl.formatMessage(messages.removedWithOthersAnnouncement, {
+                name,
+                count: cutOffIds.length,
+              }),
         );
       },
     });

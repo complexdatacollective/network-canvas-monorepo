@@ -485,6 +485,13 @@ export const messages = defineMessages({
     description:
       'Explanation in the confirmation shown before removing a family member.',
   },
+  removeConfirmDescriptionWithOthers: {
+    id: 'interview.familyPedigree.removeConfirmDescriptionWithOthers',
+    defaultMessage:
+      'They will be removed from your family tree, along with their connections to other people. {count, plural, one {{names} is connected to you only through them, so will be removed too.} other {{names} are connected to you only through them, so will be removed too.}}',
+    description:
+      'Explanation in the confirmation shown before removing a family member who is the only link between the participant and other people in the family tree. Those people would no longer be connected to the participant, so they are removed as well. names is a list of their names, or, when they have none, how they are related to the participant, each quoted and already joined in the participant’s language (for example “Grandmother” and “Grandfather”); count is how many people it names.',
+  },
   trackerProgressLabel: {
     id: 'interview.familyPedigree.trackerProgressLabel',
     defaultMessage:
@@ -576,6 +583,13 @@ export const messages = defineMessages({
     defaultMessage: 'Details saved.',
     description:
       'Screen reader announcement after a family member’s details are saved.',
+  },
+  removedWithOthersAnnouncement: {
+    id: 'interview.familyPedigree.removedWithOthersAnnouncement',
+    defaultMessage:
+      '{count, plural, one {{name} and one other person removed from your family.} other {{name} and # other people removed from your family.}}',
+    description:
+      'Screen reader announcement after a family member is removed along with the people who were connected to the participant only through them. {name} is the name of the person the participant chose to remove or, when it is not known, how they are related to the participant; count is how many other people were removed with them.',
   },
   removedAnnouncement: {
     id: 'interview.familyPedigree.removedAnnouncement',
@@ -699,6 +713,19 @@ export const messages = defineMessages({
       '{firstIsYou, select, true {You and “{second}” are not connected.} other {“{first}” and “{second}” are not connected.}}',
     description:
       'Shown under the toolbar, and read out, when the participant selects two people to disconnect who have no connection between them. first and second are their names or how they are related to the participant.',
+  },
+  listedName: {
+    id: 'interview.familyPedigree.listedName',
+    defaultMessage: '“{name}”',
+    description:
+      'One person in a list of people named in a sentence, such as the people who would be left outside the family tree. name is their name or, when it is not known, how they are related to the participant. The list is joined in the participant’s language, so this is one item: quote the name as names are quoted in the rest of this part of the interview.',
+  },
+  disconnectWouldCutOff: {
+    id: 'interview.familyPedigree.disconnectWouldCutOff',
+    defaultMessage:
+      '{count, plural, one {Removing this connection would leave {names} outside your family tree. Connect them to someone else in your family first.} other {Removing this connection would leave {names} outside your family tree. Connect them to someone else in your family first.}}',
+    description:
+      'Shown under the toolbar, and read out, when the participant selects two people to disconnect whose connection is the only link between the participant and other people in the family tree, so it cannot be removed. names is a list of those people’s names, or, when they have none, how they are related to the participant, each quoted and already joined in the participant’s language (for example “Aunt” and “Cousin”); count is how many people it names.',
   },
   disconnectConfirmTitle: {
     id: 'interview.familyPedigree.disconnectConfirmTitle',

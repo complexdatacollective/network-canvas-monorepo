@@ -15,6 +15,8 @@ The Family Pedigree is an interface for collecting family network data. The part
 
 Each family member is saved as a person of the type you choose for the stage, and each relationship as a connection of the relationship type you choose, together with the attributes described below.
 
+The canvas shows the participant's family: the participant, and everyone connected to them through the stage's relationships, however indirectly. Other stages can add people of the same person type who are not family, such as friends or colleagues. They are not drawn on the canvas and the stage never changes them, even if another stage tied them to the participant with a different kind of connection. They are not given labels, not counted towards [completeness](#completeness), and cannot be selected for a [nomination prompt](#nomination-prompts). Everything the participant adds on the canvas is connected to them, so nobody they draw leaves the family.
+
 ## How participants build their family
 
 ### The prompt
@@ -45,11 +47,11 @@ Selecting a person with a click, a tap, or the Enter or Space key opens their de
 
 The kinds of parent a participant can choose are biological, adoptive, step or social, egg or sperm donor, and surrogate. The interface rules out answers that contradict each other. No more than two people (biological parents or donors) can be recorded as someone's genetic parents, and they cannot both be recorded as female at birth or both as male at birth. Someone recorded as male at birth cannot be recorded as having carried a pregnancy.
 
-A person other than the participant can be removed from the panel with **Remove from family**, which also removes their connections to other people.
+A person other than the participant can be removed from the panel with **Remove from family**, which also removes their connections to other people. Anyone connected to the participant only through that person would no longer be part of the family, so they are removed too: the confirmation names them before anything is removed.
 
 ### Connecting people already on the canvas
 
-The toolbar has three tools. **Add and edit** is the default and does everything described above. With **Connect**, the participant selects one person and then another, and a menu asks how they are related: partners, former partners, or one as the parent of the other and, if so, which kind of parent. With **Disconnect**, they select two people who are connected and confirm; both people stay on the canvas and only the connection between them is removed. A pair of people can have at most one connection.
+The toolbar has three tools. **Add and edit** is the default and does everything described above. With **Connect**, the participant selects one person and then another, and a menu asks how they are related: partners, former partners, or one as the parent of the other and, if so, which kind of parent. With **Disconnect**, they select two people who are connected and confirm; both people stay on the canvas and only the connection between them is removed. A connection that is the only link between the participant and someone cannot be removed, because that person would leave the family: the participant is told who, and can connect them another way first. A pair of people can have at most one connection.
 
 ### Nomination prompts
 

@@ -8,7 +8,6 @@ import {
   nameFingerprint,
   partnersOf,
   planAddRelative,
-  planRemovePerson,
   primaryParentsOf,
   readFamily,
   siblingsOf,
@@ -666,13 +665,5 @@ describe('planAddRelative', () => {
         isCurrentPartner: false,
       },
     ]);
-  });
-});
-
-describe('planRemovePerson', () => {
-  test('removes every link touching the person', () => {
-    expect(planRemovePerson(nuclearFamily(), 'dad').linkIds.sort()).toEqual(
-      ['dad-ego-biological', 'dad-sib-biological', 'mum-dad-partner'].sort(),
-    );
   });
 });

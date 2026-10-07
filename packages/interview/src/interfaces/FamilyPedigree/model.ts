@@ -631,15 +631,6 @@ export function planAddRelative({
   return { people, links };
 }
 
-/** Every person and link to remove along with a person. */
-export function planRemovePerson(family: Family, personId: string) {
-  return {
-    linkIds: family.links
-      .filter((link) => link.source === personId || link.target === personId)
-      .map((link) => link.id),
-  };
-}
-
 /** A relationship the participant draws between two people already shown. */
 export type Connection =
   | { kind: 'partner'; firstId: string; secondId: string; current: boolean }

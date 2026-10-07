@@ -17,6 +17,9 @@ import {
  * along with anyone whose family relationships do not reach the participant.
  * With no participant, the family is empty. Only the participant is marked
  * as them, even if another person's participant attribute is also set.
+ *
+ * The Family Pedigree draws, labels and asks about this family alone, and the
+ * stages after it read the same family, so both agree on who is in it.
  */
 export function participantsFamily(family: Family): Family {
   const { egoId } = family;
@@ -61,6 +64,57 @@ export function participantsFamily(family: Family): Family {
       (link) => members.has(link.source) && members.has(link.target),
     ),
     egoId,
+  };
+}
+
+/**
+ * Who would leave the participant's family if this person, or these links,
+ * were removed from it: everyone connected to the participant only through
+ * them. `family` is the participant's family (`participantsFamily`); the
+ * person removed is not counted among those cut off.
+ *
+ * The Family Pedigree draws only the participant's family, so someone cut off
+ * from it would vanish from the pedigree while staying in the interview. It
+ * asks this before a removal, so that nobody drops out unannounced.
+ */
+export function peopleCutOff(
+  family: Family,
+  removal: Readonly<{ personId?: string; linkIds?: readonly string[] }>,
+): string[] {
+  const { personId } = removal;
+  const linkIds = new Set(removal.linkIds ?? []);
+  const remaining = participantsFamily({
+    ...family,
+    people: family.people.filter((person) => person.id !== personId),
+    links: family.links.filter(
+      (link) =>
+        !linkIds.has(link.id) &&
+        link.source !== personId &&
+        link.target !== personId,
+    ),
+    egoId: family.egoId === personId ? undefined : family.egoId,
+  });
+  return family.people
+    .map((person) => person.id)
+    .filter((id) => id !== personId && !remaining.byId.has(id));
+}
+
+/**
+ * Everything to remove along with a person: the people connected to the
+ * participant only through them (`peopleCutOff`), who would otherwise drop
+ * out of the family unannounced, and every link touching any of them.
+ */
+export function planRemovePerson(
+  family: Family,
+  personId: string,
+): { cutOffIds: string[]; linkIds: string[] } {
+  const cutOffIds = peopleCutOff(family, { personId });
+  const removed = new Set([personId, ...cutOffIds]);
+  return {
+    cutOffIds,
+    linkIds: family.links
+      .filter((link) => removed.has(link.source) || removed.has(link.target))
+      .map((link) => link.id),
   };
 }
 
