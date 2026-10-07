@@ -20,6 +20,8 @@ export type ContractSubject = {
   readonly store: ObjectStore['Service'];
   /** The same credentials, naming a bucket or container that does not. */
   readonly missing: ObjectStore['Service'];
+  /** The same store, asking for one object per listing page. */
+  readonly paged: ObjectStore['Service'];
 };
 
 /**
@@ -145,7 +147,10 @@ export function objectStoreContract(
       // Narrowed once for every case: `skipIf` skips them when it is absent.
       const store = subject?.store;
       const missing = subject?.missing;
-      if (store === undefined || missing === undefined) return;
+      const paged = subject?.paged;
+      if (store === undefined || missing === undefined || paged === undefined) {
+        return;
+      }
 
       it.live('stores bytes under their content hash and reads them back', () =>
         Effect.gen(function* () {
@@ -292,6 +297,26 @@ export function objectStoreContract(
             yield* store.deleteStaged(mine);
             yield* store.deleteStaged(theirs);
           }),
+      );
+
+      it.live('lists staged objects across every page of a listing', () =>
+        Effect.gen(function* () {
+          const team = randomUUID();
+          const keys = [
+            mintStagingKey(team),
+            mintStagingKey(team),
+            mintStagingKey(team),
+          ];
+          for (const key of keys) {
+            yield* paged.putStaged(key, freshBytes(16), 'text/plain');
+          }
+          const later = new Date(Date.now() + 60_000);
+
+          expect(
+            (yield* paged.listStaged(stagingPrefix(team), later)).toSorted(),
+          ).toEqual(keys.toSorted());
+          for (const key of keys) yield* paged.deleteStaged(key);
+        }),
       );
 
       it.live('promotes a staged object into the asset its hash names', () =>

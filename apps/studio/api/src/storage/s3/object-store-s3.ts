@@ -10,7 +10,11 @@ import {
 } from '@aws-sdk/client-s3';
 
 import type { S3Env } from '../../env/resolve.ts';
-import { fromBackend, type ObjectStore } from '../object-store.ts';
+import {
+  type BackendOptions,
+  fromBackend,
+  type ObjectStore,
+} from '../object-store.ts';
 
 // The S3 implementation of the object-store port (#2077), for every store
 // that speaks the S3 API: Garage, R2, MinIO and AWS S3. The only module that
@@ -27,6 +31,7 @@ const listAll = async (
   client: S3Client,
   bucket: string,
   prefix: string,
+  pageSize: number | undefined,
   abortSignal: AbortSignal,
 ) => {
   const listed: { key: string; lastModified: Date | undefined }[] = [];
@@ -37,6 +42,7 @@ const listAll = async (
         Bucket: bucket,
         Prefix: prefix,
         ContinuationToken: token,
+        MaxKeys: pageSize,
       }),
       { abortSignal },
     );
@@ -50,7 +56,10 @@ const listAll = async (
   return listed;
 };
 
-function make(env: S3Env): ObjectStore['Service'] {
+function make(
+  env: S3Env,
+  options: BackendOptions = {},
+): ObjectStore['Service'] {
   const client = new S3Client({
     endpoint: env.endpoint,
     region: env.region,
@@ -97,7 +106,7 @@ function make(env: S3Env): ObjectStore['Service'] {
         abortSignal,
       }),
     list: (prefix, abortSignal) =>
-      listAll(client, env.bucket, prefix, abortSignal),
+      listAll(client, env.bucket, prefix, options.listPageSize, abortSignal),
     // `CopySource` is a URL path, so each segment of the key is encoded; the
     // keys Studio copies are hex and a UUID, which encoding leaves as they are.
     copy: (from, to, abortSignal) =>

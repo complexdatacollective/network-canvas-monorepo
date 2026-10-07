@@ -138,6 +138,15 @@ export const removeStaged = (
     ),
   );
 
+/** How a provider's backend is built, beyond its environment. */
+export type BackendOptions = {
+  /**
+   * The most objects one listing request asks for. Left to the provider but
+   * in the contract tests, which make it small so a listing spans pages.
+   */
+  readonly listPageSize?: number;
+};
+
 /** What a stored object's metadata says, where the provider reported it. */
 type ObjectMetadata = {
   readonly size: number | undefined;

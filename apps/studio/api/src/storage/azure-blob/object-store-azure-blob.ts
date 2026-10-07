@@ -9,7 +9,11 @@ import {
 } from '@azure/storage-blob';
 
 import type { AzureBlobEnv } from '../../env/resolve.ts';
-import { fromBackend, type ObjectStore } from '../object-store.ts';
+import {
+  type BackendOptions,
+  fromBackend,
+  type ObjectStore,
+} from '../object-store.ts';
 
 // The Azure Blob Storage implementation of the object-store port (#2077), for
 // institutions whose cloud is Azure, which has no S3 API. The only module that
@@ -68,7 +72,10 @@ function containerClient(env: AzureBlobEnv): ContainerClient {
   return service.getContainerClient(env.container);
 }
 
-function make(env: AzureBlobEnv): ObjectStore['Service'] {
+function make(
+  env: AzureBlobEnv,
+  options: BackendOptions = {},
+): ObjectStore['Service'] {
   const container = containerClient(env);
 
   return fromBackend({
@@ -106,14 +113,16 @@ function make(env: AzureBlobEnv): ObjectStore['Service'] {
       container.getBlockBlobClient(key).deleteIfExists({ abortSignal }),
     list: async (prefix, abortSignal) => {
       const listed: { key: string; lastModified: Date | undefined }[] = [];
-      for await (const blob of container.listBlobsFlat({
-        prefix,
-        abortSignal,
-      })) {
-        listed.push({
-          key: blob.name,
-          lastModified: blob.properties.lastModified,
-        });
+      const pages = container
+        .listBlobsFlat({ prefix, abortSignal })
+        .byPage({ maxPageSize: options.listPageSize });
+      for await (const page of pages) {
+        for (const blob of page.segment.blobItems) {
+          listed.push({
+            key: blob.name,
+            lastModified: blob.properties.lastModified,
+          });
+        }
       }
       return listed;
     },

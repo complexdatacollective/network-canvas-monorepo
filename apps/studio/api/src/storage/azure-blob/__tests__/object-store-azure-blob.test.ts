@@ -28,14 +28,17 @@ const service = BlobServiceClient.fromConnectionString(
 const suffix = randomBytes(4).toString('hex');
 const container = service.getContainerClient(`studio-contract-${suffix}`);
 
-const storeFor = (name: string) =>
-  ObjectStoreAzureBlob.make({
-    container: name,
-    auth: {
-      kind: 'connection-string',
-      connectionString: DEV_AZURITE_CONNECTION_STRING,
+const storeFor = (name: string, listPageSize?: number) =>
+  ObjectStoreAzureBlob.make(
+    {
+      container: name,
+      auth: {
+        kind: 'connection-string',
+        connectionString: DEV_AZURITE_CONNECTION_STRING,
+      },
     },
-  });
+    listPageSize === undefined ? {} : { listPageSize },
+  );
 
 async function subject(): Promise<ContractSubject | undefined> {
   // Aborted at the deadline, so an Azurite that accepts and never answers
@@ -53,7 +56,11 @@ async function subject(): Promise<ContractSubject | undefined> {
   afterAll(async () => {
     await container.deleteIfExists();
   });
-  return { store, missing: storeFor(`studio-missing-${suffix}`) };
+  return {
+    store,
+    missing: storeFor(`studio-missing-${suffix}`),
+    paged: storeFor(container.containerName, 1),
+  };
 }
 
 const available = await subject();
