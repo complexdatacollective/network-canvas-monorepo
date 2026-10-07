@@ -9,7 +9,8 @@ import { FormFixture } from './stage-fixture.js';
  * "Continue" submit) over an animated EncryptionBackground; once a passphrase
  * is set the form is replaced by a success alert. When a later stage needs to
  * decrypt an encrypted variable without a passphrase in memory, the shared
- * PassphrasePrompter (🔑/⚠️ button + overlay) appears in the vertical nav.
+ * PassphrasePrompter (🔑/⚠️ button + overlay) appears in the navigation, in
+ * both the vertical rail and the horizontal bar.
  *
  * Locators cite packages/interview/src/interfaces/Anonymisation/Anonymisation.tsx
  * and packages/interview/src/components/PassphrasePrompter.tsx.
@@ -29,7 +30,7 @@ export class AnonymisationFixture {
   /**
    * Passphrase field — `Field name="passphrase"`. Rendered both by the stage's
    * own form (Anonymisation.tsx:131-140) and by the PassphrasePrompter overlay
-   * (PassphrasePrompter.tsx:169-176), which is why the prompter has no separate
+   * (PassphrasePrompter.tsx:195-202), which is why the prompter has no separate
    * accessor: the field name is the same, so this locates whichever is present.
    */
   passphraseField(): Locator {
@@ -95,8 +96,8 @@ export class AnonymisationFixture {
   }
 
   /**
-   * The 🔑/⚠️ PassphrasePrompter button in the vertical nav
-   * (PassphrasePrompter.tsx:70-90). Only rendered when a passphrase is
+   * The 🔑/⚠️ PassphrasePrompter button in the navigation
+   * (PassphrasePrompter.tsx:94-128). Only rendered when a passphrase is
    * required and not currently set/valid.
    */
   prompterButton(): Locator {
