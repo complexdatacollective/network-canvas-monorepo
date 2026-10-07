@@ -170,7 +170,7 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
     baseValidationContext.stageSubject
       ? {
           codebook: baseValidationContext.codebook,
-          network: quickAddValidationNetwork,
+          ...quickAddValidationNetwork,
           stageSubject: baseValidationContext.stageSubject,
           variableLabels: nodeFormVariableLabels,
         }
