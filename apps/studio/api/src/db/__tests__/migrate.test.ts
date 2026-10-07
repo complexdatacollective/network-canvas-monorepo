@@ -65,10 +65,13 @@ describe.skipIf(!db)('migrate', () => {
     options: MigrateOptions = {},
   ) =>
     Effect.runPromise(
-      migrateDatabaseEffect(verifyMigrations(document, document.fingerprint), {
-        appliedBy: 'test',
-        ...options,
-      }).pipe(Effect.provide(ownerLayer(url))),
+      migrateDatabaseEffect(
+        Effect.runSync(verifyMigrations(document, document.fingerprint)),
+        {
+          appliedBy: 'test',
+          ...options,
+        },
+      ).pipe(Effect.provide(ownerLayer(url))),
     );
 
   /** Rejects when the run succeeds, so a missing refusal fails the test. */
@@ -76,7 +79,7 @@ describe.skipIf(!db)('migrate', () => {
     Effect.runPromise(
       Effect.flip(
         migrateDatabaseEffect(
-          verifyMigrations(document, document.fingerprint),
+          Effect.runSync(verifyMigrations(document, document.fingerprint)),
         ).pipe(Effect.provide(ownerLayer(url))),
       ),
     );
@@ -85,7 +88,9 @@ describe.skipIf(!db)('migrate', () => {
   const sqlRefusal = (url: string, document: MigrationsDocument) =>
     Effect.runPromise(
       refusalOf(
-        migrateDatabaseEffect(verifyMigrations(document, document.fingerprint)),
+        migrateDatabaseEffect(
+          Effect.runSync(verifyMigrations(document, document.fingerprint)),
+        ),
       ).pipe(Effect.provide(ownerLayer(url))),
     );
 
@@ -1248,16 +1253,18 @@ describe.skipIf(!db)('migrate', () => {
       const failure = await Effect.runPromise(
         refusalOf(
           migrateDatabaseEffect(
-            verifyMigrations(
-              next({
-                slug: 'fails_at_commit',
-                delta: [
-                  `CREATE FUNCTION probe_refuse_commit() RETURNS trigger AS $$ BEGIN RAISE EXCEPTION 'refused at commit'; END; $$ LANGUAGE plpgsql;`,
-                  'CREATE CONSTRAINT TRIGGER probe_refuse_commit AFTER INSERT ON studio_migrations DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION probe_refuse_commit();',
-                ].join('\n'),
-                fingerprint: NEXT,
-              }),
-              NEXT,
+            Effect.runSync(
+              verifyMigrations(
+                next({
+                  slug: 'fails_at_commit',
+                  delta: [
+                    `CREATE FUNCTION probe_refuse_commit() RETURNS trigger AS $$ BEGIN RAISE EXCEPTION 'refused at commit'; END; $$ LANGUAGE plpgsql;`,
+                    'CREATE CONSTRAINT TRIGGER probe_refuse_commit AFTER INSERT ON studio_migrations DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION probe_refuse_commit();',
+                  ].join('\n'),
+                  fingerprint: NEXT,
+                }),
+                NEXT,
+              ),
             ),
             { log: (line) => lines.push(line) },
           ).pipe(Effect.provide(ownerLayer(scratch.db.url))),

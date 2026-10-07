@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 
-import { Schema } from 'effect';
+import { Effect, Schema } from 'effect';
 
 import { SCHEMA_FINGERPRINT } from './fingerprint.generated.ts';
 import { executableText, splitStatements } from './statements.ts';
@@ -239,11 +239,12 @@ export class VerifiedMigrations {
 
 const short = (hash: string) => hash.slice(0, 12);
 
-function refuse(message: string): never {
-  throw new MigrationsDocumentRefused({ message });
-}
+const refused = (message: string) => new MigrationsDocumentRefused({ message });
 
-function verifyMigration(migration: DocumentMigration, index: number): void {
+const verifyMigration = Effect.fnUntraced(function* (
+  migration: DocumentMigration,
+  index: number,
+): Effect.fn.Return<void, MigrationsDocumentRefused> {
   const { version, ordinal, manifest } = migration;
   const expectedOrdinal = index + 1;
   const parsed = MIGRATION_VERSION.exec(version);
@@ -252,12 +253,12 @@ function verifyMigration(migration: DocumentMigration, index: number): void {
     parsed === null ||
     Number(parsed[1]) !== ordinal
   ) {
-    refuse(
+    return yield* refused(
       `The migrations are not numbered contiguously from 0001: position ${expectedOrdinal} holds ${version} (ordinal ${ordinal}).`,
     );
   }
   if (manifest.version !== version || manifest.ordinal !== ordinal) {
-    refuse(
+    return yield* refused(
       `Migration ${version}'s manifest names ${manifest.version} (ordinal ${manifest.ordinal}).`,
     );
   }
@@ -267,7 +268,7 @@ function verifyMigration(migration: DocumentMigration, index: number): void {
     (name) => name !== SNAPSHOT_ARTEFACT,
   );
   if (names.join('\n') !== executed.join('\n')) {
-    refuse(
+    return yield* refused(
       `Migration ${version} carries ${names.join(', ')}; expected executed artefacts in the order ${EXECUTED_ARTEFACTS.join(', ')}, each at most once.`,
     );
   }
@@ -275,7 +276,7 @@ function verifyMigration(migration: DocumentMigration, index: number): void {
   const expected = canonicalOrder([...names, SNAPSHOT_ARTEFACT]);
   for (const required of REQUIRED_ARTEFACTS) {
     if (!expected.includes(required)) {
-      refuse(`Migration ${version} has no ${required}.`);
+      return yield* refused(`Migration ${version} has no ${required}.`);
     }
   }
   // Every recorded key, before canonicalOrder (which keeps only names it
@@ -283,7 +284,7 @@ function verifyMigration(migration: DocumentMigration, index: number): void {
   // of the combined hash, and still be written to the history, where the next
   // image would read it as an edit.
   if ([...recorded].sort().join('\n') !== [...expected].sort().join('\n')) {
-    refuse(
+    return yield* refused(
       `Migration ${version}'s manifest records ${recorded.join(', ')}, but the migration carries ${expected.join(', ')}.`,
     );
   }
@@ -291,47 +292,51 @@ function verifyMigration(migration: DocumentMigration, index: number): void {
   for (const { name, sql } of migration.artefacts) {
     const rehashed = sha256(sql);
     if (rehashed !== manifest.artefacts[name]) {
-      refuse(
+      return yield* refused(
         `Migration ${version}'s ${name} does not hash to its manifest (${short(rehashed)} against ${short(manifest.artefacts[name] ?? '')}): the file is damaged or was edited. Rebuild the image from a release.`,
       );
     }
     const forbidden = forbiddenStatement(sql);
     if (forbidden !== null) {
-      refuse(
+      return yield* refused(
         `Migration ${version}'s ${name} carries a statement one transaction cannot run; ${forbidden.remedy}: ${forbidden.statement}`,
       );
     }
   }
   if (combinedHash(manifest.artefacts) !== manifest.combined) {
-    refuse(
+    return yield* refused(
       `Migration ${version}'s manifest does not hash to its combined hash: the manifest was edited.`,
     );
   }
-}
+});
 
 /**
  * Two directions, as `verifySchemaDdl` checked before it: the document must be
  * this build's (its fingerprint is the bundle's), and it must be intact (every
- * artefact re-hashes to the manifest that records it). Throws
+ * artefact re-hashes to the manifest that records it). Fails with
  * `MigrationsDocumentRefused`; nothing here touches a database.
  */
-export function verifyMigrations(
+export const verifyMigrations = Effect.fnUntraced(function* (
   document: MigrationsDocument,
   expectedFingerprint: string = SCHEMA_FINGERPRINT,
-): VerifiedMigrations {
+): Effect.fn.Return<VerifiedMigrations, MigrationsDocumentRefused> {
   if (document.fingerprint !== expectedFingerprint) {
-    refuse(
+    return yield* refused(
       `The migrations beside this bundle were rendered by a different build: they record ${short(document.fingerprint)} and this build is ${short(expectedFingerprint)}. Rebuild the image.`,
     );
   }
   if (document.migrations.length === 0) {
-    refuse('The migrations document carries no migrations. Rebuild the image.');
+    return yield* refused(
+      'The migrations document carries no migrations. Rebuild the image.',
+    );
   }
-  document.migrations.forEach(verifyMigration);
+  for (const [index, migration] of document.migrations.entries()) {
+    yield* verifyMigration(migration, index);
+  }
 
   const newest = document.migrations.at(-1)!;
   if (newest.manifest.fingerprint !== document.fingerprint) {
-    refuse(
+    return yield* refused(
       `The newest migration, ${newest.version}, was generated for schema ${short(newest.manifest.fingerprint)}, but this build's schema is ${short(document.fingerprint)}: the schema changed without a migration. Run: pnpm --filter @codaco/studio-api migrate:generate --name <slug>`,
     );
   }
@@ -340,4 +345,4 @@ export function verifyMigrations(
     document.fingerprint,
     document.migrations,
   );
-}
+});
