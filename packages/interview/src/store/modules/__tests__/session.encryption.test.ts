@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   entityAttributesProperty,
+  entityPrimaryKeyProperty,
   entitySecureAttributesMeta,
 } from '@codaco/shared-consts';
 
@@ -19,10 +20,30 @@ import {
   readCachedPlaintext,
 } from '../../../interfaces/Anonymisation/decryptionScope';
 import { decryptData } from '../../../interfaces/Anonymisation/utils';
-import { addNode, updateNode } from '../session';
+import { addNode, addNodesAndEdges, updateNode } from '../session';
 import { setPassphrase, setPassphraseInvalid } from '../ui';
 
 const mixedPatch = { set: { name: 'Bob', age: 41 }, unset: [] };
+
+type EncryptionStore = ReturnType<typeof createEncryptionStore>;
+
+const passphraseChanges: {
+  change: string;
+  apply: (store: EncryptionStore) => void;
+}[] = [
+  {
+    change: 'is replaced',
+    apply: (store) => {
+      store.dispatch(setPassphrase('another passphrase'));
+    },
+  },
+  {
+    change: 'is found not to work',
+    apply: (store) => {
+      store.dispatch(setPassphraseInvalid(true));
+    },
+  },
+];
 
 describe('encrypted writes', () => {
   it('refuses a patch mixing encrypted and plain values when no passphrase is in force, and applies none of it', async () => {
@@ -98,6 +119,93 @@ describe('encrypted writes', () => {
     ).resolves.toBe('Bob');
   });
 });
+
+// Each write is dispatched, and so starts encrypting with the passphrase then
+// in force, before the passphrase changes.
+describe.each(passphraseChanges)(
+  'encrypted writes while their passphrase $change',
+  ({ apply }) => {
+    it('refuses an update and applies none of it', async () => {
+      const node = await makeEncryptedPerson('n1', 'Alice', 'pw');
+      const store = createEncryptionStore([node]);
+      store.dispatch(setPassphrase('pw'));
+      const before = store.getState().session.network;
+
+      const pending = store.dispatch(
+        updateNode({
+          nodeId: 'n1',
+          attributePatch: mixedPatch,
+          currentStep: 0,
+        }),
+      );
+      apply(store);
+      const result = await pending;
+
+      if (!updateNode.rejected.match(result)) {
+        throw new Error('expected the update to be refused');
+      }
+      expect(result.error.name).toBe('PassphraseRequiredError');
+      expect(store.getState().session.network).toBe(before);
+    });
+
+    it('refuses to add a node', async () => {
+      const store = createEncryptionStore([]);
+      store.dispatch(setPassphrase('pw'));
+      const before = store.getState().session.network;
+
+      const pending = store.dispatch(
+        addNode({
+          type: NODE_TYPE,
+          attributeData: { name: 'Bob' },
+          useEncryption: true,
+          currentStep: 0,
+        }),
+      );
+      apply(store);
+      const result = await pending;
+
+      if (!addNode.rejected.match(result)) {
+        throw new Error('expected the node to be refused');
+      }
+      expect(result.error.name).toBe('PassphraseRequiredError');
+      expect(store.getState().session.network).toBe(before);
+    });
+
+    it('refuses to add a batch of nodes, and applies none of it', async () => {
+      const store = createEncryptionStore([]);
+      store.dispatch(setPassphrase('pw'));
+      const before = store.getState().session.network;
+
+      const pending = store.dispatch(
+        addNodesAndEdges({
+          nodes: [
+            {
+              type: NODE_TYPE,
+              attributeData: { name: 'Bob' },
+              modelData: { [entityPrimaryKeyProperty]: 'bob' },
+              useEncryption: true,
+            },
+            {
+              type: NODE_TYPE,
+              attributeData: { age: 30 },
+              modelData: { [entityPrimaryKeyProperty]: 'carol' },
+            },
+          ],
+          edges: [],
+          currentStep: 0,
+        }),
+      );
+      apply(store);
+      const result = await pending;
+
+      if (!addNodesAndEdges.rejected.match(result)) {
+        throw new Error('expected the batch to be refused');
+      }
+      expect(result.error.name).toBe('PassphraseRequiredError');
+      expect(store.getState().session.network).toBe(before);
+    });
+  },
+);
 
 describe('writes with the encrypted-variables experiment off', () => {
   it('stores an answer to a variable marked encrypted as plaintext without a passphrase', async () => {

@@ -3,7 +3,7 @@ import { invariant } from 'es-toolkit';
 import { find, get } from 'es-toolkit/compat';
 import { v4 as uuid } from 'uuid';
 
-import type { Codebook } from '@codaco/protocol-validation';
+import type { Codebook, Variable } from '@codaco/protocol-validation';
 import {
   type EntityPrimaryKey,
   entityAttributesProperty,
@@ -163,6 +163,37 @@ function requireUsablePassphrase(state: {
   return passphrase;
 }
 
+/**
+ * Encrypts `attributes` with the usable passphrase in force, which must still
+ * be in force and usable once encryption finishes. Deriving the keys takes
+ * long enough for the passphrase to be replaced or found not to work in the
+ * meantime, and a write encrypted with a passphrase no longer in force could
+ * not be read with the one that is, so it is refused.
+ */
+async function encryptWithPassphraseInForce(
+  getState: () => RootState,
+  attributes: Record<string, VariableValue>,
+  variables: Record<string, Variable>,
+) {
+  const passphrase = requireUsablePassphrase(getState());
+  const encrypted = await generateSecureAttributes(
+    attributes,
+    variables,
+    passphrase,
+  );
+  if (requireUsablePassphrase(getState()) !== passphrase) {
+    throw new PassphraseRequiredError();
+  }
+  rememberEncryptedWrite(
+    getState,
+    passphrase,
+    attributes,
+    encrypted.encryptedAttributes,
+    encrypted.secureAttributes ?? {},
+  );
+  return encrypted;
+}
+
 type AddNodeArgs = {
   type: NcNode['type'];
   attributeData?: Readonly<Record<string, VariableValue | undefined>>;
@@ -230,21 +261,12 @@ async function prepareNode(args: AddNodeArgs, getState: () => RootState) {
     };
   }
 
-  const passphrase = requireUsablePassphrase(state);
-
   const { secureAttributes, encryptedAttributes } =
-    await generateSecureAttributes(
+    await encryptWithPassphraseInForce(
+      getState,
       initialAttributes,
       variablesForType,
-      passphrase,
     );
-  rememberEncryptedWrite(
-    getState,
-    passphrase,
-    initialAttributes,
-    encryptedAttributes,
-    secureAttributes ?? {},
-  );
 
   return {
     type,
@@ -392,21 +414,12 @@ export const updateNode = createAppAsyncThunk(
       };
     }
 
-    const passphrase = requireUsablePassphrase(state);
-
     const { secureAttributes, encryptedAttributes } =
-      await generateSecureAttributes(
+      await encryptWithPassphraseInForce(
+        thunkApi.getState,
         attributePatch.set,
         variablesForType,
-        passphrase,
       );
-    rememberEncryptedWrite(
-      thunkApi.getState,
-      passphrase,
-      attributePatch.set,
-      encryptedAttributes,
-      secureAttributes ?? {},
-    );
 
     return {
       nodeId,
