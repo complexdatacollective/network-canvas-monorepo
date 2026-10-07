@@ -84,8 +84,10 @@ In Architect:
 - Each Network Composer form field needs a caption, which can be translated.
   Choosing the field's attribute fills in its name as the caption, until you
   write one of your own.
-- The printable protocol summary can be printed in any of the protocol's
-  languages.
+- The printable protocol summary shows every text in all of the protocol's
+  languages, alphabetically, with the default language marked, and says which
+  language participants see where a translation is missing. Its cover lists
+  the protocol's languages.
 - The New Stage menu has a new Utilities capability, which lists the
   Information interface and the Language Chooser. The Language Chooser's
   editor lists the languages participants will be offered, which is every

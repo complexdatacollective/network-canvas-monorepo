@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest';
 
 import type {
   CurrentProtocol,
-  LocaleTag,
   SkipLogicDestination,
 } from '@codaco/protocol-validation';
 
@@ -37,11 +36,15 @@ const protocol = {
 describe('Protocol Summary skip logic', () => {
   const renderSkipLogic = (
     destination?: SkipLogicDestination,
-    locale: LocaleTag = 'en',
+    localization: CurrentProtocol['localization'] = protocol.localization,
   ) =>
     render(
       <SummaryContext.Provider
-        value={{ protocol, protocolName: protocol.name, index: [], locale }}
+        value={{
+          protocol: { ...protocol, localization },
+          protocolName: protocol.name,
+          index: [],
+        }}
       >
         <SkipLogic
           skipLogic={{
@@ -62,8 +65,11 @@ describe('Protocol Summary skip logic', () => {
     expect(screen.getByText('Debrief')).toHaveAttribute('lang', 'en');
   });
 
-  it('names the destination stage in the summary language', () => {
-    renderSkipLogic({ type: 'stage', stageId: 'debrief' }, 'fr');
+  it('names the destination stage in the default language', () => {
+    renderSkipLogic(
+      { type: 'stage', stageId: 'debrief' },
+      { defaultLocale: 'fr', locales: ['en', 'fr'] },
+    );
 
     expect(destinationRow()).toHaveTextContent('Stage 2 — Bilan');
     expect(screen.getByText('Bilan')).toHaveAttribute('lang', 'fr');

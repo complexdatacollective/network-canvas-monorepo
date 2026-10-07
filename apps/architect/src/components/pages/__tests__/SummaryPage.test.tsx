@@ -1,5 +1,5 @@
 import { configureStore } from '@reduxjs/toolkit';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -48,35 +48,26 @@ afterEach(() => {
 });
 
 describe('<SummaryPage /> language', () => {
-  it('shows the protocol text in the default language first', () => {
+  it('offers no choice of summary language', () => {
     renderSummary(bilingualProtocol);
 
-    const language = screen.getByRole('combobox', {
-      name: 'Summary language',
-    });
-    expect(language).toHaveValue('en');
-    expect(
-      [...language.querySelectorAll('option')].map(
-        (option) => option.textContent,
-      ),
-    ).toEqual(['English', 'French']);
-    expect(screen.getByRole('heading', { name: 'Welcome' })).toBeVisible();
-    expect(screen.getByText('Hello')).toHaveAttribute('lang', 'en');
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
   });
 
-  it('switches every protocol text to the chosen language, marking fallbacks with their own language', () => {
+  it('shows every protocol text in every protocol language', () => {
     renderSummary(bilingualProtocol);
 
-    fireEvent.change(
-      screen.getByRole('combobox', { name: 'Summary language' }),
-      { target: { value: 'fr' } },
-    );
-
-    expect(screen.getByRole('heading', { name: 'Bienvenue' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Welcome' })).toBeVisible();
+    expect(screen.getByText('Hello')).toHaveAttribute('lang', 'en');
     expect(screen.getByText('Bonjour')).toHaveAttribute('lang', 'fr');
     expect(
       screen.getByText('Written in English').closest('[lang]'),
     ).toHaveAttribute('lang', 'en');
+    expect(
+      screen.getByText(
+        'Not translated yet. Participants see the English text.',
+      ),
+    ).toBeVisible();
   });
 
   it('sets the reading direction of right-to-left text', () => {
@@ -97,31 +88,35 @@ describe('<SummaryPage /> language', () => {
     expect(screen.getByText('أهلا')).toHaveAttribute('dir', 'rtl');
   });
 
-  it('lists the languages alphabetically, whatever order the protocol declares them in', () => {
+  it('lists the languages on the cover alphabetically, whatever order the protocol declares them in', () => {
     renderSummary({
       ...bilingualProtocol,
       localization: { defaultLocale: 'fr', locales: ['fr', 'de', 'en'] },
     });
 
-    const language = screen.getByRole('combobox', {
-      name: 'Summary language',
-    });
-    expect(language).toHaveValue('fr');
+    const languages = screen.getByRole('heading', {
+      name: 'Languages',
+    }).nextElementSibling;
+    if (!(languages instanceof HTMLElement)) {
+      throw new Error('The cover lists no languages.');
+    }
     expect(
-      [...language.querySelectorAll('option')].map(
-        (option) => option.textContent,
-      ),
-    ).toEqual(['English', 'French', 'German']);
+      within(languages)
+        .getAllByRole('listitem')
+        .map((language) => language.textContent),
+    ).toEqual(['English', 'FrenchDefault', 'German']);
   });
 
-  it('offers no language choice for a protocol in one language', () => {
+  it('prints a protocol in one language without naming its language', () => {
     renderSummary({
       ...bilingualProtocol,
       localization: { defaultLocale: 'en', locales: ['en'] },
     });
 
     expect(
-      screen.queryByRole('combobox', { name: 'Summary language' }),
+      screen.queryByRole('heading', { name: 'Languages' }),
     ).not.toBeInTheDocument();
+    expect(screen.queryByText('Default')).not.toBeInTheDocument();
+    expect(screen.getByText('Hello')).toHaveAttribute('lang', 'en');
   });
 });

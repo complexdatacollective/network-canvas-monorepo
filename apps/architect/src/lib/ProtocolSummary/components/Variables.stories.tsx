@@ -38,7 +38,7 @@ const meta = {
     (Story) => (
       <ArchitectI18nProvider>
         <SummaryContext.Provider
-          value={{ protocol, protocolName: 'Study', index: [], locale: 'en' }}
+          value={{ protocol, protocolName: 'Study', index: [] }}
         >
           <Story />
         </SummaryContext.Provider>
@@ -73,5 +73,63 @@ export const StoredValuesPrintVerbatim: Story = {
     );
     await expect(valueCell.hyphens).toBe('manual');
     await expect(valueCell.overflowWrap).toBe('normal');
+  },
+};
+
+const multilingualProtocol: CurrentProtocol = {
+  ...protocol,
+  localization: { defaultLocale: 'en', locales: ['en', 'fr', 'ar'] },
+};
+
+export const OptionLabelsInEveryLanguage: Story = {
+  args: {
+    variables: {
+      'consent-preference': {
+        name: NAME,
+        label: 'Consent preference',
+        type: 'categorical',
+        options: [
+          {
+            value: STORED_VALUE,
+            label: {
+              en: 'Prefer not to say',
+              fr: 'Je préfère ne pas répondre',
+              ar: 'أفضل عدم الإجابة',
+            },
+          },
+          { value: 'yes', label: { en: 'Yes', fr: 'Oui' } },
+        ],
+      },
+    } satisfies Record<string, Variable>,
+  },
+  decorators: [
+    (Story) => (
+      <SummaryContext.Provider
+        value={{
+          protocol: multilingualProtocol,
+          protocolName: 'Study',
+          index: [],
+        }}
+      >
+        <Story />
+      </SummaryContext.Provider>
+    ),
+  ],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    // Each label is marked with its language on the element holding it,
+    // which markdown wraps in a paragraph of its own.
+    await expect(
+      canvas.getByText('Je préfère ne pas répondre').closest('[lang]'),
+    ).toHaveAttribute('lang', 'fr');
+    await expect(
+      canvas.getByText('أفضل عدم الإجابة').closest('[lang]'),
+    ).toHaveAttribute('dir', 'rtl');
+    await expect(
+      canvas.getByText(
+        'Not translated yet. Participants see the English text, unless their browser also lists a language that has it.',
+      ),
+    ).toBeVisible();
   },
 };

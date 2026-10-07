@@ -9,7 +9,7 @@ import { formatAssetType } from '~/components/Assets/assetMetadataMessages';
 import DualLink from './DualLink';
 import EntityBadge from './EntityBadge';
 import SummaryContext from './SummaryContext';
-import { SummaryText } from './SummaryText';
+import { DefaultLanguageText } from './SummaryText';
 const messages = defineMessages({
   numberedStage: {
     id: 'architect.presentation.numberedStage',
@@ -91,7 +91,7 @@ const Contents = () => {
                   <DualLink to={`#stage-${id}`}>
                     {intl.formatMessage(messages.numberedStage, {
                       position: index + 1,
-                      label: <SummaryText value={label} />,
+                      label: <DefaultLanguageText value={label} />,
                     })}
                   </DualLink>
                 </li>

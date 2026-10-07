@@ -23,7 +23,7 @@ type RuleProps = {
  */
 const Rule = ({ rule, codebook }: RuleProps) => {
   const intl = useAppIntl();
-  const { protocol, locale } = useContext(SummaryContext);
+  const { protocol } = useContext(SummaryContext);
 
   return (
     <RulePreview
@@ -32,7 +32,6 @@ const Rule = ({ rule, codebook }: RuleProps) => {
         codebook,
         intl,
         localization: protocol.localization,
-        locale,
       })}
       variant="summary"
     />

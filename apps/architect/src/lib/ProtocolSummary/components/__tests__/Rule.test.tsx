@@ -202,11 +202,13 @@ it('names an entity type the codebook no longer has rather than printing nothing
   ).toBe('gone where age is exactly equal to 1');
 });
 
-it('reads option labels in the summary language, falling back as the interview does', () => {
+// A rule is one sentence, so it names each option once: in the protocol's
+// default language, as the stage it filters is named in the summary.
+it('reads option labels in the default language, falling back as the interview does', () => {
   const protocol: CurrentProtocol = {
     name: 'Study',
     schemaVersion: 9,
-    localization: { defaultLocale: 'en', locales: ['en', 'fr'] },
+    localization: { defaultLocale: 'fr', locales: ['en', 'fr'] },
     assetManifest: {},
     codebook,
     stages: [],
@@ -214,7 +216,7 @@ it('reads option labels in the summary language, falling back as the interview d
   const { container } = render(
     <ArchitectI18nProvider>
       <SummaryContext.Provider
-        value={{ protocol, protocolName: 'Study', index: [], locale: 'fr' }}
+        value={{ protocol, protocolName: 'Study', index: [] }}
       >
         <Rule
           rule={{

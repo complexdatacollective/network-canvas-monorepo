@@ -17,7 +17,11 @@ import DualLink from '../DualLink';
 import EntityBadge from '../EntityBadge';
 import MiniTable from '../MiniTable';
 import SummaryContext from '../SummaryContext';
-import { SummaryText } from '../SummaryText';
+import {
+  DefaultLanguageText,
+  SummaryText,
+  useMultilingualSummary,
+} from '../SummaryText';
 import Anonymisation from './Anonymisation';
 import Behaviours from './Behaviours';
 import DataSource from './DataSource';
@@ -84,6 +88,7 @@ type StageProps = {
 const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
   const intl = useAppIntl();
   const { index } = useContext(SummaryContext);
+  const multilingual = useMultilingualSummary();
   const stageVariables = variablesOnStage(index)(id).toSorted((a, b) =>
     a[1].localeCompare(b[1], intl.locale),
   );
@@ -226,13 +231,27 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
             data-number={intl.formatNumber(stageNumber)}
           >
             <Heading level="h1">
-              <SummaryText value={label} />
+              <DefaultLanguageText value={label} />
             </Heading>
           </div>
-          {(subject || edgeType || !isEmpty(stageVariables)) && (
+          {(multilingual ||
+            subject ||
+            edgeType ||
+            !isEmpty(stageVariables)) && (
             <MiniTable
               rotated
+              wide={multilingual}
               rows={[
+                // The heading names the stage in the default language; every
+                // translation of its name is listed here.
+                ...(multilingual
+                  ? [
+                      [
+                        intl.formatMessage(summaryMessages.name),
+                        <SummaryText key="name" value={label} />,
+                      ],
+                    ]
+                  : []),
                 ...(subject
                   ? [
                       [

@@ -1,6 +1,6 @@
 import { createContext } from 'react';
 
-import type { CurrentProtocol, LocaleTag } from '@codaco/protocol-validation';
+import type { CurrentProtocol } from '@codaco/protocol-validation';
 
 export type IndexEntry = {
   id: string;
@@ -15,15 +15,19 @@ type SummaryContextType = {
   protocol: CurrentProtocol;
   protocolName: string;
   index: IndexEntry[];
-  /** The protocol language the summary shows its text in. */
-  locale: LocaleTag;
 };
 
 const SummaryContext = createContext<SummaryContextType>({
-  protocol: {} as CurrentProtocol,
+  protocol: {
+    name: 'Untitled Protocol',
+    schemaVersion: 9,
+    localization: { defaultLocale: 'und', locales: ['und'] },
+    assetManifest: {},
+    codebook: {},
+    stages: [],
+  },
   protocolName: 'Untitled Protocol',
   index: [],
-  locale: '',
 });
 
 export default SummaryContext;

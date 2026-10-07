@@ -62,7 +62,6 @@ it('reorders both printed attribute surfaces after a locale change without chang
           protocol,
           protocolName: 'Authored protocol',
           index,
-          locale: 'en',
         }}
       >
         <Stage
@@ -126,7 +125,6 @@ it('formats a whole linked list using the literal names, including Spanish e bef
           protocol,
           protocolName: 'Authored protocol',
           index,
-          locale: 'en',
         }}
       >
         <Stage

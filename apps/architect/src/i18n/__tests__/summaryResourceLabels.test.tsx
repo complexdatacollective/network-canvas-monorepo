@@ -71,7 +71,6 @@ it('updates resource types in all three print presenters and preserves authored 
           protocol,
           protocolName: 'Research_Protocol',
           index: [],
-          locale: 'en',
         }}
       >
         <section aria-label="Contents fixture">
@@ -212,7 +211,6 @@ it('formats the loaded network attribute list in the selected language without a
           protocol,
           protocolName: protocol.name,
           index: [],
-          locale: 'en',
         }}
       >
         <Asset id="network" />

@@ -2251,10 +2251,6 @@
     "defaultMessage": "Protocol Summary",
     "description": "The title text in components / pages / SummaryPage."
   },
-  "architect.pages.summaryPage.summaryLanguage": {
-    "defaultMessage": "Summary language",
-    "description": "Label of the control that chooses which of the protocol languages the summary shows the protocol text in."
-  },
   "architect.pages.translationTablePage.exitFullScreen": {
     "defaultMessage": "Exit full screen",
     "description": "The same button while the translation table fills the screen, which returns it to the window."
@@ -2671,6 +2667,10 @@
     "defaultMessage": "Document Created: {now}",
     "description": "Visible text in lib / ProtocolSummary / components / Cover."
   },
+  "architect.protocolSummary.cover.languages": {
+    "defaultMessage": "Languages",
+    "description": "Heading on the cover of the printable protocol summary, above the list of the languages the protocol is written in. Shown only for a protocol with more than one language."
+  },
   "architect.protocolSummary.cover.protocolSummaryDocument": {
     "defaultMessage": "Protocol Summary Document",
     "description": "Visible text in lib / ProtocolSummary / components / Cover."
@@ -2786,6 +2786,18 @@
   "architect.protocolSummary.stage.stage.skipLogic": {
     "defaultMessage": "Skip Logic",
     "description": "The title text in lib / ProtocolSummary / components / Stage / Stage."
+  },
+  "architect.protocolSummary.translations.defaultLanguage": {
+    "defaultMessage": "Default",
+    "description": "Badge beside the protocol’s default language in the printable protocol summary: in the list of the protocol’s languages on its cover, and beside each text, which the summary lists in every protocol language."
+  },
+  "architect.protocolSummary.translations.notTranslated": {
+    "defaultMessage": "Not translated yet. Participants see the {language} text.",
+    "description": "Shown in the printable protocol summary beside a language that a text has no translation in, when participants using that language are certain to see it in another language instead: a closely related language, such as Brazilian Portuguese for European Portuguese, or the only language the text is written in. language is that language’s name."
+  },
+  "architect.protocolSummary.translations.notTranslatedUnlessBrowserLists": {
+    "defaultMessage": "Not translated yet. Participants see the {language} text, unless their browser also lists a language that has it.",
+    "description": "Shown in the printable protocol summary beside a language that a text has no translation in, nor in a closely related language. Participants using that language see the text in another language their web browser lists, when the text has a translation in one, and otherwise in language: the protocol’s default language, or failing that another of its languages."
   },
   "architect.protocolSummary.variables.name": {
     "defaultMessage": "Name",

@@ -1,15 +1,8 @@
-import { useEffect, useId, useState } from 'react';
+import { useEffect } from 'react';
 import { useSelector } from 'react-redux';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
-import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
-import { Label } from '@codaco/fresco-ui/Label';
-import {
-  type LocaleTag,
-  sortByLanguageName,
-} from '@codaco/protocol-validation';
-import { useLanguageName } from '~/components/Localization/useLanguageName';
 import PageHeading from '~/components/ProjectNav/PageHeading';
 import { pageInsetClasses } from '~/components/ProjectNav/pageInset';
 import AssetManifest from '~/lib/ProtocolSummary/components/AssetManifest';
@@ -33,19 +26,10 @@ const messages = defineMessages({
       'Below is a comprehensive summary of your protocol configuration, including all stages, codebook, and assets.',
     description: 'The description text in components / pages / SummaryPage.',
   },
-  summaryLanguage: {
-    id: 'architect.pages.summaryPage.summaryLanguage',
-    defaultMessage: 'Summary language',
-    description:
-      'Label of the control that chooses which of the protocol languages the summary shows the protocol text in.',
-  },
 });
 
 const SummaryPage = () => {
   const intl = useAppIntl();
-  const languageName = useLanguageName();
-  const languageId = useId();
-  const [chosenLocale, setChosenLocale] = useState<LocaleTag | null>(null);
   // Toggle a document-level class so global stylesheets can switch <html>
   // and <body> into the summary "paged" layout. The class name avoids
   // `print` because Tailwind's `print:` variant makes that token noisy to
@@ -67,20 +51,12 @@ const SummaryPage = () => {
   if (!protocol || protocolName === undefined) {
     return null;
   }
-  const { defaultLocale, locales } = protocol.localization;
-  // A chosen language the protocol no longer declares falls back to the
-  // default rather than leaving the summary on a removed language.
-  const locale =
-    chosenLocale !== null && locales.includes(chosenLocale)
-      ? chosenLocale
-      : defaultLocale;
   return (
     <SummaryContext.Provider
       value={{
         protocol,
         protocolName,
         index,
-        locale,
       }}
     >
       <div className="w-full">
@@ -90,31 +66,6 @@ const SummaryPage = () => {
             description={intl.formatMessage(
               messages.belowIsAComprehensiveSummaryOf,
             )}
-            actions={
-              locales.length > 1 ? (
-                <div className="flex flex-col gap-2">
-                  <Label htmlFor={languageId}>
-                    {intl.formatMessage(messages.summaryLanguage)}
-                  </Label>
-                  <NativeSelectField
-                    id={languageId}
-                    name="summary-language"
-                    value={locale}
-                    onChange={(value) => {
-                      if (typeof value === 'string') setChosenLocale(value);
-                    }}
-                    options={sortByLanguageName(
-                      locales.map((tag) => ({
-                        value: tag,
-                        label: languageName(tag),
-                      })),
-                      (option) => option.label,
-                      intl.locale,
-                    )}
-                  />
-                </div>
-              ) : null
-            }
           />
         </div>
         <div className="protocol-summary-surface mt-6 [&_.variable-pill]:origin-left [&_.variable-pill]:scale-[0.8]">

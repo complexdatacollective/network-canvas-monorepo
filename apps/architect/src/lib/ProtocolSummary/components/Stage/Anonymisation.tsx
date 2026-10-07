@@ -12,7 +12,11 @@ import EntityBadge from '../EntityBadge';
 import { SummaryValue } from '../helpers';
 import MiniTable from '../MiniTable';
 import SummaryContext from '../SummaryContext';
-import { SummaryMarkdown, SummaryText } from '../SummaryText';
+import {
+  SummaryMarkdown,
+  SummaryText,
+  useMultilingualSummary,
+} from '../SummaryText';
 import SectionFrame from './SectionFrame';
 const messages = defineMessages({
   explanationText: {
@@ -120,6 +124,7 @@ const Anonymisation = ({
 }: AnonymisationProps) => {
   const intl = useAppIntl();
   const { protocol } = useContext(SummaryContext);
+  const multilingual = useMultilingualSummary();
   const encryptedVariables = getEncryptedVariables(protocol.codebook);
   const hasExplanation = !!explanationText;
   const hasValidation =
@@ -133,10 +138,29 @@ const Anonymisation = ({
     <>
       {hasExplanation && (
         <SectionFrame title={intl.formatMessage(messages.explanationText)}>
-          <Heading level="h1">
-            <SummaryText value={explanationText.title} />
-          </Heading>
-          <SummaryMarkdown value={explanationText.body} />
+          {multilingual ? (
+            <MiniTable
+              rotated
+              wide
+              rows={[
+                [
+                  intl.formatMessage(summaryMessages.title),
+                  <SummaryText key="title" value={explanationText.title} />,
+                ],
+                [
+                  intl.formatMessage(summaryMessages.text),
+                  <SummaryMarkdown key="text" value={explanationText.body} />,
+                ],
+              ]}
+            />
+          ) : (
+            <>
+              <Heading level="h1">
+                <SummaryText value={explanationText.title} />
+              </Heading>
+              <SummaryMarkdown value={explanationText.body} />
+            </>
+          )}
         </SectionFrame>
       )}
 

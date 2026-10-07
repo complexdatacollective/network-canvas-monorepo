@@ -14,7 +14,7 @@ import DualLink from './DualLink';
 import { SummaryValue } from './helpers';
 import MiniTable from './MiniTable';
 import SummaryContext from './SummaryContext';
-import { SummaryMarkdown, SummaryText } from './SummaryText';
+import { DefaultLanguageText, SummaryMarkdown } from './SummaryText';
 const messages = defineMessages({
   name: {
     id: 'architect.protocolSummary.variables.name',
@@ -137,7 +137,7 @@ const Variables = ({ variables }: VariablesProps) => {
                   {getUsedIn(indexEntry).map((stage) => (
                     <React.Fragment key={stage.id}>
                       <DualLink to={`#stage-${stage.id}`}>
-                        <SummaryText value={stage.label} />
+                        <DefaultLanguageText value={stage.label} />
                       </DualLink>
                       <br />
                     </React.Fragment>

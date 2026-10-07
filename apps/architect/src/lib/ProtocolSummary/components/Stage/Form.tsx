@@ -9,7 +9,11 @@ import { summaryMessages } from '~/lib/ProtocolSummary/summaryMessages';
 import { getVariableMeta } from '../helpers';
 import MiniTable from '../MiniTable';
 import SummaryContext from '../SummaryContext';
-import { SummaryMarkdown, SummaryText } from '../SummaryText';
+import {
+  SummaryMarkdown,
+  SummaryText,
+  useMultilingualSummary,
+} from '../SummaryText';
 import Variable from '../Variable';
 import SectionFrame from './SectionFrame';
 const messages = defineMessages({
@@ -40,6 +44,7 @@ type FormProps = {
 const Form = ({ form = null }: FormProps) => {
   const intl = useAppIntl();
   const { index } = useContext(SummaryContext);
+  const multilingual = useMultilingualSummary();
   if (!form) {
     return null;
   }
@@ -57,13 +62,25 @@ const Form = ({ form = null }: FormProps) => {
       title={intl.formatMessage(messages.form)}
       wrapperClassName="break-inside-avoid"
     >
-      {form.title && (
-        <Heading level="h4">
-          {intl.formatMessage(messages.title, {
-            value1: <SummaryText value={form.title} />,
-          })}
-        </Heading>
-      )}
+      {form.title &&
+        (multilingual ? (
+          <MiniTable
+            rotated
+            wide
+            rows={[
+              [
+                intl.formatMessage(summaryMessages.title),
+                <SummaryText key="title" value={form.title} />,
+              ],
+            ]}
+          />
+        ) : (
+          <Heading level="h4">
+            {intl.formatMessage(messages.title, {
+              value1: <SummaryText value={form.title} />,
+            })}
+          </Heading>
+        ))}
       <MiniTable
         wide
         className="table-fixed [&_:is(th,td):nth-child(1)]:w-[40%] [&_:is(th,td):nth-child(2)]:w-[24%] [&_:is(th,td):nth-child(3)]:w-[36%]"
