@@ -3,7 +3,8 @@
 ---
 
 Adds protocol schema 9, in which attribute (variable) names can use any
-script, spaces and punctuation.
+script, spaces and punctuation, and encrypted attributes are no longer
+experimental.
 
 **Breaking:**
 
@@ -28,9 +29,17 @@ script, spaces and punctuation.
 
 Schema 9:
 
-- The v8 to v9 migration changes only `schemaVersion`, so existing names are
-  kept as they are. Its migration note tells researchers what the new version
-  allows.
+- The v8 to v9 migration keeps existing names as they are. Its migration
+  notes tell researchers what the new version allows.
+- Schema 9 has no `experiments` property, and refuses a document that has one:
+  an attribute marked `encrypted` is always encrypted. Schema 8 still accepts
+  `experiments`, which `ExperimentsSchema` and the `Experiments` type describe.
+- The v8 to v9 migration removes `experiments`. If
+  `experiments.encryptedVariables` was not `true`, it also removes `encrypted`
+  from every node attribute, because schema 8 interviews stored those
+  attributes without encryption. A host that stores `experiments` apart from
+  the rest of the protocol must put it back into the document it migrates, or
+  an encrypted protocol loses its encryption.
 - Schema 8 still refuses names outside `a-z`, `A-Z`, digits and `. _ - :`, with
   a message that says so. `VersionlessProtocolSchema`, the version 8 body
   without its `schemaVersion`, is now exported.

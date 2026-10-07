@@ -1,7 +1,6 @@
 {
   "name": "Sample Protocol",
   "description": "This is a demonstration protocol designed to illustrate the features of the Network Canvas Interviewer app",
-  "experiments": {},
   "lastModified": "2022-11-22T18:28:58.258Z",
   "schemaVersion": 9,
   "codebook": {

@@ -3,7 +3,6 @@
   "description": "An example template for studying the sexual and injection partnerships through which HIV and other infections spread. It records partner attributes and partnership start and end dates so that overlapping partnerships can be identified, and encrypts partner labels so that only the participant can read them.",
   "schemaVersion": 9,
   "lastModified": "2026-06-15T00:00:00.000Z",
-  "experiments": { "encryptedVariables": true },
   "codebook": {
     "ego": {
       "variables": {

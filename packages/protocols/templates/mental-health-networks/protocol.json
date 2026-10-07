@@ -3,9 +3,6 @@
   "description": "An example template for studying how a personal network both supports a participant and adds stress while they manage their mental health. It uses separate name generators for supportive and difficult relationships, and records who knows about the participant's mental health (disclosure).",
   "schemaVersion": 9,
   "lastModified": "2026-06-15T00:00:00.000Z",
-  "experiments": {
-    "encryptedVariables": false
-  },
   "codebook": {
     "ego": {
       "variables": {
