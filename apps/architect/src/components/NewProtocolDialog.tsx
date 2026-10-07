@@ -156,7 +156,7 @@ const languageMessages = defineMessages({
   defaultLanguageHint: {
     id: 'architect.newProtocolDialog.defaultLanguageHint',
     defaultMessage:
-      "Text without a translation in a participant's language is shown in the default language.",
+      'Participants start the interview in the default language when their browser lists none of the protocol’s languages.',
     description: 'Hint for the default language of a new protocol.',
   },
 });

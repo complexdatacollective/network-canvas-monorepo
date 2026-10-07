@@ -1680,7 +1680,7 @@
     "description": "Researcher-facing Architect control or feedback."
   },
   "architect.localization.languageActions.addDescription": {
-    "defaultMessage": "Participants can take the interview in any of the protocol’s languages. Until you translate a text, participants see it in the default language.",
+    "defaultMessage": "Participants can take the interview in any of the protocol’s languages. Until you translate a text into a new language, participants who use it see the closest translation available instead.",
     "description": "Explanation in the dialog that adds languages to a protocol."
   },
   "architect.localization.languageActions.addSubmit": {
@@ -1992,7 +1992,7 @@
     "description": "Label for the choice of which of the languages chosen for a new protocol is its default language."
   },
   "architect.newProtocolDialog.defaultLanguageHint": {
-    "defaultMessage": "Text without a translation in a participant's language is shown in the default language.",
+    "defaultMessage": "Participants start the interview in the default language when their browser lists none of the protocol’s languages.",
     "description": "Hint for the default language of a new protocol."
   },
   "architect.newProtocolDialog.enterANameForYourProtocol": {

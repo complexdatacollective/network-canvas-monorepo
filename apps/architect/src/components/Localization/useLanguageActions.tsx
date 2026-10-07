@@ -34,7 +34,7 @@ const messages = defineMessages({
   addDescription: {
     id: 'architect.localization.languageActions.addDescription',
     defaultMessage:
-      'Participants can take the interview in any of the protocol’s languages. Until you translate a text, participants see it in the default language.',
+      'Participants can take the interview in any of the protocol’s languages. Until you translate a text into a new language, participants who use it see the closest translation available instead.',
     description: 'Explanation in the dialog that adds languages to a protocol.',
   },
   addSubmit: {
