@@ -45,6 +45,8 @@ import { getCodebook } from '../../store/modules/protocol';
 import { updateNode, updateStageMetadata } from '../../store/modules/session';
 import { useAppDispatch } from '../../store/store';
 import type { StageProps } from '../../types';
+import { isAttributeEncrypted } from '../Anonymisation/isAttributeEncrypted';
+import { usePassphrase } from '../Anonymisation/usePassphrase';
 import { interfaceMessages } from '../messages';
 import ComposerCanvas, { type NodeTapModifiers } from './ComposerCanvas';
 import ComposerDrawer from './ComposerDrawer';
@@ -126,6 +128,7 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
   // (the pre-existing behaviour, unrelated to codebook validation — no
   // runtime fallback to required). Mirrors QuickNodeForm's rewired quick-add.
   const stageVariables = useStageSelector(getCodebookVariablesForSubjectType);
+  const { isEnabled: encryptionEnabled } = usePassphrase();
   const quickAddValidationMetadata = selectValidationMetadataForVariable(
     stageVariables,
     stage.quickAdd,
@@ -174,6 +177,11 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
     subjectType: stage.subject.type,
     quickAdd: stage.quickAdd,
     layoutVariable: stage.layoutVariable,
+    useEncryption: isAttributeEncrypted(
+      encryptionEnabled,
+      stageVariables,
+      stage.quickAdd,
+    ),
     currentStep,
     undoStore,
     dispatch,
