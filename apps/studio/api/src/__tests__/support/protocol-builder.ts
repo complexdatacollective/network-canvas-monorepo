@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import {
   Clock,
+  Context,
   Duration,
   Effect,
   Exit,
@@ -13,6 +14,7 @@ import {
 } from 'effect';
 import * as RpcClient from 'effect/rpc/RpcClient';
 import * as RpcServer from 'effect/rpc/RpcServer';
+import { SqlError } from 'effect/sql';
 
 import {
   ProtocolBuilderGroup,
@@ -22,10 +24,13 @@ import { CLIENT_SESSION_HEADER } from '@codaco/studio-contract/client-session';
 
 import type { Studio } from '../../app.ts';
 import { AuthService, type SessionPrincipal } from '../../auth/service.ts';
-import type { Database } from '../../db/client.ts';
+import { Database } from '../../db/client.ts';
 import { MaintenanceTriggers } from '../../http/middleware/maintenance.ts';
 import { ReplicaId } from '../../protocol-builder/connections.ts';
-import { Doorbell } from '../../protocol-builder/doorbell.ts';
+import {
+  Doorbell,
+  makeMemoryDoorbell,
+} from '../../protocol-builder/doorbell.ts';
 import { ProtocolBuilderHandlers } from '../../protocol-builder/handlers.ts';
 import { Leases } from '../../protocol-builder/leases.ts';
 import { Presence } from '../../protocol-builder/presence.ts';
@@ -288,6 +293,156 @@ export async function createProtocolBuilderClient(
     dispose: async () => {
       await runtime.runPromise(Scope.close(scope, Exit.void));
       await runtime.dispose();
+    },
+  };
+}
+
+type ProtocolBuilderReplica = ProtocolBuilderTestClient & {
+  readonly replicaId: string;
+  readonly spans: ReturnType<typeof makeSpanCounter>;
+};
+
+const refusedTransaction = () =>
+  Effect.fail(
+    new SqlError.SqlError({
+      reason: new SqlError.UnknownError({
+        cause: new Error('the replica has stopped'),
+        message: 'the replica has stopped',
+      }),
+    }),
+  );
+
+/** The database as one replica reaches it, refusing every transaction once it has crashed. */
+const replicaDatabase = (real: Database['Service']) => {
+  let down = false;
+  const refusing = new Proxy(real.db, {
+    get: (target, key, receiver) => {
+      const value: unknown = Reflect.get(target, key, receiver);
+      return key === 'transaction' ? refusedTransaction : value;
+    },
+  });
+  const service: Database['Service'] = {
+    identity: real.identity,
+    sql: real.sql,
+    get db() {
+      return down ? refusing : real.db;
+    },
+  };
+  return {
+    service,
+    crash: () => {
+      down = true;
+    },
+  };
+};
+
+/**
+ * Replicas of one Studio sharing its database, one object store and one
+ * doorbell hub, each with its own replica id, keeper, relay and tracer.
+ */
+export async function createProtocolBuilderReplicas(
+  studio: Studio,
+  options: {
+    readonly count: number;
+    readonly clock?: Clock.Clock;
+    readonly objectStore?: ObjectStore['Service'];
+    /** Wraps one replica's view of the shared hub. */
+    readonly doorbell?: (
+      replica: number,
+      hub: Doorbell['Service'],
+    ) => Doorbell['Service'];
+    readonly safetyPollMs?: number;
+    /** A pool of each replica's own, as a process would hold; else the studio's. */
+    readonly database?: () => Promise<{
+      readonly service: Database['Service'];
+      readonly close: () => Promise<void>;
+    }>;
+  },
+) {
+  const services = studio.rpc.services;
+  if (services === undefined) throw new Error('the studio has no services');
+  const shared = Context.get(services, Database);
+  const hubScope = Scope.makeUnsafe();
+  const hub = await Effect.runPromise(
+    Scope.provide(makeMemoryDoorbell, hubScope),
+  );
+  const events = ProtocolEvents.layerWith(
+    options.safetyPollMs === undefined
+      ? {}
+      : { safetyPollMs: options.safetyPollMs },
+  );
+
+  const open = async (index: number) => {
+    const pool =
+      options.database === undefined
+        ? { service: shared, close: () => Promise.resolve() }
+        : await options.database();
+    const database = replicaDatabase(pool.service);
+    const spans = makeSpanCounter();
+    const replicaId = `replica-${index}-${randomUUID()}`;
+    const client = await createProtocolBuilderClient(
+      {
+        ...studio,
+        rpc: {
+          ...studio.rpc,
+          services: Context.add(services, Database, database.service),
+        },
+      },
+      {
+        ...(options.clock === undefined ? {} : { clock: options.clock }),
+        ...(options.objectStore === undefined
+          ? {}
+          : { objectStore: options.objectStore }),
+        tracer: spans.tracer,
+        events,
+        doorbell:
+          options.doorbell === undefined ? hub : options.doorbell(index, hub),
+        replicaId,
+      },
+    );
+    let disposed: Promise<void> | undefined;
+    const replica: ProtocolBuilderReplica = {
+      ...client,
+      replicaId,
+      spans,
+      dispose: () => {
+        disposed ??= client.dispose().then(pool.close);
+        return disposed;
+      },
+    };
+    return { replica, crash: database.crash };
+  };
+
+  const opened: Awaited<ReturnType<typeof open>>[] = [];
+  for (let index = 0; index < options.count; index += 1) {
+    opened.push(await open(index));
+  }
+  const replicas = opened.map((entry) => entry.replica);
+  const entryAt = (index: number) => {
+    const entry = opened[index];
+    if (entry === undefined) throw new Error(`no replica ${index}`);
+    return entry;
+  };
+
+  return {
+    replicas,
+    /** Stops replica `index` as a killed process would, cleaning nothing up. */
+    crash: async (index: number) => {
+      const entry = entryAt(index);
+      entry.crash();
+      await entry.replica.dispose();
+    },
+    /** A new process in place of replica `index`, under a new replica id. */
+    restart: async (index: number) => {
+      await entryAt(index).replica.dispose();
+      const entry = await open(index);
+      opened[index] = entry;
+      replicas[index] = entry.replica;
+      return entry.replica;
+    },
+    dispose: async () => {
+      for (const entry of opened.toReversed()) await entry.replica.dispose();
+      await Effect.runPromise(Scope.close(hubScope, Exit.void));
     },
   };
 }

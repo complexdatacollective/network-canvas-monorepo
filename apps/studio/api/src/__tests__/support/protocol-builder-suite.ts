@@ -697,11 +697,11 @@ export function setupProtocolBuilderSuite() {
    * connection, a transaction blocked in the database holds back every other
    * one in the pool rather than in the code under test.
    */
-  const studioOnOwnPool = async (maxConnections: number) => {
+  const ownPool = async (maxConnections: number) => {
     if (!testDb) throw new Error('no test database');
     const url = testDb.url;
     const scope = await Effect.runPromise(Scope.make());
-    const pool = Context.get(
+    const service = Context.get(
       await Effect.runPromise(
         Layer.buildWithScope(
           Database.layer({
@@ -716,14 +716,22 @@ export function setupProtocolBuilderSuite() {
       Database,
     );
     return {
+      service,
+      close: () => Effect.runPromise(Scope.close(scope, Exit.void)),
+    };
+  };
+
+  const studioOnOwnPool = async (maxConnections: number) => {
+    const pool = await ownPool(maxConnections);
+    return {
       studio: createStudio(resolveEnv({ NODE_ENV: 'test' }), {
         auth: authServiceStub({
           listMemberships: memberships,
           getMembership: membership,
         }),
-        services: Context.add(services, Database, pool),
+        services: Context.add(services, Database, pool.service),
       }),
-      close: () => Effect.runPromise(Scope.close(scope, Exit.void)),
+      close: pool.close,
     };
   };
 
@@ -824,6 +832,7 @@ export function setupProtocolBuilderSuite() {
     watching,
     drain,
     removedAfterOpening,
+    ownPool,
     studioOnOwnPool,
     createOn,
   };
