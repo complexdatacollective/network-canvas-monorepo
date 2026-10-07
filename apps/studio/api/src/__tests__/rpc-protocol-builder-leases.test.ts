@@ -1,7 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { Context, Effect, type Exit } from 'effect';
-import { SqlError } from 'effect/sql';
+import { Context, type Exit } from 'effect';
 import { beforeAll, describe, expect, it } from 'vitest';
 
 import { createStudio, type Studio } from '../app.ts';
@@ -32,21 +31,12 @@ import {
 import {
   type Caller,
   createProtocolBuilderClient,
+  faultyDatabase,
   makeShiftableClock,
   makeSpanCounter,
   type ProtocolBuilderTestClient,
 } from './support/protocol-builder.ts';
 import { expectRpcFailure } from './support/rpc.ts';
-
-const refusedTransaction = () =>
-  Effect.fail(
-    new SqlError.SqlError({
-      reason: new SqlError.UnknownError({
-        cause: new Error('the database is down'),
-        message: 'the database is down',
-      }),
-    }),
-  );
 
 describe.skipIf(!testDb)('the protocol-builder host surface', () => {
   const suite = setupProtocolBuilderSuite();
@@ -85,42 +75,18 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
     services = suite.services;
   });
 
-  /**
-   * A database that refuses every transaction it is asked to begin while it is
-   * down. Only `db` switches, once for each transaction, and `sql` stays the
-   * suite's own, so a transaction open when the fault is raised or cleared
-   * ends on the client it began on. A second client for the fault, each with
-   * its one connection, switched mid-transaction left a transaction on each
-   * waiting for the other's connection: both idle in a transaction, neither
-   * blocked in the database.
-   */
-  const faultyDatabase = () => {
-    let down = false;
-    const real = Context.get(services, Database);
-    const refusing = new Proxy(real.db, {
-      get: (target, key, receiver) => {
-        const value: unknown = Reflect.get(target, key, receiver);
-        return key === 'transaction' ? refusedTransaction : value;
-      },
-    });
-    const database: Database['Service'] = {
-      identity: real.identity,
-      sql: real.sql,
-      get db() {
-        return down ? refusing : real.db;
-      },
-    };
+  /** A Studio on the suite's database, refusing transactions while it is down. */
+  const faultyStudio = () => {
+    const fault = faultyDatabase(Context.get(services, Database));
     return {
       studio: createStudio(resolveEnv({ NODE_ENV: 'test' }), {
         auth: authServiceStub({
           listMemberships: memberships,
           getMembership: membership,
         }),
-        services: Context.add(services, Database, database),
+        services: Context.add(services, Database, fault.service),
       }),
-      setDown: (value: boolean) => {
-        down = value;
-      },
+      setDown: fault.setDown,
     };
   };
 
@@ -333,7 +299,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
   });
 
   it('keeps renewing a connection after a liveness pass the database never answered', async () => {
-    const fault = faultyDatabase();
+    const fault = faultyStudio();
     const replica = makeShiftableClock();
     const other = await createProtocolBuilderClient(fault.studio, {
       clock: replica.clock,
@@ -558,7 +524,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
   });
 
   it('shows the section a socket took although recording that failed at first', async () => {
-    const fault = faultyDatabase();
+    const fault = faultyStudio();
     const presence = holdingPresence();
     const replica = makeShiftableClock();
     const other = await createProtocolBuilderClient(fault.studio, {
@@ -766,7 +732,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
   });
 
   it('stops renewing a stranded owner’s leases even when giving them back fails', async () => {
-    const fault = faultyDatabase();
+    const fault = faultyStudio();
     const stranded = makeShiftableClock();
     const spans = makeSpanCounter();
     const other = await createProtocolBuilderClient(fault.studio, {

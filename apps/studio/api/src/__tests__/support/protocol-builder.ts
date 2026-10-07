@@ -306,14 +306,22 @@ const refusedTransaction = () =>
   Effect.fail(
     new SqlError.SqlError({
       reason: new SqlError.UnknownError({
-        cause: new Error('the replica has stopped'),
-        message: 'the replica has stopped',
+        cause: new Error('the database is down'),
+        message: 'the database is down',
       }),
     }),
   );
 
-/** The database as one replica reaches it, refusing every transaction once it has crashed. */
-const replicaDatabase = (real: Database['Service']) => {
+/**
+ * `real`, refusing every transaction it is asked to begin while it is down.
+ * Only `db` switches, once for each transaction, and `sql` stays the real
+ * one, so a transaction open when the fault is raised or cleared ends on the
+ * client it began on. A second client for the fault, each with its one
+ * connection, switched mid-transaction left a transaction on each waiting for
+ * the other's connection: both idle in a transaction, neither blocked in the
+ * database.
+ */
+export const faultyDatabase = (real: Database['Service']) => {
   let down = false;
   const refusing = new Proxy(real.db, {
     get: (target, key, receiver) => {
@@ -330,8 +338,8 @@ const replicaDatabase = (real: Database['Service']) => {
   };
   return {
     service,
-    crash: () => {
-      down = true;
+    setDown: (value: boolean) => {
+      down = value;
     },
   };
 };
@@ -377,7 +385,7 @@ export async function createProtocolBuilderReplicas(
       options.database === undefined
         ? { service: shared, close: () => Promise.resolve() }
         : await options.database();
-    const database = replicaDatabase(pool.service);
+    const database = faultyDatabase(pool.service);
     const spans = makeSpanCounter();
     const replicaId = `replica-${index}-${randomUUID()}`;
     const client = await createProtocolBuilderClient(
@@ -410,7 +418,7 @@ export async function createProtocolBuilderReplicas(
         return disposed;
       },
     };
-    return { replica, crash: database.crash };
+    return { replica, crash: () => database.setDown(true) };
   };
 
   const opened: Awaited<ReturnType<typeof open>>[] = [];
