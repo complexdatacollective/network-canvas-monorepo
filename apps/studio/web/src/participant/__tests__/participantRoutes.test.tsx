@@ -33,6 +33,7 @@ const fetchStub = installFetchStub();
 const LINK = LinkToken.make('l'.repeat(32));
 const SESSION = SessionToken.make('s'.repeat(32));
 const EARLIER_SESSION = SessionToken.make('e'.repeat(32));
+const OTHER_SESSION = SessionToken.make('o'.repeat(32));
 
 const sessionPayload = (stageIndex: number, analytics = false) => ({
   analytics,
@@ -374,6 +375,43 @@ describe('participant analytics', () => {
     expect(serialised).not.toContain(SESSION);
     expect(serialised).not.toContain('session-1');
     expect(fetchStub).not.toHaveBeenCalled();
+  });
+
+  it('starts each session’s analytics afresh when the page moves to another session', async () => {
+    const harness = installParticipantHarness({
+      ...readsSession(0, true),
+      'participant.analytics': () => Effect.void,
+    });
+
+    const router = renderAt(`/session/${SESSION}`);
+    await screen.findByRole(
+      'heading',
+      { name: 'Welcome to the study' },
+      { timeout: 15_000 },
+    );
+    await router.navigate({
+      to: '/session/$sessionToken',
+      params: { sessionToken: OTHER_SESSION },
+    });
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe(`/session/${OTHER_SESSION}`);
+    });
+    await screen.findByRole(
+      'heading',
+      { name: 'Welcome to the study' },
+      { timeout: 15_000 },
+    );
+    window.dispatchEvent(new Event('pagehide'));
+
+    await waitFor(() => {
+      const started = harness.calls
+        .filter(({ tag }) => tag === 'participant.analytics')
+        .flatMap(
+          ({ payload }) => (payload as { events: { event: string }[] }).events,
+        )
+        .filter(({ event }) => event === 'interview_started');
+      expect(started).toHaveLength(2);
+    });
   });
 
   it('builds no client and sends nothing when the session carries no analytics', async () => {

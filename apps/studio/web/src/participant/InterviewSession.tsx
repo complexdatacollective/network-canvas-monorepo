@@ -26,6 +26,11 @@ const ANALYTICS: InterviewAnalyticsMetadata = {
 };
 
 export default function InterviewSession() {
+  const { sessionToken } = route.useParams();
+  return <InterviewSessionView key={sessionToken} />;
+}
+
+function InterviewSessionView() {
   const loaded = route.useLoaderData();
   const [notice, setNotice] = useState<ParticipantNoticeKind>();
   const [currentStep, setCurrentStep] = useState(loaded.stageIndex);
