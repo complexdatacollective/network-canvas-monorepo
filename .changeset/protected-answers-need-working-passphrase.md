@@ -30,6 +30,21 @@ answers; other interviews work as before.
   returns to it.
 - Replacing a protected answer with an unprotected one no longer leaves the
   answer unreadable.
+- Saving a form no longer erases a protected answer the form could not show.
+  Before, an answer saved without the details needed to read it appeared
+  empty, and saving the form after changing any other answer deleted it. Now
+  it is kept unless the participant enters a new answer in its place.
+- The passphrase prompt cannot be closed while it checks a passphrase, and the
+  form for adding or editing a person cannot be closed while it saves. Before,
+  either could be closed and still take effect afterwards, and pressing
+  Finished again during a save could add the same person twice.
+- Browsers and password managers no longer offer to save or fill in the
+  passphrase.
+- The category "other" question shows a protected name as it was entered,
+  not in its scrambled form.
+- Outside development, the interview no longer shares its state with the
+  Redux DevTools browser extension. In development, protected answers and the
+  passphrase are hidden from the extension and from the action log.
 - Names added in the Network Composer and the Family Pedigree, and protected
   answers brought in from a side panel on a name generator, were saved without
   protection. They are now protected like every other answer, and these stages
@@ -42,6 +57,9 @@ answers; other interviews work as before.
 - Questions that compare an answer with other answers, such as a name that
   must not repeat or an answer that must match another one, now compare with
   the protected answers as they were entered. Before, they compared with the
-  stored, scrambled form, so a repeated name was accepted. If the protected
-  answers cannot be read, the question says so and asks for the passphrase
-  instead of accepting the answer.
+  stored, scrambled form, so a repeated name was accepted. This includes a
+  relative's name in the Family Pedigree. Only the protected answers a
+  question compares with need to be readable, so another protected answer
+  that cannot be read no longer stops the question being checked. If the
+  answers it compares with cannot be read, the question says so and asks for
+  the passphrase instead of accepting the answer.
