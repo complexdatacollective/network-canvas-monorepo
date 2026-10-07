@@ -62,7 +62,7 @@ const MAX_CONSECUTIVE_FAILURES = 5;
 const DRAIN_STALL_MS = 2_000;
 
 /** Every replica hears a resync at once; this spreads their reads. */
-const RESYNC_JITTER_MS = 1_000;
+export const RESYNC_JITTER_MS = 1_000;
 
 const POLL_CONCURRENCY = 4;
 
@@ -535,23 +535,27 @@ export class ProtocolEvents extends Context.Service<
           Effect.forkScoped,
         );
 
-        let resyncing = false;
+        /**
+         * Holds at most one resync, so signals that arrive while one is
+         * waiting or running coalesce into a single further poll. A resync
+         * that arrives during a poll is a gap that poll may already have read
+         * past, so it earns one more after it.
+         */
+        const resyncs = yield* Queue.dropping<void>(1);
+        yield* Queue.take(resyncs).pipe(
+          Effect.andThen(Random.nextIntBetween(0, RESYNC_JITTER_MS)),
+          Effect.flatMap((millis) => Effect.sleep(millis)),
+          // The poll reads after every signal heard so far, so none of them
+          // is owed another.
+          Effect.andThen(Queue.clear(resyncs)),
+          Effect.andThen(poll),
+          Effect.forever,
+          Effect.forkScoped,
+        );
+
         /** One batched poll per team, rather than a read per relay. */
-        const resync = Effect.suspend(() => {
-          if (resyncing) return Effect.void;
-          resyncing = true;
-          const jittered = Effect.flatMap(
-            Random.nextIntBetween(0, RESYNC_JITTER_MS),
-            (millis) => Effect.sleep(millis),
-          ).pipe(
-            Effect.ensuring(
-              Effect.sync(() => {
-                resyncing = false;
-              }),
-            ),
-            Effect.andThen(poll),
-          );
-          return Effect.asVoid(Effect.forkIn(jittered, scope));
+        const resync = Effect.sync(() => {
+          Queue.offerUnsafe(resyncs, undefined);
         });
 
         const signalDefect = catchLoopDefect(

@@ -50,7 +50,7 @@ import {
 } from '../../http/middleware/maintenance.ts';
 import { latestDraftId } from '../../protocol/store.ts';
 import { Doorbell, makeMemoryDoorbell } from '../doorbell.ts';
-import { ProtocolEvents } from '../publisher.ts';
+import { ProtocolEvents, RESYNC_JITTER_MS } from '../publisher.ts';
 
 type Signal = Stream.Success<Effect.Success<Doorbell['Service']['signals']>>;
 
@@ -705,6 +705,52 @@ describe.skipIf(!testDb)('the protocol-builder relay', () => {
         expect(spans.count('protocolBuilder.relayRead')).toBe(reads);
       } finally {
         for (const channel of channels) await channel.stop();
+      }
+    });
+
+    it('runs one resync poll at a time, and owes one more to the resyncs that arrive during it', async () => {
+      const gate = latch();
+      const lossy = scripted();
+      const { client: b, spans } = await replica({
+        doorbell: lossy.doorbell,
+        database: intercepted(
+          'protocolBuilder.relayPoll',
+          Effect.promise(() => gate.opened),
+        ),
+      });
+      const channel = await watching(socket('resync-overlap'), protocolId, b);
+      const inFlight = () =>
+        spans.count('protocolBuilder.relayPoll') -
+        spans.ended('protocolBuilder.relayPoll');
+      try {
+        await settle();
+        const polls = spans.ended('protocolBuilder.relayPoll');
+        lossy.send({ _tag: 'Resync' });
+        await until(
+          () => inFlight() === 1,
+          'the resync’s poll to be held up on its read',
+          RESYNC_JITTER_MS + 2_000,
+        );
+        for (let signal = 0; signal < 5; signal += 1) {
+          lossy.send({ _tag: 'Resync' });
+        }
+        // Past the longest jitter, so a poll forked for each signal would be
+        // running beside the first by now.
+        await settle(RESYNC_JITTER_MS + 300);
+        expect(inFlight()).toBe(1);
+
+        gate.open();
+        await until(
+          () => spans.ended('protocolBuilder.relayPoll') >= polls + 2,
+          'the poll the later resyncs are owed',
+          3_000,
+        );
+        await settle();
+        expect(spans.ended('protocolBuilder.relayPoll')).toBe(polls + 2);
+        expect(inFlight()).toBe(0);
+      } finally {
+        gate.open();
+        await channel.stop();
       }
     });
 
