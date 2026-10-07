@@ -18,13 +18,9 @@ import { cx } from '@codaco/fresco-ui/utils/cva';
 import { entityPrimaryKeyProperty, type NcNode } from '@codaco/shared-consts';
 
 import { runtimeMessages as messages } from '../i18n/runtimeMessages';
-import {
-  LOCKED_LABEL,
-  nodeLabelText,
-  readNodeLabelSource,
-} from '../interfaces/Anonymisation/nodeLabel';
-import { useDecryptedScope } from '../interfaces/Anonymisation/useDecryptionScope';
-import { usePassphrase } from '../interfaces/Anonymisation/usePassphrase';
+import { readNodeLabelSource } from '../interfaces/Anonymisation/nodeLabel';
+import { useDecryptedOutcomes } from '../interfaces/Anonymisation/useDecryptionScope';
+import { useNodeLabeller } from '../interfaces/Anonymisation/useNodeLabel';
 import { makeGetCodebookVariablesForNodeType } from '../selectors/protocol';
 import Node from './ConnectedNode';
 
@@ -182,12 +178,10 @@ const NodeList = memo(
       makeGetCodebookVariablesForNodeType,
     );
 
-    const { encryptionUnavailable } = usePassphrase();
-    const unavailable = intl.formatMessage(messages.answerUnavailable);
-
-    // Typeahead matches the label each node shows: the plaintext of an
-    // encrypted name once it is decrypted, and only the locked or unavailable
-    // label otherwise, so typing never finds a node by an answer it hides.
+    // Typeahead matches the label each node shows, read by the same function:
+    // the plaintext of an encrypted name once it is decrypted, and only the
+    // locked or unavailable label otherwise, so typing never finds a node by
+    // an answer it hides.
     const labelSources = useMemo(
       () =>
         new Map(
@@ -208,39 +202,23 @@ const NodeList = memo(
         ),
       [labelSources],
     );
-    const labelScope = useDecryptedScope(encryptedLabels);
-
-    const textValueExtractor = useCallback(
-      (node: NcNode) =>
-        nodeLabelText(
-          labelSources.get(node) ??
-            readNodeLabelSource(
-              node,
-              getCodebookVariablesForNodeType(node.type),
-            ),
-          {
-            fallback: node[entityPrimaryKeyProperty],
-            unavailable,
-            scope: labelScope,
-            encryptionUnavailable,
-          },
-        ) ?? LOCKED_LABEL,
-      [
-        labelSources,
-        getCodebookVariablesForNodeType,
-        unavailable,
-        labelScope,
-        encryptionUnavailable,
-      ],
-    );
+    const labelNode = useNodeLabeller(useDecryptedOutcomes(encryptedLabels));
 
     // The collection reads each node's typeahead text only when its items
-    // change, so they are handed over anew when the labels' plaintext becomes
-    // readable, and again when it stops being.
-    const collectionItems = useMemo(
-      () => (labelScope ? [...displayItems] : displayItems),
-      [displayItems, labelScope],
-    );
+    // change, so they are handed over anew whenever a label changes: as each
+    // name decrypts, and when the key stops being in force.
+    const typeahead = useMemo(() => {
+      const texts = new Map(
+        displayItems.map((node) => [
+          node,
+          labelNode(node, labelSources.get(node)),
+        ]),
+      );
+      return {
+        items: [...displayItems],
+        textOf: (node: NcNode) => texts.get(node) ?? labelNode(node),
+      };
+    }, [displayItems, labelSources, labelNode]);
 
     // Styling classes including drop state styling via data attributes
     const containerClasses = cx(
@@ -290,9 +268,9 @@ const NodeList = memo(
             {...collectionProps}
             key={displayAnimationKey}
             id={id ?? 'node-list'}
-            items={collectionItems}
+            items={typeahead.items}
             keyExtractor={keyExtractor}
-            textValueExtractor={textValueExtractor}
+            textValueExtractor={typeahead.textOf}
             layout={layout}
             renderItem={renderItemOverride ?? defaultRenderItem}
             dragAndDropHooks={dragAndDropHooks}

@@ -77,7 +77,8 @@ Encrypted answers are now protected in a new way:
   person's form no longer asks for it to check the new person's own answers,
   which aren't saved yet.
 - A protected name is shown decrypted in a person's label and in the "Other"
-  prompt of a categorical bin.
+  prompt of a categorical bin. While it is still being decrypted, the label
+  shows the lock, as it does before the passphrase is entered.
 - A list sorted by a protected answer, such as a name, is sorted by the
   decrypted answers once the passphrase has been entered. Until then, and
   when an answer can't be read, the list ignores that sort rule and keeps the
@@ -89,8 +90,9 @@ Encrypted answers are now protected in a new way:
   anyone.
 - Typing a letter to move through a list of people finds them by their
   decrypted names once the passphrase has been entered. Until then, typing
-  never finds anyone by a protected name, and a name that can't be read is
-  found by "Answer unavailable", as it is shown.
+  never finds anyone by a protected name. A name that can't be read is found
+  by "Answer unavailable", and a person without a name by the name of their
+  type, as each is shown.
 - The add-a-person form can't be closed or submitted twice while it saves.
   A family pedigree is saved all at once or not at all, and a relationship
   that can't be saved is reported rather than skipped. Choosing to keep

@@ -40,6 +40,9 @@ export type EncryptedValue = EncryptedBytes & {
   variableId: string;
 };
 
+/** The outcome of decrypting a value, once it is known. */
+export type OutcomeOf = (value: EncryptedValue) => DecryptOutcome | undefined;
+
 /**
  * Why a stored ciphertext can never be shown: written by schema 8's
  * experimental per-value format, stored without the metadata to decrypt it,

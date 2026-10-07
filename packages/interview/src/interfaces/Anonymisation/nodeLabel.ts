@@ -1,15 +1,18 @@
 import type { Variable } from '@codaco/protocol-validation';
-import { entityAttributesProperty, type NcNode } from '@codaco/shared-consts';
+import {
+  entityAttributesProperty,
+  entityPrimaryKeyProperty,
+  type NcNode,
+} from '@codaco/shared-consts';
 
 import { getNodeLabelAttribute } from '../../utils/getNodeLabelAttribute';
 import {
-  type DecryptionScope,
-  readCachedOutcome,
+  type OutcomeOf,
   readEncryptedAttribute,
   type StoredEncryptedAttribute,
 } from './decryptionScope';
 
-export const LOCKED_LABEL = '🔒';
+const LOCKED_LABEL = '🔒';
 
 /**
  * What a node is labelled with: the text of the attribute chosen as its label
@@ -57,31 +60,40 @@ export function readNodeLabelSource(
 }
 
 type NodeLabelTextOptions = {
-  /** The label of a node with no text to show. */
-  fallback: string;
+  /** The label of the node's type, which a node with no text of its own shows. */
+  typeLabel: string;
   /** The label of an answer that can never be read. */
   unavailable: string;
-  scope: DecryptionScope | undefined;
+  outcomeOf: OutcomeOf;
   /** Whether the interview's encryption header is refused, so no key exists. */
   encryptionUnavailable: boolean;
 };
 
 /**
- * The label read from `source`: the plaintext of an encrypted answer once
- * `scope` has decrypted it, and never anything derived from it otherwise.
- * `undefined` while the answer is still being decrypted.
+ * The label `node` shows, read from its `source`: the plaintext of an
+ * encrypted answer once it has decrypted readable, and never anything derived
+ * from it otherwise, so the lock while it is locked or still decrypting. A
+ * node with no text shows its type's label, or its id when that is blank.
  */
 export function nodeLabelText(
+  node: NcNode,
   source: NodeLabelSource,
-  { fallback, unavailable, scope, encryptionUnavailable }: NodeLabelTextOptions,
-): string | undefined {
-  if (source.status === 'plain') return source.text ?? fallback;
+  {
+    typeLabel,
+    unavailable,
+    outcomeOf,
+    encryptionUnavailable,
+  }: NodeLabelTextOptions,
+): string {
+  if (source.status === 'plain') {
+    if (source.text !== undefined) return source.text;
+    return typeLabel.trim() === '' ? node[entityPrimaryKeyProperty] : typeLabel;
+  }
   if (source.status === 'unreadable' || encryptionUnavailable) {
     return unavailable;
   }
-  if (!scope) return LOCKED_LABEL;
 
-  const outcome = readCachedOutcome(scope, source.value);
-  if (!outcome) return undefined;
+  const outcome = outcomeOf(source.value);
+  if (!outcome) return LOCKED_LABEL;
   return outcome.readable ? outcome.plaintext : unavailable;
 }

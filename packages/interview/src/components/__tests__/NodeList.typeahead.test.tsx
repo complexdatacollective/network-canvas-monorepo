@@ -2,10 +2,14 @@ import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { motion } from 'motion/react';
 import { Provider } from 'react-redux';
-import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { DndStoreProvider } from '@codaco/fresco-ui/dnd/dnd';
-import { entityPrimaryKeyProperty, type NcNode } from '@codaco/shared-consts';
+import {
+  entityAttributesProperty,
+  entityPrimaryKeyProperty,
+  type NcNode,
+} from '@codaco/shared-consts';
 
 import { CurrentStepProvider } from '../../contexts/CurrentStepContext';
 import { InterviewI18nProvider } from '../../i18n/InterviewI18nProvider';
@@ -14,10 +18,79 @@ import {
   createEncryptionStore,
   encryptionFor,
   makeEncryptedPerson,
+  NODE_TYPE,
+  outOfBoundsHeader,
   unlockWith,
 } from '../../interfaces/Anonymisation/__tests__/encryptionFixtures';
 import { encryptionUnlocked } from '../../store/modules/ui';
 import NodeList from '../NodeList';
+
+// The text the list hands the collection to type ahead by, for each node id,
+// as the collection last read it.
+const typeaheadText = vi.hoisted(() => new Map<string, string>());
+vi.mock(
+  '@codaco/fresco-ui/collection/components/Collection',
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import('@codaco/fresco-ui/collection/components/Collection')
+      >();
+    const { createElement, useCallback } = await import('react');
+    const { entityPrimaryKeyProperty: idProperty } =
+      await import('@codaco/shared-consts');
+    function RecordingCollection(
+      props: Parameters<typeof actual.Collection<NcNode>>[0],
+    ) {
+      const { textValueExtractor } = props;
+      const recording = useCallback(
+        (node: NcNode) => {
+          const text = textValueExtractor(node);
+          typeaheadText.set(node[idProperty], text);
+          return text;
+        },
+        [textValueExtractor],
+      );
+      return createElement(actual.Collection<NcNode>, {
+        ...props,
+        textValueExtractor: recording,
+      });
+    }
+    return { ...actual, Collection: RecordingCollection };
+  },
+);
+
+// Decryptions of the answers bound to these node ids wait until released, so
+// a test can see a label while it is still being decrypted.
+const held = vi.hoisted(() => {
+  const releases: (() => void)[] = [];
+  return { nodeIds: new Set<string>(), releases };
+});
+vi.mock(
+  '../../interfaces/Anonymisation/encryptionFormat',
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import('../../interfaces/Anonymisation/encryptionFormat')
+      >();
+    return {
+      ...actual,
+      decryptValue: async (
+        ...args: Parameters<typeof actual.decryptValue>
+      ): Promise<string> => {
+        if (held.nodeIds.has(args[2].nodeId)) {
+          await new Promise<void>((resolve) => held.releases.push(resolve));
+        }
+        return actual.decryptValue(...args);
+      },
+    };
+  },
+);
+
+beforeEach(() => {
+  typeaheadText.clear();
+  held.nodeIds.clear();
+  held.releases.length = 0;
+});
 
 // jsdom has neither observer; the list uses them.
 class StubObserver {
@@ -157,5 +230,92 @@ describe('NodeList typeahead with encrypted names', () => {
     await typeFrom('bob', 'an');
 
     expect(await isFocused('copy')).toBe(true);
+  });
+});
+
+// The label a node's option shows, and the text the list types ahead by.
+const shownAndTypedAhead = (nodeId: string) => ({
+  shown:
+    document
+      .getElementById(`people-item-${nodeId}`)
+      ?.getAttribute('aria-label') ?? null,
+  typedAhead: typeaheadText.get(nodeId) ?? null,
+});
+
+const both = (label: string) => ({ shown: label, typedAhead: label });
+
+describe('NodeList typeahead text', () => {
+  it('is the lock a locked name shows', async () => {
+    const nodes = await people();
+    renderList(await lockedStore(nodes), nodes);
+    await settle();
+
+    expect(shownAndTypedAhead('alice')).toEqual(both('🔒'));
+    expect(shownAndTypedAhead('bob')).toEqual(both('🔒'));
+  });
+
+  it('is the lock a name shows while it decrypts, then the name', async () => {
+    const nodes = await people();
+    held.nodeIds.add('bob');
+    renderList(await unlockedStore(nodes), nodes);
+
+    await waitFor(() =>
+      expect(shownAndTypedAhead('alice')).toEqual(both('Alice')),
+    );
+    await settle();
+    expect(shownAndTypedAhead('bob')).toEqual(both('🔒'));
+
+    act(() => {
+      for (const release of held.releases) release();
+    });
+    await waitFor(() => expect(shownAndTypedAhead('bob')).toEqual(both('Bob')));
+    expect(shownAndTypedAhead('alice')).toEqual(both('Alice'));
+  });
+
+  it('is "Answer unavailable" for a name the key can never decrypt, as shown', async () => {
+    const alice = await makeEncryptedPerson('alice', 'Alice', 'pw');
+    const copy: NcNode = { ...alice, [entityPrimaryKeyProperty]: 'copy' };
+    const nodes = [await makeEncryptedPerson('bob', 'Bob', 'pw'), copy];
+    renderList(await unlockedStore(nodes), nodes);
+
+    await waitFor(() =>
+      expect(shownAndTypedAhead('copy')).toEqual(both('Answer unavailable')),
+    );
+    expect(shownAndTypedAhead('bob')).toEqual(both('Bob'));
+  });
+
+  it('is "Answer unavailable" when no key can ever be made, as shown', async () => {
+    const nodes = await people();
+    const { header } = await encryptionFor('pw');
+    const store = createEncryptionStore(nodes, undefined, undefined, {
+      header: outOfBoundsHeader(header),
+    });
+    renderList(store, nodes);
+    await settle();
+
+    expect(shownAndTypedAhead('alice')).toEqual(both('Answer unavailable'));
+  });
+
+  it('is the decrypted name once the passphrase is entered', async () => {
+    const nodes = await people();
+    renderList(await unlockedStore(nodes), nodes);
+
+    await waitFor(() =>
+      expect(shownAndTypedAhead('alice')).toEqual(both('Alice')),
+    );
+    expect(shownAndTypedAhead('bob')).toEqual(both('Bob'));
+  });
+
+  it("is the type's label that a person with no name shows", async () => {
+    const unnamed: NcNode = {
+      [entityPrimaryKeyProperty]: 'unnamed',
+      type: NODE_TYPE,
+      [entityAttributesProperty]: {},
+    };
+    const nodes = [await makeEncryptedPerson('alice', 'Alice', 'pw'), unnamed];
+    renderList(await lockedStore(nodes), nodes);
+    await settle();
+
+    expect(shownAndTypedAhead('unnamed')).toEqual(both('Person'));
   });
 });

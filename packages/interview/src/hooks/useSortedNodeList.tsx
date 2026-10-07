@@ -12,8 +12,8 @@ import {
 } from '@codaco/shared-consts';
 
 import {
-  type DecryptOutcome,
   type EncryptedValue,
+  type OutcomeOf,
   readCachedOutcome,
   readEncryptedAttribute,
 } from '../interfaces/Anonymisation/decryptionScope';
@@ -31,7 +31,6 @@ import createSorter, {
 } from '../utils/createSorter';
 
 type VariablesForType = (type: string) => Record<string, Variable>;
-type OutcomeOf = (value: EncryptedValue) => DecryptOutcome | undefined;
 
 // Where a node sat in the list it was sorted from. A symbol, so no sort rule's
 // property can read it.
