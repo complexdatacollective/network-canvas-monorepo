@@ -23,6 +23,7 @@ import {
 import { Button } from '../Button';
 import type { FieldValue } from '../form/Field/types';
 import { FormWithoutProvider } from '../form/Form';
+import useFormStore from '../form/hooks/useFormStore';
 import FormStoreProvider, {
   FormStoreContext,
 } from '../form/store/formStoreProvider';
@@ -146,7 +147,9 @@ type FormDialog = BaseDialog & {
    * keeps the dialog open with the values as entered and the result's errors
    * shown, so the submission can be retried; only a successful one closes the
    * dialog, which then resolves with the values. Without it, submitting
-   * closes the dialog straight away.
+   * closes the dialog straight away. While it runs the dialog cannot be
+   * cancelled or dismissed, so it never resolves as cancelled with the
+   * submission still under way.
    */
   onSubmit?: FormSubmitHandler;
 };
@@ -386,6 +389,63 @@ function WizardDialogRenderer({
         guardedCloseDialog={guardedCloseDialog}
       />
     </FormStoreProvider>
+  );
+}
+
+function FormDialogContent({
+  dialog,
+  closeDialog,
+}: {
+  dialog: DialogState & { type: 'form' };
+  closeDialog: DialogContextType['closeDialog'];
+}) {
+  const intl = useAppIntl();
+  // Leaving resolves the dialog as cancelled, which would be untrue while a
+  // submission is under way: whatever it writes still lands.
+  const isSubmitting = useFormStore((state) => state.isSubmitting);
+  const formId = `dialog-form-${dialog.id}`;
+  const { onSubmit } = dialog;
+
+  return (
+    <Dialog
+      title={dialog.title}
+      description={dialog.description}
+      closeDialog={() => closeDialog(dialog.id, null)}
+      finalFocus={getDialogFinalFocus(dialog)}
+      accent={dialog.intent}
+      open={dialog.open}
+      dismissible={!isSubmitting}
+      footer={
+        <>
+          <Button
+            onClick={() => closeDialog(dialog.id, null)}
+            disabled={isSubmitting}
+            data-testid="dialog-cancel"
+          >
+            {dialog.cancelLabel ?? intl.formatMessage(commonMessages.cancel)}
+          </Button>
+          <SubmitButton form={formId} data-testid="dialog-submit">
+            {dialog.submitLabel ?? intl.formatMessage(messages.submit)}
+          </SubmitButton>
+        </>
+      }
+      className={dialog.className}
+      size={dialog.size ?? 'editor'}
+    >
+      <FormWithoutProvider
+        id={formId}
+        onSubmit={async (values) => {
+          if (onSubmit) {
+            const result = await onSubmit(values);
+            if (!result.success) return result;
+          }
+          void closeDialog(dialog.id, values);
+          return { success: true };
+        }}
+      >
+        {dialog.children}
+      </FormWithoutProvider>
+    </Dialog>
   );
 }
 
@@ -741,48 +801,9 @@ const DialogProvider: React.FC<{ children: React.ReactNode }> = ({
     }
 
     if (dialog.type === 'form') {
-      const formId = `dialog-form-${dialog.id}`;
-      const { onSubmit } = dialog;
       return (
         <FormStoreProvider key={dialog.id}>
-          <Dialog
-            title={dialog.title}
-            description={dialog.description}
-            closeDialog={() => closeDialog(dialog.id)}
-            finalFocus={getDialogFinalFocus(dialog)}
-            accent={dialog.intent}
-            open={dialog.open}
-            footer={
-              <>
-                <Button
-                  onClick={() => closeDialog(dialog.id, null)}
-                  data-testid="dialog-cancel"
-                >
-                  {dialog.cancelLabel ??
-                    intl.formatMessage(commonMessages.cancel)}
-                </Button>
-                <SubmitButton form={formId} data-testid="dialog-submit">
-                  {dialog.submitLabel ?? intl.formatMessage(messages.submit)}
-                </SubmitButton>
-              </>
-            }
-            className={dialog.className}
-            size={dialog.size ?? 'editor'}
-          >
-            <FormWithoutProvider
-              id={formId}
-              onSubmit={async (values) => {
-                if (onSubmit) {
-                  const result = await onSubmit(values);
-                  if (!result.success) return result;
-                }
-                void closeDialog(dialog.id, values);
-                return { success: true };
-              }}
-            >
-              {dialog.children}
-            </FormWithoutProvider>
-          </Dialog>
+          <FormDialogContent dialog={dialog} closeDialog={closeDialog} />
         </FormStoreProvider>
       );
     }

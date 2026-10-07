@@ -1,11 +1,20 @@
-import { act, render, renderHook, screen } from '@testing-library/react';
+import {
+  act,
+  render,
+  renderHook,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React, { useState } from 'react';
 import { describe, expect, it } from 'vitest';
 
 import Field from '../../form/Field/Field';
 import InputField from '../../form/fields/InputField';
-import type { FormSubmitHandler } from '../../form/store/types';
+import type {
+  FormSubmissionResult,
+  FormSubmitHandler,
+} from '../../form/store/types';
 import type {
   AcknowledgeDialog,
   AnyDialog,
@@ -867,6 +876,53 @@ describe('form dialog onSubmit', () => {
     });
 
     expect(capturedResult).toEqual({ name: 'Alice' });
+  });
+
+  it('cannot be cancelled or dismissed while the submission is under way', async () => {
+    const user = userEvent.setup();
+    let capturedResult: unknown = 'not-set';
+    const pending: ((result: FormSubmissionResult) => void)[] = [];
+
+    render(
+      <DialogProvider>
+        <FormDialogTestComponent
+          onResult={(r) => (capturedResult = r)}
+          onSubmit={() =>
+            new Promise((resolve) => {
+              pending.push(resolve);
+            })
+          }
+        />
+      </DialogProvider>,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Open Form' }));
+    await user.type(await screen.findByRole('textbox'), 'Alice');
+    await user.click(screen.getByTestId('dialog-submit'));
+    await waitFor(() => expect(pending).toHaveLength(1));
+
+    expect(screen.getByTestId('dialog-cancel')).toBeDisabled();
+    expect(
+      screen.queryByRole('button', { name: 'Close' }),
+    ).not.toBeInTheDocument();
+    await user.keyboard('{Escape}');
+    await user.click(screen.getByTestId('dialog-cancel'));
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 600));
+    });
+    expect(screen.getByRole('dialog')).toBeVisible();
+    expect(capturedResult).toBe('not-set');
+
+    // Once a refused submission settles the participant may leave again.
+    await act(async () => {
+      pending[0]?.({ success: false, formErrors: ['Not saved.'] });
+    });
+    expect(await screen.findByText('Not saved.')).toBeVisible();
+    await user.click(screen.getByTestId('dialog-cancel'));
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 600));
+    });
+    expect(capturedResult).toBeNull();
   });
 
   it('closes with the values on submit when no onSubmit is given', async () => {

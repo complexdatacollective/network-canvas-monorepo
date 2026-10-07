@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Provider } from 'react-redux';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
@@ -75,5 +75,45 @@ describe('PassphrasePrompter', () => {
     await waitFor(() =>
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
     );
+  });
+
+  it('cannot be closed while it checks a passphrase', async () => {
+    const { store, user } = await renderPrompter('pw');
+    let release: () => void = () => undefined;
+    const checked = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const decrypt = crypto.subtle.decrypt.bind(crypto.subtle);
+    const held = vi
+      .spyOn(crypto.subtle, 'decrypt')
+      .mockImplementation((algorithm, key, data) =>
+        checked.then(() => decrypt(algorithm, key, data)),
+      );
+
+    try {
+      await user.type(await findPassphraseField(), 'pw');
+      await user.click(
+        screen.getByRole('button', { name: 'Submit passphrase' }),
+      );
+      await waitFor(() => expect(held).toHaveBeenCalled());
+
+      expect(
+        screen.queryByRole('button', { name: 'Close' }),
+      ).not.toBeInTheDocument();
+      await user.keyboard('{Escape}');
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 600));
+      });
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
+      expect(store.getState().ui.passphrase).toBeNull();
+
+      release();
+      await waitFor(() => expect(store.getState().ui.passphrase).toBe('pw'));
+      await waitFor(() =>
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+      );
+    } finally {
+      held.mockRestore();
+    }
   });
 });
