@@ -1,10 +1,8 @@
-import { configureStore } from '@reduxjs/toolkit';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { type ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { describe, expect, it } from 'vitest';
 
-import type { Variable } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -12,203 +10,187 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
-import protocol from '../../store/modules/protocol';
-import session from '../../store/modules/session';
-import ui, { setPassphrase } from '../../store/modules/ui';
-import { useDecryptedNodes } from './useDecryptedNodes';
-import { generateSecureAttributes } from './utils';
+import { updateNode } from '../../store/modules/session';
+import { setPassphrase } from '../../store/modules/ui';
+import {
+  createEncryptionStore,
+  makeEncryptedPerson,
+} from './__tests__/encryptionFixtures';
+import { type DecryptedNodes, useDecryptedNodes } from './useDecryptedNodes';
 
 const PASSPHRASE = 'test passphrase';
 
-const variables: Record<string, Variable> = {
-  name: { name: 'name', type: 'text', component: 'Text', encrypted: true },
-};
+type EncryptionStore = ReturnType<typeof createEncryptionStore>;
 
-function makeStore(encryptionEnabled = true) {
-  return configureStore({
-    reducer: { session, protocol, ui },
-    preloadedState: {
-      protocol: {
-        id: 'p',
-        hash: 'h',
-        schemaVersion: 8,
-        experiments: { encryptedVariables: encryptionEnabled },
-        codebook: { node: { person: { name: 'Person', variables } } },
-        stages: [],
-      } as never,
+function renderDecrypted(store: EncryptionStore, initialNodes: NcNode[]) {
+  const seen: DecryptedNodes[] = [];
+  const rendered = renderHook(
+    ({ nodes }) => {
+      const result = useDecryptedNodes(nodes);
+      seen.push(result);
+      return result;
     },
-    middleware: (g) => g({ serializableCheck: false }),
-  });
+    {
+      initialProps: { nodes: initialNodes },
+      wrapper: ({ children }: { children: ReactNode }) =>
+        Provider({ store, children }),
+    },
+  );
+  return { ...rendered, seen };
 }
 
-async function encryptedNode(id: string, name: string): Promise<NcNode> {
-  const { encryptedAttributes, secureAttributes } =
-    await generateSecureAttributes({ name }, variables, PASSPHRASE);
-  return {
-    [entityPrimaryKeyProperty]: id,
-    type: 'person',
-    [entityAttributesProperty]: encryptedAttributes,
-    [entitySecureAttributesMeta]: secureAttributes,
-  };
+function readyNodes(result: { current: DecryptedNodes }) {
+  if (result.current.status !== 'ready') {
+    throw new Error(`Expected ready, got ${result.current.status}`);
+  }
+  return result.current.nodes;
 }
 
-function renderDecrypted(
-  store: ReturnType<typeof makeStore>,
-  initialNodes: NcNode[],
-) {
-  return renderHook(({ nodes }) => useDecryptedNodes(nodes), {
-    initialProps: { nodes: initialNodes },
-    wrapper: ({ children }: { children: ReactNode }) =>
-      Provider({ store, children }),
-  });
+function names(results: DecryptedNodes[]) {
+  return results.flatMap((result) =>
+    result.status === 'ready'
+      ? result.nodes.map((node) => node[entityAttributesProperty].name)
+      : [],
+  );
 }
 
 describe('useDecryptedNodes', () => {
   it('returns nodes without encrypted values as they are, with no passphrase', () => {
-    const store = makeStore();
     const nodes: NcNode[] = [
       {
         [entityPrimaryKeyProperty]: 'n1',
         type: 'person',
-        [entityAttributesProperty]: { name: 'Alice' },
+        [entityAttributesProperty]: { age: 40 },
       },
     ];
+    const store = createEncryptionStore(nodes);
     const { result } = renderDecrypted(store, nodes);
+
     expect(result.current).toEqual({ status: 'ready', nodes });
+    expect(readyNodes(result)).toBe(nodes);
+    expect(store.getState().ui.showPassphrasePrompter).toBe(false);
+  });
+
+  it('returns encrypted nodes as they are, with no passphrase, while the experiment is off', async () => {
+    const person = await makeEncryptedPerson('n1', 'Alice', PASSPHRASE);
+    const nodes = [person];
+    const store = createEncryptionStore(nodes, undefined, undefined, false);
+    const { result } = renderDecrypted(store, nodes);
+
+    expect(readyNodes(result)).toBe(nodes);
     expect(store.getState().ui.showPassphrasePrompter).toBe(false);
   });
 
   it('is locked and asks for the passphrase while none has been entered', async () => {
-    const store = makeStore();
-    const { result } = renderDecrypted(store, [
-      await encryptedNode('n1', 'Alice'),
-    ]);
+    const person = await makeEncryptedPerson('n1', 'Alice', PASSPHRASE);
+    const store = createEncryptionStore([person]);
+    const { result } = renderDecrypted(store, [person]);
+
     expect(result.current).toEqual({ status: 'locked' });
     expect(store.getState().ui.showPassphrasePrompter).toBe(true);
   });
 
   it('decrypts once the passphrase is entered', async () => {
-    const store = makeStore();
-    const { result } = renderDecrypted(store, [
-      await encryptedNode('n1', 'Alice'),
-    ]);
+    const person = await makeEncryptedPerson('n1', 'Alice', PASSPHRASE);
+    const store = createEncryptionStore([person]);
+    const { result } = renderDecrypted(store, [person]);
 
     act(() => {
       store.dispatch(setPassphrase(PASSPHRASE));
     });
     expect(result.current.status).toBe('pending');
 
-    await waitFor(() => {
-      expect(result.current.status).toBe('ready');
+    await waitFor(() => expect(result.current.status).toBe('ready'));
+    const [decrypted] = readyNodes(result);
+    expect(decrypted?.[entityAttributesProperty]).toEqual({
+      name: 'Alice',
+      age: 40,
     });
-    if (result.current.status !== 'ready') throw new Error('Expected ready');
-    expect(result.current.nodes[0]?.[entityAttributesProperty].name).toBe(
-      'Alice',
+    expect(decrypted?.[entitySecureAttributesMeta]).toBeUndefined();
+  });
+
+  it('shows a value the interview has just saved without decrypting it again', async () => {
+    const person = await makeEncryptedPerson('n1', 'Alice', PASSPHRASE);
+    const store = createEncryptionStore([person]);
+    store.dispatch(setPassphrase(PASSPHRASE));
+    const { result, rerender } = renderDecrypted(store, [person]);
+    await waitFor(() => expect(result.current.status).toBe('ready'));
+
+    await act(async () => {
+      await store.dispatch(
+        updateNode({
+          nodeId: 'n1',
+          attributePatch: { set: { name: 'Alicia' }, unset: [] },
+          currentStep: 0,
+        }),
+      );
+    });
+    rerender({ nodes: store.getState().session.network.nodes });
+
+    expect(readyNodes(result)[0]?.[entityAttributesProperty].name).toBe(
+      'Alicia',
     );
   });
 
-  it('keeps the previous result while a changed node is decrypted', async () => {
-    const store = makeStore();
+  it('keeps the plaintext at once when only other attributes change', async () => {
+    const person = await makeEncryptedPerson('n1', 'Alice', PASSPHRASE);
+    const store = createEncryptionStore([person]);
     store.dispatch(setPassphrase(PASSPHRASE));
-    const { result, rerender } = renderDecrypted(store, [
-      await encryptedNode('n1', 'Alice'),
-    ]);
-    await waitFor(() => {
-      expect(result.current.status).toBe('ready');
-    });
-
-    rerender({ nodes: [await encryptedNode('n1', 'Alicia')] });
-    expect(result.current.status).toBe('ready');
-
-    await waitFor(() => {
-      if (result.current.status !== 'ready') throw new Error('Expected ready');
-      expect(result.current.nodes[0]?.[entityAttributesProperty].name).toBe(
-        'Alicia',
-      );
-    });
-  });
-
-  it('returns encrypted nodes as they are, with no passphrase, while the experiment is off', async () => {
-    const store = makeStore(false);
-    const nodes = [await encryptedNode('n1', 'Alice')];
-    const { result } = renderDecrypted(store, nodes);
-    expect(result.current).toEqual({ status: 'ready', nodes });
-    expect(store.getState().ui.showPassphrasePrompter).toBe(false);
-  });
-
-  it('reuses the plaintext at once when only other attributes change', async () => {
-    const store = makeStore();
-    store.dispatch(setPassphrase(PASSPHRASE));
-    const stored = await encryptedNode('n1', 'Alice');
-    const { result, rerender } = renderDecrypted(store, [stored]);
-    await waitFor(() => {
-      expect(result.current.status).toBe('ready');
-    });
+    const { result, rerender } = renderDecrypted(store, [person]);
+    await waitFor(() => expect(result.current.status).toBe('ready'));
 
     rerender({
       nodes: [
         {
-          ...stored,
+          ...person,
           [entityAttributesProperty]: {
-            ...stored[entityAttributesProperty],
-            close: true,
+            ...person[entityAttributesProperty],
+            age: 41,
           },
         },
       ],
     });
 
-    if (result.current.status !== 'ready') throw new Error('Expected ready');
-    expect(result.current.nodes[0]?.[entityAttributesProperty]).toEqual({
+    expect(readyNodes(result)[0]?.[entityAttributesProperty]).toEqual({
       name: 'Alice',
-      close: true,
+      age: 41,
     });
-    expect(
-      result.current.nodes[0]?.[entitySecureAttributesMeta],
-    ).toBeUndefined();
   });
 
-  it('decrypts again when a value has new ciphertext', async () => {
-    const store = makeStore();
+  it('locks again, and stops showing the plaintext, when the passphrase is cleared', async () => {
+    const person = await makeEncryptedPerson('n1', 'Alice', PASSPHRASE);
+    const store = createEncryptionStore([person]);
     store.dispatch(setPassphrase(PASSPHRASE));
-    const stored = await encryptedNode('n1', 'Alice');
-    const { result, rerender } = renderDecrypted(store, [stored]);
-    await waitFor(() => {
-      expect(result.current.status).toBe('ready');
+    const { result, seen } = renderDecrypted(store, [person]);
+    await waitFor(() => expect(result.current.status).toBe('ready'));
+
+    const seenBeforeClearing = seen.length;
+    act(() => {
+      store.dispatch(setPassphrase(''));
     });
 
-    // Ciphertext that does not belong to the kept metadata cannot decrypt, so
-    // a result other than failure means the old plaintext was reused.
-    const otherCiphertext = (await encryptedNode('n1', 'Bob'))[
-      entityAttributesProperty
-    ].name;
-    if (otherCiphertext === undefined) throw new Error('Expected ciphertext');
-    rerender({
-      nodes: [
-        {
-          ...stored,
-          [entityAttributesProperty]: {
-            ...stored[entityAttributesProperty],
-            name: otherCiphertext,
-          },
-        },
-      ],
-    });
+    expect(result.current).toEqual({ status: 'locked' });
+    expect(names(seen.slice(seenBeforeClearing))).not.toContain('Alice');
+  });
 
-    await waitFor(() => {
-      expect(result.current.status).toBe('failed');
+  it('leaves out ciphertext that has no metadata to decrypt it', async () => {
+    const person = await makeEncryptedPerson('n1', 'Alice', PASSPHRASE);
+    const { [entitySecureAttributesMeta]: _lost, ...withoutMetadata } = person;
+    const store = createEncryptionStore([withoutMetadata]);
+    const { result } = renderDecrypted(store, [withoutMetadata]);
+
+    expect(readyNodes(result)[0]?.[entityAttributesProperty]).toEqual({
+      age: 40,
     });
   });
 
   it('fails and marks the passphrase invalid when decryption fails', async () => {
-    const store = makeStore();
+    const person = await makeEncryptedPerson('n1', 'Alice', PASSPHRASE);
+    const store = createEncryptionStore([person]);
     store.dispatch(setPassphrase('wrong passphrase'));
-    const { result } = renderDecrypted(store, [
-      await encryptedNode('n1', 'Alice'),
-    ]);
+    const { result } = renderDecrypted(store, [person]);
 
-    await waitFor(() => {
-      expect(result.current.status).toBe('failed');
-    });
+    await waitFor(() => expect(result.current.status).toBe('failed'));
     expect(store.getState().ui.passphraseInvalid).toBe(true);
   });
 });

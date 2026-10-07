@@ -34,20 +34,23 @@ vi.mock('../../../../hooks/useCelebrate', () => ({
   useCelebrate: () => vi.fn(),
 }));
 
-// Counts finished decryptions, so a test can wait for stored values to be
-// decrypted before it relies on them.
-const decryption = vi.hoisted(() => ({ settled: 0 }));
-vi.mock('../../../Anonymisation/utils', async (importOriginal) => {
+// Records when a list holding encrypted values has been decrypted, so a test
+// can wait for stored values to be readable before relying on them.
+const decryption = vi.hoisted(() => ({ ready: false }));
+vi.mock('../../../Anonymisation/useDecryptedNodes', async (importOriginal) => {
   const actual =
-    await importOriginal<typeof import('../../../Anonymisation/utils')>();
+    await importOriginal<
+      typeof import('../../../Anonymisation/useDecryptedNodes')
+    >();
   return {
-    ...actual,
-    decryptNodeAttributes: async (
-      ...args: Parameters<typeof actual.decryptNodeAttributes>
+    useDecryptedNodes: (
+      ...args: Parameters<typeof actual.useDecryptedNodes>
     ) => {
-      const node = await actual.decryptNodeAttributes(...args);
-      decryption.settled += 1;
-      return node;
+      const result = actual.useDecryptedNodes(...args);
+      if (result.status === 'ready' && result.nodes !== args[0]) {
+        decryption.ready = true;
+      }
+      return result;
     },
   };
 });
@@ -383,7 +386,7 @@ describe('QuickNodeForm with an encrypted target variable', () => {
       [entitySecureAttributesMeta]: secureAttributes,
     };
     const addNode = vi.fn(saved);
-    decryption.settled = 0;
+    decryption.ready = false;
     renderQuickNodeForm({
       validation: { unique: true },
       existingNodes: [existingNode],
@@ -391,7 +394,7 @@ describe('QuickNodeForm with an encrypted target variable', () => {
       addNode,
     });
 
-    await waitFor(() => expect(decryption.settled).toBe(1));
+    await waitFor(() => expect(decryption.ready).toBe(true));
     const input = await openField();
     await userEvent.type(input, 'Alice');
     fireEvent.submit(input.closest('form')!);
