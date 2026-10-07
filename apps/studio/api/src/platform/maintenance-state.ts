@@ -70,8 +70,8 @@ export const cachedReading = <A>(options: {
 
 /**
  * A reading that answers only for the window it was taken in. `window` counts
- * the windows its caller has seen, and moves when one begins; a value read
- * while it moved, or before its last move, answers nothing, so the caller can
+ * the windows its caller has seen, and moves when one begins; a value whose
+ * read began before its last move answers nothing, so the caller can
  * tell "not read since" from any value. Within one window it is
  * `cachedReading`: one read at a time, kept for `READING_TTL`, and a failed or
  * slow read answering the last value read in that window. Each window has its
@@ -95,9 +95,12 @@ export const windowedReading = <A>(options: {
           onSuccess: (value) =>
             Effect.gen(function* () {
               yield* Ref.set(failing, false);
-              if ((yield* options.window) === window) {
-                yield* Ref.set(last, { value, window });
-              }
+              // Tagged with the window it began in, so it cannot answer once
+              // the window has moved, and in one step, so it never replaces
+              // what a later window read.
+              yield* Ref.update(last, (held) =>
+                held.window > window ? held : { value, window },
+              );
             }),
           onFailure: (cause) =>
             Effect.gen(function* () {
@@ -116,13 +119,16 @@ export const windowedReading = <A>(options: {
     } | null>(null);
     const cacheFor = Effect.fnUntraced(function* (window: number) {
       const installed = yield* Ref.get(caches);
-      if (installed?.window === window) return installed.sample;
+      if (installed !== null && installed.window >= window) {
+        return installed.sample;
+      }
       const sample = yield* Effect.cachedWithTTL(readIn(window), READING_TTL);
-      // Concurrent first reads of a window share whichever cache lands first;
-      // a caller still in an older window reads alone rather than replace it.
+      // Concurrent first reads of a window share whichever cache lands first,
+      // and a caller still in an older window joins the newer one: its answer
+      // is decided against the window it ends in, not the one it began in.
       return yield* Ref.modify(caches, (current) =>
         current !== null && current.window >= window
-          ? [current.window === window ? current.sample : sample, current]
+          ? [current.sample, current]
           : [sample, { window, sample }],
       );
     });
