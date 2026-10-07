@@ -57,7 +57,7 @@ presence|publisher`). `pb/schema.ts` is outside that set and already
    - Socket rows: `connection_id = ws:<socketUuid>:<watchUuid>`, with
      `socket_id = ws:<socketUuid>` for presence and `setMode`.
    - Contact rows (any `openSession`, on both planes):
-     `unary:<owner>:<REPLICA_ID>`, one per `(draft, owner, replica)`. A
+     `unary:<owner>:<ReplicaId>`, one per `(draft, owner, replica)`. A
      replica only extends or expires its own.
 
    The design's `'unary'` kind is `'contact'`. Today's keeper renews any
@@ -134,7 +134,9 @@ Table constants stay unexported until code imports them.
   - `(team_id, draft_id, owner, expires_at)`: grace, renewal and the GC
     "no live row" test;
   - `(draft_id, socket_id)`;
-  - `(expires_at)`: connection GC.
+  - `(expires_at)`: connection GC;
+  - `(draft_id, expires_at) WHERE kind = 'socket'`: `livePresence` (its
+    plan ranges the index over both columns).
 
 **`protocol_staged_resources`**
 
@@ -166,11 +168,10 @@ studio_multi_replica_sync`. There is no `backfill.sql`. Then run
 
 ```ts
 // pb/leases.ts (C1)
-interface AdoptedLease { readonly sectionId: string; readonly epoch: bigint }
 class Leases extends Context.Service<Leases, {
   readonly connect: (session: S,
       onReleased: (events: ReadonlyArray<LoggedProtocolEvent>) => Effect<void>)
-    => Effect<ReadonlyArray<AdoptedLease>, SqlError, Scope.Scope>
+    => Effect<void, SqlError, Scope.Scope>
   readonly contact: (session: S) => Effect<void>        // never fails; logs
   readonly connected: (owner: string) => Effect<boolean> // local view; C1 only, S deletes it
 }>()
@@ -230,75 +231,107 @@ class StagedImports extends Context.Service<StagedImports, {
 
 ### 2.3 Lease and connection transitions (C1, `pb/connections.ts`)
 
-All arithmetic uses `clock_timestamp()`.
+All arithmetic uses `clock_timestamp()`, except `livePresence`'s expiry
+bound: it uses `now()` so the socket index can range over `expires_at`, and
+its transaction is a single read.
 
-**Lock order, the deadlock rule.** Every multi-row writer of one owner's
-lease rows first runs `lockOwnerLeases(draftId, owner)`: `SELECT 1 FROM
-leases WHERE team, draft, owner, live ORDER BY section_id FOR UPDATE`. Only
-then does it call `sync.renewHeld` or release. A transaction spanning
-drafts processes `(draft_id, owner)` pairs in ascending order.
+**Lock order, the deadlock rule.** Every transaction takes its locks in one
+total order:
 
-- `releaseOwner` and `connectSocket` take the draft head lock first (`FOR
-UPDATE` / `FOR SHARE`).
-- Liveness takes no head lock.
-- Single-row writers (`acquire`, `submit`) cannot form a cycle.
+1. the draft head (`drafts` row);
+2. `protocol_connections` rows, ascending `connection_id`;
+3. `leases` rows, ascending `section_id`.
 
-Liveness is **one transaction per team**, which bounds the tick at O(teams)
-round trips. The alternative, one transaction per `(draft, owner)`, still
-renews several rows per owner, so it needs the same ordering and costs more
-round trips. `40P01` and any other failure is logged and retried next tick,
-and registrations are kept.
+A single-row writer still closes a cycle: one that holds a lease and then
+waits on the head (or on a connection row) deadlocks against a transaction
+that holds the head and waits on that lease. So the order binds every
+locker, not only the multi-row ones.
+
+- `connectSocket`, `upsertContact` and liveness take the head `FOR SHARE`;
+  `releaseOwner` takes it `FOR UPDATE`. Each then locks connection rows (an
+  ordered `SELECT … FOR UPDATE`, or the upsert's own row), then the owner's
+  leases in one ordered statement (`lockOwnerLeases`), and only then calls
+  `sync.renewHeld` or `sync.release`.
+- `setSocketMode` and `expireConnection` lock only connection rows (ordered)
+  and wait on nothing after them, so they skip the head.
+- `sync.acquire`, `sync.commit` and the host's writes take the head before
+  any lease.
+- `discardDraft` takes the head `FOR UPDATE`, then the cascade reaches leases
+  and connections. Holding the head exclusively, it waits on no one who
+  holds a row it needs.
+
+Liveness is **one transaction per draft**. It renews the replica's own rows
+(`replica_id = ReplicaId`) and the leases of their owners. `40P01` and any
+other failure is logged and retried next tick, and registrations are kept.
+A draft whose head is gone is forgotten: its registrations are dropped.
 
 ```ts
-REPLICA_ID: string                                   // randomUUID() at module load
-connectSocket(session: S, key: ConnectionKey, presence: PresenceFields)
-  : Effect<ReadonlyArray<AdoptedLease>, SqlError, Database>
-  // noAuditTransaction('protocolBuilder.connect'): FOR SHARE head; lockOwnerLeases;
-  // renewHeld; upsert socket row (expires_at = now + TTL; mode/section from adopted)
-renewConnections(access: TeamAccess, local: ReadonlyArray<LocalRegistration>)
-  : Effect<{ missing: ReadonlyArray<LocalRegistration> }, SqlError, Database>
-  // 'protocolBuilder.liveness': UPDATE … SET expires_at = now + TTL (socket) /
-  // greatest(expires_at, …) (contact) WHERE connection_id = ANY($) AND
-  // expires_at > clock_timestamp() RETURNING connection_id; then, per distinct
-  // (draft, owner) among returned rows in sorted order, lockOwnerLeases + renewHeld.
-  // Rows not returned are `missing`; the caller re-runs connectSocket (socket) or
-  // upsertContact (contact) for each, each in its own transaction.
-upsertContact(session: S): Effect<void, SqlError, Database>    // 'protocolBuilder.contact'
-expireConnection(key: ConnectionKey): Effect<void, SqlError, Database>
-  // 'protocolBuilder.expireConnection': SET expires_at = clock_timestamp() WHERE connection_id = key
+ReplicaId: Context.Reference<string>                 // randomUUID() per process; tests give one per client
+contactKey(session: S, replicaId: string): string    // `unary:<owner>:<replicaId>`
+connectSocket(session: S, key: string): Effect<boolean, SqlError, Database>
+  // noAuditTransaction('protocolBuilder.connect'): FOR SHARE head (false if gone);
+  // upsert socket row as viewing; lockOwnerLeases + renewHeld; then mode/section
+  // from the first held lease by section_id
+renewConnections(access: TeamAccess, draftId: string, local: ReadonlyArray<LocalRegistration>)
+  : Effect<Liveness, SqlError, Database>
+  // 'protocolBuilder.liveness': FOR SHARE head (gone if missing); SELECT own live
+  // rows among `local` ORDER BY connection_id FOR UPDATE; extend them (socket:
+  // now + TTL, contact: greatest(expires_at, …)); lockOwnerLeases + renewHeld per
+  // owner. Rows not found are `missing`; the caller re-runs connectSocket (socket)
+  // or upsertContact (contact) for each, each in its own transaction.
+upsertContact(session: S): Effect<boolean, SqlError, Database>  // 'protocolBuilder.contact'; false if gone
+expireConnection(registration: LocalRegistration): Effect<void, SqlError, Database>
 releaseOwner(session: S): Effect<OwnerRelease, SqlError, Database>
-  // 'protocolBuilder.releaseOwner': FOR UPDATE head; if a live socket row exists for
-  // (draft, owner) → { released: false, retryInMs } (ms until its latest expires_at,
-  // computed in SQL); else lockOwnerLeases, release each live lease, append lock-null events
-  // → { released: true, events }
+  // 'protocolBuilder.releaseOwner': FOR UPDATE head (a gone draft releases nothing);
+  // if a live socket row exists for (draft, owner) → { released: false }; else
+  // lockOwnerLeases, release each live lease, append lock-null events
 livePresence(access: TeamAccess, draftIds: ReadonlyArray<string>)
   : Effect<ReadonlyMap<string, ReadonlyArray<PresenceEntry>>, SqlError, Database>
   // live socket rows, one entry per socket_id (editing wins), sessionId = socket_id
 setSocketMode(session: S, mode, sectionId?): Effect<void, SqlError, Database>
+  // only the caller's own rows on its socket (socket_id and owner); socket callers only
+type Liveness = { readonly gone: true } | { readonly gone: false; readonly missing: ReadonlyArray<LocalRegistration> }
 type OwnerRelease =
   | { readonly released: true; readonly events: ReadonlyArray<LoggedProtocolEvent> }
-  | { readonly released: false; readonly retryInMs: number }
+  | { readonly released: false }
 ```
 
 **`released` means "no live socket row for the owner"**, not "at least one
 lease was released". It gates the staging release.
 
-**`Leases` local state.** `Map<ConnectionKey, LocalRegistration>`, where
-`LocalRegistration = {access, draftId, owner, key, kind, presence}`.
+**`Leases` local state.** Socket registrations, each with its own
+one-permit semaphore; contact registrations per `(draft, owner)`; graces per
+`(draft, owner)`. `LocalRegistration = {session, key, kind}`.
+`Leases.connect` returns `void`.
 
 - **`connect`:**
-  1. mint `ws:<socketUuid>:<watchUuid>`;
-  2. `connectSocket`;
+  1. mint `<connectionId>:<watchUuid>`;
+  2. `connectSocket`; if the draft is gone, register nothing;
   3. register locally;
-  4. scope finalizer: unregister → `expireConnection` (best-effort) → fork
-     the grace into the layer scope, deduped per `(draft, owner)`.
-- **Grace loop:** `sleep(RECONNECT_GRACE_MS)` → drop the owner's local
-  contact registrations → `releaseOwner`:
-  - `released: false` → `sleep(retryInMs)` and repeat;
+  4. only now interrupt a pending grace for the owner, so a reconnect that
+     failed to be recorded leaves the grace to give the leases back;
+  5. scope finalizer: unregister → `expireConnection` under the
+     registration's semaphore (best-effort) → fork the grace into the layer
+     scope, deduped per `(draft, owner)`.
+- **One grace per closure, on the replica whose socket closed:**
+  `sleep(RECONNECT_GRACE_MS)` → drop the owner's local contact registration →
+  `releaseOwner`:
+  - `released: false` (the owner has a live socket elsewhere) → the grace
+    ends, with no re-sleep. The replica holding that socket runs a whole
+    grace of its own when it closes.
   - `released: true` → `onReleased(events)`;
-  - failure → log, stop (the leases lapse at TTL; C2's reaper publishes).
-- **Tick:** `Schedule.spaced(RENEW_INTERVAL_MS)`, per team →
-  `renewConnections`, then re-connect the missing.
+  - failure → retried with a bounded exponential backoff (0.5 s doubling,
+    5 retries, 15.5 s in all), then logged (the leases lapse at TTL; C2's
+    reaper publishes). Shutdown and maintenance closure still stop it.
+- **Mode updates:** AcquireLock and ReleaseLock change presence only for a
+  caller on a socket (`WsConnection`), retried with the same backoff, then
+  logged. A unary caller's connection id is its login's session id, which
+  every HTTP watch of that login carries as its socket id too.
+- **Tick:** `Schedule.spaced(RENEW_INTERVAL_MS)`, per draft →
+  `renewConnections`, then re-connect the missing. A socket's re-record runs
+  under its registration's semaphore and re-checks the registration there,
+  so a re-record cannot commit after the close's expiry and leave a live row
+  nothing renews.
 - **`contact`:** `upsertContact`, throttled to once per 30 s per `(draft,
 owner)`, then a local contact registration until `IDLE_MS`.
 - **Maintenance closure:** when `MaintenanceTriggers.closure` is a
@@ -392,11 +425,12 @@ SET expires_at = clock_timestamp() + interval '2 s'` (or `- …` to lapse).
 - I2, I12, I13, I17, I18, I19 and I15b from §5.
 
 **Behaviour change in the moved "stops renewing a stranded owner's leases
-even when giving them back fails" test.** When `releaseOwner` fails,
-staging is no longer released immediately (it was released before the
-attempt). It stays until GC. Renewal still stops, because contact
-registrations are dropped before the attempt. The test now asserts no
-further `sync.renewHeld` spans and an unchanged `leaseExpiry`.
+even when giving them back fails" test.** When every attempt of
+`releaseOwner` fails, staging is no longer released immediately (it was
+released before the attempt). It stays until GC. Renewal still stops,
+because contact registrations are dropped before the first attempt. The
+test steps through each backoff, then asserts exactly `RETRY_TIMES + 1`
+attempts, no further `sync.renewHeld` spans and an unchanged `leaseExpiry`.
 
 ### V: doorbell transport and readiness (parallel with C1; own worktree from `f2f26dcda`; merged before C2)
 
@@ -709,35 +743,39 @@ D drafts in its own worktree throughout.
 To prove each oracle can fail: apply its mutation once, see red, then
 revert.
 
-| #    | Invariant                                                                            | Test                                         | Observable                                                  | Mutation                                                       |
-| ---- | ------------------------------------------------------------------------------------ | -------------------------------------------- | ----------------------------------------------------------- | -------------------------------------------------------------- |
-| I1   | Reconnect on any replica keeps the owner's live leases                               | H#1, H#3                                     | `leaseExpiry` advances after reconnect; Submit succeeds     | drop `renewHeld` from `connectSocket`                          |
-| I2   | Grace never releases while the owner has a live socket row                           | C1 leases                                    | no lock-null event; `liveLeases` unchanged                  | remove the live-socket check in `releaseOwner`                 |
-| I3   | Renewal never resurrects an expired lease                                            | studio-sync `lease.test.ts` (exists)         | `renewHeld` returns `[]` after `forceExpire`                | drop the expiry predicate                                      |
-| I4a  | Contiguous cursors despite reordered or dropped rings                                | H#4                                          | per-watcher cursor sequence has no gaps                     | offer only the ringing cursor's row                            |
-| I4b  | Event committed between `subscribe` and backlog arrives once                         | C2 events                                    | exactly one delivery of cursor n                            | fix `next` lazily in the fiber                                 |
-| I5   | At most one holder per section                                                       | H#7                                          | one `held`, one `readOnly`                                  | let `acquire` ignore a live foreign lease (local only)         |
-| I6a  | Presence is the union across replicas                                                | H#5                                          | both sessionIds listed                                      | filter `livePresence` by `REPLICA_ID`                          |
-| I6b  | Ghost presence clears without a ring                                                 | C2 events                                    | presence event without the aged row                         | emit presence only on rings                                    |
-| I7a  | Crash: unreleased expired lease gets lock-null                                       | H#6                                          | lock-null event after `ageLeases`                           | skip `reapExpired` in the poll                                 |
-| I7b  | Reaper is idempotent across replicas                                                 | C2 events (two relays)                       | exactly one lock-null                                       | drop the recheck under `FOR UPDATE`                            |
-| I8   | Disposed or draining replica appends no release                                      | H#3                                          | no lock-null in the log                                     | run `onReleased` on grace interruption                         |
-| I9   | Staged secret never plaintext at rest                                                | `no-plaintext-at-rest.test.ts`               | scan finds no plaintext                                     | store `request.value` unsealed                                 |
-| I10a | Promotion removes row (in tx) and object (after)                                     | S, H#8                                       | row gone at commit; stub records `deleteStaged`             | delete rows after commit instead of in tx (test kills between) |
-| I10b | Discard removes object then row                                                      | S                                            | both gone                                                   | skip `deleteStaged`                                            |
-| I10c | GC removes abandoned, keeps live owners                                              | gc test                                      | row+object gone / kept                                      | invert the live-row predicate                                  |
-| I11  | `/readyz` 503 while draining                                                         | `T/health.test.ts`                           | status code                                                 | `draining: Effect.succeed(false)`                              |
-| I12  | Failed liveness pass keeps registrations                                             | C1 leases (faulty `Database`)                | next healthy tick advances `leaseExpiry`                    | delete registrations on pass failure                           |
-| I13  | Stranded owner stops renewing even if release fails                                  | C1 leases                                    | no new `sync.renewHeld` spans; `leaseExpiry` static         | drop contact registrations only after a successful release     |
-| I14  | Migration path equals push path                                                      | `migrations-converge.test.ts`, fingerprint   | equality                                                    | edit `schema.ts` without regenerating                          |
-| I15a | Contact keeps a unary owner's lease across a replica stop                            | D stack-test                                 | Submit succeeds                                             | skip `upsertContact`                                           |
-| I15b | Contact lease lapses after `IDLE_MS` silence                                         | C1 leases                                    | span count stops; `ageLeases` lapse → `readOnly` for others | renew contact rows forever                                     |
-| I16  | Valkey resubscribe triggers a read                                                   | V Valkey test, C2 (poll 60 s)                | `Resync` signal; event delivered before poll                | omit `Resync` on resubscribe                                   |
-| I17  | Two watches on one socket: ending one does not release                               | C1 leases                                    | no lock-null; other watch's row live                        | key rows by socket instead of watch                            |
-| I18  | Grace re-sleeps while another replica's socket is live, then releases once it lapses | C1 leases                                    | lock-null only after `ageConnections` lapse                 | return without retry when `released: false`                    |
-| I19  | Liveness re-creates a missing live row via `connectSocket`                           | C1 leases                                    | row exists after tick following an external expire          | treat `missing` as success                                     |
-| I20  | Relay failure fails queues after N tries; transient failure recovers                 | C2 events (faulty `Database`)                | stream dies with `RelayFailed` after N; recovers below N    | never fail queues / fail on first error                        |
-| I21  | Maintenance closure stops relay, liveness, contact, reaper writes                    | C1 + C2 with a closing `MaintenanceTriggers` | no liveness/relay spans while closed                        | ignore `closure`                                               |
+| #    | Invariant                                                                                                                      | Test                                           | Observable                                                                     | Mutation                                                        |
+| ---- | ------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------- | ------------------------------------------------------------------------------ | --------------------------------------------------------------- |
+| I1   | Reconnect on any replica keeps the owner's live leases                                                                         | H#1, H#3                                       | `leaseExpiry` advances after reconnect; Submit succeeds                        | drop `renewHeld` from `connectSocket`                           |
+| I2   | Grace never releases while the owner has a live socket row                                                                     | C1 leases                                      | no lock-null event; `liveLeases` unchanged                                     | remove the live-socket check in `releaseOwner`                  |
+| I3   | Renewal never resurrects an expired lease                                                                                      | studio-sync `lease.test.ts` (exists)           | `renewHeld` returns `[]` after `forceExpire`                                   | drop the expiry predicate                                       |
+| I4a  | Contiguous cursors despite reordered or dropped rings                                                                          | H#4                                            | per-watcher cursor sequence has no gaps                                        | offer only the ringing cursor's row                             |
+| I4b  | Event committed between `subscribe` and backlog arrives once                                                                   | C2 events                                      | exactly one delivery of cursor n                                               | fix `next` lazily in the fiber                                  |
+| I5   | At most one holder per section                                                                                                 | H#7                                            | one `held`, one `readOnly`                                                     | let `acquire` ignore a live foreign lease (local only)          |
+| I6a  | Presence is the union across replicas                                                                                          | H#5                                            | both sessionIds listed                                                         | filter `livePresence` by `ReplicaId`                            |
+| I6b  | Ghost presence clears without a ring                                                                                           | C2 events                                      | presence event without the aged row                                            | emit presence only on rings                                     |
+| I7a  | Crash: unreleased expired lease gets lock-null                                                                                 | H#6                                            | lock-null event after `ageLeases`                                              | skip `reapExpired` in the poll                                  |
+| I7b  | Reaper is idempotent across replicas                                                                                           | C2 events (two relays)                         | exactly one lock-null                                                          | drop the recheck under `FOR UPDATE`                             |
+| I8   | Disposed or draining replica appends no release                                                                                | H#3                                            | no lock-null in the log                                                        | run `onReleased` on grace interruption                          |
+| I9   | Staged secret never plaintext at rest                                                                                          | `no-plaintext-at-rest.test.ts`                 | scan finds no plaintext                                                        | store `request.value` unsealed                                  |
+| I10a | Promotion removes row (in tx) and object (after)                                                                               | S, H#8                                         | row gone at commit; stub records `deleteStaged`                                | delete rows after commit instead of in tx (test kills between)  |
+| I10b | Discard removes object then row                                                                                                | S                                              | both gone                                                                      | skip `deleteStaged`                                             |
+| I10c | GC removes abandoned, keeps live owners                                                                                        | gc test                                        | row+object gone / kept                                                         | invert the live-row predicate                                   |
+| I11  | `/readyz` 503 while draining                                                                                                   | `T/health.test.ts`                             | status code                                                                    | `draining: Effect.succeed(false)`                               |
+| I12  | Failed liveness pass keeps registrations                                                                                       | C1 leases (faulty `Database`)                  | next healthy tick advances `leaseExpiry`                                       | delete registrations on pass failure                            |
+| I13  | Stranded owner stops renewing on the grace's replica even if every release fails                                               | C1 leases                                      | `RETRY_TIMES + 1` attempts; no new `sync.renewHeld` spans                      | drop contact registrations only after a successful release      |
+| I14  | Migration path equals push path                                                                                                | `migrations-converge.test.ts`, fingerprint     | equality                                                                       | edit `schema.ts` without regenerating                           |
+| I15a | Contact keeps a unary owner's lease across a replica stop                                                                      | D stack-test                                   | Submit succeeds                                                                | skip `upsertContact`                                            |
+| I15b | Contact lease lapses after `IDLE_MS` silence                                                                                   | C1 leases                                      | span count stops; `ageLeases` lapse → `readOnly` for others                    | renew contact rows forever                                      |
+| I16  | Valkey resubscribe triggers a read                                                                                             | V Valkey test, C2 (poll 60 s)                  | `Resync` signal; event delivered before poll                                   | omit `Resync` on resubscribe                                    |
+| I17  | Two watches on one socket: ending one does not release                                                                         | C1 leases                                      | no lock-null; other watch's row live                                           | key rows by socket instead of watch                             |
+| I18  | A grace that finds the owner's socket live elsewhere ends; that replica's grace releases a whole grace after its socket closes | C1 leases                                      | A: no release span after 10× grace; B: no release at grace − 1 s, one at grace | re-sleep and retry on `released: false`; ignore the live socket |
+| I19  | Liveness re-creates a missing live row via `connectSocket`                                                                     | C1 leases                                      | row exists after tick following an external expire                             | treat `missing` as success                                      |
+| I20  | Relay failure fails queues after N tries; transient failure recovers                                                           | C2 events (faulty `Database`)                  | stream dies with `RelayFailed` after N; recovers below N                       | never fail queues / fail on first error                         |
+| I21  | Maintenance closure stops relay, liveness, contact, reaper writes                                                              | C1 + C2 with a closing `MaintenanceTriggers`   | no liveness/relay spans while closed                                           | ignore `closure`                                                |
+| I22  | Liveness and contact take the draft head before any connection or lease row                                                    | C1 leases (a second connection holds the head) | the waiter holds no `protocol_connections` or `leases` lock (`pg_locks`)       | drop or move the head lock                                      |
+| I23  | A reconnect that fails to be recorded keeps the grace                                                                          | C1 leases (a trigger refuses the row)          | grace still pending; lease released after it                                   | interrupt the grace before `connectSocket`                      |
+| I24  | A watch closing during its re-record leaves no live row                                                                        | C1 leases (own pool, held row)                 | no live row for the key                                                        | expire outside the registration's semaphore                     |
+| I25  | Mode changes touch only the caller's own rows, and only from a socket                                                          | C1 presence                                    | the other tab's or HTTP watch's row unchanged                                  | drop the owner predicate; drop the `WsConnection` skip          |
 
 ---
 
@@ -757,7 +795,17 @@ revert.
   needs source authorization. Until verified, promotion falls back to read
   and write.
 - **Risk: a stalled replica.** One paused past the TTL loses its owners'
-  leases, and I3 prevents resurrection. This is accepted, same as a crash.
+  leases, and I3 prevents resurrection. Its next liveness pass finds its
+  rows lapsed and re-records each socket row, with no leases behind it: the
+  tab is listed as viewing and must take its locks again. This is accepted,
+  same as a crash.
+- **Risk: I13 holds only on the replica running the grace.** Another
+  replica holding a contact for the same owner keeps renewing until that
+  contact idles out (`IDLE_MS`).
+- **Risk: a blip inside another replica's grace.** If the owner's socket on
+  B closes and has not yet come back when A's grace ends, A finds no live
+  socket and releases, although B's own grace would have waited. Accepted:
+  the window is the reconnect itself.
 - **Risk: re-authorization only on delivered entries.** An idle watch of a
   removed member keeps renewing until the next event. This is
   pre-existing; flag it, do not fix it here.

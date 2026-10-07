@@ -113,7 +113,7 @@ is irrelevant.
   every 10 s), and the client's socket retry ladder reaches its fifth attempt
   in about 6.6 s.
 
-- **Liveness pass.** Every 10 s (`RENEW_INTERVAL_MS`), one transaction per team
+- **Liveness pass.** Every 10 s (`RENEW_INTERVAL_MS`), one transaction per draft
   that has local connections:
   1. Push `expires_at` forward on this replica's rows (`connection_id = ANY($local)`).
   2. Renew every live lease whose `(draft_id, owner)` has a live row in that
@@ -137,6 +137,15 @@ is irrelevant.
   today's behaviour when a reconnect takes longer than 20 s. On shutdown the
   grace fibers are interrupted, as today, so a draining replica never
   releases anything.
+
+  "Do nothing" ends the grace; it does not sleep again. The replica holding
+  the live socket runs a whole grace of its own when that socket closes, so
+  the grace on the replica whose socket closed is the only grace for that
+  closure. A release that fails is retried with a bounded backoff, then
+  logged, and the leases lapse at the TTL.
+
+  Every transaction locks the draft head first, then connection rows by
+  `connection_id`, then lease rows by `section_id`.
 
 - **Unary contact.** `openSession` on the unary plane upserts a `'unary'` row
   with `expires_at = now + IDLE_MS`. The write is throttled per owner per
