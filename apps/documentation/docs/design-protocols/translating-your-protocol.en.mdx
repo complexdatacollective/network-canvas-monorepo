@@ -56,6 +56,10 @@ Open the **Languages** tab in the protocol's navigation, between **Codebook** an
 - a **Default** badge on the default language
 - how many of the protocol's texts are translated into it, such as "12 of 40 texts translated"
 
+Everything else you can do with a language is in its actions menu, the **⋯** button at the end of its row: **Make default**, **Relabel translations…** and **Remove**.
+
+Above the list, **Which translation participants see** opens a short summary of [The default language and which translation participants see](#the-default-language-and-which-translation-participants-see).
+
 Languages have no order. Architect lists them alphabetically by name, in the language Architect's interface is shown in, and the order your protocol stores them in makes no difference to what participants see.
 
 You can also manage your protocol's languages from a [Language Chooser](/en/design-protocols/interface-documentation/language-chooser) stage's editor. It shows the same list, with the same rules, as the **Languages** tab, so you can manage your protocol's languages without leaving your stages. Everything below applies in both places. A change you make there also applies to the stage's changes that you haven't saved yet. Missing translations are listed only on the **Languages** tab.
@@ -68,7 +72,7 @@ A new language starts with no translations. Until you translate a text, particip
 
 ### The default language and which translation participants see
 
-The default language is the one participants start the interview in when their browser lists none of your protocol's languages. To change it, click **Make default** next to another language.
+The default language is the one participants start the interview in when their browser lists none of your protocol's languages. To change it, choose **Make default** from another language's actions menu.
 
 The default language doesn't have to hold every text. A text needs a translation in at least one of your protocol's languages, and it can be any of them. A missing translation, whether in the default language or in another, is only a warning (see [Finding missing translations](#finding-missing-translations)).
 
@@ -93,18 +97,20 @@ If the question were written only in Brazilian Portuguese, a participant using E
 
 When your protocol has more than one variant of a language, such as Spanish (`es`) and Mexican Spanish (`es-MX`), a participant whose own language is one of them sees the text in that variant if it has it, or else in the other variant, before any other language.
 
-### Changing a language
+### Relabelling a language's translations
 
-**Change language** marks every text written in one language as written in another. Use it when you chose the wrong language or variant, for example if you added Spanish (`es`) but wrote your translations for participants in Mexico (`es-MX`). Nothing is translated or deleted: only the language the text is marked as changes. You can't change a language into one the protocol already has.
+**Relabel translations…**, in a language's actions menu, marks every text written in that language as written in another. Use it when the translations are really in another language or regional variant, for example if you added Spanish (`es`) but wrote your translations for participants in Mexico (`es-MX`). Nothing is translated or deleted: only the language the text is marked as changes. You can't relabel translations as a language the protocol already has.
 
 ### Removing a language
 
-Click **Remove** next to a language to stop offering it. Architect asks you to confirm, because every translation written in that language is deleted, and participants can no longer choose it.
+Choose **Remove** from a language's actions menu to stop offering it. Architect asks you to confirm, because every translation written in that language is deleted, and participants can no longer choose it.
 
 You can't remove:
 
 - the default language. Make another language the default first.
 - a language that some texts are written only in. Translate those texts into another language first, so that participants always have something to read.
+
+For these languages, **Remove** is unavailable, and the menu says why.
 
 ## Finding missing translations
 
@@ -116,7 +122,7 @@ Architect shows you where they are:
 - The protocol overview screen shows a notice with the number of missing translations, and a **Go to Languages** link.
 - The **Missing translations** section of the **Languages** tab lists the texts that have no translation in one language at a time. It is a tree: **Stages**, **Codebook** and **Protocol** branch into the places that hold the texts. A stage is named by its position and interface, such as "Stage 4 · Language Chooser", and a node type or edge type by its name. Each text is a row that previews what participants see in its place.
 
-Choose the language whose gaps you want to see under **Show missing translations for**, or click the button next to the language in the **Protocol languages** list, such as **Show 3 missing translations**.
+Choose the language whose gaps you want to see under **Show missing translations for**, or click the button next to the language in the **Protocol languages** list, such as **Show 3 missing French translations**.
 
 Click a row to open its translation dialog. It has the text's field, with a language menu, so you can write the text in every language, and saving writes them all at once. Beside it, **What participants see** shows the text as participants using each of your protocol's languages will see it, as you type. It marks the default language and the language you are editing. Under a language that has no translation of the text, a note says what participants see instead:
 
@@ -164,7 +170,7 @@ Tell Architect which language your text is really written in before you add tran
 1. Open the **Languages** tab. A notice asks "Which language is your text written in?".
 2. Click **Identify language**.
 3. Choose the language from the **Language** list.
-4. Click **Change language**.
+4. Click **Identify language** to finish.
 
 Every text marked as unspecified is now marked as the language you chose. Nothing is translated or deleted. Until you do this, the protocol overview screen shows the notice "Identify the language of your protocol", and interviews run with the protocol record `und` as their language in your exported data.
 
