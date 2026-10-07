@@ -1,41 +1,54 @@
 {
   "name": "E2E Fixture",
   "description": "Lean fixture for the Interviewer app e2e suite.",
-  "schemaVersion": 8,
+  "schemaVersion": 9,
+  "localization": { "defaultLocale": "en-US", "locales": ["en-US"] },
   "lastModified": "2026-07-12T00:00:00.000Z",
   "codebook": {
     "node": {
       "person": {
         "name": "Person",
+        "label": { "en-US": "Person" },
         "color": "node-color-seq-1",
         "shape": { "default": "circle" },
         "variables": {
           "name": {
             "name": "name",
+            "label": "name",
             "type": "text",
             "component": "Text",
             "validation": { "required": true }
           },
           "close": {
             "name": "close",
+            "label": "close",
             "type": "boolean",
             "component": "Boolean",
             "options": [
-              { "label": "Yes", "value": true },
-              { "label": "No", "value": false }
+              { "label": { "en-US": "Yes" }, "value": true },
+              { "label": { "en-US": "No" }, "value": false }
             ]
           },
-          "layout": { "name": "layout", "type": "layout" }
+          "layout": {
+            "name": "layout",
+            "label": "layout",
+            "type": "layout"
+          }
         }
       }
     },
     "edge": {
-      "knows": { "name": "Knows", "color": "edge-color-seq-1" }
+      "knows": {
+        "name": "Knows",
+        "label": { "en-US": "Knows" },
+        "color": "edge-color-seq-1"
+      }
     },
     "ego": {
       "variables": {
         "ego_name": {
           "name": "ego_name",
+          "label": "ego_name",
           "type": "text",
           "component": "Text",
           "validation": { "required": true }
@@ -47,47 +60,56 @@
     {
       "id": "stage-info",
       "type": "Information",
-      "label": "Welcome",
-      "title": "Welcome",
+      "label": { "en-US": "Welcome" },
+      "title": { "en-US": "Welcome" },
       "items": [
         {
           "id": "item-1",
           "type": "text",
-          "content": "# Welcome\n\nThanks for taking part."
+          "content": { "en-US": "# Welcome\n\nThanks for taking part." }
         }
       ]
     },
     {
       "id": "stage-ego",
       "type": "EgoForm",
-      "label": "About you",
+      "label": { "en-US": "About you" },
       "introductionPanel": {
-        "title": "Introduction",
-        "text": "Tell us about **you**."
+        "title": { "en-US": "Introduction" },
+        "text": { "en-US": "Tell us about **you**." }
       },
       "form": {
-        "fields": [{ "variable": "ego_name", "prompt": "What is your name?" }]
+        "fields": [
+          {
+            "variable": "ego_name",
+            "prompt": { "en-US": "What is your name?" }
+          }
+        ]
       }
     },
     {
       "id": "stage-ng",
       "type": "NameGeneratorQuickAdd",
-      "label": "Name people",
+      "label": { "en-US": "Name people" },
       "subject": { "entity": "node", "type": "person" },
       "quickAdd": "name",
       "behaviours": { "minNodes": 1, "maxNodes": 8 },
-      "prompts": [{ "id": "p1", "text": "Who are the people you know?" }]
+      "prompts": [
+        { "id": "p1", "text": { "en-US": "Who are the people you know?" } }
+      ]
     },
     {
       "id": "stage-socio",
       "type": "Sociogram",
-      "label": "Connect people",
+      "label": { "en-US": "Connect people" },
       "subject": { "entity": "node", "type": "person" },
       "background": { "concentricCircles": 4, "skewedTowardCenter": true },
       "prompts": [
         {
           "id": "p1",
-          "text": "Drag to place; link people who know each other.",
+          "text": {
+            "en-US": "Drag to place; link people who know each other."
+          },
           "layout": { "layoutVariable": "layout" },
           "edges": { "create": "knows", "display": ["knows"] }
         }

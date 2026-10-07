@@ -2,6 +2,7 @@
 title: Protocol Schema Information
 wip: false
 navOrder: 3
+date: 7th October 2026
 ---
 
 ## Summary
@@ -82,7 +83,7 @@ Migrating a protocol happens within Architect, Fresco, and Interviewer, and is a
 
 ## Schema version 9
 
-Schema version 9 is the current, latest protocol schema version. It lets you name variables in any language, and use spaces and punctuation in their names.
+Schema version 9 is the current, latest protocol schema version. It lets you write a protocol in more than one language, so that participants can take the interview in their own language. It also lets you name variables in any language, and use spaces and punctuation in their names.
 
 - **Architect** 9.0 and later, **Fresco** 5.0 and later, and **Interviewer** 9.0 and later support schema 9, and migrate schema 7 and schema 8 protocols to it automatically.
 - Earlier releases of **Fresco** (4.x) and **Interviewer** (8.x) support schemas 7 and 8 only, and can't open a schema 9 protocol.
@@ -100,10 +101,23 @@ Before you run a schema 9 protocol, make sure the app you run it in has been upd
 
 - **Variable names in any language.** Variable names can now use letters from any language, as well as spaces and punctuation: `género`, `关系类型` and `contact frequency (per week)` are all valid. A name still can't be empty, start or end with a space, or contain tabs, line breaks or other control characters. See [What a name can contain](/en/design-protocols/key-concepts/variables#what-a-name-can-contain).
 - **The same freedom for type names and option values.** Architect now accepts the same characters in the names of node types and edge types, and in the values of categorical and ordinal options.
+- **Protocols in more than one language.** A protocol now lists the languages it is written in, and one of them is its default language. Every text participants see, such as stage names, prompts, form fields, response options and Information screens, can have a translation in each of these languages, and needs one in at least one of them. When a text has no translation in the participant's language, they see the best available one instead: the text in another language their browser lists, or else in the default language, or else in any language that has it. The languages have no order. See [Translating Your Protocol](/en/design-protocols/translating-your-protocol#the-default-language-and-which-translation-participants-see).
+- **Labels for node types, edge types and attributes.** The codebook now keeps the words participants are shown for each node type and edge type separately from its name. The label can be translated, while the name, which your exported data uses, stays the same in every language. Each attribute has a label too, a readable name in plain text that isn't translated.
+- **Labels for highlighted Narrative attributes.** Each attribute a [Narrative](/en/design-protocols/interface-documentation/narrative) preset highlights has its own label, which participants see in the preset switcher and which can be translated.
+- **Labels for Network Composer fields.** Every field of a [Network Composer](/en/design-protocols/interface-documentation/network-composer) form needs a label, which participants see and which can be translated.
+- **New "[Language Chooser](/en/design-protocols/interface-documentation/language-chooser)" interface.** A screen where participants choose which of the protocol's languages the rest of the interview is shown in.
+- **The interview language in exported data.** Each exported interview records the language it was shown in. See [Interview language](/en/analyze-data/data-export#interview-language).
+
+In the protocol file, each translation is stored as an [ICU MessageFormat](https://unicode-org.github.io/icu/userguide/format_parse/messages/) message, so curly braces and some apostrophes are escaped. You never see this escaping: Architect shows and saves your text exactly as you type it, and participants see it the same way. If you edit a protocol file by hand, a translation must be plain text written in this format; placeholders such as `{name}` are not allowed.
 
 Alongside schema 9, Architect refuses names and option values that would give two variables the same column in your exported data. See [Names that would clash in exported data](/en/design-protocols/key-concepts/variables#names-that-would-clash-in-exported-data).
 
-Migrating a protocol from schema 8 to schema 9 changes only its schema version number. Nothing else in the protocol changes, and existing variable names are kept exactly as they are.
+Migrating a protocol from schema 8 to schema 9 keeps all of its content, and existing variable names are kept exactly as they are. Migration also:
+
+- marks all the text participants see as written in an unspecified language (the language code `und`), because older protocols don't record which language they are written in. This becomes the protocol's only language, and its default. Open the protocol in Architect to say which language it really is (see [Identifying the language of an older protocol](/en/design-protocols/translating-your-protocol#identifying-the-language-of-an-older-protocol)).
+- gives every node type, edge type and attribute a label, which starts as its name.
+- gives every attribute a Narrative preset highlights a label, which starts as the attribute's name.
+- gives every Network Composer field that has no label one, which starts as the attribute's name.
 
 ## Schema version 8
 
@@ -162,7 +176,7 @@ For the full history, consult the table below for information about which schema
 
 | Schema Version | Features                                                                                                                                                                                                                                                                                                                                                         | Architect Versions                | Interviewer Versions          |
 | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------- | ----------------------------- |
-| 9              | Variable names in any language, including spaces and punctuation.                                                                                                                                                                                                                                                                                                | Architect 9.0+                    | Fresco 5.0+, Interviewer 9.0+ |
+| 9              | Variable names in any language, including spaces and punctuation. Protocols in more than one language, with a default language and translations of participant-facing text. New Language Chooser interface. Labels for node types, edge types and attributes.                                                                                                    | Architect 9.0+                    | Fresco 5.0+, Interviewer 9.0+ |
 | 8              | New Geospatial, experimental Anonymisation, One-to-many dyad census, Family pedigree, Network Composer, and Narrative Pedigree interfaces. New `greaterThanVariable`/`lessThanVariable` validation, "contains"/"does not contain" comparators, and targeted skip-logic destinations. Configurable default and variable-driven node shapes, and form-field hints. | Architect                         | Fresco 4.0+, Interviewer      |
 | 7              | Minimum/maximum alter counts on name generators. Additional skip logic options for categorical variables.                                                                                                                                                                                                                                                        | 6.4.0                             | \> 6.3.0                      |
 | 6              | New "roster name generator" interface. Automatic node layout on the sociogram.                                                                                                                                                                                                                                                                                   | 6.3.0, 6.3.1                      | \> 6.2.0                      |

@@ -5,6 +5,12 @@ import type { ReactNode } from 'react';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 
+import {
+  isPresentationalText,
+  type PresentationalText,
+  presentationalTextProps,
+  presentationalTextValue,
+} from '../../PresentationalText';
 import { cx } from '../../utils/cva';
 import FieldErrors from '../FieldErrors';
 import { FieldLabel } from '../FieldLabel';
@@ -39,8 +45,8 @@ type ExcludeMotionConflicts<T> = Omit<
 type BaseFieldProps = {
   id: string;
   name?: string;
-  label: ReactNode;
-  hint?: ReactNode;
+  label: ReactNode | PresentationalText;
+  hint?: ReactNode | PresentationalText;
   validationSummary?: ReactNode;
   required?: boolean;
   errors?: string[];
@@ -127,8 +133,11 @@ export function BaseField({
               htmlFor={id}
               required={required}
               className={labelHidden ? 'sr-only' : undefined}
+              {...presentationalTextProps(label)}
             >
-              {label}
+              {isPresentationalText(label)
+                ? presentationalTextValue(label)
+                : label}
             </FieldLabel>
             {required && (
               <span id={elementIds.required} className="sr-only">

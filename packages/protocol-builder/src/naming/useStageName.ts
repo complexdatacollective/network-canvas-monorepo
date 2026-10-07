@@ -4,17 +4,17 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 
 import {
   stageNameMessages,
-  useLiveStageLabel,
+  useEditingStageLabel,
   useProposedStageLabel,
   useStageNameRegistration,
   useStageNameWriter,
 } from './stageNameInternals.ts';
 
 export type StageName = Readonly<{
-  /** The name as the form holds it right now. */
+  /** The name as the form holds it right now, in the editing language. */
   value: string;
   /**
-   * Write it, exactly as typing into the control would. Refused out loud while
+   * Write it in the editing language, exactly as typing into the control would. Refused out loud while
    * somebody else holds the stage: a write that vanished would look to the
    * researcher like one that worked.
    */
@@ -27,7 +27,10 @@ export type StageName = Readonly<{
    * ever written unasked is `useAutoStageName`.
    */
   proposal: string;
-  /** Write the proposal as the name, and count it as this editor's doing. */
+  /**
+   * Write the proposal as the name's default-language translation, and count
+   * it as this editor's doing.
+   */
   acceptProposal: () => void;
 }>;
 
@@ -50,7 +53,7 @@ export type StageName = Readonly<{
 export function useStageName(): StageName {
   const intl = useAppIntl();
   useStageNameRegistration();
-  const value = useLiveStageLabel();
+  const value = useEditingStageLabel();
   const proposal = useProposedStageLabel();
   const write = useStageNameWriter();
 

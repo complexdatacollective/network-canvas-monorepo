@@ -2,6 +2,7 @@
   "name": "Sexual & Injection Risk Networks",
   "description": "An example template for studying the sexual and injection partnerships through which HIV and other infections spread. It records partner attributes and partnership start and end dates so that overlapping partnerships can be identified, and encrypts partner labels so that only the participant can read them.",
   "schemaVersion": 9,
+  "localization": { "defaultLocale": "en-US", "locales": ["en-US"] },
   "lastModified": "2026-06-15T00:00:00.000Z",
   "experiments": { "encryptedVariables": true },
   "codebook": {
@@ -9,41 +10,48 @@
       "variables": {
         "ego_hiv_status": {
           "name": "ego_hiv_status",
+          "label": "ego_hiv_status",
           "type": "categorical",
           "component": "ToggleButtonGroup",
           "validation": {
             "maxSelected": 1
           },
           "options": [
-            { "label": "Living with HIV", "value": "positive" },
-            { "label": "HIV-negative", "value": "negative" },
+            { "label": { "en-US": "Living with HIV" }, "value": "positive" },
+            { "label": { "en-US": "HIV-negative" }, "value": "negative" },
             {
-              "label": "I don't know my status / never tested",
+              "label": { "en-US": "I don't know my status / never tested" },
               "value": "unknown"
             },
-            { "label": "Prefer not to answer", "value": "declined" }
+            {
+              "label": { "en-US": "Prefer not to answer" },
+              "value": "declined"
+            }
           ]
         },
         "on_prep": {
           "name": "on_prep",
+          "label": "on_prep",
           "type": "boolean",
           "component": "Boolean",
           "options": [
-            { "label": "Yes", "value": true },
-            { "label": "No", "value": false }
+            { "label": { "en-US": "Yes" }, "value": true },
+            { "label": { "en-US": "No" }, "value": false }
           ]
         },
         "on_art": {
           "name": "on_art",
+          "label": "on_art",
           "type": "boolean",
           "component": "Boolean",
           "options": [
-            { "label": "Yes", "value": true },
-            { "label": "No", "value": false }
+            { "label": { "en-US": "Yes" }, "value": true },
+            { "label": { "en-US": "No" }, "value": false }
           ]
         },
         "last_hiv_test": {
           "name": "last_hiv_test",
+          "label": "last_hiv_test",
           "type": "datetime",
           "component": "DatePicker",
           "parameters": {
@@ -52,11 +60,12 @@
         },
         "injects_drugs": {
           "name": "injects_drugs",
+          "label": "injects_drugs",
           "type": "boolean",
           "component": "Boolean",
           "options": [
-            { "label": "Yes", "value": true },
-            { "label": "No", "value": false }
+            { "label": { "en-US": "Yes" }, "value": true },
+            { "label": { "en-US": "No" }, "value": false }
           ]
         }
       }
@@ -64,12 +73,14 @@
     "node": {
       "partner": {
         "name": "Partner",
+        "label": { "en-US": "Partner" },
         "color": "node-color-seq-1",
         "icon": "add-a-person",
         "shape": { "default": "circle" },
         "variables": {
           "partner_label": {
             "name": "partner_label",
+            "label": "partner_label",
             "type": "text",
             "component": "Text",
             "encrypted": true,
@@ -80,23 +91,28 @@
           },
           "partner_type": {
             "name": "partner_type",
+            "label": "partner_type",
             "type": "categorical",
             "component": "ToggleButtonGroup",
             "validation": {
               "maxSelected": 1
             },
             "options": [
-              { "label": "Main or steady partner", "value": "main" },
-              { "label": "Casual partner", "value": "casual" },
               {
-                "label": "Exchange or transactional partner",
+                "label": { "en-US": "Main or steady partner" },
+                "value": "main"
+              },
+              { "label": { "en-US": "Casual partner" }, "value": "casual" },
+              {
+                "label": { "en-US": "Exchange or transactional partner" },
                 "value": "exchange"
               },
-              { "label": "Other", "value": "other" }
+              { "label": { "en-US": "Other" }, "value": "other" }
             ]
           },
           "partner_age": {
             "name": "partner_age",
+            "label": "partner_age",
             "type": "number",
             "component": "Number",
             "validation": {
@@ -106,56 +122,67 @@
           },
           "partner_gender": {
             "name": "partner_gender",
+            "label": "partner_gender",
             "type": "categorical",
             "component": "ToggleButtonGroup",
             "validation": {
               "maxSelected": 1
             },
             "options": [
-              { "label": "Woman", "value": "woman" },
-              { "label": "Man", "value": "man" },
-              { "label": "Transgender woman", "value": "trans_woman" },
-              { "label": "Transgender man", "value": "trans_man" },
-              { "label": "Non-binary or another gender", "value": "nonbinary" },
-              { "label": "Don't know", "value": "unknown" }
+              { "label": { "en-US": "Woman" }, "value": "woman" },
+              { "label": { "en-US": "Man" }, "value": "man" },
+              {
+                "label": { "en-US": "Transgender woman" },
+                "value": "trans_woman"
+              },
+              { "label": { "en-US": "Transgender man" }, "value": "trans_man" },
+              {
+                "label": { "en-US": "Non-binary or another gender" },
+                "value": "nonbinary"
+              },
+              { "label": { "en-US": "Don't know" }, "value": "unknown" }
             ]
           },
           "partner_serostatus": {
             "name": "partner_serostatus",
+            "label": "partner_serostatus",
             "type": "categorical",
             "component": "ToggleButtonGroup",
             "validation": {
               "maxSelected": 1
             },
             "options": [
-              { "label": "Living with HIV", "value": "positive" },
-              { "label": "HIV-negative", "value": "negative" },
-              { "label": "Unknown", "value": "unknown" }
+              { "label": { "en-US": "Living with HIV" }, "value": "positive" },
+              { "label": { "en-US": "HIV-negative" }, "value": "negative" },
+              { "label": { "en-US": "Unknown" }, "value": "unknown" }
             ]
           },
           "condom_use": {
             "name": "condom_use",
+            "label": "condom_use",
             "type": "ordinal",
             "component": "LikertScale",
             "options": [
-              { "label": "Never", "value": 1 },
-              { "label": "Sometimes", "value": 2 },
-              { "label": "About half the time", "value": 3 },
-              { "label": "Usually", "value": 4 },
-              { "label": "Always", "value": 5 }
+              { "label": { "en-US": "Never" }, "value": 1 },
+              { "label": { "en-US": "Sometimes" }, "value": 2 },
+              { "label": { "en-US": "About half the time" }, "value": 3 },
+              { "label": { "en-US": "Usually" }, "value": 4 },
+              { "label": { "en-US": "Always" }, "value": 5 }
             ]
           },
           "shared_injection_equipment": {
             "name": "shared_injection_equipment",
+            "label": "shared_injection_equipment",
             "type": "boolean",
             "component": "Boolean",
             "options": [
-              { "label": "Yes", "value": true },
-              { "label": "No", "value": false }
+              { "label": { "en-US": "Yes" }, "value": true },
+              { "label": { "en-US": "No" }, "value": false }
             ]
           },
           "partnership_start": {
             "name": "partnership_start",
+            "label": "partnership_start",
             "type": "datetime",
             "component": "DatePicker",
             "parameters": {
@@ -164,6 +191,7 @@
           },
           "partnership_end": {
             "name": "partnership_end",
+            "label": "partnership_end",
             "type": "datetime",
             "component": "DatePicker",
             "parameters": {
@@ -172,6 +200,7 @@
           },
           "layout": {
             "name": "layout",
+            "label": "layout",
             "type": "layout"
           }
         }
@@ -180,6 +209,7 @@
     "edge": {
       "knows": {
         "name": "Knows",
+        "label": { "en-US": "Knows" },
         "color": "edge-color-seq-1",
         "variables": {}
       }
@@ -189,36 +219,44 @@
     {
       "id": "information-researcher-notes",
       "type": "Information",
-      "label": "Template notes (delete before fielding)",
-      "title": "Template notes",
+      "label": { "en-US": "Template notes (delete before fielding)" },
+      "title": { "en-US": "Template notes" },
       "items": [
         {
           "id": "researcher-notes",
           "type": "text",
-          "content": "## For researchers\n\n_Delete this screen before you field the study. It lists the surveillance instruments and studies this template draws on._\n\n- [CDC National HIV Behavioral Surveillance (NHBS) — overview.](https://pmc.ncbi.nlm.nih.gov/articles/PMC1804113/)\n- [Weiss KM et al. ARTnet: an egocentric sexual-network study of US MSM.](https://www.medrxiv.org/content/10.1101/19010579v1.full)\n- [Methods for HIV partner / transmission network studies.](https://pmc.ncbi.nlm.nih.gov/articles/PMC5985831/)"
+          "content": {
+            "en-US": "## For researchers\n\n_Delete this screen before you field the study. It lists the surveillance instruments and studies this template draws on._\n\n- [CDC National HIV Behavioral Surveillance (NHBS) — overview.](https://pmc.ncbi.nlm.nih.gov/articles/PMC1804113/)\n- [Weiss KM et al. ARTnet: an egocentric sexual-network study of US MSM.](https://www.medrxiv.org/content/10.1101/19010579v1.full)\n- [Methods for HIV partner / transmission network studies.](https://pmc.ncbi.nlm.nih.gov/articles/PMC5985831/)"
+          }
         }
       ]
     },
     {
       "id": "information-intro",
       "type": "Information",
-      "label": "Welcome & Confidentiality",
-      "title": "About this interview",
+      "label": { "en-US": "Welcome & Confidentiality" },
+      "title": { "en-US": "About this interview" },
       "items": [
         {
           "id": "intro-confidentiality",
           "type": "text",
-          "content": "Thank you for taking part. In this interview we will ask about people you have had **sexual contact** with, and (if relevant) people you have **injected drugs** with. These questions help researchers understand how HIV, other sexually transmitted infections, and bloodborne infections can spread through networks of partners.\n\nYour answers are **confidential**. You will never have to give anyone's real name: you can use initials or a code that only makes sense to you. In the next step you will create a private passphrase that encrypts these labels, so that **only you** can read them — not even the research team.\n\n## Reference period\n\nUnless we say otherwise, please think about the **past 6 months** (the last half-year up to today). When we ask you to list partners, include everyone you had sexual contact with, or injected drugs with, during that time — whether the relationship was serious, casual, one-time, or anything else.\n\nThere are no right or wrong answers, and you can skip any question you would prefer not to answer."
+          "content": {
+            "en-US": "Thank you for taking part. In this interview we will ask about people you have had **sexual contact** with, and (if relevant) people you have **injected drugs** with. These questions help researchers understand how HIV, other sexually transmitted infections, and bloodborne infections can spread through networks of partners.\n\nYour answers are **confidential**. You will never have to give anyone's real name: you can use initials or a code that only makes sense to you. In the next step you will create a private passphrase that encrypts these labels, so that **only you** can read them — not even the research team.\n\n## Reference period\n\nUnless we say otherwise, please think about the **past 6 months** (the last half-year up to today). When we ask you to list partners, include everyone you had sexual contact with, or injected drugs with, during that time — whether the relationship was serious, casual, one-time, or anything else.\n\nThere are no right or wrong answers, and you can skip any question you would prefer not to answer."
+          }
         }
       ]
     },
     {
       "id": "anonymisation",
       "type": "Anonymisation",
-      "label": "Create your private passphrase",
+      "label": { "en-US": "Create your private passphrase" },
       "explanationText": {
-        "title": "Protect the identities of the people you mention",
-        "body": "Because the people you will describe are sensitive, this interview lets you **encrypt** the labels you give them so that they cannot be read by anyone but you — not even the researchers running this study.\n\nTo turn this on, choose a passphrase below and enter it. You will need the same passphrase if you ever return to this interview, so pick something you will remember. Do not share it with the interviewer."
+        "title": {
+          "en-US": "Protect the identities of the people you mention"
+        },
+        "body": {
+          "en-US": "Because the people you will describe are sensitive, this interview lets you **encrypt** the labels you give them so that they cannot be read by anyone but you — not even the researchers running this study.\n\nTo turn this on, choose a passphrase below and enter it. You will need the same passphrase if you ever return to this interview, so pick something you will remember. Do not share it with the interviewer."
+        }
       },
       "validation": {
         "minLength": 8,
@@ -228,35 +266,47 @@
     {
       "id": "ego-form",
       "type": "EgoForm",
-      "label": "About you",
+      "label": { "en-US": "About you" },
       "introductionPanel": {
-        "title": "A few questions about you",
-        "text": "Before we talk about your partners, we would like to ask a few questions about **you** — including your HIV status, whether you use prevention or treatment medication, and your testing and injection history. These help us interpret the partnerships you describe. You may skip any question."
+        "title": { "en-US": "A few questions about you" },
+        "text": {
+          "en-US": "Before we talk about your partners, we would like to ask a few questions about **you** — including your HIV status, whether you use prevention or treatment medication, and your testing and injection history. These help us interpret the partnerships you describe. You may skip any question."
+        }
       },
       "form": {
         "fields": [
           {
             "variable": "ego_hiv_status",
-            "prompt": "What is your current HIV status?"
+            "prompt": { "en-US": "What is your current HIV status?" }
           },
           {
             "variable": "on_prep",
-            "prompt": "Are you currently taking PrEP to prevent HIV?",
-            "hint": "PrEP stands for pre-exposure prophylaxis."
+            "prompt": {
+              "en-US": "Are you currently taking PrEP to prevent HIV?"
+            },
+            "hint": { "en-US": "PrEP stands for pre-exposure prophylaxis." }
           },
           {
             "variable": "on_art",
-            "prompt": "If you are living with HIV, are you currently taking antiretroviral treatment?",
-            "hint": "Antiretroviral treatment is also known as ART."
+            "prompt": {
+              "en-US": "If you are living with HIV, are you currently taking antiretroviral treatment?"
+            },
+            "hint": {
+              "en-US": "Antiretroviral treatment is also known as ART."
+            }
           },
           {
             "variable": "last_hiv_test",
-            "prompt": "When did you most recently take an HIV test?",
-            "hint": "An approximate month and year is fine."
+            "prompt": {
+              "en-US": "When did you most recently take an HIV test?"
+            },
+            "hint": { "en-US": "An approximate month and year is fine." }
           },
           {
             "variable": "injects_drugs",
-            "prompt": "In the past 6 months, have you injected any drugs that were not prescribed to you?"
+            "prompt": {
+              "en-US": "In the past 6 months, have you injected any drugs that were not prescribed to you?"
+            }
           }
         ]
       }
@@ -264,11 +314,11 @@
     {
       "id": "ng-sexual-partners",
       "type": "NameGenerator",
-      "label": "Sexual partners",
+      "label": { "en-US": "Sexual partners" },
       "panels": [
         {
           "id": "ng-sexual-partners-existing",
-          "title": "Already listed",
+          "title": { "en-US": "Already listed" },
           "dataSource": "existing"
         }
       ],
@@ -277,19 +327,23 @@
         "type": "partner"
       },
       "form": {
-        "title": "Add Partner",
+        "title": { "en-US": "Add Partner" },
         "fields": [
           {
             "variable": "partner_label",
-            "prompt": "Enter initials or a code for this person.",
-            "hint": "Use something that means something to you but would not identify them to anyone else."
+            "prompt": { "en-US": "Enter initials or a code for this person." },
+            "hint": {
+              "en-US": "Use something that means something to you but would not identify them to anyone else."
+            }
           }
         ]
       },
       "prompts": [
         {
           "id": "p-sexual",
-          "text": "Thinking about the **past 6 months**, who are the people you have had any kind of **sexual contact** with? Add each person using initials or a private code — include main or steady partners, casual partners, and one-time partners."
+          "text": {
+            "en-US": "Thinking about the **past 6 months**, who are the people you have had any kind of **sexual contact** with? Add each person using initials or a private code — include main or steady partners, casual partners, and one-time partners."
+          }
         }
       ],
       "behaviours": {
@@ -299,11 +353,11 @@
     {
       "id": "ng-injection-partners",
       "type": "NameGenerator",
-      "label": "Injection partners",
+      "label": { "en-US": "Injection partners" },
       "panels": [
         {
           "id": "ng-injection-partners-existing",
-          "title": "Already listed",
+          "title": { "en-US": "Already listed" },
           "dataSource": "existing"
         }
       ],
@@ -312,19 +366,23 @@
         "type": "partner"
       },
       "form": {
-        "title": "Add Partner",
+        "title": { "en-US": "Add Partner" },
         "fields": [
           {
             "variable": "partner_label",
-            "prompt": "Enter initials or a code for this person.",
-            "hint": "If you already listed them (for example, as a sexual partner), add them from the 'Already listed' panel instead of typing the label again."
+            "prompt": { "en-US": "Enter initials or a code for this person." },
+            "hint": {
+              "en-US": "If you already listed them (for example, as a sexual partner), add them from the 'Already listed' panel instead of typing the label again."
+            }
           }
         ]
       },
       "prompts": [
         {
           "id": "p-injection",
-          "text": "Still thinking about the **past 6 months**, who are the people you have **injected drugs with** — for example, people you injected alongside, or shared any injection equipment (needles, syringes, cookers, cotton, or water) with? Add anyone not already listed; if someone is both a sexual and an injection partner, drag them in from the 'Already listed' panel so they remain a single person in the data."
+          "text": {
+            "en-US": "Still thinking about the **past 6 months**, who are the people you have **injected drugs with** — for example, people you injected alongside, or shared any injection equipment (needles, syringes, cookers, cotton, or water) with? Add anyone not already listed; if someone is both a sexual and an injection partner, drag them in from the 'Already listed' panel so they remain a single person in the data."
+          }
         }
       ],
       "behaviours": {
@@ -334,51 +392,67 @@
     {
       "id": "alter-form-partnership",
       "type": "AlterForm",
-      "label": "About each partnership",
+      "label": { "en-US": "About each partnership" },
       "subject": {
         "entity": "node",
         "type": "partner"
       },
       "introductionPanel": {
-        "title": "Tell us about each partnership",
-        "text": "For each person you listed, we will ask about the **relationship** and the partner's characteristics, and about **when the partnership started and ended**. The start and end dates let researchers work out which partnerships overlapped in time, which is important for understanding how infections spread. Approximate months are fine, and you may skip any question."
+        "title": { "en-US": "Tell us about each partnership" },
+        "text": {
+          "en-US": "For each person you listed, we will ask about the **relationship** and the partner's characteristics, and about **when the partnership started and ended**. The start and end dates let researchers work out which partnerships overlapped in time, which is important for understanding how infections spread. Approximate months are fine, and you may skip any question."
+        }
       },
       "form": {
         "fields": [
           {
             "variable": "partner_type",
-            "prompt": "How would you describe your relationship with this person?"
+            "prompt": {
+              "en-US": "How would you describe your relationship with this person?"
+            }
           },
           {
             "variable": "partner_age",
-            "prompt": "About how old is this person, in years?"
+            "prompt": { "en-US": "About how old is this person, in years?" }
           },
           {
             "variable": "partner_gender",
-            "prompt": "What is this person's gender?"
+            "prompt": { "en-US": "What is this person's gender?" }
           },
           {
             "variable": "partner_serostatus",
-            "prompt": "As far as you know, what is this person's HIV status?"
+            "prompt": {
+              "en-US": "As far as you know, what is this person's HIV status?"
+            }
           },
           {
             "variable": "condom_use",
-            "prompt": "When you had sex with this person, how often did you use a condom?"
+            "prompt": {
+              "en-US": "When you had sex with this person, how often did you use a condom?"
+            }
           },
           {
             "variable": "shared_injection_equipment",
-            "prompt": "Did you ever share injection equipment with this person?",
-            "hint": "Injection equipment includes needles, syringes, cookers, cotton, or water."
+            "prompt": {
+              "en-US": "Did you ever share injection equipment with this person?"
+            },
+            "hint": {
+              "en-US": "Injection equipment includes needles, syringes, cookers, cotton, or water."
+            }
           },
           {
             "variable": "partnership_start",
-            "prompt": "When did your sexual or injection relationship with this person begin?",
-            "hint": "An approximate month and year is fine."
+            "prompt": {
+              "en-US": "When did your sexual or injection relationship with this person begin?"
+            },
+            "hint": { "en-US": "An approximate month and year is fine." }
           },
           {
             "variable": "partnership_end",
-            "prompt": "When did it end?",
-            "hint": "If it is still going on, you can leave this blank or choose this month."
+            "prompt": { "en-US": "When did it end?" },
+            "hint": {
+              "en-US": "If it is still going on, you can leave this blank or choose this month."
+            }
           }
         ]
       }
@@ -386,7 +460,7 @@
     {
       "id": "sociogram-overlap",
       "type": "Sociogram",
-      "label": "Connections between partners",
+      "label": { "en-US": "Connections between partners" },
       "subject": {
         "entity": "node",
         "type": "partner"
@@ -400,7 +474,9 @@
       "prompts": [
         {
           "id": "p-overlap",
-          "text": "The people you mentioned are arranged for you automatically below. Please draw a line between any two who **know each other**, as far as you are aware. This helps us understand how the partners in your network are connected.",
+          "text": {
+            "en-US": "The people you mentioned are arranged for you automatically below. Please draw a line between any two who **know each other**, as far as you are aware. This helps us understand how the partners in your network are connected."
+          },
           "layout": {
             "layoutVariable": "layout"
           },

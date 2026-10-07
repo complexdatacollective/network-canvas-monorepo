@@ -13,22 +13,27 @@ import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import Form from '@codaco/fresco-ui/form/Form';
 import type { NcNode } from '@codaco/shared-consts';
 
+import { TestProtocolLocalization } from '../../../__tests__/TestProtocolLocalization';
+
 const fixtures = vi.hoisted(() => {
   const codebook = {
     ego: { variables: {} },
     node: {
       person: {
         name: 'Person',
+        label: { en: 'Person' },
         color: 'node-color-seq-1',
         variables: {
           name: {
             name: 'name',
+            label: 'Name',
             type: 'text' as const,
             component: 'Text' as const,
             validation: { required: true, unique: true },
           },
           alias: {
             name: 'Alias',
+            label: 'Alias',
             type: 'text' as const,
             component: 'Text' as const,
           },
@@ -40,7 +45,9 @@ const fixtures = vi.hoisted(() => {
 
   return {
     codebook,
-    nodeForm: [{ variable: 'alias', prompt: 'What else do they go by?' }],
+    nodeForm: [
+      { variable: 'alias', prompt: { en: 'What else do they go by?' } },
+    ],
     localNodes: new Map<string, NcNode>(),
     validationContext: {
       codebook,
@@ -106,10 +113,12 @@ function renderForm(
 ) {
   render(
     <Provider store={store}>
-      <Form onSubmit={onSubmit}>
-        {children}
-        <button type="submit">Save</button>
-      </Form>
+      <TestProtocolLocalization>
+        <Form onSubmit={onSubmit}>
+          {children}
+          <button type="submit">Save</button>
+        </Form>
+      </TestProtocolLocalization>
     </Provider>,
   );
   return onSubmit;

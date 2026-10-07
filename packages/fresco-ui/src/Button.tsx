@@ -28,7 +28,9 @@ const buttonSpecificVariants = cva({
     // shrinks it. Buttons that genuinely must hold their size — icon buttons
     // (below), toolbar actions — say so with `shrink-0` at the call site.
     'max-w-full min-w-0',
-    'items-center justify-center',
+    // `safe`: content that cannot shrink (element children, a slotted
+    // element) overflows at its end only, rather than centred past both edges.
+    'items-center justify-center-safe',
     'ui-disabled:cursor-not-allowed ui-disabled:opacity-50',
     // Toggle and disclosure buttons carry their state in ARIA, so the selected
     // look follows the attribute. Deliberately NOT `!important`: a call site
@@ -307,6 +309,65 @@ const hasAriaSelectedState = ({
   expanded === true ||
   expanded === 'true';
 
+// The clip that `overflow-hidden` needs for the ellipsis sits at the padding
+// edge, so `p-[1em]` with a matching `-m-[1em]` moves it out by 1em on every
+// side without moving the text or changing the button's size. At the line box
+// it would cut glyph ink the button's own padding box (the only clip before
+// this span) left whole: Tibetan stacks and stacked Vietnamese and Thai marks
+// reach the top and bottom of the line, and a capital T overhangs its start.
+// `overflow-x: clip` would spare only the vertical overhang. Past the button,
+// the button still clips. White-space is left to inherit, so a call site that
+// lets the button wrap (`text-wrap`) lets its label wrap too.
+const BUTTON_LABEL_CLASS_NAME =
+  'min-w-0 overflow-hidden text-ellipsis -m-[1em] p-[1em]';
+
+const isTextChild = (child: React.ReactNode): child is string | number =>
+  typeof child === 'string' || typeof child === 'number';
+
+/**
+ * Gives a text label its own element. `text-overflow: ellipsis` only applies
+ * to a block container's own text, and a bare string inside the inline-flex
+ * button is an anonymous flex item that never clips, so an overlong label
+ * would otherwise be cut off by the button with no ellipsis.
+ *
+ * Each run of adjacent strings and numbers becomes ONE span, so
+ * `Show {count} items` stays a single label. A whitespace-only run stays bare
+ * (the flex container already ignores it; a span would add a gap), and
+ * elements stay direct children so `[&>.lucide]` still sizes icons.
+ */
+const wrapTextRuns = (children: React.ReactNode): React.ReactNode => {
+  const nodes = React.Children.toArray(children);
+  if (!nodes.some(isTextChild)) return children;
+
+  const wrapped: React.ReactNode[] = [];
+  let run: (string | number)[] = [];
+  const flushRun = () => {
+    const text = run.join('');
+    run = [];
+    if (text.trim() === '') {
+      if (text !== '') wrapped.push(text);
+      return;
+    }
+    wrapped.push(
+      <span key={`label-${wrapped.length}`} className={BUTTON_LABEL_CLASS_NAME}>
+        {text}
+      </span>,
+    );
+  };
+
+  for (const node of nodes) {
+    if (isTextChild(node)) {
+      run.push(node);
+    } else {
+      flushRun();
+      wrapped.push(node);
+    }
+  }
+  flushRun();
+
+  return wrapped;
+};
+
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   (
     {
@@ -365,7 +426,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         {isLinkVariant ? (
           <span className={NATIVE_LINK_LABEL_CLASS_NAME}>{children}</span>
         ) : (
-          children
+          wrapTextRuns(children)
         )}
       </button>
     );

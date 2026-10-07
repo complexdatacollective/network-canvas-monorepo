@@ -15,6 +15,11 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import Button from '../../../Button';
 import Surface from '../../../layout/Surface';
 import { usePortalContainer } from '../../../PortalContainer';
+import {
+  isPresentationalText,
+  presentationalTextProps,
+  presentationalTextValue,
+} from '../../../PresentationalText';
 import { ScrollArea } from '../../../ScrollArea';
 import {
   dropdownItemVariants,
@@ -117,7 +122,7 @@ function isComboboxOption(value: unknown): value is ComboboxOption {
     'value' in value &&
     (typeof value.value === 'string' || typeof value.value === 'number') &&
     'label' in value &&
-    typeof value.label === 'string'
+    isPresentationalText(value.label)
   );
 }
 
@@ -232,6 +237,11 @@ function ComboboxField(props: ComboboxFieldProps) {
 
   return (
     <Combobox.Root
+      // Base UI filters and announces items by `String(item.label)`, which
+      // would read an object label as "[object Object]".
+      itemToStringLabel={(option: ComboboxOption) =>
+        presentationalTextValue(option.label)
+      }
       {...rest}
       multiple
       items={options}
@@ -261,7 +271,7 @@ function ComboboxField(props: ComboboxFieldProps) {
           state,
         })}
       >
-        <span className="flex-1 truncate text-start">
+        <span className="min-w-0 flex-1 truncate text-start">
           <Combobox.Value
             placeholder={
               <span className="text-input-contrast/50 italic">
@@ -332,6 +342,7 @@ function ComboboxField(props: ComboboxFieldProps) {
                   value={option}
                   disabled={option.disabled}
                   className={dropdownItemVariants()}
+                  {...presentationalTextProps(option.label)}
                 >
                   <Combobox.ItemIndicator
                     className={cx(
@@ -341,7 +352,9 @@ function ComboboxField(props: ComboboxFieldProps) {
                   >
                     <Check />
                   </Combobox.ItemIndicator>
-                  {renderOption ? renderOption(option) : option.label}
+                  {renderOption
+                    ? renderOption(option)
+                    : presentationalTextValue(option.label)}
                 </Combobox.Item>
               )}
             </Combobox.List>

@@ -88,7 +88,9 @@ describe('the host every stage editor’s stories run in', () => {
     const committed = screen.getByRole('region', {
       name: 'What the host was asked to commit',
     });
-    expect(committed).toHaveTextContent('"label": "Renamed by the researcher"');
+    expect(committed).toHaveTextContent(
+      '"label": { "en-US": "Renamed by the researcher" }',
+    );
     // A stage with a long line makes this box scroll sideways, and the end of
     // that line is only reachable by scrolling it. So it has to take focus: a
     // reader who cannot use a pointer has no other way there.

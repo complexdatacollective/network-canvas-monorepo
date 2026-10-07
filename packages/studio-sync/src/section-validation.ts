@@ -4,6 +4,7 @@ import { z } from 'zod';
 // which validateDraft and the publish gate check with the canonical validator.
 import {
   CURRENT_SCHEMA_VERSION,
+  CurrentProtocolSchema,
   EdgeDefinitionSchema,
   EgoDefinitionSchema,
   ExperimentsSchema,
@@ -19,6 +20,7 @@ import { parseSectionId } from './taxonomy.ts';
 export const SettingsSectionSchema = z.strictObject({
   name: z.string().min(1),
   description: z.string().optional(),
+  localization: CurrentProtocolSchema.shape.localization,
   experiments: ExperimentsSchema.optional(),
   lastModified: z.string().datetime().optional(),
   schemaVersion: z.literal(CURRENT_SCHEMA_VERSION),

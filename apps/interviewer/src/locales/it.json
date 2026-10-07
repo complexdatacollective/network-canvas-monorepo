@@ -124,7 +124,7 @@
   "interviewer.interviewComplete.thankYouThisInterviewIsFinishedAnd": "Grazie. Questa intervista è terminata e le sue risposte non possono più essere modificate. Restituisci il dispositivo alla persona che conduce lo studio.",
   "interviewer.language.automatic": "Automatica (browser)",
   "interviewer.language.failed": "La lingua è cambiata per questa sessione, ma non è stato possibile salvare la preferenza. Il browser potrebbe bloccare l’archiviazione sul dispositivo.",
-  "interviewer.language.hint": "Scegli la lingua di Interviewer e dei controlli integrati dell’intervista su questo dispositivo. Non cambia il contenuto dei protocolli né i dati raccolti.",
+  "interviewer.language.hint": "Scegli la lingua usata da Interviewer su questo dispositivo. Le interviste seguono la lingua del browser della persona partecipante o quella che sceglie durante l’intervista.",
   "interviewer.language.label": "Lingua dell’app",
   "interviewer.language.saved": "Preferenza della lingua salvata su questo dispositivo.",
   "interviewer.launchFailureToast.couldNotOpenFile": "Impossibile aprire il file",

@@ -2,10 +2,15 @@ import { screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { getInterfaceTemplate } from '../../../interfaces/templates.ts';
-import { fixtureStageIds } from '../../../testing/protocolFixture.ts';
+import {
+  fixtureLocalization,
+  fixtureStageIds,
+} from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import { writeInto } from '../../__tests__/writeInto.ts';
 import { oneToManyDyadCensusStageEditor } from '../OneToManyDyadCensusStageEditor.ts';
+
+const FIXTURE_LOCALIZATION = fixtureLocalization();
 
 /** Where a host would insert a new one: over the stage the fixture holds. */
 const ONE_TO_MANY_INDEX = fixtureStageIds().indexOf(
@@ -47,7 +52,9 @@ describe('creating a one-to-many dyad census stage', () => {
     );
     // The template's answer, on screen as the answer rather than as an
     // unanswered question: the schema requires one either way.
-    expect(getInterfaceTemplate('OneToManyDyadCensus')).toEqual({
+    expect(
+      getInterfaceTemplate('OneToManyDyadCensus', FIXTURE_LOCALIZATION),
+    ).toEqual({
       behaviours: { removeAfterConsideration: true },
     });
     expect(
@@ -95,14 +102,14 @@ describe('creating a one-to-many dyad census stage', () => {
     const request = await harness.submit();
     expect(request?.stageDocument).toMatchObject({
       type: 'OneToManyDyadCensus',
-      label: 'Person One to Many Dyad Census',
+      label: { 'en-US': 'Person One to Many Dyad Census' },
       subject: { entity: 'node', type: 'person' },
       behaviours: { removeAfterConsideration: false },
     });
     expect(prompts(request?.stageDocument ?? {})).toEqual([
       {
         id: expect.any(String) as unknown as string,
-        text: 'Who does this person know?',
+        text: { 'en-US': 'Who does this person know?' },
         createEdge: 'knows',
       },
     ]);

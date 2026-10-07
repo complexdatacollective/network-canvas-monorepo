@@ -75,6 +75,7 @@ describe('solver search budget exhaustion', () => {
     for (let i = 0; i < 6; i++) {
       variables[`v${i}`] = {
         name: `V${i}`,
+        label: `V${i}`,
         type: 'number',
         validation: {
           minValue: 0,

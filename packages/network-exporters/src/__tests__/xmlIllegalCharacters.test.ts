@@ -35,23 +35,31 @@ const graphmlAndCsv: ExportOptions = {
 
 const codebook: Codebook = {
   ego: {
-    variables: { 'ego-note': { name: 'Ego note', type: 'text' } },
+    variables: {
+      'ego-note': { name: 'Ego note', label: 'Ego note', type: 'text' },
+    },
   },
   node: {
     person: {
       // A name with a character XML cannot hold, as protocol text can carry.
       name: `Per${control}son`,
+      label: { en: 'Person' },
       color: 'node-color-seq-1',
       shape: { default: 'circle' },
       variables: {
-        'p-nick': { name: 'Nickname', type: 'text' },
-        'p-odd': { name: `Odd${control}name`, type: 'text' },
+        'p-nick': { name: 'Nickname', label: 'Nickname', type: 'text' },
+        'p-odd': {
+          name: `Odd${control}name`,
+          label: 'Odd name',
+          type: 'text',
+        },
         'p-colour': {
           name: 'Colour',
+          label: 'Colour',
           type: 'categorical',
           options: [
-            { label: 'Red', value: 'red' },
-            { label: 'Blue', value: 'blue' },
+            { label: { en: 'Red' }, value: 'red' },
+            { label: { en: 'Blue' }, value: 'blue' },
           ],
         },
       },
@@ -60,8 +68,15 @@ const codebook: Codebook = {
   edge: {
     knows: {
       name: 'Knows',
+      label: { en: 'Knows' },
       color: 'edge-color-seq-1',
-      variables: { 'e-note': { name: 'Edge note', type: 'text' } },
+      variables: {
+        'e-note': {
+          name: 'Edge note',
+          label: 'Edge note',
+          type: 'text',
+        },
+      },
     },
   },
 };
@@ -74,6 +89,7 @@ const interviewWithBadCharacters: InterviewExportInput = {
   startTime: new Date('2025-01-01'),
   finishTime: new Date('2025-01-02'),
   protocolHash: 'protocol-1',
+  locale: null,
   network: {
     nodes: [
       {
@@ -122,6 +138,7 @@ const cleanInterview: InterviewExportInput = {
   startTime: new Date('2025-01-01'),
   finishTime: new Date('2025-01-02'),
   protocolHash: 'protocol-1',
+  locale: null,
   network: {
     nodes: [
       {

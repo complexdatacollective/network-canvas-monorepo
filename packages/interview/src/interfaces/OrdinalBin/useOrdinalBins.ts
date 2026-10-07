@@ -2,6 +2,7 @@
 
 import { invariant, isNil } from 'es-toolkit';
 
+import type { PresentationalText } from '@codaco/fresco-ui/PresentationalText';
 import type { Stage } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
@@ -12,11 +13,12 @@ import {
 import { usePrompts } from '../../components/Prompts/usePrompts';
 import useSortedNodeList from '../../hooks/useSortedNodeList';
 import { useStageSelector } from '../../hooks/useStageSelector';
+import { useResolvePresentationalText } from '../../localization/ProtocolLocalizationProvider';
 import { makeGetCodebookVariableById } from '../../selectors/protocol';
 import { getNetworkNodesForType } from '../../selectors/session';
 
 export type OrdinalBinItem = {
-  label: string;
+  label: PresentationalText;
   value: string | number | boolean;
   nodes: NcNode[];
 };
@@ -45,6 +47,7 @@ export function useOrdinalBins() {
     prompt: { variable: activePromptVariable, bucketSortOrder },
   } = usePrompts<OrdinalBinPrompts>();
 
+  const toPresentationalText = useResolvePresentationalText();
   const getVariableDefinition = useStageSelector(makeGetCodebookVariableById);
   const variableDefinition = getVariableDefinition(activePromptVariable);
 
@@ -66,7 +69,7 @@ export function useOrdinalBins() {
     });
 
     return {
-      label: option.label,
+      label: toPresentationalText(option.label),
       value: option.value,
       nodes,
     };

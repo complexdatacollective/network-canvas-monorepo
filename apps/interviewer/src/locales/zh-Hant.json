@@ -124,7 +124,7 @@
   "interviewer.interviewComplete.thankYouThisInterviewIsFinishedAnd": "謝謝您。此訪談已結束，回答無法再變更。請將裝置交還給研究人員。",
   "interviewer.language.automatic": "自動（依瀏覽器設定）",
   "interviewer.language.failed": "語言已在本次工作階段中變更，但無法儲存此偏好設定。您的瀏覽器可能封鎖了裝置儲存空間。",
-  "interviewer.language.hint": "選擇此裝置上 Interviewer 及其內建訪談控制項所使用的語言。這不會變更協定內容或已收集的資料。",
+  "interviewer.language.hint": "選擇 Interviewer 在此裝置上使用的語言。訪談會使用參與者瀏覽器的語言，或參與者在訪談中選擇的語言。",
   "interviewer.language.label": "應用程式語言",
   "interviewer.language.saved": "已在此裝置上儲存語言偏好設定。",
   "interviewer.launchFailureToast.couldNotOpenFile": "無法開啟檔案",

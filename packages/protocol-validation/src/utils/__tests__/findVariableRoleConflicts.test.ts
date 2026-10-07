@@ -1,32 +1,32 @@
 import { describe, expect, it } from 'vitest';
 
 import { findVariableRoleConflicts } from '../findVariableRoleConflicts.ts';
-import { createBaseProtocol } from '../test-utils.ts';
+import { createBaseProtocol, localized } from '../test-utils.ts';
 
 // Minimal stage builders over the base protocol's `person` node type.
 const egoFormStage = (variable: string) => ({
   id: 'ef1',
   type: 'EgoForm',
-  label: 'About you',
-  introductionPanel: { title: 'T', text: 'X' },
-  form: { fields: [{ variable, prompt: 'Answer' }] },
+  label: localized('About you'),
+  introductionPanel: { title: localized('T'), text: localized('X') },
+  form: { fields: [{ variable, prompt: localized('Answer') }] },
 });
 
 const alterFormStage = (variable: string) => ({
   id: 'af1',
   type: 'AlterForm',
-  label: 'Alter form',
+  label: localized('Alter form'),
   subject: { entity: 'node', type: 'person' },
-  introductionPanel: { title: 'T', text: 'X' },
-  form: { fields: [{ variable, prompt: 'Answer' }] },
+  introductionPanel: { title: localized('T'), text: localized('X') },
+  form: { fields: [{ variable, prompt: localized('Answer') }] },
 });
 
 const categoricalBinStage = (variable: string) => ({
   id: 'cb1',
   type: 'CategoricalBin',
-  label: 'Bin',
+  label: localized('Bin'),
   subject: { entity: 'node', type: 'person' },
-  prompts: [{ id: 'p1', text: 'Sort', variable }],
+  prompts: [{ id: 'p1', text: localized('Sort'), variable }],
 });
 
 // FamilyPedigree declares no top-level `subject` (unlike AlterForm/
@@ -35,7 +35,7 @@ const categoricalBinStage = (variable: string) => ({
 const familyPedigreeStage = (nominationVariable: string) => ({
   id: 'fp1',
   type: 'FamilyPedigree',
-  label: 'Family Pedigree',
+  label: localized('Family Pedigree'),
   nodeConfig: {
     type: 'person',
     nodeLabelVariable: 'pedigreeLabel',
@@ -55,9 +55,13 @@ const familyPedigreeStage = (nominationVariable: string) => ({
     requireGrandparents: 'off',
     requireChildrenContributors: 'off',
   },
-  censusPrompt: 'Who is related to you?',
+  censusPrompt: localized('Who is related to you?'),
   nominationPrompts: [
-    { id: 'np1', text: 'Family history', variable: nominationVariable },
+    {
+      id: 'np1',
+      text: localized('Family history'),
+      variable: nominationVariable,
+    },
   ],
 });
 
@@ -124,10 +128,11 @@ describe('findVariableRoleConflicts', () => {
       ...base.codebook.ego.variables,
       category: {
         name: 'ego_category',
+        label: 'ego_category',
         type: 'categorical',
         options: [
-          { label: 'A', value: 'a' },
-          { label: 'B', value: 'b' },
+          { label: localized('A'), value: 'a' },
+          { label: localized('B'), value: 'b' },
         ],
       },
     };

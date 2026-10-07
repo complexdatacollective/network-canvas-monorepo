@@ -38,6 +38,7 @@ const codebook: Codebook = {
       id,
       {
         name,
+        label: { en: name },
         color: 'node-color-seq-1' as const,
         shape: { default: 'circle' as const },
       },
@@ -52,6 +53,7 @@ const session: InterviewExportInput = {
   startTime: new Date(0),
   finishTime: new Date(1000),
   protocolHash: 'hash-1',
+  locale: null,
   network: {
     nodes: Object.keys(nodeTypeNames).map((type) => ({
       [entityPrimaryKeyProperty]: `node-${type}`,

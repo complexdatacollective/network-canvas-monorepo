@@ -2,6 +2,7 @@ import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 
+import { LocalizedInputField } from '../../fields/LocalizedStringField.tsx';
 import type {
   RowEditorProps,
   RowPreviewProps,
@@ -9,6 +10,11 @@ import type {
   RowSaveOutcome,
   RowValues,
 } from '../../form/rowDialog.tsx';
+import {
+  asLocalizedString,
+  resolveTranslation,
+} from '../../localization/localizedText.ts';
+import { useLocalizedText } from '../../localization/ProtocolLocalization.tsx';
 import type { ProtocolBuilderProtocolContext } from '../../protocol-context.ts';
 
 /**
@@ -43,22 +49,24 @@ export function TestPromptEditor({ item, editIndex, form }: RowEditorProps) {
       <Field
         name="text"
         label="Prompt text"
-        component={InputField}
+        component={LocalizedInputField}
         required="Enter the question this prompt asks."
       />
       <Field
         name="negativeLabel"
         label="Negative label"
-        component={InputField}
+        component={LocalizedInputField}
       />
     </>
   );
 }
 
 export function TestPromptPreview({ item }: RowPreviewProps) {
+  const localize = useLocalizedText();
+  const text = localize(item.text).text;
   return (
     <span>
-      {typeof item.text === 'string' ? item.text : 'Empty prompt'}
+      {text === '' ? 'Empty prompt' : text}
       {/* The list's own presentation flag is not part of the row, so a
           preview that can see it is being handed something the stage document
           does not hold. */}
@@ -90,7 +98,7 @@ export function TestItemEditor() {
       <Field
         name="content"
         label="Block text"
-        component={InputField}
+        component={LocalizedInputField}
         required="Enter the text this block shows."
       />
     </>
@@ -98,11 +106,9 @@ export function TestItemEditor() {
 }
 
 export function TestItemPreview({ item }: RowPreviewProps) {
-  return (
-    <span>
-      {typeof item.content === 'string' ? item.content : 'Empty block'}
-    </span>
-  );
+  const localize = useLocalizedText();
+  const content = localize(item.content).text;
+  return <span>{content === '' ? 'Empty block' : content}</span>;
 }
 
 /**
@@ -158,7 +164,7 @@ export function TestMediaItemEditor({ item }: RowEditorProps) {
       <Field
         name="description"
         label="Block description"
-        component={InputField}
+        component={LocalizedInputField}
       />
       {type === 'asset' ? (
         <Field
@@ -170,7 +176,7 @@ export function TestMediaItemEditor({ item }: RowEditorProps) {
         <Field
           name={CONTENT_SLOTS.text}
           label="Block text"
-          component={InputField}
+          component={LocalizedInputField}
         />
       )}
     </>
@@ -178,11 +184,14 @@ export function TestMediaItemEditor({ item }: RowEditorProps) {
 }
 
 export function TestMediaItemPreview({ item }: RowPreviewProps) {
-  return (
-    <span>
-      {typeof item.content === 'string' ? item.content : 'Empty block'}
-    </span>
-  );
+  const localize = useLocalizedText();
+  const content =
+    item.type === 'text'
+      ? localize(item.content).text
+      : typeof item.content === 'string'
+        ? item.content
+        : '';
+  return <span>{content === '' ? 'Empty block' : content}</span>;
 }
 
 /** Expands a saved block's one `content` key into the slot its type names. */
@@ -211,7 +220,14 @@ function collapseMediaItem(value: unknown): unknown {
   for (const slot of Object.values(CONTENT_SLOTS)) delete collapsed[slot];
 
   const draft = value[chosen];
-  if (typeof draft === 'string') collapsed.content = draft;
+  const content =
+    value.type === 'text'
+      ? asLocalizedString(draft)
+      : typeof draft === 'string'
+        ? draft
+        : undefined;
+  if (content === undefined) delete collapsed.content;
+  else collapsed.content = content;
   return collapsed;
 }
 
@@ -229,11 +245,8 @@ export const mediaItemSlots = Object.freeze({
 /** The question the shared fixture protocol's name generator already asks. */
 export const SEEDED_QUESTION = 'Who are the people you know?';
 
-const textOf = (value: unknown): string => {
-  if (!isRow(value)) return '';
-  const text = value.text;
-  return typeof text === 'string' ? text : '';
-};
+const textOf = (value: unknown): string =>
+  isRow(value) ? resolveTranslation(value.text, undefined, undefined).text : '';
 
 /**
  * A family's own rule about one prompt, checked when its dialog is submitted.
@@ -246,7 +259,7 @@ export const refuseADuplicateQuestion = (
   values: RowValues,
   context: RowSaveContext,
 ): RowSaveOutcome => {
-  const asked = typeof values.text === 'string' ? values.text.trim() : '';
+  const asked = textOf(values).trim();
   if (asked !== SEEDED_QUESTION || textOf(context.openedOn) === asked) {
     return { row: values };
   }

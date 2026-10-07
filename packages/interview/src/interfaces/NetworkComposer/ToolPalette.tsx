@@ -19,6 +19,11 @@ import {
 import type { ValidationPropsCatalogue } from '@codaco/fresco-ui/form/Field/types';
 import type { ValidationContext } from '@codaco/fresco-ui/form/store/types';
 import {
+  type PresentationalText,
+  presentationalTextProps,
+  presentationalTextValue,
+} from '@codaco/fresco-ui/PresentationalText';
+import {
   SegmentedToolbar,
   ToolbarGroup,
   ToolbarIconButton,
@@ -38,7 +43,7 @@ import { type UndoStoreApi, useUndoStore } from './useUndoStore';
 
 type EdgeEntry = {
   edgeType: string;
-  label: string;
+  label: PresentationalText;
   color?: string;
 };
 
@@ -206,7 +211,9 @@ export default function ToolPalette({
                   value={edgeType}
                   closeOnClick
                 >
-                  {label}
+                  <span {...presentationalTextProps(label)}>
+                    {presentationalTextValue(label)}
+                  </span>
                 </DropdownMenuRadioItem>
               ))}
             </DropdownMenuRadioGroup>

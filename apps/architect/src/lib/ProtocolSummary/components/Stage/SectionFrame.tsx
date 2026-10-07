@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import { cx } from '~/utils/cva';
 type SectionFrameProps = {
-  title: string;
+  title: ReactNode;
   children: ReactNode;
   wrapperClassName?: string;
   contentClassName?: string;

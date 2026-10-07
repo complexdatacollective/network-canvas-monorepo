@@ -20,6 +20,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
+import { messageText } from '../../../../packages/protocol-validation/src/localization/messageSyntax.ts';
 import {
   attempt,
   check,
@@ -490,6 +491,17 @@ writeFileSync(
 report(result);
 
 /**
+ * The text an option label shows in the protocol's default language. A
+ * schema-8 label is that text; from schema 9 a label holds one ICU message per
+ * language.
+ */
+function labelText(label, localization) {
+  if (typeof label === 'string') return label;
+  const message = label?.[localization?.defaultLocale];
+  return typeof message === 'string' ? messageText(message) : undefined;
+}
+
+/**
  * Every answer the walk gave, as it must appear in exported data.
  *
  * The bin answers are included as the VALUES the codebook gives their options,
@@ -498,7 +510,7 @@ report(result);
  * produce an export this check was happy with.
  */
 function expectedAnswers() {
-  const codebook = JSON.parse(
+  const document = JSON.parse(
     readFileSync(
       join(
         repoRoot,
@@ -506,10 +518,11 @@ function expectedAnswers() {
       ),
       'utf8',
     ),
-  ).codebook.node.person.variables;
+  );
+  const codebook = document.codebook.node.person.variables;
   const valueOf = (variable, label) => {
     const option = codebook[variable].options.find(
-      (entry) => entry.label === label,
+      (entry) => labelText(entry.label, document.localization) === label,
     );
     if (!option)
       throw new Error(

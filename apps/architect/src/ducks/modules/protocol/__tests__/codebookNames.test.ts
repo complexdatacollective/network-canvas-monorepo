@@ -99,17 +99,17 @@ describe('createVariableAsync names', () => {
       name: 'closeness',
       type: 'categorical',
       options: [
-        { label: 'Close', value: '  amigo cercano ' },
-        { label: 'Colleague', value: 'Colle\u0300gue' },
-        { label: 'One', value: 1 },
+        { label: { en: 'Close' }, value: '  amigo cercano ' },
+        { label: { en: 'Colleague' }, value: 'Colle\u0300gue' },
+        { label: { en: 'One' }, value: 1 },
       ],
     });
 
     const saved = personVariables(store)[variable];
     expect(saved && 'options' in saved ? saved.options : undefined).toEqual([
-      { label: 'Close', value: 'amigo cercano' },
-      { label: 'Colleague', value: 'Collègue' },
-      { label: 'One', value: 1 },
+      { label: { en: 'Close' }, value: 'amigo cercano' },
+      { label: { en: 'Colleague' }, value: 'Collègue' },
+      { label: { en: 'One' }, value: 1 },
     ]);
   });
 });
@@ -135,16 +135,16 @@ describe('renaming an attribute', () => {
     const { variable } = await createPersonVariable(store, {
       name: 'closeness',
       type: 'ordinal',
-      options: [{ label: 'Close', value: 'close' }],
+      options: [{ label: { en: 'Close' }, value: 'close' }],
     });
 
     await store
       .dispatch(
         updateVariableByUUID(variable, {
           options: [
-            { label: 'Close', value: ' close ' },
-            { label: 'Colleague', value: 'Colle\u0300gue' },
-            { label: 'One', value: 1 },
+            { label: { en: 'Close' }, value: ' close ' },
+            { label: { en: 'Colleague' }, value: 'Colle\u0300gue' },
+            { label: { en: 'One' }, value: 1 },
           ],
         }),
       )
@@ -152,9 +152,9 @@ describe('renaming an attribute', () => {
 
     const saved = personVariables(store)[variable];
     expect(saved && 'options' in saved ? saved.options : undefined).toEqual([
-      { label: 'Close', value: 'close' },
-      { label: 'Colleague', value: 'Collègue' },
-      { label: 'One', value: 1 },
+      { label: { en: 'Close' }, value: 'close' },
+      { label: { en: 'Colleague' }, value: 'Collègue' },
+      { label: { en: 'One' }, value: 1 },
     ]);
   });
 });

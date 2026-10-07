@@ -141,7 +141,7 @@ export async function seedProtocol(
 }
 
 // A minimal empty current-schema protocol for create-from-scratch specs. Built
-// to satisfy `CurrentProtocolSchema` directly (all four fields are the schema's
+// to satisfy `CurrentProtocolSchema` directly (all five fields are the schema's
 // only required top-level keys; `codebook`'s `node`/`edge`/`ego` are all
 // optional) rather than asserting, so a schema drift here is a real type
 // error instead of a silently-stale cast.
@@ -149,6 +149,7 @@ export function emptyProtocol(): CurrentProtocol {
   return {
     name: 'E2E Protocol',
     schemaVersion: 9,
+    localization: { defaultLocale: 'en', locales: ['en'] },
     codebook: {},
     stages: [],
   };

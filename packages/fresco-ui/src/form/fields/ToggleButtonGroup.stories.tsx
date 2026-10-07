@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
+import { expect, userEvent, within } from 'storybook/test';
 
 import Paragraph from '../../typography/Paragraph';
 import ToggleButtonGroupField from './ToggleButtonGroup';
@@ -36,7 +37,10 @@ const meta: Meta<typeof ToggleButtonGroupField> = {
       control: false,
       description: 'Array of options with label and value',
       table: {
-        type: { summary: 'Array<{ label: string; value: string | number }>' },
+        type: {
+          summary:
+            'Array<{ label: PresentationalText; value: string | number }>',
+        },
         defaultValue: { summary: '[]' },
       },
     },
@@ -296,5 +300,52 @@ export const Disabled: Story = {
     options: basicOptions,
     value: ['a'],
     disabled: true,
+  },
+};
+
+/**
+ * Protocol copy arrives as `PresentationalText`. The label is each toggle's
+ * accessible name, so the toggle itself carries the text's `lang` and `dir`:
+ * a screen reader pronounces the name in that language, and Arabic labels lay
+ * out right-to-left. A plain string label keeps the page's language.
+ */
+export const LocalizedLabels: Story = {
+  render: () => {
+    const [selectedOptions, setSelectedOptions] = useState<
+      (string | number)[] | undefined
+    >([]);
+
+    return (
+      <div className="w-full max-w-md">
+        <ToggleButtonGroupField
+          aria-label="Days available"
+          options={[
+            { label: { text: 'السبت', lang: 'ar', dir: 'rtl' }, value: 'sat' },
+            { label: { text: 'الأحد', lang: 'ar', dir: 'rtl' }, value: 'sun' },
+            { label: { text: 'Lunes', lang: 'es', dir: 'ltr' }, value: 'mon' },
+            { label: 'Tuesday', value: 'tue' },
+          ]}
+          value={selectedOptions}
+          onChange={setSelectedOptions}
+        />
+      </div>
+    );
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    const saturday = canvas.getByRole('checkbox', { name: 'السبت' });
+    await expect(saturday).toHaveAttribute('lang', 'ar');
+    await expect(saturday).toHaveAttribute('dir', 'rtl');
+    await expect(getComputedStyle(saturday).direction).toBe('rtl');
+    await expect(
+      canvas.getByRole('checkbox', { name: 'Lunes' }),
+    ).toHaveAttribute('lang', 'es');
+    await expect(
+      canvas.getByRole('checkbox', { name: 'Tuesday' }),
+    ).not.toHaveAttribute('lang');
+
+    await userEvent.click(saturday);
+    await expect(saturday).toBeChecked();
   },
 };

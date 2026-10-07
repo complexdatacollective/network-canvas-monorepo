@@ -13,6 +13,7 @@ import { admitStoredProtocol } from '../storedProtocolAdmission';
 const protocol: CurrentProtocol = {
   name: 'Study',
   schemaVersion: APP_SCHEMA_VERSION,
+  localization: { defaultLocale: 'en', locales: ['en'] },
   stages: [],
   codebook: { node: {}, edge: {}, ego: {} },
   assetManifest: {},

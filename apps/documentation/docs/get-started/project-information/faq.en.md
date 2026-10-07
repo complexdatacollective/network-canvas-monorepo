@@ -3,6 +3,7 @@ title: Frequently Asked Questions
 wip: false
 toc: true
 navOrder: 5
+date: 5th October 2026
 ---
 
 ## What is Network Canvas?
@@ -47,9 +48,11 @@ Finally, this documentation site is a hub for training material and tutorials, a
 
 Network Canvas has technologies built in to allow research with mixed/low written literacy groups, and we welcome feedback about ways we can adapt the software to new research populations and make it more accessible.
 
-The interfaces of Architect, Interviewer, and Fresco are available in English, British English, and Spanish. The interface language covers the apps' own menus, buttons, and messages; the text of your protocol — prompts, form labels, response options, and information screens — appears exactly as the researcher wrote it. A Spanish-language study therefore needs a protocol authored in Spanish.
+The interfaces of Architect, Interviewer, and Fresco are available in English, British English, Spanish, German, French, Italian, Dutch, Brazilian Portuguese, Simplified Chinese and Traditional Chinese. The interface language covers the apps' own menus, buttons, and messages; the text of your protocol — prompts, form labels, response options, and information screens — appears as the researcher wrote it.
 
-Accessibility support depends on which generation of the apps you use. Interviews run in the current **Interviewer** app and in **Fresco** are built for screen-reader use and full keyboard operation. The Classic apps do not have specific screen-reader support. Right-to-left languages are not currently supported in any of the apps.
+Your protocol can be written in more than one language, in any language you need, and participants take the interview in one of them. See [Translating Your Protocol](/en/design-protocols/translating-your-protocol).
+
+Accessibility support depends on which generation of the apps you use. Interviews run in the current **Interviewer** app and in **Fresco** are built for screen-reader use and full keyboard operation. The Classic apps do not have specific screen-reader support. When an interview in the current apps is shown in a right-to-left language, such as Arabic or Hebrew, its stages are laid out from right to left. The apps' own interfaces aren't available in a right-to-left language.
 
 ## Which hardware do I need to run the different components of the Network Canvas suite?
 

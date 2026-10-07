@@ -15,7 +15,7 @@
  *
  * ## How It Works
  *
- * 1. **Takes protocol field definitions** - Array of `{ variable, prompt, hint?, showValidationHints? }` objects
+ * 1. **Takes protocol field definitions** - Array of `{ variable, prompt, hint?, showValidationHints? }` objects, where `prompt` and `hint` are localized strings such as `{ en: 'What is your name?' }`
  * 2. **Looks up variable metadata** - Uses Redux selectors to get codebook info
  * 3. **Maps to form components** - Converts protocol types to form field components
  * 4. **Extracts validation** - Pulls validation rules from variable definitions
@@ -69,6 +69,7 @@
  * ## Important Notes
  *
  * - Requires Redux context with `protocol` and `session` slices
+ * - Requires a `ProtocolLocalizationProvider`, which resolves the localized prompts, hints and option labels
  * - Context-dependent validations (unique, sameAs) need network data in store
  * - The hook uses the protocol's codebook to determine field types and options
  */
@@ -96,11 +97,13 @@ const mockProtocol = {
     node: {
       person: {
         name: 'Person',
+        label: { en: 'Person' },
         displayVariable: 'name',
         iconVariant: 'add-a-person',
         variables: {
           name: {
             name: 'Name',
+            label: 'Name',
             type: 'text',
             component: 'Text',
             validation: {
@@ -111,6 +114,7 @@ const mockProtocol = {
           },
           email: {
             name: 'Email',
+            label: 'Email',
             type: 'text',
             component: 'Text',
             validation: {
@@ -119,6 +123,7 @@ const mockProtocol = {
           },
           age: {
             name: 'Age',
+            label: 'Age',
             type: 'number',
             component: 'Number',
             validation: {
@@ -128,13 +133,14 @@ const mockProtocol = {
           },
           gender: {
             name: 'Gender',
+            label: 'Gender',
             type: 'categorical',
             component: 'RadioGroup',
             options: [
-              { label: 'Male', value: 'male' },
-              { label: 'Female', value: 'female' },
-              { label: 'Non-binary', value: 'non_binary' },
-              { label: 'Prefer not to say', value: 'prefer_not_say' },
+              { label: { en: 'Male' }, value: 'male' },
+              { label: { en: 'Female' }, value: 'female' },
+              { label: { en: 'Non-binary' }, value: 'non_binary' },
+              { label: { en: 'Prefer not to say' }, value: 'prefer_not_say' },
             ],
             validation: {
               required: true,
@@ -142,21 +148,23 @@ const mockProtocol = {
           },
           occupation: {
             name: 'Occupation',
+            label: 'Occupation',
             type: 'text',
             component: 'Text',
           },
           favoriteColors: {
             name: 'Favorite Colors',
+            label: 'Favorite Colors',
             type: 'categorical',
             component: 'CheckboxGroup',
             options: [
-              { label: 'Red', value: 'red' },
-              { label: 'Blue', value: 'blue' },
-              { label: 'Green', value: 'green' },
-              { label: 'Yellow', value: 'yellow' },
-              { label: 'Purple', value: 'purple' },
-              { label: 'Orange', value: 'orange' },
-              { label: 'Pink', value: 'pink' },
+              { label: { en: 'Red' }, value: 'red' },
+              { label: { en: 'Blue' }, value: 'blue' },
+              { label: { en: 'Green' }, value: 'green' },
+              { label: { en: 'Yellow' }, value: 'yellow' },
+              { label: { en: 'Purple' }, value: 'purple' },
+              { label: { en: 'Orange' }, value: 'orange' },
+              { label: { en: 'Pink' }, value: 'pink' },
             ],
             validation: {
               minSelected: 1,
@@ -165,6 +173,7 @@ const mockProtocol = {
           },
           birthDate: {
             name: 'Birth Date',
+            label: 'Birth Date',
             type: 'datetime',
             component: 'DatePicker',
             parameters: {
@@ -175,6 +184,7 @@ const mockProtocol = {
           },
           startDate: {
             name: 'Start Date',
+            label: 'Start Date',
             type: 'datetime',
             component: 'RelativeDatePicker',
             parameters: {
@@ -185,48 +195,54 @@ const mockProtocol = {
           },
           happiness: {
             name: 'Happiness Level',
+            label: 'Happiness Level',
             type: 'scalar',
             component: 'VisualAnalogScale',
             parameters: {
-              minLabel: 'Very Unhappy',
-              maxLabel: 'Very Happy',
+              minLabel: { en: 'Very Unhappy' },
+              maxLabel: { en: 'Very Happy' },
             },
           },
           satisfaction: {
             name: 'Job Satisfaction',
+            label: 'Job Satisfaction',
             type: 'ordinal',
             component: 'LikertScale',
             options: [
-              { label: 'Very Dissatisfied', value: 1 },
-              { label: 'Dissatisfied', value: 2 },
-              { label: 'Neutral', value: 3 },
-              { label: 'Satisfied', value: 4 },
-              { label: 'Very Satisfied', value: 5 },
+              { label: { en: 'Very Dissatisfied' }, value: 1 },
+              { label: { en: 'Dissatisfied' }, value: 2 },
+              { label: { en: 'Neutral' }, value: 3 },
+              { label: { en: 'Satisfied' }, value: 4 },
+              { label: { en: 'Very Satisfied' }, value: 5 },
             ],
           },
           isEmployed: {
             name: 'Currently Employed',
+            label: 'Currently Employed',
             type: 'boolean',
             component: 'Toggle',
           },
           acceptTerms: {
             name: 'Accept Terms',
+            label: 'Accept Terms',
             type: 'boolean',
             component: 'Boolean',
           },
           preferredContact: {
             name: 'Preferred Contact Method',
+            label: 'Preferred Contact Method',
             type: 'categorical',
             component: 'ToggleButtonGroup',
             placeholder: 'Select a method...',
             options: [
-              { label: 'Email', value: 'email' },
-              { label: 'Phone', value: 'phone' },
-              { label: 'SMS', value: 'sms' },
+              { label: { en: 'Email' }, value: 'email' },
+              { label: { en: 'Phone' }, value: 'phone' },
+              { label: { en: 'SMS' }, value: 'sms' },
             ],
           },
           bio: {
             name: 'Biography',
+            label: 'Biography',
             type: 'text',
             component: 'TextArea',
             validation: {
@@ -235,6 +251,7 @@ const mockProtocol = {
           },
           nickname: {
             name: 'Nickname',
+            label: 'Nickname',
             type: 'text',
             component: 'Text',
             validation: {
@@ -243,6 +260,7 @@ const mockProtocol = {
           },
           password: {
             name: 'Password',
+            label: 'Password',
             type: 'text',
             component: 'Text',
             validation: {
@@ -252,6 +270,7 @@ const mockProtocol = {
           },
           confirmPassword: {
             name: 'Confirm Password',
+            label: 'Confirm Password',
             type: 'text',
             component: 'Text',
             validation: {
@@ -261,6 +280,7 @@ const mockProtocol = {
           },
           startAge: {
             name: 'Start Age',
+            label: 'Start Age',
             type: 'number',
             component: 'Number',
             validation: {
@@ -269,6 +289,7 @@ const mockProtocol = {
           },
           endAge: {
             name: 'End Age',
+            label: 'End Age',
             type: 'number',
             component: 'Number',
             validation: {
@@ -278,6 +299,7 @@ const mockProtocol = {
           },
           alternateEmail: {
             name: 'Alternate Email',
+            label: 'Alternate Email',
             type: 'text',
             component: 'Text',
             validation: {
@@ -291,7 +313,7 @@ const mockProtocol = {
   stages: [
     {
       type: 'NameGenerator',
-      label: 'Name Generator',
+      label: { en: 'Name Generator' },
       subject: {
         entity: 'node',
         type: 'person',
@@ -319,6 +341,8 @@ const createMockStore = () => {
     finishTime: null,
     exportTime: null,
     lastUpdated: new Date().toISOString(),
+    localePreference: null,
+    locale: null,
     network: {
       nodes: [
         // Existing nodes for testing unique validation
@@ -435,15 +459,15 @@ export const BasicFields: Story = {
     fields: [
       {
         variable: asEntityAttributeReference('name'),
-        prompt: 'What is your name?',
+        prompt: { en: 'What is your name?' },
       },
       {
         variable: asEntityAttributeReference('email'),
-        prompt: 'What is your email?',
+        prompt: { en: 'What is your email?' },
       },
       {
         variable: asEntityAttributeReference('age'),
-        prompt: 'How old are you?',
+        prompt: { en: 'How old are you?' },
       },
     ],
     autoFocus: false,
@@ -463,11 +487,11 @@ export const WithAutoFocus: Story = {
     fields: [
       {
         variable: asEntityAttributeReference('name'),
-        prompt: 'What is your name?',
+        prompt: { en: 'What is your name?' },
       },
       {
         variable: asEntityAttributeReference('occupation'),
-        prompt: 'What is your occupation?',
+        prompt: { en: 'What is your occupation?' },
       },
     ],
     autoFocus: true,
@@ -487,11 +511,11 @@ export const SelectionFields: Story = {
     fields: [
       {
         variable: asEntityAttributeReference('gender'),
-        prompt: 'What is your gender?',
+        prompt: { en: 'What is your gender?' },
       },
       {
         variable: asEntityAttributeReference('favoriteColors'),
-        prompt: 'Select your favorite colors (1-3)',
+        prompt: { en: 'Select your favorite colors (1-3)' },
       },
     ],
   },
@@ -510,15 +534,15 @@ export const ToggleFields: Story = {
     fields: [
       {
         variable: asEntityAttributeReference('isEmployed'),
-        prompt: 'Are you currently employed?',
+        prompt: { en: 'Are you currently employed?' },
       },
       {
         variable: asEntityAttributeReference('acceptTerms'),
-        prompt: 'I accept the terms and conditions',
+        prompt: { en: 'I accept the terms and conditions' },
       },
       {
         variable: asEntityAttributeReference('preferredContact'),
-        prompt: 'Preferred contact method',
+        prompt: { en: 'Preferred contact method' },
       },
     ],
   },
@@ -537,11 +561,11 @@ export const DateFields: Story = {
     fields: [
       {
         variable: asEntityAttributeReference('birthDate'),
-        prompt: 'When were you born?',
+        prompt: { en: 'When were you born?' },
       },
       {
         variable: asEntityAttributeReference('startDate'),
-        prompt: 'When did you start your current job?',
+        prompt: { en: 'When did you start your current job?' },
       },
     ],
   },
@@ -560,11 +584,11 @@ export const ScaleFields: Story = {
     fields: [
       {
         variable: asEntityAttributeReference('happiness'),
-        prompt: 'How happy are you overall?',
+        prompt: { en: 'How happy are you overall?' },
       },
       {
         variable: asEntityAttributeReference('satisfaction'),
-        prompt: 'How satisfied are you with your job?',
+        prompt: { en: 'How satisfied are you with your job?' },
       },
     ],
   },
@@ -583,11 +607,11 @@ export const TextAreaField: Story = {
     fields: [
       {
         variable: asEntityAttributeReference('name'),
-        prompt: 'What is your name?',
+        prompt: { en: 'What is your name?' },
       },
       {
         variable: asEntityAttributeReference('bio'),
-        prompt: 'Tell us about yourself (max 500 characters)',
+        prompt: { en: 'Tell us about yourself (max 500 characters)' },
       },
     ],
   },
@@ -605,27 +629,27 @@ export const WithInitialValues: Story = {
     fields: [
       {
         variable: asEntityAttributeReference('name'),
-        prompt: 'What is your name?',
+        prompt: { en: 'What is your name?' },
       },
       {
         variable: asEntityAttributeReference('age'),
-        prompt: 'How old are you?',
+        prompt: { en: 'How old are you?' },
       },
       {
         variable: asEntityAttributeReference('gender'),
-        prompt: 'What is your gender?',
+        prompt: { en: 'What is your gender?' },
       },
       {
         variable: asEntityAttributeReference('favoriteColors'),
-        prompt: 'Select your favorite colors',
+        prompt: { en: 'Select your favorite colors' },
       },
       {
         variable: asEntityAttributeReference('isEmployed'),
-        prompt: 'Are you currently employed?',
+        prompt: { en: 'Are you currently employed?' },
       },
       {
         variable: asEntityAttributeReference('bio'),
-        prompt: 'Tell us about yourself',
+        prompt: { en: 'Tell us about yourself' },
       },
     ],
     initialValues: {
@@ -652,43 +676,43 @@ export const ComprehensiveForm: Story = {
     fields: [
       {
         variable: asEntityAttributeReference('name'),
-        prompt: 'What is your name?',
+        prompt: { en: 'What is your name?' },
       },
       {
         variable: asEntityAttributeReference('email'),
-        prompt: 'What is your email?',
+        prompt: { en: 'What is your email?' },
       },
       {
         variable: asEntityAttributeReference('age'),
-        prompt: 'How old are you?',
+        prompt: { en: 'How old are you?' },
       },
       {
         variable: asEntityAttributeReference('gender'),
-        prompt: 'What is your gender?',
+        prompt: { en: 'What is your gender?' },
       },
       {
         variable: asEntityAttributeReference('occupation'),
-        prompt: 'What is your occupation?',
+        prompt: { en: 'What is your occupation?' },
       },
       {
         variable: asEntityAttributeReference('isEmployed'),
-        prompt: 'Are you currently employed?',
+        prompt: { en: 'Are you currently employed?' },
       },
       {
         variable: asEntityAttributeReference('satisfaction'),
-        prompt: 'How satisfied are you with your job?',
+        prompt: { en: 'How satisfied are you with your job?' },
       },
       {
         variable: asEntityAttributeReference('favoriteColors'),
-        prompt: 'What are your favorite colors? (Select 1-3)',
+        prompt: { en: 'What are your favorite colors? (Select 1-3)' },
       },
       {
         variable: asEntityAttributeReference('preferredContact'),
-        prompt: 'How should we contact you?',
+        prompt: { en: 'How should we contact you?' },
       },
       {
         variable: asEntityAttributeReference('bio'),
-        prompt: 'Tell us about yourself',
+        prompt: { en: 'Tell us about yourself' },
       },
     ],
     autoFocus: true,
@@ -708,7 +732,7 @@ export const MinimalForm: Story = {
     fields: [
       {
         variable: asEntityAttributeReference('name'),
-        prompt: 'What is your name?',
+        prompt: { en: 'What is your name?' },
       },
     ],
   },
@@ -726,8 +750,9 @@ export const UniqueValidation: Story = {
     fields: [
       {
         variable: asEntityAttributeReference('nickname'),
-        prompt:
-          'Enter a unique nickname (try "Johnny" or "JaneD" to see validation error)',
+        prompt: {
+          en: 'Enter a unique nickname (try "Johnny" or "JaneD" to see validation error)',
+        },
       },
     ],
   },
@@ -746,11 +771,11 @@ export const SameAsValidation: Story = {
     fields: [
       {
         variable: asEntityAttributeReference('password'),
-        prompt: 'Enter your password',
+        prompt: { en: 'Enter your password' },
       },
       {
         variable: asEntityAttributeReference('confirmPassword'),
-        prompt: 'Confirm your password',
+        prompt: { en: 'Confirm your password' },
       },
     ],
   },
@@ -769,11 +794,13 @@ export const DifferentFromValidation: Story = {
     fields: [
       {
         variable: asEntityAttributeReference('email'),
-        prompt: 'Enter your primary email',
+        prompt: { en: 'Enter your primary email' },
       },
       {
         variable: asEntityAttributeReference('alternateEmail'),
-        prompt: 'Enter an alternate email (must be different from primary)',
+        prompt: {
+          en: 'Enter an alternate email (must be different from primary)',
+        },
       },
     ],
   },
@@ -792,11 +819,11 @@ export const GreaterThanVariableValidation: Story = {
     fields: [
       {
         variable: asEntityAttributeReference('startAge'),
-        prompt: 'Enter start age',
+        prompt: { en: 'Enter start age' },
       },
       {
         variable: asEntityAttributeReference('endAge'),
-        prompt: 'Enter end age (must be greater than start age)',
+        prompt: { en: 'Enter end age (must be greater than start age)' },
       },
     ],
   },
@@ -815,32 +842,35 @@ export const ContextDependentValidations: Story = {
     fields: [
       {
         variable: asEntityAttributeReference('nickname'),
-        prompt:
-          'Enter a unique nickname (try "Johnny" or "JaneD" to see validation error)',
+        prompt: {
+          en: 'Enter a unique nickname (try "Johnny" or "JaneD" to see validation error)',
+        },
       },
       {
         variable: asEntityAttributeReference('password'),
-        prompt: 'Enter your password',
+        prompt: { en: 'Enter your password' },
       },
       {
         variable: asEntityAttributeReference('confirmPassword'),
-        prompt: 'Confirm your password (must match password)',
+        prompt: { en: 'Confirm your password (must match password)' },
       },
       {
         variable: asEntityAttributeReference('email'),
-        prompt: 'Enter your primary email',
+        prompt: { en: 'Enter your primary email' },
       },
       {
         variable: asEntityAttributeReference('alternateEmail'),
-        prompt: 'Enter an alternate email (must be different from primary)',
+        prompt: {
+          en: 'Enter an alternate email (must be different from primary)',
+        },
       },
       {
         variable: asEntityAttributeReference('startAge'),
-        prompt: 'Enter start age',
+        prompt: { en: 'Enter start age' },
       },
       {
         variable: asEntityAttributeReference('endAge'),
-        prompt: 'Enter end age (must be greater than start age)',
+        prompt: { en: 'Enter end age (must be greater than start age)' },
       },
     ],
   },
@@ -859,17 +889,19 @@ export const HintText: Story = {
     fields: [
       {
         variable: asEntityAttributeReference('name'),
-        prompt: 'What is your name?',
-        hint: 'Enter your full legal name as it appears on official documents.',
+        prompt: { en: 'What is your name?' },
+        hint: {
+          en: 'Enter your full legal name as it appears on official documents.',
+        },
       },
       {
         variable: asEntityAttributeReference('email'),
-        prompt: 'What is your email?',
-        hint: 'We will use this to send you a confirmation.',
+        prompt: { en: 'What is your email?' },
+        hint: { en: 'We will use this to send you a confirmation.' },
       },
       {
         variable: asEntityAttributeReference('age'),
-        prompt: 'How old are you?',
+        prompt: { en: 'How old are you?' },
       },
     ],
   },
@@ -888,24 +920,24 @@ export const ValidationHints: Story = {
     fields: [
       {
         variable: asEntityAttributeReference('name'),
-        prompt: 'What is your name?',
-        hint: 'Enter your full legal name.',
+        prompt: { en: 'What is your name?' },
+        hint: { en: 'Enter your full legal name.' },
         showValidationHints: true,
       },
       {
         variable: asEntityAttributeReference('email'),
-        prompt: 'What is your email?',
+        prompt: { en: 'What is your email?' },
         showValidationHints: true,
       },
       {
         variable: asEntityAttributeReference('age'),
-        prompt: 'How old are you?',
+        prompt: { en: 'How old are you?' },
         showValidationHints: true,
       },
       {
         variable: asEntityAttributeReference('favoriteColors'),
-        prompt: 'Select your favorite colors',
-        hint: 'Pick the colors you like most.',
+        prompt: { en: 'Select your favorite colors' },
+        hint: { en: 'Pick the colors you like most.' },
         showValidationHints: true,
       },
     ],

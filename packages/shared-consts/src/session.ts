@@ -8,3 +8,4 @@ export const sessionStartTimeProperty = 'sessionStart';
 export const sessionFinishTimeProperty = 'sessionFinish';
 export const sessionExportTimeProperty = 'sessionExported';
 export const codebookHashProperty = 'codebookHash';
+export const interviewLocaleProperty = 'interviewLocale';

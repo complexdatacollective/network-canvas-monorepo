@@ -93,7 +93,14 @@ export const lockDraftHead: (
   };
 }, sqlErrorsOnlyBeside);
 
-const loadDoc = Effect.fn('protocol.store.loadDoc')(function* (
+export const loadDoc: (
+  teamId: string,
+  hash: string,
+) => Effect.Effect<
+  SectionDoc,
+  DraftStructureError | SqlError.SqlError,
+  Transaction
+> = Effect.fn('protocol.store.loadDoc')(function* (
   teamId: string,
   hash: string,
 ) {

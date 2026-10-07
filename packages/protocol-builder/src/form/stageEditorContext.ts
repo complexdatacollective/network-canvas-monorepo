@@ -102,6 +102,26 @@ export type StageEditorFormContextValue = Readonly<{
    */
   applyOwnCommands(commands: readonly Command[]): OwnCommandsResult;
   /**
+   * Carries a change the HOST made to the stored stage into every copy of the
+   * stage this form holds: the draft, `committedFields`, `savedFields`, and
+   * each field's value and the baseline its unsaved-change check reads.
+   *
+   * For a host operation that rewrites the stage from outside the editor while
+   * it is open — Architect removing or renaming one of the protocol's
+   * languages, which rewrites the text of every stage. Applied to the draft
+   * alone, the change would read as an edit the researcher has not saved; left
+   * out of it, the next save would write the old text back. Applied to every
+   * copy, work the researcher has not saved survives, rewritten the same way,
+   * and a draft with nothing unsaved before the change has nothing unsaved
+   * after it.
+   *
+   * `rewrite` has to be the change the host made, applicable to any copy of
+   * the stage's fields, and pure: it is called on each copy, and on each
+   * field's value placed in the draft around it. Allowed while the editor is
+   * read-only, because it writes nothing the protocol does not already hold.
+   */
+  mapDocuments(rewrite: (fields: StageFormDraft) => StageFormDraft): void;
+  /**
    * Puts a refused structural write in front of the researcher, in the form's
    * own error region.
    *

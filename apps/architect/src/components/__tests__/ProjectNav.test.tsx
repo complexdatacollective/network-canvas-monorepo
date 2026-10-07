@@ -22,7 +22,14 @@ const createTestStore = () =>
   configureStore({
     reducer: {
       activeProtocol: (
-        state = { past: [], present: { name: 'Test' }, future: [] },
+        state = {
+          past: [],
+          present: {
+            name: 'Test',
+            localization: { defaultLocale: 'en', locales: ['en'] },
+          },
+          future: [],
+        },
       ) => state,
     },
   });

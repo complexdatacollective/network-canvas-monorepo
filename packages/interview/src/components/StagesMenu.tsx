@@ -10,6 +10,11 @@ import { Collection } from '@codaco/fresco-ui/collection/components/Collection';
 import { CollectionFilterInput } from '@codaco/fresco-ui/collection/components/CollectionFilterInput';
 import { ListLayout } from '@codaco/fresco-ui/collection/layout/ListLayout';
 import type { ItemProps, Key } from '@codaco/fresco-ui/collection/types';
+import {
+  type PresentationalText,
+  presentationalTextProps,
+  presentationalTextValue,
+} from '@codaco/fresco-ui/PresentationalText';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import InterfacePicture from '@codaco/interface-images/InterfacePicture';
@@ -19,6 +24,7 @@ import manifest, {
 
 import { useCurrentStep } from '../contexts/CurrentStepContext';
 import { runtimeMessages as messages } from '../i18n/runtimeMessages';
+import { useResolvePresentationalText } from '../localization/ProtocolLocalizationProvider';
 import {
   getSkipMap,
   getStageAvailabilityMap,
@@ -47,7 +53,10 @@ type StageItem = {
   id: string;
   index: number;
   type: string;
+  /** The stage's name as the participant reads it, for filtering. */
   label: string;
+  /** The same name with the language it is written in. */
+  title: PresentationalText;
   position: string;
   isCurrent: boolean;
   isUnavailable: boolean;
@@ -191,6 +200,7 @@ export default function StagesMenu({
   onClosed,
 }: StagesMenuProps) {
   const intl = useAppIntl();
+  const toPresentationalText = useResolvePresentationalText();
   const stages = useSelector(getProtocolStages);
   const { displayedStep: currentStageIndex } = useCurrentStep();
   const availabilityMap = useSelector(getStageAvailabilityMap);
@@ -210,19 +220,31 @@ export default function StagesMenu({
 
   const items = useMemo<StageItem[]>(
     () =>
-      stages.map((stage, index) => ({
-        id: stage.id,
-        index,
-        type: stage.type,
-        label: stage.label.trim()
-          ? stage.label
-          : intl.formatMessage(messages.untitledStage),
-        position: intl.formatNumber(index + 1, { useGrouping: false }),
-        isCurrent: index === currentStageIndex,
-        isUnavailable: skipMap[index] === true,
-        availability: availabilityMap[index] ?? { kind: 'available' },
-      })),
-    [stages, currentStageIndex, availabilityMap, skipMap, intl],
+      stages.map((stage, index) => {
+        const authored = toPresentationalText(stage.label);
+        const title = presentationalTextValue(authored).trim()
+          ? authored
+          : intl.formatMessage(messages.untitledStage);
+        return {
+          id: stage.id,
+          index,
+          type: stage.type,
+          label: presentationalTextValue(title),
+          title,
+          position: intl.formatNumber(index + 1, { useGrouping: false }),
+          isCurrent: index === currentStageIndex,
+          isUnavailable: skipMap[index] === true,
+          availability: availabilityMap[index] ?? { kind: 'available' },
+        };
+      }),
+    [
+      stages,
+      currentStageIndex,
+      availabilityMap,
+      skipMap,
+      intl,
+      toPresentationalText,
+    ],
   );
 
   const currentId = items[currentStageIndex]?.id;
@@ -366,7 +388,10 @@ export default function StagesMenu({
           isHorizontal ? 'items-center text-center' : 'min-w-0 flex-1',
         )}
       >
-        <span className={isHorizontal ? 'line-clamp-2' : undefined}>
+        <span
+          className={isHorizontal ? 'line-clamp-2' : undefined}
+          {...presentationalTextProps(item.title)}
+        >
           {item.label}
         </span>
         {availabilityStatus && (
@@ -390,7 +415,7 @@ export default function StagesMenu({
           // `transition` is scoped off `transform` so it can't fight motion's y.
           'relative block shrink-0 overflow-hidden rounded-xs ring-1 ring-white/0 transition-[filter,box-shadow] duration-200 ring-inset [&>picture]:block [&>picture]:size-full',
           'group-hover:ring-white/25 group-hover:brightness-115',
-          'group-data-[selected]:ring-white/30 group-data-[selected]:brightness-110',
+          'group-data-selected:ring-white/30 group-data-selected:brightness-110',
           isHorizontal ? 'aspect-4/3 w-full' : 'aspect-4/3 w-24',
         )}
       >

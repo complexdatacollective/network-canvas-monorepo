@@ -226,6 +226,25 @@ export const narrativePresetMessages = defineMessages({
     description:
       'Label of the tick list choosing which true-or-false codebook attributes make a node stand out.',
   },
+  presetHighlightLegendLabel: {
+    id: 'protocolBuilder.networkCanvas.presetHighlightLegendLabel',
+    defaultMessage: 'Label for “{attribute}”',
+    description:
+      'Label of the text box naming one highlighted attribute in the interview. attribute is the attribute’s name in the protocol’s codebook, which is not translated.',
+  },
+  presetHighlightLegendHint: {
+    id: 'protocolBuilder.networkCanvas.presetHighlightLegendHint',
+    defaultMessage:
+      'Shown during the interview, in the list of attributes this preset can highlight.',
+    description:
+      'Guidance under the text box naming one highlighted attribute, saying where the label appears.',
+  },
+  presetHighlightLegendRequired: {
+    id: 'protocolBuilder.networkCanvas.presetHighlightLegendRequired',
+    defaultMessage: 'Enter a label for this attribute.',
+    description:
+      'Shown when the label of a highlighted attribute is left empty.',
+  },
   presetUnavailableHighlightAttribute: {
     id: 'protocolBuilder.networkCanvas.presetUnavailableHighlightAttribute',
     defaultMessage: '{attributeId} — this attribute is not available here',

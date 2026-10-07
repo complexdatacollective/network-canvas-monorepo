@@ -379,6 +379,50 @@ test('names each stage once in the printable summary Used In column', async ({
   expect(repeated).toEqual([]);
 });
 
+// One printed summary serves every reader of a translated protocol, so it
+// holds each text in every protocol language rather than offering a choice.
+test('prints each protocol text in every protocol language', async ({
+  architectPage,
+  seed,
+}) => {
+  const { protocol, assets } = loadAllInterfacesFixture();
+  const stage = protocol.stages.find(
+    (candidate) => candidate.type === 'Information',
+  );
+  if (stage?.type !== 'Information') {
+    throw new Error('Expected the Information stage fixture');
+  }
+  const { defaultLocale } = protocol.localization;
+  protocol.localization = { defaultLocale, locales: [defaultLocale, 'fr'] };
+  stage.title = { ...stage.title, fr: 'Bienvenue' };
+  await seed(protocol, { name: 'Bilingual summary', assets });
+  await architectPage.goto('/protocol/summary');
+  await expect(architectPage.getByText('Loading protocol...')).toHaveCount(0);
+
+  await expect(architectPage.getByText('Summary language')).toHaveCount(0);
+
+  const cover = architectPage.locator(SECTION).first();
+  await expect(cover.getByRole('heading', { name: 'Languages' })).toBeVisible();
+  const coverLanguages = cover.getByRole('listitem');
+  await expect(coverLanguages).toHaveCount(2);
+  await expect(coverLanguages.filter({ hasText: 'Default' })).toHaveCount(1);
+
+  const section = architectPage.locator(`#stage-${stage.id}`);
+  await expect(section.locator('dd[lang="fr"]')).toHaveText('Bienvenue');
+  await expect(
+    section
+      .locator(`dd[lang="${defaultLocale}"]`)
+      .filter({ hasText: /^Welcome$/ }),
+  ).toBeVisible();
+  // The stage's item has no French translation, so the summary says which
+  // language participants using French see it in instead.
+  await expect(
+    section
+      .getByText(/^Not translated yet\. Participants see the .+ text\.$/)
+      .first(),
+  ).toBeVisible();
+});
+
 test('lands keyboard focus on the destination heading of a Used In link', async ({
   architectPage,
   seed,
@@ -458,6 +502,7 @@ test('deletes a very long variable from a dialog that stays inside its box', asy
   if (!personType?.variables) throw new Error('fixture lost its person type');
   personType.variables['long-name-variable'] = {
     name: LONG_NAME,
+    label: LONG_NAME,
     type: 'text',
     component: 'Text',
   };

@@ -4,6 +4,11 @@ import { RadioGroup } from '@base-ui/react/radio-group';
 import { useId, useState } from 'react';
 
 import {
+  type PresentationalText,
+  presentationalTextProps,
+  presentationalTextValue,
+} from '../../PresentationalText';
+import {
   groupSpacingVariants,
   inputControlVariants,
   stateVariants,
@@ -14,8 +19,8 @@ import { getInputState } from '../utils/getInputState';
 import { omitWidgetOnlyAria } from '../utils/omitWidgetOnlyAria';
 import { RadioItem } from './RadioGroup';
 
-export type RadioMatrixRow = { id: string; label: string };
-export type RadioMatrixOption = { value: string; label: string };
+export type RadioMatrixRow = { id: string; label: PresentationalText };
+export type RadioMatrixOption = { value: string; label: PresentationalText };
 /** One entry per row, recording the option selected for that row. */
 export type RadioMatrixValue = { id: string; value: string }[];
 
@@ -30,7 +35,7 @@ type RadioMatrixFieldProps = CreateFormFieldProps<
     /** Option pre-selected for rows the user has not explicitly answered. */
     defaultOption?: string;
     /** Optional header shown above the row-label column (wide layout only). */
-    rowHeader?: string;
+    rowHeader?: PresentationalText;
   }
 >;
 
@@ -129,16 +134,21 @@ export default function RadioMatrixField(props: RadioMatrixFieldProps) {
       >
         {/* Column headers — visible only in the wide grid layout. Each radio
             also names itself, so the headers are decorative for assistive tech. */}
-        <div aria-hidden className="hidden @3xl:block">
-          {rowHeader}
+        <div
+          aria-hidden
+          className="hidden @3xl:block"
+          {...presentationalTextProps(rowHeader)}
+        >
+          {rowHeader === undefined ? null : presentationalTextValue(rowHeader)}
         </div>
         {options.map((option) => (
           <div
             key={option.value}
             aria-hidden
             className="hidden text-center text-sm font-semibold @3xl:block"
+            {...presentationalTextProps(option.label)}
           >
-            {option.label}
+            {presentationalTextValue(option.label)}
           </div>
         ))}
 
@@ -147,8 +157,9 @@ export default function RadioMatrixField(props: RadioMatrixFieldProps) {
             <div
               id={`${headingId}-${rowIndex}`}
               className="font-semibold @max-3xl:mb-2 @3xl:mb-0 @3xl:font-normal"
+              {...presentationalTextProps(row.label)}
             >
-              {row.label}
+              {presentationalTextValue(row.label)}
             </div>
             <RadioGroup
               value={rowValue(current, row.id, defaultOption)}

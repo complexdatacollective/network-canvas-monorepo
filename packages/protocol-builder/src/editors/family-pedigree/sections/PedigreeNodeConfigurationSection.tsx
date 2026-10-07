@@ -11,6 +11,7 @@ import SlotVariableField from '../../../fields/SlotVariableField.tsx';
 import { REQUIRED } from '../../../form/requiredField.ts';
 import { useStageEditorForm } from '../../../form/stageEditorContext.ts';
 import { useStageValue } from '../../../form/stageFormHooks.ts';
+import { useLocalizedText } from '../../../localization/ProtocolLocalization.tsx';
 import type { CodebookSubject } from '../../../protocol-context.ts';
 import BuilderSection from '../../../sections/BuilderSection.tsx';
 import FormFieldsSection from '../../../sections/form-fields/FormFieldsSection.tsx';
@@ -119,6 +120,7 @@ const FORM_CAPABILITY = Object.freeze({
  */
 export default function PedigreeNodeConfigurationSection() {
   const intl = useAppIntl();
+  const localize = useLocalizedText();
   const { identity } = useStageEditorForm();
   const protocolContext = useProtocolContext();
   const nodeType = useStageValue(TYPE_FIELD);
@@ -242,7 +244,7 @@ export default function PedigreeNodeConfigurationSection() {
     all, is a fact about the reader's language.
   */
   const dependentStageNames = intl.formatList(
-    dependentNarrativeStages.map((stage) => `"${stage.label}"`),
+    dependentNarrativeStages.map((stage) => `"${localize(stage.label).text}"`),
     { type: 'conjunction' },
   );
 

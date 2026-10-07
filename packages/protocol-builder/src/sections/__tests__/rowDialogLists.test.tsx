@@ -7,6 +7,7 @@ import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { familyPedigreeStageWith } from '../../editors/family-pedigree/sections/__tests__/pedigreeFixtures.tsx';
 import NominationPromptsSection from '../../editors/family-pedigree/sections/NominationPromptsSection.tsx';
 import type { RowValues } from '../../form/rowDialog.tsx';
+import { translationText } from '../../localization/localizedText.ts';
 import { attributeField } from '../../testing/attributePicker.ts';
 import {
   renderStageEditor,
@@ -23,6 +24,11 @@ import {
   TestPromptEditor,
   TestPromptPreview,
 } from './rowFixtures.tsx';
+
+const en = (text: string) => ({ 'en-US': text });
+
+/** What a row's copy reads as in the fixture's one language. */
+const englishOf = (value: unknown) => translationText(value, 'en-US');
 
 /**
  * Every list a stage editor edits one row at a time, asked the same questions.
@@ -139,13 +145,15 @@ const nameGeneratorWith = (
     id: 'name-generator-with-rows',
     type: 'NameGenerator',
     fields: {
-      label: 'Name Generator',
+      label: en('Name Generator'),
       subject: { entity: 'node', type: 'person' },
       form: {
-        title: 'Add a person',
-        fields: [{ variable: 'name', prompt: "What is this person's name?" }],
+        title: en('Add a person'),
+        fields: [
+          { variable: 'name', prompt: en("What is this person's name?") },
+        ],
       },
-      prompts: [{ id: 'prompt-seed', text: 'Who do you know?' }],
+      prompts: [{ id: 'prompt-seed', text: en('Who do you know?') }],
       ...fields,
     },
   },
@@ -158,8 +166,8 @@ const lists: readonly ListCase[] = [
     noun: 'prompt',
     addLabel: 'Create new prompt',
     read: rowsAt('prompts'),
-    row: (id, text) => ({ id, text }),
-    label: (row) => row.text,
+    row: (id, text) => ({ id, text: en(text) }),
+    label: (row) => englishOf(row.text),
     write: typeInto('Prompt text'),
     open: (rows) =>
       nameGeneratorWith(
@@ -176,14 +184,18 @@ const lists: readonly ListCase[] = [
     noun: 'item',
     addLabel: 'Create new content item',
     read: rowsAt('items'),
-    row: (id, text) => ({ id, type: 'text', content: text }),
-    label: (row) => row.content,
+    row: (id, text) => ({ id, type: 'text', content: en(text) }),
+    label: (row) => englishOf(row.content),
     write: typeInto('Block text'),
     open: (rows) => ({
       stage: {
         id: 'information-with-blocks',
         type: 'Information',
-        fields: { label: 'Information', title: 'Welcome', items: rows },
+        fields: {
+          label: en('Information'),
+          title: en('Welcome'),
+          items: rows,
+        },
       },
       sections: (
         <PageContentSection
@@ -198,8 +210,8 @@ const lists: readonly ListCase[] = [
     noun: 'panel',
     addLabel: 'Add new panel',
     read: rowsAt('panels'),
-    row: (id, text) => ({ id, title: text, dataSource: 'existing' }),
-    label: (row) => row.title,
+    row: (id, text) => ({ id, title: en(text), dataSource: 'existing' }),
+    label: (row) => englishOf(row.title),
     write: typeInto('Panel title'),
     open: (rows) => nameGeneratorWith({ panels: rows }, <NodePanelsSection />),
   },
@@ -214,9 +226,9 @@ const lists: readonly ListCase[] = [
     row: (id, text, index) => ({
       id,
       variable: index === 0 ? 'relationship_to_ego' : 'flagged',
-      prompt: text,
+      prompt: en(text),
     }),
-    label: (row) => row.prompt,
+    label: (row) => englishOf(row.prompt),
     write: typeInto('Question text'),
     // The attribute is picked rather than typed, and a field that names none
     // cannot be saved at all.
@@ -228,12 +240,12 @@ const lists: readonly ListCase[] = [
         id: 'alter-form-with-fields',
         type: 'AlterForm',
         fields: {
-          label: 'Alter form',
+          label: en('Alter form'),
           subject: { entity: 'node', type: 'person' },
           form: { fields: rows },
           introductionPanel: {
-            title: 'About each person',
-            text: 'A few more questions.',
+            title: en('About each person'),
+            text: en('A few more questions.'),
           },
         },
       },
@@ -245,8 +257,8 @@ const lists: readonly ListCase[] = [
     noun: 'nomination prompt',
     addLabel: 'Create new nomination prompt',
     read: rowsAt('nominationPrompts'),
-    row: (id, text) => ({ id, text, variable: 'hasConditionX' }),
-    label: (row) => row.text,
+    row: (id, text) => ({ id, text: en(text), variable: 'hasConditionX' }),
+    label: (row) => englishOf(row.text),
     write: typeInto('Prompt text'),
     // Every nomination prompt writes one attribute, and the picker is where it
     // comes from.

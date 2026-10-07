@@ -91,17 +91,20 @@ describe('creating a tie-strength census stage', () => {
     const request = await harness.submit();
     expect(request?.stageDocument).toMatchObject({
       type: 'TieStrengthCensus',
-      label: 'Person Tie-Strength Census',
+      label: { 'en-US': 'Person Tie-Strength Census' },
       subject: { entity: 'node', type: 'person' },
-      introductionPanel: { title: 'Pairs', text: 'Two at a time, on a scale.' },
+      introductionPanel: {
+        title: { 'en-US': 'Pairs' },
+        text: { 'en-US': 'Two at a time, on a scale.' },
+      },
     });
     expect(prompts(request?.stageDocument ?? {})).toEqual([
       {
         id: expect.any(String) as unknown as string,
-        text: 'How close are they?',
+        text: { 'en-US': 'How close are they?' },
         createEdge: 'knows',
         edgeVariable: 'closeness',
-        negativeLabel: 'They have never met',
+        negativeLabel: { 'en-US': 'They have never met' },
       },
     ]);
   });
@@ -116,15 +119,15 @@ describe('creating a tie-strength census stage', () => {
         type: 'TieStrengthCensus',
         position: TIE_STRENGTH_INDEX,
         fields: {
-          label: 'How close',
+          label: { 'en-US': 'How close' },
           subject: { entity: 'node', type: 'person' },
           prompts: [
             {
               id: 'prompt-a',
-              text: 'How close?',
+              text: { 'en-US': 'How close?' },
               createEdge: 'knows',
               edgeVariable: 'closeness',
-              negativeLabel: 'Not at all',
+              negativeLabel: { 'en-US': 'Not at all' },
             },
           ],
         },

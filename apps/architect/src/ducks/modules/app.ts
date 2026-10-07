@@ -1,5 +1,6 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 import { get } from 'es-toolkit/compat';
+import { z } from 'zod/mini';
 
 import type { RootState } from './root';
 
@@ -165,6 +166,63 @@ export function getPreviewRespectSkipLogic(
   // setting when rehydrating state written by an earlier Architect version.
   const legacyRaw = get(state, ['app', LEGACY_PREVIEW_IGNORE_SKIP_LOGIC_KEY]);
   return legacyRaw === undefined ? false : !legacyRaw;
+}
+
+const DISMISSED_MISSING_TRANSLATIONS_KEY = 'dismissedMissingTranslations';
+
+const dismissedMissingTranslationsSchema = z.record(
+  z.string(),
+  z.int().check(z.nonnegative()),
+);
+
+// Read as one record rather than entry by entry: a record that fails to parse
+// is state this code did not write, so none of it is trusted.
+function getDismissedMissingTranslationsRecord(
+  state: Pick<RootState, 'app'>,
+): Record<string, number> {
+  const parsed = z.safeParse(
+    dismissedMissingTranslationsSchema,
+    get(state, ['app', DISMISSED_MISSING_TRANSLATIONS_KEY]),
+  );
+  return parsed.success ? parsed.data : {};
+}
+
+/**
+ * Records that the researcher dismissed the missing-translations warning for a
+ * protocol, and how many translations were missing when they did. The count is
+ * what lets the warning return when the gaps grow instead of staying silenced
+ * for good.
+ */
+export function dismissMissingTranslations(
+  protocolId: string,
+  missingCount: number,
+) {
+  return (
+    dispatch: (action: ReturnType<typeof setProperty>) => void,
+    getState: () => Pick<RootState, 'app'>,
+  ) => {
+    dispatch(
+      setProperty({
+        key: DISMISSED_MISSING_TRANSLATIONS_KEY,
+        value: {
+          ...getDismissedMissingTranslationsRecord(getState()),
+          [protocolId]: missingCount,
+        },
+      }),
+    );
+  };
+}
+
+/**
+ * The number of missing translations a protocol had when its warning was
+ * dismissed, or null if it has not been dismissed. Malformed stored data reads
+ * as not dismissed, so the warning shows rather than being hidden by garbage.
+ */
+export function getDismissedMissingTranslations(
+  state: Pick<RootState, 'app'>,
+  protocolId: string,
+): number | null {
+  return getDismissedMissingTranslationsRecord(state)[protocolId] ?? null;
 }
 
 export default appSlice.reducer;

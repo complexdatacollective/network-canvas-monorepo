@@ -1,6 +1,7 @@
 import { act, render } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { getLocaleMetadata } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -28,6 +29,9 @@ const payload = {
     finishTime: null,
     exportTime: null,
     lastUpdated: '2026-01-01T00:00:00.000Z',
+    localePreference: null,
+    locale: null,
+    localeOptions: [getLocaleMetadata('und')],
     network: {
       ego: {
         [entityPrimaryKeyProperty]: 'ego-1',
@@ -43,6 +47,7 @@ const payload = {
     importedAt: '2026-01-01T00:00:00.000Z',
     name: 'Unmount-flush protocol',
     schemaVersion: 9,
+    localization: { defaultLocale: 'und', locales: ['und'] },
     codebook: {
       ego: { variables: {} },
       node: {},
@@ -53,8 +58,8 @@ const payload = {
       {
         id: 'only-stage',
         type: 'Information',
-        label: 'Only stage',
-        title: 'Only stage',
+        label: { und: 'Only stage' },
+        title: { und: 'Only stage' },
         items: [],
       },
     ],
@@ -81,6 +86,8 @@ function renderShell(onSync: SyncHandler) {
     <Shell
       payload={payload}
       onSync={onSync}
+      onProtocolLocaleChange={() => Promise.resolve()}
+      requestedLocales={[]}
       onFinish={() => Promise.resolve()}
       onRequestAsset={() => Promise.resolve('')}
       analytics={{ installationId: 'test', hostApp: 'test' }}

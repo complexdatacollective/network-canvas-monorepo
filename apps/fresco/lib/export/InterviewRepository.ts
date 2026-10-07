@@ -26,6 +26,7 @@ export const PrismaInterviewRepository = Layer.succeed(InterviewRepository, {
         finishTime: row.finishTime,
         network: NcNetworkSchema.parse(row.network),
         protocolHash: row.protocol.hash,
+        locale: row.locale,
       }));
 
       return inputs;

@@ -44,21 +44,21 @@ describe('optionsValidationFor', () => {
   it('accepts a complete, unambiguous list', async () => {
     await expect(
       issue([
-        { label: 'Yes', value: 'yes' },
-        { label: 'No', value: 'no' },
+        { label: { en: 'Yes' }, value: 'yes' },
+        { label: { en: 'No' }, value: 'no' },
       ]),
     ).resolves.toBeUndefined();
   });
 
   it('refuses a single option', async () => {
-    await expect(issue([{ label: 'Yes', value: 'yes' }])).resolves.toMatch(
-      /minimum of two options/,
-    );
+    await expect(
+      issue([{ label: { en: 'Yes' }, value: 'yes' }]),
+    ).resolves.toMatch(/minimum of two options/);
   });
 
   it('refuses a half-finished option', async () => {
     await expect(
-      issue([{ label: 'Yes', value: 'yes' }, { label: 'No' }]),
+      issue([{ label: { en: 'Yes' }, value: 'yes' }, { label: { en: 'No' } }]),
     ).resolves.toBe('Every option needs both a label and a value.');
   });
 
@@ -68,8 +68,8 @@ describe('optionsValidationFor', () => {
     // array — the only layer that can refuse the save — has to trim too.
     await expect(
       issue([
-        { label: '   ', value: 'yes' },
-        { label: 'No', value: 'no' },
+        { label: { en: '   ' }, value: 'yes' },
+        { label: { en: 'No' }, value: 'no' },
       ]),
     ).resolves.toBe('Every option needs both a label and a value.');
   });
@@ -80,8 +80,8 @@ describe('optionsValidationFor', () => {
     // about characters in a value they have not typed yet.
     await expect(
       issue([
-        { label: 'Yes', value: '' },
-        { label: 'No', value: 'no' },
+        { label: { en: 'Yes' }, value: '' },
+        { label: { en: 'No' }, value: 'no' },
       ]),
     ).resolves.toBe('Every option needs both a label and a value.');
   });
@@ -91,8 +91,8 @@ describe('optionsValidationFor', () => {
     // incomplete; the array has to say so before the save is attempted.
     await expect(
       issue([
-        { label: 'Yes', value: '   ' },
-        { label: 'No', value: 'no' },
+        { label: { en: 'Yes' }, value: '   ' },
+        { label: { en: 'No' }, value: 'no' },
       ]),
     ).resolves.toBe('Every option needs both a label and a value.');
   });
@@ -100,8 +100,8 @@ describe('optionsValidationFor', () => {
   it('refuses two options that export as the same answer', async () => {
     await expect(
       issue([
-        { label: 'Yes', value: 'yes' },
-        { label: 'Affirmative', value: 'yes' },
+        { label: { en: 'Yes' }, value: 'yes' },
+        { label: { en: 'Affirmative' }, value: 'yes' },
       ]),
     ).resolves.toBe('Every option needs a unique value.');
   });
@@ -116,8 +116,8 @@ describe('optionsValidationFor', () => {
       // compares them that way, so the array has to as well.
       await expect(
         issue([
-          { label: 'Yes', value: first },
-          { label: 'Affirmative', value: second },
+          { label: { en: 'Yes' }, value: first },
+          { label: { en: 'Affirmative' }, value: second },
         ]),
       ).resolves.toBe('Every option needs a unique value.');
     },
@@ -126,9 +126,9 @@ describe('optionsValidationFor', () => {
   it('refuses two options that read as the same choice', async () => {
     await expect(
       issue([
-        { label: 'Yes', value: 'yes' },
+        { label: { en: 'Yes' }, value: 'yes' },
         // Case and Unicode composition are not what tells two choices apart.
-        { label: 'yes', value: 'no' },
+        { label: { en: 'yes' }, value: 'no' },
       ]),
     ).resolves.toBe('Every option needs a unique label.');
   });
@@ -136,8 +136,8 @@ describe('optionsValidationFor', () => {
   it('refuses a value holding a control character', async () => {
     await expect(
       issue([
-        { label: 'Yes', value: 'yes\tplease' },
-        { label: 'No', value: 'no' },
+        { label: { en: 'Yes' }, value: 'yes\tplease' },
+        { label: { en: 'No' }, value: 'no' },
       ]),
     ).resolves.toBe(
       'Cannot contain line breaks, tabs or other control characters',
@@ -149,8 +149,8 @@ describe('optionsValidationFor', () => {
     async (value) => {
       await expect(
         issue([
-          { label: 'Yes', value },
-          { label: 'No', value: 'no' },
+          { label: { en: 'Yes' }, value },
+          { label: { en: 'No' }, value: 'no' },
         ]),
       ).resolves.toBeUndefined();
     },
@@ -165,14 +165,14 @@ describe('optionsValidationFor', () => {
     });
     await expect(
       arrayIssue(withSibling.custom, [
-        { label: 'Bar', value: 'bar' },
-        { label: 'Baz', value: 'baz' },
+        { label: { en: 'Bar' }, value: 'bar' },
+        { label: { en: 'Baz' }, value: 'baz' },
       ]),
     ).resolves.toMatch(/foo_bar/);
     await expect(
       arrayIssue(withSibling.custom, [
-        { label: 'Qux', value: 'qux' },
-        { label: 'Baz', value: 'baz' },
+        { label: { en: 'Qux' }, value: 'qux' },
+        { label: { en: 'Baz' }, value: 'baz' },
       ]),
     ).resolves.toBeUndefined();
   });
@@ -181,7 +181,10 @@ describe('optionsValidationFor', () => {
     // Both rules fail here. A blank row should be told what it needs, not
     // lectured about the characters in the value it does not have.
     await expect(
-      issue([{ label: 'Yes' }, { label: 'No', value: 'no\tthanks' }]),
+      issue([
+        { label: { en: 'Yes' } },
+        { label: { en: 'No' }, value: 'no\tthanks' },
+      ]),
     ).resolves.toBe('Every option needs both a label and a value.');
   });
 });
@@ -265,7 +268,9 @@ describe('makeMultiSelectValidation', () => {
 
 describe('makeAssignAttributesValidation', () => {
   const { custom } = makeAssignAttributesValidation({
-    allVariables: { worried: { name: 'Worried', type: 'boolean' } },
+    allVariables: {
+      worried: { name: 'Worried', label: 'Worried', type: 'boolean' },
+    },
     committedVariableIds: new Set(['worried']),
     draftValidatedVariables: new Set(['worried']),
     hasValidatedUseElsewhere: () => false,
@@ -315,7 +320,9 @@ describe('makeAssignAttributesValidation', () => {
     // arrive already holding this contradiction, and re-saving the prompt
     // unchanged introduces nothing new to refuse.
     const { custom: settled } = makeAssignAttributesValidation({
-      allVariables: { worried: { name: 'Worried', type: 'boolean' } },
+      allVariables: {
+        worried: { name: 'Worried', label: 'Worried', type: 'boolean' },
+      },
       committedVariableIds: new Set(['worried']),
       draftValidatedVariables: new Set(),
       hasValidatedUseElsewhere: () => true,
@@ -327,7 +334,9 @@ describe('makeAssignAttributesValidation', () => {
 
   it('refuses a NEW pick of a variable this stage validates', async () => {
     const { custom: strict } = makeAssignAttributesValidation({
-      allVariables: { worried: { name: 'Worried', type: 'boolean' } },
+      allVariables: {
+        worried: { name: 'Worried', label: 'Worried', type: 'boolean' },
+      },
       committedVariableIds: new Set(),
       draftValidatedVariables: new Set(['worried']),
       hasValidatedUseElsewhere: () => false,

@@ -4,7 +4,7 @@ import { EntityAttributesSchema, VariableValueSchema } from './network.ts';
 
 /**
  * A deliberate copy of `FRAMING_IDS`, whose canonical definition is
- * `packages/protocol-validation/src/schemas/8/family-pedigree-values.ts`.
+ * `packages/protocol-validation/src/schemas/9/family-pedigree-values.ts`.
  *
  * It is copied rather than imported for two reasons. This package must never
  * depend on `@codaco/protocol-validation` — the dependency runs the other way.

@@ -1,22 +1,38 @@
 import {
   fireEvent,
-  render,
+  render as renderUnwrapped,
   screen,
   waitFor,
   within,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { ReactElement, ReactNode } from 'react';
 import { describe, expect, expectTypeOf, it, vi } from 'vitest';
 
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
+import { ProtocolLocalizationProvider } from '../../../localization/ProtocolLocalization.tsx';
 import type { CodebookSubject } from '../../../protocol-context.ts';
 import { codebookRefusalMessage } from '../../compoundFailureCopy.ts';
 import type { CodebookWriteOutcome } from '../../writes.ts';
 import CodebookEntityEditor, {
   type CodebookEntityEditorProps,
 } from '../CodebookEntityEditor.tsx';
+
+/** Every editor here edits a protocol written in English. */
+function InEnglishProtocol({ children }: Readonly<{ children: ReactNode }>) {
+  return (
+    <ProtocolLocalizationProvider
+      localization={{ defaultLocale: 'en', locales: ['en'] }}
+    >
+      {children}
+    </ProtocolLocalizationProvider>
+  );
+}
+
+const render = (ui: ReactElement) =>
+  renderUnwrapped(ui, { wrapper: InEnglishProtocol });
 
 const NODE_SUBJECT = { entity: 'node', type: 'person:adult' } as const;
 const PERSON_SECTION = sectionId({
@@ -29,11 +45,17 @@ const HOST_WORDS = 'Invalid input: expected object, received undefined';
 
 const NODE_DOCUMENT: SectionDoc = {
   name: 'Person',
+  label: { en: 'Person' },
   color: 'node-color-seq-1',
   icon: 'add-a-person',
   shape: { default: 'circle' },
   variables: {
-    age: { name: 'Age', type: 'number', component: 'Number' },
+    age: {
+      name: 'Age',
+      label: 'Age',
+      type: 'number',
+      component: 'Number',
+    },
   },
 };
 
@@ -133,7 +155,12 @@ describe('CodebookEntityEditor', () => {
     },
     {
       subject: { entity: 'edge', type: 'friends' } as const,
-      document: { name: 'Friends', color: 'edge-color-seq-1', variables: {} },
+      document: {
+        name: 'Friends',
+        label: { en: 'Friends' },
+        color: 'edge-color-seq-1',
+        variables: {},
+      },
       nameLabel: 'Edge type name',
       example: '"Friends" or "Colleagues"',
       placeholder: 'Enter a name for this edge type...',
@@ -524,6 +551,7 @@ describe('CodebookEntityEditor', () => {
       },
       expected: {
         name: 'NewPerson',
+        label: { en: 'NewPerson' },
         color: 'node-color-seq-2',
         icon: 'add-a-person',
         shape: { default: 'square' },
@@ -534,7 +562,12 @@ describe('CodebookEntityEditor', () => {
       label: 'edge',
       subject: { entity: 'edge', type: 'new:relationship' },
       draft: { name: 'Knows', color: 'edge-color-seq-2' },
-      expected: { name: 'Knows', color: 'edge-color-seq-2', variables: {} },
+      expected: {
+        name: 'Knows',
+        label: { en: 'Knows' },
+        color: 'edge-color-seq-2',
+        variables: {},
+      },
     },
     {
       label: 'ego',

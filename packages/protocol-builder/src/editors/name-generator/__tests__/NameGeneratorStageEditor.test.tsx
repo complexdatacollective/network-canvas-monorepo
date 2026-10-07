@@ -250,13 +250,17 @@ describe('the name generator editor', () => {
 
     const request = await harness.submit();
     expect(request?.stageDocument).toMatchObject({
-      label: 'Close friends',
+      label: { 'en-US': 'Close friends' },
       subject: { entity: 'node', type: 'person' },
       form: {
-        title: 'Add a person',
-        fields: [{ variable: 'name', prompt: 'What is their name?' }],
+        title: { 'en-US': 'Add a person' },
+        fields: [
+          { variable: 'name', prompt: { 'en-US': 'What is their name?' } },
+        ],
       },
-      prompts: [{ text: 'Who are the people you are closest to?' }],
+      prompts: [
+        { text: { 'en-US': 'Who are the people you are closest to?' } },
+      ],
     });
     // A stage the interface has no authored defaults for: everything it holds
     // was authored just now.
@@ -443,12 +447,14 @@ describe('the name generator editor', () => {
       node: {
         colleague: {
           name: 'colleague',
+          label: { 'en-US': 'colleague' },
           color: 'node-color-seq-3',
           icon: 'add-a-person',
           shape: { default: 'circle' },
           variables: {
             colleague_name: {
               name: 'colleague_name',
+              label: 'colleague_name',
               type: 'text',
               component: 'Text',
             },
@@ -528,6 +534,7 @@ describe('a form field and a prompt stamp reaching for the same attribute', () =
             ...(person.variables as Record<string, unknown>),
             [FREE_ATTRIBUTE]: {
               name: FREE_ATTRIBUTE,
+              label: FREE_ATTRIBUTE,
               type: 'boolean',
               component: 'Boolean',
             },

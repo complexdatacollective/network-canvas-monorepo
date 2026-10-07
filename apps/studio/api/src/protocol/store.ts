@@ -16,9 +16,9 @@ import { Effect, Schema } from 'effect';
 import type { SqlError } from 'effect/sql';
 
 import {
+  CURRENT_SCHEMA_VERSION,
   type CurrentProtocol,
   type ProtocolValidationIssue,
-  type VersionedProtocol,
   validateProtocol,
 } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
@@ -55,6 +55,7 @@ import {
 import { type ProtocolChange, diffProtocolSections } from './diff.ts';
 import { insertDraftRows } from './draft-rows.ts';
 import { failOnSectionValidation } from './draft-structure.ts';
+import { migrateStoredVersionToDraft } from './migrate.ts';
 import { PROTOCOL_TABLES } from './schema.ts';
 import { sectionizeProtocol } from './sectionize.ts';
 import { versionContentHash } from './version-hash.ts';
@@ -335,7 +336,10 @@ export const createDraftFromVersion: (
   const draftId = params.draftId ?? randomUUID();
   const { tx } = yield* Transaction;
   const version = yield* tx
-    .select({ protocolId: protocolVersions.protocolId })
+    .select({
+      protocolId: protocolVersions.protocolId,
+      schemaVersion: protocolVersions.schemaVersion,
+    })
     .from(protocolVersions)
     .where(
       and(
@@ -348,6 +352,20 @@ export const createDraftFromVersion: (
     return yield* new ProtocolStoreError({
       reason: `no version ${params.versionId}`,
     });
+  }
+  // Write-time validation admits only current-schema sections, so a draft
+  // holding an older version's sections verbatim could never be edited.
+  if (versionRow.schemaVersion < CURRENT_SCHEMA_VERSION) {
+    const migrated = yield* migrateStoredVersionToDraft(teamId, {
+      versionId: params.versionId,
+      draftId,
+    }).pipe(
+      Effect.catchTag(
+        'MigrationTargetError',
+        (error) => new ProtocolStoreError({ reason: error.reason }),
+      ),
+    );
+    return { draftId: migrated.draftId, protocolId: migrated.protocolId };
   }
   const pins = yield* tx
     .select({ sectionId: versionSections.sectionId, doc: sections.doc })
@@ -554,9 +572,7 @@ export const validateDraft: (
   // Against a placeholder rather than the sealed keys: decrypting a
   // researcher's credentials to validate would put them in memory for no reason.
   const result = yield* Effect.promise(() =>
-    validateProtocol(
-      withPlaceholderAssetKeys(assembled.document) as VersionedProtocol,
-    ),
+    validateProtocol(withPlaceholderAssetKeys(assembled.document)),
   );
   return result.success
     ? { valid: true }
@@ -669,9 +685,7 @@ export const publishDraft: (
     } satisfies PublishResult;
   }
   const validation = yield* Effect.promise(() =>
-    validateProtocol(
-      withPlaceholderAssetKeys(assembled.document) as VersionedProtocol,
-    ),
+    validateProtocol(withPlaceholderAssetKeys(assembled.document)),
   );
   if (!validation.success) {
     return {

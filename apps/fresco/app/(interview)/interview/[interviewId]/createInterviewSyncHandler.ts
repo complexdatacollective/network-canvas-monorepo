@@ -1,6 +1,6 @@
 import {
   createDebouncedSyncHandler,
-  type SessionPayload,
+  type SessionSnapshot,
   type SyncHandler,
 } from '@codaco/interview/contract';
 
@@ -95,7 +95,7 @@ export function createInterviewSyncHandler({
   };
 
   const post = async (
-    session: SessionPayload,
+    session: SessionSnapshot,
     revision: number,
     unloading: boolean,
   ): Promise<SyncOutcome> => {
@@ -114,8 +114,13 @@ export function createInterviewSyncHandler({
 
     const controller = new AbortController();
     inFlight = controller;
+    // Named fields rather than the whole snapshot: the locale fields are
+    // persisted only through the locale route.
     const body = JSON.stringify({
-      ...session,
+      id: session.id,
+      network: session.network,
+      stageMetadata: session.stageMetadata,
+      lastUpdated: session.lastUpdated,
       currentStep: getCurrentStep(),
       syncRevision: revision,
     });

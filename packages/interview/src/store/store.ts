@@ -5,11 +5,17 @@ import {
   configureStore,
   type Middleware,
 } from '@reduxjs/toolkit';
+import { omit } from 'es-toolkit';
 import { useDispatch } from 'react-redux';
 
 import { NULL_TRACKER, type Tracker } from '../analytics/tracker';
-import type { InterviewPayload, SyncHandler } from '../contract/types';
+import type {
+  InterviewPayload,
+  ProtocolLocaleChangeHandler,
+  SyncHandler,
+} from '../contract/types';
 import { createAnalyticsListenerMiddleware } from './middleware/analyticsListener';
+import { createLocaleChangeMiddleware } from './middleware/localeChangeMiddleware';
 import logger from './middleware/logger';
 import { createSyncMiddleware } from './middleware/syncMiddleware';
 import protocol from './modules/protocol';
@@ -24,6 +30,7 @@ const rootReducer = combineReducers({
 
 type StoreOptions = {
   onSync: SyncHandler;
+  onProtocolLocaleChange: ProtocolLocaleChangeHandler;
   isDevelopment?: boolean;
   extraMiddleware?: Middleware[];
   tracker?: Tracker;
@@ -36,6 +43,10 @@ export const store = (
   const { middleware: syncMiddleware, flush } = createSyncMiddleware({
     onSync: options.onSync,
   });
+  const { middleware: localeChangeMiddleware, settled: localeChangesSettled } =
+    createLocaleChangeMiddleware({
+      onProtocolLocaleChange: options.onProtocolLocaleChange,
+    });
   const tracker = options.tracker ?? NULL_TRACKER;
   const analyticsMiddleware = createAnalyticsListenerMiddleware({
     tracker,
@@ -54,15 +65,22 @@ export const store = (
         }).concat(
           ...(options.isDevelopment ? [logger] : []),
           syncMiddleware,
+          localeChangeMiddleware,
           analyticsMiddleware,
           ...(options.extraMiddleware ?? []),
         ),
       preloadedState: {
-        session: sessionPayload,
+        session: omit(sessionPayload, ['localeOptions']),
         protocol: protocolPayload,
       },
     }),
-    { flushSync: flush },
+    {
+      // Exports read the recorded locale, so whatever ends the session waits
+      // for the locale write as well as the session write.
+      flushSync: async (flushOptions?: { unloading?: boolean }) => {
+        await Promise.all([flush(flushOptions), localeChangesSettled()]);
+      },
+    },
   );
 };
 

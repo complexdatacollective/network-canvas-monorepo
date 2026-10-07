@@ -3,6 +3,7 @@ import type { IntlShape, MessageDescriptor } from '@codaco/app-i18n/messages';
 import {
   type Codebook,
   type ColorReference,
+  type LocalizedString,
   DATE_FORMATS_KEYS,
   DATE_RESOLUTION,
   type DateFormat,
@@ -323,17 +324,10 @@ const DATE_FORMAT_NAMES: ReadonlySet<string> = new Set(DATE_FORMATS_KEYS);
 const isDateFormat = (value: unknown): value is DateFormat =>
   typeof value === 'string' && DATE_FORMAT_NAMES.has(value);
 
-/**
- * The authored option set of a categorical/ordinal attribute, if it has one.
- *
- * The stored operand is compared against these values, so they keep the type
- * the codebook authored them with — coercing a numeric option to a string
- * here would save a rule that no longer matches anything.
- */
-export const ruleVariableChoices = (
+const authoredOptions = (
   variables: Readonly<Variables>,
   variableId: string | undefined,
-): RuleChoiceOption[] | undefined => {
+) => {
   const variable = ruleVariable(variables, variableId);
   // Only these two kinds of attribute have a set of choices a rule's operand
   // is picked FROM. A boolean variable also carries `options`, but they are
@@ -343,12 +337,30 @@ export const ruleVariableChoices = (
   if (variable?.type !== 'categorical' && variable?.type !== 'ordinal') {
     return undefined;
   }
-  const choices = variable.options.map(({ value, label }) => ({
-    value,
-    label: label === '' ? String(value) : label,
-  }));
-  return choices.length > 0 ? choices : undefined;
+  return variable.options.length > 0 ? variable.options : undefined;
 };
+
+/**
+ * The authored option set of a categorical/ordinal attribute, if it has one.
+ *
+ * The stored operand is compared against these values, so they keep the type
+ * the codebook authored them with — coercing a numeric option to a string
+ * here would save a rule that no longer matches anything.
+ *
+ * An option's label is written in each of the protocol's languages, and which
+ * one a rule is read in is the caller's to say: `labelText` turns a label into
+ * the words shown. An option with no words in that language is named by its
+ * value.
+ */
+export const ruleVariableChoices = (
+  variables: Readonly<Variables>,
+  variableId: string | undefined,
+  labelText: (label: LocalizedString) => string,
+): RuleChoiceOption[] | undefined =>
+  authoredOptions(variables, variableId)?.map(({ value, label }) => {
+    const text = labelText(label);
+    return { value, label: text === '' ? String(value) : text };
+  });
 
 /**
  * The operators offered for an attribute of this type. A rule with no
@@ -584,7 +596,7 @@ const isUnenteredOperand = (value: unknown): boolean =>
  *
  * Membership is by identity, which is how the interview compares them: the
  * option whose value is the number `1` is not matched by the string `"1"`, and
- * `ruleVariableChoices` keeps the authored type for exactly this reason.
+ * `authoredOptions` keeps the authored type for exactly this reason.
  *
  * Returns the offending values rather than a verdict, so a caller can say
  * which option went missing. Empty for every comparison whose operand is not
@@ -602,8 +614,8 @@ export const operandOptionProblems = (
   if (isUnenteredOperand(value)) return [];
 
   const authored = new Set<string | number>(
-    (ruleVariableChoices(variables, variableId) ?? []).map(
-      (choice) => choice.value,
+    (authoredOptions(variables, variableId) ?? []).map(
+      (option) => option.value,
     ),
   );
   const items: unknown[] = Array.isArray(value) ? value : [value];
@@ -800,7 +812,7 @@ export const operandNumberProblems = (
   const range = operandNumberRange(
     variableType,
     operator,
-    ruleVariableChoices(variables, variableId)?.length,
+    authoredOptions(variables, variableId)?.length,
   );
   if (range === undefined) return [];
   if (rangeSatisfiesComparison(operator, range, value)) return [];

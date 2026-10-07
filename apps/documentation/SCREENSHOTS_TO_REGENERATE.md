@@ -26,6 +26,31 @@ walkthrough depends on, has been recaptured; the stage shots need an interview
 driven through the sample protocol with representative data, which is a
 separate pass. Every other row is done.
 
+## Protocol localization (schema 9)
+
+Protocols can now be written in more than one language, and the interview
+gained a Language Chooser interface. These images predate that work:
+
+| Image                                      | Page                                                | What changed                                                                                                                                                  |
+| ------------------------------------------ | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `architect/new-protocol-dialog.png`        | `design-protocols/getting-started.en.mdx`           | The **Create New Protocol** dialog now has a **Protocol language** field for a blank protocol.                                                                |
+| `architect/overview-screen.png`            | `design-protocols/getting-started.en.mdx`           | The protocol navigation has a **Languages** tab between **Codebook** and **Summary**.                                                                         |
+| `architect/codebook-web.png`               | `design-protocols/key-concepts/codebook.en.mdx`     | Same navigation change. Check every other Architect capture that shows the protocol navigation bar too.                                                       |
+| `key-concepts/interfaces/utilities.png`    | `design-protocols/key-concepts/interfaces.en.mdx`   | The utility interfaces now include **Language Chooser**, between Information and Anonymisation.                                                               |
+| `interviewer-guide/interview-settings.png` | `collect-data/interviewer/using-interviewer.en.mdx` | The interview settings menu no longer has **Interface language**; it holds **Text size** and **Exit interview**. The alt text already describes the new menu. |
+
+New pages with no screenshots yet:
+
+- `design-protocols/translating-your-protocol.en.mdx` would benefit from the
+  **Languages** tab (the **Protocol languages** list and **Missing
+  translations**), the **Add languages** and **Identify language** dialogs, a
+  stage editor showing the language menu and a missing-translation note, and
+  a **Summary** tab stage listing a text in every language.
+- `design-protocols/preview-mode.en.mdx` would benefit from the **Preview
+  language** menu above a preview.
+- The Language Chooser interface page uses the interface image already listed
+  in the interface manifest; it needs no extra capture.
+
 ## Using Interviewer (Interviewer screenshots)
 
 Source: `docs/collect-data/interviewer/using-interviewer.en.mdx`

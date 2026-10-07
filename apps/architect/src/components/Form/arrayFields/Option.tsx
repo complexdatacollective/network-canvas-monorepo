@@ -9,6 +9,7 @@ import {
   useState,
   type ComponentType,
 } from 'react';
+import { useSelector } from 'react-redux';
 
 import { commonMessages } from '@codaco/app-i18n/common';
 import { defineMessages } from '@codaco/app-i18n/messages';
@@ -21,14 +22,20 @@ import {
 } from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import OptionLabelField from '@codaco/protocol-builder/fields/OptionLabelField';
-import type { VariableOptions } from '@codaco/protocol-validation';
+import type { LocaleTag, VariableOptions } from '@codaco/protocol-validation';
 import { toCanonicalText } from '@codaco/shared-consts';
 import {
   isOptionComplete,
   isOptionLabelEmpty,
   isOptionValueEmpty,
 } from '~/components/Options/optionCompleteness';
+import { getLocalization } from '~/selectors/protocol';
 import { cx } from '~/utils/cva';
+import {
+  localizedText,
+  translationText,
+  withTranslation,
+} from '~/utils/localizedText';
 
 import RowField from './RowField';
 // Punctuation only, separating two unchanged researcher-authored values.
@@ -131,6 +138,13 @@ export type OptionsContextValue = {
   arrayName: string;
   /** The whole array, for cross-row validators. */
   allValues: Record<string, unknown>;
+  /**
+   * The whole array with each label as its plain text in `labelLocale`, for
+   * the label cells' cross-row validators.
+   */
+  labelValues: Record<string, unknown>;
+  /** The translation the label cells edit: the protocol's default language. */
+  labelLocale: LocaleTag;
   /** The array field itself is reporting an error (minTwoOptions et al). */
   showArrayError: boolean;
 };
@@ -162,7 +176,9 @@ const Option = ({
   readOnly,
 }: ArrayFieldItemProps<OptionValue>) => {
   const intl = useAppIntl();
-  const { arrayName, allValues, showArrayError } = useOptionsContext();
+  const { arrayName, allValues, labelValues, labelLocale, showArrayError } =
+    useOptionsContext();
+  const localization = useSelector(getLocalization);
   const { confirm } = useDialog();
   const interactionDisabled = disabled || readOnly;
   const rowFieldName = `${arrayName}[${committedIndex ?? index}]`;
@@ -179,7 +195,9 @@ const Option = ({
   const hasAutoOpenedRef = useRef(false);
   useEffect(() => {
     if (hasAutoOpenedRef.current || isBeingEdited) return;
-    if (item.label || !isOptionValueEmpty(item.value)) return;
+    if (!isOptionLabelEmpty(item.label) || !isOptionValueEmpty(item.value)) {
+      return;
+    }
     hasAutoOpenedRef.current = true;
     onEdit?.();
   }, [isBeingEdited, item.label, item.value, onEdit]);
@@ -238,7 +256,7 @@ const Option = ({
         <div className="min-w-0 flex-1 truncate">
           <span className={!hasLabel ? 'text-current/50 italic' : undefined}>
             {hasLabel
-              ? item.label
+              ? localizedText(item.label, localization)
               : intl.formatMessage(messages.untitledOption)}
           </span>
           {/* Decorative separation of authored label and value. */}
@@ -316,7 +334,7 @@ const Option = ({
         label={intl.formatMessage(messages.label)}
         component={OptionLabelControl}
         placeholder={intl.formatMessage(messages.enterALabel)}
-        value={typeof item.label === 'string' ? item.label : ''}
+        value={translationText(item.label, labelLocale)}
         onChange={(value: unknown) => {
           // Canonical, escaped and held to one line already: the package's
           // `OptionLabelField` owns all three for every surface that authors an
@@ -325,11 +343,15 @@ const Option = ({
           // the stage and adding a draft timeline entry, merely by opening a
           // row.
           onUpdate?.({
-            label: typeof value === 'string' ? value : '',
-          } as Partial<OptionValue>);
+            label: withTranslation(
+              item.label,
+              labelLocale,
+              typeof value === 'string' ? value : '',
+            ),
+          });
         }}
         validation={{ required: true, uniqueArrayAttribute: true }}
-        allValues={allValues}
+        allValues={labelValues}
         forceShowErrors={forceShowErrors}
         disabled={interactionDisabled}
       />

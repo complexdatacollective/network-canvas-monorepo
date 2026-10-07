@@ -7,6 +7,7 @@ import SuperJSON from 'superjson';
 import Spinner from '@codaco/fresco-ui/Spinner';
 import { type ActivityType } from '~/app/dashboard/_components/ActivityFeed/types';
 import type { ActivityLocalization } from '~/i18n/activityDetails';
+import { getRequestedLocales } from '~/i18n/server';
 import { getAdmittedSession } from '~/lib/auth/guards';
 import { safeRevalidateTag } from '~/lib/cache';
 import { prisma } from '~/lib/db';
@@ -132,6 +133,9 @@ async function InterviewContent({
   // Use the same helper as the rest of the app, so a DISABLE_ANALYTICS
   // environment override also opts the interview runtime out of telemetry.
   const disableAnalytics = (await getDisableAnalytics()) ?? false;
+  // Negotiated from the request rather than in the browser so the server
+  // render and hydration choose the same protocol language.
+  const requestedLocales = await getRequestedLocales();
 
   return (
     <InterviewClient
@@ -139,6 +143,7 @@ async function InterviewContent({
       assetUrls={assetUrls}
       initialStep={initialStep}
       initialSyncRevision={initialSyncRevision}
+      requestedLocales={requestedLocales}
       installationId={installationId}
       disableAnalytics={disableAnalytics}
     />

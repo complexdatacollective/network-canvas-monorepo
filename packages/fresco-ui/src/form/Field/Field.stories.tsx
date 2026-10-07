@@ -73,7 +73,7 @@ const meta: Meta = {
       description:
         'Label text rendered above (or beside when inline) the control',
       table: {
-        type: { summary: 'string' },
+        type: { summary: 'ReactNode | PresentationalText' },
         category: 'Field Props',
       },
     },
@@ -82,7 +82,7 @@ const meta: Meta = {
       description:
         'Supplementary text rendered below the label (or below the label group when inline)',
       table: {
-        type: { summary: 'ReactNode' },
+        type: { summary: 'ReactNode | PresentationalText' },
         category: 'Field Props',
       },
     },
@@ -465,6 +465,56 @@ export const UsingMarkdown: Story = {
           'Field labels and hints are rendered with ReactMarkdown, supporting `*italic*` and `**bold**`. This story demonstrates markdown rendering in both.',
       },
     },
+  },
+};
+
+/**
+ * Protocol copy arrives as `PresentationalText`. The `<label>` carries the
+ * label text's own `lang` and `dir`, and the hint is wrapped in an element
+ * carrying the hint's, so each is pronounced and laid out in its own
+ * language — here an Arabic label laid out right-to-left over a Spanish hint
+ * in a left-to-right page. Markdown still renders inside both.
+ */
+export const LocalizedLabelAndHint: Story = {
+  render: () => (
+    <div className="flex max-w-lg flex-col">
+      <UnconnectedField
+        name="localized-nickname"
+        label={{ text: 'ما **لقبك**؟', lang: 'ar', dir: 'rtl' }}
+        hint={{
+          text: 'El nombre que *usas* a diario.',
+          lang: 'es',
+          dir: 'ltr',
+        }}
+        component={InputField}
+      />
+      <UnconnectedField
+        name="plain-nickname"
+        label="What is your nickname?"
+        hint="A plain string keeps the page's language."
+        component={InputField}
+      />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    const input = canvas.getByRole('textbox', { name: 'ما لقبك؟' });
+    await expect(input).toBeInTheDocument();
+    const label = canvas.getByText('لقبك').closest('label');
+    await expect(label).toHaveAttribute('lang', 'ar');
+    await expect(label).toHaveAttribute('dir', 'rtl');
+    await expect(getComputedStyle(canvas.getByText('لقبك')).direction).toBe(
+      'rtl',
+    );
+
+    const hintEmphasis = canvas.getByText('usas');
+    await expect(hintEmphasis.tagName).toBe('EM');
+    await expect(hintEmphasis.closest('[lang]')).toHaveAttribute('lang', 'es');
+
+    await expect(
+      canvas.getByText('What is your nickname?').closest('[lang]'),
+    ).toBe(document.documentElement);
   },
 };
 

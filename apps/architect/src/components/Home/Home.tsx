@@ -166,7 +166,10 @@ const Home = () => {
     [],
   );
   const handleCreate = useCallback(
-    (values: { name: string; description?: string }) => {
+    (values: {
+      name: string;
+      localization: CurrentProtocol['localization'];
+    }) => {
       setShowNewDialog(false);
       void runAction(async () => {
         await dispatch(createNetcanvas(values));
@@ -319,6 +322,7 @@ const Home = () => {
       <NewProtocolDialog
         open={showNewDialog}
         onOpenChange={setShowNewDialog}
+        chooseLanguages
         onSubmit={handleCreate}
       />
       <NewProtocolDialog

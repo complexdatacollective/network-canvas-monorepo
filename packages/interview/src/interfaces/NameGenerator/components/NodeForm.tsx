@@ -34,6 +34,7 @@ import useProtocolForm from '../../../forms/useProtocolForm';
 import { useCelebrate } from '../../../hooks/useCelebrate';
 import { useStageSelector } from '../../../hooks/useStageSelector';
 import { runtimeMessages } from '../../../i18n/runtimeMessages';
+import { LocalizedText } from '../../../localization/LocalizedText';
 import { getNodeIconName } from '../../../selectors/name-generator';
 import { getPromptAdditionalAttributes } from '../../../selectors/session';
 import type { AttributePatch } from '../../../store/entityAttributePatch';
@@ -226,7 +227,7 @@ const NodeForm = (props: NodeFormProps) => {
       </AnimatePresence>
       <Dialog
         open={show}
-        title={form.title}
+        title={<LocalizedText value={form.title} render={<span />} />}
         closeDialog={handleClose}
         footer={
           <Button

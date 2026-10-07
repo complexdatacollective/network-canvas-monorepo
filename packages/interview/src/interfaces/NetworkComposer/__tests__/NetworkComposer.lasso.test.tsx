@@ -11,6 +11,7 @@ import { type ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
+import { asEntityAttributeReference } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -25,6 +26,7 @@ import protocol from '../../../store/modules/protocol';
 import session from '../../../store/modules/session';
 import ui from '../../../store/modules/ui';
 import type { RegisterBeforeNext, StageProps } from '../../../types';
+import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
 import NetworkComposer from '../NetworkComposer';
 
 beforeAll(() => {
@@ -53,12 +55,17 @@ const GROUP_VAR = 'var-group';
 const stage = {
   id: 'nc1',
   type: 'NetworkComposer' as const,
-  label: 'Network Composer',
+  label: { en: 'Network Composer' },
   subject: { entity: 'node' as const, type: NODE_TYPE },
-  layoutVariable: LAYOUT_VAR,
-  quickAdd: QUICK_ADD_VAR,
-  edges: [{ subject: { entity: 'edge' as const, type: EDGE_TYPE } }],
-  convexHullVariable: GROUP_VAR,
+  layoutVariable: asEntityAttributeReference(LAYOUT_VAR),
+  quickAdd: asEntityAttributeReference(QUICK_ADD_VAR),
+  edges: [
+    {
+      id: 'edge-config',
+      subject: { entity: 'edge' as const, type: EDGE_TYPE },
+    },
+  ],
+  convexHullVariable: asEntityAttributeReference(GROUP_VAR),
   background: {
     concentricCircles: 4,
     skewedTowardCenter: true,
@@ -74,17 +81,23 @@ const codebook = {
   node: {
     [NODE_TYPE]: {
       name: 'Person',
+      label: { en: 'Person' },
       color: 'node-color-seq-1',
       shape: { default: 'circle' as const },
       variables: {
-        [QUICK_ADD_VAR]: { name: 'name', type: 'text' },
-        [LAYOUT_VAR]: { name: 'position', type: 'layout' },
+        [QUICK_ADD_VAR]: { name: 'name', label: 'Name', type: 'text' },
+        [LAYOUT_VAR]: {
+          name: 'position',
+          label: 'Position',
+          type: 'layout',
+        },
         [GROUP_VAR]: {
           name: 'Team',
+          label: 'Team',
           type: 'categorical',
           options: [
-            { value: 'red', label: 'Team Red' },
-            { value: 'blue', label: 'Team Blue' },
+            { value: 'red', label: { en: 'Team Red' } },
+            { value: 'blue', label: { en: 'Team Blue' } },
           ],
         },
       },
@@ -93,6 +106,7 @@ const codebook = {
   edge: {
     [EDGE_TYPE]: {
       name: 'Knows',
+      label: { en: 'Knows' },
       color: 'edge-color-seq-1',
       variables: {},
     },
@@ -159,6 +173,7 @@ function makeStore(
         id: 'p',
         hash: 'h',
         schemaVersion: 9,
+        localization: { defaultLocale: 'en', locales: ['en'] },
         codebook,
         stages: [stageDef],
       } as never,
@@ -191,7 +206,7 @@ function renderInterface(
         >
           <CurrentStepProvider currentStep={0} onStepChange={() => undefined}>
             <StageMetadataContext.Provider value={registerBeforeNext}>
-              {children}
+              <TestProtocolLocalization>{children}</TestProtocolLocalization>
             </StageMetadataContext.Provider>
           </CurrentStepProvider>
         </ContractProvider>

@@ -138,6 +138,7 @@ const rosterCodebook: Codebook = {
   node: {
     person: {
       name: 'Person',
+      label: { en: 'Person' },
       color: 'node-color-seq-1',
       shape: { default: 'circle' },
       variables: {},

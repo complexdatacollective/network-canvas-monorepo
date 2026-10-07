@@ -7,6 +7,11 @@ import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 
 import Button from '../../Button';
+import {
+  type PresentationalText,
+  presentationalTextProps,
+  presentationalTextValue,
+} from '../../PresentationalText';
 import { RenderMarkdown } from '../../RenderMarkdown';
 import {
   controlVariants,
@@ -40,7 +45,7 @@ const messages = defineMessages({
 });
 
 type BooleanOption = {
-  label: string;
+  label: PresentationalText;
   value: boolean;
   negative?: boolean;
 };
@@ -126,7 +131,7 @@ type BooleanFieldProps = CreateFormFieldProps<
   'fieldset',
   {
     noReset?: boolean;
-    label?: string;
+    label?: PresentationalText;
     options?: BooleanOption[];
   }
 >;
@@ -243,13 +248,21 @@ export default function BooleanField(props: BooleanFieldProps) {
         // a content-sized container to zero width).
         className="flex w-full flex-row flex-wrap items-stretch gap-2 border-0 p-0 *:min-w-0 *:grow"
         disabled={disabled}
-        aria-label={label ?? rest['aria-label']}
+        aria-label={
+          label === undefined
+            ? rest['aria-label']
+            : presentationalTextValue(label)
+        }
         aria-labelledby={rest['aria-labelledby']}
         aria-invalid={rest['aria-invalid'] ?? undefined}
         aria-readonly={readOnly || undefined}
         data-readonly={readOnly ? 'true' : undefined}
       >
-        {label && <legend className="sr-only">{label}</legend>}
+        {label && (
+          <legend className="sr-only" {...presentationalTextProps(label)}>
+            {presentationalTextValue(label)}
+          </legend>
+        )}
         {options.map((option, index) => {
           const isSelected = value === option.value;
           const optionState = disabled
@@ -297,8 +310,11 @@ export default function BooleanField(props: BooleanFieldProps) {
               />
               <span
                 className={headingVariants({ level: 'label', margin: 'none' })}
+                {...presentationalTextProps(option.label)}
               >
-                <RenderMarkdown>{option.label}</RenderMarkdown>
+                <RenderMarkdown>
+                  {presentationalTextValue(option.label)}
+                </RenderMarkdown>
               </span>
             </motion.button>
           );

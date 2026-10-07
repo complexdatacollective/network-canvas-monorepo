@@ -80,7 +80,9 @@ and unnamed-attribute labels reactive without duplicating their translations.
 Mount `AppI18nProvider` with the active locale, supported registry, and merged
 messages. Its `onLocaleChange` callback delegates persistence to the host;
 `null` means automatic negotiation. `resolveAppLocale` handles canonicalization,
-best-fit browser matching, and the explicit English fallback. Chinese requests
+best-fit browser matching, and the explicit English fallback. Browser
+preferences are matched one at a time, in order, so the first preference with
+an acceptable fit wins: `es-MX, en` selects Spanish when `es` is declared. Chinese requests
 are matched by script, so `zh-TW`, `zh-HK` and `zh-MO` select `zh-Hant` and
 `zh`, `zh-CN` and `zh-SG` select `zh-Hans`, even when a generic `zh` follows a
 regional tag in the browser list. HTTP hosts can obtain ordered requested tags
@@ -100,10 +102,11 @@ server formatter and client provider for deterministic date/time hydration.
 ## Vite builds
 
 Place `appI18n()` from `@codaco/app-i18n/vite` before the framework plugin. It
-compiles source defaults and imported locale catalogs to ICU AST and removes
-the runtime parser in production application builds. A published package that
-owns descriptors/catalogs uses `appI18n({ build: 'library' })` to compile them
-while leaving parser selection to its consumers.
+compiles source defaults and imported locale catalogs to ICU AST. The ICU
+parser stays in every bundle, because protocol strings are ICU messages that
+`@codaco/protocol-validation` and the interview runtime parse at run time. A
+published package that owns descriptors/catalogs uses the same `appI18n()` in
+its library build so its messages reach consumers already compiled.
 
 ## Next.js with Turbopack
 
@@ -128,14 +131,6 @@ const nextConfig: NextConfig = {
         as: '*.js',
       },
     },
-    resolveAlias: {
-      ...(process.env.NODE_ENV === 'production'
-        ? {
-            '@formatjs/icu-messageformat-parser':
-              '@formatjs/icu-messageformat-parser/no-parser.js',
-          }
-        : {}),
-    },
   },
 };
 
@@ -145,8 +140,8 @@ export default nextConfig;
 Workspace packages export source, so the rules also compile their descriptors
 and catalogs. Published packages export precompiled `dist` artifacts and must
 compile their own messages during their library build. A non-catalog JSON file
-remains ordinary data. Do not alias away the runtime parser unless every source
-default and runtime catalog is compiled.
+remains ordinary data. Do not alias away the runtime parser: protocol strings
+are parsed at run time.
 
 ## Validation and generation guidance
 

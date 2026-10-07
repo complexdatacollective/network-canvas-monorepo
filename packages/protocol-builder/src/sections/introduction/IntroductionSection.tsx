@@ -1,9 +1,12 @@
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
-import InputField from '@codaco/fresco-ui/form/fields/InputField';
 
-import RichTextField from '../../fields/RichTextField.tsx';
+import { localizedMaxLength } from '../../fields/localizedMaxLength.ts';
+import {
+  LocalizedInputField,
+  LocalizedRichTextField,
+} from '../../fields/LocalizedStringField.tsx';
 import { REQUIRED } from '../../form/requiredField.ts';
 import BuilderSection from '../BuilderSection.tsx';
 
@@ -17,7 +20,7 @@ const TEXT_FIELD = 'introductionPanel.text';
  */
 const TITLE_LIMIT = 50;
 
-const messages = defineMessages({
+export const introductionMessages = defineMessages({
   title: {
     id: 'protocolBuilder.introduction.title',
     defaultMessage: 'Task introduction',
@@ -63,20 +66,20 @@ export default function IntroductionSection() {
 
   return (
     <BuilderSection
-      title={intl.formatMessage(messages.title)}
-      description={intl.formatMessage(messages.description)}
+      title={intl.formatMessage(introductionMessages.title)}
+      description={intl.formatMessage(introductionMessages.description)}
     >
-      <Field<typeof InputField>
+      <Field<typeof LocalizedInputField>
         name={TITLE_FIELD}
-        component={InputField}
-        label={intl.formatMessage(messages.headingLabel)}
+        component={LocalizedInputField}
+        label={intl.formatMessage(introductionMessages.headingLabel)}
         required={REQUIRED}
-        maxLength={TITLE_LIMIT}
+        custom={localizedMaxLength(TITLE_LIMIT, intl)}
       />
-      <Field<typeof RichTextField>
+      <Field<typeof LocalizedRichTextField>
         name={TEXT_FIELD}
-        component={RichTextField}
-        label={intl.formatMessage(messages.textLabel)}
+        component={LocalizedRichTextField}
+        label={intl.formatMessage(introductionMessages.textLabel)}
         required={REQUIRED}
       />
     </BuilderSection>

@@ -159,7 +159,11 @@ type MigratorOptions = {
 };
 
 export class ProtocolMigrator {
-  private cache = new Map<string, VersionedProtocol>();
+  // One caller key can be migrated to several versions; each result is kept.
+  private cache = new Map<
+    string,
+    Map<ValidatedSchemaVersion, VersionedProtocol>
+  >();
 
   migrate(
     document: unknown,
@@ -181,15 +185,20 @@ export class ProtocolMigrator {
       dependencies,
     } = options;
 
-    // A cached result is only the answer for the version it was migrated to.
     const cached =
-      cacheKey === undefined ? undefined : this.cache.get(cacheKey);
-    if (cached?.schemaVersion === targetVersion) return cached;
+      cacheKey === undefined
+        ? undefined
+        : this.cache.get(cacheKey)?.get(targetVersion);
+    if (cached) return cached;
 
     const migrated = migrateProtocol(document, targetVersion, dependencies);
 
     if (cacheKey) {
-      this.cache.set(cacheKey, migrated);
+      const variants =
+        this.cache.get(cacheKey) ??
+        new Map<ValidatedSchemaVersion, VersionedProtocol>();
+      variants.set(targetVersion, migrated);
+      this.cache.set(cacheKey, variants);
     }
 
     return migrated;

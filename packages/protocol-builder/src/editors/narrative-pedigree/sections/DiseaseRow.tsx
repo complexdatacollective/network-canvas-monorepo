@@ -10,7 +10,6 @@ import Field from '@codaco/fresco-ui/form/Field/Field';
 import ColorPickerField, {
   resolveSwatchColor,
 } from '@codaco/fresco-ui/form/fields/ColorPicker';
-import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import {
   INHERITANCE_PATTERNS,
@@ -18,12 +17,15 @@ import {
   NodeColorSequence,
 } from '@codaco/protocol-validation';
 
+import { LocalizedInputField } from '../../../fields/LocalizedStringField.tsx';
 import VariablePickerField from '../../../fields/VariablePickerField.tsx';
 import type {
   RowEditorProps,
   RowPreviewProps,
 } from '../../../form/rowDialog.tsx';
 import { useStageValue } from '../../../form/stageFormHooks.ts';
+import { asLocalizedString } from '../../../localization/localizedText.ts';
+import { useLocalizedText } from '../../../localization/ProtocolLocalization.tsx';
 import type { CodebookSubject } from '../../../protocol-context.ts';
 import { useProtocolContext } from '../../../state/protocolContext.ts';
 import {
@@ -186,15 +188,15 @@ export function DiseaseEditor({ item, editIndex }: RowEditorProps) {
   // here would only say it again.
   return (
     <>
-      <Field<typeof InputField>
+      <Field<typeof LocalizedInputField>
         name={LABEL_FIELD}
-        component={InputField}
+        component={LocalizedInputField}
         label={intl.formatMessage(narrativePedigreeMessages.diseaseNameLabel)}
         hint={intl.formatMessage(narrativePedigreeMessages.diseaseNameHint)}
         placeholder={intl.formatMessage(
           narrativePedigreeMessages.diseaseNamePlaceholder,
         )}
-        initialValue={asString(item.label)}
+        initialValue={asLocalizedString(item.label)}
         required={intl.formatMessage(
           narrativePedigreeMessages.diseaseNameRequired,
         )}
@@ -268,6 +270,8 @@ export function DiseaseEditor({ item, editIndex }: RowEditorProps) {
  */
 export function DiseasePreview({ item }: RowPreviewProps) {
   const intl = useAppIntl();
+  const localize = useLocalizedText();
+  const label = localize(item.label);
   const protocolContext = useProtocolContext();
   const { roleMap, slotMap } = useDiseaseVariableIndexes();
   const subject = useDiseaseSubject();
@@ -304,10 +308,15 @@ export function DiseasePreview({ item }: RowPreviewProps) {
             aria-hidden="true"
           />
         )}
-        <span>
-          {asString(item.label) ??
-            intl.formatMessage(narrativePedigreeMessages.diseaseUnnamed)}
-        </span>
+        {label.text === '' ? (
+          <span>
+            {intl.formatMessage(narrativePedigreeMessages.diseaseUnnamed)}
+          </span>
+        ) : (
+          <span lang={label.lang} dir={label.dir}>
+            {label.text}
+          </span>
+        )}
         {marksNobody && (
           <Badge tone="destructive">
             {intl.formatMessage(narrativePedigreeMessages.diseaseMarksNobody)}

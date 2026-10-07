@@ -3,6 +3,10 @@ import { motion } from 'motion/react';
 import { memo, useMemo, useRef } from 'react';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
+import {
+  presentationalTextProps,
+  presentationalTextValue,
+} from '@codaco/fresco-ui/PresentationalText';
 import { getMarkdownLabelText } from '@codaco/fresco-ui/RenderMarkdown';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import type { SortOrder, Stage } from '@codaco/protocol-validation';
@@ -91,9 +95,10 @@ const OrdinalBinItem = memo((props: OrdinalBinItemProps) => {
   const headerRef = useRef<HTMLDivElement>(null);
   // The label's text, not its markdown source: a screen reader should not read
   // the asterisks around an emphasised word.
+  const labelText = presentationalTextValue(bin.label);
   const spokenLabel = useMemo(
-    () => getMarkdownLabelText(bin.label),
-    [bin.label],
+    () => getMarkdownLabelText(labelText),
+    [labelText],
   );
 
   const missingValue = isMissingValue(bin.value);
@@ -188,8 +193,12 @@ const OrdinalBinItem = memo((props: OrdinalBinItemProps) => {
         } as React.CSSProperties
       }
     >
-      <div ref={headerRef} className={accentClasses}>
-        <BinLabel label={bin.label} variant="header" containerRef={headerRef} />
+      <div
+        ref={headerRef}
+        className={accentClasses}
+        {...presentationalTextProps(bin.label)}
+      >
+        <BinLabel label={labelText} variant="header" containerRef={headerRef} />
       </div>
       <NodeList
         id={listId}

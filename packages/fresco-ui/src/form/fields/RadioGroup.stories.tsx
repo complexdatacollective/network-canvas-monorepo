@@ -271,3 +271,39 @@ export const UnrestrictedOptionValues: Story = {
     }
   },
 };
+
+/**
+ * Protocol copy arrives as `PresentationalText`: each label still renders as
+ * Markdown, on an element carrying the text's own `lang` and `dir`, so an
+ * Arabic option lays out right-to-left inside a left-to-right page. A plain
+ * string label keeps the page's language.
+ */
+export const LocalizedLabels: Story = {
+  args: {
+    'name': 'localized',
+    'aria-label': 'Relationship',
+    'options': [
+      { value: 'friend', label: { text: '**صديق**', lang: 'ar', dir: 'rtl' } },
+      { value: 'family', label: { text: 'عائلة', lang: 'ar', dir: 'rtl' } },
+      { value: 'work', label: { text: 'Compañero', lang: 'es', dir: 'ltr' } },
+      { value: 'other', label: 'Other' },
+    ],
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    const friend = canvas.getByText('صديق');
+    await expect(friend.tagName).toBe('STRONG');
+    await expect(friend.closest('[lang]')).toHaveAttribute('lang', 'ar');
+    await expect(getComputedStyle(friend).direction).toBe('rtl');
+    await expect(
+      canvas.getByText('Compañero').closest('[lang]'),
+    ).toHaveAttribute('lang', 'es');
+    await expect(canvas.getByText('Other').closest('[lang]')).toBe(
+      document.documentElement,
+    );
+
+    await userEvent.click(canvas.getByText('عائلة'));
+    await expect(canvas.getByRole('radio', { name: 'عائلة' })).toBeChecked();
+  },
+};

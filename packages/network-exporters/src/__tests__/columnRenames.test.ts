@@ -28,24 +28,34 @@ const options: ExportOptions = {
 const codebook: Codebook = {
   ego: {
     variables: {
-      'ego-case': { name: 'networkCanvasCaseID', type: 'text' },
+      'ego-case': {
+        name: 'networkCanvasCaseID',
+        label: 'Network canvas case ID',
+        type: 'text',
+      },
     },
   },
   node: {
     person: {
       name: 'Person',
+      label: { en: 'Person' },
       color: 'node-color-seq-1',
       shape: { default: 'circle' },
       variables: {
-        'p-id': { name: 'nodeID', type: 'text' },
-        'p-label': { name: 'label', type: 'text' },
-        'p-red': { name: 'Colour_red', type: 'text' },
+        'p-id': { name: 'nodeID', label: 'Node ID', type: 'text' },
+        'p-label': { name: 'label', label: 'Label', type: 'text' },
+        'p-red': {
+          name: 'Colour_red',
+          label: 'Colour red',
+          type: 'text',
+        },
         'p-colour': {
           name: 'Colour',
+          label: 'Colour',
           type: 'categorical',
           options: [
-            { label: 'Red', value: 'red' },
-            { label: 'Blue', value: 'blue' },
+            { label: { en: 'Red' }, value: 'red' },
+            { label: { en: 'Blue' }, value: 'blue' },
           ],
         },
       },
@@ -54,8 +64,11 @@ const codebook: Codebook = {
   edge: {
     knows: {
       name: 'Knows',
+      label: { en: 'Knows' },
       color: 'edge-color-seq-1',
-      variables: { 'k-from': { name: 'from', type: 'text' } },
+      variables: {
+        'k-from': { name: 'from', label: 'From', type: 'text' },
+      },
     },
   },
 };
@@ -66,6 +79,7 @@ const interview = (id: string, suffix: string): InterviewExportInput => ({
   startTime: new Date('2025-01-01'),
   finishTime: new Date('2025-01-02'),
   protocolHash: 'protocol-1',
+  locale: null,
   network: {
     nodes: [
       {

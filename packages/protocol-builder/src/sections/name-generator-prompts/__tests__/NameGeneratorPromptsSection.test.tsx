@@ -38,6 +38,8 @@ vi.mock('../../../fields/RichTextField.tsx', () => ({
 
 const prompts = <NameGeneratorPromptsSection />;
 
+const en = (text: string) => ({ 'en-US': text });
+
 type Harness = ReturnType<typeof renderStageEditor>;
 
 /**
@@ -126,6 +128,7 @@ const searchBox = (window: HTMLElement): HTMLElement =>
 
 const personDefinition = (variables: Record<string, unknown>) => ({
   name: 'person',
+  label: en('person'),
   color: 'node-color-seq-1',
   icon: 'add-a-person',
   shape: { default: 'circle' },
@@ -165,7 +168,7 @@ describe("a name generator's prompts", () => {
     const rows = request?.stageDocument.prompts;
     expect(Array.isArray(rows) && rows.at(-1)).toEqual({
       id: expect.any(String) as unknown as string,
-      text: 'And who else?',
+      text: en('And who else?'),
     });
   });
 
@@ -258,13 +261,23 @@ describe("a name generator's prompts", () => {
     harness.receiveCodebookUpdate({
       node: {
         person: personDefinition({
-          name: { name: 'name', type: 'text', component: 'Text' },
+          name: {
+            name: 'name',
+            label: 'name',
+            type: 'text',
+            component: 'Text',
+          },
           highlighted: {
             name: 'highlighted',
+            label: 'highlighted',
             type: 'boolean',
             component: 'Boolean',
           },
-          contacted: { name: 'contacted', type: 'boolean' },
+          contacted: {
+            name: 'contacted',
+            label: 'contacted',
+            type: 'boolean',
+          },
         }),
       },
     });

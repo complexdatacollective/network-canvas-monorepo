@@ -6,15 +6,20 @@ import { isEqual, omit } from 'es-toolkit';
 import { ensureError } from '@codaco/shared-consts';
 
 import type {
-  SessionPayload,
+  SessionSnapshot,
   SyncHandler,
   SyncOptions,
 } from '../../contract/types';
 
-type SyncMiddlewareState = { session: SessionPayload };
+type SyncMiddlewareState = { session: SessionSnapshot };
 
-const sessionChanged = (a: SessionPayload, b: SessionPayload) =>
-  !isEqual(omit(a, ['promptIndex']), omit(b, ['promptIndex']));
+// The locale fields are persisted through `ProtocolLocaleChangeHandler`
+// (see `localeChangeMiddleware`), so a change to them alone is not a write for
+// this route.
+const NOT_SYNCED = ['promptIndex', 'locale', 'localePreference'] as const;
+
+const sessionChanged = (a: SessionSnapshot, b: SessionSnapshot) =>
+  !isEqual(omit(a, NOT_SYNCED), omit(b, NOT_SYNCED));
 
 // How many times `flush` will write again when the session keeps moving under
 // it. Bounded because the caller is entitled to proceed: someone answering
@@ -52,7 +57,7 @@ export const createSyncMiddleware = ({
   middleware: Middleware<Record<string, never>, SyncMiddlewareState>;
   flush: (options?: { unloading?: boolean }) => Promise<void>;
 } => {
-  let lastSyncedState = {} as SessionPayload;
+  let lastSyncedState = {} as SessionSnapshot;
   let storeRef: { getState: () => SyncMiddlewareState } | null = null;
   // Several offers can be outstanding at once, and a host that coalesces them
   // resolves them together. An earlier one must not then report its older
@@ -64,7 +69,7 @@ export const createSyncMiddleware = ({
   // `lastSyncedState`, which is the newest one known to be durable — the gap
   // between them is what stops a completing write from re-offering state some
   // other write already has in hand.
-  let lastOfferedState = {} as SessionPayload;
+  let lastOfferedState = {} as SessionSnapshot;
 
   // Being durable is not enough on its own to skip a write: a write already on
   // the wire may be carrying something else, and when it lands it overwrites
@@ -73,7 +78,7 @@ export const createSyncMiddleware = ({
   // what is stored and is about to stop equalling it. So there is work to do
   // whenever the live session differs from what is durable OR from what was
   // last handed to the host.
-  const needsWrite = (session: SessionPayload) =>
+  const needsWrite = (session: SessionSnapshot) =>
     sessionChanged(session, lastSyncedState) ||
     sessionChanged(session, lastOfferedState);
 

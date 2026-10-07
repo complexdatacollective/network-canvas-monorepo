@@ -1,10 +1,14 @@
 {
   "id": "id-1",
-  "label": "Quickly Add Friends",
+  "label": {
+    "en": "Quickly Add Friends"
+  },
   "prompts": [
     {
       "id": "id-2",
-      "text": "Name someone you know"
+      "text": {
+        "en": "Name someone you know"
+      }
     }
   ],
   "quickAdd": "id-3",

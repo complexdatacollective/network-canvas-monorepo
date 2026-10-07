@@ -30,13 +30,15 @@ const nameGeneratorWith = (panels: SectionDoc[]) => ({
   id: 'name-generator-with-panels',
   type: 'NameGenerator' as const,
   fields: {
-    label: 'Name Generator',
+    label: { 'en-US': 'Name Generator' },
     subject: { entity: 'node', type: 'person' },
     form: {
-      title: 'Add a person',
+      title: { 'en-US': 'Add a person' },
       fields: [{ variable: 'name', prompt: "What is this person's name?" }],
     },
-    prompts: [{ id: 'prompt-1', text: 'Who are the people you know?' }],
+    prompts: [
+      { id: 'prompt-1', text: { 'en-US': 'Who are the people you know?' } },
+    ],
     panels,
   },
 });
@@ -66,12 +68,12 @@ describe('the name-generator sections, read in Spanish', () => {
         id: 'name-generator-with-stamps',
         type: 'NameGenerator',
         fields: {
-          label: 'Name Generator',
+          label: { 'en-US': 'Name Generator' },
           subject: { entity: 'node', type: 'person' },
           prompts: [
             {
               id: 'prompt-1',
-              text: 'Who are the people you know?',
+              text: { 'en-US': 'Who are the people you know?' },
               additionalAttributes: [{ variable: 'closeFriend', value: true }],
             },
           ],
@@ -102,7 +104,7 @@ describe('the name-generator sections, read in Spanish', () => {
       stage: nameGeneratorWith([
         {
           id: 'panel-1',
-          title: 'People you named earlier',
+          title: { 'en-US': 'People you named earlier' },
           dataSource: 'existing',
           filter: {
             join: 'AND',

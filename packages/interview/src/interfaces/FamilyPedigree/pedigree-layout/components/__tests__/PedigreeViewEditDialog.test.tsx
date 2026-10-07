@@ -27,6 +27,7 @@ import { entityAttributesProperty } from '@codaco/shared-consts';
 import type { NcNode } from '@codaco/shared-consts';
 
 import { InterviewI18nProvider } from '../../../../../i18n/InterviewI18nProvider';
+import { TestProtocolLocalization } from '../../../../__tests__/TestProtocolLocalization';
 import { FamilyPedigreeContext } from '../../../FamilyPedigreeContext';
 import { createFamilyPedigreeStore, type VariableConfig } from '../../../store';
 
@@ -99,10 +100,12 @@ const fixtures = vi.hoisted(() => {
     node: {
       person: {
         name: 'Person',
+        label: { en: 'Person' },
         color: 'node-color-seq-1',
         variables: {
           label: {
             name: 'label',
+            label: 'Label',
             type: 'text' as const,
             component: 'Text' as const,
             validation: { unique: true },
@@ -280,11 +283,13 @@ function renderPedigree() {
     // way Shell.tsx mounts them.
     <Provider store={reduxStore}>
       <InterviewI18nProvider requestedLocale={locale}>
-        <DialogProvider>
-          <FamilyPedigreeContext.Provider value={pedigreeStore}>
-            <PedigreeView />
-          </FamilyPedigreeContext.Provider>
-        </DialogProvider>
+        <TestProtocolLocalization>
+          <DialogProvider>
+            <FamilyPedigreeContext.Provider value={pedigreeStore}>
+              <PedigreeView />
+            </FamilyPedigreeContext.Provider>
+          </DialogProvider>
+        </TestProtocolLocalization>
       </InterviewI18nProvider>
     </Provider>
   );

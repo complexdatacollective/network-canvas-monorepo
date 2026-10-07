@@ -23,6 +23,7 @@ const INTERFACE_DOCUMENTATION_SLUGS: Record<StageType, string> = {
   FamilyPedigree: 'family-pedigree',
   Geospatial: 'geospatial',
   Information: 'information',
+  LanguageChooser: 'language-chooser',
   NameGenerator: 'name-generator-using-forms',
   NameGeneratorQuickAdd: 'name-generator-using-quick-add',
   NameGeneratorRoster: 'name-generator-roster',

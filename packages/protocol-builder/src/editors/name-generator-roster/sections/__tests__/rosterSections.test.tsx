@@ -18,9 +18,11 @@ const rosterWith = (fields: SectionDoc) => ({
   id: 'roster-under-test',
   type: 'NameGeneratorRoster' as const,
   fields: {
-    label: 'Name Generator Roster',
+    label: { 'en-US': 'Name Generator Roster' },
     subject: { entity: 'node', type: 'person' },
-    prompts: [{ id: 'prompt-1', text: 'Select people from the roster' }],
+    prompts: [
+      { id: 'prompt-1', text: { 'en-US': 'Select people from the roster' } },
+    ],
     ...fields,
   },
 });
@@ -101,11 +103,15 @@ const rosterNamingALostColumn = () =>
   rosterWith({
     dataSource: 'roster_data',
     cardOptions: {
-      additionalProperties: [{ variable: 'nickname', label: 'Nickname' }],
+      additionalProperties: [
+        { variable: 'nickname', label: { 'en-US': 'Nickname' } },
+      ],
     },
     sortOptions: {
       sortOrder: [{ property: 'nickname', direction: 'asc' }],
-      sortableProperties: [{ variable: 'nickname', label: 'Nickname' }],
+      sortableProperties: [
+        { variable: 'nickname', label: { 'en-US': 'Nickname' } },
+      ],
     },
   });
 
@@ -213,11 +219,13 @@ describe("a roster stage's data file", () => {
       stage: rosterWith({
         dataSource: 'broken_roster',
         cardOptions: {
-          additionalProperties: [{ variable: 'age', label: 'Age' }],
+          additionalProperties: [
+            { variable: 'age', label: { 'en-US': 'Age' } },
+          ],
         },
         sortOptions: {
           sortOrder: [{ property: 'age', direction: 'asc' }],
-          sortableProperties: [{ variable: 'age', label: 'Age' }],
+          sortableProperties: [{ variable: 'age', label: { 'en-US': 'Age' } }],
         },
         searchOptions: { fuzziness: 0.5, matchProperties: ['name'] },
       }),
@@ -258,7 +266,7 @@ describe("a roster stage's data file", () => {
       matchProperties: ['name'],
     });
     expect(request?.stageDocument.cardOptions).toEqual({
-      additionalProperties: [{ variable: 'age', label: 'Age' }],
+      additionalProperties: [{ variable: 'age', label: { 'en-US': 'Age' } }],
     });
   });
 });
@@ -294,7 +302,9 @@ describe("what a roster's cards show", () => {
       stage: rosterWith({
         dataSource: 'roster_data',
         cardOptions: {
-          additionalProperties: [{ label: 'Age', variable: 'age' }],
+          additionalProperties: [
+            { label: { 'en-US': 'Age' }, variable: 'age' },
+          ],
         },
       }),
       sections: <CardDisplaySection />,
@@ -313,7 +323,7 @@ describe("what a roster's cards show", () => {
     const harness = renderStageEditor({
       stage: rosterWith({
         dataSource: 'roster_data',
-        cardOptions: { additionalProperties: [{ label: '', variable: 'age' }] },
+        cardOptions: { additionalProperties: [{ variable: 'age' }] },
       }),
       sections: <CardDisplaySection />,
     });
@@ -407,7 +417,7 @@ describe("what a roster's cards show", () => {
 
     const request = await harness.submit();
     expect(request?.stageDocument.cardOptions).toEqual({
-      additionalProperties: [{ variable: 'age', label: 'Age' }],
+      additionalProperties: [{ variable: 'age', label: { 'en-US': 'Age' } }],
     });
     // Pointed elsewhere, so the id it used to hold stops being offered at all.
     expect(
@@ -425,7 +435,9 @@ describe("what a roster's cards show", () => {
       stage: rosterWith({
         dataSource: 'roster_data',
         cardOptions: {
-          additionalProperties: [{ variable: 'age', label: 'Age' }],
+          additionalProperties: [
+            { variable: 'age', label: { 'en-US': 'Age' } },
+          ],
         },
       }),
       sections: <CardDisplaySection />,
@@ -522,7 +534,7 @@ describe('how a roster is ordered', () => {
         dataSource: 'roster_data',
         sortOptions: {
           sortOrder: [{ property: 'age', direction: 'asc' }],
-          sortableProperties: [{ variable: 'age', label: 'Age' }],
+          sortableProperties: [{ variable: 'age', label: { 'en-US': 'Age' } }],
         },
       }),
       sections: <SortOptionsSection />,
@@ -533,7 +545,7 @@ describe('how a roster is ordered', () => {
 
     const request = await harness.submit();
     expect(request?.stageDocument.sortOptions).toEqual({
-      sortableProperties: [{ variable: 'age', label: 'Age' }],
+      sortableProperties: [{ variable: 'age', label: { 'en-US': 'Age' } }],
     });
 
     // The capability still holds a decision, so it is still switched on.
@@ -554,7 +566,7 @@ describe('how a roster is ordered', () => {
         dataSource: 'roster_data',
         sortOptions: {
           sortOrder: [{ property: 'age', direction: 'asc' }],
-          sortableProperties: [{ variable: 'age', label: 'Age' }],
+          sortableProperties: [{ variable: 'age', label: { 'en-US': 'Age' } }],
         },
       }),
       sections: <SortOptionsSection />,

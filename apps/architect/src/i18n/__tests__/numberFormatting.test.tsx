@@ -54,7 +54,7 @@ beforeEach(() => {
 it('localizes option positions while leaving the authored option value and action identity intact', () => {
   const onEdit = vi.fn();
   const onDelete = vi.fn();
-  const item = { label: 'Research_label', value: 12345 };
+  const item = { label: { en: 'Research_label' }, value: 12345 };
   function Row() {
     const dragControls = useDragControls();
     return (
@@ -76,14 +76,29 @@ it('localizes option positions while leaving the authored option value and actio
       />
     );
   }
+  const store = configureStore({
+    reducer: () => ({
+      activeProtocol: {
+        present: { localization: { defaultLocale: 'en', locales: ['en'] } },
+      },
+    }),
+  });
   render(
-    <ArchitectI18nProvider>
-      <OptionsContext.Provider
-        value={{ arrayName: 'options', allValues: {}, showArrayError: false }}
-      >
-        <Row />
-      </OptionsContext.Provider>
-    </ArchitectI18nProvider>,
+    <Provider store={store}>
+      <ArchitectI18nProvider>
+        <OptionsContext.Provider
+          value={{
+            arrayName: 'options',
+            allValues: {},
+            labelValues: {},
+            labelLocale: 'en',
+            showArrayError: false,
+          }}
+        >
+          <Row />
+        </OptionsContext.Provider>
+      </ArchitectI18nProvider>
+    </Provider>,
   );
   expect
     .soft(screen.queryByRole('button', { name: 'Edit option 12,345' }))
@@ -103,7 +118,7 @@ it('localizes option positions while leaving the authored option value and actio
     screen.getByRole('button', { name: 'Eliminar opción 12.345' }),
   ).toBeInTheDocument();
   expect(screen.getByText('12345')).toBeInTheDocument();
-  expect(item).toEqual({ label: 'Research_label', value: 12345 });
+  expect(item).toEqual({ label: { en: 'Research_label' }, value: 12345 });
 });
 afterEach(() => {
   cleanup();

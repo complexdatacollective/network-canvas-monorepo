@@ -56,6 +56,7 @@ const makeProtocol = (
 ): CurrentProtocol => ({
   name: 'Test Template',
   schemaVersion: 9,
+  localization: { defaultLocale: 'en', locales: ['en'] },
   stages: [],
   codebook: {
     node: {},

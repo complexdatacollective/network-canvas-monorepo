@@ -14,11 +14,13 @@ import type { Transaction } from '../../db/tenant.ts';
 import { ASSET_KEY_PLACEHOLDER, openAssetKey } from '../asset-keys.ts';
 import { migrateStoredVersionToDraft } from '../migrate.ts';
 import {
+  createDraftFromVersion,
   createProtocol,
   getDraftDocument,
   listVersions,
   publishDraft,
 } from '../store.ts';
+import { createProtocolSyncServer } from '../sync.ts';
 import {
   TEST_TEAM_ID,
   baseProtocol,
@@ -103,12 +105,21 @@ describe.skipIf(!storeDb)('migrateStoredVersionToDraft', () => {
     )) as {
       name: string;
       schemaVersion: number;
+      localization: unknown;
       codebook: {
-        node: Record<string, { displayVariable?: string; shape?: unknown }>;
+        node: Record<
+          string,
+          { displayVariable?: string; shape?: unknown; label?: unknown }
+        >;
       };
     };
     expect(document.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
     expect(document.name).toBe('Legacy Protocol');
+    expect(document.localization).toEqual({
+      defaultLocale: 'und',
+      locales: ['und'],
+    });
+    expect(document.codebook.node.person!.label).toEqual({ und: 'Person' });
     expect(document.codebook.node.person!.displayVariable).toBeUndefined();
     expect(document.codebook.node.person!.shape).toBeDefined();
 
@@ -128,6 +139,52 @@ describe.skipIf(!storeDb)('migrateStoredVersionToDraft', () => {
       [versionId],
     );
     expect(canonicalize(frozenAfter[0])).toBe(canonicalize(frozenBefore[0]));
+  });
+
+  it('branches an editable current-schema draft from a stored v7 version', async () => {
+    const { protocolId, versionId } = await seedV7Version();
+
+    const branched = await run(
+      createDraftFromVersion(TEST_TEAM_ID, { versionId }),
+    );
+    expect(branched.protocolId).toBe(protocolId);
+
+    const document = await run(
+      getDraftDocument(TEST_TEAM_ID, branched.draftId),
+    );
+    expect(document.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
+    expect(document.localization).toEqual({
+      defaultLocale: 'und',
+      locales: ['und'],
+    });
+
+    const sync = createProtocolSyncServer();
+    const lease = await run(
+      sync.acquire(branched.draftId, 'settings', 'branch-tab'),
+    );
+    expect(lease).not.toBeNull();
+    await expect(
+      run(
+        sync.commit({
+          draftId: branched.draftId,
+          sectionId: 'settings',
+          owner: 'branch-tab',
+          epoch: lease!.epoch,
+          clientSeq: 1n,
+          commands: [{ op: 'set', key: 'description', value: 'Branched' }],
+        }),
+      ),
+    ).resolves.toBeDefined();
+
+    const published = await run(
+      publishDraft(TEST_TEAM_ID, { draftId: branched.draftId }),
+    );
+    if (published.status !== 'published') throw new Error(published.status);
+    const after = await run(listVersions(TEST_TEAM_ID, protocolId));
+    expect(after[0]).toMatchObject({
+      schemaVersion: CURRENT_SCHEMA_VERSION,
+      migratedFromVersionId: versionId,
+    });
   });
 
   it('migrates a version whose API key is sealed, and leaves it sealed', async () => {

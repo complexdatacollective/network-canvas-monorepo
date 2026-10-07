@@ -15,6 +15,7 @@ import protocol from '../../../store/modules/protocol';
 import session from '../../../store/modules/session';
 import ui from '../../../store/modules/ui';
 import type { StageProps } from '../../../types';
+import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
 import EgoForm from '../EgoForm';
 
 class StubResizeObserver {
@@ -58,12 +59,12 @@ beforeAll(() => {
 const stage = {
   id: 'ego-form',
   type: 'EgoForm',
-  label: 'About you',
-  introductionPanel: { title: 'About you', text: '' },
+  label: { en: 'About you' },
+  introductionPanel: { title: { en: 'About you' }, text: { en: '' } },
   form: {
     fields: [
-      { variable: 'nickname', prompt: 'Your nickname' },
-      { variable: 'born_on', prompt: 'Your date of birth' },
+      { variable: 'nickname', prompt: { en: 'Your nickname' } },
+      { variable: 'born_on', prompt: { en: 'Your date of birth' } },
     ],
   },
 } as unknown as StageProps<'EgoForm'>['stage'];
@@ -73,9 +74,15 @@ const codebook = {
   edge: {},
   ego: {
     variables: {
-      nickname: { name: 'Nickname', type: 'text', component: 'Text' },
+      nickname: {
+        name: 'Nickname',
+        label: 'Nickname',
+        type: 'text',
+        component: 'Text',
+      },
       born_on: {
         name: 'Born on',
+        label: 'Born on',
         type: 'datetime',
         component: 'DatePicker',
         parameters: { type: 'full' },
@@ -91,6 +98,7 @@ const requiredNicknameCodebook = {
       ...codebook.ego.variables,
       nickname: {
         name: 'Nickname',
+        label: 'Nickname',
         type: 'text',
         component: 'Text',
         validation: { required: true },
@@ -118,14 +126,15 @@ const renderEgoForm = (
         id: 'protocol',
         hash: 'hash',
         schemaVersion: 9,
+        localization: { defaultLocale: 'en', locales: ['en'] },
         codebook: bookOfCodes,
         stages: [
           stage,
           {
             id: 'next-screen',
             type: 'Information',
-            label: 'Next screen',
-            title: 'Next screen',
+            label: { en: 'Next screen' },
+            title: { en: 'Next screen' },
             items: [],
           },
         ],
@@ -156,15 +165,17 @@ const renderEgoForm = (
   }
 
   render(
-    <Provider store={store}>
-      <AnalyticsContext.Provider value={tracker}>
-        <CurrentStepProvider currentStep={0} onStepChange={vi.fn()}>
-          <DialogProvider>
-            <Harness />
-          </DialogProvider>
-        </CurrentStepProvider>
-      </AnalyticsContext.Provider>
-    </Provider>,
+    <TestProtocolLocalization>
+      <Provider store={store}>
+        <AnalyticsContext.Provider value={tracker}>
+          <CurrentStepProvider currentStep={0} onStepChange={vi.fn()}>
+            <DialogProvider>
+              <Harness />
+            </DialogProvider>
+          </CurrentStepProvider>
+        </AnalyticsContext.Provider>
+      </Provider>
+    </TestProtocolLocalization>,
   );
 
   return track;

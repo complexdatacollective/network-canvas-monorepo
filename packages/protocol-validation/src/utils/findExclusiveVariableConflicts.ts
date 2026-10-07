@@ -1,7 +1,7 @@
 import type {
   ExclusiveSlotDescriptor,
   InterfaceOwnedOptionSetKey,
-} from '../schemas/8/entity-attribute-reference.ts';
+} from '../schemas/9/entity-attribute-reference.ts';
 import {
   collectEntityAttributeReferences,
   type EntityAttributeReferenceHit,

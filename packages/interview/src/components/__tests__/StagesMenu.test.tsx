@@ -3,9 +3,14 @@ import { render, screen } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
+import type {
+  LocaleTag,
+  LocalizationDeclaration,
+} from '@codaco/protocol-validation';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
 import { CurrentStepProvider } from '../../contexts/CurrentStepContext';
+import { TestProtocolLocalization } from '../../interfaces/__tests__/TestProtocolLocalization';
 import protocol from '../../store/modules/protocol';
 import session from '../../store/modules/session';
 import ui from '../../store/modules/ui';
@@ -29,73 +34,144 @@ beforeAll(() => {
   vi.stubGlobal('Worker', StubWorker);
 });
 
-describe('StagesMenu route status', () => {
-  it('visibly and accessibly distinguishes locally hidden and bypassed screens', () => {
-    const store = configureStore({
-      reducer: { session, protocol, ui },
-      preloadedState: {
-        session: {
-          id: 'session',
-          network: {
-            ego: { [entityAttributesProperty]: {} },
-            nodes: [],
-            edges: [],
-          },
-        } as never,
-        protocol: {
-          id: 'protocol',
-          hash: 'hash',
-          schemaVersion: 9,
-          codebook: { node: {}, edge: {}, ego: { variables: {} } },
-          stages: [
-            {
-              id: 'decision',
-              type: 'Information',
-              label: 'Decision',
-              items: [],
-            },
-            {
-              id: 'hidden',
-              type: 'Information',
-              label: 'Hidden screen',
-              items: [],
-              skipLogic: {
-                action: 'SKIP',
-                filter: { join: 'AND', rules: [] },
-                destination: { type: 'stage', stageId: 'destination' },
-              },
-            },
-            {
-              id: 'bypassed',
-              type: 'Information',
-              label: 'Bypassed screen',
-              items: [],
-            },
-            {
-              id: 'destination',
-              type: 'Information',
-              label: 'Destination',
-              items: [],
-            },
-          ],
-        } as never,
-      },
-      middleware: (getDefaultMiddleware) =>
-        getDefaultMiddleware({ serializableCheck: false }),
-    });
+const ENGLISH_ONLY: LocalizationDeclaration = {
+  defaultLocale: 'en',
+  locales: ['en'],
+};
 
-    render(
-      <Provider store={store}>
+function renderMenu({
+  stages,
+  localization = ENGLISH_ONLY,
+  locale = null,
+}: {
+  stages: unknown[];
+  localization?: LocalizationDeclaration;
+  locale?: LocaleTag | null;
+}) {
+  const store = configureStore({
+    reducer: { session, protocol, ui },
+    preloadedState: {
+      session: {
+        id: 'session',
+        network: {
+          ego: { [entityAttributesProperty]: {} },
+          nodes: [],
+          edges: [],
+        },
+      } as never,
+      protocol: {
+        id: 'protocol',
+        hash: 'hash',
+        schemaVersion: 9,
+        localization,
+        codebook: { node: {}, edge: {}, ego: { variables: {} } },
+        stages,
+      } as never,
+    },
+    middleware: (getDefaultMiddleware) =>
+      getDefaultMiddleware({ serializableCheck: false }),
+  });
+
+  return render(
+    <Provider store={store}>
+      <TestProtocolLocalization localization={localization} locale={locale}>
         <CurrentStepProvider currentStep={0} onStepChange={vi.fn()}>
           <StagesMenu open onClosed={vi.fn()} onSelect={vi.fn()} />
         </CurrentStepProvider>
-      </Provider>,
-    );
+      </TestProtocolLocalization>
+    </Provider>,
+  );
+}
+
+describe('StagesMenu route status', () => {
+  it('visibly and accessibly distinguishes locally hidden and bypassed screens', () => {
+    renderMenu({
+      stages: [
+        {
+          id: 'decision',
+          type: 'Information',
+          label: { en: 'Decision' },
+          items: [],
+        },
+        {
+          id: 'hidden',
+          type: 'Information',
+          label: { en: 'Hidden screen' },
+          items: [],
+          skipLogic: {
+            action: 'SKIP',
+            filter: { join: 'AND', rules: [] },
+            destination: { type: 'stage', stageId: 'destination' },
+          },
+        },
+        {
+          id: 'bypassed',
+          type: 'Information',
+          label: { en: 'Bypassed screen' },
+          items: [],
+        },
+        {
+          id: 'destination',
+          type: 'Information',
+          label: { en: 'Destination' },
+          items: [],
+        },
+      ],
+    });
 
     expect(
       screen.getByRole('listbox', { name: 'Interview screens' }),
     ).toBeInTheDocument();
     expect(screen.getByText('Hidden by answers')).toBeVisible();
     expect(screen.getByText('Outside current path')).toBeVisible();
+  });
+});
+
+describe('StagesMenu screen names', () => {
+  it('marks a name shown in a fallback language with that language and direction', () => {
+    renderMenu({
+      localization: { defaultLocale: 'en', locales: ['en', 'ar'] },
+      locale: 'ar',
+      stages: [
+        {
+          id: 'translated',
+          type: 'Information',
+          label: { en: 'Welcome', ar: 'مرحبا' },
+          items: [],
+        },
+        {
+          id: 'untranslated',
+          type: 'Information',
+          label: { en: 'Thank you' },
+          items: [],
+        },
+      ],
+    });
+
+    const translated = screen.getByText('مرحبا');
+    expect(translated).toHaveAttribute('lang', 'ar');
+    expect(translated).toHaveAttribute('dir', 'rtl');
+
+    const fallback = screen.getByText('Thank you');
+    expect(fallback).toHaveAttribute('lang', 'en');
+    expect(fallback).toHaveAttribute('dir', 'ltr');
+  });
+
+  it('gives a name in the unspecified language no language of its own', () => {
+    renderMenu({
+      localization: { defaultLocale: 'und', locales: ['und'] },
+      stages: [
+        {
+          id: 'only',
+          type: 'Information',
+          label: { und: 'Welcome' },
+          items: [],
+        },
+      ],
+    });
+
+    const name = screen.getByText('Welcome');
+    expect(name).not.toHaveAttribute('lang');
+    expect(name).not.toHaveAttribute('dir');
   });
 });

@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest';
 import { CURRENT_SCHEMA_VERSION } from '../../schemas/index.ts';
 import { getProtocolFileErrorKind } from '../../utils/protocolFileErrorKind.ts';
 import {
-  MigrationResultInvalidError,
   SchemaVersionDetectionError,
   ValidationError,
   VersionMismatchError,
@@ -147,7 +146,7 @@ describe('Protocol Migration - Extended Tests', () => {
     it('rejects invalid current-version colors instead of repairing them', () => {
       const invalidDoc = {
         name: 'Invalid color protocol',
-        schemaVersion: 8,
+        schemaVersion: 9,
         codebook: {
           node: {
             person: {
@@ -164,7 +163,7 @@ describe('Protocol Migration - Extended Tests', () => {
       };
 
       expect(() => migrateProtocol(invalidDoc)).toThrow(
-        'Invalid protocol document for version 8',
+        'Invalid protocol document for version 9',
       );
     });
 
@@ -259,12 +258,6 @@ describe('Protocol Migration - Extended Tests', () => {
         name: 'Test Protocol',
       });
       expect(migrated.schemaVersion).toBe(8);
-    });
-
-    it('holds a version 8 result to the names version 8 allows', () => {
-      expect(() =>
-        migrateProtocol(v7Doc('名前'), 8, { name: 'Test Protocol' }),
-      ).toThrow(MigrationResultInvalidError);
     });
 
     it('accepts the same names in a version 9 result', () => {
@@ -380,25 +373,38 @@ describe('Protocol Migration - Extended Tests', () => {
       expect(result1).toBe(result2);
     });
 
-    it('migrates again when the cached result is for another version', async () => {
+    it('keeps a separate cached result for each target version of one key', async () => {
       const v7Doc = {
         schemaVersion: 7,
         codebook: { node: {}, edge: {}, ego: {} },
         stages: [],
       };
+      const options = {
+        cacheKey: 'per-target',
+        dependencies: { name: 'Test Protocol' },
+      };
 
       const atEight = await protocolMigrator.migrate(v7Doc, {
-        cacheKey: 'per-target',
+        ...options,
         targetVersion: 8,
-        dependencies: { name: 'Test Protocol' },
       });
-      const atCurrent = await protocolMigrator.migrate(v7Doc, {
-        cacheKey: 'per-target',
-        dependencies: { name: 'Test Protocol' },
-      });
+      const atCurrent = await protocolMigrator.migrate(v7Doc, options);
 
       expect(atEight.schemaVersion).toBe(8);
       expect(atCurrent.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
+      expect(
+        await protocolMigrator.migrate(v7Doc, { ...options, targetVersion: 8 }),
+      ).toBe(atEight);
+      expect(await protocolMigrator.migrate(v7Doc, options)).toBe(atCurrent);
+
+      protocolMigrator.clearCache('per-target');
+
+      expect(
+        await protocolMigrator.migrate(v7Doc, { ...options, targetVersion: 8 }),
+      ).not.toBe(atEight);
+      expect(await protocolMigrator.migrate(v7Doc, options)).not.toBe(
+        atCurrent,
+      );
     });
 
     it('should handle migration errors and not cache failed results', async () => {

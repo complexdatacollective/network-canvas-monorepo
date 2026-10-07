@@ -116,7 +116,7 @@ export function describeProtocolFileErrorMessage(error: unknown): {
   };
 }
 
-import type { ValidationContradiction } from './schemas/8/variables/validation-contradictions.ts';
+import type { ValidationContradiction } from './schemas/9/variables/validation-contradictions.ts';
 
 export {
   formatMigrationNotes,

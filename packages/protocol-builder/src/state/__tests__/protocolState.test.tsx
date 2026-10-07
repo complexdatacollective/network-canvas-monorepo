@@ -43,6 +43,13 @@ const COLLABORATOR = {
   displayName: 'Grace',
 };
 
+const isEnglishLabel = Schema.is(Schema.Struct({ 'en-US': Schema.String }));
+
+function englishLabel(document: SectionDoc): string {
+  const { label } = document;
+  return isEnglishLabel(label) ? label['en-US'] : 'unlabelled';
+}
+
 function newHost() {
   return createInMemoryHost({ sections: sectionsFromProtocol(FIXTURE) });
 }
@@ -60,7 +67,7 @@ function Label({
   counts: Counts;
   field: keyof Counts;
 }>) {
-  const label = useSection(id, (section) => String(section.document.label));
+  const label = useSection(id, (section) => englishLabel(section.document));
   counts[field] += 1;
   return <output aria-label={name}>{label ?? 'loading'}</output>;
 }
@@ -105,7 +112,7 @@ describe('the protocol state layer', () => {
       protocolId: host.protocolId,
       requestId: nextRequestId(),
       sectionId: INFORMATION,
-      document: { ...held.document, label: 'Renamed by Grace' },
+      document: { ...held.document, label: { 'en-US': 'Renamed by Grace' } },
       revision: held.revision,
     });
 
@@ -140,7 +147,10 @@ describe('the protocol state layer', () => {
       protocolId: host.protocolId,
       requestId: nextRequestId(),
       sectionId: INFORMATION,
-      document: { ...held.document, label: 'Written while disconnected' },
+      document: {
+        ...held.document,
+        label: { 'en-US': 'Written while disconnected' },
+      },
       revision: held.revision,
     });
 
@@ -172,8 +182,10 @@ describe('the protocol state layer', () => {
         <Label name="ego form" id={EGO_FORM} counts={counts} field="egoForm" />
       </ProtocolBuilder>,
     );
+    // The two observed sections, and the settings `ProtocolBuilder` reads for
+    // the protocol's languages.
     await waitFor(() => {
-      expect(delayed.waiting()).toBe(2);
+      expect(delayed.waiting()).toBe(3);
     });
 
     const collaborator = host.asCollaborator(COLLABORATOR);
@@ -185,7 +197,7 @@ describe('the protocol state layer', () => {
       protocolId: host.protocolId,
       requestId: nextRequestId(),
       sectionId: INFORMATION,
-      document: { ...held.document, label: 'Renamed by Grace' },
+      document: { ...held.document, label: { 'en-US': 'Renamed by Grace' } },
       revision: held.revision,
     });
     await waitFor(() => {
@@ -196,7 +208,7 @@ describe('the protocol state layer', () => {
 
     delayed.release();
 
-    // Both reads were released together, so the ego form's document arriving
+    // The reads were released together, so the ego form's document arriving
     // is the proof that the information section's older answer has been
     // through the cache too.
     await waitFor(() => {
@@ -239,7 +251,7 @@ describe('the protocol state layer', () => {
       protocolId: host.protocolId,
       requestId: nextRequestId(),
       sectionId: INFORMATION,
-      document: { ...held.document, label: 'Renamed by Grace' },
+      document: { ...held.document, label: { 'en-US': 'Renamed by Grace' } },
       revision: held.revision,
     });
     await collaborator.rpcCall('ReleaseLock', {
@@ -320,6 +332,7 @@ describe('the protocol state layer', () => {
       kind: 'codebookNode',
       document: {
         name: 'Place',
+        label: { 'en-US': 'Place' },
         color: 'node-color-seq-3',
         shape: { default: 'circle' },
         variables: {},
@@ -666,7 +679,7 @@ function Editor({ id }: Readonly<{ id: ProtocolSectionId }>) {
   return (
     <>
       <output aria-label="editing">
-        {document === undefined ? 'loading' : String(document.label)}
+        {document === undefined ? 'loading' : englishLabel(document)}
       </output>
       <output aria-label="saved">{saved}</output>
       <button
@@ -674,9 +687,11 @@ function Editor({ id }: Readonly<{ id: ProtocolSectionId }>) {
         disabled={document === undefined}
         onClick={() => {
           if (document === undefined) return;
-          void submit({ ...document, label: 'Saved' }).then((result) => {
-            setSaved(result.status);
-          });
+          void submit({ ...document, label: { 'en-US': 'Saved' } }).then(
+            (result) => {
+              setSaved(result.status);
+            },
+          );
         }}
       >
         save

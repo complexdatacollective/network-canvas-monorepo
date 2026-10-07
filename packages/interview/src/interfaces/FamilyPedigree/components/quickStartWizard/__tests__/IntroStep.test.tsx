@@ -24,6 +24,7 @@ import type { ResolvedAsset } from '../../../../../contract/types';
 import { useAssetUrl } from '../../../../../hooks/useAssetUrl';
 import { useStageSelector } from '../../../../../hooks/useStageSelector';
 import protocol from '../../../../../store/modules/protocol';
+import { TestProtocolLocalization } from '../../../../__tests__/TestProtocolLocalization';
 import IntroStep, { shouldSkipIntroStep } from '../IntroStep';
 
 function renderIntroStep(assets: ResolvedAsset[] = []) {
@@ -36,7 +37,11 @@ function renderIntroStep(assets: ResolvedAsset[] = []) {
   });
 
   function Wrapper({ children }: { children: ReactNode }) {
-    return <Provider store={store}>{children}</Provider>;
+    return (
+      <Provider store={store}>
+        <TestProtocolLocalization>{children}</TestProtocolLocalization>
+      </Provider>
+    );
   }
 
   return render(<IntroStep />, { wrapper: Wrapper });
@@ -49,7 +54,7 @@ describe('IntroStep', () => {
         {
           id: 't1',
           type: 'text',
-          content: 'Welcome to the family pedigree builder.',
+          content: { en: 'Welcome to the family pedigree builder.' },
         },
       ],
     });
@@ -69,8 +74,8 @@ describe('IntroStep', () => {
   it('renders items in order', () => {
     vi.mocked(useStageSelector).mockReturnValue({
       items: [
-        { id: 't1', type: 'text', content: 'First section.' },
-        { id: 't2', type: 'text', content: 'Second section.' },
+        { id: 't1', type: 'text', content: { en: 'First section.' } },
+        { id: 't2', type: 'text', content: { en: 'Second section.' } },
       ],
     });
     vi.mocked(useAssetUrl).mockReturnValue({
@@ -90,7 +95,14 @@ describe('IntroStep', () => {
 
   it('renders a video element for a video asset item', () => {
     vi.mocked(useStageSelector).mockReturnValue({
-      items: [{ id: 'v1', type: 'asset', content: 'asset-123' }],
+      items: [
+        {
+          id: 'v1',
+          type: 'asset',
+          content: 'asset-123',
+          description: { en: 'Intro video' },
+        },
+      ],
     });
     vi.mocked(useAssetUrl).mockReturnValue({
       url: 'https://example.com/video.mp4',
@@ -114,7 +126,7 @@ describe('IntroStep', () => {
 
   it('does not render a video element when there is no asset item', () => {
     vi.mocked(useStageSelector).mockReturnValue({
-      items: [{ id: 't1', type: 'text', content: 'No video here.' }],
+      items: [{ id: 't1', type: 'text', content: { en: 'No video here.' } }],
     });
     vi.mocked(useAssetUrl).mockReturnValue({
       url: null,
@@ -142,7 +154,7 @@ describe('shouldSkipIntroStep', () => {
   it('does not skip when the intro screen has items', () => {
     expect(
       shouldSkipIntroStep({
-        items: [{ id: 't1', type: 'text', content: 'Hello' }],
+        items: [{ id: 't1', type: 'text', content: { en: 'Hello' } }],
       }),
     ).toBe(false);
   });

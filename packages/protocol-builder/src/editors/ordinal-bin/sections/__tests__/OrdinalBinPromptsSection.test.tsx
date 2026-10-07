@@ -178,12 +178,14 @@ describe('the questions an ordinal bin asks', () => {
         id: 'ordinal-bin-legacy',
         type: 'OrdinalBin',
         fields: {
-          label: 'Ordinal Bin',
+          label: { 'en-US': 'Ordinal Bin' },
           subject: { entity: 'node', type: 'person' },
           prompts: [
             {
               id: 'ordinal-bin-legacy-prompt-1',
-              text: 'How often do you have contact with this person?',
+              text: {
+                'en-US': 'How often do you have contact with this person?',
+              },
               variable: 'contactFreq',
             },
           ],
@@ -247,12 +249,12 @@ describe('the questions an ordinal bin asks', () => {
       stage: {
         type: 'OrdinalBin',
         fields: {
-          label: 'Ordinal Bin',
+          label: { 'en-US': 'Ordinal Bin' },
           subject: { entity: 'node', type: 'person' },
           prompts: [
             {
               id: 'prompt-a',
-              text: 'How often?',
+              text: { 'en-US': 'How often?' },
               variable: 'contactFreq',
               color: 'ord-color-seq-1',
               bucketSortOrder: [{ property: 'name', direction: 'asc' }],
@@ -379,12 +381,12 @@ describe('an ordinal bin prompt whose scale is not an ordinal attribute', () => 
       stage: {
         type: 'OrdinalBin',
         fields: {
-          label: 'Ordinal Bin',
+          label: { 'en-US': 'Ordinal Bin' },
           subject: { entity: 'node', type: 'person' },
           prompts: [
             {
               id: 'prompt-a',
-              text: 'How often?',
+              text: { 'en-US': 'How often?' },
               // Categorical: its values have no order for a scale to run
               // along, so this interface cannot draw them.
               variable: 'contactType',

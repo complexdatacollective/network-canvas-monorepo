@@ -6,6 +6,9 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 import AlterLimitsSection from '../../sections/alter-limits/AlterLimitsSection.tsx';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 
+/** Copy in the fixture protocol's only language, as schema 9 holds it. */
+const en = (text: string) => ({ 'en-US': text });
+
 /**
  * Mounted through a section that counts something rather than on its own: the
  * control is a whole number held in a stage document, and what it does to the
@@ -15,13 +18,13 @@ const unlimitedStage = {
   stage: {
     type: 'NameGenerator' as const,
     fields: {
-      label: 'Name Generator',
+      label: en('Name Generator'),
       subject: { entity: 'node', type: 'person' },
       form: {
-        title: 'Add a person',
-        fields: [{ variable: 'name', prompt: 'Name?' }],
+        title: en('Add a person'),
+        fields: [{ variable: 'name', prompt: en('Name?') }],
       },
-      prompts: [{ id: 'prompt-a', text: 'Who do you know?' }],
+      prompts: [{ id: 'prompt-a', text: en('Who do you know?') }],
     },
   },
   sections: <AlterLimitsSection />,

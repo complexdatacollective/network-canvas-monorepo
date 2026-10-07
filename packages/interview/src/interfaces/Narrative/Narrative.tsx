@@ -245,7 +245,7 @@ const Narrative = ({ stage }: NarrativeProps) => {
 
   // Highlight attribute
   const highlightAttribute = showHighlightedNodes
-    ? (highlight[highlightIndex] ?? undefined)
+    ? highlight[highlightIndex]?.variable
     : undefined;
 
   const underlays = convexHullVariable ? (

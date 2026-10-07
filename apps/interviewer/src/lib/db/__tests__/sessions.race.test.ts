@@ -38,7 +38,7 @@ vi.mock('../recordCrypto', async (importOriginal) => {
 // Import AFTER the mock so sessions.ts binds the wrapped encryptSession.
 const { db } = await import('../db');
 const { setSessionDek } = await import('../sessionKey');
-const { createSession, getSession, updateSession } =
+const { createSession, getSession, setSessionLocale, updateSession } =
   await import('../sessions');
 
 async function makeDek(): Promise<CryptoKey> {
@@ -174,5 +174,138 @@ describe('updateSession against concurrent writers', () => {
 
     const session = await read;
     expect(session?.network.nodes).toHaveLength(1);
+  });
+});
+
+describe('setSessionLocale', () => {
+  beforeEach(async () => {
+    await db.sessions.clear();
+    setSessionDek(await makeDek());
+  });
+  afterEach(async () => {
+    encryptPause = null;
+    await db.sessions.clear();
+    setSessionDek(null);
+  });
+
+  async function createStudySession() {
+    return createSession({
+      protocolHash: 'hash',
+      protocolName: 'Study',
+      caseId: 'case-1',
+      initialNetwork: network,
+    });
+  }
+
+  it('starts a new session with no recorded language', async () => {
+    const created = await createStudySession();
+
+    expect(created).toMatchObject({ localePreference: null, locale: null });
+    expect(await db.sessions.get(created.id)).toMatchObject({
+      localePreference: null,
+      locale: null,
+    });
+  });
+
+  it('stores both the chosen and the shown language', async () => {
+    const created = await createStudySession();
+
+    await setSessionLocale(created.id, {
+      locale: 'fr',
+      localePreference: 'fr',
+    });
+    expect(await getSession(created.id)).toMatchObject({
+      localePreference: 'fr',
+      locale: 'fr',
+    });
+
+    // Returning to automatic matching clears the choice but still records
+    // the language the interview then showed.
+    await setSessionLocale(created.id, {
+      locale: 'es',
+      localePreference: null,
+    });
+    expect(await getSession(created.id)).toMatchObject({
+      localePreference: null,
+      locale: 'es',
+    });
+  });
+
+  it('applies changes in the order they were made', async () => {
+    const created = await createStudySession();
+
+    await Promise.all([
+      setSessionLocale(created.id, { locale: 'fr', localePreference: 'fr' }),
+      setSessionLocale(created.id, { locale: 'ar', localePreference: 'ar' }),
+      setSessionLocale(created.id, { locale: 'es', localePreference: null }),
+    ]);
+
+    expect(await db.sessions.get(created.id)).toMatchObject({
+      localePreference: null,
+      locale: 'es',
+    });
+  });
+
+  it('waits behind an in-flight updateSession for the same session', async () => {
+    const created = await createStudySession();
+
+    const pause = pauseNextEncrypt();
+    const pending = updateSession(created.id, { currentStep: 2 });
+    await pause.reached;
+
+    let settled = false;
+    const localeWrite = setSessionLocale(created.id, {
+      locale: 'fr',
+      localePreference: 'fr',
+    }).then(() => {
+      settled = true;
+    });
+
+    // No event fires when a wrongly-unqueued write completes, so a macrotask
+    // turn is the oracle.
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(settled).toBe(false);
+    expect(await db.sessions.get(created.id)).toMatchObject({ locale: null });
+
+    pause.release();
+    await pending;
+    await localeWrite;
+
+    expect(await db.sessions.get(created.id)).toMatchObject({
+      currentStep: 2,
+      localePreference: 'fr',
+      locale: 'fr',
+    });
+  });
+
+  it('is not overwritten by an updateSession that read the row before another tab stored a language', async () => {
+    const created = await createStudySession();
+
+    const pause = pauseNextEncrypt();
+    const pending = updateSession(created.id, { currentStep: 3 });
+    await pause.reached;
+    // Another tab's write lands between this update's read and its commit.
+    await db.sessions.update(created.id, {
+      localePreference: 'fr',
+      locale: 'fr',
+    });
+    pause.release();
+    await pending;
+
+    expect(await db.sessions.get(created.id)).toMatchObject({
+      currentStep: 3,
+      localePreference: 'fr',
+      locale: 'fr',
+    });
+  });
+
+  it('does not recreate a deleted session', async () => {
+    const created = await createStudySession();
+    await db.sessions.delete(created.id);
+
+    await expect(
+      setSessionLocale(created.id, { locale: 'fr', localePreference: 'fr' }),
+    ).resolves.toBeUndefined();
+    expect(await db.sessions.get(created.id)).toBeUndefined();
   });
 });

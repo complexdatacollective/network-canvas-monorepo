@@ -21,6 +21,7 @@ const baseProtocol: CurrentProtocol = {
   name: 'Orig',
   description: 'd',
   schemaVersion: 9,
+  localization: { defaultLocale: 'en', locales: ['en'] },
   stages: [],
   codebook: { node: {}, edge: {}, ego: {} },
   assetManifest: {},

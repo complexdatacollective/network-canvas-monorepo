@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { InterviewI18nProvider } from '../../i18n/InterviewI18nProvider';
+import { TestProtocolLocalization } from '../__tests__/TestProtocolLocalization';
 import useItems from './useItems';
 
 const { sourceNodes, typeDefinition } = vi.hoisted(() => ({
@@ -10,8 +11,11 @@ const { sourceNodes, typeDefinition } = vi.hoisted(() => ({
     { _uid: 'named-item', type: 'person', attributes: { name: 'Zoë Álvarez' } },
   ],
   typeDefinition: {
-    name: 'Researcher subject',
-    variables: { name: { name: 'name', type: 'text' } },
+    name: 'person_internal',
+    label: { en: 'Researcher subject' },
+    variables: {
+      name: { name: 'name', label: 'Name', type: 'text' },
+    },
   },
 }));
 
@@ -34,10 +38,10 @@ function RosterLabels() {
     stage: {
       id: 'stage',
       type: 'NameGeneratorRoster',
-      label: 'Authored stage',
+      label: { en: 'Authored stage' },
       subject: { entity: 'node', type: 'person' },
       dataSource: 'source',
-      prompts: [{ id: 'prompt', text: 'Authored prompt' }],
+      prompts: [{ id: 'prompt', text: { en: 'Authored prompt' } }],
     },
     getNavigationHelpers: () => ({
       moveForward: () => {},
@@ -54,11 +58,13 @@ function RosterLabels() {
 }
 
 describe('roster memoized fallback labels', () => {
-  it('invalidates already-loaded fallback labels on locale changes without rewriting roster data or authored type names', () => {
+  it('invalidates already-loaded fallback labels on locale changes without rewriting roster data or authored type labels', () => {
     const before = structuredClone(sourceNodes);
     const tree = (locale: string) => (
       <InterviewI18nProvider requestedLocale={locale}>
-        <RosterLabels />
+        <TestProtocolLocalization>
+          <RosterLabels />
+        </TestProtocolLocalization>
       </InterviewI18nProvider>
     );
     const { rerender } = render(tree('en'));

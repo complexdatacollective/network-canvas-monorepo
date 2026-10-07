@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
-import { getAssetReferenceDescriptor } from '../schemas/8/asset-reference.ts';
-import type { StageSubject } from '../schemas/8/common/index.ts';
+import { getAssetReferenceDescriptor } from '../schemas/9/asset-reference.ts';
+import type { StageSubject } from '../schemas/9/common/index.ts';
 import {
   getEntityAttributeReferenceDescriptor,
   type AttributeExistence,
@@ -9,27 +9,26 @@ import {
   type ExclusiveSlotDescriptor,
   type InterfaceOwnedOptionSetKey,
   type SubjectResolution,
-} from '../schemas/8/entity-attribute-reference.ts';
-import { getEntityTypeReferenceDescriptor } from '../schemas/8/entity-type-reference.ts';
-// The document tree every current-generation schema version is built from,
-// imported from its own module rather than through `../schemas/index.ts`.
-// This module and the schema module are mutually recursive, and
-// `../schemas/index.ts` sits in the middle: it evaluates
+} from '../schemas/9/entity-attribute-reference.ts';
+import { getEntityTypeReferenceDescriptor } from '../schemas/9/entity-type-reference.ts';
+// The current schema, imported from its own module rather than through
+// `../schemas/index.ts`. This module and the schema module are mutually
+// recursive, and `../schemas/index.ts` sits in the middle: it evaluates
 // `const CurrentProtocolSchema = ProtocolSchemaV9` at module scope, which
 // under that cycle runs before the schema module has finished initialising.
 // Importing the schema module directly gives a live binding resolved at call
 // time instead, so the walk works whichever module the consumer entered
-// through. Its references sit at the same paths in schema 8 and schema 9.
-import { VersionlessProtocolSchema } from '../schemas/8/schema.ts';
+// through.
+import ProtocolSchemaV9 from '../schemas/9/schema.ts';
 import {
   getStageReferenceSite,
   registeredStageReferenceSites,
-} from '../schemas/8/stage-reference.ts';
+} from '../schemas/9/stage-reference.ts';
 import {
   getStageSubjectResolution,
   resolveDeclaredStageSubject,
-} from '../schemas/8/stage-subject-resolution.ts';
-import type { VariableType } from '../schemas/8/variables/types.ts';
+} from '../schemas/9/stage-subject-resolution.ts';
+import type { VariableType } from '../schemas/9/variables/types.ts';
 
 export type EntityAttributeReferenceHit = {
   path: (string | number)[];
@@ -373,9 +372,8 @@ const walk = (
       const match = options.find((option) => {
         if (!(option instanceof z.ZodObject)) return false;
         const discField: unknown = option.shape[discriminator];
-        if (!(discField instanceof z.ZodLiteral)) return false;
-        const accepted: ReadonlySet<unknown> = discField.values;
-        return accepted.has(discValue);
+        if (!isZodType(discField)) return false;
+        return literalValuesOf(discField)?.includes(discValue) ?? false;
       });
       return match ? walk(match, value, path, ctx) : [];
     }
@@ -460,10 +458,7 @@ export const collectEntityAttributeReferencesFromSchema = (
 export const collectEntityAttributeReferences = (
   protocol: unknown,
 ): EntityAttributeReferenceHit[] =>
-  collectEntityAttributeReferencesFromSchema(
-    VersionlessProtocolSchema,
-    protocol,
-  );
+  collectEntityAttributeReferencesFromSchema(ProtocolSchemaV9, protocol);
 
 /**
  * Every codebook node/edge TYPE referenced by a protocol, discovered from the
@@ -493,7 +488,7 @@ export const collectEntityTypeReferencesFromSchema = (
 export const collectEntityTypeReferences = (
   protocol: unknown,
 ): EntityTypeReferenceHit[] =>
-  collectEntityTypeReferencesFromSchema(VersionlessProtocolSchema, protocol);
+  collectEntityTypeReferencesFromSchema(ProtocolSchemaV9, protocol);
 
 /**
  * Every `assetManifest` entry referenced by a protocol, discovered from the
@@ -511,7 +506,7 @@ export const collectEntityTypeReferences = (
 export const collectAssetReferences = (
   protocol: unknown,
 ): AssetReferenceHit[] =>
-  walk(VersionlessProtocolSchema, protocol, [], rootContext(protocol))
+  walk(ProtocolSchemaV9, protocol, [], rootContext(protocol))
     .filter(isAssetHit)
     .map(({ kind: _kind, ...hit }) => hit);
 
@@ -530,7 +525,7 @@ export const collectAssetReferences = (
 export const collectStageReferences = (
   protocol: unknown,
 ): StageReferenceHit[] =>
-  walk(VersionlessProtocolSchema, protocol, [], rootContext(protocol))
+  walk(ProtocolSchemaV9, protocol, [], rootContext(protocol))
     .filter(isStageHit)
     .map(({ kind: _kind, ...hit }) => hit);
 
@@ -547,6 +542,6 @@ export const collectStageReferences = (
 export const declaredStageReferenceSites = (): string[] => {
   // Referenced so the schema module cannot be tree-shaken away from a consumer
   // that only asks this question; every tag registers as that module loads.
-  void VersionlessProtocolSchema;
+  void ProtocolSchemaV9;
   return registeredStageReferenceSites();
 };

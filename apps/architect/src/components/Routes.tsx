@@ -8,6 +8,7 @@ import {
   StageEditorPage,
   SummaryPage,
 } from '~/components/pages';
+import LocalizationPage from '~/components/pages/LocalizationPage';
 import { ActionToolbarProvider } from '~/components/ProjectNav/ActionToolbar';
 import ProjectLayout from '~/components/ProjectNav/ProjectLayout';
 import Protocol from '~/components/Protocol';
@@ -41,6 +42,11 @@ const Routes = () => {
           <Route path="/protocol/codebook">
             <ProjectLayout>
               <CodebookPage />
+            </ProjectLayout>
+          </Route>
+          <Route path="/protocol/localization">
+            <ProjectLayout>
+              <LocalizationPage />
             </ProjectLayout>
           </Route>
           <Route path="/protocol/summary">

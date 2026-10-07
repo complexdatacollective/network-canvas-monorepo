@@ -70,6 +70,9 @@ const moveStage = vi.fn<Answer<'protocols.moveStage'>>();
 
 const PROTOCOL_UUID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 
+/** Text written in the only language the sample protocol declares. */
+const enUS = (text: string) => ({ 'en-US': text });
+
 const DRAFT = {
   protocol: {
     id: ProtocolId.make(PROTOCOL_UUID),
@@ -80,20 +83,24 @@ const DRAFT = {
   },
   revision: { sequence: '2', hash: 'revision-2' },
   sections: {
-    settings: { name: 'Shell proof', schemaVersion: 9 },
+    settings: {
+      name: 'Shell proof',
+      schemaVersion: 9,
+      localization: { defaultLocale: 'en-US', locales: ['en-US'] },
+    },
     stageOrder: { stages: [STAGE_A, STAGE_B] },
     [`stage:${STAGE_A}`]: {
       id: STAGE_A,
       type: 'Information',
-      label: 'Welcome',
-      title: 'Welcome',
+      label: enUS('Welcome'),
+      title: enUS('Welcome'),
       items: [],
     },
     [`stage:${STAGE_B}`]: {
       id: STAGE_B,
       type: 'Information',
-      label: 'Follow-up',
-      title: 'Follow-up',
+      label: enUS('Follow-up'),
+      title: enUS('Follow-up'),
       items: [],
     },
     assets: {},
@@ -115,7 +122,7 @@ const HOST_SECTIONS: Readonly<Record<string, SectionDoc>> = {
   ...DRAFT.sections,
   [`stage:${STAGE_A}`]: {
     ...DRAFT.sections[`stage:${STAGE_A}`],
-    label: 'Welcome, from the host',
+    label: enUS('Welcome, from the host'),
   },
 };
 
@@ -287,7 +294,12 @@ async function collaboratorAddsScreen(label: string): Promise<void> {
     protocolId: DRAFT.protocol.id,
     requestId: nextRequestId(),
     kind: 'stage',
-    document: { type: 'Information', label, title: label, items: [] },
+    document: {
+      type: 'Information',
+      label: enUS(label),
+      title: enUS(label),
+      items: [],
+    },
   });
 }
 
@@ -305,7 +317,7 @@ async function collaboratorRenamesScreen(
     protocolId: DRAFT.protocol.id,
     requestId: nextRequestId(),
     sectionId: target,
-    document: { ...held.document, label },
+    document: { ...held.document, label: enUS(label) },
     revision: held.revision,
   });
   await client.rpcCall('ReleaseLock', {
@@ -931,7 +943,7 @@ describe('Studio editor shell', () => {
         commandWrote.set(sectionId({ kind: 'stage', stageId }), {
           id: stageId,
           type: 'Information',
-          title: '',
+          title: enUS('Untitled screen'),
           items: [],
         });
         commandWrote.set(STAGE_ORDER, { stages: [STAGE_A, STAGE_B, stageId] });
@@ -981,6 +993,66 @@ describe('Studio editor shell', () => {
 });
 
 /**
+ * A screen's name is one translation per language of the protocol, so the
+ * outline has to say which of them it is showing: the language the editor is
+ * writing in, or the one a participant would be shown when that language has
+ * no name for the screen.
+ */
+describe('a protocol written in two languages', () => {
+  async function seedEnglishAndFrench() {
+    await seedHost({
+      ...DRAFT.sections,
+      settings: {
+        ...DRAFT.sections.settings,
+        localization: { defaultLocale: 'en-US', locales: ['en-US', 'fr'] },
+      },
+      [`stage:${STAGE_A}`]: {
+        ...DRAFT.sections[`stage:${STAGE_A}`],
+        label: { 'en-US': 'Hello', 'fr': 'Bonjour' },
+      },
+      // Named in French alone, so English has nothing to show for it.
+      [`stage:${STAGE_B}`]: {
+        ...DRAFT.sections[`stage:${STAGE_B}`],
+        label: { fr: 'Suite' },
+      },
+    });
+  }
+
+  it('names each screen in the default language, or in another when it has no name there', async () => {
+    await seedEnglishAndFrench();
+    renderEditor();
+
+    expect(await findStageNameField()).toHaveValue('Hello');
+    expect(outlineScreens()).toEqual(['HelloInformation', 'SuiteInformation']);
+  });
+
+  it('names each screen in the language the editor switches to', async () => {
+    await seedEnglishAndFrench();
+    renderEditor();
+    await findStageNameField();
+
+    // Every localized field draws a menu and they all move together, so any
+    // one of them will do.
+    const [languageMenu] = screen.getAllByRole('button', {
+      name: /Editing language/,
+    });
+    if (languageMenu === undefined) throw new Error('The editor has no menu');
+    fireEvent.click(languageMenu);
+    fireEvent.click(
+      await screen.findByRole('menuitemradio', { name: /^français/ }),
+    );
+
+    await waitFor(() =>
+      expect(outlineScreens()).toEqual([
+        'BonjourInformation',
+        'SuiteInformation',
+      ]),
+    );
+    expect(await findStageNameField()).toHaveValue('Bonjour');
+  });
+});
+
+/**
  * What a collaborator does reaches this screen because the screen is drawn
  * from the protocol the package holds, which one channel keeps current.
  *
@@ -1009,8 +1081,8 @@ describe('a protocol that is not all here', () => {
       [`stage:${STAGE_C}`]: {
         id: STAGE_C,
         type: 'Information',
-        label: 'Closing',
-        title: 'Closing',
+        label: enUS('Closing'),
+        title: enUS('Closing'),
         items: [],
       },
     });

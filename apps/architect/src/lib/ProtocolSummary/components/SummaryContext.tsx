@@ -18,7 +18,14 @@ type SummaryContextType = {
 };
 
 const SummaryContext = createContext<SummaryContextType>({
-  protocol: {} as CurrentProtocol,
+  protocol: {
+    name: 'Untitled Protocol',
+    schemaVersion: 9,
+    localization: { defaultLocale: 'und', locales: ['und'] },
+    assetManifest: {},
+    codebook: {},
+    stages: [],
+  },
   protocolName: 'Untitled Protocol',
   index: [],
 });

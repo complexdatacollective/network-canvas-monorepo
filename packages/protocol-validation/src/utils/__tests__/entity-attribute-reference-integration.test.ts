@@ -1,36 +1,40 @@
 import { describe, expect, it } from 'vitest';
 
 // Minimal protocol fixture exercising codebook validation cross-references.
-// The `Protocol<8>` type is structurally complex (all stages are discriminated-
+// The `Protocol<9>` type is structurally complex (all stages are discriminated-
 // union variants with many required fields). Casting through `unknown` once at
 // the fixture boundary avoids verbose inline construction while keeping the
 // actual data shape correct for the paths under test.
 import type { Protocol } from '../../schemas/index.ts';
 import { collectEntityAttributeReferences } from '../collectEntityAttributeReferences.ts';
+import { localized } from '../test-utils.ts';
 import { validateEntityAttributeReferences } from '../validateEntityAttributeReferences.ts';
 
 const protocol = {
-  schemaVersion: 8,
+  schemaVersion: 9,
+  localization: { defaultLocale: 'en', locales: ['en'] },
   name: 'p',
   stages: [],
   codebook: {
     node: {
       person: {
         name: 'Person',
+        label: localized('Person'),
         color: 'node-color-seq-1',
         variables: {
-          age: { name: 'age', type: 'number' },
+          age: { name: 'age', label: 'age', type: 'number' },
           end: {
             name: 'end',
+            label: 'end',
             type: 'datetime',
             validation: { greaterThanOrEqualToVariable: 'start' },
           },
-          start: { name: 'start', type: 'datetime' },
+          start: { name: 'start', label: 'start', type: 'datetime' },
         },
       },
     },
   },
-} as unknown as Protocol<8>;
+} as unknown as Protocol<9>;
 
 describe('entity-attribute references against the real v8 schema', () => {
   it('extracts a validation cross-reference with the owning-variable subject', () => {
@@ -68,7 +72,7 @@ describe('entity-attribute references against the real v8 schema', () => {
           },
         },
       },
-    } as unknown as Protocol<8>;
+    } as unknown as Protocol<9>;
 
     const issues = validateEntityAttributeReferences(broken);
     expect(issues).toContainEqual({

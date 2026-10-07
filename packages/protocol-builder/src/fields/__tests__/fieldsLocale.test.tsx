@@ -47,19 +47,27 @@ const stageOrderSection = sectionId({ kind: 'stageOrder' });
 const personSection = sectionId({ kind: 'codebookNode', typeId: 'person' });
 const STAGE_SECTION = sectionId({ kind: 'stage', stageId: 'stage-1' });
 
+/** Copy in the protocol's only language, as schema 9 holds it. */
+const en = (text: string) => ({ en: text });
+
 /** The stage under edit, as its own section holds it. */
-const stageFields: SectionDoc = { label: 'Welcome', title: 'Hello', items: [] };
+const stageFields: SectionDoc = {
+  label: en('Welcome'),
+  title: en('Hello'),
+  items: [],
+};
 
 const informationStage = (id: string, label: string): SectionDoc => ({
   id,
   type: 'Information',
-  label,
-  title: label,
+  label: en(label),
+  title: en(label),
   items: [],
 });
 
 const personDefinition: SectionDoc = {
   name: 'Person',
+  label: en('Person'),
   color: 'node-color-seq-2',
   shape: { default: 'square' },
   variables: {},
@@ -75,7 +83,11 @@ const personDefinition: SectionDoc = {
  * option builder, in `stageDestination.test.ts`.
  */
 const baseSections: Record<string, SectionDoc> = {
-  [settingsSection]: { name: 'Field localization', schemaVersion: 9 },
+  [settingsSection]: {
+    name: 'Field localization',
+    schemaVersion: 9,
+    localization: { defaultLocale: 'en', locales: ['en'] },
+  },
   [stageOrderSection]: { stages: ['stage-1', 'stage-2', 'stage-3'] },
   [STAGE_SECTION]: { id: 'stage-1', type: 'Information', ...stageFields },
   [sectionId({ kind: 'stage', stageId: 'stage-2' })]: informationStage(

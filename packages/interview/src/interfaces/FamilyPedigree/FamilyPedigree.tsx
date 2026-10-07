@@ -8,6 +8,7 @@ import { Button } from '@codaco/fresco-ui/Button';
 import { useAccessibilityAnnouncements } from '@codaco/fresco-ui/dnd/useAccessibilityAnnouncements';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import type { LocalizedString } from '@codaco/protocol-validation';
 import type { NcEdge, NcNode, VariableValue } from '@codaco/shared-consts';
 import {
   entityAttributesProperty,
@@ -193,11 +194,8 @@ const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
     id: 'scaffolding',
     text: censusPrompt,
   };
-  const allPrompts = [scaffoldingPrompt, ...(nominationPrompts ?? [])] as {
-    id: string;
-    text: string;
-    variable?: string;
-  }[];
+  const allPrompts: { id: string; text: LocalizedString; variable?: string }[] =
+    [scaffoldingPrompt, ...(nominationPrompts ?? [])];
   const hasNominationPrompts = allPrompts.length > 1;
 
   const [currentStepIndex, setCurrentStepIndex] = useState(0);

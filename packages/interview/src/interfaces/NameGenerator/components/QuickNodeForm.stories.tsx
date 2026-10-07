@@ -22,12 +22,14 @@ const mockProtocol = {
     node: {
       person: {
         name: 'Person',
+        label: { en: 'Person' },
         color: 'node-color-seq-1',
         shape: { default: 'circle' },
         icon: 'add-a-person',
         variables: {
           name: {
             name: 'Name',
+            label: 'Name',
             type: 'text',
             component: 'Text',
             validation: { required: true },
@@ -40,7 +42,7 @@ const mockProtocol = {
     {
       id: 'stage-1',
       type: 'NameGenerator',
-      label: 'Name Generator',
+      label: { en: 'Name Generator' },
       subject: {
         entity: 'node',
         type: 'person',
@@ -48,7 +50,7 @@ const mockProtocol = {
       prompts: [
         {
           id: 'prompt-1',
-          text: 'Name the people in your network',
+          text: { en: 'Name the people in your network' },
           additionalAttributes: [{ variable: 'closeness', value: 5 }],
         },
       ],

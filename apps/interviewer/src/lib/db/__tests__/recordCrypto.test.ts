@@ -53,6 +53,8 @@ const session: StoredSession = {
   network,
   stageMetadata: { '0': { automaticLayout: true } },
   isSynthetic: false,
+  localePreference: null,
+  locale: null,
 };
 
 const legacyNetwork = {
@@ -135,6 +137,8 @@ async function makeEncryptedSessionRow(
     currentStep: session.currentStep,
     progress: session.progress,
     isSynthetic: session.isSynthetic,
+    localePreference: session.localePreference,
+    locale: session.locale,
     _enc: {
       network: await encryptJson(networkValue, dek, aad),
       ...(stageMetadataValue === undefined
@@ -156,6 +160,7 @@ const protocol: StoredProtocol = {
   protocol: {
     name: 'Study',
     schemaVersion: 9,
+    localization: { defaultLocale: 'en', locales: ['en'] },
     stages: [],
     codebook: { node: {}, edge: {}, ego: {} },
   } as StoredProtocol['protocol'],

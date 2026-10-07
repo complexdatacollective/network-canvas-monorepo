@@ -2,6 +2,7 @@
 title: Export Data Dictionary
 navOrder: 2
 toc: true
+date: 5th October 2026
 ---
 
 <Definition>
@@ -161,8 +162,9 @@ the files together:
 
 - The **ego file** begins with `networkCanvasEgoUUID`, `networkCanvasCaseID`,
   `networkCanvasSessionID`, `networkCanvasProtocolName`, `sessionStart`,
-  `sessionFinish`, `sessionExported`, `APP_VERSION`, and `COMMIT_HASH`,
-  followed by your ego variables. Session timestamps are ISO 8601 strings.
+  `sessionFinish`, `sessionExported`, `APP_VERSION`, `COMMIT_HASH`, and
+  `networkCanvasInterviewLocale`, followed by your ego variables. Session
+  timestamps are ISO 8601 strings.
 - **Alter files** begin with `nodeID` (a sequential number unique within the
   export), `networkCanvasEgoUUID` (the join key to the ego file), and
   `networkCanvasUUID` (the alter's permanent identifier).
@@ -170,6 +172,23 @@ the files together:
   values in the alter files), `networkCanvasEgoUUID`, `networkCanvasUUID`, and
   the permanent endpoint identifiers `networkCanvasSourceUUID` and
   `networkCanvasTargetUUID`.
+
+### Interview language
+
+`networkCanvasInterviewLocale` holds the language the interview was last shown
+in, as a language code such as `en`, `es-MX` or `zh-Hans`. It is the language
+of your protocol's text, not of the app's buttons and menus. GraphML files
+record the same value in the `nc:interviewLocale` attribute of the `<graph>`
+element.
+
+| Value           | Meaning                                                                                                                                                                |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A language code | The interview was shown in that language.                                                                                                                              |
+| `und`           | The protocol was made before Network Canvas recorded which language a protocol is written in, and its language was never identified in Architect.                      |
+| Empty (CSV)     | No language was recorded, for example for an interview started before your app recorded the interview language and not opened since. GraphML leaves the attribute out. |
+
+The column is in every ego file, even when every cell is empty. See
+[Interview language](/en/analyze-data/data-export#interview-language) for more.
 
 ## Column names
 

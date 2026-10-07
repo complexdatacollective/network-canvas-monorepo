@@ -475,7 +475,15 @@ describe('a rule this filter cannot be about', () => {
     // is the kind that may ask about the ego, and reporting it there would
     // send the researcher to fix a rule the schema accepts.
     const codebook: Codebook = {
-      ego: { variables: { ego_name: { name: 'ego_name', type: 'text' } } },
+      ego: {
+        variables: {
+          ego_name: {
+            name: 'ego_name',
+            label: 'Name',
+            type: 'text',
+          },
+        },
+      },
     };
 
     expect(ruleSetIssues(egoFilter, codebook, ruleSetTargets('query'))).toEqual(

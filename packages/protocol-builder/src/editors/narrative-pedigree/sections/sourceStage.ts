@@ -1,11 +1,12 @@
-import type { Stage } from '@codaco/protocol-validation';
+import type { LocalizedString, Stage } from '@codaco/protocol-validation';
 
 import { stagePlacement } from '../../../fields/stageDestination.ts';
 import type { ProtocolBuilderProtocolContext } from '../../../protocol-context.ts';
 
 export type SourceStageOption = Readonly<{
   value: string;
-  label: string;
+  /** The stage's own name, in every language it is written in. */
+  label: LocalizedString;
   /**
    * The number the researcher will see against this stage once the stage
    * being edited exists, counting from one.
@@ -47,7 +48,7 @@ export type SourceStageResolution = Readonly<{
    * Absent only for a source that has gone, which is the one case with no name
    * left to read.
    */
-  chosenLabel?: string;
+  chosenLabel?: LocalizedString;
 }>;
 
 /**

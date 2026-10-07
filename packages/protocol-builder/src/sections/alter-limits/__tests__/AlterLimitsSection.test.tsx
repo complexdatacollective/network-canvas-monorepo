@@ -8,17 +8,20 @@ import AlterLimitsSection from '../AlterLimitsSection.tsx';
 
 const limits = <AlterLimitsSection />;
 
+/** Copy in the fixture protocol's only language, as schema 9 holds it. */
+const en = (text: string) => ({ 'en-US': text });
+
 const unlimitedStage = {
   stage: {
     type: 'NameGenerator' as const,
     fields: {
-      label: 'Name Generator',
+      label: en('Name Generator'),
       subject: { entity: 'node', type: 'person' },
       form: {
-        title: 'Add a person',
-        fields: [{ variable: 'name', prompt: 'Name?' }],
+        title: en('Add a person'),
+        fields: [{ variable: 'name', prompt: en('Name?') }],
       },
-      prompts: [{ id: 'prompt-a', text: 'Who do you know?' }],
+      prompts: [{ id: 'prompt-a', text: en('Who do you know?') }],
     },
   },
   sections: limits,
@@ -309,8 +312,8 @@ describe('the nomination limits a name generator may set', () => {
         fields: {
           ...unlimitedStage.stage.fields,
           prompts: [
-            { id: 'prompt-a', text: 'Who do you know?' },
-            { id: 'prompt-b', text: 'Who do you talk to?' },
+            { id: 'prompt-a', text: en('Who do you know?') },
+            { id: 'prompt-b', text: en('Who do you talk to?') },
           ],
         },
       },

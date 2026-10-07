@@ -1,4 +1,5 @@
 import { useCallback, useMemo } from 'react';
+import { useSelector } from 'react-redux';
 
 import {
   createAppIntl,
@@ -9,7 +10,11 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import ArrayField, {
   type ArrayFieldProps,
 } from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
-import { MINIMUM_VARIABLE_OPTIONS } from '@codaco/protocol-validation';
+import {
+  type LocaleTag,
+  type LocalizedString,
+  MINIMUM_VARIABLE_OPTIONS,
+} from '@codaco/protocol-validation';
 import {
   type ExportColumnEntity,
   type ExportColumnVariable,
@@ -19,10 +24,12 @@ import {
   isOptionComplete,
   isOptionValueEmpty,
 } from '~/components/Options/optionCompleteness';
+import { getLocalization } from '~/selectors/protocol';
 import {
   findExportColumnConflictMessage,
   toExportColumnCandidate,
 } from '~/utils/exportColumnConflicts';
+import { translationText } from '~/utils/localizedText';
 import { createValidations, nameComparisonKey } from '~/utils/validations';
 
 import Option, { OptionsContext, type OptionValue } from './Option';
@@ -139,6 +146,33 @@ export const uniqueOptionValues = (
     ? intl.formatMessage(messages.uniqueValues)
     : undefined;
 
+const readLabel = (option: Record<string, unknown>) =>
+  isLocalizedString(option.label) ? option.label : undefined;
+
+const isLocalizedString = (value: unknown): value is LocalizedString =>
+  typeof value === 'object' &&
+  value !== null &&
+  Object.values(value).every((text) => typeof text === 'string');
+
+// Labels are compared one language at a time: that is what a participant reads.
+const optionLabelLocales = (value: unknown) => [
+  ...new Set(
+    readOptions(value).flatMap((option) =>
+      Object.keys(readLabel(option) ?? {}),
+    ),
+  ),
+];
+
+/**
+ * The options with each label replaced by its plain text in `locale`, the
+ * shape the shared label rules compare.
+ */
+const optionsWithLabelText = (value: unknown, locale: LocaleTag) =>
+  readOptions(value).map((option) => ({
+    ...option,
+    label: translationText(readLabel(option), locale),
+  }));
+
 /**
  * The label counterpart of `uniqueOptionValues`, asked of the one predicate
  * every surface that authors an option label asks — shared-consts'
@@ -150,7 +184,9 @@ export const uniqueOptionLabels = (
   value: unknown,
   intl: IntlShape = defaultIntl,
 ) =>
-  hasDuplicateOptionLabels(value)
+  optionLabelLocales(value).some((locale) =>
+    hasDuplicateOptionLabels(optionsWithLabelText(value, locale)),
+  )
     ? intl.formatMessage(messages.uniqueLabels)
     : undefined;
 
@@ -284,13 +320,20 @@ const Options = ({
   ...arrayFieldProps
 }: OptionsProps) => {
   const intl = useAppIntl();
+  const localization = useSelector(getLocalization);
+  const labelLocale = localization?.defaultLocale ?? '';
   const context = useMemo(
     () => ({
       arrayName: name,
       allValues: arrayScopedValues(name, value),
+      labelValues: arrayScopedValues(
+        name,
+        optionsWithLabelText(value, labelLocale),
+      ),
+      labelLocale,
       showArrayError: ariaInvalid,
     }),
-    [ariaInvalid, name, value],
+    [ariaInvalid, labelLocale, name, value],
   );
 
   const itemTemplate = useCallback(() => ({}), []);

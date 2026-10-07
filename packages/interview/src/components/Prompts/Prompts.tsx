@@ -6,7 +6,7 @@ import { useEffect, useMemo, useRef } from 'react';
 
 import Pips from '@codaco/fresco-ui/Pips';
 import { cx } from '@codaco/fresco-ui/utils/cva';
-import type { Prompt as TPrompt } from '@codaco/protocol-validation';
+import type { LocalizedString } from '@codaco/protocol-validation';
 
 import Prompt from './Prompt';
 
@@ -17,7 +17,7 @@ const containerVariants = {
 };
 
 type PromptsProps = {
-  prompts: TPrompt[];
+  prompts: readonly { id: string; text: LocalizedString }[];
   currentPromptId?: string;
   className?: string;
   small?: boolean;

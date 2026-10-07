@@ -11,6 +11,9 @@ import { useStageName } from '../useStageName.ts';
 
 const NAME = { name: 'Stage name' } as const;
 
+/** The all-interfaces fixture is written in this one language. */
+const FIXTURE_LANGUAGE = 'en-US';
+
 /**
  * The stage's name as a host mounts it: the title in the header slot, OUTSIDE
  * the `<form>` element. A control drawn outside its form has a form owner only
@@ -46,7 +49,7 @@ describe('the stage name drawn outside the form', () => {
 
     await waitFor(() => {
       expect(harness.protocolSections()['stage:information-1']).toMatchObject({
-        label: 'Information (revised)',
+        label: { [FIXTURE_LANGUAGE]: 'Information (revised)' },
       });
     });
   });
@@ -84,7 +87,11 @@ describe('a second reader of the name', () => {
       stage: {
         id: 'information-unnamed',
         type: 'Information',
-        fields: { label: 'Named', title: 'Welcome', items: [] },
+        fields: {
+          label: { [FIXTURE_LANGUAGE]: 'Named' },
+          title: { [FIXTURE_LANGUAGE]: 'Welcome' },
+          items: [],
+        },
       },
       sections: <RenameDialog />,
     });
@@ -161,7 +168,9 @@ describe('a host that draws no name control at all', () => {
     expect(screen.getByText('Called: Renamed from a menu')).toBeInTheDocument();
 
     const saved = await harness.submit();
-    expect(saved?.stageDocument.label).toBe('Renamed from a menu');
+    expect(saved?.stageDocument.label).toEqual({
+      [FIXTURE_LANGUAGE]: 'Renamed from a menu',
+    });
   });
 
   /**
@@ -203,7 +212,7 @@ describe('a host that draws no name control at all', () => {
     // Refused before the protocol was asked, so the schema said nothing.
     expect(harness.problems()).toEqual([]);
     expect(harness.protocolSections()['stage:information-1']).toMatchObject({
-      label: 'Information',
+      label: { [FIXTURE_LANGUAGE]: 'Information' },
     });
   });
 });

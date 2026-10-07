@@ -1,4 +1,4 @@
-import type { AttributeWriterUsage } from '../schemas/8/entity-attribute-reference.ts';
+import type { AttributeWriterUsage } from '../schemas/9/entity-attribute-reference.ts';
 import { collectEntityAttributeReferences } from './collectEntityAttributeReferences.ts';
 import {
   stageIndexOf,

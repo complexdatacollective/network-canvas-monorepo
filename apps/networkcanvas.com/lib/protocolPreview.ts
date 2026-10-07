@@ -10,6 +10,7 @@ import {
   type CurrentProtocol,
   detectSchemaVersion,
   extractProtocolFromZip,
+  getLocaleMetadata,
   getMigrationInfo,
   getProtocolFileErrorKind,
   hashProtocol,
@@ -133,6 +134,11 @@ export function createPreviewPayload(
     exportTime: null,
     lastUpdated: now,
     network: createInitialNetwork(),
+    localePreference: null,
+    locale: null,
+    localeOptions: install.protocol.localization.locales.map((locale) =>
+      getLocaleMetadata(locale),
+    ),
   };
   return { session, protocol: install.protocol };
 }

@@ -588,6 +588,17 @@ Studio consumes the schema-conformant protocol document exactly as
 assembled document with the canonical validator before freezing it. Sectioning
 is Studio-internal storage topology, not a protocol-schema change.
 
+The settings block holds the protocol's name, its schema version and its
+language declaration (`localization`: the default language and every declared
+one, which have no order). Labels, prompts and other participant-facing text
+are translations keyed by declared language, stored inside the section that owns
+them, so a structural diff names a stage by its label in the default language,
+or in another declared language that has one when the default has none. A
+protocol created in Studio declares the undetermined language (`und`), as one
+migrated from schema 8 does, because nothing asks the researcher for a language
+yet. A draft branched from a version stored under an older schema is migrated to
+the current one, so it can be edited.
+
 ### Tenancy
 
 Teams (#1249) are the tenant boundary. Every domain row — from protocols,
@@ -681,11 +692,12 @@ pnpm --filter @codaco/studio-api protocol-demo
 
 remains the way to look at one. It sectionizes a protocol (the sample one, or
 `--protocol <path>`), prints its sections and their hashes (`--sections` for
-every row), assembles it back, publishes it, edits one prompt and publishes
-again to show how much of the second version is structurally shared with the
-first, and renders the structural diff as sentences. It asserts nothing — the
-suites in `api/src/protocol/__tests__` own that — and it should be deleted
-once the client can show the same things. The rows it writes stay behind for
+every row), assembles it back, publishes it, edits one prompt in every language
+the protocol declares and publishes again to show how much of the second
+version is structurally shared with the first, and renders the structural diff
+as sentences that name stages in the protocol's default language. It asserts
+nothing — the suites in `api/src/protocol/__tests__` own that — and it should be
+deleted once the client can show the same things. The rows it writes stay behind for
 inspection; published versions cannot be deleted, so `db:reset` is how you clear
 them.
 

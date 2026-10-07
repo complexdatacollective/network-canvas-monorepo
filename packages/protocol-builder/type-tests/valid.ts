@@ -30,6 +30,7 @@ export const AWAITING = [
   'DyadCensus',
   'FamilyPedigree',
   'Geospatial',
+  'LanguageChooser',
   'NameGenerator',
   'NameGeneratorQuickAdd',
   'NameGeneratorRoster',
