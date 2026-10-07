@@ -9,4 +9,6 @@ saved encrypted. Before, the exporters followed the protocol's current
 setting, so an answer saved as plain text could be exported as `ENCRYPTED`.
 An answer saved encrypted could also be exported as unreadable data, if the
 protocol no longer asked for encryption. GraphML node labels follow the same
-rule.
+rule. A plain-text answer that replaced an encrypted one is exported as
+itself, even where an earlier version left the encrypted answer's details
+saved alongside it.

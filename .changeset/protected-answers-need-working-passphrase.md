@@ -26,6 +26,9 @@ answers; other interviews work as before.
   try again. Before, they could disappear without a word. The form for adding
   or editing a person and the category "other" question offer the passphrase
   inside the form, so the answers can be saved without closing it.
+- A save is refused if the passphrase is replaced, or found not to work, while
+  the save is under way. Before, the answer was still saved with the earlier
+  passphrase, which the one now in use might not be able to read.
 - A saved location that is protected is shown on the map when the participant
   returns to it.
 - Replacing a protected answer with an unprotected one no longer leaves the
@@ -54,6 +57,11 @@ answers; other interviews work as before.
 - A family pedigree is saved whole or not at all. If a relative's name cannot
   be saved, nothing is saved, the participant is told why, and they can enter
   the passphrase and save the pedigree again.
+- The Family Pedigree and Narrative Pedigree stages read only the protected
+  answers they show or edit. Before, a relative's other protected answer that
+  the passphrase could not read, such as one saved with a different
+  passphrase by an earlier version, hid every name and marked the passphrase
+  as not working.
 - Questions that compare an answer with other answers, such as a name that
   must not repeat or an answer that must match another one, now compare with
   the protected answers as they were entered. Before, they compared with the
