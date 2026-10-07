@@ -1640,7 +1640,8 @@
         "type": "family_member"
       },
       "prompt": {
-        "en-US": "Who is in your family?"
+        "en-US": "Who is in your family?",
+        "es": "¿Quién forma parte de tu familia?"
       },
       "nodeConfiguration": {
         "nameAttribute": "fm_name",
@@ -1681,7 +1682,38 @@
         "kindAttribute": "relationshipKind",
         "gestationalCarrierAttribute": "isGestationalCarrier",
         "currentPartnerAttribute": "isCurrentPartner"
-      }
+      },
+      "nominationPrompts": [
+        {
+          "id": "nom-conditionx",
+          "text": {
+            "en-US": "Who in your family has been diagnosed with **condition X**?",
+            "es": "¿Quién en tu familia ha recibido un diagnóstico de **la condición X**?"
+          },
+          "attribute": "hasConditionX"
+        }
+      ]
+    },
+    {
+      "id": "narrative-pedigree-dev",
+      "type": "NarrativePedigree",
+      "label": {
+        "en-US": "Narrative Pedigree",
+        "es": "Árbol genealógico narrativo"
+      },
+      "sourceStageId": "family-pedigree-dev",
+      "diseases": [
+        {
+          "id": "disease-conditionx",
+          "label": {
+            "en-US": "Condition X",
+            "es": "Condición X"
+          },
+          "color": "node-color-seq-1",
+          "attribute": "hasConditionX",
+          "inheritancePattern": "autosomalDominant"
+        }
+      ]
     },
     {
       "id": "language-chooser",
@@ -2574,37 +2606,43 @@
               {
                 "value": "woman",
                 "label": {
-                  "en-US": "Woman"
+                  "en-US": "Woman",
+                  "es": "Mujer"
                 }
               },
               {
                 "value": "man",
                 "label": {
-                  "en-US": "Man"
+                  "en-US": "Man",
+                  "es": "Hombre"
                 }
               },
               {
                 "value": "nonBinary",
                 "label": {
-                  "en-US": "Non-binary"
+                  "en-US": "Non-binary",
+                  "es": "No binario"
                 }
               },
               {
                 "value": "differentIdentity",
                 "label": {
-                  "en-US": "A different identity"
+                  "en-US": "A different identity",
+                  "es": "Otra identidad"
                 }
               },
               {
                 "value": "unknown",
                 "label": {
-                  "en-US": "Don’t know"
+                  "en-US": "Don’t know",
+                  "es": "No lo sé"
                 }
               },
               {
                 "value": "preferNotToSay",
                 "label": {
-                  "en-US": "Prefer not to say"
+                  "en-US": "Prefer not to say",
+                  "es": "Prefiero no decirlo"
                 }
               }
             ],
@@ -2617,35 +2655,46 @@
               {
                 "value": "female",
                 "label": {
-                  "en-US": "Female"
+                  "en-US": "Female",
+                  "es": "Femenino"
                 }
               },
               {
                 "value": "male",
                 "label": {
-                  "en-US": "Male"
+                  "en-US": "Male",
+                  "es": "Masculino"
                 }
               },
               {
                 "value": "intersex",
                 "label": {
-                  "en-US": "Intersex"
+                  "en-US": "Intersex",
+                  "es": "Intersexual"
                 }
               },
               {
                 "value": "unknown",
                 "label": {
-                  "en-US": "Don’t know"
+                  "en-US": "Don’t know",
+                  "es": "No lo sé"
                 }
               },
               {
                 "value": "preferNotToSay",
                 "label": {
-                  "en-US": "Prefer not to say"
+                  "en-US": "Prefer not to say",
+                  "es": "Prefiero no decirlo"
                 }
               }
             ],
             "label": "sexAssignedAtBirth"
+          },
+          "hasConditionX": {
+            "name": "hasConditionX",
+            "label": "hasConditionX",
+            "type": "boolean",
+            "component": "Toggle"
           }
         },
         "label": {
@@ -3176,37 +3225,43 @@
               {
                 "value": "partner",
                 "label": {
-                  "en-US": "Partner"
+                  "en-US": "Partner",
+                  "es": "Pareja"
                 }
               },
               {
                 "value": "biological",
                 "label": {
-                  "en-US": "Biological parent"
+                  "en-US": "Biological parent",
+                  "es": "Progenitor biológico"
                 }
               },
               {
                 "value": "adoptive",
                 "label": {
-                  "en-US": "Adoptive parent"
+                  "en-US": "Adoptive parent",
+                  "es": "Progenitor adoptivo"
                 }
               },
               {
                 "value": "social",
                 "label": {
-                  "en-US": "Step or social parent"
+                  "en-US": "Step or social parent",
+                  "es": "Padrastro, madrastra o progenitor social"
                 }
               },
               {
                 "value": "donor",
                 "label": {
-                  "en-US": "Donor"
+                  "en-US": "Donor",
+                  "es": "Donante"
                 }
               },
               {
                 "value": "surrogate",
                 "label": {
-                  "en-US": "Surrogate"
+                  "en-US": "Surrogate",
+                  "es": "Gestante subrogada"
                 }
               }
             ],

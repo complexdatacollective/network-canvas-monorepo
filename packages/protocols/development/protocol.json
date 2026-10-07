@@ -1682,7 +1682,38 @@
         "kindAttribute": "relationshipKind",
         "gestationalCarrierAttribute": "isGestationalCarrier",
         "currentPartnerAttribute": "isCurrentPartner"
-      }
+      },
+      "nominationPrompts": [
+        {
+          "id": "nom-conditionx",
+          "text": {
+            "en-US": "Who in your family has been diagnosed with **condition X**?",
+            "es": "¿Quién en tu familia ha recibido un diagnóstico de **la condición X**?"
+          },
+          "attribute": "hasConditionX"
+        }
+      ]
+    },
+    {
+      "id": "narrative-pedigree-dev",
+      "type": "NarrativePedigree",
+      "label": {
+        "en-US": "Narrative Pedigree",
+        "es": "Árbol genealógico narrativo"
+      },
+      "sourceStageId": "family-pedigree-dev",
+      "diseases": [
+        {
+          "id": "disease-conditionx",
+          "label": {
+            "en-US": "Condition X",
+            "es": "Condición X"
+          },
+          "color": "node-color-seq-1",
+          "attribute": "hasConditionX",
+          "inheritancePattern": "autosomalDominant"
+        }
+      ]
     },
     {
       "id": "language-chooser",
@@ -2658,6 +2689,12 @@
               }
             ],
             "label": "sexAssignedAtBirth"
+          },
+          "hasConditionX": {
+            "name": "hasConditionX",
+            "label": "hasConditionX",
+            "type": "boolean",
+            "component": "Toggle"
           }
         },
         "label": {

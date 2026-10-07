@@ -1241,6 +1241,27 @@
       }
     },
     {
+      "id": "narrative-pedigree",
+      "type": "NarrativePedigree",
+      "label": {
+        "en-US": "How the condition runs in the family"
+      },
+      "interviewScript": "This view reports the family structure and the people the participant identified as having the condition. It does not establish a diagnosis.\n\nThe inheritance pattern deliberately defaults to unknown and possible at-risk statuses are switched off. Before fielding, select a clinically supported pattern if one applies. Only enable inferred statuses when a qualified professional will interpret them under an approved disclosure procedure; the inference assumes full penetrance and may surface information a participant has not previously been told.",
+      "sourceStageId": "family-pedigree",
+      "showAtRiskStatuses": false,
+      "diseases": [
+        {
+          "id": "condition",
+          "label": {
+            "en-US": "This condition"
+          },
+          "color": "node-color-seq-1",
+          "attribute": "has_condition",
+          "inheritancePattern": "unknown"
+        }
+      ]
+    },
+    {
       "id": "information-close",
       "type": "Information",
       "label": {
