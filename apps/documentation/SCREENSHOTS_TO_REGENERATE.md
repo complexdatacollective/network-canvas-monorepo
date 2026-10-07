@@ -45,7 +45,7 @@ New pages with no screenshots yet:
   **Languages** tab (the **Protocol languages** list and **Missing
   translations**), the **Add languages** and **Identify language** dialogs, a
   stage editor showing the language menu and a missing-translation note, and
-  the **Summary language** menu.
+  a **Summary** tab stage listing a text in every language.
 - `design-protocols/preview-mode.en.mdx` would benefit from the **Preview
   language** menu above a preview.
 - The Language Chooser interface page uses the interface image already listed

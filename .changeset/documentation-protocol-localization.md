@@ -7,10 +7,11 @@ Protocol page explains how to choose the language a protocol is written in,
 add and remove languages, set the default language, find missing translations,
 translate in the translation table, which shows every text beside its
 translation into each language, identify the language of a protocol upgraded
-from an earlier version, preview and print each language, and how participants
-get their language. It explains that languages have no
-order and are always listed alphabetically, that a text needs a translation in
-at least one language and a missing translation is only a warning, and how
+from an earlier version, preview each language, print every translation in
+the protocol summary, and how participants get their language. It explains
+that languages have no order and are always listed alphabetically, that a
+text needs a translation in at least one language and a missing translation
+is only a warning, and how
 participants are shown the best available translation of each text: in their
 own language or a close regional match, then in the other languages their
 browser lists, then in the default language, then in any language that has it.
