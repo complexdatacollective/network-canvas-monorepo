@@ -526,7 +526,8 @@ checks:{…, draining: 'failed: draining'}}`. The worker and `router.ts`
   and emit if it changed.
 - **Safety poll** (`safetyPollMs`, default 5 s), **batched per team:**
   - one transaction for `readRelayBatch`, `livePresence(draftIds)` and
-    `liveSections`;
+    `liveSections` (three statements under READ COMMITTED, so not one
+    snapshot; see As built);
   - then `reapExpired` only for drafts with candidates; those reaper events
     are rung.
 - **Failure:** each iteration is caught and logged, and retried on the next
@@ -536,7 +537,7 @@ checks:{…, draining: 'failed: draining'}}`. The worker and `router.ts`
   `doorbell.ring(Advanced)` into the layer scope, off the write path.
   `presenceChanged` does the same with `Presence`.
 - **Doorbell signals:** one fiber per layer consumes `doorbell.signals`;
-  `Resync` dirties every relay.
+  `Resync` runs a jittered batched poll (see As built).
 - **Maintenance closure:** reads and the reaper are skipped (§2.3).
 
 **Tests:**
@@ -549,8 +550,17 @@ checks:{…, draining: 'failed: draining'}}`. The worker and `router.ts`
 - `readRelayBatch` lives in `pb/events.ts`, beside the column mapping it
   shares with `readProtocolEvents`, and reads at most `RELAY_BATCH` (256)
   events per draft per read. A relay whose read came back full marks itself
-  dirty and reads again, so a burst reaches watchers in quarter-queue
-  chunks; an unbounded read could overflow a watcher that was keeping up.
+  dirty and reads again, but only once every watcher's queue is at most half
+  full (512): it waits on a signal each watcher's stream sends as it takes
+  from its queue, so a batch always fits beside what a slow watcher has yet
+  to take. The wait is bounded (`drainStallMs`, default 2 s, from the last
+  take): a watcher that has stopped taking still overflows alone rather than
+  holding back its peers. A poll reads only presence for a relay without
+  room, and leaves its events to the wake path, which waits.
+- The safety poll's read is three statements under READ COMMITTED, not one
+  snapshot: a lease can lapse or be taken between them. Nothing relies on
+  them agreeing. Relays deliver by cursor, and `reapExpired` asks again under
+  the head held exclusively.
 - `liveSections` is private to `pb/connections.ts` and takes draft ids, not
   pairs. The reads the relay calls are `readRelay(access, draftId, next?)`
   (the wake path) and `pollRelays(access, wants)` (the safety poll), both
@@ -558,11 +568,39 @@ checks:{…, draining: 'failed: draining'}}`. The worker and `router.ts`
   and `protocolBuilder.relayPoll`; the reaper's op and span are
   `protocolBuilder.reap`. `relaySection(draftId, sectionId)` is the key the
   relay's `locks` set and `liveSections` share.
-- A per-relay semaphore serializes its wake reads and its share of a poll,
-  so `next` only moves forward under one reader.
+- Reads hold no lock. A relay's state changes only in the synchronous step
+  that delivers a finished read, which offers the run from `next` and skips
+  anything already delivered, so two reads of one relay (a wake and a poll)
+  can overlap safely. Each read of presence is numbered as it begins, and a
+  read never shows its presence over a later one's. Teams poll four at a
+  time.
+- `Resync` runs one batched poll per team after 0–1 s of random jitter,
+  coalescing resyncs that arrive meanwhile, rather than dirtying every relay:
+  every replica hears a resync at once, and a read per relay would stampede
+  the database.
+- A batched poll that fails is retried draft by draft, so only a draft whose
+  own read fails counts toward `maxConsecutiveFailures`; one warning per team
+  per failed tick.
+- A failed wake read is retried after 100 ms, doubling per consecutive
+  failure up to `safetyPollMs`. A wake the closed database held back is run
+  again within 250 ms of it reopening.
+- A read whose next cursor is missing while a later one is present ends the
+  run there. Cursors are taken under the head lock, so a gap is never
+  transient; three such reads in a row log an error and fail the relay's
+  watchers with `RelayFailed`.
 - A reap that fails is logged and does not count toward
   `maxConsecutiveFailures`: the reaper's events reach watchers through the
-  log, and a later poll asks again.
+  log, and a later poll asks again. Three failures in a row for a draft log
+  at error level, and so does every further one until a reap succeeds.
+- The reaper also re-shows the reaped owner's live connection rows that
+  still name the section: as editing the first section the tab still holds,
+  else viewing. It locks them after the head and before appending (it reads
+  `leases` without locking them), and rings `Presence`.
+- `subscribe` reads the seed outside any acquisition and joins the relay
+  afterwards, so a caller that gives up mid-seed returns at once and leaves
+  no relay behind.
+- The lease keeper logs a liveness pass that timed out on a lock at info
+  level, and warns from the third consecutive timeout on the same draft.
 - Each watcher carries a `presented` flag, so a watcher that joins a relay
   whose presence has not changed is still sent who is present.
 - An `Advanced` signal whose cursor is below the relay's `next` is ignored:
@@ -815,6 +853,16 @@ revert.
 | I23  | A reconnect that fails to be recorded keeps the grace                                                                          | C1 leases (a trigger refuses the row)          | grace still pending; lease released after it                                   | interrupt the grace before `connectSocket`                      |
 | I24  | A watch closing during its re-record leaves no live row                                                                        | C1 leases (own pool, held row)                 | no live row for the key                                                        | expire outside the registration's semaphore                     |
 | I25  | Mode changes touch only the caller's own rows, and only from a socket                                                          | C1 presence                                    | the other tab's or HTTP watch's row unchanged                                  | drop the owner predicate; drop the `WsConnection` skip          |
+| I26  | A resync reads once per team, not once per relay                                                                               | C2 events (two relays, one team)               | one more `relayPoll` span; no new `relayRead` span                             | dirty every relay on `Resync`                                   |
+| I27  | A burst never overflows a watcher that keeps draining                                                                          | C2 events (slow consumer, 2500 events)         | every cursor delivered; stream ends cleanly                                    | read again without waiting for room                             |
+| I28  | One unreadable draft fails alone                                                                                               | C2 events (unparseable lock row)               | that watcher gets `RelayFailed`; the other draft's write still polled          | fail every relay of the team on a failed batch                  |
+| I29  | A rung write is delivered while a poll's read is held up                                                                       | C2 events (poll transaction gated)             | write delivered within 2 s                                                     | serialize wake reads behind the poll's read                     |
+| I30  | A persistent gap fails the relay                                                                                               | C2 events (cursor skipped)                     | `RelayFailed`; cursor after the gap never delivered                            | drop the gap check in `deliver`                                 |
+| I31  | Repeated reap failures escalate to an error                                                                                    | C2 events (reap transaction fails)             | levels `Warn, Warn, Error`                                                     | always warn                                                     |
+| I32  | A reaped lease's tab is no longer shown editing                                                                                | C2 events (socket live, lease aged)            | connection row `viewing`; presence shows the tab viewing                       | skip the connection update in `reapExpired`                     |
+| I33  | An abandoned seed ends promptly and leaves no relay                                                                            | C2 events (seed transaction gated)             | seed span ends while the gate is shut; no subscribers                          | seed inside the acquisition                                     |
+| I34  | A failed or held-back wake is read again before the poll                                                                       | C2 events (one failed read; closure lifted)    | write delivered within 2 s, with the poll at 60 s                              | drop the retry; drop the reopen wake                            |
+| I35  | Consecutive liveness lock timeouts escalate to a warning                                                                       | C1 leases (head held for three ticks)          | levels `Info, Info, Warn`                                                      | never warn                                                      |
 
 ---
 
@@ -850,6 +898,11 @@ revert.
   `onReleased` to publish. That is harmless under C2: watchers read lock
   events from `protocol_events`, so the committed release reaches them
   through the relay's next read or poll, whether or not it was rung.
+- **Decision: no reaping without watchers.** A lapsed lease on a draft
+  nobody watches is not reaped until someone does. It need not be: `acquire`
+  treats an expired lease as free, and the first subscriber's relay reaps
+  it within one safety poll. The visible consequence is that a newly opened
+  draft can show a stale holder for up to one poll interval (5 s).
 - **Risk: re-authorization only on delivered entries.** An idle watch of a
   removed member keeps renewing until the next event. This is
   pre-existing; flag it, do not fix it here.
