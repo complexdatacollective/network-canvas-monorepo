@@ -13,23 +13,35 @@ command is a command of the images you are deploying.
 
 A release can change what Studio asks of the services you run yourself. Read
 its release notes for that before step 1. The one a release has added so far is
-object-store access: **a release that stages imports in the object store needs
+object-store access: **a release that stages files in the object store needs
 the access key (or, on Azure, the identity) to be able to delete and list as
-well as read and write**, and the `worker` uses it too.
+well as read and write**, and the `worker` now uses it too, to clear away
+staged files that were abandoned.
 
-- **S3 and S3-compatible stores.** Add `s3:DeleteObject` and `s3:ListBucket` to
-  the policy of the access key in `S3_ACCESS_KEY_ID`, beside the `s3:GetObject`
-  and `s3:PutObject` it already has. `ListBucket` is granted on the bucket
-  (`arn:aws:s3:::your-bucket`) and the others on its objects
-  (`arn:aws:s3:::your-bucket/*`). Garage, in the stack, needs nothing: `garage-init` gives
-  its key read, write and owner on the bucket, which covers both.
+- **S3 and S3-compatible stores.** Add `s3:DeleteObject` to the policy of the
+  access key in `S3_ACCESS_KEY_ID`, beside the `s3:GetObject` and
+  `s3:PutObject` it already has, and `s3:ListBucket` if it is not there yet.
+  `s3:ListBucket` is granted on the bucket (`arn:aws:s3:::your-bucket`) and
+  the others on its objects (`arn:aws:s3:::your-bucket/*`). Garage, in the
+  stack, needs nothing: `garage-init` gives its key read, write and owner on
+  the bucket, which covers both.
+- **A bucket that keeps versions.** Add a lifecycle rule that expires
+  noncurrent versions under `staging/`, as
+  [the requirements](./requirements.md#an-object-store) explain. Without it,
+  every staged file Studio deletes stays in the bucket as an old version.
 - **Azure Blob Storage.** Nothing, if the identity holds Storage Blob Data
   Contributor, as [the swap guide](./swap.md#azure-blob-storage) asks: that role
   already includes delete and list.
 
 Make the change first and the upgrade after it. An upgrade does not check the
-policy, and a key without these permissions is found out when someone imports a
-protocol file and the save is refused.
+policy. A key that cannot delete still lets authors add files to a stage and
+save it, but the API refuses to discard a staged file, and staged files are
+never cleared away.
+
+**An instance with no object store** can no longer stage a file at all: adding
+a file to a stage is refused, while staging an API key still works. Before
+this release such a file could be staged but never saved, because the save was
+refused, so nothing an author could finish before is lost.
 
 ## The sequence
 
@@ -55,7 +67,7 @@ Then confirm the instance is back:
 
 ```bash
 curl https://studio.example.org/readyz
-# {"status":"ok","checks":{"db":"ok","limiter":"ok","objectStore":"ok","schema":"ok","maintenance":"ok"}}
+# {"status":"ok","checks":{"db":"ok","limiter":"ok","objectStore":"ok","schema":"ok","maintenance":"ok","doorbell":"ok"}}
 ```
 
 This block is not only documentation. Studio's release test runs these lines
@@ -147,17 +159,24 @@ for the backup and every one starts on the new image. See
 [Running more than one API](./run.md#running-more-than-one-api).
 
 **Edit locks.** A lock on a protocol section is a row in the database, kept
-alive by the editor's connection and renewed by whichever API replica that
-connection reaches, so a restart no longer discards it. When an API container
-stops, the editors on it reconnect, to another replica or to the same one
-once it is back, and their locks carry on. A lock that is not renewed lapses
-after thirty seconds, so the window decides what survives: a rolling deploy
-across replicas, or a single container back within that time, keeps every
-lock. The maintenance window in the sequence above closes the instance to
-everyone and is usually longer, and in that case the locks lapse, an editor's
-next save is refused, and they take the section again. A protocol file imported
-but not yet saved survives either way, because it is held in the object store
-and not in the container.
+alive by the editor's connection and renewed every ten seconds by each API
+replica that editor is connected to, so a restart no longer discards it. An
+API container that stops for a deploy gives no locks back. The editors on it
+reconnect, to another replica or to the same one once it is back, and their
+locks carry on. A lock that is not renewed lapses thirty seconds after its
+last renewal, which can be as little as twenty seconds after the container
+stopped, so the window decides what survives: a rolling deploy across
+replicas keeps every lock, and so does a single container that is back, with
+its editors reconnected, within twenty seconds. The maintenance window in the
+sequence above closes the instance to everyone and is usually longer, and in
+that case the locks lapse, an editor's next save is refused, and they take the
+section again.
+
+**Staged files.** A file an author has added to a stage but not yet saved is
+held in the object store, and an API key in the database, sealed under the
+keyring. Neither lives in the container, so both survive a restart. The
+worker's hourly collection clears them away only once no replica has heard
+from the author's browser tab for five minutes.
 
 `maintenance on|off` is a command of the `studio-api` image, like `serve`,
 `worker` and `migrate`, and it is the only way the flag is set: nothing in the

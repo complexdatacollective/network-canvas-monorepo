@@ -87,10 +87,14 @@ Studio addresses the bucket **path-style** (`<endpoint>/<bucket>/<key>`), so the
 endpoint is the service address and not a per-bucket hostname.
 
 The access key needs read, write, delete and list on the bucket: on AWS,
-`s3:GetObject`, `s3:PutObject`, `s3:DeleteObject` and `s3:ListBucket`.
-Delete and list are for imports that are staged in the bucket under `staging/`
-until they are saved. A key that could only read and write, as an earlier
-release asked for, fails the first time someone imports a protocol file.
+`s3:GetObject`, `s3:PutObject`, `s3:DeleteObject` and `s3:ListBucket`
+([which goes where](./requirements.md#s3-compatible-stores)). Delete and list
+are for files an author adds while editing a stage, which wait in the bucket
+under `staging/` until the stage is saved or cancelled. A key that cannot
+delete still lets authors add files and save, but the API refuses to discard
+a staged file, and staged files are never cleared away; the API logs a warning for each one it
+could not delete after a save. If the bucket keeps versions, add the lifecycle rule
+[the requirements](./requirements.md#an-object-store) describe.
 
 Then delete the `garage` and `garage-init` services, the `garage-config` and
 `garage-init` configs, the `garage-data` volume, and the `depends_on` entries
@@ -149,8 +153,8 @@ With the account URL, Studio signs in as the **managed identity** of the
 machine it runs on — the virtual machine, or the Container App — so there is
 no account key anywhere in `.env`. Both processes that touch the container, the
 API and the worker, sign in as it, and between them they read, write, **delete
-and list** blobs: the worker deletes and lists the staged imports it clears
-away. Give that identity the **Storage Blob Data Contributor** role on the one
+and list** blobs: the API deletes staged files once a stage is saved or
+cancelled, and the worker lists and deletes the abandoned ones. Give that identity the **Storage Blob Data Contributor** role on the one
 container, not on the whole account. That role already includes delete and
 list, so an identity set up for an earlier release needs no change:
 
@@ -199,7 +203,9 @@ Delete the `garage` and `garage-init` services, the `garage-config` and
 naming them (`garage` in `api` and `worker`, `garage-init` in `migrate`),
 exactly as for a managed bucket — and ignore the two
 `GARAGE_*` variables. Blob versioning or object replication on the account
-replaces the volume copy in [Back up and restore](./backup.md).
+replaces the volume copy in [Back up and restore](./backup.md). With
+versioning on, add the lifecycle rule for `staging/` that
+[the requirements](./requirements.md#an-object-store) describe.
 
 As with the other swaps, this is tidying rather than part of the swap: until
 you delete them, the stack's Garage runs empty and `garage-init` sees

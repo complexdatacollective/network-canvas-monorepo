@@ -59,7 +59,9 @@ Cloudflare R2 in the managed topology, Garage (or any S3-compatible endpoint)
 self-hosted and in development, or Azure Blob Storage where the institution's
 cloud is Azure. `STUDIO_OBJECT_STORE` picks the implementation, and one
 contract suite holds both to the same behaviour.
-Objects are keyed by content hash, so `/storage/:hash` responses are
+A file an author adds while editing a stage waits under `staging/` until the
+stage is saved, when it is copied to its content address. Assets are keyed by
+content hash, so `/storage/:hash` responses are
 immutable-cacheable by construction. Files ride plain HTTP rather than the
 RPC surface — uploads must stream, retrievals must cache.
 
@@ -142,18 +144,21 @@ and nothing else.
 With more than one API replica, an edit made through one replica has to reach
 editors connected to another. The truth is in Postgres; Valkey only says that
 there is something new to read. When a replica commits a change to a
-protocol, or a lock changes hands, it `PUBLISH`es a short message on one
-channel (`studio:protocol-events` by default), and every replica holds a
-`SUBSCRIBE` to that channel and reads the new state from Postgres when it
-rings. The message carries no content, and a replica that misses it — it was
-restarting, or Valkey was down — still catches up, because each replica also
-reads the state its connected editors depend on every five seconds.
+protocol, a lock changes hands, or an editor arrives, leaves or starts editing,
+it `PUBLISH`es a short message on one fixed channel, `studio:protocol-events`,
+and every replica holds a `SUBSCRIBE` to that channel and reads the new state
+from Postgres when it rings. The message names the draft and, for a change, its
+position in the event log, and carries no protocol content. A replica that
+misses it — it was restarting, or Valkey was down — still catches up, because
+each replica also reads the state its connected editors depend on every five
+seconds.
 
 So Valkey makes cross-replica updates fast and is never what makes them
-correct. A Valkey that cannot be reached shows as `degraded` on `/readyz`,
-which stays 200, and updates between replicas arrive at the five-second poll
-instead of at once. The store holds nothing worth backing up, as with the
-rate-limit counters.
+correct, and it stays optional: with no `REDIS_URL`, replicas keep up with each
+other through the five-second poll alone. A replica configured with Valkey
+whose subscription is down shows `doorbell: degraded` on `/readyz`, which stays
+200, and its updates from other replicas arrive at the poll instead of at once.
+The store holds nothing worth backing up, as with the rate-limit counters.
 
 ## Development
 
@@ -720,18 +725,19 @@ Studio encrypts **secrets** in the application and relies on the deployment for
 everything else (#1900). A secret is a value that would let someone act as
 Studio or as a researcher's integration, and there are four:
 
-| What                             | Where it is stored                                     | Opened where                                                |
-| -------------------------------- | ------------------------------------------------------ | ----------------------------------------------------------- |
-| Webhook signing secrets          | `webhook_subscriptions.secret_ciphertext`              | In the worker, to sign one delivery                         |
-| API-key protocol assets          | `protocol_asset_keys`, never in a section document     | Assembling a protocol for a session or a preview            |
-| OAuth access, refresh, id tokens | `account`, as `studio-secret:<keyId>:<base64url>`      | Inside the auth adapter, on every read of the row           |
-| Staged API-key assets            | `protocol_staged_resources`, until the import is saved | When the import is saved, where it becomes an API-key asset |
+| What                             | Where it is stored                                    | Opened where                                                                                |
+| -------------------------------- | ----------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| Webhook signing secrets          | `webhook_subscriptions.secret_ciphertext`             | In the worker, to sign one delivery                                                         |
+| API-key protocol assets          | `protocol_asset_keys`, never in a section document    | Assembling a protocol for a session or a preview                                            |
+| OAuth access, refresh, id tokens | `account`, as `studio-secret:<keyId>:<base64url>`     | Inside the auth adapter, on every read of the row                                           |
+| Staged API-key assets            | `protocol_staged_resources`, until the stage is saved | When its editor inspects it, and when the stage is saved, where it becomes an API-key asset |
 
 AES-256-GCM through Node's own `crypto`, one keyring (see
 [Secrets](#secrets) for the variables), one HKDF-derived subkey per purpose,
 and a key id stored beside every ciphertext. The row's identity is the
 additional authenticated data — team and subscription, team and protocol and
-asset, provider and account and column — so a ciphertext moved to another row
+asset, provider and account and column, team and draft and tab and staged
+resource — so a ciphertext moved to another row
 stops opening rather than decrypting as that row's secret. There is no general
 `encrypt`/`decrypt`: a caller names the kind of secret it is handling, and
 therefore names the row it belongs to. Both processes refuse to start when a
@@ -810,13 +816,13 @@ a redeploy that changes a queue's options does not change how a job already in
 flight retries. What each database role may do with the job tables is in
 [Tenancy](#tenancy).
 
-| Queue                             | What runs on it                                                  | Retries                                            | Attempt expiry | When attempts run out                             |
-| --------------------------------- | ---------------------------------------------------------------- | -------------------------------------------------- | -------------- | ------------------------------------------------- |
-| `invitation-delivery`             | Team-invitation email                                            | 7 (eight attempts), exponential from 5 s to 30 min | 60 s           | Copied to `invitation-delivery-dead-letter`       |
-| `invitation-delivery-dead-letter` | Nothing works it; it holds what failed                           | none                                               | —              | Kept 30 days for a manual re-send (#1307)         |
-| `sign-in-email`                   | Magic-link sign-in email                                         | 2, exponential from 5 s to 60 s                    | 30 s           | Dropped; an expired sign-in link is worth nothing |
-| `protocol-store-gc`               | The protocol-store sweep, hourly, at most one at a time          | none                                               | 1 h            | Nothing; the next hour's run does the same work   |
-| `denied-attempts-summary`         | The suppressed-denial sweep, every minute, at most one at a time | none                                               | 60 s           | Nothing; the next minute's run does the same work |
+| Queue                             | What runs on it                                                                      | Retries                                            | Attempt expiry | When attempts run out                             |
+| --------------------------------- | ------------------------------------------------------------------------------------ | -------------------------------------------------- | -------------- | ------------------------------------------------- |
+| `invitation-delivery`             | Team-invitation email                                                                | 7 (eight attempts), exponential from 5 s to 30 min | 60 s           | Copied to `invitation-delivery-dead-letter`       |
+| `invitation-delivery-dead-letter` | Nothing works it; it holds what failed                                               | none                                               | —              | Kept 30 days for a manual re-send (#1307)         |
+| `sign-in-email`                   | Magic-link sign-in email                                                             | 2, exponential from 5 s to 60 s                    | 30 s           | Dropped; an expired sign-in link is worth nothing |
+| `protocol-store-gc`               | The protocol-store sweep, then abandoned staged files, hourly, at most one at a time | none                                               | 1 h            | Nothing; the next hour's run does the same work   |
+| `denied-attempts-summary`         | The suppressed-denial sweep, every minute, at most one at a time                     | none                                               | 60 s           | Nothing; the next minute's run does the same work |
 
 A worker with no mail transport still boots. It registers the cron and works
 the sweep, logs at error level that `invitation-delivery` and `sign-in-email`
@@ -1096,11 +1102,15 @@ under a one-second bound and answers with the verdict per check:
 
 `status` is `ok`, `degraded` or `failing`, and only `failing` answers 503 — a
 degraded process still serves. The web process checks its application pool, the
-schema fingerprint, and the object store where one is configured; the worker
-checks its maintenance pool, the schema, and whether its queue is working. A
-surface this deployment has not configured is left out rather than reported
-failed: it refuses by design, and a check for it would make an instance that
-never wanted one permanently unready.
+schema fingerprint, the maintenance gate, the object store and the rate-limit
+store where each is configured, and the sync doorbell (`degraded` when Valkey
+is configured and the replica is not subscribed, `ok` without Valkey). While
+it drains on SIGTERM it adds `draining: failed: draining` and answers 503, so
+a load balancer that reads `/readyz` stops sending it work. The worker checks
+its maintenance pool, the schema, and whether its queue is working. A surface
+this deployment has not configured is left out rather than reported failed: it
+refuses by design, and a check for it would make an instance that never wanted
+one permanently unready.
 
 The worker's listener binds `127.0.0.1` and nothing else. It is not a service
 anything routes to, and `WORKER_HEALTH_PORT` (default 3001) exists so the
@@ -1197,9 +1207,9 @@ them:
   monitoring rollups computed from the seeded sessions, and audit history
   appended through the real audit writer. Participants carry plain `email`,
   `phone`, `name` and `attributes` columns, and every secret it writes is a
-  real sealed one — each team's webhook signing secrets and one API-key
-  protocol asset, and a linked Google account for the admin — so it needs the
-  keyring, and a seeded database exercises all three secret stores.
+  real sealed one — each team's webhook signing secrets, one API-key protocol
+  asset and one staged API key, and a linked Google account for the admin — so
+  it needs the keyring, and a seeded database exercises all four secret stores.
   Seeded assets are metadata only — no bytes are uploaded, so
   `/storage/:hash` honestly 404s in development — and the plaintext of the
   anonymous interview links is printed at the end beside the admin
@@ -1302,19 +1312,28 @@ same Traefik, with no sticky sessions: any replica can serve any request, and
 an editor's WebSocket may reconnect to a different one. That works because
 nothing a replica needs lives only in its memory. Edit locks and the
 connections that hold them are rows in Postgres, so a lock outlives the
-replica that granted it and is renewed by whichever replica next hears from
-its owner. A protocol imported from a file but not yet saved is kept in the
-object store under `staging/`, with any secrets in it sealed under the
-keyring, so the replica that finishes the import need not be the one that
-started it. Valkey carries a doorbell between replicas, and a five-second poll
-backs it up (see
+replica that granted it and is renewed by every replica its owner is connected
+to. When an editor's connection closes, the replica it was on waits twenty
+seconds (`RECONNECT_GRACE_MS`) and then gives the editor's locks up only if
+they have no live connection on any replica. A file staged in an open edit is
+kept in the object store under `staging/`, and a staged API key in
+`protocol_staged_resources`, sealed under the keyring, so the replica that
+saves the stage need not be the one that staged it. Valkey carries a doorbell
+between replicas, and a five-second poll backs it up (see
 [Valkey also carries sync doorbells](#valkey-also-carries-sync-doorbells)).
 Workers have no such state and may be scaled too — a job is claimed by exactly
 one worker, and one replica ticks the cron schedules per pass (see
 [Background work](#background-work)). The worker also needs the object store,
-because it clears abandoned staged imports. Adding a replica to a self-hosted
-stack is two edits, described in
+because it clears away abandoned staged files. Adding a replica to a
+self-hosted stack is two edits and a restart of Traefik, described in
 [the self-host guide](./docs/self-host/run.md#running-more-than-one-api).
+
+More replicas mean more database connections, but transaction-mode pooling
+(PgBouncer in transaction mode, Hyperdrive) is not yet supported for the API
+and the worker. The protocol builder's multi-replica code uses only
+transaction-local state; the rest still relies on the `options` startup
+parameter, named prepared statements, the worker's `LISTEN`, and `migrate`'s
+session advisory lock.
 
 The platform that runs it — the host, image publishing, the deploy workflows
 and staging — is
@@ -1335,9 +1354,11 @@ service runs: there is no single-tenant code path.
 Backend deploys drop live WebSocket sessions by design, so the server drains
 on SIGTERM (close 1001, stop the listener, bounded timeout) and the sync
 protocol's reconnect-and-resume path makes the interruption routine (#1247).
-A deploy does not drop edit locks: a lock is a row, not a connection, so an
-editor who reconnects within the lease keeps the section they were editing,
-and a staged import survives the replica that was holding it. While a replica
+A deploy does not drop edit locks: a lock is a row, not a connection, and a
+replica that is shutting down gives none up, so an editor who reconnects
+within the lease (thirty seconds from its last renewal, renewed every ten)
+keeps the section they were editing, and a staged file survives the replica
+that was holding it. While a replica
 drains, `/readyz` answers 503 with `draining`, and the ingress keeps it in
 rotation until it stops, because the ingress checks `/healthz`, which says the
 process is alive.

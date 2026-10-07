@@ -137,7 +137,7 @@ Four things this picture is drawn to make unmissable:
   one `api` replica, each upgrade is balanced to any healthy one and stays on it
   for the life of that connection; there are no sticky sessions, because an
   editor who reconnects to another replica finds their locks and their
-  staged imports there. The replicas are the `servers` of the `api` service
+  staged files there. The replicas are the `servers` of the `api` service
   (`traefik-api-servers` in the compose file), which carries a health check on
   `/healthz` — whether the process is alive, not `/readyz`, so a replica that is
   draining stays in rotation until it stops

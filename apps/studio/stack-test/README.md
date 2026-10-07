@@ -156,10 +156,11 @@ runs one scenario with `curl` alone. The first replica is the only one up, and
 an editor's tab takes a section's lock on it. The second replica then starts,
 and the first stops, as a deploy or a lost host would stop it. The tab goes on
 working against the second replica, one call every five seconds, until forty
-seconds have passed since the first stopped. A lock's lease is thirty seconds
-and is renewed by whichever replica last heard from its owner, so a save made
-at that point is written only if the second replica really took the renewals
-over, and is refused as `NotLockHolder` if it did not.
+seconds have passed since the first stopped. A lock's lease is thirty seconds,
+renewed every ten by each replica that has heard from its owner in the last
+five minutes, so a save made at that point is written only if the second
+replica really took the renewals over, and is refused as `NotLockHolder` if it
+did not.
 
 It uses the unary plane because that is the one a shell can speak, and it
 holds the same lease as a WebSocket does. A WebSocket reconnecting to another

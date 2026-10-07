@@ -140,6 +140,12 @@ Each of these replaces one service in the stack. The swap itself is in
 - **No password in `DATABASE_URL` either.** It lives in the
   `secrets/postgres-password` file secret, which `DATABASE_PASSWORD_FILE`
   names. A URL carrying one as well is refused at boot.
+- **A direct connection, or a session-mode pooler.** Transaction-mode pooling
+  (PgBouncer in transaction mode, Cloudflare Hyperdrive) is not yet supported
+  for the API and the worker. Both keep state on a connection beyond one
+  transaction: the `options` startup parameter above, named prepared
+  statements, the worker's `LISTEN`, and the session advisory lock `migrate`
+  takes.
 - **TLS is recommended**, and required by
   [#1900](https://github.com/complexdatacollective/network-canvas-monorepo/issues/1900)
   wherever the database is not on a private network you control:
@@ -172,20 +178,28 @@ Whichever you choose, this is what Studio needs of it — and all it needs:
 - **A probe of the bucket or container**, which `/readyz` reports as
   `objectStore`. When it is unreachable, missing, or refuses the credentials,
   readiness names the object store as the failing check.
-- **Staged imports under `staging/`.** A protocol imported from a file is held
-  in the store, under `staging/<team>/<id>`, until it is saved or discarded.
-  Studio writes those objects, moves them to their content-addressed key when
-  the import is saved, and deletes them when it is discarded. The worker lists
-  the `staging/` prefix to delete what was abandoned. Nothing else is listed or
-  deleted: assets under `assets/` are never removed.
+- **Staged files under `staging/`.** A file an author adds while editing a
+  stage is held in the store, under `staging/<team>/<id>`, until they save or
+  cancel that stage. Studio writes the object, copies it to its
+  content-addressed key when the stage is saved, and deletes it once it is
+  saved or cancelled. The worker lists the `staging/` prefix to delete what
+  was abandoned. Nothing else is listed or deleted: assets under `assets/` are
+  never removed.
 - **The bucket or container already exists.** Studio never creates one.
 
 No lifecycle rules are required, no bucket policy API, no presigning, and no
-public access: assets are served through Studio. A lifecycle rule that expires
-objects under `staging/` after a few days is a sensible backstop, and optional.
+public access: assets are served through Studio.
+
+**If the bucket keeps versions**, a delete only hides an object: on S3 it adds
+a delete marker and the bytes stay as a noncurrent version, and Azure blob
+versioning keeps the deleted blob as a previous version. Staged files are
+deleted all the time, so add a lifecycle rule that expires noncurrent (or
+previous) versions under the `staging/` prefix, or they are kept for as long
+as the bucket keeps versions.
 
 Both the API and the worker use the object store, so both need the same
-credentials.
+credentials. Without an object store, an author can still stage an API key,
+but adding a file to a stage is refused.
 
 #### S3-compatible stores
 
@@ -195,18 +209,22 @@ Seven S3 operations and no others:
 | --------------- | ---------------------------------------------------------------------- |
 | `HeadBucket`    | Readiness: does the bucket answer with these credentials?              |
 | `HeadObject`    | Does this content-addressed object already exist?                      |
-| `PutObject`     | Storing an asset's bytes, or a staged import's                         |
-| `GetObject`     | Serving them back on `/storage/:hash`                                  |
-| `CopyObject`    | Moving a staged file to its asset key when the import is saved         |
-| `DeleteObject`  | Removing a staged file that was saved, discarded or abandoned          |
+| `PutObject`     | Storing an asset's bytes, or a staged file's                           |
+| `GetObject`     | Serving them back on `/storage/:hash`, and reading a staged file       |
+| `CopyObject`    | Copying a staged file to its asset key when the stage is saved         |
+| `DeleteObject`  | Removing a staged file that was saved, cancelled or abandoned          |
 | `ListObjectsV2` | The worker finding abandoned staged files, under the `staging/` prefix |
 
 An IAM policy therefore grants `s3:GetObject`, `s3:PutObject`,
-`s3:DeleteObject` and `s3:ListBucket` on the bucket, the last on the bucket
-itself and the others on its objects; `CopyObject` and `HeadObject` need no
-further action. [Upgrading](./upgrade.md#before-you-pull-new-images) from a
-release that did not stage imports in the store means adding `DeleteObject` and
-`ListBucket`. No multipart upload. Two further requirements:
+`s3:DeleteObject` and `s3:ListBucket`: `s3:ListBucket` on the bucket itself
+(`arn:aws:s3:::your-bucket`), where it covers both `ListObjectsV2` and the
+`HeadBucket` readiness probe, and the other three on its objects
+(`arn:aws:s3:::your-bucket/*`). `HeadObject` needs `s3:GetObject`, and
+`CopyObject` needs `s3:GetObject` and `s3:PutObject`, so neither adds an
+action. [Upgrading](./upgrade.md#before-you-pull-new-images) from a release
+that did not stage files in the store means adding `s3:DeleteObject`, and
+`s3:ListBucket` if the policy lacks it. No multipart upload. Two further
+requirements:
 
 - **Path-style addressing** (`<endpoint>/<bucket>/<key>`). `S3_ENDPOINT` is the
   service address, not a per-bucket hostname.
@@ -227,10 +245,14 @@ and readiness leaves the object store out rather than reporting it failed.
 
 - **One container**, named by `AZURE_STORAGE_CONTAINER`.
 - **A managed identity holding Storage Blob Data Contributor on that
-  container** — the role already includes the delete and list Studio now uses —
-  with `AZURE_STORAGE_ACCOUNT_URL` naming the account — no
+  container**, with `AZURE_STORAGE_ACCOUNT_URL` naming the account — no
   account keys. `AZURE_CLIENT_ID` picks a user-assigned identity. A host outside
   Azure uses `AZURE_STORAGE_CONNECTION_STRING` instead of the account URL.
+- **What Studio calls:** a blob's properties, upload, download, delete
+  (`deleteIfExists`) and a flat listing (`listBlobsFlat`), and the container's
+  properties for readiness. Storage Blob Data Contributor covers all of them.
+  There is no server-side copy: saving a staged file reads it back and writes
+  it to its asset key.
 - **No `S3_*` variable set alongside it.** A mixed configuration is refused at
   boot, as is one missing the container or naming both an account URL and a
   connection string.
@@ -259,13 +281,16 @@ The commands Studio issues:
 | Inside the denial-window and summary scripts | `HGET`, `HINCRBY`, `HSET`, `HSETNX`, `HGETALL`, `DEL`, `PEXPIRE`                         |
 | Between API replicas, on one channel         | `PUBLISH`, `SUBSCRIBE`                                                                   |
 
-The channel is `studio:protocol-events`. Publishing says that a protocol's
-edit state changed, and each replica reads the new state from Postgres when it
-hears it, so no content passes through the store. A replica that misses a
-message catches up on its next five-second poll, so a store that drops or
-delays messages slows live updates and cannot lose one. `SUBSCRIBE` holds a
-connection of its own per replica; a proxy in front of the store must allow
-a long-lived subscribed connection.
+The channel is `studio:protocol-events`, and it is not configurable.
+Publishing says that a protocol's edits, locks or editors changed, and each
+replica reads the new state from Postgres when it hears it, so no protocol
+content passes through the store. A replica that misses a message catches up
+on its next five-second poll, so a store that drops or delays messages slows
+live updates and cannot lose one. The same poll is how replicas keep up with
+each other when there is no store at all. `SUBSCRIBE` holds a connection of
+its own per replica; a proxy in front of the store must allow a long-lived
+subscribed connection. A replica whose subscription is down reports
+`doorbell: degraded` on `/readyz`, which still answers 200.
 
 Server-side scripting must be available: atomicity is the script, which is what
 makes the answer the same whether one API container is running or two. Each

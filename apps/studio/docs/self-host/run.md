@@ -142,7 +142,7 @@ fails with:
 }
 ```
 
-(with the object store and rate-limit store checks beside them). The database
+(with the object store, rate-limit store and doorbell checks beside them). The database
 is reachable; the roles Studio connects as do not exist until `migrate` creates
 them, and the server does not finish starting until they do. Both processes
 check again every few seconds and open by themselves once `migrate` has run,
@@ -182,7 +182,7 @@ Confirm the stack is healthy before you go on:
 
 ```bash
 curl https://studio.example.org/readyz
-# {"status":"ok","checks":{"db":"ok","limiter":"ok","objectStore":"ok","schema":"ok","maintenance":"ok"}}
+# {"status":"ok","checks":{"db":"ok","limiter":"ok","objectStore":"ok","schema":"ok","maintenance":"ok","doorbell":"ok"}}
 ```
 
 ## 7. Finish setup in the browser
@@ -237,15 +237,24 @@ connection ends reconnects to whichever replica Traefik picks next, keeping the
 section they were editing.
 
 What makes that safe is that nothing an editor needs lives only inside one
-container. Edit locks, and who is connected, are rows in Postgres. A protocol
-imported from a file but not yet saved is held in your object store under
-`staging/`, with any API keys in it sealed under your keyring. Valkey carries a
-doorbell that tells the other replicas to look, and each replica also checks
-every five seconds, so a Valkey outage slows live updates and loses none.
-Because of the staged files, the object store credentials must allow delete and
-list as well as read and write (see
+container. Edit locks, and who is connected, are rows in Postgres. A file an
+author has added to a stage but not yet saved is held in your object store
+under `staging/`, and an API key in Postgres, sealed under your keyring.
+Valkey carries a doorbell that tells the other replicas to look, and each
+replica also checks every five seconds, so a Valkey outage slows live updates
+and loses none. Because of the staged files, the object store credentials must
+allow delete and list as well as read and write (see
 [an object store](./requirements.md#an-object-store)), and the `worker` needs
-them too, as it clears imports that were abandoned.
+them too, as it clears away staged files that were abandoned.
+
+When an editor's connection closes, the replica it was on waits twenty
+seconds for them to come back before it gives their locks up. If by then they
+have a live connection on any replica, nothing is given up. A replica that is
+stopping for a deploy gives nothing up at all: its editors' locks stay theirs
+while they reconnect, for up to thirty seconds after the last renewal.
+
+Each replica is another Node process, of about 240 MB at rest, with database
+connections of its own.
 
 Adding a replica is two edits. Create `docker-compose.override.yml` beside
 `docker-compose.yml`, which Compose reads on its own:
@@ -276,17 +285,25 @@ configs:
 `api-b` is `api` with a different name: the same image, environment and
 secrets. The second block replaces the server list as a whole, so it restates
 the health check and names every replica, and so does the next replica you add.
-Then start it:
+Then start the new replica, and recreate Traefik so it reads the new list:
 
 ```bash
 docker compose up -d api-b
+docker compose up -d --force-recreate traefik
 ```
+
+Traefik reads its server list from a file Compose writes when it creates the
+container, and `up -d` alone does not recreate a running container whose
+config changed, so without the second command Traefik goes on sending every
+request to `api`. Recreating Traefik closes the connections open through it,
+and editors' browsers reconnect.
 
 Traefik checks each server's `/healthz` every five seconds and stops sending
 requests to one that does not answer. `/healthz` says the process is alive. It
 is not `/readyz`, which also reports whether the database, object store and
-schema are as this release expects, so a replica that is draining for a deploy
-stays in rotation until it stops, and the editors on it reconnect to the other.
+schema are as this release expects, and answers 503 with `draining` while a
+replica shuts down. So a replica that is draining for a deploy stays in
+rotation until it stops, and the editors on it reconnect to the other.
 
 From here the upgrade sequence names every replica in `stop` and in `up`:
 
