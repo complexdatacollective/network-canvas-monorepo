@@ -50,8 +50,10 @@ function useSameWhileUnchanged<T extends object>(next: T): T {
  *
  * A form with an encrypted question is locked until the interview's key is in
  * force, whether or not that question has been answered yet: without it the
- * stored answer cannot be shown, and a new answer could not be saved. An
- * answer that can never be read is left out, as if unanswered, and reported.
+ * stored answer cannot be shown, and a new answer could not be saved. So is a
+ * form holding an answer stored encrypted under a question the codebook no
+ * longer encrypts, until that answer can be shown. An answer that can never be
+ * read is left out, as if unanswered, and reported.
  */
 export function useProtectedFormValues(
   entity: NcNode | NcEdge | null,
@@ -63,23 +65,24 @@ export function useProtectedFormValues(
   const reportUnreadable = useReportUnreadable();
   const [, rerender] = useReducer((count: number) => count + 1, 0);
 
-  const protectedFields = useMemo(
-    () =>
-      fields
-        .map((field) => field.variable)
-        .filter((variable) => variables[variable]?.encrypted),
+  const savesEncrypted = useMemo(
+    () => fields.some(({ variable }) => variables[variable]?.encrypted),
     [fields, variables],
   );
 
   const stored = useMemo(() => {
     if (!entity || !isNode(entity)) return [];
-    return protectedFields.flatMap((variable) => {
+    return fields.flatMap(({ variable }) => {
       const attribute = readEncryptedAttribute(entity, variable, variables);
       return attribute ? [{ variable, attribute }] : [];
     });
-  }, [entity, protectedFields, variables]);
+  }, [entity, fields, variables]);
 
-  const locked = entity !== null && protectedFields.length > 0 && !scope;
+  const locked =
+    entity !== null &&
+    !scope &&
+    (savesEncrypted ||
+      stored.some(({ attribute }) => attribute.status === 'encrypted'));
 
   useEffect(() => {
     if (locked) requirePassphrase();

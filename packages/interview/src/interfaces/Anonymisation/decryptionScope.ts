@@ -126,21 +126,36 @@ export function isNumberArray(value: unknown): value is number[] {
 
 /**
  * The stored ciphertext of an attribute, or why it can never be read.
- * Undefined when the attribute is stored as plaintext: not marked encrypted,
- * or written without encryption (e.g. external data).
+ * Undefined when the attribute is stored as plaintext, such as a value
+ * written without encryption (e.g. external data).
+ *
+ * A node records how it encrypted each value it holds, and writing a value in
+ * the clear removes that record, so bytes with a record are ciphertext
+ * whatever the codebook says: a protocol re-imported without its encryption
+ * leaves values stored encrypted under variables it no longer marks. Bytes
+ * without a record are ciphertext that lost it only under a variable the
+ * codebook encrypts; anywhere else they are a plaintext answer, such as a
+ * categorical one.
  */
 export function readEncryptedAttribute(
   node: NcNode,
   variableId: string,
   variables: Record<string, Variable>,
 ): StoredEncryptedAttribute | undefined {
-  if (!variables[variableId]?.encrypted) return undefined;
-
   const data = node[entityAttributesProperty][variableId];
   if (!isNumberArray(data)) return undefined;
 
-  const secure = node[entitySecureAttributesMeta]?.[variableId];
-  if (!secure) return { status: 'unreadable', reason: 'missing-metadata' };
+  const records = node[entitySecureAttributesMeta];
+  // Own records only: an attribute named like an Object method has none.
+  const secure =
+    records && Object.hasOwn(records, variableId)
+      ? records[variableId]
+      : undefined;
+  if (!secure) {
+    return variables[variableId]?.encrypted
+      ? { status: 'unreadable', reason: 'missing-metadata' }
+      : undefined;
+  }
   if (secure.salt) return { status: 'unreadable', reason: 'legacy-format' };
 
   return {
