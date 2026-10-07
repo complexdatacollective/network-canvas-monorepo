@@ -40,6 +40,10 @@ Schema 9:
   attributes without encryption. A host that stores `experiments` apart from
   the rest of the protocol must put it back into the document it migrates, or
   an encrypted protocol loses its encryption.
+- Schema 9 refuses an Anonymisation stage whose minimum passphrase length is
+  longer than its maximum, since no participant could choose a passphrase.
+  The v8 to v9 migration removes both lengths from such a stage, so the
+  interview's default minimum applies, and its migration notes say so.
 - Schema 8 still refuses names outside `a-z`, `A-Z`, digits and `. _ - :`, with
   a message that says so. `VersionlessProtocolSchema`, the version 8 body
   without its `schemaVersion`, is now exported.

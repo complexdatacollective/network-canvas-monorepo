@@ -16,3 +16,6 @@ be missing.
 
 `DEFAULT_PASSPHRASE_MIN_LENGTH` (8) is the shortest passphrase an interview
 accepts when its Anonymisation stage sets no minimum of its own.
+`effectivePassphraseMinLength(rules)` gives the minimum that applies to a
+stage's length rules: the stage's own minimum when it sets one, otherwise the
+default, lowered to the stage's maximum when that is shorter.

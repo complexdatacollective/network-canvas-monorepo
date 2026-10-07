@@ -1,5 +1,5 @@
 ---
-'@codaco/interview': minor
+'@codaco/interview': major
 '@codaco/architect': minor
 '@codaco/interviewer': minor
 'fresco': minor
@@ -33,12 +33,24 @@ Encrypted answers are now protected in a new way:
 - Each answer is bound to the person and the question it belongs to, so an
   encrypted answer copied anywhere else can't be read, and it is padded so
   that its length reveals less about it.
-- A participant now confirms the passphrase when choosing it, and it must be
-  at least 8 characters long unless the Anonymisation stage sets its own
-  minimum, which wins even if it is shorter. Architect shows this default
-  where you set the minimum. Entering the passphrase again only checks it.
+- A participant now confirms the passphrase when choosing it. Entering it
+  again only checks it. A minimum length set on the Anonymisation stage
+  applies even if it is shorter than 8. Without one, the passphrase must be
+  at least 8 characters long, or as long as the stage's maximum when that is
+  shorter. Architect shows the minimum that applies where you set the lengths.
+- The passphrase stage now says whether the passphrase was set, accepted, or
+  had already been entered. Password managers are asked not to fill in or
+  save it, and when a passphrase is turned away the cursor goes back to the
+  field so it can be typed again.
 - While a passphrase is being checked, the interview says so and the button
   can't be pressed twice.
+- The passphrase prompt now says that a forgotten passphrase can't be
+  recovered, instead of suggesting someone can help.
+- The interview checks how its key is made before making one. If that record
+  is damaged, or was written by a newer version, no passphrase is asked for,
+  because none could be accepted: the protected answers show as "Answer
+  unavailable", the participant is told they can't be shown or saved, and
+  the interview can go on.
 - An answer that can't be read is shown as "Answer unavailable" rather than
   asking for the passphrase again.
 - A validation rule that compares an answer with an encrypted one, such as
@@ -56,5 +68,6 @@ For hosts of `@codaco/interview`: `ProtocolPayload` no longer has
 `experiments`, and the engine no longer reads it. A session's network can now
 carry an `encryption` header, which must be stored and returned with the rest
 of the network; without it, the interview treats the passphrase as never
-chosen and earlier encrypted answers can no longer be read. Encrypted values'
-metadata is now `{ iv }`, and schema 8's `{ iv, salt }` is still accepted.
+chosen and earlier encrypted answers can no longer be read. A header outside
+the runtime's bounds is left as it is. Encrypted values' metadata is now
+`{ iv }`, and schema 8's `{ iv, salt }` is still accepted.
