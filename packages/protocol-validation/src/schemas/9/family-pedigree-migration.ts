@@ -66,11 +66,10 @@ const adoptCanonicalOptions = (
 ) => {
   if (!isRecord(variable) || !Array.isArray(variable.options)) return;
   if (variable.type !== 'categorical') return;
-  if (
-    !optionsMatchInterfaceOwnedSet(variable.options.filter(isRecord), canonical)
-  ) {
-    return;
-  }
+  const options = variable.options.filter(isRecord).map(({ value }) => ({
+    value,
+  }));
+  if (!optionsMatchInterfaceOwnedSet(options, canonical)) return;
   variable.options = canonical.map((option) => ({ ...option }));
 };
 
@@ -175,11 +174,11 @@ const convertNominationPrompts = (prompts: unknown): unknown => {
   return prompts.map((prompt) => {
     if (!isRecord(prompt)) return prompt;
     const { variable, ...rest } = prompt;
-    let id = rest.id;
-    if (id === FAMILY_PEDIGREE_BUILD_PROMPT_ID) {
-      id = freshId(NOMINATION_PROMPT_ID_BASE, taken);
-      taken.add(id);
+    if (rest.id !== FAMILY_PEDIGREE_BUILD_PROMPT_ID) {
+      return withoutUndefined({ ...rest, attribute: variable });
     }
+    const id = freshId(NOMINATION_PROMPT_ID_BASE, taken);
+    taken.add(id);
     return withoutUndefined({ ...rest, id, attribute: variable });
   });
 };
