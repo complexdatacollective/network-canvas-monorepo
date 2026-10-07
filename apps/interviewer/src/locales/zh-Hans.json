@@ -118,7 +118,7 @@
   "interviewer.interview.interviewUnavailable": "访谈不可用",
   "interviewer.interview.readOnlyReview": "只读查看",
   "interviewer.interview.returnHome": "返回首页",
-  "interviewer.interview.theDataSavedForThisInterviewCouldNot": "无法读取此访谈保存的数据，因此未打开此访谈。其中的内容均未更改。",
+  "interviewer.interview.theDataSavedForThisInterviewCouldNot": "无法读取为此访谈保存的数据，因此未打开该访谈。已保存的数据未受影响。",
   "interviewer.interview.theProtocolThisInterviewUsesCouldNot": "此访谈使用的协议无法更新以适配此版本的应用，因此无法继续此访谈。其回答仍可在数据页面查看。如需开始新访谈，请在 Architect 中修复该协议并重新导入。",
   "interviewer.interview.thisInterviewMayHaveBeenDeletedOr": "此访谈可能已被删除，或其使用的协议已不再安装。",
   "interviewer.interviewComplete.exit": "退出",

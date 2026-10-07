@@ -118,7 +118,7 @@
   "interviewer.interview.interviewUnavailable": "Interview unavailable",
   "interviewer.interview.readOnlyReview": "Read-only review",
   "interviewer.interview.returnHome": "Return home",
-  "interviewer.interview.theDataSavedForThisInterviewCouldNot": "The data saved for this interview could not be read, so it has not been opened. Nothing in it has been changed.",
+  "interviewer.interview.theDataSavedForThisInterviewCouldNot": "The data saved for this interview could not be read, so the interview has not been opened. The saved data has not been changed.",
   "interviewer.interview.theProtocolThisInterviewUsesCouldNot": "The protocol this interview uses could not be updated to work with this version of the app, so this interview cannot be continued. Its responses remain available on the data screen. To start new interviews, repair the protocol in Architect and import it again.",
   "interviewer.interview.thisInterviewMayHaveBeenDeletedOr": "This interview may have been deleted, or the protocol it used is no longer installed.",
   "interviewer.interviewComplete.exit": "Exit",

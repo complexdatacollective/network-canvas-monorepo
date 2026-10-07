@@ -118,7 +118,7 @@
   "interviewer.interview.interviewUnavailable": "Interview nicht verfügbar",
   "interviewer.interview.readOnlyReview": "Schreibgeschützte Durchsicht",
   "interviewer.interview.returnHome": "Zur Startseite",
-  "interviewer.interview.theDataSavedForThisInterviewCouldNot": "Die für dieses Interview gespeicherten Daten konnten nicht gelesen werden, daher wurde es nicht geöffnet. Daran wurde nichts geändert.",
+  "interviewer.interview.theDataSavedForThisInterviewCouldNot": "Die für dieses Interview gespeicherten Daten konnten nicht gelesen werden, daher wurde es nicht geöffnet. Die gespeicherten Daten sind unverändert.",
   "interviewer.interview.theProtocolThisInterviewUsesCouldNot": "Das Protokoll dieses Interviews konnte nicht für diese App-Version aktualisiert werden, daher kann das Interview nicht fortgesetzt werden. Die Antworten bleiben in der Datenansicht verfügbar. Um neue Interviews zu starten, reparieren Sie das Protokoll in Architect und importieren Sie es erneut.",
   "interviewer.interview.thisInterviewMayHaveBeenDeletedOr": "Dieses Interview wurde möglicherweise gelöscht, oder das verwendete Protokoll ist nicht mehr installiert.",
   "interviewer.interviewComplete.exit": "Verlassen",

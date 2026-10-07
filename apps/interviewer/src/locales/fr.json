@@ -118,7 +118,7 @@
   "interviewer.interview.interviewUnavailable": "Entretien indisponible",
   "interviewer.interview.readOnlyReview": "Consultation en lecture seule",
   "interviewer.interview.returnHome": "Retour à l’accueil",
-  "interviewer.interview.theDataSavedForThisInterviewCouldNot": "Les données enregistrées pour cet entretien n’ont pas pu être lues : il n’a donc pas été ouvert. Rien n’y a été modifié.",
+  "interviewer.interview.theDataSavedForThisInterviewCouldNot": "Les données enregistrées pour cet entretien n’ont pas pu être lues : il n’a donc pas été ouvert. Ces données n’ont pas été modifiées.",
   "interviewer.interview.theProtocolThisInterviewUsesCouldNot": "Le protocole utilisé par cet entretien n’a pas pu être mis à jour pour fonctionner avec cette version de l’application : cet entretien ne peut donc pas être poursuivi. Ses réponses restent disponibles dans l’écran des données. Pour commencer de nouveaux entretiens, réparez le protocole dans Architect et importez-le à nouveau.",
   "interviewer.interview.thisInterviewMayHaveBeenDeletedOr": "Cet entretien a peut-être été supprimé, ou le protocole qu’il utilisait n’est plus installé.",
   "interviewer.interviewComplete.exit": "Quitter",

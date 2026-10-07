@@ -118,7 +118,7 @@
   "interviewer.interview.interviewUnavailable": "Intervista non disponibile",
   "interviewer.interview.readOnlyReview": "Revisione in sola lettura",
   "interviewer.interview.returnHome": "Torna alla home page",
-  "interviewer.interview.theDataSavedForThisInterviewCouldNot": "Non è stato possibile leggere i dati salvati per questa intervista, quindi non è stata aperta. Non è stato modificato nulla.",
+  "interviewer.interview.theDataSavedForThisInterviewCouldNot": "Non è stato possibile leggere i dati salvati per questa intervista, quindi non è stata aperta. I dati salvati non sono stati modificati.",
   "interviewer.interview.theProtocolThisInterviewUsesCouldNot": "Non è stato possibile aggiornare il protocollo usato da questa intervista per farlo funzionare con questa versione dell’app, quindi l’intervista non può essere continuata. Le sue risposte restano disponibili nella schermata dei dati. Per avviare nuove interviste, correggi il protocollo in Architect e importalo di nuovo.",
   "interviewer.interview.thisInterviewMayHaveBeenDeletedOr": "Questa intervista potrebbe essere stata eliminata oppure il protocollo che usava non è più installato.",
   "interviewer.interviewComplete.exit": "Esci",

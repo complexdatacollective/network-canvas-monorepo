@@ -101,7 +101,7 @@ const messages = defineMessages({
   theDataSavedForThisInterviewCouldNot: {
     id: 'interviewer.interview.theDataSavedForThisInterviewCouldNot',
     defaultMessage:
-      'The data saved for this interview could not be read, so it has not been opened. Nothing in it has been changed.',
+      'The data saved for this interview could not be read, so the interview has not been opened. The saved data has not been changed.',
     description:
       'Explains that an interview was not opened because its saved data could not be read, and reassures that the saved data was left unchanged.',
   },
