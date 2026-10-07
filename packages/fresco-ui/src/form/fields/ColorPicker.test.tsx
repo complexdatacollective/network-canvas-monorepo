@@ -277,7 +277,7 @@ const readThemeHues = (): Map<string, string> => {
   const css = readFileSync(THEME_PATH, 'utf8');
   const hues = new Map<string, string>();
   const declaration =
-    /--((?:node|edge|ord|cat)-\d+)\s*:\s*oklch\(var\(--([a-z-]+)\)\)/g;
+    /--((?:node|edge|ord|cat)-\d+)\s*:\s*oklch\((?:from oklch\()?var\(--([a-z-]+)\)\)/g;
   let match = declaration.exec(css);
   while (match) {
     const [, token, hue] = match;

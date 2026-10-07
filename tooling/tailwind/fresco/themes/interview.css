@@ -185,21 +185,13 @@
 
     /* Sequences */
     --node-1: oklch(var(--neon-coral));
-    --node-1-contrast: oklch(var(--white));
     --node-2: oklch(var(--sea-serpent));
-    --node-2-contrast: oklch(var(--white));
-    --node-3: oklch(var(--purple-pizazz));
-    --node-3-contrast: oklch(var(--white));
+    --node-3: oklch(from oklch(var(--purple-pizazz)) calc(l - 0.03) c h);
     --node-4: oklch(var(--neon-carrot));
-    --node-4-contrast: oklch(var(--white));
     --node-5: oklch(var(--kiwi));
-    --node-5-contrast: oklch(var(--white));
-    --node-6: oklch(var(--cerulean-blue));
-    --node-6-contrast: oklch(var(--white));
+    --node-6: oklch(from oklch(var(--cerulean-blue)) calc(l - 0.02) c h);
     --node-7: oklch(var(--paradise-pink));
-    --node-7-contrast: oklch(var(--white));
     --node-8: oklch(var(--mustard));
-    --node-8-contrast: oklch(var(--white));
 
     --edge-1: oklch(var(--mustard));
     --edge-2: oklch(var(--purple-pizazz));

@@ -67,7 +67,7 @@ const nodeVariants = cva({
     // a wider gap keeps the ring legible against the node's own colour.
     'focusable relative inline-flex items-center justify-center focus-visible:outline-offset-6',
     'aspect-square min-w-0 shrink-0',
-    'text-white',
+    'text-[contrast-color(var(--base))]',
     '[--base:var(--node-1)] [--dark:oklch(from_var(--base)_calc(l-0.05)_c_h)]',
   ],
   variants: {

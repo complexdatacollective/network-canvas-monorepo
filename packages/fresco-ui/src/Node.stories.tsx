@@ -1,9 +1,10 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { useRef, useState } from 'react';
+import { type CSSProperties, useRef, useState } from 'react';
 import { expect, fn, userEvent, waitFor, within } from 'storybook/test';
 
 import { useFitText } from './hooks/useFitText';
 import Node, { labelVariants, NodeColors } from './Node';
+import { contrastRatio } from './storybook-support/colorContrast';
 import Heading from './typography/Heading';
 import Paragraph from './typography/Paragraph';
 
@@ -265,8 +266,51 @@ export const Colors: Story = {
           <span className="text-xs text-current/70">{i + 1}</span>
         </div>
       ))}
+      <div className="flex flex-col items-center gap-2">
+        <Node
+          color="custom"
+          label="Custom color"
+          style={{ '--base': 'oklch(var(--platinum))' } as CSSProperties}
+        />
+        <span className="text-xs text-current/70">Custom</span>
+      </div>
     </div>
   ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const labels = [
+      ...NodeColors.filter((c) => c !== 'custom').map(
+        (_, i) => `Color ${i + 1}`,
+      ),
+      'Custom color',
+    ];
+
+    for (const label of labels) {
+      const text = await canvas.findByText(label, { selector: 'span' });
+      const style = getComputedStyle(text);
+      const ink = style.color;
+
+      await expect({ label, ink }).toEqual({
+        label,
+        ink: expect.stringMatching(/^rgb\((0, 0, 0|255, 255, 255)\)$/),
+      });
+
+      for (const half of ['--base', '--dark']) {
+        const ratio = contrastRatio(ink, style.getPropertyValue(half));
+        await expect({
+          label,
+          half,
+          ratio: Number(ratio.toFixed(2)),
+          clearsAA: ratio >= 4.5,
+        }).toEqual({
+          label,
+          half,
+          ratio: Number(ratio.toFixed(2)),
+          clearsAA: true,
+        });
+      }
+    }
+  },
   parameters: {
     docs: {
       description: {

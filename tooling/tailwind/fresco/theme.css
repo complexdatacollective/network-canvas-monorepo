@@ -304,21 +304,13 @@
 
   /* Color sequences */
   --color-node-1: var(--node-1);
-  --color-node-1-contrast: var(--node-1-contrast);
   --color-node-2: var(--node-2);
-  --color-node-2-contrast: var(--node-2-contrast);
   --color-node-3: var(--node-3);
-  --color-node-3-contrast: var(--node-3-contrast);
   --color-node-4: var(--node-4);
-  --color-node-4-contrast: var(--node-4-contrast);
   --color-node-5: var(--node-5);
-  --color-node-5-contrast: var(--node-5-contrast);
   --color-node-6: var(--node-6);
-  --color-node-6-contrast: var(--node-6-contrast);
   --color-node-7: var(--node-7);
-  --color-node-7-contrast: var(--node-7-contrast);
   --color-node-8: var(--node-8);
-  --color-node-8-contrast: var(--node-8-contrast);
 
   --color-edge-1: var(--edge-1);
   --color-edge-2: var(--edge-2);
