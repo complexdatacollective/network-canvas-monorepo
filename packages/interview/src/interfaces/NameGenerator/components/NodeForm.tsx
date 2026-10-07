@@ -1,13 +1,20 @@
 'use client';
 import { Plus } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 
 import { createMessageError } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Button from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import Form from '@codaco/fresco-ui/form/Form';
+import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import type {
   FormSubmissionResult,
   FormSubmitHandler,
@@ -55,6 +62,24 @@ type NodeFormProps = {
   ) => Promise<FormSubmissionResult>;
 };
 
+/**
+ * Tells the dialog whether the form inside it is submitting. The form's store
+ * lives inside the dialog, so that each opening starts afresh, which leaves
+ * the dialog's own controls outside it.
+ */
+function SubmittingObserver({
+  onChange,
+}: {
+  onChange: (submitting: boolean) => void;
+}) {
+  const isSubmitting = useFormStore((state) => state.isSubmitting);
+  useLayoutEffect(() => {
+    onChange(isSubmitting);
+    return () => onChange(false);
+  }, [isSubmitting, onChange]);
+  return null;
+}
+
 const NodeForm = (props: NodeFormProps) => {
   const intl = useAppIntl();
   const { selectedNode, form, disabled, onClose, addNode } = props;
@@ -64,6 +89,10 @@ const NodeForm = (props: NodeFormProps) => {
   const variables = useStageSelector(getCodebookVariablesForSubjectType);
 
   const [show, setShow] = useState(false);
+  // Leaving would be read as not saving while the save still lands, and a
+  // second submission would add the person twice, so neither is offered until
+  // the submission settles.
+  const [submitting, setSubmitting] = useState(false);
 
   const dispatch = useAppDispatch();
   const { currentStep } = useCurrentStep();
@@ -232,6 +261,7 @@ const NodeForm = (props: NodeFormProps) => {
         open={show && editing.status === 'ready'}
         title={<LocalizedText value={form.title} render={<span />} />}
         closeDialog={handleClose}
+        dismissible={!submitting}
         footer={
           <Button
             key="submit"
@@ -239,6 +269,7 @@ const NodeForm = (props: NodeFormProps) => {
             form="node-form"
             aria-label={intl.formatMessage(interfaceMessages.finished)}
             color="primary"
+            disabled={submitting}
           >
             {intl.formatMessage(interfaceMessages.finished)}
           </Button>
@@ -249,6 +280,7 @@ const NodeForm = (props: NodeFormProps) => {
           onSubmit={handleSubmit}
           className="phone-landscape:min-w-sm desktop:min-w-md w-full"
         >
+          <SubmittingObserver onChange={setSubmitting} />
           {fieldComponents}
         </Form>
       </Dialog>

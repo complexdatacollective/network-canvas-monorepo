@@ -1,9 +1,16 @@
 import { configureStore } from '@reduxjs/toolkit';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Provider } from 'react-redux';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
+import type { FormSubmissionResult } from '@codaco/fresco-ui/form/store/types';
 import {
   asEntityAttributeReference,
   type Codebook,
@@ -122,7 +129,16 @@ const emptySession: SessionState = {
  * exactly as the interview stores it, and the next entry is validated
  * against those stored values.
  */
-function renderNodeForm(variable: Variable) {
+function renderNodeForm(
+  variable: Variable,
+  {
+    addNode: addNodeOverride,
+  }: {
+    addNode?: (
+      attributes: NcNode[typeof entityAttributesProperty],
+    ) => Promise<FormSubmissionResult>;
+  } = {},
+) {
   const store = configureStore({
     reducer: { session, protocol, ui },
     preloadedState: {
@@ -144,6 +160,8 @@ function renderNodeForm(variable: Variable) {
       ),
     );
 
+  const onClose = vi.fn();
+
   render(
     <Provider store={store}>
       <TestProtocolLocalization>
@@ -152,8 +170,8 @@ function renderNodeForm(variable: Variable) {
             selectedNode={null}
             form={form}
             disabled={false}
-            onClose={vi.fn()}
-            addNode={addNode}
+            onClose={onClose}
+            addNode={addNodeOverride ?? addNode}
           />
         </CurrentStepProvider>
       </TestProtocolLocalization>
@@ -167,7 +185,7 @@ function renderNodeForm(variable: Variable) {
         (node) => node[entityAttributesProperty][VARIABLE],
       );
 
-  return { storedAnswers };
+  return { storedAnswers, onClose };
 }
 
 const openForm = async () => {
@@ -317,6 +335,43 @@ const cases: Record<string, UniqueCase> = {
     second: { enter: () => toggleCheckbox('Family'), stored: ['work'] },
   },
 };
+
+describe('NodeForm while a person is being saved', () => {
+  it('can neither be left nor submitted again until the save settles', async () => {
+    const pending: ((result: FormSubmissionResult) => void)[] = [];
+    const addNode = vi.fn(
+      () =>
+        new Promise<FormSubmissionResult>((resolve) => {
+          pending.push(resolve);
+        }),
+    );
+    const { onClose } = renderNodeForm(
+      { name: 'answer', label: 'answer', type: 'text', component: 'Text' },
+      { addNode },
+    );
+
+    await openForm();
+    await typeInto('textbox', 'Alice');
+    await finish();
+    await waitFor(() => expect(addNode).toHaveBeenCalledTimes(1));
+
+    expect(screen.getByRole('button', { name: 'Finished' })).toBeDisabled();
+    expect(
+      screen.queryByRole('button', { name: 'Close' }),
+    ).not.toBeInTheDocument();
+    await userEvent.keyboard('{Escape}');
+    await finish();
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(onClose).not.toHaveBeenCalled();
+    expect(addNode).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      pending[0]?.({ success: true });
+    });
+    await waitForDialogToClose();
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+});
 
 describe('NodeForm honours "Must be unique" for every variable type that accepts it', () => {
   it.each(Object.entries(cases))(
