@@ -37,6 +37,9 @@ export type OptionLabelFieldProps = CreateFormFieldProps<
  * a single-line document can even hold. Exactly the toolbar Architect withheld
  * for the same field.
  *
+ * The editor is `compact`: a label is a few words, so the editing area is one
+ * line tall (as tall as the toolbar above it) instead of the box a prompt gets.
+ *
  * The label is written canonically (NFC), on the way out and nowhere else.
  * Two labels that read identically are then also identical bytes — which is
  * what the uniqueness rules compare, what a GraphML or CSV export carries, and
@@ -56,6 +59,7 @@ export default function OptionLabelField({
     <RichTextField
       {...props}
       singleLine
+      compact
       value={typeof value === 'string' ? value : ''}
       onChange={(next) => onChange?.(toCanonicalText(next ?? ''))}
     />

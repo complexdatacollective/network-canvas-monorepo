@@ -661,12 +661,20 @@ const editorContentVariants = cva({
     '[&_.tiptap_p.is-editor-empty:first-child::before]:content-[attr(data-placeholder)]',
   ),
   variants: {
-    singleLine: {
-      // One line tall, like the md `InputField` beside it: that field is 48px
-      // inside a 2px border, so the editable area is about 44px (the 27px
-      // line the theme sets, and 8px above and below). The text may still
-      // wrap and grow, so a long value stays readable.
-      true: 'min-h-0 w-full px-6 py-2',
+    compact: {
+      // The text area is at least as tall as the toolbar above it, so the
+      // editor reads as two equal rows. The toolbar is a 40px icon button
+      // (`h-10`) between 8px of padding (`py-2`) on each side, and a 1px
+      // bottom border; the variable states those same terms. The single line
+      // sits in the middle of the row, and the whole row is the `.tiptap`
+      // element, so a click anywhere in it focuses the editor. Text that
+      // wraps still grows the row.
+      true: cx(
+        'w-full px-6',
+        '[--editable-min-h:calc(var(--spacing)*10+var(--spacing)*2*2+1px)]',
+        'min-h-(--editable-min-h)',
+        '[&_.tiptap]:grid [&_.tiptap]:min-h-(--editable-min-h) [&_.tiptap]:content-center',
+      ),
       false: cx(multilineContentVariants(), '[&_.tiptap]:min-h-[120px]'),
     },
   },
@@ -716,6 +724,14 @@ type RichTextEditorFieldProps = CreateFormFieldProps<
      * made in this schema, so the toolbar does not offer one.
      */
     'singleLine'?: boolean;
+    /**
+     * For a field that holds a short label, not a prompt or a passage: the
+     * text area is one line tall, as tall as the toolbar above it, rather than
+     * the 120px box a multi-line editor opens at. Implies `singleLine`, since
+     * a compact multi-line editor makes no sense. `singleLine` alone changes
+     * only the value, never the height.
+     */
+    'compact'?: boolean;
     'id': string;
     'name': string;
     'aria-describedby': string;
@@ -768,12 +784,14 @@ export default function RichTextEditorField({
   changeMode = 'blur',
   autoFocus = false,
   placeholder,
-  singleLine = false,
+  singleLine: singleLineProp = false,
+  compact = false,
   className,
   onFocus,
   onBlur,
   ...props
 }: RichTextEditorFieldProps) {
+  const singleLine = singleLineProp || compact;
   const intl = useAppIntl();
   const onChangeRef = useRef(onChange);
   const changeModeRef = useRef(changeMode);
@@ -1212,7 +1230,7 @@ export default function RichTextEditorField({
     >
       <EditorContent
         editor={editor}
-        className={editorContentVariants({ singleLine })}
+        className={editorContentVariants({ compact })}
       />
       {hasToolbar && (
         <FieldUnavailableContext.Provider value={isDisabled}>

@@ -7,7 +7,6 @@ import { z } from 'zod/mini';
 import Field from '../Field/Field';
 import Form from '../Form';
 import SubmitButton from '../SubmitButton';
-import InputField from './InputField';
 import RichTextEditorField from './RichTextEditor';
 
 const meta: Meta<typeof RichTextEditorField> = {
@@ -431,12 +430,58 @@ const singleLineContent: JSONContent = {
   ],
 };
 
+/** The editable area and the toolbar of the editor a story rendered. */
+async function measureEditor(canvasElement: HTMLElement) {
+  const canvas = within(canvasElement);
+  await waitFor(() =>
+    expect(
+      canvas.getByTestId('editor').querySelector('.tiptap'),
+    ).not.toBeNull(),
+  );
+  const editor = canvas.getByTestId('editor');
+  const editable = editor.querySelector('.tiptap')?.parentElement;
+  const toolbar = within(editor).getByRole('toolbar');
+  if (!editable) throw new Error('the story did not render');
+  return {
+    editable: editable.getBoundingClientRect().height,
+    toolbar: toolbar.getBoundingClientRect().height,
+  };
+}
+
 /**
- * A single-line editor is one line tall, like the input beside it, rather than
- * the 120px box a multi-line editor opens at. The editable area is measured
- * against the input's own height inside its border, so the two read as a pair.
+ * `compact` is for a short label, such as the name of an option: the text area
+ * is one line tall and as tall as the toolbar above it, so the editor reads as
+ * two equal rows. It needs `singleLine`, which the types enforce.
  */
-export const SingleLine: Story = {
+export const Compact: Story = {
+  render: (args) => (
+    <div className="flex w-[480px] flex-col gap-4">
+      <div data-testid="editor">
+        <RichTextEditorField
+          {...args}
+          singleLine
+          compact
+          toolbarOptions={{ headings: false, lists: false }}
+          value={singleLineContent}
+          onChange={action('onChange')}
+        />
+      </div>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const { editable, toolbar } = await measureEditor(canvasElement);
+
+    // Two equal rows, and neither one is the 120px box of a prompt.
+    await expect(Math.abs(editable - toolbar)).toBeLessThanOrEqual(1);
+    await expect(editable).toBeLessThan(120);
+  },
+};
+
+/**
+ * `singleLine` alone limits the value to one line and nothing else, so a
+ * prompt keeps the tall editing area a multi-line editor opens at.
+ */
+export const SingleLinePrompt: Story = {
   render: (args) => (
     <div className="flex w-[480px] flex-col gap-4">
       <div data-testid="editor">
@@ -448,37 +493,11 @@ export const SingleLine: Story = {
           onChange={action('onChange')}
         />
       </div>
-      <div data-testid="input">
-        <InputField
-          id="neighbouring-input"
-          name="neighbour"
-          defaultValue="A short value"
-        />
-      </div>
     </div>
   ),
   play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    const BORDER = 2 * 2;
-    await waitFor(() =>
-      expect(
-        canvas.getByTestId('editor').querySelector('.tiptap'),
-      ).not.toBeNull(),
-    );
-    const editable = canvas
-      .getByTestId('editor')
-      .querySelector('.tiptap')?.parentElement;
-    const inputBox = canvas
-      .getByTestId('input')
-      .querySelector('input')?.parentElement;
-    if (!editable || !inputBox) throw new Error('the story did not render');
+    const { editable } = await measureEditor(canvasElement);
 
-    await expect(editable.getBoundingClientRect().height).toBeLessThan(60);
-    await expect(
-      Math.abs(
-        editable.getBoundingClientRect().height -
-          (inputBox.getBoundingClientRect().height - BORDER),
-      ),
-    ).toBeLessThanOrEqual(1);
+    await expect(editable).toBeGreaterThanOrEqual(120);
   },
 };

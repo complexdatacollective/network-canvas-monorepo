@@ -322,6 +322,7 @@ function CategoricalBinPromptEditor({ item }: RowEditorProps) {
           hint={intl.formatMessage(messages.otherBinHint)}
           placeholder={intl.formatMessage(messages.otherBinPlaceholder)}
           singleLine
+          compact
           initialValue={asString(item[OTHER_LABEL_FIELD])}
           required={intl.formatMessage(messages.otherBinRequired)}
         />

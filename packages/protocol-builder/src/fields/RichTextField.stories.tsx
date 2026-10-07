@@ -188,9 +188,13 @@ export const OneLineOnly: Story = {
     const canvas = within(canvasElement);
     await awaitPassiveEffects();
 
+    const box = await canvas.findByRole('textbox', { name: CENSUS_LABEL });
+    await expect(box).toHaveAttribute('aria-multiline', 'false');
+    // A prompt is one line of VALUE, not a one-line-tall box: it keeps the
+    // tall editing area. Only `compact` fields shrink to the toolbar's height.
     await expect(
-      await canvas.findByRole('textbox', { name: CENSUS_LABEL }),
-    ).toHaveAttribute('aria-multiline', 'false');
+      box.parentElement?.getBoundingClientRect().height,
+    ).toBeGreaterThanOrEqual(120);
     await expect(
       canvas.queryByRole('button', { name: 'Heading 1' }),
     ).toBeNull();
