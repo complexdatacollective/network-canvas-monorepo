@@ -1,3 +1,5 @@
+import type { Middleware } from '@reduxjs/toolkit';
+
 import {
   asEntityAttributeReference,
   type Codebook,
@@ -115,6 +117,8 @@ type EncryptionStoreOptions = {
   edgeTypes?: Codebook['edge'];
   stageMetadata?: StageMetadata;
   encryptionEnabled?: boolean;
+  isDevelopment?: boolean;
+  extraMiddleware?: Middleware[];
 };
 
 /**
@@ -132,6 +136,8 @@ export function createEncryptionStore(
     edgeTypes,
     stageMetadata,
     encryptionEnabled = true,
+    isDevelopment,
+    extraMiddleware,
   }: EncryptionStoreOptions = {},
 ) {
   const payload: InterviewPayload = {
@@ -162,5 +168,9 @@ export function createEncryptionStore(
     },
   };
 
-  return createStore(payload, { onSync: () => Promise.resolve() });
+  return createStore(payload, {
+    onSync: () => Promise.resolve(),
+    isDevelopment,
+    extraMiddleware,
+  });
 }

@@ -10,11 +10,12 @@ import { useDispatch } from 'react-redux';
 import { NULL_TRACKER, type Tracker } from '../analytics/tracker';
 import type { InterviewPayload, SyncHandler } from '../contract/types';
 import { createAnalyticsListenerMiddleware } from './middleware/analyticsListener';
-import logger from './middleware/logger';
+import { createLoggerMiddleware } from './middleware/logger';
 import { createSyncMiddleware } from './middleware/syncMiddleware';
 import protocol from './modules/protocol';
 import session from './modules/session';
 import ui from './modules/ui';
+import { createSecretRedactors } from './redactSecrets';
 
 const rootReducer = combineReducers({
   session,
@@ -40,6 +41,7 @@ export const store = (
   const analyticsMiddleware = createAnalyticsListenerMiddleware({
     tracker,
   }).middleware;
+  const redactors = createSecretRedactors(protocolPayload);
 
   // Object.assign rather than a cast so the store's inferred type (dispatch
   // thunk overloads included) survives alongside the added flushSync.
@@ -52,7 +54,7 @@ export const store = (
             ignoredActions: ['dialogs/addDialog', 'dialogs/open/pending'],
           },
         }).concat(
-          ...(options.isDevelopment ? [logger] : []),
+          ...(options.isDevelopment ? [createLoggerMiddleware(redactors)] : []),
           syncMiddleware,
           analyticsMiddleware,
           ...(options.extraMiddleware ?? []),
@@ -61,6 +63,15 @@ export const store = (
         session: sessionPayload,
         protocol: protocolPayload,
       },
+      // Redux Toolkit turns DevTools on unless told otherwise, which would
+      // show a production interview's passphrase to anyone running the
+      // extension.
+      devTools: options.isDevelopment
+        ? {
+            actionSanitizer: redactors.redactAction,
+            stateSanitizer: redactors.redactState,
+          }
+        : false,
     }),
     { flushSync: flush },
   );
