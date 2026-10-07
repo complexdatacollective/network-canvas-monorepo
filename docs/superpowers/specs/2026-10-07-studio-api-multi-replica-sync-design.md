@@ -210,7 +210,11 @@ tenant RLS.
 
 The subscriber connection is a duplicate of the ioredis client that
 `RateLimitStore` opens. Extract a small `Valkey` platform service so the
-connection is no longer owned by rate limiting. One global channel is enough
+connection is no longer owned by rate limiting. As built (plan §1 #11), the
+doorbell instead opens its own subscriber and publisher connections. The
+subscriber turns off ioredis's `autoResubscribe` and subscribes on every
+`ready`: only an explicit `SUBSCRIBE` reports the server's confirmation, and
+the resync read is safe only after it. One global channel is enough
 at Studio's scale, because doorbells are tens of bytes per commit. If
 `REDIS_URL` is unset, the doorbell is in-process only and cross-replica
 latency falls to the 5 s poll. The boot warning that `REDIS_URL` absence

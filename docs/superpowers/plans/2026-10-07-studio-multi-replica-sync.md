@@ -84,7 +84,9 @@ section_id, cursor DESC) WHERE kind = 'lock'` for the seed and the
     between the relay's start and the backlog read are lost.
 11. **Valkey subscriber.** The rate limiter's client (`retryStrategy: () =>
 null`, 250 ms timeout) stays untouched. The doorbell opens its own
-    subscriber connection with ioredis reconnects and `autoResubscribe`,
+    subscriber connection with ioredis reconnects and re-subscribes itself
+    on every `ready` (`autoResubscribe: false`: ioredis's own resubscribe
+    never reports the server's confirmation, and `Resync` must follow it),
     plus a separate publish connection (`enableOfflineQueue: false`). Pub/sub
     ignores the DB number, so the channel is configurable.
 12. **Compose keeps the file provider.** `docker-compose.yml` deliberately
@@ -414,7 +416,10 @@ further `sync.renewHeld` spans and an unchanged `leaseExpiry`.
 
 - `layerValkey`:
   - one subscriber `Redis` (`connectionName: 'studio-doorbell'`, ioredis
-    default reconnect with capped backoff, `autoResubscribe: true`);
+    default reconnect with capped backoff, `autoResubscribe: false`, an
+    explicit `SUBSCRIBE` on every `ready`, and a periodic `PING` that forces
+    a reconnect on a half-open socket). ioredis's automatic resubscribe
+    gives no confirmation event, which `Resync` needs;
   - one publisher `Redis` (`enableOfflineQueue: false`);
   - every `subscribe` confirmation emits `Resync`;
   - `ready`/`close` drive `subscribed`;
