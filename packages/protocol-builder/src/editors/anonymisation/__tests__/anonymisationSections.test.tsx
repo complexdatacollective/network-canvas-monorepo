@@ -62,8 +62,11 @@ const openWithRules = (
       id: 'anonymisation-rules',
       type: 'Anonymisation',
       fields: {
-        label: 'Anonymisation',
-        explanationText: { title: 'Privacy', body: 'Choose a passphrase.' },
+        label: { 'en-US': 'Anonymisation' },
+        explanationText: {
+          title: { 'en-US': 'Privacy' },
+          body: { 'en-US': 'Choose a passphrase.' },
+        },
         validation,
       },
     },
