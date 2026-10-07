@@ -12,6 +12,7 @@ import {
   entityPrimaryKeyProperty,
   entitySecureAttributesMeta,
   type NcEncryptionHeader,
+  ncUUIDProperty,
 } from '@codaco/shared-consts';
 
 import { parseCsvRecord } from '../formatters/__tests__/namesFixture';
@@ -292,5 +293,235 @@ describe.each([
         everything.includes(secret),
       ),
     ).toEqual([]);
+  });
+});
+
+// Variables the codebook does not mark encrypted, whose values each entity
+// records as encrypted (as a protocol re-imported without its encryption
+// would leave them), and a type whose name the codebook does mark encrypted.
+const recordedCodebook: Codebook = {
+  ego: {
+    variables: { 'e-note': { name: 'note', label: 'Note', type: 'text' } },
+  },
+  node: {
+    person: {
+      name: 'Person',
+      label: { en: 'Person' },
+      color: 'node-color-seq-1',
+      shape: { default: 'circle' },
+      variables: {
+        'p-name': { name: 'name', label: 'Name', type: 'text' },
+        'p-age': { name: 'age', label: 'Age', type: 'number' },
+        'p-pets': {
+          name: 'pets',
+          label: 'Pets',
+          type: 'categorical',
+          options: [
+            { label: { en: 'Cat' }, value: 'cat' },
+            { label: { en: 'Dog' }, value: 'dog' },
+          ],
+        },
+        'p-city': { name: 'city', label: 'City', type: 'text' },
+      },
+    },
+    contact: {
+      name: 'Contact',
+      label: { en: 'Contact' },
+      color: 'node-color-seq-2',
+      shape: { default: 'circle' },
+      variables: {
+        'c-name': {
+          name: 'name',
+          label: 'Name',
+          type: 'text',
+          encrypted: true,
+        },
+      },
+    },
+  },
+  edge: {
+    knows: {
+      name: 'Knows',
+      label: { en: 'Knows' },
+      color: 'edge-color-seq-1',
+      variables: {
+        'k-since': { name: 'since', label: 'Since', type: 'text' },
+      },
+    },
+  },
+};
+
+const recordedInterview: InterviewExportInput = {
+  id: 'interview-1',
+  participantIdentifier: 'case-1',
+  startTime: new Date('2025-01-01'),
+  finishTime: new Date('2025-01-02'),
+  protocolHash: 'protocol-1',
+  locale: null,
+  network: {
+    encryption: encryptionHeader,
+    nodes: [
+      {
+        [entityPrimaryKeyProperty]: 'person-1',
+        type: 'person',
+        [entityAttributesProperty]: {
+          'p-name': nameCiphertext,
+          'p-age': nameCiphertext,
+          'p-pets': nameCiphertext,
+          'p-city': 'Lisbon',
+          'roster-note': nameCiphertext,
+        },
+        ...secureAttributes(
+          { iv: valueIv },
+          'p-name',
+          'p-age',
+          'p-pets',
+          'roster-note',
+        ),
+      },
+      {
+        // Encrypted, and its record lost: still never written.
+        [entityPrimaryKeyProperty]: 'contact-1',
+        type: 'contact',
+        [entityAttributesProperty]: { 'c-name': nicknameCiphertext },
+      },
+      {
+        // Written in the clear, as a roster's names are.
+        [entityPrimaryKeyProperty]: 'contact-2',
+        type: 'contact',
+        [entityAttributesProperty]: { 'c-name': 'Ana from the roster' },
+      },
+    ],
+    edges: [
+      {
+        [entityPrimaryKeyProperty]: 'edge-1',
+        from: 'person-1',
+        to: 'contact-1',
+        type: 'knows',
+        [entityAttributesProperty]: { 'k-since': nameCiphertext },
+        ...secureAttributes({ iv: valueIv }, 'k-since'),
+      },
+    ],
+    ego: {
+      [entityPrimaryKeyProperty]: 'ego-1',
+      [entityAttributesProperty]: { 'e-note': nameCiphertext },
+      ...secureAttributes({ iv: valueIv }, 'e-note'),
+    },
+  },
+};
+
+describe('an export of values whose storage, not the codebook, says they are encrypted', () => {
+  let files = new Map<string, string>();
+  let failedExports: unknown[] = [];
+  let graphml: Document;
+
+  beforeAll(async () => {
+    const run = await runRecordedExport(options, [recordedInterview], {
+      hash: 'protocol-1',
+      name: 'Secure protocol',
+      codebook: recordedCodebook,
+    });
+    files = run.files;
+    failedExports = run.result.failedExports;
+    graphml = new DOMParser().parseFromString(
+      fileEnding(files, '.graphml'),
+      MIME_TYPE.XML_APPLICATION,
+    );
+  });
+
+  const graphmlKeys = () =>
+    new Map(
+      Array.from(graphml.getElementsByTagName('key')).map((key) => [
+        key.getAttribute('id'),
+        {
+          name: key.getAttribute('attr.name'),
+          type: key.getAttribute('attr.type'),
+        },
+      ]),
+    );
+
+  // Each datum of an element, by the column name of its key.
+  const namedDataOf = (element: Element | undefined) => {
+    const keys = graphmlKeys();
+    return new Map(
+      [...dataOf(element)].map(([key, value]) => [
+        (key !== null && keys.get(key)?.name) || key,
+        value,
+      ]),
+    );
+  };
+
+  const graphmlNode = (id: string) =>
+    Array.from(graphml.getElementsByTagName('node')).find(
+      (node) => dataOf(node).get(ncUUIDProperty) === id,
+    );
+
+  it('succeeds without a failure for the session', () => {
+    expect(failedExports).toEqual([]);
+  });
+
+  it('writes the marker for every value an entity records as encrypted, in every CSV file', () => {
+    const [person] = csvRows(fileEnding(files, 'Person.csv'));
+
+    expect(
+      ['name', 'age', 'pets_cat', 'pets_dog', 'roster-note'].map((column) =>
+        person?.get(column),
+      ),
+    ).toEqual(Array.from({ length: 5 }, () => 'ENCRYPTED'));
+    expect(person?.get('city')).toBe('Lisbon');
+    expect(csvRows(fileEnding(files, 'Knows.csv'))[0]?.get('since')).toBe(
+      'ENCRYPTED',
+    );
+    expect(csvRows(fileEnding(files, '_ego.csv'))[0]?.get('note')).toBe(
+      'ENCRYPTED',
+    );
+  });
+
+  it('writes the marker for every value an entity records as encrypted, in the GraphML file, under keys that hold text', () => {
+    const person = namedDataOf(graphmlNode('person-1'));
+
+    expect(
+      ['name', 'age', 'pets_cat', 'pets_dog', 'roster-note'].map((column) =>
+        person.get(column),
+      ),
+    ).toEqual(Array.from({ length: 5 }, () => 'ENCRYPTED'));
+    expect(person.get('city')).toBe('Lisbon');
+    expect(person.get('label')).toBe('Encrypted');
+    expect(
+      namedDataOf(graphml.getElementsByTagName('edge')[0]).get('since'),
+    ).toBe('ENCRYPTED');
+
+    const typeOf = (column: string) =>
+      [...graphmlKeys().values()].find((key) => key.name === column)?.type;
+    expect(['age', 'pets_cat', 'pets_dog'].map(typeOf)).toEqual([
+      'string',
+      'string',
+      'string',
+    ]);
+  });
+
+  it('writes the marker for an encrypted variable’s ciphertext that has lost its record', () => {
+    expect(csvRows(fileEnding(files, 'Contact.csv'))[0]?.get('name')).toBe(
+      'ENCRYPTED',
+    );
+    const contact = namedDataOf(graphmlNode('contact-1'));
+    expect(contact.get('name')).toBe('ENCRYPTED');
+    expect(contact.get('label')).toBe('Encrypted');
+  });
+
+  it('writes a value of an encrypted variable that was stored in the clear as it is stored, as the interview shows it', () => {
+    expect(csvRows(fileEnding(files, 'Contact.csv'))[1]?.get('name')).toBe(
+      'Ana from the roster',
+    );
+    const contact = namedDataOf(graphmlNode('contact-2'));
+    expect(contact.get('name')).toBe('Ana from the roster');
+    expect(contact.get('label')).toBe('Ana from the roster');
+  });
+
+  it('writes no ciphertext to any file', () => {
+    const everything = [...files.values()].join('\n');
+
+    expect(everything).not.toContain(nameCiphertext.join(','));
+    expect(everything).not.toContain(nicknameCiphertext.join(','));
   });
 });
