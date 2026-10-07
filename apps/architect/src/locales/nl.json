@@ -501,6 +501,7 @@
   "architect.localization.translationTable.onlyTranslation": "Deze tekst bestaat alleen in het {language}. Vertaal hem in een andere taal voordat je hem wist.",
   "architect.localization.translationTable.onlyTranslationKept": "De vertaling in het {language} is behouden, omdat deze tekst alleen in het {language} bestaat.",
   "architect.localization.translationTable.progress": "{translated, number} van {total, number} teksten vertaald",
+  "architect.localization.translationTable.progressCount": "{translated, number} van {total, number}",
   "architect.localization.translationTable.progressLabel": "Voortgang van de vertaling in het {language}",
   "architect.localization.translationTable.saveFailed": "Deze vertaling kan niet worden opgeslagen, omdat de tekst of de taal ervan uit het protocol is verwijderd.",
   "architect.localization.translationTable.search": "Teksten en vertalingen doorzoeken",

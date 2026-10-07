@@ -501,6 +501,7 @@
   "architect.localization.translationTable.onlyTranslation": "此文本仅有 {language} 版本。请先将其翻译成另一种语言，再清除。",
   "architect.localization.translationTable.onlyTranslationKept": "已保留 {language} 翻译，因为此文本仅有 {language} 版本。",
   "architect.localization.translationTable.progress": "已翻译 {total, number} 段文本中的 {translated, number} 段",
+  "architect.localization.translationTable.progressCount": "{translated, number} / {total, number}",
   "architect.localization.translationTable.progressLabel": "{language} 翻译进度",
   "architect.localization.translationTable.saveFailed": "无法保存此翻译：该文本或其语言已从协议中移除。",
   "architect.localization.translationTable.search": "搜索文本和翻译",

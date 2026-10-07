@@ -2005,7 +2005,11 @@
   },
   "architect.localization.translationTable.progress": {
     "defaultMessage": "{translated, number} of {total, number} translated",
-    "description": "Under a language’s name in the heading of its column in the translation table: how many of the protocol’s texts have a translation into it."
+    "description": "Read by screen readers in the heading of a language’s column in the translation table: how many of the protocol’s texts have a translation into it."
+  },
+  "architect.localization.translationTable.progressCount": {
+    "defaultMessage": "{translated, number} of {total, number}",
+    "description": "Shown beside a language’s name and progress bar in the heading of its column in the translation table: how many of the protocol’s texts have a translation into it. Keep it as short as possible, since it shares one line with the language’s name."
   },
   "architect.localization.translationTable.progressLabel": {
     "defaultMessage": "{language} translation progress",

@@ -501,6 +501,7 @@
   "architect.localization.translationTable.onlyTranslation": "Este texto só existe em {language}. Traduza-o para outro idioma antes de apagá-lo.",
   "architect.localization.translationTable.onlyTranslationKept": "A tradução em {language} foi mantida, porque este texto só existe em {language}.",
   "architect.localization.translationTable.progress": "{translated, number} de {total, number} textos traduzidos",
+  "architect.localization.translationTable.progressCount": "{translated, number} de {total, number}",
   "architect.localization.translationTable.progressLabel": "Progresso da tradução em {language}",
   "architect.localization.translationTable.saveFailed": "Não foi possível salvar esta tradução, porque o texto ou o idioma dele foi removido do protocolo.",
   "architect.localization.translationTable.search": "Pesquisar textos e traduções",

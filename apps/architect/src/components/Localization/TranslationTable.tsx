@@ -104,7 +104,13 @@ const messages = defineMessages({
     id: 'architect.localization.translationTable.progress',
     defaultMessage: '{translated, number} of {total, number} translated',
     description:
-      'Under a language’s name in the heading of its column in the translation table: how many of the protocol’s texts have a translation into it.',
+      'Read by screen readers in the heading of a language’s column in the translation table: how many of the protocol’s texts have a translation into it.',
+  },
+  progressCount: {
+    id: 'architect.localization.translationTable.progressCount',
+    defaultMessage: '{translated, number} of {total, number}',
+    description:
+      'Shown beside a language’s name and progress bar in the heading of its column in the translation table: how many of the protocol’s texts have a translation into it. Keep it as short as possible, since it shares one line with the language’s name.',
   },
   progressLabel: {
     id: 'architect.localization.translationTable.progressLabel',
@@ -364,6 +370,40 @@ const useGroupHeadingHeights = () => {
   );
 };
 
+/**
+ * A ref for each language heading's contents that publishes their natural
+ * width to the heading cell, which widens its column to fit. A language's
+ * name, progress bar and count then share one line whatever the name's length
+ * in the interface's language, and every other column keeps its usual width.
+ */
+const useColumnHeadingWidths = () => {
+  const [observer] = useState(
+    () =>
+      new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          const width = entry.borderBoxSize[0]?.inlineSize;
+          const heading = entry.target.closest('th');
+          if (!width || !heading) continue;
+          heading.style.setProperty(
+            '--translation-heading-width',
+            `${width}px`,
+          );
+        }
+      }),
+  );
+
+  useEffect(() => () => observer.disconnect(), [observer]);
+
+  return useCallback(
+    (contents: HTMLDivElement | null) => {
+      if (!contents) return;
+      observer.observe(contents);
+      return () => observer.unobserve(contents);
+    },
+    [observer],
+  );
+};
+
 type TranslationTableProps = {
   /** Leads the toolbar. */
   heading?: ReactNode;
@@ -402,6 +442,7 @@ const TranslationTable = ({
     '--translation-table-head',
   );
   const groupHeadingRef = useGroupHeadingHeights();
+  const columnHeadingRef = useColumnHeadingWidths();
   const [hidden, setHidden] = useState<ReadonlySet<LocaleTag>>(new Set());
   const [searchParams, setSearchParams] = useSearchParams();
   const [query, setQuery] = useState('');
@@ -584,7 +625,7 @@ const TranslationTable = ({
             aria-label={intl.formatMessage(messages.search)}
             prefixComponent={<Search aria-hidden className="size-4" />}
             size="sm"
-            className="max-w-72 min-w-44 flex-1 basis-44"
+            className="max-w-80 min-w-56 flex-1 basis-64"
           />
           <NativeSelectField
             id={filterId}
@@ -644,12 +685,6 @@ const TranslationTable = ({
               )}
             </DropdownMenuContent>
           </DropdownMenu>
-          <p
-            role="status"
-            className="text-sm whitespace-nowrap text-current/70"
-          >
-            {intl.formatMessage(messages.shownCount, { shown, total })}
-          </p>
           <div className="ms-auto flex items-center gap-1">
             <Popover>
               <PopoverTrigger asChild>
@@ -683,7 +718,7 @@ const TranslationTable = ({
         surfaceProps={{
           className: 'bg-surface text-surface-contrast rounded-none border-0',
         }}
-        className="w-[calc(var(--translation-table-names)+var(--translation-columns)*var(--translation-table-column))] min-w-full table-fixed border-separate border-spacing-0 [--translation-table-column:16rem] [--translation-table-names:clamp(10rem,16vw,15rem)]"
+        className="w-[calc(var(--translation-table-names)+var(--translation-columns)*var(--translation-table-column))] min-w-full table-fixed border-separate border-spacing-0 [--translation-table-column:15rem] [--translation-table-names:clamp(10rem,14vw,14rem)]"
       >
         <caption className="sr-only">
           {intl.formatMessage(messages.caption)}
@@ -715,11 +750,14 @@ const TranslationTable = ({
                   // Named by the language alone: a screen reader repeats the
                   // name on every move between columns.
                   aria-labelledby={columnId(locale)}
-                  className="bg-surface-2 text-surface-2-contrast border-outline sticky top-0 z-30 border-e border-b px-3 py-2.5 text-start font-normal"
+                  // In a fixed table the first row's widths size the columns:
+                  // the usual width, or the heading's own where that is wider.
+                  className="bg-surface-2 text-surface-2-contrast border-outline sticky top-0 z-30 w-[max(var(--translation-table-column),calc(var(--translation-heading-width,0px)+1.5rem+1px))] border-e border-b px-3 py-2.5 text-start font-normal"
                 >
-                  {/* One line where the column is wide enough, and the
-                      progress on a line of its own where it is not. */}
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <div
+                    ref={columnHeadingRef}
+                    className="flex w-max items-center gap-3 whitespace-nowrap"
+                  >
                     <div className="flex items-center gap-2">
                       <span id={columnId(locale)} className="font-semibold">
                         {name}
@@ -730,8 +768,8 @@ const TranslationTable = ({
                         </Badge>
                       )}
                     </div>
-                    <div className="flex flex-1 items-center gap-2">
-                      <div aria-hidden className="min-w-6 flex-1">
+                    <div className="flex items-center gap-2">
+                      <div aria-hidden className="w-10">
                         <ProgressBar
                           orientation="horizontal"
                           percentProgress={
@@ -746,7 +784,16 @@ const TranslationTable = ({
                           className="h-1.5"
                         />
                       </div>
-                      <span className="text-xs whitespace-nowrap text-current/70">
+                      <span
+                        aria-hidden
+                        className="text-xs whitespace-nowrap text-current/70"
+                      >
+                        {intl.formatMessage(messages.progressCount, {
+                          translated,
+                          total: coverage.total,
+                        })}
+                      </span>
+                      <span className="sr-only">
                         {intl.formatMessage(messages.progress, {
                           translated,
                           total: coverage.total,
@@ -844,11 +891,12 @@ const TranslationTable = ({
       <p id={helpId} className="sr-only">
         {intl.formatMessage(messages.keyboardHelp)}
       </p>
-      {footnote && (
-        <p className="border-outline border-t px-4 py-2 text-sm text-current/70">
-          {intl.formatMessage(messages.unlessBrowserLists)}
+      <div className="border-outline flex flex-wrap items-baseline gap-x-6 gap-y-1 border-t px-4 py-2 text-sm text-current/70">
+        {footnote && <p>{intl.formatMessage(messages.unlessBrowserLists)}</p>}
+        <p role="status" className="ms-auto whitespace-nowrap">
+          {intl.formatMessage(messages.shownCount, { shown, total })}
         </p>
-      )}
+      </div>
     </div>
   );
 };
