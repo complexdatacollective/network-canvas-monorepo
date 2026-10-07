@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
-import { Context, Effect, Exit, Layer, Scope } from 'effect';
+import { Context, Effect, type Exit } from 'effect';
+import { SqlError } from 'effect/sql';
 import { beforeAll, describe, expect, it } from 'vitest';
 
 import { createStudio, type Studio } from '../app.ts';
@@ -36,6 +37,16 @@ import {
   type ProtocolBuilderTestClient,
 } from './support/protocol-builder.ts';
 import { expectRpcFailure } from './support/rpc.ts';
+
+const refusedTransaction = () =>
+  Effect.fail(
+    new SqlError.SqlError({
+      reason: new SqlError.UnknownError({
+        cause: new Error('the database is down'),
+        message: 'the database is down',
+      }),
+    }),
+  );
 
 describe.skipIf(!testDb)('the protocol-builder host surface', () => {
   const suite = setupProtocolBuilderSuite();
@@ -75,36 +86,28 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
   });
 
   /**
-   * A database whose connections, once it goes down, resolve no table: the
-   * search path is a startup parameter, so the fault is a second client, not a
-   * setting.
+   * A database that refuses every transaction it is asked to begin while it is
+   * down. Only `db` switches, once for each transaction, and `sql` stays the
+   * suite's own, so a transaction open when the fault is raised or cleared
+   * ends on the client it began on. A second client for the fault, each with
+   * its one connection, switched mid-transaction left a transaction on each
+   * waiting for the other's connection: both idle in a transaction, neither
+   * blocked in the database.
    */
-  const faultyDatabase = async () => {
-    if (!testDb) throw new Error('no test database');
-    const url = testDb.url;
+  const faultyDatabase = () => {
     let down = false;
     const real = Context.get(services, Database);
-    const scope = await Effect.runPromise(Scope.make());
-    const unreachable = Context.get(
-      await Effect.runPromise(
-        Layer.buildWithScope(
-          Database.layer({
-            url,
-            maxConnections: 1,
-            searchPath: 'pb_unreachable',
-          }),
-          scope,
-        ),
-      ),
-      Database,
-    );
+    const refusing = new Proxy(real.db, {
+      get: (target, key, receiver) => {
+        const value: unknown = Reflect.get(target, key, receiver);
+        return key === 'transaction' ? refusedTransaction : value;
+      },
+    });
     const database: Database['Service'] = {
       identity: real.identity,
-      get sql() {
-        return down ? unreachable.sql : real.sql;
-      },
+      sql: real.sql,
       get db() {
-        return down ? unreachable.db : real.db;
+        return down ? refusing : real.db;
       },
     };
     return {
@@ -118,7 +121,6 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       setDown: (value: boolean) => {
         down = value;
       },
-      close: () => Effect.runPromise(Scope.close(scope, Exit.void)),
     };
   };
 
@@ -331,7 +333,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
   });
 
   it('keeps renewing a connection after a liveness pass the database never answered', async () => {
-    const fault = await faultyDatabase();
+    const fault = faultyDatabase();
     const replica = makeShiftableClock();
     const other = await createProtocolBuilderClient(fault.studio, {
       clock: replica.clock,
@@ -368,7 +370,6 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       }
     } finally {
       await other.dispose();
-      await fault.close();
     }
   });
 
@@ -557,7 +558,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
   });
 
   it('shows the section a socket took although recording that failed at first', async () => {
-    const fault = await faultyDatabase();
+    const fault = faultyDatabase();
     const presence = holdingPresence();
     const replica = makeShiftableClock();
     const other = await createProtocolBuilderClient(fault.studio, {
@@ -607,7 +608,6 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       }
     } finally {
       await other.dispose();
-      await fault.close();
     }
   });
 
@@ -725,7 +725,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
   });
 
   it('stops renewing a stranded owner’s leases even when giving them back fails', async () => {
-    const fault = await faultyDatabase();
+    const fault = faultyDatabase();
     const stranded = makeShiftableClock();
     const spans = makeSpanCounter();
     const other = await createProtocolBuilderClient(fault.studio, {
@@ -807,7 +807,6 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
     } finally {
       fault.setDown(false);
       await other.dispose();
-      await fault.close();
     }
   });
 });
