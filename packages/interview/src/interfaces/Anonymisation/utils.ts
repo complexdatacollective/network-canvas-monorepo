@@ -132,6 +132,24 @@ export function hasEncryptedAttributes(
 }
 
 /**
+ * Whether storing these attribute values encrypts any of them, by the rule
+ * `generateSecureAttributes` applies: a string value of a variable the
+ * codebook marks encrypted, while encryption is in effect (see
+ * `isAttributeEncrypted`).
+ */
+export function writesEncryptedValue(
+  attributes: Readonly<Record<string, VariableValue | undefined>>,
+  codebookVariables: Record<string, Variable>,
+  encryptionEnabled: boolean,
+): boolean {
+  return Object.entries(attributes).some(
+    ([key, value]) =>
+      isAttributeEncrypted(encryptionEnabled, codebookVariables, key) &&
+      typeof value === 'string',
+  );
+}
+
+/**
  * Returns a copy of the node with every encrypted value replaced by its
  * plaintext and that value's secure-attribute metadata removed, so the copy is
  * consistent on its own. Only values encrypted in this interview (see

@@ -44,6 +44,7 @@ import { useInterviewToast } from '../../toast/useInterviewToast';
 import type { StageProps } from '../../types';
 import { isAttributeEncrypted } from '../Anonymisation/isAttributeEncrypted';
 import { usePassphrase } from '../Anonymisation/usePassphrase';
+import { writesEncryptedValue } from '../Anonymisation/utils';
 import { interfaceMessages } from '../messages';
 import NodeForm from './components/NodeForm';
 import NodePanels from './components/NodePanels';
@@ -156,13 +157,19 @@ const NameGenerator = (props: NameGeneratorProps) => {
         addNodeAction({
           type: stage.subject.type,
           attributeData: attributes,
-          useEncryption,
+          // Decided per node rather than by the stage's own fields: a node
+          // from a panel's external data can carry encrypted values too.
+          useEncryption: writesEncryptedValue(
+            attributes,
+            codebookForNodeType,
+            isEnabled,
+          ),
           allowUnknownAttributes: options?.allowUnknownAttributes,
           modelData: options?.modelData,
           currentStep,
         }),
       ),
-    [dispatch, stage.subject.type, useEncryption, currentStep],
+    [dispatch, stage.subject.type, codebookForNodeType, isEnabled, currentStep],
   );
 
   const addNode = useCallback(
@@ -192,21 +199,26 @@ const NameGenerator = (props: NameGeneratorProps) => {
       return;
     }
 
-    if (encryptionLocked) {
+    // Panel nodes may come from external data with attributes not in the codebook
+    const attributes = {
+      ...node[entityAttributesProperty],
+      ...newNodeAttributes,
+    };
+    if (
+      encryptionLocked ||
+      (writesEncryptedValue(attributes, codebookForNodeType, isEnabled) &&
+        (!passphrase || passphraseInvalid))
+    ) {
       requirePassphrase();
       return;
     }
 
-    // Panel nodes may come from external data with attributes not in the codebook
-    const result = await dispatchAddNode(
-      { ...node[entityAttributesProperty], ...newNodeAttributes },
-      {
-        allowUnknownAttributes: true,
-        modelData: {
-          [entityPrimaryKeyProperty]: node[entityPrimaryKeyProperty],
-        },
+    const result = await dispatchAddNode(attributes, {
+      allowUnknownAttributes: true,
+      modelData: {
+        [entityPrimaryKeyProperty]: node[entityPrimaryKeyProperty],
       },
-    );
+    });
     const failure = writeFailureMessage(result);
     if (failure) {
       showToast({
