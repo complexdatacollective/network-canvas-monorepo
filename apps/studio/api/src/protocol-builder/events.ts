@@ -175,8 +175,8 @@ export const readProtocolEvents: (
 
 /**
  * The most a relay reads of one draft at a time: a quarter of a watcher's
- * queue, so a watcher that keeps up drains between reads however far the relay
- * has to catch up.
+ * queue. A relay reads again only once every watcher's queue is at most half
+ * full, so a batch always fits beside what a slow watcher has yet to take.
  */
 export const RELAY_BATCH = 256;
 

@@ -741,25 +741,38 @@ const liveSections = Effect.fn('protocolBuilder.liveSections')(function* (
   return new Set(rows.map((row) => relaySection(row.draftId, row.sectionId)));
 }, sqlErrorsOnly);
 
+type PollWant = {
+  readonly draftId: string;
+  /** Where to read the draft's log from; undefined reads only presence. */
+  readonly next: bigint | undefined;
+};
+
 /**
  * The safety poll's read for one team's relays: their logs, who is present,
- * and the leases still live, which tells the reaper where to look.
+ * and the leases still live, which tells the reaper where to look. Three
+ * statements under READ COMMITTED, so not one snapshot: a lease can lapse or be
+ * taken between them. Nothing relies on them agreeing, since a relay delivers
+ * by cursor and the reaper asks again under the head held exclusively.
  */
 export const pollRelays: (
   access: TeamAccess,
-  wants: ReadonlyArray<{ readonly draftId: string; readonly next: bigint }>,
+  wants: ReadonlyArray<PollWant>,
 ) => Effect.Effect<RelayPoll, SqlError.SqlError, Database> = Effect.fn(
   'protocolBuilder.relayPoll',
-)(function* (
-  access: TeamAccess,
-  wants: ReadonlyArray<{ readonly draftId: string; readonly next: bigint }>,
-) {
+)(function* (access: TeamAccess, wants: ReadonlyArray<PollWant>) {
   return yield* noAuditTransaction(
     'protocolBuilder.relayRead',
     access,
     Effect.gen(function* () {
       const draftIds = wants.map((want) => want.draftId);
-      const events = yield* readRelayBatch(access.teamId, wants);
+      const events = yield* readRelayBatch(
+        access.teamId,
+        wants.flatMap((want) =>
+          want.next === undefined
+            ? []
+            : [{ draftId: want.draftId, next: want.next }],
+        ),
+      );
       const rows = yield* presenceRows(access.teamId, draftIds);
       const leased = yield* liveSections(access.teamId, draftIds);
       const poll: RelayPoll = {

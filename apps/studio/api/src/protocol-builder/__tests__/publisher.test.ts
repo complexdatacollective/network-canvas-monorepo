@@ -6,16 +6,24 @@ import {
   Effect,
   Exit,
   Layer,
+  Logger,
+  type LogLevel,
   Option,
   Predicate,
   Queue,
   Scope,
   Stream,
+  type Tracer,
 } from 'effect';
 import { SqlError } from 'effect/sql';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 
 import { type ProtocolEvent } from '@codaco/protocol-builder-core/contract/schemas';
+import {
+  DraftId,
+  ProtocolId,
+  TeamId,
+} from '@codaco/studio-contract/schema/ids';
 
 import { testDb } from '../../__tests__/support/database.ts';
 import {
@@ -56,6 +64,10 @@ const FAST_POLL_MS = 100;
 /** More events at once than a stalled watcher can hold. */
 const OVERFLOW = 2_500;
 
+/** The offsets of `count` events in a row. */
+const burst = (count: number) =>
+  Array.from({ length: count }, (_, index) => index + 1);
+
 /** Lets whatever a test just woke run, when there is nothing to wait for. */
 const settle = (millis = 300) =>
   new Promise((resolve) => setTimeout(resolve, millis));
@@ -88,6 +100,28 @@ const modeOf = (events: readonly ProtocolEvent[], sessionId: string) => {
     ? last.present.find((who) => who.sessionId === sessionId)?.mode
     : undefined;
 };
+
+type Logged = { readonly level: LogLevel.LogLevel; readonly text: string };
+
+const sqlFailure = () =>
+  new SqlError.SqlError({
+    reason: new SqlError.UnknownError({
+      cause: new Error('the database went away'),
+      message: 'the database went away',
+    }),
+  });
+
+/** Whether the running effect is inside a span of this name. */
+const within = (name: string) =>
+  Effect.map(Effect.option(Effect.currentSpan), (current) => {
+    let span: Tracer.AnySpan | undefined = Option.getOrUndefined(current);
+    while (span !== undefined) {
+      if (span._tag === 'Span' && span.name === name) return true;
+      span =
+        span._tag === 'Span' ? Option.getOrUndefined(span.parent) : undefined;
+    }
+    return false;
+  });
 
 /** A doorbell whose signals the test sends, and whose rings it keeps. */
 const scripted = () => {
@@ -173,18 +207,40 @@ describe.skipIf(!testDb)('the protocol-builder relay', () => {
       readonly doorbell?: Doorbell['Service'];
       readonly safetyPollMs?: number;
       readonly maxConsecutiveFailures?: number;
+      readonly drainStallMs?: number;
       readonly maintenance?: MaintenanceTriggers['Service'];
       readonly database?: Database['Service'];
       readonly studio?: Studio;
+      readonly logs?: Logged[];
     } = {},
   ) => {
     const spans = makeSpanCounter();
+    const logs = options.logs;
     const relay = ProtocolEvents.layerWith({
       safetyPollMs: options.safetyPollMs ?? NO_POLL_MS,
       ...(options.maxConsecutiveFailures === undefined
         ? {}
         : { maxConsecutiveFailures: options.maxConsecutiveFailures }),
-    });
+      ...(options.drainStallMs === undefined
+        ? {}
+        : { drainStallMs: options.drainStallMs }),
+    }).pipe(
+      Layer.provide(
+        logs === undefined
+          ? Layer.empty
+          : Logger.layer([
+              Logger.make(({ logLevel, message }) => {
+                const parts: unknown[] = [message].flat();
+                logs.push({
+                  level: logLevel,
+                  text: parts
+                    .filter((part) => typeof part === 'string')
+                    .join(' '),
+                });
+              }),
+            ]),
+      ),
+    );
     const client = await createProtocolBuilderClient(
       options.studio ?? suite.studio,
       {
@@ -206,6 +262,67 @@ describe.skipIf(!testDb)('the protocol-builder relay', () => {
     );
     opened.push(client);
     return { client, spans };
+  };
+
+  /**
+   * The suite's database, running `before` ahead of every transaction begun
+   * inside a span named `name`.
+   */
+  const intercepted = (
+    name: string,
+    before: Effect.Effect<void, SqlError.SqlError>,
+  ) => {
+    const real = Context.get(suite.services, Database);
+    const transaction: typeof real.db.transaction = (body, config) =>
+      Effect.andThen(
+        Effect.flatMap(within(name), (hit) => (hit ? before : Effect.void)),
+        real.db.transaction(body, config),
+      );
+    return Database.of({
+      ...real,
+      db: new Proxy(real.db, {
+        get: (target, key, receiver) => {
+          if (key === 'transaction') return transaction;
+          const value: unknown = Reflect.get(target, key, receiver);
+          return value;
+        },
+      }),
+    });
+  };
+
+  /** A protocol of the test's own, so what it does to the log stays there. */
+  const freshProtocol = async (name: string) => {
+    const id = ProtocolId.make(randomUUID());
+    await suite.adaRpc.call(
+      suite.adaRpc.rpc('protocols.create', {
+        teamId: TeamId.make(TEAM_ID),
+        name,
+        protocolId: id,
+        draftId: DraftId.make(randomUUID()),
+      }),
+    );
+    const draft = await suite.runEffect(
+      TenantScope.open(suite.access, latestDraftId(TEAM_ID, id)),
+    );
+    if (draft === undefined) throw new Error(`${name} has no draft`);
+    return { protocolId: id, draftId: draft };
+  };
+
+  /**
+   * Logs release events at these offsets past the draft's last cursor, as
+   * though written, without a ring.
+   */
+  const appendAt = async (ofDraft: string, offsets: ReadonlyArray<number>) => {
+    const rows = await teamRows<{ cursor: string }>(
+      `INSERT INTO protocol_events (draft_id, team_id, cursor, kind, section_id)
+       SELECT $1, $2, last.cursor + n, 'lock', 'settings'
+         FROM (SELECT coalesce(max(cursor), 0) AS cursor FROM protocol_events
+                WHERE draft_id = $1) AS last,
+              unnest($3::int[]) AS n
+       RETURNING cursor::text AS cursor`,
+      [ofDraft, TEAM_ID, offsets],
+    );
+    return rows.map((row) => BigInt(row.cursor));
   };
 
   const ownPool = async () => {
@@ -249,6 +366,15 @@ describe.skipIf(!testDb)('the protocol-builder relay', () => {
     return first.length + behind.flat().length;
   };
 
+  const expectRelayFailed = (exit: Exit.Exit<unknown, unknown>) => {
+    expect(Exit.isFailure(exit)).toBe(true);
+    if (Exit.isSuccess(exit)) return;
+    expect(Cause.hasDies(exit.cause)).toBe(true);
+    expect(Predicate.isTagged(Cause.squash(exit.cause), 'RelayFailed')).toBe(
+      true,
+    );
+  };
+
   /** Every cursor once, in order, with none skipped. */
   const expectContiguous = (events: readonly ProtocolEvent[]) => {
     const cursors = cursorsOf(events);
@@ -258,7 +384,7 @@ describe.skipIf(!testDb)('the protocol-builder relay', () => {
 
   describe('on one replica', () => {
     it('ends a watcher past its bound without holding back its peers', async () => {
-      const { client: a } = await replica();
+      const { client: a } = await replica({ drainStallMs: 200 });
       const stalled = latch();
       let delivered = 0;
       const slow = a.callExit(
@@ -278,14 +404,7 @@ describe.skipIf(!testDb)('the protocol-builder relay', () => {
         const before = cursorsOf(fast.events).length;
         // Past the relay's cursor, and more than the stalled watcher's queue
         // and the chunk its stream has already taken hold between them.
-        await teamRows(
-          `INSERT INTO protocol_events (draft_id, team_id, cursor, kind, section_id)
-           SELECT $1, $2, last.cursor + n, 'lock', 'settings'
-             FROM (SELECT coalesce(max(cursor), 0) AS cursor FROM protocol_events
-                    WHERE draft_id = $1) AS last,
-                  generate_series(1, $3::int) AS n`,
-          [egolessDraftId, TEAM_ID, OVERFLOW],
-        );
+        await appendAt(egolessDraftId, burst(OVERFLOW));
         const stage = await a.call(
           socket('fast'),
           a.rpc('Create', {
@@ -317,6 +436,101 @@ describe.skipIf(!testDb)('the protocol-builder relay', () => {
         stalled.open();
         await fast.stop();
       }
+    });
+
+    it('holds a burst back until a slow watcher drains, rather than overflowing it', async () => {
+      const fresh = await freshProtocol('Burst');
+      const lossy = scripted();
+      // Never reached, so only the watcher's draining lets the relay read on.
+      const { client: b } = await replica({
+        doorbell: lossy.doorbell,
+        drainStallMs: NO_POLL_MS,
+      });
+      const taken: ProtocolEvent[] = [];
+      let last: bigint | undefined;
+      const slow = b.callExit(
+        socket('burst'),
+        b.rpc('WatchProtocol', { protocolId: fresh.protocolId }).pipe(
+          Stream.takeUntil(
+            (event) =>
+              event.type !== 'presence' &&
+              event.cursor !== undefined &&
+              BigInt(event.cursor) === last,
+          ),
+          Stream.runForEach((event) =>
+            Effect.promise(async () => {
+              taken.push(event);
+              await settle(1);
+            }),
+          ),
+        ),
+      );
+      await until(
+        () => taken.some((event) => event.type === 'presence'),
+        'the slow watcher’s arrival',
+      );
+      const cursors = await appendAt(fresh.draftId, burst(OVERFLOW));
+      last = cursors.at(-1);
+      lossy.send({
+        _tag: 'Advanced',
+        draftId: fresh.draftId,
+        cursor: String(last),
+      });
+      const exit = await slow;
+      expect(Exit.isSuccess(exit)).toBe(true);
+      expect(cursorsOf(taken).slice(-OVERFLOW)).toEqual(cursors);
+      expectContiguous(taken);
+    });
+
+    it('fails its watchers when a cursor stays missing from the log', async () => {
+      const fresh = await freshProtocol('Gapped');
+      const { client: b } = await replica({
+        doorbell: scripted().doorbell,
+        safetyPollMs: FAST_POLL_MS,
+      });
+      const channel = await watching(socket('gapped'), fresh.protocolId, b);
+      try {
+        const [before, after] = await appendAt(fresh.draftId, [1, 3]);
+        const ended = await Promise.race([
+          channel.ended,
+          settle(5_000).then(() => undefined),
+        ]);
+        if (ended === undefined) throw new Error('the relay read past the gap');
+        expectRelayFailed(ended);
+        expect(cursorsOf(channel.events)).toContain(before);
+        expect(cursorsOf(channel.events)).not.toContain(after);
+      } finally {
+        await channel.stop();
+      }
+    });
+
+    it('gives up a seed its watcher abandoned, and leaves no relay behind', async () => {
+      const gate = latch();
+      const { client: b, spans } = await replica({
+        database: intercepted(
+          'protocolBuilder.seedRelay',
+          Effect.promise(() => gate.opened),
+        ),
+      });
+      const channel = watch(socket('abandoned'), protocolId, b);
+      let stopping: Promise<void> | undefined;
+      try {
+        await until(
+          () => spans.count('protocolBuilder.seedRelay') > 0,
+          'the seed to start',
+        );
+        stopping = channel.stop();
+        await until(
+          () => spans.ended('protocolBuilder.seedRelay') > 0,
+          'the abandoned seed to end while its read is held',
+          2_000,
+        );
+      } finally {
+        gate.open();
+        await (stopping ?? channel.stop());
+      }
+      await settle();
+      expect(await subscribers(b, draftId)).toBe(0);
     });
 
     it('delivers nothing of a draft nobody here watches', async () => {
@@ -442,6 +656,124 @@ describe.skipIf(!testDb)('the protocol-builder relay', () => {
         expect(revisionsOf(channel.events, first.sectionId)).toHaveLength(1);
         expectContiguous(channel.events);
       } finally {
+        await channel.stop();
+      }
+    });
+
+    it('answers a resync with one read for the team, not one per relay', async () => {
+      const first = await freshProtocol('Resynced, first');
+      const second = await freshProtocol('Resynced, second');
+      const lossy = scripted();
+      const { client: b, spans } = await replica({ doorbell: lossy.doorbell });
+      const channels = [
+        await watching(socket('batched-1'), first.protocolId, b),
+        await watching(socket('batched-2'), second.protocolId, b),
+      ];
+      try {
+        await settle();
+        const reads = spans.count('protocolBuilder.relayRead');
+        const polls = spans.ended('protocolBuilder.relayPoll');
+        lossy.send({ _tag: 'Resync' });
+        await until(
+          () => spans.ended('protocolBuilder.relayPoll') > polls,
+          'the resync’s poll',
+          3_000,
+        );
+        await settle();
+        expect(spans.ended('protocolBuilder.relayPoll')).toBe(polls + 1);
+        expect(spans.count('protocolBuilder.relayRead')).toBe(reads);
+      } finally {
+        for (const channel of channels) await channel.stop();
+      }
+    });
+
+    it('keeps polling a team’s other drafts when one draft cannot be read', async () => {
+      const broken = await freshProtocol('Unreadable');
+      const { client: a } = await replica();
+      const { client: b } = await replica({
+        doorbell: scripted().doorbell,
+        safetyPollMs: FAST_POLL_MS,
+        maxConsecutiveFailures: 3,
+      });
+      const bad = await watching(socket('unreadable'), broken.protocolId, b);
+      const good = await watching(
+        socket('readable'),
+        suite.egolessProtocolId,
+        b,
+      );
+      try {
+        // A section no reader can parse, so every read of this draft's log
+        // fails, and so does every read that includes it.
+        await teamRows(
+          `INSERT INTO protocol_events (draft_id, team_id, cursor, kind, section_id)
+           SELECT $1, $2, coalesce(max(cursor), 0) + 1, 'lock', 'not-a-section'
+             FROM protocol_events WHERE draft_id = $1`,
+          [broken.draftId, TEAM_ID],
+        );
+        expectRelayFailed(await bad.ended);
+        const stage = await a.call(
+          socket('readable-writer'),
+          a.rpc('Create', {
+            protocolId: suite.egolessProtocolId,
+            requestId: randomUUID(),
+            kind: 'stage',
+            document: {
+              type: 'Information',
+              label: 'Polled beside an unreadable draft',
+              title: 'Polled beside an unreadable draft',
+              items: [],
+            },
+          }),
+        );
+        await until(
+          () => revisionsOf(good.events, stage.sectionId).length > 0,
+          'the readable draft’s write to be polled',
+        );
+        const open = await Promise.race([
+          good.ended.then(() => false),
+          settle(FAST_POLL_MS * 4).then(() => true),
+        ]);
+        expect(open).toBe(true);
+      } finally {
+        await good.stop();
+        await bad.stop();
+      }
+    });
+
+    it('delivers a rung write while the poll’s read is held up', async () => {
+      const gate = latch();
+      const writer = scripted();
+      const reader = scripted();
+      const { client: a } = await replica({ doorbell: writer.doorbell });
+      const { client: b, spans } = await replica({
+        doorbell: reader.doorbell,
+        safetyPollMs: FAST_POLL_MS,
+        database: intercepted(
+          'protocolBuilder.relayPoll',
+          Effect.promise(() => gate.opened),
+        ),
+      });
+      const channel = await watching(socket('unblocked'), protocolId, b);
+      try {
+        await until(
+          () =>
+            spans.count('protocolBuilder.relayPoll') >
+            spans.ended('protocolBuilder.relayPoll'),
+          'a poll to be held up on its read',
+        );
+        const stage = await createOn(a, 'Rung past a held-up poll');
+        await until(
+          () => writer.rung.some((ring) => ring._tag === 'Advanced'),
+          'the writer to ring',
+        );
+        for (const ring of writer.rung) reader.send(ring);
+        await until(
+          () => revisionsOf(channel.events, stage.sectionId).length > 0,
+          'the rung write while the poll is held up',
+          2_000,
+        );
+      } finally {
+        gate.open();
         await channel.stop();
       }
     });
@@ -646,14 +978,7 @@ describe.skipIf(!testDb)('the protocol-builder relay', () => {
             return () =>
               Effect.suspend(() => {
                 failing -= 1;
-                return Effect.fail(
-                  new SqlError.SqlError({
-                    reason: new SqlError.UnknownError({
-                      cause: new Error('the database went away'),
-                      message: 'the database went away',
-                    }),
-                  }),
-                );
+                return Effect.fail(sqlFailure());
               });
           },
         }),
@@ -679,15 +1004,114 @@ describe.skipIf(!testDb)('the protocol-builder relay', () => {
         );
 
         failing = Number.POSITIVE_INFINITY;
-        const exit = await channel.ended;
-        expect(Exit.isFailure(exit)).toBe(true);
-        if (Exit.isSuccess(exit)) return;
-        expect(Cause.hasDies(exit.cause)).toBe(true);
-        expect(
-          Predicate.isTagged(Cause.squash(exit.cause), 'RelayFailed'),
-        ).toBe(true);
+        expectRelayFailed(await channel.ended);
       } finally {
         failing = 0;
+        await channel.stop();
+      }
+    });
+
+    it('retries a failed read long before the poll would', async () => {
+      let failures = 0;
+      const writer = scripted();
+      const reader = scripted();
+      const { client: a } = await replica({ doorbell: writer.doorbell });
+      const { client: b } = await replica({
+        doorbell: reader.doorbell,
+        database: intercepted(
+          'protocolBuilder.relayRead',
+          Effect.suspend(() => {
+            if (failures === 0) return Effect.void;
+            failures -= 1;
+            return Effect.fail(sqlFailure());
+          }),
+        ),
+      });
+      const channel = await watching(socket('retried'), protocolId, b);
+      try {
+        await settle();
+        const stage = await createOn(a, 'Read on the retry');
+        await until(
+          () => writer.rung.some((ring) => ring._tag === 'Advanced'),
+          'the writer to ring',
+        );
+        failures = 1;
+        for (const ring of writer.rung) reader.send(ring);
+        await until(() => failures === 0, 'the read to fail');
+        await until(
+          () => revisionsOf(channel.events, stage.sectionId).length > 0,
+          'the retried read',
+          2_000,
+        );
+      } finally {
+        failures = 0;
+        await channel.stop();
+      }
+    });
+
+    it('reads what it held back once the database reopens, without waiting for the poll', async () => {
+      const gate = closable();
+      const writer = scripted();
+      const reader = scripted();
+      const { client: a } = await replica({ doorbell: writer.doorbell });
+      const { client: b } = await replica({
+        doorbell: reader.doorbell,
+        maintenance: gate.triggers,
+      });
+      const channel = await watching(socket('reopened'), protocolId, b);
+      try {
+        gate.setClosed(true);
+        const stage = await createOn(a, 'Held back while closed');
+        await until(
+          () => writer.rung.some((ring) => ring._tag === 'Advanced'),
+          'the writer to ring',
+        );
+        for (const ring of writer.rung) reader.send(ring);
+        await settle();
+        expect(revisionsOf(channel.events, stage.sectionId)).toEqual([]);
+
+        gate.setClosed(false);
+        await until(
+          () => revisionsOf(channel.events, stage.sectionId).length > 0,
+          'the held-back read once the database reopens',
+          2_000,
+        );
+      } finally {
+        gate.setClosed(false);
+        await channel.stop();
+      }
+    });
+
+    it('raises repeated reap failures from a warning to an error', async () => {
+      const logs: Logged[] = [];
+      const { client: writer } = await replica();
+      const tab = socket('unreapable', ADA);
+      const owner = `${ADA.principal.userId}:${tab.tab ?? ''}`;
+      const stage = await createOn(writer, 'Not reaped');
+      await writer.call(
+        { principal: tab.principal, tab: tab.tab },
+        writer.rpc('AcquireLock', { protocolId, sectionId: stage.sectionId }),
+      );
+      const { client: b } = await replica({
+        safetyPollMs: FAST_POLL_MS,
+        database: intercepted(
+          'protocolBuilder.reap',
+          Effect.fail(sqlFailure()),
+        ),
+        logs,
+      });
+      const channel = await watching(socket('unreapable-seer'), protocolId, b);
+      const reaps = () =>
+        logs.filter((log) => log.text.startsWith('Releasing lapsed'));
+      try {
+        await ageLeases(owner, -1_000);
+        await until(() => reaps().length >= 3, 'three failed reaps');
+        expect(
+          reaps()
+            .slice(0, 3)
+            .map((log) => log.level),
+        ).toEqual(['Warn', 'Warn', 'Error']);
+      } finally {
         await channel.stop();
       }
     });
