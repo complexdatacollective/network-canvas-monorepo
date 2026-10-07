@@ -418,6 +418,18 @@ describe.skipIf(!testDb)('the lease keeper', () => {
             }),
           ),
         );
+        let second: Awaited<ReturnType<typeof watching>> | undefined;
+        try {
+          await waitsOnTheHead('protocolBuilder.connect', async () => {
+            second = await watching(
+              on('pb-ada-ordered-second-connection'),
+              protocolId,
+              a.client,
+            );
+          });
+        } finally {
+          await second?.stop();
+        }
       } finally {
         await channel.stop();
       }
