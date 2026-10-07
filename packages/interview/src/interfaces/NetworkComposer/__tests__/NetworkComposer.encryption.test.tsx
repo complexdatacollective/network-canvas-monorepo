@@ -158,12 +158,9 @@ function makeStore(
   encryptionEnabled = true,
   nodeVariables = variables,
 ) {
-  const store = createEncryptionStore(
-    nodes,
-    [stage],
-    nodeVariables,
+  const store = createEncryptionStore(nodes, [stage], nodeVariables, {
     encryptionEnabled,
-  );
+  });
   if (withPassphrase) store.dispatch(setPassphrase(PASSPHRASE));
   return store;
 }

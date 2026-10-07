@@ -1,4 +1,3 @@
-import { configureStore } from '@reduxjs/toolkit';
 import { act, render, waitFor } from '@testing-library/react';
 import { type ReactNode } from 'react';
 import { Provider } from 'react-redux';
@@ -16,10 +15,9 @@ import {
 } from '@codaco/shared-consts';
 
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
-import protocol from '../../../store/modules/protocol';
-import session from '../../../store/modules/session';
-import ui, { setPassphrase } from '../../../store/modules/ui';
+import { setPassphrase } from '../../../store/modules/ui';
 import type { StageProps } from '../../../types';
+import { createEncryptionStore } from '../../Anonymisation/__tests__/encryptionFixtures';
 import { isNumberArray } from '../../Anonymisation/decryptionScope';
 import { decryptData } from '../../Anonymisation/utils';
 
@@ -84,28 +82,8 @@ const stage: StageProps<'NameGenerator'>['stage'] = {
 };
 
 function makeStore(encryptionEnabled = true) {
-  const store = configureStore({
-    reducer: { session, protocol, ui },
-    preloadedState: {
-      session: {
-        id: 's',
-        promptIndex: 0,
-        network: {
-          nodes: [],
-          edges: [],
-          ego: { [entityAttributesProperty]: {} },
-        },
-      } as never,
-      protocol: {
-        id: 'p',
-        hash: 'h',
-        schemaVersion: 8,
-        experiments: { encryptedVariables: encryptionEnabled },
-        codebook: { node: { [NODE_TYPE]: { name: 'Person', variables } } },
-        stages: [stage],
-      } as never,
-    },
-    middleware: (g) => g({ serializableCheck: false }),
+  const store = createEncryptionStore([], [stage], variables, {
+    encryptionEnabled,
   });
   if (encryptionEnabled) store.dispatch(setPassphrase(PASSPHRASE));
   return store;

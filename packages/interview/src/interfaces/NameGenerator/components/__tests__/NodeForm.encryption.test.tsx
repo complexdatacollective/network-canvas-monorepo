@@ -50,12 +50,9 @@ async function renderEditing(
   encryptionEnabled = true,
 ) {
   const selected = await node;
-  const store = createEncryptionStore(
-    [selected],
-    undefined,
-    undefined,
+  const store = createEncryptionStore([selected], undefined, undefined, {
     encryptionEnabled,
-  );
+  });
   if (passphrase) store.dispatch(setPassphrase(passphrase));
   const onClose = vi.fn();
 

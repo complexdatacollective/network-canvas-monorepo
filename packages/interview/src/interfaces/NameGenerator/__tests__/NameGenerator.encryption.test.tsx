@@ -48,12 +48,9 @@ async function renderNameGenerator(encryptionEnabled = true) {
   const person = encryptionEnabled
     ? await makeEncryptedPerson('n1', 'Alice', 'pw')
     : makePlainPerson('n1', 'Alice');
-  const store = createEncryptionStore(
-    [person],
-    undefined,
-    undefined,
+  const store = createEncryptionStore([person], undefined, undefined, {
     encryptionEnabled,
-  );
+  });
   if (encryptionEnabled) store.dispatch(setPassphrase('pw'));
 
   const [stage] = store.getState().protocol.stages;

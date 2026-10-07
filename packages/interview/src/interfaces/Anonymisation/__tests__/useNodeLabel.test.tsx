@@ -139,7 +139,9 @@ describe('useNodeLabel with encrypted labels', () => {
 describe('useNodeLabel with the encrypted-variables experiment off', () => {
   it('shows a plaintext label without asking for a passphrase', async () => {
     const node = makePlainPerson('n1', 'Alice');
-    const store = createEncryptionStore([node], undefined, undefined, false);
+    const store = createEncryptionStore([node], undefined, undefined, {
+      encryptionEnabled: false,
+    });
 
     const { result, seen } = renderLabel(store, node);
     await settle();
@@ -151,7 +153,9 @@ describe('useNodeLabel with the encrypted-variables experiment off', () => {
 
   it('never decrypts a stored ciphertext, even with its passphrase in force', async () => {
     const node = await makeEncryptedPerson('n1', 'Alice', 'pw');
-    const store = createEncryptionStore([node], undefined, undefined, false);
+    const store = createEncryptionStore([node], undefined, undefined, {
+      encryptionEnabled: false,
+    });
     store.dispatch(setPassphrase('pw'));
 
     const { result, seen } = renderLabel(store, node);

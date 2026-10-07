@@ -86,12 +86,9 @@ const stage: StageProps<'NameGeneratorRoster'>['stage'] = {
 };
 
 function renderRoster(passphrase?: string, encryptionEnabled = true) {
-  const store = createEncryptionStore(
-    [],
-    [stage],
-    undefined,
+  const store = createEncryptionStore([], [stage], undefined, {
     encryptionEnabled,
-  );
+  });
   if (passphrase) store.dispatch(setPassphrase(passphrase));
 
   render(

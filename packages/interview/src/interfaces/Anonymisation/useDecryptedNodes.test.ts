@@ -74,7 +74,9 @@ describe('useDecryptedNodes', () => {
   it('returns encrypted nodes as they are, with no passphrase, while the experiment is off', async () => {
     const person = await makeEncryptedPerson('n1', 'Alice', PASSPHRASE);
     const nodes = [person];
-    const store = createEncryptionStore(nodes, undefined, undefined, false);
+    const store = createEncryptionStore(nodes, undefined, undefined, {
+      encryptionEnabled: false,
+    });
     const { result } = renderDecrypted(store, nodes);
 
     expect(readyNodes(result)).toBe(nodes);

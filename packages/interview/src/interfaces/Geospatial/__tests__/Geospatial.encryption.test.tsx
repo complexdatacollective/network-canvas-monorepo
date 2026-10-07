@@ -85,12 +85,9 @@ const person: NcNode = {
 };
 
 function renderGeospatial(passphrase?: string, encryptionEnabled = true) {
-  const store = createEncryptionStore(
-    [person],
-    [stage],
-    variables,
+  const store = createEncryptionStore([person], [stage], variables, {
     encryptionEnabled,
-  );
+  });
   if (passphrase) store.dispatch(setPassphrase(passphrase));
 
   render(

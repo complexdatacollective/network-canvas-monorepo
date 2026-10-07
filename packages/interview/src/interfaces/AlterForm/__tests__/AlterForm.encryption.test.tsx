@@ -81,12 +81,9 @@ async function renderAlterForm(passphrase?: string, encryptionEnabled = true) {
   const person = encryptionEnabled
     ? await makeEncryptedPerson('n1', 'Alice', 'pw')
     : makePlainPerson('n1', 'Alice');
-  const store = createEncryptionStore(
-    [person],
-    alterFormStages,
-    undefined,
+  const store = createEncryptionStore([person], alterFormStages, undefined, {
     encryptionEnabled,
-  );
+  });
   if (passphrase) store.dispatch(setPassphrase(passphrase));
 
   const onStepChange = vi.fn();

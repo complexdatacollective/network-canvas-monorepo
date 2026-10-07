@@ -103,7 +103,7 @@ describe('writes with the encrypted-variables experiment off', () => {
       [makePlainPerson('n1', 'Alice')],
       undefined,
       undefined,
-      false,
+      { encryptionEnabled: false },
     );
 
     const result = await store.dispatch(
@@ -124,7 +124,7 @@ describe('writes with the encrypted-variables experiment off', () => {
       [makePlainPerson('n1', 'Alice')],
       undefined,
       undefined,
-      false,
+      { encryptionEnabled: false },
     );
     store.dispatch(setPassphrase('pw'));
     store.dispatch(setPassphraseInvalid(true));

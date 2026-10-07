@@ -152,7 +152,7 @@ function renderCategoricalBin(
     [person, ...others],
     [stage],
     stageVariables,
-    encryptionEnabled,
+    { encryptionEnabled },
   );
   if (passphrase) store.dispatch(setPassphrase(passphrase));
 

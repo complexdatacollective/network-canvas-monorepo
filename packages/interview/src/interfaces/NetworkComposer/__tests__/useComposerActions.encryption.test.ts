@@ -1,9 +1,12 @@
-import { configureStore } from '@reduxjs/toolkit';
 import { act, renderHook } from '@testing-library/react';
 import { type ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { describe, expect, it } from 'vitest';
 
+import {
+  asEntityAttributeReference,
+  type Variable,
+} from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -11,9 +14,10 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
-import protocol from '../../../store/modules/protocol';
-import session from '../../../store/modules/session';
-import ui, { setPassphrase } from '../../../store/modules/ui';
+import { setPassphrase } from '../../../store/modules/ui';
+import type { StageProps } from '../../../types';
+import { createEncryptionStore } from '../../Anonymisation/__tests__/encryptionFixtures';
+import { isNumberArray } from '../../Anonymisation/decryptionScope';
 import { decryptData } from '../../Anonymisation/utils';
 import { useComposerActions } from '../useComposerActions';
 import { createUndoStore } from '../useUndoStore';
@@ -23,50 +27,29 @@ const LAYOUT_VAR = 'var-layout';
 const NODE_TYPE = 'person';
 const PASSPHRASE = 'composer passphrase';
 
-const codebook = {
-  node: {
-    [NODE_TYPE]: {
-      name: 'Person',
-      color: 'node-color-seq-1',
-      shape: { default: 'circle' as const },
-      variables: {
-        [QUICK_ADD_VAR]: {
-          name: 'name',
-          type: 'text',
-          component: 'Text',
-          encrypted: true,
-        },
-        [LAYOUT_VAR]: { name: 'position', type: 'layout' },
-      },
-    },
+const variables: Record<string, Variable> = {
+  [QUICK_ADD_VAR]: {
+    name: 'name',
+    type: 'text',
+    component: 'Text',
+    encrypted: true,
   },
-  edge: {},
-  ego: { variables: {} },
+  [LAYOUT_VAR]: { name: 'position', type: 'layout' },
+};
+
+const stage: StageProps<'NetworkComposer'>['stage'] = {
+  id: 'nc1',
+  type: 'NetworkComposer',
+  label: 'Network Composer',
+  subject: { entity: 'node', type: NODE_TYPE },
+  layoutVariable: asEntityAttributeReference(LAYOUT_VAR),
+  quickAdd: asEntityAttributeReference(QUICK_ADD_VAR),
+  background: { concentricCircles: 4, skewedTowardCenter: true },
 };
 
 function makeStore(encryptionEnabled = true) {
-  const store = configureStore({
-    reducer: { session, protocol, ui },
-    preloadedState: {
-      session: {
-        id: 's',
-        promptIndex: 0,
-        network: {
-          nodes: [],
-          edges: [],
-          ego: { [entityAttributesProperty]: {} },
-        },
-      } as never,
-      protocol: {
-        id: 'p',
-        hash: 'h',
-        schemaVersion: 8,
-        experiments: { encryptedVariables: encryptionEnabled },
-        codebook,
-        stages: [{ id: 'nc1', type: 'NetworkComposer' }],
-      } as never,
-    },
-    middleware: (g) => g({ serializableCheck: false }),
+  const store = createEncryptionStore([], [stage], variables, {
+    encryptionEnabled,
   });
   store.dispatch(setPassphrase(PASSPHRASE));
   return store;
@@ -100,12 +83,6 @@ function getNode(store: ReturnType<typeof makeStore>, id: string) {
   return store
     .getState()
     .session.network.nodes.find((n) => n[entityPrimaryKeyProperty] === id);
-}
-
-function isNumberArray(value: unknown): value is number[] {
-  return (
-    Array.isArray(value) && value.every((item) => typeof item === 'number')
-  );
 }
 
 // Reads the stored name the way every display path does: the stored value must
