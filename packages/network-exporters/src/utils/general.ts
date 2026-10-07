@@ -4,6 +4,7 @@ import {
   caseProperty,
   type NcEntity,
   entityAttributesProperty,
+  entitySecureAttributesMeta,
   sessionProperty,
 } from '@codaco/shared-consts';
 
@@ -77,3 +78,12 @@ export const isCategoricalOptionSelected = (
 
 export const getEntityAttributes = (entity: NcEntity) =>
   entity[entityAttributesProperty];
+
+/**
+ * Whether an entity's stored value for an attribute is ciphertext. Only the
+ * secure-attribute metadata saved with the value can say so: the codebook's
+ * `encrypted` flag describes what the protocol asks for now, which may differ
+ * from how this value was saved.
+ */
+export const hasEncryptedValue = (entity: NcEntity, attributeId: string) =>
+  entity[entitySecureAttributesMeta]?.[attributeId] !== undefined;
