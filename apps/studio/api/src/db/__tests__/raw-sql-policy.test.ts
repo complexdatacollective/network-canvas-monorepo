@@ -373,6 +373,10 @@ const ALLOWLIST: Record<string, { count: number; why: string }> = {
     count: 17,
     why: 'the scratch-schema harness: create, apply, grant and drop, and the one-statement fixtures and oracles every suite shares — as the owner, a tenant, the maintenance role, and under the erasure marker',
   },
+  [`${SERVER}/__tests__/support/protocol-builder-suite.ts`]: {
+    count: 6,
+    why: '`holdRow`’s BEGIN, team pin, held statement, backend pid and ROLLBACK on a connection of its own, standing in for another replica’s transaction, and `blockedBehind`’s `pg_locks` probe of the backends waiting on it',
+  },
   [`${SERVER}/interview/__tests__/fixture.ts`]: {
     count: 11,
     why: 'the interview suites’ owner fixtures: a team with a pinned protocol version, a live study, its wave, a participant and both link kinds, a session, and the completion the finalization triggers demand',
