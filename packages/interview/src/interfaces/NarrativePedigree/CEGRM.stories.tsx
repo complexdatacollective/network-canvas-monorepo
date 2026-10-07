@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useMemo } from 'react';
-import { expect, userEvent, within } from 'storybook/test';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 import SuperJSON from 'superjson';
 
 import { SyntheticInterview } from '@codaco/protocol-utilities';
@@ -483,9 +483,10 @@ export const FullWalkthrough: Story = {
   render: () => <CegrmWrapper seed={11} step={0} />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(
-      await canvas.findByText('Your family and support network'),
-    ).toBeVisible();
+    const heading = await canvas.findByText('Your family and support network');
+    // The stage animates in, so the heading can be in the document before it is
+    // visible; a loaded runner can reach this line mid-animation.
+    await waitFor(() => expect(heading).toBeVisible());
   },
 };
 
