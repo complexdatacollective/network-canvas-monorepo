@@ -11,7 +11,6 @@ import {
 import type { ReactNode } from 'react';
 
 import { PSEUDO_LOCALE } from '@codaco/app-i18n/locales';
-import { resolveAppLocale } from '@codaco/app-i18n/negotiate';
 import { AppI18nProvider, useLocaleCatalog } from '@codaco/app-i18n/react';
 import { SUPPORTED_STUDIO_LOCALES } from '@codaco/studio-contract/locales';
 import type { SupportedStudioLocale } from '@codaco/studio-contract/locales';
@@ -20,7 +19,7 @@ import type { Me } from '@codaco/studio-contract/schema/account';
 import { sessionQueryOptions } from '../lib/session.ts';
 import { studioCatalogSource } from '../locales/catalogs.ts';
 import { rpcCall, rpcKey } from '../runtime/rpc.ts';
-import { studioDefaultLocale, studioLocales } from './locales.ts';
+import { negotiateStudioLocale, studioLocales } from './locales.ts';
 import {
   clearLocaleMirror,
   readLocaleMirror,
@@ -77,12 +76,7 @@ function isSupportedStudioLocale(
 }
 
 function resolveActiveLocale(preference: string | null): string {
-  return resolveAppLocale({
-    stored: preference,
-    requested: navigator.languages,
-    locales: studioLocales,
-    defaultLocale: studioDefaultLocale,
-  }).locale;
+  return negotiateStudioLocale(preference).locale;
 }
 
 /**
@@ -92,12 +86,7 @@ function resolveActiveLocale(preference: string | null): string {
  * anything renders.
  */
 function resolveMirroredLocale() {
-  return resolveAppLocale({
-    stored: readLocaleMirror(),
-    requested: navigator.languages,
-    locales: studioLocales,
-    defaultLocale: studioDefaultLocale,
-  });
+  return negotiateStudioLocale(readLocaleMirror());
 }
 
 /**

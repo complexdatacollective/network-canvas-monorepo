@@ -242,9 +242,9 @@
       }
     },
     "apps/studio/web": {
-      "entry": ["index.html!"],
+      "entry": ["index.html!", "e2e/specs/**/*.ts"],
       "vite": true,
-      "project": ["src/**/*.{ts,tsx}"]
+      "project": ["src/**/*.{ts,tsx}", "e2e/**/*.ts"]
     },
     "apps/studio/api": {
       // The image's one-shot entries (#1909, #1901). src/index.ts and
@@ -254,6 +254,7 @@
       // named here.
       "entry": [
         "scripts/auth-cli-config.ts!",
+        "scripts/e2e-participant-links.ts",
         "src/migrate.ts!",
         "src/maintenance.ts!"
       ],

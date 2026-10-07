@@ -312,6 +312,10 @@ const OPENERS: Record<string, { count: number; why: string }> = {
     count: 1,
     why: 'the development seed, populating fixtures as the owner',
   },
+  [`${SERVER}/scripts/e2e-participant-links.ts › program › OwnerScope.open`]: {
+    count: 1,
+    why: 'the stack e2e fixture, publishing the lean protocol and creating participant links as the owner',
+  },
   [`${SERVER}/scripts/protocol-demo.ts › TenantScope.open`]: {
     count: 1,
     why: 'a hand-run development script against a fixture team',

@@ -18,7 +18,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "i18n:extract": "node scripts/extract-i18n.mjs",
-    "i18n:stamp": "node scripts/stamp-translations.mjs"
+    "i18n:stamp": "node scripts/stamp-translations.mjs",
+    "test:e2e:stack": "playwright test --config e2e/playwright.config.ts"
   },
   "devDependencies": {
     "@codaco/app-i18n": "workspace:^",
@@ -34,6 +35,8 @@
     "@codaco/tailwind-config": "workspace:^",
     "@codaco/tsconfig": "workspace:^",
     "@codaco/vitest-config": "workspace:^",
+    "@noble/hashes": "^2.4.0",
+    "@playwright/test": "catalog:",
     "@tailwindcss/vite": "catalog:",
     "@tanstack/react-query": "catalog:",
     "@tanstack/react-router": "^1.170.40",

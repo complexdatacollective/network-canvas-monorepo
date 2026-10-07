@@ -172,20 +172,24 @@ const DESTINATIONS: Destination[] = [
   { path: '/no-team', url: '/no-team', heading: 'No team yet', teamless: true },
 
   // Participant
-  { path: '/enter/$token', url: '/enter/token-1', heading: 'Welcome' },
   {
-    path: '/enter/$token/consent',
-    url: '/enter/token-1/consent',
+    path: '/enter/$token',
+    url: '/enter/token-1',
+    heading: "This link doesn't work",
+  },
+  {
+    path: '/session/$sessionToken',
+    url: '/session/token-1',
+    heading: 'This interview has ended',
+  },
+  {
+    path: '/session/$sessionToken/consent',
+    url: '/session/token-1/consent',
     heading: 'Consent',
   },
   {
-    path: '/enter/$token/interview',
-    url: '/enter/token-1/interview',
-    heading: 'Interview',
-  },
-  {
-    path: '/enter/$token/complete',
-    url: '/enter/token-1/complete',
+    path: '/session/$sessionToken/complete',
+    url: '/session/token-1/complete',
     heading: 'Interview complete',
   },
 

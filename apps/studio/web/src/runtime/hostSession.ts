@@ -2,7 +2,7 @@ import { type Layer, ManagedRuntime } from 'effect';
 
 import { registerStudioEditorSession } from '../editor/sessionLifecycle.ts';
 import { HostClient } from './hostClient.ts';
-import { delegatingRuntime } from './runtime.ts';
+import { delegatingRuntime } from './transport.ts';
 
 export type HostRuntime = ManagedRuntime.ManagedRuntime<HostClient, never>;
 

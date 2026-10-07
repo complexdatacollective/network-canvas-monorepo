@@ -54,9 +54,9 @@ export const BOTH_PATHS = [
 
   // Participant branch — no chrome, no session.
   '/enter/$token',
-  '/enter/$token/consent',
-  '/enter/$token/interview',
-  '/enter/$token/complete',
+  '/session/$sessionToken',
+  '/session/$sessionToken/consent',
+  '/session/$sessionToken/complete',
 
   // App, platform level.
   '/account',

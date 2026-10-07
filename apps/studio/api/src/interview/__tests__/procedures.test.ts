@@ -282,6 +282,7 @@ describe.skipIf(!testDb)('the participant procedures', () => {
 
       expect(second.sessionId).toBe(first.sessionId);
       expect(second.sessionToken).not.toBe(first.sessionToken);
+      expect(first.anonymous).toBe(false);
       await expectRpcFailure(readSession(first.sessionToken), 'Unauthorized');
       expect((await opened(second.sessionToken)).session.id).toBe(
         first.sessionId,
@@ -312,6 +313,7 @@ describe.skipIf(!testDb)('the participant procedures', () => {
       const first = await redeemed(f.linkToken);
       const second = await redeemed(f.linkToken);
       expect(second.sessionId).not.toBe(first.sessionId);
+      expect(first.anonymous).toBe(true);
       const events = await auditEvents(f.teamId);
       expect(events[0]?.actor_label).toBe(first.sessionId.slice(0, 8));
     });

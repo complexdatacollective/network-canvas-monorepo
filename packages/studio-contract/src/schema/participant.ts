@@ -38,7 +38,7 @@ const SecureAttributesMeta = Schema.Record(
 const entityFields = {
   _uid: NetworkIdentifier,
   attributes: EntityAttributes,
-  _secureAttributes: Schema.optionalKey(SecureAttributesMeta),
+  _secureAttributes: Schema.optional(SecureAttributesMeta),
 };
 
 export const NetworkEgo = Schema.Struct(entityFields);
@@ -46,8 +46,8 @@ export const NetworkEgo = Schema.Struct(entityFields);
 export const NetworkNode = Schema.Struct({
   ...entityFields,
   type: NetworkIdentifier,
-  stageId: Schema.optionalKey(NetworkIdentifier),
-  promptIDs: Schema.optionalKey(Schema.Array(Schema.String)),
+  stageId: Schema.optional(NetworkIdentifier),
+  promptIDs: Schema.optional(Schema.Array(Schema.String)),
 });
 
 export const NetworkEdge = Schema.Struct({
@@ -82,6 +82,7 @@ export const RedeemInput = Schema.Struct({
 export const RedeemResult = Schema.Struct({
   sessionToken: SessionToken,
   sessionId: Schema.String,
+  anonymous: Schema.Boolean,
 });
 
 export const SessionInput = Schema.Struct({
