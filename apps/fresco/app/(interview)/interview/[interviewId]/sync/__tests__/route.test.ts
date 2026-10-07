@@ -107,7 +107,13 @@ function installInterviewRow(
     stageMetadata?: unknown;
   } | null,
 ) {
-  const row = initial
+  const row: {
+    syncRevision: number;
+    network: unknown;
+    stageMetadata: unknown;
+    finishTime: Date | null;
+    currentStep: number;
+  } | null = initial
     ? {
         stageMetadata: null,
         finishTime: null,
@@ -121,14 +127,19 @@ function installInterviewRow(
       where,
       data,
     }: {
-      where: { id: string; syncRevision: { lt: number; gte: number } };
+      where: {
+        id: string;
+        syncRevision: { lt: number; gte: number };
+        finishTime?: null;
+      };
       data: { syncRevision: number; network: unknown; currentStep: number };
     }) => {
       if (!row || where.id !== 'interview-1')
         return Promise.resolve({ count: 0 });
       if (
         row.syncRevision >= where.syncRevision.lt ||
-        row.syncRevision < where.syncRevision.gte
+        row.syncRevision < where.syncRevision.gte ||
+        (where.finishTime === null && row.finishTime !== null)
       ) {
         return Promise.resolve({ count: 0 });
       }
@@ -368,6 +379,35 @@ describe('interview sync route', () => {
         syncRevision: 9,
       });
       expect(updateManyMock).not.toHaveBeenCalled();
+    });
+
+    it('declines a write when the interview is finished while the write is in flight', async () => {
+      // Another tab finishes the interview after this request has read the
+      // row but before it writes. Checking the snapshot alone would let the
+      // write land over an interview that is now frozen.
+      getAppSettingMock.mockResolvedValue(true);
+      const readRow = installInterviewRow({
+        syncRevision: 4,
+        network: networkNamed('final'),
+      });
+      findUniqueMock.mockImplementationOnce(() => {
+        const snapshot = { ...readRow() };
+        const row = readRow();
+        if (row) row.finishTime = new Date('2026-08-12T00:00:00.000Z');
+        return Promise.resolve(snapshot);
+      });
+
+      const response = await post(
+        makeRequest(networkNamed('after-finish'), { syncRevision: 5 }),
+      );
+
+      await expect(response.json()).resolves.toEqual({
+        success: true,
+        applied: false,
+        frozen: true,
+        syncRevision: 4,
+      });
+      expect(readRow()?.network).toEqual(networkNamed('final'));
     });
   });
 

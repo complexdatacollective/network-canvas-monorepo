@@ -43,6 +43,21 @@ const invalidRequest = (error: unknown) => {
 };
 
 /**
+ * Flagged, not just reported as unapplied: freezing declines every write
+ * permanently, so this is nothing like losing a race to a newer one. A client
+ * that read it as one would rewrite, be declined again, and report a failure
+ * on every change — for an interview that is over and already holds its final
+ * state.
+ */
+const frozenResponse = (syncRevision: number) =>
+  NextResponse.json({
+    success: true,
+    applied: false,
+    frozen: true,
+    syncRevision,
+  });
+
+/**
  * Handle post requests from the client to store the current interview state.
  */
 const routeHandler = async (
@@ -98,6 +113,8 @@ const routeHandler = async (
   const { network, currentStep, stageMetadata, syncRevision } =
     validatedRequest.data;
 
+  const freezeEnabled = await getAppSetting('freezeInterviewsAfterCompletion');
+
   const stored = await prisma.interview.findUnique({
     where: { id: interviewId },
     select: {
@@ -112,20 +129,8 @@ const routeHandler = async (
     return NextResponse.json({ error: 'Interview not found' }, { status: 404 });
   }
 
-  const freezeEnabled = await getAppSetting('freezeInterviewsAfterCompletion');
-
   if (freezeEnabled && stored.finishTime) {
-    // Flagged, not just reported as unapplied: freezing declines every write
-    // permanently, so this is nothing like losing a race to a newer one. A
-    // client that read it as one would rewrite, be declined again, and report a
-    // failure on every change — for an interview that is over and already holds
-    // its final state.
-    return NextResponse.json({
-      success: true,
-      applied: false,
-      frozen: true,
-      syncRevision: stored.syncRevision,
-    });
+    return frozenResponse(stored.syncRevision);
   }
 
   // Every write replaces the stored network and stage metadata wholesale, so it
@@ -133,8 +138,8 @@ const routeHandler = async (
   // A row that does not parse is one the page refuses to start from: whatever
   // this request carries was built without the participant's stored answers,
   // and writing it would destroy them. Leave the row as it is, for an operator
-  // to repair. Nothing writes the row between this read and the update below
-  // except another sync, and every sync is validated before it is written.
+  // to repair. Between this read and the update below only another sync writes
+  // the network or stage metadata, and every sync is validated first.
   const readable = parseStoredInterviewSession(stored);
   if (!readable.success) {
     after(async () => {
@@ -155,7 +160,9 @@ const routeHandler = async (
     // of the write itself: reading the stored revision first and then updating
     // would leave a window in which the newer request commits in between.
     // Postgres re-evaluates the WHERE clause after waiting on the row lock, so
-    // of two concurrent writes the lower-numbered one matches nothing.
+    // of two concurrent writes the lower-numbered one matches nothing. The
+    // same goes for freezing: an interview finished since the read above
+    // matches nothing either.
     const { count } = await prisma.interview.updateMany({
       where: {
         id: interviewId,
@@ -163,6 +170,7 @@ const routeHandler = async (
           lt: syncRevision,
           gte: syncRevision - MAX_REVISION_ADVANCE,
         },
+        ...(freezeEnabled ? { finishTime: null } : {}),
       },
       data: {
         network,
@@ -182,12 +190,13 @@ const routeHandler = async (
 
     // Nothing matched. Either the row holds a revision this write does not beat
     // — one that lost its race, so the interview already holds newer state — or
-    // the jump was too large to be plausible, or there is no such interview at
-    // all. Only the last is a failure, so tell it apart rather than reporting
-    // success for a write that had nowhere to land.
+    // the jump was too large to be plausible, or the interview has been frozen
+    // since it was read, or there is no such interview at all. Only the last is
+    // a failure, so tell it apart rather than reporting success for a write
+    // that had nowhere to land.
     const current = await prisma.interview.findUnique({
       where: { id: interviewId },
-      select: { syncRevision: true },
+      select: { syncRevision: true, finishTime: true },
     });
 
     if (!current) {
@@ -195,6 +204,10 @@ const routeHandler = async (
         { error: 'Interview not found' },
         { status: 404 },
       );
+    }
+
+    if (freezeEnabled && current.finishTime) {
+      return frozenResponse(current.syncRevision);
     }
 
     // Reporting the stored revision lets the client number its retry from it.
