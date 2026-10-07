@@ -106,7 +106,7 @@ Alongside schema 9, Architect refuses names and option values that would give tw
 
 Migrating a protocol from schema 8 to schema 9 updates its schema version number and removes its `experiments` setting. Existing variable names are kept exactly as they are. What happens to encrypted attributes depends on the setting you are migrating from:
 
-- If the **Encrypted Attributes** experiment was turned on, the attributes marked as encrypted stay marked, and are encrypted during interviews.
+- If the **Encrypted Attributes** experiment was turned on, the attributes marked as encrypted stay marked, and new answers are encrypted during interviews. Answers that the experimental version protected in earlier interviews cannot be read after the upgrade: those interviews still open, but the protected answers appear as "Answer unavailable" (and are still exported as `ENCRYPTED`). New answers are protected once the participant chooses a new passphrase. See [Answers protected by the experimental version](/en/design-protocols/interface-documentation/anonymisation#answers-protected-by-the-experimental-version).
 - If the experiment was turned off, any attribute marked as encrypted is unmarked, so it keeps being collected without encryption, as it was before. To encrypt it, mark it again in an Anonymisation stage.
 
 Nothing else in the protocol changes.
@@ -136,7 +136,7 @@ If you open a schema 8 protocol in Architect Classic, or attempt to install one 
 Schema version 8 introduces several new interfaces and authoring features:
 
 - **New "Geospatial" interface.** Allows the participant to select a location on a map based on a GeoJSON shapefile.
-- **New experimental "Anonymisation" interface.** Allows the participant to encrypt sensitive or identifiable information so that it cannot be read by the researcher. In schema 8 it must be switched on for each protocol, using an experiment setting. Schema 9 [releases it](#whats-new-in-schema-9).
+- **New experimental "Anonymisation" interface.** Allows the participant to encrypt sensitive or identifiable information so that it cannot be read by the researcher. In schema 8 it must be switched on for each protocol, using an experiment setting. Schema 9 [releases it](#whats-new-in-schema-9), but answers protected by the experimental version cannot be read after you upgrade.
 - **New "One-to-many dyad census" interface.** Allows the participant to link multiple alters at a time.
 - **New "Family pedigree" interface.** A pedigree-building interface designed for genetic disease monitoring, with configurable node and edge types, relationship variables, and optional disease/condition nomination prompts.
 - **New "[Network Composer](/en/design-protocols/interface-documentation/network-composer)" interface.** A free-form, single-screen network builder for creating alters, drawing ties of several types, and recording attribute data, designed to be driven by a researcher or interviewer.
