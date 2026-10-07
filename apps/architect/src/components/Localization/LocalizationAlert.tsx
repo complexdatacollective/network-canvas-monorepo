@@ -6,6 +6,7 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import CloseButton from '@codaco/fresco-ui/CloseButton';
 import { NativeLink } from '@codaco/fresco-ui/NativeLink';
+import { sortByLanguageName } from '@codaco/protocol-validation';
 import { focusRouteTarget } from '~/components/RouteFocus';
 import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
 import {
@@ -18,6 +19,8 @@ import {
   getLocalizationCoverage,
 } from '~/selectors/issues';
 import { getProtocol } from '~/selectors/protocol';
+
+import { useLanguageName } from './useLanguageName';
 
 const messages = defineMessages({
   unspecifiedTitle: {
@@ -35,15 +38,16 @@ const messages = defineMessages({
   },
   missingTitle: {
     id: 'architect.localization.localizationAlert.missingTitle',
-    defaultMessage:
-      '{count, plural, one {# missing translation} other {# missing translations}}',
-    description: 'Title of the notice about missing translations.',
+    defaultMessage: 'Not everything is translated yet',
+    description:
+      'Title of the informational notice on the stage list shown while some of the protocol’s text has no translation in one or more of its languages.',
   },
   missingDescription: {
     id: 'architect.localization.localizationAlert.missingDescription',
     defaultMessage:
-      'Some text is not translated into every language of this protocol. Participants see it in another language instead.',
-    description: 'Notice shown when some translations are missing.',
+      'Some text isn’t translated into {languages} yet. Participants see it in another language instead.',
+    description:
+      'Notice shown while some of the protocol’s text has no translation in one or more of its languages. languages is the list of those languages, already joined in the reader’s language, for example “French, German and Tibetan”.',
   },
   goToLanguages: {
     id: 'architect.localization.localizationAlert.goToLanguages',
@@ -53,16 +57,16 @@ const messages = defineMessages({
   },
   dismissMissing: {
     id: 'architect.localization.localizationAlert.dismissMissing',
-    defaultMessage: 'Dismiss missing translations warning',
+    defaultMessage: 'Dismiss the note about missing translations',
     description:
-      'Accessible name of the button that hides the missing-translations warning on the stage list. The warning comes back if more translations go missing.',
+      'Accessible name of the button that hides the note about missing translations on the stage list. The note comes back if more translations go missing.',
   },
 });
 
 /**
- * Stage-list notice about the protocol's languages: text whose language is
- * not identified yet, or else missing translations. A warning only; neither
- * stops the protocol being saved or used.
+ * Stage-list notice about the protocol's languages: a warning about text whose
+ * language is not identified yet, or else a note naming the languages some
+ * text is not translated into. Neither stops the protocol being saved or used.
  *
  * Missing translations can be dismissed, because a protocol may be translated
  * in part on purpose. The dismissal is remembered with the number of
@@ -72,6 +76,7 @@ const messages = defineMessages({
  */
 const LocalizationAlert = () => {
   const intl = useAppIntl();
+  const languageName = useLanguageName();
   const dispatch = useAppDispatch();
   const hasUnspecifiedLanguage = useAppSelector(getHasUnspecifiedLanguage);
   const { warnings } = useAppSelector(getLocalizationCoverage);
@@ -117,6 +122,12 @@ const LocalizationAlert = () => {
 
   if (!hasUnspecifiedLanguage && !showsMissing) return null;
 
+  const languagesWithGaps = sortByLanguageName(
+    [...new Set(warnings.map((warning) => warning.locale))],
+    languageName,
+    intl.locale,
+  );
+
   const handleDismiss = () => {
     if (protocolId === null) return;
     focusOnRemoval.current = true;
@@ -124,18 +135,21 @@ const LocalizationAlert = () => {
   };
 
   return (
-    <Alert variant="warning" className="mx-auto mb-10 max-w-3xl">
+    <Alert
+      variant={hasUnspecifiedLanguage ? 'warning' : 'info'}
+      className="mx-auto mb-10 max-w-3xl"
+    >
       <div className="mb-2 flex items-center gap-3">
         <AlertTitle className="mb-0! min-w-0 flex-1">
-          {hasUnspecifiedLanguage
-            ? intl.formatMessage(messages.unspecifiedTitle)
-            : intl.formatMessage(messages.missingTitle, {
-                count: missingCount,
-              })}
+          {intl.formatMessage(
+            hasUnspecifiedLanguage
+              ? messages.unspecifiedTitle
+              : messages.missingTitle,
+          )}
         </AlertTitle>
         {showsMissing && protocolId !== null && (
           <CloseButton
-            color="warning"
+            color="info"
             variant="default-inverted"
             size="sm"
             className="-my-2.5"
@@ -146,11 +160,14 @@ const LocalizationAlert = () => {
       </div>
       <AlertDescription className="space-y-4 text-sm">
         <span className="block">
-          {intl.formatMessage(
-            hasUnspecifiedLanguage
-              ? messages.unspecifiedDescription
-              : messages.missingDescription,
-          )}
+          {hasUnspecifiedLanguage
+            ? intl.formatMessage(messages.unspecifiedDescription)
+            : intl.formatMessage(messages.missingDescription, {
+                languages: intl.formatList(
+                  languagesWithGaps.map(languageName),
+                  { type: 'conjunction' },
+                ),
+              })}
         </span>
         <NativeLink render={<Link href="/protocol/localization" />}>
           {intl.formatMessage(messages.goToLanguages)}

@@ -85,21 +85,60 @@ const renderAlert = (store: TestStore) =>
     </Provider>,
   );
 
-const DISMISS_BUTTON = { name: 'Dismiss missing translations warning' };
+const MISSING_NOTE =
+  'Some text isn’t translated into French yet. Participants see it in another language instead.';
+
+const DISMISS_BUTTON = { name: 'Dismiss the note about missing translations' };
 
 describe('LocalizationAlert', () => {
+  it('names the languages that have gaps, alphabetically, as a calm note', () => {
+    const store = createStore();
+    store.dispatch(
+      setActiveProtocol({
+        ...protocolWithStages(0),
+        localization: {
+          defaultLocale: 'en',
+          locales: ['en', 'fr', 'de', 'bo'],
+        },
+        stages: [
+          {
+            id: 'welcome',
+            type: 'Information',
+            label: { en: 'Welcome', fr: 'Bienvenue', de: 'Willkommen' },
+            title: { en: 'Hello', de: 'Hallo' },
+            items: [],
+          },
+        ],
+      }),
+    );
+    renderAlert(store);
+
+    expect(
+      screen.getByText('Not everything is translated yet'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'Some text isn’t translated into French and Tibetan yet. Participants see it in another language instead.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent(
+      /Information: Not everything is translated yet/,
+    );
+    expect(
+      screen.getByRole('link', { name: 'Go to Languages' }),
+    ).toBeInTheDocument();
+  });
+
   it('dismisses the missing-translations warning and remembers it', async () => {
     const store = createStore();
     store.dispatch(setActiveProtocol(protocolWithStages(2)));
     const user = userEvent.setup();
     const { unmount } = renderAlert(store);
 
-    expect(screen.getByText('4 missing translations')).toBeInTheDocument();
+    expect(screen.getByText(MISSING_NOTE)).toBeInTheDocument();
     await user.click(screen.getByRole('button', DISMISS_BUTTON));
 
-    expect(
-      screen.queryByText('4 missing translations'),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText(MISSING_NOTE)).not.toBeInTheDocument();
     expect(getDismissedMissingTranslations(store.getState(), PROTOCOL_ID)).toBe(
       4,
     );
@@ -110,9 +149,7 @@ describe('LocalizationAlert', () => {
     reloaded.dispatch(setActiveProtocol(protocolWithStages(2)));
     renderAlert(reloaded);
 
-    expect(
-      screen.queryByText('4 missing translations'),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText(MISSING_NOTE)).not.toBeInTheDocument();
   });
 
   it('keeps focus on the page heading rather than a removed button', async () => {
@@ -132,16 +169,12 @@ describe('LocalizationAlert', () => {
 
     store.dispatch(setActiveProtocol(protocolWithStages(2)));
     const { unmount } = renderAlert(store);
-    expect(
-      screen.queryByText('4 missing translations'),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText(MISSING_NOTE)).not.toBeInTheDocument();
     unmount();
 
     store.dispatch(setActiveProtocol(protocolWithStages(1)));
     renderAlert(store);
-    expect(
-      screen.queryByText('2 missing translations'),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText(MISSING_NOTE)).not.toBeInTheDocument();
   });
 
   it('returns when more translations are missing than when it was dismissed', () => {
@@ -149,15 +182,13 @@ describe('LocalizationAlert', () => {
     store.dispatch(dismissMissingTranslations(PROTOCOL_ID, 2));
     store.dispatch(setActiveProtocol(protocolWithStages(1)));
     renderAlert(store);
-    expect(
-      screen.queryByText('2 missing translations'),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText(MISSING_NOTE)).not.toBeInTheDocument();
 
     act(() => {
       store.dispatch(setActiveProtocol(protocolWithStages(2)));
     });
 
-    expect(screen.getByText('4 missing translations')).toBeInTheDocument();
+    expect(screen.getByText(MISSING_NOTE)).toBeInTheDocument();
     expect(screen.getByRole('button', DISMISS_BUTTON)).toBeInTheDocument();
   });
 
@@ -167,7 +198,7 @@ describe('LocalizationAlert', () => {
     store.dispatch(setActiveProtocol(protocolWithStages(1)));
     renderAlert(store);
 
-    expect(screen.getByText('2 missing translations')).toBeInTheDocument();
+    expect(screen.getByText(MISSING_NOTE)).toBeInTheDocument();
   });
 
   it('gives the unidentified-language notice no dismiss control', () => {
@@ -214,14 +245,12 @@ describe('LocalizationAlert', () => {
       expect(
         getDismissedMissingTranslations(store.getState(), PROTOCOL_ID),
       ).toBe(1);
-      expect(
-        screen.queryByText('1 missing translation'),
-      ).not.toBeInTheDocument();
+      expect(screen.queryByText(MISSING_NOTE)).not.toBeInTheDocument();
 
       act(() => {
         store.dispatch(setActiveProtocol(protocolWithGaps(2)));
       });
-      expect(screen.getByText('2 missing translations')).toBeInTheDocument();
+      expect(screen.getByText(MISSING_NOTE)).toBeInTheDocument();
     });
 
     it('lowers the stored count to zero while the alert renders nothing', () => {
@@ -236,7 +265,7 @@ describe('LocalizationAlert', () => {
       act(() => {
         store.dispatch(setActiveProtocol(protocolWithGaps(1)));
       });
-      expect(screen.getByText('1 missing translation')).toBeInTheDocument();
+      expect(screen.getByText(MISSING_NOTE)).toBeInTheDocument();
     });
 
     it('leaves the stored count alone when the count is equal or higher', () => {
