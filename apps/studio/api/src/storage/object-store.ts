@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 
-import { Context, Effect, Option, Schema } from 'effect';
+import { Brand, Context, Effect, Option, Schema } from 'effect';
 
 // The object store is a port with one implementation per storage platform
 // (#2077): `./s3/` for every S3-compatible store and `./azure-blob/` for Azure
@@ -9,11 +9,12 @@ import { Context, Effect, Option, Schema } from 'effect';
 // imported by its own implementation alone, which
 // src/__tests__/process-separation.test.ts holds.
 //
-// An implementation is an `ObjectBackend`: the four SDK calls, as promises,
-// and the provider's own not-found signal. Everything that must not differ by
+// An implementation is an `ObjectBackend`: the SDK calls, as promises, and the
+// provider's own not-found signal. Everything that must not differ by
 // provider — the content hash, the key layout, put's existence check, what
-// "absent" means and how a failure is wrapped — is `fromBackend` below, so a
-// provider cannot drift on it. An operation added to the port is added here
+// "absent" means, how a failure is wrapped, which keys are staging keys and how
+// old a listed object is — is `fromBackend` below, so a provider cannot drift
+// on it. An operation added to the port is added here
 // and to every backend, and src/storage/__tests__/contract.ts gains a case for
 // it in the same change.
 
@@ -29,10 +30,26 @@ export type StoredObject = {
   readonly size: number | undefined;
 };
 
+/**
+ * Where a resource waits between being staged and being promoted into the
+ * content-addressed `assets/` space: `staging/<teamId>/<uuid>`. Only
+ * src/protocol-builder/staging-store.ts mints one; the store recognises one
+ * when it lists, so a listing can never name an asset.
+ */
+export type StagingKey = string & Brand.Brand<'StagingKey'>;
+
+export const StagingKey = Brand.make<StagingKey>((key) =>
+  /^staging\/[^/]+\/[0-9a-f-]{36}$/.test(key),
+);
+
+export function stagingPrefix(teamId: string): string {
+  return `staging/${teamId}/`;
+}
+
 export class ObjectStoreError extends Schema.TaggedError<ObjectStoreError>()(
   'ObjectStoreError',
   {
-    operation: Schema.Literals(['put', 'get', 'head']),
+    operation: Schema.Literals(['put', 'get', 'head', 'delete', 'list']),
     cause: Schema.Defect(),
   },
 ) {
@@ -55,6 +72,33 @@ export class ObjectStore extends Context.Service<
       hash: string,
     ) => Effect.Effect<Option.Option<StoredObject>, ObjectStoreError>;
     readonly head: Effect.Effect<void, ObjectStoreError>;
+    readonly putStaged: (
+      key: StagingKey,
+      bytes: Uint8Array,
+      mediaType: string,
+    ) => Effect.Effect<void, ObjectStoreError>;
+    readonly getStaged: (
+      key: StagingKey,
+    ) => Effect.Effect<Option.Option<Uint8Array>, ObjectStoreError>;
+    /** Succeeds for a key that is already gone. */
+    readonly deleteStaged: (
+      key: StagingKey,
+    ) => Effect.Effect<void, ObjectStoreError>;
+    /** The staging keys under `prefix` last written before `olderThan`. */
+    readonly listStaged: (
+      prefix: string,
+      olderThan: Date,
+    ) => Effect.Effect<ReadonlyArray<StagingKey>, ObjectStoreError>;
+    /**
+     * Makes the staged object the asset `hash`, leaving the staged object in
+     * place. An asset already stored under `hash` is kept as it is. False when
+     * the staged object is gone.
+     */
+    readonly promoteStaged: (
+      key: StagingKey,
+      hash: string,
+      mediaType: string,
+    ) => Effect.Effect<boolean, ObjectStoreError>;
   }
 >()('@studio/ObjectStore') {
   static readonly absent: ObjectStore['Service'] = ObjectStore.of({
@@ -62,6 +106,11 @@ export class ObjectStore extends Context.Service<
     put: () => Effect.die(new Error('no object store is configured')),
     get: () => Effect.die(new Error('no object store is configured')),
     head: Effect.die(new Error('no object store is configured')),
+    putStaged: () => Effect.die(new Error('no object store is configured')),
+    getStaged: () => Effect.die(new Error('no object store is configured')),
+    deleteStaged: () => Effect.die(new Error('no object store is configured')),
+    listStaged: () => Effect.die(new Error('no object store is configured')),
+    promoteStaged: () => Effect.die(new Error('no object store is configured')),
   });
 }
 
@@ -71,11 +120,17 @@ type ObjectMetadata = {
   readonly mediaType: string | undefined;
 };
 
+/** One object a listing found. */
+type ListedObject = {
+  readonly key: string;
+  readonly lastModified: Date | undefined;
+};
+
 /**
  * One provider's SDK calls. Each takes the signal Effect aborts when the
  * caller stops waiting, so an abandoned request ends rather than only being
- * ignored. `stat` and `read` reject with whatever the SDK throws for a missing
- * object, and `isNotFound` says which rejections those are.
+ * ignored. `stat`, `read` and `copy` reject with whatever the SDK throws for a
+ * missing object, and `isNotFound` says which rejections those are.
  */
 export type ObjectBackend = {
   readonly stat: (key: string, signal: AbortSignal) => Promise<ObjectMetadata>;
@@ -91,6 +146,22 @@ export type ObjectBackend = {
   ) => Promise<
     ObjectMetadata & { readonly body: ReadableStream<Uint8Array> | undefined }
   >;
+  /** Resolves for a key that does not exist. */
+  readonly remove: (key: string, signal: AbortSignal) => Promise<unknown>;
+  /** Every object under `prefix`, across all of the provider's pages. */
+  readonly list: (
+    prefix: string,
+    signal: AbortSignal,
+  ) => Promise<ReadonlyArray<ListedObject>>;
+  /**
+   * A copy made by the store itself, keeping the source's media type. A
+   * provider without one has promotion read the object and write it back.
+   */
+  readonly copy?: (
+    from: string,
+    to: string,
+    signal: AbortSignal,
+  ) => Promise<unknown>;
   /** Whether the bucket or container exists and answers, for `/readyz`. */
   readonly probe: (signal: AbortSignal) => Promise<unknown>;
   readonly isNotFound: (error: unknown) => boolean;
@@ -126,6 +197,20 @@ export function fromBackend(backend: ObjectBackend): ObjectStore['Service'] {
         (error: unknown) =>
           backend.isNotFound(error) ? Option.none<A>() : Promise.reject(error),
       ),
+    );
+
+  const readBytes = (key: string) =>
+    Effect.map(
+      unlessAbsent('get', (signal) =>
+        backend
+          .read(key, signal)
+          .then(({ body }) =>
+            body === undefined
+              ? undefined
+              : new Response(body).arrayBuffer().then((b) => new Uint8Array(b)),
+          ),
+      ),
+      Option.flatMap(Option.fromUndefinedOr),
     );
 
   return ObjectStore.of({
@@ -164,5 +249,52 @@ export function fromBackend(backend: ObjectBackend): ObjectStore['Service'] {
         ),
       ),
     head: Effect.asVoid(request('head', backend.probe)),
+    putStaged: (key, bytes, mediaType) =>
+      Effect.asVoid(
+        request('put', (signal) =>
+          backend.write(key, bytes, mediaType, signal),
+        ),
+      ),
+    getStaged: readBytes,
+    deleteStaged: (key) =>
+      Effect.asVoid(
+        unlessAbsent('delete', (signal) => backend.remove(key, signal)),
+      ),
+    listStaged: (prefix, olderThan) =>
+      Effect.map(
+        request('list', (signal) => backend.list(prefix, signal)),
+        (listed) =>
+          listed.flatMap(({ key, lastModified }) =>
+            lastModified !== undefined &&
+            lastModified.getTime() < olderThan.getTime() &&
+            StagingKey.is(key)
+              ? [key]
+              : [],
+          ),
+      ),
+    promoteStaged: Effect.fnUntraced(function* (
+      key: StagingKey,
+      hash: string,
+      mediaType: string,
+    ) {
+      const target = assetKey(hash);
+      const existing = yield* unlessAbsent('put', (signal) =>
+        backend.stat(target, signal),
+      );
+      if (Option.isSome(existing)) return true;
+      const { copy } = backend;
+      if (copy !== undefined) {
+        const copied = yield* unlessAbsent('put', (signal) =>
+          copy(key, target, signal),
+        );
+        return Option.isSome(copied);
+      }
+      const bytes = yield* readBytes(key);
+      if (Option.isNone(bytes)) return false;
+      yield* request('put', (signal) =>
+        backend.write(target, bytes.value, mediaType, signal),
+      );
+      return true;
+    }),
   });
 }

@@ -11,8 +11,9 @@ import type { AuthService, SessionPrincipal } from '../auth/service.ts';
 import { readEnv } from '../env.ts';
 import { deliveryFor } from '../http/storage.ts';
 import { objectStoreFor } from '../storage/live.ts';
-import { ObjectStore } from '../storage/object-store.ts';
+import type { ObjectStore } from '../storage/object-store.ts';
 import { authServiceStub } from './support/auth.ts';
+import { memoryObjectStore } from './support/object-store.ts';
 import { composeStudio, startStudioServer } from './support/serve.ts';
 
 const env = readEnv();
@@ -39,39 +40,6 @@ const PRINCIPAL: SessionPrincipal = {
   locale: null,
   sessionId: 'session-1',
 };
-
-function memoryStore(): ObjectStore['Service'] {
-  const objects = new Map<
-    string,
-    { bytes: Uint8Array<ArrayBuffer>; mediaType: string }
-  >();
-  return ObjectStore.of({
-    configured: true,
-    put: (bytes, mediaType) =>
-      Effect.sync(() => {
-        const hash = createHash('sha256').update(bytes).digest('hex');
-        const stored = objects.get(hash) ?? {
-          bytes: new Uint8Array(bytes),
-          mediaType,
-        };
-        objects.set(hash, stored);
-        return {
-          hash,
-          size: stored.bytes.byteLength,
-          mediaType: stored.mediaType,
-        };
-      }),
-    get: (hash) =>
-      Effect.sync(() =>
-        Option.map(Option.fromUndefinedOr(objects.get(hash)), (stored) => ({
-          body: new Blob([stored.bytes]).stream(),
-          mediaType: stored.mediaType,
-          size: stored.bytes.byteLength,
-        })),
-      ),
-    head: Effect.void,
-  });
-}
 
 function countingAuth(signedIn: boolean): {
   readonly auth: AuthService['Service'];
@@ -136,7 +104,7 @@ describe('asset upload authorisation', () => {
   it('refuses an unauthenticated upload', async () => {
     const res = await send('/storage', spaUpload('bytes', 'text/plain'), {
       auth: countingAuth(false).auth,
-      objectStore: memoryStore(),
+      objectStore: memoryObjectStore().store,
     });
     expect(res.status).toBe(401);
     expect(res.headers.get('Content-Type')).toContain(
@@ -153,7 +121,7 @@ describe('asset upload authorisation', () => {
         body: 'bytes',
         headers: { origin: 'https://evil.example' },
       },
-      { auth, objectStore: memoryStore() },
+      { auth, objectStore: memoryObjectStore().store },
     );
     expect(res.status).toBe(403);
     expect(lookups()).toBe(0);
@@ -165,7 +133,7 @@ describe('asset upload authorisation', () => {
       { method: 'DELETE' },
       {
         auth: countingAuth(false).auth,
-        objectStore: memoryStore(),
+        objectStore: memoryObjectStore().store,
       },
     );
     expect(res.status).toBe(403);
@@ -175,7 +143,7 @@ describe('asset upload authorisation', () => {
 describe('asset retrieval authorisation', () => {
   it('leaves retrieval public', async () => {
     const { auth, lookups } = countingAuth(false);
-    const store = memoryStore();
+    const store = memoryObjectStore().store;
     const { hash } = await Effect.runPromise(
       store.put(bytesOf('public bytes'), 'image/png'),
     );
@@ -204,7 +172,9 @@ describe('the upload cap', () => {
       ...spaUpload(endless, 'application/octet-stream'),
       duplex: 'half',
     };
-    const res = await send('/storage', init, { objectStore: memoryStore() });
+    const res = await send('/storage', init, {
+      objectStore: memoryObjectStore().store,
+    });
     expect(res.status).toBe(413);
     expect(res.headers.get('Content-Type')).toContain(
       'application/problem+json',
@@ -220,7 +190,7 @@ describe('the upload cap', () => {
       env,
       createStudio(env, {
         auth: countingAuth(true).auth,
-        objectStore: memoryStore(),
+        objectStore: memoryObjectStore().store,
       }),
     );
     try {
@@ -250,7 +220,7 @@ describe('the upload cap', () => {
 });
 
 describe('asset delivery policy', () => {
-  const store = memoryStore();
+  const store = memoryObjectStore().store;
 
   async function upload(body: string, mediaType: string): Promise<string> {
     const res = await send('/storage', spaUpload(bytesOf(body), mediaType), {

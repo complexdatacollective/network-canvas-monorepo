@@ -19,6 +19,11 @@ import { fromBackend, type ObjectStore } from '../object-store.ts';
 // `DefaultAzureCredential`, which needs the Storage Blob Data Contributor role
 // on the container and no account key. A connection string is the fallback
 // for development (Azurite) and for hosts outside Azure.
+//
+// It has no `copy`. A server-side copy authenticates its source separately
+// from the request, and the SDK documents only Shared Key (a connection
+// string) for a source in the same account, not a managed identity's token,
+// so promotion reads the staged blob and writes the asset instead.
 
 const PIPELINE: StoragePipelineOptions = {
   // The S3 client's default attempt count, so neither provider holds a
@@ -97,6 +102,21 @@ function make(env: AzureBlobEnv): ObjectStore['Service'] {
             mediaType: found.contentType,
           };
         }),
+    remove: (key, abortSignal) =>
+      container.getBlockBlobClient(key).deleteIfExists({ abortSignal }),
+    list: async (prefix, abortSignal) => {
+      const listed: { key: string; lastModified: Date | undefined }[] = [];
+      for await (const blob of container.listBlobsFlat({
+        prefix,
+        abortSignal,
+      })) {
+        listed.push({
+          key: blob.name,
+          lastModified: blob.properties.lastModified,
+        });
+      }
+      return listed;
+    },
     probe: (abortSignal) => container.getProperties({ abortSignal }),
     isNotFound,
   });

@@ -1,7 +1,10 @@
 import {
+  CopyObjectCommand,
+  DeleteObjectCommand,
   GetObjectCommand,
   HeadBucketCommand,
   HeadObjectCommand,
+  ListObjectsV2Command,
   PutObjectCommand,
   S3Client,
 } from '@aws-sdk/client-s3';
@@ -19,6 +22,33 @@ function isNotFound(error: unknown): boolean {
     (error.name === 'NoSuchKey' || error.name === 'NotFound')
   );
 }
+
+const listAll = async (
+  client: S3Client,
+  bucket: string,
+  prefix: string,
+  abortSignal: AbortSignal,
+) => {
+  const listed: { key: string; lastModified: Date | undefined }[] = [];
+  let token: string | undefined;
+  do {
+    const page = await client.send(
+      new ListObjectsV2Command({
+        Bucket: bucket,
+        Prefix: prefix,
+        ContinuationToken: token,
+      }),
+      { abortSignal },
+    );
+    for (const object of page.Contents ?? []) {
+      if (object.Key !== undefined) {
+        listed.push({ key: object.Key, lastModified: object.LastModified });
+      }
+    }
+    token = page.IsTruncated === true ? page.NextContinuationToken : undefined;
+  } while (token !== undefined);
+  return listed;
+};
 
 function make(env: S3Env): ObjectStore['Service'] {
   const client = new S3Client({
@@ -62,6 +92,23 @@ function make(env: S3Env): ObjectStore['Service'] {
           size: found.ContentLength,
           mediaType: found.ContentType,
         })),
+    remove: (key, abortSignal) =>
+      client.send(new DeleteObjectCommand({ Bucket: env.bucket, Key: key }), {
+        abortSignal,
+      }),
+    list: (prefix, abortSignal) =>
+      listAll(client, env.bucket, prefix, abortSignal),
+    // `CopySource` is a URL path, so each segment of the key is encoded; the
+    // keys Studio copies are hex and a UUID, which encoding leaves as they are.
+    copy: (from, to, abortSignal) =>
+      client.send(
+        new CopyObjectCommand({
+          Bucket: env.bucket,
+          Key: to,
+          CopySource: `${env.bucket}/${from.split('/').map(encodeURIComponent).join('/')}`,
+        }),
+        { abortSignal },
+      ),
     probe: (abortSignal) =>
       client.send(new HeadBucketCommand({ Bucket: env.bucket }), {
         abortSignal,

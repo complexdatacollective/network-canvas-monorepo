@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
@@ -42,7 +42,6 @@ import { StagedImports } from '../../protocol-builder/resources.ts';
 import { createProtocol, latestDraftId } from '../../protocol/store.ts';
 import { type StudioServices } from '../../rpc/deps.ts';
 import { SecretsCipher } from '../../secrets/services.ts';
-import { ObjectStore, ObjectStoreError } from '../../storage/object-store.ts';
 import { authServiceStub } from './auth.ts';
 import {
   insertTeam,
@@ -52,6 +51,7 @@ import {
   testDb,
   type TestDatabaseRuntime,
 } from './database.ts';
+import { memoryObjectStore } from './object-store.ts';
 import {
   type Caller,
   createProtocolBuilderClient,
@@ -325,33 +325,8 @@ export function setupProtocolBuilderSuite() {
   let unstrippable: VariableReference;
   let egolessProtocolId: string;
   let adaRpc: RpcTestClient;
-  const stored = new Map<string, { bytes: Uint8Array; mediaType: string }>();
-  let storeUnreachable = false;
-  const unreachable = (operation: 'put' | 'head') =>
-    new ObjectStoreError({
-      operation,
-      cause: new Error('the object store is unreachable'),
-    });
-  const objectStore: ObjectStore['Service'] = ObjectStore.of({
-    configured: true,
-    put: (bytes, mediaType) =>
-      Effect.suspend(() => {
-        if (storeUnreachable) return Effect.fail(unreachable('put'));
-        const hash = createHash('sha256').update(bytes).digest('hex');
-        if (!stored.has(hash)) stored.set(hash, { bytes, mediaType });
-        const existing = stored.get(hash);
-        if (existing === undefined) return Effect.die(new Error('unreachable'));
-        return Effect.succeed({
-          hash,
-          size: existing.bytes.byteLength,
-          mediaType: existing.mediaType,
-        });
-      }),
-    get: () => Effect.succeed(Option.none()),
-    head: Effect.suspend(() =>
-      storeUnreachable ? Effect.fail(unreachable('head')) : Effect.void,
-    ),
-  });
+  const objects = memoryObjectStore();
+  const objectStore = objects.store;
   const clock = makeShiftableClock();
 
   const call = <A, E>(who: Researcher | Caller, effect: Effect.Effect<A, E>) =>
@@ -814,8 +789,9 @@ export function setupProtocolBuilderSuite() {
     revoked,
     memberships,
     membership,
+    objects,
     setStoreUnreachable: (down: boolean) => {
-      storeUnreachable = down;
+      objects.setUnreachable(down);
     },
     teamRows,
     call,
