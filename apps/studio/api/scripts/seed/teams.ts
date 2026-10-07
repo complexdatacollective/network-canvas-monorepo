@@ -27,6 +27,7 @@ export const SEED_ADMIN_PASSWORD = 'studio-admin-not-for-production';
  * rather than an open door onto a database full of synthetic studies.
  */
 const SEED_INSTANCE_NAME = 'Studio (development)';
+const SEED_INSTALLATION_ID = '5eed0000-0000-4000-8000-000000000001';
 
 const TEAM_COUNT = 5;
 const MIN_MEMBERS_PER_TEAM = 2;
@@ -96,9 +97,15 @@ const insertOwnedInstallation = Effect.fnUntraced(function* (input: {
 }) {
   const { sql } = yield* Transaction;
   yield* sql.unsafe(
-    `insert into installation (id, name, owner_user_id, created_at, updated_at)
-     values (1, $1, $2, $3, $3)`,
-    [SEED_INSTANCE_NAME, input.ownerUserId, input.createdAt],
+    `insert into installation
+       (id, name, owner_user_id, installation_id, created_at, updated_at)
+     values (1, $1, $2, $3, $4, $4)`,
+    [
+      SEED_INSTANCE_NAME,
+      input.ownerUserId,
+      SEED_INSTALLATION_ID,
+      input.createdAt,
+    ],
   );
 });
 

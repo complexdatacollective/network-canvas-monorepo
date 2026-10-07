@@ -451,6 +451,7 @@ export type SessionContext = {
   readonly studyState: StudyState;
   readonly studyPausedAt: Date | null;
   readonly pauseGraceMinutes: number;
+  readonly studySettings: unknown;
 };
 
 export const loadSessionContext: (
@@ -488,6 +489,7 @@ export const loadSessionContext: (
         studyState: studies.state,
         studyPausedAt: studies.pausedAt,
         pauseGraceMinutes: studies.pauseGraceMinutes,
+        studySettings: studies.settings,
       })
       .from(interviewSessions)
       .innerJoin(

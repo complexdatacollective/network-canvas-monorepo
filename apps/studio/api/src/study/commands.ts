@@ -36,6 +36,7 @@ import { roleGrantsTeamAdministration } from '../team/roles.ts';
 import { type LockedMember, lockActor } from '../team/store.ts';
 import { STUDY_ROLE_TABLES } from './roles-schema.ts';
 import { STUDY_TABLES } from './schema.ts';
+import { participantAnalyticsEnabled, studySettings } from './settings.ts';
 
 const { studies } = STUDY_TABLES;
 const { studyRoleGrants } = STUDY_ROLE_TABLES;
@@ -75,6 +76,7 @@ const insertStudy: (input: {
   teamId: string;
   name: string;
   protocolId: string;
+  participantAnalytics: boolean;
 }) => Effect.Effect<
   InsertedStudy,
   StudyCommandError | SqlError.SqlError,
@@ -84,6 +86,7 @@ const insertStudy: (input: {
   teamId: string;
   name: string;
   protocolId: string;
+  participantAnalytics: boolean;
 }) {
   const { tx } = yield* Transaction;
   // `.returning()` is what makes the idempotence branch real: without it the
@@ -95,6 +98,7 @@ const insertStudy: (input: {
       teamId: input.teamId,
       name: input.name,
       protocolId: input.protocolId,
+      settings: studySettings(input),
     })
     .onConflictDoNothing({ target: studies.id })
     .returning({ participationMode: studies.participationMode });
@@ -108,13 +112,21 @@ const insertStudy: (input: {
   }
 
   const existing = yield* tx
-    .select({ name: studies.name, protocolId: studies.protocolId })
+    .select({
+      name: studies.name,
+      protocolId: studies.protocolId,
+      settings: studies.settings,
+    })
     .from(studies)
     .where(
       and(eq(studies.id, input.studyId), eq(studies.teamId, input.teamId)),
     );
   const row = existing[0];
-  if (row?.name === input.name && row.protocolId === input.protocolId) {
+  if (
+    row?.name === input.name &&
+    row.protocolId === input.protocolId &&
+    participantAnalyticsEnabled(row.settings) === input.participantAnalytics
+  ) {
     return { created: false } satisfies InsertedStudy as InsertedStudy;
   }
   return yield* new StudyCommandError({ code: 'CONFLICT' });
@@ -152,6 +164,7 @@ export const createAuditedStudy: (
     studyId: string;
     protocolId: string;
     draftId: string;
+    participantAnalytics?: boolean;
   },
 ) => Effect.Effect<
   CreatedStudy,
@@ -174,6 +187,7 @@ export const createAuditedStudy: (
     studyId: string;
     protocolId: string;
     draftId: string;
+    participantAnalytics?: boolean;
   },
 ) {
   const studyName = yield* Effect.sync(() =>
@@ -225,6 +239,7 @@ export const createAuditedStudy: (
           teamId: access.teamId,
           name: studyName,
           protocolId: protocol.protocolId,
+          participantAnalytics: input.participantAnalytics ?? true,
         });
         // Only on creation: a grant written on a replay would go to whoever replays
         // it, and commit unaudited.

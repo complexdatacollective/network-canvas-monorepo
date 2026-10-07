@@ -97,6 +97,22 @@ export const SessionPayload = Schema.Struct({
   stageId: Schema.NullOr(NetworkIdentifier),
   session: InterviewSession,
   protocol: Schema.Unknown,
+  analytics: Schema.Boolean,
+});
+
+export const MAX_ANALYTICS_EVENTS = 100;
+
+export const AnalyticsEvent = Schema.Struct({
+  event: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(200)),
+  properties: Schema.Record(Schema.String, Schema.Unknown),
+  timestamp: Schema.String.check(Schema.isMaxLength(64)),
+});
+
+export const AnalyticsInput = Schema.Struct({
+  events: Schema.Array(AnalyticsEvent).check(
+    Schema.isMinLength(1),
+    Schema.isMaxLength(MAX_ANALYTICS_EVENTS),
+  ),
 });
 
 export const SyncInput = Schema.Struct({

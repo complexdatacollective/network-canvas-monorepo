@@ -28,6 +28,7 @@ const SENTINELS = [
   'NODE_LABEL_TRIGGER',
   'PARTICIPANT_INPUT_TRIGGER',
   'PASSPHRASE_TRIGGER',
+  'SESSION_ID_TRIGGER',
 ];
 
 function containsSentinel(value: unknown): boolean {
@@ -47,7 +48,7 @@ function buildStore(tracker: Tracker) {
     reducer: { session, protocol, ui },
     preloadedState: {
       session: {
-        id: 'interview-1',
+        id: 'SESSION_ID_TRIGGER',
         startTime: new Date().toISOString(),
         lastUpdated: new Date().toISOString(),
         network: {

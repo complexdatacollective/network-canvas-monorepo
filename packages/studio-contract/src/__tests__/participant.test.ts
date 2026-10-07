@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { NcNetworkSchema } from '@codaco/shared-consts';
 
 import {
+  AnalyticsInput,
   FinishInput,
   FinishResult,
   InterviewNetwork,
@@ -12,6 +13,7 @@ import {
   NetworkEgo,
   NetworkNode,
   RedeemInput,
+  MAX_ANALYTICS_EVENTS,
   RedeemResult,
   SessionEnded,
   SessionInput,
@@ -64,6 +66,7 @@ const sessionPayload = {
     stageMetadata: { 'stage-1': { step: 1 } },
   },
   protocol: { schemaVersion: 8, stages: [], codebook: {} },
+  analytics: true,
 };
 
 const roundTrips = <S extends Schema.Codec<unknown, unknown>>(
@@ -104,6 +107,24 @@ describe('the participant payloads', () => {
     ['SyncResult', SyncResult, { revision: '8', applied: false }],
     ['FinishInput', FinishInput, { holderEpoch: 2, revision: '9' }],
     ['FinishResult', FinishResult, { state: 'completed' }],
+    [
+      'SessionPayload without analytics',
+      SessionPayload,
+      { ...sessionPayload, analytics: false },
+    ],
+    [
+      'AnalyticsInput',
+      AnalyticsInput,
+      {
+        events: [
+          {
+            event: 'stage_entered',
+            properties: { stage_type: 'NameGenerator', stage_index: 1 },
+            timestamp: '2026-10-07T09:00:00.000Z',
+          },
+        ],
+      },
+    ],
   ] as const)('%s round-trips', (_name, schema, value) => {
     expect(roundTrips(schema, value)).toEqual(value);
   });
@@ -152,6 +173,26 @@ describe('the participant payloads', () => {
       ).toThrow();
     },
   );
+
+  it.each([
+    ['no events', []],
+    [
+      'more events than one call carries',
+      Array.from({ length: MAX_ANALYTICS_EVENTS + 1 }, () => ({
+        event: 'stage_entered',
+        properties: {},
+        timestamp: '2026-10-07T09:00:00.000Z',
+      })),
+    ],
+    [
+      'an empty event name',
+      [{ event: '', properties: {}, timestamp: '2026-10-07T09:00:00.000Z' }],
+    ],
+  ])('refuses an analytics call with %s', (_label, events) => {
+    expect(() =>
+      Schema.decodeUnknownSync(AnalyticsInput)({ events }),
+    ).toThrow();
+  });
 
   it('keeps the protocol document whole', () => {
     expect(roundTrips(SessionPayload, sessionPayload)).toHaveProperty(

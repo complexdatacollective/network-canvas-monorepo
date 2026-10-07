@@ -8,6 +8,7 @@ import type {
   StepChangeHandler,
 } from '@codaco/interview/contract';
 
+import { createParticipantAnalyticsClient } from './analyticsClient.ts';
 import { createAssetResolver } from './assetUrl.ts';
 import {
   createParticipantHandlers,
@@ -33,6 +34,11 @@ export default function InterviewSession() {
 
   const { payload } = loaded;
 
+  const analyticsClient = useMemo(
+    () => (loaded.analytics ? createParticipantAnalyticsClient() : undefined),
+    [loaded.analytics],
+  );
+
   const { onSync, onFinish, saveStep, flushStep } = useMemo(
     () =>
       createParticipantHandlers({
@@ -48,16 +54,21 @@ export default function InterviewSession() {
   );
 
   useEffect(() => {
-    const onHidden = () => {
-      if (document.visibilityState === 'hidden') flushStep();
+    const onLeave = () => {
+      flushStep();
+      analyticsClient?.flush();
     };
-    window.addEventListener('pagehide', flushStep);
+    const onHidden = () => {
+      if (document.visibilityState === 'hidden') onLeave();
+    };
+    window.addEventListener('pagehide', onLeave);
     document.addEventListener('visibilitychange', onHidden);
     return () => {
-      window.removeEventListener('pagehide', flushStep);
+      window.removeEventListener('pagehide', onLeave);
       document.removeEventListener('visibilitychange', onHidden);
+      analyticsClient?.flush();
     };
-  }, [flushStep]);
+  }, [flushStep, analyticsClient]);
 
   const onStepChange = useCallback<StepChangeHandler>(
     (step) => {
@@ -85,7 +96,8 @@ export default function InterviewSession() {
       onFinish={onFinish}
       onRequestAsset={onRequestAsset}
       analytics={ANALYTICS}
-      disableAnalytics
+      posthogClient={analyticsClient}
+      disableAnalytics={analyticsClient === undefined}
       allowUserScaling
     />
   );

@@ -16,6 +16,7 @@ import { Routes } from '../http/router.ts';
 import { JobClock } from '../jobs/clock.ts';
 import { Jobs } from '../jobs/jobs.ts';
 import { JOB_SCHEMA } from '../jobs/queues.ts';
+import { Analytics } from '../platform/analytics.ts';
 import { BootChecks, type BootRefusal } from '../platform/boot-checks.ts';
 import {
   HttpServerLive,
@@ -114,6 +115,7 @@ function withDatabase(
     Layer.provide(Jobs.layer({ schema: JOB_SCHEMA })),
     Layer.provide(JobClock.layerApplication()),
     Layer.provide(AuditSignal.layer),
+    Layer.provide(Analytics.layerFromEnvironment),
     Layer.provideMerge(Layer.orDie(Database.layerFromEnvironment)),
   );
 }
@@ -138,6 +140,7 @@ function withoutDatabase(env: StudioEnv) {
     Layer.provide(SecretsCipher.layerAbsent),
     Layer.provide(Jobs.layer({ schema: JOB_SCHEMA })),
     Layer.provide(AuditSignal.layer),
+    Layer.provide(Analytics.layerDisabled),
     Layer.provide(DatabaseAbsent),
   );
 }

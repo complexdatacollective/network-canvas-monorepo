@@ -34,7 +34,8 @@ const LINK = LinkToken.make('l'.repeat(32));
 const SESSION = SessionToken.make('s'.repeat(32));
 const EARLIER_SESSION = SessionToken.make('e'.repeat(32));
 
-const sessionPayload = (stageIndex: number) => ({
+const sessionPayload = (stageIndex: number, analytics = false) => ({
+  analytics,
   studyId: StudyId.make('00000000-0000-4000-8000-000000000002'),
   holderEpoch: 2,
   revision: '5',
@@ -75,8 +76,10 @@ const sessionPayload = (stageIndex: number) => ({
 
 const readsSession = (
   stageIndex = 0,
+  analytics = false,
 ): Pick<ParticipantHandlers, 'participant.session'> => ({
-  'participant.session': () => Effect.succeed(sessionPayload(stageIndex)),
+  'participant.session': () =>
+    Effect.succeed(sessionPayload(stageIndex, analytics)),
 });
 
 const redeems: Pick<ParticipantHandlers, 'participant.redeem'> = {
@@ -315,6 +318,76 @@ describe('the interview session', () => {
     ).toBeInTheDocument();
     expect(screen.getByRole('alert')).toHaveTextContent(
       'Open the link you were sent to continue, or contact the research team.',
+    );
+  });
+});
+
+describe('participant analytics', () => {
+  const finishInterview = async () => {
+    fireEvent.click(
+      await screen.findByRole(
+        'button',
+        { name: 'Finish' },
+        { timeout: 15_000 },
+      ),
+    );
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.click(
+      await within(dialog).findByRole('button', { name: 'Finish Interview' }),
+    );
+    await screen.findByRole('heading', {
+      name: "You've finished this interview",
+    });
+  };
+
+  it('sends the runtime’s events to Studio, unidentified, when the session allows it', async () => {
+    const harness = installParticipantHarness({
+      ...readsSession(1, true),
+      'participant.finish': () => Effect.succeed({ state: 'completed' }),
+      'participant.analytics': () => Effect.void,
+    });
+
+    renderAt(`/session/${SESSION}`);
+    await finishInterview();
+    window.dispatchEvent(new Event('pagehide'));
+
+    await waitFor(() => {
+      expect(harness.calls.map(({ tag }) => tag)).toContain(
+        'participant.analytics',
+      );
+    });
+    const sent = harness.calls
+      .filter(({ tag }) => tag === 'participant.analytics')
+      .flatMap(
+        ({ payload }) =>
+          (payload as { events: { properties: Record<string, unknown> }[] })
+            .events,
+      );
+    expect(sent.length).toBeGreaterThan(0);
+    for (const { properties } of sent) {
+      expect(properties).toMatchObject({
+        app: 'studio',
+        distinct_id: expect.any(String),
+      });
+    }
+    const serialised = JSON.stringify(sent);
+    expect(serialised).not.toContain(SESSION);
+    expect(serialised).not.toContain('session-1');
+    expect(fetchStub).not.toHaveBeenCalled();
+  });
+
+  it('builds no client and sends nothing when the session carries no analytics', async () => {
+    const harness = installParticipantHarness({
+      ...readsSession(1),
+      'participant.finish': () => Effect.succeed({ state: 'completed' }),
+    });
+
+    renderAt(`/session/${SESSION}`);
+    await finishInterview();
+    window.dispatchEvent(new Event('pagehide'));
+
+    expect(harness.calls.map(({ tag }) => tag)).not.toContain(
+      'participant.analytics',
     );
   });
 });

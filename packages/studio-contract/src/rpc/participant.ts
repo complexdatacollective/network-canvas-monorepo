@@ -4,6 +4,7 @@ import { Rpc, RpcGroup } from 'effect/rpc';
 import { RequireSession } from '../middleware/session.ts';
 import { RateLimited, Unauthorized } from '../schema/errors.ts';
 import {
+  AnalyticsInput,
   FinishInput,
   FinishResult,
   LinkUnavailable,
@@ -57,11 +58,19 @@ const finish = Rpc.make('participant.finish', {
   ]),
 });
 
+const analytics = Rpc.make('participant.analytics', {
+  payload: AnalyticsInput,
+  error: RateLimited,
+});
+
 // Two groups: `.middleware()` applies to every rpc added so far, and
 // `participant.redeem` must stay session-free.
-const ParticipantSessionRpcs = RpcGroup.make(session, sync, finish).middleware(
-  RequireSession,
-);
+const ParticipantSessionRpcs = RpcGroup.make(
+  session,
+  sync,
+  finish,
+  analytics,
+).middleware(RequireSession);
 const ParticipantEntryRpcs = RpcGroup.make(redeem);
 
 export const ParticipantRpcs =

@@ -1,0 +1,12 @@
+{
+  "version": "0002_installation_id",
+  "ordinal": 2,
+  "fingerprint": "aaf9517a3240eb432f0e9cb5b6025735ad5cbb716b66414bd9603b9fbcb13a27",
+  "drops": [],
+  "artefacts": {
+    "delta.sql": "e4793a6cbb807f0a9dcf01f2be7fd2dbc8aa872044db3e0dc4e3227c4751d12d",
+    "sidecars.sql": "9ee7f867be135d4a3be0a5d40377c1779b5ed34210fb192886ef68c69bac9a62",
+    "snapshot.json": "c65c08335cbec97c5b63f66dab6a1e5037c87cc0d4f5916008386f162ee14658"
+  },
+  "combined": "f75cb552127fa6a736d149e037007cf2422a2eafeb1cfeaef1d079687a4e94db"
+}

@@ -49,6 +49,7 @@ const unimplementedHandlers: StudioHandlers = {
   'audit.get': unimplemented('audit.get'),
   'audit.list': unimplemented('audit.list'),
   'me': unimplemented('me'),
+  'participant.analytics': unimplemented('participant.analytics'),
   'participant.finish': unimplemented('participant.finish'),
   'participant.redeem': unimplemented('participant.redeem'),
   'participant.session': unimplemented('participant.session'),
