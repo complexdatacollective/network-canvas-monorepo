@@ -14,6 +14,7 @@ import {
   deleteAsset,
   importAssetAsync,
 } from '~/ducks/modules/protocol/assetManifest';
+import { useProtocolReadOnly } from '~/hooks/useProtocolReadOnly';
 import { getAssetManifest } from '~/selectors/protocol';
 
 import Assets from './Assets';
@@ -107,6 +108,7 @@ const AssetBrowser = ({
   const dispatch = useAppDispatch();
   const { confirm, openDialog } = useDialog();
   const assetManifest = useAppSelector(getAssetManifest);
+  const readOnly = useProtocolReadOnly();
 
   // Supplying a file for a resource the archive did not contain. The picker is
   // one hidden input reused by every card, holding the id it was opened for:
@@ -129,7 +131,9 @@ const AssetBrowser = ({
       const assetId = replacingAssetId;
       const asset = assetId ? assetManifest[assetId] : undefined;
       setReplacingAssetId(null);
-      if (!file || !assetId || !asset || asset.type === 'apikey') {
+      // A picker opened before the protocol went read-only is still open, and
+      // disabling its input does not close it.
+      if (readOnly || !file || !assetId || !asset || asset.type === 'apikey') {
         return;
       }
 
@@ -175,7 +179,7 @@ const AssetBrowser = ({
         });
       }
     },
-    [assetManifest, dispatch, intl, openDialog, replacingAssetId],
+    [assetManifest, dispatch, intl, openDialog, readOnly, replacingAssetId],
   );
 
   const handleCreate = useCallback(
@@ -241,7 +245,7 @@ const AssetBrowser = ({
         title={intl.formatMessage(messages.importResource)}
         description={intl.formatMessage(messages.addANewResourceToThis)}
       >
-        <NewAsset onCreate={handleCreate} type={type} />
+        <NewAsset onCreate={handleCreate} type={type} disabled={readOnly} />
       </Section>
       <Section
         title={intl.formatMessage(messages.resourceLibrary)}
@@ -264,6 +268,7 @@ const AssetBrowser = ({
         ref={replaceInputRef}
         type="file"
         hidden
+        disabled={readOnly}
         aria-label={intl.formatMessage(messages.chooseTheMissingFile)}
         accept={
           replacingAsset && replacingAsset.type !== 'apikey'

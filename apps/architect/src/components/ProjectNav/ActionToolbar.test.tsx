@@ -4,7 +4,7 @@ import {
   waitForElementToBeRemoved,
 } from '@testing-library/react';
 import { useMemo } from 'react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
   ToolbarButton,
@@ -106,21 +106,31 @@ describe('ActionToolbarProvider', () => {
     const lane = screen.getByRole('toolbar', { name: 'Timeline actions' });
     let scrollLeft = 0;
     Object.defineProperty(lane, 'clientWidth', { get: () => 200 });
-    Object.defineProperty(lane, 'scrollWidth', { get: () => 320 });
     Object.defineProperty(lane, 'scrollLeft', {
       get: () => scrollLeft,
       set: (next: number) => {
         scrollLeft = next;
       },
     });
+    // The toolbar measures the lane's content from its segments' layout boxes,
+    // and the segment arriving with the new route is a new element.
+    const segmentWidth = vi
+      .spyOn(HTMLElement.prototype, 'offsetWidth', 'get')
+      .mockImplementation(function (this: HTMLElement) {
+        return this.parentElement === lane ? 320 : 0;
+      });
 
-    rerender(
-      <ActionToolbarProvider>
-        <StageToolbarController />
-      </ActionToolbarProvider>,
-    );
+    try {
+      rerender(
+        <ActionToolbarProvider>
+          <StageToolbarController />
+        </ActionToolbarProvider>,
+      );
 
-    expect(scrollLeft).toBe(120);
+      expect(scrollLeft).toBe(120);
+    } finally {
+      segmentWidth.mockRestore();
+    }
   });
 
   it('animates the history toolbar into and out of the viewport', async () => {
