@@ -411,6 +411,208 @@ export const TextSize: Story = {
   },
 };
 
+// A Welcome screen, then a name generator whose name field is encrypted, so
+// the participant must enter their passphrase before they can add anyone.
+function buildEncryptedNamePayload(): string {
+  const si = new SyntheticInterview();
+
+  si.addInformationStage({
+    title: 'Welcome',
+    text: 'Welcome to the interview.',
+  });
+
+  const person = si.addNodeType({ name: 'Person' });
+  const nameVar = person.addVariable({
+    type: 'text',
+    name: 'fullName',
+    component: 'Text',
+    encrypted: true,
+  });
+  const stage = si.addStage('NameGenerator', {
+    label: 'People you know',
+    subject: { entity: 'node', type: person.id },
+  });
+  stage.addFormField({
+    variable: nameVar.id,
+    component: 'Text',
+    prompt: 'What is their name?',
+  });
+  stage.addPrompt({ text: 'Who do you know?' });
+
+  si.addInformationStage({
+    title: 'Complete',
+    text: 'Thank you for taking part.',
+  });
+
+  const payload = si.getInterviewPayload({ currentStep: 1 });
+
+  // This schema still gates encryption behind the protocol's
+  // `encryptedVariables` experiment. It is switched on in the payload itself,
+  // not through the synthetic builder, so nothing here depends on the
+  // experiment once encrypted attributes no longer need it.
+  return SuperJSON.stringify({
+    ...payload,
+    protocol: {
+      ...payload.protocol,
+      experiments: { encryptedVariables: true },
+    },
+  });
+}
+
+let encryptedNamePayload: string | undefined;
+const getEncryptedNamePayload = () =>
+  (encryptedNamePayload ??= buildEncryptedNamePayload());
+
+const overlaps = (a: DOMRect, b: DOMRect) =>
+  a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+
+// The navigation and the prompter both spring into place; measure once two
+// consecutive frames agree.
+const settledRect = (element: Element) =>
+  waitFor(
+    async () => {
+      const before = element.getBoundingClientRect();
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+      const after = element.getBoundingClientRect();
+      await expect(after.height).toBeGreaterThan(0);
+      await expect(after.toJSON()).toEqual(before.toJSON());
+      return after;
+    },
+    { timeout: 5_000 },
+  );
+
+const enterPassphraseAndAddPerson = async (canvasElement: HTMLElement) => {
+  const canvas = within(canvasElement);
+  const navigation = await canvas.findByRole('navigation');
+  const nav = within(navigation);
+
+  const prompter = await nav.findByRole(
+    'button',
+    { name: /enter your passphrase/i },
+    { timeout: 10_000 },
+  );
+  await expect(prompter).toHaveAccessibleDescription(
+    /your passphrase is needed/i,
+  );
+
+  const addPerson = canvas.getByRole('button', { name: /add a person/i });
+  await expect(addPerson).toBeDisabled();
+
+  // The prompter fits inside the bar without covering any other control, and
+  // every button keeps a usable touch target. On the narrowest phones the
+  // progress bar may give up its width while the prompter is shown.
+  const navRect = await settledRect(navigation);
+  const prompterRect = await settledRect(prompter);
+  const buttons = [
+    nav.getByRole('button', { name: /settings/i }),
+    nav.getByRole('button', { name: /previous step/i }),
+    nav.getByRole('button', { name: /next step/i }),
+  ];
+  const progress = nav.getByRole('progressbar');
+  for (const control of [prompter, ...buttons, progress]) {
+    const rect = await settledRect(control);
+    await expect(rect.left).toBeGreaterThanOrEqual(navRect.left);
+    await expect(rect.right).toBeLessThanOrEqual(navRect.right);
+    await expect(rect.top).toBeGreaterThanOrEqual(navRect.top);
+    await expect(rect.bottom).toBeLessThanOrEqual(navRect.bottom);
+  }
+  for (const control of [...buttons, progress]) {
+    await expect(overlaps(prompterRect, await settledRect(control))).toBe(
+      false,
+    );
+  }
+  for (const button of [prompter, ...buttons]) {
+    await expect((await settledRect(button)).width).toBeGreaterThanOrEqual(44);
+  }
+
+  // Keyboard only: the prompter follows the back button in the tab order.
+  nav.getByRole('button', { name: /previous step/i }).focus();
+  await userEvent.tab();
+  await expect(prompter).toHaveFocus();
+  await userEvent.keyboard('{Enter}');
+
+  const passphraseDialog = await canvas.findByRole('dialog', {
+    name: /enter your passphrase/i,
+  });
+  const passphraseField = within(passphraseDialog).getByRole('textbox', {
+    name: /passphrase/i,
+  });
+  await waitFor(() => expect(passphraseField).toHaveFocus());
+  await userEvent.type(passphraseField, 'correct horse battery');
+  await userEvent.click(
+    within(passphraseDialog).getByRole('button', {
+      name: /submit passphrase/i,
+    }),
+  );
+
+  await waitFor(() => expect(passphraseDialog).not.toBeInTheDocument());
+  await waitFor(() =>
+    expect(
+      nav.queryByRole('button', { name: /enter your passphrase/i }),
+    ).not.toBeInTheDocument(),
+  );
+  await waitFor(() => expect(addPerson).toBeEnabled());
+
+  await userEvent.click(addPerson);
+  const personDialog = await canvas.findByRole('dialog', {
+    name: /add a person/i,
+  });
+  await userEvent.type(
+    within(personDialog).getByRole('textbox', {
+      name: /what is their name/i,
+    }),
+    'Alice',
+  );
+  await userEvent.click(
+    within(personDialog).getByRole('button', { name: /finished/i }),
+  );
+
+  // The name is encrypted on write and decrypted again for its label.
+  await expect(
+    await canvas.findByRole('option', { name: 'Alice' }, { timeout: 15_000 }),
+  ).toBeInTheDocument();
+};
+
+export const PassphrasePrompt: Story = {
+  name: 'Passphrase prompt (vertical rail)',
+  parameters: { controls: { exclude: ['stageCount'] } },
+  render: () => (
+    <div className="flex h-dvh w-full">
+      <StoryInterviewShell
+        rawPayload={getEncryptedNamePayload()}
+        navigationOrientation="vertical"
+        onExit={() => {
+          console.log('Exited the interview.');
+        }}
+      />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    await enterPassphraseAndAddPerson(canvasElement);
+  },
+};
+
+export const HorizontalPassphrasePrompt: Story = {
+  name: 'Passphrase prompt (horizontal bar, small phone)',
+  parameters: { controls: { exclude: ['stageCount'] } },
+  // The narrowest preset, where the bar has the least room for the prompter.
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  render: () => (
+    <div className="flex h-dvh w-full">
+      <StoryInterviewShell
+        rawPayload={getEncryptedNamePayload()}
+        navigationOrientation="horizontal"
+        onExit={() => {
+          console.log('Exited the interview.');
+        }}
+      />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    await enterPassphraseAndAddPerson(canvasElement);
+  },
+};
+
 export const SettingsMenuScalingOnly: Story = {
   name: 'Text size without exit handler',
   render: ({ stageCount }) => (
