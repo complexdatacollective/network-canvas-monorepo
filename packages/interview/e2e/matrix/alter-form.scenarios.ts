@@ -1,5 +1,9 @@
 import { SyntheticInterview } from '@codaco/protocol-utilities';
-import { entityPrimaryKeyProperty } from '@codaco/shared-consts';
+import {
+  entityAttributesProperty,
+  entityPrimaryKeyProperty,
+  entitySecureAttributesMeta,
+} from '@codaco/shared-consts';
 
 import { expect } from '../fixtures/matrix-test.js';
 import { SlidesFormFixture } from '../fixtures/slides-form-fixture.js';
@@ -1064,9 +1068,27 @@ export const alterFormScenarios: InterfaceScenarios = {
           page.getByRole('heading', { name: 'Next stage' }),
         ).toBeVisible();
 
+        // The stored value is ciphertext (a number[]) with the metadata to
+        // decrypt it alongside, never the plaintext.
         const state = await protocol.getNetworkState(interview.interviewId);
-        // The stored value is ciphertext (a number[]), never the plaintext.
-        expect(state?.nodes[0]?.attributes.secret).not.toBe('Secret');
+        const node = state?.nodes[0];
+        const stored = node?.[entityAttributesProperty].secret;
+        expect(Array.isArray(stored)).toBe(true);
+        expect(node?.[entitySecureAttributesMeta]?.secret).toBeDefined();
+
+        // Returning to the form decrypts the answer back into its field.
+        await page.getByTestId('previous-button').click();
+        await expect(
+          page.locator('[data-stage-section="intro"]'),
+        ).toBeVisible();
+        await interview.dismissIntro();
+        await expect(stage.form.field('secret').locator('input')).toHaveValue(
+          'Secret',
+        );
+        await slides.nextSlide(await slides.getCurrentItemLabel());
+        await expect(
+          page.getByRole('heading', { name: 'Next stage' }),
+        ).toBeVisible();
       },
     },
   ],

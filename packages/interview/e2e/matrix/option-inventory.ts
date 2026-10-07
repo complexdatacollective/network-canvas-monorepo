@@ -142,8 +142,9 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
     'passphrase.persistOnRevisit',
     'passwordField.showToggle',
     'encryptedVariable.downstreamWrite',
+    'encryptedVariable.resume.locked',
     'encryptedVariable.missingPassphrase.prompter',
-    'encryptedVariable.wrongPassphrase.invalid',
+    'encryptedVariable.wrongPassphrase.rejected',
   ],
   DyadCensus: [
     'label',

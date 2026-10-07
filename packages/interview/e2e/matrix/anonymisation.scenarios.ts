@@ -355,8 +355,9 @@ export const anonymisationScenarios: InterfaceScenarios = {
     {
       id: 'missing-and-wrong-passphrase-prompter',
       covers: [
+        'encryptedVariable.resume.locked',
         'encryptedVariable.missingPassphrase.prompter',
-        'encryptedVariable.wrongPassphrase.invalid',
+        'encryptedVariable.wrongPassphrase.rejected',
       ],
       slow: true,
       build: () => {
@@ -385,7 +386,7 @@ export const anonymisationScenarios: InterfaceScenarios = {
         return synth;
       },
       currentStep: 0,
-      run: async ({ page, interview, stage }) => {
+      run: async ({ page, interview, stage, protocol }) => {
         const anon = new AnonymisationFixture(page);
         await interview.next(); // Introduction -> Anonymisation
 
@@ -399,35 +400,60 @@ export const anonymisationScenarios: InterfaceScenarios = {
 
         await stage.quickAdd.addNode('Alice');
         await expect(page.getByRole('option', { name: 'Alice' })).toBeVisible();
+        // The session must hold the ciphertext before it is resumed from.
+        await expect
+          .poll(async () => {
+            const network = await protocol.getNetworkState(
+              interview.interviewId,
+            );
+            const attributes = network?.nodes[0]?.[entityAttributesProperty];
+            return Object.values(attributes ?? {}).some(Array.isArray);
+          })
+          .toBe(true);
 
-        // Simulate a resumed session: clear the in-memory passphrase while the
-        // already-encrypted node stays in the shared graph. (A page reload
-        // cannot stand in here — the e2e host's onSync is a no-op, so a reload
-        // drops the live-added node rather than persisting it. Clearing
-        // ui.passphrase in the live store reproduces the same "encrypted node,
-        // no passphrase" state. The expression is passed as a string so the
-        // store's untyped `dispatch` is never referenced from typed code.)
-        await page.evaluate(
-          "window.__interviewStore.dispatch({ type: 'ui/setPassphrase', payload: '' })",
-        );
+        // encryptedVariable.resume.locked: leaving and resuming remounts the
+        // interview from its session, so the passphrase is gone from memory.
+        // The answer stays encrypted; nothing shows it in the clear.
+        await interview.resume();
+        await expect(page.getByRole('option', { name: '🔒' })).toBeVisible();
+        await expect(page.getByText('Alice')).toHaveCount(0);
 
         // encryptedVariable.missingPassphrase.prompter
         await expect.poll(() => stage.quickAdd.isDisabled()).toBe(true);
         await expect(anon.prompterButton()).toBeVisible();
         await expect(anon.prompterButton()).toContainText('🔑');
 
-        // encryptedVariable.wrongPassphrase.invalid: a wrong passphrase yields
-        // the decrypt-failure fallback (useNodeAttributes.tsx:92) and flips the
-        // prompter to the ⚠️ invalid state (distinct from the missing '🔒' path).
+        // encryptedVariable.wrongPassphrase.rejected: a passphrase that does
+        // not unlock the saved answer is turned away under the field, and is
+        // never put in force, so the answer stays locked rather than failing
+        // to decrypt.
         await anon.openPrompter();
         await anon.submitPrompterPassphrase('wrong-phrase');
-        await expect(page.getByRole('option', { name: '⚠️' })).toBeVisible();
-        await expect(anon.prompterButton()).toContainText('⚠️');
+        await expect(anon.passphraseError()).toContainText(
+          'This passphrase does not match the one used earlier in this interview.',
+        );
+        await expect(anon.passphraseField()).toHaveAttribute(
+          'aria-invalid',
+          'true',
+        );
+        await expect(
+          page.getByRole('dialog', { name: 'Enter your Passphrase' }),
+        ).toBeVisible();
+        // The open dialog hides the rest of the page from the accessibility
+        // tree, so the list behind it is looked up hidden.
+        await expect(
+          page.getByRole('option', { name: '🔒', includeHidden: true }),
+        ).toHaveCount(1);
+        await expect(page.getByText('Alice')).toHaveCount(0);
 
-        // The correct passphrase restores the decrypted label.
-        await anon.openPrompter();
+        // The original passphrase is accepted, and unlocks the answer.
         await anon.submitPrompterPassphrase('first-phrase');
+        await expect(
+          page.getByRole('dialog', { name: 'Enter your Passphrase' }),
+        ).toHaveCount(0);
         await expect(page.getByRole('option', { name: 'Alice' })).toBeVisible();
+        await expect(anon.prompterButton()).toHaveCount(0);
+        await expect.poll(() => stage.quickAdd.isDisabled()).toBe(false);
       },
     },
   ],
