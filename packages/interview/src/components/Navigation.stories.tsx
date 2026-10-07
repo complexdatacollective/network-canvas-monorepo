@@ -613,9 +613,13 @@ const enterPassphraseAndAddPerson = async (canvasElement: HTMLElement) => {
   const passphraseDialog = await canvas.findByRole('dialog', {
     name: /enter your passphrase/i,
   });
-  const passphraseField = within(passphraseDialog).getByRole('textbox', {
-    name: /passphrase/i,
-  });
+  // A password input has no ARIA role, so it is found by its label, which also
+  // carries a visual required marker.
+  const passphraseField = within(passphraseDialog).getByLabelText(
+    /^Passphrase/,
+    { selector: 'input' },
+  );
+  await expect(passphraseField).toHaveAttribute('type', 'password');
   await waitFor(() => expect(passphraseField).toHaveFocus());
   await userEvent.type(passphraseField, 'correct horse battery');
   await userEvent.click(
