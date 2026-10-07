@@ -682,6 +682,60 @@ owner)` where `expires_at > clock_timestamp() - IDLE_MS`**.
   age, `promoteStaged` skips an existing asset;
 - rotation reseals a staged secret.
 
+**As built (deviations from the shape above):**
+
+- `promoteStaged` returns `boolean`: false when the staged object is gone,
+  which `plan` reports as the resource's not-found outcome.
+  `ObjectBackend.list(prefix, signal)` returns each key's `lastModified`, and
+  the port's `fromBackend` filters on age, so a backend never interprets
+  `olderThan`. S3 copies with `CopyObject`; Azure has no `copy` and promotes
+  by get and write, because same-account copy authorization was not
+  verified. The memory store in `T/support/object-store.ts` has no copy
+  either.
+- Staging a file now needs a configured object store and is refused with
+  `NO_STORE` otherwise: there is no in-memory fallback. A failed
+  `putStaged` stages nothing and answers `unavailable`.
+- Every staging call (`stage`, `descriptors`, `plan`, `discard`, `inspect`,
+  `preview`, `releaseOwner`) runs `requireProtocol` inside its own
+  `noAuditTransaction`, under ops `protocolBuilder.stageResource`,
+  `.readStaged`, `.discardStaged` and `.releaseStaged`; `authorizeCaller`
+  remains only for the watch.
+- A staged row discarded, released or collected between `plan` and the write
+  makes the write's consume find fewer rows than it planned; the write then
+  changes nothing and answers `stagingGone`, which Submit and Create report
+  as a not-found `PromotionFailed`. The consume locks the rows `FOR UPDATE`
+  in `resource_id` order under the draft head the write already holds.
+- `discard`, `releaseOwner` and the GC delete staged rows without the draft
+  head: none of them writes a section, and the consume's row locks are what
+  a racing promotion contends on.
+- `Leases.connected` is kept. No production code calls it now, but
+  `pb/__tests__/leases.test.ts` observes the reconnect grace through it, and
+  rewriting C2's tests is outside S.
+- `IDLE_MS` moved from `pb/leases.ts` to `pb/schema.ts`, so the GC reads it
+  without importing the host.
+- The GC (`jobs/handlers/staged-resources-gc.ts`):
+  - requires `ObjectStore` in its `R` rather than reading it with
+    `Effect.serviceOption`, so a worker that forgot to provide it fails to
+    typecheck instead of silently skipping object work. `protocolStoreGc`,
+    `JobHandlersLive` and the two job test layers gain `ObjectStore`; the
+    tests provide `ObjectStore.absent`. `gcProtocolStore` is unchanged.
+  - lists `STAGING_ROOT` once rather than per team, and enumerates teams
+    from the staged rows, the connection rows and the listed keys, so a team
+    whose only trace is an orphaned object is still swept. A listing that
+    fails is logged and the rows and connections are collected anyway.
+  - collects in two transactions per team: select up to 1000 abandoned rows,
+    delete their objects outside any transaction, then delete the rows whose
+    objects went, re-checking the abandoned predicate so a tab that came
+    back keeps its rows.
+  - treats a row as abandoned when it is older than `IDLE_MS` and no
+    connection row for its `(team, draft, owner)` expires after
+    `now - IDLE_MS`. The age bound keeps a row staged a moment ago by a tab
+    whose connection row is not yet visible.
+- The seed stages one API key per team through the production
+  `insertStaged`, so the no-plaintext-at-rest scan covers the staged-secret
+  store; `protocol_staged_resources.created_at` joins the seed
+  reproducibility test's irreproducible columns.
+
 ### H: N-replica harness and scenarios (after S)
 
 **Owns:** `T/support/protocol-builder.ts` (additions) and new
