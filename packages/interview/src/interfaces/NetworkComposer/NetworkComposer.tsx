@@ -174,6 +174,7 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
     subjectType: stage.subject.type,
     quickAdd: stage.quickAdd,
     layoutVariable: stage.layoutVariable,
+    useEncryption: !!stageVariables[stage.quickAdd]?.encrypted,
     currentStep,
     undoStore,
     dispatch,

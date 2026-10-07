@@ -130,7 +130,9 @@ const actionTypes = {
   updateStageMetadata: 'SESSION/UPDATE_STAGE_METADATA',
   addNode: 'NETWORK/ADD_NODE' as const,
   deleteNode: 'NETWORK/DELETE_NODE' as const,
+  restoreNode: 'NETWORK/RESTORE_NODE' as const,
   updateNode: 'NETWORK/UPDATE_NODE' as const,
+  restoreNodeAttributes: 'NETWORK/RESTORE_NODE_ATTRIBUTES' as const,
   toggleNodeAttributes: 'NETWORK/TOGGLE_NODE_ATTRIBUTES' as const,
   addNodeToPrompt: 'NETWORK/ADD_NODE_TO_PROMPT' as const,
   removeNodeFromPrompt: 'NETWORK/REMOVE_NODE_FROM_PROMPT' as const,
@@ -379,6 +381,37 @@ export const deleteNode = createAction<NcNode[EntityPrimaryKey]>(
 export const deleteEdge = createAction<NcEdge[EntityPrimaryKey]>(
   actionTypes.deleteEdge,
 );
+
+type SecureAttributeMetadata = NonNullable<
+  NcNode[typeof entitySecureAttributesMeta]
+>[string];
+
+/**
+ * Captured attribute values of one node, each with its secure-attribute
+ * metadata as stored. `null` records a key the node did not have.
+ */
+export type NodeAttributeSnapshot = Readonly<
+  Record<
+    string,
+    { value: VariableValue; secure?: SecureAttributeMetadata } | null
+  >
+>;
+
+/**
+ * Undo/redo support: puts back a node exactly as it was captured. Unlike
+ * addNode it neither validates nor encrypts, because the snapshot is already
+ * stored state — an encrypted value comes back together with its IV and salt.
+ */
+export const restoreNode = createAction<NcNode>(actionTypes.restoreNode);
+
+/**
+ * Undo/redo support: writes a captured slice of a node's attributes back, each
+ * value together with its own secure-attribute metadata (or the lack of it).
+ */
+export const restoreNodeAttributes = createAction<{
+  nodeId: NcNode[EntityPrimaryKey];
+  snapshot: NodeAttributeSnapshot;
+}>(actionTypes.restoreNodeAttributes);
 
 export const updatePrompt = createAction<number>(actionTypes.updatePrompt);
 /**
@@ -754,6 +787,78 @@ const sessionReducer = createReducer(initialState, (builder) => {
         edges: network.edges.filter(
           (edge) => edge.from !== action.payload && edge.to !== action.payload,
         ),
+      },
+    });
+  });
+
+  builder.addCase(restoreNode, (state, action) => {
+    const node = action.payload;
+    invariant(
+      !find(state.network.nodes, {
+        [entityPrimaryKeyProperty]: node[entityPrimaryKeyProperty],
+      }),
+      'Node with this ID already exists in network',
+    );
+
+    return withLastUpdated({
+      ...state,
+      network: {
+        ...state.network,
+        nodes: [...state.network.nodes, node],
+      },
+    });
+  });
+
+  builder.addCase(restoreNodeAttributes, (state, action) => {
+    const { nodeId, snapshot } = action.payload;
+    const { network } = state;
+
+    return withLastUpdated({
+      ...state,
+      network: {
+        ...network,
+        nodes: network.nodes.map((node) => {
+          if (node[entityPrimaryKeyProperty] !== nodeId) {
+            return node;
+          }
+
+          const captured = Object.entries(snapshot).flatMap(([key, entry]) =>
+            entry === null ? [] : [{ key, ...entry }],
+          );
+          const set = Object.fromEntries(
+            captured.map(({ key, value }): [string, VariableValue] => [
+              key,
+              value,
+            ]),
+          );
+          const secureSet = Object.fromEntries(
+            captured.flatMap(
+              ({ key, secure }): [string, SecureAttributeMetadata][] =>
+                secure ? [[key, secure]] : [],
+            ),
+          );
+
+          // Clearing every captured key first drops any metadata the current
+          // value carries, so a restored value never pairs with another
+          // value's IV and salt.
+          const cleared = applyEntityAttributePatch(
+            node[entityAttributesProperty],
+            node[entitySecureAttributesMeta],
+            { set: {}, unset: Object.keys(snapshot) },
+          );
+          const patched = applyEntityAttributePatch(
+            cleared.attributes,
+            cleared.secureAttributes,
+            { set, unset: [] },
+            secureSet,
+          );
+
+          return {
+            ...node,
+            [entityAttributesProperty]: patched.attributes,
+            [entitySecureAttributesMeta]: patched.secureAttributes,
+          };
+        }),
       },
     });
   });
