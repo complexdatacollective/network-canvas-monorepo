@@ -1,13 +1,6 @@
 'use client';
 
-import {
-  MousePointer2,
-  Scan,
-  Unlink,
-  Waypoints,
-  ZoomIn,
-  ZoomOut,
-} from 'lucide-react';
+import { MousePointer2, Unlink, Waypoints } from 'lucide-react';
 import { motion, useReducedMotion } from 'motion/react';
 import {
   useCallback,
@@ -30,7 +23,6 @@ import Node from '@codaco/fresco-ui/Node';
 import {
   SegmentedToolbar,
   ToolbarButton,
-  ToolbarIconButton,
   ToolbarSeparator,
   ToolbarToggleGroup,
 } from '@codaco/fresco-ui/SegmentedToolbar';
@@ -73,6 +65,12 @@ import {
 import { useAppDispatch } from '../../store/store';
 import type { Direction, StageProps } from '../../types';
 import { usePassphrase } from '../Anonymisation/usePassphrase';
+import { pedigreeFraming } from '../pedigree-common/framing';
+import {
+  focusNeighbourInDirection,
+  PedigreeViewport,
+  usePedigreeZoomButtons,
+} from '../pedigree-common/PedigreeCanvas';
 import {
   type CompletenessItem,
   evaluateCompleteness,
@@ -112,12 +110,8 @@ import {
 } from './model';
 import PedigreeLayout from './pedigree-layout/components/PedigreeLayout';
 import type { PedigreeLink } from './pedigree-layout/types';
-import {
-  ARROW_DIRECTIONS,
-  nearestInDirection,
-  type Point,
-} from './spatialNavigation';
-import { usePanZoom, useZoomLimits, type View } from './usePanZoom';
+import type { Point } from './spatialNavigation';
+import { usePanZoom, type View } from './usePanZoom';
 
 /**
  * What selecting a person does: open their details (with their add menu on
@@ -410,7 +404,6 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   const viewportRef = useRef<HTMLDivElement>(null);
   const drawerRef = useRef<HTMLDivElement>(null);
   const panZoom = usePanZoom({ viewportRef, contentRef });
-  const zoomLimits = useZoomLimits(panZoom.scale);
   const promptRef = useRef<HTMLDivElement>(null);
   const toolbarAreaRef = useRef<HTMLDivElement>(null);
   // The whole family, clear of the prompt above and the toolbar below.
@@ -438,6 +431,10 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     },
     [panZoom, clearInsets],
   );
+  const zoomButtons = usePedigreeZoomButtons({
+    panZoom,
+    onShowWholeFamily: () => showWholeFamily(),
+  });
 
   // No menu while the panel is open: it would offer to add to someone else
   // mid-way through describing this person. Nor while connecting or
@@ -479,10 +476,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     return () => clearTimeout(timer);
   }, []);
   const reduceMotion = useReducedMotion();
-  const framing =
-    framingSetting === 'participantPreference'
-      ? (chosenFraming ?? 'gamete')
-      : framingSetting;
+  const framing = pedigreeFraming(framingSetting, chosenFraming);
   const chooseFraming = useCallback(
     (chosen: FramingId) => {
       dispatch(
@@ -1008,23 +1002,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     personId: string,
     event: React.KeyboardEvent<HTMLButtonElement>,
   ) => {
-    const direction = ARROW_DIRECTIONS[event.key];
-    if (!direction) return;
-    event.preventDefault();
-    const centreOf = (element: HTMLElement): Point => {
-      const rect = element.getBoundingClientRect();
-      return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
-    };
-    const current = nodeRefs.current.get(personId);
-    if (!current) return;
-    const candidates = new Map<string, Point>();
-    for (const [id, element] of nodeRefs.current) {
-      if (id !== personId && !element.disabled) {
-        candidates.set(id, centreOf(element));
-      }
-    }
-    const next = nearestInDirection(centreOf(current), candidates, direction);
-    if (next) nodeRefs.current.get(next)?.focus();
+    focusNeighbourInDirection(nodeRefs.current, personId, event);
   };
 
   // Clicking anywhere on the stage but a person hides the add menu. The side
@@ -1366,20 +1344,8 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
 
   // Escape in the add menu returns focus to its person; Escape on the person
   // hides the menu.
+  // (+ and − zoom about the middle of the canvas, in `PedigreeViewport`.)
   const handleCanvasKeyDown = (event: React.KeyboardEvent) => {
-    // + and − zoom about the middle of the canvas.
-    if (!event.metaKey && !event.ctrlKey && !event.altKey) {
-      if (event.key === '+' || event.key === '=') {
-        event.preventDefault();
-        panZoom.zoomBy(0.5);
-        return;
-      }
-      if (event.key === '-' || event.key === '_') {
-        event.preventDefault();
-        panZoom.zoomBy(-0.5);
-        return;
-      }
-    }
     if (event.key === 'Escape' && linkingId) {
       event.preventDefault();
       setLinkingId(null);
@@ -1459,109 +1425,97 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       </div>
       {measurementContainer}
       <div className="relative flex min-h-0 w-full flex-1 flex-col">
-        {/* Drag to pan, wheel or pinch to zoom. Clipped rather than
-            scrollable, so focusing someone off screen pans to them instead
-            of scrolling. */}
-        <div
-          ref={viewportRef}
-          role="region"
-          aria-label={intl.formatMessage(messages.canvasLabel)}
-          className="relative min-h-0 w-full flex-1 cursor-grab touch-none overflow-clip select-none"
+        {/* Drag to pan, wheel or pinch to zoom. */}
+        <PedigreeViewport
+          viewportRef={viewportRef}
+          contentRef={contentRef}
+          panZoom={panZoom}
           onKeyDown={handleCanvasKeyDown}
           onBlur={handleCanvasBlur}
-          data-testid="pedigree-canvas"
+          overlay={
+            connectorFrom &&
+            tool === 'connect' && (
+              <ConnectorPreview
+                container={viewportRef}
+                transform={panZoom}
+                from={connectorFrom}
+                to={connectorTo}
+                color={edgeColor}
+              />
+            )
+          }
         >
-          {connectorFrom && tool === 'connect' && (
-            <ConnectorPreview
-              container={viewportRef}
-              transform={panZoom}
-              from={connectorFrom}
-              to={connectorTo}
-              color={edgeColor}
-            />
-          )}
-          <motion.div
-            ref={contentRef}
-            className="absolute top-0 left-0 w-max p-40"
-            style={{
-              x: panZoom.x,
-              y: panZoom.y,
-              scale: panZoom.scale,
-              transformOrigin: '0 0',
-            }}
-          >
-            <PedigreeLayout
-              nodeIds={nodeIds}
-              edgeColor={edgeColor}
-              links={links}
-              nodeNames={nodeNames}
-              nodeWidth={nodeWidth}
-              nodeHeight={nodeHeight}
-              // Room around each person for the add menu that appears beside,
-              // above and below them.
-              rowGapRatio={1.4}
-              columnGapRatio={1.4}
-              renderNode={(personId) => {
-                const person = shown.byId.get(personId);
-                if (!person) return null;
-                const hasMenu = personId === menuPersonId;
-                return (
-                  <PersonNode
-                    person={person}
-                    label={displayName(personId)}
-                    color={nodeColor}
-                    shape={
-                      shapeDefinition
-                        ? resolveNodeShape(shapeDefinition, person.attributes)
-                        : 'circle'
-                    }
-                    selected={
-                      nomination ? isNominated(person) : personId === selectedId
-                    }
-                    disabled={nomination ? !canNominate(person) : false}
-                    linking={
-                      tool !== 'pointer' &&
-                      (personId === linkingId || personId === connectorTargetId)
-                    }
-                    menuOpen={hasMenu}
-                    // The person being added has not been asked yet.
-                    hasMissingDetails={
-                      !nomination &&
-                      family.byId.has(personId) &&
-                      missingDetailsFor(person, requiredFormVariables, config)
-                        .length > 0
-                    }
-                    adopted={shown.links.some(
-                      (link) =>
-                        link.kind === 'adoptive' && link.target === personId,
-                    )}
+          <PedigreeLayout
+            nodeIds={nodeIds}
+            edgeColor={edgeColor}
+            links={links}
+            nodeNames={nodeNames}
+            nodeWidth={nodeWidth}
+            nodeHeight={nodeHeight}
+            // Room around each person for the add menu that appears beside,
+            // above and below them.
+            rowGapRatio={1.4}
+            columnGapRatio={1.4}
+            renderNode={(personId) => {
+              const person = shown.byId.get(personId);
+              if (!person) return null;
+              const hasMenu = personId === menuPersonId;
+              return (
+                <PersonNode
+                  person={person}
+                  label={displayName(personId)}
+                  color={nodeColor}
+                  shape={
+                    shapeDefinition
+                      ? resolveNodeShape(shapeDefinition, person.attributes)
+                      : 'circle'
+                  }
+                  selected={
+                    nomination ? isNominated(person) : personId === selectedId
+                  }
+                  disabled={nomination ? !canNominate(person) : false}
+                  linking={
+                    tool !== 'pointer' &&
+                    (personId === linkingId || personId === connectorTargetId)
+                  }
+                  menuOpen={hasMenu}
+                  // The person being added has not been asked yet.
+                  hasMissingDetails={
+                    !nomination &&
+                    family.byId.has(personId) &&
+                    missingDetailsFor(person, requiredFormVariables, config)
+                      .length > 0
+                  }
+                  adopted={shown.links.some(
+                    (link) =>
+                      link.kind === 'adoptive' && link.target === personId,
+                  )}
 
-                    onActivate={() => handleActivate(personId)}
-                    tabIndex={personId === tabStopId ? 0 : -1}
-                    onFocus={(event) => handleFocusPerson(personId, event)}
-                    onKeyDown={(event) => handleNodeKeyDown(personId, event)}
-                    onPointerEnter={(event) =>
-                      handlePersonPointerEnter(personId, event)
-                    }
-                    onPointerLeave={handlePersonPointerLeave}
-                    onPointerDown={(event) => {
-                      lastPointerType.current = event.pointerType;
-                    }}
-                    nodeRef={setNodeRef(personId)}
-                  >
-                    {hasMenu && (
-                      <AddRelativeMenu
-                        isYou={person.isEgo}
-                        name={displayName(personId)}
-                        onAdd={openAdd}
-                      />
-                    )}
-                  </PersonNode>
-                );
-              }}
-            />
-          </motion.div>
-        </div>
+                  onActivate={() => handleActivate(personId)}
+                  tabIndex={personId === tabStopId ? 0 : -1}
+                  onFocus={(event) => handleFocusPerson(personId, event)}
+                  onKeyDown={(event) => handleNodeKeyDown(personId, event)}
+                  onPointerEnter={(event) =>
+                    handlePersonPointerEnter(personId, event)
+                  }
+                  onPointerLeave={handlePersonPointerLeave}
+                  onPointerDown={(event) => {
+                    lastPointerType.current = event.pointerType;
+                  }}
+                  nodeRef={setNodeRef(personId)}
+                >
+                  {hasMenu && (
+                    <AddRelativeMenu
+                      isYou={person.isEgo}
+                      name={displayName(personId)}
+                      onAdd={openAdd}
+                    />
+                  )}
+                </PersonNode>
+              );
+            }}
+          />
+        </PedigreeViewport>
         <div
           ref={toolbarAreaRef}
           className="pointer-events-none absolute inset-x-0 bottom-6 z-20 flex flex-col items-center gap-2 px-4"
@@ -1689,26 +1643,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                 />
               )}
               {(!nomination || participantFraming) && <ToolbarSeparator />}
-              <ToolbarIconButton
-                aria-label={intl.formatMessage(messages.zoomOut)}
-                icon={<ZoomOut />}
-                disabled={zoomLimits.atMin}
-                onClick={() => panZoom.zoomBy(-0.5)}
-                data-testid="pedigree-zoom-out"
-              />
-              <ToolbarIconButton
-                aria-label={intl.formatMessage(messages.zoomIn)}
-                icon={<ZoomIn />}
-                disabled={zoomLimits.atMax}
-                onClick={() => panZoom.zoomBy(0.5)}
-                data-testid="pedigree-zoom-in"
-              />
-              <ToolbarIconButton
-                aria-label={intl.formatMessage(messages.showWholeFamily)}
-                icon={<Scan />}
-                onClick={() => showWholeFamily()}
-                data-testid="pedigree-zoom-fit"
-              />
+              {zoomButtons}
               {progress && completeness && !nomination && <ToolbarSeparator />}
               {progress && completeness && !nomination && (
                 <CompletenessTracker

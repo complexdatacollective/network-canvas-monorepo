@@ -213,8 +213,12 @@ export function usePanZoom({
       drag: {
         filterTaps: true,
         threshold: DRAG_THRESHOLD,
-        // Only the primary button pans; touch and pen always count.
-        pointer: { buttons: 1 },
+        // Only the primary button pans; touch and pen always count. The
+        // arrow keys move between people (and focus pans to them), so they
+        // must not also drag the canvas: a keyboard drag would mark the next
+        // click, from Enter or Space on a person, as the end of a drag and
+        // swallow it.
+        pointer: { buttons: 1, keys: false },
       },
       pinch: {
         // Wheel pinches are handled with the wheel, so trackpads and mice
