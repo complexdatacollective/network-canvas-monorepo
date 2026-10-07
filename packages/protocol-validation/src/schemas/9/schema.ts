@@ -7,6 +7,7 @@ import {
   findExclusiveVariableConflicts,
   findInterfaceOwnedOptionBindings,
 } from '../../utils/findExclusiveVariableConflicts.ts';
+import { variableNameFor } from '../../utils/referenceSubjects.ts';
 import { validateReferences } from '../../utils/validateEntityAttributeReferences.ts';
 import {
   entityExists,
@@ -550,6 +551,13 @@ const validateSharedFormContradictions = (
   }
 };
 
+/** A stage type as a researcher reads it: "a Family Pedigree stage". */
+const stageNameFor = (type: string | undefined): string => {
+  if (!type) return 'a stage';
+  const name = type.replace(/([a-z])([A-Z])/g, '$1 $2');
+  return `${/^[aeiou]/i.test(name) ? 'an' : 'a'} ${name} stage`;
+};
+
 const subjectKey = (subject: StageSubject): string =>
   subject.entity === 'ego' ? 'ego' : `${subject.entity}:${subject.type}`;
 
@@ -676,7 +684,7 @@ const ProtocolSchema = z
     for (const conflict of findExclusiveVariableConflicts(protocol, hits)) {
       ctx.addIssue({
         code: 'custom' as const,
-        message: `Attribute "${conflict.variableName}" is set by ${conflict.owner.owner}, so it cannot be used anywhere else in this protocol.`,
+        message: `Attribute "${conflict.variableName}" is set by ${conflict.owner.owner}, so nothing else in this protocol may set it.`,
         path: conflict.path,
       });
     }
@@ -713,10 +721,42 @@ const ProtocolSchema = z
           : undefined;
       ctx.addIssue({
         code: 'custom' as const,
-        message: `${owningStage?.type ?? 'Stage'} ${optionSet.label} attribute "${binding.variableId}" must use its fixed set of options and cannot be modified.`,
+        message: `The ${optionSet.label} attribute "${variableNameFor(protocol, subject, binding.variableId)}" used by ${stageNameFor(owningStage?.type)} must keep its fixed options.`,
         path: binding.path,
       });
     }
+
+    // A Family Pedigree stage's gender identity terms map the options of its
+    // gender identity attribute to kinship words, and no option may be mapped
+    // twice. A term for a value the attribute does not have is NOT an error:
+    // the attribute's options are edited in the codebook before the stage that
+    // owns the words is saved, so the two are briefly out of step while a
+    // researcher works, and the interview ignores such a term. A missing or
+    // retyped attribute is reported by the reference validator above.
+    protocol.stages.forEach((stage, stageIndex) => {
+      if (stage.type !== 'FamilyPedigree') return;
+      const genderIdentity = stage.nodeConfiguration.genderIdentity;
+      if (!genderIdentity) return;
+      const seen = new Set<string | number>();
+      genderIdentity.terms.forEach((term, termIndex) => {
+        if (seen.has(term.value)) {
+          ctx.addIssue({
+            code: 'custom' as const,
+            message: `Family Pedigree gender identity words are given more than once for "${term.value}". Each option takes one set of words.`,
+            path: [
+              'stages',
+              stageIndex,
+              'nodeConfiguration',
+              'genderIdentity',
+              'terms',
+              termIndex,
+              'value',
+            ],
+          });
+        }
+        seen.add(term.value);
+      });
+    });
 
     const composerFieldOverrides = collectComposerFieldOverrides(
       protocol.stages,
@@ -1079,126 +1119,6 @@ const ProtocolSchema = z
         }
       }
 
-      // 3e.iii.b. FamilyPedigree: each introScreen asset item must resolve to
-      // a manifest entry of a displayable type (image/video/audio).
-      if (
-        stage.type === 'FamilyPedigree' &&
-        'introScreen' in stage &&
-        stage.introScreen
-      ) {
-        const displayableAssetTypes = ['image', 'video', 'audio'];
-        stage.introScreen.items.forEach((item, itemIndex) => {
-          if (item.type !== 'asset') {
-            return;
-          }
-          const asset = protocol.assetManifest?.[item.content];
-          if (!asset) {
-            ctx.addIssue({
-              code: 'custom' as const,
-              message: `FamilyPedigree introScreen item "${item.content}" does not reference an asset in the manifest.`,
-              path: [
-                'stages',
-                stageIndex,
-                'introScreen',
-                'items',
-                itemIndex,
-                'content',
-              ],
-            });
-          } else if (!displayableAssetTypes.includes(asset.type)) {
-            ctx.addIssue({
-              code: 'custom' as const,
-              message: `FamilyPedigree introScreen item "${item.content}" must reference an asset of type ${displayableAssetTypes.map((t) => `'${t}'`).join(' or ')}, but is of type "${asset.type}".`,
-              path: [
-                'stages',
-                stageIndex,
-                'introScreen',
-                'items',
-                itemIndex,
-                'content',
-              ],
-            });
-          }
-        });
-      }
-
-      if (stage.type === 'FamilyPedigree' && stage.nodeConfig.form) {
-        const nodeSubject = {
-          entity: 'node' as const,
-          type: stage.nodeConfig.type,
-        };
-        stage.nodeConfig.form.forEach((field, fieldIndex) => {
-          validateFormFieldVariable(
-            protocol.codebook,
-            field.variable,
-            nodeSubject,
-            [
-              'stages',
-              stageIndex,
-              'nodeConfig',
-              'form',
-              fieldIndex,
-              'variable',
-            ],
-            (issue) => ctx.addIssue({ code: 'custom' as const, ...issue }),
-          );
-        });
-        validateSharedFormContradictions(
-          getVariablesForSubject(protocol.codebook, nodeSubject),
-          stage.nodeConfig.form,
-          ['stages', stageIndex, 'nodeConfig', 'form'],
-          unknownRenderingFor(
-            composerFieldOverrides,
-            nodeSubject,
-            stage.nodeConfig.form,
-          ),
-          (issue) => ctx.addIssue({ code: 'custom' as const, ...issue }),
-        );
-      }
-
-      // 3e.iii.b-2. FamilyPedigree: each nomination prompt variable must exist
-      // on the node type and be boolean — the interview writes a boolean flag
-      // onto nominated nodes, so a missing or non-boolean variable would write
-      // to an undeclared/mismatched codebook variable.
-      if (stage.type === 'FamilyPedigree' && stage.nominationPrompts) {
-        const nodeSubject = {
-          entity: 'node' as const,
-          type: stage.nodeConfig.type,
-        };
-        const nodeVariables = getVariablesForSubject(
-          protocol.codebook,
-          nodeSubject,
-        );
-        stage.nominationPrompts.forEach((prompt, promptIndex) => {
-          const nodeVariable = nodeVariables[prompt.variable];
-          if (!nodeVariable) {
-            ctx.addIssue({
-              code: 'custom' as const,
-              message: `FamilyPedigree nomination prompt attribute "${prompt.variable}" does not exist on node type "${stage.nodeConfig.type}".`,
-              path: [
-                'stages',
-                stageIndex,
-                'nominationPrompts',
-                promptIndex,
-                'variable',
-              ],
-            });
-          } else if (nodeVariable.type !== 'boolean') {
-            ctx.addIssue({
-              code: 'custom' as const,
-              message: `FamilyPedigree nomination prompt attribute "${prompt.variable}" must be a boolean attribute, but is "${nodeVariable.type}".`,
-              path: [
-                'stages',
-                stageIndex,
-                'nominationPrompts',
-                promptIndex,
-                'variable',
-              ],
-            });
-          }
-        });
-      }
-
       // 3e.iii.c. NarrativePedigree: sourceStageId must reference a FamilyPedigree
       // stage; disease variables must resolve on the source node type; disease
       // labels must differ in every language a participant can see them in.
@@ -1241,8 +1161,11 @@ const ProtocolSchema = z
             path: ['stages', stageIndex, 'sourceStageId'],
           });
         } else {
-          // sourceStage is confirmed FamilyPedigree — resolve variables on its node type.
-          const sourceNodeType = sourceStage.nodeConfig.type;
+          // sourceStage is confirmed FamilyPedigree — resolve variables on its
+          // person node type.
+          // TODO(narrative-pedigree-rebuild): Narrative Pedigree still reads
+          // the pre-redesign pedigree; only the source node type is adapted.
+          const sourceNodeType = sourceStage.subject.type;
           const sourceSubject = {
             entity: 'node' as const,
             type: sourceNodeType,

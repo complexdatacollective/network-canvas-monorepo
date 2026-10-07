@@ -142,7 +142,10 @@ export const narrativePedigreeStage = withStageSubjectResolution(
   {
     from: 'stageRef',
     stageRef: 'sourceStageId',
-    path: ['nodeConfig', 'type'],
+    // TODO(narrative-pedigree-rebuild): the redesigned Family Pedigree names
+    // its person type as its stage subject; the rest of this stage still
+    // describes the pre-redesign pedigree.
+    path: ['subject', 'type'],
     entity: 'node',
   },
 );

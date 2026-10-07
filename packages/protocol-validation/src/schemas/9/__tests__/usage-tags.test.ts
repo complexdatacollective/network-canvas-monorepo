@@ -98,7 +98,7 @@ describe('attribute-writer usage tags', () => {
     expect(hullHit?.usage).toBe('unvalidatedAttribute');
   });
 
-  it('tags the FamilyPedigree node label as validated and its structural slots as unvalidated', () => {
+  it('tags the FamilyPedigree name as validated and its structural slots as unvalidated', () => {
     const protocol = {
       ...createBaseProtocol(),
       stages: [
@@ -106,40 +106,38 @@ describe('attribute-writer usage tags', () => {
           id: 'family',
           type: 'FamilyPedigree',
           label: localized('Family'),
-          nodeConfig: {
-            type: 'person',
-            nodeLabelVariable: 'name',
-            egoVariable: 'isEgo',
-            relationshipVariable: 'relationship',
-            biologicalSexVariable: 'biologicalSex',
+          subject: { entity: 'node', type: 'person' },
+          prompt: localized('Build your family'),
+          nodeConfiguration: {
+            nameAttribute: 'name',
+            genderIdentity: { attribute: 'gender', terms: [] },
+            sexAssignedAtBirthAttribute: 'sab',
+            egoAttribute: 'isEgo',
           },
-          edgeConfig: {
+          edgeConfiguration: {
             type: 'family',
-            relationshipTypeVariable: 'relationshipType',
-            isActiveVariable: 'isActive',
-            isGestationalCarrierVariable: 'isGestationalCarrier',
-            gameteRoleVariable: 'gameteRole',
+            kindAttribute: 'kind',
+            gestationalCarrierAttribute: 'carrier',
+            currentPartnerAttribute: 'current',
           },
-          framing: { mode: 'fixed', value: 'gamete' },
-          boundaries: {
-            requireGrandparents: 'off',
-            requireChildrenContributors: 'off',
-          },
-          censusPrompt: localized('Build your family'),
         },
       ],
     };
 
     const hits = hitsFor(protocol);
-    const nodeLabel = hits.find(
-      (hit) => hit.path[hit.path.length - 1] === 'nodeLabelVariable',
+    const name = hits.find(
+      (hit) => hit.path[hit.path.length - 1] === 'nameAttribute',
     );
-    const relationship = hits.find(
-      (hit) => hit.path[hit.path.length - 1] === 'relationshipVariable',
+    const ego = hits.find(
+      (hit) => hit.path[hit.path.length - 1] === 'egoAttribute',
+    );
+    const kind = hits.find(
+      (hit) => hit.path[hit.path.length - 1] === 'kindAttribute',
     );
 
-    expect(nodeLabel?.usage).toBe('validatedAttribute');
-    expect(relationship?.usage).toBe('unvalidatedAttribute');
+    expect(name?.usage).toBe('validatedAttribute');
+    expect(ego?.usage).toBe('unvalidatedAttribute');
+    expect(kind?.usage).toBe('unvalidatedAttribute');
   });
 
   // Whether a Sociogram highlight writes is a property of the prompt, not of

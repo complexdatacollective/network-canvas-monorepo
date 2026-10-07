@@ -1695,7 +1695,7 @@ const hasEmptyOrigin = (group: GroupIntervals): boolean =>
  * it. And the control is NOT determined by the codebook: schema.ts's
  * `validateFormFieldVariable` rejects a variable used by any shared form
  * field (`AlterForm`, `AlterEdgeForm`, `EgoForm`, `NameGenerator`'s form,
- * `FamilyPedigree`'s `nodeConfig.form` — all built on `FormFieldSchema`)
+ * `FamilyPedigree`'s `form` — all built on `FormFieldSchema`)
  * unless the codebook itself declares an explicit `component`, so a
  * componentless boolean is renderable ONLY by a NetworkComposer field — and
  * `ComposerFormFieldSchema.component` is required and drawn from every
