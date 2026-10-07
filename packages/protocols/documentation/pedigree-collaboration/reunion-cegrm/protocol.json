@@ -117,11 +117,11 @@
             "type": "boolean",
             "component": "Toggle"
           },
-          "relationship_to_ego": {
-            "name": "relationship_to_ego",
-            "label": "relationship_to_ego",
-            "type": "text",
-            "component": "Text"
+          "non_kin": {
+            "name": "non_kin",
+            "label": "non_kin",
+            "type": "boolean",
+            "component": "Toggle"
           },
           "layout": {
             "name": "layout",
@@ -542,7 +542,7 @@
           "id": "researcher-notes",
           "type": "text",
           "content": {
-            "en-US": "## Discussion prototype: family reunions\n\n_Delete this screen before collecting any data._\n\nBased on the existing Network Canvas CEGRM template. Review language, family boundaries and support domains with local collaborators. This version starts with mother/father wording; Architect also offers egg/sperm wording or participant choice. Neither setting describes an entire population.\n\nConsent, recruitment, privacy and recording procedures are placeholders requiring local ethics approval. Conduct each interview privately even if recruitment happens at a reunion. Never display one participant's health history to the reunion or merge relatives' maps by default.\n\nThe closing condition display uses unknown inheritance and hides inferred risk. It presents reported family history, not genetic counselling or risk assessment. The optional gender question controls shapes; AFAB/AMAB/UAAB annotations are not implemented. Record participant observations and map limitations as qualitative findings.\n\nCEGRM: Kenen & Peters (2001), https://doi.org/10.1023/A:1016627426430. Methods and clinical interpretation should be reviewed with Lori Erby and Laura Koehly."
+            "en-US": "## Discussion prototype: family reunions\n\n_Delete this screen before collecting any data._\n\nBased on the existing Network Canvas CEGRM template. Review language, family boundaries and support domains with local collaborators. This version starts with mother/father wording; Architect also offers egg/sperm wording or participant choice. Neither setting describes an entire population.\n\nThe people named in **People in your life** are marked `non_kin`; everyone the pedigree adds is not. The beyond-family stages and the family health-communication roles are filtered on that attribute. The pedigree itself draws only the participant and the people connected to them through family relationships, so the non-kin never appear on it.\n\nConsent, recruitment, privacy and recording procedures are placeholders requiring local ethics approval. Conduct each interview privately even if recruitment happens at a reunion. Never display one participant's health history to the reunion or merge relatives' maps by default.\n\nThe closing condition display uses unknown inheritance and hides inferred risk. It presents reported family history, not genetic counselling or risk assessment. The optional gender question controls shapes; AFAB/AMAB/UAAB annotations are not implemented. Record participant observations and map limitations as qualitative findings.\n\nCEGRM: Kenen & Peters (2001), https://doi.org/10.1023/A:1016627426430. Methods and clinical interpretation should be reviewed with Lori Erby and Laura Koehly."
           }
         }
       ]
@@ -754,8 +754,9 @@
                 "type": "node",
                 "options": {
                   "type": "person",
-                  "attribute": "relationship_to_ego",
-                  "operator": "NOT_EXISTS"
+                  "attribute": "non_kin",
+                  "operator": "EXACTLY",
+                  "value": true
                 }
               }
             ]
@@ -767,25 +768,49 @@
           "id": "p-friends",
           "text": {
             "en-US": "Who are the **friends** who matter most to you?"
-          }
+          },
+          "additionalAttributes": [
+            {
+              "variable": "non_kin",
+              "value": true
+            }
+          ]
         },
         {
           "id": "p-work",
           "text": {
             "en-US": "Who are the people you know through **work or study**?"
-          }
+          },
+          "additionalAttributes": [
+            {
+              "variable": "non_kin",
+              "value": true
+            }
+          ]
         },
         {
           "id": "p-groups",
           "text": {
             "en-US": "Who do you know through **groups you belong to** — a faith community, a team, a club, or a community you are part of online?"
-          }
+          },
+          "additionalAttributes": [
+            {
+              "variable": "non_kin",
+              "value": true
+            }
+          ]
         },
         {
           "id": "p-care",
           "text": {
             "en-US": "Who is involved in looking after your **health**?"
-          }
+          },
+          "additionalAttributes": [
+            {
+              "variable": "non_kin",
+              "value": true
+            }
+          ]
         }
       ]
     },
@@ -833,8 +858,9 @@
             "type": "node",
             "options": {
               "type": "person",
-              "attribute": "relationship_to_ego",
-              "operator": "NOT_EXISTS"
+              "attribute": "non_kin",
+              "operator": "EXACTLY",
+              "value": true
             }
           }
         ]
@@ -1120,8 +1146,9 @@
             "type": "node",
             "options": {
               "type": "person",
-              "attribute": "relationship_to_ego",
-              "operator": "EXISTS"
+              "attribute": "non_kin",
+              "operator": "NOT",
+              "value": true
             }
           }
         ]
