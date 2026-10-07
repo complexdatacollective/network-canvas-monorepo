@@ -225,9 +225,9 @@ describe('shell branches', () => {
       ],
       participant: [
         '/enter/$token',
-        '/enter/$token/complete',
-        '/enter/$token/consent',
-        '/enter/$token/interview',
+        '/session/$sessionToken',
+        '/session/$sessionToken/complete',
+        '/session/$sessionToken/consent',
       ],
       app: [
         '/account',

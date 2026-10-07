@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
+import { Effect } from 'effect';
 import pg from 'pg';
 import { onTestFinished } from 'vitest';
 
@@ -29,7 +30,7 @@ export function committedDocument(): MigrationsDocument {
 }
 
 export function committedMigrations(): VerifiedMigrations {
-  return verifyMigrations(committedDocument());
+  return Effect.runSync(verifyMigrations(committedDocument()));
 }
 
 export type SyntheticMigration = {

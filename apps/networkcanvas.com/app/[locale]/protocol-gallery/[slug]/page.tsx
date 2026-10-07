@@ -85,10 +85,10 @@ export default async function ProtocolDetailPage({
   const t = await getTranslations({ locale, namespace: 'ProtocolGallery' });
 
   return (
-    <main className="relative isolate">
+    <div className="relative isolate">
       <Header activeItemId="protocolGallery" host="protocolGallery" />
 
-      <div className="type-scale-product">
+      <main className="type-scale-product">
         <Container maxWidth="ultrawide" margin="none" className="mt-12">
           <div className="tablet-landscape:max-w-none mx-auto max-w-[44rem]">
             <div id={SITE_NAVIGATION_SKIP_TARGET_ID}>
@@ -178,9 +178,9 @@ export default async function ProtocolDetailPage({
             </div>
           </div>
         </Container>
-      </div>
+      </main>
 
-      <Footer />
-    </main>
+      <Footer host="protocolGallery" />
+    </div>
   );
 }

@@ -211,6 +211,78 @@ export function objectStoreContract(
         }),
       );
 
+      it.live(
+        'reads a byte range, clamped to the object and bounded below',
+        () =>
+          Effect.gen(function* () {
+            const bytes = freshBytes(1000);
+            const stored = yield* store.put(bytes, 'video/mp4');
+
+            const middle = yield* store.get(stored.hash, {
+              start: 10,
+              end: 19,
+            });
+            assertSome(middle);
+            expect(middle.value.part).toEqual({
+              kind: 'range',
+              start: 10,
+              end: 19,
+              total: 1000,
+            });
+            expect(middle.value.size).toBe(10);
+            expect(middle.value.mediaType).toBe('video/mp4');
+            expect((yield* drain(middle.value.body)).bytes).toEqual(
+              bytes.slice(10, 20),
+            );
+
+            const tail = yield* store.get(stored.hash, {
+              start: 990,
+              end: undefined,
+            });
+            assertSome(tail);
+            expect(tail.value.part).toEqual({
+              kind: 'range',
+              start: 990,
+              end: 999,
+              total: 1000,
+            });
+            expect((yield* drain(tail.value.body)).bytes).toEqual(
+              bytes.slice(990),
+            );
+
+            const past = yield* store.get(stored.hash, {
+              start: 995,
+              end: 5000,
+            });
+            assertSome(past);
+            expect((yield* drain(past.value.body)).bytes).toEqual(
+              bytes.slice(995),
+            );
+
+            const beyond = yield* store.get(stored.hash, {
+              start: 1000,
+              end: undefined,
+            });
+            assertSome(beyond);
+            expect(beyond.value.part).toEqual({
+              kind: 'unsatisfiable',
+              total: 1000,
+            });
+          }),
+      );
+
+      it.live(
+        'reads a range of an object that was never stored as absent',
+        () =>
+          Effect.gen(function* () {
+            const found = yield* store.get(sha256(freshBytes(32)), {
+              start: 0,
+              end: 1,
+            });
+            expect(Option.isNone(found)).toBe(true);
+          }),
+      );
+
       it.live('answers the readiness probe for a store that exists', () =>
         Effect.gen(function* () {
           const result = yield* readiness({

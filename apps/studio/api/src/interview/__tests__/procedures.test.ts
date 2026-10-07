@@ -282,6 +282,7 @@ describe.skipIf(!testDb)('the participant procedures', () => {
 
       expect(second.sessionId).toBe(first.sessionId);
       expect(second.sessionToken).not.toBe(first.sessionToken);
+      expect(first.anonymous).toBe(false);
       await expectRpcFailure(readSession(first.sessionToken), 'Unauthorized');
       expect((await opened(second.sessionToken)).session.id).toBe(
         first.sessionId,
@@ -312,6 +313,7 @@ describe.skipIf(!testDb)('the participant procedures', () => {
       const first = await redeemed(f.linkToken);
       const second = await redeemed(f.linkToken);
       expect(second.sessionId).not.toBe(first.sessionId);
+      expect(first.anonymous).toBe(true);
       const events = await auditEvents(f.teamId);
       expect(events[0]?.actor_label).toBe(first.sessionId.slice(0, 8));
     });
@@ -518,7 +520,7 @@ describe.skipIf(!testDb)('the participant procedures', () => {
         sessionToken,
         syncInput(session.holderEpoch, '1', ['n1', 'n2', 'n3'], [['n1', 'n2']]),
       );
-      expect(exit).toEqual(Exit.succeed({ revision: '1' }));
+      expect(exit).toEqual(Exit.succeed({ revision: '1', applied: true }));
 
       expect(
         await query(
@@ -559,7 +561,7 @@ describe.skipIf(!testDb)('the participant procedures', () => {
       );
       expect(
         await sync(sessionToken, syncInput(holderEpoch, '2', ['n1'])),
-      ).toEqual(Exit.succeed({ revision: '2' }));
+      ).toEqual(Exit.succeed({ revision: '2', applied: true }));
       expect(
         await query('SELECT node_id FROM nodes WHERE session_id = $1', [
           sessionId,
@@ -587,7 +589,7 @@ describe.skipIf(!testDb)('the participant procedures', () => {
       );
       expect(
         await sync(sessionToken, syncInput(holderEpoch, '3', ['n1', 'n2'])),
-      ).toEqual(Exit.succeed({ revision: '3' }));
+      ).toEqual(Exit.succeed({ revision: '3', applied: false }));
       expect(
         await query(
           'SELECT node_id, attributes FROM nodes WHERE session_id = $1',

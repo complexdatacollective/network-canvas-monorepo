@@ -92,10 +92,14 @@ function make(
         blobHTTPHeaders: { blobContentType: mediaType },
         abortSignal,
       }),
-    read: (key, abortSignal) =>
+    read: (key, abortSignal, range) =>
       container
         .getBlockBlobClient(key)
-        .download(0, undefined, { abortSignal })
+        .download(
+          range?.start ?? 0,
+          range === undefined ? undefined : range.end - range.start + 1,
+          { abortSignal },
+        )
         .then((found) => {
           const body = found.readableStreamBody;
           return {

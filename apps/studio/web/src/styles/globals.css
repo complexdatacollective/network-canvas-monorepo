@@ -8,6 +8,7 @@
 
 @import '@codaco/fresco-ui/styles.css';
 @import '@codaco/protocol-builder/styles.css';
+@import '@codaco/interview/styles.css';
 
 /*
  * The page's own ground. Not the theme's job — the theme defines what

@@ -4,6 +4,8 @@ import { join } from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
+import { Effect } from 'effect';
+
 import { SCHEMA_FINGERPRINT } from '../src/db/fingerprint.generated.ts';
 import {
   decodeManifest,
@@ -115,7 +117,7 @@ export function readMigrationsDocument(
     fingerprint,
     migrations: versions.map((version) => readMigration(dir, version)),
   };
-  verifyMigrations(document, fingerprint);
+  Effect.runSync(verifyMigrations(document, fingerprint));
   return document;
 }
 

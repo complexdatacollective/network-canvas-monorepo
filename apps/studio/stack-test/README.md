@@ -12,11 +12,14 @@ daemon's cache.
 apps/studio/stack-test/build.sh                          # both images, once
 apps/studio/stack-test/up.sh     --variant reference
 apps/studio/stack-test/assert.sh --variant reference
+apps/studio/stack-test/participants.sh --variant reference  # optional, see below
 apps/studio/stack-test/down.sh   --variant reference
 ```
 
 Requires Docker and `openssl`, and nothing else — no pnpm, no Node, no
-checkout state beyond this directory and the compose files beside it. Ports
+checkout state beyond this directory and the compose files beside it — except
+for `participants.sh`, which needs the workspace installed and Playwright's
+Chromium (`pnpm --filter @codaco/studio-web exec playwright install chromium`). Ports
 **80**, **443** and **127.0.0.1:8443** must be free.
 
 Compose **v2.24.4** or newer, which is above the v2.23.1 the stack itself
@@ -62,6 +65,17 @@ last 200 lines of the logs.
 of the volumes. `--profile migrate` is why it works: `migrate` depends on
 `garage-init`, so Compose creates that as an ordinary container and a plain
 `down` leaves it holding the network — the same trap `dev:stack:down` documents.
+
+**`participants.sh --variant <name>`** walks a participant through an
+interview on the built images (#1899). `api/scripts/e2e-participant-links.ts`
+publishes the lean e2e protocol (`packages/protocols/e2e/interviewer-e2e`)
+through the server's own protocol store and creates a live managed study with a
+participant link and a live anonymous study with its link, printing both
+tokens. It runs in a Node container on the stack's network, because Postgres
+publishes no port, and reads the stack's own secrets. The Playwright spec in
+`web/e2e` then opens each link, answers every stage, reloads mid-interview to
+check the answers were saved, finishes, and reopens the link to find the
+already-finished notice. CI runs it for the reference variant.
 
 Everything generated lands in `.work/`, which is gitignored: the environment
 file, the captured token, `migrate`'s output, and own-proxy's nginx

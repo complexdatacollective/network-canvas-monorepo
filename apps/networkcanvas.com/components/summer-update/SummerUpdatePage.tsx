@@ -213,10 +213,8 @@ export function SummerUpdatePage() {
 
   return (
     <>
-      <main className="selection:bg-mustard selection:text-rich-black [counter-reset:section_subsection]">
-        <ScrollSignalProgress />
-        <LaunchHero />
-
+      <ScrollSignalProgress />
+      <LaunchHero>
         <Section aria-labelledby="whats-new-title">
           <div className="mx-auto max-w-6xl">
             <Reveal {...summerUpdateRevealMotion}>
@@ -1109,7 +1107,7 @@ export function SummerUpdatePage() {
             </Reveal>
           </div>
         </Section>
-      </main>
+      </LaunchHero>
       <Footer />
     </>
   );

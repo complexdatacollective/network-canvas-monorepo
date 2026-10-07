@@ -1,16 +1,17 @@
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { loadSiteContent } from '~/lib/siteContent';
+import {
+  latestNewsItems,
+  loadSiteContent,
+  loadUpdates,
+  type Update,
+} from '~/lib/siteContent';
 
 const validFiles = {
-  'latest-news.csv': `id,title_en,title_es,title_zh-Hans,title_zh-Hant,title_de,title_nl,title_pt-BR,title_it,title_fr,href
-second,Second news,Segunda noticia,第二条新闻,第二則新聞,Zweite Meldung,Tweede nieuwsbericht,Segunda notícia,Seconda notizia,Deuxième actualité,https://example.com/second
-first,First news,Primera noticia,第一条新闻,第一則新聞,Erste Meldung,Eerste nieuwsbericht,Primeira notícia,Prima notizia,Première actualité,https://example.com/first
-`,
   'publications.csv': `id,title_en,title_es,title_zh-Hans,title_zh-Hant,title_de,title_nl,title_pt-BR,title_it,title_fr,source_en,source_es,source_zh-Hans,source_zh-Hant,source_de,source_nl,source_pt-BR,source_it,source_fr,authors,href,year
 p1,Publication 1,Publicación 1,出版物 1,出版品 1,Publikation 1,Publicatie 1,Publicação 1,Pubblicazione 1,Publication 1,Journal 1,Revista 1,期刊 1,刊物 1,Zeitschrift 1,Tijdschrift 1,Periódico 1,Rivista 1,Revue 1,Author 1,https://example.com/p1,2021
 p2,Publication 2,Publicación 2,出版物 2,出版品 2,Publikation 2,Publicatie 2,Publicação 2,Pubblicazione 2,Publication 2,Journal 2,Revista 2,期刊 2,刊物 2,Zeitschrift 2,Tijdschrift 2,Periódico 2,Rivista 2,Revue 2,Author 2,https://example.com/p2,2022
@@ -51,31 +52,27 @@ describe('loadSiteContent', () => {
     await rm(directory, { recursive: true, force: true });
   });
 
-  it('selects Spanish fields and preserves CSV row order', async () => {
+  it('selects Spanish fields', async () => {
     const content = await loadSiteContent('es', directory);
 
-    expect(content.newsItems.map(({ id, title }) => ({ id, title }))).toEqual([
-      { id: 'second', title: 'Segunda noticia' },
-      { id: 'first', title: 'Primera noticia' },
-    ]);
+    expect(content.publications[0]).toMatchObject({
+      title: 'Publicación 1',
+      source: 'Revista 1',
+    });
   });
 
-  it('selects Simplified Chinese fields and preserves CSV row order', async () => {
+  it('selects Simplified Chinese fields', async () => {
     const content = await loadSiteContent('zh-Hans', directory);
 
-    expect(content.newsItems.map(({ id, title }) => ({ id, title }))).toEqual([
-      { id: 'second', title: '第二条新闻' },
-      { id: 'first', title: '第一条新闻' },
-    ]);
+    expect(content.publications[0]).toMatchObject({
+      title: '出版物 1',
+      source: '期刊 1',
+    });
   });
 
-  it('selects Traditional Chinese fields and preserves CSV row order', async () => {
+  it('selects Traditional Chinese fields', async () => {
     const content = await loadSiteContent('zh-Hant', directory);
 
-    expect(content.newsItems.map(({ id, title }) => ({ id, title }))).toEqual([
-      { id: 'second', title: '第二則新聞' },
-      { id: 'first', title: '第一則新聞' },
-    ]);
     expect(content.publications[0]).toMatchObject({
       title: '出版品 1',
       source: '刊物 1',
@@ -89,50 +86,50 @@ describe('loadSiteContent', () => {
     expect(content.coreTeam[0]?.institution).toBe('機構');
   });
 
-  it('selects German fields and preserves CSV row order', async () => {
+  it('selects German fields', async () => {
     const content = await loadSiteContent('de', directory);
 
-    expect(content.newsItems.map(({ id, title }) => ({ id, title }))).toEqual([
-      { id: 'second', title: 'Zweite Meldung' },
-      { id: 'first', title: 'Erste Meldung' },
-    ]);
+    expect(content.publications[0]).toMatchObject({
+      title: 'Publikation 1',
+      source: 'Zeitschrift 1',
+    });
   });
 
-  it('selects Dutch fields and preserves CSV row order', async () => {
+  it('selects Dutch fields', async () => {
     const content = await loadSiteContent('nl', directory);
 
-    expect(content.newsItems.map(({ id, title }) => ({ id, title }))).toEqual([
-      { id: 'second', title: 'Tweede nieuwsbericht' },
-      { id: 'first', title: 'Eerste nieuwsbericht' },
-    ]);
+    expect(content.publications[0]).toMatchObject({
+      title: 'Publicatie 1',
+      source: 'Tijdschrift 1',
+    });
   });
 
-  it('selects Brazilian Portuguese fields and preserves CSV row order', async () => {
+  it('selects Brazilian Portuguese fields', async () => {
     const content = await loadSiteContent('pt-BR', directory);
 
-    expect(content.newsItems.map(({ id, title }) => ({ id, title }))).toEqual([
-      { id: 'second', title: 'Segunda notícia' },
-      { id: 'first', title: 'Primeira notícia' },
-    ]);
+    expect(content.publications[0]).toMatchObject({
+      title: 'Publicação 1',
+      source: 'Periódico 1',
+    });
   });
 
-  it('selects Italian fields and preserves CSV row order', async () => {
+  it('selects Italian fields', async () => {
     const content = await loadSiteContent('it', directory);
 
-    expect(content.newsItems.map(({ id, title }) => ({ id, title }))).toEqual([
-      { id: 'second', title: 'Seconda notizia' },
-      { id: 'first', title: 'Prima notizia' },
-    ]);
+    expect(content.publications[0]).toMatchObject({
+      title: 'Pubblicazione 1',
+      source: 'Rivista 1',
+    });
     expect(content.grants[0]?.pis).toBe('Responsabile scientifico: Persona');
   });
 
-  it('selects French fields and preserves CSV row order', async () => {
+  it('selects French fields', async () => {
     const content = await loadSiteContent('fr', directory);
 
-    expect(content.newsItems.map(({ id, title }) => ({ id, title }))).toEqual([
-      { id: 'second', title: 'Deuxième actualité' },
-      { id: 'first', title: 'Première actualité' },
-    ]);
+    expect(content.publications[0]).toMatchObject({
+      title: 'Publication 1',
+      source: 'Revue 1',
+    });
   });
 
   it('returns every publication row in file order', async () => {
@@ -163,30 +160,21 @@ describe('loadSiteContent', () => {
     const content = await loadSiteContent('en-US');
 
     expect(
-      [
-        content.newsItems,
-        content.publications,
-        content.grants,
-        content.coreTeam,
-      ].every((records) => records.length > 0),
+      [content.publications, content.grants, content.coreTeam].every(
+        (records) => records.length > 0,
+      ),
     ).toBe(true);
-    expect(content.newsItems).toContainEqual(
-      expect.objectContaining({
-        id: 'summer-2026-app-release',
-        href: '/summer-2026-update',
-      }),
-    );
   });
 
   it.each([
     {
       name: 'duplicate id',
-      filename: 'latest-news.csv',
+      filename: 'core-team.csv',
       row: 'row 3',
       field: 'id',
-      source: `id,title_en,title_es,title_zh-Hans,title_zh-Hant,title_de,title_nl,title_pt-BR,title_it,title_fr,href
-duplicate,First,Primera,第一,第一,Erste,Eerste,Primeira,Prima,Premier,https://example.com/first
-duplicate,Second,Segunda,第二,第二,Zweite,Tweede,Segunda,Seconda,Deuxième,https://example.com/second
+      source: `id,name,institution_en,institution_es,institution_zh-Hans,institution_zh-Hant,institution_de,institution_nl,institution_pt-BR,institution_it,institution_fr,photo
+duplicate,First Person,Institution,Institución,机构,機構,Institution,Instelling,Instituição,Istituzione,Établissement,/images/first.jpg
+duplicate,Second Person,Institution,Institución,机构,機構,Institution,Instelling,Instituição,Istituzione,Établissement,/images/second.jpg
 `,
     },
     {
@@ -217,15 +205,6 @@ p1,Publication,Publicación,出版物,出版品,Publikation,Publicatie,Publicaç
 `,
     },
     {
-      name: 'unsafe internal URL',
-      filename: 'latest-news.csv',
-      row: 'row 2',
-      field: 'href',
-      source: `id,title_en,title_es,title_zh-Hans,title_zh-Hant,title_de,title_nl,title_pt-BR,title_it,title_fr,href
-unsafe,Unsafe news,Noticia insegura,不安全的新闻,不安全的新聞,Unsichere Meldung,Onveilig nieuws,Notícia insegura,Notizia non sicura,Actualité non sûre,/\\evil.com
-`,
-    },
-    {
       name: 'invalid image',
       filename: 'core-team.csv',
       row: 'row 2',
@@ -246,21 +225,280 @@ person,Person Name,Institution,Institución,机构,機構,Institution,Instelling
   );
 
   it('reports a missing file as an empty dataset', async () => {
-    await rm(join(directory, 'latest-news.csv'));
+    await rm(join(directory, 'core-team.csv'));
 
     await expect(loadSiteContent('en-US', directory)).rejects.toThrow(
-      'latest-news.csv: dataset must contain at least one row',
+      'core-team.csv: dataset must contain at least one row',
     );
   });
 
   it('rejects a header-only dataset', async () => {
     await writeFile(
-      join(directory, 'latest-news.csv'),
-      'id,title_en,title_es,title_zh-Hans,title_zh-Hant,title_de,title_nl,title_pt-BR,title_it,title_fr,href\n',
+      join(directory, 'core-team.csv'),
+      'id,name,institution_en,institution_es,institution_zh-Hans,institution_zh-Hant,institution_de,institution_nl,institution_pt-BR,institution_it,institution_fr,photo\n',
     );
 
     await expect(loadSiteContent('en-US', directory)).rejects.toThrow(
-      'latest-news.csv: dataset must contain at least one row',
+      'core-team.csv: dataset must contain at least one row',
+    );
+  });
+});
+
+describe('loadUpdates', () => {
+  let directory: string;
+
+  async function writeUpdates(rows: string) {
+    await writeFile(
+      join(directory, 'updates.csv'),
+      `id,date,prominence,link\n${rows}`,
+    );
+  }
+
+  async function writeText(name: string, text: string) {
+    await writeFile(join(directory, 'updates', name), text);
+  }
+
+  beforeEach(async () => {
+    directory = await mkdtemp(join(tmpdir(), 'networkcanvas-updates-'));
+    await mkdir(join(directory, 'updates'));
+    await writeUpdates(`older,2026-01-05,launch,/older-announcement
+newer,2026-03-10,featured,
+`);
+    await writeText('older.en-US.md', '# Older update\n\nOlder summary\n');
+    await writeText(
+      'newer.en-US.md',
+      '# Newer update\n\nNewer summary\n\n- A list item\n\n<!-- more -->\n\n### Heading\n\nNewer details\n',
+    );
+    await writeText('older.es.md', '# Novedad anterior\n\nResumen anterior\n');
+    await writeText('newer.es.md', '# Novedad reciente\n\nResumen reciente\n');
+  });
+
+  afterEach(async () => {
+    await rm(directory, { recursive: true, force: true });
+  });
+
+  it('orders updates newest first with their markdown intact', async () => {
+    await expect(loadUpdates('en-US', directory)).resolves.toEqual([
+      {
+        id: 'newer',
+        date: '2026-03-10',
+        prominence: 'featured',
+        title: 'Newer update',
+        summary: 'Newer summary\n\n- A list item',
+        details: '### Heading\n\nNewer details',
+      },
+      {
+        id: 'older',
+        date: '2026-01-05',
+        prominence: 'launch',
+        title: 'Older update',
+        summary: 'Older summary',
+        link: '/older-announcement',
+      },
+    ]);
+  });
+
+  it('reads each update in the requested language', async () => {
+    const updates = await loadUpdates('es', directory);
+
+    expect(updates.map(({ title, summary }) => ({ title, summary }))).toEqual([
+      { title: 'Novedad reciente', summary: 'Resumen reciente' },
+      { title: 'Novedad anterior', summary: 'Resumen anterior' },
+    ]);
+  });
+
+  it('rejects a language with a missing translation', async () => {
+    await writeText('older.de.md', '# Ältere Neuigkeit\n\nZusammenfassung\n');
+    await expect(loadUpdates('de', directory)).rejects.toThrow(
+      'updates/newer.de.md: missing translation',
+    );
+  });
+
+  it('falls back to American English for British English', async () => {
+    await writeText('older.en-GB.md', '# Older update, localised\n\nSummary\n');
+    const updates = await loadUpdates('en-GB', directory);
+
+    expect(updates.map(({ title }) => title)).toEqual([
+      'Newer update',
+      'Older update, localised',
+    ]);
+  });
+
+  it('accepts a mini update with only a title', async () => {
+    await writeUpdates('tiny,2026-01-05,mini,\n');
+    await writeText('tiny.en-US.md', '# Tiny update\n');
+
+    await expect(loadUpdates('en-US', directory)).resolves.toEqual([
+      {
+        id: 'tiny',
+        date: '2026-01-05',
+        prominence: 'mini',
+        title: 'Tiny update',
+      },
+    ]);
+  });
+
+  it('accepts project news that covers no app', async () => {
+    await writeUpdates('award,2026-01-05,normal,\n');
+    await writeText('award.en-US.md', '# An award\n\nSummary\n');
+
+    await expect(loadUpdates('en-US', directory)).resolves.toEqual([
+      {
+        id: 'award',
+        date: '2026-01-05',
+        prominence: 'normal',
+        title: 'An award',
+        summary: 'Summary',
+      },
+    ]);
+  });
+
+  it('accepts dates as coarse as a month or a year, ordered by their text', async () => {
+    await writeUpdates(
+      'year,2016,mini,\nday,2016-07-01,mini,\nmonth,2016-07,mini,\n',
+    );
+    for (const id of ['year', 'month', 'day']) {
+      await writeText(`${id}.en-US.md`, `# ${id}\n`);
+    }
+
+    const updates = await loadUpdates('en-US', directory);
+
+    expect(updates.map(({ id, date }) => [id, date])).toEqual([
+      ['day', '2016-07-01'],
+      ['month', '2016-07'],
+      ['year', '2016'],
+    ]);
+  });
+
+  it.each(['2016-13', '2016-02-30', '2016-7', 'Jul 2016', '16'])(
+    'rejects the date %s',
+    async (date) => {
+      await writeUpdates(`row,${date},mini,\n`);
+      await writeText('row.en-US.md', '# Title\n');
+
+      await expect(loadUpdates('en-US', directory)).rejects.toThrow(
+        'updates.csv: row 2: date:',
+      );
+    },
+  );
+
+  it('rejects a column it does not know', async () => {
+    await writeFile(
+      join(directory, 'updates.csv'),
+      'id,date,prominence,apps,link\nrow,2026-01-05,normal,fresco,\n',
+    );
+    await writeText('row.en-US.md', '# Title\n\nSummary\n');
+
+    await expect(loadUpdates('en-US', directory)).rejects.toThrow(
+      'updates.csv: row 2: apps:',
+    );
+  });
+
+  it.each([
+    ['an unknown prominence', 'major,', 'updates.csv: row 2: prominence:'],
+    ['a launch without a link', 'launch,', 'updates.csv: row 2: link:'],
+    [
+      'a featured update with a link',
+      'featured,/a',
+      'updates.csv: row 2: link:',
+    ],
+    ['a normal update with a link', 'normal,/a', 'updates.csv: row 2: link:'],
+  ])('rejects a row with %s', async (_, fields, message) => {
+    await writeUpdates(`row,2026-01-05,${fields}\n`);
+    await writeText('row.en-US.md', '# Title\n\nSummary\n');
+
+    await expect(loadUpdates('en-US', directory)).rejects.toThrow(message);
+  });
+
+  it.each([
+    ['without a title', 'normal', 'Summary only\n', 'title:'],
+    ['without a summary', 'normal', '# Title\n', 'summary:'],
+    [
+      'a launch with details',
+      'launch',
+      '# Title\n\nSummary\n\n<!-- more -->\n\nDetails\n',
+      'details:',
+    ],
+    [
+      'a normal update with details',
+      'normal',
+      '# Title\n\nSummary\n\n<!-- more -->\n\nDetails\n',
+      'details:',
+    ],
+    [
+      'a mini update with a summary',
+      'mini',
+      '# Title\n\nSummary\n',
+      'summary:',
+    ],
+    [
+      'two details markers',
+      'featured',
+      '# Title\n\nA\n\n<!-- more -->\n\nB\n\n<!-- more -->\n\nC\n',
+      'details:',
+    ],
+  ])('rejects text %s', async (_, prominence, text, field) => {
+    const link = prominence === 'launch' ? '/a' : '';
+    await writeUpdates(`row,2026-01-05,${prominence},${link}\n`);
+    await writeText('row.en-US.md', text);
+
+    await expect(loadUpdates('en-US', directory)).rejects.toThrow(
+      `updates/row.en-US.md: ${field}`,
+    );
+  });
+
+  it('rejects a link that leaves the site', async () => {
+    for (const link of ['//attacker.example', '/\\attacker.example']) {
+      await writeUpdates(`row,2026-01-05,launch,${link}\n`);
+      await writeText('row.en-US.md', '# Title\n\nSummary\n');
+
+      await expect(loadUpdates('en-US', directory)).rejects.toThrow(
+        'updates.csv: row 2: link:',
+      );
+    }
+  });
+
+  it('rejects a date that is not an ISO calendar date', async () => {
+    await writeUpdates('row,05/01/2026,normal,\n');
+    await writeText('row.en-US.md', '# Title\n\nSummary\n');
+
+    await expect(loadUpdates('en-US', directory)).rejects.toThrow(
+      'updates.csv: row 2: date:',
+    );
+  });
+});
+
+describe('latestNewsItems', () => {
+  const update = (id: string): Update => ({
+    id,
+    date: '2026-01-05',
+    prominence: 'mini',
+    title: `Title ${id}`,
+  });
+
+  it('links the newest five update titles to their Updates entries', () => {
+    const updates = ['a', 'b', 'c', 'd', 'e', 'f'].map(update);
+
+    expect(latestNewsItems(updates)).toEqual(
+      ['a', 'b', 'c', 'd', 'e'].map((id) => ({
+        id,
+        title: `Title ${id}`,
+        href: `/updates#${id}`,
+      })),
+    );
+  });
+
+  it('carries the stories the ticker used to hold as shipped updates', async () => {
+    const ids = (await loadUpdates('en-US')).map((entry) => entry.id);
+
+    expect(ids).toEqual(
+      expect.arrayContaining([
+        'language-localization',
+        'summer-2026',
+        'network-canvas-maintenance-funding',
+        'social-network-influence-public-health',
+        'network-canvas-insna-award',
+      ]),
     );
   });
 });

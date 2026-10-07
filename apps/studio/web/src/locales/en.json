@@ -631,6 +631,98 @@
     "defaultMessage": "Page not available",
     "description": "Heading of the screen shown for an address this instance does not serve."
   },
+  "studio.participant.closedHeading": {
+    "defaultMessage": "This study has closed",
+    "description": "Heading a participant sees when the study is no longer taking responses."
+  },
+  "studio.participant.closedMessage": {
+    "defaultMessage": "It's no longer accepting responses. Thank you for your interest.",
+    "description": "Explanation under the heading for a closed study."
+  },
+  "studio.participant.continueHere": {
+    "defaultMessage": "Continue here",
+    "description": "Button that moves an interview opened elsewhere back to this window."
+  },
+  "studio.participant.endedHeading": {
+    "defaultMessage": "This interview has ended",
+    "description": "Heading a participant sees when their interview ended without being finished."
+  },
+  "studio.participant.endedMessage": {
+    "defaultMessage": "Open the link you were sent to continue, or contact the research team.",
+    "description": "Explanation under the heading for an interview that ended without being finished."
+  },
+  "studio.participant.expiredHeading": {
+    "defaultMessage": "This link has expired",
+    "description": "Heading a participant sees when their interview link has passed its expiry date."
+  },
+  "studio.participant.expiredMessage": {
+    "defaultMessage": "Contact the research team who sent it to you for a new one.",
+    "description": "Explanation under the heading for an expired interview link."
+  },
+  "studio.participant.finishedHeading": {
+    "defaultMessage": "You've finished this interview",
+    "description": "Heading a participant sees after finishing their interview, and whenever they reopen it afterwards."
+  },
+  "studio.participant.finishedMessage": {
+    "defaultMessage": "Thank you for taking part. Your answers have been saved, and you can close this page.",
+    "description": "Explanation under the heading for a finished interview."
+  },
+  "studio.participant.invalidHeading": {
+    "defaultMessage": "This link doesn't work",
+    "description": "Heading a participant sees when the interview link they opened is not recognised."
+  },
+  "studio.participant.invalidMessage": {
+    "defaultMessage": "Check that you opened the whole link, or contact the research team who sent it to you.",
+    "description": "Explanation under the heading for an interview link that is not recognised."
+  },
+  "studio.participant.notOpenHeading": {
+    "defaultMessage": "This study isn't open yet",
+    "description": "Heading a participant sees when the study their link belongs to has not started taking responses."
+  },
+  "studio.participant.notOpenMessage": {
+    "defaultMessage": "Please try again later.",
+    "description": "Explanation under the heading for a study that is not open yet."
+  },
+  "studio.participant.opening": {
+    "defaultMessage": "Opening your interview…",
+    "description": "Screen-reader text while a participant’s interview link is being opened."
+  },
+  "studio.participant.pausedHeading": {
+    "defaultMessage": "This study is paused",
+    "description": "Heading a participant sees when the research team has paused the study."
+  },
+  "studio.participant.pausedMessage": {
+    "defaultMessage": "Your answers up to a moment ago are saved. Please try again later.",
+    "description": "Explanation under the heading for a paused study, reassuring the participant their answers are kept."
+  },
+  "studio.participant.rateLimitedHeading": {
+    "defaultMessage": "Too many attempts",
+    "description": "Heading a participant sees when they have opened their link too many times in a short period."
+  },
+  "studio.participant.rateLimitedMessage": {
+    "defaultMessage": "Please wait a moment and try again.",
+    "description": "Explanation under the heading for too many attempts."
+  },
+  "studio.participant.revokedHeading": {
+    "defaultMessage": "This link is no longer active",
+    "description": "Heading a participant sees when the research team has withdrawn their interview link."
+  },
+  "studio.participant.revokedMessage": {
+    "defaultMessage": "Contact the research team who sent it to you.",
+    "description": "Explanation under the heading for an interview link that has been withdrawn."
+  },
+  "studio.participant.takenOverHeading": {
+    "defaultMessage": "This interview is open somewhere else",
+    "description": "Heading a participant sees when their interview has been opened in another window or on another device."
+  },
+  "studio.participant.takenOverMessage": {
+    "defaultMessage": "It was opened in another window or on another device. Continue there, or reload to continue here.",
+    "description": "Explanation under the heading for an interview opened somewhere else."
+  },
+  "studio.participant.tryAgain": {
+    "defaultMessage": "Try again",
+    "description": "Button on a participant notice that reloads the page to try again."
+  },
   "studio.placeholder.unbuilt": {
     "defaultMessage": "This screen has not been built yet. It is specified in {issue}.",
     "description": "Shown on every not-yet-built screen; {issue} is a GitHub issue reference like #1253."
@@ -699,38 +791,6 @@
     "defaultMessage": "Translations",
     "description": "Name of the Translations screen at /translations, used as its heading."
   },
-  "studio.screens.enterCompleteDescription": {
-    "defaultMessage": "Confirms the interview is finished and sends the participant wherever the study asked to return them.",
-    "description": "What the Interview complete screen at /enter/$token/complete will do, shown on it while it is not yet built."
-  },
-  "studio.screens.enterCompleteTitle": {
-    "defaultMessage": "Interview complete",
-    "description": "Name of the Interview complete screen at /enter/$token/complete, used as its heading."
-  },
-  "studio.screens.enterConsentDescription": {
-    "defaultMessage": "The study's consent text, and the participant's recorded decision about taking part in it.",
-    "description": "What the Consent screen at /enter/$token/consent will do, shown on it while it is not yet built."
-  },
-  "studio.screens.enterConsentTitle": {
-    "defaultMessage": "Consent",
-    "description": "Name of the Consent screen at /enter/$token/consent, used as its heading."
-  },
-  "studio.screens.enterDescription": {
-    "defaultMessage": "Where a participant's invitation link lands: the study's welcome, the language they will answer in, and anything they should read first.",
-    "description": "What the Welcome screen at /enter/$token will do, shown on it while it is not yet built."
-  },
-  "studio.screens.enterInterviewDescription": {
-    "defaultMessage": "The interview itself, run by the Network Canvas interview runtime and owning the whole viewport.",
-    "description": "What the Interview screen at /enter/$token/interview will do, shown on it while it is not yet built."
-  },
-  "studio.screens.enterInterviewTitle": {
-    "defaultMessage": "Interview",
-    "description": "Name of the Interview screen at /enter/$token/interview, used as its heading."
-  },
-  "studio.screens.enterTitle": {
-    "defaultMessage": "Welcome",
-    "description": "Name of the Welcome screen at /enter/$token, used as its heading."
-  },
   "studio.screens.galleryDescription": {
     "defaultMessage": "Protocols other researchers have published, to read, cite and copy into a team as the starting point for a study.",
     "description": "What the Gallery screen at /gallery will do, shown on it while it is not yet built."
@@ -770,6 +830,22 @@
   "studio.screens.pricingTitle": {
     "defaultMessage": "Pricing",
     "description": "Name of the Pricing screen at /pricing, used as its heading."
+  },
+  "studio.screens.sessionCompleteDescription": {
+    "defaultMessage": "Confirms the interview is finished and sends the participant wherever the study asked to return them.",
+    "description": "What the Interview complete screen at /session/$sessionToken/complete will do, shown on it while it is not yet built."
+  },
+  "studio.screens.sessionCompleteTitle": {
+    "defaultMessage": "Interview complete",
+    "description": "Name of the Interview complete screen at /session/$sessionToken/complete, used as its heading."
+  },
+  "studio.screens.sessionConsentDescription": {
+    "defaultMessage": "The study's consent text, and the participant's recorded decision about taking part in it.",
+    "description": "What the Consent screen at /session/$sessionToken/consent will do, shown on it while it is not yet built."
+  },
+  "studio.screens.sessionConsentTitle": {
+    "defaultMessage": "Consent",
+    "description": "Name of the Consent screen at /session/$sessionToken/consent, used as its heading."
   },
   "studio.screens.signUpCheckoutDescription": {
     "defaultMessage": "Hands off to the payment provider's own checkout, so card details never reach Studio.",

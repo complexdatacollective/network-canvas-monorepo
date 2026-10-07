@@ -14,9 +14,10 @@
  * starts rather than from a split on spaces.
  */
 
+import { foldText } from '../utils/foldText';
+
 export type EverythingBarMatchRange = { start: number; end: number };
 
-const DIACRITIC = /\p{Diacritic}/gu;
 /** Whitespace, punctuation and symbols all end a token. */
 const SEPARATOR = /[\p{White_Space}\p{P}\p{S}]/u;
 const UPPERCASE = /\p{Lu}/u;
@@ -31,10 +32,7 @@ type FoldedText = {
 };
 
 function foldCharacter(character: string, locale?: string): string {
-  return character
-    .normalize('NFD')
-    .replace(DIACRITIC, '')
-    .toLocaleLowerCase(locale);
+  return foldText(character, locale);
 }
 
 /**

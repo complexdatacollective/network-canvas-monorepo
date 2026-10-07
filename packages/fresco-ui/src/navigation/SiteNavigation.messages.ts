@@ -13,6 +13,7 @@ export type SiteNavigationMessages = {
   community: string;
   documentation: string;
   protocolGallery: string;
+  updates: string;
   resources: string;
   software: string;
   getStarted: string;
@@ -35,6 +36,7 @@ const englishMessages = {
   community: 'Community',
   documentation: 'Documentation',
   protocolGallery: 'Protocol Gallery',
+  updates: 'Updates',
   resources: 'Resources',
   software: 'Software',
   getStarted: 'Get Started',
@@ -84,6 +86,7 @@ export const siteNavigationMessages = {
     community: 'Comunidad',
     documentation: 'Documentación',
     protocolGallery: 'Galería de protocolos',
+    updates: 'Novedades',
     resources: 'Recursos',
     software: 'Software',
     getStarted: 'Comenzar',
@@ -129,6 +132,7 @@ export const siteNavigationMessages = {
     community: '社区',
     documentation: '文档',
     protocolGallery: '协议示例库',
+    updates: '更新',
     resources: '资源',
     software: '软件',
     getStarted: '快速入门',
@@ -174,6 +178,7 @@ export const siteNavigationMessages = {
     community: '社群',
     documentation: '說明文件',
     protocolGallery: '協定範例庫',
+    updates: '更新',
     resources: '資源',
     software: '軟體',
     getStarted: '開始使用',
@@ -219,6 +224,7 @@ export const siteNavigationMessages = {
     community: 'Community',
     documentation: 'Dokumentation',
     protocolGallery: 'Protokollgalerie',
+    updates: 'Updates',
     resources: 'Ressourcen',
     software: 'Software',
     getStarted: 'Erste Schritte',
@@ -264,6 +270,7 @@ export const siteNavigationMessages = {
     community: 'Community',
     documentation: 'Documentatie',
     protocolGallery: 'Protocolgalerij',
+    updates: 'Updates',
     resources: 'Hulpmiddelen',
     software: 'Software',
     getStarted: 'Aan de slag',
@@ -309,6 +316,7 @@ export const siteNavigationMessages = {
     community: 'Comunidade',
     documentation: 'Documentação',
     protocolGallery: 'Galeria de Protocolos',
+    updates: 'Novidades',
     resources: 'Materiais',
     software: 'Software',
     getStarted: 'Começar',
@@ -354,6 +362,7 @@ export const siteNavigationMessages = {
     community: 'Comunità',
     documentation: 'Documentazione',
     protocolGallery: 'Galleria dei protocolli',
+    updates: 'Novità',
     resources: 'Risorse',
     software: 'Software',
     getStarted: 'Inizia',
@@ -399,6 +408,7 @@ export const siteNavigationMessages = {
     community: 'Communauté',
     documentation: 'Documentation',
     protocolGallery: 'Galerie de protocoles',
+    updates: 'Nouveautés',
     resources: 'Ressources',
     software: 'Logiciels',
     getStarted: 'Commencer',

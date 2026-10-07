@@ -401,6 +401,10 @@ const ALLOWLIST: Record<string, { count: number; why: string }> = {
     count: 18,
     why: 'the node-postgres schema apply and local reset: the advisory lock and its release, the migration-history probe and count that refuse a migrated database, the stamp probe and clear, the sidecars, the transaction around the job schema and stamp, the schema drops, and the scratch sweep over `pg_namespace` and `pg_database`',
   },
+  [`${SCRIPTS}/e2e-participant-links.ts`]: {
+    count: 1,
+    why: 'the stack e2e fixture’s team GUC via `set_config`, as the seed stamps it',
+  },
   [`${SCRIPTS}/protocol-demo.ts`]: {
     count: 1,
     why: 'the demo’s team upsert, before the protocol store takes over',

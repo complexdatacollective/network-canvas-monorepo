@@ -54,12 +54,16 @@ export function memoryObjectStore(): MemoryObjectStore {
           lastModified: new Date(),
         }),
       ),
-    read: (key) =>
+    read: (key, _signal, range) =>
       reach(() => {
         const object = found(key);
+        const bytes =
+          range === undefined
+            ? object.bytes
+            : object.bytes.slice(range.start, range.end + 1);
         return {
-          body: new Blob([object.bytes]).stream(),
-          size: object.bytes.byteLength,
+          body: new Blob([bytes]).stream(),
+          size: bytes.byteLength,
           mediaType: object.mediaType,
         };
       }),

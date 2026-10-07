@@ -51,7 +51,7 @@ export const syncParticipantSession = Effect.fn(
       });
       switch (outcome._tag) {
         case 'Replayed':
-          return { revision: String(outcome.revision) };
+          return { revision: String(outcome.revision), applied: false };
         case 'TakenOver':
           return yield* new SessionTakenOver({
             holderEpoch: outcome.holderEpoch,
@@ -76,7 +76,7 @@ export const syncParticipantSession = Effect.fn(
         stageMetadata: input.stageMetadata,
         ego: egoColumns(input.network.ego),
       });
-      return { revision: String(outcome.revision) };
+      return { revision: String(outcome.revision), applied: true };
     }),
   );
 });

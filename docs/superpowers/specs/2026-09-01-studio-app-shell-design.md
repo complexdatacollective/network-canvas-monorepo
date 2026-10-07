@@ -163,7 +163,8 @@ The first path segment is drawn from a closed set, known at build time:
 /invitations/$invitationId  focused
 /setup                focused
 /no-team              focused
-/enter/$token/*       participant
+/enter/$token         participant
+/session/$sessionToken/*  participant
 /account/*            app · platform level
 /gallery/*            app · platform level
 /templates/*          app · platform level
@@ -224,12 +225,12 @@ matching what `router.tsx:50-56` already parses.
 
 **Participant** (no chrome)
 
-| Route                     | Purpose                     | Issue |
-| ------------------------- | --------------------------- | ----- |
-| `/enter/$token`           | Entry, language, info pages | #1265 |
-| `/enter/$token/consent`   | Consent capture             | #1266 |
-| `/enter/$token/interview` | The interview runtime       | #1293 |
-| `/enter/$token/complete`  | Completion, return callback | #1292 |
+| Route                             | Purpose                                | Issue |
+| --------------------------------- | -------------------------------------- | ----- |
+| `/enter/$token`                   | Redeems the link and opens its session | #1899 |
+| `/session/$sessionToken`          | The interview runtime                  | #1899 |
+| `/session/$sessionToken/consent`  | Consent capture                        | #1266 |
+| `/session/$sessionToken/complete` | Completion, return callback            | #1292 |
 
 **App — platform level**
 
@@ -289,7 +290,7 @@ rootRoute                       createRootRouteWithContext<ShellContext>()
 ├── focusedLayoutRoute          id: 'focused'      centred panel
 │   └── '/sign-in'  '/sign-up/*'  '/invitations/$invitationId'  '/setup'  '/no-team'
 ├── participantLayoutRoute      id: 'participant'  no chrome
-│   └── '/enter/$token/*'
+│   └── '/enter/$token'  '/session/$sessionToken/*'
 └── appLayoutRoute              id: 'app'          header + AppFrame; session guard
     ├── accountLayoutRoute      '/account'         sidebar: account settings
     ├── '/gallery'  '/gallery/$templateId'  '/templates'      no sidebar

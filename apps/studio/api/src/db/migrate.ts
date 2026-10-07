@@ -798,12 +798,6 @@ export const readVerifiedMigrations = Effect.fn('db.readVerifiedMigrations')(
           }),
       ),
     );
-    return yield* Effect.try({
-      try: () => verifyMigrations(document, expectedFingerprint),
-      catch: (error) =>
-        error instanceof MigrationsDocumentRefused
-          ? error
-          : new MigrationsDocumentRefused({ message: String(error) }),
-    });
+    return yield* verifyMigrations(document, expectedFingerprint);
   },
 );

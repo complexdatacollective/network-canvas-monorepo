@@ -72,6 +72,32 @@ describe('AnimationProvider', () => {
     expect(screen.getByText('true')).toBeTruthy();
   });
 
+  // Layout and `layoutId` animations ignore `MotionConfig`'s `skipAnimations`
+  // and read only the global flag, so a disabled provider has to set it.
+  it('skips Motion layout animations before rendering descendants', () => {
+    MotionGlobalConfig.skipAnimations = false;
+
+    function GlobalSkipState() {
+      return <span>{String(MotionGlobalConfig.skipAnimations)}</span>;
+    }
+
+    render(
+      <AnimationProvider disableAnimations>
+        <GlobalSkipState />
+      </AnimationProvider>,
+    );
+
+    expect(screen.getByText('true')).toBeTruthy();
+  });
+
+  it('leaves Motion layout animations running by default', () => {
+    MotionGlobalConfig.skipAnimations = false;
+
+    render(<AnimationProvider>content</AnimationProvider>);
+
+    expect(MotionGlobalConfig.skipAnimations).toBe(false);
+  });
+
   it('does not disable Base UI by default', () => {
     globalThis.BASE_UI_ANIMATIONS_DISABLED = false;
 

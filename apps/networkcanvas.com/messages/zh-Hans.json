@@ -20,7 +20,7 @@
   },
   "News": {
     "label": "最新消息：",
-    "fullStory": "[阅读全文]"
+    "readMore": "[阅读更多]"
   },
   "Tools": {
     "heading": "一系列助力研究的工具",
@@ -101,6 +101,27 @@
     "citing": "关于如何引用 Network Canvas，请参阅我们的<article>文档文章</article>。",
     "submission": "如果您希望在此展示您的出版物，请在我们社区网站的<thread>讨论帖</thread>中留言告知我们。"
   },
+  "UpdatesPage": {
+    "metadata": {
+      "title": "更新",
+      "description": "来自 Network Canvas 项目各个方面的动态：软件发布、资助、研究论文、工作坊及其他里程碑。"
+    },
+    "heading": "更新",
+    "introduction": "自 2013 年启动以来，Network Canvas 项目各个方面的动态：软件发布、资助、研究论文、工作坊及其他里程碑。",
+    "search": {
+      "label": "搜索更新",
+      "placeholder": "搜索更新",
+      "clear": "清除搜索",
+      "results": "{count} / {total, plural, =1 {# 条更新} other {# 条更新}}",
+      "emptyHeading": "未找到更新",
+      "emptyDescription": "请尝试其他搜索词。"
+    },
+    "details": {
+      "show": "显示完整详情",
+      "hide": "隐藏详情"
+    },
+    "readMore": "阅读完整公告"
+  },
   "Team": {
     "heading": "核心团队",
     "introduction": "我们的项目团队由来自多个学科和专业领域的成员组成。"
@@ -145,6 +166,7 @@
   },
   "Footer": {
     "terms": "使用条款",
+    "updates": "更新",
     "privacy": "隐私政策",
     "copyright": "版权所有 Complex Data Collective 2016-{year}",
     "youtube": "YouTube",

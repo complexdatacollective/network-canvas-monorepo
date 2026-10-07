@@ -179,8 +179,10 @@ describe('the rpc client', () => {
     ).toEqual([
       'runtime/errors.ts',
       'runtime/hostClient.ts',
+      'runtime/participantRuntime.ts',
       'runtime/runtime.ts',
       'test/hostHarness.ts',
+      'test/participantHarness.ts',
       'test/rpcHarness.ts',
     ]);
   });
@@ -280,5 +282,75 @@ describe('the tab’s client session id', () => {
       'lib/clientSession.ts',
       'runtime/hostClient.ts',
     ]);
+  });
+});
+
+describe('the participant runtime', () => {
+  const isAppSource = (file: string): boolean =>
+    !/(^|\/)(__tests__|test)\//.test(relative(SRC, file));
+
+  const localImports = (file: string): string[] =>
+    moduleSpecifiers(read(file))
+      .filter((specifier) => specifier.startsWith('.'))
+      .map((specifier) => resolveRelative(file, specifier));
+
+  const reachableFrom = (entries: ReadonlyArray<string>): Set<string> => {
+    const reached = new Set<string>();
+    const visit = (path: string): void => {
+      if (reached.has(path)) return;
+      reached.add(path);
+      for (const next of localImports(resolve(SRC, path))) visit(next);
+    };
+    for (const entry of entries) visit(entry);
+    return reached;
+  };
+
+  const PARTICIPANT_MODULES = FILES.filter(isAppSource)
+    .map((file) => relative(SRC, file))
+    .filter(
+      (path) =>
+        path.startsWith('participant/') ||
+        path.startsWith('runtime/participant'),
+    );
+
+  const RESEARCHER_RUNTIME = [
+    'lib/auth.ts',
+    'lib/session.ts',
+    'runtime/runtime.ts',
+    'runtime/rpc.ts',
+  ];
+
+  it('never reaches the researcher runtime from a participant module', () => {
+    const reached = reachableFrom(PARTICIPANT_MODULES);
+
+    expect(RESEARCHER_RUNTIME.filter((path) => reached.has(path))).toEqual([]);
+  });
+
+  it('is imported by participant modules alone', () => {
+    const importers = FILES.filter(isAppSource)
+      .filter((file) =>
+        localImports(file).some((path) =>
+          path.startsWith('runtime/participant'),
+        ),
+      )
+      .map((file) => relative(SRC, file));
+
+    expect(
+      importers.filter((path) => !PARTICIPANT_MODULES.includes(path)),
+    ).toEqual([]);
+  });
+
+  it('carries the session header and its cookie-free credentials alone', () => {
+    const appFilesWith = (raw: string): string[] =>
+      FILES.filter(isAppSource)
+        .filter((file) =>
+          sourceTokens(read(file)).some((token) => token.raw === raw),
+        )
+        .map((file) => relative(SRC, file));
+
+    expect(appFilesWith('PARTICIPANT_SESSION_HEADER')).toEqual([
+      'runtime/participantRuntime.ts',
+    ]);
+    expect(appFilesWith("'omit'")).toEqual(['runtime/participantRuntime.ts']);
   });
 });

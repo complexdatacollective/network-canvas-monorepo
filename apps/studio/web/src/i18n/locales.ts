@@ -4,6 +4,7 @@ import {
   pseudoAppLocale,
 } from '@codaco/app-i18n/locales';
 import type { AppLocale } from '@codaco/app-i18n/locales';
+import { resolveAppLocale } from '@codaco/app-i18n/negotiate';
 import { SUPPORTED_STUDIO_LOCALES } from '@codaco/studio-contract/locales';
 
 /**
@@ -37,3 +38,11 @@ export const studioLocales: readonly AppLocale[] = import.meta.env.DEV
   : studioProductionLocales;
 
 export const studioDefaultLocale = 'en';
+
+export const negotiateStudioLocale = (stored: string | null) =>
+  resolveAppLocale({
+    stored,
+    requested: navigator.languages,
+    locales: studioLocales,
+    defaultLocale: studioDefaultLocale,
+  });

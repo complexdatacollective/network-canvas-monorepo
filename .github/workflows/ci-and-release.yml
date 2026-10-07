@@ -1173,6 +1173,10 @@ jobs:
           BUILD_CACHE_TO: type=gha,scope=studio-stack-{target},mode=max,ignore-error=true
         run: apps/studio/stack-test/build.sh
 
+      - uses: ./.github/actions/turbo-ci-setup
+      - name: Install Playwright's Chromium
+        run: pnpm --filter @codaco/studio-web exec playwright install --with-deps chromium
+
       # Serial, and each variant torn down before the next: they share a
       # Compose project name, the host's ports 80 and 443, and two fixed
       # subnets. `down.sh` runs whatever the assertions did, so a failed
@@ -1181,6 +1185,7 @@ jobs:
         run: |
           apps/studio/stack-test/up.sh --variant reference
           apps/studio/stack-test/assert.sh --variant reference
+          apps/studio/stack-test/participants.sh --variant reference
       - name: Tear down the reference stack
         if: always()
         run: apps/studio/stack-test/down.sh --variant reference
@@ -1252,6 +1257,7 @@ jobs:
             apps/studio/stack-test/.work/*-logs.txt
             apps/studio/stack-test/.work/migrate.log
             apps/studio/stack-test/.work/nginx.conf
+            apps/studio/web/e2e/test-results/
           if-no-files-found: warn
           retention-days: 7
 

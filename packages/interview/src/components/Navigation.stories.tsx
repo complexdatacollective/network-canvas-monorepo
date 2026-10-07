@@ -5,6 +5,7 @@ import SuperJSON from 'superjson';
 import { SyntheticInterview } from '@codaco/protocol-utilities';
 
 import StoryInterviewShell from '../storybook-support/StoryInterviewShell';
+import { TEXT_SCALE_OPTIONS } from './Navigation';
 
 // Middle (non-Information) stages the demo cycles through as the stage count
 // grows. Each is a real interface type with a generated preview image.
@@ -408,6 +409,304 @@ export const TextSize: Story = {
     // Reopen so the visual snapshot captures the control with the enlarged
     // scale applied and 120% displayed.
     await openSettingsPopover(canvasElement);
+  },
+};
+
+// A Welcome screen, then a name generator whose name field is encrypted, so
+// the participant must enter their passphrase before they can add anyone.
+function buildEncryptedNamePayload(): string {
+  const si = new SyntheticInterview();
+
+  si.addInformationStage({
+    title: 'Welcome',
+    text: 'Welcome to the interview.',
+  });
+
+  const person = si.addNodeType({ name: 'Person' });
+  const nameVar = person.addVariable({
+    type: 'text',
+    name: 'fullName',
+    component: 'Text',
+    encrypted: true,
+  });
+  const stage = si.addStage('NameGenerator', {
+    label: 'People you know',
+    subject: { entity: 'node', type: person.id },
+  });
+  stage.addFormField({
+    variable: nameVar.id,
+    component: 'Text',
+    prompt: 'What is their name?',
+  });
+  stage.addPrompt({ text: 'Who do you know?' });
+
+  si.addInformationStage({
+    title: 'Complete',
+    text: 'Thank you for taking part.',
+  });
+
+  const payload = si.getInterviewPayload({ currentStep: 1 });
+
+  // This schema still gates encryption behind the protocol's
+  // `encryptedVariables` experiment. It is switched on in the payload itself,
+  // not through the synthetic builder, so nothing here depends on the
+  // experiment once encrypted attributes no longer need it.
+  return SuperJSON.stringify({
+    ...payload,
+    protocol: {
+      ...payload.protocol,
+      experiments: { encryptedVariables: true },
+    },
+  });
+}
+
+let encryptedNamePayload: string | undefined;
+const getEncryptedNamePayload = () =>
+  (encryptedNamePayload ??= buildEncryptedNamePayload());
+
+// By more than a pixel: the controls abut, and motion's transforms leave
+// fractions of a pixel between neighbours.
+const overlaps = (a: DOMRect, b: DOMRect) =>
+  a.left < b.right - 1 &&
+  b.left < a.right - 1 &&
+  a.top < b.bottom - 1 &&
+  b.top < a.bottom - 1;
+
+// The navigation and its controls spring into place; measure once two
+// consecutive frames agree. A crowded bar can leave the progress bar with no
+// length, but never with no size at all.
+const settledRect = (element: Element) =>
+  waitFor(
+    async () => {
+      const before = element.getBoundingClientRect();
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+      const after = element.getBoundingClientRect();
+      await expect(after.width + after.height).toBeGreaterThan(0);
+      await expect(after.toJSON()).toEqual(before.toJSON());
+      return after;
+    },
+    { timeout: 5_000 },
+  );
+
+// Every control sits inside the bar, clear of the others, with a usable touch
+// target. Only the progress bar may give up its length.
+const expectBarFits = async (navigation: HTMLElement) => {
+  const nav = within(navigation);
+  const navRect = await settledRect(navigation);
+  const buttons = [
+    nav.getByRole('button', { name: /settings/i }),
+    ...nav.queryAllByRole('button', { name: /enter your passphrase/i }),
+    nav.getByRole('button', { name: /previous step/i }),
+    nav.getByRole('button', { name: /next step/i }),
+  ];
+  const placed: { label: string; rect: DOMRect }[] = [];
+  for (const control of [...buttons, nav.getByRole('progressbar')]) {
+    const label = control.getAttribute('aria-label') ?? control.role ?? '';
+    const rect = await settledRect(control);
+    const where = `${label} at ${JSON.stringify(rect)} in ${JSON.stringify(navRect)}`;
+    await expect(rect.left, where).toBeGreaterThanOrEqual(navRect.left);
+    await expect(rect.right, where).toBeLessThanOrEqual(navRect.right);
+    await expect(rect.top, where).toBeGreaterThanOrEqual(navRect.top);
+    await expect(rect.bottom, where).toBeLessThanOrEqual(navRect.bottom);
+    for (const other of placed) {
+      await expect(
+        overlaps(rect, other.rect),
+        `${where} overlaps ${other.label} at ${JSON.stringify(other.rect)}`,
+      ).toBe(false);
+    }
+    placed.push({ label, rect });
+  }
+  for (const { label, rect } of placed.slice(0, buttons.length)) {
+    await expect(rect.width, label).toBeGreaterThanOrEqual(44);
+    await expect(rect.height, label).toBeGreaterThanOrEqual(44);
+  }
+};
+
+// Steps the text size through every option with the participant's own
+// control, checking the bar at each, and leaves it at the largest.
+const expectBarFitsAtEveryTextSize = async (
+  canvasElement: HTMLElement,
+  navigation: HTMLElement,
+) => {
+  const nav = within(navigation);
+  const settings = nav.getByRole('button', { name: /settings/i });
+  // Keyboard throughout, so the tooltip later opens on focus as it does for a
+  // keyboard user.
+  settings.focus();
+  await userEvent.keyboard('{Enter}');
+  const popover = await within(canvasElement).findByRole('dialog', {
+    name: /interview settings/i,
+  });
+  const input = within(popover).getByRole('spinbutton', {
+    name: /text size percentage/i,
+  });
+  const main = canvasElement.querySelector('main[data-theme-interview]');
+  if (!main) throw new Error('The interview shell is not rendered.');
+
+  // The size starts at 100%; step down to the smallest option first.
+  input.focus();
+  await userEvent.keyboard('{ArrowDown}'.repeat(TEXT_SCALE_OPTIONS.indexOf(1)));
+  for (const [index, scale] of TEXT_SCALE_OPTIONS.entries()) {
+    if (index > 0) await userEvent.keyboard('{ArrowUp}');
+    await waitFor(() =>
+      expect(
+        getComputedStyle(main)
+          .getPropertyValue('--interview-text-scale')
+          .trim(),
+      ).toBe(String(scale)),
+    );
+    await expectBarFits(navigation);
+  }
+
+  await userEvent.keyboard('{Escape}');
+  await waitFor(() => expect(popover).not.toBeInTheDocument());
+};
+
+const PASSPHRASE_NEEDED =
+  'Your passphrase is needed to show data on this screen. Click here to enter it.';
+
+const enterPassphraseAndAddPerson = async (canvasElement: HTMLElement) => {
+  const canvas = within(canvasElement);
+  const navigation = await canvas.findByRole('navigation');
+  const nav = within(navigation);
+
+  const prompter = await nav.findByRole(
+    'button',
+    { name: /enter your passphrase/i },
+    { timeout: 10_000 },
+  );
+  await expect(prompter).toHaveAccessibleDescription(PASSPHRASE_NEEDED);
+
+  const addPerson = canvas.getByRole('button', { name: /add a person/i });
+  await expect(addPerson).toBeDisabled();
+
+  await expectBarFitsAtEveryTextSize(canvasElement, navigation);
+
+  // Keyboard only: the prompter follows the back button in the tab order.
+  nav.getByRole('button', { name: /previous step/i }).focus();
+  await userEvent.tab();
+  await expect(prompter).toHaveFocus();
+
+  // Focus opens the tooltip, which only echoes the button's description:
+  // assistive technology must not meet that text a second time, and at the
+  // largest text size it must still fit on screen.
+  const tooltip = await waitFor(() => {
+    const popup = canvasElement.ownerDocument.querySelector('[role="tooltip"]');
+    if (!(popup instanceof HTMLElement)) throw new Error('No tooltip is open.');
+    return popup;
+  });
+  await expect(tooltip).toHaveTextContent(PASSPHRASE_NEEDED);
+  await expect(
+    within(canvasElement.ownerDocument.body).queryByRole('tooltip'),
+  ).toBeNull();
+  await expect(prompter).toHaveAccessibleDescription(PASSPHRASE_NEEDED);
+  const tooltipRect = await settledRect(tooltip);
+  const { clientWidth, clientHeight } =
+    canvasElement.ownerDocument.documentElement;
+  await expect(tooltipRect.left).toBeGreaterThanOrEqual(0);
+  await expect(tooltipRect.right).toBeLessThanOrEqual(clientWidth);
+  await expect(tooltipRect.top).toBeGreaterThanOrEqual(0);
+  await expect(tooltipRect.bottom).toBeLessThanOrEqual(clientHeight);
+
+  await userEvent.keyboard('{Enter}');
+
+  const passphraseDialog = await canvas.findByRole('dialog', {
+    name: /enter your passphrase/i,
+  });
+  const passphraseField = within(passphraseDialog).getByRole('textbox', {
+    name: /passphrase/i,
+  });
+  await waitFor(() => expect(passphraseField).toHaveFocus());
+  await userEvent.type(passphraseField, 'correct horse battery');
+  await userEvent.click(
+    within(passphraseDialog).getByRole('button', {
+      name: /submit passphrase/i,
+    }),
+  );
+
+  await waitFor(() => expect(passphraseDialog).not.toBeInTheDocument());
+  await waitFor(() =>
+    expect(
+      nav.queryByRole('button', { name: /enter your passphrase/i }),
+    ).not.toBeInTheDocument(),
+  );
+  await waitFor(() => expect(addPerson).toBeEnabled());
+  // Without the prompter, the bar still fits at the largest text size.
+  await expectBarFits(navigation);
+
+  await userEvent.click(addPerson);
+  const personDialog = await canvas.findByRole('dialog', {
+    name: /add a person/i,
+  });
+  await userEvent.type(
+    within(personDialog).getByRole('textbox', {
+      name: /what is their name/i,
+    }),
+    'Alice',
+  );
+  await userEvent.click(
+    within(personDialog).getByRole('button', { name: /finished/i }),
+  );
+
+  // The name is encrypted on write and decrypted again for its label.
+  await expect(
+    await canvas.findByRole('option', { name: 'Alice' }, { timeout: 15_000 }),
+  ).toBeInTheDocument();
+};
+
+export const PassphrasePrompt: Story = {
+  name: 'Passphrase prompt (vertical rail, small phone in landscape)',
+  parameters: {
+    controls: { exclude: ['stageCount'] },
+    // The narrowest preset turned on its side, where the rail is shortest.
+    // Declared as its own size because the test runner ignores `isRotated`.
+    viewport: {
+      options: {
+        smallPhoneLandscape: {
+          name: 'Small phone (landscape)',
+          styles: { width: '568px', height: '320px' },
+          type: 'mobile',
+        },
+      },
+    },
+  },
+  globals: { viewport: { value: 'smallPhoneLandscape', isRotated: false } },
+  render: () => (
+    <div className="flex h-dvh w-full">
+      <StoryInterviewShell
+        rawPayload={getEncryptedNamePayload()}
+        navigationOrientation="vertical"
+        allowUserScaling
+        onExit={() => {
+          console.log('Exited the interview.');
+        }}
+      />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    await enterPassphraseAndAddPerson(canvasElement);
+  },
+};
+
+export const HorizontalPassphrasePrompt: Story = {
+  name: 'Passphrase prompt (horizontal bar, small phone)',
+  parameters: { controls: { exclude: ['stageCount'] } },
+  // The narrowest preset, where the bar has the least room for the prompter.
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  render: () => (
+    <div className="flex h-dvh w-full">
+      <StoryInterviewShell
+        rawPayload={getEncryptedNamePayload()}
+        navigationOrientation="horizontal"
+        allowUserScaling
+        onExit={() => {
+          console.log('Exited the interview.');
+        }}
+      />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    await enterPassphraseAndAddPerson(canvasElement);
   },
 };
 
