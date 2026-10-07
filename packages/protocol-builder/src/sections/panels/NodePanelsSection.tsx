@@ -73,7 +73,7 @@ const INTERVIEW_NETWORK = 'existing';
  */
 const MAX_PANELS = 2;
 
-const messages = defineMessages({
+export const nodePanelsMessages = defineMessages({
   title: {
     id: 'protocolBuilder.nodePanels.title',
     defaultMessage: 'Side panels',
@@ -310,9 +310,9 @@ const messages = defineMessages({
 const PANELS_CAPABILITY: SectionCapability = {
   fields: [PANELS],
   confirmClear: {
-    title: messages.clearTitle,
-    description: messages.clearDescription,
-    confirmLabel: messages.clearConfirm,
+    title: nodePanelsMessages.clearTitle,
+    description: nodePanelsMessages.clearDescription,
+    confirmLabel: nodePanelsMessages.clearConfirm,
   },
 };
 
@@ -326,15 +326,19 @@ const PANELS_CAPABILITY: SectionCapability = {
  * handler, and there is no descriptor seam between here and the screen.
  */
 const unanswerableRulesConfirm = (intl: IntlShape) => ({
-  title: intl.formatMessage(messages.unanswerableRulesClearTitle),
-  description: intl.formatMessage(messages.unanswerableRulesClearDescription),
-  confirmLabel: intl.formatMessage(messages.unanswerableRulesClearConfirm),
+  title: intl.formatMessage(nodePanelsMessages.unanswerableRulesClearTitle),
+  description: intl.formatMessage(
+    nodePanelsMessages.unanswerableRulesClearDescription,
+  ),
+  confirmLabel: intl.formatMessage(
+    nodePanelsMessages.unanswerableRulesClearConfirm,
+  ),
   cancelLabel: intl.formatMessage(commonMessages.cancel),
   intent: 'warning' as const,
   onConfirm: () => undefined,
 });
 
-const INCOMPLETE_PANEL = createMessageError(messages.incompletePanel);
+const INCOMPLETE_PANEL = createMessageError(nodePanelsMessages.incompletePanel);
 
 /**
  * The cap is the screen's, not the schema's: `panelSchema` accepts any number
@@ -348,7 +352,7 @@ const INCOMPLETE_PANEL = createMessageError(messages.incompletePanel);
  * Refused rather than trimmed: deleting a panel a researcher wrote is their
  * decision, and each one on screen has a delete beside it.
  */
-const TOO_MANY_PANELS = createMessageError(messages.tooManyPanels);
+const TOO_MANY_PANELS = createMessageError(nodePanelsMessages.tooManyPanels);
 
 const ResourcePicker = AssetPickerField as ComponentType<
   Record<string, unknown>
@@ -476,7 +480,9 @@ function usePanelsValidation() {
  */
 const PANEL_SOURCE_KIND = 'network' as const;
 
-const SOURCE_NOT_NETWORK = createMessageError(messages.sourceNotNetwork);
+const SOURCE_NOT_NETWORK = createMessageError(
+  nodePanelsMessages.sourceNotNetwork,
+);
 
 /**
  * The lists of people shown beside a name generator.
@@ -502,9 +508,11 @@ export default function NodePanelsSection() {
 
   return (
     <BuilderSection
-      title={intl.formatMessage(messages.title)}
+      title={intl.formatMessage(nodePanelsMessages.title)}
       description={intl.formatMessage(
-        waiting ? messages.waitingDescription : messages.description,
+        waiting
+          ? nodePanelsMessages.waitingDescription
+          : nodePanelsMessages.description,
       )}
       disabled={waiting}
       capability={PANELS_CAPABILITY}
@@ -512,12 +520,12 @@ export default function NodePanelsSection() {
       <RowList config={PANEL_ROWS}>
         <Field<typeof ArrayField<RowValues>>
           name={PANELS}
-          label={intl.formatMessage(messages.fieldLabel)}
+          label={intl.formatMessage(nodePanelsMessages.fieldLabel)}
           component={ArrayField}
           getId={rowId}
-          addButtonLabel={intl.formatMessage(messages.addLabel)}
-          itemLabel={messages.itemNoun}
-          emptyStateMessage={intl.formatMessage(messages.emptyState)}
+          addButtonLabel={intl.formatMessage(nodePanelsMessages.addLabel)}
+          itemLabel={nodePanelsMessages.itemNoun}
+          emptyStateMessage={intl.formatMessage(nodePanelsMessages.emptyState)}
           itemComponent={RowListItem}
           editorComponent={RowDialog}
           itemTemplate={rowTemplate(newPanel)}
@@ -548,8 +556,8 @@ const newPanel = () => ({ dataSource: INTERVIEW_NETWORK });
 const PANEL_ROWS: RowListConfig = {
   Preview: PanelPreview,
   Editor: PanelEditor,
-  addTitle: messages.addTitle,
-  editTitle: messages.editTitle,
+  addTitle: nodePanelsMessages.addTitle,
+  editTitle: nodePanelsMessages.editTitle,
   formId: 'panel-editor',
   name: PANELS,
   normalize: (row) => withoutAbsentValues(row) as RowValues,
@@ -613,22 +621,26 @@ function PanelEditor({ item, editIndex }: RowEditorProps) {
         neither field is optional, so there is nothing here to switch off.
       */}
       <Section
-        title={intl.formatMessage(messages.configurationGroupTitle)}
-        description={intl.formatMessage(messages.configurationGroupDescription)}
+        title={intl.formatMessage(nodePanelsMessages.configurationGroupTitle)}
+        description={intl.formatMessage(
+          nodePanelsMessages.configurationGroupDescription,
+        )}
       >
         <Field<typeof LocalizedInputField>
           name="title"
           component={LocalizedInputField}
-          label={intl.formatMessage(messages.panelTitleLabel)}
-          hint={intl.formatMessage(messages.panelTitleHint)}
+          label={intl.formatMessage(nodePanelsMessages.panelTitleLabel)}
+          hint={intl.formatMessage(nodePanelsMessages.panelTitleHint)}
           initialValue={asLocalizedString(item.title)}
           required={PANEL_TITLE_REQUIRED}
         />
         <Field<typeof ResourcePicker>
           name="dataSource"
           component={ResourcePicker}
-          label={intl.formatMessage(messages.sourceLabel, { position })}
-          hint={intl.formatMessage(messages.sourceHint)}
+          label={intl.formatMessage(nodePanelsMessages.sourceLabel, {
+            position,
+          })}
+          hint={intl.formatMessage(nodePanelsMessages.sourceHint)}
           kind={PANEL_SOURCE_KIND}
           canUseExisting
           initialValue={openedDataSource}
@@ -636,8 +648,10 @@ function PanelEditor({ item, editIndex }: RowEditorProps) {
         />
       </Section>
       <Section
-        title={intl.formatMessage(messages.filterGroupTitle)}
-        description={intl.formatMessage(messages.filterGroupDescription)}
+        title={intl.formatMessage(nodePanelsMessages.filterGroupTitle)}
+        description={intl.formatMessage(
+          nodePanelsMessages.filterGroupDescription,
+        )}
         // A filter is optional and most panels have none — an unfiltered panel
         // lists everyone, which is what its absence means — so it is a
         // capability like every other one in this builder rather than an empty
@@ -650,8 +664,8 @@ function PanelEditor({ item, editIndex }: RowEditorProps) {
         <Field<typeof FilterRuleSetField>
           name="filter"
           component={FilterRuleSetField}
-          label={intl.formatMessage(messages.filterRulesLabel)}
-          hint={intl.formatMessage(messages.filterRulesHint)}
+          label={intl.formatMessage(nodePanelsMessages.filterRulesLabel)}
+          hint={intl.formatMessage(nodePanelsMessages.filterRulesHint)}
           variant={panelVariant}
           initialValue={item.filter as RuleSetValue | undefined}
           {...filterValidation}
@@ -666,8 +680,12 @@ function PanelEditor({ item, editIndex }: RowEditorProps) {
  * formatted: `required` crosses `Field`'s string-only contract, and
  * `FieldErrors` decodes it in the reader's own language where it is shown.
  */
-const PANEL_TITLE_REQUIRED = createMessageError(messages.panelTitleRequired);
-const PANEL_SOURCE_REQUIRED = createMessageError(messages.sourceRequired);
+const PANEL_TITLE_REQUIRED = createMessageError(
+  nodePanelsMessages.panelTitleRequired,
+);
+const PANEL_SOURCE_REQUIRED = createMessageError(
+  nodePanelsMessages.sourceRequired,
+);
 
 /**
  * What switching a panel's filter off destroys, in its own words.
@@ -677,9 +695,9 @@ const PANEL_SOURCE_REQUIRED = createMessageError(messages.sourceRequired);
  * narrow a panel.
  */
 const filterConfirm = (intl: IntlShape) => ({
-  title: intl.formatMessage(messages.filterClearTitle),
-  description: intl.formatMessage(messages.filterClearDescription),
-  confirmLabel: intl.formatMessage(messages.filterClearConfirm),
+  title: intl.formatMessage(nodePanelsMessages.filterClearTitle),
+  description: intl.formatMessage(nodePanelsMessages.filterClearDescription),
+  confirmLabel: intl.formatMessage(nodePanelsMessages.filterClearConfirm),
   cancelLabel: intl.formatMessage(commonMessages.cancel),
   intent: 'warning' as const,
   onConfirm: () => undefined,
@@ -868,15 +886,15 @@ function PanelPreview({ item }: RowPreviewProps) {
   // the missing phrase is what it having no answer reads as.
   const source =
     dataSource === INTERVIEW_NETWORK
-      ? intl.formatMessage(messages.interviewSource)
+      ? intl.formatMessage(nodePanelsMessages.interviewSource)
       : (panelSource(dataSource, protocolContext.assets, staged)?.name ??
-        intl.formatMessage(messages.missingSource));
+        intl.formatMessage(nodePanelsMessages.missingSource));
 
   return (
     <div className="flex flex-col gap-2">
       {title.text === '' ? (
         <p className="m-0 font-bold">
-          {intl.formatMessage(messages.untitledPanel)}
+          {intl.formatMessage(nodePanelsMessages.untitledPanel)}
         </p>
       ) : (
         <p className="m-0 font-bold" lang={title.lang} dir={title.dir}>
@@ -884,7 +902,7 @@ function PanelPreview({ item }: RowPreviewProps) {
         </p>
       )}
       <p className="m-0 text-sm text-current/70">
-        {intl.formatMessage(messages.panelSummary, { rules, source })}
+        {intl.formatMessage(nodePanelsMessages.panelSummary, { rules, source })}
       </p>
     </div>
   );

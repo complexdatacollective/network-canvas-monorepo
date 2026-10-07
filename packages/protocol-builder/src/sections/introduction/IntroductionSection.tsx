@@ -20,7 +20,7 @@ const TEXT_FIELD = 'introductionPanel.text';
  */
 const TITLE_LIMIT = 50;
 
-const messages = defineMessages({
+export const introductionMessages = defineMessages({
   title: {
     id: 'protocolBuilder.introduction.title',
     defaultMessage: 'Task introduction',
@@ -66,20 +66,20 @@ export default function IntroductionSection() {
 
   return (
     <BuilderSection
-      title={intl.formatMessage(messages.title)}
-      description={intl.formatMessage(messages.description)}
+      title={intl.formatMessage(introductionMessages.title)}
+      description={intl.formatMessage(introductionMessages.description)}
     >
       <Field<typeof LocalizedInputField>
         name={TITLE_FIELD}
         component={LocalizedInputField}
-        label={intl.formatMessage(messages.headingLabel)}
+        label={intl.formatMessage(introductionMessages.headingLabel)}
         required={REQUIRED}
         custom={localizedMaxLength(TITLE_LIMIT, intl)}
       />
       <Field<typeof LocalizedRichTextField>
         name={TEXT_FIELD}
         component={LocalizedRichTextField}
-        label={intl.formatMessage(messages.textLabel)}
+        label={intl.formatMessage(introductionMessages.textLabel)}
         required={REQUIRED}
       />
     </BuilderSection>

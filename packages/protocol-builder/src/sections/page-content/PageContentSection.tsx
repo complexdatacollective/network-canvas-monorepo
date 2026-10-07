@@ -44,7 +44,7 @@ import BuilderSection, { type SectionCapability } from '../BuilderSection.tsx';
  */
 export type PageContentVariant = 'page' | 'introScreen';
 
-const messages = defineMessages({
+export const pageContentMessages = defineMessages({
   atLeastOne: {
     id: 'protocolBuilder.pageContent.atLeastOne',
     defaultMessage:
@@ -201,7 +201,7 @@ const messages = defineMessages({
   },
 });
 
-const AT_LEAST_ONE_ITEM = createMessageError(messages.atLeastOne);
+const AT_LEAST_ONE_ITEM = createMessageError(pageContentMessages.atLeastOne);
 
 /**
  * The words each variant uses, per variant rather than per key.
@@ -252,30 +252,30 @@ const WORDS: Readonly<
   >
 > = Object.freeze({
   page: Object.freeze({
-    title: messages.pageTitle,
-    description: messages.pageDescription,
-    itemsLabel: messages.pageItemsLabel,
-    itemsHint: messages.pageItemsHint,
-    addLabel: messages.pageAddLabel,
-    addTitle: messages.pageAddTitle,
-    editTitle: messages.pageEditTitle,
-    itemNoun: messages.pageItemNoun,
-    emptyState: messages.pageEmptyState,
+    title: pageContentMessages.pageTitle,
+    description: pageContentMessages.pageDescription,
+    itemsLabel: pageContentMessages.pageItemsLabel,
+    itemsHint: pageContentMessages.pageItemsHint,
+    addLabel: pageContentMessages.pageAddLabel,
+    addTitle: pageContentMessages.pageAddTitle,
+    editTitle: pageContentMessages.pageEditTitle,
+    itemNoun: pageContentMessages.pageItemNoun,
+    emptyState: pageContentMessages.pageEmptyState,
   }),
   introScreen: Object.freeze({
-    title: messages.introTitle,
-    description: messages.introDescription,
-    itemsLabel: messages.introItemsLabel,
-    itemsHint: messages.introItemsHint,
-    addLabel: messages.introAddLabel,
-    addTitle: messages.introAddTitle,
-    editTitle: messages.introEditTitle,
-    itemNoun: messages.introItemNoun,
-    emptyState: messages.introEmptyState,
+    title: pageContentMessages.introTitle,
+    description: pageContentMessages.introDescription,
+    itemsLabel: pageContentMessages.introItemsLabel,
+    itemsHint: pageContentMessages.introItemsHint,
+    addLabel: pageContentMessages.introAddLabel,
+    addTitle: pageContentMessages.introAddTitle,
+    editTitle: pageContentMessages.introEditTitle,
+    itemNoun: pageContentMessages.introItemNoun,
+    emptyState: pageContentMessages.introEmptyState,
     clear: Object.freeze({
-      title: messages.introClearTitle,
-      description: messages.introClearDescription,
-      confirm: messages.introClearConfirm,
+      title: pageContentMessages.introClearTitle,
+      description: pageContentMessages.introClearDescription,
+      confirm: pageContentMessages.introClearConfirm,
     }),
   }),
 });
@@ -455,9 +455,11 @@ export default function PageContentSection({
         <Field<typeof LocalizedInputField>
           name={placement.titleField}
           component={LocalizedInputField}
-          label={intl.formatMessage(messages.headingLabel)}
-          hint={intl.formatMessage(messages.headingHint)}
-          placeholder={intl.formatMessage(messages.headingPlaceholder)}
+          label={intl.formatMessage(pageContentMessages.headingLabel)}
+          hint={intl.formatMessage(pageContentMessages.headingHint)}
+          placeholder={intl.formatMessage(
+            pageContentMessages.headingPlaceholder,
+          )}
           required={REQUIRED}
         />
       )}

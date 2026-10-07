@@ -2377,15 +2377,39 @@
   },
   "protocolBuilder.localization.notTranslated": {
     "defaultMessage": "Not translated into {language} yet. Participants using {language} will see the {fallback} text.",
-    "description": "Shown under a text field when the text has no translation in the language being edited, and participants are shown it in a closely related language instead, such as Brazilian Portuguese for European Portuguese. language is the language being edited; fallback is the related language participants are shown instead. Both are language names written in their own language."
+    "description": "Shown under a text field when the text has no translation in the language being edited, and participants are certain to be shown it in fallback instead: a closely related language, such as Brazilian Portuguese for European Portuguese, or the only language the text is written in. language is the language being edited. Both are language names, written in the app’s own language or, in some apps, in their own language."
   },
   "protocolBuilder.localization.notTranslatedUnlessBrowserLists": {
     "defaultMessage": "Not translated into {language} yet. Participants using {language} will see the {fallback} text, unless their browser also lists a language that has it.",
-    "description": "Shown under a text field when the text has no translation in the language being edited, nor in a closely related language. Participants are shown it in another language their web browser lists, when the text has a translation in one, and otherwise in fallback: the protocol’s default language, or failing that another of its languages. language is the language being edited. Both are language names written in their own language."
+    "description": "Shown under a text field when the text has no translation in the language being edited, nor in a closely related language. Participants are shown it in another language their web browser lists, when the text has a translation in one, and otherwise in fallback: the protocol’s default language, or failing that another of its languages. language is the language being edited. Both are language names, written in the app’s own language or, in some apps, in their own language."
   },
   "protocolBuilder.localization.unspecifiedLanguage": {
     "defaultMessage": "Unspecified language",
     "description": "Name shown for a protocol language that has not been identified yet (the \"und\" language tag), for example a protocol upgraded from an older version."
+  },
+  "protocolBuilder.localizedTextNames.diseasePosition": {
+    "defaultMessage": "Disease {position, number}",
+    "description": "Names one disease mapping of a narrative pedigree stage where its label is listed without a translation. position is the mapping’s place in the stage’s list of diseases, counting from one."
+  },
+  "protocolBuilder.localizedTextNames.fieldPosition": {
+    "defaultMessage": "Field {position, number}",
+    "description": "Names one field of a form where a text is listed without its translation, used when the field records no attribute the codebook names. position is the field’s place in the form, counting from one."
+  },
+  "protocolBuilder.localizedTextNames.itemPosition": {
+    "defaultMessage": "Item {position, number}",
+    "description": "Names one entry of a list in a stage — a block of page content, a row of a table — where a text is listed without its translation. position is the entry’s place in its list, counting from one."
+  },
+  "protocolBuilder.localizedTextNames.panelPosition": {
+    "defaultMessage": "Panel {position, number}",
+    "description": "Names one side panel of a name generator where its title is listed without a translation. position is the panel’s place in the stage’s list of side panels, counting from one."
+  },
+  "protocolBuilder.localizedTextNames.presetPosition": {
+    "defaultMessage": "Preset {position, number}",
+    "description": "Names one visualization preset of a narrative stage where a text is listed without its translation. position is the preset’s place in the stage’s list of presets, counting from one."
+  },
+  "protocolBuilder.localizedTextNames.promptPosition": {
+    "defaultMessage": "Prompt {position, number}",
+    "description": "Names one prompt of a stage where a text is listed without its translation. position is the prompt’s place in the stage’s list of prompts, counting from one."
   },
   "protocolBuilder.multiSelect.emptyState": {
     "defaultMessage": "No items available.",

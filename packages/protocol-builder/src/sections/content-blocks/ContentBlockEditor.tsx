@@ -50,7 +50,7 @@ export const contentBlockDescription = defineMessage({
   description: 'Description under the item dialog’s title.',
 });
 
-const messages = defineMessages({
+export const contentBlockMessages = defineMessages({
   kindLabel: {
     id: 'protocolBuilder.contentBlock.kindLabel',
     defaultMessage: 'Content type',
@@ -193,16 +193,16 @@ const MEDIA_COPY: Readonly<
   >
 > = Object.freeze({
   image: Object.freeze({
-    required: messages.imageRequired,
-    description: messages.imageDescriptionHint,
+    required: contentBlockMessages.imageRequired,
+    description: contentBlockMessages.imageDescriptionHint,
   }),
   audio: Object.freeze({
-    required: messages.audioRequired,
-    description: messages.audioDescriptionHint,
+    required: contentBlockMessages.audioRequired,
+    description: contentBlockMessages.audioDescriptionHint,
   }),
   video: Object.freeze({
-    required: messages.videoRequired,
-    description: messages.videoDescriptionHint,
+    required: contentBlockMessages.videoRequired,
+    description: contentBlockMessages.videoDescriptionHint,
   }),
 });
 
@@ -251,8 +251,8 @@ export default function ContentBlockEditor({ item }: RowEditorProps) {
     kind !== undefined || asString(item.content) === undefined
       ? undefined
       : protocolContext.assets[asString(item.content) ?? ''] === undefined
-        ? messages.missingResource
-        : messages.unpresentableResource;
+        ? contentBlockMessages.missingResource
+        : contentBlockMessages.unpresentableResource;
 
   // No group of its own: the dialog's title names the item being edited and
   // `contentBlockDescription` says what these fields decide, so a section
@@ -270,14 +270,16 @@ export default function ContentBlockEditor({ item }: RowEditorProps) {
       <Field<typeof RadioGroupField>
         name="type"
         component={RadioGroupField}
-        label={intl.formatMessage(messages.kindLabel)}
-        hint={intl.formatMessage(messages.kindHint)}
+        label={intl.formatMessage(contentBlockMessages.kindLabel)}
+        hint={intl.formatMessage(contentBlockMessages.kindHint)}
         options={contentBlockKindOptions(intl)}
-        required={intl.formatMessage(messages.kindRequired)}
+        required={intl.formatMessage(contentBlockMessages.kindRequired)}
       />
       {unusable !== undefined && (
         <Alert variant="warning">
-          <AlertTitle>{intl.formatMessage(messages.unusableTitle)}</AlertTitle>
+          <AlertTitle>
+            {intl.formatMessage(contentBlockMessages.unusableTitle)}
+          </AlertTitle>
           <AlertDescription>{intl.formatMessage(unusable)}</AlertDescription>
         </Alert>
       )}
@@ -285,12 +287,12 @@ export default function ContentBlockEditor({ item }: RowEditorProps) {
         <Field<typeof LocalizedRichTextField>
           name={CONTENT_BLOCK_SLOTS.text}
           component={LocalizedRichTextField}
-          label={intl.formatMessage(messages.contentLabel)}
-          hint={intl.formatMessage(messages.contentHint, {
+          label={intl.formatMessage(contentBlockMessages.contentLabel)}
+          hint={intl.formatMessage(contentBlockMessages.contentHint, {
             slotType: 'text',
           })}
-          placeholder={intl.formatMessage(messages.textPlaceholder)}
-          required={intl.formatMessage(messages.textRequired)}
+          placeholder={intl.formatMessage(contentBlockMessages.textPlaceholder)}
+          required={intl.formatMessage(contentBlockMessages.textRequired)}
         />
       )}
       {kind !== undefined && kind !== 'text' && (
@@ -298,8 +300,8 @@ export default function ContentBlockEditor({ item }: RowEditorProps) {
           <Field<typeof ResourcePicker>
             name={CONTENT_BLOCK_SLOTS[kind]}
             component={ResourcePicker}
-            label={intl.formatMessage(messages.contentLabel)}
-            hint={intl.formatMessage(messages.contentHint, {
+            label={intl.formatMessage(contentBlockMessages.contentLabel)}
+            hint={intl.formatMessage(contentBlockMessages.contentHint, {
               slotType: kind,
             })}
             kind={kind}
@@ -314,7 +316,7 @@ export default function ContentBlockEditor({ item }: RowEditorProps) {
           <Field<typeof LocalizedInputField>
             name="description"
             component={LocalizedInputField}
-            label={intl.formatMessage(messages.descriptionLabel)}
+            label={intl.formatMessage(contentBlockMessages.descriptionLabel)}
             hint={intl.formatMessage(MEDIA_COPY[kind].description)}
             initialValue={asLocalizedString(item.description)}
           />
@@ -325,8 +327,8 @@ export default function ContentBlockEditor({ item }: RowEditorProps) {
           <Field<typeof RadioGroupField>
             name="size"
             component={RadioGroupField}
-            label={intl.formatMessage(messages.sizeLabel)}
-            hint={intl.formatMessage(messages.sizeHint)}
+            label={intl.formatMessage(contentBlockMessages.sizeLabel)}
+            hint={intl.formatMessage(contentBlockMessages.sizeHint)}
             options={contentBlockSizeOptions(intl)}
             orientation="horizontal"
             initialValue={asString(item.size) ?? ''}

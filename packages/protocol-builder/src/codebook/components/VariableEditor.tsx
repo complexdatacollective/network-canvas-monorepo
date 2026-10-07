@@ -188,12 +188,6 @@ const messages = defineMessages({
     description:
       'Caption over the read-only list of answers a yes/no attribute offers, shown when the attribute holds two answers that do not record one “true” and one “false” — both recording the same one, for instance. It says that saving the attribute does not alter them. “true” and “false” are the literal values the protocol stores and stay as they are.',
   },
-  optionLabelField: {
-    id: 'protocolBuilder.codebookVariable.optionLabelField',
-    defaultMessage: 'Option {index} label',
-    description:
-      'Label of the field holding what a participant reads for one allowed answer. index is that answer’s position in the list, counting from one, and is passed as text because the researcher reads it as this row’s name.',
-  },
   optionValueField: {
     id: 'protocolBuilder.codebookVariable.optionValueField',
     defaultMessage: 'Option {index} value',
@@ -962,7 +956,7 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
                           <UnconnectedField
                             name={`option-${index + 1}-label`}
                             label={intl.formatMessage(
-                              messages.optionLabelField,
+                              variableValuesMessages.optionLabelField,
                               // The one-based position is passed as text, not as
                               // a number: the researcher reads it as this row's
                               // name, and a grouped thousands separator would

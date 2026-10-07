@@ -64,7 +64,7 @@ import {
 import type { CodebookWriteOutcome } from '../writes.ts';
 import NodeShapeMappingFields from './NodeShapeMappingFields.tsx';
 
-const messages = defineMessages({
+export const codebookEntityMessages = defineMessages({
   nameRequired: {
     id: 'protocolBuilder.codebookEntity.nameRequired',
     defaultMessage: 'Enter a type name.',
@@ -284,7 +284,7 @@ const colorOptions = (
     ...palette,
     {
       value: current,
-      label: intl.formatMessage(messages.colorOutsidePalette, {
+      label: intl.formatMessage(codebookEntityMessages.colorOutsidePalette, {
         color: current,
       }),
     },
@@ -371,9 +371,9 @@ const validateFields = (
   const errors: Partial<Record<keyof EntityFieldErrors, string>> = {};
   const name = normalizeCodebookName(stringValue(draft.name));
   if (name === '') {
-    errors.name = createMessageError(messages.nameRequired);
+    errors.name = createMessageError(codebookEntityMessages.nameRequired);
   } else if (!CodebookNameSchema.safeParse(name).success) {
-    errors.name = createMessageError(messages.nameInvalid, {
+    errors.name = createMessageError(codebookEntityMessages.nameInvalid, {
       entity: subject.entity,
     });
   } else if (
@@ -382,14 +382,17 @@ const validateFields = (
         normalizeForComparison(existingName) === normalizeForComparison(name),
     )
   ) {
-    errors.name = createMessageError(messages.nameTaken, { name });
+    errors.name = createMessageError(codebookEntityMessages.nameTaken, {
+      name,
+    });
   }
   if (stringValue(draft.color) === '') {
-    errors.color = createMessageError(messages.colorRequired);
+    errors.color = createMessageError(codebookEntityMessages.colorRequired);
   }
   if (subject.entity === 'node') {
     const shape = isRecord(draft.shape) ? stringValue(draft.shape.default) : '';
-    if (shape === '') errors.shape = createMessageError(messages.shapeRequired);
+    if (shape === '')
+      errors.shape = createMessageError(codebookEntityMessages.shapeRequired);
     const mapping = isRecord(draft.shape) ? draft.shape.dynamic : undefined;
     const mappingIssue =
       mapping === undefined
@@ -400,9 +403,10 @@ const validateFields = (
           );
     if (mappingIssue !== undefined) errors['shape.dynamic'] = mappingIssue;
     const icon = stringValue(draft.icon);
-    if (icon === '') errors.icon = createMessageError(messages.iconRequired);
+    if (icon === '')
+      errors.icon = createMessageError(codebookEntityMessages.iconRequired);
     else if (!isInterviewerIconName(icon)) {
-      errors.icon = createMessageError(messages.iconUnsupported);
+      errors.icon = createMessageError(codebookEntityMessages.iconUnsupported);
     }
   }
   return errors;
@@ -430,7 +434,7 @@ export function CodebookEntityFields({
     return (
       <Alert variant="info" appearance="soft" density="compact">
         <AlertDescription>
-          {intl.formatMessage(messages.egoHasNoProperties)}
+          {intl.formatMessage(codebookEntityMessages.egoHasNoProperties)}
         </AlertDescription>
       </Alert>
     );
@@ -455,21 +459,26 @@ export function CodebookEntityFields({
   return (
     <>
       <Section
-        title={intl.formatMessage(messages.identitySectionTitle)}
-        description={intl.formatMessage(messages.identitySectionDescription)}
+        title={intl.formatMessage(codebookEntityMessages.identitySectionTitle)}
+        description={intl.formatMessage(
+          codebookEntityMessages.identitySectionDescription,
+        )}
       >
         <UnconnectedField
           name="name"
-          label={intl.formatMessage(messages.nameLabel, {
+          label={intl.formatMessage(codebookEntityMessages.nameLabel, {
             entity: subject.entity,
           })}
-          hint={intl.formatMessage(messages.nameHint, {
+          hint={intl.formatMessage(codebookEntityMessages.nameHint, {
             entity: subject.entity,
           })}
           component={InputField}
-          placeholder={intl.formatMessage(messages.namePlaceholder, {
-            entity: subject.entity,
-          })}
+          placeholder={intl.formatMessage(
+            codebookEntityMessages.namePlaceholder,
+            {
+              entity: subject.entity,
+            },
+          )}
           value={stringValue(draft.name)}
           onChange={(value) =>
             onChange(replaceDraftProperty(draft, 'name', value ?? ''))
@@ -481,10 +490,10 @@ export function CodebookEntityFields({
         />
         <UnconnectedField
           name="label"
-          label={intl.formatMessage(messages.labelLabel, {
+          label={intl.formatMessage(codebookEntityMessages.labelLabel, {
             entity: subject.entity,
           })}
-          hint={intl.formatMessage(messages.labelHint, {
+          hint={intl.formatMessage(codebookEntityMessages.labelHint, {
             entity: subject.entity,
           })}
           component={LocalizedInputField}
@@ -497,13 +506,15 @@ export function CodebookEntityFields({
         />
       </Section>
 
-      <Section title={intl.formatMessage(messages.colorSectionTitle)}>
+      <Section
+        title={intl.formatMessage(codebookEntityMessages.colorSectionTitle)}
+      >
         <UnconnectedField
           name="color"
-          label={intl.formatMessage(messages.colorLabel, {
+          label={intl.formatMessage(codebookEntityMessages.colorLabel, {
             entity: subject.entity,
           })}
-          hint={intl.formatMessage(messages.colorHint, {
+          hint={intl.formatMessage(codebookEntityMessages.colorHint, {
             entity: subject.entity,
           })}
           component={ColorPickerField}
@@ -522,15 +533,17 @@ export function CodebookEntityFields({
       {subject.entity === 'node' && (
         <>
           <Section
-            title={intl.formatMessage(messages.appearanceSectionTitle)}
+            title={intl.formatMessage(
+              codebookEntityMessages.appearanceSectionTitle,
+            )}
             description={intl.formatMessage(
-              messages.appearanceSectionDescription,
+              codebookEntityMessages.appearanceSectionDescription,
             )}
           >
             <UnconnectedField
               name="shape"
-              label={intl.formatMessage(messages.shapeLabel)}
-              hint={intl.formatMessage(messages.shapeHint)}
+              label={intl.formatMessage(codebookEntityMessages.shapeLabel)}
+              hint={intl.formatMessage(codebookEntityMessages.shapeHint)}
               component={ShapePickerField}
               nodeColor={currentColor}
               value={
@@ -566,11 +579,13 @@ export function CodebookEntityFields({
             />
           </Section>
 
-          <Section title={intl.formatMessage(messages.iconSectionTitle)}>
+          <Section
+            title={intl.formatMessage(codebookEntityMessages.iconSectionTitle)}
+          >
             <UnconnectedField
               name="icon"
-              label={intl.formatMessage(messages.iconLabel)}
-              hint={intl.formatMessage(messages.iconHint)}
+              label={intl.formatMessage(codebookEntityMessages.iconLabel)}
+              hint={intl.formatMessage(codebookEntityMessages.iconHint)}
               component={IconPicker}
               value={stringValue(draft.icon)}
               onChange={(value) =>
@@ -794,7 +809,9 @@ export default function CodebookEntityEditor({
           tabIndex={-1}
           className="mb-6"
         >
-          <AlertTitle>{intl.formatMessage(messages.failureTitle)}</AlertTitle>
+          <AlertTitle>
+            {intl.formatMessage(codebookEntityMessages.failureTitle)}
+          </AlertTitle>
           <AlertDescription>
             {/* Decoded here, not where it was raised: a refusal stands
                 until the next save, so it follows a change of language
@@ -835,7 +852,9 @@ export default function CodebookEntityEditor({
           disabled={interactionDisabled || !dirty}
         >
           {intl.formatMessage(
-            busy ? codebookEditingMessages.saving : messages.submit,
+            busy
+              ? codebookEditingMessages.saving
+              : codebookEntityMessages.submit,
           )}
         </Button>
       )}

@@ -66,7 +66,7 @@ const SCALE_TYPE = 'ordinal' as const satisfies VariableType;
 const SCALE_LIMIT = 5;
 
 /** What only a Tie-Strength Census says; the shared words are in `censusMessages`. */
-const messages = defineMessages({
+export const tieStrengthPromptMessages = defineMessages({
   placeholder: {
     id: 'protocolBuilder.censusPrompts.tieStrengthPlaceholder',
     defaultMessage: 'Enter text for the prompt here...',
@@ -227,7 +227,9 @@ const messages = defineMessages({
   },
 });
 
-const SCALE_GONE = createMessageError(messages.scaleGoneRefusal);
+const SCALE_GONE = createMessageError(
+  tieStrengthPromptMessages.scaleGoneRefusal,
+);
 
 const asString = (value: unknown): string | undefined =>
   typeof value === 'string' ? value : undefined;
@@ -285,7 +287,7 @@ function ScaleField({
   const { createProps, editor } = useCreateAttributeForSlot({
     subject,
     variableType: SCALE_TYPE,
-    title: intl.formatMessage(messages.scaleCreateLabel),
+    title: intl.formatMessage(tieStrengthPromptMessages.scaleCreateLabel),
     onCreated: (variableId) => setFieldValue(SCALE_FIELD, variableId),
   });
   const picked = asString(edgeVariable) ?? committed;
@@ -347,17 +349,19 @@ function ScaleField({
 
   return (
     <Section
-      title={intl.formatMessage(messages.scaleTitle)}
-      description={intl.formatMessage(messages.scaleDescription)}
+      title={intl.formatMessage(tieStrengthPromptMessages.scaleTitle)}
+      description={intl.formatMessage(
+        tieStrengthPromptMessages.scaleDescription,
+      )}
     >
       <Field<typeof VariablePickerField>
         name={SCALE_FIELD}
         component={VariablePickerField}
-        label={intl.formatMessage(messages.scaleLabel)}
+        label={intl.formatMessage(tieStrengthPromptMessages.scaleLabel)}
         options={options}
-        emptyMessage={intl.formatMessage(messages.scaleEmpty)}
+        emptyMessage={intl.formatMessage(tieStrengthPromptMessages.scaleEmpty)}
         initialValue={committed}
-        required={intl.formatMessage(messages.scaleRequired)}
+        required={intl.formatMessage(tieStrengthPromptMessages.scaleRequired)}
         {...createProps}
       />
       {/*
@@ -374,10 +378,12 @@ function ScaleField({
       {valueCount > SCALE_LIMIT && (
         <Alert variant="warning" className="mt-6">
           <AlertTitle>
-            {intl.formatMessage(messages.scaleLimitTitle)}
+            {intl.formatMessage(tieStrengthPromptMessages.scaleLimitTitle)}
           </AlertTitle>
           <AlertDescription>
-            {intl.formatMessage(messages.scaleLimitDescription)}
+            {intl.formatMessage(
+              tieStrengthPromptMessages.scaleLimitDescription,
+            )}
           </AlertDescription>
         </Alert>
       )}
@@ -400,36 +406,50 @@ function TieStrengthCensusPromptEditor({ item }: RowEditorProps) {
     <>
       <PromptTextField
         item={item}
-        placeholder={intl.formatMessage(messages.placeholder)}
+        placeholder={intl.formatMessage(tieStrengthPromptMessages.placeholder)}
         title={intl.formatMessage(censusMessages.promptTextTitle)}
-        description={intl.formatMessage(messages.promptTextDescription)}
-        hint={intl.formatMessage(messages.promptTextHint)}
+        description={intl.formatMessage(
+          tieStrengthPromptMessages.promptTextDescription,
+        )}
+        hint={intl.formatMessage(tieStrengthPromptMessages.promptTextHint)}
       />
       <Section
-        title={intl.formatMessage(messages.responseTitle)}
-        description={intl.formatMessage(messages.responseDescription)}
+        title={intl.formatMessage(tieStrengthPromptMessages.responseTitle)}
+        description={intl.formatMessage(
+          tieStrengthPromptMessages.responseDescription,
+        )}
       >
         <EdgeTypeSection
-          title={intl.formatMessage(messages.edgeTitle)}
-          description={intl.formatMessage(messages.edgeDescription)}
-          label={intl.formatMessage(messages.edgeLabel)}
-          hint={intl.formatMessage(messages.edgeHint)}
-          requiredMessage={intl.formatMessage(messages.edgeRequired)}
+          title={intl.formatMessage(tieStrengthPromptMessages.edgeTitle)}
+          description={intl.formatMessage(
+            tieStrengthPromptMessages.edgeDescription,
+          )}
+          label={intl.formatMessage(tieStrengthPromptMessages.edgeLabel)}
+          hint={intl.formatMessage(tieStrengthPromptMessages.edgeHint)}
+          requiredMessage={intl.formatMessage(
+            tieStrengthPromptMessages.edgeRequired,
+          )}
         />
         <ScaleField committed={asString(item[SCALE_FIELD])} />
         <Section
-          title={intl.formatMessage(messages.declineTitle)}
-          description={intl.formatMessage(messages.declineDescription)}
+          title={intl.formatMessage(tieStrengthPromptMessages.declineTitle)}
+          description={intl.formatMessage(
+            tieStrengthPromptMessages.declineDescription,
+          )}
         >
           <Field<typeof LocalizedRichTextField>
             name={DECLINE_FIELD}
             component={LocalizedRichTextField}
-            label={intl.formatMessage(messages.declineLabel)}
-            hint={intl.formatMessage(messages.declineHint)}
-            placeholder={intl.formatMessage(messages.declinePlaceholder)}
+            label={intl.formatMessage(tieStrengthPromptMessages.declineLabel)}
+            hint={intl.formatMessage(tieStrengthPromptMessages.declineHint)}
+            placeholder={intl.formatMessage(
+              tieStrengthPromptMessages.declinePlaceholder,
+            )}
             singleLine
             initialValue={asLocalizedString(item[DECLINE_FIELD])}
-            required={intl.formatMessage(messages.declineRequired)}
+            required={intl.formatMessage(
+              tieStrengthPromptMessages.declineRequired,
+            )}
           />
         </Section>
       </Section>

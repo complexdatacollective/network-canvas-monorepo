@@ -37,6 +37,7 @@
     "./interfaces/templates": "./src/interfaces/templates.ts",
     "./localization/LanguageNaming": "./src/localization/LanguageNaming.tsx",
     "./localization/localizedText": "./src/localization/localizedText.ts",
+    "./localization/localizedTextNames": "./src/localization/localizedTextNames.ts",
     "./localization/ProtocolLocalization": "./src/localization/ProtocolLocalization.tsx",
     "./markdown/markdownAdapter": "./src/markdown/markdownAdapter.ts",
     "./naming/proposeStageLabel": "./src/naming/proposeStageLabel.ts",

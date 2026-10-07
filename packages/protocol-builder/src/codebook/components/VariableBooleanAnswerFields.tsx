@@ -16,7 +16,7 @@ import type {
 
 const ToggleControl = ToggleField as ComponentType<Record<string, unknown>>;
 
-const messages = defineMessages({
+export const booleanAnswerFieldMessages = defineMessages({
   answerLabel: {
     id: 'protocolBuilder.codebookVariable.booleanAnswerLabel',
     defaultMessage:
@@ -94,7 +94,10 @@ export default function VariableBooleanAnswerFields({
           >
             <UnconnectedField
               name={`boolean-answer-${records}-label`}
-              label={intl.formatMessage(messages.answerLabel, { records })}
+              label={intl.formatMessage(
+                booleanAnswerFieldMessages.answerLabel,
+                { records },
+              )}
               component={LocalizedOptionLabelField}
               // What the interview will actually show for an answer nobody
               // has named: the participant reads fresco-ui's own boolean
@@ -103,9 +106,12 @@ export default function VariableBooleanAnswerFields({
               // no `options` key while both labels are blank.
               // `booleanPlaceholdersMatchFresco` holds the two wordings
               // together.
-              placeholder={intl.formatMessage(messages.answerPlaceholder, {
-                records,
-              })}
+              placeholder={intl.formatMessage(
+                booleanAnswerFieldMessages.answerPlaceholder,
+                {
+                  records,
+                },
+              )}
               value={answer.label}
               onChange={(label: LocalizedString | undefined) =>
                 onChange(index, answerWithLabel(answer, label))
@@ -116,7 +122,10 @@ export default function VariableBooleanAnswerFields({
             />
             <UnconnectedField
               name={`boolean-answer-${records}-negative`}
-              label={intl.formatMessage(messages.negativeLabel, { records })}
+              label={intl.formatMessage(
+                booleanAnswerFieldMessages.negativeLabel,
+                { records },
+              )}
               component={ToggleControl}
               inline
               value={answer.negative === true}

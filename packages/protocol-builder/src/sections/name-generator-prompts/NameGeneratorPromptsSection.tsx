@@ -59,7 +59,7 @@ const VariablePicker = VariablePickerField as ComponentType<
  */
 const STAMP_TYPE = 'boolean';
 
-const messages = defineMessages({
+export const nameGeneratorPromptMessages = defineMessages({
   promptGroupTitle: {
     id: 'protocolBuilder.nameGeneratorPrompts.promptGroupTitle',
     defaultMessage: 'Participant prompt',
@@ -126,7 +126,9 @@ const messages = defineMessages({
   },
 });
 
-const WRITE_THE_QUESTION = createMessageError(messages.textRequired);
+const WRITE_THE_QUESTION = createMessageError(
+  nameGeneratorPromptMessages.textRequired,
+);
 
 const asAttributes = (value: unknown): AttributeValue[] =>
   Array.isArray(value)
@@ -159,14 +161,18 @@ function NameGeneratorPromptEditor({ item }: RowEditorProps) {
   return (
     <>
       <Section
-        title={intl.formatMessage(messages.promptGroupTitle)}
-        description={intl.formatMessage(messages.promptGroupDescription)}
+        title={intl.formatMessage(nameGeneratorPromptMessages.promptGroupTitle)}
+        description={intl.formatMessage(
+          nameGeneratorPromptMessages.promptGroupDescription,
+        )}
       >
         <Field<typeof LocalizedRichTextField>
           name="text"
           component={LocalizedRichTextField}
-          label={intl.formatMessage(messages.textLabel)}
-          placeholder={intl.formatMessage(messages.textPlaceholder)}
+          label={intl.formatMessage(nameGeneratorPromptMessages.textLabel)}
+          placeholder={intl.formatMessage(
+            nameGeneratorPromptMessages.textPlaceholder,
+          )}
           singleLine
           initialValue={asLocalizedString(item.text)}
           required={WRITE_THE_QUESTION}
@@ -313,8 +319,12 @@ function AdditionalAttributes({
 
   return (
     <Section
-      title={intl.formatMessage(messages.attributesGroupTitle)}
-      description={intl.formatMessage(messages.attributesGroupDescription)}
+      title={intl.formatMessage(
+        nameGeneratorPromptMessages.attributesGroupTitle,
+      )}
+      description={intl.formatMessage(
+        nameGeneratorPromptMessages.attributesGroupDescription,
+      )}
     >
       {/*
         A field of the prompt DIALOG's form, so a stamp added here reaches the
@@ -324,8 +334,8 @@ function AdditionalAttributes({
       <Field<typeof AssignAttributes>
         name="additionalAttributes"
         component={AssignAttributes}
-        label={intl.formatMessage(messages.assignmentsLabel)}
-        hint={intl.formatMessage(messages.assignmentsHint)}
+        label={intl.formatMessage(nameGeneratorPromptMessages.assignmentsLabel)}
+        hint={intl.formatMessage(nameGeneratorPromptMessages.assignmentsHint)}
         initialValue={committed}
         subject={subject}
         variableOptions={variableOptions}
@@ -356,7 +366,9 @@ function NameGeneratorPromptPreview({ item }: RowPreviewProps) {
       </RenderMarkdown>
       {stamps > 0 && (
         <p className="text-sm text-current/70">
-          {intl.formatMessage(messages.stampSummary, { count: stamps })}
+          {intl.formatMessage(nameGeneratorPromptMessages.stampSummary, {
+            count: stamps,
+          })}
         </p>
       )}
     </div>

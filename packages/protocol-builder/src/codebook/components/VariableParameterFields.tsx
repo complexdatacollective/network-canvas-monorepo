@@ -25,7 +25,7 @@ import {
 } from '../variableParameters.ts';
 import CoarseDateBound from './CoarseDateBound.tsx';
 
-const messages = defineMessages({
+export const parameterFieldMessages = defineMessages({
   minLabelLabel: {
     id: 'protocolBuilder.variableParameters.minLabelLabel',
     defaultMessage: 'Minimum label',
@@ -236,11 +236,13 @@ export default function VariableParameterFields({
       <>
         <UnconnectedField
           name="parameter-min-label"
-          label={intl.formatMessage(messages.minLabelLabel)}
-          hint={intl.formatMessage(messages.minLabelHint)}
+          label={intl.formatMessage(parameterFieldMessages.minLabelLabel)}
+          hint={intl.formatMessage(parameterFieldMessages.minLabelHint)}
           component={LocalizedRichTextField}
           singleLine
-          placeholder={intl.formatMessage(messages.minLabelPlaceholder)}
+          placeholder={intl.formatMessage(
+            parameterFieldMessages.minLabelPlaceholder,
+          )}
           value={asLocalizedString(held.minLabel)}
           onChange={(label) => onChange('minLabel', label)}
           required
@@ -248,11 +250,13 @@ export default function VariableParameterFields({
         />
         <UnconnectedField
           name="parameter-max-label"
-          label={intl.formatMessage(messages.maxLabelLabel)}
-          hint={intl.formatMessage(messages.maxLabelHint)}
+          label={intl.formatMessage(parameterFieldMessages.maxLabelLabel)}
+          hint={intl.formatMessage(parameterFieldMessages.maxLabelHint)}
           component={LocalizedRichTextField}
           singleLine
-          placeholder={intl.formatMessage(messages.maxLabelPlaceholder)}
+          placeholder={intl.formatMessage(
+            parameterFieldMessages.maxLabelPlaceholder,
+          )}
           value={asLocalizedString(held.maxLabel)}
           onChange={(label) => onChange('maxLabel', label)}
           required
@@ -267,8 +271,8 @@ export default function VariableParameterFields({
       <>
         <UnconnectedField
           name="parameter-anchor"
-          label={intl.formatMessage(messages.anchorLabel)}
-          hint={intl.formatMessage(messages.anchorHint)}
+          label={intl.formatMessage(parameterFieldMessages.anchorLabel)}
+          hint={intl.formatMessage(parameterFieldMessages.anchorHint)}
           component={DatePickerControl}
           type="full"
           value={asText(held.anchor)}
@@ -279,8 +283,8 @@ export default function VariableParameterFields({
         />
         <UnconnectedField
           name="parameter-before"
-          label={intl.formatMessage(messages.beforeLabel)}
-          hint={intl.formatMessage(messages.beforeHint, {
+          label={intl.formatMessage(parameterFieldMessages.beforeLabel)}
+          hint={intl.formatMessage(parameterFieldMessages.beforeHint, {
             days: RELATIVE_DATE_PICKER_DEFAULT_BEFORE,
           })}
           component={InputControl}
@@ -293,8 +297,8 @@ export default function VariableParameterFields({
         />
         <UnconnectedField
           name="parameter-after"
-          label={intl.formatMessage(messages.afterLabel)}
-          hint={intl.formatMessage(messages.afterHint, {
+          label={intl.formatMessage(parameterFieldMessages.afterLabel)}
+          hint={intl.formatMessage(parameterFieldMessages.afterHint, {
             days: RELATIVE_DATE_PICKER_DEFAULT_AFTER,
           })}
           component={InputControl}
@@ -326,8 +330,8 @@ export default function VariableParameterFields({
     <>
       <UnconnectedField
         name="parameter-resolution"
-        label={intl.formatMessage(messages.resolutionLabel)}
-        hint={intl.formatMessage(messages.resolutionHint)}
+        label={intl.formatMessage(parameterFieldMessages.resolutionLabel)}
+        hint={intl.formatMessage(parameterFieldMessages.resolutionHint)}
         component={SelectControl}
         options={dateResolutionOptions(intl)}
         value={resolution}
@@ -356,15 +360,15 @@ export default function VariableParameterFields({
         {clearedBounds && (
           <Alert variant="info" role="presentation" className="my-7">
             <AlertDescription>
-              {intl.formatMessage(messages.boundsCleared)}
+              {intl.formatMessage(parameterFieldMessages.boundsCleared)}
             </AlertDescription>
           </Alert>
         )}
       </div>
       <UnconnectedField
         name="parameter-min"
-        label={intl.formatMessage(messages.minLabel)}
-        hint={intl.formatMessage(messages.minHint)}
+        label={intl.formatMessage(parameterFieldMessages.minLabel)}
+        hint={intl.formatMessage(parameterFieldMessages.minHint)}
         {...boundControl}
         value={asText(held.min)}
         onChange={(value: unknown) => {
@@ -375,8 +379,8 @@ export default function VariableParameterFields({
       />
       <UnconnectedField
         name="parameter-max"
-        label={intl.formatMessage(messages.maxLabel)}
-        hint={intl.formatMessage(messages.maxHint)}
+        label={intl.formatMessage(parameterFieldMessages.maxLabel)}
+        hint={intl.formatMessage(parameterFieldMessages.maxHint)}
         {...boundControl}
         value={asText(held.max)}
         onChange={(value: unknown) => {
