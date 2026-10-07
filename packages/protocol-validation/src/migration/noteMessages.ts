@@ -359,6 +359,13 @@ export const migrationNoteMessages = defineMessages({
     description:
       'One complete Markdown bullet in schema 9 migration approval guidance: attributeNames. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text.',
   },
+  schema9EncryptedAttributes: {
+    id: 'protocolValidation.migrationNotes.schema9.encryptedAttributes',
+    defaultMessage:
+      'Encrypted attributes are no longer experimental: the Anonymisation interface is always available, and an attribute marked as encrypted is always encrypted. If this protocol marked attributes as encrypted without turning on the experimental "Encrypted Attributes" feature, those attributes are no longer marked, so they keep being collected without encryption.',
+    description:
+      'One complete Markdown bullet in schema 9 migration approval guidance: encryptedAttributes. "Encrypted Attributes" is the name of the former experimental feature switch in Architect. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text.',
+  },
 });
 
 // Each descriptor is a whole bullet. Markdown separators are structural:
@@ -442,7 +449,10 @@ const migrationNoteSets = {
   9: {
     prefix: '',
     suffix: '',
-    messages: [migrationNoteMessages.schema9AttributeNames],
+    messages: [
+      migrationNoteMessages.schema9AttributeNames,
+      migrationNoteMessages.schema9EncryptedAttributes,
+    ],
   },
 };
 

@@ -291,6 +291,10 @@
     "defaultMessage": "Attribute names can now use letters from any language, as well as spaces and punctuation. Existing attribute names are not changed.",
     "description": "One complete Markdown bullet in schema 9 migration approval guidance: attributeNames. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text."
   },
+  "protocolValidation.migrationNotes.schema9.encryptedAttributes": {
+    "defaultMessage": "Encrypted attributes are no longer experimental: the Anonymisation interface is always available, and an attribute marked as encrypted is always encrypted. If this protocol marked attributes as encrypted without turning on the experimental \"Encrypted Attributes\" feature, those attributes are no longer marked, so they keep being collected without encryption.",
+    "description": "One complete Markdown bullet in schema 9 migration approval guidance: encryptedAttributes. \"Encrypted Attributes\" is the name of the former experimental feature switch in Architect. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text."
+  },
   "protocolValidation.rule.additionalAttributes": {
     "defaultMessage": "Fixed attributes",
     "description": "Researcher-facing label for a protocol validation rule or generation constraint. The protocol identifier remains unchanged."

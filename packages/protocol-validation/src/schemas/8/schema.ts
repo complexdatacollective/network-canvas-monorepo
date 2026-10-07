@@ -603,16 +603,16 @@ const unknownRenderingFor = (
 /**
  * The protocol document schema 8 and schema 9 share, short of the
  * `schemaVersion` each adds for itself: `ProtocolSchemaV8` below and
- * `schemas/9/schema.ts`. The two differ only in the names a variable may
- * have, and this tree carries schema 9's rule; schema 8 adds its own back as
- * a refinement. Never parsed on its own, since a document without a version
- * is not a protocol.
+ * `schemas/9/schema.ts`. The two differ in the names a variable may have,
+ * and this tree carries schema 9's rule; schema 8 adds its own back as a
+ * refinement. Schema 8 also adds back `experiments`, which schema 9 dropped
+ * when encrypted attributes stopped being experimental. Never parsed on its
+ * own, since a document without a version is not a protocol.
  */
 export const VersionlessProtocolSchema = z
   .strictObject({
     name: z.string().min(1),
     description: z.string().optional(),
-    experiments: ExperimentsSchema.optional(),
     lastModified: z.string().datetime().optional(),
     codebook: CodebookSchema,
     assetManifest: z.record(z.string(), assetSchema).optional(),
@@ -1436,6 +1436,9 @@ const rejectSchema9VariableNames = (
 
 const ProtocolSchema = VersionlessProtocolSchema.safeExtend({
   schemaVersion: z.literal(8),
+  // Only `encryptedVariables`: the runtime encrypted a node attribute marked
+  // `encrypted` only while it was on. Schema 9 always does.
+  experiments: ExperimentsSchema.optional(),
 }).superRefine((protocol, ctx) =>
   rejectSchema9VariableNames(protocol.codebook, ctx),
 );
