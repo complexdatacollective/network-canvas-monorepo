@@ -337,7 +337,7 @@ export const EncryptedNames: Story = {
       await canvas.findByRole('button', { name: /^enter your passphrase$/i }),
     );
     await userEvent.type(
-      await screen.findByRole('textbox', { name: /passphrase/i }),
+      await screen.findByLabelText(/^Passphrase/, { selector: 'input' }),
       'storybook passphrase',
     );
     await userEvent.click(
