@@ -23,7 +23,9 @@ import {
   getDecryptionScope,
   rememberEncryptedWrite,
 } from '../../interfaces/Anonymisation/decryptionScope';
+import { isUsableEncryptionHeader } from '../../interfaces/Anonymisation/encryptionFormat';
 import {
+  EncryptionUnavailableError,
   generateSecureAttributes,
   PassphraseRequiredError,
 } from '../../interfaces/Anonymisation/utils';
@@ -160,16 +162,17 @@ const initialState = {} as SessionState;
 /**
  * The scope holding the key an encrypted write must use. Throwing rejects the
  * whole write, so a patch that mixes encrypted and plain values is never
- * applied in part.
+ * applied in part. The error says whether a passphrase could still put the
+ * key in force.
  */
-function requireDecryptionScope(
-  getState: Parameters<typeof getDecryptionScope>[0],
-): DecryptionScope {
+function requireDecryptionScope(getState: () => RootState): DecryptionScope {
   const scope = getDecryptionScope(getState);
-  if (!scope) {
-    throw new PassphraseRequiredError();
+  if (scope) return scope;
+  const header = getState().session.network.encryption;
+  if (header !== undefined && !isUsableEncryptionHeader(header)) {
+    throw new EncryptionUnavailableError();
   }
-  return scope;
+  throw new PassphraseRequiredError();
 }
 
 type AddNodeArgs = {

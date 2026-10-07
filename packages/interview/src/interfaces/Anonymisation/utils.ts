@@ -43,6 +43,25 @@ export const isPassphraseRequiredError = (
 ) => error?.name === PASSPHRASE_REQUIRED;
 
 /**
+ * An encrypted write was refused because no passphrase can ever put the
+ * interview's key in force: its encryption header is outside the runtime's
+ * bounds.
+ */
+const ENCRYPTION_UNAVAILABLE = 'EncryptionUnavailableError';
+
+export class EncryptionUnavailableError extends Error {
+  constructor() {
+    super('No passphrase can open this interview to save encrypted data');
+    this.name = ENCRYPTION_UNAVAILABLE;
+  }
+}
+
+/** As `isPassphraseRequiredError`, for an EncryptionUnavailableError. */
+export const isEncryptionUnavailableError = (
+  error: { name?: string } | undefined,
+) => error?.name === ENCRYPTION_UNAVAILABLE;
+
+/**
  * Whether storing these attribute values encrypts any of them, by the rule
  * `generateSecureAttributes` applies: a string value of a variable the
  * codebook marks encrypted.
