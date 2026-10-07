@@ -16,11 +16,13 @@ import { useStageSelector } from '../../hooks/useStageSelector';
 import { makeGetCodebookVariablesForNodeType } from '../../selectors/protocol';
 import { getStageMetadata } from '../../selectors/session';
 import { useAppDispatch } from '../../store/store';
+import type { DecryptionScope } from '../Anonymisation/decryptionScope';
 import { isAttributeEncrypted } from '../Anonymisation/isAttributeEncrypted';
 import PassphraseNotice, {
   type PassphraseNoticeStatus,
 } from '../Anonymisation/PassphraseNotice';
 import { useDecryptedNodes } from '../Anonymisation/useDecryptedNodes';
+import { useDecryptionScope } from '../Anonymisation/useDecryptionScope';
 import { usePassphrase } from '../Anonymisation/usePassphrase';
 import { FamilyPedigreeContext } from './FamilyPedigreeContext';
 import {
@@ -84,8 +86,9 @@ export const FamilyPedigreeProvider = ({
   const getCodebookVariablesForNodeType = useSelector(
     makeGetCodebookVariablesForNodeType,
   );
-  const { passphrase, passphraseInvalid, requirePassphrase, isEnabled } =
-    usePassphrase();
+  const { passphraseInvalid, requirePassphrase, isEnabled } = usePassphrase();
+  const scope = useDecryptionScope();
+  const [openedUnder, setOpenedUnder] = useState<DecryptionScope>();
   const initialFraming: FramingId | null =
     framingConfig.mode === 'fixed'
       ? framingConfig.value
@@ -148,17 +151,26 @@ export const FamilyPedigreeProvider = ({
   });
   const decryptedSeed = useDecryptedNodes(seed.nodes);
 
-  if (!store) {
-    // The store holds plaintext, so it is only built once a working
-    // passphrase to encrypt with is in force and the seeded relatives have
-    // been decrypted.
-    if (writesEncrypted && (!passphrase || passphraseInvalid)) {
-      return <StageNotice status="locked" />;
-    }
-    if (decryptedSeed.status !== 'ready') {
-      return <StageNotice status={decryptedSeed.status} />;
-    }
+  // The store holds plaintext, so the pedigree is only shown while a working
+  // passphrase to encrypt with is in force and the seeded relatives are
+  // decrypted through it. The store itself is kept, so a family being entered
+  // survives a lock. A pedigree already open under the passphrase in force
+  // stays open if that passphrase is later found not to work; committing it is
+  // refused, with the reason shown, until a working one is entered.
+  const locked =
+    writesEncrypted && (!scope || (passphraseInvalid && openedUnder !== scope));
+  const shown = !locked && store !== null && decryptedSeed.status === 'ready';
 
+  useEffect(() => {
+    if (shown) setOpenedUnder(scope);
+  }, [shown, scope]);
+
+  if (locked) return <StageNotice status="locked" />;
+  if (decryptedSeed.status !== 'ready') {
+    return <StageNotice status={decryptedSeed.status} />;
+  }
+
+  if (!store) {
     const seededNodes = decryptedSeed.nodes;
     setStore(
       createFamilyPedigreeStore(

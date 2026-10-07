@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { type ReactNode, useContext } from 'react';
 import { Provider } from 'react-redux';
@@ -380,6 +380,47 @@ describe('FamilyPedigree with an encrypted name variable', () => {
     expect(await screen.findByText('Who has been unwell?')).toBeTruthy();
     expect(await screen.findByRole('button', { name: 'Rosa' })).toBeTruthy();
     expect(screen.queryByText(ciphertext)).toBeNull();
+  });
+
+  it('hides the names when the passphrase is replaced by one that cannot read them', async () => {
+    const store = makeStore({
+      ...(await committedPedigree()),
+      withPassphrase: true,
+    });
+    renderPedigree(store);
+    expect(await screen.findByRole('button', { name: 'Rosa' })).toBeTruthy();
+
+    act(() => {
+      store.dispatch(setPassphrase('another passphrase'));
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: 'Rosa' })).toBeNull();
+    });
+    expect(await screen.findByText(/enter your passphrase/i)).toBeTruthy();
+    expect(screen.queryByText(ciphertext)).toBeNull();
+
+    act(() => {
+      store.dispatch(setPassphrase(PASSPHRASE));
+    });
+
+    expect(await screen.findByRole('button', { name: 'Rosa' })).toBeTruthy();
+  });
+
+  it('keeps an open pedigree open when its passphrase is found not to work', async () => {
+    const store = makeStore({
+      ...(await committedPedigree()),
+      withPassphrase: true,
+    });
+    renderPedigree(store);
+    expect(await screen.findByRole('button', { name: 'Rosa' })).toBeTruthy();
+
+    act(() => {
+      store.dispatch(setPassphraseInvalid(true));
+    });
+
+    expect(screen.getByRole('button', { name: 'Rosa' })).toBeTruthy();
+    expect(screen.queryByText(passphraseNotice)).toBeNull();
   });
 });
 
