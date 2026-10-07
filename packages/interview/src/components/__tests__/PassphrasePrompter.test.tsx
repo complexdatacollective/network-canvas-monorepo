@@ -10,8 +10,10 @@ import { InterviewI18nProvider } from '../../i18n/InterviewI18nProvider';
 import {
   createEncryptionStore,
   encryptionFor,
+  outOfBoundsHeader,
 } from '../../interfaces/Anonymisation/__tests__/encryptionFixtures';
 import { unlockEncryption } from '../../interfaces/Anonymisation/unlockEncryption';
+import type { NavigationOrientation } from '../../Shell';
 import { setShowPassphrasePrompter } from '../../store/modules/ui';
 import type { StageProps } from '../../types';
 import PassphrasePrompter from '../PassphrasePrompter';
@@ -288,4 +290,31 @@ describe('PassphrasePrompter in an interview whose passphrase has been chosen', 
     await unlockEncryption(store, 'pw');
     expect(deriveKey).toHaveBeenCalledTimes(2);
   });
+});
+
+const orientations: NavigationOrientation[] = ['horizontal', 'vertical'];
+
+describe('PassphrasePrompter in an interview whose answers no passphrase can open', () => {
+  it.each(orientations)(
+    'offers no passphrase in %s navigation, even when raised',
+    async (orientation) => {
+      const { header } = await encryptionFor('pw');
+      const store = createEncryptionStore([], [informationStage], undefined, {
+        header: outOfBoundsHeader(header),
+      });
+      store.dispatch(setShowPassphrasePrompter(true));
+
+      render(
+        <Provider store={store}>
+          <InterviewI18nProvider requestedLocale="en">
+            <PassphrasePrompter orientation={orientation} />
+          </InterviewI18nProvider>
+        </Provider>,
+      );
+
+      expect(
+        screen.queryByRole('button', { name: 'Enter your Passphrase' }),
+      ).not.toBeInTheDocument();
+    },
+  );
 });
