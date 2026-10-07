@@ -224,6 +224,10 @@ const protocolConnections = pgTable(
       table.socketId,
     ),
     index('protocol_connections_expires_at_idx').on(table.expiresAt),
+    // Presence lists only live socket rows.
+    index('protocol_connections_draft_id_expires_at_socket_idx')
+      .on(table.draftId, table.expiresAt)
+      .where(sql`${table.kind} = 'socket'`),
     check(
       'protocol_connections_kind_check',
       sql`${table.kind} IN ('socket', 'contact')`,

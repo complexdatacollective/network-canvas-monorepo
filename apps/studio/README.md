@@ -455,7 +455,7 @@ DDL is idempotent, so reapplying it leaves whatever is queued where it is.
 
 Open the image for the full-size diagram. Tables with row-level security or trigger sidecars carry those details as SVG tooltips. The diagram shows physical foreign-key constraints; deliberately unconstrained logical references are not drawn as relationships. The renderer uses `1`/`*` edge endpoints, so optionality remains visible through each column's not-null marker rather than the edge.
 
-Schema fingerprint: `7c1c312fe7f968e8acd95cb19006a75dd15ed9778852df673ffb1d1680ddc623`.
+Schema fingerprint: `285d8ea1a261096b69c62e4236fd36f7dce573c62af8f2d22cfe9f86be1ac642`.
 
 Sidecar behavior that cannot be represented as ERD relationships:
 
