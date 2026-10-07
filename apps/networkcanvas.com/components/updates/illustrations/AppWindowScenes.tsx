@@ -1,6 +1,6 @@
 import { cx } from '@codaco/fresco-ui/utils/cva';
 
-import { backOut, outline, segment, TAU } from './RobotParts';
+import { backOut, outline, segment, TAU } from './illustrationMotion';
 
 type SceneProps = { shown: number };
 

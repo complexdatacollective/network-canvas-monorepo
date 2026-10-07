@@ -351,7 +351,7 @@ export function UpdatesList({ updates }: { updates: readonly Update[] }) {
                             aria-describedby={update.id}
                             render={
                               <Button
-                                variant="outline"
+                                variant="raised"
                                 size="sm"
                                 iconPosition="right"
                                 icon={
@@ -371,7 +371,7 @@ export function UpdatesList({ updates }: { updates: readonly Update[] }) {
                     {update.link ? (
                       <Button
                         asChild
-                        variant="outline"
+                        variant="raised"
                         size="sm"
                         className="mt-4"
                       >
