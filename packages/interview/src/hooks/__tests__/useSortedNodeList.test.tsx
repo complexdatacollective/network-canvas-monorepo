@@ -15,11 +15,15 @@ import {
 
 import {
   createEncryptionStore,
+  encryptedVariables,
   encryptionFor,
   makeEncryptedPerson,
   unlockWith,
 } from '../../interfaces/Anonymisation/__tests__/encryptionFixtures';
 import { encryptionUnlocked } from '../../store/modules/ui';
+import createSorter, {
+  processProtocolSortRule,
+} from '../../utils/createSorter';
 import useSortedNodeList from '../useSortedNodeList';
 
 type EncryptionStore = ReturnType<typeof createEncryptionStore>;
@@ -40,15 +44,43 @@ const withAge = (node: NcNode, age: number): NcNode => ({
   [entityAttributesProperty]: { ...node[entityAttributesProperty], age },
 });
 
-// Named out of alphabetical order, and aged in yet another: by name they are
-// alice, bob, carol; by age bob, carol, alice.
-async function people() {
-  return [
-    withAge(await makeEncryptedPerson('carol', 'Carol', 'pw'), 30),
-    withAge(await makeEncryptedPerson('alice', 'Alice', 'pw'), 50),
-    withAge(await makeEncryptedPerson('bob', 'Bob', 'pw'), 20),
-  ];
+/**
+ * The order the name rule gives `nodes` when it compares their names as
+ * stored, encrypted: the order a sorter that did not leave that rule out
+ * would put them in.
+ */
+const storedNameOrder = (nodes: NcNode[]) =>
+  ids(
+    createSorter(byName.map(processProtocolSortRule(encryptedVariables)))(
+      nodes,
+    ),
+  );
+
+/**
+ * `nodes`, aged so that by age they fall in the reverse of their stored name
+ * order. Sorted by name and then age, they can then only come out in age
+ * order if the name rule was left out: comparing the stored names gives
+ * every pair a difference, so the age rule would never be reached.
+ */
+function agedAgainstStoredNames(nodes: NcNode[]) {
+  const order = storedNameOrder(nodes);
+  return {
+    nodes: nodes.map((node) =>
+      withAge(
+        node,
+        order.length - order.indexOf(node[entityPrimaryKeyProperty]),
+      ),
+    ),
+    byAge: order.toReversed(),
+  };
 }
+
+// Named out of alphabetical order: by name they are alice, bob, carol.
+const named = async () => [
+  await makeEncryptedPerson('carol', 'Carol', 'pw'),
+  await makeEncryptedPerson('alice', 'Alice', 'pw'),
+  await makeEncryptedPerson('bob', 'Bob', 'pw'),
+];
 
 async function lockedStore(nodes: NcNode[]) {
   const { header } = await encryptionFor('pw');
@@ -81,6 +113,8 @@ function renderSorted(
   return { ...rendered, seen };
 }
 
+const orders = (seen: string[][]) => new Set(seen.map((order) => order.join()));
+
 // Lets any decryption the hook started settle before asserting on the order
 // it rendered, so an order that would only appear late is not missed.
 const settle = () =>
@@ -90,7 +124,7 @@ const settle = () =>
 
 describe('useSortedNodeList with encrypted attributes', () => {
   it('sorts by the decrypted answers while the key is in force', async () => {
-    const nodes = await people();
+    const nodes = await named();
     const store = await unlockedStore(nodes);
 
     const { result } = renderSorted(store, nodes, byName);
@@ -102,52 +136,38 @@ describe('useSortedNodeList with encrypted attributes', () => {
     for (const node of result.current) expect(nodes).toContain(node);
   });
 
-  it('keeps the order it was given while the interview is locked, without asking for the passphrase', async () => {
-    const nodes = await people();
+  it('leaves the rule out while the interview is locked, applying the others, without asking for the passphrase', async () => {
+    const { nodes, byAge } = agedAgainstStoredNames(await named());
     const store = await lockedStore(nodes);
 
-    const { seen } = renderSorted(store, nodes, byName);
+    const { seen } = renderSorted(store, nodes, byNameThenAge);
     await settle();
 
-    expect(new Set(seen.map((order) => order.join()))).toEqual(
-      new Set(['carol,alice,bob']),
-    );
+    expect(orders(seen)).toEqual(new Set([byAge.join()]));
     expect(store.getState().ui.showPassphrasePrompter).toBe(false);
   });
 
-  it('still applies the rules on other attributes while the interview is locked', async () => {
-    const nodes = await people();
-    const store = await lockedStore(nodes);
-
-    const { result } = renderSorted(store, nodes, byNameThenAge);
-    await settle();
-
-    expect(ids(result.current)).toEqual(['bob', 'carol', 'alice']);
-  });
-
-  it('keeps the order it was given when one of the answers can never be decrypted', async () => {
-    const nodes = await people();
-    const [, alice] = nodes;
+  it('leaves the rule out when one of the answers can never be decrypted', async () => {
+    const people = await named();
+    const [, alice] = people;
     if (!alice) throw new Error('No alice');
     // Alice's stored name, copied onto someone else: it is bound to Alice, so
     // the key refuses it there.
     const moved: NcNode = { ...alice, [entityPrimaryKeyProperty]: 'dave' };
-    const withUnreadable = [...nodes, moved];
-    const store = await unlockedStore(withUnreadable);
-
-    const { seen } = renderSorted(store, withUnreadable, byName);
-    await settle();
-
-    expect(new Set(seen.map((order) => order.join()))).toEqual(
-      new Set(['carol,alice,bob,dave']),
-    );
-  });
-
-  it('returns to the order it was given once the key stops being in force', async () => {
-    const nodes = await people();
+    const { nodes, byAge } = agedAgainstStoredNames([...people, moved]);
     const store = await unlockedStore(nodes);
 
-    const { result, seen } = renderSorted(store, nodes, byName);
+    const { seen } = renderSorted(store, nodes, byNameThenAge);
+    await settle();
+
+    expect(orders(seen)).toEqual(new Set([byAge.join()]));
+  });
+
+  it('leaves the rule out again once the key stops being in force', async () => {
+    const { nodes, byAge } = agedAgainstStoredNames(await named());
+    const store = await unlockedStore(nodes);
+
+    const { result, seen } = renderSorted(store, nodes, byNameThenAge);
     await waitFor(() =>
       expect(ids(result.current)).toEqual(['alice', 'bob', 'carol']),
     );
@@ -158,8 +178,8 @@ describe('useSortedNodeList with encrypted attributes', () => {
     });
     await settle();
 
-    expect(
-      new Set(seen.slice(seenBeforeClearing).map((order) => order.join())),
-    ).toEqual(new Set(['carol,alice,bob']));
+    expect(orders(seen.slice(seenBeforeClearing))).toEqual(
+      new Set([byAge.join()]),
+    );
   });
 });
