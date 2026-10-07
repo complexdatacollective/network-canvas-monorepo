@@ -30,7 +30,9 @@ answers; other interviews work as before.
   the save is under way. Before, the answer was still saved with the earlier
   passphrase, which the one now in use might not be able to read.
 - A saved location that is protected is shown on the map when the participant
-  returns to it.
+  returns to it, and stops being shown once the passphrase is replaced or
+  found not to work. An area picked on the map is highlighted once it is
+  saved, so a pick that could not be saved no longer looks chosen.
 - Replacing a protected answer with an unprotected one no longer leaves the
   answer unreadable.
 - Saving a form no longer erases a protected answer the form could not show.

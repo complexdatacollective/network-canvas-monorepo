@@ -276,7 +276,6 @@ export default function GeospatialInterface({
     handleResetMapZoom,
     handleZoomIn,
     handleZoomOut,
-    handleResetSelection,
   } = useMapbox({
     mapOptions,
     dataSourceAssetId: mapOptions.dataSourceAssetId,
@@ -395,16 +394,14 @@ export default function GeospatialInterface({
       activeIndex: getNodeIndex(),
       direction: 'backwards',
     });
-    handleResetSelection();
-  }, [getNodeIndex, handleResetSelection]);
+  }, [getNodeIndex]);
 
   const nextNode = useCallback(() => {
     setNavState({
       activeIndex: navState.activeIndex + 1,
       direction: 'forwards',
     });
-    handleResetSelection();
-  }, [handleResetSelection, navState.activeIndex]);
+  }, [navState.activeIndex]);
 
   const beforeNext = (direction: Direction, intent: NavigationIntent) => {
     // Leave the stage if there are no nodes
@@ -413,7 +410,6 @@ export default function GeospatialInterface({
     }
 
     if (intent === 'jump') {
-      handleResetSelection();
       return true;
     }
 
@@ -430,7 +426,6 @@ export default function GeospatialInterface({
 
     // We are moving forwards.
     if (isLastNode()) {
-      handleResetSelection();
       return true;
     }
     nextNode();

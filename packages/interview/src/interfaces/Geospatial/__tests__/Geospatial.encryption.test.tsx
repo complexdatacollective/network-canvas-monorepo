@@ -114,15 +114,22 @@ function renderGeospatial(passphrase?: string, encryptionEnabled = true) {
     </ContractProvider>,
   );
 
+  const waitForMap = () =>
+    waitFor(() =>
+      expect(screen.getByTestId('map-container')).toHaveAttribute(
+        'data-map-idle',
+        'true',
+      ),
+    );
+
   const selectArea = async () => {
-    const map = screen.getByTestId('map-container');
-    await waitFor(() => expect(map).toHaveAttribute('data-map-idle', 'true'));
+    await waitForMap();
     act(() => {
       fireEvent.click(screen.getByTestId('geospatial-stub-click-area'));
     });
   };
 
-  return { store, selectArea };
+  return { store, selectArea, waitForMap };
 }
 
 describe('Geospatial asking for an encrypted location', () => {
@@ -166,6 +173,29 @@ describe('Geospatial asking for an encrypted location', () => {
     await expect(decryptData({ secureAttributes, data }, 'pw')).resolves.toBe(
       'Riverside',
     );
+  });
+});
+
+describe('Geospatial showing an encrypted location', () => {
+  it('stops showing the saved location once the passphrase that read it is replaced', async () => {
+    const { store, waitForMap } = renderGeospatial('pw');
+    await waitForMap();
+
+    act(() => {
+      fireEvent.click(screen.getByTestId('outside-selectable-areas-button'));
+    });
+    expect(
+      await screen.findByTestId('outside-selectable-overlay'),
+    ).toBeVisible();
+
+    act(() => {
+      store.dispatch(setPassphrase('another passphrase'));
+    });
+
+    await waitFor(() =>
+      expect(store.getState().ui.passphraseInvalid).toBe(true),
+    );
+    expect(screen.queryByTestId('outside-selectable-overlay')).toBeNull();
   });
 });
 
