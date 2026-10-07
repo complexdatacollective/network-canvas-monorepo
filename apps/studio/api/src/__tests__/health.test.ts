@@ -1,5 +1,14 @@
 import { afterAll, describe, expect, it } from '@effect/vitest';
-import { Effect, Fiber, Layer, ManagedRuntime } from 'effect';
+import {
+  Context,
+  Effect,
+  Exit,
+  Fiber,
+  Layer,
+  ManagedRuntime,
+  Scope,
+} from 'effect';
+import { HttpRouter, HttpServer } from 'effect/http';
 import { TestClock } from 'effect/testing';
 
 import { createStudio } from '../app.ts';
@@ -9,9 +18,11 @@ import { resolve } from '../env/resolve.ts';
 import {
   databaseCheck,
   type HealthChecks,
+  HealthRoutes,
   readiness,
   schemaCheckOn,
 } from '../http/health.ts';
+import { WebSocketDrain } from '../platform/ws-drain.ts';
 import { freePort } from './support/entrypoint.ts';
 import { committedMigrations } from './support/migrations.ts';
 import { createScratchDatabase, reachableDb } from './support/postgres.ts';
@@ -234,6 +245,45 @@ describe('the web process routes', () => {
     } finally {
       await stack.dispose();
       await probe.dispose();
+    }
+  });
+});
+
+describe('a draining web process', () => {
+  it('is ready until a drain starts, then 503 and names it', async () => {
+    const scope = Scope.makeUnsafe();
+    const built = await Effect.runPromise(
+      Layer.buildWithScope(WebSocketDrain.layer, scope),
+    );
+    const drain = Context.get(built, WebSocketDrain);
+    const { handler, dispose } = HttpRouter.toWebHandler(
+      HealthRoutes({ limiter: Effect.succeed('degraded') }).pipe(
+        Layer.provide(Layer.succeed(WebSocketDrain, drain)),
+        Layer.provide(HttpServer.layerServices),
+      ),
+      { disableLogger: true },
+    );
+    const readyz = () =>
+      handler(new Request(new URL('/readyz', 'http://studio.test')));
+    try {
+      const before = await readyz();
+      expect(before.status).toBe(200);
+      expect(await before.json()).toEqual({
+        status: 'degraded',
+        checks: { limiter: 'degraded' },
+      });
+
+      await Effect.runPromise(drain.drain);
+
+      const during = await readyz();
+      expect(during.status).toBe(503);
+      expect(await during.json()).toEqual({
+        status: 'failing',
+        checks: { limiter: 'degraded', draining: 'failed: draining' },
+      });
+    } finally {
+      await dispose();
+      await Effect.runPromise(Scope.close(scope, Exit.void));
     }
   });
 });
