@@ -57,9 +57,10 @@ export class ObjectStoreError extends Schema.TaggedError<ObjectStoreError>()(
   },
 ) {
   override get message(): string {
-    return this.cause instanceof Error
-      ? this.cause.message
-      : String(this.cause);
+    if (this.cause instanceof Error) return this.cause.message;
+    return typeof this.cause === 'string'
+      ? this.cause
+      : `object store ${this.operation} failed`;
   }
 }
 
