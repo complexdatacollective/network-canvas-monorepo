@@ -3,7 +3,7 @@ title: Using Interviewer
 navOrder: 2
 wip: false
 toc: true
-date: 5th October 2026
+date: 7th October 2026
 ---
 
 <SummaryCard duration="30 minutes">
@@ -153,7 +153,7 @@ The interface language never changes your protocol, your interviews or your data
 
 ### Language in interviews
 
-A protocol can be written in more than one language (see [Translating Your Protocol](/en/design-protocols/translating-your-protocol)). An interview doesn't use the **App language**. When it opens, it uses the first of the device's or browser's preferred languages that the protocol is written in, or the protocol's default language if there is none.
+A protocol can be written in more than one language (see [Translating Your Protocol](/en/design-protocols/translating-your-protocol)). An interview doesn't use the **App language**. When it opens, it uses the first of the device's or browser's preferred languages that the protocol is written in (a close regional match counts), or the protocol's default language if there is none. A text that isn't translated into that language is shown in the best available other translation: in another of the device's or browser's preferred languages that has it, or else the default language, or else any language of the protocol that has it. See [The default language and which translation participants see](/en/design-protocols/translating-your-protocol#the-default-language-and-which-translation-participants-see).
 
 The built-in interview controls, help, validation messages and dialogs are shown in the interview's language when Interviewer has it, otherwise in the first of the device's or browser's languages that Interviewer has, and otherwise in English.
 

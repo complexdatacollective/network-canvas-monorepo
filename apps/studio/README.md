@@ -590,13 +590,14 @@ is Studio-internal storage topology, not a protocol-schema change.
 
 The settings block holds the protocol's name, its schema version and its
 language declaration (`localization`: the default language and every declared
-one). Labels, prompts and other participant-facing text are translations keyed
-by declared language, stored inside the section that owns them, so a structural
-diff names a stage by its label in the default language. A protocol created in
-Studio declares the undetermined language (`und`), as one migrated from schema 8
-does, because nothing asks the researcher for a language yet. A draft branched
-from a version stored under an older schema is migrated to the current one, so
-it can be edited.
+one, which have no order). Labels, prompts and other participant-facing text
+are translations keyed by declared language, stored inside the section that owns
+them, so a structural diff names a stage by its label in the default language,
+or in another declared language that has one when the default has none. A
+protocol created in Studio declares the undetermined language (`und`), as one
+migrated from schema 8 does, because nothing asks the researcher for a language
+yet. A draft branched from a version stored under an older schema is migrated to
+the current one, so it can be edited.
 
 ### Tenancy
 

@@ -1,7 +1,7 @@
 ---
 title: Translating Your Protocol
 navOrder: 5
-date: 6th October 2026
+date: 7th October 2026
 ---
 
 <Definition>
@@ -42,7 +42,7 @@ Some parts of a protocol are the same in every language:
 
 When you create a protocol in Architect, the **Create New Protocol** dialog asks for its **Protocol languages**: the languages participants can take it in. Architect suggests the language its own interface is shown in. To offer more languages, search for and choose them in the list.
 
-If you choose more than one language, the dialog also asks for the **Default language** (see [The default language and the order of languages](#the-default-language-and-the-order-of-languages)). Architect suggests the language its interface is shown in if you chose it, or otherwise the first language you chose. If you choose only one language, it is the default language.
+If you choose more than one language, the dialog also asks for the **Default language** (see [The default language and which translation participants see](#the-default-language-and-which-translation-participants-see)). Architect suggests the language its interface is shown in if you chose it, or otherwise one of the languages you chose. If you choose only one language, it is the default language.
 
 You can change the languages and the default language later, on the **Languages** tab.
 
@@ -56,19 +56,42 @@ Open the **Languages** tab in the protocol's navigation, between **Codebook** an
 - a **Default** badge on the default language
 - how many of the protocol's texts are translated into it, such as "12 of 40 texts translated"
 
+Languages have no order. Architect lists them alphabetically by name, in the language Architect's interface is shown in, and the order your protocol stores them in makes no difference to what participants see.
+
+You can also add and remove languages from a [Language Chooser](/en/design-protocols/interface-documentation/language-chooser) stage's editor. It shows the same list, with the same rules, as the **Languages** tab, so you can manage your protocol's languages without leaving your stages. Everything below applies in both places.
+
 ### Adding languages
 
 Click **Add languages**, then search for and choose one or more languages in the **Languages** list. Click **Add languages** to finish.
 
-A new language starts with no translations. Until you translate a text, participants who use the new language see it in another of your protocol's languages (see [The default language and the order of languages](#the-default-language-and-the-order-of-languages)).
+A new language starts with no translations. Until you translate a text, participants who use the new language see another language's translation of it instead (see [The default language and which translation participants see](#the-default-language-and-which-translation-participants-see)).
 
-### The default language and the order of languages
+### The default language and which translation participants see
 
-The default language is the one participants see when the interview can't use any of their own languages. To change it, click **Make default** next to another language.
+The default language is the one participants start the interview in when their browser lists none of your protocol's languages. To change it, click **Make default** next to another language.
 
-The order of the list matters too. When a text has no translation in a participant's language, they see it in the default language. If the text isn't written in the default language either, they see it in the first language in the list that has it. Use the up and down arrows next to each language to change the order.
+The default language doesn't have to hold every text. A text needs a translation in at least one of your protocol's languages, and it can be any of them. A missing translation, whether in the default language or in another, is only a warning (see [Finding missing translations](#finding-missing-translations)).
 
-If your protocol has more than one variant of a language, such as Spanish (`es`) and Mexican Spanish (`es-MX`), a text that has no translation in one variant is shown in the other before the default language.
+For each text, participants see the first of these that has a translation:
+
+1. **Their own language.** This is the language the interview is shown in: the one they chose on a [Language Chooser](/en/design-protocols/interface-documentation/language-chooser) stage, or else the best match among the languages their browser lists, or else the default language (see [How participants get their language](#how-participants-get-their-language)). A language matches exactly, or by its closest related language. For example, European Portuguese (`pt-PT`) is closest to Brazilian Portuguese (`pt-BR`), Mexican Spanish (`es-MX`) is closest to Spanish (`es`), and `zh-TW` is closest to Traditional Chinese (`zh-Hant`).
+2. **Each other language their browser lists**, in the order the browser lists them. Each one matches exactly or by its closest related language, in the same way.
+3. **The default language**, matching exactly or by its closest related language.
+4. **Any other language of your protocol** that has the text.
+
+Which languages are closely related comes from the language matching data of the Unicode CLDR project. It also treats some languages as acceptable substitutes for each other, such as Swiss German (`gsw`) for German (`de`).
+
+For example, say your protocol is written in English (the default), French and Brazilian Portuguese, and the question "How often do you see them?" is translated into English and Brazilian Portuguese, but not into French. Participants see the question like this:
+
+| The participant                                                          | Sees                 | Why                                                                                                                                                                 |
+| ------------------------------------------------------------------------ | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Their browser is set to European Portuguese (`pt-PT`)                    | Brazilian Portuguese | European Portuguese isn't one of your languages, so the interview uses its closest related language, Brazilian Portuguese.                                          |
+| Uses French, and their browser lists no other language your protocol has | English              | French has no translation, and neither does any other language in their browser that your protocol has, so they see the default language.                           |
+| Uses French, and their browser also lists Portuguese                     | Brazilian Portuguese | French has no translation, so the interview tries the other languages their browser lists before the default language, and Portuguese matches Brazilian Portuguese. |
+
+If the question were written only in Brazilian Portuguese, a participant using English would still see it, because no other language has it.
+
+When your protocol has more than one variant of a language, such as Spanish (`es`) and Mexican Spanish (`es-MX`), a participant whose own language is one of them sees the text in that variant if it has it, or else in the other variant, before any other language.
 
 ### Changing a language
 
@@ -85,15 +108,20 @@ You can't remove:
 
 ## Finding missing translations
 
-Missing translations don't stop you from saving, previewing or using your protocol, because participants see the text in another language instead. They are still worth finishing before you collect data.
+Missing translations don't stop you from saving, previewing or using your protocol, because participants see another language's translation of the text instead (see [The default language and which translation participants see](#the-default-language-and-which-translation-participants-see)). They are still worth finishing before you collect data.
 
 Architect shows you where they are:
 
 - The **Languages** tab shows a warning icon while some translations are missing.
 - The protocol overview screen shows a notice with the number of missing translations, and a **Go to Languages** link.
-- The **Missing translations** section of the **Languages** tab lists every text that isn't translated into every language. Texts are grouped by where they are: a stage, a node type, an edge type, the ego, or the protocol. A stage's group links to its stage editor. A node type or edge type group opens that type on the **Codebook** page, and the ego group links to the **Codebook** page. A missing label links straight to the place where you translate it. Each text says which language it is missing in, and which language participants see instead.
+- The **Missing translations** section of the **Languages** tab lists the texts that have no translation in one language at a time. It is a tree: **Stages**, **Codebook** and **Protocol** branch into the places that hold the texts. A stage is named by its position and interface, such as "Stage 4 · Language Chooser", and a node type or edge type by its name. Each text is a row that previews what participants see in its place.
 
-To see only one language's gaps, choose it under **Show missing translations for**, or click the button next to the language in the **Protocol languages** list, such as **Show 3 missing translations**.
+Choose the language whose gaps you want to see under **Show missing translations for**, or click the button next to the language in the **Protocol languages** list, such as **Show 3 missing translations**.
+
+Click a row to open its translation dialog. It has the text's field, with a language menu, so you can write the text in every language, and saving writes them all at once. Beside it, **What participants see** shows the text as participants using each of your protocol's languages will see it, as you type. It marks the default language and the language you are editing. Under a language that has no translation of the text, a note says what participants see instead:
+
+- When the text is shown in a closely related language, such as Spanish for Mexican Spanish, the note reads "Not translated yet. Shown in Spanish."
+- Otherwise, the note adds that this is what participants see unless their browser also lists a language that has the text, because the other languages in a participant's browser are tried before the default language.
 
 ## Translating text
 
@@ -105,7 +133,7 @@ The language menu tells you how each text is doing:
 
 - each language in the menu is tagged **Default** or **Missing**, where that applies
 - a badge next to the menu counts the languages this text is missing in, such as "2 translations missing"
-- under a text that has no translation in the language you are editing, a note says which language participants will see instead
+- under a text that has no translation in the language you are editing, a note says which language's text participants using that language will see instead, such as "Not translated into French yet. Participants using French will see the English text". Unless the text is shown in a closely related language, the note continues ", unless their browser also lists a language that has it", because the other languages in a participant's browser are tried before the default language
 
 To remove a translation, delete all of its text. A protocol with only one language doesn't show language menus at all.
 
@@ -142,7 +170,7 @@ Every text marked as unspecified is now marked as the language you chose. Nothin
 
 ## Previewing a language
 
-To check your translations as participants will see them, [preview](/en/design-protocols/preview-mode) a stage and choose a language from the **Preview language** menu above it. See [Choosing the preview language](/en/design-protocols/preview-mode#choosing-the-preview-language).
+To check your translations as participants will see them, [preview](/en/design-protocols/preview-mode) a stage and choose a language from the **Preview language** menu above it. See [Choosing the preview language](/en/design-protocols/preview-mode#choosing-the-preview-language). A text with no translation in the preview language appears as it would to a participant using that language.
 
 ## Printing the summary in a language
 
@@ -150,14 +178,16 @@ The **Summary** tab shows your whole protocol on one page, which you can print w
 
 ## How participants get their language
 
-When an interview starts, it uses the first language in the participant's language settings that your protocol is written in. Close regional matches count, so a participant whose browser is set to Mexican Spanish (`es-MX`) is shown your Spanish (`es`) text. If none of the participant's languages is one of your protocol's languages, the interview uses the default language.
+When an interview starts, it uses the first language in the participant's language settings that your protocol is written in. Close regional matches count, so a participant whose browser is set to Mexican Spanish (`es-MX`) is shown your Spanish (`es`) text, and one set to European Portuguese (`pt-PT`) is shown your Brazilian Portuguese (`pt-BR`) text. If none of the participant's languages matches one of your protocol's languages, the interview uses the default language.
+
+This is the language the interview is shown in, and participants see each text in it wherever your protocol has a translation. Where it doesn't, they see another language's translation instead (see [The default language and which translation participants see](#the-default-language-and-which-translation-participants-see)).
 
 Where those settings come from depends on the app:
 
 - **Fresco** uses the languages set in the participant's web browser. The language of the Fresco dashboard doesn't affect interviews.
 - **Interviewer** uses the language settings of the device or browser it runs on. Interviewer's own **App language** setting doesn't affect interviews.
 
-To let participants choose for themselves, add a [Language Chooser](/en/design-protocols/interface-documentation/language-chooser) stage to your protocol. It is the only way for a participant to change the language during an interview. Once they choose, the interview keeps their choice, even when it is resumed later. Until then, the interview picks a language again each time it is opened, so an interview resumed on a different device can appear in a different language.
+To let participants choose for themselves, add a [Language Chooser](/en/design-protocols/interface-documentation/language-chooser) stage to your protocol. It lists your protocol's languages alphabetically, each by its own name, and it is the only way for a participant to change the language during an interview. Once they choose, the interview keeps their choice, even when it is resumed later. Until then, the interview picks a language again each time it is opened, so an interview resumed on a different device can appear in a different language.
 
 The interview's own buttons and messages follow the same settings, separately from your protocol's text. They are available in English, English (UK), Spanish, German, French, Italian, Dutch, Brazilian Portuguese, Simplified Chinese and Traditional Chinese. When none of the participant's languages is one of these, they are shown in English.
 

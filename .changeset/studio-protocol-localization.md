@@ -18,7 +18,7 @@ languages.
 - A screen added from the outline starts as "Untitled screen" in every language
   the protocol declares.
 - Comparing two versions names each screen that was added, removed or changed
-  by its name in the protocol's default language, or in the first language that
+  by its name in the protocol's default language, or in another language that
   has text when the default has none. Versions saved before protocols could be
   translated are still described by their plain names.
 - Editing a version that was saved in an older protocol format now starts a

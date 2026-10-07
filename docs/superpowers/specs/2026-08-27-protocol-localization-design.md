@@ -1,7 +1,7 @@
 # Protocol Localization and Locale Resolution Design
 
 **Status:** Implemented on `feat/protocol-localization`. This document
-reflects the implementation as of 6 October 2026. The design reviewed on
+reflects the implementation as of 7 October 2026. The design reviewed on
 2026-08-27 was revised during implementation; see Revisions.
 
 **Scope:** Protocol schema 9, protocol-authored participant-facing strings,
@@ -95,30 +95,63 @@ where the repository records one.
     the stage editor starts it as the attribute's name when the attribute is
     chosen, and the migration fills a missing or empty one from the
     attribute's name (§5.5, §9.2, §10.1).
+15. **A protocol's languages have no order, and each text falls back to the
+    best available translation.** The proposal made the order of
+    `localization.locales` meaningful: it was the final per-string fallback
+    order, part of protocol identity, and editable on the Languages page.
+    The product owner removed it. This changes four things:
+    - **No language order.** Nothing reads the order of `locales`. Reordering,
+      with its move buttons, drag handles and `moveLocale`, is gone, and
+      `hashProtocol` sorts the languages before hashing, so a protocol's
+      identity does not depend on the order they are stored in (§5.2, §9.1,
+      §11.1). Hosts pass `localeOptions` in any order, and the Shell throws
+      only if the set of languages differs from the declaration (§6.4).
+    - **Alphabetical lists.** Every list of a protocol's languages is shown
+      alphabetically, through `sortByLanguageName`: the Language Chooser by
+      each language's own name, collated for the interface language, and
+      Architect by name in its own interface language (§6.4, §8.2, §9.1).
+    - **Best available translation per text.** A text needs a translation in
+      at least one declared language, and the default language is not
+      required: a translation missing from any language, the default
+      included, is a warning and never an error. For each text the participant
+      sees the first translation found in the participant's own language (the
+      interview language), then in each other language their browser lists, in
+      order, then in the default language, then in any language of the
+      protocol. Each step matches exactly or by its closest related language.
+      The resolver takes the participant's languages in preference order and
+      reports how the translation was found (§6.3). Architect shows
+      researchers what participants see, including when the participant's
+      browser could change it (§9.2, §9.3).
+    - **The Language Chooser editor manages languages.** Researchers can add
+      and remove languages, make one the default, and change a language from
+      the Language Chooser stage's editor, as well as on the Languages page.
+      It is the same list, with the same operations and refusals (§8.2, §9.1).
 
 ## 1. Summary
 
 Protocol schema 9 introduces a required `localization` declaration and a
 `LocalizedString` object for every protocol-authored string rendered to a
 participant. A localized string may be incomplete: it must contain at least
-one locale entry and may contain only locales declared by the protocol, but it
-does not need to contain every declared locale. Each value is an ICU
+one locale entry, in any declared language, and may contain only locales
+declared by the protocol, but it does not need to contain every declared
+locale, the default included. Each value is an ICU
 MessageFormat message that may contain only literal text. Missing
 translations are therefore authoring warnings, not protocol-validation
 errors.
 
-At interview time, a single protocol locale is selected from the user's
-ordered preferences: the language the participant stated on a Language Chooser
-stage when there is one, otherwise the browser's languages. Each preference is
-tried in turn against the declared locales using `@formatjs/intl-localematcher`
-with the `best fit` algorithm, and the first that fits wins; the protocol
-default applies when none does. Without a stated preference the selection is
-made afresh on every load. Each localized string is then resolved
-independently. If that string does not contain the selected locale or a
-best-fit variant, resolution uses the protocol default when available and
-finally the first available key in the protocol's declared locale order. This
-makes partially translated protocols runnable while keeping fallback
-deterministic.
+At interview time, a single protocol locale, the interview language, is
+selected from the user's ordered preferences: the language the participant
+stated on a Language Chooser stage when there is one, otherwise the browser's
+languages. Each preference is tried in turn against the declared locales using
+`@formatjs/intl-localematcher` with the `best fit` algorithm, and the first
+that fits wins; the protocol default applies when none does. Without a stated
+preference the selection is made afresh on every load. Each localized string is
+then resolved independently, and shows the first of these that has a
+translation: the interview language; each other language the browser lists, in
+order; the protocol default; and finally any declared language. Each is matched
+exactly or by its closest related language. The declared languages have no
+order of their own, so no part of resolution depends on it. This makes
+partially translated protocols runnable while keeping fallback deterministic.
 
 The schema, locale primitives, matcher, ICU literal-message helpers, warning
 analyser, HTTP-header parser, and locale metadata helpers live in
@@ -196,9 +229,15 @@ evaluation.
    language list. The language last shown (`locale`) is recorded for exports
    and never used to choose one. A resumed interview with no stated choice
    therefore follows the device it resumes on.
-4. **Fallback is local to a string.** A protocol may display a Spanish prompt
-   and fall back to English for a missing hint. Resolution reports the actual
-   source locale so the DOM can carry an accurate `lang` attribute.
+4. **Fallback is local to a string, and the best available translation
+   wins.** A protocol may display a Spanish prompt and fall back to English
+   for a missing hint. Each string is resolved through the participant's
+   languages (the interview language, then the browser's other languages),
+   then the default, then any language, so a participant sees a language they
+   have said they read before one they have not. The declared languages have
+   no order to fall back through. Resolution reports the actual source locale
+   and how it was found, so the DOM can carry an accurate `lang` attribute and
+   Architect can tell researchers what participants see.
 5. **Semantic values never depend on translated copy.** Runtime branches,
    filtering, exports, and migration use ids, keys, and option values, never
    localized labels.
@@ -265,8 +304,8 @@ type LocalizationDeclaration = Readonly<{
 Validation requirements:
 
 - `localization` is required in schema 9.
-- `locales` contains at least one locale, is unique after canonicalization,
-  and preserves author-declared order.
+- `locales` contains at least one locale and is unique after canonicalization.
+  Its order carries no meaning (see the last requirement).
 - `defaultLocale` must be an exact member of `locales`.
 - Every locale is a well-formed, canonical BCP 47 tag as accepted by
   `Intl.getCanonicalLocales`.
@@ -276,8 +315,11 @@ Validation requirements:
   and may coexist.
 - `und` is valid and reserved for content whose source language is genuinely
   unknown, including automatic migration of schema-8 strings to schema 9.
-- The order of `locales` is significant: it is the final per-string fallback
-  order and is therefore included in protocol identity.
+- The order of `locales` is not significant. It is not a fallback order, no
+  interface lists the languages in it, and `hashProtocol` sorts the locales
+  before hashing, so two protocols that differ only in that order have the
+  same identity. Every list of the protocol's languages is alphabetical (§8.2,
+  §9.1).
 
 The schema deliberately does not store locale names, flags, or direction.
 
@@ -332,7 +374,9 @@ It explicitly does **not** require:
 - the same set of locales as another localized string.
 
 The first two omissions produce authoring warnings. They never make the
-protocol invalid.
+protocol invalid. The only requirement is a translation in at least one
+declared language, whichever it is: a text missing from the default language
+is no more than a warning.
 
 ### 5.4 Errors and warnings
 
@@ -357,10 +401,13 @@ function analyzeProtocolLocalization(
 The analyser emits one warning for each declared locale missing at each
 localized path, except that a string with no translation in any declared
 locale is a validation error and produces no warning. For each warning it
-calls `resolveLocalizedString` with the warning's declared `locale` as
-`selectedLocale`; `fallbackLocale` is the resolver's returned source locale.
-This defines what a participant who selected that locale will actually see and
-keeps Architect coverage identical to Interview runtime fallback. A protocol
+calls `resolveLocalizedString` for a participant whose only language is the
+warning's declared `locale`; `fallbackLocale` is the resolver's returned source
+locale, and the resolver's report of how it found that translation tells
+Architect whether the participant's browser could change the result (§9.2).
+This defines what a participant who uses that locale will actually see, unless
+their browser also lists a language that has the text, and keeps Architect
+coverage identical to Interview runtime fallback. A protocol
 using `und` also receives an Architect-level notice that its language is not
 identified, with an "Identify language" action on the Languages page.
 
@@ -491,20 +538,6 @@ function selectProtocolLocale(
   localization: LocalizationDeclaration,
 ): LocaleTag;
 
-type ResolvedLocalizedString = Readonly<{
-  text: string;
-  locale: LocaleTag;
-  selectedLocale: LocaleTag;
-  usedFallback: boolean;
-  usedDefaultLocale: boolean;
-}>;
-
-function resolveLocalizedString(
-  value: LocalizedString,
-  localization: LocalizationDeclaration,
-  selectedLocale: string,
-): ResolvedLocalizedString;
-
 type LocaleMetadata = Readonly<{
   locale: LocaleTag;
   label: string;
@@ -516,15 +549,26 @@ function getLocaleMetadata(
   displayLocale?: string,
 ): LocaleMetadata;
 
+function sortByLanguageName<T>(
+  items: readonly T[],
+  nameOf: (item: T) => string,
+  displayLocale: string,
+): T[];
+
 function escapeMessageText(text: string): string;
 
 function messageText(message: string): string;
 ```
 
+`resolveLocalizedString` and its result type `ResolvedLocalizedString` (§6.3),
 `analyzeProtocolLocalization` (§5.4) and `collectLocalizedStrings` complete the
 set. `resolveLocalizedString` returns the message as stored; the formatted text
 is produced in the Interview runtime (§7.2). `getLocaleMetadata` throws a
-`RangeError` for a tag that is not well formed.
+`RangeError` for a tag that is not well formed. `sortByLanguageName` orders any
+list of languages alphabetically by the names its reader sees, collated for the
+reader's language. A protocol's languages carry no order of their own, so the
+Language Chooser, the protocol builder and Architect all list them through it
+(§6.4).
 
 Invalid preference entries are ignored. Invalid protocol data is not silently
 normalized by these helpers; it must be validated first.
@@ -572,34 +616,50 @@ Priority is established before the call. What the host passes is:
 
 Whether a language was stated is determined from the stored
 `localePreference` before normalization, so even a malformed stated value is
-not silently replaced by a browser preference. A stated language is never
-concatenated with browser languages. This prevents a later browser language
-from overriding the participant's stated preference for a partially translated
-field.
+not silently replaced by a browser preference. A stated language alone decides
+the interview language: it is never merged into the browser's list for that
+choice, so a later browser language cannot override it. The browser's other
+languages still count as fallbacks for a text the interview language lacks,
+because per-string resolution (§6.3) takes the interview language first and
+then the languages in `requestedLocales`.
 
 ### 6.3 Per-string resolution
 
-For a localized string:
+`resolveLocalizedString` takes the participant's languages in preference order.
+The first is the language shown, the interview language of §6.2. The others are
+the languages in `requestedLocales`, in the order the browser lists them. For a
+localized string, the resolver tries these steps in order and returns the
+translation of the first that has one:
 
-1. Build `available` by filtering `localization.locales` to keys present in
-   the string. This preserves protocol order and ignores object insertion
-   order.
-2. Choose the fallback: the protocol `defaultLocale` if the string has it;
-   otherwise `available[0]`.
-3. Match `selectedLocale` against `available` with the same one-preference
-   matcher as §6.2 (FormatJS `best fit`, Chinese by script).
-4. Return the text and the actual matched locale, or the fallback when
-   nothing fits.
+1. The first language, the language shown.
+2. Each of the other languages, in order.
+3. The protocol's `defaultLocale`.
+4. Any language the string has a translation in.
 
-The schema guarantees `available` is nonempty; the resolver throws for a
-value with no translation in any declared locale, so validate first. A related
-variant may match before fallback (`es-MX` to `es`, for example). If there is
-no best-fit match, the protocol default wins when present, followed by the
-first translated locale in declared protocol order.
+Steps 1 to 3 match a language against the locales the string has, with the same
+one-preference matcher as §6.2 (FormatJS `best fit`, Chinese by script), so a
+language matches exactly or by its closest related language. The related
+languages come from CLDR's language-matching data: `pt-PT` reaches `pt-BR`,
+`es-MX` reaches `es`, `zh-TW` reaches `zh-Hant`, and a language that CLDR treats
+as an acceptable substitute reaches its substitute, such as Swiss German (`gsw`)
+for `de`. A language with no fit among the string's locales is skipped. Step 4
+applies only when nothing before it found a translation. The declared languages
+have no order to choose by, so authors cannot rely on which language it
+returns. Neither the order of `localization.locales` nor the insertion order of
+the string's keys plays a part in any step.
 
-`usedFallback` is true when the resolved locale differs from the selected
-protocol locale. `usedDefaultLocale` is true when that fallback is the
-protocol default. Callers do not reimplement this logic.
+The schema guarantees the string has a translation; the resolver throws for a
+value with no translation in any declared locale, so validate first.
+
+The result carries the message, the locale it is written in, and how the
+translation was found: from the first language or one related to it, from
+another of the participant's languages, from the protocol default, or from any
+language. This replaces the earlier pair of flags that said whether the result
+was a fallback and whether the fallback was the default. Callers do not
+reimplement this logic: the Interview adapters use the locale for the `lang`
+and `dir` of the text (§8.8), and Architect uses how it was found to tell
+researchers what participants see (§9.2). The names of the parameters and of
+the result's fields are those of the package's types.
 
 ### 6.4 Locale names and direction
 
@@ -625,16 +685,21 @@ tests.
 
 That permitted display-name variation must not cross an SSR hydration
 boundary. `SessionPayload` carries a `localeOptions` array containing one
-`LocaleMetadata` entry for every declared protocol locale in declaration
-order. The host derives it with `getLocaleMetadata`: Interviewer and Architect
-immediately before launching the Interview, and Fresco once on the server in
+`LocaleMetadata` entry for every declared protocol locale, in any order. The
+host derives it with `getLocaleMetadata`: Interviewer and Architect immediately
+before launching the Interview, and Fresco once on the server in
 `mapInterviewPayload`, which serializes the exact array into the client
 payload. The localization provider uses these serialized labels and
 directions for the initial render and the Language Chooser rather than calling
-`Intl.DisplayNames` again during hydration. It throws unless the option
-locales exactly match the declaration, in order, and it replaces only the
-`und` label. Locale-option metadata is ephemeral presentation data: it is
+`Intl.DisplayNames` again during hydration. It sorts the options alphabetically
+by label, collated for the interface language, so the Language Chooser lists
+them the same way whatever order the host passed them in. It throws only if
+the set of option locales differs from the declaration, and it replaces only
+the `und` label. Locale-option metadata is ephemeral presentation data: it is
 neither stored with the interview nor included in protocol identity.
+
+Architect lists a protocol's languages the same way, alphabetically by their
+names in Architect's own interface language, through `sortByLanguageName`.
 
 ## 7. Package and module architecture
 
@@ -704,8 +769,12 @@ only request. `setLocale` validates the tag against the declaration and
 dispatches a session-state action that records the preference, which renders
 immediately. After render, the provider also reports the locale shown when it
 differs from the recorded one. The session middleware (§8.1) turns both into
-`onProtocolLocaleChange` calls. Non-React selectors and utilities call the pure
-resolver with explicit locale arguments.
+`onProtocolLocaleChange` calls. The resolver hooks give the pure resolver the
+participant's languages in preference order: the locale shown first, then the
+languages in `requestedLocales`. A text the shown locale lacks therefore falls
+back to another of the participant's languages before the protocol default (§6.3).
+Non-React selectors and utilities call the pure resolver with the same list
+passed explicitly.
 
 The resolver hooks return the formatted message: `IntlMessageFormat` formats
 each message in the locale it is written in, with `ignoreTag`, and caches the
@@ -778,8 +847,9 @@ actual source locale and make accurate `lang` attributes impossible.
   until the engine first reports it.
 
 `SessionPayload` is what a host passes to start or resume an interview: a
-`SessionSnapshot` plus the ordered `localeOptions` presentation metadata
-described in §6.4. `localeOptions` is never persisted or synchronized. Sessions
+`SessionSnapshot` plus the `localeOptions` presentation metadata described in
+§6.4: one entry for each declared language, in any order. `localeOptions` is
+never persisted or synchronized. Sessions
 stored before protocols declared languages hold `null` in both fields; the
 interview records `locale` the next time it runs.
 
@@ -789,6 +859,10 @@ The browser or HTTP preference list is never stored. The Shell takes it as
 client so that both choose alike. The package reads no browser or storage
 globals itself. Until the participant states a preference, `requestedLocales`
 chooses both the protocol translation (§7.2) and the interface language (§8.3).
+Whether or not a preference is stated, the browser's languages also supply the
+fallback for a text that the language shown lacks: such a text is shown in
+another language the browser lists, when the protocol has the text in it,
+before the protocol default is used (§6.3).
 
 The public host contract replaces the proposed `LocaleChangeHandler` with a
 required `ProtocolLocaleChangeHandler`, passed to the Shell as
@@ -839,10 +913,12 @@ It can appear anywhere, more than once.
 - The schema is the base stage, including its localized `label`, and nothing
   more.
 - The stage shows a built-in heading, then a `RichSelectGroup` single-selection
-  list of every declared language, taken from `useProtocolLocale().options`. Each
-  option is labeled with the language's own name and carries its own `lang` and
-  `dir`; the `und` option is labeled "Unspecified language" in the interface
-  language. The language currently shown is selected. Arrow keys move focus
+  list of every declared language, taken from `useProtocolLocale().options`. The
+  list is alphabetical by the languages' own names, collated for the language of
+  the interview's built-in interface (§8.3); the protocol's stored order has no
+  effect on it. Each option is labeled with the language's own name and carries
+  its own `lang` and `dir`; the `und` option is labeled "Unspecified language" in
+  the interface language. The language currently shown is selected. Arrow keys move focus
   through the list, and Enter or Space chooses the focused language.
 - Choosing another language calls `setLocale`. The protocol text and the
   built-in interface text switch at once, the network, prompt position, and form
@@ -850,7 +926,14 @@ It can appear anywhere, more than once.
   handler (§8.1). Leaving the preselected language unchanged states nothing, so
   the browser continues to decide.
 - Architect adds the stage from the New Stage menu. Its editor lists the
-  languages participants are offered, which is every declared language.
+  languages participants are offered, which is every declared language,
+  alphabetically by name in Architect's interface language. The editor also
+  manages them, with the same list and rules as the Languages page (§9.1):
+  adding languages, making one the default, changing a language, and removing
+  one. The default language cannot be removed until another is the default, and
+  a language that holds the only translation of some text cannot be removed until
+  that text is translated elsewhere. Removing a language deletes its
+  translations.
 
 ### 8.3 Interface language
 
@@ -954,7 +1037,7 @@ editor state. The preview window starts the interview with
 would see, not in Architect's own interface language.
 
 A "Preview language" menu above the preview lists every declared language by
-its own name and switches the interview to it. The choice lasts while the
+its own name, alphabetically, and switches the interview to it. The choice lasts while the
 preview window is open and is never saved. It passes the chosen language as the
 first requested language, so the Shell keeps the step, the answers, and unsaved
 input. A language stated on a Language Chooser stage moves the menu. A stored
@@ -962,7 +1045,10 @@ preference outranks requested languages, so when the running interview holds
 one, or the author picks `und`, the preview re-creates the interview from the
 session so far with the new preference. A new payload, such as a restart,
 resets the choice. Because the preview runs the Interview runtime's own
-resolver, it reproduces every fallback that a warning reports.
+resolver, it reproduces every fallback that a warning reports. The preview
+also shows what a participant with the author's own browser languages would see,
+which a warning cannot, since a warning assumes a participant whose only
+language is the missing one (§5.4).
 
 Architect derives `localeOptions` for the preview with `getLocaleMetadata`, as
 the other hosts do.
@@ -978,8 +1064,10 @@ as one migrated from schema 8 does, because Studio does not yet ask which
 language the researcher is writing in.
 
 - The structural diff names an added or removed stage by its label in the
-  default language, falling back to the first declared language that has text,
-  and reports a localization change as a settings change.
+  default language, falling back to another declared language that has text
+  when the default has none, and reports a localization change as a settings
+  change. The order in which a protocol declares its languages decides nothing
+  here.
 - An audited Information stage is added with its placeholder title in every
   declared language.
 - A draft branched from a version stored under an older schema is migrated to
@@ -1023,16 +1111,26 @@ Architect adds a Languages page, linked from the project navigation at
 
 - adding a language by canonical tag, chosen from a list of language names;
 - choosing the default language;
-- reordering languages with move-up and move-down buttons, which sets the final
-  fallback priority after the default;
-- viewing each language's derived name and direction;
+- viewing each language's derived name and direction, in a list that is
+  alphabetical by name in Architect's interface language (`sortByLanguageName`);
 - translation coverage by language, as translated and missing counts with a
   progress bar;
 - a list of missing translations that can be filtered by language; and
 - changing a language, which is how an `und` protocol identifies its language.
 
+Languages have no order, so the page has no way to reorder them. The default
+language matters because it is the starting language when the browser lists none
+of the protocol's languages and the fallback after the participant's own
+languages (§6.3); no other language ranks above another. Every list of
+languages is alphabetical, and the order in which the file happens to store them
+has no effect on what participants see.
+
 A new protocol asks which language it is written in and declares exactly that
 language, so only a protocol migrated from schema 8 starts as `und`.
+
+The Language Chooser stage editor (§8.2) shows the same list of languages and
+manages them with the same operations and refusals as this page: adding,
+making one the default, changing a language, and removing one.
 
 Adding a language writes only the declaration. It deliberately does not clone
 default strings, so the protocol remains valid and warnings appear immediately.
@@ -1051,7 +1149,7 @@ collision with an existing language is refused rather than merged. The
 `und` migration action is this operation.
 
 Every language operation (`addLocales`, `removeLocale`, `setDefaultLocale`,
-`moveLocale`, `relabelLocale`) is a single draft edit: one undo step, and nothing
+`relabelLocale`) is a single draft edit: one undo step, and nothing
 is written when any part is refused. A refusal names its reason: `invalid-tag`,
 `unspecified-tag`, `already-declared`, `not-declared`, `default-locale`, or
 `would-empty`.
@@ -1074,15 +1172,22 @@ missing translation without making the form invalid.
   language is removed while selected.
 - Each field draws a language menu with its control. A protocol with one
   language draws nothing. The menu marks the languages the field still lacks,
-  and a note below the control names the language a participant would see
-  instead.
+  and a note below the control tells the researcher what a participant sees
+  instead: "Not translated into {language} yet. Participants using {language}
+  will see the {fallback} text", with ", unless their browser also lists a
+  language that has it" added when another browser language could change the
+  result. The note reads the resolver's report of how the translation was found
+  (§6.3), so it matches what the Interview shows. The language menu itself lists
+  the protocol's languages alphabetically by name in Architect's interface
+  language.
 - The control is drawn inside the translation's own `lang` and `dir`, and
   remounted per language, so an editor holding one language's document never
   writes it into another's.
 
 Node type and edge type labels are edited with Architect's `LabelField` on the
-Codebook page. The field opens in the default language and requires text there;
-any other language may be left untranslated. An attribute's label is edited on
+Codebook page. The field opens in the default language and requires text in at
+least one language; the default language and every other language may be left
+untranslated, with a warning. An attribute's label is edited on
 the same page as plain text, with no language menu, and never counts as a
 missing translation. The label of each attribute a Narrative preset highlights
 is a localized field in the preset dialog of the Narrative stage editor.
@@ -1110,8 +1215,12 @@ Warnings are grouped to avoid presenting thousands of flat messages:
 - grouping: missing translations are grouped by the stage or codebook entry that
   holds them, with the protocol and the ego as further groups, each linking to
   where it is edited;
-- field detail: the path within the group, each missing language, and the
-  language a participant sees instead; and
+- field detail: the path within the group and each missing language, opening a
+  translation dialog that lists the languages and shows what participants see
+  for each. For a language with no translation the note reads "Not translated
+  yet. Shown in {language}." when the text is shown in a closely related
+  language, which no other browser language can change, and otherwise adds
+  "unless the participant's browser also lists a language that has it"; and
 - unspecified language: when the protocol still declares `und`, the Languages
   page and an alert ask the researcher to identify the language, and the project
   navigation tab carries a warning for screen readers.
@@ -1211,9 +1320,11 @@ hashes `{ localization, codebook, stages }`; for schema 8 and earlier it hashes
 version decides the path, not the presence of a `localization` property, which a
 loosely validated older document could carry without meaning anything. Localized
 maps already live inside the codebook and stages; including the root declaration
-additionally makes default-locale changes and locale-order changes
-identity-bearing. Protocol name, description, assets, experiments, and
-last-modified metadata remain excluded.
+additionally makes default-locale changes identity-bearing. Languages have no
+order, so `hashProtocol` sorts the declared languages before hashing: two
+protocols that differ only in the order they list their languages share a
+hash. Protocol name, description, assets, experiments,
+and last-modified metadata remain excluded.
 
 ### 11.2 Data export
 
@@ -1292,7 +1403,8 @@ language does not change analysis schema.
 
 - Canonical and invalid locale tags, aliases, casing, duplicates, `und`, and
   language/region coexistence.
-- Localization declaration default membership and ordering.
+- Localization declaration default membership. The order of `locales` is not
+  checked and decides nothing.
 - Empty maps, required-field empty translations, undeclared keys, and
   at-least-one-key enforcement at every tagged schema site.
 - ICU literal-only messages: placeholders, plural and select, and unparsable
@@ -1301,13 +1413,23 @@ language does not change analysis schema.
 - Network Composer Visual Analog Scale endpoint overrides are collected,
   validated, warned, and migrated separately from codebook scalar endpoint
   labels despite the loose parameter record.
-- Missing translations remain schema-valid, produce exact warning paths, and
-  report the fallback produced when the missing warning locale is selected.
+- Missing translations, in the default language or any other, remain
+  schema-valid, produce exact warning paths, and report the fallback produced
+  when the missing warning locale is the participant's only language. A string
+  with a translation in any one language is valid without the default's.
 - FormatJS best-fit matching, related variants, preferences matched one at a
   time (`es-MX, en` selects declared `es`), Chinese matched by script, a stated
   value that is malformed or unmatched selecting the protocol default without
-  consulting lower-priority preferences, locale-order fallback, invalid
-  preferences, and empty preference lists.
+  consulting lower-priority preferences, invalid preferences, and empty
+  preference lists.
+- Per-string resolution through the participant's languages: the first language
+  (exactly or by a related language, including `pt-PT` to `pt-BR`, `es-MX` to
+  `es`, `zh-TW` to `zh-Hant` and Swiss German to `de`), each later language in
+  order, the protocol default, then any language with the text; the report of
+  how the translation was found for each step; and a result that does not depend
+  on the order of `localization.locales` or of a string's keys.
+- `sortByLanguageName` orders names with the collation of the display language,
+  and gives the same order whatever order the input arrives in.
 - `Accept-Language` quality ordering, stable ties, duplicates, wildcards, and
   malformed values.
 - Direction and display-name feature fallbacks.
@@ -1318,8 +1440,9 @@ language does not change analysis schema.
   id into `{ variable, label }`, labelled from the variable's name or its id.
 - Migrator caching separates the same caller key by target version and clears
   every target variant predictably.
-- Hash changes for translations, default locale, and locale order, but not
-  derived labels or direction, and a schema-8 hash is unchanged.
+- Hash changes for translations and default locale, but not for the order of
+  the declared languages, derived labels, or direction, and a schema-8 hash is
+  unchanged.
 
 ### 13.2 Interview runtime
 
@@ -1340,9 +1463,15 @@ language does not change analysis schema.
 - DOM `lang`/`dir` reflects the actual resolved locale, and the stage takes the
   direction of the translation shown while the Shell keeps the interface
   language.
-- The Language Chooser lists every declared language by its own name, selects
-  the current one, switches the whole interview on a choice, and states nothing
-  when the preselected language is left unchanged.
+- The Language Chooser lists every declared language by its own name,
+  alphabetically for the interface language and whatever order the host passed
+  `localeOptions` in, selects the current one, switches the whole interview on a
+  choice, and states nothing when the preselected language is left unchanged.
+  The Shell throws when the set of `localeOptions` languages differs from the
+  declaration, but not when only their order does.
+- A text the language shown lacks appears in another of the browser's languages
+  that has it, before the protocol default, and in any language that has it
+  when neither applies.
 - Locale changes re-render without resetting network, prompt position, stage
   position, or form answers, and reach the host through the locale-change
   handler once per change and in order, never through general sync.
@@ -1358,9 +1487,14 @@ language does not change analysis schema.
 
 ### 13.3 Architect and the protocol builder
 
-- Add, reorder, change-default, remove, and change-language flows, including
-  updating `defaultLocale` when its tag is changed and atomic refusal, with
-  nothing written, on invalid edits.
+- Add, change-default, remove, and change-language flows, from the Languages
+  page and from the Language Chooser stage editor, including updating
+  `defaultLocale` when its tag is changed and atomic refusal, with nothing
+  written, on invalid edits. No control reorders languages, and every list of
+  languages is alphabetical.
+- The field notes and the translation dialog state what participants see:
+  the fallback language, and the "unless the participant's browser also lists a
+  language that has it" wording only when the browser could change the result.
 - Each language operation is a single undo step.
 - Incomplete localized strings save successfully and appear as warnings.
 - Undeclared keys and empty localized strings fail loudly.

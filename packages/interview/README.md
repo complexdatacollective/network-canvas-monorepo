@@ -278,16 +278,28 @@ How each language is chosen:
 
 - **Protocol language.** With no `localePreference`, the first of
   `requestedLocales` that the protocol declares, otherwise its `defaultLocale`.
-  With a `localePreference`, the preference alone is matched and the browser's
-  languages are not consulted, so a preference the protocol no longer declares
-  gives the `defaultLocale`.
+  With a `localePreference`, the preference alone is matched when choosing the
+  language shown, so a preference the protocol no longer declares gives the
+  `defaultLocale`.
 - **Interface language.** `[localePreference, ...requestedLocales]` is matched
   in order against the built-in languages, and the first fit wins; otherwise
   `en`. A `localePreference` of `und` is skipped.
 
-Requests match by best fit, one at a time, so `es-MX` matches a declared `es`.
-Until a preference is stated, both languages are chosen afresh on every load, so
-a resumed interview on a device with other languages can show a different one.
+Requests match by best fit, one at a time, so `es-MX` matches a declared `es`,
+`pt-PT` a declared `pt-BR`, and `zh-TW` a declared `zh-Hant`. The matching uses
+CLDR's language data, so it also treats a few languages as acceptable
+substitutes for one another, such as Swiss German for German. Until a
+preference is stated, both languages are chosen afresh on every load, so a
+resumed interview on a device with other languages can show a different one.
+
+The language shown is not the only one a participant can see. For each piece of
+protocol text, the package shows the best available translation: first the
+language shown (or the closest related language the text has), then each other
+language in `requestedLocales` in turn, then the protocol's `defaultLocale`,
+then any language that has the text. So a text missing from the language shown
+appears in another language the participant's browser lists, if the protocol has
+it there, before it falls back to the default. The protocol's own order of
+`locales` plays no part in any of this: languages have no order.
 
 The `LanguageChooser` stage is the only control a participant has over the
 language; the settings menu has none. Choosing a language applies at once, to
@@ -314,11 +326,11 @@ language to the host.
 
 Three fields on the session payload carry the language:
 
-| Field              | Persisted | Purpose                                                                                                                                                                  |
-| ------------------ | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `localePreference` | yes       | The participant's stated choice, or `null`. The only stored value that decides the language shown.                                                                       |
-| `locale`           | yes       | The protocol language last shown. Used for export only (the exported interview language); it never chooses a language. `null` until the engine first reports it.         |
-| `localeOptions`    | no        | Presentation metadata (`{ locale, label, direction }`) for each language the protocol declares, in declaration order. Present on `SessionPayload` only; never persisted. |
+| Field              | Persisted | Purpose                                                                                                                                                          |
+| ------------------ | --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `localePreference` | yes       | The participant's stated choice, or `null`. The only stored value that decides the language shown.                                                               |
+| `locale`           | yes       | The protocol language last shown. Used for export only (the exported interview language); it never chooses a language. `null` until the engine first reports it. |
+| `localeOptions`    | no        | Presentation metadata (`{ locale, label, direction }`) for each language the protocol declares, in any order. Present on `SessionPayload` only; never persisted. |
 
 Persist the first two through `onProtocolLocaleChange`, not `onSync`.
 `SessionSnapshot`, the type `onSync` receives, still includes both fields, but
@@ -328,10 +340,13 @@ the participant just chose.
 
 Derive `localeOptions` with `getLocaleMetadata` from
 `@codaco/protocol-validation`, one entry for each of
-`protocol.localization.locales` and in the same order; `Shell` throws if they
-differ. The host derives them rather than the package so a server-rendered host
-serialises the exact labels it rendered: display names vary between JavaScript
-runtimes, and deriving them again on the client would break hydration. A
+`protocol.localization.locales`, in any order; the package sorts them
+alphabetically by label for the interface language, so the chooser lists the
+same order whatever the host passes. `Shell` throws only if the set of
+languages differs from the declaration. The host derives them rather than the
+package so a server-rendered host serialises the exact labels it rendered:
+display names vary between JavaScript runtimes, and deriving them again on the
+client would break hydration. A
 protocol migrated from schema 8 declares no language and uses the tag `und`,
 which the chooser shows as an unspecified language.
 
@@ -433,7 +448,7 @@ export async function loadInterviewPayload(
       localePreference: interview.localePreference,
       locale: interview.locale,
       // Not stored: derived on each load, one entry per declared language, in
-      // declaration order.
+      // any order (the interview sorts them).
       localeOptions: protocol.localization.locales.map((locale) =>
         getLocaleMetadata(locale),
       ),
@@ -585,8 +600,9 @@ type SessionSnapshot = {
 
 // What a host passes to start or resume an interview.
 type SessionPayload = SessionSnapshot & {
-  // One entry per declared protocol language, in declaration order
-  // (`getLocaleMetadata` from @codaco/protocol-validation). Never persisted.
+  // One entry per declared protocol language, in any order; the interview
+  // sorts them (`getLocaleMetadata` from @codaco/protocol-validation). Never
+  // persisted.
   localeOptions: readonly LocaleMetadata[];
 };
 

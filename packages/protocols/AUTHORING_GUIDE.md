@@ -72,8 +72,11 @@ node packages/protocol-validation/scripts/cli.js <path-to-your-protocol.json>; e
 
 - Tags must be canonical (`en-US`, `es`, `ar`, `pt-BR`). `en_us` or `EN-us` fail, and the error
   names the canonical spelling.
-- The order of `locales` is the fallback order a participant sees when a string lacks their
-  language.
+- The order of `locales` means nothing: languages have no order, and nothing reads it. Tools list
+  them alphabetically by name, and the hash of a protocol ignores the order.
+- `defaultLocale` is the language an interview starts in when the participant's browser lists none
+  of the protocol's languages, and the first fallback after the participant's own languages (see
+  below).
 
 Every participant-facing field holds an object keyed by those tags, one entry per translation:
 
@@ -82,9 +85,13 @@ Every participant-facing field holds an object keyed by those tags, one entry pe
 ```
 
 - Every key must be one of `localization.locales`, and at least one translation is required.
-- A string may leave a declared language out. That is a warning, not a validation error: the
-  participant sees the fallback language instead. The CLI does not report these; call
-  `analyzeProtocolLocalization` from `@codaco/protocol-validation` to list them.
+- A string may leave a declared language out, including the default language, as long as it has a
+  translation in at least one language. A missing translation is a warning, not a validation error.
+  The participant sees the best available translation instead: first in their own language (or a
+  closely related one, such as `pt-BR` for `pt-PT`), then in each other language their browser
+  lists, then in the default language, then in any language of the protocol that has the text. The
+  CLI does not report missing translations; call `analyzeProtocolLocalization` from
+  `@codaco/protocol-validation` to list them.
 - **Each value is an ICU MessageFormat message made only of literal text.** Placeholders such as
   `{name}` are not allowed. To show a literal brace, quote it: `"Pick one '{'or more'}'"` displays
   `Pick one {or more}`. An apostrophe directly before `{`, `}`, `<`, `>` or another apostrophe

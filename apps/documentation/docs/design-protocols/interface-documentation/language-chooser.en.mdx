@@ -1,7 +1,7 @@
 ---
 title: Language Chooser
 navOrder: 23
-date: 5th October 2026
+date: 7th October 2026
 ---
 
 <InterfaceSummary type="LanguageChooser">
@@ -14,15 +14,15 @@ date: 5th October 2026
 
 The Language Chooser interface is a screen where participants choose the language for the rest of the interview, from the languages your protocol is written in. It is useful whenever your protocol has more than one language, and you can't be sure that a participant's device or browser is set to the language they want to use.
 
-To set up the languages a participant can choose from, see [Translating Your Protocol](/en/design-protocols/translating-your-protocol).
+To set up the languages a participant can choose from, see [Translating Your Protocol](/en/design-protocols/translating-your-protocol). You can also add and remove languages in this stage's editor (see [Configuring the Language Chooser](#configuring-the-language-chooser)).
 
 ## What participants see
 
 The screen has the heading "Choose a language", followed by a list of languages. Network Canvas writes the heading itself, in the same language as the interview's buttons and messages.
 
-The list contains exactly the languages your protocol is written in, in the order they appear on Architect's **Languages** page. Each language is written in its own language and script, so a Spanish speaker sees **Español** and a Japanese speaker sees **日本語**, whatever language the screen is currently in. A protocol made before Network Canvas recorded which language a protocol is written in shows "Unspecified language" instead, until you choose its real language in Architect.
+The list contains exactly the languages your protocol is written in, in alphabetical order for the language of the interview's own buttons and messages. Each language is written in its own language and script, so a Spanish speaker sees **Español** and a Japanese speaker sees **日本語**, whatever language the screen is currently in. Languages have no other order: the order your protocol stores them in makes no difference. A protocol made before Network Canvas recorded which language a protocol is written in shows "Unspecified language" instead, until you choose its real language in Architect.
 
-The language the interview is currently shown in is already selected. When the participant picks another one, the change happens straight away: the heading and the interview's own buttons and messages switch to that language, and so does every later screen of the interview. The participant can change their mind as often as they like before moving on.
+The language the interview is currently shown in is already selected. When the participant picks another one, the change happens straight away: the heading and the interview's own buttons and messages switch to that language, and so does every later screen of the interview. The participant can change their mind as often as they like before moving on. A text with no translation in the language they pick appears in another of your protocol's languages (see [The default language and which translation participants see](/en/design-protocols/translating-your-protocol#the-default-language-and-which-translation-participants-see)).
 
 The participant can always move on to the next screen, even if they don't pick a language. If they leave the selected language as it is, the interview keeps choosing its language from the language settings of their device or browser, as it did before this screen. Once they pick a language, the interview keeps it, including when the interview is resumed later.
 
@@ -32,7 +32,11 @@ The interview's own buttons and messages are available in a fixed set of languag
 
 The stage editor has these sections:
 
-- **Languages** shows the languages participants can choose from. You can't change the list here: it always contains every language your protocol is written in. Add or remove languages on the **Languages** page instead.
+- **Languages** lists the languages participants can choose from: every language your protocol is written in, in alphabetical order. You can manage them right here. It is the same list as on Architect's **Languages** page, with the same rules (see [Managing your protocol's languages](/en/design-protocols/translating-your-protocol#managing-your-protocols-languages)), so a change made in one place appears in the other. You can:
+  - add languages with **Add languages**. A new language starts with no translations.
+  - make a language the default language with **Make default**.
+  - mark every text written in one language as written in another with **Change language**. Nothing is translated or deleted.
+  - stop offering a language with **Remove**, which deletes its translations. You can't remove the default language until another language is the default. You can't remove a language that holds the only translation of some text until that text is translated into another language.
 - [Skip logic](/en/design-protocols/key-concepts/skip-logic) and interviewer guidance work as they do on other stages.
 
 ## Data

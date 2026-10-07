@@ -34,8 +34,10 @@ translated into several languages.
   example with `resolveLocalizedString`.
 - `hashProtocol` takes the protocol's `schemaVersion`, and from schema 9 its
   `localization` too. A schema 9 hash covers `{ localization, codebook,
-stages }`, so a translation change produces a new hash. Hashes of schema 8
-  and earlier protocols are unchanged.
+stages }`, so a translation change produces a new hash. Languages have no
+  order, so `hashProtocol` sorts them before hashing: two protocols that differ
+  only in the order they list their languages have the same hash. Hashes of
+  schema 8 and earlier protocols are unchanged.
 
 Schema 9:
 
@@ -76,6 +78,11 @@ Localization:
   hints, option labels, Information items, census and pedigree copy) is a
   `LocalizedString`: a record from a declared locale tag to that language's
   text. Markdown fields hold markdown in each language.
+- A localized string needs a translation in at least one declared language, not
+  in every language and not necessarily in the default one. A missing
+  translation, in the default language or any other, is a warning from
+  `analyzeProtocolLocalization` and never a validation error. The order of
+  `locales` has no meaning, so nothing reads it.
 - Each value is an ICU MessageFormat message. For now a message may only be
   literal text: arguments, `plural`, `select`, number and date formats are
   refused, and markup is read as literal text. `escapeMessageText` turns plain
@@ -95,13 +102,19 @@ Localization:
 - New exports: the `LocalizedString`, `LocalizedStringFormat`, `LocaleTag`,
   `LocalizationDeclaration`, `LocaleMetadata`, `ResolvedLocalizedString`,
   `ProtocolLocalizationWarning` and `LocalizedStringHit` types;
-  `resolveLocalizedString` (picks the text for a locale, falling back through
-  the declared languages, and reports which language it found);
+  `resolveLocalizedString` (takes the participant's languages in order of
+  preference, the first being the language shown, and picks the best available
+  translation: the first language or its closest related language, then each
+  other language in turn, then the protocol's default language, then any
+  language that has the text; it reports the language it found and how it found
+  it);
   `selectProtocolLocale` and `normalizeLocalePreferences` (choose a protocol
   language from a list of preferences, in order, matching Chinese by script);
-  `canonicalizeLocale`; `getLocaleMetadata` (a language's own name and text
-  direction, with CLDR's English name and autonym standing in where the
-  JavaScript runtime has no name for the language); `analyzeProtocolLocalization` (missing translations);
+  `sortByLanguageName` (sorts any list of languages alphabetically by name,
+  collated for the language its reader uses); `canonicalizeLocale`;
+  `getLocaleMetadata` (a language's own name and text direction, with CLDR's
+  English name and autonym standing in where the JavaScript runtime has no name
+  for the language); `analyzeProtocolLocalization` (missing translations);
   `collectLocalizedStrings`; `escapeMessageText` and `messageText`;
   `escapeMarkdownText` (turns plain text into markdown that shows it as
   written).
