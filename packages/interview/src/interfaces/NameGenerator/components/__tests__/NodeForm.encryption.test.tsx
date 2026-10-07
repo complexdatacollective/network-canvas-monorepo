@@ -73,7 +73,7 @@ async function renderEditing(
       ),
     );
 
-  render(
+  const tree = () => (
     <Provider store={store}>
       <InterviewI18nProvider requestedLocale="en">
         <CurrentStepProvider currentStep={0} onStepChange={vi.fn()}>
@@ -86,10 +86,11 @@ async function renderEditing(
           />
         </CurrentStepProvider>
       </InterviewI18nProvider>
-    </Provider>,
+    </Provider>
   );
+  const { rerender } = render(tree());
 
-  return { store, onClose };
+  return { store, onClose, rerender: () => rerender(tree()) };
 }
 
 const storedName = (node: NcNode | undefined) => {
@@ -147,6 +148,33 @@ describe('NodeForm editing a person with an encrypted answer', () => {
     expect(screen.getByRole('textbox', { name: 'Name' })).toHaveValue('Alicia');
     expect(onClose).not.toHaveBeenCalled();
     expect(store.getState().session.network).toBe(before);
+  });
+
+  it('keeps an edit in progress through a re-render and an unrelated change to the interview', async () => {
+    const { store, rerender } = await renderEditing(
+      makeEncryptedPerson('n1', 'Alice', 'pw'),
+      'pw',
+    );
+    const user = userEvent.setup();
+
+    const name = await screen.findByRole('textbox', { name: 'Name' });
+    await user.clear(name);
+    await user.type(name, 'Alicia');
+
+    rerender();
+    await act(async () => {
+      await store.dispatch(
+        addSessionNode({
+          type: NODE_TYPE,
+          attributeData: { age: 30 },
+          useEncryption: true,
+          currentStep: 0,
+        }),
+      );
+    });
+    rerender();
+
+    expect(screen.getByRole('textbox', { name: 'Name' })).toHaveValue('Alicia');
   });
 
   it('does not open, and flags the passphrase, when it cannot decrypt the answer', async () => {
