@@ -32,6 +32,25 @@ const NORMALIZATION_SOURCE_VERSION = 7;
  */
 const EXPERIMENTS_SCHEMA_VERSION = 8;
 
+type StoredExperiments = { encryptedVariables?: true };
+
+/**
+ * A version 8 row's stored experiments, as its upgrade reads them: attributes
+ * marked `encrypted` stay marked only while `encryptedVariables` is on. The
+ * alpha runtime named that flag `encryptNames` and encrypted those attributes
+ * while it was on, so a row stored then keeps encryption. Anything else stored
+ * there upgrades as an unset flag does.
+ */
+function readStoredExperiments(stored: unknown): StoredExperiments {
+  if (typeof stored !== 'object' || stored === null) return {};
+  const encryptionWasOn =
+    'encryptedVariables' in stored &&
+    typeof stored.encryptedVariables === 'boolean'
+      ? stored.encryptedVariables
+      : 'encryptNames' in stored && stored.encryptNames === true;
+  return encryptionWasOn ? { encryptedVariables: true } : {};
+}
+
 type ProtocolAssetRow = {
   assetId: string;
   name: string;
@@ -161,7 +180,9 @@ async function migrateOneProtocol(
     // migration to 9 unmarks every encrypted attribute unless they say
     // encryption was on, so omitting them would stop encrypting attributes
     // whose collected values are already ciphertext.
-    ...(row.experiments != null ? { experiments: row.experiments } : {}),
+    ...(row.schemaVersion === EXPERIMENTS_SCHEMA_VERSION
+      ? { experiments: readStoredExperiments(row.experiments) }
+      : {}),
     assetManifest: buildAssetManifest(row.assets),
   };
 
@@ -255,16 +276,13 @@ async function normalizeNonConformantProtocol(
 
   // A row stored after that version has no experiments: its schema always
   // encrypts an attribute marked `encrypted`, as `encryptedVariables` did.
-  const experiments =
+  const experiments: StoredExperiments =
     row.schemaVersion > EXPERIMENTS_SCHEMA_VERSION
       ? { encryptedVariables: true }
-      : row.experiments;
+      : readStoredExperiments(row.experiments);
 
   const migrated = migrateProtocol(
-    {
-      ...atExperimentsVersion,
-      ...(experiments != null ? { experiments } : {}),
-    },
+    { ...atExperimentsVersion, experiments },
     TARGET_SCHEMA_VERSION,
     { name: cleanName },
   );

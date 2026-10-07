@@ -693,6 +693,83 @@ describe('encrypted attributes in the deploy migration', () => {
     },
   );
 
+  it.each([
+    // The alpha runtime encrypted while the flag, then named `encryptNames`,
+    // was on.
+    ['the alpha’s name for the flag', { encryptNames: true }],
+    ['the flag beside an unknown key', { encryptedVariables: true, other: 1 }],
+  ])(
+    'keeps a version 8 row’s attributes encrypted when its experiments turn encryption on with %s',
+    async (_description, experiments) => {
+      const row = makeEncryptedV8Row(experiments);
+      const prisma = makeMockPrisma();
+      prisma.protocol.findMany.mockResolvedValue([row]);
+
+      await runMigration(prisma);
+
+      const written = onlyWrite(prisma);
+      expect(written).toHaveProperty(
+        'data.schemaVersion',
+        COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
+      );
+      expect(written).toHaveProperty(
+        `data.codebook.${NAME_ATTRIBUTE}.encrypted`,
+        true,
+      );
+      expect(written).toHaveProperty('data.experiments', Prisma.DbNull);
+    },
+  );
+
+  it.each([
+    ['text', 'on'],
+    ['a list', ['encryptedVariables']],
+    ['a flag that is not a boolean', { encryptedVariables: 'true' }],
+    ['the alpha’s flag turned off', { encryptNames: false }],
+  ])(
+    'upgrades a version 8 row whose experiments are %s, with encryption off',
+    async (_description, experiments) => {
+      const row = makeEncryptedV8Row(experiments);
+      const prisma = makeMockPrisma();
+      prisma.protocol.findMany.mockResolvedValue([row]);
+
+      await runMigration(prisma);
+
+      const written = onlyWrite(prisma);
+      expect(written).toHaveProperty(
+        'data.schemaVersion',
+        COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
+      );
+      expect(written).toHaveProperty(
+        `data.codebook.${NAME_ATTRIBUTE}.type`,
+        'text',
+      );
+      expect(written).not.toHaveProperty(
+        `data.codebook.${NAME_ATTRIBUTE}.encrypted`,
+      );
+    },
+  );
+
+  it('keeps a version 8 row’s attributes encrypted when normalizing it with the alpha’s name for the flag', async () => {
+    const written = await normalizeLegacyShapedV8Row({ encryptNames: true });
+
+    expect(written).toHaveProperty(
+      `data.codebook.${NAME_ATTRIBUTE}.encrypted`,
+      true,
+    );
+  });
+
+  it('normalizes a version 8 row whose experiments are text, with encryption off', async () => {
+    const written = await normalizeLegacyShapedV8Row('on');
+
+    expect(written).toHaveProperty(
+      `data.codebook.${NAME_ATTRIBUTE}.type`,
+      'text',
+    );
+    expect(written).not.toHaveProperty(
+      `data.codebook.${NAME_ATTRIBUTE}.encrypted`,
+    );
+  });
+
   it('keeps a version 8 row’s attributes encrypted when normalizing it with encryption on', async () => {
     const written = await normalizeLegacyShapedV8Row({
       encryptedVariables: true,
