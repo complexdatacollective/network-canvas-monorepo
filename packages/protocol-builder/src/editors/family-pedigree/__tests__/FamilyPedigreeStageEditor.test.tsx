@@ -1311,6 +1311,74 @@ describe('the nomination prompts', () => {
     ).toEqual([HEART_DISEASE]);
   });
 
+  /**
+   * An exclusive slot may be written by nothing else, and a nomination prompt
+   * writes its attribute onto every person it is answered for. Offering the one
+   * to the other passes each picker and then fails the whole protocol's
+   * validation at save.
+   */
+  describe('against the participant marker', () => {
+    const OTHER_FLAG = 'has_asthma';
+
+    it('does not offer the participant marker an attribute a prompt sets', async () => {
+      const harness = await openWithAPrompt();
+      addFamilyMemberVariable(harness, OTHER_FLAG, {
+        name: OTHER_FLAG,
+        type: 'boolean',
+      });
+
+      const offered = await offeredAttributes(
+        harness.user,
+        attributeField('Participant marker'),
+      );
+
+      expect(offered).toContain(OTHER_FLAG);
+      expect(offered).not.toContain(HEART_DISEASE);
+    });
+
+    it('counts a prompt added in this edit, before anything is saved', async () => {
+      const harness = openFixture();
+      addFamilyMemberVariables(harness, {
+        [HEART_DISEASE]: { name: HEART_DISEASE, type: 'boolean' },
+        [OTHER_FLAG]: { name: OTHER_FLAG, type: 'boolean' },
+      });
+      await harness.opened();
+      const dialog = await startAPrompt(harness);
+      await chooseAttributeById(
+        harness.user,
+        attributeField('Attribute', dialog),
+        HEART_DISEASE,
+      );
+      await addThePrompt(harness);
+
+      const offered = await offeredAttributes(
+        harness.user,
+        attributeField('Participant marker'),
+      );
+
+      expect(offered).toContain(OTHER_FLAG);
+      expect(offered).not.toContain(HEART_DISEASE);
+    });
+
+    it('does not offer a prompt the attribute the participant marker has just taken', async () => {
+      const harness = openFixture();
+      addFamilyMemberVariables(harness, {
+        [HEART_DISEASE]: { name: HEART_DISEASE, type: 'boolean' },
+        [OTHER_FLAG]: { name: OTHER_FLAG, type: 'boolean' },
+      });
+      await harness.opened();
+      await bindSlot(harness, 'Participant marker', OTHER_FLAG);
+      const dialog = await startAPrompt(harness);
+
+      expect(
+        await offeredAttributes(
+          harness.user,
+          attributeField('Attribute', dialog),
+        ),
+      ).toEqual([HEART_DISEASE]);
+    });
+  });
+
   it('keeps a nomination attribute out of the additional fields', async () => {
     const harness = await openWithAPrompt();
 

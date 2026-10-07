@@ -20,13 +20,15 @@ import {
  * written by the interface itself (UNVALIDATED), so none of them may be an
  * attribute a validated control collects, here or elsewhere in the protocol.
  * Sex assigned at birth uses a value set the interface owns, and the
- * participant marker is exclusive to its slot.
+ * participant marker is exclusive to its slot: no other control of this stage,
+ * a nomination prompt included, may write it.
  */
 export default function NodeConfigurationSection() {
   const intl = useAppIntl();
   const {
     personSubject,
     draftSlotMap,
+    draftWriterMap,
     validatedPersonVariables,
     unvalidatedPersonVariables,
   } = usePedigreeDraftBindings();
@@ -78,7 +80,7 @@ export default function NodeConfigurationSection() {
             writerClass="unvalidated"
             ownSlot={FAMILY_PEDIGREE_SLOTS.egoAttribute}
             draftConflicting={validatedPersonVariables}
-            draftSlotMap={draftSlotMap}
+            draftSlotMap={draftWriterMap}
           />
         </>
       )}

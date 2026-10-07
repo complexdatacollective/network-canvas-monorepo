@@ -67,7 +67,7 @@ function useEdgeTypeChange(): () => EntityTypeChangeConfirmation | undefined {
  */
 export default function RelationshipsSection() {
   const intl = useAppIntl();
-  const { relationshipSubject, draftSlotMap } = usePedigreeDraftBindings();
+  const { relationshipSubject, draftWriterMap } = usePedigreeDraftBindings();
   const confirmTypeChange = useEdgeTypeChange();
 
   return (
@@ -96,7 +96,7 @@ export default function RelationshipsSection() {
             writerClass="unvalidated"
             ownSlot={FAMILY_PEDIGREE_SLOTS.relationshipKindAttribute}
             ownedOptions="pedigreeRelationship"
-            draftSlotMap={draftSlotMap}
+            draftSlotMap={draftWriterMap}
           />
           <SlotVariableField
             name={EDGE_CONFIGURATION_PATHS.gestationalCarrierAttribute}
@@ -107,7 +107,7 @@ export default function RelationshipsSection() {
             variableType="boolean"
             writerClass="unvalidated"
             ownSlot={FAMILY_PEDIGREE_SLOTS.gestationalCarrierAttribute}
-            draftSlotMap={draftSlotMap}
+            draftSlotMap={draftWriterMap}
           />
           <SlotVariableField
             name={EDGE_CONFIGURATION_PATHS.currentPartnerAttribute}
@@ -118,7 +118,7 @@ export default function RelationshipsSection() {
             variableType="boolean"
             writerClass="unvalidated"
             ownSlot={FAMILY_PEDIGREE_SLOTS.currentPartnerAttribute}
-            draftSlotMap={draftSlotMap}
+            draftSlotMap={draftWriterMap}
           />
         </>
       )}

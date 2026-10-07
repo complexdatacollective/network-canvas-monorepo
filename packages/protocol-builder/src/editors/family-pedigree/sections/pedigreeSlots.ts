@@ -8,7 +8,10 @@ import {
 } from '@codaco/protocol-validation';
 
 import type { ExclusiveVariableSlotMap } from '../../../codebook/variableRoles.ts';
-import { draftExclusiveSlotClaims } from '../../../fields/slotVariableWiring.ts';
+import {
+  type DraftSlotBinding,
+  draftExclusiveSlotClaims,
+} from '../../../fields/slotVariableWiring.ts';
 import { useStageValue } from '../../../form/stageFormHooks.ts';
 import type { CodebookSubject } from '../../../protocol-context.ts';
 import { useStageSubject } from '../../../sections/useStageSubject.ts';
@@ -48,6 +51,14 @@ const PERSON_FORM_FIELDS_PATH = 'form.fields';
 /** Where the stage keeps its questions about the whole family. */
 export const NOMINATION_PROMPTS_PATH = 'nominationPrompts';
 
+/**
+ * The claim a nomination prompt's attribute makes in the draft. It is no
+ * exclusive slot of the schema: it only lets the exclusive slot pickers refuse
+ * an attribute a prompt of this stage already sets, as they refuse one another
+ * slot holds.
+ */
+const NOMINATION_PROMPT_CLAIM = 'familyPedigree.nominationPrompts';
+
 const asVariableId = (value: unknown): string | undefined =>
   typeof value === 'string' && value !== '' ? value : undefined;
 
@@ -61,7 +72,11 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
  *
  * - `draftSlotMap` holds the exclusive slot claims (participant marker,
  *   relatives not recorded, relationship kind, gestational carrier, current
- *   partner).
+ *   partner). A nomination prompt's attribute is judged against these.
+ * - `draftWriterMap` holds those claims and also the attribute of each
+ *   nomination prompt. An exclusive slot picker is judged against it, because
+ *   an exclusive attribute may be written by nothing else, and a nomination
+ *   prompt writes its attribute onto people.
  * - `validatedPersonVariables` is what the stage collects from the
  *   participant with validation: the name attribute and every additional
  *   person field.
@@ -73,6 +88,7 @@ export function usePedigreeDraftBindings(): Readonly<{
   personSubject: CodebookSubject | null;
   relationshipSubject: CodebookSubject | null;
   draftSlotMap: ExclusiveVariableSlotMap;
+  draftWriterMap: ExclusiveVariableSlotMap;
   personAttributeVariables: readonly string[];
   validatedPersonVariables: readonly string[];
   unvalidatedPersonVariables: readonly string[];
@@ -113,35 +129,34 @@ export function usePedigreeDraftBindings(): Readonly<{
     [relationshipType],
   );
 
-  const draftSlotMap = useMemo(
-    () =>
-      draftExclusiveSlotClaims([
-        {
-          subject: personSubject,
-          slot: FAMILY_PEDIGREE_SLOTS.egoAttribute,
-          variableId: ego,
-        },
-        {
-          subject: personSubject,
-          slot: FAMILY_PEDIGREE_SLOTS.relativesNotRecordedAttribute,
-          variableId: relativesNotRecorded,
-        },
-        {
-          subject: relationshipSubject,
-          slot: FAMILY_PEDIGREE_SLOTS.relationshipKindAttribute,
-          variableId: kind,
-        },
-        {
-          subject: relationshipSubject,
-          slot: FAMILY_PEDIGREE_SLOTS.gestationalCarrierAttribute,
-          variableId: carrier,
-        },
-        {
-          subject: relationshipSubject,
-          slot: FAMILY_PEDIGREE_SLOTS.currentPartnerAttribute,
-          variableId: partner,
-        },
-      ]),
+  const slotBindings = useMemo<readonly DraftSlotBinding[]>(
+    () => [
+      {
+        subject: personSubject,
+        slot: FAMILY_PEDIGREE_SLOTS.egoAttribute,
+        variableId: ego,
+      },
+      {
+        subject: personSubject,
+        slot: FAMILY_PEDIGREE_SLOTS.relativesNotRecordedAttribute,
+        variableId: relativesNotRecorded,
+      },
+      {
+        subject: relationshipSubject,
+        slot: FAMILY_PEDIGREE_SLOTS.relationshipKindAttribute,
+        variableId: kind,
+      },
+      {
+        subject: relationshipSubject,
+        slot: FAMILY_PEDIGREE_SLOTS.gestationalCarrierAttribute,
+        variableId: carrier,
+      },
+      {
+        subject: relationshipSubject,
+        slot: FAMILY_PEDIGREE_SLOTS.currentPartnerAttribute,
+        variableId: partner,
+      },
+    ],
     [
       carrier,
       ego,
@@ -151,6 +166,11 @@ export function usePedigreeDraftBindings(): Readonly<{
       relationshipSubject,
       relativesNotRecorded,
     ],
+  );
+
+  const draftSlotMap = useMemo(
+    () => draftExclusiveSlotClaims(slotBindings),
+    [slotBindings],
   );
 
   const formFieldVariables = useMemo(
@@ -180,6 +200,21 @@ export function usePedigreeDraftBindings(): Readonly<{
     [nominationRows],
   );
 
+  // The slots come last, so an attribute both a prompt and a slot name is
+  // reported as the slot's, which is the more exact refusal.
+  const draftWriterMap = useMemo(
+    () =>
+      draftExclusiveSlotClaims([
+        ...nominationVariables.map((variableId): DraftSlotBinding => ({
+          subject: personSubject,
+          slot: NOMINATION_PROMPT_CLAIM,
+          variableId,
+        })),
+        ...slotBindings,
+      ]),
+    [nominationVariables, personSubject, slotBindings],
+  );
+
   const unvalidatedPersonVariables = useMemo(
     () =>
       [gender, sex, ego, relativesNotRecorded, ...nominationVariables].filter(
@@ -206,6 +241,7 @@ export function usePedigreeDraftBindings(): Readonly<{
     personSubject,
     relationshipSubject,
     draftSlotMap,
+    draftWriterMap,
     personAttributeVariables,
     validatedPersonVariables,
     unvalidatedPersonVariables,

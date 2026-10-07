@@ -70,7 +70,7 @@ const startingValue = (
 export default function CompletenessSection() {
   const intl = useAppIntl();
   const { committedFields } = useStageEditorForm();
-  const { personSubject, draftSlotMap, validatedPersonVariables } =
+  const { personSubject, draftWriterMap, validatedPersonVariables } =
     usePedigreeDraftBindings();
   const waiting = personSubject === null;
 
@@ -191,7 +191,7 @@ export default function CompletenessSection() {
             ownSlot={FAMILY_PEDIGREE_SLOTS.relativesNotRecordedAttribute}
             ownedOptions="pedigreeRelativesNotRecorded"
             draftConflicting={validatedPersonVariables}
-            draftSlotMap={draftSlotMap}
+            draftSlotMap={draftWriterMap}
           />
         </>
       )}
