@@ -1,5 +1,7 @@
 import type { ResolvedAsset } from '@codaco/interview/contract';
 
+import { participantRequestInit } from '../runtime/participantRuntime.ts';
+
 const storagePath = (source: string): string =>
   `/storage/${source.split('.')[0]}`;
 
@@ -7,7 +9,7 @@ const isSvg = (source: string): boolean =>
   source.toLowerCase().endsWith('.svg');
 
 const svgDataUrl = async (path: string): Promise<string> => {
-  const response = await fetch(path, { credentials: 'omit' });
+  const response = await fetch(path, participantRequestInit);
   if (!response.ok) {
     throw new Error(`Could not load ${path}: ${String(response.status)}`);
   }
