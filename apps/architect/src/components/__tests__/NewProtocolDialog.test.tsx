@@ -210,9 +210,10 @@ describe('NewProtocolDialog protocol languages', () => {
       name: 'Default language',
     });
     expect(select).toHaveValue('en');
+    // Alphabetical by name: Canadian French before English.
     expect(
       [...select.querySelectorAll('option')].map((option) => option.value),
-    ).toEqual(['en', 'fr-CA']);
+    ).toEqual(['fr-CA', 'en']);
 
     fireEvent.change(select, { target: { value: 'fr-CA' } });
     submit();

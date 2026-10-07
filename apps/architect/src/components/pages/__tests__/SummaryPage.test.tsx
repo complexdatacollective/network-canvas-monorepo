@@ -97,6 +97,23 @@ describe('<SummaryPage /> language', () => {
     expect(screen.getByText('أهلا')).toHaveAttribute('dir', 'rtl');
   });
 
+  it('lists the languages alphabetically, whatever order the protocol declares them in', () => {
+    renderSummary({
+      ...bilingualProtocol,
+      localization: { defaultLocale: 'fr', locales: ['fr', 'de', 'en'] },
+    });
+
+    const language = screen.getByRole('combobox', {
+      name: 'Summary language',
+    });
+    expect(language).toHaveValue('fr');
+    expect(
+      [...language.querySelectorAll('option')].map(
+        (option) => option.textContent,
+      ),
+    ).toEqual(['English', 'French', 'German']);
+  });
+
   it('offers no language choice for a protocol in one language', () => {
     renderSummary({
       ...bilingualProtocol,

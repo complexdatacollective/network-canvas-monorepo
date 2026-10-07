@@ -5,7 +5,10 @@ import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import { Label } from '@codaco/fresco-ui/Label';
-import type { LocaleTag } from '@codaco/protocol-validation';
+import {
+  type LocaleTag,
+  sortByLanguageName,
+} from '@codaco/protocol-validation';
 import { useLanguageName } from '~/components/Localization/useLanguageName';
 import PageHeading from '~/components/ProjectNav/PageHeading';
 import { pageInsetClasses } from '~/components/ProjectNav/pageInset';
@@ -100,10 +103,14 @@ const SummaryPage = () => {
                     onChange={(value) => {
                       if (typeof value === 'string') setChosenLocale(value);
                     }}
-                    options={locales.map((tag) => ({
-                      value: tag,
-                      label: languageName(tag),
-                    }))}
+                    options={sortByLanguageName(
+                      locales.map((tag) => ({
+                        value: tag,
+                        label: languageName(tag),
+                      })),
+                      (option) => option.label,
+                      intl.locale,
+                    )}
                   />
                 </div>
               ) : null

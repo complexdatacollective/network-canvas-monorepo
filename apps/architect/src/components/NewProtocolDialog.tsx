@@ -28,7 +28,10 @@ import type {
   FormSubmissionResult,
 } from '@codaco/fresco-ui/form/store/types';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
-import type { LocaleTag } from '@codaco/protocol-validation';
+import {
+  type LocaleTag,
+  sortByLanguageName,
+} from '@codaco/protocol-validation';
 import {
   describeLanguage,
   getLanguageChoices,
@@ -199,9 +202,13 @@ const DefaultLanguageField = ({ preferred }: { preferred: LocaleTag }) => {
       label={intl.formatMessage(languageMessages.defaultLanguage)}
       hint={intl.formatMessage(languageMessages.defaultLanguageHint)}
       component={DefaultLanguageSelect}
-      options={chosen.map((locale) => ({
-        value: locale,
-        label: languageOptionText(intl, describeLanguage(locale, intl.locale)),
+      options={sortByLanguageName(
+        chosen.map((locale) => describeLanguage(locale, intl.locale)),
+        (choice) => choice.name,
+        intl.locale,
+      ).map((choice) => ({
+        value: choice.locale,
+        label: languageOptionText(intl, choice),
       }))}
       chosen={chosen}
       preferred={preferred}

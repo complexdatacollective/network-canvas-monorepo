@@ -4,7 +4,11 @@ import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import SelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import type { PresentationalText } from '@codaco/fresco-ui/PresentationalText';
-import type { LocaleMetadata, LocaleTag } from '@codaco/protocol-validation';
+import {
+  type LocaleMetadata,
+  type LocaleTag,
+  sortByLanguageName,
+} from '@codaco/protocol-validation';
 import { useLanguageName } from '~/components/Localization/useLanguageName';
 import { UNSPECIFIED_LOCALE } from '~/utils/localizedText';
 
@@ -18,7 +22,7 @@ const messages = defineMessages({
 });
 
 type PreviewToolbarProps = Readonly<{
-  /** Every language the protocol declares, in declaration order. */
+  /** Every language the protocol declares. */
   options: readonly LocaleMetadata[];
   /** The language the interview is shown in. */
   value: LocaleTag;
@@ -27,8 +31,8 @@ type PreviewToolbarProps = Readonly<{
 
 /**
  * The preview window's own controls, outside the interview. Lists the
- * protocol's languages by their own names, as the interview's language chooser
- * does, so an author can check each translation.
+ * protocol's languages alphabetically by their own names, as the interview's
+ * language chooser does, so an author can check each translation.
  */
 export default function PreviewToolbar({
   options,
@@ -41,9 +45,13 @@ export default function PreviewToolbar({
 
   // `und` has no name of its own, so its label is written in Architect's
   // language and keeps the page's `lang`.
-  const optionLabel = (option: LocaleMetadata): PresentationalText =>
+  const optionName = (option: LocaleMetadata) =>
     option.locale === UNSPECIFIED_LOCALE
       ? languageName(option.locale)
+      : option.label;
+  const optionLabel = (option: LocaleMetadata): PresentationalText =>
+    option.locale === UNSPECIFIED_LOCALE
+      ? optionName(option)
       : { text: option.label, lang: option.locale, dir: option.direction };
 
   return (
@@ -55,10 +63,12 @@ export default function PreviewToolbar({
         id={selectId}
         size="sm"
         className="w-auto"
-        options={options.map((option) => ({
-          value: option.locale,
-          label: optionLabel(option),
-        }))}
+        options={sortByLanguageName(options, optionName, intl.locale).map(
+          (option) => ({
+            value: option.locale,
+            label: optionLabel(option),
+          }),
+        )}
         value={value}
         // A protocol with one language has nothing to switch to; the control
         // still names the language the preview is in.

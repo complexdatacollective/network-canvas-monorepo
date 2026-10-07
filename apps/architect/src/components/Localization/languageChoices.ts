@@ -2,6 +2,7 @@ import {
   getLocaleMetadata,
   type LocaleTag,
   selectProtocolLocale,
+  sortByLanguageName,
 } from '@codaco/protocol-validation';
 
 // Every ISO 639-1 language except `tw`, which CLDR names "Akan" like `ak`,
@@ -242,10 +243,11 @@ export const getLanguageChoices = (
 ): readonly LanguageChoice[] => {
   const cached = choicesByDisplayLocale.get(displayLocale);
   if (cached) return cached;
-  const collator = new Intl.Collator(displayLocale);
-  const choices = LANGUAGE_TAGS.map((locale) =>
-    describeLanguage(locale, displayLocale),
-  ).toSorted((a, b) => collator.compare(a.name, b.name));
+  const choices = sortByLanguageName(
+    LANGUAGE_TAGS.map((locale) => describeLanguage(locale, displayLocale)),
+    (choice) => choice.name,
+    displayLocale,
+  );
   choicesByDisplayLocale.set(displayLocale, choices);
   return choices;
 };

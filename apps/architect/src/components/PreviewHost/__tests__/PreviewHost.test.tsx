@@ -960,6 +960,20 @@ describe('PreviewHost', () => {
       expect(control).toBeEnabled();
     });
 
+    it('lists the languages alphabetically by their own names, whatever order the protocol declares them in', async () => {
+      const control = await openPreview(
+        makeProtocol({ defaultLocale: 'fr', locales: ['fr', 'en', 'de'] }),
+      );
+
+      expect(
+        within(control)
+          .getAllByRole('option')
+          .map((option) => option.textContent),
+      ).toEqual(
+        ['de', 'en', 'fr'].map((locale) => getLocaleMetadata(locale).label),
+      );
+    });
+
     it('starts on the language the interview chooses from the browser', async () => {
       const control = await openPreview(makeProtocol(ENGLISH_AND_FRENCH), [
         'fr-CA',
