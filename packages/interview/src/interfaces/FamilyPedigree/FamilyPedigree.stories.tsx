@@ -953,12 +953,17 @@ export const EncryptedNames: ScenarioStory = {
       await screen.findByRole('button', { name: /^enter your passphrase$/i }),
     );
     await userEvent.type(
-      await screen.findByRole('textbox', { name: /passphrase/i }),
+      await screen.findByLabelText(/^Passphrase/, { selector: 'input' }),
       'storybook passphrase',
     );
     await userEvent.click(
       screen.getByRole('button', { name: /submit passphrase/i }),
     );
+    // The wizard opens in a dialog of its own, so let the passphrase dialog
+    // finish closing first.
+    await waitFor(async () => {
+      await expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
 
     await clickGetStarted();
     await selectEgoSex();
