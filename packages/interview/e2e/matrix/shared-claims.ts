@@ -46,6 +46,7 @@ export const sharedSuiteClaims: readonly string[] = [
   'NameGeneratorQuickAdd:panels[].filter',
   'NameGeneratorRoster:skipLogic',
   'Narrative:skipLogic',
+  'NarrativePedigree:skipLogic',
   'NetworkComposer:skipLogic',
   'OneToManyDyadCensus:filter',
   'OneToManyDyadCensus:skipLogic',

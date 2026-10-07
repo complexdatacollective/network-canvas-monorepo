@@ -11,6 +11,7 @@ import { informationScenarios } from './information.scenarios.js';
 import { nameGeneratorQuickAddScenarios } from './name-generator-quick-add.scenarios.js';
 import { nameGeneratorRosterScenarios } from './name-generator-roster.scenarios.js';
 import { nameGeneratorScenarios } from './name-generator.scenarios.js';
+import { narrativePedigreeScenarios } from './narrative-pedigree.scenarios.js';
 import { narrativeScenarios } from './narrative.scenarios.js';
 import { networkComposerScenarios } from './network-composer.scenarios.js';
 import { oneToManyDyadCensusScenarios } from './one-to-many-dyad-census.scenarios.js';
@@ -40,6 +41,7 @@ export const ALL_SUITES: InterfaceScenarios[] = [
   nameGeneratorRosterScenarios,
   nameGeneratorScenarios,
   narrativeScenarios,
+  narrativePedigreeScenarios,
   networkComposerScenarios,
   oneToManyDyadCensusScenarios,
   ordinalBinScenarios,

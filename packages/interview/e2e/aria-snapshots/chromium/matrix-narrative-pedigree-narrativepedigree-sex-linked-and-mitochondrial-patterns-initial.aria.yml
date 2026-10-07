@@ -1,0 +1,37 @@
+- main:
+  - text: Showing all conditions
+  - complementary "Condition key":
+    - heading "Key" [level=4]
+    - heading "Conditions" [level=4]
+    - paragraph: Select a condition to see who it affects.
+    - button "Haemophilia"
+    - button "Hypophosphataemia"
+    - button "Hearing Loss"
+    - button "Mitochondrial Myopathy"
+    - separator
+    - heading "What the symbols mean" [level=4]
+    - text: Has this condition Will develop this condition Carries this condition May develop this condition May carry this condition Not known
+    - button "Save snapshot"
+  - slider "Resize the condition key panel"
+  - region "Your family":
+    - button "Focus on Agnes" [disabled]: "Haemophilia: At risk (carrier), Hypophosphataemia: Status unknown, Hearing Loss: Status unknown, and Mitochondrial Myopathy: Affected Agnes"
+    - button "Focus on Herbert" [disabled]: "Haemophilia: Status unknown, Hypophosphataemia: Status unknown, Hearing Loss: Status unknown, and Mitochondrial Myopathy: Status unknown Herbert"
+    - button "Focus on Iris" [disabled]: "Haemophilia: Obligate carrier, Hypophosphataemia: Status unknown, Hearing Loss: Status unknown, and Mitochondrial Myopathy: At risk (affected) Iris"
+    - button "Focus on Frank" [disabled]: "Haemophilia: Status unknown, Hypophosphataemia: Status unknown, Hearing Loss: Status unknown, and Mitochondrial Myopathy: Status unknown Frank"
+    - button "Focus on Walter" [disabled]: "Haemophilia: Status unknown, Hypophosphataemia: Status unknown, Hearing Loss: Affected, and Mitochondrial Myopathy: Status unknown Walter"
+    - button "Focus on Edith" [disabled]: "Haemophilia: Status unknown, Hypophosphataemia: Status unknown, Hearing Loss: Status unknown, and Mitochondrial Myopathy: Status unknown Edith"
+    - button "Focus on Alan" [disabled]: "Haemophilia: Affected, Hypophosphataemia: Status unknown, Hearing Loss: Status unknown, and Mitochondrial Myopathy: At risk (affected) Alan"
+    - button "Focus on Bruce" [disabled]: "Haemophilia: Affected, Hypophosphataemia: Status unknown, Hearing Loss: Status unknown, and Mitochondrial Myopathy: At risk (affected) Bruce"
+    - button "Focus on Diane" [disabled]: "Haemophilia: At risk (carrier), Hypophosphataemia: Status unknown, Hearing Loss: Status unknown, and Mitochondrial Myopathy: At risk (affected) Diane"
+    - button "Focus on Gerald" [disabled]: "Haemophilia: Status unknown, Hypophosphataemia: Affected, Hearing Loss: Obligate affected, and Mitochondrial Myopathy: Status unknown Gerald"
+    - button "Focus on You" [disabled]: "Haemophilia: At risk (affected), Hypophosphataemia: Status unknown, Hearing Loss: Obligate affected, and Mitochondrial Myopathy: At risk (affected) You"
+    - button "Focus on Helen" [disabled]: "Haemophilia: At risk (carrier), Hypophosphataemia: Obligate affected, Hearing Loss: Status unknown, and Mitochondrial Myopathy: At risk (affected) Helen"
+  - toolbar "Zoom controls":
+    - button "Zoom out"
+    - button "Zoom in"
+    - button "Show the whole family"
+  - navigation:
+    - button "Previous Step"
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"
