@@ -7,7 +7,6 @@ import { describe, expect, it, vi } from 'vitest';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import { setActiveProtocol } from '~/ducks/modules/activeProtocol';
 import { rootReducer } from '~/ducks/modules/root';
-import { getProtocol } from '~/selectors/protocol';
 
 import LanguageList from '../LanguageList';
 
@@ -25,20 +24,6 @@ const trilingual: CurrentProtocol = {
       type: 'Information',
       label: { en: 'Welcome', fr: 'Bienvenue' },
       title: { fr: 'Bonjour' },
-      items: [],
-    },
-  ],
-};
-
-const monolingual: CurrentProtocol = {
-  ...trilingual,
-  localization: { defaultLocale: 'en', locales: ['en'] },
-  stages: [
-    {
-      id: 'welcome',
-      type: 'Information',
-      label: { en: 'Welcome' },
-      title: { en: 'Hello' },
       items: [],
     },
   ],
@@ -71,32 +56,26 @@ const rowOf = (language: string) => {
 };
 
 describe('LanguageList', () => {
-  it('moves a language with the arrow keys on its handle and announces where it went', () => {
-    const { store } = renderLanguageList();
+  it('lists languages alphabetically by name, whatever order the protocol declares them in', () => {
+    renderLanguageList({
+      ...trilingual,
+      localization: { defaultLocale: 'en', locales: ['es', 'de', 'fr', 'en'] },
+    });
 
-    fireEvent.keyDown(
-      screen.getByRole('button', { name: 'Reorder French, position 2 of 3' }),
-      { key: 'ArrowUp' },
-    );
-
-    expect(getProtocol(store.getState())?.localization.locales).toEqual([
-      'fr',
-      'en',
-      'de',
-    ]);
-    expect(screen.getByRole('status')).toHaveTextContent(
-      'French moved to position 1 of 3.',
-    );
+    const rows = screen.getAllByRole('listitem');
     expect(
-      screen.getByRole('button', { name: 'Reorder French, position 1 of 3' }),
-    ).toBeInTheDocument();
+      ['English', 'French', 'German', 'Spanish'].map((language) =>
+        rows.indexOf(rowOf(language)),
+      ),
+    ).toEqual([0, 1, 2, 3]);
   });
 
-  it('offers no handle when the protocol has one language', () => {
-    renderLanguageList(monolingual);
+  it('offers no way to reorder languages', () => {
+    renderLanguageList();
 
+    expect(screen.getByRole('list').tagName).toBe('UL');
     expect(
-      screen.queryByRole('button', { name: /^Reorder/ }),
+      screen.queryByRole('button', { name: /reorder/i }),
     ).not.toBeInTheDocument();
   });
 

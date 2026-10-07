@@ -53,13 +53,18 @@ function englishProtocol(): CurrentProtocol {
  * whose texts exist only in its own language names it in its removal note).
  */
 function languageRow(page: Page, code: string): Locator {
-  return page
-    .getByRole('region', { name: 'Protocol languages' })
-    .getByRole('listitem')
-    .filter({ has: page.getByText(code, { exact: true }) });
+  return languageRows(page).filter({
+    has: page.getByText(code, { exact: true }),
+  });
 }
 
-test('adds a language, lists its missing translations, keeps the default language from being removed, reorders languages, and translates a listed text', async ({
+function languageRows(page: Page): Locator {
+  return page
+    .getByRole('region', { name: 'Protocol languages' })
+    .getByRole('listitem');
+}
+
+test('adds a language, lists its missing translations, keeps the default language from being removed, translates a listed text, and lists languages alphabetically', async ({
   architectPage: page,
   seed,
 }) => {
@@ -76,11 +81,7 @@ test('adds a language, lists its missing translations, keeps the default languag
   // One language: it is the default, every text is in it, and there is
   // nothing to translate into yet.
   const english = languageRow(page, 'en');
-  await expect(
-    page
-      .getByRole('region', { name: 'Protocol languages' })
-      .getByRole('listitem'),
-  ).toHaveCount(1);
+  await expect(languageRows(page)).toHaveCount(1);
   await expect(english).toContainText('English');
   await expect(english.getByText('Default', { exact: true })).toBeVisible();
   await expect(english).toContainText('3 of 3 texts translated');
@@ -169,11 +170,12 @@ test('adds a language, lists its missing translations, keeps the default languag
   await expect(
     english.getByRole('button', { name: 'Make default', exact: true }),
   ).toBeVisible();
+  // The default keeps its place in the alphabetical list.
+  await expect(languageRows(page)).toHaveText([/^English/, /^French/]);
   const frenchDefault = await readProtocolJson(
     page,
     (protocol) => protocol.localization.defaultLocale === 'fr',
   );
-  // The default changes; the order participants' fallbacks follow does not.
   expect(frenchDefault.localization).toEqual({
     defaultLocale: 'fr',
     locales: ['en', 'fr'],
@@ -207,23 +209,6 @@ test('adds a language, lists its missing translations, keeps the default languag
     'fr',
   ]);
 
-  // Languages reorder from the keyboard as well as by dragging. The order is
-  // the order participants are offered them in, so it is saved.
-  await french
-    .getByRole('button', { name: 'Reorder French, position 2 of 2' })
-    .press('ArrowUp');
-  const reordered = await readProtocolJson(
-    page,
-    (protocol) => protocol.localization.locales[0] === 'fr',
-  );
-  expect(reordered.localization).toEqual({
-    defaultLocale: 'fr',
-    locales: ['fr', 'en'],
-  });
-  await expect(
-    french.getByRole('button', { name: 'Reorder French, position 1 of 2' }),
-  ).toBeFocused();
-
   // A listed text opens in a dialog that edits the listed language first, and
   // shows what participants in each language see as it is typed. Saved, the
   // text leaves the list, the language's progress counts it, and focus moves
@@ -255,4 +240,32 @@ test('adds a language, lists its missing translations, keeps the default languag
     en: STAGE_NAME,
     fr: 'Bienvenue',
   });
+
+  // Languages have no order: a language added last is listed by its name.
+  await page
+    .getByRole('button', { name: 'Add languages', exact: true })
+    .click();
+  await expect(dialog).toBeVisible();
+  await dialog
+    .getByRole('combobox', { name: 'Languages', exact: true })
+    .click();
+  await languageList.getByRole('option', { name: /^Dutch \(nl\)/ }).click();
+  await page.keyboard.press('Escape');
+  await expect(languageList).toBeHidden();
+  await dialog
+    .getByRole('button', { name: 'Add languages', exact: true })
+    .click();
+  await expect(dialog).toBeHidden();
+  const withDutch = await readProtocolJson(page, (protocol) =>
+    protocol.localization.locales.includes('nl'),
+  );
+  expect(withDutch.localization).toEqual({
+    defaultLocale: 'fr',
+    locales: ['en', 'fr', 'nl'],
+  });
+  await expect(languageRows(page)).toHaveText([
+    /^Dutch/,
+    /^English/,
+    /^French/,
+  ]);
 });

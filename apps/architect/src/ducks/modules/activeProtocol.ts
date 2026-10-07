@@ -28,7 +28,6 @@ import codebook from './protocol/codebook';
 import {
   addLocales,
   type LocaleOperationResult,
-  moveLocale,
   relabelLocale,
   removeLocale,
   setDefaultLocale,
@@ -102,13 +101,6 @@ const activeProtocolSlice = createSlice({
     ) =>
       applyLocaleOperation(state, (protocol) =>
         setDefaultLocale(protocol, action.payload.locale),
-      ),
-    moveProtocolLocale: (
-      state,
-      action: PayloadAction<{ locale: string; index: number }>,
-    ) =>
-      applyLocaleOperation(state, (protocol) =>
-        moveLocale(protocol, action.payload.locale, action.payload.index),
       ),
     relabelProtocolLocale: (
       state,
@@ -207,7 +199,6 @@ export const {
   addProtocolLocales,
   removeProtocolLocale,
   setProtocolDefaultLocale,
-  moveProtocolLocale,
   relabelProtocolLocale,
   setProtocolTranslation,
   setProtocolLocalizedString,

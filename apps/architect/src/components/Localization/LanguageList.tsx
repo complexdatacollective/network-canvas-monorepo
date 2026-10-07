@@ -1,6 +1,5 @@
 import { Plus } from 'lucide-react';
-import { Reorder, useDragControls } from 'motion/react';
-import { useId, useMemo, useRef, useState } from 'react';
+import { useId, useMemo, useRef } from 'react';
 import { flushSync } from 'react-dom';
 import { useSelector } from 'react-redux';
 
@@ -9,8 +8,6 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import { Badge } from '@codaco/fresco-ui/Badge';
 import Button from '@codaco/fresco-ui/Button';
-import { useAccessibilityAnnouncements } from '@codaco/fresco-ui/dnd/useAccessibilityAnnouncements';
-import { ArrayFieldDragHandle } from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
 import ProgressBar from '@codaco/fresco-ui/ProgressBar';
 import Section from '@codaco/fresco-ui/Section';
 import {
@@ -19,19 +16,18 @@ import {
   TooltipTrigger,
 } from '@codaco/fresco-ui/Tooltip';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import type { LocaleTag } from '@codaco/protocol-validation';
-import { useAppDispatch } from '~/ducks/hooks';
 import {
-  moveProtocolLocale,
-  setProtocolDefaultLocale,
-} from '~/ducks/modules/activeProtocol';
+  type LocaleTag,
+  sortByLanguageName,
+} from '@codaco/protocol-validation';
+import { useAppDispatch } from '~/ducks/hooks';
+import { setProtocolDefaultLocale } from '~/ducks/modules/activeProtocol';
 import { getLocaleRemovalImpact } from '~/ducks/modules/protocol/localeOperations';
 import {
   getLocalizationCoverage,
   type LocaleCoverage,
 } from '~/selectors/issues';
 import { getProtocol } from '~/selectors/protocol';
-import { cx } from '~/utils/cva';
 import { UNSPECIFIED_LOCALE } from '~/utils/localizedText';
 
 import { describeLanguage } from './languageChoices';
@@ -60,9 +56,9 @@ const messages = defineMessages({
   description: {
     id: 'architect.localization.languageList.description',
     defaultMessage:
-      'Participants are offered these languages in this order. Drag a language to move it. Text with no translation in a participant’s language is shown in the default language or, if the default language lacks it too, in the first language in this list that has it.',
+      'Participants can take the interview in any of these languages. Each text is shown in the closest language that has it: the participant’s own language, then a related language, then another language their browser lists, then the default language, then any other.',
     description:
-      'Explanation of the list of protocol languages, shown when the protocol has more than one. The order of the list is the order participants see the languages in, and the order in which untranslated text falls back after the default language.',
+      'Explanation of the list of protocol languages, shown when the protocol has more than one. A related language is, for example, Brazilian Portuguese for a participant using European Portuguese. The list is in alphabetical order; its order has no effect.',
   },
   descriptionSingle: {
     id: 'architect.localization.languageList.descriptionSingle',
@@ -80,19 +76,6 @@ const messages = defineMessages({
     id: 'architect.localization.languageList.defaultBadge',
     defaultMessage: 'Default',
     description: 'Badge marking the default language of a protocol.',
-  },
-  reorderHandle: {
-    id: 'architect.localization.languageList.reorderHandle',
-    defaultMessage:
-      'Reorder {language}, position {position, number} of {count, number}',
-    description:
-      'Accessible name of the drag handle that moves a language to another place in the list of protocol languages.',
-  },
-  moved: {
-    id: 'architect.localization.languageList.moved',
-    defaultMessage:
-      '{language} moved to position {position, number} of {count, number}.',
-    description: 'Screen-reader announcement after a language is moved.',
   },
   makeDefault: {
     id: 'architect.localization.languageList.makeDefault',
@@ -169,22 +152,11 @@ const LanguageList = ({ onShowMissing }: LanguageListProps) => {
   const addButtonRef = useRef<HTMLButtonElement>(null);
   const { addLanguages, changeLanguage, removeLanguage } =
     useLanguageActions(addButtonRef);
-  const { announce } = useAccessibilityAnnouncements();
-
   const locales = protocol?.localization.locales ?? EMPTY_LOCALES;
-
-  // motion's `onReorder` fires on every row crossing during a drag, so the
-  // list renders from a local order and the move is dispatched once, on drop:
-  // one drag is one undo step. A newly committed order replaces it in the same
-  // render that receives it.
-  const [orderedLocales, setOrderedLocales] = useState<LocaleTag[]>(() => [
-    ...locales,
-  ]);
-  const [committedLocales, setCommittedLocales] = useState(locales);
-  if (committedLocales !== locales) {
-    setCommittedLocales(locales);
-    setOrderedLocales([...locales]);
-  }
+  const sortedLocales = useMemo(
+    () => sortByLanguageName(locales, languageName, intl.locale),
+    [intl.locale, languageName, locales],
+  );
 
   const coverageByLocale = useMemo(
     () => new Map(coverage.locales.map((entry) => [entry.locale, entry])),
@@ -203,24 +175,6 @@ const LanguageList = ({ onShowMissing }: LanguageListProps) => {
   );
 
   if (!protocol) return null;
-
-  const move = (locale: LocaleTag, index: number) => {
-    dispatch(moveProtocolLocale({ locale, index }));
-    announce(
-      intl.formatMessage(messages.moved, {
-        language: languageName(locale),
-        position: index + 1,
-        count: locales.length,
-      }),
-    );
-  };
-
-  const commitDrag = (locale: LocaleTag) => {
-    const from = locales.indexOf(locale);
-    const to = orderedLocales.indexOf(locale);
-    if (from === -1 || to === -1 || from === to) return;
-    move(locale, to);
-  };
 
   return (
     <Section
@@ -248,28 +202,18 @@ const LanguageList = ({ onShowMissing }: LanguageListProps) => {
           </AlertDescription>
         </Alert>
       )}
-      <Reorder.Group
-        as="ol"
-        axis="y"
-        values={orderedLocales}
-        onReorder={setOrderedLocales}
-        className="divide-outline flex flex-col divide-y"
-      >
-        {orderedLocales.map((locale, index) => {
+      <ul className="divide-outline flex flex-col divide-y">
+        {sortedLocales.map((locale) => {
           const entry = coverageByLocale.get(locale);
           if (!entry) return null;
           return (
             <LanguageRow
               key={locale}
               entry={entry}
-              index={index}
-              count={orderedLocales.length}
               total={coverage.total}
               strandedCount={
                 removalImpacts.get(locale)?.strandedStrings.length ?? 0
               }
-              onMove={(targetIndex) => move(locale, targetIndex)}
-              onDragCommit={() => commitDrag(locale)}
               onMakeDefault={() =>
                 dispatch(setProtocolDefaultLocale({ locale }))
               }
@@ -279,7 +223,7 @@ const LanguageList = ({ onShowMissing }: LanguageListProps) => {
             />
           );
         })}
-      </Reorder.Group>
+      </ul>
       <Button
         ref={addButtonRef}
         className="mt-6"
@@ -294,12 +238,8 @@ const LanguageList = ({ onShowMissing }: LanguageListProps) => {
 
 type LanguageRowProps = {
   entry: LocaleCoverage;
-  index: number;
-  count: number;
   total: number;
   strandedCount: number;
-  onMove: (targetIndex: number) => void;
-  onDragCommit: () => void;
   onMakeDefault: () => void;
   onChange: () => void;
   onRemove: () => void;
@@ -308,12 +248,8 @@ type LanguageRowProps = {
 
 const LanguageRow = ({
   entry,
-  index,
-  count,
   total,
   strandedCount,
-  onMove,
-  onDragCommit,
   onMakeDefault,
   onChange,
   onRemove,
@@ -321,8 +257,6 @@ const LanguageRow = ({
 }: LanguageRowProps) => {
   const intl = useAppIntl();
   const languageName = useLanguageName();
-  const dragControls = useDragControls();
-  const [isDragging, setIsDragging] = useState(false);
   const changeButtonRef = useRef<HTMLButtonElement>(null);
   const removalReasonId = useId();
   const { locale, isDefault, translated, missing } = entry;
@@ -346,140 +280,110 @@ const LanguageRow = ({
   };
 
   return (
-    <Reorder.Item
-      value={locale}
-      dragListener={false}
-      dragControls={dragControls}
-      onDragStart={() => setIsDragging(true)}
-      onDragEnd={() => {
-        setIsDragging(false);
-        onDragCommit();
-      }}
-      className={cx(
-        '-mx-3 flex items-start gap-3 px-3 py-5',
-        isDragging && 'bg-surface elevation-medium rounded',
-      )}
-    >
-      {count > 1 && (
-        <ArrayFieldDragHandle
-          dragControls={dragControls}
-          index={index}
-          itemCount={count}
-          onMove={onMove}
-          label={intl.formatMessage(messages.reorderHandle, {
-            language,
-            position: index + 1,
-            count,
-          })}
-        />
-      )}
-      <div className="flex min-w-0 flex-1 flex-wrap items-start justify-between gap-x-6 gap-y-3">
-        <div className="flex min-w-0 flex-1 basis-72 flex-col gap-2">
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-            <span className="text-lg font-semibold">{language}</span>
-            {own && own.autonym !== language && (
-              <span
-                lang={own.locale}
-                dir={own.direction}
-                className="text-current/70"
-              >
-                {own.autonym}
-              </span>
-            )}
-            <Badge render={<span />} size="sm" appearance="outline" mono>
-              {locale}
+    <li className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3 py-5">
+      <div className="flex min-w-0 flex-1 basis-72 flex-col gap-2">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <span className="text-lg font-semibold">{language}</span>
+          {own && own.autonym !== language && (
+            <span
+              lang={own.locale}
+              dir={own.direction}
+              className="text-current/70"
+            >
+              {own.autonym}
+            </span>
+          )}
+          <Badge render={<span />} size="sm" appearance="outline" mono>
+            {locale}
+          </Badge>
+          {isDefault && (
+            <Badge render={<span />} size="sm" tone="primary">
+              {intl.formatMessage(messages.defaultBadge)}
             </Badge>
-            {isDefault && (
-              <Badge render={<span />} size="sm" tone="primary">
-                {intl.formatMessage(messages.defaultBadge)}
-              </Badge>
+          )}
+        </div>
+        {total === 0 ? (
+          <Paragraph emphasis="muted" margin="none">
+            {intl.formatMessage(messages.noText)}
+          </Paragraph>
+        ) : (
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            <div className="w-40">
+              <ProgressBar
+                orientation="horizontal"
+                percentProgress={(translated / total) * 100}
+                nudge={false}
+                label={intl.formatMessage(messages.coverageLabel, {
+                  language,
+                })}
+              />
+            </div>
+            <span className="text-sm">
+              {intl.formatMessage(messages.coverage, { translated, total })}
+            </span>
+            {missing > 0 && (
+              <Button size="sm" variant="text" onClick={onShowMissing}>
+                {intl.formatMessage(messages.showMissing, { count: missing })}
+              </Button>
             )}
           </div>
-          {total === 0 ? (
-            <Paragraph emphasis="muted" margin="none">
-              {intl.formatMessage(messages.noText)}
-            </Paragraph>
-          ) : (
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-              <div className="w-40">
-                <ProgressBar
-                  orientation="horizontal"
-                  percentProgress={(translated / total) * 100}
-                  nudge={false}
-                  label={intl.formatMessage(messages.coverageLabel, {
-                    language,
-                  })}
-                />
-              </div>
-              <span className="text-sm">
-                {intl.formatMessage(messages.coverage, { translated, total })}
-              </span>
-              {missing > 0 && (
-                <Button size="sm" variant="text" onClick={onShowMissing}>
-                  {intl.formatMessage(messages.showMissing, { count: missing })}
-                </Button>
-              )}
-            </div>
-          )}
-        </div>
-        <div className="flex flex-wrap items-center gap-1">
-          {!isDefault && (
-            <Button size="sm" variant="text" onClick={makeDefault}>
-              {intl.formatMessage(messages.makeDefault)}
-            </Button>
-          )}
-          <Button
-            ref={changeButtonRef}
-            size="sm"
-            variant={isUnspecified ? 'default' : 'text'}
-            color={isUnspecified ? 'warning' : 'default'}
-            onClick={onChange}
-          >
-            {intl.formatMessage(
-              isUnspecified
-                ? messages.identifyLanguage
-                : messages.changeLanguage,
-            )}
-          </Button>
-          {removalBlockedReason ? (
-            // `aria-disabled` rather than `disabled`, which would take the
-            // button out of the focus order and stop the pointer events that
-            // open the tooltip, leaving keyboard and screen-reader users with
-            // no way to learn why it is unavailable. It has no click handler.
-            <Tooltip>
-              <TooltipTrigger
-                render={
-                  <Button
-                    size="sm"
-                    variant="text"
-                    color="destructive"
-                    aria-disabled
-                    aria-describedby={removalReasonId}
-                  >
-                    {intl.formatMessage(messages.remove)}
-                  </Button>
-                }
-              />
-              <span id={removalReasonId} className="sr-only">
-                {removalBlockedReason}
-              </span>
-              <TooltipContent aria-hidden="true">
-                {removalBlockedReason}
-              </TooltipContent>
-            </Tooltip>
-          ) : (
-            <Button
-              size="sm"
-              variant="text"
-              color="destructive"
-              onClick={onRemove}
-            >
-              {intl.formatMessage(messages.remove)}
-            </Button>
-          )}
-        </div>
+        )}
       </div>
-    </Reorder.Item>
+      <div className="flex flex-wrap items-center gap-1">
+        {!isDefault && (
+          <Button size="sm" variant="text" onClick={makeDefault}>
+            {intl.formatMessage(messages.makeDefault)}
+          </Button>
+        )}
+        <Button
+          ref={changeButtonRef}
+          size="sm"
+          variant={isUnspecified ? 'default' : 'text'}
+          color={isUnspecified ? 'warning' : 'default'}
+          onClick={onChange}
+        >
+          {intl.formatMessage(
+            isUnspecified ? messages.identifyLanguage : messages.changeLanguage,
+          )}
+        </Button>
+        {removalBlockedReason ? (
+          // `aria-disabled` rather than `disabled`, which would take the
+          // button out of the focus order and stop the pointer events that
+          // open the tooltip, leaving keyboard and screen-reader users with
+          // no way to learn why it is unavailable. It has no click handler.
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
+                  size="sm"
+                  variant="text"
+                  color="destructive"
+                  aria-disabled
+                  aria-describedby={removalReasonId}
+                >
+                  {intl.formatMessage(messages.remove)}
+                </Button>
+              }
+            />
+            <span id={removalReasonId} className="sr-only">
+              {removalBlockedReason}
+            </span>
+            <TooltipContent aria-hidden="true">
+              {removalBlockedReason}
+            </TooltipContent>
+          </Tooltip>
+        ) : (
+          <Button
+            size="sm"
+            variant="text"
+            color="destructive"
+            onClick={onRemove}
+          >
+            {intl.formatMessage(messages.remove)}
+          </Button>
+        )}
+      </div>
+    </li>
   );
 };
 

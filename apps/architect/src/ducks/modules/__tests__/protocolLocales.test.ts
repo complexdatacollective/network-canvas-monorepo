@@ -6,7 +6,6 @@ import createTimeline, { timelineActions } from '~/ducks/middleware/timeline';
 import activeProtocol, {
   actionCreators,
   addProtocolLocales,
-  moveProtocolLocale,
   relabelProtocolLocale,
   removeProtocolLocale,
   setActiveProtocol,
@@ -97,17 +96,13 @@ describe('protocol language reducers and undo', () => {
     expect(presentOf(store)).toEqual(migratedProtocol());
   });
 
-  it('undoes adding, reordering, changing the default and removing one step at a time', () => {
+  it('undoes adding, changing the default and removing one step at a time', () => {
     store.dispatch(relabelProtocolLocale({ from: 'und', to: 'en' }));
     const english = presentOf(store);
 
     store.dispatch(addProtocolLocales({ locales: ['fr', 'de'] }));
     const added = presentOf(store);
     expect(added.localization.locales).toEqual(['en', 'fr', 'de']);
-
-    store.dispatch(moveProtocolLocale({ locale: 'de', index: 0 }));
-    const moved = presentOf(store);
-    expect(moved.localization.locales).toEqual(['de', 'en', 'fr']);
 
     store.dispatch(setProtocolDefaultLocale({ locale: 'de' }));
     const defaulted = presentOf(store);
@@ -116,13 +111,11 @@ describe('protocol language reducers and undo', () => {
     store.dispatch(removeProtocolLocale({ locale: 'fr' }));
     expect(presentOf(store).localization).toEqual({
       defaultLocale: 'de',
-      locales: ['de', 'en'],
+      locales: ['en', 'de'],
     });
 
     store.dispatch(timelineActions.undo());
     expect(presentOf(store)).toEqual(defaulted);
-    store.dispatch(timelineActions.undo());
-    expect(presentOf(store)).toEqual(moved);
     store.dispatch(timelineActions.undo());
     expect(presentOf(store)).toEqual(added);
     store.dispatch(timelineActions.undo());

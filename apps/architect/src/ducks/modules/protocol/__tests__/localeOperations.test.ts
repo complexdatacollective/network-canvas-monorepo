@@ -11,7 +11,6 @@ import {
   addLocales,
   getLocaleRemovalImpact,
   type LocaleOperationResult,
-  moveLocale,
   relabelLocale,
   removeLocale,
   setDefaultLocale,
@@ -216,30 +215,6 @@ describe('setDefaultLocale', () => {
       ok: false,
       reason: 'not-declared',
     });
-  });
-});
-
-describe('moveLocale', () => {
-  const trilingual = () => protocolOf(addLocales(bilingual(), ['de']));
-
-  it('moves a language to a position in the declaration', () => {
-    expect(protocolOf(moveLocale(trilingual(), 'de', 0)).localization).toEqual({
-      defaultLocale: 'en',
-      locales: ['de', 'en', 'fr'],
-    });
-    expect(protocolOf(moveLocale(trilingual(), 'en', 1)).localization).toEqual({
-      defaultLocale: 'en',
-      locales: ['fr', 'en', 'de'],
-    });
-  });
-
-  it('keeps a position past either end inside the list', () => {
-    expect(
-      protocolOf(moveLocale(trilingual(), 'en', 99)).localization.locales,
-    ).toEqual(['fr', 'de', 'en']);
-    expect(
-      protocolOf(moveLocale(trilingual(), 'de', -1)).localization.locales,
-    ).toEqual(['de', 'en', 'fr']);
   });
 });
 

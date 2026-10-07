@@ -100,8 +100,8 @@ const resolveNewLocale = (
 };
 
 /**
- * Declares new languages after the existing ones. Nothing is translated: the
- * new languages show as missing translations until they are written.
+ * Declares new languages. Nothing is translated: the new languages show as
+ * missing translations until they are written.
  */
 export const addLocales = (
   protocol: CurrentProtocol,
@@ -189,31 +189,6 @@ export const setDefaultLocale = (
     protocol: {
       ...protocol,
       localization: { ...protocol.localization, defaultLocale: locale },
-    },
-  };
-};
-
-/**
- * Moves a language to `index` in the declaration, whose order is the final
- * fallback order after the default.
- */
-export const moveLocale = (
-  protocol: CurrentProtocol,
-  locale: LocaleTag,
-  index: number,
-): LocaleOperationResult => {
-  const { locales } = protocol.localization;
-  if (!locales.includes(locale)) return fail('not-declared');
-  const others = locales.filter((declared) => declared !== locale);
-  const target = Math.min(Math.max(index, 0), others.length);
-  return {
-    ok: true,
-    protocol: {
-      ...protocol,
-      localization: {
-        ...protocol.localization,
-        locales: [...others.slice(0, target), locale, ...others.slice(target)],
-      },
     },
   };
 };
