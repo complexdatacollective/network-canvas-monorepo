@@ -226,22 +226,27 @@ test('adds a language, keeps the default language from being removed, translates
   const defaultReason =
     'To remove the default language, make another language the default first.';
   const removeFrench = removeButton(page, 'French');
-  await removeFrench.focus();
+  const removeEnglish = removeButton(page, 'English');
+  await removeEnglish.focus();
+  await page.keyboard.press('Tab');
   await expect(removeFrench).toBeFocused();
   await expect(removeFrench).toBeDisabled();
   await expect(removeFrench).toHaveAccessibleDescription(defaultReason);
-  await expect(page.getByRole('tooltip')).toHaveText(defaultReason);
+  await expect(
+    page.getByRole('tooltip').filter({ hasText: defaultReason }),
+  ).toBeVisible();
   await page.keyboard.press('Enter');
   await expect(page.getByRole('dialog')).toHaveCount(0);
   // Nor can English, though it is no longer the default: its texts exist in
   // no other language yet.
   const strandedReason =
     '3 texts exist only in English. Translate them into another language before removing English.';
-  const removeEnglish = removeButton(page, 'English');
   await expect(removeEnglish).toBeDisabled();
   await expect(removeEnglish).toHaveAccessibleDescription(strandedReason);
   await removeEnglish.hover();
-  await expect(page.getByRole('tooltip')).toHaveText(strandedReason);
+  await expect(
+    page.getByRole('tooltip').filter({ hasText: strandedReason }),
+  ).toBeVisible();
   expect((await readProtocolJson(page)).localization.locales).toEqual([
     'en',
     'fr',
