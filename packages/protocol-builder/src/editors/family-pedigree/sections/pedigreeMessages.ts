@@ -156,20 +156,32 @@ export const familyPedigreeMessages = defineMessages({
     id: 'protocolBuilder.pedigree.genderTermsLabel',
     defaultMessage: 'Words for each gender identity',
     description:
-      'Label of the control that chooses, for each option of the gender identity attribute, the kinship words used for a person who has it, such as mother or father.',
+      'Label of the read-only table showing, for each option of the gender identity attribute, the kinship words used for a person who has it, such as mother or father.',
   },
   genderTermsHint: {
     id: 'protocolBuilder.pedigree.genderTermsHint',
     defaultMessage:
-      'A family member without a name is shown by a kinship word such as mother, brother or aunt. Choose the words each gender identity takes. An option with neutral words is called a parent, sibling or child. These words are used when the wording is everyday kinship words.',
+      'A family member without a name is shown by a kinship word such as mother, brother or aunt. These are the words each gender identity takes. Change them, and the options, with Edit options. An option with neutral words is called a parent, sibling or child. These words are used when the wording is everyday kinship words.',
     description:
-      'Guidance under the control that chooses the kinship words each gender identity option takes. Neutral words are the ones that do not depend on gender. Everyday kinship words is a choice in the Wording section. A family member is shown by their name when they have one, so the words are only used for people without a name.',
+      'Guidance over the read-only table showing the kinship words each gender identity option takes. Edit options is the label of the button below it, which opens the dialog where the options and their words are edited together. Neutral words are the ones that do not depend on gender. Everyday kinship words is a choice in the Wording section. A family member is shown by their name when they have one, so the words are only used for people without a name.',
   },
-  genderTermsRowLabel: {
-    id: 'protocolBuilder.pedigree.genderTermsRowLabel',
-    defaultMessage: 'Words for {value1}',
+  genderWordsOptionField: {
+    id: 'protocolBuilder.pedigree.genderWordsOptionField',
+    defaultMessage: 'Option {index} kinship words',
     description:
-      'Accessible name of the control choosing which kinship words one gender identity option takes. value1 is the option’s own label, as the researcher wrote it.',
+      'Label of the control, on one option’s row in the gender identity options dialog, choosing which kinship words (mother, father, parent) a person with that gender identity takes. index is the option’s position in the list, counting from one, and is passed as text because the researcher reads it as this row’s name.',
+  },
+  genderWordsSummaryOptionHeader: {
+    id: 'protocolBuilder.pedigree.genderWordsSummaryOptionHeader',
+    defaultMessage: 'Option',
+    description:
+      'Column heading over the gender identity options, in the read-only table on the stage showing which kinship words each option takes.',
+  },
+  genderWordsSummaryWordsHeader: {
+    id: 'protocolBuilder.pedigree.genderWordsSummaryWordsHeader',
+    defaultMessage: 'Kinship words',
+    description:
+      'Column heading over the kinship words (mother, father, parent) each gender identity option takes, in the read-only table on the stage.',
   },
   genderWordsFeminine: {
     id: 'protocolBuilder.pedigree.genderWordsFeminine',

@@ -3,6 +3,10 @@ import { useCallback, useRef, type ReactNode } from 'react';
 import type { VariableOption, VariableType } from '@codaco/protocol-validation';
 
 import { sectionIdForCodebookSubject } from '../../codebook/editing.ts';
+import type {
+  OptionRowChoiceValue,
+  VariableEditorHostOptions,
+} from '../../codebook/optionRowChoice.ts';
 import { useCreateCodebookVariable } from '../../codebook/useCodebookVariableEdits.ts';
 import type { CreateOptionOutcome } from '../../fields/VariablePickerField.tsx';
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
@@ -51,7 +55,20 @@ export type CreateAttributeForSlotOptions = Readonly<{
    * does for a rule they wrote themselves (`rulesSurvivingTypeChange`).
    */
   seedValidation?: Readonly<Record<string, unknown>>;
-  onCreated(variableId: string): void;
+  /**
+   * Passed on to the codebook's editor when the create escalates to it: see
+   * `VariableEditorHostOptions`. A create made from a name alone has no editor
+   * to pass it to.
+   */
+  editorOptions?: VariableEditorHostOptions;
+  /**
+   * Told the id of the attribute created, with the choice made on each of its
+   * options' rows when the editor was asked for one.
+   */
+  onCreated(
+    variableId: string,
+    optionRowChoices?: readonly OptionRowChoiceValue[],
+  ): void;
 }>;
 
 /**
@@ -96,6 +113,7 @@ export function useCreateAttributeForSlot({
   seedOptions,
   title,
   seedValidation,
+  editorOptions,
   onCreated,
 }: CreateAttributeForSlotOptions): CreateAttributeForSlot {
   const { readOnly } = useStageEditorForm();
@@ -109,6 +127,7 @@ export function useCreateAttributeForSlot({
     ...(seedOptions === undefined ? {} : { seedOptions }),
     title,
     ...(seedValidation === undefined ? {} : { seedValidation }),
+    ...(editorOptions === undefined ? {} : { editorOptions }),
     onCreated,
   });
 

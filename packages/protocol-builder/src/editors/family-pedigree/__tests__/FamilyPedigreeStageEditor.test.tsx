@@ -113,6 +113,41 @@ const switchOnGenderIdentity = async (
   );
 };
 
+/** What each kind of kinship words is called where the researcher reads it. */
+const WORDS = {
+  feminine: 'Feminine words (mother, sister)',
+  masculine: 'Masculine words (father, brother)',
+  neutral: 'Neutral words (parent, sibling)',
+  unknown:
+    'Not known (neutral words; biological mother or father for a biological parent)',
+} as const;
+
+/**
+ * The stage's read-only summary of the gender identity words, one
+ * `[option label, words]` pair per row.
+ */
+const summaryRows = async (): Promise<(string | null)[][]> => {
+  const table = await screen.findByRole('table', {
+    name: 'Words for each gender identity',
+  });
+  return within(table)
+    .getAllByRole('row')
+    .slice(1)
+    .map((row) =>
+      within(row)
+        .getAllByRole('cell')
+        .map((cell) => cell.textContent),
+    );
+};
+
+/** Opens the dialog that edits the gender identity options and their words. */
+const openGenderOptions = async (harness: StageEditorHarness) => {
+  await harness.user.click(
+    await screen.findByRole('button', { name: 'Edit options' }),
+  );
+  return screen.findByRole('dialog', { name: 'Edit gender identity options' });
+};
+
 describe('the family pedigree stage editor', () => {
   it('claims exactly this interface', () => {
     expect(Object.keys(familyPedigreeStageEditor)).toEqual(['FamilyPedigree']);
@@ -270,6 +305,48 @@ describe('the attribute slots', () => {
     expect(
       within(editor).getByRole('textbox', { name: 'Attribute name' }),
     ).toHaveValue('gender_new');
+    // Wide enough for the words beside each option.
+    expect(editor).toHaveClass('max-w-4xl');
+    // The type is shown, not offered: the slot only takes a categorical one.
+    expect(
+      within(editor).getByRole('textbox', { name: 'Attribute type' }),
+    ).toHaveAttribute('readonly');
+    expect(
+      within(editor).getByRole('textbox', { name: 'Attribute type' }),
+    ).toHaveValue('Categorical');
+    expect(
+      within(editor).queryByRole('combobox', { name: 'Attribute type' }),
+    ).toBeNull();
+    // Each suggested option starts on the words its default takes, and offers
+    // all four kinds.
+    for (const [index, words] of [
+      [1, 'feminine'],
+      [2, 'masculine'],
+      [3, 'neutral'],
+      [4, 'neutral'],
+      [5, 'unknown'],
+      [6, 'neutral'],
+    ] as const) {
+      expect(
+        within(editor).getByRole('combobox', {
+          name: `Option ${index} kinship words`,
+        }),
+      ).toHaveValue(words);
+    }
+    expect(
+      within(
+        within(editor).getByRole('combobox', {
+          name: 'Option 1 kinship words',
+        }),
+      )
+        .getAllByRole('option')
+        .map((choice) => choice.textContent),
+    ).toEqual(Object.values(WORDS));
+    // Chosen here, before the attribute exists.
+    await harness.user.selectOptions(
+      within(editor).getByRole('combobox', { name: 'Option 6 kinship words' }),
+      'unknown',
+    );
     // Not locked: the options can be added to.
     expect(
       within(editor).getByRole('button', { name: 'Create new option' }),
@@ -305,28 +382,33 @@ describe('the attribute slots', () => {
       (isRecord(variable) ? variable[created ?? ''] : undefined) ?? {},
     ).not.toHaveProperty('readOnly');
 
-    // The mapping appears for the new attribute, holding the defaults.
-    expect(
-      await screen.findByRole('combobox', { name: 'Words for Woman' }),
-    ).toHaveValue('feminine');
-    expect(screen.getByRole('combobox', { name: 'Words for Man' })).toHaveValue(
-      'masculine',
+    // The stage shows the words chosen in the dialog, read-only.
+    await waitFor(async () =>
+      expect(await summaryRows()).toEqual([
+        ['Woman', WORDS.feminine],
+        ['Man', WORDS.masculine],
+        ['Non-binary', WORDS.neutral],
+        ['A different identity', WORDS.neutral],
+        ['Don’t know', WORDS.unknown],
+        ['Prefer not to say', WORDS.unknown],
+      ]),
     );
     expect(
-      screen.getByRole('combobox', { name: 'Words for Don’t know' }),
-    ).toHaveValue('unknown');
-    expect(
-      screen.getByRole('combobox', { name: 'Words for Non-binary' }),
-    ).toHaveValue('neutral');
+      screen.queryByRole('combobox', { name: /kinship words/ }),
+    ).toBeNull();
 
     const request = await harness.submit();
     expect(nodeConfigurationOf(request?.stageDocument)).toMatchObject({
       genderIdentity: {
         attribute: created,
-        terms: PEDIGREE_DEFAULT_GENDER_IDENTITIES.map(({ value, words }) => ({
-          value,
-          words,
-        })),
+        terms: [
+          { value: 'woman', words: 'feminine' },
+          { value: 'man', words: 'masculine' },
+          { value: 'nonBinary', words: 'neutral' },
+          { value: 'differentIdentity', words: 'neutral' },
+          { value: 'unknown', words: 'unknown' },
+          { value: 'preferNotToSay', words: 'unknown' },
+        ],
       },
     });
     expect(familyPedigreeStage.safeParse(request?.stageDocument).success).toBe(
@@ -598,49 +680,138 @@ describe('the gender identity options, which this stage manages', () => {
     return isRecord(gender) ? gender.options : undefined;
   };
 
-  it('edits them from the stage, and the words follow the options that remain', async () => {
+  const termsSaved = async (harness: StageEditorHarness) => {
+    const request = await harness.submit();
+    expect(familyPedigreeStage.safeParse(request?.stageDocument).success).toBe(
+      true,
+    );
+    return (
+      nodeConfigurationOf(request?.stageDocument).genderIdentity as {
+        terms: unknown;
+      }
+    ).terms;
+  };
+
+  it('edits the options and their words together in one wide dialog, with the type shown read-only', async () => {
     const harness = openFixture();
     await harness.opened();
-    await screen.findByRole('combobox', {
-      name: 'Words for Prefer not to say',
-    });
+    const dialogElement = await openGenderOptions(harness);
+    const dialog = within(dialogElement);
 
-    await harness.user.click(
-      await screen.findByRole('button', { name: 'Edit options' }),
-    );
-    const dialog = within(
-      await screen.findByRole('dialog', {
-        name: 'Edit gender identity options',
-      }),
-    );
+    expect(dialogElement).toHaveClass('max-w-4xl');
+    expect(
+      dialog.getByRole('textbox', { name: 'Attribute type' }),
+    ).toHaveAttribute('readonly');
+    expect(
+      dialog.queryByRole('combobox', { name: 'Attribute type' }),
+    ).toBeNull();
     // Editable here: this stage is the one that manages them.
     expect(
       dialog.getByRole('button', { name: 'Create new option' }),
     ).toBeEnabled();
+    // Each row opens on the words this stage gives its option.
+    for (const [index, words] of [
+      [1, 'feminine'],
+      [2, 'masculine'],
+      [3, 'neutral'],
+      [4, 'neutral'],
+      [5, 'unknown'],
+      [6, 'neutral'],
+    ] as const) {
+      expect(
+        dialog.getByRole('combobox', { name: `Option ${index} kinship words` }),
+      ).toHaveValue(words);
+    }
+  });
+
+  it('saves the words chosen in the dialog to the stage, and the summary follows', async () => {
+    const harness = openFixture();
+    await harness.opened();
+    const dialog = within(await openGenderOptions(harness));
+
+    await harness.user.selectOptions(
+      dialog.getByRole('combobox', { name: 'Option 3 kinship words' }),
+      'feminine',
+    );
+    await harness.user.click(
+      dialog.getByRole('button', { name: 'Save attribute' }),
+    );
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+
+    // The codebook is untouched: only the words changed.
+    expect(OPTIONS(harness)).toHaveLength(6);
+    expect((await summaryRows())[2]).toEqual(['Non-binary', WORDS.feminine]);
+    expect(await termsSaved(harness)).toEqual([
+      { value: 'woman', words: 'feminine' },
+      { value: 'man', words: 'masculine' },
+      { value: 'nonBinary', words: 'feminine' },
+      { value: 'differentIdentity', words: 'neutral' },
+      { value: 'unknown', words: 'unknown' },
+      { value: 'preferNotToSay', words: 'neutral' },
+    ]);
+  });
+
+  it('gives a new option neutral words, and drops a removed option from the mapping', async () => {
+    const harness = openFixture();
+    await harness.opened();
+    const dialog = within(await openGenderOptions(harness));
+
     await harness.user.click(
       dialog.getByRole('button', { name: 'Remove option 6' }),
+    );
+    await harness.user.click(
+      dialog.getByRole('button', { name: 'Create new option' }),
+    );
+    expect(
+      dialog.getByRole('combobox', { name: 'Option 6 kinship words' }),
+    ).toHaveValue('neutral');
+    await writeInto(
+      harness,
+      dialog.getByRole('textbox', { name: 'Option 6 label' }),
+      'Agender',
+    );
+    await harness.user.type(
+      dialog.getByRole('textbox', { name: 'Option 6 value' }),
+      'agender',
     );
     await harness.user.click(
       dialog.getByRole('button', { name: 'Save attribute' }),
     );
 
-    await waitFor(() => expect(OPTIONS(harness)).toHaveLength(5));
-    await waitFor(() =>
-      expect(
-        screen.queryByRole('combobox', { name: 'Words for Prefer not to say' }),
-      ).toBeNull(),
+    await waitFor(() => expect(OPTIONS(harness)).toHaveLength(6));
+    await waitFor(async () =>
+      expect((await summaryRows()).map(([label]) => label)).toEqual([
+        'Woman',
+        'Man',
+        'Non-binary',
+        'A different identity',
+        'Don’t know',
+        'Agender',
+      ]),
     );
-    const request = await harness.submit();
-    const terms = (
-      nodeConfigurationOf(request?.stageDocument).genderIdentity as {
-        terms: { value: string }[];
-      }
-    ).terms;
-    expect(terms.map((term) => term.value)).not.toContain('preferNotToSay');
-    expect(terms).toHaveLength(5);
-    expect(familyPedigreeStage.safeParse(request?.stageDocument).success).toBe(
-      true,
+    expect(await termsSaved(harness)).toEqual([
+      { value: 'woman', words: 'feminine' },
+      { value: 'man', words: 'masculine' },
+      { value: 'nonBinary', words: 'neutral' },
+      { value: 'differentIdentity', words: 'neutral' },
+      { value: 'unknown', words: 'unknown' },
+      { value: 'agender', words: 'neutral' },
+    ]);
+  });
+
+  it('keeps the words a stage gave its options when the dialog is cancelled', async () => {
+    const harness = openFixture();
+    await harness.opened();
+    const dialog = within(await openGenderOptions(harness));
+
+    await harness.user.selectOptions(
+      dialog.getByRole('combobox', { name: 'Option 1 kinship words' }),
+      'neutral',
     );
+    await harness.user.click(dialog.getByRole('button', { name: 'Cancel' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+
+    expect((await summaryRows())[0]).toEqual(['Woman', WORDS.feminine]);
   });
 
   it('offers no way to edit them to a spectator', async () => {
@@ -650,7 +821,7 @@ describe('the gender identity options, which this stage manages', () => {
       readOnly: true,
     });
     await harness.opened();
-    await screen.findByRole('combobox', { name: 'Words for Woman' });
+    expect((await summaryRows())[0]).toEqual(['Woman', WORDS.feminine]);
 
     expect(screen.queryByRole('button', { name: 'Edit options' })).toBeNull();
   });
@@ -829,33 +1000,23 @@ describe('the gender identity words', () => {
     return isRecord(genderIdentity) ? genderIdentity.terms : undefined;
   };
 
-  it('has a row for each option of the attribute, set to the words it takes', async () => {
+  it('shows each option of the attribute with the words it takes, read-only', async () => {
     const harness = openFixture();
     await harness.opened();
 
-    for (const [label, words] of [
-      ['Woman', 'feminine'],
-      ['Man', 'masculine'],
-      ['Non-binary', 'neutral'],
-      ['A different identity', 'neutral'],
-      ['Don’t know', 'unknown'],
-      ['Prefer not to say', 'neutral'],
-    ] as const) {
-      expect(
-        await screen.findByRole('combobox', { name: `Words for ${label}` }),
-      ).toHaveValue(words);
-    }
-    const choices = within(
-      screen.getByRole('combobox', { name: 'Words for Woman' }),
-    );
-    expect(
-      choices.getAllByRole('option').map((choice) => choice.textContent),
-    ).toEqual([
-      'Feminine words (mother, sister)',
-      'Masculine words (father, brother)',
-      'Neutral words (parent, sibling)',
-      'Not known (neutral words; biological mother or father for a biological parent)',
+    expect(await summaryRows()).toEqual([
+      ['Woman', WORDS.feminine],
+      ['Man', WORDS.masculine],
+      ['Non-binary', WORDS.neutral],
+      ['A different identity', WORDS.neutral],
+      ['Don’t know', WORDS.unknown],
+      ['Prefer not to say', WORDS.neutral],
     ]);
+    // Next to the button that edits them, and nothing to edit here.
+    expect(
+      await screen.findByRole('button', { name: 'Edit options' }),
+    ).toBeVisible();
+    expect(screen.queryByRole('combobox', { name: /words/i })).toBeNull();
   });
 
   it('shows neutral words for an option the stage gives none', async () => {
@@ -865,25 +1026,27 @@ describe('the gender identity words', () => {
     });
     await harness.opened();
 
-    expect(
-      await screen.findByRole('combobox', { name: 'Words for Woman' }),
-    ).toHaveValue('feminine');
-    expect(screen.getByRole('combobox', { name: 'Words for Man' })).toHaveValue(
-      'neutral',
-    );
+    const rows = await summaryRows();
+    expect(rows[0]).toEqual(['Woman', WORDS.feminine]);
+    expect(rows[1]).toEqual(['Man', WORDS.neutral]);
   });
 
-  it('writes the whole mapping when one option is changed', async () => {
+  it('writes the whole mapping when one option’s words are changed in the dialog', async () => {
     const harness = renderStageEditor({
       stage: withTerms([{ value: 'woman', words: 'feminine' }]),
       editor: familyPedigreeEditor,
     });
     await harness.opened();
+    const dialog = within(await openGenderOptions(harness));
 
     await harness.user.selectOptions(
-      await screen.findByRole('combobox', { name: 'Words for Man' }),
+      dialog.getByRole('combobox', { name: 'Option 2 kinship words' }),
       'masculine',
     );
+    await harness.user.click(
+      dialog.getByRole('button', { name: 'Save attribute' }),
+    );
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
 
     const request = await harness.submit();
     expect(termsOf(request?.stageDocument)).toEqual([
@@ -908,7 +1071,7 @@ describe('the gender identity words', () => {
       editor: familyPedigreeEditor,
     });
     await harness.opened();
-    await screen.findByRole('combobox', { name: 'Words for Woman' });
+    await summaryRows();
 
     const request = await harness.submit();
     const values = (termsOf(request?.stageDocument) as { value: string }[]).map(
@@ -928,12 +1091,16 @@ describe('the gender identity words', () => {
       await screen.findByRole('radio', { name: 'family member' }),
     );
     await screen.findByText('Gender identity', { selector: 'label' });
-    expect(screen.queryByText('Words for each gender identity')).toBeNull();
+    expect(
+      screen.queryByRole('table', { name: 'Words for each gender identity' }),
+    ).toBeNull();
 
     await bindSlot(harness, 'Gender identity', 'genderIdentity');
 
     expect(
-      await screen.findByText('Words for each gender identity'),
+      await screen.findByRole('table', {
+        name: 'Words for each gender identity',
+      }),
     ).toBeVisible();
   });
 
@@ -984,18 +1151,12 @@ describe('the gender identity words', () => {
 
       await bindSlot(harness, 'Gender identity', 'customGender');
 
-      expect(
-        await screen.findByRole('combobox', { name: 'Words for Female' }),
-      ).toHaveValue('feminine');
-      expect(
-        screen.getByRole('combobox', { name: 'Words for Agender' }),
-      ).toHaveValue('neutral');
-      expect(
-        screen.getByRole('combobox', { name: 'Words for Male' }),
-      ).toHaveValue('masculine');
-      expect(
-        screen.getByRole('combobox', { name: 'Words for Unsure' }),
-      ).toHaveValue('unknown');
+      expect(await summaryRows()).toEqual([
+        ['Female', WORDS.feminine],
+        ['Agender', WORDS.neutral],
+        ['Male', WORDS.masculine],
+        ['Unsure', WORDS.unknown],
+      ]);
 
       const request = await harness.submit();
       expect(termsOf(request?.stageDocument)).toEqual([
@@ -1015,9 +1176,7 @@ describe('the gender identity words', () => {
         editor: familyPedigreeEditor,
       });
       await harness.opened();
-      expect(
-        await screen.findByRole('combobox', { name: 'Words for Woman' }),
-      ).toHaveValue('neutral');
+      expect((await summaryRows())[0]).toEqual(['Woman', WORDS.neutral]);
 
       const request = await harness.submit();
       expect(termsOf(request?.stageDocument)).toEqual(
@@ -1031,16 +1190,27 @@ describe('the gender identity words', () => {
     it('replaces the mapping with one for the new options when another attribute is chosen', async () => {
       const harness = await openUnbound();
       await bindSlot(harness, 'Gender identity', 'customGender');
+      const dialog = within(await openGenderOptions(harness));
       await harness.user.selectOptions(
-        await screen.findByRole('combobox', { name: 'Words for Agender' }),
+        dialog.getByRole('combobox', { name: 'Option 2 kinship words' }),
         'masculine',
+      );
+      await harness.user.click(
+        dialog.getByRole('button', { name: 'Save attribute' }),
+      );
+      await waitFor(async () =>
+        expect((await summaryRows())[1]).toEqual(['Agender', WORDS.masculine]),
       );
 
       await bindSlot(harness, 'Gender identity', 'otherGender');
 
-      expect(
-        await screen.findByRole('combobox', { name: 'Words for NB' }),
-      ).toHaveValue('neutral');
+      await waitFor(async () =>
+        expect(await summaryRows()).toEqual([
+          ['No answer', WORDS.neutral],
+          ['W', WORDS.feminine],
+          ['NB', WORDS.neutral],
+        ]),
+      );
       const request = await harness.submit();
       expect(termsOf(request?.stageDocument)).toEqual([
         { value: 'preferNotToSay', words: 'neutral' },

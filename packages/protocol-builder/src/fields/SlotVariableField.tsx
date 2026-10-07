@@ -13,6 +13,10 @@ import {
   type VariableType,
 } from '@codaco/protocol-validation';
 
+import type {
+  OptionRowChoiceValue,
+  VariableEditorHostOptions,
+} from '../codebook/optionRowChoice.ts';
 import CodebookVariableValidationSection from '../codebook/validation/CodebookVariableValidationSection.tsx';
 import {
   buildExclusiveVariableSlotMap,
@@ -79,8 +83,21 @@ export type SlotVariableFieldProps = Readonly<{
    * options is still offered.
    */
   seedOptions?: readonly VariableOption[];
-  /** Told which attribute a create from this picker bound to the slot. */
-  onCreated?: (variableId: string) => void;
+  /**
+   * Passed on to the codebook's editor when a create escalates to it: a type
+   * shown rather than offered, or a choice of the host's own on every option
+   * row (`VariableEditorHostOptions`).
+   */
+  editorOptions?: VariableEditorHostOptions;
+  /**
+   * Told which attribute a create from this picker bound to the slot, with the
+   * choice made on each of its options' rows when `editorOptions` asked for
+   * one.
+   */
+  onCreated?: (
+    variableId: string,
+    optionRowChoices?: readonly OptionRowChoiceValue[],
+  ) => void;
   /**
    * Told which existing attribute the researcher chose from the picker, when
    * that replaces what the slot held. Not called for the attribute the slot
@@ -122,6 +139,7 @@ export default function SlotVariableField({
   ownSlot,
   ownedOptions,
   seedOptions,
+  editorOptions,
   onCreated,
   onBound,
   draftConflicting,
@@ -145,9 +163,10 @@ export default function SlotVariableField({
     ...(lockedOptions === undefined ? {} : { lockedOptions }),
     ...(seedOptions === undefined ? {} : { seedOptions }),
     title: intl.formatMessage(createLabel),
-    onCreated: (variableId) => {
+    ...(editorOptions === undefined ? {} : { editorOptions }),
+    onCreated: (variableId, optionRowChoices) => {
       storeApi.getState().setFieldValue(name, variableId);
-      onCreated?.(variableId);
+      onCreated?.(variableId, optionRowChoices);
     },
   });
 

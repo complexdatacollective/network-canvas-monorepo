@@ -258,10 +258,15 @@ export function usePedigreeDraftBindings(): Readonly<{
 export const genderTermsFromDefaults = (
   options: readonly VariableOption[],
 ): { value: VariableOption['value']; words: PedigreeGenderWords }[] =>
-  options.map(({ value }) => ({
-    value,
-    words:
-      PEDIGREE_DEFAULT_GENDER_IDENTITIES.find(
-        (candidate) => candidate.value === value,
-      )?.words ?? 'neutral',
-  }));
+  options.map(({ value }) => ({ value, words: defaultWordsFor(value) }));
+
+/**
+ * The words the interface's default with this value takes, or neutral words
+ * for a value none of the defaults has.
+ */
+export const defaultWordsFor = (
+  value: VariableOption['value'],
+): PedigreeGenderWords =>
+  PEDIGREE_DEFAULT_GENDER_IDENTITIES.find(
+    (candidate) => candidate.value === value,
+  )?.words ?? 'neutral';

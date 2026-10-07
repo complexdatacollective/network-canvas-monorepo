@@ -112,6 +112,46 @@ export const AddingANominationPrompt: Story = {
   },
 };
 
+/**
+ * The gender identity options and their kinship words, edited together. The
+ * stage shows each option's words read-only beside the button; the dialog it
+ * opens is wide enough for a words choice beside each option's label and
+ * value, and shows the attribute type read-only, because the stage only takes
+ * a categorical one.
+ */
+export const EditingGenderIdentityOptions: Story = {
+  globals: { appLocale: 'en' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await awaitPassiveEffects();
+
+    const summary = await canvas.findByRole('table', {
+      name: 'Words for each gender identity',
+    });
+    await expect(
+      within(summary).getByRole('row', { name: /^Woman/ }),
+    ).toHaveTextContent('Feminine words (mother, sister)');
+
+    await userEvent.click(canvas.getByRole('button', { name: 'Edit options' }));
+
+    // The dialog is drawn in a portal, outside the canvas.
+    const dialog = within(
+      await within(document.body).findByRole('dialog', {
+        name: 'Edit gender identity options',
+      }),
+    );
+    await expect(
+      dialog.getByRole('textbox', { name: 'Attribute type' }),
+    ).toHaveAttribute('readonly');
+    await expect(
+      dialog.getByRole('combobox', { name: 'Option 1 kinship words' }),
+    ).toHaveValue('feminine');
+    await expect(
+      dialog.getByRole('combobox', { name: 'Option 2 kinship words' }),
+    ).toHaveValue('masculine');
+  },
+};
+
 /** Someone else holds the lease: every control is inert and saving is refused. */
 export const Spectating: Story = {
   args: { readOnly: true },

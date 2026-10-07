@@ -1,5 +1,5 @@
 import { Pencil } from 'lucide-react';
-import { useState } from 'react';
+import { type ReactNode, useState } from 'react';
 import { v4 as uuid } from 'uuid';
 
 import Button from '@codaco/fresco-ui/Button';
@@ -10,6 +10,10 @@ import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import VariableEditor from '../codebook/components/VariableEditor.tsx';
 import { documentWithRebasedVariable } from '../codebook/editing.ts';
+import type {
+  OptionRowChoiceValue,
+  VariableEditorHostOptions,
+} from '../codebook/optionRowChoice.ts';
 import { useCodebookSectionDocument } from '../codebook/useCodebookVariableEdits.ts';
 import { useCodebookSectionWrite } from '../codebook/writes.ts';
 import { useStageEditorForm } from '../form/stageEditorContext.ts';
@@ -33,7 +37,10 @@ import { useProtocolContext } from '../state/protocolContext.ts';
  *
  * Written to the codebook straight away, under that section's lock, like every
  * other codebook edit made from inside a stage; whatever the stage keeps beside
- * the options stays in its unsaved draft until the stage is saved.
+ * the options stays in its unsaved draft until the stage is saved. A stage that
+ * keeps something about each option chooses it on the option's own row
+ * (`editorOptions.optionRowChoice`) and is handed the result in `onSaved`, to
+ * write into its draft.
  *
  * Lives outside `editors/` because it is an update-mode mount of the attribute
  * editor and no way to create an attribute, which is the seam
@@ -46,6 +53,9 @@ export default function StageManagedOptionsEditor({
   hint,
   buttonLabel,
   dialogTitle,
+  editorOptions,
+  onSaved,
+  children,
 }: Readonly<{
   subject: CodebookSubject;
   variableId: string;
@@ -54,6 +64,15 @@ export default function StageManagedOptionsEditor({
   hint: string;
   buttonLabel: string;
   dialogTitle: string;
+  /** Passed on to the attribute editor. */
+  editorOptions?: VariableEditorHostOptions;
+  /**
+   * Told when the dialog saved, with the choice made on each saved option's
+   * row when `editorOptions` asked for one.
+   */
+  onSaved?: (optionRowChoices?: readonly OptionRowChoiceValue[]) => void;
+  /** What the stage shows of the options, above the button that edits them. */
+  children?: ReactNode;
 }>) {
   const { readOnly } = useStageEditorForm();
   const protocolContext = useProtocolContext();
@@ -96,6 +115,7 @@ export default function StageManagedOptionsEditor({
 
   return (
     <div className="mb-8 flex flex-col items-start gap-2">
+      {children}
       <p className="text-muted text-sm">{hint}</p>
       {!readOnly && document !== undefined && attribute !== undefined && (
         <Button
@@ -112,7 +132,11 @@ export default function StageManagedOptionsEditor({
           open={session.open}
           onExitComplete={onSessionExited}
           title={dialogTitle}
-          size="readable"
+          // Wider for a stage that adds a choice to every option row, which
+          // then needs the room for a third field beside the label and value.
+          size={
+            editorOptions?.optionRowChoice === undefined ? 'readable' : 'editor'
+          }
           dismissible={!submitting}
           closeDialog={requestClose}
           footer={<div ref={setFooterSlot} className="contents" />}
@@ -130,7 +154,11 @@ export default function StageManagedOptionsEditor({
             footerSlot={footerSlot}
             onCancel={requestClose}
             onSubmitDocument={submit}
-            onComplete={closeSession}
+            onComplete={(_variableId, _variableName, optionRowChoices) => {
+              onSaved?.(optionRowChoices);
+              closeSession();
+            }}
+            {...editorOptions}
           />
         </Dialog>
       )}
