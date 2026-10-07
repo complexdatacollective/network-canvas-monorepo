@@ -4,7 +4,9 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { useEffect } from 'react';
 import { Provider } from 'react-redux';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
@@ -278,6 +280,72 @@ describe('CategoricalBin asking for an encrypted "other" answer', () => {
     ).toBeVisible();
     expect(screen.getByRole('textbox')).toHaveValue('Cousin');
     expect(store.getState().session.network).toBe(before);
+  });
+
+  it('takes the passphrase again from inside the dialog, then saves the kept answer', async () => {
+    const { store, dropIntoOther } = renderCategoricalBin('pw');
+    const user = userEvent.setup();
+
+    await dropIntoOther();
+    const answer = await screen.findByRole('textbox', {
+      name: /Please specify/,
+    });
+    expect(
+      screen.queryByRole('button', { name: 'Enter your Passphrase' }),
+    ).toBeNull();
+    await user.type(answer, 'Cousin');
+    act(() => {
+      store.dispatch(setPassphraseInvalid(true));
+    });
+    await user.click(screen.getByTestId('dialog-submit'));
+    expect(
+      await screen.findByText(/Your answers have not been saved/),
+    ).toBeVisible();
+
+    await user.click(
+      within(screen.getByRole('dialog', { name: 'Specify other' })).getByRole(
+        'button',
+        { name: 'Enter your Passphrase' },
+      ),
+    );
+    const prompt = await screen.findByRole('dialog', {
+      name: 'Enter your Passphrase',
+    });
+    await user.type(
+      within(prompt).getByLabelText(/^Passphrase/, { selector: 'input' }),
+      'pw',
+    );
+    await user.click(
+      within(prompt).getByRole('button', { name: 'Submit passphrase' }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', { name: 'Enter your Passphrase' }),
+      ).toBeNull(),
+    );
+
+    expect(screen.getByRole('textbox', { name: /Please specify/ })).toHaveValue(
+      'Cousin',
+    );
+    await user.click(screen.getByTestId('dialog-submit'));
+
+    await waitFor(() =>
+      expect(
+        isNumberArray(
+          store.getState().session.network.nodes[0]?.[entityAttributesProperty]
+            .otherReason,
+        ),
+      ).toBe(true),
+    );
+    const [saved] = store.getState().session.network.nodes;
+    const data = saved?.[entityAttributesProperty].otherReason;
+    const secureAttributes = saved?.[entitySecureAttributesMeta]?.otherReason;
+    if (!isNumberArray(data)) throw new Error('Expected a stored ciphertext');
+    if (!secureAttributes)
+      throw new Error('Expected secure-attribute metadata');
+    await expect(decryptData({ secureAttributes, data }, 'pw')).resolves.toBe(
+      'Cousin',
+    );
   });
 });
 

@@ -29,6 +29,7 @@ import {
   actionPlusBadgeVariants,
   actionPlusIconClass,
 } from '../../../components/actionButtonVariants';
+import PassphraseRecovery from '../../../components/PassphraseRecovery';
 import { useCurrentStep } from '../../../contexts/CurrentStepContext';
 import { formValuesToAttributePatch } from '../../../forms/formValuesToAttributePatch';
 import useProtocolForm from '../../../forms/useProtocolForm';
@@ -42,6 +43,8 @@ import { getPromptAdditionalAttributes } from '../../../selectors/session';
 import type { AttributePatch } from '../../../store/entityAttributePatch';
 import { updateNode as updateNodeAction } from '../../../store/modules/session';
 import { useAppDispatch } from '../../../store/store';
+import { isAttributeEncrypted } from '../../Anonymisation/isAttributeEncrypted';
+import { usePassphrase } from '../../Anonymisation/usePassphrase';
 import { useProtectedFormValues } from '../../Anonymisation/useProtectedFormValues';
 import { interfaceMessages } from '../../messages';
 
@@ -137,6 +140,11 @@ const NodeForm = (props: NodeFormProps) => {
 
   const initialValues =
     selectedNode && editing.status === 'ready' ? editing.values : undefined;
+
+  const { isEnabled } = usePassphrase();
+  const protectsAnswers = form.fields.some((field) =>
+    isAttributeEncrypted(isEnabled, variables, field.variable),
+  );
 
   const { fieldComponents, coerceValues } = useProtocolForm({
     fields: form.fields,
@@ -252,6 +260,7 @@ const NodeForm = (props: NodeFormProps) => {
           onSubmit={handleSubmit}
           className="phone-landscape:min-w-sm desktop:min-w-md w-full"
         >
+          {protectsAnswers && <PassphraseRecovery />}
           {fieldComponents}
         </Form>
       </Dialog>

@@ -21,6 +21,7 @@ import {
 
 import { useTrack } from '../../analytics/useTrack';
 import NodeDrawer from '../../components/NodeDrawer';
+import PassphraseRecovery from '../../components/PassphraseRecovery';
 import Prompts from '../../components/Prompts';
 import { usePrompts } from '../../components/Prompts/usePrompts';
 import { useCurrentStep } from '../../contexts/CurrentStepContext';
@@ -343,32 +344,37 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
         type: 'form',
         title: <AppMessage message={interfaceMessages.specifyOther} />,
         children: (
-          <div className="flex items-start gap-4">
-            <div className="shrink-0">
-              <OtherResponseNode
-                node={node}
-                getCodebook={getCodebookForNodeType}
-                color={nodeColor}
-                shape={
-                  nodeTypeDefinition
-                    ? resolveNodeShape(
-                        nodeTypeDefinition.shape,
-                        node[entityAttributesProperty],
-                      )
-                    : undefined
-                }
+          <>
+            {isAttributeEncrypted(isEnabled, stageVariables, otherVariable) && (
+              <PassphraseRecovery />
+            )}
+            <div className="flex items-start gap-4">
+              <div className="shrink-0">
+                <OtherResponseNode
+                  node={node}
+                  getCodebook={getCodebookForNodeType}
+                  color={nodeColor}
+                  shape={
+                    nodeTypeDefinition
+                      ? resolveNodeShape(
+                          nodeTypeDefinition.shape,
+                          node[entityAttributesProperty],
+                        )
+                      : undefined
+                  }
+                />
+              </div>
+              <OtherResponseField
+                label={otherVariablePrompt}
+                component={InputField}
+                name={otherVariable}
+                nameMode="opaque"
+                {...otherValidationProps}
+                validationContext={validationContext}
+                autoFocus
               />
             </div>
-            <OtherResponseField
-              label={otherVariablePrompt}
-              component={InputField}
-              name={otherVariable}
-              nameMode="opaque"
-              {...otherValidationProps}
-              validationContext={validationContext}
-              autoFocus
-            />
-          </div>
+          </>
         ),
         intent: 'default',
         // Saving inside the dialog means a refused save keeps it open with
