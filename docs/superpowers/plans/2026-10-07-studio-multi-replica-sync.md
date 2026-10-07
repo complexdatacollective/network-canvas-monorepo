@@ -806,6 +806,57 @@ database observables.
 7. Concurrent AcquireLock on A and B → exactly one `held`.
 8. Stage on A, promote on B → asset committed, staged row and object gone.
 
+**As built (deviations from the shape above):**
+
+- `clock` is an Effect `Clock.Clock`: the harness only passes it on, and a
+  test keeps the `makeShiftableClock()` handle to advance it.
+- Each entry of `replicas` is a `ProtocolBuilderTestClient` plus its
+  `replicaId` and a `spans` counter of its own, so a scenario can tell one
+  replica's keeper, grace, poll or reap from another's. `restart` replaces
+  the entry in place.
+- A `database` option gives each replica a pool of its own, as a separate
+  process would hold. The suite's `ownPool` (factored out of
+  `studioOnOwnPool`) supplies it; without the option the replicas share the
+  studio's. The suite's application pool has one connection, so replicas on
+  it serialize every transaction: two relays never both read a lapsed lease
+  before one had reaped, and dropping the reaper's recheck (I7b) stayed
+  green in scenario 6. Each replica on a pool of three turns it red on every
+  run.
+- `crash(i)` swaps the replica's `db` for a proxy whose `transaction`
+  fails, then disposes the client. Every tenant write goes through
+  `db.transaction`, so the socket's expiry and the presence publish fail and
+  the rows stay live, as a killed process leaves them. `sql` stays real.
+- `restart(i)` disposes replica i if it is still open, then opens a new
+  replica under a new replica id, as a new process would. The doorbell hook
+  is applied to it again. `dispose()` is idempotent per replica and closes
+  the hub last.
+- Scenario 1 also asserts that A's grace ended without releasing and
+  without sleeping again: one `releaseOwner` span on A, its grace count
+  back to where it was, and `connected(owner)` false on A. A's liveness
+  count does not move across the tick that renews the lease, so the
+  renewal is B's.
+- I1 (drop the owner's renewal from `connectSocket`) does not turn H#1 or
+  H#3 red. Every call, the watch included, records a contact through
+  `HostSessionLive`, and `upsertContact` renews the owner's leases itself.
+  H#1 guards I2/I18 instead: removing the live-socket check releases the
+  lease. H#3 guards I8.
+- Scenario 4 writes in 8 concurrent rounds on A and B, then twice on A, so
+  that no write of B's own wakes its relay for the end of the log. B's view
+  of the hub drops each signal with probability 0.5 (mulberry32, seed
+  `0x5eed`) and shuffles the rest in threes (`Stream.grouped(3)`; a
+  trailing group waits for the next signal). The poll is 250 ms. In this
+  seeded run, later rings cover the dropped ones, so disabling the safety
+  poll's delivery stays green: H#4 guards I4a, not the poll.
+- Scenario 6 runs B and C on one shiftable clock with a 60 s poll. Advancing
+  the clock makes both poll in the same instant, and both reap. The
+  scenario asserts a `protocolBuilder.reap` span on each and one lock-null
+  in the log and in each watcher, so it covers I7b as well as I7a. The
+  variant ages the lease to +1.5 s, lets B's keeper renew it, then waits
+  past the aged expiry and two polls: no lock-null and no reap. Making the
+  keeper renew no leases turns it red.
+- Scenario 7 runs six rounds, each replica on its own pool, and checks the
+  one live lease row's owner as well as the answers.
+
 ### D: deployment, stack-test, docs, changeset (drafts now in own worktree; final after H)
 
 **Owns:**
@@ -885,7 +936,7 @@ revert.
 | I6a  | Presence is the union across replicas                                                                                          | H#5                                            | both sessionIds listed                                                         | filter `livePresence` by `ReplicaId`                            |
 | I6b  | Ghost presence clears without a ring                                                                                           | C2 events                                      | presence event without the aged row                                            | emit presence only on rings                                     |
 | I7a  | Crash: unreleased expired lease gets lock-null                                                                                 | H#6                                            | lock-null event after `ageLeases`                                              | skip `reapExpired` in the poll                                  |
-| I7b  | Reaper is idempotent across replicas                                                                                           | C2 events (two relays)                         | exactly one lock-null                                                          | drop the recheck under `FOR UPDATE`                             |
+| I7b  | Reaper is idempotent across replicas                                                                                           | C2 events (two relays), H#6                    | exactly one lock-null                                                          | drop the recheck under `FOR UPDATE`                             |
 | I8   | Disposed or draining replica appends no release                                                                                | H#3                                            | no lock-null in the log                                                        | run `onReleased` on grace interruption                          |
 | I9   | Staged secret never plaintext at rest                                                                                          | `no-plaintext-at-rest.test.ts`                 | scan finds no plaintext                                                        | store `request.value` unsealed                                  |
 | I10a | Promotion removes row (in tx) and object (after)                                                                               | S, H#8                                         | row gone at commit; stub records `deleteStaged`                                | delete rows after commit instead of in tx (test kills between)  |
