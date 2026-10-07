@@ -8,6 +8,10 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
+import type { usePassphrase } from '../../../Anonymisation/usePassphrase';
+
+type Passphrase = ReturnType<typeof usePassphrase>;
+
 const externalDataMock = vi.fn();
 
 vi.mock('../../../../hooks/useExternalData', () => ({
@@ -42,12 +46,21 @@ vi.mock('../../../../selectors/protocol', () => ({
 const passphraseState = { unlocked: false };
 const requirePassphrase = vi.fn();
 
-vi.mock('../../../Anonymisation/usePassphrase', () => ({
-  usePassphrase: () => ({
-    unlocked: passphraseState.unlocked,
-    requirePassphrase,
-  }),
-}));
+vi.mock('../../../Anonymisation/usePassphrase', async () => {
+  const { runtimeMessages } = await import('../../../../i18n/runtimeMessages');
+  return {
+    usePassphrase: (): Passphrase => ({
+      unlocked: passphraseState.unlocked,
+      passphraseChosen: true,
+      encryptionUnavailable: false,
+      lockedNotice: runtimeMessages.protectedAnswersLocked,
+      unlock: vi.fn<Passphrase['unlock']>(),
+      submitPassphrase: vi.fn<Passphrase['submitPassphrase']>(),
+      requirePassphrase,
+      showPassphrasePrompter: false,
+    }),
+  };
+});
 
 vi.mock('../../../../selectors/name-generator', () => ({
   getPanelNodes: () => panelNodesSelector,
