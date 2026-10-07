@@ -181,10 +181,7 @@ export type Published<T> = { outcome: T; events: LoggedProtocolEvent[] };
 
 export type AcquireResult = Published<AcquireOutcome | undefined>;
 
-/** `stillHeld` is another section the owner holds, if any, for its presence. */
-type ReleaseResult = Published<undefined> & {
-  stillHeld?: ProtocolSectionId;
-};
+type ReleaseResult = Published<undefined>;
 
 export function sessionOwner(session: ProtocolBuilderSession): string {
   return `${session.principal.userId}:${session.clientSessionId}`;
@@ -628,47 +625,10 @@ export const releaseLock: (
             { kind: 'lock', sectionId },
           ])
         : [];
-      const stillHeld = yield* heldByOwner(teamId, session.draftId, owner);
-      return {
-        outcome: undefined,
-        events,
-        ...(stillHeld === undefined ? {} : { stillHeld }),
-      };
+      return { outcome: undefined, events };
     }).pipe(provideCaller(session.principal)),
   );
 });
-
-/** The first live section `owner` holds on the draft, if any. */
-const heldByOwner: (
-  teamId: string,
-  draftId: string,
-  owner: string,
-) => Effect.Effect<
-  ProtocolSectionId | undefined,
-  SqlError.SqlError,
-  Transaction
-> = Effect.fn('protocolBuilder.heldByOwner')(function* (
-  teamId: string,
-  draftId: string,
-  owner: string,
-) {
-  const { tx } = yield* Transaction;
-  const rows = yield* tx
-    .select({ sectionId: leases.sectionId })
-    .from(leases)
-    .where(
-      and(
-        eq(leases.draftId, draftId),
-        eq(leases.teamId, teamId),
-        eq(leases.owner, owner),
-        sql`${leases.expiresAt} > clock_timestamp()`,
-      ),
-    )
-    .orderBy(leases.sectionId)
-    .limit(1);
-  const held = rows[0]?.sectionId;
-  return held === undefined ? undefined : makeSectionId(parseSectionId(held));
-}, sqlErrorsOnly);
 
 type WrittenSections = {
   head: HeadState;

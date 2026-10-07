@@ -385,9 +385,16 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         host.rpc('ReleaseLock', { protocolId, sectionId: dialog.sectionId }),
       );
 
-      expect(
-        (await present()).find((who) => who.sessionId === ADA.connectionId),
-      ).toMatchObject({ mode: 'editing', sectionId: editor.sectionId });
+      await until(
+        async () =>
+          (await present()).some(
+            (who) =>
+              who.sessionId === ADA.connectionId &&
+              who.mode === 'editing' &&
+              who.sectionId === editor.sectionId,
+          ),
+        'the tab to show the section it still holds',
+      );
     } finally {
       await call(
         ADA,
@@ -580,9 +587,16 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         replica.advance(RETRY_BASE_MS);
         expect((await acquiring).lock).toBe('held');
 
-        expect(
-          (await present()).find((who) => who.sessionId === caller.connection),
-        ).toMatchObject({ mode: 'editing', sectionId });
+        await until(
+          async () =>
+            (await present()).some(
+              (who) =>
+                who.sessionId === caller.connection &&
+                who.mode === 'editing' &&
+                who.sectionId === sectionId,
+            ),
+          'the retried mode to be recorded',
+        );
         await other.call(
           caller,
           other.rpc('ReleaseLock', { protocolId, sectionId }),
@@ -594,6 +608,119 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
     } finally {
       await other.dispose();
       await fault.close();
+    }
+  });
+
+  it('publishes a lock and replies before its holder’s mode is recorded', async () => {
+    const presence = holdingPresence();
+    const other = await createProtocolBuilderClient(studio, {
+      clock: makeShiftableClock().clock,
+      objectStore,
+      presence: presence.layer,
+    });
+    const { caller } = tabOf('mode-after');
+    try {
+      const stage = await createOn(other, 'Published before its mode');
+      const sectionId = stage.sectionId;
+      const channel = await watching(caller, protocolId, other);
+      const colleague = await watching(GRACE, protocolId, other);
+      try {
+        const recording = presence.next();
+        let replied = false;
+        const acquiring = other
+          .call(caller, other.rpc('AcquireLock', { protocolId, sectionId }))
+          .finally(() => {
+            replied = true;
+          });
+        await recording.reached;
+        try {
+          await until(() => replied, 'the reply while the mode is recorded');
+          await until(
+            () =>
+              colleague.events.some(
+                (event) =>
+                  event.type === 'lock' &&
+                  event.sectionId === sectionId &&
+                  event.holder !== undefined,
+              ),
+            'the lock to reach a colleague while the mode is recorded',
+          );
+        } finally {
+          recording.release();
+        }
+        expect((await acquiring).lock).toBe('held');
+        await until(
+          async () =>
+            (await present()).some(
+              (who) =>
+                who.sessionId === caller.connection && who.mode === 'editing',
+            ),
+          'the mode to be recorded',
+        );
+        await other.call(
+          caller,
+          other.rpc('ReleaseLock', { protocolId, sectionId }),
+        );
+      } finally {
+        await colleague.stop();
+        await channel.stop();
+      }
+    } finally {
+      await other.dispose();
+    }
+  });
+
+  it('records the mode a tab holds now when an earlier update lands late', async () => {
+    const presence = holdingPresence();
+    const spans = makeSpanCounter();
+    const other = await createProtocolBuilderClient(studio, {
+      clock: makeShiftableClock().clock,
+      objectStore,
+      presence: presence.layer,
+      tracer: spans.tracer,
+    });
+    const { caller } = tabOf('mode-late');
+    try {
+      const stage = await createOn(other, 'Released before its mode landed');
+      const sectionId = stage.sectionId;
+      const channel = await watching(caller, protocolId, other);
+      try {
+        const recording = presence.next();
+        const acquiring = other.call(
+          caller,
+          other.rpc('AcquireLock', { protocolId, sectionId }),
+        );
+        await recording.reached;
+        const recorded = spans.ended('protocolBuilder.setMode');
+        try {
+          await other.call(
+            caller,
+            other.rpc('ReleaseLock', { protocolId, sectionId }),
+          );
+          await until(
+            () => spans.ended('protocolBuilder.setMode') > recorded,
+            'the release’s mode to be recorded',
+          );
+        } finally {
+          recording.release();
+        }
+        expect((await acquiring).lock).toBe('held');
+        await until(
+          () => spans.ended('protocolBuilder.setMode') > recorded + 1,
+          'the acquire’s late mode to be recorded',
+        );
+        expect(
+          (await present()).find((who) => who.sessionId === caller.connection),
+        ).toMatchObject({ mode: 'viewing' });
+        expect(
+          (await present()).find((who) => who.sessionId === caller.connection)
+            ?.sectionId,
+        ).toBeUndefined();
+      } finally {
+        await channel.stop();
+      }
+    } finally {
+      await other.dispose();
     }
   });
 

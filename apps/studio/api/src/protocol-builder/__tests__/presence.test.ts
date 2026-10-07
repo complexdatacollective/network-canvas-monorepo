@@ -7,6 +7,7 @@ import {
   ADA,
   GRACE,
   setupProtocolBuilderSuite,
+  until,
 } from '../../__tests__/support/protocol-builder-suite.ts';
 import type { Caller } from '../../__tests__/support/protocol-builder.ts';
 
@@ -45,6 +46,16 @@ describe.skipIf(!testDb)('presence', () => {
           protocolId: suite.protocolId,
           sectionId: stage.sectionId,
         }),
+      );
+      await until(
+        async () =>
+          (await connectionRows()).filter(
+            (row) =>
+              row.live &&
+              row.socket_id === caller.connection &&
+              row.mode === 'editing',
+          ).length === 2,
+        'both watches to show the lock',
       );
       // The watch listed last stops showing the lock, as a row written before
       // the lock was taken would.
@@ -137,12 +148,19 @@ describe.skipIf(!testDb)('presence', () => {
       await lock(passer, 'AcquireLock', passing.sectionId);
       await lock(passer, 'ReleaseLock', passing.sectionId);
 
-      expect(await shownFor(holder.tab)).toEqual([
-        { mode: 'editing', sectionId: held.sectionId },
+      const shown = async () =>
+        JSON.stringify([
+          await shownFor(holder.tab),
+          await shownFor(passer.tab),
+        ]);
+      const expected = JSON.stringify([
+        [{ mode: 'editing', sectionId: held.sectionId }],
+        [{ mode: 'viewing', sectionId: null }],
       ]);
-      expect(await shownFor(passer.tab)).toEqual([
-        { mode: 'viewing', sectionId: null },
-      ]);
+      await until(
+        async () => (await shown()) === expected,
+        'each tab to show only its own lock',
+      );
       await lock(holder, 'ReleaseLock', held.sectionId);
     } finally {
       await second.stop();

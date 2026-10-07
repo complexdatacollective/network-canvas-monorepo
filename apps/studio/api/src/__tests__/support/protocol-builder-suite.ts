@@ -242,8 +242,7 @@ export function holdingPresence() {
       const real = yield* Presence;
       return Presence.of({
         ...real,
-        setMode: (session, mode, sectionId) =>
-          hold.around(undefined, real.setMode(session, mode, sectionId)),
+        setMode: (session) => hold.around(undefined, real.setMode(session)),
       });
     }),
   ).pipe(Layer.provide(Presence.layer));

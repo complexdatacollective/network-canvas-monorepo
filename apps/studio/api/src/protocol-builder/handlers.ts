@@ -23,7 +23,6 @@ import type { SectionDoc } from '@codaco/studio-sync/apply';
 import {
   sectionId as makeSectionId,
   parseSectionId,
-  type ProtocolSectionId,
 } from '@codaco/studio-sync/taxonomy';
 
 import { provideCaller } from '../audit/actor.ts';
@@ -156,6 +155,7 @@ export const ProtocolBuilderHandlers: Layer.Layer<
     const events = yield* ProtocolEvents;
     const staged = yield* StagedImports;
     const objectStore = yield* ObjectStore;
+    const scope = yield* Effect.scope;
 
     const publish = (
       session: ProtocolBuilderSession,
@@ -165,29 +165,34 @@ export const ProtocolBuilderHandlers: Layer.Layer<
     const publishPresence = (session: ProtocolBuilderSession) =>
       events.presenceChanged(session);
 
-    // A unary caller shows no mode: its connection id is its login's, which
-    // every HTTP watch of that login carries too.
-    const showMode = (
-      session: ProtocolBuilderSession,
-      sectionId: ProtocolSectionId | undefined,
-    ) =>
+    /**
+     * Records the socket's mode from what its tab holds, then, when `announce`,
+     * tells watchers. Forked once the call's events are published, so a retry
+     * holds back neither them nor the reply; each attempt reads the tab's
+     * leases afresh, so a late one still writes its current mode. A unary
+     * caller records no mode: its connection id is its login's, which every
+     * HTTP watch of that login carries too.
+     */
+    const showMode = (session: ProtocolBuilderSession, announce: boolean) =>
       Effect.gen(function* () {
-        if (Option.isNone(yield* Effect.serviceOption(WsConnection))) return;
-        yield* retryBriefly(
-          presence.setMode(
-            session,
-            sectionId === undefined ? 'viewing' : 'editing',
-            sectionId,
-          ),
+        const onSocket = Option.isSome(
+          yield* Effect.serviceOption(WsConnection),
         );
-      }).pipe(
-        Effect.catchCause((cause) =>
-          Effect.logWarning(
-            'Recording protocol-builder presence failed',
-            cause,
-          ),
-        ),
-      );
+        const update = Effect.gen(function* () {
+          if (onSocket) {
+            yield* retryBriefly(presence.setMode(session)).pipe(
+              Effect.catchCause((cause) =>
+                Effect.logWarning(
+                  'Recording protocol-builder presence failed',
+                  cause,
+                ),
+              ),
+            );
+          }
+          if (announce) yield* publishPresence(session);
+        });
+        yield* Effect.forkIn(Effect.interruptible(update), scope);
+      });
 
     const stagingFor = (session: ProtocolBuilderSession, editId: string) =>
       staged.for(stagingKey(session, editId), sessionOwner(session));
@@ -262,10 +267,8 @@ export const ProtocolBuilderHandlers: Layer.Layer<
             if (result.outcome === undefined) {
               return yield* new SectionNotFound({ sectionId });
             }
-            const held = result.outcome.lock === 'held';
-            if (held) yield* showMode(session, sectionId);
             yield* publish(session, result.events);
-            if (held) yield* publishPresence(session);
+            if (result.outcome.lock === 'held') yield* showMode(session, true);
             return result.outcome;
           }),
         );
@@ -282,9 +285,8 @@ export const ProtocolBuilderHandlers: Layer.Layer<
               protocolId,
               releaseLock(session, sectionId),
             );
-            yield* showMode(session, result.stillHeld);
             yield* publish(session, result.events);
-            if (result.events.length > 0) yield* publishPresence(session);
+            yield* showMode(session, result.events.length > 0);
           }),
         );
       }),

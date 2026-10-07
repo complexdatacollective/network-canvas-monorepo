@@ -21,7 +21,6 @@ import { SYNC_TABLES } from '@codaco/studio-sync/schema';
 import {
   parseSectionId,
   sectionId as makeSectionId,
-  type ProtocolSectionId,
 } from '@codaco/studio-sync/taxonomy';
 
 import { noAuditTransaction } from '../audit/no-audit.ts';
@@ -529,23 +528,21 @@ export const livePresence: (
 });
 
 /**
- * Sets the mode of the caller's own watches on its socket, never another
- * tab's sharing that socket. Only for a caller on a socket: a unary caller's
- * connection id is its login's session id, which every HTTP watch of that
- * login carries as its socket id too.
+ * Shows the caller's own watches on its socket, never another tab's sharing
+ * that socket, editing the first section its tab holds a live lease on, in
+ * `section_id` order as `connectSocket` does, else viewing. Read after the
+ * rows are locked, so an update that is retried or lands late writes what the
+ * tab holds then. Only for a caller on a socket: a unary caller's connection
+ * id is its login's session id, which every HTTP watch of that login carries
+ * as its socket id too.
  */
 export const setSocketMode: (
   session: ProtocolBuilderSession,
-  mode: Presence['mode'],
-  sectionId?: ProtocolSectionId,
 ) => Effect.Effect<void, SqlError.SqlError, Database> = Effect.fn(
   'protocolBuilder.setMode',
-)(function* (
-  session: ProtocolBuilderSession,
-  mode: Presence['mode'],
-  sectionId?: ProtocolSectionId,
-) {
+)(function* (session: ProtocolBuilderSession) {
   const teamId = session.access.teamId;
+  const owner = sessionOwner(session);
   yield* noAuditTransaction(
     'protocolBuilder.setMode',
     session.access,
@@ -559,7 +556,7 @@ export const setSocketMode: (
             eq(connections.teamId, teamId),
             eq(connections.draftId, session.draftId),
             eq(connections.socketId, session.connectionId),
-            eq(connections.owner, sessionOwner(session)),
+            eq(connections.owner, owner),
             eq(connections.kind, 'socket'),
             live(),
           ),
@@ -567,9 +564,25 @@ export const setSocketMode: (
         .orderBy(asc(connections.connectionId))
         .for('update');
       if (rows.length === 0) return;
+      const [held] = yield* tx
+        .select({ sectionId: leases.sectionId })
+        .from(leases)
+        .where(
+          and(
+            eq(leases.teamId, teamId),
+            eq(leases.draftId, session.draftId),
+            eq(leases.owner, owner),
+            gt(leases.expiresAt, now()),
+          ),
+        )
+        .orderBy(asc(leases.sectionId))
+        .limit(1);
       yield* tx
         .update(connections)
-        .set({ mode, sectionId: sectionId ?? null })
+        .set({
+          mode: held === undefined ? 'viewing' : 'editing',
+          sectionId: held?.sectionId ?? null,
+        })
         .where(
           and(
             eq(connections.teamId, teamId),

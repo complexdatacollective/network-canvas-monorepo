@@ -2,7 +2,6 @@ import { Context, Effect, Layer } from 'effect';
 import type { SqlError } from 'effect/sql';
 
 import type { Presence as PresenceValue } from '@codaco/protocol-builder-core/contract/schemas';
-import type { ProtocolSectionId } from '@codaco/studio-sync/taxonomy';
 
 import { Database } from '../db/client.ts';
 import { livePresence, setSocketMode } from './connections.ts';
@@ -16,10 +15,9 @@ import type { ProtocolBuilderSession } from './host.ts';
 export class Presence extends Context.Service<
   Presence,
   {
+    /** Records the socket's mode from the leases its tab holds now. */
     readonly setMode: (
       session: ProtocolBuilderSession,
-      mode: PresenceValue['mode'],
-      sectionId?: ProtocolSectionId,
     ) => Effect.Effect<void, SqlError.SqlError>;
     readonly list: (
       session: ProtocolBuilderSession,
@@ -32,11 +30,8 @@ export class Presence extends Context.Service<
       const database = yield* Database;
       const withDatabase = Effect.provideService(Database, database);
 
-      const setMode = (
-        session: ProtocolBuilderSession,
-        mode: PresenceValue['mode'],
-        sectionId?: ProtocolSectionId,
-      ) => withDatabase(setSocketMode(session, mode, sectionId));
+      const setMode = (session: ProtocolBuilderSession) =>
+        withDatabase(setSocketMode(session));
 
       const list = (session: ProtocolBuilderSession) =>
         withDatabase(livePresence(session.access, [session.draftId])).pipe(
