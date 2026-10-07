@@ -461,7 +461,10 @@ export default function PersonForm({
         {formFields.length > 0 && (
           <section className="flex flex-col">
             <Heading level="h3" margin="none" className="mb-4">
-              <AppMessage message={messages.moreAboutThisPerson} />
+              <AppMessage
+                message={messages.moreAboutThisPerson}
+                values={{ isYou: isEgo ? 'true' : 'false' }}
+              />
             </Heading>
             {fieldComponents}
           </section>

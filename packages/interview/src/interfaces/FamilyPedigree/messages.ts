@@ -193,9 +193,10 @@ export const messages = defineMessages({
   },
   moreAboutThisPerson: {
     id: 'interview.familyPedigree.moreAboutThisPerson',
-    defaultMessage: 'More about this person',
+    defaultMessage:
+      '{isYou, select, true {More about you} other {More about this person}}',
     description:
-      'Heading above the study’s own additional questions about a family member.',
+      'Heading above the study’s own additional questions about a family member, in the side panel for adding or editing them. On the participant’s own panel it addresses them.',
   },
   nameLabel: {
     id: 'interview.familyPedigree.nameLabel',

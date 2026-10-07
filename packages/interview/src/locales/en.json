@@ -280,8 +280,8 @@
     "description": "Notice at the top of the panel showing a family member’s details. {details} is a list of the questions not yet answered, e.g. “Name and Gender identity”."
   },
   "interview.familyPedigree.moreAboutThisPerson": {
-    "defaultMessage": "More about this person",
-    "description": "Heading above the study’s own additional questions about a family member."
+    "defaultMessage": "{isYou, select, true {More about you} other {More about this person}}",
+    "description": "Heading above the study’s own additional questions about a family member, in the side panel for adding or editing them. On the participant’s own panel it addresses them."
   },
   "interview.familyPedigree.nameHint": {
     "defaultMessage": "A first name or nickname is fine. If you don’t know it, leave this blank and they will be shown by how they are related to you.",
