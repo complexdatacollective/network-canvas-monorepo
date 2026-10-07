@@ -97,21 +97,27 @@ const findPassphraseField = (canvas: ReturnType<typeof within>) =>
 
 const CONFIRM_LABEL = /^Confirm Passphrase/;
 
+const PASSPHRASE_SET = 'Passphrase set successfully! Click "Next" to continue.';
+const PASSPHRASE_ACCEPTED = 'Passphrase accepted! Click "Next" to continue.';
+const ALREADY_ENTERED =
+  'You have already entered your passphrase. Click "Next" to continue.';
+const ANY_SUCCESS =
+  /Passphrase set successfully|Passphrase accepted|You have already entered your passphrase/;
+
 /**
  * Submits the passphrase form and waits for the check to show as under way
- * and then to finish with the passphrase accepted.
+ * and then to finish with `successMessage`.
  */
-async function submitAndWaitForAcceptance(canvas: ReturnType<typeof within>) {
+async function submitAndWaitForAcceptance(
+  canvas: ReturnType<typeof within>,
+  successMessage: string,
+) {
   await userEvent.click(canvas.getByRole('button', { name: 'Submit' }));
   await expect(
     await canvas.findByText('Checking your passphrase…'),
   ).toBeInTheDocument();
   await expect(
-    await canvas.findByText(
-      /Passphrase set successfully/,
-      {},
-      { timeout: 10_000 },
-    ),
+    await canvas.findByText(successMessage, {}, { timeout: 10_000 }),
   ).toBeInTheDocument();
   await expect(
     canvas.queryByText('Checking your passphrase…'),
@@ -165,7 +171,7 @@ export const ChoosesAPassphrase: Story = {
     docs: {
       description: {
         story:
-          'No passphrase has been chosen in this interview yet, so the participant chooses one and confirms it. Without a minimum set by the stage, it must be at least 8 characters.',
+          'No passphrase has been chosen in this interview yet, so the participant chooses one and confirms it. Without a minimum set by the stage, it must be at least 8 characters. Neither field offers to save the passphrase to a password manager.',
       },
     },
   },
@@ -173,6 +179,8 @@ export const ChoosesAPassphrase: Story = {
     const canvas = within(canvasElement);
     const passphrase = await findPassphraseField(canvas);
     const confirm = canvas.getByLabelText(CONFIRM_LABEL, { selector: 'input' });
+    await expect(passphrase).toHaveAttribute('autocomplete', 'off');
+    await expect(confirm).toHaveAttribute('autocomplete', 'off');
 
     await userEvent.type(passphrase, 'short');
     await userEvent.type(confirm, 'short');
@@ -188,7 +196,7 @@ export const ChoosesAPassphrase: Story = {
     await userEvent.type(passphrase, PASSPHRASE);
     await userEvent.clear(confirm);
     await userEvent.type(confirm, PASSPHRASE);
-    await submitAndWaitForAcceptance(canvas);
+    await submitAndWaitForAcceptance(canvas, PASSPHRASE_SET);
   },
 };
 
@@ -220,7 +228,43 @@ export const ShorterMinimumLength: Story = {
 
     await userEvent.type(passphrase, 'd');
     await userEvent.type(confirm, 'd');
-    await submitAndWaitForAcceptance(canvas);
+    await submitAndWaitForAcceptance(canvas, PASSPHRASE_SET);
+  },
+};
+
+export const ReturnsToTheStage: Story = {
+  render: (args) => <AnonymisationStoryWrapper {...args} />,
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'The participant chooses a passphrase, moves on, and comes back. The passphrase is still in force, so the stage asks for nothing and says it was entered already.',
+      },
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const passphrase = await findPassphraseField(canvas);
+    await userEvent.type(passphrase, PASSPHRASE);
+    await userEvent.type(
+      canvas.getByLabelText(CONFIRM_LABEL, { selector: 'input' }),
+      PASSPHRASE,
+    );
+    await submitAndWaitForAcceptance(canvas, PASSPHRASE_SET);
+
+    await userEvent.click(canvas.getByTestId('next-button'));
+    await expect(
+      await canvas.findByRole('heading', { name: 'Complete' }),
+    ).toBeInTheDocument();
+    await userEvent.click(canvas.getByTestId('previous-button'));
+
+    await expect(
+      await canvas.findByText(ALREADY_ENTERED, {}, { timeout: 10_000 }),
+    ).toBeInTheDocument();
+    await expect(canvas.queryByText(PASSPHRASE_SET)).not.toBeInTheDocument();
+    await expect(
+      canvas.queryByLabelText(/^Passphrase/, { selector: 'input' }),
+    ).not.toBeInTheDocument();
   },
 };
 
@@ -264,13 +308,14 @@ export const ResumedWithProtectedAnswers: Story = {
   parameters: {
     docs: {
       description: {
-        story: `A passphrase ("${PASSPHRASE}") was chosen earlier in this interview, and is no longer in memory. The stage asks for it again, once and without length rules. A different passphrase is turned away with the reason under the field; the original one is accepted.`,
+        story: `A passphrase ("${PASSPHRASE}") was chosen earlier in this interview, and is no longer in memory. The stage asks for it again, once and without length rules. A different passphrase is turned away with the reason under the field; the original one is accepted, and the stage says so rather than that a passphrase was set.`,
       },
     },
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const passphrase = await findPassphraseField(canvas);
+    await expect(passphrase).toHaveAttribute('autocomplete', 'off');
     await expect(
       canvas.getByText(
         'You chose a passphrase earlier in this interview. Enter it to continue.',
@@ -299,12 +344,44 @@ export const ResumedWithProtectedAnswers: Story = {
     await expect(
       canvas.queryByText('Checking your passphrase…'),
     ).not.toBeInTheDocument();
-    await expect(
-      canvas.queryByText(/Passphrase set successfully/),
-    ).not.toBeInTheDocument();
+    await expect(canvas.queryByText(ANY_SUCCESS)).not.toBeInTheDocument();
 
     await userEvent.clear(passphrase);
     await userEvent.type(passphrase, PASSPHRASE);
-    await submitAndWaitForAcceptance(canvas);
+    await submitAndWaitForAcceptance(canvas, PASSPHRASE_ACCEPTED);
+  },
+};
+
+export const DamagedPassphraseRecord: Story = {
+  render: () => (
+    <EncryptedStoryInterviewShell
+      build={buildResumedInterview}
+      passphrase={PASSPHRASE}
+      currentStep={0}
+      headerIterations={1_000_000_000}
+    />
+  ),
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'The record this interview keeps to check a passphrase has been damaged (here, an impossible key-stretching count), so no passphrase can be checked. The stage asks for none, says the protected answers cannot be shown or saved, and lets the participant continue.',
+      },
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      await canvas.findByText(
+        'Answers protected by a passphrase cannot be shown or saved in this interview. Please let the person who recruited you to this study know.',
+        {},
+        { timeout: 10_000 },
+      ),
+    ).toBeInTheDocument();
+    await expect(
+      canvas.queryByLabelText(/^Passphrase/, { selector: 'input' }),
+    ).not.toBeInTheDocument();
+    await expect(canvas.queryByText(ANY_SUCCESS)).not.toBeInTheDocument();
+    await expect(canvas.getByTestId('next-button')).toBeEnabled();
   },
 };

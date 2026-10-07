@@ -31,6 +31,7 @@ async function encryptedRawPayload(
   { interview, encryptedVariableIds, encryptedFor }: EncryptedInterview,
   passphrase: string,
   currentStep: number,
+  headerIterations: number | undefined,
 ) {
   const variables = Object.fromEntries(
     encryptedVariableIds.map((id): [string, Variable] => [
@@ -57,9 +58,13 @@ async function encryptedRawPayload(
       };
     }),
   );
+  const encryption =
+    headerIterations === undefined
+      ? header
+      : { ...header, kdf: { ...header.kdf, iterations: headerIterations } };
   return SuperJSON.stringify({
     ...payload,
-    network: { ...payload.network, nodes, encryption: header },
+    network: { ...payload.network, nodes, encryption },
   });
 }
 
@@ -75,23 +80,34 @@ export default function EncryptedStoryInterviewShell({
   build,
   passphrase,
   currentStep,
+  headerIterations,
 }: {
   /** Stable across renders (declare it at module scope). */
   build: () => EncryptedInterview;
   passphrase: string;
   currentStep: number;
+  /**
+   * Stores the header with this iteration count in place of the one the key
+   * was derived with, as a damaged header would carry.
+   */
+  headerIterations?: number;
 }) {
   const [rawPayload, setRawPayload] = useState<string>();
 
   useEffect(() => {
     let current = true;
-    void encryptedRawPayload(build(), passphrase, currentStep).then((raw) => {
+    void encryptedRawPayload(
+      build(),
+      passphrase,
+      currentStep,
+      headerIterations,
+    ).then((raw) => {
       if (current) setRawPayload(raw);
     });
     return () => {
       current = false;
     };
-  }, [build, passphrase, currentStep]);
+  }, [build, passphrase, currentStep, headerIterations]);
 
   if (!rawPayload) return null;
 
