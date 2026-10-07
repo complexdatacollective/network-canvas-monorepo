@@ -146,13 +146,16 @@ relationships:
   symbol drawn for them. Neither is a measure of the other.
 
 The same `name` variable labels people in the Family Pedigree and the Quick Add
-Name Generator. It is configured as **required** and **unique**. Pedigree labels
-are protocol data and follow the same codebook validation rules as names entered
-elsewhere. Because the name is required, the Family Pedigree asks for a name for
-every person, including the participant, and shows a warning on anyone the
-interface added without describing them, such as an unnamed parent, until they
-are named. Create a separate pedigree-name variable only when the analysis
-requires two different concepts.
+Name Generator. It is configured as **required** and **unique**. Names typed in
+the Family Pedigree follow the same codebook validation rules as names entered
+elsewhere, so no two typed names can be the same. A participant may still leave
+a relative's name blank, because they may not know it. When they leave the
+stage, the interface saves a label as the name of each unnamed relative,
+including any unnamed parent it added: their kinship word, such as "Maternal
+grandmother", told apart by a relative where needed, such as "Sister (partner
+of Tom)". Every relative therefore has a distinct name that later stages can
+show. Create a separate pedigree-name variable only when the analysis requires
+two different concepts.
 
 ## Construct the family pedigree inclusively
 

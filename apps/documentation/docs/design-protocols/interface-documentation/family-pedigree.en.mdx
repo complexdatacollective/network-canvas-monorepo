@@ -39,7 +39,7 @@ When a new relationship needs people who are not yet on the canvas, the interfac
 
 Selecting a person with a click, a tap, or the Enter or Space key opens their details in the side panel. The panel shows, in this order:
 
-1. **About this person**: the person's name, their gender identity if the stage asks about it, and their sex assigned at birth. The name is optional. Gender identity and sex assigned at birth are required questions. Gender identity offers the options you define, and sex assigned at birth offers female, male, intersex, don't know and prefer not to say.
+1. **About this person**: the person's name, their gender identity if the stage asks about it, and their sex assigned at birth. The name is optional, even when the name attribute is required. Gender identity and sex assigned at birth are required questions. Gender identity offers the options you define, and sex assigned at birth offers female, male, intersex, don't know and prefer not to say.
 2. How the person is related to the others. When adding a person, this is how they are related to the person they are being added to: for a parent, the kind of parent and whether they carried the pregnancy; for a partner, whether the partnership is current; for a child, who the other parent is, whether the child is biological, adopted or a step-child, and for a biological child who carried the pregnancy; for a sibling, which parents they share. When editing a person, it is their existing partnerships and parents. If the stage has a [completeness requirement](#completeness), the panel also asks whether the person has siblings and children, where none are recorded.
 3. **More about this person**: any [additional person fields](#additional-person-fields) you have added.
 
@@ -67,16 +67,20 @@ The text shown above the canvas while the participant draws their family. Say ho
 
 Choose the attributes of the person type that the interface records about every family member. For each, you can pick an existing attribute or create a new one from the picker.
 
-| Attribute                  | Type                                                                | What it holds                                                                                                                                |
-| -------------------------- | ------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| Name                       | Text                                                                | The person's name, typed in the side panel. The attribute's validation rules apply, such as requiring a name or making every name unique.    |
-| Sex assigned at birth      | Categorical (female, male, intersex, don't know, prefer not to say) | The sex the person was assigned at birth. The interface sets this attribute's options, and they cannot be changed.                           |
-| Gender identity (optional) | Categorical (your own options)                                      | How the person describes their gender. Asked only when **Ask about gender identity** is switched on.                                         |
-| Participant marker         | Boolean                                                             | True on the participant's own person and blank on everyone else. The interface sets it itself, so nothing else in the protocol may write it. |
+| Attribute                  | Type                                                                | What it holds                                                                                                                            |
+| -------------------------- | ------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| Name                       | Text                                                                | The person's name, typed in the side panel, or the label the interface gives a person the participant leaves unnamed. See [Name](#name). |
+| Sex assigned at birth      | Categorical (female, male, intersex, don't know, prefer not to say) | The sex the person was assigned at birth. The interface sets this attribute's options, and they cannot be changed.                       |
+| Gender identity (optional) | Categorical (your own options)                                      | How the person describes their gender. Asked only when **Ask about gender identity** is switched on.                                     |
+| Participant marker         | Boolean                                                             | True on the participant's own person and blank on everyone else. The interface sets it itself.                                           |
 
 #### Name
 
-The interface labels a person by their name when they have one, and a person who has been named is never labelled with a kinship word. The participant is always labelled "You". The name attribute's validation rules apply to the name question in the side panel, and you can set them in the **Validation** section under the name control. If the attribute is required, every person needs a name, the question reads "Name" rather than "Name (optional)", and a person without one counts as missing a required detail. If it is unique, no two people of the stage's type in the network can share a name. Otherwise, naming a family member is optional.
+The interface labels a person by their name when they have one, and a person who has been named is never labelled with a kinship word. The participant is always labelled "You".
+
+A participant may not know a relative's name, so they can always leave it blank. When they leave the stage, the interface saves a label as the name of everyone they left unnamed, including any unnamed parents it added, so that later stages can show who is who. The label is the person's kinship word in the participant's language and the stage's [wording](#wording), such as "Maternal grandmother". Labels are distinct from each other and from every typed name: where two people would share a word, each is told apart by a relative, as in "Sister (partner of Tom)", or else numbered, as in "Sister 2". If the participant comes back to the stage, those people are unnamed again, and they are given fresh labels when the participant leaves. The participant's own name is never filled in.
+
+The name attribute's validation rules apply to the names the participant types, and you can set them in the **Validation** section under the name control. If the attribute is unique, a typed name cannot repeat another typed name of a person of the stage's type. If it is required, every person still ends up with a name, because the interface fills in anyone left unnamed, so a blank name is allowed and is not a missing detail. Saved labels are not checked against the other rules, such as a maximum length.
 
 #### Sex assigned at birth
 
@@ -119,11 +123,11 @@ Then choose the attributes the interface writes on each relationship.
 | Gestational carrier | Boolean                                                                                            | True on the parent relationship of whoever carried the pregnancy (a surrogate, or a biological parent who did), and false on every other parent relationship. It is not set on partnerships. |
 | Current partner     | Boolean                                                                                            | True when a partnership is current, and false when it has ended. It is set on every partnership and on nothing else.                                                                         |
 
-The interface writes these attributes itself, so nothing else in the protocol may write them. A filter or skip logic can still read them.
+The interface writes these attributes itself. A filter or skip logic can read them.
 
 ### Wording
 
-Choose the kinship words used for family members the participant has not named. People who are named are shown by name. The wording changes only what participants read, and adds nothing to the exported data.
+Choose the kinship words used for family members the participant has not named. People who are named are shown by name. The wording changes what participants read, and the words in the labels saved for people the participant leaves unnamed (see [Name](#name)). It adds no other data to the export.
 
 | Choice                               | What participants read                                                                                                                                                                                                                                                    |
 | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -151,9 +155,9 @@ Choose **Relatives to record**. Each choice includes the ones before it:
 4. **All second-degree relatives**: adds nieces, nephews and grandchildren.
 5. **Three generations, to first cousins**: adds first cousins.
 
-Only biological relatives count, so an adopted child does not satisfy "children". Biological parents are the people who gave the egg or the sperm, so donors count, but a surrogate does not. A participant can account for siblings and children by saying that a person has none or that they do not know. Those answers are kept in the **Relatives not recorded** attribute, a categorical attribute whose options the interface sets and which nothing else in the protocol may write.
+Only biological relatives count, so an adopted child does not satisfy "children". Biological parents are the people who gave the egg or the sperm, so donors count, but a surrogate does not. A participant can account for siblings and children by saying that a person has none or that they do not know. Those answers are kept in the **Relatives not recorded** attribute, a categorical attribute whose options the interface sets.
 
-The required details about each person are their sex assigned at birth, their gender identity when the stage asks about it, and any additional person field whose attribute the codebook marks as required. They apply to everyone in the family, including people the interface added without a name.
+The required details about each person are their sex assigned at birth, their gender identity when the stage asks about it, and any additional person field whose attribute the codebook marks as required. They apply to everyone in the family, including people the interface added without a name. A name is never a required detail.
 
 Choose **When the family is incomplete**:
 
@@ -167,7 +171,7 @@ A checklist in the toolbar shows what is still needed and takes the participant 
 Optionally ask questions about the whole family once it is drawn, such as "Who in your family has had heart disease?". Each prompt has:
 
 - the question the participant reads;
-- a true/false attribute. The interface sets it to true on everyone the participant selects, and to false on anyone they select and then deselect. Everyone else is left blank. It cannot be the participant marker or another attribute the interface sets itself;
+- a boolean attribute. The interface sets it to true on everyone the participant selects, and to false on anyone they select and then deselect. Everyone else is left blank. It cannot be the participant marker or another attribute the interface sets itself;
 - optionally, a limit on **Who can be selected**: anyone, anyone except people assigned male at birth, or anyone except people assigned female at birth. Use a limit for a condition that only people of one sex can have. People recorded as the other sex cannot be selected, but everyone else can, including people whose sex assigned at birth is intersex, don't know, prefer not to say, or not yet answered.
 
 Participants answer the prompts in the order you list them, after they have drawn their family.
