@@ -510,7 +510,21 @@ describe.skipIf(!testDb)('protocol-builder across replicas', () => {
     expect(await liveSocketsOf(socket)).toHaveLength(1);
 
     await ageLeases(owner, -1_000);
-    await pollTogether();
+    // Holding the head, so each replica's poll reads the lapsed lease before
+    // either reap can log its release, and both reaps are in flight at once.
+    const head = await suite.holdRow(
+      'SELECT 1 FROM drafts WHERE id = $1 FOR UPDATE',
+      [suite.draftId],
+    );
+    try {
+      await pollTogether();
+      await until(
+        async () => (await suite.waitingOn(head.pid)) >= 2,
+        'B and C both to wait to reap',
+      );
+    } finally {
+      await head.release();
+    }
     await until(
       () =>
         left.every(

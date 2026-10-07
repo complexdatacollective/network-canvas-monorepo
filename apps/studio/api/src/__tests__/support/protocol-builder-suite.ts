@@ -549,6 +549,18 @@ export function setupProtocolBuilderSuite() {
       )
     ).rows;
 
+  /**
+   * Backends waiting on `pid`, directly or in the queue behind another waiter
+   * for the same row.
+   */
+  const waitingOn = async (pid: number) => {
+    const first = await blockedBehind(pid);
+    const behind = await Promise.all(
+      first.map((waiter) => blockedBehind(waiter.pid)),
+    );
+    return first.length + behind.flat().length;
+  };
+
   const spans = makeSpanCounter();
 
   const stagedIds = async (editId: string) => {
@@ -876,6 +888,7 @@ export function setupProtocolBuilderSuite() {
     present,
     holdRow,
     blockedBehind,
+    waitingOn,
     spans,
     stagedIds,
     keeperTick,

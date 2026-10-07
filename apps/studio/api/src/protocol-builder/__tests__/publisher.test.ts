@@ -363,18 +363,6 @@ describe.skipIf(!testDb)('the protocol-builder relay', () => {
     return row?.releases ?? 0;
   };
 
-  /**
-   * Backends waiting on `pid`, directly or in the queue behind another waiter
-   * for the same row.
-   */
-  const waitingOn = async (pid: number) => {
-    const first = await suite.blockedBehind(pid);
-    const behind = await Promise.all(
-      first.map((waiter) => suite.blockedBehind(waiter.pid)),
-    );
-    return first.length + behind.flat().length;
-  };
-
   const expectRelayFailed = (exit: Exit.Exit<unknown, unknown>) => {
     expect(Exit.isFailure(exit)).toBe(true);
     if (Exit.isSuccess(exit)) return;
@@ -932,7 +920,7 @@ describe.skipIf(!testDb)('the protocol-builder relay', () => {
           async () =>
             a.spans.count('protocolBuilder.reap') > 0 &&
             b.spans.count('protocolBuilder.reap') > 0 &&
-            (await waitingOn(held.pid)) >= 2,
+            (await suite.waitingOn(held.pid)) >= 2,
           'both replicas to wait to reap',
         );
         await held.release();
