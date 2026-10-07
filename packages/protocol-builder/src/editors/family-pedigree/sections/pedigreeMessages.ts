@@ -37,7 +37,7 @@ export const familyPedigreeMessages = defineMessages({
   nameHint: {
     id: 'protocolBuilder.pedigree.nameHint',
     defaultMessage:
-      'A text attribute holding each person’s name. The participant types it in the side panel when describing each family member, and may leave it blank.',
+      'A text attribute holding each person’s name. The participant types it in the side panel when describing each family member, and the attribute’s validation rules apply, such as requiring a name or making every name unique.',
     description: 'Guidance under the name attribute control.',
   },
   nameCreateLabel: {

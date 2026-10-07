@@ -279,6 +279,7 @@ export function fullSiblingsOf(family: Family, personId: string): string[] {
 }
 
 export type MissingDetail =
+  | 'name'
   | 'genderIdentity'
   | 'sexAssignedAtBirth'
   | { variable: string };
@@ -292,15 +293,20 @@ const isEmpty = (value: VariableValue | undefined) =>
 /**
  * The required details not yet given for a person: the interface's own
  * person attributes (gender identity only where the stage collects it), then
- * every researcher field whose attribute the codebook marks required. A name is never required — a participant may not know it,
- * and an unnamed person is shown by how they are related to the participant.
+ * every researcher field whose attribute the codebook marks required. A name
+ * counts only when the name attribute is itself required (`nameRequired`);
+ * otherwise a participant may not know it, and an unnamed person is shown by
+ * how they are related to the participant.
  */
 export function missingDetailsFor(
   person: Person,
   requiredFormVariables: readonly string[],
-  config: Pick<PedigreeConfig, 'genderIdentity'>,
+  config: Pick<PedigreeConfig, 'genderIdentity'> & { nameRequired?: boolean },
 ): MissingDetail[] {
   const missing: MissingDetail[] = [];
+  if (config.nameRequired && person.name === undefined) {
+    missing.push('name');
+  }
   if (config.genderIdentity && person.genderIdentity === undefined) {
     missing.push('genderIdentity');
   }

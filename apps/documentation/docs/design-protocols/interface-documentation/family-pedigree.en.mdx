@@ -69,14 +69,14 @@ Choose the attributes of the person type that the interface records about every 
 
 | Attribute                  | Type                                                                | What it holds                                                                                                                                |
 | -------------------------- | ------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| Name                       | Text                                                                | The person's name, typed in the side panel. The participant may leave it blank.                                                              |
+| Name                       | Text                                                                | The person's name, typed in the side panel. The attribute's validation rules apply, such as requiring a name or making every name unique.    |
 | Sex assigned at birth      | Categorical (female, male, intersex, don't know, prefer not to say) | The sex the person was assigned at birth. The interface sets this attribute's options, and they cannot be changed.                           |
 | Gender identity (optional) | Categorical (your own options)                                      | How the person describes their gender. Asked only when **Ask about gender identity** is switched on.                                         |
 | Participant marker         | Boolean                                                             | True on the participant's own person and blank on everyone else. The interface sets it itself, so nothing else in the protocol may write it. |
 
 #### Name
 
-The interface labels a person by their name when they have one. Naming a family member is optional, and a person who has been named is never labelled with a kinship word. The participant is always labelled "You".
+The interface labels a person by their name when they have one, and a person who has been named is never labelled with a kinship word. The participant is always labelled "You". The name attribute's validation rules apply to the name question in the side panel, and you can set them in the **Validation** section under the name control. If the attribute is required, every person needs a name, the question reads "Name" rather than "Name (optional)", and a person without one counts as missing a required detail. If it is unique, no two people of the stage's type in the network can share a name. Otherwise, naming a family member is optional.
 
 #### Sex assigned at birth
 

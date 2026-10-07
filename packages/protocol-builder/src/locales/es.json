@@ -924,7 +924,7 @@
   "protocolBuilder.pedigree.kindHint": "Registra si una relación es de pareja o qué tipo de progenitor es una persona para la otra. La interfaz fija las opciones de este atributo y ninguna otra parte del protocolo puede escribirlo.",
   "protocolBuilder.pedigree.kindLabel": "Tipo de relación",
   "protocolBuilder.pedigree.nameCreateLabel": "Crear un nuevo atributo de nombre",
-  "protocolBuilder.pedigree.nameHint": "Un atributo de texto que guarda el nombre de cada persona. El participante lo escribe en el panel lateral al describir a cada familiar, y puede dejarlo en blanco.",
+  "protocolBuilder.pedigree.nameHint": "Un atributo de texto que guarda el nombre de cada persona. El participante lo escribe en el panel lateral al describir a cada familiar, y se aplican las reglas de validación del atributo, como exigir un nombre o hacer que cada nombre sea único.",
   "protocolBuilder.pedigree.nameLabel": "Nombre de la persona",
   "protocolBuilder.pedigree.nominationAddLabel": "Crear nueva pregunta de nominación",
   "protocolBuilder.pedigree.nominationAddTitle": "Crear pregunta de nominación",

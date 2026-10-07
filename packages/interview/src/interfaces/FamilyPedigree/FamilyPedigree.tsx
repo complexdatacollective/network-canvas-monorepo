@@ -292,6 +292,23 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       });
   }, [codebook, config.personType, formFields]);
 
+  // The details a person must have given: the name only when the codebook
+  // requires the name attribute, and gender identity only where the stage
+  // asks it.
+  const nameRequired = useMemo(() => {
+    const definition =
+      codebook.node?.[config.personType]?.variables?.[config.nameAttribute];
+    return (
+      definition !== undefined &&
+      'validation' in definition &&
+      definition.validation?.required === true
+    );
+  }, [codebook, config.personType, config.nameAttribute]);
+  const detailsConfig = useMemo(
+    () => ({ genderIdentity: config.genderIdentity, nameRequired }),
+    [config.genderIdentity, nameRequired],
+  );
+
   // The participant is always on the canvas: create them on first visit.
   const creatingEgo = useRef(false);
   useEffect(() => {
@@ -620,11 +637,11 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
             family,
             completeness.scope,
             (person) =>
-              missingDetailsFor(person, requiredFormVariables, config).length >
-              0,
+              missingDetailsFor(person, requiredFormVariables, detailsConfig)
+                .length > 0,
           )
         : null,
-    [family, completeness, requiredFormVariables, config],
+    [family, completeness, requiredFormVariables, detailsConfig],
   );
   const [trackerOpen, setTrackerOpen] = useState(false);
 
@@ -729,7 +746,11 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       mode: {
         kind: 'edit',
         person,
-        missing: missingDetailsFor(person, requiredFormVariables, config),
+        missing: missingDetailsFor(
+          person,
+          requiredFormVariables,
+          detailsConfig,
+        ),
       },
       ids: [],
     });
@@ -1318,8 +1339,11 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                     hasMissingDetails={
                       !nomination &&
                       family.byId.has(personId) &&
-                      missingDetailsFor(person, requiredFormVariables, config)
-                        .length > 0
+                      missingDetailsFor(
+                        person,
+                        requiredFormVariables,
+                        detailsConfig,
+                      ).length > 0
                     }
                     adopted={shown.links.some(
                       (link) =>

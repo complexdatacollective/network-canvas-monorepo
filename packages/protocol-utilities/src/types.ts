@@ -493,6 +493,9 @@ export type AddStageInput = {
    * false, no gender identity variable is created, `genderIdentities` is
    * ignored, and the gendered framing's words follow sex assigned at birth. */
   askGenderIdentity?: boolean;
+  /** The validation of the name attribute in the codebook, such as
+   * `{ required: true, unique: true }`. Defaults to none. */
+  nameValidation?: Record<string, unknown>;
   /** The options of the gender identity variable and the words each takes;
    * an option with no `words` is left out of the stage's terms, so it takes
    * neutral words. Defaults to the six options Architect seeds a new

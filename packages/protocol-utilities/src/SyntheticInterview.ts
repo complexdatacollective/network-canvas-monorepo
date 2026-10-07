@@ -451,6 +451,10 @@ export class SyntheticInterview {
       if (opts?.encrypted) {
         existing.encrypted = true;
       }
+      // Likewise validation: redeclaring "name" with a rule must keep the rule.
+      if (opts?.validation) {
+        existing.validation = opts.validation;
+      }
       return { id: existing.id };
     }
 
@@ -716,7 +720,10 @@ export class SyntheticInterview {
         }));
 
       entry.nodeConfiguration = {
-        nameAttribute: personVariable('name', { type: 'text' }),
+        nameAttribute: personVariable('name', {
+          type: 'text',
+          ...(opts?.nameValidation ? { validation: opts.nameValidation } : {}),
+        }),
         ...(opts?.askGenderIdentity === false
           ? {}
           : {

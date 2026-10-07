@@ -228,6 +228,28 @@ describe('missingDetailsFor', () => {
     expect(missingDetailsFor(family.byId.get('a')!, [], config)).toEqual([]);
   });
 
+  test('a name is a missing detail only when the name attribute is required', () => {
+    const family = readFamily(
+      [
+        person('a', { gender: ['man'], sex: ['male'] }),
+        person('b', { name: 'B', gender: ['man'], sex: ['male'] }),
+      ],
+      [],
+      config,
+    );
+    const required = { ...config, nameRequired: true };
+    expect(missingDetailsFor(family.byId.get('a')!, [], required)).toEqual([
+      'name',
+    ]);
+    expect(missingDetailsFor(family.byId.get('b')!, [], required)).toEqual([]);
+    expect(
+      missingDetailsFor(family.byId.get('a')!, [], {
+        ...config,
+        nameRequired: false,
+      }),
+    ).toEqual([]);
+  });
+
   test('includes required researcher fields that are empty', () => {
     const family = readFamily(
       [

@@ -179,6 +179,24 @@ export const messages = defineMessages({
     defaultMessage: 'Your name (optional)',
     description: 'Label of the field for the participant’s own name.',
   },
+  nameRequiredLabel: {
+    id: 'interview.familyPedigree.nameRequiredLabel',
+    defaultMessage: 'Name',
+    description:
+      'Label of the field for a family member’s name when the study requires one. Also names the name question in the notice listing a family member’s missing details.',
+  },
+  yourNameRequiredLabel: {
+    id: 'interview.familyPedigree.yourNameRequiredLabel',
+    defaultMessage: 'Your name',
+    description:
+      'Label of the field for the participant’s own name when the study requires one.',
+  },
+  nameRequiredHint: {
+    id: 'interview.familyPedigree.nameRequiredHint',
+    defaultMessage: 'A first name or nickname is fine.',
+    description:
+      'Hint beneath the field for a family member’s name when the study requires one, so the participant cannot leave it blank.',
+  },
   nameHint: {
     id: 'interview.familyPedigree.nameHint',
     defaultMessage:

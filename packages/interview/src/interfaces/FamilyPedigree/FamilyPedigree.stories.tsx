@@ -61,6 +61,8 @@ type StoryOptions = {
   /** Whether the stage asks about gender identity. Defaults to true; when
    * false, the stage binds no gender identity attribute. */
   askGenderIdentity?: boolean;
+  /** The codebook's validation of the name attribute. */
+  nameValidation?: Record<string, unknown>;
 };
 
 type GenderIdentities = {
@@ -83,6 +85,7 @@ function buildInterview({
   shapeBy = 'genderIdentity',
   genderIdentities,
   askGenderIdentity = true,
+  nameValidation,
 }: StoryOptions) {
   const si = new SyntheticInterview(1);
   si.addInformationStage({ title: 'Welcome', text: 'Before the pedigree.' });
@@ -95,6 +98,7 @@ function buildInterview({
     nominationPrompts,
     genderIdentities,
     askGenderIdentity,
+    nameValidation,
   });
   // The researcher's choice of symbol, made in the codebook: circles for
   // women (or female), squares for men (or male), diamonds for anyone else.
@@ -166,6 +170,7 @@ function PedigreeStory({
   shapeBy,
   genderIdentities,
   askGenderIdentity,
+  nameValidation,
 }: StoryOptions) {
   const rawPayload = useMemo(
     () =>
@@ -179,6 +184,7 @@ function PedigreeStory({
           shapeBy,
           genderIdentities,
           askGenderIdentity,
+          nameValidation,
         }).getInterviewPayload({ currentStep: 1 }),
       ),
     [
@@ -190,6 +196,7 @@ function PedigreeStory({
       shapeBy,
       genderIdentities,
       askGenderIdentity,
+      nameValidation,
     ],
   );
 
@@ -1487,4 +1494,125 @@ export const RecommendsThreeGenerations: Story = {
     />
   ),
   play: expectPeople(4),
+};
+
+/**
+ * The codebook requires every name to be given, and to be unique. The name
+ * question reads "Name" rather than "Name (optional)", refuses to be left
+ * empty or to repeat another person's name, and lets someone who already has
+ * a name be saved again. A person with no name carries a warning, because
+ * their name is a required detail.
+ */
+export const RequiredUniqueName: Story = {
+  args: { requirement: 'none' },
+  render: (args) => (
+    <PedigreeStory
+      {...settings(args)}
+      nameValidation={{ required: true, unique: true }}
+      family={{
+        people: [
+          {
+            id: 'ego',
+            name: 'Ari',
+            gender: 'nonBinary',
+            sex: 'intersex',
+            ego: true,
+          },
+          { id: 'mum', name: 'Julie', gender: 'woman', sex: 'female' },
+          { id: 'dad', gender: 'man', sex: 'male' },
+        ],
+        links: [
+          { from: 'mum', to: 'dad', kind: 'partner' },
+          { from: 'mum', to: 'ego', kind: 'biological', carrier: true },
+          { from: 'dad', to: 'ego', kind: 'biological' },
+        ],
+      }}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
+    const panel = () =>
+      canvasElement.ownerDocument.querySelector(
+        '[data-testid="pedigree-person-panel"]',
+      );
+    const nameField = () => body.findByRole('textbox', { name: /^Name/ });
+
+    // Julie is saved again with her own name, which is not a duplicate.
+    await userEvent.click(
+      await canvas.findByRole('button', { name: /^Julie/ }),
+    );
+    await expect(await nameField()).toHaveValue('Julie');
+    await expect(body.queryByText('Name (optional)')).toBeNull();
+    await userEvent.click(await body.findByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(panel()).toBeNull());
+
+    // The unnamed father is missing a required detail.
+    const father = await canvas.findByRole('button', {
+      name: /^Father, some details missing/,
+    });
+    await userEvent.click(father);
+
+    // Another person's name is refused.
+    await userEvent.type(await nameField(), 'Julie');
+    await userEvent.click(await body.findByRole('button', { name: 'Save' }));
+    await body.findByText('This value is used elsewhere. It must be unique.');
+    await expect(panel()).not.toBeNull();
+
+    // So is no name at all.
+    await userEvent.clear(await nameField());
+    await userEvent.click(await body.findByRole('button', { name: 'Save' }));
+    await body.findByText('You must answer this question before continuing.');
+    await expect(panel()).not.toBeNull();
+
+    // A new name saves, and labels him.
+    await userEvent.type(await nameField(), 'Rob');
+    await userEvent.click(await body.findByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(panel()).toBeNull());
+    await expect(
+      await canvas.findByRole('button', { name: /^Rob$/ }),
+    ).toBeVisible();
+  },
+};
+
+/**
+ * Without a rule on the name attribute in the codebook, the name question is
+ * labelled optional and a person can be saved without a name.
+ */
+export const NameIsOptionalByDefault: Story = {
+  args: { requirement: 'none' },
+  render: (args) => (
+    <PedigreeStory
+      {...settings(args)}
+      family={{
+        people: [
+          {
+            id: 'ego',
+            name: 'Ari',
+            gender: 'nonBinary',
+            sex: 'intersex',
+            ego: true,
+          },
+          { id: 'dad', gender: 'man', sex: 'male' },
+        ],
+        links: [{ from: 'dad', to: 'ego', kind: 'biological' }],
+      }}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
+    await userEvent.click(
+      await canvas.findByRole('button', { name: /^Father/ }),
+    );
+    await body.findByText('Name (optional)');
+    await userEvent.click(await body.findByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(
+        canvasElement.ownerDocument.querySelector(
+          '[data-testid="pedigree-person-panel"]',
+        ),
+      ).toBeNull(),
+    );
+  },
 };

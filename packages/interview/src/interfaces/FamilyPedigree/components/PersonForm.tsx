@@ -13,7 +13,10 @@ import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import { FormWithoutProvider } from '@codaco/fresco-ui/form/Form';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
-import type { FormSubmitHandler } from '@codaco/fresco-ui/form/store/types';
+import type {
+  FormSubmitHandler,
+  ValidationContext,
+} from '@codaco/fresco-ui/form/store/types';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import {
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH,
@@ -25,6 +28,13 @@ import {
 
 import { formValuesToAttributePatch } from '../../../forms/formValuesToAttributePatch';
 import useProtocolForm from '../../../forms/useProtocolForm';
+import { useStageSelector } from '../../../hooks/useStageSelector';
+import {
+  getValidationContext,
+  selectValidationMetadataForVariable,
+  validationPropsFor,
+} from '../../../selectors/forms';
+import { getCodebookVariablesForSubjectType } from '../../../selectors/protocol';
 import { RELATIVES_NOT_RECORDED } from '../completeness';
 import { messages } from '../messages';
 import {
@@ -168,6 +178,35 @@ export default function PersonForm({
 
   const isEgo = person?.isEgo ?? false;
 
+  // The name question applies whatever validation the codebook gives the name
+  // attribute (required, unique, length…), by the same mapping the interview's
+  // other forms use. `unique` resolves against the people already in the
+  // network, leaving out the person being edited so their own saved name is
+  // not a duplicate.
+  const stageVariables = useStageSelector(getCodebookVariablesForSubjectType);
+  const nameValidation = selectValidationMetadataForVariable(
+    stageVariables,
+    config.nameAttribute,
+  );
+  const nameValidationProps = nameValidation
+    ? validationPropsFor(nameValidation)
+    : {};
+  const nameRequired = nameValidationProps.required === true;
+  const baseValidationContext = useStageSelector(getValidationContext);
+  const personId = person?.id;
+  const nameValidationContext = useMemo<ValidationContext | undefined>(
+    () =>
+      baseValidationContext.stageSubject
+        ? {
+            codebook: baseValidationContext.codebook,
+            network: baseValidationContext.network,
+            stageSubject: baseValidationContext.stageSubject,
+            ...(personId !== undefined ? { currentEntityId: personId } : {}),
+          }
+        : undefined,
+    [baseValidationContext, personId],
+  );
+
   const initialResearcherValues = useMemo(() => {
     if (!person) return undefined;
     const values: Record<string, FieldValue> = {};
@@ -293,11 +332,27 @@ export default function PersonForm({
             name={config.nameAttribute}
             nameMode="opaque"
             label={intl.formatMessage(
-              isEgo ? messages.yourNameLabel : messages.nameLabel,
+              nameRequired
+                ? isEgo
+                  ? messages.yourNameRequiredLabel
+                  : messages.nameRequiredLabel
+                : isEgo
+                  ? messages.yourNameLabel
+                  : messages.nameLabel,
             )}
-            hint={isEgo ? undefined : intl.formatMessage(messages.nameHint)}
+            hint={
+              isEgo
+                ? undefined
+                : intl.formatMessage(
+                    nameRequired
+                      ? messages.nameRequiredHint
+                      : messages.nameHint,
+                  )
+            }
             initialValue={person?.name}
             autoComplete="off"
+            {...nameValidationProps}
+            validationContext={nameValidationContext}
           />
           {config.genderIdentity && (
             <Field
