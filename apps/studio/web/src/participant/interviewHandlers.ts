@@ -18,6 +18,7 @@ const RATE_LIMIT_ATTEMPTS = 3;
 const RATE_LIMIT_LONGEST_WAIT_SECONDS = 60;
 const RESEND_ATTEMPTS = 3;
 const ORDINARY = { immediate: false, unloading: false };
+const IMMEDIATE = { immediate: true, unloading: false };
 const UNLOADING = { immediate: true, unloading: true };
 
 type SyncPayload = Parameters<typeof participantUnloadingSync>[0];
@@ -172,6 +173,13 @@ export function createParticipantHandlers({
   // the finished notice or finishes again after a resend.
   const onFinish: FinishHandler = async (_id, signal) => {
     try {
+      // The runtime flushes only answers it holds unsaved, so a stage save
+      // still waiting out the debounce (reaching the finish stage changes no
+      // answer) is sent first: the completed record keeps the stage reached.
+      if (savedStep !== getCurrentStep()) {
+        await debouncedSync(offered.id, offered, IMMEDIATE);
+        signal.throwIfAborted();
+      }
       try {
         await finish(signal);
       } catch (error) {

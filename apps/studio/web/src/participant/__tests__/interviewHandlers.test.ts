@@ -453,6 +453,7 @@ describe('the participant stage flush', () => {
     const harness = installParticipantHarness({
       'participant.sync': (payload) =>
         Effect.succeed({ revision: payload.revision, applied: true }),
+      'participant.finish': () => Effect.succeed({ state: 'completed' }),
     });
     const handlers = createParticipantHandlers({
       holderEpoch: 3,
@@ -484,6 +485,26 @@ describe('the participant stage flush', () => {
     expect(harness.calls.at(-1)?.payload).toEqual(
       expect.objectContaining({ stageIndex: 1, stageId: 'second' }),
     );
+  });
+
+  it('saves the stage reached before finishing when its save is still waiting', async () => {
+    vi.useFakeTimers();
+    const { onSync, saveStep, onFinish, harness, moveTo } = stepHandlers();
+    await onSync('session-1', session('Ada'), SYNC);
+    // On to the runtime's finish stage inside the debounce window, changing
+    // no answer, and straight to Finish.
+    moveTo(2);
+    saveStep();
+    await onFinish('session-1', new AbortController().signal);
+
+    expect(harness.calls.map(({ tag, payload }) => [tag, payload])).toEqual([
+      ['participant.sync', expect.objectContaining({ revision: '8' })],
+      [
+        'participant.sync',
+        expect.objectContaining({ revision: '9', stageIndex: 2 }),
+      ],
+      ['participant.finish', { holderEpoch: 3, revision: '9' }],
+    ]);
   });
 
   it('sends nothing as the page goes once the stage reached is saved', async () => {
