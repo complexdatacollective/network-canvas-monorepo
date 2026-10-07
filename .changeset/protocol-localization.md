@@ -64,10 +64,10 @@ In Architect:
   a translation into any language shown, or those missing one language; a
   search finds texts by place or translation; and language columns can be
   hidden.
-- Each language on the Languages page links to its missing translations in
-  the table, such as "Show 3 missing French translations". While translations
-  are missing, a note in the stage list names the languages that need them and
-  opens the table on every missing translation.
+- On the Languages page, a language that some texts are not translated into
+  yet is marked "Missing translations". While translations are missing, a note
+  in the stage list names the languages that need them and opens the table on
+  every missing translation.
 - A new protocol asks which languages participants can take it in, and,
   when you choose more than one, which of them is the default. A protocol
   upgraded from an earlier version is marked as written in "Unspecified

@@ -1815,6 +1815,10 @@
     "defaultMessage": "Make default",
     "description": "Item in the menu of actions for one protocol language that makes it the default language."
   },
+  "architect.localization.languageList.missingBadge": {
+    "defaultMessage": "Missing translations",
+    "description": "Badge on a protocol language that some texts have not been translated into yet."
+  },
   "architect.localization.languageList.noText": {
     "defaultMessage": "There is no text to translate yet.",
     "description": "Shown instead of translation progress in an empty protocol."
@@ -1830,10 +1834,6 @@
   "architect.localization.languageList.remove": {
     "defaultMessage": "Remove",
     "description": "Item in the menu of actions for one protocol language that removes it from the protocol."
-  },
-  "architect.localization.languageList.showMissing": {
-    "defaultMessage": "{count, plural, one {Show # missing {language} translation} other {Show # missing {language} translations}}",
-    "description": "Link that opens the translation table showing only the texts not yet translated into one language. language is the language name."
   },
   "architect.localization.languageList.strandedNote": {
     "defaultMessage": "{count, plural, one {# text exists only in {language}. Translate it into another language before removing {language}.} other {# texts exist only in {language}. Translate them into another language before removing {language}.}}",

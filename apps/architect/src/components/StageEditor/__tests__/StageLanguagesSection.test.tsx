@@ -35,7 +35,7 @@ const FORM_ID = 'language-chooser-form';
 
 const LABEL = { en: 'Choose a language', fr: 'Choisissez une langue' };
 
-// German has no translations, so the Languages page would offer to list them.
+// German has no translations, so its row is marked as missing them.
 const protocol: CurrentProtocol = {
   name: 'Study',
   schemaVersion: 9,
@@ -170,10 +170,11 @@ describe('the language chooser’s languages in Architect', () => {
       screen.getByRole('button', { name: 'Add languages' }),
     ).toBeInTheDocument();
     expect(
-      within(rowOf('German')).getByRole('link', {
-        name: 'Show 1 missing German translation',
-      }),
-    ).toHaveAttribute('href', '/protocol/localization?table=open&missing=de');
+      within(rowOf('German')).getByText('Missing translations'),
+    ).toBeVisible();
+    expect(
+      within(rowOf('French')).queryByText('Missing translations'),
+    ).not.toBeInTheDocument();
     expect(
       screen.getByRole('link', { name: 'Open translation table' }),
     ).toHaveAttribute('href', '/protocol/localization?table=open');
@@ -212,13 +213,11 @@ describe('the language chooser’s languages in Architect', () => {
 
     openDialog.mockResolvedValueOnce(true);
     await userEvent.click(
-      within(rowOf('German')).getByRole('link', {
-        name: 'Show 1 missing German translation',
-      }),
+      screen.getByRole('link', { name: 'Open translation table' }),
     );
     await waitFor(() =>
       expect(window.location.pathname + window.location.search).toBe(
-        '/protocol/localization?table=open&missing=de',
+        '/protocol/localization?table=open',
       ),
     );
     expect(openDialog).toHaveBeenCalledTimes(2);

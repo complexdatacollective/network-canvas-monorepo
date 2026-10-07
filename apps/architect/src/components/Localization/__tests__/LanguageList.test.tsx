@@ -100,25 +100,18 @@ describe('LanguageList', () => {
       german.getByRole('button', { name: 'Actions for German' }),
     ).toBeVisible();
     expect(
-      german.getByRole('link', {
-        name: 'Show 2 missing German translations',
-      }),
-    ).toBeVisible();
-    expect(
       german.queryByRole('button', { name: /^(Remove|Make default)$/ }),
     ).not.toBeInTheDocument();
   });
 
-  it('links a language’s missing translations to the translation table, showing only those', () => {
+  it('marks a language that is missing translations, without linking anywhere', () => {
     renderLanguageList();
 
+    const german = within(rowOf('German'));
+    expect(german.getByText('Missing translations')).toBeVisible();
+    expect(german.queryByRole('link')).not.toBeInTheDocument();
     expect(
-      within(rowOf('German')).getByRole('link', {
-        name: 'Show 2 missing German translations',
-      }),
-    ).toHaveAttribute('href', '/protocol/localization?table=open&missing=de');
-    expect(
-      within(rowOf('French')).queryByRole('link', { name: /missing/ }),
+      within(rowOf('French')).queryByText('Missing translations'),
     ).not.toBeInTheDocument();
   });
 

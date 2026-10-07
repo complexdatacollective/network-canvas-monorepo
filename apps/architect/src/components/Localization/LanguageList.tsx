@@ -155,12 +155,11 @@ const messages = defineMessages({
     defaultMessage: 'There is no text to translate yet.',
     description: 'Shown instead of translation progress in an empty protocol.',
   },
-  showMissing: {
-    id: 'architect.localization.languageList.showMissing',
-    defaultMessage:
-      '{count, plural, one {Show # missing {language} translation} other {Show # missing {language} translations}}',
+  missingBadge: {
+    id: 'architect.localization.languageList.missingBadge',
+    defaultMessage: 'Missing translations',
     description:
-      'Link that opens the translation table showing only the texts not yet translated into one language. language is the language name.',
+      'Badge on a protocol language that some texts have not been translated into yet.',
   },
   defaultNote: {
     id: 'architect.localization.languageList.defaultNote',
@@ -279,10 +278,6 @@ export const ProtocolLanguages = ({ draft }: ProtocolLanguagesProps) => {
         {sortedLocales.map((locale) => {
           const entry = coverageByLocale.get(locale);
           if (!entry) return null;
-          const missingHref = translationTableHref({
-            kind: 'language',
-            locale,
-          });
           return (
             <LanguageRow
               key={locale}
@@ -296,9 +291,6 @@ export const ProtocolLanguages = ({ draft }: ProtocolLanguagesProps) => {
               }
               onRelabel={(returnFocus) => relabelLanguage(locale, returnFocus)}
               onRemove={(returnFocus) => removeLanguage(locale, returnFocus)}
-              missingHref={missingHref}
-              missingState={tableLinkState}
-              onShowMissing={guardLeavingStage(missingHref)}
             />
           );
         })}
@@ -334,10 +326,6 @@ type LanguageRowProps = {
   onMakeDefault: () => void;
   onRelabel: (returnFocus: ReturnFocus) => Promise<void>;
   onRemove: (returnFocus: ReturnFocus) => Promise<void>;
-  /** The translation table, showing this language's missing translations. */
-  missingHref: string;
-  missingState: typeof openedFromLanguagesState | null;
-  onShowMissing: (event: MouseEvent<HTMLAnchorElement>) => void;
 };
 
 const LanguageRow = ({
@@ -347,9 +335,6 @@ const LanguageRow = ({
   onMakeDefault,
   onRelabel,
   onRemove,
-  missingHref,
-  missingState,
-  onShowMissing,
 }: LanguageRowProps) => {
   const intl = useAppIntl();
   const languageName = useLanguageName();
@@ -401,6 +386,11 @@ const LanguageRow = ({
               {intl.formatMessage(messages.defaultBadge)}
             </Badge>
           )}
+          {total > 0 && missing > 0 && (
+            <Badge render={<span />} size="sm" tone="warning">
+              {intl.formatMessage(messages.missingBadge)}
+            </Badge>
+          )}
         </div>
         {total === 0 ? (
           <Paragraph emphasis="muted" margin="none">
@@ -426,20 +416,6 @@ const LanguageRow = ({
               {intl.formatMessage(messages.coverage, { translated, total })}
             </span>
           </div>
-        )}
-        {total > 0 && missing > 0 && (
-          <Button asChild size="sm" variant="link" className="self-start">
-            <Link
-              href={missingHref}
-              state={missingState}
-              onClick={onShowMissing}
-            >
-              {intl.formatMessage(messages.showMissing, {
-                count: missing,
-                language,
-              })}
-            </Link>
-          </Button>
         )}
       </div>
       <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>

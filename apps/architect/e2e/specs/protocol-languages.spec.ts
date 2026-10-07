@@ -166,6 +166,12 @@ test('adds a language, keeps the default language from being removed, translates
   await expect(french).toContainText('French');
   await expect(french).toContainText('0 of 3 texts translated');
   await expect(french.getByText('Default', { exact: true })).toHaveCount(0);
+  await expect(
+    french.getByText('Missing translations', { exact: true }),
+  ).toBeVisible();
+  await expect(
+    english.getByText('Missing translations', { exact: true }),
+  ).toHaveCount(0);
   await expect(openTable).toHaveAttribute(
     'href',
     '/protocol/localization?table=open',
@@ -266,22 +272,19 @@ test('adds a language, keeps the default language from being removed, translates
     'fr',
   ]);
 
-  // A language's missing translations open in the translation table, showing
-  // only the texts it is missing, under the stage they belong to.
-  await french
-    .getByRole('link', { name: 'Show 3 missing French translations' })
-    .click();
-  await expect(page).toHaveURL(
-    /\/protocol\/localization\?table=open&missing=fr$/,
-  );
+  // The translation table can show only the texts one language is missing,
+  // under the stage they belong to, and its address says so.
+  await openTable.click();
+  await expect(page).toHaveURL(/\/protocol\/localization\?table=open$/);
   await expect(translationTableDialog(page)).toBeVisible();
   await expect(
     translationTableDialog(page).getByRole('searchbox', {
       name: 'Search texts and translations',
     }),
   ).toBeFocused();
-  await expect(textsToShow(page).locator('option:checked')).toHaveText(
-    'Missing French',
+  await textsToShow(page).selectOption({ label: 'Missing French' });
+  await expect(page).toHaveURL(
+    /\/protocol\/localization\?table=open&missing=fr$/,
   );
   await expect(page.getByText('Showing 3 of 3 texts')).toBeVisible();
   const table = translationTable(page);
@@ -336,18 +339,18 @@ test('adds a language, keeps the default language from being removed, translates
     page.getByText('Every text is translated into French.'),
   ).toBeVisible();
 
-  // Closing goes back to the Languages page. The link that opened the table
-  // is gone, so focus goes to the page's heading.
+  // Closing goes back to the Languages page, and to the link that opened the
+  // table.
   await translationTableDialog(page)
     .getByRole('button', { name: 'Close', exact: true })
     .click();
   await expect(translationTableDialog(page)).toBeHidden();
   await expect(page).toHaveURL(/\/protocol\/localization$/);
-  await expect(
-    page.getByRole('heading', { name: 'Languages', level: 1 }),
-  ).toBeFocused();
+  await expect(openTable).toBeFocused();
   await expect(french).toContainText('3 of 3 texts translated');
-  await expect(french.getByRole('link', { name: /missing/ })).toHaveCount(0);
+  await expect(
+    french.getByText('Missing translations', { exact: true }),
+  ).toHaveCount(0);
 
   // Languages have no order: a language added last is listed by its name.
   await page
