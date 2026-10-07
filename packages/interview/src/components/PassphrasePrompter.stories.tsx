@@ -4,6 +4,7 @@ import { expect, screen, userEvent, waitFor, within } from 'storybook/test';
 import { SyntheticInterview } from '@codaco/protocol-utilities';
 
 import EncryptedStoryInterviewShell from '../storybook-support/EncryptedStoryInterviewShell';
+import { expectMaskedPassphraseField } from '../storybook-support/expectMaskedPassphraseField';
 
 const PASSPHRASE = 'correct horse battery staple';
 
@@ -85,7 +86,7 @@ export const Locked: Story = {
 export const TurnsAwayAWrongPassphrase: Story = {
   play: async ({ canvasElement }) => {
     const field = await openPrompter(canvasElement);
-    await expect(field).toHaveAttribute('type', 'password');
+    await expectMaskedPassphraseField(field);
 
     await userEvent.type(field, 'not the passphrase');
     await userEvent.click(

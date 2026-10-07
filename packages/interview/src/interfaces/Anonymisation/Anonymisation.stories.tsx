@@ -6,6 +6,7 @@ import SuperJSON from 'superjson';
 import { SyntheticInterview } from '@codaco/protocol-utilities';
 
 import EncryptedStoryInterviewShell from '../../storybook-support/EncryptedStoryInterviewShell';
+import { expectMaskedPassphraseField } from '../../storybook-support/expectMaskedPassphraseField';
 import StoryInterviewShell from '../../storybook-support/StoryInterviewShell';
 
 type StoryArgs = {
@@ -175,12 +176,8 @@ export const ResumedWithProtectedAnswers: Story = {
     });
     const submit = canvas.getByRole('button', { name: 'Submit' });
 
-    // A password manager must not offer to save or fill the passphrase.
     for (const field of [passphrase, confirm]) {
-      await expect(field).toHaveAttribute('autocomplete', 'off');
-      if (CSS.supports('-webkit-text-security', 'disc')) {
-        await expect(field).toHaveAttribute('type', 'text');
-      }
+      await expectMaskedPassphraseField(field);
     }
 
     await userEvent.type(passphrase, 'not the passphrase');
