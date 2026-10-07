@@ -12,7 +12,8 @@ import { PARTICIPANT_SESSION_HEADER } from '@codaco/studio-contract/middleware/s
 
 import { Environment } from '../env.ts';
 
-const GRACEFUL_SHUTDOWN_TIMEOUT = '10 seconds';
+/** How long the listener waits for accepted requests to finish once it stops. */
+export const GRACEFUL_SHUTDOWN_TIMEOUT = '10 seconds';
 
 export const RedactedHeadersLive = Layer.succeed(Headers.CurrentRedactedNames)([
   ...Headers.CurrentRedactedNames.defaultValue(),

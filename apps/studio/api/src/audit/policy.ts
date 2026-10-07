@@ -7,6 +7,7 @@ export type RpcTag = string;
 
 export const AUDIT_READ_TAGS: ReadonlySet<RpcTag> = new Set<RpcTag>([
   'status',
+  'status.updateAvailable',
   'me',
   'protocols.draft',
   'protocols.list',

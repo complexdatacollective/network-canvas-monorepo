@@ -3,13 +3,15 @@ import { Cause, Effect, Exit, Layer } from 'effect';
 
 import { JOB_QUEUES, type JobQueueName } from '@codaco/studio-sync/jobs';
 
-import { testDb } from '../../__tests__/support/database.ts';
+import { ownerRows, testDb } from '../../__tests__/support/database.ts';
 import { MaintenanceDatabase } from '../../db/client.ts';
 import { MaintenanceScope } from '../../db/tenant.ts';
 import { type DbEnv, Environment, type StudioEnv } from '../../env.ts';
 import { collectLogs } from '../../platform/__tests__/support/logs.ts';
 import { RateLimitStore } from '../../rate-limit/store.ts';
+import { STUDIO_VERSION } from '../../version.ts';
 import {
+  layerRecordingHttp,
   layerRecordingMailer,
   RecordedMail,
 } from '../handlers/__tests__/support.ts';
@@ -30,6 +32,7 @@ import {
 const WORKED = [
   'protocol-store-gc',
   'denied-attempts-summary',
+  'update-check',
   'sign-in-email',
   'invitation-delivery',
 ] as const satisfies readonly JobQueueName[];
@@ -87,6 +90,16 @@ describe.skipIf(!testDb)('the worker’s handler registrations', () => {
   layer(
     Layer.mergeAll(
       layerRecordingMailer,
+      // The running version, so the check records it and finds nothing to send.
+      layerRecordingHttp({
+        kind: 'json',
+        body: {
+          version: STUDIO_VERSION,
+          date: '2026-10-06T14:30:00Z',
+          notes: 'https://releases.networkcanvas.com/studio/notes',
+          migration: '0001_initial',
+        },
+      }),
       DeniedAttemptsStore.layer.pipe(Layer.provide(RateLimitStore.layerAbsent)),
     ).pipe(Layer.provideMerge(layerDeliveryHarness)),
   )('over Studio and the queue', (suite) => {
@@ -161,6 +174,16 @@ describe.skipIf(!testDb)('the worker’s handler registrations', () => {
             yield* enqueue('protocol-store-gc');
             const swept = yield* worker.drainOnce('protocol-store-gc');
             assert.strictEqual(swept._tag, 'settled');
+
+            // The check is not behind the mail gate: with no transport it
+            // still runs and still records the release the in-app notice reads.
+            yield* enqueue('update-check');
+            const checked = yield* worker.drainOnce('update-check');
+            assert.strictEqual(checked._tag, 'settled');
+            const recorded = yield* ownerRows<{
+              latest_version: string | null;
+            }>('select latest_version from deployment_state');
+            assert.strictEqual(recorded[0]?.latest_version, STUDIO_VERSION);
           }).pipe(
             Effect.provide(registered({ mail: { kind: 'refuse' } }), {
               local: true,
@@ -200,6 +223,7 @@ describe.skipIf(!testDb)('the worker’s handler registrations', () => {
           assert.deepStrictEqual(yield* scheduleNames, [
             'denied-attempts-summary',
             'protocol-store-gc',
+            'update-check',
           ]);
         }),
     );

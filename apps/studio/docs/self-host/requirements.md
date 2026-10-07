@@ -120,8 +120,10 @@ Each of these replaces one service in the stack. The swap itself is in
 
 ### A database
 
-- **Postgres 18.** Every process refuses a database whose schema fingerprint is
-  not this build's, and the schema is generated for this major. See
+- **Postgres 18.** Every process stays closed on a database whose schema is not
+  this build's — `api` answers with the maintenance page and `worker` runs no
+  jobs — until `migrate` brings it up to date, and the schema is generated for
+  this major. See
   [the major-upgrade page](./postgres-major-upgrade.md) for moving between
   majors.
 - **The login needs `CREATEROLE` the first time `migrate` runs.** It creates

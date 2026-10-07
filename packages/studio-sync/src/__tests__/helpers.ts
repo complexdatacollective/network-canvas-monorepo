@@ -89,6 +89,10 @@ export type SyncFacade = {
     owner: string,
     epoch: bigint,
   ): Promise<Lease | null>;
+  renewHeld(
+    draftId: string,
+    owner: string,
+  ): Promise<Array<Lease & { sectionId: string }>>;
   release(
     draftId: string,
     sectionId: string,
@@ -121,6 +125,7 @@ export function makeSyncFacade(
       run(server.takeover(draftId, sectionId, owner)),
     renew: (draftId, sectionId, owner, epoch) =>
       run(server.renew(draftId, sectionId, owner, epoch)),
+    renewHeld: (draftId, owner) => run(server.renewHeld(draftId, owner)),
     release: (draftId, sectionId, owner, epoch) =>
       run(Effect.asVoid(server.release(draftId, sectionId, owner, epoch))),
     commit: (params) => run(server.commit(params)),

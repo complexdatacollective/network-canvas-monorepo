@@ -1,6 +1,6 @@
-import { Cause, Duration, Effect, Layer, MutableRef } from 'effect';
+import { Cause, Duration, Effect, Layer, MutableRef, Option } from 'effect';
 
-import { MaintenanceState } from '../platform/maintenance-state.ts';
+import { MaintenanceTriggers } from '../http/middleware/maintenance.ts';
 import { JobWorker } from './worker.ts';
 
 const DEFAULT_POLL_INTERVAL = Duration.seconds(1);
@@ -9,34 +9,50 @@ export type JobMaintenanceGateConfig = {
   readonly pollInterval?: Duration.Input | undefined;
 };
 
+type Applied = { readonly fetching: boolean; readonly detail: string | null };
+
+/**
+ * The worker claims jobs only while the API would be open: one rule,
+ * `MaintenanceTriggers.closure`, governs both processes. So a worker still
+ * running when `migrate` starts stops claiming while the migration lock is
+ * held, and stays stopped afterwards on a schema that is not its build's.
+ */
 export const JobMaintenanceGate = {
   layer: (
     config: JobMaintenanceGateConfig = {},
-  ): Layer.Layer<never, never, JobWorker | MaintenanceState> =>
+  ): Layer.Layer<never, never, JobWorker | MaintenanceTriggers> =>
     Layer.effectDiscard(
       Effect.gen(function* () {
         const worker = yield* JobWorker;
-        const state = yield* MaintenanceState;
+        const triggers = yield* MaintenanceTriggers;
         // `null` until the first tick, so the first answer is always applied: that is
         // what opens a worker built with `startPaused`.
-        const applied = MutableRef.make<boolean | null>(null);
+        const applied = MutableRef.make<Applied | null>(null);
 
         const tick = Effect.gen(function* () {
-          const { maintenance } = yield* state.read;
-          const fetching = !maintenance;
+          const closure = yield* triggers.closure;
+          const fetching = Option.isNone(closure);
+          const detail = Option.match(closure, {
+            onNone: () => null,
+            onSome: (closed) => closed.detail,
+          });
           const previous = MutableRef.get(applied);
-          if (previous === fetching) return;
-          MutableRef.set(applied, fetching);
-          yield* worker.setFetching(fetching);
-          if (!fetching) {
+          if (previous?.fetching === fetching && previous.detail === detail) {
+            return;
+          }
+          MutableRef.set(applied, { fetching, detail });
+          if (previous?.fetching !== fetching) {
+            yield* worker.setFetching(fetching);
+          }
+          if (detail !== null) {
             yield* Effect.logWarning(
-              'the deployment is in maintenance: the job worker has stopped claiming jobs on every queue',
+              `${detail}: the job worker has stopped claiming jobs on every queue`,
             );
             return;
           }
           if (previous !== null) {
             yield* Effect.logInfo(
-              'maintenance is over: the job worker is claiming jobs again',
+              'the deployment is open again: the job worker is claiming jobs again',
             );
           }
         });
@@ -44,7 +60,7 @@ export const JobMaintenanceGate = {
         const guarded = tick.pipe(
           Effect.catchCause((cause) =>
             Effect.logError(
-              `the job maintenance gate failed to read the deployment state: ${Cause.pretty(cause)}`,
+              `the job maintenance gate failed to read whether the deployment is open: ${Cause.pretty(cause)}`,
             ),
           ),
         );

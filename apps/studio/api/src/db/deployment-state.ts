@@ -1,4 +1,4 @@
-import { eq, sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import {
   boolean,
   check,
@@ -12,6 +12,7 @@ import type { SqlError } from 'effect/sql';
 
 import { TENANT_ROLES } from '@codaco/studio-sync/rls';
 
+import { isNewer } from '../update/manifest.ts';
 import type { Database, MaintenanceDatabase } from './client.ts';
 import { sqlErrorsOnly } from './errors.ts';
 import { MaintenanceScope, Transaction, UntenantedScope } from './tenant.ts';
@@ -25,6 +26,22 @@ const deploymentState = pgTable(
     updatedAt: timestamp('updated_at', { withTimezone: true })
       .notNull()
       .defaultNow(),
+    // What the worker's daily update check last read from the release manifest
+    // (#1901). Written by `recordUpdateCheck` alone; the four `latest_*` columns
+    // are one fact and move together. NULL until a check has succeeded.
+    latestVersion: text('latest_version'),
+    latestReleasedAt: timestamp('latest_released_at', { withTimezone: true }),
+    latestNotesUrl: text('latest_notes_url'),
+    // Whether upgrading the build that ran the check to that release applies a
+    // migration: decided by the check against its own build, since the
+    // manifest names only the release's newest migration.
+    latestSchemaChange: boolean('latest_schema_change'),
+    // When a check last succeeded, whether or not it found anything new.
+    checkedAt: timestamp('checked_at', { withTimezone: true }),
+    // The version the owner has been emailed about, or is being emailed about:
+    // `claimNotification` sets it before the send, which is what makes the
+    // email once per version. Cleared again when the send did not happen.
+    notifiedVersion: text('notified_version'),
   },
   (table) => [
     check('deployment_state_singleton_check', sql`${table.id} = 1`),
@@ -35,6 +52,15 @@ const deploymentState = pgTable(
               AND (${table.reason} IS NULL
                    OR (char_length(${table.reason}) BETWEEN 1 AND 280
                        AND ${table.reason} ~ '[^[:space:]]')))`,
+    ),
+    check(
+      'deployment_state_latest_release_check',
+      sql`(${table.latestVersion} IS NULL) = (${table.latestReleasedAt} IS NULL)
+          AND (${table.latestVersion} IS NULL) = (${table.latestNotesUrl} IS NULL)
+          AND (${table.latestVersion} IS NULL) = (${table.latestSchemaChange} IS NULL)
+          AND (${table.latestVersion} IS NULL
+               OR ${table.latestVersion} ~ '^(0|[1-9][0-9]*)[.](0|[1-9][0-9]*)[.](0|[1-9][0-9]*)$')
+          AND (${table.latestNotesUrl} IS NULL OR ${table.latestNotesUrl} ~ '^https://')`,
     ),
   ],
 );
@@ -65,7 +91,26 @@ const STATE_COLUMNS = {
   updatedAt: deploymentState.updatedAt,
 };
 
-const theRow = (rows: ReadonlyArray<DeploymentState>) =>
+const RELEASE_COLUMNS = {
+  version: deploymentState.latestVersion,
+  releasedAt: deploymentState.latestReleasedAt,
+  notesUrl: deploymentState.latestNotesUrl,
+  schemaChange: deploymentState.latestSchemaChange,
+};
+
+/** The newest release the daily update check has recorded (#1901). */
+export type LatestRelease = {
+  readonly version: string;
+  readonly releasedAt: Date;
+  readonly notesUrl: string;
+  /**
+   * Whether upgrading to it applies a migration, as the check decided against
+   * the build it ran in (`upgradeAppliesMigration`).
+   */
+  readonly schemaChange: boolean;
+};
+
+const theRow = <Row>(rows: ReadonlyArray<Row>) =>
   rows[0] === undefined
     ? Effect.die(new Error('deployment_state has no row'))
     : Effect.succeed(rows[0]);
@@ -76,7 +121,16 @@ const theRow = (rows: ReadonlyArray<DeploymentState>) =>
  */
 const READ_STATEMENT_TIMEOUT = '1s';
 
-const readRow = Effect.fn('db.deploymentState.read')(function* () {
+/**
+ * The flag and the release are two reads, each selecting only its own columns.
+ * A new image's api boots against the older schema between `up -d` and
+ * `migrate`; if the flag read named the `latest_*` columns, a release that
+ * added or renamed one would make the flag unreadable exactly when the window
+ * is open, and the gate would report the schema instead of the maintenance
+ * window (#1901). The flag read must depend on nothing a later release can
+ * change.
+ */
+const readFlag = Effect.fn('db.deploymentState.read')(function* () {
   const { tx, sql: client } = yield* Transaction;
   yield* client`select set_config('statement_timeout', ${READ_STATEMENT_TIMEOUT}, true)`;
   const rows = yield* tx
@@ -86,17 +140,57 @@ const readRow = Effect.fn('db.deploymentState.read')(function* () {
   return yield* theRow(rows);
 }, sqlErrorsOnly);
 
+const readRelease = Effect.fn('db.deploymentState.readLatestRelease')(
+  function* () {
+    const { tx, sql: client } = yield* Transaction;
+    yield* client`select set_config('statement_timeout', ${READ_STATEMENT_TIMEOUT}, true)`;
+    const rows = yield* tx
+      .select(RELEASE_COLUMNS)
+      .from(deploymentState)
+      .where(eq(deploymentState.id, 1));
+    return yield* theRow(rows);
+  },
+  sqlErrorsOnly,
+);
+
+type Release = Effect.Success<ReturnType<typeof readRelease>>;
+
+/** Null until a check has recorded a release; the four columns move together. */
+const releaseOf = (release: Release): LatestRelease | null =>
+  release.version === null ||
+  release.releasedAt === null ||
+  release.notesUrl === null ||
+  release.schemaChange === null
+    ? null
+    : {
+        version: release.version,
+        releasedAt: release.releasedAt,
+        notesUrl: release.notesUrl,
+        schemaChange: release.schemaChange,
+      };
+
 export const readDeploymentState = (): Effect.Effect<
   DeploymentState,
   SqlError.SqlError,
   Database
-> => UntenantedScope.open(readRow());
+> => UntenantedScope.open(readFlag());
 
 export const readDeploymentStateAsMaintenance = (): Effect.Effect<
   DeploymentState,
   SqlError.SqlError,
   MaintenanceDatabase
-> => MaintenanceScope.open(readRow());
+> => MaintenanceScope.open(readFlag());
+
+/**
+ * What the worker's update check last recorded, or null when it has recorded
+ * nothing yet (a fresh instance, or one whose manifest has never been
+ * reachable). Read by the application role, bounded like `readDeploymentState`.
+ */
+export const readLatestRelease = (): Effect.Effect<
+  LatestRelease | null,
+  SqlError.SqlError,
+  Database
+> => Effect.map(UntenantedScope.open(readRelease()), releaseOf);
 
 export const setMaintenance: (
   window: MaintenanceWindow,
@@ -114,4 +208,82 @@ export const setMaintenance: (
     .where(eq(deploymentState.id, 1))
     .returning(STATE_COLUMNS);
   return yield* theRow(rows);
+}, sqlErrorsOnly);
+
+/**
+ * Record what the manifest said. Touches the `latest_*` columns and
+ * `checked_at` and nothing else: the maintenance flag, its reason and
+ * `updated_at` (which dates the flag) are not this write's to move.
+ */
+export const recordUpdateCheck: (
+  release: LatestRelease,
+) => Effect.Effect<void, SqlError.SqlError, Transaction> = Effect.fn(
+  'db.deploymentState.recordUpdateCheck',
+)(function* (release: LatestRelease) {
+  const { tx } = yield* Transaction;
+  yield* tx
+    .update(deploymentState)
+    .set({
+      latestVersion: release.version,
+      latestReleasedAt: release.releasedAt,
+      latestNotesUrl: release.notesUrl,
+      latestSchemaChange: release.schemaChange,
+      checkedAt: sql`now()`,
+    })
+    .where(eq(deploymentState.id, 1));
+}, sqlErrorsOnly);
+
+/** A claim this call took, and the version it replaced. */
+export type NotificationClaim = { readonly previous: string | null };
+
+/**
+ * Take the right to email the owner about `version`. Granted only for a
+ * version newer than every one already emailed, so each version is mailed at
+ * most once even when the manifest goes back — a stale CDN answer, or a
+ * withdrawn release — to one the owner has already heard about. The row is
+ * read `FOR UPDATE`, so two runs cannot both claim. `null` when the claim is
+ * not this call's to take.
+ */
+export const claimNotification: (
+  version: string,
+) => Effect.Effect<NotificationClaim | null, SqlError.SqlError, Transaction> =
+  Effect.fn('db.deploymentState.claimNotification')(function* (
+    version: string,
+  ) {
+    const { tx } = yield* Transaction;
+    const [row] = yield* tx
+      .select({ notifiedVersion: deploymentState.notifiedVersion })
+      .from(deploymentState)
+      .where(eq(deploymentState.id, 1))
+      .for('update');
+    if (row === undefined) return null;
+    const previous = row.notifiedVersion;
+    if (previous !== null && !isNewer(version, previous)) return null;
+    yield* tx
+      .update(deploymentState)
+      .set({ notifiedVersion: version })
+      .where(eq(deploymentState.id, 1));
+    return { previous };
+  }, sqlErrorsOnly);
+
+/**
+ * Give a claim back because the email was not sent: the row names the version
+ * emailed before it again. Compare-and-reset, so it cannot undo a later claim.
+ */
+export const releaseNotificationClaim: (
+  version: string,
+  claim: NotificationClaim,
+) => Effect.Effect<void, SqlError.SqlError, Transaction> = Effect.fn(
+  'db.deploymentState.releaseNotificationClaim',
+)(function* (version: string, claim: NotificationClaim) {
+  const { tx } = yield* Transaction;
+  yield* tx
+    .update(deploymentState)
+    .set({ notifiedVersion: claim.previous })
+    .where(
+      and(
+        eq(deploymentState.id, 1),
+        eq(deploymentState.notifiedVersion, version),
+      ),
+    );
 }, sqlErrorsOnly);

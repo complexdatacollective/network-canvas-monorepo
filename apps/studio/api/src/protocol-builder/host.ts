@@ -615,6 +615,33 @@ export const renewLease: (
 });
 
 /**
+ * Renews every live lease the caller's tab holds on the draft, and names them.
+ *
+ * Asked when a watch opens, because the keeper that renewed them lives in the
+ * process that granted them: after a restart, or a reconnect to another
+ * process, nothing else would keep them alive past the TTL.
+ */
+export const adoptLeases: (
+  session: ProtocolBuilderSession,
+) => Effect.Effect<
+  { sectionId: ProtocolSectionId; epoch: bigint }[],
+  SqlError.SqlError,
+  Database
+> = Effect.fn('protocolBuilder.adoptLeases')(function* (
+  session: ProtocolBuilderSession,
+) {
+  const renewed = yield* noAuditTransaction(
+    SYNC_TRANSACTION_POLICIES.renewHeld,
+    session.access,
+    sqlErrorsOnly(sync.renewHeld(session.draftId, sessionOwner(session))),
+  );
+  return renewed.map((lease) => ({
+    sectionId: makeSectionId(parseSectionId(lease.sectionId)),
+    epoch: lease.epoch,
+  }));
+});
+
+/**
  * Gives the section back, if this caller has it. Releasing something the
  * caller does not hold changes nothing and logs nothing.
  */

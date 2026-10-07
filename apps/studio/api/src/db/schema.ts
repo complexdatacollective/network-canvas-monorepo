@@ -216,22 +216,31 @@ function staleDetail(state: StaleSchema): string {
     : `Expected ${SCHEMA_FINGERPRINT.slice(0, 12)}, found ${state.found?.slice(0, 12)} recorded ${state.appliedAt?.toISOString()}.`;
 }
 
+/** The two ways a deployment runs `migrate`; a checkout has neither. */
+const MIGRATE_COMMANDS = [
+  '  docker compose run --rm migrate    (the reference stack)',
+  '  studio-api migrate                 (a container you run yourself)',
+];
+
 /**
- * Why a deployment will not touch a database another build created, and what
- * to do instead.
+ * What a deployment says about a database whose schema another build stamped,
+ * and what brings it up to date.
  *
- * Here rather than beside `migrate` because both readers need the same words:
- * `studio-api migrate` refuses with this, and every process that boots against
- * such a database refuses with it too. Pre-release there is no reconciliation
- * to offer — there are no databases worth adopting and no migrations to run —
- * so the remedy is to recreate, and #1901 is the issue that changes that.
+ * Here rather than beside `migrate` because more than one reader needs the
+ * same words: a deployed `api` or `worker` logs this while it waits closed for
+ * the schema (`platform/schema-gate.ts`), and an operator who reads it and then
+ * runs `migrate` must not have to work out whether the two describe the same
+ * database. `migrate` is the remedy, so a database it cannot upgrade — history
+ * it did not write, or a newer build's — is answered by the refusal `migrate`
+ * prints, which this points to rather than repeats.
  */
 export function staleDatabaseMessage(state: StaleSchema): string {
   return [
-    'The database was not created by this build.',
+    'The database schema is not this build’s.',
     staleDetail(state),
-    'Studio is pre-release and has no migration system yet, so a build cannot upgrade a database another build created (#1901).',
-    'Recreate the database and run migrate against it again, or wait for the migration system.',
+    'Run migrate from this build’s image to bring it up to date:',
+    ...MIGRATE_COMMANDS,
+    'If migrate refuses, follow the remedy it prints.',
   ].join('\n');
 }
 
@@ -242,29 +251,25 @@ export function schemaProblemMessage(
   if (state.kind === 'absent') {
     return [
       'The database has no Studio schema.',
-      'Create it and start again:',
       ...(lane === 'deployed'
         ? [
-            '  docker compose run --rm migrate    (the reference stack)',
-            '  studio-api migrate                 (a container you run yourself)',
+            'Run migrate from this build’s image to create it:',
+            ...MIGRATE_COMMANDS,
           ]
         : [
+            'Create it and start again:',
             '  pnpm --filter @codaco/studio-api db:reset        (local development)',
             '  pnpm --filter @codaco/studio-api apply-schema    (a database from a checkout)',
           ]),
     ].join('\n');
   }
 
-  // A deployment gets the refusal `migrate` itself prints, word for word: the
-  // two are the same verdict about the same database, and an operator reading
-  // one after the other must not have to work out whether they mean the same
-  // thing.
   if (lane === 'deployed') return staleDatabaseMessage(state);
 
   return [
     'The database was not built from the schema in this build.',
     staleDetail(state),
-    'Studio has no migration system yet: pre-release, drizzle-kit push reconciles the schema in place, or recreate the database.',
+    'In a checkout, apply-schema reconciles a development database in place and db:reset recreates it; a database carrying migration history is upgraded by migrate instead.',
     'Then start again:',
     '  pnpm --filter @codaco/studio-api apply-schema    (reconcile in place)',
     '  pnpm --filter @codaco/studio-api db:reset        (recreate)',

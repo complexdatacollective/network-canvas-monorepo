@@ -36,8 +36,17 @@ const MISSING_KEY_ID = 'gone';
 const MISSING_ASSET_KEY_ID = 'gone-asset';
 const PROTOCOL = 'b6e4a1c2-5d3f-4e8a-9c07-1f2b3d4e5a6b';
 
+/**
+ * What each process prints once it would serve. The web process listens before
+ * its keyring check, closed until the check passes (#1901), so for it this is
+ * the line that says the check passed, not the listening line.
+ */
 const ENTRYPOINTS = [
-  ['the web process', 'src/index.ts', /listening on/i],
+  [
+    'the web process',
+    'src/index.ts',
+    /Schema current and keyring verified; serving\./,
+  ],
   ['the worker', 'src/worker.ts', /Network Canvas Studio worker \S+ started/],
 ] as const;
 

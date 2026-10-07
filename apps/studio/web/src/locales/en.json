@@ -1838,5 +1838,21 @@
   "studio.teamStudies.openEditor": {
     "defaultMessage": "Open the protocol editor",
     "description": "Link on a study card into the study's protocol editor."
+  },
+  "studio.updateNotice.codeOnly": {
+    "defaultMessage": "Studio {version} is available, released {releasedAt}. Upgrading to it does not change the database.",
+    "description": "Shown above every screen to the person who owns this Studio when a newer release is out and upgrading this Studio to it applies no database migration (decided against the version running, so a release skipped over counts): going back means running the previous version again."
+  },
+  "studio.updateNotice.releaseNotes": {
+    "defaultMessage": "Release notes",
+    "description": "The link, beside the update notice, to what the newer release changes."
+  },
+  "studio.updateNotice.schemaChange": {
+    "defaultMessage": "Studio {version} is available, released {releasedAt}. Upgrading to it changes the database: rolling back means restoring the backup taken during the upgrade.",
+    "description": "Shown above every screen to the person who owns this Studio when a newer release is out and upgrading this Studio to it applies a database migration (decided against the version running, so a release skipped over counts), which is what makes going back a restore rather than a redeploy."
+  },
+  "studio.updateNotice.upgradeGuide": {
+    "defaultMessage": "Upgrade guide",
+    "description": "The link, beside the update notice, to the steps for upgrading a self-hosted Studio."
   }
 }

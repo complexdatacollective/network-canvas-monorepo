@@ -1,8 +1,12 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
+import { Duration } from 'effect';
 import { describe, expect, it } from 'vitest';
 import { parse } from 'yaml';
+
+import { GRACEFUL_SHUTDOWN_TIMEOUT } from '../platform/http-server.ts';
+import { DRAIN_TIMEOUT } from '../platform/ws-drain.ts';
 
 // The drift guard between `apps/studio/docker-compose.yml` and the
 // `.env.example` beside it — the two files a self-hoster downloads, and the
@@ -38,11 +42,17 @@ type ComposeFile = {
 // Parsed with interpolation left alone: `${VAR}` is a plain string to the YAML
 // parser, which is what lets the checks below reason about the references
 // themselves rather than about one machine's values for them.
-/** Every overlay `stack-test/lib.sh` layers over `docker-compose.yml`. */
+const upgradeOverlaySource = read('release-test/compose.upgrade.yml');
+
+/**
+ * Every overlay `stack-test/lib.sh` or `release-test/lib.sh` layers over
+ * `docker-compose.yml`.
+ */
 function composeOverlays(): [string, string][] {
   const variants = new URL('stack-test/variants/', studioRoot);
   return [
     ['docker-compose.local.yml', localComposeSource],
+    ['release-test/compose.upgrade.yml', upgradeOverlaySource],
     ...readdirSync(fileURLToPath(variants))
       .filter((name) => name.endsWith('.yml'))
       .map((name): [string, string] => [
@@ -198,6 +208,49 @@ describe('the reference compose stack', () => {
         grace: '40s',
       });
     }
+  });
+
+  it('gives the api time to finish its own shutdown before Docker kills it', () => {
+    // The upgrade stops `api` before its backup and relies on the stop
+    // finishing the requests already accepted (docs/self-host/upgrade.md,
+    // step 2). The server's shutdown is the WebSocket drain, then the
+    // listener's graceful close, one after the other; Docker's 10s default is
+    // shorter than the two together and would SIGKILL a request partway.
+    const shutdownMs =
+      Duration.toMillis(DRAIN_TIMEOUT) +
+      Duration.toMillis(GRACEFUL_SHUTDOWN_TIMEOUT);
+    const graceOf = (value: string | undefined) => {
+      const seconds = /^(\d+)s$/.exec(value ?? '')?.[1];
+      return seconds === undefined ? null : Number(seconds) * 1000;
+    };
+    expect(compose.services.api!.stop_grace_period).toBe('20s');
+    expect(graceOf(compose.services.api!.stop_grace_period)).toBeGreaterThan(
+      shutdownMs,
+    );
+
+    // As for the worker: an overlay that mentions the key must say 20s.
+    for (const [name, source] of composeOverlays()) {
+      const overlay = parse(source, { logLevel: 'silent' }) as ComposeFile;
+      const api = overlay.services?.api;
+      if (!api || !('stop_grace_period' in api)) continue;
+      expect({ name, grace: api.stop_grace_period }).toEqual({
+        name,
+        grace: '20s',
+      });
+    }
+  });
+
+  it('lets the upgrade lane add nothing to the stack but a loopback database port', () => {
+    // The lane's claim is that it upgrades the reference stack with the
+    // guide's commands. An overlay that replaced an image, a command or a
+    // service would make that claim about a different stack, so the overlay is
+    // held to the one thing the seed needs: Postgres reachable from this host,
+    // and from nowhere else.
+    const overlay = parse(upgradeOverlaySource) as ComposeFile;
+    expect(Object.keys(overlay)).toEqual(['services']);
+    expect(overlay.services).toEqual({
+      postgres: { ports: ['127.0.0.1:55433:5432'] },
+    });
   });
 
   it('lets the three swappable backing services be swapped from .env alone', () => {

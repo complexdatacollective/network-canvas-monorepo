@@ -2,7 +2,6 @@ import { afterAll, describe, expect, it } from '@effect/vitest';
 import { Effect, Fiber, Layer, ManagedRuntime } from 'effect';
 import { TestClock } from 'effect/testing';
 
-import { renderSchemaDdl } from '../../scripts/render-schema-ddl.ts';
 import { createStudio } from '../app.ts';
 import { OwnerDatabase, ReadinessDatabase } from '../db/client.ts';
 import { migrateDatabaseEffect } from '../db/migrate.ts';
@@ -14,6 +13,7 @@ import {
   schemaCheckOn,
 } from '../http/health.ts';
 import { freePort } from './support/entrypoint.ts';
+import { committedMigrations } from './support/migrations.ts';
 import { createScratchDatabase, reachableDb } from './support/postgres.ts';
 import { testKeyringEntry } from './support/secrets.ts';
 import { composeStudio } from './support/serve.ts';
@@ -278,9 +278,8 @@ describe.skipIf(!db)('the web process against a real database', () => {
         await before.dispose();
       }
 
-      const ddl = await renderSchemaDdl();
       await Effect.runPromise(
-        migrateDatabaseEffect(ddl).pipe(
+        migrateDatabaseEffect(committedMigrations()).pipe(
           Effect.provide(OwnerDatabase.layer({ url: scratch.db.url })),
         ),
       );

@@ -16,7 +16,8 @@
     "dev:object-stores": "node scripts/dev.ts --object-stores",
     "dev:stack": "node scripts/dev-stack.ts",
     "dev:stack:down": "node scripts/dev-stack.ts --down",
-    "build": "vite build && node scripts/render-schema-ddl.ts",
+    "build": "vite build && node scripts/render-migrations.ts",
+    "migrate:generate": "node scripts/migrate-generate.ts",
     "apply-schema": "pnpm run sync-fingerprint && node --env-file-if-exists=.env scripts/apply-schema.ts",
     "rotate-secrets": "node --env-file-if-exists=.env src/rotate-secrets.ts",
     "sync-fingerprint": "node scripts/sync-fingerprint.ts",
@@ -32,6 +33,7 @@
     "start:maintenance": "NODE_ENV=production node --env-file-if-exists=.env dist/maintenance.js",
     "typecheck": "tsc --build --noEmit",
     "test": "vitest run",
+    "test:released-migrations": "vitest run --config ../../../scripts/vitest.config.ts scripts/ci/studio-released-migrations.test.mjs",
     "test:watch": "vitest"
   },
   "dependencies": {

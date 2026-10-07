@@ -37,6 +37,7 @@ import { ObjectStore } from '../storage/object-store.ts';
 import { readProtocolEvents, type LoggedProtocolEvent } from './events.ts';
 import {
   acquireLock,
+  adoptLeases,
   authorizeCaller,
   create,
   deleteEntityType,
@@ -358,12 +359,34 @@ export const ProtocolBuilderHandlers: Layer.Layer<
               session.draftId,
               endOwner(session),
             );
+            // The tab's leases may have been granted by another process, or
+            // by this one before a restart; from here on this process's
+            // keeper renews them. A failure ends the watch, and the client's
+            // retry asks again.
+            const adopted = yield* command(protocolId, adoptLeases(session));
+            for (const { sectionId, epoch } of adopted) {
+              yield* leases.hold({
+                renew: Effect.provideService(
+                  renewLease(session, sectionId, epoch),
+                  Database,
+                  database,
+                ),
+                draftId: session.draftId,
+                sectionId,
+                owner: sessionOwner(session),
+              });
+            }
+            const editing = adopted[0]?.sectionId;
             // Registered before the join, so it runs after the join's own
             // release.
             yield* Effect.addFinalizer(() => publishPresence(session));
             yield* presence.join(
               session.draftId,
-              sessionPresence(session, 'viewing'),
+              sessionPresence(
+                session,
+                editing === undefined ? 'viewing' : 'editing',
+                editing,
+              ),
             );
             yield* publishPresence(session);
             const lastBacklog = backlog.at(-1)?.cursor;

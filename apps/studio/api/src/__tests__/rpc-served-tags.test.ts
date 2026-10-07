@@ -33,6 +33,7 @@ const STUDIO_TAGS = [
   'protocols.moveStage',
   'setup.complete',
   'status',
+  'status.updateAvailable',
   'studies.counts',
   'studies.create',
   'studies.get',
