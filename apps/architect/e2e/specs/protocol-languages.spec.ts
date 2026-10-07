@@ -271,10 +271,11 @@ test('adds a language, lists its missing translations, keeps the default languag
   // last one closes the dialog. Saved texts leave the list, the language's
   // progress counts them, and focus moves on to the next text.
   await missingText('Stage name Welcome').click();
-  const translation = page.getByRole('dialog', {
-    name: 'Welcome · Information Stage name',
-  });
-  await expect(translation).toBeVisible();
+  // The dialog is named after the text it shows, so Save and next renames it.
+  const translation = page.getByRole('dialog');
+  await expect(translation).toHaveAccessibleName(
+    'Welcome · Information Stage name',
+  );
   await expect(translation).toHaveAccessibleDescription(
     'Text 1 of 3 to translate into French',
   );
