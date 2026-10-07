@@ -46,7 +46,6 @@ export const BUILT_IN_DETAIL_LABELS: Record<
   Exclude<MissingDetail, { variable: string }>,
   MessageDescriptor
 > = {
-  name: messages.nameRequiredLabel,
   genderIdentity: messages.genderIdentityLabel,
   sexAssignedAtBirth: messages.sexAssignedAtBirthLabel,
 };

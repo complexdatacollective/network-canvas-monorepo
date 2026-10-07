@@ -35,11 +35,37 @@ describe('StageMetadataSchema', () => {
     expect(isNetworkComposerStageMetadata([[0, 'a', 'b', true]])).toBe(false);
   });
 
+  it('accepts a pedigree record of generated labels, with or without a framing', () => {
+    const parsed = StageMetadataSchema.parse({
+      chosen: { framing: 'gendered', generatedLabels: { 'node-1': 'Sister' } },
+      fixed: { generatedLabels: { 'node-1': 'Aunt (partner of Tom)' } },
+    });
+
+    expect(parsed.chosen).toEqual({
+      framing: 'gendered',
+      generatedLabels: { 'node-1': 'Sister' },
+    });
+    expect(parsed.fixed).toEqual({
+      generatedLabels: { 'node-1': 'Aunt (partner of Tom)' },
+    });
+  });
+
   it('guards only FamilyPedigree metadata', () => {
     expect(isFamilyPedigreeStageMetadata({ framing: 'gendered' })).toBe(true);
+    expect(
+      isFamilyPedigreeStageMetadata({ generatedLabels: { a: 'Mother' } }),
+    ).toBe(true);
     expect(isFamilyPedigreeStageMetadata({ framing: 'neutral' })).toBe(false);
+    expect(isFamilyPedigreeStageMetadata({ generatedLabels: { a: 1 } })).toBe(
+      false,
+    );
+    expect(isFamilyPedigreeStageMetadata({ generatedLabels: ['Mother'] })).toBe(
+      false,
+    );
+    expect(isFamilyPedigreeStageMetadata([[0, 'a', 'b', true]])).toBe(false);
     expect(isFamilyPedigreeStageMetadata({ automaticLayout: true })).toBe(
       false,
     );
+    expect(isFamilyPedigreeStageMetadata({})).toBe(false);
   });
 });

@@ -156,16 +156,28 @@ function wordsFromSexAssignedAtBirth(
   return 'neutral';
 }
 
+/**
+ * The family as recorded. `generatedLabels` are the labels the stage saved as
+ * the names of people the participant left unnamed, by person id: someone
+ * whose name is still their saved label is read as unnamed, so they are shown
+ * by their kinship word and given a fresh label when the participant leaves.
+ */
 export function readFamily(
   nodes: readonly NcNode[],
   edges: readonly NcEdge[],
   config: PedigreeConfig,
+  generatedLabels: Readonly<Record<string, string>> = {},
 ): Family {
   const people: Person[] = nodes
     .filter((node) => node.type === config.personType)
     .map((node) => {
       const attributes = node[entityAttributesProperty];
-      const name = attributes[config.nameAttribute];
+      const recorded = attributes[config.nameAttribute];
+      const id = node[entityPrimaryKeyProperty];
+      const name =
+        Object.hasOwn(generatedLabels, id) && generatedLabels[id] === recorded
+          ? undefined
+          : recorded;
       const genderIdentityConfig = config.genderIdentity;
       const genderIdentity = genderIdentityConfig
         ? readOption(attributes[genderIdentityConfig.attribute])
@@ -175,7 +187,7 @@ export function readFamily(
         PEDIGREE_SEX_ASSIGNED_AT_BIRTH,
       );
       return {
-        id: node[entityPrimaryKeyProperty],
+        id,
         isEgo: attributes[config.egoAttribute] === true,
         name: typeof name === 'string' && name.trim() !== '' ? name : undefined,
         genderIdentity,
@@ -279,7 +291,6 @@ export function fullSiblingsOf(family: Family, personId: string): string[] {
 }
 
 export type MissingDetail =
-  | 'name'
   | 'genderIdentity'
   | 'sexAssignedAtBirth'
   | { variable: string };
@@ -294,19 +305,16 @@ const isEmpty = (value: VariableValue | undefined) =>
  * The required details not yet given for a person: the interface's own
  * person attributes (gender identity only where the stage collects it), then
  * every researcher field whose attribute the codebook marks required. A name
- * counts only when the name attribute is itself required (`nameRequired`);
- * otherwise a participant may not know it, and an unnamed person is shown by
- * how they are related to the participant.
+ * is never missing, even when the name attribute is required: a participant
+ * may not know it, and anyone left unnamed is given a label from how they
+ * are related to the participant when the participant leaves the stage.
  */
 export function missingDetailsFor(
   person: Person,
   requiredFormVariables: readonly string[],
-  config: Pick<PedigreeConfig, 'genderIdentity'> & { nameRequired?: boolean },
+  config: Pick<PedigreeConfig, 'genderIdentity'>,
 ): MissingDetail[] {
   const missing: MissingDetail[] = [];
-  if (config.nameRequired && person.name === undefined) {
-    missing.push('name');
-  }
   if (config.genderIdentity && person.genderIdentity === undefined) {
     missing.push('genderIdentity');
   }

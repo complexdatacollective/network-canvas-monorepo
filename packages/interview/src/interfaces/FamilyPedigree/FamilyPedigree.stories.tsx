@@ -17,6 +17,10 @@ import StoryInterviewShell from '../../storybook-support/StoryInterviewShell';
 const PROMPT =
   'Add the members of your family. Select a person to add their relatives.';
 
+/** The next stage's list of everyone in the family, by the name each was
+ * given: the stage after the pedigree, when a story adds it. */
+const PEOPLE_PROMPT = 'Everyone in your family, by their saved names.';
+
 type SeedPerson = {
   id: string;
   name?: string;
@@ -63,6 +67,9 @@ type StoryOptions = {
   askGenderIdentity?: boolean;
   /** The codebook's validation of the name attribute. */
   nameValidation?: Record<string, unknown>;
+  /** Follows the pedigree with a stage listing everyone in the family by
+   * the name each was given. */
+  followedByPeopleList?: boolean;
 };
 
 type GenderIdentities = {
@@ -86,6 +93,7 @@ function buildInterview({
   genderIdentities,
   askGenderIdentity = true,
   nameValidation,
+  followedByPeopleList = false,
 }: StoryOptions) {
   const si = new SyntheticInterview(1);
   si.addInformationStage({ title: 'Welcome', text: 'Before the pedigree.' });
@@ -157,6 +165,11 @@ function buildInterview({
     );
   }
 
+  if (followedByPeopleList) {
+    si.addStage('OrdinalBin', {
+      subject: { entity: 'node', type: people.id },
+    }).addPrompt({ text: PEOPLE_PROMPT });
+  }
   si.addInformationStage({ title: 'Complete', text: 'After the pedigree.' });
   return si;
 }
@@ -171,6 +184,7 @@ function PedigreeStory({
   genderIdentities,
   askGenderIdentity,
   nameValidation,
+  followedByPeopleList,
 }: StoryOptions) {
   const rawPayload = useMemo(
     () =>
@@ -185,6 +199,7 @@ function PedigreeStory({
           genderIdentities,
           askGenderIdentity,
           nameValidation,
+          followedByPeopleList,
         }).getInterviewPayload({ currentStep: 1 }),
       ),
     [
@@ -197,6 +212,7 @@ function PedigreeStory({
       genderIdentities,
       askGenderIdentity,
       nameValidation,
+      followedByPeopleList,
     ],
   );
 
@@ -1496,19 +1512,212 @@ export const RecommendsThreeGenerations: Story = {
   play: expectPeople(4),
 };
 
+const panelOf = (canvasElement: HTMLElement) =>
+  canvasElement.ownerDocument.querySelector(
+    '[data-testid="pedigree-person-panel"]',
+  );
+
+/** Moves on to the list of people after the pedigree. */
+async function leaveForPeopleList(canvasElement: HTMLElement) {
+  const canvas = within(canvasElement);
+  await userEvent.click(canvas.getByTestId('next-button'));
+  await canvas.findByText(PEOPLE_PROMPT);
+}
+
+/** Goes back from the list of people to the pedigree. */
+async function returnToPedigree(canvasElement: HTMLElement) {
+  const canvas = within(canvasElement);
+  await userEvent.click(canvas.getByTestId('previous-button'));
+  await canvas.findByTestId('pedigree-canvas');
+}
+
+/** Two unnamed sisters, each with a named partner, and unnamed parents. */
+const sistersWithPartners: Family = {
+  people: [
+    { id: 'ego', name: 'Ari', gender: 'nonBinary', sex: 'intersex', ego: true },
+    { id: 'mum', gender: 'woman', sex: 'female' },
+    { id: 'dad', gender: 'man', sex: 'male' },
+    { id: 'sis1', gender: 'woman', sex: 'female' },
+    { id: 'sis2', gender: 'woman', sex: 'female' },
+    { id: 'tom', name: 'Tom', gender: 'man', sex: 'male' },
+    { id: 'sam', name: 'Sam', gender: 'man', sex: 'male' },
+  ],
+  links: [
+    { from: 'mum', to: 'dad', kind: 'partner' },
+    { from: 'mum', to: 'ego', kind: 'biological', carrier: true },
+    { from: 'dad', to: 'ego', kind: 'biological' },
+    { from: 'mum', to: 'sis1', kind: 'biological', carrier: true },
+    { from: 'dad', to: 'sis1', kind: 'biological' },
+    { from: 'mum', to: 'sis2', kind: 'biological', carrier: true },
+    { from: 'dad', to: 'sis2', kind: 'biological' },
+    { from: 'sis1', to: 'tom', kind: 'partner' },
+    { from: 'sis2', to: 'sam', kind: 'partner' },
+  ],
+};
+
 /**
- * The codebook requires every name to be given, and to be unique. The name
- * question reads "Name" rather than "Name (optional)", refuses to be left
- * empty or to repeat another person's name, and lets someone who already has
- * a name be saved again. A person with no name carries a warning, because
- * their name is a required detail.
+ * Leaving the stage saves a name for everyone the participant left unnamed:
+ * their kinship word, told apart by a named relative where two would share
+ * it, so the next stage can show who is who. On the canvas they keep their
+ * live kinship words. Coming back, they are unnamed again, with an empty
+ * name question; a name typed for one of them is theirs from then on, and
+ * the others are given fresh labels when the participant leaves again.
  */
-export const RequiredUniqueName: Story = {
+export const UnnamedPeopleAreLabelledOnLeavingAndUnnamedOnReturn: Story = {
+  args: { requirement: 'none' },
+  render: (args) => (
+    <PedigreeStory
+      {...settings(args)}
+      family={sistersWithPartners}
+      followedByPeopleList
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
+    await canvas.findByRole('button', { name: /^Sister 1/ });
+
+    await leaveForPeopleList(canvasElement);
+    for (const name of [
+      'Sister (partner of Tom)',
+      'Sister (partner of Sam)',
+      'Mother',
+      'Father',
+      'Tom',
+      'Sam',
+    ]) {
+      await expect(await canvas.findByText(name)).toBeInTheDocument();
+    }
+
+    // Back on the pedigree, the saved labels are not names: the canvas
+    // shows the kinship words, and the name question is empty.
+    await returnToPedigree(canvasElement);
+    await userEvent.click(
+      await canvas.findByRole('button', { name: /^Sister 1/ }),
+    );
+    const nameField = await body.findByRole('textbox', { name: /^Name/ });
+    await expect(nameField).toHaveValue('');
+    await expect(
+      canvas.queryByRole('button', { name: /partner of/ }),
+    ).toBeNull();
+
+    // A typed name is the participant's own.
+    await userEvent.type(nameField, 'Bea');
+    await userEvent.click(await body.findByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(panelOf(canvasElement)).toBeNull());
+    await canvas.findByRole('button', { name: /^Bea/ });
+
+    // With only one unnamed sister left, she is simply "Sister".
+    await leaveForPeopleList(canvasElement);
+    await expect(await canvas.findByText('Bea')).toBeInTheDocument();
+    await expect(await canvas.findByText('Sister')).toBeInTheDocument();
+    await expect(canvas.queryByText(/partner of/)).toBeNull();
+
+    // And Bea's name stays hers on the next visit.
+    await returnToPedigree(canvasElement);
+    await userEvent.click(await canvas.findByRole('button', { name: /^Bea/ }));
+    await expect(
+      await body.findByRole('textbox', { name: /^Name/ }),
+    ).toHaveValue('Bea');
+    await userEvent.click(await body.findByRole('button', { name: 'Cancel' }));
+    await waitFor(() => expect(panelOf(canvasElement)).toBeNull());
+
+    // Typing the very words of a saved label makes them a typed name too.
+    await userEvent.click(
+      await canvas.findByRole('button', { name: /^Sister/ }),
+    );
+    const sisterName = await body.findByRole('textbox', { name: /^Name/ });
+    await expect(sisterName).toHaveValue('');
+    await userEvent.type(sisterName, 'Sister');
+    await userEvent.click(await body.findByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(panelOf(canvasElement)).toBeNull());
+    await userEvent.click(
+      await canvas.findByRole('button', { name: /^Sister/ }),
+    );
+    await expect(
+      await body.findByRole('textbox', { name: /^Name/ }),
+    ).toHaveValue('Sister');
+  },
+};
+
+/**
+ * A relative added on a return visit changes who shares a kinship word, and
+ * the labels saved on leaving again follow: the sister first saved as
+ * "Sister" is numbered with the new one, since no relative tells them
+ * apart.
+ */
+export const LabelsAreGivenAfreshAfterAddingARelative: Story = {
+  args: { requirement: 'none' },
+  render: (args) => (
+    <PedigreeStory
+      {...settings(args)}
+      followedByPeopleList
+      family={{
+        people: [
+          {
+            id: 'ego',
+            name: 'Ari',
+            gender: 'nonBinary',
+            sex: 'intersex',
+            ego: true,
+          },
+          { id: 'mum', name: 'Julie', gender: 'woman', sex: 'female' },
+          { id: 'dad', name: 'Rob', gender: 'man', sex: 'male' },
+          { id: 'sis', gender: 'woman', sex: 'female' },
+        ],
+        links: [
+          { from: 'mum', to: 'dad', kind: 'partner' },
+          { from: 'mum', to: 'ego', kind: 'biological', carrier: true },
+          { from: 'dad', to: 'ego', kind: 'biological' },
+          { from: 'mum', to: 'sis', kind: 'biological', carrier: true },
+          { from: 'dad', to: 'sis', kind: 'biological' },
+        ],
+      }}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
+    await canvas.findByRole('button', { name: /^Sister/ });
+
+    await leaveForPeopleList(canvasElement);
+    await expect(await canvas.findByText('Sister')).toBeInTheDocument();
+
+    // Add another sister, unnamed.
+    await returnToPedigree(canvasElement);
+    await userEvent.hover(await canvas.findByRole('button', { name: /^You/ }));
+    await userEvent.click(await canvas.findByTestId('pedigree-menu-sibling'));
+    await userEvent.click(await body.findByRole('radio', { name: 'Woman' }));
+    await userEvent.click(await body.findByRole('radio', { name: 'Female' }));
+    await userEvent.click(
+      await body.findByRole('button', { name: 'Add to family' }),
+    );
+    await waitFor(() => expect(panelOf(canvasElement)).toBeNull());
+    await waitFor(() =>
+      expect(canvas.getAllByTestId('pedigree-person')).toHaveLength(5),
+    );
+
+    await leaveForPeopleList(canvasElement);
+    await expect(await canvas.findByText('Sister 1')).toBeInTheDocument();
+    await expect(await canvas.findByText('Sister 2')).toBeInTheDocument();
+    await expect(canvas.queryByText('Sister')).toBeNull();
+  },
+};
+
+/**
+ * The codebook requires every name to be given, and to be unique. A name may
+ * still be left blank — anyone unnamed is given a label on leaving — so the
+ * question reads "Name (optional)", and an unnamed person is not missing a
+ * detail. A typed name must not repeat another typed name, but may repeat a
+ * label saved for someone else, who is then given a different one.
+ */
+export const RequiredNamesMayBeLeftBlankButMustBeUnique: Story = {
   args: { requirement: 'none' },
   render: (args) => (
     <PedigreeStory
       {...settings(args)}
       nameValidation={{ required: true, unique: true }}
+      followedByPeopleList
       family={{
         people: [
           {
@@ -1520,11 +1729,14 @@ export const RequiredUniqueName: Story = {
           },
           { id: 'mum', name: 'Julie', gender: 'woman', sex: 'female' },
           { id: 'dad', gender: 'man', sex: 'male' },
+          { id: 'sis', gender: 'woman', sex: 'female' },
         ],
         links: [
           { from: 'mum', to: 'dad', kind: 'partner' },
           { from: 'mum', to: 'ego', kind: 'biological', carrier: true },
           { from: 'dad', to: 'ego', kind: 'biological' },
+          { from: 'mum', to: 'sis', kind: 'biological', carrier: true },
+          { from: 'dad', to: 'sis', kind: 'biological' },
         ],
       }}
     />
@@ -1532,46 +1744,49 @@ export const RequiredUniqueName: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const body = within(canvasElement.ownerDocument.body);
-    const panel = () =>
-      canvasElement.ownerDocument.querySelector(
-        '[data-testid="pedigree-person-panel"]',
-      );
     const nameField = () => body.findByRole('textbox', { name: /^Name/ });
+    const save = async () =>
+      userEvent.click(await body.findByRole('button', { name: 'Save' }));
+
+    // The unnamed father is missing nothing, and can be saved unnamed.
+    const father = await canvas.findByRole('button', { name: /^Father$/ });
+    await userEvent.click(father);
+    await body.findByText('Name (optional)');
+    await save();
+    await waitFor(() => expect(panelOf(canvasElement)).toBeNull());
 
     // Julie is saved again with her own name, which is not a duplicate.
     await userEvent.click(
       await canvas.findByRole('button', { name: /^Julie/ }),
     );
     await expect(await nameField()).toHaveValue('Julie');
-    await expect(body.queryByText('Name (optional)')).toBeNull();
-    await userEvent.click(await body.findByRole('button', { name: 'Save' }));
-    await waitFor(() => expect(panel()).toBeNull());
+    await save();
+    await waitFor(() => expect(panelOf(canvasElement)).toBeNull());
 
-    // The unnamed father is missing a required detail.
-    const father = await canvas.findByRole('button', {
-      name: /^Father, some details missing/,
-    });
-    await userEvent.click(father);
+    await leaveForPeopleList(canvasElement);
+    await expect(await canvas.findByText('Father')).toBeInTheDocument();
+    await returnToPedigree(canvasElement);
 
-    // Another person's name is refused.
+    // Another person's typed name is refused.
+    await userEvent.click(
+      await canvas.findByRole('button', { name: /^Sister/ }),
+    );
     await userEvent.type(await nameField(), 'Julie');
-    await userEvent.click(await body.findByRole('button', { name: 'Save' }));
+    await save();
     await body.findByText('This value is used elsewhere. It must be unique.');
-    await expect(panel()).not.toBeNull();
+    await expect(panelOf(canvasElement)).not.toBeNull();
 
-    // So is no name at all.
+    // The label saved for the father is not: he is given another.
     await userEvent.clear(await nameField());
-    await userEvent.click(await body.findByRole('button', { name: 'Save' }));
-    await body.findByText('You must answer this question before continuing.');
-    await expect(panel()).not.toBeNull();
+    await userEvent.type(await nameField(), 'Father');
+    await save();
+    await waitFor(() => expect(panelOf(canvasElement)).toBeNull());
 
-    // A new name saves, and labels him.
-    await userEvent.type(await nameField(), 'Rob');
-    await userEvent.click(await body.findByRole('button', { name: 'Save' }));
-    await waitFor(() => expect(panel()).toBeNull());
+    await leaveForPeopleList(canvasElement);
     await expect(
-      await canvas.findByRole('button', { name: /^Rob$/ }),
-    ).toBeVisible();
+      await canvas.findByText('Father (partner of Julie)'),
+    ).toBeInTheDocument();
+    await expect(await canvas.findByText('Father')).toBeInTheDocument();
   },
 };
 
@@ -1607,12 +1822,6 @@ export const NameIsOptionalByDefault: Story = {
     );
     await body.findByText('Name (optional)');
     await userEvent.click(await body.findByRole('button', { name: 'Save' }));
-    await waitFor(() =>
-      expect(
-        canvasElement.ownerDocument.querySelector(
-          '[data-testid="pedigree-person-panel"]',
-        ),
-      ).toBeNull(),
-    );
+    await waitFor(() => expect(panelOf(canvasElement)).toBeNull());
   },
 };

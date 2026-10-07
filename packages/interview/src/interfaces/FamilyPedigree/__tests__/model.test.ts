@@ -154,6 +154,26 @@ describe('readFamily', () => {
     );
     expect(family.links).toEqual([]);
   });
+
+  test('reads a name that is still the label the stage saved for that person as no name', () => {
+    const family = readFamily(
+      [
+        person('saved', { name: 'Sister' }),
+        person('renamed', { name: 'Sam' }),
+        person('typed', { name: 'Sister' }),
+      ],
+      [],
+      config,
+      { saved: 'Sister', renamed: 'Brother', gone: 'Father' },
+    );
+    expect(family.byId.get('saved')?.name).toBeUndefined();
+    // Their name has changed since the label was saved.
+    expect(family.byId.get('renamed')?.name).toBe('Sam');
+    // The same words, typed for someone with no saved label.
+    expect(family.byId.get('typed')?.name).toBe('Sister');
+    // The attribute itself is untouched.
+    expect(family.byId.get('saved')?.attributes.name).toBe('Sister');
+  });
 });
 
 describe('relatives', () => {
@@ -226,28 +246,6 @@ describe('missingDetailsFor', () => {
       config,
     );
     expect(missingDetailsFor(family.byId.get('a')!, [], config)).toEqual([]);
-  });
-
-  test('a name is a missing detail only when the name attribute is required', () => {
-    const family = readFamily(
-      [
-        person('a', { gender: ['man'], sex: ['male'] }),
-        person('b', { name: 'B', gender: ['man'], sex: ['male'] }),
-      ],
-      [],
-      config,
-    );
-    const required = { ...config, nameRequired: true };
-    expect(missingDetailsFor(family.byId.get('a')!, [], required)).toEqual([
-      'name',
-    ]);
-    expect(missingDetailsFor(family.byId.get('b')!, [], required)).toEqual([]);
-    expect(
-      missingDetailsFor(family.byId.get('a')!, [], {
-        ...config,
-        nameRequired: false,
-      }),
-    ).toEqual([]);
   });
 
   test('includes required researcher fields that are empty', () => {

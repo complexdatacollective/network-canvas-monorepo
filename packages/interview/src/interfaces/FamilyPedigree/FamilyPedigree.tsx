@@ -68,7 +68,7 @@ import {
   updateStageMetadata,
 } from '../../store/modules/session';
 import { useAppDispatch } from '../../store/store';
-import type { StageProps } from '../../types';
+import type { Direction, StageProps } from '../../types';
 import {
   type CompletenessItem,
   evaluateCompleteness,
@@ -87,6 +87,7 @@ import PersonForm, {
   type PersonFormResult,
 } from './components/PersonForm';
 import PersonNode from './components/PersonNode';
+import { generateLabels } from './generatedLabels';
 import { formatPersonLabel, labelFamily } from './kinship';
 import { messages } from './messages';
 import {
@@ -200,11 +201,24 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     return !only || (sex !== 'female' && sex !== 'male') || sex === only;
   };
 
+  // The stage's own record: the framing the participant chose, when the
+  // stage leaves it to them, and the labels saved as the names of people they
+  // left unnamed.
+  const stageMetadata = useStageSelector(getStageMetadata);
+  const pedigreeMetadata = isFamilyPedigreeStageMetadata(stageMetadata)
+    ? stageMetadata
+    : undefined;
+  const generatedLabels = useMemo(
+    () => pedigreeMetadata?.generatedLabels ?? {},
+    [pedigreeMetadata],
+  );
+
   const nodes = useStageSelector(getNetworkNodes);
   const edges = useStageSelector(getNetworkEdges);
+  // Someone whose name is still the label saved for them is read as unnamed.
   const family = useMemo(
-    () => readFamily(nodes, edges, config),
-    [nodes, edges, config],
+    () => readFamily(nodes, edges, config, generatedLabels),
+    [nodes, edges, config, generatedLabels],
   );
 
   // The person being added is drawn in the family from the moment the panel
@@ -251,8 +265,9 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       [...nodes, ...draftNodes],
       [...edges, ...draftEdges],
       config,
+      generatedLabels,
     );
-  }, [draft, family, nodes, edges, config]);
+  }, [draft, family, nodes, edges, config, generatedLabels]);
   const nodeColor = useStageSelector(getNodeColorSelector);
   // Connectors, and the preview of a new one, take the codebook's colour for
   // the relationship type ('edge-color-seq-N' is the CSS variable --edge-N).
@@ -291,23 +306,6 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         );
       });
   }, [codebook, config.personType, formFields]);
-
-  // The details a person must have given: the name only when the codebook
-  // requires the name attribute, and gender identity only where the stage
-  // asks it.
-  const nameRequired = useMemo(() => {
-    const definition =
-      codebook.node?.[config.personType]?.variables?.[config.nameAttribute];
-    return (
-      definition !== undefined &&
-      'validation' in definition &&
-      definition.validation?.required === true
-    );
-  }, [codebook, config.personType, config.nameAttribute]);
-  const detailsConfig = useMemo(
-    () => ({ genderIdentity: config.genderIdentity, nameRequired }),
-    [config.genderIdentity, nameRequired],
-  );
 
   // The participant is always on the canvas: create them on first visit.
   const creatingEgo = useRef(false);
@@ -415,10 +413,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   // the toolbar at any time. The choice is open when the stage loads until
   // they have made it, and until then the words that assume no gender are
   // used.
-  const stageMetadata = useStageSelector(getStageMetadata);
-  const chosenFraming = isFamilyPedigreeStageMetadata(stageMetadata)
-    ? stageMetadata.framing
-    : undefined;
+  const chosenFraming = pedigreeMetadata?.framing;
   const framingSetting = stage.framing ?? 'gendered';
   const participantFraming = framingSetting === 'participantPreference';
   // Opened a moment after the stage loads, once the toolbar is in, so the
@@ -440,10 +435,13 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   const chooseFraming = useCallback(
     (chosen: FramingId) => {
       dispatch(
-        updateStageMetadata({ currentStep, metadata: { framing: chosen } }),
+        updateStageMetadata({
+          currentStep,
+          metadata: { ...pedigreeMetadata, framing: chosen },
+        }),
       );
     },
-    [dispatch, currentStep],
+    [dispatch, currentStep, pedigreeMetadata],
   );
   const labels = useMemo(() => labelFamily(shown, framing), [shown, framing]);
   const displayName = useCallback(
@@ -637,11 +635,11 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
             family,
             completeness.scope,
             (person) =>
-              missingDetailsFor(person, requiredFormVariables, detailsConfig)
-                .length > 0,
+              missingDetailsFor(person, requiredFormVariables, config).length >
+              0,
           )
         : null,
-    [family, completeness, requiredFormVariables, detailsConfig],
+    [family, completeness, requiredFormVariables, config],
   );
   const [trackerOpen, setTrackerOpen] = useState(false);
 
@@ -674,7 +672,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   // (Pressing Next closes the list, as a press outside it, before this runs;
   // so a recommendation remembers that it has been shown instead.)
   const shownBeforeNext = useRef(false);
-  useBeforeNext((direction) => {
+  const completeEnoughToLeave = (direction: Direction) => {
     if (direction !== 'forwards' || !progress || !completeness) return true;
     // Only the family's own prompt asks for it to be complete.
     if (nomination) return true;
@@ -685,6 +683,51 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     shownBeforeNext.current = true;
     setTrackerOpen(true);
     return false;
+  };
+
+  // Everyone the participant left unnamed is given a label as their name, in
+  // the participant's language and choice of words, so they can be recognised
+  // in the rest of the interview. The labels are saved whenever the
+  // participant moves on — to another prompt or out of the stage, forwards,
+  // back, or to another stage — before the next stage reads the family, and
+  // recorded in the stage's metadata, so that on a return visit those people
+  // are unnamed again and are given fresh labels when the participant leaves.
+  const saveGeneratedLabels = async () => {
+    const saved = generateLabels(family, framing, intl);
+    for (const [personId, label] of saved) {
+      const person = family.byId.get(personId);
+      if (!person || person.attributes[config.nameAttribute] === label) {
+        continue;
+      }
+      await dispatch(
+        updateNode({
+          nodeId: personId,
+          attributePatch: {
+            set: { [config.nameAttribute]: label },
+            unset: [],
+          },
+          currentStep,
+        }),
+      );
+    }
+    if (saved.size === 0 && pedigreeMetadata?.generatedLabels === undefined) {
+      return;
+    }
+    dispatch(
+      updateStageMetadata({
+        currentStep,
+        metadata: {
+          ...pedigreeMetadata,
+          generatedLabels: Object.fromEntries(saved),
+        },
+      }),
+    );
+  };
+
+  useBeforeNext(async (direction) => {
+    if (!completeEnoughToLeave(direction)) return false;
+    await saveGeneratedLabels();
+    return true;
   });
 
   // Each item in the list leads to where it is resolved: adding the missing
@@ -746,11 +789,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       mode: {
         kind: 'edit',
         person,
-        missing: missingDetailsFor(
-          person,
-          requiredFormVariables,
-          detailsConfig,
-        ),
+        missing: missingDetailsFor(person, requiredFormVariables, config),
       },
       ids: [],
     });
@@ -966,6 +1005,28 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
           currentStep,
         }),
       );
+      // A name typed for someone whose label was saved is theirs now, even
+      // when it is the same words.
+      const typedName = result.set[config.nameAttribute];
+      if (
+        typeof typedName === 'string' &&
+        typedName.trim() !== '' &&
+        Object.hasOwn(generatedLabels, mode.person.id)
+      ) {
+        dispatch(
+          updateStageMetadata({
+            currentStep,
+            metadata: {
+              ...pedigreeMetadata,
+              generatedLabels: Object.fromEntries(
+                Object.entries(generatedLabels).filter(
+                  ([personId]) => personId !== mode.person.id,
+                ),
+              ),
+            },
+          }),
+        );
+      }
 
       for (const update of result.linkUpdates ?? []) {
         await dispatch(
@@ -1339,11 +1400,8 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                     hasMissingDetails={
                       !nomination &&
                       family.byId.has(personId) &&
-                      missingDetailsFor(
-                        person,
-                        requiredFormVariables,
-                        detailsConfig,
-                      ).length > 0
+                      missingDetailsFor(person, requiredFormVariables, config)
+                        .length > 0
                     }
                     adopted={shown.links.some(
                       (link) =>
@@ -1582,6 +1640,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
             framing={framing}
             genderIdentityOptions={genderIdentityOptions}
             formFields={formFields}
+            generatedLabels={generatedLabels}
             displayName={displayName}
             askAbout={
               panel.mode.kind === 'edit' && progress

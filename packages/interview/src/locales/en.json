@@ -185,7 +185,7 @@
   },
   "interview.familyPedigree.familyMember": {
     "defaultMessage": "Family member",
-    "description": "Label for a family member whose name is not known and who is not connected to the participant in the family tree."
+    "description": "Label for a family member whose name is not known and who is not connected to the participant in the family tree. Also saved as their name when they leave this part of the interview, so they can be recognised later."
   },
   "interview.familyPedigree.familySection": {
     "defaultMessage": "Their family",
@@ -222,6 +222,22 @@
   "interview.familyPedigree.genderIdentityLabel": {
     "defaultMessage": "Gender identity",
     "description": "Label of the question about a family member’s gender."
+  },
+  "interview.familyPedigree.generatedLabelChildOf": {
+    "defaultMessage": "{isYou, select, true {{term} (your child)} other {{term} (child of {name})}}",
+    "description": "Saved as the name of a family member the participant did not name, when their kinship word alone is shared with someone else, and shown for them in later parts of the interview. term is the already translated kinship word, such as “Half-sister”; name is the name of their parent, or that parent’s own kinship word, such as “Ana” or “Stepmother”. The first form is used when their parent is the participant."
+  },
+  "interview.familyPedigree.generatedLabelParentOf": {
+    "defaultMessage": "{isYou, select, true {{term} (your parent)} other {{term} (parent of {name})}}",
+    "description": "Saved as the name of a family member the participant did not name, when their kinship word alone is shared with someone else, and shown for them in later parts of the interview. term is the already translated kinship word, such as “Grandmother”; name is the name of their child, or that child’s own kinship word, such as “Julie” or “Mother”. The first form is used when their child is the participant."
+  },
+  "interview.familyPedigree.generatedLabelPartnerOf": {
+    "defaultMessage": "{isYou, select, true {{term} (your partner)} other {{term} (partner of {name})}}",
+    "description": "Saved as the name of a family member the participant did not name, when their kinship word alone is shared with someone else, and shown for them in later parts of the interview. term is the already translated kinship word, such as “Sister” or “Family member”; name is the name of their partner, or that partner’s own kinship word, such as “Tom” or “Uncle”. The first form is used when their partner is the participant."
+  },
+  "interview.familyPedigree.generatedLabelSiblingOf": {
+    "defaultMessage": "{isYou, select, true {{term} (your sibling)} other {{term} (sibling of {name})}}",
+    "description": "Saved as the name of a family member the participant did not name, when their kinship word alone is shared with someone else, and shown for them in later parts of the interview. term is the already translated kinship word, such as “Cousin”; name is the name of their brother or sister, or that sibling’s own kinship word, such as “Sam” or “Niece”. The first form is used when their sibling is the participant."
   },
   "interview.familyPedigree.hasChildrenQuestion": {
     "defaultMessage": "{isYou, select, true {Do you have any biological children?} other {Does {name} have any biological children?}}",
@@ -271,21 +287,13 @@
     "defaultMessage": "Name (optional)",
     "description": "Label of the field for a family member’s name, which the participant may not know."
   },
-  "interview.familyPedigree.nameRequiredHint": {
-    "defaultMessage": "A first name or nickname is fine.",
-    "description": "Hint beneath the field for a family member’s name when the study requires one, so the participant cannot leave it blank."
-  },
-  "interview.familyPedigree.nameRequiredLabel": {
-    "defaultMessage": "Name",
-    "description": "Label of the field for a family member’s name when the study requires one. Also names the name question in the notice listing a family member’s missing details."
-  },
   "interview.familyPedigree.no": {
     "defaultMessage": "No",
     "description": "Answer to a yes/no question."
   },
   "interview.familyPedigree.numberedRelative": {
     "defaultMessage": "{label} {number, number}",
-    "description": "Tells apart several family members who would otherwise share a label (for example two unnamed children). label is the already translated label; number is their position in the order they were added."
+    "description": "Tells apart several family members who would otherwise share a label (for example two unnamed children). label is the already translated label; number is their position in the order they were added. Shown in the family tree, and saved as the name of an unnamed family member when nothing else tells them apart."
   },
   "interview.familyPedigree.otherParentLabel": {
     "defaultMessage": "Who is the child’s other parent?",
@@ -369,11 +377,11 @@
   },
   "interview.familyPedigree.relativeOf": {
     "defaultMessage": "{owner}'s {term, select, mother {mother} father {father} parent {parent} eggParent {egg parent} spermParent {sperm parent} biologicalMother {bio­logical mother} biologicalFather {bio­logical father} adoptiveMother {adoptive mother} adoptiveFather {adoptive father} adoptiveParent {adoptive parent} stepmother {stepmother} stepfather {stepfather} stepparent {step-parent} eggDonor {egg donor} spermDonor {sperm donor} donor {donor} surrogate {surrogate} daughter {daughter} son {son} child {child} stepdaughter {stepdaughter} stepson {stepson} stepchild {stepchild} donorConceivedChild {donor-conceived child} surrogacyChild {child born through surrogacy} sister {sister} brother {brother} sibling {sibling} halfSister {half-sister} halfBrother {half-brother} halfSibling {half-sibling} stepsister {stepsister} stepbrother {stepbrother} stepsibling {step-sibling} partner {partner} formerPartner {former partner} other {relative}}",
-    "description": "Label for a family member whose name is not known and who has no everyday kinship word, described through a relative of theirs: owner is that relative’s label (for example “Cousin”), and term is how this person is related to them. Translate the possessive grammar as a whole; owner stays verbatim. Display only."
+    "description": "Label for a family member whose name is not known and who has no everyday kinship word, described through a relative of theirs: owner is that relative’s label (for example “Cousin”), and term is how this person is related to them. Translate the possessive grammar as a whole; owner stays verbatim. Also saved as the name of a family member the participant did not name."
   },
   "interview.familyPedigree.relativeTerm": {
     "defaultMessage": "{term, select, mother {Mother} father {Father} parent {Parent} eggParent {Egg parent} spermParent {Sperm parent} biologicalMother {Bio­logical mother} biologicalFather {Bio­logical father} adoptiveMother {Adoptive mother} adoptiveFather {Adoptive father} adoptiveParent {Adoptive parent} stepmother {Stepmother} stepfather {Stepfather} stepparent {Step-parent} eggDonor {Egg donor} spermDonor {Sperm donor} donor {Donor} surrogate {Surrogate} daughter {Daughter} son {Son} child {Child} stepdaughter {Stepdaughter} stepson {Stepson} stepchild {Stepchild} donorConceivedChild {Donor-conceived child} surrogacyChild {Child born through surrogacy} sister {Sister} brother {Brother} sibling {Sibling} halfSister {Half-sister} halfBrother {Half-brother} halfSibling {Half-sibling} stepsister {Stepsister} stepbrother {Stepbrother} stepsibling {Step-sibling} partner {Partner} formerPartner {Former partner} grandmother {Grandmother} grandfather {Grandfather} grandparent {Grandparent} maternalGrandmother {Maternal grandmother} maternalGrandfather {Maternal grandfather} maternalGrandparent {Maternal grandparent} paternalGrandmother {Paternal grandmother} paternalGrandfather {Paternal grandfather} paternalGrandparent {Paternal grandparent} greatGrandmother {Great-grandmother} greatGrandfather {Great-grandfather} greatGrandparent {Great-grandparent} granddaughter {Granddaughter} grandson {Grandson} grandchild {Grandchild} greatGranddaughter {Great-granddaughter} greatGrandson {Great-grandson} greatGrandchild {Great-grandchild} aunt {Aunt} uncle {Uncle} maternalAunt {Maternal aunt} maternalUncle {Maternal uncle} paternalAunt {Paternal aunt} paternalUncle {Paternal uncle} parentsSibling {Parent's sibling} greatAunt {Great-aunt} greatUncle {Great-uncle} grandparentsSibling {Grandparent's sibling} niece {Niece} nephew {Nephew} siblingsChild {Sibling's child} cousin {Cousin} motherInLaw {Mother-in-law} fatherInLaw {Father-in-law} parentInLaw {Parent-in-law} sisterInLaw {Sister-in-law} brotherInLaw {Brother-in-law} siblingInLaw {Sibling-in-law} daughterInLaw {Daughter-in-law} sonInLaw {Son-in-law} childInLaw {Child-in-law} other {Relative}}",
-    "description": "Label for a family member whose name is not known: their kinship to the participant (for example, the participant’s maternal grandmother). Depending on the study, either gendered words (mother, aunt) or words that do not assume gender (egg parent, parent’s sibling) are used. Display only; nothing here is saved as research data. Labels sit inside a small circle, so a long word carries a soft hyphen (U+00AD) where it may break; add one to long words in your language."
+    "description": "Label for a family member whose name is not known: their kinship to the participant (for example, the participant’s maternal grandmother). Depending on the study, either gendered words (mother, aunt) or words that do not assume gender (egg parent, parent’s sibling) are used. Also saved as the name of a family member the participant did not name, when they leave this part of the interview, so they can be recognised later. Labels sit inside a small circle, so a long word carries a soft hyphen (U+00AD) where it may break; add one to long words in your language."
   },
   "interview.familyPedigree.remove": {
     "defaultMessage": "Remove from family",
@@ -502,10 +510,6 @@
   "interview.familyPedigree.yourNameLabel": {
     "defaultMessage": "Your name (optional)",
     "description": "Label of the field for the participant’s own name."
-  },
-  "interview.familyPedigree.yourNameRequiredLabel": {
-    "defaultMessage": "Your name",
-    "description": "Label of the field for the participant’s own name when the study requires one."
   },
   "interview.familyPedigree.zoomIn": {
     "defaultMessage": "Zoom in",

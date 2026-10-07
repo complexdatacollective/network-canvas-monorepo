@@ -25,6 +25,11 @@ import {
   type PedigreeParentKind,
   type PedigreeRelationshipKind,
 } from '@codaco/protocol-validation';
+import {
+  entityAttributesProperty,
+  entityPrimaryKeyProperty,
+  type NcNode,
+} from '@codaco/shared-consts';
 
 import { formValuesToAttributePatch } from '../../../forms/formValuesToAttributePatch';
 import useProtocolForm from '../../../forms/useProtocolForm';
@@ -137,6 +142,10 @@ type PersonFormProps = {
    * identity. */
   genderIdentityOptions: GenderIdentityOption[];
   formFields: FormField[];
+  /** The labels the stage saved as the names of people the participant left
+   * unnamed, by person id. They are given afresh, so a typed name may repeat
+   * one. */
+  generatedLabels: Readonly<Record<string, string>>;
   displayName: (personId: string) => string;
   /** Edit only: ask whether the person has siblings, and children. */
   askAbout?: { siblings: boolean; children: boolean; required: boolean };
@@ -168,6 +177,7 @@ export default function PersonForm({
   framing,
   genderIdentityOptions,
   formFields,
+  generatedLabels,
   displayName,
   askAbout,
   onDraftChange,
@@ -178,34 +188,50 @@ export default function PersonForm({
 
   const isEgo = person?.isEgo ?? false;
 
-  // The name question applies whatever validation the codebook gives the name
-  // attribute (required, unique, length…), by the same mapping the interview's
-  // other forms use. `unique` resolves against the people already in the
-  // network, leaving out the person being edited so their own saved name is
-  // not a duplicate.
+  // A typed name follows whatever validation the codebook gives the name
+  // attribute (unique, length…), by the same mapping the interview's other
+  // forms use. The name may always be left blank, even when the attribute is
+  // required: anyone left unnamed is given a label when the participant
+  // leaves the stage. `unique` resolves against the people already in the
+  // network, leaving out the person being edited, so their own saved name is
+  // not a duplicate, and the labels saved for anyone else, which are given
+  // afresh.
   const stageVariables = useStageSelector(getCodebookVariablesForSubjectType);
   const nameValidation = selectValidationMetadataForVariable(
     stageVariables,
     config.nameAttribute,
   );
-  const nameValidationProps = nameValidation
+  const { required: _required, ...nameValidationProps } = nameValidation
     ? validationPropsFor(nameValidation)
     : {};
-  const nameRequired = nameValidationProps.required === true;
   const baseValidationContext = useStageSelector(getValidationContext);
   const personId = person?.id;
-  const nameValidationContext = useMemo<ValidationContext | undefined>(
-    () =>
-      baseValidationContext.stageSubject
-        ? {
-            codebook: baseValidationContext.codebook,
-            network: baseValidationContext.network,
-            stageSubject: baseValidationContext.stageSubject,
-            ...(personId !== undefined ? { currentEntityId: personId } : {}),
-          }
-        : undefined,
-    [baseValidationContext, personId],
-  );
+  const nameValidationContext = useMemo<ValidationContext | undefined>(() => {
+    const { codebook, network, stageSubject } = baseValidationContext;
+    if (!stageSubject) return undefined;
+    const isSavedLabel = (node: NcNode) => {
+      const id = node[entityPrimaryKeyProperty];
+      return (
+        Object.hasOwn(generatedLabels, id) &&
+        node[entityAttributesProperty][config.nameAttribute] ===
+          generatedLabels[id]
+      );
+    };
+    return {
+      codebook,
+      network: {
+        ...network,
+        nodes: network.nodes.map((node) => {
+          if (!isSavedLabel(node)) return node;
+          const { [config.nameAttribute]: _label, ...attributes } =
+            node[entityAttributesProperty];
+          return { ...node, [entityAttributesProperty]: attributes };
+        }),
+      },
+      stageSubject,
+      ...(personId !== undefined ? { currentEntityId: personId } : {}),
+    };
+  }, [baseValidationContext, personId, generatedLabels, config.nameAttribute]);
 
   const initialResearcherValues = useMemo(() => {
     if (!person) return undefined;
@@ -332,23 +358,9 @@ export default function PersonForm({
             name={config.nameAttribute}
             nameMode="opaque"
             label={intl.formatMessage(
-              nameRequired
-                ? isEgo
-                  ? messages.yourNameRequiredLabel
-                  : messages.nameRequiredLabel
-                : isEgo
-                  ? messages.yourNameLabel
-                  : messages.nameLabel,
+              isEgo ? messages.yourNameLabel : messages.nameLabel,
             )}
-            hint={
-              isEgo
-                ? undefined
-                : intl.formatMessage(
-                    nameRequired
-                      ? messages.nameRequiredHint
-                      : messages.nameHint,
-                  )
-            }
+            hint={isEgo ? undefined : intl.formatMessage(messages.nameHint)}
             initialValue={person?.name}
             autoComplete="off"
             {...nameValidationProps}
