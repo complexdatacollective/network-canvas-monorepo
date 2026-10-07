@@ -301,7 +301,7 @@ describe('InterviewRoute enter gate', () => {
     }
   });
 
-  it('hydrates the stored language and offers the protocol languages in declaration order', async () => {
+  it('hydrates the stored language and offers every protocol language', async () => {
     getSettingsMock.mockResolvedValue({ requireUnlockOnEnter: false });
     getSessionMock.mockResolvedValue(
       makeSession({ localePreference: 'ar', locale: 'ar' }),

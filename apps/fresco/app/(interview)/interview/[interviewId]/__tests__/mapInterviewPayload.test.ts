@@ -71,7 +71,7 @@ describe('mapInterviewPayload', () => {
     expect(initialSyncRevision).toBe(7);
   });
 
-  it('offers every declared locale in the protocol’s declaration order', () => {
+  it('offers every declared locale, with its text direction', () => {
     const source = makeSource(COMPATIBLE_PROTOCOL_SCHEMA_VERSION);
     const { payload } = mapInterviewPayload({
       ...source,
