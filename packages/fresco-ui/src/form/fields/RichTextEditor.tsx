@@ -647,19 +647,30 @@ const toolbarButtonStyles = iconButtonVariants({
 
 const toolbarSeparatorStyles = cx('mx-2 h-5 w-px shrink-0 bg-current/20');
 
-const editorContentStyles = cx(
-  multilineContentVariants(),
-  'order-2 flex-1',
-  'outline-none',
-  '[&_.tiptap]:min-h-[120px] [&_.tiptap]:outline-none',
-  // Placeholder styles
-  '[&_.tiptap_p.is-editor-empty:first-child::before]:text-input-contrast/50',
-  '[&_.tiptap_p.is-editor-empty:first-child::before]:pointer-events-none',
-  '[&_.tiptap_p.is-editor-empty:first-child::before]:float-left',
-  '[&_.tiptap_p.is-editor-empty:first-child::before]:h-0',
-  '[&_.tiptap_p.is-editor-empty:first-child::before]:italic',
-  '[&_.tiptap_p.is-editor-empty:first-child::before]:content-[attr(data-placeholder)]',
-);
+const editorContentVariants = cva({
+  base: cx(
+    'order-2 flex-1',
+    'outline-none',
+    '[&_.tiptap]:outline-none',
+    // Placeholder styles
+    '[&_.tiptap_p.is-editor-empty:first-child::before]:text-input-contrast/50',
+    '[&_.tiptap_p.is-editor-empty:first-child::before]:pointer-events-none',
+    '[&_.tiptap_p.is-editor-empty:first-child::before]:float-left',
+    '[&_.tiptap_p.is-editor-empty:first-child::before]:h-0',
+    '[&_.tiptap_p.is-editor-empty:first-child::before]:italic',
+    '[&_.tiptap_p.is-editor-empty:first-child::before]:content-[attr(data-placeholder)]',
+  ),
+  variants: {
+    singleLine: {
+      // One line tall, like the md `InputField` beside it: that field is 48px
+      // inside a 2px border, so the editable area is about 44px (the 27px
+      // line the theme sets, and 8px above and below). The text may still
+      // wrap and grow, so a long value stays readable.
+      true: 'min-h-0 w-full px-6 py-2',
+      false: cx(multilineContentVariants(), '[&_.tiptap]:min-h-[120px]'),
+    },
+  },
+});
 
 type ToolbarOptions = {
   bold?: boolean;
@@ -1199,7 +1210,10 @@ export default function RichTextEditorField({
         onBlur?.(event);
       }}
     >
-      <EditorContent editor={editor} className={editorContentStyles} />
+      <EditorContent
+        editor={editor}
+        className={editorContentVariants({ singleLine })}
+      />
       {hasToolbar && (
         <FieldUnavailableContext.Provider value={isDisabled}>
           <Toolbar.Root className={toolbarStyles}>

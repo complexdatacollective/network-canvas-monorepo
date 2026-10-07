@@ -1,11 +1,13 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { JSONContent } from '@tiptap/react';
 import { action } from 'storybook/actions';
+import { expect, waitFor, within } from 'storybook/test';
 import { z } from 'zod/mini';
 
 import Field from '../Field/Field';
 import Form from '../Form';
 import SubmitButton from '../SubmitButton';
+import InputField from './InputField';
 import RichTextEditorField from './RichTextEditor';
 
 const meta: Meta<typeof RichTextEditorField> = {
@@ -420,4 +422,63 @@ export const NoToolbar: Story = {
       />
     </div>
   ),
+};
+
+const singleLineContent: JSONContent = {
+  type: 'doc',
+  content: [
+    { type: 'paragraph', content: [{ type: 'text', text: 'A short label' }] },
+  ],
+};
+
+/**
+ * A single-line editor is one line tall, like the input beside it, rather than
+ * the 120px box a multi-line editor opens at. The editable area is measured
+ * against the input's own height inside its border, so the two read as a pair.
+ */
+export const SingleLine: Story = {
+  render: (args) => (
+    <div className="flex w-[480px] flex-col gap-4">
+      <div data-testid="editor">
+        <RichTextEditorField
+          {...args}
+          singleLine
+          toolbarOptions={{ headings: false, lists: false }}
+          value={singleLineContent}
+          onChange={action('onChange')}
+        />
+      </div>
+      <div data-testid="input">
+        <InputField
+          id="neighbouring-input"
+          name="neighbour"
+          defaultValue="A short value"
+        />
+      </div>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const BORDER = 2 * 2;
+    await waitFor(() =>
+      expect(
+        canvas.getByTestId('editor').querySelector('.tiptap'),
+      ).not.toBeNull(),
+    );
+    const editable = canvas
+      .getByTestId('editor')
+      .querySelector('.tiptap')?.parentElement;
+    const inputBox = canvas
+      .getByTestId('input')
+      .querySelector('input')?.parentElement;
+    if (!editable || !inputBox) throw new Error('the story did not render');
+
+    await expect(editable.getBoundingClientRect().height).toBeLessThan(60);
+    await expect(
+      Math.abs(
+        editable.getBoundingClientRect().height -
+          (inputBox.getBoundingClientRect().height - BORDER),
+      ),
+    ).toBeLessThanOrEqual(1);
+  },
 };
