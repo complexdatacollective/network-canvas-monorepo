@@ -7,6 +7,7 @@ import { SYNC_TABLES } from '@codaco/studio-sync/schema';
 import { testCipher } from '../../__tests__/support/secrets.ts';
 import { Transaction } from '../../db/tenant.ts';
 import { openAssetKey, stripAssetKeyValues } from '../asset-keys.ts';
+import { PROTOCOL_TABLES } from '../schema.ts';
 import {
   createDraftFromVersion,
   createProtocol,
@@ -27,9 +28,11 @@ import {
   readFixtureProtocol,
   type StoreSchema,
   storeDb,
+  waitForLockWait,
 } from './helpers.ts';
 
 const { drafts } = SYNC_TABLES;
+const { protocols } = PROTOCOL_TABLES;
 
 const setDescription = (draftId: string, description: string) =>
   Effect.gen(function* () {
@@ -283,6 +286,34 @@ describe.skipIf(!storeDb)('publishDraft', () => {
       throw new Error('the head writers waited on a reference to the draft');
     }
     expect(published.status).toBe('published');
+  });
+
+  it('takes the protocol before the draft head, in the order the host’s writes do', async () => {
+    const { protocolId, draftId } = await run(
+      createProtocol(TEST_TEAM_ID, cipher, { protocol: baseProtocol() }),
+    );
+    const { headTaken, publishing } = await run(
+      Effect.gen(function* () {
+        const { tx } = yield* Transaction;
+        // As `lockProtocolDraft` does first in a host write.
+        yield* tx
+          .select({ id: protocols.id })
+          .from(protocols)
+          .where(eq(protocols.id, protocolId))
+          .for('update');
+        const waiting = runAlongside(publishDraft(TEST_TEAM_ID, { draftId }));
+        yield* Effect.promise(() => store.run(waitForLockWait()));
+        // The head the write takes next, free while the publish waits.
+        const head = yield* tx
+          .select({ id: drafts.id })
+          .from(drafts)
+          .where(eq(drafts.id, draftId))
+          .for('no key update', { noWait: true });
+        return { headTaken: head.length, publishing: waiting };
+      }),
+    );
+    expect(headTaken).toBe(1);
+    expect((await publishing).status).toBe('published');
   });
 
   it('published versions are immutable, and their sections cannot be deleted', async () => {

@@ -2,9 +2,9 @@
 // so that every replica can renew, grace-check and list presence from the
 // database rather than from its own memory.
 //
-// Lock order, the deadlock rule, is total: the draft head, then
-// `protocol_connections` rows in `connection_id` order, then `leases` rows in
-// `section_id` order. A single-row writer still closes a cycle: one that holds
+// Lock order, the deadlock rule, is total: the protocol's `protocols` and
+// `protocol_drafts` rows, then the draft head, then `protocol_connections` rows
+// in `connection_id` order, then `leases` rows in `section_id` order. A single-row writer still closes a cycle: one that holds
 // a lease and then waits on the head (or on a connection row) deadlocks against
 // a transaction that holds the head and waits on that lease.
 //
@@ -21,7 +21,8 @@
 //   on nothing after them, so they skip the head. `setSocketMode` then reads
 //   the tab's leases without locking them.
 // - The host's writes lock their `protocols` and `protocol_drafts` rows
-//   (`lockProtocolDraft`) before the head, and the head before any lease.
+//   (`lockProtocolDraft`) before the head, and the head before any lease;
+//   `publishDraft` locks its `protocols` row before the head too.
 // - `discardDraft` holds the head FOR UPDATE and then cascades to leases and
 //   connections; holding the head exclusively, it waits on no one who holds a
 //   row it needs.
