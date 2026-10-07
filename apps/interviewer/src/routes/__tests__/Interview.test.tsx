@@ -792,6 +792,61 @@ describe('InterviewRoute finish flow', () => {
   });
 });
 
+describe('InterviewRoute session change', () => {
+  beforeEach(() => {
+    getSettingsMock.mockResolvedValue({
+      requireUnlockOnEnter: false,
+      requireUnlockOnExit: false,
+      requireUnlockOnExport: false,
+    });
+  });
+
+  it('unmounts the previous interview while the next one loads, and fails closed if it cannot be read', async () => {
+    let rejectNextSession!: (cause: unknown) => void;
+    getSessionMock.mockImplementation((id: string) =>
+      id === 's1'
+        ? Promise.resolve(makeSession())
+        : new Promise((_resolve, reject) => {
+            rejectNextSession = reject;
+          }),
+    );
+
+    const { rerender } = render(<InterviewRoute sessionId="s1" />);
+    await screen.findByTestId('shell-mounted');
+    shellMock.mockClear();
+    updateSessionMock.mockClear();
+
+    useRouteMock.mockReturnValue([true, { sessionId: 's2' }]);
+    rerender(<InterviewRoute sessionId="s2" />);
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    // A Shell left mounted here would be handed handlers bound to s2, so its
+    // next step change would write s1's progress into s2.
+    act(() => {
+      shellMock.mock.calls
+        .at(-1)?.[0]
+        .onStepChange(1, { progress: 50, totalSteps: 4 });
+    });
+    expect(screen.queryByTestId('shell-mounted')).not.toBeInTheDocument();
+    expect(shellMock).not.toHaveBeenCalled();
+    expect(updateSessionMock).not.toHaveBeenCalled();
+
+    await act(async () => {
+      rejectNextSession(new Error('stored network failed to parse'));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    expect(
+      await screen.findByRole('heading', {
+        name: /interview could not be opened/i,
+      }),
+    ).toBeInTheDocument();
+    expect(shellMock).not.toHaveBeenCalled();
+  });
+});
+
 describe('InterviewRoute analytics wiring', () => {
   beforeEach(() => {
     getSettingsMock.mockResolvedValue({

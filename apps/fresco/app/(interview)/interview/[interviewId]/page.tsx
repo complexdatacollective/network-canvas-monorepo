@@ -85,6 +85,37 @@ async function InterviewContent({
     redirect('/interview/finished');
   }
 
+  const mapped = mapInterviewPayload(interview);
+
+  if (!mapped.success) {
+    // Starting anyway would hand the client a network built without the stored
+    // one, which its first sync would replace, or run it against an empty
+    // design. The report carries no interview id: the id is the participant's
+    // access link, and the report leaves the deployment.
+    after(async () => {
+      await captureException(mapped.error, {
+        context:
+          mapped.unreadable === 'protocol'
+            ? 'interview.load.protocolUnreadable'
+            : 'interview.load.unreadable',
+      });
+      await flushPostHog();
+    });
+
+    return (
+      <ErrorMessage
+        title="This interview could not be opened"
+        message={
+          mapped.unreadable === 'protocol'
+            ? 'This interview could not be loaded, so it has not been started. Nothing has been changed. Please contact the person who recruited you to this study for assistance.'
+            : 'The answers saved for this interview could not be read, so it has not been started. Nothing has been changed. Please contact the person who recruited you to this study for assistance.'
+        }
+      />
+    );
+  }
+
+  // Recorded only once the interview can actually be opened: a refusal above
+  // must not leave an activity entry claiming it was.
   after(async () => {
     try {
       const message = session
@@ -131,35 +162,6 @@ async function InterviewContent({
       // Non-critical — don't block the interview
     }
   });
-
-  const mapped = mapInterviewPayload(interview);
-
-  if (!mapped.success) {
-    // Starting anyway would hand the client a network built without the stored
-    // one, which its first sync would replace, or run it against an empty
-    // design. The report carries no interview id: the id is the participant's
-    // access link, and the report leaves the deployment.
-    after(async () => {
-      await captureException(mapped.error, {
-        context:
-          mapped.unreadable === 'protocol'
-            ? 'interview.load.protocolUnreadable'
-            : 'interview.load.unreadable',
-      });
-      await flushPostHog();
-    });
-
-    return (
-      <ErrorMessage
-        title="This interview could not be opened"
-        message={
-          mapped.unreadable === 'protocol'
-            ? 'This interview could not be loaded, so it has not been started. Nothing has been changed. Please contact the person who recruited you to this study for assistance.'
-            : 'The answers saved for this interview could not be read, so it has not been started. Nothing has been changed. Please contact the person who recruited you to this study for assistance.'
-        }
-      />
-    );
-  }
 
   const { payload, assetUrls, initialStep, initialSyncRevision } = mapped;
 
