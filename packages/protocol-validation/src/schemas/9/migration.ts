@@ -5,6 +5,7 @@ import {
   collectLocalizedStringSites,
   type LocalizedStringSite,
 } from '../../utils/collectLocalizedStrings.ts';
+import { migrateFamilyPedigreeStages } from './family-pedigree-migration.ts';
 import ProtocolSchemaV9 from './schema.ts';
 
 // Schema 8 never recorded the language its copy was written in.
@@ -183,6 +184,9 @@ const migrationV8toV9 = createMigration({
 - Text that participants see is now marked as written in "Unspecified language", because older protocols do not record which language they use. You can change it to the language it is actually written in on the Languages page in Architect.`,
   migrate: (doc) => {
     const migrated = structuredClone(doc);
+    // Before the codebook labels and the localization pass, so the attribute
+    // and stage the conversion adds are labelled and localized with the rest.
+    migrateFamilyPedigreeStages(migrated);
     addCodebookLabels(migrated.codebook);
     addHighlightLabels(migrated);
     addComposerCaptions(migrated);

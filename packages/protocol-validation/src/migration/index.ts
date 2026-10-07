@@ -43,6 +43,14 @@
  * one) and coerces boolean and fractional ordinal/categorical option values to
  * their string form (v8 admits neither). Neither is licence to touch a stage or
  * a value the target schema could have represented.
+ *
+ * `migrationV8toV9` adds a stage. Schema 9's FamilyPedigree has no
+ * introduction screen, so a schema 8 pedigree's introduction becomes an
+ * Information stage inserted just before it; the alternative is discarding
+ * text participants were shown. This breaks invariant 1 for an interview in
+ * progress on such a protocol: a session whose resume position is at or after
+ * the pedigree resumes one stage earlier than where its participant left it,
+ * and no host adjusts a stored position for it yet.
  */
 
 // Import the actual protocol types for each version
