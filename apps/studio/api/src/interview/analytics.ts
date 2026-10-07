@@ -1,4 +1,6 @@
-import { Effect, Predicate } from 'effect';
+import { createHash } from 'node:crypto';
+
+import { Effect } from 'effect';
 
 import { POSTHOG_APP_PROPS } from '@codaco/shared-consts';
 import { ParticipantSession } from '@codaco/studio-contract/middleware/session';
@@ -35,20 +37,27 @@ const WITHHELD_PROPERTIES = new Set([
   '$lib',
 ]);
 
-const MAX_DISTINCT_ID_LENGTH = 200;
+type ForwardingConfig = {
+  readonly installationId: string;
+  readonly distinctId: string;
+};
 
-type ForwardingConfig = { readonly installationId: string };
+const participantDistinctId = (installationId: string, sessionId: string) =>
+  `participant:${createHash('sha256').update(`${installationId}:${sessionId}`).digest('hex').slice(0, 32)}`;
 
 export const participantAnalyticsConfig = Effect.fn(
   'interview.participantAnalyticsConfig',
-)(function* (studySettings: unknown) {
+)(function* (sessionId: string, studySettings: unknown) {
   const analytics = yield* Analytics;
   if (!analytics.enabled || !participantAnalyticsEnabled(studySettings)) {
     return null;
   }
   const installationId = yield* readInstallationId();
   if (installationId === null) return null;
-  return { installationId } satisfies ForwardingConfig;
+  return {
+    installationId,
+    distinctId: participantDistinctId(installationId, sessionId),
+  } satisfies ForwardingConfig;
 });
 
 const forwardableEvent = (
@@ -58,14 +67,6 @@ const forwardableEvent = (
   if (captured.event.startsWith('$') && captured.event !== EXCEPTION_EVENT) {
     return null;
   }
-  const distinctId = captured.properties.distinct_id;
-  if (
-    !Predicate.isString(distinctId) ||
-    distinctId.length === 0 ||
-    distinctId.length > MAX_DISTINCT_ID_LENGTH
-  ) {
-    return null;
-  }
   const properties = Object.fromEntries(
     Object.entries(captured.properties).filter(
       ([key]) => !WITHHELD_PROPERTIES.has(key),
@@ -73,7 +74,7 @@ const forwardableEvent = (
   );
   return {
     event: captured.event,
-    distinctId: `participant:${distinctId}`,
+    distinctId: config.distinctId,
     timestamp: captured.timestamp,
     properties: {
       ...properties,
@@ -101,7 +102,10 @@ export const forwardParticipantEvents = Effect.fn(
     Effect.gen(function* () {
       const context = yield* loadSessionContext(session.sessionId);
       if (context === null) return null;
-      return yield* participantAnalyticsConfig(context.studySettings);
+      return yield* participantAnalyticsConfig(
+        session.sessionId,
+        context.studySettings,
+      );
     }),
   );
   if (config === null) return;

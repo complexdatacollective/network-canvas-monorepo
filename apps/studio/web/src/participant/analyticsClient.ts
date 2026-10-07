@@ -1,9 +1,16 @@
 import type { ComponentProps } from 'react';
 
 import type { Shell } from '@codaco/interview';
-import { MAX_ANALYTICS_EVENTS } from '@codaco/studio-contract/schema/participant';
+import {
+  analyticsPropertiesLength,
+  MAX_ANALYTICS_EVENTS,
+  MAX_ANALYTICS_PROPERTIES_LENGTH,
+} from '@codaco/studio-contract/schema/participant';
 
-import { participantCall } from '../runtime/participantRpc.ts';
+import {
+  participantCall,
+  participantUnloadingAnalytics,
+} from '../runtime/participantRpc.ts';
 
 type AnalyticsClient = NonNullable<
   ComponentProps<typeof Shell>['posthogClient']
@@ -15,16 +22,21 @@ type QueuedEvent = {
   readonly timestamp: string;
 };
 
-type Send = (events: readonly QueuedEvent[]) => Promise<void>;
+type Send = (
+  events: readonly QueuedEvent[],
+  options: { readonly unloading: boolean },
+) => Promise<void>;
 
 export type ParticipantAnalyticsClient = AnalyticsClient & {
-  readonly flush: () => void;
+  readonly flush: (options?: { readonly unloading: boolean }) => void;
 };
 
 const FLUSH_DELAY_MS = 2000;
 
-const sendThroughStudio: Send = (events) =>
-  participantCall('participant.analytics', { events });
+const sendThroughStudio: Send = (events, { unloading }) =>
+  unloading
+    ? participantUnloadingAnalytics({ events })
+    : participantCall('participant.analytics', { events });
 
 const exceptionProperties = (error: unknown) => {
   const { name, message } =
@@ -47,7 +59,9 @@ export function createParticipantAnalyticsClient(
   let queue: QueuedEvent[] = [];
   let timer: ReturnType<typeof setTimeout> | undefined;
 
-  const flush = () => {
+  const flush = ({
+    unloading = false,
+  }: { readonly unloading?: boolean } = {}) => {
     if (timer !== undefined) {
       clearTimeout(timer);
       timer = undefined;
@@ -55,17 +69,22 @@ export function createParticipantAnalyticsClient(
     while (queue.length > 0) {
       const batch = queue.slice(0, MAX_ANALYTICS_EVENTS);
       queue = queue.slice(MAX_ANALYTICS_EVENTS);
-      send(batch).catch(() => undefined);
+      send(batch, { unloading }).catch(() => undefined);
     }
   };
 
   const enqueue = (event: string, properties: Record<string, unknown>) => {
+    if (
+      analyticsPropertiesLength(properties) > MAX_ANALYTICS_PROPERTIES_LENGTH
+    ) {
+      return;
+    }
     queue.push({ event, properties, timestamp: now().toISOString() });
     if (queue.length >= MAX_ANALYTICS_EVENTS) {
       flush();
       return;
     }
-    timer ??= setTimeout(flush, FLUSH_DELAY_MS);
+    timer ??= setTimeout(() => flush(), FLUSH_DELAY_MS);
   };
 
   return {

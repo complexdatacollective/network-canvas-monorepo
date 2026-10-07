@@ -32,18 +32,42 @@ export const { rpcCall: participantCall } = adapter;
 
 type SyncPayload = PayloadOf<ParticipantRpcsType, 'participant.sync'>;
 type SyncSuccess = SuccessOf<ParticipantRpcsType, 'participant.sync'>;
+type AnalyticsPayload = PayloadOf<ParticipantRpcsType, 'participant.analytics'>;
+
+const ANALYTICS_KEEPALIVE_MAX_BYTES = 4_000;
+
+const bodyBytes = (payload: unknown) =>
+  new Blob([JSON.stringify(payload)]).size;
+
+const unloading = <A, E>(
+  effect: Effect.Effect<A, E, ParticipantClient>,
+  keepalive: boolean,
+): Promise<A> =>
+  participantRuntime.runPromise(
+    effect.pipe(
+      Effect.provideService(FetchHttpClient.RequestInit, {
+        ...participantRequestInit,
+        keepalive,
+      }),
+    ),
+  );
 
 export const participantUnloadingSync = (
   payload: SyncPayload,
 ): Promise<SyncSuccess> =>
-  participantRuntime.runPromise(
+  unloading(
     Effect.flatMap(ParticipantClient, (client) =>
       client('participant.sync', payload),
-    ).pipe(
-      Effect.provideService(FetchHttpClient.RequestInit, {
-        ...participantRequestInit,
-        keepalive:
-          new Blob([JSON.stringify(payload)]).size <= KEEPALIVE_MAX_BYTES,
-      }),
     ),
+    bodyBytes(payload) <= KEEPALIVE_MAX_BYTES,
+  );
+
+export const participantUnloadingAnalytics = (
+  payload: AnalyticsPayload,
+): Promise<void> =>
+  unloading(
+    Effect.flatMap(ParticipantClient, (client) =>
+      client('participant.analytics', payload),
+    ),
+    bodyBytes(payload) <= ANALYTICS_KEEPALIVE_MAX_BYTES,
   );

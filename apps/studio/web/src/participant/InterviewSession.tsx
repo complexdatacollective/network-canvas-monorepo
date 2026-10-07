@@ -56,7 +56,7 @@ export default function InterviewSession() {
   useEffect(() => {
     const onLeave = () => {
       flushStep();
-      analyticsClient?.flush();
+      analyticsClient?.flush({ unloading: true });
     };
     const onHidden = () => {
       if (document.visibilityState === 'hidden') onLeave();

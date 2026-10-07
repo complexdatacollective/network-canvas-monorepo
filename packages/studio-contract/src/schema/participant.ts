@@ -102,9 +102,24 @@ export const SessionPayload = Schema.Struct({
 
 export const MAX_ANALYTICS_EVENTS = 100;
 
+export const MAX_ANALYTICS_PROPERTIES_LENGTH = 4096;
+
+export const analyticsPropertiesLength = (properties: unknown): number =>
+  JSON.stringify(properties)?.length ?? 0;
+
 export const AnalyticsEvent = Schema.Struct({
   event: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(200)),
-  properties: Schema.Record(Schema.String, Schema.Unknown),
+  properties: Schema.Record(
+    Schema.String.check(Schema.isMaxLength(200)),
+    Schema.Unknown,
+  ).check(
+    Schema.makeFilter<Readonly<Record<string, unknown>>>(
+      (properties) =>
+        analyticsPropertiesLength(properties) <=
+          MAX_ANALYTICS_PROPERTIES_LENGTH ||
+        `must serialize to at most ${MAX_ANALYTICS_PROPERTIES_LENGTH} characters`,
+    ),
+  ),
   timestamp: Schema.String.check(Schema.isMaxLength(64)),
 });
 

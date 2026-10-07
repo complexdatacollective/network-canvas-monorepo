@@ -14,6 +14,7 @@ import {
   NetworkNode,
   RedeemInput,
   MAX_ANALYTICS_EVENTS,
+  MAX_ANALYTICS_PROPERTIES_LENGTH,
   RedeemResult,
   SessionEnded,
   SessionInput,
@@ -185,6 +186,16 @@ describe('the participant payloads', () => {
       })),
     ],
     [
+      'an event whose properties are too large',
+      [
+        {
+          event: 'stage_entered',
+          properties: { padding: 'x'.repeat(MAX_ANALYTICS_PROPERTIES_LENGTH) },
+          timestamp: '2026-10-07T09:00:00.000Z',
+        },
+      ],
+    ],
+    [
       'an empty event name',
       [{ event: '', properties: {}, timestamp: '2026-10-07T09:00:00.000Z' }],
     ],
@@ -192,6 +203,19 @@ describe('the participant payloads', () => {
     expect(() =>
       Schema.decodeUnknownSync(AnalyticsInput)({ events }),
     ).toThrow();
+  });
+
+  it('drops an over-long property name and keeps the rest', () => {
+    const decoded = Schema.decodeUnknownSync(AnalyticsInput)({
+      events: [
+        {
+          event: 'stage_entered',
+          properties: { ['k'.repeat(201)]: 1, stage_index: 2 },
+          timestamp: '2026-10-07T09:00:00.000Z',
+        },
+      ],
+    });
+    expect(decoded.events[0]?.properties).toEqual({ stage_index: 2 });
   });
 
   it('keeps the protocol document whole', () => {

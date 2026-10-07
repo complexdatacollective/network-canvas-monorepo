@@ -54,7 +54,10 @@ export const readParticipantSession = Effect.fn(
         publishedAt: context.publishedAt,
       });
       const analytics =
-        (yield* participantAnalyticsConfig(context.studySettings)) !== null;
+        (yield* participantAnalyticsConfig(
+          session.sessionId,
+          context.studySettings,
+        )) !== null;
 
       return {
         studyId: context.studyId,

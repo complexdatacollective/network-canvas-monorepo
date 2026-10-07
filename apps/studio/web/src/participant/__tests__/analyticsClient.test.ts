@@ -1,6 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { MAX_ANALYTICS_EVENTS } from '@codaco/studio-contract/schema/participant';
+import {
+  MAX_ANALYTICS_EVENTS,
+  MAX_ANALYTICS_PROPERTIES_LENGTH,
+} from '@codaco/studio-contract/schema/participant';
 
 import { createParticipantAnalyticsClient } from '../analyticsClient.ts';
 
@@ -32,18 +35,21 @@ describe('the participant analytics client', () => {
     vi.advanceTimersByTime(2000);
 
     expect(send).toHaveBeenCalledTimes(1);
-    expect(send).toHaveBeenCalledWith([
-      {
-        event: 'stage_entered',
-        properties: { stage_type: 'Information' },
-        timestamp: NOW.toISOString(),
-      },
-      {
-        event: 'stage_left',
-        properties: { stage_type: 'Information' },
-        timestamp: NOW.toISOString(),
-      },
-    ]);
+    expect(send).toHaveBeenCalledWith(
+      [
+        {
+          event: 'stage_entered',
+          properties: { stage_type: 'Information' },
+          timestamp: NOW.toISOString(),
+        },
+        {
+          event: 'stage_left',
+          properties: { stage_type: 'Information' },
+          timestamp: NOW.toISOString(),
+        },
+      ],
+      { unloading: false },
+    );
   });
 
   it('sends a full batch at once without waiting', () => {
@@ -55,11 +61,12 @@ describe('the participant analytics client', () => {
     expect(send.mock.calls[0]?.[0]).toHaveLength(MAX_ANALYTICS_EVENTS);
   });
 
-  it('sends what it holds at once when asked, and not again later', () => {
+  it('sends what it holds as the page goes, as an unloading send, and not again later', () => {
     const { send, client } = setup();
     client.capture('stage_entered', {});
-    client.flush();
+    client.flush({ unloading: true });
     expect(send).toHaveBeenCalledTimes(1);
+    expect(send).toHaveBeenCalledWith(expect.any(Array), { unloading: true });
     vi.advanceTimersByTime(2000);
     expect(send).toHaveBeenCalledTimes(1);
   });
@@ -69,20 +76,39 @@ describe('the participant analytics client', () => {
     const error = new TypeError('video load failed: 4');
     client.captureException(error, { feature: 'information-media' });
     client.flush();
-    expect(send).toHaveBeenCalledWith([
-      {
-        event: '$exception',
-        timestamp: NOW.toISOString(),
-        properties: {
-          feature: 'information-media',
-          $exception_list: [
-            {
-              type: 'TypeError',
-              value: 'video load failed: 4',
-              mechanism: { handled: true, synthetic: false },
-            },
-          ],
+    expect(send).toHaveBeenCalledWith(
+      [
+        {
+          event: '$exception',
+          timestamp: NOW.toISOString(),
+          properties: {
+            feature: 'information-media',
+            $exception_list: [
+              {
+                type: 'TypeError',
+                value: 'video load failed: 4',
+                mechanism: { handled: true, synthetic: false },
+              },
+            ],
+          },
         },
+      ],
+      { unloading: false },
+    );
+  });
+
+  it('drops an event too large for the api to accept, keeping the rest', () => {
+    const { send, client } = setup();
+    client.capture('stage_entered', { stage_index: 1 });
+    client.capture('stage_entered', {
+      padding: 'x'.repeat(MAX_ANALYTICS_PROPERTIES_LENGTH),
+    });
+    client.flush();
+    expect(send.mock.calls[0]?.[0]).toEqual([
+      {
+        event: 'stage_entered',
+        properties: { stage_index: 1 },
+        timestamp: NOW.toISOString(),
       },
     ]);
   });

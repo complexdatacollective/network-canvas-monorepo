@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 
 import { Context, Effect, Exit, Schema } from 'effect';
 import { RpcClient } from 'effect/rpc';
@@ -970,31 +970,60 @@ describe.skipIf(!testDb)('participant analytics', () => {
         properties: { distinct_id: 'page-pseudonym', $set: { name: 'Ada' } },
       },
       { event: 'stage_left', properties: { stage_type: 'NameGenerator' } },
-      {
-        event: 'stage_left',
-        properties: { distinct_id: 'd'.repeat(201) },
-      },
     ]);
 
     expect(Exit.isSuccess(exit)).toBe(true);
     expect(charged).toEqual([`participant_analytics:${sessionId}`]);
+    const stamped = {
+      app: 'studio',
+      $app_name: 'Network Canvas Studio',
+      $app_version: STUDIO_VERSION,
+      host_version: STUDIO_VERSION,
+      installation_id: installationId,
+      $process_person_profile: false,
+      $geoip_disable: true,
+    };
+    const distinctId = `participant:${createHash('sha256').update(`${installationId}:${sessionId}`).digest('hex').slice(0, 32)}`;
     expect(await captured()).toEqual([
       {
         event: 'stage_entered',
-        distinctId: 'participant:page-pseudonym',
+        distinctId,
         timestamp: '2026-10-07T09:00:00.000Z',
-        properties: {
-          stage_type: 'NameGenerator',
-          app: 'studio',
-          $app_name: 'Network Canvas Studio',
-          $app_version: STUDIO_VERSION,
-          host_version: STUDIO_VERSION,
-          installation_id: installationId,
-          $process_person_profile: false,
-          $geoip_disable: true,
-        },
+        properties: { stage_type: 'NameGenerator', ...stamped },
+      },
+      {
+        event: 'stage_left',
+        distinctId,
+        timestamp: '2026-10-07T09:00:00.000Z',
+        properties: { stage_type: 'NameGenerator', ...stamped },
       },
     ]);
+  });
+
+  it('keeps one identity for a session across pages, and a different one per session', async () => {
+    const first = await begin();
+    const second = await begin();
+    const event = [
+      { event: 'stage_entered', properties: { distinct_id: 'page-a' } },
+    ];
+    await send(first.sessionToken, event);
+    await client.call(
+      asParticipant(
+        first.sessionToken,
+        client.rpc('participant.session', { holderId: 'page-b' }),
+      ),
+    );
+    await send(first.sessionToken, [
+      { event: 'stage_entered', properties: { distinct_id: 'page-b' } },
+    ]);
+    await send(second.sessionToken, event);
+
+    const [before, after, other] = (await captured()).map(
+      (forwarded) => forwarded.distinctId,
+    );
+    expect(after).toBe(before);
+    expect(other).not.toBe(before);
+    expect(before).not.toContain(first.sessionId);
   });
 
   it('forwards an exception the runtime reports', async () => {
