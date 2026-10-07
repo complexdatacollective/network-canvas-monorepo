@@ -148,7 +148,7 @@ export default function useProtocolForm({
 
     return {
       ...baseValidationContext,
-      network: validationNetwork,
+      ...validationNetwork,
       stageSubject,
       variableLabels,
       ...(currentEntityId !== undefined ? { currentEntityId } : {}),

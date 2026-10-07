@@ -179,7 +179,7 @@ vi.mock('../../../../../selectors/protocol', () => ({
 // Decrypting stored values for validation reads the passphrase from Redux;
 // this pedigree has none to decrypt.
 vi.mock('../../../../../forms/useValidationNetwork', () => ({
-  useValidationNetwork: ({ network }: { network: unknown }) => network,
+  useValidationNetwork: ({ network }: { network: unknown }) => ({ network }),
 }));
 
 vi.mock('../../../../../selectors/forms', async (importOriginal) => {

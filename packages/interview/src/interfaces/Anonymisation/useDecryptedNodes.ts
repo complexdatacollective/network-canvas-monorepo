@@ -55,7 +55,7 @@ function describeNode(
 
 function readPlaintextNode(
   { node, encrypted, unreadable }: ProtectedNode,
-  scope: DecryptionScope | undefined,
+  plaintextOf: (value: EncryptedValue) => string | undefined,
 ): NcNode {
   if (encrypted.length === 0 && unreadable.length === 0) return node;
 
@@ -65,7 +65,7 @@ function readPlaintextNode(
   const secureAttributes = { ...node[entitySecureAttributesMeta] };
   for (const variable of unreadable) delete attributes[variable];
   for (const { variable, value } of encrypted) {
-    const plaintext = scope ? readCachedPlaintext(scope, value) : undefined;
+    const plaintext = plaintextOf(value);
     if (plaintext === undefined) delete attributes[variable];
     else attributes[variable] = plaintext;
     delete secureAttributes[variable];
@@ -79,6 +79,32 @@ function readPlaintextNode(
       ? { [entitySecureAttributesMeta]: secureAttributes }
       : {}),
   };
+}
+
+/**
+ * The nodes with their encrypted values decrypted through `scope`, as
+ * `useDecryptedNodes` makes them ready, for a caller that needs them now
+ * rather than on a later render. Rejects if any value fails to decrypt.
+ */
+export async function decryptNodes(
+  nodes: NcNode[],
+  scope: DecryptionScope,
+  getVariables: (type: string) => Record<string, Variable>,
+): Promise<NcNode[]> {
+  const protectedNodes = nodes.map((node) =>
+    describeNode(node, getVariables(node.type)),
+  );
+  const plaintexts = new Map<EncryptedValue, string>();
+  await Promise.all(
+    protectedNodes.flatMap(({ encrypted }) =>
+      encrypted.map(async ({ value }) => {
+        plaintexts.set(value, await decryptInScope(scope, value));
+      }),
+    ),
+  );
+  return protectedNodes.map((entry) =>
+    readPlaintextNode(entry, (value) => plaintexts.get(value)),
+  );
 }
 
 /**
@@ -127,7 +153,9 @@ export function useDecryptedNodes(nodes: NcNode[]): DecryptedNodes {
   const plaintextNodes = useMemo(() => {
     if (!decrypted) return undefined;
     const resolved = protectedNodes.map((entry) =>
-      readPlaintextNode(entry, scope),
+      readPlaintextNode(entry, (value) =>
+        scope ? readCachedPlaintext(scope, value) : undefined,
+      ),
     );
     return resolved.every((node, index) => node === nodes[index])
       ? nodes

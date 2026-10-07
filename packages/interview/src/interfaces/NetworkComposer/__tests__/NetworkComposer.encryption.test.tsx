@@ -44,6 +44,7 @@ vi.mock('../../Anonymisation/useDecryptedNodes', async (importOriginal) => {
       typeof import('../../Anonymisation/useDecryptedNodes')
     >();
   return {
+    ...actual,
     useDecryptedNodes: (
       ...args: Parameters<typeof actual.useDecryptedNodes>
     ) => {
@@ -52,6 +53,24 @@ vi.mock('../../Anonymisation/useDecryptedNodes', async (importOriginal) => {
         decryption.ready = true;
       }
       return result;
+    },
+  };
+});
+
+// Holds every decryption while `held` is set, so a test can act while stored
+// values are still being decrypted.
+const decryptionGate = vi.hoisted(() => {
+  const gate: { held?: Promise<void> } = {};
+  return gate;
+});
+vi.mock('../../Anonymisation/utils', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('../../Anonymisation/utils')>();
+  return {
+    ...actual,
+    decryptData: async (...args: Parameters<typeof actual.decryptData>) => {
+      await decryptionGate.held;
+      return actual.decryptData(...args);
     },
   };
 });
@@ -389,5 +408,40 @@ describe('NetworkComposer validating an encrypted name', () => {
 
     await waitFor(() => expect(input).toHaveAttribute('aria-invalid', 'true'));
     expect(store.getState().session.network.nodes).toHaveLength(1);
+  });
+
+  it('waits for the stored names before checking one submitted while they are being decrypted', async () => {
+    let release: () => void = () => undefined;
+    decryptionGate.held = new Promise((resolve) => {
+      release = resolve;
+    });
+    try {
+      decryption.ready = false;
+      const store = makeStore(
+        [await makeEncryptedNode()],
+        true,
+        uniqueNameVariables,
+      );
+      renderComposer(store);
+
+      fireEvent.click(screen.getByRole('button', { name: /add node/i }));
+      const input = await screen.findByRole('textbox', { name: /name/i });
+      await act(async () => {
+        fireEvent.change(input, { target: { value: 'Alice' } });
+        fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' });
+      });
+
+      expect(decryption.ready).toBe(false);
+      expect(store.getState().session.network.nodes).toHaveLength(1);
+
+      await act(async () => release());
+      await waitFor(() =>
+        expect(input).toHaveAttribute('aria-invalid', 'true'),
+      );
+      expect(store.getState().session.network.nodes).toHaveLength(1);
+    } finally {
+      release();
+      decryptionGate.held = undefined;
+    }
   });
 });

@@ -14,9 +14,15 @@ import { updateNode } from '../../store/modules/session';
 import { setPassphrase } from '../../store/modules/ui';
 import {
   createEncryptionStore,
+  encryptedVariables,
   makeEncryptedPerson,
 } from './__tests__/encryptionFixtures';
-import { type DecryptedNodes, useDecryptedNodes } from './useDecryptedNodes';
+import { getDecryptionScope } from './decryptionScope';
+import {
+  type DecryptedNodes,
+  decryptNodes,
+  useDecryptedNodes,
+} from './useDecryptedNodes';
 
 const PASSPHRASE = 'test passphrase';
 
@@ -182,5 +188,44 @@ describe('useDecryptedNodes', () => {
 
     await waitFor(() => expect(result.current.status).toBe('failed'));
     expect(store.getState().ui.passphraseInvalid).toBe(true);
+  });
+});
+
+describe('decryptNodes', () => {
+  function scopeFor(store: EncryptionStore, passphrase: string) {
+    store.dispatch(setPassphrase(passphrase));
+    const scope = getDecryptionScope(store, passphrase);
+    if (!scope) throw new Error('Expected a decryption scope');
+    return scope;
+  }
+
+  it('resolves to the nodes with their values decrypted', async () => {
+    const person = await makeEncryptedPerson('n1', 'Alice', PASSPHRASE);
+    const store = createEncryptionStore([person]);
+
+    const [node] = await decryptNodes(
+      [person],
+      scopeFor(store, PASSPHRASE),
+      () => encryptedVariables,
+    );
+
+    expect(node?.[entityAttributesProperty]).toEqual({
+      name: 'Alice',
+      age: 40,
+    });
+    expect(node?.[entitySecureAttributesMeta]).toBeUndefined();
+  });
+
+  it('rejects when a value fails to decrypt', async () => {
+    const person = await makeEncryptedPerson('n1', 'Alice', PASSPHRASE);
+    const store = createEncryptionStore([person]);
+
+    await expect(
+      decryptNodes(
+        [person],
+        scopeFor(store, 'wrong passphrase'),
+        () => encryptedVariables,
+      ),
+    ).rejects.toThrow();
   });
 });

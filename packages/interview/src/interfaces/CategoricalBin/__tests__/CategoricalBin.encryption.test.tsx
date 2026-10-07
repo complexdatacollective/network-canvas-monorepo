@@ -51,6 +51,7 @@ vi.mock('../../Anonymisation/useDecryptedNodes', async (importOriginal) => {
       typeof import('../../Anonymisation/useDecryptedNodes')
     >();
   return {
+    ...actual,
     useDecryptedNodes: (
       ...args: Parameters<typeof actual.useDecryptedNodes>
     ) => {

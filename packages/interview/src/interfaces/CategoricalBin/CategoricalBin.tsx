@@ -322,7 +322,7 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
         baseValidationContext.stageSubject
           ? {
               codebook: baseValidationContext.codebook,
-              network: validationNetwork,
+              ...validationNetwork,
               stageSubject: baseValidationContext.stageSubject,
               currentEntityId: nodeId,
               // …and the same comparison rule must word its error the same way

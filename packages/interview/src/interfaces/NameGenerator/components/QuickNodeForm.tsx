@@ -104,7 +104,7 @@ const QuickNodeForm = ({
     baseValidationContext.stageSubject
       ? {
           codebook: baseValidationContext.codebook,
-          network: validationNetwork,
+          ...validationNetwork,
           stageSubject: baseValidationContext.stageSubject,
           currentEntityAttributes: newNodeAttributes,
         }

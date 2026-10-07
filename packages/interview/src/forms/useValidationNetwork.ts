@@ -1,7 +1,9 @@
 'use client';
 
 import { useMemo } from 'react';
+import { useSelector } from 'react-redux';
 
+import type { ValidationContext } from '@codaco/fresco-ui/form/store/types';
 import type {
   Codebook,
   StageSubject,
@@ -9,7 +11,12 @@ import type {
 } from '@codaco/protocol-validation';
 import type { NcNetwork, NcNode } from '@codaco/shared-consts';
 
-import { useDecryptedNodes } from '../interfaces/Anonymisation/useDecryptedNodes';
+import {
+  decryptNodes,
+  useDecryptedNodes,
+} from '../interfaces/Anonymisation/useDecryptedNodes';
+import { useDecryptionScope } from '../interfaces/Anonymisation/useDecryptionScope';
+import { makeGetCodebookVariablesForNodeType } from '../selectors/protocol';
 
 const NO_NODES: NcNode[] = [];
 
@@ -41,16 +48,18 @@ function comparesEncryptedValues(
 
 /**
  * The network that the validation rules of these variables' fields compare
- * against. When a rule compares with values stored encrypted, the nodes come
- * back with those values decrypted, and the passphrase is asked for if it is
- * not known yet. Until the values are decrypted, and for every other form, it
- * is the network as stored.
+ * against, to spread into their validation context. When a rule compares with
+ * values stored encrypted, the nodes come back with those values decrypted,
+ * and the passphrase is asked for if it is not known yet. While they are being
+ * decrypted, `resolveNetwork` makes a validation run wait for them, so a value
+ * is never checked against ciphertext. For every other form it is the network
+ * as stored.
  */
 export function useValidationNetwork(
   { codebook, network }: { codebook: Codebook; network: NcNetwork },
   subject: StageSubject | null,
   variableIds: readonly string[],
-): NcNetwork {
+): Pick<ValidationContext, 'network' | 'resolveNetwork'> {
   // Only node variables can be encrypted.
   const variables =
     subject?.entity === 'node'
@@ -67,9 +76,27 @@ export function useValidationNetwork(
     comparesEncrypted && decrypted.status === 'ready'
       ? decrypted.nodes
       : network.nodes;
+  const pending = comparesEncrypted && decrypted.status === 'pending';
 
-  return useMemo(
-    () => (nodes === network.nodes ? network : { ...network, nodes }),
-    [network, nodes],
+  const scope = useDecryptionScope();
+  const getCodebookVariablesForNodeType = useSelector(
+    makeGetCodebookVariablesForNodeType,
   );
+
+  return useMemo(() => {
+    const comparedNetwork =
+      nodes === network.nodes ? network : { ...network, nodes };
+    if (!pending || !scope) return { network: comparedNetwork };
+    return {
+      network: comparedNetwork,
+      resolveNetwork: async () => ({
+        ...network,
+        nodes: await decryptNodes(
+          network.nodes,
+          scope,
+          getCodebookVariablesForNodeType,
+        ),
+      }),
+    };
+  }, [network, nodes, pending, scope, getCodebookVariablesForNodeType]);
 }

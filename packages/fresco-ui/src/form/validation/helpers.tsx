@@ -144,6 +144,22 @@ export function makeValidationFunction(
   return (formValues: Record<string, FieldValue>) =>
     z.unknown().check(
       z.superRefine(async (fieldValue, ctx) => {
+        let context = validationContext;
+        if (validationContext?.resolveNetwork) {
+          try {
+            context = {
+              ...validationContext,
+              network: await validationContext.resolveNetwork(),
+            };
+          } catch {
+            ctx.addIssue({
+              code: 'custom',
+              message: helperIntl(intl).formatMessage(messages.unexpectedError),
+            });
+            return;
+          }
+        }
+
         // Handle built-in validations from the validations object
         const validationEntries = Object.entries(props).filter(
           ([key]) =>
@@ -160,7 +176,7 @@ export function makeValidationFunction(
 
             const validationFn = validationFnFactory(
               parameter as ValidationParameter,
-              validationContext,
+              context,
               intl,
             )(formValues);
 
@@ -196,7 +212,7 @@ export function makeValidationFunction(
               // Resolve schema if it's a function
               const resolvedSchema =
                 typeof schema === 'function'
-                  ? await schema(formValues, validationContext)
+                  ? await schema(formValues, context)
                   : schema;
 
               const result = await resolvedSchema.safeParseAsync(fieldValue);
