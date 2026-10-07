@@ -6,7 +6,6 @@ import {
   CURRENT_SCHEMA_VERSION,
   EdgeDefinitionSchema,
   EgoDefinitionSchema,
-  ExperimentsSchema,
   NodeDefinitionSchema,
   assetSchema,
   stageSchema,
@@ -19,7 +18,6 @@ import { parseSectionId } from './taxonomy.ts';
 export const SettingsSectionSchema = z.strictObject({
   name: z.string().min(1),
   description: z.string().optional(),
-  experiments: ExperimentsSchema.optional(),
   lastModified: z.string().datetime().optional(),
   schemaVersion: z.literal(CURRENT_SCHEMA_VERSION),
 });

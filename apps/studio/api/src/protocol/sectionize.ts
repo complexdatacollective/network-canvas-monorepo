@@ -30,9 +30,6 @@ export function sectionizeProtocol(
   if (protocol.description !== undefined) {
     settings.description = protocol.description;
   }
-  if (protocol.experiments !== undefined) {
-    settings.experiments = protocol.experiments;
-  }
   if (protocol.lastModified !== undefined) {
     settings.lastModified = protocol.lastModified;
   }
