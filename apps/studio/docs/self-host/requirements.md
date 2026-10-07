@@ -279,15 +279,17 @@ The commands Studio issues:
 | On every connection, as it opens             | `CLIENT SETNAME`, `INFO`                                                                 |
 | Directly                                     | `EVAL`, `SCAN`, `PING`                                                                   |
 | Inside the sliding-window script             | `TIME`, `ZREMRANGEBYSCORE`, `ZCARD`, `ZRANGE … WITHSCORES`, `ZADD`, `PEXPIRE`, `HINCRBY` |
-| Inside the denial-window and summary scripts | `HGET`, `HINCRBY`, `HSET`, `HSETNX`, `HGETALL`, `DEL`, `PEXPIRE`                         |
-| Between API replicas, on one channel         | `PUBLISH`, `SUBSCRIBE`                                                                   |
+| Inside the denial-window and summary scripts | `EXISTS`, `HGET`, `HINCRBY`, `HSET`, `HSETNX`, `HGETALL`, `RENAME`, `DEL`, `PEXPIRE`     |
+| Between API replicas, on one channel         | `PUBLISH`, `SUBSCRIBE`, and `PING` on the subscribed connection                          |
 
 Studio's Redis client names each connection as it opens (`studio-rate-limit`,
 `studio-doorbell` and `studio-doorbell-publish`), so `CLIENT LIST` shows which
 is which, and asks `INFO` whether the server is ready before it sends anything
-else. A server that refuses `CLIENT SETNAME` is used anyway, and so is one
-whose access rules deny `INFO` (the client logs a warning). One that has
-renamed or removed `INFO` is not: the connection never becomes ready.
+else. Those two are the only ones a server may refuse: one that refuses
+`CLIENT SETNAME` is used anyway, and so is one whose access rules deny `INFO`
+(the client logs a warning). One that has renamed or removed `INFO` is not:
+the connection never becomes ready. Every other command in the table is
+required.
 
 The channel is `studio:protocol-events`, and it is not configurable.
 Publishing says that a protocol's edits, locks or editors changed, and each

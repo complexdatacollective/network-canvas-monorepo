@@ -249,7 +249,10 @@ under `staging/`, and an API key in Postgres, sealed under your keyring.
 Valkey carries a doorbell, on the `studio:protocol-events` channel, that one
 replica rings when a protocol changes so the others tell their editors at
 once. Each replica also checks the database every five seconds, so a Valkey
-outage slows live updates and loses none. Because of the staged files, the
+outage slows live updates and loses none. A Redis server you run in Valkey's
+place must allow `SUBSCRIBE` and `PUBLISH` for the doorbell as well as the
+limiter's `EVAL`, `SCAN`, `PING` and script commands; `CLIENT SETNAME` and
+`INFO` are optional (see [a rate-limit store](./requirements.md#a-rate-limit-store)). Because of the staged files, the
 object store credentials must allow delete and list as well as read and write
 (see [an object store](./requirements.md#an-object-store)), and the `worker`
 needs them too, as it clears away staged files that were abandoned.
