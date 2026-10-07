@@ -380,6 +380,13 @@ export const migrationNoteMessages = defineMessages({
     description:
       'One complete Markdown bullet in schema 9 migration approval guidance: contradictoryPassphraseRules. Anonymisation is the name of the interface (stage type) that asks a participant to choose a passphrase protecting some of their answers; the lengths are the shortest and longest passphrase the researcher allowed. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text.',
   },
+  schema9EncryptedAttributeRules: {
+    id: 'protocolValidation.migrationNotes.schema9.encryptedAttributeRules',
+    defaultMessage:
+      "Skip logic and filters can no longer use an encrypted attribute. Rules are checked without the participant's passphrase, so under schema 8 a rule on an encrypted attribute only ever saw the encrypted text, never the answer, and never worked. These rules are removed, along with any filter or skip logic left with no rules. Check the stages that used them, because the rules that remain may now match differently. Rules in a panel that lists people from an external data file are kept, because that data is not encrypted.",
+    description:
+      'One complete Markdown bullet in schema 9 migration approval guidance: encryptedAttributeRules. An encrypted attribute is one whose answers are stored encrypted with a passphrase the participant chooses. Skip logic decides whether a stage is shown; a filter decides which people a stage or panel lists; each is made of rules. A panel is the side list on a name generator stage. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text.',
+  },
 });
 
 // Each descriptor is a whole bullet. Markdown separators are structural:
@@ -468,6 +475,7 @@ const migrationNoteSets = {
       migrationNoteMessages.schema9UnspecifiedLanguage,
       migrationNoteMessages.schema9EncryptedAttributes,
       migrationNoteMessages.schema9ContradictoryPassphraseRules,
+      migrationNoteMessages.schema9EncryptedAttributeRules,
     ],
   },
 };

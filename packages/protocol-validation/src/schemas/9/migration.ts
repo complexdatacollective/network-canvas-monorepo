@@ -101,6 +101,57 @@ const subjectVariables = (
     : {};
 };
 
+const isEncryptedNodeAttribute = (codebook: unknown, rule: unknown) => {
+  if (!isRecord(rule) || rule.type !== 'node' || !isRecord(rule.options)) {
+    return false;
+  }
+  const { type, attribute } = rule.options;
+  if (typeof type !== 'string' || typeof attribute !== 'string') return false;
+  const variables = subjectVariables(codebook, 'node', { type });
+  const variable = variables[attribute];
+  return isRecord(variable) && variable.encrypted === true;
+};
+
+// Whether a filter is left with no rules once those on encrypted attributes
+// are gone.
+const withoutEncryptedRules = (codebook: unknown, filter: unknown) => {
+  if (!isRecord(filter) || !Array.isArray(filter.rules)) return false;
+  const rules = filter.rules.filter(
+    (rule: unknown) => !isEncryptedNodeAttribute(codebook, rule),
+  );
+  filter.rules = rules;
+  return rules.length === 0;
+};
+
+// Schema 9 refuses a rule on an encrypted attribute: rules are checked
+// without the participant's passphrase, so under schema 8 such a rule only
+// ever saw the ciphertext. A filter left with no rules goes, and so does
+// skip logic left with none. An external-data panel reads the researcher's
+// own unencrypted rows, so its rules stay.
+const removeEncryptedAttributeRules = (protocol: unknown) => {
+  if (!isRecord(protocol) || !Array.isArray(protocol.stages)) return;
+  const { codebook } = protocol;
+  for (const stage of protocol.stages) {
+    if (!isRecord(stage)) continue;
+    if (withoutEncryptedRules(codebook, stage.filter)) {
+      Reflect.deleteProperty(stage, 'filter');
+    }
+    if (
+      isRecord(stage.skipLogic) &&
+      withoutEncryptedRules(codebook, stage.skipLogic.filter)
+    ) {
+      Reflect.deleteProperty(stage, 'skipLogic');
+    }
+    if (!Array.isArray(stage.panels)) continue;
+    for (const panel of stage.panels) {
+      if (!isRecord(panel) || panel.dataSource !== 'existing') continue;
+      if (withoutEncryptedRules(codebook, panel.filter)) {
+        Reflect.deleteProperty(panel, 'filter');
+      }
+    }
+  }
+};
+
 /**
  * A schema 8 Narrative legend showed each highlighted attribute's name, so
  * each highlight keeps that name as its label. The attribute is looked up on
@@ -218,13 +269,15 @@ const migrationV8toV9 = createMigration({
   notes: `- Attribute names can now use letters from any language, as well as spaces and punctuation. Existing attribute names are not changed.
 - Text that participants see is now marked as written in "Unspecified language", because older protocols do not record which language they use. You can change it to the language it is actually written in on the Languages page in Architect.
 - Encrypted attributes are no longer experimental: the Anonymisation interface is always available, and an attribute marked as encrypted is always encrypted. If this protocol marked attributes as encrypted without turning on the experimental "Encrypted Attributes" feature, those attributes are no longer marked, so they keep being collected without encryption.
-- If an Anonymisation stage required a minimum passphrase length longer than its maximum, no participant could choose a passphrase, so both lengths are removed and the default minimum length applies.`,
+- If an Anonymisation stage required a minimum passphrase length longer than its maximum, no participant could choose a passphrase, so both lengths are removed and the default minimum length applies.
+- Skip logic and filters can no longer use an encrypted attribute. Rules are checked without the participant's passphrase, so under schema 8 a rule on an encrypted attribute only ever saw the encrypted text, never the answer, and never worked. These rules are removed, along with any filter or skip logic left with no rules. Check the stages that used them, because the rules that remain may now match differently. Rules in a panel that lists people from an external data file are kept, because that data is not encrypted.`,
   migrate: ({ experiments, ...doc }) => {
     const migrated = structuredClone(doc);
     if (!isRecord(experiments) || experiments.encryptedVariables !== true) {
       removeEncryptedMarks(migrated.codebook);
     }
     removeContradictoryPassphraseRules(migrated);
+    removeEncryptedAttributeRules(migrated);
     addCodebookLabels(migrated.codebook);
     addHighlightLabels(migrated);
     addComposerCaptions(migrated);

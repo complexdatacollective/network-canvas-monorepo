@@ -177,3 +177,103 @@ describe('Migrating passphrase length rules from schema 8 to 9', () => {
     );
   });
 });
+
+const nodeRule = (id: string, attribute: string, value: string | number) => ({
+  type: 'node' as const,
+  id,
+  options: {
+    type: 'person',
+    attribute,
+    operator: typeof value === 'number' ? 'GREATER_THAN' : 'EXACTLY',
+    value,
+  },
+});
+
+const nameRule = nodeRule('rule-name', 'name', 'Alice');
+const ageRule = nodeRule('rule-age', 'age', 18);
+
+// A protocol with an encrypted `person.name`, and rules on it in the name
+// generator's skip logic, both of its panels and the sociogram's filter.
+const protocolWithRulesOnEncryptedName = (
+  experiments: { encryptedVariables?: boolean } | undefined,
+) => {
+  const protocol = protocolWithEncryptedName(experiments);
+  const [nameGenerator, sociogram] = protocol.stages;
+  return {
+    ...protocol,
+    assetManifest: {
+      'previous-people': {
+        id: 'previous-people',
+        type: 'network',
+        name: 'Previous people',
+        source: 'previous-people.csv',
+      },
+    },
+    stages: [
+      {
+        ...nameGenerator,
+        skipLogic: { action: 'SKIP', filter: { rules: [nameRule] } },
+        panels: [
+          {
+            id: 'panel-network',
+            title: localized('People already named'),
+            dataSource: 'existing',
+            filter: { join: 'AND', rules: [nameRule, ageRule] },
+          },
+          {
+            id: 'panel-external',
+            title: localized('People from before'),
+            dataSource: 'previous-people',
+            filter: { rules: [nameRule] },
+          },
+        ],
+      },
+      { ...sociogram, filter: { rules: [nameRule] } },
+    ],
+  };
+};
+
+describe('Migrating rules on encrypted attributes from schema 8 to 9', () => {
+  it('removes them while the attribute stays encrypted, with any filter or skip logic left empty', () => {
+    const [nameGenerator, sociogram] = migrateProtocol(
+      asSchema8Protocol(
+        protocolWithRulesOnEncryptedName({ encryptedVariables: true }),
+      ),
+      9,
+    ).stages;
+
+    expect(nameGenerator).not.toHaveProperty('skipLogic');
+    expect(nameGenerator).toMatchObject({
+      panels: [
+        { filter: { join: 'AND', rules: [ageRule] } },
+        // The external file's rows are not encrypted, so its rule still works.
+        { filter: { rules: [nameRule] } },
+      ],
+    });
+    expect(sociogram).not.toHaveProperty('filter');
+  });
+
+  it('keeps them when the experiment was off, because the attribute is no longer encrypted', () => {
+    const [nameGenerator, sociogram] = migrateProtocol(
+      asSchema8Protocol(protocolWithRulesOnEncryptedName(undefined)),
+      9,
+    ).stages;
+
+    expect(nameGenerator).toMatchObject({
+      skipLogic: { action: 'SKIP', filter: { rules: [nameRule] } },
+      panels: [
+        { filter: { join: 'AND', rules: [nameRule, ageRule] } },
+        { filter: { rules: [nameRule] } },
+      ],
+    });
+    expect(sociogram).toMatchObject({ filter: { rules: [nameRule] } });
+  });
+
+  it('says so in the migration notes', () => {
+    const note = getMigrationInfo(8).notes.find(({ version }) => version === 9);
+
+    expect(note?.notes).toContain(
+      'Skip logic and filters can no longer use an encrypted attribute.',
+    );
+  });
+});
