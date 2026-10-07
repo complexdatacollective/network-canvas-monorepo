@@ -79,4 +79,19 @@ describe('GraphML node labels', () => {
 
     expect(await getNodeLabel(node, codebookWithName(true))).toBe('Alice');
   });
+
+  it('labels a node with its name when the name is plaintext, though metadata from an encrypted name it replaced was left with it', async () => {
+    const node: NodeWithResequencedID = {
+      [entityPrimaryKeyProperty]: '1',
+      [egoProperty]: 'ego-1',
+      [nodeExportIDProperty]: 1,
+      type: 'person',
+      [entityAttributesProperty]: { 'name-uuid': 'Alice' },
+      [entitySecureAttributesMeta]: {
+        'name-uuid': { iv: [1], salt: [2] },
+      },
+    };
+
+    expect(await getNodeLabel(node, codebookWithName(true))).toBe('Alice');
+  });
 });

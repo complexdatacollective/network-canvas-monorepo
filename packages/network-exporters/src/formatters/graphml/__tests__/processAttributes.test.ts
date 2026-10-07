@@ -194,5 +194,27 @@ describe('processAttributes', () => {
 
       expect(getDataElements(result)).toEqual({ 'name-uuid': 'Alice' });
     });
+
+    it('exports a plaintext value as itself, though metadata from an encrypted value it replaced was left with it', async () => {
+      const node: NodeWithResequencedID = {
+        [entityPrimaryKeyProperty]: '1',
+        [egoProperty]: 'ego-1',
+        [nodeExportIDProperty]: 1,
+        type: 'person',
+        [entityAttributesProperty]: { 'name-uuid': 'Alice' },
+        [entitySecureAttributesMeta]: {
+          'name-uuid': { iv: [1], salt: [2] },
+        },
+      };
+
+      const result = await processAttributes(
+        node,
+        codebookWithName(true),
+        mockExportOptions,
+        new Map(),
+      );
+
+      expect(getDataElements(result)).toEqual({ 'name-uuid': 'Alice' });
+    });
   });
 });

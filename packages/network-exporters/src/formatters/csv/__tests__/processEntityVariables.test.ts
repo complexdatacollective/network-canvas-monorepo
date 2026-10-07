@@ -302,5 +302,25 @@ describe('processEntityVariables', () => {
 
       expect(result[entityAttributesProperty]).toEqual({ name: 'Alice' });
     });
+
+    it('exports a plaintext value as itself, though metadata from an encrypted value it replaced was left with it', () => {
+      const node: NcNode = {
+        [entityPrimaryKeyProperty]: '1',
+        type: 'person',
+        [entityAttributesProperty]: { 'name-uuid': 'Alice' },
+        [entitySecureAttributesMeta]: {
+          'name-uuid': { iv: [1], salt: [2] },
+        },
+      };
+
+      const result = processEntityVariables(
+        node,
+        'node',
+        codebookWithName(true),
+        mockExportOptions,
+      );
+
+      expect(result[entityAttributesProperty]).toEqual({ name: 'Alice' });
+    });
   });
 });
