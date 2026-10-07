@@ -202,10 +202,13 @@ export type PedigreeCompletenessScope =
  *   feminine words, male masculine, and anything else or unanswered neutral.
  * - `gamete`: words that make no assumption about gender. Biological parents
  *   are described by the gamete they gave (egg parent, sperm parent, read
- *   from their recorded sex at birth), and every other relative by a neutral
- *   word (grandparent, parent's sibling, sibling's child).
+ *   from their recorded sex at birth, and a plain parent when it is neither
+ *   female nor male), and every other relative by a neutral word
+ *   (grandparent, parent's sibling, sibling's child).
  *
- * The framing changes only what is shown; nothing it produces is stored.
+ * The framing changes only what is shown, and nothing it produces is
+ * exported. When the participant chooses the framing, the choice is kept in
+ * the session's stage metadata so they are asked only once.
  */
 export const FRAMING_IDS = ['gendered', 'gamete'] as const;
 

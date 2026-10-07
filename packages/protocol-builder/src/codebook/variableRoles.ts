@@ -39,7 +39,7 @@ const messages = defineMessages({
     defaultMessage:
       'This attribute is set by {owner}, so it cannot be used here. Choose a different attribute.',
     description:
-      'Refusal shown when a researcher picks an attribute (a codebook variable) that one kind of interview step writes for itself. owner is the name of that step, which is the researcher’s own or a built-in interface name and is not translated here.',
+      'Refusal shown when a researcher picks an attribute (a codebook variable) that one kind of interview step writes for itself. owner is a whole English phrase from the protocol schema that names a built-in interface and what it records, for example “the Family Pedigree interface, which marks the participant”. It is not translated here, so it stays in English inside the translated sentence.',
   },
   draftInterfaceOwnedPick: {
     id: 'protocolBuilder.codebookVariable.draftInterfaceOwnedPick',
@@ -61,9 +61,9 @@ const stageManagedOptionsMessages = defineMessages({
   stageManagedOptions: {
     id: 'protocolBuilder.codebookVariable.stageManagedOptions',
     defaultMessage:
-      '{count, plural, one {These options are managed by the {stageLabels} stage, which decides the kin words each one takes. Edit them there.} other {These options are managed by the stages {stageLabels}, which decide the kin words each one takes. Edit them in any of those stages.}}',
+      '{count, plural, one {These options are managed by the {stageLabels} stage, which decides the kinship words each one takes. Edit them there.} other {These options are managed by the stages {stageLabels}, which decide the kinship words each one takes. Edit them in any of those stages.}}',
     description:
-      'Shown in place of the editable list of allowed answers of an attribute (a codebook variable) whose answers belong to one or more interview steps, and as the refusal when a change to them is attempted anywhere else. A stage is one step of an interview. stageLabels is the researcher’s own name for each of those steps, already in quotation marks and separated by commas, and is not translated here. count is how many steps manage the answers. The kin words are the family words (mother, brother, parent) a family-tree step uses for each answer.',
+      'Shown in place of the editable list of allowed answers of an attribute (a codebook variable) whose answers belong to one or more interview steps, and as the refusal when a change to them is attempted anywhere else. A stage is one step of an interview. stageLabels is the researcher’s own name for each of those steps, already in quotation marks and separated by commas, and is not translated here. count is how many steps manage the answers. The kinship words are the family words (mother, brother, parent) a family-tree step uses for each answer.',
   },
 });
 

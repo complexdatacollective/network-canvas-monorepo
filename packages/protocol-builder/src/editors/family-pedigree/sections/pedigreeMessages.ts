@@ -18,9 +18,9 @@ export const familyPedigreeMessages = defineMessages({
   nodeConfigurationDescription: {
     id: 'protocolBuilder.pedigree.personAttributesDescription',
     defaultMessage:
-      'Choose where the interface records what it asks about every family member. Pick an existing attribute, or create a new one from the picker.',
+      'Choose where the interface records what it asks about every family member. Pick an existing attribute, or create a new one from the picker. A person’s symbol in the interview comes from the shape setting of the person type in the codebook. To draw it from gender identity or sex assigned at birth, map the shape to that attribute there.',
     description:
-      'Description of the person attributes section. An attribute is a codebook variable.',
+      'Description of the person attributes section. An attribute is a codebook variable. The shape setting is the Shape field in the node appearance group of the node type editor, where the shape can also be mapped to an attribute, so that each answer is drawn as a different symbol.',
   },
   nodeConfigurationWaiting: {
     id: 'protocolBuilder.pedigree.personAttributesWaiting',
@@ -55,9 +55,9 @@ export const familyPedigreeMessages = defineMessages({
   genderIdentityDescription: {
     id: 'protocolBuilder.pedigree.genderIdentityDescription',
     defaultMessage:
-      'When off, relatives are described by their sex assigned at birth.',
+      'When off, the question isn’t asked, and words such as mother or brother follow each person’s sex assigned at birth.',
     description:
-      'Explains what happens when the gender identity question is switched off: the kinship words (mother, brother, parent) follow the sex a person was assigned at birth instead.',
+      'Explains what happens when the gender identity question is switched off: it is not asked, and the kinship words (mother, brother, parent) follow the sex a person was assigned at birth instead. Female takes feminine words, male masculine words, and anyone else, or no answer, neutral words.',
   },
   genderIdentityClearTitle: {
     id: 'protocolBuilder.pedigree.genderIdentityClearTitle',
@@ -68,9 +68,9 @@ export const familyPedigreeMessages = defineMessages({
   genderIdentityClearDescription: {
     id: 'protocolBuilder.pedigree.genderIdentityClearDescription',
     defaultMessage:
-      'The attribute and the words you chose for each option will be removed from this stage, and relatives will be described by their sex assigned at birth. The attribute and its options stay in the codebook.',
+      'The attribute and the words you chose for each option will be removed from this stage, and words such as mother or brother will follow each person’s sex assigned at birth. The attribute and its options stay in the codebook.',
     description:
-      'Body of the confirmation shown before the gender identity question is switched off, saying what is lost and what is kept. An attribute is a codebook variable.',
+      'Body of the confirmation shown before the gender identity question is switched off, saying what is lost and what is kept. An attribute is a codebook variable. The kinship words (mother, brother, parent) follow the sex a person was assigned at birth instead.',
   },
   genderIdentityClearConfirm: {
     id: 'protocolBuilder.pedigree.genderIdentityClearConfirm',
@@ -93,9 +93,9 @@ export const familyPedigreeMessages = defineMessages({
   genderOptionsEditHint: {
     id: 'protocolBuilder.pedigree.genderOptionsEditHint',
     defaultMessage:
-      'These options can only be changed here. Anywhere else in the protocol they are shown read-only.',
+      'This stage decides the words each option takes, so the options can only be edited from a Family Pedigree stage that uses this attribute. Elsewhere in Architect they are read-only.',
     description:
-      'Explains why the button that edits the gender identity options is on this stage: the options belong to the stage because it decides which kinship words each one takes.',
+      'Explains why the button that edits the gender identity options is on this stage: the options belong to the stage because it decides which kinship words each one takes, so no other part of the app can change them. A Family Pedigree stage is the interview step this page configures. Architect is the name of the app.',
   },
   genderIdentityLabel: {
     id: 'protocolBuilder.pedigree.genderIdentityLabel',
@@ -106,9 +106,9 @@ export const familyPedigreeMessages = defineMessages({
   genderIdentityHint: {
     id: 'protocolBuilder.pedigree.genderIdentityHint',
     defaultMessage:
-      'Records each person’s gender identity. This stage manages the options this attribute offers, so you edit them here and say below which words each one takes.',
+      'Records each person’s gender identity. Set its options, and the words each one takes, below.',
     description:
-      'Guidance under the gender identity attribute control. The options are the researcher’s own, and are edited only from this stage; the control that follows chooses the kinship words each takes.',
+      'Guidance under the gender identity attribute control. The options are the researcher’s own, and are edited and given kinship words in the controls that follow, which appear once an attribute is chosen.',
   },
   genderIdentityCreateLabel: {
     id: 'protocolBuilder.pedigree.genderIdentityCreateLabel',
@@ -161,9 +161,9 @@ export const familyPedigreeMessages = defineMessages({
   genderTermsHint: {
     id: 'protocolBuilder.pedigree.genderTermsHint',
     defaultMessage:
-      'Family members are described with kinship words such as mother, brother or aunt. Choose the words each gender identity takes. An option with neutral words is described as a parent, sibling or child.',
+      'A family member without a name is shown by a kinship word such as mother, brother or aunt. Choose the words each gender identity takes. An option with neutral words is called a parent, sibling or child. These words are used when the wording is everyday kinship words.',
     description:
-      'Guidance under the control that chooses the kinship words each gender identity option takes. Neutral words are the ones that do not depend on gender.',
+      'Guidance under the control that chooses the kinship words each gender identity option takes. Neutral words are the ones that do not depend on gender. Everyday kinship words is a choice in the Wording section. A family member is shown by their name when they have one, so the words are only used for people without a name.',
   },
   genderTermsRowLabel: {
     id: 'protocolBuilder.pedigree.genderTermsRowLabel',
@@ -191,9 +191,10 @@ export const familyPedigreeMessages = defineMessages({
   },
   genderWordsUnknown: {
     id: 'protocolBuilder.pedigree.genderWordsUnknown',
-    defaultMessage: 'Not known (named from sex assigned at birth)',
+    defaultMessage:
+      'Not known (neutral words; biological mother or father for a biological parent)',
     description:
-      'Choice for the kinship words a gender identity option takes, for an option meaning the person’s gender is not known: a biological parent is then named from their sex assigned at birth, such as biological mother.',
+      'Choice for the kinship words a gender identity option takes, for an option meaning the person’s gender is not known. Every relative gets neutral words, such as parent or sibling, except a biological parent whose sex assigned at birth is known, who is called biological mother or biological father.',
   },
   sexAssignedAtBirthLabel: {
     id: 'protocolBuilder.pedigree.sexAssignedAtBirthLabel',
@@ -204,9 +205,9 @@ export const familyPedigreeMessages = defineMessages({
   sexAssignedAtBirthHint: {
     id: 'protocolBuilder.pedigree.sexAssignedAtBirthHint',
     defaultMessage:
-      'The interface uses this to name biological parents and donors, to work out who could have carried a pregnancy, to check that a child’s two biological parents are possible, to choose everyday kin words when gender identity is not asked, and to limit a nomination question to one sex assigned at birth. The interface sets this attribute’s options, and they cannot be changed.',
+      'The interface uses this to name biological parents and donors, to work out who could have carried a pregnancy, to check that a child’s two biological parents are possible, to choose everyday kinship words when gender identity is not asked, and to limit a nomination question to one sex assigned at birth. The interface sets this attribute’s options, and they cannot be changed.',
     description:
-      'Guidance under the sex assigned at birth attribute control, saying why the interface needs it. The options are a fixed list the interface owns. Kin words are the family words (mother, brother, parent). A nomination question is one question asked of the whole family, such as who has had a condition.',
+      'Guidance under the sex assigned at birth attribute control, saying why the interface needs it. The options are a fixed list the interface owns. Kinship words are the family words (mother, brother, parent). A nomination question is one question asked of the whole family, such as who has had a condition.',
   },
   sexAssignedAtBirthCreateLabel: {
     id: 'protocolBuilder.pedigree.sexAssignedAtBirthCreateLabel',
@@ -223,9 +224,9 @@ export const familyPedigreeMessages = defineMessages({
   egoHint: {
     id: 'protocolBuilder.pedigree.egoHint',
     defaultMessage:
-      'The interface sets this true/false attribute to true on the participant’s own person. Use it in a stage filter to keep the participant out of later stages, such as a name generator or sociogram of their relatives, or to tell them apart in exports and analysis. Nothing else in the protocol may write it.',
+      'The interface sets this true/false attribute to true on the participant’s own person, and leaves it blank on everyone else. Use it in a stage filter to keep the participant out of later stages, such as a name generator or sociogram of their relatives, or to tell them apart in exports and analysis. Because it is blank rather than false for everyone else, filter on “is not” true to leave the participant out. Nothing else in the protocol may write it.',
     description:
-      'Guidance under the participant marker attribute control. A stage filter is the set of rules, in the stage’s Stage filter section, that decide which nodes a stage shows. A name generator and a sociogram are kinds of interview stage.',
+      'Guidance under the participant marker attribute control. A stage filter is the set of rules, in the stage’s Stage filter section, that decide which nodes a stage shows. A name generator and a sociogram are kinds of interview stage. “is not” is the name of a rule operator in the stage filter, written exactly as it appears there.',
   },
   egoCreateLabel: {
     id: 'protocolBuilder.pedigree.egoCreateLabel',
@@ -287,8 +288,9 @@ export const familyPedigreeMessages = defineMessages({
   gestationalCarrierHint: {
     id: 'protocolBuilder.pedigree.gestationalCarrierHint',
     defaultMessage:
-      'A true/false attribute set on a parent relationship when that parent carried the pregnancy. Nothing else in the protocol may write it.',
-    description: 'Guidance under the gestational carrier attribute control.',
+      'True on the parent relationship of whoever carried the pregnancy (a surrogate, or a biological parent who did), and false on every other parent relationship. Nothing else in the protocol may write it.',
+    description:
+      'Guidance under the gestational carrier attribute control. A parent relationship is the connection between a parent and their child. The attribute is not set on partnerships.',
   },
   gestationalCarrierCreateLabel: {
     id: 'protocolBuilder.pedigree.gestationalCarrierCreateLabel',
@@ -305,8 +307,9 @@ export const familyPedigreeMessages = defineMessages({
   currentPartnerHint: {
     id: 'protocolBuilder.pedigree.currentPartnerHint',
     defaultMessage:
-      'A true/false attribute set on a partner relationship when the partnership is current. Nothing else in the protocol may write it.',
-    description: 'Guidance under the current partner attribute control.',
+      'True when a partnership is current, and false when it has ended. Nothing else in the protocol may write it.',
+    description:
+      'Guidance under the current partner attribute control. It is set on every partnership, and on nothing else.',
   },
   currentPartnerCreateLabel: {
     id: 'protocolBuilder.pedigree.currentPartnerCreateLabel',
@@ -323,9 +326,9 @@ export const familyPedigreeMessages = defineMessages({
   relationshipTypeChangeDescription: {
     id: 'protocolBuilder.pedigree.relationshipTypeChangeDescription',
     defaultMessage:
-      'The relationship kind, gestational carrier and current partner attributes belong to the current edge type, so changing it removes them.',
+      'The relationship kind, gestational carrier and current partner attributes belong to the current edge type, so changing it clears those choices. The attributes stay in the codebook.',
     description:
-      'Body of the confirmation shown before a Family Pedigree’s relationship edge type changes, saying what the change discards.',
+      'Body of the confirmation shown before a Family Pedigree’s relationship edge type changes, saying what the change discards from this stage and what it leaves. The codebook is the protocol’s definition of what an interview records.',
   },
   relationshipTypeChangeConfirm: {
     id: 'protocolBuilder.pedigree.relationshipTypeChangeConfirm',
@@ -343,9 +346,9 @@ export const familyPedigreeMessages = defineMessages({
   completenessDescription: {
     id: 'protocolBuilder.pedigree.completenessDescription',
     defaultMessage:
-      'Require participants to record a minimum part of their family before they continue. Switched off, they can continue with whatever family they have drawn.',
+      'Check that participants have recorded a minimum part of their family, and every required detail about each person, before they continue. Switched off, they can continue with whatever they have drawn.',
     description:
-      'Description of the completeness section. The participant is the person being interviewed.',
+      'Description of the completeness section. The participant is the person being interviewed. The required details are sex assigned at birth, gender identity when the stage asks it, and any additional person field the codebook marks as required. Whether the participant may continue without them is the enforcement choice below.',
   },
   completenessWaiting: {
     id: 'protocolBuilder.pedigree.completenessWaiting',
@@ -363,9 +366,9 @@ export const familyPedigreeMessages = defineMessages({
   completenessScopeHint: {
     id: 'protocolBuilder.pedigree.completenessScopeHint',
     defaultMessage:
-      'Each choice includes the ones before it. A participant can satisfy siblings and children by saying they have none or do not know. Biological parents are the people who contributed the egg or sperm, so donors count.',
+      'Each choice includes the ones before it. Only biological relatives count, so an adopted child does not satisfy “children”. Biological parents are the people who gave the egg or sperm, so donors count. A participant can account for siblings and children by saying they have none or do not know.',
     description:
-      'Guidance under the control choosing which relatives must be recorded. Biological parents are the genetic parents of a person; a gestational carrier who did not contribute the egg is not one.',
+      'Guidance under the control choosing which relatives must be recorded. Biological parents are the genetic parents of a person; a gestational carrier who did not contribute the egg is not one. Adoptive and step relatives do not count. Siblings, in this setting, are people who share a biological parent.',
   },
   completenessScopeParents: {
     id: 'protocolBuilder.pedigree.completenessScopeParents',
@@ -443,9 +446,10 @@ export const familyPedigreeMessages = defineMessages({
   },
   completenessEnforcementRequiredDescription: {
     id: 'protocolBuilder.pedigree.completenessEnforcementRequiredDescription',
-    defaultMessage: 'Participants cannot continue until it is complete.',
+    defaultMessage:
+      'Participants cannot continue until the required relatives and details are recorded.',
     description:
-      'Says what the required choice does. It refers to the family the participant has drawn.',
+      'Says what the required choice does. The required relatives are the ones chosen above, and the required details are about each person in the family the participant has drawn.',
   },
   completenessEnforcementRecommended: {
     id: 'protocolBuilder.pedigree.completenessEnforcementRecommended',
@@ -487,7 +491,7 @@ export const familyPedigreeMessages = defineMessages({
   completenessClearDescription: {
     id: 'protocolBuilder.pedigree.completenessClearDescription',
     defaultMessage:
-      'The relatives and enforcement you chose will be removed, and participants will be able to continue with any family they have drawn.',
+      'The relatives, the enforcement and the relatives-not-recorded attribute you chose will be removed from this stage, and participants will be able to continue with any family they have drawn.',
     description:
       'Body of the confirmation shown before the completeness requirement is switched off, saying what is lost.',
   },
@@ -534,9 +538,9 @@ export const familyPedigreeMessages = defineMessages({
   framingDescription: {
     id: 'protocolBuilder.pedigree.framingDescription',
     defaultMessage:
-      'Choose the words participants read for the people in their family. This changes only what is shown. Nothing it produces is recorded in the data.',
+      'Choose the kinship words used for family members the participant hasn’t named. Named people are shown by name. This changes only what participants read, and adds nothing to the exported data.',
     description:
-      'Description of the wording section. The participant is the person being interviewed; the words are kinship words such as mother, sibling or egg parent.',
+      'Description of the wording section. The participant is the person being interviewed; the words are kinship words such as mother, sibling or egg parent. A family member the participant has not given a name to is shown by their kinship to the participant instead. The participant themselves is always shown as “You”.',
   },
   framingLabel: {
     id: 'protocolBuilder.pedigree.framingLabel',
@@ -560,7 +564,7 @@ export const familyPedigreeMessages = defineMessages({
   framingGenderedDescription: {
     id: 'protocolBuilder.pedigree.framingGenderedDescription',
     defaultMessage:
-      'Mother, father, sister, brother, aunt and uncle. Each person’s words come from their gender identity when this stage asks about it, and from their sex assigned at birth when it does not.',
+      'Words such as mother, father, sister, brother, aunt and uncle. A person’s words come from their gender identity when this stage asks about it, and from their sex assigned at birth when it does not.',
     description:
       'Says what the everyday kinship words choice does and where each person’s words come from. The stage can be set to ask each family member’s gender identity or not to ask it.',
   },
@@ -573,9 +577,9 @@ export const familyPedigreeMessages = defineMessages({
   framingGameteDescription: {
     id: 'protocolBuilder.pedigree.framingGameteDescription',
     defaultMessage:
-      'Biological parents are the egg parent and the sperm parent, and every other relative gets a neutral word such as grandparent, sibling or parent’s sibling.',
+      'A biological parent is called the egg parent or the sperm parent, going by their sex assigned at birth, and a parent whose sex is neither female nor male is called a parent. Every other relative gets a neutral word such as grandparent, sibling or parent’s sibling.',
     description:
-      'Says what the egg parent and sperm parent choice does. Biological parents are the people who gave the egg or the sperm.',
+      'Says what the egg parent and sperm parent choice does. Biological parents are the people who gave the egg or the sperm. The egg parent is the one whose sex assigned at birth is female and the sperm parent the one whose sex assigned at birth is male; a biological parent with any other answer, or none, is called a parent.',
   },
   framingParticipantPreferenceLabel: {
     id: 'protocolBuilder.pedigree.framingParticipantPreferenceLabel',
@@ -684,9 +688,9 @@ export const familyPedigreeMessages = defineMessages({
   nominationVariableHint: {
     id: 'protocolBuilder.pedigree.nominationVariableHint',
     defaultMessage:
-      'A true/false attribute the interface sets to true on everyone the participant selects.',
+      'A true/false attribute. The interface sets it to true on everyone the participant selects, and to false on anyone they select and then deselect. Everyone else is left blank.',
     description:
-      'Guidance under the attribute control of a nomination prompt. An attribute is a codebook variable.',
+      'Guidance under the attribute control of a nomination prompt. An attribute is a codebook variable. Selecting a person a second time deselects them.',
   },
   nominationVariableEmpty: {
     id: 'protocolBuilder.pedigree.nominationVariableEmpty',
@@ -723,9 +727,9 @@ export const familyPedigreeMessages = defineMessages({
   nominationSexHint: {
     id: 'protocolBuilder.pedigree.nominationSexHint',
     defaultMessage:
-      'Limit the question to one sex assigned at birth for a condition only those people can have. People recorded as the other sex cannot be selected. Anyone else can, including people whose sex assigned at birth is intersex, unknown or not recorded.',
+      'Use this for a condition that only people of one sex can have. People recorded as the other sex assigned at birth cannot be selected. Everyone else can, including people whose sex assigned at birth is intersex, don’t know, prefer not to say or not yet answered.',
     description:
-      'Guidance under the control limiting a nomination prompt by sex assigned at birth, saying who is left out and who is not. The limit is for a condition only people of one sex can have, such as ovarian or prostate cancer.',
+      'Guidance under the control limiting a nomination prompt by sex assigned at birth, saying who is left out and who is not. The limit is for a condition only people of one sex can have, such as ovarian or prostate cancer. The listed answers are the options of the sex assigned at birth question, and not yet answered means the participant has not answered it for that person.',
   },
   nominationSexAnyone: {
     id: 'protocolBuilder.pedigree.nominationSexAnyone',
@@ -735,15 +739,15 @@ export const familyPedigreeMessages = defineMessages({
   },
   nominationSexFemale: {
     id: 'protocolBuilder.pedigree.nominationSexFemale',
-    defaultMessage: 'Only people assigned female at birth',
+    defaultMessage: 'Anyone except people assigned male at birth',
     description:
-      'Choice for a nomination prompt that only people whose sex assigned at birth is female can be selected for.',
+      'Choice for a nomination prompt that leaves out only the people whose sex assigned at birth is male. People whose sex assigned at birth is female, intersex, not known, not given or not yet answered can still be selected.',
   },
   nominationSexMale: {
     id: 'protocolBuilder.pedigree.nominationSexMale',
-    defaultMessage: 'Only people assigned male at birth',
+    defaultMessage: 'Anyone except people assigned female at birth',
     description:
-      'Choice for a nomination prompt that only people whose sex assigned at birth is male can be selected for.',
+      'Choice for a nomination prompt that leaves out only the people whose sex assigned at birth is female. People whose sex assigned at birth is male, intersex, not known, not given or not yet answered can still be selected.',
   },
 
   personFormTitle: {
@@ -755,9 +759,9 @@ export const familyPedigreeMessages = defineMessages({
   personFormDescription: {
     id: 'protocolBuilder.pedigree.personFormDescription',
     defaultMessage:
-      'Optionally ask more about each family member. These fields are shown in the side panel after the interface’s own questions: the name, sex assigned at birth and, when it is asked, gender identity.',
+      'Optionally ask more about each family member. These questions come last in the side panel, after the interface’s own questions about the person and how they are related.',
     description:
-      'Description of the additional person fields section. The side panel is where the participant describes each person they add. Gender identity is asked only when the stage is set to ask it.',
+      'Description of the additional person fields section. The side panel is where the participant describes each person they add. The interface’s own questions are the person’s name, gender identity (when the stage asks it) and sex assigned at birth, and then how the person is related to others in the family.',
   },
   personFormFieldLabel: {
     id: 'protocolBuilder.pedigree.personFormFieldLabel',
@@ -800,7 +804,7 @@ export const familyPedigreeMessages = defineMessages({
   personFormReservedRefusal: {
     id: 'protocolBuilder.pedigree.personFormReservedRefusal',
     defaultMessage:
-      'The interface already records this attribute itself, as one of its person attributes or as the answer to a nomination prompt, so these fields cannot collect it as well. Choose another attribute, or remove the field.',
+      'The interface already records this attribute itself, so these fields cannot collect it as well. Choose another attribute, or remove the field.',
     description:
       'Refusal shown when an additional person field collects an attribute already chosen as one of the Family Pedigree’s own person attributes (name, gender identity, sex assigned at birth or participant marker) or as the attribute a nomination prompt sets.',
   },

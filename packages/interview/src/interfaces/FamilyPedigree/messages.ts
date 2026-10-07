@@ -11,7 +11,7 @@ export const messages = defineMessages({
     id: 'interview.familyPedigree.you',
     defaultMessage: 'You',
     description:
-      'Label shown beneath the participant’s own symbol in their family tree.',
+      'Label shown inside the participant’s own symbol in their family tree.',
   },
   relativeTerm: {
     id: 'interview.familyPedigree.relativeTerm',
@@ -94,34 +94,34 @@ export const messages = defineMessages({
     defaultMessage:
       '{isYou, select, true {Add your parent} other {Add a parent of {name}}}',
     description:
-      'Title of the side panel used to add a parent of a family member. {name} is that family member’s name or “Unnamed”.',
+      'Title of the side panel used to add a parent of a family member. {name} is that family member’s name or, when they have none, how they are related to the participant, such as “Maternal grandmother”, or “Family member” when they are not connected to the participant.',
   },
   addSiblingTitle: {
     id: 'interview.familyPedigree.addSiblingTitle',
     defaultMessage:
       '{isYou, select, true {Add your sibling} other {Add a sibling of {name}}}',
     description:
-      'Title of the side panel used to add a sibling of a family member. {name} is that family member’s name or “Unnamed”.',
+      'Title of the side panel used to add a sibling of a family member. {name} is that family member’s name or, when they have none, how they are related to the participant, such as “Maternal grandmother”, or “Family member” when they are not connected to the participant.',
   },
   addPartnerTitle: {
     id: 'interview.familyPedigree.addPartnerTitle',
     defaultMessage:
       '{isYou, select, true {Add your partner} other {Add a partner of {name}}}',
     description:
-      'Title of the side panel used to add a partner of a family member. {name} is that family member’s name or “Unnamed”.',
+      'Title of the side panel used to add a partner of a family member. {name} is that family member’s name or, when they have none, how they are related to the participant, such as “Maternal grandmother”, or “Family member” when they are not connected to the participant.',
   },
   addChildTitle: {
     id: 'interview.familyPedigree.addChildTitle',
     defaultMessage:
       '{isYou, select, true {Add your child} other {Add a child of {name}}}',
     description:
-      'Title of the side panel used to add a child of a family member. {name} is that family member’s name or “Unnamed”.',
+      'Title of the side panel used to add a child of a family member. {name} is that family member’s name or, when they have none, how they are related to the participant, such as “Maternal grandmother”, or “Family member” when they are not connected to the participant.',
   },
   editTitle: {
     id: 'interview.familyPedigree.editTitle',
     defaultMessage: '{isYou, select, true {About you} other {About {name}}}',
     description:
-      'Title of the side panel showing the details about a family member. {name} is that family member’s name or “Unnamed”.',
+      'Title of the side panel showing the details about a family member. {name} is that family member’s name or, when they have none, how they are related to the participant, such as “Maternal grandmother”, or “Family member” when they are not connected to the participant.',
   },
   aboutThisPerson: {
     id: 'interview.familyPedigree.aboutThisPerson',
@@ -146,7 +146,7 @@ export const messages = defineMessages({
     defaultMessage:
       '{personIsYou, select, true {Are you still together with {partner}?} other {{partnerIsYou, select, true {Are you still together?} other {Are they still together with {partner}?}}}}',
     description:
-      'Yes/no question in the details panel about one of the family member’s partnerships: whether it is current, rather than separated or ended. {partner} is the partner’s name or “Unnamed”.',
+      'Yes/no question in the details panel about one of the family member’s partnerships: whether it is current, rather than separated or ended. {partner} is the partner’s name or, when they have none, how they are related to the participant, such as “Maternal grandmother”, or “Family member” when they are not connected to the participant.',
   },
   parentLinkKindLabel: {
     id: 'interview.familyPedigree.parentLinkKindLabel',
@@ -160,7 +160,7 @@ export const messages = defineMessages({
     defaultMessage:
       '{parentIsYou, select, true {Did you carry the pregnancy?} other {Did {parent} carry the pregnancy?}}',
     description:
-      'Yes/no question in the details panel: whether this biological parent was pregnant with the family member. {parent} is the parent’s name or “Unnamed”.',
+      'Yes/no question in the details panel: whether this biological parent was pregnant with the family member. {parent} is the parent’s name or, when they have none, how they are related to the participant, such as “Maternal grandmother”, or “Family member” when they are not connected to the participant.',
   },
   moreAboutThisPerson: {
     id: 'interview.familyPedigree.moreAboutThisPerson',
@@ -451,7 +451,7 @@ export const messages = defineMessages({
     id: 'interview.familyPedigree.removeConfirmTitle',
     defaultMessage: 'Remove {name}?',
     description:
-      'Title of the confirmation shown before removing a family member. {name} is their name or “Unnamed”.',
+      'Title of the confirmation shown before removing a family member. {name} is their name or, when they have none, how they are related to the participant, such as “Maternal grandmother”, or “Family member” when they are not connected to the participant.',
   },
   removeConfirmDescription: {
     id: 'interview.familyPedigree.removeConfirmDescription',

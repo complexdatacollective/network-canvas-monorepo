@@ -55,7 +55,7 @@ export type InterfaceOwnedOptionSetKey =
 /**
  * Declares a reference as a stage-managed OPTION LIST: the variable's options
  * belong to the stage that binds it, because the stage attaches meaning to
- * each option (the Family Pedigree's kin words for each gender identity).
+ * each option (the Family Pedigree's kinship words for each gender identity).
  * Editing the options anywhere else would leave that meaning describing
  * options that no longer exist.
  *
@@ -70,7 +70,7 @@ export type InterfaceOwnedOptionSetKey =
 export type StageManagedOptionsDescriptor = {
   /**
    * Researcher-facing description of what the stage decides about the
-   * options ("the kin words each option takes"), as a whole phrase.
+   * options ("the kinship words each option takes"), as a whole phrase.
    */
   owner: string;
 };

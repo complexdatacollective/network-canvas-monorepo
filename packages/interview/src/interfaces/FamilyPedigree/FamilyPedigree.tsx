@@ -1288,7 +1288,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
               nodeWidth={nodeWidth}
               nodeHeight={nodeHeight}
               // Room around each person for the add menu that appears beside,
-              // above and below them, and for their name beneath.
+              // above and below them.
               rowGapRatio={1.4}
               columnGapRatio={1.4}
               renderNode={(personId) => {

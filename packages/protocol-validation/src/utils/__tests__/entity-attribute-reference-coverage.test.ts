@@ -73,7 +73,7 @@ const EXPECTED_OWNED_OPTION_SETS = [
 ];
 
 const EXPECTED_STAGE_MANAGED_OPTION_OWNERS = [
-  'the kin words each option takes',
+  'the kinship words each option takes',
 ];
 
 // The descriptors themselves, by the same traversal as countTagged.

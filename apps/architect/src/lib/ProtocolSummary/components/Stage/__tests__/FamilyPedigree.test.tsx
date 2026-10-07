@@ -93,7 +93,7 @@ describe('Protocol Summary family pedigree', () => {
     expect(screen.getByText('Gender identity')).toBeInTheDocument();
     expect(
       screen.getByText(
-        'Not asked. Relatives are described by their sex assigned at birth.',
+        'Not asked. Words such as mother or brother follow sex assigned at birth.',
       ),
     ).toBeInTheDocument();
     expect(screen.queryByText('Gender identity words')).toBeNull();
@@ -182,7 +182,7 @@ describe('Protocol Summary family pedigree', () => {
     // Said once: only the first prompt carries a limit.
     expect(screen.getAllByText('Who can be selected')).toHaveLength(1);
     expect(
-      screen.getByText('Only people assigned female at birth'),
+      screen.getByText('Anyone except people assigned male at birth'),
     ).toBeInTheDocument();
     expect(screen.getAllByText('Attribute')).toHaveLength(2);
   });

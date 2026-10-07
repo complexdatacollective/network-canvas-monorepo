@@ -201,7 +201,7 @@ describe('writing the answers an attribute offers', () => {
 
       await waitFor(() =>
         expect(outcome()).toBe(
-          'refused: These options are managed by the “Family Pedigree” stage, which decides the kin words each one takes. Edit them there.',
+          'refused: These options are managed by the “Family Pedigree” stage, which decides the kinship words each one takes. Edit them there.',
         ),
       );
       expect(harness.host.store.read(familyMemberSection)).toEqual(before);

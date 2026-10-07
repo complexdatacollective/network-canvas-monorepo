@@ -2719,7 +2719,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       const lockedIssue =
         !result.success &&
         result.error.issues.find((i) =>
-          i.message.includes('must use its fixed set of options'),
+          i.message.includes('must keep its fixed options'),
         );
       expect(lockedIssue).toBeFalsy();
     });
@@ -2825,8 +2825,8 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         const issue = result.error.issues.find(
           (i) =>
             i.message.includes(
-              'FamilyPedigree sex assigned at birth attribute "sab"',
-            ) && i.message.includes('must use its fixed set of options'),
+              'The sex assigned at birth attribute "Sab" used by a Family Pedigree stage',
+            ) && i.message.includes('must keep its fixed options'),
         );
         expect(issue).toBeDefined();
         expect(issue?.path).toEqual([
@@ -2852,8 +2852,8 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         const issue = result.error.issues.find(
           (i) =>
             i.message.includes(
-              'FamilyPedigree family relationship kind attribute "kind"',
-            ) && i.message.includes('must use its fixed set of options'),
+              'The family relationship kind attribute "Kind" used by a Family Pedigree stage',
+            ) && i.message.includes('must keep its fixed options'),
         );
         expect(issue).toBeDefined();
         expect(issue?.path).toEqual([
@@ -2883,8 +2883,8 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         const issue = result.error.issues.find(
           (i) =>
             i.message.includes(
-              'FamilyPedigree sex assigned at birth attribute "sab"',
-            ) && i.message.includes('must use its fixed set of options'),
+              'The sex assigned at birth attribute "Sab" used by a Family Pedigree stage',
+            ) && i.message.includes('must keep its fixed options'),
         );
         expect(issue).toBeDefined();
       }

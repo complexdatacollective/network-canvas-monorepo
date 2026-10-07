@@ -419,6 +419,17 @@ describe('the attribute slots', () => {
   });
 });
 
+describe('the person attributes section', () => {
+  it('says that a person’s symbol comes from the person type’s shape in the codebook', async () => {
+    const harness = openFixture();
+    await harness.opened();
+
+    expect(
+      await screen.findByText(/A person’s symbol in the interview comes from/),
+    ).toHaveTextContent('map the shape to that attribute there');
+  });
+});
+
 describe('asking about gender identity', () => {
   const genderIdentitySwitch = () =>
     screen.findByRole('switch', { name: 'Ask about gender identity' });
@@ -430,7 +441,7 @@ describe('asking about gender identity', () => {
     expect(await genderIdentitySwitch()).toBeChecked();
     expect(
       screen.getByText(
-        'When off, relatives are described by their sex assigned at birth.',
+        'When off, the question isn’t asked, and words such as mother or brother follow each person’s sex assigned at birth.',
       ),
     ).toBeVisible();
     expect(
@@ -843,7 +854,7 @@ describe('the gender identity words', () => {
       'Feminine words (mother, sister)',
       'Masculine words (father, brother)',
       'Neutral words (parent, sibling)',
-      'Not known (named from sex assigned at birth)',
+      'Not known (neutral words; biological mother or father for a biological parent)',
     ]);
   });
 
@@ -1063,10 +1074,10 @@ describe('the wording', () => {
     await harness.opened();
 
     expect(await choice(/^Everyday kinship words/)).toHaveTextContent(
-      'Each person’s words come from their gender identity when this stage asks about it, and from their sex assigned at birth when it does not.',
+      'A person’s words come from their gender identity when this stage asks about it, and from their sex assigned at birth when it does not.',
     );
     expect(await choice(/^Egg parent and sperm parent/)).toHaveTextContent(
-      'every other relative gets a neutral word',
+      'Every other relative gets a neutral word',
     );
     expect(await choice(/^Let the participant choose/)).toHaveTextContent(
       'when they first reach the stage',
@@ -1201,7 +1212,7 @@ describe('the nomination prompts', () => {
     );
     await harness.user.click(
       within(dialog).getByRole('option', {
-        name: 'Only people assigned female at birth',
+        name: 'Anyone except people assigned male at birth',
       }),
     );
     await addThePrompt(harness);
@@ -1268,7 +1279,7 @@ describe('the nomination prompts', () => {
     const dialog = await screen.findByRole('dialog');
     expect(
       await within(dialog).findByRole('option', {
-        name: 'Only people assigned female at birth',
+        name: 'Anyone except people assigned male at birth',
       }),
     ).toHaveAttribute('aria-selected', 'true');
     await harness.user.click(

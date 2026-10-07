@@ -43,9 +43,9 @@ const messages = defineMessages({
   genderIdentityNotAsked: {
     id: 'architect.protocolSummary.stage.familyPedigree.genderIdentityNotAsked',
     defaultMessage:
-      'Not asked. Relatives are described by their sex assigned at birth.',
+      'Not asked. Words such as mother or brother follow sex assigned at birth.',
     description:
-      'Value shown beside the gender identity label in the printable protocol summary when the Family Pedigree stage does not ask about gender identity, saying what the kinship words follow instead.',
+      'Value shown beside the gender identity label in the printable protocol summary when the Family Pedigree stage does not ask about gender identity, saying what the kinship words (mother, brother, parent) follow instead.',
   },
   genderIdentityTerms: {
     id: 'architect.protocolSummary.stage.familyPedigree.genderIdentityTerms',
@@ -79,9 +79,10 @@ const messages = defineMessages({
   },
   genderWordsUnknown: {
     id: 'architect.protocolSummary.stage.familyPedigree.genderWordsUnknown',
-    defaultMessage: 'Not known (named from sex assigned at birth)',
+    defaultMessage:
+      'Not known (neutral words; biological mother or father for a biological parent)',
     description:
-      'Printable protocol summary name of the kinship words for an option meaning the person’s gender is not known: a biological parent is named from their sex assigned at birth, such as biological mother.',
+      'Printable protocol summary name of the kinship words for an option meaning the person’s gender is not known. Every relative gets neutral words, such as parent or sibling, except a biological parent whose sex assigned at birth is known, who is called biological mother or biological father.',
   },
   sexAssignedAtBirth: {
     id: 'architect.protocolSummary.stage.familyPedigree.sexAssignedAtBirth',
@@ -133,9 +134,10 @@ const messages = defineMessages({
   },
   completenessEnforcementRequired: {
     id: 'architect.protocolSummary.stage.familyPedigree.completenessEnforcementRequired',
-    defaultMessage: 'Participants cannot continue until it is complete.',
+    defaultMessage:
+      'Participants cannot continue until the required relatives and details are recorded.',
     description:
-      'Printable protocol summary text for a completeness requirement that stops the participant continuing until the required relatives are recorded.',
+      'Printable protocol summary text for a completeness requirement that stops the participant continuing until the required relatives, and the required details about each person, are recorded.',
   },
   completenessEnforcementRecommended: {
     id: 'architect.protocolSummary.stage.familyPedigree.completenessEnforcementRecommended',
@@ -187,15 +189,15 @@ const messages = defineMessages({
   },
   nominationLimitFemale: {
     id: 'architect.protocolSummary.stage.familyPedigree.nominationLimitFemale',
-    defaultMessage: 'Only people assigned female at birth',
+    defaultMessage: 'Anyone except people assigned male at birth',
     description:
-      'Printable protocol summary text for a nomination prompt that only people whose sex assigned at birth is female can be selected for.',
+      'Printable protocol summary text for a nomination prompt that leaves out only the people whose sex assigned at birth is male. Everyone else can still be selected.',
   },
   nominationLimitMale: {
     id: 'architect.protocolSummary.stage.familyPedigree.nominationLimitMale',
-    defaultMessage: 'Only people assigned male at birth',
+    defaultMessage: 'Anyone except people assigned female at birth',
     description:
-      'Printable protocol summary text for a nomination prompt that only people whose sex assigned at birth is male can be selected for.',
+      'Printable protocol summary text for a nomination prompt that leaves out only the people whose sex assigned at birth is female. Everyone else can still be selected.',
   },
   scopeParents: {
     id: 'architect.protocolSummary.stage.familyPedigree.scopeParents',

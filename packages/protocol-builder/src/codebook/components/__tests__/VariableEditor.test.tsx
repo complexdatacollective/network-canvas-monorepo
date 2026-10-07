@@ -326,7 +326,7 @@ describe('VariableEditor', () => {
       openManaged(submitting(), ['Family Pedigree']);
 
       const table = screen.getByRole('table', {
-        name: 'These options are managed by the “Family Pedigree” stage, which decides the kin words each one takes. Edit them there.',
+        name: 'These options are managed by the “Family Pedigree” stage, which decides the kinship words each one takes. Edit them there.',
       });
       expect(within(table).getByText('Woman')).toBeInTheDocument();
       expect(
@@ -342,7 +342,7 @@ describe('VariableEditor', () => {
 
       expect(
         screen.getByRole('table', {
-          name: 'These options are managed by the stages “Family”, “Household”, which decide the kin words each one takes. Edit them in any of those stages.',
+          name: 'These options are managed by the stages “Family”, “Household”, which decide the kinship words each one takes. Edit them in any of those stages.',
         }),
       ).toBeInTheDocument();
     });

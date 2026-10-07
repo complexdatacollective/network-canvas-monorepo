@@ -71,7 +71,7 @@ const GenderIdentitySchema = z.strictObject({
     usage: 'unvalidatedAttribute',
     requireType: ['categorical'],
     stageManagedOptions: {
-      owner: 'the kin words each option takes',
+      owner: 'the kinship words each option takes',
     },
   }),
   // Which kinship words each option takes (mother or father, sister or
@@ -83,8 +83,10 @@ const GenderIdentitySchema = z.strictObject({
 });
 
 /**
- * Binds the interface to the person node type: the attributes it collects for
- * every family member, in the side panel, before any researcher-defined field.
+ * Binds the interface to the person node type: the attributes it records about
+ * every family member. The name, gender identity (where asked) and sex
+ * assigned at birth are asked in the side panel, before any researcher-defined
+ * field; the participant marker is set by the interface itself.
  */
 export const NodeConfigurationSchema = z.strictObject({
   // Text attribute holding the person's name, typed in the side panel.
@@ -190,7 +192,8 @@ export const FAMILY_PEDIGREE_BUILD_PROMPT_ID = 'pedigree';
 /**
  * A question asked of the whole family once it is drawn, such as "Who in
  * your family has had heart disease?". The participant selects everyone it
- * applies to, which sets a boolean attribute on them; anyone not selected
+ * applies to, which sets a boolean attribute to true on them. Selecting
+ * someone again deselects them and sets it to false; anyone never selected
  * has it unset.
  */
 const NominationPromptSchema = z.strictObject({
@@ -216,10 +219,13 @@ const NominationPromptSchema = z.strictObject({
 /**
  * The stage a participant draws their family on.
  *
- * The canvas opens on the participant. Selecting anyone offers to add their
- * parent, sibling, partner or child; each new person is described in a side
- * panel that collects the interface's own node configuration attributes, the
- * attributes the new relationship needs, and then the researcher's `form` fields.
+ * The canvas opens on the participant. A person's add menu (parent, sibling,
+ * partner or child) shows while the pointer is over them or keyboard focus is
+ * on them, and after a tap once their details panel closes; selecting a person
+ * opens their details in a side panel. Each new person is described in that
+ * panel: the interface's own questions (name, gender identity where asked,
+ * sex assigned at birth), how they are related to the person they are added
+ * to, and then the researcher's `form` fields.
  */
 export const familyPedigreeStage = baseStageSchema.extend({
   type: z.literal('FamilyPedigree'),

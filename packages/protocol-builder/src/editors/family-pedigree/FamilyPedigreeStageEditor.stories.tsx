@@ -106,7 +106,7 @@ export const AddingANominationPrompt: Story = {
     ).toHaveAttribute('aria-selected', 'true');
     await expect(
       dialog.getByRole('option', {
-        name: 'Only people assigned female at birth',
+        name: 'Anyone except people assigned male at birth',
       }),
     ).toBeInTheDocument();
   },

@@ -24,7 +24,7 @@ import { useProtocolContext } from '../state/protocolContext.ts';
  *
  * Some attributes' options belong to one kind of stage, because that stage
  * decides what each option means (the Family Pedigree's gender identity: which
- * kin words each takes). Everywhere else in Architect those options are shown
+ * kinship words each takes). Everywhere else in Architect those options are shown
  * read-only, so this is the one place they can be added, removed, relabelled or
  * given a different value. It opens the codebook's own attribute editor, the
  * same one that shows them read-only elsewhere, and writes through the same

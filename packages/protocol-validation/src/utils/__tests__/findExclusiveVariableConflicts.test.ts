@@ -279,7 +279,7 @@ describe('findExclusiveVariableConflicts', () => {
     expect(
       result.error?.issues.some((issue) =>
         issue.message.includes(
-          'sex assigned at birth attribute "sexAssignedAtBirth" must use its fixed set of options',
+          'The sex assigned at birth attribute "sexAssignedAtBirth" used by a Family Pedigree stage must keep its fixed options.',
         ),
       ),
     ).toBe(true);
@@ -297,7 +297,7 @@ describe('findStageManagedOptionBindings', () => {
       {
         subject: { entity: 'node', type: 'family_member' },
         variableId: 'genderIdentity',
-        descriptor: { owner: 'the kin words each option takes' },
+        descriptor: { owner: 'the kinship words each option takes' },
         stageId: 'fp1',
         stageLabel: 'Family Pedigree',
         path: ['stages', 0, 'nodeConfiguration', 'genderIdentity', 'attribute'],

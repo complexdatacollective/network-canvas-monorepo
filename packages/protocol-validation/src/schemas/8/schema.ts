@@ -5,6 +5,7 @@ import {
   findExclusiveVariableConflicts,
   findInterfaceOwnedOptionBindings,
 } from '../../utils/findExclusiveVariableConflicts.ts';
+import { variableNameFor } from '../../utils/referenceSubjects.ts';
 import { validateReferences } from '../../utils/validateEntityAttributeReferences.ts';
 import {
   entityExists,
@@ -546,6 +547,13 @@ const validateSharedFormContradictions = (
   }
 };
 
+/** A stage type as a researcher reads it: "a Family Pedigree stage". */
+const stageNameFor = (type: string | undefined): string => {
+  if (!type) return 'a stage';
+  const name = type.replace(/([a-z])([A-Z])/g, '$1 $2');
+  return `${/^[aeiou]/i.test(name) ? 'an' : 'a'} ${name} stage`;
+};
+
 const subjectKey = (subject: StageSubject): string =>
   subject.entity === 'ego' ? 'ego' : `${subject.entity}:${subject.type}`;
 
@@ -640,7 +648,7 @@ const ProtocolSchema = z
     for (const conflict of findExclusiveVariableConflicts(protocol, hits)) {
       ctx.addIssue({
         code: 'custom' as const,
-        message: `Attribute "${conflict.variableName}" is set by ${conflict.owner.owner}, so it cannot be used anywhere else in this protocol.`,
+        message: `Attribute "${conflict.variableName}" is set by ${conflict.owner.owner}, so nothing else in this protocol may set it.`,
         path: conflict.path,
       });
     }
@@ -677,7 +685,7 @@ const ProtocolSchema = z
           : undefined;
       ctx.addIssue({
         code: 'custom' as const,
-        message: `${owningStage?.type ?? 'Stage'} ${optionSet.label} attribute "${binding.variableId}" must use its fixed set of options and cannot be modified.`,
+        message: `The ${optionSet.label} attribute "${variableNameFor(protocol, subject, binding.variableId)}" used by ${stageNameFor(owningStage?.type)} must keep its fixed options.`,
         path: binding.path,
       });
     }

@@ -672,7 +672,7 @@ describe('a prompt whose attribute’s values an interface owns', () => {
 /**
  * A prompt binned by an attribute whose OPTIONS a stage manages.
  *
- * The Family Pedigree decides which kin words each gender identity option
+ * The Family Pedigree decides which kinship words each gender identity option
  * takes, so the options are its to change. A categorical bin may still assign
  * the attribute (the attribute stays on offer, and writing it is not
  * restricted), but the bins are shown rather than edited, under a note naming
@@ -680,7 +680,7 @@ describe('a prompt whose attribute’s values an interface owns', () => {
  */
 describe('a prompt whose attribute’s options a stage manages', () => {
   const MANAGED_NOTE =
-    'These options are managed by the “Family Pedigree” stage, which decides the kin words each one takes. Edit them there.';
+    'These options are managed by the “Family Pedigree” stage, which decides the kinship words each one takes. Edit them there.';
 
   it('offers the attribute, and shows its options read-only under a note naming the stage', async () => {
     const harness = renderStageEditor(
