@@ -71,10 +71,7 @@ import {
   type DraftStructureError,
   type HeadState,
 } from '../protocol/draft-structure.ts';
-import {
-  createProtocolSyncServer,
-  SYNC_TRANSACTION_POLICIES,
-} from '../protocol/sync.ts';
+import { createProtocolSyncServer } from '../protocol/sync.ts';
 import { requireProtocol } from '../rpc/team-scope.ts';
 import type { SecretsCipherApi } from '../secrets/cipher.ts';
 import {
@@ -182,9 +179,11 @@ export type RefactorOutcome =
 /** A write's outcome and the events it logged, for the caller to publish. */
 export type Published<T> = { outcome: T; events: LoggedProtocolEvent[] };
 
-export type AcquireResult = Published<AcquireOutcome | undefined> & {
-  /** Present when this call took the lease, so the keeper can renew it. */
-  lease?: { epoch: bigint };
+export type AcquireResult = Published<AcquireOutcome | undefined>;
+
+/** `stillHeld` is another section the owner holds, if any, for its presence. */
+type ReleaseResult = Published<undefined> & {
+  stillHeld?: ProtocolSectionId;
 };
 
 export function sessionOwner(session: ProtocolBuilderSession): string {
@@ -588,57 +587,9 @@ export const acquireLock: (
       return {
         outcome: { lock: 'held', ...state } satisfies AcquireOutcome,
         events,
-        lease: { epoch: lease.epoch },
       };
     }).pipe(provideCaller(session.principal)),
   );
-});
-
-export const renewLease: (
-  session: ProtocolBuilderSession,
-  sectionId: ProtocolSectionId,
-  epoch: bigint,
-) => Effect.Effect<Lease | null, SqlError.SqlError, Database> = Effect.fn(
-  'protocolBuilder.renewLease',
-)(function* (
-  session: ProtocolBuilderSession,
-  sectionId: ProtocolSectionId,
-  epoch: bigint,
-) {
-  return yield* noAuditTransaction(
-    SYNC_TRANSACTION_POLICIES.renew,
-    session.access,
-    sqlErrorsOnly(
-      sync.renew(session.draftId, sectionId, sessionOwner(session), epoch),
-    ),
-  );
-});
-
-/**
- * Renews every live lease the caller's tab holds on the draft, and names them.
- *
- * Asked when a watch opens, because the keeper that renewed them lives in the
- * process that granted them: after a restart, or a reconnect to another
- * process, nothing else would keep them alive past the TTL.
- */
-export const adoptLeases: (
-  session: ProtocolBuilderSession,
-) => Effect.Effect<
-  { sectionId: ProtocolSectionId; epoch: bigint }[],
-  SqlError.SqlError,
-  Database
-> = Effect.fn('protocolBuilder.adoptLeases')(function* (
-  session: ProtocolBuilderSession,
-) {
-  const renewed = yield* noAuditTransaction(
-    SYNC_TRANSACTION_POLICIES.renewHeld,
-    session.access,
-    sqlErrorsOnly(sync.renewHeld(session.draftId, sessionOwner(session))),
-  );
-  return renewed.map((lease) => ({
-    sectionId: makeSectionId(parseSectionId(lease.sectionId)),
-    epoch: lease.epoch,
-  }));
 });
 
 /**
@@ -649,7 +600,7 @@ export const releaseLock: (
   session: ProtocolBuilderSession,
   sectionId: ProtocolSectionId,
 ) => Effect.Effect<
-  Published<undefined>,
+  ReleaseResult,
   DraftStructureError | Forbidden | SqlError.SqlError,
   Database
 > = Effect.fn('protocolBuilder.releaseLock')(function* (
@@ -665,63 +616,59 @@ export const releaseLock: (
       yield* requireProtocol(session.access, session.protocolId);
       yield* lockDraftHead(teamId, session.draftId);
       const lease = yield* lockLease(teamId, session.draftId, sectionId);
-      if (lease === undefined || !lease.live || lease.owner !== owner) {
-        return { outcome: undefined, events: [] };
+      const releasing =
+        lease !== undefined && lease.live && lease.owner === owner;
+      if (releasing) {
+        yield* sqlErrorsOnly(
+          sync.release(session.draftId, sectionId, owner, lease.epoch),
+        );
       }
-      yield* sqlErrorsOnly(
-        sync.release(session.draftId, sectionId, owner, lease.epoch),
-      );
-      const events = yield* appendProtocolEvents(teamId, session.draftId, [
-        { kind: 'lock', sectionId },
-      ]);
-      return { outcome: undefined, events };
+      const events = releasing
+        ? yield* appendProtocolEvents(teamId, session.draftId, [
+            { kind: 'lock', sectionId },
+          ])
+        : [];
+      const stillHeld = yield* heldByOwner(teamId, session.draftId, owner);
+      return {
+        outcome: undefined,
+        events,
+        ...(stillHeld === undefined ? {} : { stillHeld }),
+      };
     }).pipe(provideCaller(session.principal)),
   );
 });
 
-/**
- * Releases everything one connection still holds. A dropped socket must not
- * leave colleagues waiting out a lease they can see nobody using.
- */
-export const releaseConnection: (
-  session: ProtocolBuilderSession,
-  sectionIds: readonly ProtocolSectionId[],
+/** The first live section `owner` holds on the draft, if any. */
+const heldByOwner: (
+  teamId: string,
+  draftId: string,
+  owner: string,
 ) => Effect.Effect<
-  Published<undefined>,
-  DraftStructureError | SqlError.SqlError,
-  Database
-> = Effect.fn('protocolBuilder.releaseConnection')(function* (
-  session: ProtocolBuilderSession,
-  sectionIds: readonly ProtocolSectionId[],
+  ProtocolSectionId | undefined,
+  SqlError.SqlError,
+  Transaction
+> = Effect.fn('protocolBuilder.heldByOwner')(function* (
+  teamId: string,
+  draftId: string,
+  owner: string,
 ) {
-  const owner = sessionOwner(session);
-  const teamId = session.access.teamId;
-  if (sectionIds.length === 0) return { outcome: undefined, events: [] };
-  return yield* noAuditTransaction(
-    'protocolBuilder.releaseConnection',
-    session.access,
-    Effect.gen(function* () {
-      yield* lockDraftHead(teamId, session.draftId);
-      const records: ProtocolEventRecord[] = [];
-      for (const sectionId of sectionIds) {
-        const lease = yield* lockLease(teamId, session.draftId, sectionId);
-        if (lease === undefined || !lease.live || lease.owner !== owner) {
-          continue;
-        }
-        yield* sqlErrorsOnly(
-          sync.release(session.draftId, sectionId, owner, lease.epoch),
-        );
-        records.push({ kind: 'lock', sectionId });
-      }
-      const events = yield* appendProtocolEvents(
-        teamId,
-        session.draftId,
-        records,
-      );
-      return { outcome: undefined, events };
-    }),
-  );
-});
+  const { tx } = yield* Transaction;
+  const rows = yield* tx
+    .select({ sectionId: leases.sectionId })
+    .from(leases)
+    .where(
+      and(
+        eq(leases.draftId, draftId),
+        eq(leases.teamId, teamId),
+        eq(leases.owner, owner),
+        sql`${leases.expiresAt} > clock_timestamp()`,
+      ),
+    )
+    .orderBy(leases.sectionId)
+    .limit(1);
+  const held = rows[0]?.sectionId;
+  return held === undefined ? undefined : makeSectionId(parseSectionId(held));
+}, sqlErrorsOnly);
 
 type WrittenSections = {
   head: HeadState;

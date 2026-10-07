@@ -1,17 +1,34 @@
+import { randomUUID } from 'node:crypto';
+
 import {
+  type Cause,
   Clock,
   Context,
   Effect,
   Exit,
   Fiber,
   Layer,
-  Ref,
+  Option,
   Schedule,
   type Scope,
 } from 'effect';
+import type { SqlError } from 'effect/sql';
 
-import type { Lease } from '@codaco/studio-sync/server';
-import type { ProtocolSectionId } from '@codaco/studio-sync/taxonomy';
+import { Database } from '../db/client.ts';
+import { MaintenanceTriggers } from '../http/middleware/maintenance.ts';
+import {
+  connectSocket,
+  contactKey,
+  expireConnection,
+  releaseOwner,
+  renewConnections,
+  upsertContact,
+  type AdoptedLease,
+  type LocalRegistration,
+} from './connections.ts';
+import type { LoggedProtocolEvent } from './events.ts';
+import { sessionOwner, type ProtocolBuilderSession } from './host.ts';
+import { socketClosure } from './socket-closure.ts';
 
 /** A third of the lease TTL: two renewals may be lost before one expires. */
 export const RENEW_INTERVAL_MS = 10_000;
@@ -26,205 +43,267 @@ export const RECONNECT_GRACE_MS = 20_000;
 
 export const IDLE_MS = 5 * 60_000;
 
-export type HeldLease = {
-  readonly renew: Effect.Effect<Lease | null, unknown>;
-  readonly draftId: string;
-  readonly sectionId: ProtocolSectionId;
-  readonly owner: string;
+/** How often one owner's unary calls reach the database, per replica. */
+const CONTACT_INTERVAL_MS = 30_000;
+
+type Contact = {
+  readonly registration: LocalRegistration;
+  readonly until: number;
+  readonly contactedAt: number | undefined;
 };
 
-type Entry = HeldLease & {
-  readonly generation: number;
-  readonly touchedAt: number;
-};
+type Grace = { readonly token: symbol; readonly fiber: Fiber.Fiber<void> };
 
-type OwnerConnections = {
-  readonly open: number;
-  readonly grace?: Fiber.Fiber<void>;
-  readonly ends: ReadonlyMap<string, Effect.Effect<void>>;
-};
+const ownerKey = (session: ProtocolBuilderSession) =>
+  `${session.draftId}\u0000${sessionOwner(session)}`;
 
-const leaseKey = (draftId: string, sectionId: string, owner: string) =>
-  `${draftId} ${sectionId} ${owner}`;
+const registrationKey = (registration: LocalRegistration) =>
+  `${registration.session.draftId}\u0000${registration.key}`;
 
 export class Leases extends Context.Service<
   Leases,
   {
+    /**
+     * Records this watch as connected, and renews the leases its tab already
+     * holds, for as long as the scope is open. When the scope closes the row
+     * is expired and, unless the tab comes back within the reconnect grace on
+     * any replica, its leases are given back and `onReleased` is told what
+     * that logged.
+     */
     readonly connect: (
-      owner: string,
-      draftId: string,
-      end: Effect.Effect<void>,
-    ) => Effect.Effect<void, never, Scope.Scope>;
-    readonly hold: (lease: HeldLease) => Effect.Effect<void>;
-    readonly drop: (
-      draftId: string,
-      sectionId: ProtocolSectionId,
-      owner: string,
-    ) => Effect.Effect<void>;
+      session: ProtocolBuilderSession,
+      onReleased: (
+        events: ReadonlyArray<LoggedProtocolEvent>,
+      ) => Effect.Effect<void>,
+    ) => Effect.Effect<
+      ReadonlyArray<AdoptedLease>,
+      SqlError.SqlError,
+      Scope.Scope
+    >;
+    /** Keeps a calling owner's leases renewed until it has been idle a while. */
+    readonly contact: (session: ProtocolBuilderSession) => Effect.Effect<void>;
+    /** Whether this replica has a watch open, or a grace pending, for `owner`. */
     readonly connected: (owner: string) => Effect.Effect<boolean>;
-    readonly heldSections: (
-      draftId: string,
-      owner: string,
-    ) => Effect.Effect<ReadonlyArray<ProtocolSectionId>>;
-    readonly touch: (owner: string) => Effect.Effect<void>;
   }
 >()('@studio/Leases') {
-  static readonly layer: Layer.Layer<Leases> = Layer.effect(
+  static readonly layer: Layer.Layer<
+    Leases,
+    never,
+    Database | MaintenanceTriggers
+  > = Layer.effect(
     Leases,
     Effect.gen(function* () {
+      const database = yield* Database;
+      const triggers = yield* MaintenanceTriggers;
       const scope = yield* Effect.scope;
-      const held = yield* Ref.make<ReadonlyMap<string, Entry>>(new Map());
-      const connections = yield* Ref.make<
-        ReadonlyMap<string, OwnerConnections>
-      >(new Map());
-      let generations = 0;
+      // Mutated only between yields, so no fiber sees a half-made change.
+      const sockets = new Map<string, LocalRegistration>();
+      const contacts = new Map<string, Contact>();
+      const graces = new Map<string, Grace>();
 
-      const forget = (key: string, generation: number) =>
-        Ref.update(held, (current) => {
-          if (current.get(key)?.generation !== generation) return current;
-          const next = new Map(current);
-          next.delete(key);
-          return next;
-        });
+      const withDatabase = Effect.provideService(Database, database);
 
-      const endStranded = Effect.fnUntraced(function* (owner: string) {
-        const ends = yield* Ref.modify(connections, (current) => {
-          const state = current.get(owner);
-          if (state === undefined || state.open > 0)
-            return [undefined, current];
-          const next = new Map(current);
-          next.delete(owner);
-          return [state.ends, next];
-        });
-        if (ends === undefined) return;
-        for (const end of ends.values()) {
-          // Runs from a timer, so a failing release must not take the keeper
-          // down with it.
-          yield* end.pipe(
-            Effect.catchCause((cause) =>
-              Effect.logError('Releasing a stranded lease owner failed', cause),
-            ),
-          );
-        }
-      });
+      const closed = Effect.map(socketClosure(triggers), Option.isSome);
 
-      const renewDue = Effect.gen(function* () {
+      const logFailure = (message: string) =>
+        Effect.catchCause((cause: Cause.Cause<unknown>) =>
+          Effect.logWarning(message, cause),
+        );
+
+      const holdsSocket = (owner: string) =>
+        [...sockets.values()].some(
+          (registration) => ownerKey(registration.session) === owner,
+        );
+
+      const tick = Effect.gen(function* () {
+        if (yield* closed) return;
         const at = yield* Clock.currentTimeMillis;
-        const open = yield* Ref.get(connections);
-        for (const [key, lease] of yield* Ref.get(held)) {
-          if (!open.has(lease.owner) && at - lease.touchedAt > IDLE_MS) {
-            yield* forget(key, lease.generation);
+        for (const [owner, contact] of contacts) {
+          if (contact.until <= at) contacts.delete(owner);
+        }
+        const byTeam = new Map<string, LocalRegistration[]>();
+        for (const registration of [
+          ...sockets.values(),
+          ...[...contacts.values()].map((contact) => contact.registration),
+        ]) {
+          const teamId = registration.session.access.teamId;
+          const team = byTeam.get(teamId) ?? [];
+          team.push(registration);
+          byTeam.set(teamId, team);
+        }
+        for (const local of byTeam.values()) {
+          const [first] = local;
+          if (first === undefined) continue;
+          const pass = yield* Effect.exit(
+            withDatabase(renewConnections(first.session.access, local)),
+          );
+          // Registrations stay: an unanswered pass says nothing about whether
+          // the connections are still there, and the next tick asks again.
+          if (Exit.isFailure(pass)) {
+            yield* Effect.logWarning(
+              'Renewing protocol-builder connections failed',
+              pass.cause,
+            );
             continue;
           }
-          const renewed = yield* Effect.exit(lease.renew);
-          // An unanswered renewal says nothing about whose lease it is: the
-          // entry stays and the next tick asks again.
-          if (Exit.isFailure(renewed)) continue;
-          if (renewed.value === null) yield* forget(key, lease.generation);
+          for (const missing of pass.value.missing) {
+            yield* reconnect(missing).pipe(
+              withDatabase,
+              logFailure('Re-recording a protocol-builder connection failed'),
+            );
+          }
         }
       });
 
-      yield* renewDue.pipe(
+      const reconnect = (registration: LocalRegistration) => {
+        const key = registrationKey(registration);
+        if (registration.kind === 'socket') {
+          return sockets.has(key)
+            ? Effect.asVoid(
+                connectSocket(registration.session, registration.key),
+              )
+            : Effect.void;
+        }
+        const contact = contacts.get(ownerKey(registration.session));
+        return contact !== undefined &&
+          registrationKey(contact.registration) === key
+          ? upsertContact(registration.session)
+          : Effect.void;
+      };
+
+      yield* tick.pipe(
         Effect.schedule(Schedule.spaced(RENEW_INTERVAL_MS)),
         Effect.forkScoped,
       );
 
+      const graceFor = (
+        session: ProtocolBuilderSession,
+        onReleased: (
+          events: ReadonlyArray<LoggedProtocolEvent>,
+        ) => Effect.Effect<void>,
+      ) =>
+        Effect.gen(function* () {
+          const owner = ownerKey(session);
+          let wait = RECONNECT_GRACE_MS;
+          while (true) {
+            yield* Effect.sleep(wait);
+            if (yield* closed) return;
+            // Dropped before the release, which may fail: a contact left
+            // renewing would keep the leases forever.
+            contacts.delete(owner);
+            const outcome = yield* Effect.uninterruptible(
+              Effect.gen(function* () {
+                const release = yield* withDatabase(releaseOwner(session));
+                if (release.released) yield* onReleased(release.events);
+                return release;
+              }),
+            );
+            if (outcome.released) return;
+            wait = outcome.retryInMs;
+          }
+        }).pipe(logFailure('Releasing a stranded lease owner failed'));
+
+      const startGrace = (
+        session: ProtocolBuilderSession,
+        onReleased: (
+          events: ReadonlyArray<LoggedProtocolEvent>,
+        ) => Effect.Effect<void>,
+      ) =>
+        Effect.gen(function* () {
+          const owner = ownerKey(session);
+          if (holdsSocket(owner) || graces.has(owner)) return;
+          const token = Symbol(owner);
+          let finished = false;
+          const fiber = yield* graceFor(session, onReleased).pipe(
+            Effect.ensuring(
+              Effect.sync(() => {
+                finished = true;
+                if (graces.get(owner)?.token === token) graces.delete(owner);
+              }),
+            ),
+            Effect.forkIn(scope),
+          );
+          // A fiber forked into a scope that is already closing ends at once.
+          if (!finished) graces.set(owner, { token, fiber });
+        });
+
+      const disconnect = (
+        registration: LocalRegistration,
+        onReleased: (
+          events: ReadonlyArray<LoggedProtocolEvent>,
+        ) => Effect.Effect<void>,
+      ) =>
+        Effect.gen(function* () {
+          sockets.delete(registrationKey(registration));
+          yield* withDatabase(expireConnection(registration)).pipe(
+            logFailure('Expiring a protocol-builder connection failed'),
+          );
+          yield* startGrace(registration.session, onReleased);
+        });
+
       const connect = (
-        owner: string,
-        draftId: string,
-        end: Effect.Effect<void>,
+        session: ProtocolBuilderSession,
+        onReleased: (
+          events: ReadonlyArray<LoggedProtocolEvent>,
+        ) => Effect.Effect<void>,
       ) =>
         Effect.acquireRelease(
           Effect.gen(function* () {
-            const grace = yield* Ref.modify(connections, (current) => {
-              const state = current.get(owner);
-              const ends = new Map(state?.ends);
-              ends.set(draftId, end);
-              const next = new Map(current);
-              next.set(owner, { open: (state?.open ?? 0) + 1, ends });
-              return [state?.grace, next];
-            });
-            if (grace !== undefined) yield* Fiber.interrupt(grace);
+            const grace = graces.get(ownerKey(session));
+            if (grace !== undefined) {
+              graces.delete(ownerKey(session));
+              yield* Fiber.interrupt(grace.fiber);
+            }
+            const registration: LocalRegistration = {
+              session,
+              key: `${session.connectionId}:${randomUUID()}`,
+              kind: 'socket',
+            };
+            const adopted = yield* withDatabase(
+              connectSocket(session, registration.key),
+            );
+            sockets.set(registrationKey(registration), registration);
+            return { registration, adopted };
           }),
-          () =>
-            Effect.gen(function* () {
-              const stranded = yield* Ref.modify(connections, (current) => {
-                const state = current.get(owner);
-                if (state === undefined) return [false, current];
-                const open = state.open - 1;
-                return [
-                  open === 0,
-                  new Map(current).set(owner, { ...state, open }),
-                ];
-              });
-              if (!stranded) return;
-              const grace = yield* Effect.sleep(RECONNECT_GRACE_MS).pipe(
-                Effect.andThen(Effect.uninterruptible(endStranded(owner))),
-                Effect.forkIn(scope),
-              );
-              const kept = yield* Ref.modify(connections, (current) => {
-                const state = current.get(owner);
-                if (state?.open !== 0 || state.grace !== undefined) {
-                  return [false, current];
-                }
-                return [true, new Map(current).set(owner, { ...state, grace })];
-              });
-              if (!kept) yield* Fiber.interrupt(grace);
-            }),
-        ).pipe(Effect.asVoid);
+          ({ registration }) => disconnect(registration, onReleased),
+        ).pipe(Effect.map(({ adopted }) => adopted));
 
-      const hold = (lease: HeldLease) =>
+      const contact = (session: ProtocolBuilderSession) =>
         Effect.gen(function* () {
-          const touchedAt = yield* Clock.currentTimeMillis;
-          generations += 1;
-          const entry: Entry = { ...lease, generation: generations, touchedAt };
-          yield* Ref.update(held, (current) =>
-            new Map(current).set(
-              leaseKey(lease.draftId, lease.sectionId, lease.owner),
-              entry,
-            ),
-          );
-        });
-
-      const drop = (
-        draftId: string,
-        sectionId: ProtocolSectionId,
-        owner: string,
-      ) =>
-        Ref.update(held, (current) => {
-          const next = new Map(current);
-          next.delete(leaseKey(draftId, sectionId, owner));
-          return next;
-        });
+          if (yield* closed) return;
+          const at = yield* Clock.currentTimeMillis;
+          const owner = ownerKey(session);
+          const existing = contacts.get(owner);
+          const due =
+            existing?.contactedAt === undefined ||
+            at - existing.contactedAt >= CONTACT_INTERVAL_MS;
+          contacts.set(owner, {
+            registration: {
+              session,
+              key: contactKey(session),
+              kind: 'contact',
+            },
+            until: at + IDLE_MS,
+            contactedAt: existing?.contactedAt,
+          });
+          if (!due) return;
+          yield* withDatabase(upsertContact(session));
+          const current = contacts.get(owner);
+          if (current !== undefined) {
+            contacts.set(owner, { ...current, contactedAt: at });
+          }
+        }).pipe(logFailure('Recording protocol-builder contact failed'));
 
       const connected = (owner: string) =>
-        Ref.get(connections).pipe(Effect.map((current) => current.has(owner)));
-
-      const heldSections = (draftId: string, owner: string) =>
-        Ref.get(held).pipe(
-          Effect.map((current) =>
-            [...current.values()]
-              .filter(
-                (lease) => lease.draftId === draftId && lease.owner === owner,
-              )
-              .map((lease) => lease.sectionId),
-          ),
+        Effect.sync(
+          () =>
+            [...sockets.values()].some(
+              (registration) => sessionOwner(registration.session) === owner,
+            ) ||
+            [...graces.keys()].some((key) => key.endsWith(`\u0000${owner}`)),
         );
 
-      const touch = (owner: string) =>
-        Effect.gen(function* () {
-          const at = yield* Clock.currentTimeMillis;
-          yield* Ref.update(held, (current) => {
-            const next = new Map(current);
-            for (const [key, lease] of current) {
-              if (lease.owner === owner)
-                next.set(key, { ...lease, touchedAt: at });
-            }
-            return next;
-          });
-        });
-
-      return Leases.of({ connect, hold, drop, connected, heldSections, touch });
+      return Leases.of({ connect, contact, connected });
     }),
   );
 }

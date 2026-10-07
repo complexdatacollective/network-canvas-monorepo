@@ -150,7 +150,7 @@ export const openSession = Effect.fn('protocolBuilder.openSession')(function* (
   yield* charge('rpc_team', session.access.teamId);
   const leases = yield* Leases;
   const staged = yield* StagedImports;
-  yield* leases.touch(sessionOwner(session));
+  yield* leases.contact(session);
   yield* staged.touch(ownerPrefix(session));
   const now = yield* Clock.currentTimeMillis;
   yield* staged.expire(now - IDLE_MS, leases.connected);

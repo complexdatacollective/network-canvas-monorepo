@@ -294,6 +294,11 @@ const OPENERS: Record<string, { count: number; why: string }> = {
       count: 1,
       why: 'the editor listing a draft’s sections, read-only',
     },
+  [`${SERVER}/src/protocol-builder/connections.ts › protocolBuilder.livePresence › TenantScope.open`]:
+    {
+      count: 1,
+      why: 'who is connected to a draft, across replicas, read-only',
+    },
   [`${SERVER}/src/protocol-builder/handlers.ts › TenantScope.open`]: {
     count: 2,
     why: 'the event backlog a watch replays, and a resource inspection with its committed asset key, read-only',

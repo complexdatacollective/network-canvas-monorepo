@@ -23,11 +23,11 @@ import type { SectionDoc } from '@codaco/studio-sync/apply';
 import {
   sectionId as makeSectionId,
   parseSectionId,
+  type ProtocolSectionId,
 } from '@codaco/studio-sync/taxonomy';
 
 import { provideCaller } from '../audit/actor.ts';
 import { type AuthService } from '../auth/service.ts';
-import { Database } from '../db/client.ts';
 import { TenantScope } from '../db/tenant.ts';
 import { openAssetKey } from '../protocol/asset-keys.ts';
 import { type RateLimiter } from '../rate-limit/limiter.ts';
@@ -37,7 +37,6 @@ import { ObjectStore } from '../storage/object-store.ts';
 import { readProtocolEvents, type LoggedProtocolEvent } from './events.ts';
 import {
   acquireLock,
-  adoptLeases,
   authorizeCaller,
   create,
   deleteEntityType,
@@ -46,11 +45,8 @@ import {
   headSection,
   listSectionIds,
   readSection,
-  releaseConnection,
   releaseLock,
-  renewLease,
   sessionOwner,
-  sessionPresence,
   submit,
   type ProtocolBuilderSession,
   type RefactorOutcome,
@@ -71,7 +67,6 @@ import {
   ownerPrefix,
   stillSignedIn,
   WatchCutoff,
-  WsConnection,
 } from './session.ts';
 import type { WriteOperation, WriteReceipt } from './writeReceipts.ts';
 import { readWriteReceipt } from './writeReceipts.ts';
@@ -155,7 +150,6 @@ export const ProtocolBuilderHandlers: Layer.Layer<
   | StagedImports
 > = ProtocolBuilderGroup.toLayer(
   Effect.gen(function* () {
-    const database = yield* Database;
     const leases = yield* Leases;
     const presence = yield* Presence;
     const events = yield* ProtocolEvents;
@@ -170,12 +164,40 @@ export const ProtocolBuilderHandlers: Layer.Layer<
         ? events.publish(session.draftId, entries)
         : Effect.void;
 
+    // Presence is a courtesy to colleagues: failing to show it must not fail
+    // the call that changed it, whose own write has already committed.
     const publishPresence = (session: ProtocolBuilderSession) =>
-      Effect.flatMap(presence.list(session.draftId), (present) =>
+      Effect.flatMap(presence.list(session), (present) =>
         events.publish(session.draftId, [
           { event: { type: 'presence', present } },
         ]),
+      ).pipe(
+        Effect.catchCause((cause) =>
+          Effect.logWarning(
+            'Publishing protocol-builder presence failed',
+            cause,
+          ),
+        ),
       );
+
+    const showMode = (
+      session: ProtocolBuilderSession,
+      sectionId: ProtocolSectionId | undefined,
+    ) =>
+      presence
+        .setMode(
+          session,
+          sectionId === undefined ? 'viewing' : 'editing',
+          sectionId,
+        )
+        .pipe(
+          Effect.catchCause((cause) =>
+            Effect.logWarning(
+              'Recording protocol-builder presence failed',
+              cause,
+            ),
+          ),
+        );
 
     const stagingFor = (session: ProtocolBuilderSession, editId: string) =>
       staged.for(stagingKey(session, editId), sessionOwner(session));
@@ -189,19 +211,18 @@ export const ProtocolBuilderHandlers: Layer.Layer<
         (assets) => assets?.document ?? {},
       );
 
-    const endOwner = (session: ProtocolBuilderSession): Effect.Effect<void> =>
-      Effect.gen(function* () {
-        const owner = sessionOwner(session);
-        const held = yield* leases.heldSections(session.draftId, owner);
-        // Dropped before the release, which may fail: a keeper left renewing
-        // would hold them forever.
-        for (const sectionId of held) {
-          yield* leases.drop(session.draftId, sectionId, owner);
-        }
-        yield* staged.releaseMatching(ownerPrefix(session));
-        const released = yield* Effect.orDie(releaseConnection(session, held));
-        yield* publish(session, released.events);
-      }).pipe(Effect.provideService(Database, database));
+    /**
+     * Runs only once the tab is known to have no live socket on any replica:
+     * its staging goes with its leases, and colleagues see both.
+     */
+    const onReleased =
+      (session: ProtocolBuilderSession) =>
+      (entries: ReadonlyArray<LoggedProtocolEvent>) =>
+        Effect.gen(function* () {
+          yield* staged.releaseMatching(ownerPrefix(session));
+          yield* publish(session, entries);
+          yield* publishPresence(session);
+        });
 
     const inspectWithCommittedKey = (
       session: ProtocolBuilderSession,
@@ -251,29 +272,10 @@ export const ProtocolBuilderHandlers: Layer.Layer<
             if (result.outcome === undefined) {
               return yield* new SectionNotFound({ sectionId });
             }
-            if (result.lease !== undefined) {
-              const epoch = result.lease.epoch;
-              yield* leases.hold({
-                renew: Effect.provideService(
-                  renewLease(session, sectionId, epoch),
-                  Database,
-                  database,
-                ),
-                draftId: session.draftId,
-                sectionId,
-                owner: sessionOwner(session),
-              });
-              // A unary caller's connection is the cookie session, never ended:
-              // a participant joined for it could never be removed.
-              if (Option.isSome(yield* Effect.serviceOption(WsConnection))) {
-                yield* presence.put(
-                  session.draftId,
-                  sessionPresence(session, 'editing', sectionId),
-                );
-              }
-            }
+            const held = result.outcome.lock === 'held';
+            if (held) yield* showMode(session, sectionId);
             yield* publish(session, result.events);
-            if (result.lease !== undefined) yield* publishPresence(session);
+            if (held) yield* publishPresence(session);
             return result.outcome;
           }),
         );
@@ -290,18 +292,7 @@ export const ProtocolBuilderHandlers: Layer.Layer<
               protocolId,
               releaseLock(session, sectionId),
             );
-            const owner = sessionOwner(session);
-            yield* leases.drop(session.draftId, sectionId, owner);
-            const [stillHeld] = yield* leases.heldSections(
-              session.draftId,
-              owner,
-            );
-            yield* presence.setMode(
-              session.draftId,
-              session.connectionId,
-              stillHeld === undefined ? 'viewing' : 'editing',
-              stillHeld,
-            );
+            yield* showMode(session, result.stillHeld);
             yield* publish(session, result.events);
             if (result.events.length > 0) yield* publishPresence(session);
           }),
@@ -354,40 +345,14 @@ export const ProtocolBuilderHandlers: Layer.Layer<
                 ).pipe(provideCaller(session.principal)),
               ),
             );
-            yield* leases.connect(
-              sessionOwner(session),
-              session.draftId,
-              endOwner(session),
-            );
-            // The tab's leases may have been granted by another process, or
-            // by this one before a restart; from here on this process's
-            // keeper renews them. A failure ends the watch, and the client's
-            // retry asks again.
-            const adopted = yield* command(protocolId, adoptLeases(session));
-            for (const { sectionId, epoch } of adopted) {
-              yield* leases.hold({
-                renew: Effect.provideService(
-                  renewLease(session, sectionId, epoch),
-                  Database,
-                  database,
-                ),
-                draftId: session.draftId,
-                sectionId,
-                owner: sessionOwner(session),
-              });
-            }
-            const editing = adopted[0]?.sectionId;
-            // Registered before the join, so it runs after the join's own
-            // release.
+            // Registered before the connection, so it runs after the
+            // connection's row has been expired and no longer lists it.
             yield* Effect.addFinalizer(() => publishPresence(session));
-            yield* presence.join(
-              session.draftId,
-              sessionPresence(
-                session,
-                editing === undefined ? 'viewing' : 'editing',
-                editing,
-              ),
-            );
+            // The tab's leases may have been granted by another replica, or
+            // by this one before a restart; from here on this replica renews
+            // them. A failure ends the watch, and the client's retry asks
+            // again.
+            yield* Effect.orDie(leases.connect(session, onReleased(session)));
             yield* publishPresence(session);
             const lastBacklog = backlog.at(-1)?.cursor;
             let last = lastBacklog === undefined ? from : BigInt(lastBacklog);

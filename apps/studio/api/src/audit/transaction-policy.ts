@@ -45,10 +45,35 @@ export const NO_AUDIT_TRANSACTION_POLICIES = {
     kind: 'none',
     reason: 'Lease release is explicitly excluded from the team audit log.',
   },
-  'protocolBuilder.releaseConnection': {
+  'protocolBuilder.connect': {
     kind: 'none',
     reason:
-      'A closed connection giving its leases back is release, recorded for the same reason and excluded for the same one.',
+      'Recording an open watch and renewing the leases its tab already holds is connection bookkeeping and lease renewal, which the audit-log design excludes.',
+  },
+  'protocolBuilder.liveness': {
+    kind: 'none',
+    reason:
+      'Extending the expiry of open connections and the leases their owners hold is a heartbeat, excluded like any lease renewal.',
+  },
+  'protocolBuilder.contact': {
+    kind: 'none',
+    reason:
+      'Noting that a tab is still calling, so its leases stay renewed between calls, is connection bookkeeping rather than an action on team data.',
+  },
+  'protocolBuilder.expireConnection': {
+    kind: 'none',
+    reason:
+      'Marking a closed watch expired is connection bookkeeping; no state a team can see changes.',
+  },
+  'protocolBuilder.setMode': {
+    kind: 'none',
+    reason:
+      'Switching what a connection shows its colleagues between viewing and editing is presence, which the audit-log design excludes.',
+  },
+  'protocolBuilder.releaseOwner': {
+    kind: 'none',
+    reason:
+      'A tab that stayed away past the reconnect grace giving its leases back is release, excluded from the team audit log like any other.',
   },
   'sync.createDraft': {
     kind: 'none',

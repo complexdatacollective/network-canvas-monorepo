@@ -1,91 +1,49 @@
-import { Context, Effect, Layer, Ref, type Scope } from 'effect';
+import { Context, Effect, Layer } from 'effect';
+import type { SqlError } from 'effect/sql';
 
 import type { Presence as PresenceValue } from '@codaco/protocol-builder-core/contract/schemas';
+import type { ProtocolSectionId } from '@codaco/studio-sync/taxonomy';
 
-type Present = ReadonlyMap<string, ReadonlyMap<string, PresenceValue>>;
+import { Database } from '../db/client.ts';
+import { livePresence, setSocketMode } from './connections.ts';
+import type { ProtocolBuilderSession } from './host.ts';
 
-const withEntry = (
-  present: Present,
-  draftId: string,
-  presence: PresenceValue,
-): Present =>
-  new Map(present).set(
-    draftId,
-    new Map(present.get(draftId)).set(presence.sessionId, presence),
-  );
-
+/**
+ * Who is on a protocol, read from the connection rows every replica keeps, so
+ * a colleague connected through another replica is listed too. Joining and
+ * leaving are `Leases.connect`'s: a watch's row is its presence.
+ */
 export class Presence extends Context.Service<
   Presence,
   {
-    readonly join: (
-      draftId: string,
-      presence: PresenceValue,
-    ) => Effect.Effect<void, never, Scope.Scope>;
-    readonly put: (
-      draftId: string,
-      presence: PresenceValue,
-    ) => Effect.Effect<void>;
-    readonly leave: (draftId: string, sessionId: string) => Effect.Effect<void>;
     readonly setMode: (
-      draftId: string,
-      sessionId: string,
+      session: ProtocolBuilderSession,
       mode: PresenceValue['mode'],
-      sectionId?: PresenceValue['sectionId'],
-    ) => Effect.Effect<void>;
+      sectionId?: ProtocolSectionId,
+    ) => Effect.Effect<void, SqlError.SqlError>;
     readonly list: (
-      draftId: string,
-    ) => Effect.Effect<ReadonlyArray<PresenceValue>>;
+      session: ProtocolBuilderSession,
+    ) => Effect.Effect<ReadonlyArray<PresenceValue>, SqlError.SqlError>;
   }
 >()('@studio/Presence') {
-  static readonly layer: Layer.Layer<Presence> = Layer.effect(
+  static readonly layer: Layer.Layer<Presence, never, Database> = Layer.effect(
     Presence,
     Effect.gen(function* () {
-      const present = yield* Ref.make<Present>(new Map());
-
-      const put = (draftId: string, presence: PresenceValue) =>
-        Ref.update(present, (current) => withEntry(current, draftId, presence));
-
-      const leave = (draftId: string, sessionId: string) =>
-        Ref.update(present, (current) => {
-          const inDraft = current.get(draftId);
-          if (inDraft?.has(sessionId) !== true) return current;
-          const remaining = new Map(inDraft);
-          remaining.delete(sessionId);
-          const next = new Map(current);
-          if (remaining.size === 0) next.delete(draftId);
-          else next.set(draftId, remaining);
-          return next;
-        });
-
-      const join = (draftId: string, presence: PresenceValue) =>
-        Effect.acquireRelease(put(draftId, presence), () =>
-          leave(draftId, presence.sessionId),
-        );
+      const database = yield* Database;
+      const withDatabase = Effect.provideService(Database, database);
 
       const setMode = (
-        draftId: string,
-        sessionId: string,
+        session: ProtocolBuilderSession,
         mode: PresenceValue['mode'],
-        sectionId?: PresenceValue['sectionId'],
-      ) =>
-        Ref.update(present, (current) => {
-          const was = current.get(draftId)?.get(sessionId);
-          if (was === undefined) return current;
-          return withEntry(current, draftId, {
-            sessionId: was.sessionId,
-            userId: was.userId,
-            displayName: was.displayName,
-            mode,
-            ...(sectionId === undefined ? {} : { sectionId }),
-          });
-        });
+        sectionId?: ProtocolSectionId,
+      ) => withDatabase(setSocketMode(session, mode, sectionId));
 
-      const list = (draftId: string) =>
-        Ref.get(present).pipe(
-          Effect.map((current) => [...(current.get(draftId)?.values() ?? [])]),
+      const list = (session: ProtocolBuilderSession) =>
+        withDatabase(livePresence(session.access, [session.draftId])).pipe(
+          Effect.map((present) => present.get(session.draftId) ?? []),
         );
 
-      return Presence.of({ join, put, leave, setMode, list });
+      return Presence.of({ setMode, list });
     }),
   );
 }
