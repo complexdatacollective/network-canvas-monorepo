@@ -1,6 +1,5 @@
 'use client';
 
-import { Tooltip } from '@base-ui/react/tooltip';
 import {
   AnimatePresence,
   motion,
@@ -19,13 +18,20 @@ import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
 import type { FormSubmitHandler } from '@codaco/fresco-ui/form/store/types';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
-import { usePortalContainer } from '@codaco/fresco-ui/PortalContainer';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@codaco/fresco-ui/Tooltip';
+import { cx } from '@codaco/fresco-ui/utils/cva';
 
 import { runtimeMessages as messages } from '../i18n/runtimeMessages';
 import PassphraseCheckStatus from '../interfaces/Anonymisation/PassphraseCheckStatus';
 import { protocolPassphraseLengthRules } from '../interfaces/Anonymisation/passphraseRules';
 import { usePassphrase } from '../interfaces/Anonymisation/usePassphrase';
 import { interfaceMessages } from '../interfaces/messages';
+import type { NavigationOrientation } from '../Shell';
 import { getProtocolStages } from '../store/modules/protocol';
 import Overlay from './Overlay';
 
@@ -36,14 +42,23 @@ const transition: Transition = {
   delay: 0.1,
 };
 
-export default function PassphrasePrompter() {
+type PassphrasePrompterProps = {
+  orientation: NavigationOrientation;
+  /** Placement of the trigger within the navigation bar. */
+  className?: string;
+};
+
+export default function PassphrasePrompter({
+  orientation,
+  className,
+}: PassphrasePrompterProps) {
   const intl = useAppIntl();
   const { showPassphrasePrompter, passphraseChosen } = usePassphrase();
   // Whether the open dialog chooses the interview's passphrase or asks for
   // it, fixed when it opens so that it does not change while it closes.
   const [overlay, setOverlay] = useState({ show: false, choosing: false });
   const [showTooltip, setShowTooltip] = useState(false);
-  const portalContainer = usePortalContainer();
+  const descriptionId = useId();
 
   const willChange = useWillChange();
 
@@ -54,17 +69,26 @@ export default function PassphrasePrompter() {
 
   return (
     <>
-      <Tooltip.Provider>
-        <Tooltip.Root open={showTooltip} onOpenChange={setShowTooltip}>
+      <TooltipProvider>
+        <Tooltip open={showTooltip} onOpenChange={setShowTooltip}>
           <AnimatePresence>
             {showPassphrasePrompter && (
-              <Tooltip.Trigger
+              <TooltipTrigger
                 render={
                   <motion.button
+                    type="button"
                     aria-label={intl.formatMessage(messages.enterPassphrase)}
+                    aria-describedby={descriptionId}
                     key="lock"
                     layout
-                    className="bg-platinum group flex size-[calc(4.8*var(--theme-root-size))] cursor-pointer items-center justify-center rounded-full"
+                    className={cx(
+                      'bg-platinum focusable group flex aspect-square w-[calc(4.8*var(--theme-root-size))] shrink-0 cursor-pointer items-center justify-center rounded-full',
+                      // On the narrowest phones a horizontal bar cannot fit
+                      // every control at full size, so this gives up width
+                      // rather than pushing the forward button off screen.
+                      orientation === 'horizontal' && 'min-w-12 shrink',
+                      className,
+                    )}
                     initial={{ scale: 0, opacity: 0 }}
                     animate={{
                       scale: 1,
@@ -81,32 +105,25 @@ export default function PassphrasePrompter() {
                       {/* oxlint-disable-next-line formatjs/no-literal-string-in-jsx -- Decorative status glyph; the button has a localized accessible name. */}
                       {'🔑'}
                     </motion.span>
+                    {/* The tooltip opens only on hover or focus, so screen
+                        readers get the same explanation as the button's
+                        description. */}
+                    <span id={descriptionId} hidden>
+                      <AppMessage message={messages.passphraseNeeded} />
+                    </span>
                   </motion.button>
                 }
               />
             )}
           </AnimatePresence>
-          <Tooltip.Portal container={portalContainer ?? undefined}>
-            <Tooltip.Positioner sideOffset={5} side="right">
-              <Tooltip.Popup
-                render={
-                  <motion.div
-                    key="tooltip"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="bg-surface flex w-96 flex-col justify-center gap-4 rounded-xl p-6 shadow-xl"
-                  />
-                }
-              >
-                <div>
-                  <AppMessage message={messages.passphraseNeeded} />
-                </div>
-                <Tooltip.Arrow className="fill-surface" />
-              </Tooltip.Popup>
-            </Tooltip.Positioner>
-          </Tooltip.Portal>
-        </Tooltip.Root>
-      </Tooltip.Provider>
+          <TooltipContent
+            side={orientation === 'vertical' ? 'right' : 'top'}
+            className="max-w-md"
+          >
+            <AppMessage message={messages.passphraseNeeded} />
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
       <PassphraseOverlay
         show={overlay.show}
         choosing={overlay.choosing}

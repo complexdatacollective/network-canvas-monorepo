@@ -26,7 +26,8 @@ const escapeRegExp = (text: string) =>
  * field and a line saying it was chosen earlier). Once the key is in force the
  * form is replaced by a success alert. When a later stage needs the key and it
  * is not in force, the shared PassphrasePrompter (🔑 button + dialog) appears
- * in the vertical nav, in the same choose or verify mode.
+ * in the navigation, in both the vertical rail and the horizontal bar, in the
+ * same choose or verify mode.
  *
  * Locators cite packages/interview/src/interfaces/Anonymisation/Anonymisation.tsx
  * and packages/interview/src/components/PassphrasePrompter.tsx.
@@ -139,7 +140,7 @@ export class AnonymisationFixture {
   }
 
   /**
-   * The 🔑 PassphrasePrompter button in the vertical nav. Only rendered while
+   * The 🔑 PassphrasePrompter button in the navigation. Only rendered while
    * a screen needs the interview's key and it is not in force.
    */
   prompterButton(): Locator {

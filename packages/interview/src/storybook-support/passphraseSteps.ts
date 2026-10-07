@@ -2,7 +2,7 @@ import { expect, screen, userEvent, waitFor, within } from 'storybook/test';
 
 /**
  * Play-function steps for the passphrase prompter: the key button in the
- * vertical navigation and the dialog it opens.
+ * navigation, in either orientation, and the dialog it opens.
  */
 
 // Deriving the key takes a moment, and longer under a loaded test run.

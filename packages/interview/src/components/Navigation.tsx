@@ -495,7 +495,13 @@ const Navigation = ({
           buttonRef={backButtonRef}
           data-testid="previous-button"
         />
-        {orientation === 'vertical' && <PassphrasePrompter />}
+        <PassphrasePrompter
+          orientation={orientation}
+          // Horizontally it joins the settings button at the leading edge,
+          // clear of the back and forward buttons. Sharing settings' `order-1`
+          // keeps it straight after settings, as it is in the DOM.
+          className={orientation === 'horizontal' ? 'order-1' : undefined}
+        />
         {stageNavigationEnabled ? (
           <motion.button
             type="button"

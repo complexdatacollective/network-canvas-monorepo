@@ -143,7 +143,7 @@ const meta: Meta = {
     docs: {
       description: {
         component:
-          "Shown in the vertical navigation when the screen needs the interview's passphrase and it is not in memory: before one has been chosen, or after the interview is resumed. The first passphrase of an interview is chosen and confirmed; any later one is accepted only if it matches it.",
+          "Shown in the navigation, as a side rail or a bottom bar, when the screen needs the interview's passphrase and it is not in memory: before one has been chosen, or after the interview is resumed. The first passphrase of an interview is chosen and confirmed; any later one is accepted only if it matches it.",
       },
     },
   },
