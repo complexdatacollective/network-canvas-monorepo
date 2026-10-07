@@ -17,6 +17,7 @@ import {
   type VariableValue,
 } from '@codaco/shared-consts';
 
+import { rememberEncryptedWrite } from '../../interfaces/Anonymisation/decryptionScope';
 import { generateSecureAttributes } from '../../interfaces/Anonymisation/utils';
 import {
   makeGetCodebookVariablesForEdgeType,
@@ -216,6 +217,13 @@ export const addNode = createAppAsyncThunk(
         variablesForType,
         passphrase,
       );
+    rememberEncryptedWrite(
+      thunkApi.getState,
+      passphrase,
+      initialAttributes,
+      encryptedAttributes,
+      secureAttributes ?? {},
+    );
 
     return {
       type,
@@ -334,6 +342,13 @@ export const updateNode = createAppAsyncThunk(
         variablesForType,
         passphrase,
       );
+    rememberEncryptedWrite(
+      thunkApi.getState,
+      passphrase,
+      attributePatch.set,
+      encryptedAttributes,
+      secureAttributes ?? {},
+    );
 
     return {
       nodeId,
