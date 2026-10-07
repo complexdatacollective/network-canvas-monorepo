@@ -822,7 +822,8 @@ const sessionReducer = createReducer(initialState, (builder) => {
             return node;
           }
 
-          const captured = Object.entries(snapshot).flatMap(([key, entry]) =>
+          const entries = Object.entries(snapshot);
+          const captured = entries.flatMap(([key, entry]) =>
             entry === null ? [] : [{ key, ...entry }],
           );
           const set = Object.fromEntries(
@@ -838,18 +839,17 @@ const sessionReducer = createReducer(initialState, (builder) => {
             ),
           );
 
-          // Clearing every captured key first drops any metadata the current
-          // value carries, so a restored value never pairs with another
-          // value's IV and salt.
-          const cleared = applyEntityAttributePatch(
+          // Setting a key drops the metadata its current value carries, so a
+          // restored value only ever pairs with its own captured IV and salt.
+          const patched = applyEntityAttributePatch(
             node[entityAttributesProperty],
             node[entitySecureAttributesMeta],
-            { set: {}, unset: Object.keys(snapshot) },
-          );
-          const patched = applyEntityAttributePatch(
-            cleared.attributes,
-            cleared.secureAttributes,
-            { set, unset: [] },
+            {
+              set,
+              unset: entries.flatMap(([key, entry]) =>
+                entry === null ? [key] : [],
+              ),
+            },
             secureSet,
           );
 

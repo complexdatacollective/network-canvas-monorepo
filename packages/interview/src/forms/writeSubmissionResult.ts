@@ -24,6 +24,23 @@ export function writeFailureMessage(
 }
 
 /**
+ * Why a write was refused, from the serialised error that `unwrap()` on the
+ * dispatched write rejects with.
+ */
+export function rejectedWriteMessage(error: unknown): MessageDescriptor {
+  const name =
+    typeof error === 'object' &&
+    error !== null &&
+    'name' in error &&
+    typeof error.name === 'string'
+      ? error.name
+      : undefined;
+  return isPassphraseRequiredError({ name })
+    ? runtimeMessages.protectedAnswersNotSaved
+    : runtimeMessages.submissionFailed;
+}
+
+/**
  * A form submission outcome for a write, so a refused write keeps the form
  * open with its values and an error rather than reporting success.
  */

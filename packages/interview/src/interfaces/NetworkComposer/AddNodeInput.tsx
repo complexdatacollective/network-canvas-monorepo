@@ -19,8 +19,11 @@ type AddNodeInputProps = {
   entityLabel: string;
   /** Codebook variable the quick-add name is written to. */
   targetVariable: string;
-  /** Create a node with the given name. The input stays open for the next one. */
-  onCreate: (name: string) => Promise<void>;
+  /**
+   * Create a node with the given name, resolving whether it was created. The
+   * input stays open for the next one, and keeps a name that was not saved.
+   */
+  onCreate: (name: string) => Promise<boolean>;
   /**
    * Context required for context-dependent validations like unique, sameAs,
    * etc. — forwarded to useField exactly as QuickNodeForm's quick-add field
@@ -121,8 +124,7 @@ function AddNodeField({
           // `required` — a rule-less variable behaves exactly as before).
           if (name === '') return;
 
-          await onCreate(name);
-          setFieldToReset({ name: targetVariable });
+          if (await onCreate(name)) setFieldToReset({ name: targetVariable });
         } finally {
           submissionInProgress.current = false;
           setIsSubmitting(false);
