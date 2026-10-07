@@ -1,21 +1,18 @@
 import type { StageSection } from '../../defineStageEditor.tsx';
 import CompletenessSection from './CompletenessSection.tsx';
 import FramingSection from './FramingSection.tsx';
-import GenderIdentitySection from './GenderIdentitySection.tsx';
 import NodeConfigurationSection from './NodeConfigurationSection.tsx';
 import NominationPromptsSection from './NominationPromptsSection.tsx';
 import PedigreePromptSection from './PedigreePromptSection.tsx';
 import PersonFormFieldsSection from './PersonFormFieldsSection.tsx';
 import RelationshipsSection from './RelationshipsSection.tsx';
 
-/** The attributes the interface records about every family member. */
+/**
+ * The attributes the interface records about every family member, including
+ * whether gender identity is asked and the kinship words each option takes.
+ */
 export const nodeConfiguration = (): StageSection => () => (
   <NodeConfigurationSection />
-);
-
-/** Whether gender identity is asked, and the kinship words each option takes. */
-export const genderIdentity = (): StageSection => () => (
-  <GenderIdentitySection />
 );
 
 /** How relationships between family members are recorded. */

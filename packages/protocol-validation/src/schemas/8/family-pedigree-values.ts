@@ -51,7 +51,11 @@ export type PedigreeDefaultGenderIdentityValue =
   (typeof PEDIGREE_DEFAULT_GENDER_IDENTITIES)[number]['value'];
 
 /**
- * Sex assigned at birth, shown beneath the symbol as AFAB, AMAB or UAAB.
+ * Sex assigned at birth. The interface reads it to name biological parents
+ * and donors by the gamete they gave, to know who could have carried a
+ * pregnancy, to check that a child's two genetic parents are possible, to
+ * choose the gendered framing's words when gender identity is not asked, and
+ * to limit a nomination prompt to one sex.
  */
 export const PEDIGREE_SEX_ASSIGNED_AT_BIRTH = [
   'female',

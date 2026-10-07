@@ -62,10 +62,6 @@ const INTERFACE_TEMPLATES: Partial<
     },
     background: DEFAULT_CIRCLES_BACKGROUND,
   },
-  FamilyPedigree: {
-    prompt:
-      'Add the members of your family. Select a person to add their relatives.',
-  },
 };
 
 /**

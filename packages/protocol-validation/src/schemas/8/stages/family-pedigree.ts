@@ -87,7 +87,7 @@ const GenderIdentitySchema = z.strictObject({
  * every family member, in the side panel, before any researcher-defined field.
  */
 export const NodeConfigurationSchema = z.strictObject({
-  // Text attribute holding the person's name, shown beneath their symbol.
+  // Text attribute holding the person's name, typed in the side panel.
   nameAttribute: entityAttributeReference({
     subject: 'stageSubject',
     usage: 'validatedAttribute',

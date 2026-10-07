@@ -37,7 +37,7 @@ export const familyPedigreeMessages = defineMessages({
   nameHint: {
     id: 'protocolBuilder.pedigree.nameHint',
     defaultMessage:
-      'A text attribute holding each person’s name, shown beneath their symbol on the pedigree.',
+      'A text attribute holding each person’s name. The participant types it in the side panel when describing each family member, and may leave it blank.',
     description: 'Guidance under the name attribute control.',
   },
   nameCreateLabel: {
@@ -50,7 +50,7 @@ export const familyPedigreeMessages = defineMessages({
     id: 'protocolBuilder.pedigree.genderIdentityTitle',
     defaultMessage: 'Ask about gender identity',
     description:
-      'Title of the switch, and of the section it opens, that makes a Family Pedigree ask each family member’s gender identity. Switched off, the question is not asked.',
+      'Title of the switch, and of the part of the person attributes section it opens, that makes a Family Pedigree ask each family member’s gender identity. A new stage has it switched on; switched off, the question is not asked.',
   },
   genderIdentityDescription: {
     id: 'protocolBuilder.pedigree.genderIdentityDescription',
@@ -58,13 +58,6 @@ export const familyPedigreeMessages = defineMessages({
       'When off, relatives are described by their sex assigned at birth.',
     description:
       'Explains what happens when the gender identity question is switched off: the kinship words (mother, brother, parent) follow the sex a person was assigned at birth instead.',
-  },
-  genderIdentityWaiting: {
-    id: 'protocolBuilder.pedigree.genderIdentityWaiting',
-    defaultMessage:
-      'Choose the node type before choosing the gender identity attribute.',
-    description:
-      'Shown in place of the gender identity section’s description while no node type has been chosen for the stage.',
   },
   genderIdentityClearTitle: {
     id: 'protocolBuilder.pedigree.genderIdentityClearTitle',
@@ -211,9 +204,9 @@ export const familyPedigreeMessages = defineMessages({
   sexAssignedAtBirthHint: {
     id: 'protocolBuilder.pedigree.sexAssignedAtBirthHint',
     defaultMessage:
-      'Shown beneath each person’s symbol. The interface sets the options this attribute offers, and they cannot be changed.',
+      'The interface uses this to name biological parents and donors, to work out who could have carried a pregnancy, to check that a child’s two biological parents are possible, to choose everyday kin words when gender identity is not asked, and to limit a nomination question to one sex assigned at birth. The interface sets this attribute’s options, and they cannot be changed.',
     description:
-      'Guidance under the sex assigned at birth attribute control. The options are a fixed list the interface owns.',
+      'Guidance under the sex assigned at birth attribute control, saying why the interface needs it. The options are a fixed list the interface owns. Kin words are the family words (mother, brother, parent). A nomination question is one question asked of the whole family, such as who has had a condition.',
   },
   sexAssignedAtBirthCreateLabel: {
     id: 'protocolBuilder.pedigree.sexAssignedAtBirthCreateLabel',
@@ -230,8 +223,9 @@ export const familyPedigreeMessages = defineMessages({
   egoHint: {
     id: 'protocolBuilder.pedigree.egoHint',
     defaultMessage:
-      'A true/false attribute the interface sets on the participant. Nothing else in the protocol may write it.',
-    description: 'Guidance under the participant marker attribute control.',
+      'The interface sets this true/false attribute to true on the participant’s own person. Use it in a stage filter to keep the participant out of later stages, such as a name generator or sociogram of their relatives, or to tell them apart in exports and analysis. Nothing else in the protocol may write it.',
+    description:
+      'Guidance under the participant marker attribute control. A stage filter is the set of rules, in the stage’s Stage filter section, that decide which nodes a stage shows. A name generator and a sociogram are kinds of interview stage.',
   },
   egoCreateLabel: {
     id: 'protocolBuilder.pedigree.egoCreateLabel',
@@ -519,13 +513,14 @@ export const familyPedigreeMessages = defineMessages({
   promptHint: {
     id: 'protocolBuilder.pedigree.promptHint',
     defaultMessage:
-      'Shown to the participant above the canvas while they draw their family. Tell them how to add their relatives.',
-    description: 'Guidance under the pedigree prompt field.',
+      'Shown to the participant above the canvas while they draw their family. Invite them to add the people in their family, and tell them how, for example: “Let’s map out your family. Tap or click a person to add their details, and hover over them (or tap them) to add their relatives.”',
+    description:
+      'Guidance under the pedigree prompt field. The example is written as it would read to a participant, and may be translated freely.',
   },
   promptPlaceholder: {
     id: 'protocolBuilder.pedigree.promptPlaceholder',
     defaultMessage:
-      'Add the members of your family. Select a person to add their relatives.',
+      'Let’s map out your family. Tap or click a person to add their details, and hover over them (or tap them) to add their relatives.',
     description:
       'Example shown inside the empty pedigree prompt field. Written as it would read to a participant.',
   },

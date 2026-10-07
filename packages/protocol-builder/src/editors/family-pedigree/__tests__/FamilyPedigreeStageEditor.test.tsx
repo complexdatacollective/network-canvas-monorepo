@@ -8,7 +8,6 @@ import {
 } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
-import { getInterfaceTemplate } from '../../../interfaces/templates.ts';
 import {
   attributeField,
   chooseAttributeById,
@@ -60,13 +59,21 @@ const openFixture = () =>
 /** A stage of this interface that does not exist yet, as a host creates one. */
 const openNewStage = () =>
   renderStageEditor({
-    stage: {
-      id: 'family-pedigree-new',
-      type: 'FamilyPedigree',
-      fields: getInterfaceTemplate('FamilyPedigree'),
-    },
+    create: { type: 'FamilyPedigree', position: 0 },
     editor: familyPedigreeEditor,
   });
+
+const PROMPT_TEXT =
+  'Add the people in your family. Select someone to add more.';
+
+/** Writes the prompt a new stage starts without. */
+const writePrompt = async (harness: StageEditorHarness): Promise<void> => {
+  await writeInto(
+    harness,
+    await screen.findByRole('textbox', { name: 'Prompt text' }),
+    PROMPT_TEXT,
+  );
+};
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -138,14 +145,12 @@ describe('the family pedigree stage editor', () => {
     await harness.roundTrip({ unowned: [] });
   });
 
-  it('opens a new stage on its default prompt with every slot empty', async () => {
+  it('opens a new stage with no prompt and every slot empty', async () => {
     openNewStage();
 
     expect(
       await screen.findByRole('textbox', { name: 'Prompt text' }),
-    ).toHaveTextContent(
-      'Add the members of your family. Select a person to add their relatives.',
-    );
+    ).toHaveTextContent('');
     // No person type yet, so there is nothing to bind attributes of.
     expect(screen.queryByText('Name', { selector: 'label' })).toBeNull();
   });
@@ -161,7 +166,6 @@ describe('the family pedigree stage editor', () => {
       await screen.findByRole('radio', { name: 'family member' }),
     );
     await bindSlot(harness, 'Name', 'fm_name');
-    await switchOnGenderIdentity(harness);
     await bindSlot(harness, 'Gender identity', 'genderIdentity');
     await bindSlot(harness, 'Sex assigned at birth', 'sexAssignedAtBirth');
     await bindSlot(harness, 'Participant marker', 'is_ego');
@@ -173,19 +177,16 @@ describe('the family pedigree stage editor', () => {
     await bindSlot(harness, 'Gestational carrier', 'isGestationalCarrier');
     await bindSlot(harness, 'Current partner', 'isCurrentPartner');
 
-    await harness.user.type(
-      screen.getByRole('textbox', { name: 'Stage name' }),
-      'Family',
-    );
+    await writePrompt(harness);
 
     const request = await harness.submit();
     expect(request?.stageDocument).toEqual({
-      id: 'family-pedigree-new',
+      id: expect.any(String),
       type: 'FamilyPedigree',
-      label: 'Family',
+      // Named for the person type and the interface until the researcher says otherwise.
+      label: expect.any(String),
       subject: { entity: 'node', type: 'family_member' },
-      prompt:
-        'Add the members of your family. Select a person to add their relatives.',
+      prompt: PROMPT_TEXT,
       nodeConfiguration: {
         nameAttribute: 'fm_name',
         genderIdentity: {
@@ -437,16 +438,64 @@ describe('asking about gender identity', () => {
     ).toBeVisible();
   });
 
-  it('is off for a new stage, which asks nothing about gender identity', async () => {
+  it('is on for a new stage, which waits for the attribute like any other slot', async () => {
     const harness = openNewStage();
     await harness.user.click(
       await screen.findByRole('radio', { name: 'family member' }),
     );
 
+    expect(await genderIdentitySwitch()).toBeChecked();
+    expect(
+      await screen.findByText('Gender identity', { selector: 'label' }),
+    ).toBeVisible();
+  });
+
+  it('is off for a stage that exists without it, and opening the stage does not add it', async () => {
+    const harness = renderStageEditor({
+      stage: familyPedigreeStageWith({
+        nodeConfiguration: {
+          nameAttribute: 'fm_name',
+          sexAssignedAtBirthAttribute: 'sexAssignedAtBirth',
+          egoAttribute: 'is_ego',
+        },
+      }),
+      editor: familyPedigreeEditor,
+    });
+    await harness.opened();
+
     expect(await genderIdentitySwitch()).not.toBeChecked();
     expect(
       screen.queryByText('Gender identity', { selector: 'label' }),
     ).toBeNull();
+
+    const request = await harness.submit();
+    expect(nodeConfigurationOf(request?.stageDocument)).toEqual({
+      nameAttribute: 'fm_name',
+      sexAssignedAtBirthAttribute: 'sexAssignedAtBirth',
+      egoAttribute: 'is_ego',
+    });
+  });
+
+  it('sits inside the person attributes, after sex assigned at birth', async () => {
+    const harness = openNewStage();
+    await harness.user.click(
+      await screen.findByRole('radio', { name: 'family member' }),
+    );
+    const sex = await screen.findByText('Sex assigned at birth', {
+      selector: 'label',
+    });
+    const gender = await screen.findByText('Gender identity', {
+      selector: 'label',
+    });
+    const section = screen.getByRole('region', { name: 'Person attributes' });
+
+    expect(section).toContainElement(gender);
+    expect(
+      sex.compareDocumentPosition(gender) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(harness.outline().map((entry) => entry.title)).toContain(
+      'Ask about gender identity',
+    );
   });
 
   it('saves a stage the schema accepts with no gender identity at all', async () => {
@@ -455,6 +504,9 @@ describe('asking about gender identity', () => {
     await harness.user.click(
       await screen.findByRole('radio', { name: 'family member' }),
     );
+    // Switched on for a new stage; switching it off leaves nothing behind.
+    await harness.user.click(await genderIdentitySwitch());
+    expect(screen.queryByRole('dialog')).toBeNull();
     await bindSlot(harness, 'Name', 'fm_name');
     await bindSlot(harness, 'Sex assigned at birth', 'sexAssignedAtBirth');
     await bindSlot(harness, 'Participant marker', 'is_ego');
@@ -464,6 +516,7 @@ describe('asking about gender identity', () => {
     await bindSlot(harness, 'Relationship kind', 'relationshipKind');
     await bindSlot(harness, 'Gestational carrier', 'isGestationalCarrier');
     await bindSlot(harness, 'Current partner', 'isCurrentPartner');
+    await writePrompt(harness);
     await harness.user.type(
       screen.getByRole('textbox', { name: 'Stage name' }),
       'Family',
@@ -503,13 +556,12 @@ describe('asking about gender identity', () => {
     );
   });
 
-  it('refuses a switched-on question with no attribute chosen', async () => {
+  it('refuses a new stage whose gender identity attribute is not chosen yet, and says so', async () => {
     const harness = openNewStage();
     await harness.user.click(
       await screen.findByRole('radio', { name: 'family member' }),
     );
     await bindSlot(harness, 'Name', 'fm_name');
-    await harness.user.click(await genderIdentitySwitch());
     await screen.findByText('Gender identity', { selector: 'label' });
 
     expect(await harness.submit()).toBeNull();
@@ -519,6 +571,11 @@ describe('asking about gender identity', () => {
         .find((section) => section.title === 'Ask about gender identity')
         ?.state,
     ).toBe('Has a problem');
+    expect(
+      within(attributeField('Gender identity')).getByText(
+        'This field is required.',
+      ),
+    ).toBeVisible();
   });
 });
 
@@ -855,18 +912,10 @@ describe('the gender identity words', () => {
   });
 
   it('is withheld until an attribute is chosen', async () => {
-    const harness = renderStageEditor({
-      stage: {
-        id: 'family-pedigree-new',
-        type: 'FamilyPedigree',
-        fields: getInterfaceTemplate('FamilyPedigree'),
-      },
-      editor: familyPedigreeEditor,
-    });
+    const harness = openNewStage();
     await harness.user.click(
       await screen.findByRole('radio', { name: 'family member' }),
     );
-    await switchOnGenderIdentity(harness);
     await screen.findByText('Gender identity', { selector: 'label' });
     expect(screen.queryByText('Words for each gender identity')).toBeNull();
 

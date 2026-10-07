@@ -68,9 +68,15 @@ const DEFAULT_GENDER_OPTION_LABELS: Record<
 
 /**
  * Whether the participant is asked about gender identity, and if so which
- * attribute holds the answer and which kinship words each option takes.
+ * attribute holds the answer and which kinship words each option takes. A
+ * subsection of the person attributes, which it is mounted inside once the
+ * person type is chosen.
  *
- * Optional like every capability. Off, no question is asked and relatives are
+ * Optional like every capability, but on for a stage being created: the
+ * researcher then binds an attribute as they do for the name, and the stage
+ * cannot be saved until they have (or switch the question off). A stage that
+ * already exists opens with the question off unless it holds the attribute, and
+ * opening it never adds one. Off, no question is asked and relatives are
  * described by their sex assigned at birth. On, the researcher binds a
  * categorical attribute and chooses the words each of its options takes.
  *
@@ -80,11 +86,10 @@ const DEFAULT_GENDER_OPTION_LABELS: Record<
  */
 export default function GenderIdentitySection() {
   const intl = useAppIntl();
-  const { committedFields, storeApi } = useStageEditorForm();
+  const { committedFields, creation, storeApi } = useStageEditorForm();
   const protocolContext = useProtocolContext();
   const { personSubject, draftSlotMap, validatedPersonVariables } =
     usePedigreeDraftBindings();
-  const waiting = personSubject === null;
 
   // What a new gender identity attribute starts with, and the words each of
   // those options takes. Staged on the terms field, which may not be mounted
@@ -115,15 +120,11 @@ export default function GenderIdentitySection() {
   return (
     <BuilderSection
       title={intl.formatMessage(messages.genderIdentityTitle)}
-      description={intl.formatMessage(
-        waiting
-          ? messages.genderIdentityWaiting
-          : messages.genderIdentityDescription,
-      )}
-      disabled={waiting}
+      description={intl.formatMessage(messages.genderIdentityDescription)}
       capability={GENDER_IDENTITY_CAPABILITY}
+      startOn={creation !== undefined}
     >
-      {!waiting && (
+      {personSubject !== null && (
         <>
           <SlotVariableField
             name={NODE_CONFIGURATION_PATHS.genderIdentityAttribute}

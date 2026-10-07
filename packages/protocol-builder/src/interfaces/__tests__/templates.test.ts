@@ -68,10 +68,13 @@ describe('getInterfaceTemplate', () => {
     }
   });
 
-  it('seeds the family pedigree with its opening prompt', () => {
-    const familyPedigree = getInterfaceTemplate('FamilyPedigree');
-    expect(typeof familyPedigree.prompt).toBe('string');
-    expect((familyPedigree.prompt as string).trim()).not.toBe('');
+  /**
+   * The prompt is the researcher's wording to the participant, so a new
+   * pedigree stage starts without one and cannot be saved until it has one.
+   */
+  it('leaves the family pedigree prompt for the researcher to write', () => {
+    expect(getInterfaceTemplate('FamilyPedigree')).not.toHaveProperty('prompt');
+    expect(getInterfaceTemplate('FamilyPedigree')).toEqual({});
   });
 });
 
@@ -99,7 +102,12 @@ const STILL_NEEDED: Readonly<Record<string, readonly string[]>> = {
   CategoricalBin: ['prompts', 'subject'],
   DyadCensus: ['introductionPanel', 'prompts', 'subject'],
   EgoForm: ['form', 'introductionPanel'],
-  FamilyPedigree: ['edgeConfiguration', 'nodeConfiguration', 'subject'],
+  FamilyPedigree: [
+    'edgeConfiguration',
+    'nodeConfiguration',
+    'prompt',
+    'subject',
+  ],
   Geospatial: ['mapOptions', 'prompts', 'subject'],
   Information: ['items', 'title'],
   NameGenerator: ['form', 'prompts', 'subject'],

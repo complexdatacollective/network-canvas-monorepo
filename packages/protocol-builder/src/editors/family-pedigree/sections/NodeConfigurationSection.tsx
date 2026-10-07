@@ -3,6 +3,7 @@ import { FAMILY_PEDIGREE_SLOTS } from '@codaco/protocol-validation';
 
 import SlotVariableField from '../../../fields/SlotVariableField.tsx';
 import BuilderSection from '../../../sections/BuilderSection.tsx';
+import GenderIdentitySection from './GenderIdentitySection.tsx';
 import { familyPedigreeMessages as messages } from './pedigreeMessages.ts';
 import {
   NODE_CONFIGURATION_PATHS,
@@ -13,7 +14,7 @@ import {
  * The attributes of the person node type the interface records about every
  * family member: their name and sex assigned at birth (asked in the side
  * panel), and the marker it sets on the participant. Gender identity, which is
- * optional, has its own section (`GenderIdentitySection`).
+ * optional, is a subsection between them (`GenderIdentitySection`).
  *
  * The researcher binds each slot. The name is collected from the participant
  * with the attribute's own validation (a VALIDATED writer); the other two are
@@ -70,6 +71,7 @@ export default function NodeConfigurationSection() {
             draftConflicting={validatedPersonVariables}
             draftSlotMap={draftSlotMap}
           />
+          <GenderIdentitySection />
           <SlotVariableField
             name={NODE_CONFIGURATION_PATHS.egoAttribute}
             label={messages.egoLabel}
