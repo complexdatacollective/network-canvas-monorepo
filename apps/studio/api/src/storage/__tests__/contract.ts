@@ -2,7 +2,7 @@ import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { createServer, type Socket } from 'node:net';
 
 import { describe, expect, it } from '@effect/vitest';
-import { Effect, Exit, Option } from 'effect';
+import { Effect, Exit, Option, Stream } from 'effect';
 
 import { CI } from '../../__tests__/support/env.ts';
 import { readiness } from '../../http/health.ts';
@@ -360,18 +360,22 @@ export function objectStoreContract(
             const later = new Date(Date.now() + 60_000);
             const earlier = new Date(Date.now() - 60_000);
 
-            expect(yield* store.listStaged(stagingPrefix(team), later)).toEqual(
-              [mine],
-            );
             expect(
-              yield* store.listStaged(stagingPrefix(team), earlier),
+              yield* Stream.runCollect(
+                store.listStaged(stagingPrefix(team), later),
+              ),
+            ).toEqual([[mine]]);
+            expect(
+              yield* Stream.runCollect(
+                store.listStaged(stagingPrefix(team), earlier),
+              ),
             ).toEqual([]);
             yield* store.deleteStaged(mine);
             yield* store.deleteStaged(theirs);
           }),
       );
 
-      it.live('lists staged objects across every page of a listing', () =>
+      it.live('lists staged objects a page at a time, across every page', () =>
         Effect.gen(function* () {
           const team = randomUUID();
           const keys = [
@@ -384,9 +388,11 @@ export function objectStoreContract(
           }
           const later = new Date(Date.now() + 60_000);
 
-          expect(
-            (yield* paged.listStaged(stagingPrefix(team), later)).toSorted(),
-          ).toEqual(keys.toSorted());
+          const pages = yield* Stream.runCollect(
+            paged.listStaged(stagingPrefix(team), later),
+          );
+          expect(pages.map((page) => page.length)).toEqual([1, 1, 1]);
+          expect(pages.flat().toSorted()).toEqual(keys.toSorted());
           for (const key of keys) yield* paged.deleteStaged(key);
         }),
       );
@@ -450,7 +456,7 @@ export function objectStoreContract(
       it.live('fails a listing of a missing bucket or container', () =>
         Effect.gen(function* () {
           const error = yield* Effect.flip(
-            missing.listStaged('staging/', new Date()),
+            Stream.runCollect(missing.listStaged('staging/', new Date())),
           );
           expect(error.operation).toBe('list');
         }),

@@ -1,4 +1,4 @@
-import { Effect, Layer, Logger, type LogLevel, Option } from 'effect';
+import { Effect, Exit, Layer, Logger, type LogLevel, Option } from 'effect';
 import { beforeAll, describe, expect, it } from 'vitest';
 
 import type { ProtocolSectionId } from '@codaco/studio-sync/taxonomy';
@@ -29,7 +29,13 @@ import {
 import { ObjectStore } from '../../storage/object-store.ts';
 import { LIVENESS_LOCK_TIMEOUT_MS } from '../connections.ts';
 import type { LoggedProtocolEvent } from '../events.ts';
-import { Leases, RECONNECT_GRACE_MS, RENEW_INTERVAL_MS } from '../leases.ts';
+import {
+  CONNECT_TIMEOUT_MS,
+  GRACE_RELEASE_TIMEOUT_MS,
+  Leases,
+  RECONNECT_GRACE_MS,
+  RENEW_INTERVAL_MS,
+} from '../leases.ts';
 import { IDLE_MS } from '../schema.ts';
 
 /** Long enough that a unary call reaches the database again. */
@@ -613,6 +619,177 @@ describe.skipIf(!testDb)('the lease keeper', () => {
         await ageConnections({ owner, kind: 'socket' }, -1_000);
         expect(await liveSockets(owner)).toHaveLength(0);
 
+        await keeperTick(RENEW_INTERVAL_MS, a.time);
+        expect(await liveSockets(owner)).toHaveLength(1);
+      } finally {
+        await channel.stop();
+      }
+    } finally {
+      await a.client.dispose();
+    }
+  });
+
+  it('gives up a grace’s release still waiting on the draft head at its bound', async () => {
+    const a = await replica();
+    const { owner, on } = tabOf('bounded-grace');
+    const caller = on('pb-ada-bounded-grace-connection');
+    try {
+      const stage = await createOn(a.client, 'Held through a bounded grace');
+      const sectionId = stage.sectionId;
+      const channel = await watching(caller, protocolId, a.client);
+      await a.client.call(
+        caller,
+        a.client.rpc('AcquireLock', { protocolId, sectionId }),
+      );
+      await channel.stop();
+      await until(
+        () => a.time.pending(RECONNECT_GRACE_MS) > 0,
+        'the grace to start',
+      );
+      const head = await holdRow(
+        'SELECT id FROM drafts WHERE id = $1 FOR UPDATE',
+        [draftId],
+      );
+      try {
+        a.time.advance(RECONNECT_GRACE_MS + 1);
+        await until(
+          () => a.spans.count('protocolBuilder.releaseOwner') > 0,
+          'the release to begin',
+        );
+        await settle();
+        a.time.advance(GRACE_RELEASE_TIMEOUT_MS);
+        await until(
+          () => a.spans.ended('protocolBuilder.graceElapsed') > 0,
+          'the grace to give up while the head is held',
+        );
+      } finally {
+        await head.release();
+      }
+      expect(await releasesOf(sectionId)).toBe(0);
+      expect(await liveLeases(owner)).toEqual([sectionId]);
+      await ageLeases(owner, -1_000);
+    } finally {
+      await a.client.dispose();
+    }
+  });
+
+  it('fails a watch whose connect still waits on the draft head at its bound', async () => {
+    const a = await replica();
+    const { on } = tabOf('bounded-connect');
+    const caller = on('pb-ada-bounded-connect-connection');
+    try {
+      // Recorded first, so the watch's own contact is not due and only its
+      // connect reaches the head.
+      await a.client.call(
+        on(),
+        a.client.rpc('ResourcesList', {
+          protocolId,
+          editId: 'pb-bounded-connect-edit',
+          status: 'staged',
+        }),
+      );
+      const head = await holdRow(
+        'SELECT id FROM drafts WHERE id = $1 FOR UPDATE',
+        [draftId],
+      );
+      const channel = watch(caller, protocolId, a.client);
+      try {
+        await until(
+          () => a.spans.count('protocolBuilder.connect') > 0,
+          'the connect to begin',
+        );
+        await settle();
+        a.time.advance(CONNECT_TIMEOUT_MS);
+        const ended = await Promise.race([
+          channel.ended,
+          new Promise<undefined>((resolve) =>
+            setTimeout(() => resolve(undefined), 2_000),
+          ),
+        ]);
+        if (ended === undefined) {
+          throw new Error('the watch went on waiting past its bound');
+        }
+        expect(Exit.isFailure(ended)).toBe(true);
+      } finally {
+        await head.release();
+        await channel.stop();
+      }
+    } finally {
+      await a.client.dispose();
+    }
+  });
+
+  it('writes the head and gives back a grace’s leases past a transaction that only references the draft', async () => {
+    const a = await replica();
+    const { owner, on } = tabOf('referenced-head');
+    const caller = on('pb-ada-referenced-head-connection');
+    try {
+      const stage = await createOn(a.client, 'Held past a reference');
+      const sectionId = stage.sectionId;
+      const channel = await watching(caller, protocolId, a.client);
+      await a.client.call(
+        caller,
+        a.client.rpc('AcquireLock', { protocolId, sectionId }),
+      );
+      await channel.stop();
+      await until(
+        () => a.time.pending(RECONNECT_GRACE_MS) > 0,
+        'the grace to start',
+      );
+      // The lock a staged upload's insert takes on the draft it references.
+      const reference = await holdRow(
+        'SELECT id FROM drafts WHERE id = $1 FOR KEY SHARE',
+        [draftId],
+      );
+      try {
+        const created = await Promise.race([
+          createOn(a.client, 'Written past a reference'),
+          new Promise<undefined>((resolve) =>
+            setTimeout(() => resolve(undefined), 3_000),
+          ),
+        ]);
+        if (created === undefined) {
+          throw new Error('the host write waited on a reference to the draft');
+        }
+        a.time.advance(RECONNECT_GRACE_MS + 1);
+        await until(
+          () => a.spans.ended('protocolBuilder.graceElapsed') > 0,
+          'the grace to give its leases back past a reference to the draft',
+        );
+      } finally {
+        await reference.release();
+      }
+      expect(await releasesOf(sectionId)).toBe(1);
+      expect(await liveLeases(owner)).toEqual([]);
+    } finally {
+      await a.client.dispose();
+    }
+  });
+
+  it('keeps ticking after a tick that died', async () => {
+    let faulting = false;
+    const a = await replica({
+      maintenance: MaintenanceTriggers.of({
+        closure: Effect.suspend(() =>
+          faulting
+            ? Effect.die(new Error('a fault inside the keeper'))
+            : Effect.succeed(Option.none<Closure>()),
+        ),
+      }),
+    });
+    const { owner, on } = tabOf('faulted');
+    try {
+      const channel = await watching(
+        on('pb-ada-faulted-connection'),
+        protocolId,
+        a.client,
+      );
+      try {
+        faulting = true;
+        await keeperTick(RENEW_INTERVAL_MS, a.time);
+        faulting = false;
+
+        await ageConnections({ owner, kind: 'socket' }, -1_000);
         await keeperTick(RENEW_INTERVAL_MS, a.time);
         expect(await liveSockets(owner)).toHaveLength(1);
       } finally {

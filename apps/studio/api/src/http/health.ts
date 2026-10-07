@@ -95,8 +95,9 @@ export const readiness: (checks: HealthChecks) => Effect.Effect<Readiness> =
  * A draining replica answers `/readyz` with 503 so a load balancer stops
  * routing to it. This is best-effort: the window lasts only as long as the
  * drain, which ends at once with no sockets open and after `DRAIN_TIMEOUT` at
- * most, and the compose stack health-checks `/healthz`, so it is advisory for
- * other load balancers. The worker serves these routes without a
+ * most, and the multi-replica override's Traefik health check probes
+ * `/healthz` (the base compose stack has none), so it is advisory for other
+ * load balancers. The worker serves these routes without a
  * `WebSocketDrain`.
  */
 export function HealthRoutes(

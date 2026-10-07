@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { describe, expect, it } from '@effect/vitest';
+import { describe, expect, it, vi } from '@effect/vitest';
 import {
   Context,
   Duration,
@@ -14,6 +14,7 @@ import {
   Scope,
   Stream,
 } from 'effect';
+import { TestClock } from 'effect/testing';
 import { Redis } from 'ioredis';
 
 import { readEnv } from '../env.ts';
@@ -32,7 +33,7 @@ const url = (await reachableDeniedAuditStore()) ? readEnv().redis : undefined;
 
 const WAIT = Duration.seconds(5);
 
-const ADVANCED = { _tag: 'Advanced', draftId: 'draft-1', cursor: '7' } as const;
+const ADVANCED = { _tag: 'Advanced', draftId: 'draft-1', cursor: 7n } as const;
 
 const PRESENCE = { _tag: 'Presence', draftId: 'draft-2' } as const;
 
@@ -168,6 +169,36 @@ describe.skipIf(!url)('the Valkey doorbell', () => {
     }).pipe(Effect.scoped),
   );
 
+  it.effect('keeps probing the server after a probe that died', () =>
+    Effect.gen(function* () {
+      const pings = vi
+        .spyOn(Redis.prototype, 'ping')
+        .mockImplementation(() => Promise.reject(new Error('no PONG')));
+      const disconnects = vi
+        .spyOn(Redis.prototype, 'disconnect')
+        .mockImplementationOnce(() => {
+          throw new Error('a fault while disconnecting');
+        });
+      yield* Effect.addFinalizer(() =>
+        Effect.sync(() => {
+          pings.mockRestore();
+          disconnects.mockRestore();
+        }),
+      );
+      const b = yield* doorbellOn(channel());
+      yield* TestClock.withLive(until(b, true));
+
+      for (let probes = 0; pings.mock.calls.length < 2; probes += 1) {
+        if (probes === 100) {
+          return yield* Effect.die('the doorbell stopped probing');
+        }
+        yield* TestClock.adjust('10 seconds');
+        yield* TestClock.withLive(Effect.sleep('20 millis'));
+      }
+      expect(disconnects).toHaveBeenCalled();
+    }).pipe(Effect.scoped),
+  );
+
   it.live('ignores a payload that is not a doorbell message', () =>
     Effect.gen(function* () {
       const on = channel();
@@ -179,6 +210,10 @@ describe.skipIf(!url)('the Valkey doorbell', () => {
       yield* Effect.promise(async () => {
         await redis.publish(on, 'not json');
         await redis.publish(on, '{"_tag":"Advanced","draftId":"draft-1"}');
+        await redis.publish(
+          on,
+          '{"_tag":"Advanced","draftId":"draft-1","cursor":"seven"}',
+        );
         await redis.publish(on, '{"_tag":"Unknown","draftId":"draft-1"}');
         await redis.publish(on, '{"_tag":"Presence","draftId":"draft-2"}');
       });

@@ -23,7 +23,7 @@ import {
 const DoorbellMessage = Schema.Union([
   Schema.TaggedStruct('Advanced', {
     draftId: Schema.String,
-    cursor: Schema.String,
+    cursor: Schema.BigIntFromString,
   }),
   Schema.TaggedStruct('Presence', { draftId: Schema.String }),
 ]);
@@ -267,7 +267,14 @@ const connectValkey = Effect.fnUntraced(function* (options: {
         }),
       ),
     );
-  });
+  }).pipe(
+    Effect.catchCause((cause) =>
+      Effect.logError(
+        'Protocol-builder doorbell: probing Valkey failed',
+        cause,
+      ),
+    ),
+  );
   yield* Effect.forkScoped(
     Effect.repeat(probe, Schedule.spaced(PING_INTERVAL)),
   );

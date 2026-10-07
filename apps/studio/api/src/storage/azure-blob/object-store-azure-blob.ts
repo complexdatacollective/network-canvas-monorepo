@@ -115,20 +115,24 @@ function make(
         }),
     remove: (key, abortSignal) =>
       container.getBlockBlobClient(key).deleteIfExists({ abortSignal }),
-    list: async (prefix, abortSignal) => {
-      const listed: { key: string; lastModified: Date | undefined }[] = [];
-      const pages = container
+    list: async (prefix, cursor, abortSignal) => {
+      const page = await container
         .listBlobsFlat({ prefix, abortSignal })
-        .byPage({ maxPageSize: options.listPageSize });
-      for await (const page of pages) {
-        for (const blob of page.segment.blobItems) {
-          listed.push({
-            key: blob.name,
-            lastModified: blob.properties.lastModified,
-          });
-        }
-      }
-      return listed;
+        .byPage({
+          continuationToken: cursor,
+          maxPageSize: options.listPageSize,
+        })
+        .next();
+      if (page.done === true) return { objects: [], next: undefined };
+      const next = page.value.continuationToken;
+      return {
+        objects: page.value.segment.blobItems.map((blob) => ({
+          key: blob.name,
+          lastModified: blob.properties.lastModified,
+        })),
+        // The last page carries an empty token rather than none.
+        next: next === undefined || next === '' ? undefined : next,
+      };
     },
     probe: (abortSignal) => container.getProperties({ abortSignal }),
     isNotFound,

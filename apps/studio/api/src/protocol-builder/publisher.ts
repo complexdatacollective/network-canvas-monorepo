@@ -202,6 +202,12 @@ export class ProtocolEvents extends Context.Service<
 
         const closed = Effect.map(socketClosure(triggers), Option.isSome);
 
+        /** Keeps a scheduled loop running past a defect in one of its passes. */
+        const logDefect = (message: string) =>
+          Effect.catchCause((cause: Cause.Cause<unknown>) =>
+            Effect.logError(message, cause),
+          );
+
         const offer = (
           relay: Relay,
           watcher: Watcher,
@@ -429,7 +435,7 @@ export class ProtocolEvents extends Context.Service<
               yield* ring({
                 _tag: 'Advanced',
                 draftId: relay.draftId,
-                cursor: last,
+                cursor: BigInt(last),
               });
             }
             if (reshown) {
@@ -516,7 +522,7 @@ export class ProtocolEvents extends Context.Service<
             concurrency: POLL_CONCURRENCY,
             discard: true,
           });
-        });
+        }).pipe(logDefect('Polling protocol-builder relays failed'));
 
         yield* poll.pipe(
           Effect.schedule(Schedule.spaced(safetyPollMs)),
@@ -529,6 +535,7 @@ export class ProtocolEvents extends Context.Service<
             Queue.offerUnsafe(relay.wake, undefined);
           heldBack.clear();
         }).pipe(
+          logDefect('Reopening held-back protocol-builder relays failed'),
           Effect.schedule(Schedule.spaced(REOPEN_CHECK_MS)),
           Effect.forkScoped,
         );
@@ -553,16 +560,20 @@ export class ProtocolEvents extends Context.Service<
         });
 
         const signals = yield* doorbell.signals;
-        yield* Stream.runForEach(signals, (signal) => {
-          if (signal._tag === 'Resync') return resync;
-          const relay = relays.get(signal.draftId);
-          if (signal._tag === 'Presence') return markDirty(relay, PRESENCE);
-          // This replica's own ring comes back too, after its read.
-          if (relay !== undefined && BigInt(signal.cursor) < relay.next) {
-            return Effect.void;
-          }
-          return markDirty(relay, EVENTS);
-        }).pipe(Effect.forkScoped);
+        yield* Stream.runForEach(signals, (signal) =>
+          Effect.suspend(() => {
+            if (signal._tag === 'Resync') return resync;
+            const relay = relays.get(signal.draftId);
+            if (signal._tag === 'Presence') return markDirty(relay, PRESENCE);
+            // This replica's own ring comes back too, after its read.
+            if (relay !== undefined && signal.cursor < relay.next) {
+              return Effect.void;
+            }
+            return markDirty(relay, EVENTS);
+          }).pipe(
+            logDefect('Handling a protocol-builder doorbell signal failed'),
+          ),
+        ).pipe(Effect.forkScoped);
 
         const joinExisting = (draftId: string, watcher: Watcher) =>
           Effect.sync(() => {
@@ -603,7 +614,22 @@ export class ProtocolEvents extends Context.Service<
               stopped: false,
             };
             relays.set(session.draftId, relay);
-            yield* Effect.forkIn(run(relay), scope);
+            yield* Effect.forkIn(
+              run(relay).pipe(
+                Effect.catchCause((cause) =>
+                  Cause.hasInterruptsOnly(cause)
+                    ? Effect.void
+                    : Effect.andThen(
+                        Effect.logError(
+                          'A protocol-builder relay failed; ending its watchers',
+                          cause,
+                        ),
+                        Effect.sync(() => end(relay)),
+                      ),
+                ),
+              ),
+              scope,
+            );
             return relay;
           });
 
@@ -662,7 +688,7 @@ export class ProtocolEvents extends Context.Service<
             yield* ring({
               _tag: 'Advanced',
               draftId: session.draftId,
-              cursor: last,
+              cursor: BigInt(last),
             });
           });
 

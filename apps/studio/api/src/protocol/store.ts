@@ -697,7 +697,7 @@ export const publishDraft: (
     })
     .from(drafts)
     .where(and(eq(drafts.id, params.draftId), eq(drafts.teamId, teamId)))
-    .for('update');
+    .for('no key update');
   const lockedRow = lockedHead[0];
   if (lockedRow === undefined) {
     return yield* new ProtocolStoreError({

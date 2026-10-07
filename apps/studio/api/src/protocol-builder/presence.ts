@@ -13,7 +13,7 @@ import type { ProtocolBuilderSession } from './host.ts';
 export class Presence extends Context.Service<
   Presence,
   {
-    /** Records the socket's mode from the leases its tab holds now. */
+    /** Records the mode of the tab's watches from the leases it holds now. */
     readonly setMode: (
       session: ProtocolBuilderSession,
     ) => Effect.Effect<void, SqlError.SqlError>;

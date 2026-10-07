@@ -61,6 +61,8 @@ CREATE INDEX "protocol_connections_draft_id_expires_at_socket_idx" ON "protocol_
 
 CREATE INDEX "protocol_staged_resources_team_id_created_at_idx" ON "protocol_staged_resources" ("team_id","created_at");
 
+CREATE INDEX "protocol_staged_resources_team_id_object_key_idx" ON "protocol_staged_resources" ("team_id","object_key");
+
 ALTER TABLE "protocol_connections" ADD CONSTRAINT "protocol_connections_draft_id_team_id_drafts_id_team_id_fkey" FOREIGN KEY ("draft_id","team_id") REFERENCES "drafts"("id","team_id") ON DELETE CASCADE;
 
 ALTER TABLE "protocol_staged_resources" ADD CONSTRAINT "protocol_staged_resources_8KVb58hmJSP2_fkey" FOREIGN KEY ("draft_id","team_id") REFERENCES "drafts"("id","team_id") ON DELETE CASCADE;

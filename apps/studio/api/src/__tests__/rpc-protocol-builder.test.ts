@@ -992,6 +992,35 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
     await expectRpcFailure(Promise.resolve(ended), 'ProtocolNotFound');
   });
 
+  it('ends an idle watch once the locked role no longer reaches the protocol, with nothing written', async () => {
+    const { who, remove, restore } = await removedAfterOpening('demoted-idle');
+    const channel = await watching(who, protocolId);
+    let ended: Exit.Exit<void, unknown> | undefined;
+    try {
+      await database.run(
+        ownerAffected(`UPDATE team_members SET role = 'member' WHERE id = $1`, [
+          who.memberId,
+        ]),
+      );
+      // Past the longest jittered wait, so the timer has fired.
+      clock.advance(2 * REAUTHORIZE_MS);
+      ended = await Promise.race([
+        channel.ended,
+        new Promise<undefined>((resolve) =>
+          setTimeout(() => resolve(undefined), 2_000),
+        ),
+      ]);
+    } finally {
+      await channel.stop();
+      await remove();
+      await restore();
+    }
+    if (ended === undefined) {
+      throw new Error('the idle watch stayed open to a demoted caller');
+    }
+    await expectRpcFailure(Promise.resolve(ended), 'ProtocolNotFound');
+  });
+
   it('refuses a retried submit from a caller removed since it wrote', async () => {
     const { who, remove, restore } = await removedAfterOpening('removed-retry');
     const stage = await createStage(ADA, 'Written before a removal');

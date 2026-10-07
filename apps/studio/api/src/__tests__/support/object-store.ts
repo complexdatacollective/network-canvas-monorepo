@@ -1,4 +1,8 @@
-import { fromBackend, type ObjectStore } from '../../storage/object-store.ts';
+import {
+  type BackendOptions,
+  fromBackend,
+  type ObjectStore,
+} from '../../storage/object-store.ts';
 
 class MissingObject extends Error {}
 
@@ -25,7 +29,9 @@ export type MemoryObjectStore = {
  * so it keeps every rule the real providers do. It has no server-side copy,
  * so promotion reads and writes, as on Azure.
  */
-export function memoryObjectStore(): MemoryObjectStore {
+export function memoryObjectStore(
+  options: BackendOptions = {},
+): MemoryObjectStore {
   const objects = new Map<string, MemoryObject>();
   const removed: string[] = [];
   let unreachable = false;
@@ -72,15 +78,28 @@ export function memoryObjectStore(): MemoryObjectStore {
         removed.push(key);
         return objects.delete(key);
       }),
-    list: (prefix) =>
-      reach(() =>
-        [...objects.entries()]
-          .filter(([key]) => key.startsWith(prefix))
-          .map(([key, object]) => ({
+    // Pages in key order, the cursor being the last key a page held.
+    list: (prefix, cursor) =>
+      reach(() => {
+        const after = [...objects.entries()]
+          .filter(
+            ([key]) =>
+              key.startsWith(prefix) && (cursor === undefined || key > cursor),
+          )
+          .toSorted(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+        const page = after.slice(0, options.listPageSize ?? after.length);
+        const last = page.at(-1);
+        return {
+          objects: page.map(([key, object]) => ({
             key,
             lastModified: object.lastModified,
           })),
-      ),
+          next:
+            last !== undefined && page.length < after.length
+              ? last[0]
+              : undefined,
+        };
+      }),
     probe: () => reach(() => undefined),
     isNotFound: (error) => error instanceof MissingObject,
   });

@@ -1,6 +1,14 @@
 import { randomUUID } from 'node:crypto';
 
-import { Clock, Effect, Option, Predicate, Result, Stream } from 'effect';
+import {
+  Clock,
+  Effect,
+  Option,
+  Predicate,
+  Result,
+  Schedule,
+  Stream,
+} from 'effect';
 import type * as Layer from 'effect/Layer';
 import type * as Rpc from 'effect/rpc/Rpc';
 
@@ -59,12 +67,7 @@ import {
   type Inspection,
   type ResourceOutcome,
 } from './resources.ts';
-import {
-  openSession,
-  stillSignedIn,
-  WatchCutoff,
-  WsConnection,
-} from './session.ts';
+import { openSession, stillSignedIn, WatchCutoff } from './session.ts';
 import type { WriteOperation, WriteReceipt } from './writeReceipts.ts';
 import { readWriteReceipt } from './writeReceipts.ts';
 
@@ -149,33 +152,26 @@ export const ProtocolBuilderHandlers: Layer.Layer<
     const scope = yield* Effect.scope;
 
     /**
-     * Records the socket's mode from what its tab holds, then, when `announce`,
-     * tells watchers. Forked once the call's events are published, so a retry
-     * holds back neither them nor the reply; each attempt reads the tab's
-     * leases afresh, so a late one still writes its current mode. A unary
-     * caller records no mode: its connection id is its login's, which every
-     * HTTP watch of that login carries too.
+     * Records the mode of the tab's watches from what it holds, then, when
+     * `announce`, tells watchers. Forked once the call's events are published,
+     * so a retry holds back neither them nor the reply; each attempt reads the
+     * tab's leases afresh, so a late one still writes its current mode.
      */
     const showMode = (session: ProtocolBuilderSession, announce: boolean) =>
-      Effect.gen(function* () {
-        const onSocket = Option.isSome(
-          yield* Effect.serviceOption(WsConnection),
-        );
-        const update = Effect.gen(function* () {
-          if (onSocket) {
-            yield* retryBriefly(presence.setMode(session)).pipe(
-              Effect.catchCause((cause) =>
-                Effect.logWarning(
-                  'Recording protocol-builder presence failed',
-                  cause,
-                ),
+      Effect.forkIn(
+        Effect.gen(function* () {
+          yield* retryBriefly(presence.setMode(session)).pipe(
+            Effect.catchCause((cause) =>
+              Effect.logWarning(
+                'Recording protocol-builder presence failed',
+                cause,
               ),
-            );
-          }
+            ),
+          );
           if (announce) yield* events.presenceChanged(session);
-        });
-        yield* Effect.forkIn(update, scope);
-      });
+        }),
+        scope,
+      ).pipe(Effect.asVoid);
 
     const assetsDocument = (session: ProtocolBuilderSession) =>
       Effect.map(
@@ -335,6 +331,16 @@ export const ProtocolBuilderHandlers: Layer.Layer<
             const lastBacklog = backlog.at(-1)?.cursor;
             let last = lastBacklog === undefined ? from : BigInt(lastBacklog);
             let authorizedAt = yield* Clock.currentTimeMillis;
+            const reauthorizeWhenDue = Effect.gen(function* () {
+              const at = yield* Clock.currentTimeMillis;
+              if (at - authorizedAt < REAUTHORIZE_MS) return;
+              yield* stillSignedIn(headers);
+              yield* command(
+                protocolId,
+                authorizeCaller(yield* openSession(protocolId)),
+              );
+              authorizedAt = at;
+            });
             const delivered = live.pipe(
               // Either ends the watch with a defect, which the client
               // resubscribes after, replaying from its cursor.
@@ -344,15 +350,7 @@ export const ProtocolBuilderHandlers: Layer.Layer<
               ),
               Stream.filterMapEffect((entry) =>
                 Effect.gen(function* () {
-                  const at = yield* Clock.currentTimeMillis;
-                  if (at - authorizedAt >= REAUTHORIZE_MS) {
-                    yield* stillSignedIn(headers);
-                    yield* command(
-                      protocolId,
-                      authorizeCaller(yield* openSession(protocolId)),
-                    );
-                    authorizedAt = at;
-                  }
+                  yield* reauthorizeWhenDue;
                   // Presence is not replayable, so it never moves the cursor.
                   if (entry.cursor === undefined) {
                     return Result.succeed(onTheWire(entry));
@@ -366,9 +364,20 @@ export const ProtocolBuilderHandlers: Layer.Layer<
                 }),
               ),
             );
+            // A quiet draft delivers nothing to re-authorize on, so a
+            // removed member's idle watch is asked on a timer as well;
+            // jittered so that watches reconnected together spread out.
             const watched = Stream.concat(
               Stream.fromIterable(backlog.map(onTheWire)),
               delivered,
+            ).pipe(
+              Stream.interruptWhen(
+                reauthorizeWhenDue.pipe(
+                  Effect.schedule(
+                    Schedule.spaced(REAUTHORIZE_MS).pipe(Schedule.jittered),
+                  ),
+                ),
+              ),
             );
             const cutoff = yield* Effect.serviceOption(WatchCutoff);
             return Option.isNone(cutoff)

@@ -1,12 +1,12 @@
 {
   "version": "0002_studio_multi_replica_sync",
   "ordinal": 2,
-  "fingerprint": "285d8ea1a261096b69c62e4236fd36f7dce573c62af8f2d22cfe9f86be1ac642",
+  "fingerprint": "6540ad67941dd5a4ff0cd957ff82fc51952fa76085090f0448ad5b5a6c90173d",
   "drops": [],
   "artefacts": {
-    "delta.sql": "1873b65ad0b8812528d104e2c198daf90cdf3b6a7bd10f628385aad6b3215e18",
+    "delta.sql": "c401173c6323a63f415e896734100aff860d1db01f648e578cb7387677ceb097",
     "sidecars.sql": "1d77cfb1dacfe716bcc040bae2e87e10a99bab081e0e84ecabe1e697639df001",
-    "snapshot.json": "e653a39e72553f1f7c4e791e6869d54168d376303e02e6bf7f4e01922ea0d041"
+    "snapshot.json": "ef107ed90a32b7e93a41f54c14ec857e89f7300d44d9cc6ea1371250614ca7d8"
   },
-  "combined": "06de7a08adbe56e7447d5994fcb556bbc08e8d211ad4418711def884b80e4854"
+  "combined": "5b258df42164378ec43d6316e35ae0869f7a751ef98918870b326eeaca14b44f"
 }

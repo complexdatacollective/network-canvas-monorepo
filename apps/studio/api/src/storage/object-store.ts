@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 
-import { Brand, Context, Effect, Option, Schema } from 'effect';
+import { Brand, Context, Effect, Option, Schema, Stream } from 'effect';
 
 // The object store is a port with one implementation per storage platform
 // (#2077): `./s3/` for every S3-compatible store and `./azure-blob/` for Azure
@@ -111,11 +111,14 @@ export class ObjectStore extends Context.Service<
     readonly deleteStaged: (
       key: StagingKey,
     ) => Effect.Effect<void, ObjectStoreError>;
-    /** The staging keys under `prefix` last written before `olderThan`. */
+    /**
+     * The staging keys under `prefix` last written before `olderThan`, one
+     * page of the provider's listing at a time.
+     */
     readonly listStaged: (
       prefix: string,
       olderThan: Date,
-    ) => Effect.Effect<ReadonlyArray<StagingKey>, ObjectStoreError>;
+    ) => Stream.Stream<ReadonlyArray<StagingKey>, ObjectStoreError>;
     /**
      * Makes the staged object the asset `hash`, leaving the staged object in
      * place. An asset already stored under `hash` is kept as it is. False when
@@ -136,7 +139,7 @@ export class ObjectStore extends Context.Service<
     putStaged: () => Effect.die(new Error('no object store is configured')),
     getStaged: () => Effect.die(new Error('no object store is configured')),
     deleteStaged: () => Effect.die(new Error('no object store is configured')),
-    listStaged: () => Effect.die(new Error('no object store is configured')),
+    listStaged: () => Stream.die(new Error('no object store is configured')),
     promoteStaged: () => Effect.die(new Error('no object store is configured')),
   });
 }
@@ -165,7 +168,7 @@ export const removeStaged = (
 export type BackendOptions = {
   /**
    * The most objects one listing request asks for. Left to the provider but
-   * in the contract tests, which make it small so a listing spans pages.
+   * in tests, which make it small so a listing spans pages.
    */
   readonly listPageSize?: number;
 };
@@ -180,6 +183,12 @@ type ObjectMetadata = {
 type ListedObject = {
   readonly key: string;
   readonly lastModified: Date | undefined;
+};
+
+/** One page of a listing, and where the next page starts, if there is one. */
+type ListedPage = {
+  readonly objects: ReadonlyArray<ListedObject>;
+  readonly next: string | undefined;
 };
 
 /**
@@ -206,11 +215,12 @@ export type ObjectBackend = {
   >;
   /** Resolves for a key that does not exist. */
   readonly remove: (key: string, signal: AbortSignal) => Promise<unknown>;
-  /** Every object under `prefix`, across all of the provider's pages. */
+  /** The page of objects under `prefix` that `cursor` starts, or the first. */
   readonly list: (
     prefix: string,
+    cursor: string | undefined,
     signal: AbortSignal,
-  ) => Promise<ReadonlyArray<ListedObject>>;
+  ) => Promise<ListedPage>;
   /**
    * A copy made by the store itself, keeping the source's media type. A
    * provider without one has promotion read the object and write it back.
@@ -359,16 +369,27 @@ export function fromBackend(backend: ObjectBackend): ObjectStore['Service'] {
         unlessAbsent('delete', (signal) => backend.remove(key, signal)),
       ),
     listStaged: (prefix, olderThan) =>
-      Effect.map(
-        request('list', (signal) => backend.list(prefix, signal)),
-        (listed) =>
-          listed.flatMap(({ key, lastModified }) =>
-            lastModified !== undefined &&
-            lastModified.getTime() < olderThan.getTime() &&
-            StagingKey.is(key)
-              ? [key]
-              : [],
-          ),
+      Stream.paginate<
+        string | undefined,
+        ReadonlyArray<StagingKey>,
+        ObjectStoreError
+      >(undefined, (cursor) =>
+        Effect.map(
+          request('list', (signal) => backend.list(prefix, cursor, signal)),
+          ({ objects, next }) => {
+            const keys = objects.flatMap(({ key, lastModified }) =>
+              lastModified !== undefined &&
+              lastModified.getTime() < olderThan.getTime() &&
+              StagingKey.is(key)
+                ? [key]
+                : [],
+            );
+            return [
+              keys.length === 0 ? [] : [keys],
+              Option.fromNullishOr(next),
+            ];
+          },
+        ),
       ),
     promoteStaged: Effect.fnUntraced(function* (
       key: StagingKey,

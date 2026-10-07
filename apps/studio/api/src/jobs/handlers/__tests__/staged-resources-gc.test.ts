@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { Effect, Logger, type LogLevel, References } from 'effect';
+import { Effect, Logger, type LogLevel, References, Stream } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
@@ -16,7 +16,7 @@ import {
   memoryObjectStore,
 } from '../../../__tests__/support/object-store.ts';
 import { mintStagingKey } from '../../../protocol-builder/staging-store.ts';
-import { ObjectStore } from '../../../storage/object-store.ts';
+import { ObjectStore, STAGING_ROOT } from '../../../storage/object-store.ts';
 import {
   CONNECTION_RETENTION_MS,
   gcStagedResources,
@@ -276,13 +276,72 @@ describe.skipIf(!testDb)('collecting abandoned staged resources', () => {
     expect(objects.removed()).toEqual([gone.key]);
   });
 
-  it('collects the teams after one whose collection fails', async () => {
+  it('sweeps unnamed objects a page of the listing at a time, across every page and team', async () => {
+    const first = await seedDraft('staged-gc-paged-a');
+    const second = await seedDraft('staged-gc-paged-b');
+    const objects = memoryObjectStore({ listPageSize: 2 });
+
+    const named = await stageFile(first, objects, 'live', LONG_AGO);
+    await connect(first, 'live', MINUTE);
+    const unnamed = [
+      mintStagingKey(first.teamId),
+      mintStagingKey(first.teamId),
+      mintStagingKey(second.teamId),
+      mintStagingKey(second.teamId),
+    ];
+    for (const key of unnamed) {
+      await run(
+        objects.store.putStaged(key, new Uint8Array([6]), 'text/plain'),
+      );
+    }
+    objects.backdate(STAGING_ROOT, STAGED_ORPHAN_GRACE_MS + MINUTE);
+
+    const events: string[] = [];
+    const watched = ObjectStore.of({
+      ...objects.store,
+      listStaged: (prefix, olderThan) =>
+        objects.store
+          .listStaged(prefix, olderThan)
+          .pipe(Stream.tap(() => Effect.sync(() => events.push('page')))),
+      deleteStaged: (key) =>
+        Effect.andThen(
+          Effect.sync(() => events.push('delete')),
+          objects.store.deleteStaged(key),
+        ),
+    });
+    await run(Effect.provideService(gcStagedResources(), ObjectStore, watched));
+
+    expect(objects.keys()).toEqual([named.key]);
+    expect(objects.removed().toSorted()).toEqual(unnamed.toSorted());
+    expect(events.filter((event) => event === 'page')).toHaveLength(3);
+    expect(events.indexOf('delete')).toBeLessThan(events.lastIndexOf('page'));
+  });
+
+  it('indexes staged rows by team and object key, for the orphan sweep', async () => {
+    const indexes = await run(
+      ownerRows<{ indexdef: string }>(
+        `SELECT indexdef FROM pg_indexes
+          WHERE schemaname = current_schema()
+            AND tablename = 'protocol_staged_resources'`,
+      ),
+    );
+    expect(indexes.map((index) => index.indexdef)).toContainEqual(
+      expect.stringContaining('(team_id, object_key)'),
+    );
+  });
+
+  it('collects the teams after one whose collection fails, and that team’s expired connections', async () => {
     const failing = await seedDraft('staged-gc-a');
     const healthy = await seedDraft('staged-gc-b');
     const objects = memoryObjectStore();
 
     const stuck = await stageFile(failing, objects, 'gone', LONG_AGO);
     const collected = await stageFile(healthy, objects, 'gone', LONG_AGO);
+    const longExpired = await connect(
+      failing,
+      'gone',
+      -(CONNECTION_RETENTION_MS + MINUTE),
+    );
 
     const name = `refuse_staged_gc_${randomUUID().replaceAll('-', '')}`;
     await run(
@@ -315,6 +374,7 @@ describe.skipIf(!testDb)('collecting abandoned staged resources', () => {
 
     expect(await stagedIds(failing)).toEqual([stuck.resourceId]);
     expect(objects.keys()).toContain(stuck.key);
+    expect(await connectionIds(failing)).not.toContain(longExpired);
     expect(await stagedIds(healthy)).toEqual([]);
     expect(objects.removed()).toEqual([collected.key]);
   });

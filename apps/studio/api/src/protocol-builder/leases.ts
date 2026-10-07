@@ -49,6 +49,21 @@ const LOCK_WAITS_BEFORE_WARNING = 3;
  */
 export const RECONNECT_GRACE_MS = 20_000;
 
+/**
+ * How long a watch's connect may wait on the database before the watch fails
+ * and the client's retry asks again; it waits on the draft head, which a
+ * grace's release or a write may hold.
+ */
+export const CONNECT_TIMEOUT_MS = 5_000;
+
+/**
+ * Bounds a grace's release, retries and all: room for the 15.5s of waits
+ * between `retryBriefly`'s attempts and for the attempts themselves. A release
+ * that gives up leaves the leases to lapse, and the relays' reaper gives them
+ * back.
+ */
+export const GRACE_RELEASE_TIMEOUT_MS = 25_000;
+
 /** How often one owner's unary calls reach the database, per replica. */
 const CONTACT_INTERVAL_MS = 30_000;
 
@@ -103,7 +118,11 @@ export class Leases extends Context.Service<
     readonly connect: (
       session: ProtocolBuilderSession,
       onReleased: OnReleased,
-    ) => Effect.Effect<void, SqlError.SqlError, Scope.Scope>;
+    ) => Effect.Effect<
+      void,
+      SqlError.SqlError | Cause.TimeoutError,
+      Scope.Scope
+    >;
     /** Keeps a calling owner's leases renewed until it has been idle a while. */
     readonly contact: (session: ProtocolBuilderSession) => Effect.Effect<void>;
   }
@@ -270,6 +289,9 @@ export class Leases extends Context.Service<
       };
 
       yield* tick.pipe(
+        Effect.catchCause((cause) =>
+          Effect.logError('Renewing protocol-builder leases failed', cause),
+        ),
         Effect.schedule(Schedule.spaced(RENEW_INTERVAL_MS)),
         Effect.forkScoped,
       );
@@ -291,15 +313,24 @@ export class Leases extends Context.Service<
             // leases forever.
             contacts.delete(ownerKey(session));
             if (yield* closed) return;
-            yield* Effect.gen(function* () {
-              if (yield* closed) return;
-              yield* Effect.uninterruptible(
-                Effect.gen(function* () {
-                  const release = yield* withDatabase(releaseOwner(session));
-                  if (release.released) yield* onReleased(release.events);
-                }),
-              );
-            }).pipe(retryBriefly);
+            const attempt = Effect.gen(function* () {
+              if (yield* closed) return undefined;
+              return yield* withDatabase(releaseOwner(session));
+            });
+            // A reconnect, or the bound, may cancel the release while it waits
+            // on the database; once it has committed, telling watchers may
+            // not be cut short.
+            yield* Effect.uninterruptibleMask((restore) =>
+              Effect.gen(function* () {
+                const release = yield* restore(
+                  attempt.pipe(
+                    retryBriefly,
+                    Effect.timeout(GRACE_RELEASE_TIMEOUT_MS),
+                  ),
+                );
+                if (release?.released) yield* onReleased(release.events);
+              }),
+            );
           }).pipe(Effect.withSpan('protocolBuilder.graceElapsed'));
         }).pipe(logFailure('Releasing a stranded lease owner failed'));
 
@@ -351,9 +382,11 @@ export class Leases extends Context.Service<
               key: `${session.connectionId}:${randomUUID()}`,
               kind: 'socket',
             };
+            // Interruptible, unlike the rest of the acquisition, so that a
+            // closing scope or the bound cancels a wait on the draft head.
             const recorded = yield* withDatabase(
               connectSocket(session, registration.key),
-            );
+            ).pipe(Effect.timeout(CONNECT_TIMEOUT_MS), Effect.interruptible);
             if (!recorded) return undefined;
             sockets.set(registrationKey(registration), {
               registration,

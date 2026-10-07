@@ -455,7 +455,7 @@ export function makeSyncServer(options: SyncServerOptions = {}) {
       })
       .from(drafts)
       .where(and(eq(drafts.id, draftId), eq(drafts.teamId, teamId)))
-      .for('update');
+      .for('no key update');
     const headRow = head[0];
     if (headRow === undefined) {
       return yield* new LeaseRejectedError({

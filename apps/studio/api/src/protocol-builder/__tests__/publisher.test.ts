@@ -145,19 +145,28 @@ const scripted = () => {
 
 const closable = () => {
   let closed = false;
+  let faulty = false;
   return {
     triggers: MaintenanceTriggers.of({
-      closure: Effect.sync(() =>
-        closed
-          ? Option.some<Closure>({
-              trigger: 'maintenance',
-              detail: 'maintenance mode is on',
-            })
-          : Option.none<Closure>(),
+      closure: Effect.suspend(() =>
+        faulty
+          ? Effect.die(new Error('a fault reading the maintenance state'))
+          : Effect.succeed(
+              closed
+                ? Option.some<Closure>({
+                    trigger: 'maintenance',
+                    detail: 'maintenance mode is on',
+                  })
+                : Option.none<Closure>(),
+            ),
       ),
     }),
     setClosed: (value: boolean) => {
       closed = value;
+    },
+    /** Makes every reading of the closure die, as a defect would. */
+    setFaulty: (value: boolean) => {
+      faulty = value;
     },
   };
 };
@@ -471,11 +480,8 @@ describe.skipIf(!testDb)('the protocol-builder relay', () => {
       );
       const cursors = await appendAt(fresh.draftId, burst(OVERFLOW));
       last = cursors.at(-1);
-      lossy.send({
-        _tag: 'Advanced',
-        draftId: fresh.draftId,
-        cursor: String(last),
-      });
+      if (last === undefined) throw new Error('the burst logged nothing');
+      lossy.send({ _tag: 'Advanced', draftId: fresh.draftId, cursor: last });
       const exit = await slow;
       expect(Exit.isSuccess(exit)).toBe(true);
       expect(cursorsOf(taken).slice(-OVERFLOW)).toEqual(cursors);
@@ -655,6 +661,33 @@ describe.skipIf(!testDb)('the protocol-builder relay', () => {
         );
         expect(revisionsOf(channel.events, first.sectionId)).toHaveLength(1);
         expectContiguous(channel.events);
+      } finally {
+        await channel.stop();
+      }
+    });
+
+    it('keeps answering the doorbell after a signal it cannot handle', async () => {
+      const fresh = await freshProtocol('Unhandled signal');
+      const lossy = scripted();
+      const { client: b } = await replica({ doorbell: lossy.doorbell });
+      const channel = await watching(socket('unhandled'), fresh.protocolId, b);
+      try {
+        await settle();
+        lossy.send({
+          _tag: 'Advanced',
+          draftId: fresh.draftId,
+          get cursor(): bigint {
+            throw new Error('a cursor that cannot be read');
+          },
+        });
+        const [cursor] = await appendAt(fresh.draftId, [1]);
+        if (cursor === undefined) throw new Error('nothing was logged');
+        lossy.send({ _tag: 'Advanced', draftId: fresh.draftId, cursor });
+        await until(
+          () => cursorsOf(channel.events).includes(cursor),
+          'the next ring to be delivered',
+          2_000,
+        );
       } finally {
         await channel.stop();
       }
@@ -1078,6 +1111,89 @@ describe.skipIf(!testDb)('the protocol-builder relay', () => {
         );
       } finally {
         gate.setClosed(false);
+        await channel.stop();
+      }
+    });
+
+    it('reads what it held back after a reopen check that died', async () => {
+      const gate = closable();
+      const writer = scripted();
+      const reader = scripted();
+      const { client: a } = await replica({ doorbell: writer.doorbell });
+      const { client: b } = await replica({
+        doorbell: reader.doorbell,
+        maintenance: gate.triggers,
+      });
+      const channel = await watching(socket('reopen-fault'), protocolId, b);
+      try {
+        gate.setClosed(true);
+        const stage = await createOn(a, 'Held back past a fault');
+        await until(
+          () => writer.rung.some((ring) => ring._tag === 'Advanced'),
+          'the writer to ring',
+        );
+        for (const ring of writer.rung) reader.send(ring);
+        await settle();
+
+        gate.setFaulty(true);
+        await settle();
+        gate.setFaulty(false);
+        gate.setClosed(false);
+        await until(
+          () => revisionsOf(channel.events, stage.sectionId).length > 0,
+          'the held-back read once the database reopens',
+          2_000,
+        );
+      } finally {
+        gate.setFaulty(false);
+        gate.setClosed(false);
+        await channel.stop();
+      }
+    });
+
+    it('keeps polling after a poll that died', async () => {
+      const gate = closable();
+      const { client: a } = await replica({ doorbell: scripted().doorbell });
+      const { client: b } = await replica({
+        doorbell: scripted().doorbell,
+        safetyPollMs: FAST_POLL_MS,
+        maintenance: gate.triggers,
+      });
+      const channel = await watching(socket('poll-fault'), protocolId, b);
+      try {
+        gate.setFaulty(true);
+        await settle(FAST_POLL_MS * 3);
+        gate.setFaulty(false);
+        const stage = await createOn(a, 'Polled after a fault');
+        await until(
+          () => revisionsOf(channel.events, stage.sectionId).length > 0,
+          'the poll after the fault to find the write',
+        );
+      } finally {
+        gate.setFaulty(false);
+        await channel.stop();
+      }
+    });
+
+    it('ends its watchers when its relay dies, rather than leaving them waiting', async () => {
+      const gate = closable();
+      const lossy = scripted();
+      const { client: b } = await replica({
+        doorbell: lossy.doorbell,
+        maintenance: gate.triggers,
+      });
+      const channel = await watching(socket('relay-fault'), protocolId, b);
+      try {
+        gate.setFaulty(true);
+        lossy.send({ _tag: 'Presence', draftId });
+        const ended = await Promise.race([
+          channel.ended,
+          settle(2_000).then(() => undefined),
+        ]);
+        if (ended === undefined) throw new Error('the watch was left waiting');
+        expectRelayFailed(ended);
+      } finally {
+        gate.setFaulty(false);
         await channel.stop();
       }
     });

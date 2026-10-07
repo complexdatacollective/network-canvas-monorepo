@@ -304,6 +304,10 @@ const protocolStagedResources = pgTable(
       table.teamId,
       table.createdAt,
     ),
+    index('protocol_staged_resources_team_id_object_key_idx').on(
+      table.teamId,
+      table.objectKey,
+    ),
     check(
       'protocol_staged_resources_kind_check',
       sql`${table.kind} IN ('content', 'secret')`,

@@ -9,7 +9,7 @@
 // object together; the object is deleted after. One the store would not delete
 // is unnamed from then on, and a later run's orphan sweep takes it.
 import { and, asc, eq, gt, lt, notExists, sql } from 'drizzle-orm';
-import { Clock, Effect, Option } from 'effect';
+import { Clock, Effect, Option, Stream } from 'effect';
 
 import { noAuditMaintenanceTransaction } from '../../audit/no-audit.ts';
 import { MaintenanceScope, Transaction } from '../../db/tenant.ts';
@@ -72,6 +72,19 @@ type StagedGcResult = {
 const teamOf = (key: StagingKey) =>
   key.slice(STAGING_ROOT.length).split('/')[0] ?? '';
 
+/**
+ * Logs a failure as one team's, so the work after it still runs and the next
+ * run asks again.
+ */
+const contained =
+  (message: string, teamId: string) =>
+  <E, R>(effect: Effect.Effect<void, E, R>) =>
+    effect.pipe(
+      Effect.catchCause((cause) =>
+        Effect.logError(message, cause).pipe(Effect.annotateLogs({ teamId })),
+      ),
+    );
+
 export const gcStagedResources = Effect.fn('protocol.gcStagedResources')(
   function* () {
     const store = yield* ObjectStore;
@@ -81,25 +94,10 @@ export const gcStagedResources = Effect.fn('protocol.gcStagedResources')(
       connectionsDeleted: 0,
     };
 
-    const now = yield* Clock.currentTimeMillis;
-    // A store that will not list still leaves the rows and connections to
-    // collect.
-    const unnamed = store.configured
-      ? yield* store
-          .listStaged(STAGING_ROOT, new Date(now - STAGED_ORPHAN_GRACE_MS))
-          .pipe(
-            Effect.catch((error) =>
-              Effect.as(
-                Effect.logWarning('Listing staged objects failed', error),
-                [],
-              ),
-            ),
-          )
-      : [];
-
     // Deliberately cross-team; RLS admits this scan only to the maintenance
-    // role. A team whose only trace is an unnamed object is found by its key.
-    const tenants = yield* MaintenanceScope.open(
+    // role. A team whose only trace is an unnamed object is found by the
+    // orphan sweep, by its key.
+    const teams = yield* MaintenanceScope.open(
       Effect.gen(function* () {
         const { tx } = yield* Transaction;
         const withStaging = yield* tx
@@ -108,10 +106,13 @@ export const gcStagedResources = Effect.fn('protocol.gcStagedResources')(
         const withConnections = yield* tx
           .selectDistinct({ teamId: connections.teamId })
           .from(connections);
-        return [...withStaging, ...withConnections].map((row) => row.teamId);
+        return [
+          ...new Set(
+            [...withStaging, ...withConnections].map((row) => row.teamId),
+          ),
+        ].toSorted();
       }),
     );
-    const teams = [...new Set([...tenants, ...unnamed.map(teamOf)])].toSorted();
 
     /** Keys a delete was already asked for this run, by a row or the sweep. */
     const asked = new Set<string>();
@@ -122,7 +123,7 @@ export const gcStagedResources = Effect.fn('protocol.gcStagedResources')(
       }
     });
 
-    const collectTeam = Effect.fnUntraced(function* (teamId: string) {
+    const collectRows = Effect.fnUntraced(function* (teamId: string) {
       const access = maintenanceTeamAccess(teamId);
 
       // Each batch locks its rows in key order, as a promotion's consume
@@ -170,35 +171,12 @@ export const gcStagedResources = Effect.fn('protocol.gcStagedResources')(
         }
         if (deleted.length < STAGED_BATCH) break;
       }
+    });
 
-      const listed = unnamed.filter(
-        (key) => teamOf(key) === teamId && !asked.has(key),
-      );
-      if (listed.length > 0) {
-        const named = yield* noAuditMaintenanceTransaction(
-          'protocol.gcStagedResources',
-          access,
-          Effect.flatMap(Transaction, ({ tx }) =>
-            tx
-              .select({ objectKey: staged.objectKey })
-              .from(staged)
-              .where(
-                and(
-                  eq(staged.teamId, teamId),
-                  sql`${staged.objectKey} = ANY(${sql.param(listed)}::text[])`,
-                ),
-              ),
-          ),
-        );
-        const kept = new Set(named.map((row) => row.objectKey));
-        for (const key of listed) {
-          if (!kept.has(key)) yield* remove(key);
-        }
-      }
-
+    const collectConnections = Effect.fnUntraced(function* (teamId: string) {
       const expired = yield* noAuditMaintenanceTransaction(
         'protocol.gcProtocolConnections',
-        access,
+        maintenanceTeamAccess(teamId),
         Effect.flatMap(Transaction, ({ tx }) =>
           tx
             .delete(connections)
@@ -214,18 +192,71 @@ export const gcStagedResources = Effect.fn('protocol.gcStagedResources')(
       result.connectionsDeleted += expired.length;
     });
 
-    // One team's failure is its own: the teams after it are still collected,
-    // and the next run asks again.
-    for (const teamId of teams) {
-      yield* collectTeam(teamId).pipe(
-        Effect.catchCause((cause) =>
-          Effect.logError(
-            'Collecting a team’s staged resources failed',
-            cause,
-          ).pipe(Effect.annotateLogs({ teamId })),
+    /** Deletes the keys, all one team's, that no staged row names. */
+    const sweepUnnamed = Effect.fnUntraced(function* (
+      teamId: string,
+      keys: ReadonlyArray<StagingKey>,
+    ) {
+      const named = yield* noAuditMaintenanceTransaction(
+        'protocol.gcStagedResources',
+        maintenanceTeamAccess(teamId),
+        Effect.flatMap(Transaction, ({ tx }) =>
+          tx
+            .select({ objectKey: staged.objectKey })
+            .from(staged)
+            .where(
+              and(
+                eq(staged.teamId, teamId),
+                sql`${staged.objectKey} = ANY(${sql.param(keys)}::text[])`,
+              ),
+            ),
         ),
       );
+      const kept = new Set(named.map((row) => row.objectKey));
+      for (const key of keys) {
+        if (!kept.has(key)) yield* remove(key);
+      }
+    });
+
+    for (const teamId of teams) {
+      yield* collectRows(teamId).pipe(
+        contained('Collecting a team’s staged resources failed', teamId),
+      );
+      yield* collectConnections(teamId).pipe(
+        contained('Collecting a team’s expired connections failed', teamId),
+      );
     }
+
+    if (!store.configured) return result;
+
+    // The whole staging area rather than each team's prefix, so the objects
+    // of a team with no rows left are still found; a page at a time, so the
+    // listing is never held in memory whole.
+    const now = yield* Clock.currentTimeMillis;
+    yield* store
+      .listStaged(STAGING_ROOT, new Date(now - STAGED_ORPHAN_GRACE_MS))
+      .pipe(
+        Stream.runForEach(
+          Effect.fnUntraced(function* (page) {
+            const byTeam = Map.groupBy(
+              page.filter((key) => !asked.has(key)),
+              teamOf,
+            );
+            for (const [teamId, keys] of byTeam) {
+              yield* sweepUnnamed(teamId, keys).pipe(
+                contained(
+                  'Sweeping a team’s unnamed staged objects failed',
+                  teamId,
+                ),
+              );
+            }
+          }),
+        ),
+        // A store that will not list leaves its unnamed objects to a later run.
+        Effect.catch((error) =>
+          Effect.logWarning('Listing staged objects failed', error),
+        ),
+      );
 
     return result;
   },

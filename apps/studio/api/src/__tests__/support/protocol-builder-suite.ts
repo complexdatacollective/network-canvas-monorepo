@@ -32,7 +32,7 @@ import {
   unsafeMakeTeamAccess,
 } from '../../db/tenant.ts';
 import { resolve as resolveEnv } from '../../env/resolve.ts';
-import { livePresence } from '../../protocol-builder/connections.ts';
+import { readRelay } from '../../protocol-builder/connections.ts';
 import { type LoggedProtocolEvent } from '../../protocol-builder/events.ts';
 import { type ProtocolBuilderSession } from '../../protocol-builder/host.ts';
 import { RENEW_INTERVAL_MS } from '../../protocol-builder/leases.ts';
@@ -441,7 +441,11 @@ export function setupProtocolBuilderSuite() {
     );
 
   const present = async () =>
-    (await runEffect(livePresence(access, [draftId]))).get(draftId) ?? [];
+    (
+      await runEffect(
+        readRelay(access, draftId, { next: undefined, presence: true }),
+      )
+    ).presence.get(draftId) ?? [];
 
   /**
    * Locks one row from a connection of the suite's own, as another replica's

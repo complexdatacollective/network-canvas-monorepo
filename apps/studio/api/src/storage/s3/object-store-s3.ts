@@ -27,35 +27,6 @@ function isNotFound(error: unknown): boolean {
   );
 }
 
-const listAll = async (
-  client: S3Client,
-  bucket: string,
-  prefix: string,
-  pageSize: number | undefined,
-  abortSignal: AbortSignal,
-) => {
-  const listed: { key: string; lastModified: Date | undefined }[] = [];
-  let token: string | undefined;
-  do {
-    const page = await client.send(
-      new ListObjectsV2Command({
-        Bucket: bucket,
-        Prefix: prefix,
-        ContinuationToken: token,
-        MaxKeys: pageSize,
-      }),
-      { abortSignal },
-    );
-    for (const object of page.Contents ?? []) {
-      if (object.Key !== undefined) {
-        listed.push({ key: object.Key, lastModified: object.LastModified });
-      }
-    }
-    token = page.IsTruncated === true ? page.NextContinuationToken : undefined;
-  } while (token !== undefined);
-  return listed;
-};
-
 function make(
   env: S3Env,
   options: BackendOptions = {},
@@ -112,8 +83,26 @@ function make(
       client.send(new DeleteObjectCommand({ Bucket: env.bucket, Key: key }), {
         abortSignal,
       }),
-    list: (prefix, abortSignal) =>
-      listAll(client, env.bucket, prefix, options.listPageSize, abortSignal),
+    list: async (prefix, cursor, abortSignal) => {
+      const page = await client.send(
+        new ListObjectsV2Command({
+          Bucket: env.bucket,
+          Prefix: prefix,
+          ContinuationToken: cursor,
+          MaxKeys: options.listPageSize,
+        }),
+        { abortSignal },
+      );
+      return {
+        objects: (page.Contents ?? []).flatMap((object) =>
+          object.Key === undefined
+            ? []
+            : [{ key: object.Key, lastModified: object.LastModified }],
+        ),
+        next:
+          page.IsTruncated === true ? page.NextContinuationToken : undefined,
+      };
+    },
     // `CopySource` is a URL path, so each segment of the key is encoded; the
     // keys Studio copies are hex and a UUID, which encoding leaves as they are.
     copy: (from, to, abortSignal) =>

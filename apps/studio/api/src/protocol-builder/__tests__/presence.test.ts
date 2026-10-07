@@ -168,7 +168,7 @@ describe.skipIf(!testDb)('presence', () => {
     }
   });
 
-  it('leaves a login’s HTTP watch showing what it adopted while its unary calls take and give back locks', async () => {
+  it('shows on every watch of a tab what its own unary calls take and give back, and nothing another tab does', async () => {
     const held = await createStage(ADA, 'Held before an HTTP watch');
     const later = await createStage(ADA, 'Taken by a unary call later');
     const passing = await createStage(ADA, 'Passed through by another tab');
@@ -180,22 +180,40 @@ describe.skipIf(!testDb)('presence', () => {
       principal: ADA.principal,
       tab: 'pb-presence-unary-tab',
     };
+    const both = (mode: string, sectionId: string | null) =>
+      JSON.stringify([
+        { mode, sectionId },
+        { mode, sectionId },
+      ]);
+    const shown = async () =>
+      JSON.stringify(await shownFor('pb-presence-http-tab'));
+    const showing = (mode: string, sectionId: string | null) =>
+      until(
+        async () => (await shown()) === both(mode, sectionId),
+        `the tab’s watches to show ${mode} ${sectionId ?? 'nothing'}`,
+      );
     await lock(watcher, 'AcquireLock', held.sectionId);
-    const channel = await watching(watcher, suite.protocolId);
+    const overHttp = await watching(watcher, suite.protocolId);
+    const overSocket = await watching(
+      { ...watcher, connection: 'pb-presence-http-tab-socket' },
+      suite.protocolId,
+    );
     try {
-      const adopted = [{ mode: 'editing', sectionId: held.sectionId }];
-      expect(await shownFor('pb-presence-http-tab')).toEqual(adopted);
+      expect(await shown()).toEqual(both('editing', held.sectionId));
 
       await lock(other, 'AcquireLock', passing.sectionId);
       await lock(other, 'ReleaseLock', passing.sectionId);
-      expect(await shownFor('pb-presence-http-tab')).toEqual(adopted);
+      expect(await shown()).toEqual(both('editing', held.sectionId));
 
-      await lock(watcher, 'AcquireLock', later.sectionId);
-      expect(await shownFor('pb-presence-http-tab')).toEqual(adopted);
-      await lock(watcher, 'ReleaseLock', later.sectionId);
-    } finally {
-      await channel.stop();
       await lock(watcher, 'ReleaseLock', held.sectionId);
+      await showing('viewing', null);
+      await lock(watcher, 'AcquireLock', later.sectionId);
+      await showing('editing', later.sectionId);
+      await lock(watcher, 'ReleaseLock', later.sectionId);
+      await showing('viewing', null);
+    } finally {
+      await overSocket.stop();
+      await overHttp.stop();
     }
   });
 

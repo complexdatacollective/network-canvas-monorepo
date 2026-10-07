@@ -9,8 +9,14 @@
 // a transaction that holds the head and waits on that lease.
 //
 // - `connectSocket`, `upsertContact` and liveness take the head FOR SHARE, and
-//   `releaseOwner` FOR UPDATE; each then locks connection rows, then the
-//   owners' leases in one ordered statement, and only then renews or releases.
+//   `releaseOwner` and the reaper FOR NO KEY UPDATE; each then locks
+//   connection rows, then the owners' leases in one ordered statement, and
+//   only then renews or releases.
+// - Every head writer here and in the host takes FOR NO KEY UPDATE rather
+//   than FOR UPDATE: exclusive against every head lock above all the same,
+//   but not against the FOR KEY SHARE that a foreign key's check takes on the
+//   head when a child row, such as a staged upload, is inserted. Weaker locks
+//   only remove waits, so the order above holds.
 // - `setSocketMode` and `expireConnection` lock only connection rows and wait
 //   on nothing after them, so they skip the head. `setSocketMode` then reads
 //   the tab's leases without locking them.
@@ -35,7 +41,7 @@ import {
 import { noAuditTransaction } from '../audit/no-audit.ts';
 import type { Database } from '../db/client.ts';
 import { sqlErrorsOnly } from '../db/errors.ts';
-import { TenantScope, type TeamAccess, Transaction } from '../db/tenant.ts';
+import { type TeamAccess, Transaction } from '../db/tenant.ts';
 import { createProtocolSyncServer } from '../protocol/sync.ts';
 import {
   appendProtocolEvents,
@@ -113,7 +119,7 @@ export const contactKey = (
 const lockHead = Effect.fn('protocolBuilder.lockDraft')(function* (
   teamId: string,
   draftId: string,
-  strength: 'update' | 'share',
+  strength: 'no key update' | 'share',
 ) {
   const { tx } = yield* Transaction;
   const rows = yield* tx
@@ -430,7 +436,7 @@ export const releaseOwner: (
     session.access,
     Effect.gen(function* () {
       // A deleted draft took its leases with it.
-      if (!(yield* lockHead(teamId, session.draftId, 'update'))) {
+      if (!(yield* lockHead(teamId, session.draftId, 'no key update'))) {
         return NOTHING_HELD;
       }
       if (yield* hasLiveSocket(teamId, session.draftId, owner)) {
@@ -495,6 +501,11 @@ const presenceRows = Effect.fn('protocolBuilder.presenceRows')(function* (
   return rows;
 }, sqlErrorsOnly);
 
+/**
+ * One entry per socket, across every replica: a socket carrying several
+ * watches shows once, editing if any of them is. Listed in the order the
+ * sockets first connected.
+ */
 const groupPresence = (
   rows: ReadonlyArray<PresenceRow>,
 ): ReadonlyMap<string, ReadonlyArray<Presence>> => {
@@ -522,39 +533,11 @@ const groupPresence = (
 };
 
 /**
- * One entry per socket, across every replica: a socket carrying several
- * watches shows once, editing if any of them is. Listed in the order the
- * sockets first connected.
- */
-export const livePresence: (
-  access: TeamAccess,
-  draftIds: ReadonlyArray<string>,
-) => Effect.Effect<
-  ReadonlyMap<string, ReadonlyArray<Presence>>,
-  SqlError.SqlError,
-  Database
-> = Effect.fn('protocolBuilder.livePresence')(function* (
-  access: TeamAccess,
-  draftIds: ReadonlyArray<string>,
-) {
-  if (draftIds.length === 0) {
-    return new Map<string, ReadonlyArray<Presence>>();
-  }
-  const rows = yield* TenantScope.open(
-    access,
-    presenceRows(access.teamId, draftIds),
-  );
-  return groupPresence(rows);
-});
-
-/**
- * Shows the caller's own watches on its socket, never another tab's sharing
- * that socket, editing the first section its tab holds a live lease on, in
+ * Shows every live watch of the caller's tab, on any socket or plane and never
+ * another tab's, editing the first section the tab holds a live lease on, in
  * `section_id` order as `connectSocket` does, else viewing. Read after the
  * rows are locked, so an update that is retried or lands late writes what the
- * tab holds then. Only for a caller on a socket: a unary caller's connection
- * id is its login's session id, which every HTTP watch of that login carries
- * as its socket id too.
+ * tab holds then.
  */
 export const setSocketMode: (
   session: ProtocolBuilderSession,
@@ -575,7 +558,6 @@ export const setSocketMode: (
           and(
             eq(connections.teamId, teamId),
             eq(connections.draftId, session.draftId),
-            eq(connections.socketId, session.connectionId),
             eq(connections.owner, owner),
             eq(connections.kind, 'socket'),
             live(),
@@ -818,7 +800,8 @@ export const reapExpired: (
     'protocolBuilder.reap',
     access,
     Effect.gen(function* () {
-      if (!(yield* lockHead(teamId, draftId, 'update'))) return NOTHING_REAPED;
+      if (!(yield* lockHead(teamId, draftId, 'no key update')))
+        return NOTHING_REAPED;
       const { tx } = yield* Transaction;
       const latest = yield* tx
         .selectDistinctOn([protocolEvents.sectionId], {
