@@ -1,4 +1,3 @@
-import { configureStore } from '@reduxjs/toolkit';
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
@@ -9,6 +8,7 @@ import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import { DndStoreProvider } from '@codaco/fresco-ui/dnd/DndStoreProvider';
 import {
   asEntityAttributeReference,
+  type Codebook,
   type Variable,
 } from '@codaco/protocol-validation';
 import {
@@ -17,6 +17,7 @@ import {
   entitySecureAttributesMeta,
   type NcEdge,
   type NcNode,
+  type StageMetadata,
   type VariableValue,
 } from '@codaco/shared-consts';
 
@@ -24,17 +25,30 @@ import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import { StageMetadataContext } from '../../../contexts/StageMetadataContext';
 import { ContractProvider } from '../../../contract/context';
 import { InterviewI18nProvider } from '../../../i18n/InterviewI18nProvider';
-import protocol from '../../../store/modules/protocol';
-import session from '../../../store/modules/session';
-import ui, { setPassphrase } from '../../../store/modules/ui';
+import { setPassphrase } from '../../../store/modules/ui';
 import type { BeforeNextFunction, StageProps } from '../../../types';
+import { createEncryptionStore } from '../../Anonymisation/__tests__/encryptionFixtures';
 import { generateSecureAttributes } from '../../Anonymisation/utils';
 import NarrativePedigreeView from '../../NarrativePedigree/components/NarrativePedigreeView';
 import FamilyPedigree from '../FamilyPedigree';
 
 const MEASURED_SIZE = 96;
-class StubResizeObserver {
-  callback: ResizeObserverCallback;
+const measuredRect = {
+  width: MEASURED_SIZE,
+  height: MEASURED_SIZE,
+  top: 0,
+  left: 0,
+  bottom: MEASURED_SIZE,
+  right: MEASURED_SIZE,
+  x: 0,
+  y: 0,
+  toJSON: () => ({}),
+};
+const measuredSize = { inlineSize: MEASURED_SIZE, blockSize: MEASURED_SIZE };
+
+// Reports every observed element at the measured size straight away.
+class StubResizeObserver implements ResizeObserver {
+  private callback: ResizeObserverCallback;
   constructor(callback: ResizeObserverCallback) {
     this.callback = callback;
   }
@@ -43,8 +57,11 @@ class StubResizeObserver {
       [
         {
           target,
-          contentRect: { width: MEASURED_SIZE, height: MEASURED_SIZE },
-        } as unknown as ResizeObserverEntry,
+          contentRect: measuredRect,
+          borderBoxSize: [measuredSize],
+          contentBoxSize: [measuredSize],
+          devicePixelContentBoxSize: [measuredSize],
+        },
       ],
       this,
     );
@@ -55,17 +72,9 @@ class StubResizeObserver {
 
 beforeAll(() => {
   vi.stubGlobal('ResizeObserver', StubResizeObserver);
-  vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue({
-    width: MEASURED_SIZE,
-    height: MEASURED_SIZE,
-    top: 0,
-    left: 0,
-    bottom: MEASURED_SIZE,
-    right: MEASURED_SIZE,
-    x: 0,
-    y: 0,
-    toJSON: () => ({}),
-  });
+  vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue(
+    measuredRect,
+  );
 });
 
 const PASSPHRASE = 'pedigree passphrase';
@@ -96,17 +105,8 @@ const nodeVariables: Record<string, Variable> = {
   [AFFECTED_VAR]: { name: 'affected', type: 'boolean' },
 };
 
-const codebook = {
-  node: {
-    [NODE_TYPE]: {
-      name: 'Person',
-      color: 'node-color-seq-1',
-      shape: { default: 'square' },
-      variables: nodeVariables,
-    },
-  },
-  edge: { [EDGE_TYPE]: { name: 'Family', color: 'edge-color-seq-1' } },
-  ego: { variables: {} },
+const edgeTypes: Codebook['edge'] = {
+  [EDGE_TYPE]: { name: 'Family', color: 'edge-color-seq-1' },
 };
 
 const stage: StageProps<'FamilyPedigree'>['stage'] = {
@@ -198,7 +198,7 @@ async function committedPedigree() {
       },
     },
   ];
-  const metadata = {
+  const metadata: StageMetadata[string] = {
     isNetworkCommitted: true,
     edgeIdVersion: 1,
     nodes: [
@@ -223,29 +223,19 @@ function makeStore({
 }: {
   nodes?: NcNode[];
   edges?: NcEdge[];
-  metadata?: unknown;
+  metadata?: StageMetadata[string];
   withPassphrase: boolean;
 }) {
-  const store = configureStore({
-    reducer: { session, protocol, ui },
-    preloadedState: {
-      session: {
-        id: 's',
-        promptIndex: 0,
-        network: { nodes, edges, ego: { [entityAttributesProperty]: {} } },
-        stageMetadata: metadata ? { 0: metadata } : {},
-      } as never,
-      protocol: {
-        id: 'p',
-        hash: 'h',
-        schemaVersion: 9,
-        codebook,
-        stages: [stage, narrativeStage],
-        assets: [],
-      } as never,
+  const store = createEncryptionStore(
+    nodes,
+    [stage, narrativeStage],
+    nodeVariables,
+    {
+      edges,
+      edgeTypes,
+      ...(metadata ? { stageMetadata: { 0: metadata } } : {}),
     },
-    middleware: (g) => g({ serializableCheck: false }),
-  });
+  );
   if (withPassphrase) store.dispatch(setPassphrase(PASSPHRASE));
   return store;
 }

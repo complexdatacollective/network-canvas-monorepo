@@ -1,7 +1,9 @@
-import { configureStore } from '@reduxjs/toolkit';
 import { describe, expect, it } from 'vitest';
 
-import type { Variable } from '@codaco/protocol-validation';
+import {
+  asEntityAttributeReference,
+  type Variable,
+} from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entitySecureAttributesMeta,
@@ -9,15 +11,11 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
-import { createInitialNetwork } from '../../../contract/network';
 import { writeFailureMessage } from '../../../forms/writeSubmissionResult';
 import { runtimeMessages } from '../../../i18n/runtimeMessages';
-import protocol from '../../../store/modules/protocol';
-import session from '../../../store/modules/session';
-import ui, {
-  setPassphrase,
-  setPassphraseInvalid,
-} from '../../../store/modules/ui';
+import { setPassphrase, setPassphraseInvalid } from '../../../store/modules/ui';
+import type { StageProps } from '../../../types';
+import { createEncryptionStore } from '../../Anonymisation/__tests__/encryptionFixtures';
 import { isNumberArray } from '../../Anonymisation/decryptionScope';
 import { decryptData } from '../../Anonymisation/utils';
 import { createFamilyPedigreeStore, type VariableConfig } from '../store';
@@ -64,31 +62,49 @@ const encryptedVariableIds: ReadonlySet<string> = new Set([
   config.nodeLabelVariable,
 ]);
 
+const stage: StageProps<'FamilyPedigree'>['stage'] = {
+  id: 'pedigree',
+  type: 'FamilyPedigree',
+  label: 'Family Pedigree',
+  censusPrompt: 'Build your pedigree.',
+  framing: { mode: 'fixed', value: 'gendered' },
+  boundaries: {
+    requireGrandparents: 'off',
+    requireChildrenContributors: 'off',
+  },
+  nodeConfig: {
+    type: config.nodeType,
+    nodeLabelVariable: asEntityAttributeReference(config.nodeLabelVariable),
+    egoVariable: asEntityAttributeReference(config.egoVariable),
+    relationshipVariable: asEntityAttributeReference(
+      config.relationshipVariable,
+    ),
+    biologicalSexVariable: asEntityAttributeReference(
+      config.biologicalSexVariable,
+    ),
+  },
+  edgeConfig: {
+    type: config.edgeType,
+    relationshipTypeVariable: asEntityAttributeReference(
+      config.relationshipTypeVariable,
+    ),
+    isActiveVariable: asEntityAttributeReference(config.isActiveVariable),
+    isGestationalCarrierVariable: asEntityAttributeReference(
+      config.isGestationalCarrierVariable,
+    ),
+    gameteRoleVariable: asEntityAttributeReference(config.gameteRoleVariable),
+  },
+};
+
 function makeReduxStore() {
-  const reduxStore = configureStore({
-    reducer: { session, protocol, ui },
-    preloadedState: {
-      session: {
-        id: 's',
-        promptIndex: 0,
-        network: createInitialNetwork(),
-      } as never,
-      protocol: {
-        id: 'p',
-        hash: 'h',
-        schemaVersion: 9,
-        codebook: {
-          node: {
-            [config.nodeType]: { name: 'Person', variables: nodeVariables },
-          },
-          edge: {
-            [config.edgeType]: { name: 'Family', variables: edgeVariables },
-          },
-        },
-        stages: [{ id: 'pedigree', type: 'FamilyPedigree' }],
-      } as never,
+  const reduxStore = createEncryptionStore([], [stage], nodeVariables, {
+    edgeTypes: {
+      [config.edgeType]: {
+        name: 'Family',
+        color: 'edge-color-seq-1',
+        variables: edgeVariables,
+      },
     },
-    middleware: (g) => g({ serializableCheck: false }),
   });
   reduxStore.dispatch(setPassphrase(PASSPHRASE));
   return reduxStore;

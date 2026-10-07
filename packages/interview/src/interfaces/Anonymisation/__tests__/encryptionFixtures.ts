@@ -7,7 +7,9 @@ import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
   entitySecureAttributesMeta,
+  type NcEdge,
   type NcNode,
+  type StageMetadata,
 } from '@codaco/shared-consts';
 
 import { createInitialNetwork } from '../../../contract/network';
@@ -99,6 +101,12 @@ export const alterFormStages: Stages = [
   },
 ];
 
+type EncryptionStoreOptions = {
+  edges?: NcEdge[];
+  edgeTypes?: Codebook['edge'];
+  stageMetadata?: StageMetadata;
+};
+
 /**
  * A real interview store holding `nodes`, as an interview that has just been
  * mounted (or resumed) would have it: no passphrase in memory.
@@ -107,6 +115,7 @@ export function createEncryptionStore(
   nodes: NcNode[],
   stages: Stages = nameGeneratorStages,
   variables: Record<string, Variable> = encryptedVariables,
+  { edges = [], edgeTypes, stageMetadata }: EncryptionStoreOptions = {},
 ) {
   const payload: InterviewPayload = {
     session: {
@@ -115,7 +124,8 @@ export function createEncryptionStore(
       finishTime: null,
       exportTime: null,
       lastUpdated: '2026-01-01T00:00:00.000Z',
-      network: { ...createInitialNetwork(), nodes },
+      network: { ...createInitialNetwork(), nodes, edges },
+      ...(stageMetadata ? { stageMetadata } : {}),
     },
     protocol: {
       id: 'protocol-1',
@@ -128,6 +138,7 @@ export function createEncryptionStore(
         node: {
           [NODE_TYPE]: { ...personDefinition, variables },
         },
+        ...(edgeTypes ? { edge: edgeTypes } : {}),
       },
       stages,
     },
