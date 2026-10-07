@@ -6,7 +6,9 @@ import { beforeAll, describe, expect, it, vi } from 'vitest';
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import {
   entityAttributesProperty,
+  entityPrimaryKeyProperty,
   entitySecureAttributesMeta,
+  type NcNode,
 } from '@codaco/shared-consts';
 
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
@@ -77,10 +79,16 @@ beforeAll(() => {
 
 const [alterFormStage] = alterFormStages;
 
-async function renderAlterForm(passphrase?: string, encryptionEnabled = true) {
-  const person = encryptionEnabled
-    ? await makeEncryptedPerson('n1', 'Alice', 'pw')
-    : makePlainPerson('n1', 'Alice');
+async function renderAlterForm(
+  passphrase?: string,
+  encryptionEnabled = true,
+  storedPerson?: NcNode,
+) {
+  const person =
+    storedPerson ??
+    (encryptionEnabled
+      ? await makeEncryptedPerson('n1', 'Alice', 'pw')
+      : makePlainPerson('n1', 'Alice'));
   const store = createEncryptionStore([person], alterFormStages, undefined, {
     encryptionEnabled,
   });
@@ -171,6 +179,42 @@ describe('AlterForm with an encrypted question', () => {
     await expect(
       decryptData({ secureAttributes: secure, data: stored }, 'pw'),
     ).resolves.toBe('Alicia');
+  });
+
+  it('removes an answer the participant clears', async () => {
+    const { store, onStepChange, next } = await renderAlterForm('pw');
+    const user = userEvent.setup();
+
+    await user.clear(await screen.findByRole('spinbutton', { name: 'Age' }));
+    await next();
+
+    await waitFor(() => expect(onStepChange).toHaveBeenCalled());
+    const [saved] = store.getState().session.network.nodes;
+    expect(saved?.[entityAttributesProperty]).not.toHaveProperty('age');
+  });
+
+  it('keeps an answer it cannot show when the person is saved with another answer changed', async () => {
+    const encrypted = await makeEncryptedPerson('n1', 'Alice', 'pw');
+    const storedCiphertext = encrypted[entityAttributesProperty].name;
+    const { store, onStepChange, next } = await renderAlterForm('pw', true, {
+      [entityPrimaryKeyProperty]: encrypted[entityPrimaryKeyProperty],
+      type: encrypted.type,
+      [entityAttributesProperty]: encrypted[entityAttributesProperty],
+    });
+    const user = userEvent.setup();
+
+    expect(await screen.findByRole('textbox', { name: 'Name' })).toHaveValue(
+      '',
+    );
+    const age = screen.getByRole('spinbutton', { name: 'Age' });
+    await user.clear(age);
+    await user.type(age, '41');
+    await next();
+
+    await waitFor(() => expect(onStepChange).toHaveBeenCalled());
+    const [saved] = store.getState().session.network.nodes;
+    expect(saved?.[entityAttributesProperty].age).toBe(41);
+    expect(saved?.[entityAttributesProperty].name).toEqual(storedCiphertext);
   });
 
   it('keeps answers being entered, and says they were not saved, when the passphrase stops working', async () => {

@@ -200,7 +200,11 @@ const EgoFormInner = (props: EgoFormProps) => {
     async (formData: Record<string, FieldValue>) => {
       const coerced = coerceValues(formData);
       const stageFieldIds = form.fields.map((f) => f.variable);
-      const patchResult = formValuesToAttributePatch(coerced, stageFieldIds);
+      const patchResult = formValuesToAttributePatch(
+        coerced,
+        stageFieldIds,
+        egoAttributes,
+      );
 
       if (!patchResult.success) {
         return {

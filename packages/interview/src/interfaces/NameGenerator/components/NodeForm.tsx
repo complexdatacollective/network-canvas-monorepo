@@ -158,6 +158,7 @@ const NodeForm = (props: NodeFormProps) => {
       const patchResult = formValuesToAttributePatch(
         coerceValues(values),
         form.fields.map((field) => field.variable),
+        initialValues ?? {},
       );
 
       if (!patchResult.success) {
@@ -191,6 +192,7 @@ const NodeForm = (props: NodeFormProps) => {
     [
       coerceValues,
       form.fields,
+      initialValues,
       selectedNode,
       addNode,
       newNodeAttributes,

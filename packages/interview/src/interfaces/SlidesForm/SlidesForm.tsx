@@ -161,6 +161,7 @@ const SlideContentInner = forwardRef<SlideHandle, SlideFormProps>(
       const patchResult = formValuesToAttributePatch(
         coerceValues(values),
         form.fields.map((field) => field.variable),
+        initialValues,
       );
 
       if (!patchResult.success) {

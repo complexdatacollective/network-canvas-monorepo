@@ -119,7 +119,12 @@ const QuickNodeForm = ({
         };
       }
 
-      const patchResult = formValuesToAttributePatch(values, [targetVariable]);
+      // A new person: the form showed no stored values.
+      const patchResult = formValuesToAttributePatch(
+        values,
+        [targetVariable],
+        {},
+      );
       if (!patchResult.success) {
         return {
           success: false,

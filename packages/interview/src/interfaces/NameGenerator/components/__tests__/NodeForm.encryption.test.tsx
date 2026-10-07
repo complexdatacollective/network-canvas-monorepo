@@ -287,6 +287,45 @@ describe('NodeForm editing a person with an encrypted answer', () => {
     expect(name).toHaveValue('');
     expect(screen.getByRole('spinbutton', { name: 'Age' })).toHaveValue(40);
   });
+
+  it('removes an answer the participant clears', async () => {
+    const { store, onClose } = await renderEditing(
+      makeEncryptedPerson('n1', 'Alice', 'pw'),
+      'pw',
+    );
+    const user = userEvent.setup();
+
+    await user.clear(await screen.findByRole('spinbutton', { name: 'Age' }));
+    await user.click(screen.getByRole('button', { name: 'Finished' }));
+
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+    const [saved] = store.getState().session.network.nodes;
+    expect(saved?.[entityAttributesProperty]).not.toHaveProperty('age');
+  });
+
+  it('keeps the unreadable answer when the person is saved with another answer changed', async () => {
+    const encrypted = await makeEncryptedPerson('n1', 'Alice', 'pw');
+    const storedCiphertext = encrypted[entityAttributesProperty].name;
+    const { store, onClose } = await renderEditing(
+      {
+        [entityPrimaryKeyProperty]: encrypted[entityPrimaryKeyProperty],
+        type: encrypted.type,
+        [entityAttributesProperty]: encrypted[entityAttributesProperty],
+      },
+      'pw',
+    );
+    const user = userEvent.setup();
+
+    const age = await screen.findByRole('spinbutton', { name: 'Age' });
+    await user.clear(age);
+    await user.type(age, '41');
+    await user.click(screen.getByRole('button', { name: 'Finished' }));
+
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+    const [saved] = store.getState().session.network.nodes;
+    expect(saved?.[entityAttributesProperty].age).toBe(41);
+    expect(saved?.[entityAttributesProperty].name).toEqual(storedCiphertext);
+  });
 });
 
 describe('NodeForm with the encrypted-variables experiment off', () => {

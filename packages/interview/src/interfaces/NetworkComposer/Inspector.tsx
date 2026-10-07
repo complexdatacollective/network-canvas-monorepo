@@ -146,6 +146,7 @@ function AttributeFormInner({
       const patchResult = formValuesToAttributePatch(
         coerceValues(values),
         (form.fields ?? []).map((field) => field.variable),
+        initialValues,
       );
 
       // The form keeps what was entered, so the edit can be saved again once
@@ -166,7 +167,7 @@ function AttributeFormInner({
         showSaveFailure(rejectedWriteMessage(error));
       });
     },
-    [onSave, entityId, coerceValues, form.fields, storeApi],
+    [onSave, entityId, coerceValues, form.fields, initialValues, storeApi],
   );
 
   return (

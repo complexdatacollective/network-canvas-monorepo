@@ -106,6 +106,7 @@ const NODE_TYPE = 'person';
 const QUICK_ADD_VAR = 'var-quick-add';
 const LAYOUT_VAR = 'var-layout';
 const NOTES_VAR = 'var-notes';
+const AGE_VAR = 'var-age';
 const NODE_ID = 'node-a';
 const PASSPHRASE = 'composer passphrase';
 
@@ -152,6 +153,25 @@ const stage: StageProps<'NetworkComposer'>['stage'] = {
   background: { concentricCircles: 4, skewedTowardCenter: true },
 };
 
+const ageVariables: Record<string, Variable> = {
+  ...variables,
+  [AGE_VAR]: { name: 'age', type: 'number', component: 'Number' },
+};
+
+const notesAndAgeStage: StageProps<'NetworkComposer'>['stage'] = {
+  ...stage,
+  nodeForm: {
+    fields: [
+      ...(stage.nodeForm?.fields ?? []),
+      {
+        variable: asEntityAttributeReference(AGE_VAR),
+        component: 'Number',
+        label: 'Age',
+      },
+    ],
+  },
+};
+
 async function makeEncryptedNode(): Promise<NcNode> {
   const { encryptedAttributes, secureAttributes } =
     await generateSecureAttributes(
@@ -176,18 +196,22 @@ function makeStore(
   withPassphrase: boolean,
   encryptionEnabled = true,
   nodeVariables = variables,
+  composerStage = stage,
 ) {
-  const store = createEncryptionStore(nodes, [stage], nodeVariables, {
+  const store = createEncryptionStore(nodes, [composerStage], nodeVariables, {
     encryptionEnabled,
   });
   if (withPassphrase) store.dispatch(setPassphrase(PASSPHRASE));
   return store;
 }
 
-function renderComposer(store: ReturnType<typeof makeStore>) {
+function renderComposer(
+  store: ReturnType<typeof makeStore>,
+  composerStage = stage,
+) {
   const registerBeforeNext: RegisterBeforeNext = vi.fn();
   const props: StageProps<'NetworkComposer'> = {
-    stage,
+    stage: composerStage,
     getNavigationHelpers: () => ({
       moveForward: vi.fn(),
       moveBackward: vi.fn(),
@@ -335,6 +359,79 @@ describe('NetworkComposer with encrypted variables', () => {
 
     const notesInput = await screen.findByLabelText(/notes/i);
     expect(notesInput).toHaveProperty('value', 'Met at work');
+  });
+});
+
+/** The encrypted person, aged 40, with the given encryption metadata. */
+async function makeAgedNode(
+  keepMetadata: (variable: string) => boolean = () => true,
+): Promise<NcNode> {
+  const encrypted = await makeEncryptedNode();
+  return {
+    ...encrypted,
+    [entityAttributesProperty]: {
+      ...encrypted[entityAttributesProperty],
+      [AGE_VAR]: 40,
+    },
+    [entitySecureAttributesMeta]: Object.fromEntries(
+      Object.entries(encrypted[entitySecureAttributesMeta] ?? {}).filter(
+        ([variable]) => keepMetadata(variable),
+      ),
+    ),
+  };
+}
+
+function openAgedNodeDrawer(node: NcNode) {
+  const store = makeStore([node], true, true, ageVariables, notesAndAgeStage);
+  renderComposer(store, notesAndAgeStage);
+  return store;
+}
+
+describe('NetworkComposer saving an edit in the drawer', () => {
+  it('removes an answer the participant clears', async () => {
+    const store = openAgedNodeDrawer(await makeAgedNode());
+
+    const nodeButton = await screen.findByRole('button', { name: /alice/i });
+    act(() => {
+      tapNode(nodeButton);
+    });
+    const ageInput = await screen.findByLabelText(/age/i);
+    expect(ageInput).toHaveProperty('value', '40');
+    fireEvent.change(ageInput, { target: { value: '' } });
+
+    await waitFor(
+      () => {
+        const [node] = store.getState().session.network.nodes;
+        expect(node?.[entityAttributesProperty]).not.toHaveProperty(AGE_VAR);
+      },
+      { timeout: 3000 },
+    );
+  });
+
+  it('keeps an answer the drawer cannot show when another answer is changed', async () => {
+    // The notes are left without the metadata that decrypts them.
+    const stored = await makeAgedNode((variable) => variable !== NOTES_VAR);
+    const store = openAgedNodeDrawer(stored);
+
+    const nodeButton = await screen.findByRole('button', { name: /alice/i });
+    act(() => {
+      tapNode(nodeButton);
+    });
+    const ageInput = await screen.findByLabelText(/age/i);
+    expect(screen.getByLabelText(/notes/i)).toHaveProperty('value', '');
+    fireEvent.change(ageInput, { target: { value: '41' } });
+
+    await waitFor(
+      () => {
+        const [node] = store.getState().session.network.nodes;
+        expect(node?.[entityAttributesProperty][AGE_VAR]).toBe(41);
+      },
+      { timeout: 3000 },
+    );
+    const [saved] = store.getState().session.network.nodes;
+    expect(saved?.[entityAttributesProperty][NOTES_VAR]).toEqual(
+      stored[entityAttributesProperty][NOTES_VAR],
+    );
   });
 });
 
