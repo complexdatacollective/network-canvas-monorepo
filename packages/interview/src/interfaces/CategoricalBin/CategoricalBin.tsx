@@ -31,7 +31,6 @@ import {
 } from '../../forms/writeSubmissionResult';
 import useReadyForNextStage from '../../hooks/useReadyForNextStage';
 import { useStageSelector } from '../../hooks/useStageSelector';
-import { runtimeMessages } from '../../i18n/runtimeMessages';
 import { useResolvePresentationalText } from '../../localization/ProtocolLocalizationProvider';
 import {
   getValidationContext,
@@ -199,7 +198,7 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
     prompt.otherVariable !== undefined ? [prompt.otherVariable] : [],
   );
   const intl = useAppIntl();
-  const { unlocked, requirePassphrase } = usePassphrase();
+  const { unlocked, requirePassphrase, lockedNotice } = usePassphrase();
   const { showToast } = useInterviewToast();
 
   // A refused write leaves the person where they were; say why.
@@ -251,9 +250,7 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
       if (stageVariables[otherVariable]?.encrypted && !unlocked) {
         requirePassphrase();
         showToast({
-          description: intl.formatMessage(
-            runtimeMessages.protectedAnswersLocked,
-          ),
+          description: intl.formatMessage(lockedNotice),
           variant: 'info',
           anchor: 'forward',
         });

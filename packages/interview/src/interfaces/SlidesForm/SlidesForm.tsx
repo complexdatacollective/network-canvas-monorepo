@@ -53,6 +53,7 @@ import type { Subject } from '../../selectors/forms';
 import { makeGetCodebookVariablesForNodeType } from '../../selectors/protocol';
 import type { AttributePatch } from '../../store/entityAttributePatch';
 import type { BeforeNextFunction, Direction } from '../../types';
+import { usePassphrase } from '../Anonymisation/usePassphrase';
 import { useProtectedFormValues } from '../Anonymisation/useProtectedFormValues';
 import { interfaceMessages } from '../messages';
 
@@ -291,6 +292,7 @@ const ProtectedSlide = forwardRef<
   }
 >(function ProtectedSlide({ header, reason, onReadyChange }, ref) {
   const noticeRef = useRef<HTMLDivElement>(null);
+  const { lockedNotice } = usePassphrase();
 
   useEffect(() => {
     onReadyChange(false);
@@ -316,7 +318,7 @@ const ProtectedSlide = forwardRef<
             className="tablet-portrait:min-w-lg focusable max-w-2xl"
           >
             <AlertDescription>
-              <AppMessage message={runtimeMessages.protectedAnswersLocked} />
+              <AppMessage message={lockedNotice} />
             </AlertDescription>
           </Alert>
         )}
