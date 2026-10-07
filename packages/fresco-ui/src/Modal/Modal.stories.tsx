@@ -1,10 +1,11 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { motion } from 'motion/react';
 import { useState } from 'react';
-import { fn } from 'storybook/test';
+import { expect, fn, screen, userEvent, within } from 'storybook/test';
 
 import Modal from '.';
 import Button from '../Button';
+import { awaitPassiveEffects } from '../storybook-support/awaitPassiveEffects';
 import Heading from '../typography/Heading';
 import Paragraph from '../typography/Paragraph';
 import { cx } from '../utils/cva';
@@ -463,5 +464,69 @@ export const LayoutIdMorph: Story = {
           'Use layoutId to create smooth morph transitions between a trigger element and the modal. The modal appears to expand from the clicked card and collapses back when closed.',
       },
     },
+  },
+};
+
+const nextFrame = () =>
+  new Promise<void>((resolve) => {
+    requestAnimationFrame(() => {
+      resolve();
+    });
+  });
+
+/** The element's opacity as drawn: its own times every ancestor's. */
+const drawnOpacity = (element: Element) => {
+  let opacity = 1;
+  for (
+    let node: Element | null = element;
+    node !== null;
+    node = node.parentElement
+  ) {
+    opacity *= Number(getComputedStyle(node).opacity);
+  }
+  return opacity;
+};
+
+/**
+ * The morph opened under automation, where it must not run at all.
+ *
+ * A `layoutId` morph is a Motion layout animation, and those read only
+ * Motion's page-wide `skipAnimations` flag, not the one `MotionConfig` puts in
+ * context. With only the context flag set the popup crossfaded in over several
+ * frames, and an a11y check run in that window read its text as failed
+ * contrast. Every frame after the popup appears must already show it settled:
+ * fully opaque, at its final size and place.
+ */
+export const LayoutIdMorphUnderAutomation: Story = {
+  render: () => <LayoutIdMorphExample />,
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'The layoutId morph with animations disabled for automation, as in Storybook tests and Chromatic: the modal opens at its final state on the first frame.',
+      },
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await awaitPassiveEffects();
+
+    await userEvent.click(
+      canvas.getByRole('button', { name: /Project Alpha/ }),
+    );
+    const popup = await screen.findByRole('dialog');
+
+    const frames: { opacity: number; rect: string }[] = [];
+    for (let frame = 0; frame < 12; frame++) {
+      frames.push({
+        opacity: drawnOpacity(popup),
+        rect: JSON.stringify(popup.getBoundingClientRect()),
+      });
+      await nextFrame();
+    }
+
+    const settled = frames.at(-1);
+    await expect(settled?.opacity).toBe(1);
+    await expect(frames).toEqual(frames.map(() => settled));
   },
 };
