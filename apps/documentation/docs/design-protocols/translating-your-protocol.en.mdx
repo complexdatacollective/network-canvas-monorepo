@@ -65,7 +65,7 @@ Under the list, **Open translation table** opens [the translation table](#the-tr
 
 Languages have no order. Architect lists them alphabetically by name, in the language Architect's interface is shown in, and the order your protocol stores them in makes no difference to what participants see.
 
-You can also manage your protocol's languages from a [Language Chooser](/en/design-protocols/interface-documentation/language-chooser) stage's editor. It shows the same list, with the same rules, as the **Languages** tab, so you can manage your protocol's languages without leaving your stages. Everything below applies in both places. A change you make there also applies to the stage's changes that you haven't saved yet. Opening the translation table from there leaves the stage, so if the stage has changes you haven't saved, Architect asks whether to discard them first.
+You can also manage your protocol's languages from a [Language Chooser](/en/design-protocols/interface-documentation/language-chooser) stage's editor. It shows the same list, with the same rules, as the **Languages** tab, so you can manage your protocol's languages without leaving your stages. Everything below applies in both places. A change you make there also applies to the stage's changes that you haven't saved yet. Opening the translation table from there leaves the stage for the **Languages** tab, so if the stage has changes you haven't saved, Architect asks whether to discard them first.
 
 ### Adding languages
 
@@ -127,7 +127,9 @@ Architect shows you where they are:
 
 ## The translation table
 
-The translation table shows every text participants see, beside its translation into each of your protocol's languages. Open it with **Open translation table** on the **Languages** tab, or with any of the links in [Finding missing translations](#finding-missing-translations). **Return to Languages** takes you back.
+The translation table shows every text participants see, beside its translation into each of your protocol's languages. Open it with **Open translation table** on the **Languages** tab, or with any of the links in [Finding missing translations](#finding-missing-translations). It opens over the **Languages** tab and fills almost the whole window. When there are more texts or languages than fit, scroll the table: the language names and the names of the texts stay in view.
+
+To close the table, click the close button in its top corner, press Escape, or use your browser's Back button. You're back on the **Languages** tab, and a change you were making to a cell is saved.
 
 Each row is one text, and each column is one language, in alphabetical order. The top of each column shows the language's name, a **Default** badge on the default language, and how many texts are translated into it, such as "12 of 40 translated".
 
@@ -148,7 +150,7 @@ Above the table:
 
 Click a cell to edit its translation. Your change is saved when you leave the cell, and you can press Escape to undo it before then. To remove a translation, delete all of its text. A text needs a translation in at least one language, so you can't clear its only translation: the cell says why, and keeps the text.
 
-Formatted text, such as the text of an Information screen, is shown as participants see it until you click it. It then opens with the same formatting buttons as in the stage editor, below the text.
+Formatted text, such as the text of an Information screen, is shown as participants see it until you click it. It then opens with the same formatting buttons as in the stage editor, above the text. The buttons stay in view while you scroll through a long text.
 
 You can work through the table with the keyboard:
 
@@ -158,13 +160,9 @@ You can work through the table with the keyboard:
 | Ctrl+Enter, or ⌘+Enter on a Mac | Saves the text and moves to the next row.                                                                                       |
 | Up arrow and down arrow         | Move to the row above or below, from the first or last line of a cell.                                                          |
 | Tab                             | Moves to the next cell. In formatted text, it moves to the formatting buttons first, and in a list it indents the item instead. |
-| Escape                          | Undoes your change to the cell, until you leave it.                                                                             |
+| Escape                          | Undoes your change to the cell, until you leave it. When there's no change to undo, closes the table.                           |
 
 The help button (a question mark) above the table explains these keys too. **Undo** and **Redo**, next to it, undo and redo changes to your protocol, such as a translation you saved.
-
-### Using the whole screen
-
-The table fills the browser window. To give it the whole screen, click **Full screen**. Click **Exit full screen**, or press Escape, to go back. Your browser leaves full screen whenever you press Escape, even while you are editing a cell. Leaving the table also leaves full screen. If your browser can't show pages full screen, the button isn't shown.
 
 ## Translating text
 
