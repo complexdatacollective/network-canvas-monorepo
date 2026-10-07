@@ -137,6 +137,24 @@ minute in that team's audit log; the scopes with no team behind them — sign-in
 storage, the public API — become one log line per scope per run, with a count
 and nothing else.
 
+### Valkey also carries sync doorbells
+
+With more than one API replica, an edit made through one replica has to reach
+editors connected to another. The truth is in Postgres; Valkey only says that
+there is something new to read. When a replica commits a change to a
+protocol, or a lock changes hands, it `PUBLISH`es a short message on one
+channel (`studio:protocol-events` by default), and every replica holds a
+`SUBSCRIBE` to that channel and reads the new state from Postgres when it
+rings. The message carries no content, and a replica that misses it — it was
+restarting, or Valkey was down — still catches up, because each replica also
+reads the state its connected editors depend on every five seconds.
+
+So Valkey makes cross-replica updates fast and is never what makes them
+correct. A Valkey that cannot be reached shows as `degraded` on `/readyz`,
+which stays 200, and updates between replicas arrive at the five-second poll
+instead of at once. The store holds nothing worth backing up, as with the
+rate-limit counters.
+
 ## Development
 
 ```bash
@@ -160,13 +178,13 @@ Compose project `studio-dev`. `traefik`, `web`, `api` and `worker` stay
 stopped: in development those processes run from source with watch and HMR
 instead.
 
-| Service  | Address                   | What it is                                              |
-| -------- | ------------------------- | ------------------------------------------------------- |
-| Postgres | `127.0.0.1:54318`         | database `studio_dev`, reset and reseeded on every boot |
-| Garage   | `127.0.0.1:9100`          | the S3-compatible object store; bucket `studio-dev`     |
-| Azurite  | `127.0.0.1:10100`         | the Azure Blob emulator, for the contract suite only    |
-| Valkey   | `127.0.0.1:63790`         | Redis-compatible, for rate-limit counters               |
-| Mailpit  | `127.0.0.1:1025`, `:8025` | SMTP sink and its inbox at <http://localhost:8025>      |
+| Service  | Address                   | What it is                                               |
+| -------- | ------------------------- | -------------------------------------------------------- |
+| Postgres | `127.0.0.1:54318`         | database `studio_dev`, reset and reseeded on every boot  |
+| Garage   | `127.0.0.1:9100`          | the S3-compatible object store; bucket `studio-dev`      |
+| Azurite  | `127.0.0.1:10100`         | the Azure Blob emulator, for the contract suite only     |
+| Valkey   | `127.0.0.1:63790`         | Redis-compatible: rate-limit counters and sync doorbells |
+| Mailpit  | `127.0.0.1:1025`, `:8025` | SMTP sink and its inbox at <http://localhost:8025>       |
 
 `pnpm --filter @codaco/studio-api dev:object-stores` starts only Garage and
 Azurite, bootstraps Garage's bucket and exits — enough for the object-store
@@ -700,13 +718,14 @@ them.
 
 Studio encrypts **secrets** in the application and relies on the deployment for
 everything else (#1900). A secret is a value that would let someone act as
-Studio or as a researcher's integration, and there are three:
+Studio or as a researcher's integration, and there are four:
 
-| What                             | Where it is stored                                 | Opened where                                      |
-| -------------------------------- | -------------------------------------------------- | ------------------------------------------------- |
-| Webhook signing secrets          | `webhook_subscriptions.secret_ciphertext`          | In the worker, to sign one delivery               |
-| API-key protocol assets          | `protocol_asset_keys`, never in a section document | Assembling a protocol for a session or a preview  |
-| OAuth access, refresh, id tokens | `account`, as `studio-secret:<keyId>:<base64url>`  | Inside the auth adapter, on every read of the row |
+| What                             | Where it is stored                                     | Opened where                                                |
+| -------------------------------- | ------------------------------------------------------ | ----------------------------------------------------------- |
+| Webhook signing secrets          | `webhook_subscriptions.secret_ciphertext`              | In the worker, to sign one delivery                         |
+| API-key protocol assets          | `protocol_asset_keys`, never in a section document     | Assembling a protocol for a session or a preview            |
+| OAuth access, refresh, id tokens | `account`, as `studio-secret:<keyId>:<base64url>`      | Inside the auth adapter, on every read of the row           |
+| Staged API-key assets            | `protocol_staged_resources`, until the import is saved | When the import is saved, where it becomes an API-key asset |
 
 AES-256-GCM through Node's own `crypto`, one keyring (see
 [Secrets](#secrets) for the variables), one HKDF-derived subkey per purpose,
@@ -1026,7 +1045,7 @@ command rather than a path into the bundle:
 
 | Command                  | What it is                                                                                  |
 | ------------------------ | ------------------------------------------------------------------------------------------- |
-| `serve` (the default)    | HTTP, the RPC surface and the WebSocket endpoint; a single replica (#1247)                  |
+| `serve` (the default)    | HTTP, the RPC surface and the WebSocket endpoint; scalable, with no sticky sessions         |
 | `worker`                 | background jobs and cron schedules; scalable (see [Background work](#background-work))      |
 | `migrate`                | creates this build's schema in an empty database; once per deployment, not once per replica |
 | `maintenance on` / `off` | closes the instance to users. A stub that exits 64 until #1901 merges                       |
@@ -1278,14 +1297,24 @@ What the managed service adds is configuration rather than architecture: the
 same compose file with its own `.env`, pointing the five `S3_*` variables at an
 R2 bucket instead of the stack's Garage. There is no CDN in front of the client
 — nginx behind the ingress is enough at the expected scale — and no second
-topology to maintain. The web process stays a single replica, as it already
-did: the sync leases it holds are per-process state (#1247). The audit
-denial-rate window used to be a second reason and is not one any more — it
-counts in Valkey now, like every other limit (#1909) — so what a second replica
-still needs is somewhere shared for the sync leases to live. Workers have no
-such state and may be scaled — a job is claimed by exactly one worker, and one
-replica ticks the cron schedules per pass (see
-[Background work](#background-work)).
+topology to maintain. The API can run as one replica or several, behind the
+same Traefik, with no sticky sessions: any replica can serve any request, and
+an editor's WebSocket may reconnect to a different one. That works because
+nothing a replica needs lives only in its memory. Edit locks and the
+connections that hold them are rows in Postgres, so a lock outlives the
+replica that granted it and is renewed by whichever replica next hears from
+its owner. A protocol imported from a file but not yet saved is kept in the
+object store under `staging/`, with any secrets in it sealed under the
+keyring, so the replica that finishes the import need not be the one that
+started it. Valkey carries a doorbell between replicas, and a five-second poll
+backs it up (see
+[Valkey also carries sync doorbells](#valkey-also-carries-sync-doorbells)).
+Workers have no such state and may be scaled too — a job is claimed by exactly
+one worker, and one replica ticks the cron schedules per pass (see
+[Background work](#background-work)). The worker also needs the object store,
+because it clears abandoned staged imports. Adding a replica to a self-hosted
+stack is two edits, described in
+[the self-host guide](./docs/self-host/run.md#running-more-than-one-api).
 
 The platform that runs it — the host, image publishing, the deploy workflows
 and staging — is
@@ -1306,6 +1335,12 @@ service runs: there is no single-tenant code path.
 Backend deploys drop live WebSocket sessions by design, so the server drains
 on SIGTERM (close 1001, stop the listener, bounded timeout) and the sync
 protocol's reconnect-and-resume path makes the interruption routine (#1247).
+A deploy does not drop edit locks: a lock is a row, not a connection, so an
+editor who reconnects within the lease keeps the section they were editing,
+and a staged import survives the replica that was holding it. While a replica
+drains, `/readyz` answers 503 with `draining`, and the ingress keeps it in
+rotation until it stops, because the ingress checks `/healthz`, which says the
+process is alive.
 Managed backend deploys trigger on `@codaco/studio-api` version changes —
 never on image rebuilds — so client-only releases cannot bounce the backend.
 While the API container is being replaced, the ingress serves the static

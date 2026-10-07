@@ -227,6 +227,78 @@ Whichever provider you use, its host is one of the instance's
 this machine, and it is yours to choose, like the host of any service you
 swap in.
 
+## Running more than one API
+
+One `api` container is enough for most instances, and nothing in this guide
+needs more. Run a second when you want to deploy without interrupting editors,
+or to keep serving through the loss of one container. Studio needs no sticky
+sessions for this: any replica can serve any request, and an editor whose
+connection ends reconnects to whichever replica Traefik picks next, keeping the
+section they were editing.
+
+What makes that safe is that nothing an editor needs lives only inside one
+container. Edit locks, and who is connected, are rows in Postgres. A protocol
+imported from a file but not yet saved is held in your object store under
+`staging/`, with any API keys in it sealed under your keyring. Valkey carries a
+doorbell that tells the other replicas to look, and each replica also checks
+every five seconds, so a Valkey outage slows live updates and loses none.
+Because of the staged files, the object store credentials must allow delete and
+list as well as read and write (see
+[an object store](./requirements.md#an-object-store)), and the `worker` needs
+them too, as it clears imports that were abandoned.
+
+Adding a replica is two edits. Create `docker-compose.override.yml` beside
+`docker-compose.yml`, which Compose reads on its own:
+
+```yaml
+services:
+  api-b:
+    extends:
+      file: docker-compose.yml
+      service: api
+
+configs:
+  traefik-api-servers:
+    content: |
+      http:
+        services:
+          api:
+            loadBalancer:
+              healthCheck:
+                path: /healthz
+                interval: 5s
+                timeout: 3s
+              servers:
+                - url: "http://api:3000"
+                - url: "http://api-b:3000"
+```
+
+`api-b` is `api` with a different name: the same image, environment and
+secrets. The second block replaces the server list as a whole, so it restates
+the health check and names every replica, and so does the next replica you add.
+Then start it:
+
+```bash
+docker compose up -d api-b
+```
+
+Traefik checks each server's `/healthz` every five seconds and stops sending
+requests to one that does not answer. `/healthz` says the process is alive. It
+is not `/readyz`, which also reports whether the database, object store and
+schema are as this release expects, so a replica that is draining for a deploy
+stays in rotation until it stops, and the editors on it reconnect to the other.
+
+From here the upgrade sequence names every replica in `stop` and in `up`:
+
+```bash
+docker compose stop api api-b worker
+docker compose up -d web api api-b worker
+```
+
+If you front the stack with your own proxy, as in
+[Swap an element](./swap.md#the-ingress), list each replica as a
+`server` line in its `upstream` block and leave out any session affinity.
+
 ## Where to go next
 
 - [Back up and restore](./backup.md) — do this before the instance carries

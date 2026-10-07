@@ -9,6 +9,28 @@ Run these from the directory holding `docker-compose.yml` and `.env`. Nothing
 here needs a checkout of the source, Node, pnpm or any tool but Docker: every
 command is a command of the images you are deploying.
 
+## Before you pull new images
+
+A release can change what Studio asks of the services you run yourself. Read
+its release notes for that before step 1. The one a release has added so far is
+object-store access: **a release that stages imports in the object store needs
+the access key (or, on Azure, the identity) to be able to delete and list as
+well as read and write**, and the `worker` uses it too.
+
+- **S3 and S3-compatible stores.** Add `s3:DeleteObject` and `s3:ListBucket` to
+  the policy of the access key in `S3_ACCESS_KEY_ID`, beside the `s3:GetObject`
+  and `s3:PutObject` it already has. `ListBucket` is granted on the bucket
+  (`arn:aws:s3:::your-bucket`) and the others on its objects
+  (`arn:aws:s3:::your-bucket/*`). Garage, in the stack, needs nothing: `garage-init` gives
+  its key read, write and owner on the bucket, which covers both.
+- **Azure Blob Storage.** Nothing, if the identity holds Storage Blob Data
+  Contributor, as [the swap guide](./swap.md#azure-blob-storage) asks: that role
+  already includes delete and list.
+
+Make the change first and the upgrade after it. An upgrade does not check the
+policy, and a key without these permissions is found out when someone imports a
+protocol file and the save is refused.
+
 ## The sequence
 
 Put the new image digests in `.env` (`STUDIO_API_IMAGE` and
@@ -118,6 +140,24 @@ Step by step:
    the flag is still set.
 6. **`maintenance off`** reopens the instance. Readiness passes again within a
    second or two.
+
+**Running more than one `api`.** Name each replica in `stop` and in `up -d`
+(`docker compose stop api api-b worker`), so that every replica is stopped
+for the backup and every one starts on the new image. See
+[Running more than one API](./run.md#running-more-than-one-api).
+
+**Edit locks.** A lock on a protocol section is a row in the database, kept
+alive by the editor's connection and renewed by whichever API replica that
+connection reaches, so a restart no longer discards it. When an API container
+stops, the editors on it reconnect, to another replica or to the same one
+once it is back, and their locks carry on. A lock that is not renewed lapses
+after thirty seconds, so the window decides what survives: a rolling deploy
+across replicas, or a single container back within that time, keeps every
+lock. The maintenance window in the sequence above closes the instance to
+everyone and is usually longer, and in that case the locks lapse, an editor's
+next save is refused, and they take the section again. A protocol file imported
+but not yet saved survives either way, because it is held in the object store
+and not in the container.
 
 `maintenance on|off` is a command of the `studio-api` image, like `serve`,
 `worker` and `migrate`, and it is the only way the flag is set: nothing in the

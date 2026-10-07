@@ -86,6 +86,12 @@ request.
 Studio addresses the bucket **path-style** (`<endpoint>/<bucket>/<key>`), so the
 endpoint is the service address and not a per-bucket hostname.
 
+The access key needs read, write, delete and list on the bucket: on AWS,
+`s3:GetObject`, `s3:PutObject`, `s3:DeleteObject` and `s3:ListBucket`.
+Delete and list are for imports that are staged in the bucket under `staging/`
+until they are saved. A key that could only read and write, as an earlier
+release asked for, fails the first time someone imports a protocol file.
+
 Then delete the `garage` and `garage-init` services, the `garage-config` and
 `garage-init` configs, the `garage-data` volume, and the `depends_on` entries
 naming them — `garage` in `api` and `worker`, `garage-init` in `migrate` — the two `GARAGE_*` variables are read only by those
