@@ -178,7 +178,9 @@ describe('NameGeneratorRoster adding people whose answers are encrypted', () => 
     const secureAttributes = added?.[entitySecureAttributesMeta]?.name;
     expect(isNumberArray(data)).toBe(true);
     expect(secureAttributes).toBeDefined();
-    if (!secureAttributes || !isNumberArray(data)) return;
+    if (!isNumberArray(data)) throw new Error('Expected a stored ciphertext');
+    if (!secureAttributes)
+      throw new Error('Expected secure-attribute metadata');
     await expect(decryptData({ secureAttributes, data }, 'pw')).resolves.toBe(
       'Alice',
     );

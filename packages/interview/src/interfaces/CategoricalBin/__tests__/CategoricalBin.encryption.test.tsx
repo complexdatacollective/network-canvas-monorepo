@@ -250,7 +250,9 @@ describe('CategoricalBin asking for an encrypted "other" answer', () => {
     const [saved] = store.getState().session.network.nodes;
     const data = saved?.[entityAttributesProperty].otherReason;
     const secureAttributes = saved?.[entitySecureAttributesMeta]?.otherReason;
-    if (!secureAttributes || !isNumberArray(data)) return;
+    if (!isNumberArray(data)) throw new Error('Expected a stored ciphertext');
+    if (!secureAttributes)
+      throw new Error('Expected secure-attribute metadata');
     await expect(decryptData({ secureAttributes, data }, 'pw')).resolves.toBe(
       'Cousin',
     );

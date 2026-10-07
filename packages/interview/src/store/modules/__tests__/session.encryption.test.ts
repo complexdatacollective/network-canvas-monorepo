@@ -90,7 +90,9 @@ describe('encrypted writes', () => {
     expect(stored?.age).toBe(41);
     expect(isNumberArray(stored?.name)).toBe(true);
     expect(secure).toBeDefined();
-    if (!secure || !isNumberArray(stored?.name)) return;
+    if (!isNumberArray(stored?.name))
+      throw new Error('Expected a stored ciphertext');
+    if (!secure) throw new Error('Expected secure-attribute metadata');
     await expect(
       decryptData({ secureAttributes: secure, data: stored.name }, 'pw'),
     ).resolves.toBe('Bob');
@@ -157,7 +159,7 @@ describe('plaintext of encrypted writes', () => {
       ? getEncryptedValue(updated, 'name', encryptedVariables, true)
       : undefined;
     expect(written).toBeDefined();
-    if (!written) return;
+    if (!written) throw new Error('Expected an encrypted value to be written');
     expect(readCachedPlaintext(scope, written)).toBe('Bob');
   });
 

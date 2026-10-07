@@ -166,7 +166,8 @@ describe('AlterForm with an encrypted question', () => {
     const stored = saved?.[entityAttributesProperty].name;
     const secure = saved?.[entitySecureAttributesMeta]?.name;
     expect(isNumberArray(stored)).toBe(true);
-    if (!secure || !isNumberArray(stored)) return;
+    if (!isNumberArray(stored)) throw new Error('Expected a stored ciphertext');
+    if (!secure) throw new Error('Expected secure-attribute metadata');
     await expect(
       decryptData({ secureAttributes: secure, data: stored }, 'pw'),
     ).resolves.toBe('Alicia');
