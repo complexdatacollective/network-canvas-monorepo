@@ -1,5 +1,5 @@
 import { get } from 'es-toolkit/compat';
-import { createElement, useId, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 
 import { commonMessages } from '@codaco/app-i18n/common';
 import { formatMessageError } from '@codaco/app-i18n/messages';
@@ -7,11 +7,10 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
-import {
-  headingTagBelow,
-  useEnclosingHeadingLevel,
-} from '@codaco/fresco-ui/typography/EnclosingHeadingLevel';
-import Heading from '@codaco/fresco-ui/typography/Heading';
+import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
+import RichSelectGroupField, {
+  type RichSelectOption,
+} from '@codaco/fresco-ui/form/fields/RichSelectGroup';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
 import { codebookEditingMessages } from '../../../codebook/codebookMessages.ts';
@@ -40,47 +39,66 @@ import {
   shapeWithPedigreeSymbols,
 } from './personSymbols.ts';
 
-type SymbolAction = 'sexAssignedAtBirth' | 'genderIdentity' | 'oneSymbol';
+/** The three answers the choice offers. */
+type SymbolChoice = 'sexAssignedAtBirth' | 'genderIdentity' | 'codebook';
 
 const asVariableId = (value: unknown): string | undefined =>
   typeof value === 'string' && value !== '' ? value : undefined;
 
-/** Whether an action would throw away shapes someone chose by hand. */
-const replacesHandMadeShapes = (state: PersonSymbolState): boolean =>
-  state.kind === 'custom' || state.kind === 'other';
+const isSymbolChoice = (value: unknown): value is SymbolChoice =>
+  value === 'sexAssignedAtBirth' ||
+  value === 'genderIdentity' ||
+  value === 'codebook';
+
+/** Which answer the codebook's shape amounts to. */
+const choiceFor = (state: PersonSymbolState): SymbolChoice => {
+  if (state.kind === 'sexAssignedAtBirth') return 'sexAssignedAtBirth';
+  if (
+    state.kind === 'genderIdentity' ||
+    state.kind === 'genderIdentityOutOfDate'
+  ) {
+    return 'genderIdentity';
+  }
+  return 'codebook';
+};
 
 /**
- * Sets the person type's symbols from sex assigned at birth or gender
- * identity in one click, following standard pedigree nomenclature: a circle
- * for female or feminine, a square for male or masculine, a diamond for
- * everyone else.
+ * What the person type's symbols are drawn from: sex assigned at birth or
+ * gender identity, following standard pedigree nomenclature (a circle for
+ * female or feminine, a square for male or masculine, a diamond for everyone
+ * else), or whatever the codebook says.
+ *
+ * One choice whose selected answer is what the codebook's shape amounts to
+ * (`personSymbolState`), read every render, so a change made in the codebook
+ * editor or by a collaborator moves it without anything of this control's
+ * own. "Set in the codebook" is the answer for no mapping, a mapping of
+ * either attribute set differently by hand, and a mapping of another
+ * attribute, and its description says which.
  *
  * A person's symbol is the person type's codebook shape (`resolveNodeShape`
- * in the interview), not a stage setting, so a click is a CODEBOOK write,
- * taken under the person type's own lock and applied at once — like the
- * codebook editor's own shape changes, and like `EncryptedAttributesSection`.
- * Nothing here touches the stage's draft, so the stage's save and cancel are
- * unaffected by it.
+ * in the interview), not a stage setting, so choosing an answer is a CODEBOOK
+ * write, taken under the person type's own lock and applied at once — like
+ * the codebook editor's own shape changes, and like
+ * `EncryptedAttributesSection`. Nothing here touches the stage's draft, so
+ * the stage's save and cancel are unaffected by it.
  *
- * What the symbols follow is read from the codebook every render, against
- * the attributes and words in the stage's draft, so a change made in the
- * codebook editor or by a collaborator shows here without anything of this
- * control's own. Overwriting a mapping someone set by hand asks first.
+ * - Sex assigned at birth, or gender identity, writes a mapping of every
+ *   option of that attribute with a diamond default.
+ * - Set in the codebook, chosen over one of those, removes the mapping and
+ *   keeps the default. Over anything else it is already the answer.
+ * - Replacing a mapping someone set by hand asks first.
+ * - Gender identity symbols left behind by changed options or words stay
+ *   selected; a note under the label says so, with the one action that
+ *   updates them.
  */
 export default function PersonSymbolsControl({
   personSubject,
 }: Readonly<{ personSubject: Extract<CodebookSubject, { entity: 'node' }> }>) {
   const intl = useAppIntl();
-  const headingId = useId();
   const { readOnly, savedFields } = useStageEditorForm();
   const protocolContext = useProtocolContext();
   const writeCodebookSection = useCodebookSectionWrite();
   const { confirm } = useDialog();
-  const enclosingHeadingLevel = useEnclosingHeadingLevel();
-  const headingTag =
-    enclosingHeadingLevel === null
-      ? 'h4'
-      : headingTagBelow(enclosingHeadingLevel);
 
   const sexAttribute = asVariableId(
     useStageValue(NODE_CONFIGURATION_PATHS.sexAssignedAtBirthAttribute),
@@ -102,11 +120,12 @@ export default function PersonSymbolsControl({
    * from words nobody saved are out of date, not hand-made, once they do.
    */
   const [appliedGenderTerms, setAppliedGenderTerms] = useState<unknown>();
+  /** The answer being written, shown as chosen until the write settles. */
+  const [pending, setPending] = useState<SymbolChoice | undefined>();
   const [failure, setFailure] = useState<
     Readonly<{ message: string; held: boolean }> | undefined
   >(undefined);
-  const [busy, setBusy] = useState(false);
-  /** Read when a confirmed action is acted on, not when it was asked for. */
+  /** Read when a confirmed choice is acted on, not when it was asked for. */
   const writable = useRef(!readOnly);
   writable.current = !readOnly;
 
@@ -132,19 +151,13 @@ export default function PersonSymbolsControl({
       ...(appliedGenderTerms === undefined ? [] : [appliedGenderTerms]),
     ],
   });
+  const detected = choiceFor(state);
 
-  const status = (() => {
+  // What "Set in the codebook" draws: the mapping that is not one of the
+  // other two answers, or — over one of them — the default that choosing it
+  // leaves everyone with.
+  const codebookDescription = (() => {
     switch (state.kind) {
-      case 'notMapped':
-        return intl.formatMessage(messages.symbolsNotMapped, {
-          shape: state.defaultShape,
-        });
-      case 'sexAssignedAtBirth':
-        return intl.formatMessage(messages.symbolsSexAssignedAtBirth);
-      case 'genderIdentity':
-        return intl.formatMessage(messages.symbolsGenderIdentity);
-      case 'genderIdentityOutOfDate':
-        return intl.formatMessage(messages.symbolsGenderIdentityOutOfDate);
       case 'custom':
         return intl.formatMessage(
           state.source === 'sexAssignedAtBirth'
@@ -155,15 +168,52 @@ export default function PersonSymbolsControl({
         return intl.formatMessage(messages.symbolsOther, {
           attributeName: variables[state.variableId]?.name ?? state.variableId,
         });
+      case 'notMapped':
+        return intl.formatMessage(messages.symbolsNotMapped, {
+          shape: state.defaultShape,
+        });
+      default: {
+        const stored: unknown = definition?.shape.default;
+        return intl.formatMessage(messages.symbolsNotMapped, {
+          shape: typeof stored === 'string' ? stored : 'circle',
+        });
+      }
     }
   })();
 
-  const write = async (action: SymbolAction) => {
-    // The words the click was made against, kept as they were: the draft can
+  const options: RichSelectOption[] = [
+    {
+      value: 'sexAssignedAtBirth',
+      label: intl.formatMessage(messages.symbolsSexAssignedAtBirthLabel),
+      description: intl.formatMessage(
+        messages.symbolsSexAssignedAtBirthDescription,
+      ),
+      disabled: !canUseSex,
+    },
+    ...(canUseGender
+      ? [
+          {
+            value: 'genderIdentity',
+            label: intl.formatMessage(messages.symbolsGenderIdentityLabel),
+            description: intl.formatMessage(
+              messages.symbolsGenderIdentityDescription,
+            ),
+          },
+        ]
+      : []),
+    {
+      value: 'codebook',
+      label: intl.formatMessage(messages.symbolsCodebookLabel),
+      description: codebookDescription,
+    },
+  ];
+
+  const write = async (choice: SymbolChoice) => {
+    // The words the choice was made against, kept as they were: the draft can
     // move while the write waits for the lock.
     const terms = genderTerms;
     setFailure(undefined);
-    setBusy(true);
+    setPending(choice);
     try {
       const outcome = await writeCodebookSection(
         personSubject,
@@ -172,9 +222,9 @@ export default function PersonSymbolsControl({
           // taken, so an option a collaborator added a moment ago is covered.
           const current = shapeMappingVariables(authoritative.variables);
           let mapping: ShapeMappingDraft | undefined;
-          if (action !== 'oneSymbol') {
+          if (choice !== 'codebook') {
             const variableId =
-              action === 'sexAssignedAtBirth' ? sexAttribute : genderAttribute;
+              choice === 'sexAssignedAtBirth' ? sexAttribute : genderAttribute;
             const variable =
               variableId === undefined ? undefined : current[variableId];
             if (variableId === undefined || variable === undefined) {
@@ -183,7 +233,7 @@ export default function PersonSymbolsControl({
             mapping = pedigreeSymbolMapping(
               variableId,
               variable,
-              action === 'sexAssignedAtBirth'
+              choice === 'sexAssignedAtBirth'
                 ? sexAssignedAtBirthSymbol
                 : (value) => genderIdentitySymbol(terms, value),
             );
@@ -204,14 +254,17 @@ export default function PersonSymbolsControl({
         });
         return;
       }
-      if (action === 'genderIdentity') setAppliedGenderTerms(terms);
+      if (choice === 'genderIdentity') setAppliedGenderTerms(terms);
     } finally {
-      setBusy(false);
+      setPending(undefined);
     }
   };
 
-  const run = async (action: SymbolAction) => {
-    if (replacesHandMadeShapes(state)) {
+  const choose = async (choice: SymbolChoice) => {
+    if (
+      (state.kind === 'custom' || state.kind === 'other') &&
+      choice !== 'codebook'
+    ) {
       const confirmed = await confirm({
         title: intl.formatMessage(messages.symbolsReplaceTitle),
         description: intl.formatMessage(messages.symbolsReplaceDescription),
@@ -226,61 +279,56 @@ export default function PersonSymbolsControl({
       setFailure({ message: READ_ONLY_MESSAGE, held: true });
       return;
     }
-    await write(action);
+    await write(choice);
   };
 
-  const actions: { action: SymbolAction; label: string }[] = [];
-  if (state.kind === 'genderIdentityOutOfDate' && canUseGender) {
-    actions.push({
-      action: 'genderIdentity',
-      label: intl.formatMessage(messages.symbolsUpdateGenderIdentity),
-    });
-  }
-  if (canUseSex && state.kind !== 'sexAssignedAtBirth') {
-    actions.push({
-      action: 'sexAssignedAtBirth',
-      label: intl.formatMessage(messages.symbolsUseSexAssignedAtBirth),
-    });
-  }
-  if (
-    canUseGender &&
-    state.kind !== 'genderIdentity' &&
-    state.kind !== 'genderIdentityOutOfDate'
-  ) {
-    actions.push({
-      action: 'genderIdentity',
-      label: intl.formatMessage(messages.symbolsUseGenderIdentity),
-    });
-  }
-  if (
-    state.kind === 'sexAssignedAtBirth' ||
-    state.kind === 'genderIdentity' ||
-    state.kind === 'genderIdentityOutOfDate'
-  ) {
-    actions.push({
-      action: 'oneSymbol',
-      label: intl.formatMessage(messages.symbolsUseOneSymbol),
-    });
-  }
+  const busy = pending !== undefined;
+
+  const hint = (
+    <>
+      {state.kind === 'genderIdentityOutOfDate' && (
+        <span className="text-warning mb-1 block">
+          {intl.formatMessage(messages.symbolsGenderIdentityOutOfDate)}{' '}
+          {!readOnly && canUseGender && (
+            <Button
+              type="button"
+              variant="link"
+              color="dynamic"
+              size="sm"
+              disabled={busy}
+              onClick={() => void write('genderIdentity')}
+            >
+              {intl.formatMessage(messages.symbolsUpdateGenderIdentity)}
+            </Button>
+          )}
+        </span>
+      )}
+      {!canUseSex && !canUseGender && (
+        <span className="mb-1 block">
+          {intl.formatMessage(messages.symbolsNoSource)}
+        </span>
+      )}
+      <span className="block">{intl.formatMessage(messages.symbolsHint)}</span>
+    </>
+  );
 
   return (
-    <div
-      role="group"
-      aria-labelledby={headingId}
-      className="mb-8 flex flex-col items-start gap-2"
-    >
-      <Heading
-        id={headingId}
-        level="h4"
-        margin="none"
-        {...(headingTag === 'h4' ? {} : { render: createElement(headingTag) })}
-      >
-        {intl.formatMessage(messages.symbolsTitle)}
-      </Heading>
-      {/* Live, so the sentence a click changes is read out when it changes. */}
-      <Paragraph margin="none" aria-live="polite" aria-atomic="true">
-        {status}
-      </Paragraph>
+    <div className="flex flex-col gap-2">
+      <UnconnectedField
+        name="pedigree-symbols"
+        label={intl.formatMessage(messages.symbolsLabel)}
+        hint={hint}
+        component={RichSelectGroupField}
+        options={options}
+        value={pending ?? detected}
+        disabled={readOnly || busy}
+        onChange={(next) => {
+          // Choosing the answer already held writes nothing: the out-of-date
+          // note carries the one action that rewrites it.
+          if (!isSymbolChoice(next) || next === detected) return;
+          void choose(next);
+        }}
+      />
       {failure !== undefined && (
         <Alert
           variant={failure.held ? 'warning' : 'destructive'}
@@ -291,40 +339,11 @@ export default function PersonSymbolsControl({
           </AlertDescription>
         </Alert>
       )}
-      {!canUseSex && !canUseGender ? (
-        <Paragraph margin="none" emphasis="muted" intent="smallText">
-          {intl.formatMessage(messages.symbolsNoSource)}
-        </Paragraph>
-      ) : (
-        !readOnly && (
-          <div className="flex flex-wrap gap-2">
-            {actions.map(({ action, label }) => (
-              <Button
-                key={label}
-                type="button"
-                color={
-                  state.kind === 'genderIdentityOutOfDate' &&
-                  action === 'genderIdentity'
-                    ? 'primary'
-                    : 'default'
-                }
-                disabled={busy}
-                onClick={() => void run(action)}
-              >
-                {label}
-              </Button>
-            ))}
-          </div>
-        )
-      )}
       {busy && (
         <Paragraph role="status" margin="none" emphasis="muted">
           {intl.formatMessage(codebookEditingMessages.saving)}
         </Paragraph>
       )}
-      <p className="text-muted text-sm">
-        {intl.formatMessage(messages.symbolsHint)}
-      </p>
     </div>
   );
 }

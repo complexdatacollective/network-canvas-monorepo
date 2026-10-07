@@ -28,98 +28,98 @@ export const familyPedigreeMessages = defineMessages({
     description:
       'Shown in place of the person attributes section’s description while no node type has been chosen for the stage.',
   },
-  symbolsTitle: {
-    id: 'protocolBuilder.pedigree.symbolsTitle',
+  symbolsLabel: {
+    id: 'protocolBuilder.pedigree.symbolsLabel',
     defaultMessage: 'Symbols',
     description:
-      'Heading of the part of the person attributes section that sets the symbol (circle, square or diamond) each family member is drawn with on the family tree.',
+      'Label of the choice, at the end of the person attributes section, of what sets the symbol (circle, square or diamond) each family member is drawn with on the family tree.',
   },
   symbolsHint: {
     id: 'protocolBuilder.pedigree.symbolsHint',
     defaultMessage:
-      'A person’s symbol comes from the shape of the person type in the codebook. These buttons change that shape straight away, not when you save this stage, and change how people of this type are drawn throughout the interview.',
+      'A person’s symbol comes from the shape of the person type in the codebook. Choosing an option changes that shape straight away, not when you save this stage, and changes how people of this type are drawn throughout the interview.',
     description:
-      'Guidance under the symbol buttons. The shape is the Shape setting, with its mapping from an attribute, in the node appearance group of the codebook’s node type editor. The change is written to the codebook at once, so it is not undone by cancelling the stage, and it applies on every stage that draws this node type.',
+      'Guidance under the symbols choice. The shape is the Shape setting, with its mapping from an attribute, in the node appearance group of the codebook’s node type editor. The change is written to the codebook at once, so it is not undone by cancelling the stage, and it applies on every stage that draws this node type.',
+  },
+  symbolsNoSource: {
+    id: 'protocolBuilder.pedigree.symbolsNoSource',
+    defaultMessage:
+      'Choose the sex assigned at birth or gender identity attribute above to draw symbols from it.',
+    description:
+      'Shown under the symbols choice while neither attribute it can draw symbols from has been chosen in the controls above it.',
+  },
+  symbolsGenderIdentityOutOfDate: {
+    id: 'protocolBuilder.pedigree.symbolsGenderIdentityOutOfDate',
+    defaultMessage:
+      'Gender identity’s options or kinship words have changed since the symbols were set.',
+    description:
+      'Note under the symbols choice while it draws symbols from gender identity but the gender identity options, or the kinship words chosen for them, have changed since. A small Update symbols action follows it.',
+  },
+  symbolsUpdateGenderIdentity: {
+    id: 'protocolBuilder.pedigree.symbolsUpdateGenderIdentity',
+    defaultMessage: 'Update symbols',
+    description:
+      'Link-style action in the out-of-date note that draws the symbols again from the gender identity options and kinship words as they are now.',
+  },
+  symbolsSexAssignedAtBirthLabel: {
+    id: 'protocolBuilder.pedigree.symbolsSexAssignedAtBirthLabel',
+    defaultMessage: 'Sex assigned at birth',
+    description:
+      'Option of the symbols choice that draws each family member’s symbol from their sex assigned at birth, the standard way family trees are drawn.',
+  },
+  symbolsSexAssignedAtBirthDescription: {
+    id: 'protocolBuilder.pedigree.symbolsSexAssignedAtBirthDescription',
+    defaultMessage:
+      'A circle for female, a square for male, and a diamond for everyone else.',
+    description:
+      'Description of the sex assigned at birth option of the symbols choice, saying which symbol each answer gets. Everyone else includes people whose sex assigned at birth is not recorded.',
+  },
+  symbolsGenderIdentityLabel: {
+    id: 'protocolBuilder.pedigree.symbolsGenderIdentityLabel',
+    defaultMessage: 'Gender identity',
+    description:
+      'Option of the symbols choice that draws each family member’s symbol from their gender identity, through the kinship words chosen for each gender identity option.',
+  },
+  symbolsGenderIdentityDescription: {
+    id: 'protocolBuilder.pedigree.symbolsGenderIdentityDescription',
+    defaultMessage:
+      'A circle for options with feminine words, a square for masculine words, and a diamond for everyone else.',
+    description:
+      'Description of the gender identity option of the symbols choice. Feminine words are kinship words such as mother, masculine words such as father. Everyone else includes options with neutral or not-known words and people whose gender identity is not recorded.',
+  },
+  symbolsCodebookLabel: {
+    id: 'protocolBuilder.pedigree.symbolsCodebookLabel',
+    defaultMessage: 'Set in the codebook',
+    description:
+      'Option of the symbols choice that leaves the symbols to the shape setting of the person type in the codebook. Its description says what that setting draws.',
   },
   symbolsNotMapped: {
     id: 'protocolBuilder.pedigree.symbolsNotMapped',
     defaultMessage:
       '{shape, select, circle {Everyone is drawn as a circle.} square {Everyone is drawn as a square.} other {Everyone is drawn as a diamond.}}',
     description:
-      'Says that the person type’s symbol follows no attribute, so every family member has the same symbol. shape is the stored shape name: circle, square, or diamond (the other branch).',
-  },
-  symbolsSexAssignedAtBirth: {
-    id: 'protocolBuilder.pedigree.symbolsSexAssignedAtBirth',
-    defaultMessage:
-      'Symbols follow sex assigned at birth: a circle for female, a square for male, and a diamond for everyone else.',
-    description:
-      'Says that each family member’s symbol follows their sex assigned at birth, the standard way family trees are drawn. Everyone else includes people whose sex assigned at birth is not recorded.',
-  },
-  symbolsGenderIdentity: {
-    id: 'protocolBuilder.pedigree.symbolsGenderIdentity',
-    defaultMessage:
-      'Symbols follow gender identity: a circle for options with feminine words, a square for options with masculine words, and a diamond for everyone else.',
-    description:
-      'Says that each family member’s symbol follows their gender identity, through the kinship words chosen for each gender identity option (feminine words such as mother, masculine words such as father). Everyone else includes options with neutral or not-known words and people whose gender identity is not recorded.',
-  },
-  symbolsGenderIdentityOutOfDate: {
-    id: 'protocolBuilder.pedigree.symbolsGenderIdentityOutOfDate',
-    defaultMessage:
-      'Symbols follow gender identity, but its options or their kinship words have changed since the symbols were set.',
-    description:
-      'Says that the symbols were set from gender identity and are now out of date, because the gender identity options, or the kinship words chosen for them, have changed since. A button beside it updates them.',
+      'Description of the set-in-the-codebook option of the symbols choice when the codebook draws every family member with the same symbol, or will once the option is chosen. shape is the stored shape name: circle, square, or diamond (the other branch).',
   },
   symbolsCustomSexAssignedAtBirth: {
     id: 'protocolBuilder.pedigree.symbolsCustomSexAssignedAtBirth',
     defaultMessage:
-      'Symbols follow sex assigned at birth, with shapes set differently in the codebook.',
+      'Follows sex assigned at birth, with shapes set differently in the codebook.',
     description:
-      'Says that each family member’s symbol follows their sex assigned at birth, but with a mapping someone set by hand in the codebook rather than the standard circle, square and diamond.',
+      'Description of the set-in-the-codebook option of the symbols choice when the codebook draws symbols from sex assigned at birth with a mapping someone set by hand, rather than the standard circle, square and diamond.',
   },
   symbolsCustomGenderIdentity: {
     id: 'protocolBuilder.pedigree.symbolsCustomGenderIdentity',
     defaultMessage:
-      'Symbols follow gender identity, with shapes set differently in the codebook.',
+      'Follows gender identity, with shapes set differently in the codebook.',
     description:
-      'Says that each family member’s symbol follows their gender identity, but with a mapping someone set by hand in the codebook rather than the standard circle, square and diamond.',
+      'Description of the set-in-the-codebook option of the symbols choice when the codebook draws symbols from gender identity with a mapping someone set by hand, rather than the standard circle, square and diamond.',
   },
   symbolsOther: {
     id: 'protocolBuilder.pedigree.symbolsOther',
     defaultMessage:
-      'Symbols follow the attribute {attributeName}, set in the codebook.',
+      'Follows the attribute {attributeName}, set in the codebook.',
     description:
-      'Says that each family member’s symbol follows an attribute that is neither of this stage’s sex assigned at birth or gender identity attributes. attributeName is that attribute’s name as the researcher gave it.',
-  },
-  symbolsUseSexAssignedAtBirth: {
-    id: 'protocolBuilder.pedigree.symbolsUseSexAssignedAtBirth',
-    defaultMessage: 'Use sex assigned at birth',
-    description:
-      'Button that sets every family member’s symbol from their sex assigned at birth: a circle for female, a square for male, and a diamond for everyone else.',
-  },
-  symbolsUseGenderIdentity: {
-    id: 'protocolBuilder.pedigree.symbolsUseGenderIdentity',
-    defaultMessage: 'Use gender identity',
-    description:
-      'Button that sets every family member’s symbol from their gender identity: a circle for options with feminine words, a square for options with masculine words, and a diamond for everyone else.',
-  },
-  symbolsUpdateGenderIdentity: {
-    id: 'protocolBuilder.pedigree.symbolsUpdateGenderIdentity',
-    defaultMessage: 'Update symbols',
-    description:
-      'Button that sets the symbols again from the gender identity options and kinship words as they are now, after they changed.',
-  },
-  symbolsUseOneSymbol: {
-    id: 'protocolBuilder.pedigree.symbolsUseOneSymbol',
-    defaultMessage: 'Use one symbol for everyone',
-    description:
-      'Button that stops the symbol following an attribute, so every family member is drawn with the person type’s default shape.',
-  },
-  symbolsNoSource: {
-    id: 'protocolBuilder.pedigree.symbolsNoSource',
-    defaultMessage:
-      'Choose the sex assigned at birth or gender identity attribute below to set symbols from it.',
-    description:
-      'Shown in place of the symbol buttons while neither attribute they set symbols from has been chosen in the controls below.',
+      'Description of the set-in-the-codebook option of the symbols choice when the codebook draws symbols from an attribute that is neither of this stage’s sex assigned at birth or gender identity attributes. attributeName is that attribute’s name as the researcher gave it.',
   },
   symbolsReplaceTitle: {
     id: 'protocolBuilder.pedigree.symbolsReplaceTitle',

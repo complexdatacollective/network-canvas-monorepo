@@ -120,7 +120,9 @@ export default function StageManagedOptionsEditor({
       {!readOnly && document !== undefined && attribute !== undefined && (
         <Button
           type="button"
-          color="default"
+          // Dynamic, so it keeps its contrast on whichever surface the
+          // section nests it in.
+          color="dynamic"
           icon={<Pencil aria-hidden="true" />}
           onClick={() => openSession({ key: uuid(), openedDocument: document })}
         >

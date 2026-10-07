@@ -48,23 +48,24 @@ const GENDER_SYMBOLS = {
   },
 };
 
-const STATUS = {
+const CODEBOOK = {
   notMappedCircle: 'Everyone is drawn as a circle.',
   notMappedDiamond: 'Everyone is drawn as a diamond.',
-  sex: 'Symbols follow sex assigned at birth: a circle for female, a square for male, and a diamond for everyone else.',
-  gender:
-    'Symbols follow gender identity: a circle for options with feminine words, a square for options with masculine words, and a diamond for everyone else.',
-  genderOutOfDate:
-    'Symbols follow gender identity, but its options or their kinship words have changed since the symbols were set.',
   customSex:
-    'Symbols follow sex assigned at birth, with shapes set differently in the codebook.',
-  other: 'Symbols follow the attribute is_ego, set in the codebook.',
+    'Follows sex assigned at birth, with shapes set differently in the codebook.',
+  other: 'Follows the attribute is_ego, set in the codebook.',
 } as const;
 
-const openFixture = async (): Promise<StageEditorHarness> => {
+const OUT_OF_DATE =
+  'Gender identity’s options or kinship words have changed since the symbols were set.';
+
+const openFixture = async (
+  options: Readonly<{ readOnly?: boolean }> = {},
+): Promise<StageEditorHarness> => {
   const harness = renderStageEditor({
     stageId: 'family-pedigree-1',
     editor: familyPedigreeEditor,
+    ...options,
   });
   await harness.opened();
   return harness;
@@ -88,63 +89,99 @@ const receiveShape = (harness: StageEditorHarness, shape: unknown): void => {
   });
 };
 
+/** The symbols choice: one card per answer. */
 const symbols = async () =>
-  within(await screen.findByRole('group', { name: 'Symbols' }));
+  within(await screen.findByRole('listbox', { name: 'Symbols' }));
 
-const expectStatus = async (text: string) => {
-  const group = await symbols();
-  await waitFor(() => expect(group.getByText(text)).toBeVisible());
+const OPTION = {
+  sex: /^Sex assigned at birth/,
+  gender: /^Gender identity/,
+  codebook: /^Set in the codebook/,
+} as const;
+
+const option = async (name: RegExp) =>
+  (await symbols()).getByRole('option', { name });
+
+/** Waits for this answer to be the chosen one, and returns its card. */
+const expectChosen = async (name: RegExp) => {
+  let card: HTMLElement | undefined;
+  await waitFor(async () => {
+    card = await option(name);
+    expect(card).toHaveAttribute('aria-selected', 'true');
+  });
+  return card as HTMLElement;
 };
 
-const click = async (harness: StageEditorHarness, name: string) => {
-  await harness.user.click((await symbols()).getByRole('button', { name }));
+const choose = async (harness: StageEditorHarness, name: RegExp) => {
+  await harness.user.click(await option(name));
 };
 
-describe('the pedigree symbols control', () => {
-  it('sets symbols from sex assigned at birth in one click, without asking', async () => {
+describe('the pedigree symbols choice', () => {
+  it('comes last in the person attributes, after the gender identity subsection', async () => {
+    await openFixture();
+    const listbox = await screen.findByRole('listbox', { name: 'Symbols' });
+    const genderSwitch = screen.getByRole('switch', {
+      name: 'Ask about gender identity',
+    });
+    const marker = screen.getByText('Participant marker', {
+      selector: 'label',
+    });
+    expect(
+      marker.compareDocumentPosition(genderSwitch) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      genderSwitch.compareDocumentPosition(listbox) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it('draws symbols from sex assigned at birth when chosen, without asking', async () => {
     const harness = await openFixture();
-    await expectStatus(STATUS.notMappedCircle);
+    expect(await expectChosen(OPTION.codebook)).toHaveTextContent(
+      CODEBOOK.notMappedCircle,
+    );
 
-    await click(harness, 'Use sex assigned at birth');
+    await choose(harness, OPTION.sex);
 
     await waitFor(() => expect(shapeOf(harness)).toEqual(SEX_SYMBOLS));
     expect(screen.queryByRole('dialog')).toBeNull();
-    await expectStatus(STATUS.sex);
-    // Already the standard symbols, so the button that sets them is gone.
-    expect(
-      (await symbols()).queryByRole('button', {
-        name: 'Use sex assigned at birth',
-      }),
-    ).toBeNull();
+    await expectChosen(OPTION.sex);
   });
 
-  it('sets symbols from gender identity and its kinship words in one click', async () => {
+  it('draws symbols from gender identity and its kinship words when chosen', async () => {
     const harness = await openFixture();
 
-    await click(harness, 'Use gender identity');
+    await choose(harness, OPTION.gender);
 
     await waitFor(() => expect(shapeOf(harness)).toEqual(GENDER_SYMBOLS));
-    await expectStatus(STATUS.gender);
+    await expectChosen(OPTION.gender);
   });
 
-  it('draws everyone with one symbol again when asked', async () => {
+  it('removes a mapping it set and keeps the default when set in the codebook is chosen', async () => {
     const harness = await openFixture();
     receiveShape(harness, SEX_SYMBOLS);
-    await expectStatus(STATUS.sex);
+    await expectChosen(OPTION.sex);
+    // Says what choosing it leaves everyone with.
+    expect(await option(OPTION.codebook)).toHaveTextContent(
+      CODEBOOK.notMappedDiamond,
+    );
 
-    await click(harness, 'Use one symbol for everyone');
+    await choose(harness, OPTION.codebook);
 
     await waitFor(() =>
       expect(shapeOf(harness)).toEqual({ default: 'diamond' }),
     );
-    await expectStatus(STATUS.notMappedDiamond);
+    expect(await expectChosen(OPTION.codebook)).toHaveTextContent(
+      CODEBOOK.notMappedDiamond,
+    );
   });
 
   it('writes only the codebook: the stage saves as it would have', async () => {
     const harness = await openFixture();
     const before = await harness.submit();
 
-    await click(harness, 'Use sex assigned at birth');
+    await choose(harness, OPTION.sex);
     await waitFor(() => expect(shapeOf(harness)).toEqual(SEX_SYMBOLS));
 
     const after = await harness.submit();
@@ -153,9 +190,7 @@ describe('the pedigree symbols control', () => {
 
   it('offers gender identity only while the stage asks about it', async () => {
     const harness = await openFixture();
-    expect(
-      (await symbols()).getByRole('button', { name: 'Use gender identity' }),
-    ).toBeVisible();
+    expect(await option(OPTION.gender)).toBeVisible();
 
     await harness.user.click(
       await screen.findByRole('switch', { name: 'Ask about gender identity' }),
@@ -164,40 +199,39 @@ describe('the pedigree symbols control', () => {
       await screen.findByRole('button', { name: 'Stop asking' }),
     );
 
-    await waitFor(() =>
+    await waitFor(async () =>
       expect(
-        screen.queryByRole('button', { name: 'Use gender identity' }),
+        (await symbols()).queryByRole('option', { name: OPTION.gender }),
       ).toBeNull(),
     );
-    expect(
-      (await symbols()).getByRole('button', {
-        name: 'Use sex assigned at birth',
-      }),
-    ).toBeVisible();
+    expect(await option(OPTION.sex)).not.toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
   });
 
-  describe('says what the symbols follow, read from the codebook', () => {
-    it('no attribute', async () => {
+  describe('chooses the answer the codebook amounts to', () => {
+    it('no attribute: set in the codebook, saying everyone has one symbol', async () => {
       await openFixture();
-      await expectStatus(STATUS.notMappedCircle);
+      expect(await expectChosen(OPTION.codebook)).toHaveTextContent(
+        CODEBOOK.notMappedCircle,
+      );
     });
 
     it('sex assigned at birth, drawn the standard way', async () => {
       const harness = await openFixture();
       receiveShape(harness, SEX_SYMBOLS);
-      await expectStatus(STATUS.sex);
+      await expectChosen(OPTION.sex);
     });
 
-    it('gender identity, drawn the standard way', async () => {
+    it('gender identity, drawn the standard way, with no note', async () => {
       const harness = await openFixture();
       receiveShape(harness, GENDER_SYMBOLS);
-      await expectStatus(STATUS.gender);
-      expect(
-        (await symbols()).queryByRole('button', { name: 'Update symbols' }),
-      ).toBeNull();
+      await expectChosen(OPTION.gender);
+      expect(screen.queryByText(OUT_OF_DATE)).toBeNull();
     });
 
-    it('one of those attributes, drawn some other way', async () => {
+    it('one of those attributes drawn some other way: set in the codebook, saying so', async () => {
       const harness = await openFixture();
       receiveShape(harness, {
         default: 'diamond',
@@ -209,10 +243,14 @@ describe('the pedigree symbols control', () => {
           ],
         },
       });
-      await expectStatus(STATUS.customSex);
+      await waitFor(async () =>
+        expect(await expectChosen(OPTION.codebook)).toHaveTextContent(
+          CODEBOOK.customSex,
+        ),
+      );
     });
 
-    it('another attribute', async () => {
+    it('another attribute: set in the codebook, naming it', async () => {
       const harness = await openFixture();
       receiveShape(harness, {
         default: 'circle',
@@ -222,14 +260,18 @@ describe('the pedigree symbols control', () => {
           map: [{ value: true, shape: 'square' }],
         },
       });
-      await expectStatus(STATUS.other);
+      await waitFor(async () =>
+        expect(await expectChosen(OPTION.codebook)).toHaveTextContent(
+          CODEBOOK.other,
+        ),
+      );
     });
   });
 
-  it('offers to update gender identity symbols whose words have changed since', async () => {
+  it('keeps gender identity chosen when its words change, and updates it from the note', async () => {
     const harness = await openFixture();
     receiveShape(harness, GENDER_SYMBOLS);
-    await expectStatus(STATUS.gender);
+    await expectChosen(OPTION.gender);
 
     await harness.user.click(
       await screen.findByRole('button', { name: 'Edit options' }),
@@ -248,10 +290,17 @@ describe('the pedigree symbols control', () => {
     );
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
 
-    await expectStatus(STATUS.genderOutOfDate);
-    await click(harness, 'Update symbols');
+    expect(await screen.findByText(OUT_OF_DATE)).toBeVisible();
+    await expectChosen(OPTION.gender);
+    // Choosing the answer already chosen rewrites nothing.
+    await choose(harness, OPTION.gender);
+    expect(shapeOf(harness)).toEqual(GENDER_SYMBOLS);
 
-    // Updated without asking: these are symbols the control set itself.
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Update symbols' }),
+    );
+
+    // Updated without asking: these are symbols the choice set itself.
     expect(screen.queryByRole('dialog')).toBeNull();
     await waitFor(() =>
       expect(shapeOf(harness)).toEqual({
@@ -265,7 +314,8 @@ describe('the pedigree symbols control', () => {
         },
       }),
     );
-    await expectStatus(STATUS.gender);
+    await waitFor(() => expect(screen.queryByText(OUT_OF_DATE)).toBeNull());
+    await expectChosen(OPTION.gender);
   });
 
   it('asks before replacing symbols set by hand in the codebook', async () => {
@@ -279,9 +329,13 @@ describe('the pedigree symbols control', () => {
       },
     };
     receiveShape(harness, handMade);
-    await expectStatus(STATUS.customSex);
+    await waitFor(async () =>
+      expect(await expectChosen(OPTION.codebook)).toHaveTextContent(
+        CODEBOOK.customSex,
+      ),
+    );
 
-    await click(harness, 'Use sex assigned at birth');
+    await choose(harness, OPTION.sex);
     const confirmation = await screen.findByRole('dialog', {
       name: 'Replace the symbols set in the codebook?',
     });
@@ -290,8 +344,9 @@ describe('the pedigree symbols control', () => {
     );
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     expect(shapeOf(harness)).toEqual(handMade);
+    await expectChosen(OPTION.codebook);
 
-    await click(harness, 'Use sex assigned at birth');
+    await choose(harness, OPTION.sex);
     await harness.user.click(
       within(
         await screen.findByRole('dialog', {
@@ -303,14 +358,11 @@ describe('the pedigree symbols control', () => {
     await waitFor(() => expect(shapeOf(harness)).toEqual(SEX_SYMBOLS));
   });
 
-  it('offers no buttons to a spectator', async () => {
-    const harness = renderStageEditor({
-      stageId: 'family-pedigree-1',
-      editor: familyPedigreeEditor,
-      readOnly: true,
-    });
-    await harness.opened();
-    await expectStatus(STATUS.notMappedCircle);
-    expect((await symbols()).queryAllByRole('button')).toEqual([]);
+  it('is disabled for a spectator', async () => {
+    await openFixture({ readOnly: true });
+    await expectChosen(OPTION.codebook);
+    expect(
+      await screen.findByRole('listbox', { name: 'Symbols' }),
+    ).toHaveAttribute('aria-disabled', 'true');
   });
 });

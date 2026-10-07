@@ -3,6 +3,14 @@ import { useEffect } from 'react';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import { getMarkdownLabelText } from '@codaco/fresco-ui/RenderMarkdown';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@codaco/fresco-ui/Table';
 import type { VariableOption } from '@codaco/protocol-validation';
 
 import {
@@ -76,35 +84,36 @@ export default function GenderIdentityWordsSummaryField({
         ? {}
         : { 'aria-describedby': ariaDescribedBy })}
     >
-      <table
-        aria-label={tableLabel}
-        className="bg-surface-2 text-surface-2-contrast w-full rounded text-sm"
-      >
-        <thead>
-          <tr className="text-left">
-            <th scope="col" className="px-4 pt-3 pb-1 font-bold">
+      <Table aria-label={tableLabel} className="text-sm">
+        <TableHeader>
+          <TableRow className="h-auto">
+            <TableHead scope="col" className="w-1/3 py-2">
               {intl.formatMessage(messages.genderWordsSummaryOptionHeader)}
-            </th>
-            <th scope="col" className="px-4 pt-3 pb-1 font-bold">
+            </TableHead>
+            <TableHead scope="col" className="py-2">
               {intl.formatMessage(messages.genderWordsSummaryWordsHeader)}
-            </th>
-          </tr>
-        </thead>
-        <tbody className="[&>tr:last-child>td]:pb-3">
+            </TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
           {options.map((option) => (
-            <tr key={String(option.value)}>
-              <td className="px-4 py-1">
+            <TableRow key={String(option.value)} className="h-auto">
+              {/* Wrapped rather than kept on one line: an option's label and
+                  the longest words both run past a narrow panel. The option
+                  column is given a third of the width, because a cell that
+                  may wrap is otherwise squeezed to its longest word. */}
+              <TableCell className="w-1/3 py-2 whitespace-normal">
                 {getMarkdownLabelText(option.label)}
-              </td>
-              <td className="px-4 py-1">
+              </TableCell>
+              <TableCell className="py-2 whitespace-normal">
                 {intl.formatMessage(
                   GENDER_WORDS_LABELS[wordsFor(value, option.value)],
                 )}
-              </td>
-            </tr>
+              </TableCell>
+            </TableRow>
           ))}
-        </tbody>
-      </table>
+        </TableBody>
+      </Table>
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, userEvent, within } from 'storybook/test';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 
 import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPassiveEffects';
 
@@ -153,10 +153,11 @@ export const EditingGenderIdentityOptions: Story = {
 };
 
 /**
- * The person type's symbols, set in one click. The fixture's type draws
- * everyone as a circle; using sex assigned at birth writes a circle for
+ * The person type's symbols: one choice at the end of the person attributes.
+ * The fixture's type draws everyone as a circle, so "Set in the codebook" is
+ * chosen and says so; choosing sex assigned at birth writes a circle for
  * female, a square for male and a diamond for everyone else to the codebook
- * at once, and the control then says so.
+ * at once, and the choice then shows it chosen.
  */
 export const Symbols: Story = {
   globals: { appLocale: 'en' },
@@ -165,27 +166,31 @@ export const Symbols: Story = {
     await awaitPassiveEffects();
 
     const symbols = within(
-      await canvas.findByRole('group', { name: 'Symbols' }),
+      await canvas.findByRole('listbox', { name: 'Symbols' }),
     );
+    const codebook = symbols.getByRole('option', {
+      name: /^Set in the codebook/,
+    });
+    await expect(codebook).toHaveAttribute('aria-selected', 'true');
+    await expect(codebook).toHaveTextContent('Everyone is drawn as a circle.');
     await expect(
-      symbols.getByText('Everyone is drawn as a circle.'),
-    ).toBeInTheDocument();
-    await expect(
-      symbols.getByRole('button', { name: 'Use gender identity' }),
+      symbols.getByRole('option', { name: /^Gender identity/ }),
     ).toBeInTheDocument();
 
-    await userEvent.click(
-      symbols.getByRole('button', { name: 'Use sex assigned at birth' }),
-    );
+    const sex = symbols.getByRole('option', { name: /^Sex assigned at birth/ });
+    await userEvent.click(sex);
 
-    await expect(
-      await symbols.findByText(
-        'Symbols follow sex assigned at birth: a circle for female, a square for male, and a diamond for everyone else.',
-        {},
-        // The write goes through the host's lock and back over its channel.
-        { timeout: 5000 },
-      ),
-    ).toBeInTheDocument();
+    // The write goes through the host's lock and back over its channel.
+    await waitFor(() => expect(sex).toHaveAttribute('aria-selected', 'true'), {
+      timeout: 5000,
+    });
+    await waitFor(
+      () =>
+        expect(
+          symbols.getByRole('option', { name: /^Set in the codebook/ }),
+        ).toHaveTextContent('Everyone is drawn as a diamond.'),
+      { timeout: 5000 },
+    );
   },
 };
 

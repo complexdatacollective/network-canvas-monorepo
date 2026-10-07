@@ -15,7 +15,7 @@ import PersonSymbolsControl from './PersonSymbolsControl.tsx';
  * The attributes of the person node type the interface records about every
  * family member: their name and sex assigned at birth (asked in the side
  * panel), and the marker it sets on the participant. Gender identity, which is
- * optional, is a subsection between them (`GenderIdentitySection`).
+ * optional, is a subsection after them (`GenderIdentitySection`).
  *
  * The researcher binds each slot. The name is collected from the participant
  * with the attribute's own validation (a VALIDATED writer); the other two are
@@ -25,8 +25,9 @@ import PersonSymbolsControl from './PersonSymbolsControl.tsx';
  * participant marker is exclusive to its slot: no other control of this stage,
  * a nomination prompt included, may write it.
  *
- * The section opens with the person type's symbols (`PersonSymbolsControl`),
- * which can be set from sex assigned at birth or gender identity in one click.
+ * The section ends with the person type's symbols (`PersonSymbolsControl`),
+ * one choice that can draw them from sex assigned at birth or gender
+ * identity, so it comes after both.
  */
 export default function NodeConfigurationSection() {
   const intl = useAppIntl();
@@ -51,9 +52,6 @@ export default function NodeConfigurationSection() {
     >
       {!waiting && (
         <>
-          {personSubject.entity === 'node' && (
-            <PersonSymbolsControl personSubject={personSubject} />
-          )}
           <SlotVariableField
             name={NODE_CONFIGURATION_PATHS.nameAttribute}
             label={messages.nameLabel}
@@ -78,7 +76,6 @@ export default function NodeConfigurationSection() {
             draftConflicting={validatedPersonVariables}
             draftSlotMap={draftSlotMap}
           />
-          <GenderIdentitySection />
           <SlotVariableField
             name={NODE_CONFIGURATION_PATHS.egoAttribute}
             label={messages.egoLabel}
@@ -91,6 +88,10 @@ export default function NodeConfigurationSection() {
             draftConflicting={validatedPersonVariables}
             draftSlotMap={draftWriterMap}
           />
+          <GenderIdentitySection />
+          {personSubject.entity === 'node' && (
+            <PersonSymbolsControl personSubject={personSubject} />
+          )}
         </>
       )}
     </BuilderSection>

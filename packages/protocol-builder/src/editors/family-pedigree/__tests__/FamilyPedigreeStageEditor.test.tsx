@@ -11,6 +11,7 @@ import type { SectionDoc } from '@codaco/studio-sync/apply';
 import {
   attributeField,
   chooseAttributeById,
+  FIELD_LABEL,
   inventAttribute,
   offeredAttributes,
 } from '../../../testing/attributePicker.ts';
@@ -84,7 +85,7 @@ const bindSlot = async (
   label: string,
   variableId: string,
 ): Promise<void> => {
-  await screen.findByText(label, { selector: 'label' });
+  await screen.findByText(label, { selector: FIELD_LABEL });
   await chooseAttributeById(harness.user, attributeField(label), variableId);
 };
 
@@ -187,7 +188,7 @@ describe('the family pedigree stage editor', () => {
       await screen.findByRole('textbox', { name: 'Prompt text' }),
     ).toHaveTextContent('');
     // No person type yet, so there is nothing to bind attributes of.
-    expect(screen.queryByText('Name', { selector: 'label' })).toBeNull();
+    expect(screen.queryByText('Name', { selector: FIELD_LABEL })).toBeNull();
   });
 
   /**
@@ -509,7 +510,7 @@ describe('the person attributes section', () => {
     expect(
       await screen.findByText(/A person’s symbol comes from the shape/),
     ).toHaveTextContent(
-      'change how people of this type are drawn throughout the interview',
+      'changes how people of this type are drawn throughout the interview',
     );
   });
 });
@@ -529,7 +530,7 @@ describe('asking about gender identity', () => {
       ),
     ).toBeVisible();
     expect(
-      await screen.findByText('Gender identity', { selector: 'label' }),
+      await screen.findByText('Gender identity', { selector: FIELD_LABEL }),
     ).toBeVisible();
   });
 
@@ -541,7 +542,7 @@ describe('asking about gender identity', () => {
 
     expect(await genderIdentitySwitch()).toBeChecked();
     expect(
-      await screen.findByText('Gender identity', { selector: 'label' }),
+      await screen.findByText('Gender identity', { selector: FIELD_LABEL }),
     ).toBeVisible();
   });
 
@@ -560,7 +561,7 @@ describe('asking about gender identity', () => {
 
     expect(await genderIdentitySwitch()).not.toBeChecked();
     expect(
-      screen.queryByText('Gender identity', { selector: 'label' }),
+      screen.queryByText('Gender identity', { selector: FIELD_LABEL }),
     ).toBeNull();
 
     const request = await harness.submit();
@@ -577,10 +578,10 @@ describe('asking about gender identity', () => {
       await screen.findByRole('radio', { name: 'family member' }),
     );
     const sex = await screen.findByText('Sex assigned at birth', {
-      selector: 'label',
+      selector: FIELD_LABEL,
     });
     const gender = await screen.findByText('Gender identity', {
-      selector: 'label',
+      selector: FIELD_LABEL,
     });
     const section = screen.getByRole('region', { name: 'Person attributes' });
 
@@ -657,7 +658,7 @@ describe('asking about gender identity', () => {
       await screen.findByRole('radio', { name: 'family member' }),
     );
     await bindSlot(harness, 'Name', 'fm_name');
-    await screen.findByText('Gender identity', { selector: 'label' });
+    await screen.findByText('Gender identity', { selector: FIELD_LABEL });
 
     expect(await harness.submit()).toBeNull();
     expect(
@@ -907,7 +908,9 @@ describe('the completeness requirement', () => {
     await harness.opened();
 
     await switchOn(harness);
-    await screen.findByText('Relatives not recorded', { selector: 'label' });
+    await screen.findByText('Relatives not recorded', {
+      selector: FIELD_LABEL,
+    });
 
     expect(await harness.submit()).toBeNull();
     expect(
@@ -921,7 +924,9 @@ describe('the completeness requirement', () => {
     await harness.opened();
 
     await switchOn(harness);
-    await screen.findByText('Relatives not recorded', { selector: 'label' });
+    await screen.findByText('Relatives not recorded', {
+      selector: FIELD_LABEL,
+    });
     await inventAttribute(
       harness.user,
       attributeField('Relatives not recorded'),
@@ -1087,12 +1092,27 @@ describe('the gender identity words', () => {
     });
   });
 
+  it('shows each option and its words in a table with Option and Kinship words columns', async () => {
+    const harness = openFixture();
+    await harness.opened();
+    const table = await screen.findByRole('table', {
+      name: 'Words for each gender identity',
+    });
+
+    expect(
+      within(table)
+        .getAllByRole('columnheader')
+        .map((header) => header.textContent),
+    ).toEqual(['Option', 'Kinship words']);
+    expect((await summaryRows())[1]).toEqual(['Man', WORDS.masculine]);
+  });
+
   it('is withheld until an attribute is chosen', async () => {
     const harness = openNewStage();
     await harness.user.click(
       await screen.findByRole('radio', { name: 'family member' }),
     );
-    await screen.findByText('Gender identity', { selector: 'label' });
+    await screen.findByText('Gender identity', { selector: FIELD_LABEL });
     expect(
       screen.queryByRole('table', { name: 'Words for each gender identity' }),
     ).toBeNull();
