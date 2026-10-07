@@ -1,6 +1,6 @@
 /**
- * The schema 8 to 9 conversion of the Family Pedigree stage, run by
- * `migrationV8toV9` before it localizes the document's text.
+ * The schema 8 to 9 conversion of the Family Pedigree and Narrative Pedigree
+ * stages, run by `migrationV8toV9` before it localizes the document's text.
  *
  * Every string written here is plain schema 8 text. The migration's
  * localization pass, which runs afterwards, wraps each participant-facing one
@@ -358,4 +358,29 @@ export const migrateFamilyPedigreeStages = (protocol: Fields) => {
 
   for (const stage of stages) retargetSkipDestination(stage, retargets);
   protocol.stages = stages;
+};
+
+/**
+ * Schema 9 names the attribute a disease row reads `attribute`, as every other
+ * pedigree binding does. Each row keeps its other keys, and the stage keeps
+ * its `sourceStageId`, which still names the converted pedigree.
+ */
+export const migrateNarrativePedigreeStages = (protocol: Fields) => {
+  if (!Array.isArray(protocol.stages)) return;
+  for (const stage of protocol.stages) {
+    if (!isRecord(stage) || stage.type !== 'NarrativePedigree') continue;
+    if (!Array.isArray(stage.diseases)) continue;
+    stage.diseases = stage.diseases.map((disease: unknown) =>
+      isRecord(disease) &&
+      Object.hasOwn(disease, 'variable') &&
+      !Object.hasOwn(disease, 'attribute')
+        ? Object.fromEntries(
+            Object.entries(disease).map(([key, value]) => [
+              key === 'variable' ? 'attribute' : key,
+              value,
+            ]),
+          )
+        : disease,
+    );
+  }
 };

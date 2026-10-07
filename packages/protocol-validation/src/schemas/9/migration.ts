@@ -5,7 +5,10 @@ import {
   collectLocalizedStringSites,
   type LocalizedStringSite,
 } from '../../utils/collectLocalizedStrings.ts';
-import { migrateFamilyPedigreeStages } from './family-pedigree-migration.ts';
+import {
+  migrateFamilyPedigreeStages,
+  migrateNarrativePedigreeStages,
+} from './family-pedigree-migration.ts';
 import ProtocolSchemaV9 from './schema.ts';
 
 // Schema 8 never recorded the language its copy was written in.
@@ -192,6 +195,7 @@ const migrationV8toV9 = createMigration({
     // Before the codebook labels and the localization pass, so the attribute
     // and stage the conversion adds are labelled and localized with the rest.
     migrateFamilyPedigreeStages(migrated);
+    migrateNarrativePedigreeStages(migrated);
     addCodebookLabels(migrated.codebook);
     addHighlightLabels(migrated);
     addComposerCaptions(migrated);

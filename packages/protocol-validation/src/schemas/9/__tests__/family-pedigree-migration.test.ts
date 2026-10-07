@@ -766,8 +766,9 @@ describe('v8 to v9 Family Pedigree migration', () => {
   });
 
   describe('the released CEGRM template', () => {
-    // Its Narrative Pedigree is converted by its own migration, so the
-    // template is validated here without it.
+    // validated end-to-end once the narrative rename lands: until schema 9's
+    // Narrative Pedigree names a disease's attribute `attribute`, the
+    // template is validated without its Narrative Pedigree.
     const withoutNarrativePedigree = (): Fields => {
       const document = structuredClone(ecoGeneticTemplate) as Fields;
       document.stages = stagesOf(document).filter(
@@ -834,5 +835,104 @@ describe('v8 to v9 Family Pedigree migration', () => {
         variableAt(migrated, 'node', 'person', 'biologicalSex')?.options,
       ).toEqual(localizedOptions(PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS));
     });
+
+    it('keeps its Narrative Pedigree pointed at the converted pedigree', () => {
+      // validated end-to-end once the narrative rename lands
+      const migrated = migrateStep(structuredClone(ecoGeneticTemplate));
+      expect(stageById(migrated, 'narrative-pedigree')).toMatchObject({
+        type: 'NarrativePedigree',
+        sourceStageId: 'family-pedigree',
+        diseases: [
+          {
+            id: 'condition',
+            label: und('This condition'),
+            color: 'node-color-seq-1',
+            attribute: 'has_condition',
+            inheritancePattern: 'unknown',
+          },
+        ],
+      });
+    });
+  });
+});
+
+describe('v8 to v9 Narrative Pedigree migration', () => {
+  const narrativePedigree = (diseases: Fields[]): Fields => ({
+    id: 'narrative',
+    type: 'NarrativePedigree',
+    label: 'How it runs in the family',
+    sourceStageId: 'pedigree',
+    showAtRiskStatuses: true,
+    diseases,
+  });
+
+  // validated end-to-end once the narrative rename lands
+  it('names each disease’s attribute `attribute`, keeping the rest of the row', () => {
+    const migrated = migrateStep(
+      schema8Protocol([
+        schema8Pedigree(),
+        narrativePedigree([
+          {
+            id: 'condition',
+            label: 'The condition',
+            color: 'node-color-seq-1',
+            variable: 'hasCondition',
+            inheritancePattern: 'autosomalDominant',
+          },
+          {
+            id: 'testing',
+            label: 'Tested',
+            color: 'node-color-seq-2',
+            variable: 'hadTesting',
+            inheritancePattern: 'unknown',
+          },
+        ]),
+      ]),
+    );
+    const stage = stageById(migrated, 'narrative');
+    expect(stage).toEqual({
+      id: 'narrative',
+      type: 'NarrativePedigree',
+      label: und('How it runs in the family'),
+      sourceStageId: 'pedigree',
+      showAtRiskStatuses: true,
+      diseases: [
+        {
+          id: 'condition',
+          label: und('The condition'),
+          color: 'node-color-seq-1',
+          attribute: 'hasCondition',
+          inheritancePattern: 'autosomalDominant',
+        },
+        {
+          id: 'testing',
+          label: und('Tested'),
+          color: 'node-color-seq-2',
+          attribute: 'hadTesting',
+          inheritancePattern: 'unknown',
+        },
+      ],
+    });
+    expect(
+      Array.isArray(stage.diseases) && isRecord(stage.diseases[0])
+        ? Object.keys(stage.diseases[0])
+        : [],
+    ).toEqual(['id', 'label', 'color', 'attribute', 'inheritancePattern']);
+  });
+
+  it('leaves a row that already names its attribute as it is', () => {
+    const disease = {
+      id: 'condition',
+      label: 'The condition',
+      color: 'node-color-seq-1',
+      attribute: 'hasCondition',
+      inheritancePattern: 'unknown',
+    };
+    const migrated = migrateStep(
+      schema8Protocol([schema8Pedigree(), narrativePedigree([disease])]),
+    );
+    expect(stageById(migrated, 'narrative').diseases).toEqual([
+      { ...disease, label: und('The condition') },
+    ]);
   });
 });
