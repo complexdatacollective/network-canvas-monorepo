@@ -5,6 +5,7 @@ import {
 } from '@codaco/interview/contract';
 import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
 import { parseStoredInterviewSession } from '~/lib/db/storedInterviewSession';
+import { parseStoredProtocol } from '~/lib/db/storedProtocol';
 import type { GetInterviewByIdQuery } from '~/queries/interviews';
 
 type MappedInterview =
@@ -16,10 +17,12 @@ type MappedInterview =
       initialSyncRevision: number;
     }
   | {
-      // The participant data the row holds does not parse. Nothing may start
-      // the interview: the client would build a network without it, and its
-      // first sync would replace what is stored.
+      // Nothing may start the interview. Without the participant data the
+      // client would build a network that its first sync writes over the
+      // stored one; without the protocol it would run a design other than the
+      // researcher's.
       success: false;
+      unreadable: 'session' | 'protocol';
       error: unknown;
     };
 
@@ -44,9 +47,18 @@ export function mapInterviewPayload(
     );
   }
 
+  const storedProtocol = parseStoredProtocol(protocol);
+  if (!storedProtocol.success) {
+    return {
+      success: false,
+      unreadable: 'protocol',
+      error: storedProtocol.error,
+    };
+  }
+
   const stored = parseStoredInterviewSession(session);
   if (!stored.success) {
-    return { success: false, error: stored.error };
+    return { success: false, unreadable: 'session', error: stored.error };
   }
 
   const assets: ResolvedAsset[] = protocol.assets.map((a) => {
@@ -78,6 +90,7 @@ export function mapInterviewPayload(
     },
     protocol: {
       ...protocol,
+      ...storedProtocol.data,
       schemaVersion,
       hash: protocol.hash,
       description: protocol.description ?? undefined,

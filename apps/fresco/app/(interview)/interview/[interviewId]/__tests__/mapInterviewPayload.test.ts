@@ -5,17 +5,20 @@ import type { GetInterviewByIdQuery } from '~/queries/interviews';
 
 import { mapInterviewPayload } from '../mapInterviewPayload';
 
+type Source = NonNullable<GetInterviewByIdQuery>;
+type StoredProtocol = Partial<
+  Pick<Source['protocol'], 'stages' | 'codebook' | 'experiments'>
+>;
+
 /**
- * A minimal interview row shaped exactly as `getInterviewById` returns it: the
- * protocol's JSON columns parsed by the Prisma result extension, the
- * interview's own JSON columns exactly as stored.
+ * A minimal interview row shaped exactly as `getInterviewById` returns it, with
+ * every JSON column (the interview's and its protocol's) exactly as stored.
  */
 function makeSource(
   schemaVersion: number,
-  stored: Partial<
-    Pick<NonNullable<GetInterviewByIdQuery>, 'network' | 'stageMetadata'>
-  > = {},
-): NonNullable<GetInterviewByIdQuery> {
+  stored: Partial<Pick<Source, 'network' | 'stageMetadata'>> = {},
+  storedProtocol: StoredProtocol = {},
+): Source {
   return {
     id: 'interview-1',
     startTime: new Date('2026-01-01T00:00:00.000Z'),
@@ -46,12 +49,13 @@ function makeSource(
       originalFileKey: null,
       originalFileUrl: null,
       assets: [],
+      ...storedProtocol,
     },
     ...stored,
   };
 }
 
-function mapReady(source: NonNullable<GetInterviewByIdQuery>) {
+function mapReady(source: Source) {
   const result = mapInterviewPayload(source);
   if (!result.success) throw new Error('Expected a readable interview');
   return result;
@@ -119,7 +123,7 @@ describe('mapInterviewPayload', () => {
         }),
       );
 
-      expect(result.success).toBe(false);
+      expect(result).toMatchObject({ success: false, unreadable: 'session' });
       expect(result).not.toHaveProperty('payload');
     });
 
@@ -130,7 +134,7 @@ describe('mapInterviewPayload', () => {
         }),
       );
 
-      expect(result.success).toBe(false);
+      expect(result).toMatchObject({ success: false, unreadable: 'session' });
       expect(result).not.toHaveProperty('payload');
     });
 
@@ -139,7 +143,7 @@ describe('mapInterviewPayload', () => {
         makeSource(COMPATIBLE_PROTOCOL_SCHEMA_VERSION, { network: null }),
       );
 
-      expect(result.success).toBe(false);
+      expect(result).toMatchObject({ success: false, unreadable: 'session' });
     });
 
     it('hands the client the stored network and stage metadata it read', () => {
@@ -169,6 +173,67 @@ describe('mapInterviewPayload', () => {
       );
 
       expect(payload.session.stageMetadata).toBeUndefined();
+    });
+  });
+
+  describe('stored protocol', () => {
+    // Each of these still holds the researcher's design, but no longer parses.
+    // An interview run against an empty stand-in for it would collect nothing,
+    // and the participant could finish it believing they had taken part.
+    it.each<[string, StoredProtocol]>([
+      ['stages', { stages: [{ id: 'stage-1', type: 'NotAnInterface' }] }],
+      ['codebook', { codebook: { node: { person: 'not an entity type' } } }],
+      ['experiments', { experiments: { notAnExperiment: true } }],
+    ])(
+      'refuses to start from %s it cannot read, rather than from an empty stand-in',
+      (_field, storedProtocol) => {
+        const result = mapInterviewPayload(
+          makeSource(COMPATIBLE_PROTOCOL_SCHEMA_VERSION, {}, storedProtocol),
+        );
+
+        expect(result).toMatchObject({
+          success: false,
+          unreadable: 'protocol',
+        });
+        expect(result).not.toHaveProperty('payload');
+      },
+    );
+
+    it('refuses a protocol whose stages are missing altogether', () => {
+      const result = mapInterviewPayload(
+        makeSource(COMPATIBLE_PROTOCOL_SCHEMA_VERSION, {}, { stages: null }),
+      );
+
+      expect(result).toMatchObject({ success: false, unreadable: 'protocol' });
+    });
+
+    it('hands the client the protocol it read', () => {
+      const codebook = { node: {}, edge: {}, ego: { variables: {} } };
+      const experiments = { encryptedVariables: true };
+
+      const { payload } = mapReady(
+        makeSource(
+          COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
+          {},
+          { stages: [], codebook, experiments },
+        ),
+      );
+
+      expect(payload.protocol.stages).toEqual([]);
+      expect(payload.protocol.codebook).toEqual(codebook);
+      expect(payload.protocol.experiments).toEqual(experiments);
+    });
+
+    it('reads a protocol that stores no experiments as having none enabled', () => {
+      const { payload } = mapReady(
+        makeSource(
+          COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
+          {},
+          { experiments: null },
+        ),
+      );
+
+      expect(payload.protocol.experiments).toEqual({});
     });
   });
 });

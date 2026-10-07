@@ -89,12 +89,15 @@ async function InterviewContent({
 
   if (!mapped.success) {
     // Starting anyway would hand the client a network built without the stored
-    // one, and its first sync would replace it. The report carries no interview
-    // id: the id is the participant's access link, and the report leaves the
-    // deployment.
+    // one, which its first sync would replace, or run it against an empty
+    // design. The report carries no interview id: the id is the participant's
+    // access link, and the report leaves the deployment.
     after(async () => {
       await captureException(mapped.error, {
-        context: 'interview.load.unreadable',
+        context:
+          mapped.unreadable === 'protocol'
+            ? 'interview.load.protocolUnreadable'
+            : 'interview.load.unreadable',
       });
       await flushPostHog();
     });
@@ -102,7 +105,11 @@ async function InterviewContent({
     return (
       <ErrorMessage
         title="This interview could not be opened"
-        message="The answers saved for this interview could not be read, so it has not been started. Nothing has been changed. Please contact the person who recruited you to this study for assistance."
+        message={
+          mapped.unreadable === 'protocol'
+            ? 'This interview could not be loaded, so it has not been started. Nothing has been changed. Please contact the person who recruited you to this study for assistance.'
+            : 'The answers saved for this interview could not be read, so it has not been started. Nothing has been changed. Please contact the person who recruited you to this study for assistance.'
+        }
       />
     );
   }
