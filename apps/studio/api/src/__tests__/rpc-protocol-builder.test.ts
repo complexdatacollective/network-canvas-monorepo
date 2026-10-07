@@ -25,14 +25,18 @@ import {
   sid,
   STAGE_ORDER,
   stageSection,
+  until,
   type VariableReference,
 } from './support/protocol-builder-suite.ts';
 import {
   createProtocolBuilderClient,
+  makeShiftableClock,
+  makeSpanCounter,
   type ProtocolBuilderTestClient,
 } from './support/protocol-builder.ts';
 import { expectRpcFailure } from './support/rpc.ts';
 import {
+  limiterWithoutStore,
   openRateLimitStore,
   reachableRedis,
   REDIS_DATABASES,
@@ -1019,6 +1023,54 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       throw new Error('the idle watch stayed open to a demoted caller');
     }
     await expectRpcFailure(Promise.resolve(ended), 'ProtocolNotFound');
+  });
+
+  it('reauthorizes an idle watch on its timer without charging a rate limit', async () => {
+    const charged: string[] = [];
+    const time = makeShiftableClock();
+    const spans = makeSpanCounter();
+    const counted = await createProtocolBuilderClient(
+      createStudio(resolveEnv({ NODE_ENV: 'test' }), {
+        auth: authServiceStub({
+          listMemberships: memberships,
+          getMembership: membership,
+        }),
+        limiter: {
+          ...limiterWithoutStore,
+          check: (scope, subject) => {
+            charged.push(scope);
+            return limiterWithoutStore.check(scope, subject);
+          },
+        },
+        services,
+      }),
+      { clock: time.clock, objectStore, tracer: spans.tracer },
+    );
+    const reauthorized = () => spans.ended('protocolBuilder.authorizeCaller');
+    try {
+      const channel = await watching(ADA, protocolId, counted);
+      let ended = false;
+      void channel.ended.then(() => {
+        ended = true;
+      });
+      try {
+        const before = charged.length;
+        for (const round of [1, 2, 3]) {
+          // Past the longest jittered wait, until the timer has asked.
+          await until(async () => {
+            time.advance(2 * REAUTHORIZE_MS);
+            await new Promise((settle) => setTimeout(settle, 200));
+            return reauthorized() >= round;
+          }, `the timer's reauthorization ${round}`);
+        }
+        expect(ended).toBe(false);
+        expect(charged.slice(before)).toEqual([]);
+      } finally {
+        await channel.stop();
+      }
+    } finally {
+      await counted.dispose();
+    }
   });
 
   it('refuses a retried submit from a caller removed since it wrote', async () => {

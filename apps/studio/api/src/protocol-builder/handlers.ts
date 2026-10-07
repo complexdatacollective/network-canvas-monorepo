@@ -7,6 +7,7 @@ import {
   Predicate,
   Result,
   Schedule,
+  Semaphore,
   Stream,
 } from 'effect';
 import type * as Layer from 'effect/Layer';
@@ -55,7 +56,7 @@ import {
   type ProtocolBuilderSession,
   type RefactorOutcome,
 } from './host.ts';
-import { Leases, RENEW_INTERVAL_MS, retryBriefly } from './leases.ts';
+import { Leases, retryBriefly } from './leases.ts';
 import { Presence } from './presence.ts';
 import { ProtocolEvents } from './publisher.ts';
 import {
@@ -71,7 +72,12 @@ import { openSession, stillSignedIn, WatchCutoff } from './session.ts';
 import type { WriteOperation, WriteReceipt } from './writeReceipts.ts';
 import { readWriteReceipt } from './writeReceipts.ts';
 
-export const REAUTHORIZE_MS = RENEW_INTERVAL_MS;
+/**
+ * How long an open watch goes on delivering to a caller removed from the team
+ * or no longer granted the protocol. A write is refused at once, in its own
+ * transaction; a watch only reads.
+ */
+export const REAUTHORIZE_MS = 30_000;
 
 const command = <A, E, R>(
   protocolId: string,
@@ -331,16 +337,21 @@ export const ProtocolBuilderHandlers: Layer.Layer<
             const lastBacklog = backlog.at(-1)?.cursor;
             let last = lastBacklog === undefined ? from : BigInt(lastBacklog);
             let authorizedAt = yield* Clock.currentTimeMillis;
-            const reauthorizeWhenDue = Effect.gen(function* () {
-              const at = yield* Clock.currentTimeMillis;
-              if (at - authorizedAt < REAUTHORIZE_MS) return;
-              yield* stillSignedIn(headers);
-              yield* command(
-                protocolId,
-                authorizeCaller(yield* openSession(protocolId)),
-              );
-              authorizedAt = at;
-            });
+            const reauthorizing = Semaphore.makeUnsafe(1);
+            // On the session the watch opened, against the role and grants
+            // as they stand: no rate limit is charged and no contact made, as
+            // `openSession` would for every open watch on every timer. One at
+            // a time, so a delivery and the timer that fall due together ask
+            // once.
+            const reauthorizeWhenDue = reauthorizing.withPermit(
+              Effect.gen(function* () {
+                const at = yield* Clock.currentTimeMillis;
+                if (at - authorizedAt < REAUTHORIZE_MS) return;
+                yield* stillSignedIn(headers);
+                yield* command(protocolId, authorizeCaller(session));
+                authorizedAt = at;
+              }),
+            );
             const delivered = live.pipe(
               // Either ends the watch with a defect, which the client
               // resubscribes after, replaying from its cursor.
