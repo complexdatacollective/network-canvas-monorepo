@@ -5,7 +5,7 @@ import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPa
 
 import StageEditor from '../../StageEditor.tsx';
 import { StageEditorStoryHost } from '../../testing/StageEditorStoryHost.tsx';
-import { storyDialogVisible } from '../dyad-census/storyDialogVisible.ts';
+import { storyDialogVisible } from '../../testing/storyDialogVisible.ts';
 import { narrativeStageEditor } from './NarrativeStageEditor.ts';
 
 const meta = {

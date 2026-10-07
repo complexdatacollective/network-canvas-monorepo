@@ -194,7 +194,9 @@ export const SwitchingLanguage: Story = {
     const spanish = await screen.findByRole('menuitemradio', {
       name: /^español/i,
     });
-    await expect(within(spanish).getByText('Missing')).toBeVisible();
+    await waitFor(async () => {
+      await expect(within(spanish).getByText('Missing')).toBeVisible();
+    });
     await userEvent.click(spanish);
     await waitFor(async () => {
       await expect(screen.queryByRole('menu')).toBeNull();
