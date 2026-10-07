@@ -47,7 +47,11 @@ export function createParticipantHandlers({
   onNotice,
 }: Args): ParticipantHandlers {
   let issued = BigInt(revision);
-  let latest = session;
+  // The newest snapshot the runtime has handed over, which a save the host
+  // starts itself must send: the last one written may be older than an answer
+  // still waiting out the debounce, and sending it would settle that answer's
+  // waiter on a write that never carried it.
+  let offered = session;
   let stopped = false;
 
   const stop = (kind: ParticipantNoticeKind): void => {
@@ -103,10 +107,9 @@ export function createParticipantHandlers({
     }
   };
 
-  const onSync = createDebouncedSyncHandler(
+  const debouncedSync = createDebouncedSyncHandler(
     async (_id, snapshot, { unloading }) => {
       if (stopped) return;
-      latest = snapshot;
       try {
         await (unloading
           ? participantUnloadingSync(payloadFor(snapshot))
@@ -120,6 +123,11 @@ export function createParticipantHandlers({
     { waitMs: SYNC_WAIT_MS },
   );
 
+  const onSync: SyncHandler = (id, snapshot, options) => {
+    offered = snapshot;
+    return debouncedSync(id, snapshot, options);
+  };
+
   const finish = () =>
     participantCall('participant.finish', {
       holderEpoch,
@@ -132,7 +140,7 @@ export function createParticipantHandlers({
         await finish();
       } catch (error) {
         if (!(error instanceof SessionOutOfDate)) throw error;
-        await send(latest);
+        await send(offered);
         await finish();
       }
     } catch (error) {
@@ -145,7 +153,7 @@ export function createParticipantHandlers({
   };
 
   const saveStep = (): void => {
-    onSync(latest.id, latest, ORDINARY).catch(() => undefined);
+    debouncedSync(offered.id, offered, ORDINARY).catch(() => undefined);
   };
 
   return { onSync, onFinish, saveStep };

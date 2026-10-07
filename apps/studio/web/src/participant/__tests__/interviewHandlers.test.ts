@@ -243,6 +243,70 @@ describe('the participant sync handler’s recovery', () => {
   });
 });
 
+describe('the participant sync handler’s own saves', () => {
+  const ORDINARY = { immediate: false, unloading: false };
+  const savedNames = (calls: ReadonlyArray<{ readonly payload: unknown }>) =>
+    calls.map(
+      ({ payload }) =>
+        (payload as { network: SessionPayload['network'] }).network.ego
+          .attributes.name,
+    );
+
+  it('saves the answer still waiting out the debounce when the participant moves on', async () => {
+    vi.useFakeTimers();
+    let step = 0;
+    const harness = installParticipantHarness({
+      'participant.sync': (payload) =>
+        Effect.succeed({ revision: payload.revision }),
+    });
+    const { onSync, saveStep } = createParticipantHandlers({
+      holderEpoch: 3,
+      revision: '7',
+      session: session('Initial'),
+      stageIds: ['first', 'second'],
+      getCurrentStep: () => step,
+      onNotice: vi.fn(),
+    });
+
+    await onSync('session-1', session('Ada'), SYNC);
+    // Changed inside the debounce window, so it waits.
+    const grace = onSync('session-1', session('Grace'), ORDINARY);
+    step = 1;
+    saveStep();
+    await vi.advanceTimersByTimeAsync(3000);
+    await grace;
+
+    expect(savedNames(harness.calls)).toEqual(['Ada', 'Grace']);
+    expect(harness.calls.at(-1)?.payload).toEqual(
+      expect.objectContaining({ stageIndex: 1, stageId: 'second' }),
+    );
+  });
+
+  it('saves the answer still waiting out the debounce when the server is behind at finish', async () => {
+    vi.useFakeTimers();
+    let finishes = 0;
+    const harness = installParticipantHarness({
+      'participant.sync': (payload) =>
+        Effect.succeed({ revision: payload.revision }),
+      'participant.finish': () => {
+        finishes += 1;
+        return finishes === 1
+          ? Effect.fail(new SessionOutOfDate({ revision: '8' }))
+          : Effect.succeed({ state: 'completed' });
+      },
+    });
+    const { onSync, onFinish } = handlersFor();
+
+    await onSync('session-1', session('Ada'), SYNC);
+    void onSync('session-1', session('Grace'), ORDINARY).catch(() => undefined);
+    await onFinish('session-1', new AbortController().signal);
+
+    expect(
+      savedNames(harness.calls.filter(({ tag }) => tag === 'participant.sync')),
+    ).toEqual(['Ada', 'Grace']);
+  });
+});
+
 describe('the participant finish handler', () => {
   const signal = new AbortController().signal;
 
