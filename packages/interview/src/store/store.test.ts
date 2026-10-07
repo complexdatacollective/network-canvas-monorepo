@@ -19,7 +19,7 @@ import {
   NODE_TYPE,
   unlockWith,
 } from '../interfaces/Anonymisation/__tests__/encryptionFixtures';
-import { addNode, updateNode } from './modules/session';
+import { addNode, addNodesAndEdges, updateNode } from './modules/session';
 import { store } from './store';
 
 // Stands in for the Redux DevTools extension, which the store looks for when
@@ -45,6 +45,7 @@ const PASSPHRASE = 'correct horse battery';
 const NAME = 'Alice Liddell';
 const NEW_NAME = 'Alice Pleasance';
 const ROSTER_NAME = 'Bob from the roster';
+const RELATIVE_NAME = 'Carol from the pedigree';
 
 const payload: InterviewPayload = {
   session: {
@@ -114,8 +115,9 @@ function createInterview(isDevelopment: boolean) {
 }
 
 /**
- * Writes an encrypted answer, changes it, and adds a person whose name is
- * stored without encryption, as a roster can.
+ * Writes an encrypted answer, changes it, adds a person whose name is stored
+ * without encryption, as a roster can, and adds a relative as a family
+ * pedigree does.
  */
 async function answer(interview: ReturnType<typeof store>) {
   await unlockWith(interview, PASSPHRASE);
@@ -143,6 +145,21 @@ async function answer(interview: ReturnType<typeof store>) {
       addNode({
         type: NODE_TYPE,
         attributeData: { name: ROSTER_NAME },
+        currentStep: 0,
+      }),
+    )
+    .unwrap();
+  await interview
+    .dispatch(
+      addNodesAndEdges({
+        nodes: [
+          {
+            type: NODE_TYPE,
+            attributeData: { name: RELATIVE_NAME, age: 70 },
+            useEncryption: true,
+          },
+        ],
+        edges: [],
         currentStep: 0,
       }),
     )
@@ -177,6 +194,8 @@ describe('the interview store', () => {
     expect(shown).not.toContain(NAME);
     expect(shown).not.toContain(NEW_NAME);
     expect(shown).not.toContain(ROSTER_NAME);
+    expect(JSON.stringify(actions)).toContain(RELATIVE_NAME);
+    expect(shown).not.toContain(RELATIVE_NAME);
     expect(shown).toContain('"age":40');
 
     const state = options?.stateSanitizer?.(interview.getState(), 0);
@@ -184,7 +203,11 @@ describe('the interview store', () => {
       state?.session.network.nodes.map(
         (node) => node[entityAttributesProperty],
       ),
-    ).toEqual([{ name: '[encrypted]', age: 40 }, { name: '[encrypted]' }]);
+    ).toEqual([
+      { name: '[encrypted]', age: 40 },
+      { name: '[encrypted]' },
+      { name: '[encrypted]', age: 70 },
+    ]);
     expect(state?.protocol.codebook.node?.[NODE_TYPE]?.variables).toEqual(
       encryptedVariables,
     );
@@ -201,9 +224,11 @@ describe('the interview store', () => {
 
     const logged = JSON.stringify(info.mock.calls);
     expect(logged).toContain('NETWORK/UPDATE_NODE');
+    expect(logged).toContain('NETWORK/ADD_NODES_AND_EDGES');
     expect(logged).toContain('"age":40');
     expect(logged).not.toContain(NAME);
     expect(logged).not.toContain(NEW_NAME);
     expect(logged).not.toContain(ROSTER_NAME);
+    expect(logged).not.toContain(RELATIVE_NAME);
   });
 });

@@ -4,7 +4,10 @@ import { expect, screen, userEvent, waitFor, within } from 'storybook/test';
 import SuperJSON from 'superjson';
 
 import { SyntheticInterview } from '@codaco/protocol-utilities';
-import { RELATIONSHIP_TYPE_OPTIONS } from '@codaco/protocol-validation';
+import {
+  GAMETE_ROLE_OPTIONS,
+  RELATIONSHIP_TYPE_OPTIONS,
+} from '@codaco/protocol-validation';
 
 import type { NavigationOrientation } from '../../Shell';
 import { choosePassphraseInPrompter } from '../../storybook-support/passphraseSteps';
@@ -108,6 +111,11 @@ function createFamilyPedigreeInterview(seed: number, encryptedNames = false) {
     name: 'Is Gestational Carrier',
     type: 'boolean',
   });
+  const gameteRoleVar = edgeType.addVariable({
+    name: 'Gamete Role',
+    type: 'categorical',
+    options: GAMETE_ROLE_OPTIONS,
+  });
 
   return {
     si,
@@ -123,6 +131,7 @@ function createFamilyPedigreeInterview(seed: number, encryptedNames = false) {
     relationshipVar,
     isActiveVar,
     isGestCarrierVar,
+    gameteRoleVar,
   };
 }
 
@@ -196,6 +205,7 @@ export const Default: Story = {
         relationshipVar,
         isActiveVar,
         isGestCarrierVar,
+        gameteRoleVar,
         isEgoVar,
         relationshipToEgoVar,
         biologicalSexVar,
@@ -256,6 +266,7 @@ export const Default: Story = {
           relationshipTypeVariable: relationshipVar.id,
           isActiveVariable: isActiveVar.id,
           isGestationalCarrierVariable: isGestCarrierVar.id,
+          gameteRoleVariable: gameteRoleVar.id,
         },
         censusPrompt: scaffoldingText,
         nominationPrompts: [
@@ -343,6 +354,7 @@ export function buildScenarioInterview({
     relationshipVar,
     isActiveVar,
     isGestCarrierVar,
+    gameteRoleVar,
     isEgoVar,
     relationshipToEgoVar,
     biologicalSexVar,
@@ -382,6 +394,7 @@ export function buildScenarioInterview({
       relationshipTypeVariable: relationshipVar.id,
       isActiveVariable: isActiveVar.id,
       isGestationalCarrierVariable: isGestCarrierVar.id,
+      gameteRoleVariable: gameteRoleVar.id,
     },
     censusPrompt: 'Please create your family pedigree.',
     ...(withNomination && {

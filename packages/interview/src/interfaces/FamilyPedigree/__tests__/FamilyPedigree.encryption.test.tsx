@@ -145,6 +145,18 @@ const edgeTypes: Codebook['edge'] = {
     name: 'Family',
     label: { en: 'Family' },
     color: 'edge-color-seq-1',
+    variables: {
+      [REL_TYPE_VAR]: {
+        name: 'relationshipType',
+        label: 'relationshipType',
+        type: 'categorical',
+        options: [
+          { label: { en: 'Biological' }, value: 'biological' },
+          { label: { en: 'Social' }, value: 'social' },
+        ],
+      },
+      [IS_ACTIVE_VAR]: { name: 'isActive', label: 'isActive', type: 'boolean' },
+    },
   },
 };
 

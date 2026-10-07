@@ -193,10 +193,33 @@ async function readStoredLabel(node: NcNode | undefined) {
   return decryptValue(key, stored.value, stored.value);
 }
 
+/**
+ * The node and edge counts of every session state the store passes through,
+ * as a host persisting each change would see them.
+ */
+function watchNetworkStates(reduxStore: ReduxStore) {
+  const seen: [number, number][] = [];
+  reduxStore.subscribe(() => {
+    const { nodes, edges } = reduxStore.getState().session.network;
+    seen.push([nodes.length, edges.length]);
+  });
+  return seen;
+}
+
 describe('finalizeNetwork with an encrypted name variable', () => {
   it('stores each name as ciphertext bound to the node it is committed as', async () => {
     const reduxStore = await makeReduxStore();
+    const seen = watchNetworkStates(reduxStore);
     await buildFamily(reduxStore).getState().finalizeNetwork();
+
+    // The whole family arrives in one change, never a person at a time.
+    expect(seen).toContainEqual([2, 1]);
+    expect(
+      seen.every(
+        ([nodes, edges]) =>
+          (nodes === 0 && edges === 0) || (nodes === 2 && edges === 1),
+      ),
+    ).toBe(true);
 
     const nodes = reduxStore.getState().session.network.nodes;
     expect(nodes).toHaveLength(2);
@@ -278,7 +301,13 @@ describe('finalizeNetwork with an encrypted name variable', () => {
       attributes: { [config.relationshipTypeVariable]: ['social'] },
     });
 
+    const seen = watchNetworkStates(reduxStore);
     const refused = await store.getState().finalizeNetwork();
+
+    // Nothing of the family was ever in the session, even for a moment.
+    expect(seen.every(([nodes, edges]) => nodes === 0 && edges === 0)).toBe(
+      true,
+    );
 
     expect(refused && writeFailureMessage(refused)).toBe(
       runtimeMessages.protectedAnswersNotSaved,
