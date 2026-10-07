@@ -1,4 +1,3 @@
-import { configureStore } from '@reduxjs/toolkit';
 import {
   act,
   fireEvent,
@@ -25,10 +24,11 @@ import {
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import { StageMetadataContext } from '../../../contexts/StageMetadataContext';
 import { ContractProvider } from '../../../contract/context';
-import protocol from '../../../store/modules/protocol';
-import session from '../../../store/modules/session';
-import ui, { setPassphrase } from '../../../store/modules/ui';
+import { setPassphrase, setPassphraseInvalid } from '../../../store/modules/ui';
+import { interviewToastManager } from '../../../toast/interviewToastManager';
 import type { RegisterBeforeNext, StageProps } from '../../../types';
+import { createEncryptionStore } from '../../Anonymisation/__tests__/encryptionFixtures';
+import { isNumberArray } from '../../Anonymisation/decryptionScope';
 import {
   decryptData,
   generateSecureAttributes,
@@ -63,6 +63,17 @@ beforeAll(() => {
       unobserve() {}
       disconnect() {}
     };
+  }
+  // The drawer's form errors animate into view.
+  if (typeof window.IntersectionObserver === 'undefined') {
+    vi.stubGlobal(
+      'IntersectionObserver',
+      class IntersectionObserver {
+        observe() {}
+        unobserve() {}
+        disconnect() {}
+      },
+    );
   }
   if (!HTMLElement.prototype.setPointerCapture) {
     HTMLElement.prototype.setPointerCapture = () => undefined;
@@ -102,19 +113,6 @@ const uniqueNameVariables: Record<string, Variable> = {
     validation: { unique: true },
   },
 };
-
-const codebookWith = (nodeVariables: Record<string, Variable>) => ({
-  node: {
-    [NODE_TYPE]: {
-      name: 'Person',
-      color: 'node-color-seq-1',
-      shape: { default: 'circle' as const },
-      variables: nodeVariables,
-    },
-  },
-  edge: {},
-  ego: { variables: {} },
-});
 
 const stage: StageProps<'NetworkComposer'>['stage'] = {
   id: 'nc1',
@@ -160,29 +158,12 @@ function makeStore(
   encryptionEnabled = true,
   nodeVariables = variables,
 ) {
-  const store = configureStore({
-    reducer: { session, protocol, ui },
-    preloadedState: {
-      session: {
-        id: 's',
-        promptIndex: 0,
-        network: {
-          nodes,
-          edges: [],
-          ego: { [entityAttributesProperty]: {} },
-        },
-      } as never,
-      protocol: {
-        id: 'p',
-        hash: 'h',
-        schemaVersion: 8,
-        experiments: { encryptedVariables: encryptionEnabled },
-        codebook: codebookWith(nodeVariables),
-        stages: [stage],
-      } as never,
-    },
-    middleware: (g) => g({ serializableCheck: false }),
-  });
+  const store = createEncryptionStore(
+    nodes,
+    [stage],
+    nodeVariables,
+    encryptionEnabled,
+  );
   if (withPassphrase) store.dispatch(setPassphrase(PASSPHRASE));
   return store;
 }
@@ -234,12 +215,6 @@ function tapNode(nodeEl: HTMLElement) {
     pointerId: 1,
   });
   fireEvent.click(nodeEl, { detail: 1 });
-}
-
-function isNumberArray(value: unknown): value is number[] {
-  return (
-    Array.isArray(value) && value.every((item) => typeof item === 'number')
-  );
 }
 
 async function readStored(node: NcNode | undefined, variable: string) {
@@ -334,6 +309,56 @@ describe('NetworkComposer with encrypted variables', () => {
 
     const notesInput = await screen.findByLabelText(/notes/i);
     expect(notesInput).toHaveProperty('value', 'Met at work');
+  });
+});
+
+describe('NetworkComposer refusing to save without a working passphrase', () => {
+  const notSaved = 'Your answers have not been saved.';
+
+  it('keeps a name it could not add, and says why', async () => {
+    const toast = vi.spyOn(interviewToastManager, 'add');
+    const store = makeStore([], true);
+    store.dispatch(setPassphraseInvalid(true));
+    renderComposer(store);
+
+    fireEvent.click(screen.getByRole('button', { name: /add node/i }));
+    const input = await screen.findByRole('textbox', { name: /name/i });
+    await act(async () => {
+      fireEvent.change(input, { target: { value: 'Alice' } });
+      fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' });
+    });
+
+    await waitFor(() =>
+      expect(toast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          description: expect.stringContaining(notSaved),
+        }),
+      ),
+    );
+    expect(input).toHaveValue('Alice');
+    expect(store.getState().session.network.nodes).toHaveLength(0);
+  });
+
+  it('keeps an edit in the drawer it could not save, and says why', async () => {
+    const stored = await makeEncryptedNode();
+    const store = makeStore([stored], true);
+    renderComposer(store);
+
+    const nodeButton = await screen.findByRole('button', { name: /alice/i });
+    act(() => {
+      tapNode(nodeButton);
+    });
+    const notesInput = await screen.findByLabelText(/notes/i);
+    act(() => {
+      store.dispatch(setPassphraseInvalid(true));
+    });
+    fireEvent.change(notesInput, { target: { value: 'Old friend' } });
+
+    expect(
+      await screen.findByText(new RegExp(notSaved), {}, { timeout: 3000 }),
+    ).toBeTruthy();
+    expect(notesInput).toHaveValue('Old friend');
+    expect(store.getState().session.network.nodes[0]).toBe(stored);
   });
 });
 

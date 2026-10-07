@@ -28,6 +28,7 @@ import { createCanvasStore } from '../../canvas/useCanvasStore';
 import { useCurrentStep } from '../../contexts/CurrentStepContext';
 import { useVariableLabels } from '../../forms/buildVariableLabels';
 import { useValidationNetwork } from '../../forms/useValidationNetwork';
+import { rejectedWriteMessage } from '../../forms/writeSubmissionResult';
 import { useNodeMeasurement } from '../../hooks/useNodeMeasurement';
 import { useStageSelector } from '../../hooks/useStageSelector';
 import {
@@ -45,11 +46,12 @@ import {
 import { getCodebook } from '../../store/modules/protocol';
 import { updateNode, updateStageMetadata } from '../../store/modules/session';
 import { useAppDispatch } from '../../store/store';
+import { useInterviewToast } from '../../toast/useInterviewToast';
 import type { StageProps } from '../../types';
 import { isAttributeEncrypted } from '../Anonymisation/isAttributeEncrypted';
 import type { PassphraseNoticeStatus } from '../Anonymisation/PassphraseNotice';
-import { useDecryptedNodes } from '../Anonymisation/useDecryptedNodes';
 import { usePassphrase } from '../Anonymisation/usePassphrase';
+import { useProtectedFormValues } from '../Anonymisation/useProtectedFormValues';
 import { interfaceMessages } from '../messages';
 import ComposerCanvas, { type NodeTapModifiers } from './ComposerCanvas';
 import ComposerDrawer from './ComposerDrawer';
@@ -185,7 +187,8 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
     (stage.nodeForm?.fields ?? []).some((field) =>
       isAttributeEncrypted(isEnabled, stageVariables, field.variable),
     );
-  const encryptionLocked = writesEncrypted && !passphrase;
+  const addNodeLocked = quickAddEncrypted && !passphrase;
+  const { showToast } = useInterviewToast();
 
   useEffect(() => {
     if (writesEncrypted) requirePassphrase();
@@ -309,22 +312,33 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
   // each landing on the next free grid cell from the top-left.
   const handleAddNode = useCallback(
     async (name: string) => {
-      if (quickAddEncrypted && !passphrase) {
+      if (addNodeLocked) {
         requirePassphrase();
-        return;
+        return false;
       }
       const occupied = nodes
         .map((n) => n[entityAttributesProperty]?.[layoutVariable])
         .filter(isPosition);
-      await actions.createNodeAt(name, nextGridPosition(occupied));
+      try {
+        await actions.createNodeAt(name, nextGridPosition(occupied));
+        return true;
+      } catch (error) {
+        showToast({
+          description: intl.formatMessage(rejectedWriteMessage(error)),
+          variant: 'destructive',
+          anchor: 'forward',
+        });
+        return false;
+      }
     },
     [
       nodes,
       layoutVariable,
       actions,
-      quickAddEncrypted,
-      passphrase,
+      addNodeLocked,
       requirePassphrase,
+      showToast,
+      intl,
     ],
   );
 
@@ -610,28 +624,21 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
         ) ?? null)
       : null;
 
-  // The drawer shows and edits plaintext; stored encrypted values are
-  // decrypted for it.
-  const selectedNodes = useMemo(
-    () => (selectedNode ? [selectedNode] : []),
-    [selectedNode],
+  // The drawer shows and edits plaintext, and its title is the quick-add
+  // name, so both are read through the passphrase.
+  const drawerFields = useMemo(
+    () => [...(stage.nodeForm?.fields ?? []), { variable: stage.quickAdd }],
+    [stage.nodeForm, stage.quickAdd],
   );
-  const decryptedSelection = useDecryptedNodes(selectedNodes);
-  const decryptedSelectedNode =
-    selectedNode !== null && decryptedSelection.status === 'ready'
-      ? (decryptedSelection.nodes.find(
-          (n) =>
-            n[entityPrimaryKeyProperty] ===
-            selectedNode[entityPrimaryKeyProperty],
-        ) ?? null)
-      : null;
-  const selectedNodePassphraseStatus = (():
-    | PassphraseNoticeStatus
-    | undefined => {
-    if (encryptionLocked) return 'locked';
-    if (decryptedSelection.status !== 'ready') return decryptedSelection.status;
-    return decryptedSelectedNode ? undefined : 'pending';
-  })();
+  const selectedNodeValues = useProtectedFormValues(
+    selectedNode,
+    drawerFields,
+    stageVariables,
+  );
+  const selectedNodePassphraseStatus: PassphraseNoticeStatus | undefined =
+    selectedNodeValues.status === 'ready'
+      ? undefined
+      : selectedNodeValues.status;
 
   const selectedEdge =
     selectedEdgeId !== null
@@ -650,8 +657,9 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
   // no form to edit (it then shows an empty state).
   const currentEditor: DrawerEditor | null = (() => {
     if (selectedNode !== null) {
-      const rawName =
-        decryptedSelectedNode?.[entityAttributesProperty]?.[stage.quickAdd];
+      const attributes =
+        selectedNodeValues.status === 'ready' ? selectedNodeValues.values : {};
+      const rawName = attributes[stage.quickAdd];
       const title =
         typeof rawName === 'string' && rawName.trim() !== ''
           ? rawName
@@ -662,7 +670,7 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
         title,
         form: stage.nodeForm,
         subject: stage.subject,
-        attributes: decryptedSelectedNode?.[entityAttributesProperty] ?? {},
+        attributes,
         passphraseStatus: selectedNodePassphraseStatus,
       };
     }
@@ -707,7 +715,7 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
         nodeLabel={nodeLabel}
         quickAddTargetVariable={stage.quickAdd}
         onAddNode={handleAddNode}
-        addNodeLocked={quickAddEncrypted && !passphrase}
+        addNodeLocked={addNodeLocked}
         quickAddValidationProps={quickAddValidationProps}
         quickAddValidationContext={quickAddValidationContext}
         groupVariable={groupVariable}

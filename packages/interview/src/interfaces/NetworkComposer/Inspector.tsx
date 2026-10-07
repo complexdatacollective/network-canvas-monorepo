@@ -3,7 +3,10 @@ import { useCallback, useContext, useEffect, useMemo, useRef } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 
 import { commonMessages } from '@codaco/app-i18n/common';
-import { createMessageError } from '@codaco/app-i18n/messages';
+import {
+  createMessageError,
+  type MessageDescriptor,
+} from '@codaco/app-i18n/messages';
 import { AppMessage } from '@codaco/app-i18n/react';
 import { Button } from '@codaco/fresco-ui/Button';
 import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
@@ -19,6 +22,7 @@ import type { entityAttributesProperty, NcNode } from '@codaco/shared-consts';
 
 import { formValuesToAttributePatch } from '../../forms/formValuesToAttributePatch';
 import useProtocolForm from '../../forms/useProtocolForm';
+import { rejectedWriteMessage } from '../../forms/writeSubmissionResult';
 import { runtimeMessages } from '../../i18n/runtimeMessages';
 import type { Subject } from '../../selectors/forms';
 import type { AttributePatch } from '../../store/entityAttributePatch';
@@ -144,19 +148,23 @@ function AttributeFormInner({
         (form.fields ?? []).map((field) => field.variable),
       );
 
-      const showSaveFailure = () => {
+      // The form keeps what was entered, so the edit can be saved again once
+      // whatever refused it is resolved.
+      const showSaveFailure = (message: MessageDescriptor) => {
         storeApi?.getState().setErrors({
-          formErrors: [createMessageError(runtimeMessages.submissionFailed)],
+          formErrors: [createMessageError(message)],
           fieldErrors: {},
         });
       };
 
       if (!patchResult.success) {
-        showSaveFailure();
+        showSaveFailure(runtimeMessages.submissionFailed);
         return;
       }
 
-      void onSave(entityId, patchResult.patch).catch(showSaveFailure);
+      void onSave(entityId, patchResult.patch).catch((error: unknown) => {
+        showSaveFailure(rejectedWriteMessage(error));
+      });
     },
     [onSave, entityId, coerceValues, form.fields, storeApi],
   );

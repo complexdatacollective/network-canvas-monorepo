@@ -51,7 +51,7 @@ type ToolPaletteProps = {
   nodeLabel: string;
   /** Codebook variable the quick-add name is written to. */
   quickAddTargetVariable: string;
-  onAddNode: (name: string) => Promise<void>;
+  onAddNode: (name: string) => Promise<boolean>;
   /**
    * The name would be stored encrypted and there is no passphrase yet, so the
    * add-node field is replaced by an explanation.
