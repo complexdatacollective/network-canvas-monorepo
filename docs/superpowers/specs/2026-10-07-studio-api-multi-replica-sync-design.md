@@ -144,8 +144,28 @@ is irrelevant.
   closure. A release that fails is retried with a bounded backoff, then
   logged, and the leases lapse at the TTL.
 
-  Every transaction locks the draft head first, then connection rows by
-  `connection_id`, then lease rows by `section_id`.
+  **Lock order, the deadlock rule.** Every transaction takes its locks in
+  one total order: the draft head (`drafts` row), then `protocol_connections`
+  rows in ascending `connection_id`, then `leases` rows in ascending
+  `section_id`. A single-row writer still closes a cycle: one that holds a
+  lease and then waits on the head (or on a connection row) deadlocks against
+  a transaction that holds the head and waits on that lease. So the order
+  binds every locker, not only the multi-row ones.
+
+  - `connectSocket`, `upsertContact` and liveness take the head `FOR SHARE`;
+    `releaseOwner` takes it `FOR UPDATE`. Each then locks connection rows (an
+    ordered `SELECT … FOR UPDATE`, or the upsert's own row), then the owner's
+    leases in one ordered statement, and only then calls `sync.renewHeld` or
+    `sync.release`.
+  - `setSocketMode` and `expireConnection` lock only connection rows
+    (ordered) and wait on nothing after them, so they skip the head.
+    `setSocketMode` then reads the tab's leases without locking them.
+  - `sync.acquire`, `sync.commit` and the host's writes take the head before
+    any lease. The host's writes first lock the `protocols` and
+    `protocol_drafts` rows (`lockProtocolDraft`), which sit before the head.
+  - `discardDraft` takes the head `FOR UPDATE`, then the cascade reaches
+    leases and connections. Holding the head exclusively, it waits on no one
+    who holds a row it needs.
 
 - **Unary contact.** `openSession` on the unary plane upserts a `'unary'` row
   with `expires_at = now + IDLE_MS`. The write is throttled per owner per

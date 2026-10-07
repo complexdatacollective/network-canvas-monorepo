@@ -4,12 +4,21 @@
 //
 // Lock order, the deadlock rule, is total: the draft head, then
 // `protocol_connections` rows in `connection_id` order, then `leases` rows in
-// `section_id` order. A writer holding even one row of one kind while it waits
-// on another kind can close a cycle, so single-row writers keep the order too.
-// Every transaction here that goes on to lock leases takes the head first;
-// `setSocketMode` and `expireConnection` lock connection rows and then wait on
-// nothing, so they can sit at the end of a wait but never inside a cycle, and
-// skip the head.
+// `section_id` order. A single-row writer still closes a cycle: one that holds
+// a lease and then waits on the head (or on a connection row) deadlocks against
+// a transaction that holds the head and waits on that lease.
+//
+// - `connectSocket`, `upsertContact` and liveness take the head FOR SHARE, and
+//   `releaseOwner` FOR UPDATE; each then locks connection rows, then the
+//   owners' leases in one ordered statement, and only then renews or releases.
+// - `setSocketMode` and `expireConnection` lock only connection rows and wait
+//   on nothing after them, so they skip the head. `setSocketMode` then reads
+//   the tab's leases without locking them.
+// - The host's writes lock their `protocols` and `protocol_drafts` rows
+//   (`lockProtocolDraft`) before the head, and the head before any lease.
+// - `discardDraft` holds the head FOR UPDATE and then cascades to leases and
+//   connections; holding the head exclusively, it waits on no one who holds a
+//   row it needs.
 import { randomUUID } from 'node:crypto';
 
 import { and, asc, desc, eq, gt, inArray, max, sql } from 'drizzle-orm';

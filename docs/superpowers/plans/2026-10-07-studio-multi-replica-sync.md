@@ -253,9 +253,11 @@ locker, not only the multi-row ones.
   leases in one ordered statement (`lockOwnerLeases`), and only then calls
   `sync.renewHeld` or `sync.release`.
 - `setSocketMode` and `expireConnection` lock only connection rows (ordered)
-  and wait on nothing after them, so they skip the head.
+  and wait on nothing after them, so they skip the head. `setSocketMode` then
+  reads the tab's leases without locking them.
 - `sync.acquire`, `sync.commit` and the host's writes take the head before
-  any lease.
+  any lease. The host's writes first lock the `protocols` and
+  `protocol_drafts` rows (`lockProtocolDraft`), which sit before the head.
 - `discardDraft` takes the head `FOR UPDATE`, then the cascade reaches leases
   and connections. Holding the head exclusively, it waits on no one who
   holds a row it needs.
