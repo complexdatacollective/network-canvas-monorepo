@@ -2,7 +2,7 @@
 
 import { ArrowRight } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
-import { useCallback, useContext, useEffect, useRef } from 'react';
+import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 
 import { commonMessages } from '@codaco/app-i18n/common';
 import { createMessageError } from '@codaco/app-i18n/messages';
@@ -43,6 +43,15 @@ import { usePassphrase } from './usePassphrase';
 
 type AnonymisationProps = StageProps<'Anonymisation'>;
 
+/** How the passphrase was put in force on this visit to the stage. */
+type EnteredHere = 'chosen' | 'verified';
+
+const successMessages = {
+  chosen: interfaceMessages.passphraseSet,
+  verified: interfaceMessages.passphraseAccepted,
+  earlier: interfaceMessages.passphraseAlreadyEntered,
+};
+
 function AnonymisationInner(props: AnonymisationProps) {
   const intl = useAppIntl();
   const formRef = useRef<HTMLFormElement>(null);
@@ -51,7 +60,12 @@ function AnonymisationInner(props: AnonymisationProps) {
   const {
     stage: { explanationText, validation },
   } = props;
-  const { unlocked, passphraseChosen, submitPassphrase } = usePassphrase();
+  const { unlocked, passphraseChosen, encryptionUnavailable, unlock } =
+    usePassphrase();
+  // Set when the check starts rather than when it ends: the key is put in
+  // force before the check resolves, and the stage must not first say the
+  // passphrase was entered on an earlier visit.
+  const [enteredHere, setEnteredHere] = useState<EnteredHere | null>(null);
   // Once a passphrase has been chosen in this interview, this stage only asks
   // for it again: it is checked, not chosen, so it needs no confirmation and
   // the length rules do not apply to it.
@@ -69,11 +83,17 @@ function AnonymisationInner(props: AnonymisationProps) {
     }
   }, [unlocked, celebrate]);
 
+  // From an effect rather than after the check, so that a check still under
+  // way when the participant leaves cannot mark the next stage ready.
+  useEffect(() => {
+    if (unlocked || encryptionUnavailable) updateReady(true);
+  }, [unlocked, encryptionUnavailable, updateReady]);
+
   useBeforeNext(async (direction) => {
     if (direction === 'backwards') {
       return true;
     }
-    if (unlocked) {
+    if (unlocked || encryptionUnavailable) {
       return true;
     }
 
@@ -94,13 +114,7 @@ function AnonymisationInner(props: AnonymisationProps) {
     // Leaving waits for the passphrase to be checked, so a rejected one keeps
     // the participant here with the error rather than moving on without it.
     // The form shows the check under way as it does for its own submit.
-    const { setSubmitting } = formStore.getState();
-    setSubmitting(true);
-    try {
-      return await submitRegisteredForm(formStore);
-    } finally {
-      setSubmitting(false);
-    }
+    return submitRegisteredForm(formStore, { showSubmitting: true });
   });
 
   const checkPassphrase = useCallback(
@@ -112,7 +126,10 @@ function AnonymisationInner(props: AnonymisationProps) {
         };
       }
 
-      if (!(await submitPassphrase(candidate))) {
+      setEnteredHere(passphraseChosen ? 'verified' : 'chosen');
+      const outcome = await unlock(candidate);
+      if (outcome === 'incorrect') {
+        setEnteredHere(null);
         return {
           success: false,
           fieldErrors: {
@@ -122,11 +139,19 @@ function AnonymisationInner(props: AnonymisationProps) {
           },
         };
       }
-
-      updateReady(true);
+      if (outcome === 'unavailable') {
+        setEnteredHere(null);
+        return {
+          success: false,
+          formErrors: [
+            createMessageError(runtimeMessages.protectedAnswersUnavailable),
+          ],
+        };
+      }
+      setEnteredHere(outcome);
       return { success: true };
     },
-    [submitPassphrase, updateReady],
+    [passphraseChosen, unlock],
   );
 
   // The form's submit and the Next button can both ask for the check; while
@@ -176,7 +201,17 @@ function AnonymisationInner(props: AnonymisationProps) {
             </RenderMarkdown>
 
             <AnimatePresence mode="popLayout">
-              {unlocked ? (
+              {encryptionUnavailable ? (
+                <motion.div key="unavailable">
+                  <Alert variant="warning">
+                    <AlertDescription>
+                      <AppMessage
+                        message={runtimeMessages.protectedAnswersUnavailable}
+                      />
+                    </AlertDescription>
+                  </Alert>
+                </motion.div>
+              ) : unlocked ? (
                 <motion.div
                   key="success"
                   initial={{ opacity: 0, scale: 0.9 }}
@@ -185,7 +220,9 @@ function AnonymisationInner(props: AnonymisationProps) {
                 >
                   <Alert ref={alertRef} variant="success">
                     <AlertDescription>
-                      <AppMessage message={interfaceMessages.passphraseSet} />
+                      <AppMessage
+                        message={successMessages[enteredHere ?? 'earlier']}
+                      />
                     </AlertDescription>
                   </Alert>
                 </motion.div>
@@ -217,6 +254,7 @@ function AnonymisationInner(props: AnonymisationProps) {
                         label={intl.formatMessage(runtimeMessages.passphrase)}
                         required
                         autoFocus
+                        suppressPasswordManager
                         {...lengthRules}
                       />
                       {choosing && (
@@ -231,6 +269,7 @@ function AnonymisationInner(props: AnonymisationProps) {
                           )}
                           required
                           sameAs="passphrase"
+                          suppressPasswordManager
                           {...lengthRules}
                         />
                       )}

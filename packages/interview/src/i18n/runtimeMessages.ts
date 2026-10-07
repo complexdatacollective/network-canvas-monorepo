@@ -160,9 +160,9 @@ export const runtimeMessages = defineMessages({
   passphraseHelp: {
     id: 'interview.runtime.passphraseHelp',
     defaultMessage:
-      'Enter your passphrase in order to unlock the data on this screen. If you cannot remember your passphrase, please contact the person who recruited you to this study.',
+      'Enter the passphrase you chose earlier in this interview to see and change the answers on this screen. A passphrase cannot be recovered if it is forgotten.',
     description:
-      'Instructions for unlocking encrypted data and finding help if the passphrase is forgotten.',
+      'Instructions in the dialog for entering the passphrase chosen earlier in this interview. It must not suggest that anyone can recover or reset a forgotten passphrase, because no one can.',
   },
   passphrase: {
     id: 'interview.runtime.passphrase',

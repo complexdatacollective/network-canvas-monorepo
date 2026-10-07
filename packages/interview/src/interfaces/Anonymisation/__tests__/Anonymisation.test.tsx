@@ -5,6 +5,8 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import type { NcEncryptionHeader } from '@codaco/shared-consts';
 
+import { AnalyticsContext } from '../../../analytics/AnalyticsContext';
+import type { Tracker } from '../../../analytics/tracker';
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import { StageMetadataProvider } from '../../../contexts/StageMetadataContext';
 import useInterviewNavigation from '../../../hooks/useInterviewNavigation';
@@ -15,6 +17,7 @@ import { unlockEncryption } from '../unlockEncryption';
 import {
   createEncryptionStore,
   encryptionFor,
+  outOfBoundsHeader,
   unlockWith,
 } from './encryptionFixtures';
 
@@ -148,14 +151,19 @@ function renderStage({
     );
   }
 
-  render(
-    <Provider store={store}>
-      <InterviewI18nProvider requestedLocale="en">
-        <CurrentStepProvider currentStep={0} onStepChange={onStepChange}>
-          <Harness />
-        </CurrentStepProvider>
-      </InterviewI18nProvider>
-    </Provider>,
+  const captureException = vi.fn<Tracker['captureException']>();
+  const tracker: Tracker = { track: vi.fn(), captureException };
+
+  const { unmount } = render(
+    <AnalyticsContext.Provider value={tracker}>
+      <Provider store={store}>
+        <InterviewI18nProvider requestedLocale="en">
+          <CurrentStepProvider currentStep={0} onStepChange={onStepChange}>
+            <Harness />
+          </CurrentStepProvider>
+        </InterviewI18nProvider>
+      </Provider>
+    </AnalyticsContext.Provider>,
   );
 
   /** Presses Next, and resolves once the stage has decided. */
@@ -173,7 +181,15 @@ function renderStage({
     return leaving;
   };
 
-  return { store, onStepChange, next, startNext, user: userEvent.setup() };
+  return {
+    store,
+    onStepChange,
+    next,
+    startNext,
+    unmount,
+    captureException,
+    user: userEvent.setup(),
+  };
 }
 
 // Each label also carries a visual required marker.
@@ -182,7 +198,21 @@ const passphraseField = () =>
 const confirmField = () =>
   screen.queryByLabelText(/^Confirm Passphrase/, { selector: 'input' });
 const submitButton = () => screen.getByRole('button', { name: 'Submit' });
-const successMessage = () => screen.findByText(/Passphrase set successfully/);
+const PASSPHRASE_SET = 'Passphrase set successfully! Click "Next" to continue.';
+const PASSPHRASE_ACCEPTED = 'Passphrase accepted! Click "Next" to continue.';
+const ALREADY_ENTERED =
+  'You have already entered your passphrase. Click "Next" to continue.';
+const UNAVAILABLE =
+  'Answers protected by a passphrase cannot be shown or saved in this interview. Please let the person who recruited you to this study know.';
+
+const successMessage = (text: string) => screen.findByText(text);
+const anySuccessMessage = () =>
+  screen.queryByText(
+    (content) =>
+      content === PASSPHRASE_SET ||
+      content === PASSPHRASE_ACCEPTED ||
+      content === ALREADY_ENTERED,
+  );
 
 async function enter(
   user: ReturnType<typeof userEvent.setup>,
@@ -205,6 +235,10 @@ describe('Anonymisation in an interview without a passphrase', () => {
     const { store, user } = renderStage();
 
     expect(confirmField()).toHaveAttribute('type', 'password');
+    // Kept out of the browser's password manager, as Interviewer's own
+    // unlock screen keeps its passphrase.
+    expect(await passphraseField()).toHaveAttribute('autocomplete', 'off');
+    expect(confirmField()).toHaveAttribute('autocomplete', 'off');
     expect(screen.queryByText(VERIFY_LINE)).not.toBeInTheDocument();
 
     const deriveKey = vi.spyOn(crypto.subtle, 'deriveKey');
@@ -221,9 +255,10 @@ describe('Anonymisation in an interview without a passphrase', () => {
     await enter(user, 'eight888');
     await user.click(submitButton());
 
-    expect(await successMessage()).toBeInTheDocument();
+    expect(await successMessage(PASSPHRASE_SET)).toBeInTheDocument();
     expect(store.getState().session.network.encryption).toBeDefined();
     expect(store.getState().ui.encryptionKeyId).not.toBeNull();
+    expect(store.getState().ui.FORM_IS_READY).toBe(true);
     expect(deriveKey).toHaveBeenCalledTimes(1);
   });
 
@@ -255,7 +290,7 @@ describe('Anonymisation in an interview without a passphrase', () => {
     await enter(user, 'abcd');
     await user.click(submitButton());
 
-    expect(await successMessage()).toBeInTheDocument();
+    expect(await successMessage(PASSPHRASE_SET)).toBeInTheDocument();
     expect(store.getState().session.network.encryption).toBeDefined();
   });
 
@@ -323,6 +358,7 @@ describe('Anonymisation in an interview whose passphrase has been chosen', () =>
     expect(await screen.findByText(VERIFY_LINE)).toBeInTheDocument();
     const field = await passphraseField();
     expect(field).toHaveAttribute('type', 'password');
+    expect(field).toHaveAttribute('autocomplete', 'off');
     expect(confirmField()).not.toBeInTheDocument();
     expect(field).not.toHaveAccessibleDescription(
       expect.stringContaining('Enter at least'),
@@ -344,19 +380,38 @@ describe('Anonymisation in an interview whose passphrase has been chosen', () =>
     expect(store.getState().ui.encryptionKeyId).toBeNull();
     expect(store.getState().session.network.encryption).toEqual(header);
 
-    // Turned away, the participant stays here with the field to try again.
+    // Turned away on Next, the participant stays here, with the field
+    // focused to try again.
+    act(() => submitButton().focus());
     await next();
     expect(onStepChange).not.toHaveBeenCalled();
+    await waitFor(() => expect(field).toHaveFocus());
     expect(field).toBeEnabled();
     expect(field).toHaveAttribute('aria-invalid', 'true');
     expect(store.getState().ui.encryptionKeyId).toBeNull();
-    expect(screen.queryByText(/Passphrase set successfully/)).toBeNull();
+    expect(store.getState().ui.FORM_IS_READY).toBe(false);
+    expect(anySuccessMessage()).toBeNull();
+
+    // The key is in force before the check resolves; the stage must not say
+    // in between that the passphrase was entered on an earlier visit.
+    const shown = new Set<string>();
+    const observer = new MutationObserver(() => {
+      const message = anySuccessMessage();
+      if (message?.textContent) shown.add(message.textContent);
+    });
+    observer.observe(document.body, {
+      subtree: true,
+      childList: true,
+      characterData: true,
+    });
 
     await user.clear(field);
     await user.type(field, 'pw');
     await user.click(submitButton());
 
-    expect(await successMessage()).toBeInTheDocument();
+    expect(await successMessage(PASSPHRASE_ACCEPTED)).toBeInTheDocument();
+    observer.disconnect();
+    expect([...shown]).toEqual([PASSPHRASE_ACCEPTED]);
     expect(store.getState().ui.encryptionKeyId).not.toBeNull();
     expect(store.getState().session.network.encryption).toEqual(header);
 
@@ -379,6 +434,11 @@ describe('Anonymisation in an interview whose passphrase has been chosen', () =>
     await waitFor(() =>
       expect(status).toHaveTextContent('Checking your passphrase…'),
     );
+    // The same live region, mounted throughout, so the change is announced.
+    // Not a paragraph: the spinner it shows is a block, which a paragraph
+    // cannot hold.
+    expect(screen.getByRole('status')).toBe(status);
+    expect(status.closest('p')).toBeNull();
     expect(submitButton()).toBeDisabled();
     expect(submitButton()).toHaveAttribute('aria-busy', 'true');
 
@@ -388,7 +448,7 @@ describe('Anonymisation in an interview whose passphrase has been chosen', () =>
       await leaving;
     });
 
-    expect(await successMessage()).toBeInTheDocument();
+    expect(await successMessage(PASSPHRASE_ACCEPTED)).toBeInTheDocument();
     expect(onStepChange).toHaveBeenCalledWith(1, expect.anything());
 
     // Attempts on one store run one after another, so this one settles only
@@ -399,13 +459,14 @@ describe('Anonymisation in an interview whose passphrase has been chosen', () =>
 });
 
 describe('Anonymisation once the passphrase is in force', () => {
-  it('shows that it has been set instead of asking for it', async () => {
+  it('says it was entered earlier instead of asking for it', async () => {
     const { header } = await encryptionFor('pw');
     const { store, onStepChange, next } = renderStage({ header });
     await act(() => unlockWith(store, 'pw'));
 
-    const success = await successMessage();
+    const success = await successMessage(ALREADY_ENTERED);
     expect(success).toBeInTheDocument();
+    expect(store.getState().ui.FORM_IS_READY).toBe(true);
     expect(
       screen.queryByLabelText(/^Passphrase/, { selector: 'input' }),
     ).toBeNull();
@@ -413,5 +474,59 @@ describe('Anonymisation once the passphrase is in force', () => {
 
     await next();
     expect(onStepChange).toHaveBeenCalledWith(1, expect.anything());
+  });
+});
+
+describe('Anonymisation left while the passphrase is being checked', () => {
+  it('does not mark the next stage ready once the check ends', async () => {
+    const { header } = await encryptionFor('pw');
+    const { store, unmount, user } = renderStage({ header });
+    const field = await passphraseField();
+
+    const { deriveKey, release } = holdKeyDerivation();
+    await user.type(field, 'pw');
+    await user.click(submitButton());
+    await waitFor(() => expect(deriveKey).toHaveBeenCalledTimes(1));
+
+    unmount();
+    expect(store.getState().ui.FORM_IS_READY).toBe(false);
+
+    release();
+    // Attempts on one store run one after another, so this settles only once
+    // the stage's own check has.
+    await unlockEncryption(store, 'pw');
+
+    expect(store.getState().ui.encryptionKeyId).not.toBeNull();
+    expect(store.getState().ui.FORM_IS_READY).toBe(false);
+  });
+});
+
+describe('Anonymisation in an interview whose encryption header is out of bounds', () => {
+  it('says protected answers are unavailable, asks for no passphrase, reports it once, and lets the participant move on', async () => {
+    const { header } = await encryptionFor('pw');
+    const refused = outOfBoundsHeader(header);
+    const deriveKey = vi.spyOn(crypto.subtle, 'deriveKey');
+    const { store, onStepChange, next, captureException } = renderStage({
+      header: refused,
+    });
+
+    expect(await screen.findByText(UNAVAILABLE)).toBeInTheDocument();
+    expect(
+      screen.queryByLabelText(/^Passphrase/, { selector: 'input' }),
+    ).toBeNull();
+    expect(screen.queryByText(VERIFY_LINE)).toBeNull();
+    expect(anySuccessMessage()).toBeNull();
+    expect(store.getState().ui.FORM_IS_READY).toBe(true);
+    expect(captureException).toHaveBeenCalledTimes(1);
+    expect(captureException.mock.calls[0]?.[1]).toEqual({
+      feature: 'encrypted-attributes',
+      reason: 'refused-header',
+    });
+
+    await next();
+    expect(onStepChange).toHaveBeenCalledWith(1, expect.anything());
+    expect(deriveKey).not.toHaveBeenCalled();
+    expect(store.getState().session.network.encryption).toEqual(refused);
+    expect(store.getState().ui.showPassphrasePrompter).toBe(false);
   });
 });

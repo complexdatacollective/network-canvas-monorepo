@@ -8,6 +8,19 @@ export const interfaceMessages = defineMessages({
     description:
       'Success message after the participant sets the anonymisation passphrase. Next refers to the interview navigation arrow.',
   },
+  passphraseAccepted: {
+    id: 'interview.interfaces.passphraseAccepted',
+    defaultMessage: 'Passphrase accepted! Click "Next" to continue.',
+    description:
+      'Success message after the participant enters, on the anonymisation screen, the passphrase they chose earlier in the interview. Next refers to the interview navigation arrow.',
+  },
+  passphraseAlreadyEntered: {
+    id: 'interview.interfaces.passphraseAlreadyEntered',
+    defaultMessage:
+      'You have already entered your passphrase. Click "Next" to continue.',
+    description:
+      'Shown on the anonymisation screen when the participant returns to it after their passphrase was already set or entered. Next refers to the interview navigation arrow.',
+  },
   reenterPassphrase: {
     id: 'interview.interfaces.reenterPassphrase',
     defaultMessage: 'Re-enter your passphrase...',
