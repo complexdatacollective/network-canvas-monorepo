@@ -37,6 +37,11 @@ answers; other interviews work as before.
   returns to it, and stops being shown once the passphrase is replaced or
   found not to work. An area picked on the map is highlighted once it is
   saved, so a pick that could not be saved no longer looks chosen.
+- Answers changed one after another in the Network Composer's side panel, and
+  locations picked one after another on the map, are saved in the order they
+  were made. Before, an earlier answer that took longer to protect could be
+  saved last and replace the later one, and an answer put back while an
+  earlier one was still being protected could be lost.
 - Replacing a protected answer with an unprotected one no longer leaves the
   answer unreadable.
 - Saving a form no longer erases a protected answer the form could not show.

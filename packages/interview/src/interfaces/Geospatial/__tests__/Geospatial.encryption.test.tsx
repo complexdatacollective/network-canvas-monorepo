@@ -34,6 +34,38 @@ import GeospatialInterface from '../Geospatial';
 // Chrome's), so no real map is ever built.
 vi.mock('mapbox-gl/esm', () => ({ Map: vi.fn() }));
 
+// Holds back the result of the next encryption while `held` is set, so a
+// test can make an earlier save slower than a later one. Counts every
+// encryption begun and ended, so a test can wait for all of them.
+const encryptionGate = vi.hoisted(() => {
+  const gate: { held?: Promise<void>; begun: number; ended: number } = {
+    begun: 0,
+    ended: 0,
+  };
+  return gate;
+});
+vi.mock('../../Anonymisation/utils', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('../../Anonymisation/utils')>();
+  return {
+    ...actual,
+    generateSecureAttributes: async (
+      ...args: Parameters<typeof actual.generateSecureAttributes>
+    ) => {
+      encryptionGate.begun += 1;
+      const held = encryptionGate.held;
+      encryptionGate.held = undefined;
+      try {
+        const result = await actual.generateSecureAttributes(...args);
+        await held;
+        return result;
+      } finally {
+        encryptionGate.ended += 1;
+      }
+    },
+  };
+});
+
 class StubObserver {
   observe() {}
   unobserve() {}
@@ -172,6 +204,42 @@ describe('Geospatial asking for an encrypted location', () => {
       throw new Error('Expected secure-attribute metadata');
     await expect(decryptData({ secureAttributes, data }, 'pw')).resolves.toBe(
       'Riverside',
+    );
+  });
+});
+
+describe('Geospatial saving locations in the order they were picked', () => {
+  it('stores the later location when the earlier one is still being protected', async () => {
+    const { store, selectArea } = renderGeospatial('pw');
+    const begunBefore = encryptionGate.begun;
+    let release: () => void = () => undefined;
+    encryptionGate.held = new Promise((resolve) => {
+      release = resolve;
+    });
+
+    await selectArea();
+    await waitFor(() => expect(encryptionGate.begun).toBe(begunBefore + 1));
+    act(() => {
+      fireEvent.click(screen.getByTestId('outside-selectable-areas-button'));
+    });
+    // Long enough for a later location that did not wait for the earlier one to
+    // be stored first.
+    await act(() => new Promise((resolve) => setTimeout(resolve, 500)));
+    release();
+
+    await waitFor(() => expect(encryptionGate.begun).toBe(begunBefore + 2));
+    await waitFor(() =>
+      expect(encryptionGate.ended).toBe(encryptionGate.begun),
+    );
+    await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+    const [saved] = store.getState().session.network.nodes;
+    const data = saved?.[entityAttributesProperty].neighbourhood;
+    const secureAttributes = saved?.[entitySecureAttributesMeta]?.neighbourhood;
+    if (!isNumberArray(data)) throw new Error('Expected a stored ciphertext');
+    if (!secureAttributes)
+      throw new Error('Expected secure-attribute metadata');
+    await expect(decryptData({ secureAttributes, data }, 'pw')).resolves.toBe(
+      'outside-selectable-areas',
     );
   });
 });

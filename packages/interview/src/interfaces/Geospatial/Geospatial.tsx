@@ -31,6 +31,7 @@ import { useContractFlags } from '../../contract/context';
 import { writeFailureMessage } from '../../forms/writeSubmissionResult';
 import { useAssetUrl } from '../../hooks/useAssetUrl';
 import useBeforeNext from '../../hooks/useBeforeNext';
+import useOneAtATime from '../../hooks/useOneAtATime';
 import useReadyForNextStage from '../../hooks/useReadyForNextStage';
 import { useStageSelector } from '../../hooks/useStageSelector';
 import { runtimeMessages } from '../../i18n/runtimeMessages';
@@ -237,12 +238,15 @@ export default function GeospatialInterface({
     ],
   );
 
-  // Every outcome of the save, including a refusal, is reported inside it.
+  // A location that takes longer to save, as a protected one can, never lands
+  // after one picked later. Every outcome of a save, including a refusal, is
+  // reported inside it.
+  const saveLocationInOrder = useOneAtATime(saveLocationValue);
   const setLocationValue = useCallback(
     (value: string | null, selectionKind: 'search' | 'pin' = 'pin') => {
-      void saveLocationValue(value, selectionKind);
+      void saveLocationInOrder(value, selectionKind);
     },
-    [saveLocationValue],
+    [saveLocationInOrder],
   );
 
   // A saved location that is encrypted is decrypted before it is shown.

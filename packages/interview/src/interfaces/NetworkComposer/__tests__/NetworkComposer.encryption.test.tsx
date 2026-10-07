@@ -7,7 +7,7 @@ import {
 } from '@testing-library/react';
 import { type ReactNode } from 'react';
 import { Provider } from 'react-redux';
-import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import {
@@ -57,10 +57,51 @@ vi.mock('../../Anonymisation/useDecryptedNodes', async (importOriginal) => {
   };
 });
 
+// Goes on giving the drawer the answers it was last given while `held` is
+// set, as a render that comes later than the store change would, until
+// `rerender` gives it the answers stored by then.
+const answersLag = vi.hoisted(() => {
+  const lag: { held: boolean; rerender?: () => void } = { held: false };
+  return lag;
+});
+vi.mock(
+  '../../Anonymisation/useProtectedFormValues',
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import('../../Anonymisation/useProtectedFormValues')
+      >();
+    const { useReducer, useRef } = await import('react');
+    return {
+      ...actual,
+      useProtectedFormValues: (
+        ...args: Parameters<typeof actual.useProtectedFormValues>
+      ) => {
+        const result = actual.useProtectedFormValues(...args);
+        const [, rerender] = useReducer((count: number) => count + 1, 0);
+        answersLag.rerender = rerender;
+        const given = useRef(result);
+        if (!answersLag.held) given.current = result;
+        return given.current;
+      },
+    };
+  },
+);
+
 // Holds every decryption while `held` is set, so a test can act while stored
 // values are still being decrypted.
 const decryptionGate = vi.hoisted(() => {
   const gate: { held?: Promise<void> } = {};
+  return gate;
+});
+// Holds back the result of the next encryption while `held` is set, so a
+// test can make an earlier save slower than a later one. Counts every
+// encryption begun and ended, so a test can wait for all of them.
+const encryptionGate = vi.hoisted(() => {
+  const gate: { held?: Promise<void>; begun: number; ended: number } = {
+    begun: 0,
+    ended: 0,
+  };
   return gate;
 });
 vi.mock('../../Anonymisation/utils', async (importOriginal) => {
@@ -71,6 +112,20 @@ vi.mock('../../Anonymisation/utils', async (importOriginal) => {
     decryptData: async (...args: Parameters<typeof actual.decryptData>) => {
       await decryptionGate.held;
       return actual.decryptData(...args);
+    },
+    generateSecureAttributes: async (
+      ...args: Parameters<typeof actual.generateSecureAttributes>
+    ) => {
+      encryptionGate.begun += 1;
+      const held = encryptionGate.held;
+      encryptionGate.held = undefined;
+      try {
+        const result = await actual.generateSecureAttributes(...args);
+        await held;
+        return result;
+      } finally {
+        encryptionGate.ended += 1;
+      }
     },
   };
 });
@@ -713,31 +768,34 @@ describe('NetworkComposer leaving the stage with the drawer open', () => {
   });
 });
 
+const makeNodes = async () => [
+  await makeEncryptedNode(),
+  await makeEncryptedNode({
+    id: 'node-b',
+    name: 'Bob',
+    notes: 'Neighbour',
+    position: { x: 0.6, y: 0.6 },
+  }),
+];
+
+async function openAlice(
+  store: ReturnType<typeof makeStore>,
+  composerStage = stage,
+) {
+  renderComposer(store, composerStage);
+  const alice = await screen.findByRole('button', { name: /alice/i });
+  await screen.findByRole('button', { name: /bob/i });
+  act(() => {
+    tapNode(alice);
+  });
+  const notesInput = await screen.findByLabelText(/notes/i);
+  await waitFor(() => expect(notesInput).toHaveValue('Met at work'));
+  return notesInput;
+}
+
 describe('NetworkComposer moving the selection off an edit in the drawer', () => {
   const notSaved = /Your answers have not been saved/;
   const discardDialog = { name: 'Discard changes?' };
-
-  const makeNodes = async () => [
-    await makeEncryptedNode(),
-    await makeEncryptedNode({
-      id: 'node-b',
-      name: 'Bob',
-      notes: 'Neighbour',
-      position: { x: 0.6, y: 0.6 },
-    }),
-  ];
-
-  async function openAlice(store: ReturnType<typeof makeStore>) {
-    renderComposer(store);
-    const alice = await screen.findByRole('button', { name: /alice/i });
-    await screen.findByRole('button', { name: /bob/i });
-    act(() => {
-      tapNode(alice);
-    });
-    const notesInput = await screen.findByLabelText(/notes/i);
-    await waitFor(() => expect(notesInput).toHaveValue('Met at work'));
-    return notesInput;
-  }
 
   const moves: [string, () => void][] = [
     [
@@ -917,6 +975,187 @@ describe('NetworkComposer moving the selection off an edit in the drawer', () =>
       expect(screen.queryByRole('dialog', discardDialog)).toBeNull();
     },
   );
+});
+
+describe('NetworkComposer saving edits in the order they were made', () => {
+  afterEach(() => {
+    encryptionGate.held = undefined;
+    answersLag.held = false;
+  });
+
+  function holdNextEncryption() {
+    const begunBefore = encryptionGate.begun;
+    let release: () => void = () => undefined;
+    encryptionGate.held = new Promise((resolve) => {
+      release = resolve;
+    });
+    return { begun: () => encryptionGate.begun > begunBefore, release };
+  }
+
+  // Every encryption begun has ended and its write has been applied.
+  async function allSaved() {
+    await waitFor(() =>
+      expect(encryptionGate.ended).toBe(encryptionGate.begun),
+    );
+    await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+  }
+
+  const storedAge = (store: ReturnType<typeof makeStore>) =>
+    store.getState().session.network.nodes[0]?.[entityAttributesProperty][
+      AGE_VAR
+    ] ?? null;
+
+  it('stores the latest edit when an earlier save is still protecting its answers', async () => {
+    const store = makeStore(await makeNodes(), true);
+    const notesInput = await openAlice(store);
+    const earlier = holdNextEncryption();
+
+    fireEvent.change(notesInput, { target: { value: 'First' } });
+    await waitFor(() => expect(earlier.begun()).toBe(true), {
+      timeout: 2000,
+    });
+    fireEvent.change(notesInput, { target: { value: 'Second' } });
+    act(() => {
+      tapNode(screen.getByRole('button', { name: /bob/i }));
+    });
+    // Long enough for a later save that did not wait for the earlier one to
+    // be stored first.
+    await act(() => new Promise((resolve) => setTimeout(resolve, 500)));
+    earlier.release();
+
+    expect(await screen.findByDisplayValue('Neighbour')).toBeTruthy();
+    await allSaved();
+    expect(
+      await readStored(store.getState().session.network.nodes[0], NOTES_VAR),
+    ).toBe('Second');
+  });
+
+  it('clears an answer an earlier save is still storing when the participant moves on', async () => {
+    const store = makeStore(
+      await makeNodes(),
+      true,
+      true,
+      ageVariables,
+      notesAndAgeStage,
+    );
+    await openAlice(store, notesAndAgeStage);
+    const age = screen.getByLabelText(/age/i);
+    const earlier = holdNextEncryption();
+
+    fireEvent.change(age, { target: { value: '30' } });
+    await waitFor(() => expect(earlier.begun()).toBe(true), {
+      timeout: 2000,
+    });
+    fireEvent.change(age, { target: { value: '' } });
+    act(() => {
+      tapNode(screen.getByRole('button', { name: /bob/i }));
+    });
+    // Long enough for a later save that did not wait for the earlier one to
+    // be stored first.
+    await act(() => new Promise((resolve) => setTimeout(resolve, 500)));
+    earlier.release();
+
+    expect(await screen.findByDisplayValue('Neighbour')).toBeTruthy();
+    await allSaved();
+    expect(storedAge(store)).toBeNull();
+  });
+
+  it('keeps an answer the participant puts back while an earlier save is under way', async () => {
+    const store = makeStore(
+      await makeNodes(),
+      true,
+      true,
+      ageVariables,
+      notesAndAgeStage,
+    );
+    await openAlice(store, notesAndAgeStage);
+    const age = screen.getByLabelText(/age/i);
+    const earlier = holdNextEncryption();
+
+    fireEvent.change(age, { target: { value: '30' } });
+    await waitFor(() => expect(earlier.begun()).toBe(true), {
+      timeout: 2000,
+    });
+    fireEvent.change(age, { target: { value: '' } });
+    earlier.release();
+
+    // The earlier save lands, and the answer put back is then saved over it.
+    await waitFor(() => expect(storedAge(store)).toBe(30));
+    await waitFor(() => expect(storedAge(store)).toBeNull(), {
+      timeout: 2000,
+    });
+    expect(screen.getByLabelText(/age/i)).toHaveValue(null);
+  });
+
+  it('keeps an answer put back whose save waits behind an earlier one', async () => {
+    const store = makeStore(
+      await makeNodes(),
+      true,
+      true,
+      ageVariables,
+      notesAndAgeStage,
+    );
+    await openAlice(store, notesAndAgeStage);
+    const age = screen.getByLabelText(/age/i);
+    const earlier = holdNextEncryption();
+
+    fireEvent.change(age, { target: { value: '30' } });
+    await waitFor(() => expect(earlier.begun()).toBe(true), {
+      timeout: 2000,
+    });
+    fireEvent.change(age, { target: { value: '' } });
+    // Long enough for the second save to be made, and to wait for the first.
+    await act(() => new Promise((resolve) => setTimeout(resolve, 600)));
+    earlier.release();
+
+    await waitFor(() => expect(storedAge(store)).toBe(30));
+    await waitFor(() => expect(storedAge(store)).toBeNull(), {
+      timeout: 2000,
+    });
+    // Long enough for an answer the form wrongly showed again to be saved.
+    await act(() => new Promise((resolve) => setTimeout(resolve, 600)));
+    expect(storedAge(store)).toBeNull();
+    expect(screen.getByLabelText(/age/i)).toHaveValue(null);
+  });
+
+  it('keeps an answer put back when the drawer is given the answers of each save late', async () => {
+    const store = makeStore(await makeNodes(), true);
+    const notesInput = await openAlice(store);
+    const first = holdNextEncryption();
+
+    fireEvent.change(notesInput, { target: { value: 'First' } });
+    await waitFor(() => expect(first.begun()).toBe(true), { timeout: 2000 });
+    fireEvent.change(notesInput, { target: { value: 'Met at work' } });
+    // Long enough for the second save to be made, and to wait for the first.
+    await act(() => new Promise((resolve) => setTimeout(resolve, 600)));
+
+    // The first save lands, and the second is made before the drawer is
+    // given the first one's answers.
+    answersLag.held = true;
+    const second = holdNextEncryption();
+    first.release();
+    await waitFor(() => expect(second.begun()).toBe(true), { timeout: 2000 });
+    expect(
+      await readStored(store.getState().session.network.nodes[0], NOTES_VAR),
+    ).toBe('First');
+
+    // The drawer is given the first save's answers while the second is
+    // still pending, then the second save's.
+    answersLag.held = false;
+    act(() => {
+      answersLag.rerender?.();
+    });
+    second.release();
+
+    await allSaved();
+    // Long enough for an answer the form wrongly showed again to be saved.
+    await act(() => new Promise((resolve) => setTimeout(resolve, 600)));
+    await allSaved();
+    expect(
+      await readStored(store.getState().session.network.nodes[0], NOTES_VAR),
+    ).toBe('Met at work');
+    expect(screen.getByLabelText(/notes/i)).toHaveValue('Met at work');
+  });
 });
 
 describe('NetworkComposer while the encryptedVariables experiment is off', () => {

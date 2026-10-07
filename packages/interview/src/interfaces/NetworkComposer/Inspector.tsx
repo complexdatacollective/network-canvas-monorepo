@@ -27,6 +27,7 @@ import { formValuesToAttributePatch } from '../../forms/formValuesToAttributePat
 import useProtocolForm from '../../forms/useProtocolForm';
 import { rejectedWriteMessage } from '../../forms/writeSubmissionResult';
 import useBeforeNext from '../../hooks/useBeforeNext';
+import useOneAtATime from '../../hooks/useOneAtATime';
 import { runtimeMessages } from '../../i18n/runtimeMessages';
 import type { Subject } from '../../selectors/forms';
 import type { AttributePatch } from '../../store/entityAttributePatch';
@@ -63,6 +64,10 @@ export type InspectorProps = {
 
 // How long to wait after the last edit before validating and persisting.
 const AUTOSAVE_DELAY = 400;
+
+// One of the form's own saves: the answers it stores, and whether the store
+// has taken them.
+type OwnWrite = { stored: Record<string, FieldValue>; done: boolean };
 
 const noopSubmit: FormSubmitHandler = () => ({ success: true as const });
 
@@ -163,19 +168,43 @@ function AttributeFormInner({
   const storeApi = useContext(FormStoreContext);
   const { confirm } = useDialog();
 
+  // The stored answers the form was last given.
+  const givenRef = useRef(initialValues);
+  // The answers each of the form's own saves stores, oldest first, from just
+  // before it is made until the form is given them back. While any is
+  // pending, the form may hold answers that differ from the stored ones even
+  // when it shows the answers it was given, and the next save builds on the
+  // newest of these rather than on those.
+  const ownWritesRef = useRef<OwnWrite[]>([]);
+
   // An answer changed outside the form, as an undo does, replaces the one
   // shown unless the participant has changed that question since. Otherwise
   // the form would go on showing the undone answer, and save it back when the
-  // Inspector closes.
-  const storedRef = useRef(initialValues);
+  // Inspector closes. The answers the form's own save stored are not such a
+  // change, even when the participant has put back the earlier answer since.
   useEffect(() => {
-    const previous = storedRef.current;
-    storedRef.current = initialValues;
+    const previous = givenRef.current;
+    givenRef.current = initialValues;
     const state = storeApi?.getState();
     if (previous === initialValues || !state?.pathOperations) return;
 
+    const fields = form.fields ?? [];
+    // Several saves can land in one render, so the answers given may be those
+    // of any pending save, and every save before it has landed too.
+    const ownWrites = ownWritesRef.current;
+    const landed = ownWrites.findIndex(({ stored }) =>
+      fields.every(({ variable }) =>
+        isEqual(initialValues[variable], stored[variable]),
+      ),
+    );
+    if (landed !== -1) {
+      ownWritesRef.current = ownWrites.slice(landed + 1);
+      return;
+    }
+    ownWritesRef.current = ownWrites.filter(({ done }) => !done);
+
     const shown = coerceValues(state.getFormValues());
-    for (const { variable } of form.fields ?? []) {
+    for (const { variable } of fields) {
       if (
         isEqual(shown[variable], previous[variable]) &&
         !isEqual(shown[variable], initialValues[variable])
@@ -187,7 +216,7 @@ function AttributeFormInner({
 
   // Resolves to why the values could not be saved, or to undefined once they
   // are saved.
-  const persist = useCallback(
+  const save = useCallback(
     async (values: Record<string, FieldValue>) => {
       // The form keeps what was entered, so the edit can be saved again once
       // whatever refused it is resolved.
@@ -199,10 +228,11 @@ function AttributeFormInner({
         return message;
       };
 
+      const stored = ownWritesRef.current.at(-1)?.stored ?? givenRef.current;
       const patchResult = formValuesToAttributePatch(
         coerceValues(values),
         (form.fields ?? []).map((field) => field.variable),
-        initialValues,
+        stored,
       );
       if (!patchResult.success) {
         return showSaveFailure(runtimeMessages.submissionFailed);
@@ -215,14 +245,27 @@ function AttributeFormInner({
       const changesAnswers =
         unset.length > 0 ||
         Object.entries(set).some(
-          ([name, value]) => !isEqual(value, initialValues[name]),
+          ([name, value]) => !isEqual(value, stored[name]),
         );
       if (changesAnswers) {
+        const ownWrite: OwnWrite = {
+          stored: Object.fromEntries(
+            [...Object.entries(stored), ...Object.entries(set)].filter(
+              ([name]) => !unset.includes(name),
+            ),
+          ),
+          done: false,
+        };
+        ownWritesRef.current = [...ownWritesRef.current, ownWrite];
         try {
           await onSave(entityId, patchResult.patch);
         } catch (error) {
+          ownWritesRef.current = ownWritesRef.current.filter(
+            (pending) => pending !== ownWrite,
+          );
           return showSaveFailure(rejectedWriteMessage(error));
         }
+        ownWrite.done = true;
       }
 
       // An edit refused earlier is saved now, so the refusal is gone.
@@ -232,8 +275,11 @@ function AttributeFormInner({
       }
       return undefined;
     },
-    [onSave, entityId, coerceValues, form.fields, initialValues, storeApi],
+    [onSave, entityId, coerceValues, form.fields, storeApi],
   );
+  // A save that takes longer, as protecting an answer can, never lands after
+  // a newer one.
+  const persist = useOneAtATime(save);
 
   const handleValidValues = useCallback(
     (values: Record<string, FieldValue>) => {
@@ -248,7 +294,10 @@ function AttributeFormInner({
   // store refused, or one hidden because the passphrase cannot read it.
   const confirmLeave = useCallback((): true | Promise<boolean> => {
     const state = storeApi?.getState();
-    if (!state || !selectIsFormDirty(state)) return true;
+    if (!state) return true;
+    const unsaved =
+      selectIsFormDirty(state) || (canSave && ownWritesRef.current.length > 0);
+    if (!unsaved) return true;
 
     return (async () => {
       let reason: MessageDescriptor | undefined =
