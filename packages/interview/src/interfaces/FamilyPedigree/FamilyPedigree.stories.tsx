@@ -6,6 +6,7 @@ import SuperJSON from 'superjson';
 import { SyntheticInterview } from '@codaco/protocol-utilities';
 import { RELATIONSHIP_TYPE_OPTIONS } from '@codaco/protocol-validation';
 
+import type { NavigationOrientation } from '../../Shell';
 import StoryInterviewShell from '../../storybook-support/StoryInterviewShell';
 import {
   clickGetStarted,
@@ -18,8 +19,9 @@ import {
 } from './familyPedigreeWizardHelpers';
 import { SuppressPedigreeHintContext } from './pedigreeHintContext';
 
-function createFamilyPedigreeInterview(seed: number) {
+function createFamilyPedigreeInterview(seed: number, encryptedNames = false) {
   const si = new SyntheticInterview(seed);
+  if (encryptedNames) si.setExperiments({ encryptedVariables: true });
 
   const nodeType = si.addNodeType({
     name: 'Person',
@@ -29,6 +31,7 @@ function createFamilyPedigreeInterview(seed: number) {
     name: 'Name',
     type: 'text',
     component: 'Text',
+    ...(encryptedNames && { encrypted: true }),
   });
 
   const genderVar = nodeType.addVariable({
@@ -125,8 +128,10 @@ function createFamilyPedigreeInterview(seed: number) {
 
 function FamilyPedigreeStoryWrapper({
   buildFn,
+  navigationOrientation,
 }: {
   buildFn: () => SyntheticInterview;
+  navigationOrientation?: NavigationOrientation;
 }) {
   const interview = useMemo(() => buildFn(), [buildFn]);
   const rawPayload = useMemo(
@@ -140,7 +145,10 @@ function FamilyPedigreeStoryWrapper({
   return (
     <SuppressPedigreeHintContext.Provider value={true}>
       <div className="h-screen">
-        <StoryInterviewShell rawPayload={rawPayload} />
+        <StoryInterviewShell
+          rawPayload={rawPayload}
+          navigationOrientation={navigationOrientation}
+        />
       </div>
     </SuppressPedigreeHintContext.Provider>
   );
@@ -320,7 +328,10 @@ export const OnboardingCloseConfirmation: Story = {
 // Exported for the capture story (FamilyPedigree.capture.stories.tsx), which
 // replays a scenario through the real quick-start wizard so the published
 // screenshot shows a pedigree built from valid data.
-export function buildScenarioInterview({ withNomination = false } = {}) {
+export function buildScenarioInterview({
+  withNomination = false,
+  encryptedNames = false,
+} = {}) {
   const {
     si,
     nodeType,
@@ -335,7 +346,7 @@ export function buildScenarioInterview({ withNomination = false } = {}) {
     isEgoVar,
     relationshipToEgoVar,
     biologicalSexVar,
-  } = createFamilyPedigreeInterview(1);
+  } = createFamilyPedigreeInterview(1, encryptedNames);
 
   si.addInformationStage({
     title: 'Welcome',
@@ -912,6 +923,85 @@ export const DiseaseNomination: ScenarioStory = {
     // The final nomination prompt advances out of the stage.
     await userEvent.click(await screen.findByTestId('next-button'));
     await screen.findByText('After the main stage.');
+  },
+};
+
+/**
+ * The name variable is marked encrypted. The pedigree waits for the
+ * passphrase (entered from the key button in the navigation) before it can be
+ * built; names are stored encrypted when the pedigree is finalized and shown
+ * decrypted on the nomination step.
+ */
+export const EncryptedNames: ScenarioStory = {
+  args: { scaffoldingText: '' },
+  render: () => (
+    <FamilyPedigreeStoryWrapper
+      buildFn={() =>
+        buildScenarioInterview({ withNomination: true, encryptedNames: true })
+      }
+      navigationOrientation="vertical"
+    />
+  ),
+  play: async () => {
+    await expect(
+      await screen.findByText(/enter your passphrase to see and change/i),
+    ).toBeInTheDocument();
+    await expect(
+      screen.queryByTestId('pedigree-get-started'),
+    ).not.toBeInTheDocument();
+
+    await userEvent.click(
+      await screen.findByRole('button', { name: /^enter your passphrase$/i }),
+    );
+    await userEvent.type(
+      await screen.findByRole('textbox', { name: /passphrase/i }),
+      'storybook passphrase',
+    );
+    await userEvent.click(
+      screen.getByRole('button', { name: /submit passphrase/i }),
+    );
+
+    await clickGetStarted();
+    await selectEgoSex();
+
+    await setFieldInput('egg-parent.is-donor', false);
+    await setFieldInput('egg-parent.name', 'Linda');
+    await setFieldInput('egg-parent.gestationalCarrier', true);
+    await setFieldInput('egg-parent.gender_identity', 'woman');
+    await clickNext();
+
+    await setFieldInput('sperm-parent.is-donor', false);
+    await setFieldInput('sperm-parent.name', 'Robert');
+    await setFieldInput('sperm-parent.gender_identity', 'man');
+    await clickNext();
+
+    await setFieldInput('hasOtherParents', false);
+    await clickNext();
+
+    await setPartnership('egg-parent', 'Robert', 'current');
+    await clickNext();
+
+    await setFieldInput('hasPartner', false);
+    await clickNext();
+    await expectQuickStartComplete(['Linda', 'Robert']);
+
+    await userEvent.click(await screen.findByTestId('next-button'));
+    const confirmDialog = await getDialog();
+    await userEvent.click(
+      within(confirmDialog).getByRole('button', { name: 'Finalize' }),
+    );
+
+    // The nomination step reads the committed, now encrypted, relatives.
+    // Encrypting and then decrypting each name takes a few seconds.
+    await screen.findByText(
+      /diagnosed with breast cancer/i,
+      {},
+      { timeout: 15000 },
+    );
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Linda' }, { timeout: 15000 }),
+    );
+    await screen.findByRole('button', { name: 'Linda', pressed: true });
   },
 };
 
