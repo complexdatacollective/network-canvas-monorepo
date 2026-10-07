@@ -42,6 +42,7 @@
   "protocolBuilder.anonymisation.passphraseRulesFieldLabel": "Passphrase rules",
   "protocolBuilder.anonymisation.passphraseRulesMaximumBelowOne": "The longest passphrase you allow must be at least one character.",
   "protocolBuilder.anonymisation.passphraseRulesMinimumAboveMaximum": "The shortest passphrase you allow cannot be longer than the longest one.",
+  "protocolBuilder.anonymisation.passphraseRulesMinimumDefault": "Defaults to {count, plural, one {# character} other {# characters}} if no minimum is set.",
   "protocolBuilder.anonymisation.passphraseRulesTitle": "Passphrase validation",
   "protocolBuilder.anonymisation.storageNotice": "Values for encrypted attributes are not stored in the database.",
   "protocolBuilder.anonymisation.typeSwitchDescription": "Enable encryption for attributes belonging to this node type.",

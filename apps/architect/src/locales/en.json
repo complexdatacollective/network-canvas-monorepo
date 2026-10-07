@@ -2183,6 +2183,10 @@
     "defaultMessage": "Schema Version: {schemaVersion}",
     "description": "Visible text in lib / ProtocolSummary / components / ProtocolCard."
   },
+  "architect.protocolSummary.stage.anonymisation.defaultMinimumPassphraseLength": {
+    "defaultMessage": "{count, number} (default)",
+    "description": "Value of the minimum passphrase length row in the printed protocol summary when the stage sets no minimum of its own, so the interview applies its default. count is that default length in characters."
+  },
   "architect.protocolSummary.stage.anonymisation.explanationText": {
     "defaultMessage": "Explanation Text",
     "description": "The title text in lib / ProtocolSummary / components / Stage / Anonymisation."

@@ -42,6 +42,7 @@
   "protocolBuilder.anonymisation.passphraseRulesFieldLabel": "Règles de la phrase secrète",
   "protocolBuilder.anonymisation.passphraseRulesMaximumBelowOne": "La longueur maximale autorisée pour la phrase secrète doit être d’au moins un caractère.",
   "protocolBuilder.anonymisation.passphraseRulesMinimumAboveMaximum": "La longueur minimale autorisée pour la phrase secrète ne peut pas dépasser la longueur maximale.",
+  "protocolBuilder.anonymisation.passphraseRulesMinimumDefault": "Si aucun minimum n’est défini, la valeur par défaut est de {count, plural, one {# caractère} other {# caractères}}.",
   "protocolBuilder.anonymisation.passphraseRulesTitle": "Validation de la phrase secrète",
   "protocolBuilder.anonymisation.storageNotice": "Les valeurs des attributs chiffrés ne sont pas stockées dans la base de données.",
   "protocolBuilder.anonymisation.typeSwitchDescription": "Activer le chiffrement des attributs de ce type de nœud.",

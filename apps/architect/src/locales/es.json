@@ -545,6 +545,7 @@
   "architect.protocolSummary.entity.ego": "Ego",
   "architect.protocolSummary.protocolCard.lastModified": "Última modificación: {value1}",
   "architect.protocolSummary.protocolCard.schemaVersion": "Versión del esquema: {schemaVersion}",
+  "architect.protocolSummary.stage.anonymisation.defaultMinimumPassphraseLength": "{count, number} (predeterminado)",
   "architect.protocolSummary.stage.anonymisation.explanationText": "Texto explicativo",
   "architect.protocolSummary.stage.anonymisation.theFollowingAttributesWillBeEncrypted": "Los siguientes atributos se cifrarán con la frase de contraseña del participante:",
   "architect.protocolSummary.stage.behaviours.behaviours": "Comportamientos",

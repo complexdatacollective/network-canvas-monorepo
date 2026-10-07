@@ -2,6 +2,7 @@ import { act, screen, waitFor, within } from '@testing-library/react';
 import { type ReactNode, useMemo, useState } from 'react';
 import { describe, expect, it } from 'vitest';
 
+import { DEFAULT_PASSPHRASE_MIN_LENGTH } from '@codaco/shared-consts';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import {
@@ -264,6 +265,31 @@ describe('how the passphrase rules are put on screen', () => {
     expect(labels[0]).toHaveClass('sr-only');
     // Still the control's own accessible name, rather than dropped.
     expect(labels[0]).toHaveAttribute('for');
+  });
+
+  /**
+   * The interview applies the shared default minimum when the stage sets none,
+   * so the minimum row says so — on the row itself, and from the constant the
+   * interview reads rather than a number written here, so the two cannot
+   * drift. It stays when the researcher switches the minimum on or off, and
+   * the maximum, which has no default, says nothing.
+   */
+  it('says what minimum applies when none is set', async () => {
+    const harness = openEditor();
+    const hint = `Defaults to ${DEFAULT_PASSPHRASE_MIN_LENGTH} characters if no minimum is set.`;
+
+    const minimum = await screen.findByRole('switch', {
+      name: 'Minimum text length',
+    });
+    expect(minimum).toBeChecked();
+    expect(minimum).toHaveAccessibleDescription(hint);
+
+    await harness.user.click(minimum);
+    await waitFor(() => expect(minimum).not.toBeChecked());
+    expect(minimum).toHaveAccessibleDescription(hint);
+    expect(
+      screen.getByRole('switch', { name: 'Maximum text length' }),
+    ).toHaveAccessibleDescription('');
   });
 
   /**

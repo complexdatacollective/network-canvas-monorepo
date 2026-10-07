@@ -42,6 +42,7 @@
   "protocolBuilder.anonymisation.passphraseRulesFieldLabel": "Regels voor de wachtzin",
   "protocolBuilder.anonymisation.passphraseRulesMaximumBelowOne": "De langste wachtzin die je toestaat, moet minimaal één teken lang zijn.",
   "protocolBuilder.anonymisation.passphraseRulesMinimumAboveMaximum": "De kortste wachtzin die je toestaat, mag niet langer zijn dan de langste.",
+  "protocolBuilder.anonymisation.passphraseRulesMinimumDefault": "Als je geen minimum instelt, is de standaardwaarde {count, plural, one {# teken} other {# tekens}}.",
   "protocolBuilder.anonymisation.passphraseRulesTitle": "Validatie van de wachtzin",
   "protocolBuilder.anonymisation.storageNotice": "Waarden van versleutelde attributen worden niet in de database opgeslagen.",
   "protocolBuilder.anonymisation.typeSwitchDescription": "Schakel versleuteling in voor attributen van dit knooppunttype.",

@@ -42,6 +42,7 @@
   "protocolBuilder.anonymisation.passphraseRulesFieldLabel": "Passphrase-Regeln",
   "protocolBuilder.anonymisation.passphraseRulesMaximumBelowOne": "Die längste zulässige Passphrase muss mindestens ein Zeichen lang sein.",
   "protocolBuilder.anonymisation.passphraseRulesMinimumAboveMaximum": "Die kürzeste zulässige Passphrase darf nicht länger als die längste sein.",
+  "protocolBuilder.anonymisation.passphraseRulesMinimumDefault": "Ist kein Minimum festgelegt, gilt standardmäßig {count, plural, one {# Zeichen} other {# Zeichen}}.",
   "protocolBuilder.anonymisation.passphraseRulesTitle": "Validierung der Passphrase",
   "protocolBuilder.anonymisation.storageNotice": "Werte verschlüsselter Attribute werden nicht in der Datenbank gespeichert.",
   "protocolBuilder.anonymisation.typeSwitchDescription": "Aktivieren Sie die Verschlüsselung für Attribute dieses Knotentyps.",

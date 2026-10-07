@@ -158,6 +158,21 @@ describe('the anonymisation sections, read in Spanish', () => {
   });
 
   /**
+   * The default the minimum row names is a sentence with a number spliced into
+   * it, so it is read in Spanish as a literal: a catalog entry that lost its
+   * `{count}` would still be a plausible sentence.
+   */
+  it('says in Spanish what minimum applies when none is set', async () => {
+    openEditor();
+
+    expect(
+      await screen.findByRole('switch', { name: 'Longitud mínima del texto' }),
+    ).toHaveAccessibleDescription(
+      'Si no defines un mínimo, el valor predeterminado es de 8 caracteres.',
+    );
+  });
+
+  /**
    * The refusal crosses the field's string-only `custom` contract encoded, so
    * this is where a descriptor that had been flattened to an English sentence
    * on the way through would show up.

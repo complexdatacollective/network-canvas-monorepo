@@ -42,6 +42,7 @@
   "protocolBuilder.anonymisation.passphraseRulesFieldLabel": "通關密語規則",
   "protocolBuilder.anonymisation.passphraseRulesMaximumBelowOne": "您允許的通關密語長度上限至少須為 1 個字元。",
   "protocolBuilder.anonymisation.passphraseRulesMinimumAboveMaximum": "您允許的通關密語長度下限不得超過長度上限。",
+  "protocolBuilder.anonymisation.passphraseRulesMinimumDefault": "未設定長度下限時，預設為 {count, plural, other {# 個字元}}。",
   "protocolBuilder.anonymisation.passphraseRulesTitle": "通關密語驗證",
   "protocolBuilder.anonymisation.storageNotice": "加密屬性的值不會儲存在資料庫中。",
   "protocolBuilder.anonymisation.typeSwitchDescription": "為此節點類型的屬性啟用加密。",

@@ -4,6 +4,7 @@ import { expect, userEvent, waitFor, within } from 'storybook/test';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
 import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPassiveEffects';
+import { DEFAULT_PASSPHRASE_MIN_LENGTH } from '@codaco/shared-consts';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { FieldStoryHost } from '../testing/FieldStoryHost.tsx';
@@ -77,9 +78,14 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+/** What the minimum row says about the length applied when none is set. */
+const defaultMinimumHint = `Defaults to ${DEFAULT_PASSPHRASE_MIN_LENGTH} characters if no minimum is set.`;
+
 /**
  * No requirements at all: both rules are off and neither has a number, because
- * a rule that is not in force has no length to show.
+ * a rule that is not in force has no length to show. The minimum row still
+ * says what a participant gets then — the interview's own default — and the
+ * maximum, which has none, says nothing.
  */
 export const NoRulesYet: Story = {
   args: { seedEdit: noRules },
@@ -90,19 +96,25 @@ export const NoRulesYet: Story = {
     // in this file awaits its FIRST query for that reason.
     await awaitPassiveEffects();
 
-    await expect(
-      await canvas.findByRole('switch', { name: 'Minimum text length' }),
-    ).not.toBeChecked();
-    await expect(
-      canvas.getByRole('switch', { name: 'Maximum text length' }),
-    ).not.toBeChecked();
+    const minimum = await canvas.findByRole('switch', {
+      name: 'Minimum text length',
+    });
+    await expect(minimum).not.toBeChecked();
+    await expect(minimum).toHaveAccessibleDescription(defaultMinimumHint);
+    const maximum = canvas.getByRole('switch', {
+      name: 'Maximum text length',
+    });
+    await expect(maximum).not.toBeChecked();
+    await expect(maximum).toHaveAccessibleDescription('');
     await expect(canvas.queryAllByRole('spinbutton')).toHaveLength(0);
   },
 };
 
 /**
  * The lengths the fixture's stage holds: between four and twelve characters.
- * Each rule's number sits under the checkbox that switched it on.
+ * Each rule's number sits under the checkbox that switched it on, and the
+ * minimum still names the default it replaces — a minimum the researcher sets
+ * wins even when it is shorter than that.
  */
 export const TheLengthsAStageHolds: Story = {
   play: async ({ canvasElement }) => {
@@ -112,9 +124,11 @@ export const TheLengthsAStageHolds: Story = {
     await expect(
       await canvas.findByRole('switch', { name: 'Minimum text length' }),
     ).toBeChecked();
-    await expect(
-      canvas.getByRole('spinbutton', { name: 'Minimum text length' }),
-    ).toHaveValue(4);
+    const minimum = canvas.getByRole('spinbutton', {
+      name: 'Minimum text length',
+    });
+    await expect(minimum).toHaveValue(4);
+    await expect(minimum).toHaveAccessibleDescription(defaultMinimumHint);
     await expect(
       canvas.getByRole('spinbutton', { name: 'Maximum text length' }),
     ).toHaveValue(12);

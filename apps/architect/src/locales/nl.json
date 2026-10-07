@@ -545,6 +545,7 @@
   "architect.protocolSummary.entity.ego": "Ego",
   "architect.protocolSummary.protocolCard.lastModified": "Laatst gewijzigd: {value1}",
   "architect.protocolSummary.protocolCard.schemaVersion": "Schemaversie: {schemaVersion}",
+  "architect.protocolSummary.stage.anonymisation.defaultMinimumPassphraseLength": "{count, number} (standaard)",
   "architect.protocolSummary.stage.anonymisation.explanationText": "Uitlegtekst",
   "architect.protocolSummary.stage.anonymisation.theFollowingAttributesWillBeEncrypted": "De volgende attributen worden versleuteld met de wachtzin van de deelnemer:",
   "architect.protocolSummary.stage.behaviours.behaviours": "Gedrag",

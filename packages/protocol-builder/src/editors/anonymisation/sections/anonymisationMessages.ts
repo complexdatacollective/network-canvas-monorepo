@@ -81,6 +81,13 @@ export const anonymisationMessages = defineMessages({
     description:
       'Guidance under the passphrase-rules control, naming the trade-off a researcher is making when they set a minimum length.',
   },
+  passphraseRulesMinimumDefault: {
+    id: 'protocolBuilder.anonymisation.passphraseRulesMinimumDefault',
+    defaultMessage:
+      'Defaults to {count, plural, one {# character} other {# characters}} if no minimum is set.',
+    description:
+      'Shown beneath the minimum-length rule in the passphrase rules, saying how short a passphrase a participant may choose when the researcher sets no minimum of their own. count is that default length. A minimum the researcher sets replaces it, even a shorter one.',
+  },
   passphraseRulesMinimumAboveMaximum: {
     id: 'protocolBuilder.anonymisation.passphraseRulesMinimumAboveMaximum',
     defaultMessage:

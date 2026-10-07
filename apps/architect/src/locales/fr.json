@@ -545,6 +545,7 @@
   "architect.protocolSummary.entity.ego": "Ego",
   "architect.protocolSummary.protocolCard.lastModified": "Dernière modification : {value1}",
   "architect.protocolSummary.protocolCard.schemaVersion": "Version du schéma : {schemaVersion}",
+  "architect.protocolSummary.stage.anonymisation.defaultMinimumPassphraseLength": "{count, number} (par défaut)",
   "architect.protocolSummary.stage.anonymisation.explanationText": "Texte d’explication",
   "architect.protocolSummary.stage.anonymisation.theFollowingAttributesWillBeEncrypted": "Les attributs suivants seront chiffrés à l’aide de la phrase secrète de la personne participante :",
   "architect.protocolSummary.stage.behaviours.behaviours": "Comportements",

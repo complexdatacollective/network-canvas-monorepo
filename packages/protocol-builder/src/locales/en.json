@@ -171,6 +171,10 @@
     "defaultMessage": "The shortest passphrase you allow cannot be longer than the longest one.",
     "description": "Refusal shown on the passphrase-rules control when the minimum length the researcher set is greater than the maximum, so no passphrase could satisfy both."
   },
+  "protocolBuilder.anonymisation.passphraseRulesMinimumDefault": {
+    "defaultMessage": "Defaults to {count, plural, one {# character} other {# characters}} if no minimum is set.",
+    "description": "Shown beneath the minimum-length rule in the passphrase rules, saying how short a passphrase a participant may choose when the researcher sets no minimum of their own. count is that default length. A minimum the researcher sets replaces it, even a shorter one."
+  },
   "protocolBuilder.anonymisation.passphraseRulesTitle": {
     "defaultMessage": "Passphrase validation",
     "description": "Heading of the section where a researcher decides what a participant’s passphrase has to look like. The requirements are lengths only: a shortest and a longest."

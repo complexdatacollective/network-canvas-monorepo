@@ -545,6 +545,7 @@
   "architect.protocolSummary.entity.ego": "自我",
   "architect.protocolSummary.protocolCard.lastModified": "上次修改時間：{value1}",
   "architect.protocolSummary.protocolCard.schemaVersion": "架構版本：{schemaVersion}",
+  "architect.protocolSummary.stage.anonymisation.defaultMinimumPassphraseLength": "{count, number}（預設）",
   "architect.protocolSummary.stage.anonymisation.explanationText": "說明文字",
   "architect.protocolSummary.stage.anonymisation.theFollowingAttributesWillBeEncrypted": "下列屬性將使用參與者的通關密語加密：",
   "architect.protocolSummary.stage.behaviours.behaviours": "行為",

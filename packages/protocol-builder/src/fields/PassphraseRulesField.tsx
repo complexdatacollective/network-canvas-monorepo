@@ -1,5 +1,7 @@
 import { createMessageError } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
+import { DEFAULT_PASSPHRASE_MIN_LENGTH } from '@codaco/shared-consts';
 
 import VariableValidationEditor from '../codebook/validation/VariableValidationEditor.tsx';
 import {
@@ -37,6 +39,10 @@ export type PassphraseRulesFieldProps = CreateFormFieldProps<
  * There is deliberately nothing to compare a passphrase against — it is not a
  * codebook attribute and there are no sibling attributes in scope — so the
  * editor is handed no variables and offers only the two length rules.
+ *
+ * The minimum row says what applies when none is set: the interview falls back
+ * to `DEFAULT_PASSPHRASE_MIN_LENGTH`, and a minimum the researcher sets
+ * replaces that even when it is shorter.
  */
 export default function PassphraseRulesField({
   value,
@@ -53,6 +59,8 @@ export default function PassphraseRulesField({
   // `aria-invalid` describing nothing.
   'aria-describedby': ariaDescribedBy,
 }: PassphraseRulesFieldProps) {
+  const intl = useAppIntl();
+
   return (
     <VariableValidationEditor
       entity={ENTITY}
@@ -65,6 +73,12 @@ export default function PassphraseRulesField({
         onChange?.(next);
       }}
       readOnly={disabled || readOnly}
+      ruleHints={{
+        minLength: intl.formatMessage(
+          anonymisationMessages.passphraseRulesMinimumDefault,
+          { count: DEFAULT_PASSPHRASE_MIN_LENGTH },
+        ),
+      }}
       aria-invalid={ariaInvalid}
       {...(ariaDescribedBy === undefined
         ? {}

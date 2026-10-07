@@ -42,6 +42,7 @@
   "protocolBuilder.anonymisation.passphraseRulesFieldLabel": "Regole della passphrase",
   "protocolBuilder.anonymisation.passphraseRulesMaximumBelowOne": "La passphrase più lunga che consenti deve avere almeno un carattere.",
   "protocolBuilder.anonymisation.passphraseRulesMinimumAboveMaximum": "La passphrase più corta che consenti non può essere più lunga di quella più lunga.",
+  "protocolBuilder.anonymisation.passphraseRulesMinimumDefault": "Se non imposti un minimo, il valore predefinito è di {count, plural, one {# carattere} many {# di caratteri} other {# caratteri}}.",
   "protocolBuilder.anonymisation.passphraseRulesTitle": "Convalida della passphrase",
   "protocolBuilder.anonymisation.storageNotice": "I valori degli attributi cifrati non vengono memorizzati nel database.",
   "protocolBuilder.anonymisation.typeSwitchDescription": "Attiva la cifratura per gli attributi di questo tipo di nodo.",

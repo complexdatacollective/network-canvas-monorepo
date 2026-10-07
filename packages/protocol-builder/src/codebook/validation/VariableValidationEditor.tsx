@@ -74,6 +74,14 @@ type VariableValidationEditorProps = Readonly<{
    * own control is what the interview renders, which is most callers.
    */
   'stageRendering'?: StageRendering;
+  /**
+   * Guidance to show beneath particular rules, by rule key, for a host that
+   * knows something about a rule the editor cannot — such as what applies when
+   * the rule is off. Said whether the rule is on or off. The editor's own
+   * explanation of why a rule is unavailable, or of a unique rule that cannot
+   * be satisfied, takes precedence.
+   */
+  'ruleHints'?: Readonly<Record<string, string>>;
 }>;
 
 const messages = defineMessages({
@@ -225,6 +233,7 @@ export default function VariableValidationEditor({
   'aria-invalid': ariaInvalid,
   'aria-describedby': fieldDescribedBy,
   stageRendering,
+  ruleHints,
 }: VariableValidationEditorProps) {
   const intl = useAppIntl();
   const editorId = useId();
@@ -496,7 +505,7 @@ export default function VariableValidationEditor({
         uniqueValueCount,
       });
     }
-    return undefined;
+    return ruleHints?.[ruleKey];
   };
 
   const targetOptionsFor = (ruleKey: string): TargetOption[] => {

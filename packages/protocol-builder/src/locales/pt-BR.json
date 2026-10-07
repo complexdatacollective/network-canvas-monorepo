@@ -42,6 +42,7 @@
   "protocolBuilder.anonymisation.passphraseRulesFieldLabel": "Regras da frase secreta",
   "protocolBuilder.anonymisation.passphraseRulesMaximumBelowOne": "O tamanho máximo permitido para a frase secreta deve ser de pelo menos um caractere.",
   "protocolBuilder.anonymisation.passphraseRulesMinimumAboveMaximum": "O tamanho mínimo permitido para a frase secreta não pode ser maior que o máximo.",
+  "protocolBuilder.anonymisation.passphraseRulesMinimumDefault": "Se nenhum mínimo for definido, o padrão é {count, plural, one {# caractere} other {# caracteres}}.",
   "protocolBuilder.anonymisation.passphraseRulesTitle": "Validação da frase secreta",
   "protocolBuilder.anonymisation.storageNotice": "Os valores dos atributos criptografados não são armazenados no banco de dados.",
   "protocolBuilder.anonymisation.typeSwitchDescription": "Ative a criptografia para atributos deste tipo de nó.",

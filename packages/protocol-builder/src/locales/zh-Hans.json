@@ -42,6 +42,7 @@
   "protocolBuilder.anonymisation.passphraseRulesFieldLabel": "密码短语规则",
   "protocolBuilder.anonymisation.passphraseRulesMaximumBelowOne": "允许的最长密码短语至少须为一个字符。",
   "protocolBuilder.anonymisation.passphraseRulesMinimumAboveMaximum": "允许的最短密码短语不能长于最长密码短语。",
+  "protocolBuilder.anonymisation.passphraseRulesMinimumDefault": "未设置最小长度时，默认为 {count, plural, other {# 个字符}}。",
   "protocolBuilder.anonymisation.passphraseRulesTitle": "密码短语验证",
   "protocolBuilder.anonymisation.storageNotice": "加密属性的值不会存储在数据库中。",
   "protocolBuilder.anonymisation.typeSwitchDescription": "为属于此节点类型的属性启用加密。",
