@@ -57,7 +57,7 @@ While a nomination prompt is showing, the family can no longer be changed. The p
 
 ## Configuring the stage
 
-The stage editor in Architect has a section for each part of this. Start by choosing the **Node type** the people are, which is the person type in your codebook.
+The stage editor in Architect has a section for each part of this. Start by choosing the **Node type** the people are, which is the person type in your codebook. While a [Narrative Pedigree](/en/design-protocols/interface-documentation/narrative-pedigree) stage draws this stage's family, the node type cannot be changed.
 
 ### Prompt
 
@@ -90,7 +90,7 @@ The interface uses sex assigned at birth to name biological parents and donors, 
 
 <KeyConcept title="Why sex is recorded at birth">
 
-Family-history and inheritance work depends on the sex a person was assigned at birth, because it determines how sex-linked conditions are passed on. This is separate from how a person describes their gender. The interface always offers "Don't know" and "Prefer not to say", and treats any answer other than female or male as not known either way: it never names someone as a mother or a father from it, and a nomination prompt limited to one sex does not exclude them.
+Family-history and inheritance work depends on the sex a person was assigned at birth, because it determines how sex-linked conditions are passed on. This is separate from how a person describes their gender. The interface always offers "Don't know" and "Prefer not to say", and treats any answer other than female or male as not known either way: it never names someone as a mother or a father from it, and a nomination prompt limited to one sex does not exclude them. A [Narrative Pedigree](/en/design-protocols/interface-documentation/narrative-pedigree) stage reads it to trace X-linked and Y-linked conditions.
 
 </KeyConcept>
 
@@ -187,6 +187,8 @@ Optionally ask questions about the whole family once it is drawn, such as "Who i
 - optionally, a limit on **Who can be selected**: anyone, anyone except people assigned male at birth, or anyone except people assigned female at birth. Use a limit for a condition that only people of one sex can have. People recorded as the other sex cannot be selected, but everyone else can, including people whose sex assigned at birth is intersex, don't know, prefer not to say, or not yet answered.
 
 Participants answer the prompts in the order you list them, after they have drawn their family.
+
+The attribute each prompt records is what a [Narrative Pedigree](/en/design-protocols/interface-documentation/narrative-pedigree) stage reads to draw who has a condition and to infer how it is inherited. Pair the two stages when you want to show how a condition runs through the family.
 
 ## Best Practices
 

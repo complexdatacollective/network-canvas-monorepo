@@ -86,25 +86,26 @@ clinical review.
 
 ## The protocol as a methodological translation
 
-Network Canvas represents a CEGRM as one interview with 13 stages. The order
+Network Canvas represents a CEGRM as one interview with 14 stages. The order
 follows the data dependencies in the protocol. Each stage writes a bounded part
 of the record; later stages interpret or extend what is already present.
 
-| Stage                           | Interface                  | Methodological purpose                                                                              |
-| ------------------------------- | -------------------------- | --------------------------------------------------------------------------------------------------- |
-| 1. Template notes               | Information                | Researcher instructions and sources; remove before fielding.                                        |
-| 2. Welcome and consent          | Ego Form                   | Explain the mapping task, its sensitive content, and participation choice.                          |
-| 3. About you                    | Ego Form                   | Collect the participant attributes needed by the study.                                             |
-| 4. Family pedigree              | Family Pedigree            | Co-construct the multi-generational family and record condition and testing status for each person. |
-| 5. Beyond the family            | Information                | Mark the transition from pedigree construction to the wider social environment.                     |
-| 6. People in your life          | Name Generator (quick add) | Add friends, colleagues, group members, and health professionals to the same person node type.      |
-| 7. How you know each person     | Categorical Bin            | Classify non-family contacts without overwriting pedigree-derived kinship.                          |
-| 8. How close you feel           | Ordinal Bin                | Add perceived closeness for all people except the participant.                                      |
-| 9. How often you are in contact | Ordinal Bin                | Add current contact frequency, excluding people recorded as deceased.                               |
-| 10. Exchanges of support        | Sociogram                  | Record who knows whom and the four CEGRM support domains.                                           |
-| 11. Talking about the condition | Sociogram                  | Identify family information gatherers, disseminators, and blockers.                                 |
-| 12. The completed map           | Narrative                  | Compare support and communication overlays on one stable layout and elicit interpretation.          |
-| 13. Closing                     | Information                | Debrief and connect the participant with the approved support pathway.                              |
+| Stage                                    | Interface                  | Methodological purpose                                                                               |
+| ---------------------------------------- | -------------------------- | ---------------------------------------------------------------------------------------------------- |
+| 1. Template notes                        | Information                | Researcher instructions and sources; remove before fielding.                                         |
+| 2. Welcome and consent                   | Ego Form                   | Explain the mapping task, its sensitive content, and participation choice.                           |
+| 3. About you                             | Ego Form                   | Collect the participant attributes needed by the study.                                              |
+| 4. Family pedigree                       | Family Pedigree            | Co-construct the multi-generational family and record who has had the condition and genetic testing. |
+| 5. Beyond the family                     | Information                | Mark the transition from pedigree construction to the wider social environment.                      |
+| 6. People in your life                   | Name Generator (quick add) | Add friends, colleagues, group members, and health professionals to the same person node type.       |
+| 7. How you know each person              | Categorical Bin            | Classify non-family contacts without overwriting pedigree-derived kinship.                           |
+| 8. How close you feel                    | Ordinal Bin                | Add perceived closeness for all people except the participant.                                       |
+| 9. How often you are in contact          | Ordinal Bin                | Add current contact frequency, excluding people recorded as deceased.                                |
+| 10. Exchanges of support                 | Sociogram                  | Record who knows whom and the four CEGRM support domains.                                            |
+| 11. Talking about the condition          | Sociogram                  | Identify family information gatherers, disseminators, and blockers.                                  |
+| 12. The completed map                    | Narrative                  | Compare support and communication overlays on one stable layout and elicit interpretation.           |
+| 13. How the condition runs in the family | Narrative Pedigree         | Revisit who has had the condition in its multi-generational family structure.                        |
+| 14. Closing                              | Information                | Debrief and connect the participant with the approved support pathway.                               |
 
 ![The CEGRM sequence moving from the family pedigree to people beyond the family.](/assets/img/cegrm-tutorial/interview-sequence.jpg 'The Family pedigree, Beyond the family, and People in your life stages on the protocol timeline')
 
@@ -187,12 +188,12 @@ pregnancy. This supports donor conception, surrogacy, adoption, same-sex
 parents, and other family structures while preserving the information needed by
 the pedigree data model.
 
-The template asks about condition and testing as part of each person's details,
-together with living status and birth year. "Has this person had this
-condition?" and "Has this person had genetic testing for it?" populate
-`has_condition` and `had_testing`. The Family Pedigree can instead ask such
-questions as nomination prompts, which let the participant select everyone a
-question applies to once the family is drawn.
+The template asks about condition and testing as nomination prompts, once the
+family is drawn: "Who in your family has had this condition?" and "Who has had
+genetic testing for it?" let the participant select everyone each question
+applies to, and populate `has_condition` and `had_testing`. Each person's
+details ask only for living status and birth year. The Narrative Pedigree later
+in the interview reads `has_condition`.
 
 These answers record the participant's
 report; they do not establish diagnosis, genotype, or verified clinical status.
@@ -351,6 +352,17 @@ If they are research data, add an approved capture process such as audio
 recording and transcription, structured field notes, or a separate form. State
 how the material will be linked to the interview without compromising
 confidentiality.
+
+The following Narrative Pedigree returns to the multi-generational family view
+and colors people identified as having the condition. Its inheritance pattern
+defaults to unknown, and inferred at-risk statuses are switched off for safety.
+Select an inheritance pattern only when the condition supports it. Enable
+inferred statuses only when qualified personnel will interpret the display under
+an approved disclosure procedure. The visualization is not a diagnosis, and its
+inference model cannot represent incomplete penetrance, phenocopies, uncertain
+variants, mosaicism, or every clinically relevant complexity. See the
+[Narrative Pedigree](/en/design-protocols/interface-documentation/narrative-pedigree)
+interface.
 
 ## Plan the quantitative analysis before fieldwork
 
