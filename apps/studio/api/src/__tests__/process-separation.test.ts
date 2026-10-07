@@ -399,7 +399,7 @@ const byName = (left: string, right: string): number =>
   left === right ? 0 : left < right ? -1 : 1;
 
 const PROTOCOL_BUILDER_HOST =
-  /\/src\/protocol-builder\/(?:rpc|handlers|session|leases|presence|publisher|connections)\.ts$/;
+  /\/src\/protocol-builder\/(?:rpc|handlers|session|leases|presence|publisher|connections|doorbell)\.ts$/;
 
 const HTTPAPI_BARREL = /\/effect\/dist\/http-api\/index\.js$/;
 
@@ -422,6 +422,7 @@ describe('the protocol-builder host', () => {
     expect(hostModules('src/index.ts')).toEqual(
       [
         'src/protocol-builder/connections.ts',
+        'src/protocol-builder/doorbell.ts',
         'src/protocol-builder/handlers.ts',
         'src/protocol-builder/leases.ts',
         'src/protocol-builder/presence.ts',

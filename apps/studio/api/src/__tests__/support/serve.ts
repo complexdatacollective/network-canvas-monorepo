@@ -15,6 +15,7 @@ import { MaintenanceTriggers } from '../../http/middleware/maintenance.ts';
 import { Routes } from '../../http/router.ts';
 import { RedactedHeadersLive } from '../../platform/http-server.ts';
 import { WebSocketDrain } from '../../platform/ws-drain.ts';
+import { Doorbell } from '../../protocol-builder/doorbell.ts';
 import { studioServices } from './services.ts';
 
 /**
@@ -30,6 +31,7 @@ export async function startStudioServer(
     readonly wsMaxPayload?: number;
     readonly unaryBodyLimit?: number;
     readonly clock?: Clock.Clock;
+    readonly doorbell?: Layer.Layer<Doorbell>;
   } = {},
 ): Promise<{ origin: string; dispose: () => Promise<void> }> {
   const EnvironmentLive = Layer.succeed(Environment, env);
@@ -47,6 +49,7 @@ export async function startStudioServer(
     Layer.provideMerge(ServeLive),
     Layer.provideMerge(WebSocketDrain.layer),
     Layer.provideMerge(ServerLive),
+    Layer.provide(options.doorbell ?? Doorbell.layerMemory),
     Layer.provide(maintenance),
     Layer.provide(EnvironmentLive),
     Layer.provide(studioServices(studio)),
@@ -79,6 +82,7 @@ export function composeStudio(
   studio: Studio,
   checks: HealthChecks = studio.checks,
   maintenance: Layer.Layer<MaintenanceTriggers> = MaintenanceTriggers.layerOpen,
+  options: { readonly doorbell?: Layer.Layer<Doorbell> } = {},
 ): {
   request: (path: string, init?: RequestInit) => Promise<Response>;
   dispose: () => Promise<void>;
@@ -86,6 +90,7 @@ export function composeStudio(
   const { handler, dispose } = HttpRouter.toWebHandler(
     Routes(studio, checks).pipe(
       Layer.provide(WebSocketDrain.layerTest),
+      Layer.provide(options.doorbell ?? Doorbell.layerMemory),
       Layer.provide(maintenance),
       Layer.provide(Layer.succeed(Environment, env)),
       Layer.provide(studioServices(studio)),

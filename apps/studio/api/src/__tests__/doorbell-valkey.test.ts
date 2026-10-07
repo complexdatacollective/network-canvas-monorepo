@@ -17,7 +17,12 @@ import {
 import { Redis } from 'ioredis';
 
 import { readEnv } from '../env.ts';
-import { Doorbell, makeMemoryDoorbell } from '../protocol-builder/doorbell.ts';
+import { resolve as resolveEnv } from '../env/resolve.ts';
+import {
+  Doorbell,
+  doorbellCheck,
+  makeMemoryDoorbell,
+} from '../protocol-builder/doorbell.ts';
 import { reachableDeniedAuditStore } from './support/valkey.ts';
 
 // The shared Valkey is reached without `reachableRedis`, which flushes a
@@ -205,6 +210,33 @@ describe('a Valkey doorbell that cannot reach its server', () => {
       expect(yield* doorbell.subscribed).toBe(false);
       yield* promptly('closing', Scope.close(scope, Exit.void));
     }),
+  );
+
+  it.live('reports readiness degraded, and only while one is configured', () =>
+    Effect.gen(function* () {
+      const env = resolveEnv({ NODE_ENV: 'test' });
+      const doorbell = Context.get(
+        yield* Layer.build(
+          Doorbell.layerValkey({
+            url: 'redis://127.0.0.1:1',
+            channel: channel(),
+          }),
+        ),
+        Doorbell,
+      );
+      expect(
+        yield* doorbellCheck(
+          { ...env, redis: 'redis://127.0.0.1:1' },
+          doorbell,
+        ),
+      ).toBe('degraded');
+      expect(
+        yield* doorbellCheck(
+          { ...env, redis: undefined },
+          yield* memoryDoorbell,
+        ),
+      ).toBe('ok');
+    }).pipe(Effect.scoped),
   );
 });
 

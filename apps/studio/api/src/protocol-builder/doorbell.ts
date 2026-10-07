@@ -13,7 +13,8 @@ import {
 } from 'effect';
 import { Redis } from 'ioredis';
 
-import { Environment } from '../env.ts';
+import { Environment, type StudioEnv } from '../env.ts';
+import type { HealthCheck } from '../http/health.ts';
 import {
   describeValkeyError,
   throttledWarning,
@@ -124,6 +125,20 @@ const makeHub = Effect.gen(function* () {
     signals: Effect.map(PubSub.subscribe(pubsub), Stream.fromSubscription),
   };
 });
+
+/**
+ * Degraded rather than failing when a configured doorbell is not subscribed:
+ * other replicas' writes still reach this one's watchers by the safety poll.
+ */
+export const doorbellCheck = (
+  env: StudioEnv,
+  doorbell: Doorbell['Service'],
+): HealthCheck =>
+  env.redis === undefined
+    ? Effect.succeed('ok')
+    : Effect.map(doorbell.subscribed, (subscribed) =>
+        subscribed ? 'ok' : 'degraded',
+      );
 
 /** One in-process hub; share the returned service between layers to model several replicas. */
 export const makeMemoryDoorbell: Effect.Effect<
