@@ -610,7 +610,7 @@ const TranslationTable = ({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="border-outline flex items-start gap-2 border-b px-4 py-3">
+      <div className="flex items-start gap-2 px-6 py-4">
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-2">
           {heading}
           <InputField
@@ -716,9 +716,10 @@ const TranslationTable = ({
         aria-describedby={helpId}
         style={tableStyle}
         surfaceProps={{
-          className: 'bg-surface text-surface-contrast rounded-none border-0',
+          className:
+            'bg-surface text-surface-contrast border-outline mx-6 w-auto',
         }}
-        className="w-[calc(var(--translation-table-names)+var(--translation-columns)*var(--translation-table-column))] min-w-full table-fixed border-separate border-spacing-0 [--translation-table-column:15rem] [--translation-table-names:clamp(10rem,14vw,14rem)]"
+        className="w-[calc(var(--translation-table-names)+var(--translation-columns)*var(--translation-table-column))] min-w-full table-fixed border-separate border-spacing-0 [--translation-table-column:14.5rem] [--translation-table-names:clamp(10rem,13vw,14rem)]"
       >
         <caption className="sr-only">
           {intl.formatMessage(messages.caption)}
@@ -891,7 +892,7 @@ const TranslationTable = ({
       <p id={helpId} className="sr-only">
         {intl.formatMessage(messages.keyboardHelp)}
       </p>
-      <div className="border-outline flex flex-wrap items-baseline gap-x-6 gap-y-1 border-t px-4 py-2 text-sm text-current/70">
+      <div className="flex flex-wrap items-baseline gap-x-6 gap-y-1 px-6 py-3 text-sm text-current/70">
         {footnote && <p>{intl.formatMessage(messages.unlessBrowserLists)}</p>}
         <p role="status" className="ms-auto whitespace-nowrap">
           {intl.formatMessage(messages.shownCount, { shown, total })}
