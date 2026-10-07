@@ -90,6 +90,11 @@ Encrypted answers are now protected in a new way:
   back from any other person does. Leaving a Network Composer stage saves a
   change in its side panel that hadn't been saved yet, and asks before
   discarding one that is invalid or couldn't be saved.
+- An area picked on the map is highlighted once it is saved, so a pick that
+  couldn't be saved, such as a protected location picked before the
+  passphrase was entered, no longer looks chosen. The map highlights only the
+  location saved for the person shown, even when moving on while it is still
+  loading.
 - The summary of the family that a family pedigree saves alongside the
   interview names a relative whose name is protected by their relationship
   alone, so a protected name never reaches it, even inside another
