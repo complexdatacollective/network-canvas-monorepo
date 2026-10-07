@@ -83,9 +83,14 @@ const { analyticsContext, fakeAnalyticsClient } = vi.hoisted(() => {
     captureException: vi.fn(),
     register: vi.fn(),
   };
-  const context: { enabled: boolean; client: typeof client | null } = {
+  const context: {
+    enabled: boolean;
+    client: typeof client | null;
+    captureException: typeof client.captureException;
+  } = {
     enabled: false,
     client: null,
+    captureException: vi.fn(),
   };
   return { analyticsContext: context, fakeAnalyticsClient: client };
 });
@@ -723,6 +728,43 @@ describe('InterviewRoute finish flow', () => {
     expect(
       await screen.findByRole('heading', { name: /interview unavailable/i }),
     ).toBeInTheDocument();
+    expect(shellMock).not.toHaveBeenCalled();
+  });
+
+  it('refuses to open a session whose stored data cannot be read, and reports it', async () => {
+    const cause = new Error('stored network failed to parse');
+    getSessionMock.mockRejectedValue(cause);
+
+    render(<InterviewRoute sessionId="s1" />);
+
+    expect(
+      await screen.findByRole('heading', {
+        name: /interview could not be opened/i,
+      }),
+    ).toBeInTheDocument();
+    expect(shellMock).not.toHaveBeenCalled();
+    expect(updateSessionMock).not.toHaveBeenCalled();
+    expect(updateSettingsMock).not.toHaveBeenCalled();
+    expect(analyticsContext.captureException).toHaveBeenCalledWith(cause, {
+      feature: 'interview-load',
+    });
+  });
+
+  it('clears authorization when returning home from an unreadable session', async () => {
+    // Fails after entry was authorized, so the stale id must be cleared.
+    getProtocolByHashMock.mockRejectedValue(new Error('protocol unreadable'));
+
+    render(<InterviewRoute sessionId="s1" />);
+    const button = await screen.findByRole('button', { name: /return home/i });
+    expect(
+      screen.getByRole('heading', { name: /interview could not be opened/i }),
+    ).toBeInTheDocument();
+
+    setAuthorizedInterviewIdMock.mockClear();
+    await invoke(() => button.click());
+
+    expect(setAuthorizedInterviewIdMock).toHaveBeenCalledWith(null);
+    expect(navigateMock).toHaveBeenCalledWith('/', { replace: true });
     expect(shellMock).not.toHaveBeenCalled();
   });
 

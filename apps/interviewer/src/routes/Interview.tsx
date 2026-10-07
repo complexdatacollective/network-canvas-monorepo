@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useEffectEvent,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useLocation, useRoute, useSearch } from 'wouter';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
@@ -85,6 +92,19 @@ const messages = defineMessages({
       'This interview may have been deleted, or the protocol it used is no longer installed.',
     description: 'Visible copy in Interviewer Interview.',
   },
+  interviewCouldNotBeOpened: {
+    id: 'interviewer.interview.interviewCouldNotBeOpened',
+    defaultMessage: 'Interview could not be opened',
+    description:
+      'Heading shown in place of an interview whose saved data could not be read, so the interview was not opened.',
+  },
+  theDataSavedForThisInterviewCouldNot: {
+    id: 'interviewer.interview.theDataSavedForThisInterviewCouldNot',
+    defaultMessage:
+      'The data saved for this interview could not be read, so it has not been opened. Nothing in it has been changed.',
+    description:
+      'Explains that an interview was not opened because its saved data could not be read, and reassures that the saved data was left unchanged.',
+  },
   readOnlyReview: {
     id: 'interviewer.interview.readOnlyReview',
     defaultMessage: 'Read-only review',
@@ -135,6 +155,7 @@ type LoadState =
   | { kind: 'loading' }
   | { kind: 'missing' }
   | { kind: 'incompatible' }
+  | { kind: 'unreadable' }
   | {
       kind: 'ready';
       payload: InterviewPayload;
@@ -142,6 +163,21 @@ type LoadState =
       readOnly: boolean;
       initialStageOverrideIndex?: number;
     };
+
+const loadFailureCopy = {
+  incompatible: {
+    heading: messages.interviewUnavailable,
+    body: messages.theProtocolThisInterviewUsesCouldNot,
+  },
+  missing: {
+    heading: messages.interviewNotFound,
+    body: messages.thisInterviewMayHaveBeenDeletedOr,
+  },
+  unreadable: {
+    heading: messages.interviewCouldNotBeOpened,
+    body: messages.theDataSavedForThisInterviewCouldNot,
+  },
+};
 
 const discardSessionChanges: SyncHandler = () => Promise.resolve();
 const discardFinish: FinishHandler = () => Promise.resolve();
@@ -216,6 +252,18 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
     },
     [textScaleStorageKey],
   );
+
+  const {
+    client: posthogClient,
+    enabled: analyticsEnabled,
+    captureException,
+  } = useAnalytics();
+  // An effect event, not a load-effect dependency: captureException changes
+  // identity when the analytics opt-in flips, and re-running the load would
+  // re-hydrate an interview already in progress.
+  const reportLoadFailure = useEffectEvent((cause: unknown) => {
+    captureException(cause, { feature: 'interview-load' });
+  });
 
   // The interview's messages load while the session below is unlocked and
   // decrypted, rather than once the Shell mounts. A failure here is retried by
@@ -326,7 +374,14 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
         });
       }
     };
-    void load();
+    // Fail closed: a session whose stored data cannot be read must never be
+    // replaced by one the Shell builds without it, so refuse to mount the
+    // Shell (and with it every autosave) and report the failure.
+    load().catch((cause: unknown) => {
+      if (!active) return;
+      setState({ kind: 'unreadable' });
+      reportLoadFailure(cause);
+    });
     return () => {
       active = false;
     };
@@ -340,7 +395,6 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
     isLiveRoute,
   ]);
 
-  const { client: posthogClient, enabled: analyticsEnabled } = useAnalytics();
   const readOnly = state.kind === 'ready' && state.readOnly;
 
   const analytics = useMemo(
@@ -421,62 +475,24 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
     );
   }
 
-  if (state.kind === 'incompatible') {
+  if (
+    state.kind === 'incompatible' ||
+    state.kind === 'missing' ||
+    state.kind === 'unreadable'
+  ) {
+    const copy = loadFailureCopy[state.kind];
     return (
-      <div className="mx-auto flex h-full max-w-lg items-center justify-center p-8">
-        <Surface
-          floating
-          spacing="lg"
-          shadow="lg"
-          className="flex flex-col items-center gap-4 text-center"
-        >
-          <Heading level="h1">
-            {intl.formatMessage(messages.interviewUnavailable)}
-          </Heading>
-          <Paragraph>
-            {intl.formatMessage(messages.theProtocolThisInterviewUsesCouldNot)}
-          </Paragraph>
-          <Button
-            onClick={() => {
-              setAuthorizedInterviewId(null);
-              goHome();
-            }}
-          >
-            {intl.formatMessage(messages.returnHome)}
-          </Button>
-        </Surface>
-      </div>
-    );
-  }
-
-  if (state.kind === 'missing') {
-    return (
-      <div className="mx-auto flex h-full max-w-lg items-center justify-center p-8">
-        <Surface
-          floating
-          spacing="lg"
-          shadow="lg"
-          className="flex flex-col items-center gap-4 text-center"
-        >
-          <Heading level="h1">
-            {intl.formatMessage(messages.interviewNotFound)}
-          </Heading>
-          <Paragraph>
-            {intl.formatMessage(messages.thisInterviewMayHaveBeenDeletedOr)}
-          </Paragraph>
-          <Button
-            onClick={() => {
-              // Not gated (don't trap the user on an error screen), but clear
-              // the entry authorization so a transient load failure can't leave
-              // a stale id that would later skip the enter gate.
-              setAuthorizedInterviewId(null);
-              goHome();
-            }}
-          >
-            {intl.formatMessage(messages.returnHome)}
-          </Button>
-        </Surface>
-      </div>
+      <LoadFailure
+        heading={intl.formatMessage(copy.heading)}
+        body={intl.formatMessage(copy.body)}
+        onReturnHome={() => {
+          // Not gated (don't trap the user on an error screen), but clear the
+          // entry authorization so a transient load failure can't leave a
+          // stale id that would later skip the enter gate.
+          setAuthorizedInterviewId(null);
+          goHome();
+        }}
+      />
     );
   }
 
@@ -528,6 +544,34 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
         onTextScaleChange={handleTextScaleChange}
         navigationClassnames={NAVIGATION_SAFE_AREA_CLASSNAMES}
       />
+    </div>
+  );
+}
+
+function LoadFailure({
+  heading,
+  body,
+  onReturnHome,
+}: {
+  heading: string;
+  body: string;
+  onReturnHome: () => void;
+}) {
+  const intl = useAppIntl();
+  return (
+    <div className="mx-auto flex h-full max-w-lg items-center justify-center p-8">
+      <Surface
+        floating
+        spacing="lg"
+        shadow="lg"
+        className="flex flex-col items-center gap-4 text-center"
+      >
+        <Heading level="h1">{heading}</Heading>
+        <Paragraph>{body}</Paragraph>
+        <Button onClick={onReturnHome}>
+          {intl.formatMessage(messages.returnHome)}
+        </Button>
+      </Surface>
     </div>
   );
 }
