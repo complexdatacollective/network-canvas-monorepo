@@ -19,6 +19,27 @@ const writeOwnProperty = <Value>(
 };
 
 /**
+ * An encrypted write was refused because no passphrase that can decrypt this
+ * interview's data is in force.
+ */
+const PASSPHRASE_REQUIRED = 'PassphraseRequiredError';
+
+export class PassphraseRequiredError extends Error {
+  constructor() {
+    super('A valid passphrase is required to save encrypted data');
+    this.name = PASSPHRASE_REQUIRED;
+  }
+}
+
+/**
+ * Recognises a PassphraseRequiredError after Redux Toolkit has serialised it
+ * into a rejected thunk action, where only its name survives.
+ */
+export const isPassphraseRequiredError = (
+  error: { name?: string } | undefined,
+) => error?.name === PASSPHRASE_REQUIRED;
+
+/**
  * Creates a key from a passphrase and a random salt. The salt is used to
  * ensure the same passphrase results in a unique key each time.
  *
