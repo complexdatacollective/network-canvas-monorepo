@@ -83,7 +83,7 @@ export const FamilyPedigreeProvider = ({
   const getCodebookVariablesForNodeType = useSelector(
     makeGetCodebookVariablesForNodeType,
   );
-  const { passphrase, requirePassphrase } = usePassphrase();
+  const { passphrase, passphraseInvalid, requirePassphrase } = usePassphrase();
   const initialFraming: FramingId | null =
     framingConfig.mode === 'fixed'
       ? framingConfig.value
@@ -146,9 +146,12 @@ export const FamilyPedigreeProvider = ({
   const decryptedSeed = useDecryptedNodes(seed.nodes);
 
   if (!store) {
-    // The store holds plaintext, so it is only built once the passphrase it
-    // will encrypt with exists and the seeded relatives have been decrypted.
-    if (writesEncrypted && !passphrase) return <StageNotice status="locked" />;
+    // The store holds plaintext, so it is only built once a working
+    // passphrase to encrypt with is in force and the seeded relatives have
+    // been decrypted.
+    if (writesEncrypted && (!passphrase || passphraseInvalid)) {
+      return <StageNotice status="locked" />;
+    }
     if (decryptedSeed.status !== 'ready') {
       return <StageNotice status={decryptedSeed.status} />;
     }

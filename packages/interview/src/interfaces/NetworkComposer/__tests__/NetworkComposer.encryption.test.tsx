@@ -235,6 +235,16 @@ describe('NetworkComposer with encrypted variables', () => {
     expect(store.getState().session.network.nodes).toHaveLength(0);
   });
 
+  it('holds the add-node field while the passphrase is not working', async () => {
+    const store = makeStore([], true);
+    store.dispatch(setPassphraseInvalid(true));
+    renderComposer(store);
+
+    fireEvent.click(screen.getByRole('button', { name: /add node/i }));
+    expect(await screen.findByText(passphraseNotice)).toBeTruthy();
+    expect(screen.queryByRole('textbox', { name: /name/i })).toBeNull();
+  });
+
   it('stores a name added from the palette as ciphertext with its metadata', async () => {
     const store = makeStore([], true);
     renderComposer(store);
@@ -309,16 +319,19 @@ describe('NetworkComposer with encrypted variables', () => {
 describe('NetworkComposer refusing to save without a working passphrase', () => {
   const notSaved = 'Your answers have not been saved.';
 
-  it('keeps a name it could not add, and says why', async () => {
+  it('keeps a name being typed when the passphrase stops working, and says why it was not added', async () => {
     const toast = vi.spyOn(interviewToastManager, 'add');
     const store = makeStore([], true);
-    store.dispatch(setPassphraseInvalid(true));
     renderComposer(store);
 
     fireEvent.click(screen.getByRole('button', { name: /add node/i }));
     const input = await screen.findByRole('textbox', { name: /name/i });
+    fireEvent.change(input, { target: { value: 'Alice' } });
+    act(() => {
+      store.dispatch(setPassphraseInvalid(true));
+    });
+    expect(screen.getByRole('textbox', { name: /name/i })).toBe(input);
     await act(async () => {
-      fireEvent.change(input, { target: { value: 'Alice' } });
       fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' });
     });
 
