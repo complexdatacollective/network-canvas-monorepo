@@ -276,6 +276,53 @@ export function holdingStaging() {
   return { layer, next: hold.next };
 }
 
+/**
+ * `studio`, with one transaction held once it has committed and before its
+ * caller hears so: the window in which an interrupt or a timeout loses what
+ * the commit did. Held on the name of the innermost span it ran under.
+ */
+export function holdingCommits(studio: Studio) {
+  const services = studio.rpc.services;
+  if (services === undefined) throw new Error('the studio has no services');
+  const real = Context.get(services, Database);
+  const hold = holdOnce<string>();
+  const spanName = Effect.match(Effect.currentSpan, {
+    onFailure: () => '',
+    onSuccess: (span) => span.name,
+  });
+  const db = new Proxy(real.db, {
+    get: (target, key, receiver) => {
+      const value: unknown = Reflect.get(target, key, receiver);
+      if (key !== 'transaction' || typeof value !== 'function') return value;
+      return (...args: unknown[]) => {
+        const result: unknown = Reflect.apply(value, target, args);
+        return Effect.isEffect(result)
+          ? Effect.tap(result, () =>
+              Effect.flatMap(spanName, (name) =>
+                hold.around(name, Effect.void),
+              ),
+            )
+          : result;
+      };
+    },
+  });
+  const service: Database['Service'] = {
+    identity: real.identity,
+    sql: real.sql,
+    db,
+  };
+  return {
+    studio: {
+      ...studio,
+      rpc: {
+        ...studio.rpc,
+        services: Context.add(services, Database, service),
+      },
+    },
+    next: hold.next,
+  };
+}
+
 export async function until(
   predicate: () => boolean | Promise<boolean>,
   what: string,

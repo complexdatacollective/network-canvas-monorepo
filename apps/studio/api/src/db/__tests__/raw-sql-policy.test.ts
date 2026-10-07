@@ -361,9 +361,9 @@ const ALLOWLIST: Record<string, { count: number; why: string }> = {
     count: 1,
     why: '`INSERT … SELECT` over its own target table, freezing the manifest row through `to_jsonb(m)`',
   },
-  [`${SERVER}/protocol-builder/connections.ts › protocolBuilder.liveness`]: {
+  [`${SERVER}/protocol-builder/connections.ts › protocolBuilder.lockTimeout`]: {
     count: 1,
-    why: '`SET LOCAL lock_timeout`, which bounds the keeper’s wait on one draft and has no builder path',
+    why: '`SET LOCAL lock_timeout`, which bounds the lock waits of a liveness pass, a connect and a grace’s release, and has no builder path',
   },
   [`${SYNC}/server.ts`]: {
     count: 2,

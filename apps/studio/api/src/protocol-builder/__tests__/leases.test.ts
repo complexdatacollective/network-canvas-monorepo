@@ -9,6 +9,7 @@ import {
   ADA,
   callerOf,
   GRACE,
+  holdingCommits,
   holdingEvents,
   latch,
   setupProtocolBuilderSuite,
@@ -27,10 +28,12 @@ import {
   MaintenanceTriggers,
 } from '../../http/middleware/maintenance.ts';
 import { ObjectStore } from '../../storage/object-store.ts';
-import { LIVENESS_LOCK_TIMEOUT_MS } from '../connections.ts';
+import {
+  CONNECT_LOCK_TIMEOUT_MS,
+  LIVENESS_LOCK_TIMEOUT_MS,
+} from '../connections.ts';
 import type { LoggedProtocolEvent } from '../events.ts';
 import {
-  CONNECT_TIMEOUT_MS,
   GRACE_RELEASE_TIMEOUT_MS,
   Leases,
   RECONNECT_GRACE_MS,
@@ -107,6 +110,7 @@ describe.skipIf(!testDb)('the lease keeper', () => {
       readonly studio?: Studio;
       readonly objectStore?: ObjectStore['Service'];
       readonly events?: ReturnType<typeof holdingEvents>['layer'];
+      readonly leases?: typeof Leases.layer;
     } = {},
   ) => {
     const time = makeShiftableClock();
@@ -119,6 +123,25 @@ describe.skipIf(!testDb)('the lease keeper', () => {
       ...rest,
     });
     return { client, time, spans };
+  };
+
+  /** The keeper, keeping the level and text of whatever it logs. */
+  const loggingLeases = () => {
+    const logs: Array<{ level: LogLevel.LogLevel; text: string }> = [];
+    const layer = Leases.layer.pipe(
+      Layer.provide(
+        Logger.layer([
+          Logger.make(({ logLevel, message }) => {
+            const parts: unknown[] = [message].flat();
+            logs.push({
+              level: logLevel,
+              text: parts.filter((part) => typeof part === 'string').join(' '),
+            });
+          }),
+        ]),
+      ),
+    );
+    return { logs, layer };
   };
 
   /** Lets whatever a test just woke run, when there is nothing to wait for. */
@@ -363,6 +386,158 @@ describe.skipIf(!testDb)('the lease keeper', () => {
     } finally {
       await a.client.dispose();
       await own.close();
+    }
+  });
+
+  it('expires a watch’s row when the watch closes as its connect commits', async () => {
+    const own = await suite.studioOnOwnPool(4);
+    const commits = holdingCommits(own.studio);
+    const a = await replica({ studio: commits.studio });
+    const { owner, on } = tabOf('cut-connect');
+    const caller = on('pb-ada-cut-connect-connection');
+    try {
+      const stage = await createOn(a.client, 'Held through a cut-off connect');
+      const sectionId = stage.sectionId;
+      const first = await watching(caller, protocolId, a.client);
+      await a.client.call(
+        caller,
+        a.client.rpc('AcquireLock', { protocolId, sectionId }),
+      );
+      await first.stop();
+      await until(
+        () => a.time.pending(RECONNECT_GRACE_MS) > 0,
+        'the reconnect grace to start',
+      );
+
+      const committed = commits.next(
+        (span) => span === 'protocolBuilder.connect',
+      );
+      const again = watch(caller, protocolId, a.client);
+      await committed.reached;
+      const stopping = again.stop();
+      await settle();
+      committed.release();
+      await stopping;
+      await until(
+        async () => (await liveSockets(owner)).length === 0,
+        'the closed watch’s row to expire',
+      );
+      await until(
+        () => a.time.pending(RECONNECT_GRACE_MS) > 0,
+        'a grace to follow the close',
+      );
+      a.time.advance(RECONNECT_GRACE_MS);
+      await until(
+        async () => (await releasesOf(sectionId)) === 1,
+        'the grace to give the lease back',
+      );
+      expect(await liveLeases(owner)).toEqual([]);
+    } finally {
+      await a.client.dispose();
+      await own.close();
+    }
+  });
+
+  /**
+   * A tab that has held a lease and closed its watch, with GRACE watching
+   * and the grace's release held once it has committed.
+   */
+  const committedRelease = async (slug: string) => {
+    const own = await suite.studioOnOwnPool(4);
+    const commits = holdingCommits(own.studio);
+    const keeper = loggingLeases();
+    const a = await replica({
+      studio: commits.studio,
+      events: holdingEvents().layer,
+      leases: keeper.layer,
+    });
+    const { on } = tabOf(slug);
+    const caller = on(`pb-ada-${slug}-connection`);
+    const stage = await createOn(a.client, `Given back (${slug})`);
+    const sectionId = stage.sectionId;
+    const observer = await watching(GRACE, protocolId, a.client);
+    const first = await watching(caller, protocolId, a.client);
+    await a.client.call(
+      caller,
+      a.client.rpc('AcquireLock', { protocolId, sectionId }),
+    );
+    await first.stop();
+    await until(
+      () => a.time.pending(RECONNECT_GRACE_MS) > 0,
+      'the reconnect grace to start',
+    );
+    const released = commits.next(
+      (span) => span === 'protocolBuilder.releaseOwner',
+    );
+    a.time.advance(RECONNECT_GRACE_MS);
+    await released.reached;
+    return {
+      a,
+      caller,
+      sectionId,
+      observer,
+      logs: keeper.logs,
+      release: released.release,
+      told: () =>
+        until(
+          () =>
+            observer.events.some(
+              (event) =>
+                event.type === 'lock' &&
+                event.sectionId === sectionId &&
+                event.holder === undefined,
+            ),
+          'the watcher to be told of the release',
+          2_000,
+        ),
+      dispose: async () => {
+        released.release();
+        await observer.stop();
+        await a.client.dispose();
+        await own.close();
+      },
+    };
+  };
+
+  it('tells watchers what a grace gave back when the tab returns as the release commits', async () => {
+    const released = await committedRelease('returning');
+    const { a } = released;
+    try {
+      const connected = a.spans.ended('protocolBuilder.connect');
+      const again = watch(released.caller, protocolId, a.client);
+      try {
+        await until(
+          () => a.spans.ended('protocolBuilder.connect') > connected,
+          'the tab’s return to be recorded',
+        );
+        await settle();
+        released.release();
+        await released.told();
+      } finally {
+        await again.stop();
+      }
+    } finally {
+      await released.dispose();
+    }
+  });
+
+  it('tells watchers what a grace gave back when its release commits past the deadline, and logs no failure', async () => {
+    const released = await committedRelease('late');
+    const { a } = released;
+    try {
+      a.time.advance(GRACE_RELEASE_TIMEOUT_MS);
+      await settle();
+      released.release();
+      await released.told();
+      await until(
+        () => a.spans.ended('protocolBuilder.graceElapsed') > 0,
+        'the grace to finish',
+      );
+      expect(
+        released.logs.filter((log) => log.text.startsWith('Releasing')),
+      ).toEqual([]);
+    } finally {
+      await released.dispose();
     }
   });
 
@@ -694,16 +869,13 @@ describe.skipIf(!testDb)('the lease keeper', () => {
       );
       const channel = watch(caller, protocolId, a.client);
       try {
-        await until(
-          () => a.spans.count('protocolBuilder.connect') > 0,
-          'the connect to begin',
-        );
-        await settle();
-        a.time.advance(CONNECT_TIMEOUT_MS);
         const ended = await Promise.race([
           channel.ended,
           new Promise<undefined>((resolve) =>
-            setTimeout(() => resolve(undefined), 2_000),
+            setTimeout(
+              () => resolve(undefined),
+              CONNECT_LOCK_TIMEOUT_MS + 2_000,
+            ),
           ),
         ]);
         if (ended === undefined) {
@@ -945,25 +1117,11 @@ describe.skipIf(!testDb)('the lease keeper', () => {
   it('warns once a draft’s liveness pass has waited on a lock several ticks in a row', async () => {
     const own = await suite.studioOnOwnPool(4);
     const time = makeShiftableClock();
-    const logs: Array<{ level: LogLevel.LogLevel; text: string }> = [];
+    const { logs, layer } = loggingLeases();
     const client = await createProtocolBuilderClient(own.studio, {
       clock: time.clock,
       objectStore,
-      leases: Leases.layer.pipe(
-        Layer.provide(
-          Logger.layer([
-            Logger.make(({ logLevel, message }) => {
-              const parts: unknown[] = [message].flat();
-              logs.push({
-                level: logLevel,
-                text: parts
-                  .filter((part) => typeof part === 'string')
-                  .join(' '),
-              });
-            }),
-          ]),
-        ),
-      ),
+      leases: layer,
     });
     const { on } = tabOf('starved');
     const waits = () =>

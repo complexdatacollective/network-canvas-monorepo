@@ -131,6 +131,32 @@ const lockHead = Effect.fn('protocolBuilder.lockDraft')(function* (
 }, sqlErrorsOnly);
 
 /**
+ * Bounds each wait on a lock in the transaction. Waits are bounded here rather
+ * than by a timeout on the calling fiber: `withTransaction` commits on exit
+ * whatever interrupts it, so a timeout that fired as the commit landed would
+ * leave the caller without what the commit did.
+ */
+const limitLockWaits = Effect.fn('protocolBuilder.lockTimeout')(function* (
+  millis: number,
+) {
+  const { sql: client } = yield* Transaction;
+  yield* client.unsafe(`SET LOCAL lock_timeout = '${millis}ms'`);
+}, sqlErrorsOnly);
+
+/**
+ * How long a watch's connect waits for any one lock before the watch fails
+ * and the client's retry asks again; the head may be held by a grace's
+ * release or a write.
+ */
+export const CONNECT_LOCK_TIMEOUT_MS = 5_000;
+
+/** How long one draft's liveness pass waits for a lock before giving up. */
+export const LIVENESS_LOCK_TIMEOUT_MS = 2_000;
+
+/** How long one attempt at a grace's release waits for a lock before it is retried. */
+const RELEASE_LOCK_TIMEOUT_MS = 2_000;
+
+/**
  * One statement for every owner, so the rows are locked in `section_id` order
  * across owners as well as within one.
  */
@@ -190,6 +216,7 @@ export const connectSocket: (
     'protocolBuilder.connect',
     session.access,
     Effect.gen(function* () {
+      yield* limitLockWaits(CONNECT_LOCK_TIMEOUT_MS);
       // Shared, so connects run side by side but never across a grace's
       // release, which takes the head exclusively.
       if (!(yield* lockHead(teamId, session.draftId, 'share'))) return false;
@@ -239,9 +266,6 @@ export const connectSocket: (
   );
 });
 
-/** How long one draft's liveness pass waits for a lock before giving up. */
-export const LIVENESS_LOCK_TIMEOUT_MS = 2_000;
-
 /**
  * Extends every row of `local` on one draft that this replica wrote and that
  * is still live, and renews the leases of the owners behind them. A row that
@@ -265,14 +289,11 @@ export const renewConnections: (
     'protocolBuilder.liveness',
     access,
     Effect.gen(function* () {
-      const transaction = yield* Transaction;
       // A draft whose head or rows another transaction holds fails this pass
       // rather than holding up the keeper; the next tick asks again.
-      yield* transaction.sql.unsafe(
-        `SET LOCAL lock_timeout = '${LIVENESS_LOCK_TIMEOUT_MS}ms'`,
-      );
+      yield* limitLockWaits(LIVENESS_LOCK_TIMEOUT_MS);
       if (!(yield* lockHead(access.teamId, draftId, 'share'))) return GONE;
-      const { tx } = transaction;
+      const { tx } = yield* Transaction;
       const locked = yield* tx
         .select({
           connectionId: connections.connectionId,
@@ -435,6 +456,7 @@ export const releaseOwner: (
     'protocolBuilder.releaseOwner',
     session.access,
     Effect.gen(function* () {
+      yield* limitLockWaits(RELEASE_LOCK_TIMEOUT_MS);
       // A deleted draft took its leases with it.
       if (!(yield* lockHead(teamId, session.draftId, 'no key update'))) {
         return NOTHING_HELD;

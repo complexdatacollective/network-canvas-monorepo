@@ -50,17 +50,11 @@ const LOCK_WAITS_BEFORE_WARNING = 3;
 export const RECONNECT_GRACE_MS = 20_000;
 
 /**
- * How long a watch's connect may wait on the database before the watch fails
- * and the client's retry asks again; it waits on the draft head, which a
- * grace's release or a write may hold.
- */
-export const CONNECT_TIMEOUT_MS = 5_000;
-
-/**
- * Bounds a grace's release, retries and all: room for the 15.5s of waits
- * between `retryBriefly`'s attempts and for the attempts themselves. A release
- * that gives up leaves the leases to lapse, and the relays' reaper gives them
- * back.
+ * No retry of a grace's release begins later than this after its first
+ * attempt: room for the 15.5s of waits between `retryBriefly`'s attempts and
+ * for the attempts themselves, whose waits on locks the database bounds. An
+ * attempt under way runs to its end. A release that gives up leaves the leases
+ * to lapse, and the relays' reaper gives them back.
  */
 export const GRACE_RELEASE_TIMEOUT_MS = 25_000;
 
@@ -118,11 +112,7 @@ export class Leases extends Context.Service<
     readonly connect: (
       session: ProtocolBuilderSession,
       onReleased: OnReleased,
-    ) => Effect.Effect<
-      void,
-      SqlError.SqlError | Cause.TimeoutError,
-      Scope.Scope
-    >;
+    ) => Effect.Effect<void, SqlError.SqlError, Scope.Scope>;
     /** Keeps a calling owner's leases renewed until it has been idle a while. */
     readonly contact: (session: ProtocolBuilderSession) => Effect.Effect<void>;
   }
@@ -313,24 +303,24 @@ export class Leases extends Context.Service<
             // leases forever.
             contacts.delete(ownerKey(session));
             if (yield* closed) return;
-            const attempt = Effect.gen(function* () {
-              if (yield* closed) return undefined;
-              return yield* withDatabase(releaseOwner(session));
-            });
-            // A reconnect, or the bound, may cancel the release while it waits
-            // on the database; once it has committed, telling watchers may
-            // not be cut short.
-            yield* Effect.uninterruptibleMask((restore) =>
+            const deadline =
+              (yield* Clock.currentTimeMillis) + GRACE_RELEASE_TIMEOUT_MS;
+            // Whole, so that a reconnect's interrupt lands only between
+            // attempts: one that landed after the commit would leave the leases
+            // given back and no watcher told.
+            const attempt = Effect.uninterruptible(
               Effect.gen(function* () {
-                const release = yield* restore(
-                  attempt.pipe(
-                    retryBriefly,
-                    Effect.timeout(GRACE_RELEASE_TIMEOUT_MS),
-                  ),
-                );
-                if (release?.released) yield* onReleased(release.events);
+                if (yield* closed) return;
+                const release = yield* withDatabase(releaseOwner(session));
+                if (release.released) yield* onReleased(release.events);
               }),
             );
+            yield* Effect.retry(attempt, {
+              schedule: Schedule.exponential(RETRY_BASE_MS),
+              times: RETRY_TIMES,
+              while: () =>
+                Effect.map(Clock.currentTimeMillis, (at) => at < deadline),
+            });
           }).pipe(Effect.withSpan('protocolBuilder.graceElapsed'));
         }).pipe(logFailure('Releasing a stranded lease owner failed'));
 
@@ -382,11 +372,13 @@ export class Leases extends Context.Service<
               key: `${session.connectionId}:${randomUUID()}`,
               kind: 'socket',
             };
-            // Interruptible, unlike the rest of the acquisition, so that a
-            // closing scope or the bound cancels a wait on the draft head.
+            // Uninterruptible, as the whole acquisition is: a closing scope
+            // that cut it off once the row had committed would leave a live
+            // row that nothing renews or expires. The database bounds its
+            // waits on locks.
             const recorded = yield* withDatabase(
               connectSocket(session, registration.key),
-            ).pipe(Effect.timeout(CONNECT_TIMEOUT_MS), Effect.interruptible);
+            );
             if (!recorded) return undefined;
             sockets.set(registrationKey(registration), {
               registration,
