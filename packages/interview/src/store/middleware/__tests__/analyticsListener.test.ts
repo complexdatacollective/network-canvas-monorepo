@@ -8,6 +8,7 @@ import protocol from '../../modules/protocol';
 import session, {
   addEdge,
   addNode,
+  addNodesAndEdges,
   addNodeToPrompt,
   deleteEdge,
   deleteNode,
@@ -80,6 +81,30 @@ describe('analyticsListener — global entity events', () => {
         node_type: 'person',
       }),
     );
+  });
+
+  it('emits node_added and edge_created for each entity a batch adds', async () => {
+    const tracker = makeTracker();
+    const store = buildStore(tracker);
+    await store.dispatch(
+      addNodesAndEdges({
+        nodes: [
+          { type: 'person', modelData: { _uid: 'a' } },
+          { type: 'person', modelData: { _uid: 'b' } },
+        ],
+        edges: [{ from: 'a', to: 'b', type: 'knows' }],
+        currentStep: 1,
+      }),
+    );
+
+    const calls = tracker.track.mock.calls;
+    expect(calls.filter(([name]) => name === 'node_added')).toEqual([
+      ['node_added', { node_id: 'a', node_type: 'person' }],
+      ['node_added', { node_id: 'b', node_type: 'person' }],
+    ]);
+    expect(calls.filter(([name]) => name === 'edge_created')).toEqual([
+      ['edge_created', { edge_id: expect.any(String), edge_type: 'knows' }],
+    ]);
   });
 
   it('emits node_removed on deleteNode', () => {

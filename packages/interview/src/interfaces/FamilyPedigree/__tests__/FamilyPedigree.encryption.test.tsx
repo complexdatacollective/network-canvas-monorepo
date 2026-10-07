@@ -109,7 +109,21 @@ const nodeVariables: Record<string, Variable> = {
 };
 
 const edgeTypes: Codebook['edge'] = {
-  [EDGE_TYPE]: { name: 'Family', color: 'edge-color-seq-1' },
+  [EDGE_TYPE]: {
+    name: 'Family',
+    color: 'edge-color-seq-1',
+    variables: {
+      [REL_TYPE_VAR]: {
+        name: 'relationshipType',
+        type: 'categorical',
+        options: [
+          { label: 'Biological', value: 'biological' },
+          { label: 'Social', value: 'social' },
+        ],
+      },
+      [IS_ACTIVE_VAR]: { name: 'isActive', type: 'boolean' },
+    },
+  },
 };
 
 const stage: StageProps<'FamilyPedigree'>['stage'] = {

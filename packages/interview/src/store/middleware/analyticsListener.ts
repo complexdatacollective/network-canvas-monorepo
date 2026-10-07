@@ -9,6 +9,7 @@ import type { Tracker } from '../../analytics/tracker';
 import {
   addEdge,
   addNode,
+  addNodesAndEdges,
   addNodeToPrompt,
   deleteEdge,
   deleteNode,
@@ -47,6 +48,30 @@ export function createAnalyticsListenerMiddleware({
         node_id: newNode._uid,
         node_type: action.payload?.type,
       });
+    },
+  });
+
+  // A family pedigree is committed as one change; it reports each person and
+  // relationship as the single adds do.
+  startAppListening({
+    actionCreator: addNodesAndEdges.fulfilled,
+    effect: (action, listenerApi) => {
+      const before =
+        listenerApi.getOriginalState().session.network?.nodes.length ?? 0;
+      const added =
+        listenerApi.getState().session.network?.nodes.slice(before) ?? [];
+      for (const node of added) {
+        tracker.track('node_added', {
+          node_id: node._uid,
+          node_type: node.type,
+        });
+      }
+      for (const edge of action.payload.edges) {
+        tracker.track('edge_created', {
+          edge_id: edge.edgeId,
+          edge_type: edge.type,
+        });
+      }
     },
   });
 

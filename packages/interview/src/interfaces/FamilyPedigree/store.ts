@@ -20,8 +20,7 @@ import {
   type AttributePatch,
 } from '../../store/entityAttributePatch';
 import {
-  addEdge as addEdgeToNetwork,
-  addNode as addNodeToNetwork,
+  addNodesAndEdges,
   deleteEdge,
   deleteNode,
   updateEdge as updateEdgeInNetwork,
@@ -125,15 +124,16 @@ type NetworkActions = {
   commitBatch: (batch: CommitBatch) => void;
   syncMetadata: () => void;
   /**
-   * Commits the pedigree to the interview network. Resolves to the refused
-   * write when a person could not be saved, in which case nothing is
-   * committed and the pedigree stays editable.
+   * Commits the pedigree to the interview network as one change, so nothing
+   * that observes the session sees part of it. Resolves to the refused write
+   * when it could not be saved, in which case nothing is committed and the
+   * pedigree stays editable.
    */
-  finalizeNetwork: () => Promise<RefusedNodeWrite | undefined>;
+  finalizeNetwork: () => Promise<RefusedWrite | undefined>;
   resetNetwork: () => void;
 };
 
-type RefusedNodeWrite = ReturnType<typeof addNodeToNetwork.rejected>;
+type RefusedWrite = ReturnType<typeof addNodesAndEdges.rejected>;
 
 export type FamilyPedigreeStore = FamilyPedigreeState & NetworkActions;
 
@@ -493,6 +493,7 @@ export const createFamilyPedigreeStore = (
           const createdReduxIds = new Map<string, string>();
           const createdReduxEdgeIds = new Map<string, string>();
 
+          const newNodes = [];
           for (const [storeId, node] of network.nodes) {
             // Pre-existing same-type nodes already live in Redux; re-committing
             // them would duplicate the shared graph.
@@ -509,34 +510,22 @@ export const createFamilyPedigreeStore = (
             };
 
             const reduxId = crypto.randomUUID();
-            const result = await dispatch(
-              addNodeToNetwork({
-                type: variableConfig.nodeType,
-                attributeData,
-                useEncryption: Object.entries(attributeData).some(
-                  ([key, value]) =>
-                    encryptedVariableIds.has(key) && typeof value === 'string',
-                ),
-                modelData: { _uid: reduxId },
-                allowUnknownAttributes: true,
-                currentStep: currentStep ?? 0,
-              }),
-            );
-
-            if (!addNodeToNetwork.fulfilled.match(result)) {
-              // A partly committed family would leave people without the
-              // relationships that place them, so take back those already
-              // saved and leave the whole pedigree for another attempt.
-              for (const createdId of createdReduxIds.values()) {
-                dispatch(deleteNode(createdId));
-              }
-              return result;
-            }
-
             idMap.set(storeId, reduxId);
             createdReduxIds.set(storeId, reduxId);
+            newNodes.push({
+              type: variableConfig.nodeType,
+              attributeData,
+              useEncryption: Object.entries(attributeData).some(
+                ([key, value]) =>
+                  encryptedVariableIds.has(key) && typeof value === 'string',
+              ),
+              modelData: { _uid: reduxId },
+              allowUnknownAttributes: true,
+            });
           }
 
+          const newEdges = [];
+          const newEdgeStoreIds: string[] = [];
           for (const [edgeId, edge] of network.edges) {
             // Edges seeded from Redux already exist in the shared graph.
             if (preexistingReduxEdgeIds.has(edgeId)) {
@@ -546,20 +535,33 @@ export const createFamilyPedigreeStore = (
             const mappedFrom = idMap.get(edge.from);
             const mappedTo = idMap.get(edge.to);
             if (mappedFrom && mappedTo) {
-              const result = await dispatch(
-                addEdgeToNetwork({
-                  type: variableConfig.edgeType,
-                  from: mappedFrom,
-                  to: mappedTo,
-                  attributeData: { ...edge[entityAttributesProperty] },
-                  currentStep: currentStep ?? 0,
-                }),
-              );
-
-              if (addEdgeToNetwork.fulfilled.match(result)) {
-                createdReduxEdgeIds.set(edgeId, result.payload.edgeId);
-              }
+              newEdges.push({
+                type: variableConfig.edgeType,
+                from: mappedFrom,
+                to: mappedTo,
+                attributeData: { ...edge[entityAttributesProperty] },
+              });
+              newEdgeStoreIds.push(edgeId);
             }
+          }
+
+          if (newNodes.length > 0 || newEdges.length > 0) {
+            // A partly committed family would leave people without the
+            // relationships that place them, so the pedigree is saved whole
+            // or, if any part of it is refused, not at all.
+            const result = await dispatch(
+              addNodesAndEdges({
+                nodes: newNodes,
+                edges: newEdges,
+                currentStep: currentStep ?? 0,
+              }),
+            );
+            if (!addNodesAndEdges.fulfilled.match(result)) return result;
+
+            result.payload.edges.forEach(({ edgeId }, index) => {
+              const storeEdgeId = newEdgeStoreIds[index];
+              if (storeEdgeId) createdReduxEdgeIds.set(storeEdgeId, edgeId);
+            });
           }
 
           set((state) => {
