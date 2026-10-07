@@ -3,6 +3,7 @@
 import { useContext, useEffect, useMemo, useRef, useState } from 'react';
 
 import { commonMessages } from '@codaco/app-i18n/common';
+import { createMessageError } from '@codaco/app-i18n/messages';
 import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import { Button } from '@codaco/fresco-ui/Button';
 import { useAccessibilityAnnouncements } from '@codaco/fresco-ui/dnd/useAccessibilityAnnouncements';
@@ -17,6 +18,7 @@ import {
 import { useTrack } from '../../analytics/useTrack';
 import Prompts from '../../components/Prompts/Prompts';
 import { useContractFlags } from '../../contract/context';
+import { writeFailureMessage } from '../../forms/writeSubmissionResult';
 import useBeforeNext from '../../hooks/useBeforeNext';
 import useReadyForNextStage from '../../hooks/useReadyForNextStage';
 import { useStageSelector } from '../../hooks/useStageSelector';
@@ -389,7 +391,10 @@ const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
       cancelLabel: <AppMessage message={messages.keepEditing} />,
       intent: 'default',
       onConfirm: async () => {
-        await finalizeNetwork();
+        const refused = await finalizeNetwork();
+        const failure = refused && writeFailureMessage(refused);
+        // Keeps the dialog open with the reason, and the pedigree unsaved.
+        if (failure) throw new Error(createMessageError(failure));
       },
     });
 
