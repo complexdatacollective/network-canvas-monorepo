@@ -428,7 +428,7 @@ export default function NodeShapeMappingFields({
               {answers.map((answer) => (
                 <div key={JSON.stringify(answer.value)} className={ROW_CLASSES}>
                   <span className="min-w-0 flex-1 text-sm">{answer.label}</span>
-                  <div className="w-48 shrink-0">
+                  <div className="shrink-0">
                     <UnconnectedField
                       name={`shape-for-${String(answer.value)}`}
                       label={intl.formatMessage(messages.shapeForValue, {
@@ -473,7 +473,7 @@ export default function NodeShapeMappingFields({
                 {/* Mathematical mapping symbol, independent of locale. */}
                 {/* oxlint-disable-next-line formatjs/no-literal-string-in-jsx */}
                 <span className="text-xl text-current/70">→</span>
-                <div className="w-48 shrink-0">
+                <div className="shrink-0">
                   <UnconnectedField
                     name="shape-below-first-threshold"
                     label={intl.formatMessage(messages.shapeDefaultSwatch)}
