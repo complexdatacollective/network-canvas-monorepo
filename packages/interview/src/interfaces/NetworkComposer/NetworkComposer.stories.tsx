@@ -6,6 +6,7 @@ import SuperJSON from 'superjson';
 import { SyntheticInterview } from '@codaco/protocol-utilities';
 
 import type { NavigationOrientation } from '../../Shell';
+import { choosePassphraseInPrompter } from '../../storybook-support/passphraseSteps';
 import StoryInterviewShell from '../../storybook-support/StoryInterviewShell';
 
 function createComposerInterview(seed: number) {
@@ -309,8 +310,8 @@ const buildEncryptedNames = () => {
 
 /**
  * The quick-add name variable is marked encrypted. Adding a person waits for
- * the passphrase (entered from the key button in the navigation); names are
- * then stored encrypted and shown decrypted.
+ * a passphrase, chosen and confirmed from the key button in the navigation;
+ * names are then stored encrypted and shown decrypted.
  */
 export const EncryptedNames: Story = {
   render: () => (
@@ -332,16 +333,7 @@ export const EncryptedNames: Story = {
     ).not.toBeInTheDocument();
     await userEvent.keyboard('{Escape}');
 
-    await userEvent.click(
-      await canvas.findByRole('button', { name: /^enter your passphrase$/i }),
-    );
-    await userEvent.type(
-      await screen.findByLabelText(/^Passphrase/, { selector: 'input' }),
-      'storybook passphrase',
-    );
-    await userEvent.click(
-      screen.getByRole('button', { name: /submit passphrase/i }),
-    );
+    await choosePassphraseInPrompter('storybook passphrase');
 
     await userEvent.click(addNode);
     const nameInput = await screen.findByRole('textbox', { name: /name/i });

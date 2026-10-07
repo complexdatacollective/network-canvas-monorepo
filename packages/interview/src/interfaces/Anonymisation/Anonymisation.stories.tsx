@@ -11,6 +11,8 @@ import StoryInterviewShell from '../../storybook-support/StoryInterviewShell';
 type StoryArgs = {
   title: string;
   body: string;
+  /** The stage's own minimum passphrase length, replacing the default. */
+  minLength?: number;
 };
 
 function buildInterview(args: StoryArgs) {
@@ -23,6 +25,9 @@ function buildInterview(args: StoryArgs) {
 
   interview.addStage('Anonymisation', {
     explanationText: { title: args.title, body: args.body },
+    ...(args.minLength !== undefined && {
+      validation: { minLength: args.minLength },
+    }),
   });
 
   interview.addInformationStage({
@@ -65,6 +70,11 @@ const meta: Meta<StoryArgs> = {
       control: 'text',
       description: 'Explanation text body (supports markdown)',
     },
+    minLength: {
+      control: 'number',
+      description:
+        'Minimum passphrase length set by the stage (`validation.minLength`). Without one, a new passphrase must be at least 8 characters.',
+    },
   },
   args: {
     title: 'Data Anonymisation',
@@ -74,6 +84,39 @@ const meta: Meta<StoryArgs> = {
 
 export default meta;
 type Story = StoryObj<StoryArgs>;
+
+const PASSPHRASE = 'correct horse battery staple';
+
+// Each label also carries a visual required marker.
+const findPassphraseField = (canvas: ReturnType<typeof within>) =>
+  canvas.findByLabelText(
+    /^Passphrase/,
+    { selector: 'input' },
+    { timeout: 10_000 },
+  );
+
+const CONFIRM_LABEL = /^Confirm Passphrase/;
+
+/**
+ * Submits the passphrase form and waits for the check to show as under way
+ * and then to finish with the passphrase accepted.
+ */
+async function submitAndWaitForAcceptance(canvas: ReturnType<typeof within>) {
+  await userEvent.click(canvas.getByRole('button', { name: 'Submit' }));
+  await expect(
+    await canvas.findByText('Checking your passphrase…'),
+  ).toBeInTheDocument();
+  await expect(
+    await canvas.findByText(
+      /Passphrase set successfully/,
+      {},
+      { timeout: 10_000 },
+    ),
+  ).toBeInTheDocument();
+  await expect(
+    canvas.queryByText('Checking your passphrase…'),
+  ).not.toBeInTheDocument();
+}
 
 export const Default: Story = {
   render: (args) => <AnonymisationStoryWrapper {...args} />,
@@ -116,7 +159,70 @@ export const DetailedInstructions: Story = {
   },
 };
 
-const PASSPHRASE = 'correct horse battery staple';
+export const ChoosesAPassphrase: Story = {
+  render: (args) => <AnonymisationStoryWrapper {...args} />,
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'No passphrase has been chosen in this interview yet, so the participant chooses one and confirms it. Without a minimum set by the stage, it must be at least 8 characters.',
+      },
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const passphrase = await findPassphraseField(canvas);
+    const confirm = canvas.getByLabelText(CONFIRM_LABEL, { selector: 'input' });
+
+    await userEvent.type(passphrase, 'short');
+    await userEvent.type(confirm, 'short');
+    await userEvent.click(canvas.getByRole('button', { name: 'Submit' }));
+    await waitFor(() =>
+      expect(passphrase).toHaveAttribute('aria-invalid', 'true'),
+    );
+    await expect(passphrase).toHaveAccessibleDescription(
+      expect.stringContaining('Too short. Enter at least 8 characters.'),
+    );
+
+    await userEvent.clear(passphrase);
+    await userEvent.type(passphrase, PASSPHRASE);
+    await userEvent.clear(confirm);
+    await userEvent.type(confirm, PASSPHRASE);
+    await submitAndWaitForAcceptance(canvas);
+  },
+};
+
+export const ShorterMinimumLength: Story = {
+  render: (args) => <AnonymisationStoryWrapper {...args} />,
+  args: { minLength: 4 },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'The stage sets its own minimum length of 4 characters, which replaces the default of 8: a 3-character passphrase is turned away, a 4-character one is accepted.',
+      },
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const passphrase = await findPassphraseField(canvas);
+    const confirm = canvas.getByLabelText(CONFIRM_LABEL, { selector: 'input' });
+
+    await userEvent.type(passphrase, 'abc');
+    await userEvent.type(confirm, 'abc');
+    await userEvent.click(canvas.getByRole('button', { name: 'Submit' }));
+    await waitFor(() =>
+      expect(passphrase).toHaveAttribute('aria-invalid', 'true'),
+    );
+    await expect(passphrase).toHaveAccessibleDescription(
+      expect.stringContaining('Too short. Enter at least 4 characters.'),
+    );
+
+    await userEvent.type(passphrase, 'd');
+    await userEvent.type(confirm, 'd');
+    await submitAndWaitForAcceptance(canvas);
+  },
+};
 
 function buildResumedInterview() {
   const interview = new SyntheticInterview();
@@ -158,47 +264,47 @@ export const ResumedWithProtectedAnswers: Story = {
   parameters: {
     docs: {
       description: {
-        story: `The interview already holds answers protected with a passphrase ("${PASSPHRASE}") that is no longer in memory. A different passphrase is turned away with the reason under the field; the original one is accepted.`,
+        story: `A passphrase ("${PASSPHRASE}") was chosen earlier in this interview, and is no longer in memory. The stage asks for it again, once and without length rules. A different passphrase is turned away with the reason under the field; the original one is accepted.`,
       },
     },
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    // Each label also carries a visual required marker.
-    const passphrase = await canvas.findByLabelText(
-      /^Passphrase/,
-      { selector: 'input' },
+    const passphrase = await findPassphraseField(canvas);
+    await expect(
+      canvas.getByText(
+        'You chose a passphrase earlier in this interview. Enter it to continue.',
+      ),
+    ).toBeInTheDocument();
+    await expect(
+      canvas.queryByLabelText(CONFIRM_LABEL, { selector: 'input' }),
+    ).not.toBeInTheDocument();
+
+    // Shorter than any minimum for choosing one, yet checked like any other.
+    await userEvent.type(passphrase, 'nope');
+    await userEvent.click(canvas.getByRole('button', { name: 'Submit' }));
+
+    await waitFor(
+      () => expect(passphrase).toHaveAttribute('aria-invalid', 'true'),
       { timeout: 10_000 },
-    );
-    const confirm = canvas.getByLabelText(/^Confirm Passphrase/, {
-      selector: 'input',
-    });
-    const submit = canvas.getByRole('button', { name: 'Submit' });
-
-    await userEvent.type(passphrase, 'not the passphrase');
-    await userEvent.type(confirm, 'not the passphrase');
-    await userEvent.click(submit);
-
-    await waitFor(() =>
-      expect(passphrase).toHaveAttribute('aria-invalid', 'true'),
     );
     await expect(passphrase).toHaveAccessibleDescription(
       expect.stringContaining(
         'This passphrase does not match the one used earlier in this interview.',
       ),
     );
+    await expect(passphrase).not.toHaveAccessibleDescription(
+      expect.stringContaining('Too short'),
+    );
+    await expect(
+      canvas.queryByText('Checking your passphrase…'),
+    ).not.toBeInTheDocument();
     await expect(
       canvas.queryByText(/Passphrase set successfully/),
     ).not.toBeInTheDocument();
 
     await userEvent.clear(passphrase);
     await userEvent.type(passphrase, PASSPHRASE);
-    await userEvent.clear(confirm);
-    await userEvent.type(confirm, PASSPHRASE);
-    await userEvent.click(submit);
-
-    await expect(
-      await canvas.findByText(/Passphrase set successfully/),
-    ).toBeInTheDocument();
+    await submitAndWaitForAcceptance(canvas);
   },
 };

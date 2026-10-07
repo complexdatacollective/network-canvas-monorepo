@@ -7,6 +7,7 @@ import { SyntheticInterview } from '@codaco/protocol-utilities';
 import { RELATIONSHIP_TYPE_OPTIONS } from '@codaco/protocol-validation';
 
 import type { NavigationOrientation } from '../../Shell';
+import { choosePassphraseInPrompter } from '../../storybook-support/passphraseSteps';
 import StoryInterviewShell from '../../storybook-support/StoryInterviewShell';
 import {
   clickGetStarted,
@@ -926,8 +927,8 @@ export const DiseaseNomination: ScenarioStory = {
 };
 
 /**
- * The name variable is marked encrypted. The pedigree waits for the
- * passphrase (entered from the key button in the navigation) before it can be
+ * The name variable is marked encrypted. The pedigree waits for a passphrase,
+ * chosen and confirmed from the key button in the navigation, before it can be
  * built; names are stored encrypted when the pedigree is finalized and shown
  * decrypted on the nomination step.
  */
@@ -949,21 +950,9 @@ export const EncryptedNames: ScenarioStory = {
       screen.queryByTestId('pedigree-get-started'),
     ).not.toBeInTheDocument();
 
-    await userEvent.click(
-      await screen.findByRole('button', { name: /^enter your passphrase$/i }),
-    );
-    await userEvent.type(
-      await screen.findByLabelText(/^Passphrase/, { selector: 'input' }),
-      'storybook passphrase',
-    );
-    await userEvent.click(
-      screen.getByRole('button', { name: /submit passphrase/i }),
-    );
-    // The wizard opens in a dialog of its own, so let the passphrase dialog
-    // finish closing first.
-    await waitFor(async () => {
-      await expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    });
+    // The wizard opens in a dialog of its own; this waits for the passphrase
+    // dialog to finish closing first.
+    await choosePassphraseInPrompter('storybook passphrase');
 
     await clickGetStarted();
     await selectEgoSex();

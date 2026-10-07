@@ -85,8 +85,7 @@ const createMockStore = () => {
   };
 
   const mockUiState = {
-    passphrase: null as string | null,
-    passphraseInvalid: false,
+    encryptionKeyId: null,
     showPassphrasePrompter: false,
   };
 

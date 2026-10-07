@@ -1,12 +1,13 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useMemo } from 'react';
-import { expect, screen, userEvent, within } from 'storybook/test';
+import { expect, userEvent, within } from 'storybook/test';
 import SuperJSON from 'superjson';
 
 import { SyntheticInterview } from '@codaco/protocol-utilities';
 import type { ComponentType } from '@codaco/protocol-validation';
 
 import EncryptedStoryInterviewShell from '../../storybook-support/EncryptedStoryInterviewShell';
+import { enterPassphraseInPrompter } from '../../storybook-support/passphraseSteps';
 import StoryInterviewShell from '../../storybook-support/StoryInterviewShell';
 
 const FIELD_PRESETS: { component: ComponentType; prompt: string }[] = [
@@ -327,20 +328,7 @@ export const ProtectedAnswersUnlocked: Story = {
   },
   play: async ({ canvasElement }) => {
     await openLockedSlide(canvasElement);
-
-    await userEvent.click(
-      within(canvasElement).getByRole('button', {
-        name: 'Enter your Passphrase',
-      }),
-    );
-    // The label also carries a visual required marker.
-    await userEvent.type(
-      await screen.findByLabelText(/^Passphrase/, { selector: 'input' }),
-      PASSPHRASE,
-    );
-    await userEvent.click(
-      screen.getByRole('button', { name: 'Submit passphrase' }),
-    );
+    await enterPassphraseInPrompter(PASSPHRASE);
 
     const canvas = within(canvasElement);
     await expect(
