@@ -13,7 +13,8 @@ import { createInitialNetwork } from '../../../contract/network';
 import protocol from '../../../store/modules/protocol';
 import session from '../../../store/modules/session';
 import ui, { setPassphrase } from '../../../store/modules/ui';
-import { decryptData, isNumberArray } from '../../Anonymisation/utils';
+import { isNumberArray } from '../../Anonymisation/decryptionScope';
+import { decryptData } from '../../Anonymisation/utils';
 import { createFamilyPedigreeStore, type VariableConfig } from '../store';
 
 const PASSPHRASE = 'pedigree passphrase';

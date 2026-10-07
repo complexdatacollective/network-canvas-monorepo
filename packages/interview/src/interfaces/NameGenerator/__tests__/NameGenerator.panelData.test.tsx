@@ -20,7 +20,8 @@ import protocol from '../../../store/modules/protocol';
 import session from '../../../store/modules/session';
 import ui, { setPassphrase } from '../../../store/modules/ui';
 import type { StageProps } from '../../../types';
-import { decryptData, isNumberArray } from '../../Anonymisation/utils';
+import { isNumberArray } from '../../Anonymisation/decryptionScope';
+import { decryptData } from '../../Anonymisation/utils';
 
 // The main list's drop handler is the subject; everything else the stage
 // renders is stubbed.
