@@ -172,7 +172,9 @@ const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
         : [],
     [isNetworkCommitted, allNodes, nodeType, memberIds],
   );
-  const decryptedCommittedNodes = useDecryptedNodes(committedNodes);
+  const decryptedCommittedNodes = useDecryptedNodes(committedNodes, [
+    nodeLabelVariable,
+  ]);
   const plaintextCommittedNodes =
     decryptedCommittedNodes.status === 'ready'
       ? decryptedCommittedNodes.nodes

@@ -23,16 +23,21 @@ import {
   decryptNodes,
   useDecryptedNodes,
 } from './useDecryptedNodes';
+import { generateSecureAttributes } from './utils';
 
 const PASSPHRASE = 'test passphrase';
 
 type EncryptionStore = ReturnType<typeof createEncryptionStore>;
 
-function renderDecrypted(store: EncryptionStore, initialNodes: NcNode[]) {
+function renderDecrypted(
+  store: EncryptionStore,
+  initialNodes: NcNode[],
+  reads: readonly string[] = ['name'],
+) {
   const seen: DecryptedNodes[] = [];
   const rendered = renderHook(
     ({ nodes }) => {
-      const result = useDecryptedNodes(nodes);
+      const result = useDecryptedNodes(nodes, reads);
       seen.push(result);
       return result;
     },
@@ -50,6 +55,34 @@ function readyNodes(result: { current: DecryptedNodes }) {
     throw new Error(`Expected ready, got ${result.current.status}`);
   }
   return result.current.nodes;
+}
+
+/**
+ * A person whose `name` is encrypted with `passphrase` and whose `nickname` is
+ * encrypted with `otherPassphrase`, as an older runtime could leave them.
+ */
+async function makeMixedPerson(
+  id: string,
+  passphrase: string,
+  otherPassphrase: string,
+): Promise<NcNode> {
+  const person = await makeEncryptedPerson(id, 'Alice', passphrase);
+  const nickname = await generateSecureAttributes(
+    { nickname: 'Ally' },
+    encryptedVariables,
+    otherPassphrase,
+  );
+  return {
+    ...person,
+    [entityAttributesProperty]: {
+      ...person[entityAttributesProperty],
+      ...nickname.encryptedAttributes,
+    },
+    [entitySecureAttributesMeta]: {
+      ...person[entitySecureAttributesMeta],
+      ...nickname.secureAttributes,
+    },
+  };
 }
 
 function names(results: DecryptedNodes[]) {
@@ -192,6 +225,22 @@ describe('useDecryptedNodes', () => {
     });
   });
 
+  it('leaves out, and never decrypts, protected answers the caller does not read', async () => {
+    const person = await makeMixedPerson('n1', PASSPHRASE, 'older passphrase');
+    const store = createEncryptionStore([person]);
+    store.dispatch(setPassphrase(PASSPHRASE));
+    const { result } = renderDecrypted(store, [person], ['name']);
+
+    await waitFor(() => expect(result.current.status).toBe('ready'));
+    const [decrypted] = readyNodes(result);
+    expect(decrypted?.[entityAttributesProperty]).toEqual({
+      name: 'Alice',
+      age: 40,
+    });
+    expect(decrypted?.[entitySecureAttributesMeta]).toBeUndefined();
+    expect(store.getState().ui.passphraseInvalid).toBe(false);
+  });
+
   it('fails and marks the passphrase invalid when decryption fails', async () => {
     const person = await makeEncryptedPerson('n1', 'Alice', PASSPHRASE);
     const store = createEncryptionStore([person]);
@@ -217,6 +266,26 @@ describe('decryptNodes', () => {
 
     const [node] = await decryptNodes(
       [person],
+      ['name'],
+      scopeFor(store, PASSPHRASE),
+      () => encryptedVariables,
+      true,
+    );
+
+    expect(node?.[entityAttributesProperty]).toEqual({
+      name: 'Alice',
+      age: 40,
+    });
+    expect(node?.[entitySecureAttributesMeta]).toBeUndefined();
+  });
+
+  it('leaves out, and never decrypts, protected answers the caller does not read', async () => {
+    const person = await makeMixedPerson('n1', PASSPHRASE, 'older passphrase');
+    const store = createEncryptionStore([person]);
+
+    const [node] = await decryptNodes(
+      [person],
+      ['name'],
       scopeFor(store, PASSPHRASE),
       () => encryptedVariables,
       true,
@@ -236,6 +305,7 @@ describe('decryptNodes', () => {
     await expect(
       decryptNodes(
         [person],
+        ['name'],
         scopeFor(store, 'wrong passphrase'),
         () => encryptedVariables,
         true,
@@ -251,6 +321,7 @@ describe('decryptNodes', () => {
 
     const [node] = await decryptNodes(
       [person],
+      ['name'],
       scopeFor(store, 'wrong passphrase'),
       () => encryptedVariables,
       false,

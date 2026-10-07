@@ -11,12 +11,7 @@ import {
   VARIABLE_REFERENCE_VALIDATIONS,
   type Variable,
 } from '@codaco/protocol-validation';
-import {
-  entityAttributesProperty,
-  entitySecureAttributesMeta,
-  type NcNetwork,
-  type NcNode,
-} from '@codaco/shared-consts';
+import { type NcNetwork, type NcNode } from '@codaco/shared-consts';
 
 import { runtimeMessages } from '../i18n/runtimeMessages';
 import { isAttributeEncrypted } from '../interfaces/Anonymisation/isAttributeEncrypted';
@@ -75,37 +70,6 @@ function getComparedEncryptedVariables(
   return [...compared].toSorted();
 }
 
-/**
- * The node without the encrypted values no rule compares with, so that only
- * the compared ones are decrypted: a value the passphrase cannot read is then
- * no reason to fail validation unless a rule needs it.
- */
-function withComparedEncryptedValuesOnly(
-  node: NcNode,
-  variables: Record<string, Variable>,
-  compared: ReadonlySet<string>,
-  encryptionEnabled: boolean,
-): NcNode {
-  const uncompared = Object.keys(node[entityAttributesProperty]).filter(
-    (id) =>
-      isAttributeEncrypted(encryptionEnabled, variables, id) &&
-      !compared.has(id),
-  );
-  if (uncompared.length === 0) return node;
-
-  const attributes = { ...node[entityAttributesProperty] };
-  const secureAttributes = { ...node[entitySecureAttributesMeta] };
-  for (const id of uncompared) {
-    delete attributes[id];
-    delete secureAttributes[id];
-  }
-  return {
-    ...node,
-    [entityAttributesProperty]: attributes,
-    [entitySecureAttributesMeta]: secureAttributes,
-  };
-}
-
 /** The network with its nodes of `type` replaced by `subjectNodes`. */
 const withSubjectNodes = (
   network: NcNetwork,
@@ -153,18 +117,17 @@ export function useValidationNetwork(
     variableIds,
     isEnabled,
   ).join(' ');
+  const compared = useMemo(
+    () => (comparedKey === '' ? [] : comparedKey.split(' ')),
+    [comparedKey],
+  );
 
   const comparedNodes = useMemo(() => {
-    if (comparedKey === '' || subjectType === undefined) return NO_NODES;
-    const compared = new Set(comparedKey.split(' '));
-    return network.nodes
-      .filter((node) => node.type === subjectType)
-      .map((node) =>
-        withComparedEncryptedValuesOnly(node, variables, compared, isEnabled),
-      );
-  }, [comparedKey, subjectType, network.nodes, variables, isEnabled]);
+    if (compared.length === 0 || subjectType === undefined) return NO_NODES;
+    return network.nodes.filter((node) => node.type === subjectType);
+  }, [compared, subjectType, network.nodes]);
 
-  const decrypted = useDecryptedNodes(comparedNodes);
+  const decrypted = useDecryptedNodes(comparedNodes, compared);
   const comparesEncrypted = comparedNodes !== NO_NODES;
   const status = comparesEncrypted ? decrypted.status : 'ready';
   const decryptedNodes =
@@ -207,6 +170,7 @@ export function useValidationNetwork(
       resolveNetwork: async () => {
         const plaintextNodes = await decryptNodes(
           comparedNodes,
+          compared,
           scope,
           getCodebookVariablesForNodeType,
           isEnabled,
@@ -223,6 +187,7 @@ export function useValidationNetwork(
     network,
     decryptedNodes,
     comparedNodes,
+    compared,
     subjectType,
     scope,
     getCodebookVariablesForNodeType,

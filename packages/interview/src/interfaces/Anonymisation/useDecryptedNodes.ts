@@ -33,17 +33,22 @@ export type DecryptedNodes =
 type ProtectedNode = {
   node: NcNode;
   encrypted: { variable: string; value: EncryptedValue }[];
-  /** Ciphertext with no metadata to decrypt it, which can never be shown. */
-  unreadable: string[];
+  /**
+   * Ciphertext left out of the result: values the caller does not read, which
+   * are never decrypted, and values with no metadata to decrypt them, which
+   * can never be shown.
+   */
+  omitted: string[];
 };
 
 function describeNode(
   node: NcNode,
   variables: Record<string, Variable>,
   encryptionEnabled: boolean,
+  reads: ReadonlySet<string>,
 ): ProtectedNode {
   const encrypted: ProtectedNode['encrypted'] = [];
-  const unreadable: string[] = [];
+  const omitted: string[] = [];
   for (const [variable, data] of Object.entries(
     node[entityAttributesProperty],
   )) {
@@ -54,23 +59,26 @@ function describeNode(
       variables,
       encryptionEnabled,
     );
-    if (value) encrypted.push({ variable, value });
-    else if (isNumberArray(data)) unreadable.push(variable);
+    if (value && reads.has(variable)) encrypted.push({ variable, value });
+    else if (value || isNumberArray(data)) omitted.push(variable);
   }
-  return { node, encrypted, unreadable };
+  return { node, encrypted, omitted };
 }
 
 function readPlaintextNode(
-  { node, encrypted, unreadable }: ProtectedNode,
+  { node, encrypted, omitted }: ProtectedNode,
   plaintextOf: (value: EncryptedValue) => string | undefined,
 ): NcNode {
-  if (encrypted.length === 0 && unreadable.length === 0) return node;
+  if (encrypted.length === 0 && omitted.length === 0) return node;
 
   const attributes: Record<string, VariableValue> = {
     ...node[entityAttributesProperty],
   };
   const secureAttributes = { ...node[entitySecureAttributesMeta] };
-  for (const variable of unreadable) delete attributes[variable];
+  for (const variable of omitted) {
+    delete attributes[variable];
+    delete secureAttributes[variable];
+  }
   for (const { variable, value } of encrypted) {
     const plaintext = plaintextOf(value);
     if (plaintext === undefined) delete attributes[variable];
@@ -89,20 +97,22 @@ function readPlaintextNode(
 }
 
 /**
- * The nodes with their encrypted values decrypted through `scope`, as
- * `useDecryptedNodes` makes them ready, for a caller that needs them now
- * rather than on a later render. Only values encrypted in this interview (see
- * `isAttributeEncrypted`) are decrypted. Rejects if any value fails to
- * decrypt.
+ * The nodes with the encrypted values of the variables in `reads` decrypted
+ * through `scope`, as `useDecryptedNodes` makes them ready, for a caller that
+ * needs them now rather than on a later render. Only values encrypted in this
+ * interview (see `isAttributeEncrypted`) are decrypted, and other encrypted
+ * values are left out. Rejects if any value read fails to decrypt.
  */
 export async function decryptNodes(
   nodes: NcNode[],
+  reads: readonly string[],
   scope: DecryptionScope,
   getVariables: (type: string) => Record<string, Variable>,
   encryptionEnabled: boolean,
 ): Promise<NcNode[]> {
+  const readSet = new Set(reads);
   const protectedNodes = nodes.map((node) =>
-    describeNode(node, getVariables(node.type), encryptionEnabled),
+    describeNode(node, getVariables(node.type), encryptionEnabled, readSet),
   );
   const plaintexts = new Map<EncryptedValue, string>();
   await Promise.all(
@@ -118,18 +128,25 @@ export async function decryptNodes(
 }
 
 /**
- * Decrypts the encrypted attribute values of a list of nodes for display or
- * editing, through the decryption scope of the passphrase in force. Nodes
- * without encrypted values pass through untouched, so a list with none, or
- * any list while encryption is not in effect (see `isAttributeEncrypted`), is
- * ready immediately and needs no passphrase. Pass a memoized list: a new array
- * on every render restarts the work.
+ * Decrypts the encrypted values of the variables in `reads` on a list of nodes
+ * for display or editing, through the decryption scope of the passphrase in
+ * force. `reads` names the variables the caller shows or uses. Encrypted
+ * values of any other variable are left out of the result and never
+ * decrypted, so a value the caller does not read can neither fail the result
+ * nor flag the passphrase. Nodes without encrypted values pass through
+ * untouched, so a list with none, or any list while encryption is not in
+ * effect (see `isAttributeEncrypted`), is ready immediately and needs no
+ * passphrase. Pass a memoized list of nodes: a new array on every render
+ * restarts the work.
  *
  * Without a passphrase the result is `locked` and the passphrase is
  * requested. The plaintext is read from the scope rather than kept here, so it
  * is gone from the result as soon as the passphrase is.
  */
-export function useDecryptedNodes(nodes: NcNode[]): DecryptedNodes {
+export function useDecryptedNodes(
+  nodes: NcNode[],
+  reads: readonly string[],
+): DecryptedNodes {
   const getCodebookVariablesForNodeType = useSelector(
     makeGetCodebookVariablesForNodeType,
   );
@@ -142,17 +159,21 @@ export function useDecryptedNodes(nodes: NcNode[]): DecryptedNodes {
     values: EncryptedValue[];
   }>();
 
-  const protectedNodes = useMemo(
-    () =>
-      nodes.map((node) =>
-        describeNode(
-          node,
-          getCodebookVariablesForNodeType(node.type),
-          isEnabled,
-        ),
+  // A key rather than the array, so callers may pass a fresh `reads` on every
+  // render without restarting the work. Variable ids cannot contain a space
+  // (`VariableNameSchema`).
+  const readsKey = [...new Set(reads)].toSorted().join(' ');
+  const protectedNodes = useMemo(() => {
+    const readSet = new Set(readsKey.split(' '));
+    return nodes.map((node) =>
+      describeNode(
+        node,
+        getCodebookVariablesForNodeType(node.type),
+        isEnabled,
+        readSet,
       ),
-    [nodes, getCodebookVariablesForNodeType, isEnabled],
-  );
+    );
+  }, [nodes, readsKey, getCodebookVariablesForNodeType, isEnabled]);
   const values = useMemo(
     () =>
       protectedNodes.flatMap(({ encrypted }) =>

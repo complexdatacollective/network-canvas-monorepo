@@ -96,6 +96,7 @@ const REL_TYPE_VAR = 'relationshipType';
 const IS_ACTIVE_VAR = 'isActive';
 const IS_GEST_VAR = 'isGestationalCarrier';
 const GAMETE_VAR = 'gameteRole';
+const NOTES_VAR = 'notes';
 
 const nodeVariables: Record<string, Variable> = {
   [NAME_VAR]: {
@@ -109,6 +110,13 @@ const nodeVariables: Record<string, Variable> = {
   [BIO_SEX_VAR]: { name: 'biologicalSex', type: 'text' },
   [NOMINATED_VAR]: { name: 'nominated', type: 'boolean' },
   [AFFECTED_VAR]: { name: 'affected', type: 'boolean' },
+  // Asked on another stage; the pedigree interfaces never show it.
+  [NOTES_VAR]: {
+    name: 'notes',
+    type: 'text',
+    component: 'Text',
+    encrypted: true,
+  },
 };
 
 const edgeTypes: Codebook['edge'] = {
@@ -235,6 +243,37 @@ async function committedPedigree() {
   return { nodes, edges, metadata };
 }
 
+/**
+ * The committed pedigree, with an answer the pedigree does not show saved for
+ * the mother under an older passphrase, as an older runtime could leave it.
+ */
+async function committedPedigreeWithOlderAnswer() {
+  const pedigree = await committedPedigree();
+  const notes = await generateSecureAttributes(
+    { [NOTES_VAR]: 'Lives abroad' },
+    nodeVariables,
+    'older passphrase',
+  );
+  return {
+    ...pedigree,
+    nodes: pedigree.nodes.map((node) =>
+      node[entityPrimaryKeyProperty] === 'mother'
+        ? {
+            ...node,
+            [entityAttributesProperty]: {
+              ...node[entityAttributesProperty],
+              ...notes.encryptedAttributes,
+            },
+            [entitySecureAttributesMeta]: {
+              ...node[entitySecureAttributesMeta],
+              ...notes.secureAttributes,
+            },
+          }
+        : node,
+    ),
+  };
+}
+
 function makeStore({
   nodes = [],
   edges = [],
@@ -242,6 +281,7 @@ function makeStore({
   withPassphrase,
   encryptionEnabled = true,
   variables = nodeVariables,
+  pedigreeStage = stage,
 }: {
   nodes?: NcNode[];
   edges?: NcEdge[];
@@ -249,10 +289,11 @@ function makeStore({
   withPassphrase: boolean;
   encryptionEnabled?: boolean;
   variables?: Record<string, Variable>;
+  pedigreeStage?: StageProps<'FamilyPedigree'>['stage'];
 }) {
   const store = createEncryptionStore(
     nodes,
-    [stage, narrativeStage],
+    [pedigreeStage, narrativeStage],
     variables,
     {
       edges,
@@ -387,6 +428,22 @@ describe('FamilyPedigree with an encrypted name variable', () => {
     expect(screen.queryByText(ciphertext)).toBeNull();
   });
 
+  it('shows the names when an answer it does not show cannot be read', async () => {
+    const store = makeStore({
+      ...(await committedPedigreeWithOlderAnswer()),
+      withPassphrase: true,
+    });
+    const { moveToNomination } = renderPedigree(store);
+
+    expect(await screen.findByRole('button', { name: 'Rosa' })).toBeTruthy();
+
+    await moveToNomination();
+
+    expect(await screen.findByText('Who has been unwell?')).toBeTruthy();
+    expect(await screen.findByRole('button', { name: 'Rosa' })).toBeTruthy();
+    expect(store.getState().ui.passphraseInvalid).toBe(false);
+  });
+
   it('hides the names when the passphrase is replaced by one that cannot read them', async () => {
     const store = makeStore({
       ...(await committedPedigree()),
@@ -488,6 +545,54 @@ describe('FamilyPedigree while the encryptedVariables experiment is off', () => 
   });
 });
 
+describe('FamilyPedigree seeding relatives from earlier stages', () => {
+  it('decrypts the answers its node form edits', async () => {
+    const store = makeStore({
+      withPassphrase: true,
+      pedigreeStage: {
+        ...stage,
+        nodeConfig: {
+          ...stage.nodeConfig,
+          form: [
+            {
+              variable: asEntityAttributeReference(NOTES_VAR),
+              prompt: 'Anything else?',
+            },
+          ],
+        },
+      },
+    });
+    let pedigreeStore: FamilyPedigreeStoreApi | undefined;
+    function StoreProbe() {
+      pedigreeStore = useContext(FamilyPedigreeContext);
+      return null;
+    }
+    render(
+      <FamilyPedigreeProvider
+        nodes={[
+          await encryptedNode('rosa', {
+            [NAME_VAR]: 'Rosa',
+            [NOTES_VAR]: 'Lives abroad',
+          }),
+        ]}
+        edges={[]}
+      >
+        <StoreProbe />
+      </FamilyPedigreeProvider>,
+      { wrapper: makeWrapper(store) },
+    );
+
+    await waitFor(() => expect(pedigreeStore).toBeDefined());
+    if (!pedigreeStore) throw new Error('Expected the pedigree store');
+    const seeded = pedigreeStore.getState().network.nodes.get('rosa');
+    expect(seeded?.[entityAttributesProperty]).toEqual({
+      [NAME_VAR]: 'Rosa',
+      [NOTES_VAR]: 'Lives abroad',
+    });
+    expect(seeded?.[entitySecureAttributesMeta]).toBeUndefined();
+  });
+});
+
 describe('FamilyPedigree checking the name of a relative', () => {
   it('rejects a name someone else in the interview already has, though it is stored encrypted', async () => {
     const store = makeStore({
@@ -558,6 +663,22 @@ describe('NarrativePedigree reading an encrypted pedigree', () => {
       await screen.findByRole('button', { name: 'Focus on Rosa' }),
     ).toBeTruthy();
     expect(screen.queryByText(ciphertext)).toBeNull();
+  });
+
+  it('shows the names when an answer it does not show cannot be read', async () => {
+    const store = makeStore({
+      ...(await committedPedigreeWithOlderAnswer()),
+      withPassphrase: true,
+    });
+    renderNarrative(store);
+
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Condition' }),
+    );
+    expect(
+      await screen.findByRole('button', { name: 'Focus on Rosa' }),
+    ).toBeTruthy();
+    expect(store.getState().ui.passphraseInvalid).toBe(false);
   });
 
   it('shows a placeholder instead of names until the passphrase is entered', async () => {

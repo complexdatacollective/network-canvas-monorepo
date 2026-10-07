@@ -340,8 +340,11 @@ export default function NarrativePedigreeView({
 
   // Names are only for display, so the genetics above works from the stored
   // nodes and, until the names are decrypted, the diagram shows each person's
-  // relationship instead.
-  const decrypted = useDecryptedNodes(pedigreeNodes);
+  // relationship instead. The names are the only protected answers shown.
+  const decrypted = useDecryptedNodes(
+    pedigreeNodes,
+    sourceConfig ? [sourceConfig.config.nodeLabelVariable] : [],
+  );
   const plaintextNodes = decrypted.status === 'ready' ? decrypted.nodes : null;
   const nodesMap = useMemo(() => {
     const plaintext = new Map(plaintextNodes?.map((n) => [n._uid, n]));

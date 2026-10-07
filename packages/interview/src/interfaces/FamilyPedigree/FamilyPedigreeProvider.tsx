@@ -149,7 +149,12 @@ export const FamilyPedigreeProvider = ({
       ),
     };
   });
-  const decryptedSeed = useDecryptedNodes(seed.nodes);
+  // The pedigree shows and edits each relative's name and the answers to its
+  // node form.
+  const decryptedSeed = useDecryptedNodes(seed.nodes, [
+    nodeLabelVariable,
+    ...(nodeForm ?? []).map((field) => field.variable),
+  ]);
 
   // The store holds plaintext, so the pedigree is only shown while a working
   // passphrase to encrypt with is in force and the seeded relatives are
