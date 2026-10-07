@@ -1,6 +1,6 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { ReactNode } from 'react';
+import { type ReactNode, useEffect } from 'react';
 import { Provider } from 'react-redux';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
@@ -15,6 +15,7 @@ import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
   entitySecureAttributesMeta,
+  isFamilyPedigreeStageMetadata,
   type NcEdge,
   type NcEncryptionHeader,
   type NcNode,
@@ -37,6 +38,8 @@ import {
 import { generateSecureAttributes } from '../../Anonymisation/utils';
 import NarrativePedigreeView from '../../NarrativePedigree/components/NarrativePedigreeView';
 import FamilyPedigree from '../FamilyPedigree';
+import { useFamilyPedigreeStore } from '../FamilyPedigreeContext';
+import { FamilyPedigreeProvider } from '../FamilyPedigreeProvider';
 
 // Records the node and variable of every value the interview tries to
 // decrypt, so a test can tell one attempt from a loop of them.
@@ -363,7 +366,18 @@ async function makeStore({
   return store;
 }
 
-function renderPedigree(store: Store) {
+function renderPedigree(
+  store: Store,
+  ui: ReactNode = (
+    <FamilyPedigree
+      stage={stage}
+      getNavigationHelpers={() => ({
+        moveForward: vi.fn(),
+        moveBackward: vi.fn(),
+      })}
+    />
+  ),
+) {
   const beforeNext: { current: BeforeNextFunction | null } = { current: null };
   const registerBeforeNext = (
     ...args: [BeforeNextFunction | null] | [string, BeforeNextFunction | null]
@@ -400,16 +414,7 @@ function renderPedigree(store: Store) {
     );
   }
 
-  render(
-    <FamilyPedigree
-      stage={stage}
-      getNavigationHelpers={() => ({
-        moveForward: vi.fn(),
-        moveBackward: vi.fn(),
-      })}
-    />,
-    { wrapper: Wrapper },
-  );
+  render(ui, { wrapper: Wrapper });
 
   return {
     moveToNomination: async () => {
@@ -504,6 +509,43 @@ describe('FamilyPedigree with an encrypted name variable', () => {
     await act(() => new Promise((resolve) => setTimeout(resolve, 50)));
     expect(attemptsOnMother()).toHaveLength(1);
     expect(store.getState().ui.showPassphrasePrompter).toBe(false);
+  });
+});
+
+function SyncMetadataOnMount() {
+  const syncMetadata = useFamilyPedigreeStore((state) => state.syncMetadata);
+  useEffect(() => syncMetadata(), [syncMetadata]);
+  return null;
+}
+
+describe('FamilyPedigree summary of a family whose names were stored encrypted', () => {
+  it('names each relative by relationship, though the codebook no longer encrypts names', async () => {
+    const committed = await committedPedigree();
+    const store = await makeStore({
+      ...committed,
+      variables: unprotectedPedigreeVariables,
+      unlocked: true,
+    });
+    renderPedigree(
+      store,
+      <FamilyPedigreeProvider nodes={committed.nodes} edges={committed.edges}>
+        <SyncMetadataOnMount />
+      </FamilyPedigreeProvider>,
+    );
+
+    await waitFor(() => {
+      const metadata = store.getState().session.stageMetadata?.[0];
+      if (!isFamilyPedigreeStageMetadata(metadata)) {
+        throw new Error('Expected pedigree metadata');
+      }
+      expect(metadata.nodes?.map(({ label }) => label).toSorted()).toEqual([
+        '',
+        'Mother',
+      ]);
+    });
+    expect(JSON.stringify(store.getState().session.stageMetadata)).not.toMatch(
+      /Rosa|Sam/,
+    );
   });
 });
 

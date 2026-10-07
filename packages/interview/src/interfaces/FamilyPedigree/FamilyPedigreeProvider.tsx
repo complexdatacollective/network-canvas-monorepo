@@ -16,6 +16,7 @@ import { useStageSelector } from '../../hooks/useStageSelector';
 import { makeGetCodebookVariablesForNodeType } from '../../selectors/protocol';
 import { getStageMetadata } from '../../selectors/session';
 import { useAppDispatch } from '../../store/store';
+import { readEncryptedAttribute } from '../Anonymisation/decryptionScope';
 import PassphraseNotice, {
   type PassphraseNoticeStatus,
 } from '../Anonymisation/PassphraseNotice';
@@ -104,8 +105,9 @@ export const FamilyPedigreeProvider = ({
     biologicalSexVariable,
   };
 
+  const nodeVariables = getCodebookVariablesForNodeType(nodeType);
   const encryptedVariableIds = new Set(
-    Object.entries(getCodebookVariablesForNodeType(nodeType))
+    Object.entries(nodeVariables)
       .filter(([, variable]) => variable.encrypted)
       .map(([variableId]) => variableId),
   );
@@ -175,6 +177,18 @@ export const FamilyPedigreeProvider = ({
         initialFraming,
         framingConfig.mode,
         encryptedVariableIds,
+        new Set(
+          seed.nodes
+            .filter(
+              (node) =>
+                readEncryptedAttribute(
+                  node,
+                  nodeLabelVariable,
+                  nodeVariables,
+                ) !== undefined,
+            )
+            .map((node) => node._uid),
+        ),
       ),
     );
     return null;

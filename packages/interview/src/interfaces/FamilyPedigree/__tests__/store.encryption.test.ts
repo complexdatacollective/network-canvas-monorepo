@@ -261,12 +261,121 @@ describe('finalizeNetwork with an encrypted name variable', () => {
     if (!isFamilyPedigreeStageMetadata(metadata)) {
       throw new Error('Expected pedigree metadata');
     }
-    // Unnamed relatives fall back to a relationship label, as before.
+    // A relative whose name is encrypted is labelled by relationship, as an
+    // unnamed one is.
     expect(metadata.nodes?.map(({ label }) => label).toSorted()).toEqual([
       '',
-      'Family Member',
+      'Parent',
     ]);
     expect(JSON.stringify(metadata)).not.toMatch(/Mum|Sam/);
+  });
+
+  it('keeps names out of the labels derived for other relatives', async () => {
+    const reduxStore = await makeReduxStore();
+    const store = buildFamily(reduxStore);
+    const parentId = [...store.getState().network.nodes].find(
+      ([, node]) =>
+        node[entityAttributesProperty][config.nodeLabelVariable] === 'Mum',
+    )?.[0];
+    if (!parentId) throw new Error('Expected the named parent');
+    // Unnamed, so labelled through the nearest named relative.
+    const grandparentId = store.getState().addNode({
+      attributes: { [config.egoVariable]: false },
+    });
+    store.getState().addEdge({
+      from: grandparentId,
+      to: parentId,
+      attributes: {
+        [config.relationshipTypeVariable]: ['biological'],
+        [config.isActiveVariable]: true,
+      },
+    });
+
+    await store.getState().finalizeNetwork();
+
+    const metadata = reduxStore.getState().session.stageMetadata?.[0];
+    if (!isFamilyPedigreeStageMetadata(metadata)) {
+      throw new Error('Expected pedigree metadata');
+    }
+    expect(metadata.nodes?.map(({ label }) => label).toSorted()).toEqual([
+      '',
+      'Grandparent',
+      'Parent',
+    ]);
+    expect(JSON.stringify(metadata)).not.toMatch(/Mum|Sam/);
+  });
+
+  it('keeps out the names of relatives whose names were stored encrypted, though the codebook no longer encrypts them', async () => {
+    const reduxStore = await makeReduxStore();
+    const egoId = 'ego';
+    const parentId = 'parent';
+    const seeded = (id: string, attributes: NcNode['attributes']): NcNode => ({
+      [entityPrimaryKeyProperty]: id,
+      type: config.nodeType,
+      [entityAttributesProperty]: attributes,
+    });
+    const store = createFamilyPedigreeStore(
+      new Map([
+        [
+          egoId,
+          seeded(egoId, {
+            [config.egoVariable]: true,
+            [config.nodeLabelVariable]: 'Sam',
+          }),
+        ],
+        [
+          parentId,
+          seeded(parentId, {
+            [config.egoVariable]: false,
+            [config.nodeLabelVariable]: 'Mum',
+          }),
+        ],
+      ]),
+      new Map(),
+      new Map(),
+      config,
+      reduxStore.dispatch,
+      0,
+      new Set([egoId, parentId]),
+      new Set(),
+      null,
+      'fixed',
+      new Set(),
+      new Set([parentId]),
+    );
+    store.getState().addEdge({
+      from: parentId,
+      to: egoId,
+      attributes: {
+        [config.relationshipTypeVariable]: ['biological'],
+        [config.isActiveVariable]: true,
+      },
+    });
+    const grandparentId = store.getState().addNode({
+      attributes: { [config.egoVariable]: false },
+    });
+    store.getState().addEdge({
+      from: grandparentId,
+      to: parentId,
+      attributes: {
+        [config.relationshipTypeVariable]: ['biological'],
+        [config.isActiveVariable]: true,
+      },
+    });
+
+    store.getState().syncMetadata();
+
+    const metadata = reduxStore.getState().session.stageMetadata?.[0];
+    if (!isFamilyPedigreeStageMetadata(metadata)) {
+      throw new Error('Expected pedigree metadata');
+    }
+    // Ego's name was saved in the clear, so it may be named.
+    expect(metadata.nodes?.map(({ label }) => label).toSorted()).toEqual([
+      'Grandparent',
+      'Parent',
+      'Sam',
+    ]);
+    expect(JSON.stringify(metadata)).not.toMatch(/Mum/);
   });
 
   it('commits nothing while the interview is locked, and keeps the pedigree for another try', async () => {

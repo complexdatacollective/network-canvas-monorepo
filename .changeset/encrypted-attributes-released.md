@@ -83,6 +83,10 @@ Encrypted answers are now protected in a new way:
 - The add-a-person form can't be closed or submitted twice while it saves.
   A family pedigree is saved all at once or not at all, and a relationship
   that can't be saved is reported rather than skipped.
+- The summary of the family that a family pedigree saves alongside the
+  interview names a relative whose name is protected by their relationship
+  alone, so a protected name never reaches it, even inside another
+  relative's label, such as "Rosa's Parent".
 
 Skip logic and filters are checked without the participant's passphrase, so a
 rule on an encrypted attribute could only ever compare its encrypted text.

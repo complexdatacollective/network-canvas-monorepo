@@ -155,6 +155,9 @@ export const createFamilyPedigreeStore = (
   // Node variables the codebook marks encrypted. The store holds their
   // plaintext while the pedigree is built; it must only reach Redux encrypted.
   encryptedVariableIds: ReadonlySet<string> = new Set(),
+  // Seeded relatives whose name was stored encrypted, which the codebook may
+  // no longer ask for: their decrypted names are held here too.
+  protectedNameNodeIds: ReadonlySet<string> = new Set(),
 ) => {
   // Guard the network invariant that at most one edge of a given relationship
   // type connects any pair of nodes. Throwing surfaces edge-creation bugs (e.g.
@@ -397,6 +400,25 @@ export const createFamilyPedigreeStore = (
           );
           const egoId = egoEntry?.[0];
 
+          // The metadata is saved as plain text, so a name the passphrase
+          // protects must reach it neither as a person's own label nor inside
+          // another person's, as in "Alice's Parent". Such a person is
+          // labelled by relationship, as an unnamed one is.
+          const labelVariable = variableConfig.nodeLabelVariable;
+          const labelledNodes = new Map(
+            [...nodes].map(([id, node]): [string, NcNode] => {
+              if (
+                !encryptedVariableIds.has(labelVariable) &&
+                !protectedNameNodeIds.has(id)
+              ) {
+                return [id, node];
+              }
+              const { [labelVariable]: _name, ...attributes } =
+                node[entityAttributesProperty];
+              return [id, { ...node, [entityAttributesProperty]: attributes }];
+            }),
+          );
+
           // framing ?? 'gamete': safe fallback — per spec §4.1, when framing is
           // null only the intro/chooser steps render and no gamete-parent labels exist.
           // Preserve the established English metadata snapshot; it is research data.
@@ -404,24 +426,19 @@ export const createFamilyPedigreeStore = (
           const computedLabels = egoId
             ? computeAllDisplayLabels(
                 egoId,
-                nodes,
+                labelledNodes,
                 edges,
                 variableConfig,
                 get().framing ?? 'gamete',
               )
             : new Map<string, string>();
 
-          const serializedNodes = [...nodes.entries()].map(([id, node]) => {
+          const serializedNodes = [...labelledNodes].map(([id, node]) => {
             const isEgo =
               node[entityAttributesProperty][variableConfig.egoVariable] ===
               true;
-            const storedLabel =
-              node[entityAttributesProperty][variableConfig.nodeLabelVariable];
-            let label =
-              typeof storedLabel === 'string' &&
-              !encryptedVariableIds.has(variableConfig.nodeLabelVariable)
-                ? storedLabel
-                : '';
+            const storedLabel = node[entityAttributesProperty][labelVariable];
+            let label = typeof storedLabel === 'string' ? storedLabel : '';
 
             if (!label && !isEgo) {
               label = computedLabels.get(id) ?? 'Family Member';
