@@ -82,7 +82,11 @@ Encrypted answers are now protected in a new way:
   decrypted answers once the passphrase has been entered. Until then, and
   when an answer can't be read, the list ignores that sort rule and keeps the
   order its other rules give it, so the order never hints at what the answers
-  say.
+  say. A one-to-many dyad census, which shows people one at a time, keeps the
+  order each prompt began with until the stage is left, so entering the
+  passphrase part-way never skips or repeats anyone. When the passphrase has
+  already been entered, it waits for the decrypted answers before showing
+  anyone.
 - Typing a letter to move through a list of people finds them by their
   decrypted names once the passphrase has been entered. Until then, typing
   never finds anyone by a protected name, and a name that can't be read is
@@ -121,6 +125,11 @@ interview with encrypted answers still opens, syncs and exports as before:
 its old encrypted answers show as "Answer unavailable" and export as
 `ENCRYPTED`, and if the participant continues, they choose a new passphrase
 that protects the answers they give from then on.
+
+In a one-to-many dyad census that takes people out of the list once they have
+been considered, going back to an earlier prompt now resumes on the last
+person that prompt showed, rather than on one it never shows on the way
+forward.
 
 For hosts of `@codaco/interview`: `ProtocolPayload` no longer has
 `experiments`, and the engine no longer reads it. A session's network can now

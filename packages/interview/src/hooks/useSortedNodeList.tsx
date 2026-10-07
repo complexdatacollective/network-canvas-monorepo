@@ -1,11 +1,12 @@
 'use client';
 
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useSelector } from 'react-redux';
 
 import type { SortRule, Variable } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
+  entityPrimaryKeyProperty,
   type NcNode,
   type VariableValue,
 } from '@codaco/shared-consts';
@@ -16,7 +17,10 @@ import {
   readCachedOutcome,
   readEncryptedAttribute,
 } from '../interfaces/Anonymisation/decryptionScope';
-import { useDecryptedScope } from '../interfaces/Anonymisation/useDecryptionScope';
+import {
+  useDecryptedScope,
+  useDecryptionScope,
+} from '../interfaces/Anonymisation/useDecryptionScope';
 import {
   getAllVariableUUIDsByEntity,
   makeGetCodebookVariablesForNodeType,
@@ -139,19 +143,22 @@ function sortNodes<T extends NcNode>(
   );
 }
 
+type NodeSorter = <T extends NcNode>(subset: T[]) => T[];
+
 /**
- * A function sorting any of `nodes` by the protocol's `sortRules`.
+ * A function sorting any of `nodes` by the protocol's `sortRules`, and
+ * whether the order it gives is about to change on its own.
  *
  * While the interview's key is in force, the encrypted values the rules
  * compare are decrypted and the sorter is replaced once they are, so a list
- * sorted with it re-sorts by their plaintext. It never asks for the
- * passphrase: an interview that has not been unlocked sorts as though those
- * rules were not there (see `sortNodes`).
+ * sorted with it re-sorts by their plaintext; until then it is `settling`. It
+ * never asks for the passphrase: an interview that has not been unlocked
+ * sorts as though those rules were not there (see `sortNodes`).
  */
-export function useNodeSorter(
+function useSorter(
   nodes: NcNode[],
   sortRules: SortRule[] | undefined,
-): <T extends NcNode>(subset: T[]) => T[] {
+): { sort: NodeSorter; settling: boolean } {
   const codebookVariables = useSelector(getAllVariableUUIDsByEntity);
   const variablesForType = useSelector(makeGetCodebookVariablesForNodeType);
 
@@ -163,17 +170,27 @@ export function useNodeSorter(
     () => comparedEncryptedValues(nodes, rules, variablesForType),
     [nodes, rules, variablesForType],
   );
+  const keyInForce = useDecryptionScope() !== undefined;
   const scope = useDecryptedScope(values);
 
   // Plaintext is read from the key's decryption scope on every sort rather
   // than kept here, so the order stops reflecting it as soon as the key goes.
-  return useCallback(
+  const sort = useCallback(
     <T extends NcNode>(subset: T[]) =>
       sortNodes(subset, rules, variablesForType, (value) =>
         scope ? readCachedOutcome(scope, value) : undefined,
       ),
     [rules, variablesForType, scope],
   );
+  return { sort, settling: keyInForce && scope === undefined };
+}
+
+/** A function sorting any of `nodes` by the protocol's `sortRules`. */
+export function useNodeSorter(
+  nodes: NcNode[],
+  sortRules: SortRule[] | undefined,
+): NodeSorter {
+  return useSorter(nodes, sortRules).sort;
 }
 
 export default function useSortedNodeList<T extends NcNode>(
@@ -182,4 +199,58 @@ export default function useSortedNodeList<T extends NcNode>(
 ): T[] {
   const sort = useNodeSorter(nodes, sortRules);
   return useMemo(() => sort(nodes), [sort, nodes]);
+}
+
+const idsOf = (nodes: readonly NcNode[]) =>
+  nodes.map((node) => node[entityPrimaryKeyProperty]);
+
+/** `order`, followed by the ids in `sorted` that it does not hold yet. */
+function withArrivals(
+  order: readonly string[],
+  sorted: readonly NcNode[],
+): readonly string[] {
+  const known = new Set(order);
+  const arrived = idsOf(sorted).filter((id) => !known.has(id));
+  return arrived.length === 0 ? order : [...order, ...arrived];
+}
+
+/**
+ * The nodes a stage steps through one at a time on its `pass` (such as a
+ * prompt), in the order `sortRules` give them when the pass begins.
+ *
+ * A pass keeps that order for as long as the stage is shown, so a stage that
+ * tracks where it is by position never skips or repeats anyone when the list
+ * re-sorts meanwhile, as it does when the passphrase is entered and a rule on
+ * an encrypted attribute starts to apply. Nodes that arrive later are added
+ * at the end. `undefined` while the order a pass would begin with is still
+ * settling, so that nothing is shown in an order that is about to change.
+ */
+export function useStepOrder<T extends NcNode>(
+  nodes: T[],
+  sortRules: SortRule[] | undefined,
+  pass: number,
+): T[] | undefined {
+  const { sort, settling } = useSorter(nodes, sortRules);
+  const sorted = useMemo(() => sort(nodes), [sort, nodes]);
+
+  const [orders, setOrders] = useState<ReadonlyMap<number, readonly string[]>>(
+    () => new Map(),
+  );
+  const kept = orders.get(pass);
+  const order = kept
+    ? withArrivals(kept, sorted)
+    : settling
+      ? undefined
+      : idsOf(sorted);
+  // Recorded during render, so the pass's first committed render already
+  // shows the order it keeps.
+  if (order && order !== kept) setOrders(new Map(orders).set(pass, order));
+
+  return useMemo(() => {
+    if (!order) return undefined;
+    const byId = new Map(
+      nodes.map((node) => [node[entityPrimaryKeyProperty], node]),
+    );
+    return order.flatMap((id) => byId.get(id) ?? []);
+  }, [order, nodes]);
 }
