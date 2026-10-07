@@ -1211,6 +1211,14 @@
     "defaultMessage": "Outside Selectable Areas",
     "description": "Button used to indicate that the participant’s location lies outside the selectable map areas. The stored selection identifier is never translated."
   },
+  "interview.interfaces.passphraseAccepted": {
+    "defaultMessage": "Passphrase accepted! Click \"Next\" to continue.",
+    "description": "Success message after the participant enters, on the anonymisation screen, the passphrase they chose earlier in the interview. Next refers to the interview navigation arrow."
+  },
+  "interview.interfaces.passphraseAlreadyEntered": {
+    "defaultMessage": "You have already entered your passphrase. Click \"Next\" to continue.",
+    "description": "Shown on the anonymisation screen when the participant returns to it after their passphrase was already set or entered. Next refers to the interview navigation arrow."
+  },
   "interview.interfaces.passphraseSet": {
     "defaultMessage": "Passphrase set successfully! Click \"Next\" to continue.",
     "description": "Success message after the participant sets the anonymisation passphrase. Next refers to the interview navigation arrow."
@@ -1744,8 +1752,8 @@
     "description": "Label of the secret phrase input used to decrypt interview data."
   },
   "interview.runtime.passphraseHelp": {
-    "defaultMessage": "Enter your passphrase in order to unlock the data on this screen. If you cannot remember your passphrase, please contact the person who recruited you to this study.",
-    "description": "Instructions for unlocking encrypted data and finding help if the passphrase is forgotten."
+    "defaultMessage": "Enter the passphrase you chose earlier in this interview to see and change the answers on this screen. A passphrase cannot be recovered if it is forgotten.",
+    "description": "Instructions in the dialog for entering the passphrase chosen earlier in this interview. It must not suggest that anyone can recover or reset a forgotten passphrase, because no one can."
   },
   "interview.runtime.passphraseIncorrect": {
     "defaultMessage": "This passphrase does not match the one used earlier in this interview. Check it and try again.",
@@ -1766,6 +1774,10 @@
   "interview.runtime.protectedAnswersNotSaved": {
     "defaultMessage": "Your answers have not been saved. Enter your passphrase, then try again.",
     "description": "Error when answers protected by the interview passphrase could not be saved because no working passphrase has been entered."
+  },
+  "interview.runtime.protectedAnswersUnavailable": {
+    "defaultMessage": "Answers protected by a passphrase cannot be shown or saved in this interview. Please let the person who recruited you to this study know.",
+    "description": "Shown in place of questions whose answers are protected by a passphrase, and on the passphrase screen, when the information this interview needs to check a passphrase is damaged, so no passphrase can be entered."
   },
   "interview.runtime.secondNode": {
     "defaultMessage": "second item",
