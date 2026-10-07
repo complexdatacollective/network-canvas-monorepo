@@ -26,7 +26,7 @@ import {
 
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import { InterviewI18nProvider } from '../../../i18n/InterviewI18nProvider';
-import { setPassphrase } from '../../../store/modules/ui';
+import { setPassphrase, setPassphraseInvalid } from '../../../store/modules/ui';
 import { interviewToastManager } from '../../../toast/interviewToastManager';
 import type { StageProps } from '../../../types';
 import { createEncryptionStore } from '../../Anonymisation/__tests__/encryptionFixtures';
@@ -218,6 +218,28 @@ describe('CategoricalBin asking for an encrypted "other" answer', () => {
     await expect(decryptData({ secureAttributes, data }, 'pw')).resolves.toBe(
       'Cousin',
     );
+  });
+
+  it('keeps the answer being entered, and says it was not saved, when the passphrase stops working', async () => {
+    const { store, dropIntoOther } = renderCategoricalBin('pw');
+    const before = store.getState().session.network;
+
+    await dropIntoOther();
+    fireEvent.change(await screen.findByRole('textbox'), {
+      target: { value: 'Cousin' },
+    });
+    act(() => {
+      store.dispatch(setPassphraseInvalid(true));
+    });
+    fireEvent.click(screen.getByTestId('dialog-submit'));
+
+    expect(
+      await screen.findByText(
+        'Your answers have not been saved. Enter your passphrase, then try again.',
+      ),
+    ).toBeVisible();
+    expect(screen.getByRole('textbox')).toHaveValue('Cousin');
+    expect(store.getState().session.network).toBe(before);
   });
 });
 
