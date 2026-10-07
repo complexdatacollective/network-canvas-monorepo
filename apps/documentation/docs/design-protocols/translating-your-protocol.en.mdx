@@ -55,14 +55,17 @@ Open the **Languages** tab in the protocol's navigation, between **Codebook** an
 - its name, its name in its own language, and its language code, such as `es` or `pt-BR`
 - a **Default** badge on the default language
 - how many of the protocol's texts are translated into it, such as "12 of 40 texts translated"
+- when some texts aren't translated into it yet, a link that opens them in the translation table, such as **Show 3 missing French translations**
 
 Everything else you can do with a language is in its actions menu, the **⋯** button at the end of its row: **Make default**, **Relabel translations…** and **Remove**.
 
 Above the list, **Which translation participants see** opens a short summary of [The default language and which translation participants see](#the-default-language-and-which-translation-participants-see).
 
+Under the list, **Open translation table** opens [the translation table](#the-translation-table), where you can translate every text into every language. It appears once your protocol has more than one language.
+
 Languages have no order. Architect lists them alphabetically by name, in the language Architect's interface is shown in, and the order your protocol stores them in makes no difference to what participants see.
 
-You can also manage your protocol's languages from a [Language Chooser](/en/design-protocols/interface-documentation/language-chooser) stage's editor. It shows the same list, with the same rules, as the **Languages** tab, so you can manage your protocol's languages without leaving your stages. Everything below applies in both places. A change you make there also applies to the stage's changes that you haven't saved yet. Missing translations are listed only on the **Languages** tab.
+You can also manage your protocol's languages from a [Language Chooser](/en/design-protocols/interface-documentation/language-chooser) stage's editor. It shows the same list, with the same rules, as the **Languages** tab, so you can manage your protocol's languages without leaving your stages. Everything below applies in both places. A change you make there also applies to the stage's changes that you haven't saved yet. Opening the translation table from there leaves the stage, so if the stage has changes you haven't saved, Architect asks whether to discard them first.
 
 ### Adding languages
 
@@ -119,32 +122,53 @@ Missing translations don't stop you from saving, previewing or using your protoc
 Architect shows you where they are:
 
 - The **Languages** tab shows a warning icon while some translations are missing.
-- The protocol overview screen shows a note that names the languages with missing translations, and a **Go to Languages** link.
-- The **Missing translations** section of the **Languages** tab lists the texts that have no translation, one language at a time.
+- The protocol overview screen shows a note that names the languages with missing translations. Its **Show missing translations** link opens the translation table on every text that is missing a translation.
+- On the **Languages** tab, each language with missing translations has a link such as **Show 3 missing French translations**. It opens the translation table on the texts that aren't translated into that language yet.
 
-### The missing translations list
+## The translation table
 
-Each language with missing translations has a tab that shows how many texts it is missing, such as **French 4**. Click a tab to see that language's missing translations. When more than five languages have missing translations, or their tabs don't fit across the section, choose the language from the **Show missing translations for** menu instead. You can also click the button next to a language in the **Protocol languages** list, such as **Show 3 missing French translations**.
+The translation table shows every text participants see, beside its translation into each of your protocol's languages. Open it with **Open translation table** on the **Languages** tab, or with any of the links in [Finding missing translations](#finding-missing-translations). **Return to Languages** takes you back.
 
-The list is a tree. **Stages**, **Codebook** and **Protocol** branch into the places that hold the texts. A stage shows its position, its name in the default language, and its interface, such as "Stage 4" and "Choose your language · Language Chooser". A node type or edge type shows its name. Under each place, texts are named the way the editor names them, such as "Page heading" or "Item 1 › Content", and each one previews what participants see in its place.
+Each row is one text, and each column is one language, in alphabetical order. The top of each column shows the language's name, a **Default** badge on the default language, and how many texts are translated into it, such as "12 of 40 translated".
 
-### Translating from the list
+The rows are grouped by where the texts are: your stages in order, then the codebook, then the protocol itself. A stage's group shows its position, its name in the default language, and its interface, such as "Stage 4 · Choose your language · Language Chooser". A node type or edge type shows its name. Click a stage's or type's name to open it. Each row is named the way the editor names the text, such as "Page heading" or "Item 1 › Content".
 
-Click a text in the list to open its translation dialog. The title says where the text is and what it is, and the line under it shows how far through the list you are, such as "Text 2 of 5 to translate into French".
+A cell with no translation shows, in lighter type, the text that participants using that language see instead, with a tag that says which language it is in, such as **Shown in English**. An asterisk after the tag means that participants may see the text in a different language: the other languages in a participant's browser are tried before the default language, so a participant whose browser also lists a language that has the text sees that one. A note under the table explains this. There's no asterisk when the text is shown in a closely related language, such as Spanish for Mexican Spanish, or when only one language has the text.
 
-At the top, **Translating from** shows the text in another language for you to translate from. It starts with the default language when the text has one. When more languages have the text, click the language's name to translate from one of those instead.
+### Choosing which texts and languages to show
 
-Under it is the text's field, set to the language you chose in the list. The field has a language menu, so you can write the text in any of your languages, and saving saves them all at once. A text needs to be written in at least one language.
+Above the table:
 
-Beside the field, **What participants see** shows the text as participants using each of your languages see it, and updates as you type. Each language has a card, marked **Default** for the default language and **Editing** for the language you are writing in. Click a language's card to write in that language. When a language has no translation, its card shows the text that participants see instead, in lighter type, with a tag that says which language it is in, such as **Shown in English**.
+- **Texts to show** chooses which rows the table shows: **All texts**, **Missing in any shown language**, or the texts missing one language, such as **Missing French**. A text you translate stays in the table until you change this choice, so it doesn't disappear while you work on it.
+- **Search texts and translations** finds texts by where they are, or by their translation into any of the languages shown.
+- The **Languages** menu, such as **Languages (3 of 4)**, shows and hides columns. One language is always shown. When you translate into one language at a time, it can help to show only that language and the one you translate from.
+- A count, such as "Showing 8 of 40 texts", says how many texts are shown.
 
-An asterisk after the tag means that participants may see the text in a different language: the other languages in a participant's browser are tried before the default language, so a participant whose browser also lists a language that has the text sees that one. A note under the cards explains this. There's no asterisk when the text is shown in a closely related language, such as Spanish for Mexican Spanish, or when only one language has the text.
+### Editing translations
 
-To keep going, click **Save and next**. Architect saves the text and shows the next text that's missing a translation in the same language, ready for you to type. On the last text, click **Save** to save it and close the dialog.
+Click a cell to edit its translation. Your change is saved when you leave the cell, and you can press Escape to undo it before then. To remove a translation, delete all of its text. A text needs a translation in at least one language, so you can't clear its only translation: the cell says why, and keeps the text.
+
+Formatted text, such as the text of an Information screen, is shown as participants see it until you click it. It then opens with the same formatting buttons as in the stage editor, below the text.
+
+You can work through the table with the keyboard:
+
+| Key                             | What it does                                                                                                                    |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| Enter                           | In a text of one line, saves it and moves to the next row. In a text with line breaks, starts a new line.                       |
+| Ctrl+Enter, or ⌘+Enter on a Mac | Saves the text and moves to the next row.                                                                                       |
+| Up arrow and down arrow         | Move to the row above or below, from the first or last line of a cell.                                                          |
+| Tab                             | Moves to the next cell. In formatted text, it moves to the formatting buttons first, and in a list it indents the item instead. |
+| Escape                          | Undoes your change to the cell, until you leave it.                                                                             |
+
+The help button (a question mark) above the table explains these keys too. **Undo** and **Redo**, next to it, undo and redo changes to your protocol, such as a translation you saved.
+
+### Using the whole screen
+
+The table fills the browser window. To give it the whole screen, click **Full screen**. Click **Exit full screen**, or press Escape, to go back. Your browser leaves full screen whenever you press Escape, even while you are editing a cell. Leaving the table also leaves full screen. If your browser can't show pages full screen, the button isn't shown.
 
 ## Translating text
 
-You translate a text in the same place where you wrote it, such as the stage editor. When your protocol has more than one language, each text field has a language menu next to it, showing the language you are editing. Choose another language from the menu to write in that language.
+Besides the translation table, you can translate a text in the same place where you wrote it, such as the stage editor. When your protocol has more than one language, each text field has a language menu next to it, showing the language you are editing. Choose another language from the menu to write in that language.
 
 All the text fields in an editor switch language together, so you can work through a stage in one language at a time. The editor always opens in the default language, and its previews show the text in the language you are editing.
 

@@ -47,16 +47,25 @@ In Architect:
   a missing translation, in the default language or any other, is a warning and
   never an error. A language can't be removed while it is the default, or while
   it holds the only translation of some text.
-- The Languages page lists missing translations one language at a time, in a
-  tab for each language that is missing some, or from a menu when more than
-  five languages are, or when their tabs don't fit. Stages are listed by
-  position, name and interface, and each text is named the way its editor
-  names it, such as "Page heading" or "Item 1 › Content". Clicking a text
-  opens a dialog that shows it in a language to translate from and as
-  participants using each language will see it, tags the languages that will
-  see it in another language, and offers Save and next to move straight on to
-  the next missing text. While translations are missing, a note in the stage
-  list names the languages that need them.
+- A translation table shows every text participants see beside its
+  translation into each of the protocol's languages, one column per language.
+  Open translation table, on the Languages page and in the Language Chooser's
+  editor, opens it. It fills the window, and a Full screen button gives it the
+  whole screen. Rows are grouped by stage, with each stage's position, name
+  and interface, then by codebook type, and each text is named the way its
+  editor names it, such as "Page heading" or "Item 1 › Content". Each cell is
+  edited where it is, formatted text with the stage editor's formatting
+  buttons, and saved when you leave it: Escape undoes a change until then, the
+  arrow keys move between rows, and Ctrl+Enter saves and moves to the next
+  row. An empty cell shows what participants using that language see instead,
+  tagged with that text's language. A menu shows every text, the texts missing
+  a translation into any language shown, or those missing one language; a
+  search finds texts by place or translation; and language columns can be
+  hidden.
+- Each language on the Languages page links to its missing translations in
+  the table, such as "Show 3 missing French translations". While translations
+  are missing, a note in the stage list names the languages that need them and
+  opens the table on every missing translation.
 - A new protocol asks which languages participants can take it in, and,
   when you choose more than one, which of them is the default. A protocol
   upgraded from an earlier version is marked as written in "Unspecified
