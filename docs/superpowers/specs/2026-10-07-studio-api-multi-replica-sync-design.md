@@ -145,9 +145,9 @@ is irrelevant.
   logged, and the leases lapse at the TTL.
 
   **Lock order, the deadlock rule.** Every transaction takes its locks in
-  one total order: the draft head (`drafts` row), then `protocol_connections`
-  rows in ascending `connection_id`, then `leases` rows in ascending
-  `section_id`. A single-row writer still closes a cycle: one that holds a
+  one total order: the `protocols` and `protocol_drafts` rows, then the
+  draft head (`drafts` row), then `protocol_connections` rows in ascending
+  `connection_id`, then `leases` rows in ascending `section_id`. A single-row writer still closes a cycle: one that holds a
   lease and then waits on the head (or on a connection row) deadlocks against
   a transaction that holds the head and waits on that lease. So the order
   binds every locker, not only the multi-row ones.
@@ -162,7 +162,11 @@ is irrelevant.
     `setSocketMode` then reads the tab's leases without locking them.
   - `sync.acquire`, `sync.commit` and the host's writes take the head before
     any lease. The host's writes first lock the `protocols` and
-    `protocol_drafts` rows (`lockProtocolDraft`), which sit before the head.
+    `protocol_drafts` rows (`lockProtocolDraft`), which sit before the head,
+    and `publishDraft` locks `protocols` before the head for the same reason.
+  - Liveness, connect and the grace's release set `lock_timeout`, so a
+    held head fails them promptly rather than leaving a caller waiting.
+    Pool checkout and `BEGIN` are not bounded.
   - `discardDraft` takes the head `FOR UPDATE`, then the cascade reaches
     leases and connections. Holding the head exclusively, it waits on no one
     who holds a row it needs.

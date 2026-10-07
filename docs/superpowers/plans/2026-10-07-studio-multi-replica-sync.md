@@ -236,9 +236,11 @@ its transaction is a single read.
 **Lock order, the deadlock rule.** Every transaction takes its locks in one
 total order:
 
-1. the draft head (`drafts` row);
-2. `protocol_connections` rows, ascending `connection_id`;
-3. `leases` rows, ascending `section_id`.
+1. the `protocols` and `protocol_drafts` rows (`lockProtocolDraft`, and
+   `publishDraft`'s own `protocols … FOR UPDATE`);
+2. the draft head (`drafts` row);
+3. `protocol_connections` rows, ascending `connection_id`;
+4. `leases` rows, ascending `section_id`.
 
 A single-row writer still closes a cycle: one that holds a lease and then
 waits on the head (or on a connection row) deadlocks against a transaction
@@ -256,9 +258,18 @@ locker, not only the multi-row ones.
 - `sync.acquire`, `sync.commit` and the host's writes take the head before
   any lease. The host's writes first lock the `protocols` and
   `protocol_drafts` rows (`lockProtocolDraft`), which sit before the head.
+- `publishDraft` locks the `protocols` row `FOR UPDATE` before the head, as
+  the host's writes do. Taking the head first would wait on a host write
+  that holds the `protocols` row and is itself waiting on the head.
 - `discardDraft` takes the head `FOR UPDATE`, then the cascade reaches leases
   and connections. Holding the head exclusively, it waits on no one who
   holds a row it needs.
+
+The order keeps lock waits finite; `lock_timeout` keeps them short where a
+caller is waiting on a fiber. Liveness, `connectSocket` and `releaseOwner`
+each set `SET LOCAL lock_timeout` first (see C1 As built). Checking a
+connection out of the pool and `BEGIN` are not bounded by it, nor by
+anything else: `@effect/sql-pg` has no acquire timeout.
 
 Liveness is **one transaction per draft**. It renews the replica's own rows
 (`replica_id = ReplicaId`) and the leases of their owners. `40P01` and any
@@ -630,17 +641,14 @@ checks:{…, draining: 'failed: draining'}}`. The worker and `router.ts`
   - Every scheduled loop (the lease keeper's tick, the relay's poll and
     held-back reopen check, the doorbell's probe) and the doorbell signal
     consumer catch and log a cause before their schedule, so one fault never
-    ends the loop. A relay whose run dies ends its watchers with the failure
+    ends the loop (logged at most once a minute while it recurs; see below). A relay whose run dies ends its watchers with the failure
     rather than leaving them waiting. The doorbell decodes `cursor` with
     `Schema.BigIntFromString`.
-  - The connect acquisition is bounded by `CONNECT_TIMEOUT_MS` (5 s) and is
-    interruptible, so a closing scope or the bound cancels a wait on the
-    draft head. A grace's release, retries included, is bounded by
-    `GRACE_RELEASE_TIMEOUT_MS` (25 s, room for `retryBriefly`'s 15.5 s of
-    waits); one that gives up leaves the leases to lapse for the reaper.
-  - An idle watch re-authorizes every `REAUTHORIZE_MS`, jittered, and ends
-    with the authorization failure when the caller no longer reaches the
-    protocol.
+  - The connect acquisition and a grace's release were bounded by fiber
+    timeouts; the adversarial review replaced both (below).
+  - An idle watch re-authorizes on a jittered timer and ends with the
+    authorization failure when the caller no longer reaches the protocol
+    (its pace and cost are below).
   - Every head writer (`lockDraftHead`, `publishDraft`, `sync.commit`,
     `releaseOwner`, the reaper) takes the head `FOR NO KEY UPDATE`: still
     exclusive against every other head lock, but not against the
@@ -650,6 +658,63 @@ checks:{…, draining: 'failed: draining'}}`. The worker and `router.ts`
     no deadlock.
   - A lease-renewal readiness signal was not added: `Leases` is built inside
     the RPC routes, not beside `/readyz`.
+- After the adversarial review:
+  - **Work after a commit never depends on the fiber outliving it.**
+    `withTransaction` commits in an uninterruptible finalizer, so a fiber
+    timeout or interrupt that lands as COMMIT runs fails the caller while
+    the transaction stands. Two places did work after a commit that such a
+    failure skipped:
+    - The connect acquisition is uninterruptible and has no fiber timeout. A
+      bound that fired as it committed left a live row that no finalizer
+      would expire (I36). Its lock waits are bounded in the database
+      instead: the transaction sets `lock_timeout`
+      (`CONNECT_LOCK_TIMEOUT_MS`, 5 s), so a head held past it fails the
+      connect with nothing written.
+    - A grace's release attempt is uninterruptible from its `closed` check
+      through `onReleased`, so a release that commits always tells watchers,
+      even when the tab returns or the deadline passes as it commits (I37).
+      `releaseOwner` sets `lock_timeout` (`RELEASE_LOCK_TIMEOUT_MS`, 2 s).
+      Retries stop at `GRACE_RELEASE_TIMEOUT_MS` (25 s) through
+      `Effect.retry`'s `while`, checked between attempts: no attempt begins
+      after it, and one under way finishes. One that gives up leaves the
+      leases to lapse for the reaper.
+
+    Liveness keeps `LIVENESS_LOCK_TIMEOUT_MS`. All three set it through
+    `limitLockWaits` (span `protocolBuilder.lockTimeout`). Pool checkout and
+    `BEGIN` stay unbounded: `@effect/sql-pg` has no acquire timeout, and its
+    10 s `connectTimeout` bounds only opening a new physical connection, so
+    a saturated pool still holds a connect or a release until a connection
+    frees up.
+
+    The rest of the post-commit work in `protocol-builder` was audited:
+    - Already whole: the handlers' writes, which are uninterruptible from
+      the command on; the disconnect in the watch's release finalizer; the
+      watch's presence ring, whose finalizer is registered before the
+      connect.
+    - Idempotent: `Leases.contact` registers before its upsert.
+    - Lost only at shutdown, where durable state covers it:
+      - a tick's reconnect: the rows lapse by TTL;
+      - the reaper's dirtying and ring: the events are in the log, and other
+        replicas read them by cursor;
+      - a mode change's presence ring: the poll diffs presence;
+      - the forked staged-object deletes after a release or promotion: the
+        orphan sweep removes them.
+    - `resources.ts` settles a staged upload by its row (`namedByRow`).
+    - `draft-structure.ts` and `staging-store.ts` do no work after a commit.
+
+  - `publishDraft` locks `protocols` before the draft head, in the order
+    §2.3 gives (I38).
+  - An idle watch re-authorizes on its own `REAUTHORIZE_MS` (30 s) timer,
+    jittered, not at the lease-renewal pace, and a delivered entry
+    re-authorizes once that much time has passed. A pass checks the session
+    and `authorizeCaller` without the RPC rate limiter, under a one-permit
+    semaphore, so the timer and a delivery never run it at once (I39).
+  - A scheduled loop logs a defect that recurs pass after pass once, then
+    at most once a minute (`RECURRING_DEFECT_LOG_MS`) with how many passes
+    in a row it has failed. A different defect logs at once, and a pass that
+    succeeds resets the count (`catchLoopDefect`, I40). It covers the lease
+    keeper's tick, the relay's poll and reopen check, the doorbell's probe
+    and its signal consumer.
 
 ### S: persistent staging (serial, after C2)
 
@@ -1047,6 +1112,11 @@ revert.
 | I33  | An abandoned seed ends promptly and leaves no relay                                                                            | C2 events (seed transaction gated)             | seed span ends while the gate is shut; no subscribers                          | seed inside the acquisition                                     |
 | I34  | A failed or held-back wake is read again before the poll                                                                       | C2 events (one failed read; closure lifted)    | write delivered within 2 s, with the poll at 60 s                              | drop the retry; drop the reopen wake                            |
 | I35  | Consecutive liveness lock timeouts escalate to a warning                                                                       | C1 leases (head held for three ticks)          | levels `Info, Info, Warn`                                                      | never warn                                                      |
+| I36  | A watch that closes as its connect commits leaves no live row                                                                  | C1 leases (commit held, watch closed)          | no live row for the watch                                                      | bound the connect with a fiber timeout or interrupt             |
+| I37  | A grace release that commits tells watchers, even past its deadline or as the tab returns                                      | C1 leases (release commit held)                | watcher sees the lock release; no failure logged                               | let the deadline or the tab's return interrupt the attempt      |
+| I38  | `publishDraft` takes `protocols` before the draft head                                                                         | protocol publish (`protocols` row held)        | head lockable `NOWAIT` while publish waits                                     | lock the head first                                             |
+| I39  | An idle watch's re-authorization charges no rate limit                                                                         | RPC protocol builder (counting limiter)        | timer passes run; no limiter charge; watch still open                          | re-authorize through the rate-limited RPC path                  |
+| I40  | A loop's recurring defect logs once, not at every pass                                                                         | C2 publisher (reopen check defect)             | one error log across five passes                                               | log every caught cause                                          |
 
 ---
 
@@ -1087,9 +1157,8 @@ revert.
   treats an expired lease as free, and the first subscriber's relay reaps
   it within one safety poll. The visible consequence is that a newly opened
   draft can show a stale holder for up to one poll interval (5 s).
-- **Risk: re-authorization only on delivered entries.** An idle watch of a
-  removed member keeps renewing until the next event. This is
-  pre-existing; flag it, do not fix it here.
+- **Resolved: re-authorization only on delivered entries.** An idle watch
+  now re-authorizes on its own timer (C1 As built).
 - **Out of scope: making the existing DB client pooler-safe.** This is
   pre-existing, and the user decides separately. It covers:
   - role and `statement_timeout` startup parameters;
