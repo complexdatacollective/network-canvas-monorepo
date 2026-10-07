@@ -2,7 +2,7 @@ import { configureStore } from '@reduxjs/toolkit';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Provider } from 'react-redux';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import { ProtocolBuilder } from '@codaco/protocol-builder/ProtocolBuilder';
 import type { StageEditorActionContext } from '@codaco/protocol-builder/stage-editor-contract';
@@ -146,7 +146,11 @@ const finishedEditing = () =>
   screen.queryByRole('button', { name: 'Finished Editing' });
 
 describe('the language chooser’s languages in Architect', () => {
-  it('lists the protocol’s languages with the Languages page’s actions, but no missing translations', async () => {
+  afterEach(() => {
+    window.history.replaceState(null, '', '/');
+  });
+
+  it('lists the protocol’s languages with the Languages page’s actions and links', async () => {
     await openEditor();
 
     expect(
@@ -166,12 +170,56 @@ describe('the language chooser’s languages in Architect', () => {
       screen.getByRole('button', { name: 'Add languages' }),
     ).toBeInTheDocument();
     expect(
-      screen.queryByRole('button', { name: /missing translation/ }),
-    ).not.toBeInTheDocument();
+      within(rowOf('German')).getByRole('link', {
+        name: 'Show 1 missing German translation',
+      }),
+    ).toHaveAttribute('href', '/protocol/localization/table?missing=de');
+    expect(
+      screen.getByRole('link', { name: 'Open translation table' }),
+    ).toHaveAttribute('href', '/protocol/localization/table');
     // The sections the package's own editor has, besides its list.
     expect(
       screen.getByRole('heading', { name: 'Skip logic' }),
     ).toBeInTheDocument();
+  });
+
+  it('opens the translation table from an untouched stage without asking', async () => {
+    await openEditor();
+
+    await userEvent.click(
+      screen.getByRole('link', { name: 'Open translation table' }),
+    );
+
+    expect(window.location.pathname).toBe('/protocol/localization/table');
+    expect(globalThis.__architectDialogMocks.openDialog).not.toHaveBeenCalled();
+  });
+
+  it('asks before leaving unsaved changes to the stage for the translation table', async () => {
+    const { name } = await openEditor();
+    await userEvent.clear(name);
+    await userEvent.type(name, 'Pick a language');
+    await waitFor(() => expect(readStageDraft().dirty).toBe(true));
+    const { openDialog } = globalThis.__architectDialogMocks;
+
+    openDialog.mockResolvedValueOnce(false);
+    await userEvent.click(
+      screen.getByRole('link', { name: 'Open translation table' }),
+    );
+    await waitFor(() => expect(openDialog).toHaveBeenCalledTimes(1));
+    expect(window.location.pathname).toBe('/');
+
+    openDialog.mockResolvedValueOnce(true);
+    await userEvent.click(
+      within(rowOf('German')).getByRole('link', {
+        name: 'Show 1 missing German translation',
+      }),
+    );
+    await waitFor(() =>
+      expect(window.location.pathname + window.location.search).toBe(
+        '/protocol/localization/table?missing=de',
+      ),
+    );
+    expect(openDialog).toHaveBeenCalledTimes(2);
   });
 
   it('leaves nothing to save after removing a language from an untouched stage', async () => {

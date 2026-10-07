@@ -1,8 +1,6 @@
 import { combineReducers, configureStore } from '@reduxjs/toolkit';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { useState } from 'react';
-import { flushSync } from 'react-dom';
 import { Provider } from 'react-redux';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -115,7 +113,6 @@ describe('DialogForm', () => {
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalledWith(
         expect.objectContaining({ label: 'Alice' }),
-        'main',
       );
     });
   });
@@ -184,7 +181,6 @@ describe('DialogForm', () => {
     await waitFor(() => {
       expect(onSubmitOpening).toHaveBeenCalledWith(
         expect.objectContaining({ label: 'new' }),
-        'main',
       );
     });
     expect(onSubmitClosing).not.toHaveBeenCalled();
@@ -292,7 +288,6 @@ describe('DialogForm', () => {
     ).toBeInTheDocument();
     expect(onSubmit).toHaveBeenCalledWith(
       expect.objectContaining({ label: 'Alice' }),
-      'main',
     );
   });
 
@@ -377,127 +372,6 @@ describe('DialogForm', () => {
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Cancel' })).toBeEnabled();
     });
-  });
-});
-
-describe('DialogForm secondary submit', () => {
-  const openDialogSpy = globalThis.__architectDialogMocks.openDialog;
-
-  const renderForm = (
-    onSubmit: (values: unknown, submitter: string) => { success: true },
-    onClose = vi.fn(),
-  ) =>
-    render(
-      <DialogForm
-        open
-        onClose={onClose}
-        title="Translate"
-        formId="secondary-form"
-        submitLabel="Save"
-        secondarySubmitLabel="Save and next"
-        onSubmit={onSubmit}
-      >
-        <Field
-          name="label"
-          label="Label"
-          component={InputField}
-          initialValue="Alice"
-        />
-      </DialogForm>,
-    );
-
-  it('draws the second button after the main one and tells onSubmit which sent the form', async () => {
-    const onSubmit = vi.fn(() => ({ success: true as const }));
-    renderForm(onSubmit);
-
-    const buttons = screen
-      .getAllByRole('button')
-      .map((button) => button.textContent);
-    expect(buttons.indexOf('Save and next')).toBe(buttons.indexOf('Save') + 1);
-
-    fireEvent.click(screen.getByRole('button', { name: 'Save and next' }));
-    await waitFor(() =>
-      expect(onSubmit).toHaveBeenLastCalledWith(
-        expect.objectContaining({ label: 'Alice' }),
-        'secondary',
-      ),
-    );
-
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
-    await waitFor(() =>
-      expect(onSubmit).toHaveBeenLastCalledWith(
-        expect.objectContaining({ label: 'Alice' }),
-        'main',
-      ),
-    );
-  });
-
-  it('takes the values a secondary submit saved as unchanged', async () => {
-    const onClose = vi.fn();
-    const onSubmit = vi.fn(() => ({ success: true as const }));
-    renderForm(onSubmit, onClose);
-
-    fireEvent.change(screen.getByRole('textbox', { name: 'Label' }), {
-      target: { value: 'Bob' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'Save and next' }));
-    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
-
-    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
-    expect(openDialogSpy).not.toHaveBeenCalled();
-    expect(onClose).toHaveBeenCalledTimes(1);
-  });
-
-  it('takes a field that mounts while a secondary submit saves as unchanged', async () => {
-    const onClose = vi.fn();
-    const NextItem = () => {
-      const [item, setItem] = useState(1);
-      return (
-        <DialogForm
-          open
-          onClose={onClose}
-          title="Translate"
-          formId="next-item-form"
-          submitLabel="Save"
-          secondarySubmitLabel="Save and next"
-          onSubmit={() => {
-            // As a store dispatch does, the next item renders before the
-            // submission finishes.
-            flushSync(() => setItem((current) => current + 1));
-            return { success: true as const };
-          }}
-        >
-          <Field
-            key={item}
-            name={`item${item}`}
-            label="Label"
-            component={InputField}
-            initialValue={`Item ${item}`}
-          />
-        </DialogForm>
-      );
-    };
-    render(<NextItem />);
-
-    fireEvent.change(screen.getByRole('textbox', { name: 'Label' }), {
-      target: { value: 'Edited' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'Save and next' }));
-    await waitFor(() =>
-      expect(screen.getByRole('textbox', { name: 'Label' })).toHaveValue(
-        'Item 2',
-      ),
-    );
-    await waitFor(() =>
-      expect(
-        screen.getByRole('button', { name: 'Save and next' }),
-      ).toBeEnabled(),
-    );
-
-    expect(hasDirtyNestedDraft()).toBe(false);
-    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
-    expect(openDialogSpy).not.toHaveBeenCalled();
-    expect(onClose).toHaveBeenCalledTimes(1);
   });
 });
 

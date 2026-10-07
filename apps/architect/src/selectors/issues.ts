@@ -233,33 +233,6 @@ export type TranslationPlace =
   | { kind: 'ego' }
   | { kind: 'protocol' };
 
-export type MissingTranslationGap = {
-  locale: LocaleTag;
-  /**
-   * The translation a participant who chose `locale` sees instead, when their
-   * browser lists no other language that has the string.
-   */
-  fallbackLocale: LocaleTag;
-};
-
-export type MissingTranslationField = {
-  /** The string's path in the protocol, which `setProtocolTranslation` takes. */
-  path: readonly (string | number)[];
-  /** The string's path below its place, e.g. `['prompts', 0, 'text']`. */
-  field: readonly (string | number)[];
-  /** Whether participants see the string rendered as markdown. */
-  format: LocalizedStringFormat;
-  /** Every translation the string has, including each gap's fallback. */
-  value: LocalizedString;
-  gaps: readonly MissingTranslationGap[];
-};
-
-export type MissingTranslationGroup = {
-  key: string;
-  place: TranslationPlace;
-  fields: readonly MissingTranslationField[];
-};
-
 const locateTranslation = (
   protocol: CurrentProtocol,
   path: readonly (string | number)[],
@@ -293,7 +266,16 @@ const locateTranslation = (
 };
 
 /** One participant-facing string, as the translation table lists it. */
-export type TranslationRow = Omit<MissingTranslationField, 'gaps'>;
+export type TranslationRow = {
+  /** The string's path in the protocol, which `setProtocolLocalizedString` takes. */
+  path: readonly (string | number)[];
+  /** The string's path below its place, e.g. `['prompts', 0, 'text']`. */
+  field: readonly (string | number)[];
+  /** Whether participants see the string rendered as markdown. */
+  format: LocalizedStringFormat;
+  /** Every translation the string has. */
+  value: LocalizedString;
+};
 
 export type TranslationGroup = {
   key: string;
@@ -337,49 +319,5 @@ export const getTranslationGroups = createSelector(
       .toSorted(
         (a, b) => PLACE_ORDER[a.place.kind] - PLACE_ORDER[b.place.kind],
       );
-  },
-);
-
-/**
- * Missing translations grouped by the stage or codebook entry that holds
- * them, one row per string, in the order the protocol declares them.
- */
-export const getMissingTranslationGroups = createSelector(
-  [getProtocol, getLocalizedStrings, getLocalizationCoverage],
-  (protocol, strings, coverage): readonly MissingTranslationGroup[] => {
-    if (!protocol) return [];
-    const gapsByPath = new Map<string, MissingTranslationGap[]>();
-    for (const warning of coverage.warnings) {
-      const pathKey = JSON.stringify(warning.path);
-      const gaps = gapsByPath.get(pathKey) ?? [];
-      gapsByPath.set(pathKey, gaps);
-      gaps.push({
-        locale: warning.locale,
-        fallbackLocale: warning.fallbackLocale,
-      });
-    }
-    const groups = new Map<
-      string,
-      { place: TranslationPlace; fields: MissingTranslationField[] }
-    >();
-    for (const hit of strings) {
-      const gaps = gapsByPath.get(JSON.stringify(hit.path));
-      if (!gaps) continue;
-      const { key, place, field } = locateTranslation(protocol, hit.path);
-      const group = groups.get(key) ?? { place, fields: [] };
-      groups.set(key, group);
-      group.fields.push({
-        path: hit.path,
-        field,
-        format: hit.format,
-        value: hit.value,
-        gaps,
-      });
-    }
-    return [...groups].map(([key, group]) => ({
-      key,
-      place: group.place,
-      fields: group.fields,
-    }));
   },
 );

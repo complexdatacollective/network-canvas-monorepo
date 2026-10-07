@@ -8,7 +8,7 @@ import {
   useRef,
   useState,
 } from 'react';
-import { Link } from 'wouter';
+import { Link, useSearchParams } from 'wouter';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
@@ -22,9 +22,8 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from '@codaco/fresco-ui/DropdownMenu';
-import CheckboxField from '@codaco/fresco-ui/form/fields/Checkbox';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
-import { Label } from '@codaco/fresco-ui/Label';
+import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import { NativeLink } from '@codaco/fresco-ui/NativeLink';
 import {
   Popover,
@@ -54,15 +53,16 @@ import {
 } from '~/selectors/issues';
 import { getProtocol } from '~/selectors/protocol';
 
-import {
-  describePlace,
-  type PlaceDetails,
-  textSteps,
-} from './MissingTranslations';
+import { describePlace, type PlaceDetails, textSteps } from './textPlaces';
 import TranslationCell, {
   type CommitResult,
   fallbackFor,
 } from './TranslationCell';
+import {
+  type MissingFilter,
+  readMissingFilter,
+  writeMissingFilter,
+} from './translationTableLinks';
 import { useLanguageName } from './useLanguageName';
 
 const messages = defineMessages({
@@ -116,11 +116,29 @@ const messages = defineMessages({
     description:
       'Label and placeholder of the search field above the translation table. It finds texts by where they are or by their translations into the languages shown.',
   },
-  missingOnly: {
-    id: 'architect.localization.translationTable.missingOnly',
-    defaultMessage: 'Only texts with missing translations',
+  filter: {
+    id: 'architect.localization.translationTable.filter',
+    defaultMessage: 'Texts to show',
     description:
-      'Checkbox above the translation table that hides the texts already translated into every language shown.',
+      'Accessible name of the menu above the translation table that chooses whether it shows every text or only the texts with a translation missing.',
+  },
+  allTexts: {
+    id: 'architect.localization.translationTable.allTexts',
+    defaultMessage: 'All texts',
+    description:
+      'Option in the menu above the translation table that shows every text the protocol has.',
+  },
+  missingAny: {
+    id: 'architect.localization.translationTable.missingAny',
+    defaultMessage: 'Missing in any shown language',
+    description:
+      'Option in the menu above the translation table that shows only the texts with no translation into one or more of the languages whose columns are shown.',
+  },
+  missingLanguage: {
+    id: 'architect.localization.translationTable.missingLanguage',
+    defaultMessage: 'Missing {language}',
+    description:
+      'Option in the menu above the translation table, one per language, that shows only the texts with no translation into that language. language is the language’s name, such as “French”.',
   },
   languages: {
     id: 'architect.localization.translationTable.languages',
@@ -158,6 +176,12 @@ const messages = defineMessages({
     defaultMessage: 'Every text is translated into the languages shown.',
     description:
       'Shown in the translation table when only texts with missing translations are shown and there are none.',
+  },
+  allTranslatedInto: {
+    id: 'architect.localization.translationTable.allTranslatedInto',
+    defaultMessage: 'Every text is translated into {language}.',
+    description:
+      'Shown in the translation table when only texts with no translation into one language are shown and there are none. language is the language’s name, such as “French”.',
   },
   noTexts: {
     id: 'architect.localization.translationTable.noTexts',
@@ -260,6 +284,9 @@ const GroupHeading = ({ group }: { group: ShownGroup }) => {
 
 const rowKey = (path: TranslationRow['path']) => JSON.stringify(path);
 
+// Set apart from the menu's other options, which a language tag could match.
+const languageOption = (locale: LocaleTag) => `language:${locale}`;
+
 const isSingleLine = (row: TranslationRow) =>
   Object.values(row.value).every(
     (message) => !messageText(message).includes('\n'),
@@ -284,7 +311,7 @@ const describeGroups = (
         return {
           key: rowKey(row.path),
           row,
-          name: steps.map(({ label }) => label).join(NAME_SEPARATOR),
+          name: steps.join(NAME_SEPARATOR),
           rawName: raw,
           singleLine: isSingleLine(row),
         };
@@ -326,12 +353,12 @@ const TranslationTable = ({ heading, actions }: TranslationTableProps) => {
   const coverage = useAppSelector(getLocalizationCoverage);
   const baseId = useId();
   const searchId = useId();
-  const missingOnlyId = useId();
+  const filterId = useId();
   const helpId = useId();
   const tableRef = useRef<HTMLTableElement>(null);
   const headRef = useRef<HTMLTableSectionElement>(null);
   const [hidden, setHidden] = useState<ReadonlySet<LocaleTag>>(new Set());
-  const [missingOnly, setMissingOnly] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
   const [query, setQuery] = useState('');
   // A row stays while it is being worked on, even once its last missing
   // translation is written or its text stops matching the search, so the
@@ -363,6 +390,8 @@ const TranslationTable = ({ heading, actions }: TranslationTableProps) => {
     intl.locale,
   );
   const visible = locales.filter((locale) => !hidden.has(locale));
+  // Kept in the address, so a link can open the table on a language's gaps.
+  const filter = readMissingFilter(searchParams, locales);
   const described = describeGroups(intl, protocol, groups);
   const total = described.reduce((sum, group) => sum + group.rows.length, 0);
 
@@ -371,23 +400,31 @@ const TranslationTable = ({ heading, actions }: TranslationTableProps) => {
     needle === '' ||
     [
       group.kind,
-      group.title ?? '',
+      group.title?.text ?? '',
       row.name,
       ...visible.map((locale) => translationText(row.row.value, locale)),
     ].some((text) => text.toLocaleLowerCase(intl.locale).includes(needle));
-  const isMissing = (row: ShownRow) =>
-    visible.some((locale) => !Object.hasOwn(row.row.value, locale));
+  const isMissingIn = (row: ShownRow, locale: LocaleTag) =>
+    !Object.hasOwn(row.row.value, locale);
+  const passesFilter = (row: ShownRow) => {
+    switch (filter.kind) {
+      case 'all':
+        return true;
+      case 'any':
+        return visible.some((locale) => isMissingIn(row, locale));
+      case 'language':
+        return isMissingIn(row, filter.locale);
+    }
+  };
 
   const shownGroups = described.flatMap((group) => {
     const rows = group.rows.filter(
-      (row) =>
-        kept.has(row.key) ||
-        ((!missingOnly || isMissing(row)) && matches(group, row)),
+      (row) => kept.has(row.key) || (passesFilter(row) && matches(group, row)),
     );
     return rows.length > 0 ? [{ ...group, rows }] : [];
   });
   const shown = shownGroups.reduce((sum, group) => sum + group.rows.length, 0);
-  const filtering = missingOnly || needle !== '';
+  const filtering = filter.kind !== 'all' || needle !== '';
 
   const footnote = shownGroups.some((group) =>
     group.rows.some((row) =>
@@ -401,6 +438,13 @@ const TranslationTable = ({ heading, actions }: TranslationTableProps) => {
 
   const resetKept = () => setKept(new Set());
 
+  const chooseFilter = (next: MissingFilter) => {
+    setSearchParams((params) => writeMissingFilter(params, next), {
+      replace: true,
+    });
+    resetKept();
+  };
+
   const toggleLanguage = (locale: LocaleTag, show: boolean) => {
     const next = new Set(hidden);
     if (show) next.delete(locale);
@@ -408,6 +452,37 @@ const TranslationTable = ({ heading, actions }: TranslationTableProps) => {
     if (next.size === locales.length) return;
     setHidden(next);
     resetKept();
+    // A language's gaps are not listed once its column is hidden.
+    if (filter.kind === 'language' && filter.locale === locale && !show) {
+      chooseFilter({ kind: 'any' });
+    }
+  };
+
+  const filterOptions = [
+    { value: 'all', label: intl.formatMessage(messages.allTexts) },
+    { value: 'any', label: intl.formatMessage(messages.missingAny) },
+    ...locales.map((locale) => ({
+      value: languageOption(locale),
+      label: intl.formatMessage(messages.missingLanguage, {
+        language: languageName(locale),
+      }),
+    })),
+  ];
+
+  const handleFilterChange = (value: string | number | undefined) => {
+    if (value === 'all' || value === 'any') {
+      chooseFilter({ kind: value });
+      return;
+    }
+    const locale = locales.find((tag) => languageOption(tag) === value);
+    if (locale === undefined) return;
+    // Its column is shown, so its gaps can be filled where they are listed.
+    if (hidden.has(locale)) {
+      const next = new Set(hidden);
+      next.delete(locale);
+      setHidden(next);
+    }
+    chooseFilter({ kind: 'language', locale });
   };
 
   const commit =
@@ -447,12 +522,15 @@ const TranslationTable = ({ heading, actions }: TranslationTableProps) => {
     };
 
   const columnId = (locale: LocaleTag) => `${baseId}-language-${locale}`;
-  const emptyMessage =
-    total === 0
-      ? messages.noTexts
-      : needle === ''
-        ? messages.allTranslated
-        : messages.noMatches;
+  const emptyMessage = () => {
+    if (total === 0) return intl.formatMessage(messages.noTexts);
+    if (needle !== '') return intl.formatMessage(messages.noMatches);
+    return filter.kind === 'language'
+      ? intl.formatMessage(messages.allTranslatedInto, {
+          language: languageName(filter.locale),
+        })
+      : intl.formatMessage(messages.allTranslated);
+  };
 
   const tableStyle: TableStyle = { '--translation-columns': visible.length };
   let rowIndex = -1;
@@ -475,19 +553,20 @@ const TranslationTable = ({ heading, actions }: TranslationTableProps) => {
           size="sm"
           className="max-w-72 min-w-44 flex-1 basis-44"
         />
-        <div className="flex items-center gap-2">
-          <CheckboxField
-            id={missingOnlyId}
-            value={missingOnly}
-            onChange={(value) => {
-              setMissingOnly(Boolean(value));
-              resetKept();
-            }}
-          />
-          <Label htmlFor={missingOnlyId} className="cursor-pointer text-sm">
-            {intl.formatMessage(messages.missingOnly)}
-          </Label>
-        </div>
+        <NativeSelectField
+          id={filterId}
+          name="translation-table-filter"
+          aria-label={intl.formatMessage(messages.filter)}
+          value={
+            filter.kind === 'language'
+              ? languageOption(filter.locale)
+              : filter.kind
+          }
+          onChange={handleFilterChange}
+          options={filterOptions}
+          size="sm"
+          className="w-auto max-w-72 min-w-44"
+        />
         <DropdownMenu>
           <DropdownMenuTrigger
             render={
@@ -640,9 +719,7 @@ const TranslationTable = ({ heading, actions }: TranslationTableProps) => {
                 colSpan={visible.length + 1}
                 className="px-3 py-10 text-center text-current/70"
               >
-                {intl.formatMessage(
-                  filtering || total === 0 ? emptyMessage : messages.noTexts,
-                )}
+                {emptyMessage()}
               </td>
             </tr>
           </tbody>

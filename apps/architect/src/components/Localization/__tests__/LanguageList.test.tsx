@@ -35,10 +35,7 @@ const DEFAULT_REASON =
 const STRANDED_REASON =
   '1 text exists only in French. Translate it into another language before removing French.';
 
-const renderLanguageList = (
-  protocol: CurrentProtocol = trilingual,
-  onShowMissing = vi.fn(),
-) => {
+const renderLanguageList = (protocol: CurrentProtocol = trilingual) => {
   const store = configureStore({
     reducer: rootReducer,
     middleware: (getDefaultMiddleware) =>
@@ -47,10 +44,10 @@ const renderLanguageList = (
   store.dispatch(setActiveProtocol(protocol));
   render(
     <Provider store={store}>
-      <LanguageList onShowMissing={onShowMissing} />
+      <LanguageList />
     </Provider>,
   );
-  return { store, onShowMissing };
+  return { store };
 };
 
 const rowOf = (language: string) => {
@@ -103,7 +100,7 @@ describe('LanguageList', () => {
       german.getByRole('button', { name: 'Actions for German' }),
     ).toBeVisible();
     expect(
-      german.getByRole('button', {
+      german.getByRole('link', {
         name: 'Show 2 missing German translations',
       }),
     ).toBeVisible();
@@ -112,16 +109,28 @@ describe('LanguageList', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('asks for the missing translations of a language', () => {
-    const { onShowMissing } = renderLanguageList();
+  it('links a language’s missing translations to the translation table, showing only those', () => {
+    renderLanguageList();
 
-    fireEvent.click(
-      within(rowOf('German')).getByRole('button', {
+    expect(
+      within(rowOf('German')).getByRole('link', {
         name: 'Show 2 missing German translations',
       }),
-    );
+    ).toHaveAttribute('href', '/protocol/localization/table?missing=de');
+    expect(
+      within(rowOf('French')).queryByRole('link', { name: /missing/ }),
+    ).not.toBeInTheDocument();
+  });
 
-    expect(onShowMissing).toHaveBeenCalledWith('de');
+  it('opens the translation table from beside Add languages', () => {
+    renderLanguageList();
+
+    expect(
+      screen.getByRole('link', { name: 'Open translation table' }),
+    ).toHaveAttribute('href', '/protocol/localization/table');
+    expect(
+      screen.getByRole('button', { name: 'Add languages' }),
+    ).toBeInTheDocument();
   });
 
   it('keeps the default language’s Remove in its menu, unavailable, and says why', async () => {
@@ -292,5 +301,20 @@ describe('LanguageList', () => {
         name: 'Which translation participants see',
       }),
     ).not.toBeInTheDocument();
+  });
+
+  it('offers the translation table only once there is a language to translate into', () => {
+    renderLanguageList({
+      ...trilingual,
+      localization: { defaultLocale: 'en', locales: ['en'] },
+      stages: [],
+    });
+
+    expect(
+      screen.queryByRole('link', { name: 'Open translation table' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Add languages' }),
+    ).toBeInTheDocument();
   });
 });

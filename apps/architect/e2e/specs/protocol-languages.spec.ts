@@ -10,24 +10,21 @@ import { emptyProtocol } from '../fixtures/seed.js';
 import { readProtocolJson } from '../helpers/read-store.js';
 
 /**
- * The Languages page (`/protocol/localization`): the protocol's declared
- * languages, and the texts not yet translated into each of them.
+ * The Languages page (`/protocol/localization`), which manages the protocol's
+ * languages, and the translation table (`/protocol/localization/table`),
+ * where its texts are translated.
  *
  * Seeded with one English stage holding three texts (its name, its heading and
- * one text block), so the page has something to count and list once a second
+ * one text block), so there is something to count and translate once a second
  * language joins.
  */
 const STAGE_NAME = 'Welcome';
 
-/**
- * Each text's row in the list: its name as the stage editor gives it, then its
- * English text. The heading and the text block share the "Page content"
- * branch, so their rows name only what follows it.
- */
+/** Each text's row in the translation table, named as the stage editor names it. */
 const STAGE_TEXT_ROWS = [
-  'Stage name Welcome',
-  'Page heading Welcome to the study',
-  'Item 1 › Content Thank you for taking part.',
+  'Stage name',
+  'Page content › Page heading',
+  'Page content › Item 1 › Content',
 ];
 
 function englishProtocol(): CurrentProtocol {
@@ -54,6 +51,12 @@ function englishProtocol(): CurrentProtocol {
 function welcomeTitle(protocol: CurrentProtocol) {
   const stage = protocol.stages[0];
   return stage?.type === 'Information' ? stage.title : undefined;
+}
+
+function welcomeContent(protocol: CurrentProtocol) {
+  const stage = protocol.stages[0];
+  const item = stage?.type === 'Information' ? stage.items?.[0] : undefined;
+  return item?.type === 'text' ? item.content : undefined;
 }
 
 /**
@@ -88,7 +91,25 @@ async function closeActions(page: Page, menu: Locator) {
   await expect(menu).toBeHidden();
 }
 
-test('adds a language, lists its missing translations, keeps the default language from being removed, translates a listed text, and lists languages alphabetically', async ({
+function translationTable(page: Page): Locator {
+  return page.getByRole('table', { name: /^Every text participants see/ });
+}
+
+/**
+ * The text box holding a first-stage text's translation into a language. A
+ * formatted text's cell has one only while it has focus.
+ */
+function translationCell(page: Page, row: string, language: string): Locator {
+  return translationTable(page).getByRole('textbox', {
+    name: new RegExp(`^Stage 1 .*\\b${row} ${language}$`),
+  });
+}
+
+function textsToShow(page: Page): Locator {
+  return page.getByRole('combobox', { name: 'Texts to show', exact: true });
+}
+
+test('adds a language, keeps the default language from being removed, translates its missing texts in the translation table, and lists languages alphabetically', async ({
   architectPage: page,
   seed,
 }) => {
@@ -109,10 +130,12 @@ test('adds a language, lists its missing translations, keeps the default languag
   await expect(english).toContainText('English');
   await expect(english.getByText('Default', { exact: true })).toBeVisible();
   await expect(english).toContainText('3 of 3 texts translated');
-  const missing = page.getByRole('region', { name: 'Missing translations' });
-  await expect(missing).toContainText(
-    'This protocol has one language. Add a language to start translating.',
-  );
+  // With nothing to translate into, there is no translation table.
+  const openTable = page.getByRole('link', {
+    name: 'Open translation table',
+    exact: true,
+  });
+  await expect(openTable).toHaveCount(0);
 
   // Add French from the list of languages.
   await page
@@ -137,6 +160,10 @@ test('adds a language, lists its missing translations, keeps the default languag
   await expect(french).toContainText('French');
   await expect(french).toContainText('0 of 3 texts translated');
   await expect(french.getByText('Default', { exact: true })).toHaveCount(0);
+  await expect(openTable).toHaveAttribute(
+    'href',
+    '/protocol/localization/table',
+  );
   // A language with no translations of its own strands nothing, so it can go.
   const frenchActions = await openActions(page, 'French');
   await expect(
@@ -157,38 +184,6 @@ test('adds a language, lists its missing translations, keeps the default languag
     locales: ['en', 'fr'],
   });
   expect(added.stages).toEqual(before.stages);
-
-  // The missing translations, listed under the stage they belong to. French is
-  // the only language with gaps, so it has the only tab.
-  await french
-    .getByRole('button', { name: 'Show 3 missing French translations' })
-    .click();
-  await expect(missing.getByRole('tab')).toHaveCount(1);
-  await expect(
-    missing.getByRole('tab', { name: 'French, 3 missing translations' }),
-  ).toHaveAttribute('aria-selected', 'true');
-  await expect(missing.getByRole('combobox')).toHaveCount(0);
-  await expect(
-    missing.getByRole('heading', { name: 'Stages', exact: true }),
-  ).toBeVisible();
-  // A stage is headed by its position, its name in the default language and
-  // its interface, and its name links to it.
-  const stageGroup = missing.getByRole('heading', {
-    name: /^Stage 1\s*Welcome · Information$/,
-  });
-  await expect(stageGroup).toBeVisible();
-  await expect(
-    stageGroup.getByRole('link', { name: STAGE_NAME, exact: true }),
-  ).toHaveAttribute('href', '/protocol/stage/welcome');
-  const missingText = (name: string) =>
-    missing.getByRole('button', { name, exact: true });
-  for (const row of STAGE_TEXT_ROWS) {
-    await expect(missingText(row)).toBeVisible();
-  }
-  // Each row previews the English text participants see in place of French.
-  await expect(
-    missingText('Page heading Welcome to the study').locator('[lang="en"]'),
-  ).toHaveText('Welcome to the study');
 
   // Make French the default.
   await (
@@ -265,56 +260,52 @@ test('adds a language, lists its missing translations, keeps the default languag
     'fr',
   ]);
 
-  // A listed text opens in a dialog that edits the listed language first, and
-  // shows what participants in each language see as it is typed. Save and next
-  // saves it and shows the next listed text, ready to type into; Save on the
-  // last one closes the dialog. Saved texts leave the list, the language's
-  // progress counts them, and focus moves on to the next text.
-  await missingText('Stage name Welcome').click();
-  // The dialog is named after the text it shows, so Save and next renames it.
-  const translation = page.getByRole('dialog');
-  await expect(translation).toHaveAccessibleName(
-    'Welcome · Information Stage name',
-  );
-  await expect(translation).toHaveAccessibleDescription(
-    'Text 1 of 3 to translate into French',
-  );
-  const textField = translation.getByRole('textbox', {
-    name: 'Text',
-    exact: true,
-  });
-  await textField.fill('Bienvenue');
-  const frenchView = translation
-    .getByRole('region', { name: 'What participants see' })
-    .getByRole('listitem')
-    .filter({
-      has: page.getByRole('button', { name: 'Edit French', exact: true }),
-    });
-  await expect(frenchView).toContainText('Editing');
-  await expect(frenchView.locator('[lang="fr"]')).toHaveText('Bienvenue');
-  await translation
-    .getByRole('button', { name: 'Save and next', exact: true })
+  // A language's missing translations open in the translation table, showing
+  // only the texts it is missing, under the stage they belong to.
+  await french
+    .getByRole('link', { name: 'Show 3 missing French translations' })
     .click();
-  await expect(translation).toHaveAccessibleDescription(
-    'Text 2 of 3 to translate into French',
-  );
-  await expect(translation).toHaveAccessibleName(
-    'Welcome · Information Page content › Page heading',
-  );
-  await expect(textField).toBeFocused();
-  await textField.fill('Bienvenue dans l’étude');
-  await translation.getByRole('button', { name: 'Save', exact: true }).click();
-  await expect(translation).toBeHidden();
-  await expect(missingText('Stage name Welcome')).toHaveCount(0);
+  await expect(page).toHaveURL(/\/protocol\/localization\/table\?missing=fr$/);
   await expect(
-    missingText('Page content › Item 1 › Content Thank you for taking part.'),
+    page.getByRole('heading', { name: 'Translation table', level: 1 }),
   ).toBeFocused();
+  await expect(textsToShow(page).locator('option:checked')).toHaveText(
+    'Missing French',
+  );
+  await expect(page.getByText('Showing 3 of 3 texts')).toBeVisible();
+  const table = translationTable(page);
+  await expect(table.locator('th[scope="row"]')).toHaveText(STAGE_TEXT_ROWS);
+  // A stage is headed by its position, its name in the default language and
+  // its interface, and its name links to it.
   await expect(
-    missing.getByRole('tab', { name: 'French, 1 missing translation' }),
+    table.getByRole('rowheader', { name: 'Stage 1 · Welcome · Information' }),
   ).toBeVisible();
-  await expect(french).toContainText('2 of 3 texts translated');
+  await expect(
+    table.getByRole('link', { name: STAGE_NAME, exact: true }),
+  ).toHaveAttribute('href', '/protocol/stage/welcome');
+  // An empty cell shows the English text participants see in place of French.
+  await expect(
+    translationCell(page, 'Page heading', 'French'),
+  ).toHaveAccessibleDescription(/^Welcome to the study Not translated yet\./);
+
+  // Enter saves a text of one line and moves to the next row, in plain and
+  // formatted text alike. The last row has nowhere to go, so Ctrl+Enter only
+  // saves it. Rows translated while the filter is on stay until it changes.
+  await translationCell(page, 'Stage name', 'French').click();
+  await page.keyboard.type('Bienvenue');
+  await page.keyboard.press('Enter');
+  await expect(translationCell(page, 'Page heading', 'French')).toBeFocused();
+  await page.keyboard.type('Bienvenue dans l’étude');
+  await page.keyboard.press('Enter');
+  await expect(translationCell(page, 'Content', 'French')).toBeFocused();
+  await page.keyboard.type('Merci de votre participation.');
+  await page.keyboard.press('Control+Enter');
+  await expect(
+    table.getByRole('columnheader', { name: /^French/ }),
+  ).toContainText('3 of 3 translated');
+  await expect(table.locator('th[scope="row"]')).toHaveText(STAGE_TEXT_ROWS);
   const translated = await readProtocolJson(page, (protocol) =>
-    Object.hasOwn(welcomeTitle(protocol) ?? {}, 'fr'),
+    Object.hasOwn(welcomeContent(protocol) ?? {}, 'fr'),
   );
   expect(translated.stages[0]?.label).toEqual({
     en: STAGE_NAME,
@@ -324,6 +315,20 @@ test('adds a language, lists its missing translations, keeps the default languag
     en: 'Welcome to the study',
     fr: 'Bienvenue dans l’étude',
   });
+  expect(welcomeContent(translated)).toEqual({
+    en: 'Thank you for taking part.',
+    fr: 'Merci de votre participation.',
+  });
+  await textsToShow(page).selectOption({ label: 'All texts' });
+  await textsToShow(page).selectOption({ label: 'Missing French' });
+  await expect(
+    page.getByText('Every text is translated into French.'),
+  ).toBeVisible();
+
+  await page.getByRole('link', { name: 'Return to Languages' }).click();
+  await expect(page).toHaveURL(/\/protocol\/localization$/);
+  await expect(french).toContainText('3 of 3 texts translated');
+  await expect(french.getByRole('link', { name: /missing/ })).toHaveCount(0);
 
   // Languages have no order: a language added last is listed by its name.
   await page
@@ -401,8 +406,7 @@ test('changes the protocol’s languages from the language chooser stage, and th
   const name = page.getByRole('textbox', { name: 'Stage name' });
   await expect(name).toHaveValue(CHOOSER_LABEL.en);
 
-  // The Languages page's own list, without the missing translations it has no
-  // room to show here.
+  // The Languages page's own list, with its way to the translation table.
   const languages = page.getByRole('region', {
     name: 'Languages',
     exact: true,
@@ -412,9 +416,11 @@ test('changes the protocol’s languages from the language chooser stage, and th
     /^French/,
     /^Spanish/,
   ]);
-  await expect(
-    languages.getByRole('button', { name: /missing translation/ }),
-  ).toHaveCount(0);
+  const openTable = languages.getByRole('link', {
+    name: 'Open translation table',
+    exact: true,
+  });
+  await expect(openTable).toBeVisible();
 
   // Removing a language from a stage that has not been touched leaves nothing
   // to save, and nothing to be asked about on the way out.
@@ -441,9 +447,24 @@ test('changes the protocol’s languages from the language chooser stage, and th
   await expect(
     page.getByRole('button', { name: 'Finished Editing' }),
   ).toBeVisible();
+
+  // Going to the translation table leaves the stage, so its unsaved changes
+  // are confirmed first.
+  await openTable.click();
+  const discard = page.getByRole('dialog', {
+    name: 'Discard unsaved stage changes?',
+  });
+  await expect(discard).toBeVisible();
+  await discard.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await expect(discard).toBeHidden();
+  await expect(page).toHaveURL(/\/protocol\/stage\/choose-language$/);
+  await expect(name).toHaveValue('Pick a language');
+
   await removeLanguage(page, 'French');
   await expect(stageLanguageRow(page, 'fr')).toHaveCount(0);
   await expect(name).toHaveValue('Pick a language');
+  // With one language left, there is nothing to translate into.
+  await expect(openTable).toHaveCount(0);
   await page.getByRole('button', { name: 'Finished Editing' }).click();
   await page.waitForURL(/\/protocol$/);
 
@@ -462,70 +483,26 @@ function bilingualProtocol(): CurrentProtocol {
   });
 }
 
-test('puts the languages beside their missing translations when there is room, and above them when there is not', async ({
+test('opens the translation table on every missing translation from the protocol’s note', async ({
   architectPage: page,
   seed,
 }) => {
   await seed(bilingualProtocol());
   await gotoProtocol(page);
-  await page.goto('/protocol/localization');
-  const languages = page.getByRole('region', { name: 'Protocol languages' });
-  const missing = page.getByRole('region', { name: 'Missing translations' });
-  await expect(languageRows(page)).toHaveCount(2);
 
-  const boxes = async () => {
-    const [list, gaps] = await Promise.all([
-      languages.boundingBox(),
-      missing.boundingBox(),
-    ]);
-    if (!list || !gaps) throw new Error('A section is not on the page.');
-    return { list, gaps };
-  };
-
-  // Side by side, the languages narrower and first in reading order.
-  await page.setViewportSize({ width: 1440, height: 900 });
-  await expect(async () => {
-    const { list, gaps } = await boxes();
-    expect(list.x + list.width).toBeLessThan(gaps.x);
-    expect(list.width).toBeLessThan(gaps.width);
-    expect(Math.abs(list.y - gaps.y)).toBeLessThan(1);
-  }).toPass();
-
-  // Stacked, languages first.
-  await page.setViewportSize({ width: 800, height: 900 });
-  await expect(async () => {
-    const { list, gaps } = await boxes();
-    expect(list.y + list.height).toBeLessThanOrEqual(gaps.y);
-    expect(Math.abs(list.x - gaps.x)).toBeLessThan(1);
-  }).toPass();
-
-  // Asking for a language's missing translations still brings their section
-  // into view, with focus on its heading.
-  await languageRow(page, 'fr')
-    .getByRole('button', { name: 'Show 3 missing French translations' })
+  await page
+    .getByRole('link', { name: 'Show missing translations', exact: true })
     .click();
-  const heading = missing.getByRole('heading', {
-    name: 'Missing translations',
-    exact: true,
-  });
-  await expect(heading).toBeInViewport();
-  await expect
-    .poll(() =>
-      heading.evaluate((element) => element.contains(document.activeElement)),
-    )
-    .toBe(true);
+  await expect(page).toHaveURL(/\/protocol\/localization\/table\?missing=any$/);
+  await expect(textsToShow(page).locator('option:checked')).toHaveText(
+    'Missing in any shown language',
+  );
+  await expect(page.getByText('Showing 3 of 3 texts')).toBeVisible();
 
-  // Scrolled to the end, nothing on the page is left under the page's
-  // floating actions.
-  await page.mouse.move(400, 450);
-  await page.mouse.wheel(0, 10_000);
-  const pageActions = page.getByRole('toolbar', { name: 'Page actions' });
-  await expect(async () => {
-    const [gaps, actions] = await Promise.all([
-      missing.boundingBox(),
-      pageActions.boundingBox(),
-    ]);
-    if (!gaps || !actions) throw new Error('A section is not on the page.');
-    expect(gaps.y + gaps.height).toBeLessThanOrEqual(actions.y);
-  }).toPass();
+  // The filter is kept in the address, and every text has a row without it.
+  await textsToShow(page).selectOption({ label: 'All texts' });
+  await expect(page).toHaveURL(/\/protocol\/localization\/table$/);
+  await expect(translationTable(page).locator('th[scope="row"]')).toHaveText(
+    STAGE_TEXT_ROWS,
+  );
 });

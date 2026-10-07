@@ -1,12 +1,22 @@
-import { Check, Ellipsis, Languages, Plus, Star, Trash2 } from 'lucide-react';
-import { useId, useMemo, useRef, useState } from 'react';
+import {
+  Check,
+  Ellipsis,
+  Languages,
+  Plus,
+  Star,
+  Table2,
+  Trash2,
+} from 'lucide-react';
+import { type MouseEvent, useId, useMemo, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
+import { Link, useLocation } from 'wouter';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import { Badge } from '@codaco/fresco-ui/Badge';
 import Button, { IconButton } from '@codaco/fresco-ui/Button';
+import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,8 +31,10 @@ import {
   type LocaleTag,
   sortByLanguageName,
 } from '@codaco/protocol-validation';
+import { readStageDraft } from '~/components/StageEditor/stageDraftBeacon';
 import { useAppDispatch } from '~/ducks/hooks';
 import { setProtocolDefaultLocale } from '~/ducks/modules/activeProtocol';
+import { promptDiscardDraft } from '~/hooks/useProtocolNavGuard';
 import {
   getLocalizationCoverage,
   type LocaleCoverage,
@@ -32,6 +44,7 @@ import { UNSPECIFIED_LOCALE } from '~/utils/localizedText';
 
 import { describeLanguage } from './languageChoices';
 import TranslationFallback from './TranslationFallback';
+import { translationTableHref } from './translationTableLinks';
 import {
   type OpenStageDraft,
   type ReturnFocus,
@@ -76,6 +89,12 @@ const messages = defineMessages({
     id: 'architect.localization.languageList.addLanguages',
     defaultMessage: 'Add languages',
     description: 'Button that opens the dialog for adding languages.',
+  },
+  openTable: {
+    id: 'architect.localization.languageList.openTable',
+    defaultMessage: 'Open translation table',
+    description:
+      'Link under the list of protocol languages to the translation table, which shows every participant-facing text beside its translation into each language.',
   },
   defaultBadge: {
     id: 'architect.localization.languageList.defaultBadge',
@@ -138,7 +157,7 @@ const messages = defineMessages({
     defaultMessage:
       '{count, plural, one {Show # missing {language} translation} other {Show # missing {language} translations}}',
     description:
-      'Button that lists the texts not yet translated into one language. language is the language name.',
+      'Link that opens the translation table showing only the texts not yet translated into one language. language is the language name.',
   },
   defaultNote: {
     id: 'architect.localization.languageList.defaultNote',
@@ -158,12 +177,8 @@ const messages = defineMessages({
 
 const EMPTY_LOCALES: readonly LocaleTag[] = [];
 
-type LanguageListProps = {
-  onShowMissing: (locale: LocaleTag) => void;
-};
-
 /** The Languages page's list of the protocol's languages. */
-const LanguageList = ({ onShowMissing }: LanguageListProps) => {
+const LanguageList = () => {
   const intl = useAppIntl();
   const protocol = useSelector(getProtocol);
   const locales = protocol?.localization.locales ?? EMPTY_LOCALES;
@@ -180,14 +195,12 @@ const LanguageList = ({ onShowMissing }: LanguageListProps) => {
       )}
     >
       {multilingual && <TranslationFallback />}
-      <ProtocolLanguages onShowMissing={onShowMissing} />
+      <ProtocolLanguages />
     </Section>
   );
 };
 
 type ProtocolLanguagesProps = {
-  /** Lists a language's missing translations; the button is left out without it. */
-  onShowMissing?: (locale: LocaleTag) => void;
   /** A stage open in the stage editor, which every change has to reach too. */
   draft?: OpenStageDraft;
 };
@@ -196,12 +209,11 @@ type ProtocolLanguagesProps = {
  * The protocol's languages and every change that can be made to them, for
  * whichever page shows them.
  */
-export const ProtocolLanguages = ({
-  onShowMissing,
-  draft,
-}: ProtocolLanguagesProps) => {
+export const ProtocolLanguages = ({ draft }: ProtocolLanguagesProps) => {
   const intl = useAppIntl();
   const dispatch = useAppDispatch();
+  const { openDialog } = useDialog();
+  const [, setLocation] = useLocation();
   const protocol = useSelector(getProtocol);
   const coverage = useSelector(getLocalizationCoverage);
   const languageName = useLanguageName();
@@ -225,6 +237,17 @@ export const ProtocolLanguages = ({
   );
 
   if (!protocol) return null;
+
+  // The translation table is a page of its own, and going to it from the
+  // stage editor leaves the stage, so unsaved changes to it are confirmed
+  // first, as Back confirms them.
+  const guardLeavingStage =
+    (href: string) => (event: MouseEvent<HTMLAnchorElement>) => {
+      if (draft === undefined || !readStageDraft().dirty) return;
+      event.preventDefault();
+      void promptDiscardDraft(openDialog, () => setLocation(href), true);
+    };
+  const tableHref = translationTableHref();
 
   return (
     <>
@@ -251,6 +274,10 @@ export const ProtocolLanguages = ({
         {sortedLocales.map((locale) => {
           const entry = coverageByLocale.get(locale);
           if (!entry) return null;
+          const missingHref = translationTableHref({
+            kind: 'language',
+            locale,
+          });
           return (
             <LanguageRow
               key={locale}
@@ -264,21 +291,28 @@ export const ProtocolLanguages = ({
               }
               onRelabel={(returnFocus) => relabelLanguage(locale, returnFocus)}
               onRemove={(returnFocus) => removeLanguage(locale, returnFocus)}
-              onShowMissing={
-                onShowMissing ? () => onShowMissing(locale) : undefined
-              }
+              missingHref={missingHref}
+              onShowMissing={guardLeavingStage(missingHref)}
             />
           );
         })}
       </ul>
-      <Button
-        ref={addButtonRef}
-        className="mt-6"
-        icon={<Plus aria-hidden />}
-        onClick={() => void addLanguages()}
-      >
-        {intl.formatMessage(messages.addLanguages)}
-      </Button>
+      <div className="mt-6 flex flex-wrap gap-3">
+        {locales.length > 1 && (
+          <Button asChild color="primary" icon={<Table2 aria-hidden />}>
+            <Link href={tableHref} onClick={guardLeavingStage(tableHref)}>
+              {intl.formatMessage(messages.openTable)}
+            </Link>
+          </Button>
+        )}
+        <Button
+          ref={addButtonRef}
+          icon={<Plus aria-hidden />}
+          onClick={() => void addLanguages()}
+        >
+          {intl.formatMessage(messages.addLanguages)}
+        </Button>
+      </div>
     </>
   );
 };
@@ -290,7 +324,9 @@ type LanguageRowProps = {
   onMakeDefault: () => void;
   onRelabel: (returnFocus: ReturnFocus) => Promise<void>;
   onRemove: (returnFocus: ReturnFocus) => Promise<void>;
-  onShowMissing?: () => void;
+  /** The translation table, showing this language's missing translations. */
+  missingHref: string;
+  onShowMissing: (event: MouseEvent<HTMLAnchorElement>) => void;
 };
 
 const LanguageRow = ({
@@ -300,6 +336,7 @@ const LanguageRow = ({
   onMakeDefault,
   onRelabel,
   onRemove,
+  missingHref,
   onShowMissing,
 }: LanguageRowProps) => {
   const intl = useAppIntl();
@@ -378,17 +415,14 @@ const LanguageRow = ({
             </span>
           </div>
         )}
-        {total > 0 && missing > 0 && onShowMissing && (
-          <Button
-            size="sm"
-            variant="link"
-            className="self-start"
-            onClick={onShowMissing}
-          >
-            {intl.formatMessage(messages.showMissing, {
-              count: missing,
-              language,
-            })}
+        {total > 0 && missing > 0 && (
+          <Button asChild size="sm" variant="link" className="self-start">
+            <Link href={missingHref} onClick={onShowMissing}>
+              {intl.formatMessage(messages.showMissing, {
+                count: missing,
+                language,
+              })}
+            </Link>
           </Button>
         )}
       </div>

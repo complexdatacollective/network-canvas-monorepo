@@ -1,5 +1,4 @@
-import { toMerged } from 'es-toolkit';
-import { useCallback, useContext, useRef, useState } from 'react';
+import { useCallback, useState } from 'react';
 
 import { commonMessages } from '@codaco/app-i18n/common';
 import { defineMessages } from '@codaco/app-i18n/messages';
@@ -7,9 +6,7 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import Button from '@codaco/fresco-ui/Button';
 import Dialog, { type DialogProps } from '@codaco/fresco-ui/dialogs/Dialog';
 import { FormWithoutProvider } from '@codaco/fresco-ui/form/Form';
-import FormStoreProvider, {
-  FormStoreContext,
-} from '@codaco/fresco-ui/form/store/formStoreProvider';
+import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import { ResizableFlexPanel } from '@codaco/fresco-ui/ResizableFlexPanel';
 import { useRefusedNestedCommit } from '~/hooks/useRefusedNestedCommit';
@@ -28,22 +25,12 @@ const messages = defineMessages({
   },
 });
 
-/** Which footer button sent the form. */
-type Submitter = 'main' | 'secondary';
-
-type DialogFormSubmitHandler = (
-  values: Parameters<LenientSubmitHandler>[0],
-  submitter: Submitter,
-) => ReturnType<LenientSubmitHandler>;
-
 export type DialogFormProps = {
   /** Whether the dialog is open. */
   open: boolean;
   /** Closes the dialog — called on Cancel and after a successful submit. */
   onClose: () => void;
   title?: React.ReactNode;
-  /** Text under the title that the dialog is described by. */
-  description?: DialogProps['description'];
   /**
    * Stable, human-readable NAME for the underlying `<form>` (e.g.
    * `'editable-list-form'`). It is only the stem of the element's DOM id — a
@@ -53,14 +40,6 @@ export type DialogFormProps = {
   formId: string;
   /** Footer submit button label, e.g. 'Add' or 'Save'. */
   submitLabel: string;
-  /**
-   * Label of a second submit button after the main one, for submitting
-   * without finishing, such as "Save and next". `onSubmit` is told which
-   * button sent the form. A secondary submission that succeeds counts the
-   * submitted values, and any field that mounts while it saves, as saved, so
-   * the dialog can stay open without claiming they are unsaved.
-   */
-  secondarySubmitLabel?: string;
   cancelLabel?: string;
   /**
    * Called with the form's values on submit, after `validate` (if provided)
@@ -68,7 +47,7 @@ export type DialogFormProps = {
    * dialog open with those errors displayed (e.g. from an async uniqueness
    * check), or void/`{success: true}` for a plain success.
    */
-  onSubmit: DialogFormSubmitHandler;
+  onSubmit: LenientSubmitHandler;
   /**
    * Form-level validation run before `onSubmit`. A non-empty result
    * short-circuits the submit with those field errors — see
@@ -110,10 +89,8 @@ const DialogFormBody = ({
   open,
   onClose,
   title,
-  description,
   formId,
   submitLabel,
-  secondarySubmitLabel,
   cancelLabel: providedCancelLabel,
   onSubmit,
   validate,
@@ -130,10 +107,6 @@ const DialogFormBody = ({
     providedCancelLabel ?? intl.formatMessage(commonMessages.cancel);
 
   const refusedCommit = useRefusedNestedCommit();
-  const storeApi = useContext(FormStoreContext);
-  // Set by the button's click, which comes before the submission it sends —
-  // implicit submission clicks the main button too.
-  const submitter = useRef<Submitter>('main');
 
   /**
    * Every dialog form is guarded by construction. The previous arrangement was
@@ -180,20 +153,11 @@ const DialogFormBody = ({
    */
   const guardedSubmit = useCallback<LenientSubmitHandler>(
     async (values) => {
-      const sentBy = submitter.current;
-      submitter.current = 'main';
       const refusal = refusedCommit();
       if (refusal) return { success: false, formErrors: [refusal] };
-      const result = await onSubmit(values, sentBy);
-      if (sentBy === 'secondary' && (result === undefined || result.success)) {
-        // A field that mounted while the submission was saving — the next
-        // item's, say — was not part of it, and keeps what it holds as saved.
-        const store = storeApi?.getState();
-        store?.rebaseToDocument(toMerged(store.getFormValues(), values));
-      }
-      return result;
+      return await onSubmit(values);
     },
-    [onSubmit, refusedCommit, storeApi],
+    [onSubmit, refusedCommit],
   );
 
   const handleSubmit = withFormLevelValidate(guardedSubmit, validate, {
@@ -206,7 +170,6 @@ const DialogFormBody = ({
       closeDialog={requestClose}
       dismissible={!isSubmitting}
       title={title}
-      description={description}
       layoutId={layoutId}
       style={style}
       finalFocus={finalFocus}
@@ -220,25 +183,7 @@ const DialogFormBody = ({
           >
             {cancelLabel}
           </Button>
-          <SubmitButton
-            form={domFormId}
-            onClick={() => {
-              submitter.current = 'main';
-            }}
-          >
-            {submitLabel}
-          </SubmitButton>
-          {secondarySubmitLabel !== undefined && (
-            <SubmitButton
-              form={domFormId}
-              color="default"
-              onClick={() => {
-                submitter.current = 'secondary';
-              }}
-            >
-              {secondarySubmitLabel}
-            </SubmitButton>
-          )}
+          <SubmitButton form={domFormId}>{submitLabel}</SubmitButton>
         </>
       }
     >

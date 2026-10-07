@@ -9,7 +9,7 @@ import {
   getHasMissingTranslations,
   getHasUnspecifiedLanguage,
   getLocalizationCoverage,
-  getMissingTranslationGroups,
+  getTranslationGroups,
 } from '../issues';
 import { getStageList } from '../protocol';
 
@@ -91,35 +91,36 @@ describe('getLocalizationCoverage()', () => {
   });
 });
 
-describe('getMissingTranslationGroups()', () => {
-  it('groups missing translations by the stage or codebook entry that holds them', () => {
-    expect(getMissingTranslationGroups(stateWith(trilingual()))).toEqual([
-      {
-        key: 'node:person',
-        place: { kind: 'codebook', entity: 'node', entityType: 'person' },
-        fields: [
-          {
-            path: ['codebook', 'node', 'person', 'label'],
-            field: ['label'],
-            format: 'plain',
-            value: { en: 'Person' },
-            gaps: [
-              { locale: 'fr', fallbackLocale: 'en' },
-              { locale: 'de', fallbackLocale: 'en' },
-            ],
-          },
-        ],
-      },
+describe('getTranslationGroups()', () => {
+  it('groups every text by the stage or codebook entry that holds it, stages first', () => {
+    expect(getTranslationGroups(stateWith(trilingual()))).toEqual([
       {
         key: 'stage:welcome',
         place: { kind: 'stage', stageId: 'welcome' },
-        fields: [
+        rows: [
+          {
+            path: ['stages', 0, 'label'],
+            field: ['label'],
+            format: 'plain',
+            value: { en: 'Welcome', fr: 'Bienvenue', de: 'Willkommen' },
+          },
           {
             path: ['stages', 0, 'title'],
             field: ['title'],
             format: 'plain',
             value: { en: 'Hello', fr: 'Bonjour' },
-            gaps: [{ locale: 'de', fallbackLocale: 'en' }],
+          },
+        ],
+      },
+      {
+        key: 'node:person',
+        place: { kind: 'codebook', entity: 'node', entityType: 'person' },
+        rows: [
+          {
+            path: ['codebook', 'node', 'person', 'label'],
+            field: ['label'],
+            format: 'plain',
+            value: { en: 'Person' },
           },
         ],
       },
@@ -148,15 +149,15 @@ describe('getMissingTranslationGroups()', () => {
       ],
     };
 
-    const content = getMissingTranslationGroups(stateWith(withText))
+    const content = getTranslationGroups(stateWith(withText))
       .find(({ key }) => key === 'stage:intro')
-      ?.fields.find(({ field }) => field.join('.') === 'items.0.content');
+      ?.rows.find(({ field }) => field.join('.') === 'items.0.content');
 
-    expect(content).toMatchObject({
+    expect(content).toEqual({
       path: ['stages', 1, 'items', 0, 'content'],
+      field: ['items', 0, 'content'],
       format: 'markdown',
       value: { en: 'Name **people**', fr: 'Nommez' },
-      gaps: [{ locale: 'de', fallbackLocale: 'en' }],
     });
   });
 });

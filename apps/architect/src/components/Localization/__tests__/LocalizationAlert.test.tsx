@@ -125,8 +125,8 @@ describe('LocalizationAlert', () => {
       /Information: Not everything is translated yet/,
     );
     expect(
-      screen.getByRole('link', { name: 'Go to Languages' }),
-    ).toBeInTheDocument();
+      screen.getByRole('link', { name: 'Show missing translations' }),
+    ).toHaveAttribute('href', '/protocol/localization/table?missing=any');
   });
 
   it('dismisses the missing-translations warning and remembers it', async () => {
@@ -209,6 +209,10 @@ describe('LocalizationAlert', () => {
     expect(
       screen.getByText('Identify the language of your protocol'),
     ).toBeInTheDocument();
+    // The language is identified on the Languages page.
+    expect(
+      screen.getByRole('link', { name: 'Go to Languages' }),
+    ).toHaveAttribute('href', '/protocol/localization');
     expect(
       screen.queryByRole('button', DISMISS_BUTTON),
     ).not.toBeInTheDocument();

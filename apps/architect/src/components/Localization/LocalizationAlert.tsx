@@ -20,6 +20,7 @@ import {
 } from '~/selectors/issues';
 import { getProtocol } from '~/selectors/protocol';
 
+import { translationTableHref } from './translationTableLinks';
 import { useLanguageName } from './useLanguageName';
 
 const messages = defineMessages({
@@ -54,6 +55,12 @@ const messages = defineMessages({
     defaultMessage: 'Go to Languages',
     description:
       'Link to the Languages page, where the protocol languages and translations are managed.',
+  },
+  showMissing: {
+    id: 'architect.localization.localizationAlert.showMissing',
+    defaultMessage: 'Show missing translations',
+    description:
+      'Link in the note about missing translations on the stage list. It opens the translation table showing only the texts with a translation missing.',
   },
   dismissMissing: {
     id: 'architect.localization.localizationAlert.dismissMissing',
@@ -169,9 +176,17 @@ const LocalizationAlert = () => {
                 ),
               })}
         </span>
-        <NativeLink render={<Link href="/protocol/localization" />}>
-          {intl.formatMessage(messages.goToLanguages)}
-        </NativeLink>
+        {hasUnspecifiedLanguage ? (
+          <NativeLink render={<Link href="/protocol/localization" />}>
+            {intl.formatMessage(messages.goToLanguages)}
+          </NativeLink>
+        ) : (
+          <NativeLink
+            render={<Link href={translationTableHref({ kind: 'any' })} />}
+          >
+            {intl.formatMessage(messages.showMissing)}
+          </NativeLink>
+        )}
       </AlertDescription>
     </Alert>
   );

@@ -1,12 +1,11 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { createRef } from 'react';
 import { Provider } from 'react-redux';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
-import MissingTranslations from '~/components/Localization/MissingTranslations';
+import TranslationTable from '~/components/Localization/TranslationTable';
 import CodebookPage from '~/components/pages/CodebookPage';
 import { setActiveProtocol } from '~/ducks/modules/activeProtocol';
 import { rootReducer } from '~/ducks/modules/root';
@@ -83,11 +82,7 @@ const ageRow = {
 const renderAttributeTable = (store: Store) =>
   render(
     <Provider store={store}>
-      <MissingTranslations
-        language={null}
-        onLanguageChange={() => {}}
-        headingRef={createRef()}
-      />
+      <TranslationTable />
       <Variables entity="node" type="person" variables={[ageRow]} />
     </Provider>,
   );
@@ -176,7 +171,7 @@ describe('Editing labels from the Codebook', () => {
     expect(ageLabel(store)).toBe('Age');
   });
 
-  it('lists the type label under Missing translations, and no attribute label', () => {
+  it('lists the type label in the translation table, and no attribute label', () => {
     const store = makeStore();
     renderAttributeTable(store);
 
@@ -184,11 +179,15 @@ describe('Editing labels from the Codebook', () => {
       'href',
       '/protocol/codebook?entity=node&type=person',
     );
-    const missing = screen.getByRole('region', {
-      name: 'Missing translations',
+    const table = screen.getByRole('table', {
+      name: /^Every text participants see/,
     });
-    const texts = within(missing).getAllByRole('button');
-    expect(texts).toHaveLength(1);
-    expect(texts[0]).toHaveAccessibleName('Node type label Person');
+    // Each group's heading is a row header too, of its group of rows.
+    const texts = within(table)
+      .getAllByRole('rowheader')
+      .filter((header) => header.getAttribute('scope') === 'row');
+    expect(texts.map((header) => header.textContent)).toEqual([
+      'Node type label',
+    ]);
   });
 });

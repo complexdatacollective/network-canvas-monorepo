@@ -2,7 +2,7 @@ import { configureStore } from '@reduxjs/toolkit';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Provider } from 'react-redux';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import { setActiveProtocol } from '~/ducks/modules/activeProtocol';
@@ -111,7 +111,16 @@ const stageTitle = (store: Rendered['store'], index: number) => {
   return stage && 'title' in stage ? stage.title : undefined;
 };
 
+const shownCount = () => screen.getByText(/^Showing /);
+
+const filterMenu = () =>
+  screen.getByRole('combobox', { name: 'Texts to show' });
+
 describe('TranslationTable', () => {
+  afterEach(() => {
+    window.history.replaceState(null, '', '/');
+  });
+
   it('lists a row per text under its stage, and a column per language in alphabetical order', () => {
     renderTable();
 
@@ -210,22 +219,36 @@ describe('TranslationTable', () => {
     expect(english).toHaveValue('Thank you');
   });
 
-  it('shows only the texts with missing translations when asked', async () => {
+  it('finds texts by a translation shown, or by the stage or type they belong to', async () => {
+    const { user } = renderTable();
+    const search = screen.getByRole('searchbox', {
+      name: 'Search texts and translations',
+    });
+
+    await user.type(search, 'hola');
+    expect(shownCount()).toHaveTextContent('Showing 1 of 7 texts');
+    expect(rowHeaders().map((header) => header.textContent)).toEqual([
+      'Page content › Page heading',
+    ]);
+
+    await user.clear(search);
+    await user.type(search, 'thanks');
+    expect(shownCount()).toHaveTextContent('Showing 3 of 7 texts');
+
+    await user.clear(search);
+    await user.type(search, 'nothing like this');
+    expect(screen.getByText('No texts match your search.')).toBeInTheDocument();
+  });
+
+  it('shows only the texts missing a translation into any language shown', async () => {
     const { user } = renderTable();
 
-    expect(screen.getByText(/^Showing /)).toHaveTextContent(
-      'Showing 7 of 7 texts',
-    );
-    await user.click(
-      screen.getByRole('checkbox', {
-        name: 'Only texts with missing translations',
-      }),
-    );
+    expect(filterMenu()).toHaveDisplayValue('All texts');
+    expect(shownCount()).toHaveTextContent('Showing 7 of 7 texts');
+    await user.selectOptions(filterMenu(), 'Missing in any shown language');
 
     // Both stage labels are translated into every language.
-    expect(screen.getByText(/^Showing /)).toHaveTextContent(
-      'Showing 5 of 7 texts',
-    );
+    expect(shownCount()).toHaveTextContent('Showing 5 of 7 texts');
     expect(rowHeaders().map((header) => header.textContent)).toEqual([
       'Page content › Page heading',
       'Page content › Item 1 › Content',
@@ -244,6 +267,87 @@ describe('TranslationTable', () => {
           .filter((header) => header.getAttribute('scope') === 'row'),
       ).toHaveLength(2);
     }
+    // Kept in the address, which a link to the table can carry.
+    expect(window.location.search).toBe('?missing=any');
+
+    await user.selectOptions(filterMenu(), 'All texts');
+    expect(shownCount()).toHaveTextContent('Showing 7 of 7 texts');
+    expect(window.location.search).toBe('');
+  });
+
+  it('shows only the texts missing a translation into one language', async () => {
+    const { user } = renderTable();
+
+    await user.selectOptions(filterMenu(), 'Missing Spanish');
+
+    expect(shownCount()).toHaveTextContent('Showing 2 of 7 texts');
+    expect(screen.getByRole('link', { name: 'Thanks' })).toBeInTheDocument();
+    expect(
+      screen.queryByRole('link', { name: 'Welcome' }),
+    ).not.toBeInTheDocument();
+    expect(window.location.search).toBe('?missing=es');
+
+    await user.selectOptions(filterMenu(), 'Missing English');
+    expect(
+      screen.getByText('Every text is translated into English.'),
+    ).toBeInTheDocument();
+  });
+
+  it('opens on the texts a link asks for', () => {
+    window.history.replaceState(
+      null,
+      '',
+      '/protocol/localization/table?missing=es',
+    );
+    renderTable();
+
+    expect(filterMenu()).toHaveDisplayValue('Missing Spanish');
+    expect(shownCount()).toHaveTextContent('Showing 2 of 7 texts');
+  });
+
+  it('opens on every text when a link asks for a language the protocol does not have', () => {
+    window.history.replaceState(
+      null,
+      '',
+      '/protocol/localization/table?missing=de',
+    );
+    renderTable();
+
+    expect(filterMenu()).toHaveDisplayValue('All texts');
+    expect(shownCount()).toHaveTextContent('Showing 7 of 7 texts');
+  });
+
+  it('shows the column of the language whose gaps it lists', async () => {
+    const { user } = renderTable();
+    const languageNames = () =>
+      screen
+        .getAllByRole('columnheader')
+        .slice(1)
+        .map((header) => header.textContent);
+
+    await user.click(screen.getByRole('button', { name: /^Languages/ }));
+    await user.click(
+      await screen.findByRole('menuitemcheckbox', { name: 'Spanish' }),
+    );
+    await user.keyboard('{Escape}');
+    expect(languageNames()).toEqual([
+      expect.stringMatching(/^English/),
+      expect.stringMatching(/^French/),
+    ]);
+
+    await user.selectOptions(filterMenu(), 'Missing Spanish');
+    expect(languageNames()).toEqual([
+      expect.stringMatching(/^English/),
+      expect.stringMatching(/^French/),
+      expect.stringMatching(/^Spanish/),
+    ]);
+
+    // Hiding it again lists the gaps in the languages still shown.
+    await user.click(screen.getByRole('button', { name: /^Languages/ }));
+    await user.click(
+      await screen.findByRole('menuitemcheckbox', { name: 'Spanish' }),
+    );
+    expect(filterMenu()).toHaveDisplayValue('Missing in any shown language');
   });
 
   describe('formatted text', () => {
