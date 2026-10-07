@@ -1119,10 +1119,11 @@ jobs:
       && inputs.interview_e2e_benchmark == true)
       && needs.detect.outputs.studio == 'true'
     runs-on: ubuntu-latest
-    # The build is most of this. The six variant cycles cost about a minute
-    # each once the images exist; a cold build of studio-api is the rest, and
-    # the GitHub Actions cache below is what keeps it off the critical path on
-    # every run after the first.
+    # The build is most of this. The seven variant cycles cost about a minute
+    # each once the images exist, except two-api, which also waits out a lock's
+    # 30 second lease and so takes about three; a cold build of studio-api is
+    # the rest, and the GitHub Actions cache below is what keeps it off the
+    # critical path on every run after the first.
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
@@ -1223,6 +1224,14 @@ jobs:
       - name: Tear down the swapped ingress
         if: always()
         run: apps/studio/stack-test/down.sh --variant own-proxy
+
+      - name: Two API replicas
+        run: |
+          apps/studio/stack-test/up.sh --variant two-api
+          apps/studio/stack-test/assert.sh --variant two-api
+      - name: Tear down two API replicas
+        if: always()
+        run: apps/studio/stack-test/down.sh --variant two-api
 
       # The assertions print `docker compose ps` and the last 200 log lines
       # inline, which is where a reader looks first; `down.sh` writes the same
