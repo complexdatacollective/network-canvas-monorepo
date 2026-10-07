@@ -1,13 +1,22 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSelector } from 'react-redux';
 
-import type { NcNode } from '@codaco/shared-consts';
+import {
+  entityAttributesProperty,
+  entitySecureAttributesMeta,
+  type NcNode,
+  type VariableValue,
+} from '@codaco/shared-consts';
 
 import { makeGetCodebookVariablesForNodeType } from '../../selectors/protocol';
 import { usePassphrase } from './usePassphrase';
-import { decryptNodeAttributes, hasEncryptedAttributes } from './utils';
+import {
+  decryptNodeAttributes,
+  hasEncryptedAttributes,
+  isNumberArray,
+} from './utils';
 
 export type DecryptedNodes =
   | { status: 'ready'; nodes: NcNode[] }
@@ -15,23 +24,68 @@ export type DecryptedNodes =
   | { status: 'pending' }
   | { status: 'failed' };
 
+type Decryption = { stored: NcNode; plain: NcNode };
+
 type Decryptions = {
   passphrase: string;
-  /** Plaintext copy of each stored node decrypted so far, keyed by the node. */
-  byNode: ReadonlyMap<NcNode, NcNode>;
+  /** The latest decryption of each node, keyed by node id. */
+  byId: ReadonlyMap<string, Decryption>;
   /** The most recently completed result. */
   nodes: NcNode[];
 };
 
-// Redux replaces a node object whenever the node changes, so an unchanged node
-// object can reuse its earlier decryption.
+/**
+ * Redux keeps unchanged values by reference, so when an edit leaves a node's
+ * encrypted values and their metadata untouched, the earlier plaintext still
+ * applies and only the other attributes need refreshing. Any new ciphertext
+ * means the node has to be decrypted again.
+ */
+function reuseDecryption(
+  node: NcNode,
+  { stored, plain }: Decryption,
+): NcNode | null {
+  if (node === stored) return plain;
+
+  const storedMeta = stored[entitySecureAttributesMeta] ?? {};
+  const meta = node[entitySecureAttributesMeta] ?? {};
+  const secureKeys = Object.keys(meta);
+  if (secureKeys.length !== Object.keys(storedMeta).length) return null;
+
+  const storedAttributes = stored[entityAttributesProperty];
+  const attributes: Record<string, VariableValue> = {};
+  for (const [key, value] of Object.entries(node[entityAttributesProperty])) {
+    if (value !== storedAttributes[key] && isNumberArray(value)) return null;
+    attributes[key] = value;
+  }
+
+  for (const key of secureKeys) {
+    const plainValue = plain[entityAttributesProperty][key];
+    if (
+      meta[key] !== storedMeta[key] ||
+      attributes[key] !== storedAttributes[key] ||
+      plainValue === undefined
+    ) {
+      return null;
+    }
+    attributes[key] = plainValue;
+  }
+
+  const { [entitySecureAttributesMeta]: _decrypted, ...rest } = node;
+  return { ...rest, [entityAttributesProperty]: attributes };
+}
+
 function resolve(
   nodes: NcNode[],
-  byNode: ReadonlyMap<NcNode, NcNode>,
+  byId: ReadonlyMap<string, Decryption>,
 ): NcNode[] | null {
   const resolved: NcNode[] = [];
   for (const node of nodes) {
-    const plain = hasEncryptedAttributes(node) ? byNode.get(node) : node;
+    if (!hasEncryptedAttributes(node)) {
+      resolved.push(node);
+      continue;
+    }
+    const known = byId.get(node._uid);
+    const plain = known ? reuseDecryption(node, known) : null;
     if (!plain) return null;
     resolved.push(plain);
   }
@@ -41,7 +95,8 @@ function resolve(
 /**
  * Decrypts the encrypted attribute values of a list of nodes for display or
  * editing. Nodes without encrypted values pass through untouched, so a list
- * with none is ready immediately and needs no passphrase.
+ * with none is ready immediately and needs no passphrase. Pass a memoized
+ * list: a new array on every render restarts the work.
  *
  * Without a passphrase the result is `locked` and the passphrase is
  * requested. While a changed list is being decrypted the previous result for
@@ -64,38 +119,44 @@ export function useDecryptedNodes(nodes: NcNode[]): DecryptedNodes {
   const needsDecryption = nodes.some(hasEncryptedAttributes);
   const current =
     passphrase && decryptions?.passphrase === passphrase ? decryptions : null;
+  const resolved = useMemo(
+    () => (current ? resolve(nodes, current.byId) : null),
+    [nodes, current],
+  );
 
   useEffect(() => {
     if (needsDecryption && !passphrase) requirePassphrase();
   }, [needsDecryption, passphrase, requirePassphrase]);
 
   useEffect(() => {
-    if (!needsDecryption || !passphrase) return undefined;
-    if (current && resolve(nodes, current.byNode)) return undefined;
+    if (!needsDecryption || !passphrase || resolved) return undefined;
 
     let cancelled = false;
-    const known = current?.byNode ?? new Map<NcNode, NcNode>();
+    const known = current?.byId ?? new Map<string, Decryption>();
 
     async function decryptAll(key: string) {
       try {
-        const pairs = await Promise.all(
-          nodes.map(async (node): Promise<[NcNode, NcNode]> => {
-            if (!hasEncryptedAttributes(node)) return [node, node];
+        const decrypted = await Promise.all(
+          nodes.map(async (node): Promise<Decryption> => {
+            if (!hasEncryptedAttributes(node)) {
+              return { stored: node, plain: node };
+            }
+            const previous = known.get(node._uid);
             const plain =
-              known.get(node) ??
+              (previous ? reuseDecryption(node, previous) : null) ??
               (await decryptNodeAttributes(
                 node,
                 getCodebookVariablesForNodeType(node.type),
                 key,
               ));
-            return [node, plain];
+            return { stored: node, plain };
           }),
         );
         if (cancelled) return;
         setDecryptions({
           passphrase: key,
-          byNode: new Map(pairs),
-          nodes: pairs.map(([, plain]) => plain),
+          byId: new Map(decrypted.map((entry) => [entry.stored._uid, entry])),
+          nodes: decrypted.map(({ plain }) => plain),
         });
       } catch {
         if (cancelled) return;
@@ -114,14 +175,13 @@ export function useDecryptedNodes(nodes: NcNode[]): DecryptedNodes {
     needsDecryption,
     passphrase,
     current,
+    resolved,
     getCodebookVariablesForNodeType,
     setPassphraseInvalid,
   ]);
 
   if (!needsDecryption) return { status: 'ready', nodes };
   if (!passphrase) return { status: 'locked' };
-
-  const resolved = current ? resolve(nodes, current.byNode) : null;
   if (resolved) return { status: 'ready', nodes: resolved };
 
   if (failure?.passphrase === passphrase && failure.nodes === nodes) {
