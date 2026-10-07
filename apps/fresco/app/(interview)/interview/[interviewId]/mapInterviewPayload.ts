@@ -4,16 +4,28 @@ import {
   type ResolvedAsset,
 } from '@codaco/interview/contract';
 import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
+import { parseStoredInterviewSession } from '~/lib/db/storedInterviewSession';
 import type { GetInterviewByIdQuery } from '~/queries/interviews';
+
+type MappedInterview =
+  | {
+      success: true;
+      payload: InterviewPayload;
+      assetUrls: Record<string, string>;
+      initialStep: number;
+      initialSyncRevision: number;
+    }
+  | {
+      // The participant data the row holds does not parse. Nothing may start
+      // the interview: the client would build a network without it, and its
+      // first sync would replace what is stored.
+      success: false;
+      error: unknown;
+    };
 
 export function mapInterviewPayload(
   source: NonNullable<GetInterviewByIdQuery>,
-): {
-  payload: InterviewPayload;
-  assetUrls: Record<string, string>;
-  initialStep: number;
-  initialSyncRevision: number;
-} {
+): MappedInterview {
   const { protocol, ...session } = source;
 
   // The stored version is written from the validated document at import
@@ -30,6 +42,11 @@ export function mapInterviewPayload(
         `schema version ${COMPATIBLE_PROTOCOL_SCHEMA_VERSION}. It must be ` +
         `migrated before an interview using it can be started.`,
     );
+  }
+
+  const stored = parseStoredInterviewSession(session);
+  if (!stored.success) {
+    return { success: false, error: stored.error };
   }
 
   const assets: ResolvedAsset[] = protocol.assets.map((a) => {
@@ -56,8 +73,8 @@ export function mapInterviewPayload(
       finishTime: session.finishTime?.toISOString() ?? null,
       exportTime: session.exportTime?.toISOString() ?? null,
       lastUpdated: session.lastUpdated.toISOString(),
-      network: session.network,
-      stageMetadata: session.stageMetadata ?? undefined,
+      network: stored.data.network,
+      stageMetadata: stored.data.stageMetadata ?? undefined,
     },
     protocol: {
       ...protocol,
@@ -70,6 +87,7 @@ export function mapInterviewPayload(
   };
 
   return {
+    success: true,
     payload,
     assetUrls,
     initialStep: session.currentStep,

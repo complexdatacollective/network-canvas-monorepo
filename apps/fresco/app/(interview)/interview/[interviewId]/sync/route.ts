@@ -7,6 +7,7 @@ import {
   StageMetadataSchema,
 } from '@codaco/shared-consts';
 import { prisma } from '~/lib/db';
+import { parseStoredInterviewSession } from '~/lib/db/storedInterviewSession';
 import { captureException, flushPostHog } from '~/lib/posthog-server';
 import { getAppSetting } from '~/queries/appSettings';
 
@@ -97,27 +98,56 @@ const routeHandler = async (
   const { network, currentStep, stageMetadata, syncRevision } =
     validatedRequest.data;
 
+  const stored = await prisma.interview.findUnique({
+    where: { id: interviewId },
+    select: {
+      finishTime: true,
+      syncRevision: true,
+      network: true,
+      stageMetadata: true,
+    },
+  });
+
+  if (!stored) {
+    return NextResponse.json({ error: 'Interview not found' }, { status: 404 });
+  }
+
   const freezeEnabled = await getAppSetting('freezeInterviewsAfterCompletion');
 
-  if (freezeEnabled) {
-    const interview = await prisma.interview.findUnique({
-      where: { id: interviewId },
-      select: { finishTime: true, syncRevision: true },
+  if (freezeEnabled && stored.finishTime) {
+    // Flagged, not just reported as unapplied: freezing declines every write
+    // permanently, so this is nothing like losing a race to a newer one. A
+    // client that read it as one would rewrite, be declined again, and report a
+    // failure on every change — for an interview that is over and already holds
+    // its final state.
+    return NextResponse.json({
+      success: true,
+      applied: false,
+      frozen: true,
+      syncRevision: stored.syncRevision,
+    });
+  }
+
+  // Every write replaces the stored network and stage metadata wholesale, so it
+  // may only land over data the interview page could have handed to a client.
+  // A row that does not parse is one the page refuses to start from: whatever
+  // this request carries was built without the participant's stored answers,
+  // and writing it would destroy them. Leave the row as it is, for an operator
+  // to repair. Nothing writes the row between this read and the update below
+  // except another sync, and every sync is validated before it is written.
+  const readable = parseStoredInterviewSession(stored);
+  if (!readable.success) {
+    after(async () => {
+      await captureException(readable.error, {
+        context: 'interview.sync.unreadable',
+      });
+      await flushPostHog();
     });
 
-    if (interview?.finishTime) {
-      // Flagged, not just reported as unapplied: freezing declines every write
-      // permanently, so this is nothing like losing a race to a newer one. A
-      // client that read it as one would rewrite, be declined again, and report
-      // a failure on every change — for an interview that is over and already
-      // holds its final state.
-      return NextResponse.json({
-        success: true,
-        applied: false,
-        frozen: true,
-        syncRevision: interview.syncRevision,
-      });
-    }
+    return NextResponse.json(
+      { error: 'Stored interview data could not be read' },
+      { status: 409 },
+    );
   }
 
   try {

@@ -7,7 +7,6 @@ import {
   ExperimentsSchema,
   stageSchema,
 } from '@codaco/protocol-validation';
-import { NcNetworkSchema, StageMetadataSchema } from '@codaco/shared-consts';
 import { env } from '~/env';
 import { PrismaClient } from '~/lib/db/generated/client';
 import { safeParseField } from '~/lib/db/safeParseField';
@@ -54,48 +53,16 @@ const createPrismaClient = () => {
         },
       },
     },
+    /**
+     * An interview's own JSON columns (`network`, `stageMetadata`) are
+     * deliberately not parsed here. They hold the participant's answers, and
+     * the interview writes them back wholesale on every sync: a fallback in
+     * place of a row that does not parse would start the interview without
+     * them, and the first sync would replace what is stored. Callers parse
+     * them with `parseStoredInterviewSession` and refuse to go on when that
+     * fails.
+     */
     result: {
-      interview: {
-        network: {
-          needs: {
-            network: true,
-          },
-          compute: ({ network }) => {
-            const emptyNetwork = {
-              nodes: [],
-              edges: [],
-              ego: { _uid: 'empty', attributes: {} },
-            };
-
-            if (!network) {
-              return NcNetworkSchema.parse(emptyNetwork);
-            }
-
-            return safeParseField(
-              NcNetworkSchema,
-              network,
-              'interview.network',
-              NcNetworkSchema.parse(emptyNetwork),
-            );
-          },
-        },
-        stageMetadata: {
-          needs: {
-            stageMetadata: true,
-          },
-          compute: ({ stageMetadata }) => {
-            if (!stageMetadata) {
-              return null;
-            }
-            return safeParseField(
-              StageMetadataSchema,
-              stageMetadata,
-              'interview.stageMetadata',
-              null,
-            );
-          },
-        },
-      },
       protocol: protocolJsonExtensions(),
     },
   });

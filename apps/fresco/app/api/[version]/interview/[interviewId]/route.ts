@@ -6,6 +6,7 @@ import {
   requireApiTokenAuth,
 } from '~/app/api/_helpers/auth';
 import { prisma } from '~/lib/db';
+import { parseStoredInterviewSession } from '~/lib/db/storedInterviewSession';
 import { captureException, flushPostHog } from '~/lib/posthog-server';
 import { getAppSetting } from '~/queries/appSettings';
 
@@ -77,7 +78,28 @@ export async function GET(
       );
     }
 
-    return NextResponse.json({ data: interview }, { headers: corsHeaders });
+    // Answer with the participant data as the deployment reads it, or not at
+    // all: presenting an empty network for one that does not parse would
+    // misreport what the interview holds.
+    const stored = parseStoredInterviewSession(interview);
+    if (!stored.success) {
+      after(async () => {
+        await captureException(stored.error, {
+          context: 'api.interview.unreadable',
+        });
+        await flushPostHog();
+      });
+
+      return NextResponse.json(
+        { error: 'Stored interview data could not be read' },
+        { status: 500, headers: corsHeaders },
+      );
+    }
+
+    return NextResponse.json(
+      { data: { ...interview, ...stored.data } },
+      { headers: corsHeaders },
+    );
   } catch (e) {
     const error = ensureError(e);
     await captureException(error);

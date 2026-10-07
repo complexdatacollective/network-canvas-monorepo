@@ -12,13 +12,18 @@ import { getFrescoI18nInitialization } from '~/i18n/server';
 import { getAdmittedSession } from '~/lib/auth/guards';
 import { safeRevalidateTag } from '~/lib/cache';
 import { prisma } from '~/lib/db';
-import { captureEvent, flushPostHog } from '~/lib/posthog-server';
+import {
+  captureEvent,
+  captureException,
+  flushPostHog,
+} from '~/lib/posthog-server';
 import { getAppSetting, getDisableAnalytics } from '~/queries/appSettings';
 import {
   getInterviewById,
   type GetInterviewByIdQuery,
 } from '~/queries/interviews';
 
+import { ErrorMessage } from '../_components/ErrorMessage';
 import InterviewClient from './InterviewClient';
 import { mapInterviewPayload } from './mapInterviewPayload';
 
@@ -127,8 +132,29 @@ async function InterviewContent({
     }
   });
 
-  const { payload, assetUrls, initialStep, initialSyncRevision } =
-    mapInterviewPayload(interview);
+  const mapped = mapInterviewPayload(interview);
+
+  if (!mapped.success) {
+    // Starting anyway would hand the client a network built without the stored
+    // one, and its first sync would replace it. The report carries no interview
+    // id: the id is the participant's access link, and the report leaves the
+    // deployment.
+    after(async () => {
+      await captureException(mapped.error, {
+        context: 'interview.load.unreadable',
+      });
+      await flushPostHog();
+    });
+
+    return (
+      <ErrorMessage
+        title="This interview could not be opened"
+        message="The answers saved for this interview could not be read, so it has not been started. Nothing has been changed. Please contact the person who recruited you to this study for assistance."
+      />
+    );
+  }
+
+  const { payload, assetUrls, initialStep, initialSyncRevision } = mapped;
 
   const installationId = (await getAppSetting('installationId')) ?? 'unknown';
   // Use the same helper as the rest of the app, so a DISABLE_ANALYTICS

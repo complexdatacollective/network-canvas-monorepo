@@ -6,11 +6,16 @@ import type { GetInterviewByIdQuery } from '~/queries/interviews';
 import { mapInterviewPayload } from '../mapInterviewPayload';
 
 /**
- * A minimal interview row shaped exactly as `getInterviewById` returns it
- * (JSON columns already parsed by the Prisma result extension), parameterised
- * by the protocol's persisted schema version.
+ * A minimal interview row shaped exactly as `getInterviewById` returns it: the
+ * protocol's JSON columns parsed by the Prisma result extension, the
+ * interview's own JSON columns exactly as stored.
  */
-function makeSource(schemaVersion: number): NonNullable<GetInterviewByIdQuery> {
+function makeSource(
+  schemaVersion: number,
+  stored: Partial<
+    Pick<NonNullable<GetInterviewByIdQuery>, 'network' | 'stageMetadata'>
+  > = {},
+): NonNullable<GetInterviewByIdQuery> {
   return {
     id: 'interview-1',
     startTime: new Date('2026-01-01T00:00:00.000Z'),
@@ -42,12 +47,19 @@ function makeSource(schemaVersion: number): NonNullable<GetInterviewByIdQuery> {
       originalFileUrl: null,
       assets: [],
     },
+    ...stored,
   };
+}
+
+function mapReady(source: NonNullable<GetInterviewByIdQuery>) {
+  const result = mapInterviewPayload(source);
+  if (!result.success) throw new Error('Expected a readable interview');
+  return result;
 }
 
 describe('mapInterviewPayload', () => {
   it('stamps the payload with the protocol row’s own schema version', () => {
-    const { payload, initialStep } = mapInterviewPayload(
+    const { payload, initialStep } = mapReady(
       makeSource(COMPATIBLE_PROTOCOL_SCHEMA_VERSION),
     );
 
@@ -61,7 +73,7 @@ describe('mapInterviewPayload', () => {
   it('carries the row’s stored sync revision through, so writes are numbered from it', () => {
     // Numbering from zero instead would make every write a reloaded tab makes
     // older than what is stored, and the endpoint would discard all of them.
-    const { initialSyncRevision } = mapInterviewPayload(
+    const { initialSyncRevision } = mapReady(
       makeSource(COMPATIBLE_PROTOCOL_SCHEMA_VERSION),
     );
 
@@ -83,5 +95,80 @@ describe('mapInterviewPayload', () => {
     expect(() =>
       mapInterviewPayload(makeSource(COMPATIBLE_PROTOCOL_SCHEMA_VERSION + 1)),
     ).toThrow(/must be migrated/);
+  });
+
+  describe('stored participant data', () => {
+    // Still holds the participant's answers, but no longer parses: a node
+    // attribute holding a nested object.
+    const unreadableNetwork = {
+      nodes: [
+        {
+          _uid: 'node-1',
+          type: 'person',
+          attributes: { name: 'Ada', invalid: { nested: 'value' } },
+        },
+      ],
+      edges: [],
+      ego: { _uid: 'ego-1', attributes: {} },
+    };
+
+    it('refuses to start from a stored network it cannot read, rather than from an empty one', () => {
+      const result = mapInterviewPayload(
+        makeSource(COMPATIBLE_PROTOCOL_SCHEMA_VERSION, {
+          network: unreadableNetwork,
+        }),
+      );
+
+      expect(result.success).toBe(false);
+      expect(result).not.toHaveProperty('payload');
+    });
+
+    it('refuses to start from stored stage metadata it cannot read', () => {
+      const result = mapInterviewPayload(
+        makeSource(COMPATIBLE_PROTOCOL_SCHEMA_VERSION, {
+          stageMetadata: { 'stage-1': 'not a list of answers' },
+        }),
+      );
+
+      expect(result.success).toBe(false);
+      expect(result).not.toHaveProperty('payload');
+    });
+
+    it('refuses a stored network that is missing altogether', () => {
+      const result = mapInterviewPayload(
+        makeSource(COMPATIBLE_PROTOCOL_SCHEMA_VERSION, { network: null }),
+      );
+
+      expect(result.success).toBe(false);
+    });
+
+    it('hands the client the stored network and stage metadata it read', () => {
+      const network = {
+        nodes: [
+          { _uid: 'node-1', type: 'person', attributes: { name: 'Ada' } },
+        ],
+        edges: [],
+        ego: { _uid: 'ego-1', attributes: { age: 42 } },
+      };
+      const stageMetadata = { 'stage-1': [[0, 'node-1', 'node-2', false]] };
+
+      const { payload } = mapReady(
+        makeSource(COMPATIBLE_PROTOCOL_SCHEMA_VERSION, {
+          network,
+          stageMetadata,
+        }),
+      );
+
+      expect(payload.session.network).toEqual(network);
+      expect(payload.session.stageMetadata).toEqual(stageMetadata);
+    });
+
+    it('starts without stage metadata when none is stored', () => {
+      const { payload } = mapReady(
+        makeSource(COMPATIBLE_PROTOCOL_SCHEMA_VERSION, { stageMetadata: null }),
+      );
+
+      expect(payload.session.stageMetadata).toBeUndefined();
+    });
   });
 });
