@@ -223,7 +223,15 @@ equals 'as a problem document' 'application/problem+json' "$CONTENT_TYPE"
 contains 'naming the refusal' '"status":401' "$BODY"
 equals 'before any procedure answered' '' "$RPC_VERDICT"
 
-request "$URL/readyz"
+# The doorbell subscribes once its store answers, which can be a moment after
+# the rest of /readyz is ok, so the body is asked for again for up to 15 s.
+for _ in $(seq 1 15); do
+  request "$URL/readyz"
+  case "$BODY" in
+    *'"doorbell":"ok"'*) break ;;
+  esac
+  sleep 1
+done
 equals '/readyz is served' 200 "$STATUS"
 contains '/readyz reports the database' '"db":"ok"' "$BODY"
 contains '/readyz reports the schema' '"schema":"ok"' "$BODY"
@@ -709,9 +717,15 @@ if [ "$VARIANT" = "two-api" ]; then
   compose start api >/dev/null 2>&1
   api_body="$(replica_ready api)"
   contains 'the first replica is back, its doorbell subscribed' '"doorbell":"ok"' "$api_body"
-  subscribers="$(compose exec -T "$(limiter_store_service)" \
-    valkey-cli --raw PUBSUB NUMSUB studio:protocol-events 2>/dev/null \
-    | tr -d '\r' | tail -n 1 || true)"
+  # Ready reports the subscription once it is asked for, a moment before the
+  # store may count it, so the count is asked for again for up to 10 s.
+  for _ in $(seq 1 10); do
+    subscribers="$(compose exec -T "$(limiter_store_service)" \
+      valkey-cli --raw PUBSUB NUMSUB studio:protocol-events 2>/dev/null \
+      | tr -d '\r' | tail -n 1 || true)"
+    [ "$subscribers" = 2 ] && break
+    sleep 1
+  done
   equals 'both replicas listen for the doorbell' 2 "${subscribers:-none}"
 
   # curl's Netscape jar: tab-separated, the name and value in the last two
@@ -756,10 +770,10 @@ process.exit(5);
 '
 
   # Takes the lock again (the same owner and tab, so it is still theirs) for a
-  # current document and revision, saves a change, and prints the new
+  # current document and revision, saves it under NAME, and prints the new
   # sequence and when the save returned.
   SAVE_JS='
-const { PROTOCOL_ID, SECTION, COOKIE, ORIGIN, TAB, REQUEST_ID } = process.env;
+const { PROTOCOL_ID, SECTION, COOKIE, ORIGIN, TAB, REQUEST_ID, NAME } = process.env;
 const find = (value, key) => {
   if (value === null || typeof value !== "object") return undefined;
   if (key in value) return value[key];
@@ -781,46 +795,71 @@ const call = async (tag, payload) => {
   return exit.exit.value;
 };
 const lock = await call("AcquireLock", { protocolId: PROTOCOL_ID, sectionId: SECTION });
-const document = JSON.parse(JSON.stringify(find(lock, "document")).replace(/"name":"Two replicas[^"]*"/, "\"name\":\"Two replicas, relayed\""));
+const document = JSON.parse(JSON.stringify(find(lock, "document")).replace(/"name":"Two replicas[^"]*"/, JSON.stringify("name") + ":" + JSON.stringify(NAME)));
 const saved = await call("Submit", { protocolId: PROTOCOL_ID, requestId: REQUEST_ID, sectionId: SECTION, document, revision: find(lock, "revision") });
 console.log("saved " + find(saved, "sequence") + " at " + Date.now());
 '
 
-  watch_log="$WORK_DIR/relay-watch.log"
-  compose exec -T \
-    -e PROTOCOL_ID="$protocol_id" -e COOKIE="$cookie" -e ORIGIN="$ORIGIN" \
-    -e TAB='stack-test-tab-2' -e AFTER="$sequence_after" \
-    api-b node --input-type=module -e "$WATCH_JS" > "$watch_log" 2>&1 < /dev/null &
-  watcher=$!
-  for _ in $(seq 1 60); do
-    grep -q '^watching$' "$watch_log" 2>/dev/null && break
-    kill -0 "$watcher" 2>/dev/null || break
-    sleep 0.5
+  # The safety poll runs every 5 s, so a save it carried reaches the watcher
+  # anywhere up to 5 s after the save returned; one the doorbell carried
+  # arrives in well under a second. A poll lands under this bound by chance
+  # one save in five, so three rounds in a row under it were the doorbell's
+  # but for one run in 125.
+  RELAY_BOUND_MS=1000
+  after="$sequence_after"
+  for round in 1 2 3; do
+    # An empty sequence would let any revision pass as the relayed save, even
+    # one the watcher replays from the log as it connects.
+    case "$after" in
+      '' | *[!0-9]*) fail "round $round has a sequence to watch past" "saw '$after'" ;;
+    esac
+
+    watch_log="$WORK_DIR/relay-watch-$round.log"
+    compose exec -T \
+      -e PROTOCOL_ID="$protocol_id" -e COOKIE="$cookie" -e ORIGIN="$ORIGIN" \
+      -e TAB='stack-test-tab-2' -e AFTER="$after" \
+      api-b node --input-type=module -e "$WATCH_JS" > "$watch_log" 2>&1 < /dev/null &
+    watcher=$!
+    for _ in $(seq 1 60); do
+      grep -q '^watching$' "$watch_log" 2>/dev/null && break
+      kill -0 "$watcher" 2>/dev/null || break
+      sleep 0.5
+    done
+    if grep -q '^watching$' "$watch_log"; then
+      pass "round $round: a second tab watches on the second replica" 'its stream answered'
+    else
+      fail "round $round: a second tab watches on the second replica" "$(tr '\n' ' ' < "$watch_log")"
+    fi
+
+    saved="$(compose exec -T \
+      -e PROTOCOL_ID="$protocol_id" -e SECTION="$SECTION" -e COOKIE="$cookie" \
+      -e ORIGIN="$ORIGIN" -e TAB="$TAB" -e REQUEST_ID="$(uuid)" \
+      -e NAME="Two replicas, relayed $round" \
+      api node --input-type=module -e "$SAVE_JS" 2>&1 < /dev/null || true)"
+    saved_line="$(printf '%s\n' "$saved" | grep '^saved [0-9]* at [0-9]*$' || true)"
+    if [ -n "$saved_line" ]; then
+      pass "round $round: the editor saves on the first replica" "$saved_line"
+    else
+      fail "round $round: the editor saves on the first replica" "$(printf '%s' "$saved" | tr '\n' ' ' | cut -c1-300)"
+    fi
+
+    watched=0
+    wait "$watcher" || watched=$?
+    seen="$(grep '^revision [0-9]* at [0-9]*$' "$watch_log" || true)"
+    if [ "$watched" -ne 0 ] || [ -z "$seen" ]; then
+      fail "round $round: the watcher on the second replica hears of the save" \
+        "exited $watched: $(tr '\n' ' ' < "$watch_log")"
+    fi
+    latency=$((${seen##* at } - ${saved_line##* at }))
+    if [ "$latency" -lt "$RELAY_BOUND_MS" ]; then
+      pass "round $round: the watcher hears of it within ${RELAY_BOUND_MS} ms" \
+        "${seen% at *}, $latency ms after the save returned"
+    else
+      fail "round $round: the watcher hears of it within ${RELAY_BOUND_MS} ms" \
+        "${seen% at *}, $latency ms after the save returned: the safety poll's pace, not the doorbell's"
+    fi
+    after="$(printf '%s' "$saved_line" | sed -n 's/^saved \([0-9]*\) at .*/\1/p')"
   done
-  if grep -q '^watching$' "$watch_log"; then
-    pass 'a second tab watches the protocol on the second replica' 'its stream answered'
-  else
-    fail 'a second tab watches the protocol on the second replica' "$(tr '\n' ' ' < "$watch_log")"
-  fi
-
-  saved="$(compose exec -T \
-    -e PROTOCOL_ID="$protocol_id" -e SECTION="$SECTION" -e COOKIE="$cookie" \
-    -e ORIGIN="$ORIGIN" -e TAB="$TAB" -e REQUEST_ID="$(uuid)" \
-    api node --input-type=module -e "$SAVE_JS" 2>&1 < /dev/null || true)"
-  contains 'the editor saves on the first replica' 'saved ' "$saved"
-
-  watched=0
-  wait "$watcher" || watched=$?
-  seen="$(grep '^revision ' "$watch_log" || true)"
-  if [ "$watched" -eq 0 ] && [ -n "$seen" ]; then
-    seen_ms="${seen##* at }"
-    saved_ms="${saved##* at }"
-    pass 'the watcher on the second replica hears of the save' \
-      "${seen% at *}, $((seen_ms - saved_ms)) ms after the save returned"
-  else
-    fail 'the watcher on the second replica hears of the save' \
-      "exited $watched: $(tr '\n' ' ' < "$watch_log")"
-  fi
 fi
 
 echo ''
