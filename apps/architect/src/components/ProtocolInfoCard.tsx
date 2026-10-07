@@ -27,6 +27,7 @@ import {
   updateProtocolDescription,
   updateProtocolName,
 } from '~/ducks/modules/activeProtocol';
+import { useProtocolReadOnly } from '~/hooks/useProtocolReadOnly';
 import { useRunOnce } from '~/hooks/useRunOnce';
 import { getProtocol, getProtocolName } from '~/selectors/protocol';
 import countGraphemes from '~/utils/countGraphemes';
@@ -186,6 +187,7 @@ const describeAllowance = (
 const ProtocolInfoCard = () => {
   const intl = useAppIntl();
   const dispatch = useAppDispatch();
+  const readOnly = useProtocolReadOnly();
   const name = useSelector(getProtocolName);
   const protocol = useSelector(getProtocol);
   const description = protocol?.description ?? '';
@@ -437,9 +439,13 @@ const ProtocolInfoCard = () => {
               className: cx(
                 'text-navy-taupe placeholder:text-navy-taupe/50 focus-visible:ring-sea-green field-sizing-content w-full resize-none rounded-sm border-none bg-transparent p-0 font-black outline-none focus-visible:ring-2 focus-visible:outline-none',
                 'max-h-[3lh] overflow-hidden wrap-break-word',
+                // WebKit on iOS greys a disabled field's text through this
+                // property rather than `color`, which would fade the title.
+                'disabled:[-webkit-text-fill-color:currentColor]',
                 protocolNameSizeClass(nameGraphemes),
               ),
             })}
+            disabled={readOnly}
             value={localName}
             onChange={(e) => handleNameChange(e.target.value)}
             onKeyDown={(e) => {
@@ -540,6 +546,7 @@ const ProtocolInfoCard = () => {
           placeholder={intl.formatMessage(
             messages.enterADescriptionForYourProtocol,
           )}
+          disabled={readOnly}
           value={localDescription}
           onChange={(value) => setLocalDescription(value ?? '')}
           onBlur={() => {

@@ -18,6 +18,7 @@ import {
   actionCreators as stageActions,
   getFamilyPedigreeDependentStages,
 } from '~/ducks/modules/protocol/stages';
+import { useProtocolReadOnly } from '~/hooks/useProtocolReadOnly';
 import { useRunOnce } from '~/hooks/useRunOnce';
 import { getProtocol, getStageList } from '~/selectors/protocol';
 import { cx } from '~/utils/cva';
@@ -136,6 +137,7 @@ const Timeline = () => {
   const isFirstMount = useRunOnce('timeline-entrance');
   const animate = !shouldReduceMotion && isFirstMount;
   const { announce } = useAccessibilityAnnouncements();
+  const readOnly = useProtocolReadOnly();
 
   // Local order the Reorder list renders from. motion's onReorder fires per
   // row-crossing during a drag; we track the visual order here and only commit a
@@ -186,6 +188,10 @@ const Timeline = () => {
   const [insertAtIndex, setInsertAtIndex] = useState<number | undefined>(
     undefined,
   );
+
+  // Another tab taking the protocol closes a new-stage screen that was open,
+  // rather than leaving it to start a stage this tab can no longer add.
+  if (readOnly && showNewStageDialog) setShowNewStageDialog(false);
 
   const handleInsertStage = useCallback((index: number) => {
     setInsertAtIndex(index);
@@ -510,9 +516,14 @@ const Timeline = () => {
         <motion.button
           type="button"
           ref={addStageRef}
+          disabled={readOnly}
+          // The fade is on the circle and the label, not here: the entrance
+          // animation owns this element's inline `opacity`, which would
+          // override a class. Dropping `group` silences the hover styling.
           className={cx(
             timelineRowGrid,
-            'focusable group relative z-1 mt-3 cursor-pointer p-4',
+            'focusable relative z-1 mt-3 p-4',
+            readOnly ? 'cursor-not-allowed' : 'group cursor-pointer',
           )}
           onClick={() => handleInsertStage(stages.length)}
           initial={animate ? 'hidden' : false}
@@ -520,10 +531,20 @@ const Timeline = () => {
           variants={addStageVariants}
         >
           <div />
-          <div className="bg-action text-primary-contrast flex h-10 w-10 items-center justify-center rounded-full transition-transform duration-300 ease-in-out group-hover:scale-110">
+          <div
+            className={cx(
+              'bg-action text-primary-contrast flex h-10 w-10 items-center justify-center rounded-full transition-transform duration-300 ease-in-out group-hover:scale-110',
+              readOnly && 'opacity-50',
+            )}
+          >
             <Plus className="h-6 w-6" strokeWidth={2.5} />
           </div>
-          <span className="justify-self-start text-lg font-semibold transition-all group-hover:font-bold">
+          <span
+            className={cx(
+              'justify-self-start text-lg font-semibold transition-all group-hover:font-bold',
+              readOnly && 'opacity-50',
+            )}
+          >
             {intl.formatMessage(messages.addNewStage)}
           </span>
         </motion.button>

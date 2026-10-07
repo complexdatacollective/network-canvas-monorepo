@@ -12,6 +12,7 @@ import activeProtocolReducer, {
   updateProtocolDescription,
   updateProtocolName,
 } from '~/ducks/modules/activeProtocol';
+import { ProtocolReadOnlyContext } from '~/hooks/useProtocolReadOnly';
 
 import ProtocolInfoCard from '../ProtocolInfoCard';
 
@@ -56,7 +57,7 @@ const createTestStore = () =>
       getDefaultMiddleware({ serializableCheck: false }),
   });
 
-const renderCard = (initialName?: string) => {
+const renderCard = (initialName?: string, readOnly = false) => {
   const store = createTestStore();
   store.dispatch(
     setActiveProtocol(
@@ -65,9 +66,11 @@ const renderCard = (initialName?: string) => {
   );
 
   render(
-    <Provider store={store}>
-      <ProtocolInfoCard />
-    </Provider>,
+    <ProtocolReadOnlyContext value={readOnly}>
+      <Provider store={store}>
+        <ProtocolInfoCard />
+      </Provider>
+    </ProtocolReadOnlyContext>,
   );
 
   return store;
@@ -687,5 +690,37 @@ describe('ProtocolInfoCard', () => {
       fireEvent.change(nameControl(), { target: { value: 'A'.repeat(85) } });
       expectStatusSilent();
     });
+  });
+});
+
+describe('ProtocolInfoCard while another tab owns the protocol', () => {
+  beforeEach(() => {
+    window.history.replaceState({}, '', '/protocol');
+  });
+
+  // `disabled` rather than `readOnly`: a disabled textarea takes no focus, so
+  // there is no blur to commit and no caret to type into.
+  it('disables the name and description', () => {
+    renderCard(undefined, true);
+
+    expect(nameControl()).toBeDisabled();
+    expect(
+      screen.getByRole('textbox', { name: 'Protocol description' }),
+    ).toBeDisabled();
+  });
+
+  it('keeps the codebook links', () => {
+    renderCard(undefined, true);
+
+    expect(screen.getAllByRole('link', { name: /types?$/ })).toHaveLength(2);
+  });
+
+  it('leaves the name and description editable outside the guard', () => {
+    renderCard();
+
+    expect(nameControl()).toBeEnabled();
+    expect(
+      screen.getByRole('textbox', { name: 'Protocol description' }),
+    ).toBeEnabled();
   });
 });

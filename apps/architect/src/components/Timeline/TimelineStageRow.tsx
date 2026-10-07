@@ -9,6 +9,7 @@ import { useKeyboardReorder } from '@codaco/fresco-ui/dnd/useKeyboardReorder';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import { interfaceDisplayName } from '@codaco/protocol-builder/interfaces/interfaceNames';
 import StageTypeImage from '@codaco/protocol-builder/interfaces/StageTypeImage';
+import { useProtocolReadOnly } from '~/hooks/useProtocolReadOnly';
 import filterIcon from '~/images/timeline/filter-icon.svg';
 import skipLogicIcon from '~/images/timeline/skip-logic-icon.svg';
 import { cx } from '~/utils/cva';
@@ -129,6 +130,7 @@ const TimelineStageRow = ({
   variants,
 }: TimelineStageRowProps) => {
   const intl = useAppIntl();
+  const readOnly = useProtocolReadOnly();
   const pointerStart = useRef({ x: 0, y: 0 });
   const didDrag = useRef(false);
 
@@ -215,6 +217,10 @@ const TimelineStageRow = ({
       className={cx(timelineRowGrid, 'group relative cursor-pointer p-4')}
       variants={variants}
       onPointerDown={handleRowPointerDown}
+      // Reorder.Item hard-codes `drag` to the group's axis, so the listener is
+      // what turns it off. Without a listener motion also leaves `touch-action`
+      // and `user-select` alone, so the row scrolls and selects like any other.
+      dragListener={!readOnly}
       onDragStart={() => {
         didDrag.current = true;
       }}
@@ -239,9 +245,9 @@ const TimelineStageRow = ({
         type="button"
         ref={setOpenControl}
         aria-label={openControlLabel}
-        aria-keyshortcuts={reorder['aria-keyshortcuts']}
+        aria-keyshortcuts={readOnly ? undefined : reorder['aria-keyshortcuts']}
         onClick={handleOpenFromButton}
-        onKeyDown={reorder.onKeyDown}
+        onKeyDown={readOnly ? undefined : reorder.onKeyDown}
         className="focusable block w-full max-w-44 justify-self-end"
       >
         <StageTypeImage
@@ -306,7 +312,10 @@ const TimelineStageRow = ({
               stageName: stageName,
             })}
             color="destructive"
-            className={revealOnRowInterest}
+            disabled={readOnly}
+            // `invisible` rather than unmounted, for the same reason the
+            // control is `opacity-0` at rest: the row never changes size.
+            className={readOnly ? 'invisible' : revealOnRowInterest}
             onClick={(event) => {
               event.stopPropagation();
               onDelete(stage.id);

@@ -4,8 +4,8 @@ import { useEffect, useRef, useSyncExternalStore } from 'react';
  * The seam every guard that could destroy unsaved work consults for editors
  * that are NOT the stage form: the "are you sure you want to leave?"
  * confirmations, and — since a nested draft can also be torn away by the
- * cross-tab lock rather than by navigation — the read-only swap and the
- * protocol reclaim (`useProtocolAccessMode`, `useProtocolTabLock`).
+ * cross-tab lock rather than by navigation — the switch to read-only and
+ * the protocol reclaim (`useProtocolAccessMode`, `useProtocolTabLock`).
  *
  * A nested editor — a form field, a nomination prompt, an ordinal option, a
  * skip-logic rule — keeps its draft in its own store or in component state and
@@ -33,8 +33,8 @@ export const hasDirtyNestedDraft = (): boolean => {
 /**
  * Whether ANY nested editor is open, dirty or not.
  *
- * The question the cross-tab lock asks — both for its read-only swap and for a
- * reclaim. Deliberately not the dirty one, for two separate reasons.
+ * The question the cross-tab lock asks — both for its switch to read-only
+ * and for a reclaim. Deliberately not the dirty one, for two separate reasons.
  *
  * Dirtiness flips back to clean the moment the researcher undoes their typing,
  * and a guard keyed on it would tear the editor away mid-edit — the same

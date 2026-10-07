@@ -424,16 +424,20 @@
     "description": "Researcher-facing explanatory text in components / ProtocolLockBanner."
   },
   "architect.chrome.protocolLockBanner.thisProtocolHasBeenOpenedIn": {
-    "defaultMessage": "This protocol has been opened in another tab, which now holds the saved copy. Nothing you change here can be saved, including any unsaved changes in the editor you have open. Close the other tab to carry on editing here, or close that editor to switch to a read-only view.",
+    "defaultMessage": "This protocol has been opened in another tab, which now holds the saved copy. Nothing you change here can be saved, including any unsaved changes in the editor you have open. Close the other tab to carry on editing here, or close that editor to keep looking through the protocol read-only.",
     "description": "Researcher-facing explanatory text in components / ProtocolLockBanner."
   },
   "architect.chrome.protocolLockBanner.thisProtocolHasBeenOpenedIn6aa3d": {
-    "defaultMessage": "This protocol has been opened in another tab, which now holds the saved copy. Nothing you change here can be saved, including any unsaved changes to this stage. Close the other tab to carry on editing here, or discard your changes to switch to a read-only view.",
+    "defaultMessage": "This protocol has been opened in another tab, which now holds the saved copy. Nothing you change here can be saved, including any unsaved changes to this stage. Close the other tab to carry on editing here, or discard your changes to keep looking through the protocol read-only.",
     "description": "Researcher-facing explanatory text in components / ProtocolLockBanner."
   },
   "architect.chrome.protocolLockBanner.thisProtocolIsOpenInAnother": {
-    "defaultMessage": "This protocol is open in another tab, which holds the saved copy. You are viewing it here in read-only mode. Close the other tab to continue editing in this one.",
+    "defaultMessage": "This protocol is open in another tab, which holds the saved copy, so it is read-only here. You can look through every page, but nothing can be changed. Close the other tab to edit it in this one.",
     "description": "Researcher-facing explanatory text in components / ProtocolLockBanner."
+  },
+  "architect.chrome.protocolRouteGuard.editingRestored": {
+    "defaultMessage": "The other tab is no longer editing this protocol, so you can edit it here again.",
+    "description": "Screen-reader announcement made when a tab that was showing a protocol read-only, because another tab was editing it, becomes able to edit it."
   },
   "architect.chrome.protocolSummary.assetBadge.assetNotFound": {
     "defaultMessage": "Asset {id} not found",

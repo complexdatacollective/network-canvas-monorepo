@@ -21,6 +21,7 @@ import protocols from '~/ducks/modules/protocols';
 import protocolValidation from '~/ducks/modules/protocolValidation';
 import { useProtocolAccessMode } from '~/hooks/useProtocolAccessMode';
 import { guardState } from '~/hooks/useProtocolNavGuard';
+import { useProtocolReadOnly } from '~/hooks/useProtocolReadOnly';
 
 import ProtocolRouteGuard from '../ProtocolRouteGuard';
 
@@ -35,14 +36,6 @@ vi.mock('wouter', () => ({
 
 vi.mock('wouter/use-browser-location', () => ({
   navigate: mockBrowserNavigate,
-}));
-
-vi.mock('~/components/pages/SummaryPage', () => ({
-  default: () => <div data-testid="read-only-summary">Summary</div>,
-}));
-
-vi.mock('~/components/ProjectNav/ProjectLayout', () => ({
-  default: ({ children }: { children: ReactNode }) => <>{children}</>,
 }));
 
 const protocol: CurrentProtocol = {
@@ -73,14 +66,34 @@ type TestStore = ReturnType<typeof createTestStore>;
 
 // A stage editor holding a real edit, exactly as its own chrome publishes one.
 const openDirtyStageDraft = () => {
-  publishStageDraft(editedStage, { label: 'A' }, { label: 'A, edited' });
+  publishStageDraft(editedStage, { label: 'A' }, { label: 'A, edited' }, true);
+};
+
+// A stage editor opened while another tab held the protocol: never granted its
+// stage, so it holds nothing of the researcher's.
+const openReadOnlyStageEditor = () => {
+  publishStageDraft(stage, { label: 'A' }, { label: 'A' }, false);
+};
+
+// A page as the routes render one: it asks the guard whether to offer editing.
+const Editor = () => (
+  <div data-testid="editor" data-read-only={String(useProtocolReadOnly())}>
+    Editor
+  </div>
+);
+
+const expectReadOnly = (readOnly: boolean) => {
+  expect(screen.getByTestId('editor')).toHaveAttribute(
+    'data-read-only',
+    String(readOnly),
+  );
 };
 
 const renderGuard = (store: TestStore) =>
   render(
     <Provider store={store}>
       <ProtocolRouteGuard>
-        <div data-testid="editor">Editor</div>
+        <Editor />
       </ProtocolRouteGuard>
     </Provider>,
   );
@@ -98,7 +111,7 @@ const renderGuardWithNestedEditor = (store: TestStore, dirty = true) =>
   render(
     <Provider store={store}>
       <ProtocolRouteGuard>
-        <div data-testid="editor">Editor</div>
+        <Editor />
         <NestedEditor dirty={dirty} />
       </ProtocolRouteGuard>
     </Provider>,
@@ -109,8 +122,8 @@ const ROUTE_TITLE = 'Codebook';
 // Stands in for ProtocolLockBanner, which App renders as a sibling above the
 // routes. What matters here is its lifecycle, not its copy: it exists only in
 // read-only mode, takes focus when it arrives (so the researcher is not left on
-// `<body>` when the editor is replaced), and unmounts the moment the lock comes
-// back — taking focus with it.
+// `<body>` when the control they were using is disabled), and unmounts the
+// moment the lock comes back — taking focus with it.
 const LockBanner = () => {
   const mode = useProtocolAccessMode();
   const ref = useRef<HTMLDivElement>(null);
@@ -124,15 +137,15 @@ const LockBanner = () => {
   return <div ref={ref} tabIndex={-1} data-testid="lock-banner" />;
 };
 
-// The restored editor as the real routes render it: a heading carrying the
-// route's landing point, which is what focus has to end up on.
+// The page as the real routes render it: a heading carrying the route's
+// landing point, which is what focus has to end up on.
 const renderGuardWithBanner = (store: TestStore, children?: ReactNode) =>
   render(
     <Provider store={store}>
       <LockBanner />
       <ProtocolRouteGuard>
         <h1 {...routeFocusTargetProps}>{ROUTE_TITLE}</h1>
-        <div data-testid="editor">Editor</div>
+        <Editor />
         {children}
       </ProtocolRouteGuard>
     </Provider>,
@@ -203,20 +216,38 @@ describe('ProtocolRouteGuard', () => {
     expect(mockBrowserNavigate).not.toHaveBeenCalled();
   });
 
-  it('replaces the editor with the read-only view when the protocol is open in another tab', () => {
+  it('renders the route as it is, but read-only, when the protocol is open in another tab', () => {
     store.dispatch(setActiveProtocol(protocol));
     store.dispatch(setProtocolLockState('open-elsewhere'));
     mockLocation.mockReturnValue('/protocol/codebook');
 
     renderGuard(store);
 
-    expect(screen.queryByTestId('editor')).not.toBeInTheDocument();
-    expect(screen.getByTestId('read-only-summary')).toBeInTheDocument();
+    expectReadOnly(true);
     // The URL is the user's; losing the lock must not also move them.
     expect(mockBrowserNavigate).not.toHaveBeenCalled();
   });
 
-  it('keeps the stage editor mounted when the tab is demoted while editing a stage', () => {
+  it('offers editing while this tab holds the protocol', () => {
+    store.dispatch(setActiveProtocol(protocol));
+    mockLocation.mockReturnValue('/protocol/codebook');
+
+    renderGuard(store);
+
+    expectReadOnly(false);
+  });
+
+  it('stays read-only while the reclaim waits on a draft conflict', () => {
+    store.dispatch(setActiveProtocol(protocol));
+    store.dispatch(setProtocolLockState('reclaim-blocked'));
+    mockLocation.mockReturnValue('/protocol/codebook');
+
+    renderGuard(store);
+
+    expectReadOnly(true);
+  });
+
+  it('keeps a stage editor that was editing operable when the tab is demoted', () => {
     store.dispatch(setActiveProtocol(protocol));
     openDirtyStageDraft();
     mockLocation.mockReturnValue('/protocol/stage/stage-1');
@@ -228,44 +259,52 @@ describe('ProtocolRouteGuard', () => {
 
     renderGuard(store);
 
-    // A stage draft exists nowhere else: replacing the editor underneath it
-    // would be the silent discard this guard exists to prevent.
-    expect(screen.getByTestId('editor')).toBeInTheDocument();
-    expect(screen.queryByTestId('read-only-summary')).not.toBeInTheDocument();
+    // A stage draft exists nowhere else: making the editor read-only
+    // underneath it would leave the researcher unable to deal with it.
+    expectReadOnly(false);
   });
 
-  // Keyed on the route rather than on the draft being dirty: dirtiness is a deep
-  // comparison of the live form values against the values the editor opened
-  // on, so it flips back to clean the moment the user undoes to the committed
-  // values — which would tear the editor away (and its redo history with it)
-  // mid-edit.
-  it('keeps the stage editor mounted after the draft is undone back to clean', () => {
+  // Keyed on the editor having been granted its stage rather than on the draft
+  // being dirty: dirtiness is a deep comparison of the live form values against
+  // the values the editor opened on, so it flips back to clean the moment the
+  // user undoes to the committed values — which would freeze the editor (and
+  // its redo history with it) mid-edit.
+  it('keeps that stage editor operable after the draft is undone back to clean', () => {
     store.dispatch(setActiveProtocol(protocol));
     openDirtyStageDraft();
     mockLocation.mockReturnValue('/protocol/stage/stage-1');
     store.dispatch(setProtocolLockState('open-elsewhere'));
 
-    expect(readStageDraft().dirty).toBe(true);
-
     renderGuard(store);
-    expect(screen.getByTestId('editor')).toBeInTheDocument();
+    expectReadOnly(false);
 
     act(() => {
       // The undo itself: the form is back at the values it opened on, and the
       // editor publishes those. Deliberately against the SAME baseline — a
       // published pair whose baseline had moved too would report clean even if
       // the form still held the edit.
-      publishStageDraft(stage, { label: 'A' }, { label: 'A' });
+      publishStageDraft(stage, { label: 'A' }, { label: 'A' }, true);
     });
 
     expect(readStageDraft().dirty).toBe(false);
-    expect(screen.getByTestId('editor')).toBeInTheDocument();
+    expectReadOnly(false);
   });
 
-  // Dialogs are portalled outside the route tree, so an editor dialog open at
-  // the moment the lock is lost would survive the swap with a confirm that
-  // writes into a protocol this tab no longer owns.
-  it('dismisses open dialogs when the editor is replaced by the read-only view', () => {
+  it('makes a stage editor opened while another tab held the protocol read-only', () => {
+    store.dispatch(setActiveProtocol(protocol));
+    store.dispatch(setProtocolLockState('open-elsewhere'));
+    openReadOnlyStageEditor();
+    mockLocation.mockReturnValue('/protocol/stage/stage-1');
+
+    renderGuard(store);
+
+    expectReadOnly(true);
+  });
+
+  // Dialogs are portalled outside the route tree, so a confirmation open at the
+  // moment the lock is lost would survive the switch with a confirm that writes
+  // into a protocol this tab no longer owns.
+  it('dismisses open dialogs when the page becomes read-only', () => {
     const closeAllDialogs = globalThis.__architectDialogMocks.closeAllDialogs;
     store.dispatch(setActiveProtocol(protocol));
 
@@ -277,59 +316,78 @@ describe('ProtocolRouteGuard', () => {
     });
 
     expect(closeAllDialogs).toHaveBeenCalledTimes(1);
+    expectReadOnly(true);
   });
 
-  // The other tab closed, so this one reclaimed the lock: the read-only view is
-  // replaced by the editor and the banner that held focus unmounts. RouteFocus
-  // is keyed on the location, which this transition does not change, so nothing
-  // else can put the researcher back into the restored page.
-  it('lands focus on the restored route when the other tab releases the lock', () => {
+  // The other tab let the protocol go, so this one reclaimed it: the page stays
+  // where it is and becomes editable, and the banner that held focus unmounts.
+  // RouteFocus is keyed on the location, which this transition does not change,
+  // so nothing else would put the researcher back into the page.
+  it('lands focus on the route heading when the lock comes back while the banner has focus', () => {
     store.dispatch(setActiveProtocol(protocol));
     store.dispatch(setProtocolLockState('open-elsewhere'));
     mockLocation.mockReturnValue('/protocol/codebook');
 
     renderGuardWithBanner(store);
 
-    // The precondition: focus is on the banner, and the editor — heading and
-    // all — is not on the page at all.
     expect(screen.getByTestId('lock-banner')).toHaveFocus();
-    expect(screen.queryByTestId('editor')).not.toBeInTheDocument();
+    expectReadOnly(true);
 
     act(() => {
       store.dispatch(setProtocolLockState('owned'));
     });
 
     expect(screen.queryByTestId('lock-banner')).not.toBeInTheDocument();
+    expectReadOnly(false);
     expect(routeHeading()).toHaveFocus();
   });
 
-  // Same narrowness as RouteFocus: the restored editor may focus something of
-  // its own (the stage editor autofocuses its name input on a new stage), and
-  // dragging the researcher back to the heading would undo it.
-  it('leaves a control that took focus in the restored route alone', () => {
-    const Autofocusing = () => {
-      const ref = useRef<HTMLButtonElement>(null);
-      useEffect(() => {
-        ref.current?.focus();
-      }, []);
-      return (
-        <button ref={ref} type="button">
-          Stage name
-        </button>
-      );
-    };
+  // The researcher has moved on from the banner to look through the page;
+  // dragging them back to the heading would lose their place.
+  it('leaves focus where the researcher put it when the lock comes back', () => {
     store.dispatch(setActiveProtocol(protocol));
     store.dispatch(setProtocolLockState('open-elsewhere'));
     mockLocation.mockReturnValue('/protocol/codebook');
 
-    renderGuardWithBanner(store, <Autofocusing />);
+    renderGuardWithBanner(
+      store,
+      <a href="#stage-1" data-testid="page-link">
+        Stage 1
+      </a>,
+    );
+    act(() => {
+      screen.getByTestId('page-link').focus();
+    });
 
     act(() => {
       store.dispatch(setProtocolLockState('owned'));
     });
 
-    expect(screen.getByRole('button', { name: 'Stage name' })).toHaveFocus();
+    expect(screen.getByTestId('page-link')).toHaveFocus();
     expect(routeHeading()).not.toHaveFocus();
+  });
+
+  // Nothing on the page moves when editing comes back, so without this a
+  // screen-reader user would only find out by trying a control.
+  it('announces that editing is available again', () => {
+    store.dispatch(setActiveProtocol(protocol));
+    store.dispatch(setProtocolLockState('open-elsewhere'));
+    mockLocation.mockReturnValue('/protocol/codebook');
+
+    renderGuard(store);
+    expect(
+      screen.queryByText(/no longer editing this protocol/),
+    ).not.toBeInTheDocument();
+
+    act(() => {
+      store.dispatch(setProtocolLockState('owned'));
+    });
+
+    expect(
+      screen.getByText(
+        'The other tab is no longer editing this protocol, so you can edit it here again.',
+      ),
+    ).toBeInTheDocument();
   });
 
   it('leaves dialogs alone on a first render that is already read-only', () => {
@@ -342,11 +400,10 @@ describe('ProtocolRouteGuard', () => {
     expect(closeAllDialogs).not.toHaveBeenCalled();
   });
 
-  // The demote path's own silent discard (#1387): a variable or entity-type
-  // editor open over the Codebook is rendered from the route tree, so replacing
-  // that tree unmounts it — `handleClose` never runs, and
-  // `confirmDiscardNestedDraft` never asks.
-  it('keeps a dirty nested editor mounted when the tab is demoted outside the stage editor', () => {
+  // A variable or entity-type editor open over the Codebook holds its values in
+  // its own form store (#1387): disabling the page under it would leave the
+  // researcher unable to finish or cancel it.
+  it('keeps a dirty nested editor operable when the tab is demoted outside the stage editor', () => {
     store.dispatch(setActiveProtocol(protocol));
     mockLocation.mockReturnValue('/protocol/codebook');
 
@@ -358,16 +415,15 @@ describe('ProtocolRouteGuard', () => {
     });
 
     expect(screen.getByTestId('nested-editor')).toBeInTheDocument();
-    expect(screen.getByTestId('editor')).toBeInTheDocument();
-    expect(screen.queryByTestId('read-only-summary')).not.toBeInTheDocument();
+    expectReadOnly(false);
   });
 
   // Keyed on an editor being OPEN rather than on its draft being dirty, for the
-  // same reason `held-stage-editor` is keyed on the route: dirtiness is
-  // recomputed on every render, so an editor cleared back to empty would vanish
-  // from under the researcher at the next unrelated re-render. Being open only
+  // same reason the stage editor is keyed on being granted: dirtiness is
+  // recomputed on every render, so an editor cleared back to empty would freeze
+  // under the researcher at the next unrelated re-render. Being open only
   // changes when they open or close one.
-  it('keeps a pristine nested editor mounted too, rather than deciding by dirtiness', () => {
+  it('keeps a pristine nested editor operable too, rather than deciding by dirtiness', () => {
     store.dispatch(setActiveProtocol(protocol));
     mockLocation.mockReturnValue('/protocol/codebook');
 
@@ -378,12 +434,12 @@ describe('ProtocolRouteGuard', () => {
     });
 
     expect(screen.getByTestId('nested-editor')).toBeInTheDocument();
-    expect(screen.queryByTestId('read-only-summary')).not.toBeInTheDocument();
+    expectReadOnly(false);
   });
 
-  // Once the researcher has dealt with the editor, there is nothing left that
-  // the read-only view would take — so the swap that was held finally happens.
-  it('shows the read-only view once the nested editor is closed', () => {
+  // Once the researcher has dealt with the editor, there is nothing left of
+  // theirs on the page — so it goes read-only like any other.
+  it('makes the page read-only once the nested editor is closed', () => {
     store.dispatch(setActiveProtocol(protocol));
     mockLocation.mockReturnValue('/protocol/codebook');
 
@@ -391,7 +447,7 @@ describe('ProtocolRouteGuard', () => {
     act(() => {
       store.dispatch(setProtocolLockState('open-elsewhere'));
     });
-    expect(screen.getByTestId('nested-editor')).toBeInTheDocument();
+    expectReadOnly(false);
 
     // The researcher answers the editor's own discard confirmation, and it
     // closes.
@@ -399,27 +455,27 @@ describe('ProtocolRouteGuard', () => {
       rerender(
         <Provider store={store}>
           <ProtocolRouteGuard>
-            <div data-testid="editor">Editor</div>
+            <Editor />
           </ProtocolRouteGuard>
         </Provider>,
       );
     });
 
-    expect(screen.getByTestId('read-only-summary')).toBeInTheDocument();
+    expectReadOnly(true);
   });
 
-  it('shows the read-only view everywhere outside the stage editor', () => {
+  it('makes every page outside the stage editor read-only, whatever the stage draft holds', () => {
     store.dispatch(setActiveProtocol(protocol));
     openDirtyStageDraft();
     mockLocation.mockReturnValue('/protocol');
     store.dispatch(setProtocolLockState('open-elsewhere'));
 
-    // A dirty draft is not the exemption — the route is. Off the stage editor
-    // route, an unsaved draft does not hold the editor open.
+    // A dirty draft is not the exemption — the stage editor holding it is. Off
+    // the stage editor route, an unsaved draft does not hold the page open.
     expect(readStageDraft().dirty).toBe(true);
 
     renderGuard(store);
 
-    expect(screen.getByTestId('read-only-summary')).toBeInTheDocument();
+    expectReadOnly(true);
   });
 });

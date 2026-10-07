@@ -3,6 +3,7 @@ import { Reorder } from 'motion/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { INTERFACE_NAMES } from '@codaco/protocol-builder/interfaces/interfaceNames';
+import { ProtocolReadOnlyContext } from '~/hooks/useProtocolReadOnly';
 
 import TimelineStageRow, { type TimelineRowStage } from '../TimelineStageRow';
 
@@ -34,23 +35,29 @@ const acceptMove = () => true;
 // The `<li>` mirrors Timeline.tsx: the row is not the list item. Each stage
 // gets one `<li>` holding the insertion point above it and then this card, so
 // that the `<ul>`'s children are the protocol's stages and nothing else.
-const renderRow = (index: number, handlers: Handlers = {}) => {
+const renderRow = (
+  index: number,
+  handlers: Handlers = {},
+  readOnly = false,
+) => {
   const stage = stages[index]!;
   return render(
-    <Reorder.Group axis="y" values={stages} onReorder={vi.fn()}>
-      <li>
-        <TimelineStageRow
-          stage={stage}
-          index={index}
-          stageCount={stages.length}
-          onOpen={handlers.onOpen ?? vi.fn()}
-          onMove={handlers.onMove ?? vi.fn(acceptMove)}
-          onDelete={handlers.onDelete ?? vi.fn()}
-          onDragCommit={vi.fn()}
-          registerOpenControl={vi.fn()}
-        />
-      </li>
-    </Reorder.Group>,
+    <ProtocolReadOnlyContext value={readOnly}>
+      <Reorder.Group axis="y" values={stages} onReorder={vi.fn()}>
+        <li>
+          <TimelineStageRow
+            stage={stage}
+            index={index}
+            stageCount={stages.length}
+            onOpen={handlers.onOpen ?? vi.fn()}
+            onMove={handlers.onMove ?? vi.fn(acceptMove)}
+            onDelete={handlers.onDelete ?? vi.fn()}
+            onDragCommit={vi.fn()}
+            registerOpenControl={vi.fn()}
+          />
+        </li>
+      </Reorder.Group>
+    </ProtocolReadOnlyContext>,
   );
 };
 
@@ -248,5 +255,94 @@ describe('TimelineStageRow', () => {
         name: 'Edit stage 1: Untitled stage, Information',
       }),
     ).toBeInTheDocument();
+  });
+
+  describe('while another tab owns the protocol', () => {
+    const openControlName = 'Edit stage 1: Consent, Information';
+
+    // jsdom does not drive motion's pointer gesture, so the drag is read off
+    // the one thing motion leaves on a row that listens for it: `touch-action:
+    // pan-x`, so a vertical drag is not taken for a scroll. A row with the
+    // listener off keeps its native scrolling, and is not draggable.
+    it('offers a pointer drag when the protocol is editable', () => {
+      renderRow(0);
+
+      const row = screen.getByRole('button', {
+        name: openControlName,
+      }).parentElement!;
+      expect(row.style.touchAction).toBe('pan-x');
+    });
+
+    it('does not offer a pointer drag', () => {
+      renderRow(0, {}, true);
+
+      const row = screen.getByRole('button', {
+        name: openControlName,
+      }).parentElement!;
+      expect(row.style.touchAction).toBe('');
+    });
+
+    it('leaves the arrow keys alone and does not advertise them', () => {
+      const onMove = vi.fn(acceptMove);
+      renderRow(0, { onMove }, true);
+      const openControl = screen.getByRole('button', { name: openControlName });
+
+      fireEvent.keyDown(openControl, { key: 'ArrowDown' });
+      fireEvent.keyDown(openControl, { key: 'ArrowUp' });
+
+      expect(onMove).not.toHaveBeenCalled();
+      expect(openControl).not.toHaveAttribute('aria-keyshortcuts');
+    });
+
+    it('still opens the stage from the button and from the row', () => {
+      const onOpen = vi.fn();
+      renderRow(0, { onOpen }, true);
+      const openControl = screen.getByRole('button', { name: openControlName });
+
+      fireEvent.click(openControl);
+      expect(onOpen).toHaveBeenCalledTimes(1);
+
+      fireEvent.pointerDown(openControl.parentElement!, {
+        clientX: 10,
+        clientY: 10,
+      });
+      fireEvent.click(openControl.parentElement!, { clientX: 10, clientY: 10 });
+      expect(onOpen).toHaveBeenCalledTimes(2);
+    });
+
+    it('disables delete, and a click on it deletes nothing', () => {
+      const onDelete = vi.fn();
+      renderRow(1, { onDelete }, true);
+
+      const deleteControl = screen.getByRole('button', {
+        name: 'Delete stage 2: Demographics',
+      });
+      expect(deleteControl).toBeDisabled();
+      // A disabled row delete must not fall through to the row, which opens
+      // the editor: the click is on the button, not the row.
+      fireEvent.click(deleteControl);
+      expect(onDelete).not.toHaveBeenCalled();
+    });
+
+    it('keeps the editable controls working outside the guard', () => {
+      const onDelete = vi.fn();
+      const onMove = vi.fn(acceptMove);
+      renderRow(0, { onDelete, onMove });
+      const openControl = screen.getByRole('button', { name: openControlName });
+
+      expect(openControl).toHaveAttribute(
+        'aria-keyshortcuts',
+        'ArrowUp ArrowDown',
+      );
+      fireEvent.keyDown(openControl, { key: 'ArrowDown' });
+      expect(onMove).toHaveBeenCalledWith('stage-1', 1);
+
+      const deleteControl = screen.getByRole('button', {
+        name: 'Delete stage 1: Consent',
+      });
+      expect(deleteControl).toBeEnabled();
+      fireEvent.click(deleteControl);
+      expect(onDelete).toHaveBeenCalledWith('stage-1');
+    });
   });
 });

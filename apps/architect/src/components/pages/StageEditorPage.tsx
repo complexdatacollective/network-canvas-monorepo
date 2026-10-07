@@ -31,13 +31,14 @@ import StageEditorChrome, {
   StageEditorHeader,
 } from '~/components/StageEditor/StageEditorChrome';
 import { STAGE_FORM_ID } from '~/components/StageEditor/stageFormId';
-import { getActiveProtocolId } from '~/ducks/modules/app';
+import { getActiveProtocolId, getProtocolOwnedHere } from '~/ducks/modules/app';
 import type { RootState } from '~/ducks/store';
 import {
   getLeavePersistence,
   guardState,
   stageDiscardDescriptions,
 } from '~/hooks/useProtocolNavGuard';
+import { useProtocolReadOnly } from '~/hooks/useProtocolReadOnly';
 import { useArchitectClient } from '~/protocolBuilder/useArchitectClient';
 import { getProtocol, getStage, getStageIndex } from '~/selectors/protocol';
 const messages = defineMessages({
@@ -147,6 +148,33 @@ const StageEditorPage = () => {
     });
     setLocation('/protocol');
   }, [openDialog, setLocation, stageMissing]);
+
+  // Creating a stage is an edit. A tab that cannot make one has nothing to
+  // show on this URL, so it goes to the stage list, as a create with no
+  // interface does. Only when read-only: an editor granted its new stage before
+  // another tab took the protocol keeps it, held, like any other draft.
+  const protocolReadOnly = useProtocolReadOnly();
+  const refusedCreate = stageId === null && protocolReadOnly;
+  useEffect(() => {
+    if (refusedCreate) setLocation('/protocol', { replace: true });
+  }, [refusedCreate, setLocation]);
+
+  // The editor asks for its stage once, when it mounts, so one opened while
+  // another tab held the protocol stays read-only after this tab reclaims it.
+  // Re-open it then, and the researcher can edit the stage they are on. Only
+  // an editor that was never granted its stage: one that was granted holds a
+  // draft, and the reclaim closes it (or asks about it) before this tab owns
+  // the protocol again.
+  const ownedHere = useSelector(getProtocolOwnedHere);
+  const editorGranted = useStageDraft((beacon) => beacon.editing);
+  const [editorGeneration, setEditorGeneration] = useState(0);
+  const [wasOwnedHere, setWasOwnedHere] = useState(ownedHere);
+  if (wasOwnedHere !== ownedHere) {
+    setWasOwnedHere(ownedHere);
+    if (ownedHere && !editorGranted) {
+      setEditorGeneration((generation) => generation + 1);
+    }
+  }
 
   const otherTabName = intl.formatMessage(messages.otherTab);
   // One client per store, because a new one re-opens the protocol channel
@@ -280,7 +308,12 @@ const StageEditorPage = () => {
   // While the stale-URL redirect effect runs, and for a create with no
   // interface to create, there is nothing to edit and nothing to say: the
   // effect above is already on its way to the stage list.
-  if (stageMissing || target === undefined || activeProtocolId === null) {
+  if (
+    stageMissing ||
+    refusedCreate ||
+    target === undefined ||
+    activeProtocolId === null
+  ) {
     return null;
   }
 
@@ -371,6 +404,7 @@ const StageEditorPage = () => {
               >
                 <EnclosingHeadingLevel level="h2">
                   <StageEditor
+                    key={editorGeneration}
                     target={target}
                     formId={STAGE_FORM_ID}
                     actions={renderChrome}

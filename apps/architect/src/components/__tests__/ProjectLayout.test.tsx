@@ -119,8 +119,8 @@ describe('ProjectLayout', () => {
     ).toBeInTheDocument();
   });
 
-  // The read-only view renders at whatever /protocol URL the researcher is on
-  // (ProtocolRouteGuard), so the decision cannot be keyed on the Summary path.
+  // A tab another tab has taken the protocol from shows every page read-only,
+  // so the decision cannot be keyed on the Summary path.
   it('offers no Undo or Redo on any route while another tab holds the saved copy', () => {
     openProtocolWithHistory(store);
     mockLocation.mockReturnValue('/protocol/codebook');
