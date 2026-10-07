@@ -18,14 +18,6 @@ const writeOwnProperty = <Value>(
   });
 };
 
-export class UnauthorizedError extends Error {
-  constructor(message?: string) {
-    super('Unauthorized');
-    this.name = 'UnauthorizedError';
-    this.message = message ?? 'Unauthorised';
-  }
-}
-
 /**
  * Creates a key from a passphrase and a random salt. The salt is used to
  * ensure the same passphrase results in a unique key each time.

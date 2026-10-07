@@ -17,6 +17,8 @@ import {
   type VariableValue,
 } from '@codaco/shared-consts';
 
+import { rememberEncryptedWrite } from '../../interfaces/Anonymisation/decryptionScope';
+import { isAttributeEncrypted } from '../../interfaces/Anonymisation/isAttributeEncrypted';
 import { generateSecureAttributes } from '../../interfaces/Anonymisation/utils';
 import {
   makeGetCodebookVariablesForEdgeType,
@@ -217,6 +219,13 @@ export const addNode = createAppAsyncThunk(
         variablesForType,
         passphrase,
       );
+    rememberEncryptedWrite(
+      thunkApi.getState,
+      passphrase,
+      initialAttributes,
+      encryptedAttributes,
+      secureAttributes ?? {},
+    );
 
     return {
       type,
@@ -312,13 +321,12 @@ export const updateNode = createAppAsyncThunk(
         : `Invalid node attribute patch for type "${node.type}": ${validation.error.keys.join(', ')} ${validation.error.code === 'unknown-keys' ? 'do not exist in protocol codebook' : 'cannot be both set and unset'}`,
     );
 
-    const useEncryption = getShouldEncryptNames(state);
-    // We know that encryption is enabled at the protocol level, but are the node attributes we are updating encrypted?
-    const hasEncryptedAttributes = Object.keys(attributePatch.set).some(
-      (key) => variablesForType[key]?.encrypted,
+    const encryptionEnabled = getShouldEncryptNames(state);
+    const hasEncryptedAttributes = Object.keys(attributePatch.set).some((key) =>
+      isAttributeEncrypted(encryptionEnabled, variablesForType, key),
     );
 
-    if (!useEncryption || !hasEncryptedAttributes) {
+    if (!hasEncryptedAttributes) {
       return {
         nodeId,
         attributePatch,
@@ -337,6 +345,13 @@ export const updateNode = createAppAsyncThunk(
         variablesForType,
         passphrase,
       );
+    rememberEncryptedWrite(
+      thunkApi.getState,
+      passphrase,
+      attributePatch.set,
+      encryptedAttributes,
+      secureAttributes ?? {},
+    );
 
     return {
       nodeId,
