@@ -22,8 +22,9 @@ TOKEN_FILE="$WORK_DIR/setup-token"
 PROJECT="studio-ci"
 
 # `reference` first: it is the stack a self-hoster runs, and each of the others
-# is that stack with one element replaced.
-VARIANTS=(reference external-postgres external-bucket external-bucket-azure external-redis own-proxy)
+# is that stack with one element replaced — or, for `two-api`, with a second
+# replica of the API added.
+VARIANTS=(reference external-postgres external-bucket external-bucket-azure external-redis own-proxy two-api)
 
 # The stack's own network. Also TRUSTED_PROXIES, so it must name the network
 # the ingress is on and nothing else. .243 rather than .240 (`.env.example`),
@@ -95,6 +96,18 @@ compose() {
     -f "$STUDIO_DIR/docker-compose.local.yml" \
     -f "$(variant_file "$VARIANT")" \
     "$@"
+}
+
+# The Compose services that serve the API behind the ingress: `api`, and for
+# `two-api` its second replica too. A script that stops, starts or waits for "the
+# API" acts on all of them, so a variant with more replicas is held to the same
+# list of assertions as one with a single replica.
+api_services() {
+  if [ "$VARIANT" = "two-api" ]; then
+    echo 'api api-b'
+  else
+    echo 'api'
+  fi
 }
 
 # Where the ingress answers for this variant. Traefik for all but one; for

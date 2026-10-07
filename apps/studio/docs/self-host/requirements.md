@@ -172,23 +172,41 @@ Whichever you choose, this is what Studio needs of it — and all it needs:
 - **A probe of the bucket or container**, which `/readyz` reports as
   `objectStore`. When it is unreachable, missing, or refuses the credentials,
   readiness names the object store as the failing check.
+- **Staged imports under `staging/`.** A protocol imported from a file is held
+  in the store, under `staging/<team>/<id>`, until it is saved or discarded.
+  Studio writes those objects, moves them to their content-addressed key when
+  the import is saved, and deletes them when it is discarded. The worker lists
+  the `staging/` prefix to delete what was abandoned. Nothing else is listed or
+  deleted: assets under `assets/` are never removed.
 - **The bucket or container already exists.** Studio never creates one.
 
-No listing, no deletion, no lifecycle rules, no bucket policy API, no
-presigning, and no public access: assets are served through Studio.
+No lifecycle rules are required, no bucket policy API, no presigning, and no
+public access: assets are served through Studio. A lifecycle rule that expires
+objects under `staging/` after a few days is a sensible backstop, and optional.
+
+Both the API and the worker use the object store, so both need the same
+credentials.
 
 #### S3-compatible stores
 
-Four S3 operations and no others:
+Seven S3 operations and no others:
 
-| Operation    | Used for                                                  |
-| ------------ | --------------------------------------------------------- |
-| `HeadBucket` | Readiness: does the bucket answer with these credentials? |
-| `HeadObject` | Does this content-addressed object already exist?         |
-| `PutObject`  | Storing an asset's bytes                                  |
-| `GetObject`  | Serving them back on `/storage/:hash`                     |
+| Operation       | Used for                                                               |
+| --------------- | ---------------------------------------------------------------------- |
+| `HeadBucket`    | Readiness: does the bucket answer with these credentials?              |
+| `HeadObject`    | Does this content-addressed object already exist?                      |
+| `PutObject`     | Storing an asset's bytes, or a staged import's                         |
+| `GetObject`     | Serving them back on `/storage/:hash`                                  |
+| `CopyObject`    | Moving a staged file to its asset key when the import is saved         |
+| `DeleteObject`  | Removing a staged file that was saved, discarded or abandoned          |
+| `ListObjectsV2` | The worker finding abandoned staged files, under the `staging/` prefix |
 
-No multipart upload. Two further requirements:
+An IAM policy therefore grants `s3:GetObject`, `s3:PutObject`,
+`s3:DeleteObject` and `s3:ListBucket` on the bucket, the last on the bucket
+itself and the others on its objects; `CopyObject` and `HeadObject` need no
+further action. [Upgrading](./upgrade.md#before-you-pull-new-images) from a
+release that did not stage imports in the store means adding `DeleteObject` and
+`ListBucket`. No multipart upload. Two further requirements:
 
 - **Path-style addressing** (`<endpoint>/<bucket>/<key>`). `S3_ENDPOINT` is the
   service address, not a per-bucket hostname.
@@ -209,7 +227,8 @@ and readiness leaves the object store out rather than reporting it failed.
 
 - **One container**, named by `AZURE_STORAGE_CONTAINER`.
 - **A managed identity holding Storage Blob Data Contributor on that
-  container**, with `AZURE_STORAGE_ACCOUNT_URL` naming the account — no
+  container** — the role already includes the delete and list Studio now uses —
+  with `AZURE_STORAGE_ACCOUNT_URL` naming the account — no
   account keys. `AZURE_CLIENT_ID` picks a user-assigned identity. A host outside
   Azure uses `AZURE_STORAGE_CONNECTION_STRING` instead of the account URL.
 - **No `S3_*` variable set alongside it.** A mixed configuration is refused at
@@ -226,7 +245,8 @@ store cannot drift apart.
 ### A rate-limit store
 
 **Redis 7-compatible.** It holds sliding-window counters and the audit
-denial window, and nothing else: no persistence, no backup, no durability
+denial window, and carries a doorbell between API replicas (below). It holds
+nothing that has to last: no persistence, no backup, no durability
 requirement. The limiter fails open when it is unreachable, and readiness
 reports `limiter: degraded` rather than failing.
 
@@ -237,6 +257,15 @@ The commands Studio issues:
 | Directly                                     | `EVAL`, `SCAN`, `PING`                                                                   |
 | Inside the sliding-window script             | `TIME`, `ZREMRANGEBYSCORE`, `ZCARD`, `ZRANGE … WITHSCORES`, `ZADD`, `PEXPIRE`, `HINCRBY` |
 | Inside the denial-window and summary scripts | `HGET`, `HINCRBY`, `HSET`, `HSETNX`, `HGETALL`, `DEL`, `PEXPIRE`                         |
+| Between API replicas, on one channel         | `PUBLISH`, `SUBSCRIBE`                                                                   |
+
+The channel is `studio:protocol-events`. Publishing says that a protocol's
+edit state changed, and each replica reads the new state from Postgres when it
+hears it, so no content passes through the store. A replica that misses a
+message catches up on its next five-second poll, so a store that drops or
+delays messages slows live updates and cannot lose one. `SUBSCRIBE` holds a
+connection of its own per replica; a proxy in front of the store must allow
+a long-lived subscribed connection.
 
 Server-side scripting must be available: atomicity is the script, which is what
 makes the answer the same whether one API container is running or two. Each

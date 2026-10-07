@@ -1667,7 +1667,8 @@ test('the studio-stack job runs every variant through up, assert and down', () =
   assert.ok(studioStack, 'studio-stack job exists');
 
   const variants = stackTestVariants();
-  // The reference stack and every swap docs/self-host/swap.md documents.
+  // The reference stack, every swap docs/self-host/swap.md documents, and the
+  // stack with a second API replica (docs/self-host/run.md).
   assert.deepEqual(variants, [
     'external-bucket',
     'external-bucket-azure',
@@ -1675,6 +1676,7 @@ test('the studio-stack job runs every variant through up, assert and down', () =
     'external-redis',
     'own-proxy',
     'reference',
+    'two-api',
   ]);
 
   for (const variant of variants) {
