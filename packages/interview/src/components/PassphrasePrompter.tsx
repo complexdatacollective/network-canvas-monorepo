@@ -15,6 +15,7 @@ import Field from '@codaco/fresco-ui/form/Field/Field';
 import PasswordField from '@codaco/fresco-ui/form/fields/PasswordField';
 import { FormWithoutProvider } from '@codaco/fresco-ui/form/Form';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
+import ResetFormWhenClosed from '@codaco/fresco-ui/form/ResetFormWhenClosed';
 import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
 import type { FormSubmitHandler } from '@codaco/fresco-ui/form/store/types';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
@@ -153,8 +154,11 @@ type PassphraseOverlayProps = {
   onClose: () => void;
 };
 
+// Each opening starts empty: what was typed, and why it was turned away, go
+// as soon as the overlay closes rather than when its exit animation ends.
 const PassphraseOverlay = (props: PassphraseOverlayProps) => (
   <FormStoreProvider>
+    <ResetFormWhenClosed open={props.show} />
     <PassphraseDialog {...props} />
   </FormStoreProvider>
 );

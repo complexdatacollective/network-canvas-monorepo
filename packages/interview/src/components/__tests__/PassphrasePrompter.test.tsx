@@ -1,4 +1,11 @@
-import { act, render, screen, waitFor, within } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Provider } from 'react-redux';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
@@ -244,6 +251,59 @@ describe('PassphrasePrompter in an interview whose passphrase has been chosen', 
     );
     expect(store.getState().ui.encryptionKeyId).not.toBeNull();
     expect(store.getState().session.network.encryption).toEqual(header);
+  });
+
+  it('opens again empty after a passphrase was turned away', async () => {
+    const { header } = await encryptionFor('pw');
+    const { user, passphrase, submit } = await openPrompter({ header });
+
+    await user.type(passphrase, 'not-the-passphrase');
+    await user.click(submit);
+    await waitFor(() =>
+      expect(passphrase).toHaveAttribute('aria-invalid', 'true'),
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Close' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+
+    await user.click(
+      screen.getByRole('button', { name: 'Enter your Passphrase' }),
+    );
+    const reopened = await within(
+      await screen.findByRole('dialog'),
+    ).findByLabelText(/^Passphrase/, { selector: 'input' });
+    expect(reopened).toHaveValue('');
+    expect(reopened).not.toHaveAttribute('aria-invalid', 'true');
+    expect(reopened).not.toHaveAccessibleDescription(
+      expect.stringContaining('does not match'),
+    );
+  });
+
+  // Until the exit animation ends the field is still mounted, so only the
+  // close itself can empty it.
+  it('opens again empty when reopened while it is still closing', async () => {
+    const { header } = await encryptionFor('pw');
+    const { user, passphrase, submit } = await openPrompter({ header });
+
+    await user.type(passphrase, 'not-the-passphrase');
+    await user.click(submit);
+    await waitFor(() =>
+      expect(passphrase).toHaveAttribute('aria-invalid', 'true'),
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Enter your Passphrase' }),
+    );
+
+    const reopened = await within(
+      await screen.findByRole('dialog'),
+    ).findByLabelText(/^Passphrase/, { selector: 'input' });
+    expect(reopened).toBe(passphrase);
+    expect(reopened).toHaveValue('');
+    expect(reopened).not.toHaveAttribute('aria-invalid', 'true');
   });
 
   it('says it is checking the passphrase, and starts no second check while it does', async () => {

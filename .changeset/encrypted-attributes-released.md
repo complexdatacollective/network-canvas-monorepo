@@ -50,7 +50,8 @@ Encrypted answers are now protected in a new way:
 - The passphrase prompt now also appears when the navigation runs along the
   bottom of the screen, and a notice that answers are protected brings it
   up. Password managers are asked to stay out of it too, and it can't be
-  closed while it checks a passphrase.
+  closed while it checks a passphrase. It starts empty each time it opens,
+  even when it is opened again as it closes.
 - The interview checks how its key is made before making one. If that record
   is damaged, or was written by a newer version, no passphrase is asked for,
   because none could be accepted. Protected answers show as "Answer
