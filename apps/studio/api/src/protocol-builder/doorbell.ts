@@ -1,11 +1,12 @@
 import {
-  Clock,
   Context,
+  Duration,
   Effect,
   Layer,
   MutableRef,
   Option,
   PubSub,
+  Schedule,
   Schema,
   type Scope,
   Stream,
@@ -13,6 +14,10 @@ import {
 import { Redis } from 'ioredis';
 
 import { Environment } from '../env.ts';
+import {
+  describeValkeyError,
+  throttledWarning,
+} from '../platform/valkey-log.ts';
 
 const DoorbellMessage = Schema.Union([
   Schema.TaggedStruct('Advanced', {
@@ -34,16 +39,21 @@ const encodePayload = Schema.encodeEffect(DoorbellPayload);
 
 const DEFAULT_CHANNEL = 'studio:protocol-events';
 
+const DEFAULT_CONNECTION_NAME = 'studio-doorbell';
+
 const PUBLISH_TIMEOUT_MS = 1_000;
 
-const WARN_INTERVAL_MS = 60_000;
+const PING_INTERVAL = Duration.seconds(10);
+
+const PING_TIMEOUT = Duration.seconds(2);
+
+const RESUBSCRIBE_BASE_MS = 200;
+
+const RESUBSCRIBE_CAP_MS = 30_000;
+
+const SIGNAL_CAPACITY = 1024;
 
 const RESYNC: DoorbellSignal = { _tag: 'Resync' };
-
-function describe(error: unknown): string {
-  const message = error instanceof Error ? error.message : String(error);
-  return message.replaceAll(/\s+/g, ' ').trim().slice(0, 200);
-}
 
 /**
  * Tells every replica that a draft's log or presence moved. It carries no
@@ -54,7 +64,13 @@ export class Doorbell extends Context.Service<
   Doorbell,
   {
     readonly ring: (message: DoorbellMessage) => Effect.Effect<void>;
-    /** Subscribed when the effect returns, so nothing rung afterwards is missed. */
+    /**
+     * Subscribed to the local hub when the effect returns. A ring missed
+     * while the transport was unsubscribed, or dropped because a consumer
+     * fell behind, is followed by a `Resync`. No `Resync` is promised at
+     * start (the memory doorbell never sends one), so a consumer makes its
+     * own first read.
+     */
     readonly signals: Effect.Effect<
       Stream.Stream<DoorbellSignal>,
       never,
@@ -71,8 +87,9 @@ export class Doorbell extends Context.Service<
   static readonly layerValkey = (options: {
     readonly url: string;
     readonly channel: string;
-  }): Layer.Layer<Doorbell> =>
-    Layer.effect(Doorbell, connectValkey(options.url, options.channel));
+    /** Names the subscriber in `CLIENT LIST`; the publisher appends `-publish`. */
+    readonly connectionName?: string;
+  }): Layer.Layer<Doorbell> => Layer.effect(Doorbell, connectValkey(options));
 
   static readonly layer: Layer.Layer<Doorbell, never, Environment> =
     Layer.unwrap(
@@ -85,8 +102,28 @@ export class Doorbell extends Context.Service<
     );
 }
 
-const subscribeTo = (hub: PubSub.PubSub<DoorbellSignal>) =>
-  Effect.map(PubSub.subscribe(hub), Stream.fromSubscription);
+/**
+ * A bounded hub that never blocks a ring. When it is full, signals are
+ * dropped and one `Resync` is owed, delivered ahead of the next signal that
+ * fits; until then the consumer's safety poll covers the gap.
+ */
+const makeHub = Effect.gen(function* () {
+  const pubsub = yield* PubSub.dropping<DoorbellSignal>(SIGNAL_CAPACITY);
+  yield* Effect.addFinalizer(() => PubSub.shutdown(pubsub));
+  const owed = MutableRef.make(false);
+  const offer = (signal: DoorbellSignal): void => {
+    if (MutableRef.get(owed)) {
+      if (!PubSub.publishUnsafe(pubsub, RESYNC)) return;
+      MutableRef.set(owed, false);
+      if (signal._tag === 'Resync') return;
+    }
+    if (!PubSub.publishUnsafe(pubsub, signal)) MutableRef.set(owed, true);
+  };
+  return {
+    offer,
+    signals: Effect.map(PubSub.subscribe(pubsub), Stream.fromSubscription),
+  };
+});
 
 /** One in-process hub; share the returned service between layers to model several replicas. */
 export const makeMemoryDoorbell: Effect.Effect<
@@ -94,29 +131,31 @@ export const makeMemoryDoorbell: Effect.Effect<
   never,
   Scope.Scope
 > = Effect.gen(function* () {
-  const hub = yield* PubSub.unbounded<DoorbellSignal>();
-  yield* Effect.addFinalizer(() => PubSub.shutdown(hub));
+  const hub = yield* makeHub;
   return Doorbell.of({
-    ring: (message) => Effect.asVoid(PubSub.publish(hub, message)),
-    signals: subscribeTo(hub),
+    ring: (message) => Effect.sync(() => hub.offer(message)),
+    signals: hub.signals,
     subscribed: Effect.succeed(true),
   });
 });
 
 const disconnect = (redis: Redis) => Effect.sync(() => redis.disconnect());
 
-const connectValkey = Effect.fnUntraced(function* (
-  url: string,
-  channel: string,
-) {
+const connectValkey = Effect.fnUntraced(function* (options: {
+  readonly url: string;
+  readonly channel: string;
+  readonly connectionName?: string;
+}) {
+  const { url, channel } = options;
+  const connectionName = options.connectionName ?? DEFAULT_CONNECTION_NAME;
   const run = Effect.runForkWith(yield* Effect.context());
-  const hub = yield* PubSub.unbounded<DoorbellSignal>();
-  yield* Effect.addFinalizer(() => PubSub.shutdown(hub));
+  const hub = yield* makeHub;
 
   const subscribed = MutableRef.make(false);
   const closing = MutableRef.make(false);
   const outage = MutableRef.make(false);
   const connection = MutableRef.make(0);
+  const refusals = MutableRef.make(0);
 
   const trouble = (what: string) => {
     if (MutableRef.getAndSet(outage, true)) {
@@ -130,73 +169,116 @@ const connectValkey = Effect.fnUntraced(function* (
     );
   };
 
-  yield* Effect.acquireRelease(
+  const isCurrent = (epoch: number) =>
+    MutableRef.get(connection) === epoch && !MutableRef.get(closing);
+
+  const subscriber = yield* Effect.acquireRelease(
     Effect.sync(() => {
-      const subscriber = new Redis(url, {
-        connectionName: 'studio-doorbell',
+      const redis = new Redis(url, {
+        connectionName,
         // ioredis resubscribes on its own with this on, but never reports
         // when the server confirms it; a confirmation is what makes a resync
         // read safe, so this subscribes on every `ready` instead.
         autoResubscribe: false,
       });
-      subscriber.on('ready', () => {
-        const current = MutableRef.incrementAndGet(connection);
-        subscriber.subscribe(channel).then(
+      redis.on('ready', () => {
+        const epoch = MutableRef.incrementAndGet(connection);
+        redis.subscribe(channel).then(
           () => {
-            if (MutableRef.get(connection) !== current) return;
+            if (!isCurrent(epoch)) return;
+            MutableRef.set(refusals, 0);
             MutableRef.set(subscribed, true);
             if (MutableRef.getAndSet(outage, false)) {
               run(Effect.logInfo('Protocol-builder doorbell resubscribed.'));
             }
-            PubSub.publishUnsafe(hub, RESYNC);
+            hub.offer(RESYNC);
           },
           (error: unknown) => {
-            trouble(`subscribing failed (${describe(error)})`);
+            if (!isCurrent(epoch)) return;
+            trouble(`subscribing failed (${describeValkeyError(error)})`);
+            // `ready` resets ioredis's own backoff, so a server that keeps
+            // refusing SUBSCRIBE is retried on this schedule instead.
+            const delay = Math.min(
+              RESUBSCRIBE_CAP_MS,
+              RESUBSCRIBE_BASE_MS *
+                2 ** Math.min(8, MutableRef.getAndIncrement(refusals)),
+            );
+            setTimeout(() => {
+              if (isCurrent(epoch)) redis.disconnect(true);
+            }, delay).unref();
           },
         );
       });
-      subscriber.on('close', () => {
+      redis.on('close', () => {
         MutableRef.incrementAndGet(connection);
         const was = MutableRef.getAndSet(subscribed, false);
         if (was && !MutableRef.get(closing)) trouble('subscription lost');
       });
       // Without a listener ioredis rethrows connection errors as an uncaught
       // 'error' event.
-      subscriber.on('error', (error: unknown) => {
-        trouble(`connection error (${describe(error)})`);
+      redis.on('error', (error: unknown) => {
+        trouble(`connection error (${describeValkeyError(error)})`);
       });
-      subscriber.on('message', (from: string, payload: string) => {
+      redis.on('message', (from: string, payload: string) => {
         if (from !== channel) return;
         const decoded = decodePayload(payload);
-        if (Option.isSome(decoded)) PubSub.publishUnsafe(hub, decoded.value);
+        if (Option.isSome(decoded)) hub.offer(decoded.value);
       });
-      return subscriber;
+      return redis;
     }),
-    (subscriber) =>
+    (redis) =>
       Effect.andThen(
         Effect.sync(() => MutableRef.set(closing, true)),
-        disconnect(subscriber),
+        disconnect(redis),
       ),
   );
 
-  const lastRingWarning = MutableRef.make(Number.NEGATIVE_INFINITY);
+  // A half-open socket raises no `close`, so `subscribed` would stay true
+  // while nothing arrives; a PING that goes unanswered forces a reconnect.
+  const probe = Effect.suspend(() => {
+    if (!MutableRef.get(subscribed)) return Effect.void;
+    const epoch = MutableRef.get(connection);
+    return Effect.tryPromise({
+      try: () => subscriber.ping(),
+      catch: (error) => error,
+    }).pipe(
+      Effect.timeout(PING_TIMEOUT),
+      Effect.asVoid,
+      Effect.catch((error) =>
+        Effect.sync(() => {
+          if (!isCurrent(epoch)) return;
+          trouble(`no answer to PING (${describeValkeyError(error)})`);
+          subscriber.disconnect(true);
+        }),
+      ),
+    );
+  });
+  yield* Effect.forkScoped(
+    Effect.repeat(probe, Schedule.spaced(PING_INTERVAL)),
+  );
+
   const publisher = yield* Effect.acquireRelease(
     Effect.sync(() => {
       const redis = new Redis(url, {
-        connectionName: 'studio-doorbell-publish',
+        connectionName: `${connectionName}-publish`,
         enableOfflineQueue: false,
         commandTimeout: PUBLISH_TIMEOUT_MS,
       });
       redis.on('error', (error: unknown) => {
         run(
           Effect.logDebug(
-            `Protocol-builder doorbell publisher: ${describe(error)}`,
+            `Protocol-builder doorbell publisher: ${describeValkeyError(error)}`,
           ),
         );
       });
       return redis;
     }),
     disconnect,
+  );
+
+  const warnRing = throttledWarning(
+    (reason) =>
+      `Protocol-builder doorbell could not ring (${reason}); other replicas see the change at their next safety poll.`,
   );
 
   const ring = (message: DoorbellMessage): Effect.Effect<void> =>
@@ -208,21 +290,12 @@ const connectValkey = Effect.fnUntraced(function* (
         }),
       ),
       Effect.asVoid,
-      Effect.catch((error) =>
-        Effect.gen(function* () {
-          const now = yield* Clock.currentTimeMillis;
-          if (now - MutableRef.get(lastRingWarning) < WARN_INTERVAL_MS) return;
-          MutableRef.set(lastRingWarning, now);
-          yield* Effect.logWarning(
-            `Protocol-builder doorbell could not ring (${describe(error)}); other replicas see the change at their next safety poll.`,
-          );
-        }),
-      ),
+      Effect.catch((error) => warnRing(describeValkeyError(error))),
     );
 
   return Doorbell.of({
     ring,
-    signals: subscribeTo(hub),
+    signals: hub.signals,
     subscribed: Effect.sync(() => MutableRef.get(subscribed)),
   });
 });

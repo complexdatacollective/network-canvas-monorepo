@@ -5,11 +5,13 @@ import {
   Context,
   Duration,
   Effect,
+  Exit,
   Fiber,
   Layer,
   Option,
+  Predicate,
   Schedule,
-  type Scope,
+  Scope,
   Stream,
 } from 'effect';
 import { Redis } from 'ioredis';
@@ -29,12 +31,17 @@ const ADVANCED = { _tag: 'Advanced', draftId: 'draft-1', cursor: '7' } as const;
 
 const PRESENCE = { _tag: 'Presence', draftId: 'draft-2' } as const;
 
+const connectionName = () => `studio-doorbell-test-${randomUUID()}`;
+
 const doorbellOn = (
   channel: string,
+  name: string = connectionName(),
 ): Effect.Effect<Doorbell['Service'], never, Scope.Scope> =>
   Effect.gen(function* () {
     if (!url) return yield* Effect.die('unreachable: probe guaranteed Valkey');
-    const context = yield* Layer.build(Doorbell.layerValkey({ url, channel }));
+    const context = yield* Layer.build(
+      Doorbell.layerValkey({ url, channel, connectionName: name }),
+    );
     return Context.get(context, Doorbell);
   });
 
@@ -54,7 +61,7 @@ const until = (
     Effect.asVoid,
   );
 
-/** The first signal matching `tag`, subscribed before this returns. */
+/** The first `Resync`, or the first message, subscribed before this returns. */
 const nextSignal = Effect.fnUntraced(function* (
   doorbell: Doorbell['Service'],
   kind: 'Resync' | 'message',
@@ -97,6 +104,29 @@ const admin = Effect.acquireRelease(
   (redis) => Effect.promise(() => redis.quit()),
 );
 
+/** Drops only the named subscriber: other clients share this Valkey. */
+const killSubscriber = Effect.fnUntraced(function* (
+  redis: Redis,
+  name: string,
+) {
+  const list = yield* Effect.promise(() =>
+    redis.call('CLIENT', 'LIST', 'TYPE', 'pubsub'),
+  );
+  if (!Predicate.isString(list)) {
+    return yield* Effect.die('CLIENT LIST did not answer with text');
+  }
+  const id = list
+    .split('\n')
+    .filter((line) => line.split(' ').includes(`name=${name}`))
+    .map((line) => /(?:^| )id=(\d+)/.exec(line)?.[1])
+    .find(Predicate.isString);
+  if (id === undefined) return yield* Effect.die(`no subscriber named ${name}`);
+  const killed = yield* Effect.promise(() =>
+    redis.call('CLIENT', 'KILL', 'ID', id),
+  );
+  expect(killed).toBe(1);
+});
+
 const channel = () => `studio:protocol-events:${randomUUID()}`;
 
 describe.skipIf(!url)('the Valkey doorbell', () => {
@@ -115,15 +145,14 @@ describe.skipIf(!url)('the Valkey doorbell', () => {
   it.live('resubscribes after the server drops it, and asks for a resync', () =>
     Effect.gen(function* () {
       const on = channel();
+      const name = connectionName();
       const a = yield* doorbellOn(on);
-      const b = yield* doorbellOn(on);
+      const b = yield* doorbellOn(on, name);
       const redis = yield* admin;
       yield* until(b, true);
 
       const resync = yield* nextSignal(b, 'Resync');
-      yield* Effect.promise(() =>
-        redis.call('CLIENT', 'KILL', 'TYPE', 'pubsub'),
-      );
+      yield* killSubscriber(redis, name);
 
       yield* until(b, false);
       yield* until(b, true);
@@ -154,6 +183,31 @@ describe.skipIf(!url)('the Valkey doorbell', () => {
   );
 });
 
+describe('a Valkey doorbell that cannot reach its server', () => {
+  it.live('neither blocks a ring nor delays its own close', () =>
+    Effect.gen(function* () {
+      const scope = yield* Scope.make();
+      const context = yield* Layer.buildWithScope(
+        Doorbell.layerValkey({
+          url: 'redis://127.0.0.1:1',
+          channel: channel(),
+        }),
+        scope,
+      );
+      const doorbell = Context.get(context, Doorbell);
+      const promptly = <A>(what: string, effect: Effect.Effect<A>) =>
+        Effect.timeoutOrElse(effect, {
+          duration: '300 millis',
+          orElse: () => Effect.die(`${what} took longer than 300ms`),
+        });
+
+      yield* promptly('a ring', doorbell.ring(ADVANCED));
+      expect(yield* doorbell.subscribed).toBe(false);
+      yield* promptly('closing', Scope.close(scope, Exit.void));
+    }),
+  );
+});
+
 const memoryDoorbell = Effect.map(
   Layer.build(Doorbell.layerMemory),
   (context) => Context.get(context, Doorbell),
@@ -178,6 +232,36 @@ describe('the in-memory doorbell', () => {
         PRESENCE,
       ]);
       expect(yield* shared.subscribed).toBe(true);
+    }),
+  );
+
+  it.effect('owes one Resync for the rings a stalled consumer missed', () =>
+    Effect.gen(function* () {
+      const doorbell = yield* makeMemoryDoorbell;
+      const stalled = yield* doorbell.signals;
+      for (let ring = 0; ring < 5_000; ring += 1) {
+        yield* doorbell.ring(ADVANCED);
+      }
+
+      const draining = yield* Effect.forkChild(
+        Stream.runCollect(
+          Stream.takeUntil(stalled, (signal) => signal._tag === 'Presence'),
+        ),
+      );
+      const received = yield* Effect.raceFirst(
+        Fiber.join(draining),
+        Effect.andThen(
+          Effect.forever(
+            Effect.andThen(doorbell.ring(PRESENCE), Effect.yieldNow),
+          ),
+          Effect.never,
+        ),
+      );
+
+      const resyncs = received.filter((signal) => signal._tag === 'Resync');
+      expect(resyncs).toHaveLength(1);
+      expect(received.slice(-2)).toEqual([{ _tag: 'Resync' }, PRESENCE]);
+      expect(received.length).toBeLessThan(5_000);
     }),
   );
 
