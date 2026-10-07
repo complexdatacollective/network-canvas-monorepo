@@ -171,7 +171,7 @@ function assetKey(hash: string): string {
   return `assets/${hash}`;
 }
 
-function contentHash(bytes: Uint8Array): string {
+export function contentHash(bytes: Uint8Array): string {
   return createHash('sha256').update(bytes).digest('hex');
 }
 

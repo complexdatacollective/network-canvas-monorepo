@@ -224,7 +224,7 @@ export async function createProtocolBuilderClient(
     >;
     /** Share one `makeMemoryDoorbell` between clients to ring across them. */
     readonly doorbell?: Doorbell['Service'];
-    readonly staged?: Layer.Layer<StagedImports>;
+    readonly staged?: Layer.Layer<StagedImports, never, Database | ObjectStore>;
     readonly layer?: Layer.Layer<never>;
     /** Each client is a replica of its own unless two are given one id. */
     readonly replicaId?: string;

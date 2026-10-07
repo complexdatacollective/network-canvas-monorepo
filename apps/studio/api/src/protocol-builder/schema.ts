@@ -249,6 +249,13 @@ const protocolConnections = pgTable(
 );
 
 /**
+ * How long a tab's unary-plane contact keeps its leases renewed, and how long
+ * after its last connection lapsed the worker leaves what it staged. Here so
+ * the worker can read it without importing the host.
+ */
+export const IDLE_MS = 5 * 60_000;
+
+/**
  * A resource an editor staged but has not yet committed, persisted so that a
  * later write on any replica can promote it.
  *

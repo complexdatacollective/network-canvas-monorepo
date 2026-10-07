@@ -19,7 +19,6 @@ import {
   SectionsLocked,
 } from '@codaco/protocol-builder-core/contract/errors';
 import type { ProtocolEvent } from '@codaco/protocol-builder-core/contract/schemas';
-import type { SectionDoc } from '@codaco/studio-sync/apply';
 import {
   sectionId as makeSectionId,
   parseSectionId,
@@ -32,7 +31,6 @@ import { openAssetKey } from '../protocol/asset-keys.ts';
 import { type RateLimiter } from '../rate-limit/limiter.ts';
 import type { StudioServices } from '../rpc/deps.ts';
 import { requireProtocol } from '../rpc/team-scope.ts';
-import { ObjectStore } from '../storage/object-store.ts';
 import { readProtocolEvents, type LoggedProtocolEvent } from './events.ts';
 import {
   acquireLock,
@@ -45,7 +43,6 @@ import {
   listSectionIds,
   readSection,
   releaseLock,
-  sessionOwner,
   submit,
   type ProtocolBuilderSession,
   type RefactorOutcome,
@@ -58,12 +55,12 @@ import {
   committedInspection,
   committedPreview,
   StagedImports,
+  stagingGone,
   type Inspection,
   type ResourceOutcome,
 } from './resources.ts';
 import {
   openSession,
-  ownerPrefix,
   stillSignedIn,
   WatchCutoff,
   WsConnection,
@@ -85,10 +82,6 @@ const command = <A, E, R>(
         : Effect.die(error),
     ),
   );
-
-// Keyed by edit, not connection or owner: an edit outlives a dropped socket.
-const stagingKey = (session: ProtocolBuilderSession, editId: string) =>
-  `${ownerPrefix(session)}${editId}`;
 
 const writeKey = (
   session: ProtocolBuilderSession,
@@ -143,7 +136,6 @@ export const ProtocolBuilderHandlers: Layer.Layer<
   | StudioServices
   | AuthService
   | RateLimiter
-  | ObjectStore
   | Leases
   | Presence
   | ProtocolEvents
@@ -154,7 +146,6 @@ export const ProtocolBuilderHandlers: Layer.Layer<
     const presence = yield* Presence;
     const events = yield* ProtocolEvents;
     const staged = yield* StagedImports;
-    const objectStore = yield* ObjectStore;
     const scope = yield* Effect.scope;
 
     const publish = (
@@ -194,9 +185,6 @@ export const ProtocolBuilderHandlers: Layer.Layer<
         yield* Effect.forkIn(Effect.interruptible(update), scope);
       });
 
-    const stagingFor = (session: ProtocolBuilderSession, editId: string) =>
-      staged.for(stagingKey(session, editId), sessionOwner(session));
-
     const assetsDocument = (session: ProtocolBuilderSession) =>
       Effect.map(
         command(
@@ -214,7 +202,7 @@ export const ProtocolBuilderHandlers: Layer.Layer<
       (session: ProtocolBuilderSession) =>
       (entries: ReadonlyArray<LoggedProtocolEvent>) =>
         Effect.gen(function* () {
-          yield* staged.releaseMatching(ownerPrefix(session));
+          yield* staged.releaseOwner(session);
           yield* publish(session, entries);
           yield* publishPresence(session);
         });
@@ -222,7 +210,6 @@ export const ProtocolBuilderHandlers: Layer.Layer<
     const inspectWithCommittedKey = (
       session: ProtocolBuilderSession,
       resourceId: string,
-      inspect: (assets: SectionDoc) => ResourceOutcome<Inspection>,
     ) =>
       command(
         session.protocolId,
@@ -234,7 +221,10 @@ export const ProtocolBuilderHandlers: Layer.Layer<
               session,
               makeSectionId({ kind: 'assets' }),
             );
-            const outcome = inspect(assets?.document ?? {});
+            const outcome = committedInspection(
+              assets?.document ?? {},
+              resourceId,
+            );
             if (outcome.status !== 'ok') return outcome;
             if (outcome.data.descriptor.kind !== 'apikey') return outcome;
             if (outcome.data.value !== undefined) return outcome;
@@ -244,10 +234,11 @@ export const ProtocolBuilderHandlers: Layer.Layer<
               assetId: resourceId,
             });
             if (value === undefined) return outcome;
-            return {
-              status: 'ok' as const,
+            const inspected: ResourceOutcome<Inspection> = {
+              status: 'ok',
               data: { ...outcome.data, value },
             };
+            return inspected;
           }).pipe(provideCaller(session.principal)),
         ),
       );
@@ -415,14 +406,16 @@ export const ProtocolBuilderHandlers: Layer.Layer<
           ),
         );
         if (already !== undefined) return submitted(already);
-        const store =
+        const planned =
           promote === undefined
             ? undefined
-            : yield* stagingFor(session, promote.editId);
-        const planned =
-          promote === undefined || store === undefined
-            ? undefined
-            : yield* store.plan(objectStore, promote.resourceIds);
+            : yield* command(
+                protocolId,
+                staged.plan(
+                  { session, editId: promote.editId },
+                  promote.resourceIds,
+                ),
+              );
         if (planned?.status === 'failed') {
           return yield* new PromotionFailed({
             sectionId,
@@ -435,11 +428,12 @@ export const ProtocolBuilderHandlers: Layer.Layer<
               protocolId,
               submit(session, sectionId, document, {
                 requestId,
-                ...(planned === undefined
+                ...(planned === undefined || promote === undefined
                   ? {}
                   : {
                       assetEntries: planned.data.entries,
                       promoted: planned.data.promoted,
+                      staged: promote,
                     }),
               }),
             );
@@ -467,9 +461,16 @@ export const ProtocolBuilderHandlers: Layer.Layer<
                 issues: outcome.issues,
               });
             }
-            if (promote !== undefined && store !== undefined) {
-              store.completePromotion(promote.resourceIds);
+            if (outcome.status === 'stagingGone') {
+              return yield* new PromotionFailed({
+                sectionId,
+                failure: stagingGone(outcome.resourceId),
+              });
             }
+            yield* Effect.forkIn(
+              staged.removePromoted(outcome.stagedObjects),
+              scope,
+            );
             const promoted = planned?.data.promoted;
             return {
               revision: outcome.revision,
@@ -502,14 +503,16 @@ export const ProtocolBuilderHandlers: Layer.Layer<
           ),
         );
         if (already !== undefined) return yield* created(already);
-        const store =
+        const planned =
           promote === undefined
             ? undefined
-            : yield* stagingFor(session, promote.editId);
-        const planned =
-          promote === undefined || store === undefined
-            ? undefined
-            : yield* store.plan(objectStore, promote.resourceIds);
+            : yield* command(
+                protocolId,
+                staged.plan(
+                  { session, editId: promote.editId },
+                  promote.resourceIds,
+                ),
+              );
         if (planned?.status === 'failed') {
           return yield* new PromotionFailed({ failure: planned.failure });
         }
@@ -522,11 +525,12 @@ export const ProtocolBuilderHandlers: Layer.Layer<
                 kind,
                 document,
                 ...(position === undefined ? {} : { position }),
-                ...(planned === undefined
+                ...(planned === undefined || promote === undefined
                   ? {}
                   : {
                       assetEntries: planned.data.entries,
                       promoted: planned.data.promoted,
+                      staged: promote,
                     }),
                 mintId: randomUUID,
               }),
@@ -548,9 +552,15 @@ export const ProtocolBuilderHandlers: Layer.Layer<
                 issues: outcome.issues,
               });
             }
-            if (promote !== undefined && store !== undefined) {
-              store.completePromotion(promote.resourceIds);
+            if (outcome.status === 'stagingGone') {
+              return yield* new PromotionFailed({
+                failure: stagingGone(outcome.resourceId),
+              });
             }
+            yield* Effect.forkIn(
+              staged.removePromoted(outcome.stagedObjects),
+              scope,
+            );
             return {
               sectionId: outcome.sectionId,
               revision: outcome.revision,
@@ -634,13 +644,16 @@ export const ProtocolBuilderHandlers: Layer.Layer<
         status,
       }) {
         const session = yield* openSession(protocolId);
-        const store =
+        const stagedHere =
           editId === undefined
-            ? undefined
-            : yield* staged.opened(stagingKey(session, editId));
+            ? []
+            : yield* command(
+                protocolId,
+                staged.descriptors({ session, editId }),
+              );
         const resources = [
           ...committedDescriptors(yield* assetsDocument(session)),
-          ...(store?.descriptors() ?? []),
+          ...stagedHere,
         ].filter(
           (descriptor) =>
             (kinds === undefined || kinds.includes(descriptor.kind)) &&
@@ -656,34 +669,34 @@ export const ProtocolBuilderHandlers: Layer.Layer<
         request,
       }) {
         const session = yield* openSession(protocolId);
-        yield* command(protocolId, authorizeCaller(session));
-        const store = yield* stagingFor(session, editId);
-        return store.stage(requestId, request);
+        return yield* command(
+          protocolId,
+          staged.stage({ session, editId }, requestId, request),
+        );
       }),
 
       ResourcesDiscard: Effect.fn('protocolBuilder.ResourcesDiscard')(
         function* ({ protocolId, editId, resourceId }) {
           const session = yield* openSession(protocolId);
-          yield* command(protocolId, authorizeCaller(session));
-          const store = yield* stagingFor(session, editId);
-          return store.discard(resourceId);
+          return yield* command(
+            protocolId,
+            staged.discard({ session, editId }, resourceId),
+          );
         },
       ),
 
       ResourcesInspect: Effect.fn('protocolBuilder.ResourcesInspect')(
         function* ({ protocolId, editId, resourceId }) {
           const session = yield* openSession(protocolId);
-          const store =
+          const stagedOne =
             editId === undefined
               ? undefined
-              : yield* staged.opened(stagingKey(session, editId));
-          return yield* inspectWithCommittedKey(
-            session,
-            resourceId,
-            (assets) =>
-              store === undefined
-                ? committedInspection(assets, resourceId)
-                : store.inspect(assets, resourceId),
+              : yield* command(
+                  protocolId,
+                  staged.inspect({ session, editId }, resourceId),
+                );
+          return (
+            stagedOne ?? (yield* inspectWithCommittedKey(session, resourceId))
           );
         },
       ),
@@ -691,14 +704,17 @@ export const ProtocolBuilderHandlers: Layer.Layer<
       ResourcesPreview: Effect.fn('protocolBuilder.ResourcesPreview')(
         function* ({ protocolId, editId, resourceId }) {
           const session = yield* openSession(protocolId);
-          const assets = yield* assetsDocument(session);
-          const store =
+          const stagedOne =
             editId === undefined
               ? undefined
-              : yield* staged.opened(stagingKey(session, editId));
-          return store === undefined
-            ? committedPreview(assets, resourceId)
-            : store.preview(assets, resourceId);
+              : yield* command(
+                  protocolId,
+                  staged.preview({ session, editId }, resourceId),
+                );
+          return (
+            stagedOne ??
+            committedPreview(yield* assetsDocument(session), resourceId)
+          );
         },
       ),
     });

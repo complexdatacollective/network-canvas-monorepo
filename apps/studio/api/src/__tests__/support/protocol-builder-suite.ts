@@ -249,6 +249,11 @@ export function holdingPresence() {
   return { layer, next: hold.next };
 }
 
+/**
+ * Staging with an inspection or a promotion's plan held once it has answered,
+ * so what follows it — the committed read, the write — runs after whatever
+ * the test does meanwhile. Held on the first resource id the call names.
+ */
 export function holdingStaging() {
   const hold = holdOnce<string>();
   const layer = Layer.effect(
@@ -257,7 +262,14 @@ export function holdingStaging() {
       const real = yield* StagedImports;
       return StagedImports.of({
         ...real,
-        opened: (key) => hold.around(key, real.opened(key)),
+        inspect: (edit, resourceId) =>
+          Effect.flatMap(real.inspect(edit, resourceId), (found) =>
+            hold.around(resourceId, Effect.succeed(found)),
+          ),
+        plan: (edit, resourceIds) =>
+          Effect.flatMap(real.plan(edit, resourceIds), (planned) =>
+            hold.around(resourceIds[0] ?? '', Effect.succeed(planned)),
+          ),
       });
     }),
   ).pipe(Layer.provide(StagedImports.layer));

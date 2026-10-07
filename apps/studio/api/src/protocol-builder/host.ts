@@ -74,12 +74,14 @@ import {
 import { createProtocolSyncServer } from '../protocol/sync.ts';
 import { requireProtocol } from '../rpc/team-scope.ts';
 import type { SecretsCipherApi } from '../secrets/cipher.ts';
+import type { StagingKey } from '../storage/object-store.ts';
 import {
   appendProtocolEvents,
   type LoggedProtocolEvent,
   type ProtocolEventRecord,
 } from './events.ts';
 import { PROTOCOL_BUILDER_TABLES } from './schema.ts';
+import { consumeStaged, type Consumed } from './staging-store.ts';
 import {
   readWriteReceipt,
   recordWriteReceipt,
@@ -127,12 +129,24 @@ export type AcquireOutcome =
   | ({ lock: 'held' } & SectionAtRevision)
   | ({ lock: 'readOnly'; holder: Presence } & SectionAtRevision);
 
+/**
+ * A promoted resource stopped being staged between the promotion's plan and
+ * its write: discarded, released or collected. The write changed nothing.
+ */
+type StagingGone = { status: 'stagingGone'; resourceId: string };
+
 export type SubmitOutcome =
-  | { status: 'written'; revision: Revision }
+  | {
+      status: 'written';
+      revision: Revision;
+      /** Staged objects the write consumed, for the caller to delete. */
+      stagedObjects: StagingKey[];
+    }
   | { status: 'replayed'; receipt: WriteReceipt }
   | { status: 'notLockHolder'; holder?: Presence }
   | { status: 'blocked'; blocked: SectionHolder[] }
-  | { status: 'invalidShape'; issues: SectionIssue[] };
+  | { status: 'invalidShape'; issues: SectionIssue[] }
+  | StagingGone;
 
 export type CreatableSectionKind =
   | 'stage'
@@ -141,7 +155,12 @@ export type CreatableSectionKind =
   | 'codebookEgo';
 
 export type CreateOutcome =
-  | { status: 'created'; sectionId: ProtocolSectionId; revision: Revision }
+  | {
+      status: 'created';
+      sectionId: ProtocolSectionId;
+      revision: Revision;
+      stagedObjects: StagingKey[];
+    }
   | { status: 'replayed'; receipt: WriteReceipt }
   | { status: 'exists'; sectionId: ProtocolSectionId }
   | { status: 'blocked'; blocked: SectionHolder[] }
@@ -149,7 +168,8 @@ export type CreateOutcome =
       status: 'invalidShape';
       sectionId: ProtocolSectionId;
       issues: SectionIssue[];
-    };
+    }
+  | StagingGone;
 
 export type SectionHolder = { sectionId: ProtocolSectionId; holder?: Presence };
 
@@ -160,12 +180,35 @@ export type SectionHolder = { sectionId: ProtocolSectionId; holder?: Presence };
  * `promoted` is carried through rather than derived, because the receipt has
  * to answer the retry with what the first attempt said — by then the staged
  * resources it describes have been consumed and cannot be described again.
+ * `staged` names the rows the write consumes in its own transaction, so the
+ * resources stop being staged exactly when they become committed.
  */
 export type WriteIntent = {
   requestId: string;
   assetEntries?: Readonly<Record<string, unknown>>;
   promoted?: ResourceDescriptor[];
+  staged?: { editId: string; resourceIds: readonly string[] };
 };
+
+/**
+ * Takes the write's staged rows under the draft head it holds, after every
+ * check that could still refuse it, so a refusal leaves them staged.
+ */
+const consumePromotion = (
+  session: ProtocolBuilderSession,
+  staged: WriteIntent['staged'],
+) =>
+  staged === undefined
+    ? Effect.succeed<Consumed>({ status: 'consumed', objectKeys: [] })
+    : consumeStaged(
+        {
+          teamId: session.access.teamId,
+          draftId: session.draftId,
+          owner: sessionOwner(session),
+          editId: staged.editId,
+        },
+        staged.resourceIds,
+      );
 
 export type RefactorOutcome =
   | {
@@ -901,6 +944,13 @@ export const submit = Effect.fn('protocolBuilder.submit')(function* (
         }
         writes.set(ASSETS, { ...assets.document, ...write.assetEntries });
       }
+      const consumed = yield* consumePromotion(session, write.staged);
+      if (consumed.status === 'gone') {
+        return unchanged<Published<SubmitOutcome | undefined>>({
+          outcome: { status: 'stagingGone', resourceId: consumed.resourceId },
+          events: [],
+        });
+      }
       const written = yield* writeSections(session, {
         head,
         writes,
@@ -912,7 +962,11 @@ export const submit = Effect.fn('protocolBuilder.submit')(function* (
       });
       return changed<Published<SubmitOutcome | undefined>>(
         {
-          outcome: { status: 'written', revision: written.revision },
+          outcome: {
+            status: 'written',
+            revision: written.revision,
+            stagedObjects: consumed.objectKeys,
+          },
           events: written.events,
         },
         [
@@ -1058,6 +1112,13 @@ export const create = Effect.fn('protocolBuilder.create')(function* (
         }
         writes.set(ASSETS, { ...assets.document, ...input.assetEntries });
       }
+      const consumed = yield* consumePromotion(session, input.staged);
+      if (consumed.status === 'gone') {
+        return unchanged<Published<CreateOutcome>>({
+          outcome: { status: 'stagingGone', resourceId: consumed.resourceId },
+          events: [],
+        });
+      }
       const written = yield* writeSections(session, {
         head,
         writes,
@@ -1074,6 +1135,7 @@ export const create = Effect.fn('protocolBuilder.create')(function* (
             status: 'created',
             sectionId: target,
             revision: written.revision,
+            stagedObjects: consumed.objectKeys,
           },
           events: written.events,
         },

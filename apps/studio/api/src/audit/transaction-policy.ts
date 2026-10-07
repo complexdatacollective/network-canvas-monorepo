@@ -85,6 +85,26 @@ export const NO_AUDIT_TRANSACTION_POLICIES = {
     reason:
       'A tab that stayed away past the reconnect grace giving its leases back is release, excluded from the team audit log like any other.',
   },
+  'protocolBuilder.stageResource': {
+    kind: 'none',
+    reason:
+      'Staging a file or key holds it for an edit that may never be saved; the submit that promotes it into the protocol is the audited write.',
+  },
+  'protocolBuilder.readStaged': {
+    kind: 'none',
+    reason:
+      'Reading what the caller staged for its own edit changes nothing a team can see.',
+  },
+  'protocolBuilder.discardStaged': {
+    kind: 'none',
+    reason:
+      'Discarding a staged resource drops something that was never part of the protocol; no state a team can see changes.',
+  },
+  'protocolBuilder.releaseStaged': {
+    kind: 'none',
+    reason:
+      'Dropping what a tab staged once it stayed away past the reconnect grace is cleanup of resources that were never part of the protocol.',
+  },
   'sync.createDraft': {
     kind: 'none',
     reason: 'Protocol synchronization producer coverage is delivered by #1521.',

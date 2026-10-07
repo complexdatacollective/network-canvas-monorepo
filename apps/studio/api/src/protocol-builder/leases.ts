@@ -30,6 +30,7 @@ import {
 } from './connections.ts';
 import type { LoggedProtocolEvent } from './events.ts';
 import { sessionOwner, type ProtocolBuilderSession } from './host.ts';
+import { IDLE_MS } from './schema.ts';
 import { socketClosure } from './socket-closure.ts';
 
 /** A third of the lease TTL: two renewals may be lost before one expires. */
@@ -45,8 +46,6 @@ const RENEW_CONCURRENCY = 4;
  * after 0.25s to 4s.
  */
 export const RECONNECT_GRACE_MS = 20_000;
-
-export const IDLE_MS = 5 * 60_000;
 
 /** How often one owner's unary calls reach the database, per replica. */
 const CONTACT_INTERVAL_MS = 30_000;

@@ -23,12 +23,8 @@ import {
   MaintenanceTriggers,
 } from '../../http/middleware/maintenance.ts';
 import { LIVENESS_LOCK_TIMEOUT_MS } from '../connections.ts';
-import {
-  IDLE_MS,
-  Leases,
-  RECONNECT_GRACE_MS,
-  RENEW_INTERVAL_MS,
-} from '../leases.ts';
+import { Leases, RECONNECT_GRACE_MS, RENEW_INTERVAL_MS } from '../leases.ts';
+import { IDLE_MS } from '../schema.ts';
 
 /** Long enough that a unary call reaches the database again. */
 const PAST_CONTACT_INTERVAL_MS = 60_000;

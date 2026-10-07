@@ -11,7 +11,6 @@ import {
 
 import { type Studio } from '../app.ts';
 import { TenantScope } from '../db/tenant.ts';
-import { IDLE_MS } from '../protocol-builder/leases.ts';
 import { ASSET_KEY_PLACEHOLDER, openAssetKey } from '../protocol/asset-keys.ts';
 import { testDb } from './support/database.ts';
 import {
@@ -20,11 +19,13 @@ import {
   callerOf,
   EDIT,
   GRACE,
+  holdingEvents,
   holdingStaging,
   OTHER_EDIT,
   setupProtocolBuilderSuite,
   STAGE_ORDER,
   TEAM_ID,
+  until,
 } from './support/protocol-builder-suite.ts';
 import {
   createProtocolBuilderClient,
@@ -38,7 +39,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
   const {
     runEffect,
     access,
-    clock,
+    objects,
     objectStore,
     setStoreUnreachable,
     teamRows,
@@ -46,7 +47,6 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
     callExit,
     createStage,
     stagedIds,
-    watching,
     removedAfterOpening,
   } = suite;
   let host: ProtocolBuilderTestClient;
@@ -810,74 +810,309 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
     );
   });
 
-  it('drops what a caller with no channel staged once the idle bound passes', async () => {
-    const unary = callerOf({
-      ...ADA,
-      connectionId: 'pb-ada-unary-connection',
-      clientSessionId: 'pb-ada-unary-tab',
-    });
-    const abandoned = await call(
-      unary,
-      host.rpc('ResourcesStage', {
+  const stageFile = (
+    over: ProtocolBuilderTestClient,
+    editId: string,
+    requestId: string,
+    bytes: Uint8Array,
+  ) =>
+    over.call(
+      callerOf(ADA),
+      over.rpc('ResourcesStage', {
         protocolId,
-        editId: EDIT,
-        requestId: 'unary-import',
+        editId,
+        requestId,
         request: {
-          kind: 'secret',
-          name: 'A token nobody saved',
-          value: 'pk.gone',
+          kind: 'content',
+          contentKind: 'image',
+          name: 'A photograph',
+          source: 'photo.png',
+          contentType: 'image/png',
+          bytes,
         },
       }),
     );
-    const channel = await watching(GRACE, protocolId);
+
+  const objectKeyOf = async (resourceId: string) => {
+    const [row] = await teamRows<{ objectKey: string }>(
+      `SELECT object_key AS "objectKey" FROM protocol_staged_resources
+        WHERE resource_id = $1`,
+      [resourceId],
+    );
+    if (row === undefined) throw new Error('no staged row');
+    return row.objectKey;
+  };
+
+  const stagedRowsOf = (resourceId: string) =>
+    teamRows(
+      `SELECT resource_id FROM protocol_staged_resources WHERE resource_id = $1`,
+      [resourceId],
+    );
+
+  it('keeps a staged file through a restart, for another replica to promote', async () => {
+    const edit = 'edit-across-replicas';
+    const bytes = new Uint8Array([137, 80, 78, 71, 0, 0, 0, 42]);
+    const first = await createProtocolBuilderClient(studio, {
+      objectStore,
+      replicaId: 'replica-that-staged',
+    });
+    let firstOpen = true;
+    const second = await createProtocolBuilderClient(studio, {
+      objectStore,
+      replicaId: 'replica-that-promotes',
+    });
     try {
-      const watched = await call(
-        GRACE,
-        host.rpc('ResourcesStage', {
-          protocolId,
-          editId: OTHER_EDIT,
-          requestId: 'watched-import',
-          request: {
-            kind: 'secret',
-            name: 'A token being thought about',
-            value: 'pk.kept',
-          },
-        }),
-      );
-      if (abandoned.status !== 'ok' || watched.status !== 'ok') {
-        throw new Error('staging failed');
-      }
+      const staged = await stageFile(first, edit, 'across-replicas', bytes);
+      if (staged.status !== 'ok') throw new Error(staged.failure.message);
+      const resourceId = staged.data.descriptor.id;
+      await first.dispose();
+      firstOpen = false;
 
-      clock.advance(IDLE_MS + 1);
-      await call(ADA, host.rpc('ListSections', { protocolId }));
+      const listed = await second.call(
+        callerOf(ADA),
+        second.rpc('ResourcesList', { protocolId, editId: edit }),
+      );
+      if (listed.status !== 'ok') throw new Error(listed.failure.message);
+      expect(listed.data.resources).toContainEqual(
+        expect.objectContaining({ id: resourceId, status: 'staged' }),
+      );
+      const preview = await second.call(
+        callerOf(ADA),
+        second.rpc('ResourcesPreview', {
+          protocolId,
+          editId: edit,
+          resourceId,
+        }),
+      );
+      expect(preview).toEqual({
+        status: 'ok',
+        data: {
+          resourceId,
+          url: `data:image/png;base64,${Buffer.from(bytes).toString('base64')}`,
+        },
+      });
 
-      const gone = await call(
-        unary,
-        host.rpc('ResourcesList', {
+      const stage = await createStage(ADA, 'Promoted on another replica');
+      const held = await second.call(
+        callerOf(ADA),
+        second.rpc('AcquireLock', { protocolId, sectionId: stage.sectionId }),
+      );
+      const written = await second.call(
+        callerOf(ADA),
+        second.rpc('Submit', {
           protocolId,
-          editId: EDIT,
-          status: 'staged',
+          requestId: randomUUID(),
+          sectionId: stage.sectionId,
+          document: held.document,
+          revision: held.revision,
+          promote: { editId: edit, resourceIds: [resourceId] },
         }),
       );
-      const kept = await call(
-        GRACE,
-        host.rpc('ResourcesList', {
-          protocolId,
-          editId: OTHER_EDIT,
-          status: 'staged',
+      const digest = createHash('sha256').update(bytes).digest('hex');
+      expect(written.promoted).toEqual([
+        expect.objectContaining({
+          id: resourceId,
+          status: 'committed',
+          source: `${digest}.png`,
         }),
-      );
-      if (gone.status !== 'ok' || kept.status !== 'ok') {
-        throw new Error('listing failed');
-      }
-      expect(gone.data.resources.map((entry) => entry.id)).not.toContain(
-        abandoned.data.descriptor.id,
-      );
-      expect(kept.data.resources.map((entry) => entry.id)).toContain(
-        watched.data.descriptor.id,
+      ]);
+      expect(objects.keys()).toContain(`assets/${digest}`);
+      await second.call(
+        callerOf(ADA),
+        second.rpc('ReleaseLock', { protocolId, sectionId: stage.sectionId }),
       );
     } finally {
-      await channel.stop();
+      if (firstOpen) await first.dispose();
+      await second.dispose();
+    }
+  });
+
+  it('deletes a promotion’s staged rows in its own write, and its staged object after', async () => {
+    const edit = 'edit-promoted-once';
+    const events = holdingEvents();
+    const other = await createProtocolBuilderClient(studio, {
+      objectStore,
+      events: events.layer,
+    });
+    try {
+      const staged = await stageFile(
+        other,
+        edit,
+        'promoted-once',
+        new Uint8Array([4, 8, 15, 16, 23, 42]),
+      );
+      if (staged.status !== 'ok') throw new Error(staged.failure.message);
+      const resourceId = staged.data.descriptor.id;
+      const objectKey = await objectKeyOf(resourceId);
+      const stage = await createStage(ADA, 'Promotes a file once');
+      const held = await other.call(
+        callerOf(ADA),
+        other.rpc('AcquireLock', { protocolId, sectionId: stage.sectionId }),
+      );
+
+      const committed = events.next((entries) =>
+        entries.some(
+          ({ event }) =>
+            event.type === 'revision' && event.sectionId === stage.sectionId,
+        ),
+      );
+      const written = other.call(
+        callerOf(ADA),
+        other.rpc('Submit', {
+          protocolId,
+          requestId: randomUUID(),
+          sectionId: stage.sectionId,
+          document: held.document,
+          revision: held.revision,
+          promote: { editId: edit, resourceIds: [resourceId] },
+        }),
+      );
+      await committed.reached;
+      try {
+        expect(await stagedRowsOf(resourceId)).toEqual([]);
+        expect(objects.keys()).toContain(objectKey);
+      } finally {
+        committed.release();
+      }
+      await written;
+
+      await until(
+        () => objects.removed().includes(objectKey),
+        'the promoted staged object to be deleted',
+      );
+      expect(objects.keys()).not.toContain(objectKey);
+      await other.call(
+        callerOf(ADA),
+        other.rpc('ReleaseLock', { protocolId, sectionId: stage.sectionId }),
+      );
+    } finally {
+      await other.dispose();
+    }
+  });
+
+  it('deletes a discarded file’s object before its row, keeping the row while the object stays', async () => {
+    const edit = 'edit-discarded-file';
+    const staged = await stageFile(
+      host,
+      edit,
+      'discarded-file',
+      new Uint8Array([7, 7, 7]),
+    );
+    if (staged.status !== 'ok') throw new Error(staged.failure.message);
+    const resourceId = staged.data.descriptor.id;
+    const objectKey = await objectKeyOf(resourceId);
+
+    setStoreUnreachable(true);
+    let refused;
+    try {
+      refused = await call(
+        ADA,
+        host.rpc('ResourcesDiscard', { protocolId, editId: edit, resourceId }),
+      );
+    } finally {
+      setStoreUnreachable(false);
+    }
+    expect(refused).toMatchObject({
+      status: 'failed',
+      failure: { reason: 'unavailable', retryable: true },
+    });
+    expect(await stagedIds(edit)).toContain(resourceId);
+
+    const discarded = await call(
+      ADA,
+      host.rpc('ResourcesDiscard', { protocolId, editId: edit, resourceId }),
+    );
+    expect(discarded).toStrictEqual({ status: 'ok' });
+    expect(objects.removed()).toContain(objectKey);
+    expect(objects.keys()).not.toContain(objectKey);
+    expect(await stagedRowsOf(resourceId)).toEqual([]);
+  });
+
+  it('stages nothing for a file the object store cannot take', async () => {
+    const edit = 'edit-stage-store-down';
+    setStoreUnreachable(true);
+    let refused;
+    try {
+      refused = await stageFile(
+        host,
+        edit,
+        'stage-store-down',
+        new Uint8Array([1]),
+      );
+    } finally {
+      setStoreUnreachable(false);
+    }
+    expect(refused).toMatchObject({
+      status: 'failed',
+      failure: { reason: 'unavailable', retryable: true },
+    });
+    expect(await stagedIds(edit)).toEqual([]);
+  });
+
+  it('refuses a write whose staged resource was discarded after it was planned', async () => {
+    const edit = 'edit-gone-before-write';
+    const staged = await call(
+      ADA,
+      host.rpc('ResourcesStage', {
+        protocolId,
+        editId: edit,
+        requestId: 'gone-before-write',
+        request: { kind: 'secret', name: 'Discarded', value: 'pk.discarded' },
+      }),
+    );
+    if (staged.status !== 'ok') throw new Error('staging failed');
+    const resourceId = staged.data.descriptor.id;
+    const stage = await createStage(ADA, 'Loses its resource');
+    const held = await call(
+      ADA,
+      host.rpc('AcquireLock', { protocolId, sectionId: stage.sectionId }),
+    );
+    const staging = holdingStaging();
+    const other = await createProtocolBuilderClient(studio, {
+      objectStore,
+      staged: staging.layer,
+    });
+    try {
+      const planned = staging.next((id) => id === resourceId);
+      const submitting = other.callExit(
+        callerOf(ADA),
+        other.rpc('Submit', {
+          protocolId,
+          requestId: randomUUID(),
+          sectionId: stage.sectionId,
+          document: { ...held.document, label: 'Renamed' },
+          revision: held.revision,
+          promote: { editId: edit, resourceIds: [resourceId] },
+        }),
+      );
+      await planned.reached;
+      await call(
+        ADA,
+        host.rpc('ResourcesDiscard', { protocolId, editId: edit, resourceId }),
+      );
+      planned.release();
+
+      const error = await expectRpcFailure(submitting, 'PromotionFailed');
+      expect(error).toMatchObject({
+        sectionId: stage.sectionId,
+        failure: { reason: 'not-found', resourceId, retryable: false },
+      });
+      const after = await call(
+        ADA,
+        host.rpc('GetSection', { protocolId, sectionId: stage.sectionId }),
+      );
+      expect(after.revision).toEqual(held.revision);
+      const assets = await call(
+        ADA,
+        host.rpc('GetSection', { protocolId, sectionId: ASSETS }),
+      );
+      expect(assets.document[resourceId]).toBeUndefined();
+    } finally {
+      await other.dispose();
+      await call(
+        ADA,
+        host.rpc('ReleaseLock', { protocolId, sectionId: stage.sectionId }),
+      );
     }
   });
 
