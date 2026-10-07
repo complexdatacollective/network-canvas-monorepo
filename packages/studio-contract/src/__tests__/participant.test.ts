@@ -100,7 +100,8 @@ describe('the participant payloads', () => {
         stageMetadata: {},
       },
     ],
-    ['SyncResult', SyncResult, { revision: '8' }],
+    ['SyncResult', SyncResult, { revision: '8', applied: true }],
+    ['SyncResult', SyncResult, { revision: '8', applied: false }],
     ['FinishInput', FinishInput, { holderEpoch: 2, revision: '9' }],
     ['FinishResult', FinishResult, { state: 'completed' }],
   ] as const)('%s round-trips', (_name, schema, value) => {
