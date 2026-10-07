@@ -43,7 +43,7 @@ vi.mock('../../../../selectors/protocol', () => ({
   getCodebookVariablesForSubjectType: 'getCodebookVariablesForSubjectType',
 }));
 
-const passphraseState = { unlocked: false };
+const passphraseState = { unlocked: false, refused: false };
 const requirePassphrase = vi.fn();
 
 vi.mock('../../../Anonymisation/usePassphrase', async () => {
@@ -52,8 +52,10 @@ vi.mock('../../../Anonymisation/usePassphrase', async () => {
     usePassphrase: (): Passphrase => ({
       unlocked: passphraseState.unlocked,
       passphraseChosen: true,
-      encryptionUnavailable: false,
-      lockedNotice: runtimeMessages.protectedAnswersLocked,
+      encryptionUnavailable: passphraseState.refused,
+      lockedNotice: passphraseState.refused
+        ? runtimeMessages.protectedAnswersUnavailable
+        : runtimeMessages.protectedAnswersLocked,
       unlock: vi.fn<Passphrase['unlock']>(),
       submitPassphrase: vi.fn<Passphrase['submitPassphrase']>(),
       requirePassphrase,
@@ -245,6 +247,7 @@ describe('NodePanel external data with encrypted values', () => {
     vi.clearAllMocks();
     delete stageVariables.name;
     passphraseState.unlocked = false;
+    passphraseState.refused = false;
   });
 
   it('asks for the passphrase and holds the rows back until one is entered', () => {
@@ -253,6 +256,18 @@ describe('NodePanel external data with encrypted values', () => {
     expect(requirePassphrase).toHaveBeenCalled();
     expect(screen.queryByTestId('node-list')).toBeNull();
     expect(screen.getByText(/enter your passphrase/i)).toBeTruthy();
+  });
+
+  it('says protected answers cannot be shown or saved, holding the rows back, under a header no passphrase can open', () => {
+    passphraseState.refused = true;
+
+    renderPanel();
+
+    expect(screen.queryByTestId('node-list')).toBeNull();
+    expect(screen.getByRole('status')).toHaveTextContent(
+      /cannot be shown or saved in this interview/,
+    );
+    expect(screen.queryByText(/enter your passphrase/i)).toBeNull();
   });
 
   it('offers the rows once the passphrase has been entered', () => {
