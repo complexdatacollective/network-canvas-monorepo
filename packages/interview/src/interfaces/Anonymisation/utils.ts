@@ -1,8 +1,11 @@
 import type { Variable } from '@codaco/protocol-validation';
-import type {
-  NcNode,
-  EntityAttributesProperty,
-  EntitySecureAttributesMeta,
+import {
+  entityAttributesProperty,
+  entitySecureAttributesMeta,
+  type NcNode,
+  type EntityAttributesProperty,
+  type EntitySecureAttributesMeta,
+  type VariableValue,
 } from '@codaco/shared-consts';
 
 const writeOwnProperty = <Value>(
@@ -104,6 +107,67 @@ export async function decryptData(
   // TODO: We need to look up the variable type and re-cast it here.
 
   return decoder.decode(decryptedData);
+}
+
+function isNumberArray(value: unknown): value is number[] {
+  return (
+    Array.isArray(value) && value.every((item) => typeof item === 'number')
+  );
+}
+
+/**
+ * Whether any of the node's attribute values is stored encrypted.
+ */
+export function hasEncryptedAttributes(node: NcNode): boolean {
+  return Object.keys(node[entitySecureAttributesMeta] ?? {}).length > 0;
+}
+
+/**
+ * Returns a copy of the node with every encrypted value replaced by its
+ * plaintext and that value's secure-attribute metadata removed, so the copy is
+ * consistent on its own. Throws when a value cannot be decrypted, including a
+ * value of an encrypted variable that is ciphertext without its metadata.
+ */
+export async function decryptNodeAttributes(
+  node: NcNode,
+  codebookVariables: Record<string, Variable>,
+  passphrase: string,
+): Promise<NcNode> {
+  const secureAttributes = node[entitySecureAttributesMeta] ?? {};
+
+  const entries = await Promise.all(
+    Object.entries(node[entityAttributesProperty]).map(
+      async ([key, value]): Promise<[string, VariableValue]> => {
+        const secure = Object.hasOwn(secureAttributes, key)
+          ? secureAttributes[key]
+          : undefined;
+
+        if (!secure) {
+          if (codebookVariables[key]?.encrypted && isNumberArray(value)) {
+            throw new Error(
+              `Secure attributes missing for encrypted variable ${key}`,
+            );
+          }
+          return [key, value];
+        }
+
+        if (!isNumberArray(value)) {
+          throw new Error(`Encrypted value missing for variable ${key}`);
+        }
+
+        return [
+          key,
+          await decryptData(
+            { secureAttributes: secure, data: value },
+            passphrase,
+          ),
+        ];
+      },
+    ),
+  );
+
+  const { [entitySecureAttributesMeta]: _decrypted, ...rest } = node;
+  return { ...rest, [entityAttributesProperty]: Object.fromEntries(entries) };
 }
 
 export async function generateSecureAttributes(
