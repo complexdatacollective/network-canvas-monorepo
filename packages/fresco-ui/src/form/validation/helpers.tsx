@@ -3,6 +3,7 @@ import { z } from 'zod/mini';
 import {
   createAppIntl,
   defineMessages,
+  formatMessageError,
   type IntlShape,
 } from '@codaco/app-i18n/messages';
 
@@ -151,10 +152,18 @@ export function makeValidationFunction(
               ...validationContext,
               network: await validationContext.resolveNetwork(),
             };
-          } catch {
+          } catch (error) {
+            // A rejection carrying a message error (see `createMessageError`)
+            // says why the network is unavailable, and that reason is shown.
+            const reason =
+              error instanceof Error
+                ? formatMessageError(error.message, helperIntl(intl))
+                : undefined;
             ctx.addIssue({
               code: 'custom',
-              message: helperIntl(intl).formatMessage(messages.unexpectedError),
+              message:
+                reason ??
+                helperIntl(intl).formatMessage(messages.unexpectedError),
             });
             return;
           }
