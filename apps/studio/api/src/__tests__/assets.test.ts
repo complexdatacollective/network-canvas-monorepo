@@ -288,6 +288,26 @@ describe('asset delivery policy', () => {
     expect(res.headers.get('X-Content-Type-Options')).toBe('nosniff');
   });
 
+  // Every audio, video and raster image type protocol-builder's
+  // `EXTENSION_CONTENT_TYPES` gives an accepted stimulus: an interview puts the
+  // storage URL straight into an <img>, <audio> or <video>. SVG stays an
+  // opaque download (above); the interview renders it from the bytes.
+  it.each([
+    'audio/aiff',
+    'audio/mp4',
+    'audio/mpeg',
+    'image/gif',
+    'image/jpeg',
+    'image/png',
+    'video/mp4',
+    'video/quicktime',
+  ])('serves %s, a stimulus Studio accepts, inline as itself', (type) => {
+    expect(deliveryFor(type)).toEqual({
+      contentType: type,
+      disposition: 'inline',
+    });
+  });
+
   it('classifies a parameterised media type by its essence', () => {
     expect(deliveryFor('image/png; charset=binary')).toEqual({
       contentType: 'image/png',

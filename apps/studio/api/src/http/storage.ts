@@ -15,7 +15,10 @@ const SHA256_HEX = /^[0-9a-f]{64}$/;
 const UNSAFE_METHODS = ['POST', 'PUT', 'PATCH', 'DELETE'] as const;
 
 // Uploaded bytes are untrusted and served from the Studio origin: only media
-// the browser cannot turn into script is served inline. SVG carries <script>.
+// the browser cannot turn into script is served inline, which covers every
+// audio, video and raster stimulus Studio accepts (protocol-builder's
+// `RESOURCE_KIND_EXTENSIONS`). SVG carries <script>: an interview renders it
+// from the bytes instead (`participant/assetUrl.ts` in studio-web).
 const INLINE_MEDIA_TYPES = new Set([
   'image/apng',
   'image/avif',
@@ -24,12 +27,16 @@ const INLINE_MEDIA_TYPES = new Set([
   'image/png',
   'image/webp',
   'audio/aac',
+  'audio/aiff',
+  'audio/x-aiff',
+  'audio/mp4',
   'audio/mpeg',
   'audio/ogg',
   'audio/wav',
   'audio/webm',
   'video/mp4',
   'video/ogg',
+  'video/quicktime',
   'video/webm',
 ]);
 

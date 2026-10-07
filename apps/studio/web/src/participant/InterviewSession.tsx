@@ -8,6 +8,7 @@ import type {
   StepChangeHandler,
 } from '@codaco/interview/contract';
 
+import { createAssetResolver } from './assetUrl.ts';
 import { createParticipantHandlers } from './interviewHandlers.ts';
 import ParticipantNotice, {
   type ParticipantNoticeKind,
@@ -19,9 +20,6 @@ const ANALYTICS: InterviewAnalyticsMetadata = {
   installationId: 'studio',
   hostApp: 'studio',
 };
-
-const storageUrl = (source: string): string =>
-  `/storage/${source.split('.')[0]}`;
 
 export default function InterviewSession() {
   const loaded = route.useLoaderData();
@@ -66,16 +64,8 @@ export default function InterviewSession() {
     [saveStep],
   );
 
-  const onRequestAsset = useCallback<AssetRequestHandler>(
-    async (assetId) => {
-      const asset = payload.protocol.assets.find(
-        (candidate) => candidate.assetId === assetId,
-      );
-      if (asset?.source === undefined) {
-        throw new Error(`No stored file for asset ${assetId}`);
-      }
-      return storageUrl(asset.source);
-    },
+  const onRequestAsset = useMemo<AssetRequestHandler>(
+    () => createAssetResolver(payload.protocol.assets),
     [payload],
   );
 

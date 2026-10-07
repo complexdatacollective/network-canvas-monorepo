@@ -12,15 +12,21 @@ const decodeSessionToken = Schema.decodeUnknownOption(SessionToken);
 const keyFor = (linkToken: LinkToken): string =>
   `studio.participant.${bytesToHex(sha256(utf8ToBytes(linkToken)))}`;
 
-const stores = (): Storage[] => [sessionStorage, localStorage];
+// Getters, read inside each caller's `try`: a browser that denies Web Storage
+// throws on reading `sessionStorage` or `localStorage` itself, and one denied
+// store must not cost the other.
+const STORES: ReadonlyArray<() => Storage> = [
+  () => sessionStorage,
+  () => localStorage,
+];
 
 export const readStoredSession = (
   linkToken: LinkToken,
 ): SessionToken | undefined => {
-  for (const store of stores()) {
+  for (const store of STORES) {
     try {
       const stored = Option.getOrUndefined(
-        decodeSessionToken(store.getItem(keyFor(linkToken))),
+        decodeSessionToken(store().getItem(keyFor(linkToken))),
       );
       if (stored !== undefined) return stored;
     } catch {
@@ -46,9 +52,9 @@ export const storeSession = (
 };
 
 export const forgetStoredSession = (linkToken: LinkToken): void => {
-  for (const store of stores()) {
+  for (const store of STORES) {
     try {
-      store.removeItem(keyFor(linkToken));
+      store().removeItem(keyFor(linkToken));
     } catch {
       continue;
     }
