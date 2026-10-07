@@ -29,16 +29,24 @@ import { type KeyboardEvent, useState } from 'react';
  * every close, including this one, so a caller resetting its search query
  * there keeps doing so.
  *
+ * Pass `open` to keep a component's caller in control of it, as
+ * `Combobox.Root` would: the popup then stays as the caller says, and Escape
+ * on the trigger is still claimed by the open popup rather than whatever is
+ * behind it.
+ *
  * Delete this once Base UI's trigger handles Escape while open.
  */
 export function useComboboxTriggerEscape({
+  open: controlledOpen,
   defaultOpen = false,
   onOpenChange,
 }: {
+  open?: boolean;
   defaultOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
 } = {}) {
-  const [open, setOpen] = useState(defaultOpen);
+  const [uncontrolledOpen, setOpen] = useState(defaultOpen);
+  const open = controlledOpen ?? uncontrolledOpen;
 
   const handleOpenChange = (nextOpen: boolean) => {
     setOpen(nextOpen);
