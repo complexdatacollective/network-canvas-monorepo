@@ -68,7 +68,12 @@ import {
   type Inspection,
   type ResourceOutcome,
 } from './resources.ts';
-import { openSession, stillSignedIn, WatchCutoff } from './session.ts';
+import {
+  openSession,
+  resolveSession,
+  stillSignedIn,
+  WatchCutoff,
+} from './session.ts';
 import type { WriteOperation, WriteReceipt } from './writeReceipts.ts';
 import { readWriteReceipt } from './writeReceipts.ts';
 
@@ -338,17 +343,19 @@ export const ProtocolBuilderHandlers: Layer.Layer<
             let last = lastBacklog === undefined ? from : BigInt(lastBacklog);
             let authorizedAt = yield* Clock.currentTimeMillis;
             const reauthorizing = Semaphore.makeUnsafe(1);
-            // On the session the watch opened, against the role and grants
-            // as they stand: no rate limit is charged and no contact made, as
-            // `openSession` would for every open watch on every timer. One at
-            // a time, so a delivery and the timer that fall due together ask
-            // once.
+            // By the memberships, role and grants as they stand, but with no
+            // rate limit charged and no contact made, as `openSession` would
+            // for every open watch on every timer. One at a time, so a
+            // delivery and the timer that fall due together ask once.
             const reauthorizeWhenDue = reauthorizing.withPermit(
               Effect.gen(function* () {
                 const at = yield* Clock.currentTimeMillis;
                 if (at - authorizedAt < REAUTHORIZE_MS) return;
                 yield* stillSignedIn(headers);
-                yield* command(protocolId, authorizeCaller(session));
+                yield* command(
+                  protocolId,
+                  authorizeCaller(yield* resolveSession(protocolId)),
+                );
                 authorizedAt = at;
               }),
             );
