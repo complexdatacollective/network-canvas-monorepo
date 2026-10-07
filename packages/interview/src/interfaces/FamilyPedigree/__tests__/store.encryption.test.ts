@@ -315,3 +315,50 @@ describe('finalizeNetwork with an encrypted name variable', () => {
     expect(await readStoredLabel(ego)).toBe('Sam');
   });
 });
+
+describe('finalizeNetwork cancelled before the pedigree is saved', () => {
+  const readOnlyFlags = (store: ReturnType<typeof buildFamily>) =>
+    [...store.getState().nodeMetadata.values()].map((meta) => meta.readOnly);
+
+  async function expectNothingCommittedThenSaved(
+    reduxStore: ReturnType<typeof makeReduxStore>,
+    store: ReturnType<typeof buildFamily>,
+    readOnlyBefore: boolean[],
+  ) {
+    const { network, stageMetadata } = reduxStore.getState().session;
+    expect(network.nodes).toEqual([]);
+    expect(network.edges).toEqual([]);
+    expect(stageMetadata?.[0]).toBeUndefined();
+    // Still editable: finalizing marks every relative read-only.
+    expect(readOnlyFlags(store)).toEqual(readOnlyBefore);
+
+    // The pedigree is kept, so finalizing again saves it once.
+    expect(await store.getState().finalizeNetwork()).toBeUndefined();
+    expect(reduxStore.getState().session.network.nodes).toHaveLength(2);
+    expect(reduxStore.getState().session.network.edges).toHaveLength(1);
+  }
+
+  it('commits nothing when cancelled while the names are encrypted', async () => {
+    const reduxStore = makeReduxStore();
+    const store = buildFamily(reduxStore);
+    const readOnlyBefore = readOnlyFlags(store);
+    const controller = new AbortController();
+
+    const finalizing = store.getState().finalizeNetwork(controller.signal);
+    controller.abort();
+
+    expect(await finalizing).toBeDefined();
+    await expectNothingCommittedThenSaved(reduxStore, store, readOnlyBefore);
+  });
+
+  it('commits nothing when already cancelled', async () => {
+    const reduxStore = makeReduxStore();
+    const store = buildFamily(reduxStore);
+    const readOnlyBefore = readOnlyFlags(store);
+
+    expect(
+      await store.getState().finalizeNetwork(AbortSignal.abort()),
+    ).toBeDefined();
+    await expectNothingCommittedThenSaved(reduxStore, store, readOnlyBefore);
+  });
+});

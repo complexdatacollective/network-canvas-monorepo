@@ -126,10 +126,10 @@ type NetworkActions = {
   /**
    * Commits the pedigree to the interview network as one change, so nothing
    * that observes the session sees part of it. Resolves to the refused write
-   * when it could not be saved, in which case nothing is committed and the
-   * pedigree stays editable.
+   * when it could not be saved, or when `signal` cancelled it before it was
+   * saved; then nothing is committed and the pedigree stays editable.
    */
-  finalizeNetwork: () => Promise<RefusedWrite | undefined>;
+  finalizeNetwork: (signal?: AbortSignal) => Promise<RefusedWrite | undefined>;
   resetNetwork: () => void;
 };
 
@@ -476,7 +476,7 @@ export const createFamilyPedigreeStore = (
           );
         },
 
-        finalizeNetwork: async () => {
+        finalizeNetwork: async (signal) => {
           if (!dispatch) return undefined;
 
           const { network, syncMetadata: sync } = get();
@@ -565,13 +565,20 @@ export const createFamilyPedigreeStore = (
             // A partly committed family would leave people without the
             // relationships that place them, so the pedigree is saved whole
             // or, if any part of it is refused, not at all.
-            const result = await dispatch(
+            const commit = dispatch(
               addNodesAndEdges({
                 nodes: newNodes,
                 edges: newEdges,
                 currentStep: currentStep ?? 0,
               }),
             );
+            // Cancelled while the names are being encrypted, the write is
+            // abandoned and nothing is committed.
+            const abort = () => commit.abort();
+            signal?.addEventListener('abort', abort, { once: true });
+            if (signal?.aborted) abort();
+            const result = await commit;
+            signal?.removeEventListener('abort', abort);
             if (!addNodesAndEdges.fulfilled.match(result)) return result;
 
             result.payload.edges.forEach(({ edgeId }, index) => {
