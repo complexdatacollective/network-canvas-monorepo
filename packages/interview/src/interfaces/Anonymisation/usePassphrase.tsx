@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import { useDispatch, useSelector, useStore } from 'react-redux';
 
 import {
   getPassphrase,
@@ -11,6 +11,8 @@ import {
   setShowPassphrasePrompter,
   showPassphrasePrompter,
 } from '../../store/modules/ui';
+import type { RootState } from '../../store/store';
+import { passphraseUnlocksNetwork } from './verifyPassphrase';
 
 export const usePassphrase = () => {
   const dispatch = useDispatch();
@@ -34,13 +36,29 @@ export const usePassphrase = () => {
     return undefined;
   }, [passphrase, dispatch, showPrompter]);
 
-  const setPassphrase = useCallback(
-    (newPassphrase: string) => {
-      dispatch(setShowPassphrasePrompter(false));
+  const store = useStore<RootState>();
 
-      dispatch(setPassphraseAction(newPassphrase));
+  /**
+   * Puts `candidate` in force only if it unlocks the data this interview
+   * already holds, so a mistyped passphrase is turned away at entry instead of
+   * being used to encrypt new answers that could then never be read alongside
+   * the old ones. Resolves to whether it was accepted.
+   */
+  const submitPassphrase = useCallback(
+    async (candidate: string) => {
+      const { session, protocol } = store.getState();
+      const accepted = await passphraseUnlocksNetwork(
+        session.network.nodes,
+        protocol.codebook,
+        candidate,
+      );
+      if (!accepted) return false;
+
+      dispatch(setShowPassphrasePrompter(false));
+      dispatch(setPassphraseAction(candidate));
+      return true;
     },
-    [dispatch],
+    [store, dispatch],
   );
 
   const setPassphraseInvalid = useCallback(
@@ -53,7 +71,7 @@ export const usePassphrase = () => {
   return {
     passphrase,
     passphraseInvalid,
-    setPassphrase,
+    submitPassphrase,
     requirePassphrase,
     showPassphrasePrompter: showPrompter,
     setPassphraseInvalid,

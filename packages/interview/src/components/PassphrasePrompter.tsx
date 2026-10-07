@@ -9,11 +9,13 @@ import {
 } from 'motion/react';
 import { useCallback, useEffect, useId, useState } from 'react';
 
+import { createMessageError } from '@codaco/app-i18n/messages';
 import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
-import InputField from '@codaco/fresco-ui/form/fields/InputField';
+import PasswordField from '@codaco/fresco-ui/form/fields/PasswordField';
 import { FormWithoutProvider } from '@codaco/fresco-ui/form/Form';
 import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
+import type { FormSubmitHandler } from '@codaco/fresco-ui/form/store/types';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import { usePortalContainer } from '@codaco/fresco-ui/PortalContainer';
 
@@ -30,24 +32,14 @@ const transition: Transition = {
 
 export default function PassphrasePrompter() {
   const intl = useAppIntl();
-  const { setPassphrase, showPassphrasePrompter, passphraseInvalid } =
-    usePassphrase();
+  const { showPassphrasePrompter, passphraseInvalid } = usePassphrase();
   const [showPassphraseOverlay, setShowPassphraseOverlay] = useState(false);
   const [showTooltip, setShowTooltip] = useState(false);
   const portalContainer = usePortalContainer();
 
   const willChange = useWillChange();
 
-  const handleSetPassphrase = useCallback(
-    (passphrase: string) => {
-      if (!passphrase) {
-        return;
-      }
-      setPassphrase(passphrase);
-      setShowPassphraseOverlay(false);
-    },
-    [setPassphrase],
-  );
+  const closeOverlay = useCallback(() => setShowPassphraseOverlay(false), []);
 
   useEffect(() => {
     let timeout: ReturnType<typeof setTimeout> | null = null;
@@ -124,30 +116,47 @@ export default function PassphrasePrompter() {
         </Tooltip.Root>
       </Tooltip.Provider>
       <PassphraseOverlay
-        handleSubmit={handleSetPassphrase}
         show={showPassphraseOverlay}
-        onClose={() => setShowPassphraseOverlay(false)}
+        onAccepted={closeOverlay}
+        onClose={closeOverlay}
       />
     </>
   );
 }
 
 const PassphraseOverlay = ({
-  handleSubmit,
   show,
+  onAccepted,
   onClose,
 }: {
-  handleSubmit: (passphrase: string) => void;
   show: boolean;
+  onAccepted: () => void;
   onClose: () => void;
 }) => {
   const intl = useAppIntl();
-  const { passphraseInvalid } = usePassphrase();
+  const { passphraseInvalid, submitPassphrase } = usePassphrase();
   const formId = useId();
 
-  const onSubmitForm = (values: unknown) => {
-    const fields = values as { passphrase: string };
-    handleSubmit(fields.passphrase);
+  const onSubmitForm: FormSubmitHandler = async ({ passphrase }) => {
+    if (typeof passphrase !== 'string') {
+      return {
+        success: false,
+        formErrors: [createMessageError(messages.submissionFailed)],
+      };
+    }
+
+    // A passphrase that cannot unlock what is already saved is turned away
+    // here, with the reason under the field, rather than being put in force.
+    if (!(await submitPassphrase(passphrase))) {
+      return {
+        success: false,
+        fieldErrors: {
+          passphrase: [createMessageError(messages.passphraseIncorrect)],
+        },
+      };
+    }
+
+    onAccepted();
     return { success: true };
   };
 
@@ -178,7 +187,7 @@ const PassphraseOverlay = ({
             onSubmit={onSubmitForm}
           >
             <Field
-              component={InputField}
+              component={PasswordField}
               name="passphrase"
               label={intl.formatMessage(messages.passphrase)}
               placeholder={intl.formatMessage(messages.passphrasePlaceholder)}
