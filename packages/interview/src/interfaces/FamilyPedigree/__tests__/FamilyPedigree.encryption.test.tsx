@@ -6,6 +6,8 @@ import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import { DndStoreProvider } from '@codaco/fresco-ui/dnd/DndStoreProvider';
+import { FormWithoutProvider } from '@codaco/fresco-ui/form/Form';
+import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
 import {
   asEntityAttributeReference,
   type Codebook,
@@ -30,6 +32,7 @@ import type { BeforeNextFunction, StageProps } from '../../../types';
 import { createEncryptionStore } from '../../Anonymisation/__tests__/encryptionFixtures';
 import { generateSecureAttributes } from '../../Anonymisation/utils';
 import NarrativePedigreeView from '../../NarrativePedigree/components/NarrativePedigreeView';
+import PersonNameField from '../components/PersonNameField';
 import FamilyPedigree from '../FamilyPedigree';
 import { FamilyPedigreeContext } from '../FamilyPedigreeContext';
 import { FamilyPedigreeProvider } from '../FamilyPedigreeProvider';
@@ -238,17 +241,19 @@ function makeStore({
   metadata,
   withPassphrase,
   encryptionEnabled = true,
+  variables = nodeVariables,
 }: {
   nodes?: NcNode[];
   edges?: NcEdge[];
   metadata?: StageMetadata[string];
   withPassphrase: boolean;
   encryptionEnabled?: boolean;
+  variables?: Record<string, Variable>;
 }) {
   const store = createEncryptionStore(
     nodes,
     [stage, narrativeStage],
-    nodeVariables,
+    variables,
     {
       edges,
       edgeTypes,
@@ -480,6 +485,49 @@ describe('FamilyPedigree while the encryptedVariables experiment is off', () => 
     expect(stored.every((node) => !node[entitySecureAttributesMeta])).toBe(
       true,
     );
+  });
+});
+
+describe('FamilyPedigree checking the name of a relative', () => {
+  it('rejects a name someone else in the interview already has, though it is stored encrypted', async () => {
+    const store = makeStore({
+      // Nominated on another stage, so not part of the pedigree.
+      nodes: [await encryptedNode('alter', { [NAME_VAR]: 'Alice' })],
+      withPassphrase: true,
+      variables: {
+        ...nodeVariables,
+        [NAME_VAR]: {
+          name: 'name',
+          type: 'text',
+          component: 'Text',
+          encrypted: true,
+          validation: { unique: true },
+        },
+      },
+    });
+    const user = userEvent.setup();
+    render(
+      <FamilyPedigreeProvider nodes={[]} edges={[]}>
+        <FormStoreProvider>
+          <FormWithoutProvider onSubmit={vi.fn()}>
+            <PersonNameField label="Name" />
+          </FormWithoutProvider>
+        </FormStoreProvider>
+      </FamilyPedigreeProvider>,
+      { wrapper: makeWrapper(store) },
+    );
+
+    await user.type(
+      await screen.findByRole('textbox', { name: /Name/ }),
+      'Alice',
+    );
+    await user.tab();
+
+    expect(
+      await screen.findByText(
+        'This value is used elsewhere. It must be unique.',
+      ),
+    ).toBeVisible();
   });
 });
 

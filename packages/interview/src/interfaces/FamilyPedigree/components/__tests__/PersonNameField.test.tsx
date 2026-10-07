@@ -87,6 +87,13 @@ vi.mock('../../../../store/modules/protocol', async (importOriginal) => {
   };
 });
 
+// Decrypting stored values for validation reads the passphrase from Redux;
+// these people have none to decrypt. FamilyPedigree.encryption.test.tsx
+// checks the name against encrypted ones.
+vi.mock('../../../../forms/useValidationNetwork', () => ({
+  useValidationNetwork: ({ network }: { network: unknown }) => ({ network }),
+}));
+
 vi.mock('../../../../selectors/forms', async (importOriginal) => {
   const actual =
     await importOriginal<typeof import('../../../../selectors/forms')>();

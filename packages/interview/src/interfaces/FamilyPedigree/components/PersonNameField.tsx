@@ -13,11 +13,14 @@ import type {
   CustomFieldValidation,
   ValidationContext,
 } from '@codaco/fresco-ui/form/store/types';
+import type { StageSubject } from '@codaco/protocol-validation';
+import type { NcNetwork } from '@codaco/shared-consts';
 
 import {
   buildVariableLabels,
   useVariableLabels,
 } from '../../../forms/buildVariableLabels';
+import { useValidationNetwork } from '../../../forms/useValidationNetwork';
 import { useStageSelector } from '../../../hooks/useStageSelector';
 import {
   getValidationContext,
@@ -135,35 +138,51 @@ export default function PersonNameField({
   // an error message.
   const formVariableLabels = useVariableLabels(nodeForm ?? []);
 
-  const validationContext = useMemo<ValidationContext>(() => {
+  const network = useMemo<NcNetwork>(() => {
     const localIds = new Set(pedigreeNodes.keys());
     return {
+      ...baseValidationContext.network,
+      nodes: [
+        ...baseValidationContext.network.nodes.filter(
+          (node) => !localIds.has(node._uid),
+        ),
+        ...pedigreeNodes.values(),
+      ],
+    };
+  }, [baseValidationContext.network, pedigreeNodes]);
+  const stageSubject = useMemo<StageSubject>(
+    () => ({ entity: 'node', type: nodeType }),
+    [nodeType],
+  );
+  // Names already in the interview network may be stored encrypted; `unique`
+  // must compare with their plaintext, as every other form does.
+  const validationNetwork = useValidationNetwork(
+    { codebook, network },
+    stageSubject,
+    [nodeLabelVariable],
+  );
+
+  const validationContext = useMemo<ValidationContext>(
+    () => ({
       ...baseValidationContext,
-      stageSubject: { entity: 'node', type: nodeType },
+      ...validationNetwork,
+      stageSubject,
       variableLabels: {
         ...formVariableLabels,
         ...buildVariableLabels([{ variable: nodeLabelVariable, label }]),
       },
       ...(currentEntityId !== undefined ? { currentEntityId } : {}),
-      network: {
-        ...baseValidationContext.network,
-        nodes: [
-          ...baseValidationContext.network.nodes.filter(
-            (node) => !localIds.has(node._uid),
-          ),
-          ...pedigreeNodes.values(),
-        ],
-      },
-    };
-  }, [
-    baseValidationContext,
-    currentEntityId,
-    formVariableLabels,
-    label,
-    nodeLabelVariable,
-    nodeType,
-    pedigreeNodes,
-  ]);
+    }),
+    [
+      baseValidationContext,
+      validationNetwork,
+      stageSubject,
+      currentEntityId,
+      formVariableLabels,
+      label,
+      nodeLabelVariable,
+    ],
+  );
 
   return (
     <Field
