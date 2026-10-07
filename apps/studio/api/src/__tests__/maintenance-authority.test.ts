@@ -196,7 +196,7 @@ describe.skipIf(!db)('studio-api maintenance on|off', () => {
       const document = committedDocument();
       await Effect.runPromise(
         migrateDatabaseEffect(
-          verifyMigrations(document, document.fingerprint),
+          Effect.runSync(verifyMigrations(document, document.fingerprint)),
           { appliedBy: 'test' },
         ).pipe(
           Effect.provide(

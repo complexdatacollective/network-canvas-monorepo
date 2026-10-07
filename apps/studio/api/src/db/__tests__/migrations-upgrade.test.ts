@@ -111,7 +111,7 @@ describe.skipIf(!db)('an upgrade of a populated database', () => {
   const migrate = (document: MigrationsDocument) =>
     Effect.runPromise(
       migrateDatabaseEffect(
-        verifyMigrations(document, document.fingerprint),
+        Effect.runSync(verifyMigrations(document, document.fingerprint)),
       ).pipe(Effect.provide(OwnerDatabase.layer(scratch.db))),
     );
 
@@ -119,7 +119,7 @@ describe.skipIf(!db)('an upgrade of a populated database', () => {
     Effect.runPromise(
       Effect.flip(
         migrateDatabaseEffect(
-          verifyMigrations(document, document.fingerprint),
+          Effect.runSync(verifyMigrations(document, document.fingerprint)),
         ).pipe(Effect.provide(OwnerDatabase.layer(scratch.db))),
       ),
     );

@@ -1,3 +1,4 @@
+import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -11,7 +12,7 @@ import {
   type DocumentMigration,
   forbiddenStatement,
   type MigrationsDocument,
-  MigrationsDocumentRefused,
+  type MigrationsDocumentRefused,
   verifyMigrations,
   VerifiedMigrations,
 } from '../migrations-document.ts';
@@ -22,15 +23,13 @@ const committed = committedDocument();
 const refusalOf = (
   document: MigrationsDocument,
   fingerprint = document.fingerprint,
-): MigrationsDocumentRefused => {
-  try {
-    verifyMigrations(document, fingerprint);
-  } catch (error) {
-    if (error instanceof MigrationsDocumentRefused) return error;
-    throw error;
-  }
-  throw new Error('the document was accepted');
-};
+): MigrationsDocumentRefused =>
+  Effect.runSync(
+    verifyMigrations(document, fingerprint).pipe(
+      Effect.andThen(() => Effect.die(new Error('the document was accepted'))),
+      Effect.flip,
+    ),
+  );
 
 /** One migration of the document, rebuilt by `change`. */
 function changing(
@@ -49,7 +48,7 @@ function changing(
 describe('the committed migrations document', () => {
   it('verifies against this build’s fingerprint', () => {
     expect(committed.migrations.length).toBeGreaterThan(0);
-    const verified = verifyMigrations(committed);
+    const verified = Effect.runSync(verifyMigrations(committed));
     expect(verified).toBeInstanceOf(VerifiedMigrations);
     expect(verified.fingerprint).toBe(SCHEMA_FINGERPRINT);
     expect(verified.migrations).toEqual(committed.migrations);
