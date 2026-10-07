@@ -117,6 +117,7 @@ const REL_TYPE_VAR = 'relationshipType';
 const IS_ACTIVE_VAR = 'isActive';
 const IS_GEST_VAR = 'isGestationalCarrier';
 const GAMETE_VAR = 'gameteRole';
+const DIAGNOSIS_VAR = 'diagnosis';
 
 const nodeVariables: Record<string, Variable> = {
   [NAME_VAR]: {
@@ -139,6 +140,22 @@ const nodeVariables: Record<string, Variable> = {
   },
   [NOMINATED_VAR]: { name: 'nominated', label: 'nominated', type: 'boolean' },
   [AFFECTED_VAR]: { name: 'affected', label: 'affected', type: 'boolean' },
+};
+
+/**
+ * A codebook under which the pedigree writes nothing encrypted, while a
+ * question another stage asks about relatives is protected.
+ */
+const unprotectedPedigreeVariables: Record<string, Variable> = {
+  ...nodeVariables,
+  [NAME_VAR]: { name: 'name', label: 'name', type: 'text', component: 'Text' },
+  [DIAGNOSIS_VAR]: {
+    name: 'diagnosis',
+    label: 'diagnosis',
+    type: 'text',
+    component: 'Text',
+    encrypted: true,
+  },
 };
 
 const edgeTypes: Codebook['edge'] = {
@@ -214,10 +231,11 @@ const narrativeStage: StageProps<'NarrativePedigree'>['stage'] = {
 async function encryptedNode(
   id: string,
   attributes: Record<string, VariableValue>,
+  variables: Record<string, Variable> = nodeVariables,
 ): Promise<NcNode> {
   const { key } = await encryptionFor(PASSPHRASE);
   const { encryptedAttributes, secureAttributes } =
-    await generateSecureAttributes(attributes, nodeVariables, key, id);
+    await generateSecureAttributes(attributes, variables, key, id);
   return {
     [entityPrimaryKeyProperty]: id,
     type: NODE_TYPE,
@@ -255,18 +273,32 @@ function withNameOf(node: NcNode, source: NcNode): NcNode {
  */
 async function committedPedigree({
   motherNameUnreadable = false,
-}: { motherNameUnreadable?: boolean } = {}) {
-  const ego = await encryptedNode('ego', {
-    [NAME_VAR]: 'Sam',
-    [EGO_VAR]: true,
-  });
-  const mother = await encryptedNode('mother', {
-    [NAME_VAR]: 'Rosa',
-    [EGO_VAR]: false,
-    [BIO_SEX_VAR]: 'female',
-    [REL_VAR]: 'Parent',
-    [NOMINATED_VAR]: false,
-  });
+  motherDiagnosis,
+  variables = nodeVariables,
+}: {
+  motherNameUnreadable?: boolean;
+  motherDiagnosis?: string;
+  variables?: Record<string, Variable>;
+} = {}) {
+  const ego = await encryptedNode(
+    'ego',
+    { [NAME_VAR]: 'Sam', [EGO_VAR]: true },
+    variables,
+  );
+  const mother = await encryptedNode(
+    'mother',
+    {
+      [NAME_VAR]: 'Rosa',
+      [EGO_VAR]: false,
+      [BIO_SEX_VAR]: 'female',
+      [REL_VAR]: 'Parent',
+      [NOMINATED_VAR]: false,
+      ...(motherDiagnosis === undefined
+        ? {}
+        : { [DIAGNOSIS_VAR]: motherDiagnosis }),
+    },
+    variables,
+  );
   const nodes = [ego, motherNameUnreadable ? withNameOf(mother, ego) : mother];
   const edges: NcEdge[] = [
     {
@@ -306,18 +338,20 @@ async function makeStore({
   edges = [],
   metadata,
   header,
+  variables = nodeVariables,
   unlocked,
 }: {
   nodes?: NcNode[];
   edges?: NcEdge[];
   metadata?: StageMetadata[string];
   header?: NcEncryptionHeader;
+  variables?: Record<string, Variable>;
   unlocked: boolean;
 }): Promise<Store> {
   const store = createEncryptionStore(
     nodes,
     [stage, narrativeStage],
-    nodeVariables,
+    variables,
     {
       edges,
       edgeTypes,
@@ -491,6 +525,51 @@ describe('FamilyPedigree under an encryption header no passphrase can open', () 
     expect(store.getState().ui.showPassphrasePrompter).toBe(false);
     expect(await canMoveOn()).toBe(true);
     expect(store.getState().session.network.nodes).toEqual([]);
+  });
+
+  it('opens a pedigree that writes nothing protected, and keeps the protected answers relatives already hold', async () => {
+    const committed = await committedPedigree({
+      motherDiagnosis: 'Asthma',
+      variables: unprotectedPedigreeVariables,
+    });
+    const store = await makeStore({
+      ...committed,
+      header: outOfBoundsHeader(committed.header),
+      variables: unprotectedPedigreeVariables,
+      unlocked: false,
+    });
+    const storedMother = () => {
+      const mother = store
+        .getState()
+        .session.network.nodes.find((node) => node._uid === 'mother');
+      if (!mother) throw new Error('Expected the mother to be stored');
+      return mother;
+    };
+    const before = storedMother();
+    expect(before[entitySecureAttributesMeta]?.[DIAGNOSIS_VAR]).toBeDefined();
+    const { moveToNomination } = renderPedigree(store);
+
+    expect(await screen.findByRole('button', { name: 'Rosa' })).toBeTruthy();
+    expect(screen.queryByText(/cannot be shown or saved/)).toBeNull();
+    expect(screen.queryByText(/Asthma|\d+,\d+,\d+/)).toBeNull();
+    expect(store.getState().ui.showPassphrasePrompter).toBe(false);
+
+    await moveToNomination();
+    await userEvent.click(await screen.findByRole('button', { name: 'Rosa' }));
+
+    await waitFor(() =>
+      expect(storedMother()[entityAttributesProperty][NOMINATED_VAR]).toBe(
+        true,
+      ),
+    );
+    const after = storedMother();
+    expect(after[entityAttributesProperty][DIAGNOSIS_VAR]).toEqual(
+      before[entityAttributesProperty][DIAGNOSIS_VAR],
+    );
+    expect(after[entitySecureAttributesMeta]).toEqual(
+      before[entitySecureAttributesMeta],
+    );
+    expect(store.getState().session.network.nodes).toHaveLength(2);
   });
 });
 
