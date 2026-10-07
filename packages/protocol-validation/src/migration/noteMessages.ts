@@ -366,6 +366,41 @@ export const migrationNoteMessages = defineMessages({
     description:
       'One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded. "Unspecified language" must match the name Network Canvas shows for text with no language, and "Languages" must match the name of the Architect page where languages are managed.',
   },
+  schema9FamilyPedigree: {
+    id: 'protocolValidation.migrationNotes.schema9.familyPedigree',
+    defaultMessage:
+      'Family Pedigree stages are converted to the redesigned Family Pedigree. If a stage had an introduction screen, the screen becomes an Information stage just before the pedigree, which is skipped whenever the pedigree is skipped.',
+    description:
+      'One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded: familyPedigree. "Family Pedigree" and "Information" are interface names. Keep quoted IDs and attribute names ("pedigree", "relativesNotRecorded") exactly as written.',
+  },
+  schema9FamilyPedigreeLabels: {
+    id: 'protocolValidation.migrationNotes.schema9.familyPedigreeLabels',
+    defaultMessage:
+      'The Family Pedigree answers for sex assigned at birth and for the kind of each relationship keep the values already recorded, but their labels change to the wording of the redesigned interface. A nomination prompt with the ID "pedigree", which is now reserved, is given a new ID.',
+    description:
+      'One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded: familyPedigreeLabels. "Family Pedigree" and "Information" are interface names. Keep quoted IDs and attribute names ("pedigree", "relativesNotRecorded") exactly as written.',
+  },
+  schema9FamilyPedigreeCompleteness: {
+    id: 'protocolValidation.migrationNotes.schema9.familyPedigreeCompleteness',
+    defaultMessage:
+      'A Family Pedigree that required or recommended recording grandparents now requires or recommends recording the family up to the grandparents, which also includes siblings, children, aunts and uncles. A new attribute, "relativesNotRecorded", is added for the people in the pedigree, to record when a participant says someone has no siblings or no children, or does not know.',
+    description:
+      'One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded: familyPedigreeCompleteness. "Family Pedigree" and "Information" are interface names. Keep quoted IDs and attribute names ("pedigree", "relativesNotRecorded") exactly as written.',
+  },
+  schema9FamilyPedigreeRemoved: {
+    id: 'protocolValidation.migrationNotes.schema9.familyPedigreeRemoved',
+    defaultMessage:
+      "Three Family Pedigree settings are removed because the redesigned interface does not use them: requiring the other biological parent of the participant's children and that parent's family, the attribute for each person's relationship to the participant, and the attribute for which gamete each parent gave. Both attributes stay in the codebook with any answers already recorded, but are no longer filled in.",
+    description:
+      'One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded: familyPedigreeRemoved. "Family Pedigree" and "Information" are interface names. Keep quoted IDs and attribute names ("pedigree", "relativesNotRecorded") exactly as written.',
+  },
+  schema9FamilyPedigreeGenderIdentity: {
+    id: 'protocolValidation.migrationNotes.schema9.familyPedigreeGenderIdentity',
+    defaultMessage:
+      "The converted Family Pedigree does not ask about gender identity. Where it uses gendered words such as mother or sister, they follow each person's sex assigned at birth.",
+    description:
+      'One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded: familyPedigreeGenderIdentity. "Family Pedigree" and "Information" are interface names. Keep quoted IDs and attribute names ("pedigree", "relativesNotRecorded") exactly as written.',
+  },
 });
 
 // Each descriptor is a whole bullet. Markdown separators are structural:
@@ -452,6 +487,11 @@ const migrationNoteSets = {
     messages: [
       migrationNoteMessages.schema9AttributeNames,
       migrationNoteMessages.schema9UnspecifiedLanguage,
+      migrationNoteMessages.schema9FamilyPedigree,
+      migrationNoteMessages.schema9FamilyPedigreeLabels,
+      migrationNoteMessages.schema9FamilyPedigreeCompleteness,
+      migrationNoteMessages.schema9FamilyPedigreeRemoved,
+      migrationNoteMessages.schema9FamilyPedigreeGenderIdentity,
     ],
   },
 };
