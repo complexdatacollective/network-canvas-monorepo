@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 
-import { Effect } from 'effect';
+import { Effect, Predicate } from 'effect';
 
 import { POSTHOG_APP_PROPS } from '@codaco/shared-consts';
 import { ParticipantSession } from '@codaco/studio-contract/middleware/session';
@@ -60,6 +60,31 @@ export const participantAnalyticsConfig = Effect.fn(
   } satisfies ForwardingConfig;
 });
 
+const ERROR_TYPE = /^[A-Za-z][\w.]{0,99}$/;
+
+const exceptionType = (properties: Readonly<Record<string, unknown>>) => {
+  const list = properties.$exception_list;
+  const first: unknown = Array.isArray(list) ? list[0] : undefined;
+  const type =
+    Predicate.isObject(first) && Predicate.hasProperty(first, 'type')
+      ? first.type
+      : undefined;
+  return Predicate.isString(type) && ERROR_TYPE.test(type) ? type : 'Error';
+};
+
+const exceptionProperties = (properties: Readonly<Record<string, unknown>>) => {
+  const type = exceptionType(properties);
+  return {
+    $exception_list: [
+      {
+        type,
+        value: type,
+        mechanism: { handled: true, synthetic: false },
+      },
+    ],
+  };
+};
+
 const forwardableEvent = (
   captured: typeof AnalyticsEvent.Type,
   config: ForwardingConfig,
@@ -67,9 +92,12 @@ const forwardableEvent = (
   if (captured.event.startsWith('$') && captured.event !== EXCEPTION_EVENT) {
     return null;
   }
+  const isException = captured.event === EXCEPTION_EVENT;
   const properties = Object.fromEntries(
     Object.entries(captured.properties).filter(
-      ([key]) => !WITHHELD_PROPERTIES.has(key),
+      ([key]) =>
+        !WITHHELD_PROPERTIES.has(key) &&
+        !(isException && key.startsWith('$exception')),
     ),
   );
   return {
@@ -78,6 +106,7 @@ const forwardableEvent = (
     timestamp: captured.timestamp,
     properties: {
       ...properties,
+      ...(isException && exceptionProperties(captured.properties)),
       [POSTHOG_APP_PROPS.APP]: PARTICIPANT_APP,
       [POSTHOG_APP_PROPS.APP_NAME]: PARTICIPANT_APP_NAME,
       [POSTHOG_APP_PROPS.APP_VERSION]: STUDIO_VERSION,

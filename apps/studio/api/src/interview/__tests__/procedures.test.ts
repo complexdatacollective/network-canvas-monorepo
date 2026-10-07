@@ -1026,19 +1026,58 @@ describe.skipIf(!testDb)('participant analytics', () => {
     expect(before).not.toContain(first.sessionId);
   });
 
-  it('forwards an exception the runtime reports', async () => {
+  it('forwards an exception by its type only, never its message', async () => {
     const { sessionToken } = await begin();
     await send(sessionToken, [
       {
         event: '$exception',
         properties: {
-          distinct_id: 'page-pseudonym',
-          $exception_list: [{ type: 'Error', value: 'video load failed: 4' }],
+          feature: 'external-data',
+          $exception_list: [
+            {
+              type: 'SyntaxError',
+              value: 'Unexpected token in ROSTER_ROW_SENTINEL',
+              stacktrace: { frames: [{ filename: 'ROSTER_ROW_SENTINEL' }] },
+            },
+          ],
+          $exception_message: 'ROSTER_ROW_SENTINEL',
+        },
+      },
+      {
+        event: '$exception',
+        properties: {
+          $exception_list: [{ type: 'not a type: ROSTER_ROW_SENTINEL' }],
         },
       },
     ]);
-    expect((await captured()).map((event) => event.event)).toEqual([
-      '$exception',
+    const forwarded = await captured();
+    expect(JSON.stringify(forwarded)).not.toContain('ROSTER_ROW_SENTINEL');
+    expect(
+      forwarded.map((event) => [
+        event.properties.feature,
+        event.properties.$exception_list,
+      ]),
+    ).toEqual([
+      [
+        'external-data',
+        [
+          {
+            type: 'SyntaxError',
+            value: 'SyntaxError',
+            mechanism: { handled: true, synthetic: false },
+          },
+        ],
+      ],
+      [
+        undefined,
+        [
+          {
+            type: 'Error',
+            value: 'Error',
+            mechanism: { handled: true, synthetic: false },
+          },
+        ],
+      ],
     ]);
   });
 

@@ -39,13 +39,12 @@ const sendThroughStudio: Send = (events, { unloading }) =>
     : participantCall('participant.analytics', { events });
 
 const exceptionProperties = (error: unknown) => {
-  const { name, message } =
-    error instanceof Error ? error : new Error(String(error));
+  const type = error instanceof Error ? error.name : 'Error';
   return {
     $exception_list: [
       {
-        type: name,
-        value: message,
+        type,
+        value: type,
         mechanism: { handled: true, synthetic: false },
       },
     ],

@@ -71,22 +71,25 @@ describe('the participant analytics client', () => {
     expect(send).toHaveBeenCalledTimes(1);
   });
 
-  it('reports an exception by its type and message only', () => {
+  it('reports an exception by its type only, never its message', () => {
     const { send, client } = setup();
-    const error = new TypeError('video load failed: 4');
-    client.captureException(error, { feature: 'information-media' });
+    const error = new SyntaxError('Unexpected token in ROSTER_ROW_SENTINEL');
+    client.captureException(error, { feature: 'external-data' });
     client.flush();
+    expect(JSON.stringify(send.mock.calls)).not.toContain(
+      'ROSTER_ROW_SENTINEL',
+    );
     expect(send).toHaveBeenCalledWith(
       [
         {
           event: '$exception',
           timestamp: NOW.toISOString(),
           properties: {
-            feature: 'information-media',
+            feature: 'external-data',
             $exception_list: [
               {
-                type: 'TypeError',
-                value: 'video load failed: 4',
+                type: 'SyntaxError',
+                value: 'SyntaxError',
                 mechanism: { handled: true, synthetic: false },
               },
             ],
