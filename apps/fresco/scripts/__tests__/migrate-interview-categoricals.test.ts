@@ -1,7 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { type Codebook } from '@codaco/protocol-validation';
-import { type NcNetwork } from '@codaco/shared-consts';
+import { type NcNetwork, NcNetworkSchema } from '@codaco/shared-consts';
+import {
+  networkWithEncryptionHeader,
+  schema8EncryptedNetwork,
+} from '~/lib/__tests__/encryptedNetworks';
 import {
   migrateInterviewCategoricals,
   migrateNetworkCategoricals,
@@ -188,6 +192,34 @@ describe('migrateNetworkCategoricals', () => {
     const result = migrateNetworkCategoricals(network, makeCodebook());
     expect(result.changed).toBe(false);
     expect(result.network.nodes[0]?.attributes).not.toHaveProperty(CAT_NODE);
+  });
+
+  it.each([
+    {
+      label: 'the encryption header and IV-only values',
+      encrypted: networkWithEncryptionHeader,
+    },
+    {
+      label: 'schema 8 values without a header',
+      encrypted: schema8EncryptedNetwork,
+    },
+  ])('keeps $label in a network it rewrites', ({ encrypted }) => {
+    const withCategorical = (value: string | string[]) => ({
+      ...encrypted,
+      nodes: encrypted.nodes.map((node) => ({
+        ...node,
+        attributes: { ...node.attributes, [CAT_NODE]: value },
+      })),
+    });
+
+    // The migration writes back what it parsed from the row.
+    const result = migrateNetworkCategoricals(
+      NcNetworkSchema.parse(withCategorical('family')),
+      makeCodebook(),
+    );
+
+    expect(result.changed).toBe(true);
+    expect(result.network).toStrictEqual(withCategorical(['family']));
   });
 
   it('reports no change when a network has no categorical scalars', () => {

@@ -6,6 +6,10 @@ import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
 } from '@codaco/shared-consts';
+import {
+  networkWithEncryptionHeader,
+  schema8EncryptedNetwork,
+} from '~/lib/__tests__/encryptedNetworks';
 
 vi.mock('server-only', () => ({}));
 
@@ -103,5 +107,24 @@ describe('PrismaInterviewRepository', () => {
     ]);
 
     await expect(getForExport(['interview-1'])).rejects.toThrow();
+  });
+
+  it.each([
+    {
+      label: 'the encryption header and IV-only values',
+      stored: networkWithEncryptionHeader,
+    },
+    {
+      label: 'schema 8 values without a header',
+      stored: schema8EncryptedNetwork,
+    },
+  ])('exports a network with $label unchanged', async ({ stored }) => {
+    mockGetInterviewsForExport.mockResolvedValue([
+      row({ identifier: 'P005', label: null }, stored),
+    ]);
+
+    const inputs = await getForExport(['interview-1']);
+
+    expect(inputs[0]?.network).toStrictEqual(stored);
   });
 });
