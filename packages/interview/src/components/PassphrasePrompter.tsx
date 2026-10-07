@@ -36,7 +36,7 @@ const transition: Transition = {
 
 type PassphrasePrompterProps = {
   orientation: NavigationOrientation;
-  /** Placement of the trigger within the navigation bar. */
+  /** Placement and flex behaviour of the trigger within the navigation bar. */
   className?: string;
 };
 
@@ -98,11 +98,15 @@ export default function PassphrasePrompter({
                     key="lock"
                     layout
                     className={cx(
-                      'bg-platinum focusable group flex aspect-square w-[calc(4.8*var(--theme-root-size))] shrink-0 cursor-pointer items-center justify-center rounded-full',
-                      // On the narrowest phones a horizontal bar cannot fit
-                      // every control at full size, so this gives up width
-                      // rather than pushing the forward button off screen.
-                      orientation === 'horizontal' && 'min-w-12 shrink',
+                      'bg-platinum focusable group flex aspect-square cursor-pointer items-center justify-center rounded-full',
+                      // Only the length along the bar is stated, so when the
+                      // bar shrinks that length the ratio keeps the button
+                      // round. Safari can collapse a flex item whose main
+                      // size comes from its ratio, so the ratio only ever
+                      // derives the cross size.
+                      orientation === 'vertical'
+                        ? 'h-[calc(4.8*var(--theme-root-size))]'
+                        : 'w-[calc(4.8*var(--theme-root-size))]',
                       className,
                     )}
                     initial={{ scale: 0, opacity: 0 }}
@@ -130,9 +134,12 @@ export default function PassphrasePrompter({
               />
             )}
           </AnimatePresence>
+          {/* A visual echo of the button's description, so assistive
+              technology does not meet the same text twice. */}
           <TooltipContent
+            aria-hidden="true"
             side={orientation === 'vertical' ? 'right' : 'top'}
-            className="max-w-md"
+            className="max-w-[min(var(--available-width),var(--container-md))]"
           >
             <AppMessage message={promptMessage} />
           </TooltipContent>
