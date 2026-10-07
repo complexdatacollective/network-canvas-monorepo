@@ -587,9 +587,12 @@ checks:{…, draining: 'failed: draining'}}`. The worker and `router.ts`
   read never shows its presence over a later one's. Teams poll four at a
   time.
 - `Resync` runs one batched poll per team after 0–1 s of random jitter,
-  coalescing resyncs that arrive meanwhile, rather than dirtying every relay:
-  every replica hears a resync at once, and a read per relay would stampede
-  the database.
+  rather than dirtying every relay: every replica hears a resync at once, and
+  a read per relay would stampede the database. One loop runs these polls, so
+  two never overlap. Resyncs that arrive while it waits are covered by the
+  poll that follows; one that arrives during a poll may be a gap that poll
+  already read past, so it is owed exactly one more, run straight after
+  (the pending resync is a one-slot dropping queue, as a relay's wake is).
 - A batched poll that fails is retried draft by draft, so only a draft whose
   own read fails counts toward `maxConsecutiveFailures`; one warning per team
   per failed tick.
@@ -992,8 +995,12 @@ database observables.
   seeded run, later rings cover the dropped ones, so disabling the safety
   poll's delivery stays green: H#4 guards I4a, not the poll.
 - Scenario 6 runs B and C on one shiftable clock with a 60 s poll. Advancing
-  the clock makes both poll in the same instant, and both reap. The
-  scenario asserts a `protocolBuilder.reap` span on each and one lock-null
+  the clock makes both poll in the same instant. Which of them then reaps
+  depends on scheduling: a replica whose poll reads after the other's reap
+  has committed sees the release already logged, finds nothing lapsed and
+  never reaps, which failed this scenario on a loaded CI runner. The
+  scenario therefore holds the draft head until both replicas wait to reap,
+  so both read the lapsed lease first and both reap. It asserts a `protocolBuilder.reap` span on each and one lock-null
   in the log and in each watcher, so it covers I7b as well as I7a. The
   variant ages the lease to +1.5 s, lets B's keeper renew it, then waits
   past the aged expiry and two polls: no lock-null and no reap. Making the
@@ -1106,6 +1113,7 @@ revert.
 | I24  | A watch closing during its re-record leaves no live row                                                                        | C1 leases (own pool, held row)                 | no live row for the key                                                        | expire outside the registration's semaphore                     |
 | I25  | Mode changes touch only the caller's own rows, and only from a socket                                                          | C1 presence                                    | the other tab's or HTTP watch's row unchanged                                  | drop the owner predicate; drop the `WsConnection` skip          |
 | I26  | A resync reads once per team, not once per relay                                                                               | C2 events (two relays, one team)               | one more `relayPoll` span; no new `relayRead` span                             | dirty every relay on `Resync`                                   |
+| I26a | Resync polls never overlap, and a resync during a poll is owed one more                                                        | C2 events (poll held on its read, six resyncs) | one poll in flight; exactly two `relayPoll` spans end                          | fork a poll per signal; drop signals while a poll runs          |
 | I27  | A burst never overflows a watcher that keeps draining                                                                          | C2 events (slow consumer, 2500 events)         | every cursor delivered; stream ends cleanly                                    | read again without waiting for room                             |
 | I28  | One unreadable draft fails alone                                                                                               | C2 events (unparseable lock row)               | that watcher gets `RelayFailed`; the other draft's write still polled          | fail every relay of the team on a failed batch                  |
 | I29  | A rung write is delivered while a poll's read is held up                                                                       | C2 events (poll transaction gated)             | write delivered within 2 s                                                     | serialize wake reads behind the poll's read                     |

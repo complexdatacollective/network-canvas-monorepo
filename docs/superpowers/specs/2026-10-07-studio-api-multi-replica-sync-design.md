@@ -249,7 +249,9 @@ c".
   transaction of three READ COMMITTED statements, which are not one
   snapshot; correctness rests on delivering by cursor and on the reaper's
   recheck under the head lock, not on the statements agreeing. A doorbell
-  resync runs this poll, jittered, rather than a read per relay. A relay
+  resync runs this poll, jittered, rather than a read per relay; polls from
+  resyncs run one at a time, and a resync that arrives during one is owed one
+  more after it. A relay
   reads more only when every watcher's queue has room for a batch.
 - **Subscribe.** The handshake keeps today's order: register the queue, then
   read the backlog, then deliver live events filtered by `cursor > last`. Any
