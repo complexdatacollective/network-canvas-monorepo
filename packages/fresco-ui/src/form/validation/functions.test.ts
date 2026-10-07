@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod/mini';
 
-import { createAppIntl } from '@codaco/app-i18n/messages';
+import {
+  createAppIntl,
+  createMessageError,
+  formatMessageError,
+} from '@codaco/app-i18n/messages';
 import type { StageSubject } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
@@ -2109,6 +2113,35 @@ describe('Validation Functions', () => {
         expect(result.error.issues.map((issue) => issue.message)).toEqual([
           'An error occurred while validating.',
         ]);
+      }
+    });
+
+    it('fails with the reason it rejects with, when that is a message error', async () => {
+      const reason = createMessageError({
+        id: 'test.validation.networkLocked',
+        defaultMessage: 'Enter your passphrase, then try again.',
+      });
+      const validate = makeValidationFunction({
+        unique: 'testAttribute',
+        validationContext: createMockContext({
+          network: networkWith(['ciphertext']),
+          resolveNetwork: () => Promise.reject(new Error(reason)),
+        }),
+      });
+
+      const result = await validate({}).safeParseAsync('Alice');
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues.map((issue) => issue.message)).toEqual([
+          reason,
+        ]);
+        expect(
+          formatMessageError(
+            result.error.issues[0]?.message ?? '',
+            createAppIntl({ locale: 'en' }),
+          ),
+        ).toBe('Enter your passphrase, then try again.');
       }
     });
   });

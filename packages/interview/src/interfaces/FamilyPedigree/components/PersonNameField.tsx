@@ -15,6 +15,7 @@ import type {
 } from '@codaco/fresco-ui/form/store/types';
 
 import { useVariableLabels } from '../../../forms/buildVariableLabels';
+import { useValidationNetwork } from '../../../forms/useValidationNetwork';
 import { useStageSelector } from '../../../hooks/useStageSelector';
 import {
   getValidationContext,
@@ -119,8 +120,27 @@ export default function PersonNameField({
   // Newly added pedigree members live in the interface's local store until
   // the stage is finalized. Include them in the validation network so rules
   // such as `unique` see the in-progress family as well as nodes already in
-  // the interview network. currentEntityId prevents an edit from conflicting
-  // with the node's own existing value.
+  // the interview network, whose encrypted values are compared through the
+  // passphrase like any other form's. currentEntityId prevents an edit from
+  // conflicting with the node's own existing value.
+  const pedigreeNetwork = useMemo(() => {
+    const localIds = new Set(pedigreeNodes.keys());
+    return {
+      ...baseValidationContext.network,
+      nodes: [
+        ...baseValidationContext.network.nodes.filter(
+          (node) => !localIds.has(node._uid),
+        ),
+        ...pedigreeNodes.values(),
+      ],
+    };
+  }, [baseValidationContext.network, pedigreeNodes]);
+  const validationNetwork = useValidationNetwork(
+    { codebook: baseValidationContext.codebook, network: pedigreeNetwork },
+    { entity: 'node', type: nodeType },
+    [nodeLabelVariable],
+  );
+
   // The rest of the person's attributes are collected by the wizard's protocol
   // form, whose captions the participant has read; the label variable is
   // deliberately stripped from that form (`getNodeForm`) and asked here
@@ -132,35 +152,27 @@ export default function PersonNameField({
   // an error message.
   const formVariableLabels = useVariableLabels(nodeForm ?? []);
 
-  const validationContext = useMemo<ValidationContext>(() => {
-    const localIds = new Set(pedigreeNodes.keys());
-    return {
+  const validationContext = useMemo<ValidationContext>(
+    () => ({
       ...baseValidationContext,
+      ...validationNetwork,
       stageSubject: { entity: 'node', type: nodeType },
       variableLabels: {
         ...formVariableLabels,
         ...Object.fromEntries([[nodeLabelVariable, label]]),
       },
       ...(currentEntityId !== undefined ? { currentEntityId } : {}),
-      network: {
-        ...baseValidationContext.network,
-        nodes: [
-          ...baseValidationContext.network.nodes.filter(
-            (node) => !localIds.has(node._uid),
-          ),
-          ...pedigreeNodes.values(),
-        ],
-      },
-    };
-  }, [
-    baseValidationContext,
-    currentEntityId,
-    formVariableLabels,
-    label,
-    nodeLabelVariable,
-    nodeType,
-    pedigreeNodes,
-  ]);
+    }),
+    [
+      baseValidationContext,
+      currentEntityId,
+      formVariableLabels,
+      label,
+      nodeLabelVariable,
+      nodeType,
+      validationNetwork,
+    ],
+  );
 
   return (
     <Field

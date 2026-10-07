@@ -73,6 +73,12 @@ vi.mock('../../../../hooks/useStageSelector', () => ({
   },
 }));
 
+// No name here is encrypted, so the network is compared as stored; encrypted
+// names are covered by PersonNameField.encryption.test.tsx.
+vi.mock('../../../../forms/useValidationNetwork', () => ({
+  useValidationNetwork: ({ network }: { network: unknown }) => ({ network }),
+}));
+
 vi.mock('../../utils/nodeUtils', () => ({
   getNodeType: 'nodeType',
   getNodeLabelVariable: 'nodeLabelVariable',

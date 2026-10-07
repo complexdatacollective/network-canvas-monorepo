@@ -3,14 +3,17 @@
 import { useMemo } from 'react';
 import { useSelector } from 'react-redux';
 
+import { createMessageError } from '@codaco/app-i18n/messages';
 import type { ValidationContext } from '@codaco/fresco-ui/form/store/types';
-import type {
-  Codebook,
-  StageSubject,
-  Variable,
+import {
+  type Codebook,
+  type StageSubject,
+  type Variable,
+  VARIABLE_REFERENCE_VALIDATIONS,
 } from '@codaco/protocol-validation';
 import type { NcNetwork, NcNode } from '@codaco/shared-consts';
 
+import { runtimeMessages } from '../i18n/runtimeMessages';
 import {
   decryptNodes,
   omitEncryptedValues,
@@ -21,10 +24,13 @@ import { makeGetCodebookVariablesForNodeType } from '../selectors/protocol';
 
 const NO_NODES: NcNode[] = [];
 
+const namesAnotherVariable = (rule: string) =>
+  VARIABLE_REFERENCE_VALIDATIONS.some((reference) => reference === rule);
+
 /**
  * Whether validating this variable compares with values stored encrypted:
- * `unique` reads every other person's value for it, and `sameAs` and
- * `differentFrom` fall back to the stored value of the variable they name.
+ * `unique` reads every other person's value for it, and every rule that names
+ * another variable falls back to that variable's stored value.
  */
 function comparesEncryptedValues(
   variables: Record<string, Variable>,
@@ -38,12 +44,11 @@ function comparesEncryptedValues(
   if ('unique' in validation && validation.unique && variable.encrypted) {
     return true;
   }
-  const targets = [
-    'sameAs' in validation ? validation.sameAs : undefined,
-    'differentFrom' in validation ? validation.differentFrom : undefined,
-  ];
-  return targets.some(
-    (target) => target !== undefined && !!variables[target]?.encrypted,
+  return Object.entries(validation).some(
+    ([rule, target]) =>
+      namesAnotherVariable(rule) &&
+      typeof target === 'string' &&
+      !!variables[target]?.encrypted,
   );
 }
 
@@ -54,8 +59,10 @@ function comparesEncryptedValues(
  * and the passphrase is asked for if it is not known yet. Until they are
  * decrypted the network leaves them out: while they are being decrypted,
  * `resolveNetwork` makes a validation run wait for them, and while the key is
- * not in force it fails the run, so a value is never checked against
- * ciphertext. For every other form it is the network as stored.
+ * not in force it fails the run with an error asking for the passphrase, so a
+ * value is never checked against ciphertext. A stored value its key cannot
+ * read is left out, as if unanswered. For every other form it is the network
+ * as stored.
  */
 export function useValidationNetwork(
   { codebook, network }: { codebook: Codebook; network: NcNetwork },
@@ -103,7 +110,9 @@ export function useValidationNetwork(
         network: withoutCiphertext,
         resolveNetwork: () =>
           Promise.reject(
-            new Error('Encrypted values cannot be compared without the key'),
+            new Error(
+              createMessageError(runtimeMessages.protectedAnswersNotChecked),
+            ),
           ),
       };
     }

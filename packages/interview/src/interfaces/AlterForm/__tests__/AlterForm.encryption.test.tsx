@@ -5,6 +5,10 @@ import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import {
+  asEntityAttributeReference,
+  type Variable,
+} from '@codaco/protocol-validation';
+import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
   entitySecureAttributesMeta,
@@ -79,19 +83,27 @@ beforeAll(() => {
   vi.stubGlobal('IntersectionObserver', ImmediateIntersectionObserver);
 });
 
-const [alterFormStage] = alterFormStages;
+type Stages = Parameters<typeof createEncryptionStore>[1];
 
 async function renderAlterForm({
   person,
   unlocked = false,
-}: { person?: NcNode; unlocked?: boolean } = {}) {
+  stages = alterFormStages,
+  variables = encryptedVariables,
+}: {
+  person?: NcNode;
+  unlocked?: boolean;
+  stages?: Stages;
+  variables?: Record<string, Variable>;
+} = {}) {
   const { header } = await encryptionFor('pw');
   const store = createEncryptionStore(
     [person ?? (await makeEncryptedPerson('n1', 'Alice', 'pw'))],
-    alterFormStages,
-    undefined,
+    stages,
+    variables,
     { header },
   );
+  const alterFormStage = stages?.[0];
   if (unlocked) await unlockWith(store, 'pw');
 
   // Every time the passphrase is asked for, not only the latest state.
@@ -280,5 +292,80 @@ describe('AlterForm with an encrypted question', () => {
     expect(saved?.[entitySecureAttributesMeta]).toEqual(
       person[entitySecureAttributesMeta],
     );
+  });
+});
+
+describe('AlterForm comparing an answer with a protected one', () => {
+  const variables: Record<string, Variable> = {
+    ...encryptedVariables,
+    nickname: {
+      name: 'nickname',
+      label: 'Nickname',
+      type: 'text',
+      component: 'Text',
+      validation: { differentFrom: asEntityAttributeReference('name') },
+    },
+  };
+  const stages: Stages = [
+    {
+      id: 'alter-form',
+      type: 'AlterForm',
+      label: { en: 'Alter form' },
+      subject: { entity: 'node', type: 'person' },
+      introductionPanel: {
+        title: { en: 'About each person' },
+        text: { en: 'Intro' },
+      },
+      form: {
+        fields: [
+          {
+            variable: asEntityAttributeReference('nickname'),
+            prompt: { en: 'Nickname' },
+          },
+        ],
+      },
+    },
+    ...alterFormStages.slice(1),
+  ];
+
+  it('asks for the passphrase before checking the answer, then checks it against the protected one', async () => {
+    const { store, onStepChange, next } = await renderAlterForm({
+      stages,
+      variables,
+    });
+    const user = userEvent.setup();
+
+    const nickname = await screen.findByRole('textbox', { name: 'Nickname' });
+    await user.type(nickname, 'Alice');
+    await next();
+
+    expect(
+      await screen.findByText(
+        'This answer is checked against answers protected by your passphrase. Enter your passphrase, then try again.',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('An error occurred while validating.'),
+    ).toBeNull();
+    expect(onStepChange).not.toHaveBeenCalled();
+    expect(store.getState().ui.showPassphrasePrompter).toBe(true);
+
+    await act(() => unlockWith(store, 'pw'));
+    await next();
+
+    expect(
+      await screen.findByText(/must be different from your earlier answer/i),
+    ).toBeInTheDocument();
+    expect(onStepChange).not.toHaveBeenCalled();
+
+    await user.clear(nickname);
+    await user.type(nickname, 'Ali');
+    await next();
+
+    await waitFor(() => expect(onStepChange).toHaveBeenCalled());
+    expect(
+      store.getState().session.network.nodes[0]?.[entityAttributesProperty]
+        .nickname,
+    ).toBe('Ali');
   });
 });

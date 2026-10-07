@@ -4,11 +4,13 @@ import { isValidElement, type ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { describe, expect, it } from 'vitest';
 
+import { createMessageError } from '@codaco/app-i18n/messages';
 import {
   asEntityAttributeReference,
   type Codebook,
   type FormField,
   type Variable,
+  VARIABLE_REFERENCE_VALIDATIONS,
 } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
@@ -19,6 +21,7 @@ import {
 
 import { CurrentStepProvider } from '../../contexts/CurrentStepContext';
 import type { ProtocolPayload } from '../../contract/types';
+import { runtimeMessages } from '../../i18n/runtimeMessages';
 import { TestProtocolLocalization } from '../../interfaces/__tests__/TestProtocolLocalization';
 import {
   encryptionFor,
@@ -37,7 +40,60 @@ const NOTES_VAR = 'notes';
 const NODE_ID = 'node-1';
 const PASSPHRASE = 'protocol form passphrase';
 
+const nameReference = asEntityAttributeReference(NAME_VAR);
+
+// The variable whose validation uses each rule to name the encrypted name. A
+// valid protocol can only name it with `sameAs` or `differentFrom` (the others
+// need a number, date or scalar), but every rule that names a variable reads
+// that variable's stored value, so each is covered.
+const variableNamingNameBy: Record<
+  (typeof VARIABLE_REFERENCE_VALIDATIONS)[number],
+  string
+> = {
+  sameAs: 'confirm-name',
+  differentFrom: NICKNAME_VAR,
+  greaterThanVariable: 'greater',
+  lessThanVariable: 'less',
+  greaterThanOrEqualToVariable: 'at-least',
+  lessThanOrEqualToVariable: 'at-most',
+};
+
 const variables: Record<string, Variable> = {
+  [variableNamingNameBy.sameAs]: {
+    name: 'confirm_name',
+    label: 'confirm_name',
+    type: 'text',
+    component: 'Text',
+    validation: { sameAs: nameReference },
+  },
+  [variableNamingNameBy.greaterThanVariable]: {
+    name: 'greater',
+    label: 'greater',
+    type: 'number',
+    component: 'Number',
+    validation: { greaterThanVariable: nameReference },
+  },
+  [variableNamingNameBy.lessThanVariable]: {
+    name: 'less',
+    label: 'less',
+    type: 'number',
+    component: 'Number',
+    validation: { lessThanVariable: nameReference },
+  },
+  [variableNamingNameBy.greaterThanOrEqualToVariable]: {
+    name: 'at_least',
+    label: 'at_least',
+    type: 'number',
+    component: 'Number',
+    validation: { greaterThanOrEqualToVariable: nameReference },
+  },
+  [variableNamingNameBy.lessThanOrEqualToVariable]: {
+    name: 'at_most',
+    label: 'at_most',
+    type: 'number',
+    component: 'Number',
+    validation: { lessThanOrEqualToVariable: nameReference },
+  },
   [NAME_VAR]: {
     name: 'name',
     label: 'name',
@@ -51,7 +107,7 @@ const variables: Record<string, Variable> = {
     label: 'nickname',
     type: 'text',
     component: 'Text',
-    validation: { differentFrom: asEntityAttributeReference(NAME_VAR) },
+    validation: { differentFrom: nameReference },
   },
   [NOTES_VAR]: {
     name: 'notes',
@@ -225,11 +281,17 @@ function validatedValue(fieldComponents: ReactNode, variable: string) {
   return validatedNode(fieldComponents)?.[entityAttributesProperty][variable];
 }
 
+const comparisons: [string, string, string | undefined][] = [
+  ['`unique` on an encrypted variable', NAME_VAR, undefined],
+  ...VARIABLE_REFERENCE_VALIDATIONS.map((rule): [string, string, string] => [
+    `\`${rule}\` naming an encrypted variable`,
+    variableNamingNameBy[rule],
+    NODE_ID,
+  ]),
+];
+
 describe('useProtocolForm validating against encrypted values', () => {
-  it.each([
-    ['`unique` on an encrypted variable', NAME_VAR, undefined],
-    ['`differentFrom` naming an encrypted variable', NICKNAME_VAR, NODE_ID],
-  ])(
+  it.each(comparisons)(
     'compares %s with the plaintext of the stored value',
     async (_rule, variable, currentEntityId) => {
       const store = await makeStore([await encryptedNode()], true);
@@ -257,18 +319,25 @@ describe('useProtocolForm validating against encrypted values', () => {
     expect(store.getState().ui.showPassphrasePrompter).toBe(false);
   });
 
-  it('fails a comparison with an encrypted value while the key is not in force, never using its ciphertext', async () => {
-    const store = await makeStore([await encryptedNode()], false);
-    const { result } = renderForm(store, NICKNAME_VAR, NODE_ID);
+  it.each(comparisons)(
+    'fails %s, asking for the passphrase, while the key is not in force, never using its ciphertext',
+    async (_rule, variable, currentEntityId) => {
+      const store = await makeStore([await encryptedNode()], false);
+      const { result } = renderForm(store, variable, currentEntityId);
 
-    expect(
-      validatedNode(result.current.fieldComponents)?.[entityAttributesProperty],
-    ).toEqual({});
-    await expect(
-      resolveValidatedNetwork(result.current.fieldComponents),
-    ).rejects.toThrow();
-    expect(store.getState().ui.showPassphrasePrompter).toBe(true);
-  });
+      expect(
+        validatedNode(result.current.fieldComponents)?.[
+          entityAttributesProperty
+        ],
+      ).toEqual({});
+      await expect(
+        resolveValidatedNetwork(result.current.fieldComponents),
+      ).rejects.toThrow(
+        createMessageError(runtimeMessages.protectedAnswersNotChecked),
+      );
+      expect(store.getState().ui.showPassphrasePrompter).toBe(true);
+    },
+  );
 
   it('leaves a form that compares with no encrypted value on the stored network', async () => {
     const node = await encryptedNode();
