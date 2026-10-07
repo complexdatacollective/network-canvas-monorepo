@@ -15,6 +15,7 @@ import {
 import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
 
 import { runtimeMessages } from '../i18n/runtimeMessages';
+import { usePassphrase } from '../interfaces/Anonymisation/usePassphrase';
 import { useResolvePresentationalText } from '../localization/ProtocolLocalizationProvider';
 import ProtocolField, { type ProtocolFieldDefinition } from './ProtocolField';
 
@@ -44,10 +45,53 @@ function asReplacement(
 }
 
 /**
+ * A question whose stored answer can never be shown, kept as it is stored.
+ * A new answer is offered in its place only while one could be saved: under
+ * an encryption header no passphrase can open, it could not.
+ */
+function UnavailableAnswer({
+  field,
+  onReplace,
+}: {
+  field: ProtocolFieldDefinition;
+  onReplace: () => void;
+}) {
+  const intl = useAppIntl();
+  const toPresentationalText = useResolvePresentationalText();
+  const { encryptionUnavailable, lockedNotice } = usePassphrase();
+
+  return (
+    <UnconnectedField
+      name={field.variable}
+      label={toPresentationalText(field.label)}
+      hint={
+        <AppMessage
+          message={
+            encryptionUnavailable
+              ? lockedNotice
+              : runtimeMessages.answerUnavailableKept
+          }
+        />
+      }
+      component={InputField}
+      value={intl.formatMessage(runtimeMessages.answerUnavailable)}
+      readOnly
+      suffixComponent={
+        encryptionUnavailable ? undefined : (
+          <Button type="button" size="sm" variant="text" onClick={onReplace}>
+            <AppMessage message={runtimeMessages.replaceUnavailableAnswer} />
+          </Button>
+        )
+      }
+    />
+  );
+}
+
+/**
  * One question of a protocol form. While its stored answer can never be shown,
  * the question is shown read-only as "Answer unavailable" and that answer is
- * kept as it is stored; the participant may choose to enter a new answer,
- * which replaces it once given.
+ * kept as it is stored; where a new answer could be saved, the participant
+ * may choose to enter one, which replaces it once given.
  *
  * Replacing renders the same field the question renders once its new answer
  * is readable, so a form that saves as the participant types keeps the field,
@@ -60,7 +104,6 @@ export default function ProtocolFormField({
   autoFocus,
   validationContext,
 }: ProtocolFormFieldProps) {
-  const intl = useAppIntl();
   const [replacing, setReplacing] = useState(false);
   const toPresentationalText = useResolvePresentationalText();
   const authoredHint =
@@ -68,24 +111,7 @@ export default function ProtocolFormField({
 
   if (unavailable && !replacing) {
     return (
-      <UnconnectedField
-        name={field.variable}
-        label={toPresentationalText(field.label)}
-        hint={<AppMessage message={runtimeMessages.answerUnavailableKept} />}
-        component={InputField}
-        value={intl.formatMessage(runtimeMessages.answerUnavailable)}
-        readOnly
-        suffixComponent={
-          <Button
-            type="button"
-            size="sm"
-            variant="text"
-            onClick={() => setReplacing(true)}
-          >
-            <AppMessage message={runtimeMessages.replaceUnavailableAnswer} />
-          </Button>
-        }
-      />
+      <UnavailableAnswer field={field} onReplace={() => setReplacing(true)} />
     );
   }
 

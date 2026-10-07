@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { describe, expect, it, vi } from 'vitest';
 
+import type { Variable } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -21,19 +22,43 @@ import {
   encryptionFor,
   makeEncryptedPerson,
   NODE_TYPE,
+  outOfBoundsHeader,
   unlockWith,
 } from './encryptionFixtures';
 
 const fields = [{ variable: 'name' }, { variable: 'age' }];
 
+/** The codebook of a protocol re-imported without the name's encryption. */
+const unmarkedVariables: Record<string, Variable> = {
+  ...encryptedVariables,
+  name: { name: 'name', label: 'name', type: 'text', component: 'Text' },
+};
+
 type EncryptionStore = ReturnType<typeof createEncryptionStore>;
 
-async function lockedStore(nodes: NcNode[]) {
+async function lockedStore(
+  nodes: NcNode[],
+  variables: Record<string, Variable> = encryptedVariables,
+) {
   const { header } = await encryptionFor('pw');
-  return createEncryptionStore(nodes, undefined, undefined, { header });
+  return createEncryptionStore(nodes, undefined, variables, { header });
 }
 
-function renderValuesFor(store: EncryptionStore, entity: NcNode) {
+async function refusedStore(
+  nodes: NcNode[],
+  variables: Record<string, Variable> = encryptedVariables,
+) {
+  const { header } = await encryptionFor('pw');
+  return createEncryptionStore(nodes, undefined, variables, {
+    header: outOfBoundsHeader(header),
+  });
+}
+
+function renderValuesFor(
+  store: EncryptionStore,
+  entity: NcNode,
+  variables: Record<string, Variable> = encryptedVariables,
+) {
   const captureException = vi.fn<Tracker['captureException']>();
   const tracker: Tracker = { track: vi.fn(), captureException };
   const wrapper = ({ children }: { children: ReactNode }) => (
@@ -43,7 +68,7 @@ function renderValuesFor(store: EncryptionStore, entity: NcNode) {
   );
   const rendered = renderHook(
     ({ entity: current }: { entity: NcNode }) =>
-      useProtectedFormValues(current, fields, encryptedVariables),
+      useProtectedFormValues(current, fields, variables),
     { wrapper, initialProps: { entity } },
   );
   return { ...rendered, captureException };
@@ -118,6 +143,64 @@ describe('useProtectedFormValues', () => {
 
     expect(result.current).toEqual({ status: 'locked' });
     expect(store.getState().ui.showPassphrasePrompter).toBe(true);
+  });
+
+  it('makes every protected question unavailable, answered or not, when no passphrase can open the interview', async () => {
+    const alice = await makeEncryptedPerson('n1', 'Alice', 'pw');
+    const unnamed: NcNode = {
+      [entityPrimaryKeyProperty]: 'n2',
+      type: NODE_TYPE,
+      [entityAttributesProperty]: { age: 30 },
+    };
+    const store = await refusedStore([alice, unnamed]);
+
+    const answered = renderValuesFor(store, alice);
+    expect(answered.result.current).toEqual({
+      status: 'ready',
+      values: { age: 40 },
+      unavailable: ['name'],
+    });
+    answered.unmount();
+
+    const unanswered = renderValuesFor(store, unnamed);
+    expect(unanswered.result.current).toEqual({
+      status: 'ready',
+      values: { age: 30 },
+      unavailable: ['name'],
+    });
+    expect(store.getState().ui.showPassphrasePrompter).toBe(false);
+  });
+
+  it('waits for the passphrase to show an answer stored encrypted under a question the codebook no longer protects', async () => {
+    const alice = await makeEncryptedPerson('n1', 'Alice', 'pw');
+    const store = await lockedStore([alice], unmarkedVariables);
+
+    const { result } = renderValuesFor(store, alice, unmarkedVariables);
+
+    expect(result.current).toEqual({ status: 'locked' });
+    expect(store.getState().ui.showPassphrasePrompter).toBe(true);
+
+    await act(() => unlockWith(store, 'pw'));
+    await waitFor(() => expect(result.current.status).toBe('ready'));
+    expect(result.current).toEqual({
+      status: 'ready',
+      values: { name: 'Alice', age: 40 },
+      unavailable: [],
+    });
+  });
+
+  it('makes an answer stored encrypted under a question the codebook no longer protects unavailable when no passphrase can open the interview', async () => {
+    const alice = await makeEncryptedPerson('n1', 'Alice', 'pw');
+    const store = await refusedStore([alice], unmarkedVariables);
+
+    const { result } = renderValuesFor(store, alice, unmarkedVariables);
+
+    expect(result.current).toEqual({
+      status: 'ready',
+      values: { age: 40 },
+      unavailable: ['name'],
+    });
+    expect(store.getState().ui.showPassphrasePrompter).toBe(false);
   });
 
   it('reports an answer the key cannot decrypt as unavailable, without asking for the passphrase again', async () => {

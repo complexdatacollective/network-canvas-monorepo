@@ -6,6 +6,7 @@ import SuperJSON from 'superjson';
 import { SyntheticInterview } from '@codaco/protocol-utilities';
 
 import type { NavigationOrientation } from '../../Shell';
+import EncryptedStoryInterviewShell from '../../storybook-support/EncryptedStoryInterviewShell';
 import { choosePassphraseInPrompter } from '../../storybook-support/passphraseSteps';
 import StoryInterviewShell from '../../storybook-support/StoryInterviewShell';
 
@@ -343,5 +344,70 @@ export const EncryptedNames: Story = {
     await expect(
       await canvas.findByRole('button', { name: /alex/i }),
     ).toBeInTheDocument();
+  },
+};
+
+const buildProtectedNotes = () => {
+  const { si, nt, quickAddVar, layoutVar, friendship } =
+    createComposerInterview(11);
+  const notesVar = nt.addVariable({
+    type: 'text',
+    name: 'notes',
+    component: 'Text',
+    encrypted: true,
+  });
+  const stage = si.addStage('NetworkComposer', {
+    quickAdd: quickAddVar.id,
+    layoutVariable: layoutVar.id,
+    nodeForm: {
+      fields: [
+        { variable: notesVar.id, component: 'Text', label: 'Notes' },
+        { component: 'Number', label: 'Age' },
+      ],
+    },
+  });
+  stage.addEdgeType({ type: friendship.id });
+  si.addManualNode(stage.id, nt.id, 'alice', {
+    [quickAddVar.id]: 'Alice',
+    [layoutVar.id]: { x: 0.4, y: 0.4 },
+    [notesVar.id]: 'Met at work',
+  });
+  si.addInformationStage({ title: 'Complete', text: 'After the main stage.' });
+  return { interview: si, encryptedVariableIds: [notesVar.id] };
+};
+
+/**
+ * The notes are protected, but the record this interview keeps to check a
+ * passphrase has been damaged (here, an impossible key-stretching count), so
+ * no passphrase can open them. A person's notes are shown as unavailable, with
+ * the reason, and cannot be replaced; nothing asks for a passphrase.
+ */
+export const ProtectedNotesRefused: Story = {
+  render: () => (
+    <EncryptedStoryInterviewShell
+      build={buildProtectedNotes}
+      passphrase="storybook passphrase"
+      currentStep={0}
+      headerIterations={1_000_000_000}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(
+      await canvas.findByRole('button', { name: 'Alice' }, { timeout: 10_000 }),
+    );
+
+    const notes = await screen.findByRole('textbox', { name: /notes/i });
+    await expect(notes).toHaveValue('Answer unavailable');
+    await expect(notes).toHaveAttribute('readonly');
+    await expect(notes).toHaveAccessibleDescription(
+      /cannot be shown or saved in this interview/,
+    );
+    await expect(
+      screen.queryByRole('button', { name: 'Enter a new answer' }),
+    ).not.toBeInTheDocument();
+    await expect(
+      screen.queryByRole('button', { name: 'Enter your Passphrase' }),
+    ).not.toBeInTheDocument();
   },
 };

@@ -26,6 +26,7 @@ import {
   encryptedVariables,
   encryptionFor,
   makeEncryptedPerson,
+  outOfBoundsHeader,
   unlockWith,
 } from '../../Anonymisation/__tests__/encryptionFixtures';
 import { readEncryptedAttribute } from '../../Anonymisation/decryptionScope';
@@ -88,11 +89,14 @@ type Stages = Parameters<typeof createEncryptionStore>[1];
 async function renderAlterForm({
   person,
   unlocked = false,
+  refused = false,
   stages = alterFormStages,
   variables = encryptedVariables,
 }: {
   person?: NcNode;
   unlocked?: boolean;
+  /** Stores a header no passphrase can open, as a damaged copy might. */
+  refused?: boolean;
   stages?: Stages;
   variables?: Record<string, Variable>;
 } = {}) {
@@ -101,7 +105,7 @@ async function renderAlterForm({
     [person ?? (await makeEncryptedPerson('n1', 'Alice', 'pw'))],
     stages,
     variables,
-    { header },
+    { header: refused ? outOfBoundsHeader(header) : header },
   );
   const alterFormStage = stages?.[0];
   if (unlocked) await unlockWith(store, 'pw');
@@ -251,6 +255,42 @@ describe('AlterForm with an encrypted question', () => {
     expect(prompts()).toBe(0);
   });
 
+  it('shows each protected question as unavailable and saves the rest, without asking for a passphrase, when none can open the interview', async () => {
+    const person = await makeEncryptedPerson('n1', 'Alice', 'pw');
+    const { store, onStepChange, next, prompts } = await renderAlterForm({
+      person,
+      refused: true,
+    });
+    const user = userEvent.setup();
+
+    const name = await screen.findByRole('textbox', { name: 'Name' });
+    expect(name).toHaveValue('Answer unavailable');
+    expect(name).toHaveAttribute('readonly');
+    expect(name).toHaveAccessibleDescription(
+      /cannot be shown or saved in this interview/,
+    );
+    expect(
+      screen.queryByRole('button', { name: 'Enter a new answer' }),
+    ).toBeNull();
+    expect(screen.queryByText(/Enter your passphrase/)).toBeNull();
+
+    const age = screen.getByRole('spinbutton', { name: 'Age' });
+    await user.clear(age);
+    await user.type(age, '41');
+    await next();
+
+    await waitFor(() => expect(onStepChange).toHaveBeenCalled());
+    const [saved] = store.getState().session.network.nodes;
+    expect(saved?.[entityAttributesProperty]).toEqual({
+      ...person[entityAttributesProperty],
+      age: 41,
+    });
+    expect(saved?.[entitySecureAttributesMeta]).toEqual(
+      person[entitySecureAttributesMeta],
+    );
+    expect(prompts()).toBe(0);
+  });
+
   it('replaces an unavailable answer once a new one is entered', async () => {
     const { store, onStepChange, next } = await renderAlterForm({
       person: await unreadablePerson(),
@@ -327,6 +367,29 @@ describe('AlterForm comparing an answer with a protected one', () => {
     },
     ...alterFormStages.slice(1),
   ];
+
+  it('checks the answer as if the protected one were unanswered when no passphrase can open the interview', async () => {
+    const { store, onStepChange, next, prompts } = await renderAlterForm({
+      stages,
+      variables,
+      refused: true,
+    });
+    const user = userEvent.setup();
+
+    await user.type(
+      await screen.findByRole('textbox', { name: 'Nickname' }),
+      'Alice',
+    );
+    await next();
+
+    await waitFor(() => expect(onStepChange).toHaveBeenCalled());
+    expect(screen.queryByText(/Enter your passphrase/)).toBeNull();
+    expect(prompts()).toBe(0);
+    expect(
+      store.getState().session.network.nodes[0]?.[entityAttributesProperty]
+        .nickname,
+    ).toBe('Alice');
+  });
 
   it('asks for the passphrase before checking the answer, then checks it against the protected one', async () => {
     const { store, onStepChange, next } = await renderAlterForm({

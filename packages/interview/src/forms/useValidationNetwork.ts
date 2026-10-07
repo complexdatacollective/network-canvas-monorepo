@@ -61,8 +61,11 @@ function comparesEncryptedValues(
  * `resolveNetwork` makes a validation run wait for them, and while the key is
  * not in force it fails the run with an error asking for the passphrase, so a
  * value is never checked against ciphertext. A stored value its key cannot
- * read is left out, as if unanswered. For every other form it is the network
- * as stored.
+ * read is left out, as if unanswered, and so is every encrypted value under
+ * an encryption header no passphrase can open: no rule then waits for a
+ * passphrase that could not be entered, and each comparison with a protected
+ * answer is skipped as it is for an unanswered one. For every other form it
+ * is the network as stored.
  */
 export function useValidationNetwork(
   { codebook, network }: { codebook: Codebook; network: NcNetwork },

@@ -29,6 +29,7 @@ import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalizati
 import {
   createEncryptionStore,
   encryptionFor,
+  outOfBoundsHeader,
   unlockWith,
 } from '../../Anonymisation/__tests__/encryptionFixtures';
 import { readEncryptedAttribute } from '../../Anonymisation/decryptionScope';
@@ -217,23 +218,27 @@ type Store = ReturnType<typeof createEncryptionStore>;
 
 /**
  * An interview holding `nodes`. Unless `fresh`, its passphrase was chosen
- * earlier; its key is in force unless `locked`.
+ * earlier; its key is in force unless `locked`. A `refused` interview holds a
+ * header no passphrase can open, as a damaged copy might.
  */
 async function makeStore({
   nodes = [],
   locked = false,
   fresh = false,
+  refused = false,
   nodeVariables = variables,
 }: {
   nodes?: NcNode[];
   locked?: boolean;
   fresh?: boolean;
+  refused?: boolean;
   nodeVariables?: Record<string, Variable>;
 } = {}): Promise<Store> {
+  const { header } = await encryptionFor(PASSPHRASE);
   const store = createEncryptionStore(nodes, [stage], nodeVariables, {
-    header: fresh ? undefined : (await encryptionFor(PASSPHRASE)).header,
+    header: fresh ? undefined : refused ? outOfBoundsHeader(header) : header,
   });
-  if (!locked) await unlockWith(store, PASSPHRASE);
+  if (!locked && !refused) await unlockWith(store, PASSPHRASE);
   return store;
 }
 
@@ -530,6 +535,52 @@ describe('NetworkComposer with encrypted variables', () => {
     expect(screen.getByLabelText(/notes/i)).toBe(notesInput);
     expect(notesInput).toHaveFocus();
     expect(notesInput).toHaveValue('Old friend');
+  });
+});
+
+describe('NetworkComposer under an encryption header no passphrase can open', () => {
+  it('shows each protected answer as unavailable, without asking for a passphrase, and saves the others', async () => {
+    const person = await makeEncryptedNode();
+    const store = await makeStore({ nodes: [person], refused: true });
+    renderComposer(store);
+
+    const nodeButton = await screen.findByRole('button', {
+      name: 'Answer unavailable',
+    });
+    act(() => {
+      tapNode(nodeButton);
+    });
+
+    const notesInput = await screen.findByLabelText(/notes/i);
+    expect(notesInput).toHaveValue('Answer unavailable');
+    expect(notesInput).toHaveAttribute('readonly');
+    expect(notesInput).toHaveAccessibleDescription(
+      /cannot be shown or saved in this interview/,
+    );
+    expect(
+      screen.queryByRole('button', { name: 'Enter a new answer' }),
+    ).toBeNull();
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Place' }), {
+      target: { value: 'Work' },
+    });
+
+    await waitFor(() =>
+      expect(
+        store.getState().session.network.nodes[0]?.[entityAttributesProperty][
+          PLACE_VAR
+        ],
+      ).toBe('Work'),
+    );
+    const [saved] = store.getState().session.network.nodes;
+    expect(saved?.[entityAttributesProperty]).toEqual({
+      ...person[entityAttributesProperty],
+      [PLACE_VAR]: 'Work',
+    });
+    expect(saved?.[entitySecureAttributesMeta]).toEqual(
+      person[entitySecureAttributesMeta],
+    );
+    expect(store.getState().ui.showPassphrasePrompter).toBe(false);
   });
 });
 
