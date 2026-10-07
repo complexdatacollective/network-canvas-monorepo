@@ -25,9 +25,11 @@ import Prompts from '../../components/Prompts';
 import { usePrompts } from '../../components/Prompts/usePrompts';
 import { useCurrentStep } from '../../contexts/CurrentStepContext';
 import { buildVariableLabels } from '../../forms/buildVariableLabels';
+import { writeFailureMessage } from '../../forms/writeSubmissionResult';
 import useReadyForNextStage from '../../hooks/useReadyForNextStage';
 import { useStageSelector } from '../../hooks/useStageSelector';
 import { resolveInterviewIntl } from '../../i18n/resolveIntl';
+import { runtimeMessages } from '../../i18n/runtimeMessages';
 import {
   getValidationContext,
   selectValidationMetadataForVariable,
@@ -44,8 +46,11 @@ import {
 } from '../../selectors/session';
 import { updateNode } from '../../store/modules/session';
 import { useAppDispatch } from '../../store/store';
+import { useInterviewToast } from '../../toast/useInterviewToast';
 import type { StageProps } from '../../types';
 import { getNodeLabelAttribute } from '../../utils/getNodeLabelAttribute';
+import { isAttributeEncrypted } from '../Anonymisation/isAttributeEncrypted';
+import { usePassphrase } from '../Anonymisation/usePassphrase';
 import { interfaceMessages } from '../messages';
 import CategoricalBinItem from './components/CategoricalBinItem';
 import { useCategoricalBins } from './useCategoricalBins';
@@ -218,6 +223,24 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
   // other Field (codebook + network + this stage's subject); the dialog below
   // scopes it to the specific dropped node via currentEntityId.
   const baseValidationContext = useStageSelector(getValidationContext);
+  const intl = useAppIntl();
+  const { passphrase, passphraseInvalid, requirePassphrase, isEnabled } =
+    usePassphrase();
+  const { showToast } = useInterviewToast();
+
+  // A refused write leaves the person where they were; say why.
+  const committed = (
+    updateResult: Parameters<typeof writeFailureMessage>[0],
+  ) => {
+    const failure = writeFailureMessage(updateResult);
+    if (!failure) return true;
+    showToast({
+      description: intl.formatMessage(failure),
+      variant: 'destructive',
+      anchor: 'forward',
+    });
+    return false;
+  };
 
   const handleDropNode = async (node: NcNode, binIndex: number) => {
     const nodeId = node[entityPrimaryKeyProperty];
@@ -246,6 +269,23 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
     // proves otherVariablePrompt exists whenever otherVariable is set.
     if (bin.isOther && prompt.otherVariable !== undefined) {
       const { otherVariable, otherVariablePrompt } = prompt;
+
+      // An answer that would be encrypted is not asked for until it could be
+      // saved.
+      if (
+        isAttributeEncrypted(isEnabled, stageVariables, otherVariable) &&
+        (!passphrase || passphraseInvalid)
+      ) {
+        requirePassphrase();
+        showToast({
+          description: intl.formatMessage(
+            runtimeMessages.protectedAnswersLocked,
+          ),
+          variant: 'info',
+          anchor: 'forward',
+        });
+        return false;
+      }
 
       // Derive the other variable's validation props directly from its
       // codebook definition — the other-input renders its own Field/component
@@ -342,7 +382,7 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
         }),
       );
 
-      if (!updateNode.fulfilled.match(updateResult)) return false;
+      if (!committed(updateResult)) return false;
 
       recordCommittedDrop();
       return true;
@@ -363,7 +403,7 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
       }),
     );
 
-    if (!updateNode.fulfilled.match(updateResult)) return false;
+    if (!committed(updateResult)) return false;
 
     recordCommittedDrop();
     return true;
