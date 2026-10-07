@@ -16,6 +16,7 @@ import {
 import type { SqlError } from 'effect/sql';
 
 import { Database } from '../db/client.ts';
+import { isLockUnavailable } from '../db/errors.ts';
 import { MaintenanceTriggers } from '../http/middleware/maintenance.ts';
 import {
   connectSocket,
@@ -33,6 +34,9 @@ import { socketClosure } from './socket-closure.ts';
 
 /** A third of the lease TTL: two renewals may be lost before one expires. */
 export const RENEW_INTERVAL_MS = 10_000;
+
+/** Drafts whose liveness passes one tick runs side by side. */
+const RENEW_CONCURRENCY = 4;
 
 /**
  * Shorter than the 30s lease TTL, but long enough for a client to come back:
@@ -175,34 +179,46 @@ export class Leases extends Context.Service<
           draft.push(registration);
           byDraft.set(draftId, draft);
         }
-        for (const [draftId, local] of byDraft) {
-          const [first] = local;
-          if (first === undefined) continue;
-          const pass = yield* Effect.exit(
-            withDatabase(
-              renewConnections(first.session.access, draftId, local),
-            ),
-          );
-          // Registrations stay: an unanswered pass says nothing about whether
-          // the connections are still there, and the next tick asks again.
-          if (Exit.isFailure(pass)) {
-            yield* Effect.logWarning(
-              'Renewing protocol-builder connections failed',
-              pass.cause,
-            );
-            continue;
-          }
-          if (pass.value.gone) {
-            yield* forget(draftId);
-            continue;
-          }
-          for (const missing of pass.value.missing) {
-            yield* reconnect(missing).pipe(
-              withDatabase,
-              logFailure('Re-recording a protocol-builder connection failed'),
-            );
-          }
-        }
+        yield* Effect.forEach(
+          byDraft,
+          ([draftId, local]) =>
+            Effect.gen(function* () {
+              const [first] = local;
+              if (first === undefined) return;
+              const pass = yield* Effect.exit(
+                withDatabase(
+                  renewConnections(first.session.access, draftId, local),
+                ),
+              );
+              // Registrations stay: an unanswered pass says nothing about
+              // whether the connections are still there, and the next tick
+              // asks again.
+              if (Exit.isFailure(pass)) {
+                yield* isLockUnavailable(pass.cause)
+                  ? Effect.logInfo(
+                      'Renewing protocol-builder connections waited too long for a lock; the next tick retries',
+                    )
+                  : Effect.logWarning(
+                      'Renewing protocol-builder connections failed',
+                      pass.cause,
+                    );
+                return;
+              }
+              if (pass.value.gone) {
+                yield* forget(draftId);
+                return;
+              }
+              for (const missing of pass.value.missing) {
+                yield* reconnect(missing).pipe(
+                  withDatabase,
+                  logFailure(
+                    'Re-recording a protocol-builder connection failed',
+                  ),
+                );
+              }
+            }),
+          { concurrency: RENEW_CONCURRENCY, discard: true },
+        );
       });
 
       const reconnect = (registration: LocalRegistration) => {

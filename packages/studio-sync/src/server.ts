@@ -2,7 +2,16 @@
 // transition a single atomic conditional statement), the Replicache-style
 // idempotent commit path with per-draft serialization, and manifest-hash
 // resume — exactly as specified on #1247.
-import { and, eq, gt, isNotNull, max, type SQL, sql } from 'drizzle-orm';
+import {
+  and,
+  eq,
+  gt,
+  inArray,
+  isNotNull,
+  max,
+  type SQL,
+  sql,
+} from 'drizzle-orm';
 import { QueryBuilder } from 'drizzle-orm/pg-core';
 import { Effect, Schema } from 'effect';
 
@@ -337,14 +346,14 @@ export function makeSyncServer(options: SyncServerOptions = {}) {
   });
 
   /**
-   * Heartbeat for every live lease one owner holds on a draft, whatever its
-   * epoch: the owner is the tab, and a lease it re-acquired after an expiry is
-   * still its own to keep alive. Like `renew`, it cannot resurrect an expired
-   * lease, and it never touches another owner's.
+   * Heartbeat for every live lease the named owners hold on a draft, whatever
+   * its epoch: the owner is the tab, and a lease it re-acquired after an expiry
+   * is still its own to keep alive. Like `renew`, it cannot resurrect an
+   * expired lease, and it never touches another owner's.
    */
   const renewHeld = Effect.fn('sync.renewHeld')(function* (
     draftId: string,
-    owner: string,
+    owners: ReadonlyArray<string>,
   ) {
     const { tx, teamId } = yield* tenant();
     return yield* tx
@@ -353,13 +362,14 @@ export function makeSyncServer(options: SyncServerOptions = {}) {
       .where(
         and(
           eq(leases.draftId, draftId),
-          eq(leases.owner, owner),
+          inArray(leases.owner, [...owners]),
           eq(leases.teamId, teamId),
           gt(leases.expiresAt, clockNow()),
         ),
       )
       .returning({
         sectionId: leases.sectionId,
+        owner: leases.owner,
         epoch: leases.epoch,
         expiresAt: leases.expiresAt,
       });

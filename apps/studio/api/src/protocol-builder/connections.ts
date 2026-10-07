@@ -148,8 +148,10 @@ const lockOwnerLeases = Effect.fn('protocolBuilder.lockOwnerLeases')(function* (
 const renewOwnerLeases = Effect.fn('protocolBuilder.renewOwnerLeases')(
   function* (teamId: string, draftId: string, owners: ReadonlyArray<string>) {
     const held = yield* lockOwnerLeases(teamId, draftId, owners);
-    for (const owner of new Set(held.map((lease) => lease.owner))) {
-      yield* sqlErrorsOnly(sync.renewHeld(draftId, owner));
+    if (held.length > 0) {
+      yield* sqlErrorsOnly(
+        sync.renewHeld(draftId, [...new Set(held.map((lease) => lease.owner))]),
+      );
     }
     return held;
   },
@@ -222,6 +224,9 @@ export const connectSocket: (
   );
 });
 
+/** How long one draft's liveness pass waits for a lock before giving up. */
+export const LIVENESS_LOCK_TIMEOUT_MS = 2_000;
+
 /**
  * Extends every row of `local` on one draft that this replica wrote and that
  * is still live, and renews the leases of the owners behind them. A row that
@@ -245,8 +250,14 @@ export const renewConnections: (
     'protocolBuilder.liveness',
     access,
     Effect.gen(function* () {
+      const transaction = yield* Transaction;
+      // A draft whose head or rows another transaction holds fails this pass
+      // rather than holding up the keeper; the next tick asks again.
+      yield* transaction.sql.unsafe(
+        `SET LOCAL lock_timeout = '${LIVENESS_LOCK_TIMEOUT_MS}ms'`,
+      );
       if (!(yield* lockHead(access.teamId, draftId, 'share'))) return GONE;
-      const { tx } = yield* Transaction;
+      const { tx } = transaction;
       const locked = yield* tx
         .select({
           connectionId: connections.connectionId,

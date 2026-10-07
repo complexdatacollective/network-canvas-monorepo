@@ -361,6 +361,10 @@ const ALLOWLIST: Record<string, { count: number; why: string }> = {
     count: 1,
     why: '`INSERT … SELECT` over its own target table, freezing the manifest row through `to_jsonb(m)`',
   },
+  [`${SERVER}/protocol-builder/connections.ts › protocolBuilder.liveness`]: {
+    count: 1,
+    why: '`SET LOCAL lock_timeout`, which bounds the keeper’s wait on one draft and has no builder path',
+  },
   [`${SYNC}/server.ts`]: {
     count: 2,
     why: "`current_setting('transaction_isolation')` (no FROM), and the built `sectionExists` query executed as the same SQL it embeds in an `EXISTS`",

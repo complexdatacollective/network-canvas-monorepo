@@ -1,6 +1,8 @@
 import { Effect, Option } from 'effect';
 import { beforeAll, describe, expect, it } from 'vitest';
 
+import type { ProtocolSectionId } from '@codaco/studio-sync/taxonomy';
+
 import { ownerAffected, testDb } from '../../__tests__/support/database.ts';
 import {
   ADA,
@@ -20,6 +22,7 @@ import {
   type Closure,
   MaintenanceTriggers,
 } from '../../http/middleware/maintenance.ts';
+import { LIVENESS_LOCK_TIMEOUT_MS } from '../connections.ts';
 import {
   IDLE_MS,
   Leases,
@@ -419,6 +422,110 @@ describe.skipIf(!testDb)('the lease keeper', () => {
         await channel.stop();
       }
     } finally {
+      await a.client.dispose();
+    }
+  });
+
+  it('renews other drafts while one waits on a lock, and retries that one at the next tick', async () => {
+    const own = await suite.studioOnOwnPool(4);
+    const a = await replica({ studio: own.studio });
+    const { on } = tabOf('blocked');
+    const waiting = on('pb-ada-blocked-connection');
+    const free = on('pb-ada-free-connection');
+    const socketExpiry = async (caller: Caller) => {
+      const [row] = await teamRows<{ at: number | null }>(
+        `SELECT (extract(epoch from max(expires_at)) * 1000)::float8 AS at
+           FROM protocol_connections WHERE socket_id = $1`,
+        [caller.connection],
+      );
+      return row?.at ?? 0;
+    };
+    const passes = () => a.spans.ended('protocolBuilder.liveness');
+    try {
+      // Watched first, so a keeper taking drafts one at a time reaches it first.
+      const onWaiting = await watching(waiting, protocolId, a.client);
+      const onFree = await watching(free, suite.egolessProtocolId, a.client);
+      try {
+        const waitingBefore = await socketExpiry(waiting);
+        const freeBefore = await socketExpiry(free);
+        const held = await holdRow(
+          'SELECT 1 FROM drafts WHERE id = $1 FOR UPDATE',
+          [draftId],
+        );
+        const ended = passes();
+        try {
+          await until(
+            () => a.time.pending(RENEW_INTERVAL_MS) > 0,
+            'the lease keeper to be waiting',
+          );
+          a.time.advance(RENEW_INTERVAL_MS);
+          await until(() => passes() > ended, 'the free draft to be renewed');
+          expect(await blockedBehind(held.pid)).toHaveLength(1);
+          expect(await socketExpiry(free)).toBeGreaterThan(freeBefore);
+
+          await until(
+            () => passes() > ended + 1,
+            'the waiting draft to give up its pass',
+            2 * LIVENESS_LOCK_TIMEOUT_MS,
+          );
+          expect(await blockedBehind(held.pid)).toHaveLength(0);
+          expect(await socketExpiry(waiting)).toBe(waitingBefore);
+        } finally {
+          await held.release();
+        }
+        await keeperTick(RENEW_INTERVAL_MS, a.time);
+        expect(await socketExpiry(waiting)).toBeGreaterThan(waitingBefore);
+      } finally {
+        await onFree.stop();
+        await onWaiting.stop();
+      }
+    } finally {
+      await a.client.dispose();
+      await own.close();
+    }
+  });
+
+  it('renews the leases of every owner on a draft in one statement', async () => {
+    const a = await replica();
+    const tabs = [tabOf('renewed-first'), tabOf('renewed-second')];
+    const channels: Array<Awaited<ReturnType<typeof watching>>> = [];
+    const held: Array<{ caller: Caller; sectionId: ProtocolSectionId }> = [];
+    try {
+      for (const [index, tab] of tabs.entries()) {
+        const caller = tab.on(`pb-ada-renewed-${index}-connection`);
+        channels.push(await watching(caller, protocolId, a.client));
+        const stage = await createOn(a.client, `Renewed with another ${index}`);
+        const taken = await a.client.call(
+          caller,
+          a.client.rpc('AcquireLock', {
+            protocolId,
+            sectionId: stage.sectionId,
+          }),
+        );
+        expect(taken.lock).toBe('held');
+        held.push({ caller, sectionId: stage.sectionId });
+      }
+      const before = await Promise.all(
+        tabs.map((tab) => leaseExpiry(tab.owner)),
+      );
+      const renewals = a.spans.count('sync.renewHeld');
+
+      await keeperTick(RENEW_INTERVAL_MS, a.time);
+
+      expect(a.spans.count('sync.renewHeld')).toBe(renewals + 1);
+      for (const [index, tab] of tabs.entries()) {
+        expect(await leaseExpiry(tab.owner)).toBeGreaterThan(
+          before[index] ?? Number.POSITIVE_INFINITY,
+        );
+      }
+    } finally {
+      for (const { caller, sectionId } of held) {
+        await a.client.call(
+          caller,
+          a.client.rpc('ReleaseLock', { protocolId, sectionId }),
+        );
+      }
+      for (const channel of channels) await channel.stop();
       await a.client.dispose();
     }
   });
