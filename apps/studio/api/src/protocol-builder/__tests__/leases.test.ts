@@ -112,13 +112,7 @@ describe.skipIf(!testDb)('the lease keeper', () => {
       tracer: spans.tracer,
       ...rest,
     });
-    return {
-      client,
-      time,
-      spans,
-      connected: (owner: string) =>
-        client.run(Leases.use((leases) => leases.connected(owner))),
-    };
+    return { client, time, spans };
   };
 
   /** Lets whatever a test just woke run, when there is nothing to wait for. */
@@ -160,7 +154,12 @@ describe.skipIf(!testDb)('the lease keeper', () => {
           async () => (await liveSockets(owner)).length === 1,
           'the ended watch’s row to expire',
         );
-        expect(await a.connected(owner)).toBe(true);
+        await until(
+          () => a.spans.ended('protocolBuilder.disconnect') > 0,
+          'the ended watch’s close to finish',
+        );
+        // The tab's other socket is open here, so no grace began.
+        expect(a.time.pending(RECONNECT_GRACE_MS)).toBe(0);
         a.time.advance(RECONNECT_GRACE_MS + 1);
         await keeperTick(RENEW_INTERVAL_MS, a.time);
 
@@ -203,7 +202,7 @@ describe.skipIf(!testDb)('the lease keeper', () => {
 
         a.time.advance(RECONNECT_GRACE_MS);
         await until(
-          async () => !(await a.connected(owner)),
+          () => a.spans.ended('protocolBuilder.graceElapsed') > 0,
           'replica A’s grace to end',
         );
         expect(a.spans.ended('protocolBuilder.releaseOwner')).toBe(1);
@@ -330,7 +329,7 @@ describe.skipIf(!testDb)('the lease keeper', () => {
         expired = a.spans.ended('protocolBuilder.expireConnection');
         stopping = channel.stop();
         await until(
-          async () => !(await a.connected(owner)),
+          () => a.spans.count('protocolBuilder.disconnect') > 0,
           'the close to reach the replica',
         );
         await settle();
@@ -683,7 +682,7 @@ describe.skipIf(!testDb)('the lease keeper', () => {
   it('stops renewing a calling tab whose grace ended while the database was closed', async () => {
     const gate = closable();
     const a = await replica({ maintenance: gate.triggers });
-    const { owner, on } = tabOf('grace-closed');
+    const { on } = tabOf('grace-closed');
     try {
       const channel = await watching(
         on('pb-ada-grace-closed-connection'),
@@ -706,7 +705,10 @@ describe.skipIf(!testDb)('the lease keeper', () => {
 
       gate.setClosed(true);
       a.time.advance(RECONNECT_GRACE_MS);
-      await until(async () => !(await a.connected(owner)), 'the grace to end');
+      await until(
+        () => a.spans.ended('protocolBuilder.graceElapsed') > 0,
+        'the grace to end',
+      );
       gate.setClosed(false);
 
       const passes = a.spans.count('protocolBuilder.liveness');

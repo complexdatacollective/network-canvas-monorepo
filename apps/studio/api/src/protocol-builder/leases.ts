@@ -106,8 +106,6 @@ export class Leases extends Context.Service<
     ) => Effect.Effect<void, SqlError.SqlError, Scope.Scope>;
     /** Keeps a calling owner's leases renewed until it has been idle a while. */
     readonly contact: (session: ProtocolBuilderSession) => Effect.Effect<void>;
-    /** Whether this replica has a watch open, or a grace pending, for `owner`. */
-    readonly connected: (owner: string) => Effect.Effect<boolean>;
   }
 >()('@studio/Leases') {
   static readonly layer: Layer.Layer<
@@ -287,20 +285,22 @@ export class Leases extends Context.Service<
       ) =>
         Effect.gen(function* () {
           yield* Effect.sleep(RECONNECT_GRACE_MS);
-          // Dropped before the release, which may fail or be skipped while the
-          // database is closed: a contact left renewing would keep the leases
-          // forever.
-          contacts.delete(ownerKey(session));
-          if (yield* closed) return;
           yield* Effect.gen(function* () {
+            // Dropped before the release, which may fail or be skipped while
+            // the database is closed: a contact left renewing would keep the
+            // leases forever.
+            contacts.delete(ownerKey(session));
             if (yield* closed) return;
-            yield* Effect.uninterruptible(
-              Effect.gen(function* () {
-                const release = yield* withDatabase(releaseOwner(session));
-                if (release.released) yield* onReleased(release.events);
-              }),
-            );
-          }).pipe(retryBriefly);
+            yield* Effect.gen(function* () {
+              if (yield* closed) return;
+              yield* Effect.uninterruptible(
+                Effect.gen(function* () {
+                  const release = yield* withDatabase(releaseOwner(session));
+                  if (release.released) yield* onReleased(release.events);
+                }),
+              );
+            }).pipe(retryBriefly);
+          }).pipe(Effect.withSpan('protocolBuilder.graceElapsed'));
         }).pipe(logFailure('Releasing a stranded lease owner failed'));
 
       const startGrace = (
@@ -338,7 +338,7 @@ export class Leases extends Context.Service<
             .withPermit(withDatabase(expireConnection(registration)))
             .pipe(logFailure('Expiring a protocol-builder connection failed'));
           yield* startGrace(registration.session, onReleased);
-        });
+        }).pipe(Effect.withSpan('protocolBuilder.disconnect'));
 
       const connect = (
         session: ProtocolBuilderSession,
@@ -405,17 +405,7 @@ export class Leases extends Context.Service<
           }
         }).pipe(logFailure('Recording protocol-builder contact failed'));
 
-      const connected = (owner: string) =>
-        Effect.sync(
-          () =>
-            [...sockets.values()].some(
-              ({ registration }) =>
-                sessionOwner(registration.session) === owner,
-            ) ||
-            [...graces.keys()].some((key) => key.endsWith(`\u0000${owner}`)),
-        );
-
-      return Leases.of({ connect, contact, connected });
+      return Leases.of({ connect, contact });
     }),
   );
 }

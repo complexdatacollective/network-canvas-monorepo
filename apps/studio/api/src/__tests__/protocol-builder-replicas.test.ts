@@ -7,7 +7,6 @@ import { type ProtocolEvent } from '@codaco/protocol-builder-core/contract/schem
 
 import { type Doorbell } from '../protocol-builder/doorbell.ts';
 import {
-  Leases,
   RECONNECT_GRACE_MS,
   RENEW_INTERVAL_MS,
 } from '../protocol-builder/leases.ts';
@@ -245,8 +244,9 @@ describe.skipIf(!testDb)('protocol-builder across replicas', () => {
     expect(await liveLeases(owner)).toEqual([sectionId]);
     expect(await releasesLogged(sectionId)).toBe(0);
     expect(shift.pending(RECONNECT_GRACE_MS)).toBe(graces);
-    expect(await a.run(Leases.use((leases) => leases.connected(owner)))).toBe(
-      false,
+    await until(
+      () => a.spans.ended('protocolBuilder.graceElapsed') === 1,
+      'A’s grace to end',
     );
 
     // B's keeper, not A's, renews it from here.
