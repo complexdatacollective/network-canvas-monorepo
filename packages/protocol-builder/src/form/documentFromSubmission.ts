@@ -349,7 +349,7 @@ function hasAncestorIn(
   );
 }
 
-function safeFieldPath(name: string): ObjectPath | null {
+export function safeFieldPath(name: string): ObjectPath | null {
   try {
     return resolveFieldPath([], name);
   } catch {

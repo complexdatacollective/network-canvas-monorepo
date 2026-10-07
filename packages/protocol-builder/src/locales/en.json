@@ -2344,8 +2344,8 @@
     "description": "Heading of the section where a researcher writes what a participant reads before this step of the interview begins."
   },
   "protocolBuilder.languageChooser.languagesDescription": {
-    "defaultMessage": "Participants choose from every language this protocol is written in. Add or remove languages in the protocol's settings.",
-    "description": "Description of the section listing the languages a participant can choose between. The list cannot be edited on this stage; it follows the languages set for the whole protocol."
+    "defaultMessage": "Participants choose from every language this protocol is written in. The languages belong to the whole protocol, so they can't be changed on this stage.",
+    "description": "Description of the section listing the languages a participant can choose between. The list cannot be edited on this stage; it follows the languages of the whole protocol. A stage is one step of an interview."
   },
   "protocolBuilder.languageChooser.languagesListLabel": {
     "defaultMessage": "Languages participants can choose",

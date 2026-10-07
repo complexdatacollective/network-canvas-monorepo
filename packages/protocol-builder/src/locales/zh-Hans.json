@@ -585,7 +585,7 @@
   "protocolBuilder.introduction.headingLabel": "标题",
   "protocolBuilder.introduction.textLabel": "介绍文本",
   "protocolBuilder.introduction.title": "任务介绍",
-  "protocolBuilder.languageChooser.languagesDescription": "参与者可从此协议使用的所有语言中进行选择。请在协议设置中添加或移除语言。",
+  "protocolBuilder.languageChooser.languagesDescription": "参与者可从此协议使用的所有语言中进行选择。语言适用于整个协议，因此无法在此阶段更改。",
   "protocolBuilder.languageChooser.languagesListLabel": "参与者可选择的语言",
   "protocolBuilder.languageChooser.languagesTitle": "语言",
   "protocolBuilder.languageChooser.singleLanguage": "此协议仅使用一种语言编写，因此参与者只会看到这一个选项。",

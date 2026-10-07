@@ -585,7 +585,7 @@
   "protocolBuilder.introduction.headingLabel": "Titre",
   "protocolBuilder.introduction.textLabel": "Texte d’introduction",
   "protocolBuilder.introduction.title": "Introduction de la tâche",
-  "protocolBuilder.languageChooser.languagesDescription": "Les personnes participantes choisissent parmi toutes les langues dans lesquelles ce protocole est rédigé. Ajoutez ou supprimez des langues dans les paramètres du protocole.",
+  "protocolBuilder.languageChooser.languagesDescription": "Les personnes participantes choisissent parmi toutes les langues dans lesquelles ce protocole est rédigé. Les langues concernent l’ensemble du protocole : elles ne peuvent donc pas être modifiées dans cette étape.",
   "protocolBuilder.languageChooser.languagesListLabel": "Langues que les personnes participantes peuvent choisir",
   "protocolBuilder.languageChooser.languagesTitle": "Langues",
   "protocolBuilder.languageChooser.singleLanguage": "Ce protocole est rédigé dans une seule langue : les personnes participantes la verront donc comme leur seul choix.",

@@ -5,9 +5,8 @@ import { defineMessages } from '@codaco/app-i18n/messages';
  *
  * The stage is where a participant picks which of the protocol's languages the
  * rest of their interview is shown in. The languages themselves are not
- * chosen here — they are the languages the protocol is written in, set in the
- * protocol's settings — so most of what this file says explains where they
- * come from.
+ * chosen here — they are the languages the whole protocol is written in — so
+ * most of what this file says explains where they come from.
  */
 export const languageChooserMessages = defineMessages({
   languagesTitle: {
@@ -19,9 +18,9 @@ export const languageChooserMessages = defineMessages({
   languagesDescription: {
     id: 'protocolBuilder.languageChooser.languagesDescription',
     defaultMessage:
-      "Participants choose from every language this protocol is written in. Add or remove languages in the protocol's settings.",
+      "Participants choose from every language this protocol is written in. The languages belong to the whole protocol, so they can't be changed on this stage.",
     description:
-      'Description of the section listing the languages a participant can choose between. The list cannot be edited on this stage; it follows the languages set for the whole protocol.',
+      'Description of the section listing the languages a participant can choose between. The list cannot be edited on this stage; it follows the languages of the whole protocol. A stage is one step of an interview.',
   },
   languagesListLabel: {
     id: 'protocolBuilder.languageChooser.languagesListLabel',

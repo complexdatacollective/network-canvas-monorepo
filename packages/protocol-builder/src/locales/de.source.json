@@ -585,7 +585,7 @@
   "protocolBuilder.introduction.headingLabel": "Title",
   "protocolBuilder.introduction.textLabel": "Introduction text",
   "protocolBuilder.introduction.title": "Task introduction",
-  "protocolBuilder.languageChooser.languagesDescription": "Participants choose from every language this protocol is written in. Add or remove languages in the protocol's settings.",
+  "protocolBuilder.languageChooser.languagesDescription": "Participants choose from every language this protocol is written in. The languages belong to the whole protocol, so they can't be changed on this stage.",
   "protocolBuilder.languageChooser.languagesListLabel": "Languages participants can choose",
   "protocolBuilder.languageChooser.languagesTitle": "Languages",
   "protocolBuilder.languageChooser.singleLanguage": "This protocol is written in one language, so participants will see it as their only choice.",

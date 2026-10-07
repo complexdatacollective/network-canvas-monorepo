@@ -585,7 +585,7 @@
   "protocolBuilder.introduction.headingLabel": "Titel",
   "protocolBuilder.introduction.textLabel": "Introductietekst",
   "protocolBuilder.introduction.title": "Introductie van de taak",
-  "protocolBuilder.languageChooser.languagesDescription": "Deelnemers kiezen uit alle talen waarin dit protocol is geschreven. Voeg talen toe of verwijder ze in de instellingen van het protocol.",
+  "protocolBuilder.languageChooser.languagesDescription": "Deelnemers kiezen uit alle talen waarin dit protocol is geschreven. De talen gelden voor het hele protocol, dus je kunt ze niet in deze fase wijzigen.",
   "protocolBuilder.languageChooser.languagesListLabel": "Talen waaruit deelnemers kunnen kiezen",
   "protocolBuilder.languageChooser.languagesTitle": "Talen",
   "protocolBuilder.languageChooser.singleLanguage": "Dit protocol is in één taal geschreven, dus deelnemers zien die als hun enige keuze.",

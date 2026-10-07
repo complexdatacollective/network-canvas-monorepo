@@ -585,7 +585,7 @@
   "protocolBuilder.introduction.headingLabel": "Titel",
   "protocolBuilder.introduction.textLabel": "Einleitungstext",
   "protocolBuilder.introduction.title": "Einführung in die Aufgabe",
-  "protocolBuilder.languageChooser.languagesDescription": "Die Teilnehmenden wählen aus allen Sprachen, in denen dieses Protokoll verfasst ist. Sprachen fügen Sie in den Einstellungen des Protokolls hinzu oder entfernen sie dort.",
+  "protocolBuilder.languageChooser.languagesDescription": "Die Teilnehmenden wählen aus allen Sprachen, in denen dieses Protokoll verfasst ist. Die Sprachen gelten für das ganze Protokoll und lassen sich daher in diesem Abschnitt nicht ändern.",
   "protocolBuilder.languageChooser.languagesListLabel": "Sprachen, die die Teilnehmenden auswählen können",
   "protocolBuilder.languageChooser.languagesTitle": "Sprachen",
   "protocolBuilder.languageChooser.singleLanguage": "Dieses Protokoll ist in einer Sprache verfasst, daher sehen die Teilnehmenden sie als einzige Auswahlmöglichkeit.",

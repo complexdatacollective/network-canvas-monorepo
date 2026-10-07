@@ -16,8 +16,7 @@ import { languageChooserMessages } from './languageChooserMessages.ts';
  * The languages a participant will be offered, read from the protocol.
  *
  * Shown rather than edited: the choices are the languages the protocol is
- * written in, which belong to the whole protocol and are set in its settings.
- * A stage that kept a list of its own could offer a language nothing is
+ * written in, which belong to the whole protocol. A stage that kept a list of its own could offer a language nothing is
  * translated into, or leave out one that is. Listed alphabetically by the
  * names shown, as the interview lists them.
  */

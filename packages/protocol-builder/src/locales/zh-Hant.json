@@ -585,7 +585,7 @@
   "protocolBuilder.introduction.headingLabel": "標題",
   "protocolBuilder.introduction.textLabel": "介紹文字",
   "protocolBuilder.introduction.title": "任務介紹",
-  "protocolBuilder.languageChooser.languagesDescription": "參與者可從此協定使用的所有語言中選擇。請在協定設定中新增或移除語言。",
+  "protocolBuilder.languageChooser.languagesDescription": "參與者可從此協定使用的所有語言中選擇。語言適用於整個協定，因此無法在此階段變更。",
   "protocolBuilder.languageChooser.languagesListLabel": "參與者可選擇的語言",
   "protocolBuilder.languageChooser.languagesTitle": "語言",
   "protocolBuilder.languageChooser.singleLanguage": "此協定僅以一種語言撰寫，因此參與者只會看到這一個選項。",
