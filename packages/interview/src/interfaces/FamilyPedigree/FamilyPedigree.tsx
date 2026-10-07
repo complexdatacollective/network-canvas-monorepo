@@ -87,8 +87,7 @@ import PersonForm, {
   type PersonFormResult,
 } from './components/PersonForm';
 import PersonNode from './components/PersonNode';
-import { generateLabels } from './generatedLabels';
-import { formatPersonLabel, labelFamily } from './kinship';
+import { generateLabels, labelEveryone } from './generatedLabels';
 import { messages } from './messages';
 import {
   areConnected,
@@ -443,14 +442,16 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     },
     [dispatch, currentStep, pedigreeMetadata],
   );
-  const labels = useMemo(() => labelFamily(shown, framing), [shown, framing]);
+  // Everyone the participant has not named is shown by the label that will
+  // be saved as their name when they leave, worked out afresh from the family
+  // as it stands, so the canvas and the stages after it always agree.
+  const labels = useMemo(
+    () => labelEveryone(shown, framing, intl),
+    [shown, framing, intl],
+  );
   const displayName = useCallback(
-    (personId: string) => {
-      const label = labels.get(personId);
-      return label
-        ? formatPersonLabel(label, intl)
-        : intl.formatMessage(messages.familyMember);
-    },
+    (personId: string) =>
+      labels.get(personId) ?? intl.formatMessage(messages.familyMember),
     [labels, intl],
   );
 

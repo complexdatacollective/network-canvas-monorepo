@@ -53,36 +53,75 @@ function relativesFor(
   }
 }
 
-/** Labels are compared as a participant would read them. */
-const comparable = (text: string) => text.trim().toLocaleLowerCase();
+/** A soft hyphen: where a long kinship word may break inside a symbol. */
+const SOFT_HYPHEN = /\u00AD/g;
 
 /** Kinship words carry soft hyphens for the canvas; saved text does not. */
-const plain = (text: string) => text.replace(/­/g, '');
+const plain = (text: string) => text.replace(SOFT_HYPHEN, '');
 
-const withoutNumber = (label: PersonLabel): PersonLabel =>
-  label.type === 'numbered' ? label.label : label;
+/** Labels are compared as a participant would read them. */
+const comparable = (text: string) => plain(text).trim().toLocaleLowerCase();
+
+/**
+ * How everyone in the family is shown on the canvas and named in the rest of
+ * the stage: the participant as "You", a named person by their name, and
+ * everyone else by the label `generateLabels` saves for them, keeping the
+ * soft hyphens where a long kinship word may break inside a symbol. Without
+ * those, each label is exactly the text saved when the participant leaves.
+ */
+export function labelEveryone(
+  family: Family,
+  framing: FramingId,
+  intl: IntlShape,
+): Map<string, string> {
+  const generated = buildLabels(family, framing, intl);
+  return new Map(
+    family.people.map((person) => [
+      person.id,
+      person.isEgo
+        ? intl.formatMessage(messages.you)
+        : (person.name ??
+          generated.get(person.id) ??
+          intl.formatMessage(messages.familyMember)),
+    ]),
+  );
+}
 
 /**
  * The label to save as the name of everyone the participant has not named,
  * keyed by person id. The participant is never given one.
  *
- * Each label is the kinship word the canvas shows for the person, in the
- * framing's words. Labels are distinct from one another and from every typed
- * name, compared without case or surrounding space. Where several people
- * would share a word, or a word matches a typed name, each is told apart by
- * one relative (as in "Aunt (partner of Tom)"): their partner, then a child,
- * then a parent, then a sibling, the first that separates the whole group.
- * Named relatives and the participant are tried before any relative known
- * only by a kinship word, and a relative is used only when no one else in
- * the group shares them. When no relative separates them, they are numbered
- * in the order they were added ("Sister 1", "Sister 2").
+ * Each label starts from the person's kinship word, in the framing's words.
+ * Labels are distinct from one another and from every typed name, compared
+ * without case or surrounding space. Where several people would share a word,
+ * or a word matches a typed name, each is told apart by one relative (as in
+ * "Aunt (partner of Tom)"): their partner, then a child, then a parent, then
+ * a sibling, the first that separates the whole group. Named relatives and
+ * the participant are tried before any relative known only by a kinship
+ * word, and a relative is used only when no one else in the group shares
+ * them. When no relative separates them, they are numbered in the order they
+ * were added ("Sister 1", "Sister 2"). The canvas shows the same labels.
  */
 export function generateLabels(
   family: Family,
   framing: FramingId,
   intl: IntlShape,
 ): Map<string, string> {
-  const canvasLabels = labelFamily(family, framing);
+  return new Map(
+    [...buildLabels(family, framing, intl)].map(([id, label]) => [
+      id,
+      plain(label),
+    ]),
+  );
+}
+
+/** The generated labels, with the kinship words' soft hyphens. */
+function buildLabels(
+  family: Family,
+  framing: FramingId,
+  intl: IntlShape,
+): Map<string, string> {
+  const kinshipLabels = labelFamily(family, framing);
   const unnamed = family.people.filter(
     (person) => !person.isEgo && person.name === undefined,
   );
@@ -97,11 +136,9 @@ export function generateLabels(
   const baseLabels = new Map<string, PersonLabel>();
   const baseTexts = new Map<string, string>();
   for (const person of unnamed) {
-    const label = withoutNumber(
-      canvasLabels.get(person.id) ?? { type: 'unconnected' },
-    );
+    const label = kinshipLabels.get(person.id) ?? { type: 'unconnected' };
     baseLabels.set(person.id, label);
-    baseTexts.set(person.id, plain(formatPersonLabel(label, intl)));
+    baseTexts.set(person.id, formatPersonLabel(label, intl));
   }
 
   const groups = new Map<string, Person[]>();

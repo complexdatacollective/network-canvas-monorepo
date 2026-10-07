@@ -95,10 +95,10 @@ describe('labelFamily', () => {
       mum: 'Egg parent',
       dad: 'Sperm parent',
       sis: 'Sibling',
-      nan: 'Grandparent 1',
-      grandad: 'Grandparent 2',
-      aunt: "Parent's sibling 1",
-      uncle: "Parent's sibling 2",
+      nan: 'Grandparent',
+      grandad: 'Grandparent',
+      aunt: "Parent's sibling",
+      uncle: "Parent's sibling",
       cousin: 'Cousin',
       nephew: "Sibling's child",
       kid: 'Child',
@@ -250,7 +250,7 @@ describe('labelFamily', () => {
     ];
     expect(
       labelsOf(nodes, edges, 'gendered', configWithoutGenderIdentity),
-    ).toMatchObject({ parent: 'Parent 1', other: 'Parent 2' });
+    ).toMatchObject({ parent: 'Parent', other: 'Parent' });
   });
 
   test('the side of the family follows the first parent’s words, not their option', () => {
@@ -332,7 +332,7 @@ describe('labelFamily', () => {
     expect(labels.cousinsSon).toBe("Cousin's son");
   });
 
-  test('unnamed people who would share a label are numbered', () => {
+  test('unnamed people may share a kinship word, which generateLabels tells apart', () => {
     const labels = labelsOf(
       [person('ego', { isEgo: true }), person('a'), person('b'), woman('c')],
       [
@@ -341,7 +341,7 @@ describe('labelFamily', () => {
         link('ego', 'c', 'biological'),
       ],
     );
-    expect(labels).toMatchObject({ a: 'Child 1', b: 'Child 2', c: 'Daughter' });
+    expect(labels).toMatchObject({ a: 'Child', b: 'Child', c: 'Daughter' });
   });
 
   test('someone not connected to the participant is a family member', () => {

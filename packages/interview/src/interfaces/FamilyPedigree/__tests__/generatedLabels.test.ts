@@ -4,7 +4,7 @@ import type { FramingId } from '@codaco/protocol-validation';
 import type { NcEdge, NcNode } from '@codaco/shared-consts';
 
 import { resolveInterviewIntl } from '../../../i18n/resolveIntl';
-import { generateLabels } from '../generatedLabels';
+import { generateLabels, labelEveryone } from '../generatedLabels';
 import { readFamily, type PedigreeConfig } from '../model';
 import { config, configWithoutGenderIdentity, link, person } from './fixtures';
 
@@ -397,5 +397,59 @@ describe('generateLabels', () => {
       expect(comparable).not.toContain('sister 1');
       expect(comparable).not.toContain('ari');
     }
+  });
+});
+
+describe('labelEveryone', () => {
+  const nodes = [
+    person('ego', { isEgo: true, name: 'Ari' }),
+    person('mum', { sex: ['female'] }),
+    man('dad'),
+    woman('sis1'),
+    woman('sis2'),
+    man('tom', { name: 'Tom' }),
+    man('sam', { name: 'Sam' }),
+    person('kid1'),
+    person('kid2'),
+  ];
+  const edges = [
+    link('mum', 'ego', 'biological'),
+    link('dad', 'ego', 'biological'),
+    link('mum', 'sis1', 'biological'),
+    link('dad', 'sis1', 'biological'),
+    link('mum', 'sis2', 'biological'),
+    link('dad', 'sis2', 'biological'),
+    link('sis1', 'tom', 'partner'),
+    link('sis2', 'sam', 'partner'),
+    link('ego', 'kid1', 'biological'),
+    link('ego', 'kid2', 'biological'),
+  ];
+
+  test('shows each unnamed person by the label saved for them, the participant as “You” and named people by name', () => {
+    const family = readFamily(nodes, edges, config);
+    for (const framing of ['gendered', 'gamete'] as const) {
+      const shown = labelEveryone(family, framing, intl);
+      const saved = generateLabels(family, framing, intl);
+      for (const [id, label] of saved) {
+        // The canvas keeps only the soft hyphens a long word may break at.
+        expect(shown.get(id)?.replace(/\u00AD/g, '')).toBe(label);
+      }
+      expect(shown.get('ego')).toBe('You');
+      expect(shown.get('tom')).toBe('Tom');
+      expect(shown.size).toBe(nodes.length);
+    }
+    expect(Object.fromEntries(labelEveryone(family, 'gendered', intl))).toEqual(
+      {
+        ego: 'You',
+        mum: 'Bio\u00ADlogical mother',
+        dad: 'Father',
+        sis1: 'Sister (partner of Tom)',
+        sis2: 'Sister (partner of Sam)',
+        tom: 'Tom',
+        sam: 'Sam',
+        kid1: 'Child 1',
+        kid2: 'Child 2',
+      },
+    );
   });
 });

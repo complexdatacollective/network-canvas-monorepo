@@ -159,8 +159,8 @@ function wordsFromSexAssignedAtBirth(
 /**
  * The family as recorded. `generatedLabels` are the labels the stage saved as
  * the names of people the participant left unnamed, by person id: someone
- * whose name is still their saved label is read as unnamed, so they are shown
- * by their kinship word and given a fresh label when the participant leaves.
+ * whose name is still their saved label is read as unnamed, so their label is
+ * worked out afresh from the family as it stands.
  */
 export function readFamily(
   nodes: readonly NcNode[],

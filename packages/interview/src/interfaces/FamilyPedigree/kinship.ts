@@ -142,8 +142,6 @@ export type PersonLabel =
   | { type: 'term'; term: KinTerm }
   /** Beyond the kinship words: described through the person before them. */
   | { type: 'relativeOf'; owner: PersonLabel; term: StepTerm }
-  /** Several unnamed people would otherwise share one label. */
-  | { type: 'numbered'; label: PersonLabel; number: number }
   /** Not connected to the participant at all. */
   | { type: 'unconnected' };
 
@@ -484,16 +482,13 @@ function kinTermFor(
   return undefined;
 }
 
-const labelKey = (label: PersonLabel): string => JSON.stringify(label);
-
 /**
  * The label for everyone in the family. Named people are shown by name and
  * the participant as "you"; everyone else by their kinship to the
  * participant, in the words of the stage's framing, found along the shortest
  * path between them. Someone with no everyday kinship word is described
- * through the person before them on that path ("Cousin's son"). When several
- * unnamed people would share a label they are numbered in the order they were
- * added.
+ * through the person before them on that path ("Cousin's son"). Several
+ * unnamed people may share a label here: `generateLabels` tells them apart.
  */
 export function labelFamily(
   family: Family,
@@ -509,8 +504,8 @@ export function labelFamily(
   if (!family.egoId) return fillUnconnected(family, labels);
 
   // Breadth-first from the participant, one step of distance at a time, so
-  // that each label is final (numbered where needed) before anyone further
-  // away is described through it.
+  // that each label is final before anyone further away is described through
+  // it.
   const paths = new Map<string, Step[]>([[family.egoId, []]]);
   let frontier = [family.egoId];
   while (frontier.length > 0) {
@@ -544,32 +539,11 @@ export function labelFamily(
         );
       }
     }
-    numberDuplicates(family, layer);
     for (const [id, label] of layer) labels.set(id, label);
     frontier = next;
   }
 
   return fillUnconnected(family, labels);
-}
-
-function numberDuplicates(family: Family, layer: Map<string, PersonLabel>) {
-  const groups = new Map<string, string[]>();
-  for (const person of family.people) {
-    const label = layer.get(person.id);
-    if (!label) continue;
-    const key = labelKey(label);
-    groups.set(key, [...(groups.get(key) ?? []), person.id]);
-  }
-  for (const ids of groups.values()) {
-    if (ids.length < 2) continue;
-    ids.forEach((id, index) => {
-      layer.set(id, {
-        type: 'numbered',
-        label: layer.get(id)!,
-        number: index + 1,
-      });
-    });
-  }
 }
 
 function fillUnconnected(family: Family, labels: Map<string, PersonLabel>) {
@@ -594,11 +568,6 @@ export function formatPersonLabel(label: PersonLabel, intl: IntlShape): string {
       return intl.formatMessage(messages.relativeOf, {
         owner: formatPersonLabel(label.owner, intl),
         term: label.term,
-      });
-    case 'numbered':
-      return intl.formatMessage(messages.numberedRelative, {
-        label: formatPersonLabel(label.label, intl),
-        number: label.number,
       });
     case 'unconnected':
       return intl.formatMessage(messages.familyMember);

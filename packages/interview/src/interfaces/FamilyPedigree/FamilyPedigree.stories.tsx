@@ -1558,10 +1558,10 @@ const sistersWithPartners: Family = {
 /**
  * Leaving the stage saves a name for everyone the participant left unnamed:
  * their kinship word, told apart by a named relative where two would share
- * it, so the next stage can show who is who. On the canvas they keep their
- * live kinship words. Coming back, they are unnamed again, with an empty
- * name question; a name typed for one of them is theirs from then on, and
- * the others are given fresh labels when the participant leaves again.
+ * it, so the next stage can show who is who. The canvas shows the same
+ * labels throughout. Coming back, they are unnamed again, with an empty name
+ * question; a name typed for one of them is theirs from then on, and the
+ * others' labels follow at once.
  */
 export const UnnamedPeopleAreLabelledOnLeavingAndUnnamedOnReturn: Story = {
   args: { requirement: 'none' },
@@ -1575,31 +1575,35 @@ export const UnnamedPeopleAreLabelledOnLeavingAndUnnamedOnReturn: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const body = within(canvasElement.ownerDocument.body);
-    await canvas.findByRole('button', { name: /^Sister 1/ });
-
-    await leaveForPeopleList(canvasElement);
-    for (const name of [
+    const labels = [
       'Sister (partner of Tom)',
       'Sister (partner of Sam)',
       'Mother',
       'Father',
-      'Tom',
-      'Sam',
-    ]) {
+    ];
+    // The canvas shows the labels the next stage will.
+    for (const label of labels) {
+      await expect(
+        await canvas.findByRole('button', { name: label }),
+      ).toBeVisible();
+    }
+    await expect(
+      canvas.queryByRole('button', { name: /^Sister \d/ }),
+    ).toBeNull();
+
+    await leaveForPeopleList(canvasElement);
+    for (const name of [...labels, 'Tom', 'Sam']) {
       await expect(await canvas.findByText(name)).toBeInTheDocument();
     }
 
     // Back on the pedigree, the saved labels are not names: the canvas
-    // shows the kinship words, and the name question is empty.
+    // shows the same labels, and the name question is empty.
     await returnToPedigree(canvasElement);
     await userEvent.click(
-      await canvas.findByRole('button', { name: /^Sister 1/ }),
+      await canvas.findByRole('button', { name: 'Sister (partner of Tom)' }),
     );
     const nameField = await body.findByRole('textbox', { name: /^Name/ });
     await expect(nameField).toHaveValue('');
-    await expect(
-      canvas.queryByRole('button', { name: /partner of/ }),
-    ).toBeNull();
 
     // A typed name is the participant's own.
     await userEvent.type(nameField, 'Bea');
@@ -1607,7 +1611,12 @@ export const UnnamedPeopleAreLabelledOnLeavingAndUnnamedOnReturn: Story = {
     await waitFor(() => expect(panelOf(canvasElement)).toBeNull());
     await canvas.findByRole('button', { name: /^Bea/ });
 
-    // With only one unnamed sister left, she is simply "Sister".
+    // With only one unnamed sister left, she is simply "Sister", on the
+    // canvas at once and on the next stage.
+    await canvas.findByRole('button', { name: 'Sister' });
+    await expect(
+      canvas.queryByRole('button', { name: /partner of/ }),
+    ).toBeNull();
     await leaveForPeopleList(canvasElement);
     await expect(await canvas.findByText('Bea')).toBeInTheDocument();
     await expect(await canvas.findByText('Sister')).toBeInTheDocument();
@@ -1642,9 +1651,9 @@ export const UnnamedPeopleAreLabelledOnLeavingAndUnnamedOnReturn: Story = {
 
 /**
  * A relative added on a return visit changes who shares a kinship word, and
- * the labels saved on leaving again follow: the sister first saved as
- * "Sister" is numbered with the new one, since no relative tells them
- * apart.
+ * the labels follow, on the canvas and when saved on leaving again: the
+ * sister first saved as "Sister" is numbered with the new one, since no
+ * relative tells them apart.
  */
 export const LabelsAreGivenAfreshAfterAddingARelative: Story = {
   args: { requirement: 'none' },
@@ -1696,6 +1705,8 @@ export const LabelsAreGivenAfreshAfterAddingARelative: Story = {
     await waitFor(() =>
       expect(canvas.getAllByTestId('pedigree-person')).toHaveLength(5),
     );
+    await canvas.findByRole('button', { name: 'Sister 1' });
+    await canvas.findByRole('button', { name: 'Sister 2' });
 
     await leaveForPeopleList(canvasElement);
     await expect(await canvas.findByText('Sister 1')).toBeInTheDocument();

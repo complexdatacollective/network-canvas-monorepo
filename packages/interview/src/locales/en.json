@@ -225,19 +225,19 @@
   },
   "interview.familyPedigree.generatedLabelChildOf": {
     "defaultMessage": "{isYou, select, true {{term} (your child)} other {{term} (child of {name})}}",
-    "description": "Saved as the name of a family member the participant did not name, when their kinship word alone is shared with someone else, and shown for them in later parts of the interview. term is the already translated kinship word, such as “Half-sister”; name is the name of their parent, or that parent’s own kinship word, such as “Ana” or “Stepmother”. The first form is used when their parent is the participant."
+    "description": "Label for a family member the participant did not name, when their kinship word alone is shared with someone else. Shown inside their symbol in the family tree, and saved as their name so later parts of the interview show the same label. term is the already translated kinship word, such as “Half-sister”; name is the name of their parent, or that parent’s own kinship word, such as “Ana” or “Stepmother”. The first form is used when their parent is the participant."
   },
   "interview.familyPedigree.generatedLabelParentOf": {
     "defaultMessage": "{isYou, select, true {{term} (your parent)} other {{term} (parent of {name})}}",
-    "description": "Saved as the name of a family member the participant did not name, when their kinship word alone is shared with someone else, and shown for them in later parts of the interview. term is the already translated kinship word, such as “Grandmother”; name is the name of their child, or that child’s own kinship word, such as “Julie” or “Mother”. The first form is used when their child is the participant."
+    "description": "Label for a family member the participant did not name, when their kinship word alone is shared with someone else. Shown inside their symbol in the family tree, and saved as their name so later parts of the interview show the same label. term is the already translated kinship word, such as “Grandmother”; name is the name of their child, or that child’s own kinship word, such as “Julie” or “Mother”. The first form is used when their child is the participant."
   },
   "interview.familyPedigree.generatedLabelPartnerOf": {
     "defaultMessage": "{isYou, select, true {{term} (your partner)} other {{term} (partner of {name})}}",
-    "description": "Saved as the name of a family member the participant did not name, when their kinship word alone is shared with someone else, and shown for them in later parts of the interview. term is the already translated kinship word, such as “Sister” or “Family member”; name is the name of their partner, or that partner’s own kinship word, such as “Tom” or “Uncle”. The first form is used when their partner is the participant."
+    "description": "Label for a family member the participant did not name, when their kinship word alone is shared with someone else. Shown inside their symbol in the family tree, and saved as their name so later parts of the interview show the same label. term is the already translated kinship word, such as “Sister” or “Family member”; name is the name of their partner, or that partner’s own kinship word, such as “Tom” or “Uncle”. The first form is used when their partner is the participant."
   },
   "interview.familyPedigree.generatedLabelSiblingOf": {
     "defaultMessage": "{isYou, select, true {{term} (your sibling)} other {{term} (sibling of {name})}}",
-    "description": "Saved as the name of a family member the participant did not name, when their kinship word alone is shared with someone else, and shown for them in later parts of the interview. term is the already translated kinship word, such as “Cousin”; name is the name of their brother or sister, or that sibling’s own kinship word, such as “Sam” or “Niece”. The first form is used when their sibling is the participant."
+    "description": "Label for a family member the participant did not name, when their kinship word alone is shared with someone else. Shown inside their symbol in the family tree, and saved as their name so later parts of the interview show the same label. term is the already translated kinship word, such as “Cousin”; name is the name of their brother or sister, or that sibling’s own kinship word, such as “Sam” or “Niece”. The first form is used when their sibling is the participant."
   },
   "interview.familyPedigree.hasChildrenQuestion": {
     "defaultMessage": "{isYou, select, true {Do you have any biological children?} other {Does {name} have any biological children?}}",
