@@ -706,9 +706,12 @@ checks:{…, draining: 'failed: draining'}}`. The worker and `router.ts`
     §2.3 gives (I38).
   - An idle watch re-authorizes on its own `REAUTHORIZE_MS` (30 s) timer,
     jittered, not at the lease-renewal pace, and a delivered entry
-    re-authorizes once that much time has passed. A pass checks the session
-    and `authorizeCaller` without the RPC rate limiter, under a one-permit
-    semaphore, so the timer and a delivery never run it at once (I39).
+    re-authorizes once that much time has passed. A pass checks the sign-in,
+    resolves the session again from the caller's current memberships
+    (`resolveSession`, `openSession` without its rate-limit charges and
+    contact) and runs `authorizeCaller` on it. A one-permit semaphore keeps
+    the timer and a delivery from running it at once (I39). Authorizing the
+    session the watch opened would keep its role, and miss a removal.
   - A scheduled loop logs a defect that recurs pass after pass once, then
     at most once a minute (`RECURRING_DEFECT_LOG_MS`) with how many passes
     in a row it has failed. A different defect logs at once, and a pass that
