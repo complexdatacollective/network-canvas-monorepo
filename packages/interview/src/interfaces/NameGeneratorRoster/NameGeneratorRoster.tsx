@@ -242,6 +242,7 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
     minNodes,
     maxNodes,
     isLastPrompt,
+    writesEncrypted: useEncryption,
   });
 
   const handleAddNode = async (metadata?: Record<string, unknown>) => {

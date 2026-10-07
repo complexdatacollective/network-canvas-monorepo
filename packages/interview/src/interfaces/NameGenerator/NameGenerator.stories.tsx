@@ -6,6 +6,7 @@ import SuperJSON from 'superjson';
 import { SyntheticInterview } from '@codaco/protocol-utilities';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
+import EncryptedStoryInterviewShell from '../../storybook-support/EncryptedStoryInterviewShell';
 import StoryInterviewShell from '../../storybook-support/StoryInterviewShell';
 
 type StageType = 'NameGenerator' | 'NameGeneratorQuickAdd';
@@ -680,5 +681,94 @@ export const DragFromExternalDataPanel: Story = {
       },
       { timeout: 5000 },
     );
+  },
+};
+
+function buildProtectedInterview() {
+  const interview = new SyntheticInterview();
+  const person = interview.addNodeType({ name: 'Person' });
+  const name = person.addVariable({ name: 'name', type: 'text' });
+  const nickname = person.addVariable({
+    name: 'nickname',
+    type: 'text',
+    component: 'Text',
+    encrypted: true,
+  });
+  const age = person.addVariable({
+    name: 'age',
+    type: 'number',
+    component: 'Number',
+  });
+
+  const stage = interview.addStage('NameGenerator', {
+    label: 'Name Generator (Protected)',
+    subject: { entity: 'node', type: person.id },
+    behaviours: { minNodes: 2 },
+  });
+  stage.addFormField({
+    variable: nickname.id,
+    component: 'Text',
+    prompt: 'What nickname do you use for this person?',
+  });
+  stage.addFormField({
+    variable: age.id,
+    component: 'Number',
+    prompt: 'How old are they?',
+  });
+  stage.addPrompt({ text: 'Please name at least two people you know.' });
+  interview.addManualNode(
+    stage.id,
+    person.id,
+    'alice',
+    { [name.id]: 'Alice', [nickname.id]: 'Ali', [age.id]: 34 },
+    { promptIndices: [0] },
+  );
+
+  interview.addInformationStage({
+    title: 'Complete',
+    text: 'After the main stage.',
+  });
+
+  return { interview, encryptedVariableIds: [nickname.id] };
+}
+
+export const ProtectedAnswersRefused: Story = {
+  render: () => (
+    <EncryptedStoryInterviewShell
+      build={buildProtectedInterview}
+      passphrase="correct horse battery staple"
+      currentStep={0}
+      headerIterations={1_000_000_000}
+    />
+  ),
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'People here have a protected nickname, but the record this interview keeps to check a passphrase has been damaged (here, an impossible key-stretching count), so no passphrase can open it. No one can be added, and the stage says why without asking for a passphrase. Its minimum of two people no longer holds the participant back.',
+      },
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await expect(
+      await screen.findByText(
+        /cannot be shown or saved in this interview/,
+        {},
+        { timeout: 10_000 },
+      ),
+    ).toBeInTheDocument();
+    await expect(
+      canvas.getByRole('button', { name: 'Add a person' }),
+    ).toBeDisabled();
+    await expect(
+      canvas.queryByRole('button', { name: 'Enter your Passphrase' }),
+    ).not.toBeInTheDocument();
+
+    await userEvent.click(canvas.getByTestId('next-button'));
+    await expect(
+      await canvas.findByText('After the main stage.'),
+    ).toBeInTheDocument();
   },
 };
