@@ -15,15 +15,17 @@ import type {
 import type { DragMetadata, DropCallback } from '@codaco/fresco-ui/dnd/types';
 import { useSafeAnimate } from '@codaco/fresco-ui/hooks/useSafeAnimate';
 import { cx } from '@codaco/fresco-ui/utils/cva';
-import {
-  entityAttributesProperty,
-  entityPrimaryKeyProperty,
-  type NcNode,
-} from '@codaco/shared-consts';
+import { entityPrimaryKeyProperty, type NcNode } from '@codaco/shared-consts';
 
 import { runtimeMessages as messages } from '../i18n/runtimeMessages';
+import {
+  LOCKED_LABEL,
+  nodeLabelText,
+  readNodeLabelSource,
+} from '../interfaces/Anonymisation/nodeLabel';
+import { useDecryptedScope } from '../interfaces/Anonymisation/useDecryptionScope';
+import { usePassphrase } from '../interfaces/Anonymisation/usePassphrase';
 import { makeGetCodebookVariablesForNodeType } from '../selectors/protocol';
-import { getNodeLabelAttribute } from '../utils/getNodeLabelAttribute';
 import Node from './ConnectedNode';
 
 // Props that NodeList always provides internally — consumers can't override these
@@ -180,21 +182,64 @@ const NodeList = memo(
       makeGetCodebookVariablesForNodeType,
     );
 
+    const { encryptionUnavailable } = usePassphrase();
+    const unavailable = intl.formatMessage(messages.answerUnavailable);
+
+    // Typeahead matches the label each node shows: the plaintext of an
+    // encrypted name once it is decrypted, and only the locked or unavailable
+    // label otherwise, so typing never finds a node by an answer it hides.
+    const labelSources = useMemo(
+      () =>
+        new Map(
+          displayItems.map((node) => [
+            node,
+            readNodeLabelSource(
+              node,
+              getCodebookVariablesForNodeType(node.type),
+            ),
+          ]),
+        ),
+      [displayItems, getCodebookVariablesForNodeType],
+    );
+    const encryptedLabels = useMemo(
+      () =>
+        [...labelSources.values()].flatMap((source) =>
+          source.status === 'encrypted' ? [source.value] : [],
+        ),
+      [labelSources],
+    );
+    const labelScope = useDecryptedScope(encryptedLabels);
+
     const textValueExtractor = useCallback(
-      (node: NcNode) => {
-        const codebookVariables = getCodebookVariablesForNodeType(node.type);
-        const labelAttrId = getNodeLabelAttribute(
-          codebookVariables,
-          node[entityAttributesProperty],
-        );
-        if (labelAttrId) {
-          const value = node[entityAttributesProperty][labelAttrId];
-          if (typeof value === 'string') return value;
-          if (typeof value === 'number') return String(value);
-        }
-        return node[entityPrimaryKeyProperty];
-      },
-      [getCodebookVariablesForNodeType],
+      (node: NcNode) =>
+        nodeLabelText(
+          labelSources.get(node) ??
+            readNodeLabelSource(
+              node,
+              getCodebookVariablesForNodeType(node.type),
+            ),
+          {
+            fallback: node[entityPrimaryKeyProperty],
+            unavailable,
+            scope: labelScope,
+            encryptionUnavailable,
+          },
+        ) ?? LOCKED_LABEL,
+      [
+        labelSources,
+        getCodebookVariablesForNodeType,
+        unavailable,
+        labelScope,
+        encryptionUnavailable,
+      ],
+    );
+
+    // The collection reads each node's typeahead text only when its items
+    // change, so they are handed over anew when the labels' plaintext becomes
+    // readable, and again when it stops being.
+    const collectionItems = useMemo(
+      () => (labelScope ? [...displayItems] : displayItems),
+      [displayItems, labelScope],
     );
 
     // Styling classes including drop state styling via data attributes
@@ -245,7 +290,7 @@ const NodeList = memo(
             {...collectionProps}
             key={displayAnimationKey}
             id={id ?? 'node-list'}
-            items={displayItems}
+            items={collectionItems}
             keyExtractor={keyExtractor}
             textValueExtractor={textValueExtractor}
             layout={layout}
