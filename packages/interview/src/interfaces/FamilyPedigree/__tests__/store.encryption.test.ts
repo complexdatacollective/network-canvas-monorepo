@@ -10,9 +10,14 @@ import {
 } from '@codaco/shared-consts';
 
 import { createInitialNetwork } from '../../../contract/network';
+import { writeFailureMessage } from '../../../forms/writeSubmissionResult';
+import { runtimeMessages } from '../../../i18n/runtimeMessages';
 import protocol from '../../../store/modules/protocol';
 import session from '../../../store/modules/session';
-import ui, { setPassphrase } from '../../../store/modules/ui';
+import ui, {
+  setPassphrase,
+  setPassphraseInvalid,
+} from '../../../store/modules/ui';
 import { isNumberArray } from '../../Anonymisation/decryptionScope';
 import { decryptData } from '../../Anonymisation/utils';
 import { createFamilyPedigreeStore, type VariableConfig } from '../store';
@@ -43,6 +48,18 @@ const nodeVariables: Record<string, Variable> = {
   [config.egoVariable]: { name: 'isEgo', type: 'boolean' },
 };
 
+const edgeVariables: Record<string, Variable> = {
+  [config.relationshipTypeVariable]: {
+    name: 'relationshipType',
+    type: 'categorical',
+    options: [
+      { label: 'Biological', value: 'biological' },
+      { label: 'Social', value: 'social' },
+    ],
+  },
+  [config.isActiveVariable]: { name: 'isActive', type: 'boolean' },
+};
+
 const encryptedVariableIds: ReadonlySet<string> = new Set([
   config.nodeLabelVariable,
 ]);
@@ -64,7 +81,9 @@ function makeReduxStore() {
           node: {
             [config.nodeType]: { name: 'Person', variables: nodeVariables },
           },
-          edge: { [config.edgeType]: { name: 'Family' } },
+          edge: {
+            [config.edgeType]: { name: 'Family', variables: edgeVariables },
+          },
         },
         stages: [{ id: 'pedigree', type: 'FamilyPedigree' }],
       } as never,
@@ -152,5 +171,66 @@ describe('finalizeNetwork with an encrypted name variable', () => {
       'Family Member',
     ]);
     expect(JSON.stringify(metadata)).not.toMatch(/Mum|Sam/);
+  });
+
+  it('commits nothing when a name cannot be saved, and keeps the pedigree for another try', async () => {
+    const reduxStore = makeReduxStore();
+    reduxStore.dispatch(setPassphraseInvalid(true));
+    const store = createFamilyPedigreeStore(
+      new Map(),
+      new Map(),
+      new Map(),
+      config,
+      reduxStore.dispatch,
+      0,
+      new Set(),
+      new Set(),
+      null,
+      'fixed',
+      encryptedVariableIds,
+    );
+    // An unnamed relative first: it needs no passphrase, so it is written
+    // before the named one is refused.
+    const siblingId = store.getState().addNode({
+      attributes: { [config.egoVariable]: false },
+    });
+    const egoId = store.getState().addNode({
+      attributes: {
+        [config.egoVariable]: true,
+        [config.nodeLabelVariable]: 'Sam',
+      },
+    });
+    store.getState().addEdge({
+      from: siblingId,
+      to: egoId,
+      attributes: { [config.relationshipTypeVariable]: ['social'] },
+    });
+
+    const refused = await store.getState().finalizeNetwork();
+
+    expect(refused && writeFailureMessage(refused)).toBe(
+      runtimeMessages.protectedAnswersNotSaved,
+    );
+    const { network, stageMetadata } = reduxStore.getState().session;
+    expect(network.nodes).toEqual([]);
+    expect(network.edges).toEqual([]);
+    expect(stageMetadata?.[0]).toBeUndefined();
+    expect(
+      store.getState().network.nodes.get(egoId)?.[entityAttributesProperty][
+        config.nodeLabelVariable
+      ],
+    ).toBe('Sam');
+    expect(store.getState().nodeMetadata.get(siblingId)?.readOnly).toBe(false);
+
+    reduxStore.dispatch(setPassphraseInvalid(false));
+    expect(await store.getState().finalizeNetwork()).toBeUndefined();
+
+    const saved = reduxStore.getState().session.network;
+    expect(saved.nodes).toHaveLength(2);
+    expect(saved.edges).toHaveLength(1);
+    const ego = saved.nodes.find(
+      (node) => node[entityAttributesProperty][config.egoVariable] === true,
+    );
+    expect(await readStoredLabel(ego)).toBe('Sam');
   });
 });

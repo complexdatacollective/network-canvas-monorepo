@@ -124,9 +124,16 @@ type NetworkActions = {
   setNoChildrenAffirmed: (value: boolean) => void;
   commitBatch: (batch: CommitBatch) => void;
   syncMetadata: () => void;
-  finalizeNetwork: () => Promise<void>;
+  /**
+   * Commits the pedigree to the interview network. Resolves to the refused
+   * write when a person could not be saved, in which case nothing is
+   * committed and the pedigree stays editable.
+   */
+  finalizeNetwork: () => Promise<RefusedNodeWrite | undefined>;
   resetNetwork: () => void;
 };
+
+type RefusedNodeWrite = ReturnType<typeof addNodeToNetwork.rejected>;
 
 export type FamilyPedigreeStore = FamilyPedigreeState & NetworkActions;
 
@@ -453,7 +460,7 @@ export const createFamilyPedigreeStore = (
         },
 
         finalizeNetwork: async () => {
-          if (!dispatch) return;
+          if (!dispatch) return undefined;
 
           const { network, syncMetadata: sync } = get();
 
@@ -515,10 +522,18 @@ export const createFamilyPedigreeStore = (
               }),
             );
 
-            if (addNodeToNetwork.fulfilled.match(result)) {
-              idMap.set(storeId, reduxId);
-              createdReduxIds.set(storeId, reduxId);
+            if (!addNodeToNetwork.fulfilled.match(result)) {
+              // A partly committed family would leave people without the
+              // relationships that place them, so take back those already
+              // saved and leave the whole pedigree for another attempt.
+              for (const createdId of createdReduxIds.values()) {
+                dispatch(deleteNode(createdId));
+              }
+              return result;
             }
+
+            idMap.set(storeId, reduxId);
+            createdReduxIds.set(storeId, reduxId);
           }
 
           for (const [edgeId, edge] of network.edges) {
@@ -558,6 +573,7 @@ export const createFamilyPedigreeStore = (
           });
 
           sync();
+          return undefined;
         },
 
         resetNetwork: () => {
