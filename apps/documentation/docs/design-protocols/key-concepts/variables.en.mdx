@@ -94,7 +94,7 @@ Variables persist throughout the interview:
 
 ### Encrypted variables
 
-Schema 8 adds an `encrypted` flag to variables, which marks a variable's values for on-device encryption so that they cannot be read by the researcher. This is not a general per-variable control: it is not exposed in the variable editor. Instead, you turn it on by adding the experimental [Anonymisation interface](/en/design-protocols/interface-documentation/anonymisation) to your protocol and selecting which node attributes to encrypt. Encrypting variables requires enabling the **Encrypted Variables** experimental feature first, and encrypted values are not stored in the database or included in exports. See the [Anonymisation interface documentation](/en/design-protocols/interface-documentation/anonymisation) for details.
+A variable can carry an `encrypted` flag, which marks its values for on-device encryption so that they cannot be read by the researcher. This is not a general per-variable control: it is not exposed in the variable editor. Instead, you add an [Anonymisation interface](/en/design-protocols/interface-documentation/anonymisation) to your protocol and select which node attributes to encrypt in its **Encrypted attributes** section. Encrypted values are stored only in encrypted form, and are never included in exports in readable form. See the [Anonymisation interface documentation](/en/design-protocols/interface-documentation/anonymisation) for details.
 
 ## Creating variables
 
