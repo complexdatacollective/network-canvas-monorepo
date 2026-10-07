@@ -87,14 +87,6 @@ export const NO_AUDIT_TRANSACTION_POLICIES = {
     kind: 'none',
     reason: 'Lease takeover is explicitly excluded from the team audit log.',
   },
-  'sync.renew': {
-    kind: 'none',
-    reason: 'Lease renewal is explicitly excluded from the team audit log.',
-  },
-  'sync.renewHeld': {
-    kind: 'none',
-    reason: 'Lease renewal is explicitly excluded from the team audit log.',
-  },
   'sync.release': {
     kind: 'none',
     reason: 'Lease release is explicitly excluded from the team audit log.',
