@@ -51,7 +51,7 @@ import {
   type ProtocolBuilderSession,
   type RefactorOutcome,
 } from './host.ts';
-import { Leases, RENEW_INTERVAL_MS } from './leases.ts';
+import { Leases, RENEW_INTERVAL_MS, retryBriefly } from './leases.ts';
 import { Presence } from './presence.ts';
 import { ProtocolEvents } from './publisher.ts';
 import {
@@ -67,6 +67,7 @@ import {
   ownerPrefix,
   stillSignedIn,
   WatchCutoff,
+  WsConnection,
 } from './session.ts';
 import type { WriteOperation, WriteReceipt } from './writeReceipts.ts';
 import { readWriteReceipt } from './writeReceipts.ts';
@@ -180,24 +181,29 @@ export const ProtocolBuilderHandlers: Layer.Layer<
         ),
       );
 
+    // A unary caller shows no mode: its connection id is its login's, which
+    // every HTTP watch of that login carries too.
     const showMode = (
       session: ProtocolBuilderSession,
       sectionId: ProtocolSectionId | undefined,
     ) =>
-      presence
-        .setMode(
-          session,
-          sectionId === undefined ? 'viewing' : 'editing',
-          sectionId,
-        )
-        .pipe(
-          Effect.catchCause((cause) =>
-            Effect.logWarning(
-              'Recording protocol-builder presence failed',
-              cause,
-            ),
+      Effect.gen(function* () {
+        if (Option.isNone(yield* Effect.serviceOption(WsConnection))) return;
+        yield* retryBriefly(
+          presence.setMode(
+            session,
+            sectionId === undefined ? 'viewing' : 'editing',
+            sectionId,
           ),
         );
+      }).pipe(
+        Effect.catchCause((cause) =>
+          Effect.logWarning(
+            'Recording protocol-builder presence failed',
+            cause,
+          ),
+        ),
+      );
 
     const stagingFor = (session: ProtocolBuilderSession, editId: string) =>
       staged.for(stagingKey(session, editId), sessionOwner(session));

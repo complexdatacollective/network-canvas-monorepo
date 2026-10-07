@@ -1,7 +1,7 @@
 import { Effect, Option } from 'effect';
 import { beforeAll, describe, expect, it } from 'vitest';
 
-import { testDb } from '../../__tests__/support/database.ts';
+import { ownerAffected, testDb } from '../../__tests__/support/database.ts';
 import {
   ADA,
   callerOf,
@@ -41,8 +41,11 @@ describe.skipIf(!testDb)('the lease keeper', () => {
     ageLeases,
     ageConnections,
     keeperTick,
+    watch,
     watching,
     createOn,
+    holdRow,
+    blockedBehind,
   } = suite;
   let protocolId: string;
   let draftId: string;
@@ -86,14 +89,21 @@ describe.skipIf(!testDb)('the lease keeper', () => {
     };
   };
 
-  const replica = async (maintenance?: MaintenanceTriggers['Service']) => {
+  const replica = async (
+    options: {
+      readonly maintenance?: MaintenanceTriggers['Service'];
+      readonly replicaId?: string;
+      readonly studio?: Studio;
+    } = {},
+  ) => {
     const time = makeShiftableClock();
     const spans = makeSpanCounter();
-    const client = await createProtocolBuilderClient(studio, {
+    const { studio: own, ...rest } = options;
+    const client = await createProtocolBuilderClient(own ?? studio, {
       clock: time.clock,
       objectStore,
       tracer: spans.tracer,
-      ...(maintenance === undefined ? {} : { maintenance }),
+      ...rest,
     });
     return {
       client,
@@ -103,6 +113,9 @@ describe.skipIf(!testDb)('the lease keeper', () => {
         client.run(Leases.use((leases) => leases.connected(owner))),
     };
   };
+
+  /** Lets whatever a test just woke run, when there is nothing to wait for. */
+  const settle = () => new Promise((resolve) => setTimeout(resolve, 100));
 
   const liveSockets = async (owner: string) =>
     (await connectionRows()).filter(
@@ -158,10 +171,9 @@ describe.skipIf(!testDb)('the lease keeper', () => {
     }
   });
 
-  it('waits out the grace again while the tab is connected through another replica, then gives its leases back once that lapses', async () => {
+  it('leaves the grace to the replica still holding the tab’s socket, which gives the leases back a whole grace after that socket closes', async () => {
     const a = await replica();
-    const gate = closable();
-    const b = await replica(gate.triggers);
+    const b = await replica();
     const { owner, on } = tabOf('roaming');
     const onA = on('pb-ada-roaming-a-connection');
     const onB = on('pb-ada-roaming-b-connection');
@@ -170,6 +182,7 @@ describe.skipIf(!testDb)('the lease keeper', () => {
       const sectionId = stage.sectionId;
       const watchedOnA = await watching(onA, protocolId, a.client);
       const watchedOnB = await watching(onB, protocolId, b.client);
+      let stoppedOnB = false;
       try {
         await a.client.call(
           onA,
@@ -178,30 +191,281 @@ describe.skipIf(!testDb)('the lease keeper', () => {
         await watchedOnA.stop();
         await until(
           () => a.time.pending(RECONNECT_GRACE_MS) > 0,
-          'the reconnect grace to start',
+          'replica A’s grace to start',
         );
 
         a.time.advance(RECONNECT_GRACE_MS);
         await until(
-          () => a.spans.ended('protocolBuilder.releaseOwner') > 0,
-          'the release to be attempted',
+          async () => !(await a.connected(owner)),
+          'replica A’s grace to end',
         );
+        expect(a.spans.ended('protocolBuilder.releaseOwner')).toBe(1);
         expect(await releasesOf(sectionId)).toBe(0);
         expect(await liveLeases(owner)).toEqual([sectionId]);
 
-        // Replica B stops renewing, as a replica that went away would.
-        gate.setClosed(true);
-        await ageConnections({ owner, kind: 'socket' }, -1_000);
-        // Past the longest wait the retry can have been given: B's whole TTL.
-        a.time.advance(RECONNECT_GRACE_MS + RENEW_INTERVAL_MS);
+        // Well past every TTL: a grace that waited again would try again.
+        a.time.advance(10 * RECONNECT_GRACE_MS);
+        await settle();
+        expect(a.spans.count('protocolBuilder.releaseOwner')).toBe(1);
+
+        stoppedOnB = true;
+        await watchedOnB.stop();
         await until(
-          async () => (await releasesOf(sectionId)) === 1,
-          'the stranded lease to be given back',
+          () => b.time.pending(RECONNECT_GRACE_MS) > 0,
+          'replica B’s grace to start',
         );
+        b.time.advance(RECONNECT_GRACE_MS - 1_000);
+        await settle();
+        expect(b.spans.count('protocolBuilder.releaseOwner')).toBe(0);
+        expect(await liveLeases(owner)).toEqual([sectionId]);
+
+        b.time.advance(1_000);
+        await until(
+          () => b.spans.ended('protocolBuilder.releaseOwner') > 0,
+          'replica B’s release',
+        );
+        expect(await releasesOf(sectionId)).toBe(1);
         expect(await liveLeases(owner)).toEqual([]);
       } finally {
-        await watchedOnB.stop();
+        if (!stoppedOnB) await watchedOnB.stop();
       }
+    } finally {
+      await b.client.dispose();
+      await a.client.dispose();
+    }
+  });
+
+  it('keeps the grace when the tab’s reconnect fails to be recorded', async () => {
+    const a = await replica();
+    const { owner, on } = tabOf('refused');
+    const first = on('pb-ada-refused-connection');
+    const refused = 'pb-ada-refused-again-connection';
+    const asOwner = (statement: string) =>
+      suite.database.run(ownerAffected(statement));
+    try {
+      const stage = await createOn(a.client, 'Held through a failed reconnect');
+      const sectionId = stage.sectionId;
+      const channel = await watching(first, protocolId, a.client);
+      await a.client.call(
+        first,
+        a.client.rpc('AcquireLock', { protocolId, sectionId }),
+      );
+      await channel.stop();
+      await until(
+        () => a.time.pending(RECONNECT_GRACE_MS) > 0,
+        'the reconnect grace to start',
+      );
+
+      await asOwner(
+        `CREATE FUNCTION pb_refuse_socket() RETURNS trigger LANGUAGE plpgsql
+           AS $$ BEGIN RAISE EXCEPTION 'refused for the test'; END $$`,
+      );
+      await asOwner(
+        `CREATE TRIGGER pb_refuse_socket BEFORE INSERT ON protocol_connections
+           FOR EACH ROW WHEN (NEW.socket_id = '${refused}')
+           EXECUTE FUNCTION pb_refuse_socket()`,
+      );
+      try {
+        const retried = watch(on(refused), protocolId, a.client);
+        expect((await retried.ended)._tag).toBe('Failure');
+      } finally {
+        await asOwner('DROP TRIGGER pb_refuse_socket ON protocol_connections');
+        await asOwner('DROP FUNCTION pb_refuse_socket()');
+      }
+      expect(a.time.pending(RECONNECT_GRACE_MS)).toBe(1);
+      expect(await liveLeases(owner)).toEqual([sectionId]);
+
+      a.time.advance(RECONNECT_GRACE_MS);
+      await until(
+        async () => (await liveLeases(owner)).length === 0,
+        'the grace to give the lease back',
+      );
+    } finally {
+      await a.client.dispose();
+    }
+  });
+
+  it('leaves no live row behind when a watch closes while its row is being recorded again', async () => {
+    // A pool of its own: on the suite's single connection the close would
+    // queue behind the blocked re-record in the pool, not in the replica.
+    const own = await suite.studioOnOwnPool(4);
+    const a = await replica({ studio: own.studio });
+    const { owner, on } = tabOf('ghost');
+    try {
+      const channel = await watching(
+        on('pb-ada-ghost-connection'),
+        protocolId,
+        a.client,
+      );
+      const [row] = await liveSockets(owner);
+      if (row === undefined) throw new Error('the watch recorded no row');
+      const key = row.connection_id;
+      await ageConnections({ owner, kind: 'socket' }, -1_000);
+      const held = await holdRow(
+        `SELECT 1 FROM protocol_connections
+          WHERE draft_id = $1 AND connection_id = $2 FOR UPDATE`,
+        [draftId, key],
+      );
+      let stopping: Promise<void> | undefined;
+      try {
+        await until(
+          () => a.time.pending(RENEW_INTERVAL_MS) > 0,
+          'the lease keeper to be waiting',
+        );
+        a.time.advance(RENEW_INTERVAL_MS);
+        await until(
+          async () => (await blockedBehind(held.pid)).length > 0,
+          'the row to be recorded again',
+        );
+
+        const expired = a.spans.ended('protocolBuilder.expireConnection');
+        stopping = channel.stop();
+        // Run one at a time, the close cannot expire the row until the
+        // re-record lets go, so waiting out this deadline is the pass.
+        await until(
+          () => a.spans.ended('protocolBuilder.expireConnection') > expired,
+          'the close to expire the row',
+          1_000,
+        ).catch(() => undefined);
+      } finally {
+        await held.release();
+      }
+      await stopping;
+      await until(
+        () => a.time.pending(RENEW_INTERVAL_MS) > 0,
+        'the lease keeper to finish its tick',
+      );
+      expect(
+        (await connectionRows()).filter(
+          (candidate) => candidate.connection_id === key && candidate.live,
+        ),
+      ).toEqual([]);
+    } finally {
+      await a.client.dispose();
+      await own.close();
+    }
+  });
+
+  it('takes the draft head before any connection or lease row', async () => {
+    const a = await replica();
+    const { on } = tabOf('ordered');
+    const waitsOnTheHead = async (
+      span: string,
+      start: () => Promise<unknown>,
+    ) => {
+      const held = await holdRow(
+        'SELECT 1 FROM drafts WHERE id = $1 FOR UPDATE',
+        [draftId],
+      );
+      const begun = a.spans.count(span);
+      const ended = a.spans.ended(span);
+      let started: Promise<unknown> | undefined;
+      try {
+        started = start();
+        await until(
+          async () =>
+            a.spans.count(span) > begun &&
+            (await blockedBehind(held.pid)).length > 0,
+          `${span} to wait on the draft head`,
+        );
+        expect(a.spans.ended(span)).toBe(ended);
+        for (const waiter of await blockedBehind(held.pid)) {
+          expect(waiter.holds).toEqual([]);
+        }
+      } finally {
+        await held.release();
+      }
+      await started;
+      expect(a.spans.ended(span)).toBeGreaterThan(ended);
+    };
+    try {
+      const channel = await watching(
+        on('pb-ada-ordered-connection'),
+        protocolId,
+        a.client,
+      );
+      try {
+        await waitsOnTheHead('protocolBuilder.liveness', async () => {
+          await until(
+            () => a.time.pending(RENEW_INTERVAL_MS) > 0,
+            'the lease keeper to be waiting',
+          );
+          a.time.advance(RENEW_INTERVAL_MS);
+          await until(
+            () => a.time.pending(RENEW_INTERVAL_MS) > 0,
+            'the lease keeper to finish its tick',
+          );
+        });
+        // A tab not yet seen here, so its first call reaches the database.
+        await waitsOnTheHead('protocolBuilder.contact', () =>
+          a.client.call(
+            tabOf('ordered-calls').on(),
+            a.client.rpc('ResourcesList', {
+              protocolId,
+              editId: 'pb-ordered-edit',
+              status: 'staged',
+            }),
+          ),
+        );
+      } finally {
+        await channel.stop();
+      }
+    } finally {
+      await a.client.dispose();
+    }
+  });
+
+  it('records each replica’s contact under its own key, and renews only its own rows', async () => {
+    const a = await replica({ replicaId: 'pb-replica-a' });
+    const b = await replica({ replicaId: 'pb-replica-b' });
+    const { owner, on } = tabOf('replicas');
+    const list = (over: typeof a) =>
+      over.client.call(
+        on(),
+        over.client.rpc('ResourcesList', {
+          protocolId,
+          editId: 'pb-replicas-edit',
+          status: 'staged',
+        }),
+      );
+    const contactRows = async () =>
+      (
+        await teamRows<{
+          connection_id: string;
+          replica_id: string;
+          expires_at: Date;
+        }>(
+          `SELECT connection_id, replica_id, expires_at
+             FROM protocol_connections
+            WHERE draft_id = $1 AND owner = $2 AND kind = 'contact'
+            ORDER BY replica_id`,
+          [draftId, owner],
+        )
+      ).map((row) => ({
+        key: row.connection_id,
+        replicaId: row.replica_id,
+        expiresAt: row.expires_at.getTime(),
+      }));
+    try {
+      await list(a);
+      await list(b);
+      const [onA, onB] = await contactRows();
+      if (onA === undefined || onB === undefined) {
+        throw new Error('a replica recorded no contact');
+      }
+      expect([onA.key, onB.key]).toEqual([
+        `unary:${owner}:pb-replica-a`,
+        `unary:${owner}:pb-replica-b`,
+      ]);
+      expect([onA.replicaId, onB.replicaId]).toEqual([
+        'pb-replica-a',
+        'pb-replica-b',
+      ]);
+
+      await keeperTick(RENEW_INTERVAL_MS, a.time);
+      const [renewedOnA, leftOnB] = await contactRows();
+      expect(renewedOnA?.expiresAt).toBeGreaterThan(onA.expiresAt);
+      expect(leftOnB?.expiresAt).toBe(onB.expiresAt);
     } finally {
       await b.client.dispose();
       await a.client.dispose();
@@ -229,10 +493,19 @@ describe.skipIf(!testDb)('the lease keeper', () => {
     }
   });
 
-  it('keeps a calling tab’s lease renewed until it has been idle a while', async () => {
+  it('keeps a calling tab’s lease renewed until it has been idle a while since its latest call', async () => {
     const a = await replica();
     const { owner, on } = tabOf('calling');
     const caller = on();
+    const renewedBy = async (millis: number) => {
+      const before = await leaseExpiry(owner);
+      await keeperTick(millis, a.time);
+      const after = await leaseExpiry(owner);
+      if (before === undefined || after === undefined) {
+        throw new Error('the tab holds no lease');
+      }
+      return after > before;
+    };
     try {
       const stage = await createOn(a.client, 'Held by calls alone');
       const sectionId = stage.sectionId;
@@ -241,18 +514,25 @@ describe.skipIf(!testDb)('the lease keeper', () => {
         a.client.rpc('AcquireLock', { protocolId, sectionId }),
       );
       expect(held.lock).toBe('held');
-      const granted = await leaseExpiry(owner);
-      if (granted === undefined) throw new Error('the tab holds no lease');
 
-      await keeperTick(RENEW_INTERVAL_MS, a.time);
-      expect(await leaseExpiry(owner)).toBeGreaterThan(granted);
+      expect(await renewedBy(RENEW_INTERVAL_MS)).toBe(true);
+      // One tick short of the idle bound: still renewed.
+      expect(await renewedBy(IDLE_MS - 2 * RENEW_INTERVAL_MS)).toBe(true);
 
-      await keeperTick(IDLE_MS, a.time);
-      const renewals = a.spans.count('sync.renewHeld');
-      const idle = await leaseExpiry(owner);
-      await keeperTick(RENEW_INTERVAL_MS, a.time);
-      expect(a.spans.count('sync.renewHeld')).toBe(renewals);
-      expect(await leaseExpiry(owner)).toBe(idle);
+      // A later call starts the bound again from here.
+      await a.client.call(
+        caller,
+        a.client.rpc('ResourcesList', {
+          protocolId,
+          editId: 'pb-calling-edit',
+          status: 'staged',
+        }),
+      );
+      expect(await renewedBy(2 * RENEW_INTERVAL_MS)).toBe(true);
+      expect(await renewedBy(IDLE_MS - 3 * RENEW_INTERVAL_MS)).toBe(true);
+
+      expect(await renewedBy(2 * RENEW_INTERVAL_MS)).toBe(false);
+      expect(await renewedBy(RENEW_INTERVAL_MS)).toBe(false);
 
       await ageLeases(owner, -1_000);
       const taken = await a.client.call(
@@ -271,7 +551,7 @@ describe.skipIf(!testDb)('the lease keeper', () => {
 
   it('neither renews nor records contact while the database is closed to it', async () => {
     const gate = closable();
-    const a = await replica(gate.triggers);
+    const a = await replica({ maintenance: gate.triggers });
     const { on } = tabOf('closed');
     const caller = on('pb-ada-closed-connection');
     const list = () =>

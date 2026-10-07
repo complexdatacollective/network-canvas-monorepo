@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 import {
   Clock,
   Duration,
@@ -22,6 +24,7 @@ import type { Studio } from '../../app.ts';
 import { AuthService, type SessionPrincipal } from '../../auth/service.ts';
 import type { Database } from '../../db/client.ts';
 import { MaintenanceTriggers } from '../../http/middleware/maintenance.ts';
+import { ReplicaId } from '../../protocol-builder/connections.ts';
 import { ProtocolBuilderHandlers } from '../../protocol-builder/handlers.ts';
 import { Leases } from '../../protocol-builder/leases.ts';
 import { Presence } from '../../protocol-builder/presence.ts';
@@ -216,6 +219,8 @@ export async function createProtocolBuilderClient(
     readonly events?: Layer.Layer<ProtocolEvents>;
     readonly staged?: Layer.Layer<StagedImports>;
     readonly layer?: Layer.Layer<never>;
+    /** Each client is a replica of its own unless two are given one id. */
+    readonly replicaId?: string;
   } = {},
 ): Promise<ProtocolBuilderTestClient> {
   const sessions: Sessions = new Map();
@@ -229,8 +234,9 @@ export async function createProtocolBuilderClient(
     studioServices(studio),
     Layer.succeed(AuthService)(harnessAuth(studio.auth, sessions)),
   );
-  const triggers = Layer.merge(
+  const triggers = Layer.mergeAll(
     withAuth,
+    Layer.succeed(ReplicaId)(options.replicaId ?? randomUUID()),
     options.maintenance === undefined
       ? MaintenanceTriggers.layerOpen
       : Layer.succeed(MaintenanceTriggers)(options.maintenance),

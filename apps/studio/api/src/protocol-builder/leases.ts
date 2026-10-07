@@ -11,6 +11,7 @@ import {
   Option,
   Schedule,
   type Scope,
+  Semaphore,
 } from 'effect';
 import type { SqlError } from 'effect/sql';
 
@@ -22,8 +23,8 @@ import {
   expireConnection,
   releaseOwner,
   renewConnections,
+  ReplicaId,
   upsertContact,
-  type AdoptedLease,
   type LocalRegistration,
 } from './connections.ts';
 import type { LoggedProtocolEvent } from './events.ts';
@@ -46,13 +47,37 @@ export const IDLE_MS = 5 * 60_000;
 /** How often one owner's unary calls reach the database, per replica. */
 const CONTACT_INTERVAL_MS = 30_000;
 
+/** The wait before the first retry of a failed release or mode change. */
+export const RETRY_BASE_MS = 500;
+
+/** Retries after the first attempt, each wait double the last: 15.5s in all. */
+export const RETRY_TIMES = 5;
+
+export const retryBriefly = <A, E, R>(
+  effect: Effect.Effect<A, E, R>,
+): Effect.Effect<A, E, R> =>
+  Effect.retry(effect, {
+    schedule: Schedule.exponential(RETRY_BASE_MS),
+    times: RETRY_TIMES,
+  });
+
 type Contact = {
   readonly registration: LocalRegistration;
   readonly until: number;
   readonly contactedAt: number | undefined;
 };
 
+/** Its re-recording and its expiry run one at a time, under `lock`. */
+type Socket = {
+  readonly registration: LocalRegistration;
+  readonly lock: Semaphore.Semaphore;
+};
+
 type Grace = { readonly token: symbol; readonly fiber: Fiber.Fiber<void> };
+
+type OnReleased = (
+  events: ReadonlyArray<LoggedProtocolEvent>,
+) => Effect.Effect<void>;
 
 const ownerKey = (session: ProtocolBuilderSession) =>
   `${session.draftId}\u0000${sessionOwner(session)}`;
@@ -66,20 +91,14 @@ export class Leases extends Context.Service<
     /**
      * Records this watch as connected, and renews the leases its tab already
      * holds, for as long as the scope is open. When the scope closes the row
-     * is expired and, unless the tab comes back within the reconnect grace on
-     * any replica, its leases are given back and `onReleased` is told what
-     * that logged.
+     * is expired and, unless the tab still has a socket open on some replica
+     * when the reconnect grace runs out, its leases are given back and
+     * `onReleased` is told what that logged.
      */
     readonly connect: (
       session: ProtocolBuilderSession,
-      onReleased: (
-        events: ReadonlyArray<LoggedProtocolEvent>,
-      ) => Effect.Effect<void>,
-    ) => Effect.Effect<
-      ReadonlyArray<AdoptedLease>,
-      SqlError.SqlError,
-      Scope.Scope
-    >;
+      onReleased: OnReleased,
+    ) => Effect.Effect<void, SqlError.SqlError, Scope.Scope>;
     /** Keeps a calling owner's leases renewed until it has been idle a while. */
     readonly contact: (session: ProtocolBuilderSession) => Effect.Effect<void>;
     /** Whether this replica has a watch open, or a grace pending, for `owner`. */
@@ -94,14 +113,21 @@ export class Leases extends Context.Service<
     Leases,
     Effect.gen(function* () {
       const database = yield* Database;
+      const replicaId = yield* ReplicaId;
       const triggers = yield* MaintenanceTriggers;
       const scope = yield* Effect.scope;
       // Mutated only between yields, so no fiber sees a half-made change.
-      const sockets = new Map<string, LocalRegistration>();
+      const sockets = new Map<string, Socket>();
       const contacts = new Map<string, Contact>();
       const graces = new Map<string, Grace>();
 
-      const withDatabase = Effect.provideService(Database, database);
+      const withDatabase = <A, E>(
+        effect: Effect.Effect<A, E, Database>,
+      ): Effect.Effect<A, E> =>
+        effect.pipe(
+          Effect.provideService(Database, database),
+          Effect.provideService(ReplicaId, replicaId),
+        );
 
       const closed = Effect.map(socketClosure(triggers), Option.isSome);
 
@@ -112,8 +138,26 @@ export class Leases extends Context.Service<
 
       const holdsSocket = (owner: string) =>
         [...sockets.values()].some(
-          (registration) => ownerKey(registration.session) === owner,
+          ({ registration }) => ownerKey(registration.session) === owner,
         );
+
+      /**
+       * A deleted draft cascaded its rows away: nothing of it is renewed
+       * again, and a watch still open on it closes with no grace to run.
+       */
+      const forget = (draftId: string) =>
+        Effect.sync(() => {
+          for (const [key, socket] of sockets) {
+            if (socket.registration.session.draftId === draftId) {
+              sockets.delete(key);
+            }
+          }
+          for (const [owner, contact] of contacts) {
+            if (contact.registration.session.draftId === draftId) {
+              contacts.delete(owner);
+            }
+          }
+        });
 
       const tick = Effect.gen(function* () {
         if (yield* closed) return;
@@ -121,21 +165,23 @@ export class Leases extends Context.Service<
         for (const [owner, contact] of contacts) {
           if (contact.until <= at) contacts.delete(owner);
         }
-        const byTeam = new Map<string, LocalRegistration[]>();
+        const byDraft = new Map<string, LocalRegistration[]>();
         for (const registration of [
-          ...sockets.values(),
+          ...[...sockets.values()].map((socket) => socket.registration),
           ...[...contacts.values()].map((contact) => contact.registration),
         ]) {
-          const teamId = registration.session.access.teamId;
-          const team = byTeam.get(teamId) ?? [];
-          team.push(registration);
-          byTeam.set(teamId, team);
+          const draftId = registration.session.draftId;
+          const draft = byDraft.get(draftId) ?? [];
+          draft.push(registration);
+          byDraft.set(draftId, draft);
         }
-        for (const local of byTeam.values()) {
+        for (const [draftId, local] of byDraft) {
           const [first] = local;
           if (first === undefined) continue;
           const pass = yield* Effect.exit(
-            withDatabase(renewConnections(first.session.access, local)),
+            withDatabase(
+              renewConnections(first.session.access, draftId, local),
+            ),
           );
           // Registrations stay: an unanswered pass says nothing about whether
           // the connections are still there, and the next tick asks again.
@@ -144,6 +190,10 @@ export class Leases extends Context.Service<
               'Renewing protocol-builder connections failed',
               pass.cause,
             );
+            continue;
+          }
+          if (pass.value.gone) {
+            yield* forget(draftId);
             continue;
           }
           for (const missing of pass.value.missing) {
@@ -156,19 +206,37 @@ export class Leases extends Context.Service<
       });
 
       const reconnect = (registration: LocalRegistration) => {
-        const key = registrationKey(registration);
+        const draftId = registration.session.draftId;
         if (registration.kind === 'socket') {
-          return sockets.has(key)
-            ? Effect.asVoid(
-                connectSocket(registration.session, registration.key),
-              )
-            : Effect.void;
+          const key = registrationKey(registration);
+          const socket = sockets.get(key);
+          if (socket === undefined) return Effect.void;
+          // Under the lock its close expires the row under, and asked again
+          // there: a re-record that committed after that expiry would leave a
+          // live row nothing renews or expires.
+          return socket.lock.withPermit(
+            Effect.gen(function* () {
+              if (!sockets.has(key)) return;
+              const recorded = yield* connectSocket(
+                registration.session,
+                registration.key,
+              );
+              if (!recorded) yield* forget(draftId);
+            }),
+          );
         }
         const contact = contacts.get(ownerKey(registration.session));
-        return contact !== undefined &&
-          registrationKey(contact.registration) === key
-          ? upsertContact(registration.session)
-          : Effect.void;
+        if (
+          contact === undefined ||
+          registrationKey(contact.registration) !==
+            registrationKey(registration)
+        ) {
+          return Effect.void;
+        }
+        return Effect.gen(function* () {
+          const recorded = yield* upsertContact(registration.session);
+          if (!recorded) yield* forget(draftId);
+        });
       };
 
       yield* tick.pipe(
@@ -176,38 +244,35 @@ export class Leases extends Context.Service<
         Effect.forkScoped,
       );
 
+      /**
+       * The only grace for this closure: a release that finds the owner's
+       * socket live elsewhere ends it, and the replica holding that socket
+       * runs a whole grace of its own when the socket closes.
+       */
       const graceFor = (
         session: ProtocolBuilderSession,
-        onReleased: (
-          events: ReadonlyArray<LoggedProtocolEvent>,
-        ) => Effect.Effect<void>,
+        onReleased: OnReleased,
       ) =>
         Effect.gen(function* () {
-          const owner = ownerKey(session);
-          let wait = RECONNECT_GRACE_MS;
-          while (true) {
-            yield* Effect.sleep(wait);
+          yield* Effect.sleep(RECONNECT_GRACE_MS);
+          if (yield* closed) return;
+          // Dropped before the release, which may fail: a contact left
+          // renewing would keep the leases forever.
+          contacts.delete(ownerKey(session));
+          yield* Effect.gen(function* () {
             if (yield* closed) return;
-            // Dropped before the release, which may fail: a contact left
-            // renewing would keep the leases forever.
-            contacts.delete(owner);
-            const outcome = yield* Effect.uninterruptible(
+            yield* Effect.uninterruptible(
               Effect.gen(function* () {
                 const release = yield* withDatabase(releaseOwner(session));
                 if (release.released) yield* onReleased(release.events);
-                return release;
               }),
             );
-            if (outcome.released) return;
-            wait = outcome.retryInMs;
-          }
+          }).pipe(retryBriefly);
         }).pipe(logFailure('Releasing a stranded lease owner failed'));
 
       const startGrace = (
         session: ProtocolBuilderSession,
-        onReleased: (
-          events: ReadonlyArray<LoggedProtocolEvent>,
-        ) => Effect.Effect<void>,
+        onReleased: OnReleased,
       ) =>
         Effect.gen(function* () {
           const owner = ownerKey(session);
@@ -229,44 +294,53 @@ export class Leases extends Context.Service<
 
       const disconnect = (
         registration: LocalRegistration,
-        onReleased: (
-          events: ReadonlyArray<LoggedProtocolEvent>,
-        ) => Effect.Effect<void>,
+        onReleased: OnReleased,
       ) =>
         Effect.gen(function* () {
-          sockets.delete(registrationKey(registration));
-          yield* withDatabase(expireConnection(registration)).pipe(
-            logFailure('Expiring a protocol-builder connection failed'),
-          );
+          const key = registrationKey(registration);
+          const socket = sockets.get(key);
+          if (socket === undefined) return;
+          sockets.delete(key);
+          yield* socket.lock
+            .withPermit(withDatabase(expireConnection(registration)))
+            .pipe(logFailure('Expiring a protocol-builder connection failed'));
           yield* startGrace(registration.session, onReleased);
         });
 
       const connect = (
         session: ProtocolBuilderSession,
-        onReleased: (
-          events: ReadonlyArray<LoggedProtocolEvent>,
-        ) => Effect.Effect<void>,
+        onReleased: OnReleased,
       ) =>
         Effect.acquireRelease(
           Effect.gen(function* () {
-            const grace = graces.get(ownerKey(session));
-            if (grace !== undefined) {
-              graces.delete(ownerKey(session));
-              yield* Fiber.interrupt(grace.fiber);
-            }
             const registration: LocalRegistration = {
               session,
               key: `${session.connectionId}:${randomUUID()}`,
               kind: 'socket',
             };
-            const adopted = yield* withDatabase(
+            const recorded = yield* withDatabase(
               connectSocket(session, registration.key),
             );
-            sockets.set(registrationKey(registration), registration);
-            return { registration, adopted };
+            if (!recorded) return undefined;
+            sockets.set(registrationKey(registration), {
+              registration,
+              lock: Semaphore.makeUnsafe(1),
+            });
+            // Only once the row is recorded: a reconnect that failed leaves the
+            // grace to give the leases back.
+            const owner = ownerKey(session);
+            const grace = graces.get(owner);
+            if (grace !== undefined) {
+              graces.delete(owner);
+              yield* Fiber.interrupt(grace.fiber);
+            }
+            return registration;
           }),
-          ({ registration }) => disconnect(registration, onReleased),
-        ).pipe(Effect.map(({ adopted }) => adopted));
+          (registration) =>
+            registration === undefined
+              ? Effect.void
+              : disconnect(registration, onReleased),
+        ).pipe(Effect.asVoid);
 
       const contact = (session: ProtocolBuilderSession) =>
         Effect.gen(function* () {
@@ -280,14 +354,18 @@ export class Leases extends Context.Service<
           contacts.set(owner, {
             registration: {
               session,
-              key: contactKey(session),
+              key: contactKey(session, replicaId),
               kind: 'contact',
             },
             until: at + IDLE_MS,
             contactedAt: existing?.contactedAt,
           });
           if (!due) return;
-          yield* withDatabase(upsertContact(session));
+          const recorded = yield* withDatabase(upsertContact(session));
+          if (!recorded) {
+            yield* forget(session.draftId);
+            return;
+          }
           const current = contacts.get(owner);
           if (current !== undefined) {
             contacts.set(owner, { ...current, contactedAt: at });
@@ -298,7 +376,8 @@ export class Leases extends Context.Service<
         Effect.sync(
           () =>
             [...sockets.values()].some(
-              (registration) => sessionOwner(registration.session) === owner,
+              ({ registration }) =>
+                sessionOwner(registration.session) === owner,
             ) ||
             [...graces.keys()].some((key) => key.endsWith(`\u0000${owner}`)),
         );

@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
+import type { ProtocolSectionId } from '@codaco/studio-sync/taxonomy';
+
 import { testDb } from '../../__tests__/support/database.ts';
 import {
   ADA,
@@ -10,12 +12,19 @@ import type { Caller } from '../../__tests__/support/protocol-builder.ts';
 
 describe.skipIf(!testDb)('presence', () => {
   const suite = setupProtocolBuilderSuite();
-  const { teamRows, ageConnections, present, watching, createStage } = suite;
+  const {
+    teamRows,
+    ageConnections,
+    connectionRows,
+    present,
+    watching,
+    createStage,
+  } = suite;
 
   const callerOn = (
     who: typeof ADA,
     slug: string,
-  ): Caller & { connection: string } => ({
+  ): Caller & { connection: string; tab: string } => ({
     principal: who.principal,
     connection: `pb-presence-${slug}-connection`,
     tab: `pb-presence-${slug}-tab`,
@@ -37,15 +46,15 @@ describe.skipIf(!testDb)('presence', () => {
           sectionId: stage.sectionId,
         }),
       );
-      // The watch that connected first stops showing the lock, as a row
-      // written before the lock was taken would.
+      // The watch listed last stops showing the lock, as a row written before
+      // the lock was taken would.
       await teamRows(
         `UPDATE protocol_connections
             SET mode = 'viewing', section_id = NULL
           WHERE connection_id = (
             SELECT connection_id FROM protocol_connections
              WHERE draft_id = $1 AND socket_id = $2
-             ORDER BY created_at LIMIT 1)`,
+             ORDER BY created_at DESC, connection_id DESC LIMIT 1)`,
         [suite.draftId, caller.connection],
       );
 
@@ -76,6 +85,15 @@ describe.skipIf(!testDb)('presence', () => {
     const first = await watching(earlier, suite.protocolId);
     const second = await watching(later, suite.protocolId);
     try {
+      // Rewritten to the end of the heap and to the later expiry, so neither
+      // a scan nor the expiry index returns the rows in connection order.
+      await teamRows(
+        `UPDATE protocol_connections
+            SET created_at = created_at - interval '1 hour',
+                expires_at = expires_at + interval '1 minute'
+          WHERE draft_id = $1 AND socket_id = $2`,
+        [suite.draftId, earlier.connection],
+      );
       expect(
         (await listed([later.connection, earlier.connection])).map(
           (who) => who.sessionId,
@@ -84,6 +102,82 @@ describe.skipIf(!testDb)('presence', () => {
     } finally {
       await second.stop();
       await first.stop();
+    }
+  });
+
+  const shownFor = async (tab: string) =>
+    (await connectionRows())
+      .filter(
+        (row) =>
+          row.live &&
+          row.kind === 'socket' &&
+          row.owner === `${ADA.principal.userId}:${tab}`,
+      )
+      .map((row) => ({ mode: row.mode, sectionId: row.section_id }));
+
+  const lock = (
+    caller: Caller,
+    rpc: 'AcquireLock' | 'ReleaseLock',
+    sectionId: ProtocolSectionId,
+  ) =>
+    suite.call(
+      caller,
+      suite.host.rpc(rpc, { protocolId: suite.protocolId, sectionId }),
+    );
+
+  it('changes only the calling tab’s rows on a socket other tabs share', async () => {
+    const held = await createStage(ADA, 'Held by one tab of a shared socket');
+    const passing = await createStage(ADA, 'Passed through by the other tab');
+    const holder = callerOn(ADA, 'holder');
+    const passer = { ...holder, tab: 'pb-presence-passer-tab' };
+    const first = await watching(holder, suite.protocolId);
+    const second = await watching(passer, suite.protocolId);
+    try {
+      await lock(holder, 'AcquireLock', held.sectionId);
+      await lock(passer, 'AcquireLock', passing.sectionId);
+      await lock(passer, 'ReleaseLock', passing.sectionId);
+
+      expect(await shownFor(holder.tab)).toEqual([
+        { mode: 'editing', sectionId: held.sectionId },
+      ]);
+      expect(await shownFor(passer.tab)).toEqual([
+        { mode: 'viewing', sectionId: null },
+      ]);
+      await lock(holder, 'ReleaseLock', held.sectionId);
+    } finally {
+      await second.stop();
+      await first.stop();
+    }
+  });
+
+  it('leaves a login’s HTTP watch showing what it adopted while its unary calls take and give back locks', async () => {
+    const held = await createStage(ADA, 'Held before an HTTP watch');
+    const later = await createStage(ADA, 'Taken by a unary call later');
+    const passing = await createStage(ADA, 'Passed through by another tab');
+    const watcher: Caller = {
+      principal: ADA.principal,
+      tab: 'pb-presence-http-tab',
+    };
+    const other: Caller = {
+      principal: ADA.principal,
+      tab: 'pb-presence-unary-tab',
+    };
+    await lock(watcher, 'AcquireLock', held.sectionId);
+    const channel = await watching(watcher, suite.protocolId);
+    try {
+      const adopted = [{ mode: 'editing', sectionId: held.sectionId }];
+      expect(await shownFor('pb-presence-http-tab')).toEqual(adopted);
+
+      await lock(other, 'AcquireLock', passing.sectionId);
+      await lock(other, 'ReleaseLock', passing.sectionId);
+      expect(await shownFor('pb-presence-http-tab')).toEqual(adopted);
+
+      await lock(watcher, 'AcquireLock', later.sectionId);
+      expect(await shownFor('pb-presence-http-tab')).toEqual(adopted);
+      await lock(watcher, 'ReleaseLock', later.sectionId);
+    } finally {
+      await channel.stop();
+      await lock(watcher, 'ReleaseLock', held.sectionId);
     }
   });
 

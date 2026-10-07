@@ -10,6 +10,8 @@ import { REAUTHORIZE_MS } from '../protocol-builder/handlers.ts';
 import {
   RECONNECT_GRACE_MS,
   RENEW_INTERVAL_MS,
+  RETRY_BASE_MS,
+  RETRY_TIMES,
 } from '../protocol-builder/leases.ts';
 import { type StudioServices } from '../rpc/deps.ts';
 import { authServiceStub } from './support/auth.ts';
@@ -155,10 +157,15 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       return row.expires_at.getTime();
     };
 
-    const held = await call(
-      tab,
-      host.rpc('AcquireLock', { protocolId, sectionId }),
-    );
+    // Taken through a server of its own, gone before the restart, so only the
+    // restarted server's keeper can renew the lease.
+    const granting = await createProtocolBuilderClient(studio, {
+      clock: makeShiftableClock().clock,
+      objectStore,
+    });
+    const held = await granting
+      .call(tab, granting.rpc('AcquireLock', { protocolId, sectionId }))
+      .finally(() => granting.dispose());
     if (held.lock !== 'held') throw new Error('the section was already taken');
 
     const restartedClock = makeShiftableClock();
@@ -497,11 +504,10 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
     }
   });
 
-  it('keeps renewing a lock whose caller went away as it was taken', async () => {
+  it('tells watchers of a lock whose caller went away as it was taken', async () => {
     const presence = holdingPresence();
-    const replica = makeShiftableClock();
     const other = await createProtocolBuilderClient(studio, {
-      clock: replica.clock,
+      clock: makeShiftableClock().clock,
       objectStore,
       presence: presence.layer,
     });
@@ -509,30 +515,85 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
     try {
       const stage = await createOn(other, 'Taken by a closing tab');
       const sectionId = stage.sectionId;
-      const taken = presence.next();
-      const leaving = new AbortController();
-      const acquiring = other.callExit(
-        caller,
-        other.rpc('AcquireLock', { protocolId, sectionId }),
-        { signal: leaving.signal },
-      );
-      await taken.reached;
-      leaving.abort();
-      await new Promise((settle) => setTimeout(settle, 50));
-      taken.release();
-      await acquiring;
-      expect(await liveLeases(owner)).toEqual([sectionId]);
-      const granted = await leaseExpiry(owner);
-      if (granted === undefined) throw new Error('the tab holds no lease');
-
-      await keeperTick(RENEW_INTERVAL_MS, replica);
-      expect(await leaseExpiry(owner)).toBeGreaterThan(granted);
-      await other.call(
-        caller,
-        other.rpc('ReleaseLock', { protocolId, sectionId }),
-      );
+      const colleague = await watching(GRACE, protocolId, other);
+      try {
+        const taken = presence.next();
+        const leaving = new AbortController();
+        const acquiring = other.callExit(
+          caller,
+          other.rpc('AcquireLock', { protocolId, sectionId }),
+          { signal: leaving.signal },
+        );
+        await taken.reached;
+        leaving.abort();
+        await new Promise((settle) => setTimeout(settle, 50));
+        taken.release();
+        await acquiring;
+        expect(await liveLeases(owner)).toEqual([sectionId]);
+        await until(
+          () =>
+            colleague.events.some(
+              (event) => event.type === 'lock' && event.sectionId === sectionId,
+            ),
+          'the colleague to hear the lock was taken',
+        );
+        await other.call(
+          caller,
+          other.rpc('ReleaseLock', { protocolId, sectionId }),
+        );
+      } finally {
+        await colleague.stop();
+      }
     } finally {
       await other.dispose();
+    }
+  });
+
+  it('shows the section a socket took although recording that failed at first', async () => {
+    const fault = await faultyDatabase();
+    const presence = holdingPresence();
+    const replica = makeShiftableClock();
+    const other = await createProtocolBuilderClient(fault.studio, {
+      clock: replica.clock,
+      objectStore,
+      presence: presence.layer,
+    });
+    const { caller } = tabOf('mode-retried');
+    try {
+      const stage = await createOn(other, 'Shown after a retried mode');
+      const sectionId = stage.sectionId;
+      const channel = await watching(caller, protocolId, other);
+      try {
+        const recording = presence.next();
+        const acquiring = other.call(
+          caller,
+          other.rpc('AcquireLock', { protocolId, sectionId }),
+        );
+        await recording.reached;
+        fault.setDown(true);
+        recording.release();
+        await until(
+          () => replica.pending(RETRY_BASE_MS) > 0,
+          'the mode to be retried',
+        );
+        fault.setDown(false);
+        replica.advance(RETRY_BASE_MS);
+        expect((await acquiring).lock).toBe('held');
+
+        expect(
+          (await present()).find((who) => who.sessionId === caller.connection),
+        ).toMatchObject({ mode: 'editing', sectionId });
+        await other.call(
+          caller,
+          other.rpc('ReleaseLock', { protocolId, sectionId }),
+        );
+      } finally {
+        fault.setDown(false);
+        await channel.stop();
+      }
+    } finally {
+      await other.dispose();
+      await fault.close();
     }
   });
 
@@ -585,16 +646,26 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         'the reconnect grace to start',
       );
 
-      const attempts = spans.count('protocolBuilder.releaseOwner');
+      const attempts = spans.ended('protocolBuilder.releaseOwner');
+      const failed = () => spans.ended('protocolBuilder.releaseOwner');
       fault.setDown(true);
       stranded.advance(RECONNECT_GRACE_MS);
+      for (let retry = 0; retry < RETRY_TIMES; retry += 1) {
+        const wait = RETRY_BASE_MS * 2 ** retry;
+        // A real timer under the shifted clock may have run the retry already.
+        await until(
+          () => stranded.pending(wait) > 0 || failed() > attempts + retry + 1,
+          'the release to be retried',
+        );
+        stranded.advance(wait);
+      }
       await until(
-        () => spans.count('protocolBuilder.releaseOwner') > attempts,
-        'the release to be attempted',
+        () => failed() === attempts + RETRY_TIMES + 1,
+        'every attempt to give the leases back to fail',
       );
-      await until(
-        () => stranded.pending(RECONNECT_GRACE_MS) === 0,
-        'the grace to give up',
+      stranded.advance(RECONNECT_GRACE_MS);
+      expect(spans.count('protocolBuilder.releaseOwner')).toBe(
+        attempts + RETRY_TIMES + 1,
       );
       fault.setDown(false);
       const renewals = spans.count('sync.renewHeld');

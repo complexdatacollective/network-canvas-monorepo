@@ -2,11 +2,21 @@ import { createHash, randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-import { Context, Deferred, Effect, Layer, Option, Stream } from 'effect';
+import {
+  Context,
+  Deferred,
+  Effect,
+  Exit,
+  Layer,
+  Option,
+  Scope,
+  Stream,
+} from 'effect';
 import { afterAll, beforeAll } from 'vitest';
 
 import { type ProtocolEvent } from '@codaco/protocol-builder-core/contract/schemas';
 import { type CurrentProtocol } from '@codaco/protocol-validation';
+import { TEAM_GUC } from '@codaco/studio-sync/rls';
 import {
   sectionId as makeSectionId,
   parseSectionId,
@@ -15,6 +25,7 @@ import {
 
 import { createStudio, type Studio } from '../../app.ts';
 import { type SessionPrincipal } from '../../auth/service.ts';
+import { Database } from '../../db/client.ts';
 import {
   type TeamAccess,
   TenantScope,
@@ -37,6 +48,7 @@ import {
   openTestDatabase,
   ownerAffected,
   tenantRows,
+  testDb,
   type TestDatabaseRuntime,
 } from './database.ts';
 import {
@@ -426,6 +438,61 @@ export function setupProtocolBuilderSuite() {
   const present = async () =>
     (await runEffect(livePresence(access, [draftId]))).get(draftId) ?? [];
 
+  /**
+   * Locks one row from a connection of the suite's own, as another replica's
+   * transaction would, until `release`.
+   */
+  const holdRow = async (
+    statement: string,
+    params: ReadonlyArray<unknown> = [],
+  ) => {
+    const client = await database.appPool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query('SELECT set_config($1, $2, true)', [
+        TEAM_GUC,
+        TEAM_ID,
+      ]);
+      const locked = await client.query(statement, [...params]);
+      if (locked.rowCount !== 1) throw new Error('no row to hold');
+      const [backend] = (
+        await client.query<{ pid: number }>('SELECT pg_backend_pid() AS pid')
+      ).rows;
+      if (backend === undefined) throw new Error('no backend pid');
+      return {
+        pid: backend.pid,
+        release: async () => {
+          await client.query('ROLLBACK');
+          client.release();
+        },
+      };
+    } catch (error) {
+      client.release();
+      throw error;
+    }
+  };
+
+  /**
+   * The backends waiting on `pid`, each with the connection and lease tables
+   * it already holds a lock on.
+   */
+  const blockedBehind = async (pid: number) =>
+    (
+      await database.appPool.query<{ pid: number; holds: string[] }>(
+        `SELECT a.pid,
+                array(SELECT DISTINCT c.relname::text
+                        FROM pg_locks l
+                        JOIN pg_class c ON c.oid = l.relation
+                       WHERE l.pid = a.pid AND l.granted
+                         AND c.relnamespace = current_schema()::regnamespace
+                         AND c.relname IN ('protocol_connections', 'leases')
+                       ORDER BY 1) AS holds
+           FROM pg_stat_activity a
+          WHERE $1 = ANY(pg_blocking_pids(a.pid))`,
+        [pid],
+      )
+    ).rows;
+
   const spans = makeSpanCounter();
 
   const stagedIds = async (editId: string) => {
@@ -620,6 +687,41 @@ export function setupProtocolBuilderSuite() {
     );
   };
 
+  /**
+   * A Studio on an application pool of its own: on the suite's single
+   * connection, a transaction blocked in the database holds back every other
+   * one in the pool rather than in the code under test.
+   */
+  const studioOnOwnPool = async (maxConnections: number) => {
+    if (!testDb) throw new Error('no test database');
+    const url = testDb.url;
+    const scope = await Effect.runPromise(Scope.make());
+    const pool = Context.get(
+      await Effect.runPromise(
+        Layer.buildWithScope(
+          Database.layer({
+            url,
+            maxConnections,
+            applicationName: 'studio-test-own-pool',
+            searchPath: database.harness.schema,
+          }),
+          scope,
+        ),
+      ),
+      Database,
+    );
+    return {
+      studio: createStudio(resolveEnv({ NODE_ENV: 'test' }), {
+        auth: authServiceStub({
+          listMemberships: memberships,
+          getMembership: membership,
+        }),
+        services: Context.add(services, Database, pool),
+      }),
+      close: () => Effect.runPromise(Scope.close(scope, Exit.void)),
+    };
+  };
+
   const removedAfterOpening = async (slug: string) => {
     const who = researcher(slug);
     await database.run(
@@ -707,6 +809,8 @@ export function setupProtocolBuilderSuite() {
     ageConnections,
     connectionRows,
     present,
+    holdRow,
+    blockedBehind,
     spans,
     stagedIds,
     keeperTick,
@@ -714,6 +818,7 @@ export function setupProtocolBuilderSuite() {
     watching,
     drain,
     removedAfterOpening,
+    studioOnOwnPool,
     createOn,
   };
 }
