@@ -139,8 +139,7 @@ export function sourceStageNodeType(
 ): string | undefined {
   const stage = sourceStageOf(context, sourceStageId);
   if (stage === undefined) return undefined;
-  // TODO(narrative-pedigree-rebuild): the redesigned Family Pedigree's people
-  // are its stage subject.
+  // The Family Pedigree's people are its stage subject.
   const nodeType = stage.subject.type;
   return typeof nodeType === 'string' ? nodeType : undefined;
 }
@@ -210,8 +209,10 @@ export function diseaseMarksNobody(
   if (typeof row !== 'object' || row === null || Array.isArray(row)) {
     return false;
   }
-  const variable: unknown = Reflect.get(row, 'variable');
+  const attribute: unknown = Reflect.get(row, 'attribute');
   return (
-    typeof variable === 'string' && variable !== '' && !recorded.has(variable)
+    typeof attribute === 'string' &&
+    attribute !== '' &&
+    !recorded.has(attribute)
   );
 }

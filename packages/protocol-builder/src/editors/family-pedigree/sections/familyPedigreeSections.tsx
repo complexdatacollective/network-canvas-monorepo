@@ -4,8 +4,17 @@ import FramingSection from './FramingSection.tsx';
 import NodeConfigurationSection from './NodeConfigurationSection.tsx';
 import NominationPromptsSection from './NominationPromptsSection.tsx';
 import PedigreePromptSection from './PedigreePromptSection.tsx';
+import PedigreeSubjectSection from './PedigreeSubjectSection.tsx';
 import PersonFormFieldsSection from './PersonFormFieldsSection.tsx';
 import RelationshipsSection from './RelationshipsSection.tsx';
+
+/**
+ * The node type family members are, which is not changed while a narrative
+ * pedigree reads this stage.
+ */
+export const pedigreeSubject = (): StageSection => () => (
+  <PedigreeSubjectSection />
+);
 
 /**
  * The attributes the interface records about every family member, including

@@ -1671,3 +1671,61 @@ describe('the nomination prompts', () => {
     ).not.toContain(HEART_DISEASE);
   });
 });
+
+/**
+ * A narrative pedigree resolves every disease it draws through its source
+ * pedigree's node type, so a type change under one leaves it naming
+ * attributes the new type does not have — a protocol nobody could publish,
+ * and one this editor cannot repair: the stage that would have to be remapped
+ * is not the stage it is editing. The fixture's `narrative-pedigree-1` reads
+ * `family-pedigree-1`.
+ */
+describe('the node type, while a narrative pedigree reads this stage', () => {
+  it('says which stages read this pedigree', async () => {
+    openFixture();
+
+    expect(
+      await screen.findByText('Other stages read this pedigree'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /these stages visualize this pedigree.*"Narrative Pedigree"/i,
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('refuses a node type change, naming the stages in its way', async () => {
+    const harness = openFixture();
+
+    await harness.user.click(
+      await screen.findByRole('radio', { name: 'person' }),
+    );
+
+    expect(
+      await screen.findByText('Cannot change node type'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/"Narrative Pedigree" reads this pedigree/),
+    ).toBeInTheDocument();
+    // Refused rather than confirmed: no answer to the usual question would
+    // let the change through.
+    expect(
+      screen.queryByRole('button', { name: 'Change the node type' }),
+    ).not.toBeInTheDocument();
+
+    await harness.user.click(screen.getByRole('button', { name: 'Continue' }));
+    await waitFor(() => {
+      expect(screen.queryAllByRole('dialog')).toHaveLength(0);
+    });
+    expect(screen.getByRole('radio', { name: 'family member' })).toBeChecked();
+  });
+
+  it('says nothing of other stages on a pedigree nothing reads', async () => {
+    openNewStage();
+
+    await screen.findByRole('radio', { name: 'person' });
+    expect(
+      screen.queryByText('Other stages read this pedigree'),
+    ).not.toBeInTheDocument();
+  });
+});

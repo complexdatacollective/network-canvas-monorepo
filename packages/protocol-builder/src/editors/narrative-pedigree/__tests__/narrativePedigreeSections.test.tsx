@@ -386,7 +386,7 @@ describe('the diseases a narrative pedigree defines', () => {
             id: 'disease-2',
             label: { 'en-US': 'Condition X, again' },
             color: 'node-color-seq-2',
-            variable: 'hasConditionX',
+            attribute: 'hasConditionX',
             inheritancePattern: 'unknown',
           },
         ],
@@ -412,7 +412,7 @@ describe('the diseases a narrative pedigree defines', () => {
             id: 'disease-2',
             label: { 'en-US': 'Condition Z' },
             color: 'node-color-seq-2',
-            variable: 'hasConditionZ',
+            attribute: 'hasConditionZ',
             inheritancePattern: 'unknown',
           },
         ],
@@ -641,7 +641,7 @@ describe('a disease whose attribute the codebook can no longer carry', () => {
    * afterwards is the slot rule alone.
    */
   it('reports an attribute the pedigree derives for itself, and saves the stage', async () => {
-    const mappedToEgo = { ...fixtureDisease(), variable: 'is_ego' };
+    const mappedToEgo = { ...fixtureDisease(), attribute: 'is_ego' };
     const harness = renderStageEditor(
       narrativePedigreeHolding({ diseases: [mappedToEgo] }),
     );

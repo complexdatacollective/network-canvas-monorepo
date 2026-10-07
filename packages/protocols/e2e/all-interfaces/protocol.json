@@ -872,7 +872,7 @@
             "en-US": "Condition X"
           },
           "color": "node-color-seq-1",
-          "variable": "hasConditionX",
+          "attribute": "hasConditionX",
           "inheritancePattern": "autosomalDominant"
         }
       ]

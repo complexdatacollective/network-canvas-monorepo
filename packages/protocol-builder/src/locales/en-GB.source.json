@@ -35,5 +35,6 @@
   "protocolBuilder.networkCanvas.presetsDescription": "Create visualizations that researchers can switch between during the interview.",
   "protocolBuilder.networkCanvas.presetsFieldHint": "Add one or more \"presets\" below, to create different visualizations that you can switch between within the interview.",
   "protocolBuilder.networkCanvas.presetsTitle": "Visualization presets",
+  "protocolBuilder.pedigree.dependentStagesDescription": "These stages visualize this pedigree's network and map their own attributes onto its node type: {stageNames}. Changing the node type here will leave them pointing at attributes the new type does not have.",
   "protocolBuilder.removeAfterConsideration.fieldLabel": "Removal behavior"
 }

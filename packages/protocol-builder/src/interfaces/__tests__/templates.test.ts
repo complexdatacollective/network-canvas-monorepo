@@ -76,6 +76,18 @@ describe('getInterfaceTemplate', () => {
     expect(getInterfaceTemplate('FamilyPedigree')).not.toHaveProperty('prompt');
     expect(getInterfaceTemplate('FamilyPedigree')).toEqual({});
   });
+
+  /**
+   * A narrative pedigree starts reading no pedigree and drawing no disease,
+   * with the probabilistic markers off until a researcher asks for them.
+   */
+  it('starts a narrative pedigree with no source, no diseases, and the at-risk markers off', () => {
+    expect(getInterfaceTemplate('NarrativePedigree')).toEqual({
+      sourceStageId: '',
+      diseases: [],
+      showAtRiskStatuses: false,
+    });
+  });
 });
 
 /**

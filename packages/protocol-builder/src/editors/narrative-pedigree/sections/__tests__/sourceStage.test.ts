@@ -220,13 +220,13 @@ describe('a disease that would mark nobody', () => {
   const recorded = new Set(['hasConditionX']);
 
   it('is one mapping an attribute nothing records', () => {
-    expect(diseaseMarksNobody({ variable: 'biologicalSex' }, recorded)).toBe(
+    expect(diseaseMarksNobody({ attribute: 'biologicalSex' }, recorded)).toBe(
       true,
     );
   });
 
   it('is not one mapping an attribute a nomination prompt writes', () => {
-    expect(diseaseMarksNobody({ variable: 'hasConditionX' }, recorded)).toBe(
+    expect(diseaseMarksNobody({ attribute: 'hasConditionX' }, recorded)).toBe(
       false,
     );
   });
@@ -236,7 +236,7 @@ describe('a disease that would mark nobody', () => {
    * marks nobody would put two refusals on one empty control.
    */
   it('is not an unfinished row, or something that is not a row at all', () => {
-    expect(diseaseMarksNobody({ variable: '' }, recorded)).toBe(false);
+    expect(diseaseMarksNobody({ attribute: '' }, recorded)).toBe(false);
     expect(diseaseMarksNobody({}, recorded)).toBe(false);
     expect(diseaseMarksNobody(null, recorded)).toBe(false);
     expect(diseaseMarksNobody(['hasConditionZ'], recorded)).toBe(false);

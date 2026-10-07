@@ -1,6 +1,5 @@
 import { interviewerGuidance } from '../../sections/interviewer-guidance/interviewerGuidance.tsx';
 import { skipLogic } from '../../sections/skip-logic/skipLogic.tsx';
-import { subjectPicker } from '../../sections/subject-picker/subjectPicker.tsx';
 import { defineStageEditor } from '../defineStageEditor.tsx';
 import {
   completeness,
@@ -8,6 +7,7 @@ import {
   nodeConfiguration,
   nominationPrompts,
   pedigreePrompt,
+  pedigreeSubject,
   personFormFields,
   relationships,
 } from './sections/familyPedigreeSections.tsx';
@@ -26,7 +26,7 @@ import {
  * drawn.
  */
 export const familyPedigreeStageEditor = defineStageEditor('FamilyPedigree', [
-  subjectPicker({ entity: 'node' }),
+  pedigreeSubject(),
   pedigreePrompt(),
   nodeConfiguration(),
   relationships(),

@@ -926,6 +926,26 @@ export const familyPedigreeMessages = defineMessages({
     description:
       'Button that confirms switching off the additional person fields and discarding them.',
   },
+  dependentStagesTitle: {
+    id: 'protocolBuilder.pedigree.dependentStagesTitle',
+    defaultMessage: 'Other stages read this pedigree',
+    description:
+      'Title of the warning shown above the node type control when other stages of the same protocol draw their network from this pedigree.',
+  },
+  dependentStagesDescription: {
+    id: 'protocolBuilder.pedigree.dependentStagesDescription',
+    defaultMessage:
+      "These stages visualize this pedigree's network and map their own attributes onto its node type: {stageNames}. Changing the node type here will leave them pointing at attributes the new type does not have.",
+    description:
+      'Body of the warning about other stages that read this pedigree. stageNames is the list of those stages’ names, each in quotation marks, already joined into one phrase in the reader’s language.',
+  },
+  dependentStagesBlockReason: {
+    id: 'protocolBuilder.pedigree.dependentStagesBlockReason',
+    defaultMessage:
+      '{stageCount, plural, one {{stageNames} reads this pedigree and maps its own attributes onto this node type, so the node type cannot be changed here. Change or remove that stage first.} other {{stageNames} read this pedigree and map their own attributes onto this node type, so the node type cannot be changed here. Change or remove those stages first.}}',
+    description:
+      'Shown when a researcher tries to change the node type of a pedigree that another stage of the protocol reads, and the change is refused. stageCount is how many such stages there are; stageNames is their names, each in quotation marks, already joined into one phrase in the reader’s language.',
+  },
   personFormReservedRefusal: {
     id: 'protocolBuilder.pedigree.personFormReservedRefusal',
     defaultMessage:
