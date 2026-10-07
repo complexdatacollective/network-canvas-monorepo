@@ -429,6 +429,69 @@ describe('NetworkComposer inspector — node', () => {
   });
 });
 
+describe('NetworkComposer inspector — undo and redo with the drawer open', () => {
+  const storedName = (store: ReturnType<typeof makeStore>) =>
+    store
+      .getState()
+      .session.network.nodes.find(
+        (n) => n[entityPrimaryKeyProperty] === NODE_A_ID,
+      )?.[entityAttributesProperty]?.[NODE_NAME_VAR];
+
+  async function editAndSave(store: ReturnType<typeof makeStore>) {
+    renderInterface(store);
+    const nodeA = await screen.findByRole('button', { name: /alice/i });
+    act(() => {
+      tapNode(nodeA);
+    });
+    const nameInput = await screen.findByLabelText(/full name/i);
+    fireEvent.change(nameInput, { target: { value: 'Alice Updated' } });
+    await waitFor(() => expect(storedName(store)).toBe('Alice Updated'), {
+      timeout: 2000,
+    });
+    return nameInput;
+  }
+
+  const pressUndo = (redo = false) =>
+    act(async () => {
+      fireEvent.keyDown(screen.getByTestId('network-composer'), {
+        key: 'z',
+        metaKey: true,
+        shiftKey: redo,
+      });
+    });
+
+  it('shows the answer an undo restores, and keeps it when the drawer closes', async () => {
+    const store = makeStore();
+    const nameInput = await editAndSave(store);
+
+    await pressUndo();
+    await waitFor(() => expect(storedName(store)).toBe('Alice Smith'));
+    await waitFor(() => expect(nameInput).toHaveValue('Alice Smith'));
+
+    act(() => {
+      fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    });
+    await waitFor(() =>
+      expect(screen.queryByTestId('inspector-panel')).toBeNull(),
+    );
+    expect(storedName(store)).toBe('Alice Smith');
+  });
+
+  it('keeps the edit available to redo once the drawer has caught up with the undo', async () => {
+    const store = makeStore();
+    const nameInput = await editAndSave(store);
+
+    await pressUndo();
+    await waitFor(() => expect(nameInput).toHaveValue('Alice Smith'));
+    // Longer than the drawer waits before saving an edit.
+    await act(() => new Promise((resolve) => setTimeout(resolve, 600)));
+
+    await pressUndo(true);
+    await waitFor(() => expect(storedName(store)).toBe('Alice Updated'));
+    await waitFor(() => expect(nameInput).toHaveValue('Alice Updated'));
+  });
+});
+
 async function clickEdge(edgeId: string) {
   const edgeLine = await waitFor(() => {
     const el = document.querySelector(`line[data-edge-id="${edgeId}"]`);

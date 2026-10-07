@@ -94,6 +94,4 @@ answers; other interviews work as before.
   not been saved.
 - Going back from the first person or relationship on a stage that asks
   about each one saves the answers entered, or warns that they have not been
-  saved, as going forward does. Before, they were lost. Leaving the Network
-  Composer saves a change in its side panel that has not been saved yet, and
-  asks before discarding one that cannot be saved.
+  saved, as going forward does. Before, they were lost.

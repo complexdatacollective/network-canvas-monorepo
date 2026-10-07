@@ -1,4 +1,5 @@
 'use client';
+import { isEqual } from 'es-toolkit';
 import { useCallback, useContext, useEffect, useMemo, useRef } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -35,6 +36,7 @@ import PassphraseNotice, {
 } from '../Anonymisation/PassphraseNotice';
 import discardChangesDialog from '../discardChangesDialog';
 import { interfaceMessages } from '../messages';
+import type { LeaveGuard } from './useComposerStore';
 
 type Attributes = NcNode[typeof entityAttributesProperty];
 
@@ -51,6 +53,12 @@ export type InspectorProps = {
   passphraseStatus?: PassphraseNoticeStatus;
   onSave: (id: string, attributePatch: AttributePatch) => Promise<void>;
   onDelete: (id: string) => void;
+  /**
+   * Holds the participant on this entity while its form has a draft, so
+   * whatever would close the Inspector first saves the draft or asks before
+   * discarding it. Returns the function that releases the hold.
+   */
+  guardDraft: (entityId: string, confirmLeave: LeaveGuard) => () => void;
 };
 
 // How long to wait after the last edit before validating and persisting.
@@ -127,6 +135,7 @@ function AttributeFormInner({
   attributes,
   canSave,
   onSave,
+  guardDraft,
 }: Omit<InspectorProps, 'form' | 'onDelete' | 'passphraseStatus'> & {
   form: ComposerForm;
   canSave: boolean;
@@ -154,6 +163,28 @@ function AttributeFormInner({
   const storeApi = useContext(FormStoreContext);
   const { confirm } = useDialog();
 
+  // An answer changed outside the form, as an undo does, replaces the one
+  // shown unless the participant has changed that question since. Otherwise
+  // the form would go on showing the undone answer, and save it back when the
+  // Inspector closes.
+  const storedRef = useRef(initialValues);
+  useEffect(() => {
+    const previous = storedRef.current;
+    storedRef.current = initialValues;
+    const state = storeApi?.getState();
+    if (previous === initialValues || !state?.pathOperations) return;
+
+    const shown = coerceValues(state.getFormValues());
+    for (const { variable } of form.fields ?? []) {
+      if (
+        isEqual(shown[variable], previous[variable]) &&
+        !isEqual(shown[variable], initialValues[variable])
+      ) {
+        state.pathOperations.resetField([variable]);
+      }
+    }
+  }, [initialValues, storeApi, form.fields, coerceValues]);
+
   // Resolves to why the values could not be saved, or to undefined once they
   // are saved.
   const persist = useCallback(
@@ -177,10 +208,21 @@ function AttributeFormInner({
         return showSaveFailure(runtimeMessages.submissionFailed);
       }
 
-      try {
-        await onSave(entityId, patchResult.patch);
-      } catch (error) {
-        return showSaveFailure(rejectedWriteMessage(error));
+      // Every save adds an undo step, and a new step discards what could be
+      // redone, so a save that changes nothing, as after the form follows an
+      // undo, is not made.
+      const { set, unset } = patchResult.patch;
+      const changesAnswers =
+        unset.length > 0 ||
+        Object.entries(set).some(
+          ([name, value]) => !isEqual(value, initialValues[name]),
+        );
+      if (changesAnswers) {
+        try {
+          await onSave(entityId, patchResult.patch);
+        } catch (error) {
+          return showSaveFailure(rejectedWriteMessage(error));
+        }
       }
 
       // An edit refused earlier is saved now, so the refusal is gone.
@@ -200,28 +242,37 @@ function AttributeFormInner({
     [persist],
   );
 
-  // Leaving the stage saves an edit the autosave has not reached yet, and
-  // asks before discarding one that cannot be saved: an invalid edit, one the
+  // Closing the Inspector, by leaving the stage or by moving the selection
+  // off this entity, saves an edit the autosave has not reached yet, and asks
+  // before discarding one that cannot be saved: an invalid edit, one the
   // store refused, or one hidden because the passphrase cannot read it.
-  useBeforeNext(async () => {
+  const confirmLeave = useCallback((): true | Promise<boolean> => {
     const state = storeApi?.getState();
     if (!state || !selectIsFormDirty(state)) return true;
 
-    let reason: MessageDescriptor | undefined =
-      runtimeMessages.protectedAnswersNotSaved;
-    if (canSave) {
-      reason = (await state.validateForm())
-        ? await persist(state.getFormValues())
-        : interfaceMessages.discardChangesDescription;
-      if (reason === undefined) return true;
-    }
+    return (async () => {
+      let reason: MessageDescriptor | undefined =
+        runtimeMessages.protectedAnswersNotSaved;
+      if (canSave) {
+        reason = (await state.validateForm())
+          ? await persist(state.getFormValues())
+          : interfaceMessages.discardChangesDescription;
+        if (reason === undefined) return true;
+      }
 
-    const discarded = await confirm({
-      ...discardChangesDialog(reason),
-      onConfirm: () => undefined,
-    });
-    return discarded === true;
-  });
+      const discarded = await confirm({
+        ...discardChangesDialog(reason),
+        onConfirm: () => undefined,
+      });
+      return discarded === true;
+    })();
+  }, [storeApi, canSave, persist, confirm]);
+
+  useBeforeNext(confirmLeave);
+  useEffect(
+    () => guardDraft(entityId, confirmLeave),
+    [guardDraft, entityId, confirmLeave],
+  );
 
   return (
     <div data-testid="inspector-panel" className="flex min-h-0 flex-1 flex-col">
@@ -243,6 +294,7 @@ export default function Inspector({
   passphraseStatus,
   onSave,
   onDelete,
+  guardDraft,
 }: InspectorProps) {
   const hasFields = form !== undefined && (form.fields?.length ?? 0) > 0;
 
@@ -268,6 +320,7 @@ export default function Inspector({
                   attributes={shownAttributes}
                   canSave={!passphraseStatus}
                   onSave={onSave}
+                  guardDraft={guardDraft}
                 />
               </FormStoreProvider>
             )}

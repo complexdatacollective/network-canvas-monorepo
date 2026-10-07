@@ -172,19 +172,24 @@ const notesAndAgeStage: StageProps<'NetworkComposer'>['stage'] = {
   },
 };
 
-async function makeEncryptedNode(): Promise<NcNode> {
+async function makeEncryptedNode({
+  id = NODE_ID,
+  name = 'Alice',
+  notes = 'Met at work',
+  position = { x: 0.3, y: 0.3 },
+} = {}): Promise<NcNode> {
   const { encryptedAttributes, secureAttributes } =
     await generateSecureAttributes(
       {
-        [QUICK_ADD_VAR]: 'Alice',
-        [NOTES_VAR]: 'Met at work',
-        [LAYOUT_VAR]: { x: 0.3, y: 0.3 },
+        [QUICK_ADD_VAR]: name,
+        [NOTES_VAR]: notes,
+        [LAYOUT_VAR]: position,
       },
       variables,
       PASSPHRASE,
     );
   return {
-    [entityPrimaryKeyProperty]: NODE_ID,
+    [entityPrimaryKeyProperty]: id,
     type: NODE_TYPE,
     [entityAttributesProperty]: encryptedAttributes,
     [entitySecureAttributesMeta]: secureAttributes,
@@ -706,6 +711,212 @@ describe('NetworkComposer leaving the stage with the drawer open', () => {
     await expect(left).resolves.toBe(false);
     expect(store.getState().session.network.nodes[0]).toBe(stored);
   });
+});
+
+describe('NetworkComposer moving the selection off an edit in the drawer', () => {
+  const notSaved = /Your answers have not been saved/;
+  const discardDialog = { name: 'Discard changes?' };
+
+  const makeNodes = async () => [
+    await makeEncryptedNode(),
+    await makeEncryptedNode({
+      id: 'node-b',
+      name: 'Bob',
+      notes: 'Neighbour',
+      position: { x: 0.6, y: 0.6 },
+    }),
+  ];
+
+  async function openAlice(store: ReturnType<typeof makeStore>) {
+    renderComposer(store);
+    const alice = await screen.findByRole('button', { name: /alice/i });
+    await screen.findByRole('button', { name: /bob/i });
+    act(() => {
+      tapNode(alice);
+    });
+    const notesInput = await screen.findByLabelText(/notes/i);
+    await waitFor(() => expect(notesInput).toHaveValue('Met at work'));
+    return notesInput;
+  }
+
+  const moves: [string, () => void][] = [
+    [
+      'tapping another person',
+      () => tapNode(screen.getByRole('button', { name: /bob/i })),
+    ],
+    [
+      'tapping the background',
+      () => {
+        const canvas = screen.getByRole('application');
+        const at = { button: 0, clientX: 5, clientY: 5, pointerId: 1 };
+        fireEvent.pointerDown(canvas, at);
+        fireEvent.pointerUp(canvas, at);
+      },
+    ],
+    [
+      'closing the drawer',
+      () => fireEvent.click(screen.getByRole('button', { name: 'Close' })),
+    ],
+    [
+      'choosing another tool',
+      () => fireEvent.click(screen.getByRole('button', { name: /add node/i })),
+    ],
+  ];
+
+  it.each(moves)(
+    'saves an edit made too recently to have been saved yet before %s',
+    async (_, move) => {
+      const store = makeStore(await makeNodes(), true);
+      const notesInput = await openAlice(store);
+
+      fireEvent.change(notesInput, { target: { value: 'Old friend' } });
+      act(move);
+
+      await waitFor(async () =>
+        expect(
+          await readStored(
+            store.getState().session.network.nodes[0],
+            NOTES_VAR,
+          ),
+        ).toBe('Old friend'),
+      );
+      await waitFor(() =>
+        expect(screen.queryByDisplayValue('Old friend')).toBeNull(),
+      );
+      expect(screen.queryByRole('dialog', discardDialog)).toBeNull();
+    },
+  );
+
+  it.each(moves)(
+    'asks before %s away from an edit it could not save, and stays when the participant keeps it',
+    async (_, move) => {
+      const nodes = await makeNodes();
+      const store = makeStore(nodes, true);
+      const notesInput = await openAlice(store);
+
+      act(() => {
+        store.dispatch(setPassphraseInvalid(true));
+      });
+      fireEvent.change(notesInput, { target: { value: 'Old friend' } });
+      act(move);
+
+      const warning = await screen.findByRole('dialog', discardDialog);
+      expect(warning).toHaveTextContent(notSaved);
+      fireEvent.click(screen.getByRole('button', { name: 'Keep changes' }));
+
+      await waitFor(() =>
+        expect(screen.queryByRole('dialog', discardDialog)).toBeNull(),
+      );
+      expect(screen.getByLabelText(/notes/i)).toHaveValue('Old friend');
+      expect(screen.queryByRole('textbox', { name: /name/i })).toBeNull();
+      expect(store.getState().session.network.nodes[0]).toBe(nodes[0]);
+    },
+  );
+
+  it('moves on once the participant agrees to discard an edit it could not save', async () => {
+    const nodes = await makeNodes();
+    const store = makeStore(nodes, true);
+    const notesInput = await openAlice(store);
+
+    act(() => {
+      store.dispatch(setPassphraseInvalid(true));
+    });
+    fireEvent.change(notesInput, { target: { value: 'Old friend' } });
+    act(() => {
+      tapNode(screen.getByRole('button', { name: /bob/i }));
+    });
+
+    await screen.findByRole('dialog', discardDialog);
+    fireEvent.click(screen.getByRole('button', { name: 'Discard changes' }));
+
+    await waitFor(() =>
+      expect(screen.queryByDisplayValue('Old friend')).toBeNull(),
+    );
+    expect(store.getState().session.network.nodes[0]).toBe(nodes[0]);
+  });
+
+  it('asks before closing the drawer on an edit hidden while another passphrase is tried', async () => {
+    const nodes = await makeNodes();
+    const store = makeStore(nodes, true);
+    const notesInput = await openAlice(store);
+
+    fireEvent.change(notesInput, { target: { value: 'Old friend' } });
+    let release: () => void = () => undefined;
+    decryptionGate.held = new Promise((resolve) => {
+      release = resolve;
+    });
+    try {
+      act(() => {
+        store.dispatch(setPassphrase('another passphrase'));
+      });
+      await waitFor(() =>
+        expect(screen.queryByRole('textbox', { name: /notes/i })).toBeNull(),
+      );
+      act(() => {
+        fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+      });
+
+      const warning = await screen.findByRole('dialog', discardDialog);
+      expect(warning).toHaveTextContent(notSaved);
+      fireEvent.click(screen.getByRole('button', { name: 'Keep changes' }));
+      await waitFor(() =>
+        expect(screen.queryByRole('dialog', discardDialog)).toBeNull(),
+      );
+    } finally {
+      release();
+      decryptionGate.held = undefined;
+    }
+
+    act(() => {
+      store.dispatch(setPassphrase(PASSPHRASE));
+    });
+    expect(await screen.findByRole('textbox', { name: /notes/i })).toHaveValue(
+      'Old friend',
+    );
+  });
+
+  const deletes: [string, () => void][] = [
+    [
+      'from the drawer',
+      () => fireEvent.click(screen.getByRole('button', { name: 'Delete' })),
+    ],
+    [
+      'with the Delete key',
+      () =>
+        fireEvent.keyDown(screen.getByTestId('network-composer'), {
+          key: 'Delete',
+        }),
+    ],
+  ];
+
+  it.each(deletes)(
+    'deletes the person %s without asking about an edit it could not save',
+    async (_, remove) => {
+      const store = makeStore(await makeNodes(), true, true, {
+        ...variables,
+        [NOTES_VAR]: {
+          name: 'notes',
+          type: 'text',
+          component: 'Text',
+          encrypted: true,
+          validation: { required: true },
+        },
+      });
+      const notesInput = await openAlice(store);
+
+      fireEvent.change(notesInput, { target: { value: '' } });
+      act(remove);
+
+      await waitFor(() =>
+        expect(store.getState().session.network.nodes).toHaveLength(1),
+      );
+      act(() => {
+        tapNode(screen.getByRole('button', { name: /bob/i }));
+      });
+      expect(await screen.findByDisplayValue('Neighbour')).toBeTruthy();
+      expect(screen.queryByRole('dialog', discardDialog)).toBeNull();
+    },
+  );
 });
 
 describe('NetworkComposer while the encryptedVariables experiment is off', () => {

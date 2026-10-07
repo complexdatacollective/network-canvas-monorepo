@@ -354,3 +354,63 @@ export const EncryptedNames: Story = {
     ).toBeInTheDocument();
   },
 };
+
+const buildUnsavedEdit = () => {
+  const { si, quickAddVar, layoutVar } = createComposerInterview(11);
+  si.addInformationStage({ title: 'Welcome', text: 'Before the main stage.' });
+  si.addStage('NetworkComposer', {
+    quickAdd: quickAddVar.id,
+    layoutVariable: layoutVar.id,
+    nodeForm: {
+      fields: [
+        { component: 'Number', label: 'Age', validation: { minValue: 18 } },
+      ],
+    },
+  });
+  si.addInformationStage({ title: 'Complete', text: 'After the main stage.' });
+  return si;
+};
+
+/**
+ * An edit in the drawer that cannot be saved, here an age below the
+ * question's minimum, is never dropped by moving off the person: closing the
+ * drawer or tapping someone else asks first, and keeping the edit keeps the
+ * drawer open on it.
+ */
+export const UnsavedEditInDrawer: Story = {
+  render: () => <NetworkComposerStoryWrapper buildFn={buildUnsavedEdit} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(
+      await canvas.findByRole('button', { name: /add node/i }),
+    );
+    const nameInput = await screen.findByRole('textbox', { name: /name/i });
+    await userEvent.type(nameInput, 'Alex{Enter}');
+    await userEvent.type(nameInput, 'Sam{Enter}');
+    await userEvent.keyboard('{Escape}');
+
+    await userEvent.click(await canvas.findByRole('button', { name: /alex/i }));
+    const age = await screen.findByLabelText(/age/i);
+    await userEvent.type(age, '5');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Close' }));
+    await expect(
+      await screen.findByRole('dialog', { name: 'Discard changes?' }),
+    ).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Keep changes' }));
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', { name: 'Discard changes?' }),
+      ).not.toBeInTheDocument(),
+    );
+    await expect(screen.getByLabelText(/age/i)).toHaveValue(5);
+
+    await userEvent.click(canvas.getByRole('button', { name: /sam/i }));
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Discard changes' }),
+    );
+    await waitFor(() =>
+      expect(screen.getByLabelText(/age/i)).toHaveValue(null),
+    );
+  },
+};
