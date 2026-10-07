@@ -642,24 +642,43 @@ language matches exactly or by its closest related language. The related
 languages come from CLDR's language-matching data: `pt-PT` reaches `pt-BR`,
 `es-MX` reaches `es`, `zh-TW` reaches `zh-Hant`, and a language that CLDR treats
 as an acceptable substitute reaches its substitute, such as Swiss German (`gsw`)
-for `de`. A language with no fit among the string's locales is skipped. Step 4
-applies only when nothing before it found a translation. The declared languages
-have no order to choose by, so authors cannot rely on which language it
-returns. Neither the order of `localization.locales` nor the insertion order of
-the string's keys plays a part in any step.
+for `de`. A language with no fit among the string's locales is skipped, and so
+is a malformed preference. Step 4 applies only when nothing before it found a
+translation. The declared languages have no order to choose by, so it takes the
+first of the string's locales by tag, compared character by character, which
+keeps the result the same in every runtime. Neither the order of
+`localization.locales` nor the insertion order of the string's keys plays a part
+in any step: the matcher is given the locales sorted by tag, so two equally
+close languages resolve the same way whatever order they were declared in.
 
 The schema guarantees the string has a translation; the resolver throws for a
 value with no translation in any declared locale, so validate first.
 
-The result carries the message, the locale it is written in, and how the
-translation was found: from the first language or one related to it, from
-another of the participant's languages, from the protocol default, or from any
-language. This replaces the earlier pair of flags that said whether the result
-was a fallback and whether the fallback was the default. Callers do not
-reimplement this logic: the Interview adapters use the locale for the `lang`
-and `dir` of the text (§8.8), and Architect uses how it was found to tell
-researchers what participants see (§9.2). The names of the parameters and of
-the result's fields are those of the package's types.
+```ts
+function resolveLocalizedString(
+  value: Readonly<Record<LocaleTag, string>>,
+  localization: LocalizationDeclaration,
+  requestedLocales: readonly [string, ...string[]],
+): ResolvedLocalizedString;
+
+type ResolvedLocalizedString = Readonly<{
+  text: string;
+  locale: LocaleTag; // the language of the translation shown
+  selectedLocale: LocaleTag; // requestedLocales[0], canonicalized
+  usedFallback: boolean; // false only for the selected language's own text
+  matchedBy: 'selected' | 'requested' | 'default' | 'any';
+}>;
+```
+
+`matchedBy` names the step that found the translation: the first language or
+one related to it, another of the participant's languages, the protocol
+default, or any language. It replaces the earlier `usedDefaultLocale` flag.
+Callers do not reimplement this logic: the Interview adapters use `locale` for
+the `lang` and `dir` of the text (§8.8), and Architect and the protocol builder
+use `matchedBy` to tell researchers what participants see (§9.2). An editor
+knows only the language being edited, so it resolves with that one language: a
+`matchedBy` of `selected` is certain, and `default` or `any` could still be
+changed by a language the participant's browser lists, which the note says.
 
 ### 6.4 Locale names and direction
 
