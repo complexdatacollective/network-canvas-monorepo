@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { Codebook } from '@codaco/protocol-validation';
 import {
@@ -17,7 +17,44 @@ const codebook: Codebook = {
   node: { [NODE_TYPE]: personDefinition },
 };
 
+function people(count: number, passphrase: string) {
+  return Promise.all(
+    Array.from({ length: count }, (_, index) =>
+      makeEncryptedPerson(`n${index}`, `Person ${index}`, passphrase),
+    ),
+  );
+}
+
+/** Counts key derivations, and the most that were running at once. */
+function watchKeyDerivations() {
+  const deriveKey = crypto.subtle.deriveKey.bind(crypto.subtle);
+  const watched = { started: 0, running: 0, mostAtOnce: 0 };
+  vi.spyOn(crypto.subtle, 'deriveKey').mockImplementation(
+    async (algorithm, baseKey, derivedKeyType, extractable, keyUsages) => {
+      watched.started += 1;
+      watched.running += 1;
+      watched.mostAtOnce = Math.max(watched.mostAtOnce, watched.running);
+      try {
+        return await deriveKey(
+          algorithm,
+          baseKey,
+          derivedKeyType,
+          extractable,
+          keyUsages,
+        );
+      } finally {
+        watched.running -= 1;
+      }
+    },
+  );
+  return watched;
+}
+
 describe('passphraseUnlocksNetwork', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it('accepts any passphrase while nothing is encrypted', async () => {
     const plain = {
       [entityPrimaryKeyProperty]: 'n1',
@@ -63,5 +100,26 @@ describe('passphraseUnlocksNetwork', () => {
     await expect(
       passphraseUnlocksNetwork([node], codebook, 'wrong', false),
     ).resolves.toBe(true);
+  });
+
+  it('stops trying saved values once one has been decrypted', async () => {
+    const nodes = await people(12, 'pw');
+    const derivations = watchKeyDerivations();
+
+    await expect(
+      passphraseUnlocksNetwork(nodes, codebook, 'pw', true),
+    ).resolves.toBe(true);
+    expect(derivations.started).toBeLessThanOrEqual(4);
+  });
+
+  it('tries only a few saved values at a time', async () => {
+    const nodes = await people(12, 'pw');
+    const derivations = watchKeyDerivations();
+
+    await expect(
+      passphraseUnlocksNetwork(nodes, codebook, 'wrong', true),
+    ).resolves.toBe(false);
+    expect(derivations.started).toBe(12);
+    expect(derivations.mostAtOnce).toBeLessThanOrEqual(4);
   });
 });
