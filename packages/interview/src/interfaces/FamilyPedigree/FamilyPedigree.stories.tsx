@@ -239,7 +239,7 @@ export const Default: Story = {
           form: [
             {
               variable: genderVar.id,
-              prompt: { en: 'How does this person identify their gender?' },
+              prompt: 'How does this person identify their gender?',
             },
           ],
         },
@@ -362,7 +362,7 @@ export function buildScenarioInterview({ withNomination = false } = {}) {
       form: [
         {
           variable: genderVar.id,
-          prompt: { en: 'How does this person identify their gender?' },
+          prompt: 'How does this person identify their gender?',
         },
       ],
     },
