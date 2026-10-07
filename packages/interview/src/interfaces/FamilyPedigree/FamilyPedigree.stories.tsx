@@ -1804,9 +1804,13 @@ export const TheParticipantIsNotAskedTheirName: Story = {
     const body = within(canvasElement.ownerDocument.body);
 
     await userEvent.click(await canvas.findByRole('button', { name: 'You' }));
-    await body.findByText('About you');
     await waitFor(() => expect(panelOf(canvasElement)).not.toBeNull());
     const panel = within(panelOf(canvasElement) as HTMLElement);
+    // Their panel's first section addresses them.
+    await expect(
+      await panel.findByRole('heading', { name: 'About you', level: 3 }),
+    ).toBeInTheDocument();
+    await expect(panel.queryByText('About this person')).toBeNull();
     await expect(panel.queryByRole('textbox', { name: /name/i })).toBeNull();
     await expect(panel.queryByText(/name/i)).toBeNull();
     // What the family tree needs, and the researcher's questions, remain.
@@ -2015,6 +2019,8 @@ export const NameIsOptionalByDefault: Story = {
     await userEvent.click(
       await canvas.findByRole('button', { name: /^Father/ }),
     );
+    // A relative's first section is about them.
+    await body.findByRole('heading', { name: 'About this person', level: 3 });
     await body.findByText('Name (optional)');
     await userEvent.click(await body.findByRole('button', { name: 'Save' }));
     await waitFor(() => expect(panelOf(canvasElement)).toBeNull());

@@ -21,6 +21,7 @@ import {
 } from '@codaco/fresco-ui/Tooltip';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 
+import { withoutSoftHyphens } from '../generatedLabels';
 import { messages } from '../messages';
 import type { Person } from '../model';
 import { EDGE_WIDTH } from '../pedigree-layout/components/EdgeRenderer';
@@ -126,7 +127,7 @@ export default function PersonNode({
         label={label}
         ariaLabel={intl.formatMessage(messages.personAccessibleName, {
           isYou: person.isEgo ? 'true' : 'false',
-          name: label,
+          name: withoutSoftHyphens(label),
           missing: hasMissingDetails ? 'true' : 'false',
         })}
         selected={selected}

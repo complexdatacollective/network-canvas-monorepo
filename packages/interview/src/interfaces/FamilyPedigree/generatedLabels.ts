@@ -57,11 +57,14 @@ function relativesFor(
 /** A soft hyphen: where a long kinship word may break inside a symbol. */
 const SOFT_HYPHEN = /\u00AD/g;
 
-/** Kinship words carry soft hyphens for the canvas; saved text does not. */
-const plain = (text: string) => text.replace(SOFT_HYPHEN, '');
+/** Kinship words carry soft hyphens for the canvas; saved text, and what a
+ * screen reader reads out, does not. */
+export const withoutSoftHyphens = (text: string) =>
+  text.replace(SOFT_HYPHEN, '');
 
 /** Labels are compared as a participant would read them. */
-const comparable = (text: string) => plain(text).trim().toLocaleLowerCase();
+const comparable = (text: string) =>
+  withoutSoftHyphens(text).trim().toLocaleLowerCase();
 
 /**
  * How everyone in the family is shown on the canvas and named in the rest of
@@ -114,7 +117,7 @@ export function generateLabels(
   return new Map(
     [...buildLabels(family, framing, intl)]
       .filter(([id]) => family.byId.get(id)?.hasUnreadableName !== true)
-      .map(([id, label]) => [id, plain(label)]),
+      .map(([id, label]) => [id, withoutSoftHyphens(label)]),
   );
 }
 

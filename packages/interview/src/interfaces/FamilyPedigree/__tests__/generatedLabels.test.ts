@@ -565,3 +565,44 @@ describe('encrypted names', () => {
     ).toEqual({ mum: 'Mother' });
   });
 });
+
+describe('soft hyphens', () => {
+  test('saved labels never carry the soft hyphens the canvas shows', () => {
+    const family = readFamily(
+      [
+        person('ego', { isEgo: true }),
+        woman('mum'),
+        woman('nan'),
+        man('sam', { name: 'Sam' }),
+        woman('sd1'),
+        woman('sd2'),
+        man('tom', { name: 'Tom' }),
+        man('al', { name: 'Al' }),
+      ],
+      [
+        link('mum', 'ego', 'biological'),
+        link('nan', 'mum', 'biological'),
+        link('ego', 'sam', 'partner'),
+        link('sam', 'sd1', 'biological'),
+        link('sam', 'sd2', 'biological'),
+        link('sd1', 'tom', 'partner'),
+        link('sd2', 'al', 'partner'),
+      ],
+      config,
+    );
+    const shown = labelEveryone(family, 'gendered', intl);
+    const saved = generateLabels(family, 'gendered', intl);
+    // The canvas breaks long kinship words at their soft hyphens.
+    expect(shown.get('nan')).toBe('Maternal grand­mother');
+    expect(shown.get('sd1')).toBe('Step­daughter (partner of Tom)');
+    // What is saved reads the same, without them.
+    expect(Object.fromEntries(saved)).toMatchObject({
+      nan: 'Maternal grandmother',
+      sd1: 'Stepdaughter (partner of Tom)',
+    });
+    for (const label of saved.values()) {
+      expect(label).not.toContain('­');
+    }
+    expect(saved.get('sd2')).toBe('Stepdaughter (partner of Al)');
+  });
+});

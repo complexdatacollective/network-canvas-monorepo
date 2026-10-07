@@ -4,14 +4,20 @@ import type { FramingId } from '@codaco/protocol-validation';
 import type { NcEdge, NcNode } from '@codaco/shared-consts';
 
 import { resolveInterviewIntl } from '../../../i18n/resolveIntl';
-import { formatPersonLabel, KIN_TERMS, labelFamily } from '../kinship';
+import {
+  formatPersonLabel,
+  KIN_TERMS,
+  type KinTerm,
+  labelFamily,
+} from '../kinship';
 import { messages } from '../messages';
 import { readFamily, type PedigreeConfig } from '../model';
 import { config, configWithoutGenderIdentity, link, person } from './fixtures';
 
 const intl = resolveInterviewIntl();
 
-/** Labels as English text, keyed by person id. */
+/** Labels as English text, keyed by person id, read without the soft
+ * hyphens where a long word may break inside a symbol. */
 function labelsOf(
   nodes: NcNode[],
   edges: NcEdge[],
@@ -22,7 +28,7 @@ function labelsOf(
   return Object.fromEntries(
     [...labelFamily(family, framing)].map(([id, label]) => [
       id,
-      formatPersonLabel(label, intl),
+      formatPersonLabel(label, intl).replace(/\u00AD/g, ''),
     ]),
   );
 }
@@ -139,8 +145,8 @@ describe('labelFamily', () => {
       link('nonBinary', 'ego', 'social'),
     ];
     expect(labelsOf(nodes, edges)).toMatchObject({
-      eggParent: 'Bio\u00ADlogical mother',
-      spermParent: 'Bio\u00ADlogical father',
+      eggParent: 'Biological mother',
+      spermParent: 'Biological father',
       nonBinary: 'Step-parent',
     });
     expect(labelsOf(nodes, edges, 'gamete')).toMatchObject({
@@ -355,6 +361,61 @@ describe('labelFamily', () => {
       expect(intl.formatMessage(messages.relativeTerm, { term })).not.toBe(
         'Relative',
       );
+    }
+  });
+});
+
+describe('soft hyphens', () => {
+  const term = (kinTerm: KinTerm) =>
+    formatPersonLabel({ type: 'term', term: kinTerm }, intl);
+
+  test('long kinship words carry a soft hyphen at a syllable break, so they break there inside a symbol', () => {
+    const long: KinTerm[] = [
+      'grandmother',
+      'granddaughter',
+      'stepdaughter',
+      'stepbrother',
+      'maternalGrandparent',
+      'greatGrandmother',
+      'grandparentsSibling',
+      'surrogate',
+      'biologicalMother',
+    ];
+    expect(
+      Object.fromEntries(long.map((kinTerm) => [kinTerm, term(kinTerm)])),
+    ).toEqual({
+      grandmother: 'Grand\u00ADmother',
+      granddaughter: 'Grand\u00ADdaughter',
+      stepdaughter: 'Step\u00ADdaughter',
+      stepbrother: 'Step\u00ADbrother',
+      maternalGrandparent: 'Maternal grand\u00ADparent',
+      greatGrandmother: 'Great-grand\u00ADmother',
+      grandparentsSibling: "Grand\u00ADparent's sibling",
+      surrogate: 'Surro\u00ADgate',
+      biologicalMother: 'Bio\u00ADlogical mother',
+    });
+    expect(
+      formatPersonLabel(
+        {
+          type: 'relativeOf',
+          owner: { type: 'term', term: 'cousin' },
+          term: 'stepmother',
+        },
+        intl,
+      ),
+    ).toBe("Cousin's step\u00ADmother");
+  });
+
+  test('short words, and words that fit a symbol whole, have none', () => {
+    const short: KinTerm[] = [
+      'mother',
+      'grandson',
+      'stepson',
+      'stepchild',
+      'halfSister',
+    ];
+    for (const kinTerm of short) {
+      expect(term(kinTerm)).not.toContain('\u00AD');
     }
   });
 });
