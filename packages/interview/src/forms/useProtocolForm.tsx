@@ -29,8 +29,11 @@ import {
 import { getCodebookVariablesForSubjectType } from '../selectors/protocol';
 import { authoredFieldLabel, useVariableLabels } from './buildVariableLabels';
 import { coerceFormValues } from './coerceFormValues';
-import ProtocolField from './ProtocolField';
+import { formValuesToAttributePatch } from './formValuesToAttributePatch';
+import ProtocolFormField from './ProtocolFormField';
 import { useValidationNetwork } from './useValidationNetwork';
+
+const NO_VARIABLES: readonly string[] = [];
 
 /**
  * Narrow a loosely-typed form Subject into a valid StageSubject for the
@@ -58,6 +61,10 @@ function subjectToStageSubject(subject?: Subject): StageSubject | null {
  *                    avoid collisions when multiple instances share a form store.
  * @param formValueAliases - Maps codebook variable IDs to interface-owned form
  *                    keys while preserving the original ID for metadata lookup.
+ * @param unavailableVariables - Variables whose stored answer can never be
+ *                    shown (see `useProtectedFormValues`). Each is shown as
+ *                    unavailable, and `toAttributePatch` leaves it as stored
+ *                    unless the participant enters a new answer.
  */
 export default function useProtocolForm({
   fields,
@@ -67,6 +74,7 @@ export default function useProtocolForm({
   namespace,
   currentEntityId,
   formValueAliases,
+  unavailableVariables = NO_VARIABLES,
 }: {
   fields: Array<FormField | ComposerFormField>;
   autoFocus?: boolean;
@@ -75,6 +83,7 @@ export default function useProtocolForm({
   namespace?: string;
   currentEntityId?: string;
   formValueAliases?: Readonly<Record<string, string>>;
+  unavailableVariables?: readonly string[];
 }) {
   const stageValidationContext = useStageSelector(getValidationContext);
   const baseValidationContext =
@@ -185,6 +194,21 @@ export default function useProtocolForm({
     [numberFieldNames],
   );
 
+  /**
+   * The change a submission of `values` makes to the entity's attributes. A
+   * stored answer the form could not show is never part of it unless the
+   * participant entered a new one.
+   */
+  const toAttributePatch = useCallback(
+    (values: Record<string, FieldValue>) =>
+      formValuesToAttributePatch(
+        coerceValues(values),
+        fields.map((field) => field.variable),
+        { keepWhenUnanswered: unavailableVariables },
+      ),
+    [coerceValues, fields, unavailableVariables],
+  );
+
   // Audit sweep: the input control each field actually renders with, keyed by
   // variable and resolved exactly as the rendered Field resolves it (stage
   // field first, then codebook variable). Analytics needs the real control
@@ -229,9 +253,10 @@ export default function useProtocolForm({
         : undefined;
 
     return (
-      <ProtocolField
+      <ProtocolFormField
         key={index}
         field={{ ...field, label }}
+        unavailable={unavailableVariables.includes(field.variable)}
         initialValue={initialValue}
         autoFocus={autoFocus && index === 0}
         validationContext={validationContext ?? undefined}
@@ -248,6 +273,7 @@ export default function useProtocolForm({
   return {
     fieldComponents,
     coerceValues,
+    toAttributePatch,
     componentByVariable,
     variableByFieldPath,
   };

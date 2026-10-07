@@ -120,7 +120,7 @@ describe('useProtectedFormValues', () => {
     expect(store.getState().ui.showPassphrasePrompter).toBe(true);
   });
 
-  it('leaves out an answer the key cannot decrypt, without asking for the passphrase again', async () => {
+  it('reports an answer the key cannot decrypt as unavailable, without asking for the passphrase again', async () => {
     const alice = await makeEncryptedPerson('n1', 'Alice', 'pw');
     // Alice's stored name, copied onto someone else: it is bound to Alice.
     const moved: NcNode = { ...alice, [entityPrimaryKeyProperty]: 'n2' };
@@ -130,7 +130,11 @@ describe('useProtectedFormValues', () => {
     const { result, captureException } = renderValuesFor(store, moved);
     await waitFor(() => expect(result.current.status).toBe('ready'));
 
-    expect(readyValues(result)).toEqual({ age: 40 });
+    expect(result.current).toEqual({
+      status: 'ready',
+      values: { age: 40 },
+      unavailable: ['name'],
+    });
     expect(store.getState().ui.showPassphrasePrompter).toBe(false);
     expect(captureException).toHaveBeenCalledTimes(1);
     expect(captureException.mock.calls[0]?.[1]).toEqual({
@@ -139,7 +143,7 @@ describe('useProtectedFormValues', () => {
     });
   });
 
-  it('leaves out a schema 8 answer once a new passphrase is chosen, so the question can be answered again', async () => {
+  it('reports a schema 8 answer as unavailable once a new passphrase is chosen', async () => {
     const legacy: NcNode = {
       [entityPrimaryKeyProperty]: 'legacy-1',
       type: NODE_TYPE,
@@ -157,7 +161,11 @@ describe('useProtectedFormValues', () => {
       await unlockEncryption(store, 'a new passphrase');
     });
 
-    expect(readyValues(result)).toEqual({ age: 40 });
+    expect(result.current).toEqual({
+      status: 'ready',
+      values: { age: 40 },
+      unavailable: ['name'],
+    });
     expect(captureException.mock.calls.map(([, props]) => props)).toEqual([
       { feature: 'encrypted-attributes', reason: 'legacy-format' },
     ]);

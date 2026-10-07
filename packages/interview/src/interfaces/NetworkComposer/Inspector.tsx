@@ -20,7 +20,6 @@ import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
 import type { ComposerForm } from '@codaco/protocol-validation';
 import type { entityAttributesProperty, NcNode } from '@codaco/shared-consts';
 
-import { formValuesToAttributePatch } from '../../forms/formValuesToAttributePatch';
 import useProtocolForm from '../../forms/useProtocolForm';
 import { rejectedWriteMessage } from '../../forms/writeSubmissionResult';
 import { runtimeMessages } from '../../i18n/runtimeMessages';
@@ -38,6 +37,11 @@ export type InspectorProps = {
   form: ComposerForm | undefined;
   subject: Subject;
   attributes: Attributes;
+  /**
+   * The attributes whose stored value can never be shown, which are left out
+   * of `attributes` and kept as stored unless a new value is entered.
+   */
+  unavailable?: readonly string[];
   /**
    * Set while the entity's values cannot be shown or saved because they are
    * encrypted; the form is replaced by an explanation.
@@ -115,6 +119,7 @@ function AttributeFormInner({
   form,
   subject,
   attributes,
+  unavailable,
   onSave,
 }: Omit<InspectorProps, 'form' | 'onDelete' | 'passphraseStatus'> & {
   form: ComposerForm;
@@ -133,20 +138,18 @@ function AttributeFormInner({
     [attributes],
   );
 
-  const { fieldComponents, coerceValues } = useProtocolForm({
+  const { fieldComponents, toAttributePatch } = useProtocolForm({
     fields: form.fields ?? [],
     initialValues,
     subject,
     currentEntityId: entityId,
+    unavailableVariables: unavailable,
   });
   const storeApi = useContext(FormStoreContext);
 
   const handleValidValues = useCallback(
     (values: Record<string, FieldValue>) => {
-      const patchResult = formValuesToAttributePatch(
-        coerceValues(values),
-        (form.fields ?? []).map((field) => field.variable),
-      );
+      const patchResult = toAttributePatch(values);
 
       // The form keeps what was entered, so the edit can be saved again once
       // whatever refused it is resolved.
@@ -166,7 +169,7 @@ function AttributeFormInner({
         showSaveFailure(rejectedWriteMessage(error));
       });
     },
-    [onSave, entityId, coerceValues, form.fields, storeApi],
+    [onSave, entityId, toAttributePatch, storeApi],
   );
 
   return (
@@ -186,6 +189,7 @@ export default function Inspector({
   form,
   subject,
   attributes,
+  unavailable,
   passphraseStatus,
   onSave,
   onDelete,
@@ -206,6 +210,7 @@ export default function Inspector({
             form={form}
             subject={subject}
             attributes={attributes}
+            unavailable={unavailable}
             onSave={onSave}
           />
         </FormStoreProvider>

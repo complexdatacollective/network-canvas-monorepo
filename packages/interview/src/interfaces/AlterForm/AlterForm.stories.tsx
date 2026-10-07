@@ -341,3 +341,54 @@ export const ProtectedAnswersUnlocked: Story = {
     ).toHaveValue(34);
   },
 };
+
+// Alice's nickname was encrypted for someone else, as when an answer is
+// copied between people, so no passphrase can read it here.
+const buildUnavailableInterview = () => ({
+  ...buildProtectedInterview(),
+  encryptedFor: { alice: 'someone-else' },
+});
+
+export const ProtectedAnswerUnavailable: Story = {
+  render: () => (
+    <EncryptedStoryInterviewShell
+      build={buildUnavailableInterview}
+      passphrase={PASSPHRASE}
+      currentStep={0}
+    />
+  ),
+  parameters: {
+    docs: {
+      description: {
+        story: `The person's nickname is protected, but was encrypted for someone else, so the passphrase ("${PASSPHRASE}") cannot read it. Once the passphrase is entered, the question is shown as unavailable and its stored answer is kept as it is unless the participant chooses to enter a new one.`,
+      },
+    },
+  },
+  play: async ({ canvasElement }) => {
+    await openLockedSlide(canvasElement);
+    await enterPassphraseInPrompter(PASSPHRASE);
+
+    const canvas = within(canvasElement);
+    const nickname = await canvas.findByRole('textbox', {
+      name: /What nickname do you use for this person/,
+    });
+    await expect(nickname).toHaveValue('Answer unavailable');
+    await expect(nickname).toHaveAttribute('readonly');
+    await expect(nickname).toHaveAccessibleDescription(/cannot be shown here/);
+    await expect(
+      canvas.getByRole('spinbutton', { name: /How old are they/ }),
+    ).toHaveValue(34);
+
+    await userEvent.click(
+      canvas.getByRole('button', { name: 'Enter a new answer' }),
+    );
+    const replacement = canvas.getByRole('textbox', {
+      name: /What nickname do you use for this person/,
+    });
+    await expect(replacement).toHaveValue('');
+    await expect(replacement).toHaveFocus();
+    await expect(
+      canvas.getByText(/Leave this empty to keep the earlier answer/),
+    ).toBeInTheDocument();
+  },
+};

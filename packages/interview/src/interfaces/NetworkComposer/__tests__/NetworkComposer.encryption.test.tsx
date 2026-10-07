@@ -114,6 +114,7 @@ const NODE_TYPE = 'person';
 const QUICK_ADD_VAR = 'var-quick-add';
 const LAYOUT_VAR = 'var-layout';
 const NOTES_VAR = 'var-notes';
+const PLACE_VAR = 'var-place';
 const NODE_ID = 'node-a';
 const PASSPHRASE = 'composer passphrase';
 
@@ -129,6 +130,12 @@ const variables: Record<string, Variable> = {
   [QUICK_ADD_VAR]: encryptedText('name'),
   [LAYOUT_VAR]: { name: 'position', label: 'position', type: 'layout' },
   [NOTES_VAR]: encryptedText('notes'),
+  [PLACE_VAR]: {
+    name: 'place',
+    label: 'place',
+    type: 'text',
+    component: 'Text',
+  },
 };
 
 const uniqueNameVariables: Record<string, Variable> = {
@@ -157,6 +164,11 @@ const stage: StageProps<'NetworkComposer'>['stage'] = {
         component: 'Text',
         label: { en: 'Notes' },
       },
+      {
+        variable: asEntityAttributeReference(PLACE_VAR),
+        component: 'Text',
+        label: { en: 'Place' },
+      },
     ],
   },
   background: { concentricCircles: 4, skewedTowardCenter: true },
@@ -181,6 +193,24 @@ async function makeEncryptedNode(): Promise<NcNode> {
     [entityAttributesProperty]: encryptedAttributes,
     [entitySecureAttributesMeta]: secureAttributes,
   };
+}
+
+/** Alice's answers, copied onto another person, are still bound to Alice. */
+async function makeCopiedNode(): Promise<NcNode> {
+  return {
+    ...(await makeEncryptedNode()),
+    [entityPrimaryKeyProperty]: 'node-b',
+  };
+}
+
+async function openCopiedNode(store: Store) {
+  renderComposer(store);
+  const nodeButton = await screen.findByRole('button', {
+    name: 'Answer unavailable',
+  });
+  act(() => {
+    tapNode(nodeButton);
+  });
 }
 
 type Store = ReturnType<typeof createEncryptionStore>;
@@ -412,26 +442,20 @@ describe('NetworkComposer with encrypted variables', () => {
 
   it('shows the answers of a person that cannot be read as unavailable, once, without asking for the passphrase again', async () => {
     decryptionGate.attempts.length = 0;
-    // Alice's answers, copied onto another person, are still bound to Alice.
-    const copied: NcNode = {
-      ...(await makeEncryptedNode()),
-      [entityPrimaryKeyProperty]: 'node-b',
-    };
-    const store = await makeStore({ nodes: [copied] });
-    renderComposer(store);
+    const store = await makeStore({ nodes: [await makeCopiedNode()] });
+    await openCopiedNode(store);
 
-    const nodeButton = await screen.findByRole('button', {
-      name: 'Answer unavailable',
-    });
-    act(() => {
-      tapNode(nodeButton);
-    });
     const notesInput = await screen.findByLabelText(
       /notes/i,
       {},
       { timeout: 3000 },
     );
-    expect(notesInput).toHaveProperty('value', '');
+    expect(notesInput).toHaveValue('Answer unavailable');
+    expect(notesInput).toHaveAttribute('readonly');
+    expect(notesInput).toHaveAccessibleDescription(/cannot be shown here/);
+    expect(
+      screen.getByRole('heading', { name: 'Answer unavailable' }),
+    ).toBeTruthy();
     expect(screen.queryByText(passphraseNotice)).toBeNull();
     expect(screen.queryByDisplayValue(/\d+,\d+,\d+/)).toBeNull();
 
@@ -444,6 +468,68 @@ describe('NetworkComposer with encrypted variables', () => {
     expect(attemptsOn(QUICK_ADD_VAR)).toHaveLength(1);
     expect(attemptsOn(NOTES_VAR)).toHaveLength(1);
     expect(store.getState().ui.showPassphrasePrompter).toBe(false);
+  });
+
+  it('keeps the answers that cannot be read when the drawer saves a change to another answer', async () => {
+    const copied = await makeCopiedNode();
+    const store = await makeStore({ nodes: [copied] });
+    await openCopiedNode(store);
+
+    const place = await screen.findByRole(
+      'textbox',
+      { name: 'Place' },
+      { timeout: 3000 },
+    );
+    fireEvent.change(place, { target: { value: 'Work' } });
+
+    await waitFor(
+      () =>
+        expect(
+          store.getState().session.network.nodes[0]?.[entityAttributesProperty][
+            PLACE_VAR
+          ],
+        ).toBe('Work'),
+      { timeout: 3000 },
+    );
+    const [saved] = store.getState().session.network.nodes;
+    expect(saved?.[entityAttributesProperty]).toEqual({
+      ...copied[entityAttributesProperty],
+      [PLACE_VAR]: 'Work',
+    });
+    expect(saved?.[entitySecureAttributesMeta]).toEqual(
+      copied[entitySecureAttributesMeta],
+    );
+  });
+
+  it('saves a new answer over one that cannot be read, keeping the field and its focus once saved', async () => {
+    const store = await makeStore({ nodes: [await makeCopiedNode()] });
+    await openCopiedNode(store);
+
+    fireEvent.click(
+      await screen.findByRole(
+        'button',
+        { name: 'Enter a new answer' },
+        { timeout: 3000 },
+      ),
+    );
+    const notesInput = screen.getByLabelText(/notes/i);
+    expect(notesInput).toHaveValue('');
+    expect(notesInput).toHaveFocus();
+    fireEvent.change(notesInput, { target: { value: 'Old friend' } });
+
+    await waitFor(
+      async () => {
+        const [node] = store.getState().session.network.nodes;
+        expect(await readStored(node, NOTES_VAR)).toBe('Old friend');
+      },
+      { timeout: 3000 },
+    );
+    await waitFor(() =>
+      expect(screen.queryByText(/will replace the earlier one/)).toBeNull(),
+    );
+    expect(screen.getByLabelText(/notes/i)).toBe(notesInput);
+    expect(notesInput).toHaveFocus();
+    expect(notesInput).toHaveValue('Old friend');
   });
 });
 

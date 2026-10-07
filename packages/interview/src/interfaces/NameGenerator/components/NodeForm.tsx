@@ -30,7 +30,6 @@ import {
   actionPlusIconClass,
 } from '../../../components/actionButtonVariants';
 import { useCurrentStep } from '../../../contexts/CurrentStepContext';
-import { formValuesToAttributePatch } from '../../../forms/formValuesToAttributePatch';
 import useProtocolForm from '../../../forms/useProtocolForm';
 import { writeSubmissionResult } from '../../../forms/writeSubmissionResult';
 import { useCelebrate } from '../../../hooks/useCelebrate';
@@ -136,22 +135,20 @@ const NodeForm = (props: NodeFormProps) => {
     onClose();
   }, [editingLocked, onClose]);
 
-  const initialValues =
-    selectedNode && editing.status === 'ready' ? editing.values : undefined;
+  const edited =
+    selectedNode && editing.status === 'ready' ? editing : undefined;
 
-  const { fieldComponents, coerceValues } = useProtocolForm({
+  const { fieldComponents, toAttributePatch } = useProtocolForm({
     fields: form.fields,
     autoFocus: true,
-    initialValues,
+    initialValues: edited?.values,
     currentEntityId: selectedNode?.[entityPrimaryKeyProperty],
+    unavailableVariables: edited?.unavailable,
   });
 
   const handleSubmit: FormSubmitHandler = useCallback(
     async (values) => {
-      const patchResult = formValuesToAttributePatch(
-        coerceValues(values),
-        form.fields.map((field) => field.variable),
-      );
+      const patchResult = toAttributePatch(values);
 
       if (!patchResult.success) {
         return {
@@ -182,8 +179,7 @@ const NodeForm = (props: NodeFormProps) => {
       return { success: true };
     },
     [
-      coerceValues,
-      form.fields,
+      toAttributePatch,
       selectedNode,
       addNode,
       newNodeAttributes,

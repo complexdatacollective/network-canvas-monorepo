@@ -7,6 +7,7 @@ import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
+  entitySecureAttributesMeta,
   type NcNode,
 } from '@codaco/shared-consts';
 
@@ -145,6 +146,12 @@ async function renderAlterForm({
   return { store, onStepChange, next, prompts: () => prompts };
 }
 
+/** A ciphertext written for another person fails to decrypt for this one. */
+async function unreadablePerson(): Promise<NcNode> {
+  const elsewhere = await makeEncryptedPerson('elsewhere', 'Alice', 'pw');
+  return { ...elsewhere, [entityPrimaryKeyProperty]: 'n1' };
+}
+
 async function storedName(store: ReturnType<typeof createEncryptionStore>) {
   const [saved] = store.getState().session.network.nodes;
   const stored = saved
@@ -201,24 +208,77 @@ describe('AlterForm with an encrypted question', () => {
     ).toBe(41);
   });
 
-  it('shows an answer the key cannot read as unanswered, without asking for the passphrase again', async () => {
-    // A ciphertext written for another person fails to decrypt for this one.
-    const elsewhere = await makeEncryptedPerson('elsewhere', 'Alice', 'pw');
+  it('shows an answer the key cannot read as unavailable and keeps it through a save, without asking for the passphrase again', async () => {
+    const person = await unreadablePerson();
     const { store, onStepChange, next, prompts } = await renderAlterForm({
-      person: { ...elsewhere, [entityPrimaryKeyProperty]: 'n1' },
+      person,
       unlocked: true,
     });
     const user = userEvent.setup();
 
     const name = await screen.findByRole('textbox', { name: 'Name' });
-    expect(name).toHaveValue('');
-    expect(screen.getByRole('spinbutton', { name: 'Age' })).toHaveValue(40);
+    expect(name).toHaveValue('Answer unavailable');
+    expect(name).toHaveAttribute('readonly');
+    expect(name).toHaveAccessibleDescription(/cannot be shown here/);
 
+    const age = screen.getByRole('spinbutton', { name: 'Age' });
+    expect(age).toHaveValue(40);
+    await user.clear(age);
+    await user.type(age, '41');
+    await next();
+
+    await waitFor(() => expect(onStepChange).toHaveBeenCalled());
+    const [saved] = store.getState().session.network.nodes;
+    expect(saved?.[entityAttributesProperty]).toEqual({
+      ...person[entityAttributesProperty],
+      age: 41,
+    });
+    expect(saved?.[entitySecureAttributesMeta]).toEqual(
+      person[entitySecureAttributesMeta],
+    );
+    expect(prompts()).toBe(0);
+  });
+
+  it('replaces an unavailable answer once a new one is entered', async () => {
+    const { store, onStepChange, next } = await renderAlterForm({
+      person: await unreadablePerson(),
+      unlocked: true,
+    });
+    const user = userEvent.setup();
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Enter a new answer' }),
+    );
+    const name = screen.getByRole('textbox', { name: 'Name' });
+    expect(name).toHaveValue('');
+    expect(name).toHaveFocus();
     await user.type(name, 'Alicia');
     await next();
 
     await waitFor(() => expect(onStepChange).toHaveBeenCalled());
     await expect(storedName(store)).resolves.toBe('Alicia');
-    expect(prompts()).toBe(0);
+  });
+
+  it('keeps an unavailable answer when its new answer is left empty', async () => {
+    const person = await unreadablePerson();
+    const { store, onStepChange, next } = await renderAlterForm({
+      person,
+      unlocked: true,
+    });
+    const user = userEvent.setup();
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Enter a new answer' }),
+    );
+    await next();
+
+    await waitFor(() => expect(onStepChange).toHaveBeenCalled());
+    const [saved] = store.getState().session.network.nodes;
+    expect(saved?.[entityAttributesProperty]).toEqual(
+      person[entityAttributesProperty],
+    );
+    expect(saved?.[entitySecureAttributesMeta]).toEqual(
+      person[entitySecureAttributesMeta],
+    );
   });
 });

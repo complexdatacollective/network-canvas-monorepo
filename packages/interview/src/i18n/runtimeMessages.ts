@@ -157,6 +157,26 @@ export const runtimeMessages = defineMessages({
     description:
       'Shown in place of a protected answer, such as a name, that was saved earlier but can no longer be shown.',
   },
+  answerUnavailableKept: {
+    id: 'interview.runtime.answerUnavailableKept',
+    defaultMessage:
+      'This answer was saved earlier but cannot be shown here. It will be kept as it is unless you enter a new one.',
+    description:
+      'Explains, under a question whose earlier protected answer can no longer be shown, that the earlier answer is kept unless the participant replaces it.',
+  },
+  replaceUnavailableAnswer: {
+    id: 'interview.runtime.replaceUnavailableAnswer',
+    defaultMessage: 'Enter a new answer',
+    description:
+      'Button beside an earlier answer that can no longer be shown, which lets the participant type a new answer to replace it.',
+  },
+  replacingUnavailableAnswer: {
+    id: 'interview.runtime.replacingUnavailableAnswer',
+    defaultMessage:
+      'Your new answer will replace the earlier one, which cannot be shown. Leave this empty to keep the earlier answer.',
+    description:
+      'Hint under a question the participant chose to answer again because its earlier protected answer can no longer be shown.',
+  },
   passphraseHelp: {
     id: 'interview.runtime.passphraseHelp',
     defaultMessage:
@@ -202,6 +222,13 @@ export const runtimeMessages = defineMessages({
       'Your answers have not been saved. Enter your passphrase, then try again.',
     description:
       'Error when answers protected by the interview passphrase could not be saved because no working passphrase has been entered.',
+  },
+  protectedAnswersNotChecked: {
+    id: 'interview.runtime.protectedAnswersNotChecked',
+    defaultMessage:
+      'This answer is checked against answers protected by your passphrase. Enter your passphrase, then try again.',
+    description:
+      'Error under a question whose answer must be compared with answers protected by the interview passphrase, shown until that passphrase is entered.',
   },
   offlineTaskTitle: {
     id: 'interview.runtime.offlineTaskTitle',

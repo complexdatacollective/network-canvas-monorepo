@@ -1,4 +1,5 @@
 import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
+import isUnanswered from '@codaco/fresco-ui/form/validation/utils/isUnanswered';
 import { type VariableValue, VariableValueSchema } from '@codaco/shared-consts';
 
 import type { AttributePatch } from '../store/entityAttributePatch';
@@ -13,9 +14,19 @@ export type FormValuesToAttributePatchResult =
       };
     };
 
+type FormValuesToAttributePatchOptions = {
+  /**
+   * Fields whose stored answer the form could not show. Left unanswered, such
+   * a field keeps that answer rather than clearing it: only a new answer
+   * replaces it.
+   */
+  keepWhenUnanswered?: readonly string[];
+};
+
 export function formValuesToAttributePatch(
   values: Readonly<Record<string, FieldValue>>,
   mountedFieldNames: readonly string[],
+  { keepWhenUnanswered = [] }: FormValuesToAttributePatchOptions = {},
 ): FormValuesToAttributePatchResult {
   const set: Record<string, VariableValue> = {};
   const unset: string[] = [];
@@ -25,6 +36,10 @@ export function formValuesToAttributePatch(
     const value = Object.hasOwn(values, fieldName)
       ? values[fieldName]
       : undefined;
+
+    if (keepWhenUnanswered.includes(fieldName) && isUnanswered(value)) {
+      continue;
+    }
 
     if (value === undefined) {
       unset.push(fieldName);

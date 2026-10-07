@@ -6,6 +6,7 @@ import { beforeAll, describe, expect, it, vi } from 'vitest';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
+  entitySecureAttributesMeta,
   type NcNode,
 } from '@codaco/shared-consts';
 
@@ -110,6 +111,12 @@ async function renderNodeForm({
   };
 }
 
+/** A ciphertext written for another person fails to decrypt for this one. */
+async function unreadablePerson(): Promise<NcNode> {
+  const elsewhere = await makeEncryptedPerson('elsewhere', 'Alice', 'pw');
+  return { ...elsewhere, [entityPrimaryKeyProperty]: 'n1' };
+}
+
 /** The plaintext of a node's stored name, which must be bound to its id. */
 async function storedName(node: NcNode | undefined) {
   const stored = node
@@ -171,20 +178,50 @@ describe('NodeForm editing a person with an encrypted answer', () => {
     expect(screen.getByRole('textbox', { name: 'Name' })).toHaveValue('Alicia');
   });
 
-  it('opens without an answer its key cannot read, asks for no passphrase, and saves a new answer over it', async () => {
-    // A ciphertext written for another person fails to decrypt for this one.
-    const elsewhere = await makeEncryptedPerson('elsewhere', 'Alice', 'pw');
+  it('shows an answer its key cannot read as unavailable, asks for no passphrase, and keeps it when the form is finished', async () => {
+    const person = await unreadablePerson();
     const { store, onClose, prompts } = await renderNodeForm({
-      selected: { ...elsewhere, [entityPrimaryKeyProperty]: 'n1' },
+      selected: person,
       unlocked: true,
     });
     const user = userEvent.setup();
 
     const name = await screen.findByRole('textbox', { name: 'Name' });
-    expect(name).toHaveValue('');
-    expect(screen.getByRole('spinbutton', { name: 'Age' })).toHaveValue(40);
+    expect(name).toHaveValue('Answer unavailable');
+    expect(name).toHaveAttribute('readonly');
+    expect(name).toHaveAccessibleDescription(/cannot be shown here/);
+    const age = screen.getByRole('spinbutton', { name: 'Age' });
+    expect(age).toHaveValue(40);
     expect(onClose).not.toHaveBeenCalled();
 
+    await user.clear(age);
+    await user.type(age, '41');
+    await user.click(screen.getByRole('button', { name: 'Finished' }));
+
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+    const [saved] = store.getState().session.network.nodes;
+    expect(saved?.[entityAttributesProperty]).toEqual({
+      ...person[entityAttributesProperty],
+      age: 41,
+    });
+    expect(saved?.[entitySecureAttributesMeta]).toEqual(
+      person[entitySecureAttributesMeta],
+    );
+    expect(prompts()).toBe(0);
+  });
+
+  it('saves a new answer over one its key cannot read', async () => {
+    const { store, onClose } = await renderNodeForm({
+      selected: await unreadablePerson(),
+      unlocked: true,
+    });
+    const user = userEvent.setup();
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Enter a new answer' }),
+    );
+    const name = screen.getByRole('textbox', { name: 'Name' });
+    expect(name).toHaveValue('');
     await user.type(name, 'Alicia');
     await user.click(screen.getByRole('button', { name: 'Finished' }));
 
@@ -192,7 +229,6 @@ describe('NodeForm editing a person with an encrypted answer', () => {
     await expect(
       storedName(store.getState().session.network.nodes[0]),
     ).resolves.toBe('Alicia');
-    expect(prompts()).toBe(0);
   });
 
   it('does not open without a passphrase, and asks for one', async () => {
@@ -205,9 +241,9 @@ describe('NodeForm editing a person with an encrypted answer', () => {
     expect(screen.queryByRole('textbox', { name: 'Name' })).toBeNull();
   });
 
-  it('opens without the unreadable answer when its encryption metadata is missing', async () => {
+  it('shows an answer whose encryption metadata is missing as unavailable, and keeps it when the form is finished', async () => {
     const encrypted = await makeEncryptedPerson('n1', 'Alice', 'pw');
-    await renderNodeForm({
+    const { store, onClose } = await renderNodeForm({
       selected: {
         [entityPrimaryKeyProperty]: encrypted[entityPrimaryKeyProperty],
         type: encrypted.type,
@@ -215,10 +251,18 @@ describe('NodeForm editing a person with an encrypted answer', () => {
       },
       unlocked: true,
     });
+    const user = userEvent.setup();
 
     const name = await screen.findByRole('textbox', { name: 'Name' });
-    expect(name).toHaveValue('');
+    expect(name).toHaveValue('Answer unavailable');
     expect(screen.getByRole('spinbutton', { name: 'Age' })).toHaveValue(40);
+
+    await user.click(screen.getByRole('button', { name: 'Finished' }));
+
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+    expect(
+      store.getState().session.network.nodes[0]?.[entityAttributesProperty],
+    ).toEqual(encrypted[entityAttributesProperty]);
   });
 });
 

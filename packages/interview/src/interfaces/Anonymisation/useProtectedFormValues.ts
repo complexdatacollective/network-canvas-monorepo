@@ -23,7 +23,16 @@ import { usePassphrase } from './usePassphrase';
 import { useReportUnreadable } from './useReportUnreadable';
 
 type ProtectedFormValues =
-  | { status: 'ready'; values: Record<string, VariableValue> }
+  | {
+      status: 'ready';
+      values: Record<string, VariableValue>;
+      /**
+       * The questions whose stored answer can never be shown. Each is left
+       * out of `values`, and must be left as it is stored unless the
+       * participant gives a new answer.
+       */
+      unavailable: readonly string[];
+    }
   | { status: 'pending' }
   | { status: 'locked' };
 
@@ -53,7 +62,7 @@ function useSameWhileUnchanged<T extends object>(next: T): T {
  * stored answer cannot be shown, and a new answer could not be saved. So is a
  * form holding an answer stored encrypted under a question the codebook no
  * longer encrypts, until that answer can be shown. An answer that can never be
- * read is left out, as if unanswered, and reported.
+ * read is left out of the values, named in `unavailable`, and reported.
  */
 export function useProtectedFormValues(
   entity: NcNode | NcEdge | null,
@@ -107,17 +116,24 @@ export function useProtectedFormValues(
   // the form as if it were an answer.
   const pending: EncryptedValue[] = [];
   const unreadable = new Set<UnreadableReason>();
+  const unavailable: string[] = [];
   for (const { variable, attribute } of stored) {
     delete values[variable];
     if (attribute.status === 'unreadable') {
       unreadable.add(attribute.reason);
+      unavailable.push(variable);
       continue;
     }
     if (!scope) continue;
     const outcome = readCachedOutcome(scope, attribute.value);
-    if (!outcome) pending.push(attribute.value);
-    else if (outcome.readable) values[variable] = outcome.plaintext;
-    else unreadable.add('decryption-failed');
+    if (!outcome) {
+      pending.push(attribute.value);
+    } else if (outcome.readable) {
+      values[variable] = outcome.plaintext;
+    } else {
+      unreadable.add('decryption-failed');
+      unavailable.push(variable);
+    }
   }
   const missing = pending.length > 0;
 
@@ -146,8 +162,13 @@ export function useProtectedFormValues(
   }, [scope, missing, stored]);
 
   const stableValues = useSameWhileUnchanged(values);
+  const stableUnavailable = useSameWhileUnchanged(unavailable);
 
   if (locked) return { status: 'locked' };
   if (missing) return { status: 'pending' };
-  return { status: 'ready', values: stableValues };
+  return {
+    status: 'ready',
+    values: stableValues,
+    unavailable: stableUnavailable,
+  };
 }

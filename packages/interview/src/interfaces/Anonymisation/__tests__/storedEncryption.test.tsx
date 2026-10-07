@@ -177,6 +177,7 @@ describe('a value stored encrypted under a variable the codebook does not mark',
     expect(result.current).toEqual({
       status: 'ready',
       values: { name: 'Bob', pets: [1] },
+      unavailable: [],
     });
     expect(store.getState().ui.showPassphrasePrompter).toBe(false);
   });
