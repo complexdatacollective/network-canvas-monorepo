@@ -269,3 +269,102 @@ test('adds a language, lists its missing translations, keeps the default languag
     /^French/,
   ]);
 });
+
+const CHOOSER_LABEL = {
+  en: 'Choose a language',
+  fr: 'Choisissez une langue',
+  es: 'Elige un idioma',
+};
+
+function chooserProtocol(): CurrentProtocol {
+  return CurrentProtocolSchema.parse({
+    ...emptyProtocol(),
+    localization: { defaultLocale: 'en', locales: ['en', 'fr', 'es'] },
+    stages: [
+      { id: 'choose-language', type: 'LanguageChooser', label: CHOOSER_LABEL },
+    ],
+  });
+}
+
+/** One row of the language chooser stage's list of the protocol's languages. */
+function stageLanguageRow(page: Page, code: string): Locator {
+  return page
+    .getByRole('region', { name: 'Languages', exact: true })
+    .getByRole('listitem')
+    .filter({ has: page.getByText(code, { exact: true }) });
+}
+
+async function removeLanguage(page: Page, code: string, language: string) {
+  await stageLanguageRow(page, code)
+    .getByRole('button', { name: 'Remove', exact: true })
+    .click();
+  const confirm = page.getByRole('dialog', { name: `Remove ${language}?` });
+  await confirm
+    .getByRole('button', { name: 'Remove language', exact: true })
+    .click();
+  await expect(confirm).toBeHidden();
+}
+
+test('changes the protocol’s languages from the language chooser stage, and the open stage follows', async ({
+  architectPage: page,
+  seed,
+}) => {
+  await seed(chooserProtocol());
+  await gotoProtocol(page);
+  await page.goto('/protocol/stage/choose-language');
+  const name = page.getByRole('textbox', { name: 'Stage name' });
+  await expect(name).toHaveValue(CHOOSER_LABEL.en);
+
+  // The Languages page's own list, without the missing translations it has no
+  // room to show here.
+  const languages = page.getByRole('region', {
+    name: 'Languages',
+    exact: true,
+  });
+  await expect(languages.getByRole('listitem')).toHaveText([
+    /^English/,
+    /^French/,
+    /^Spanish/,
+  ]);
+  await expect(
+    languages.getByRole('button', { name: /missing translation/ }),
+  ).toHaveCount(0);
+
+  // Removing a language from a stage that has not been touched leaves nothing
+  // to save, and nothing to be asked about on the way out.
+  await removeLanguage(page, 'es', 'Spanish');
+  const withoutSpanish = await readProtocolJson(
+    page,
+    (protocol) => !protocol.localization.locales.includes('es'),
+  );
+  expect(withoutSpanish.localization.locales).toEqual(['en', 'fr']);
+  expect(withoutSpanish.stages[0]?.label).toEqual({
+    en: CHOOSER_LABEL.en,
+    fr: CHOOSER_LABEL.fr,
+  });
+  await expect(
+    page.getByRole('button', { name: 'Finished Editing' }),
+  ).toBeHidden();
+  await page.getByRole('button', { name: 'Cancel' }).first().click();
+  await page.waitForURL(/\/protocol$/);
+
+  // A stage with unsaved changes keeps them, and saves without the language.
+  await page.goto('/protocol/stage/choose-language');
+  await expect(name).toHaveValue(CHOOSER_LABEL.en);
+  await name.fill('Pick a language');
+  await expect(
+    page.getByRole('button', { name: 'Finished Editing' }),
+  ).toBeVisible();
+  await removeLanguage(page, 'fr', 'French');
+  await expect(stageLanguageRow(page, 'fr')).toHaveCount(0);
+  await expect(name).toHaveValue('Pick a language');
+  await page.getByRole('button', { name: 'Finished Editing' }).click();
+  await page.waitForURL(/\/protocol$/);
+
+  const saved = await readProtocolJson(
+    page,
+    (protocol) => protocol.stages[0]?.label.en === 'Pick a language',
+  );
+  expect(saved.localization).toEqual({ defaultLocale: 'en', locales: ['en'] });
+  expect(saved.stages[0]?.label).toEqual({ en: 'Pick a language' });
+});

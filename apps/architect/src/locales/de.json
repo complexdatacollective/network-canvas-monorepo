@@ -706,6 +706,8 @@
   "architect.skipDestination.stage": "Abschnitt {position, number} – {label}",
   "architect.skipDestination.unknown": "Unbekannter Abschnitt",
   "architect.skipDestination.untitled": "Unbenannter Abschnitt",
+  "architect.stageEditor.languages.description": "{count, plural, =1 {Dieses Protokoll ist in einer Sprache verfasst, daher sehen die Teilnehmenden sie als einzige Auswahlmöglichkeit. Fügen Sie Sprachen hinzu, damit sie mehr Auswahl haben.} other {Die Teilnehmenden wählen aus allen Sprachen, in denen dieses Protokoll verfasst ist.}} Änderungen hier gelten für das ganze Protokoll, genau wie auf der Seite „Sprachen“.",
+  "architect.stageEditor.languages.title": "Sprachen",
   "architect.stageEditor.sectionOutline.completeStatus": "Vollständig",
   "architect.stageEditor.sectionOutline.errorStatus": "Enthält einen Fehler",
   "architect.stageEditor.sectionOutline.incompleteStatus": "Unvollständig",

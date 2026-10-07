@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  collectLocalizedStrings,
   type CurrentProtocol,
   escapeMessageText,
+  type LocalizedStringHit,
   messageText,
   validateProtocol,
 } from '@codaco/protocol-validation';
@@ -11,10 +13,13 @@ import {
   addLocales,
   getLocaleRemovalImpact,
   type LocaleOperationResult,
+  relabelledLocale,
   relabelLocale,
   removeLocale,
+  rewriteLocalizedStrings,
   setDefaultLocale,
   setTranslation,
+  withoutLocale,
 } from '../localeOperations';
 
 const NODE_TYPE = 'person';
@@ -153,7 +158,27 @@ describe('addLocales', () => {
 
 describe('removeLocale', () => {
   it('counts the translations a removal deletes', () => {
-    expect(getLocaleRemovalImpact(bilingual(), 'fr').translationCount).toBe(4);
+    expect(
+      getLocaleRemovalImpact(collectLocalizedStrings(bilingual()), 'fr')
+        .translationCount,
+    ).toBe(4);
+  });
+
+  it('counts each text once however many readings of it there are', () => {
+    // The stage's title as the protocol holds it, and as an open editor holds
+    // it unsaved, with the English deleted.
+    const unsaved: LocalizedStringHit = {
+      path: ['stages', 0, 'title'],
+      value: { fr: 'Bonjour' },
+      format: 'plain',
+    };
+    const impact = getLocaleRemovalImpact(
+      [...collectLocalizedStrings(bilingual()), unsaved],
+      'fr',
+    );
+
+    expect(impact.translationCount).toBe(4);
+    expect(impact.strandedStrings).toEqual([unsaved]);
   });
 
   it('deletes the language and every translation written in it', async () => {
@@ -185,9 +210,10 @@ describe('removeLocale', () => {
     const frenchDefault = protocolOf(setDefaultLocale(bilingual(), 'fr'));
 
     expect(
-      getLocaleRemovalImpact(frenchDefault, 'en').strandedStrings.map(
-        ({ value }) => value,
-      ),
+      getLocaleRemovalImpact(
+        collectLocalizedStrings(frenchDefault),
+        'en',
+      ).strandedStrings.map(({ value }) => value),
     ).toEqual([{ en: 'Distant' }]);
     expect(removeLocale(frenchDefault, 'en')).toEqual({
       ok: false,
@@ -200,6 +226,50 @@ describe('removeLocale', () => {
       ok: false,
       reason: 'not-declared',
     });
+  });
+});
+
+describe('rewriteLocalizedStrings', () => {
+  const stageFields = () => ({
+    stages: [
+      {
+        type: 'Information',
+        label: { en: 'Welcome', fr: 'Bienvenue' },
+        title: { en: 'Hello', fr: 'Bonjour' },
+        interviewScript: 'fr',
+        items: [],
+      },
+    ],
+  });
+
+  it('rewrites the texts of part of a protocol, and nothing else', () => {
+    expect(rewriteLocalizedStrings(stageFields(), withoutLocale('fr'))).toEqual(
+      {
+        stages: [
+          {
+            type: 'Information',
+            label: { en: 'Welcome' },
+            title: { en: 'Hello' },
+            interviewScript: 'fr',
+            items: [],
+          },
+        ],
+      },
+    );
+  });
+
+  it('moves translations to another language', () => {
+    const [stage] = rewriteLocalizedStrings(
+      stageFields(),
+      relabelledLocale('fr', 'fr-CA'),
+    ).stages;
+
+    expect(stage?.label).toEqual({ 'en': 'Welcome', 'fr-CA': 'Bienvenue' });
+  });
+
+  it('answers with the same document when nothing changes', () => {
+    const fields = stageFields();
+    expect(rewriteLocalizedStrings(fields, withoutLocale('de'))).toBe(fields);
   });
 });
 

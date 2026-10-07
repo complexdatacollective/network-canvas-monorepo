@@ -39,26 +39,52 @@ const fail = (reason: LocaleOperationFailure): LocaleOperationResult => ({
 const isDeclared = (protocol: CurrentProtocol, locale: LocaleTag) =>
   protocol.localization.locales.includes(locale);
 
+/** What a change to the protocol's languages does to one text. */
+export type LocalizedStringRewrite = (
+  value: LocalizedString,
+) => LocalizedString;
+
+/** Deletes the translation written in `locale`. */
+export const withoutLocale =
+  (locale: LocaleTag): LocalizedStringRewrite =>
+  (value) => {
+    if (!Object.hasOwn(value, locale)) return value;
+    const { [locale]: _removed, ...rest } = value;
+    return rest;
+  };
+
+/** Marks the translation written as `from` as written in `to`. */
+export const relabelledLocale =
+  (from: LocaleTag, to: LocaleTag): LocalizedStringRewrite =>
+  (value) =>
+    Object.hasOwn(value, from)
+      ? Object.fromEntries(
+          Object.entries(value).map(([key, text]) => [
+            key === from ? to : key,
+            text,
+          ]),
+        )
+      : value;
+
 /**
- * Replaces each collected string in one draft, so a locale operation is a
- * single protocol edit: one undo step, and nothing is written if any part of
- * it is refused.
+ * Replaces each text in `document` — a protocol, or any part of one shaped as
+ * the protocol holds it — in one draft, so a locale operation is a single
+ * protocol edit: one undo step, and nothing is written if any part of it is
+ * refused. The same rewrite carries the change into a stage open in an editor.
  */
-const rewriteLocalizedStrings = (
-  protocol: CurrentProtocol,
-  rewrite: (value: LocalizedString) => LocalizedString,
-  localization: CurrentProtocol['localization'],
-): CurrentProtocol =>
-  createNextState(protocol, (draft) => {
-    for (const hit of collectLocalizedStrings(protocol)) {
+export const rewriteLocalizedStrings = <T extends object>(
+  document: T,
+  rewrite: LocalizedStringRewrite,
+): T =>
+  createNextState(document, (draft) => {
+    for (const hit of collectLocalizedStrings(document)) {
       const next = rewrite(hit.value);
       if (next !== hit.value) setAtPath(draft, hit.path, next);
     }
-    draft.localization = localization;
   });
 
 const setAtPath = (
-  root: object,
+  root: unknown,
   path: readonly (string | number)[],
   value: LocalizedString,
 ) => {
@@ -133,18 +159,34 @@ export type LocaleRemovalImpact = {
   strandedStrings: readonly LocalizedStringHit[];
 };
 
+/**
+ * What removing `locale` would delete, and what would be left with no text.
+ *
+ * `texts` may hold more than one reading of the same text — the protocol's,
+ * and an unsaved one in an open stage editor — and each place counts once:
+ * translated if any reading has the language, stranded if any reading has
+ * nothing else.
+ */
 export const getLocaleRemovalImpact = (
-  protocol: CurrentProtocol,
+  texts: readonly LocalizedStringHit[],
   locale: LocaleTag,
 ): LocaleRemovalImpact => {
-  const translated = collectLocalizedStrings(protocol).filter((hit) =>
-    Object.hasOwn(hit.value, locale),
-  );
+  const translated = new Set<string>();
+  const stranded = new Map<string, LocalizedStringHit>();
+  for (const hit of texts) {
+    if (!Object.hasOwn(hit.value, locale)) continue;
+    const place = JSON.stringify(hit.path);
+    translated.add(place);
+    if (
+      !stranded.has(place) &&
+      Object.keys(hit.value).every((key) => key === locale)
+    ) {
+      stranded.set(place, hit);
+    }
+  }
   return {
-    translationCount: translated.length,
-    strandedStrings: translated.filter((hit) =>
-      Object.keys(hit.value).every((key) => key === locale),
-    ),
+    translationCount: translated.size,
+    strandedStrings: [...stranded.values()],
   };
 };
 
@@ -157,25 +199,22 @@ export const removeLocale = (
   if (locale === protocol.localization.defaultLocale) {
     return fail('default-locale');
   }
-  if (getLocaleRemovalImpact(protocol, locale).strandedStrings.length > 0) {
-    return fail('would-empty');
-  }
+  const impact = getLocaleRemovalImpact(
+    collectLocalizedStrings(protocol),
+    locale,
+  );
+  if (impact.strandedStrings.length > 0) return fail('would-empty');
   return {
     ok: true,
-    protocol: rewriteLocalizedStrings(
-      protocol,
-      (value) => {
-        if (!Object.hasOwn(value, locale)) return value;
-        const { [locale]: _removed, ...rest } = value;
-        return rest;
-      },
-      {
+    protocol: {
+      ...rewriteLocalizedStrings(protocol, withoutLocale(locale)),
+      localization: {
         ...protocol.localization,
         locales: protocol.localization.locales.filter(
           (declared) => declared !== locale,
         ),
       },
-    ),
+    },
   };
 };
 
@@ -270,24 +309,15 @@ export const relabelLocale = (
   const { localization } = protocol;
   return {
     ok: true,
-    protocol: rewriteLocalizedStrings(
-      protocol,
-      (value) =>
-        Object.hasOwn(value, from)
-          ? Object.fromEntries(
-              Object.entries(value).map(([key, text]) => [
-                key === from ? to : key,
-                text,
-              ]),
-            )
-          : value,
-      {
+    protocol: {
+      ...rewriteLocalizedStrings(protocol, relabelledLocale(from, to)),
+      localization: {
         defaultLocale:
           localization.defaultLocale === from ? to : localization.defaultLocale,
         locales: localization.locales.map((declared) =>
           declared === from ? to : declared,
         ),
       },
-    ),
+    },
   };
 };

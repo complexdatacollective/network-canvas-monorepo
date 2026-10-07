@@ -2827,6 +2827,14 @@
     "defaultMessage": "Untitled stage",
     "description": "Display of a skip-logic destination, preserving the authored stage label."
   },
+  "architect.stageEditor.languages.description": {
+    "defaultMessage": "{count, plural, =1 {This protocol is written in one language, so participants will see it as their only choice. Add languages to give them more to choose from.} other {Participants choose from every language this protocol is written in.}} Changes here apply to the whole protocol, as they do on the Languages page.",
+    "description": "Description of the stage editor section listing the languages a participant can choose between. count is how many languages the protocol has. The Languages page is the page of the same name in the project navigation."
+  },
+  "architect.stageEditor.languages.title": {
+    "defaultMessage": "Languages",
+    "description": "Heading of the stage editor section listing the languages a participant can choose between on a language chooser stage."
+  },
   "architect.stageEditor.sectionOutline.completeStatus": {
     "defaultMessage": "Finished",
     "description": "Spoken state of one section of a stage editor: everything it asks for has been filled in and nothing in it is invalid. Read out after the section’s own name, and never shown on screen."

@@ -706,6 +706,8 @@
   "architect.skipDestination.stage": "Etapa {position, number} — {label}",
   "architect.skipDestination.unknown": "Etapa desconhecida",
   "architect.skipDestination.untitled": "Etapa sem título",
+  "architect.stageEditor.languages.description": "{count, plural, =1 {Este protocolo foi escrito em um só idioma, então participantes vão vê-lo como a única opção. Adicione idiomas para dar mais opções a eles.} other {Participantes escolhem entre todos os idiomas em que este protocolo foi escrito.}} As alterações feitas aqui valem para o protocolo inteiro, assim como na página Idiomas.",
+  "architect.stageEditor.languages.title": "Idiomas",
   "architect.stageEditor.sectionOutline.completeStatus": "Concluída",
   "architect.stageEditor.sectionOutline.errorStatus": "Tem um problema",
   "architect.stageEditor.sectionOutline.incompleteStatus": "Não concluída",

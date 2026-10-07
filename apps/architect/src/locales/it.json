@@ -706,6 +706,8 @@
   "architect.skipDestination.stage": "Fase {position, number}: {label}",
   "architect.skipDestination.unknown": "Fase sconosciuta",
   "architect.skipDestination.untitled": "Fase senza titolo",
+  "architect.stageEditor.languages.description": "{count, plural, =1 {Questo protocollo è scritto in una sola lingua, quindi le persone partecipanti la vedranno come unica scelta. Aggiungi lingue per offrire loro più possibilità di scelta.} other {Le persone partecipanti scelgono tra tutte le lingue in cui è scritto questo protocollo.}} Le modifiche fatte qui valgono per l’intero protocollo, come nella pagina Lingue.",
+  "architect.stageEditor.languages.title": "Lingue",
   "architect.stageEditor.sectionOutline.completeStatus": "Completata",
   "architect.stageEditor.sectionOutline.errorStatus": "Contiene un problema",
   "architect.stageEditor.sectionOutline.incompleteStatus": "Non completata",

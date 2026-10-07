@@ -706,6 +706,8 @@
   "architect.skipDestination.stage": "Fase {position, number} – {label}",
   "architect.skipDestination.unknown": "Onbekende fase",
   "architect.skipDestination.untitled": "Naamloze fase",
+  "architect.stageEditor.languages.description": "{count, plural, =1 {Dit protocol is in één taal geschreven, dus deelnemers zien die als hun enige keuze. Voeg talen toe om ze meer keuze te geven.} other {Deelnemers kiezen uit alle talen waarin dit protocol is geschreven.}} Wijzigingen hier gelden voor het hele protocol, net als op de pagina Talen.",
+  "architect.stageEditor.languages.title": "Talen",
   "architect.stageEditor.sectionOutline.completeStatus": "Voltooid",
   "architect.stageEditor.sectionOutline.errorStatus": "Bevat een probleem",
   "architect.stageEditor.sectionOutline.incompleteStatus": "Niet voltooid",

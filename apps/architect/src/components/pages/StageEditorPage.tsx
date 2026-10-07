@@ -22,6 +22,7 @@ import StageEditor from '@codaco/protocol-builder/StageEditor';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 import StageEditorNav from '~/components/ProjectNav/StageEditorNav';
 import { routeFocusTargetProps } from '~/components/RouteFocus';
+import { architectStageEditors } from '~/components/StageEditor/architectStageEditors';
 import {
   readStageDraft,
   useStageDraft,
@@ -383,6 +384,7 @@ const StageEditorPage = () => {
                     actions={renderChrome}
                     header={renderHeader}
                     onSaved={handleSaved}
+                    registry={architectStageEditors}
                   />
                 </EnclosingHeadingLevel>
               </ProtocolBuilder>

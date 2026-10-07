@@ -22,7 +22,6 @@ import {
 } from '@codaco/protocol-validation';
 import { useAppDispatch } from '~/ducks/hooks';
 import { setProtocolDefaultLocale } from '~/ducks/modules/activeProtocol';
-import { getLocaleRemovalImpact } from '~/ducks/modules/protocol/localeOperations';
 import {
   getLocalizationCoverage,
   type LocaleCoverage,
@@ -31,7 +30,7 @@ import { getProtocol } from '~/selectors/protocol';
 import { UNSPECIFIED_LOCALE } from '~/utils/localizedText';
 
 import { describeLanguage } from './languageChoices';
-import { useLanguageActions } from './useLanguageActions';
+import { type OpenStageDraft, useLanguageActions } from './useLanguageActions';
 import { useLanguageName } from './useLanguageName';
 
 const messages = defineMessages({
@@ -143,15 +142,49 @@ type LanguageListProps = {
   onShowMissing: (locale: LocaleTag) => void;
 };
 
+/** The Languages page's list of the protocol's languages. */
 const LanguageList = ({ onShowMissing }: LanguageListProps) => {
+  const intl = useAppIntl();
+  const protocol = useSelector(getProtocol);
+  const locales = protocol?.localization.locales ?? EMPTY_LOCALES;
+
+  if (!protocol) return null;
+
+  return (
+    <Section
+      title={intl.formatMessage(messages.title)}
+      description={intl.formatMessage(
+        locales.length > 1 ? messages.description : messages.descriptionSingle,
+      )}
+    >
+      <ProtocolLanguages onShowMissing={onShowMissing} />
+    </Section>
+  );
+};
+
+type ProtocolLanguagesProps = {
+  /** Lists a language's missing translations; the button is left out without it. */
+  onShowMissing?: (locale: LocaleTag) => void;
+  /** A stage open in the stage editor, which every change has to reach too. */
+  draft?: OpenStageDraft;
+};
+
+/**
+ * The protocol's languages and every change that can be made to them, for
+ * whichever page shows them.
+ */
+export const ProtocolLanguages = ({
+  onShowMissing,
+  draft,
+}: ProtocolLanguagesProps) => {
   const intl = useAppIntl();
   const dispatch = useAppDispatch();
   const protocol = useSelector(getProtocol);
   const coverage = useSelector(getLocalizationCoverage);
   const languageName = useLanguageName();
   const addButtonRef = useRef<HTMLButtonElement>(null);
-  const { addLanguages, changeLanguage, removeLanguage } =
-    useLanguageActions(addButtonRef);
+  const { addLanguages, changeLanguage, removeLanguage, removalImpact } =
+    useLanguageActions(addButtonRef, draft);
   const locales = protocol?.localization.locales ?? EMPTY_LOCALES;
   const sortedLocales = useMemo(
     () => sortByLanguageName(locales, languageName, intl.locale),
@@ -164,25 +197,14 @@ const LanguageList = ({ onShowMissing }: LanguageListProps) => {
   );
 
   const removalImpacts = useMemo(
-    () =>
-      new Map(
-        protocol?.localization.locales.map((locale) => [
-          locale,
-          getLocaleRemovalImpact(protocol, locale),
-        ]),
-      ),
-    [protocol],
+    () => new Map(locales.map((locale) => [locale, removalImpact(locale)])),
+    [locales, removalImpact],
   );
 
   if (!protocol) return null;
 
   return (
-    <Section
-      title={intl.formatMessage(messages.title)}
-      description={intl.formatMessage(
-        locales.length > 1 ? messages.description : messages.descriptionSingle,
-      )}
-    >
+    <>
       {locales.includes(UNSPECIFIED_LOCALE) && (
         <Alert variant="warning" className="mb-6">
           <AlertTitle>
@@ -219,7 +241,9 @@ const LanguageList = ({ onShowMissing }: LanguageListProps) => {
               }
               onChange={() => void changeLanguage(locale)}
               onRemove={() => void removeLanguage(locale)}
-              onShowMissing={() => onShowMissing(locale)}
+              onShowMissing={
+                onShowMissing ? () => onShowMissing(locale) : undefined
+              }
             />
           );
         })}
@@ -232,7 +256,7 @@ const LanguageList = ({ onShowMissing }: LanguageListProps) => {
       >
         {intl.formatMessage(messages.addLanguages)}
       </Button>
-    </Section>
+    </>
   );
 };
 
@@ -243,7 +267,7 @@ type LanguageRowProps = {
   onMakeDefault: () => void;
   onChange: () => void;
   onRemove: () => void;
-  onShowMissing: () => void;
+  onShowMissing?: () => void;
 };
 
 const LanguageRow = ({
@@ -321,7 +345,7 @@ const LanguageRow = ({
             <span className="text-sm">
               {intl.formatMessage(messages.coverage, { translated, total })}
             </span>
-            {missing > 0 && (
+            {missing > 0 && onShowMissing && (
               <Button size="sm" variant="text" onClick={onShowMissing}>
                 {intl.formatMessage(messages.showMissing, { count: missing })}
               </Button>

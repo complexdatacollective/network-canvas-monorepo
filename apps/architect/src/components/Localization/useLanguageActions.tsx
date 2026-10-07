@@ -1,4 +1,4 @@
-import { type RefObject, useCallback } from 'react';
+import { type RefObject, useCallback, useMemo } from 'react';
 import { useSelector } from 'react-redux';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
@@ -6,14 +6,24 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
-import type { LocaleTag } from '@codaco/protocol-validation';
-import { useAppDispatch } from '~/ducks/hooks';
+import {
+  collectLocalizedStrings,
+  type LocaleTag,
+  type LocalizedStringHit,
+} from '@codaco/protocol-validation';
+import { useAppDispatch, useAppStore } from '~/ducks/hooks';
 import {
   addProtocolLocales,
   relabelProtocolLocale,
   removeProtocolLocale,
 } from '~/ducks/modules/activeProtocol';
-import { getLocaleRemovalImpact } from '~/ducks/modules/protocol/localeOperations';
+import {
+  getLocaleRemovalImpact,
+  type LocaleRemovalImpact,
+  type LocalizedStringRewrite,
+  relabelledLocale,
+  withoutLocale,
+} from '~/ducks/modules/protocol/localeOperations';
 import { getProtocol } from '~/selectors/protocol';
 import { UNSPECIFIED_LOCALE } from '~/utils/localizedText';
 
@@ -114,6 +124,22 @@ const messages = defineMessages({
   },
 });
 
+const NO_TEXTS: readonly LocalizedStringHit[] = [];
+
+/**
+ * A stage open in the stage editor while the protocol's languages change.
+ *
+ * Its unsaved text is not in the protocol, so a removal has to count it too,
+ * and a removal or a change of language has to reach it as well: otherwise the
+ * next save writes a language the protocol no longer has.
+ */
+export type OpenStageDraft = Readonly<{
+  /** The stage's texts as the editor holds them, at the stage's own paths. */
+  texts: readonly LocalizedStringHit[];
+  /** Applies a change the protocol has just taken to the open stage. */
+  rewrite: (rewrite: LocalizedStringRewrite) => void;
+}>;
+
 /**
  * The dialogs behind each change to a protocol's languages. Each change is
  * validated here and then dispatched as one protocol edit, so it is one undo
@@ -121,13 +147,38 @@ const messages = defineMessages({
  */
 export const useLanguageActions = (
   finalFocus: RefObject<HTMLElement | null>,
+  draft?: OpenStageDraft,
 ) => {
   const intl = useAppIntl();
   const dispatch = useAppDispatch();
+  const store = useAppStore();
   const { openDialog, confirm } = useDialog();
   const protocol = useSelector(getProtocol);
   const languageName = useLanguageName();
   const declared = protocol?.localization.locales;
+  const draftTexts = draft?.texts ?? NO_TEXTS;
+  const rewriteDraft = draft?.rewrite;
+
+  const protocolTexts = useMemo(
+    () => (protocol ? collectLocalizedStrings(protocol) : NO_TEXTS),
+    [protocol],
+  );
+  const texts = useMemo(
+    () => [...protocolTexts, ...draftTexts],
+    [draftTexts, protocolTexts],
+  );
+
+  /** What removing `locale` would delete, unsaved stage text included. */
+  const removalImpact = useCallback(
+    (locale: LocaleTag): LocaleRemovalImpact =>
+      getLocaleRemovalImpact(texts, locale),
+    [texts],
+  );
+
+  const declaredNow = useCallback(
+    () => getProtocol(store.getState())?.localization.locales,
+    [store],
+  );
 
   const availableChoices = useCallback(
     (declaredLocales: readonly LocaleTag[]) =>
@@ -191,17 +242,25 @@ export const useLanguageActions = (
         ),
       });
       if (!values) return;
-      const to = values.language;
-      if (typeof to === 'string') dispatch(relabelProtocolLocale({ from, to }));
+      const tag = values.language;
+      if (typeof tag !== 'string') return;
+      const before = declaredNow() ?? [];
+      dispatch(relabelProtocolLocale({ from, to: tag }));
+      // The language as the protocol now declares it, which is the tag after
+      // canonicalisation, and nothing at all if the change was refused.
+      const to = declaredNow()?.find((locale) => !before.includes(locale));
+      if (to !== undefined) rewriteDraft?.(relabelledLocale(from, to));
     },
     [
       availableChoices,
       declared,
+      declaredNow,
       dispatch,
       finalFocus,
       intl,
       languageName,
       openDialog,
+      rewriteDraft,
     ],
   );
 
@@ -209,7 +268,7 @@ export const useLanguageActions = (
     async (locale: LocaleTag) => {
       if (!protocol) return;
       const language = languageName(locale);
-      const { translationCount } = getLocaleRemovalImpact(protocol, locale);
+      const { translationCount } = removalImpact(locale);
       await confirm({
         title: intl.formatMessage(messages.removeTitle, { language }),
         description: intl.formatMessage(messages.removeDescription, {
@@ -221,11 +280,25 @@ export const useLanguageActions = (
         finalFocus,
         onConfirm: () => {
           dispatch(removeProtocolLocale({ locale }));
+          const after = declaredNow();
+          if (after !== undefined && !after.includes(locale)) {
+            rewriteDraft?.(withoutLocale(locale));
+          }
         },
       });
     },
-    [confirm, dispatch, finalFocus, intl, languageName, protocol],
+    [
+      confirm,
+      declaredNow,
+      dispatch,
+      finalFocus,
+      intl,
+      languageName,
+      protocol,
+      removalImpact,
+      rewriteDraft,
+    ],
   );
 
-  return { addLanguages, changeLanguage, removeLanguage };
+  return { addLanguages, changeLanguage, removeLanguage, removalImpact };
 };

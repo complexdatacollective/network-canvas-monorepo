@@ -706,6 +706,8 @@
   "architect.skipDestination.stage": "階段 {position, number}：{label}",
   "architect.skipDestination.unknown": "未知階段",
   "architect.skipDestination.untitled": "未命名階段",
+  "architect.stageEditor.languages.description": "{count, plural, =1 {此協定僅以一種語言撰寫，因此參與者只會看到這一個選項。新增語言即可為參與者提供更多選擇。} other {參與者可從此協定使用的所有語言中選擇。}}在此所做的變更會套用至整個協定，與在「語言」頁面中的變更相同。",
+  "architect.stageEditor.languages.title": "語言",
   "architect.stageEditor.sectionOutline.completeStatus": "已完成",
   "architect.stageEditor.sectionOutline.errorStatus": "有問題",
   "architect.stageEditor.sectionOutline.incompleteStatus": "未完成",
