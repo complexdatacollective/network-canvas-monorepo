@@ -222,6 +222,48 @@ describe('readFamily', () => {
   });
 });
 
+describe('readFamily with encrypted names', () => {
+  const ciphertext = [181, 22, 9, 240, 77, 3, 145, 61, 200, 18];
+
+  test('reads an encrypted name once it is decrypted, and cannot read it before', () => {
+    const nodes = [person('bea', { name: ciphertext })];
+    expect(readFamily(nodes, [], config).byId.get('bea')).toMatchObject({
+      name: undefined,
+      hasUnreadableName: true,
+    });
+    expect(
+      readFamily(nodes, [], config, {}, new Map([['bea', 'Bea']])).byId.get(
+        'bea',
+      ),
+    ).toMatchObject({ name: 'Bea', hasUnreadableName: false });
+  });
+
+  test('someone holding an encrypted label the stage saved is unnamed, decrypted or not', () => {
+    const nodes = [person('sis', { name: ciphertext })];
+    const record = { sis: nameFingerprint(ciphertext) };
+    for (const decrypted of [
+      new Map<string, string>(),
+      new Map([['sis', 'Sister']]),
+    ]) {
+      expect(
+        readFamily(nodes, [], config, record, decrypted).byId.get('sis'),
+      ).toMatchObject({ name: undefined, hasUnreadableName: false });
+    }
+  });
+
+  test('a decrypted name of nothing but space is no name', () => {
+    expect(
+      readFamily(
+        [person('blank', { name: ciphertext })],
+        [],
+        config,
+        {},
+        new Map([['blank', '  ']]),
+      ).byId.get('blank'),
+    ).toMatchObject({ name: undefined, hasUnreadableName: false });
+  });
+});
+
 describe('relatives', () => {
   test('derives parents, partners and siblings', () => {
     const family = nuclearFamily();

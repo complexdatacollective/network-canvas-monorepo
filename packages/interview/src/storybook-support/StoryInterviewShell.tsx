@@ -13,6 +13,7 @@ import {
   type ResolvedAsset,
   Shell,
   type StepChangeHandler,
+  type SyncHandler,
 } from '..';
 
 // SyntheticInterview emits assets as plain objects whose `url` field
@@ -132,6 +133,9 @@ const StoryInterviewShell = (props: {
   allowUserScaling?: boolean;
   reviewMode?: boolean;
   initialStep?: number;
+  /** Receives the session each time the interview writes it, so a story can
+   * check what was stored. */
+  onSync?: SyncHandler;
 }) => {
   const { payload, initialStep, assetUrls } = useMemo(() => {
     const raw = SuperJSON.parse<RawSyntheticPayload>(props.rawPayload);
@@ -158,7 +162,11 @@ const StoryInterviewShell = (props: {
     [assetUrls],
   );
 
-  const onSync = useCallback(() => Promise.resolve(), []);
+  const { onSync: onSyncProp } = props;
+  const onSync = useCallback<SyncHandler>(
+    (...args) => onSyncProp?.(...args) ?? Promise.resolve(),
+    [onSyncProp],
+  );
   const onFinish = useCallback(() => Promise.resolve(), []);
 
   // Wrapping providers (DndStoreProvider, DialogProvider, Toast viewport,

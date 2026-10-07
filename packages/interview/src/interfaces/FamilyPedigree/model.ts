@@ -84,9 +84,12 @@ export type Person = {
    * the stage generated for them is not a name. */
   name: string | undefined;
   /**
-   * They hold a name the stage cannot read: one written encrypted by another
-   * stage. They count as named, so they are never given a label or offered
-   * the name question, and the canvas shows them by a label of their own.
+   * They hold a name the stage cannot read: an encrypted name not yet
+   * decrypted (before the passphrase is entered, or while it is being
+   * decrypted), one the passphrase could not decrypt, or ciphertext on a
+   * protocol that no longer encrypts. Nobody else is labelled after it, they
+   * are never given a label to save or offered the name question, and the
+   * canvas shows them by a label of their own until the name can be read.
    */
   hasUnreadableName: boolean;
   /** The value of the gender identity option the person was given, whatever
@@ -199,12 +202,15 @@ export function holdsGeneratedLabel(
  * fingerprint of each label the stage saved as the name of someone the
  * participant left unnamed: someone who still holds that label is read as
  * unnamed, so their label is worked out afresh from the family as it stands.
+ * `decryptedNames` holds, by person id, the text of each encrypted name the
+ * stage has decrypted; any other encrypted name cannot be read.
  */
 export function readFamily(
   nodes: readonly NcNode[],
   edges: readonly NcEdge[],
   config: PedigreeConfig,
   generatedLabels: Readonly<Record<string, string>> = {},
+  decryptedNames: ReadonlyMap<string, string> = new Map(),
 ): Family {
   const people: Person[] = nodes
     .filter((node) => node.type === config.personType)
@@ -213,14 +219,16 @@ export function readFamily(
       const recorded = attributes[config.nameAttribute];
       const id = node[entityPrimaryKeyProperty];
       const isGenerated = holdsGeneratedLabel(generatedLabels, id, recorded);
+      // Anything but text in a text attribute is ciphertext: an encrypted
+      // name, read only once it is decrypted.
+      const text =
+        typeof recorded === 'string' ? recorded : decryptedNames.get(id);
       const name =
-        !isGenerated && typeof recorded === 'string' && recorded.trim() !== ''
-          ? recorded
+        !isGenerated && text !== undefined && text.trim() !== ''
+          ? text
           : undefined;
-      // Anything else in a text attribute is ciphertext, which the stage
-      // cannot read: an encrypted name.
       const hasUnreadableName =
-        !isGenerated && recorded !== undefined && typeof recorded !== 'string';
+        !isGenerated && recorded !== undefined && text === undefined;
       const genderIdentityConfig = config.genderIdentity;
       const genderIdentity = genderIdentityConfig
         ? readOption(attributes[genderIdentityConfig.attribute])

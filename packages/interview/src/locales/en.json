@@ -183,6 +183,10 @@
     "defaultMessage": "{isYou, select, true {About you} other {About {name}}}",
     "description": "Title of the side panel showing the details about a family member. {name} is that family member’s name or, when they have none, how they are related to the participant, such as “Maternal grandmother”, or “Family member” when they are not connected to the participant."
   },
+  "interview.familyPedigree.enterPassphrase": {
+    "defaultMessage": "Enter passphrase",
+    "description": "Button in the notice under the family tree that opens the box for entering the passphrase protecting names."
+  },
   "interview.familyPedigree.familyMember": {
     "defaultMessage": "Family member",
     "description": "Label for a family member whose name is not known and who is not connected to the participant in the family tree. Also saved as their name when they leave this part of the interview, so they can be recognised later."
@@ -350,6 +354,14 @@
   "interview.familyPedigree.partnershipCurrentLabel": {
     "defaultMessage": "Are they still together?",
     "description": "Yes/no question: whether a partnership is current, rather than separated or ended."
+  },
+  "interview.familyPedigree.passphraseInvalidNotice": {
+    "defaultMessage": "Your passphrase did not unlock the names in your family. Enter it again to see them and to add or change people.",
+    "description": "Notice shown under the family tree when the passphrase entered could not unlock the names saved earlier. Until the right one is entered, people are shown by how they are related to the participant, and the family cannot be changed."
+  },
+  "interview.familyPedigree.passphraseNeededNotice": {
+    "defaultMessage": "Enter your passphrase to see the names in your family and to add or change people.",
+    "description": "Notice shown under the family tree when the study protects names with a passphrase that has not been entered yet. Until it is, people are shown by how they are related to the participant, and the family cannot be changed."
   },
   "interview.familyPedigree.personAccessibleName": {
     "defaultMessage": "{isYou, select, true {You} other {{name}}}{missing, select, true {, some details missing} other {}}",

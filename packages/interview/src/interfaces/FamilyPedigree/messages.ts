@@ -814,4 +814,24 @@ export const messages = defineMessages({
     description:
       'Option when choosing which parents a new sibling shares, for someone with one parent recorded: their second parent, who is added unnamed for both of them.',
   },
+  passphraseNeededNotice: {
+    id: 'interview.familyPedigree.passphraseNeededNotice',
+    defaultMessage:
+      'Enter your passphrase to see the names in your family and to add or change people.',
+    description:
+      'Notice shown under the family tree when the study protects names with a passphrase that has not been entered yet. Until it is, people are shown by how they are related to the participant, and the family cannot be changed.',
+  },
+  passphraseInvalidNotice: {
+    id: 'interview.familyPedigree.passphraseInvalidNotice',
+    defaultMessage:
+      'Your passphrase did not unlock the names in your family. Enter it again to see them and to add or change people.',
+    description:
+      'Notice shown under the family tree when the passphrase entered could not unlock the names saved earlier. Until the right one is entered, people are shown by how they are related to the participant, and the family cannot be changed.',
+  },
+  enterPassphrase: {
+    id: 'interview.familyPedigree.enterPassphrase',
+    defaultMessage: 'Enter passphrase',
+    description:
+      'Button in the notice under the family tree that opens the box for entering the passphrase protecting names.',
+  },
 });

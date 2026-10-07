@@ -1,5 +1,6 @@
 import type { IntlShape, MessageDescriptor } from '@codaco/app-i18n/messages';
 import type { FramingId } from '@codaco/protocol-validation';
+import type { VariableValue } from '@codaco/shared-consts';
 
 import { formatPersonLabel, labelFamily, type PersonLabel } from './kinship';
 import { messages } from './messages';
@@ -115,6 +116,33 @@ export function generateLabels(
       .filter(([id]) => family.byId.get(id)?.hasUnreadableName !== true)
       .map(([id, label]) => [id, plain(label)]),
   );
+}
+
+/**
+ * Which of the labels to save each person already holds, and which must be
+ * written. Someone already holds their label when their name attribute reads
+ * as its very text: as stored, or as decrypted (`decryptedNames`, by person
+ * id) when it is encrypted. Their stored value is kept as it is, so that it
+ * is not written, and encrypted, again.
+ */
+export function labelWrites(
+  family: Family,
+  labels: ReadonlyMap<string, string>,
+  nameAttribute: string,
+  decryptedNames: ReadonlyMap<string, string>,
+): { held: Map<string, VariableValue>; toWrite: Map<string, string> } {
+  const held = new Map<string, VariableValue>();
+  const toWrite = new Map<string, string>();
+  for (const [personId, label] of labels) {
+    const person = family.byId.get(personId);
+    if (!person) continue;
+    const stored = person.attributes[nameAttribute];
+    const text =
+      typeof stored === 'string' ? stored : decryptedNames.get(personId);
+    if (stored !== undefined && text === label) held.set(personId, stored);
+    else toWrite.set(personId, label);
+  }
+  return { held, toWrite };
 }
 
 /** The generated labels, with the kinship words' soft hyphens, for everyone

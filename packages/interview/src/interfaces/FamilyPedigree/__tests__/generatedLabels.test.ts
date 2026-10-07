@@ -4,8 +4,8 @@ import type { FramingId } from '@codaco/protocol-validation';
 import type { NcEdge, NcNode } from '@codaco/shared-consts';
 
 import { resolveInterviewIntl } from '../../../i18n/resolveIntl';
-import { generateLabels, labelEveryone } from '../generatedLabels';
-import { readFamily, type PedigreeConfig } from '../model';
+import { generateLabels, labelEveryone, labelWrites } from '../generatedLabels';
+import { nameFingerprint, readFamily, type PedigreeConfig } from '../model';
 import { config, configWithoutGenderIdentity, link, person } from './fixtures';
 
 const intl = resolveInterviewIntl();
@@ -480,5 +480,88 @@ describe('labelEveryone', () => {
     expect(labelEveryone(family, 'gendered', intl).get('sis1')).toBe(
       'Sister (partner of Sam)',
     );
+  });
+});
+
+describe('encrypted names', () => {
+  const ciphertext = (seed: number) => [seed, 22, 9, 240, 77, 3];
+
+  test('a decrypted typed name is shown, and no label repeats it', () => {
+    const family = readFamily(
+      [
+        person('ego', { isEgo: true }),
+        woman('mum'),
+        man('dad'),
+        // Typed as "Sister", and stored encrypted.
+        woman('sis1', { name: ciphertext(1) }),
+        woman('sis2'),
+        man('tom', { name: 'Tom' }),
+      ],
+      [
+        ...parentLinks,
+        ...siblingLinks('sis1'),
+        ...siblingLinks('sis2'),
+        link('sis2', 'tom', 'partner'),
+      ],
+      config,
+      {},
+      new Map([['sis1', 'Sister']]),
+    );
+    expect(labelEveryone(family, 'gendered', intl).get('sis1')).toBe('Sister');
+    expect(generateLabels(family, 'gendered', intl).get('sis2')).toBe(
+      'Sister (partner of Tom)',
+    );
+  });
+
+  test('a label already held, read through decryption, is kept rather than written again', () => {
+    const family = readFamily(
+      [
+        person('ego', { isEgo: true }),
+        woman('mum', { name: ciphertext(1) }),
+        man('dad', { name: ciphertext(2) }),
+        woman('sis'),
+      ],
+      [...parentLinks, ...siblingLinks('sis')],
+      config,
+      {
+        mum: nameFingerprint(ciphertext(1)),
+        dad: nameFingerprint(ciphertext(2)),
+      },
+    );
+    const labels = generateLabels(family, 'gendered', intl);
+    expect(Object.fromEntries(labels)).toEqual({
+      mum: 'Mother',
+      dad: 'Father',
+      sis: 'Sister',
+    });
+    // The mother's stored label still reads "Mother"; the father's was saved
+    // under another framing, and the sister has none.
+    const decrypted = new Map([
+      ['mum', 'Mother'],
+      ['dad', 'Sperm parent'],
+    ]);
+    const { held, toWrite } = labelWrites(family, labels, 'name', decrypted);
+    expect(Object.fromEntries(held)).toEqual({ mum: ciphertext(1) });
+    expect(Object.fromEntries(toWrite)).toEqual({
+      dad: 'Father',
+      sis: 'Sister',
+    });
+    // Without the decrypted text, nothing encrypted can be known to be held.
+    expect([
+      ...labelWrites(family, labels, 'name', new Map()).toWrite.keys(),
+    ]).toEqual(['mum', 'dad', 'sis']);
+  });
+
+  test('a label held as text is kept', () => {
+    const family = readFamily(
+      [person('ego', { isEgo: true }), woman('mum', { name: 'Mother' })],
+      [link('mum', 'ego', 'biological')],
+      config,
+      { mum: nameFingerprint('Mother') },
+    );
+    const labels = generateLabels(family, 'gendered', intl);
+    expect(
+      Object.fromEntries(labelWrites(family, labels, 'name', new Map()).held),
+    ).toEqual({ mum: 'Mother' });
   });
 });

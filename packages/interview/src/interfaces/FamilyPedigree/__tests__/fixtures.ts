@@ -1,11 +1,13 @@
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
+  entitySecureAttributesMeta,
   type NcEdge,
   type NcNode,
   type VariableValue,
 } from '@codaco/shared-consts';
 
+import { generateSecureAttributes } from '../../Anonymisation/utils';
 import type { PedigreeConfig } from '../model';
 
 export const config: PedigreeConfig = {
@@ -44,6 +46,33 @@ export const person = (
   type: 'person',
   [entityAttributesProperty]: attributes,
 });
+
+/** A person whose name is stored encrypted with the passphrase, as the
+ * interview writes an encrypted name attribute. */
+export async function encryptedPerson(
+  id: string,
+  name: string,
+  passphrase: string,
+  attributes: Record<string, VariableValue> = {},
+): Promise<NcNode> {
+  const { encryptedAttributes, secureAttributes } =
+    await generateSecureAttributes(
+      { name },
+      {
+        name: {
+          type: 'text',
+          component: 'Text',
+          name: 'name',
+          encrypted: true,
+        },
+      },
+      passphrase,
+    );
+  return {
+    ...person(id, { ...attributes, ...encryptedAttributes }),
+    [entitySecureAttributesMeta]: secureAttributes,
+  };
+}
 
 export const link = (
   from: string,

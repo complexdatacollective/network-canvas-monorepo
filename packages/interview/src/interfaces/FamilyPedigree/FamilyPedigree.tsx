@@ -22,6 +22,7 @@ import { useSelector } from 'react-redux';
 import { v4 as uuid } from 'uuid';
 
 import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
+import { Alert } from '@codaco/fresco-ui/Alert';
 import { Button } from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
@@ -42,6 +43,7 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
+import { PassphraseOverlay } from '../../components/PassphrasePrompter';
 import Prompts from '../../components/Prompts/Prompts';
 import { usePrompts } from '../../components/Prompts/usePrompts';
 import { useCurrentStep } from '../../contexts/CurrentStepContext';
@@ -69,6 +71,7 @@ import {
 } from '../../store/modules/session';
 import { useAppDispatch } from '../../store/store';
 import type { Direction, StageProps } from '../../types';
+import { usePassphrase } from '../Anonymisation/usePassphrase';
 import {
   type CompletenessItem,
   evaluateCompleteness,
@@ -87,7 +90,8 @@ import PersonForm, {
   type PersonFormResult,
 } from './components/PersonForm';
 import PersonNode from './components/PersonNode';
-import { generateLabels, labelEveryone } from './generatedLabels';
+import { useDecryptedNames } from './encryptedNames';
+import { generateLabels, labelEveryone, labelWrites } from './generatedLabels';
 import { messages } from './messages';
 import {
   areConnected,
@@ -215,10 +219,45 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
 
   const nodes = useStageSelector(getNetworkNodes);
   const edges = useStageSelector(getNetworkEdges);
+  const codebook = useSelector(getCodebook);
+
+  // When the study encrypts the name attribute, names are written encrypted
+  // with the participant's passphrase and decrypted with it to be shown.
+  // Without the passphrase (or with one that does not decrypt the names
+  // already saved) people are shown by labels, and nothing that could write
+  // a name can be done: the participant is asked for it, as other stages
+  // with encrypted names ask.
+  const {
+    isEnabled: encryptionEnabled,
+    passphrase,
+    passphraseInvalid,
+    requirePassphrase,
+    setPassphrase,
+    setPassphraseInvalid,
+  } = usePassphrase();
+  const encryptNames =
+    encryptionEnabled &&
+    codebook.node?.[config.personType]?.variables?.[config.nameAttribute]
+      ?.encrypted === true;
+  const namesLocked = encryptNames && (!passphrase || passphraseInvalid);
+  useEffect(() => {
+    if (encryptNames) requirePassphrase();
+  }, [encryptNames, requirePassphrase]);
+  const [passphraseOpen, setPassphraseOpen] = useState(false);
+  const decryption = useDecryptedNames({
+    nodes,
+    nameAttribute: config.nameAttribute,
+    enabled: encryptNames,
+    passphrase,
+    passphraseInvalid,
+    onUndecryptable: () => setPassphraseInvalid(true),
+  });
+  const decryptedNames = decryption.names;
+
   // Someone who still holds the label the stage saved for them is unnamed.
   const family = useMemo(
-    () => readFamily(nodes, edges, config, generatedLabels),
-    [nodes, edges, config, generatedLabels],
+    () => readFamily(nodes, edges, config, generatedLabels, decryptedNames),
+    [nodes, edges, config, generatedLabels, decryptedNames],
   );
 
   // The person being added is drawn in the family from the moment the panel
@@ -266,8 +305,9 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       [...edges, ...draftEdges],
       config,
       generatedLabels,
+      decryptedNames,
     );
-  }, [draft, family, nodes, edges, config, generatedLabels]);
+  }, [draft, family, nodes, edges, config, generatedLabels, decryptedNames]);
   const nodeColor = useStageSelector(getNodeColorSelector);
   // Connectors, and the preview of a new one, take the codebook's colour for
   // the relationship type ('edge-color-seq-N' is the CSS variable --edge-N).
@@ -277,7 +317,6 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   );
   const edgeColorName = useSelector(edgeColorSelector);
   const edgeColor = `var(--edge-${edgeColorName.replace('edge-color-seq-', '')})`;
-  const codebook = useSelector(getCodebook);
   // A person's symbol is the person type's shape in the codebook, which the
   // researcher may map to one of their attributes, such as gender identity
   // or sex assigned at birth.
@@ -390,9 +429,9 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
 
   // No menu while the panel is open: it would offer to add to someone else
   // mid-way through describing this person. Nor while connecting or
-  // disconnecting people.
+  // disconnecting people, nor while the family waits for the passphrase.
   const menuPersonId =
-    panel?.open || tool !== 'pointer' || nomination
+    panel?.open || tool !== 'pointer' || nomination || namesLocked
       ? null
       : (hoveredId ?? focusedId);
   const menuPerson = menuPersonId ? family.byId.get(menuPersonId) : undefined;
@@ -611,7 +650,25 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     panZoom.goTo({ x, y, scale });
   }, [selectedId, panZoom, clearInsets]);
 
+  // Anything that could write a name waits for the passphrase, and asks for
+  // it instead, saying why.
+  const askForPassphrase = () => {
+    requirePassphrase();
+    setAnnouncement(
+      intl.formatMessage(
+        passphraseInvalid
+          ? messages.passphraseInvalidNotice
+          : messages.passphraseNeededNotice,
+      ),
+    );
+    setPassphraseOpen(true);
+  };
+
   const openAddPanel = (relation: Relation, anchor: Person) => {
+    if (namesLocked) {
+      askForPassphrase();
+      return;
+    }
     // The new person, and up to two unnamed parents for a sibling.
     const ids = [uuid(), uuid(), uuid()];
     rememberView(anchor.id, ids[0] ?? anchor.id);
@@ -698,17 +755,37 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   // encrypted), so that on a return visit those people are unnamed again and
   // are given fresh labels when the participant leaves, while a name written
   // since on another stage no longer matches and is never overwritten.
-  const saveGeneratedLabels = async () => {
-    const saved = generateLabels(family, framing, intl);
+  //
+  // An encrypted label is written with the passphrase. Without it, going on
+  // waits for the participant to enter it; going back leaves the labels to be
+  // saved when they next leave.
+  const saveGeneratedLabels = async (direction: Direction) => {
+    // Every encrypted name is decrypted first, so that no label repeats a
+    // typed name still being decrypted.
+    const decrypted =
+      encryptNames && !namesLocked
+        ? await decryption.decryptAll(nodes)
+        : undefined;
+    const current = decrypted
+      ? readFamily(nodes, edges, config, generatedLabels, decrypted.names)
+      : family;
+    const saved = generateLabels(current, framing, intl);
+    const { held, toWrite } = labelWrites(
+      current,
+      saved,
+      config.nameAttribute,
+      decrypted?.names ?? decryptedNames,
+    );
+    if (toWrite.size > 0 && (namesLocked || decrypted?.failed === true)) {
+      if (direction === 'backwards') return true;
+      askForPassphrase();
+      return false;
+    }
     const record: Record<string, string> = {};
-    for (const [personId, label] of saved) {
-      const person = family.byId.get(personId);
-      if (!person) continue;
-      const current = person.attributes[config.nameAttribute];
-      if (current === label) {
-        record[personId] = nameFingerprint(current);
-        continue;
-      }
+    for (const [personId, stored] of held) {
+      record[personId] = nameFingerprint(stored);
+    }
+    for (const [personId, label] of toWrite) {
       const result = await dispatch(
         updateNode({
           nodeId: personId,
@@ -729,7 +806,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       Object.keys(record).length === 0 &&
       pedigreeMetadata?.generatedLabels === undefined
     ) {
-      return;
+      return true;
     }
     dispatch(
       updateStageMetadata({
@@ -737,12 +814,12 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         metadata: { ...pedigreeMetadata, generatedLabels: record },
       }),
     );
+    return true;
   };
 
   useBeforeNext(async (direction) => {
     if (!completeEnoughToLeave(direction)) return false;
-    await saveGeneratedLabels();
-    return true;
+    return saveGeneratedLabels(direction);
   });
 
   // Each item in the list leads to where it is resolved: adding the missing
@@ -795,6 +872,10 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   };
 
   const openEdit = (personId: string) => {
+    if (namesLocked) {
+      askForPassphrase();
+      return;
+    }
     const person = family.byId.get(personId);
     if (!person) return;
     rememberView(personId, personId);
@@ -867,6 +948,11 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   // Selecting a person (click, tap, Enter or Space) opens their details. The
   // panel returns focus to them when it closes.
   const handleActivate = (personId: string) => {
+    if (namesLocked) {
+      setLastFocusedId(personId);
+      askForPassphrase();
+      return;
+    }
     if (nomination) {
       setLastFocusedId(personId);
       const person = family.byId.get(personId);
@@ -1006,10 +1092,21 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
 
   const handleSubmit = async (result: PersonFormResult) => {
     if (!panel) return;
+    // The passphrase found not to decrypt the names while the panel was open
+    // keeps the panel open until the right one is entered.
+    if (namesLocked) {
+      askForPassphrase();
+      return;
+    }
     const { mode } = panel;
     closePanel();
+    // A typed name is shown at once, while its ciphertext is decrypted.
+    const typedName = result.set[config.nameAttribute];
 
     if (mode.kind === 'edit') {
+      if (typeof typedName === 'string') {
+        decryption.expectName(mode.person.id, typedName);
+      }
       await dispatch(
         updateNode({
           nodeId: mode.person.id,
@@ -1022,7 +1119,6 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       );
       // A name typed for someone whose label was saved is theirs now, even
       // when it is the same words.
-      const typedName = result.set[config.nameAttribute];
       if (
         typeof typedName === 'string' &&
         typedName.trim() !== '' &&
@@ -1081,12 +1177,17 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       result.request,
     );
     const newPersonId = plan.people[0]?.id ?? '';
+    if (typeof typedName === 'string') {
+      decryption.expectName(newPersonId, typedName);
+    }
     for (const person of plan.people) {
       await dispatch(
         addNode({
           type: config.personType,
           attributeData: person.details,
           modelData: { [entityPrimaryKeyProperty]: person.id },
+          // A typed name is written encrypted when the study encrypts names.
+          useEncryption: encryptNames,
           currentStep,
         }),
       ).unwrap();
@@ -1453,6 +1554,30 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
           ref={toolbarAreaRef}
           className="pointer-events-none absolute inset-x-0 bottom-6 z-20 flex flex-col items-center gap-2 px-4"
         >
+          {namesLocked && (
+            <Alert
+              variant="info"
+              density="compact"
+              appearance="soft"
+              className="pointer-events-auto my-0 w-auto"
+              data-testid="pedigree-passphrase-notice"
+            >
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                <p className="text-sm">
+                  <AppMessage
+                    message={
+                      passphraseInvalid
+                        ? messages.passphraseInvalidNotice
+                        : messages.passphraseNeededNotice
+                    }
+                  />
+                </p>
+                <Button size="sm" onClick={() => setPassphraseOpen(true)}>
+                  <AppMessage message={messages.enterPassphrase} />
+                </Button>
+              </div>
+            </Alert>
+          )}
           {tool !== 'pointer' && (
             <p
               className="text-sm opacity-80"
@@ -1509,6 +1634,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
               {!nomination && (
                 <ToolbarToggleGroup
                   aria-label={intl.formatMessage(messages.toolGroupLabel)}
+                  disabled={namesLocked}
                   value={[tool]}
                   onValueChange={(value) => {
                     const next = value[0];
@@ -1609,6 +1735,17 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       <div aria-live="polite" className="sr-only">
         {announcement}
       </div>
+      {encryptNames && (
+        <PassphraseOverlay
+          show={passphraseOpen}
+          onClose={() => setPassphraseOpen(false)}
+          handleSubmit={(entered) => {
+            if (!entered) return;
+            setPassphrase(entered);
+            setPassphraseOpen(false);
+          }}
+        />
+      )}
       <PersonDrawer
         popupRef={drawerRef}
         open={panel?.open ?? false}
@@ -1656,6 +1793,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
             genderIdentityOptions={genderIdentityOptions}
             formFields={formFields}
             generatedLabels={generatedLabels}
+            decryptedNames={decryptedNames}
             displayName={displayName}
             askAbout={
               panel.mode.kind === 'edit' && progress

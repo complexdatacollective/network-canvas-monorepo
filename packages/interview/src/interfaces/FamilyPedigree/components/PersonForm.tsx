@@ -146,6 +146,8 @@ type PersonFormProps = {
   /** The stage's record of who holds a label it saved as their name, by
    * person id. Labels are given afresh, so a typed name may repeat one. */
   generatedLabels: Readonly<Record<string, string>>;
+  /** Each encrypted name the stage has decrypted, by person id. */
+  decryptedNames: ReadonlyMap<string, string>;
   displayName: (personId: string) => string;
   /** Edit only: ask whether the person has siblings, and children. */
   askAbout?: { siblings: boolean; children: boolean; required: boolean };
@@ -178,6 +180,7 @@ export default function PersonForm({
   genderIdentityOptions,
   formFields,
   generatedLabels,
+  decryptedNames,
   displayName,
   askAbout,
   onDraftChange,
@@ -200,7 +203,7 @@ export default function PersonForm({
   // leaves the stage. `unique` resolves against the people already in the
   // network, leaving out the person being edited, so their own saved name is
   // not a duplicate, and the labels saved for anyone else, which are given
-  // afresh.
+  // afresh. Encrypted names are compared as decrypted.
   const stageVariables = useStageSelector(getCodebookVariablesForSubjectType);
   const nameValidation = selectValidationMetadataForVariable(
     stageVariables,
@@ -225,16 +228,32 @@ export default function PersonForm({
       network: {
         ...network,
         nodes: network.nodes.map((node) => {
-          if (!isSavedLabel(node)) return node;
           const { [config.nameAttribute]: _label, ...attributes } =
             node[entityAttributesProperty];
-          return { ...node, [entityAttributesProperty]: attributes };
+          if (isSavedLabel(node)) {
+            return { ...node, [entityAttributesProperty]: attributes };
+          }
+          const decrypted = decryptedNames.get(node[entityPrimaryKeyProperty]);
+          if (decrypted === undefined) return node;
+          return {
+            ...node,
+            [entityAttributesProperty]: {
+              ...attributes,
+              [config.nameAttribute]: decrypted,
+            },
+          };
         }),
       },
       stageSubject,
       ...(personId !== undefined ? { currentEntityId: personId } : {}),
     };
-  }, [baseValidationContext, personId, generatedLabels, config.nameAttribute]);
+  }, [
+    baseValidationContext,
+    personId,
+    generatedLabels,
+    decryptedNames,
+    config.nameAttribute,
+  ]);
 
   const initialResearcherValues = useMemo(() => {
     if (!person) return undefined;

@@ -11,7 +11,12 @@ import type {
   PedigreeRelationshipKind,
   PedigreeSexAssignedAtBirth,
 } from '@codaco/protocol-validation';
+import {
+  entityAttributesProperty,
+  entitySecureAttributesMeta,
+} from '@codaco/shared-consts';
 
+import type { SessionPayload, SyncHandler } from '../..';
 import StoryInterviewShell from '../../storybook-support/StoryInterviewShell';
 
 const PROMPT =
@@ -75,6 +80,14 @@ type StoryOptions = {
   followedByPeopleList?: boolean;
   /** Follows the pedigree with a form asking each person's name again. */
   followedByNameForm?: boolean;
+  /** Encrypts the name attribute with the participant's passphrase. */
+  encryptedNames?: boolean;
+};
+
+/** What only the story's shell takes: how the interview is hosted. */
+type ShellOptions = {
+  /** Receives the session each time the interview writes it. */
+  onSync?: SyncHandler;
 };
 
 type GenderIdentities = {
@@ -100,8 +113,10 @@ function buildInterview({
   nameValidation,
   followedByPeopleList = false,
   followedByNameForm = false,
+  encryptedNames = false,
 }: StoryOptions) {
   const si = new SyntheticInterview(1);
+  if (encryptedNames) si.setExperiments({ encryptedVariables: true });
   si.addInformationStage({ title: 'Welcome', text: 'Before the pedigree.' });
   const people = si.addNodeType({ name: 'Person' });
   const stage = si.addStage('FamilyPedigree', {
@@ -197,6 +212,13 @@ function buildInterview({
     const name = personType.variables[stage.name];
     if (name) name.component = 'Text';
   }
+  if (encryptedNames) {
+    const personType = payload.protocol.codebook.node[people.id] as {
+      variables: Record<string, { encrypted?: boolean }>;
+    };
+    const name = personType.variables[stage.name];
+    if (name) name.encrypted = true;
+  }
   return payload;
 }
 
@@ -212,7 +234,9 @@ function PedigreeStory({
   nameValidation,
   followedByPeopleList,
   followedByNameForm,
-}: StoryOptions) {
+  encryptedNames,
+  onSync,
+}: StoryOptions & ShellOptions) {
   const rawPayload = useMemo(
     () =>
       SuperJSON.stringify(
@@ -228,6 +252,7 @@ function PedigreeStory({
           nameValidation,
           followedByPeopleList,
           followedByNameForm,
+          encryptedNames,
         }),
       ),
     [
@@ -242,6 +267,7 @@ function PedigreeStory({
       nameValidation,
       followedByPeopleList,
       followedByNameForm,
+      encryptedNames,
     ],
   );
 
@@ -250,7 +276,13 @@ function PedigreeStory({
       {/* Changing the story's settings builds a new interview, so the
           running one, with a network made against the old protocol, starts
           over rather than carrying on. */}
-      <StoryInterviewShell key={rawPayload} rawPayload={rawPayload} />
+      <StoryInterviewShell
+        key={rawPayload}
+        rawPayload={rawPayload}
+        onSync={onSync}
+        // The passphrase is entered from the side of the screen.
+        navigationOrientation={encryptedNames ? 'vertical' : undefined}
+      />
     </div>
   );
 }
@@ -1986,5 +2018,140 @@ export const NameIsOptionalByDefault: Story = {
     await body.findByText('Name (optional)');
     await userEvent.click(await body.findByRole('button', { name: 'Save' }));
     await waitFor(() => expect(panelOf(canvasElement)).toBeNull());
+  },
+};
+
+/** The session as the interview last wrote it, for the story recording it. */
+let lastSynced: SessionPayload | undefined;
+const recordSession: SyncHandler = (_interviewId, session) => {
+  lastSynced = session;
+  return Promise.resolve();
+};
+
+/** Every value written encrypted in the session last written. */
+const encryptedValues = () =>
+  (lastSynced?.network.nodes ?? []).flatMap((node) =>
+    Object.keys(node[entitySecureAttributesMeta] ?? {}).map(
+      (variable) => node[entityAttributesProperty][variable],
+    ),
+  );
+
+/** Whether the text is stored as it is anywhere in the session last written. */
+const storedAsText = (text: string) =>
+  (lastSynced?.network.nodes ?? []).some((node) =>
+    Object.values(node[entityAttributesProperty]).includes(text),
+  );
+
+const PASSPHRASE = 'blue whale lighthouse';
+
+/**
+ * The study encrypts names. Until the participant enters their passphrase,
+ * the family cannot be changed, and a notice says why. Once it is entered, a
+ * name typed for a new relative is stored encrypted and shown on the canvas
+ * decrypted. Leaving, the unnamed parents are given labels, stored encrypted
+ * too; coming back, those labels are read as unnamed again, while the typed
+ * name is decrypted into the name question.
+ */
+export const EncryptedNames: Story = {
+  args: { requirement: 'none' },
+  render: (args) => (
+    <PedigreeStory
+      {...settings(args)}
+      encryptedNames
+      followedByPeopleList
+      onSync={recordSession}
+      family={{
+        people: [
+          { id: 'ego', gender: 'nonBinary', sex: 'intersex', ego: true },
+          { id: 'mum', gender: 'woman', sex: 'female' },
+          { id: 'dad', gender: 'man', sex: 'male' },
+        ],
+        links: [
+          { from: 'mum', to: 'dad', kind: 'partner' },
+          { from: 'mum', to: 'ego', kind: 'biological', carrier: true },
+          { from: 'dad', to: 'ego', kind: 'biological' },
+        ],
+      }}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    lastSynced = undefined;
+    const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
+
+    // Without the passphrase, the family waits for it, and says so.
+    const notice = await canvas.findByTestId('pedigree-passphrase-notice');
+    await expect(notice).toHaveTextContent(
+      'Enter your passphrase to see the names in your family',
+    );
+    await expect(canvas.getByTestId('pedigree-tool-connect')).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
+
+    // Entered through the interview's passphrase prompter.
+    await userEvent.click(
+      await canvas.findByRole('button', { name: 'Enter your Passphrase' }),
+    );
+    await userEvent.type(
+      await body.findByRole('textbox', { name: /Passphrase/ }),
+      PASSPHRASE,
+    );
+    await userEvent.click(
+      await body.findByRole('button', { name: 'Submit passphrase' }),
+    );
+    await waitFor(() =>
+      expect(canvas.queryByTestId('pedigree-passphrase-notice')).toBeNull(),
+    );
+
+    // A sister, named.
+    await userEvent.hover(await canvas.findByRole('button', { name: /^You/ }));
+    await userEvent.click(await canvas.findByTestId('pedigree-menu-sibling'));
+    await userEvent.type(
+      await body.findByRole('textbox', { name: /^Name/ }),
+      'Bea',
+    );
+    await userEvent.click(await body.findByRole('radio', { name: 'Woman' }));
+    await userEvent.click(await body.findByRole('radio', { name: 'Female' }));
+    await userEvent.click(
+      await body.findByRole('button', { name: 'Add to family' }),
+    );
+    await waitFor(() => expect(panelOf(canvasElement)).toBeNull());
+
+    // Shown by name, and stored encrypted.
+    await canvas.findByRole('button', { name: /^Bea/ });
+    await waitFor(() => {
+      expect(storedAsText('Bea')).toBe(false);
+      expect(encryptedValues()).toHaveLength(1);
+    });
+
+    // Leaving gives the parents labels, encrypted as well, which the next
+    // stage decrypts.
+    await leaveForPeopleList(canvasElement);
+    for (const name of ['Bea', 'Mother', 'Father']) {
+      await expect(await canvas.findByText(name)).toBeInTheDocument();
+    }
+    await waitFor(() => {
+      expect(encryptedValues()).toHaveLength(3);
+      for (const label of ['Mother', 'Father']) {
+        expect(storedAsText(label)).toBe(false);
+      }
+    });
+
+    // Back on the pedigree, the labels are not names, and the typed name is.
+    await returnToPedigree(canvasElement);
+    await userEvent.click(
+      await canvas.findByRole('button', { name: /^Mother/ }),
+    );
+    await expect(
+      await body.findByRole('textbox', { name: /^Name/ }),
+    ).toHaveValue('');
+    await userEvent.click(await body.findByRole('button', { name: 'Cancel' }));
+    await waitFor(() => expect(panelOf(canvasElement)).toBeNull());
+
+    await userEvent.click(await canvas.findByRole('button', { name: /^Bea/ }));
+    await expect(
+      await body.findByRole('textbox', { name: /^Name/ }),
+    ).toHaveValue('Bea');
   },
 };
