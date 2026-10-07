@@ -19,6 +19,7 @@ import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import { InterviewI18nProvider } from '../../../i18n/InterviewI18nProvider';
 import protocol from '../../../store/modules/protocol';
 import session from '../../../store/modules/session';
+import ui from '../../../store/modules/ui';
 import type { StageProps } from '../../../types';
 import { useFamilyPedigreeStore } from '../../FamilyPedigree/FamilyPedigreeContext';
 import { FamilyPedigreeProvider } from '../../FamilyPedigree/FamilyPedigreeProvider';
@@ -237,7 +238,7 @@ function makeStore(
   framingOptions?: FramingOptions,
 ) {
   return configureStore({
-    reducer: { protocol, session },
+    reducer: { protocol, session, ui },
     preloadedState: {
       protocol: {
         codebook,
@@ -770,7 +771,7 @@ function makeCousinNarrativeStage(showAtRiskStatuses = true): NarrativeStage {
 function renderCousinView(showAtRiskStatuses = true) {
   const stage = makeCousinNarrativeStage(showAtRiskStatuses);
   const store = configureStore({
-    reducer: { protocol, session },
+    reducer: { protocol, session, ui },
     preloadedState: {
       protocol: {
         codebook,
@@ -1009,7 +1010,7 @@ describe('NarrativePedigreeView — no dimming without a focal node', () => {
       ],
     };
     const store = configureStore({
-      reducer: { protocol, session },
+      reducer: { protocol, session, ui },
       preloadedState: {
         protocol: {
           codebook,

@@ -1,5 +1,7 @@
+import { configureStore } from '@reduxjs/toolkit';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { Provider } from 'react-redux';
 import { describe, expect, it, vi } from 'vitest';
 
 import { asEntityAttributeReference } from '@codaco/protocol-validation';
@@ -7,6 +9,9 @@ import type { NcEdge, NcNode } from '@codaco/shared-consts';
 
 import { InterviewI18nProvider } from '../../../i18n/InterviewI18nProvider';
 import type * as sessionSelectors from '../../../selectors/session';
+import protocol from '../../../store/modules/protocol';
+import session from '../../../store/modules/session';
+import ui from '../../../store/modules/ui';
 import type * as interviewStore from '../../../store/store';
 import type { StageProps } from '../../../types';
 import FamilyPedigree from '../FamilyPedigree';
@@ -74,6 +79,7 @@ vi.mock('../utils/nodeUtils', async (importOriginal) => ({
   getEgoVariable: () => 'isEgo',
   getRelationshipVariable: () => 'relationship',
   getBiologicalSexVariable: () => 'biologicalSex',
+  getNodeForm: () => undefined,
 }));
 vi.mock('../utils/edgeUtils', async (importOriginal) => ({
   ...(await importOriginal<typeof edgeUtils>()),
@@ -169,10 +175,22 @@ const props = {
 describe('FamilyPedigree build announcements', () => {
   it('consumes add, remove and completion events while later actions use the current language', async () => {
     const user = userEvent.setup();
+    // Passphrase state and the codebook's encrypted flags come from Redux.
+    const store = configureStore({
+      reducer: { protocol, session, ui },
+      preloadedState: {
+        protocol: {
+          codebook: { node: { person: { name: 'Person', variables: {} } } },
+          stages: [],
+        } as never,
+      },
+    });
     const view = (locale: string) => (
-      <InterviewI18nProvider requestedLocale={locale}>
-        <FamilyPedigree {...props} />
-      </InterviewI18nProvider>
+      <Provider store={store}>
+        <InterviewI18nProvider requestedLocale={locale}>
+          <FamilyPedigree {...props} />
+        </InterviewI18nProvider>
+      </Provider>
     );
     const { rerender } = render(view('en'));
     await user.click(screen.getByRole('button', { name: 'Add relative' }));

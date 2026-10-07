@@ -28,6 +28,8 @@ import {
 import { toggleNodeAttributes } from '../../store/modules/session';
 import { useAppDispatch } from '../../store/store';
 import type { StageProps } from '../../types';
+import PassphraseNotice from '../Anonymisation/PassphraseNotice';
+import { useDecryptedNodes } from '../Anonymisation/useDecryptedNodes';
 import { buildPedigreeDialog } from './buildPedigreeDialog';
 import PedigreeChecklist from './components/PedigreeChecklist';
 import EgoCellWizard from './components/wizards/EgoCellWizard';
@@ -159,9 +161,24 @@ const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
     biologicalSexVariable,
   };
 
+  // The nomination steps show the committed relatives from Redux, where
+  // encrypted names are stored as ciphertext.
+  const committedNodes = useMemo(
+    () =>
+      isNetworkCommitted
+        ? [...buildOverrideNodesMap(allNodes, nodeType, memberIds).values()]
+        : [],
+    [isNetworkCommitted, allNodes, nodeType, memberIds],
+  );
+  const decryptedCommittedNodes = useDecryptedNodes(committedNodes);
+  const plaintextCommittedNodes =
+    decryptedCommittedNodes.status === 'ready'
+      ? decryptedCommittedNodes.nodes
+      : null;
   const reduxNodesMap = useMemo(
-    () => buildOverrideNodesMap(allNodes, nodeType, memberIds),
-    [allNodes, nodeType, memberIds],
+    () =>
+      new Map((plaintextCommittedNodes ?? []).map((node) => [node._uid, node])),
+    [plaintextCommittedNodes],
   );
   const reduxEdgesMap = useMemo(
     () => buildOverrideEdgesMap(allEdges, edgeType),
@@ -530,14 +547,18 @@ const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
           ) : (
             <>
               {isNetworkCommitted && currentStepIndex > 0 ? (
-                <PedigreeView
-                  overrideNodes={reduxNodesMap}
-                  overrideEdges={reduxEdgesMap}
-                  activeNominationVariable={
-                    allPrompts[currentStepIndex]?.variable ?? null
-                  }
-                  onToggleAttribute={handleToggleAttribute}
-                />
+                decryptedCommittedNodes.status === 'ready' ? (
+                  <PedigreeView
+                    overrideNodes={reduxNodesMap}
+                    overrideEdges={reduxEdgesMap}
+                    activeNominationVariable={
+                      allPrompts[currentStepIndex]?.variable ?? null
+                    }
+                    onToggleAttribute={handleToggleAttribute}
+                  />
+                ) : (
+                  <PassphraseNotice status={decryptedCommittedNodes.status} />
+                )
               ) : (
                 <PedigreeView isFinalized={isNetworkCommitted} />
               )}
