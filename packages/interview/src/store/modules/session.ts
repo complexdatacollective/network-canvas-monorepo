@@ -19,7 +19,10 @@ import {
 
 import { rememberEncryptedWrite } from '../../interfaces/Anonymisation/decryptionScope';
 import { isAttributeEncrypted } from '../../interfaces/Anonymisation/isAttributeEncrypted';
-import { generateSecureAttributes } from '../../interfaces/Anonymisation/utils';
+import {
+  generateSecureAttributes,
+  PassphraseRequiredError,
+} from '../../interfaces/Anonymisation/utils';
 import {
   makeGetCodebookVariablesForEdgeType,
   makeGetCodebookVariablesForNodeType,
@@ -142,6 +145,20 @@ const actionTypes = {
 
 const initialState = {} as SessionState;
 
+/**
+ * The passphrase an encrypted write may use. Throwing rejects the whole write,
+ * so a patch that mixes encrypted and plain values is never applied in part.
+ */
+function requireUsablePassphrase(state: {
+  ui: { passphrase: string | null; passphraseInvalid: boolean };
+}): string {
+  const { passphrase, passphraseInvalid } = state.ui;
+  if (!passphrase || passphraseInvalid) {
+    throw new PassphraseRequiredError();
+  }
+  return passphrase;
+}
+
 type AddNodeArgs = {
   type: NcNode['type'];
   attributeData?: Readonly<Record<string, VariableValue | undefined>>;
@@ -206,12 +223,7 @@ export const addNode = createAppAsyncThunk(
       };
     }
 
-    const { passphrase } = state.ui;
-
-    invariant(
-      passphrase,
-      'Passphrase is required to add a node when encryption is enabled',
-    );
+    const passphrase = requireUsablePassphrase(state);
 
     const { secureAttributes, encryptedAttributes } =
       await generateSecureAttributes(
@@ -335,9 +347,7 @@ export const updateNode = createAppAsyncThunk(
       };
     }
 
-    const { passphrase } = state.ui;
-
-    invariant(passphrase, 'Passphrase is required to update this node');
+    const passphrase = requireUsablePassphrase(state);
 
     const { secureAttributes, encryptedAttributes } =
       await generateSecureAttributes(
@@ -799,10 +809,6 @@ const sessionReducer = createReducer(initialState, (builder) => {
     const { nodeId, attributePatch, newModelData, secureSet } = action.payload;
     const { network } = state;
     const { nodes } = network;
-
-    // TODO: must be updated to support encrypted attributes.
-    // Should have an additional parameter controlling this (see addNode)
-    // Stage should control this parameter, using the usePassphrase hook
 
     return withLastUpdated({
       ...state,

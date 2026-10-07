@@ -3,18 +3,14 @@ import type { ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { describe, expect, it } from 'vitest';
 
-import {
-  entityAttributesProperty,
-  entityPrimaryKeyProperty,
-  type NcNode,
-} from '@codaco/shared-consts';
+import type { NcNode } from '@codaco/shared-consts';
 
 import { setPassphrase } from '../../../store/modules/ui';
 import { useNodeLabel } from '../useNodeLabel';
 import {
   createEncryptionStore,
   makeEncryptedPerson,
-  NODE_TYPE,
+  makePlainPerson,
 } from './encryptionFixtures';
 
 type EncryptionStore = ReturnType<typeof createEncryptionStore>;
@@ -142,11 +138,7 @@ describe('useNodeLabel with encrypted labels', () => {
 
 describe('useNodeLabel with the encrypted-variables experiment off', () => {
   it('shows a plaintext label without asking for a passphrase', async () => {
-    const node: NcNode = {
-      [entityPrimaryKeyProperty]: 'n1',
-      type: NODE_TYPE,
-      [entityAttributesProperty]: { name: 'Alice', age: 40 },
-    };
+    const node = makePlainPerson('n1', 'Alice');
     const store = createEncryptionStore([node], undefined, undefined, false);
 
     const { result, seen } = renderLabel(store, node);

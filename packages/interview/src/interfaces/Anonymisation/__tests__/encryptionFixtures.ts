@@ -56,6 +56,15 @@ export async function makeEncryptedPerson(
   };
 }
 
+/** A person whose `name` is stored as plaintext, as it is with encryption off. */
+export function makePlainPerson(id: string, name: string): NcNode {
+  return {
+    [entityPrimaryKeyProperty]: id,
+    type: NODE_TYPE,
+    [entityAttributesProperty]: { name, age: 40 },
+  };
+}
+
 type Stages = InterviewPayload['protocol']['stages'];
 
 const nameGeneratorStages: Stages = [
