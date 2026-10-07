@@ -1,5 +1,5 @@
-import { Check, Ellipsis, Plus, Table2, Trash2 } from 'lucide-react';
-import { type MouseEvent, useId, useMemo, useRef, useState } from 'react';
+import { Check, Plus, Table2, Trash2 } from 'lucide-react';
+import { type MouseEvent, useId, useMemo, useRef } from 'react';
 import { useSelector } from 'react-redux';
 import { Link, useLocation } from 'wouter';
 
@@ -9,16 +9,15 @@ import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import { Badge } from '@codaco/fresco-ui/Badge';
 import Button, { IconButton } from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@codaco/fresco-ui/DropdownMenu';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import ProgressBar from '@codaco/fresco-ui/ProgressBar';
 import Section from '@codaco/fresco-ui/Section';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@codaco/fresco-ui/Tooltip';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import {
   type LocaleTag,
@@ -110,23 +109,17 @@ const messages = defineMessages({
     defaultMessage: 'Default',
     description: 'Badge marking the default language of a protocol.',
   },
-  actionsFor: {
-    id: 'architect.localization.languageList.actionsFor',
-    defaultMessage: 'Actions for {language}',
-    description:
-      'Accessible name of the button that opens the menu of actions for one protocol language, and of that menu. language is the language name.',
-  },
   identifyLanguage: {
     id: 'architect.localization.languageList.identifyLanguage',
     defaultMessage: 'Identify language',
     description:
       'Button that names the language of text whose language has not been identified.',
   },
-  remove: {
-    id: 'architect.localization.languageList.remove',
-    defaultMessage: 'Remove',
+  removeLanguage: {
+    id: 'architect.localization.languageList.removeLanguage',
+    defaultMessage: 'Remove {language}',
     description:
-      'Item in the menu of actions for one protocol language that removes it from the protocol.',
+      'Accessible name of the delete button at the end of a protocol language’s row, which removes that language from the protocol. language is the language name.',
   },
   coverage: {
     id: 'architect.localization.languageList.coverage',
@@ -154,14 +147,14 @@ const messages = defineMessages({
     defaultMessage:
       'To remove the default language, make another language the default first.',
     description:
-      'Shown under the unavailable Remove item in the menu of actions for the default language, saying why it cannot be removed.',
+      'Tooltip and accessible description of the unavailable delete button of the default language, saying why it cannot be removed.',
   },
   strandedNote: {
     id: 'architect.localization.languageList.strandedNote',
     defaultMessage:
       '{count, plural, one {# text exists only in {language}. Translate it into another language before removing {language}.} other {# texts exist only in {language}. Translate them into another language before removing {language}.}}',
     description:
-      'Shown under the unavailable Remove item in the menu of actions for a language, saying why it cannot be removed: some text has no other translation.',
+      'Tooltip and accessible description of the unavailable delete button of a language, saying why it cannot be removed: some text has no other translation.',
   },
 });
 
@@ -336,9 +329,7 @@ const LanguageRow = ({
 }: LanguageRowProps) => {
   const intl = useAppIntl();
   const languageName = useLanguageName();
-  const [menuOpen, setMenuOpen] = useState(false);
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  const removeLabelId = useId();
+  const removeButtonRef = useRef<HTMLButtonElement>(null);
   const removalReasonId = useId();
   const { locale, isDefault, translated, missing } = entry;
   const isUnspecified = locale === UNSPECIFIED_LOCALE;
@@ -353,14 +344,6 @@ const LanguageRow = ({
           language,
         })
       : null;
-
-  // A dialog opened from the menu waits for the menu to close, so the menu
-  // handing focus back to its button cannot pull it out of the dialog.
-  const runMenuAction =
-    (action: (returnFocus: ReturnFocus) => Promise<void>) => () => {
-      setMenuOpen(false);
-      void Promise.resolve().then(() => action(() => triggerRef.current));
-    };
 
   return (
     <li className="flex items-start gap-4 py-5">
@@ -416,53 +399,42 @@ const LanguageRow = ({
           </div>
         )}
       </div>
-      <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
-        <DropdownMenuTrigger
+      {/* An unavailable button stays focusable (aria-disabled rather than
+          disabled), so its reason reaches keyboard and pointer users as a
+          tooltip and screen readers as its description. */}
+      <Tooltip disabled={removalBlockedReason === null}>
+        <TooltipTrigger
           render={
             <IconButton
-              ref={triggerRef}
+              ref={removeButtonRef}
               variant="text"
               color="dynamic"
-              aria-label={intl.formatMessage(messages.actionsFor, {
+              aria-label={intl.formatMessage(messages.removeLanguage, {
                 language,
               })}
-              icon={<Ellipsis aria-hidden />}
+              aria-disabled={removalBlockedReason !== null || undefined}
+              aria-describedby={
+                removalBlockedReason === null ? undefined : removalReasonId
+              }
+              icon={<Trash2 aria-hidden />}
+              onClick={() => {
+                if (removalBlockedReason !== null) return;
+                void onRemove(() => removeButtonRef.current);
+              }}
             />
           }
         />
-        <DropdownMenuContent side="bottom" align="end">
-          {removalBlockedReason ? (
-            // Disabled items stay reachable with the arrow keys, and the
-            // reason is part of the item rather than a tooltip, so it is read
-            // out and seen by everyone who finds the item unavailable.
-            <DropdownMenuItem
-              disabled
-              aria-labelledby={removeLabelId}
-              aria-describedby={removalReasonId}
-              icon={<Trash2 aria-hidden className="opacity-50" />}
-              className="items-start data-disabled:opacity-100"
-            >
-              <span className="flex flex-col gap-1">
-                <span id={removeLabelId} className="opacity-50">
-                  {intl.formatMessage(messages.remove)}
-                </span>
-                <span id={removalReasonId} className="max-w-64 text-sm">
-                  {removalBlockedReason}
-                </span>
-              </span>
-            </DropdownMenuItem>
-          ) : (
-            <DropdownMenuItem
-              icon={<Trash2 aria-hidden className="text-destructive-ink" />}
-              onClick={runMenuAction(onRemove)}
-            >
-              <span className="text-destructive-ink">
-                {intl.formatMessage(messages.remove)}
-              </span>
-            </DropdownMenuItem>
-          )}
-        </DropdownMenuContent>
-      </DropdownMenu>
+        {removalBlockedReason !== null && (
+          <TooltipContent side="left" className="max-w-64">
+            {removalBlockedReason}
+          </TooltipContent>
+        )}
+      </Tooltip>
+      {removalBlockedReason !== null && (
+        <span id={removalReasonId} hidden>
+          {removalBlockedReason}
+        </span>
+      )}
     </li>
   );
 };

@@ -1759,10 +1759,6 @@
     "defaultMessage": "Search languages",
     "description": "Placeholder of the search box in the list of languages."
   },
-  "architect.localization.languageList.actionsFor": {
-    "defaultMessage": "Actions for {language}",
-    "description": "Accessible name of the button that opens the menu of actions for one protocol language, and of that menu. language is the language name."
-  },
   "architect.localization.languageList.addLanguages": {
     "defaultMessage": "Add languages",
     "description": "Button that opens the dialog for adding languages."
@@ -1789,7 +1785,7 @@
   },
   "architect.localization.languageList.defaultNote": {
     "defaultMessage": "To remove the default language, make another language the default first.",
-    "description": "Shown under the unavailable Remove item in the menu of actions for the default language, saying why it cannot be removed."
+    "description": "Tooltip and accessible description of the unavailable delete button of the default language, saying why it cannot be removed."
   },
   "architect.localization.languageList.description": {
     "defaultMessage": "Participants can take the interview in any of these languages.",
@@ -1815,13 +1811,13 @@
     "defaultMessage": "Open translation table",
     "description": "Link under the list of protocol languages to the translation table, which shows every participant-facing text beside its translation into each language."
   },
-  "architect.localization.languageList.remove": {
-    "defaultMessage": "Remove",
-    "description": "Item in the menu of actions for one protocol language that removes it from the protocol."
+  "architect.localization.languageList.removeLanguage": {
+    "defaultMessage": "Remove {language}",
+    "description": "Accessible name of the delete button at the end of a protocol language’s row, which removes that language from the protocol. language is the language name."
   },
   "architect.localization.languageList.strandedNote": {
     "defaultMessage": "{count, plural, one {# text exists only in {language}. Translate it into another language before removing {language}.} other {# texts exist only in {language}. Translate them into another language before removing {language}.}}",
-    "description": "Shown under the unavailable Remove item in the menu of actions for a language, saying why it cannot be removed: some text has no other translation."
+    "description": "Tooltip and accessible description of the unavailable delete button of a language, saying why it cannot be removed: some text has no other translation."
   },
   "architect.localization.languageList.title": {
     "defaultMessage": "Protocol languages",

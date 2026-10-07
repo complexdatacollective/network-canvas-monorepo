@@ -122,34 +122,10 @@ const rowOf = (language: string) => {
   return row;
 };
 
-const actionsTrigger = (language: string) =>
+const removeButton = (language: string) =>
   within(rowOf(language)).getByRole('button', {
-    name: `Actions for ${language}`,
+    name: `Remove ${language}`,
   });
-
-const openActions = async (language: string) => {
-  await userEvent.click(actionsTrigger(language));
-  return screen.findByRole('menu', { name: `Actions for ${language}` });
-};
-
-const closeActions = async (language: string) => {
-  await userEvent.keyboard('{Escape}');
-  await waitFor(() =>
-    expect(
-      screen.queryByRole('menu', { name: `Actions for ${language}` }),
-    ).not.toBeInTheDocument(),
-  );
-};
-
-const chooseAction = async (language: string, action: string) => {
-  const menu = await openActions(language);
-  await userEvent.click(within(menu).getByRole('menuitem', { name: action }));
-};
-
-const removeItem = async (language: string) => {
-  const menu = await openActions(language);
-  return within(menu).getByRole('menuitem', { name: 'Remove' });
-};
 
 const finishedEditing = () =>
   screen.queryByRole('button', { name: 'Finished Editing' });
@@ -166,13 +142,10 @@ describe('the language chooser’s languages in Architect', () => {
       screen.getByRole('heading', { name: 'Languages' }),
     ).toBeInTheDocument();
     for (const language of ['English', 'French', 'German']) {
-      expect(actionsTrigger(language)).toBeInTheDocument();
+      expect(removeButton(language)).toBeInTheDocument();
     }
-    const menu = await openActions('French');
-    expect(
-      within(menu).getByRole('menuitem', { name: 'Remove' }),
-    ).toBeInTheDocument();
-    await closeActions('French');
+    expect(removeButton('French')).not.toHaveAttribute('aria-disabled');
+    expect(removeButton('English')).toHaveAttribute('aria-disabled', 'true');
     expect(
       screen.getByRole('combobox', { name: 'Default language' }),
     ).toHaveDisplayValue('English');
@@ -253,7 +226,7 @@ describe('the language chooser’s languages in Architect', () => {
   it('leaves nothing to save after removing a language from an untouched stage', async () => {
     const { store } = await openEditor();
 
-    await chooseAction('French', 'Remove');
+    await userEvent.click(removeButton('French'));
 
     await waitFor(() =>
       expect(getProtocol(store.getState())?.localization.locales).toEqual([
@@ -276,7 +249,7 @@ describe('the language chooser’s languages in Architect', () => {
     await userEvent.type(name, 'Pick a language');
     await waitFor(() => expect(readStageDraft().dirty).toBe(true));
 
-    await chooseAction('French', 'Remove');
+    await userEvent.click(removeButton('French'));
 
     await waitFor(() =>
       expect(readStageDraft().stage?.label).toEqual({
@@ -311,7 +284,7 @@ describe('the language chooser’s languages in Architect', () => {
 
     await userEvent.clear(name);
     await userEvent.type(name, 'Pick a language');
-    await chooseAction('French', 'Remove');
+    await userEvent.click(removeButton('French'));
     await waitFor(() =>
       expect(readStageDraft().stage?.label).toEqual({
         en: 'Pick a language',
@@ -335,8 +308,7 @@ describe('the language chooser’s languages in Architect', () => {
 
   it('counts the open stage’s unsaved text when a language would be removed', async () => {
     const { name } = await openEditor();
-    expect(await removeItem('French')).not.toHaveAttribute('aria-disabled');
-    await closeActions('French');
+    expect(removeButton('French')).not.toHaveAttribute('aria-disabled');
 
     // The stage's name is now only in French, though the protocol still has
     // it in English as well.
@@ -345,7 +317,7 @@ describe('the language chooser’s languages in Architect', () => {
       expect(readStageDraft().stage?.label).toEqual({ fr: LABEL.fr }),
     );
 
-    const remove = await removeItem('French');
+    const remove = removeButton('French');
     expect(remove).toHaveAttribute('aria-disabled', 'true');
     expect(remove).toHaveAccessibleDescription(
       '1 text exists only in French. Translate it into another language before removing French.',

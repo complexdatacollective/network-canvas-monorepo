@@ -76,19 +76,9 @@ function languageRows(page: Page): Locator {
     .getByRole('listitem');
 }
 
-/** Opens a language's actions menu, which holds every change to it. */
-async function openActions(page: Page, language: string): Promise<Locator> {
-  await page
-    .getByRole('button', { name: `Actions for ${language}`, exact: true })
-    .click();
-  const menu = page.getByRole('menu', { name: `Actions for ${language}` });
-  await expect(menu).toBeVisible();
-  return menu;
-}
-
-async function closeActions(page: Page, menu: Locator) {
-  await page.keyboard.press('Escape');
-  await expect(menu).toBeHidden();
+/** The delete button at the end of a language's row. */
+function removeButton(page: Page, language: string): Locator {
+  return page.getByRole('button', { name: `Remove ${language}`, exact: true });
 }
 
 function translationTableDialog(page: Page): Locator {
@@ -183,11 +173,7 @@ test('adds a language, keeps the default language from being removed, translates
     '/protocol/localization?table=open',
   );
   // A language with no translations of its own strands nothing, so it can go.
-  const frenchActions = await openActions(page, 'French');
-  await expect(
-    frenchActions.getByRole('menuitem', { name: 'Remove', exact: true }),
-  ).toBeEnabled();
-  await closeActions(page, frenchActions);
+  await expect(removeButton(page, 'French')).toBeEnabled();
   await expect(
     page.getByRole('link', { name: /^Languages\b/ }),
   ).toHaveAccessibleName(/has missing translations/);
@@ -222,45 +208,28 @@ test('adds a language, keeps the default language from being removed, translates
   });
   expect(frenchDefault.stages).toEqual(before.stages);
 
-  // The default language cannot be removed, and its Remove item says why.
-  // The item stays reachable with the arrow keys, so the reason reaches
-  // keyboard users too, and choosing it does nothing.
-  const frenchActionsButton = page.getByRole('button', {
-    name: 'Actions for French',
-    exact: true,
-  });
-  await frenchActionsButton.focus();
-  await page.keyboard.press('Enter');
-  const defaultActions = page.getByRole('menu', {
-    name: 'Actions for French',
-  });
-  await expect(defaultActions.getByRole('menuitem')).toHaveCount(1);
-  await page.keyboard.press('ArrowDown');
-  const removeFrench = defaultActions.getByRole('menuitem', {
-    name: 'Remove',
-    exact: true,
-  });
+  // The default language cannot be removed, and its delete button says why.
+  // The button stays in the tab order, so the reason reaches keyboard users
+  // too, and pressing it does nothing.
+  const defaultReason =
+    'To remove the default language, make another language the default first.';
+  const removeFrench = removeButton(page, 'French');
+  await removeFrench.focus();
   await expect(removeFrench).toBeFocused();
   await expect(removeFrench).toBeDisabled();
-  await expect(removeFrench).toHaveAccessibleDescription(
-    'To remove the default language, make another language the default first.',
-  );
+  await expect(removeFrench).toHaveAccessibleDescription(defaultReason);
+  await expect(page.getByRole('tooltip')).toHaveText(defaultReason);
   await page.keyboard.press('Enter');
   await expect(page.getByRole('dialog')).toHaveCount(0);
-  await closeActions(page, defaultActions);
-  await expect(frenchActionsButton).toBeFocused();
   // Nor can English, though it is no longer the default: its texts exist in
   // no other language yet.
-  const englishActions = await openActions(page, 'English');
-  const removeEnglish = englishActions.getByRole('menuitem', {
-    name: 'Remove',
-    exact: true,
-  });
+  const strandedReason =
+    '3 texts exist only in English. Translate them into another language before removing English.';
+  const removeEnglish = removeButton(page, 'English');
   await expect(removeEnglish).toBeDisabled();
-  await expect(removeEnglish).toHaveAccessibleDescription(
-    '3 texts exist only in English. Translate them into another language before removing English.',
-  );
-  await closeActions(page, englishActions);
+  await expect(removeEnglish).toHaveAccessibleDescription(strandedReason);
+  await removeEnglish.hover();
+  await expect(page.getByRole('tooltip')).toHaveText(strandedReason);
   expect((await readProtocolJson(page)).localization.locales).toEqual([
     'en',
     'fr',
@@ -400,11 +369,7 @@ function stageLanguageRow(page: Page, code: string): Locator {
 }
 
 async function removeLanguage(page: Page, language: string) {
-  await (
-    await openActions(page, language)
-  )
-    .getByRole('menuitem', { name: 'Remove', exact: true })
-    .click();
+  await removeButton(page, language).click();
   const confirm = page.getByRole('dialog', { name: `Remove ${language}?` });
   await confirm
     .getByRole('button', { name: 'Remove language', exact: true })

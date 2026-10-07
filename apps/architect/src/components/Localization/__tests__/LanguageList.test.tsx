@@ -74,15 +74,10 @@ const rowOf = (language: string) => {
   return row;
 };
 
-const actionsTrigger = (language: string) =>
+const removeButton = (language: string) =>
   within(rowOf(language)).getByRole('button', {
-    name: `Actions for ${language}`,
+    name: `Remove ${language}`,
   });
-
-const openActions = async (language: string) => {
-  fireEvent.click(actionsTrigger(language));
-  return screen.findByRole('menu', { name: `Actions for ${language}` });
-};
 
 describe('LanguageList', () => {
   it('lists languages alphabetically by name, whatever order the protocol declares them in', () => {
@@ -108,16 +103,15 @@ describe('LanguageList', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('names the language in every control of its row', () => {
+  it('gives each language one control, which removes it and is named for it', () => {
     renderLanguageList();
 
-    const german = within(rowOf('German'));
     expect(
-      german.getByRole('button', { name: 'Actions for German' }),
-    ).toBeVisible();
-    expect(
-      german.queryByRole('button', { name: /^(Remove|Make default)$/ }),
-    ).not.toBeInTheDocument();
+      within(rowOf('German'))
+        .getAllByRole('button')
+        .map((button) => button.getAttribute('aria-label')),
+    ).toEqual(['Remove German']);
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
   });
 
   it('marks a language that is missing translations, without linking anywhere', () => {
@@ -142,63 +136,51 @@ describe('LanguageList', () => {
     ).toBeInTheDocument();
   });
 
-  it('keeps the default language’s Remove in its menu, unavailable, and says why', async () => {
-    renderLanguageList();
-
-    const menu = await openActions('English');
-    expect(
-      within(menu).queryByRole('menuitem', { name: 'Make default' }),
-    ).not.toBeInTheDocument();
-
-    const remove = within(menu).getByRole('menuitem', { name: 'Remove' });
-    expect(remove).toHaveAttribute('aria-disabled', 'true');
-    expect(remove).toHaveAccessibleDescription(DEFAULT_REASON);
-    expect(remove).toHaveTextContent(DEFAULT_REASON);
-
-    fireEvent.click(remove);
-    expect(globalThis.__architectDialogMocks.confirm).not.toHaveBeenCalled();
-  });
-
-  it('says why a language holding the only copy of a text cannot be removed', async () => {
-    renderLanguageList();
-
-    const menu = await openActions('French');
-    const remove = within(menu).getByRole('menuitem', { name: 'Remove' });
-    expect(remove).toHaveAttribute('aria-disabled', 'true');
-    expect(remove).toHaveAccessibleDescription(STRANDED_REASON);
-    expect(remove).toHaveTextContent(STRANDED_REASON);
-  });
-
-  it('reaches an unavailable Remove with the arrow keys and closes on Escape', async () => {
+  it('keeps the default language’s delete button unavailable, and says why', async () => {
     const user = userEvent.setup();
     renderLanguageList();
 
-    const trigger = actionsTrigger('English');
-    trigger.focus();
-    await user.keyboard('{Enter}');
-    const menu = await screen.findByRole('menu', {
-      name: 'Actions for English',
-    });
-    const remove = within(menu).getByRole('menuitem', { name: 'Remove' });
+    const remove = removeButton('English');
+    expect(remove).toHaveAttribute('aria-disabled', 'true');
+    expect(remove).toHaveAccessibleDescription(DEFAULT_REASON);
 
-    await user.keyboard('{ArrowDown}');
+    await user.hover(remove);
+    expect(await screen.findByRole('tooltip')).toHaveTextContent(
+      DEFAULT_REASON,
+    );
+
+    await user.click(remove);
+    expect(globalThis.__architectDialogMocks.confirm).not.toHaveBeenCalled();
+  });
+
+  it('says why a language holding the only copy of a text cannot be removed', () => {
+    renderLanguageList();
+
+    const remove = removeButton('French');
+    expect(remove).toHaveAttribute('aria-disabled', 'true');
+    expect(remove).toHaveAccessibleDescription(STRANDED_REASON);
+  });
+
+  it('keeps an unavailable delete button in the tab order, and shows why on focus', async () => {
+    const user = userEvent.setup();
+    renderLanguageList();
+
+    const remove = removeButton('English');
+    remove.focus();
     expect(remove).toHaveFocus();
+    expect(await screen.findByRole('tooltip')).toHaveTextContent(
+      DEFAULT_REASON,
+    );
+
     await user.keyboard('{Enter}');
     expect(globalThis.__architectDialogMocks.confirm).not.toHaveBeenCalled();
-
-    await user.keyboard('{Escape}');
-    expect(
-      screen.queryByRole('menu', { name: 'Actions for English' }),
-    ).not.toBeInTheDocument();
-    expect(trigger).toHaveFocus();
   });
 
   it('removes a language that can be removed, then returns focus to Add languages', async () => {
     const { store } = renderLanguageList();
     const { confirm } = globalThis.__architectDialogMocks;
 
-    const menu = await openActions('German');
-    const remove = within(menu).getByRole('menuitem', { name: 'Remove' });
+    const remove = removeButton('German');
     expect(remove).not.toHaveAttribute('aria-disabled');
     expect(remove).not.toHaveAccessibleDescription();
     fireEvent.click(remove);
@@ -247,17 +229,6 @@ describe('LanguageList', () => {
     expect(
       within(rowOf('English')).queryByText('Default'),
     ).not.toBeInTheDocument();
-  });
-
-  it('offers no way to rename a language', async () => {
-    renderLanguageList();
-
-    const menu = await openActions('German');
-    expect(
-      within(menu)
-        .getAllByRole('menuitem')
-        .map((item) => item.textContent),
-    ).toEqual(['Remove']);
   });
 
   it('identifies the language of unidentified text from its notice', async () => {
