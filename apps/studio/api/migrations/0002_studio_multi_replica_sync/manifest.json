@@ -1,0 +1,12 @@
+{
+  "version": "0002_studio_multi_replica_sync",
+  "ordinal": 2,
+  "fingerprint": "7c1c312fe7f968e8acd95cb19006a75dd15ed9778852df673ffb1d1680ddc623",
+  "drops": [],
+  "artefacts": {
+    "delta.sql": "32f864ade21a9c8464678db1256e56dfd0f795f2db18274f43681052242a1f66",
+    "sidecars.sql": "1d77cfb1dacfe716bcc040bae2e87e10a99bab081e0e84ecabe1e697639df001",
+    "snapshot.json": "c666fc523c3d415f7a2d972e9eafc5ec3fd101fb1848e231653c27c53151f675"
+  },
+  "combined": "c7e94c81002961e77a8474ccfce7dbcc3ded8fd198d7768eb5e89d059be42968"
+}
