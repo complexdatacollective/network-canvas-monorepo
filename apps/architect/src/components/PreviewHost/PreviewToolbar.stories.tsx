@@ -35,7 +35,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'The bar above an interview preview. Its menu lists every language the protocol declares, each named in that language, and shows the interview in the one chosen until the preview window closes. A language chooser stage moves it too.',
+          'The bar above an interview preview. Its menu lists every language the protocol declares alphabetically, each named in that language, and shows the interview in the one chosen until the preview window closes. A language chooser stage moves it too.',
       },
     },
   },
@@ -46,9 +46,12 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** A protocol translated into several languages, one written right to left. */
+/**
+ * A protocol translated into several languages, one written right to left.
+ * The menu sorts them by name, whatever order the protocol declares them in.
+ */
 export const SeveralLanguages: Story = {
-  args: { locales: ['en', 'fr', 'ar', 'zh-Hans'], initialLocale: 'en' },
+  args: { locales: ['zh-Hans', 'ar', 'fr', 'en'], initialLocale: 'en' },
   play: async ({ args, canvasElement }) => {
     const canvas = within(canvasElement);
     const menu = canvas.getByRole('combobox', { name: 'Preview language' });
@@ -76,8 +79,9 @@ export const UnspecifiedLanguage: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const menu = canvas.getByRole('combobox', { name: 'Preview language' });
-    const [unspecified] = within(menu).getAllByRole('option');
-    await expect(unspecified).toHaveTextContent('Unspecified language');
+    const unspecified = within(menu).getByRole('option', {
+      name: 'Unspecified language',
+    });
     await expect(unspecified).not.toHaveAttribute('lang');
   },
 };
