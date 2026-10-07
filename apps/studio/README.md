@@ -478,7 +478,7 @@ DDL is idempotent, so reapplying it leaves whatever is queued where it is.
 
 Open the image for the full-size diagram. Tables with row-level security or trigger sidecars carry those details as SVG tooltips. The diagram shows physical foreign-key constraints; deliberately unconstrained logical references are not drawn as relationships. The renderer uses `1`/`*` edge endpoints, so optionality remains visible through each column's not-null marker rather than the edge.
 
-Schema fingerprint: `285d8ea1a261096b69c62e4236fd36f7dce573c62af8f2d22cfe9f86be1ac642`.
+Schema fingerprint: `6540ad67941dd5a4ff0cd957ff82fc51952fa76085090f0448ad5b5a6c90173d`.
 
 Sidecar behavior that cannot be represented as ERD relationships:
 
@@ -1023,9 +1023,9 @@ generating a half-documented entry.
 
 ### Rate limiting
 
-| Variable    | What it is                                                                                    | Development default       | Real deployment                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
-| ----------- | --------------------------------------------------------------------------------------------- | ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `REDIS_URL` | Redis 7-compatible server (the reference stack runs Valkey) holding every rate-limit counter. | `redis://127.0.0.1:63790` | Unset ⇒ there is no limiter store, every limit is disabled, and the server says so once at boot outside development. The reference compose stack always sets it. Any Redis 7-compatible server will do — the limiter uses `EVAL`, sorted sets and hashes and nothing else — and the counters are disposable: losing them resets every window rather than losing data. It is the only part of rate limiting a deployment configures: the limits themselves are constants in `src/rate-limit/scopes.ts` and are not settings. |
+| Variable    | What it is                                                                                                                                                                       | Development default       | Real deployment                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `REDIS_URL` | Redis 7-compatible server (the reference stack runs Valkey) holding every rate-limit counter and carrying the protocol-builder doorbell on the `studio:protocol-events` channel. | `redis://127.0.0.1:63790` | Unset ⇒ there is no limiter store, every limit is disabled, and the server says so once at boot outside development; API replicas then hear of each other’s protocol writes only through the five-second safety poll. The reference compose stack always sets it. Any Redis 7-compatible server will do — the limiter uses `EVAL`, sorted sets and hashes, the doorbell `SUBSCRIBE`, `PUBLISH` and `PING` — and nothing in it is kept: losing the counters resets every window rather than losing data, and a lost doorbell message is covered by the same poll. It is the only part of rate limiting a deployment configures: the limits themselves are constants in `src/rate-limit/scopes.ts` and are not settings. |
 
 <!-- generated:env end -->
 
@@ -1328,12 +1328,13 @@ because it clears away abandoned staged files. Adding a replica to a
 self-hosted stack is two edits and a restart of Traefik, described in
 [the self-host guide](./docs/self-host/run.md#running-more-than-one-api).
 
-More replicas mean more database connections, but transaction-mode pooling
-(PgBouncer in transaction mode, Hyperdrive) is not yet supported for the API
-and the worker. The protocol builder's multi-replica code uses only
-transaction-local state; the rest still relies on the `options` startup
-parameter, named prepared statements, the worker's `LISTEN`, and `migrate`'s
-session advisory lock.
+More replicas mean more database connections. Each API replica opens up to 11
+(a pool of 10, and one for its readiness check), and so does each worker. The
+API, the worker and `migrate` need a direct connection or session-mode
+pooling: transaction-mode pooling (PgBouncer in transaction mode, Hyperdrive)
+is not supported. They use named prepared statements and the `options`
+startup parameter, the worker `LISTEN`s, and `migrate` holds a session
+advisory lock.
 
 The platform that runs it — the host, image publishing, the deploy workflows
 and staging — is

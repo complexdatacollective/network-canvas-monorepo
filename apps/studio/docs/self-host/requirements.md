@@ -61,8 +61,8 @@ docker compose version --short
 
 Port 80 is not optional even though every request is redirected from it: the
 HTTP-01 challenge is answered there, ahead of the redirect. Nothing else is
-published — the database, the object store and the rate-limit store are
-reachable only from the stack's own network.
+published — the database, the object store and the rate-limit store (which
+also carries the doorbell) are reachable only from the stack's own network.
 
 **TLS** is obtained and renewed automatically by Traefik from Let's Encrypt
 over ACME HTTP-01, with no DNS credentials. The certificate and account live in
@@ -276,10 +276,18 @@ The commands Studio issues:
 
 | Where                                        | Commands                                                                                 |
 | -------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| On every connection, as it opens             | `CLIENT SETNAME`, `INFO`                                                                 |
 | Directly                                     | `EVAL`, `SCAN`, `PING`                                                                   |
 | Inside the sliding-window script             | `TIME`, `ZREMRANGEBYSCORE`, `ZCARD`, `ZRANGE … WITHSCORES`, `ZADD`, `PEXPIRE`, `HINCRBY` |
 | Inside the denial-window and summary scripts | `HGET`, `HINCRBY`, `HSET`, `HSETNX`, `HGETALL`, `DEL`, `PEXPIRE`                         |
 | Between API replicas, on one channel         | `PUBLISH`, `SUBSCRIBE`                                                                   |
+
+Studio's Redis client names each connection as it opens (`studio-rate-limit`,
+`studio-doorbell` and `studio-doorbell-publish`), so `CLIENT LIST` shows which
+is which, and asks `INFO` whether the server is ready before it sends anything
+else. A server that refuses `CLIENT SETNAME` is used anyway, and so is one
+whose access rules deny `INFO` (the client logs a warning). One that has
+renamed or removed `INFO` is not: the connection never becomes ready.
 
 The channel is `studio:protocol-events`, and it is not configurable.
 Publishing says that a protocol's edits, locks or editors changed, and each

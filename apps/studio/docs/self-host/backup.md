@@ -80,11 +80,19 @@ for every release that changes the upgrade path.
 
 **The backup an upgrade rolls back to is taken with nothing running that
 writes to the database** — step 2 of [the upgrade sequence](./upgrade.md)
-stops `api` and `worker` first, so that backup holds every write the instance
-accepted before it closed. A scheduled backup of a live instance is fine for
-the database, which is dumped in one consistent snapshot, and fine for the
-object store, which is written additively; it is a copy as of the moment the
-dump started.
+stops every API replica and the `worker` first, so that backup holds every
+write the instance accepted before it closed. A scheduled backup of a live
+instance is fine for the database, which is dumped in one consistent
+snapshot, and fine for the object store, which is written additively; it is a
+copy as of the moment the dump started.
+
+**`staging/` is the one part of the object store that comes and goes.** It
+holds files an editor has chosen in the protocol builder but not yet saved.
+Studio deletes them once they are saved, cancelled or left behind. No saved
+protocol points into `staging/`, so a copy that misses some of it loses no
+saved work, and a restored instance clears out whatever is left there on its
+own. You can leave `staging/` out of your object-store copy if your tool
+makes that easy.
 
 ## How often, and the deadline that sets it
 
@@ -119,8 +127,8 @@ the digests you replaced.
 ```bash
 set -a && . ./.env && set +a
 
-# Stop everything that writes.
-docker compose stop api worker
+# Stop everything that writes: every API replica and the worker.
+docker compose stop $(docker compose config --services | grep '^api') worker
 
 # 1a. A fresh, empty database.
 docker compose exec -T postgres \
@@ -147,7 +155,7 @@ cp backup/studio-secrets-key secrets/studio-secrets-key
 chmod 644 secrets/studio-secrets-key   # readable by the container; secrets/ itself is 700
 
 # Start the release .env names, then reopen the instance.
-docker compose up -d web api worker
+docker compose up -d web $(docker compose config --services | grep '^api') worker
 docker compose run --rm --no-deps api maintenance off
 ```
 

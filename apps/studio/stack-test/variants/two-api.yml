@@ -1,36 +1,9 @@
 # Two API replicas behind the stack's own Traefik: docs/self-host/run.md,
 # "Running more than one API".
 #
-# Nothing is replaced. `api-b` is a second copy of `api` — the same image, the
-# same environment, the same secrets — and the server list Traefik balances
-# across names both. Those are the two edits the guide asks of a self-hoster,
-# and they are all this file makes: no sticky sessions, no other configuration.
-#
-# `extends` rather than a second copy of the service, so `api-b` cannot drift
-# from `api`: it is the base file's `api` with nothing changed but its name.
-# It publishes no port, as `api` does not.
-
-services:
-  api-b:
-    extends:
-      # Relative to the first Compose file, as every path in an override is.
-      file: docker-compose.yml
-      service: api
-
-# The server list, and nothing else of the routing. The health check restates
-# the base file's values: a config is replaced as a whole, not merged line by
-# line, so keep it in step with `traefik-api-servers` in `docker-compose.yml`.
-configs:
-  traefik-api-servers:
-    content: |
-      http:
-        services:
-          api:
-            loadBalancer:
-              healthCheck:
-                path: /healthz
-                interval: 5s
-                timeout: 3s
-              servers:
-                - url: "http://api:3000"
-                - url: "http://api-b:3000"
+# Empty on purpose. The override this variant applies is the guide's own
+# block, which lib.sh extracts from docs/self-host/run.md into
+# .work/two-api.override.yml and layers after this file: a copy here would be
+# a second thing to keep in step, and this variant would then be testing the
+# copy. This file stays so the variant is listed beside the others.
+services: {}

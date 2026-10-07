@@ -376,7 +376,8 @@ are getters, which each file copies in its own `beforeAll`.
     `stillHeld` read from `leases` in the same transaction.
 - Rewiring in `pb/handlers.ts`, `pb/session.ts` and `pb/rpc.ts`:
   - `openSession`: `leases.contact(session)`. `staged.touch/expire` stay,
-    and `expire` keeps calling `leases.connected`.
+    and `expire` keeps calling `leases.connected` (as built, superseded:
+    `Leases.connected` is deleted; see S).
   - WatchProtocol:
     1. `subscribe`
     2. backlog
@@ -620,6 +621,35 @@ checks:{…, draining: 'failed: draining'}}`. The worker and `router.ts`
   `SET LOCAL lock_timeout` (`LIVENESS_LOCK_TIMEOUT_MS`, 2 s) and a draft that
   times out is retried at the next tick; `sync.renewHeld` takes several
   owners, so a pass renews every owner's leases in one `UPDATE`.
+- After the runtime review:
+  - `setSocketMode` shows every live watch of the caller's tab, on any
+    socket or plane, and the handlers record it after every lock change,
+    unary calls included, so an HTTP-plane watch is not left showing a stale
+    mode. `livePresence` is gone; the suite reads presence through
+    `readRelay`.
+  - Every scheduled loop (the lease keeper's tick, the relay's poll and
+    held-back reopen check, the doorbell's probe) and the doorbell signal
+    consumer catch and log a cause before their schedule, so one fault never
+    ends the loop. A relay whose run dies ends its watchers with the failure
+    rather than leaving them waiting. The doorbell decodes `cursor` with
+    `Schema.BigIntFromString`.
+  - The connect acquisition is bounded by `CONNECT_TIMEOUT_MS` (5 s) and is
+    interruptible, so a closing scope or the bound cancels a wait on the
+    draft head. A grace's release, retries included, is bounded by
+    `GRACE_RELEASE_TIMEOUT_MS` (25 s, room for `retryBriefly`'s 15.5 s of
+    waits); one that gives up leaves the leases to lapse for the reaper.
+  - An idle watch re-authorizes every `REAUTHORIZE_MS`, jittered, and ends
+    with the authorization failure when the caller no longer reaches the
+    protocol.
+  - Every head writer (`lockDraftHead`, `publishDraft`, `sync.commit`,
+    `releaseOwner`, the reaper) takes the head `FOR NO KEY UPDATE`: still
+    exclusive against every other head lock, but not against the
+    `KEY SHARE` an insert of a child row (a staged upload, a connection row)
+    takes on the draft. `discardDraft` keeps `FOR UPDATE`, since it deletes
+    the row. A lock that conflicts with less only removes waits, so this adds
+    no deadlock.
+  - A lease-renewal readiness signal was not added: `Leases` is built inside
+    the RPC routes, not beside `/readyz`.
 
 ### S: persistent staging (serial, after C2)
 
@@ -722,9 +752,11 @@ owner)` where `expires_at > clock_timestamp() - IDLE_MS`**.
 
 - `promoteStaged` returns `boolean`: false when the staged object is gone,
   which `plan` reports as the resource's not-found outcome.
-  `ObjectBackend.list(prefix, signal)` returns each key's `lastModified`, and
-  the port's `fromBackend` filters on age, so a backend never interprets
-  `olderThan`. S3 copies with `CopyObject`; Azure has no `copy` and promotes
+  `ObjectBackend.list(prefix, cursor, signal)` returns one page of keys with
+  each key's `lastModified`, and the cursor of the next page; the port's
+  `fromBackend` filters on age, so a backend never interprets `olderThan`,
+  and `listStaged` is a `Stream` of pages, so no caller holds a whole
+  listing. S3 copies with `CopyObject`; Azure has no `copy` and promotes
   by get and write, because same-account copy authorization was not
   verified. The memory store in `T/support/object-store.ts` has no copy
   either.
@@ -784,28 +816,32 @@ resource_id)` order and skips them while a socket connection row of the
     typecheck instead of silently skipping object work. `protocolStoreGc`,
     `JobHandlersLive` and the two job test layers gain `ObjectStore`; the
     tests provide `ObjectStore.absent`. `gcProtocolStore` is unchanged.
-  - lists `STAGING_ROOT` once rather than per team, and enumerates teams
-    from the staged rows, the connection rows and the listed keys, so a team
-    whose only trace is an orphaned object is still swept. A listing that
-    fails is logged and the rows and connections are collected anyway.
+  - enumerates teams from the staged rows and the connection rows, collects
+    their rows and connections, and then sweeps `STAGING_ROOT` a page at a
+    time rather than per team prefix, grouping each page's keys by team, so
+    a team whose only trace is an orphaned object is still swept. A listing
+    that fails is logged; the rows and connections are already collected.
   - collects row-first, in batches of 1000: one statement locks a batch of
     abandoned rows in key order (as a promotion's consume does), deletes
     them and returns their object keys; the objects are deleted after
-    commit. The orphan sweep asks which listed keys a row names with one
-    `= ANY` array parameter, and skips keys this run already deleted.
-  - collects each team inside its own `catchCause`: a team that fails is
-    logged at error level with its `teamId`, and the teams after it are
-    still collected.
+    commit. The orphan sweep asks, per team and page, which listed keys a
+    row names with one `= ANY` array parameter, served by the
+    `(team_id, object_key)` index, and skips keys this run already deleted.
+  - collects each team's rows, its expired connections, and each page's
+    sweep of its keys inside their own `catchCause`: a failure is logged at
+    error level with its `teamId`, and everything after it still runs, so
+    a team whose staging fails still has its connection rows collected.
   - runs whether or not `gcProtocolStore` succeeded: `protocolStoreGc` keeps
     the sweep's `Exit`, runs the staged GC, then fails the job with the
     sweep's cause if it failed.
-- Each backend's `make` takes an optional `listPageSize`, set only by the
-  contract tests, so the contract's paging case makes S3 follow its
-  continuation tokens and Azure iterate `byPage`.
   - treats a row as abandoned when it is older than `IDLE_MS` and no
     connection row for its `(team, draft, owner)` expires after
     `now - IDLE_MS`. The age bound keeps a row staged a moment ago by a tab
     whose connection row is not yet visible.
+- Each backend's `make`, and the memory store, take an optional
+  `listPageSize`, set only by tests, so the contract's paging case makes S3
+  follow its continuation tokens and Azure its `byPage` tokens, and the GC's
+  paging case spans pages.
 - The seed stages one API key per team through the production
   `insertStaged`, so the no-plaintext-at-rest scan covers the staged-secret
   store; `protocol_staged_resources.created_at` joins the seed
@@ -926,7 +962,8 @@ database observables.
   - `apps/studio/README.md` ~708: the secrets table gains staged secrets;
   - the Valkey section gains `PUBLISH`/`SUBSCRIBE`;
   - never hand-edit the generated schema-docs block.
-- The Studio-lane changeset (`@codaco/studio-api`).
+- The Studio-lane changeset (`@codaco/studio-api` and, for `renewHeld`,
+  `@codaco/studio-sync`).
 
 **Stack-test scenario.** It uses the `rpc` helper and cookie jar, and polls
 for state rather than sleeping.
@@ -936,13 +973,15 @@ for state rather than sleeping.
 3. `AcquireLock` with a fixed client-session header.
 4. `start api-b`; poll until healthy.
 5. `stop api`; poll until requests are served (by api-b).
-6. `ListSections` every 5 s until 40 s have passed since the acquire.
+6. `ListSections` every 5 s until 40 s have passed since `api` stopped.
 7. `Submit` succeeds. Without contact renewal it returns `NotLockHolder`
    (I15).
 
 **CI budget.** The last successful `studio-stack` run took 6.9 min (warm
 cache) against `timeout-minutes: 40`. One more variant adds ~2 min, so no
-raise is needed. D rechecks against a cold-build run before finalising.
+raise is needed. D rechecks against a cold-build run before finalising. As
+built, two-api takes about 3 min, the longest variant: it waits out the 40 s
+and then runs the cross-replica relay check.
 
 ---
 
@@ -967,7 +1006,7 @@ revert.
 
 | #    | Invariant                                                                                                                      | Test                                           | Observable                                                                     | Mutation                                                        |
 | ---- | ------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------- | ------------------------------------------------------------------------------ | --------------------------------------------------------------- |
-| I1   | Reconnect on any replica keeps the owner's live leases                                                                         | H#1, H#3                                       | `leaseExpiry` advances after reconnect; Submit succeeds                        | drop `renewHeld` from `connectSocket`                           |
+| I1   | Reconnect on any replica keeps the owner's live leases                                                                         | none as built (contact renews; see H notes)    | `leaseExpiry` advances after reconnect; Submit succeeds                        | drop `renewHeld` from `connectSocket`                           |
 | I2   | Grace never releases while the owner has a live socket row                                                                     | C1 leases                                      | no lock-null event; `liveLeases` unchanged                                     | remove the live-socket check in `releaseOwner`                  |
 | I3   | Renewal never resurrects an expired lease                                                                                      | studio-sync `lease.test.ts` (exists)           | `renewHeld` returns `[]` after `forceExpire`                                   | drop the expiry predicate                                       |
 | I4a  | Contiguous cursors despite reordered or dropped rings                                                                          | H#4                                            | per-watcher cursor sequence has no gaps                                        | offer only the ringing cursor's row                             |

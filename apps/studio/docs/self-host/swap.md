@@ -94,13 +94,15 @@ under `staging/` until the stage is saved or cancelled. A key that cannot
 delete still lets authors add files and save, but the API refuses to discard
 a staged file, and staged files stay in the bucket for good. The API logs a
 warning for each one it could not delete after a save or once its tab has
-gone, and the worker logs one for each abandoned file on every hourly run. If the bucket keeps versions, add the lifecycle rule
+gone, and the worker logs one for each abandoned file on every hourly run.
+If the bucket keeps versions, add the lifecycle rule
 [the requirements](./requirements.md#an-object-store) describe.
 
 Then delete the `garage` and `garage-init` services, the `garage-config` and
 `garage-init` configs, the `garage-data` volume, and the `depends_on` entries
-naming them — `garage` in `api` and `worker`, `garage-init` in `migrate` — the two `GARAGE_*` variables are read only by those
-containers. Your provider's own mirroring or versioning replaces the volume
+naming them — `garage` in `api` and `worker`, `garage-init` in `migrate` —
+the two `GARAGE_*` variables are read only by those containers. Your
+provider's own mirroring or versioning replaces the volume
 copy in [Back up and restore](./backup.md).
 
 This swap is exercised in CI by `apps/studio/stack-test`, variant
@@ -155,8 +157,9 @@ machine it runs on — the virtual machine, or the Container App — so there is
 no account key anywhere in `.env`. Both processes that touch the container, the
 API and the worker, sign in as it, and between them they read, write, **delete
 and list** blobs: the API deletes staged files once a stage is saved or
-cancelled, and the worker lists and deletes the abandoned ones. Give that identity the **Storage Blob Data Contributor** role on the one
-container, not on the whole account. That role already includes delete and
+cancelled, and the worker lists and deletes the abandoned ones. Give that
+identity the **Storage Blob Data Contributor** role on the one container, not
+on the whole account. That role already includes delete and
 list, so an identity set up for an earlier release needs no change:
 
 ```bash
@@ -216,8 +219,9 @@ that `STUDIO_OBJECT_STORE` is not `s3` and exits without bootstrapping it, so
 This swap is exercised in CI by `apps/studio/stack-test`, variant
 `external-bucket-azure`: the stack runs against Azurite, Microsoft's Blob
 Storage emulator, on another network, serving an account of its own and
-signed in to with a connection string, with the `S3_*` values emptied and `garage` and `garage-init` gone — and is held to the
-same assertions as every other variant, including writing an asset through
+signed in to with a connection string, with the `S3_*` values emptied and
+`garage` and `garage-init` gone — and is held to the same assertions as every
+other variant, including writing an asset through
 `/storage` and reading it back.
 
 ## An external Redis

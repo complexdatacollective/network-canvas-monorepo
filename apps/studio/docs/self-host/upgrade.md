@@ -11,12 +11,28 @@ command is a command of the images you are deploying.
 
 ## Before you pull new images
 
-A release can change what Studio asks of the services you run yourself. Read
-its release notes for that before step 1. The one a release has added so far is
-object-store access: **a release that stages files in the object store needs
-the access key (or, on Azure, the identity) to be able to delete and list as
-well as read and write**, and the `worker` now uses it too, to clear away
-staged files that were abandoned.
+A release can change what Studio asks of the services you run yourself, or of
+the files you downloaded. Read its release notes for that before step 1. The
+release that lets you run more than one API asks for two changes, and brings
+two more things worth knowing before you start.
+
+**Download `docker-compose.yml` again.** Its Traefik service now reads the
+list of API servers from a config of its own, which
+[Running more than one API](./run.md#running-more-than-one-api) builds on.
+With the older file a second replica starts but gets no traffic, and nothing
+reports it. Keep your `.env` and `secrets/` as they are:
+
+```bash
+curl -O https://raw.githubusercontent.com/complexdatacollective/network-canvas-monorepo/main/apps/studio/docker-compose.yml
+```
+
+If you had changed your copy of the file, make the same changes to the new
+one.
+
+**Let the object store delete and list.** A release that stages files in the
+object store needs the access key (or, on Azure, the identity) to be able to
+delete and list as well as read and write, and the `worker` now uses it too,
+to clear away staged files that were abandoned.
 
 - **S3 and S3-compatible stores.** Add `s3:DeleteObject` to the policy of the
   access key in `S3_ACCESS_KEY_ID`, beside the `s3:GetObject` and
@@ -41,9 +57,15 @@ each one they could not delete, so the logs show it.
 
 **An instance with no object store** can no longer stage a file at all: adding
 a file to a stage is refused, without the offer to try again, while staging
-an API key still works. Before
-this release such a file could be staged but never saved, because the save was
-refused, so nothing an author could finish before is lost.
+an API key still works. Before this release such a file could be staged but
+never saved, because the save was refused, so nothing an author could finish
+before is lost.
+
+**Expect `migrate` to build an index.** This release's migration indexes the
+lock entries in `protocol_events`, the table that holds every protocol's edit
+history. It runs inside the maintenance window, with every API replica
+stopped, so nothing is waiting on it. On an instance with a very long edit
+history it makes step 5 take longer, and the window with it.
 
 ## The sequence
 
@@ -55,11 +77,12 @@ Put the new image digests in `.env` (`STUDIO_API_IMAGE` and
 ```bash
 docker compose run --rm --no-deps api maintenance on
 # wait until /readyz names maintenance mode — see step 2
-docker compose stop api worker
+docker compose stop $(docker compose config --services | grep '^api') worker
 # take your backup now — see ./backup.md
 docker compose pull
-docker compose up -d web api worker
+docker compose up -d web $(docker compose config --services | grep '^api') worker
 docker compose run --rm migrate
+# wait until every api replica reports its schema ok — see step 6
 docker compose run --rm --no-deps api maintenance off
 ```
 
@@ -72,18 +95,25 @@ curl https://studio.example.org/readyz
 # {"status":"ok","checks":{"db":"ok","limiter":"ok","objectStore":"ok","schema":"ok","maintenance":"ok","doorbell":"ok"}}
 ```
 
+`docker compose config --services | grep '^api'` lists every API replica:
+`api`, and `api-b` or any other you have added, as long as its name starts
+with `api`. So the same lines work however many replicas you run, and every
+one of them is stopped for the backup and started on the new image.
+
 This block is not only documentation. Studio's release test runs these lines
 exactly as written against a running instance, with the backup page's commands
-in place of the backup comment and a wait for `/readyz` in place of the other.
-While they run it reads `/readyz` and one API route a few times a second, and
-fails if, from the moment `/readyz` first names maintenance mode (it must
-within three seconds of the first command returning) until the last command
+in place of the backup comment, and a wait for what each of the other two
+comments names in its place. While they run it reads `/readyz` and one API
+route a few times a second, and fails if, from the moment `/readyz` first
+names maintenance mode (it must within three seconds of the first command
+returning) until the last command
 starts, either answered 200, the API route answered with anything but the
 maintenance page, `/readyz` gave a reason other than maintenance mode, or the
 readings stopped for more than five seconds. It checks what those two routes
 answered when it asked, not every request. It also fails if an `api` or
 `worker` container is still running when the backup starts, or if the ones
-`stop` stopped had to be killed rather than finishing on their own.
+`stop` stopped had to be killed rather than finishing on their own, or if a
+replica has not reported its schema ok two minutes after `migrate` returned.
 
 Step by step:
 
@@ -94,9 +124,9 @@ Step by step:
    `--no-deps` because this only writes a flag to the database: it needs no
    other service started on its account. A reason is optional —
    `maintenance on Upgrading to 1.4` — and `/readyz` repeats it.
-2. **Wait for the flag to land, stop `api` and `worker`, then back up.** The
-   rule for the backup: **take it when nothing that can write to the database
-   is running.** Closing the instance is not enough for that. The flag stops
+2. **Wait for the flag to land, stop every API replica and the `worker`, then
+   back up.** The rule for the backup: **take it when nothing that can write
+   to the database is running.** Closing the instance is not enough for that. The flag stops
    the API admitting new requests and the worker claiming new jobs, but a
    request the API accepted just before it read the flag, or a job the worker
    was already running, still runs to its end, and can commit after the dump
@@ -111,13 +141,17 @@ Step by step:
      proves the API has read the flag, so from here it answers every new
      request with the maintenance page, and the stop below waits only for the
      requests already running;
-   - `docker compose stop api worker` stops both processes, and each finishes
-     what it is doing before it exits: the API the requests it has already
-     accepted, the worker the jobs it is running. The command returns once
-     both have exited. The worker gives a job 25 seconds; one still running
-     then is interrupted, and runs again once the instance reopens. While
-     `api` is down Traefik serves the maintenance page from `web`, so users
-     see no difference.
+   - the `stop` line stops every API replica and the worker, and each
+     finishes what it is doing before it exits: an API the requests it has
+     already accepted, the worker the jobs it is running. The command
+     returns once all of them have exited. The worker gives a job 25
+     seconds; one still running then is interrupted, and runs again once the
+     instance reopens. While the API is down Traefik serves the maintenance
+     page from `web`, so users see no difference.
+
+     Every replica has to stop, not only `api`. One left running goes on
+     writing while the backup is taken, and after `migrate` it is an old
+     build on a new schema: closed, while Traefik still sends it requests.
 
    Then nothing that writes to the database is running, and the backup holds
    every write the instance accepted. [Back up and restore](./backup.md) is
@@ -125,13 +159,13 @@ Step by step:
 
 3. **`pull`** fetches the image digests `.env` names. Change
    `STUDIO_API_IMAGE` and `STUDIO_WEB_IMAGE` before this step, not after.
-4. **`up -d web api worker`** replaces the three containers built from those
-   images, and starts the two step 2 stopped. Named rather than a bare `up -d`
-   so the backing services are not touched. Until the new `api` answers,
-   Traefik serves the static maintenance page from `web` — which depends on
-   nothing that is being upgraded — so the page is visible for the whole window
-   however it started. The new `api` and `worker` start against a database
-   `migrate` has not moved yet. They do not crash or restart over it: they
+4. **`up -d`** replaces `web`, every API replica and the `worker` with
+   containers built from those images, and starts the ones step 2 stopped.
+   Named rather than a bare `up -d` so the backing services are not touched.
+   Until the new `api` answers, Traefik serves the static maintenance page
+   from `web` — which depends on nothing that is being upgraded — so the page
+   is visible for the whole window however it started. The new `api` and
+   `worker` start against a database `migrate` has not moved yet. They do not crash or restart over it: they
    wait, closed — `api` answers with the maintenance page and `worker` claims
    no jobs — until the schema is theirs.
 
@@ -152,27 +186,32 @@ Step by step:
    and changes nothing. Either way it exits 0. Within a few seconds the new
    `api` and `worker` see a schema they recognise — and stay closed, because
    the flag is still set.
-6. **`maintenance off`** reopens the instance. Readiness passes again within a
-   second or two.
+6. **Check every replica, then `maintenance off`.** Before you reopen, ask
+   each API replica whether it is ready apart from the flag:
 
-**Running more than one `api`.** Name each replica in `stop` and in `up -d`
-(`docker compose stop api api-b worker`), so that every replica is stopped
-for the backup and every one starts on the new image. See
-[Running more than one API](./run.md#running-more-than-one-api).
+   ```bash
+   for api in $(docker compose config --services | grep '^api'); do
+     docker compose exec -T "$api" node -e "fetch('http://127.0.0.1:3000/readyz').then(r => r.json()).then(r => console.log('$api', JSON.stringify(r.checks)))"
+   done
+   ```
+
+   Each line should say `"schema":"ok"`, with `maintenance` the only check
+   that fails. A replica that says `not this build's schema` has not seen the
+   migration yet, or is still on the old image: wait a few seconds and ask
+   again, and if it still says so, run `docker compose up -d <that replica>`.
+   Then `maintenance off` reopens the instance, and readiness passes again
+   within a second or two.
 
 **Edit locks.** A lock on a protocol section is a row in the database, kept
 alive by the editor's connection and renewed every ten seconds by each API
-replica that editor is connected to, so a restart no longer discards it. An
-API container that stops for a deploy gives no locks back. The editors on it
-reconnect, to another replica or to the same one once it is back, and their
-locks carry on. A lock that is not renewed lapses thirty seconds after its
-last renewal, which can be as little as twenty seconds after the container
-stopped, so the window decides what survives: a rolling deploy across
-replicas keeps every lock, and so does a single container that is back, with
-its editors reconnected, within twenty seconds. The maintenance window in the
-sequence above closes the instance to everyone and is usually longer, and in
-that case the locks lapse, an editor's next save is refused, and they take the
-section again.
+replica that editor is connected to, so it survives a restart of the API. An
+API container that stops gives no locks back. Its editors reconnect, to
+another replica or to the same one once it is back, and their locks carry on
+as long as they are back within thirty seconds of the last renewal, which can
+be as little as twenty seconds after the container stopped. The maintenance
+window in the sequence above stops every replica and usually lasts longer, so
+expect locks to lapse during an upgrade: an editor's next save is refused,
+and they take the section again.
 
 **Staged files.** A file an author has added to a stage but not yet saved is
 held in the object store, and an API key in the database, sealed under the
@@ -271,8 +310,9 @@ step 5. That depends on the version you upgraded from, not only on the release:
 moving from 1.0 to a code-only 1.2 still applies whatever 1.1 added. When it
 applied one, the previous build does not serve a database the new `migrate`
 has moved forward: its `api` waits, closed, naming the schema, and its
-`migrate` refuses the history as newer. Rolling upgrades are not claimed either, for the same reason
-— the window in step 4 is real, and the maintenance page is what covers it.
+`migrate` refuses the history as newer. For the same reason Studio does not
+offer rolling upgrades: the window in step 4 is real, and the maintenance
+page is what covers it.
 
 Keep the digests you are replacing. `docker compose config --images` before
 step 3 prints what is running.

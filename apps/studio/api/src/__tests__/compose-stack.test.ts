@@ -33,6 +33,19 @@ type ComposeService = {
   secrets?: string[];
   stop_grace_period?: string;
 };
+/** A `traefik-api-servers` config, as the file provider reads it. */
+type ApiServers = {
+  http: {
+    services: {
+      api: {
+        loadBalancer: {
+          healthCheck?: { path: string; interval: string; timeout: string };
+          servers: { url: string }[];
+        };
+      };
+    };
+  };
+};
 type ComposeFile = {
   services: Record<string, ComposeService>;
   secrets?: Record<string, { file?: string }>;
@@ -45,6 +58,16 @@ type ComposeFile = {
 const upgradeOverlaySource = read('release-test/compose.upgrade.yml');
 
 /**
+ * The `docker-compose.override.yml` that docs/self-host/run.md gives a
+ * self-hoster adding a replica, read from between the markers
+ * `stack-test/lib.sh` extracts it from for the two-api variant.
+ */
+const twoApiOverrideSource =
+  /^<!-- two-api-override start -->\n+```yaml\n(?<body>[\s\S]*?)^```\n+<!-- two-api-override end -->$/m.exec(
+    read('docs/self-host/run.md'),
+  )?.groups?.body ?? '';
+
+/**
  * Every overlay `stack-test/lib.sh` or `release-test/lib.sh` layers over
  * `docker-compose.yml`.
  */
@@ -53,6 +76,7 @@ function composeOverlays(): [string, string][] {
   return [
     ['docker-compose.local.yml', localComposeSource],
     ['release-test/compose.upgrade.yml', upgradeOverlaySource],
+    ['docs/self-host/run.md (two-api-override)', twoApiOverrideSource],
     ...readdirSync(fileURLToPath(variants))
       .filter((name) => name.endsWith('.yml'))
       .map((name): [string, string] => [
@@ -318,6 +342,71 @@ describe('the reference compose stack', () => {
       .map(({ name }) => name)
       .filter((name) => !known.has(name));
     expect(stray).toEqual([]);
+  });
+
+  it('gives Traefik one api server, with no health check, in a file of its own', () => {
+    // The server list is its own config so a second replica replaces that
+    // file alone (docs/self-host/run.md). With one server a health check could
+    // only take it out of rotation and serve the maintenance page instead.
+    const traefik: {
+      command: string[];
+      configs: { source: string; target: string }[];
+    } = parse(composeSource).services.traefik;
+    expect(traefik.command).toContain(
+      '--providers.file.directory=/etc/traefik/dynamic',
+    );
+    expect(traefik.configs).toEqual([
+      { source: 'traefik-dynamic', target: '/etc/traefik/dynamic/routing.yml' },
+      {
+        source: 'traefik-api-servers',
+        target: '/etc/traefik/dynamic/api-servers.yml',
+      },
+    ]);
+    const servers: ApiServers = parse(
+      compose.configs!['traefik-api-servers']!.content!,
+    );
+    expect(servers).toEqual({
+      http: {
+        services: {
+          api: { loadBalancer: { servers: [{ url: 'http://api:3000' }] } },
+        },
+      },
+    });
+  });
+
+  it('adds a second replica in the guide with the base api and a liveness check', () => {
+    expect(twoApiOverrideSource).not.toBe('');
+    const override: {
+      services: Record<string, { extends?: { file: string; service: string } }>;
+      configs: Record<string, { content: string }>;
+    } = parse(twoApiOverrideSource);
+    // `extends`, so the replica is the base file's `api` with nothing changed
+    // but its name, and its name starts with `api` because the upgrade and
+    // restore commands find replicas that way.
+    expect(override.services).toEqual({
+      'api-b': { extends: { file: 'docker-compose.yml', service: 'api' } },
+    });
+    expect(Object.keys(override.configs)).toEqual(['traefik-api-servers']);
+    const servers: ApiServers = parse(
+      override.configs['traefik-api-servers']!.content,
+    );
+    // `/healthz`, not `/readyz`: readiness fails on every replica at once
+    // during maintenance or a database outage.
+    expect(servers).toEqual({
+      http: {
+        services: {
+          api: {
+            loadBalancer: {
+              healthCheck: { path: '/healthz', interval: '5s', timeout: '3s' },
+              servers: [
+                { url: 'http://api:3000' },
+                { url: 'http://api-b:3000' },
+              ],
+            },
+          },
+        },
+      },
+    });
   });
 
   it('carries the two file secrets and no others', () => {

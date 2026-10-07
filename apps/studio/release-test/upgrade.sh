@@ -8,10 +8,11 @@
 # `secrets` the stack reads, and the place the backup lands — the directory a
 # self-hoster runs `docker compose` from. The sequence is read from the
 # `<!-- upgrade-sequence -->` block of docs/self-host/upgrade.md and each of
-# its commands is run as written. Its two comments are instructions, and each
-# is carried out as the guide words it: the backup comment by the
+# its commands is run as written. Its three comments are instructions, and
+# each is carried out as the guide words it: the backup comment by the
 # `<!-- backup-take -->` block of docs/self-host/backup.md, also as written,
-# and the readiness comment by waiting for /readyz to name maintenance mode.
+# the first wait by waiting for /readyz to name maintenance mode, and the
+# second by asking each API replica's own /readyz until its schema is ok.
 # Nothing in either block is edited, so a change to the guide changes what
 # this runs, and a guide that stops parsing fails here.
 #
@@ -24,19 +25,19 @@
 #   - observe.sh records /readyz and a probe four times a second (faster while
 #     `migrate` runs), and window.mjs then decides whether the instance was
 #     closed throughout;
-#   - once the guide's `stop api worker` has returned — no worker of the old
-#     release is left to claim it — one `protocol-store-gc` job is enqueued as
-#     the application role. It must still be `created` after `migrate`, and
+#   - once the guide's `stop` has returned — no worker of the old release is
+#     left to claim it — one `protocol-store-gc` job is enqueued as the
+#     application role. It must still be `created` after `migrate`, and
 #     still `created` once the NEW worker — the one `up -d` started — is
 #     running with the flag on, and it must be completed after `maintenance
 #     off` cleared the flag;
-#   - when the backup starts, no `api` or `worker` container may be running
-#     (the guide's rule: the backup is taken with nothing running that can
-#     write to the database), and the ones `stop` stopped must have exited
-#     through their own shutdown rather than been killed at the end of their
-#     stop grace period — stopped.json records what was seen;
-#   - after the guide's /readyz wait and before `stop api worker`, the lane
-#     waits for the observer itself to have recorded /readyz naming
+#   - when the backup starts, no API replica or `worker` container may be
+#     running (the guide's rule: the backup is taken with nothing running
+#     that can write to the database), and the ones `stop` stopped must have
+#     exited through their own shutdown rather than been killed at the end of
+#     their stop grace period — stopped.json records what was seen;
+#   - after the guide's /readyz wait and before its `stop`, the lane waits
+#     for the observer itself to have recorded /readyz naming
 #     maintenance mode: once `api` is stopped Traefik's page answers every
 #     probe, so those readings are the only evidence the OLD release closed;
 #   - before `maintenance off`, the lane waits for that new worker to start,
@@ -67,7 +68,8 @@ READY_BOUND=180
 STEP_BOUND=900
 WAIT_STEP_BOUND=30
 NEW_WORKER_BOUND=120
-STOP_LINE='docker compose stop api worker'
+SCHEMA_BOUND=120
+STOP_LINE="docker compose stop \$(docker compose config --services | grep '^api') worker"
 rm -f "$EVENTS" "$OBSERVED" "$FAST" "$PROBE_JOB_FILE" "$NEW_WORKER_FILE" "$STOPPED_FILE"
 
 now_ms() { perl -MTime::HiRes=time -e 'printf "%d\n", time * 1000'; }
@@ -82,10 +84,10 @@ BACKUP="$(guide_block "$STUDIO_DIR/docs/self-host/backup.md" backup-take)"
 # `|| true`: a line that is missing is the guard's to report, not `set -e`'s.
 line_of() { { grep -n -m 1 "$@" <<< "$SEQUENCE" || true; } | cut -d: -f1; }
 wait_at="$(line_of '^# wait until /readyz names maintenance mode')"
-stop_at="$(line_of -x -e "$STOP_LINE")"
+stop_at="$(line_of -F -x -e "$STOP_LINE")"
 backup_at="$(line_of '^# take your backup')"
 [ -n "$wait_at" ] || die "the upgrade sequence no longer has its '# wait until /readyz names maintenance mode' line"
-[ -n "$stop_at" ] || die "the upgrade sequence no longer stops api and worker ('$STOP_LINE') before the backup"
+[ -n "$stop_at" ] || die "the upgrade sequence no longer stops every API replica and the worker ('$STOP_LINE') before the backup"
 [ -n "$backup_at" ] || die "the upgrade sequence no longer has its '# take your backup' line, which is where backup.md's block runs"
 [ "$wait_at" -lt "$stop_at" ] && [ "$stop_at" -lt "$backup_at" ] \
   || die "the upgrade sequence must wait for /readyz, then '$STOP_LINE', then take the backup — in that order"
@@ -173,7 +175,7 @@ enqueue_probe() {
 
 worker_container() { docker compose ps -q worker; }
 
-# The guide's rule for the backup, checked as it starts: no `api` or
+# The guide's rule for the backup, checked as it starts: no API replica or
 # `worker` container is running — the release's own or a one-off `run` of
 # either — and every one that was running before the sequence exited through
 # its own shutdown. A graceful stop interrupts the process's main fiber, which
@@ -182,7 +184,7 @@ check_nothing_writes() { # old container ids…
   local running ids=("$@") id state stopped=() problem=''
   running="$(docker ps --filter "label=com.docker.compose.project=$PROJECT" \
     --format '{{.ID}} {{.Label "com.docker.compose.service"}} {{.Image}}' \
-    | awk '$2 == "api" || $2 == "worker" || $2 == "migrate"')"
+    | awk '$2 ~ /^api/ || $2 == "worker" || $2 == "migrate"')"
   if [ -n "$running" ]; then
     problem="still running when the backup started: $(tr '\n' ';' <<< "$running")"
   fi
@@ -249,6 +251,38 @@ wait_for_new_worker() { # container since-ms
   return 1
 }
 
+# The guide's second wait, as its step 6 words it: every API replica's own
+# /readyz, asked inside its container so Traefik's balancing cannot answer for
+# another, reports its schema ok. The flag is still on, so each still fails
+# naming maintenance mode; the schema check is the one that must have turned.
+wait_every_api_schema_ok() {
+  local deadline=$((SECONDS + SCHEMA_BOUND)) services service checks pending
+  services="$(docker compose config --services | grep '^api')"
+  [ -n "$services" ] || {
+    echo 'docker compose config --services names no API replica' >&2
+    return 1
+  }
+  while :; do
+    pending=''
+    for service in $services; do
+      checks="$(docker compose exec -T "$service" node -e "fetch('http://127.0.0.1:3000/readyz').then(r => r.json()).then(r => console.log(JSON.stringify(r.checks)))" 2> /dev/null || true)"
+      case "$checks" in
+        *'"schema":"ok"'*) ;;
+        *) pending="${pending:+$pending, }$service: ${checks:-no answer}" ;;
+      esac
+    done
+    if [ -z "$pending" ]; then
+      say "  every API replica reports its schema ok ($(tr '\n' ' ' <<< "$services" | sed 's/ $//'))"
+      return 0
+    fi
+    if [ "$SECONDS" -ge "$deadline" ]; then
+      echo "not every API replica reported its schema ok within ${SCHEMA_BOUND}s of migrate returning — $pending" >&2
+      return 1
+    fi
+    sleep 0.5
+  done
+}
+
 # ── The new digests, as the guide's step 3 asks ───────────────────────────
 set_images "$TO_API" "$TO_WEB"
 
@@ -300,6 +334,10 @@ while IFS= read -r line; do
       run_step "$WAIT_STEP_BOUND" 'wait until /readyz names maintenance mode (upgrade.md step 2)' \
         wait_readyz_maintenance || break
       wait_for_observer_closed "$on_started_ms" || true
+      ;;
+    '# wait until every api replica reports its schema ok'*)
+      run_step "$((SCHEMA_BOUND + 30))" 'wait until every api replica reports its schema ok (upgrade.md step 6)' \
+        wait_every_api_schema_ok || break
       ;;
     '#'*) continue ;;
     *)

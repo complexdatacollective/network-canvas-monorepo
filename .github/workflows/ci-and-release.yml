@@ -1119,11 +1119,12 @@ jobs:
       && inputs.interview_e2e_benchmark == true)
       && needs.detect.outputs.studio == 'true'
     runs-on: ubuntu-latest
-    # The build is most of this. The seven variant cycles cost about a minute
-    # each once the images exist, except two-api, which also waits out a lock's
-    # 30 second lease and so takes about three; a cold build of studio-api is
-    # the rest, and the GitHub Actions cache below is what keeps it off the
-    # critical path on every run after the first.
+    # A cold build of studio-api is most of this, and the GitHub Actions cache
+    # below is what keeps it off the critical path on every run after the
+    # first. Once the images exist, each variant is one up/assert/down cycle.
+    # two-api is the longest: it waits out a lock's 30 second lease with one
+    # replica stopped, then relays a save from one replica to a tab watching
+    # on the other.
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6

@@ -127,6 +127,24 @@ api_address() {
     "$(container_id api)"
 }
 
+# One replica's own /readyz body, asked from inside its container so the
+# ingress cannot answer for another. Polls until it is ok with the doorbell
+# subscribed, for up to 120 s, and prints the last body either way for the
+# caller to assert on.
+replica_ready() { # service
+  local body=''
+  for _ in $(seq 1 120); do
+    body="$(compose exec -T "$1" node -e \
+      "fetch('http://127.0.0.1:3000/readyz').then(r => r.text()).then(t => console.log(t), () => console.log(''))" \
+      2>/dev/null || true)"
+    case "$body" in
+      *'"status":"ok"'*'"doorbell":"ok"'*) break ;;
+    esac
+    sleep 1
+  done
+  printf '%s' "$body"
+}
+
 section() {
   echo ''
   echo "[$VARIANT] $1"
@@ -215,7 +233,20 @@ contains '/readyz reports the object store' '"objectStore":"ok"' "$BODY"
 # still serve every assertion below. `degraded` here is the swap silently not
 # having worked.
 contains '/readyz reports the limiter' '"limiter":"ok"' "$BODY"
+# `ok` for the same reason: a replica that cannot subscribe reports
+# `degraded` and still answers 200, and its editors then hear of the other
+# replicas' writes only through the five-second poll.
+contains '/readyz reports the doorbell' '"doorbell":"ok"' "$BODY"
 contains '/readyz is ok overall' '"status":"ok"' "$BODY"
+
+# Through the ingress, one answer comes from whichever replica Traefik picked,
+# so with two each is asked from inside its own container as well.
+if [ "$VARIANT" = "two-api" ]; then
+  for service in $(api_services); do
+    replica_body="$(replica_ready "$service")"
+    contains "$service's own /readyz reports the doorbell" '"doorbell":"ok"' "$replica_body"
+  done
+fi
 
 # `--http1.1` because a WebSocket handshake is an HTTP/1.1 upgrade and both
 # ingresses offer h2 over TLS, where `Connection: Upgrade` is not a legal
@@ -342,6 +373,14 @@ else
   fail "the limiter's counters are in $limiter_store" \
     'no studio:rl:* key — the refusal above came from somewhere else'
 fi
+# The doorbell rings in the same store: every API replica holds one
+# subscription to its channel there. The publishing connection subscribes to
+# nothing, and the worker has no doorbell, so the count is the replicas.
+doorbell_subscribers="$(compose exec -T "$limiter_store" \
+  valkey-cli --raw PUBSUB NUMSUB studio:protocol-events 2>/dev/null \
+  | tr -d '\r' | tail -n 1 || true)"
+equals "every API replica listens for the doorbell in $limiter_store" \
+  "$(wc -w <<< "$(api_services)" | tr -d ' ')" "${doorbell_subscribers:-none}"
 if [ "$VARIANT" = 'external-redis' ]; then
   # There is no second store to have written them to: the service that held
   # them before the swap is gone, which the swapped-element section asserted.
@@ -366,10 +405,10 @@ contains '/rpc is the maintenance page' 'temporarily unavailable' "$BODY"
 
 # 502, 503 or 504, not one of them: a container that is gone takes its address
 # with it, so the ingress's connection attempt is refused on some runs and
-# times out on others — and once Traefik's health check has marked the only
-# server down, it answers 503 itself rather than trying it. Which of the three
-# it is says nothing about the routing; that this path is NOT the maintenance
-# page is the contract.
+# times out on others — and once two-api's health check has marked every
+# server down, Traefik answers 503 itself rather than trying one. Which of the
+# three it is says nothing about the routing; that this path is NOT the
+# maintenance page is the contract.
 request "$URL/readyz"
 case "$STATUS" in
   502 | 503 | 504) pass '/readyz bypasses the maintenance page' "$STATUS" ;;
@@ -407,8 +446,8 @@ equals '/readyz recovers once the API is back' 200 "${restored:-none}"
 # ── own-proxy: the upgrade window, and the forwarded headers ──────────────
 #
 # The maintenance window above stops and starts one container, which usually
-# keeps its address. An UPGRADE replaces it — `docker compose up -d web api worker`, step
-# 4 of docs/self-host/upgrade.md — and the replacement usually has a new one.
+# keeps its address. An UPGRADE replaces it — `up -d`, step 4 of
+# docs/self-host/upgrade.md — and the replacement usually has a new one.
 # nginx resolved the name in its `upstream` block once, when it loaded, so it
 # goes on addressing the container that is gone and answers 502 until it is
 # reloaded: measured here at 172.31.243.8 becoming .7, and 502 for as long as
@@ -508,9 +547,10 @@ fi
 # ── two-api: an editor's lock survives the replica that granted it ────────
 #
 # What running more than one API is for. An editor takes a section's lock on
-# one replica; that replica is then stopped, as a deploy or a failed host would
-# stop it; the other replica carries on serving the same editor, and the
-# editor's next save is still written.
+# one replica; that replica is then stopped, as a restart or a failed host
+# would stop it; the other replica carries on serving the same editor, and the
+# editor's next save is still written. Then, with both up, a save on one
+# replica has to reach a tab watching on the other (step 8).
 #
 # Through the unary plane and `curl`, because that is the one a shell can speak
 # and it holds the same lease as a socket does: every call an editor makes to a
@@ -659,6 +699,128 @@ if [ "$VARIANT" = "two-api" ]; then
   builder GetSection "{\"protocolId\":\"$protocol_id\",\"sectionId\":\"$SECTION\"}"
   equals 'the section reads back' Success "$RPC_VERDICT"
   contains 'with the edited name' 'Two replicas, edited' "$RPC_EXIT"
+
+  # 8. The relay. A second tab watches the protocol on one replica while the
+  # editor saves on the other, and the watcher has to hear of the save. Both
+  # calls go to a replica's own port from inside its container, so Traefik's
+  # balancing cannot put them on the same one; the session cookie is the one
+  # the owner signed in with, read from curl's jar.
+  section 'a save on one replica reaches a watcher on the other'
+  compose start api >/dev/null 2>&1
+  api_body="$(replica_ready api)"
+  contains 'the first replica is back, its doorbell subscribed' '"doorbell":"ok"' "$api_body"
+  subscribers="$(compose exec -T "$(limiter_store_service)" \
+    valkey-cli --raw PUBSUB NUMSUB studio:protocol-events 2>/dev/null \
+    | tr -d '\r' | tail -n 1 || true)"
+  equals 'both replicas listen for the doorbell' 2 "${subscribers:-none}"
+
+  # curl's Netscape jar: tab-separated, the name and value in the last two
+  # fields, and an HttpOnly cookie's line prefixed `#HttpOnly_`.
+  cookie="$(awk -F'\t' 'NF >= 7 { print $6 "=" $7 }' "$COOKIE_JAR" | paste -sd ';' - | sed 's/;/; /g')"
+  differs 'the owner has a session cookie to send' '' "$cookie"
+
+  # Prints `watching` once the stream has answered, and exits 0 on the first
+  # revision newer than AFTER, printing when it saw it.
+  WATCH_JS='
+const { PROTOCOL_ID, COOKIE, ORIGIN, TAB, AFTER } = process.env;
+setTimeout(() => { console.log("timed out"); process.exit(2); }, 30000);
+const response = await fetch("http://127.0.0.1:3000/rpc/protocol-builder", {
+  method: "POST",
+  headers: { "content-type": "application/ndjson", origin: ORIGIN, "sec-fetch-site": "same-origin", cookie: COOKIE, "x-studio-client-session": TAB },
+  body: JSON.stringify({ _tag: "Request", id: "1", tag: "WatchProtocol", payload: { protocolId: PROTOCOL_ID }, headers: [] }) + "\n",
+});
+if (!response.ok || !response.body) { console.log("status " + response.status); process.exit(3); }
+const decoder = new TextDecoder();
+let buffered = "";
+let watching = false;
+for await (const bytes of response.body) {
+  buffered += decoder.decode(bytes, { stream: true });
+  for (let end = buffered.indexOf("\n"); end >= 0; end = buffered.indexOf("\n")) {
+    const line = buffered.slice(0, end);
+    buffered = buffered.slice(end + 1);
+    if (line.trim() === "") continue;
+    const frame = JSON.parse(line);
+    if (frame._tag === "Exit") { console.log("exit " + JSON.stringify(frame.exit)); process.exit(4); }
+    if (frame._tag !== "Chunk") continue;
+    if (!watching) { watching = true; console.log("watching"); }
+    for (const event of frame.values) {
+      if (event.type === "revision" && BigInt(event.revision.sequence) > BigInt(AFTER)) {
+        console.log("revision " + event.revision.sequence + " at " + Date.now());
+        process.exit(0);
+      }
+    }
+  }
+}
+console.log("stream ended");
+process.exit(5);
+'
+
+  # Takes the lock again (the same owner and tab, so it is still theirs) for a
+  # current document and revision, saves a change, and prints the new
+  # sequence and when the save returned.
+  SAVE_JS='
+const { PROTOCOL_ID, SECTION, COOKIE, ORIGIN, TAB, REQUEST_ID } = process.env;
+const find = (value, key) => {
+  if (value === null || typeof value !== "object") return undefined;
+  if (key in value) return value[key];
+  for (const child of Object.values(value)) {
+    const found = find(child, key);
+    if (found !== undefined) return found;
+  }
+  return undefined;
+};
+const call = async (tag, payload) => {
+  const response = await fetch("http://127.0.0.1:3000/rpc/protocol-builder", {
+    method: "POST",
+    headers: { "content-type": "application/ndjson", origin: ORIGIN, "sec-fetch-site": "same-origin", cookie: COOKIE, "x-studio-client-session": TAB },
+    body: JSON.stringify({ _tag: "Request", id: "1", tag, payload, headers: [] }) + "\n",
+  });
+  const text = await response.text();
+  const exit = text.split("\n").filter((line) => line.trim() !== "").map((line) => JSON.parse(line)).find((frame) => frame._tag === "Exit");
+  if (exit?.exit?._tag !== "Success") throw new Error(tag + " answered " + response.status + ": " + text.slice(0, 300));
+  return exit.exit.value;
+};
+const lock = await call("AcquireLock", { protocolId: PROTOCOL_ID, sectionId: SECTION });
+const document = JSON.parse(JSON.stringify(find(lock, "document")).replace(/"name":"Two replicas[^"]*"/, "\"name\":\"Two replicas, relayed\""));
+const saved = await call("Submit", { protocolId: PROTOCOL_ID, requestId: REQUEST_ID, sectionId: SECTION, document, revision: find(lock, "revision") });
+console.log("saved " + find(saved, "sequence") + " at " + Date.now());
+'
+
+  watch_log="$WORK_DIR/relay-watch.log"
+  compose exec -T \
+    -e PROTOCOL_ID="$protocol_id" -e COOKIE="$cookie" -e ORIGIN="$ORIGIN" \
+    -e TAB='stack-test-tab-2' -e AFTER="$sequence_after" \
+    api-b node --input-type=module -e "$WATCH_JS" > "$watch_log" 2>&1 < /dev/null &
+  watcher=$!
+  for _ in $(seq 1 60); do
+    grep -q '^watching$' "$watch_log" 2>/dev/null && break
+    kill -0 "$watcher" 2>/dev/null || break
+    sleep 0.5
+  done
+  if grep -q '^watching$' "$watch_log"; then
+    pass 'a second tab watches the protocol on the second replica' 'its stream answered'
+  else
+    fail 'a second tab watches the protocol on the second replica' "$(tr '\n' ' ' < "$watch_log")"
+  fi
+
+  saved="$(compose exec -T \
+    -e PROTOCOL_ID="$protocol_id" -e SECTION="$SECTION" -e COOKIE="$cookie" \
+    -e ORIGIN="$ORIGIN" -e TAB="$TAB" -e REQUEST_ID="$(uuid)" \
+    api node --input-type=module -e "$SAVE_JS" 2>&1 < /dev/null || true)"
+  contains 'the editor saves on the first replica' 'saved ' "$saved"
+
+  watched=0
+  wait "$watcher" || watched=$?
+  seen="$(grep '^revision ' "$watch_log" || true)"
+  if [ "$watched" -eq 0 ] && [ -n "$seen" ]; then
+    seen_ms="${seen##* at }"
+    saved_ms="${saved##* at }"
+    pass 'the watcher on the second replica hears of the save' \
+      "${seen% at *}, $((seen_ms - saved_ms)) ms after the save returned"
+  else
+    fail 'the watcher on the second replica hears of the save' \
+      "exited $watched: $(tr '\n' ' ' < "$watch_log")"
+  fi
 fi
 
 echo ''

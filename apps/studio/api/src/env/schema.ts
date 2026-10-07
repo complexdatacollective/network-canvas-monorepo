@@ -493,9 +493,9 @@ export const EnvironmentSchema = Schema.Struct({
     {
       group: 'Rate limiting',
       summary:
-        'Redis 7-compatible server (the reference stack runs Valkey) holding every rate-limit counter.',
+        'Redis 7-compatible server (the reference stack runs Valkey) holding every rate-limit counter and carrying the protocol-builder doorbell on the `studio:protocol-events` channel.',
       deployment:
-        'Unset ⇒ there is no limiter store, every limit is disabled, and the server says so once at boot outside development. The reference compose stack always sets it. Any Redis 7-compatible server will do — the limiter uses `EVAL`, sorted sets and hashes and nothing else — and the counters are disposable: losing them resets every window rather than losing data. It is the only part of rate limiting a deployment configures: the limits themselves are constants in `src/rate-limit/scopes.ts` and are not settings.',
+        'Unset ⇒ there is no limiter store, every limit is disabled, and the server says so once at boot outside development; API replicas then hear of each other’s protocol writes only through the five-second safety poll. The reference compose stack always sets it. Any Redis 7-compatible server will do — the limiter uses `EVAL`, sorted sets and hashes, the doorbell `SUBSCRIBE`, `PUBLISH` and `PING` — and nothing in it is kept: losing the counters resets every window rather than losing data, and a lost doorbell message is covered by the same poll. It is the only part of rate limiting a deployment configures: the limits themselves are constants in `src/rate-limit/scopes.ts` and are not settings.',
       example: 'redis://valkey:6379',
     },
   ),

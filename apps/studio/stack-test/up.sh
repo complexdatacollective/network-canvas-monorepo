@@ -144,6 +144,9 @@ cat > "$ENV_FILE" <<ENV
 #     -f $STUDIO_DIR/docker-compose.yml \\
 #     -f $STUDIO_DIR/docker-compose.local.yml \\
 #     -f $STACK_TEST_DIR/variants/$VARIANT.yml ps
+#
+# two-api adds \`-f $TWO_API_OVERRIDE\` after the variant file: the guide's
+# override block, which lib.sh extracts from docs/self-host/run.md.
 STUDIO_HOSTNAME=$HOSTNAME_
 ACME_EMAIL=nobody@localhost
 STUDIO_API_IMAGE=$API_IMAGE
@@ -301,12 +304,21 @@ if [ "$VARIANT" = "two-api" ]; then
   needed=8
   for service in $(api_services); do
     say "waiting for $service to open"
+    opened=''
     for _ in $(seq 1 120); do
-      compose exec -T "$service" node -e \
+      if compose exec -T "$service" node -e \
         "fetch('http://127.0.0.1:3000/readyz').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))" \
-        >/dev/null 2>&1 && break
+        >/dev/null 2>&1; then
+        opened=yes
+        break
+      fi
       sleep 1
     done
+    if [ -z "$opened" ]; then
+      compose ps
+      compose logs --tail 200 "$service"
+      die "$service did not answer /readyz with 200 from inside its container within 120s"
+    fi
   done
 fi
 say "waiting for $url/readyz"

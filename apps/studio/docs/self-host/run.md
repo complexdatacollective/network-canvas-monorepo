@@ -117,8 +117,9 @@ anything is served.
 `STUDIO_HOSTNAME` must have an `A` (or `AAAA`) record for this machine, and
 ports **80 and 443** must be reachable from the internet. Port 80 is not
 optional: the ACME HTTP-01 challenge is answered on it, ahead of the redirect
-to HTTPS. Nothing else is published — the database, the object store and the
-rate-limit store are reachable only from the stack's own network.
+to HTTPS. Nothing else is published — the database, the object store and
+Valkey (the rate-limit store, and the doorbell the API replicas ring each
+other on) are reachable only from the stack's own network.
 
 ## 5. Start it
 
@@ -142,9 +143,10 @@ fails with:
 }
 ```
 
-(with the object store, rate-limit store and doorbell checks beside them). The database
-is reachable; the roles Studio connects as do not exist until `migrate` creates
-them, and the server does not finish starting until they do. Both processes
+(with the object store, rate-limit store and doorbell checks beside them).
+The database is reachable; the roles Studio connects as do not exist until
+`migrate` creates them, and the server does not finish starting until they
+do. Both processes
 check again every few seconds and open by themselves once `migrate` has run,
 with no restart.
 
@@ -230,34 +232,54 @@ swap in.
 ## Running more than one API
 
 One `api` container is enough for most instances, and nothing in this guide
-needs more. Run a second when you want to deploy without interrupting editors,
-or to keep serving through the loss of one container. Studio needs no sticky
-sessions for this: any replica can serve any request, and an editor whose
-connection ends reconnects to whichever replica Traefik picks next, keeping the
-section they were editing.
+needs more. Run a second to keep serving through the loss of one container:
+while one replica is down, the other answers. Studio needs no sticky sessions
+for this: any replica can serve any request, and an editor whose connection
+ends reconnects to whichever replica Traefik picks next, keeping the section
+they were editing. It is not seamless: editors on the replica that went away
+see a reconnect, and for the few seconds before Traefik notices it has gone,
+some requests sent to it get the maintenance page and need trying again. An
+upgrade still stops every replica for its maintenance window (see
+[Upgrade](./upgrade.md)).
 
 What makes that safe is that nothing an editor needs lives only inside one
 container. Edit locks, and who is connected, are rows in Postgres. A file an
 author has added to a stage but not yet saved is held in your object store
 under `staging/`, and an API key in Postgres, sealed under your keyring.
-Valkey carries a doorbell that tells the other replicas to look, and each
-replica also checks every five seconds, so a Valkey outage slows live updates
-and loses none. Because of the staged files, the object store credentials must
-allow delete and list as well as read and write (see
-[an object store](./requirements.md#an-object-store)), and the `worker` needs
-them too, as it clears away staged files that were abandoned.
+Valkey carries a doorbell, on the `studio:protocol-events` channel, that one
+replica rings when a protocol changes so the others tell their editors at
+once. Each replica also checks the database every five seconds, so a Valkey
+outage slows live updates and loses none. Because of the staged files, the
+object store credentials must allow delete and list as well as read and write
+(see [an object store](./requirements.md#an-object-store)), and the `worker`
+needs them too, as it clears away staged files that were abandoned.
 
 When an editor's connection closes, the replica it was on waits twenty
 seconds for them to come back before it gives their locks up. If by then they
 have a live connection on any replica, nothing is given up. A replica that is
-stopping for a deploy gives nothing up at all: its editors' locks stay theirs
-while they reconnect, for up to thirty seconds after the last renewal.
+stopping gives nothing up at all: its editors' locks stay theirs while they
+reconnect, for up to thirty seconds after the last renewal.
 
-Each replica is another Node process, of about 240 MB at rest, with database
-connections of its own.
+Each replica is another Node process, of about 240 MB at rest, and opens up
+to 11 Postgres connections: a pool of 10, and one for its readiness check.
+The `worker` opens up to 11 as well. Postgres allows 100 by default, so count
+11 for each replica and the worker, and leave a few for `migrate` and your
+backups. A managed database may allow fewer.
+
+Running more than one needs the `docker-compose.yml` from the release that
+added it, or a later one: earlier copies have no separate server list for
+Traefik. If yours
+is older, download it again before you start, and carry over any changes you
+had made to your copy:
+
+```bash
+curl -O https://raw.githubusercontent.com/complexdatacollective/network-canvas-monorepo/main/apps/studio/docker-compose.yml
+```
 
 Adding a replica is two edits. Create `docker-compose.override.yml` beside
 `docker-compose.yml`, which Compose reads on its own:
+
+<!-- two-api-override start -->
 
 ```yaml
 services:
@@ -282,9 +304,15 @@ configs:
                 - url: "http://api-b:3000"
 ```
 
+<!-- two-api-override end -->
+
 `api-b` is `api` with a different name: the same image, environment and
-secrets. The second block replaces the server list as a whole, so it restates
-the health check and names every replica, and so does the next replica you add.
+secrets. Keep the name starting with `api`: the upgrade and restore commands
+find every replica that way. The second block replaces the server list as a
+whole, so it names every replica, and so does the next replica you add.
+Studio's own stack test builds its two-replica stack from this block, as
+written.
+
 Then start the new replica, and recreate Traefik so it reads the new list:
 
 ```bash
@@ -298,19 +326,16 @@ config changed, so without the second command Traefik goes on sending every
 request to `api`. Recreating Traefik closes the connections open through it,
 and editors' browsers reconnect.
 
-Traefik checks each server's `/healthz` every five seconds and stops sending
-requests to one that does not answer. `/healthz` says the process is alive. It
-is not `/readyz`, which also reports whether the database, object store and
-schema are as this release expects, and answers 503 with `draining` while a
-replica shuts down. So a replica that is draining for a deploy stays in
-rotation until it stops, and the editors on it reconnect to the other.
+The block also adds a health check, which one replica does not need: Traefik
+asks each server's `/healthz` every five seconds and stops sending requests to
+one that does not answer, so a stopped replica leaves rotation. `/healthz`
+says only that the process is alive. It is not `/readyz`, which also fails
+during maintenance and whenever the database is unreachable, and would then
+take every replica out at once. So a replica stays in rotation until it stops,
+and the editors on it then reconnect to the other.
 
-From here the upgrade sequence names every replica in `stop` and in `up`:
-
-```bash
-docker compose stop api api-b worker
-docker compose up -d web api api-b worker
-```
+The upgrade sequence and the restore already stop and start every service
+whose name starts with `api`, so they need no change for a second replica.
 
 If you front the stack with your own proxy, as in
 [Swap an element](./swap.md#the-ingress), list each replica as a

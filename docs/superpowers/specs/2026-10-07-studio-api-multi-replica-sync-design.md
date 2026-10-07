@@ -177,6 +177,17 @@ is irrelevant.
   lapse at the TTL and its next submit is refused with `NotLockHolder`.
   That degradation is accepted because no shipped client uses the unary plane.
 
+  As built, this degradation does not happen. The row is a `'contact'` row
+  keyed per owner **per replica** (`unary:<owner>:<replica>`), with the lease
+  TTL as its expiry. Every replica that serves the owner writes its own row,
+  at most once every 30 s, and that write renews the owner's live leases at
+  once. Each liveness pass then renews the row and the leases until `IDLE_MS`
+  after the owner's last call on that replica. So when a replica dies, the
+  owner's next call on another replica keeps its leases, provided it arrives
+  inside the TTL. The two-API stack test saves 40 s after the granting replica
+  stopped. `Leases.connected` no longer exists: releasing staged rows checks
+  for a live `'socket'` row, and a `'contact'` row never holds off a release.
+
 ### 3.3 Changes to `studio-sync`
 
 Add one statement to `makeSyncServer`:
@@ -305,10 +316,11 @@ Not taken:
   about 30 s, and leases of owners who never return expire at the TTL. The
   reaper then publishes the release events. A ghost row can only _delay_ a
   release, never cause a wrong one.
-- **Rolling deploy.** The draining replica closes sockets with 1001
-  (`ws-drain.ts`), deletes their rows in the socket finalizers, and does not
-  release, because grace fibers are interrupted. Clients reconnect to a
-  surviving replica, whose connect transaction renews their leases.
+- **Restarting one replica** (same build; upgrades stop every replica). The
+  draining replica closes sockets with 1001 (`ws-drain.ts`), deletes their
+  rows in the socket finalizers, and does not release, because grace fibers
+  are interrupted. Clients reconnect to a surviving replica, whose connect
+  transaction renews their leases.
 - **Event order.** The relay emits only contiguous cursor runs read from the
   log. This fixes the in-process ordering race described in §7.
 - **Reconnect and resume on a different replica.** `WatchProtocol` resumes
@@ -342,6 +354,11 @@ The proposal:
 - **Abandoned staging.** The worker's `protocol-store-gc` cron sweeps rows
   whose owner has had no live connection for `IDLE_MS`. A bucket lifecycle
   rule on `staging/` is the backstop.
+
+  As built, no lifecycle rule is needed. The same cron deletes staging objects
+  that no row names once they are 24 hours old. A rule is needed only on a
+  bucket that keeps versions, where a delete leaves the bytes behind as a
+  noncurrent version (`docs/self-host/requirements.md`).
 
 This also takes up to 100 MB per staged file out of API memory. Discarded
 staging still leaves nothing behind, subject to GC latency after a crash.
@@ -395,14 +412,26 @@ replica can serve the next one. The load balancer needs:
   `WebSocketDrain.closing` opens, so new upgrades go elsewhere during the 5 s
   socket drain inside `stop_grace_period: 20s`. This is a small change in
   `http/health.ts`.
+
+  As built, `/readyz` does return 503 while draining, but nothing in the
+  compose stack reads it. The base stack has one replica and no health check.
+  The multi-replica override in `docs/self-host/run.md` health-checks
+  `/healthz`, which stays 200 while a replica drains. A readiness check there
+  would take every replica out of rotation at once during maintenance mode or
+  a database outage. The drain signal is advisory for load balancers that
+  probe `/readyz`.
+
 - **Valkey reachable from every API replica**, for live cross-replica updates.
 - **For the compose stack:** the file-provider router names one server,
   `http://api:3000` (`docker-compose.yml:396-401`). Running `api` with
   `deploy.replicas > 1` needs Traefik's Docker provider, or one listed server
   per replica.
 
-Hosting targets: this unlocks Azure Container Apps with more than one replica
-and rolling deploys that do not interrupt editors. It does **not** by itself
+Hosting targets: this unlocks Azure Container Apps with more than one replica.
+It does not give rolling upgrades: an upgrade stops every replica, because the
+old and new builds do not share a schema (`docs/self-host/upgrade.md`), so
+editors' locks lapse across one. A restart or a lost replica on the same build
+keeps them (§5). It does **not** by itself
 make `serve` fit Azure Functions or Cloudflare Workers. Long-lived WebSockets
 with a per-process liveness loop would there need Durable Objects or an
 equivalent, which is a separate design.
@@ -476,10 +505,13 @@ equivalent, which is a separate design.
 - `apps/studio/README.md`:
   - The run-mode table (about line 1029): change `serve` "a single replica
     (#1247)" to "scalable; needs `REDIS_URL` for live cross-replica updates".
+    As built, `REDIS_URL` is optional. Without it, replicas still see each
+    other's changes, through the relay's 5 s safety poll.
   - Deployment topologies (about lines 1281-1288): replace the
     single-replica paragraph with the liveness and relay model.
   - Live-session impact (about lines 1306-1308): editors keep their locks
-    across a backend deploy.
+    across a backend restart. As built, not across an upgrade, which stops
+    every replica.
   - The Valkey section: Valkey now also carries sync doorbells, still
     disposable.
   - The schema module list: add the new tables.
@@ -487,8 +519,10 @@ equivalent, which is a separate design.
   `PUBLISH`/`SUBSCRIBE` to the command list. State what more than one API
   container requires.
 - `apps/studio/docs/self-host/run.md` and `upgrade.md`: how to run more than
-  one `api` (the Traefik provider change), and that upgrades no longer drop
-  edit locks.
+  one `api` (the Traefik provider change), and that a restart no longer drops
+  edit locks. As built, run.md adds a second replica as a compose override
+  that lists each replica as a Traefik server, and upgrade.md says locks lapse
+  during an upgrade.
 - `apps/studio/docs/topology.md` (about lines 135-150): `/ws` routing to N
   replicas.
 - `apps/studio/api/src/protocol-builder/leases.ts`: correct the

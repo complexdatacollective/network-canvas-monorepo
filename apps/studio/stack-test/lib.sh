@@ -80,8 +80,36 @@ variant_file() {
   echo "$path"
 }
 
-# One Compose project: the project name, the three files and the environment
-# file, fixed here so no caller can name three of the four.
+# two-api's second replica is the `docker-compose.override.yml` that
+# docs/self-host/run.md gives a self-hoster, extracted from between its
+# `<!-- two-api-override -->` markers on every use rather than copied into
+# this directory, so the block a self-hoster pastes is the block that ran.
+TWO_API_OVERRIDE="$WORK_DIR/two-api.override.yml"
+
+write_two_api_override() {
+  local guide="$STUDIO_DIR/docs/self-host/run.md" required
+  mkdir -p "$WORK_DIR"
+  awk -v start='<!-- two-api-override start -->' -v end='<!-- two-api-override end -->' '
+    $0 == start { marked = 1; next }
+    $0 == end { marked = 0 }
+    marked && /^```yaml$/ { inside = 1; next }
+    inside && /^```$/ { inside = 0; next }
+    inside
+  ' "$guide" > "$TWO_API_OVERRIDE"
+  for required in \
+    'api-b:' \
+    'service: api' \
+    'traefik-api-servers:' \
+    'path: /healthz' \
+    '- url: "http://api:3000"' \
+    '- url: "http://api-b:3000"'; do
+    grep -qF -- "$required" "$TWO_API_OVERRIDE" \
+      || die "the two-api-override block in $guide no longer contains: $required"
+  done
+}
+
+# One Compose project: the project name, the files and the environment file,
+# fixed here so no caller can name some of them and not the others.
 #
 # `docker-compose.local.yml` is applied to every variant and is not optional:
 # it is what points Traefik at a certificate authority that does not answer, so
@@ -89,19 +117,24 @@ variant_file() {
 # Encrypt for `localhost`. Restating its Traefik command list here would be a
 # second copy of the production flag list to keep in step.
 compose() {
+  local overrides=(-f "$(variant_file "$VARIANT")")
+  if [ "$VARIANT" = "two-api" ]; then
+    write_two_api_override
+    overrides+=(-f "$TWO_API_OVERRIDE")
+  fi
   docker compose \
     -p "$PROJECT" \
     --env-file "$ENV_FILE" \
     -f "$STUDIO_DIR/docker-compose.yml" \
     -f "$STUDIO_DIR/docker-compose.local.yml" \
-    -f "$(variant_file "$VARIANT")" \
+    "${overrides[@]}" \
     "$@"
 }
 
 # The Compose services that serve the API behind the ingress: `api`, and for
-# `two-api` its second replica too. A script that stops, starts or waits for "the
-# API" acts on all of them, so a variant with more replicas is held to the same
-# list of assertions as one with a single replica.
+# `two-api` its second replica too. A script that stops, starts or waits for
+# "the API" acts on all of them, so a variant with more replicas is held to the
+# same list of assertions as one with a single replica.
 api_services() {
   if [ "$VARIANT" = "two-api" ]; then
     echo 'api api-b'
