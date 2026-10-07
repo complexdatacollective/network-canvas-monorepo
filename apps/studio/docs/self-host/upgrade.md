@@ -96,9 +96,16 @@ curl https://studio.example.org/readyz
 ```
 
 `docker compose config --services | grep '^api'` lists every API replica:
-`api`, and `api-b` or any other you have added, as long as its name starts
-with `api`. So the same lines work however many replicas you run, and every
-one of them is stopped for the backup and started on the new image.
+`api`, and `api-b` or any other you have added as a service of its own in
+`docker-compose.override.yml`, as long as its name starts with `api`. So the
+same lines work however many replicas you run, and every one of them is
+stopped for the backup and started on the new image. It sees the override
+only because Compose reads that file on its own when no `-f` is given: if you
+run Compose with `-f`, pass the same flags to every command here or set
+`COMPOSE_FILE`, as
+[Running more than one API](./run.md#running-more-than-one-api) describes.
+Replicas made with `--scale` are not supported, because `docker compose exec`
+reaches only the first container of a scaled service.
 
 This block is not only documentation. Studio's release test runs these lines
 exactly as written against a running instance, with the backup page's commands

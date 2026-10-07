@@ -32,7 +32,9 @@ docker compose stop $(docker compose config --services | grep '^api') worker
 The `stop` line names every API replica, `api` and any other whose name
 starts with `api` (see
 [Running more than one API](./run.md#running-more-than-one-api)), so nothing
-is left writing to the database you are about to copy.
+is left writing to the database you are about to copy. It finds them in the
+`docker-compose.override.yml` Compose reads on its own; if you run Compose
+with `-f`, that section says what to pass instead.
 
 **Dump, using the new major's client.** A throwaway container of the new image
 on the stack's network, so the client is version 19 and the server is still 18:

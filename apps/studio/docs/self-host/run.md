@@ -316,6 +316,20 @@ whole, so it names every replica, and so does the next replica you add.
 Studio's own stack test builds its two-replica stack from this block, as
 written.
 
+Add each replica as a service of its own like this, not with
+`docker compose up --scale api=2`. A scaled service is one name for several
+containers, and `docker compose exec -T api` reaches only the first of them,
+so the upgrade's per-replica readiness check would ask one container on
+behalf of all of them.
+
+Compose reads `docker-compose.override.yml` on its own only when no `-f` is
+given, and that is how `docker compose config --services | grep '^api'`, in
+the upgrade, backup and Postgres upgrade commands, finds `api-b`. If you run
+Compose with `-f`, pass the same `-f` flags to every `docker compose` command
+on those pages, `config --services` included, or set `COMPOSE_FILE` in `.env`
+(`COMPOSE_FILE=docker-compose.yml:docker-compose.override.yml`) so that
+`docker compose` without flags reads them all.
+
 Then start the new replica, and recreate Traefik so it reads the new list:
 
 ```bash

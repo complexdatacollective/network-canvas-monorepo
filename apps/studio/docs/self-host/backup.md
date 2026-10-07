@@ -120,7 +120,9 @@ Same order. Into a **fresh** database rather than over a live one: the schema is
 created by the dump, and restoring across an existing one is how a half-restored
 instance happens. Set `.env`'s image digests to the release that took the
 backup first — when you are [rolling back an upgrade](./upgrade.md#rollback),
-the digests you replaced.
+the digests you replaced. The `stop` and `up` lines below find every API
+replica by name, as [the upgrade](./upgrade.md#the-sequence) does, so what it
+says about running Compose with `-f` holds here too.
 
 <!-- backup-restore start -->
 
