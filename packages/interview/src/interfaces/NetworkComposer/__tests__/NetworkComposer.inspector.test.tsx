@@ -22,7 +22,11 @@ import { ContractProvider } from '../../../contract/context';
 import protocol from '../../../store/modules/protocol';
 import session from '../../../store/modules/session';
 import ui from '../../../store/modules/ui';
-import type { RegisterBeforeNext, StageProps } from '../../../types';
+import type {
+  BeforeNextFunction,
+  RegisterBeforeNext,
+  StageProps,
+} from '../../../types';
 import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
 import NetworkComposer from '../NetworkComposer';
 
@@ -240,7 +244,19 @@ function renderInterface(
   store: ReturnType<typeof makeStore>,
   stageForProps: object = stage,
 ) {
-  const registerBeforeNext: RegisterBeforeNext = vi.fn();
+  const handlers = new Map<string, BeforeNextFunction>();
+  const registerBeforeNext: RegisterBeforeNext = (
+    keyOrFn: string | BeforeNextFunction | null,
+    maybeFn?: BeforeNextFunction | null,
+  ) => {
+    const key = typeof keyOrFn === 'string' ? keyOrFn : '__default__';
+    const fn = typeof keyOrFn === 'string' ? (maybeFn ?? null) : keyOrFn;
+    if (fn === null) {
+      handlers.delete(key);
+    } else {
+      handlers.set(key, fn);
+    }
+  };
 
   const props: StageProps<'NetworkComposer'> = {
     stage: stageForProps as StageProps<'NetworkComposer'>['stage'],
@@ -271,6 +287,15 @@ function renderInterface(
   }
 
   render(<NetworkComposer {...props} />, { wrapper: Wrapper });
+
+  // What pressing Next asks of the stage: whether it may be left.
+  const leave = async () => {
+    for (const handler of handlers.values()) {
+      if ((await handler('forwards', 'step')) === false) return false;
+    }
+    return true;
+  };
+  return { leave };
 }
 
 /**
@@ -518,6 +543,92 @@ describe('NetworkComposer inspector — edge', () => {
         edges.find((e) => e[entityPrimaryKeyProperty] === EDGE_ID),
       ).toBeUndefined();
     });
+  });
+});
+
+describe('NetworkComposer inspector — leaving an edit', () => {
+  const storedName = (store: ReturnType<typeof makeStore>, nodeId: string) =>
+    store
+      .getState()
+      .session.network.nodes.find(
+        (n) => n[entityPrimaryKeyProperty] === nodeId,
+      )?.[entityAttributesProperty]?.[NODE_NAME_VAR];
+
+  const requiredNameCodebook = {
+    ...codebook,
+    node: {
+      [NODE_TYPE]: {
+        ...codebook.node[NODE_TYPE],
+        variables: {
+          ...codebook.node[NODE_TYPE].variables,
+          [NODE_NAME_VAR]: {
+            ...codebook.node[NODE_TYPE].variables[NODE_NAME_VAR],
+            validation: { required: true },
+          },
+        },
+      },
+    },
+  };
+
+  async function openAlice(store: ReturnType<typeof makeStore>) {
+    const { leave } = renderInterface(store);
+    act(() => {
+      tapNode(screen.getByRole('button', { name: /alice/i }));
+    });
+    const nameInput = await screen.findByLabelText(/full name/i);
+    await waitFor(() => expect(nameInput).toHaveValue('Alice Smith'));
+    return { leave, nameInput };
+  }
+
+  it('leaves the stage without asking or saving when nothing was changed', async () => {
+    const store = makeStore();
+    const before = store.getState().session.network;
+    const { leave } = await openAlice(store);
+
+    await expect(leave()).resolves.toBe(true);
+    expect(
+      screen.queryByRole('dialog', { name: 'Discard changes?' }),
+    ).toBeNull();
+    expect(store.getState().session.network).toBe(before);
+  });
+
+  it('saves an edit made too recently for the autosave when the stage is left', async () => {
+    const store = makeStore();
+    const { leave, nameInput } = await openAlice(store);
+
+    fireEvent.change(nameInput, { target: { value: 'Alice Updated' } });
+    let left: Promise<boolean> | undefined;
+    act(() => {
+      left = leave();
+    });
+
+    await expect(left).resolves.toBe(true);
+    expect(
+      screen.queryByRole('dialog', { name: 'Discard changes?' }),
+    ).toBeNull();
+    expect(storedName(store, NODE_A_ID)).toBe('Alice Updated');
+  });
+
+  it('asks before leaving the stage with an invalid edit, and stays when it is kept', async () => {
+    const store = makeStore(false, stage, requiredNameCodebook);
+    const before = store.getState().session.network;
+    const { leave, nameInput } = await openAlice(store);
+
+    fireEvent.change(nameInput, { target: { value: '' } });
+    let left: Promise<boolean> | undefined;
+    act(() => {
+      left = leave();
+    });
+
+    const warning = await screen.findByRole('dialog', {
+      name: 'Discard changes?',
+    });
+    expect(warning).toHaveTextContent(/invalid data/);
+    fireEvent.click(screen.getByRole('button', { name: 'Keep changes' }));
+
+    await expect(left).resolves.toBe(false);
+    expect(nameInput).toHaveValue('');
+    expect(store.getState().session.network).toBe(before);
   });
 });
 

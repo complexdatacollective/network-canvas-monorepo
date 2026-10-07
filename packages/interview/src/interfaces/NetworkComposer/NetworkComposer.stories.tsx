@@ -289,6 +289,63 @@ export const BackgroundImage: Story = {
   render: () => <NetworkComposerStoryWrapper buildFn={buildBackgroundImage} />,
 };
 
+const buildValidatedAge = () => {
+  const { si, nt, quickAddVar, layoutVar, friendship } =
+    createComposerInterview(12);
+  si.addInformationStage({ title: 'Welcome', text: 'Before the main stage.' });
+  const stage = si.addStage('NetworkComposer', {
+    quickAdd: quickAddVar.id,
+    layoutVariable: layoutVar.id,
+    nodeForm: {
+      fields: [
+        {
+          component: 'Number',
+          label: 'Age',
+          validation: { minValue: 1, maxValue: 120 },
+        },
+      ],
+    },
+  });
+  stage.addEdgeType({ type: friendship.id });
+  si.addManualNode(stage.id, nt.id, 'alice', {
+    [quickAddVar.id]: 'Alice',
+    [layoutVar.id]: { x: 0.4, y: 0.4 },
+  });
+  si.addInformationStage({ title: 'Complete', text: 'After the main stage.' });
+  return si;
+};
+
+/**
+ * Leaving the stage with an edit in the drawer saves it, even one made too
+ * recently for the autosave. An edit that cannot be saved, such as an age
+ * outside its limits, is not dropped without a word: the participant is asked
+ * whether to discard it, and keeping it stays on the stage.
+ */
+export const LeavingWithAnInvalidEdit: Story = {
+  render: () => <NetworkComposerStoryWrapper buildFn={buildValidatedAge} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(
+      await canvas.findByRole('button', { name: 'Alice' }, { timeout: 10_000 }),
+    );
+
+    const age = await screen.findByRole('spinbutton', { name: /age/i });
+    await userEvent.clear(age);
+    await userEvent.type(age, '500');
+    await userEvent.click(canvas.getByTestId('next-button'));
+
+    await expect(
+      await screen.findByRole('dialog', { name: 'Discard changes?' }),
+    ).toHaveTextContent(/invalid data/);
+    await userEvent.click(screen.getByRole('button', { name: 'Keep changes' }));
+
+    await expect(
+      await screen.findByRole('spinbutton', { name: /age/i }),
+    ).toHaveValue(500);
+    await expect(canvas.queryByText('After the main stage.')).toBeNull();
+  },
+};
+
 const buildEncryptedNames = () => {
   const si = new SyntheticInterview(10);
   const nt = si.addNodeType({ name: 'Person' });

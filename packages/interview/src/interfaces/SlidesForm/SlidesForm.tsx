@@ -55,6 +55,7 @@ import type { AttributePatch } from '../../store/entityAttributePatch';
 import type { BeforeNextFunction, Direction } from '../../types';
 import { usePassphrase } from '../Anonymisation/usePassphrase';
 import { useProtectedFormValues } from '../Anonymisation/useProtectedFormValues';
+import discardChangesDialog from '../discardChangesDialog';
 import { interfaceMessages } from '../messages';
 
 type FormKind = 'alter' | 'alter_edge' | 'ego' | 'slides';
@@ -84,16 +85,6 @@ const slideTransition = {
   type: 'spring' as const,
   stiffness: 200,
   damping: 15,
-};
-
-const discardChangesDialog = {
-  title: <AppMessage message={interfaceMessages.discardChangesTitle} />,
-  description: (
-    <AppMessage message={interfaceMessages.discardChangesDescription} />
-  ),
-  confirmLabel: <AppMessage message={interfaceMessages.discardChanges} />,
-  cancelLabel: <AppMessage message={interfaceMessages.keepChanges} />,
-  intent: 'destructive' as const,
 };
 
 type SlideHandle = {
@@ -452,7 +443,7 @@ export default function SlidesForm({
       }
 
       const discarded = await confirm({
-        ...discardChangesDialog,
+        ...discardChangesDialog(),
         onConfirm: () => {
           track('form_dismissed_without_save', { form_kind });
         },
@@ -462,32 +453,33 @@ export default function SlidesForm({
     }
 
     if (direction === 'backwards') {
-      if (activeIndex === 0) {
-        if (onNavigateBack) {
-          onNavigateBack();
-          return false;
-        }
-        return true;
-      }
-
+      // Every slide, the first included, is saved or its changes discarded
+      // with the participant's agreement before going back.
       const formIsValid = await slideRef.current?.validate();
-
-      if (!formIsValid && slideRef.current?.isDirty()) {
-        await confirm({
-          ...discardChangesDialog,
-          onConfirm: () => {
-            track('form_dismissed_without_save', { form_kind });
-            setActiveIndex((prev) => prev - 1);
-          },
-        });
-        return false;
-      }
 
       if (formIsValid) {
         const submitted = await slideRef.current?.submit();
         if (!submitted) {
           return false;
         }
+      } else if (slideRef.current?.isDirty()) {
+        const discarded = await confirm({
+          ...discardChangesDialog(),
+          onConfirm: () => {
+            track('form_dismissed_without_save', { form_kind });
+          },
+        });
+        if (discarded !== true) {
+          return false;
+        }
+      }
+
+      if (activeIndex === 0) {
+        if (onNavigateBack) {
+          onNavigateBack();
+          return false;
+        }
+        return true;
       }
 
       setActiveIndex((prev) => prev - 1);

@@ -118,10 +118,12 @@ async function renderAlterForm({
 
   const onStepChange = vi.fn();
   let moveForward: (() => Promise<void>) | undefined;
+  let moveBackward: (() => Promise<void>) | undefined;
 
   function Harness() {
     const navigation = useInterviewNavigation(0);
     moveForward = navigation.moveForward;
+    moveBackward = navigation.moveBackward;
     if (alterFormStage?.type !== 'AlterForm') return null;
 
     return (
@@ -159,7 +161,12 @@ async function renderAlterForm({
   // Leave the introduction for the first person's questions.
   await next();
 
-  return { store, onStepChange, next, prompts: () => prompts };
+  const back = () =>
+    act(async () => {
+      await moveBackward?.();
+    });
+
+  return { store, onStepChange, next, back, prompts: () => prompts };
 }
 
 /** A ciphertext written for another person fails to decrypt for this one. */
@@ -332,6 +339,25 @@ describe('AlterForm with an encrypted question', () => {
     expect(saved?.[entitySecureAttributesMeta]).toEqual(
       person[entitySecureAttributesMeta],
     );
+  });
+});
+
+describe('AlterForm going back from the first person', () => {
+  it('saves the answers entered before showing the introduction again', async () => {
+    const { store, back } = await renderAlterForm({ unlocked: true });
+    const user = userEvent.setup();
+
+    const name = await screen.findByRole('textbox', { name: 'Name' });
+    await waitFor(() => expect(name).toHaveValue('Alice'));
+    await user.clear(name);
+    await user.type(name, 'Alicia');
+    await back();
+
+    expect(await screen.findByText('About each person')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('dialog', { name: 'Discard changes?' }),
+    ).toBeNull();
+    await expect(storedName(store)).resolves.toBe('Alicia');
   });
 });
 

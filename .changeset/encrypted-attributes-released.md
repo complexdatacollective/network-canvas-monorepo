@@ -85,6 +85,11 @@ Encrypted answers are now protected in a new way:
   that can't be saved is reported rather than skipped. Choosing to keep
   editing while it is being saved saves none of it, so finalizing it again
   saves each relative once.
+- Going back from the first person or relationship in a form now saves the
+  answers, or asks before discarding answers that can't be saved, as going
+  back from any other person does. Leaving a Network Composer stage saves a
+  change in its side panel that hadn't been saved yet, and asks before
+  discarding one that is invalid or couldn't be saved.
 - The summary of the family that a family pedigree saves alongside the
   interview names a relative whose name is protected by their relationship
   alone, so a protected name never reaches it, even inside another

@@ -221,9 +221,37 @@ export const WithValidation: Story = {
     docs: {
       description: {
         story:
-          'Demonstrates form fields with validation rules including required fields, min/max values, length constraints, and selection limits. Try advancing without completing the form to see validation errors.',
+          'Demonstrates form fields with validation rules including required fields, min/max values, length constraints, and selection limits. Try advancing without completing the form to see validation errors. Going back from the first person with answers that cannot be saved asks before discarding them, as every other person does.',
       },
     },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    // Leave the introduction for the first person's questions.
+    await userEvent.click(
+      await canvas.findByTestId('next-button', {}, { timeout: 10_000 }),
+    );
+
+    // The introduction's exit animation runs before the questions appear.
+    const notes = await canvas.findByRole(
+      'textbox',
+      { name: /Notes \(required/ },
+      { timeout: 10_000 },
+    );
+    await userEvent.clear(notes);
+    await userEvent.type(notes, 'ab');
+    await userEvent.click(canvas.getByTestId('previous-button'));
+
+    const body = within(canvasElement.ownerDocument.body);
+    await expect(
+      await body.findByRole('dialog', { name: 'Discard changes?' }),
+    ).toBeInTheDocument();
+    await userEvent.click(body.getByRole('button', { name: 'Keep changes' }));
+
+    await expect(
+      await canvas.findByRole('textbox', { name: /Notes \(required/ }),
+    ).toHaveValue('ab');
+    await expect(canvas.queryByText('About Each Person')).toBeNull();
   },
 };
 

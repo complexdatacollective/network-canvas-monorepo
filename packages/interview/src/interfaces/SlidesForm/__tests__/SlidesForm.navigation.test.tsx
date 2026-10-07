@@ -704,3 +704,123 @@ describe('SlidesForm navigation ownership', () => {
     expect(onStepChange).toHaveBeenCalledWith(1, expect.anything());
   });
 });
+
+describe('SlidesForm going back from the first slide', () => {
+  function renderFirstSlide() {
+    const store = configureStore({
+      reducer: { session, protocol, ui },
+      preloadedState: {
+        session: {
+          id: 'session',
+          network: {
+            ego: { [entityAttributesProperty]: {} },
+            nodes: [person, secondPerson],
+            edges: [],
+          },
+        } as never,
+        protocol: {
+          id: 'protocol',
+          hash: 'hash',
+          schemaVersion: 9,
+          localization: { defaultLocale: 'en', locales: ['en'] },
+          codebook: requiredNameCodebook,
+          stages: [
+            {
+              id: 'alter-form',
+              type: 'AlterForm',
+              label: { en: 'Alter form' },
+              subject: { entity: 'node', type: 'person' },
+              introductionPanel: {
+                title: { en: 'About this person' },
+                text: { en: '' },
+              },
+              form,
+            },
+          ],
+        } as never,
+      },
+      middleware: (getDefaultMiddleware) =>
+        getDefaultMiddleware({ serializableCheck: false }),
+    });
+    const onNavigateBack = vi.fn();
+    const updateItem = vi.fn().mockResolvedValue({ success: true });
+    let moveBackward: (() => Promise<void>) | undefined;
+
+    function BackHarness() {
+      const navigation = useInterviewNavigation(0);
+      moveBackward = navigation.moveBackward;
+
+      return (
+        <StageMetadataProvider value={navigation.registerBeforeNext}>
+          <SlidesForm
+            form={form}
+            items={[person, secondPerson]}
+            subject={{ entity: 'node', type: 'person' }}
+            updateItem={updateItem}
+            onNavigateBack={onNavigateBack}
+            moveForward={navigation.moveForward}
+            renderHeader={() => <span>Person header</span>}
+            form_kind="alter"
+          />
+        </StageMetadataProvider>
+      );
+    }
+
+    render(
+      <TestProtocolLocalization>
+        <Provider store={store}>
+          <CurrentStepProvider currentStep={0} onStepChange={vi.fn()}>
+            <DialogProvider>
+              <BackHarness />
+            </DialogProvider>
+          </CurrentStepProvider>
+        </Provider>
+      </TestProtocolLocalization>,
+    );
+
+    return { onNavigateBack, updateItem, back: () => moveBackward?.() };
+  }
+
+  it('saves the answers before showing the introduction again', async () => {
+    const { onNavigateBack, updateItem, back } = renderFirstSlide();
+
+    const field = await screen.findByRole('textbox', { name: 'Person name' });
+    fireEvent.change(field, { target: { value: 'Ada Lovelace' } });
+    await screen.findByDisplayValue('Ada Lovelace');
+
+    await act(async () => {
+      await back();
+    });
+
+    expect(updateItem).toHaveBeenCalledWith('person-1', expect.anything());
+    expect(onNavigateBack).toHaveBeenCalledTimes(1);
+  });
+
+  it('asks before discarding answers that cannot be saved, and stays when they are kept', async () => {
+    const { onNavigateBack, updateItem, back } = renderFirstSlide();
+
+    const field = await screen.findByRole('textbox', { name: 'Person name' });
+    fireEvent.change(field, { target: { value: '' } });
+    await screen.findByDisplayValue('');
+
+    let leaving: Promise<void> | undefined;
+    await act(async () => {
+      leaving = back();
+      await Promise.resolve();
+    });
+
+    const keepChanges = await screen.findByRole('button', {
+      name: 'Keep changes',
+    });
+    await act(async () => {
+      fireEvent.click(keepChanges);
+      await leaving;
+    });
+
+    expect(onNavigateBack).not.toHaveBeenCalled();
+    expect(updateItem).not.toHaveBeenCalled();
+    expect(screen.getByRole('textbox', { name: 'Person name' })).toHaveValue(
+      '',
+    );
+  });
+});
