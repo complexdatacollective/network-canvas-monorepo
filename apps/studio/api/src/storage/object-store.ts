@@ -42,8 +42,11 @@ export const StagingKey = Brand.make<StagingKey>((key) =>
   /^staging\/[^/]+\/[0-9a-f-]{36}$/.test(key),
 );
 
+/** The prefix every team's staging keys share. */
+export const STAGING_ROOT = 'staging/';
+
 export function stagingPrefix(teamId: string): string {
-  return `staging/${teamId}/`;
+  return `${STAGING_ROOT}${teamId}/`;
 }
 
 export class ObjectStoreError extends Schema.TaggedError<ObjectStoreError>()(

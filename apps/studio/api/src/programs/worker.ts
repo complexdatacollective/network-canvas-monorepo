@@ -31,6 +31,7 @@ import { RateLimiter } from '../rate-limit/limiter.ts';
 import { RateLimitStore } from '../rate-limit/store.ts';
 import { SecretsCipher } from '../secrets/services.ts';
 import { KeyringVerified } from '../secrets/verify.ts';
+import { ObjectStoreLive } from '../storage/live.ts';
 import { STUDIO_VERSION } from '../version.ts';
 import { reportingRefusals } from './command.ts';
 
@@ -145,6 +146,8 @@ function workerWith(db: DbEnv) {
         // `update/manifest.ts` names.
         Layer.provide(FetchHttpClient.layer),
         Layer.provide(DeniedAttemptsStore.layer),
+        // The protocol-store sweep collects staged objects.
+        Layer.provide(ObjectStoreLive),
         // Paused until the gate's first reading: a worker that booted
         // fetching could claim before that reading said "closed".
         Layer.provideMerge(

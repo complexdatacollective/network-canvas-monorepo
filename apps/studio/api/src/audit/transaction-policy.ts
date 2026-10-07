@@ -105,6 +105,16 @@ export const NO_AUDIT_TRANSACTION_POLICIES = {
     reason:
       'Dropping what a tab staged once it stayed away past the reconnect grace is cleanup of resources that were never part of the protocol.',
   },
+  'protocol.gcStagedResources': {
+    kind: 'none',
+    reason:
+      'Collecting what a tab staged once no replica has heard from it for the idle bound, and staged objects nothing names, is scheduled maintenance of things that were never part of a protocol.',
+  },
+  'protocol.gcProtocolConnections': {
+    kind: 'none',
+    reason:
+      'Deleting connection rows that expired long ago is scheduled maintenance of connection bookkeeping, which the audit-log design excludes.',
+  },
   'sync.createDraft': {
     kind: 'none',
     reason: 'Protocol synchronization producer coverage is delivered by #1521.',

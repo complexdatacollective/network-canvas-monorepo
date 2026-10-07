@@ -11,6 +11,7 @@ import {
 import { MaintenanceDatabase } from '../../../db/client.ts';
 import { MaintenanceScope, Transaction } from '../../../db/tenant.ts';
 import { collectLogs } from '../../../platform/__tests__/support/logs.ts';
+import { ObjectStore } from '../../../storage/object-store.ts';
 import {
   asApp,
   asMaintenance,
@@ -29,7 +30,10 @@ import {
   protocolStoreGc,
 } from '../protocol-store-gc.ts';
 
-const suiteLayer = layerJobs.pipe(Layer.provideMerge(layerDeliveryHarness));
+const suiteLayer = Layer.merge(
+  layerJobs,
+  Layer.succeed(ObjectStore, ObjectStore.absent),
+).pipe(Layer.provideMerge(layerDeliveryHarness));
 
 const PINNED_TEAM = 'gc-team-pinned';
 
@@ -264,11 +268,17 @@ describe.skipIf(!testDb)('the protocol store sweep on the native queue', () => {
 
         assert.deepStrictEqual(
           logs.messages.filter((message) =>
-            message.startsWith(`protocol-store-gc ${jobId}:`),
+            message.startsWith(`protocol-store-gc ${jobId}: manifests`),
           ),
           [
             `protocol-store-gc ${jobId}: manifests 0, sections 1, command log 0`,
           ],
+        );
+        // Its counts are the whole database's, which other suites share.
+        assert.isTrue(
+          logs.messages.some((message) =>
+            message.startsWith(`protocol-store-gc ${jobId}: staged rows`),
+          ),
         );
       }).pipe(Effect.provide(logs.layer));
     });
