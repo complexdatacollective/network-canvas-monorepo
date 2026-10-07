@@ -5,6 +5,7 @@ import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPa
 
 import StageEditor from '../../StageEditor.tsx';
 import { StageEditorStoryHost } from '../../testing/StageEditorStoryHost.tsx';
+import { storyDialogVisible } from '../dyad-census/storyDialogVisible.ts';
 import { narrativeStageEditor } from './NarrativeStageEditor.ts';
 
 const meta = {
@@ -74,9 +75,11 @@ export const HighlightLabels: Story = {
     if (editPreset === undefined) throw new Error('the stage has no preset');
     await userEvent.click(editPreset);
 
-    const preset = within(
-      await within(canvasElement.ownerDocument.body).findByRole('dialog'),
+    const panel = await within(canvasElement.ownerDocument.body).findByRole(
+      'dialog',
     );
+    await storyDialogVisible(panel);
+    const preset = within(panel);
     await expect(
       preset.getByRole('textbox', { name: 'Label for “flagged”' }),
     ).toHaveValue('Flagged');
