@@ -391,6 +391,17 @@ const recordedInterview: InterviewExportInput = {
         type: 'contact',
         [entityAttributesProperty]: { 'c-name': 'Ana from the roster' },
       },
+      {
+        // Answered in the clear over encrypted answers, by a runtime that
+        // left their records in place.
+        [entityPrimaryKeyProperty]: 'contact-3',
+        type: 'contact',
+        [entityAttributesProperty]: {
+          'c-name': 'Bea',
+          'roster-note': 'met at work',
+        },
+        ...secureAttributes({ iv: valueIv }, 'c-name', 'roster-note'),
+      },
     ],
     edges: [
       {
@@ -516,6 +527,18 @@ describe('an export of values whose storage, not the codebook, says they are enc
     const contact = namedDataOf(graphmlNode('contact-2'));
     expect(contact.get('name')).toBe('Ana from the roster');
     expect(contact.get('label')).toBe('Ana from the roster');
+  });
+
+  it('writes a plaintext value as it is stored, though the entity still records an earlier encrypted one', () => {
+    const row = csvRows(fileEnding(files, 'Contact.csv'))[2];
+    expect([row?.get('name'), row?.get('roster-note')]).toEqual([
+      'Bea',
+      'met at work',
+    ]);
+    const contact = namedDataOf(graphmlNode('contact-3'));
+    expect(
+      ['name', 'roster-note', 'label'].map((column) => contact.get(column)),
+    ).toEqual(['Bea', 'met at work', 'Bea']);
   });
 
   it('writes no ciphertext to any file', () => {
