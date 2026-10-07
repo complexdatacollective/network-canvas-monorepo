@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { describe, expect, it } from 'vitest';
 
+import type { Variable } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -177,6 +178,27 @@ describe('useNodeLabel with encrypted labels', () => {
 
     await installKeyOf(store, 'pw');
     await waitFor(() => expect(result.current).toBe('Alice'));
+  });
+
+  it('decrypts a name its record says is encrypted, though the codebook no longer marks it', async () => {
+    // As a protocol re-imported without its encryption declares the name.
+    const unmarkedVariables: Record<string, Variable> = {
+      name: { name: 'name', label: 'name', type: 'text', component: 'Text' },
+      age: { name: 'age', label: 'age', type: 'number', component: 'Number' },
+    };
+    const node = await makeEncryptedPerson('n1', 'Alice', 'pw');
+    const { header } = await encryptionFor('pw');
+    const store = createEncryptionStore([node], undefined, unmarkedVariables, {
+      header,
+    });
+
+    const { result, seen } = renderLabel(store, node);
+    await waitFor(() => expect(result.current).toBe('🔒'));
+    expect(store.getState().ui.showPassphrasePrompter).toBe(true);
+
+    await unlockWith(store, 'pw');
+    await waitFor(() => expect(result.current).toBe('Alice'));
+    expect(seen).not.toContain('Person');
   });
 
   it('never shows an unreadable outcome to an interview that later unlocks with the right key', async () => {

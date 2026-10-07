@@ -37,8 +37,26 @@ export function useNodeLabel(node: NcNode | undefined) {
   const { requirePassphrase, encryptionUnavailable } = usePassphrase();
   const reportUnreadable = useReportUnreadable();
 
+  // The variables as this node stores them: one whose value its record says is
+  // encrypted counts as encrypted when choosing the label, as when reading it,
+  // so a name stored encrypted under a variable the codebook no longer
+  // encrypts is still decrypted and shown as the name.
+  const labelVariables = useMemo(() => {
+    const variables = codebook?.variables ?? {};
+    if (!node) return variables;
+    return Object.fromEntries(
+      Object.entries(variables).map(([variableId, variable]) => [
+        variableId,
+        !variable.encrypted &&
+        readEncryptedAttribute(node, variableId, variables)
+          ? { ...variable, encrypted: true }
+          : variable,
+      ]),
+    );
+  }, [node, codebook]);
+
   const labelAttributeId = getNodeLabelAttribute(
-    codebook?.variables ?? {},
+    labelVariables,
     node?.[entityAttributesProperty] ?? {},
   );
 
