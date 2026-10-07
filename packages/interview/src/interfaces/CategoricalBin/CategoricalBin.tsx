@@ -25,7 +25,10 @@ import Prompts from '../../components/Prompts';
 import { usePrompts } from '../../components/Prompts/usePrompts';
 import { useCurrentStep } from '../../contexts/CurrentStepContext';
 import { buildVariableLabels } from '../../forms/buildVariableLabels';
-import { writeFailureMessage } from '../../forms/writeSubmissionResult';
+import {
+  writeFailureMessage,
+  writeSubmissionResult,
+} from '../../forms/writeSubmissionResult';
 import useReadyForNextStage from '../../hooks/useReadyForNextStage';
 import { useStageSelector } from '../../hooks/useStageSelector';
 import { resolveInterviewIntl } from '../../i18n/resolveIntl';
@@ -360,27 +363,30 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
           </div>
         ),
         intent: 'default',
+        // Saving inside the dialog means a refused save keeps it open with
+        // the answer as typed and the reason shown, ready to retry.
+        onSubmit: async (values) => {
+          const otherValue = values[otherVariable];
+          return writeSubmissionResult(
+            await dispatch(
+              updateNode({
+                nodeId,
+                attributePatch: {
+                  set: {
+                    [otherVariable]:
+                      typeof otherValue === 'string' ? otherValue : '',
+                  },
+                  unset: [variable],
+                },
+                currentStep,
+              }),
+            ),
+          );
+        },
       });
 
+      // The dialog only resolves with values once they have been saved.
       if (!result) return false;
-
-      const updateResult = await dispatch(
-        updateNode({
-          nodeId,
-          attributePatch: {
-            set: {
-              [otherVariable]:
-                typeof result[otherVariable] === 'string'
-                  ? result[otherVariable]
-                  : '',
-            },
-            unset: [variable],
-          },
-          currentStep,
-        }),
-      );
-
-      if (!committed(updateResult)) return false;
 
       recordCommittedDrop();
       return true;
