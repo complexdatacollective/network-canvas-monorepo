@@ -15,19 +15,21 @@ import {
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
-  entitySecureAttributesMeta,
   type NcNode,
 } from '@codaco/shared-consts';
 
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import { ContractProvider } from '../../../contract/context';
 import { InterviewI18nProvider } from '../../../i18n/InterviewI18nProvider';
-import { setPassphrase } from '../../../store/modules/ui';
 import { interviewToastManager } from '../../../toast/interviewToastManager';
 import type { StageProps } from '../../../types';
-import { createEncryptionStore } from '../../Anonymisation/__tests__/encryptionFixtures';
-import { isNumberArray } from '../../Anonymisation/decryptionScope';
-import { decryptData } from '../../Anonymisation/utils';
+import {
+  createEncryptionStore,
+  encryptionFor,
+  unlockWith,
+} from '../../Anonymisation/__tests__/encryptionFixtures';
+import { readEncryptedAttribute } from '../../Anonymisation/decryptionScope';
+import { decryptValue } from '../../Anonymisation/encryptionFormat';
 import GeospatialInterface from '../Geospatial';
 
 // The stage is driven through its stub map (jsdom's user agent is not
@@ -84,9 +86,12 @@ const person: NcNode = {
   [entityAttributesProperty]: { name: 'Alice' },
 };
 
-function renderGeospatial(passphrase?: string) {
-  const store = createEncryptionStore([person], [stage], variables);
-  if (passphrase) store.dispatch(setPassphrase(passphrase));
+async function renderGeospatial({ unlocked = false } = {}) {
+  const { header } = await encryptionFor('pw');
+  const store = createEncryptionStore([person], [stage], variables, {
+    header,
+  });
+  if (unlocked) await unlockWith(store, 'pw');
 
   render(
     <ContractProvider
@@ -126,7 +131,7 @@ function renderGeospatial(passphrase?: string) {
 describe('Geospatial asking for an encrypted location', () => {
   it('asks for the passphrase instead of taking a location it could not save', async () => {
     const toast = vi.spyOn(interviewToastManager, 'add');
-    const { store, selectArea } = renderGeospatial();
+    const { store, selectArea } = await renderGeospatial();
     const before = store.getState().session.network;
 
     await selectArea();
@@ -143,24 +148,22 @@ describe('Geospatial asking for an encrypted location', () => {
   });
 
   it('saves the location encrypted once the passphrase is in force', async () => {
-    const { store, selectArea } = renderGeospatial('pw');
+    const { store, selectArea } = await renderGeospatial({ unlocked: true });
 
     await selectArea();
 
-    await waitFor(() =>
-      expect(
-        isNumberArray(
-          store.getState().session.network.nodes[0]?.[entityAttributesProperty]
-            .neighbourhood,
-        ),
-      ).toBe(true),
-    );
-    const [saved] = store.getState().session.network.nodes;
-    const data = saved?.[entityAttributesProperty].neighbourhood;
-    const secureAttributes = saved?.[entitySecureAttributesMeta]?.neighbourhood;
-    if (!secureAttributes || !isNumberArray(data)) return;
-    await expect(decryptData({ secureAttributes, data }, 'pw')).resolves.toBe(
-      'Riverside',
-    );
+    const stored = await waitFor(() => {
+      const [saved] = store.getState().session.network.nodes;
+      const attribute = saved
+        ? readEncryptedAttribute(saved, 'neighbourhood', variables)
+        : undefined;
+      if (attribute?.status !== 'encrypted') {
+        throw new Error('Expected the location to be stored encrypted');
+      }
+      return attribute.value;
+    });
+    expect(stored.nodeId).toBe(person[entityPrimaryKeyProperty]);
+    const { key } = await encryptionFor('pw');
+    await expect(decryptValue(key, stored, stored)).resolves.toBe('Riverside');
   });
 });

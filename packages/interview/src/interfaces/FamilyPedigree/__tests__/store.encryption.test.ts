@@ -6,6 +6,7 @@ import {
 } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
+  entityPrimaryKeyProperty,
   entitySecureAttributesMeta,
   isFamilyPedigreeStageMetadata,
   type NcNode,
@@ -13,11 +14,14 @@ import {
 
 import { writeFailureMessage } from '../../../forms/writeSubmissionResult';
 import { runtimeMessages } from '../../../i18n/runtimeMessages';
-import { setPassphrase, setPassphraseInvalid } from '../../../store/modules/ui';
 import type { StageProps } from '../../../types';
-import { createEncryptionStore } from '../../Anonymisation/__tests__/encryptionFixtures';
-import { isNumberArray } from '../../Anonymisation/decryptionScope';
-import { decryptData } from '../../Anonymisation/utils';
+import {
+  createEncryptionStore,
+  encryptionFor,
+  unlockWith,
+} from '../../Anonymisation/__tests__/encryptionFixtures';
+import { readEncryptedAttribute } from '../../Anonymisation/decryptionScope';
+import { decryptValue } from '../../Anonymisation/encryptionFormat';
 import { createFamilyPedigreeStore, type VariableConfig } from '../store';
 
 const PASSPHRASE = 'pedigree passphrase';
@@ -96,7 +100,13 @@ const stage: StageProps<'FamilyPedigree'>['stage'] = {
   },
 };
 
-function makeReduxStore() {
+type ReduxStore = ReturnType<typeof createEncryptionStore>;
+
+/**
+ * An interview whose passphrase was chosen earlier, with its key in force
+ * unless `locked`.
+ */
+async function makeReduxStore({ locked = false } = {}): Promise<ReduxStore> {
   const reduxStore = createEncryptionStore([], [stage], nodeVariables, {
     edgeTypes: {
       [config.edgeType]: {
@@ -105,12 +115,13 @@ function makeReduxStore() {
         variables: edgeVariables,
       },
     },
+    header: (await encryptionFor(PASSPHRASE)).header,
   });
-  reduxStore.dispatch(setPassphrase(PASSPHRASE));
+  if (!locked) await unlockWith(reduxStore, PASSPHRASE);
   return reduxStore;
 }
 
-function buildFamily(reduxStore: ReturnType<typeof makeReduxStore>) {
+function buildFamily(reduxStore: ReduxStore) {
   const store = createFamilyPedigreeStore(
     new Map(),
     new Map(),
@@ -147,18 +158,33 @@ function buildFamily(reduxStore: ReturnType<typeof makeReduxStore>) {
   return store;
 }
 
+/**
+ * The stored name, decrypted as every display path reads it: as the
+ * ciphertext of this node's own name, stored with only an IV beside it.
+ */
 async function readStoredLabel(node: NcNode | undefined) {
   if (!node) throw new Error('Expected the node to exist');
-  const value = node[entityAttributesProperty][config.nodeLabelVariable];
-  const secure = node[entitySecureAttributesMeta]?.[config.nodeLabelVariable];
-  if (!isNumberArray(value)) throw new Error('Expected a stored ciphertext');
-  if (!secure) throw new Error('Expected secure-attribute metadata');
-  return decryptData({ secureAttributes: secure, data: value }, PASSPHRASE);
+  const stored = readEncryptedAttribute(
+    node,
+    config.nodeLabelVariable,
+    nodeVariables,
+  );
+  if (stored?.status !== 'encrypted') {
+    throw new Error('Expected a stored ciphertext');
+  }
+  expect(stored.value.nodeId).toBe(node[entityPrimaryKeyProperty]);
+  expect(
+    Object.keys(
+      node[entitySecureAttributesMeta]?.[config.nodeLabelVariable] ?? {},
+    ),
+  ).toEqual(['iv']);
+  const { key } = await encryptionFor(PASSPHRASE);
+  return decryptValue(key, stored.value, stored.value);
 }
 
 describe('finalizeNetwork with an encrypted name variable', () => {
-  it('stores each name as ciphertext with its metadata', async () => {
-    const reduxStore = makeReduxStore();
+  it('stores each name as ciphertext bound to the node it is committed as', async () => {
+    const reduxStore = await makeReduxStore();
     await buildFamily(reduxStore).getState().finalizeNetwork();
 
     const nodes = reduxStore.getState().session.network.nodes;
@@ -173,8 +199,28 @@ describe('finalizeNetwork with an encrypted name variable', () => {
     ).toBe('Parent');
   });
 
+  it('records each relative under the id their name was encrypted for', async () => {
+    const reduxStore = await makeReduxStore();
+    const store = buildFamily(reduxStore);
+    await store.getState().finalizeNetwork();
+
+    const { network, storeToReduxIdMap } = store.getState();
+    const committed = reduxStore.getState().session.network.nodes;
+    expect(storeToReduxIdMap.size).toBe(2);
+    for (const [storeId, reduxId] of storeToReduxIdMap) {
+      const name =
+        network.nodes.get(storeId)?.[entityAttributesProperty][
+          config.nodeLabelVariable
+        ];
+      const node = committed.find(
+        (candidate) => candidate[entityPrimaryKeyProperty] === reduxId,
+      );
+      expect(await readStoredLabel(node)).toBe(name);
+    }
+  });
+
   it('keeps names out of the membership metadata', async () => {
-    const reduxStore = makeReduxStore();
+    const reduxStore = await makeReduxStore();
     await buildFamily(reduxStore).getState().finalizeNetwork();
 
     const metadata = reduxStore.getState().session.stageMetadata?.[0];
@@ -189,9 +235,8 @@ describe('finalizeNetwork with an encrypted name variable', () => {
     expect(JSON.stringify(metadata)).not.toMatch(/Mum|Sam/);
   });
 
-  it('commits nothing when a name cannot be saved, and keeps the pedigree for another try', async () => {
-    const reduxStore = makeReduxStore();
-    reduxStore.dispatch(setPassphraseInvalid(true));
+  it('commits nothing while the interview is locked, and keeps the pedigree for another try', async () => {
+    const reduxStore = await makeReduxStore({ locked: true });
     const store = createFamilyPedigreeStore(
       new Map(),
       new Map(),
@@ -238,7 +283,7 @@ describe('finalizeNetwork with an encrypted name variable', () => {
     ).toBe('Sam');
     expect(store.getState().nodeMetadata.get(siblingId)?.readOnly).toBe(false);
 
-    reduxStore.dispatch(setPassphraseInvalid(false));
+    await unlockWith(reduxStore, PASSPHRASE);
     expect(await store.getState().finalizeNetwork()).toBeUndefined();
 
     const saved = reduxStore.getState().session.network;

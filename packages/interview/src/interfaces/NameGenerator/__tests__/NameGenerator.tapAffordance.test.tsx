@@ -47,7 +47,7 @@ vi.mock('../../../store/store', () => ({ useAppDispatch: () => vi.fn() }));
 vi.mock('../../Anonymisation/usePassphrase', () => ({
   usePassphrase: () => ({
     requirePassphrase: vi.fn(),
-    passphrase: null,
+    unlocked: false,
   }),
 }));
 

@@ -6,6 +6,8 @@ import type {
   VariableValue,
 } from '@codaco/shared-consts';
 
+import { encryptValue } from './encryptionFormat';
+
 const writeOwnProperty = <Value>(
   target: Record<string, Value>,
   key: string,
@@ -20,8 +22,8 @@ const writeOwnProperty = <Value>(
 };
 
 /**
- * An encrypted write was refused because no passphrase that can decrypt this
- * interview's data is in force.
+ * An encrypted write was refused because the interview's encryption key is
+ * not in force: no passphrase has been entered since it was opened.
  */
 const PASSPHRASE_REQUIRED = 'PassphraseRequiredError';
 
@@ -41,73 +43,6 @@ export const isPassphraseRequiredError = (
 ) => error?.name === PASSPHRASE_REQUIRED;
 
 /**
- * Creates a key from a passphrase and a random salt. The salt is used to
- * ensure the same passphrase results in a unique key each time.
- *
- * To derive a key from a passphrase, use the PBKDF2 algorithm to make the
- * encryption more secure by adding a random salt. This ensures the same
- * passphrase results in a unique key each time.
- */
-async function generateKey(passphrase: string, salt: Uint8Array<ArrayBuffer>) {
-  const encoder = new TextEncoder();
-  const keyMaterial = await crypto.subtle.importKey(
-    'raw',
-    encoder.encode(passphrase),
-    'PBKDF2',
-    false,
-    ['deriveKey'],
-  );
-
-  return await crypto.subtle.deriveKey(
-    {
-      name: 'PBKDF2',
-      salt,
-      iterations: 100000,
-      hash: 'SHA-256',
-    },
-    keyMaterial,
-    { name: 'AES-GCM', length: 256 },
-    false,
-    ['encrypt', 'decrypt'],
-  );
-}
-
-type EncryptedData = {
-  secureAttributes: {
-    iv: number[];
-    salt: number[];
-  };
-  data: number[];
-};
-
-export async function decryptData(
-  encrypted: EncryptedData,
-  passphrase: string,
-): Promise<string> {
-  const {
-    data,
-    secureAttributes: { iv, salt },
-  } = encrypted;
-
-  const key = await generateKey(passphrase, new Uint8Array(salt));
-
-  const decryptedData = await crypto.subtle.decrypt(
-    {
-      name: 'AES-GCM',
-      iv: new Uint8Array(iv),
-    },
-    key,
-    new Uint8Array(data),
-  );
-
-  const decoder = new TextDecoder();
-
-  // TODO: We need to look up the variable type and re-cast it here.
-
-  return decoder.decode(decryptedData);
-}
-
-/**
  * Whether storing these attribute values encrypts any of them, by the rule
  * `generateSecureAttributes` applies: a string value of a variable the
  * codebook marks encrypted.
@@ -122,10 +57,15 @@ export function writesEncryptedValue(
   );
 }
 
+/**
+ * Encrypts the string values of encrypted variables for the node `nodeId`,
+ * which each ciphertext is bound to. Other values pass through unchanged.
+ */
 export async function generateSecureAttributes(
   attributes: NcNode[EntityAttributesProperty],
   codebookVariables: Record<string, Variable>,
-  passphrase: string,
+  key: CryptoKey,
+  nodeId: string,
 ): Promise<{
   secureAttributes: NcNode[EntitySecureAttributesMeta];
   encryptedAttributes: NcNode[EntityAttributesProperty];
@@ -135,36 +75,18 @@ export async function generateSecureAttributes(
     ...attributes,
   };
 
-  for (const [key, value] of Object.entries(attributes)) {
-    // If this attribute is not encrypted, we can skip it
-    if (!codebookVariables[key]?.encrypted) {
-      continue;
-    }
+  for (const [variableId, value] of Object.entries(attributes)) {
+    if (!codebookVariables[variableId]?.encrypted) continue;
 
-    // TODO: expand this for other variable types
+    // Only text variables can be encrypted, so a string is the only value
+    // there is to encrypt.
     if (typeof value === 'string') {
-      const encoder = new TextEncoder();
-      // Create a new salt and IV for each encryption
-      const salt = crypto.getRandomValues(new Uint8Array(16));
-      const iv = crypto.getRandomValues(new Uint8Array(12));
-
-      const encryptionKey = await generateKey(passphrase, salt);
-      const encryptedData = await crypto.subtle.encrypt(
-        { name: 'AES-GCM', iv: iv },
-        encryptionKey,
-        encoder.encode(value),
-      );
-
-      writeOwnProperty(secureAttributes, key, {
-        iv: Array.from(iv),
-        salt: Array.from(salt),
+      const { iv, data } = await encryptValue(key, value, {
+        nodeId,
+        variableId,
       });
-
-      writeOwnProperty(
-        encryptedAttributes,
-        key,
-        Array.from(new Uint8Array(encryptedData)),
-      );
+      writeOwnProperty(secureAttributes, variableId, { iv });
+      writeOwnProperty(encryptedAttributes, variableId, data);
     }
   }
 

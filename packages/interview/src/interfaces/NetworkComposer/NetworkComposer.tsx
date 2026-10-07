@@ -176,16 +176,16 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
       : undefined;
 
   // Names added here, and values edited in the drawer, are stored encrypted
-  // when their variables are marked encrypted, which needs a working
-  // passphrase.
+  // when their variables are marked encrypted, which needs the interview's
+  // key to be in force.
   const quickAddEncrypted = !!stageVariables[stage.quickAdd]?.encrypted;
   const writesEncrypted =
     quickAddEncrypted ||
     (stage.nodeForm?.fields ?? []).some(
       (field) => !!stageVariables[field.variable]?.encrypted,
     );
-  const { passphrase, passphraseInvalid, requirePassphrase } = usePassphrase();
-  const addNodeLocked = quickAddEncrypted && (!passphrase || passphraseInvalid);
+  const { unlocked, requirePassphrase } = usePassphrase();
+  const addNodeLocked = quickAddEncrypted && !unlocked;
   const { showToast } = useInterviewToast();
 
   useEffect(() => {

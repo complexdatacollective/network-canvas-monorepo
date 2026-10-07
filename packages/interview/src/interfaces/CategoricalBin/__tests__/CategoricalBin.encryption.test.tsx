@@ -26,15 +26,16 @@ import {
 
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import { InterviewI18nProvider } from '../../../i18n/InterviewI18nProvider';
-import { setPassphrase, setPassphraseInvalid } from '../../../store/modules/ui';
 import { interviewToastManager } from '../../../toast/interviewToastManager';
 import type { StageProps } from '../../../types';
-import { createEncryptionStore } from '../../Anonymisation/__tests__/encryptionFixtures';
-import { isNumberArray } from '../../Anonymisation/decryptionScope';
 import {
-  decryptData,
-  generateSecureAttributes,
-} from '../../Anonymisation/utils';
+  createEncryptionStore,
+  encryptionFor,
+  unlockWith,
+} from '../../Anonymisation/__tests__/encryptionFixtures';
+import { readEncryptedAttribute } from '../../Anonymisation/decryptionScope';
+import { decryptValue } from '../../Anonymisation/encryptionFormat';
+import { generateSecureAttributes } from '../../Anonymisation/utils';
 import CategoricalBin from '../CategoricalBin';
 import { getCatBinDropTargetId } from '../components/CategoricalBinItem';
 
@@ -137,19 +138,23 @@ function CaptureDndStore({
   return null;
 }
 
-function renderCategoricalBin(
-  passphrase?: string,
-  {
-    others = [],
-    stageVariables = variables,
-  }: { others?: NcNode[]; stageVariables?: Record<string, Variable> } = {},
-) {
+async function renderCategoricalBin({
+  unlocked = false,
+  others = [],
+  stageVariables = variables,
+}: {
+  unlocked?: boolean;
+  others?: NcNode[];
+  stageVariables?: Record<string, Variable>;
+} = {}) {
+  const { header } = await encryptionFor('pw');
   const store = createEncryptionStore(
     [person, ...others],
     [stage],
     stageVariables,
+    { header },
   );
-  if (passphrase) store.dispatch(setPassphrase(passphrase));
+  if (unlocked) await unlockWith(store, 'pw');
 
   let dndStore: StoreApi<DndStore> | undefined;
   render(
@@ -207,7 +212,7 @@ function renderCategoricalBin(
 describe('CategoricalBin asking for an encrypted "other" answer', () => {
   it('asks for the passphrase instead of taking an answer it could not save', async () => {
     const toast = vi.spyOn(interviewToastManager, 'add');
-    const { store, dropIntoOther } = renderCategoricalBin();
+    const { store, dropIntoOther } = await renderCategoricalBin();
     const before = store.getState().session.network;
 
     await dropIntoOther();
@@ -225,7 +230,9 @@ describe('CategoricalBin asking for an encrypted "other" answer', () => {
   });
 
   it('saves the answer encrypted once the passphrase is in force', async () => {
-    const { store, dropIntoOther } = renderCategoricalBin('pw');
+    const { store, dropIntoOther } = await renderCategoricalBin({
+      unlocked: true,
+    });
 
     await dropIntoOther();
     fireEvent.change(await screen.findByRole('textbox'), {
@@ -233,43 +240,19 @@ describe('CategoricalBin asking for an encrypted "other" answer', () => {
     });
     fireEvent.click(screen.getByTestId('dialog-submit'));
 
-    await waitFor(() =>
-      expect(
-        isNumberArray(
-          store.getState().session.network.nodes[0]?.[entityAttributesProperty]
-            .otherReason,
-        ),
-      ).toBe(true),
-    );
-    const [saved] = store.getState().session.network.nodes;
-    const data = saved?.[entityAttributesProperty].otherReason;
-    const secureAttributes = saved?.[entitySecureAttributesMeta]?.otherReason;
-    if (!secureAttributes || !isNumberArray(data)) return;
-    await expect(decryptData({ secureAttributes, data }, 'pw')).resolves.toBe(
-      'Cousin',
-    );
-  });
-
-  it('keeps the answer being entered, and says it was not saved, when the passphrase stops working', async () => {
-    const { store, dropIntoOther } = renderCategoricalBin('pw');
-    const before = store.getState().session.network;
-
-    await dropIntoOther();
-    fireEvent.change(await screen.findByRole('textbox'), {
-      target: { value: 'Cousin' },
+    const stored = await waitFor(() => {
+      const [saved] = store.getState().session.network.nodes;
+      const attribute = saved
+        ? readEncryptedAttribute(saved, 'otherReason', variables)
+        : undefined;
+      if (attribute?.status !== 'encrypted') {
+        throw new Error('Expected the answer to be stored encrypted');
+      }
+      return attribute.value;
     });
-    act(() => {
-      store.dispatch(setPassphraseInvalid(true));
-    });
-    fireEvent.click(screen.getByTestId('dialog-submit'));
-
-    expect(
-      await screen.findByText(
-        'Your answers have not been saved. Enter your passphrase, then try again.',
-      ),
-    ).toBeVisible();
-    expect(screen.getByRole('textbox')).toHaveValue('Cousin');
-    expect(store.getState().session.network).toBe(before);
+    expect(stored.nodeId).toBe(person[entityPrimaryKeyProperty]);
+    const { key } = await encryptionFor('pw');
+    await expect(decryptValue(key, stored, stored)).resolves.toBe('Cousin');
   });
 });
 
@@ -289,7 +272,8 @@ describe('CategoricalBin validating an encrypted "other" answer', () => {
       await generateSecureAttributes(
         { otherReason: 'Neighbour' },
         uniqueVariables,
-        'pw',
+        (await encryptionFor('pw')).key,
+        'n2',
       );
     const neighbour: NcNode = {
       [entityPrimaryKeyProperty]: 'n2',
@@ -298,7 +282,8 @@ describe('CategoricalBin validating an encrypted "other" answer', () => {
       [entitySecureAttributesMeta]: secureAttributes,
     };
     decryption.ready = false;
-    const { store, dropIntoOther } = renderCategoricalBin('pw', {
+    const { store, dropIntoOther } = await renderCategoricalBin({
+      unlocked: true,
       others: [neighbour],
       stageVariables: uniqueVariables,
     });

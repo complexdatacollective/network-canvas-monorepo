@@ -19,10 +19,14 @@ import {
 
 import { CurrentStepProvider } from '../../contexts/CurrentStepContext';
 import type { ProtocolPayload } from '../../contract/types';
+import {
+  encryptionFor,
+  unlockWith,
+} from '../../interfaces/Anonymisation/__tests__/encryptionFixtures';
 import { generateSecureAttributes } from '../../interfaces/Anonymisation/utils';
 import protocol from '../../store/modules/protocol';
 import session, { type SessionState } from '../../store/modules/session';
-import ui, { setPassphrase } from '../../store/modules/ui';
+import ui from '../../store/modules/ui';
 import useProtocolForm from '../useProtocolForm';
 
 const NODE_TYPE = 'person';
@@ -66,12 +70,17 @@ function fieldFor(variable: string): FormField[] {
   return [{ variable: asEntityAttributeReference(variable), prompt: 'Answer' }];
 }
 
-async function encryptedNode(): Promise<NcNode> {
+/**
+ * The stored person, with their name encrypted for `boundTo`: their own id
+ * unless the ciphertext was written for someone else.
+ */
+async function encryptedNode(boundTo = NODE_ID): Promise<NcNode> {
   const { encryptedAttributes, secureAttributes } =
     await generateSecureAttributes(
       { [NAME_VAR]: 'Alice' },
       variables,
-      PASSPHRASE,
+      (await encryptionFor(PASSPHRASE)).key,
+      boundTo,
     );
   return {
     [entityPrimaryKeyProperty]: NODE_ID,
@@ -81,7 +90,7 @@ async function encryptedNode(): Promise<NcNode> {
   };
 }
 
-function makeStore(nodes: NcNode[], withPassphrase: boolean) {
+async function makeStore(nodes: NcNode[], unlocked: boolean) {
   const sessionState: SessionState = {
     id: 'session',
     startTime: '2026-01-01T00:00:00.000Z',
@@ -96,6 +105,7 @@ function makeStore(nodes: NcNode[], withPassphrase: boolean) {
       },
       nodes,
       edges: [],
+      encryption: (await encryptionFor(PASSPHRASE)).header,
     },
   };
   const protocolState: ProtocolPayload = {
@@ -123,12 +133,12 @@ function makeStore(nodes: NcNode[], withPassphrase: boolean) {
     middleware: (getDefaultMiddleware) =>
       getDefaultMiddleware({ serializableCheck: false }),
   });
-  if (withPassphrase) store.dispatch(setPassphrase(PASSPHRASE));
+  if (unlocked) await unlockWith(store, PASSPHRASE);
   return store;
 }
 
 function renderForm(
-  store: ReturnType<typeof makeStore>,
+  store: Awaited<ReturnType<typeof makeStore>>,
   variable: string,
   currentEntityId?: string,
 ) {
@@ -151,8 +161,8 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
 
-/** The value the first field's validators see for the stored person. */
-function validatedValue(fieldComponents: ReactNode, variable: string) {
+/** The stored person as the first field's validators see them. */
+function validatedNode(fieldComponents: ReactNode) {
   const element = Array.isArray(fieldComponents)
     ? fieldComponents[0]
     : fieldComponents;
@@ -170,7 +180,30 @@ function validatedValue(fieldComponents: ReactNode, variable: string) {
   if (!isRecord(node) || !isRecord(node[entityAttributesProperty])) {
     return undefined;
   }
-  return node[entityAttributesProperty][variable];
+  return { [entityAttributesProperty]: node[entityAttributesProperty] };
+}
+
+/** Waits for the network the first field's validators would compare with. */
+async function resolveValidatedNetwork(fieldComponents: ReactNode) {
+  const element = Array.isArray(fieldComponents)
+    ? fieldComponents[0]
+    : fieldComponents;
+  if (!isValidElement(element) || !isRecord(element.props)) {
+    throw new Error('Expected a field');
+  }
+  const { validationContext } = element.props;
+  if (
+    !isRecord(validationContext) ||
+    typeof validationContext.resolveNetwork !== 'function'
+  ) {
+    throw new Error('Expected the validation to resolve its network');
+  }
+  return validationContext.resolveNetwork();
+}
+
+/** The value the first field's validators see for the stored person. */
+function validatedValue(fieldComponents: ReactNode, variable: string) {
+  return validatedNode(fieldComponents)?.[entityAttributesProperty][variable];
 }
 
 describe('useProtocolForm validating against encrypted values', () => {
@@ -180,7 +213,7 @@ describe('useProtocolForm validating against encrypted values', () => {
   ])(
     'compares %s with the plaintext of the stored value',
     async (_rule, variable, currentEntityId) => {
-      const store = makeStore([await encryptedNode()], true);
+      const store = await makeStore([await encryptedNode()], true);
       const { result } = renderForm(store, variable, currentEntityId);
 
       await waitFor(() => {
@@ -191,9 +224,36 @@ describe('useProtocolForm validating against encrypted values', () => {
     },
   );
 
+  it('leaves out a stored value its key cannot read, rather than comparing with its ciphertext', async () => {
+    const store = await makeStore([await encryptedNode('elsewhere')], true);
+    const { result } = renderForm(store, NAME_VAR);
+
+    await waitFor(() => {
+      expect(
+        validatedNode(result.current.fieldComponents)?.[
+          entityAttributesProperty
+        ],
+      ).toEqual({});
+    });
+    expect(store.getState().ui.showPassphrasePrompter).toBe(false);
+  });
+
+  it('fails a comparison with an encrypted value while the key is not in force, never using its ciphertext', async () => {
+    const store = await makeStore([await encryptedNode()], false);
+    const { result } = renderForm(store, NICKNAME_VAR, NODE_ID);
+
+    expect(
+      validatedNode(result.current.fieldComponents)?.[entityAttributesProperty],
+    ).toEqual({});
+    await expect(
+      resolveValidatedNetwork(result.current.fieldComponents),
+    ).rejects.toThrow();
+    expect(store.getState().ui.showPassphrasePrompter).toBe(true);
+  });
+
   it('leaves a form that compares with no encrypted value on the stored network', async () => {
     const node = await encryptedNode();
-    const store = makeStore([node], false);
+    const store = await makeStore([node], false);
     const { result } = renderForm(store, NOTES_VAR, NODE_ID);
 
     expect(validatedValue(result.current.fieldComponents, NAME_VAR)).toBe(

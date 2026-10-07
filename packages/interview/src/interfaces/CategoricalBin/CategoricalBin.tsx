@@ -232,7 +232,7 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
     prompt.otherVariable !== undefined ? [prompt.otherVariable] : [],
   );
   const intl = useAppIntl();
-  const { passphrase, passphraseInvalid, requirePassphrase } = usePassphrase();
+  const { unlocked, requirePassphrase } = usePassphrase();
   const { showToast } = useInterviewToast();
 
   // A refused write leaves the person where they were; say why.
@@ -279,10 +279,7 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
 
       // An answer that would be encrypted is not asked for until it could be
       // saved.
-      if (
-        stageVariables[otherVariable]?.encrypted &&
-        (!passphrase || passphraseInvalid)
-      ) {
+      if (stageVariables[otherVariable]?.encrypted && !unlocked) {
         requirePassphrase();
         showToast({
           description: intl.formatMessage(

@@ -13,6 +13,7 @@ import type { NcNetwork, NcNode } from '@codaco/shared-consts';
 
 import {
   decryptNodes,
+  omitEncryptedValues,
   useDecryptedNodes,
 } from '../interfaces/Anonymisation/useDecryptedNodes';
 import { useDecryptionScope } from '../interfaces/Anonymisation/useDecryptionScope';
@@ -50,10 +51,11 @@ function comparesEncryptedValues(
  * The network that the validation rules of these variables' fields compare
  * against, to spread into their validation context. When a rule compares with
  * values stored encrypted, the nodes come back with those values decrypted,
- * and the passphrase is asked for if it is not known yet. While they are being
- * decrypted, `resolveNetwork` makes a validation run wait for them, so a value
- * is never checked against ciphertext. For every other form it is the network
- * as stored.
+ * and the passphrase is asked for if it is not known yet. Until they are
+ * decrypted the network leaves them out: while they are being decrypted,
+ * `resolveNetwork` makes a validation run wait for them, and while the key is
+ * not in force it fails the run, so a value is never checked against
+ * ciphertext. For every other form it is the network as stored.
  */
 export function useValidationNetwork(
   { codebook, network }: { codebook: Codebook; network: NcNetwork },
@@ -72,11 +74,9 @@ export function useValidationNetwork(
   const decrypted = useDecryptedNodes(
     comparesEncrypted ? network.nodes : NO_NODES,
   );
-  const nodes =
-    comparesEncrypted && decrypted.status === 'ready'
-      ? decrypted.nodes
-      : network.nodes;
-  const pending = comparesEncrypted && decrypted.status === 'pending';
+  const status = comparesEncrypted ? decrypted.status : 'ready';
+  const readyNodes =
+    decrypted.status === 'ready' ? decrypted.nodes : network.nodes;
 
   const scope = useDecryptionScope();
   const getCodebookVariablesForNodeType = useSelector(
@@ -84,11 +84,31 @@ export function useValidationNetwork(
   );
 
   return useMemo(() => {
-    const comparedNetwork =
-      nodes === network.nodes ? network : { ...network, nodes };
-    if (!pending || !scope) return { network: comparedNetwork };
+    if (status === 'ready') {
+      const nodes = comparesEncrypted ? readyNodes : network.nodes;
+      return {
+        network: nodes === network.nodes ? network : { ...network, nodes },
+      };
+    }
+
+    const withoutCiphertext = {
+      ...network,
+      nodes: omitEncryptedValues(
+        network.nodes,
+        getCodebookVariablesForNodeType,
+      ),
+    };
+    if (status === 'locked' || !scope) {
+      return {
+        network: withoutCiphertext,
+        resolveNetwork: () =>
+          Promise.reject(
+            new Error('Encrypted values cannot be compared without the key'),
+          ),
+      };
+    }
     return {
-      network: comparedNetwork,
+      network: withoutCiphertext,
       resolveNetwork: async () => ({
         ...network,
         nodes: await decryptNodes(
@@ -98,5 +118,12 @@ export function useValidationNetwork(
         ),
       }),
     };
-  }, [network, nodes, pending, scope, getCodebookVariablesForNodeType]);
+  }, [
+    network,
+    status,
+    comparesEncrypted,
+    readyNodes,
+    scope,
+    getCodebookVariablesForNodeType,
+  ]);
 }

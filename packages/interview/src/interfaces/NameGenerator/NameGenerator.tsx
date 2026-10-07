@@ -71,7 +71,7 @@ const NameGenerator = (props: NameGeneratorProps) => {
   const interfaceRef = useRef<HTMLDivElement>(null);
 
   const { isLastPrompt, promptIndex } = usePrompts();
-  const { requirePassphrase, passphrase, passphraseInvalid } = usePassphrase();
+  const { requirePassphrase, unlocked } = usePassphrase();
   const { showToast } = useInterviewToast();
 
   const [selectedNode, setSelectedNode] = useState<NcNode | null>(null);
@@ -121,9 +121,9 @@ const NameGenerator = (props: NameGeneratorProps) => {
     }
   }, [useEncryption, requirePassphrase]);
 
-  // Answers this stage would encrypt can only be taken once a passphrase that
-  // works is in force.
-  const encryptionLocked = useEncryption && (!passphrase || passphraseInvalid);
+  // Answers this stage would encrypt can only be taken once the interview's
+  // passphrase has been entered.
+  const encryptionLocked = useEncryption && !unlocked;
 
   const addNodeToPrompt = useCallback(
     (
@@ -204,8 +204,7 @@ const NameGenerator = (props: NameGeneratorProps) => {
     };
     if (
       encryptionLocked ||
-      (writesEncryptedValue(attributes, codebookForNodeType) &&
-        (!passphrase || passphraseInvalid))
+      (writesEncryptedValue(attributes, codebookForNodeType) && !unlocked)
     ) {
       requirePassphrase();
       return;

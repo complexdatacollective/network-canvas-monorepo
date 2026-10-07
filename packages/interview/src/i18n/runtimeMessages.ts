@@ -108,13 +108,6 @@ export const runtimeMessages = defineMessages({
     description:
       'Fallback accessible name for the second item when its name is missing.',
   },
-  decryptRetry: {
-    id: 'interview.runtime.decryptRetry',
-    defaultMessage:
-      'There was a problem decrypting the data. Please re-enter your passphrase.',
-    description:
-      'Message asking for another passphrase after decryption fails.',
-  },
   passphraseNeeded: {
     id: 'interview.runtime.passphraseNeeded',
     defaultMessage:
@@ -132,12 +125,37 @@ export const runtimeMessages = defineMessages({
     defaultMessage: 'Submit passphrase',
     description: 'Action that submits a passphrase to decrypt interview data.',
   },
-  decryptFailed: {
-    id: 'interview.runtime.decryptFailed',
-    defaultMessage:
-      'There was an error decrypting the data with the passphrase entered. Please try again.',
+  choosePassphrase: {
+    id: 'interview.runtime.choosePassphrase',
+    defaultMessage: 'Choose a passphrase',
     description:
-      'Error after the entered passphrase could not decrypt the data.',
+      'Title of the dialog in which the participant chooses the passphrase that will protect some of their answers, when none has been chosen yet in this interview.',
+  },
+  choosePassphraseHelp: {
+    id: 'interview.runtime.choosePassphraseHelp',
+    defaultMessage:
+      'Some answers on this screen are protected by a passphrase. Choose one, and keep it safe: you will need it to see or change these answers later, and it cannot be recovered if it is forgotten.',
+    description:
+      'Instructions in the dialog for choosing the interview passphrase, explaining that it cannot be recovered.',
+  },
+  enterChosenPassphrase: {
+    id: 'interview.runtime.enterChosenPassphrase',
+    defaultMessage:
+      'You chose a passphrase earlier in this interview. Enter it to continue.',
+    description:
+      'Shown on the passphrase screen when the participant already chose a passphrase earlier in this interview and needs to enter it again.',
+  },
+  checkingPassphrase: {
+    id: 'interview.runtime.checkingPassphrase',
+    defaultMessage: 'Checking your passphrase…',
+    description:
+      'Status shown and announced while an entered passphrase is being checked, which can take a few seconds.',
+  },
+  answerUnavailable: {
+    id: 'interview.runtime.answerUnavailable',
+    defaultMessage: 'Answer unavailable',
+    description:
+      'Shown in place of a protected answer, such as a name, that was saved earlier but can no longer be shown.',
   },
   passphraseHelp: {
     id: 'interview.runtime.passphraseHelp',

@@ -7,20 +7,26 @@ import {
   type Transition,
   useWillChange,
 } from 'motion/react';
-import { useCallback, useEffect, useId, useState } from 'react';
+import { useCallback, useId, useState } from 'react';
+import { useSelector } from 'react-redux';
 
 import { createMessageError } from '@codaco/app-i18n/messages';
 import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import PasswordField from '@codaco/fresco-ui/form/fields/PasswordField';
 import { FormWithoutProvider } from '@codaco/fresco-ui/form/Form';
+import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
 import type { FormSubmitHandler } from '@codaco/fresco-ui/form/store/types';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import { usePortalContainer } from '@codaco/fresco-ui/PortalContainer';
 
 import { runtimeMessages as messages } from '../i18n/runtimeMessages';
+import PassphraseCheckStatus from '../interfaces/Anonymisation/PassphraseCheckStatus';
+import { protocolPassphraseLengthRules } from '../interfaces/Anonymisation/passphraseRules';
 import { usePassphrase } from '../interfaces/Anonymisation/usePassphrase';
+import { interfaceMessages } from '../interfaces/messages';
+import { getProtocolStages } from '../store/modules/protocol';
 import Overlay from './Overlay';
 
 const transition: Transition = {
@@ -32,29 +38,19 @@ const transition: Transition = {
 
 export default function PassphrasePrompter() {
   const intl = useAppIntl();
-  const { showPassphrasePrompter, passphraseInvalid } = usePassphrase();
-  const [showPassphraseOverlay, setShowPassphraseOverlay] = useState(false);
+  const { showPassphrasePrompter, passphraseChosen } = usePassphrase();
+  // Whether the open dialog chooses the interview's passphrase or asks for
+  // it, fixed when it opens so that it does not change while it closes.
+  const [overlay, setOverlay] = useState({ show: false, choosing: false });
   const [showTooltip, setShowTooltip] = useState(false);
   const portalContainer = usePortalContainer();
 
   const willChange = useWillChange();
 
-  const closeOverlay = useCallback(() => setShowPassphraseOverlay(false), []);
-
-  useEffect(() => {
-    let timeout: ReturnType<typeof setTimeout> | null = null;
-    if (passphraseInvalid) {
-      timeout = setTimeout(() => {
-        setShowTooltip(true);
-      }, 500);
-    }
-
-    return () => {
-      if (timeout) {
-        clearTimeout(timeout);
-      }
-    };
-  }, [passphraseInvalid]);
+  const closeOverlay = useCallback(
+    () => setOverlay((current) => ({ ...current, show: false })),
+    [],
+  );
 
   return (
     <>
@@ -77,11 +73,13 @@ export default function PassphrasePrompter() {
                     exit={{ scale: 0, opacity: 0 }}
                     transition={transition}
                     style={{ willChange }}
-                    onClick={() => setShowPassphraseOverlay(true)}
+                    onClick={() =>
+                      setOverlay({ show: true, choosing: !passphraseChosen })
+                    }
                   >
                     <motion.span className="animate-shake scale-90 text-4xl transition-transform group-hover:scale-100">
                       {/* oxlint-disable-next-line formatjs/no-literal-string-in-jsx -- Decorative status glyph; the button has a localized accessible name. */}
-                      {passphraseInvalid ? '⚠️' : '🔑'}
+                      {'🔑'}
                     </motion.span>
                   </motion.button>
                 }
@@ -101,13 +99,7 @@ export default function PassphrasePrompter() {
                 }
               >
                 <div>
-                  <AppMessage
-                    message={
-                      passphraseInvalid
-                        ? messages.decryptRetry
-                        : messages.passphraseNeeded
-                    }
-                  />
+                  <AppMessage message={messages.passphraseNeeded} />
                 </div>
                 <Tooltip.Arrow className="fill-surface" />
               </Tooltip.Popup>
@@ -116,7 +108,8 @@ export default function PassphrasePrompter() {
         </Tooltip.Root>
       </Tooltip.Provider>
       <PassphraseOverlay
-        show={showPassphraseOverlay}
+        show={overlay.show}
+        choosing={overlay.choosing}
         onAccepted={closeOverlay}
         onClose={closeOverlay}
       />
@@ -124,18 +117,34 @@ export default function PassphrasePrompter() {
   );
 }
 
-const PassphraseOverlay = ({
-  show,
-  onAccepted,
-  onClose,
-}: {
+type PassphraseOverlayProps = {
   show: boolean;
+  /** Whether no passphrase has been chosen yet, so this one becomes it. */
+  choosing: boolean;
   onAccepted: () => void;
   onClose: () => void;
-}) => {
+};
+
+const PassphraseOverlay = (props: PassphraseOverlayProps) => (
+  <FormStoreProvider>
+    <PassphraseDialog {...props} />
+  </FormStoreProvider>
+);
+
+const PassphraseDialog = ({
+  show,
+  choosing,
+  onAccepted,
+  onClose,
+}: PassphraseOverlayProps) => {
   const intl = useAppIntl();
-  const { passphraseInvalid, submitPassphrase } = usePassphrase();
+  const { submitPassphrase } = usePassphrase();
+  // Closed mid-check and opened again, the dialog would offer a second
+  // passphrase while the first is still being checked.
+  const checking = useFormStore((state) => state.isSubmitting);
+  const stages = useSelector(getProtocolStages);
   const formId = useId();
+  const lengthRules = choosing ? protocolPassphraseLengthRules(stages) : {};
 
   const onSubmitForm: FormSubmitHandler = async ({ passphrase }) => {
     if (typeof passphrase !== 'string') {
@@ -145,8 +154,8 @@ const PassphraseOverlay = ({
       };
     }
 
-    // A passphrase that cannot unlock what is already saved is turned away
-    // here, with the reason under the field, rather than being put in force.
+    // A passphrase that does not match the one chosen for this interview is
+    // turned away here, with the reason under the field.
     if (!(await submitPassphrase(passphrase))) {
       return {
         success: false,
@@ -161,42 +170,57 @@ const PassphraseOverlay = ({
   };
 
   return (
-    <FormStoreProvider>
-      <Overlay
-        show={show}
-        title={intl.formatMessage(messages.enterPassphrase)}
-        onClose={onClose}
-        footer={
-          <SubmitButton form={formId}>
-            <AppMessage message={messages.submitPassphrase} />
-          </SubmitButton>
-        }
-      >
-        <div className="flex flex-col">
-          {passphraseInvalid && (
-            <p className="bg-accent/50 rounded p-6 text-white">
-              <AppMessage message={messages.decryptFailed} />
-            </p>
-          )}
-          <p>
-            <AppMessage message={messages.passphraseHelp} />
-          </p>
-          <FormWithoutProvider
-            id={formId}
-            className="mt-6"
-            onSubmit={onSubmitForm}
-          >
+    <Overlay
+      show={show}
+      title={intl.formatMessage(
+        choosing ? messages.choosePassphrase : messages.enterPassphrase,
+      )}
+      onClose={onClose}
+      dismissible={!checking}
+      footer={
+        <SubmitButton form={formId}>
+          <AppMessage message={messages.submitPassphrase} />
+        </SubmitButton>
+      }
+    >
+      <div className="flex flex-col">
+        <p>
+          <AppMessage
+            message={
+              choosing ? messages.choosePassphraseHelp : messages.passphraseHelp
+            }
+          />
+        </p>
+        <FormWithoutProvider
+          id={formId}
+          className="mt-6"
+          onSubmit={onSubmitForm}
+        >
+          <Field
+            component={PasswordField}
+            name="passphrase"
+            label={intl.formatMessage(messages.passphrase)}
+            placeholder={intl.formatMessage(messages.passphrasePlaceholder)}
+            required
+            autoFocus
+            {...lengthRules}
+          />
+          {choosing && (
             <Field
               component={PasswordField}
-              name="passphrase"
-              label={intl.formatMessage(messages.passphrase)}
-              placeholder={intl.formatMessage(messages.passphrasePlaceholder)}
+              name="passphrase-2"
+              label={intl.formatMessage(interfaceMessages.confirmPassphrase)}
+              placeholder={intl.formatMessage(
+                interfaceMessages.reenterPassphrase,
+              )}
               required
-              autoFocus
+              sameAs="passphrase"
+              {...lengthRules}
             />
-          </FormWithoutProvider>
-        </div>
-      </Overlay>
-    </FormStoreProvider>
+          )}
+        </FormWithoutProvider>
+        <PassphraseCheckStatus />
+      </div>
+    </Overlay>
   );
 };

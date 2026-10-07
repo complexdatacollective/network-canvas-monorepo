@@ -4,76 +4,61 @@ import { useCallback } from 'react';
 import { useDispatch, useSelector, useStore } from 'react-redux';
 
 import {
-  getPassphrase,
-  getPassphraseInvalid,
-  setPassphrase as setPassphraseAction,
-  setPassphraseInvalid as setPassphraseInvalidAction,
   setShowPassphrasePrompter,
   showPassphrasePrompter,
 } from '../../store/modules/ui';
 import type { RootState } from '../../store/store';
-import { passphraseUnlocksNetwork } from './verifyPassphrase';
+import { unlockEncryption } from './unlockEncryption';
+import { useDecryptionScope } from './useDecryptionScope';
+
+const hasEncryptionHeader = (state: RootState) =>
+  state.session.network.encryption !== undefined;
 
 export const usePassphrase = () => {
   const dispatch = useDispatch();
+  const store = useStore<RootState>();
 
-  const passphrase = useSelector(getPassphrase);
-  const passphraseInvalid = useSelector(getPassphraseInvalid);
+  const unlocked = useDecryptionScope() !== undefined;
+  const passphraseChosen = useSelector(hasEncryptionHeader);
   const showPrompter = useSelector(showPassphrasePrompter);
 
   const requirePassphrase = useCallback(() => {
-    if (passphrase) {
+    if (unlocked) {
       if (showPrompter) {
         dispatch(setShowPassphrasePrompter(false));
       }
-
-      return passphrase;
+      return;
     }
 
     if (!showPrompter) {
       dispatch(setShowPassphrasePrompter(true));
     }
-    return undefined;
-  }, [passphrase, dispatch, showPrompter]);
-
-  const store = useStore<RootState>();
+  }, [unlocked, dispatch, showPrompter]);
 
   /**
-   * Puts `candidate` in force only if it unlocks the data this interview
-   * already holds, so a mistyped passphrase is turned away at entry instead of
-   * being used to encrypt new answers that could then never be read alongside
-   * the old ones. Resolves to whether it was accepted.
+   * Derives the key from `candidate` and puts it in force: the first
+   * passphrase of an interview creates its encryption header, and any later
+   * one must match it. Resolves to whether it was accepted.
    */
   const submitPassphrase = useCallback(
     async (candidate: string) => {
-      const { session, protocol } = store.getState();
-      const accepted = await passphraseUnlocksNetwork(
-        session.network.nodes,
-        protocol.codebook,
-        candidate,
-      );
-      if (!accepted) return false;
-
-      dispatch(setShowPassphrasePrompter(false));
-      dispatch(setPassphraseAction(candidate));
-      return true;
+      const accepted = await unlockEncryption(store, candidate);
+      if (accepted) dispatch(setShowPassphrasePrompter(false));
+      return accepted;
     },
     [store, dispatch],
   );
 
-  const setPassphraseInvalid = useCallback(
-    (state: boolean) => {
-      dispatch(setPassphraseInvalidAction(state));
-    },
-    [dispatch],
-  );
-
   return {
-    passphrase,
-    passphraseInvalid,
+    /** Whether the interview's encryption key is in force. */
+    unlocked,
+    /**
+     * Whether a passphrase has been chosen for this interview, so that one
+     * entered now is checked against it rather than becoming it.
+     */
+    passphraseChosen,
     submitPassphrase,
     requirePassphrase,
     showPassphrasePrompter: showPrompter,
-    setPassphraseInvalid,
   };
 };

@@ -10,6 +10,7 @@ import {
   entityPrimaryKeyProperty,
   entitySecureAttributesMeta,
   type NcEdge,
+  type NcEncryptionHeader,
   type NcEntity,
   type NcNetwork,
   type NcNode,
@@ -17,7 +18,11 @@ import {
   type VariableValue,
 } from '@codaco/shared-consts';
 
-import { rememberEncryptedWrite } from '../../interfaces/Anonymisation/decryptionScope';
+import {
+  type DecryptionScope,
+  getDecryptionScope,
+  rememberEncryptedWrite,
+} from '../../interfaces/Anonymisation/decryptionScope';
 import {
   generateSecureAttributes,
   PassphraseRequiredError,
@@ -141,22 +146,24 @@ const actionTypes = {
   toggleEdge: 'NETWORK/TOGGLE_EDGE' as const,
   deleteEdge: 'NETWORK/DELETE_EDGE' as const,
   updateEgo: 'NETWORK/UPDATE_EGO' as const,
+  setEncryptionHeader: 'NETWORK/SET_ENCRYPTION_HEADER' as const,
 };
 
 const initialState = {} as SessionState;
 
 /**
- * The passphrase an encrypted write may use. Throwing rejects the whole write,
- * so a patch that mixes encrypted and plain values is never applied in part.
+ * The scope holding the key an encrypted write must use. Throwing rejects the
+ * whole write, so a patch that mixes encrypted and plain values is never
+ * applied in part.
  */
-function requireUsablePassphrase(state: {
-  ui: { passphrase: string | null; passphraseInvalid: boolean };
-}): string {
-  const { passphrase, passphraseInvalid } = state.ui;
-  if (!passphrase || passphraseInvalid) {
+function requireDecryptionScope(
+  getState: Parameters<typeof getDecryptionScope>[0],
+): DecryptionScope {
+  const scope = getDecryptionScope(getState);
+  if (!scope) {
     throw new PassphraseRequiredError();
   }
-  return passphrase;
+  return scope;
 }
 
 type AddNodeArgs = {
@@ -213,27 +220,31 @@ export const addNode = createAppAsyncThunk(
     }
 
     const sessionMeta = getSessionMeta(state, currentStep);
+    // Chosen here rather than in the reducer: an encrypted value is bound to
+    // the node it is written for, so the id must be known before encrypting.
+    const nodeId = modelData?.[entityPrimaryKeyProperty] ?? uuid();
 
     if (!useEncryption) {
       return {
         type,
         attributeData: initialAttributes,
-        modelData,
+        nodeId,
         sessionMeta,
       };
     }
 
-    const passphrase = requireUsablePassphrase(state);
+    const scope = requireDecryptionScope(thunkApi.getState);
 
     const { secureAttributes, encryptedAttributes } =
       await generateSecureAttributes(
         initialAttributes,
         variablesForType,
-        passphrase,
+        scope.key,
+        nodeId,
       );
     rememberEncryptedWrite(
-      thunkApi.getState,
-      passphrase,
+      scope,
+      nodeId,
       initialAttributes,
       encryptedAttributes,
       secureAttributes ?? {},
@@ -242,7 +253,7 @@ export const addNode = createAppAsyncThunk(
     return {
       type,
       attributeData: encryptedAttributes,
-      modelData,
+      nodeId,
       secureAttributes,
       sessionMeta,
     };
@@ -346,17 +357,18 @@ export const updateNode = createAppAsyncThunk(
       };
     }
 
-    const passphrase = requireUsablePassphrase(state);
+    const scope = requireDecryptionScope(thunkApi.getState);
 
     const { secureAttributes, encryptedAttributes } =
       await generateSecureAttributes(
         attributePatch.set,
         variablesForType,
-        passphrase,
+        scope.key,
+        nodeId,
       );
     rememberEncryptedWrite(
-      thunkApi.getState,
-      passphrase,
+      scope,
+      nodeId,
       attributePatch.set,
       encryptedAttributes,
       secureAttributes ?? {},
@@ -400,7 +412,8 @@ export type NodeAttributeSnapshot = Readonly<
 /**
  * Undo/redo support: puts back a node exactly as it was captured. Unlike
  * addNode it neither validates nor encrypts, because the snapshot is already
- * stored state — an encrypted value comes back together with its IV and salt.
+ * stored state — an encrypted value comes back together with its IV, under
+ * the same node id it is bound to.
  */
 export const restoreNode = createAction<NcNode>(actionTypes.restoreNode);
 
@@ -412,6 +425,15 @@ export const restoreNodeAttributes = createAction<{
   nodeId: NcNode[EntityPrimaryKey];
   snapshot: NodeAttributeSnapshot;
 }>(actionTypes.restoreNodeAttributes);
+
+/**
+ * Records how this interview's encryption key is derived and checked. Written
+ * once, when the first passphrase is accepted; a header already in place is
+ * never replaced, because every stored value depends on it.
+ */
+export const setEncryptionHeader = createAction<NcEncryptionHeader>(
+  actionTypes.setEncryptionHeader,
+);
 
 export const updatePrompt = createAction<number>(actionTypes.updatePrompt);
 /**
@@ -662,7 +684,7 @@ export const updateStageMetadata = createAction<{
 
 const sessionReducer = createReducer(initialState, (builder) => {
   builder.addCase(addNode.fulfilled, (state, action) => {
-    const { secureAttributes, sessionMeta, modelData } = action.payload;
+    const { secureAttributes, sessionMeta, nodeId } = action.payload;
     const { promptId, stageId } = sessionMeta;
     invariant(stageId, 'Stage ID is required to add a node');
 
@@ -670,17 +692,13 @@ const sessionReducer = createReducer(initialState, (builder) => {
       payload: { type, attributeData },
     } = action;
 
-    // If node UUID is provided, check that it doesn't already exist in the network
-    if (modelData?.[entityPrimaryKeyProperty]) {
-      const existingNode = find(state.network.nodes, {
-        [entityPrimaryKeyProperty]: modelData[entityPrimaryKeyProperty],
-      });
-      invariant(!existingNode, 'Node with this ID already exists in network');
-    }
+    const existingNode = find(state.network.nodes, {
+      [entityPrimaryKeyProperty]: nodeId,
+    });
+    invariant(!existingNode, 'Node with this ID already exists in network');
 
     const newNode: NcNode = {
-      [entityPrimaryKeyProperty]:
-        modelData?.[entityPrimaryKeyProperty] ?? uuid(),
+      [entityPrimaryKeyProperty]: nodeId,
       type,
       [entityAttributesProperty]: attributeData,
       [entitySecureAttributesMeta]: secureAttributes,
@@ -840,7 +858,7 @@ const sessionReducer = createReducer(initialState, (builder) => {
           );
 
           // Setting a key drops the metadata its current value carries, so a
-          // restored value only ever pairs with its own captured IV and salt.
+          // restored value only ever pairs with its own captured IV.
           const patched = applyEntityAttributePatch(
             node[entityAttributesProperty],
             node[entitySecureAttributesMeta],
@@ -889,6 +907,17 @@ const sessionReducer = createReducer(initialState, (builder) => {
           };
         }),
       },
+    });
+  });
+
+  builder.addCase(setEncryptionHeader, (state, action) => {
+    invariant(
+      !state.network.encryption,
+      'This interview already has an encryption header',
+    );
+    return withLastUpdated({
+      ...state,
+      network: { ...state.network, encryption: action.payload },
     });
   });
 

@@ -95,7 +95,7 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
 
   const { isLastPrompt } = usePrompts();
 
-  const { requirePassphrase, passphrase, passphraseInvalid } = usePassphrase();
+  const { requirePassphrase, unlocked } = usePassphrase();
   const { showToast } = useInterviewToast();
 
   const interfaceRef = useRef(null);
@@ -221,9 +221,9 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
     }
   }, [useEncryption, requirePassphrase]);
 
-  // Answers this stage would encrypt can only be taken once a passphrase that
-  // works is in force.
-  const encryptionLocked = useEncryption && (!passphrase || passphraseInvalid);
+  // Answers this stage would encrypt can only be taken once the interview's
+  // passphrase has been entered.
+  const encryptionLocked = useEncryption && !unlocked;
 
   const { maxNodesReached } = useNodeLimits({
     stageNodeCount,

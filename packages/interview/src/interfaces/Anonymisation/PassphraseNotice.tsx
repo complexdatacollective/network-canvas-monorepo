@@ -7,12 +7,11 @@ import { cx } from '@codaco/fresco-ui/utils/cva';
 
 import { runtimeMessages } from '../../i18n/runtimeMessages';
 
-export type PassphraseNoticeStatus = 'locked' | 'pending' | 'failed';
+export type PassphraseNoticeStatus = 'locked' | 'pending';
 
 /**
  * Stands in for controls that read or save encrypted values while those values
- * cannot be used yet: no passphrase, decryption under way, or decryption
- * failed.
+ * cannot be used yet: no passphrase, or decryption under way.
  */
 export default function PassphraseNotice({
   status,
@@ -38,13 +37,7 @@ export default function PassphraseNotice({
           </span>
         </>
       ) : (
-        <AppMessage
-          message={
-            status === 'failed'
-              ? runtimeMessages.decryptRetry
-              : runtimeMessages.protectedAnswersLocked
-          }
-        />
+        <AppMessage message={runtimeMessages.protectedAnswersLocked} />
       )}
     </output>
   );

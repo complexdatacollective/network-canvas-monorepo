@@ -24,15 +24,15 @@ import {
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import { StageMetadataContext } from '../../../contexts/StageMetadataContext';
 import { ContractProvider } from '../../../contract/context';
-import { setPassphrase, setPassphraseInvalid } from '../../../store/modules/ui';
-import { interviewToastManager } from '../../../toast/interviewToastManager';
 import type { RegisterBeforeNext, StageProps } from '../../../types';
-import { createEncryptionStore } from '../../Anonymisation/__tests__/encryptionFixtures';
-import { isNumberArray } from '../../Anonymisation/decryptionScope';
 import {
-  decryptData,
-  generateSecureAttributes,
-} from '../../Anonymisation/utils';
+  createEncryptionStore,
+  encryptionFor,
+  unlockWith,
+} from '../../Anonymisation/__tests__/encryptionFixtures';
+import { readEncryptedAttribute } from '../../Anonymisation/decryptionScope';
+import { decryptValue } from '../../Anonymisation/encryptionFormat';
+import { generateSecureAttributes } from '../../Anonymisation/utils';
 import NetworkComposer from '../NetworkComposer';
 
 // Records when a list holding encrypted values has been decrypted, so a test
@@ -57,20 +57,27 @@ vi.mock('../../Anonymisation/useDecryptedNodes', async (importOriginal) => {
   };
 });
 
-// Holds every decryption while `held` is set, so a test can act while stored
-// values are still being decrypted.
+// Records every decryption attempt, and holds each one while `held` is set so
+// a test can act while stored values are still being decrypted.
 const decryptionGate = vi.hoisted(() => {
-  const gate: { held?: Promise<void> } = {};
+  const gate: {
+    held?: Promise<void>;
+    attempts: { nodeId: string; variableId: string }[];
+  } = { attempts: [] };
   return gate;
 });
-vi.mock('../../Anonymisation/utils', async (importOriginal) => {
+vi.mock('../../Anonymisation/encryptionFormat', async (importOriginal) => {
   const actual =
-    await importOriginal<typeof import('../../Anonymisation/utils')>();
+    await importOriginal<
+      typeof import('../../Anonymisation/encryptionFormat')
+    >();
   return {
     ...actual,
-    decryptData: async (...args: Parameters<typeof actual.decryptData>) => {
+    decryptValue: async (...args: Parameters<typeof actual.decryptValue>) => {
+      const [, , { nodeId, variableId }] = args;
+      decryptionGate.attempts.push({ nodeId, variableId });
       await decryptionGate.held;
-      return actual.decryptData(...args);
+      return actual.decryptValue(...args);
     },
   };
 });
@@ -153,6 +160,7 @@ const stage: StageProps<'NetworkComposer'>['stage'] = {
 };
 
 async function makeEncryptedNode(): Promise<NcNode> {
+  const { key } = await encryptionFor(PASSPHRASE);
   const { encryptedAttributes, secureAttributes } =
     await generateSecureAttributes(
       {
@@ -161,7 +169,8 @@ async function makeEncryptedNode(): Promise<NcNode> {
         [LAYOUT_VAR]: { x: 0.3, y: 0.3 },
       },
       variables,
-      PASSPHRASE,
+      key,
+      NODE_ID,
     );
   return {
     [entityPrimaryKeyProperty]: NODE_ID,
@@ -171,17 +180,31 @@ async function makeEncryptedNode(): Promise<NcNode> {
   };
 }
 
-function makeStore(
-  nodes: NcNode[],
-  withPassphrase: boolean,
+type Store = ReturnType<typeof createEncryptionStore>;
+
+/**
+ * An interview holding `nodes`. Unless `fresh`, its passphrase was chosen
+ * earlier; its key is in force unless `locked`.
+ */
+async function makeStore({
+  nodes = [],
+  locked = false,
+  fresh = false,
   nodeVariables = variables,
-) {
-  const store = createEncryptionStore(nodes, [stage], nodeVariables);
-  if (withPassphrase) store.dispatch(setPassphrase(PASSPHRASE));
+}: {
+  nodes?: NcNode[];
+  locked?: boolean;
+  fresh?: boolean;
+  nodeVariables?: Record<string, Variable>;
+} = {}): Promise<Store> {
+  const store = createEncryptionStore(nodes, [stage], nodeVariables, {
+    header: fresh ? undefined : (await encryptionFor(PASSPHRASE)).header,
+  });
+  if (!locked) await unlockWith(store, PASSPHRASE);
   return store;
 }
 
-function renderComposer(store: ReturnType<typeof makeStore>) {
+function renderComposer(store: Store) {
   const registerBeforeNext: RegisterBeforeNext = vi.fn();
   const props: StageProps<'NetworkComposer'> = {
     stage,
@@ -230,20 +253,36 @@ function tapNode(nodeEl: HTMLElement) {
   fireEvent.click(nodeEl, { detail: 1 });
 }
 
+// The stored value must be ciphertext, stored with only an IV beside it, that
+// decrypts as this node's own answer.
 async function readStored(node: NcNode | undefined, variable: string) {
   if (!node) throw new Error('Expected the node to exist');
-  const value = node[entityAttributesProperty][variable];
-  const secure = node[entitySecureAttributesMeta]?.[variable];
-  if (!isNumberArray(value)) throw new Error('Expected a stored ciphertext');
-  if (!secure) throw new Error('Expected secure-attribute metadata');
-  return decryptData({ secureAttributes: secure, data: value }, PASSPHRASE);
+  const stored = readEncryptedAttribute(node, variable, variables);
+  if (stored?.status !== 'encrypted') {
+    throw new Error('Expected a stored ciphertext');
+  }
+  expect(stored.value.nodeId).toBe(node[entityPrimaryKeyProperty]);
+  expect(
+    Object.keys(node[entitySecureAttributesMeta]?.[variable] ?? {}),
+  ).toEqual(['iv']);
+  const { key } = await encryptionFor(PASSPHRASE);
+  return decryptValue(key, stored.value, stored.value);
+}
+
+async function addFromPalette(name: string) {
+  fireEvent.click(screen.getByRole('button', { name: /add node/i }));
+  const input = await screen.findByRole('textbox', { name: /name/i });
+  act(() => {
+    fireEvent.change(input, { target: { value: name } });
+    fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' });
+  });
 }
 
 const passphraseNotice = /enter your passphrase to see and change/i;
 
 describe('NetworkComposer with encrypted variables', () => {
   it('asks for the passphrase and holds the add-node field until one is entered', async () => {
-    const store = makeStore([], false);
+    const store = await makeStore({ fresh: true, locked: true });
     renderComposer(store);
 
     expect(store.getState().ui.showPassphrasePrompter).toBe(true);
@@ -254,26 +293,26 @@ describe('NetworkComposer with encrypted variables', () => {
     expect(store.getState().session.network.nodes).toHaveLength(0);
   });
 
-  it('holds the add-node field while the passphrase is not working', async () => {
-    const store = makeStore([], true);
-    store.dispatch(setPassphraseInvalid(true));
+  it('holds the add-node field in a resumed interview until the passphrase is entered again', async () => {
+    const store = await makeStore({ locked: true });
     renderComposer(store);
 
+    expect(store.getState().ui.showPassphrasePrompter).toBe(true);
     fireEvent.click(screen.getByRole('button', { name: /add node/i }));
     expect(await screen.findByText(passphraseNotice)).toBeTruthy();
     expect(screen.queryByRole('textbox', { name: /name/i })).toBeNull();
+
+    await act(() => unlockWith(store, PASSPHRASE));
+
+    expect(await screen.findByRole('textbox', { name: /name/i })).toBeTruthy();
+    expect(screen.queryByText(passphraseNotice)).toBeNull();
   });
 
-  it('stores a name added from the palette as ciphertext with its metadata', async () => {
-    const store = makeStore([], true);
+  it('stores a name added from the palette as ciphertext bound to the new node', async () => {
+    const store = await makeStore();
     renderComposer(store);
 
-    fireEvent.click(screen.getByRole('button', { name: /add node/i }));
-    const input = await screen.findByRole('textbox', { name: /name/i });
-    act(() => {
-      fireEvent.change(input, { target: { value: 'Alice' } });
-      fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' });
-    });
+    await addFromPalette('Alice');
 
     await waitFor(() => {
       expect(store.getState().session.network.nodes).toHaveLength(1);
@@ -283,8 +322,36 @@ describe('NetworkComposer with encrypted variables', () => {
     expect(await readStored(node, QUICK_ADD_VAR)).toBe('Alice');
   });
 
+  it('puts an undone node back under its own id on redo, with its name still readable and shown', async () => {
+    const store = await makeStore();
+    renderComposer(store);
+
+    await addFromPalette('Alice');
+    await waitFor(() => {
+      expect(store.getState().session.network.nodes).toHaveLength(1);
+    });
+    const [created] = store.getState().session.network.nodes;
+
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+    await waitFor(() => {
+      expect(store.getState().session.network.nodes).toEqual([]);
+    });
+    expect(screen.queryByRole('button', { name: /alice/i })).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Redo' }));
+    await waitFor(() => {
+      expect(store.getState().session.network.nodes).toHaveLength(1);
+    });
+    const [restored] = store.getState().session.network.nodes;
+    expect(restored?.[entityPrimaryKeyProperty]).toBe(
+      created?.[entityPrimaryKeyProperty],
+    );
+    expect(await readStored(restored, QUICK_ADD_VAR)).toBe('Alice');
+    expect(await screen.findByRole('button', { name: /alice/i })).toBeTruthy();
+  });
+
   it('shows decrypted values in the drawer and saves edits encrypted', async () => {
-    const store = makeStore([await makeEncryptedNode()], true);
+    const store = await makeStore({ nodes: [await makeEncryptedNode()] });
     renderComposer(store);
 
     const nodeButton = await screen.findByRole('button', { name: /alice/i });
@@ -314,7 +381,10 @@ describe('NetworkComposer with encrypted variables', () => {
   });
 
   it('keeps encrypted values out of the drawer until the passphrase is entered', async () => {
-    const store = makeStore([await makeEncryptedNode()], false);
+    const store = await makeStore({
+      nodes: [await makeEncryptedNode()],
+      locked: true,
+    });
     renderComposer(store);
 
     const nodeButton = await screen.findByRole('button', { name: /🔒/ });
@@ -326,76 +396,56 @@ describe('NetworkComposer with encrypted variables', () => {
     expect(screen.queryByLabelText(/notes/i)).toBeNull();
     expect(screen.queryByDisplayValue(/\d+,\d+,\d+/)).toBeNull();
 
-    act(() => {
-      store.dispatch(setPassphrase(PASSPHRASE));
-    });
+    await act(() => unlockWith(store, PASSPHRASE));
 
     const notesInput = await screen.findByLabelText(/notes/i);
     expect(notesInput).toHaveProperty('value', 'Met at work');
   });
-});
 
-describe('NetworkComposer refusing to save without a working passphrase', () => {
-  const notSaved = 'Your answers have not been saved.';
-
-  it('keeps a name being typed when the passphrase stops working, and says why it was not added', async () => {
-    const toast = vi.spyOn(interviewToastManager, 'add');
-    const store = makeStore([], true);
+  it('shows the answers of a person that cannot be read as unavailable, once, without asking for the passphrase again', async () => {
+    decryptionGate.attempts.length = 0;
+    // Alice's answers, copied onto another person, are still bound to Alice.
+    const copied: NcNode = {
+      ...(await makeEncryptedNode()),
+      [entityPrimaryKeyProperty]: 'node-b',
+    };
+    const store = await makeStore({ nodes: [copied] });
     renderComposer(store);
 
-    fireEvent.click(screen.getByRole('button', { name: /add node/i }));
-    const input = await screen.findByRole('textbox', { name: /name/i });
-    fireEvent.change(input, { target: { value: 'Alice' } });
-    act(() => {
-      store.dispatch(setPassphraseInvalid(true));
+    const nodeButton = await screen.findByRole('button', {
+      name: 'Answer unavailable',
     });
-    expect(screen.getByRole('textbox', { name: /name/i })).toBe(input);
-    await act(async () => {
-      fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' });
-    });
-
-    await waitFor(() =>
-      expect(toast).toHaveBeenCalledWith(
-        expect.objectContaining({
-          description: expect.stringContaining(notSaved),
-        }),
-      ),
-    );
-    expect(input).toHaveValue('Alice');
-    expect(store.getState().session.network.nodes).toHaveLength(0);
-  });
-
-  it('keeps an edit in the drawer it could not save, and says why', async () => {
-    const stored = await makeEncryptedNode();
-    const store = makeStore([stored], true);
-    renderComposer(store);
-
-    const nodeButton = await screen.findByRole('button', { name: /alice/i });
     act(() => {
       tapNode(nodeButton);
     });
-    const notesInput = await screen.findByLabelText(/notes/i);
-    act(() => {
-      store.dispatch(setPassphraseInvalid(true));
-    });
-    fireEvent.change(notesInput, { target: { value: 'Old friend' } });
+    const notesInput = await screen.findByLabelText(
+      /notes/i,
+      {},
+      { timeout: 3000 },
+    );
+    expect(notesInput).toHaveProperty('value', '');
+    expect(screen.queryByText(passphraseNotice)).toBeNull();
+    expect(screen.queryByDisplayValue(/\d+,\d+,\d+/)).toBeNull();
 
-    expect(
-      await screen.findByText(new RegExp(notSaved), {}, { timeout: 3000 }),
-    ).toBeTruthy();
-    expect(notesInput).toHaveValue('Old friend');
-    expect(store.getState().session.network.nodes[0]).toBe(stored);
+    const attemptsOn = (variableId: string) =>
+      decryptionGate.attempts.filter(
+        (attempt) =>
+          attempt.nodeId === 'node-b' && attempt.variableId === variableId,
+      );
+    await act(() => new Promise((resolve) => setTimeout(resolve, 50)));
+    expect(attemptsOn(QUICK_ADD_VAR)).toHaveLength(1);
+    expect(attemptsOn(NOTES_VAR)).toHaveLength(1);
+    expect(store.getState().ui.showPassphrasePrompter).toBe(false);
   });
 });
 
 describe('NetworkComposer validating an encrypted name', () => {
   it('rejects a name another person already has', async () => {
     decryption.ready = false;
-    const store = makeStore(
-      [await makeEncryptedNode()],
-      true,
-      uniqueNameVariables,
-    );
+    const store = await makeStore({
+      nodes: [await makeEncryptedNode()],
+      nodeVariables: uniqueNameVariables,
+    });
     renderComposer(store);
 
     await waitFor(() => expect(decryption.ready).toBe(true));
@@ -417,11 +467,10 @@ describe('NetworkComposer validating an encrypted name', () => {
     });
     try {
       decryption.ready = false;
-      const store = makeStore(
-        [await makeEncryptedNode()],
-        true,
-        uniqueNameVariables,
-      );
+      const store = await makeStore({
+        nodes: [await makeEncryptedNode()],
+        nodeVariables: uniqueNameVariables,
+      });
       renderComposer(store);
 
       fireEvent.click(screen.getByRole('button', { name: /add node/i }));

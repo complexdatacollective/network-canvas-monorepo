@@ -39,16 +39,12 @@ vi.mock('../../../../selectors/protocol', () => ({
   getCodebookVariablesForSubjectType: 'getCodebookVariablesForSubjectType',
 }));
 
-const passphraseState: {
-  passphrase: string | null;
-  passphraseInvalid: boolean;
-} = { passphrase: null, passphraseInvalid: false };
+const passphraseState = { unlocked: false };
 const requirePassphrase = vi.fn();
 
 vi.mock('../../../Anonymisation/usePassphrase', () => ({
   usePassphrase: () => ({
-    passphrase: passphraseState.passphrase,
-    passphraseInvalid: passphraseState.passphraseInvalid,
+    unlocked: passphraseState.unlocked,
     requirePassphrase,
   }),
 }));
@@ -232,8 +228,7 @@ describe('NodePanel external data with encrypted values', () => {
     cleanup();
     vi.clearAllMocks();
     delete stageVariables.name;
-    passphraseState.passphrase = null;
-    passphraseState.passphraseInvalid = false;
+    passphraseState.unlocked = false;
   });
 
   it('asks for the passphrase and holds the rows back until one is entered', () => {
@@ -244,19 +239,8 @@ describe('NodePanel external data with encrypted values', () => {
     expect(screen.getByText(/enter your passphrase/i)).toBeTruthy();
   });
 
-  it('holds the rows back while the passphrase is not working', () => {
-    passphraseState.passphrase = 'secret';
-    passphraseState.passphraseInvalid = true;
-
-    renderPanel();
-
-    expect(requirePassphrase).toHaveBeenCalled();
-    expect(screen.queryByTestId('node-list')).toBeNull();
-    expect(screen.getByText(/enter your passphrase/i)).toBeTruthy();
-  });
-
   it('offers the rows once the passphrase has been entered', () => {
-    passphraseState.passphrase = 'secret';
+    passphraseState.unlocked = true;
 
     renderPanel();
 

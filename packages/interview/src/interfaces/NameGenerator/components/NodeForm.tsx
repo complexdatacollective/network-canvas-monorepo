@@ -126,7 +126,7 @@ const NodeForm = (props: NodeFormProps) => {
   };
 
   // An edited person's encrypted answers are decrypted before the form opens,
-  // and the form closes if the passphrase that decrypted them goes.
+  // and the form does not open at all until the passphrase has been entered.
   const editing = useProtectedFormValues(selectedNode, form.fields, variables);
   const editingLocked = selectedNode !== null && editing.status === 'locked';
   useEffect(() => {

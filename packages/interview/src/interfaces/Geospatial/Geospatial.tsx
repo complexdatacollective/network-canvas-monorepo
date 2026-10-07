@@ -175,13 +175,11 @@ export default function GeospatialInterface({
   const track = useTrack();
   const { showToast } = useInterviewToast();
   const variables = useStageSelector(getCodebookVariablesForSubjectType);
-  const { passphrase, passphraseInvalid, requirePassphrase } = usePassphrase();
+  const { unlocked, requirePassphrase } = usePassphrase();
   const promptVariable = currentPrompt.variable;
   // A location this prompt would encrypt is only taken once it could be saved.
   const locationLocked =
-    !!promptVariable &&
-    !!variables[promptVariable]?.encrypted &&
-    (!passphrase || passphraseInvalid);
+    !!promptVariable && !!variables[promptVariable]?.encrypted && !unlocked;
 
   const saveLocationValue = useCallback(
     async (value: string | null, selectionKind: 'search' | 'pin') => {

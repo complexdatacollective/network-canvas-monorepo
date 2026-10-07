@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
 import type { Tracker } from '../../../analytics/tracker';
+import { unlockEncryption } from '../../../interfaces/Anonymisation/unlockEncryption';
 import protocol from '../../modules/protocol';
 import session, {
   addEdge,
@@ -13,7 +14,7 @@ import session, {
   deleteNode,
   removeNodeFromPrompt,
 } from '../../modules/session';
-import ui, { setPassphrase, setPassphraseInvalid } from '../../modules/ui';
+import ui from '../../modules/ui';
 import { createAnalyticsListenerMiddleware } from '../analyticsListener';
 
 function makeTracker() {
@@ -191,22 +192,19 @@ describe('analyticsListener — global entity events', () => {
 });
 
 describe('analyticsListener — anonymisation', () => {
-  it('emits passphrase_set on setPassphrase (no value sent)', () => {
+  it('emits passphrase_set and passphrase_validation_failed without the passphrase', async () => {
     const tracker = makeTracker();
     const store = buildStore(tracker);
-    store.dispatch(setPassphrase('DO_NOT_LEAK'));
+
+    await expect(unlockEncryption(store, 'DO_NOT_LEAK-1')).resolves.toBe(true);
     expect(tracker.track).toHaveBeenCalledWith('passphrase_set');
+
+    tracker.track.mockClear();
+    await expect(unlockEncryption(store, 'DO_NOT_LEAK-2')).resolves.toBe(false);
+    expect(tracker.track).toHaveBeenCalledWith('passphrase_validation_failed');
+    expect(tracker.track).not.toHaveBeenCalledWith('passphrase_set');
+
     const allArgs = JSON.stringify(tracker.track.mock.calls);
     expect(allArgs).not.toContain('DO_NOT_LEAK');
-  });
-
-  it('emits passphrase_validation_failed on setPassphraseInvalid(true) only', () => {
-    const tracker = makeTracker();
-    const store = buildStore(tracker);
-    store.dispatch(setPassphraseInvalid(true));
-    expect(tracker.track).toHaveBeenCalledWith('passphrase_validation_failed');
-    tracker.track.mockClear();
-    store.dispatch(setPassphraseInvalid(false));
-    expect(tracker.track).not.toHaveBeenCalled();
   });
 });

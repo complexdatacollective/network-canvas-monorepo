@@ -1,48 +1,54 @@
 'use client';
 
-import { useEffect, useMemo, useReducer, useState } from 'react';
+import { useEffect, useMemo, useReducer } from 'react';
 import { useSelector } from 'react-redux';
 
+import { useAppIntl } from '@codaco/app-i18n/react';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
   type NcNode,
 } from '@codaco/shared-consts';
 
+import { runtimeMessages } from '../../i18n/runtimeMessages';
 import { makeGetCodebookForNodeType } from '../../selectors/protocol';
 import { getNodeLabelAttribute } from '../../utils/getNodeLabelAttribute';
 import {
-  type DecryptionScope,
   decryptInScope,
-  getEncryptedValue,
-  readCachedPlaintext,
+  readCachedOutcome,
+  readEncryptedAttribute,
 } from './decryptionScope';
 import { useDecryptionScope } from './useDecryptionScope';
 import { usePassphrase } from './usePassphrase';
+import { useReportUnreadable } from './useReportUnreadable';
 
 const LOCKED_LABEL = '🔒';
-const FAILED_LABEL = '⚠️';
-
-type FailedDecryption = { scope: DecryptionScope; data: number[] };
 
 export function useNodeLabel(node: NcNode | undefined) {
+  const intl = useAppIntl();
   const getCodebookForNodeType = useSelector(makeGetCodebookForNodeType);
   const codebook = node ? getCodebookForNodeType(node.type) : undefined;
   const scope = useDecryptionScope();
-  const { requirePassphrase, setPassphraseInvalid } = usePassphrase();
+  const { requirePassphrase } = usePassphrase();
+  const reportUnreadable = useReportUnreadable();
 
   const labelAttributeId = getNodeLabelAttribute(
     codebook?.variables ?? {},
     node?.[entityAttributesProperty] ?? {},
   );
 
-  const encrypted = useMemo(
+  const stored = useMemo(
     () =>
       node && labelAttributeId
-        ? getEncryptedValue(node, labelAttributeId, codebook?.variables ?? {})
+        ? readEncryptedAttribute(
+            node,
+            labelAttributeId,
+            codebook?.variables ?? {},
+          )
         : undefined,
     [node, labelAttributeId, codebook],
   );
+  const encrypted = stored?.status === 'encrypted' ? stored.value : undefined;
 
   // Synchronous label for every non-decrypt case, available on the FIRST
   // committed render. Resolving plain labels through the async effect below
@@ -51,7 +57,7 @@ export function useNodeLabel(node: NcNode | undefined) {
   // for name-based queries and assistive tech to see the wrong name.
   const syncLabel = useMemo(() => {
     if (!node) return undefined;
-    if (encrypted) return undefined;
+    if (stored) return undefined;
     const fallback = codebook?.name ?? node[entityPrimaryKeyProperty];
     if (!labelAttributeId) return fallback;
     const value = node[entityAttributesProperty]?.[labelAttributeId];
@@ -60,26 +66,20 @@ export function useNodeLabel(node: NcNode | undefined) {
     return typeof value === 'string' || typeof value === 'number'
       ? String(value)
       : fallback;
-  }, [node, encrypted, codebook, labelAttributeId]);
+  }, [node, stored, codebook, labelAttributeId]);
 
-  // Plaintext is read from the passphrase's decryption scope on every render
-  // rather than copied into component state, so it disappears from the label
-  // the moment that passphrase stops being in force.
+  // Plaintext is read from the key's decryption scope on every render rather
+  // than copied into component state, so it disappears from the label the
+  // moment that key stops being in force.
   const [, rerender] = useReducer((count: number) => count + 1, 0);
-  const [failure, setFailure] = useState<FailedDecryption>();
-
-  const decryptedLabel =
-    encrypted && scope ? readCachedPlaintext(scope, encrypted) : undefined;
-  const lockedLabel = encrypted && !scope ? LOCKED_LABEL : undefined;
-  const failedLabel =
-    encrypted &&
-    scope &&
-    failure?.scope === scope &&
-    failure.data === encrypted.data
-      ? FAILED_LABEL
-      : undefined;
+  const outcome =
+    encrypted && scope ? readCachedOutcome(scope, encrypted) : undefined;
 
   useEffect(() => {
+    if (stored?.status === 'unreadable') {
+      reportUnreadable(stored.reason);
+      return;
+    }
     if (!encrypted) return;
 
     if (!scope) {
@@ -87,23 +87,26 @@ export function useNodeLabel(node: NcNode | undefined) {
       return;
     }
 
-    if (readCachedPlaintext(scope, encrypted) !== undefined) return;
+    const cached = readCachedOutcome(scope, encrypted);
+    if (cached) {
+      if (!cached.readable) reportUnreadable('decryption-failed');
+      return;
+    }
 
     let current = true;
-    decryptInScope(scope, encrypted).then(
-      () => {
-        if (current) rerender();
-      },
-      () => {
-        if (!current) return;
-        setFailure({ scope, data: encrypted.data });
-        setPassphraseInvalid(true);
-      },
-    );
+    void decryptInScope(scope, encrypted).then((result) => {
+      if (!result.readable) reportUnreadable('decryption-failed');
+      if (current) rerender();
+    });
     return () => {
       current = false;
     };
-  }, [encrypted, scope, requirePassphrase, setPassphraseInvalid]);
+  }, [stored, encrypted, scope, requirePassphrase, reportUnreadable]);
 
-  return syncLabel ?? lockedLabel ?? decryptedLabel ?? failedLabel;
+  if (syncLabel !== undefined) return syncLabel;
+  if (stored?.status === 'unreadable' || outcome?.readable === false) {
+    return intl.formatMessage(runtimeMessages.answerUnavailable);
+  }
+  if (encrypted && !scope) return LOCKED_LABEL;
+  return outcome?.readable ? outcome.plaintext : undefined;
 }

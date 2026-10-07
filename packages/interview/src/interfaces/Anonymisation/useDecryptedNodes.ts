@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useReducer, useState } from 'react';
+import { useEffect, useMemo, useReducer } from 'react';
 import { useSelector } from 'react-redux';
 
 import type { Variable } from '@codaco/protocol-validation';
@@ -14,26 +14,27 @@ import {
 import { makeGetCodebookVariablesForNodeType } from '../../selectors/protocol';
 import {
   type DecryptionScope,
+  type DecryptOutcome,
   decryptInScope,
   type EncryptedValue,
-  getEncryptedValue,
-  isNumberArray,
-  readCachedPlaintext,
+  readCachedOutcome,
+  readEncryptedAttribute,
+  type UnreadableReason,
 } from './decryptionScope';
 import { useDecryptionScope } from './useDecryptionScope';
 import { usePassphrase } from './usePassphrase';
+import { useReportUnreadable } from './useReportUnreadable';
 
 export type DecryptedNodes =
   | { status: 'ready'; nodes: NcNode[] }
   | { status: 'locked' }
-  | { status: 'pending' }
-  | { status: 'failed' };
+  | { status: 'pending' };
 
 type ProtectedNode = {
   node: NcNode;
   encrypted: { variable: string; value: EncryptedValue }[];
-  /** Ciphertext with no metadata to decrypt it, which can never be shown. */
-  unreadable: string[];
+  /** Stored ciphertext that can never be shown, and why. */
+  unreadable: { variable: string; reason: UnreadableReason }[];
 };
 
 function describeNode(
@@ -41,21 +42,26 @@ function describeNode(
   variables: Record<string, Variable>,
 ): ProtectedNode {
   const encrypted: ProtectedNode['encrypted'] = [];
-  const unreadable: string[] = [];
-  for (const [variable, data] of Object.entries(
-    node[entityAttributesProperty],
-  )) {
-    if (!variables[variable]?.encrypted) continue;
-    const value = getEncryptedValue(node, variable, variables);
-    if (value) encrypted.push({ variable, value });
-    else if (isNumberArray(data)) unreadable.push(variable);
+  const unreadable: ProtectedNode['unreadable'] = [];
+  for (const variable of Object.keys(node[entityAttributesProperty])) {
+    const stored = readEncryptedAttribute(node, variable, variables);
+    if (stored?.status === 'encrypted') {
+      encrypted.push({ variable, value: stored.value });
+    } else if (stored?.status === 'unreadable') {
+      unreadable.push({ variable, reason: stored.reason });
+    }
   }
   return { node, encrypted, unreadable };
 }
 
+/**
+ * The node with each encrypted value replaced by its plaintext. A value that
+ * can never be read is left out, as if unanswered, so that its ciphertext is
+ * never shown, compared or saved as though it were an answer.
+ */
 function readPlaintextNode(
   { node, encrypted, unreadable }: ProtectedNode,
-  plaintextOf: (value: EncryptedValue) => string | undefined,
+  outcomeOf: (value: EncryptedValue) => DecryptOutcome | undefined,
 ): NcNode {
   if (encrypted.length === 0 && unreadable.length === 0) return node;
 
@@ -63,11 +69,14 @@ function readPlaintextNode(
     ...node[entityAttributesProperty],
   };
   const secureAttributes = { ...node[entitySecureAttributesMeta] };
-  for (const variable of unreadable) delete attributes[variable];
+  for (const { variable } of unreadable) {
+    delete attributes[variable];
+    delete secureAttributes[variable];
+  }
   for (const { variable, value } of encrypted) {
-    const plaintext = plaintextOf(value);
-    if (plaintext === undefined) delete attributes[variable];
-    else attributes[variable] = plaintext;
+    const outcome = outcomeOf(value);
+    if (outcome?.readable) attributes[variable] = outcome.plaintext;
+    else delete attributes[variable];
     delete secureAttributes[variable];
   }
 
@@ -82,9 +91,25 @@ function readPlaintextNode(
 }
 
 /**
+ * The nodes with every encrypted value left out, for a caller that must not
+ * see ciphertext while the values cannot be decrypted yet.
+ */
+export function omitEncryptedValues(
+  nodes: NcNode[],
+  getVariables: (type: string) => Record<string, Variable>,
+): NcNode[] {
+  return nodes.map((node) =>
+    readPlaintextNode(
+      describeNode(node, getVariables(node.type)),
+      () => undefined,
+    ),
+  );
+}
+
+/**
  * The nodes with their encrypted values decrypted through `scope`, as
  * `useDecryptedNodes` makes them ready, for a caller that needs them now
- * rather than on a later render. Rejects if any value fails to decrypt.
+ * rather than on a later render.
  */
 export async function decryptNodes(
   nodes: NcNode[],
@@ -94,41 +119,39 @@ export async function decryptNodes(
   const protectedNodes = nodes.map((node) =>
     describeNode(node, getVariables(node.type)),
   );
-  const plaintexts = new Map<EncryptedValue, string>();
+  const outcomes = new Map<EncryptedValue, DecryptOutcome>();
   await Promise.all(
     protectedNodes.flatMap(({ encrypted }) =>
       encrypted.map(async ({ value }) => {
-        plaintexts.set(value, await decryptInScope(scope, value));
+        outcomes.set(value, await decryptInScope(scope, value));
       }),
     ),
   );
   return protectedNodes.map((entry) =>
-    readPlaintextNode(entry, (value) => plaintexts.get(value)),
+    readPlaintextNode(entry, (value) => outcomes.get(value)),
   );
 }
 
 /**
  * Decrypts the encrypted attribute values of a list of nodes for display or
- * editing, through the decryption scope of the passphrase in force. Nodes
- * without encrypted values pass through untouched, so a list with none is
- * ready immediately and needs no passphrase. Pass a memoized list: a new array
- * on every render restarts the work.
+ * editing, with the interview's key. Nodes without encrypted values pass
+ * through untouched, so a list with none is ready immediately and needs no
+ * passphrase. Pass a memoized list: a new array on every render restarts the
+ * work.
  *
- * Without a passphrase the result is `locked` and the passphrase is
- * requested. The plaintext is read from the scope rather than kept here, so it
- * is gone from the result as soon as the passphrase is.
+ * Without the key the result is `locked` and the passphrase is requested.
+ * The plaintext is read from the key's decryption scope rather than kept here,
+ * so it is gone from the result as soon as the key is. Values that can never
+ * be read are left out of the nodes and reported.
  */
 export function useDecryptedNodes(nodes: NcNode[]): DecryptedNodes {
   const getCodebookVariablesForNodeType = useSelector(
     makeGetCodebookVariablesForNodeType,
   );
   const scope = useDecryptionScope();
-  const { requirePassphrase, setPassphraseInvalid } = usePassphrase();
+  const { requirePassphrase } = usePassphrase();
+  const reportUnreadable = useReportUnreadable();
   const [, rerender] = useReducer((count: number) => count + 1, 0);
-  const [failedFor, setFailedFor] = useState<{
-    scope: DecryptionScope;
-    values: EncryptedValue[];
-  }>();
 
   const protectedNodes = useMemo(
     () =>
@@ -144,23 +167,41 @@ export function useDecryptedNodes(nodes: NcNode[]): DecryptedNodes {
       ),
     [protectedNodes],
   );
+  const storedUnreadable = useMemo(
+    () =>
+      new Set(
+        protectedNodes.flatMap(({ unreadable }) =>
+          unreadable.map(({ reason }) => reason),
+        ),
+      ),
+    [protectedNodes],
+  );
 
   const decrypted =
     values.length === 0 ||
     (scope !== undefined &&
-      values.every((value) => readCachedPlaintext(scope, value) !== undefined));
+      values.every((value) => readCachedOutcome(scope, value) !== undefined));
+  const decryptionFailed =
+    decrypted &&
+    scope !== undefined &&
+    values.some((value) => readCachedOutcome(scope, value)?.readable === false);
 
   const plaintextNodes = useMemo(() => {
     if (!decrypted) return undefined;
     const resolved = protectedNodes.map((entry) =>
       readPlaintextNode(entry, (value) =>
-        scope ? readCachedPlaintext(scope, value) : undefined,
+        scope ? readCachedOutcome(scope, value) : undefined,
       ),
     );
     return resolved.every((node, index) => node === nodes[index])
       ? nodes
       : resolved;
   }, [decrypted, protectedNodes, scope, nodes]);
+
+  useEffect(() => {
+    for (const reason of storedUnreadable) reportUnreadable(reason);
+    if (decryptionFailed) reportUnreadable('decryption-failed');
+  }, [storedUnreadable, decryptionFailed, reportUnreadable]);
 
   useEffect(() => {
     if (values.length > 0 && !scope) requirePassphrase();
@@ -170,25 +211,17 @@ export function useDecryptedNodes(nodes: NcNode[]): DecryptedNodes {
     if (!scope || decrypted) return undefined;
 
     let current = true;
-    Promise.all(values.map((value) => decryptInScope(scope, value))).then(
+    void Promise.all(values.map((value) => decryptInScope(scope, value))).then(
       () => {
         if (current) rerender();
-      },
-      () => {
-        if (!current) return;
-        setFailedFor({ scope, values });
-        setPassphraseInvalid(true);
       },
     );
     return () => {
       current = false;
     };
-  }, [scope, decrypted, values, setPassphraseInvalid]);
+  }, [scope, decrypted, values]);
 
   if (plaintextNodes) return { status: 'ready', nodes: plaintextNodes };
   if (!scope) return { status: 'locked' };
-  if (failedFor?.scope === scope && failedFor.values === values) {
-    return { status: 'failed' };
-  }
   return { status: 'pending' };
 }

@@ -629,19 +629,19 @@ describe('finalizeNetwork', () => {
     };
 
     type ProtocolState = typeof protocolState;
-    type UIState = { passphrase: null };
+    type UIState = { encryptionKeyId: null };
 
     const reduxStore = configureStore({
       reducer: {
         session: sessionReducer,
         protocol: (state: ProtocolState = protocolState): ProtocolState =>
           state,
-        ui: (state: UIState = { passphrase: null }): UIState => state,
+        ui: (state: UIState = { encryptionKeyId: null }): UIState => state,
       },
       preloadedState: {
         session: sessionState,
         protocol: protocolState,
-        ui: { passphrase: null },
+        ui: { encryptionKeyId: null },
       },
     });
 

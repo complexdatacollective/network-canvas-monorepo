@@ -287,7 +287,7 @@ const ProtectedSlide = forwardRef<
   SlideHandle,
   {
     header: ReactNode;
-    reason: 'pending' | 'passphrase-needed' | 'passphrase-invalid';
+    reason: 'pending' | 'locked';
     onReadyChange: (ready: boolean) => void;
   }
 >(function ProtectedSlide({ header, reason, onReadyChange }, ref) {
@@ -317,13 +317,7 @@ const ProtectedSlide = forwardRef<
             className="tablet-portrait:min-w-lg focusable max-w-2xl"
           >
             <AlertDescription>
-              <AppMessage
-                message={
-                  reason === 'passphrase-invalid'
-                    ? runtimeMessages.decryptRetry
-                    : runtimeMessages.protectedAnswersLocked
-                }
-              />
+              <AppMessage message={runtimeMessages.protectedAnswersLocked} />
             </AlertDescription>
           </Alert>
         )}
@@ -364,7 +358,7 @@ const SlideContent = forwardRef<SlideHandle, SlideContentProps>(
         <ProtectedSlide
           ref={ref}
           header={props.header}
-          reason={protectedValues.reason}
+          reason="locked"
           onReadyChange={props.onReadyChange}
         />
       );

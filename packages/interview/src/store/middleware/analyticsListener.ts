@@ -14,7 +14,7 @@ import {
   deleteNode,
   removeNodeFromPrompt,
 } from '../modules/session';
-import { setPassphrase, setPassphraseInvalid } from '../modules/ui';
+import { encryptionUnlocked, passphraseRejected } from '../modules/ui';
 import type { AppDispatch, RootState } from '../store';
 
 type AnalyticsListenerArgs = {
@@ -96,20 +96,19 @@ export function createAnalyticsListenerMiddleware({
     },
   });
 
-  // Anonymisation. The passphrase value itself is never sent.
+  // Anonymisation. Neither the passphrase nor anything derived from it is
+  // sent.
   startAppListening({
-    actionCreator: setPassphrase,
+    actionCreator: encryptionUnlocked,
     effect: () => {
       tracker.track('passphrase_set');
     },
   });
 
   startAppListening({
-    actionCreator: setPassphraseInvalid,
-    effect: (action) => {
-      if (action.payload) {
-        tracker.track('passphrase_validation_failed');
-      }
+    actionCreator: passphraseRejected,
+    effect: () => {
+      tracker.track('passphrase_validation_failed');
     },
   });
 

@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { Provider } from 'react-redux';
@@ -16,6 +16,7 @@ import {
   entityPrimaryKeyProperty,
   entitySecureAttributesMeta,
   type NcEdge,
+  type NcEncryptionHeader,
   type NcNode,
   type StageMetadata,
   type VariableValue,
@@ -25,12 +26,36 @@ import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import { StageMetadataContext } from '../../../contexts/StageMetadataContext';
 import { ContractProvider } from '../../../contract/context';
 import { InterviewI18nProvider } from '../../../i18n/InterviewI18nProvider';
-import { setPassphrase, setPassphraseInvalid } from '../../../store/modules/ui';
 import type { BeforeNextFunction, StageProps } from '../../../types';
-import { createEncryptionStore } from '../../Anonymisation/__tests__/encryptionFixtures';
+import {
+  createEncryptionStore,
+  encryptionFor,
+  unlockWith,
+} from '../../Anonymisation/__tests__/encryptionFixtures';
 import { generateSecureAttributes } from '../../Anonymisation/utils';
 import NarrativePedigreeView from '../../NarrativePedigree/components/NarrativePedigreeView';
 import FamilyPedigree from '../FamilyPedigree';
+
+// Records the node and variable of every value the interview tries to
+// decrypt, so a test can tell one attempt from a loop of them.
+const decryptAttempts = vi.hoisted(() => {
+  const attempts: { nodeId: string; variableId: string }[] = [];
+  return attempts;
+});
+vi.mock('../../Anonymisation/encryptionFormat', async (importOriginal) => {
+  const actual =
+    await importOriginal<
+      typeof import('../../Anonymisation/encryptionFormat')
+    >();
+  return {
+    ...actual,
+    decryptValue: (...args: Parameters<typeof actual.decryptValue>) => {
+      const [, , { nodeId, variableId }] = args;
+      decryptAttempts.push({ nodeId, variableId });
+      return actual.decryptValue(...args);
+    },
+  };
+});
 
 const MEASURED_SIZE = 96;
 const measuredRect = {
@@ -163,8 +188,9 @@ async function encryptedNode(
   id: string,
   attributes: Record<string, VariableValue>,
 ): Promise<NcNode> {
+  const { key } = await encryptionFor(PASSPHRASE);
   const { encryptedAttributes, secureAttributes } =
-    await generateSecureAttributes(attributes, nodeVariables, PASSPHRASE);
+    await generateSecureAttributes(attributes, nodeVariables, key, id);
   return {
     [entityPrimaryKeyProperty]: id,
     type: NODE_TYPE,
@@ -173,18 +199,48 @@ async function encryptedNode(
   };
 }
 
-/** A pedigree already committed by an earlier visit: ego and their mother. */
-async function committedPedigree() {
-  const nodes = [
-    await encryptedNode('ego', { [NAME_VAR]: 'Sam', [EGO_VAR]: true }),
-    await encryptedNode('mother', {
-      [NAME_VAR]: 'Rosa',
-      [EGO_VAR]: false,
-      [BIO_SEX_VAR]: 'female',
-      [REL_VAR]: 'Parent',
-      [NOMINATED_VAR]: false,
-    }),
-  ];
+/**
+ * `node` holding the encrypted name of `source`: a ciphertext bound to
+ * another node, which the interview's key can never decrypt here.
+ */
+function withNameOf(node: NcNode, source: NcNode): NcNode {
+  const name = source[entityAttributesProperty][NAME_VAR];
+  const secure = source[entitySecureAttributesMeta]?.[NAME_VAR];
+  if (name === undefined || !secure) {
+    throw new Error('Expected an encrypted name to copy');
+  }
+  return {
+    ...node,
+    [entityAttributesProperty]: {
+      ...node[entityAttributesProperty],
+      [NAME_VAR]: name,
+    },
+    [entitySecureAttributesMeta]: {
+      ...node[entitySecureAttributesMeta],
+      [NAME_VAR]: secure,
+    },
+  };
+}
+
+/**
+ * A pedigree already committed by an earlier visit: ego and their mother,
+ * with the header of the passphrase chosen then.
+ */
+async function committedPedigree({
+  motherNameUnreadable = false,
+}: { motherNameUnreadable?: boolean } = {}) {
+  const ego = await encryptedNode('ego', {
+    [NAME_VAR]: 'Sam',
+    [EGO_VAR]: true,
+  });
+  const mother = await encryptedNode('mother', {
+    [NAME_VAR]: 'Rosa',
+    [EGO_VAR]: false,
+    [BIO_SEX_VAR]: 'female',
+    [REL_VAR]: 'Parent',
+    [NOMINATED_VAR]: false,
+  });
+  const nodes = [ego, motherNameUnreadable ? withNameOf(mother, ego) : mother];
   const edges: NcEdge[] = [
     {
       [entityPrimaryKeyProperty]: 'mother-ego',
@@ -212,20 +268,25 @@ async function committedPedigree() {
       attributes: edge[entityAttributesProperty],
     })),
   };
-  return { nodes, edges, metadata };
+  const { header } = await encryptionFor(PASSPHRASE);
+  return { nodes, edges, metadata, header };
 }
 
-function makeStore({
+type Store = ReturnType<typeof createEncryptionStore>;
+
+async function makeStore({
   nodes = [],
   edges = [],
   metadata,
-  withPassphrase,
+  header,
+  unlocked,
 }: {
   nodes?: NcNode[];
   edges?: NcEdge[];
   metadata?: StageMetadata[string];
-  withPassphrase: boolean;
-}) {
+  header?: NcEncryptionHeader;
+  unlocked: boolean;
+}): Promise<Store> {
   const store = createEncryptionStore(
     nodes,
     [stage, narrativeStage],
@@ -233,14 +294,15 @@ function makeStore({
     {
       edges,
       edgeTypes,
+      header,
       ...(metadata ? { stageMetadata: { 0: metadata } } : {}),
     },
   );
-  if (withPassphrase) store.dispatch(setPassphrase(PASSPHRASE));
+  if (unlocked) await unlockWith(store, PASSPHRASE);
   return store;
 }
 
-function renderPedigree(store: ReturnType<typeof makeStore>) {
+function renderPedigree(store: Store) {
   const beforeNext: { current: BeforeNextFunction | null } = { current: null };
   const registerBeforeNext = (
     ...args: [BeforeNextFunction | null] | [string, BeforeNextFunction | null]
@@ -300,7 +362,7 @@ const ciphertext = /\d+,\d+,\d+/;
 
 describe('FamilyPedigree with an encrypted name variable', () => {
   it('asks for the passphrase and holds the pedigree until one is entered', async () => {
-    const store = makeStore({ withPassphrase: false });
+    const store = await makeStore({ unlocked: false });
     renderPedigree(store);
 
     expect(await screen.findByText(passphraseNotice)).toBeTruthy();
@@ -309,9 +371,7 @@ describe('FamilyPedigree with an encrypted name variable', () => {
     );
     expect(store.getState().ui.showPassphrasePrompter).toBe(true);
 
-    act(() => {
-      store.dispatch(setPassphrase(PASSPHRASE));
-    });
+    await act(() => unlockWith(store, PASSPHRASE));
 
     expect(
       await screen.findByRole('heading', { name: /build your family/i }),
@@ -319,29 +379,28 @@ describe('FamilyPedigree with an encrypted name variable', () => {
     expect(screen.queryByText(passphraseNotice)).toBeNull();
   });
 
-  it('holds the pedigree while the passphrase is not working', async () => {
-    const store = makeStore({ withPassphrase: true });
-    store.dispatch(setPassphraseInvalid(true));
+  it('holds a pedigree from an earlier visit until the passphrase is entered again, then shows its names', async () => {
+    const store = await makeStore({
+      ...(await committedPedigree()),
+      unlocked: false,
+    });
     renderPedigree(store);
 
     expect(await screen.findByText(passphraseNotice)).toBeTruthy();
-    expect(screen.queryByRole('heading', { name: /build your family/i })).toBe(
-      null,
-    );
+    expect(screen.queryByRole('button', { name: 'Rosa' })).toBeNull();
+    expect(screen.queryByText(ciphertext)).toBeNull();
+    expect(store.getState().ui.showPassphrasePrompter).toBe(true);
 
-    act(() => {
-      store.dispatch(setPassphrase(PASSPHRASE));
-    });
+    await act(() => unlockWith(store, PASSPHRASE));
 
-    expect(
-      await screen.findByRole('heading', { name: /build your family/i }),
-    ).toBeTruthy();
+    expect(await screen.findByRole('button', { name: 'Rosa' })).toBeTruthy();
+    expect(screen.queryByText(passphraseNotice)).toBeNull();
   });
 
   it('shows decrypted names when revisiting and on the nomination steps', async () => {
-    const store = makeStore({
+    const store = await makeStore({
       ...(await committedPedigree()),
-      withPassphrase: true,
+      unlocked: true,
     });
     const { moveToNomination } = renderPedigree(store);
 
@@ -354,9 +413,35 @@ describe('FamilyPedigree with an encrypted name variable', () => {
     expect(await screen.findByRole('button', { name: 'Rosa' })).toBeTruthy();
     expect(screen.queryByText(ciphertext)).toBeNull();
   });
+
+  it('shows a relative whose name cannot be read without it, once, and without asking for the passphrase again', async () => {
+    decryptAttempts.length = 0;
+    const store = await makeStore({
+      ...(await committedPedigree({ motherNameUnreadable: true })),
+      unlocked: true,
+    });
+    renderPedigree(store);
+
+    // Labelled by relationship, as a relative without a name is; the name
+    // copied onto them is never shown as theirs.
+    expect(await screen.findByRole('button', { name: 'Mother' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Sam' })).toBeNull();
+    expect(screen.queryByText(ciphertext)).toBeNull();
+    expect(screen.queryByText(passphraseNotice)).toBeNull();
+    expect(store.getState().ui.showPassphrasePrompter).toBe(false);
+
+    // Refused once and remembered: nothing tries it again, or asks for the
+    // passphrase because of it. A loop would try again straight away.
+    const attemptsOnMother = () =>
+      decryptAttempts.filter(({ nodeId }) => nodeId === 'mother');
+    await waitFor(() => expect(attemptsOnMother()).toHaveLength(1));
+    await act(() => new Promise((resolve) => setTimeout(resolve, 50)));
+    expect(attemptsOnMother()).toHaveLength(1);
+    expect(store.getState().ui.showPassphrasePrompter).toBe(false);
+  });
 });
 
-function renderNarrative(store: ReturnType<typeof makeStore>) {
+function renderNarrative(store: Store) {
   render(
     <Provider store={store}>
       <InterviewI18nProvider requestedLocale="en">
@@ -370,9 +455,9 @@ function renderNarrative(store: ReturnType<typeof makeStore>) {
 
 describe('NarrativePedigree reading an encrypted pedigree', () => {
   it('shows the decrypted names', async () => {
-    const store = makeStore({
+    const store = await makeStore({
       ...(await committedPedigree()),
-      withPassphrase: true,
+      unlocked: true,
     });
     renderNarrative(store);
 
@@ -386,9 +471,9 @@ describe('NarrativePedigree reading an encrypted pedigree', () => {
   });
 
   it('shows a placeholder instead of names until the passphrase is entered', async () => {
-    const store = makeStore({
+    const store = await makeStore({
       ...(await committedPedigree()),
-      withPassphrase: false,
+      unlocked: false,
     });
     renderNarrative(store);
 

@@ -14,6 +14,7 @@ import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
   entitySecureAttributesMeta,
+  type NcEncryptionHeader,
   type NcNode,
 } from '@codaco/shared-consts';
 
@@ -25,8 +26,12 @@ import session, {
   addNode as addSessionNode,
   type SessionState,
 } from '../../../../store/modules/session';
-import ui, { setPassphrase } from '../../../../store/modules/ui';
+import ui from '../../../../store/modules/ui';
 import type { StageProps } from '../../../../types';
+import {
+  encryptionFor,
+  unlockWith,
+} from '../../../Anonymisation/__tests__/encryptionFixtures';
 import { generateSecureAttributes } from '../../../Anonymisation/utils';
 import QuickNodeForm from '../QuickNodeForm';
 
@@ -128,7 +133,10 @@ function buildStage(fixedSiblingValue?: boolean): QuickAddStage {
   };
 }
 
-function buildSession(existingNodes: NcNode[] = []): SessionState {
+function buildSession(
+  existingNodes: NcNode[] = [],
+  encryption?: NcEncryptionHeader,
+): SessionState {
   return {
     id: 'session',
     startTime: '2024-01-01T00:00:00.000Z',
@@ -142,6 +150,7 @@ function buildSession(existingNodes: NcNode[] = []): SessionState {
       },
       nodes: existingNodes,
       edges: [],
+      ...(encryption ? { encryption } : {}),
     },
   };
 }
@@ -164,7 +173,7 @@ function buildProtocol(
   };
 }
 
-function renderQuickNodeForm({
+async function renderQuickNodeForm({
   validation,
   omitComponent,
   fixedSiblingValue,
@@ -181,10 +190,11 @@ function renderQuickNodeForm({
     attributes: NcNode[typeof entityAttributesProperty],
   ) => Promise<FormSubmissionResult>;
 }) {
+  const encryption = encrypted ? await encryptionFor(PASSPHRASE) : undefined;
   const store = configureStore({
     reducer: { session, protocol, ui },
     preloadedState: {
-      session: buildSession(existingNodes),
+      session: buildSession(existingNodes, encryption?.header),
       protocol: buildProtocol(
         validation,
         omitComponent,
@@ -195,7 +205,7 @@ function renderQuickNodeForm({
     middleware: (getDefaultMiddleware) =>
       getDefaultMiddleware({ serializableCheck: false }),
   });
-  if (encrypted) store.dispatch(setPassphrase(PASSPHRASE));
+  if (encrypted) await unlockWith(store, PASSPHRASE);
 
   render(
     <Provider store={store}>
@@ -222,7 +232,7 @@ const saved = async (): Promise<FormSubmissionResult> => ({ success: true });
 describe('QuickNodeForm honours codebook validation', () => {
   it('honours optional requiredness alongside the other codebook rules', async () => {
     const addNode = vi.fn(saved);
-    renderQuickNodeForm({
+    await renderQuickNodeForm({
       validation: { required: false, maxLength: 10 },
       addNode,
     });
@@ -246,7 +256,7 @@ describe('QuickNodeForm honours codebook validation', () => {
 
   it('accepts an empty entry when the codebook has no validation rules', async () => {
     const addNode = vi.fn(saved);
-    renderQuickNodeForm({ validation: undefined, addNode });
+    await renderQuickNodeForm({ validation: undefined, addNode });
 
     const input = await openField();
 
@@ -257,7 +267,7 @@ describe('QuickNodeForm honours codebook validation', () => {
   });
 
   it('clears a successful value when adding the node updates the live validation context before submission finishes', async () => {
-    let store: ReturnType<typeof renderQuickNodeForm>['store'];
+    let store: Awaited<ReturnType<typeof renderQuickNodeForm>>['store'];
     const addNode = vi.fn(
       async (attributes: NcNode[typeof entityAttributesProperty]) =>
         writeSubmissionResult(
@@ -270,7 +280,7 @@ describe('QuickNodeForm honours codebook validation', () => {
           ),
         ),
     );
-    ({ store } = renderQuickNodeForm({
+    ({ store } = await renderQuickNodeForm({
       validation: undefined,
       addNode,
     }));
@@ -297,7 +307,7 @@ describe('QuickNodeForm honours codebook validation', () => {
       [entityAttributesProperty]: { [TARGET_VARIABLE]: 'Alice' },
     };
     const addNode = vi.fn(saved);
-    renderQuickNodeForm({
+    await renderQuickNodeForm({
       validation: { unique: true },
       existingNodes: [existingNode],
       addNode,
@@ -325,7 +335,7 @@ describe('QuickNodeForm honours codebook validation', () => {
 
   it('still enforces validation for a component-less target variable (e.g. one created via Architect\'s "Create New Variable" dialog, which never sets `component`), without crashing', async () => {
     const addNode = vi.fn(saved);
-    renderQuickNodeForm({
+    await renderQuickNodeForm({
       validation: { required: true },
       omitComponent: true,
       addNode,
@@ -351,7 +361,7 @@ describe('QuickNodeForm honours codebook validation', () => {
 
   it('compares the target against prompt-fixed sibling attributes on the new node', async () => {
     const addNode = vi.fn(saved);
-    renderQuickNodeForm({
+    await renderQuickNodeForm({
       validation: {
         sameAs: asEntityAttributeReference(SIBLING_VARIABLE),
       },
@@ -376,7 +386,8 @@ describe('QuickNodeForm with an encrypted target variable', () => {
         { [TARGET_VARIABLE]: 'Alice' },
         buildCodebook(undefined, false, true).node?.[NODE_TYPE]?.variables ??
           {},
-        PASSPHRASE,
+        (await encryptionFor(PASSPHRASE)).key,
+        'existing-node',
       );
     const existingNode: NcNode = {
       [entityPrimaryKeyProperty]: 'existing-node',
@@ -386,7 +397,7 @@ describe('QuickNodeForm with an encrypted target variable', () => {
     };
     const addNode = vi.fn(saved);
     decryption.ready = false;
-    renderQuickNodeForm({
+    await renderQuickNodeForm({
       validation: { unique: true },
       existingNodes: [existingNode],
       encrypted: true,

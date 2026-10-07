@@ -1,19 +1,29 @@
-import { act, render, screen } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { Provider } from 'react-redux';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
-import type { NcNode } from '@codaco/shared-consts';
+import { asEntityAttributeReference } from '@codaco/protocol-validation';
+import { entityPrimaryKeyProperty, type NcNode } from '@codaco/shared-consts';
 
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import { InterviewI18nProvider } from '../../../i18n/InterviewI18nProvider';
-import { setPassphrase, setPassphraseInvalid } from '../../../store/modules/ui';
 import {
   createEncryptionStore,
   encryptedVariables,
+  encryptionFor,
   makeEncryptedPerson,
+  NODE_TYPE,
+  unlockWith,
 } from '../../Anonymisation/__tests__/encryptionFixtures';
-import { getEncryptedValue } from '../../Anonymisation/decryptionScope';
-import { decryptData } from '../../Anonymisation/utils';
+import { readEncryptedAttribute } from '../../Anonymisation/decryptionScope';
+import { decryptValue } from '../../Anonymisation/encryptionFormat';
 import NameGenerator from '../NameGenerator';
 
 vi.mock('../../../hooks/useCelebrate', () => ({
@@ -43,14 +53,34 @@ beforeAll(() => {
   vi.stubGlobal('IntersectionObserver', StubObserver);
 });
 
-async function renderNameGenerator() {
-  const person = await makeEncryptedPerson('n1', 'Alice', 'pw');
-  const store = createEncryptionStore([person]);
-  store.dispatch(setPassphrase('pw'));
+type Stages = Parameters<typeof createEncryptionStore>[1];
+
+const quickAddStages: Stages = [
+  {
+    id: 'quick-add',
+    type: 'NameGeneratorQuickAdd',
+    label: 'Quick add',
+    subject: { entity: 'node', type: NODE_TYPE },
+    quickAdd: asEntityAttributeReference('name'),
+    prompts: [{ id: 'prompt-1', text: 'Name people' }],
+  },
+];
+
+async function renderNameGenerator({
+  nodes = [],
+  stages,
+  unlocked = false,
+}: { nodes?: NcNode[]; stages?: Stages; unlocked?: boolean } = {}) {
+  const { header } = await encryptionFor('pw');
+  const store = createEncryptionStore(nodes, stages, undefined, { header });
+  if (unlocked) await unlockWith(store, 'pw');
 
   const [stage] = store.getState().protocol.stages;
-  if (stage?.type !== 'NameGenerator') {
-    throw new Error('The fixture stage is a name generator');
+  if (
+    stage?.type !== 'NameGenerator' &&
+    stage?.type !== 'NameGeneratorQuickAdd'
+  ) {
+    throw new Error('The stage is a name generator');
   }
 
   render(
@@ -69,36 +99,46 @@ async function renderNameGenerator() {
     </Provider>,
   );
 
-  return { store, person };
+  return { store };
+}
+
+/** The plaintext of a node's stored name, which must be bound to its id. */
+async function storedName(node: NcNode | undefined) {
+  const stored = node
+    ? readEncryptedAttribute(node, 'name', encryptedVariables)
+    : undefined;
+  if (stored?.status !== 'encrypted') {
+    throw new Error('Expected the name to be stored encrypted');
+  }
+  expect(stored.value.nodeId).toBe(node?.[entityPrimaryKeyProperty]);
+  const { key } = await encryptionFor('pw');
+  return decryptValue(key, stored.value, stored.value);
 }
 
 describe('NameGenerator asking for encrypted answers', () => {
-  it('takes no new answers, and opens no one for editing, while the passphrase does not work', async () => {
-    const { store, person } = await renderNameGenerator();
+  it('takes no new answers, and opens no one for editing, until the passphrase is entered', async () => {
+    const person = await makeEncryptedPerson('n1', 'Alice', 'pw');
+    const { store } = await renderNameGenerator({ nodes: [person] });
 
     const add = screen.getByRole('button', { name: 'Add a person' });
-    expect(add).toBeEnabled();
-
-    act(() => {
-      store.dispatch(setPassphraseInvalid(true));
-    });
     expect(add).toBeDisabled();
+    expect(store.getState().ui.showPassphrasePrompter).toBe(true);
 
     expect(tapNode).toBeInstanceOf(Function);
     await act(async () => {
       tapNode?.(person);
-      // As long as decrypting the tapped person would take, so a form that
-      // was going to open for them has done so.
-      const value = getEncryptedValue(person, 'name', encryptedVariables);
-      if (value) await decryptData(value, 'pw');
+      await encryptionFor('pw');
     });
-
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(screen.queryByRole('textbox', { name: 'Name' })).toBeNull();
+
+    await act(() => unlockWith(store, 'pw'));
+    expect(add).toBeEnabled();
   });
 
   it('opens a tapped person on their decrypted answers once the passphrase works', async () => {
-    const { person } = await renderNameGenerator();
+    const person = await makeEncryptedPerson('n1', 'Alice', 'pw');
+    await renderNameGenerator({ nodes: [person], unlocked: true });
 
     act(() => {
       tapNode?.(person);
@@ -107,5 +147,46 @@ describe('NameGenerator asking for encrypted answers', () => {
     expect(await screen.findByRole('textbox', { name: 'Name' })).toHaveValue(
       'Alice',
     );
+  });
+
+  it('stores a person added through the form with their name encrypted for the id they are given', async () => {
+    const { store } = await renderNameGenerator({ unlocked: true });
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole('button', { name: 'Add a person' }));
+    await user.type(
+      await screen.findByRole('textbox', { name: 'Name' }),
+      'Bob',
+    );
+    await user.click(screen.getByRole('button', { name: 'Finished' }));
+
+    await waitFor(() =>
+      expect(store.getState().session.network.nodes).toHaveLength(1),
+    );
+    await expect(
+      storedName(store.getState().session.network.nodes[0]),
+    ).resolves.toBe('Bob');
+  });
+
+  it('stores a quickly added person with their name encrypted for the id they are given', async () => {
+    const { store } = await renderNameGenerator({
+      stages: quickAddStages,
+      unlocked: true,
+    });
+    const user = userEvent.setup();
+
+    await user.click(screen.getByTestId('quick-add-toggle'));
+    const input = await screen.findByTestId('quick-add-input');
+    await user.type(input, 'Bob');
+    const form = input.closest('form');
+    if (!form) throw new Error('Expected the quick-add field in a form');
+    fireEvent.submit(form);
+
+    await waitFor(() =>
+      expect(store.getState().session.network.nodes).toHaveLength(1),
+    );
+    await expect(
+      storedName(store.getState().session.network.nodes[0]),
+    ).resolves.toBe('Bob');
   });
 });

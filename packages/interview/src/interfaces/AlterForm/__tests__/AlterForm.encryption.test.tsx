@@ -6,21 +6,24 @@ import { beforeAll, describe, expect, it, vi } from 'vitest';
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import {
   entityAttributesProperty,
-  entitySecureAttributesMeta,
+  entityPrimaryKeyProperty,
+  type NcNode,
 } from '@codaco/shared-consts';
 
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import { StageMetadataProvider } from '../../../contexts/StageMetadataContext';
 import useInterviewNavigation from '../../../hooks/useInterviewNavigation';
 import { InterviewI18nProvider } from '../../../i18n/InterviewI18nProvider';
-import { setPassphrase, setPassphraseInvalid } from '../../../store/modules/ui';
 import {
   alterFormStages,
   createEncryptionStore,
+  encryptedVariables,
+  encryptionFor,
   makeEncryptedPerson,
+  unlockWith,
 } from '../../Anonymisation/__tests__/encryptionFixtures';
-import { isNumberArray } from '../../Anonymisation/decryptionScope';
-import { decryptData } from '../../Anonymisation/utils';
+import { readEncryptedAttribute } from '../../Anonymisation/decryptionScope';
+import { decryptValue } from '../../Anonymisation/encryptionFormat';
 import AlterForm from '../AlterForm';
 
 class StubResizeObserver {
@@ -76,12 +79,24 @@ beforeAll(() => {
 
 const [alterFormStage] = alterFormStages;
 
-async function renderAlterForm(passphrase?: string) {
+async function renderAlterForm({
+  person,
+  unlocked = false,
+}: { person?: NcNode; unlocked?: boolean } = {}) {
+  const { header } = await encryptionFor('pw');
   const store = createEncryptionStore(
-    [await makeEncryptedPerson('n1', 'Alice', 'pw')],
+    [person ?? (await makeEncryptedPerson('n1', 'Alice', 'pw'))],
     alterFormStages,
+    undefined,
+    { header },
   );
-  if (passphrase) store.dispatch(setPassphrase(passphrase));
+  if (unlocked) await unlockWith(store, 'pw');
+
+  // Every time the passphrase is asked for, not only the latest state.
+  let prompts = 0;
+  store.subscribe(() => {
+    if (store.getState().ui.showPassphrasePrompter) prompts += 1;
+  });
 
   const onStepChange = vi.fn();
   let moveForward: (() => Promise<void>) | undefined;
@@ -124,7 +139,20 @@ async function renderAlterForm(passphrase?: string) {
   // Leave the introduction for the first person's questions.
   await next();
 
-  return { store, onStepChange, next };
+  return { store, onStepChange, next, prompts: () => prompts };
+}
+
+async function storedName(store: ReturnType<typeof createEncryptionStore>) {
+  const [saved] = store.getState().session.network.nodes;
+  const stored = saved
+    ? readEncryptedAttribute(saved, 'name', encryptedVariables)
+    : undefined;
+  if (stored?.status !== 'encrypted') {
+    throw new Error('Expected the name to be stored encrypted');
+  }
+  expect(stored.value.nodeId).toBe(saved?.[entityPrimaryKeyProperty]);
+  const { key } = await encryptionFor('pw');
+  return decryptValue(key, stored.value, stored.value);
 }
 
 describe('AlterForm with an encrypted question', () => {
@@ -148,46 +176,46 @@ describe('AlterForm with an encrypted question', () => {
   });
 
   it('shows decrypted answers and saves encrypted and plain answers together once the passphrase is in force', async () => {
-    const { store, onStepChange, next } = await renderAlterForm('pw');
+    const { store, onStepChange, next } = await renderAlterForm({
+      unlocked: true,
+    });
     const user = userEvent.setup();
 
     const name = await screen.findByRole('textbox', { name: 'Name' });
     expect(name).toHaveValue('Alice');
+    const age = screen.getByRole('spinbutton', { name: 'Age' });
+    await user.clear(age);
+    await user.type(age, '41');
 
     await user.clear(name);
     await user.type(name, 'Alicia');
     await next();
 
     await waitFor(() => expect(onStepChange).toHaveBeenCalled());
-    const [saved] = store.getState().session.network.nodes;
-    const stored = saved?.[entityAttributesProperty].name;
-    const secure = saved?.[entitySecureAttributesMeta]?.name;
-    expect(isNumberArray(stored)).toBe(true);
-    if (!secure || !isNumberArray(stored)) return;
-    await expect(
-      decryptData({ secureAttributes: secure, data: stored }, 'pw'),
-    ).resolves.toBe('Alicia');
+    await expect(storedName(store)).resolves.toBe('Alicia');
+    expect(
+      store.getState().session.network.nodes[0]?.[entityAttributesProperty].age,
+    ).toBe(41);
   });
 
-  it('keeps answers being entered, and says they were not saved, when the passphrase stops working', async () => {
-    const { store, onStepChange, next } = await renderAlterForm('pw');
+  it('shows an answer the key cannot read as unanswered, without asking for the passphrase again', async () => {
+    // A ciphertext written for another person fails to decrypt for this one.
+    const elsewhere = await makeEncryptedPerson('elsewhere', 'Alice', 'pw');
+    const { store, onStepChange, next, prompts } = await renderAlterForm({
+      person: { ...elsewhere, [entityPrimaryKeyProperty]: 'n1' },
+      unlocked: true,
+    });
     const user = userEvent.setup();
 
     const name = await screen.findByRole('textbox', { name: 'Name' });
-    await user.clear(name);
-    await user.type(name, 'Alicia');
-    const before = store.getState().session.network;
+    expect(name).toHaveValue('');
+    expect(screen.getByRole('spinbutton', { name: 'Age' })).toHaveValue(40);
 
-    act(() => {
-      store.dispatch(setPassphraseInvalid(true));
-    });
+    await user.type(name, 'Alicia');
     await next();
 
-    expect(
-      await screen.findByText(/Your answers have not been saved/),
-    ).toBeInTheDocument();
-    expect(screen.getByRole('textbox', { name: 'Name' })).toHaveValue('Alicia');
-    expect(onStepChange).not.toHaveBeenCalled();
-    expect(store.getState().session.network).toBe(before);
+    await waitFor(() => expect(onStepChange).toHaveBeenCalled());
+    await expect(storedName(store)).resolves.toBe('Alicia');
+    expect(prompts()).toBe(0);
   });
 });

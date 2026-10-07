@@ -176,8 +176,8 @@ vi.mock('../../../../../selectors/protocol', () => ({
 // would read real Redux state, so it returns null and the caller falls back to
 // its no-fields path. Everything else — including the validation-rule
 // resolution PersonNameField depends on — stays real.
-// Decrypting stored values for validation reads the passphrase from Redux;
-// this pedigree has none to decrypt.
+// Decrypting stored values for validation needs the interview's key, held
+// against the Redux store; this pedigree has none to decrypt.
 vi.mock('../../../../../forms/useValidationNetwork', () => ({
   useValidationNetwork: ({ network }: { network: unknown }) => ({ network }),
 }));

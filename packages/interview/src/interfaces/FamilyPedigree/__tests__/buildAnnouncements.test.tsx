@@ -31,6 +31,7 @@ const fixtures = vi.hoisted(() => ({
   dispatch: vi.fn(),
   updateReady: vi.fn(),
   track: vi.fn(),
+  captureException: vi.fn(),
 }));
 
 // Keep the real stage, pedigree provider/store, locale provider and live
@@ -59,6 +60,7 @@ vi.mock('../../../hooks/useReadyForNextStage', () => ({
 }));
 vi.mock('../../../analytics/useTrack', () => ({
   useTrack: () => fixtures.track,
+  useCaptureException: () => fixtures.captureException,
 }));
 vi.mock('../../../contract/context', () => ({
   useContractFlags: () => ({ isDevelopment: false }),

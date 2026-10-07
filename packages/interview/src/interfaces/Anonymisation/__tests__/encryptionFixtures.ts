@@ -8,13 +8,16 @@ import {
   entityPrimaryKeyProperty,
   entitySecureAttributesMeta,
   type NcEdge,
+  type NcEncryptionHeader,
   type NcNode,
   type StageMetadata,
 } from '@codaco/shared-consts';
 
 import { createInitialNetwork } from '../../../contract/network';
-import type { InterviewPayload } from '../../../contract/types';
+import type { InterviewPayload, SyncHandler } from '../../../contract/types';
 import { store as createStore } from '../../../store/store';
+import { createEncryptionHeader } from '../encryptionFormat';
+import { installEncryptionKey } from '../unlockEncryption';
 import { generateSecureAttributes } from '../utils';
 
 export const NODE_TYPE = 'person';
@@ -30,24 +33,54 @@ export const encryptedVariables: Record<string, Variable> = {
   age: { name: 'age', type: 'number', component: 'Number' },
 };
 
-export const personDefinition = {
+const personDefinition = {
   name: 'Person',
   color: 'node-color-seq-1',
   shape: { default: 'circle' },
   variables: encryptedVariables,
 } satisfies NonNullable<Codebook['node']>[string];
 
-/** A person whose `name` is encrypted with `passphrase`. */
+type Encryption = { header: NcEncryptionHeader; key: CryptoKey };
+
+const encryptions = new Map<string, Promise<Encryption>>();
+
+/**
+ * The encryption header and key of an interview protected with `passphrase`.
+ * Deriving a key is deliberately slow, so it is done once per passphrase and
+ * shared by every test in the file.
+ */
+export function encryptionFor(passphrase: string): Promise<Encryption> {
+  const cached = encryptions.get(passphrase);
+  if (cached) return cached;
+  const encryption = createEncryptionHeader(passphrase);
+  encryptions.set(passphrase, encryption);
+  return encryption;
+}
+
+/**
+ * Puts the key of `passphrase` in force in `store`, as entering it would,
+ * without deriving it again.
+ */
+export async function unlockWith(
+  store: Parameters<typeof installEncryptionKey>[0],
+  passphrase: string,
+): Promise<void> {
+  installEncryptionKey(store, (await encryptionFor(passphrase)).key);
+}
+
+/** A person whose `name` is encrypted with the key of `passphrase`. */
 export async function makeEncryptedPerson(
   id: string,
   name: string,
   passphrase: string,
 ): Promise<NcNode> {
+  const { key } = await encryptionFor(passphrase);
   const { encryptedAttributes, secureAttributes } =
     await generateSecureAttributes(
       { name, age: 40 },
       encryptedVariables,
-      passphrase,
+      key,
+      id,
     );
 
   return {
@@ -105,17 +138,31 @@ type EncryptionStoreOptions = {
   edges?: NcEdge[];
   edgeTypes?: Codebook['edge'];
   stageMetadata?: StageMetadata;
+  /**
+   * The interview's encryption header, once a passphrase has been chosen in
+   * it (from `encryptionFor`). Without one, the next passphrase entered is
+   * the first.
+   */
+  header?: NcEncryptionHeader;
+  /** Receives every session the interview hands the host to persist. */
+  onSync?: SyncHandler;
 };
 
 /**
  * A real interview store holding `nodes`, as an interview that has just been
- * mounted (or resumed) would have it: no passphrase in memory.
+ * mounted (or resumed) would have it: no key in memory.
  */
 export function createEncryptionStore(
   nodes: NcNode[],
   stages: Stages = nameGeneratorStages,
   variables: Record<string, Variable> = encryptedVariables,
-  { edges = [], edgeTypes, stageMetadata }: EncryptionStoreOptions = {},
+  {
+    edges = [],
+    edgeTypes,
+    stageMetadata,
+    header,
+    onSync = () => Promise.resolve(),
+  }: EncryptionStoreOptions = {},
 ) {
   const payload: InterviewPayload = {
     session: {
@@ -124,7 +171,12 @@ export function createEncryptionStore(
       finishTime: null,
       exportTime: null,
       lastUpdated: '2026-01-01T00:00:00.000Z',
-      network: { ...createInitialNetwork(), nodes, edges },
+      network: {
+        ...createInitialNetwork(),
+        nodes,
+        edges,
+        ...(header ? { encryption: header } : {}),
+      },
       ...(stageMetadata ? { stageMetadata } : {}),
     },
     protocol: {
@@ -144,5 +196,5 @@ export function createEncryptionStore(
     },
   };
 
-  return createStore(payload, { onSync: () => Promise.resolve() });
+  return createStore(payload, { onSync });
 }

@@ -14,11 +14,15 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
-import { setPassphrase } from '../../../store/modules/ui';
 import type { StageProps } from '../../../types';
-import { createEncryptionStore } from '../../Anonymisation/__tests__/encryptionFixtures';
-import { isNumberArray } from '../../Anonymisation/decryptionScope';
-import { decryptData } from '../../Anonymisation/utils';
+import {
+  createEncryptionStore,
+  encryptionFor,
+  unlockWith,
+} from '../../Anonymisation/__tests__/encryptionFixtures';
+import { readEncryptedAttribute } from '../../Anonymisation/decryptionScope';
+import { decryptValue } from '../../Anonymisation/encryptionFormat';
+import { generateSecureAttributes } from '../../Anonymisation/utils';
 import { useComposerActions } from '../useComposerActions';
 import { createUndoStore } from '../useUndoStore';
 
@@ -47,13 +51,41 @@ const stage: StageProps<'NetworkComposer'>['stage'] = {
   background: { concentricCircles: 4, skewedTowardCenter: true },
 };
 
-function makeStore() {
-  const store = createEncryptionStore([], [stage], variables);
-  store.dispatch(setPassphrase(PASSPHRASE));
+type Store = ReturnType<typeof createEncryptionStore>;
+
+/**
+ * An interview whose passphrase was chosen earlier, holding `nodes`, with its
+ * key in force unless `locked`.
+ */
+async function makeStore({
+  nodes = [],
+  locked = false,
+}: { nodes?: NcNode[]; locked?: boolean } = {}): Promise<Store> {
+  const store = createEncryptionStore(nodes, [stage], variables, {
+    header: (await encryptionFor(PASSPHRASE)).header,
+  });
+  if (!locked) await unlockWith(store, PASSPHRASE);
   return store;
 }
 
-function renderActions(store: ReturnType<typeof makeStore>) {
+async function storedPerson(id: string, name: string): Promise<NcNode> {
+  const { key } = await encryptionFor(PASSPHRASE);
+  const { encryptedAttributes, secureAttributes } =
+    await generateSecureAttributes(
+      { [QUICK_ADD_VAR]: name, [LAYOUT_VAR]: { x: 0.5, y: 0.5 } },
+      variables,
+      key,
+      id,
+    );
+  return {
+    [entityPrimaryKeyProperty]: id,
+    type: NODE_TYPE,
+    [entityAttributesProperty]: encryptedAttributes,
+    [entitySecureAttributesMeta]: secureAttributes,
+  };
+}
+
+function renderActions(store: Store) {
   const undoStore = createUndoStore();
   const { result } = renderHook(
     () =>
@@ -74,26 +106,32 @@ function renderActions(store: ReturnType<typeof makeStore>) {
   return { result, undoStore };
 }
 
-function getNode(store: ReturnType<typeof makeStore>, id: string) {
+function getNode(store: Store, id: string) {
   return store
     .getState()
     .session.network.nodes.find((n) => n[entityPrimaryKeyProperty] === id);
 }
 
 // Reads the stored name the way every display path does: the stored value must
-// be ciphertext and decrypt with the metadata stored beside it.
+// be ciphertext, stored with only an IV beside it, and decrypt as the name of
+// the node it is stored on.
 async function readStoredName(node: NcNode | undefined) {
   if (!node) throw new Error('Expected the node to exist');
-  const value = node[entityAttributesProperty][QUICK_ADD_VAR];
-  const secure = node[entitySecureAttributesMeta]?.[QUICK_ADD_VAR];
-  if (!isNumberArray(value)) throw new Error('Expected a stored ciphertext');
-  if (!secure) throw new Error('Expected secure-attribute metadata');
-  return decryptData({ secureAttributes: secure, data: value }, PASSPHRASE);
+  const stored = readEncryptedAttribute(node, QUICK_ADD_VAR, variables);
+  if (stored?.status !== 'encrypted') {
+    throw new Error('Expected a stored ciphertext');
+  }
+  expect(stored.value.nodeId).toBe(node[entityPrimaryKeyProperty]);
+  expect(
+    Object.keys(node[entitySecureAttributesMeta]?.[QUICK_ADD_VAR] ?? {}),
+  ).toEqual(['iv']);
+  const { key } = await encryptionFor(PASSPHRASE);
+  return decryptValue(key, stored.value, stored.value);
 }
 
 describe('useComposerActions with an encrypted quick-add variable', () => {
   it('createNodeAt stores the name as ciphertext with its metadata', async () => {
-    const store = makeStore();
+    const store = await makeStore();
     const { result } = renderActions(store);
 
     let id = '';
@@ -110,8 +148,8 @@ describe('useComposerActions with an encrypted quick-add variable', () => {
     });
   });
 
-  it('redo of an undone create puts back a decryptable node', async () => {
-    const store = makeStore();
+  it('redo of an undone create puts the node back under its own id, still decryptable', async () => {
+    const store = await makeStore();
     const { result, undoStore } = renderActions(store);
 
     let id = '';
@@ -121,16 +159,19 @@ describe('useComposerActions with an encrypted quick-add variable', () => {
     await act(async () => {
       await undoStore.getState().undo();
     });
-    expect(getNode(store, id)).toBeUndefined();
+    expect(store.getState().session.network.nodes).toEqual([]);
 
     await act(async () => {
       await undoStore.getState().redo();
     });
-    expect(await readStoredName(getNode(store, id))).toBe('Alex');
+    const [restored, ...others] = store.getState().session.network.nodes;
+    expect(others).toEqual([]);
+    expect(restored?.[entityPrimaryKeyProperty]).toBe(id);
+    expect(await readStoredName(restored)).toBe('Alex');
   });
 
   it('undo of a deletion puts back a decryptable node', async () => {
-    const store = makeStore();
+    const store = await makeStore();
     const { result, undoStore } = renderActions(store);
 
     let id = '';
@@ -149,7 +190,7 @@ describe('useComposerActions with an encrypted quick-add variable', () => {
   });
 
   it('undo of a multi-node deletion puts back decryptable nodes', async () => {
-    const store = makeStore();
+    const store = await makeStore();
     const { result, undoStore } = renderActions(store);
 
     const ids: string[] = [];
@@ -169,7 +210,7 @@ describe('useComposerActions with an encrypted quick-add variable', () => {
   });
 
   it('undo and redo of an encrypted edit keep each value with its own metadata', async () => {
-    const store = makeStore();
+    const store = await makeStore();
     const { result, undoStore } = renderActions(store);
 
     let id = '';
@@ -196,7 +237,7 @@ describe('useComposerActions with an encrypted quick-add variable', () => {
   });
 
   it('undo of coalesced encrypted edits restores the value before the first edit', async () => {
-    const store = makeStore();
+    const store = await makeStore();
     const { result, undoStore } = renderActions(store);
 
     let id = '';
@@ -228,7 +269,7 @@ describe('useComposerActions with an encrypted quick-add variable', () => {
   });
 
   it('undo of clearing an encrypted value restores it with its metadata, redo clears both', async () => {
-    const store = makeStore();
+    const store = await makeStore();
     const { result, undoStore } = renderActions(store);
 
     let id = '';
@@ -258,5 +299,39 @@ describe('useComposerActions with an encrypted quick-add variable', () => {
     expect(
       redone?.[entitySecureAttributesMeta]?.[QUICK_ADD_VAR],
     ).toBeUndefined();
+  });
+});
+
+describe('useComposerActions while the interview is locked', () => {
+  it('refuses to create a node with an encrypted name, storing nothing and recording no undo step', async () => {
+    const store = await makeStore({ locked: true });
+    const { result, undoStore } = renderActions(store);
+
+    await act(async () => {
+      await expect(
+        result.current.createNodeAt('Alex', { x: 0.5, y: 0.5 }),
+      ).rejects.toMatchObject({ name: 'PassphraseRequiredError' });
+    });
+
+    expect(store.getState().session.network.nodes).toEqual([]);
+    expect(undoStore.getState().past).toEqual([]);
+  });
+
+  it('refuses an encrypted edit, leaving the stored value and its IV as they were', async () => {
+    const stored = await storedPerson('node-a', 'Alex');
+    const store = await makeStore({ nodes: [stored], locked: true });
+    const { result, undoStore } = renderActions(store);
+
+    await act(async () => {
+      await expect(
+        result.current.updateNodeAttributes('node-a', {
+          set: { [QUICK_ADD_VAR]: 'Sam' },
+          unset: [],
+        }),
+      ).rejects.toMatchObject({ name: 'PassphraseRequiredError' });
+    });
+
+    expect(getNode(store, 'node-a')).toBe(stored);
+    expect(undoStore.getState().past).toEqual([]);
   });
 });
