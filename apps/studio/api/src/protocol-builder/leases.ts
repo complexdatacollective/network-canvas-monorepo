@@ -271,10 +271,11 @@ export class Leases extends Context.Service<
       ) =>
         Effect.gen(function* () {
           yield* Effect.sleep(RECONNECT_GRACE_MS);
-          if (yield* closed) return;
-          // Dropped before the release, which may fail: a contact left
-          // renewing would keep the leases forever.
+          // Dropped before the release, which may fail or be skipped while the
+          // database is closed: a contact left renewing would keep the leases
+          // forever.
           contacts.delete(ownerKey(session));
+          if (yield* closed) return;
           yield* Effect.gen(function* () {
             if (yield* closed) return;
             yield* Effect.uninterruptible(

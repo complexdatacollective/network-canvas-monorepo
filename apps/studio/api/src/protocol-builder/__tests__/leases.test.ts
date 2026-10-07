@@ -664,6 +664,43 @@ describe.skipIf(!testDb)('the lease keeper', () => {
     }
   });
 
+  it('stops renewing a calling tab whose grace ended while the database was closed', async () => {
+    const gate = closable();
+    const a = await replica({ maintenance: gate.triggers });
+    const { owner, on } = tabOf('grace-closed');
+    try {
+      const channel = await watching(
+        on('pb-ada-grace-closed-connection'),
+        protocolId,
+        a.client,
+      );
+      await a.client.call(
+        on(),
+        a.client.rpc('ResourcesList', {
+          protocolId,
+          editId: 'pb-grace-closed-edit',
+          status: 'staged',
+        }),
+      );
+      await channel.stop();
+      await until(
+        () => a.time.pending(RECONNECT_GRACE_MS) > 0,
+        'the reconnect grace to start',
+      );
+
+      gate.setClosed(true);
+      a.time.advance(RECONNECT_GRACE_MS);
+      await until(async () => !(await a.connected(owner)), 'the grace to end');
+      gate.setClosed(false);
+
+      const passes = a.spans.count('protocolBuilder.liveness');
+      await keeperTick(RENEW_INTERVAL_MS, a.time);
+      expect(a.spans.count('protocolBuilder.liveness')).toBe(passes);
+    } finally {
+      await a.client.dispose();
+    }
+  });
+
   it('neither renews nor records contact while the database is closed to it', async () => {
     const gate = closable();
     const a = await replica({ maintenance: gate.triggers });
