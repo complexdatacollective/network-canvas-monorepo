@@ -36,10 +36,12 @@ staged files that were abandoned.
 Make the change first and the upgrade after it. An upgrade does not check the
 policy. A key that cannot delete still lets authors add files to a stage and
 save it, but the API refuses to discard a staged file, and staged files are
-never cleared away.
+never cleared away from the bucket. The API and the worker log a warning for
+each one they could not delete, so the logs show it.
 
 **An instance with no object store** can no longer stage a file at all: adding
-a file to a stage is refused, while staging an API key still works. Before
+a file to a stage is refused, without the offer to try again, while staging
+an API key still works. Before
 this release such a file could be staged but never saved, because the save was
 refused, so nothing an author could finish before is lost.
 

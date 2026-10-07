@@ -92,8 +92,9 @@ The access key needs read, write, delete and list on the bucket: on AWS,
 are for files an author adds while editing a stage, which wait in the bucket
 under `staging/` until the stage is saved or cancelled. A key that cannot
 delete still lets authors add files and save, but the API refuses to discard
-a staged file, and staged files are never cleared away; the API logs a warning for each one it
-could not delete after a save. If the bucket keeps versions, add the lifecycle rule
+a staged file, and staged files stay in the bucket for good. The API logs a
+warning for each one it could not delete after a save or once its tab has
+gone, and the worker logs one for each abandoned file on every hourly run. If the bucket keeps versions, add the lifecycle rule
 [the requirements](./requirements.md#an-object-store) describe.
 
 Then delete the `garage` and `garage-init` services, the `garage-config` and

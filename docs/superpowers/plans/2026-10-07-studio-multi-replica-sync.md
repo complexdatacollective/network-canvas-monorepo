@@ -729,8 +729,21 @@ owner)` where `expires_at > clock_timestamp() - IDLE_MS`**.
   verified. The memory store in `T/support/object-store.ts` has no copy
   either.
 - Staging a file now needs a configured object store and is refused with
-  `NO_STORE` otherwise: there is no in-memory fallback. A failed
+  `NO_STORE` otherwise: there is no in-memory fallback. The refusal's reason
+  is `unsupported-kind`, in `stage`, `plan` and `preview` alike, because
+  retrying cannot help until the operator configures a store; the client
+  therefore offers no retry and shows the message as before. A failed
   `putStaged` stages nothing and answers `unavailable`.
+- A stage that fails or is interrupted after its `putStaged` deletes the
+  object it wrote, unless a row names it: when the insert's outcome is
+  unknown the row is read first, and a read that fails keeps the object for
+  the orphan sweep. A PUT still in flight when the delete runs is left to the
+  orphan sweep too. The insert that loses a unique race reads the winner and
+  retries once if that row vanished in between, then answers `unavailable`.
+- Every best-effort staged delete (`discard`, `releaseOwner`, the
+  promotion's clean-up, a failed stage and the GC) goes through
+  `removeStaged`, which logs a failure at warning level annotated with the
+  key and the operation, and never fails its caller.
 - Every staging call (`stage`, `descriptors`, `plan`, `discard`, `inspect`,
   `preview`, `releaseOwner`) runs `requireProtocol` inside its own
   `noAuditTransaction`, under ops `protocolBuilder.stageResource`,
@@ -744,9 +757,25 @@ owner)` where `expires_at > clock_timestamp() - IDLE_MS`**.
 - `discard`, `releaseOwner` and the GC delete staged rows without the draft
   head: none of them writes a section, and the consume's row locks are what
   a racing promotion contends on.
-- `Leases.connected` is kept. No production code calls it now, but
-  `pb/__tests__/leases.test.ts` observes the reconnect grace through it, and
-  rewriting C2's tests is outside S.
+- `discard` still deletes the objects, then the rows: the caller is present
+  and a failure answers it. `releaseOwner` and the GC go row-first instead,
+  because nobody is waiting on them: one statement deletes the rows it finds
+  abandoned and returns their object keys, and only then are the objects
+  deleted. A tab that came back keeps its row and its object together, and an
+  object the store would not delete is unnamed from then on, so a later orphan
+  sweep takes it.
+- `releaseOwner`'s statement locks the owner's rows in `(edit_id,
+resource_id)` order and skips them while a socket connection row of the
+  owner is live, so a tab that reconnected on another replica during the
+  grace keeps its staging.
+- `onReleased` publishes the released locks and the presence change first,
+  then forks `releaseOwner` into the handler's scope: the other tabs see the
+  locks go without waiting on object deletes. `ReleaseLock` returns before
+  publishing anything when the release gave nothing back.
+- `Leases.connected` is deleted. `pb/__tests__/leases.test.ts` and the
+  replica scenarios observe the reconnect grace through the
+  `protocolBuilder.disconnect` and `protocolBuilder.graceElapsed` spans, and
+  the pending sleeps of the shiftable clock.
 - `IDLE_MS` moved from `pb/leases.ts` to `pb/schema.ts`, so the GC reads it
   without importing the host.
 - The GC (`jobs/handlers/staged-resources-gc.ts`):
@@ -759,10 +788,20 @@ owner)` where `expires_at > clock_timestamp() - IDLE_MS`**.
     from the staged rows, the connection rows and the listed keys, so a team
     whose only trace is an orphaned object is still swept. A listing that
     fails is logged and the rows and connections are collected anyway.
-  - collects in two transactions per team: select up to 1000 abandoned rows,
-    delete their objects outside any transaction, then delete the rows whose
-    objects went, re-checking the abandoned predicate so a tab that came
-    back keeps its rows.
+  - collects row-first, in batches of 1000: one statement locks a batch of
+    abandoned rows in key order (as a promotion's consume does), deletes
+    them and returns their object keys; the objects are deleted after
+    commit. The orphan sweep asks which listed keys a row names with one
+    `= ANY` array parameter, and skips keys this run already deleted.
+  - collects each team inside its own `catchCause`: a team that fails is
+    logged at error level with its `teamId`, and the teams after it are
+    still collected.
+  - runs whether or not `gcProtocolStore` succeeded: `protocolStoreGc` keeps
+    the sweep's `Exit`, runs the staged GC, then fails the job with the
+    sweep's cause if it failed.
+- Each backend's `make` takes an optional `listPageSize`, set only by the
+  contract tests, so the contract's paging case makes S3 follow its
+  continuation tokens and Azure iterate `byPage`.
   - treats a row as abandoned when it is older than `IDLE_MS` and no
     connection row for its `(team, draft, owner)` expires after
     `now - IDLE_MS`. The age bound keeps a row staged a moment ago by a tab
@@ -832,7 +871,8 @@ database observables.
   the hub last.
 - Scenario 1 also asserts that A's grace ended without releasing and
   without sleeping again: one `releaseOwner` span on A, its grace count
-  back to where it was, and `connected(owner)` false on A. A's liveness
+  back to where it was, and its `protocolBuilder.graceElapsed` span ended
+  once (`connected(owner)` false on A, until `Leases.connected` went). A's liveness
   count does not move across the tick that renews the lease, so the
   renewal is B's.
 - I1 (drop the owner's renewal from `connectSocket`) does not turn H#1 or
