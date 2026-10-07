@@ -23,6 +23,15 @@ const TARGET_SCHEMA_VERSION = COMPATIBLE_PROTOCOL_SCHEMA_VERSION;
  */
 const NORMALIZATION_SOURCE_VERSION = 7;
 
+/**
+ * The last version with `experiments`, which recorded whether attributes
+ * marked `encrypted` were actually encrypted. Normalization stops here on its
+ * way up from `NORMALIZATION_SOURCE_VERSION`: the migration into this version
+ * resets `experiments`, and the migration out of it unmarks every encrypted
+ * attribute unless they say encryption was on.
+ */
+const EXPERIMENTS_SCHEMA_VERSION = 8;
+
 type ProtocolAssetRow = {
   assetId: string;
   name: string;
@@ -86,7 +95,6 @@ function isConformant(row: ProtocolRow): boolean {
     schemaVersion: TARGET_SCHEMA_VERSION,
     stages: row.stages,
     codebook: row.codebook,
-    experiments: row.experiments ?? {},
     // The whole-protocol schema cross-references stage asset ids (roster,
     // geospatial) against the manifest, so it must be reconstructed here or
     // every asset-referencing protocol would fail and be re-normalized on
@@ -147,11 +155,10 @@ async function migrateOneProtocol(
     schemaVersion: row.schemaVersion,
     stages: row.stages,
     codebook: row.codebook,
-    // Once the target version advances beyond 8, version-8 rows enter this
-    // path carrying experiments; a source that omitted them would persist the
-    // migration's absent default and silently erase the stored configuration.
-    // Omit the key (rather than sending null) for the older rows that have
-    // none.
+    // Fresco keeps a version 8 row's `experiments` in their own column. The
+    // migration to 9 unmarks every encrypted attribute unless they say
+    // encryption was on, so omitting them would stop encrypting attributes
+    // whose collected values are already ciphertext.
     ...(row.experiments != null ? { experiments: row.experiments } : {}),
     assetManifest: buildAssetManifest(row.assets),
   };
@@ -196,11 +203,9 @@ async function migrateOneProtocol(
       // the brand at the Prisma JSON boundary.
       stages: migrated.stages as Prisma.InputJsonValue,
       codebook: migrated.codebook,
-      // Fall back to the stored value like the normalization path below: the
-      // migration chain predates experiments and may not carry them through.
-      // A future migration that means to clear them should set `{}`, not drop
-      // the key.
-      experiments: migrated.experiments ?? row.experiments ?? Prisma.JsonNull,
+      // The target version has no experiments, and an import leaves the
+      // column empty too.
+      experiments: Prisma.DbNull,
       hash: newHash,
     },
     newHash,
@@ -239,9 +244,27 @@ async function normalizeNonConformantProtocol(
     assetManifest: buildAssetManifest(row.assets),
   };
 
-  const migrated = migrateProtocol(asSourceVersion, TARGET_SCHEMA_VERSION, {
-    name: cleanName,
-  });
+  const { experiments: _reset, ...atExperimentsVersion } = migrateProtocol(
+    asSourceVersion,
+    EXPERIMENTS_SCHEMA_VERSION,
+    { name: cleanName },
+  );
+
+  // A row stored after that version has no experiments: its schema always
+  // encrypts an attribute marked `encrypted`, as `encryptedVariables` did.
+  const experiments =
+    row.schemaVersion > EXPERIMENTS_SCHEMA_VERSION
+      ? { encryptedVariables: true }
+      : row.experiments;
+
+  const migrated = migrateProtocol(
+    {
+      ...atExperimentsVersion,
+      ...(experiments != null ? { experiments } : {}),
+    },
+    TARGET_SCHEMA_VERSION,
+    { name: cleanName },
+  );
 
   // The hash is derived from stages + codebook only, so re-normalizing gives
   // the same hash the import flow would now compute for this protocol.
@@ -254,10 +277,7 @@ async function normalizeNonConformantProtocol(
       schemaVersion: TARGET_SCHEMA_VERSION,
       stages: migrated.stages as Prisma.InputJsonValue,
       codebook: migrated.codebook,
-      // Preserve the protocol's existing experiments; a migration chain
-      // starting below the version that introduced them has no knowledge of
-      // them and would otherwise reset them to its default.
-      experiments: row.experiments ?? Prisma.JsonNull,
+      experiments: Prisma.DbNull,
       hash: newHash,
     },
     newHash,

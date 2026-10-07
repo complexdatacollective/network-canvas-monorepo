@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
 import { hashProtocol, migrateProtocol } from '@codaco/protocol-validation';
+import { Prisma } from '~/lib/db/generated/client';
 import {
   buildAssetManifest,
   migrateProtocolsToCompatibleVersion,
@@ -69,6 +70,84 @@ function makeMockPrisma(): MockPrisma {
   };
 }
 
+// The script calls only these three methods of the transaction client.
+const runMigration = (prisma: MockPrisma) =>
+  migrateProtocolsToCompatibleVersion(
+    prisma as unknown as Parameters<
+      typeof migrateProtocolsToCompatibleVersion
+    >[0],
+  );
+
+/** The one update the migration made, to assert on by property path. */
+function onlyWrite(prisma: MockPrisma): unknown {
+  expect(prisma.protocol.update).toHaveBeenCalledTimes(1);
+  return prisma.protocol.update.mock.calls[0]?.[0];
+}
+
+const NAME_ATTRIBUTE = 'node.person.variables.name';
+
+/**
+ * `makeV7Protocol` with a text attribute marked `encrypted`, a mark the
+ * migration to version 8 keeps and the one to version 9 removes unless the
+ * protocol's experiments turned encryption on.
+ */
+function makeV7ProtocolWithEncryptedName() {
+  const v7 = makeV7Protocol();
+  return {
+    ...v7,
+    codebook: {
+      ...v7.codebook,
+      node: {
+        person: {
+          ...v7.codebook.node.person,
+          variables: {
+            ...v7.codebook.node.person.variables,
+            name: { name: 'name', type: 'text', encrypted: true },
+          },
+        },
+      },
+    },
+  };
+}
+
+/** A conformant version 8 row with an encrypted attribute. */
+function makeEncryptedV8Row(experiments: unknown) {
+  const v8 = migrateProtocol(
+    { ...makeV7ProtocolWithEncryptedName(), name: 'Encrypted' },
+    8,
+    { name: 'Encrypted' },
+  );
+  return {
+    id: 'cm-encrypted-v8',
+    assets: [],
+    name: 'Encrypted.netcanvas',
+    schemaVersion: 8,
+    stages: v8.stages,
+    codebook: v8.codebook,
+    experiments,
+  };
+}
+
+/**
+ * A row stored at `schemaVersion` whose body still has the legacy shapes only
+ * normalization rewrites, with an encrypted attribute.
+ */
+function makeLegacyShapedEncryptedRow(
+  schemaVersion: number,
+  experiments: unknown,
+) {
+  const legacyShaped = makeV7ProtocolWithEncryptedName();
+  return {
+    id: 'cm-legacy-encrypted',
+    assets: [],
+    name: 'Legacy Encrypted.netcanvas',
+    schemaVersion,
+    stages: legacyShaped.stages,
+    codebook: legacyShaped.codebook,
+    experiments,
+  };
+}
+
 describe('migrateProtocolsToCompatibleVersion', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -77,11 +156,7 @@ describe('migrateProtocolsToCompatibleVersion', () => {
   it('is a no-op when there are no v7 protocols', async () => {
     const prisma = makeMockPrisma();
 
-    await migrateProtocolsToCompatibleVersion(
-      prisma as unknown as Parameters<
-        typeof migrateProtocolsToCompatibleVersion
-      >[0],
-    );
+    await runMigration(prisma);
 
     expect(prisma.protocol.update).not.toHaveBeenCalled();
   });
@@ -103,11 +178,7 @@ describe('migrateProtocolsToCompatibleVersion', () => {
       },
     ]);
 
-    await migrateProtocolsToCompatibleVersion(
-      prisma as unknown as Parameters<
-        typeof migrateProtocolsToCompatibleVersion
-      >[0],
-    );
+    await runMigration(prisma);
 
     expect(prisma.protocol.update).toHaveBeenCalledTimes(1);
 
@@ -131,7 +202,7 @@ describe('migrateProtocolsToCompatibleVersion', () => {
     expect(updateCall.data.schemaVersion).toBe(
       COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
     );
-    expect(updateCall.data.experiments).toEqual({});
+    expect(updateCall.data.experiments).toEqual(Prisma.DbNull);
 
     // iconVariant → icon, with shape added
     const personNode = updateCall.data.codebook.node.person;
@@ -169,11 +240,7 @@ describe('migrateProtocolsToCompatibleVersion', () => {
       },
     ]);
 
-    await migrateProtocolsToCompatibleVersion(
-      prisma as unknown as Parameters<
-        typeof migrateProtocolsToCompatibleVersion
-      >[0],
-    );
+    await runMigration(prisma);
 
     type UpdateCallArg = { data: { hash: string } };
     const dbCall = prisma.protocol.update.mock.calls[0]?.[0] as UpdateCallArg;
@@ -215,13 +282,7 @@ describe('migrateProtocolsToCompatibleVersion', () => {
       },
     ]);
 
-    await expect(
-      migrateProtocolsToCompatibleVersion(
-        prisma as unknown as Parameters<
-          typeof migrateProtocolsToCompatibleVersion
-        >[0],
-      ),
-    ).resolves.toBeUndefined();
+    await expect(runMigration(prisma)).resolves.toBeUndefined();
 
     // Nothing was written for the broken row, and the failure names it.
     expect(prisma.protocol.update).not.toHaveBeenCalled();
@@ -259,18 +320,14 @@ describe('migrateProtocolsToCompatibleVersion', () => {
       ),
     ).toThrow();
 
-    await migrateProtocolsToCompatibleVersion(
-      prisma as unknown as Parameters<
-        typeof migrateProtocolsToCompatibleVersion
-      >[0],
-    );
+    await runMigration(prisma);
 
     expect(prisma.protocol.update).toHaveBeenCalledTimes(1);
     expect(prisma.protocol.update).toHaveBeenCalledWith({
       where: { id: 'cm-legacy-v8' },
       data: expect.objectContaining({
         schemaVersion: COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
-        experiments: storedExperiments,
+        experiments: Prisma.DbNull,
         // iconVariant → icon proves the legacy shape was rewritten.
         codebook: expect.objectContaining({
           node: {
@@ -298,13 +355,7 @@ describe('migrateProtocolsToCompatibleVersion', () => {
       },
     ]);
 
-    await expect(
-      migrateProtocolsToCompatibleVersion(
-        prisma as unknown as Parameters<
-          typeof migrateProtocolsToCompatibleVersion
-        >[0],
-      ),
-    ).resolves.toBeUndefined();
+    await expect(runMigration(prisma)).resolves.toBeUndefined();
 
     expect(prisma.protocol.update).not.toHaveBeenCalled();
     const logged = errorSpy.mock.calls.map((call) => String(call[0])).join(' ');
@@ -334,11 +385,7 @@ describe('migrateProtocolsToCompatibleVersion', () => {
       },
     ]);
 
-    await migrateProtocolsToCompatibleVersion(
-      prisma as unknown as Parameters<
-        typeof migrateProtocolsToCompatibleVersion
-      >[0],
-    );
+    await runMigration(prisma);
 
     expect(prisma.protocol.update).toHaveBeenCalledTimes(1);
 
@@ -358,40 +405,6 @@ describe('migrateProtocolsToCompatibleVersion', () => {
     // mislabelled protocol rather than leaving its legacy shape untouched.
     expect(call.data.codebook.node.person.icon).toBe('add-a-person');
     expect(call.data.codebook.node.person).not.toHaveProperty('iconVariant');
-  });
-
-  it('preserves stored experiments when normalizing a non-conformant protocol', async () => {
-    // Experiments exist only at the compatible version and the migration chain
-    // predates them, so both write paths must carry the stored value through
-    // rather than resetting it to the chain's default.
-    const legacyShaped = makeV7Protocol();
-    const storedExperiments = { encryptedVariables: true };
-    const prisma = makeMockPrisma();
-    prisma.protocol.findMany.mockResolvedValue([
-      {
-        id: 'cm-experiments',
-        assets: [],
-        name: 'With Experiments.netcanvas',
-        schemaVersion: COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
-        stages: legacyShaped.stages,
-        codebook: legacyShaped.codebook,
-        experiments: storedExperiments,
-        description: legacyShaped.description,
-        lastModified: new Date(legacyShaped.lastModified),
-      },
-    ]);
-
-    await migrateProtocolsToCompatibleVersion(
-      prisma as unknown as Parameters<
-        typeof migrateProtocolsToCompatibleVersion
-      >[0],
-    );
-
-    expect(prisma.protocol.update).toHaveBeenCalledTimes(1);
-    const call = prisma.protocol.update.mock.calls[0]?.[0] as {
-      data: { experiments: unknown };
-    };
-    expect(call.data.experiments).toEqual(storedExperiments);
   });
 
   it('normalizes non-conformant asset-referencing protocols', async () => {
@@ -430,11 +443,7 @@ describe('migrateProtocolsToCompatibleVersion', () => {
       },
     ]);
 
-    await migrateProtocolsToCompatibleVersion(
-      prisma as unknown as Parameters<
-        typeof migrateProtocolsToCompatibleVersion
-      >[0],
-    );
+    await runMigration(prisma);
 
     expect(prisma.protocol.update).toHaveBeenCalledTimes(1);
   });
@@ -482,17 +491,13 @@ describe('migrateProtocolsToCompatibleVersion', () => {
         schemaVersion: COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
         stages: conformant.stages,
         codebook: conformant.codebook,
-        experiments: conformant.experiments ?? null,
+        experiments: null,
         description: null,
         lastModified: new Date('2024-01-01T00:00:00.000Z'),
       },
     ]);
 
-    await migrateProtocolsToCompatibleVersion(
-      prisma as unknown as Parameters<
-        typeof migrateProtocolsToCompatibleVersion
-      >[0],
-    );
+    await runMigration(prisma);
 
     expect(prisma.protocol.update).not.toHaveBeenCalled();
   });
@@ -516,17 +521,13 @@ describe('migrateProtocolsToCompatibleVersion', () => {
         schemaVersion: COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
         stages: conformant.stages,
         codebook: conformant.codebook,
-        experiments: conformant.experiments ?? null,
+        experiments: null,
         description: null,
         lastModified: new Date('2024-01-01T00:00:00.000Z'),
       },
     ]);
 
-    await migrateProtocolsToCompatibleVersion(
-      prisma as unknown as Parameters<
-        typeof migrateProtocolsToCompatibleVersion
-      >[0],
-    );
+    await runMigration(prisma);
 
     expect(prisma.protocol.update).not.toHaveBeenCalled();
   });
@@ -553,13 +554,7 @@ describe('migrateProtocolsToCompatibleVersion', () => {
       },
     ]);
 
-    await expect(
-      migrateProtocolsToCompatibleVersion(
-        prisma as unknown as Parameters<
-          typeof migrateProtocolsToCompatibleVersion
-        >[0],
-      ),
-    ).resolves.toBeUndefined();
+    await expect(runMigration(prisma)).resolves.toBeUndefined();
 
     expect(prisma.protocol.update).not.toHaveBeenCalled();
     expect(warnSpy).toHaveBeenCalledWith(
@@ -597,13 +592,7 @@ describe('migrateProtocolsToCompatibleVersion', () => {
     // deployment completes and the log names both rows so the administrator
     // can resolve the duplicate.
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    await expect(
-      migrateProtocolsToCompatibleVersion(
-        prisma as unknown as Parameters<
-          typeof migrateProtocolsToCompatibleVersion
-        >[0],
-      ),
-    ).resolves.toBeUndefined();
+    await expect(runMigration(prisma)).resolves.toBeUndefined();
 
     const logged = errorSpy.mock.calls.map((call) => String(call[0])).join(' ');
     expect(logged).toMatch(/cm-collide/);
@@ -614,6 +603,143 @@ describe('migrateProtocolsToCompatibleVersion', () => {
     // the surrounding PostgreSQL transaction.
     expect(prisma.protocol.update).not.toHaveBeenCalled();
     errorSpy.mockRestore();
+  });
+});
+
+/**
+ * Run the deploy migration over a version 8 row that fails its own version and
+ * so is normalized from version 7, whose migration to 8 resets experiments to
+ * empty. Returns what was written.
+ */
+async function normalizeLegacyShapedV8Row(experiments: unknown) {
+  const row = makeLegacyShapedEncryptedRow(8, experiments);
+  expect(row.codebook).toHaveProperty(`${NAME_ATTRIBUTE}.encrypted`, true);
+  expect(() =>
+    migrateProtocol(
+      {
+        name: 'Legacy Encrypted',
+        schemaVersion: 8,
+        stages: row.stages,
+        codebook: row.codebook,
+      },
+      COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
+    ),
+  ).toThrow();
+  const prisma = makeMockPrisma();
+  prisma.protocol.findMany.mockResolvedValue([row]);
+
+  await runMigration(prisma);
+
+  const written = onlyWrite(prisma);
+  // iconVariant → icon proves the row went through normalization.
+  expect(written).toHaveProperty(
+    'data.codebook.node.person.icon',
+    'add-a-person',
+  );
+  return written;
+}
+
+describe('encrypted attributes in the deploy migration', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('keeps a version 8 row’s attributes encrypted when its experiments turned encryption on', async () => {
+    // Their collected values are ciphertext; unmarking them would hand the
+    // interview ciphertext as if it were the participant's answer.
+    const row = makeEncryptedV8Row({ encryptedVariables: true });
+    const prisma = makeMockPrisma();
+    prisma.protocol.findMany.mockResolvedValue([row]);
+
+    await runMigration(prisma);
+
+    const written = onlyWrite(prisma);
+    expect(written).toHaveProperty(
+      'data.schemaVersion',
+      COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
+    );
+    expect(written).toHaveProperty(
+      `data.codebook.${NAME_ATTRIBUTE}.encrypted`,
+      true,
+    );
+    expect(written).toHaveProperty('data.experiments', Prisma.DbNull);
+  });
+
+  it.each([
+    ['absent', null],
+    ['empty', {}],
+    ['off', { encryptedVariables: false }],
+  ])(
+    'unmarks a version 8 row’s encrypted attributes when encryption was %s, since their values are plaintext',
+    async (_description, experiments) => {
+      const row = makeEncryptedV8Row(experiments);
+      expect(row.codebook).toHaveProperty(`${NAME_ATTRIBUTE}.encrypted`, true);
+      const prisma = makeMockPrisma();
+      prisma.protocol.findMany.mockResolvedValue([row]);
+
+      await runMigration(prisma);
+
+      const written = onlyWrite(prisma);
+      expect(written).toHaveProperty(
+        `data.codebook.${NAME_ATTRIBUTE}.type`,
+        'text',
+      );
+      expect(written).not.toHaveProperty(
+        `data.codebook.${NAME_ATTRIBUTE}.encrypted`,
+      );
+      expect(written).toHaveProperty('data.experiments', Prisma.DbNull);
+    },
+  );
+
+  it('keeps a version 8 row’s attributes encrypted when normalizing it with encryption on', async () => {
+    const written = await normalizeLegacyShapedV8Row({
+      encryptedVariables: true,
+    });
+
+    expect(written).toHaveProperty(
+      `data.codebook.${NAME_ATTRIBUTE}.encrypted`,
+      true,
+    );
+    expect(written).toHaveProperty('data.experiments', Prisma.DbNull);
+  });
+
+  it('unmarks a version 8 row’s encrypted attributes when normalizing it with encryption off', async () => {
+    const written = await normalizeLegacyShapedV8Row(null);
+
+    expect(written).toHaveProperty(
+      `data.codebook.${NAME_ATTRIBUTE}.type`,
+      'text',
+    );
+    expect(written).not.toHaveProperty(
+      `data.codebook.${NAME_ATTRIBUTE}.encrypted`,
+    );
+    expect(written).toHaveProperty('data.experiments', Prisma.DbNull);
+  });
+
+  it('keeps the attributes of a non-conformant row at the compatible version encrypted when normalizing it', async () => {
+    // That version has no experiments and always encrypts, so the empty
+    // experiments the version 8 step of normalization starts from must not
+    // decide.
+    const row = makeLegacyShapedEncryptedRow(
+      COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
+      null,
+    );
+    expect(row.codebook).toHaveProperty(`${NAME_ATTRIBUTE}.encrypted`, true);
+    const prisma = makeMockPrisma();
+    prisma.protocol.findMany.mockResolvedValue([row]);
+
+    await runMigration(prisma);
+
+    const written = onlyWrite(prisma);
+    expect(written).toHaveProperty(
+      'data.codebook.node.person.icon',
+      'add-a-person',
+    );
+    expect(written).toHaveProperty(
+      `data.codebook.${NAME_ATTRIBUTE}.encrypted`,
+      true,
+    );
+    expect(written).toHaveProperty('data.experiments', Prisma.DbNull);
   });
 });
 

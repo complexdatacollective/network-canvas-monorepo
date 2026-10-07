@@ -31,10 +31,9 @@ import type { StoredProtocol } from './types';
 // tables. A row whose migration or validation fails never opens a transaction
 // at all, so it and its sessions are left untouched and the sweep continues.
 //
-// This is a no-op for every library in the field today: the only schema version
-// Interviewer has ever stored is the current one. It ships built and tested so
-// that the release which introduces a new schema version cannot orphan the
-// sessions of a protocol it migrates.
+// A library stored by a release whose runtime executed an older schema version
+// (schema 8, for every release before the runtime moved to 9) is migrated here
+// on the first launch after the update.
 //
 // Two properties of a migration are what make repointing sessions sufficient,
 // and protocol-validation's migration module states both as binding invariants:
@@ -135,6 +134,9 @@ async function migrateStoredProtocolRow(
 
   // The `name` dependency: v7 and below have no protocol name of their own, so
   // the migration is told the one this library already displays for the row.
+  // The whole stored document goes in because the migration from 8 reads its
+  // `experiments`: without them it unmarks every encrypted attribute, and
+  // sessions whose values were already encrypted could no longer be read.
   const migrated = migrateProtocol(
     stored.protocol,
     COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
@@ -177,8 +179,8 @@ async function migrateStoredProtocolRow(
   if (hash === previousHash) {
     // Guarded like every other commit in this sweep: the async work above
     // left a gap in which another tab may have re-imported (same hash, and —
-    // because the hash excludes assets and experiments — possibly different
-    // resources) or deleted this protocol. Only the revision that was read
+    // because the hash excludes assets — possibly different resources) or
+    // deleted this protocol. Only the revision that was read
     // may be replaced.
     await db.transaction('rw', db.protocols, async () => {
       const source = await db.protocols.get(row.id);
@@ -198,7 +200,7 @@ async function migrateStoredProtocolRow(
 
   // Two different protocols migrating onto one hash share a structure, but
   // the hash covers codebook and stages only — the rows can still carry
-  // different assets (images, API keys) and experiments. Merging them would
+  // different assets (images, API keys). Merging them would
   // resume this row's interviews against the other row's resources, so a
   // cross-row collision is refused: this row, its sessions, and its assets
   // stay exactly as they are, and the failure is reported like any other

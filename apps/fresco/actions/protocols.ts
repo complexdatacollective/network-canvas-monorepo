@@ -272,7 +272,6 @@ export async function insertProtocol(
           create: newAssets,
           connect: existingAssetIds.map((assetId: string) => ({ assetId })),
         },
-        experiments: protocol.experiments ?? Prisma.JsonNull,
       },
     });
 

@@ -72,6 +72,9 @@ model Protocol {
   codebook        Json
   assets          Asset[]
   interviews      Interview[]
+  // A schema 8 protocol's `experiments`, which the deploy-time migration to
+  // schema 9 needs to know whether its encrypted attributes stay encrypted.
+  // Schema 9 has no experiments, so the column is empty once a row is migrated.
   experiments     Json?
   originalFileKey String?
   originalFileUrl String?

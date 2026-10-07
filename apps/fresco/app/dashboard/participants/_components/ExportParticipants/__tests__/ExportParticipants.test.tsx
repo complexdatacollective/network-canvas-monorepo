@@ -28,7 +28,6 @@ const protocol: ProtocolWithInterviews = {
   lastModified: new Date(0),
   stages: [],
   codebook: {},
-  experiments: undefined,
   originalFileKey: null,
   originalFileUrl: null,
   interviews: [],
