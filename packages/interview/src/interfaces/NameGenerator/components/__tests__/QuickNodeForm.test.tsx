@@ -13,6 +13,7 @@ import {
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
+  entitySecureAttributesMeta,
   type NcNode,
 } from '@codaco/shared-consts';
 
@@ -24,19 +25,39 @@ import session, {
   addNode as addSessionNode,
   type SessionState,
 } from '../../../../store/modules/session';
-import ui from '../../../../store/modules/ui';
+import ui, { setPassphrase } from '../../../../store/modules/ui';
 import type { StageProps } from '../../../../types';
+import { generateSecureAttributes } from '../../../Anonymisation/utils';
 import QuickNodeForm from '../QuickNodeForm';
 
 vi.mock('../../../../hooks/useCelebrate', () => ({
   useCelebrate: () => vi.fn(),
 }));
 
+// Counts finished decryptions, so a test can wait for stored values to be
+// decrypted before it relies on them.
+const decryption = vi.hoisted(() => ({ settled: 0 }));
+vi.mock('../../../Anonymisation/utils', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('../../../Anonymisation/utils')>();
+  return {
+    ...actual,
+    decryptNodeAttributes: async (
+      ...args: Parameters<typeof actual.decryptNodeAttributes>
+    ) => {
+      const node = await actual.decryptNodeAttributes(...args);
+      decryption.settled += 1;
+      return node;
+    },
+  };
+});
+
 const NODE_TYPE = 'person';
 const TARGET_VARIABLE = 'name';
 const SIBLING_VARIABLE = 'alias';
 const STAGE_ID = 'quick-add-stage';
 const PROMPT_ID = 'prompt-1';
+const PASSPHRASE = 'quick add passphrase';
 
 function buildCodebook(
   validation?: Validation,
@@ -45,6 +66,7 @@ function buildCodebook(
   // quickAdd target is the realistic (not synthetic-only) case the
   // regression test below exercises.
   omitComponent = false,
+  encrypted = false,
 ): Codebook {
   return {
     node: {
@@ -59,6 +81,7 @@ function buildCodebook(
             type: 'text',
             ...(omitComponent ? {} : { component: 'Text' }),
             ...(validation ? { validation } : {}),
+            ...(encrypted ? { encrypted } : {}),
           },
           [SIBLING_VARIABLE]: {
             name: 'Flag',
@@ -123,6 +146,8 @@ function buildProtocol(
   validation?: Validation,
   omitComponent = false,
   fixedSiblingValue?: boolean,
+  encrypted = false,
+  encryptionEnabled = encrypted,
 ): ProtocolPayload {
   return {
     id: 'protocol',
@@ -131,7 +156,8 @@ function buildProtocol(
     assets: [],
     name: 'Test protocol',
     schemaVersion: 8,
-    codebook: buildCodebook(validation, omitComponent),
+    experiments: { encryptedVariables: encryptionEnabled },
+    codebook: buildCodebook(validation, omitComponent, encrypted),
     stages: [buildStage(fixedSiblingValue)],
   };
 }
@@ -141,12 +167,14 @@ function renderQuickNodeForm({
   omitComponent,
   fixedSiblingValue,
   existingNodes,
+  encrypted,
   addNode,
 }: {
   validation?: Validation;
   omitComponent?: boolean;
   fixedSiblingValue?: boolean;
   existingNodes?: NcNode[];
+  encrypted?: boolean;
   addNode: (
     attributes: NcNode[typeof entityAttributesProperty],
   ) => Promise<FormSubmissionResult>;
@@ -155,11 +183,17 @@ function renderQuickNodeForm({
     reducer: { session, protocol, ui },
     preloadedState: {
       session: buildSession(existingNodes),
-      protocol: buildProtocol(validation, omitComponent, fixedSiblingValue),
+      protocol: buildProtocol(
+        validation,
+        omitComponent,
+        fixedSiblingValue,
+        encrypted,
+      ),
     },
     middleware: (getDefaultMiddleware) =>
       getDefaultMiddleware({ serializableCheck: false }),
   });
+  if (encrypted) store.dispatch(setPassphrase(PASSPHRASE));
 
   render(
     <Provider store={store}>
@@ -329,6 +363,40 @@ describe('QuickNodeForm honours codebook validation', () => {
     fireEvent.submit(input.closest('form')!);
 
     await waitFor(() => expect(input).not.toBeDisabled());
+    expect(addNode).not.toHaveBeenCalled();
+  });
+});
+
+describe('QuickNodeForm with an encrypted target variable', () => {
+  it('rejects a name another person already has', async () => {
+    const { encryptedAttributes, secureAttributes } =
+      await generateSecureAttributes(
+        { [TARGET_VARIABLE]: 'Alice' },
+        buildCodebook(undefined, false, true).node?.[NODE_TYPE]?.variables ??
+          {},
+        PASSPHRASE,
+      );
+    const existingNode: NcNode = {
+      [entityPrimaryKeyProperty]: 'existing-node',
+      type: NODE_TYPE,
+      [entityAttributesProperty]: encryptedAttributes,
+      [entitySecureAttributesMeta]: secureAttributes,
+    };
+    const addNode = vi.fn(saved);
+    decryption.settled = 0;
+    renderQuickNodeForm({
+      validation: { unique: true },
+      existingNodes: [existingNode],
+      encrypted: true,
+      addNode,
+    });
+
+    await waitFor(() => expect(decryption.settled).toBe(1));
+    const input = await openField();
+    await userEvent.type(input, 'Alice');
+    fireEvent.submit(input.closest('form')!);
+
+    await waitFor(() => expect(input).toHaveAttribute('aria-invalid', 'true'));
     expect(addNode).not.toHaveBeenCalled();
   });
 });

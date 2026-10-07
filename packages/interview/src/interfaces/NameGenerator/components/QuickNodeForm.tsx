@@ -13,6 +13,7 @@ import type {
 import type { EntityAttributesProperty, NcNode } from '@codaco/shared-consts';
 
 import { formValuesToAttributePatch } from '../../../forms/formValuesToAttributePatch';
+import { useValidationNetwork } from '../../../forms/useValidationNetwork';
 import { useStageSelector } from '../../../hooks/useStageSelector';
 import { runtimeMessages } from '../../../i18n/runtimeMessages';
 import {
@@ -94,11 +95,16 @@ const QuickNodeForm = ({
   // reach a participant. With nothing authored to offer, the comparison
   // validators' complete label-free sentences are the correct output.
   const baseValidationContext = useStageSelector(getValidationContext);
+  const validationNetwork = useValidationNetwork(
+    baseValidationContext,
+    baseValidationContext.stageSubject,
+    [targetVariable],
+  );
   const validationContext: ValidationContext | undefined =
     baseValidationContext.stageSubject
       ? {
           codebook: baseValidationContext.codebook,
-          network: baseValidationContext.network,
+          network: validationNetwork,
           stageSubject: baseValidationContext.stageSubject,
           currentEntityAttributes: newNodeAttributes,
         }

@@ -31,13 +31,37 @@ import { interviewToastManager } from '../../../toast/interviewToastManager';
 import type { StageProps } from '../../../types';
 import { createEncryptionStore } from '../../Anonymisation/__tests__/encryptionFixtures';
 import { isNumberArray } from '../../Anonymisation/decryptionScope';
-import { decryptData } from '../../Anonymisation/utils';
+import {
+  decryptData,
+  generateSecureAttributes,
+} from '../../Anonymisation/utils';
 import CategoricalBin from '../CategoricalBin';
 import { getCatBinDropTargetId } from '../components/CategoricalBinItem';
 
 vi.mock('../../../hooks/useCelebrate', () => ({
   useCelebrate: () => vi.fn(),
 }));
+
+// Records when a list holding encrypted values has been decrypted, so a test
+// can wait for stored values to be readable before relying on them.
+const decryption = vi.hoisted(() => ({ ready: false }));
+vi.mock('../../Anonymisation/useDecryptedNodes', async (importOriginal) => {
+  const actual =
+    await importOriginal<
+      typeof import('../../Anonymisation/useDecryptedNodes')
+    >();
+  return {
+    useDecryptedNodes: (
+      ...args: Parameters<typeof actual.useDecryptedNodes>
+    ) => {
+      const result = actual.useDecryptedNodes(...args);
+      if (result.status === 'ready' && result.nodes !== args[0]) {
+        decryption.ready = true;
+      }
+      return result;
+    },
+  };
+});
 
 // jsdom has neither observer; the bins and the dialog use them.
 class StubObserver {
@@ -112,11 +136,22 @@ function CaptureDndStore({
   return null;
 }
 
-function renderCategoricalBin(passphrase?: string, encryptionEnabled = true) {
+function renderCategoricalBin(
+  passphrase?: string,
+  {
+    others = [],
+    stageVariables = variables,
+    encryptionEnabled = true,
+  }: {
+    others?: NcNode[];
+    stageVariables?: Record<string, Variable>;
+    encryptionEnabled?: boolean;
+  } = {},
+) {
   const store = createEncryptionStore(
-    [person],
+    [person, ...others],
     [stage],
-    variables,
+    stageVariables,
     encryptionEnabled,
   );
   if (passphrase) store.dispatch(setPassphrase(passphrase));
@@ -245,7 +280,9 @@ describe('CategoricalBin asking for an encrypted "other" answer', () => {
 
 describe('CategoricalBin with the encrypted-variables experiment off', () => {
   it('takes and saves the "other" answer as plaintext without asking for a passphrase', async () => {
-    const { store, dropIntoOther } = renderCategoricalBin(undefined, false);
+    const { store, dropIntoOther } = renderCategoricalBin(undefined, {
+      encryptionEnabled: false,
+    });
 
     await dropIntoOther();
     fireEvent.change(await screen.findByRole('textbox'), {
@@ -261,6 +298,76 @@ describe('CategoricalBin with the encrypted-variables experiment off', () => {
     );
     expect(
       store.getState().session.network.nodes[0]?.[entitySecureAttributesMeta],
+    ).toBeUndefined();
+    expect(store.getState().ui.showPassphrasePrompter).toBe(false);
+  });
+});
+
+const uniqueVariables: Record<string, Variable> = {
+  ...variables,
+  otherReason: {
+    name: 'Other reason',
+    type: 'text',
+    component: 'Text',
+    encrypted: true,
+    validation: { unique: true },
+  },
+};
+
+describe('CategoricalBin validating an encrypted "other" answer', () => {
+  it('rejects an answer another person already gave', async () => {
+    const { encryptedAttributes, secureAttributes } =
+      await generateSecureAttributes(
+        { otherReason: 'Neighbour' },
+        uniqueVariables,
+        'pw',
+      );
+    const neighbour: NcNode = {
+      [entityPrimaryKeyProperty]: 'n2',
+      type: 'person',
+      [entityAttributesProperty]: encryptedAttributes,
+      [entitySecureAttributesMeta]: secureAttributes,
+    };
+    decryption.ready = false;
+    const { store, dropIntoOther } = renderCategoricalBin('pw', {
+      others: [neighbour],
+      stageVariables: uniqueVariables,
+    });
+
+    await waitFor(() => expect(decryption.ready).toBe(true));
+    await dropIntoOther();
+    const input = await screen.findByRole('textbox');
+    fireEvent.change(input, { target: { value: 'Neighbour' } });
+    fireEvent.click(screen.getByTestId('dialog-submit'));
+
+    await waitFor(() => expect(input).toHaveAttribute('aria-invalid', 'true'));
+    expect(
+      store.getState().session.network.nodes[0]?.[entityAttributesProperty]
+        .otherReason,
+    ).toBeUndefined();
+  });
+
+  it('rejects a duplicate answer without a passphrase while the experiment is off', async () => {
+    const neighbour: NcNode = {
+      [entityPrimaryKeyProperty]: 'n2',
+      type: 'person',
+      [entityAttributesProperty]: { otherReason: 'Neighbour' },
+    };
+    const { store, dropIntoOther } = renderCategoricalBin(undefined, {
+      others: [neighbour],
+      stageVariables: uniqueVariables,
+      encryptionEnabled: false,
+    });
+
+    await dropIntoOther();
+    const input = await screen.findByRole('textbox');
+    fireEvent.change(input, { target: { value: 'Neighbour' } });
+    fireEvent.click(screen.getByTestId('dialog-submit'));
+
+    await waitFor(() => expect(input).toHaveAttribute('aria-invalid', 'true'));
+    expect(
+      store.getState().session.network.nodes[0]?.[entityAttributesProperty]
+        .otherReason,
     ).toBeUndefined();
     expect(store.getState().ui.showPassphrasePrompter).toBe(false);
   });

@@ -26,6 +26,7 @@ import { getCodebookVariablesForSubjectType } from '../selectors/protocol';
 import { useVariableLabels } from './buildVariableLabels';
 import { coerceFormValues } from './coerceFormValues';
 import ProtocolField from './ProtocolField';
+import { useValidationNetwork } from './useValidationNetwork';
 
 /**
  * Narrow a loosely-typed form Subject into a valid StageSubject for the
@@ -71,9 +72,9 @@ export default function useProtocolForm({
   currentEntityId?: string;
   formValueAliases?: Readonly<Record<string, string>>;
 }) {
-  const baseValidationContext = useStageSelector(
-    getValidationContext,
-  ) as ValidationContext | null;
+  const stageValidationContext = useStageSelector(getValidationContext);
+  const baseValidationContext =
+    stageValidationContext as ValidationContext | null;
 
   // Callers routinely pass `subject` as an inline literal, so key on its
   // VALUES rather than its identity. A per-render subject identity would give
@@ -128,6 +129,12 @@ export default function useProtocolForm({
     })),
   );
 
+  const validationNetwork = useValidationNetwork(
+    stageValidationContext,
+    subjectToStageSubject(stableSubject) ?? stageValidationContext.stageSubject,
+    fieldsMetadata.map((field) => field.variable),
+  );
+
   const validationContext = useMemo<ValidationContext | null>(() => {
     if (!baseValidationContext) return null;
 
@@ -141,6 +148,7 @@ export default function useProtocolForm({
 
     return {
       ...baseValidationContext,
+      network: validationNetwork,
       stageSubject,
       variableLabels,
       ...(currentEntityId !== undefined ? { currentEntityId } : {}),
@@ -151,6 +159,7 @@ export default function useProtocolForm({
     currentEntityId,
     formValueAliases,
     stableSubject,
+    validationNetwork,
     variableLabels,
   ]);
 
