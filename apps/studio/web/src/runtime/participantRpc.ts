@@ -15,6 +15,11 @@ import {
   participantRuntime,
 } from './participantRuntime.ts';
 
+// Browsers give keepalive requests a 64 KB budget. A body over it goes as an
+// ordinary request, which a closing page may cancel: for an interview that
+// large, answers given in the debounce window before the tab is closed can be
+// lost. Accepted as a known limit (a hidden page still finishes the request);
+// the durable alternatives keep answers in the browser or compress the body.
 const KEEPALIVE_MAX_BYTES = 60_000;
 
 const adapter: RpcAdapter<ParticipantRpcsType> = makeRpcAdapter({

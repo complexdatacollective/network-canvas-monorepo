@@ -10,7 +10,10 @@ import {
 } from '@codaco/studio-contract/schema/participant';
 
 import { installParticipantHarness } from '../../test/participantHarness.ts';
-import { createParticipantHandlers } from '../interviewHandlers.ts';
+import {
+  createParticipantHandlers,
+  pageRevisionBase,
+} from '../interviewHandlers.ts';
 
 const session = (name: string): SessionPayload => ({
   id: 'session-1',
@@ -519,6 +522,61 @@ describe('the participant stage flush', () => {
   });
 });
 
+describe('the participant page’s save numbers', () => {
+  const numbered = (numberSavesFrom: bigint) =>
+    createParticipantHandlers({
+      holderEpoch: 3,
+      revision: '7',
+      session: session('Initial'),
+      stageIds: ['first', 'second'],
+      getCurrentStep: () => 1,
+      onNotice: vi.fn(),
+      numberSavesFrom,
+    });
+
+  it('outranks the page it reloaded from its first save as the page goes', async () => {
+    // The page before the reload left saves 8 and 9; this page loaded at 7.
+    const harness = installParticipantHarness({
+      'participant.sync': (payload) =>
+        BigInt(payload.revision) <= 9n
+          ? Effect.succeed({ revision: '9', applied: false })
+          : Effect.succeed({ revision: payload.revision, applied: true }),
+    });
+    const { onSync } = numbered(5000n);
+
+    await onSync('session-1', session('Ada'), {
+      immediate: true,
+      unloading: true,
+    });
+
+    // One request: nothing has to run after the page has gone.
+    expect(
+      harness.calls.map(({ payload }) =>
+        Reflect.get(Object(payload), 'revision'),
+      ),
+    ).toEqual(['5000']);
+  });
+
+  it('finishes at the revision the server holds, not the next number', async () => {
+    const harness = installParticipantHarness({
+      'participant.finish': () => Effect.succeed({ state: 'completed' }),
+    });
+    const { onFinish } = numbered(5000n);
+
+    await onFinish('session-1', new AbortController().signal);
+
+    expect(harness.calls).toEqual([
+      { tag: 'participant.finish', payload: { holderEpoch: 3, revision: '7' } },
+    ]);
+  });
+
+  it('gives a later page numbers past any an earlier page could have used', () => {
+    expect(pageRevisionBase(1_001)).toBeGreaterThan(
+      pageRevisionBase(1_000) + 999n,
+    );
+  });
+});
+
 describe('the participant finish handler', () => {
   const signal = new AbortController().signal;
 
@@ -566,7 +624,8 @@ describe('the participant finish handler', () => {
 
     expect(harness.calls.map(({ tag, payload }) => [tag, payload])).toEqual([
       ['participant.sync', expect.objectContaining({ revision: '8' })],
-      ['participant.finish', { holderEpoch: 3, revision: '8' }],
+      // The save at 8 was refused, so the server still holds 7.
+      ['participant.finish', { holderEpoch: 3, revision: '7' }],
       [
         'participant.sync',
         expect.objectContaining({

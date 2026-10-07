@@ -52,11 +52,18 @@ function make(env: S3Env): ObjectStore['Service'] {
         }),
         { abortSignal },
       ),
-    read: (key, abortSignal) =>
+    read: (key, abortSignal, range) =>
       client
-        .send(new GetObjectCommand({ Bucket: env.bucket, Key: key }), {
-          abortSignal,
-        })
+        .send(
+          new GetObjectCommand({
+            Bucket: env.bucket,
+            Key: key,
+            ...(range === undefined
+              ? {}
+              : { Range: `bytes=${String(range.start)}-${String(range.end)}` }),
+          }),
+          { abortSignal },
+        )
         .then((found) => ({
           body: found.Body?.transformToWebStream(),
           size: found.ContentLength,

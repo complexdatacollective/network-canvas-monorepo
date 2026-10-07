@@ -9,7 +9,10 @@ import type {
 } from '@codaco/interview/contract';
 
 import { createAssetResolver } from './assetUrl.ts';
-import { createParticipantHandlers } from './interviewHandlers.ts';
+import {
+  createParticipantHandlers,
+  pageRevisionBase,
+} from './interviewHandlers.ts';
 import ParticipantNotice, {
   type ParticipantNoticeKind,
 } from './ParticipantNotice.tsx';
@@ -35,6 +38,7 @@ export default function InterviewSession() {
       createParticipantHandlers({
         holderEpoch: loaded.holderEpoch,
         revision: loaded.revision,
+        numberSavesFrom: pageRevisionBase(),
         session: payload.session,
         stageIds: payload.protocol.stages.map((stage) => stage.id),
         getCurrentStep: () => currentStepRef.current,

@@ -26,6 +26,11 @@ type SyncPayload = Parameters<typeof participantUnloadingSync>[0];
 type Args = {
   readonly holderEpoch: number;
   readonly revision: string;
+  /**
+   * Where this page numbers its saves from, when that is past the stored
+   * revision: `pageRevisionBase()` in a browser.
+   */
+  readonly numberSavesFrom?: bigint;
   readonly session: SessionPayload;
   readonly stageIds: readonly string[];
   readonly getCurrentStep: () => number;
@@ -46,12 +51,18 @@ const wait = (seconds: number) =>
 export function createParticipantHandlers({
   holderEpoch,
   revision,
+  numberSavesFrom = 0n,
   session,
   stageIds,
   getCurrentStep,
   onNotice,
 }: Args): ParticipantHandlers {
-  let issued = BigInt(revision);
+  // The revision the server holds as far as this page knows: the stored one,
+  // then each save it applied. Finishing presents it, since the server
+  // finishes only at the revision it holds.
+  let held = BigInt(revision);
+  // The last number this page gave a save.
+  let issued = numberSavesFrom > held ? numberSavesFrom - 1n : held;
   // The newest snapshot the runtime has handed over, which a save the host
   // starts itself must send: the last one written may be older than an answer
   // still waiting out the debounce, and sending it would settle that answer's
@@ -131,6 +142,7 @@ export function createParticipantHandlers({
         ? deliverUnloading(payload)
         : deliver(payload));
       if (applied) {
+        held = BigInt(payload.revision);
         savedStep = payload.stageIndex;
         return;
       }
@@ -164,7 +176,7 @@ export function createParticipantHandlers({
   const finish = (signal: AbortSignal) =>
     participantCall(
       'participant.finish',
-      { holderEpoch, revision: String(issued) },
+      { holderEpoch, revision: String(held) },
       signal,
     );
 
@@ -212,3 +224,13 @@ export function createParticipantHandlers({
 
   return { onSync, onFinish, saveStep, flushStep };
 }
+
+/**
+ * Pages sharing a holder — a reloaded tab and the page before it — share one
+ * revision space, and a later page's saves must outrank the earlier page's
+ * last saves from the first, since a save made as a page goes cannot wait for
+ * an answer to correct itself. Numbering from the load time does that: a page
+ * makes far fewer than a thousand saves for each millisecond it is open.
+ */
+export const pageRevisionBase = (now: number = Date.now()): bigint =>
+  BigInt(now) * 1000n;
