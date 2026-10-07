@@ -576,9 +576,10 @@ export const ErrorState: Story = {
 /**
  * A swatch's accessible name is the whole of what its colour is to a reader
  * who cannot see it, so the name has to be the name of the colour the theme
- * paints. Each swatch is compared against the theme's own token for the colour
- * it is named after: a name the theme does not define paints nothing, and a
- * name belonging to another colour paints that other colour.
+ * paints. Each swatch's hue and chroma are compared against the theme's own
+ * token for the color it is named after: a name the theme does not define
+ * paints nothing, and a name belonging to another color paints that other
+ * color.
  */
 export const PaletteNames: Story = {
   parameters: { chromatic: { disableSnapshot: true } },
@@ -607,14 +608,21 @@ export const PaletteNames: Story = {
         if (label === undefined) throw new Error('this palette names nothing');
         // Painted with the theme's token for the name the swatch carries.
         // Cleared first: an invalid value leaves the previous one in place.
-        probe.style.backgroundColor = '';
-        probe.style.backgroundColor = `oklch(var(--${label.toLowerCase().replaceAll(' ', '-')}))`;
+        const hueOf = (color: string) => {
+          probe.style.backgroundColor = '';
+          probe.style.backgroundColor = `oklch(from ${color} 0.5 c h)`;
+          return getComputedStyle(probe).backgroundColor;
+        };
 
-        const named = getComputedStyle(probe).backgroundColor;
+        const named = hueOf(
+          `oklch(var(--${label.toLowerCase().replaceAll(' ', '-')}))`,
+        );
         await expect(named).not.toBe('rgba(0, 0, 0, 0)');
         await expect(
-          getComputedStyle(group.getByRole('radio', { name: label }))
-            .backgroundColor,
+          hueOf(
+            getComputedStyle(group.getByRole('radio', { name: label }))
+              .backgroundColor,
+          ),
         ).toBe(named);
       }
     };
