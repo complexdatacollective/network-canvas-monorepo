@@ -124,6 +124,13 @@ async function choose(
 }
 
 describe('PassphrasePrompter in an interview without a passphrase', () => {
+  it('keeps the passphrase and its confirmation out of password managers', async () => {
+    const { dialog, passphrase } = await openPrompter();
+
+    expect(passphrase).toHaveAttribute('autocomplete', 'off');
+    expect(confirmField(dialog)).toHaveAttribute('autocomplete', 'off');
+  });
+
   it('has the participant choose one of at least eight characters, confirmed, and puts it in force', async () => {
     const { store, user, dialog } = await openPrompter();
 
@@ -137,6 +144,7 @@ describe('PassphrasePrompter in an interview without a passphrase', () => {
     expect(first).toHaveAccessibleDescription(
       expect.stringContaining('Too short. Enter at least 8 characters.'),
     );
+    expect(first).toHaveFocus();
     expect(deriveKey).not.toHaveBeenCalled();
     expect(store.getState().session.network.encryption).toBeUndefined();
 
@@ -198,6 +206,7 @@ describe('PassphrasePrompter in an interview whose passphrase has been chosen', 
 
     expect(dialog).toHaveAccessibleName('Enter your Passphrase');
     expect(passphrase).toHaveAttribute('type', 'password');
+    expect(passphrase).toHaveAttribute('autocomplete', 'off');
     expect(confirmField(dialog)).not.toBeInTheDocument();
     expect(passphrase).not.toHaveAccessibleDescription(
       expect.stringContaining('Enter at least'),
@@ -218,6 +227,8 @@ describe('PassphrasePrompter in an interview whose passphrase has been chosen', 
     expect(passphrase).not.toHaveAccessibleDescription(
       expect.stringContaining('Too short'),
     );
+    // Back on the field to correct, not on its show-passphrase toggle.
+    expect(passphrase).toHaveFocus();
     expect(store.getState().ui.encryptionKeyId).toBeNull();
     expect(store.getState().session.network.encryption).toEqual(header);
     expect(screen.getByRole('dialog')).toBeInTheDocument();

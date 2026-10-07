@@ -220,6 +220,8 @@ const PassphraseDialog = ({
           className="mt-6"
           onSubmit={onSubmitForm}
         >
+          {/* The passphrase protects this one interview's answers, so a
+              password manager must not offer to save it as a site login. */}
           <Field
             component={PasswordField}
             name="passphrase"
@@ -227,6 +229,7 @@ const PassphraseDialog = ({
             placeholder={intl.formatMessage(messages.passphrasePlaceholder)}
             required
             autoFocus
+            suppressPasswordManager
             {...lengthRules}
           />
           {choosing && (
@@ -238,6 +241,7 @@ const PassphraseDialog = ({
                 interfaceMessages.reenterPassphrase,
               )}
               required
+              suppressPasswordManager
               sameAs="passphrase"
               {...lengthRules}
             />

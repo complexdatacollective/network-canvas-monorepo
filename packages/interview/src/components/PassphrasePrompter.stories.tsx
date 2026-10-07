@@ -201,7 +201,13 @@ export const TurnsAwayAWrongPassphrase: Story = {
     const dialog = screen.getByRole('dialog', {
       name: 'Enter your Passphrase',
     });
-    await expect(field).toHaveAttribute('type', 'password');
+    // Masked without being a password input, so password managers neither
+    // offer to save it nor fill it in.
+    await expect(field).toHaveAttribute('type', 'text');
+    await expect(field).toHaveAttribute('autocomplete', 'off');
+    await expect(
+      getComputedStyle(field).getPropertyValue('-webkit-text-security'),
+    ).toBe('disc');
     await expect(
       within(dialog).queryByLabelText(/^Confirm Passphrase/, {
         selector: 'input',
@@ -221,6 +227,7 @@ export const TurnsAwayAWrongPassphrase: Story = {
         'This passphrase does not match the one used earlier in this interview.',
       ),
     );
+    await expect(field).toHaveFocus();
     await expect(
       screen.queryByText('Checking your passphrase…'),
     ).not.toBeInTheDocument();
@@ -266,6 +273,10 @@ export const ChoosesAPassphrase: Story = {
       selector: 'input',
     });
     const submit = dialog.getByRole('button', { name: 'Submit passphrase' });
+    for (const input of [field, confirm]) {
+      await expect(input).toHaveAttribute('type', 'text');
+      await expect(input).toHaveAttribute('autocomplete', 'off');
+    }
 
     await userEvent.type(field, 'short');
     await userEvent.type(confirm, 'short');
