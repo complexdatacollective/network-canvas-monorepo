@@ -313,14 +313,20 @@ export class ProtocolEvents extends Context.Service<
               );
               return;
             }
-            const last = reaped.value.at(-1)?.cursor;
-            if (last === undefined) return;
-            yield* markDirty(relays.get(relay.draftId), EVENTS);
-            yield* ring({
-              _tag: 'Advanced',
-              draftId: relay.draftId,
-              cursor: last,
-            });
+            const { events, reshown } = reaped.value;
+            const last = events.at(-1)?.cursor;
+            if (last !== undefined) {
+              yield* markDirty(relays.get(relay.draftId), EVENTS);
+              yield* ring({
+                _tag: 'Advanced',
+                draftId: relay.draftId,
+                cursor: last,
+              });
+            }
+            if (reshown) {
+              yield* markDirty(relays.get(relay.draftId), PRESENCE);
+              yield* ring({ _tag: 'Presence', draftId: relay.draftId });
+            }
           });
 
         const pollTeam = (team: ReadonlyArray<Relay>) =>

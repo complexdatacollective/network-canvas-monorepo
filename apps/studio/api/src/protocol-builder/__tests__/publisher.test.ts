@@ -82,6 +82,13 @@ const presentIn = (events: readonly ProtocolEvent[]) => {
     : [];
 };
 
+const modeOf = (events: readonly ProtocolEvent[], sessionId: string) => {
+  const last = events.findLast((event) => event.type === 'presence');
+  return last?.type === 'presence'
+    ? last.present.find((who) => who.sessionId === sessionId)?.mode
+    : undefined;
+};
+
 /** A doorbell whose signals the test sends, and whose rings it keeps. */
 const scripted = () => {
   const signals = Effect.runSync(Queue.unbounded<Signal>());
@@ -578,6 +585,50 @@ describe.skipIf(!testDb)('the protocol-builder relay', () => {
         await held.release().catch(() => undefined);
         await onB.stop();
         await onA.stop();
+      }
+    });
+  });
+
+  describe('reaping a lapsed lease', () => {
+    it('shows the tab that held it viewing once it is reaped', async () => {
+      const { client: a } = await replica({ safetyPollMs: FAST_POLL_MS });
+      const holder = socket('lapsed-holder', ADA);
+      const owner = `${ADA.principal.userId}:${holder.tab ?? ''}`;
+      const stage = await createOn(a, 'Held past its lease');
+      const held = await watching(holder, protocolId, a);
+      const seer = await watching(socket('lapsed-seer'), protocolId, a);
+      const shownAs = () => modeOf(seer.events, holder.connection ?? '');
+      try {
+        await a.call(
+          holder,
+          a.rpc('AcquireLock', { protocolId, sectionId: stage.sectionId }),
+        );
+        await until(
+          () => shownAs() === 'editing',
+          'the holder to be shown editing',
+        );
+        // As a replica that stopped would leave it: the socket still live, its
+        // lease lapsed, and nobody to give the lease back.
+        await ageLeases(owner, -1_000);
+        await until(
+          async () =>
+            (await suite.connectionRows()).some(
+              (row) =>
+                row.live &&
+                row.socket_id === holder.connection &&
+                row.mode === 'viewing' &&
+                row.section_id === null,
+            ),
+          'the reaper to show the holder’s row viewing',
+        );
+        await until(
+          () => shownAs() === 'viewing',
+          'the watcher to see the holder viewing',
+        );
+        expect(releasesIn(seer.events, stage.sectionId)).toHaveLength(1);
+      } finally {
+        await seer.stop();
+        await held.stop();
       }
     });
   });

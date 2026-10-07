@@ -78,7 +78,7 @@ export const NO_AUDIT_TRANSACTION_POLICIES = {
   'protocolBuilder.reap': {
     kind: 'none',
     reason:
-      'Logging the release of a lease that lapsed with no one to give it back is lease release, excluded from the team audit log like any other.',
+      'Logging the release of a lease that lapsed with no one to give it back, and showing its holder no longer editing, is lease release and presence, excluded from the team audit log like any other.',
   },
   'protocolBuilder.releaseOwner': {
     kind: 'none',
