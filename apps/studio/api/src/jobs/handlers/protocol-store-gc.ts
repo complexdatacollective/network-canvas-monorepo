@@ -264,12 +264,15 @@ export const protocolStoreGc = Effect.fn('job.protocol-store-gc')(function* (
   GcBoundsError | GcRoleError | SqlError.SqlError,
   MaintenanceDatabase | ObjectStore
 > {
-  const swept = yield* gcProtocolStore(PROTOCOL_STORE_GC_BOUNDS);
-  yield* Effect.logInfo(
-    `protocol-store-gc ${job.id}: manifests ${swept.manifestsDeleted}, sections ${swept.sectionsDeleted}, command log ${swept.commandLogDeleted}`,
-  );
-  // After the sweep, and apart from it: an unreachable object store must not
-  // cost the protocol store its collection, nor the reverse.
+  const swept = yield* Effect.exit(gcProtocolStore(PROTOCOL_STORE_GC_BOUNDS));
+  if (Exit.isSuccess(swept)) {
+    yield* Effect.logInfo(
+      `protocol-store-gc ${job.id}: manifests ${swept.value.manifestsDeleted}, sections ${swept.value.sectionsDeleted}, command log ${swept.value.commandLogDeleted}`,
+    );
+  }
+  // After the sweep, whether or not it succeeded, and apart from it: an
+  // unreachable object store must not cost the protocol store its collection,
+  // nor the reverse. A failed sweep still fails the job, once this has run.
   yield* gcStagedResources().pipe(
     Effect.tap((staged) =>
       Effect.logInfo(
@@ -280,5 +283,6 @@ export const protocolStoreGc = Effect.fn('job.protocol-store-gc')(function* (
       Effect.logError('Collecting staged resources failed', cause),
     ),
   );
+  if (Exit.isFailure(swept)) return yield* Effect.failCause(swept.cause);
   return 'completed';
 });

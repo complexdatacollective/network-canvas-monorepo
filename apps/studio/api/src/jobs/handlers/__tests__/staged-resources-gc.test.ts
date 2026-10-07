@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { Effect } from 'effect';
+import { Effect, Logger, type LogLevel, References } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
@@ -44,8 +44,8 @@ describe.skipIf(!testDb)('collecting abandoned staged resources', () => {
     return database.run(effect);
   };
 
-  const seedDraft = async () => {
-    const teamId = uniqueTeamId('staged-gc');
+  const seedDraft = async (label = 'staged-gc') => {
+    const teamId = uniqueTeamId(label);
     const draftId = randomUUID();
     await run(insertTeam(teamId));
     await run(
@@ -102,17 +102,30 @@ describe.skipIf(!testDb)('collecting abandoned staged resources', () => {
   };
 
   /** A connection row for `owner` that expires `inMs` from now (or before). */
-  const connect = async (draft: Draft, owner: string, inMs: number) => {
+  const connect = async (
+    draft: Draft,
+    owner: string,
+    inMs: number,
+    kind: 'contact' | 'socket' = 'contact',
+  ) => {
     const connectionId = randomUUID();
     await run(
       ownerRows(
         `INSERT INTO protocol_connections
-           (team_id, draft_id, connection_id, kind, owner, user_id,
+           (team_id, draft_id, connection_id, socket_id, kind, owner, user_id,
             display_name, mode, replica_id, expires_at)
-         VALUES ($1, $2, $3, 'contact', $4, 'user', 'User', 'editing',
+         VALUES ($1, $2, $3, $4, $5, $6, 'user', 'User', 'editing',
                  'replica',
-                 clock_timestamp() + make_interval(secs => $5::float8 / 1000))`,
-        [draft.teamId, draft.draftId, connectionId, owner, inMs],
+                 clock_timestamp() + make_interval(secs => $7::float8 / 1000))`,
+        [
+          draft.teamId,
+          draft.draftId,
+          connectionId,
+          kind === 'socket' ? `socket-${connectionId}` : null,
+          kind,
+          owner,
+          inMs,
+        ],
       ),
     );
     return connectionId;
@@ -140,6 +153,30 @@ describe.skipIf(!testDb)('collecting abandoned staged resources', () => {
 
   const collect = (objects: MemoryObjectStore) =>
     run(Effect.provideService(gcStagedResources(), ObjectStore, objects.store));
+
+  type LoggedLine = {
+    readonly level: LogLevel.LogLevel;
+    readonly annotations: Readonly<Record<string, unknown>>;
+  };
+
+  const collectLogged = async (objects: MemoryObjectStore) => {
+    const lines: LoggedLine[] = [];
+    const logger = Logger.layer([
+      Logger.make(({ logLevel, fiber }) => {
+        lines.push({
+          level: logLevel,
+          annotations: fiber.getRef(References.CurrentLogAnnotations),
+        });
+      }),
+    ]);
+    const result = await run(
+      gcStagedResources().pipe(
+        Effect.provideService(ObjectStore, objects.store),
+        Effect.provide(logger),
+      ),
+    );
+    return { result, lines };
+  };
 
   it('collects what a tab no replica has heard from staged, and keeps the rest', async () => {
     const draft = await seedDraft();
@@ -192,7 +229,7 @@ describe.skipIf(!testDb)('collecting abandoned staged resources', () => {
     expect(await connectionIds(draft)).not.toContain(longExpired);
   });
 
-  it('keeps an abandoned row while the store will not delete its object', async () => {
+  it('deletes an abandoned row though the store will not delete its object, and sweeps the object later', async () => {
     const draft = await seedDraft();
     const objects = memoryObjectStore();
 
@@ -205,16 +242,80 @@ describe.skipIf(!testDb)('collecting abandoned staged resources', () => {
     );
 
     objects.setUnreachable(true);
-    await collect(objects);
-
-    expect(await stagedIds(draft)).toEqual([file.resourceId]);
-    expect(await stagedIds(draft)).not.toContain(secret);
-    expect(await connectionIds(draft)).not.toContain(longExpired);
-
-    objects.setUnreachable(false);
-    await collect(objects);
+    const { lines } = await collectLogged(objects);
 
     expect(await stagedIds(draft)).toEqual([]);
+    expect(await stagedIds(draft)).not.toContain(secret);
+    expect(await connectionIds(draft)).not.toContain(longExpired);
+    expect(objects.removed()).toEqual([]);
+    expect(lines).toContainEqual({
+      level: 'Warn',
+      annotations: { key: file.key, operation: 'collect' },
+    });
+
+    objects.setUnreachable(false);
+    objects.backdate(file.key, STAGED_ORPHAN_GRACE_MS + MINUTE);
+    await collect(objects);
+
     expect(objects.keys()).not.toContain(file.key);
+    expect(objects.removed()).toEqual([file.key]);
+  });
+
+  it('keeps the row and object of an owner whose socket is live', async () => {
+    const draft = await seedDraft();
+    const objects = memoryObjectStore();
+
+    const socketHeld = await stageFile(draft, objects, 'socket', LONG_AGO);
+    await connect(draft, 'socket', MINUTE, 'socket');
+    const gone = await stageFile(draft, objects, 'gone', LONG_AGO);
+
+    await collect(objects);
+
+    expect(await stagedIds(draft)).toEqual([socketHeld.resourceId]);
+    expect(objects.keys()).toContain(socketHeld.key);
+    expect(objects.removed()).toEqual([gone.key]);
+  });
+
+  it('collects the teams after one whose collection fails', async () => {
+    const failing = await seedDraft('staged-gc-a');
+    const healthy = await seedDraft('staged-gc-b');
+    const objects = memoryObjectStore();
+
+    const stuck = await stageFile(failing, objects, 'gone', LONG_AGO);
+    const collected = await stageFile(healthy, objects, 'gone', LONG_AGO);
+
+    const name = `refuse_staged_gc_${randomUUID().replaceAll('-', '')}`;
+    await run(
+      ownerRows(`
+        CREATE FUNCTION ${name}() RETURNS trigger AS $$
+        BEGIN
+          RAISE EXCEPTION 'staged collection refused';
+        END;
+        $$ LANGUAGE plpgsql`),
+    );
+    await run(
+      ownerRows(`
+        CREATE TRIGGER ${name}
+          BEFORE DELETE ON protocol_staged_resources
+          FOR EACH ROW
+          WHEN (OLD.team_id = '${failing.teamId}')
+          EXECUTE FUNCTION ${name}()`),
+    );
+    try {
+      const { lines } = await collectLogged(objects);
+
+      expect(lines).toContainEqual({
+        level: 'Error',
+        annotations: { teamId: failing.teamId },
+      });
+    } finally {
+      await run(ownerRows(`DROP TRIGGER ${name} ON protocol_staged_resources`));
+      await run(ownerRows(`DROP FUNCTION ${name}()`));
+    }
+
+    expect(await stagedIds(failing)).toEqual([stuck.resourceId]);
+    expect(objects.keys()).toContain(stuck.key);
+    expect(await stagedIds(healthy)).toEqual([]);
+    expect(objects.removed()).toEqual([collected.key]);
   });
 });

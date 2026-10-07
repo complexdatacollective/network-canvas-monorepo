@@ -118,6 +118,26 @@ export class ObjectStore extends Context.Service<
   });
 }
 
+/**
+ * Deletes a staged object for `operation`, warning rather than failing when
+ * the store will not: an object left behind is unnamed, and the worker's
+ * orphan sweep removes it. True when the object is gone.
+ */
+export const removeStaged = (
+  store: ObjectStore['Service'],
+  key: StagingKey,
+  operation: string,
+): Effect.Effect<boolean> =>
+  store.deleteStaged(key).pipe(
+    Effect.as(true),
+    Effect.catchCause((cause) =>
+      Effect.logWarning('Deleting a staged object failed', cause).pipe(
+        Effect.annotateLogs({ key, operation }),
+        Effect.as(false),
+      ),
+    ),
+  );
+
 /** What a stored object's metadata says, where the provider reported it. */
 type ObjectMetadata = {
   readonly size: number | undefined;

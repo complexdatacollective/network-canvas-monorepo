@@ -4,11 +4,12 @@
 //
 // A tab that leaves cleanly releases its own staging (resources.ts); this is
 // for the tab whose replica died with it, and for the object a stage wrote
-// before failing to record it. Each staged object is deleted before its row,
-// and a row whose object the store would not delete is kept for the next run,
-// so a row never outlives the only record of the object it names.
-import { and, eq, gt, inArray, lt, notExists, or, sql } from 'drizzle-orm';
-import { Clock, Effect, Exit } from 'effect';
+// before failing to record it. Each row goes first, in the statement that asks
+// whether it is abandoned, so a tab that came back keeps its row and its
+// object together; the object is deleted after. One the store would not delete
+// is unnamed from then on, and a later run's orphan sweep takes it.
+import { and, asc, eq, gt, lt, notExists, sql } from 'drizzle-orm';
+import { Clock, Effect, Option } from 'effect';
 
 import { noAuditMaintenanceTransaction } from '../../audit/no-audit.ts';
 import { MaintenanceScope, Transaction } from '../../db/tenant.ts';
@@ -18,6 +19,7 @@ import {
 } from '../../protocol-builder/schema.ts';
 import {
   ObjectStore,
+  removeStaged,
   STAGING_ROOT,
   StagingKey,
 } from '../../storage/object-store.ts';
@@ -61,27 +63,11 @@ const abandoned = (tx: Tx) =>
     ),
   );
 
-export type StagedGcResult = {
+type StagedGcResult = {
   stagedRowsDeleted: number;
   stagedObjectsDeleted: number;
   connectionsDeleted: number;
 };
-
-type AbandonedRow = {
-  draftId: string;
-  owner: string;
-  editId: string;
-  resourceId: string;
-  objectKey: string | null;
-};
-
-const rowKey = (row: AbandonedRow) =>
-  and(
-    eq(staged.draftId, row.draftId),
-    eq(staged.owner, row.owner),
-    eq(staged.editId, row.editId),
-    eq(staged.resourceId, row.resourceId),
-  );
 
 const teamOf = (key: StagingKey) =>
   key.slice(STAGING_ROOT.length).split('/')[0] ?? '';
@@ -97,7 +83,7 @@ export const gcStagedResources = Effect.fn('protocol.gcStagedResources')(
 
     const now = yield* Clock.currentTimeMillis;
     // A store that will not list still leaves the rows and connections to
-    // collect; each row's object delete fails alone and keeps its row.
+    // collect.
     const unnamed = store.configured
       ? yield* store
           .listStaged(STAGING_ROOT, new Date(now - STAGED_ORPHAN_GRACE_MS))
@@ -127,61 +113,67 @@ export const gcStagedResources = Effect.fn('protocol.gcStagedResources')(
     );
     const teams = [...new Set([...tenants, ...unnamed.map(teamOf)])].toSorted();
 
-    /** True when nothing is left in the store under the key. */
-    const removed = Effect.fnUntraced(function* (key: string | null) {
-      if (key === null || !store.configured) return true;
-      const exit = yield* Effect.exit(store.deleteStaged(StagingKey(key)));
-      if (Exit.isFailure(exit)) return false;
-      result.stagedObjectsDeleted += 1;
-      return true;
+    /** Keys a delete was already asked for this run, by a row or the sweep. */
+    const asked = new Set<string>();
+    const remove = Effect.fnUntraced(function* (key: StagingKey) {
+      asked.add(key);
+      if (yield* removeStaged(store, key, 'collect')) {
+        result.stagedObjectsDeleted += 1;
+      }
     });
 
-    for (const teamId of teams) {
+    const collectTeam = Effect.fnUntraced(function* (teamId: string) {
       const access = maintenanceTeamAccess(teamId);
 
-      const rows = yield* noAuditMaintenanceTransaction(
-        'protocol.gcStagedResources',
-        access,
-        Effect.flatMap(Transaction, ({ tx }) =>
-          tx
-            .select({
-              draftId: staged.draftId,
-              owner: staged.owner,
-              editId: staged.editId,
-              resourceId: staged.resourceId,
-              objectKey: staged.objectKey,
-            })
-            .from(staged)
-            .where(and(eq(staged.teamId, teamId), abandoned(tx)))
-            .limit(STAGED_BATCH),
-        ),
-      );
-      const collectable: AbandonedRow[] = [];
-      for (const row of rows) {
-        if (yield* removed(row.objectKey)) collectable.push(row);
-      }
-      if (collectable.length > 0) {
-        // Re-asked: a tab that came back since the read keeps its rows.
+      // Each batch locks its rows in key order, as a promotion's consume
+      // does, before deleting them.
+      for (;;) {
         const deleted = yield* noAuditMaintenanceTransaction(
           'protocol.gcStagedResources',
           access,
-          Effect.flatMap(Transaction, ({ tx }) =>
-            tx
+          Effect.flatMap(Transaction, ({ tx }) => {
+            const batch = tx
+              .select({
+                draftId: staged.draftId,
+                owner: staged.owner,
+                editId: staged.editId,
+                resourceId: staged.resourceId,
+              })
+              .from(staged)
+              .where(and(eq(staged.teamId, teamId), abandoned(tx)))
+              .orderBy(
+                asc(staged.draftId),
+                asc(staged.owner),
+                asc(staged.editId),
+                asc(staged.resourceId),
+              )
+              .limit(STAGED_BATCH)
+              .for('update');
+            return tx
               .delete(staged)
               .where(
                 and(
                   eq(staged.teamId, teamId),
-                  abandoned(tx),
-                  or(...collectable.map(rowKey)),
+                  sql`(${staged.draftId}, ${staged.owner}, ${staged.editId}, ${staged.resourceId}) IN ${batch}`,
                 ),
               )
-              .returning({ resourceId: staged.resourceId }),
-          ),
+              .returning({ objectKey: staged.objectKey });
+          }),
         );
         result.stagedRowsDeleted += deleted.length;
+        if (store.configured) {
+          for (const { objectKey } of deleted) {
+            const key =
+              objectKey === null ? Option.none() : StagingKey.option(objectKey);
+            if (Option.isSome(key)) yield* remove(key.value);
+          }
+        }
+        if (deleted.length < STAGED_BATCH) break;
       }
 
-      const listed = unnamed.filter((key) => teamOf(key) === teamId);
+      const listed = unnamed.filter(
+        (key) => teamOf(key) === teamId && !asked.has(key),
+      );
       if (listed.length > 0) {
         const named = yield* noAuditMaintenanceTransaction(
           'protocol.gcStagedResources',
@@ -193,14 +185,14 @@ export const gcStagedResources = Effect.fn('protocol.gcStagedResources')(
               .where(
                 and(
                   eq(staged.teamId, teamId),
-                  inArray(staged.objectKey, listed),
+                  sql`${staged.objectKey} = ANY(${sql.param(listed)}::text[])`,
                 ),
               ),
           ),
         );
         const kept = new Set(named.map((row) => row.objectKey));
         for (const key of listed) {
-          if (!kept.has(key)) yield* removed(key);
+          if (!kept.has(key)) yield* remove(key);
         }
       }
 
@@ -220,6 +212,19 @@ export const gcStagedResources = Effect.fn('protocol.gcStagedResources')(
         ),
       );
       result.connectionsDeleted += expired.length;
+    });
+
+    // One team's failure is its own: the teams after it are still collected,
+    // and the next run asks again.
+    for (const teamId of teams) {
+      yield* collectTeam(teamId).pipe(
+        Effect.catchCause((cause) =>
+          Effect.logError(
+            'Collecting a team’s staged resources failed',
+            cause,
+          ).pipe(Effect.annotateLogs({ teamId })),
+        ),
+      );
     }
 
     return result;
