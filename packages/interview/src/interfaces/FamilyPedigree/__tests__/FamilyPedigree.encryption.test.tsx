@@ -31,6 +31,7 @@ import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalizati
 import {
   createEncryptionStore,
   encryptionFor,
+  outOfBoundsHeader,
   unlockWith,
 } from '../../Anonymisation/__tests__/encryptionFixtures';
 import { generateSecureAttributes } from '../../Anonymisation/utils';
@@ -382,6 +383,9 @@ function renderPedigree(store: Store) {
         await beforeNext.current?.('forwards', 'step');
       });
     },
+    /** Whether the stage lets the participant move on from its first step. */
+    canMoveOn: () =>
+      act(async () => (await beforeNext.current?.('forwards', 'step')) ?? true),
   };
 }
 
@@ -466,6 +470,27 @@ describe('FamilyPedigree with an encrypted name variable', () => {
     await act(() => new Promise((resolve) => setTimeout(resolve, 50)));
     expect(attemptsOnMother()).toHaveLength(1);
     expect(store.getState().ui.showPassphrasePrompter).toBe(false);
+  });
+});
+
+describe('FamilyPedigree under an encryption header no passphrase can open', () => {
+  it('says why the pedigree cannot be built, without asking for a passphrase, and lets the participant move on', async () => {
+    const { header } = await encryptionFor(PASSPHRASE);
+    const store = await makeStore({
+      header: outOfBoundsHeader(header),
+      unlocked: false,
+    });
+    const { canMoveOn } = renderPedigree(store);
+
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      /cannot be shown or saved in this interview/,
+    );
+    expect(screen.queryByRole('heading', { name: /build your family/i })).toBe(
+      null,
+    );
+    expect(store.getState().ui.showPassphrasePrompter).toBe(false);
+    expect(await canMoveOn()).toBe(true);
+    expect(store.getState().session.network.nodes).toEqual([]);
   });
 });
 

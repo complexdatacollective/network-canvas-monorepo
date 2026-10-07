@@ -10,6 +10,7 @@ import {
 } from '@codaco/protocol-validation';
 
 import type { NavigationOrientation } from '../../Shell';
+import EncryptedStoryInterviewShell from '../../storybook-support/EncryptedStoryInterviewShell';
 import { choosePassphraseInPrompter } from '../../storybook-support/passphraseSteps';
 import StoryInterviewShell from '../../storybook-support/StoryInterviewShell';
 import {
@@ -1008,6 +1009,47 @@ export const EncryptedNames: ScenarioStory = {
       await screen.findByRole('button', { name: 'Linda' }, { timeout: 15000 }),
     );
     await screen.findByRole('button', { name: 'Linda', pressed: true });
+  },
+};
+
+const buildRefusedPedigreeInterview = () => ({
+  interview: buildScenarioInterview({ encryptedNames: true }),
+  encryptedVariableIds: [],
+});
+
+/**
+ * The name variable is marked encrypted, but the record this interview keeps
+ * to check a passphrase has been damaged (here, an impossible key-stretching
+ * count), so no passphrase can be entered and no name could be saved. The
+ * pedigree is not offered, nothing asks for a passphrase, and the participant
+ * can move on.
+ */
+export const EncryptedNamesRefused: ScenarioStory = {
+  args: { scaffoldingText: '' },
+  render: () => (
+    <EncryptedStoryInterviewShell
+      build={buildRefusedPedigreeInterview}
+      passphrase="storybook passphrase"
+      currentStep={1}
+      headerIterations={1_000_000_000}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      await canvas.findByRole('status', {}, { timeout: 10_000 }),
+    ).toHaveTextContent(/cannot be shown or saved in this interview/);
+    await expect(
+      canvas.queryByTestId('pedigree-get-started'),
+    ).not.toBeInTheDocument();
+    await expect(
+      canvas.queryByRole('button', { name: 'Enter your Passphrase' }),
+    ).not.toBeInTheDocument();
+
+    await userEvent.click(canvas.getByTestId('next-button'));
+    await expect(
+      await canvas.findByText('After the main stage.'),
+    ).toBeInTheDocument();
   },
 };
 
