@@ -1,3 +1,5 @@
+'use client';
+
 import { hash } from 'ohash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
