@@ -507,8 +507,10 @@ describe('the person attributes section', () => {
     await harness.opened();
 
     expect(
-      await screen.findByText(/A person’s symbol in the interview comes from/),
-    ).toHaveTextContent('map the shape to that attribute there');
+      await screen.findByText(/A person’s symbol comes from the shape/),
+    ).toHaveTextContent(
+      'change how people of this type are drawn throughout the interview',
+    );
   });
 });
 

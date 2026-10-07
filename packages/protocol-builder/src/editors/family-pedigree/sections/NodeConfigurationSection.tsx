@@ -9,6 +9,7 @@ import {
   NODE_CONFIGURATION_PATHS,
   usePedigreeDraftBindings,
 } from './pedigreeSlots.ts';
+import PersonSymbolsControl from './PersonSymbolsControl.tsx';
 
 /**
  * The attributes of the person node type the interface records about every
@@ -23,6 +24,9 @@ import {
  * Sex assigned at birth uses a value set the interface owns, and the
  * participant marker is exclusive to its slot: no other control of this stage,
  * a nomination prompt included, may write it.
+ *
+ * The section opens with the person type's symbols (`PersonSymbolsControl`),
+ * which can be set from sex assigned at birth or gender identity in one click.
  */
 export default function NodeConfigurationSection() {
   const intl = useAppIntl();
@@ -47,6 +51,9 @@ export default function NodeConfigurationSection() {
     >
       {!waiting && (
         <>
+          {personSubject.entity === 'node' && (
+            <PersonSymbolsControl personSubject={personSubject} />
+          )}
           <SlotVariableField
             name={NODE_CONFIGURATION_PATHS.nameAttribute}
             label={messages.nameLabel}

@@ -152,6 +152,43 @@ export const EditingGenderIdentityOptions: Story = {
   },
 };
 
+/**
+ * The person type's symbols, set in one click. The fixture's type draws
+ * everyone as a circle; using sex assigned at birth writes a circle for
+ * female, a square for male and a diamond for everyone else to the codebook
+ * at once, and the control then says so.
+ */
+export const Symbols: Story = {
+  globals: { appLocale: 'en' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await awaitPassiveEffects();
+
+    const symbols = within(
+      await canvas.findByRole('group', { name: 'Symbols' }),
+    );
+    await expect(
+      symbols.getByText('Everyone is drawn as a circle.'),
+    ).toBeInTheDocument();
+    await expect(
+      symbols.getByRole('button', { name: 'Use gender identity' }),
+    ).toBeInTheDocument();
+
+    await userEvent.click(
+      symbols.getByRole('button', { name: 'Use sex assigned at birth' }),
+    );
+
+    await expect(
+      await symbols.findByText(
+        'Symbols follow sex assigned at birth: a circle for female, a square for male, and a diamond for everyone else.',
+        {},
+        // The write goes through the host's lock and back over its channel.
+        { timeout: 5000 },
+      ),
+    ).toBeInTheDocument();
+  },
+};
+
 /** Someone else holds the lease: every control is inert and saving is refused. */
 export const Spectating: Story = {
   args: { readOnly: true },

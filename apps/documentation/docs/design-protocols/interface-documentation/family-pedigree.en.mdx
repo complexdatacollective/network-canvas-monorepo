@@ -109,7 +109,16 @@ The marker is true on the participant's own person and blank, not false, on ever
 
 #### How each person's symbol is drawn
 
-A person's symbol in the interview comes from the shape setting of the person type in the codebook. It is not set in the Family Pedigree stage. Under **Node appearance** in the codebook, choose a default shape and, optionally, map shapes from an attribute. Map the shape to the gender identity attribute or to the sex assigned at birth attribute if you want each answer drawn as a different symbol. The interface does not draw sex or gender in any other way, and with no mapping everyone has the default shape.
+A person's symbol in the interview comes from the shape setting of the person type in the codebook, under **Node appearance**: a default shape and, optionally, shapes mapped from an attribute. The interface does not draw sex or gender in any other way, and with no mapping everyone has the default shape.
+
+The **Symbols** part of the Person attributes section sets this mapping in one click, following standard pedigree nomenclature:
+
+- **Use sex assigned at birth** draws female as a circle, male as a square, and everyone else as a diamond.
+- **Use gender identity**, offered while the stage asks about gender identity, draws options that take feminine words as a circle, options that take masculine words as a square, and everyone else as a diamond.
+
+In both, a person with no answer is drawn as a diamond. Above the buttons, Architect says what the symbols follow now. If you change the gender identity options or their kinship words after setting symbols from them, it says the symbols are out of date and offers **Update symbols**. **Use one symbol for everyone** removes the mapping.
+
+These buttons change the codebook straight away, not when you save the stage. Because the shape belongs to the person type, the change applies wherever people of that type are drawn in the interview, on other stages too. If the shapes were set by hand in the codebook, Architect asks before replacing them. You can still edit the mapping in the codebook afterwards.
 
 ### Relationships
 
