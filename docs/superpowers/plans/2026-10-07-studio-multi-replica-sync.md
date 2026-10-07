@@ -278,8 +278,8 @@ renewConnections(access: TeamAccess, draftId: string, local: ReadonlyArray<Local
   : Effect<Liveness, SqlError, Database>
   // 'protocolBuilder.liveness': FOR SHARE head (gone if missing); SELECT own live
   // rows among `local` ORDER BY connection_id FOR UPDATE; extend them (socket:
-  // now + TTL, contact: greatest(expires_at, …)); lockOwnerLeases + renewHeld per
-  // owner. Rows not found are `missing`; the caller re-runs connectSocket (socket)
+  // now + TTL, contact: greatest(expires_at, …)); lockOwnerLeases + one renewHeld
+  // over every owner. Rows not found are `missing`; the caller re-runs connectSocket (socket)
   // or upsertContact (contact) for each, each in its own transaction.
 upsertContact(session: S): Effect<boolean, SqlError, Database>  // 'protocolBuilder.contact'; false if gone
 expireConnection(registration: LocalRegistration): Effect<void, SqlError, Database>
@@ -546,6 +546,45 @@ checks:{…, draining: 'failed: draining'}}`. The worker and `router.ts`
 - moved fan-out tests;
 - I4a, I4b, I6b, I7b, I20 and I21 from §5.
 
+**As built (deviations from the shape above):**
+
+- `readRelayBatch` lives in `pb/events.ts`, beside the column mapping it
+  shares with `readProtocolEvents`, and reads at most `RELAY_BATCH` (256)
+  events per draft per read. A relay whose read came back full marks itself
+  dirty and reads again, so a burst reaches watchers in quarter-queue
+  chunks; an unbounded read could overflow a watcher that was keeping up.
+- `liveSections` is private to `pb/connections.ts` and takes draft ids, not
+  pairs. The reads the relay calls are `readRelay(access, draftId, next?)`
+  (the wake path) and `pollRelays(access, wants)` (the safety poll), both
+  under op `protocolBuilder.relayRead`, with spans `protocolBuilder.relayRead`
+  and `protocolBuilder.relayPoll`; the reaper's op and span are
+  `protocolBuilder.reap`. `relaySection(draftId, sectionId)` is the key the
+  relay's `locks` set and `liveSections` share.
+- A per-relay semaphore serializes its wake reads and its share of a poll,
+  so `next` only moves forward under one reader.
+- A reap that fails is logged and does not count toward
+  `maxConsecutiveFailures`: the reaper's events reach watchers through the
+  log, and a later poll asks again.
+- Each watcher carries a `presented` flag, so a watcher that joins a relay
+  whose presence has not changed is still sent who is present.
+- An `Advanced` signal whose cursor is below the relay's `next` is ignored:
+  the relay has delivered that event already, as with a replica's own ring,
+  which comes back after its read.
+- `publishPresence` in the handlers no longer reads presence itself; it calls
+  `presenceChanged`, and every replica's relay reads presence from the
+  connection rows. This changes C1's handler.
+- At the coordinator's request, `AcquireLock` and `ReleaseLock` publish
+  before recording the socket's mode, and the mode update runs in a fiber
+  forked into the layer scope. `setSocketMode(session)` derives the mode from
+  the tab's live leases after locking its rows, so a retried or late update
+  records what the tab holds now. `releaseLock` no longer returns
+  `stillHeld`.
+- Also at the coordinator's request: the lease keeper runs liveness for up to
+  four drafts at a time; each liveness transaction sets
+  `SET LOCAL lock_timeout` (`LIVENESS_LOCK_TIMEOUT_MS`, 2 s) and a draft that
+  times out is retried at the next tick; `sync.renewHeld` takes several
+  owners, so a pass renews every owner's leases in one `UPDATE`.
+
 ### S: persistent staging (serial, after C2)
 
 **Owns:**
@@ -808,6 +847,11 @@ revert.
   B closes and has not yet come back when A's grace ends, A finds no live
   socket and releases, although B's own grace would have waited. Accepted:
   the window is the reconnect itself.
+- **A retried `releaseOwner` publishes nothing new.** When the grace's
+  release is retried, only the attempt that commits returns events for
+  `onReleased` to publish. That is harmless under C2: watchers read lock
+  events from `protocol_events`, so the committed release reaches them
+  through the relay's next read or poll, whether or not it was rung.
 - **Risk: re-authorization only on delivered entries.** An idle watch of a
   removed member keeps renewing until the next event. This is
   pre-existing; flag it, do not fix it here.
