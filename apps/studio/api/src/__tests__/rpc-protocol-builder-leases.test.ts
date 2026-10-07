@@ -724,6 +724,47 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
     }
   });
 
+  it('records no mode for a release that gave nothing back', async () => {
+    const spans = makeSpanCounter();
+    const other = await createProtocolBuilderClient(studio, {
+      clock: makeShiftableClock().clock,
+      objectStore,
+      tracer: spans.tracer,
+    });
+    const { caller } = tabOf('mode-unreleased');
+    try {
+      const stage = await createOn(other, 'Released without being held');
+      const sectionId = stage.sectionId;
+      const channel = await watching(caller, protocolId, other);
+      try {
+        const before = spans.count('protocolBuilder.setMode');
+        await other.call(
+          caller,
+          other.rpc('ReleaseLock', { protocolId, sectionId }),
+        );
+        // The acquire's own update marks when a forked update would have run.
+        await other.call(
+          caller,
+          other.rpc('AcquireLock', { protocolId, sectionId }),
+        );
+        await until(
+          () => spans.ended('protocolBuilder.setMode') > before,
+          'the acquire’s mode to be recorded',
+        );
+        await new Promise((settle) => setTimeout(settle, 50));
+        expect(spans.count('protocolBuilder.setMode')).toBe(before + 1);
+        await other.call(
+          caller,
+          other.rpc('ReleaseLock', { protocolId, sectionId }),
+        );
+      } finally {
+        await channel.stop();
+      }
+    } finally {
+      await other.dispose();
+    }
+  });
+
   it('stops renewing a stranded owner’s leases even when giving them back fails', async () => {
     const fault = faultyDatabase();
     const stranded = makeShiftableClock();
