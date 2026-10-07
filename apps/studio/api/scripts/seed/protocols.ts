@@ -14,6 +14,7 @@ import type { CurrentProtocol, Stage } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
+import { insertStaged } from '../../src/protocol-builder/staging-store.ts';
 import { addStage, removeStage } from '../../src/protocol/draft-structure.ts';
 import {
   createProtocol,
@@ -235,4 +236,41 @@ export const seedProtocolLine = Effect.fnUntraced(function* (
     ],
   };
   return line;
+});
+
+/**
+ * Stages one API key in the team's draft, as an editing tab would before
+ * submitting it, so the staged-secret store has a row in a seeded database
+ * for the dump-and-search test to search. Written through the production
+ * insert, which is what seals it. Returns the plaintext.
+ */
+export const seedStagedSecret = Effect.fnUntraced(function* (
+  teamId: string,
+  draftId: string,
+  adminUserId: string,
+  cipher: SecretsCipherApi,
+) {
+  const value = `sk.staged-${seedHex(16)}`;
+  const requestId = seedUuid();
+  yield* insertStaged(
+    cipher,
+    {
+      teamId,
+      draftId,
+      owner: `${adminUserId}:${seedUuid()}`,
+      editId: seedUuid(),
+    },
+    requestId,
+    {
+      kind: 'secret',
+      descriptor: {
+        id: seedUuid(),
+        kind: 'apikey',
+        name: 'Staged map token',
+        status: 'staged',
+      },
+      value,
+    },
+  );
+  return value;
 });

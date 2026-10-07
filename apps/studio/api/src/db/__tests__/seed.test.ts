@@ -1068,6 +1068,8 @@ const IRREPRODUCIBLE = {
   session_stats: ['computed_at'],
   schemaFingerprint: ['appliedAt'],
   deployment_state: ['updated_at'],
+  // Stamped by the production insert the seed stages through.
+  protocol_staged_resources: ['created_at'],
 } as const;
 
 /**
