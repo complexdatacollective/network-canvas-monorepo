@@ -4,6 +4,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
 import { useEffect } from 'react';
 import { Provider } from 'react-redux';
@@ -143,16 +144,18 @@ function CaptureDndStore({
 
 async function renderCategoricalBin({
   unlocked = false,
+  subject = person,
   others = [],
   stageVariables = variables,
 }: {
   unlocked?: boolean;
+  subject?: NcNode;
   others?: NcNode[];
   stageVariables?: Record<string, Variable>;
 } = {}) {
   const { header } = await encryptionFor('pw');
   const store = createEncryptionStore(
-    [person, ...others],
+    [subject, ...others],
     [stage],
     stageVariables,
     { header },
@@ -192,9 +195,9 @@ async function renderCategoricalBin({
     act(() => {
       dndStore?.getState().startDrag(
         {
-          id: person[entityPrimaryKeyProperty],
+          id: subject[entityPrimaryKeyProperty],
           type: 'NODE',
-          metadata: person,
+          metadata: subject,
           _sourceZone: null,
         },
         { x: 0, y: 0, width: 10, height: 10 },
@@ -258,6 +261,41 @@ describe('CategoricalBin asking for an encrypted "other" answer', () => {
     expect(stored.nodeId).toBe(person[entityPrimaryKeyProperty]);
     const { key } = await encryptionFor('pw');
     await expect(decryptValue(key, stored, stored)).resolves.toBe('Cousin');
+  });
+
+  it('shows the person by their decrypted name while asking', async () => {
+    const namedVariables: Record<string, Variable> = {
+      ...variables,
+      name: {
+        name: 'name',
+        label: 'name',
+        type: 'text',
+        component: 'Text',
+        encrypted: true,
+      },
+    };
+    const { encryptedAttributes, secureAttributes } =
+      await generateSecureAttributes(
+        { name: 'Alice' },
+        namedVariables,
+        (await encryptionFor('pw')).key,
+        person[entityPrimaryKeyProperty],
+      );
+    const { dropIntoOther } = await renderCategoricalBin({
+      unlocked: true,
+      subject: {
+        ...person,
+        [entityAttributesProperty]: encryptedAttributes,
+        [entitySecureAttributesMeta]: secureAttributes,
+      },
+      stageVariables: namedVariables,
+    });
+
+    await dropIntoOther();
+
+    const dialog = await screen.findByRole('dialog');
+    expect(await within(dialog).findByText('Alice')).toBeVisible();
+    expect(within(dialog).queryByText('Person')).toBeNull();
   });
 });
 

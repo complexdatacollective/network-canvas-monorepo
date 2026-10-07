@@ -2,9 +2,7 @@
 import { AnimatePresence, motion } from 'motion/react';
 import type { ComponentProps } from 'react';
 import { useEffect, useRef, useState } from 'react';
-import { useSelector } from 'react-redux';
 
-import type { IntlShape } from '@codaco/app-i18n/messages';
 import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import Field from '@codaco/fresco-ui/form/Field/Field';
@@ -13,11 +11,7 @@ import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import type { ValidationContext } from '@codaco/fresco-ui/form/store/types';
 import UINode from '@codaco/fresco-ui/Node';
 import { presentationalTextValue } from '@codaco/fresco-ui/PresentationalText';
-import type {
-  LocalizedString,
-  ResolvedLocalizedString,
-  Stage,
-} from '@codaco/protocol-validation';
+import type { Stage } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -38,19 +32,13 @@ import {
 import useReadyForNextStage from '../../hooks/useReadyForNextStage';
 import { useStageSelector } from '../../hooks/useStageSelector';
 import { runtimeMessages } from '../../i18n/runtimeMessages';
-import {
-  useResolveLocalizedString,
-  useResolvePresentationalText,
-} from '../../localization/ProtocolLocalizationProvider';
+import { useResolvePresentationalText } from '../../localization/ProtocolLocalizationProvider';
 import {
   getValidationContext,
   selectValidationMetadataForVariable,
   validationPropsFor,
 } from '../../selectors/forms';
-import {
-  getCodebookVariablesForSubjectType,
-  makeGetCodebookForNodeType,
-} from '../../selectors/protocol';
+import { getCodebookVariablesForSubjectType } from '../../selectors/protocol';
 import {
   getNodeColorSelector,
   getNodeTypeDefinition,
@@ -60,7 +48,7 @@ import { updateNode } from '../../store/modules/session';
 import { useAppDispatch } from '../../store/store';
 import { useInterviewToast } from '../../toast/useInterviewToast';
 import type { StageProps } from '../../types';
-import { getNodeLabelAttribute } from '../../utils/getNodeLabelAttribute';
+import { useNodeLabel } from '../Anonymisation/useNodeLabel';
 import { usePassphrase } from '../Anonymisation/usePassphrase';
 import { interfaceMessages } from '../messages';
 import CategoricalBinItem from './components/CategoricalBinItem';
@@ -103,31 +91,6 @@ type CategoricalBinPrompts = Extract<
   { type: 'CategoricalBin' }
 >['prompts'][number];
 
-const getNodeLabel = (
-  node: NcNode,
-  getCodebook: ReturnType<typeof makeGetCodebookForNodeType.resultFunc>,
-  resolve: (value: LocalizedString) => ResolvedLocalizedString,
-  intl: IntlShape,
-): string => {
-  const codebook = getCodebook(node.type);
-  const attributes = node[entityAttributesProperty];
-  const labelAttrId = getNodeLabelAttribute(
-    codebook?.variables ?? {},
-    attributes,
-  );
-
-  if (labelAttrId) {
-    const value = attributes[labelAttrId];
-    if (typeof value === 'string' || typeof value === 'number') {
-      return String(value);
-    }
-  }
-
-  return codebook
-    ? resolve(codebook.label).text
-    : intl.formatMessage(interfaceMessages.node);
-};
-
 // Queued dialog children subscribe themselves, so the placeholder and fallback
 // label follow a locale switch while the participant keeps their entered answer.
 function OtherResponseField(props: FieldProps<typeof InputField>) {
@@ -140,19 +103,13 @@ function OtherResponseField(props: FieldProps<typeof InputField>) {
   );
 }
 
+// Labelled as everywhere else the person is shown, so a protected name is
+// decrypted rather than shown as stored.
 function OtherResponseNode({
   node,
-  getCodebook,
   ...props
-}: Omit<ComponentProps<typeof UINode>, 'label'> & {
-  node: NcNode;
-  getCodebook: ReturnType<typeof makeGetCodebookForNodeType.resultFunc>;
-}) {
-  const intl = useAppIntl();
-  const resolve = useResolveLocalizedString();
-  return (
-    <UINode {...props} label={getNodeLabel(node, getCodebook, resolve, intl)} />
-  );
+}: Omit<ComponentProps<typeof UINode>, 'label'> & { node: NcNode }) {
+  return <UINode {...props} label={useNodeLabel(node)} />;
 }
 
 const CategoricalBin = (_props: CategoricalBinStageProps) => {
@@ -231,7 +188,6 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
   const { openDialog } = useDialog();
   const nodeColor = useStageSelector(getNodeColorSelector);
   const nodeTypeDefinition = useStageSelector(getNodeTypeDefinition);
-  const getCodebookForNodeType = useSelector(makeGetCodebookForNodeType);
   const stageVariables = useStageSelector(getCodebookVariablesForSubjectType);
   // Base pieces of the validation context useProtocolForm builds for every
   // other Field (codebook + network + this stage's subject); the dialog below
@@ -358,7 +314,6 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
             <div className="shrink-0">
               <OtherResponseNode
                 node={node}
-                getCodebook={getCodebookForNodeType}
                 color={nodeColor}
                 shape={
                   nodeTypeDefinition
