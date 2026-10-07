@@ -279,13 +279,13 @@ Property `node_id`/`edge_id` (and `node_a_id`/`node_b_id` for paired events) app
 
 ### 9.1 Stage-level events
 
-| Event                     | Source                           | Extra props                                                                                            |
-| ------------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `interview_started`       | middleware (Shell mount)         | —                                                                                                      |
-| `stage_entered`           | middleware (currentStep change)  | `stage_type`, `stage_index`, `prompt_index`, `direction: 'forward' \| 'back' \| 'jumped' \| 'initial'` |
-| `stage_exited`            | middleware                       | `stage_type`, `stage_index`, `duration_ms`, `prompt_count`, `exit_direction`                           |
-| `stage_validation_failed` | hook (Navigation `beforeNext`)   | `stage_type`, `stage_index`, `validation_kind`                                                         |
-| `interview_finished`      | middleware (`onFinish` resolves) | `total_duration_ms`, `stage_count`                                                                     |
+| Event                     | Source                              | Extra props                                                                                            |
+| ------------------------- | ----------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `interview_started`       | middleware (Shell mount)            | —                                                                                                      |
+| `stage_entered`           | middleware (currentStep change)     | `stage_type`, `stage_index`, `prompt_index`, `direction: 'forward' \| 'back' \| 'jumped' \| 'initial'` |
+| `stage_exited`            | middleware                          | `stage_type`, `stage_index`, `duration_ms`, `prompt_count`, `exit_direction`                           |
+| `stage_validation_failed` | hook (Navigation `beforeNext`)      | `stage_type`, `stage_index`, `validation_kind`                                                         |
+| `interview_finished`      | FinishSession (`onFinish` resolves) | `stage_count` (the protocol's own stages)                                                              |
 
 ### 9.2 Global entity events
 
@@ -309,10 +309,10 @@ Fire from Redux middleware on the underlying actions, regardless of which stage 
 | `form_opened`                 | hook                                                             | `form_kind: 'alter' \| 'alter_edge' \| 'ego' \| 'slides'`, `field_details: string[]` (component names in order, duplicates preserved), `entity_id?` (node_id when alter, edge_id when alter_edge, omitted for ego/slides) |
 | `form_submitted`              | middleware (`updateEgo` / `updateNode` / `updateEdge` fulfilled) | `form_kind`, `entity_id?`                                                                                                                                                                                                 |
 | `form_dismissed_without_save` | hook                                                             | `form_kind`, `entity_id?`                                                                                                                                                                                                 |
-| `form_validation_failed`      | hook                                                             | `form_kind`, `entity_id?`, `field_errors: Array<{ field_index: number; component: string; kind: string; config?: Record<string, number \| boolean> }>`                                                                    |
+| `form_validation_failed`      | hook                                                             | `form_kind`, `entity_id?`, `field_errors: Array<{ field_index: number; component: string }>` (one entry per invalid field)                                                                                                |
 | `slides_form_slide_advanced`  | hook (SlidesForm only)                                           | `slide_index`, `total_slides`                                                                                                                                                                                             |
 
-`field_errors[].config` carries only numeric/boolean rule params; entries that reference codebook variable names (`differentFrom: 'name'`, etc.) are filtered out before emission.
+**Amended 2026-10-07 (#2119):** `field_errors` entries carry the field's position and input component only. The failed rule's `kind` and `config` are not reported: the form layer exposes a rendered message per field, not the rule that failed, and the message itself can contain protocol-authored text, so it is never sent. Reporting the rule would need the form layer to expose it; with analytics kept basic, that is not planned.
 
 #### NameGenerator
 
