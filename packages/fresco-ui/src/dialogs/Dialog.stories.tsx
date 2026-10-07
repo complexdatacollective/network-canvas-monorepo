@@ -51,7 +51,7 @@ const meta = {
       description: {
         component: `Accessible modal dialog with a fixed header and footer and a scrollable content region.
 
-Use \`size="readable"\` for confirmations, notices, and small forms; \`editor\` for substantial forms; \`workspace\` for collections, maps, and previews; and \`fullscreen\` for immersive workflows. Every size fills the available width on narrow containers and stops growing at its semantic cap. \`className\` is merged last as an escape hatch.`,
+Use \`size="readable"\` for confirmations, notices, and small forms; \`editor\` for substantial forms; \`workspace\` for collections, maps, and previews; \`fullscreen\` for immersive workflows; and \`viewport\` for tools, such as large tables, that need the whole viewport less a narrow margin. Every size fills the available width on narrow containers and stops growing at its semantic cap; \`viewport\` has none. \`className\` is merged last as an escape hatch.`,
       },
     },
   },
@@ -114,6 +114,16 @@ export const Fullscreen: Story = {
     description:
       'Fullscreen dialogs provide a viewport-like workspace while retaining dialog focus management and actions.',
     size: 'fullscreen',
+  },
+  render: (args) => <DialogTemplate {...args} />,
+};
+
+export const Viewport: Story = {
+  args: {
+    title: 'Translation table',
+    description:
+      'Viewport dialogs fill the whole viewport less a narrow margin, with no width or height cap, for tools such as large tables whose content is wider and taller than any screen.',
+    size: 'viewport',
   },
   render: (args) => <DialogTemplate {...args} />,
 };
