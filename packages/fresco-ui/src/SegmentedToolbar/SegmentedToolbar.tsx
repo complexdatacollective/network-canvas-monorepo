@@ -34,6 +34,7 @@ import { cva, cx } from '../utils/cva';
 import {
   isRightToLeft,
   measureHorizontalOverflow,
+  measureRestingScrollWidth,
   setHorizontalOverflowVariables,
 } from '../utils/horizontalOverflow';
 
@@ -295,6 +296,11 @@ const rootLayoutVariants = cva({
   defaultVariants: { orientation: 'horizontal' },
 });
 
+const measureLaneOverflow = (lane: HTMLElement) =>
+  measureHorizontalOverflow(lane, {
+    scrollWidth: measureRestingScrollWidth(lane),
+  });
+
 function useHorizontalOverflow(
   enabled: boolean,
   restAt: ToolbarRestPosition,
@@ -315,14 +321,19 @@ function useHorizontalOverflow(
       frame.style.removeProperty('--scroll-area-overflow-x-end');
       return;
     }
-    setHorizontalOverflowVariables(frame, measureHorizontalOverflow(lane));
+    setHorizontalOverflowVariables(frame, measureLaneOverflow(lane));
   }, [enabled]);
 
+  // Assigns even when nothing is hidden: the lane may still hold a scroll
+  // position from before the hand-off, and Chrome can leave a stale overshoot
+  // scrollable, so a lane whose segments fit is sent back to its start.
   const anchorToEnd = React.useCallback(() => {
     const lane = laneRef.current;
     if (!lane || !anchorsToEnd) return;
-    const hidden = lane.scrollWidth - lane.clientWidth;
-    if (hidden <= 0) return;
+    const hidden = Math.max(
+      0,
+      measureRestingScrollWidth(lane) - lane.clientWidth,
+    );
     lane.scrollLeft = isRightToLeft(lane) ? -hidden : hidden;
   }, [anchorsToEnd]);
 
@@ -335,7 +346,7 @@ function useHorizontalOverflow(
     const lane = laneRef.current;
     if (!lane) return undefined;
     const onScroll = () => {
-      pinnedToEnd.current = measureHorizontalOverflow(lane).inlineEnd <= 1;
+      pinnedToEnd.current = measureLaneOverflow(lane).inlineEnd <= 1;
       publishOverflow();
     };
     lane.addEventListener('scroll', onScroll, { passive: true });
@@ -1055,12 +1066,21 @@ export function SegmentedToolbar({
                 // with `position: absolute` (AnimatePresence `popLayout`) and
                 // writes layout-projection transforms on the ones that stay, so
                 // `scrollWidth` runs some 80px past `clientWidth` for the length
-                // of every hand-off. At rest the two are equal. Left to `auto`,
-                // that overshoot flashes a scrollbar across the pill — and where
-                // the platform reserves space for one, grows it 15px taller
-                // mid-animation — to advertise content that was never out of
-                // reach. Genuine overflow still scrolls by wheel, by touch, and
-                // by the toolbar's roving focus.
+                // of every hand-off. Left to `auto`, that overshoot flashes a
+                // scrollbar across the pill — and where the platform reserves
+                // space for one, grows it 15px taller mid-animation — to
+                // advertise content that was never out of reach. Genuine
+                // overflow still scrolls by wheel, by touch, and by the
+                // toolbar's roving focus.
+                //
+                // Nor does the overshoot reliably end with the hand-off. The
+                // segments are composited for their `filter` animation, and
+                // Chrome can apply the transform resets that follow without
+                // recomputing the lane's scrollable overflow, so `scrollWidth`
+                // keeps the overshoot after everything has settled. The rest
+                // position and the edge fades are therefore measured from the
+                // segments' layout boxes (`measureRestingScrollWidth`), which
+                // transforms never move, rather than from `scrollWidth`.
                 'scrollbar-none overflow-x-auto overscroll-x-contain p-[5px] [&::-webkit-scrollbar]:hidden',
           )}
         >
