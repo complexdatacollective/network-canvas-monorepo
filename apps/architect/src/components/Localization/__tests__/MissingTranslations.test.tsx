@@ -1,9 +1,9 @@
 import { configureStore } from '@reduxjs/toolkit';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createRef, useState } from 'react';
 import { Provider } from 'react-redux';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 
 import {
   type CurrentProtocol,
@@ -419,6 +419,50 @@ describe('MissingTranslations', () => {
       await user.selectOptions(menu, 'Spanish (1)');
 
       expect(onLanguageChange).toHaveBeenCalledWith('es');
+    });
+
+    it('chooses from the menu while the tabs do not fit, and goes back to the tabs once they do', () => {
+      let room = 400;
+      const resizes: (() => void)[] = [];
+      vi.stubGlobal(
+        'ResizeObserver',
+        class implements ResizeObserver {
+          constructor(callback: ResizeObserverCallback) {
+            resizes.push(() => callback([], this));
+          }
+          observe() {}
+          unobserve() {}
+          disconnect() {}
+        },
+      );
+      const clientWidth = vi
+        .spyOn(HTMLElement.prototype, 'clientWidth', 'get')
+        .mockImplementation(() => room);
+      const scrollWidth = vi
+        .spyOn(HTMLElement.prototype, 'scrollWidth', 'get')
+        .mockReturnValue(600);
+      onTestFinished(() => {
+        vi.unstubAllGlobals();
+        clientWidth.mockRestore();
+        scrollWidth.mockRestore();
+      });
+
+      renderMissingTranslations();
+
+      expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
+      expect(
+        screen.getByRole('combobox', { name: 'Show missing translations for' }),
+      ).toHaveDisplayValue('French (5)');
+
+      room = 700;
+      act(() => {
+        for (const resize of resizes) resize();
+      });
+
+      expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+      expect(screen.getByRole('tab', { selected: true })).toHaveAccessibleName(
+        'French, 5 missing translations',
+      );
     });
   });
 

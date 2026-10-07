@@ -49,14 +49,14 @@ In Architect:
   it holds the only translation of some text.
 - The Languages page lists missing translations one language at a time, in a
   tab for each language that is missing some, or from a menu when more than
-  five languages are. Stages are listed by position, name and interface, and
-  each text is named the way its editor names it, such as "Page heading" or
-  "Item 1 › Content". Clicking a text opens a dialog that shows it in a
-  language to translate from and as participants using each language will see
-  it, tags the languages that will see it in another language, and offers
-  Save and next to move straight on to the next missing text. While
-  translations are missing, a note in the stage list names the languages that
-  need them.
+  five languages are, or when their tabs don't fit. Stages are listed by
+  position, name and interface, and each text is named the way its editor
+  names it, such as "Page heading" or "Item 1 › Content". Clicking a text
+  opens a dialog that shows it in a language to translate from and as
+  participants using each language will see it, tags the languages that will
+  see it in another language, and offers Save and next to move straight on to
+  the next missing text. While translations are missing, a note in the stage
+  list names the languages that need them.
 - A new protocol asks which languages participants can take it in, and,
   when you choose more than one, which of them is the default. A protocol
   upgraded from an earlier version is marked as written in "Unspecified

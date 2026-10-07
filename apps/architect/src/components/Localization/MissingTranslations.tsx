@@ -11,6 +11,7 @@ import {
   type ReactNode,
   type RefObject,
   useId,
+  useLayoutEffect,
   useRef,
   useState,
 } from 'react';
@@ -816,6 +817,48 @@ const nextIndex = (editing: Editing, missing: ReadonlySet<string>) => {
 // Tabs fit a handful of languages; past that a menu lists them.
 const MAX_LANGUAGE_TABS = 5;
 
+/**
+ * Whether the language tabs fit on one line of `area`. While the tabs show,
+ * they are measured; once they overflow, the width they needed is kept, and
+ * they return when the area is that wide again. `labels` names the tabs'
+ * languages, so a different set of languages is measured afresh. A count
+ * changing as texts are translated is not: it barely changes the width, and
+ * trying the tabs again would rebuild the list under the researcher's focus.
+ */
+const useTabsFit = (labels: string) => {
+  const area = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState<number | null>(null);
+  const [needed, setNeeded] = useState<Readonly<{
+    labels: string;
+    width: number;
+  }> | null>(null);
+  const fits =
+    needed?.labels !== labels || width === null || width >= needed.width;
+
+  useLayoutEffect(() => {
+    const element = area.current;
+    if (element === null || typeof ResizeObserver === 'undefined') return;
+    const measure = () => {
+      setWidth(element.clientWidth);
+      const list = element.querySelector<HTMLElement>('[role="tablist"]');
+      if (list !== null && list.scrollWidth > list.clientWidth) {
+        setNeeded({ labels, width: list.scrollWidth });
+      }
+    };
+    measure();
+    // The tabs themselves are watched too, since their names widen them when
+    // the font arrives without changing the area's size.
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    for (const tab of element.querySelectorAll('[role="tab"]')) {
+      observer.observe(tab);
+    }
+    return () => observer.disconnect();
+  }, [labels, fits]);
+
+  return { area, fits };
+};
+
 type MissingTranslationsProps = {
   /**
    * The language to list; null, or one with no gaps, lists the alphabetically
@@ -850,6 +893,12 @@ const MissingTranslations = ({
   const [dialogOpen, setDialogOpen] = useState(false);
   const sessions = useRef(0);
   const entries = useRef(new Map<string, HTMLElement>());
+  const tabs = useTabsFit(
+    coverage.locales
+      .filter(({ missing }) => missing > 0)
+      .map(({ locale }) => languageName(locale))
+      .join('\n'),
+  );
 
   if (!protocol) return null;
 
@@ -1119,63 +1168,70 @@ const MissingTranslations = ({
             {intl.formatMessage(messages.complete)}
           </Paragraph>
         )
-      ) : languagesWithGaps.length > MAX_LANGUAGE_TABS ? (
-        <div className="flex flex-col gap-6">
-          <div className="flex max-w-md flex-col gap-2">
-            <Label htmlFor={pickerId}>
-              {intl.formatMessage(messages.filterLabel)}
-            </Label>
-            <NativeSelectField
-              id={pickerId}
-              name="missing-translations-language"
-              value={shown.locale}
-              onChange={(value) => {
-                if (typeof value === 'string') onLanguageChange(value);
-              }}
-              options={languagesWithGaps.map(({ locale, missing }) => ({
-                value: locale,
-                label: intl.formatMessage(messages.filterOption, {
-                  language: languageName(locale),
-                  count: missing,
-                }),
-              }))}
-            />
-          </div>
-          {list}
-        </div>
       ) : (
-        <Tabs
-          layout="top"
-          aria-label={intl.formatMessage(messages.languagesLabel)}
-          value={shown.locale}
-          onValueChange={onLanguageChange}
-          className="gap-6"
-          tabs={languagesWithGaps.map(({ locale, missing }) => ({
-            value: locale,
-            label: (
-              <>
-                <span aria-hidden="true" className="flex items-center gap-2">
-                  {languageName(locale)}
-                  <Badge render={<span />} size="sm" tone="neutral">
-                    {intl.formatNumber(missing)}
-                  </Badge>
-                </span>
-                <span className="sr-only">
-                  {intl.formatMessage(messages.languageTab, {
-                    language: languageName(locale),
-                    count: missing,
-                  })}
-                </span>
-              </>
-            ),
-          }))}
-        >
-          {languagesWithGaps.map(({ locale }) => (
-            <TabsPanel key={locale} value={locale}>
-              {locale === shown.locale ? list : null}
-            </TabsPanel>
-          ))}
-        </Tabs>
+        <div ref={tabs.area}>
+          {languagesWithGaps.length > MAX_LANGUAGE_TABS || !tabs.fits ? (
+            <div className="flex flex-col gap-6">
+              <div className="flex max-w-md flex-col gap-2">
+                <Label htmlFor={pickerId}>
+                  {intl.formatMessage(messages.filterLabel)}
+                </Label>
+                <NativeSelectField
+                  id={pickerId}
+                  name="missing-translations-language"
+                  value={shown.locale}
+                  onChange={(value) => {
+                    if (typeof value === 'string') onLanguageChange(value);
+                  }}
+                  options={languagesWithGaps.map(({ locale, missing }) => ({
+                    value: locale,
+                    label: intl.formatMessage(messages.filterOption, {
+                      language: languageName(locale),
+                      count: missing,
+                    }),
+                  }))}
+                />
+              </div>
+              {list}
+            </div>
+          ) : (
+            <Tabs
+              layout="top"
+              aria-label={intl.formatMessage(messages.languagesLabel)}
+              value={shown.locale}
+              onValueChange={onLanguageChange}
+              className="gap-6"
+              tabs={languagesWithGaps.map(({ locale, missing }) => ({
+                value: locale,
+                label: (
+                  <>
+                    <span
+                      aria-hidden="true"
+                      className="flex items-center gap-2"
+                    >
+                      {languageName(locale)}
+                      <Badge render={<span />} size="sm" tone="neutral">
+                        {intl.formatNumber(missing)}
+                      </Badge>
+                    </span>
+                    <span className="sr-only">
+                      {intl.formatMessage(messages.languageTab, {
+                        language: languageName(locale),
+                        count: missing,
+                      })}
+                    </span>
+                  </>
+                ),
+              }))}
+            >
+              {languagesWithGaps.map(({ locale }) => (
+                <TabsPanel key={locale} value={locale}>
+                  {locale === shown.locale ? list : null}
+                </TabsPanel>
+              ))}
+            </Tabs>
+          )}
+        </div>
       )}
       {editing && editingText && (
         <TranslationDialog
