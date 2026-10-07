@@ -119,15 +119,28 @@ Missing translations don't stop you from saving, previewing or using your protoc
 Architect shows you where they are:
 
 - The **Languages** tab shows a warning icon while some translations are missing.
-- The protocol overview screen shows a notice with the number of missing translations, and a **Go to Languages** link.
-- The **Missing translations** section of the **Languages** tab lists the texts that have no translation in one language at a time. It is a tree: **Stages**, **Codebook** and **Protocol** branch into the places that hold the texts. A stage is named by its position and interface, such as "Stage 4 · Language Chooser", and a node type or edge type by its name. Each text is a row that previews what participants see in its place.
+- The protocol overview screen shows a note that names the languages with missing translations, and a **Go to Languages** link.
+- The **Missing translations** section of the **Languages** tab lists the texts that have no translation, one language at a time.
 
-Choose the language whose gaps you want to see under **Show missing translations for**, or click the button next to the language in the **Protocol languages** list, such as **Show 3 missing French translations**.
+### The missing translations list
 
-Click a row to open its translation dialog. It has the text's field, with a language menu, so you can write the text in every language, and saving writes them all at once. Beside it, **What participants see** shows the text as participants using each of your protocol's languages will see it, as you type. It marks the default language and the language you are editing. Under a language that has no translation of the text, a note says what participants see instead:
+Each language with missing translations has a tab that shows how many texts it is missing, such as **French 4**. Click a tab to see that language's missing translations. When more than five languages have missing translations, choose the language from the **Show missing translations for** menu instead. You can also click the button next to a language in the **Protocol languages** list, such as **Show 3 missing French translations**.
 
-- When the text is shown in a closely related language, such as Spanish for Mexican Spanish, the note reads "Not translated yet. Shown in Spanish."
-- Otherwise, the note adds that this is what participants see unless their browser also lists a language that has the text, because the other languages in a participant's browser are tried before the default language.
+The list is a tree. **Stages**, **Codebook** and **Protocol** branch into the places that hold the texts. A stage shows its position, its name in the default language, and its interface, such as "Stage 4" and "Choose your language · Language Chooser". A node type or edge type shows its name. Under each place, texts are named the way the editor names them, such as "Page heading" or "Item 1 › Content", and each one previews what participants see in its place.
+
+### Translating from the list
+
+Click a text in the list to open its translation dialog. The title says where the text is and what it is, and the line under it shows how far through the list you are, such as "Text 2 of 5 to translate into French".
+
+At the top, **Translating from** shows the text in another language for you to translate from. It starts with the default language when the text has one. When more languages have the text, click the language's name to translate from one of those instead.
+
+Under it is the text's field, set to the language you chose in the list. The field has a language menu, so you can write the text in any of your languages, and saving saves them all at once. A text needs to be written in at least one language.
+
+Beside the field, **What participants see** shows the text as participants using each of your languages see it, and updates as you type. Each language has a card, marked **Default** for the default language and **Editing** for the language you are writing in. Click a language's card to write in that language. When a language has no translation, its card shows the text that participants see instead, in lighter type, with a tag that says which language it is in, such as **Shown in English**.
+
+An asterisk after the tag means that participants may see the text in a different language: the other languages in a participant's browser are tried before the default language, so a participant whose browser also lists a language that has the text sees that one. A note under the cards explains this. There's no asterisk when the text is shown in a closely related language, such as Spanish for Mexican Spanish, or when only one language has the text.
+
+To keep going, click **Save and next**. Architect saves the text and shows the next text that's missing a translation in the same language, ready for you to type. On the last text, click **Save** to save it and close the dialog.
 
 ## Translating text
 
@@ -139,7 +152,7 @@ The language menu tells you how each text is doing:
 
 - each language in the menu is tagged **Default** or **Missing**, where that applies
 - a badge next to the menu counts the languages this text is missing in, such as "2 translations missing"
-- under a text that has no translation in the language you are editing, a note says which language's text participants using that language will see instead, such as "Not translated into French yet. Participants using French will see the English text". Unless the text is shown in a closely related language, the note continues ", unless their browser also lists a language that has it", because the other languages in a participant's browser are tried before the default language
+- under a text that has no translation in the language you are editing, a note says which language's text participants using that language will see instead, such as "Not translated into French yet. Participants using French will see the English text". When another of your languages also has the text, and the text isn't shown in a closely related language, the note continues ", unless their browser also lists a language that has it", because the other languages in a participant's browser are tried before the default language
 
 To remove a translation, delete all of its text. A protocol with only one language doesn't show language menus at all.
 
