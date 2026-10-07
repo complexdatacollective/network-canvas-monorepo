@@ -111,9 +111,7 @@ describe('ProjectLayout', () => {
 
     expect(screen.queryByRole('button', { name: /undo/i })).toBeNull();
     expect(screen.queryByRole('button', { name: /redo/i })).toBeNull();
-    // Reading the protocol is still offered: neither leaves this tab's copy
-    // behind, and Download is how the work gets out.
-    expect(screen.getByRole('button', { name: /print/i })).toBeInTheDocument();
+    // Download is still offered: it is how the work gets out.
     expect(
       screen.getByRole('button', { name: /^download$/i }),
     ).toBeInTheDocument();
@@ -130,6 +128,18 @@ describe('ProjectLayout', () => {
 
     expect(screen.queryByRole('button', { name: /undo/i })).toBeNull();
     expect(screen.queryByRole('button', { name: /redo/i })).toBeNull();
+    // Print is the Summary's: other pages would print their editing chrome.
+    expect(screen.queryByRole('button', { name: /print/i })).toBeNull();
+  });
+
+  it('offers Print on the Summary while another tab holds the saved copy', () => {
+    openProtocolWithHistory(store);
+    mockLocation.mockReturnValue('/protocol/summary');
+    store.dispatch(setProtocolLockState('open-elsewhere'));
+
+    renderLayout(store);
+
+    expect(screen.getByRole('button', { name: /print/i })).toBeInTheDocument();
   });
 
   it('keeps Undo and Redo on a normal authoring page', () => {

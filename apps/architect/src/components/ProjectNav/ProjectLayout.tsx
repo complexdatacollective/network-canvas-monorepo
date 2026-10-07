@@ -37,8 +37,9 @@ const ProjectLayout = ({ children, className }: ProjectLayoutProps) => {
   // has to tell them apart. The summary is read-only because it is a report,
   // and this tab still owns the saved copy, so its Undo reaches disk. Any page
   // in a tab another tab has taken the protocol from is read-only because this
-  // tab owns nothing: its Undo would rewind the screen and be dropped. Both
-  // gain Print, because printing only reads.
+  // tab owns nothing: its Undo would rewind the screen and be dropped. Print
+  // follows the route, not the mode: the print styles are written for the
+  // Summary, and printing any other page would print its editing chrome.
   const accessMode = useProtocolAccessMode();
   const mode: ProjectActionsMode =
     accessMode !== 'editable'
@@ -46,7 +47,6 @@ const ProjectLayout = ({ children, className }: ProjectLayoutProps) => {
       : location === '/protocol/summary'
         ? 'report'
         : 'authoring';
-  const presenting = mode !== 'authoring';
 
   return (
     <div
@@ -62,7 +62,9 @@ const ProjectLayout = ({ children, className }: ProjectLayoutProps) => {
       {children}
       <ProjectActions
         mode={mode}
-        additionalActions={presenting ? <PrintProtocolAction /> : undefined}
+        additionalActions={
+          location === '/protocol/summary' ? <PrintProtocolAction /> : undefined
+        }
       />
     </div>
   );

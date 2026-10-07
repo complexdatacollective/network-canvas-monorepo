@@ -58,19 +58,27 @@ const exportUnwrap = vi.fn();
 // Records the protocol the export would write, not the thunk's argument: the
 // real thunk falls back to the active protocol when given no override, and
 // the mock does the same so the record says which protocol reaches the file.
-const exportNetcanvasMock = vi.fn((_protocol: CurrentProtocol) => ({
-  type: 'webUserActions/exportNetcanvas',
-  unwrap: exportUnwrap,
-}));
+const exportNetcanvasMock = vi.fn(
+  (_protocol: CurrentProtocol, _protocolId: string | undefined) => ({
+    type: 'webUserActions/exportNetcanvas',
+    unwrap: exportUnwrap,
+  }),
+);
 
 vi.mock('~/ducks/modules/userActions/userActions', () => ({
   exportNetcanvas:
-    (override: CurrentProtocol | undefined) =>
+    (options: { protocol?: CurrentProtocol; protocolId?: string } = {}) =>
     (
       _dispatch: unknown,
-      getState: () => { activeProtocol: { present: CurrentProtocol } },
+      getState: () => {
+        app: { activeProtocolId: string };
+        activeProtocol: { present: CurrentProtocol };
+      },
     ) =>
-      exportNetcanvasMock(override ?? getState().activeProtocol.present),
+      exportNetcanvasMock(
+        options.protocol ?? getState().activeProtocol.present,
+        options.protocolId ?? getState().app.activeProtocolId,
+      ),
 }));
 
 const sourceAuthoringMock = vi.hoisted(() => ({
@@ -362,7 +370,10 @@ describe('<ProjectActions />', () => {
     expect(protocolLibraryMock.getStoredProtocol).toHaveBeenCalledWith(
       'protocol-1',
     );
-    expect(exportNetcanvasMock).toHaveBeenCalledWith(savedProtocol);
+    expect(exportNetcanvasMock).toHaveBeenCalledWith(
+      savedProtocol,
+      'protocol-1',
+    );
     expect(exportNetcanvasMock).not.toHaveBeenCalledWith(protocol);
   });
 
@@ -385,7 +396,7 @@ describe('<ProjectActions />', () => {
     await waitFor(() => {
       expect(exportNetcanvasMock).toHaveBeenCalledTimes(1);
     });
-    expect(exportNetcanvasMock).toHaveBeenCalledWith(protocol);
+    expect(exportNetcanvasMock).toHaveBeenCalledWith(protocol, 'protocol-1');
     expect(protocolLibraryMock.getStoredProtocol).not.toHaveBeenCalled();
   });
 

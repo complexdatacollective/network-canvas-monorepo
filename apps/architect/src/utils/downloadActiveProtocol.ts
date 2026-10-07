@@ -44,11 +44,15 @@ const finalMessages = defineMessages({
 const runDownload = async (
   dispatch: AppDispatch,
   openDialog: DialogContextType['openDialog'],
-  readProtocol: () => Promise<CurrentProtocol | undefined>,
+  readProtocol: () => Promise<{
+    protocol?: CurrentProtocol;
+    protocolId?: string;
+  }>,
 ): Promise<boolean> => {
   try {
-    const protocol = await readProtocol();
-    const result = await dispatch(exportNetcanvas(protocol)).unwrap();
+    const result = await dispatch(
+      exportNetcanvas(await readProtocol()),
+    ).unwrap();
     if (result.status === 'unresolved-assets') {
       void openDialog({
         type: 'acknowledge',
@@ -115,7 +119,7 @@ export const downloadActiveProtocol = (
   openDialog: DialogContextType['openDialog'],
   protocol?: CurrentProtocol,
 ): Promise<boolean> =>
-  runDownload(dispatch, openDialog, () => Promise.resolve(protocol));
+  runDownload(dispatch, openDialog, () => Promise.resolve({ protocol }));
 
 /**
  * Downloads the open protocol as it is saved in the library, rather than as
@@ -136,5 +140,7 @@ export const downloadSavedProtocol = (
   runDownload(dispatch, openDialog, async () => {
     const row = await getStoredProtocol(protocolId);
     if (!row) throw new Error('No saved copy of the open protocol to export');
-    return row.protocol;
+    // The row's own id, not whichever protocol is active once the read
+    // resolves: its assets are stored under this id.
+    return { protocol: row.protocol, protocolId };
   });
