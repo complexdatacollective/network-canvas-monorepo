@@ -889,6 +889,63 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
     },
   );
 
+  const REMOVED_EDIT = 'edit-staged-before-removal';
+
+  const removedStagedReads: ReadonlyArray<
+    readonly [string, (resourceId: string) => Effect.Effect<unknown, unknown>]
+  > = [
+    [
+      'ResourcesList',
+      () => host.rpc('ResourcesList', { protocolId, editId: REMOVED_EDIT }),
+    ],
+    [
+      'ResourcesInspect',
+      (resourceId) =>
+        host.rpc('ResourcesInspect', {
+          protocolId,
+          editId: REMOVED_EDIT,
+          resourceId,
+        }),
+    ],
+    [
+      'ResourcesPreview',
+      (resourceId) =>
+        host.rpc('ResourcesPreview', {
+          protocolId,
+          editId: REMOVED_EDIT,
+          resourceId,
+        }),
+    ],
+  ];
+
+  it.each(removedStagedReads)(
+    'refuses a %s of what a caller staged once it is removed',
+    async (name, read) => {
+      const { who, remove } = await removedAfterOpening(
+        `removed-staged-${name}`,
+      );
+      const staged = await call(
+        who,
+        host.rpc('ResourcesStage', {
+          protocolId,
+          editId: REMOVED_EDIT,
+          requestId: randomUUID(),
+          request: {
+            kind: 'secret',
+            name: 'Staged before removal',
+            value: 'pk.removed',
+          },
+        }),
+      );
+      if (staged.status !== 'ok') throw new Error('staging failed');
+      await remove();
+      await expectRpcFailure(
+        callExit(who, read(staged.data.descriptor.id)),
+        'ProtocolNotFound',
+      );
+    },
+  );
+
   it('refuses a watch from a caller removed after its session was opened', async () => {
     const { who, remove } = await removedAfterOpening('removed-watch');
     await remove();
