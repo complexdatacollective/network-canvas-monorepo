@@ -229,15 +229,7 @@ test('adds a language, keeps the default language from being removed, translates
   const defaultActions = page.getByRole('menu', {
     name: 'Actions for French',
   });
-  await expect(
-    defaultActions.getByRole('menuitem', {
-      name: 'Relabel translations…',
-      exact: true,
-    }),
-  ).toBeFocused();
-  await expect(
-    defaultActions.getByRole('menuitem', { name: 'Make default' }),
-  ).toHaveCount(0);
+  await expect(defaultActions.getByRole('menuitem')).toHaveCount(1);
   await page.keyboard.press('ArrowDown');
   const removeFrench = defaultActions.getByRole('menuitem', {
     name: 'Remove',

@@ -1693,7 +1693,7 @@
   },
   "architect.localization.languageActions.chooseALanguage": {
     "defaultMessage": "Choose a language",
-    "description": "Placeholder of the list of languages that text can be relabelled as."
+    "description": "Placeholder of the list of languages that unidentified text can be identified as."
   },
   "architect.localization.languageActions.chooseAtLeastOne": {
     "defaultMessage": "Choose at least one language.",
@@ -1705,7 +1705,7 @@
   },
   "architect.localization.languageActions.chooseOne": {
     "defaultMessage": "Choose a language.",
-    "description": "Error when the dialog that relabels a protocol language is submitted without a language."
+    "description": "Error when the dialog that identifies the language of unidentified text is submitted without a language."
   },
   "architect.localization.languageActions.identifyDescription": {
     "defaultMessage": "Protocols made before protocols declared their languages have their text marked as an unidentified language. Choose the language it is written in. Nothing is translated or deleted.",
@@ -1721,7 +1721,7 @@
   },
   "architect.localization.languageActions.languageLabel": {
     "defaultMessage": "Language",
-    "description": "Label of the list of languages in the dialog that relabels a protocol language, or identifies the language of unidentified text."
+    "description": "Label of the list of languages in the dialog that identifies the language of unidentified text."
   },
   "architect.localization.languageActions.languageOption": {
     "defaultMessage": "{name} ({tag})",
@@ -1742,18 +1742,6 @@
   "architect.localization.languageActions.noLanguagesFound": {
     "defaultMessage": "No language matches your search.",
     "description": "Shown when a language search finds nothing."
-  },
-  "architect.localization.languageActions.relabelDescription": {
-    "defaultMessage": "Use this when these translations are really in another language or regional variant, such as Mexican Spanish rather than Spanish. Every text marked as {language} will be marked as the language you choose. Nothing is translated or deleted.",
-    "description": "Explanation in the dialog that relabels a protocol language: when to use it and what it does. language is the current language name. The example names a regional variant of a language."
-  },
-  "architect.localization.languageActions.relabelSubmit": {
-    "defaultMessage": "Relabel translations",
-    "description": "Submit button of the dialog that marks every text written in one protocol language as written in another."
-  },
-  "architect.localization.languageActions.relabelTitle": {
-    "defaultMessage": "Relabel {language} translations",
-    "description": "Title of the dialog that marks every text written in one protocol language as written in another. language is the current language name."
   },
   "architect.localization.languageActions.removeConfirm": {
     "defaultMessage": "Remove language",
@@ -1803,10 +1791,6 @@
     "defaultMessage": "Participants take the interview in this language. Add more languages to let them choose one.",
     "description": "Explanation of the list of protocol languages, shown when the protocol has only one language."
   },
-  "architect.localization.languageList.identifyItem": {
-    "defaultMessage": "Identify language…",
-    "description": "Item in the menu of actions for the unidentified language. It opens a dialog that names the language the text is written in."
-  },
   "architect.localization.languageList.identifyLanguage": {
     "defaultMessage": "Identify language",
     "description": "Button that names the language of text whose language has not been identified."
@@ -1826,10 +1810,6 @@
   "architect.localization.languageList.openTable": {
     "defaultMessage": "Open translation table",
     "description": "Link under the list of protocol languages to the translation table, which shows every participant-facing text beside its translation into each language."
-  },
-  "architect.localization.languageList.relabel": {
-    "defaultMessage": "Relabel translations…",
-    "description": "Item in the menu of actions for one protocol language. It opens a dialog that marks every text written in this language as written in another language, for when the language was chosen wrongly. Nothing is translated."
   },
   "architect.localization.languageList.remove": {
     "defaultMessage": "Remove",

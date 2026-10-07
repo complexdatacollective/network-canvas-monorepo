@@ -53,14 +53,14 @@ export const withoutLocale =
     return rest;
   };
 
-/** Marks the translation written as `from` as written in `to`. */
-export const relabelledLocale =
-  (from: LocaleTag, to: LocaleTag): LocalizedStringRewrite =>
+/** Marks the translation in the unidentified language as written in `to`. */
+export const identifiedLocale =
+  (to: LocaleTag): LocalizedStringRewrite =>
   (value) =>
-    Object.hasOwn(value, from)
+    Object.hasOwn(value, UNSPECIFIED_LOCALE)
       ? Object.fromEntries(
           Object.entries(value).map(([key, text]) => [
-            key === from ? to : key,
+            key === UNSPECIFIED_LOCALE ? to : key,
             text,
           ]),
         )
@@ -292,17 +292,18 @@ export const setLocalizedString = (
 };
 
 /**
- * Says that text marked as `from` is written in `tag`: the declaration entry
- * and every translation move to the new tag together, and the default follows
- * when it is the language being relabelled. An existing language is never
+ * Says that text marked as the unidentified language, as a protocol made
+ * before protocols declared their languages is, is written in `tag`: the
+ * declaration entry and every translation move to the new tag together, and
+ * the default follows when it is the unidentified language. A language that
+ * has been identified is never renamed, and an existing language is never
  * merged into.
  */
-export const relabelLocale = (
+export const identifyUnspecifiedLocale = (
   protocol: CurrentProtocol,
-  from: LocaleTag,
   tag: string,
 ): LocaleOperationResult => {
-  if (!isDeclared(protocol, from)) return fail('not-declared');
+  if (!isDeclared(protocol, UNSPECIFIED_LOCALE)) return fail('not-declared');
   const resolved = resolveNewLocale(protocol, tag);
   if (!resolved.ok) return fail(resolved.reason);
   const to = resolved.locale;
@@ -310,12 +311,14 @@ export const relabelLocale = (
   return {
     ok: true,
     protocol: {
-      ...rewriteLocalizedStrings(protocol, relabelledLocale(from, to)),
+      ...rewriteLocalizedStrings(protocol, identifiedLocale(to)),
       localization: {
         defaultLocale:
-          localization.defaultLocale === from ? to : localization.defaultLocale,
+          localization.defaultLocale === UNSPECIFIED_LOCALE
+            ? to
+            : localization.defaultLocale,
         locales: localization.locales.map((declared) =>
-          declared === from ? to : declared,
+          declared === UNSPECIFIED_LOCALE ? to : declared,
         ),
       },
     },

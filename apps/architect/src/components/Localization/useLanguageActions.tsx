@@ -14,18 +14,17 @@ import {
 import { useAppDispatch, useAppStore } from '~/ducks/hooks';
 import {
   addProtocolLocales,
-  relabelProtocolLocale,
+  identifyProtocolLocale,
   removeProtocolLocale,
 } from '~/ducks/modules/activeProtocol';
 import {
   getLocaleRemovalImpact,
+  identifiedLocale,
   type LocaleRemovalImpact,
   type LocalizedStringRewrite,
-  relabelledLocale,
   withoutLocale,
 } from '~/ducks/modules/protocol/localeOperations';
 import { getProtocol } from '~/selectors/protocol';
-import { UNSPECIFIED_LOCALE } from '~/utils/localizedText';
 
 import { getLanguageChoices } from './languageChoices';
 import {
@@ -57,19 +56,6 @@ const messages = defineMessages({
     defaultMessage: 'Languages',
     description: 'Label of the searchable list of languages to add.',
   },
-  relabelTitle: {
-    id: 'architect.localization.languageActions.relabelTitle',
-    defaultMessage: 'Relabel {language} translations',
-    description:
-      'Title of the dialog that marks every text written in one protocol language as written in another. language is the current language name.',
-  },
-  relabelDescription: {
-    id: 'architect.localization.languageActions.relabelDescription',
-    defaultMessage:
-      'Use this when these translations are really in another language or regional variant, such as Mexican Spanish rather than Spanish. Every text marked as {language} will be marked as the language you choose. Nothing is translated or deleted.',
-    description:
-      'Explanation in the dialog that relabels a protocol language: when to use it and what it does. language is the current language name. The example names a regional variant of a language.',
-  },
   identifyTitle: {
     id: 'architect.localization.languageActions.identifyTitle',
     defaultMessage: 'Identify the language of your text',
@@ -87,25 +73,19 @@ const messages = defineMessages({
     id: 'architect.localization.languageActions.languageLabel',
     defaultMessage: 'Language',
     description:
-      'Label of the list of languages in the dialog that relabels a protocol language, or identifies the language of unidentified text.',
+      'Label of the list of languages in the dialog that identifies the language of unidentified text.',
   },
   chooseALanguage: {
     id: 'architect.localization.languageActions.chooseALanguage',
     defaultMessage: 'Choose a language',
     description:
-      'Placeholder of the list of languages that text can be relabelled as.',
+      'Placeholder of the list of languages that unidentified text can be identified as.',
   },
   chooseOne: {
     id: 'architect.localization.languageActions.chooseOne',
     defaultMessage: 'Choose a language.',
     description:
-      'Error when the dialog that relabels a protocol language is submitted without a language.',
-  },
-  relabelSubmit: {
-    id: 'architect.localization.languageActions.relabelSubmit',
-    defaultMessage: 'Relabel translations',
-    description:
-      'Submit button of the dialog that marks every text written in one protocol language as written in another.',
+      'Error when the dialog that identifies the language of unidentified text is submitted without a language.',
   },
   identifySubmit: {
     id: 'architect.localization.languageActions.identifySubmit',
@@ -233,61 +213,51 @@ export const useLanguageActions = (
     if (locales.length > 0) dispatch(addProtocolLocales({ locales }));
   }, [availableChoices, declared, dispatch, finalFocus, intl, openDialog]);
 
-  const relabelLanguage = useCallback(
-    async (from: LocaleTag, returnFocus?: ReturnFocus) => {
-      if (!declared) return;
-      const isUnspecified = from === UNSPECIFIED_LOCALE;
-      const values = await openDialog({
-        type: 'form',
-        title: isUnspecified
-          ? intl.formatMessage(messages.identifyTitle)
-          : intl.formatMessage(messages.relabelTitle, {
-              language: languageName(from),
-            }),
-        description: isUnspecified
-          ? intl.formatMessage(messages.identifyDescription)
-          : intl.formatMessage(messages.relabelDescription, {
-              language: languageName(from),
-            }),
-        submitLabel: intl.formatMessage(
-          isUnspecified ? messages.identifySubmit : messages.relabelSubmit,
-        ),
-        finalFocus: focusAfter(returnFocus),
-        children: (
-          <Field<typeof NativeSelectField>
-            name="language"
-            label={intl.formatMessage(messages.languageLabel)}
-            component={NativeSelectField}
-            placeholder={intl.formatMessage(messages.chooseALanguage)}
-            options={availableChoices(declared).map((choice) => ({
-              value: choice.locale,
-              label: languageOptionText(intl, choice),
-            }))}
-            required={intl.formatMessage(messages.chooseOne)}
-          />
-        ),
-      });
-      if (!values) return;
-      const tag = values.language;
-      if (typeof tag !== 'string') return;
-      const before = declaredNow() ?? [];
-      dispatch(relabelProtocolLocale({ from, to: tag }));
-      // The language as the protocol now declares it, which is the tag after
-      // canonicalisation, and nothing at all if the change was refused.
-      const to = declaredNow()?.find((locale) => !before.includes(locale));
-      if (to !== undefined) rewriteDraft?.(relabelledLocale(from, to));
-    },
-    [
-      availableChoices,
-      declared,
-      declaredNow,
-      dispatch,
-      intl,
-      languageName,
-      openDialog,
-      rewriteDraft,
-    ],
-  );
+  /**
+   * Names the language of a protocol's unidentified text, the only language
+   * that can be renamed.
+   */
+  const identifyLanguage = useCallback(async () => {
+    if (!declared) return;
+    const values = await openDialog({
+      type: 'form',
+      title: intl.formatMessage(messages.identifyTitle),
+      description: intl.formatMessage(messages.identifyDescription),
+      submitLabel: intl.formatMessage(messages.identifySubmit),
+      finalFocus,
+      children: (
+        <Field<typeof NativeSelectField>
+          name="language"
+          label={intl.formatMessage(messages.languageLabel)}
+          component={NativeSelectField}
+          placeholder={intl.formatMessage(messages.chooseALanguage)}
+          options={availableChoices(declared).map((choice) => ({
+            value: choice.locale,
+            label: languageOptionText(intl, choice),
+          }))}
+          required={intl.formatMessage(messages.chooseOne)}
+        />
+      ),
+    });
+    if (!values) return;
+    const tag = values.language;
+    if (typeof tag !== 'string') return;
+    const before = declaredNow() ?? [];
+    dispatch(identifyProtocolLocale({ locale: tag }));
+    // The language as the protocol now declares it, which is the tag after
+    // canonicalisation, and nothing at all if the change was refused.
+    const to = declaredNow()?.find((locale) => !before.includes(locale));
+    if (to !== undefined) rewriteDraft?.(identifiedLocale(to));
+  }, [
+    availableChoices,
+    declared,
+    declaredNow,
+    dispatch,
+    finalFocus,
+    intl,
+    openDialog,
+    rewriteDraft,
+  ]);
 
   const removeLanguage = useCallback(
     async (locale: LocaleTag, returnFocus?: ReturnFocus) => {
@@ -324,5 +294,5 @@ export const useLanguageActions = (
     ],
   );
 
-  return { addLanguages, relabelLanguage, removeLanguage, removalImpact };
+  return { addLanguages, identifyLanguage, removeLanguage, removalImpact };
 };

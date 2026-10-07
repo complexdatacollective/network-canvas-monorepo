@@ -30,6 +30,22 @@ const trilingual: CurrentProtocol = {
   ],
 };
 
+// Made before protocols declared their languages, so its text is marked as
+// the unidentified language.
+const migrated: CurrentProtocol = {
+  ...trilingual,
+  localization: { defaultLocale: 'und', locales: ['und'] },
+  stages: [
+    {
+      id: 'welcome',
+      type: 'Information',
+      label: { und: 'Welcome' },
+      title: { und: 'Hello' },
+      items: [],
+    },
+  ],
+};
+
 const DEFAULT_REASON =
   'To remove the default language, make another language the default first.';
 const STRANDED_REASON =
@@ -133,9 +149,6 @@ describe('LanguageList', () => {
     expect(
       within(menu).queryByRole('menuitem', { name: 'Make default' }),
     ).not.toBeInTheDocument();
-    expect(
-      within(menu).getByRole('menuitem', { name: 'Relabel translations…' }),
-    ).toBeVisible();
 
     const remove = within(menu).getByRole('menuitem', { name: 'Remove' });
     expect(remove).toHaveAttribute('aria-disabled', 'true');
@@ -168,7 +181,7 @@ describe('LanguageList', () => {
     });
     const remove = within(menu).getByRole('menuitem', { name: 'Remove' });
 
-    await user.keyboard('{ArrowDown}{ArrowDown}');
+    await user.keyboard('{ArrowDown}');
     expect(remove).toHaveFocus();
     await user.keyboard('{Enter}');
     expect(globalThis.__architectDialogMocks.confirm).not.toHaveBeenCalled();
@@ -220,29 +233,41 @@ describe('LanguageList', () => {
     );
   });
 
-  it('relabels a language’s translations, explaining when to, and returns focus to its menu button', async () => {
+  it('offers no way to rename a language', async () => {
     renderLanguageList();
-    const { openDialog } = globalThis.__architectDialogMocks;
 
     const menu = await openActions('German');
-    fireEvent.click(
-      within(menu).getByRole('menuitem', { name: 'Relabel translations…' }),
-    );
+    expect(
+      within(menu)
+        .getAllByRole('menuitem')
+        .map((item) => item.textContent),
+    ).toEqual(['Make default', 'Remove']);
+  });
+
+  it('identifies the language of unidentified text from its notice', async () => {
+    const { store } = renderLanguageList(migrated);
+    const { openDialog } = globalThis.__architectDialogMocks;
+    openDialog.mockResolvedValueOnce({ language: 'en' });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Identify language' }));
 
     await vi.waitFor(() => expect(openDialog).toHaveBeenCalledOnce());
-    const options = openDialog.mock.lastCall?.[0];
-    expect(options).toMatchObject({
-      title: 'Relabel German translations',
-      submitLabel: 'Relabel translations',
+    expect(openDialog.mock.lastCall?.[0]).toMatchObject({
+      title: 'Identify the language of your text',
+      submitLabel: 'Identify language',
     });
-    expect(options?.description).toMatch(
-      /^Use this when these translations are really in another language or regional variant/,
+    await vi.waitFor(() =>
+      expect(getProtocol(store.getState())?.localization).toEqual({
+        defaultLocale: 'en',
+        locales: ['en'],
+      }),
     );
-    expect(options?.description).toContain('Nothing is translated or deleted.');
-
-    const finalFocus = options?.finalFocus;
-    if (typeof finalFocus !== 'function') throw new Error('No finalFocus');
-    expect(finalFocus()).toBe(actionsTrigger('German'));
+    expect(getProtocol(store.getState())?.stages[0]?.label).toEqual({
+      en: 'Welcome',
+    });
+    expect(
+      screen.queryByRole('button', { name: 'Identify language' }),
+    ).not.toBeInTheDocument();
   });
 
   it('explains which translation participants see, in a closed disclosure', () => {

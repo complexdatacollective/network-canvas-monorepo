@@ -94,8 +94,8 @@ In Architect:
   Information interface and the Language Chooser. The Language Chooser's
   editor lists the languages participants will be offered, which is every
   language the protocol is written in, and manages them the same way as the
-  Languages page: you can add languages, make one the default, change a
-  language, and remove one, under the same rules.
+  Languages page: you can add languages, make one the default, and remove
+  one, under the same rules.
 - A preview opens in the language a participant with your browser would see,
   rather than in Architect's own language. A "Preview language" menu above it
   switches the interview to any of the protocol's languages while the preview

@@ -27,8 +27,8 @@ import assetManifest from './protocol/assetManifest';
 import codebook from './protocol/codebook';
 import {
   addLocales,
+  identifyUnspecifiedLocale,
   type LocaleOperationResult,
-  relabelLocale,
   removeLocale,
   setDefaultLocale,
   setLocalizedString,
@@ -102,12 +102,12 @@ const activeProtocolSlice = createSlice({
       applyLocaleOperation(state, (protocol) =>
         setDefaultLocale(protocol, action.payload.locale),
       ),
-    relabelProtocolLocale: (
+    identifyProtocolLocale: (
       state,
-      action: PayloadAction<{ from: string; to: string }>,
+      action: PayloadAction<{ locale: string }>,
     ) =>
       applyLocaleOperation(state, (protocol) =>
-        relabelLocale(protocol, action.payload.from, action.payload.to),
+        identifyUnspecifiedLocale(protocol, action.payload.locale),
       ),
     setProtocolTranslation: (
       state,
@@ -199,7 +199,7 @@ export const {
   addProtocolLocales,
   removeProtocolLocale,
   setProtocolDefaultLocale,
-  relabelProtocolLocale,
+  identifyProtocolLocale,
   setProtocolTranslation,
   setProtocolLocalizedString,
 } = activeProtocolSlice.actions;

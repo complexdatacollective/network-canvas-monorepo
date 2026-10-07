@@ -1,12 +1,4 @@
-import {
-  Check,
-  Ellipsis,
-  Languages,
-  Plus,
-  Star,
-  Table2,
-  Trash2,
-} from 'lucide-react';
+import { Check, Ellipsis, Plus, Star, Table2, Trash2 } from 'lucide-react';
 import { type MouseEvent, useId, useMemo, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { Link, useLocation } from 'wouter';
@@ -116,23 +108,11 @@ const messages = defineMessages({
     description:
       'Item in the menu of actions for one protocol language that makes it the default language.',
   },
-  relabel: {
-    id: 'architect.localization.languageList.relabel',
-    defaultMessage: 'Relabel translations…',
-    description:
-      'Item in the menu of actions for one protocol language. It opens a dialog that marks every text written in this language as written in another language, for when the language was chosen wrongly. Nothing is translated.',
-  },
   identifyLanguage: {
     id: 'architect.localization.languageList.identifyLanguage',
     defaultMessage: 'Identify language',
     description:
       'Button that names the language of text whose language has not been identified.',
-  },
-  identifyItem: {
-    id: 'architect.localization.languageList.identifyItem',
-    defaultMessage: 'Identify language…',
-    description:
-      'Item in the menu of actions for the unidentified language. It opens a dialog that names the language the text is written in.',
   },
   remove: {
     id: 'architect.localization.languageList.remove',
@@ -220,7 +200,7 @@ export const ProtocolLanguages = ({ draft }: ProtocolLanguagesProps) => {
   const coverage = useSelector(getLocalizationCoverage);
   const languageName = useLanguageName();
   const addButtonRef = useRef<HTMLButtonElement>(null);
-  const { addLanguages, relabelLanguage, removeLanguage, removalImpact } =
+  const { addLanguages, identifyLanguage, removeLanguage, removalImpact } =
     useLanguageActions(addButtonRef, draft);
   const locales = protocol?.localization.locales ?? EMPTY_LOCALES;
   const sortedLocales = useMemo(
@@ -267,7 +247,7 @@ export const ProtocolLanguages = ({ draft }: ProtocolLanguagesProps) => {
             <Button
               size="sm"
               color="warning"
-              onClick={() => void relabelLanguage(UNSPECIFIED_LOCALE)}
+              onClick={() => void identifyLanguage()}
             >
               {intl.formatMessage(messages.identifyLanguage)}
             </Button>
@@ -289,7 +269,6 @@ export const ProtocolLanguages = ({ draft }: ProtocolLanguagesProps) => {
               onMakeDefault={() =>
                 dispatch(setProtocolDefaultLocale({ locale }))
               }
-              onRelabel={(returnFocus) => relabelLanguage(locale, returnFocus)}
               onRemove={(returnFocus) => removeLanguage(locale, returnFocus)}
             />
           );
@@ -324,7 +303,6 @@ type LanguageRowProps = {
   total: number;
   strandedCount: number;
   onMakeDefault: () => void;
-  onRelabel: (returnFocus: ReturnFocus) => Promise<void>;
   onRemove: (returnFocus: ReturnFocus) => Promise<void>;
 };
 
@@ -333,7 +311,6 @@ const LanguageRow = ({
   total,
   strandedCount,
   onMakeDefault,
-  onRelabel,
   onRemove,
 }: LanguageRowProps) => {
   const intl = useAppIntl();
@@ -434,22 +411,16 @@ const LanguageRow = ({
         />
         <DropdownMenuContent side="bottom" align="end">
           {!isDefault && (
-            <DropdownMenuItem
-              icon={<Star aria-hidden />}
-              onClick={onMakeDefault}
-            >
-              {intl.formatMessage(messages.makeDefault)}
-            </DropdownMenuItem>
+            <>
+              <DropdownMenuItem
+                icon={<Star aria-hidden />}
+                onClick={onMakeDefault}
+              >
+                {intl.formatMessage(messages.makeDefault)}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+            </>
           )}
-          <DropdownMenuItem
-            icon={<Languages aria-hidden />}
-            onClick={runMenuAction(onRelabel)}
-          >
-            {intl.formatMessage(
-              isUnspecified ? messages.identifyItem : messages.relabel,
-            )}
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
           {removalBlockedReason ? (
             // Disabled items stay reachable with the arrow keys, and the
             // reason is part of the item rather than a tooltip, so it is read
