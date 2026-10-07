@@ -25,5 +25,9 @@ A button whose label is too long for it now cuts the label off with an
 ellipsis at its end, instead of clipping both the start and the end of the
 label.
 
+`ProgressBar` takes a `tone` of `neutral` (the default, unchanged) or `info`.
+An `info` bar fills its unfinished progress with the info colour, so a bar
+under way reads apart from both an empty track and a complete bar.
+
 **Breaking:** `SelectOption.lang` is removed. Pass a label in another language
 as `{ text, lang, dir }` instead, as `LocaleSelect` now does.
