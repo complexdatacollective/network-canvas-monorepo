@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Provider } from 'react-redux';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
@@ -271,12 +271,19 @@ describe('PassphrasePrompter in an interview whose passphrase has been chosen', 
     await user.type(passphrase, '{Enter}');
     expect(deriveKey).toHaveBeenCalledTimes(1);
 
-    // Nor can the dialog be closed, to be opened again and offer another.
+    // Nor can the dialog be closed, to be opened again and offer another, or
+    // to leave the passphrase it is checking to come into force unseen.
     expect(
       within(dialog).queryByRole('button', { name: 'Close' }),
     ).not.toBeInTheDocument();
     await user.keyboard('{Escape}');
+    await user.click(document.body);
+    // Long enough for a closing dialog to have gone.
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 600));
+    });
     expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(store.getState().ui.encryptionKeyId).toBeNull();
 
     release();
 
