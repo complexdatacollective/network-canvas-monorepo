@@ -24,13 +24,9 @@ export function HomepageEntrance({
   return (
     <>
       <HomepagePageBackground reveal={revealBackground} />
-      <div>
-        <HeroIntro
-          newsItems={newsItems}
-          onEntranceStart={handleEntranceStart}
-        />
+      <HeroIntro newsItems={newsItems} onEntranceStart={handleEntranceStart}>
         {children}
-      </div>
+      </HeroIntro>
     </>
   );
 }

@@ -21,7 +21,7 @@ export function Header({
   entranceVariants,
   host = 'website',
 }: {
-  activeItemId?: 'home' | 'getStarted' | 'protocolGallery';
+  activeItemId?: 'home' | 'getStarted' | 'protocolGallery' | 'updates';
   className?: string;
   containerClassName?: string;
   entranceVariants?: Variants;
