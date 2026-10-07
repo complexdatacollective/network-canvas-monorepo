@@ -51,9 +51,9 @@ const withAge = (node: NcNode, age: number): NcNode => ({
  */
 const storedNameOrder = (nodes: NcNode[]) =>
   ids(
-    createSorter(byName.map(processProtocolSortRule(encryptedVariables)))(
-      nodes,
-    ),
+    createSorter<NcNode>(
+      byName.map(processProtocolSortRule(encryptedVariables)),
+    )(nodes),
   );
 
 /**
