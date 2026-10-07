@@ -9,6 +9,7 @@ const expectedSizeClass: Record<DialogSize, string> = {
   editor: 'max-w-4xl',
   workspace: 'max-w-7xl',
   fullscreen: 'max-w-[100rem]',
+  viewport: 'max-w-none',
 };
 
 describe('Dialog', () => {

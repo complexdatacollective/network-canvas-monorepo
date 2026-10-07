@@ -18,6 +18,7 @@ describe('generateSecureAttributes', () => {
       component: 'Text',
       encrypted: true,
       name: '__proto__',
+      label: '__proto__',
       type: 'text',
     };
     const codebookVariables: Record<string, Variable> = Object.fromEntries([

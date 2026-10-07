@@ -26,7 +26,6 @@ const REQUEST = 'write-1';
  * lost on its way back, not never sent.
  */
 type KeyedWrite = Readonly<{
-  /** Dotted path of the contract procedure this exercises. */
   procedure: string;
   name: string;
   prepare?: (host: InMemoryHost) => Promise<void>;
@@ -49,7 +48,7 @@ const PORTRAIT = () =>
     name: 'Portrait',
     source: 'portrait.png',
     contentType: 'image/png',
-    bytes: new Blob([new Uint8Array([1, 2, 3])], { type: 'image/png' }),
+    bytes: new Uint8Array([1, 2, 3]),
   }) as const;
 
 function fixtureHost(): InMemoryHost {
@@ -61,7 +60,7 @@ function fixtureHost(): InMemoryHost {
 }
 
 async function stagePortrait(host: InMemoryHost): Promise<string> {
-  const staged = await host.client.resources.stage({
+  const staged = await host.adapter.rpcCall('ResourcesStage', {
     protocolId: host.protocolId,
     editId: EDIT,
     requestId: 'staging-1',
@@ -72,7 +71,7 @@ async function stagePortrait(host: InMemoryHost): Promise<string> {
 }
 
 async function takeLock(host: InMemoryHost): Promise<void> {
-  await host.client.acquireLock({
+  await host.adapter.rpcCall('AcquireLock', {
     protocolId: host.protocolId,
     sectionId: INFORMATION,
   });
@@ -85,27 +84,27 @@ function stageTemplate(host: InMemoryHost): Record<string, unknown> {
 
 const WRITES: readonly KeyedWrite[] = [
   {
-    procedure: 'submit',
+    procedure: 'Submit',
     name: 'submitting a stage',
     prepare: takeLock,
     run: (host, requestId) =>
-      host.client.submit({
+      host.adapter.rpcCall('Submit', {
         protocolId: host.protocolId,
         requestId,
         sectionId: INFORMATION,
         document: {
           ...host.store.read(INFORMATION).document,
-          label: 'Renamed by the retry enumeration',
+          label: { 'en-US': 'Renamed by the retry enumeration' },
         },
         revision: host.store.read(INFORMATION).revision,
       }),
   },
   {
-    procedure: 'submit',
+    procedure: 'Submit',
     name: 'submitting a stage that promotes a resource',
     prepare: takeLock,
     run: (host, requestId, staged) =>
-      host.client.submit({
+      host.adapter.rpcCall('Submit', {
         protocolId: host.protocolId,
         requestId,
         sectionId: INFORMATION,
@@ -115,12 +114,12 @@ const WRITES: readonly KeyedWrite[] = [
       }),
   },
   {
-    procedure: 'create',
+    procedure: 'Create',
     // The retry a promotion never covered: a create with nothing staged
     // carried no key at all, so a second attempt minted a second stage.
     name: 'creating a stage',
     run: (host, requestId) =>
-      host.client.create({
+      host.adapter.rpcCall('Create', {
         protocolId: host.protocolId,
         requestId,
         kind: 'stage',
@@ -128,10 +127,10 @@ const WRITES: readonly KeyedWrite[] = [
       }),
   },
   {
-    procedure: 'create',
+    procedure: 'Create',
     name: 'creating a stage that promotes a resource',
     run: (host, requestId, staged) =>
-      host.client.create({
+      host.adapter.rpcCall('Create', {
         protocolId: host.protocolId,
         requestId,
         kind: 'stage',
@@ -143,10 +142,10 @@ const WRITES: readonly KeyedWrite[] = [
       }),
   },
   {
-    procedure: 'resources.stage',
+    procedure: 'ResourcesStage',
     name: 'staging a file',
     run: (host, requestId) =>
-      host.client.resources.stage({
+      host.adapter.rpcCall('ResourcesStage', {
         protocolId: host.protocolId,
         editId: EDIT,
         requestId,
@@ -159,7 +158,7 @@ const WRITES: readonly KeyedWrite[] = [
 type State = Readonly<{ sections: string[]; staged: string[] }>;
 
 async function state(host: InMemoryHost): Promise<State> {
-  const listed = await host.client.resources.list({
+  const listed = await host.adapter.rpcCall('ResourcesList', {
     protocolId: host.protocolId,
     editId: EDIT,
     status: 'staged',
@@ -212,13 +211,13 @@ describe('a write is made once for its request id', () => {
     // imported file listed twice, with the id their submit promotes being the
     // one attempt they never heard about.
     const [first, again] = await Promise.all([
-      host.client.resources.stage({
+      host.adapter.rpcCall('ResourcesStage', {
         protocolId: host.protocolId,
         editId: EDIT,
         requestId: REQUEST,
         request: PORTRAIT(),
       }),
-      host.client.resources.stage({
+      host.adapter.rpcCall('ResourcesStage', {
         protocolId: host.protocolId,
         editId: EDIT,
         requestId: REQUEST,
@@ -227,7 +226,7 @@ describe('a write is made once for its request id', () => {
     ]);
 
     expect(again).toEqual(first);
-    const listed = await host.client.resources.list({
+    const listed = await host.adapter.rpcCall('ResourcesList', {
       protocolId: host.protocolId,
       editId: EDIT,
       status: 'staged',

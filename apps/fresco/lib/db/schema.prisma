@@ -70,6 +70,11 @@ model Protocol {
   lastModified    DateTime
   stages          Json
   codebook        Json
+  // The protocol's language declaration ({ defaultLocale, locales }). The
+  // default is the declaration every protocol migrated from a schema without
+  // languages carries, so rows stored before this column existed, and rows an
+  // older server inserts during a rolling deploy, read as that.
+  localization    Json        @default("{\"defaultLocale\":\"und\",\"locales\":[\"und\"]}")
   assets          Asset[]
   interviews      Interview[]
   experiments     Json?
@@ -91,25 +96,31 @@ model Asset {
 }
 
 model Interview {
-  id            String      @id @default(cuid()) // Cannot be bigint because we want to obfuscate the id
-  startTime     DateTime    @default(now())
-  finishTime    DateTime?
-  exportTime    DateTime?
-  lastUpdated   DateTime    @updatedAt
-  network       Json
-  participant   Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
-  participantId String
-  protocol      Protocol    @relation(fields: [protocolId], references: [id], onDelete: Cascade)
-  protocolId    String      @map("protocolId")
-  currentStep   Int         @default(0)
-  stageMetadata Json? // Used to store negative responses in tiestrength census and dyadcensus
-  isSynthetic   Boolean     @default(false)
+  id               String      @id @default(cuid()) // Cannot be bigint because we want to obfuscate the id
+  startTime        DateTime    @default(now())
+  finishTime       DateTime?
+  exportTime       DateTime?
+  lastUpdated      DateTime    @updatedAt
+  network          Json
+  participant      Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  participantId    String
+  protocol         Protocol    @relation(fields: [protocolId], references: [id], onDelete: Cascade)
+  protocolId       String      @map("protocolId")
+  currentStep      Int         @default(0)
+  stageMetadata    Json? // Used to store negative responses in tiestrength census and dyadcensus
+  isSynthetic      Boolean     @default(false)
   // Write-ordering guard for the interview sync endpoint. The participant's
   // browser numbers each sync it issues and the endpoint only applies one
   // carrying a higher number than the row already holds, so a request that
   // overtakes a newer one is discarded instead of rolling the interview back.
   // Not a timestamp: see the sync route for why the client clock will not do.
-  syncRevision  Int         @default(0)
+  syncRevision     Int         @default(0)
+  // The language the participant chose on a language chooser stage. Until one
+  // is chosen, the browser's languages decide on every load.
+  localePreference String?
+  // The protocol language last shown, recorded for exports and never used to
+  // choose one. Null until the interview first reports it.
+  locale           String?
 
   @@index(fields: [protocolId])
   @@index([participantId])
@@ -150,10 +161,10 @@ model AppSettings {
 }
 
 model Events {
-  id        String   @id @default(cuid())
-  timestamp DateTime @default(now())
-  type      String
-  message   String
+  id           String   @id @default(cuid())
+  timestamp    DateTime @default(now())
+  type         String
+  message      String
   // Stable message kind and named values for new records. The original
   // message remains the immutable audit/export record; legacy rows stay null.
   localization Json?

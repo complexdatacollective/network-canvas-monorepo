@@ -1,11 +1,10 @@
-import { AsyncIteratorClass } from '@orpc/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { Effect, Schema, Stream } from 'effect';
 import { Component, StrictMode, useState, type ReactNode } from 'react';
 import { describe, expect, it } from 'vitest';
 
-import type { ProtocolBuilderClient } from '@codaco/protocol-builder-core/contract';
-import type { ProtocolEvent } from '@codaco/protocol-builder-core/contract/schemas';
+import { ProtocolEventSchema } from '@codaco/protocol-builder-core/contract/schemas';
 import allInterfaces from '@codaco/protocols/e2e/all-interfaces/protocol.json';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import {
@@ -14,9 +13,16 @@ import {
 } from '@codaco/studio-sync/taxonomy';
 
 import { ProtocolBuilder } from '../../ProtocolBuilder.tsx';
-import { createInMemoryHost } from '../../testing/host/createInMemoryHost.ts';
+import {
+  createInMemoryHost,
+  type HandlerOverrides,
+  type InMemoryHost,
+} from '../../testing/host/createInMemoryHost.ts';
 import { sectionsFromProtocol } from '../../testing/host/sectionsFromProtocol.ts';
-import { useProtocolBuilderContext } from '../context.ts';
+import {
+  useProtocolBuilderContext,
+  type ProtocolBuilderAdapter,
+} from '../context.ts';
 import { useEntityTypes, useSection, useSectionMutation } from '../hooks.ts';
 
 /** The edit these calls are made from: one editor, open throughout. */
@@ -37,6 +43,13 @@ const COLLABORATOR = {
   displayName: 'Grace',
 };
 
+const isEnglishLabel = Schema.is(Schema.Struct({ 'en-US': Schema.String }));
+
+function englishLabel(document: SectionDoc): string {
+  const { label } = document;
+  return isEnglishLabel(label) ? label['en-US'] : 'unlabelled';
+}
+
 function newHost() {
   return createInMemoryHost({ sections: sectionsFromProtocol(FIXTURE) });
 }
@@ -54,18 +67,18 @@ function Label({
   counts: Counts;
   field: keyof Counts;
 }>) {
-  const label = useSection(id, (section) => String(section.document.label));
+  const label = useSection(id, (section) => englishLabel(section.document));
   counts[field] += 1;
   return <output aria-label={name}>{label ?? 'loading'}</output>;
 }
 
 async function renderObservers(
-  client: ProtocolBuilderClient,
+  adapter: ProtocolBuilderAdapter,
   protocolId: string,
 ) {
   const counts: Counts = { information: 0, egoForm: 0 };
   render(
-    <ProtocolBuilder client={client} protocolId={protocolId}>
+    <ProtocolBuilder adapter={adapter} protocolId={protocolId}>
       <Label
         name="information"
         id={INFORMATION}
@@ -87,19 +100,19 @@ async function renderObservers(
 describe('the protocol state layer', () => {
   it('re-renders only the observer of the section that changed', async () => {
     const host = newHost();
-    const counts = await renderObservers(host.client, host.protocolId);
+    const counts = await renderObservers(host.adapter, host.protocolId);
     const settled = { ...counts };
 
     const collaborator = host.asCollaborator(COLLABORATOR);
-    const held = await collaborator.acquireLock({
+    const held = await collaborator.rpcCall('AcquireLock', {
       protocolId: host.protocolId,
       sectionId: INFORMATION,
     });
-    await collaborator.submit({
+    await collaborator.rpcCall('Submit', {
       protocolId: host.protocolId,
       requestId: nextRequestId(),
       sectionId: INFORMATION,
-      document: { ...held.document, label: 'Renamed by Grace' },
+      document: { ...held.document, label: { 'en-US': 'Renamed by Grace' } },
       revision: held.revision,
     });
 
@@ -114,12 +127,12 @@ describe('the protocol state layer', () => {
 
   it('replays the revisions published while the channel was down', async () => {
     const host = newHost();
-    const watched = recordingClient(host.client);
-    const counts = await renderObservers(watched.client, host.protocolId);
+    const watched = recordingWatch(host);
+    const counts = await renderObservers(watched.adapter, host.protocolId);
     expect(counts.information).toBeGreaterThan(0);
 
     const collaborator = host.asCollaborator(COLLABORATOR);
-    const held = await collaborator.acquireLock({
+    const held = await collaborator.rpcCall('AcquireLock', {
       protocolId: host.protocolId,
       sectionId: INFORMATION,
     });
@@ -130,11 +143,14 @@ describe('the protocol state layer', () => {
     // The stream is cut before the write, so the revision reaches no open
     // watcher: resuming from the last cursor is the only way it can arrive.
     host.store.disconnectWatchers();
-    await collaborator.submit({
+    await collaborator.rpcCall('Submit', {
       protocolId: host.protocolId,
       requestId: nextRequestId(),
       sectionId: INFORMATION,
-      document: { ...held.document, label: 'Written while disconnected' },
+      document: {
+        ...held.document,
+        label: { 'en-US': 'Written while disconnected' },
+      },
       revision: held.revision,
     });
 
@@ -153,10 +169,10 @@ describe('the protocol state layer', () => {
 
   it('keeps a revision that landed while the section was being read', async () => {
     const host = newHost();
-    const delayed = delayedSectionReads(host.client);
+    const delayed = delayedSectionReads(host);
     const counts: Counts = { information: 0, egoForm: 0 };
     render(
-      <ProtocolBuilder client={delayed.client} protocolId={host.protocolId}>
+      <ProtocolBuilder adapter={delayed.adapter} protocolId={host.protocolId}>
         <Label
           name="information"
           id={INFORMATION}
@@ -166,20 +182,22 @@ describe('the protocol state layer', () => {
         <Label name="ego form" id={EGO_FORM} counts={counts} field="egoForm" />
       </ProtocolBuilder>,
     );
+    // The two observed sections, and the settings `ProtocolBuilder` reads for
+    // the protocol's languages.
     await waitFor(() => {
-      expect(delayed.waiting()).toBe(2);
+      expect(delayed.waiting()).toBe(3);
     });
 
     const collaborator = host.asCollaborator(COLLABORATOR);
-    const held = await collaborator.acquireLock({
+    const held = await collaborator.rpcCall('AcquireLock', {
       protocolId: host.protocolId,
       sectionId: INFORMATION,
     });
-    await collaborator.submit({
+    await collaborator.rpcCall('Submit', {
       protocolId: host.protocolId,
       requestId: nextRequestId(),
       sectionId: INFORMATION,
-      document: { ...held.document, label: 'Renamed by Grace' },
+      document: { ...held.document, label: { 'en-US': 'Renamed by Grace' } },
       revision: held.revision,
     });
     await waitFor(() => {
@@ -190,7 +208,7 @@ describe('the protocol state layer', () => {
 
     delayed.release();
 
-    // Both reads were released together, so the ego form's document arriving
+    // The reads were released together, so the ego form's document arriving
     // is the proof that the information section's older answer has been
     // through the cache too.
     await waitFor(() => {
@@ -206,10 +224,10 @@ describe('the protocol state layer', () => {
     // Nothing arrives on the channel, so the cache holds what it read and
     // keeps holding it: the state an editor opens in while a reconnect is
     // still catching up.
-    const client = silentChannel(host.client);
+    const adapter = silentChannel(host);
     const counts: Counts = { information: 0, egoForm: 0 };
     const view = render(
-      <ProtocolBuilder client={client} protocolId={host.protocolId}>
+      <ProtocolBuilder adapter={adapter} protocolId={host.protocolId}>
         <Label
           name="information"
           id={INFORMATION}
@@ -225,24 +243,24 @@ describe('the protocol state layer', () => {
     });
 
     const collaborator = host.asCollaborator(COLLABORATOR);
-    const held = await collaborator.acquireLock({
+    const held = await collaborator.rpcCall('AcquireLock', {
       protocolId: host.protocolId,
       sectionId: INFORMATION,
     });
-    await collaborator.submit({
+    await collaborator.rpcCall('Submit', {
       protocolId: host.protocolId,
       requestId: nextRequestId(),
       sectionId: INFORMATION,
-      document: { ...held.document, label: 'Renamed by Grace' },
+      document: { ...held.document, label: { 'en-US': 'Renamed by Grace' } },
       revision: held.revision,
     });
-    await collaborator.releaseLock({
+    await collaborator.rpcCall('ReleaseLock', {
       protocolId: host.protocolId,
       sectionId: INFORMATION,
     });
 
     view.rerender(
-      <ProtocolBuilder client={client} protocolId={host.protocolId}>
+      <ProtocolBuilder adapter={adapter} protocolId={host.protocolId}>
         <Label
           name="information"
           id={INFORMATION}
@@ -267,7 +285,7 @@ describe('the protocol state layer', () => {
     render(
       <StrictMode>
         <ProtocolBuilder
-          client={silentChannel(host.client)}
+          adapter={silentChannel(host)}
           protocolId={host.protocolId}
         >
           <Editor id={INFORMATION} />
@@ -294,10 +312,10 @@ describe('the protocol state layer', () => {
       nextId: () => 'place',
     });
     const created = sectionId({ kind: 'codebookNode', typeId: 'place' });
-    const gated = gatedSectionList(host.client);
-    const watched = watchedEvents(gated.client);
+    const gated = gatedSectionList(host);
+    const watched = watchedEvents(gated.adapter);
     render(
-      <ProtocolBuilder client={watched.client} protocolId={host.protocolId}>
+      <ProtocolBuilder adapter={watched.adapter} protocolId={host.protocolId}>
         <NodeTypes />
       </ProtocolBuilder>,
     );
@@ -308,12 +326,13 @@ describe('the protocol state layer', () => {
     // Created after the host answered the list and before that answer
     // arrived: the channel carries the new section while the list that does
     // not have it is still on its way, and nothing refetches the list.
-    await host.client.create({
+    await host.adapter.rpcCall('Create', {
       protocolId: host.protocolId,
       requestId: nextRequestId(),
       kind: 'codebookNode',
       document: {
         name: 'Place',
+        label: { 'en-US': 'Place' },
         color: 'node-color-seq-3',
         shape: { default: 'circle' },
         variables: {},
@@ -333,14 +352,14 @@ describe('the protocol state layer', () => {
 
   it('ignores an acquire that settles after the editor moved to another section', async () => {
     const host = newHost();
-    await host.asCollaborator(COLLABORATOR).acquireLock({
+    await host.asCollaborator(COLLABORATOR).rpcCall('AcquireLock', {
       protocolId: host.protocolId,
       sectionId: INFORMATION,
     });
-    const gated = gatedAcquire(host.client, INFORMATION);
+    const gated = gatedAcquire(host, INFORMATION);
 
     const view = render(
-      <ProtocolBuilder client={gated.client} protocolId={host.protocolId}>
+      <ProtocolBuilder adapter={gated.adapter} protocolId={host.protocolId}>
         <Lock id={INFORMATION} />
       </ProtocolBuilder>,
     );
@@ -349,7 +368,7 @@ describe('the protocol state layer', () => {
     });
 
     view.rerender(
-      <ProtocolBuilder client={gated.client} protocolId={host.protocolId}>
+      <ProtocolBuilder adapter={gated.adapter} protocolId={host.protocolId}>
         <Lock id={EGO_FORM} />
       </ProtocolBuilder>,
     );
@@ -372,10 +391,10 @@ describe('the protocol state layer', () => {
     // Held BEFORE the host sees it, so the release the cleanup sends for the
     // section this editor left arrives while nobody holds that lock and the
     // grant lands after it.
-    const gated = withheldAcquire(silentChannel(host.client), INFORMATION);
+    const gated = withheldAcquire(host, INFORMATION, SILENT);
 
     const view = render(
-      <ProtocolBuilder client={gated.client} protocolId={host.protocolId}>
+      <ProtocolBuilder adapter={gated.adapter} protocolId={host.protocolId}>
         <Lock id={INFORMATION} />
       </ProtocolBuilder>,
     );
@@ -384,7 +403,7 @@ describe('the protocol state layer', () => {
     });
 
     view.rerender(
-      <ProtocolBuilder client={gated.client} protocolId={host.protocolId}>
+      <ProtocolBuilder adapter={gated.adapter} protocolId={host.protocolId}>
         <Lock id={EGO_FORM} />
       </ProtocolBuilder>,
     );
@@ -412,7 +431,7 @@ describe('the protocol state layer', () => {
 
     render(
       <ProtocolBuilder
-        client={silentChannel(host.client)}
+        adapter={silentChannel(host)}
         protocolId={host.protocolId}
       >
         <Lock id={missing} />
@@ -429,15 +448,15 @@ describe('the protocol state layer', () => {
 
   it('does not open a cached section for editing before the acquire answers', async () => {
     const host = newHost();
-    await host.asCollaborator(COLLABORATOR).acquireLock({
+    await host.asCollaborator(COLLABORATOR).rpcCall('AcquireLock', {
       protocolId: host.protocolId,
       sectionId: INFORMATION,
     });
-    const gated = gatedAcquire(silentChannel(host.client), INFORMATION);
+    const gated = gatedAcquire(host, INFORMATION, SILENT);
     const counts: Counts = { information: 0, egoForm: 0 };
 
     render(
-      <ProtocolBuilder client={gated.client} protocolId={host.protocolId}>
+      <ProtocolBuilder adapter={gated.adapter} protocolId={host.protocolId}>
         <Label
           name="information"
           id={INFORMATION}
@@ -466,7 +485,7 @@ describe('the protocol state layer', () => {
 
   it('hands the editor what its submit promoted', async () => {
     const host = newHost();
-    const staged = await host.client.resources.stage({
+    const staged = await host.adapter.rpcCall('ResourcesStage', {
       protocolId: host.protocolId,
       editId: EDIT,
       requestId: 'request-1',
@@ -476,14 +495,14 @@ describe('the protocol state layer', () => {
         name: 'Portrait',
         source: 'portrait.png',
         contentType: 'image/png',
-        bytes: new Blob([new Uint8Array([1, 2, 3])], { type: 'image/png' }),
+        bytes: new Uint8Array([1, 2, 3]),
       },
     });
     if (staged.status !== 'ok') throw new Error('staging failed');
 
     render(
       <ProtocolBuilder
-        client={silentChannel(host.client)}
+        adapter={silentChannel(host)}
         protocolId={host.protocolId}
       >
         <PromotingEditor
@@ -511,7 +530,7 @@ describe('the protocol state layer', () => {
 
   it('repeats a save whose answer was lost under the id that save used', async () => {
     const host = newHost();
-    const staged = await host.client.resources.stage({
+    const staged = await host.adapter.rpcCall('ResourcesStage', {
       protocolId: host.protocolId,
       editId: EDIT,
       requestId: 'request-1',
@@ -521,14 +540,14 @@ describe('the protocol state layer', () => {
         name: 'Portrait',
         source: 'portrait.png',
         contentType: 'image/png',
-        bytes: new Blob([new Uint8Array([1, 2, 3])], { type: 'image/png' }),
+        bytes: new Uint8Array([1, 2, 3]),
       },
     });
     if (staged.status !== 'ok') throw new Error('staging failed');
-    const lost = lostAnswers(silentChannel(host.client));
+    const lost = lostAnswers(host, SILENT);
 
     render(
-      <ProtocolBuilder client={lost.client} protocolId={host.protocolId}>
+      <ProtocolBuilder adapter={lost.adapter} protocolId={host.protocolId}>
         <PromotingEditor
           id={INFORMATION}
           resourceId={staged.data.descriptor.id}
@@ -561,11 +580,11 @@ describe('the protocol state layer', () => {
 
   it('does not put back a section deleted while its acquire was in flight', async () => {
     const host = newHost();
-    const gated = gatedAcquire(host.client, INFORMATION);
+    const gated = gatedAcquire(host, INFORMATION);
     const cache = cacheProbe();
 
     const view = render(
-      <ProtocolBuilder client={gated.client} protocolId={host.protocolId}>
+      <ProtocolBuilder adapter={gated.adapter} protocolId={host.protocolId}>
         <cache.Probe />
         <Lock id={INFORMATION} />
       </ProtocolBuilder>,
@@ -576,7 +595,7 @@ describe('the protocol state layer', () => {
     });
 
     view.rerender(
-      <ProtocolBuilder client={gated.client} protocolId={host.protocolId}>
+      <ProtocolBuilder adapter={gated.adapter} protocolId={host.protocolId}>
         <cache.Probe />
         <Lock id={EGO_FORM} />
       </ProtocolBuilder>,
@@ -586,7 +605,7 @@ describe('the protocol state layer', () => {
       expect(host.store.holderOf(INFORMATION)).toBeUndefined();
     });
 
-    await host.asCollaborator(COLLABORATOR).delete({
+    await host.asCollaborator(COLLABORATOR).rpcCall('Delete', {
       protocolId: host.protocolId,
       sectionId: INFORMATION,
     });
@@ -613,7 +632,7 @@ describe('the protocol state layer', () => {
     render(
       <Boundary>
         <ProtocolBuilder
-          client={faultyAcquire(silentChannel(host.client), INFORMATION)}
+          adapter={faultyAcquire(host, INFORMATION, SILENT)}
           protocolId={host.protocolId}
         >
           <Lock id={INFORMATION} />
@@ -634,14 +653,14 @@ describe('the protocol state layer', () => {
 
   it('names the holder from the acquire, without waiting for a lock event', async () => {
     const host = newHost();
-    await host.asCollaborator(COLLABORATOR).acquireLock({
+    await host.asCollaborator(COLLABORATOR).rpcCall('AcquireLock', {
       protocolId: host.protocolId,
       sectionId: INFORMATION,
     });
 
     render(
       <ProtocolBuilder
-        client={silentChannel(host.client)}
+        adapter={silentChannel(host)}
         protocolId={host.protocolId}
       >
         <Lock id={INFORMATION} />
@@ -660,7 +679,7 @@ function Editor({ id }: Readonly<{ id: ProtocolSectionId }>) {
   return (
     <>
       <output aria-label="editing">
-        {document === undefined ? 'loading' : String(document.label)}
+        {document === undefined ? 'loading' : englishLabel(document)}
       </output>
       <output aria-label="saved">{saved}</output>
       <button
@@ -668,9 +687,11 @@ function Editor({ id }: Readonly<{ id: ProtocolSectionId }>) {
         disabled={document === undefined}
         onClick={() => {
           if (document === undefined) return;
-          void submit({ ...document, label: 'Saved' }).then((result) => {
-            setSaved(result.status);
-          });
+          void submit({ ...document, label: { 'en-US': 'Saved' } }).then(
+            (result) => {
+              setSaved(result.status);
+            },
+          );
         }}
       >
         save
@@ -732,41 +753,35 @@ function NodeTypes() {
   );
 }
 
-/**
- * The host's client with its answer for one section's `acquireLock` held at a
- * gate the test opens, so an acquire can settle after the editor that asked
- * for it has moved on.
- */
-function gatedAcquire(client: ProtocolBuilderClient, held: ProtocolSectionId) {
+const SILENT: HandlerOverrides = { WatchProtocol: () => Stream.never };
+
+function gatedAcquire(
+  host: InMemoryHost,
+  held: ProtocolSectionId,
+  base: HandlerOverrides = {},
+) {
   const gates: (() => void)[] = [];
   const released: string[] = [];
-  const acquireLock: ProtocolBuilderClient['acquireLock'] = async (
-    input,
-    options,
-  ) => {
-    const answer = await client.acquireLock(input, options);
-    if (input.sectionId === held) {
-      await new Promise<void>((open) => gates.push(open));
-    }
-    return answer;
-  };
-  const releaseLock: ProtocolBuilderClient['releaseLock'] = (
-    input,
-    options,
-  ) => {
-    released.push(input.sectionId);
-    return client.releaseLock(input, options);
-  };
-  const wrapped = new Proxy(client, {
-    get: (target, property) =>
-      property === 'acquireLock'
-        ? acquireLock
-        : property === 'releaseLock'
-          ? releaseLock
-          : Reflect.get(target, property),
+  const adapter = host.adapterWith({
+    ...base,
+    AcquireLock: (input) =>
+      Effect.flatMap(host.handle.AcquireLock(input), (answer) =>
+        input.sectionId === held
+          ? Effect.as(
+              Effect.promise(
+                () => new Promise<void>((open) => gates.push(open)),
+              ),
+              answer,
+            )
+          : Effect.succeed(answer),
+      ),
+    ReleaseLock: (input) => {
+      released.push(input.sectionId);
+      return host.handle.ReleaseLock(input);
+    },
   });
   return {
-    client: wrapped,
+    adapter,
     waiting: () => gates.length,
     releases: (id: ProtocolSectionId) =>
       released.filter((section) => section === id).length,
@@ -776,69 +791,60 @@ function gatedAcquire(client: ProtocolBuilderClient, held: ProtocolSectionId) {
   };
 }
 
-/**
- * The host's client with one section's `acquireLock` answered by a result
- * whose document cannot be read: a bug in what the hook does with an answer,
- * rather than anything the host said about it.
- */
 function faultyAcquire(
-  client: ProtocolBuilderClient,
+  host: InMemoryHost,
   faulty: ProtocolSectionId,
-): ProtocolBuilderClient {
-  const acquireLock: ProtocolBuilderClient['acquireLock'] = async (
-    input,
-    options,
-  ) => {
-    const answer = await client.acquireLock(input, options);
-    if (input.sectionId !== faulty) return answer;
-    return {
-      lock: 'held',
-      revision: answer.revision,
-      get document(): SectionDoc {
-        throw new Error('bug reading the acquired document');
-      },
-    };
-  };
-  return new Proxy(client, {
-    get: (target, property) =>
-      property === 'acquireLock' ? acquireLock : Reflect.get(target, property),
+  base: HandlerOverrides = {},
+): ProtocolBuilderAdapter {
+  return host.adapterWith({
+    ...base,
+    AcquireLock: (input) =>
+      Effect.map(host.handle.AcquireLock(input), (answer) =>
+        input.sectionId !== faulty
+          ? answer
+          : {
+              lock: 'held' as const,
+              revision: answer.revision,
+              get document(): SectionDoc {
+                throw new Error('bug reading the acquired document');
+              },
+            },
+      ),
   });
 }
 
 /**
- * The host's client with the first `submit` answered by a dropped connection.
- *
  * The host makes the write and the caller is told only that the call failed,
  * which is all a client has when a socket closes between a request and its
- * answer: an oRPC link rejects the calls that were in flight and reconnects
- * only the ones that follow, so nothing resends this one.
+ * answer: the socket protocol fails the calls that were in flight and
+ * reconnects only for the ones that follow, so nothing resends this one.
  */
-function lostAnswers(client: ProtocolBuilderClient) {
+function lostAnswers(host: InMemoryHost, base: HandlerOverrides = {}) {
   const requestIds: string[] = [];
   let lost = false;
-  const submit: ProtocolBuilderClient['submit'] = async (input, options) => {
-    requestIds.push(input.requestId);
-    const answer = await client.submit(input, options);
-    if (lost) return answer;
-    lost = true;
-    throw new Error('WebSocket closed (code 1006)');
-  };
-  const wrapped = new Proxy(client, {
-    get: (target, property) =>
-      property === 'submit' ? submit : Reflect.get(target, property),
+  const adapter = host.adapterWith({
+    ...base,
+    Submit: (input) => {
+      requestIds.push(input.requestId);
+      return Effect.flatMap(host.handle.Submit(input), (answer) => {
+        if (lost) return Effect.succeed(answer);
+        lost = true;
+        return Effect.die(new Error('WebSocket closed (code 1006)'));
+      });
+    },
   });
-  return { client: wrapped, requestIds: () => requestIds };
+  return { adapter, requestIds: () => requestIds };
 }
 
 /** The section cache as the hooks leave it, which no rendered output shows. */
 function cacheProbe() {
   let read: ((id: ProtocolSectionId) => unknown) | undefined;
   function Probe() {
-    const { protocolId, utils } = useProtocolBuilderContext();
+    const { protocolId, adapter } = useProtocolBuilderContext();
     const queryClient = useQueryClient();
     read = (id) =>
       queryClient.getQueryData(
-        utils.getSection.queryKey({ input: { protocolId, sectionId: id } }),
+        adapter.rpcKey('GetSection', { protocolId, sectionId: id }),
       );
     return null;
   }
@@ -873,33 +879,28 @@ class Boundary extends Component<
   }
 }
 
-/**
- * The host's client with one section's `acquireLock` held at a gate the test
- * opens BEFORE the request reaches the host, so an acquire can be granted
- * after the editor that asked for it has already given the lock back.
- */
 function withheldAcquire(
-  client: ProtocolBuilderClient,
+  host: InMemoryHost,
   held: ProtocolSectionId,
+  base: HandlerOverrides = {},
 ) {
   const gates: (() => void)[] = [];
   const granted: string[] = [];
-  const acquireLock: ProtocolBuilderClient['acquireLock'] = async (
-    input,
-    options,
-  ) => {
-    if (input.sectionId !== held) return client.acquireLock(input, options);
-    await new Promise<void>((open) => gates.push(open));
-    const answer = await client.acquireLock(input, options);
-    granted.push(answer.lock);
-    return answer;
-  };
-  const wrapped = new Proxy(client, {
-    get: (target, property) =>
-      property === 'acquireLock' ? acquireLock : Reflect.get(target, property),
+  const adapter = host.adapterWith({
+    ...base,
+    AcquireLock: (input) =>
+      input.sectionId !== held
+        ? host.handle.AcquireLock(input)
+        : Effect.flatMap(
+            Effect.promise(() => new Promise<void>((open) => gates.push(open))),
+            () =>
+              Effect.tap(host.handle.AcquireLock(input), (answer) =>
+                Effect.sync(() => granted.push(answer.lock)),
+              ),
+          ),
   });
   return {
-    client: wrapped,
+    adapter,
     waiting: () => gates.length,
     granted: () => granted,
     release: () => {
@@ -908,29 +909,19 @@ function withheldAcquire(
   };
 }
 
-/**
- * The host's client with its `listSections` answer held at a gate the test
- * opens, so a section can be created after the host formed the answer and
- * before the client has it.
- */
-function gatedSectionList(client: ProtocolBuilderClient) {
+function gatedSectionList(host: InMemoryHost) {
   const gates: (() => void)[] = [];
-  const listSections: ProtocolBuilderClient['listSections'] = async (
-    input,
-    options,
-  ) => {
-    const answer = await client.listSections(input, options);
-    await new Promise<void>((open) => gates.push(open));
-    return answer;
-  };
-  const wrapped = new Proxy(client, {
-    get: (target, property) =>
-      property === 'listSections'
-        ? listSections
-        : Reflect.get(target, property),
+  const adapter = host.adapterWith({
+    ListSections: (input) =>
+      Effect.flatMap(host.handle.ListSections(input), (answer) =>
+        Effect.as(
+          Effect.promise(() => new Promise<void>((open) => gates.push(open))),
+          answer,
+        ),
+      ),
   });
   return {
-    client: wrapped,
+    adapter,
     waiting: () => gates.length,
     release: () => {
       for (const open of gates.splice(0)) open();
@@ -953,26 +944,19 @@ function Lock({ id }: Readonly<{ id: ProtocolSectionId }>) {
   );
 }
 
-/**
- * The host's client with every `getSection` answer held at a gate the test
- * opens, so a revision can be published while a read is in flight.
- */
-function delayedSectionReads(client: ProtocolBuilderClient) {
+function delayedSectionReads(host: InMemoryHost) {
   const gates: (() => void)[] = [];
-  const getSection: ProtocolBuilderClient['getSection'] = async (
-    input,
-    options,
-  ) => {
-    const answer = await client.getSection(input, options);
-    await new Promise<void>((open) => gates.push(open));
-    return answer;
-  };
-  const wrapped = new Proxy(client, {
-    get: (target, property) =>
-      property === 'getSection' ? getSection : Reflect.get(target, property),
+  const adapter = host.adapterWith({
+    GetSection: (input) =>
+      Effect.flatMap(host.handle.GetSection(input), (answer) =>
+        Effect.as(
+          Effect.promise(() => new Promise<void>((open) => gates.push(open))),
+          answer,
+        ),
+      ),
   });
   return {
-    client: wrapped,
+    adapter,
     waiting: () => gates.length,
     release: () => {
       for (const open of gates.splice(0)) open();
@@ -980,86 +964,46 @@ function delayedSectionReads(client: ProtocolBuilderClient) {
   };
 }
 
-/**
- * The host's client, recording each revision the channel has finished
- * applying: the event is recorded after the consumer's loop body has run, so
- * a test can sequence itself against what the cache has already been told.
- */
-function watchedEvents(client: ProtocolBuilderClient) {
+const isProtocolEvent = Schema.is(ProtocolEventSchema);
+
+function watchedEvents(adapter: ProtocolBuilderAdapter) {
   const applied: string[] = [];
-  const watchProtocol: ProtocolBuilderClient['watchProtocol'] = async (
-    input,
-    options,
-  ) => {
-    const events = await client.watchProtocol(input, options);
-    let handled: ProtocolEvent | undefined;
-    return new AsyncIteratorClass<ProtocolEvent, void, void>(
-      async () => {
-        // Asking for the next event is the channel saying it has finished
-        // with the last one, so what it did with that one is already in the
-        // cache — which is the ordering this test needs to sequence against.
-        if (handled?.type === 'revision') applied.push(handled.sectionId);
-        handled = undefined;
-        const next = await events.next();
-        if (next.done === true) return { done: true, value: undefined };
-        handled = next.value;
-        return { done: false, value: next.value };
-      },
-      async () => {
-        await events.return?.(undefined);
-      },
-    );
+  return {
+    adapter: {
+      ...adapter,
+      rpcStream: (tag, payload, onChunk, signal) =>
+        adapter.rpcStream(
+          tag,
+          payload,
+          (chunk) => {
+            onChunk(chunk);
+            if (isProtocolEvent(chunk) && chunk.type === 'revision') {
+              applied.push(chunk.sectionId);
+            }
+          },
+          signal,
+        ),
+    } satisfies ProtocolBuilderAdapter,
+    applied: () => applied,
   };
-  const wrapped = new Proxy(client, {
-    get: (target, property) =>
-      property === 'watchProtocol'
-        ? watchProtocol
-        : Reflect.get(target, property),
-  });
-  return { client: wrapped, applied: () => applied };
 }
 
 /**
  * A host that answers procedures but publishes nothing — Architect's
- * in-process router, whose locks are always granted, has no lock events to
+ * in-process host, whose locks are always granted, has no lock events to
  * send.
  */
-function silentChannel(client: ProtocolBuilderClient): ProtocolBuilderClient {
-  const watchProtocol: ProtocolBuilderClient['watchProtocol'] = () =>
-    Promise.resolve(
-      new AsyncIteratorClass<ProtocolEvent, void, void>(
-        () => new Promise<never>(() => undefined),
-        () => Promise.resolve(),
-      ),
-    );
-  return new Proxy(client, {
-    get: (target, property) =>
-      property === 'watchProtocol'
-        ? watchProtocol
-        : Reflect.get(target, property),
-  });
+function silentChannel(host: InMemoryHost): ProtocolBuilderAdapter {
+  return host.adapterWith(SILENT);
 }
 
-/**
- * The host's client, recording the cursor each `watchProtocol` call resumes
- * from. The stream itself is untouched: the host cuts it.
- */
-function recordingClient(client: ProtocolBuilderClient) {
+function recordingWatch(host: InMemoryHost) {
   const since: (string | undefined)[] = [];
-  const watchProtocol: ProtocolBuilderClient['watchProtocol'] = (
-    input,
-    options,
-  ) => {
-    since.push(input.since);
-    return client.watchProtocol(input, options);
-  };
-  // The router client is a lazy proxy, so it cannot be spread: only its
-  // `watchProtocol` is replaced, and everything else resolves as before.
-  const wrapped = new Proxy(client, {
-    get: (target, property) =>
-      property === 'watchProtocol'
-        ? watchProtocol
-        : Reflect.get(target, property),
+  const adapter = host.adapterWith({
+    WatchProtocol: (input) => {
+      since.push(input.since);
+      return host.handle.WatchProtocol(input);
+    },
   });
-  return { client: wrapped, since: () => since };
+  return { adapter, since: () => since };
 }

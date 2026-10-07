@@ -10,12 +10,13 @@ function makeBaseProtocol(
   return {
     name: 'Test',
     description: '',
-    schemaVersion: 8,
+    schemaVersion: 9,
+    localization: { defaultLocale: 'en', locales: ['en'] },
     stages: [],
     codebook: { node: {}, edge: {}, ego: {} },
     assetManifest: {},
     ...overrides,
-  } as CurrentProtocol;
+  };
 }
 
 describe('currentProtocolToPayload', () => {
@@ -27,6 +28,22 @@ describe('currentProtocolToPayload', () => {
     expect(b.id).not.toBe(a.id);
     expect(() => new Date(a.importedAt).toISOString()).not.toThrow();
     expect(a.hash).toBe(b.hash); // hash is content-derived; uuid/timestamp are not in the hash input
+  });
+
+  it('hashes the protocol’s languages along with its structure', () => {
+    const english = currentProtocolToPayload(makeBaseProtocol());
+    const englishAndFrench = currentProtocolToPayload(
+      makeBaseProtocol({
+        localization: { defaultLocale: 'en', locales: ['en', 'fr'] },
+      }),
+    );
+    const frenchByDefault = currentProtocolToPayload(
+      makeBaseProtocol({
+        localization: { defaultLocale: 'fr', locales: ['en', 'fr'] },
+      }),
+    );
+    expect(englishAndFrench.hash).not.toBe(english.hash);
+    expect(frenchByDefault.hash).not.toBe(englishAndFrench.hash);
   });
 
   it('transforms file assetManifest entries into ResolvedAsset[] using source as name', () => {

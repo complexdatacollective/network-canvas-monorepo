@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
-import { getEntityTypeReferenceDescriptor } from '../../schemas/8/entity-type-reference.ts';
+import { getEntityTypeReferenceDescriptor } from '../../schemas/9/entity-type-reference.ts';
 import { CurrentProtocolSchema } from '../../schemas/index.ts';
 
 // Count every meta-tagged node reachable by the same traversal the extractor

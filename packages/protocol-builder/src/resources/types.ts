@@ -1,5 +1,3 @@
-import type { z } from 'zod';
-
 import type {
   ResourceContentKindSchema,
   ResourceDescriptorSchema,
@@ -15,18 +13,16 @@ import type {
  * The resource vocabulary the editor's controls speak, taken from the contract
  * so there is one definition of each.
  */
-export type ResourceKind = z.output<typeof ResourceKindSchema>;
-export type ResourceContentKind = z.output<typeof ResourceContentKindSchema>;
-export type ResourceStatus = z.output<typeof ResourceStatusSchema>;
-export type ResourceDescriptor = z.output<typeof ResourceDescriptorSchema>;
-export type ResourceInspection = z.output<typeof ResourceInspectionSchema>;
-export type ResourcePreview = z.output<typeof ResourcePreviewSchema>;
-export type ResourceFailureReason = z.output<
-  typeof ResourceFailureReasonSchema
->;
-export type ResourceGatewayFailure = z.output<
-  typeof ResourceGatewayFailureSchema
->;
+export type ResourceKind = (typeof ResourceKindSchema)['Type'];
+export type ResourceContentKind = (typeof ResourceContentKindSchema)['Type'];
+export type ResourceStatus = (typeof ResourceStatusSchema)['Type'];
+export type ResourceDescriptor = (typeof ResourceDescriptorSchema)['Type'];
+export type ResourceInspection = (typeof ResourceInspectionSchema)['Type'];
+export type ResourcePreview = (typeof ResourcePreviewSchema)['Type'];
+export type ResourceFailureReason =
+  (typeof ResourceFailureReasonSchema)['Type'];
+export type ResourceGatewayFailure =
+  (typeof ResourceGatewayFailureSchema)['Type'];
 
 export type ResourceResult<T> =
   | Readonly<{ status: 'ok'; data: T }>

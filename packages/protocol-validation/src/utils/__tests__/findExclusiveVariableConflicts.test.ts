@@ -3,16 +3,17 @@ import { describe, expect, it } from 'vitest';
 import {
   GENDER_IDENTITY_OPTIONS,
   GENDER_IDENTITY_TERMS,
-} from '../../schemas/8/__tests__/pedigreeGenderFixtures.ts';
+} from '../../schemas/9/__tests__/pedigreeGenderFixtures.ts';
 import {
   PEDIGREE_RELATIONSHIP_KIND_OPTIONS,
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
-} from '../../schemas/8/family-pedigree-values.ts';
-import ProtocolSchemaV8 from '../../schemas/8/schema.ts';
+} from '../../schemas/9/family-pedigree-values.ts';
+import ProtocolSchemaV9 from '../../schemas/9/schema.ts';
 import {
   findExclusiveVariableConflicts,
   findStageManagedOptionBindings,
 } from '../findExclusiveVariableConflicts.ts';
+import { localized, localizedOptions } from '../test-utils.ts';
 
 type Stage = Record<string, unknown>;
 
@@ -32,10 +33,10 @@ const edgeConfiguration = {
 
 const familyPedigree = (overrides: Stage = {}): Stage => ({
   id: 'fp1',
-  label: 'Family Pedigree',
+  label: localized('Family Pedigree'),
   type: 'FamilyPedigree',
   subject: { entity: 'node', type: 'family_member' },
-  prompt: 'Build your family',
+  prompt: localized('Build your family'),
   nodeConfiguration,
   edgeConfiguration,
   ...overrides,
@@ -43,46 +44,66 @@ const familyPedigree = (overrides: Stage = {}): Stage => ({
 
 const protocolWith = (stages: Stage[]) => ({
   name: 'Pedigree protocol',
-  schemaVersion: 8 as const,
+  schemaVersion: 9 as const,
+  localization: { defaultLocale: 'en', locales: ['en'] },
   codebook: {
     node: {
       family_member: {
         name: 'Family member',
+        label: localized('Family member'),
         color: 'node-color-seq-1',
         shape: { default: 'circle' as const },
         variables: {
-          fmName: { name: 'fm_name', type: 'text', component: 'Text' },
-          isEgo: { name: 'is_ego', type: 'boolean' },
+          fmName: {
+            name: 'fm_name',
+            label: 'fm_name',
+            type: 'text',
+            component: 'Text',
+          },
+          isEgo: { name: 'is_ego', label: 'is_ego', type: 'boolean' },
           genderIdentity: {
             name: 'genderIdentity',
+            label: 'genderIdentity',
             type: 'categorical',
             options: GENDER_IDENTITY_OPTIONS,
           },
           sexAssignedAtBirth: {
             name: 'sexAssignedAtBirth',
+            label: 'sexAssignedAtBirth',
             type: 'categorical',
-            options: PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
+            options: localizedOptions(PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS),
           },
-          hasConditionX: { name: 'hasConditionX', type: 'boolean' },
-          fmLayout: { name: 'fmLayout', type: 'layout' },
+          hasConditionX: {
+            name: 'hasConditionX',
+            label: 'hasConditionX',
+            type: 'boolean',
+          },
+          fmLayout: { name: 'fmLayout', label: 'fmLayout', type: 'layout' },
         },
       },
     },
     edge: {
       family_edge: {
         name: 'Family edge',
+        label: localized('Family edge'),
         color: 'edge-color-seq-1',
         variables: {
           relationshipKind: {
             name: 'relationshipKind',
+            label: 'relationshipKind',
             type: 'categorical',
-            options: PEDIGREE_RELATIONSHIP_KIND_OPTIONS,
+            options: localizedOptions(PEDIGREE_RELATIONSHIP_KIND_OPTIONS),
           },
           isGestationalCarrier: {
             name: 'isGestationalCarrier',
+            label: 'isGestationalCarrier',
             type: 'boolean',
           },
-          isCurrentPartner: { name: 'isCurrentPartner', type: 'boolean' },
+          isCurrentPartner: {
+            name: 'isCurrentPartner',
+            label: 'isCurrentPartner',
+            type: 'boolean',
+          },
         },
       },
     },
@@ -94,7 +115,7 @@ describe('findExclusiveVariableConflicts', () => {
   it('reports nothing for a well-formed pedigree', () => {
     const protocol = protocolWith([familyPedigree()]);
     expect(findExclusiveVariableConflicts(protocol)).toEqual([]);
-    const result = ProtocolSchemaV8.safeParse(protocol);
+    const result = ProtocolSchemaV9.safeParse(protocol);
     expect(result.success ? null : result.error.issues).toBeNull();
   });
 
@@ -108,14 +129,14 @@ describe('findExclusiveVariableConflicts', () => {
       familyPedigree(),
       {
         id: 'sg1',
-        label: 'Map your family',
+        label: localized('Map your family'),
         type: 'Sociogram',
         subject: { entity: 'node', type: 'family_member' },
         background: { concentricCircles: 4 },
         prompts: [
           {
             id: 'p1',
-            text: 'Place your family',
+            text: localized('Place your family'),
             layout: { layoutVariable: 'fmLayout' },
             highlight: { allowHighlighting: false, variable: 'isEgo' },
           },
@@ -123,7 +144,7 @@ describe('findExclusiveVariableConflicts', () => {
       },
     ]);
     expect(findExclusiveVariableConflicts(protocol)).toEqual([]);
-    const result = ProtocolSchemaV8.safeParse(protocol);
+    const result = ProtocolSchemaV9.safeParse(protocol);
     expect(result.success ? null : result.error.issues).toBeNull();
   });
 
@@ -134,14 +155,14 @@ describe('findExclusiveVariableConflicts', () => {
       familyPedigree(),
       {
         id: 'sg1',
-        label: 'Map your family',
+        label: localized('Map your family'),
         type: 'Sociogram',
         subject: { entity: 'node', type: 'family_member' },
         background: { concentricCircles: 4 },
         prompts: [
           {
             id: 'p1',
-            text: 'Place your family',
+            text: localized('Place your family'),
             layout: { layoutVariable: 'fmLayout' },
             highlight: { allowHighlighting: true, variable: 'isEgo' },
           },
@@ -152,14 +173,19 @@ describe('findExclusiveVariableConflicts', () => {
     expect(conflicts.map((conflict) => conflict.path)).toEqual([
       ['stages', 1, 'prompts', 0, 'highlight', 'variable'],
     ]);
-    expect(ProtocolSchemaV8.safeParse(protocol).success).toBe(false);
+    expect(ProtocolSchemaV9.safeParse(protocol).success).toBe(false);
   });
 
   it('reports a form field bound to the participant marker', () => {
     const protocol = protocolWith([
       familyPedigree({
         form: {
-          fields: [{ variable: 'isEgo', prompt: 'Are you the participant?' }],
+          fields: [
+            {
+              variable: 'isEgo',
+              prompt: localized('Are you the participant?'),
+            },
+          ],
         },
       }),
     ]);
@@ -171,16 +197,16 @@ describe('findExclusiveVariableConflicts', () => {
       'familyPedigree.nodeConfiguration.egoAttribute',
     );
     expect(conflicts[0]?.variableName).toBe('is_ego');
-    expect(ProtocolSchemaV8.safeParse(protocol).success).toBe(false);
+    expect(ProtocolSchemaV9.safeParse(protocol).success).toBe(false);
   });
 
   it('accepts two FamilyPedigree stages that share one node type and its structural slots', () => {
     const protocol = protocolWith([
       familyPedigree(),
-      familyPedigree({ id: 'fp2', label: 'Second pedigree' }),
+      familyPedigree({ id: 'fp2', label: localized('Second pedigree') }),
     ]);
     expect(findExclusiveVariableConflicts(protocol)).toEqual([]);
-    expect(ProtocolSchemaV8.safeParse(protocol).success).toBe(true);
+    expect(ProtocolSchemaV9.safeParse(protocol).success).toBe(true);
   });
 
   it('reports one variable claimed by two DIFFERENT exclusive slots', () => {
@@ -207,9 +233,16 @@ describe('findExclusiveVariableConflicts', () => {
       familyPedigree(),
       {
         id: 'info1',
-        label: 'Wrap up',
+        label: localized('Wrap up'),
         type: 'Information',
-        items: [{ id: 'i1', type: 'text', content: 'Thanks', size: 'MEDIUM' }],
+        items: [
+          {
+            id: 'i1',
+            type: 'text',
+            content: localized('Thanks'),
+            size: 'MEDIUM',
+          },
+        ],
         skipLogic: {
           action: 'SKIP',
           filter: {
@@ -239,11 +272,15 @@ describe('findExclusiveVariableConflicts', () => {
       familyPedigree(),
       {
         id: 'cb1',
-        label: 'Sort by gender',
+        label: localized('Sort by gender'),
         type: 'CategoricalBin',
         subject: { entity: 'node', type: 'family_member' },
         prompts: [
-          { id: 'p1', text: 'Sort your family', variable: 'genderIdentity' },
+          {
+            id: 'p1',
+            text: localized('Sort your family'),
+            variable: 'genderIdentity',
+          },
         ],
       },
     ]);
@@ -251,30 +288,52 @@ describe('findExclusiveVariableConflicts', () => {
   });
 
   it('still rejects a bin whose options have drifted from the interface-owned set', () => {
-    const protocol = protocolWith([
+    const base = protocolWith([
       familyPedigree(),
       {
         id: 'cb1',
-        label: 'Sort by sex assigned at birth',
+        label: localized('Sort by sex assigned at birth'),
         type: 'CategoricalBin',
         subject: { entity: 'node', type: 'family_member' },
         prompts: [
           {
             id: 'p1',
-            text: 'Sort your family',
+            text: localized('Sort your family'),
             variable: 'sexAssignedAtBirth',
           },
         ],
       },
     ]);
-    protocol.codebook.node.family_member.variables.sexAssignedAtBirth = {
-      name: 'sexAssignedAtBirth',
-      type: 'categorical',
-      options: PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS.map((option) =>
-        option.value === 'female' ? { ...option, label: 'Woman' } : option,
-      ),
+    const familyMember = base.codebook.node.family_member;
+    const protocol = {
+      ...base,
+      codebook: {
+        ...base.codebook,
+        node: {
+          family_member: {
+            ...familyMember,
+            variables: {
+              ...familyMember.variables,
+              sexAssignedAtBirth: {
+                name: 'sexAssignedAtBirth',
+                label: 'sexAssignedAtBirth',
+                type: 'categorical',
+                // Option labels are localized copy, so only a changed value
+                // drifts.
+                options: localizedOptions<string>(
+                  PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
+                ).map((option) =>
+                  option.value === 'female'
+                    ? { ...option, value: 'woman' }
+                    : option,
+                ),
+              },
+            },
+          },
+        },
+      },
     };
-    const result = ProtocolSchemaV8.safeParse(protocol);
+    const result = ProtocolSchemaV9.safeParse(protocol);
     expect(result.success).toBe(false);
     expect(
       result.error?.issues.some((issue) =>
@@ -308,7 +367,7 @@ describe('findStageManagedOptionBindings', () => {
   it('returns one binding per stage when several stages bind the attribute', () => {
     const protocol = protocolWith([
       familyPedigree(),
-      familyPedigree({ id: 'fp2', label: 'Second family' }),
+      familyPedigree({ id: 'fp2', label: localized('Second family') }),
     ]);
     expect(
       findStageManagedOptionBindings(protocol).map(
@@ -333,13 +392,15 @@ describe('findStageManagedOptionBindings', () => {
       familyPedigree(),
       {
         id: 'ask',
-        label: 'Ask gender',
+        label: localized('Ask gender'),
         type: 'NameGenerator',
         subject: { entity: 'node', type: 'family_member' },
         form: {
-          fields: [{ variable: 'genderIdentity', prompt: 'Gender?' }],
+          fields: [
+            { variable: 'genderIdentity', prompt: localized('Gender?') },
+          ],
         },
-        prompts: [{ id: 'p1', text: 'Name people' }],
+        prompts: [{ id: 'p1', text: localized('Name people') }],
       },
     ]);
     expect(

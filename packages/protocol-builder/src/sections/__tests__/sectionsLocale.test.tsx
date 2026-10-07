@@ -21,6 +21,9 @@ import InterviewerGuidanceSection from '../interviewer-guidance/InterviewerGuida
 import NetworkFilterSection from '../network-filter/NetworkFilterSection.tsx';
 import SkipLogicSection from '../skip-logic/SkipLogicSection.tsx';
 
+/** Protocol copy in the fixture's one language. */
+const en = (text: string) => ({ 'en-US': text });
+
 /**
  * The three sections every stage editor composes, read in Spanish.
  *
@@ -303,8 +306,9 @@ describe('the form-fields section, read in Spanish', () => {
     seedPersonVariables(harness, {
       closeness: {
         name: 'closeness',
+        label: 'closeness',
         type: 'scalar',
-        parameters: { minLabel: 'Nada cerca', maxLabel: 'Muy cerca' },
+        parameters: { minLabel: en('Nada cerca'), maxLabel: en('Muy cerca') },
       },
     });
     await chooseAttribute(harness, dialog, 'closeness');
@@ -697,7 +701,12 @@ describe('the form-fields row dialog, read in Spanish', () => {
   it('offers what a date field accepts', async () => {
     const harness = alterFormInSpanish();
     seedPersonVariables(harness, {
-      met_on: { name: 'met_on', type: 'datetime', component: 'DatePicker' },
+      met_on: {
+        name: 'met_on',
+        label: 'met_on',
+        type: 'datetime',
+        component: 'DatePicker',
+      },
     });
     const dialog = await openFieldDialog(
       harness,
@@ -728,9 +737,9 @@ describe('the form-fields row dialog, read in Spanish', () => {
         type: 'AlterForm',
         fields: {
           ...loadFixtureStage('alter-form-1').fields,
-          label: 'Dónde se sitúa cada persona',
+          label: en('Dónde se sitúa cada persona'),
           form: {
-            fields: [{ variable: 'layout', prompt: '¿Dónde se sitúa?' }],
+            fields: [{ variable: 'layout', prompt: en('¿Dónde se sitúa?') }],
           },
         },
       },
@@ -762,14 +771,30 @@ describe('the form-fields row dialog, read in Spanish', () => {
  */
 describe('a codebook write a Spanish form field needs, refused', () => {
   /**
-   * The two names the create row turns away by itself, read in Spanish.
+   * The names the create row turns away by itself, read in Spanish.
    *
    * Neither reaches the codebook any more: the row it is typed into asks the
-   * schema's own name rule and the names this type already holds, so the
-   * refusal stands beside the name while the researcher is still looking at
-   * it, in their own language, with nothing asked of the host.
+   * codebook's own name rules and the names and export columns this type
+   * already holds, so the refusal stands beside the name while the
+   * researcher is still looking at it, in their own language, with nothing
+   * asked of the host.
    */
-  it('says on the create row what the codebook could not store', async () => {
+  it('says on the create row that another spelling of a name is already used', async () => {
+    const harness = alterFormInSpanish();
+    const dialog = await openFieldDialog(
+      harness,
+      'Crear nuevo campo de formulario',
+    );
+
+    const window = await searchForAnAttribute(harness, dialog, 'CONTACTTYPE');
+
+    const refused = within(window).getByRole('option', {
+      name: 'No se puede crear un atributo llamado «CONTACTTYPE»: este tipo ya tiene un atributo con ese nombre',
+    });
+    expect(refused).toHaveAttribute('aria-disabled', 'true');
+  });
+
+  it('offers to create a name written with spaces', async () => {
     const harness = alterFormInSpanish();
     const dialog = await openFieldDialog(
       harness,
@@ -782,10 +807,11 @@ describe('a codebook write a Spanish form field needs, refused', () => {
       'nombre de pila',
     );
 
-    const refused = within(window).getByRole('option', {
-      name: 'No se puede crear un atributo llamado «nombre de pila»: solo se pueden usar letras, números y los símbolos ._-: en un nombre',
-    });
-    expect(refused).toHaveAttribute('aria-disabled', 'true');
+    expect(
+      within(window).getByRole('option', {
+        name: 'Crear un atributo nuevo llamado «nombre de pila».',
+      }),
+    ).not.toHaveAttribute('aria-disabled');
   });
 
   it('says on the create row that this type is already using the name', async () => {
@@ -829,15 +855,16 @@ describe('a codebook write a Spanish form field needs, refused', () => {
    * chose here.
    *
    * Reached through an attribute the protocol SCHEMA accepts and the builder
-   * refuses — a stored value with a space in it, which export formats turn
-   * into a key — so the row's own save is refused on the control that caused
-   * it rather than closing over a write that never happened.
+   * refuses — a stored value with a tab in it, which no name may hold — so the
+   * row's own save is refused on the control that caused it rather than
+   * closing over a write that never happened.
    */
   it('says the input control could not be recorded', async () => {
     const harness = alterFormInSpanish();
     seedPersonVariables(harness, {
       lugar_de_contacto: {
         name: 'lugar_de_contacto',
+        label: 'lugar_de_contacto',
         type: 'categorical',
         component: 'CheckboxGroup',
         // Not the researcher's to change, so the values are shown rather than
@@ -845,8 +872,8 @@ describe('a codebook write a Spanish form field needs, refused', () => {
         // writes, and its write the only thing that can be refused.
         readOnly: true,
         options: [
-          { label: 'En casa', value: 'en casa' },
-          { label: 'En el trabajo', value: 'trabajo' },
+          { label: en('En casa'), value: 'en\tcasa' },
+          { label: en('En el trabajo'), value: 'trabajo' },
         ],
       },
     });
@@ -917,15 +944,18 @@ describe('a form a Spanish researcher cannot save', () => {
         id: 'repite-un-atributo',
         type: 'AlterForm',
         fields: {
-          label: 'Formulario de alter',
+          label: en('Formulario de alter'),
           subject: { entity: 'node', type: 'person' },
           form: {
             fields: [
               {
                 variable: 'relationship_to_ego',
-                prompt: '¿De qué os conocéis?',
+                prompt: en('¿De qué os conocéis?'),
               },
-              { variable: 'relationship_to_ego', prompt: '¿Y de qué más?' },
+              {
+                variable: 'relationship_to_ego',
+                prompt: en('¿Y de qué más?'),
+              },
             ],
           },
         },
@@ -957,7 +987,7 @@ describe('a form a Spanish researcher cannot save', () => {
         id: 'un-campo-sin-terminar',
         type: 'AlterForm',
         fields: {
-          label: 'Formulario de alter',
+          label: en('Formulario de alter'),
           subject: { entity: 'node', type: 'person' },
           // A field that names an attribute and asks nothing, which the row
           // dialog cannot produce and an import can.
@@ -1007,9 +1037,9 @@ describe('a Spanish form-fields section waiting on a subject', () => {
         id: 'sin-sujeto',
         type: 'NameGenerator',
         fields: {
-          label: 'Generador de nombres',
-          form: { title: 'Añadir una persona', fields: [] },
-          prompts: [{ id: 'prompt-1', text: '¿A quién conoces?' }],
+          label: en('Generador de nombres'),
+          form: { title: en('Añadir una persona'), fields: [] },
+          prompts: [{ id: 'prompt-1', text: en('¿A quién conoces?') }],
         },
       },
       locale: 'es',

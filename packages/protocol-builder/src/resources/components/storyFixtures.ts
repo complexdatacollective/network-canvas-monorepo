@@ -1,4 +1,5 @@
-import type { ProtocolBuilderClient } from '@codaco/protocol-builder-core/contract';
+import { Effect } from 'effect';
+
 import type { StageType } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import {
@@ -6,6 +7,7 @@ import {
   type ProtocolSectionId,
 } from '@codaco/studio-sync/taxonomy';
 
+import type { ProtocolBuilderAdapter } from '../../state/context.ts';
 import { createInMemoryHost } from '../../testing/host/createInMemoryHost.ts';
 import type { ResourceKind } from '../types.ts';
 
@@ -138,6 +140,16 @@ export function fieldNotesFile(): File {
   });
 }
 
+/**
+ * A roster whose two headings look the same but are not: the accented letter
+ * is typed as one character in the first and as two in the second.
+ */
+export function collidingHeadingsRosterFile(): File {
+  return new File(['caf\u00e9,cafe\u0301\nAda,36\n'], 'roster.csv', {
+    type: 'text/csv',
+  });
+}
+
 /** The stage a picker story's field belongs to. */
 export type StoryStage = Readonly<{
   stageId: string;
@@ -161,7 +173,7 @@ export type StoryHostOptions = Readonly<{
 }>;
 
 export type StoryHost = Readonly<{
-  client: ProtocolBuilderClient;
+  adapter: ProtocolBuilderAdapter;
   protocolId: string;
   /** The stage section a picker story's editor opens. */
   sectionId: ProtocolSectionId;
@@ -221,7 +233,7 @@ export function createStoryHost(options: StoryHostOptions = {}): StoryHost {
     sections: {
       [sectionId({ kind: 'settings' })]: {
         name: 'Resource picker proof host',
-        schemaVersion: 8,
+        schemaVersion: 9,
       },
       [sectionId({ kind: 'stageOrder' })]: { stages: [stage.stageId] },
       [stageSection]: { id: stage.stageId, type: stage.type, ...stage.fields },
@@ -250,55 +262,38 @@ export function createStoryHost(options: StoryHostOptions = {}): StoryHost {
    * which no browser will draw. A real host knows what it stored, and so does
    * this one.
    */
-  const previewing: ProtocolBuilderClient['resources']['preview'] = async (
-    input,
-  ) => {
-    if (refuses('preview')) return REFUSAL;
-    const resolved = await host.client.resources.preview(input);
-    const contentType = contentTypes.get(input.resourceId);
-    if (resolved.status !== 'ok' || contentType === undefined) return resolved;
-    return {
-      status: 'ok' as const,
-      data: {
-        ...resolved.data,
-        url: resolved.data.url.replace(
-          'data:application/octet-stream;',
-          `data:${contentType};`,
-        ),
-      },
-    };
-  };
-
-  const staging: ProtocolBuilderClient['resources']['stage'] = (input) =>
-    refuses('stage')
-      ? Promise.resolve(REFUSAL)
-      : host.client.resources.stage(input);
-
-  const inspecting: ProtocolBuilderClient['resources']['inspect'] = (input) =>
-    refuses('inspect')
-      ? Promise.resolve(REFUSAL)
-      : host.client.resources.inspect(input);
-
-  // Proxied rather than spread: a contract client's procedures are reached
-  // through property access rather than held as own properties.
-  const storyResources = new Proxy(host.client.resources, {
-    get: (target, property, receiver) => {
-      if (property === 'preview') return previewing;
-      if (property === 'stage') return staging;
-      if (property === 'inspect') return inspecting;
-      return Reflect.get(target, property, receiver);
-    },
-  });
-
-  const client = new Proxy(host.client, {
-    get: (target, property, receiver) =>
-      property === 'resources'
-        ? storyResources
-        : Reflect.get(target, property, receiver),
+  const adapter = host.adapterWith({
+    ResourcesPreview: (input) =>
+      refuses('preview')
+        ? Effect.succeed(REFUSAL)
+        : Effect.map(host.handle.ResourcesPreview(input), (resolved) => {
+            const contentType = contentTypes.get(input.resourceId);
+            if (resolved.status !== 'ok' || contentType === undefined) {
+              return resolved;
+            }
+            return {
+              status: 'ok' as const,
+              data: {
+                ...resolved.data,
+                url: resolved.data.url.replace(
+                  'data:application/octet-stream;',
+                  `data:${contentType};`,
+                ),
+              },
+            };
+          }),
+    ResourcesStage: (input) =>
+      refuses('stage')
+        ? Effect.succeed(REFUSAL)
+        : host.handle.ResourcesStage(input),
+    ResourcesInspect: (input) =>
+      refuses('inspect')
+        ? Effect.succeed(REFUSAL)
+        : host.handle.ResourcesInspect(input),
   });
 
   return {
-    client,
+    adapter,
     protocolId: host.protocolId,
     sectionId: stageSection,
     takeTheStage: () => {
@@ -308,7 +303,10 @@ export function createStoryHost(options: StoryHostOptions = {}): StoryHost {
           userId: 'user-2',
           displayName: 'Grace',
         })
-        .acquireLock({ protocolId: host.protocolId, sectionId: stageSection });
+        .rpcCall('AcquireLock', {
+          protocolId: host.protocolId,
+          sectionId: stageSection,
+        });
     },
   };
 }

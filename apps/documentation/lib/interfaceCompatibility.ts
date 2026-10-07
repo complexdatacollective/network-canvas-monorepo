@@ -27,23 +27,26 @@ const APPS: Record<AppId, { label: string; role: AppRole; maxSchema: number }> =
     'architect': {
       label: 'Architect',
       role: 'configure',
-      maxSchema: 8,
+      maxSchema: 9,
     },
     'interviewer-classic': {
       label: 'Interviewer Classic',
       role: 'run',
       maxSchema: 7,
     },
-    'interviewer': { label: 'Interviewer', role: 'run', maxSchema: 8 },
-    'fresco': { label: 'Fresco', role: 'run', maxSchema: 8 },
+    'interviewer': { label: 'Interviewer', role: 'run', maxSchema: 9 },
+    'fresco': { label: 'Fresco', role: 'run', maxSchema: 9 },
   };
 
 const INTERFACE_INTRODUCED_IN: Record<string, number> = {
+  // Schema 9 additions (schemas/9/migration.ts)
+  'language-chooser': 9,
   // Schema 8 additions (schemas/8/migration.ts)
   'geospatial': 8,
   'anonymisation': 8,
   'one-to-many-dyad-census': 8,
   'family-pedigree': 8,
+  'narrative-pedigree': 8,
   'network-composer': 8,
   // Schema 6 — NameGeneratorRoster (schemas/6/migration.ts)
   'name-generator-roster': 6,

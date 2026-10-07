@@ -2,15 +2,13 @@ import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { COLOR_SEQUENCE_HUE_NAMES } from '@codaco/fresco-ui/form/fields/ColorPicker';
-import type { ProtocolBuilderClient } from '@codaco/protocol-builder-core/contract';
 import { NodeColorSequence } from '@codaco/protocol-validation';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { newEntityDraft } from '../../../fields/EntityTypePickerField.tsx';
-import type {
-  InMemoryClient,
-  InMemoryHost,
-} from '../../../testing/host/createInMemoryHost.ts';
+import type { ProtocolBuilderAdapter } from '../../../state/context.ts';
+import { beforeCall } from '../../../testing/host/beforeCall.ts';
+import type { InMemoryHost } from '../../../testing/host/createInMemoryHost.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import {
   TestPromptEditor,
@@ -21,6 +19,9 @@ import IntroductionSection from '../../introduction/IntroductionSection.tsx';
 import PromptsSection from '../../PromptsSection.tsx';
 import SubjectSection from '../SubjectSection.tsx';
 import { changeSubjectTo } from './changeSubject.ts';
+
+/** Copy in the fixture protocol's only language, as schema 9 holds it. */
+const en = (text: string) => ({ 'en-US': text });
 
 type Harness = ReturnType<typeof renderStageEditor>;
 
@@ -645,12 +646,12 @@ describe('dismissing the create dialog while it is submitting', () => {
    *
    * Between the editor and the host rather than inside it: an in-memory host
    * answers in a microtask, so a request that is still in flight is something
-   * only the transport can be. The call goes on to the real router when the
+   * only the transport can be. The call goes on to the real host when the
    * release comes, and what the editor is finally told is the host's own
    * answer.
    */
   const gateTheCreate = (): Readonly<{
-    client: (host: InMemoryHost) => ProtocolBuilderClient;
+    adapter: (host: InMemoryHost) => ProtocolBuilderAdapter;
     release: () => void;
   }> => {
     let open: () => void = () => undefined;
@@ -658,16 +659,8 @@ describe('dismissing the create dialog while it is submitting', () => {
       open = resolve;
     });
     return {
-      client: ({ client }) =>
-        new Proxy(client, {
-          get: (target, property) =>
-            property === 'create'
-              ? async (...args: Parameters<InMemoryClient['create']>) => {
-                  await held;
-                  return client.create(...args);
-                }
-              : Reflect.get(target, property),
-        }),
+      adapter: ({ adapter }) =>
+        beforeCall(adapter, (tag) => (tag === 'Create' ? held : undefined)),
       release: () => {
         open();
       },
@@ -692,7 +685,7 @@ describe('dismissing the create dialog while it is submitting', () => {
     const harness = renderStageEditor({
       stageId: 'name-generator-1',
       sections: nodeSubjectAndPrompts,
-      client: gate.client,
+      adapter: gate.adapter,
     });
     await startTheCreate(harness);
 
@@ -897,7 +890,7 @@ describe('changing a subject the stage is configured for', () => {
         id: 'name-generator-1',
         type: 'NameGenerator' as const,
         fields: {
-          label: 'Name Generator',
+          label: en('Name Generator'),
           subject: { entity: 'node', type: 'person' },
         },
       },
@@ -948,7 +941,7 @@ describe('choosing a type for a stage that has never had one', () => {
   const configuredWithoutASubject = {
     type: 'AlterForm' as const,
     fields: {
-      label: 'Details',
+      label: en('Details'),
       filter: {
         rules: [
           {
@@ -1026,7 +1019,7 @@ describe('choosing a type for a stage that has never had one', () => {
    */
   it('does not ask when the stage really has nothing to lose', async () => {
     const harness = renderStageEditor({
-      stage: { type: 'AlterForm' as const, fields: { label: 'Details' } },
+      stage: { type: 'AlterForm' as const, fields: { label: en('Details') } },
       sections: nodeSubjectAndFilter,
     });
 
@@ -1043,7 +1036,7 @@ describe('choosing a type for a stage that has never had one', () => {
       stage: {
         type: 'NetworkComposer' as const,
         fields: {
-          label: 'Build your network',
+          label: en('Build your network'),
           behaviours: { automaticLayout: true },
           background: { concentricCircles: 4, skewedTowardCenter: false },
         },
@@ -1064,7 +1057,7 @@ describe('choosing a type for a stage that has never had one', () => {
       stage: {
         type: 'NetworkComposer' as const,
         fields: {
-          label: 'Build your network',
+          label: en('Build your network'),
           behaviours: { automaticLayout: false },
           background: { concentricCircles: 4, skewedTowardCenter: false },
         },
@@ -1083,7 +1076,7 @@ describe('choosing a type for a stage that has never had one', () => {
       stage: {
         type: 'NetworkComposer' as const,
         fields: {
-          label: 'Build your network',
+          label: en('Build your network'),
           behaviours: { automaticLayout: true, freeDraw: true },
           background: { concentricCircles: 4, skewedTowardCenter: false },
         },

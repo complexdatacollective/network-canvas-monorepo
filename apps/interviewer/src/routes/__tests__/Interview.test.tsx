@@ -1,10 +1,15 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
 import { type ReactNode, useState } from 'react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AppI18nProvider } from '@codaco/app-i18n/react';
-import type { InterviewPayload, SessionPayload } from '@codaco/interview';
+import type {
+  InterviewPayload,
+  ProtocolLocaleChangeHandler,
+  SessionPayload,
+} from '@codaco/interview';
 import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
+import { getLocaleMetadata } from '@codaco/protocol-validation';
 import { InterviewerI18nProvider } from '~/i18n/InterviewerI18nProvider';
 import { interviewerProductionLocales } from '~/i18n/locales';
 import { LOCALE_PREFERENCE_KEY } from '~/i18n/preference';
@@ -46,12 +51,14 @@ const getSessionMock = vi.fn();
 const getProtocolByHashMock = vi.fn();
 const markSessionFinishedMock = vi.fn();
 const updateSessionMock = vi.fn();
+const setSessionLocaleMock = vi.fn();
 const updateSettingsMock = vi.fn();
 vi.mock('~/lib/db/api', () => ({
   getSettings: (...a: unknown[]) => getSettingsMock(...a),
   getSession: (...a: unknown[]) => getSessionMock(...a),
   getProtocolByHash: (...a: unknown[]) => getProtocolByHashMock(...a),
   updateSession: (...a: unknown[]) => updateSessionMock(...a),
+  setSessionLocale: (...a: unknown[]) => setSessionLocaleMock(...a),
   updateSettings: (...a: unknown[]) => updateSettingsMock(...a),
   markSessionFinished: (...a: unknown[]) => markSessionFinishedMock(...a),
 }));
@@ -72,13 +79,33 @@ vi.mock('~/lib/installationId', () => ({
   getInstallationId: () => 'test-install',
 }));
 
+// The app-level analytics context as the route sees it. `client` lags
+// `enabled`: the provider flips the opt-in state first and resolves its
+// posthog-js client afterwards, and the client stays null for good in builds
+// with analytics disabled or when the load fails.
+const { analyticsContext, fakeAnalyticsClient } = vi.hoisted(() => {
+  const client = {
+    capture: vi.fn(),
+    captureException: vi.fn(),
+    register: vi.fn(),
+  };
+  const context: { enabled: boolean; client: typeof client | null } = {
+    enabled: false,
+    client: null,
+  };
+  return { analyticsContext: context, fakeAnalyticsClient: client };
+});
+vi.mock('~/lib/analytics/AnalyticsProvider', () => ({
+  useAnalytics: () => analyticsContext,
+}));
+
 type CapturedShellProps = {
   currentStep: number;
   disableAnalytics: boolean;
+  posthogClient?: unknown;
   finishConfirmationDescription: ReactNode;
-  requestedLocale: string;
-  localePreference: string | null;
-  onLocaleChange: (locale: string | null) => void;
+  requestedLocales: readonly string[];
+  onProtocolLocaleChange: ProtocolLocaleChangeHandler;
   initialStageOverrideIndex?: number;
   payload: InterviewPayload;
   onExit: () => void;
@@ -95,8 +122,9 @@ type CapturedShellProps = {
   reviewMode: boolean;
 };
 
-const { shellMock } = vi.hoisted(() => ({
+const { shellMock, shellInterfaceLocale } = vi.hoisted(() => ({
   shellMock: vi.fn<(props: CapturedShellProps) => void>(),
+  shellInterfaceLocale: { current: 'en' },
 }));
 vi.mock('@codaco/interview', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@codaco/interview')>();
@@ -104,13 +132,13 @@ vi.mock('@codaco/interview', async (importOriginal) => {
     ...actual,
     Shell: (props: CapturedShellProps) => {
       shellMock(props);
-      // A queued confirmation retains its original node. Deliberately give
-      // the package a different locale so this tests the host subscription,
-      // not accidental inheritance of the host catalog through Shell.
+      // A queued confirmation retains its original node. The provider stands
+      // in for the Shell's own one, which carries the interview's interface
+      // language rather than Interviewer's.
       const [queuedDescription] = useState(props.finishConfirmationDescription);
       return (
         <AppI18nProvider
-          locale="en"
+          locale={shellInterfaceLocale.current}
           locales={interviewerProductionLocales}
           manageDocument={false}
         >
@@ -139,6 +167,8 @@ function makeSession(overrides: Record<string, unknown> = {}) {
       edges: [],
       ego: { _uid: 'ego-1', attributes: {} },
     },
+    localePreference: null,
+    locale: null,
     ...overrides,
   };
 }
@@ -150,6 +180,9 @@ function makeProtocol() {
     schemaVersion: COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
     importedAt: '2026-01-01T00:00:00.000Z',
     protocol: {
+      // Neither alphabetical nor default-first, so the offered order can only
+      // come from the declaration.
+      localization: { defaultLocale: 'en', locales: ['fr', 'ar', 'en'] },
       stages: [
         { id: 'stage-1' },
         { id: 'stage-2' },
@@ -200,6 +233,9 @@ function makeSyncPayload(
     exportTime: null,
     lastUpdated: '2026-01-01T00:00:00.000Z',
     network: { nodes: [], edges: [], ego: { _uid: 'ego-1', attributes: {} } },
+    localePreference: null,
+    locale: null,
+    localeOptions: [],
     ...overrides,
   };
 }
@@ -217,65 +253,18 @@ beforeEach(() => {
   getProtocolByHashMock.mockResolvedValue(makeProtocol());
   requireFreshUnlockMock.mockResolvedValue({ ok: true });
   getAuthorizedInterviewIdMock.mockReturnValue(null);
+  setSessionLocaleMock.mockResolvedValue(undefined);
   useSearchMock.mockReturnValue('');
   useRouteMock.mockReturnValue([true, { sessionId: 's1' }]);
+  shellInterfaceLocale.current = 'en';
   refreshStepUpContextIdentities();
 });
 
 describe('InterviewRoute enter gate', () => {
-  it('passes the negotiated device locale to Shell and persists menu choices without reloading the interview', async () => {
+  it("asks the interview for the browser languages rather than Interviewer's own language", async () => {
     const languages = vi
       .spyOn(navigator, 'languages', 'get')
-      .mockReturnValue(['en-GB']);
-    localStorage.removeItem(LOCALE_PREFERENCE_KEY);
-    getSettingsMock.mockResolvedValue({ requireUnlockOnEnter: false });
-    try {
-      render(
-        <InterviewerI18nProvider>
-          <InterviewRoute sessionId="s1" />
-        </InterviewerI18nProvider>,
-      );
-      const shell = await screen.findByTestId('shell-mounted');
-      expect(lastShellProps().requestedLocale).toBe('en-GB');
-      expect(lastShellProps().localePreference).toBeNull();
-      const originalPayload = lastShellProps().payload;
-      expect(shell).toHaveTextContent('Finishing ends this interview.');
-      const reads = getSessionMock.mock.calls.length;
-
-      act(() => lastShellProps().onLocaleChange('es'));
-      expect(lastShellProps().requestedLocale).toBe('es');
-      expect(lastShellProps().localePreference).toBe('es');
-      expect(shell).toHaveTextContent(
-        'Al finalizar, se cierra esta entrevista.',
-      );
-      expect(shell).toHaveTextContent(
-        'la persona responsable de la investigación puede volver a marcarla como sin finalizar',
-      );
-      expect(document.documentElement).toHaveAttribute('lang', 'es');
-      expect(localStorage.getItem(LOCALE_PREFERENCE_KEY)).toBe('es');
-      expect(lastShellProps().payload).toBe(originalPayload);
-      expect(getSessionMock).toHaveBeenCalledTimes(reads);
-      expect(updateSessionMock).not.toHaveBeenCalled();
-      expect(requireFreshUnlockMock).not.toHaveBeenCalled();
-
-      act(() => lastShellProps().onLocaleChange(null));
-      expect(lastShellProps().requestedLocale).toBe('en-GB');
-      expect(lastShellProps().localePreference).toBeNull();
-      expect(localStorage.getItem(LOCALE_PREFERENCE_KEY)).toBeNull();
-      expect(document.documentElement).toHaveAttribute('lang', 'en-GB');
-      expect(shell).toHaveTextContent('Finishing ends this interview.');
-      expect(lastShellProps().payload).toBe(originalPayload);
-      expect(getSessionMock).toHaveBeenCalledTimes(reads);
-    } finally {
-      languages.mockRestore();
-      localStorage.removeItem(LOCALE_PREFERENCE_KEY);
-    }
-  });
-
-  it('initializes the menu with the saved explicit preference and can return directly to Automatic', async () => {
-    const languages = vi
-      .spyOn(navigator, 'languages', 'get')
-      .mockReturnValue(['en-GB']);
+      .mockReturnValue(['fr-CA', 'en-GB']);
     localStorage.setItem(LOCALE_PREFERENCE_KEY, 'es');
     getSettingsMock.mockResolvedValue({ requireUnlockOnEnter: false });
     try {
@@ -284,27 +273,78 @@ describe('InterviewRoute enter gate', () => {
           <InterviewRoute sessionId="s1" />
         </InterviewerI18nProvider>,
       );
-      const shell = await screen.findByTestId('shell-mounted');
-      expect(lastShellProps().requestedLocale).toBe('es');
-      expect(lastShellProps().localePreference).toBe('es');
-      expect(shell).toHaveTextContent(
-        'Al finalizar, se cierra esta entrevista.',
-      );
-      const payload = lastShellProps().payload;
-      const reads = getSessionMock.mock.calls.length;
-      act(() => lastShellProps().onLocaleChange(null));
-      expect(lastShellProps().requestedLocale).toBe('en-GB');
-      expect(lastShellProps().localePreference).toBeNull();
-      expect(shell).toHaveTextContent('Finishing ends this interview.');
-      expect(localStorage.getItem(LOCALE_PREFERENCE_KEY)).toBeNull();
-      expect(lastShellProps().payload).toBe(payload);
-      expect(getSessionMock).toHaveBeenCalledTimes(reads);
-      expect(updateSessionMock).not.toHaveBeenCalled();
-      expect(requireFreshUnlockMock).not.toHaveBeenCalled();
+      await screen.findByTestId('shell-mounted');
+      expect(lastShellProps().requestedLocales).toEqual(['fr-CA', 'en-GB']);
     } finally {
       languages.mockRestore();
       localStorage.removeItem(LOCALE_PREFERENCE_KEY);
     }
+  });
+
+  it("words the finish confirmation in the interview's interface language", async () => {
+    localStorage.setItem(LOCALE_PREFERENCE_KEY, 'en');
+    shellInterfaceLocale.current = 'es';
+    getSettingsMock.mockResolvedValue({ requireUnlockOnEnter: false });
+    try {
+      render(
+        <InterviewerI18nProvider>
+          <InterviewRoute sessionId="s1" />
+        </InterviewerI18nProvider>,
+      );
+      const shell = await screen.findByTestId('shell-mounted');
+      expect(shell).toHaveTextContent(
+        'Al finalizar, se cierra esta entrevista.',
+      );
+      expect(shell).not.toHaveTextContent('Finishing ends this interview.');
+    } finally {
+      localStorage.removeItem(LOCALE_PREFERENCE_KEY);
+    }
+  });
+
+  it('hydrates the stored language and offers every protocol language', async () => {
+    getSettingsMock.mockResolvedValue({ requireUnlockOnEnter: false });
+    getSessionMock.mockResolvedValue(
+      makeSession({ localePreference: 'ar', locale: 'ar' }),
+    );
+
+    render(<InterviewRoute sessionId="s1" />);
+    await screen.findByTestId('shell-mounted');
+
+    const { session } = lastShellProps().payload;
+    expect(session.localePreference).toBe('ar');
+    expect(session.locale).toBe('ar');
+    expect(session.localeOptions.map(({ locale }) => locale)).toEqual([
+      'fr',
+      'ar',
+      'en',
+    ]);
+    expect(session.localeOptions).toEqual(
+      ['fr', 'ar', 'en'].map((locale) => getLocaleMetadata(locale)),
+    );
+  });
+
+  it("stores the participant's language choice on the session without reloading the interview", async () => {
+    getSettingsMock.mockResolvedValue({ requireUnlockOnEnter: false });
+    render(<InterviewRoute sessionId="s1" />);
+    await screen.findByTestId('shell-mounted');
+    const payload = lastShellProps().payload;
+    const reads = getSessionMock.mock.calls.length;
+    updateSessionMock.mockClear();
+
+    await act(async () => {
+      await lastShellProps().onProtocolLocaleChange('s1', {
+        locale: 'fr',
+        localePreference: 'fr',
+      });
+    });
+
+    expect(setSessionLocaleMock).toHaveBeenCalledWith('s1', {
+      locale: 'fr',
+      localePreference: 'fr',
+    });
+    expect(updateSessionMock).not.toHaveBeenCalled();
+    expect(lastShellProps().payload).toBe(payload);
+    expect(getSessionMock).toHaveBeenCalledTimes(reads);
   });
 
   it('navigates home when the enter gate is cancelled', async () => {
@@ -631,7 +671,8 @@ describe('InterviewRoute finish flow', () => {
 
     render(<InterviewRoute sessionId="s1" />);
     await screen.findByTestId('shell-mounted');
-    const { onFinish, onStepChange, onSync } = lastShellProps();
+    const { onFinish, onProtocolLocaleChange, onStepChange, onSync } =
+      lastShellProps();
 
     await act(async () => {
       await onSync('s1', makeSyncPayload(), {
@@ -639,11 +680,16 @@ describe('InterviewRoute finish flow', () => {
         unloading: false,
       });
       onStepChange(2, { progress: 75, totalSteps: 4 });
+      await onProtocolLocaleChange('s1', {
+        locale: 'fr',
+        localePreference: 'fr',
+      });
       await onFinish('s1');
     });
 
     expect(lastShellProps().reviewMode).toBe(true);
     expect(updateSessionMock).not.toHaveBeenCalled();
+    expect(setSessionLocaleMock).not.toHaveBeenCalled();
     expect(markSessionFinishedMock).not.toHaveBeenCalled();
     expect(updateSettingsMock).not.toHaveBeenCalled();
   });
@@ -655,7 +701,8 @@ describe('InterviewRoute finish flow', () => {
 
     render(<InterviewRoute sessionId="s1" />);
     await screen.findByTestId('shell-mounted');
-    const { onFinish, onStepChange, onSync } = lastShellProps();
+    const { onFinish, onProtocolLocaleChange, onStepChange, onSync } =
+      lastShellProps();
 
     await act(async () => {
       await onSync('s1', makeSyncPayload(), {
@@ -663,10 +710,15 @@ describe('InterviewRoute finish flow', () => {
         unloading: false,
       });
       onStepChange(2, { progress: 75, totalSteps: 4 });
+      await onProtocolLocaleChange('s1', {
+        locale: 'fr',
+        localePreference: 'fr',
+      });
       await onFinish('s1');
     });
 
     expect(updateSessionMock).not.toHaveBeenCalled();
+    expect(setSessionLocaleMock).not.toHaveBeenCalled();
     expect(markSessionFinishedMock).not.toHaveBeenCalled();
     expect(updateSettingsMock).not.toHaveBeenCalled();
   });
@@ -719,5 +771,58 @@ describe('InterviewRoute finish flow', () => {
     await invoke(() => screen.getByRole('button', { name: /exit/i }).click());
 
     expect(navigateMock).not.toHaveBeenCalledWith('/', { replace: true });
+  });
+});
+
+describe('InterviewRoute analytics wiring', () => {
+  beforeEach(() => {
+    getSettingsMock.mockResolvedValue({
+      requireUnlockOnEnter: false,
+      requireUnlockOnExit: false,
+      requireUnlockOnExport: false,
+    });
+  });
+
+  afterEach(() => {
+    analyticsContext.enabled = false;
+    analyticsContext.client = null;
+  });
+
+  // The Shell's contract for "analytics on, no client" is to start its own
+  // posthog-js instance from the default entrypoint, which the app never
+  // bundles deliberately: it carries the remote script loader the CSP forbids,
+  // is not opted out by default, and knows nothing of the app's super
+  // properties. The Shell must therefore stay off until the app's client is
+  // attached, however long that takes.
+  it('keeps Shell analytics off while opted in but the client has not resolved', async () => {
+    analyticsContext.enabled = true;
+    analyticsContext.client = null;
+
+    render(<InterviewRoute sessionId="s1" />);
+
+    expect(await screen.findByTestId('shell-mounted')).toBeInTheDocument();
+    expect(lastShellProps().posthogClient).toBeUndefined();
+    expect(lastShellProps().disableAnalytics).toBe(true);
+  });
+
+  it('enables Shell analytics only with the app client attached', async () => {
+    analyticsContext.enabled = true;
+    analyticsContext.client = fakeAnalyticsClient;
+
+    render(<InterviewRoute sessionId="s1" />);
+
+    expect(await screen.findByTestId('shell-mounted')).toBeInTheDocument();
+    expect(lastShellProps().posthogClient).toBe(fakeAnalyticsClient);
+    expect(lastShellProps().disableAnalytics).toBe(false);
+  });
+
+  it('keeps Shell analytics off after an opt-out even though the client stays loaded', async () => {
+    analyticsContext.enabled = false;
+    analyticsContext.client = fakeAnalyticsClient;
+
+    render(<InterviewRoute sessionId="s1" />);
+
+    expect(await screen.findByTestId('shell-mounted')).toBeInTheDocument();
+    expect(lastShellProps().disableAnalytics).toBe(true);
   });
 });

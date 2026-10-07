@@ -5,6 +5,12 @@ import { RadioGroup, type RadioGroupProps } from '@base-ui/react/radio-group';
 import { motion } from 'motion/react';
 import { type ReactNode, useId } from 'react';
 
+import {
+  isPresentationalText,
+  type PresentationalText,
+  presentationalTextProps,
+  presentationalTextValue,
+} from '../../PresentationalText';
 import { RenderMarkdown } from '../../RenderMarkdown';
 import {
   controlLabelVariants,
@@ -57,7 +63,8 @@ const radioIndicatorVariants = cva({
 
 type RadioItemProps = {
   value: string | number;
-  label: ReactNode;
+  /** Strings and `PresentationalText` render as Markdown; other nodes as-is. */
+  label: ReactNode | PresentationalText;
   disabled?: boolean;
   readOnly?: boolean;
   size?: VariantProps<typeof radioIndicatorVariants>['size'];
@@ -146,9 +153,10 @@ export function RadioItem({
           disabled && 'opacity-50',
           labelClassName,
         )}
+        {...presentationalTextProps(label)}
       >
-        {typeof label === 'string' ? (
-          <RenderMarkdown>{label}</RenderMarkdown>
+        {isPresentationalText(label) ? (
+          <RenderMarkdown>{presentationalTextValue(label)}</RenderMarkdown>
         ) : (
           label
         )}
@@ -159,7 +167,7 @@ export function RadioItem({
 
 type RadioOption = {
   value: string | number;
-  label: ReactNode;
+  label: ReactNode | PresentationalText;
   disabled?: boolean;
 };
 
@@ -252,7 +260,7 @@ export default function RadioGroupField(props: RadioGroupFieldProps) {
         aria-required={rest['aria-required']}
         aria-readonly={readOnly || undefined}
       >
-        {options.map((option) => (
+        {options.map((option, index) => (
           <RadioItem
             key={String(option.value)}
             value={option.value}
@@ -263,7 +271,10 @@ export default function RadioGroupField(props: RadioGroupFieldProps) {
             disabled={Boolean(disabled) || Boolean(option.disabled)}
             readOnly={readOnly}
             size={size}
-            id={`${optionIdPrefix}-${String(option.value)}`}
+            // Positional, not the option's value: an option value is whatever
+            // the researcher typed, and an element id may not contain
+            // whitespace.
+            id={`${optionIdPrefix}-${index}`}
           />
         ))}
       </RadioGroup>

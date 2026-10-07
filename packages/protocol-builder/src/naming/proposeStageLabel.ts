@@ -6,6 +6,7 @@ import type {
   StageType,
 } from '@codaco/protocol-validation';
 
+import { resolveTranslation } from '../localization/localizedText.ts';
 import type { ProtocolBuilderProtocolContext } from '../protocol-context.ts';
 import { generateStageLabel, STAGE_TYPE_NAMES } from './generateStageLabel.ts';
 import {
@@ -48,6 +49,7 @@ export type StageLabelDraft = Readonly<{
  *
  * Always answers with a name, and always in English: it seeds a STORED value
  * rather than being copy — see `STAGE_TYPE_NAMES` in `generateStageLabel.ts`.
+ * The answer is plain text, written as the name's default-language translation.
  */
 export function proposeStageLabel(
   stage: StageLabelDraft,
@@ -83,13 +85,23 @@ function entityName(
   return types?.[type]?.name ?? null;
 }
 
-/** The names already taken, so a proposal is unique in the interview. */
+/**
+ * The names already taken, so a proposal is unique in the interview. Compared
+ * in the default language, the one a proposal is written in.
+ */
 function existingStageLabels(
   context: ProtocolBuilderProtocolContext,
   stageId: string | undefined,
 ): string[] {
   return context.orderedStages
     .filter((stage) => stage.id !== stageId)
-    .map((stage) => stage.label)
+    .map(
+      (stage) =>
+        resolveTranslation(
+          stage.label,
+          context.localization,
+          context.localization?.defaultLocale,
+        ).text,
+    )
     .filter((label) => label !== '');
 }

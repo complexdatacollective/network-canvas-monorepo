@@ -1,6 +1,8 @@
 {
   "id": "id-1",
-  "label": "Where Do You Live?",
+  "label": {
+    "en": "Where Do You Live?"
+  },
   "mapOptions": {
     "center": [0, 0],
     "color": "ord-color-seq-1",
@@ -13,7 +15,9 @@
   "prompts": [
     {
       "id": "id-3",
-      "text": "Where do you live?",
+      "text": {
+        "en": "Where do you live?"
+      },
       "variable": "id-4"
     }
   ],

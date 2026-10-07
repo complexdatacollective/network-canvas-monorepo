@@ -1,3 +1,4 @@
+import { Array as Arr } from 'effect';
 import {
   createContext,
   useContext,
@@ -10,10 +11,13 @@ import {
 import { v4 as uuid } from 'uuid';
 
 import { createMessageError } from '@codaco/app-i18n/messages';
-import type { ProtocolBuilderClient } from '@codaco/protocol-builder-core/contract';
 
-import { useProtocolBuilderContext } from '../state/context.ts';
+import {
+  useProtocolBuilderContext,
+  type ProtocolBuilderAdapter,
+} from '../state/context.ts';
 import type { ResourcePromotion } from '../state/hooks.ts';
+import { withRosterCharacterMessage } from './components/rosterCharacters.ts';
 import { resourceFailureMessages } from './resourceMessages.ts';
 import {
   resourceFailure,
@@ -55,7 +59,7 @@ async function called<T>(
 /**
  * What the editor's resource controls call.
  *
- * Every method is the contract's own `resources.*` procedure with this
+ * Every method is the contract's own `Resources…` procedure with this
  * protocol's id already supplied, plus the two things only the open edit knows:
  * which resources it has staged, and which of those are on their way out.
  */
@@ -175,7 +179,7 @@ export function ResourceClientProvider({
   editId: named,
   children,
 }: ProviderProps) {
-  const { client, protocolId } = useProtocolBuilderContext();
+  const { adapter, protocolId } = useProtocolBuilderContext();
   // Minted once for this mount rather than on every render: the id is what the
   // host holds this edit's staged files under, and a second one would leave
   // the files imported under the first unreachable.
@@ -188,26 +192,26 @@ export function ResourceClientProvider({
   const editorClient = useMemo(
     () =>
       buildResourceClient({
-        client,
+        adapter,
         protocolId,
         editId,
         setStaged,
         leaving: leaving.current,
         discarded: discarded.current,
       }),
-    [client, protocolId, editId],
+    [adapter, protocolId, editId],
   );
 
   const stagedResources = useMemo(
     () =>
       buildStagedResources({
-        client,
+        adapter,
         protocolId,
         editId,
         staged,
         setStaged,
       }),
-    [client, protocolId, editId, staged],
+    [adapter, protocolId, editId, staged],
   );
 
   // Whatever is still staged when the edit goes is what nothing saved: the
@@ -232,7 +236,7 @@ export function ResourceClientProvider({
  * collections are refs. That is what makes the client itself hold still.
  */
 type ClientDeps = Readonly<{
-  client: ProtocolBuilderClient;
+  adapter: ProtocolBuilderAdapter;
   protocolId: string;
   /** The edit every call names, so none of them reaches another's staging. */
   editId: string;
@@ -246,7 +250,7 @@ type ClientDeps = Readonly<{
 }>;
 
 type StagedDeps = Readonly<{
-  client: ProtocolBuilderClient;
+  adapter: ProtocolBuilderAdapter;
   protocolId: string;
   editId: string;
   staged: readonly ResourceDescriptor[];
@@ -264,14 +268,13 @@ function forgetStaged(
 }
 
 function buildResourceClient(deps: ClientDeps): ResourceClient {
-  const { client, protocolId, editId } = deps;
-  const resources = client.resources;
+  const { adapter, protocolId, editId } = deps;
 
   const list = async (
     options?: ResourceListOptions,
   ): Promise<ResourceResult<readonly ResourceDescriptor[]>> =>
     called(async () => {
-      const result = await resources.list({
+      const result = await adapter.rpcCall('ResourcesList', {
         protocolId,
         // Named, so the list is the protocol's committed resources AND what
         // this edit has imported. Without it a researcher would not see the
@@ -301,7 +304,7 @@ function buildResourceClient(deps: ClientDeps): ResourceClient {
 
     stageUpload: (request) =>
       called(async () => {
-        const result = await resources.stage({
+        const result = await adapter.rpcCall('ResourcesStage', {
           protocolId,
           editId,
           requestId: request.requestId,
@@ -311,19 +314,22 @@ function buildResourceClient(deps: ClientDeps): ResourceClient {
             name: request.name,
             source: request.source,
             contentType: request.contentType,
-            bytes: new Blob([request.bytes as BlobPart], {
-              type: request.contentType,
-            }),
+            bytes: request.bytes,
           },
         });
-        if (result.status !== 'ok') return result;
+        if (result.status !== 'ok') {
+          return {
+            ...result,
+            failure: withRosterCharacterMessage(result.failure),
+          };
+        }
         recordStaged(result.data.descriptor);
         return resourceOk(result.data.descriptor);
       }),
 
     stageSecret: (request) =>
       called(async () => {
-        const result = await resources.stage({
+        const result = await adapter.rpcCall('ResourcesStage', {
           protocolId,
           editId,
           requestId: request.requestId,
@@ -337,7 +343,7 @@ function buildResourceClient(deps: ClientDeps): ResourceClient {
 
     resolvePreview: (resourceId) =>
       called(async () => {
-        const result = await resources.preview({
+        const result = await adapter.rpcCall('ResourcesPreview', {
           protocolId,
           editId,
           resourceId,
@@ -347,7 +353,7 @@ function buildResourceClient(deps: ClientDeps): ResourceClient {
 
     inspect: (resourceId) =>
       called(async () => {
-        const result = await resources.inspect({
+        const result = await adapter.rpcCall('ResourcesInspect', {
           protocolId,
           editId,
           resourceId,
@@ -359,7 +365,7 @@ function buildResourceClient(deps: ClientDeps): ResourceClient {
       called(async () => {
         deps.leaving.add(resourceId);
         try {
-          const result = await resources.discard({
+          const result = await adapter.rpcCall('ResourcesDiscard', {
             protocolId,
             editId,
             resourceId,
@@ -395,8 +401,7 @@ function buildResourceClient(deps: ClientDeps): ResourceClient {
 }
 
 function buildStagedResources(deps: StagedDeps): StagedResources {
-  const { client, protocolId, editId } = deps;
-  const resources = client.resources;
+  const { adapter, protocolId, editId } = deps;
   const forget = (resourceId: string) => {
     forgetStaged(deps, resourceId);
   };
@@ -406,7 +411,7 @@ function buildStagedResources(deps: StagedDeps): StagedResources {
     staged: deps.staged,
     promotion: () => {
       const resourceIds = deps.staged.map((descriptor) => descriptor.id);
-      if (resourceIds.length === 0) return undefined;
+      if (!Arr.isArrayNonEmpty(resourceIds)) return undefined;
       return { editId, resourceIds };
     },
     promoted: () => {
@@ -419,7 +424,10 @@ function buildStagedResources(deps: StagedDeps): StagedResources {
         // read from the status alone; there is no data key to unwrap.
         // Named, so it drops what THIS edit staged and nothing another editor
         // in the same session is holding.
-        const result = await resources.discard({ protocolId, editId });
+        const result = await adapter.rpcCall('ResourcesDiscard', {
+          protocolId,
+          editId,
+        });
         if (result.status !== 'ok') return result;
         for (const descriptor of deps.staged) forget(descriptor.id);
         return resourceOk(undefined);

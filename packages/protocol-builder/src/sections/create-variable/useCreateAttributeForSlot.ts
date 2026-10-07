@@ -8,10 +8,11 @@ import type {
   VariableEditorHostOptions,
 } from '../../codebook/optionRowChoice.ts';
 import { useCreateCodebookVariable } from '../../codebook/useCodebookVariableEdits.ts';
+import type { VariableNameScope } from '../../fields/variableNameRules.ts';
 import type { CreateOptionOutcome } from '../../fields/VariablePickerField.tsx';
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import type { CodebookSubject } from '../../protocol-context.ts';
-import { useSubjectVariableNames } from '../canvas/codebookChoices.ts';
+import { useSubjectVariableScope } from '../canvas/codebookChoices.ts';
 import { needsCodebookEditorToCreate } from '../collectableTypes.ts';
 import { useCreateVariableEditor } from './useCreateVariableEditor.tsx';
 
@@ -83,7 +84,8 @@ export type CreateAttributeForSlotOptions = Readonly<{
 export type CreateAttributeForSlot = Readonly<{
   createProps: Readonly<{
     onCreateOption?: (variableName: string) => Promise<CreateOptionOutcome>;
-    namesInUse?: readonly string[];
+    nameScope?: VariableNameScope;
+    newVariableType?: string;
   }>;
   /** The escalation dialog, rendered by whoever owns the picker. */
   editor: ReactNode;
@@ -118,7 +120,7 @@ export function useCreateAttributeForSlot({
 }: CreateAttributeForSlotOptions): CreateAttributeForSlot {
   const { readOnly } = useStageEditorForm();
   const chosenSubject = subject ?? undefined;
-  const namesInUse = useSubjectVariableNames(chosenSubject);
+  const nameScope = useSubjectVariableScope(chosenSubject);
   const createVariable = useCreateCodebookVariable(chosenSubject);
   const editorPath = useCreateVariableEditor({
     subject: subject ?? null,
@@ -190,7 +192,8 @@ export function useCreateAttributeForSlot({
     createProps: offered
       ? {
           onCreateOption: escalates ? editorPath.createOption : createDirectly,
-          namesInUse,
+          ...(nameScope === undefined ? {} : { nameScope }),
+          newVariableType: variableType,
         }
       : {},
     editor: editorPath.editor,

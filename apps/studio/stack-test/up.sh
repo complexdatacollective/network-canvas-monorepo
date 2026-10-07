@@ -6,7 +6,7 @@
 #   apps/studio/stack-test/up.sh --variant external-bucket
 #   apps/studio/stack-test/up.sh --variant own-proxy
 #
-# What `dev:stack` does (server/scripts/dev-stack.ts), from bash and without
+# What `dev:stack` does (api/scripts/dev-stack.ts), from bash and without
 # pnpm, plus one per-variant override: write the secrets and the environment,
 # `up -d`, `run --rm migrate`, and wait for `/readyz` through whatever ingress
 # this variant is testing. The setup token `migrate` prints is captured to
@@ -44,7 +44,7 @@ fi
 
 # ── The two file secrets ──────────────────────────────────────────────────
 #
-# Written only when absent, exactly as server/scripts/compose.ts writes them:
+# Written only when absent, exactly as api/scripts/compose.ts writes them:
 # a developer who already has a `dev`/`dev:stack` value here keeps it, and
 # either value works because the same file is what Postgres is initialised
 # with and what the server reads. Compose resolves every declared secret while

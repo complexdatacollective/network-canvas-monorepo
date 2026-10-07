@@ -17,7 +17,7 @@ const stateWith = (assetManifest: Record<string, unknown>): RootState =>
     activeProtocol: {
       present: {
         name: 'Study',
-        schemaVersion: 8,
+        schemaVersion: 9,
         stages: [],
         codebook: { node: {}, edge: {}, ego: {} },
         assetManifest,

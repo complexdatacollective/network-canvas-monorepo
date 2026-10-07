@@ -2,10 +2,12 @@ import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 // TODO: add filter
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import type { Panel } from '@codaco/protocol-validation';
 import { summaryMessages } from '~/lib/ProtocolSummary/summaryMessages';
 
 import AssetBadge from '../AssetBadge';
 import MiniTable from '../MiniTable';
+import { SummaryText } from '../SummaryText';
 import SectionFrame from './SectionFrame';
 const messages = defineMessages({
   panels: {
@@ -23,11 +25,7 @@ const messages = defineMessages({
 });
 
 type PanelsProps = {
-  panels?: Array<{
-    id: string;
-    title: string;
-    dataSource: string;
-  }> | null;
+  panels?: Panel[] | null;
 };
 const Panels = ({ panels = null }: PanelsProps) => {
   const intl = useAppIntl();
@@ -42,7 +40,10 @@ const Panels = ({ panels = null }: PanelsProps) => {
             <MiniTable
               rotated
               rows={[
-                [intl.formatMessage(summaryMessages.title), panel.title],
+                [
+                  intl.formatMessage(summaryMessages.title),
+                  <SummaryText key="title" value={panel.title} />,
+                ],
                 [
                   intl.formatMessage(summaryMessages.dataSource),
                   panel.dataSource === 'existing' ? (

@@ -5,7 +5,7 @@ import type { CustomFieldValidation } from '@codaco/fresco-ui/form/store/types';
 import { readMessage } from '../../../testing/i18n.ts';
 import { makeAssignAttributesValidation } from '../AssignAttributes.tsx';
 import { makeMultiSelectValidation } from '../MultiSelect.tsx';
-import { optionsValidation } from '../Options.tsx';
+import { optionsValidationFor } from '../Options.tsx';
 
 /**
  * What the field would report for this whole array, as the researcher reads
@@ -37,27 +37,28 @@ async function arrayIssue(
   return message === undefined ? undefined : readMessage(message);
 }
 
-describe('optionsValidation', () => {
-  const issue = (value: unknown) => arrayIssue(optionsValidation.custom, value);
+describe('optionsValidationFor', () => {
+  const issue = (value: unknown) =>
+    arrayIssue(optionsValidationFor().custom, value);
 
   it('accepts a complete, unambiguous list', async () => {
     await expect(
       issue([
-        { label: 'Yes', value: 'yes' },
-        { label: 'No', value: 'no' },
+        { label: { en: 'Yes' }, value: 'yes' },
+        { label: { en: 'No' }, value: 'no' },
       ]),
     ).resolves.toBeUndefined();
   });
 
   it('refuses a single option', async () => {
-    await expect(issue([{ label: 'Yes', value: 'yes' }])).resolves.toMatch(
-      /minimum of two options/,
-    );
+    await expect(
+      issue([{ label: { en: 'Yes' }, value: 'yes' }]),
+    ).resolves.toMatch(/minimum of two options/);
   });
 
   it('refuses a half-finished option', async () => {
     await expect(
-      issue([{ label: 'Yes', value: 'yes' }, { label: 'No' }]),
+      issue([{ label: { en: 'Yes' }, value: 'yes' }, { label: { en: 'No' } }]),
     ).resolves.toBe('Every option needs both a label and a value.');
   });
 
@@ -67,8 +68,8 @@ describe('optionsValidation', () => {
     // array — the only layer that can refuse the save — has to trim too.
     await expect(
       issue([
-        { label: '   ', value: 'yes' },
-        { label: 'No', value: 'no' },
+        { label: { en: '   ' }, value: 'yes' },
+        { label: { en: 'No' }, value: 'no' },
       ]),
     ).resolves.toBe('Every option needs both a label and a value.');
   });
@@ -79,8 +80,19 @@ describe('optionsValidation', () => {
     // about characters in a value they have not typed yet.
     await expect(
       issue([
-        { label: 'Yes', value: '' },
-        { label: 'No', value: 'no' },
+        { label: { en: 'Yes' }, value: '' },
+        { label: { en: 'No' }, value: 'no' },
+      ]),
+    ).resolves.toBe('Every option needs both a label and a value.');
+  });
+
+  it('treats a value of nothing but spaces as missing', async () => {
+    // The value is saved trimmed, so the codebook write would refuse it as
+    // incomplete; the array has to say so before the save is attempted.
+    await expect(
+      issue([
+        { label: { en: 'Yes' }, value: '   ' },
+        { label: { en: 'No' }, value: 'no' },
       ]),
     ).resolves.toBe('Every option needs both a label and a value.');
   });
@@ -88,36 +100,91 @@ describe('optionsValidation', () => {
   it('refuses two options that export as the same answer', async () => {
     await expect(
       issue([
-        { label: 'Yes', value: 'yes' },
-        { label: 'Affirmative', value: 'yes' },
+        { label: { en: 'Yes' }, value: 'yes' },
+        { label: { en: 'Affirmative' }, value: 'yes' },
       ]),
     ).resolves.toBe('Every option needs a unique value.');
   });
 
+  it.each([
+    ['a number and the same number as text', 1, '1'],
+    ['a value and the same value with a trailing space', 'yes', 'yes '],
+  ])(
+    'refuses two options whose values are %s',
+    async (_case, first, second) => {
+      // Each pair is stored, and exported, as one value: the codebook write
+      // compares them that way, so the array has to as well.
+      await expect(
+        issue([
+          { label: { en: 'Yes' }, value: first },
+          { label: { en: 'Affirmative' }, value: second },
+        ]),
+      ).resolves.toBe('Every option needs a unique value.');
+    },
+  );
+
   it('refuses two options that read as the same choice', async () => {
     await expect(
       issue([
-        { label: 'Yes', value: 'yes' },
+        { label: { en: 'Yes' }, value: 'yes' },
         // Case and Unicode composition are not what tells two choices apart.
-        { label: 'yes', value: 'no' },
+        { label: { en: 'yes' }, value: 'no' },
       ]),
     ).resolves.toBe('Every option needs a unique label.');
   });
 
-  it('refuses a value that cannot become an export column', async () => {
+  it('refuses a value holding a control character', async () => {
     await expect(
       issue([
-        { label: 'Yes', value: 'yes please' },
-        { label: 'No', value: 'no' },
+        { label: { en: 'Yes' }, value: 'yes\tplease' },
+        { label: { en: 'No' }, value: 'no' },
       ]),
-    ).resolves.toMatch(/Not a valid option value/);
+    ).resolves.toBe(
+      'Cannot contain line breaks, tabs or other control characters',
+    );
+  });
+
+  it.each(['yes please', '友人', 'amigo cercano', 'Collègue', 'a.b [1]'])(
+    'accepts the value %j, in whatever script or punctuation it is written',
+    async (value) => {
+      await expect(
+        issue([
+          { label: { en: 'Yes' }, value },
+          { label: { en: 'No' }, value: 'no' },
+        ]),
+      ).resolves.toBeUndefined();
+    },
+  );
+
+  it('refuses a value that would export to a column the export already writes', async () => {
+    const withSibling = optionsValidationFor({
+      entity: 'node',
+      name: 'foo',
+      type: 'categorical',
+      siblings: [{ name: 'foo_bar', type: 'text' }],
+    });
+    await expect(
+      arrayIssue(withSibling.custom, [
+        { label: { en: 'Bar' }, value: 'bar' },
+        { label: { en: 'Baz' }, value: 'baz' },
+      ]),
+    ).resolves.toMatch(/foo_bar/);
+    await expect(
+      arrayIssue(withSibling.custom, [
+        { label: { en: 'Qux' }, value: 'qux' },
+        { label: { en: 'Baz' }, value: 'baz' },
+      ]),
+    ).resolves.toBeUndefined();
   });
 
   it('says what is missing before it says the missing part is malformed', async () => {
     // Both rules fail here. A blank row should be told what it needs, not
     // lectured about the characters in the value it does not have.
     await expect(
-      issue([{ label: 'Yes' }, { label: 'No', value: 'no thanks' }]),
+      issue([
+        { label: { en: 'Yes' } },
+        { label: { en: 'No' }, value: 'no\tthanks' },
+      ]),
     ).resolves.toBe('Every option needs both a label and a value.');
   });
 });
@@ -201,7 +268,9 @@ describe('makeMultiSelectValidation', () => {
 
 describe('makeAssignAttributesValidation', () => {
   const { custom } = makeAssignAttributesValidation({
-    allVariables: { worried: { name: 'Worried', type: 'boolean' } },
+    allVariables: {
+      worried: { name: 'Worried', label: 'Worried', type: 'boolean' },
+    },
     committedVariableIds: new Set(['worried']),
     draftValidatedVariables: new Set(['worried']),
     hasValidatedUseElsewhere: () => false,
@@ -251,7 +320,9 @@ describe('makeAssignAttributesValidation', () => {
     // arrive already holding this contradiction, and re-saving the prompt
     // unchanged introduces nothing new to refuse.
     const { custom: settled } = makeAssignAttributesValidation({
-      allVariables: { worried: { name: 'Worried', type: 'boolean' } },
+      allVariables: {
+        worried: { name: 'Worried', label: 'Worried', type: 'boolean' },
+      },
       committedVariableIds: new Set(['worried']),
       draftValidatedVariables: new Set(),
       hasValidatedUseElsewhere: () => true,
@@ -263,7 +334,9 @@ describe('makeAssignAttributesValidation', () => {
 
   it('refuses a NEW pick of a variable this stage validates', async () => {
     const { custom: strict } = makeAssignAttributesValidation({
-      allVariables: { worried: { name: 'Worried', type: 'boolean' } },
+      allVariables: {
+        worried: { name: 'Worried', label: 'Worried', type: 'boolean' },
+      },
       committedVariableIds: new Set(),
       draftValidatedVariables: new Set(['worried']),
       hasValidatedUseElsewhere: () => false,

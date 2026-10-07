@@ -4,6 +4,8 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 
 import type { LockedOptionList } from '../codebook/variableRoles.ts';
 import { binMessages } from '../editors/ordinal-bin/sections/binMessages.ts';
+import type { ResolvedTranslation } from '../localization/localizedText.ts';
+import { useLocalizedText } from '../localization/ProtocolLocalization.tsx';
 
 /**
  * The values an attribute offers, shown rather than edited.
@@ -35,6 +37,7 @@ export default function LockedOptions({
   caption?: string;
 }>) {
   const intl = useAppIntl();
+  const localize = useLocalizedText();
 
   return (
     <div className="bg-surface-2 text-text relative mb-8 rounded p-4">
@@ -54,12 +57,20 @@ export default function LockedOptions({
           </tr>
         </thead>
         <tbody>
-          {options.map((option) => (
-            <tr key={String(option.value)}>
-              <td className="py-1">{option.label}</td>
-              <td className="font-monospace py-1">{String(option.value)}</td>
-            </tr>
-          ))}
+          {options.map((option) => {
+            const label: ResolvedTranslation =
+              typeof option.label === 'string'
+                ? { text: option.label }
+                : localize(option.label);
+            return (
+              <tr key={String(option.value)}>
+                <td className="py-1" lang={label.lang} dir={label.dir}>
+                  {label.text}
+                </td>
+                <td className="font-monospace py-1">{String(option.value)}</td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>

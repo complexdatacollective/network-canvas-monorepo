@@ -12,11 +12,11 @@ import BinAttributeField, {
   type BinAttributeSlot,
   binAttributePickIssue,
 } from '../../../fields/BinAttributeField.tsx';
+import { LocalizedRichTextField } from '../../../fields/LocalizedStringField.tsx';
 import {
   PromptTextField,
   PromptTextPreview,
 } from '../../../fields/PromptTextField.tsx';
-import RichTextField from '../../../fields/RichTextField.tsx';
 import type {
   RowEditorProps,
   RowSaveContext,
@@ -24,6 +24,7 @@ import type {
   RowValues,
 } from '../../../form/rowDialog.tsx';
 import { useStageEditorForm } from '../../../form/stageEditorContext.ts';
+import { asLocalizedString } from '../../../localization/localizedText.ts';
 import PromptsSection from '../../../sections/PromptsSection.tsx';
 import { useOptionsRowCommit } from '../../../sections/useOptionsRowCommit.ts';
 import { useStageSubject } from '../../../sections/useStageSubject.ts';
@@ -49,7 +50,7 @@ const FOLLOW_UP_TYPE = 'text' as const satisfies VariableType;
 const BIN_LIMIT = 8;
 
 /** What only a Categorical Bin says; the words both bins use are in `binMessages`. */
-const messages = defineMessages({
+export const categoricalBinPromptMessages = defineMessages({
   placeholder: {
     id: 'protocolBuilder.censusPrompts.categoricalBinPlaceholder',
     defaultMessage: 'Enter your prompt...',
@@ -216,7 +217,7 @@ const OTHER_SLOT: BinAttributeSlot = Object.freeze({
   // exclude different attributes: the follow-up is typed into an input that
   // honours the attribute's own codebook rules.
   writerClass: 'validated',
-  goneRefusal: messages.otherAttributeGoneRefusal,
+  goneRefusal: categoricalBinPromptMessages.otherAttributeGoneRefusal,
 });
 
 const asString = (value: unknown): string | undefined =>
@@ -253,26 +254,32 @@ function CategoricalBinPromptEditor({ item }: RowEditorProps) {
     <>
       <PromptTextField
         item={item}
-        placeholder={intl.formatMessage(messages.placeholder)}
+        placeholder={intl.formatMessage(
+          categoricalBinPromptMessages.placeholder,
+        )}
         title={intl.formatMessage(censusMessages.promptTextTitle)}
         description={intl.formatMessage(censusMessages.promptTextDescription)}
       />
       <Section
-        title={intl.formatMessage(messages.binsTitle)}
-        description={intl.formatMessage(messages.binsDescription)}
+        title={intl.formatMessage(categoricalBinPromptMessages.binsTitle)}
+        description={intl.formatMessage(
+          categoricalBinPromptMessages.binsDescription,
+        )}
       >
         <BinAttributeField
           slot={BINS_SLOT}
           subject={subject}
           committed={asString(item[BINS_FIELD])}
           label={intl.formatMessage(binMessages.attributeLabel)}
-          hint={intl.formatMessage(messages.binsHint)}
-          emptyMessage={intl.formatMessage(messages.binsEmpty)}
+          hint={intl.formatMessage(categoricalBinPromptMessages.binsHint)}
+          emptyMessage={intl.formatMessage(
+            categoricalBinPromptMessages.binsEmpty,
+          )}
           requiredMessage={intl.formatMessage(binMessages.binAttributeRequired)}
           createLabel={intl.formatMessage(binMessages.attributeCreateLabel)}
           optionLimit={BIN_LIMIT}
           optionLimitDescription={intl.formatMessage(
-            messages.binLimitDescription,
+            categoricalBinPromptMessages.binLimitDescription,
           )}
           extraBins={followUpBins}
         />
@@ -284,8 +291,10 @@ function CategoricalBinPromptEditor({ item }: RowEditorProps) {
         then not be asked anything in.
       */}
       <Section
-        title={intl.formatMessage(messages.otherTitle)}
-        description={intl.formatMessage(messages.otherDescription)}
+        title={intl.formatMessage(categoricalBinPromptMessages.otherTitle)}
+        description={intl.formatMessage(
+          categoricalBinPromptMessages.otherDescription,
+        )}
         toggleable
         disabled={!chosen}
         defaultOpen={committedOther !== undefined}
@@ -300,11 +309,21 @@ function CategoricalBinPromptEditor({ item }: RowEditorProps) {
           slot={OTHER_SLOT}
           subject={subject}
           committed={committedOther}
-          label={intl.formatMessage(messages.otherAttributeLabel)}
-          hint={intl.formatMessage(messages.otherAttributeHint)}
-          emptyMessage={intl.formatMessage(messages.otherAttributeEmpty)}
-          requiredMessage={intl.formatMessage(messages.otherAttributeRequired)}
-          createLabel={intl.formatMessage(messages.otherAttributeCreateLabel)}
+          label={intl.formatMessage(
+            categoricalBinPromptMessages.otherAttributeLabel,
+          )}
+          hint={intl.formatMessage(
+            categoricalBinPromptMessages.otherAttributeHint,
+          )}
+          emptyMessage={intl.formatMessage(
+            categoricalBinPromptMessages.otherAttributeEmpty,
+          )}
+          requiredMessage={intl.formatMessage(
+            categoricalBinPromptMessages.otherAttributeRequired,
+          )}
+          createLabel={intl.formatMessage(
+            categoricalBinPromptMessages.otherAttributeCreateLabel,
+          )}
         />
         <CodebookVariableValidationSection
           subject={subject}
@@ -313,28 +332,40 @@ function CategoricalBinPromptEditor({ item }: RowEditorProps) {
               ? otherVariable
               : undefined
           }
-          description={messages.otherValidationDescription}
+          description={categoricalBinPromptMessages.otherValidationDescription}
         />
-        <Field<typeof RichTextField>
+        <Field<typeof LocalizedRichTextField>
           name={OTHER_LABEL_FIELD}
-          component={RichTextField}
-          label={intl.formatMessage(messages.otherBinLabel)}
-          hint={intl.formatMessage(messages.otherBinHint)}
-          placeholder={intl.formatMessage(messages.otherBinPlaceholder)}
+          component={LocalizedRichTextField}
+          label={intl.formatMessage(categoricalBinPromptMessages.otherBinLabel)}
+          hint={intl.formatMessage(categoricalBinPromptMessages.otherBinHint)}
+          placeholder={intl.formatMessage(
+            categoricalBinPromptMessages.otherBinPlaceholder,
+          )}
           singleLine
           compact
-          initialValue={asString(item[OTHER_LABEL_FIELD])}
-          required={intl.formatMessage(messages.otherBinRequired)}
+          initialValue={asLocalizedString(item[OTHER_LABEL_FIELD])}
+          required={intl.formatMessage(
+            categoricalBinPromptMessages.otherBinRequired,
+          )}
         />
-        <Field<typeof RichTextField>
+        <Field<typeof LocalizedRichTextField>
           name={OTHER_PROMPT_FIELD}
-          component={RichTextField}
-          label={intl.formatMessage(messages.otherPromptLabel)}
-          hint={intl.formatMessage(messages.otherPromptHint)}
-          placeholder={intl.formatMessage(messages.otherPromptPlaceholder)}
+          component={LocalizedRichTextField}
+          label={intl.formatMessage(
+            categoricalBinPromptMessages.otherPromptLabel,
+          )}
+          hint={intl.formatMessage(
+            categoricalBinPromptMessages.otherPromptHint,
+          )}
+          placeholder={intl.formatMessage(
+            categoricalBinPromptMessages.otherPromptPlaceholder,
+          )}
           singleLine
-          initialValue={asString(item[OTHER_PROMPT_FIELD])}
-          required={intl.formatMessage(messages.otherPromptRequired)}
+          initialValue={asLocalizedString(item[OTHER_PROMPT_FIELD])}
+          required={intl.formatMessage(
+            categoricalBinPromptMessages.otherPromptRequired,
+          )}
         />
       </Section>
       <BinSortOrders subject={subject} item={item} disabled={!chosen} />

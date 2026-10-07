@@ -3,16 +3,21 @@ import { invariant } from 'es-toolkit';
 import { useCallback, useMemo } from 'react';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
+import type { PresentationalText } from '@codaco/fresco-ui/PresentationalText';
+import type { LocalizedString } from '@codaco/protocol-validation';
 import {
   type EntityPrimaryKey,
   entityPrimaryKeyProperty,
   type NcEntity,
   type NcNode,
-  type VariableValue,
 } from '@codaco/shared-consts';
 
 import useExternalData from '../../hooks/useExternalData';
 import { useStageSelector } from '../../hooks/useStageSelector';
+import {
+  useResolveLocalizedString,
+  useResolvePresentationalText,
+} from '../../localization/ProtocolLocalizationProvider';
 import { getStageCardOptions } from '../../selectors/name-generator';
 import {
   getNetworkNodes,
@@ -22,22 +27,26 @@ import getParentKeyByNameValue from '../../utils/getParentKeyByNameValue';
 import { getEntityAttributes } from '../../utils/networkEntities';
 import { resolveRosterNodeLabel } from '../../utils/resolveRosterNodeLabel';
 import { interfaceMessages } from '../messages';
+import type { DataCardDetail } from './DataCard';
 import type { NameGeneratorRosterProps } from './helpers';
 
 /**
  * Format details needed for list cards
  */
 const detailsWithVariableUUIDs =
-  (
-    props: NameGeneratorRosterProps & {
-      nodeTypeDefinition: ReturnType<typeof getNodeTypeDefinition>;
-      visibleSupplementaryFields: ReturnType<
-        typeof getStageCardOptions
-      >['additionalProperties'];
-    },
-  ) =>
-  (node: NcNode) => {
-    const { nodeTypeDefinition, visibleSupplementaryFields } = props;
+  (props: {
+    nodeTypeDefinition: ReturnType<typeof getNodeTypeDefinition>;
+    visibleSupplementaryFields: ReturnType<
+      typeof getStageCardOptions
+    >['additionalProperties'];
+    toPresentationalText: (value: LocalizedString) => PresentationalText;
+  }) =>
+  (node: NcNode): DataCardDetail[] | undefined => {
+    const {
+      nodeTypeDefinition,
+      visibleSupplementaryFields,
+      toPresentationalText,
+    } = props;
 
     invariant(
       nodeTypeDefinition,
@@ -53,13 +62,13 @@ const detailsWithVariableUUIDs =
         field.variable,
     }));
 
-    return withUUIDReplacement?.reduce(
-      (acc, field) => ({
-        ...acc,
-        [field.label]: attrs[field.variable],
-      }),
-      {} as Record<string, VariableValue | undefined>,
-    );
+    return withUUIDReplacement?.map((field) => ({
+      id: field.variable,
+      label: toPresentationalText(field.label),
+      value: Object.hasOwn(attrs, field.variable)
+        ? attrs[field.variable]
+        : undefined,
+    }));
   };
 
 export type UseItemElement = {
@@ -74,6 +83,8 @@ export type UseItemElement = {
 // Returns all nodes associated with external data
 const useItems = (props: NameGeneratorRosterProps) => {
   const intl = useAppIntl();
+  const resolve = useResolveLocalizedString();
+  const toPresentationalText = useResolvePresentationalText();
   const nodeTypeDefinition = useStageSelector(getNodeTypeDefinition);
   const { externalData, status } = useExternalData(
     props.stage.dataSource,
@@ -90,9 +101,13 @@ const useItems = (props: NameGeneratorRosterProps) => {
   // data, meaning we do not expect it to be encrypted.
   // TODO: this must be updated if we want rosters to support encrypted data.
   const codebookVariables = nodeTypeDefinition?.variables;
+  const typeLabel = nodeTypeDefinition
+    ? resolve(nodeTypeDefinition.label).text
+    : '';
   const subjectLabel =
-    nodeTypeDefinition?.name ??
-    intl.formatMessage(interfaceMessages.nodeSubject);
+    typeLabel.trim() === ''
+      ? intl.formatMessage(interfaceMessages.nodeSubject)
+      : typeLabel;
   const getNodeLabel = useCallback(
     (node: NcNode, sequentialNumber: number) =>
       resolveRosterNodeLabel({
@@ -116,9 +131,9 @@ const useItems = (props: NameGeneratorRosterProps) => {
       props: {
         label: getNodeLabel(item, index + 1),
         data: detailsWithVariableUUIDs({
-          ...props,
           nodeTypeDefinition,
           visibleSupplementaryFields: cardOptions.additionalProperties,
+          toPresentationalText,
         })(item),
       },
     })) as UseItemElement[];
@@ -127,7 +142,7 @@ const useItems = (props: NameGeneratorRosterProps) => {
     getNodeLabel,
     nodeTypeDefinition,
     cardOptions.additionalProperties,
-    props,
+    toPresentationalText,
   ]);
 
   return { status, items, excludeItems };

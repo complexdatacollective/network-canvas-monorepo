@@ -1,4 +1,4 @@
-import type { CurrentProtocol } from '@codaco/protocol-validation';
+import type { CurrentProtocol, LocaleTag } from '@codaco/protocol-validation';
 import type { NcNetwork, StageMetadata } from '@codaco/shared-consts';
 
 export type StoredAssetType =
@@ -65,7 +65,19 @@ export type StoredSession = {
   stageMetadata?: StageMetadata;
   // Optional so pre-existing rows (undefined) read as not synthetic.
   isSynthetic?: boolean;
+  // Written only through `setSessionLocale`. `localePreference` is the
+  // language the participant chose in the interview and decides which
+  // translation is shown; `locale` is the translation last shown, recorded for
+  // exports and never used to choose one.
+  localePreference: LocaleTag | null;
+  locale: LocaleTag | null;
 };
+
+// A general session write. The locale fields are left out because only
+// `setSessionLocale` may change them.
+export type StoredSessionPatch = Partial<
+  Omit<StoredSession, 'localePreference' | 'locale'>
+>;
 
 export type SessionStatusKind = 'in-progress' | 'complete';
 

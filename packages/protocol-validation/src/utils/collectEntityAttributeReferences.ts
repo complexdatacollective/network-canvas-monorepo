@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
-import { getAssetReferenceDescriptor } from '../schemas/8/asset-reference.ts';
-import type { StageSubject } from '../schemas/8/common/index.ts';
+import { getAssetReferenceDescriptor } from '../schemas/9/asset-reference.ts';
+import type { StageSubject } from '../schemas/9/common/index.ts';
 import {
   getEntityAttributeReferenceDescriptor,
   type AttributeExistence,
@@ -10,26 +10,26 @@ import {
   type InterfaceOwnedOptionSetKey,
   type StageManagedOptionsDescriptor,
   type SubjectResolution,
-} from '../schemas/8/entity-attribute-reference.ts';
-import { getEntityTypeReferenceDescriptor } from '../schemas/8/entity-type-reference.ts';
-// The CURRENT protocol schema, imported from its own module rather than
-// through `../schemas/index.ts`. This module and the schema module are
-// mutually recursive, and `../schemas/index.ts` sits in the middle: it
-// evaluates `const CurrentProtocolSchema = ProtocolSchemaV8` at module scope,
-// which under that cycle runs before the schema module has finished
-// initialising. Importing the schema module directly gives a live binding
-// resolved at call time instead, so the walk works whichever module the
-// consumer entered through.
-import CurrentProtocolSchema from '../schemas/8/schema.ts';
+} from '../schemas/9/entity-attribute-reference.ts';
+import { getEntityTypeReferenceDescriptor } from '../schemas/9/entity-type-reference.ts';
+// The current schema, imported from its own module rather than through
+// `../schemas/index.ts`. This module and the schema module are mutually
+// recursive, and `../schemas/index.ts` sits in the middle: it evaluates
+// `const CurrentProtocolSchema = ProtocolSchemaV9` at module scope, which
+// under that cycle runs before the schema module has finished initialising.
+// Importing the schema module directly gives a live binding resolved at call
+// time instead, so the walk works whichever module the consumer entered
+// through.
+import ProtocolSchemaV9 from '../schemas/9/schema.ts';
 import {
   getStageReferenceSite,
   registeredStageReferenceSites,
-} from '../schemas/8/stage-reference.ts';
+} from '../schemas/9/stage-reference.ts';
 import {
   getStageSubjectResolution,
   resolveDeclaredStageSubject,
-} from '../schemas/8/stage-subject-resolution.ts';
-import type { VariableType } from '../schemas/8/variables/types.ts';
+} from '../schemas/9/stage-subject-resolution.ts';
+import type { VariableType } from '../schemas/9/variables/types.ts';
 
 export type EntityAttributeReferenceHit = {
   path: (string | number)[];
@@ -76,7 +76,7 @@ type WalkContext = {
   // options.type entity ('ego' rules reference no codebook type).
   filterRuleEntity?: 'node' | 'edge';
   // The protocol's stages, for a stage whose subject is declared on ANOTHER
-  // stage. Empty when the walk was entered on a schema
+  // stage (NarrativePedigree). Empty when the walk was entered on a schema
   // fragment rather than a whole protocol.
   stages: readonly unknown[];
 };
@@ -375,9 +375,8 @@ const walk = (
       const match = options.find((option) => {
         if (!(option instanceof z.ZodObject)) return false;
         const discField: unknown = option.shape[discriminator];
-        if (!(discField instanceof z.ZodLiteral)) return false;
-        const accepted: ReadonlySet<unknown> = discField.values;
-        return accepted.has(discValue);
+        if (!isZodType(discField)) return false;
+        return literalValuesOf(discField)?.includes(discValue) ?? false;
       });
       return match ? walk(match, value, path, ctx) : [];
     }
@@ -444,7 +443,7 @@ const isStageHit = (
 
 /**
  * The walk's root context. `stages` is seeded from the value being walked so a
- * stage whose subject lives on another stage can resolve
+ * stage whose subject lives on another stage (NarrativePedigree) can resolve
  * it; walking a schema fragment simply leaves it empty.
  */
 const rootContext = (value: unknown): WalkContext => ({
@@ -462,7 +461,7 @@ export const collectEntityAttributeReferencesFromSchema = (
 export const collectEntityAttributeReferences = (
   protocol: unknown,
 ): EntityAttributeReferenceHit[] =>
-  collectEntityAttributeReferencesFromSchema(CurrentProtocolSchema, protocol);
+  collectEntityAttributeReferencesFromSchema(ProtocolSchemaV9, protocol);
 
 /**
  * Every codebook node/edge TYPE referenced by a protocol, discovered from the
@@ -492,7 +491,7 @@ export const collectEntityTypeReferencesFromSchema = (
 export const collectEntityTypeReferences = (
   protocol: unknown,
 ): EntityTypeReferenceHit[] =>
-  collectEntityTypeReferencesFromSchema(CurrentProtocolSchema, protocol);
+  collectEntityTypeReferencesFromSchema(ProtocolSchemaV9, protocol);
 
 /**
  * Every `assetManifest` entry referenced by a protocol, discovered from the
@@ -510,14 +509,15 @@ export const collectEntityTypeReferences = (
 export const collectAssetReferences = (
   protocol: unknown,
 ): AssetReferenceHit[] =>
-  walk(CurrentProtocolSchema, protocol, [], rootContext(protocol))
+  walk(ProtocolSchemaV9, protocol, [], rootContext(protocol))
     .filter(isAssetHit)
     .map(({ kind: _kind, ...hit }) => hit);
 
 /**
  * Every other STAGE a protocol's stages name, discovered from the schema's
  * `stageReference` tags — the stage counterpart of the collectors above.
- * Covers skip-logic destinations.
+ * Covers skip-logic destinations and the FamilyPedigree a NarrativePedigree
+ * describes the people of.
  *
  * A consumer deciding whether a stage may be REMOVED must derive its
  * dependants from here rather than from the two paths it happens to know: a
@@ -528,7 +528,7 @@ export const collectAssetReferences = (
 export const collectStageReferences = (
   protocol: unknown,
 ): StageReferenceHit[] =>
-  walk(CurrentProtocolSchema, protocol, [], rootContext(protocol))
+  walk(ProtocolSchemaV9, protocol, [], rootContext(protocol))
     .filter(isStageHit)
     .map(({ kind: _kind, ...hit }) => hit);
 
@@ -545,6 +545,6 @@ export const collectStageReferences = (
 export const declaredStageReferenceSites = (): string[] => {
   // Referenced so the schema module cannot be tree-shaken away from a consumer
   // that only asks this question; every tag registers as that module loads.
-  void CurrentProtocolSchema;
+  void ProtocolSchemaV9;
   return registeredStageReferenceSites();
 };

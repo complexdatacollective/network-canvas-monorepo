@@ -124,7 +124,7 @@
   "interviewer.interviewComplete.thankYouThisInterviewIsFinishedAnd": "Vielen Dank. Dieses Interview ist abgeschlossen, und die Antworten können nicht mehr geändert werden. Bitte geben Sie das Gerät an die forschende Person zurück.",
   "interviewer.language.automatic": "Automatisch (Browser)",
   "interviewer.language.failed": "Die Sprache wurde für diese Sitzung geändert, aber die Einstellung konnte nicht gespeichert werden. Möglicherweise blockiert Ihr Browser den Gerätespeicher.",
-  "interviewer.language.hint": "Wählen Sie die Sprache für Interviewer und die integrierten Interview-Steuerelemente auf diesem Gerät. Protokollinhalte und erhobene Daten werden dadurch nicht geändert.",
+  "interviewer.language.hint": "Wählen Sie die Sprache, die Interviewer auf diesem Gerät verwendet. Interviews werden in der Browsersprache der teilnehmenden Person angezeigt oder in der Sprache, die sie während des Interviews auswählt.",
   "interviewer.language.label": "Anzeigesprache",
   "interviewer.language.saved": "Spracheinstellung auf diesem Gerät gespeichert.",
   "interviewer.launchFailureToast.couldNotOpenFile": "Datei konnte nicht geöffnet werden",

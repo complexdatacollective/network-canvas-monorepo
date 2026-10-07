@@ -1,10 +1,9 @@
-import { AsyncIteratorClass } from '@orpc/client';
 import { useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { render, waitFor } from '@testing-library/react';
+import { Effect, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import type { ProtocolBuilderClient } from '@codaco/protocol-builder-core/contract';
-import type { ProtocolEvent } from '@codaco/protocol-builder-core/contract/schemas';
+import { ProtocolEventSchema } from '@codaco/protocol-builder-core/contract/schemas';
 import allInterfaces from '@codaco/protocols/e2e/all-interfaces/protocol.json';
 import {
   sectionId,
@@ -21,6 +20,7 @@ import {
   lockQueryKey,
   presenceQueryKey,
   useProtocolBuilderContext,
+  type ProtocolBuilderAdapter,
   type ProtocolBuilderContextValue,
 } from '../context.ts';
 import { useEntityTypes, useSection } from '../hooks.ts';
@@ -41,7 +41,7 @@ const COLLABORATOR = {
 };
 
 /** Which read is held open while the event arrives. */
-type Read = 'getSection' | 'listSections';
+type Read = 'GetSection' | 'ListSections';
 
 type Cache = Readonly<{
   client: QueryClient;
@@ -74,8 +74,9 @@ function fixtureHost(): InMemoryHost {
 
 function sectionEntry(cache: Cache, id: ProtocolSectionId): unknown {
   return cache.client.getQueryData(
-    cache.context.utils.getSection.queryKey({
-      input: { protocolId: cache.context.protocolId, sectionId: id },
+    cache.context.adapter.rpcKey('GetSection', {
+      protocolId: cache.context.protocolId,
+      sectionId: id,
     }),
   );
 }
@@ -89,9 +90,9 @@ function labelOf(cache: Cache, id: ProtocolSectionId): unknown {
 
 function sectionIds(cache: Cache): readonly string[] | undefined {
   const list = cache.client.getQueryData(
-    cache.context.utils.listSections.queryOptions({
-      input: { protocolId: cache.context.protocolId },
-    }).queryKey,
+    cache.context.adapter.rpcKey('ListSections', {
+      protocolId: cache.context.protocolId,
+    }),
   );
   return (list as { sectionIds?: string[] } | undefined)?.sectionIds;
 }
@@ -120,37 +121,42 @@ function presentNames(cache: Cache): string[] {
 }
 
 async function deleteInformation(host: InMemoryHost): Promise<void> {
-  await host.client.delete({
+  await host.adapter.rpcCall('Delete', {
     protocolId: host.protocolId,
     sectionId: INFORMATION,
+  });
+}
+
+async function renameInformation(
+  host: InMemoryHost,
+  label: string,
+): Promise<void> {
+  const collaborator = host.asCollaborator(COLLABORATOR);
+  const held = await collaborator.rpcCall('AcquireLock', {
+    protocolId: host.protocolId,
+    sectionId: INFORMATION,
+  });
+  await collaborator.rpcCall('Submit', {
+    protocolId: host.protocolId,
+    requestId: nextRequestId(),
+    sectionId: INFORMATION,
+    document: { ...held.document, label: { 'en-US': label } },
+    revision: held.revision,
   });
 }
 
 const RACES: readonly Race[] = [
   {
     name: 'a revision of the section being read',
-    read: 'getSection',
-    cause: async (host) => {
-      const collaborator = host.asCollaborator(COLLABORATOR);
-      const held = await collaborator.acquireLock({
-        protocolId: host.protocolId,
-        sectionId: INFORMATION,
-      });
-      await collaborator.submit({
-        protocolId: host.protocolId,
-        requestId: nextRequestId(),
-        sectionId: INFORMATION,
-        document: { ...held.document, label: 'Renamed by Grace' },
-        revision: held.revision,
-      });
-    },
+    read: 'GetSection',
+    cause: (host) => renameInformation(host, 'Renamed by Grace'),
     event: `revision:${INFORMATION}`,
     cached: (cache) => labelOf(cache, INFORMATION),
-    newer: 'Renamed by Grace',
+    newer: { 'en-US': 'Renamed by Grace' },
   },
   {
     name: 'the deletion of the section being read',
-    read: 'getSection',
+    read: 'GetSection',
     cause: deleteInformation,
     event: `revision:${INFORMATION}`,
     cached: (cache) => labelOf(cache, INFORMATION),
@@ -158,9 +164,9 @@ const RACES: readonly Race[] = [
   },
   {
     name: 'a lock taken on the section being read',
-    read: 'getSection',
+    read: 'GetSection',
     cause: async (host) => {
-      await host.asCollaborator(COLLABORATOR).acquireLock({
+      await host.asCollaborator(COLLABORATOR).rpcCall('AcquireLock', {
         protocolId: host.protocolId,
         sectionId: INFORMATION,
       });
@@ -171,12 +177,16 @@ const RACES: readonly Race[] = [
   },
   {
     name: 'presence arriving while a section is being read',
-    read: 'getSection',
+    read: 'GetSection',
     cause: async (host) => {
-      const events = await host
-        .asCollaborator(COLLABORATOR)
-        .watchProtocol({ protocolId: host.protocolId });
-      await events.next();
+      await new Promise<void>((joined) => {
+        void host
+          .asCollaborator(COLLABORATOR)
+          .rpcStream('WatchProtocol', { protocolId: host.protocolId }, () =>
+            joined(),
+          )
+          .catch(() => undefined);
+      });
     },
     event: 'presence:',
     cached: presentNames,
@@ -184,14 +194,15 @@ const RACES: readonly Race[] = [
   },
   {
     name: 'a section created while the list is being read',
-    read: 'listSections',
+    read: 'ListSections',
     cause: async (host) => {
-      await host.client.create({
+      await host.adapter.rpcCall('Create', {
         protocolId: host.protocolId,
         requestId: nextRequestId(),
         kind: 'codebookNode',
         document: {
           name: 'Place',
+          label: { 'en-US': 'Place' },
           color: 'node-color-seq-3',
           shape: { default: 'circle' },
           variables: {},
@@ -204,7 +215,7 @@ const RACES: readonly Race[] = [
   },
   {
     name: 'a section deleted while the list is being read',
-    read: 'listSections',
+    read: 'ListSections',
     cause: deleteInformation,
     event: `revision:${INFORMATION}`,
     cached: (cache) => sectionIds(cache)?.includes(INFORMATION),
@@ -243,16 +254,44 @@ describe('an event arriving around an answer that is still in flight', () => {
       expect(race.cached(cache)).toEqual(race.newer);
     });
   }
+
+  it('ends with the newer state when the event lands while the stream is down', async () => {
+    const race = RACES[0];
+    if (race === undefined) throw new Error('no revision race');
+    const { host, cache, gate, channel } = await mount(race);
+    const revisions = () =>
+      channel.handled().filter((handled) => handled === race.event).length;
+
+    await renameInformation(host, 'Before the drop');
+    await waitFor(() => {
+      expect(revisions()).toBe(1);
+    });
+    host.store.disconnectWatchers();
+    await renameInformation(host, 'While the stream was down');
+    await waitFor(() => {
+      expect(revisions()).toBeGreaterThanOrEqual(2);
+    });
+
+    gate.release();
+    await settle();
+    // Past the channel's first reconnect delay.
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
+    expect(labelOf(cache, INFORMATION)).toEqual({
+      'en-US': 'While the stream was down',
+    });
+    expect(revisions()).toBe(2);
+  });
 });
 
 /** The observers mounted, the read held open, and the cache to read after. */
 async function mount(race: Race) {
   const host = fixtureHost();
-  const gate = gatedRead(host.client, race.read);
-  const channel = handledEvents(gate.client);
+  const gate = gatedRead(host, race.read);
+  const channel = handledEvents(gate.adapter);
   let cache: Cache | undefined;
   render(
-    <ProtocolBuilder client={channel.client} protocolId={host.protocolId}>
+    <ProtocolBuilder adapter={channel.adapter} protocolId={host.protocolId}>
       <Capture onCache={(value) => (cache = value)} />
       <Reader />
     </ProtocolBuilder>,
@@ -278,7 +317,7 @@ function Capture({ onCache }: Readonly<{ onCache: (cache: Cache) => void }>) {
 /** Reads a section and the node types, so both queries have an observer. */
 function Reader() {
   const label = useSection(INFORMATION, (section) =>
-    String(section.document.label),
+    JSON.stringify(section.document.label),
   );
   const types = useEntityTypes('node');
   return (
@@ -288,27 +327,25 @@ function Reader() {
   );
 }
 
-/**
- * The host's client with one procedure's answers held at a gate the test
- * opens: the host has formed the answer and the client does not have it yet.
- */
-function gatedRead(client: ProtocolBuilderClient, procedure: Read) {
+function gatedRead(host: InMemoryHost, procedure: Read) {
   const gates: (() => void)[] = [];
-  const call = client[procedure] as (
-    input: unknown,
-    options: unknown,
-  ) => Promise<unknown>;
-  const gated = async (input: unknown, options: unknown) => {
-    const answer = await call(input, options);
-    await new Promise<void>((open) => gates.push(open));
-    return answer;
-  };
-  const wrapped = new Proxy(client, {
-    get: (target, property) =>
-      property === procedure ? gated : Reflect.get(target, property),
-  });
+  const held = <A,>(answer: A) =>
+    Effect.as(
+      Effect.promise(() => new Promise<void>((open) => gates.push(open))),
+      answer,
+    );
+  const adapter =
+    procedure === 'GetSection'
+      ? host.adapterWith({
+          GetSection: (input) =>
+            Effect.flatMap(host.handle.GetSection(input), held),
+        })
+      : host.adapterWith({
+          ListSections: (input) =>
+            Effect.flatMap(host.handle.ListSections(input), held),
+        });
   return {
-    client: wrapped,
+    adapter,
     waiting: () => gates.length,
     release: () => {
       for (const open of gates.splice(0)) open();
@@ -316,44 +353,29 @@ function gatedRead(client: ProtocolBuilderClient, procedure: Read) {
   };
 }
 
-/**
- * The host's client, recording each event the channel has finished with.
- *
- * An event is recorded when the channel asks for the next one, which it does
- * only after its handler has run — so a test that waits for the record can
- * read the cache knowing what the channel did with that event is in it.
- */
-function handledEvents(client: ProtocolBuilderClient) {
+function handledEvents(adapter: ProtocolBuilderAdapter) {
   const handled: string[] = [];
-  const watchProtocol: ProtocolBuilderClient['watchProtocol'] = async (
-    input,
-    options,
-  ) => {
-    const events = await client.watchProtocol(input, options);
-    let pending: ProtocolEvent | undefined;
-    return new AsyncIteratorClass<ProtocolEvent, void, void>(
-      async () => {
-        if (pending !== undefined) handled.push(keyOf(pending));
-        pending = undefined;
-        const next = await events.next();
-        if (next.done === true) return { done: true, value: undefined };
-        pending = next.value;
-        return { done: false, value: next.value };
-      },
-      async () => {
-        await events.return?.(undefined);
-      },
-    );
+  return {
+    adapter: {
+      ...adapter,
+      rpcStream: (tag, payload, onChunk, signal) =>
+        adapter.rpcStream(
+          tag,
+          payload,
+          (chunk) => {
+            onChunk(chunk);
+            handled.push(keyOf(chunk));
+          },
+          signal,
+        ),
+    } satisfies ProtocolBuilderAdapter,
+    handled: () => handled,
   };
-  const wrapped = new Proxy(client, {
-    get: (target, property) =>
-      property === 'watchProtocol'
-        ? watchProtocol
-        : Reflect.get(target, property),
-  });
-  return { client: wrapped, handled: () => handled };
 }
 
-function keyOf(event: ProtocolEvent): string {
-  return `${event.type}:${event.type === 'presence' ? '' : event.sectionId}`;
+const isProtocolEvent = Schema.is(ProtocolEventSchema);
+
+function keyOf(chunk: unknown): string {
+  if (!isProtocolEvent(chunk)) return 'unknown:';
+  return `${chunk.type}:${chunk.type === 'presence' ? '' : chunk.sectionId}`;
 }

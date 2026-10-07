@@ -11,6 +11,8 @@ import {
 } from '../../__tests__/rowFixtures.tsx';
 import PageContentSection from '../PageContentSection.tsx';
 
+const en = (text: string) => ({ 'en-US': text });
+
 const pageContent = (
   <>
     <PageContentSection
@@ -62,11 +64,11 @@ describe('a page of content rather than a task', () => {
       {
         id: 'info-item-1',
         type: 'text',
-        content: 'Welcome to this interview.',
+        content: en('Welcome to this interview.'),
       },
       {
         id: expect.any(String) as unknown as string,
-        content: 'And then this.',
+        content: en('And then this.'),
         type: 'text',
       },
     ]);
@@ -120,10 +122,10 @@ describe('a page whose blocks can be prose or a resource', () => {
       id: 'information-media',
       type: 'Information' as const,
       fields: {
-        label: 'Information',
-        title: 'Welcome',
+        label: en('Information'),
+        title: en('Welcome'),
         items: [
-          { id: 'block-text', type: 'text', content: 'Read this.' },
+          { id: 'block-text', type: 'text', content: en('Read this.') },
           { id: 'block-asset', type: 'asset', content: 'geo_data' },
         ],
       },
@@ -171,7 +173,7 @@ describe('a page whose blocks can be prose or a resource', () => {
     const request = await harness.submit();
     const items = request?.stageDocument.items;
     expect(Array.isArray(items) ? items : []).toEqual([
-      { id: 'block-text', type: 'text', content: 'Read this.' },
+      { id: 'block-text', type: 'text', content: en('Read this.') },
       { id: 'block-asset', type: 'asset', content: 'roster_data' },
     ]);
   });
@@ -191,9 +193,11 @@ describe('a block field the researcher left empty', () => {
         id: 'information-empty',
         type: 'Information',
         fields: {
-          label: 'Information',
-          title: 'Welcome',
-          items: [{ id: 'block-text', type: 'text', content: 'Read this.' }],
+          label: en('Information'),
+          title: en('Welcome'),
+          items: [
+            { id: 'block-text', type: 'text', content: en('Read this.') },
+          ],
         },
       },
       sections: (
@@ -223,7 +227,7 @@ describe('a block field the researcher left empty', () => {
     const request = await harness.submit();
     const items = request?.stageDocument.items;
     expect(Array.isArray(items) ? items : []).toEqual([
-      { id: 'block-text', type: 'text', content: 'Read this.' },
+      { id: 'block-text', type: 'text', content: en('Read this.') },
     ]);
   });
 });
@@ -242,9 +246,11 @@ describe('a block whose active slot the researcher emptied', () => {
         id: 'information-emptied',
         type: 'Information',
         fields: {
-          label: 'Information',
-          title: 'Welcome',
-          items: [{ id: 'block-text', type: 'text', content: 'Read this.' }],
+          label: en('Information'),
+          title: en('Welcome'),
+          items: [
+            { id: 'block-text', type: 'text', content: en('Read this.') },
+          ],
         },
       },
       sections: (
@@ -324,9 +330,11 @@ describe('the expand and collapse halves of a block', () => {
         id: 'information-live',
         type: 'Information',
         fields: {
-          label: 'Information',
-          title: 'Welcome',
-          items: [{ id: 'block-text', type: 'text', content: 'Read this.' }],
+          label: en('Information'),
+          title: en('Welcome'),
+          items: [
+            { id: 'block-text', type: 'text', content: en('Read this.') },
+          ],
         },
       },
       sections: (
@@ -353,7 +361,7 @@ describe('the expand and collapse halves of a block', () => {
     // The row exactly, key for key: an editor-only slot left on it would be a
     // key the protocol schema has never heard of.
     expect(written?.stageDocument.items).toEqual([
-      { id: 'block-text', type: 'text', content: 'Read this instead.' },
+      { id: 'block-text', type: 'text', content: en('Read this instead.') },
     ]);
   });
 });

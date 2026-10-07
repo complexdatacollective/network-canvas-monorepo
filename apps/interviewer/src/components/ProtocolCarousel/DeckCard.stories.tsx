@@ -25,8 +25,8 @@ import {
 
 // A minimal but type-correct protocol. DeckCard only reads `name`, `hash`,
 // `description`, and `importedAt`, but `ProtocolWithCounts` requires the full
-// shape — so we build a valid (empty) v8 protocol to satisfy the types without
-// any `as` casts.
+// shape — so we build a valid (empty) current-schema protocol to satisfy the
+// types without any `as` casts.
 type ProtocolOverrides = {
   name?: string;
   description?: string;
@@ -43,7 +43,8 @@ function makeProtocol({
   const protocol: CurrentProtocol = {
     name,
     description,
-    schemaVersion: 8,
+    schemaVersion: 9,
+    localization: { defaultLocale: 'en', locales: ['en'] },
     codebook: {},
     stages: [],
   };
@@ -52,7 +53,7 @@ function makeProtocol({
     id: 'story-protocol',
     hash,
     name,
-    schemaVersion: 8,
+    schemaVersion: 9,
     importedAt,
     description,
     codebook: {},

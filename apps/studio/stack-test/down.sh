@@ -10,7 +10,7 @@
 # behind holding the network. The next `up` then fails against a container
 # attached to a network that no longer exists. They are not orphans either
 # (the files still declare them), so `--remove-orphans` does not reach them.
-# See the same note on `down` in server/scripts/dev-stack.ts.
+# See the same note on `down` in api/scripts/dev-stack.ts.
 #
 # Volumes always go: a variant cycle must start from an empty database, or the
 # first-run setup this suite asserts would already be spent.

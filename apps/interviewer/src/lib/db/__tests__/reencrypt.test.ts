@@ -56,6 +56,8 @@ function makeSession(id: string): StoredSession {
     network,
     stageMetadata: { '0': { automaticLayout: true } },
     isSynthetic: false,
+    localePreference: null,
+    locale: null,
   };
 }
 
@@ -63,13 +65,14 @@ const protocol: StoredProtocol = {
   id: 'h1',
   hash: 'h1',
   name: 'Study',
-  schemaVersion: 8,
+  schemaVersion: 9,
   importedAt: '2026-01-01T09:08:07.654Z',
   description: 'A study',
   codebook: { node: {}, edge: {}, ego: {} },
   protocol: {
     name: 'Study',
-    schemaVersion: 8,
+    schemaVersion: 9,
+    localization: { defaultLocale: 'en', locales: ['en'] },
     stages: [],
     codebook: { node: {}, edge: {}, ego: {} },
   } as CurrentProtocol,

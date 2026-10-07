@@ -5,7 +5,8 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
-import { useState } from 'react';
+import userEvent from '@testing-library/user-event';
+import { Fragment, StrictMode, useState } from 'react';
 import { describe, expect, it } from 'vitest';
 
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
@@ -37,25 +38,30 @@ const EDITED_SECTION = sectionId({ kind: 'stage', stageId: EDITED_STAGE_ID });
 
 const personNode = (name: string): SectionDoc => ({
   name,
+  label: { en: name },
   color: 'node-color-seq-1',
   shape: { default: 'circle' },
   variables: {
-    diabetes: { name: 'Diabetes', type: 'boolean' },
-    asthma: { name: 'Asthma', type: 'boolean' },
+    diabetes: { name: 'Diabetes', label: 'Diabetes', type: 'boolean' },
+    asthma: { name: 'Asthma', label: 'Asthma', type: 'boolean' },
   },
 });
 
 const informationStage = (id: string, label: string): SectionDoc => ({
   id,
   type: 'Information',
-  label,
-  title: label,
+  label: { en: label },
+  title: { en: label },
   items: [],
 });
+
+const ENGLISH = { defaultLocale: 'en', locales: ['en'] };
+const ENGLISH_AND_SPANISH = { defaultLocale: 'en', locales: ['en', 'es'] };
 
 type SectionMap = Record<string, SectionDoc>;
 
 const protocolSections = (extra: SectionMap = {}): SectionMap => ({
+  [sectionId({ kind: 'settings' })]: { localization: ENGLISH },
   [sectionId({ kind: 'stageOrder' })]: { stages: ['stage-other'] },
   [sectionId({ kind: 'stage', stageId: 'stage-other' })]: informationStage(
     'stage-other',
@@ -64,6 +70,7 @@ const protocolSections = (extra: SectionMap = {}): SectionMap => ({
   [sectionId({ kind: 'codebookNode', typeId: 'person' })]: personNode('Person'),
   [sectionId({ kind: 'codebookEdge', typeId: 'friendship' })]: {
     name: 'Friendship',
+    label: { en: 'Friendship' },
     variables: {},
   },
   ...extra,
@@ -84,6 +91,12 @@ type EditorOptions = Readonly<{
    * instead. What a host with a rename dialog and no stage title does.
    */
   headless?: boolean;
+  /**
+   * Mounts the editor under `StrictMode`, which runs every effect, its cleanup
+   * and the effect again before the first paint — what a host's development
+   * build does to the editor on every mount.
+   */
+  strict?: boolean;
 }>;
 
 function Editor({
@@ -113,7 +126,7 @@ function Editor({
   });
 
   return (
-    <ProtocolBuilder client={host.client} protocolId={host.protocolId}>
+    <ProtocolBuilder adapter={host.adapter} protocolId={host.protocolId}>
       <SeedProtocolCache store={host.store}>
         <ResourceClientProvider>
           <StageEditSession target={target} formId="stage-form">
@@ -168,8 +181,9 @@ function HeadlessName({ onName }: { onName: (name: StageName) => void }) {
 function renderEditor(options: EditorOptions = {}) {
   const headless = options.headless === true;
   const type = options.type ?? 'NameGenerator';
-  const fields = options.fields ?? { label: '' };
+  const fields = options.fields ?? {};
   const existing = options.existing === true;
+  const Wrapper = options.strict === true ? StrictMode : Fragment;
   const sections: SectionMap = {
     ...(options.sections ?? protocolSections()),
     ...(existing
@@ -186,25 +200,27 @@ function renderEditor(options: EditorOptions = {}) {
   let readLiveDraft: (() => SectionDoc) | null = null;
 
   render(
-    <DialogProvider>
-      <Editor
-        sections={sections}
-        target={target}
-        headless={headless}
-        onStore={(api) => {
-          storeApi = api;
-        }}
-        onLiveDraft={(read) => {
-          readLiveDraft = read;
-        }}
-        onHost={(built) => {
-          host = built;
-        }}
-        onName={(name) => {
-          stageName = name;
-        }}
-      />
-    </DialogProvider>,
+    <Wrapper>
+      <DialogProvider>
+        <Editor
+          sections={sections}
+          target={target}
+          headless={headless}
+          onStore={(api) => {
+            storeApi = api;
+          }}
+          onLiveDraft={(read) => {
+            readLiveDraft = read;
+          }}
+          onHost={(built) => {
+            host = built;
+          }}
+          onName={(name) => {
+            stageName = name;
+          }}
+        />
+      </DialogProvider>
+    </Wrapper>,
   );
 
   const input = headless
@@ -259,10 +275,22 @@ describe('useStageName', () => {
     );
   });
 
+  /**
+   * `StrictMode` unmounts the editor and mounts it again before anything is
+   * painted, and the form empties itself in between. The record of what the
+   * editor has already proposed has to go with the form's values: kept, it
+   * reads the emptied name as one the researcher cleared and leaves it empty.
+   */
+  it('proposes a name when the editor is mounted twice by StrictMode', async () => {
+    const { input } = renderEditor({ strict: true });
+
+    await waitFor(() => expect(input).toHaveValue('Form Name Generator'));
+  });
+
   it('reads the subject from the committed draft when no field holds it', async () => {
     const { input } = renderEditor({
       type: 'Sociogram',
-      fields: { label: '', subject: { entity: 'edge', type: 'friendship' } },
+      fields: { subject: { entity: 'edge', type: 'friendship' } },
     });
 
     await waitFor(() => expect(input).toHaveValue('Friendship Sociogram'));
@@ -272,11 +300,10 @@ describe('useStageName', () => {
     const { input } = renderEditor({
       type: 'Information',
       fields: {
-        label: '',
         items: [
           { id: 'item-1', type: 'asset', content: 'asset-video' },
           { id: 'item-2', type: 'asset', content: 'asset-image' },
-          { id: 'item-3', type: 'text', content: 'Some prose' },
+          { id: 'item-3', type: 'text', content: { en: 'Some prose' } },
         ],
       },
       sections: protocolSections({
@@ -298,7 +325,7 @@ describe('useStageName', () => {
 
   it('qualifies a name generator from the panels beside its question', async () => {
     const { input } = renderEditor({
-      fields: { label: '', panels: [{ dataSource: 'roster-asset' }] },
+      fields: { panels: [{ dataSource: 'roster-asset' }] },
     });
 
     await waitFor(() =>
@@ -354,7 +381,7 @@ describe('useStageName', () => {
   it('proposes nothing for a stage that is not being created', async () => {
     const { input, setValue } = renderEditor({
       type: 'Sociogram',
-      fields: { label: 'Hand named' },
+      fields: { label: { en: 'Hand named' } },
       existing: true,
     });
 
@@ -372,7 +399,7 @@ describe('useStageName', () => {
   it('names an existing stage when a host accepts the proposal', async () => {
     const { name, liveDraft } = renderEditor({
       type: 'Sociogram',
-      fields: { label: '', subject: { entity: 'node', type: 'person' } },
+      fields: { subject: { entity: 'node', type: 'person' } },
       existing: true,
       headless: true,
     });
@@ -388,7 +415,7 @@ describe('useStageName', () => {
     });
 
     await waitFor(() => expect(name()?.value).toBe('Person Sociogram'));
-    expect(liveDraft()?.label).toBe('Person Sociogram');
+    expect(liveDraft()?.label).toEqual({ en: 'Person Sociogram' });
   });
 
   it('leaves an existing stage with an empty name empty', async () => {
@@ -397,7 +424,7 @@ describe('useStageName', () => {
     // into a protocol nobody asked it to name.
     const { input } = renderEditor({
       type: 'Sociogram',
-      fields: { label: '' },
+      fields: {},
       existing: true,
     });
 
@@ -420,7 +447,7 @@ describe('useStageName', () => {
   it('renames a stage from a host that draws no control', async () => {
     const { name, liveDraft } = renderEditor({
       type: 'Sociogram',
-      fields: { label: 'Hand named' },
+      fields: { label: { en: 'Hand named' } },
       existing: true,
       headless: true,
     });
@@ -437,8 +464,81 @@ describe('useStageName', () => {
       name()?.setValue('Renamed from a menu');
     });
 
-    expect(liveDraft()?.label).toBe('Renamed from a menu');
+    expect(liveDraft()?.label).toEqual({ en: 'Renamed from a menu' });
     expect(name()?.value).toBe('Renamed from a menu');
+  });
+});
+
+describe('a name written in more than one language', () => {
+  const bilingual = (extra: SectionMap = {}) =>
+    protocolSections({
+      [sectionId({ kind: 'settings' })]: { localization: ENGLISH_AND_SPANISH },
+      ...extra,
+    });
+
+  it('renames only the translation in the editing language', async () => {
+    const user = userEvent.setup();
+    const { input, liveDraft } = renderEditor({
+      type: 'Sociogram',
+      fields: { label: { en: 'Hand named', es: 'Nombrado a mano' } },
+      existing: true,
+      sections: bilingual(),
+    });
+    await settle();
+    expect(input).toHaveValue('Hand named');
+    expect(input.closest('[lang]')).toHaveAttribute('lang', 'en');
+
+    await user.click(screen.getByRole('button', { name: /Editing language/ }));
+    await user.click(
+      await screen.findByRole('menuitemradio', { name: /^español/ }),
+    );
+
+    const spanish = screen.getByRole('textbox', { name: 'Stage name' });
+    expect(spanish).toHaveValue('Nombrado a mano');
+    expect(spanish.closest('[lang]')).toHaveAttribute('lang', 'es');
+
+    fireEvent.change(spanish, { target: { value: 'Sociograma' } });
+    expect(liveDraft()?.label).toEqual({ en: 'Hand named', es: 'Sociograma' });
+  });
+
+  it('writes a proposal as the default language and keeps the translations', async () => {
+    const { name, liveDraft } = renderEditor({
+      type: 'Sociogram',
+      fields: {
+        label: { es: 'Sociograma' },
+        subject: { entity: 'node', type: 'person' },
+      },
+      existing: true,
+      headless: true,
+      sections: bilingual(),
+    });
+    await settle();
+    expect(name()?.value).toBe('');
+
+    act(() => {
+      name()?.acceptProposal();
+    });
+
+    await waitFor(() =>
+      expect(liveDraft()?.label).toEqual({
+        es: 'Sociograma',
+        en: 'Person Sociogram',
+      }),
+    );
+  });
+
+  it('dedupes a proposal against the default-language names only', async () => {
+    const { input } = renderEditor({
+      type: 'Information',
+      sections: bilingual({
+        [sectionId({ kind: 'stage', stageId: 'stage-other' })]: {
+          ...informationStage('stage-other', 'About the study'),
+          label: { en: 'About the study', es: 'Information' },
+        },
+      }),
+    });
+
+    await waitFor(() => expect(input).toHaveValue('Information'));
   });
 });
 
@@ -459,33 +559,33 @@ describe('useStageName parity with Architect', () => {
     {
       name: 'a subjectless name generator',
       type: 'NameGenerator',
-      fields: { label: '' },
+      fields: {},
       expected: 'Form Name Generator',
     },
     {
       name: 'a name generator with a node subject',
       type: 'NameGenerator',
-      fields: { label: '', subject: { entity: 'node', type: 'person' } },
+      fields: { subject: { entity: 'node', type: 'person' } },
       expected: 'Person Form Name Generator',
     },
     {
       name: 'network panels',
       type: 'NameGenerator',
-      fields: { label: '' },
+      fields: {},
       panels: [{ dataSource: 'existing' }],
       expected: 'Form Name Generator with Network Panels',
     },
     {
       name: 'mixed panels',
       type: 'NameGeneratorQuickAdd',
-      fields: { label: '' },
+      fields: {},
       panels: [{ dataSource: 'existing' }, { dataSource: 'roster-asset' }],
       expected: 'Quick Add Name Generator with Panels',
     },
     {
       name: 'a stage type with no qualifier',
       type: 'Sociogram',
-      fields: { label: '', subject: { entity: 'edge', type: 'friendship' } },
+      fields: { subject: { entity: 'edge', type: 'friendship' } },
       expected: 'Friendship Sociogram',
     },
   ];

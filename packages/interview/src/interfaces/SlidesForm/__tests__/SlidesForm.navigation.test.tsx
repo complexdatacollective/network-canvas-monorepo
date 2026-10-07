@@ -17,6 +17,7 @@ import useInterviewNavigation from '../../../hooks/useInterviewNavigation';
 import protocol from '../../../store/modules/protocol';
 import session from '../../../store/modules/session';
 import ui from '../../../store/modules/ui';
+import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
 import SlidesForm from '../SlidesForm';
 
 class StubResizeObserver {
@@ -55,7 +56,7 @@ beforeAll(() => {
 });
 
 const form: TitlelessForm = {
-  fields: [{ variable: 'name' as never, prompt: 'Person name' }],
+  fields: [{ variable: 'name' as never, prompt: { en: 'Person name' } }],
 };
 
 const person: NcNode = {
@@ -80,10 +81,16 @@ const codebook = {
   node: {
     person: {
       name: 'Person',
+      label: { en: 'Person' },
       color: 'node-color-seq-1',
       shape: { default: 'circle' },
       variables: {
-        name: { name: 'Name', type: 'text', component: 'Text' },
+        name: {
+          name: 'Name',
+          label: 'Name',
+          type: 'text',
+          component: 'Text',
+        },
       },
     },
   },
@@ -99,6 +106,7 @@ const requiredNameCodebook = {
       variables: {
         name: {
           name: 'Name',
+          label: 'Name',
           type: 'text',
           component: 'Text',
           validation: { required: true },
@@ -124,16 +132,19 @@ describe('SlidesForm navigation ownership', () => {
         protocol: {
           id: 'protocol',
           hash: 'hash',
-          schemaVersion: 8,
+          schemaVersion: 9,
+          localization: { defaultLocale: 'en', locales: ['en'] },
           codebook: {
             node: {
               person: {
                 name: 'Person',
+                label: { en: 'Person' },
                 color: 'node-color-seq-1',
                 shape: { default: 'circle' },
                 variables: {
                   name: {
                     name: 'Name',
+                    label: 'Name',
                     type: 'text',
                     component: 'Text',
                   },
@@ -147,9 +158,12 @@ describe('SlidesForm navigation ownership', () => {
             {
               id: 'hidden-alter-form',
               type: 'AlterForm',
-              label: 'Hidden form',
+              label: { en: 'Hidden form' },
               subject: { entity: 'node', type: 'person' },
-              introductionPanel: { title: 'About this person', text: '' },
+              introductionPanel: {
+                title: { en: 'About this person' },
+                text: { en: '' },
+              },
               form,
               skipLogic: {
                 action: 'SKIP',
@@ -159,8 +173,8 @@ describe('SlidesForm navigation ownership', () => {
             {
               id: 'next-screen',
               type: 'Information',
-              label: 'Next screen',
-              title: 'Next screen',
+              label: { en: 'Next screen' },
+              title: { en: 'Next screen' },
               items: [],
             },
           ],
@@ -194,13 +208,15 @@ describe('SlidesForm navigation ownership', () => {
     }
 
     render(
-      <Provider store={store}>
-        <CurrentStepProvider currentStep={0} onStepChange={onStepChange}>
-          <DialogProvider>
-            <OverrideHarness />
-          </DialogProvider>
-        </CurrentStepProvider>
-      </Provider>,
+      <TestProtocolLocalization>
+        <Provider store={store}>
+          <CurrentStepProvider currentStep={0} onStepChange={onStepChange}>
+            <DialogProvider>
+              <OverrideHarness />
+            </DialogProvider>
+          </CurrentStepProvider>
+        </Provider>
+      </TestProtocolLocalization>,
     );
 
     expect(screen.getByTestId('overridden-slides-form')).toBeVisible();
@@ -227,22 +243,26 @@ describe('SlidesForm navigation ownership', () => {
         protocol: {
           id: 'protocol',
           hash: 'hash',
-          schemaVersion: 8,
+          schemaVersion: 9,
+          localization: { defaultLocale: 'en', locales: ['en'] },
           codebook,
           stages: [
             {
               id: 'alter-form',
               type: 'AlterForm',
-              label: 'Alter form',
+              label: { en: 'Alter form' },
               subject: { entity: 'node', type: 'person' },
-              introductionPanel: { title: 'About this person', text: '' },
+              introductionPanel: {
+                title: { en: 'About this person' },
+                text: { en: '' },
+              },
               form,
             },
             {
               id: 'next-screen',
               type: 'Information',
-              label: 'Next screen',
-              title: 'Next screen',
+              label: { en: 'Next screen' },
+              title: { en: 'Next screen' },
               items: [],
             },
           ],
@@ -274,13 +294,15 @@ describe('SlidesForm navigation ownership', () => {
     }
 
     render(
-      <Provider store={store}>
-        <CurrentStepProvider currentStep={0} onStepChange={onStepChange}>
-          <DialogProvider>
-            <JumpHarness />
-          </DialogProvider>
-        </CurrentStepProvider>
-      </Provider>,
+      <TestProtocolLocalization>
+        <Provider store={store}>
+          <CurrentStepProvider currentStep={0} onStepChange={onStepChange}>
+            <DialogProvider>
+              <JumpHarness />
+            </DialogProvider>
+          </CurrentStepProvider>
+        </Provider>
+      </TestProtocolLocalization>,
     );
 
     expect(
@@ -312,22 +334,26 @@ describe('SlidesForm navigation ownership', () => {
         protocol: {
           id: 'protocol',
           hash: 'hash',
-          schemaVersion: 8,
+          schemaVersion: 9,
+          localization: { defaultLocale: 'en', locales: ['en'] },
           codebook: requiredNameCodebook,
           stages: [
             {
               id: 'alter-form',
               type: 'AlterForm',
-              label: 'Alter form',
+              label: { en: 'Alter form' },
               subject: { entity: 'node', type: 'person' },
-              introductionPanel: { title: 'About this person', text: '' },
+              introductionPanel: {
+                title: { en: 'About this person' },
+                text: { en: '' },
+              },
               form,
             },
             {
               id: 'next-screen',
               type: 'Information',
-              label: 'Next screen',
-              title: 'Next screen',
+              label: { en: 'Next screen' },
+              title: { en: 'Next screen' },
               items: [],
             },
           ],
@@ -359,13 +385,15 @@ describe('SlidesForm navigation ownership', () => {
     }
 
     render(
-      <Provider store={store}>
-        <CurrentStepProvider currentStep={0} onStepChange={onStepChange}>
-          <DialogProvider>
-            <JumpHarness />
-          </DialogProvider>
-        </CurrentStepProvider>
-      </Provider>,
+      <TestProtocolLocalization>
+        <Provider store={store}>
+          <CurrentStepProvider currentStep={0} onStepChange={onStepChange}>
+            <DialogProvider>
+              <JumpHarness />
+            </DialogProvider>
+          </CurrentStepProvider>
+        </Provider>
+      </TestProtocolLocalization>,
     );
 
     expect(
@@ -399,22 +427,26 @@ describe('SlidesForm navigation ownership', () => {
         protocol: {
           id: 'protocol',
           hash: 'hash',
-          schemaVersion: 8,
+          schemaVersion: 9,
+          localization: { defaultLocale: 'en', locales: ['en'] },
           codebook: requiredNameCodebook,
           stages: [
             {
               id: 'alter-form',
               type: 'AlterForm',
-              label: 'Alter form',
+              label: { en: 'Alter form' },
               subject: { entity: 'node', type: 'person' },
-              introductionPanel: { title: 'About this person', text: '' },
+              introductionPanel: {
+                title: { en: 'About this person' },
+                text: { en: '' },
+              },
               form,
             },
             {
               id: 'next-screen',
               type: 'Information',
-              label: 'Next screen',
-              title: 'Next screen',
+              label: { en: 'Next screen' },
+              title: { en: 'Next screen' },
               items: [],
             },
           ],
@@ -446,13 +478,15 @@ describe('SlidesForm navigation ownership', () => {
     }
 
     render(
-      <Provider store={store}>
-        <CurrentStepProvider currentStep={0} onStepChange={onStepChange}>
-          <DialogProvider>
-            <JumpHarness />
-          </DialogProvider>
-        </CurrentStepProvider>
-      </Provider>,
+      <TestProtocolLocalization>
+        <Provider store={store}>
+          <CurrentStepProvider currentStep={0} onStepChange={onStepChange}>
+            <DialogProvider>
+              <JumpHarness />
+            </DialogProvider>
+          </CurrentStepProvider>
+        </Provider>
+      </TestProtocolLocalization>,
     );
 
     // This person starts without a name, and the name is required — so the
@@ -489,22 +523,26 @@ describe('SlidesForm navigation ownership', () => {
         protocol: {
           id: 'protocol',
           hash: 'hash',
-          schemaVersion: 8,
+          schemaVersion: 9,
+          localization: { defaultLocale: 'en', locales: ['en'] },
           codebook: requiredNameCodebook,
           stages: [
             {
               id: 'alter-form',
               type: 'AlterForm',
-              label: 'Alter form',
+              label: { en: 'Alter form' },
               subject: { entity: 'node', type: 'person' },
-              introductionPanel: { title: 'About this person', text: '' },
+              introductionPanel: {
+                title: { en: 'About this person' },
+                text: { en: '' },
+              },
               form,
             },
             {
               id: 'next-screen',
               type: 'Information',
-              label: 'Next screen',
-              title: 'Next screen',
+              label: { en: 'Next screen' },
+              title: { en: 'Next screen' },
               items: [],
             },
           ],
@@ -536,13 +574,15 @@ describe('SlidesForm navigation ownership', () => {
     }
 
     render(
-      <Provider store={store}>
-        <CurrentStepProvider currentStep={0} onStepChange={onStepChange}>
-          <DialogProvider>
-            <JumpHarness />
-          </DialogProvider>
-        </CurrentStepProvider>
-      </Provider>,
+      <TestProtocolLocalization>
+        <Provider store={store}>
+          <CurrentStepProvider currentStep={0} onStepChange={onStepChange}>
+            <DialogProvider>
+              <JumpHarness />
+            </DialogProvider>
+          </CurrentStepProvider>
+        </Provider>
+      </TestProtocolLocalization>,
     );
 
     const field = await screen.findByRole('textbox', { name: 'Person name' });
@@ -581,22 +621,26 @@ describe('SlidesForm navigation ownership', () => {
         protocol: {
           id: 'protocol',
           hash: 'hash',
-          schemaVersion: 8,
+          schemaVersion: 9,
+          localization: { defaultLocale: 'en', locales: ['en'] },
           codebook: requiredNameCodebook,
           stages: [
             {
               id: 'alter-form',
               type: 'AlterForm',
-              label: 'Alter form',
+              label: { en: 'Alter form' },
               subject: { entity: 'node', type: 'person' },
-              introductionPanel: { title: 'About this person', text: '' },
+              introductionPanel: {
+                title: { en: 'About this person' },
+                text: { en: '' },
+              },
               form,
             },
             {
               id: 'next-screen',
               type: 'Information',
-              label: 'Next screen',
-              title: 'Next screen',
+              label: { en: 'Next screen' },
+              title: { en: 'Next screen' },
               items: [],
             },
           ],
@@ -628,13 +672,15 @@ describe('SlidesForm navigation ownership', () => {
     }
 
     render(
-      <Provider store={store}>
-        <CurrentStepProvider currentStep={0} onStepChange={onStepChange}>
-          <DialogProvider>
-            <JumpHarness />
-          </DialogProvider>
-        </CurrentStepProvider>
-      </Provider>,
+      <TestProtocolLocalization>
+        <Provider store={store}>
+          <CurrentStepProvider currentStep={0} onStepChange={onStepChange}>
+            <DialogProvider>
+              <JumpHarness />
+            </DialogProvider>
+          </CurrentStepProvider>
+        </Provider>
+      </TestProtocolLocalization>,
     );
 
     const field = await screen.findByRole('textbox', { name: 'Person name' });

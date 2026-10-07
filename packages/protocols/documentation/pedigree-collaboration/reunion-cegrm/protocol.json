@@ -1,0 +1,1263 @@
+{
+  "name": "Family reunion: family history and support (discussion prototype)",
+  "description": "CEGRM adaptation for discussion with reunion collaborators; not a field-ready instrument.",
+  "schemaVersion": 9,
+  "localization": {
+    "defaultLocale": "en-US",
+    "locales": ["en-US"]
+  },
+  "lastModified": "2026-10-05T00:00:00.000Z",
+  "codebook": {
+    "ego": {
+      "variables": {
+        "participant_consent": {
+          "name": "participant_consent",
+          "label": "participant_consent",
+          "type": "boolean",
+          "component": "Boolean",
+          "validation": {
+            "required": true
+          },
+          "options": [
+            {
+              "label": {
+                "en-US": "Yes. I agree to take part."
+              },
+              "value": true,
+              "negative": false
+            },
+            {
+              "label": {
+                "en-US": "No. I do not agree to take part."
+              },
+              "value": false,
+              "negative": true
+            }
+          ]
+        },
+        "ego_age": {
+          "name": "ego_age",
+          "label": "ego_age",
+          "type": "number",
+          "component": "Number"
+        },
+        "ego_education": {
+          "name": "ego_education",
+          "label": "ego_education",
+          "type": "ordinal",
+          "component": "RadioGroup",
+          "options": [
+            {
+              "label": {
+                "en-US": "Secondary school or less"
+              },
+              "value": 1
+            },
+            {
+              "label": {
+                "en-US": "Post-secondary or vocational training"
+              },
+              "value": 2
+            },
+            {
+              "label": {
+                "en-US": "University degree"
+              },
+              "value": 3
+            },
+            {
+              "label": {
+                "en-US": "Postgraduate degree"
+              },
+              "value": 4
+            }
+          ]
+        }
+      }
+    },
+    "node": {
+      "person": {
+        "name": "Person",
+        "label": {
+          "en-US": "Person"
+        },
+        "color": "node-color-seq-1",
+        "icon": "add-a-person",
+        "shape": {
+          "default": "diamond",
+          "dynamic": {
+            "type": "discrete",
+            "variable": "gender_identity",
+            "map": [
+              {
+                "value": "man",
+                "shape": "square"
+              },
+              {
+                "value": "woman",
+                "shape": "circle"
+              }
+            ]
+          }
+        },
+        "variables": {
+          "name": {
+            "name": "name",
+            "label": "name",
+            "type": "text",
+            "component": "Text",
+            "validation": {
+              "required": true,
+              "unique": true
+            }
+          },
+          "is_ego": {
+            "name": "is_ego",
+            "label": "is_ego",
+            "type": "boolean",
+            "component": "Toggle"
+          },
+          "relationship_to_ego": {
+            "name": "relationship_to_ego",
+            "label": "relationship_to_ego",
+            "type": "text",
+            "component": "Text"
+          },
+          "layout": {
+            "name": "layout",
+            "label": "layout",
+            "type": "layout"
+          },
+          "tie_type": {
+            "name": "tie_type",
+            "label": "tie_type",
+            "type": "categorical",
+            "component": "ToggleButtonGroup",
+            "options": [
+              {
+                "label": {
+                  "en-US": "Close friend"
+                },
+                "value": "close_friend"
+              },
+              {
+                "label": {
+                  "en-US": "Friend"
+                },
+                "value": "friend"
+              },
+              {
+                "label": {
+                  "en-US": "Colleague or classmate"
+                },
+                "value": "colleague"
+              },
+              {
+                "label": {
+                  "en-US": "Neighbour"
+                },
+                "value": "neighbour"
+              },
+              {
+                "label": {
+                  "en-US": "Faith community"
+                },
+                "value": "faith"
+              },
+              {
+                "label": {
+                  "en-US": "Health professional"
+                },
+                "value": "professional"
+              }
+            ]
+          },
+          "tie_type_other": {
+            "name": "tie_type_other",
+            "label": "tie_type_other",
+            "type": "text",
+            "component": "Text",
+            "validation": {
+              "required": true
+            }
+          },
+          "has_condition": {
+            "name": "has_condition",
+            "label": "has_condition",
+            "type": "boolean",
+            "component": "Toggle"
+          },
+          "had_testing": {
+            "name": "had_testing",
+            "label": "had_testing",
+            "type": "boolean",
+            "component": "Toggle"
+          },
+          "living_status": {
+            "name": "living_status",
+            "label": "living_status",
+            "type": "categorical",
+            "component": "ToggleButtonGroup",
+            "options": [
+              {
+                "label": {
+                  "en-US": "Living"
+                },
+                "value": "living"
+              },
+              {
+                "label": {
+                  "en-US": "Deceased"
+                },
+                "value": "deceased"
+              },
+              {
+                "label": {
+                  "en-US": "Don’t know"
+                },
+                "value": "unknown"
+              }
+            ]
+          },
+          "birth_year": {
+            "name": "birth_year",
+            "label": "birth_year",
+            "type": "number",
+            "component": "Number"
+          },
+          "closeness": {
+            "name": "closeness",
+            "label": "closeness",
+            "type": "ordinal",
+            "component": "LikertScale",
+            "options": [
+              {
+                "label": {
+                  "en-US": "Not close"
+                },
+                "value": 1
+              },
+              {
+                "label": {
+                  "en-US": "A little close"
+                },
+                "value": 2
+              },
+              {
+                "label": {
+                  "en-US": "Quite close"
+                },
+                "value": 3
+              },
+              {
+                "label": {
+                  "en-US": "Very close"
+                },
+                "value": 4
+              }
+            ]
+          },
+          "contact_frequency": {
+            "name": "contact_frequency",
+            "label": "contact_frequency",
+            "type": "ordinal",
+            "component": "LikertScale",
+            "options": [
+              {
+                "label": {
+                  "en-US": "No contact"
+                },
+                "value": 1
+              },
+              {
+                "label": {
+                  "en-US": "Less than once a year"
+                },
+                "value": 2
+              },
+              {
+                "label": {
+                  "en-US": "A few times a year"
+                },
+                "value": 3
+              },
+              {
+                "label": {
+                  "en-US": "Monthly"
+                },
+                "value": 4
+              },
+              {
+                "label": {
+                  "en-US": "Weekly"
+                },
+                "value": 5
+              },
+              {
+                "label": {
+                  "en-US": "Daily or almost daily"
+                },
+                "value": 6
+              }
+            ]
+          },
+          "exch_information": {
+            "name": "exch_information",
+            "label": "exch_information",
+            "type": "boolean",
+            "component": "Toggle"
+          },
+          "exch_tangible": {
+            "name": "exch_tangible",
+            "label": "exch_tangible",
+            "type": "boolean",
+            "component": "Toggle"
+          },
+          "exch_emotional": {
+            "name": "exch_emotional",
+            "label": "exch_emotional",
+            "type": "boolean",
+            "component": "Toggle"
+          },
+          "exch_spiritual": {
+            "name": "exch_spiritual",
+            "label": "exch_spiritual",
+            "type": "boolean",
+            "component": "Toggle"
+          },
+          "role_gatherer": {
+            "name": "role_gatherer",
+            "label": "role_gatherer",
+            "type": "boolean",
+            "component": "Toggle"
+          },
+          "role_disseminator": {
+            "name": "role_disseminator",
+            "label": "role_disseminator",
+            "type": "boolean",
+            "component": "Toggle"
+          },
+          "role_blocker": {
+            "name": "role_blocker",
+            "label": "role_blocker",
+            "type": "boolean",
+            "component": "Toggle"
+          },
+          "gender_identity": {
+            "name": "gender_identity",
+            "label": "gender_identity",
+            "type": "categorical",
+            "component": "CheckboxGroup",
+            "options": [
+              {
+                "label": {
+                  "en-US": "Man / boy"
+                },
+                "value": "man"
+              },
+              {
+                "label": {
+                  "en-US": "Woman / girl"
+                },
+                "value": "woman"
+              },
+              {
+                "label": {
+                  "en-US": "Non-binary / another gender"
+                },
+                "value": "another_gender"
+              },
+              {
+                "label": {
+                  "en-US": "Do not know"
+                },
+                "value": "unknown"
+              },
+              {
+                "label": {
+                  "en-US": "Prefer not to say"
+                },
+                "value": "prefer_not_to_say"
+              }
+            ],
+            "validation": {
+              "maxSelected": 1
+            }
+          },
+          "sexAssignedAtBirth": {
+            "name": "sexAssignedAtBirth",
+            "label": "sexAssignedAtBirth",
+            "type": "categorical",
+            "options": [
+              {
+                "value": "female",
+                "label": {
+                  "en-US": "Female"
+                }
+              },
+              {
+                "value": "male",
+                "label": {
+                  "en-US": "Male"
+                }
+              },
+              {
+                "value": "intersex",
+                "label": {
+                  "en-US": "Intersex"
+                }
+              },
+              {
+                "value": "unknown",
+                "label": {
+                  "en-US": "Don’t know"
+                }
+              },
+              {
+                "value": "preferNotToSay",
+                "label": {
+                  "en-US": "Prefer not to say"
+                }
+              }
+            ]
+          },
+          "relativesNotRecorded": {
+            "name": "relativesNotRecorded",
+            "label": "relativesNotRecorded",
+            "type": "categorical",
+            "options": [
+              {
+                "value": "noSiblings",
+                "label": {
+                  "en-US": "Has no siblings"
+                }
+              },
+              {
+                "value": "siblingsUnknown",
+                "label": {
+                  "en-US": "Siblings not known"
+                }
+              },
+              {
+                "value": "noChildren",
+                "label": {
+                  "en-US": "Has no children"
+                }
+              },
+              {
+                "value": "childrenUnknown",
+                "label": {
+                  "en-US": "Children not known"
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    "edge": {
+      "family_relationship": {
+        "name": "Family relationship",
+        "label": {
+          "en-US": "Family relationship"
+        },
+        "color": "edge-color-seq-1",
+        "variables": {
+          "isActive": {
+            "name": "isActive",
+            "label": "isActive",
+            "type": "boolean"
+          },
+          "isGestationalCarrier": {
+            "name": "isGestationalCarrier",
+            "label": "isGestationalCarrier",
+            "type": "boolean"
+          },
+          "relationshipKind": {
+            "name": "relationshipKind",
+            "label": "relationshipKind",
+            "type": "categorical",
+            "options": [
+              {
+                "value": "partner",
+                "label": {
+                  "en-US": "Partner"
+                }
+              },
+              {
+                "value": "biological",
+                "label": {
+                  "en-US": "Biological parent"
+                }
+              },
+              {
+                "value": "adoptive",
+                "label": {
+                  "en-US": "Adoptive parent"
+                }
+              },
+              {
+                "value": "social",
+                "label": {
+                  "en-US": "Step or social parent"
+                }
+              },
+              {
+                "value": "donor",
+                "label": {
+                  "en-US": "Donor"
+                }
+              },
+              {
+                "value": "surrogate",
+                "label": {
+                  "en-US": "Surrogate"
+                }
+              }
+            ]
+          }
+        }
+      },
+      "knows": {
+        "name": "Knows",
+        "label": {
+          "en-US": "Knows"
+        },
+        "color": "edge-color-seq-2"
+      }
+    }
+  },
+  "stages": [
+    {
+      "id": "information-researcher-notes",
+      "type": "Information",
+      "label": {
+        "en-US": "Template notes (delete before fielding)"
+      },
+      "title": {
+        "en-US": "Template notes"
+      },
+      "items": [
+        {
+          "id": "researcher-notes",
+          "type": "text",
+          "content": {
+            "en-US": "## Discussion prototype: family reunions\n\n_Delete this screen before collecting any data._\n\nBased on the existing Network Canvas CEGRM template. Review language, family boundaries and support domains with local collaborators. This version starts with mother/father wording; Architect also offers egg/sperm wording or participant choice. Neither setting describes an entire population.\n\nConsent, recruitment, privacy and recording procedures are placeholders requiring local ethics approval. Conduct each interview privately even if recruitment happens at a reunion. Never display one participant's health history to the reunion or merge relatives' maps by default.\n\nThe closing condition display uses unknown inheritance and hides inferred risk. It presents reported family history, not genetic counselling or risk assessment. The optional gender question controls shapes; AFAB/AMAB/UAAB annotations are not implemented. Record participant observations and map limitations as qualitative findings.\n\nCEGRM: Kenen & Peters (2001), https://doi.org/10.1023/A:1016627426430. Methods and clinical interpretation should be reviewed with Lori Erby and Laura Koehly."
+          }
+        }
+      ]
+    },
+    {
+      "id": "information-intro",
+      "type": "EgoForm",
+      "label": {
+        "en-US": "Welcome and consent"
+      },
+      "introductionPanel": {
+        "title": {
+          "en-US": "About this interview"
+        },
+        "text": {
+          "en-US": "## Your family and the people who support you\n\nThis demonstration maps family relationships, what you know about a family health condition, and the people you turn to for information or support. Use nicknames if you prefer. You can leave questions unanswered, pause, or stop.\n\nFor an actual study, the researcher must first explain the approved consent and privacy procedures. This example consent question is a placeholder."
+        }
+      },
+      "form": {
+        "fields": [
+          {
+            "variable": "participant_consent",
+            "prompt": {
+              "en-US": "Do you consent to participate in this study?"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "ego-form-background",
+      "type": "EgoForm",
+      "label": {
+        "en-US": "About you"
+      },
+      "skipLogic": {
+        "action": "SKIP",
+        "filter": {
+          "rules": [
+            {
+              "id": "c0a8f2d1-4b6e-4a9c-8f3d-2e7b1a5c9d40",
+              "type": "ego",
+              "options": {
+                "attribute": "participant_consent",
+                "operator": "EXACTLY",
+                "value": false
+              }
+            }
+          ]
+        },
+        "destination": {
+          "type": "finish"
+        }
+      },
+      "introductionPanel": {
+        "title": {
+          "en-US": "A little about you"
+        },
+        "text": {
+          "en-US": "A few short questions before we start on the map."
+        }
+      },
+      "form": {
+        "fields": [
+          {
+            "variable": "ego_age",
+            "prompt": {
+              "en-US": "How old are you?"
+            }
+          },
+          {
+            "variable": "ego_education",
+            "prompt": {
+              "en-US": "What is the highest level of education you have completed?"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "family-pedigree",
+      "type": "FamilyPedigree",
+      "label": {
+        "en-US": "Family pedigree"
+      },
+      "interviewScript": "Build the pedigree with the participant rather than handing them the device. Published CEGRM sessions are co-constructed, and recent studies pre-populate the pedigree before the session and review it with the participant instead of drawing it from scratch — do that if your study design allows, since it substantially reduces burden.\n\nLiving status and birth year are collected while each person is added. The two questions after the pedigree is finalised are asked by tapping people on the finished tree. Take them slowly. Illness, testing and bereavement will often prompt a story; let it run, and capture it using your approved study procedure.\n\nDiscussion prototype: mother/father framing is a starting point for collaborator review, not an assumption about all Black families or reunion participants. Ask local partners about preferred wording. Gender identity drives the configurable person shapes separately from sex recorded at birth. Standard AFAB/AMAB/UAAB annotations are not yet displayed.",
+      "subject": {
+        "entity": "node",
+        "type": "person"
+      },
+      "prompt": {
+        "en-US": "Let's map out your family. Who is in it?"
+      },
+      "nodeConfiguration": {
+        "nameAttribute": "name",
+        "sexAssignedAtBirthAttribute": "sexAssignedAtBirth",
+        "egoAttribute": "is_ego"
+      },
+      "edgeConfiguration": {
+        "type": "family_relationship",
+        "kindAttribute": "relationshipKind",
+        "gestationalCarrierAttribute": "isGestationalCarrier",
+        "currentPartnerAttribute": "isActive"
+      },
+      "framing": "gendered",
+      "completeness": {
+        "scope": "grandparents",
+        "enforcement": "recommended",
+        "relativesNotRecordedAttribute": "relativesNotRecorded"
+      },
+      "form": {
+        "fields": [
+          {
+            "variable": "gender_identity",
+            "prompt": {
+              "en-US": "How does this person describe their gender, if you know?"
+            },
+            "hint": {
+              "en-US": "Optional. Do not guess. You may leave this blank."
+            }
+          },
+          {
+            "variable": "living_status",
+            "prompt": {
+              "en-US": "Is this person living or deceased?"
+            }
+          },
+          {
+            "variable": "birth_year",
+            "prompt": {
+              "en-US": "What year was this person born?"
+            },
+            "hint": {
+              "en-US": "Leave this blank if you do not know."
+            }
+          }
+        ]
+      },
+      "nominationPrompts": [
+        {
+          "id": "nom-condition",
+          "text": {
+            "en-US": "Who in your family has had **this condition**?"
+          },
+          "attribute": "has_condition"
+        },
+        {
+          "id": "nom-testing",
+          "text": {
+            "en-US": "Who has had **genetic testing** for it?"
+          },
+          "attribute": "had_testing"
+        }
+      ]
+    },
+    {
+      "id": "information-beyond-family",
+      "type": "Information",
+      "label": {
+        "en-US": "Beyond the family"
+      },
+      "title": {
+        "en-US": "The people beyond your family"
+      },
+      "items": [
+        {
+          "id": "beyond-text",
+          "type": "text",
+          "content": {
+            "en-US": "You have mapped the people who belong in your family story. The next few screens add everyone else who matters — friends, colleagues, neighbours, people from groups you belong to, and the people who look after your health.\n\nThey will sit alongside your family on the same map."
+          }
+        }
+      ]
+    },
+    {
+      "id": "ng-non-kin",
+      "type": "NameGeneratorQuickAdd",
+      "label": {
+        "en-US": "People in your life"
+      },
+      "interviewScript": "The same person can belong in several of these questions. Add them once, then pick them from the panel of people already named rather than typing the name again.\n\nThe published instrument treats this step as widening the map to the participant's whole social universe, so do not rush it — friends and co-members of groups are where the spiritual and emotional domains usually turn out to live.",
+      "subject": {
+        "entity": "node",
+        "type": "person"
+      },
+      "quickAdd": "name",
+      "panels": [
+        {
+          "id": "already-mentioned",
+          "title": {
+            "en-US": "People you added earlier"
+          },
+          "dataSource": "existing",
+          "filter": {
+            "join": "AND",
+            "rules": [
+              {
+                "id": "c0a8f2d1-4b6e-4a9c-8f3d-2e7b1a5c9d46",
+                "type": "node",
+                "options": {
+                  "type": "person",
+                  "attribute": "is_ego",
+                  "operator": "NOT",
+                  "value": true
+                }
+              },
+              {
+                "id": "c0a8f2d1-4b6e-4a9c-8f3d-2e7b1a5c9d47",
+                "type": "node",
+                "options": {
+                  "type": "person",
+                  "attribute": "relationship_to_ego",
+                  "operator": "NOT_EXISTS"
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "prompts": [
+        {
+          "id": "p-friends",
+          "text": {
+            "en-US": "Who are the **friends** who matter most to you?"
+          }
+        },
+        {
+          "id": "p-work",
+          "text": {
+            "en-US": "Who are the people you know through **work or study**?"
+          }
+        },
+        {
+          "id": "p-groups",
+          "text": {
+            "en-US": "Who do you know through **groups you belong to** — a faith community, a team, a club, or a community you are part of online?"
+          }
+        },
+        {
+          "id": "p-care",
+          "text": {
+            "en-US": "Who is involved in looking after your **health**?"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bin-tie-type",
+      "type": "CategoricalBin",
+      "label": {
+        "en-US": "How you know each person"
+      },
+      "subject": {
+        "entity": "node",
+        "type": "person"
+      },
+      "prompts": [
+        {
+          "id": "p-tie-type",
+          "text": {
+            "en-US": "Sort the people you have just named by **how you know them**."
+          },
+          "variable": "tie_type",
+          "otherVariable": "tie_type_other",
+          "otherVariablePrompt": {
+            "en-US": "How would you describe how you know this person?"
+          },
+          "otherOptionLabel": {
+            "en-US": "Something else"
+          }
+        }
+      ],
+      "filter": {
+        "join": "AND",
+        "rules": [
+          {
+            "id": "c0a8f2d1-4b6e-4a9c-8f3d-2e7b1a5c9d40",
+            "type": "node",
+            "options": {
+              "type": "person",
+              "attribute": "is_ego",
+              "operator": "NOT",
+              "value": true
+            }
+          },
+          {
+            "id": "c0a8f2d1-4b6e-4a9c-8f3d-2e7b1a5c9d44",
+            "type": "node",
+            "options": {
+              "type": "person",
+              "attribute": "relationship_to_ego",
+              "operator": "NOT_EXISTS"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "bin-closeness",
+      "type": "OrdinalBin",
+      "label": {
+        "en-US": "How close you feel"
+      },
+      "interviewScript": "Closeness is a Network Canvas addition rather than a CEGRM symbol. It locates the support exchanges within the participant's perceived relationship structure and makes it possible to distinguish emotionally close ties from ties that perform a particular support function.",
+      "subject": {
+        "entity": "node",
+        "type": "person"
+      },
+      "prompts": [
+        {
+          "id": "p-closeness",
+          "text": {
+            "en-US": "Sort each person by **how close you feel** to them now."
+          },
+          "variable": "closeness",
+          "color": "ord-color-seq-1"
+        }
+      ],
+      "filter": {
+        "rules": [
+          {
+            "id": "c0a8f2d1-4b6e-4a9c-8f3d-2e7b1a5c9d48",
+            "type": "node",
+            "options": {
+              "type": "person",
+              "attribute": "is_ego",
+              "operator": "NOT",
+              "value": true
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "bin-contact-frequency",
+      "type": "OrdinalBin",
+      "label": {
+        "en-US": "How often you are in contact"
+      },
+      "interviewScript": "Contact frequency is a Network Canvas addition rather than a CEGRM symbol. Ask about contact by any channel during the past 12 months. People recorded as deceased are excluded because a current-frequency category would be inapplicable; people whose living status is unknown remain available.",
+      "subject": {
+        "entity": "node",
+        "type": "person"
+      },
+      "prompts": [
+        {
+          "id": "p-contact-frequency",
+          "text": {
+            "en-US": "Thinking about the past 12 months, sort each person by **how often you have been in contact** — in person, by phone, or online."
+          },
+          "variable": "contact_frequency",
+          "color": "ord-color-seq-2"
+        }
+      ],
+      "filter": {
+        "join": "AND",
+        "rules": [
+          {
+            "id": "c0a8f2d1-4b6e-4a9c-8f3d-2e7b1a5c9d49",
+            "type": "node",
+            "options": {
+              "type": "person",
+              "attribute": "is_ego",
+              "operator": "NOT",
+              "value": true
+            }
+          },
+          {
+            "id": "c0a8f2d1-4b6e-4a9c-8f3d-2e7b1a5c9d50",
+            "type": "node",
+            "options": {
+              "type": "person",
+              "attribute": "living_status",
+              "operator": "EXCLUDES",
+              "value": "deceased"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "socio-exchanges",
+      "type": "Sociogram",
+      "label": {
+        "en-US": "Exchanges of support"
+      },
+      "interviewScript": "These four questions are the coloured dots of the original paper instrument: information, practical help, feelings, and spiritual connection. Each is asked about every person on the map, family and non-family alike.\n\nAll the people are placed automatically so the participant reads the map rather than arranging it. Answer the first question about who knows whom before the four exchange questions — the connections make the later views legible.",
+      "subject": {
+        "entity": "node",
+        "type": "person"
+      },
+      "background": {
+        "concentricCircles": 0
+      },
+      "behaviours": {
+        "automaticLayout": true,
+        "allowRepositioning": true
+      },
+      "prompts": [
+        {
+          "id": "p-ties",
+          "text": {
+            "en-US": "Connect any of these people who **know one another**."
+          },
+          "layout": {
+            "layoutVariable": "layout"
+          },
+          "edges": {
+            "create": "knows",
+            "display": ["knows"]
+          }
+        },
+        {
+          "id": "p-information",
+          "text": {
+            "en-US": "Who do you **share health or genetic information** with?"
+          },
+          "layout": {
+            "layoutVariable": "layout"
+          },
+          "highlight": {
+            "allowHighlighting": true,
+            "variable": "exch_information"
+          },
+          "edges": {
+            "display": ["knows"]
+          }
+        },
+        {
+          "id": "p-tangible",
+          "text": {
+            "en-US": "Who gives you **practical help** — a lift to an appointment, a meal, looking after the children?"
+          },
+          "layout": {
+            "layoutVariable": "layout"
+          },
+          "highlight": {
+            "allowHighlighting": true,
+            "variable": "exch_tangible"
+          },
+          "edges": {
+            "display": ["knows"]
+          }
+        },
+        {
+          "id": "p-emotional",
+          "text": {
+            "en-US": "Who do you **share your feelings** with about all of this?"
+          },
+          "layout": {
+            "layoutVariable": "layout"
+          },
+          "highlight": {
+            "allowHighlighting": true,
+            "variable": "exch_emotional"
+          },
+          "edges": {
+            "display": ["knows"]
+          }
+        },
+        {
+          "id": "p-spiritual",
+          "text": {
+            "en-US": "Who do you share a **spiritual or religious connection** with?"
+          },
+          "layout": {
+            "layoutVariable": "layout"
+          },
+          "highlight": {
+            "allowHighlighting": true,
+            "variable": "exch_spiritual"
+          },
+          "edges": {
+            "display": ["knows"]
+          }
+        }
+      ],
+      "filter": {
+        "rules": [
+          {
+            "id": "c0a8f2d1-4b6e-4a9c-8f3d-2e7b1a5c9d41",
+            "type": "node",
+            "options": {
+              "type": "person",
+              "attribute": "is_ego",
+              "operator": "NOT",
+              "value": true
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "socio-roles",
+      "type": "Sociogram",
+      "label": {
+        "en-US": "Talking about the condition"
+      },
+      "interviewScript": "These three questions are the coloured stars of the paper instrument — the gatherer, disseminator and blocker roles described by Koehly and colleagues. They are configured for family members because the published roles describe communication within families at hereditary risk. Widen the filter only when non-family information brokerage is part of the research question.\n\nThis stage keeps the positions established on the preceding all-contact Sociogram. Do not enable automatic layout here: recomputing only the filtered family subset would make the relatives' coordinates incompatible with the non-family contacts when the completed map combines them again.\n\nThe third question names someone as a barrier to family communication, so frame it gently and without judgement: people usually have reasons, and those reasons are often the most useful thing the participant tells you.",
+      "subject": {
+        "entity": "node",
+        "type": "person"
+      },
+      "background": {
+        "concentricCircles": 0
+      },
+      "behaviours": {
+        "automaticLayout": false
+      },
+      "prompts": [
+        {
+          "id": "p-gatherer",
+          "text": {
+            "en-US": "Who in your family **looks for information** about this condition — reads about it, asks questions, or keeps track of what is known?"
+          },
+          "layout": {
+            "layoutVariable": "layout"
+          },
+          "highlight": {
+            "allowHighlighting": true,
+            "variable": "role_gatherer"
+          },
+          "edges": {
+            "display": ["knows"]
+          }
+        },
+        {
+          "id": "p-disseminator",
+          "text": {
+            "en-US": "Who in your family **helps people talk** about it and passes news on?"
+          },
+          "layout": {
+            "layoutVariable": "layout"
+          },
+          "highlight": {
+            "allowHighlighting": true,
+            "variable": "role_disseminator"
+          },
+          "edges": {
+            "display": ["knows"]
+          }
+        },
+        {
+          "id": "p-blocker",
+          "text": {
+            "en-US": "Who in your family finds it **hard to talk** about it, or would rather not know?"
+          },
+          "layout": {
+            "layoutVariable": "layout"
+          },
+          "highlight": {
+            "allowHighlighting": true,
+            "variable": "role_blocker"
+          },
+          "edges": {
+            "display": ["knows"]
+          }
+        }
+      ],
+      "filter": {
+        "join": "AND",
+        "rules": [
+          {
+            "id": "c0a8f2d1-4b6e-4a9c-8f3d-2e7b1a5c9d42",
+            "type": "node",
+            "options": {
+              "type": "person",
+              "attribute": "is_ego",
+              "operator": "NOT",
+              "value": true
+            }
+          },
+          {
+            "id": "c0a8f2d1-4b6e-4a9c-8f3d-2e7b1a5c9d45",
+            "type": "node",
+            "options": {
+              "type": "person",
+              "attribute": "relationship_to_ego",
+              "operator": "EXISTS"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "narrative-cegrm",
+      "type": "Narrative",
+      "label": {
+        "en-US": "The completed map"
+      },
+      "interviewScript": "This is the payoff of the whole session, and the point at which the CEGRM stops being a questionnaire and becomes an elicitation device. Operate it yourself and use it to prompt the participant.\n\nBegin with everyone and their connections. Then use Forms of support to move through information, practical help, feelings and spiritual connection, followed by Family health communication for the gatherer, disseminator and blocker roles. Ask what the participant notices. Where do the colours cluster? Where are they absent? Absence is as informative as presence — a person with no one in the feelings overlay, or a family where practical help comes entirely from outside it, is the finding.\n\nMove between overlays at the participant's pace and let them ask to go back. The positions are kept fixed so comparisons remain meaningful. Nothing drawn on this screen is saved, so capture the conversation using your approved study procedure.",
+      "subject": {
+        "entity": "node",
+        "type": "person"
+      },
+      "background": {
+        "concentricCircles": 3,
+        "skewedTowardCenter": true
+      },
+      "behaviours": {
+        "automaticLayout": false,
+        "allowRepositioning": false,
+        "freeDraw": true
+      },
+      "presets": [
+        {
+          "id": "preset-everyone",
+          "label": {
+            "en-US": "Everyone on your map"
+          },
+          "layoutVariable": "layout",
+          "edges": {
+            "display": ["knows"]
+          }
+        },
+        {
+          "id": "preset-support",
+          "label": {
+            "en-US": "Forms of support"
+          },
+          "layoutVariable": "layout",
+          "edges": {
+            "display": ["knows"]
+          },
+          "highlight": [
+            {
+              "variable": "exch_information",
+              "label": {
+                "en-US": "exch_information"
+              }
+            },
+            {
+              "variable": "exch_tangible",
+              "label": {
+                "en-US": "exch_tangible"
+              }
+            },
+            {
+              "variable": "exch_emotional",
+              "label": {
+                "en-US": "exch_emotional"
+              }
+            },
+            {
+              "variable": "exch_spiritual",
+              "label": {
+                "en-US": "exch_spiritual"
+              }
+            }
+          ]
+        },
+        {
+          "id": "preset-roles",
+          "label": {
+            "en-US": "Family health communication"
+          },
+          "layoutVariable": "layout",
+          "edges": {
+            "display": ["knows"]
+          },
+          "highlight": [
+            {
+              "variable": "role_gatherer",
+              "label": {
+                "en-US": "role_gatherer"
+              }
+            },
+            {
+              "variable": "role_disseminator",
+              "label": {
+                "en-US": "role_disseminator"
+              }
+            },
+            {
+              "variable": "role_blocker",
+              "label": {
+                "en-US": "role_blocker"
+              }
+            }
+          ]
+        }
+      ],
+      "filter": {
+        "rules": [
+          {
+            "id": "c0a8f2d1-4b6e-4a9c-8f3d-2e7b1a5c9d43",
+            "type": "node",
+            "options": {
+              "type": "person",
+              "attribute": "is_ego",
+              "operator": "NOT",
+              "value": true
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "information-close",
+      "type": "Information",
+      "label": {
+        "en-US": "Closing"
+      },
+      "title": {
+        "en-US": "Thank you"
+      },
+      "items": [
+        {
+          "id": "close-text",
+          "type": "text",
+          "content": {
+            "en-US": "Thank you for building this map with us.\n\nIf anything we have talked about today has left you wanting to speak to someone, please tell the interviewer before you leave. They can help you find the right support."
+          }
+        }
+      ]
+    }
+  ]
+}

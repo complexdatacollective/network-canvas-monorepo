@@ -6,6 +6,7 @@ import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
 import { resolveFieldPath } from '@codaco/fresco-ui/form/FieldNamespace';
 import type { Command } from '@codaco/studio-sync/apply';
 
+import { isFieldValue } from '../../form/fieldValue.ts';
 import {
   type StageFormStoreApi,
   useStageEditorForm,
@@ -31,22 +32,6 @@ import {
  * hold is a defect in the template rather than something to swallow: writing
  * `undefined` instead would silently drop a default the interface depends on.
  */
-const isFieldValueArrayItem = (
-  value: unknown,
-): value is string | number | boolean | Record<string, unknown> =>
-  typeof value === 'string' ||
-  typeof value === 'number' ||
-  typeof value === 'boolean' ||
-  (typeof value === 'object' && value !== null && !Array.isArray(value));
-
-const isFieldValue = (value: unknown): value is FieldValue =>
-  value === undefined ||
-  typeof value === 'string' ||
-  typeof value === 'number' ||
-  typeof value === 'boolean' ||
-  (Array.isArray(value) && value.every(isFieldValueArrayItem)) ||
-  (typeof value === 'object' && value !== null && !Array.isArray(value));
-
 function asFieldValue(value: unknown): FieldValue {
   if (!isFieldValue(value)) {
     throw new TypeError('An interface template holds a value a form cannot.');

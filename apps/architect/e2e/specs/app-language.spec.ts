@@ -153,12 +153,14 @@ test('authors an Information stage in Spanish and changes built-in preview langu
   await page.getByRole('button', { name: 'Finalizar edición' }).click();
   await page.waitForURL('**/protocol');
   const stage = await readStageJson(page, 0);
+  // Authored text is saved under the protocol's default language (`en` in
+  // `emptyProtocol()`), whatever language Architect itself is shown in.
   expect(stage).toMatchObject({
     type: 'Information',
-    label: 'Stage_Research_1',
-    title: 'Participant_Heading_EN',
+    label: { en: 'Stage_Research_1' },
+    title: { en: 'Participant_Heading_EN' },
     // The existing Markdown serializer escapes literal underscores.
-    items: [{ type: 'text', content: 'Participant\\_Content\\_EN' }],
+    items: [{ type: 'text', content: { en: 'Participant\\_Content\\_EN' } }],
   });
   const beforeSwitch = await readProtocolJson(page);
   await selectLanguage(page, 'en-GB');
@@ -194,58 +196,26 @@ test('authors an Information stage in Spanish and changes built-in preview langu
     'es',
   );
 
-  // The interface menu is independently scoped: a British-English preview
-  // can run inside the Spanish Architect document without rewriting authored
-  // content, resetting the protocol, or persisting a different host choice.
-  await preview
-    .getByRole('button', { name: 'Configuración', exact: true })
-    .click();
-  const interfaceLanguage = preview.getByRole('combobox', {
-    name: /^(Idioma de la interfaz|Interface language)$/,
-  });
-  await expect(interfaceLanguage).toHaveValue('__automatic');
-  await interfaceLanguage.selectOption('en-GB');
-  await expect(nextStep).toHaveAccessibleName('Next Step');
-  await expect(nextStep.locator('xpath=ancestor::*[@lang][1]')).toHaveAttribute(
-    'lang',
-    'en-GB',
-  );
-  await expect(preview.locator('html')).toHaveAttribute('lang', 'es');
-  await expect(page.locator('html')).toHaveAttribute('lang', 'es');
-  await expect(
-    preview.getByRole('heading', { name: 'Participant_Heading_EN' }),
-  ).toBeVisible();
-  await expect(
-    preview.getByText('Participant_Content_EN', { exact: true }),
-  ).toBeVisible();
-  expect(await readProtocolJson(page)).toEqual(beforeSwitch);
-  await interfaceLanguage.selectOption('__automatic');
-  await expect(nextStep).toHaveAccessibleName('Siguiente paso');
-  await expect(nextStep.locator('xpath=ancestor::*[@lang][1]')).toHaveAttribute(
-    'lang',
-    'es',
-  );
-  await preview.keyboard.press('Escape');
-  await expect(interfaceLanguage).toBeHidden();
+  // The interview's built-in text follows the browser's languages (`es-MX`
+  // here), never Architect's own. Switching Architect to English mid-preview
+  // re-labels the preview window's Architect document but leaves the already
+  // open confirmation, the interview's own dialog, in Spanish, and rewrites
+  // neither the authored content nor the protocol.
   await nextStep.click();
   await preview.getByRole('button', { name: 'Finalizar', exact: true }).click();
   const finish = preview.getByRole('dialog');
-  await expect(finish).toContainText(
-    'Esto es una vista previa, así que no se guarda nada. Al finalizar se cierra esta prueba del protocolo, y puedes iniciarla de nuevo después.',
-  );
+  const spanishFinishConfirmation =
+    'Esto es una vista previa, así que no se guarda nada. Al finalizar se cierra esta prueba del protocolo, y puedes iniciarla de nuevo después.';
+  await expect(finish).toContainText(spanishFinishConfirmation);
   const dialogId = await finish.getAttribute('id');
   expect(dialogId).toBeTruthy();
 
-  // The already-open runtime confirmation must subscribe to host changes too;
-  // the preview-only promise lives in Architect's catalog, outside Shell's.
   await selectLanguage(page, 'en');
   await expect(preview.locator('html')).toHaveAttribute('lang', 'en');
-  await expect(finish).toHaveAttribute('id', dialogId!);
-  await expect(finish).toContainText(
-    'This is a preview, so nothing is saved. Finishing ends this run of the protocol, and you can start it again afterwards.',
-  );
+  await expect(finish).toHaveAttribute('id', dialogId ?? '');
+  await expect(finish).toContainText(spanishFinishConfirmation);
   await finish
-    .getByRole('button', { name: 'Finish Interview', exact: true })
+    .getByRole('button', { name: 'Finalizar entrevista', exact: true })
     .click();
   await expect(
     preview.getByRole('heading', { name: 'Preview finished' }),
@@ -332,7 +302,6 @@ test('formats printed attribute order and updates linked-list grammar live while
   seed,
   context,
 }) => {
-  // These authored names satisfy the protocol's ASCII NMTOKEN contract.
   // Underscore/hyphen/dot distinguish locale collation from codepoint order.
   const names = ['alpha_name', 'alpha.name', 'alpha-name', 'Isabel'];
   const protocol = CurrentProtocolSchema.parse({
@@ -342,7 +311,7 @@ test('formats printed attribute order and updates linked-list grammar live while
         variables: Object.fromEntries(
           names.map((name, index) => [
             `attribute-${index}`,
-            { name, type: 'text', component: 'Text' },
+            { name, label: name, type: 'text', component: 'Text' },
           ]),
         ),
       },
@@ -351,30 +320,30 @@ test('formats printed attribute order and updates linked-list grammar live while
       {
         id: 'sort',
         type: 'EgoForm',
-        label: 'Authored_sort',
+        label: { en: 'Authored_sort' },
         introductionPanel: {
-          title: 'Authored introduction',
-          text: 'Authored content',
+          title: { en: 'Authored introduction' },
+          text: { en: 'Authored content' },
         },
         form: {
           fields: names.map((_, index) => ({
             variable: `attribute-${index}`,
-            prompt: `Authored_prompt_${index}`,
+            prompt: { en: `Authored_prompt_${index}` },
           })),
         },
       },
       {
         id: 'conjunction',
         type: 'EgoForm',
-        label: 'Authored_conjunction',
+        label: { en: 'Authored_conjunction' },
         introductionPanel: {
-          title: 'Authored introduction',
-          text: 'Authored content',
+          title: { en: 'Authored introduction' },
+          text: { en: 'Authored content' },
         },
         form: {
           fields: [0, 3].map((index) => ({
             variable: `attribute-${index}`,
-            prompt: `Authored_prompt_${index}`,
+            prompt: { en: `Authored_prompt_${index}` },
           })),
         },
       },

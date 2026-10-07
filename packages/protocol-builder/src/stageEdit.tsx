@@ -1,4 +1,3 @@
-import { safe } from '@orpc/client';
 import {
   createContext,
   useCallback,
@@ -25,6 +24,7 @@ import {
   type StageFormDraft,
   type StageIdentity,
 } from './stageDocument.ts';
+import { attempt } from './state/attempt.ts';
 import { useProtocolBuilderContext } from './state/context.ts';
 import {
   useSectionMutation,
@@ -220,7 +220,7 @@ function CreatingStage({
   children: ReactNode;
 }>) {
   const formId = useFormId(requestedFormId);
-  const { client, protocolId } = useProtocolBuilderContext();
+  const { adapter, protocolId } = useProtocolBuilderContext();
   const staged = useStagedResources();
   const addKey = useKeptRequestId();
   const { stageType, position } = target;
@@ -252,43 +252,45 @@ function CreatingStage({
       // document, so an add the host REFUSED, which the researcher fixes and
       // asks for again, is a different intent and gets an id of its own.
       const requestId = addKey.forAsk(contentHash(document));
-      const { data, definedError, isSuccess } = await safe(
-        client.create({
-          protocolId,
-          requestId,
-          kind: 'stage',
-          document,
-          position,
-          ...(promotion === undefined ? {} : { promote: promotion }),
-        }),
-      );
-      if (isSuccess || definedError !== null) addKey.settled(requestId);
-      if (!isSuccess) {
+      const created = await attempt(adapter, 'Create', {
+        protocolId,
+        requestId,
+        kind: 'stage',
+        document,
+        position,
+        ...(promotion === undefined ? {} : { promote: promotion }),
+      });
+      if (created.isSuccess || created.refusal !== undefined) {
+        addKey.settled(requestId);
+      }
+      if (!created.isSuccess) {
+        const { refusal } = created;
         // Every one of these left the protocol exactly as it was, so the draft
         // stays: the stage was not added, and adding it again once the reason
         // has passed is what the researcher will do next.
-        if (definedError?.code === 'PROMOTION_FAILED') {
+        if (refusal?._tag === 'PromotionFailed') {
           return { status: 'refused', message: PROMOTION_FAILED_MESSAGE };
         }
-        if (definedError?.code === 'SECTIONS_LOCKED') {
+        if (refusal?._tag === 'SectionsLocked') {
           return {
             status: 'refused',
-            message: blockedMessage(blockedHolders(definedError.data.blocked)),
+            message: blockedMessage(blockedHolders(refusal.blocked)),
           };
         }
         return {
           status: 'refused',
           message:
-            definedError?.code === 'INVALID_SHAPE'
+            refusal?._tag === 'InvalidShape'
               ? INVALID_SHAPE_MESSAGE
               : ADD_FAILED_MESSAGE,
         };
       }
+      const { data } = created;
       staged.promoted();
       onSaved?.(data.sectionId);
       return { status: 'saved', sectionId: data.sectionId };
     },
-    [addKey, client, identity, onSaved, position, protocolId, staged],
+    [addKey, adapter, identity, onSaved, position, protocolId, staged],
   );
 
   const edit = useMemo<StageEdit>(

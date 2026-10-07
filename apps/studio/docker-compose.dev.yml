@@ -2,7 +2,7 @@
 #
 #   docker compose -f docker-compose.yml -f docker-compose.dev.yml ...
 #
-# `pnpm --filter @codaco/studio-server dev` applies it for you and starts only
+# `pnpm --filter @codaco/studio-api dev` applies it for you and starts only
 # the four services below; `traefik`, `web`, `api` and `worker` stay stopped,
 # because in development those run from source with watch and HMR.
 #
@@ -22,6 +22,9 @@ services:
       # The port packages/studio-sync's conformance suite expects, so one
       # container serves the app and that suite.
       - '127.0.0.1:54318:5432'
+    # Parallel suites drop ~100-table schemas at once; the default of 64 runs
+    # out. A command rather than an initdb argument so existing volumes get it.
+    command: ['postgres', '-c', 'max_locks_per_transaction=256']
 
   garage:
     ports:

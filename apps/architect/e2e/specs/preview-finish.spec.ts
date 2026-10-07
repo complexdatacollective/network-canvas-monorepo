@@ -32,33 +32,34 @@ const STAGE_LABEL = 'Welcome';
 function twoScreenProtocol(): CurrentProtocol {
   return CurrentProtocolSchema.parse({
     name: 'Preview finish E2E',
-    schemaVersion: 8,
+    schemaVersion: 9,
+    localization: { defaultLocale: 'en', locales: ['en'] },
     codebook: { node: {}, edge: {}, ego: {} },
     assetManifest: {},
     stages: [
       {
         id: 'welcome',
         type: 'Information',
-        label: STAGE_LABEL,
-        title: 'Welcome',
+        label: { en: STAGE_LABEL },
+        title: { en: 'Welcome' },
         items: [
           {
             id: 'welcome-text',
             type: 'text',
-            content: 'Thank you for taking part.',
+            content: { en: 'Thank you for taking part.' },
           },
         ],
       },
       {
         id: 'closing',
         type: 'Information',
-        label: 'Closing',
-        title: 'Closing',
+        label: { en: 'Closing' },
+        title: { en: 'Closing' },
         items: [
           {
             id: 'closing-text',
             type: 'text',
-            content: 'That is everything we wanted to ask.',
+            content: { en: 'That is everything we wanted to ask.' },
           },
         ],
       },

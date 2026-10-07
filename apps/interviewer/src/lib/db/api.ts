@@ -1,3 +1,4 @@
+import type { ProtocolLocaleChange } from '@codaco/interview';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import type { NcNetwork } from '@codaco/shared-consts';
 
@@ -16,6 +17,7 @@ import type {
   StoredProtocol,
   StoredSession,
   StoredSessionLite,
+  StoredSessionPatch,
   StoredSettings,
 } from './types';
 
@@ -102,9 +104,16 @@ export async function createSession(args: {
 
 export async function updateSession(
   id: string,
-  patch: Partial<StoredSession>,
+  patch: StoredSessionPatch,
 ): Promise<StoredSession | undefined> {
   return dexieSessions.updateSession(id, patch);
+}
+
+export async function setSessionLocale(
+  id: string,
+  change: ProtocolLocaleChange,
+): Promise<void> {
+  return dexieSessions.setSessionLocale(id, change);
 }
 
 export async function whenSessionWritesSettle(): Promise<void> {

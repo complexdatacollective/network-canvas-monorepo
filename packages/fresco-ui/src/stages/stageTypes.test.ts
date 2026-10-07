@@ -13,7 +13,7 @@ describe('STAGE_TYPE_COLORS', () => {
   it('gives every stage type a distinct palette colour', () => {
     const colors = Object.values(STAGE_TYPE_COLORS);
 
-    expect(colors).toHaveLength(18);
+    expect(colors).toHaveLength(20);
     expect(new Set(colors).size).toBe(colors.length);
     for (const color of colors) {
       expect(paletteColorStyles).toHaveProperty(color);
@@ -35,6 +35,7 @@ describe('STAGE_TYPE_COLORS', () => {
       ['AlterEdgeForm', 'AlterForm'],
       ['Narrative', 'Sociogram'],
       ['DyadCensus', 'OneToManyDyadCensus'],
+      ['FamilyPedigree', 'NarrativePedigree'],
     ]);
   });
 

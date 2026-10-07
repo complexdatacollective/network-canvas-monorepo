@@ -367,9 +367,9 @@ describe('the questions a tie-strength census asks about a pair', () => {
         harness.hostCodebook().edge?.knows?.variables?.closeness,
       ).toMatchObject({
         options: [
-          { label: 'Inseparable', value: 3 },
-          { label: 'Somewhat close', value: 2 },
-          { label: 'Not close', value: 1 },
+          { label: { 'en-US': 'Inseparable' }, value: 3 },
+          { label: { 'en-US': 'Somewhat close' }, value: 2 },
+          { label: { 'en-US': 'Not close' }, value: 1 },
         ],
       }),
     );
@@ -470,10 +470,10 @@ describe('the questions a tie-strength census asks about a pair', () => {
     expect(rows[0]?.id).toBe('tie-strength-census-prompt-1');
     expect(rows[1]).toEqual({
       id: expect.any(String) as unknown as string,
-      text: 'How much trust?',
+      text: { 'en-US': 'How much trust?' },
       createEdge: 'knows',
       edgeVariable: 'closeness',
-      negativeLabel: 'Not at all',
+      negativeLabel: { 'en-US': 'Not at all' },
     });
   });
 
@@ -672,7 +672,12 @@ describe('a tie-strength prompt whose scale has gone', () => {
 
     harness.receiveCodebookUpdate({
       edge: {
-        knows: { name: 'knows', color: 'edge-color-seq-1', variables: {} },
+        knows: {
+          name: 'knows',
+          label: { 'en-US': 'knows' },
+          color: 'edge-color-seq-1',
+          variables: {},
+        },
       },
     });
     expect(

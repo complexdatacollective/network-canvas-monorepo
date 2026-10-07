@@ -8,12 +8,17 @@ import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import type { FieldValue } from '@codaco/fresco-ui/form/store/types';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
+import { LocalizedInputField } from '../../../fields/LocalizedStringField.tsx';
 import type { RowPreviewProps } from '../../../form/rowDialog.tsx';
+import { useLocalizedText } from '../../../localization/ProtocolLocalization.tsx';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import BuilderSection from '../../BuilderSection.tsx';
 import PromptsSection from '../../PromptsSection.tsx';
 import SubjectSection from '../SubjectSection.tsx';
 import { changeSubjectTo } from './changeSubject.ts';
+
+/** Copy in the fixture protocol's only language, as schema 9 holds it. */
+const en = (text: string) => ({ 'en-US': text });
 
 /**
  * A family's own section for one nested behaviour.
@@ -49,7 +54,7 @@ function CensusPromptEditor() {
       <Field
         name="text"
         label="Prompt text"
-        component={InputField}
+        component={LocalizedInputField}
         required="Enter the question this prompt asks."
       />
       <Field
@@ -63,9 +68,8 @@ function CensusPromptEditor() {
 }
 
 function CensusPromptPreview({ item }: RowPreviewProps) {
-  return (
-    <span>{typeof item.text === 'string' ? item.text : 'Empty prompt'}</span>
-  );
+  const localize = useLocalizedText();
+  return <span>{localize(item.text).text || 'Empty prompt'}</span>;
 }
 
 const subjectAndPrompts = (
@@ -103,13 +107,13 @@ const censusHoldingNonDefault = {
   id: 'one-to-many-dyad-census-1',
   type: 'OneToManyDyadCensus' as const,
   fields: {
-    label: 'One to Many Dyad Census',
+    label: en('One to Many Dyad Census'),
     subject: { entity: 'node', type: 'person' },
     behaviours: { removeAfterConsideration: false },
     prompts: [
       {
         id: 'one-to-many-dyad-census-prompt-1',
-        text: 'Tap on all the people who this person knows',
+        text: en('Tap on all the people who this person knows'),
         createEdge: 'knows',
       },
     ],
@@ -167,17 +171,17 @@ const censusWithAFilter = {
   id: 'dyad-census-1',
   type: 'DyadCensus' as const,
   fields: {
-    label: 'Dyad Census',
+    label: en('Dyad Census'),
     subject: { entity: 'node', type: 'person' },
     introductionPanel: {
-      title: 'Introduction to the Dyad Census',
-      text: 'This section goes through every pair of people.',
+      title: en('Introduction to the Dyad Census'),
+      text: en('This section goes through every pair of people.'),
     },
     filter: A_PERSON_FILTER,
     prompts: [
       {
         id: 'dyad-census-prompt-1',
-        text: 'Do these two people know each other?',
+        text: en('Do these two people know each other?'),
         createEdge: 'knows',
       },
     ],

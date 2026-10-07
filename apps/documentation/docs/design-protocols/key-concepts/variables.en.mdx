@@ -1,6 +1,7 @@
 ---
 title: Variables
 navOrder: 4
+date: 5th October 2026
 ---
 
 <Definition>
@@ -33,11 +34,11 @@ Number variables collect numerical data like ages, counts, ratings, or measureme
 
 ### Boolean
 
-Boolean variables collect binary true/false or yes/no data. Available input controls include Toggle and Checkbox (single). Examples include lives nearby (true/false), provides emotional support (yes/no), and family member (true/false). In exported data, boolean variables appear as TRUE/FALSE in CSV and as boolean values in GraphML.
+Boolean variables collect binary true/false or yes/no data. Available input controls include Toggle and Checkbox (single). Examples include lives nearby (true/false), provides emotional support (yes/no), and family member (true/false). In exported data, boolean variables appear as `true`/`false` in CSV and as boolean values in GraphML.
 
 ### Categorical (Nominal)
 
-Categorical variables collect data where options have no inherent order—responses are distinct categories. Available input controls include Radio Button Group (single selection), Toggle Button Group (single selection), and Checkbox Group (multiple selection). Examples include gender (Male, Female, Non-binary, Other), relationship type (Friend, Family, Colleague, Neighbor), and communication methods (Phone, Email, In-person, Text, with multiple possible). In exported data, single-select categorical variables appear as one column with the category value, while multi-select categorical variables appear as multiple columns (one per option) with TRUE/FALSE values.
+Categorical variables collect data where options have no inherent order—responses are distinct categories. Available input controls include Radio Button Group (single selection), Toggle Button Group (single selection), and Checkbox Group (multiple selection). Examples include gender (Male, Female, Non-binary, Other), relationship type (Friend, Family, Colleague, Neighbor), and communication methods (Phone, Email, In-person, Text, with multiple possible). In exported data, categorical variables appear as one column per option, with `true`/`false` values, whether participants can select one option or several.
 
 ### Ordinal
 
@@ -143,6 +144,78 @@ Some variables are created automatically:
 
 ## Variable naming best practices
 
+A variable's name is how it appears in the codebook, and it becomes the column name in your exported data. This section covers what a name can contain, the names Architect refuses because they would clash in exported data, and some advice on choosing names that are easy to analyze.
+
+### What a name can contain
+
+<AppOnly app="current">
+
+Names can be written in any language, and they can include spaces and punctuation. All of these are valid variable names:
+
+- `close_friend`
+- `género`
+- `关系类型`
+- `contact frequency (per week)`
+
+The same freedom applies to the names of node types and edge types, and to the values of categorical and ordinal options. There are only two limits on what any of these can contain. A name:
+
+- can't be empty
+- can't contain tabs, line breaks, or other invisible control characters, nor the special codes U+FFFE and U+FFFF, which don't appear in ordinary text. These characters usually arrive when you paste text copied from another program.
+
+A variable's name also can't be the same as the name of another variable of the same node type, edge type, or ego, however it is capitalized: `Age` and `age` count as the same name.
+
+Architect tidies each name as you save it. It removes any spaces from the start and end, and it stores accented letters in one consistent form (Unicode NFC), so a name typed on two different keyboards is saved the same way.
+
+The column headings of a roster file work differently: Architect refuses a heading that starts or ends with a space, rather than removing the spaces. See [Column headings](/en/design-protocols/tutorials/working-with-rosters#column-headings) in Working with Roster Data for when this happens.
+
+</AppOnly>
+
+<AppOnly app="classic">
+
+Architect Classic allows only the letters A–Z and a–z, the digits 0–9, and the symbols `.`, `_`, `-` and `:` in variable names, with no spaces. Protocols that use names in other languages, or names with spaces or other punctuation, use schema 9, which Architect Classic can't open. See [Protocol Schema Information](/en/get-started/protocol-schema-information#schema-version-9).
+
+</AppOnly>
+
+### Names that would clash in exported data
+
+<AppOnly app="current">
+
+Most variables are exported as a single column named after the variable, but two types are exported as several columns:
+
+- A **categorical** variable gets one column for each option, named `variable_option`. A variable `support` with the options `emotional` and `financial` gets the columns `support_emotional` and `support_financial`.
+- A **layout** variable gets one column for each coordinate: `_x` and `_y` in CSV files, `_X` and `_Y` in GraphML files, and `_screenSpaceX` and `_screenSpaceY` when screen layout coordinates are exported.
+
+This means two different names can still produce the same column. Architect checks for this whenever you name a variable, add an option, or change an option's value, and it explains which column would clash. As with duplicate names, capitalization is ignored. The check covers CSV and GraphML, including the screen layout columns, because you choose names long before you choose export options.
+
+Architect refuses a name or option in each of these situations:
+
+| What clashes                                         | Example                                                                                                                                                                                                                                                                                       |
+| ---------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A variable's name and another variable's option      | A categorical variable `support` has the option `emotional`, so it writes the column `support_emotional`. Another variable can't be named `support_emotional`.                                                                                                                                |
+| An option and another variable's name                | The reverse: if a variable named `support_emotional` already exists, you can't add the option `emotional` to `support`.                                                                                                                                                                       |
+| Two options of different variables                   | `contact` with the option `in_person` and `contact_in` with the option `person` would both write `contact_in_person`.                                                                                                                                                                         |
+| A variable's name and a layout variable's coordinate | A layout variable `position` writes `position_x` and `position_y`, so another variable can't be named `position_x` (or `Position_X`).                                                                                                                                                         |
+| A variable's name and a built-in column              | Every export file has columns that Network Canvas writes itself, such as `nodeID`. A node variable can't be named `nodeID`.                                                                                                                                                                   |
+| Two columns that an export writes the same way       | GraphML files replace spaces and most punctuation with `_`, so `close friend` and `close_friend` would both be written as `close_friend`. CSV files put an apostrophe in front of a name that starts with `=`, `+`, `-` or `@`, so `=total` and `'=total` would both be written as `'=total`. |
+
+These are the built-in column names that variables can't use, in any capitalization. Option columns and layout columns can't use them either.
+
+| Variables of | Reserved column names                                                                                                                                                                                                                                                                                                    |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Ego          | `_uid`, `caseId`, `sessionId`, `protocolName`, `sessionStart`, `sessionFinish`, `sessionExported`, `APP_VERSION`, `COMMIT_HASH`, `label`, `networkCanvasEgoUUID`, `networkCanvasCaseID`, `networkCanvasSessionID`, `networkCanvasProtocolName`, `networkCanvasInterviewLocale`, `networkCanvasType`, `networkCanvasUUID` |
+| Nodes        | `_uid`, `nodeID`, `label`, `networkCanvasEgoUUID`, `networkCanvasType`, `networkCanvasUUID`                                                                                                                                                                                                                              |
+| Edges        | `_uid`, `edgeID`, `from`, `to`, `label`, `networkCanvasEgoUUID`, `networkCanvasType`, `networkCanvasUUID`, `networkCanvasSourceUUID`, `networkCanvasTargetUUID`                                                                                                                                                          |
+
+Protocols created before Architect made these checks open and run as before. If one of them has two variables that write the same column, the export renames one of the columns and warns you. See [Column names that clash](/en/analyze-data/data-export#column-names-that-clash).
+
+</AppOnly>
+
+<AppOnly app="classic">
+
+Architect Classic does not check whether two variables would write the same column in exported data, so check your categorical and layout variables yourself. A categorical variable `support` with the option `emotional` writes a `support_emotional` column, and a layout variable `position` writes `position_x` and `position_y`.
+
+</AppOnly>
+
 ### Use descriptive names
 
 **Good examples:**
@@ -165,12 +238,6 @@ Choose a naming style and stick to it:
 - **camelCase**: `contactFrequency`, `closeFriend`
 - **PascalCase**: `ContactFrequency`, `CloseFriend`
 
-**Avoid:**
-
-- Spaces: "contact frequency" (problematic in data analysis)
-- Special characters: `contact-frequency` (hyphens can be interpreted as minus signs)
-- Starting with numbers: `1contact` (invalid in many systems)
-
 ### Keep names concise
 
 **Good:** `age`, `gender`, `rel_type`, `freq`
@@ -178,11 +245,19 @@ Choose a naming style and stick to it:
 
 ### Plan for data analysis
 
-Consider how variables will appear in exported data:
+Your CSV files keep every name as you wrote it, in any language. Some analysis software handles spaces and punctuation in column names less smoothly, though:
 
-- R and Python prefer snake_case
-- Statistical packages prefer short names
-- Avoid abbreviations that are unclear months later
+- Base R's `read.csv` replaces spaces and punctuation in column names with dots unless you add `check.names = FALSE`. See [Opening CSV files](/en/analyze-data/data-export#opening-csv-files).
+- In R, a column name that contains a space has to be quoted with backticks, as in `` alters$`close friend` ``. In pandas, it can only be used with brackets, as in `alters["close friend"]`.
+- Hyphens can be read as minus signs in formulas, and some software doesn't accept a name that starts with a number, such as `1contact`.
+- A name that starts with `=`, `+`, `-` or `@` gets an apostrophe in front of it as a CSV column header, so that spreadsheet programs don't run it as a formula. See [Why some values start with an apostrophe](/en/analyze-data/data-export#why-some-values-start-with-an-apostrophe).
+- Some statistical packages have stricter rules for variable names than Network Canvas, and may rename columns when you import a file.
+- GraphML attribute names can't contain spaces or most punctuation, so the GraphML export replaces those characters with `_`. See [GraphML attribute names](/en/analyze-data/data-export#graphml-attribute-names).
+
+If you want names that you never need to quote in R or Python, use only letters, numbers, and underscores (snake_case), and start each name with a letter. It also helps to:
+
+- prefer short names, because some statistical packages limit their length
+- avoid abbreviations that will be unclear months later
 
 ## Working with variables
 
@@ -201,7 +276,7 @@ Use the [Codebook](/en/design-protocols/key-concepts/codebook) in Architect:
 
 You can change the input control (if compatible with variable type), validation rules, options for categorical variables, and the attribute's name. You cannot change the variable type, which is set when first created with an input control.
 
-To rename an attribute, click the pill of the attribute a section has selected — the one shown under **Change attribute** in a prompt, form field, or other attribute picker — or focus it and press Enter or Space. (Pills shown elsewhere, such as in the attribute search results or in a rule's summary, are labels rather than controls; in the Codebook, use the edit control on the attribute's own row instead.) A box opens holding the current name; type the new name and click **Save Changes**. The new name must not be empty, must not already be used by another attribute of the same node type, edge type or ego (however it is capitalised), and may use only letters, numbers and the symbols `._-:`. Cancelling, pressing Escape, or clicking away keeps the old name. Stages that use the attribute keep using it under its new name, but remember that the name becomes the column name in exported data.
+To rename an attribute, click the pill of the attribute a section has selected — the one shown under **Change attribute** in a prompt, form field, or other attribute picker — or focus it and press Enter or Space. (Pills shown elsewhere, such as in the attribute search results or in a rule's summary, are labels rather than controls; in the Codebook, use the edit control on the attribute's own row instead.) A box opens holding the current name; type the new name and click **Save Changes**. The new name follows the same rules as any other name: see [What a name can contain](#what-a-name-can-contain) and [Names that would clash in exported data](#names-that-would-clash-in-exported-data). Cancelling, pressing Escape, or clicking away keeps the old name. Stages that use the attribute keep using it under its new name, but remember that the name becomes the column name in exported data.
 
 Changes you make to the codebook while a stage is open — creating an attribute, renaming it, or editing its options or validation rules — are written to the codebook straight away. They are kept even if you then cancel your edits to the stage, because an attribute belongs to every stage that uses it rather than to the stage you are editing.
 
@@ -265,6 +340,14 @@ Variable names in your protocol become column names in exported data:
 - Categorical variables → one column per option, named `variable_option` with `true`/`false` values
 - Layout variables → columns named after the variable with `_x` and `_y` suffixes (e.g. `my_layout_x` and `my_layout_y`)
 
+CSV files use each name exactly as it appears in the codebook, including any spaces, punctuation, or letters from other languages. GraphML attribute names can't hold spaces or most punctuation, so a variable named `contact frequency (per week)` becomes `contact_frequency__per_week_` in a GraphML file, and the original name is kept alongside it. See [GraphML attribute names](/en/analyze-data/data-export#graphml-attribute-names).
+
+<AppOnly app="current">
+
+Architect refuses names that would give two variables the same column, including names that only become the same once an export writes them, such as `close friend` and `close_friend` in GraphML (see [Names that would clash in exported data](#names-that-would-clash-in-exported-data)). If a protocol created before that check has such a clash, the export renames the later column with a `_2` suffix (or `_3`, and so on) and shows a warning. When two names only become the same in GraphML, the name that was already valid keeps it, and the other gets the suffix.
+
+</AppOnly>
+
 ## Common patterns
 
 ### Demographic variables (ego)
@@ -320,6 +403,11 @@ support_frequency: Ordinal (Radio Button Group)
 ### Need to rename a variable
 
 **Solution:** Click the attribute's pill and type the new name. See [Modifying variables](#modifying-variables).
+
+### Architect won't accept a variable name
+
+**Cause:** The name contains a tab, line break, or other invisible character (often from text pasted from another program), is already used by another variable, or would write the same column as another variable or a built-in column in exported data
+**Solution:** Read the message under the name field, which says which rule the name breaks. Retype the name rather than pasting it, or choose a name that doesn't clash. See [Variable naming best practices](#variable-naming-best-practices).
 
 </AppOnly>
 

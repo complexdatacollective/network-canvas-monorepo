@@ -1,32 +1,32 @@
 import { describe, expect, it } from 'vitest';
 
 import { findVariableRoleConflicts } from '../findVariableRoleConflicts.ts';
-import { createBaseProtocol } from '../test-utils.ts';
+import { createBaseProtocol, localized } from '../test-utils.ts';
 
 // Minimal stage builders over the base protocol's `person` node type.
 const egoFormStage = (variable: string) => ({
   id: 'ef1',
   type: 'EgoForm',
-  label: 'About you',
-  introductionPanel: { title: 'T', text: 'X' },
-  form: { fields: [{ variable, prompt: 'Answer' }] },
+  label: localized('About you'),
+  introductionPanel: { title: localized('T'), text: localized('X') },
+  form: { fields: [{ variable, prompt: localized('Answer') }] },
 });
 
 const alterFormStage = (variable: string) => ({
   id: 'af1',
   type: 'AlterForm',
-  label: 'Alter form',
+  label: localized('Alter form'),
   subject: { entity: 'node', type: 'person' },
-  introductionPanel: { title: 'T', text: 'X' },
-  form: { fields: [{ variable, prompt: 'Answer' }] },
+  introductionPanel: { title: localized('T'), text: localized('X') },
+  form: { fields: [{ variable, prompt: localized('Answer') }] },
 });
 
 const categoricalBinStage = (variable: string) => ({
   id: 'cb1',
   type: 'CategoricalBin',
-  label: 'Bin',
+  label: localized('Bin'),
   subject: { entity: 'node', type: 'person' },
-  prompts: [{ id: 'p1', text: 'Sort', variable }],
+  prompts: [{ id: 'p1', text: localized('Sort'), variable }],
 });
 
 // FamilyPedigree's form fields resolve against the stage's `subject`, like any
@@ -34,9 +34,9 @@ const categoricalBinStage = (variable: string) => ({
 const familyPedigreeStage = (formVariable: string) => ({
   id: 'fp1',
   type: 'FamilyPedigree',
-  label: 'Family Pedigree',
+  label: localized('Family Pedigree'),
   subject: { entity: 'node', type: 'person' },
-  prompt: 'Who is related to you?',
+  prompt: localized('Who is related to you?'),
   nodeConfiguration: {
     nameAttribute: 'pedigreeName',
     genderIdentity: { attribute: 'pedigreeGender', terms: [] },
@@ -49,7 +49,9 @@ const familyPedigreeStage = (formVariable: string) => ({
     gestationalCarrierAttribute: 'pedigreeGestCarrier',
     currentPartnerAttribute: 'pedigreeCurrent',
   },
-  form: { fields: [{ variable: formVariable, prompt: 'Family history' }] },
+  form: {
+    fields: [{ variable: formVariable, prompt: localized('Family history') }],
+  },
 });
 
 const withStages = (stages: unknown[]) => {
@@ -115,10 +117,11 @@ describe('findVariableRoleConflicts', () => {
       ...base.codebook.ego.variables,
       category: {
         name: 'ego_category',
+        label: 'ego_category',
         type: 'categorical',
         options: [
-          { label: 'A', value: 'a' },
-          { label: 'B', value: 'b' },
+          { label: localized('A'), value: 'a' },
+          { label: localized('B'), value: 'b' },
         ],
       },
     };

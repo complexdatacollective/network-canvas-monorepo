@@ -5,20 +5,18 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import Surface from '@codaco/fresco-ui/layout/Surface';
+import type { LocalizedString } from '@codaco/protocol-validation';
 
-import OptionLabelField from '../../fields/OptionLabelField.tsx';
+import { LocalizedOptionLabelField } from '../../fields/LocalizedStringField.tsx';
 import type {
   BooleanAnswer,
   BooleanAnswerIssues,
   BooleanAnswers,
 } from '../variableOptions.ts';
 
-const OptionLabelControl = OptionLabelField as ComponentType<
-  Record<string, unknown>
->;
 const ToggleControl = ToggleField as ComponentType<Record<string, unknown>>;
 
-const messages = defineMessages({
+export const booleanAnswerFieldMessages = defineMessages({
   answerLabel: {
     id: 'protocolBuilder.codebookVariable.booleanAnswerLabel',
     defaultMessage:
@@ -40,6 +38,15 @@ const messages = defineMessages({
       'Label of the switch that draws one of the two answers of a yes/no attribute in red when a participant selects it. records says which of the two stored values this answer records; “true” and “false” are the literal values the protocol stores and stay as they are.',
   },
 });
+
+/** The answer with its words replaced; an answer with none holds no label. */
+const answerWithLabel = (
+  answer: BooleanAnswer,
+  label: LocalizedString | undefined,
+): BooleanAnswer => {
+  const { label: _replaced, ...rest } = answer;
+  return label === undefined ? rest : { ...rest, label };
+};
 
 export type VariableBooleanAnswerFieldsProps = Readonly<{
   answers: BooleanAnswers;
@@ -87,8 +94,11 @@ export default function VariableBooleanAnswerFields({
           >
             <UnconnectedField
               name={`boolean-answer-${records}-label`}
-              label={intl.formatMessage(messages.answerLabel, { records })}
-              component={OptionLabelControl}
+              label={intl.formatMessage(
+                booleanAnswerFieldMessages.answerLabel,
+                { records },
+              )}
+              component={LocalizedOptionLabelField}
               // What the interview will actually show for an answer nobody
               // has named: the participant reads fresco-ui's own boolean
               // control, which supplies its translated Yes/No when the
@@ -96,15 +106,15 @@ export default function VariableBooleanAnswerFields({
               // no `options` key while both labels are blank.
               // `booleanPlaceholdersMatchFresco` holds the two wordings
               // together.
-              placeholder={intl.formatMessage(messages.answerPlaceholder, {
-                records,
-              })}
+              placeholder={intl.formatMessage(
+                booleanAnswerFieldMessages.answerPlaceholder,
+                {
+                  records,
+                },
+              )}
               value={answer.label}
-              onChange={(value: unknown) =>
-                onChange(index, {
-                  ...answer,
-                  label: typeof value === 'string' ? value : '',
-                })
+              onChange={(label: LocalizedString | undefined) =>
+                onChange(index, answerWithLabel(answer, label))
               }
               readOnly={readOnly}
               errors={errors}
@@ -112,7 +122,10 @@ export default function VariableBooleanAnswerFields({
             />
             <UnconnectedField
               name={`boolean-answer-${records}-negative`}
-              label={intl.formatMessage(messages.negativeLabel, { records })}
+              label={intl.formatMessage(
+                booleanAnswerFieldMessages.negativeLabel,
+                { records },
+              )}
               component={ToggleControl}
               inline
               value={answer.negative === true}

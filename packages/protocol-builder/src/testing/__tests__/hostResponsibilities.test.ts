@@ -1,55 +1,45 @@
 import { describe, expect, it } from 'vitest';
 
-import { contract } from '@codaco/protocol-builder-core/contract';
+import { ProtocolBuilderGroup } from '@codaco/protocol-builder-core/contract';
 
 import {
-  contractProcedurePaths,
+  contractProcedureTags,
   hostResponsibilities,
 } from '../hostResponsibilities.ts';
 
 /**
- * The contract's procedures, walked here rather than imported from the module
+ * The contract's procedures, read here rather than imported from the module
  * under test.
  *
  * A test that asked the module for the list and then compared it with itself
- * would agree with any answer, including an empty one. This walk is written
- * against `@orpc/contract`'s own marker and knows nothing about the module's
- * implementation, so a derivation that stopped recursing into `resources` — or
- * started reporting the groups themselves as procedures — disagrees with it.
+ * would agree with any answer, including an empty one. This reads each rpc's
+ * own `_tag` rather than the map's keys the module reads, so a derivation that
+ * reported something other than the procedures disagrees with it.
  */
-const walkContract = (node: object, prefix: string): string[] =>
-  Object.entries(node).flatMap(([key, value]) => {
-    const path = prefix === '' ? key : `${prefix}.${key}`;
-    if (typeof value !== 'object' || value === null) return [];
-    return '~orpc' in value ? [path] : walkContract(value, path);
-  });
+const declaredTags = (): string[] =>
+  Array.from(ProtocolBuilderGroup.requests.values(), (rpc) => rpc._tag);
 
 describe('the host responsibilities', () => {
   /**
    * The list is the contract's, in the contract's order. Both halves matter:
    * a set comparison would pass a list that had reordered itself into
-   * something nobody could read beside `contract.ts`.
+   * something nobody could read beside `group.ts`.
    */
   it('is every procedure the contract declares, in that order', () => {
-    const declared = walkContract(contract, '');
+    const declared = declaredTags();
 
     expect(declared.length).toBeGreaterThan(0);
-    expect(contractProcedurePaths()).toEqual(declared);
-    expect(hostResponsibilities().map(({ path }) => path)).toEqual(declared);
+    expect(contractProcedureTags()).toEqual(declared);
+    expect(hostResponsibilities().map(({ tag }) => tag)).toEqual(declared);
   });
 
-  /**
-   * The nested groups are the part a shallow read gets wrong: `refactor` and
-   * `resources` are not procedures, and their members are. Named rather than
-   * left to the comparison above, so a failure says which shape broke.
-   */
-  it('reads through the contract’s groups rather than reporting them', () => {
-    const paths = contractProcedurePaths();
+  it('names each procedure by its tag in the group', () => {
+    const tags = contractProcedureTags();
 
-    expect(paths).toContain('refactor.deleteVariable');
-    expect(paths).toContain('resources.stage');
-    expect(paths).not.toContain('refactor');
-    expect(paths).not.toContain('resources');
+    expect(tags).toContain('RefactorDeleteVariable');
+    expect(tags).toContain('ResourcesStage');
+    expect(tags).not.toContain('refactor.deleteVariable');
+    expect(tags).not.toContain('resources.stage');
   });
 
   /**
@@ -60,11 +50,11 @@ describe('the host responsibilities', () => {
   it('says something about every one of them, and about nothing else', () => {
     const responsibilities = hostResponsibilities();
 
-    for (const { path, responsibility } of responsibilities) {
-      expect(responsibility, `${path} has no responsibility`).not.toBe('');
+    for (const { tag, responsibility } of responsibilities) {
+      expect(responsibility, `${tag} has no responsibility`).not.toBe('');
       // A sentence, not a restatement of the name: the old list's failure was
-      // rows that said `acquireLock` acquires a lock.
-      expect(responsibility.length, `${path} says too little`).toBeGreaterThan(
+      // rows that said `AcquireLock` acquires a lock.
+      expect(responsibility.length, `${tag} says too little`).toBeGreaterThan(
         40,
       );
     }

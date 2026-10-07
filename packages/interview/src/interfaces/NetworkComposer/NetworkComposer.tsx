@@ -11,6 +11,11 @@ import type { ValidationContext } from '@codaco/fresco-ui/form/store/types';
 import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
 import Node from '@codaco/fresco-ui/Node';
 import type { ActivationSource } from '@codaco/fresco-ui/Node';
+import {
+  type PresentationalText,
+  presentationalTextProps,
+  presentationalTextValue,
+} from '@codaco/fresco-ui/PresentationalText';
 import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
 import type { ComposerForm } from '@codaco/protocol-validation';
 import {
@@ -29,6 +34,10 @@ import { useCurrentStep } from '../../contexts/CurrentStepContext';
 import { useVariableLabels } from '../../forms/buildVariableLabels';
 import { useNodeMeasurement } from '../../hooks/useNodeMeasurement';
 import { useStageSelector } from '../../hooks/useStageSelector';
+import {
+  useResolveLocalizedString,
+  useResolvePresentationalText,
+} from '../../localization/ProtocolLocalizationProvider';
 import {
   getValidationContext,
   selectValidationMetadataForVariable,
@@ -79,7 +88,7 @@ const hasGroupValue = (raw: unknown, value: string): boolean => {
 type DrawerEditor = {
   kind: 'node' | 'edge';
   entityId: string;
-  title: string;
+  title: PresentationalText;
   form: ComposerForm | undefined;
   subject: Subject;
   attributes: NcNode[typeof entityAttributesProperty];
@@ -91,6 +100,8 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
   const dispatch = useAppDispatch();
   const { currentStep } = useCurrentStep();
   const shouldReduceMotion = useReducedMotion();
+  const resolve = useResolveLocalizedString();
+  const toPresentationalText = useResolvePresentationalText();
 
   const layoutVariable = stage.layoutVariable;
 
@@ -115,8 +126,13 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
   const edges = useStageSelector(getNetworkEdges);
 
   const codebook = useSelector(getCodebook);
-  const nodeLabel =
-    codebook?.node?.[stage.subject.type]?.name ?? stage.subject.type;
+  const nodeTypeDefinition = codebook?.node?.[stage.subject.type];
+  const nodeTypeLabel = nodeTypeDefinition
+    ? toPresentationalText(nodeTypeDefinition.label)
+    : stage.subject.type;
+  const nodeLabel = nodeTypeDefinition
+    ? resolve(nodeTypeDefinition.label).text
+    : stage.subject.type;
 
   // Derive the quick-add target variable's validation props directly from its
   // codebook definition — AddNodeInput renders its own input and only ever
@@ -221,10 +237,9 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
     hullVariableId !== undefined && hullVariable && hullOptions
       ? {
           id: hullVariableId,
-          label: hullVariable.name ?? hullVariableId,
           options: hullOptions.map((option) => ({
             value: String(option.value),
-            label: option.label ?? String(option.value),
+            label: toPresentationalText(option.label),
           })),
         }
       : null;
@@ -454,7 +469,7 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
     const edgeCbEntry = codebook?.edge?.[edgeType];
     return {
       edgeType,
-      label: edgeCbEntry?.name ?? edgeType,
+      label: edgeCbEntry ? toPresentationalText(edgeCbEntry.label) : edgeType,
       color: edgeCbEntry?.color,
     };
   });
@@ -473,7 +488,7 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
       ? { variable: currentTool.variable, value: currentTool.value }
       : null;
   // The active group's variable can only be the stage's single hull variable.
-  const activeGroupLabel =
+  const activeGroupLabel: PresentationalText =
     activeGroup !== null
       ? (groupVariable?.options.find(
           (option) => option.value === activeGroup.value,
@@ -589,7 +604,7 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
       const title =
         typeof rawName === 'string' && rawName.trim() !== ''
           ? rawName
-          : nodeLabel;
+          : nodeTypeLabel;
       return {
         kind: 'node',
         entityId: selectedNode[entityPrimaryKeyProperty],
@@ -600,10 +615,13 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
       };
     }
     if (selectedEdge !== null) {
+      const edgeTypeDefinition = codebook?.edge?.[selectedEdge.type];
       return {
         kind: 'edge',
         entityId: selectedEdge[entityPrimaryKeyProperty],
-        title: codebook?.edge?.[selectedEdge.type]?.name ?? selectedEdge.type,
+        title: edgeTypeDefinition
+          ? toPresentationalText(edgeTypeDefinition.label)
+          : selectedEdge.type,
         form: selectedEdgeFormEntry?.form,
         subject: { entity: 'edge', type: selectedEdge.type },
         attributes: selectedEdge[entityAttributesProperty],
@@ -707,7 +725,9 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
                           : undefined
                       }
                     >
-                      {option.label}
+                      <span {...presentationalTextProps(option.label)}>
+                        {presentationalTextValue(option.label)}
+                      </span>
                     </Toggle>
                   ))}
                 </ToggleGroup>

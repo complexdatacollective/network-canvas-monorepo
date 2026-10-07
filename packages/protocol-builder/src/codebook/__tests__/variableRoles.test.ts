@@ -35,18 +35,27 @@ const FAMILY_SUBJECT = { entity: 'node', type: 'family-member' } as const;
 const FAMILY_STAGE_ID = 'family-stage';
 const EGO_SLOT = 'familyPedigree.nodeConfiguration.egoAttribute';
 
+const settings = {
+  [sectionId({ kind: 'settings' })]: {
+    localization: { defaultLocale: 'en', locales: ['en'] },
+  },
+};
+
 const sections = (): Record<string, SectionDoc> => ({
+  ...settings,
   [sectionId({ kind: 'codebookNode', typeId: 'person' })]: {
     name: 'Person',
+    label: { en: 'Person' },
     color: 'node-color-seq-1',
     shape: { default: 'circle' },
     variables: {
       category: {
         name: 'Category',
+        label: 'Category',
         type: 'categorical',
         options: [
-          { label: 'One', value: 'one' },
-          { label: 'Two', value: 'two' },
+          { label: { en: 'One' }, value: 'one' },
+          { label: { en: 'Two' }, value: 'two' },
         ],
       },
     },
@@ -54,17 +63,22 @@ const sections = (): Record<string, SectionDoc> => ({
   [sectionId({ kind: 'stage', stageId: FORM_STAGE_ID })]: {
     id: FORM_STAGE_ID,
     type: 'AlterForm',
-    label: 'Form',
+    label: { en: 'Form' },
     subject: SUBJECT,
-    introductionPanel: { title: 'Introduction', text: 'Answer a question.' },
-    form: { fields: [{ variable: 'category', prompt: 'Category?' }] },
+    introductionPanel: {
+      title: { en: 'Introduction' },
+      text: { en: 'Answer a question.' },
+    },
+    form: { fields: [{ variable: 'category', prompt: { en: 'Category?' } }] },
   },
   [sectionId({ kind: 'stage', stageId: BIN_STAGE_ID })]: {
     id: BIN_STAGE_ID,
     type: 'CategoricalBin',
-    label: 'Bin',
+    label: { en: 'Bin' },
     subject: SUBJECT,
-    prompts: [{ id: 'prompt-1', text: 'Sort people.', variable: 'category' }],
+    prompts: [
+      { id: 'prompt-1', text: { en: 'Sort people.' }, variable: 'category' },
+    ],
   },
   // Put the bin first to prove exclusion follows the stage id through the
   // canonical order rather than assuming an app-local editor index.
@@ -74,12 +88,13 @@ const sections = (): Record<string, SectionDoc> => ({
 });
 
 const familySections = (): Record<string, SectionDoc> => ({
+  ...settings,
   [sectionId({ kind: 'stage', stageId: FAMILY_STAGE_ID })]: {
     id: FAMILY_STAGE_ID,
     type: 'FamilyPedigree',
-    label: 'Family Pedigree',
+    label: { en: 'Family Pedigree' },
     subject: FAMILY_SUBJECT,
-    prompt: 'Build your family',
+    prompt: { en: 'Build your family' },
     nodeConfiguration: {
       nameAttribute: 'name',
       genderIdentity: { attribute: 'genderIdentity', terms: [] },
@@ -143,7 +158,7 @@ describe('variable role helpers', () => {
     };
     const options = [
       { label: 'Form', value: 'form-only' },
-      { label: 'Bin', value: 'bin-only' },
+      { label: { en: 'Bin' }, value: 'bin-only' },
       { label: 'Free', value: 'free' },
     ];
 
@@ -218,9 +233,15 @@ describe('variable role helpers', () => {
     );
     const reversedCanonical =
       PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS.toReversed();
+    const reworded = PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS.map(
+      ({ value }) => ({
+        value,
+        label: { es: value },
+      }),
+    );
     const staleOptions = PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS.map(
       (option, index) =>
-        index === 0 ? { ...option, label: 'Changed label' } : option,
+        index === 0 ? { ...option, value: 'changed' } : option,
     );
 
     expect(
@@ -229,6 +250,15 @@ describe('variable role helpers', () => {
         FAMILY_SUBJECT,
         'sexAssignedAtBirth',
         reversedCanonical,
+      ),
+    ).toBeUndefined();
+    // The labels are participant copy the interview never branches on.
+    expect(
+      interfaceOwnedOptionsIssue(
+        optionMap,
+        FAMILY_SUBJECT,
+        'sexAssignedAtBirth',
+        reworded,
       ),
     ).toBeUndefined();
     // The refusal crossed a string-only contract, so it is read back the way a
@@ -280,21 +310,24 @@ describe('variable role helpers', () => {
     const variables = {
       sexAssignedAtBirth: {
         name: 'sexAssignedAtBirth',
+        label: 'sexAssignedAtBirth',
         type: 'categorical' as const,
-        options: [{ label: 'Drifted', value: 'drifted' }],
+        options: [{ label: { en: 'Drifted' }, value: 'drifted' }],
       },
       stamped: {
         name: 'stamped',
+        label: 'stamped',
         type: 'ordinal' as const,
         readOnly: true,
-        options: [{ label: 'Low', value: 1 }],
+        options: [{ label: { en: 'Low' }, value: 1 }],
       },
       ordinary: {
         name: 'ordinary',
+        label: 'ordinary',
         type: 'categorical' as const,
-        options: [{ label: 'Yes', value: 'yes' }],
+        options: [{ label: { en: 'Yes' }, value: 'yes' }],
       },
-      plain: { name: 'plain', type: 'text' as const },
+      plain: { name: 'plain', label: 'plain', type: 'text' as const },
     };
 
     // The CANONICAL set, not the drifted one the codebook happens to hold:
@@ -308,7 +341,7 @@ describe('variable role helpers', () => {
       ),
     ).toEqual(PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS);
     expect(lockedVariableOptions(variables, 'stamped')).toEqual([
-      { label: 'Low', value: 1 },
+      { label: { en: 'Low' }, value: 1 },
     ]);
     expect(lockedVariableOptions(variables, 'ordinary')).toBeUndefined();
     // An attribute with no option list at all cannot have one locked.

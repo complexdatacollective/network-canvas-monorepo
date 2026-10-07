@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
-import { getEntityAttributeReferenceDescriptor } from '../../schemas/8/entity-attribute-reference.ts';
+import { getEntityAttributeReferenceDescriptor } from '../../schemas/9/entity-attribute-reference.ts';
 import { CurrentProtocolSchema } from '../../schemas/index.ts';
 
 // Count every meta-tagged node reachable by the same traversal the extractor uses.
@@ -43,15 +43,15 @@ const countTagged = (
 // person attributes (name, gender identity, sex assigned at birth, ego) and
 // relationship attributes (kind, gestational carrier, current partner) and
 // completeness attribute (relatives not recorded) and each nomination
-// prompt's boolean `variable`, plus
-// the two node shape-mapping `variable` fields (discrete and breakpoints arms), plus
+// prompt's boolean `variable` — and NarrativePedigree diseases[].variable,
+// plus the two node shape-mapping `variable` fields (discrete and breakpoints arms), plus
 // #1392's four existence-unchecked sites: the shared sort rule `property`
 // (SortRuleSchema, reached by every prompt-level sort order and the roster's
 // stage-level one) and the roster's three data-source column fields
 // (cardOptions.additionalProperties[].variable,
 // sortOptions.sortableProperties[].variable, searchOptions.matchProperties[]).
 // The value is verified against the runtime count computed below.
-const EXPECTED_TAGGED_FIELD_COUNT = 39;
+const EXPECTED_TAGGED_FIELD_COUNT = 40;
 
 // Every slot an interface owns outright, and every slot whose OPTION SET it
 // owns, and every slot whose option LIST a stage manages. All drive

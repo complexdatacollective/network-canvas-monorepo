@@ -99,7 +99,7 @@ const MINIMUM_ABOVE_MAXIMUM = createMessageError(
  * finished. Both halves of that are this stage's own rules, which is why it is
  * refused here rather than in the shared catalogue.
  *
- * The protocol schema accepts it too (`schemas/8/stages/anonymisation.ts`
+ * The protocol schema accepts it too (`schemas/9/stages/anonymisation.ts`
  * pins the lengths to integers and no floor), so a protocol already holding
  * one opens, is refused here, and can be corrected.
  */

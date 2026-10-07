@@ -1,30 +1,36 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { describe, expect, it } from 'vitest';
 
-import type { Stage } from '@codaco/protocol-validation';
+import type { LocalizedString, Stage } from '@codaco/protocol-validation';
 import type { AppDispatch } from '~/ducks/store';
 
 import { commitStage } from '../commitStage';
 import reducer, {
   actionCreators,
+  getFamilyPedigreeNodeTypeChangeBlock,
   getInvalidSkipDestinationReferences,
   getSkipDestinationDependentStages,
   test,
 } from '../stages';
 
+// The stages below are deliberately partial: the reducers under test read only
+// ids, types and references. Typing each label as a LocalizedString keeps them
+// comparable to `Stage` for the assertions.
+const localized = (text: string): LocalizedString => ({ en: text });
+
 const mockStages = [
-  { id: '3', type: 'Information', label: 'Foo' },
+  { id: '3', type: 'Information', label: localized('Foo') },
   {
     id: '9',
     type: 'NameGenerator',
-    label: 'Bar',
+    label: localized('Bar'),
     prompts: [
-      { id: '7', text: 'prompt' },
-      { id: '3', text: 'prompt2' },
-      { id: '5', text: 'prompt3' },
+      { id: '7', text: localized('prompt') },
+      { id: '3', text: localized('prompt2') },
+      { id: '5', text: localized('prompt3') },
     ],
   },
-  { id: '5', type: 'OrdinalBin', label: 'Baz' },
+  { id: '5', type: 'OrdinalBin', label: localized('Baz') },
 ] as Stage[];
 
 describe('protocol.stages', () => {
@@ -33,7 +39,11 @@ describe('protocol.stages', () => {
     // no standalone create action to insert a stage.
     describe('commitStage (create)', () => {
       it('Creates a stage', () => {
-        const newStage = { id: 'new', type: 'Information', label: '' } as Stage;
+        const newStage = {
+          id: 'new',
+          type: 'Information',
+          label: localized(''),
+        } as Stage;
 
         const appendStageToState = reducer(
           mockStages,
@@ -61,8 +71,8 @@ describe('protocol.stages', () => {
         const updatedStages = reducer(mockStages, test.deleteStage('9'));
 
         expect(updatedStages).toEqual([
-          { id: '3', type: 'Information', label: 'Foo' },
-          { id: '5', type: 'OrdinalBin', label: 'Baz' },
+          { id: '3', type: 'Information', label: localized('Foo') },
+          { id: '5', type: 'OrdinalBin', label: localized('Baz') },
         ]);
       });
     });
@@ -72,15 +82,19 @@ describe('protocol.stages', () => {
         {
           id: 'source',
           type: 'Information',
-          label: 'Source',
+          label: localized('Source'),
           skipLogic: {
             action: 'SKIP',
             filter: { join: 'AND', rules: [] },
             destination: { type: 'stage', stageId: 'destination' },
           },
         },
-        { id: 'middle', type: 'Information', label: 'Middle' },
-        { id: 'destination', type: 'Information', label: 'Destination' },
+        { id: 'middle', type: 'Information', label: localized('Middle') },
+        {
+          id: 'destination',
+          type: 'Information',
+          label: localized('Destination'),
+        },
       ] as Stage[];
 
       it('finds stages that depend on a destination', () => {
@@ -133,6 +147,51 @@ describe('protocol.stages', () => {
         expect(violation?.destinationStageId).toBe('destination');
       });
     });
+
+    describe('getFamilyPedigreeNodeTypeChangeBlock', () => {
+      const familyPedigreeWithDependent = [
+        {
+          id: 'fp',
+          type: 'FamilyPedigree',
+          label: localized('Family Pedigree'),
+        },
+        {
+          id: 'np',
+          type: 'NarrativePedigree',
+          label: localized('Narrative Pedigree'),
+          sourceStageId: 'fp',
+        },
+      ] as Stage[];
+
+      it('returns dependent NarrativePedigree stages when present', () => {
+        expect(
+          getFamilyPedigreeNodeTypeChangeBlock(
+            familyPedigreeWithDependent,
+            'fp',
+          ).map((stage) => stage.id),
+        ).toEqual(['np']);
+      });
+
+      it('returns nothing when no NarrativePedigree sources the stage', () => {
+        const withoutDependent = [
+          {
+            id: 'fp',
+            type: 'FamilyPedigree',
+            label: localized('Family Pedigree'),
+          },
+          {
+            id: 'np',
+            type: 'NarrativePedigree',
+            label: localized('Narrative Pedigree'),
+            sourceStageId: 'other',
+          },
+        ] as Stage[];
+
+        expect(
+          getFamilyPedigreeNodeTypeChangeBlock(withoutDependent, 'fp'),
+        ).toEqual([]);
+      });
+    });
   });
 
   describe('async action creators', () => {
@@ -176,7 +235,7 @@ describe('protocol.stages', () => {
             {
               id: 'source',
               type: 'Information',
-              label: 'Source',
+              label: localized('Source'),
               skipLogic: {
                 action: 'SKIP',
                 filter: { join: 'AND', rules: [] },
@@ -186,7 +245,7 @@ describe('protocol.stages', () => {
             {
               id: 'destination',
               type: 'Information',
-              label: 'Destination',
+              label: localized('Destination'),
             },
           ],
           codebook: { node: {} },
@@ -200,9 +259,37 @@ describe('protocol.stages', () => {
         );
       });
 
+      it('blocks deleting a FamilyPedigree referenced by a NarrativePedigree', async () => {
+        const present = {
+          stages: [
+            {
+              id: 'fp',
+              type: 'FamilyPedigree',
+              label: localized('Pedigree'),
+            },
+            {
+              id: 'np',
+              type: 'NarrativePedigree',
+              label: localized('Narrative'),
+              sourceStageId: 'fp',
+            },
+          ],
+          codebook: { node: {} },
+        };
+        const { store, dispatched } = createThunkStore(present);
+
+        await store.dispatch(actionCreators.deleteStage('fp'));
+
+        expect(dispatched.some((a) => a.type === 'stages/deleteStage')).toBe(
+          false,
+        );
+      });
+
       it('deletes a FamilyPedigree with no dependents', async () => {
         const present = {
-          stages: [{ id: 'fp', type: 'FamilyPedigree', label: 'Pedigree' }],
+          stages: [
+            { id: 'fp', type: 'FamilyPedigree', label: localized('Pedigree') },
+          ],
           codebook: { node: {} },
         };
         const { store, dispatched } = createThunkStore(present);
@@ -216,13 +303,21 @@ describe('protocol.stages', () => {
 
       it('strips encrypted from variables when deleting an Anonymisation stage', async () => {
         const present = {
-          stages: [{ id: 'anon', type: 'Anonymisation', label: 'Anon' }],
+          stages: [
+            { id: 'anon', type: 'Anonymisation', label: localized('Anon') },
+          ],
           codebook: {
             node: {
               person: {
                 name: 'Person',
+                label: localized('Person'),
                 variables: {
-                  ssn: { name: 'ssn', type: 'text', encrypted: true },
+                  ssn: {
+                    name: 'ssn',
+                    label: 'ssn',
+                    type: 'text',
+                    encrypted: true,
+                  },
                 },
               },
             },

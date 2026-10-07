@@ -5,6 +5,7 @@ import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPa
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { useAutoStageName } from '../naming/useAutoStageName.ts';
+import { chooseEditingLanguage } from '../testing/chooseEditingLanguage.ts';
 import { FieldStoryHost } from '../testing/FieldStoryHost.tsx';
 import type { InMemoryHost } from '../testing/host/createInMemoryHost.ts';
 import StageNameField from './StageNameField.tsx';
@@ -36,8 +37,24 @@ function StageName() {
 
 /** A stage nobody has named, which is where a stage being created starts. */
 const unnamed = (host: InMemoryHost) => {
-  const { document } = host.store.read(STAGE);
-  host.store.applyAsCollaborator(STAGE, { ...document, label: '' });
+  const {
+    document: { label: _label, ...unlabelled },
+  } = host.store.read(STAGE);
+  host.store.applyAsCollaborator(STAGE, unlabelled);
+};
+
+const SETTINGS = sectionId({ kind: 'settings' });
+
+/** A protocol written in English and French, with the stage named in both. */
+const inEnglishAndFrench = (host: InMemoryHost) => {
+  host.store.applyAsCollaborator(SETTINGS, {
+    ...host.store.read(SETTINGS).document,
+    localization: { defaultLocale: 'en-US', locales: ['en-US', 'fr'] },
+  });
+  host.store.applyAsCollaborator(STAGE, {
+    ...host.store.read(STAGE).document,
+    label: { 'en-US': 'Sociogram', 'fr': 'Sociogramme' },
+  });
 };
 
 const meta = {
@@ -131,7 +148,7 @@ export const EnterSavesTheStage: Story = {
     await waitFor(async () => {
       await expect(
         canvas.getByRole('status', { name: 'Save status' }),
-      ).toHaveTextContent('"label":"Sociogram (revised)"');
+      ).toHaveTextContent('"label":{"en-US":"Sociogram (revised)"}');
     });
   },
 };
@@ -202,5 +219,41 @@ export const ANameTheResearcherWroteIsKept: Story = {
     await userEvent.tab();
 
     await expect(box).toHaveValue('Who you turn to');
+  },
+};
+
+/**
+ * A protocol written in more than one language names each stage in each of
+ * them. The menu beside the name chooses which translation the box edits, and
+ * a rename writes that translation alone.
+ */
+export const NamedInSeveralLanguages: Story = {
+  args: { seedEdit: inEnglishAndFrench },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await awaitPassiveEffects();
+
+    const box = await canvas.findByRole('textbox', { name: STAGE_NAME_LABEL });
+    await expect(box).toHaveValue('Sociogram');
+
+    await chooseEditingLanguage(canvasElement, /^français/);
+    await waitFor(async () => {
+      await expect(
+        canvas.getByRole('textbox', { name: STAGE_NAME_LABEL }),
+      ).toHaveValue('Sociogramme');
+    });
+
+    await userEvent.type(
+      canvas.getByRole('textbox', { name: STAGE_NAME_LABEL }),
+      ' des proches',
+    );
+    await userEvent.keyboard('{Enter}');
+    await waitFor(async () => {
+      await expect(
+        canvas.getByRole('status', { name: 'Save status' }),
+      ).toHaveTextContent(
+        '"label":{"en-US":"Sociogram","fr":"Sociogramme des proches"}',
+      );
+    });
   },
 };

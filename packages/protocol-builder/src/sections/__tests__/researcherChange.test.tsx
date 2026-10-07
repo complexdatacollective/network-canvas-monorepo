@@ -10,6 +10,9 @@ import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import BuilderSection, { type SectionCapability } from '../BuilderSection.tsx';
 import { useOnResearcherChange } from '../researcherChange.ts';
 
+/** Copy in the fixture protocol's only language, as schema 9 holds it. */
+const en = (text: string) => ({ 'en-US': text });
+
 /**
  * A roster stage whose card details were configured against a data file the
  * stage no longer names.
@@ -19,11 +22,11 @@ import { useOnResearcherChange } from '../researcherChange.ts';
  * details describing the file that is gone are exactly what it invalidates.
  */
 const rosterFields: SectionDoc = {
-  label: 'People you know',
+  label: en('People you know'),
   subject: { entity: 'node', type: 'person' },
-  prompts: [{ id: 'prompt-1', text: 'Pick someone you know' }],
+  prompts: [{ id: 'prompt-1', text: en('Pick someone you know') }],
   cardOptions: {
-    additionalProperties: [{ label: 'Nickname', variable: 'nickname' }],
+    additionalProperties: [{ label: en('Nickname'), variable: 'nickname' }],
   },
 };
 

@@ -11,6 +11,7 @@ import { ResourceClientProvider } from '../client.tsx';
 import type { ResourcePickerKind } from './resourceKinds.ts';
 import ResourceUploadControl from './ResourceUploadControl.tsx';
 import {
+  collidingHeadingsRosterFile,
   createStoryHost,
   fieldNotesFile,
   skylineImageFile,
@@ -44,7 +45,7 @@ function UploadControlHost({
   const [imported, setImported] = useState('Nothing has been imported yet.');
 
   return (
-    <ProtocolBuilder client={host.client} protocolId={host.protocolId}>
+    <ProtocolBuilder adapter={host.adapter} protocolId={host.protocolId}>
       <ResourceClientProvider>
         <main className="mx-auto flex max-w-2xl flex-col gap-4 p-6">
           <Paragraph intent="smallText" emphasis="muted" aria-live="polite">
@@ -140,6 +141,32 @@ export const AFileOfTheWrongKind: Story = {
         ['.jpg', '.jpeg', '.gif', '.png', '.svg'],
       )}.`,
     );
+  },
+};
+
+/**
+ * A roster whose headings an interview could not match to its variables,
+ * refused before anything is staged: two headings that are one name written
+ * two ways would fill one variable from both columns, and the interview would
+ * refuse the roster when a participant reached the stage.
+ */
+export const ARosterWithHeadingsThatCollide: Story = {
+  args: { kind: 'network' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await awaitPassiveEffects();
+
+    await userEvent.upload(
+      canvas.getByLabelText('Choose a file from your computer'),
+      collidingHeadingsRosterFile(),
+    );
+
+    await expect(await canvas.findByRole('alert')).toHaveTextContent(
+      'the "cafe\u0301" and "caf\u00e9" attributes are the same name written in two different ways, such as an accented letter typed as one character in one and as two in the other',
+    );
+    await expect(
+      canvas.getByText('Nothing has been imported yet.'),
+    ).toBeInTheDocument();
   },
 };
 

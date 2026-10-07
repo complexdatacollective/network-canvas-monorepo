@@ -42,6 +42,18 @@ class InterviewerV8DB extends Dexie {
     this.version(3).stores({
       protocolMigrations: 'previousHash',
     });
+    // v4 gives every session the two plaintext locale fields. Neither is
+    // known for a session started before protocols declared languages, so
+    // both start empty and the interview records `locale` when it next runs.
+    this.version(4).upgrade((tx) =>
+      tx
+        .table<StoredSessionRow, string>('sessions')
+        .toCollection()
+        .modify((session) => {
+          session.localePreference = null;
+          session.locale = null;
+        }),
+    );
   }
 }
 

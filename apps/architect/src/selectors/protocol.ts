@@ -5,6 +5,7 @@ import type { Asset } from '@codaco/protocol-validation';
 import { canRedo, canUndo } from '~/ducks/middleware/timeline';
 import type { RootState } from '~/ducks/modules/root';
 import { deriveAssetDisplayNames } from '~/utils/assetNames';
+import { localizedText } from '~/utils/localizedText';
 
 /**
  * The protocol as it stands: what the researcher sees, and what is validated,
@@ -22,6 +23,9 @@ export const getProtocol = (state: RootState) => {
 export const getProtocolName = (state: RootState): string | undefined => {
   return getProtocol(state)?.name;
 };
+
+export const getLocalization = (state: RootState) =>
+  getProtocol(state)?.localization;
 
 /**
  * A stable identity for "this protocol has no resources", so the selectors
@@ -84,7 +88,7 @@ export const getStageList = createSelector([getProtocol], (protocol) => {
   return stages.map((stage) => ({
     id: stage.id,
     type: stage.type,
-    label: stage.label,
+    label: localizedText(stage.label, protocol?.localization),
     hasFilter: 'filter' in stage ? !!stage.filter : false,
     hasSkipLogic: !!stage.skipLogic,
     skipLogic: stage.skipLogic

@@ -379,6 +379,7 @@ describe('SummerUpdatePage', () => {
       'Anonymisation',
       'One-to-many dyad census',
       'Family pedigree',
+      'Narrative pedigree',
       'Network composer',
     ].forEach((interfaceName) => {
       const card = screen.getByRole('button', { name: interfaceName });

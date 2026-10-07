@@ -4,6 +4,7 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import Section from '@codaco/fresco-ui/Section';
+import { normalizeCodebookName } from '@codaco/shared-consts';
 
 import { variableValuesMessages } from '../codebook/codebookMessages.ts';
 import { useStageManagedOptionsLock } from '../codebook/useStageManagedOptionsLock.ts';
@@ -19,8 +20,10 @@ import {
   variableRoleKey,
 } from '../codebook/variableRoles.ts';
 import BooleanAnswersField from '../fields/BooleanAnswersField.tsx';
+import { variableNameScope } from '../fields/variableNameRules.ts';
+import type { OptionExportColumns } from '../form/arrayFields/cellRules.ts';
 import type { OptionValue } from '../form/arrayFields/Option.tsx';
-import Options, { optionsValidation } from '../form/arrayFields/Options.tsx';
+import Options, { optionsValidationFor } from '../form/arrayFields/Options.tsx';
 import RevealWhenChosen from '../form/RevealWhenChosen.tsx';
 import { useStageEditorForm } from '../form/stageEditorContext.ts';
 import {
@@ -132,6 +135,11 @@ export type AttributeValueFieldsProps = Readonly<{
    * and the row's own create writes them.
    */
   invented?: string;
+  /**
+   * What the attribute being invented is called. An option exports to
+   * `{attribute}_{value}`, so the values are judged against it.
+   */
+  inventedName?: string;
   revealWhenChosenIn?: string;
 }>;
 
@@ -161,6 +169,7 @@ export default function AttributeValueFields({
   rowComponent,
   optionsField = ATTRIBUTE_OPTIONS_FIELD,
   invented,
+  inventedName,
   revealWhenChosenIn,
 }: AttributeValueFieldsProps) {
   const intl = useAppIntl();
@@ -199,6 +208,35 @@ export default function AttributeValueFields({
       variableId === undefined ||
       variableId === '' ||
       picked !== undefined,
+  );
+
+  // Where each answer would be exported, so a value that lands on a column the
+  // export already writes is said on its row. The attribute being edited is
+  // left out of its own siblings: its columns are what is being changed.
+  const exportColumns = useMemo((): OptionExportColumns | undefined => {
+    if (subject === undefined) return undefined;
+    const { entity, variables: held } = variableNameScope(
+      subject.entity,
+      variables,
+    );
+    if (invented !== undefined) {
+      const name = normalizeCodebookName(inventedName ?? '');
+      return name === ''
+        ? undefined
+        : { entity, name, type: invented, siblings: held };
+    }
+    return picked === undefined
+      ? undefined
+      : {
+          entity,
+          name: picked.name,
+          type: picked.type,
+          siblings: held.filter(({ id }) => id !== variableId),
+        };
+  }, [invented, inventedName, picked, subject, variableId, variables]);
+  const optionsRules = useMemo(
+    () => optionsValidationFor(exportColumns),
+    [exportColumns],
   );
 
   const locked = useMemo(
@@ -243,7 +281,8 @@ export default function AttributeValueFields({
                 variableValuesMessages.addOption,
               )}
               readOnly={readOnly}
-              {...optionsValidation}
+              exportColumns={exportColumns}
+              {...optionsRules}
             />
           </Section>
         </RevealWhenChosen>
@@ -333,7 +372,8 @@ export default function AttributeValueFields({
             )}
             initialValue={isOptionList(heldOptions) ? heldOptions : undefined}
             readOnly={readOnly}
-            {...optionsValidation}
+            exportColumns={exportColumns}
+            {...optionsRules}
           />
         </Section>
       </RevealWhenChosen>

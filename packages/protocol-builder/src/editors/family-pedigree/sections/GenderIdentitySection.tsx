@@ -14,6 +14,8 @@ import GenderIdentityWordsSummaryField from '../../../fields/GenderIdentityWords
 import SlotVariableField from '../../../fields/SlotVariableField.tsx';
 import { useStageEditorForm } from '../../../form/stageEditorContext.ts';
 import { useStageValue } from '../../../form/stageFormHooks.ts';
+import { localizedFromText } from '../../../localization/localizedText.ts';
+import { useProtocolLocalization } from '../../../localization/ProtocolLocalization.tsx';
 import { variablesForSubject } from '../../../protocol-context.ts';
 import BuilderSection, {
   type SectionCapability,
@@ -115,13 +117,22 @@ export default function GenderIdentitySection() {
   // terms field when it saves; that field may not be mounted until the new
   // attribute reaches the codebook, and the form holds a value written to a
   // field that is not yet there until it mounts.
+  // Their labels are participant copy, written in the protocol's default
+  // language for the researcher to translate, so there are none to seed until
+  // the protocol's languages are known.
+  const localization = useProtocolLocalization();
   const seedOptions = useMemo(
     () =>
-      PEDIGREE_DEFAULT_GENDER_IDENTITIES.map(({ value }) => ({
-        value,
-        label: intl.formatMessage(DEFAULT_GENDER_OPTION_LABELS[value]),
-      })),
-    [intl],
+      localization === undefined
+        ? undefined
+        : PEDIGREE_DEFAULT_GENDER_IDENTITIES.map(({ value }) => ({
+            value,
+            label: localizedFromText(
+              localization,
+              intl.formatMessage(DEFAULT_GENDER_OPTION_LABELS[value]),
+            ),
+          })),
+    [intl, localization],
   );
 
   const genderVariableId = useStageValue(
@@ -185,7 +196,7 @@ export default function GenderIdentitySection() {
             subject={personSubject}
             variableType="categorical"
             writerClass="unvalidated"
-            seedOptions={seedOptions}
+            {...(seedOptions === undefined ? {} : { seedOptions })}
             editorOptions={createWords}
             onCreated={(_variableId, optionRowChoices) =>
               storeApi
@@ -193,7 +204,7 @@ export default function GenderIdentitySection() {
                 .setFieldValue(
                   NODE_CONFIGURATION_PATHS.genderIdentityTerms,
                   optionRowChoices === undefined
-                    ? genderTermsFromDefaults(seedOptions)
+                    ? genderTermsFromDefaults(seedOptions ?? [])
                     : termsFromRowChoices(optionRowChoices),
                 )
             }

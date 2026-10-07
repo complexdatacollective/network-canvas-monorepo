@@ -12,6 +12,7 @@ const pipelineResult: ExportReturn = {
   status: 'success',
   successfulExports: [],
   failedExports: [],
+  warnings: [],
   output: { key: 'export.zip' },
 };
 
@@ -60,6 +61,7 @@ function makeSession(id: string): InterviewExportInput {
       ego: { _uid: `ego-${id}`, attributes: {} },
     },
     protocolHash: 'hash-1',
+    locale: null,
   };
 }
 

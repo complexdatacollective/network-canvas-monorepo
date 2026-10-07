@@ -12,6 +12,7 @@ import RichSelectGroupField, {
 import { useShouldSkipAnimations } from '@codaco/fresco-ui/hooks/useSafeAnimate';
 import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
 import type {
+  LocalizedString,
   VariableOptions,
   VariableOptionValue,
 } from '@codaco/protocol-validation';
@@ -29,6 +30,7 @@ import { useCurrentStep } from '../../contexts/CurrentStepContext';
 import useBeforeNext from '../../hooks/useBeforeNext';
 import { useStageSelector } from '../../hooks/useStageSelector';
 import useStageValidation from '../../hooks/useStageValidation';
+import { useResolvePresentationalText } from '../../localization/ProtocolLocalizationProvider';
 import { getNodePairs } from '../../selectors/dyad-census';
 import {
   getEdgeColorForType,
@@ -120,8 +122,9 @@ export default function TieStrengthCensus(props: TieStrengthCensusProps) {
   } = usePrompts<{
     createEdge: string;
     edgeVariable?: string;
-    negativeLabel: string;
+    negativeLabel: LocalizedString;
   }>();
+  const toPresentationalText = useResolvePresentationalText();
 
   const nodes = useStageSelector(getNetworkNodesForType);
   const edges = useStageSelector(getNetworkEdges);
@@ -146,7 +149,7 @@ export default function TieStrengthCensus(props: TieStrengthCensusProps) {
     (option) =>
       typeof option.value === 'boolean'
         ? []
-        : [{ value: option.value, label: option.label }],
+        : [{ value: option.value, label: toPresentationalText(option.label) }],
   );
 
   // Collision-free decline sentinel: must never equal a real option value, so a
@@ -158,7 +161,7 @@ export default function TieStrengthCensus(props: TieStrengthCensusProps) {
 
   const richSelectOptions: RichSelectOption[] = [
     ...realOptions,
-    { value: declineValue, label: negativeLabel },
+    { value: declineValue, label: toPresentationalText(negativeLabel) },
   ];
 
   const pair =

@@ -9,6 +9,7 @@ import {
   type EdgeColor,
   FAMILY_PEDIGREE_BUILD_PROMPT_ID,
   type FamilyPedigreeNominationPrompt,
+  type LocalizedString,
   type NodeDefinition,
   type Prompt,
   type StageSubject,
@@ -39,11 +40,16 @@ type NavigationInfo = {
   canMoveBackward: boolean;
 };
 
-const getActiveSession = (state: RootState) => {
+export const getActiveSession = (state: RootState) => {
   return state.session;
 };
 
 export const getInterviewId = (state: RootState) => state.session.id;
+
+export const getLocalePreference = (state: RootState) =>
+  state.session.localePreference;
+
+export const getRecordedLocale = (state: RootState) => state.session.locale;
 
 /**
  * The package no longer stores currentStep in Redux, so every selector that
@@ -79,7 +85,7 @@ export const getCurrentStage = createSelector(
 
 /**
  * Returns the subject for the current stage, or `null` for subjectless stages
- * (Information, Anonymisation).
+ * (Information, Anonymisation, LanguageChooser, the appended finish stage).
  *
  * This selector must never throw because Redux dispatches trigger synchronous
  * subscription notifications. During stage transitions, components from the
@@ -90,7 +96,16 @@ export const getCurrentStage = createSelector(
 export const getStageSubject = createSelector(getCurrentStage, (stage) => {
   invariant(stage, 'getStageSubject: No current stage found');
 
-  if (stage.type === 'Information' || stage.type === 'Anonymisation') {
+  if (
+    stage.type === 'FinishSession' ||
+    stage.type === 'LanguageChooser' ||
+    stage.type === 'Information' ||
+    stage.type === 'Anonymisation' ||
+    // NarrativePedigree has no stage subject: it reads the captured pedigree
+    // from the shared network filtered to its source FamilyPedigree stage's
+    // node/edge types, so it owns no subject of its own.
+    stage.type === 'NarrativePedigree'
+  ) {
     return null;
   }
 
@@ -129,7 +144,7 @@ export const getPromptIndex = createSelector(
  */
 type SessionPrompt =
   | Prompt
-  | { id: typeof FAMILY_PEDIGREE_BUILD_PROMPT_ID; text: string }
+  | { id: typeof FAMILY_PEDIGREE_BUILD_PROMPT_ID; text: LocalizedString }
   | FamilyPedigreeNominationPrompt;
 
 export const getPrompts = createSelector(

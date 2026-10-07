@@ -8,7 +8,7 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 import { REQUIRED } from '../form/requiredField.ts';
 import { FieldStoryHost } from '../testing/FieldStoryHost.tsx';
 import type { InMemoryHost } from '../testing/host/createInMemoryHost.ts';
-import RichTextField from './RichTextField.tsx';
+import { LocalizedRichTextField } from './LocalizedStringField.tsx';
 
 /** The prose an anonymisation stage shows before asking for a passphrase. */
 const EXPLANATION_FIELD = 'explanationText.body';
@@ -25,9 +25,9 @@ const ANONYMISATION = sectionId({ kind: 'stage', stageId: 'anonymisation-1' });
  * links are all available, and Enter starts a new paragraph.
  */
 const explanation = (
-  <Field<typeof RichTextField>
+  <Field<typeof LocalizedRichTextField>
     name={EXPLANATION_FIELD}
-    component={RichTextField}
+    component={LocalizedRichTextField}
     label={EXPLANATION_LABEL}
     hint="Say which answers the passphrase protects, who can read them, and that the answers cannot be recovered without it."
     placeholder="Some of your answers are stored so that only you can unlock them."
@@ -44,9 +44,9 @@ const explanation = (
  * reads was saved with a space in front of it.
  */
 const censusPrompt = (
-  <Field<typeof RichTextField>
+  <Field<typeof LocalizedRichTextField>
     name={CENSUS_FIELD}
-    component={RichTextField}
+    component={LocalizedRichTextField}
     label={CENSUS_LABEL}
     hint="Shown to the participant above the canvas for the whole stage."
     placeholder="Enter your prompt..."

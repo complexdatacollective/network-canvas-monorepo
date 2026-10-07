@@ -20,11 +20,11 @@ There is deliberately **no client↔server dependency edge**: the halves share
 only the boundary package, so changesets and release CI re-gate a half only
 when its boundary moved.
 
-- `client/` — `@codaco/studio-client`: Vite + React SPA (TanStack Router,
+- `web/` — `@codaco/studio-web`: Vite + React SPA (TanStack Router,
   TanStack Query, `@codaco/fresco-ui`). Builds to static assets; talks to the
-  server through typed oRPC procedures, importing the boundary contract
+  server through typed Effect rpc procedures, importing the boundary contract
   type-only.
-- `server/` — `@codaco/studio-server`: Hono app on `@hono/node-server`
+- `api/` — `@codaco/studio-api`: Effect programs on `@effect/platform-node`
   (Node 24 baseline), one persistent process serving every surface below. It
   serves no client assets in any topology — nginx does, from the `studio-web`
   image (#1909). A second process built from the same source runs background
@@ -32,9 +32,10 @@ when its boundary moved.
   third creates the schema and exits. It owns the database:
   `src/db` holds the pool and the schema, and `src/protocol` is the sectioned,
   content-addressed protocol store (#1276) built on top of it.
-- `packages/studio-rpc` — `@codaco/studio-rpc`: the internal RPC boundary
-  (Zod schemas + typed oRPC contract). The only shared code between the
-  halves.
+- `packages/studio-contract` — `@codaco/studio-contract`: the boundary the
+  halves share, on Effect `Schema`: the `/rpc` procedures, the `/api/v1`
+  definition, and the `/ws` protocol-builder group, which it re-exports from
+  `@codaco/protocol-builder-core`.
 - `packages/studio-sync` — `@codaco/studio-sync`: the sync protocol core
   (#1247). Isomorphic: the client imports its apply engine, the server its
   lease and commit engine and the schema those run against. It also carries the
@@ -46,12 +47,12 @@ when its boundary moved.
 Three surfaces, one domain layer beneath them, none generated from another
 (per the 2026-08-11 decision on #1248):
 
-| Path       | Surface                  | Consumers                              | Stability                                             |
-| ---------- | ------------------------ | -------------------------------------- | ----------------------------------------------------- |
-| `/rpc`     | Internal RPC (oRPC v2)   | The SPA only                           | Unpublished, free-moving                              |
-| `/api/v1`  | Public data API (REST)   | Researchers, external tools            | OpenAPI 3.1 (`/api/v1/openapi.json`), RFC 9457 errors |
-| `/ws`      | Sync protocol            | The SPA's editor                       | Unpublished, protocol-versioned (#1247)               |
-| `/storage` | Asset bytes (plain HTTP) | The SPA (upload), interviews (stimuli) | Unpublished; content-addressed, immutable (#1278)     |
+| Path       | Surface                   | Consumers                              | Stability                                                                            |
+| ---------- | ------------------------- | -------------------------------------- | ------------------------------------------------------------------------------------ |
+| `/rpc`     | Internal RPC (Effect rpc) | The SPA only                           | Unpublished, free-moving                                                             |
+| `/api/v1`  | Public data API (REST)    | Researchers, external tools            | OpenAPI 3.1.0 (`/api/v1/openapi.json`, browsable at `/api/v1/docs`), RFC 9457 errors |
+| `/ws`      | Sync protocol             | The SPA's editor                       | Unpublished, protocol-versioned (#1247)                                              |
+| `/storage` | Asset bytes (plain HTTP)  | The SPA (upload), interviews (stimuli) | Unpublished; content-addressed, immutable (#1278)                                    |
 
 Asset bytes live in S3-compatible object storage (#1246): Cloudflare R2 in
 the managed topology, Garage (or any S3-compatible endpoint) self-hosted and
@@ -89,10 +90,11 @@ it is counted against: sign-in per client address and per email; invitation
 acceptance per token; participant redemption per address and per link, and
 participant sync writes per session (declared here, enforced when the
 participant routes land with #1899); RPC per user and per team; storage reads
-per address; the public API per token, or per address with none; and WebSocket
-upgrades per user.
+per address; the public API per address (an `Authorization` header is not a
+subject until a token is validated, #1899), and its reference page per address
+again; and WebSocket upgrades per user.
 
-Every limit is a constant in `server/src/rate-limit/scopes.ts` — the count, the
+Every limit is a constant in `api/src/rate-limit/scopes.ts` — the count, the
 window, and why that number — and none of them is configurable. They are
 security defaults rather than capacity settings, and a limit a deployer can
 raise is a limit an attacker meets only where nobody raised it. `REDIS_URL` is
@@ -116,13 +118,15 @@ guarantee; refusing traffic because the defence is broken would turn an abuse
 control into an outage.
 
 The suites that exercise any of this — the limiter's own, and the three cases
-in `server/src/team/__tests__/commands.test.ts` that assert where the audit
+in `api/src/team/__tests__/commands.test.ts` that assert where the audit
 denial window's cap falls — need the development lane's Valkey running and
 skip without it, because a limiter that fails open cannot be observed
 enforcing anything; on CI they throw instead, where the store is part of the
 job. They run the shipped constants like everything else: a case that has to be
-refused states its own small limit in code, through the `limits` option on
-`createApp` and `createRateLimiter`, rather than turning the shipped one down.
+refused states its own small limit in code, through
+`RateLimiter.layerWith(limits)` (or `support/valkey.ts`'s
+`openRateLimitStore(url).limiter(limits)` for a suite that drives
+`createStudio`), rather than turning the shipped one down.
 
 What was refused is reported once a minute by the `denied-attempts-summary`
 job on the worker (see [Background work](#background-work)). Suppressed
@@ -135,7 +139,7 @@ and nothing else.
 ## Development
 
 ```bash
-pnpm --filter @codaco/studio-server dev
+pnpm --filter @codaco/studio-api dev
 ```
 
 One command. It brings up the backing services in Docker, bootstraps the
@@ -180,7 +184,7 @@ development stack at a time. If `pnpm dev` finds a container from the scripts
 this replaced (`studio-dev-pg-*`, `studio-dev-minio-*`) still holding one of
 them, it stops that container and says so.
 
-Nothing is set by hand. The committed `server/.env.development` carries every
+Nothing is set by hand. The committed `api/.env.development` carries every
 value the server needs, and `scripts/dev.ts` hands the same values to Compose —
 both from the `DEV` constants in `src/env/development.ts`, so the containers and
 the server's configuration cannot drift apart. It also writes
@@ -206,8 +210,8 @@ need a protocol draft or other manual change to persist across restarts, keep
 the session running rather than cycling `pnpm dev`.
 
 ```bash
-pnpm --filter @codaco/studio-server dev:down              # stop the services
-pnpm --filter @codaco/studio-server dev:down -- --volumes # and wipe their data
+pnpm --filter @codaco/studio-api dev:down              # stop the services
+pnpm --filter @codaco/studio-api dev:down -- --volumes # and wipe their data
 ```
 
 `dev:down` is `docker compose -p studio-dev … down`; `--volumes` adds `-v`,
@@ -239,7 +243,7 @@ is reachable.
 
 In production the connection comes from `DATABASE_URL`; when it is unset the
 server still boots and database-backed surfaces refuse, mirroring the S3
-degradation contract. Locally, put an override in a gitignored `server/.env`,
+degradation contract. Locally, put an override in a gitignored `api/.env`,
 which is loaded after `.env.development` and so wins:
 
 ```
@@ -289,7 +293,7 @@ every variable is catalogued under [Environment](#environment) below.
 ### Running the whole stack locally
 
 ```bash
-pnpm --filter @codaco/studio-server dev:stack
+pnpm --filter @codaco/studio-api dev:stack
 ```
 
 The other lane. Where `dev` runs the backing services in containers and the
@@ -316,8 +320,8 @@ deployed schema, the first-run screen, and an upgrade — before any of them
 reach someone else's host.
 
 ```bash
-pnpm --filter @codaco/studio-server dev:stack:down              # stop it
-pnpm --filter @codaco/studio-server dev:stack:down -- --volumes # and wipe its data
+pnpm --filter @codaco/studio-api dev:stack:down              # stop it
+pnpm --filter @codaco/studio-api dev:stack:down -- --volumes # and wipe its data
 ```
 
 Wiping the volumes is how you get a fresh first-run setup: the next `dev:stack`
@@ -376,42 +380,42 @@ keeping.
 Studio has one schema, defined as Drizzle tables in seventeen modules that live
 with their owners, plus the queue declarations beside them:
 
-- better-auth's tables — `server/src/db/auth-schema.ts`
+- better-auth's tables — `api/src/db/auth-schema.ts`
 - the sync engine's drafts, sections, manifests, leases and command log —
   `packages/studio-sync/src/schema.ts`
 - the protocol store's versioning tables, and the sealed API keys of its
-  `apikey` assets — `server/src/protocol/schema.ts`
-- protocol asset metadata — `server/src/asset/schema.ts`
+  `apikey` assets — `api/src/protocol/schema.ts`
+- protocol asset metadata — `api/src/asset/schema.ts`
 - the study spine: studies, waves, participants and their plain contact
   columns, interview sessions and interview links —
-  `server/src/study/schema.ts`; study roles —
-  `server/src/study/roles-schema.ts`
+  `api/src/study/schema.ts`; study roles —
+  `api/src/study/roles-schema.ts`
 - the collected network: snapshots, nodes, edges and the per-session rollups —
-  `server/src/network/schema.ts`
-- consent documents and records — `server/src/consent/schema.ts`
+  `api/src/network/schema.ts`
+- consent documents and records — `api/src/consent/schema.ts`
 - schedules, prompts, message templates, deliveries and opt-outs —
-  `server/src/schedule/schema.ts`
-- team-owned API tokens — `server/src/token/schema.ts`
-- templates and the gallery — `server/src/template/schema.ts`
-- webhooks — `server/src/webhook/schema.ts`
-- experiments — `server/src/experiment/schema.ts`
-- feedback reports — `server/src/feedback/schema.ts`
-- monitoring rollups — `server/src/monitoring/schema.ts`
+  `api/src/schedule/schema.ts`
+- team-owned API tokens — `api/src/token/schema.ts`
+- templates and the gallery — `api/src/template/schema.ts`
+- webhooks — `api/src/webhook/schema.ts`
+- experiments — `api/src/experiment/schema.ts`
+- feedback reports — `api/src/feedback/schema.ts`
+- monitoring rollups — `api/src/monitoring/schema.ts`
 - immutable audit history, its staged exports and its alert outbox —
-  `server/src/audit/schema.ts`
-- durable invitation delivery — `server/src/team/invitation-delivery-schema.ts`
+  `api/src/audit/schema.ts`
+- durable invitation delivery — `api/src/team/invitation-delivery-schema.ts`
 - the background queues — `packages/studio-sync/src/jobs.ts`: every queue
   Studio declares and how each one retries and expires, the cron schedules the
-  worker registers, what a job on each queue may carry, and what the two
-  database roles may do with pg-boss's tables. Declarations rather than Drizzle
-  tables — pg-boss owns the tables (see [Background work](#background-work))
+  worker registers, and what a job on each queue may carry. Declarations rather
+  than Drizzle tables — the queue's own two tables are raw SQL in
+  `api/src/jobs/schema.ts` (see [Background work](#background-work))
 
 The PL/pgSQL immutability functions and triggers, which Drizzle cannot express,
 ride in raw-SQL sidecar exports beside their tables — as do the parts of
 row-level security that drizzle-kit does not manage: the roles, `FORCE ROW
 LEVEL SECURITY`, and the grants (see [Tenancy](#tenancy)).
-`server/src/db/schema.ts` collects all of it into the `SCHEMA` and `SIDECARS`
-exports that `server/scripts/apply.ts` applies. Sidecar order carries a rule
+`api/src/db/schema.ts` collects all of it into the `SCHEMA` and `SIDECARS`
+exports that `api/scripts/apply.ts` applies. Sidecar order carries a rule
 the test suite pins: the broad grant over every table runs first, right after
 the roles are created, and every narrower revocation (the outboxes, the audit
 log) runs after it, because a revocation placed before the broad grant is
@@ -424,30 +428,27 @@ The policies themselves are `pgPolicy` entries on the table definitions, which
 is why `drizzle-kit` is pinned to the 1.0 release candidate: the stable line's
 `push` silently drops their `USING`/`WITH CHECK` expressions.
 
-pg-boss's own schema, `pgboss`, is part of what a schema application installs.
-`apply-schema` runs pg-boss's construction plan, applies the grants that sit
-beside the queue declarations, and creates or updates every declared queue. No
-process migrates pg-boss at start. That plan's SQL, those grants and the queue
-declarations are all hashed into the fingerprint, so a pg-boss upgrade or a
-change to a queue's retry, expiry or dead-letter settings is a schema change
-like any other: applied once by `apply-schema`, and refused at boot by every
-process until it has been. Pre-release, a version difference is resolved the
-way the rest of the schema is — by replacement rather than migration. A
-database whose installed pg-boss schema is not this build's version is dropped
-and reinstalled, which discards every job that was queued in it; `apply-schema`
-logs how many that was before it does it.
+The background queue's own schema, `studio_jobs`, is part of what a schema
+application installs: two tables, their indexes, a notify trigger and the
+grants that divide them between the two roles — the application may create a
+job and read back its id, the worker runs as maintenance and owns the tables.
+Its DDL and grants are hashed into the fingerprint like everything else, so a
+column added to `studio_jobs.jobs` or a widened grant is a schema change like
+any other: applied once by `apply-schema`, and refused at boot by every process
+until it has been, rather than discovered by a worker at its first claim. The
+DDL is idempotent, so reapplying it leaves whatever is queued where it is.
 
 <!-- generated:schema-docs start -->
 
 #### Generated entity-relationship diagram
 
-<!-- Generated by `pnpm --filter @codaco/studio-server sync-fingerprint` from the assembled Drizzle schema and raw-SQL sidecars. Do not edit by hand. -->
+<!-- Generated by `pnpm --filter @codaco/studio-api sync-fingerprint` from the assembled Drizzle schema and raw-SQL sidecars. Do not edit by hand. -->
 
 [![Network Canvas Studio entity-relationship diagram](./schema-erd.svg)](./schema-erd.svg)
 
 Open the image for the full-size diagram. Tables with row-level security or trigger sidecars carry those details as SVG tooltips. The diagram shows physical foreign-key constraints; deliberately unconstrained logical references are not drawn as relationships. The renderer uses `1`/`*` edge endpoints, so optionality remains visible through each column's not-null marker rather than the edge.
 
-Schema fingerprint: `6f05d460b6340b7aa2462274c5ed5454842ad87bb8289169af442a905fa7aeba`.
+Schema fingerprint: `57a485b67b63682b9007fc2d081e4c448d52dd77bd273c28e3c9e5469ca6e93f`.
 
 Sidecar behavior that cannot be represented as ERD relationships:
 
@@ -503,6 +504,8 @@ Sidecar behavior that cannot be represented as ERD relationships:
 | `team_invitation_deliveries` privileges                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | Revokes UPDATE, DELETE from studio_app.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | `installation` privileges                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | Revokes INSERT, DELETE, TRUNCATE from studio_app, studio_maintenance.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | `installation` privileges                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | Revokes UPDATE from studio_maintenance.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `deployment_state` privileges                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            | Revokes INSERT, DELETE, TRUNCATE from studio_app, studio_maintenance.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| `deployment_state` privileges                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            | Revokes UPDATE from studio_app.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | `audit_export_jobs` privileges                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | Revokes UPDATE, DELETE from studio_app.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | `audit_alert_outbox` privileges                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | Revokes UPDATE, DELETE from studio_app.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | `audit_export_jobs` privileges                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | Grants UPDATE (handle_consumed_at) to studio_app.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
@@ -515,12 +518,12 @@ The server never applies schema — it only verifies. Application is
 a repo checkout: it introspects the live database, applies whatever delta
 brings it to the definitions, re-runs the sidecars, and stamps a fingerprint —
 the hash of the DDL that describes this build. Boot compares that stamp
-against the fingerprint committed in `server/src/db/fingerprint.generated.ts`.
+against the fingerprint committed in `api/src/db/fingerprint.generated.ts`.
 Both database commands resync the fingerprint and generated schema docs before
 touching the database. To resync without connecting to a database, run:
 
 ```bash
-pnpm --filter @codaco/studio-server sync-fingerprint
+pnpm --filter @codaco/studio-api sync-fingerprint
 ```
 
 That command also regenerates the ERD, its sidecar summary, and the README
@@ -529,7 +532,7 @@ needs refreshing. CI re-runs the generator and rejects either committed
 artifact once it has drifted, which you can do yourself with:
 
 ```bash
-pnpm --filter @codaco/studio-server check:schema-docs
+pnpm --filter @codaco/studio-api check:schema-docs
 ```
 
 It is a check of its own rather than a test case because rendering the diagram
@@ -541,7 +544,7 @@ A mismatch stops the server with the remedies: `apply-schema` reconciles the
 database in place, or
 
 ```bash
-pnpm --filter @codaco/studio-server db:reset
+pnpm --filter @codaco/studio-api db:reset
 ```
 
 drops the schema, rebuilds it, and seeds. It refuses to touch a non-loopback
@@ -577,13 +580,24 @@ version is a _manifest_ — an ordered map of section id to section hash
 sections are shared, reordering stages touches only the manifest, and
 structural diff falls out of comparing two manifests.
 
-`server/src/protocol` implements this over the same pool everything else uses.
+`api/src/protocol` implements this over the same pool everything else uses.
 Assembly (`getDraftDocument`, `getVersionDocument`) is the contract: outside
 the storage layer,
 Studio consumes the schema-conformant protocol document exactly as
 `@codaco/protocol-validation` defines it, and publishing re-validates the
 assembled document with the canonical validator before freezing it. Sectioning
 is Studio-internal storage topology, not a protocol-schema change.
+
+The settings block holds the protocol's name, its schema version and its
+language declaration (`localization`: the default language and every declared
+one, which have no order). Labels, prompts and other participant-facing text
+are translations keyed by declared language, stored inside the section that owns
+them, so a structural diff names a stage by its label in the default language,
+or in another declared language that has one when the default has none. A
+protocol created in Studio declares the undetermined language (`und`), as one
+migrated from schema 8 does, because nothing asks the researcher for a language
+yet. A draft branched from a version stored under an older schema is migrated to
+the current one, so it can be edited.
 
 ### Tenancy
 
@@ -595,14 +609,15 @@ through composite foreign keys (`(study_id, team_id)`, and
 same study as its siblings), and section
 documents deduplicate **per team**: identical content in two teams is two rows,
 because a shared row would leak content across the boundary. The data layer
-only speaks through a `TenantDb` (`@codaco/studio-sync/tenant`), a pool handle
-pinned to one team: the `ProtocolStore` and `SyncServer` constructors take one
-instead of a pool, every statement carries an explicit team predicate, and
-every statement runs inside a transaction that stamps `app.team_id` as a
-transaction-local GUC. A team's id enters a request explicitly — `requireTeam`
-in `server/src/rpc.ts` resolves the procedure input's `teamId` against the
-caller's membership (`AuthService.getMembership`) and yields the pinned
-`TenantDb`; the session's active team is never the authorization input.
+reaches a team's rows only inside a `TenantScope` transaction
+(`api/src/db/tenant.ts`), which stamps `app.team_id` as a transaction-local
+GUC before any statement in its body runs; every statement also carries an
+explicit team predicate. `TenantScope.open` takes a `TeamAccess` — a branded
+token (`@codaco/studio-sync/tenant`) minted only by the few modules that have
+just checked a membership — never a bare team id. A team's id enters a request
+explicitly — `openTeam` in `api/src/rpc/team-scope.ts` resolves the
+procedure input's `teamId` against the caller's membership and yields the
+`TeamAccess`; the session's active team is never the authorization input.
 
 Beneath that, Postgres row-level security enforces the same boundary
 (`@codaco/studio-sync/rls`). Every tenant table carries a `team_isolation`
@@ -620,16 +635,16 @@ collection is the one deliberately cross-team caller: it runs on a
 `studio_maintenance` pool — the one role the policies admit across every
 team, a policy clause rather than a `BYPASSRLS` role because only a superuser
 can create one of those and managed Postgres offers none — enumerates tenants
-from the swept tables, sweeps each under that team's `TenantDb`, and refuses
+from the swept tables, sweeps each in a `MaintenanceScope.openTenant`
+transaction stamped with that team, and refuses
 any other role, under which it would report a clean sweep without having
 visited anyone. Every background job runs that way: the worker process
 (see [Background work](#background-work)) runs protocol-store garbage
-collection, which pg-boss's cron starts hourly, and invitation and sign-in
+collection, which the queue's cron starts hourly, and invitation and sign-in
 mail, all as `studio_maintenance`. The application role may create a job and
-nothing else with it — INSERT on the job table, SELECT on the queue and version
-tables, and a column-level SELECT on the two columns its insert reads back — so
-queued work is invisible to the role that serves requests, and one team cannot
-learn what another has queued. Job payloads carry row identifiers only; the
+nothing else with it — INSERT on the job table and a column-level SELECT on the
+`id` its insert reads back — so queued work is invisible to the role that
+serves requests, and one team cannot learn what another has queued. Job payloads carry row identifiers only; the
 handler loads what it needs under its own role. There is one documented
 exception, declared where the policy is (`JOB_PAYLOAD_POLICY` in
 `packages/studio-sync/src/jobs.ts`, where a test refuses any other): a sign-in
@@ -651,7 +666,7 @@ Two consequences are worth knowing. `COPY FROM` is refused for any role
 subject to row-level security, so a bulk import must batch `INSERT`s or run as
 maintenance. And the test suites run the store and the sync engine as
 `studio_app`, so every existing case also proves the policies admit what they
-should; `server/src/db/__tests__/rls.test.ts` proves what they refuse.
+should; `api/src/db/__tests__/rls.test.ts` proves what they refuse.
 
 Better-auth's organization plugin backs these tables, and its own optional
 `teams` feature — a subdivision _inside_ an organization — stays disabled, so
@@ -663,7 +678,7 @@ refuses: creation, structural add and remove, publishing, versions, diff,
 platform migration, and garbage collection.
 
 Its database-backed tests run against the dev Postgres and skip without one, so
-on a machine with no container `pnpm --filter @codaco/studio-server test`
+on a machine with no container `pnpm --filter @codaco/studio-api test`
 passes having verified far less than it appears to. Read the reporter, not the
 exit code.
 
@@ -672,16 +687,17 @@ exist to prove the tenancy spine end to end, and no screen renders them yet —
 so
 
 ```bash
-pnpm --filter @codaco/studio-server protocol-demo
+pnpm --filter @codaco/studio-api protocol-demo
 ```
 
 remains the way to look at one. It sectionizes a protocol (the sample one, or
 `--protocol <path>`), prints its sections and their hashes (`--sections` for
-every row), assembles it back, publishes it, edits one prompt and publishes
-again to show how much of the second version is structurally shared with the
-first, and renders the structural diff as sentences. It asserts nothing — the
-suites in `server/src/protocol/__tests__` own that — and it should be deleted
-once the client can show the same things. The rows it writes stay behind for
+every row), assembles it back, publishes it, edits one prompt in every language
+the protocol declares and publishes again to show how much of the second
+version is structurally shared with the first, and renders the structural diff
+as sentences that name stages in the protocol's default language. It asserts
+nothing — the suites in `api/src/protocol/__tests__` own that — and it should be
+deleted once the client can show the same things. The rows it writes stay behind for
 inspection; published versions cannot be deleted, so `db:reset` is how you clear
 them.
 
@@ -750,27 +766,35 @@ process runs it (#1895). One image, two processes: `node dist/index.js` is the
 web process, which serves HTTP, the RPC surface and the WebSocket endpoint and
 may only create jobs, and `node dist/worker.js` is the worker, which runs the
 jobs and the cron schedules and binds no port. Neither can do the other's work
-— the web process constructs pg-boss with supervision, scheduling and migration
-off, and the worker imports neither the HTTP app nor the RPC router, which a
-source test holds it to. `pnpm dev` runs both.
+— the web process reaches only the enqueue client, and the worker imports
+neither the HTTP app nor the RPC router, which a source test holds it to.
+`pnpm dev` runs both.
 
-A job is created inside the transaction that caused it. The command hands its
-own database client to pg-boss through pg-boss's Drizzle adapter, so the job is
-inserted on that connection, inside that transaction, alongside the domain row
-and its audit event: a command that rolls back leaves no job, and a command
-that commits always leaves exactly one. Nothing enqueues after a commit, and
-`server/src/jobs/enqueue.ts` is the only module that creates a job at all —
-another source test holds the codebase to that, because an enqueue on its own
-connection reopens both windows this closes.
+The queue is Studio's own, written on Effect over two Postgres tables
+(`api/src/jobs/`, whose README is its reference). It replaced
+pg-boss on 16 September 2026 (#1957) and keeps pg-boss's semantics where they
+were worth keeping — the retry ladder and its backoff, per-queue singletons,
+dead-letter copies, retention and deletion — with the differences, and the
+rulings behind them, tabulated in §2 of that README.
 
-Queues are schema rather than configuration. A queue is declared in
-`JOB_QUEUES` in `packages/studio-sync/src/jobs.ts` — after any queue it names
-as its dead letter, because the target has to exist before the queue that
-points at it — and `pnpm --filter @codaco/studio-server sync-fingerprint` then
-folds it into the fingerprint every process verifies at boot. `apply-schema`
-creates or updates it (see [Changing the schema](#changing-the-schema)).
-Nothing creates a queue at run time. What each database role may do with the
-job tables is in [Tenancy](#tenancy).
+A job is created inside the transaction that caused it. `Jobs.enqueue` requires
+the caller's `Transaction`, so the job is inserted on that connection, inside
+that transaction, alongside the domain row and its audit event: a command that
+rolls back leaves no job, and a command that commits always leaves exactly one.
+Nothing enqueues after a commit. `api/src/jobs/insert.ts` renders the one
+statement that creates a job and `api/src/jobs/worker.ts` is the only other
+module that inserts one (cron); `api/src/jobs/__tests__/source-policy.test.ts`
+holds the codebase to that, because an enqueue on its own connection reopens
+both windows this closes.
+
+Queues are declarations, not configuration and not rows. A queue is declared in
+`JOB_QUEUES` in `packages/studio-sync/src/jobs.ts`, and a `deadLetter` has to
+name another queue in that list or the server refuses the whole list at start.
+Nothing creates a queue anywhere: a job carries its queue's name, and the retry
+and expiry that queue resolved to, on the job row itself — frozen at enqueue, so
+a redeploy that changes a queue's options does not change how a job already in
+flight retries. What each database role may do with the job tables is in
+[Tenancy](#tenancy).
 
 | Queue                             | What runs on it                                                  | Retries                                            | Attempt expiry | When attempts run out                             |
 | --------------------------------- | ---------------------------------------------------------------- | -------------------------------------------------- | -------------- | ------------------------------------------------- |
@@ -794,18 +818,19 @@ failure, and `uncertain` — the send may have happened and Studio could not
 record that it did, so a person decides rather than a retry duplicating
 someone's mail (#1305, #1307).
 
-On SIGTERM the worker stops pg-boss gracefully with a 25-second timeout, so a
-send already in flight finishes inside the container's stop window. A job that
-outlives it fails and is retried by the next worker.
+On SIGTERM the worker stops gracefully with a 25-second timeout, so a send
+already in flight finishes inside the container's stop window. A job that
+outlives it is left to its lease: the next worker's expiry pass returns it and
+walks the retry ladder for it.
 
 What is deliberately absent: there is no admin surface, no dashboard, and no
 job priorities. A delivery state researchers can see, and a manual re-send, is
-#1307; structured logging, metrics, and whether to mount pg-boss's own
-dashboard belong to the observability aspect of #1243.
+#1307; structured logging and metrics belong to the observability aspect of
+#1243.
 
 ## Environment
 
-`apps/studio/server/src/env.ts` is the only module in the server that reads
+`apps/studio/api/src/env.ts` is the only module in the server that reads
 `process.env`, and everything else takes a resolved `StudioEnv`. It validates
 in two layers: `src/env/schema.ts` is one Effect `Schema.Struct` declaring
 every variable, and `src/env/resolve.ts` applies the rules that span several at
@@ -816,7 +841,7 @@ the process that sends mail — the worker (see
 the web process cannot construct a transport even where a deployment defines
 them, and a half-configured pair is the worker's to refuse.
 
-Two oxlint rules, scoped to `apps/studio/server/src/**` in the repository's
+Two oxlint rules, scoped to `apps/studio/api/src/**` in the repository's
 `.oxlintrc.json`, are what keep that true: `node/no-process-env`, and a ban on
 importing `node:process` — the linter only sees `process.env` reached through
 the global, so a file that imported `process` could read the environment with
@@ -833,7 +858,7 @@ each carrying a comment saying why:
   environment to a child process, because that is what makes the child a
   deployment-shaped run of an entrypoint rather than an in-process test.
 
-`apps/studio/server/scripts/**` is outside the rule: a script that hands its
+`apps/studio/api/scripts/**` is outside the rule: a script that hands its
 whole environment to a child process has nothing to validate, and every script
 that reads Studio's own configuration calls `readEnv()` like everything else.
 
@@ -844,21 +869,21 @@ these variables are credentials and a boot failure is written to the log of
 every container that restarts.
 
 `src/env.ts` also exports an `Environment` service (an Effect `Context.Service`
-and a `Layer` that decodes and resolves once). Nothing consumes it yet — the server
-is a Hono app and a pg-boss worker, neither of which runs under Effect — but it
-is the sanctioned way in for the first module that does.
+and a `Layer` that decodes and resolves once). The worker program provides it —
+the job queue's layers are built over it — and it is the sanctioned way in for
+anything else that runs under Effect.
 
 Three files carry values, and the dev script loads them in this order, so a
 later one wins:
 
-| File                      | Committed          | Loaded by                   |
-| ------------------------- | ------------------ | --------------------------- |
-| `server/.env.development` | yes — deliberately | `pnpm dev` only             |
-| `server/.env`             | no, gitignored     | `pnpm dev` and `pnpm start` |
-| `server/.env.example`     | yes, as a template | nothing; copy it to `.env`  |
+| File                   | Committed          | Loaded by                   |
+| ---------------------- | ------------------ | --------------------------- |
+| `api/.env.development` | yes — deliberately | `pnpm dev` only             |
+| `api/.env`             | no, gitignored     | `pnpm dev` and `pnpm start` |
+| `api/.env.example`     | yes, as a template | nothing; copy it to `.env`  |
 
 **Development needs no setup.** `.env.development` is committed, so a fresh
-clone runs `pnpm --filter @codaco/studio-server dev` and gets a working stack
+clone runs `pnpm --filter @codaco/studio-api dev` and gets a working stack
 — its credentials are intentional test values pointing at the Docker
 containers the dev script provisions. Put personal overrides (real SMTP
 credentials, say) in a gitignored `.env` beside it.
@@ -891,7 +916,7 @@ Because the schema carries no defaults, no development credential is compiled
 into the server bundle.
 
 The table below, `.env.development`, and `.env.example` are all written by
-`pnpm --filter @codaco/studio-server generate:env-docs` from two inputs:
+`pnpm --filter @codaco/studio-api generate:env-docs` from two inputs:
 
 - `src/env/schema.ts` — which variables exist, and, out of each field's
   annotations, its group, summary, deployment behaviour and example. So what a
@@ -916,19 +941,20 @@ generating a half-documented entry.
 
 <!-- generated:env start -->
 
-<!-- Generated by `pnpm --filter @codaco/studio-server generate:env-docs` from src/env/schema.ts. Do not edit by hand. -->
+<!-- Generated by `pnpm --filter @codaco/studio-api generate:env-docs` from src/env/schema.ts. Do not edit by hand. -->
 
 ### Process
 
-| Variable                 | What it is                                                                                                                                                                    | Development default | Real deployment                                                                                                                                                                                                                                                    |
-| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `NODE_ENV`               | Runtime mode. Anything other than `production` leaves development affordances available.                                                                                      | `development`       | Set to `production` by the `studio-api` image.                                                                                                                                                                                                                     |
-| `STUDIO_DEV_DEFAULTS`    | Marks the process as running against the committed development defaults.                                                                                                      | `1`                 | Never set. It is refused at boot unless `NODE_ENV` is `development` or `test`.                                                                                                                                                                                     |
-| `PORT`                   | TCP port the HTTP server listens on.                                                                                                                                          | —                   | Unset ⇒ 3000.                                                                                                                                                                                                                                                      |
-| `HOST`                   | Interface the HTTP server binds to.                                                                                                                                           | —                   | Unset ⇒ `0.0.0.0`.                                                                                                                                                                                                                                                 |
-| `WORKER_HEALTH_PORT`     | TCP port the worker process serves `/healthz` and `/readyz` on, bound to `127.0.0.1` only.                                                                                    | —                   | Unset ⇒ 3001. The worker routes no traffic, so this listener exists for the container healthcheck and is never published or proxied; the address it binds is fixed in code, not configurable. The web process ignores it and serves the same two routes on `PORT`. |
-| `STUDIO_TELEMETRY`       | Whether this instance reports anonymous usage telemetry. Declared here so the development lane can turn it off; nothing reads it until #1897 builds the reporting it governs. | `false`             | Unset ⇒ true. Set to `false` to opt an instance out. It does not govern the update check (#1901), which is not configurable and is blocked at the firewall instead.                                                                                                |
-| `STUDIO_DEPLOYMENT_MODE` | Which topology this deployment serves: `managed` (marketing, pricing, sign-up, billing) or `self-hosted` (first-run setup). The other topology’s paths are refused with 404.  | `managed`           | Unset ⇒ `self-hosted`. The managed deployment sets `managed` in the container environment, at run time rather than at build time, because every entrypoint reads it inside the running process.                                                                    |
+| Variable                      | What it is                                                                                                                                                                                                          | Development default | Real deployment                                                                                                                                                                                                                                                    |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `NODE_ENV`                    | Runtime mode. Anything other than `production` leaves development affordances available.                                                                                                                            | `development`       | Set to `production` by the `studio-api` image.                                                                                                                                                                                                                     |
+| `STUDIO_DEV_DEFAULTS`         | Marks the process as running against the committed development defaults.                                                                                                                                            | `1`                 | Never set. It is refused at boot unless `NODE_ENV` is `development` or `test`.                                                                                                                                                                                     |
+| `PORT`                        | TCP port the HTTP server listens on.                                                                                                                                                                                | —                   | Unset ⇒ 3000.                                                                                                                                                                                                                                                      |
+| `HOST`                        | Interface the HTTP server binds to.                                                                                                                                                                                 | —                   | Unset ⇒ `0.0.0.0`.                                                                                                                                                                                                                                                 |
+| `WORKER_HEALTH_PORT`          | TCP port the worker process serves `/healthz` and `/readyz` on, bound to `127.0.0.1` only.                                                                                                                          | —                   | Unset ⇒ 3001. The worker routes no traffic, so this listener exists for the container healthcheck and is never published or proxied; the address it binds is fixed in code, not configurable. The web process ignores it and serves the same two routes on `PORT`. |
+| `STUDIO_TELEMETRY`            | Whether this instance reports anonymous usage telemetry. Also the switch on telemetry export: with it off, no exporter is built whatever `OTEL_EXPORTER_OTLP_ENDPOINT` says. #1897 builds the reporting it governs. | `false`             | Unset ⇒ true. Set to `false` to opt an instance out. It does not govern the update check (#1901), which is not configurable and is blocked at the firewall instead.                                                                                                |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | OTLP/HTTP collector that receives this instance’s logs, traces and metrics (#1897).                                                                                                                                 | —                   | Unset ⇒ nothing is exported; logs stay on stdout. Set to a collector’s base URL (the OTLP/HTTP paths `/v1/logs`, `/v1/traces`, `/v1/metrics` are appended). `STUDIO_TELEMETRY=false` overrides it.                                                                 |
+| `STUDIO_DEPLOYMENT_MODE`      | Which topology this deployment serves: `managed` (marketing, pricing, sign-up, billing) or `self-hosted` (first-run setup). The other topology’s paths are refused with 404.                                        | `managed`           | Unset ⇒ `self-hosted`. The managed deployment sets `managed` in the container environment, at run time rather than at build time, because every entrypoint reads it inside the running process.                                                                    |
 
 ### Object storage
 
@@ -942,10 +968,10 @@ generating a half-documented entry.
 
 ### Database
 
-| Variable                 | What it is                                                                          | Development default                                    | Real deployment                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
-| ------------------------ | ----------------------------------------------------------------------------------- | ------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `DATABASE_URL`           | Postgres connection string, `pg.Pool`’s native format.                              | `postgres://postgres:spike@127.0.0.1:54318/studio_dev` | Unset ⇒ no database; auth and sync refuse while the server still boots. The login owns the schema and needs `CREATEROLE` the first time `apply-schema` runs; the server runs as the `studio_app` role it creates. A connection string carrying an `options` parameter is refused at boot: node-postgres would let it override the `role=` every pool pins itself with, and both processes would run as the login instead.                                                                            |
-| `DATABASE_PASSWORD_FILE` | Path of a file holding the password for `DATABASE_URL`, which must then carry none. | —                                                      | How the reference compose stack delivers the database password: a Compose file secret at `/run/secrets/postgres_password`, so it appears neither in `docker inspect` nor in any process environment. The file is read once at boot and its password inserted into `DATABASE_URL`. Setting it while `DATABASE_URL` also carries a password is a boot error — there would be no way to tell which was meant. Trailing newlines are stripped, matching what the Postgres image does with the same file. |
+| Variable                 | What it is                                                                          | Development default                                    | Real deployment                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| ------------------------ | ----------------------------------------------------------------------------------- | ------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`           | Postgres connection string, as a `postgres://` URL.                                 | `postgres://postgres:spike@127.0.0.1:54318/studio_dev` | Unset ⇒ no database; auth and sync refuse while the server still boots. The login owns the schema and needs `CREATEROLE` the first time `apply-schema` runs; the server runs as the `studio_app` role it creates. A connection string carrying an `options` parameter is refused at boot: it could override the role every database client pins itself with, and both processes would run as the login instead. It must be a `postgres://` URL: a bare socket path, a keyword connection string, a URL with credentials but no host, or an `sslmode` other than `disable`, `require`, `verify-ca` or `verify-full` is refused at boot, because the server’s database client cannot read one. For a Unix socket, keep `localhost` as the host and name the socket’s directory in the `host` parameter — `postgres://studio@localhost/studio?host=/var/run/postgresql` — so a password from `DATABASE_PASSWORD_FILE` has somewhere to go. |
+| `DATABASE_PASSWORD_FILE` | Path of a file holding the password for `DATABASE_URL`, which must then carry none. | —                                                      | How the reference compose stack delivers the database password: a Compose file secret at `/run/secrets/postgres_password`, so it appears neither in `docker inspect` nor in any process environment. The server rereads the file for every new database connection, so a rotated password takes effect without a restart once the file holds it. Setting it while `DATABASE_URL` also carries a password is a boot error — there would be no way to tell which was meant. Trailing newlines are stripped, matching what the Postgres image does with the same file.                                                                                                                                                                                                                                                                                                                                                                     |
 
 ### Secrets
 
@@ -1013,21 +1039,21 @@ docker run --rm --env-file .env studio-api worker
 ```
 
 `studio-web` is nginx serving the built client and the maintenance page
-(`apps/studio/client/nginx.conf`). It proxies nothing: Traefik routes the API's
+(`apps/studio/web/nginx.conf`). It proxies nothing: Traefik routes the API's
 paths to `studio-api` and everything else to it, so the browser sees one
 origin. Since #1909 the server holds no client assets at all — it serves no
 page path in any topology, and the topology gate that used to live beside the
-static mount is now the client's alone (`client/src/lib/deployment.ts`).
+static mount is now the client's alone (`web/src/lib/deployment.ts`).
 
 Both halves also run straight from a checkout, which is what the suites and a
 local smoke test use:
 
 ```bash
-pnpm --filter @codaco/studio-client build        # client/dist — static assets
-pnpm --filter @codaco/studio-server build        # server/dist — Node bundle
-pnpm --filter @codaco/studio-server start        # the web process
-pnpm --filter @codaco/studio-server start:worker # the background worker
-pnpm --filter @codaco/studio-server start:migrate # the schema one-shot
+pnpm --filter @codaco/studio-web build        # web/dist — static assets
+pnpm --filter @codaco/studio-api build        # api/dist — Node bundle
+pnpm --filter @codaco/studio-api start        # the web process
+pnpm --filter @codaco/studio-api start:worker # the background worker
+pnpm --filter @codaco/studio-api start:migrate # the schema one-shot
 ```
 
 ### Health checks
@@ -1037,10 +1063,10 @@ which process runs, and a check that suited `serve` would be wrong for `worker`
 and meaningless for `migrate`. The check belongs to the service, and this is
 the contract each process offers.
 
-| Process  | Check                                           | What it means                                                                                                           |
-| -------- | ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| `serve`  | `GET /healthz` on `PORT`                        | Liveness. It consults nothing, so a container runtime does not restart a healthy process because Postgres is down       |
-| `worker` | `GET /readyz` on `127.0.0.1:WORKER_HEALTH_PORT` | Readiness, including the pg-boss connection — the one thing a process that answers no request cannot otherwise be asked |
+| Process  | Check                                           | What it means                                                                                                                        |
+| -------- | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `serve`  | `GET /healthz` on `PORT`                        | Liveness. It consults nothing, so a container runtime does not restart a healthy process because Postgres is down                    |
+| `worker` | `GET /readyz` on `127.0.0.1:WORKER_HEALTH_PORT` | Readiness, including whether the worker is claiming jobs — the one thing a process that answers no request cannot otherwise be asked |
 
 Both processes serve both routes. `/readyz` runs each of the process's checks
 under a one-second bound and answers with the verdict per check:
@@ -1052,7 +1078,7 @@ under a one-second bound and answers with the verdict per check:
 `status` is `ok`, `degraded` or `failing`, and only `failing` answers 503 — a
 degraded process still serves. The web process checks its application pool, the
 schema fingerprint, and the object store where one is configured; the worker
-checks its maintenance pool, the schema, and whether pg-boss is connected. A
+checks its maintenance pool, the schema, and whether its queue is working. A
 surface this deployment has not configured is left out rather than reported
 failed: it refuses by design, and a check for it would make an instance that
 never wanted one permanently unready.
@@ -1070,7 +1096,7 @@ so it needs the same `DATABASE_URL` and keyring the processes do:
 
 ```bash
 docker run --rm --env-file .env studio-api rotate-secrets   # a deployment
-pnpm --filter @codaco/studio-server rotate-secrets          # a checkout
+pnpm --filter @codaco/studio-api rotate-secrets          # a checkout
 ```
 
 In the reference stack that is `docker compose run --rm --no-deps api
@@ -1083,6 +1109,14 @@ Both processes refuse to start while any stored key id is missing from the
 keyring, naming it, so a half-finished rotation is caught before it serves
 anything.
 
+Each committed batch is logged as one JSON line, like every other Studio log,
+and the command ends with one plain line per store. It exits 0 once every row
+is under the current entry; 1 when it refuses (a key id the keyring cannot
+produce, or rows still under another key because another session held them),
+printing the one sentence to act on; and 130 when interrupted. An interrupted
+or refused run keeps every batch it committed, so running it again finishes
+the rest.
+
 ### Database schema and seeding
 
 Run **once per deployment** against `DATABASE_URL` — not once per replica,
@@ -1091,8 +1125,8 @@ which is why these are commands rather than boot work. A deployment runs
 
 ```bash
 docker run --rm --env-file .env studio-api migrate   # a deployment
-pnpm --filter @codaco/studio-server apply-schema     # a checkout
-pnpm --filter @codaco/studio-server seed
+pnpm --filter @codaco/studio-api apply-schema     # a checkout
+pnpm --filter @codaco/studio-api seed
 ```
 
 All of them are idempotent, and `seed` refuses against a database whose
@@ -1131,12 +1165,12 @@ them:
   ```
 
 - **`seed` wipes every table and repopulates synthetic content** (faker,
-  `src/db/seed.ts` and `src/db/seed/`): five teams with a mix of members
+  `scripts/seed/`): five teams with a mix of members
   across every team role, and one fixed admin account —
   `admin@studio.test` / `studio-admin-not-for-production` — who owns every
   seeded team and signs in through the real email/password endpoint like any
   other credential account. Each team gets a protocol line published twice
-  through `ProtocolStore`, five studies spanning every lifecycle state and
+  through the protocol store, five studies spanning every lifecycle state and
   both participation modes, their waves, participants, tokenized interview
   links, interview sessions carrying real networks generated from the version
   each session pins, consent documents and records, scheduling and messaging,
@@ -1228,7 +1262,7 @@ instance configuration. `/` is served in both: a self-hoster's origin root is
 the URL they hand their researchers, and refusing it would make the instance
 dead at the address people type.
 
-The classification is one list, in `@codaco/studio-rpc`'s `surfaces` module —
+The classification is one list, in `@codaco/studio-contract`'s `surfaces` module —
 the only code both deployables import. The server reports the mode over the
 `status` procedure and the client's route tree reads the same list, so the two
 cannot drift. Unset means `self-hosted`, the fail-closed value: a managed
@@ -1249,8 +1283,8 @@ did: the sync leases it holds are per-process state (#1247). The audit
 denial-rate window used to be a second reason and is not one any more — it
 counts in Valkey now, like every other limit (#1909) — so what a second replica
 still needs is somewhere shared for the sync leases to live. Workers have no
-such state and may be scaled — pg-boss hands each job, and each firing of a
-cron schedule, to exactly one of them (see
+such state and may be scaled — a job is claimed by exactly one worker, and one
+replica ticks the cron schedules per pass (see
 [Background work](#background-work)).
 
 The platform that runs it — the host, image publishing, the deploy workflows
@@ -1272,9 +1306,9 @@ service runs: there is no single-tenant code path.
 Backend deploys drop live WebSocket sessions by design, so the server drains
 on SIGTERM (close 1001, stop the listener, bounded timeout) and the sync
 protocol's reconnect-and-resume path makes the interruption routine (#1247).
-Managed backend deploys trigger on `@codaco/studio-server` version changes —
+Managed backend deploys trigger on `@codaco/studio-api` version changes —
 never on image rebuilds — so client-only releases cannot bounce the backend.
 While the API container is being replaced, the ingress serves the static
-maintenance page from `studio-web` (`client/public/maintenance.html`) for every
+maintenance page from `studio-web` (`web/public/maintenance.html`) for every
 path except `/healthz` and `/readyz`, which pass through untouched so the
 deploy and the container runtime always read the real status.

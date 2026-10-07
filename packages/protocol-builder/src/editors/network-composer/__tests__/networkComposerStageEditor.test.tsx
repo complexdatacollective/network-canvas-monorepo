@@ -142,7 +142,7 @@ describe('the network composer stage editor', () => {
 
     const saved = await harness.submit();
     expect(saved?.stageDocument).toMatchObject({
-      label: 'Build',
+      label: { 'en-US': 'Build' },
       subject: { entity: 'node', type: 'person' },
       quickAdd: 'composerName',
       layoutVariable: 'layout',
@@ -199,7 +199,7 @@ describe('the network composer stage editor', () => {
       stage: {
         type: 'NetworkComposer',
         fields: {
-          label: 'Network Composer',
+          label: { 'en-US': 'Network Composer' },
           interviewScript: 'Ask them to build their network.',
           skipLogic: {
             action: 'SKIP',
@@ -227,8 +227,8 @@ describe('the network composer stage editor', () => {
                 id: 'composer-field-1',
                 variable: 'age',
                 component: 'Number',
-                label: 'How old are they?',
-                hint: 'In years.',
+                label: { 'en-US': 'How old are they?' },
+                hint: { 'en-US': 'In years.' },
                 showValidationHints: true,
               },
             ],
@@ -243,7 +243,7 @@ describe('the network composer stage editor', () => {
                     id: 'composer-edge-field-1',
                     variable: 'edgeNotes',
                     component: 'TextArea',
-                    label: 'Anything else?',
+                    label: { 'en-US': 'Anything else?' },
                   },
                 ],
               },

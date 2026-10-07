@@ -27,7 +27,7 @@ function makeProtocol(
   return {
     name: 'T',
     description: '',
-    schemaVersion: 8,
+    schemaVersion: 9,
     stages: [],
     codebook: {
       node: {

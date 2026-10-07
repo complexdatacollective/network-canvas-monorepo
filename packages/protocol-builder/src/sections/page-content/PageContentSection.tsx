@@ -5,9 +5,9 @@ import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import ArrayField from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
-import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import type { StageType } from '@codaco/protocol-validation';
 
+import { LocalizedInputField } from '../../fields/LocalizedStringField.tsx';
 import { withoutAbsentValues } from '../../form/absentValues.ts';
 import { REQUIRED } from '../../form/requiredField.ts';
 import {
@@ -26,7 +26,7 @@ import type { ProtocolBuilderProtocolContext } from '../../protocol-context.ts';
 import { useProtocolContext } from '../../state/protocolContext.ts';
 import BuilderSection from '../BuilderSection.tsx';
 
-const messages = defineMessages({
+export const pageContentMessages = defineMessages({
   atLeastOne: {
     id: 'protocolBuilder.pageContent.atLeastOne',
     defaultMessage:
@@ -109,7 +109,7 @@ const messages = defineMessages({
   },
 });
 
-const AT_LEAST_ONE_ITEM = createMessageError(messages.atLeastOne);
+const AT_LEAST_ONE_ITEM = createMessageError(pageContentMessages.atLeastOne);
 
 const TITLE_FIELD = 'title';
 const ITEMS_FIELD = 'items';
@@ -209,8 +209,8 @@ export default function PageContentSection({
     () => ({
       Preview: ItemPreview,
       Editor: ItemEditor,
-      addTitle: messages.pageAddTitle,
-      editTitle: messages.pageEditTitle,
+      addTitle: pageContentMessages.pageAddTitle,
+      editTitle: pageContentMessages.pageEditTitle,
       ...(itemDescription === undefined
         ? {}
         : { description: itemDescription }),
@@ -237,27 +237,29 @@ export default function PageContentSection({
 
   return (
     <BuilderSection
-      title={intl.formatMessage(messages.pageTitle)}
-      description={intl.formatMessage(messages.pageDescription)}
+      title={intl.formatMessage(pageContentMessages.pageTitle)}
+      description={intl.formatMessage(pageContentMessages.pageDescription)}
     >
-      <Field<typeof InputField>
+      <Field<typeof LocalizedInputField>
         name={TITLE_FIELD}
-        component={InputField}
-        label={intl.formatMessage(messages.headingLabel)}
-        hint={intl.formatMessage(messages.headingHint)}
-        placeholder={intl.formatMessage(messages.headingPlaceholder)}
+        component={LocalizedInputField}
+        label={intl.formatMessage(pageContentMessages.headingLabel)}
+        hint={intl.formatMessage(pageContentMessages.headingHint)}
+        placeholder={intl.formatMessage(pageContentMessages.headingPlaceholder)}
         required={REQUIRED}
       />
       <RowList config={rowList}>
         <Field<typeof ArrayField<RowValues>>
           name={ITEMS_FIELD}
-          label={intl.formatMessage(messages.pageItemsLabel)}
-          hint={intl.formatMessage(messages.pageItemsHint)}
+          label={intl.formatMessage(pageContentMessages.pageItemsLabel)}
+          hint={intl.formatMessage(pageContentMessages.pageItemsHint)}
           component={ArrayField}
           getId={rowId}
-          addButtonLabel={intl.formatMessage(messages.pageAddLabel)}
-          itemLabel={messages.pageItemNoun}
-          emptyStateMessage={intl.formatMessage(messages.pageEmptyState)}
+          addButtonLabel={intl.formatMessage(pageContentMessages.pageAddLabel)}
+          itemLabel={pageContentMessages.pageItemNoun}
+          emptyStateMessage={intl.formatMessage(
+            pageContentMessages.pageEmptyState,
+          )}
           itemComponent={RowListItem}
           editorComponent={RowDialog}
           itemTemplate={rowTemplate()}

@@ -92,7 +92,7 @@ describe('getInterfaceTemplate', () => {
  *
  * Written down because the alternative is discovering the same fact one
  * interface at a time, which is how `AlterForm`'s empty template came to look
- * like a defect rather than like the eighteen beside it. If a template ever
+ * like a defect rather than like the nineteen beside it. If a template ever
  * does start covering one of these, this list is what says so.
  */
 const STILL_NEEDED: Readonly<Record<string, readonly string[]>> = {
@@ -110,10 +110,13 @@ const STILL_NEEDED: Readonly<Record<string, readonly string[]>> = {
   ],
   Geospatial: ['mapOptions', 'prompts', 'subject'],
   Information: ['items', 'title'],
+  // Its choices are the protocol's own languages, so a name is all it needs.
+  LanguageChooser: [],
   NameGenerator: ['form', 'prompts', 'subject'],
   NameGeneratorQuickAdd: ['prompts', 'quickAdd', 'subject'],
   NameGeneratorRoster: ['dataSource', 'prompts', 'subject'],
   Narrative: ['presets', 'subject'],
+  NarrativePedigree: ['diseases'],
   NetworkComposer: ['layoutVariable', 'quickAdd', 'subject'],
   OneToManyDyadCensus: ['prompts', 'subject'],
   OrdinalBin: ['prompts', 'subject'],
@@ -132,7 +135,7 @@ const newStage = (type: (typeof STAGE_TYPES)[number]) => ({
   ...getInterfaceTemplate(type),
   type,
   id: 'stage-1',
-  label: 'A new stage',
+  label: { en: 'A new stage' },
 });
 
 /** The top-level properties the schema refuses, in a stable order. */
@@ -167,15 +170,17 @@ describe('a new stage given nothing but a name', () => {
 
   /**
    * Stated once, plainly, because it is what a reader of the list above would
-   * otherwise have to work out by scanning it. The day an interface can be
-   * saved straight from its template, this fails and someone reads the list.
+   * otherwise have to work out by scanning it. The day another interface can
+   * be saved straight from its template, this fails and someone reads the
+   * list. The language chooser is the one exception: it has nothing to
+   * configure beyond its name.
    */
-  it('is not a saveable stage for any interface', () => {
+  it('is a saveable stage only for the language chooser', () => {
     const saveable = STAGE_TYPES.filter(
       (type) => stageSchema.safeParse(newStage(type)).success,
     );
 
-    expect(saveable).toEqual([]);
+    expect(saveable).toEqual(['LanguageChooser']);
   });
 
   /**

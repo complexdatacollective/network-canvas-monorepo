@@ -1,41 +1,44 @@
-import { createTanstackQueryUtils } from '@orpc/tanstack-query';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { useMemo, type ReactNode } from 'react';
 
-import type { ProtocolBuilderClient } from '@codaco/protocol-builder-core/contract';
+import { sectionId } from '@codaco/studio-sync/taxonomy';
 
+import { protocolLocalizationOf } from './localization/localizedText.ts';
+import { ProtocolLocalizationProvider } from './localization/ProtocolLocalization.tsx';
 import { useProtocolChannel } from './state/channel.ts';
-import { ProtocolBuilderProvider } from './state/context.ts';
+import {
+  ProtocolBuilderProvider,
+  type ProtocolBuilderAdapter,
+} from './state/context.ts';
+import { useSection } from './state/hooks.ts';
 import { createProtocolQueryClient } from './state/queryClient.ts';
 
+const SETTINGS = sectionId({ kind: 'settings' });
+
 export type ProtocolBuilderProps = Readonly<{
-  /** The host's contract client — in-process or over a wire; both are typed alike. */
-  client: ProtocolBuilderClient;
+  adapter: ProtocolBuilderAdapter;
   protocolId: string;
   children?: ReactNode;
 }>;
 
 /**
  * Everything the package needs around a protocol's editors: the cache, one
- * channel feeding it, and the client every hook calls. A host supplies its
- * contract client and sees nothing of the state library behind this.
+ * channel feeding it, and the adapter every hook calls. A host supplies its
+ * adapter and sees nothing of the cache behind this.
  */
 export function ProtocolBuilder({
-  client,
+  adapter,
   protocolId,
   children,
 }: ProtocolBuilderProps) {
   const queryClient = useMemo(() => createProtocolQueryClient(), []);
-  const value = useMemo(
-    () => ({ client, protocolId, utils: createTanstackQueryUtils(client) }),
-    [client, protocolId],
-  );
+  const value = useMemo(() => ({ adapter, protocolId }), [adapter, protocolId]);
 
   return (
     <QueryClientProvider client={queryClient}>
       <ProtocolBuilderProvider value={value}>
         <ProtocolChannel protocolId={protocolId} />
-        {children}
+        <ProtocolLanguages>{children}</ProtocolLanguages>
       </ProtocolBuilderProvider>
     </QueryClientProvider>
   );
@@ -44,4 +47,20 @@ export function ProtocolBuilder({
 function ProtocolChannel({ protocolId }: Readonly<{ protocolId: string }>) {
   useProtocolChannel(protocolId);
   return null;
+}
+
+/**
+ * The protocol's languages, for every localized field and preview beneath.
+ * Read from the settings section alone, so an edit anywhere else in the
+ * protocol does not re-render every field that shows protocol copy.
+ */
+function ProtocolLanguages({ children }: Readonly<{ children?: ReactNode }>) {
+  const localization = useSection(SETTINGS, (section) =>
+    protocolLocalizationOf(section.document),
+  );
+  return (
+    <ProtocolLocalizationProvider localization={localization}>
+      {children}
+    </ProtocolLocalizationProvider>
+  );
 }

@@ -6,13 +6,14 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
+import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { selectIsFormDirty } from '@codaco/fresco-ui/form/store/formStoreProvider';
-import type { ProtocolBuilderClient } from '@codaco/protocol-builder-core/contract';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
+import { translationText } from '../../localization/localizedText.ts';
 import { ProtocolBuilder } from '../../ProtocolBuilder.tsx';
 import {
   ResourceClientProvider,
@@ -21,9 +22,9 @@ import {
 } from '../../resources/client.tsx';
 import BuilderSection from '../../sections/BuilderSection.tsx';
 import { StageEditSession } from '../../stageEdit.tsx';
+import type { ProtocolBuilderAdapter } from '../../state/context.ts';
 import {
   createInMemoryHost,
-  type InMemoryClient,
   type InMemoryHost,
 } from '../../testing/host/createInMemoryHost.ts';
 import {
@@ -36,6 +37,8 @@ import StageEditorShell from '../StageEditorShell.tsx';
 
 const STAGE_ID = 'information-1';
 const STAGE_SECTION = sectionId({ kind: 'stage', stageId: STAGE_ID });
+
+const en = (text: string) => ({ 'en-US': text });
 const STAGE_ORDER = sectionId({ kind: 'stageOrder' });
 
 /**
@@ -82,7 +85,7 @@ describe('a stage the protocol has not answered for yet', () => {
     renderStageEditor({
       stageId: STAGE_ID,
       sections: nameSection,
-      client: gate.client,
+      adapter: gate.adapter,
     });
 
     const field = await screen.findByRole('textbox', { name: 'Stage name' });
@@ -124,7 +127,7 @@ describe('what a save writes', () => {
       ...seeded.fields,
       id: STAGE_ID,
       type: seeded.type,
-      label: 'A renamed page',
+      label: en('A renamed page'),
     });
     // And nothing the form invented on the way through.
     expect(Object.keys(written?.stageDocument ?? {}).toSorted()).toEqual(
@@ -138,48 +141,31 @@ describe('what a save writes', () => {
  * the identical request again — a socket that drops between the host writing
  * and the client reading it, which is the one case a client cannot tell from
  * a write that never happened.
- *
- * Proxied rather than spread: a contract client's procedures are reached
- * through property access rather than held as own properties, so a spread copy
- * of one has no procedures on it at all.
  */
 function withTheFirstAnswerLost(): Readonly<{
-  client: (host: InMemoryHost) => ProtocolBuilderClient;
+  adapter: (host: InMemoryHost) => ProtocolBuilderAdapter;
   resends: () => number;
 }> {
   let resends = 0;
   return {
-    client: ({ client }) => {
-      const resent = new Map<PropertyKey, unknown>();
-      const resend = <TArgs extends unknown[], TAnswer>(
-        call: (...args: TArgs) => Promise<TAnswer>,
-      ) => {
-        let lost = false;
-        return async (...args: TArgs): Promise<TAnswer> => {
-          const answer = await call(...args);
-          if (lost) return answer;
-          lost = true;
+    adapter: (host) => {
+      const lostSubmit = { lost: false };
+      const lostCreate = { lost: false };
+      const once = <A, E, R>(
+        state: { lost: boolean },
+        call: () => Effect.Effect<A, E, R>,
+      ) =>
+        Effect.flatMap(call(), (answer) => {
+          if (state.lost) return Effect.succeed(answer);
+          state.lost = true;
           resends += 1;
           // The first answer never reaches the client, so the very same
           // request goes out again.
-          return call(...args);
-        };
-      };
-      resent.set(
-        'submit',
-        resend((...args: Parameters<InMemoryClient['submit']>) =>
-          client.submit(...args),
-        ),
-      );
-      resent.set(
-        'create',
-        resend((...args: Parameters<InMemoryClient['create']>) =>
-          client.create(...args),
-        ),
-      );
-      return new Proxy(client, {
-        get: (target, property) =>
-          resent.get(property) ?? Reflect.get(target, property),
+          return call();
+        });
+      return host.adapterWith({
+        Submit: (input) => once(lostSubmit, () => host.handle.Submit(input)),
+        Create: (input) => once(lostCreate, () => host.handle.Create(input)),
       });
     },
     resends: () => resends,
@@ -192,7 +178,7 @@ describe('a save whose answer is lost on the way back', () => {
     const harness = renderStageEditor({
       stageId: STAGE_ID,
       sections: nameSection,
-      client: lost.client,
+      adapter: lost.adapter,
     });
     const before = harness.host.store.read(STAGE_SECTION).revision.sequence;
 
@@ -211,7 +197,7 @@ describe('a save whose answer is lost on the way back', () => {
       before + 1n,
     );
     expect(harness.protocolSections()[STAGE_SECTION]).toMatchObject({
-      label: 'Saved through a dropped socket',
+      label: en('Saved through a dropped socket'),
     });
   });
 
@@ -239,7 +225,7 @@ describe('a save whose answer is lost on the way back', () => {
       before + 2n,
     );
     expect(harness.protocolSections()[STAGE_SECTION]).toMatchObject({
-      label: 'Saved again',
+      label: en('Saved again'),
     });
   });
 
@@ -253,7 +239,7 @@ describe('a save whose answer is lost on the way back', () => {
         fields: loadFixtureStage(STAGE_ID).fields,
       },
       sections: nameSection,
-      client: lost.client,
+      adapter: lost.adapter,
     });
 
     const field = screen.getByRole('textbox', { name: 'Stage name' });
@@ -282,7 +268,7 @@ describe('a save whose answer is lost on the way back', () => {
         fields: loadFixtureStage(STAGE_ID).fields,
       },
       sections: nameSection,
-      client: lost.client,
+      adapter: lost.adapter,
     });
 
     const field = screen.getByRole('textbox', { name: 'Stage name' });
@@ -331,11 +317,11 @@ describe('a save the protocol refuses because the lock has gone', () => {
       ),
     ).toBeInTheDocument();
     // The draft is gone: the control is back to what the protocol holds.
-    const savedLabel = seeded.fields.label;
-    expect(typeof savedLabel).toBe('string');
+    const savedLabel = translationText(seeded.fields.label, 'en-US');
+    expect(savedLabel).not.toBe('');
     await waitFor(() => {
       expect(screen.getByRole('textbox', { name: 'Stage name' })).toHaveValue(
-        String(savedLabel),
+        savedLabel,
       );
     });
     expect(harness.protocolSections()[STAGE_SECTION]).toEqual({
@@ -489,7 +475,7 @@ describe('a stage the protocol will not open', () => {
     const host = createInMemoryHost({ sections: fixtureProtocolSections() });
 
     render(
-      <ProtocolBuilder client={host.client} protocolId={host.protocolId}>
+      <ProtocolBuilder adapter={host.adapter} protocolId={host.protocolId}>
         <ResourceClientProvider>
           <StageEditSession
             target={{
@@ -563,7 +549,8 @@ function StagedFileProbe() {
             name: 'A roster',
             source: 'roster.csv',
             contentType: 'text/csv',
-            bytes: new TextEncoder().encode('{}'),
+            // jsdom's `TextEncoder` answers with another realm's `Uint8Array`.
+            bytes: new Uint8Array(new TextEncoder().encode('{}')),
           });
         }}
       >
@@ -821,27 +808,24 @@ describe('a file imported while a stage is being added', () => {
 /**
  * Holds every answer to `acquireLock` until the test lets it through, which is
  * every host for as long as it takes to answer.
- *
- * Proxied rather than spread: a contract client's procedures are reached
- * through property access rather than held as own properties, so a spread copy
- * of one has no procedures on it at all.
  */
 function gatedAcquire(): Readonly<{
-  client: (host: InMemoryHost) => ProtocolBuilderClient;
+  adapter: (host: InMemoryHost) => ProtocolBuilderAdapter;
   release: () => void;
 }> {
   const gates: (() => void)[] = [];
   return {
-    client: ({ client }) =>
-      new Proxy(client, {
-        get: (target, property) =>
-          property === 'acquireLock'
-            ? async (...args: Parameters<InMemoryClient['acquireLock']>) => {
-                const answer = await client.acquireLock(...args);
-                await new Promise<void>((open) => gates.push(open));
-                return answer;
-              }
-            : Reflect.get(target, property),
+    adapter: (host) =>
+      host.adapterWith({
+        AcquireLock: (input) =>
+          Effect.flatMap(host.handle.AcquireLock(input), (answer) =>
+            Effect.as(
+              Effect.promise(
+                () => new Promise<void>((open) => gates.push(open)),
+              ),
+              answer,
+            ),
+          ),
       }),
     release: () => {
       for (const open of gates.splice(0)) open();
@@ -862,7 +846,7 @@ function gatedAcquire(): Readonly<{
 async function discardStagedFilesAtTheHost(
   harness: Readonly<{ host: InMemoryHost; editId: string }>,
 ): Promise<void> {
-  const discarded = await harness.host.client.resources.discard({
+  const discarded = await harness.host.adapter.rpcCall('ResourcesDiscard', {
     protocolId: harness.host.protocolId,
     editId: harness.editId,
   });
@@ -890,28 +874,25 @@ function orderOf(sections: Readonly<Record<string, unknown>>): string[] {
  * tells the host that this is the same intent as the write it already made.
  */
 function withTheFirstAnswerSwallowed(): Readonly<{
-  client: (host: InMemoryHost) => ProtocolBuilderClient;
+  adapter: (host: InMemoryHost) => ProtocolBuilderAdapter;
   keys: () => readonly string[];
 }> {
   const keys: string[] = [];
   let swallowed = false;
   return {
     keys: () => keys,
-    client: (host) => {
-      const create = async (
-        ...args: Parameters<InMemoryClient['create']>
-      ): Promise<Awaited<ReturnType<InMemoryClient['create']>>> => {
-        const [input] = args;
-        keys.push(input.requestId);
-        const answer = await host.client.create(...args);
-        if (swallowed) return answer;
-        swallowed = true;
-        throw new Error('the socket dropped before the answer arrived');
-      };
-      return new Proxy(host.client, {
-        get: (target, property) =>
-          property === 'create' ? create : Reflect.get(target, property),
-      });
-    },
+    adapter: (host) =>
+      host.adapterWith({
+        Create: (input) => {
+          keys.push(input.requestId);
+          return Effect.flatMap(host.handle.Create(input), (answer) => {
+            if (swallowed) return Effect.succeed(answer);
+            swallowed = true;
+            return Effect.die(
+              new Error('the socket dropped before the answer arrived'),
+            );
+          });
+        },
+      }),
   };
 }

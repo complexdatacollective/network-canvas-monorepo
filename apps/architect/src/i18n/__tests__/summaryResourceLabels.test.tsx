@@ -46,7 +46,8 @@ afterEach(() => {
 it('updates resource types in all three print presenters and preserves authored resource metadata', () => {
   const protocol: CurrentProtocol = {
     name: 'Research_Protocol',
-    schemaVersion: 8,
+    schemaVersion: 9,
+    localization: { defaultLocale: 'en', locales: ['en'] },
     stages: [],
     codebook: {},
     assetManifest: {
@@ -66,7 +67,11 @@ it('updates resource types in all three print presenters and preserves authored 
   render(
     <ArchitectI18nProvider>
       <SummaryContext.Provider
-        value={{ protocol, protocolName: 'Research_Protocol', index: [] }}
+        value={{
+          protocol,
+          protocolName: 'Research_Protocol',
+          index: [],
+        }}
       >
         <section aria-label="Contents fixture">
           <Contents />
@@ -186,7 +191,8 @@ it('re-sorts existing resource rows for Spanish while preserving sort direction 
 it('formats the loaded network attribute list in the selected language without altering CSV headers', async () => {
   const protocol: CurrentProtocol = {
     name: 'Research_Protocol',
-    schemaVersion: 8,
+    schemaVersion: 9,
+    localization: { defaultLocale: 'en', locales: ['en'] },
     stages: [],
     codebook: {},
     assetManifest: {
@@ -201,7 +207,11 @@ it('formats the loaded network attribute list in the selected language without a
   render(
     <ArchitectI18nProvider>
       <SummaryContext.Provider
-        value={{ protocol, protocolName: protocol.name, index: [] }}
+        value={{
+          protocol,
+          protocolName: protocol.name,
+          index: [],
+        }}
       >
         <Asset id="network" />
       </SummaryContext.Provider>

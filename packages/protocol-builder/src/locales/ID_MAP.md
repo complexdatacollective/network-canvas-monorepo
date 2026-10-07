@@ -106,6 +106,7 @@ after the fact is marked in place.
 | `option`                    | `form/arrayFields/Option.tsx`, `form/arrayFields/Options.tsx`, `form/arrayFields/cellRules.ts` (`duplicateLabelRow`), `codebook/editing.ts` (`minimumOptions`)                                                                                                                        | i18n-2b   |
 | `entitySelect`              | `fields/EntityTypePickerField.tsx`                                                                                                                                                                                                                                                    | i18n-2b   |
 | `variablePicker`            | `fields/VariablePickerField.tsx`, `fields/VariableSpotlight.tsx`, `fields/AttributePill.tsx` (the `rename*` ids; all three added by the parity loop)                                                                                                                                  | i18n-2b   |
+| `exportColumn`              | `fields/variableNameRules.ts` (a name that would write an export column another variable or a built-in column already writes)                                                                                                                                                         | names     |
 | `skipLogicDestination`      | `fields/stageDestination.ts`                                                                                                                                                                                                                                                          | i18n-2b   |
 | `networkFilter`             | `sections/network-filter/NetworkFilterSection.tsx`                                                                                                                                                                                                                                    | i18n-2b   |
 | `skipLogic`                 | `sections/skip-logic/SkipLogicSection.tsx`                                                                                                                                                                                                                                            | i18n-2b   |
@@ -138,6 +139,7 @@ after the fact is marked in place.
 | `searchOptions`             | `editors/name-generator-roster/sections/SearchOptionsSection.tsx`                                                                                                                                                                                                                     | family E  |
 | `rosterColumns`             | `editors/name-generator-roster/sections/rosterColumns.ts`                                                                                                                                                                                                                             | family E  |
 | `networkCanvas`             | `sections/background/`, `sections/canvas/`, `sections/canvas-behaviours/`, `sections/form-fields/composerFormFieldMessages.ts`, `editors/sociogram/sections/prompts/`, `editors/narrative/sections/presets/`, `editors/network-composer/sections/composerMessages.ts`                 | family F  |
+| `localizedTextNames`        | `localization/localizedTextNames.ts`                                                                                                                                                                                                                                                  | languages |
 
 Family E added one the reserved list did not hold, on the same terms:
 
@@ -295,17 +297,18 @@ back with that name in it, in the same pull request.
 
 ### One file per family — the interface families
 
-| `<area>`        | Owns the copy in                                     | Declared in                                                     |
-| --------------- | ---------------------------------------------------- | --------------------------------------------------------------- |
-| `pedigree`      | `editors/family-pedigree/sections/`                  | `editors/family-pedigree/sections/pedigreeMessages.ts`          |
-| `networkCanvas` | `sections/canvas/`                                   | `sections/canvas/canvasMessages.ts`                             |
-| `networkCanvas` | `sections/canvas-behaviours/`                        | `sections/canvas-behaviours/canvasBehavioursMessages.ts`        |
-| `networkCanvas` | `editors/sociogram/sections/prompts/`                | `editors/sociogram/sections/prompts/sociogramPromptMessages.ts` |
-| `networkCanvas` | `editors/narrative/sections/presets/`                | `editors/narrative/sections/presets/narrativePresetMessages.ts` |
-| `networkCanvas` | `editors/network-composer/sections/`                 | `editors/network-composer/sections/composerMessages.ts`         |
-| `networkCanvas` | the composer's form-field list                       | `sections/form-fields/composerFormFieldMessages.ts`             |
-| `geospatial`    | `editors/geospatial/sections/`, `fields/geospatial/` | `fields/geospatial/geospatialMessages.ts`                       |
-| `anonymisation` | `editors/anonymisation/sections/`                    | `editors/anonymisation/sections/anonymisationMessages.ts`       |
+| `<area>`            | Owns the copy in                                     | Declared in                                                        |
+| ------------------- | ---------------------------------------------------- | ------------------------------------------------------------------ |
+| `pedigree`          | `editors/family-pedigree/sections/`                  | `editors/family-pedigree/sections/pedigreeMessages.ts`             |
+| `networkCanvas`     | `sections/canvas/`                                   | `sections/canvas/canvasMessages.ts`                                |
+| `networkCanvas`     | `sections/canvas-behaviours/`                        | `sections/canvas-behaviours/canvasBehavioursMessages.ts`           |
+| `networkCanvas`     | `editors/sociogram/sections/prompts/`                | `editors/sociogram/sections/prompts/sociogramPromptMessages.ts`    |
+| `networkCanvas`     | `editors/narrative/sections/presets/`                | `editors/narrative/sections/presets/narrativePresetMessages.ts`    |
+| `networkCanvas`     | `editors/network-composer/sections/`                 | `editors/network-composer/sections/composerMessages.ts`            |
+| `networkCanvas`     | the composer's form-field list                       | `sections/form-fields/composerFormFieldMessages.ts`                |
+| `geospatial`        | `editors/geospatial/sections/`, `fields/geospatial/` | `fields/geospatial/geospatialMessages.ts`                          |
+| `narrativePedigree` | `editors/narrative-pedigree/sections/`               | `editors/narrative-pedigree/sections/narrativePedigreeMessages.ts` |
+| `anonymisation`     | `editors/anonymisation/sections/`                    | `editors/anonymisation/sections/anonymisationMessages.ts`          |
 
 `anonymisation` was reserved for `sections/anonymisation/`, and its copy is
 declared under `editors/anonymisation/sections/` instead: one directory per

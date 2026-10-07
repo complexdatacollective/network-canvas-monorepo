@@ -187,10 +187,6 @@
     "defaultMessage": "Add",
     "description": "Button that commits the dialog a researcher has filled in for a NEW row of a list. The same dialog says Save when it is editing a row that already exists."
   },
-  "protocolBuilder.arrayField.attributeNameSubject": {
-    "defaultMessage": "attribute name",
-    "description": "What the researcher was entering, named inside the sentence that refuses it: the name of a codebook variable. Interpolated mid-sentence after \"Not a valid\", so it is lower case."
-  },
   "protocolBuilder.arrayField.deleteRow": {
     "defaultMessage": "Delete {itemLabel}",
     "description": "Action that deletes one row of a list — the accessible name of the button on the row. itemLabel is the list’s own noun for one of its rows, already in the reader’s language."
@@ -199,17 +195,13 @@
     "defaultMessage": "Edit {itemLabel}",
     "description": "Accessible name of the button that opens one row of a list in its editing dialog. itemLabel is the list’s own noun for one of its rows, already in the reader’s language."
   },
-  "protocolBuilder.arrayField.invalidName": {
-    "defaultMessage": "Not a valid {subject}. Only letters, numbers and the symbols ._-: are supported",
-    "description": "Shown under a cell whose text cannot be stored as an XML element name or a CSV column header. subject names what was being entered — an attribute name, an option value — already in the reader’s language. The characters listed are literal punctuation and stay as they are."
+  "protocolBuilder.arrayField.invalidOptionValue": {
+    "defaultMessage": "Cannot contain line breaks, tabs or other control characters",
+    "description": "Shown under the value cell of an option in an editable list when the text holds a character that cannot be stored in a value, such as a line break or a tab. Terse because it sits inside a row of a table-like list. A value may otherwise be written in any language or script, with spaces and punctuation."
   },
   "protocolBuilder.arrayField.itemNoun": {
     "defaultMessage": "item",
     "description": "Generic noun for one row of an editable list in a stage editor, used where the list has no more specific word for its rows. Interpolated mid-sentence into things said ABOUT a row (\"Delete this item?\", \"This item was not saved.\"), so it is lower case and singular."
-  },
-  "protocolBuilder.arrayField.optionValueSubject": {
-    "defaultMessage": "option value",
-    "description": "What the researcher was entering, named inside the sentence that refuses it: the stored value of one option of a categorical or ordinal attribute, as opposed to the label a participant reads. Interpolated mid-sentence after \"Not a valid\", so it is lower case."
   },
   "protocolBuilder.arrayField.reorderRow": {
     "defaultMessage": "Reorder {itemLabel} {position} of {count, number}",
@@ -728,8 +720,8 @@
     "description": "Refusal shown under the name field when another attribute of the same type is already called that."
   },
   "protocolBuilder.codebookEditing.newVariableNameInvalid": {
-    "defaultMessage": "Not a valid attribute name. Only letters, numbers and the symbols ._-: are supported",
-    "description": "Refusal shown under the name field of a stage editor when the name typed for a new attribute holds characters the export formats cannot carry. The listed symbols are literal characters and must not be translated. Said in the same words as the row-cell rule that judges an attribute name as it is typed."
+    "defaultMessage": "An attribute name cannot contain line breaks, tabs or other control characters.",
+    "description": "Refusal shown under the name field of a stage editor when the name typed for a new attribute holds a character that cannot be stored in a name, such as a line break or a tab. Names may otherwise be written in any language or script, with spaces and punctuation."
   },
   "protocolBuilder.codebookEditing.noSubject": {
     "defaultMessage": "Choose what this stage works with before creating an attribute.",
@@ -748,8 +740,8 @@
     "description": "Refusal shown when a researcher saves an attribute whose list of allowed answers has a row with an empty label or an empty stored value. The label is what a participant reads; the value is what the export records."
   },
   "protocolBuilder.codebookEditing.optionsInvalidValue": {
-    "defaultMessage": "Not a valid option value. Only letters, numbers and the symbols ._-: are supported",
-    "description": "Refusal shown when an allowed answer’s stored value holds characters the export formats cannot carry. The listed symbols are literal characters and must not be translated."
+    "defaultMessage": "An option value cannot contain line breaks, tabs or other control characters.",
+    "description": "Refusal shown when an allowed answer’s stored value holds a character that cannot be stored in a value, such as a line break or a tab. Values may otherwise be written in any language or script, with spaces and punctuation."
   },
   "protocolBuilder.codebookEditing.saving": {
     "defaultMessage": "Saving…",
@@ -903,17 +895,25 @@
     "defaultMessage": "Some codebook data could not be displayed",
     "description": "Heading of the warning listing parts of the stored codebook this page could not read."
   },
+  "protocolBuilder.codebookEntity.labelHint": {
+    "defaultMessage": "{entity, select, node {The words participants are shown for this node type. Left empty, the type name is used.} other {The words participants are shown for this edge type. Left empty, the type name is used.}}",
+    "description": "Guidance under the entity type label field. The type name is the field above it, holding the researcher’s own name for the type. entity is node or edge."
+  },
+  "protocolBuilder.codebookEntity.labelLabel": {
+    "defaultMessage": "{entity, select, node {Node type label} other {Edge type label}}",
+    "description": "Label of the field holding the words participants are shown for this entity type, as opposed to the type name the researcher and the exported data use. entity is node or edge; the ego has no label."
+  },
   "protocolBuilder.codebookEntity.manageEgoAttributes": {
     "defaultMessage": "Manage attributes",
     "description": "Button on the ego card that opens its attribute list. The ego — the interview participant themselves — has attributes but no type properties, so the button offers those rather than editing a type."
   },
   "protocolBuilder.codebookEntity.nameHint": {
     "defaultMessage": "{entity, select, node {This name identifies the node type in the codebook and exported data. Some examples might be \"Person\", \"Place\", or \"Organization\".} edge {This name identifies the edge type in the codebook and exported data. Some examples might be \"Friends\" or \"Colleagues\".} other {This name identifies the ego definition in the codebook and exported data.}}",
-    "description": "Guidance under the name field, saying where the name is read back and giving example type names. entity is node, edge or ego. The codebook is the protocol’s definition of what an interview records; exported data is the file a researcher analyses afterwards. The quoted examples are sample type names and may be translated, but the field accepts only the letters A–Z and a–z, digits and the symbols . _ - : — so each example must contain no spaces and no accented or non-Latin letters. Where no example in your language fits, keep the English name and add a translation in parentheses after the closing quote."
+    "description": "Guidance under the name field, saying where the name is read back and giving example type names. entity is node, edge or ego. The codebook is the protocol’s definition of what an interview records; exported data is the file a researcher analyses afterwards. The quoted examples are sample type names: translate them into natural type names in your language. Spaces, accented letters and any script are allowed in a type name."
   },
   "protocolBuilder.codebookEntity.nameInvalid": {
-    "defaultMessage": "{entity, select, node {Not a valid node type name. Only letters, numbers and the symbols ._-: are supported} edge {Not a valid edge type name. Only letters, numbers and the symbols ._-: are supported} other {Not a valid ego definition name. Only letters, numbers and the symbols ._-: are supported}}",
-    "description": "Refusal shown under the name field when the name holds characters the export formats cannot carry. entity is node, edge or ego. The listed symbols are literal characters and must not be translated."
+    "defaultMessage": "{entity, select, node {A node type name cannot contain line breaks, tabs or other control characters.} edge {An edge type name cannot contain line breaks, tabs or other control characters.} other {An ego definition name cannot contain line breaks, tabs or other control characters.}}",
+    "description": "Refusal shown under the name field when the name holds a character that cannot be stored in a name, such as a line break or a tab. entity is node, edge or ego. Names may otherwise be written in any language or script, with spaces and punctuation."
   },
   "protocolBuilder.codebookEntity.nameLabel": {
     "defaultMessage": "{entity, select, node {Node type name} other {Edge type name}}",
@@ -1134,6 +1134,14 @@
   "protocolBuilder.codebookVariable.interfaceOwnedPick": {
     "defaultMessage": "This attribute is set by {owner}, so it cannot be used here. Choose a different attribute.",
     "description": "Refusal shown when a researcher picks an attribute (a codebook variable) that one kind of interview step writes for itself. owner is a whole English phrase from the protocol schema that names a built-in interface and what it records, for example “the Family Pedigree interface, which marks the participant”. It is not translated here, so it stays in English inside the translated sentence."
+  },
+  "protocolBuilder.codebookVariable.labelHint": {
+    "defaultMessage": "A readable label for this attribute. It is not translated. Left empty, the attribute name is used.",
+    "description": "Guidance under the attribute label field. The attribute name is the field above it, holding the researcher’s own name for the attribute."
+  },
+  "protocolBuilder.codebookVariable.labelLabel": {
+    "defaultMessage": "Attribute label",
+    "description": "Label of the field holding a readable label for this attribute (a codebook variable), as opposed to the attribute name the exported data uses."
   },
   "protocolBuilder.codebookVariable.lockedOptionLabelHeader": {
     "defaultMessage": "Label",
@@ -1511,6 +1519,66 @@
     "defaultMessage": "Node type options",
     "description": "Accessible name of the group of chips a researcher picks a node type from. A node type is a kind of network member the study records, such as a person or a place."
   },
+  "protocolBuilder.exportColumn.reservedLayout": {
+    "defaultMessage": "A layout attribute named “{name}” would be exported to a column called “{column}”, but the export already has a built-in column called “{reservedColumn}”. Choose a different name.",
+    "description": "Refusal shown when a layout attribute, which is exported as several position columns named after it, would write one of them to a column the export always writes itself. name is the attribute; column is the position column; reservedColumn is the built-in column it matches. The export is the file a researcher analyses after the interviews and a column is one field in it. Names and columns are the researcher’s own text and are not translated."
+  },
+  "protocolBuilder.exportColumn.reservedName": {
+    "defaultMessage": "The export already has a built-in column called “{reservedColumn}”, so an attribute cannot be named “{column}”. Choose a different name.",
+    "description": "Refusal shown when the name typed for an attribute is the name of a column the export always writes itself. column is the name typed; reservedColumn is the built-in column it matches, which can differ in capital letters. The export is the file a researcher analyses after the interviews and a column is one field in it. Names and columns are the researcher’s own text and are not translated."
+  },
+  "protocolBuilder.exportColumn.reservedOption": {
+    "defaultMessage": "Option “{value}” of “{name}” would be exported to a column called “{column}”, but the export already has a built-in column called “{reservedColumn}”. Change the option value or the attribute name.",
+    "description": "Refusal shown when an option of a categorical attribute would be exported to a column the export always writes itself. name is the attribute; value is the option; column is where it would be written; reservedColumn is the built-in column it matches. The export is the file a researcher analyses after the interviews and a column is one field in it. Names, values and columns are the researcher’s own text and are not translated."
+  },
+  "protocolBuilder.exportColumn.siblingLayoutWithLayout": {
+    "defaultMessage": "A layout attribute named “{name}” would be exported to a column called “{column}”, but the export already has a column called “{siblingColumn}” for the position of the layout attribute “{siblingName}”. Choose a different name.",
+    "description": "Refusal shown when a position column of one layout attribute would be the same as a position column of another. name is the layout attribute being saved; column is its position column; siblingName is the other layout attribute; siblingColumn is its position column. The export is the file a researcher analyses after the interviews and a column is one field in it. Names and columns are the researcher’s own text and are not translated."
+  },
+  "protocolBuilder.exportColumn.siblingLayoutWithName": {
+    "defaultMessage": "A layout attribute named “{name}” would be exported to a column called “{column}”, but the attribute “{siblingName}” already has a column called “{siblingColumn}”. Choose a different name.",
+    "description": "Refusal shown when a layout attribute, which is exported as several position columns named after it, would write one of them to a column another attribute already writes. name is the layout attribute; column is the position column; siblingName is the other attribute; siblingColumn is its column. The export is the file a researcher analyses after the interviews and a column is one field in it. Names and columns are the researcher’s own text and are not translated."
+  },
+  "protocolBuilder.exportColumn.siblingLayoutWithOption": {
+    "defaultMessage": "A layout attribute named “{name}” would be exported to a column called “{column}”, but the export already has a column called “{siblingColumn}” for option “{siblingValue}” of the attribute “{siblingName}”. Choose a different name.",
+    "description": "Refusal shown when a position column of a layout attribute would be the same as the column an option of a categorical attribute is exported to. name is the layout attribute; column is the position column; siblingName and siblingValue are the categorical attribute and its option; siblingColumn is the option’s column. The export is the file a researcher analyses after the interviews and a column is one field in it. Names, values and columns are the researcher’s own text and are not translated."
+  },
+  "protocolBuilder.exportColumn.siblingNameWithLayout": {
+    "defaultMessage": "The export already has a column called “{siblingColumn}” for the position of the layout attribute “{siblingName}”. Choose a different name.",
+    "description": "Refusal shown when the name typed for an attribute is the name of one of the position columns a layout attribute is exported to, such as “position_x”. siblingColumn is that column; siblingName is the layout attribute. The export is the file a researcher analyses after the interviews and a column is one field in it. Names and columns are the researcher’s own text and are not translated."
+  },
+  "protocolBuilder.exportColumn.siblingNameWithName": {
+    "defaultMessage": "The export already has a column called “{siblingColumn}” for the attribute “{siblingName}”. Choose a different name.",
+    "description": "Refusal shown when the name typed for an attribute is the name of a column another attribute already writes. siblingColumn is that column; siblingName is the other attribute. The export is the file a researcher analyses after the interviews and a column is one field in it. Names and columns are the researcher’s own text and are not translated."
+  },
+  "protocolBuilder.exportColumn.siblingNameWithOption": {
+    "defaultMessage": "The export already has a column called “{siblingColumn}” for option “{siblingValue}” of the attribute “{siblingName}”. Choose a different name.",
+    "description": "Refusal shown when the name typed for an attribute is the name of the column an option of a categorical attribute is exported to, such as “foo_bar” for option “bar” of “foo”. siblingColumn is that column; siblingValue is the option; siblingName is the categorical attribute. The export is the file a researcher analyses after the interviews and a column is one field in it. Names, values and columns are the researcher’s own text and are not translated."
+  },
+  "protocolBuilder.exportColumn.siblingOptionWithLayout": {
+    "defaultMessage": "Option “{value}” of “{name}” would be exported to a column called “{column}”, but the export already has a column called “{siblingColumn}” for the position of the layout attribute “{siblingName}”. Change the option value or the attribute name.",
+    "description": "Refusal shown when an option of a categorical attribute would be exported to the same column as a position of a layout attribute. name and value are the option being saved; column is where it would be written; siblingName is the layout attribute; siblingColumn is its position column. The export is the file a researcher analyses after the interviews and a column is one field in it. Names, values and columns are the researcher’s own text and are not translated."
+  },
+  "protocolBuilder.exportColumn.siblingOptionWithName": {
+    "defaultMessage": "Option “{value}” of “{name}” would be exported to a column called “{column}”, but the attribute “{siblingName}” already has a column called “{siblingColumn}”. Change the option value or the attribute name.",
+    "description": "Refusal shown when an option of a categorical attribute would be exported to a column another attribute already writes. name is the categorical attribute; value is the option; column is where it would be written; siblingName is the other attribute; siblingColumn is its column. The export is the file a researcher analyses after the interviews and a column is one field in it. Names, values and columns are the researcher’s own text and are not translated."
+  },
+  "protocolBuilder.exportColumn.siblingOptionWithOption": {
+    "defaultMessage": "Option “{value}” of “{name}” would be exported to a column called “{column}”, but the export already has a column called “{siblingColumn}” for option “{siblingValue}” of the attribute “{siblingName}”. Change the option value or the attribute name.",
+    "description": "Refusal shown when an option of one categorical attribute would be exported to the same column as an option of another, which happens when two names and values run together the same way. name and value are the option being saved; column is where it would be written; siblingName and siblingValue are the other option; siblingColumn is its column. The export is the file a researcher analyses after the interviews and a column is one field in it. Names, values and columns are the researcher’s own text and are not translated."
+  },
+  "protocolBuilder.exportColumn.writtenLayout": {
+    "defaultMessage": "In the export, the position column “{column}” of the layout attribute “{name}” and the column “{siblingColumn}” of the attribute “{siblingName}” would become the same column, “{writtenColumn}”. Choose a different name.",
+    "description": "Refusal shown when a layout attribute, which is exported as several position columns named after it, would write one of them to a column that differs from a column another attribute already writes, but the export would write both as the same column name. The export changes some characters in a column name: GraphML files replace spaces and most punctuation with “_”, and CSV files put an apostrophe before a name that starts with =, +, - or @. name is the layout attribute; column is the position column; siblingName is the other attribute; siblingColumn is its column; writtenColumn is the column name both would be written as. The export is the file a researcher analyses after the interviews and a column is one field in it. Names and columns are the researcher’s own text and are not translated."
+  },
+  "protocolBuilder.exportColumn.writtenName": {
+    "defaultMessage": "In the export, the name “{column}” and the column “{siblingColumn}” of the attribute “{siblingName}” would become the same column, “{writtenColumn}”. Choose a different name.",
+    "description": "Refusal shown when the name typed for an attribute differs from a column another attribute already writes, but the export would write both as the same column name. The export changes some characters in a column name: GraphML files replace spaces and most punctuation with “_”, and CSV files put an apostrophe before a name that starts with =, +, - or @. column is the name typed; siblingColumn is the other column; siblingName is the other attribute; writtenColumn is the column name both would be written as. The export is the file a researcher analyses after the interviews and a column is one field in it. Names and columns are the researcher’s own text and are not translated."
+  },
+  "protocolBuilder.exportColumn.writtenOption": {
+    "defaultMessage": "In the export, the column “{column}” for option “{value}” of “{name}” and the column “{siblingColumn}” of the attribute “{siblingName}” would become the same column, “{writtenColumn}”. Change the option value or the attribute name.",
+    "description": "Refusal shown when an option of a categorical attribute would be exported to a column that differs from a column another attribute already writes, but the export would write both as the same column name. The export changes some characters in a column name: GraphML files replace spaces and most punctuation with “_”, and CSV files put an apostrophe before a name that starts with =, +, - or @. name is the categorical attribute; value is the option; column is where it would be written; siblingName is the other attribute; siblingColumn is its column; writtenColumn is the column name both would be written as. The export is the file a researcher analyses after the interviews and a column is one field in it. Names, values and columns are the researcher’s own text and are not translated."
+  },
   "protocolBuilder.externalDataSource.columnsDescription": {
     "defaultMessage": "The people in it carry these attributes: {names}.",
     "description": "Body of the notice listing the attributes the chosen data file’s people carry. names is the column headings read out of the file, already joined into a list in the reader’s own language; they are the researcher’s own words and are never translated."
@@ -1566,10 +1634,6 @@
   "protocolBuilder.fieldPreview.empty": {
     "defaultMessage": "Select an attribute and input control to preview this field.",
     "description": "Shown in place of the preview of a form field while the two things it would need to render — which attribute the answer is recorded under, and which control collects it — have not both been chosen."
-  },
-  "protocolBuilder.fieldPreview.placeholderLabel": {
-    "defaultMessage": "Attribute label",
-    "description": "Stands in for the label of a network composer’s form field in its preview, while the researcher has authored none and the attribute it collects has no name to borrow."
   },
   "protocolBuilder.fieldPreview.placeholderQuestion": {
     "defaultMessage": "Your question will appear here.",
@@ -2175,6 +2239,10 @@
     "defaultMessage": "Information",
     "description": "Researcher-facing interface name. Interface for presenting researcher-authored information. Not a protocol-authored stage label."
   },
+  "protocolBuilder.interface.languageChooser": {
+    "defaultMessage": "Language Chooser",
+    "description": "Researcher-facing interface name. Interface where the participant chooses which of the protocol languages the rest of the interview is shown in. Not a protocol-authored stage label."
+  },
   "protocolBuilder.interface.nameGenerator": {
     "defaultMessage": "Name Generator (using forms)",
     "description": "Researcher-facing interface name. Interface for naming network members using forms. Not a protocol-authored stage label."
@@ -2190,6 +2258,10 @@
   "protocolBuilder.interface.narrative": {
     "defaultMessage": "Narrative",
     "description": "Researcher-facing interface name. Interface for recording a narrative. Not a protocol-authored stage label."
+  },
+  "protocolBuilder.interface.narrativePedigree": {
+    "defaultMessage": "Narrative Pedigree",
+    "description": "Researcher-facing interface name. Interface combining a narrative with a family genealogy. Not a protocol-authored stage label."
   },
   "protocolBuilder.interface.networkComposer": {
     "defaultMessage": "Network Composer",
@@ -2255,6 +2327,74 @@
     "defaultMessage": "Task introduction",
     "description": "Heading of the section where a researcher writes what a participant reads before this step of the interview begins."
   },
+  "protocolBuilder.languageChooser.languagesDescription": {
+    "defaultMessage": "Participants choose from every language this protocol is written in. The languages belong to the whole protocol, so they can't be changed on this stage.",
+    "description": "Description of the section listing the languages a participant can choose between. The list cannot be edited on this stage; it follows the languages of the whole protocol. A stage is one step of an interview."
+  },
+  "protocolBuilder.languageChooser.languagesListLabel": {
+    "defaultMessage": "Languages participants can choose",
+    "description": "Accessible name of the list of languages a participant can choose between on this stage."
+  },
+  "protocolBuilder.languageChooser.languagesTitle": {
+    "defaultMessage": "Languages",
+    "description": "Heading of the section listing the languages a participant can choose between on this stage."
+  },
+  "protocolBuilder.languageChooser.singleLanguage": {
+    "defaultMessage": "This protocol is written in one language, so participants will see it as their only choice.",
+    "description": "Shown under the list of languages when the protocol has only one language, so this stage offers participants a single option."
+  },
+  "protocolBuilder.localization.defaultLanguage": {
+    "defaultMessage": "Default",
+    "description": "Tag beside the protocol’s default language: the language participants start in when their browser lists none of the protocol’s languages, and the one untranslated text falls back to after the participant’s own languages."
+  },
+  "protocolBuilder.localization.editingLanguage": {
+    "defaultMessage": "Editing language",
+    "description": "Accessible name of the menu that chooses which of the protocol languages the researcher is writing text in, or previewing a form field in."
+  },
+  "protocolBuilder.localization.missingCount": {
+    "defaultMessage": "{count, plural, one {# translation missing} other {# translations missing}}",
+    "description": "Shown beside the language menu of a text field or of a form field’s preview: how many of the protocol languages this text, or any of the text the preview shows, has no translation in."
+  },
+  "protocolBuilder.localization.missingTranslation": {
+    "defaultMessage": "Missing",
+    "description": "Tag beside a protocol language in the language menu when the text being edited has no translation in that language. In the preview of a form field the menu covers all the text the preview shows, and the tag appears when any of it has no translation in that language."
+  },
+  "protocolBuilder.localization.notTranslated": {
+    "defaultMessage": "Not translated into {language} yet. Participants using {language} will see the {fallback} text.",
+    "description": "Shown under a text field when the text has no translation in the language being edited, and participants are certain to be shown it in fallback instead: a closely related language, such as Brazilian Portuguese for European Portuguese, or the only language the text is written in. language is the language being edited. Both are language names, written in the app’s own language or, in some apps, in their own language."
+  },
+  "protocolBuilder.localization.notTranslatedUnlessBrowserLists": {
+    "defaultMessage": "Not translated into {language} yet. Participants using {language} will see the {fallback} text, unless their browser also lists a language that has it.",
+    "description": "Shown under a text field when the text has no translation in the language being edited, nor in a closely related language. Participants are shown it in another language their web browser lists, when the text has a translation in one, and otherwise in fallback: the protocol’s default language, or failing that another of its languages. language is the language being edited. Both are language names, written in the app’s own language or, in some apps, in their own language."
+  },
+  "protocolBuilder.localization.unspecifiedLanguage": {
+    "defaultMessage": "Unspecified language",
+    "description": "Name shown for a protocol language that has not been identified yet (the \"und\" language tag), for example a protocol upgraded from an older version."
+  },
+  "protocolBuilder.localizedTextNames.diseasePosition": {
+    "defaultMessage": "Disease {position, number}",
+    "description": "Names one disease mapping of a narrative pedigree stage where its label is listed without a translation. position is the mapping’s place in the stage’s list of diseases, counting from one."
+  },
+  "protocolBuilder.localizedTextNames.fieldPosition": {
+    "defaultMessage": "Field {position, number}",
+    "description": "Names one field of a form where a text is listed without its translation, used when the field records no attribute the codebook names. position is the field’s place in the form, counting from one."
+  },
+  "protocolBuilder.localizedTextNames.itemPosition": {
+    "defaultMessage": "Item {position, number}",
+    "description": "Names one entry of a list in a stage — a block of page content, a row of a table — where a text is listed without its translation. position is the entry’s place in its list, counting from one."
+  },
+  "protocolBuilder.localizedTextNames.panelPosition": {
+    "defaultMessage": "Panel {position, number}",
+    "description": "Names one side panel of a name generator where its title is listed without a translation. position is the panel’s place in the stage’s list of side panels, counting from one."
+  },
+  "protocolBuilder.localizedTextNames.presetPosition": {
+    "defaultMessage": "Preset {position, number}",
+    "description": "Names one visualization preset of a narrative stage where a text is listed without its translation. position is the preset’s place in the stage’s list of presets, counting from one."
+  },
+  "protocolBuilder.localizedTextNames.promptPosition": {
+    "defaultMessage": "Prompt {position, number}",
+    "description": "Names one prompt of a stage where a text is listed without its translation. position is the prompt’s place in the stage’s list of prompts, counting from one."
+  },
   "protocolBuilder.multiSelect.emptyState": {
     "defaultMessage": "No items available.",
     "description": "Shown in place of the rows when a list has none, and the list’s caller has offered no wording of its own."
@@ -2310,6 +2450,278 @@
   "protocolBuilder.nameGeneratorPrompts.textRequired": {
     "defaultMessage": "Write the question this prompt asks.",
     "description": "Refusal shown when a researcher saves a name-generator prompt with no question in it."
+  },
+  "protocolBuilder.narrativePedigree.atRiskFieldHint": {
+    "defaultMessage": "Optionally show <strong>possible</strong> (at-risk) statuses alongside the certain ones, inferred from family structure and inheritance patterns.",
+    "description": "Guidance under the at-risk switch, saying what turning it on adds to the family tree. The <strong> tag marks the word separating an inferred status from a recorded one."
+  },
+  "protocolBuilder.narrativePedigree.atRiskFieldLabel": {
+    "defaultMessage": "Show possible (at-risk) statuses",
+    "description": "Label of the switch turning inferred risk on. The bracketed words name what these are called on the family tree itself."
+  },
+  "protocolBuilder.narrativePedigree.atRiskHowConstrained": {
+    "defaultMessage": "Two rules constrain how risk travels through a family. Only <em>biological</em> and <em>donor</em> relationships pass conditions on; social, adoptive, surrogate and partner links do not. And where a person’s biological sex is not known, sex-linked inheritance through that person is left uncertain rather than guessed.",
+    "description": "Says the two limits on inference. The named relationship kinds — biological, donor, social, adoptive, surrogate, partner — are the ones a Family Pedigree stage records, so they should read the same here as they do there."
+  },
+  "protocolBuilder.narrativePedigree.atRiskHowHeading": {
+    "defaultMessage": "How it is worked out",
+    "description": "Heading over the paragraphs explaining where an inferred at-risk status comes from."
+  },
+  "protocolBuilder.narrativePedigree.atRiskHowInferred": {
+    "defaultMessage": "At-risk statuses are not observed or diagnosed. They are inferred from the family structure together with each condition’s inheritance pattern — the child of a parent affected by a dominant condition and the child of two carriers of a recessive condition are both shown as <em>may develop</em> it, while a child with only one carrier parent is shown as <em>may carry</em> it.",
+    "description": "Says what an at-risk status is worked out from, with the examples the pedigree itself draws that way: a child of two carriers of a recessive condition inherits both copies in a quarter of cases, so it is drawn as \"may develop\" rather than as \"may carry\", which is what a child with one carrier parent is drawn as. The <em> tags mark the two phrases drawn from standard pedigree nomenclature; a carrier holds a condition without developing it."
+  },
+  "protocolBuilder.narrativePedigree.atRiskMeaning": {
+    "defaultMessage": "When this is on, the pedigree also shows a person who <em>may develop</em> a condition or <em>may carry</em> it. These are drawn as the usual status symbol with a question mark (“?”) added. A solid, filled symbol always means a clinically <em>affected</em> individual (per Bennett et al., 2022 nomenclature), so at-risk relatives always appear as unfilled symbols marked with a “?”.",
+    "description": "First paragraph of the prose explaining at-risk statuses to a researcher. The <em> tags mark the three phrases drawn from standard pedigree nomenclature; the quoted question mark is the symbol drawn on the family tree, so it stays a question mark whatever quotation marks the language uses around it. The bracketed citation names the published nomenclature and is not translated."
+  },
+  "protocolBuilder.narrativePedigree.atRiskTitle": {
+    "defaultMessage": "At-risk statuses",
+    "description": "Heading of the section deciding whether the family tree also marks people who MIGHT develop or carry a condition, as well as those recorded as having it."
+  },
+  "protocolBuilder.narrativePedigree.atRiskWhyOff": {
+    "defaultMessage": "At-risk symbols are a strong visual signal that can be read as established fact rather than inferred risk. They are intended for <strong>clinician-directed use</strong>, where the result is interpreted in context. Standard pedigree nomenclature (Bennett et al., 2022) deliberately does not encode probabilistic risk, so leave this off unless a clinician is guiding interpretation.",
+    "description": "The argument for leaving inferred risk off. The <strong> tag marks the condition under which showing it is appropriate: a clinician deciding to, and reading the result. \"Standard pedigree nomenclature\" is the published convention for drawing family trees in clinical genetics, and the bracketed citation naming it is not translated."
+  },
+  "protocolBuilder.narrativePedigree.atRiskWhyOffHeading": {
+    "defaultMessage": "Why this is off by default",
+    "description": "Heading over the paragraph explaining why inferred risk is not shown unless a researcher asks for it."
+  },
+  "protocolBuilder.narrativePedigree.diseaseColorHint": {
+    "defaultMessage": "Select a color for this disease.",
+    "description": "Guidance under the disease-colour control. A pedigree is a family tree."
+  },
+  "protocolBuilder.narrativePedigree.diseaseColorLabel": {
+    "defaultMessage": "Color",
+    "description": "Label of the control choosing which colour one condition is drawn in on the family tree."
+  },
+  "protocolBuilder.narrativePedigree.diseaseColorRequired": {
+    "defaultMessage": "Choose a color for this disease.",
+    "description": "Refusal shown under the disease-colour control when the researcher saves the dialog without choosing one."
+  },
+  "protocolBuilder.narrativePedigree.diseaseDetailsDescription": {
+    "defaultMessage": "Define how this disease appears, map it to the source pedigree's affected-status attribute, and choose how its inheritance is interpreted.",
+    "description": "Said under the title of a disease’s own dialog. The source pedigree is the family-pedigree stage this one draws its family from; the affected-status attribute is the yes-or-no attribute that pedigree records the condition in."
+  },
+  "protocolBuilder.narrativePedigree.diseaseInheritanceHint": {
+    "defaultMessage": "Choose how this disease is inherited. Mendelian patterns are used with biological relationships and recorded sex to infer carrier and possible at-risk statuses. Multifactorial and Unknown show affected status only and do not infer carrier or at-risk statuses.",
+    "description": "Guidance under the inheritance-pattern control. \"Mendelian\" describes the classical single-gene patterns; a carrier holds a condition without developing it; \"Multifactorial\" and \"Unknown\" are two of the choices in the list and are named here exactly as they are written there."
+  },
+  "protocolBuilder.narrativePedigree.diseaseInheritanceLabel": {
+    "defaultMessage": "Inheritance pattern",
+    "description": "Label of the control choosing how one condition travels from parent to child."
+  },
+  "protocolBuilder.narrativePedigree.diseaseInheritancePlaceholder": {
+    "defaultMessage": "Select an inheritance pattern...",
+    "description": "Placeholder shown in the inheritance-pattern control while none has been chosen. The trailing dots are an ellipsis written as three full stops."
+  },
+  "protocolBuilder.narrativePedigree.diseaseInheritanceRequired": {
+    "defaultMessage": "Choose how this disease is inherited.",
+    "description": "Refusal shown under the inheritance-pattern control when the researcher saves the dialog without choosing one."
+  },
+  "protocolBuilder.narrativePedigree.diseaseMarksNobody": {
+    "defaultMessage": "Nothing records this attribute",
+    "description": "Badge shown on a collapsed row of the disease list when that disease maps an attribute the source Family Pedigree stage does not record, so the disease would mark nobody. Terse because it sits inside a row beside the disease’s name."
+  },
+  "protocolBuilder.narrativePedigree.diseaseNameHint": {
+    "defaultMessage": "Shown to the participant in the pedigree's key, so it should be a name they recognize.",
+    "description": "Guidance under the disease-name field. The key is the legend drawn beside the family tree, naming what each colour means."
+  },
+  "protocolBuilder.narrativePedigree.diseaseNameLabel": {
+    "defaultMessage": "Disease label",
+    "description": "Label of the field holding what one condition is called in the key the participant reads."
+  },
+  "protocolBuilder.narrativePedigree.diseaseNamePlaceholder": {
+    "defaultMessage": "Enter a name for this disease...",
+    "description": "Placeholder shown in the empty disease-name field. The trailing dots are an ellipsis written as three full stops."
+  },
+  "protocolBuilder.narrativePedigree.diseaseNameRequired": {
+    "defaultMessage": "Give this disease a name.",
+    "description": "Refusal shown under the disease-name field when the researcher saves the dialog having left it empty."
+  },
+  "protocolBuilder.narrativePedigree.diseaseNoun": {
+    "defaultMessage": "disease",
+    "description": "What one row of the disease list is called inside things said ABOUT it — \"Edit disease\", \"Delete this disease?\" — so it is lower case and singular. A disease here is a condition the stage draws on the family tree."
+  },
+  "protocolBuilder.narrativePedigree.diseaseUnnamed": {
+    "defaultMessage": "Unnamed disease",
+    "description": "Stands in for the name in the collapsed row of the disease list while the researcher has not written one, so the row can still be told apart and opened."
+  },
+  "protocolBuilder.narrativePedigree.diseaseVariableEmpty": {
+    "defaultMessage": "There is no attribute for this disease to map. A disease can only map an attribute that a nomination prompt of the source pedigree records and that no other disease already maps. Add a nomination prompt to that pedigree asking who has this condition, and it can be mapped here.",
+    "description": "Said in place of the affected-status list when the source Family Pedigree stage leaves this disease nothing to map — either because no nomination prompt of it records an attribute this stage could draw, or because every attribute it does record is already mapped by another disease. It states the rule and what to do rather than which of the two it is, because the remedy is the same nomination prompt either way. \"Nomination prompts\" is the name of that part of the pedigree editor."
+  },
+  "protocolBuilder.narrativePedigree.diseaseVariableGone": {
+    "defaultMessage": "The attribute this disease maps ({attributeName}) is no longer in the codebook, so nothing can record who is affected. Choose another attribute.",
+    "description": "Refusal shown on the attribute control of a disease whose attribute has been deleted from the codebook while the researcher had the row open. attributeName is the stored identifier — there is no name left to show, because the definition has gone. An attribute is a codebook variable."
+  },
+  "protocolBuilder.narrativePedigree.diseaseVariableHint": {
+    "defaultMessage": "Select a boolean node attribute.",
+    "description": "Guidance under the node-attribute control. Boolean because a family member either has this condition recorded against them or does not."
+  },
+  "protocolBuilder.narrativePedigree.diseaseVariableLabel": {
+    "defaultMessage": "Node attribute",
+    "description": "Label of the control choosing which recorded field of a family member says whether they have this condition. An attribute is one field of data recorded about a person."
+  },
+  "protocolBuilder.narrativePedigree.diseaseVariableRequired": {
+    "defaultMessage": "Choose the attribute that records who is affected.",
+    "description": "Refusal shown under the affected-status control when the researcher saves the dialog without choosing one."
+  },
+  "protocolBuilder.narrativePedigree.diseaseVariableTypeChanged": {
+    "defaultMessage": "{attributeName} no longer records a yes-or-no answer, so it cannot say who is affected. Choose another attribute.",
+    "description": "Refusal shown on the attribute control of a disease whose attribute has been changed to another type while the researcher had the row open. attributeName is the attribute’s own name and is not translated. A disease is drawn from a true-or-false answer."
+  },
+  "protocolBuilder.narrativePedigree.diseasesAddLabel": {
+    "defaultMessage": "Create new disease",
+    "description": "Button that opens the dialog for describing one more condition. Whole rather than a generic \"Add\", because a stage editor shows several lists at once and they would otherwise be indistinguishable to anyone navigating by a list of buttons."
+  },
+  "protocolBuilder.narrativePedigree.diseasesAddTitle": {
+    "defaultMessage": "Create disease",
+    "description": "Title of the dialog a researcher fills in to describe one more condition."
+  },
+  "protocolBuilder.narrativePedigree.diseasesAtLeastOne": {
+    "defaultMessage": "Add at least one disease. A narrative pedigree with none shows the participant an unmarked family.",
+    "description": "Refusal shown above the disease list when a researcher saves a stage that would draw nothing. \"Narrative pedigree\" is the name of this kind of interview step."
+  },
+  "protocolBuilder.narrativePedigree.diseasesDuplicateLabel": {
+    "defaultMessage": "Another disease already uses this name. Give this one a name participants can tell apart.",
+    "description": "Refusal shown under the name control in the disease dialog when a sibling disease already carries that name. The name is what the participant reads in the key beside the family tree, so two the same are indistinguishable on screen."
+  },
+  "protocolBuilder.narrativePedigree.diseasesDuplicateVariable": {
+    "defaultMessage": "This attribute is already mapped by another disease. Choose a different one, or edit the existing disease instead.",
+    "description": "Refusal shown under the attribute control in the disease dialog when a sibling disease already records who is affected under the attribute just chosen. An attribute is one field of data recorded about a person."
+  },
+  "protocolBuilder.narrativePedigree.diseasesEditTitle": {
+    "defaultMessage": "Edit disease",
+    "description": "Title of the dialog a researcher fills in to change a condition they have already described."
+  },
+  "protocolBuilder.narrativePedigree.diseasesEmptyState": {
+    "defaultMessage": "No diseases yet. Create one to mark who in the family is affected.",
+    "description": "Shown in place of the disease list while this stage would draw nothing on the family."
+  },
+  "protocolBuilder.narrativePedigree.diseasesFieldHint": {
+    "defaultMessage": "Define the diseases to visualize on the pedigree. Each disease maps to a boolean node attribute from the source Family Pedigree stage.",
+    "description": "Guidance under the list of diseases. An attribute is one field of data recorded about a person; boolean is a yes/no attribute; the source Family Pedigree stage is the earlier step of the interview that collected the family."
+  },
+  "protocolBuilder.narrativePedigree.diseasesFieldLabel": {
+    "defaultMessage": "Diseases",
+    "description": "Label of the list of conditions inside the diseases section. The same word as the section heading, and translated once for each: the heading names the part of the stage, and this names the control."
+  },
+  "protocolBuilder.narrativePedigree.diseasesMarkNobody": {
+    "defaultMessage": "{count, plural, one {{diseaseNames} maps an attribute the source pedigree does not record, so nobody in the family would be marked with it. Add a nomination prompt to that pedigree asking who has it, or remove the disease.} other {{diseaseNames} map attributes the source pedigree does not record, so nobody in the family would be marked with them. Add a nomination prompt to that pedigree for each of them, or remove those diseases.}}",
+    "description": "Refusal shown above the disease list when one or more diseases already in it map an attribute no nomination prompt of the source Family Pedigree stage records — usually because a collaborator deleted that prompt, or the protocol was imported that way. count is how many such diseases there are; diseaseNames is their names, already joined into one phrase in the reader’s language. A nomination prompt asks the participant who in the family a question applies to and marks everyone they name."
+  },
+  "protocolBuilder.narrativePedigree.diseasesNotRecorded": {
+    "defaultMessage": "Nothing records this attribute, so nobody would be marked with it. Add a nomination prompt to the source pedigree asking who has this condition, then map it here.",
+    "description": "Refusal shown under the attribute control in the disease dialog when the chosen attribute is one no nomination prompt of the source Family Pedigree stage records — a mapping to it draws an unmarked family in every interview. A nomination prompt asks the participant who in the family a question applies to and marks everyone they name; \"Nomination prompts\" is the name of that part of the pedigree editor."
+  },
+  "protocolBuilder.narrativePedigree.diseasesTitle": {
+    "defaultMessage": "Disease mappings",
+    "description": "Heading of the section listing the conditions this step of the interview draws onto the family tree."
+  },
+  "protocolBuilder.narrativePedigree.diseasesWaitingDescription": {
+    "defaultMessage": "Choose the Family Pedigree stage this one reads before defining its diseases.",
+    "description": "Said instead of the diseases section’s description while no source stage has been chosen, so there is no family and no set of attributes to describe a disease against."
+  },
+  "protocolBuilder.narrativePedigree.inheritanceAutosomalDominant": {
+    "defaultMessage": "Autosomal dominant",
+    "description": "One choice in the inheritance-pattern list: a condition on a non-sex chromosome that one affected parent is enough to pass on. Standard clinical genetics terminology."
+  },
+  "protocolBuilder.narrativePedigree.inheritanceAutosomalRecessive": {
+    "defaultMessage": "Autosomal recessive",
+    "description": "One choice in the inheritance-pattern list: a condition on a non-sex chromosome that needs a copy from both parents. Standard clinical genetics terminology."
+  },
+  "protocolBuilder.narrativePedigree.inheritanceMitochondrial": {
+    "defaultMessage": "Mitochondrial",
+    "description": "One choice in the inheritance-pattern list: a condition passed on through the mother’s mitochondria. Standard clinical genetics terminology."
+  },
+  "protocolBuilder.narrativePedigree.inheritanceMultifactorial": {
+    "defaultMessage": "Multifactorial",
+    "description": "One choice in the inheritance-pattern list: a condition arising from several genes and the environment together, so nothing can be inferred from the family tree alone."
+  },
+  "protocolBuilder.narrativePedigree.inheritanceUnknown": {
+    "defaultMessage": "Unknown",
+    "description": "One choice in the inheritance-pattern list, said of the condition rather than of the researcher: how it is inherited has not been established, so only recorded status is drawn."
+  },
+  "protocolBuilder.narrativePedigree.inheritanceXLinkedDominant": {
+    "defaultMessage": "X-linked dominant",
+    "description": "One choice in the inheritance-pattern list: a dominant condition carried on the X chromosome. Standard clinical genetics terminology; \"X\" is the chromosome’s letter and is not translated."
+  },
+  "protocolBuilder.narrativePedigree.inheritanceXLinkedRecessive": {
+    "defaultMessage": "X-linked recessive",
+    "description": "One choice in the inheritance-pattern list: a recessive condition carried on the X chromosome. Standard clinical genetics terminology; \"X\" is the chromosome’s letter and is not translated."
+  },
+  "protocolBuilder.narrativePedigree.inheritanceYLinked": {
+    "defaultMessage": "Y-linked",
+    "description": "One choice in the inheritance-pattern list: a condition carried on the Y chromosome. Standard clinical genetics terminology; \"Y\" is the chromosome’s letter and is not translated."
+  },
+  "protocolBuilder.narrativePedigree.sourceAfterThisStage": {
+    "defaultMessage": "The Family Pedigree stage this one reads now runs after it, so the family would still be empty. Move it earlier in the interview, or choose a pedigree that runs before this stage.",
+    "description": "Shown when the stage this one draws its family from has been moved to run later in the interview, so the participant would not have built the family yet."
+  },
+  "protocolBuilder.narrativePedigree.sourceChangeConfirm": {
+    "defaultMessage": "Change the pedigree",
+    "description": "Button that confirms pointing a narrative pedigree at a different Family Pedigree stage and discarding every disease that described the previous one."
+  },
+  "protocolBuilder.narrativePedigree.sourceChangeDescription": {
+    "defaultMessage": "Each disease names an attribute of the family members the current pedigree collects, so none of them would still describe the new one. Choosing a different pedigree removes them all, and choosing this one again does not bring them back.",
+    "description": "Body of the confirmation shown before a narrative pedigree’s source changes, saying what the change discards and that reversing the choice does not undo it."
+  },
+  "protocolBuilder.narrativePedigree.sourceChangeTitle": {
+    "defaultMessage": "This will remove every disease",
+    "description": "Title of the confirmation shown before a researcher points this stage at a different Family Pedigree stage. Every disease it draws names an attribute of the current pedigree’s family members, so changing the pedigree discards all of them."
+  },
+  "protocolBuilder.narrativePedigree.sourceEmptyMessage": {
+    "defaultMessage": "This interview has no Family Pedigree stage before this one. Add one, or move this stage later, before configuring it.",
+    "description": "Body of the notice shown above the source-stage control when nothing in the interview qualifies; the control itself stays on screen, disabled. \"Family Pedigree\" names the kind of interview step that collects a family tree."
+  },
+  "protocolBuilder.narrativePedigree.sourceEmptyTitle": {
+    "defaultMessage": "No pedigree to read",
+    "description": "Heading of the notice shown above the source-stage control when the interview holds no family tree this stage could draw. The control itself stays on screen, disabled."
+  },
+  "protocolBuilder.narrativePedigree.sourceGone": {
+    "defaultMessage": "The pedigree you chose is no longer one of the options here, so nothing has changed and no disease has been removed. Choose again.",
+    "description": "Body of the message refusing a confirmed change of source pedigree whose chosen stage is no longer offered. Addressed to the researcher authoring the protocol, and it says what did NOT happen: the change was not applied and the disease mappings beside it were not thrown away."
+  },
+  "protocolBuilder.narrativePedigree.sourceGoneTitle": {
+    "defaultMessage": "That pedigree is no longer available",
+    "description": "Title of the message shown when a researcher agrees to change which family tree this step draws, and the stage they picked stopped being one this control offers while the question was open — a collaborator deleted it, changed what kind of step it is, or moved it later in the interview. The change is refused."
+  },
+  "protocolBuilder.narrativePedigree.sourceHint": {
+    "defaultMessage": "Select the Family Pedigree stage whose network data this Narrative Pedigree will visualize. Only Family Pedigree stages are listed here.",
+    "description": "Guidance under the source-stage control, explaining why the list is shorter than the interview. \"Family Pedigree\" names another kind of interview step; a stage is one step of an interview."
+  },
+  "protocolBuilder.narrativePedigree.sourceLabel": {
+    "defaultMessage": "Source stage",
+    "description": "Label of the control naming which earlier step of the interview collected the family this one draws on."
+  },
+  "protocolBuilder.narrativePedigree.sourceMissing": {
+    "defaultMessage": "The Family Pedigree stage this one reads is no longer part of the interview. Choose another one, or restore it, before this stage can be saved.",
+    "description": "Shown when the stage this one draws its family from has been deleted or dropped out of the interview — usually by a collaborator, while this editor was open."
+  },
+  "protocolBuilder.narrativePedigree.sourceNotAPedigree": {
+    "defaultMessage": "The stage this one reads is no longer a Family Pedigree, so there is no family for it to visualize. Choose a Family Pedigree stage instead.",
+    "description": "Shown when the stage this one draws its family from has been changed to a different kind of interview step, so it no longer collects a family tree."
+  },
+  "protocolBuilder.narrativePedigree.sourcePlaceholder": {
+    "defaultMessage": "Select a Family Pedigree stage...",
+    "description": "Placeholder shown in the source-stage control while no stage has been chosen. The trailing dots are an ellipsis written as three full stops."
+  },
+  "protocolBuilder.narrativePedigree.sourceProblemTitle": {
+    "defaultMessage": "This stage has no family to show",
+    "description": "Heading of the warning shown when the stage this one was pointed at can no longer be used. The sentence under it says which of the three things went wrong."
+  },
+  "protocolBuilder.narrativePedigree.sourceStageOption": {
+    "defaultMessage": "Stage {position, number} — {stageLabel}",
+    "description": "One Family Pedigree stage offered as the one this stage draws its family from. position is where that stage will sit in the finished interview, counting from one; stageLabel is the researcher’s own name for it and is not translated. The number is shown because two stages may carry the same name."
+  },
+  "protocolBuilder.narrativePedigree.sourceTitle": {
+    "defaultMessage": "Pedigree source",
+    "description": "Heading of the section where a researcher chooses which earlier step of the interview collected the family this step draws on. A pedigree is a family tree."
+  },
+  "protocolBuilder.narrativePedigree.sourceUnusableOption": {
+    "defaultMessage": "{stageName} — this stage can no longer be used",
+    "description": "How the stored choice is labelled inside the source-stage list once it can no longer be used, so the researcher can still see what this stage points at. stageName is the researcher’s own name for that stage and is not translated, or — where the stage has left the interview and there is no name left to read — its identifier."
   },
   "protocolBuilder.networkCanvas.automaticLayoutSectionDescription": {
     "defaultMessage": "When on, nodes are arranged by a force-directed layout. Participants can toggle this during the interview; this sets the starting state.",
@@ -2565,15 +2977,15 @@
   },
   "protocolBuilder.networkCanvas.formFieldMissingAttribute": {
     "defaultMessage": "{attributeId} — this attribute is no longer in the codebook",
-    "description": "How a network composer form field reads in the list when the attribute it records into has been deleted from the codebook and the field has no question of its own to be named by. attributeId is the raw stored identifier: there is no name left to show, because the definition it would have come from has been deleted."
+    "description": "How a network composer form field reads in the list when the attribute it records into has been deleted from the codebook: in place of its question when it has none, and as a warning badge under the question when it has one. attributeId is the raw stored identifier: there is no name left to show, because the definition it would have come from has been deleted."
   },
   "protocolBuilder.networkCanvas.formFieldNoun": {
     "defaultMessage": "form field",
     "description": "What one row of a network composer’s form list is called, used in the accessible names of its edit, delete and reorder controls and in the confirmation that deletes it."
   },
   "protocolBuilder.networkCanvas.formFieldQuestionHint": {
-    "defaultMessage": "What the participant is asked. Leave it empty to use the attribute’s own name.",
-    "description": "Guidance under the question box of a network composer form field. The attribute’s name is the researcher-facing name the codebook records it under."
+    "defaultMessage": "What the participant is asked. It starts as the attribute’s name; change it to the words the participant should read.",
+    "description": "Guidance under the question box of a network composer form field. The box is filled in with the attribute’s name when the attribute is chosen; the attribute’s name is the researcher-facing name the codebook records it under, and it is never translated, so the question is what the participant reads."
   },
   "protocolBuilder.networkCanvas.formFieldQuestionLabel": {
     "defaultMessage": "Question",
@@ -2582,6 +2994,10 @@
   "protocolBuilder.networkCanvas.formFieldQuestionPlaceholder": {
     "defaultMessage": "Enter your question…",
     "description": "Placeholder inside the empty question box of a network composer form field."
+  },
+  "protocolBuilder.networkCanvas.formFieldQuestionRequired": {
+    "defaultMessage": "Write what the participant is asked for this field.",
+    "description": "Refusal shown when a network composer form field is saved with an empty question box."
   },
   "protocolBuilder.networkCanvas.formFieldRecordsAttribute": {
     "defaultMessage": "Records the attribute “{attributeName}”",
@@ -2758,6 +3174,18 @@
   "protocolBuilder.networkCanvas.presetHighlightLabel": {
     "defaultMessage": "Highlight attributes",
     "description": "Label of the tick list choosing which true-or-false codebook attributes make a node stand out."
+  },
+  "protocolBuilder.networkCanvas.presetHighlightLegendHint": {
+    "defaultMessage": "Shown during the interview, in the list of attributes this preset can highlight.",
+    "description": "Guidance under the text box naming one highlighted attribute, saying where the label appears."
+  },
+  "protocolBuilder.networkCanvas.presetHighlightLegendLabel": {
+    "defaultMessage": "Label for “{attribute}”",
+    "description": "Label of the text box naming one highlighted attribute in the interview. attribute is the attribute’s name in the protocol’s codebook, which is not translated."
+  },
+  "protocolBuilder.networkCanvas.presetHighlightLegendRequired": {
+    "defaultMessage": "Enter a label for this attribute.",
+    "description": "Shown when the label of a highlighted attribute is left empty."
   },
   "protocolBuilder.networkCanvas.presetHighlightTitle": {
     "defaultMessage": "Node highlighting",
@@ -4159,9 +4587,13 @@
     "defaultMessage": "That resource is being discarded, so it cannot be used here. Choose a different one.",
     "description": "Refusal shown when a researcher picks a resource another field is in the middle of discarding."
   },
+  "protocolBuilder.resourceFailure.rosterAttributeNameDuplicate": {
+    "defaultMessage": "the \"{first}\" and \"{second}\" attributes are the same name written in two different ways, such as an accented letter typed as one character in one and as two in the other",
+    "description": "Refusal shown when an imported roster carries two column or attribute names that look identical but are stored differently: the same accented letter is typed as a single character in one and as a plain letter followed by a separate accent mark in the other. An interview would fill one variable from both and lose one column’s values. first and second are those two headings, left exactly as the researcher wrote them, so they usually look the same. Names that differ only in capital letters are not refused. Lower case and without a full stop."
+  },
   "protocolBuilder.resourceFailure.rosterAttributeNameUnusable": {
-    "defaultMessage": "the \"{name}\" attribute cannot be used as a variable name: names may hold only letters, digits, and the characters . _ - :",
-    "description": "Refusal shown when an imported roster carries a column or attribute name a protocol variable cannot take — a spreadsheet heading such as \"home address\". name is that heading, left exactly as the researcher wrote it. Lower case and without a full stop."
+    "defaultMessage": "the \"{name}\" attribute cannot be used as a variable name: a name cannot be empty, start or end with a space, or contain line breaks, tabs or other control characters",
+    "description": "Refusal shown when an imported roster carries a column or attribute name a protocol variable cannot take — a heading that is empty, one with a space at the start or end, or one holding a line break, a tab or another control character. name is that heading, left exactly as the researcher wrote it. Names may otherwise be written in any language or script, with spaces and punctuation inside them. Lower case and without a full stop."
   },
   "protocolBuilder.resourceFailure.rosterEmpty": {
     "defaultMessage": "the selected file has no records in it, so a stage using it would have nobody to show",
@@ -4169,11 +4601,11 @@
   },
   "protocolBuilder.resourceFailure.rosterNodeAttributesNotObject": {
     "defaultMessage": "the attributes of node {position} are not an object",
-    "description": "Names the entry at fault in an imported roster whose attributes are malformed. \"Node\" is one person or entity in network data; position is its one-based place in the file. Lower case and without a full stop."
+    "description": "Names the entry at fault in an imported roster whose attributes are malformed. \"Node\" is one person or entity in network data; position is the node’s position in the file’s list of nodes, counting from 1. Lower case and without a full stop."
   },
   "protocolBuilder.resourceFailure.rosterNodeNotObject": {
     "defaultMessage": "node {position} is not an object",
-    "description": "Names the entry at fault in an imported roster. \"Node\" is the network-research term for one person or entity in the data; position is its one-based place in the file. Appears after a clause of its own, so it is lower case and has no full stop."
+    "description": "Names the entry at fault in an imported roster. \"Node\" is the network-research term for one person or entity in the data; position is the node’s position in the file’s list of nodes, counting from 1. Appears after a clause of its own, so it is lower case and has no full stop."
   },
   "protocolBuilder.resourceFailure.rosterUnreadable": {
     "defaultMessage": "the selected file is not a readable network",
@@ -4185,11 +4617,11 @@
   },
   "protocolBuilder.resourceFailure.rosterValueUnusableInNode": {
     "defaultMessage": "the \"{name}\" attribute of node {position} is not a value a variable can hold",
-    "description": "Names the attribute at fault in an imported JSON roster. name is the researcher’s own attribute name; \"node\" is one person or entity in network data and position is its one-based place in the file. Lower case and without a full stop."
+    "description": "Names the attribute at fault in an imported JSON roster. name is the researcher’s own attribute name; \"node\" is one person or entity in network data and position is the node’s position in the file’s list of nodes, counting from 1. Lower case and without a full stop."
   },
   "protocolBuilder.resourceFailure.rosterValueUnusableInRow": {
     "defaultMessage": "the \"{name}\" attribute of row {row} is not a value a variable can hold",
-    "description": "Names the cell at fault in an imported spreadsheet roster. name is the researcher’s own column heading; row is its one-based line in the file. \"Attribute\" and \"variable\" are the data fields a protocol records. Lower case and without a full stop."
+    "description": "Names the cell at fault in an imported spreadsheet roster. name is the researcher’s own column heading; row is the row number a spreadsheet shows, where the header is row 1. \"Attribute\" and \"variable\" are the data fields a protocol records. Lower case and without a full stop."
   },
   "protocolBuilder.resourceFailure.unreachable": {
     "defaultMessage": "The resource could not be reached. Try again in a moment.",
@@ -4550,6 +4982,26 @@
   "protocolBuilder.resourceUpload.unreadable": {
     "defaultMessage": "That file could not be read. Choose it again, or try a different file.",
     "description": "Refusal shown when the browser could not read the bytes of the file a researcher chose — it was moved, renamed, or is unreadable."
+  },
+  "protocolBuilder.rosterCharacters.attributeName": {
+    "defaultMessage": "An attribute name in node {node} contains a character that can’t be used ({character}). Delete it from the file, then import the file again.{others, plural, =0 {} one { The same problem appears in # other place in the file.} other { The same problem appears in # other places in the file.}}",
+    "description": "Refusal shown when an attribute name in a JSON data file (a roster) a researcher chose contains a character Network Canvas can’t store. node is the node’s position in the file’s list of nodes, counting from 1. character is the character’s Unicode code point, such as U+0007, and stays as written. It is usually an invisible control character pasted in from another program, which an exported file could not hold. others is how many more places in the file have the same problem; when it is 0 nothing more is said."
+  },
+  "protocolBuilder.rosterCharacters.attributeValue": {
+    "defaultMessage": "The “{attribute}” attribute of node {node} contains a character that can’t be used ({character}). Delete it from the file, then import the file again.{others, plural, =0 {} one { The same problem appears in # other place in the file.} other { The same problem appears in # other places in the file.}}",
+    "description": "Refusal shown when an attribute value in a JSON data file (a roster) a researcher chose contains a character Network Canvas can’t store. attribute is the attribute’s name as the file writes it; node is the node’s position in the file’s list of nodes, counting from 1. character is the character’s Unicode code point, such as U+0007, and stays as written. It is usually an invisible control character pasted in from another program, which an exported file could not hold. others is how many more places in the file have the same problem; when it is 0 nothing more is said."
+  },
+  "protocolBuilder.rosterCharacters.cell": {
+    "defaultMessage": "Row {row} of the “{column}” column contains a character that can’t be used ({character}). Delete it from the file, then import the file again.{others, plural, =0 {} one { The same problem appears in # other place in the file.} other { The same problem appears in # other places in the file.}}",
+    "description": "Refusal shown when a cell of a CSV data file (a roster) a researcher chose contains a character Network Canvas can’t store. row is the row number a spreadsheet shows, where the header is row 1; column is the researcher’s own column header. character is the character’s Unicode code point, such as U+0007, and stays as written. It is usually an invisible control character pasted in from another program, which an exported file could not hold. others is how many more places in the file have the same problem; when it is 0 nothing more is said."
+  },
+  "protocolBuilder.rosterCharacters.columnName": {
+    "defaultMessage": "The header of column {column} contains a character that can’t be used ({character}). Delete it from the file, then import the file again.{others, plural, =0 {} one { The same problem appears in # other place in the file.} other { The same problem appears in # other places in the file.}}",
+    "description": "Refusal shown when the header of a column in a CSV data file (a roster) a researcher chose contains a character Network Canvas can’t store. column is the column’s position, counting from 1 at the left. character is the character’s Unicode code point, such as U+0007, and stays as written. It is usually an invisible control character pasted in from another program, which an exported file could not hold. others is how many more places in the file have the same problem; when it is 0 nothing more is said."
+  },
+  "protocolBuilder.rosterCharacters.line": {
+    "defaultMessage": "Line {line} of this file contains a character that can’t be used ({character}). Delete it from the file, then import the file again.{others, plural, =0 {} one { The same problem appears in # other place in the file.} other { The same problem appears in # other places in the file.}}",
+    "description": "Refusal shown when a data file (a roster, CSV or JSON) a researcher chose contains a character Network Canvas can’t store, somewhere that can only be pointed to by its line. line is the line number a text editor shows, counting from 1. character is the character’s Unicode code point, such as U+0007, and stays as written. It is usually an invisible control character pasted in from another program, which an exported file could not hold. others is how many more places in the file have the same problem; when it is 0 nothing more is said."
   },
   "protocolBuilder.rosterColumns.missingColumn": {
     "defaultMessage": "{column} — this attribute is not in the data file",
@@ -5912,8 +6364,8 @@
     "description": "Name of the one option standing for an attribute that is not among the ones this control was given to offer. attributeId is the raw stored identifier — there is no name to show, because no definition of it reached this control."
   },
   "protocolBuilder.variablePicker.nameInvalid": {
-    "defaultMessage": "only letters, numbers and the symbols ._-: can be used in a name",
-    "description": "Reason given on the switched-off create row of the attribute list when the name typed holds characters the export formats cannot carry. Reads after a colon, so it is a clause rather than a sentence. The listed symbols are literal characters and must not be translated."
+    "defaultMessage": "a name cannot contain line breaks, tabs or other control characters",
+    "description": "Reason given on the switched-off create row of the attribute list when the name typed holds a character that cannot be stored in a name, such as a line break or a tab. Reads after a colon, so it is a clause rather than a sentence. Names may otherwise be written in any language or script, with spaces and punctuation."
   },
   "protocolBuilder.variablePicker.nameTaken": {
     "defaultMessage": "this type already has an attribute called that",

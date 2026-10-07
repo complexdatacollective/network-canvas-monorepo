@@ -88,7 +88,8 @@ vi.mock('~/utils/protocolLibrary', () => ({
 
 const protocol: CurrentProtocol = {
   name: 'Test',
-  schemaVersion: 8,
+  schemaVersion: 9,
+  localization: { defaultLocale: 'en', locales: ['en'] },
   stages: [],
   codebook: {
     node: {},
@@ -222,7 +223,7 @@ describe('<ProjectActions />', () => {
       id: 'protocol-1',
       name: 'Test',
       protocol,
-      schemaVersion: 8,
+      schemaVersion: 9,
       createdAt: Date.now(),
       updatedAt: Date.now(),
       sourceRef: { kind: 'sample', id: 'sample' },
@@ -334,22 +335,22 @@ describe('<ProjectActions />', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/');
   });
 
-  it.each(['/protocol/assets', '/protocol/codebook', '/protocol/summary'])(
-    'returns from %s to the timeline',
-    (route) => {
-      mockLocation.mockReturnValue(route);
-      const store = createTestStore();
-      render(<ProjectActions />, { wrapper: wrap(store) });
+  it.each([
+    '/protocol/assets',
+    '/protocol/codebook',
+    '/protocol/localization',
+    '/protocol/summary',
+  ])('returns from %s to the timeline', (route) => {
+    mockLocation.mockReturnValue(route);
+    const store = createTestStore();
+    render(<ProjectActions />, { wrapper: wrap(store) });
 
-      fireEvent.click(
-        screen.getByRole('button', { name: /Return to Stages/i }),
-      );
-      expect(mockNavigate).toHaveBeenCalledWith('/protocol');
-      expect(
-        screen.queryByRole('button', { name: /return to start screen/i }),
-      ).toBeNull();
-    },
-  );
+    fireEvent.click(screen.getByRole('button', { name: /Return to Stages/i }));
+    expect(mockNavigate).toHaveBeenCalledWith('/protocol');
+    expect(
+      screen.queryByRole('button', { name: /return to start screen/i }),
+    ).toBeNull();
+  });
 
   it('hides save-to-source outside source authoring mode', () => {
     const store = createTestStore();
@@ -366,7 +367,7 @@ describe('<ProjectActions />', () => {
       id: 'protocol-1',
       name: 'Test',
       protocol,
-      schemaVersion: 8,
+      schemaVersion: 9,
       createdAt: Date.now(),
       updatedAt: Date.now(),
       sourceRef: { kind: 'sample', id: 'sample' },

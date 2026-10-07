@@ -65,7 +65,7 @@ const narrativeDisplayingRank = {
       id: 'preset-1',
       label: 'Review',
       layoutVariable: 'layout',
-      highlight: ['rank'],
+      highlight: [{ variable: 'rank', label: { en: 'Rank' } }],
     },
   ],
 } as unknown as Stage;

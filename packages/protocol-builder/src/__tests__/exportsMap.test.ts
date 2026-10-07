@@ -135,7 +135,7 @@ const sourceFilesUnder = (directory: string): string[] =>
  * Every specifier naming a package, in the positions a resolver reads.
  *
  * The import forms rather than any quoted occurrence, and the distinction is
- * not academic: `apps/studio/client/vite.config.ts` lists the package's bare
+ * not academic: `apps/studio/web/vite.config.ts` lists the package's bare
  * name in `optimizeDeps.exclude`, which is a package to leave unbundled rather
  * than a module to resolve, and a plain string search reports it as an
  * undeclared `.` subpath. The shape mirrors `packageImportBoundaries.test.ts`'s
@@ -186,7 +186,7 @@ const PACKAGES = [
   {
     name: '@codaco/protocol-builder-core',
     root: join(repoRoot, 'packages', 'protocol-builder-core'),
-    // This package, `@codaco/studio-rpc`, Architect and the Studio server take
+    // This package, `@codaco/studio-contract`, Architect and the Studio server take
     // the contract from it today. A floor, for the same reason.
     consumerFloor: 2,
   },

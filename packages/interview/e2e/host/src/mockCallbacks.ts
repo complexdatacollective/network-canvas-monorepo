@@ -1,13 +1,17 @@
 import type {
   AssetRequestHandler,
   FinishHandler,
+  ProtocolLocaleChangeHandler,
   SyncHandler,
 } from '../../../src/contract/types';
 
 // The Shell is a self-contained Redux island in the e2e host. There is no
 // remote sink for sessions — Playwright reads state straight from the live
-// Redux store via window.__interviewStore. So sync is a no-op.
+// Redux store via window.__interviewStore. So sync and locale changes are
+// no-ops.
 export const mockSync: SyncHandler = async (): Promise<void> => {};
+export const mockProtocolLocaleChange: ProtocolLocaleChangeHandler =
+  async (): Promise<void> => {};
 
 /**
  * Configurable behavior for the instrumented onFinish mock, set from

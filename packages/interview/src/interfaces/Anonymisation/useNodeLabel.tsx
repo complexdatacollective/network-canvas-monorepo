@@ -12,6 +12,7 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
+import { useResolveLocalizedString } from '../../localization/ProtocolLocalizationProvider';
 import { makeGetCodebookForNodeType } from '../../selectors/protocol';
 import { getNodeLabelAttribute } from '../../utils/getNodeLabelAttribute';
 import { useNodeAttributes } from './useNodeAttributes';
@@ -24,6 +25,10 @@ const labelCache = new Map<string, string>();
 export function useNodeLabel(node: NcNode | undefined) {
   const getCodebookForNodeType = useSelector(makeGetCodebookForNodeType);
   const codebook = node ? getCodebookForNodeType(node.type) : undefined;
+  const resolve = useResolveLocalizedString();
+  const typeLabel = codebook ? resolve(codebook.label).text : '';
+  const fallback =
+    typeLabel.trim() === '' ? node?.[entityPrimaryKeyProperty] : typeLabel;
   const { passphrase, isEnabled } = usePassphrase();
   const prevPassphrase = usePrevious(passphrase);
   const prevNode = usePrevious(node);
@@ -56,7 +61,6 @@ export function useNodeLabel(node: NcNode | undefined) {
   const syncLabel = useMemo(() => {
     if (!node) return undefined;
     if (needsAsyncDecrypt) return undefined;
-    const fallback = codebook?.name ?? node[entityPrimaryKeyProperty];
     if (!labelAttributeId) return fallback;
     const value = node[entityAttributesProperty]?.[labelAttributeId];
     // getNodeLabelAttribute only nominates text/number-valued attributes;
@@ -64,7 +68,7 @@ export function useNodeLabel(node: NcNode | undefined) {
     return typeof value === 'string' || typeof value === 'number'
       ? String(value)
       : fallback;
-  }, [node, needsAsyncDecrypt, codebook, labelAttributeId]);
+  }, [node, needsAsyncDecrypt, fallback, labelAttributeId]);
 
   const getById = useNodeAttributes(node);
   const [label, setLabel] = useState<string | undefined>(undefined);
@@ -99,8 +103,6 @@ export function useNodeLabel(node: NcNode | undefined) {
       }
     }
 
-    const fallback = codebook?.name ?? node[entityPrimaryKeyProperty];
-
     void (async () => {
       try {
         const value = await getById<string | number>(labelAttributeId);
@@ -117,7 +119,7 @@ export function useNodeLabel(node: NcNode | undefined) {
   }, [
     needsAsyncDecrypt,
     labelAttributeId,
-    codebook,
+    fallback,
     node,
     getById,
     cacheKey,

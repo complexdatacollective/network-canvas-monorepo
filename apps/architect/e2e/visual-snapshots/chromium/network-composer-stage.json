@@ -7,7 +7,9 @@
     "automaticLayout": true
   },
   "id": "id-1",
-  "label": "Build Your Network",
+  "label": {
+    "en": "Build Your Network"
+  },
   "layoutVariable": "id-2",
   "quickAdd": "id-3",
   "subject": {

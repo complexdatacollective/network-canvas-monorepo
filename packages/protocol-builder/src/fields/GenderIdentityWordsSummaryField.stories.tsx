@@ -14,10 +14,10 @@ import GenderIdentityWordsSummaryField from './GenderIdentityWordsSummaryField.t
 const TERMS_FIELD = 'genderIdentityTerms';
 
 const OPTIONS = [
-  { value: 'woman', label: 'Woman' },
-  { value: 'man', label: 'Man' },
-  { value: 'transWoman', label: 'Trans woman' },
-  { value: 'unknown', label: 'Don’t know' },
+  { value: 'woman', label: { en: 'Woman' } },
+  { value: 'man', label: { en: 'Man' } },
+  { value: 'transWoman', label: { en: 'Trans woman' } },
+  { value: 'unknown', label: { en: 'Don’t know' } },
 ];
 
 const LABEL = 'Words for each gender identity';
@@ -84,7 +84,7 @@ export const NothingMapped: Story = {
     await awaitPassiveEffects();
 
     await expect(await rowsOf(canvasElement)).toEqual(
-      OPTIONS.map(({ label }) => [label, 'Neutral words (parent, sibling)']),
+      OPTIONS.map(({ label }) => [label.en, 'Neutral words (parent, sibling)']),
     );
   },
 };

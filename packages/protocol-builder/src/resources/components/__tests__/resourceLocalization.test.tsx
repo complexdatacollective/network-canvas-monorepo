@@ -124,7 +124,10 @@ describe('resource surfaces in a reader’s own language', () => {
     const host = createResourceHost();
     render(
       inSpanish(
-        <ResourceContextFrame client={host.client} protocolId={host.protocolId}>
+        <ResourceContextFrame
+          adapter={host.adapter}
+          protocolId={host.protocolId}
+        >
           <ResourceUploadControl kind="image" onStaged={() => undefined} />
         </ResourceContextFrame>,
       ),
@@ -157,7 +160,10 @@ describe('resource surfaces in a reader’s own language', () => {
     const host = createResourceHost({ resources: [IMAGE_SEED] });
     render(
       inSpanish(
-        <ResourceContextFrame client={host.client} protocolId={host.protocolId}>
+        <ResourceContextFrame
+          adapter={host.adapter}
+          protocolId={host.protocolId}
+        >
           <ImagePicker />
         </ResourceContextFrame>,
       ),
@@ -193,7 +199,7 @@ describe('resource surfaces in a reader’s own language', () => {
     const user = userEvent.setup();
     const host = createResourceHost({ resources: [IMAGE_SEED] });
     const picker = (
-      <ResourceContextFrame client={host.client} protocolId={host.protocolId}>
+      <ResourceContextFrame adapter={host.adapter} protocolId={host.protocolId}>
         <ImagePicker />
       </ResourceContextFrame>
     );
@@ -272,7 +278,7 @@ describe('a failure crossing the contract’s string-only message', () => {
     // contract types as a plain `string`.
     const host = createResourceHost();
     const resources = renderResourceClient(
-      withResourceProcedures(host.client, {
+      withResourceProcedures(host, {
         inspect: () => {
           throw new Error('the host threw');
         },

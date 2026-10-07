@@ -53,7 +53,7 @@ export const Editing: Story = {
     });
     await expect(
       canvas.getByRole('region', { name: 'What the host was asked to commit' }),
-    ).toHaveTextContent('"label": "About you"');
+    ).toHaveTextContent('"label": { "en-US": "About you" }');
   },
 };
 

@@ -6,11 +6,11 @@ describe('genderTermsFromDefaults', () => {
   it('gives an option named for a default that default’s words, and the rest neutral words', () => {
     expect(
       genderTermsFromDefaults([
-        { value: 'unknown', label: 'Unsure' },
-        { value: 'agender', label: 'Agender' },
-        { value: 'woman', label: 'Female' },
-        { value: 'man', label: 'Male' },
-        { value: 'preferNotToSay', label: 'No answer' },
+        { value: 'unknown', label: { en: 'Unsure' } },
+        { value: 'agender', label: { en: 'Agender' } },
+        { value: 'woman', label: { en: 'Female' } },
+        { value: 'man', label: { en: 'Male' } },
+        { value: 'preferNotToSay', label: { en: 'No answer' } },
       ]),
     ).toEqual([
       { value: 'unknown', words: 'unknown' },
@@ -24,8 +24,8 @@ describe('genderTermsFromDefaults', () => {
   it('matches by value exactly, not by label', () => {
     expect(
       genderTermsFromDefaults([
-        { value: 1, label: 'woman' },
-        { value: 'Woman', label: 'man' },
+        { value: 1, label: { en: 'woman' } },
+        { value: 'Woman', label: { en: 'man' } },
       ]),
     ).toEqual([
       { value: 1, words: 'neutral' },

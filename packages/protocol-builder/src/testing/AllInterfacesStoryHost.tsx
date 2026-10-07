@@ -22,8 +22,8 @@ import {
  * The stages this host offers, and what to call each of them.
  *
  * `fixtureStageIds()` is the whole list. Written out here it would be a list
- * that agrees with itself — eighteen names in this file opening eighteen
- * editors and saying nothing about the twentieth interface somebody adds —
+ * that agrees with itself — twenty names in this file opening twenty
+ * editors and saying nothing about the twenty-first interface somebody adds —
  * whereas the fixture holds exactly one stage per `StageType`, which is a fact
  * `protocolFixture.test.ts` keeps true.
  */
@@ -45,9 +45,9 @@ const openableStages = (): Readonly<{ stageId: string; name: string }>[] =>
  * does not render an empty panel: `UnregisteredStageTypeError` is thrown while
  * the dispatcher renders, and the story fails with the interface named.
  *
- * One at a time rather than all eighteen at once, which is both what a host
- * does and what the page can be read as: eighteen stage editors mounted
- * together put eighteen copies of "Interviewer guidance" on one page, and a
+ * One at a time rather than all twenty at once, which is both what a host
+ * does and what the page can be read as: twenty stage editors mounted
+ * together put twenty copies of "Interviewer guidance" on one page, and a
  * duplicated landmark name is a real accessibility defect in the page even
  * though it is nobody's editor that has it.
  */
@@ -74,7 +74,7 @@ export function AllInterfacesStoryHost() {
 
   return (
     <DialogProvider>
-      <ProtocolBuilder client={host.client} protocolId={host.protocolId}>
+      <ProtocolBuilder adapter={host.adapter} protocolId={host.protocolId}>
         <main className="mx-auto flex max-w-6xl flex-col gap-6 p-6">
           <nav aria-label="Interfaces">
             <ul className="flex list-none flex-wrap gap-2 p-0">

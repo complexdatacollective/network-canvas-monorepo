@@ -1,13 +1,14 @@
 import { describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 
-import { getStageReferenceSite } from '../../schemas/8/stage-reference.ts';
-import { getStageSubjectResolution } from '../../schemas/8/stage-subject-resolution.ts';
-import { stageSchema } from '../../schemas/8/stages/index.ts';
+import { getStageReferenceSite } from '../../schemas/9/stage-reference.ts';
+import { getStageSubjectResolution } from '../../schemas/9/stage-subject-resolution.ts';
+import { stageSchema } from '../../schemas/9/stages/index.ts';
 import {
   collectStageReferences,
   declaredStageReferenceSites,
 } from '../collectEntityAttributeReferences.ts';
+import { localized } from '../test-utils.ts';
 
 // Walks the REAL protocol schema, so this covers the walker and the
 // `stageReference` tagging of each schema spot together. Stage fixtures are
@@ -23,7 +24,7 @@ const protocol = {
     {
       id: 'skip-to-stage',
       type: 'Information',
-      title: 'About this study',
+      title: localized('About this study'),
       skipLogic: {
         action: 'SHOW',
         filter: { rules: [] },
@@ -33,12 +34,17 @@ const protocol = {
     {
       id: 'skip-to-finish',
       type: 'Information',
-      title: 'Nearly done',
+      title: localized('Nearly done'),
       skipLogic: {
         action: 'SKIP',
         filter: { rules: [] },
         destination: { type: 'finish' },
       },
+    },
+    {
+      id: 'np',
+      type: 'NarrativePedigree',
+      sourceStageId: 'fp',
     },
   ],
 };
@@ -57,6 +63,7 @@ describe('collectStageReferences', () => {
         site: 'skipLogic.destination.stageId',
         path: 'stages.1.skipLogic.destination.stageId',
       },
+      { stageId: 'fp', site: 'sourceStageId', path: 'stages.3.sourceStageId' },
     ]);
   });
 
@@ -93,6 +100,7 @@ describe('declaredStageReferenceSites', () => {
   it('is every site the current schema declares', () => {
     expect(declaredStageReferenceSites().toSorted()).toEqual([
       'skipLogic.destination.stageId',
+      'sourceStageId',
     ]);
   });
 
@@ -105,7 +113,7 @@ describe('declaredStageReferenceSites', () => {
    */
   it('answers for the schema, where the registry alone answers for the imports', async () => {
     vi.resetModules();
-    const registry = await import('../../schemas/8/stage-reference.ts');
+    const registry = await import('../../schemas/9/stage-reference.ts');
     expect(registry.registeredStageReferenceSites()).toEqual([]);
 
     const fresh = await import('../collectEntityAttributeReferences.ts');

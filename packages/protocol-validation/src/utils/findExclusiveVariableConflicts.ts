@@ -2,7 +2,7 @@ import type {
   ExclusiveSlotDescriptor,
   InterfaceOwnedOptionSetKey,
   StageManagedOptionsDescriptor,
-} from '../schemas/8/entity-attribute-reference.ts';
+} from '../schemas/9/entity-attribute-reference.ts';
 import {
   collectEntityAttributeReferences,
   type EntityAttributeReferenceHit,
@@ -222,7 +222,10 @@ export type StageManagedOptionBinding = {
   descriptor: StageManagedOptionsDescriptor;
   /** The stage that binds the variable at this slot. */
   stageId: string;
-  /** That stage's label, as the researcher named it. */
+  /**
+   * That stage's label, as the researcher named it, in the protocol's default
+   * language (or, lacking that translation, the first one it has).
+   */
   stageLabel: string;
   path: (string | number)[];
 };
@@ -236,6 +239,21 @@ export type StageManagedOptionBinding = {
  * options. Architect's option editors read this to lock the options everywhere
  * but the owning stage's editor.
  */
+/** A stage label's text in the protocol's default language. */
+const stageLabelText = (label: unknown, localization: unknown): string => {
+  if (typeof label === 'string') return label;
+  const translations = asRecord(label);
+  if (!translations) return '';
+  const defaultLocale = asRecord(localization)?.defaultLocale;
+  const preferred =
+    typeof defaultLocale === 'string' ? translations[defaultLocale] : undefined;
+  if (typeof preferred === 'string') return preferred;
+  const first = Object.values(translations).find(
+    (text): text is string => typeof text === 'string',
+  );
+  return first ?? '';
+};
+
 export const findStageManagedOptionBindings = (
   protocol: unknown,
   hits?: readonly EntityAttributeReferenceHit[],
@@ -260,7 +278,7 @@ export const findStageManagedOptionBindings = (
       variableId: hit.variableId,
       descriptor: hit.stageManagedOptions,
       stageId: stage.id,
-      stageLabel: typeof stage.label === 'string' ? stage.label : '',
+      stageLabel: stageLabelText(stage.label, protocolRecord.localization),
       path: hit.path,
     });
   }

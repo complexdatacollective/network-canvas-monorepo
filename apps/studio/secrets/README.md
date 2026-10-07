@@ -40,5 +40,5 @@ no secrets — webhook signing secrets, protocol asset API keys and stored OAuth
 tokens are all unreadable without the key they were written under.
 
 The development lane writes both files with fixed development values if they
-are absent, so `pnpm --filter @codaco/studio-server dev` needs no setup. Those
+are absent, so `pnpm --filter @codaco/studio-api dev` needs no setup. Those
 values are published and are for local containers only.

@@ -562,17 +562,21 @@ const handleProtocolMigration = ({
 type CreateNetcanvasParams = {
   name: string;
   description?: string;
+  localization: CurrentProtocol['localization'];
 };
 
 // Create a new protocol
 export const createNetcanvas = createAppAsyncThunk(
   'webUserActions/createNetcanvas',
-  async ({ name, description }: CreateNetcanvasParams, { dispatch }) => {
-    // Create a new empty protocol
+  async (
+    { name, description, localization }: CreateNetcanvasParams,
+    { dispatch },
+  ) => {
     const newProtocol: CurrentProtocol = {
       name,
       description,
       schemaVersion: APP_SCHEMA_VERSION,
+      localization,
       stages: [],
       codebook: {
         node: {},
@@ -580,7 +584,7 @@ export const createNetcanvas = createAppAsyncThunk(
         ego: {},
       },
       assetManifest: {},
-    } as CurrentProtocol;
+    };
 
     await instantiateProtocol(
       { protocol: newProtocol, name, description },

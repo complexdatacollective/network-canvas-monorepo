@@ -7,22 +7,25 @@ import SummaryContext from '../../SummaryContext';
 import FamilyPedigree from '../FamilyPedigree';
 
 const protocol = {
-  schemaVersion: 8,
+  schemaVersion: 9,
   name: 'Pedigree protocol',
+  localization: { defaultLocale: 'en', locales: ['en'] },
   codebook: {
     node: {
       person: {
         name: 'Person',
+        label: { en: 'Person' },
         color: 'node-color-seq-1',
         shape: { default: 'circle' },
         variables: {
           gender: {
             name: 'Gender',
+            label: 'Gender',
             type: 'categorical',
             options: [
-              { value: 'woman', label: 'Woman' },
-              { value: 'transWoman', label: 'Trans **woman**' },
-              { value: 'agender', label: 'Agender' },
+              { value: 'woman', label: { en: 'Woman' } },
+              { value: 'transWoman', label: { en: 'Trans **woman**' } },
+              { value: 'agender', label: { en: 'Agender' } },
             ],
           },
         },
@@ -162,13 +165,13 @@ describe('Protocol Summary family pedigree', () => {
           nominationPrompts={[
             {
               id: 'nomination-1',
-              text: 'Who has had **ovarian** cancer?',
+              text: { en: 'Who has had **ovarian** cancer?' },
               attribute: 'gender',
               onlyForSexAssignedAtBirth: 'female',
             },
             {
               id: 'nomination-2',
-              text: 'Who has had diabetes?',
+              text: { en: 'Who has had diabetes?' },
               attribute: 'gender',
             },
           ]}

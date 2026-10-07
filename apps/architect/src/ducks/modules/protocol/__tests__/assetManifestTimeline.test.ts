@@ -62,14 +62,14 @@ const makeStore = () =>
 
 const protocol = (
   assetManifest: CurrentProtocol['assetManifest'] = {},
-): CurrentProtocol =>
-  ({
-    name: 'Study',
-    schemaVersion: 8,
-    stages: [],
-    codebook: { node: {}, edge: {}, ego: {} },
-    assetManifest,
-  }) as CurrentProtocol;
+): CurrentProtocol => ({
+  name: 'Study',
+  schemaVersion: 9,
+  localization: { defaultLocale: 'en', locales: ['en'] },
+  stages: [],
+  codebook: { node: {}, edge: {}, ego: {} },
+  assetManifest,
+});
 
 const history = (store: ReturnType<typeof makeStore>) => {
   const { past, future, timeline, futureTimeline } = store.getState()

@@ -93,21 +93,21 @@ function buildOptions(
 
   if (labels) {
     labels.forEach((label, i) => {
-      options.push({ label, value: i });
+      options.push({ label: { en: label }, value: i });
     });
     if (hasMissingValue) {
-      options.push({ label: 'N/A', value: -1 });
+      options.push({ label: { en: 'N/A' }, value: -1 });
     }
     return options;
   }
 
   for (let i = 0; i < binCount; i++) {
     const label = ORDINAL_LABELS[i] ?? `Option ${i + 1}`;
-    options.push({ label, value: i + 1 });
+    options.push({ label: { en: label }, value: i + 1 });
   }
 
   if (hasMissingValue) {
-    options.push({ label: 'N/A', value: -1 });
+    options.push({ label: { en: 'N/A' }, value: -1 });
   }
 
   return options;
@@ -295,6 +295,10 @@ const expectLabelsFullyVisible = async (
   binSelector: string,
   expectedCount: number,
 ) => {
+  // Chromatic starts play functions before webfonts finish loading, and a
+  // label measured against the fallback font wraps differently.
+  await document.fonts.ready;
+
   await waitFor(
     async () => {
       const bins = [...canvasElement.querySelectorAll(binSelector)];
@@ -313,12 +317,30 @@ const expectLabelsFullyVisible = async (
         const { lineHeight, fontSize } = getComputedStyle(label);
         const halfLeading =
           (Number.parseFloat(lineHeight) - Number.parseFloat(fontSize)) / 2;
+        const heightSlack = Math.max(2, halfLeading);
         await expect(
           label.scrollHeight - label.clientHeight,
-        ).toBeLessThanOrEqual(Math.max(2, halfLeading));
+        ).toBeLessThanOrEqual(heightSlack);
         await expect(label.scrollWidth - label.clientWidth).toBeLessThanOrEqual(
           1,
         );
+
+        // The fitter's hyphenating rung only helps where the browser has a
+        // hyphenation dictionary, which Chrome on Linux (Chromatic included)
+        // downloads after install and may never have. The label has to fit
+        // without one, in both directions: a word the dictionary broke can
+        // overflow the width as well as push the text down.
+        label.style.hyphens = 'manual';
+        try {
+          await expect(
+            label.scrollHeight - label.clientHeight,
+          ).toBeLessThanOrEqual(heightSlack);
+          await expect(
+            label.scrollWidth - label.clientWidth,
+          ).toBeLessThanOrEqual(1);
+        } finally {
+          label.style.hyphens = '';
+        }
       }
     },
     { timeout: 10_000 },

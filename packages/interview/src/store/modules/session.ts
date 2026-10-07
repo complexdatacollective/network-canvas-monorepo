@@ -3,7 +3,7 @@ import { invariant } from 'es-toolkit';
 import { find, get } from 'es-toolkit/compat';
 import { v4 as uuid } from 'uuid';
 
-import type { Codebook } from '@codaco/protocol-validation';
+import type { Codebook, LocaleTag } from '@codaco/protocol-validation';
 import {
   type EntityPrimaryKey,
   entityAttributesProperty,
@@ -119,12 +119,16 @@ export type SessionState = {
   promptIndex?: number;
   stageMetadata?: StageMetadata; // Used as temporary storage by DyadCensus/TieStrengthCensus
   stageRequiresEncryption?: boolean; // Set to true by the stage if it detects that nodes it creates require encryption
+  localePreference: LocaleTag | null;
+  locale: LocaleTag | null;
 };
 
 const actionTypes = {
   updatePrompt: 'SESSION/UPDATE_PROMPT',
   transitionStage: 'SESSION/TRANSITION_STAGE',
   updateStageMetadata: 'SESSION/UPDATE_STAGE_METADATA',
+  setLocalePreference: 'SESSION/SET_LOCALE_PREFERENCE',
+  recordLocale: 'SESSION/RECORD_LOCALE',
   addNode: 'NETWORK/ADD_NODE' as const,
   deleteNode: 'NETWORK/DELETE_NODE' as const,
   updateNode: 'NETWORK/UPDATE_NODE' as const,
@@ -605,6 +609,17 @@ export const updateStageMetadata = createAction<{
   metadata: StageMetadataEntry;
 }>(actionTypes.updateStageMetadata);
 
+/**
+ * The participant chose a language. The choice is also the language now shown,
+ * so both fields change together and the host hears about it once.
+ */
+export const setLocalePreference = createAction<LocaleTag>(
+  actionTypes.setLocalePreference,
+);
+
+/** Records the protocol translation shown, for exports. */
+export const recordLocale = createAction<LocaleTag>(actionTypes.recordLocale);
+
 const sessionReducer = createReducer(initialState, (builder) => {
   builder.addCase(addNode.fulfilled, (state, action) => {
     const { secureAttributes, sessionMeta, modelData } = action.payload;
@@ -911,6 +926,27 @@ const sessionReducer = createReducer(initialState, (builder) => {
         [currentStep]: metadata,
       },
     });
+  });
+
+  // Neither locale action touches `lastUpdated`: they are not interview data,
+  // and the general sync route does not write them.
+  builder.addCase(setLocalePreference, (state, action) => {
+    if (
+      state.localePreference === action.payload &&
+      state.locale === action.payload
+    ) {
+      return state;
+    }
+    return {
+      ...state,
+      localePreference: action.payload,
+      locale: action.payload,
+    };
+  });
+
+  builder.addCase(recordLocale, (state, action) => {
+    if (state.locale === action.payload) return state;
+    return { ...state, locale: action.payload };
   });
 
   builder.addCase(updateEgo.fulfilled, (state, action) => {

@@ -48,11 +48,11 @@ const RELATIVES_NOT_RECORDED_ATTRIBUTE = 'relativesNotRecorded';
 const NOMINATION_ATTRIBUTE = 'has_heart_disease';
 
 const FAMILY_PEDIGREE_FIELDS: SectionDoc = {
-  label: 'Family Pedigree',
+  label: { 'en-US': 'Family Pedigree' },
   interviewScript: INTERVIEW_SCRIPT,
   skipLogic: SKIP_LOGIC,
   subject: { entity: 'node', type: 'family_member' },
-  prompt: 'Add the members of your family.',
+  prompt: { 'en-US': 'Add the members of your family.' },
   nodeConfiguration: {
     nameAttribute: 'fm_name',
     genderIdentity: {
@@ -84,7 +84,7 @@ const FAMILY_PEDIGREE_FIELDS: SectionDoc = {
   nominationPrompts: [
     {
       id: 'nomination-1',
-      text: 'Who in your family has had heart disease?',
+      text: { 'en-US': 'Who in your family has had heart disease?' },
       attribute: NOMINATION_ATTRIBUTE,
       onlyForSexAssignedAtBirth: 'female',
     },
@@ -92,7 +92,9 @@ const FAMILY_PEDIGREE_FIELDS: SectionDoc = {
   // NOT one of the person attributes: the interface already collects those
   // itself, so the extra fields may not. See `MEMBER_FORM_ATTRIBUTE`.
   form: {
-    fields: [{ variable: 'fm_occupation', prompt: 'What do they do?' }],
+    fields: [
+      { variable: 'fm_occupation', prompt: { 'en-US': 'What do they do?' } },
+    ],
   },
 };
 
@@ -169,11 +171,16 @@ describe.each(MAXIMAL)(
       addFamilyMemberVariables(harness, {
         [MEMBER_FORM_ATTRIBUTE]: {
           name: MEMBER_FORM_ATTRIBUTE,
+          label: MEMBER_FORM_ATTRIBUTE,
           type: 'text',
           component: 'Text',
         },
         [RELATIVES_NOT_RECORDED_ATTRIBUTE]: RELATIVES_NOT_RECORDED_VARIABLE,
-        [NOMINATION_ATTRIBUTE]: { name: NOMINATION_ATTRIBUTE, type: 'boolean' },
+        [NOMINATION_ATTRIBUTE]: {
+          name: NOMINATION_ATTRIBUTE,
+          label: NOMINATION_ATTRIBUTE,
+          type: 'boolean',
+        },
       });
 
       await harness.roundTrip({ unowned: [...unowned] });

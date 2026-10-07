@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
-import { expect } from 'storybook/test';
+import { expect, screen, userEvent, within } from 'storybook/test';
 
 import Heading from '../../../typography/Heading';
 import Paragraph from '../../../typography/Paragraph';
@@ -670,8 +670,92 @@ export const RightToLeft: Story = {
     await expect(rtlStyles.paddingLeft).toBe(ltrStyles.paddingRight);
     await expect(rtlStyles.paddingRight).toBe('0px');
 
-    // And so does the chevron, which is what has to be said twice.
+    // And so does the chevron, which is what has to be said twice. The LTR
+    // value is exact: only `100%` keeps the chevron on the control's right
+    // edge as its width changes. The RTL value is the one place the builds
+    // differ: the published build minifies `left` to `0`, which the browser
+    // serialises as `0px` where the source's `left` reads back as `0%`.
     await expect(ltrStyles.backgroundPositionX).toBe('100%');
-    await expect(rtlStyles.backgroundPositionX).toBe('0%');
+    await expect(['0%', '0px']).toContain(rtlStyles.backgroundPositionX);
+  },
+};
+
+const localizedFamilyOptions: SelectOption[] = [
+  { value: 'mother', label: { text: 'أم', lang: 'ar', dir: 'rtl' } },
+  { value: 'father', label: { text: 'أب', lang: 'ar', dir: 'rtl' } },
+];
+
+const localizedOtherOptions: SelectOption[] = [
+  { value: 'friend', label: { text: 'Amigo', lang: 'es', dir: 'ltr' } },
+  { value: 'other', label: 'Someone else' },
+];
+
+/**
+ * Protocol copy arrives as `PresentationalText`. In the native select each
+ * `<option>` and `<optgroup>` carries the text's own `lang` and `dir`; in the
+ * styled select so do the selected value and each listed item. A plain string
+ * keeps the page's language.
+ */
+export const LocalizedOptions: Story = {
+  render: () => {
+    const [value, setValue] = useState<string | number>('mother');
+
+    return (
+      <div className="flex w-72 flex-col gap-8">
+        <NativeSelectField
+          name="localized-native"
+          aria-label="Relationship (native)"
+          options={[
+            {
+              label: { text: 'العائلة', lang: 'ar', dir: 'rtl' },
+              options: localizedFamilyOptions,
+            },
+            ...localizedOtherOptions,
+          ]}
+          value={value}
+          onChange={(v) => setValue(v ?? '')}
+        />
+        <StyledSelectField
+          name="localized-styled"
+          aria-label="Relationship (styled)"
+          options={[...localizedFamilyOptions, ...localizedOtherOptions]}
+          value={value}
+          onChange={(v) => setValue(v ?? '')}
+        />
+      </div>
+    );
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    const native = canvas.getByRole('combobox', {
+      name: 'Relationship (native)',
+    });
+    const mother = within(native).getByRole('option', { name: 'أم' });
+    await expect(mother).toHaveAttribute('lang', 'ar');
+    await expect(mother).toHaveAttribute('dir', 'rtl');
+    await expect(native.querySelector('optgroup')).toHaveAttribute(
+      'label',
+      'العائلة',
+    );
+    await expect(
+      within(native).getByRole('option', { name: 'Someone else' }),
+    ).not.toHaveAttribute('lang');
+
+    const styled = canvas.getByRole('combobox', {
+      name: 'Relationship (styled)',
+    });
+    await expect(
+      within(styled).getByText('أم').closest('[lang]'),
+    ).toHaveAttribute('dir', 'rtl');
+
+    await userEvent.click(styled);
+    const listbox = await screen.findByRole('listbox');
+    const friend = within(listbox).getByRole('option', { name: 'Amigo' });
+    await expect(
+      within(friend).getByText('Amigo').closest('[lang]'),
+    ).toHaveAttribute('lang', 'es');
+    await userEvent.click(friend);
+    await expect(native).toHaveValue('friend');
   },
 };

@@ -1,12 +1,14 @@
 import {
   BookOpen,
   ChartNoAxesColumnIncreasing,
+  Dna,
   FileUser,
   GitCompare,
   GitFork,
   IdCard,
   Info,
   KeyRound,
+  Languages,
   LayoutGrid,
   type LucideIcon,
   MapPinned,
@@ -43,10 +45,12 @@ export const STAGE_TYPE_COLORS: Record<StageType, PaletteColor> = {
   OrdinalBin: 'mustard',
   CategoricalBin: 'neon-carrot',
   FamilyPedigree: 'purple-pizazz',
+  NarrativePedigree: 'purple-pizazz-dark',
   Narrative: 'neon-coral-dark',
   Geospatial: 'sea-serpent',
   Information: 'platinum-dark',
   Anonymisation: 'cyber-grape',
+  LanguageChooser: 'charcoal',
 };
 
 /**
@@ -70,10 +74,12 @@ export const STAGE_TYPE_ICONS: Record<StageType, LucideIcon> = {
   OrdinalBin: ChartNoAxesColumnIncreasing,
   CategoricalBin: LayoutGrid,
   FamilyPedigree: Network,
+  NarrativePedigree: Dna,
   Narrative: BookOpen,
   Geospatial: MapPinned,
   Information: Info,
   Anonymisation: KeyRound,
+  LanguageChooser: Languages,
 };
 
 /**

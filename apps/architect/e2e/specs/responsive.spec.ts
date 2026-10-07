@@ -298,6 +298,7 @@ test('the stage editor splits into two columns on the room the researcher can se
 for (const page of [
   { path: '/protocol/assets', heading: 'Resource Library' },
   { path: '/protocol/codebook', heading: 'Codebook' },
+  { path: '/protocol/localization', heading: 'Languages' },
   { path: '/protocol/summary', heading: 'Protocol Summary' },
 ] as const) {
   test(`${page.heading} content keeps a horizontal inset at phone width`, async ({
@@ -343,25 +344,27 @@ for (const page of [
 /**
  * Every stage type the all-interfaces fixture carries.
  *
- * Ten of them earned their place by overflowing. Five — Information, Ego
+ * Eleven of them earned their place by overflowing. Five — Information, Ego
  * Form, Name Generator, Ordinal Bin and Narrative — overflowed at phone width
  * from `ArrayField`'s 24rem `min-width` floor, each measuring 432px of content
  * inside a 390px box before it was removed.
  *
- * The remaining five were listed here as known gaps while that floor was fixed,
+ * The remaining six were listed here as known gaps while that floor was fixed,
  * and are asserted now that the fixed widths behind them are gone. Measured
  * before, at 390: Name Generator Roster 484, Geospatial 484, Family Pedigree
- * 550, Alter Form 400, Alter Edge Form 400. Four causes
+ * 550, Alter Form 400, Alter Edge Form 400, Narrative Pedigree 410. Four causes
  * between them, so each is worth its own assertion rather than one
  * representative: the asset thumbnail's flat `w-[25rem]` (roster, geospatial);
  * `ArrayField`'s remaining `min-w-fit`, inherited from `controlVariants` and
- * left behind when `min-w-sm` went (roster, both Alter Forms); Family Pedigree's two-column variable rows, which now stack below
+ * left behind when `min-w-sm` went (roster, both Alter Forms, Narrative
+ * Pedigree); Family Pedigree's two-column variable rows, which now stack below
  * a 34rem container query; and the variable pill's uncapped 20rem `max-width`,
  * which no `min-w-0` can restrain because a variable name renders `nowrap` and
  * so has no min-content smaller than itself.
  *
- * The other eight were never reported overflowing, and measuring them bore that
- * out — every one sits exactly at 390/390 and 768/768, with the app scroll
+ * The other nine (the Language Chooser joined them with schema 9) were never
+ * reported overflowing, and measuring them bore that out — every one sits
+ * exactly at 390/390 and 768/768, with the app scroll
  * container's width identical from the first frame after the stage-name field
  * appears to thirty frames later. They are asserted anyway, because they are
  * where the next regression in a shared control would surface: they exercise
@@ -370,8 +373,8 @@ for (const page of [
  * "measured clean" from "not measured".
  *
  * This is now the fixture's whole set, in its stage order, and the test below
- * asserts that it still is — a nineteenth interface added to all-interfaces
- * fails here until it is named, rather than quietly going uncovered.
+ * asserts that it still is — an interface added to all-interfaces fails here
+ * until it is named, rather than quietly going uncovered.
  */
 const EDITOR_TYPES_UNDER_TEST = [
   'Anonymisation',
@@ -390,8 +393,10 @@ const EDITOR_TYPES_UNDER_TEST = [
   'AlterEdgeForm',
   'Narrative',
   'FamilyPedigree',
+  'NarrativePedigree',
   'NetworkComposer',
   'Geospatial',
+  'LanguageChooser',
 ] as const;
 
 for (const viewport of VIEWPORTS) {
@@ -586,9 +591,9 @@ function protocolWithStages(): CurrentProtocol {
     ...emptyProtocol(),
     stages: [1, 2, 3].map((index) => ({
       id: `info-${index}`,
-      label: `Information ${index}`,
+      label: { en: `Information ${index}` },
       type: 'Information',
-      title: `Information ${index}`,
+      title: { en: `Information ${index}` },
       items: [],
     })),
   };

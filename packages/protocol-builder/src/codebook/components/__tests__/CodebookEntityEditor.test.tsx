@@ -1,22 +1,38 @@
 import {
   fireEvent,
-  render,
+  render as renderUnwrapped,
   screen,
   waitFor,
   within,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { ReactElement, ReactNode } from 'react';
 import { describe, expect, expectTypeOf, it, vi } from 'vitest';
 
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
+import { ProtocolLocalizationProvider } from '../../../localization/ProtocolLocalization.tsx';
 import type { CodebookSubject } from '../../../protocol-context.ts';
 import { codebookRefusalMessage } from '../../compoundFailureCopy.ts';
 import type { CodebookWriteOutcome } from '../../writes.ts';
 import CodebookEntityEditor, {
   type CodebookEntityEditorProps,
 } from '../CodebookEntityEditor.tsx';
+
+/** Every editor here edits a protocol written in English. */
+function InEnglishProtocol({ children }: Readonly<{ children: ReactNode }>) {
+  return (
+    <ProtocolLocalizationProvider
+      localization={{ defaultLocale: 'en', locales: ['en'] }}
+    >
+      {children}
+    </ProtocolLocalizationProvider>
+  );
+}
+
+const render = (ui: ReactElement) =>
+  renderUnwrapped(ui, { wrapper: InEnglishProtocol });
 
 const NODE_SUBJECT = { entity: 'node', type: 'person:adult' } as const;
 const PERSON_SECTION = sectionId({
@@ -29,11 +45,17 @@ const HOST_WORDS = 'Invalid input: expected object, received undefined';
 
 const NODE_DOCUMENT: SectionDoc = {
   name: 'Person',
+  label: { en: 'Person' },
   color: 'node-color-seq-1',
   icon: 'add-a-person',
   shape: { default: 'circle' },
   variables: {
-    age: { name: 'Age', type: 'number', component: 'Number' },
+    age: {
+      name: 'Age',
+      label: 'Age',
+      type: 'number',
+      component: 'Number',
+    },
   },
 };
 
@@ -133,7 +155,12 @@ describe('CodebookEntityEditor', () => {
     },
     {
       subject: { entity: 'edge', type: 'friends' } as const,
-      document: { name: 'Friends', color: 'edge-color-seq-1', variables: {} },
+      document: {
+        name: 'Friends',
+        label: { en: 'Friends' },
+        color: 'edge-color-seq-1',
+        variables: {},
+      },
       nameLabel: 'Edge type name',
       example: '"Friends" or "Colleagues"',
       placeholder: 'Enter a name for this edge type...',
@@ -296,40 +323,84 @@ describe('CodebookEntityEditor', () => {
     ).toHaveLength(1);
   });
 
-  it('accepts periods in a schema-valid entity name', async () => {
+  it.each([
+    'Person.v2',
+    'Works With',
+    '友人',
+    'amigo cercano',
+    'Collègue',
+    'Person/Place',
+    'Person&Place',
+  ])('accepts the entity name %j', async (typed) => {
     const user = userEvent.setup();
     const onSubmit = vi.fn<SubmitEntity>(async () => applied());
     renderUpdateEditor(onSubmit);
 
     const name = screen.getByRole('textbox', { name: 'Node type name' });
     await user.clear(name);
-    await user.type(name, 'Person.v2');
+    await user.type(name, typed);
     await user.click(screen.getByRole('button', { name: 'Save entity' }));
 
     await waitFor(() => expect(onSubmit).toHaveBeenCalledOnce());
+    expect(onSubmit.mock.calls[0]?.[0]).toEqual({
+      ...NODE_DOCUMENT,
+      name: typed,
+    });
   });
 
-  it.each(['Person Type', 'Person/Place', 'Person&Place'])(
-    'rejects the export-unsafe entity name %s',
-    async (invalidName) => {
-      const user = userEvent.setup();
-      const onSubmit = vi.fn<SubmitEntity>(async () => applied());
-      renderUpdateEditor(onSubmit);
+  it('saves an entity name trimmed and in canonical form', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn<SubmitEntity>(async () => applied());
+    renderUpdateEditor(onSubmit);
 
-      const name = screen.getByRole('textbox', { name: 'Node type name' });
-      await user.clear(name);
-      await user.type(name, invalidName);
-      await user.click(screen.getByRole('button', { name: 'Save entity' }));
+    const name = screen.getByRole('textbox', { name: 'Node type name' });
+    await user.clear(name);
+    await user.type(name, `  ${'Collègue'.normalize('NFD')}  `);
+    await user.click(screen.getByRole('button', { name: 'Save entity' }));
 
-      expect(onSubmit).not.toHaveBeenCalled();
-      expect(
-        screen.getByText(
-          'Not a valid node type name. Only letters, numbers and the symbols ._-: are supported',
-        ),
-      ).toBeInTheDocument();
-      expect(name).toHaveValue(invalidName);
-    },
-  );
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledOnce());
+    expect(onSubmit.mock.calls[0]?.[0]).toEqual({
+      ...NODE_DOCUMENT,
+      name: 'Collègue',
+    });
+  });
+
+  it.each([
+    ['a tab', 'Person\tType'],
+    ['a nul', `Person${String.fromCharCode(0)}Type`],
+  ])('rejects an entity name holding %s', async (_, invalidName) => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn<SubmitEntity>(async () => applied());
+    renderUpdateEditor(onSubmit);
+
+    const name = screen.getByRole('textbox', { name: 'Node type name' });
+    fireEvent.change(name, { target: { value: invalidName } });
+    await user.click(screen.getByRole('button', { name: 'Save entity' }));
+
+    expect(onSubmit).not.toHaveBeenCalled();
+    expect(
+      screen.getByText(
+        'A node type name cannot contain line breaks, tabs or other control characters.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('asks for a name where the name is only spaces', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn<SubmitEntity>(async () => applied());
+    renderUpdateEditor(onSubmit);
+
+    const name = screen.getByRole('textbox', { name: 'Node type name' });
+    await user.clear(name);
+    await user.type(name, '   ');
+    await user.click(screen.getByRole('button', { name: 'Save entity' }));
+
+    expect(onSubmit).not.toHaveBeenCalled();
+    expect(screen.getByText('Enter a type name.')).toBeInTheDocument();
+    expect(
+      screen.queryByText(/cannot contain line breaks/u),
+    ).not.toBeInTheDocument();
+  });
 
   it('rejects a canonically equivalent entity name', async () => {
     const user = userEvent.setup();
@@ -480,6 +551,7 @@ describe('CodebookEntityEditor', () => {
       },
       expected: {
         name: 'NewPerson',
+        label: { en: 'NewPerson' },
         color: 'node-color-seq-2',
         icon: 'add-a-person',
         shape: { default: 'square' },
@@ -490,7 +562,12 @@ describe('CodebookEntityEditor', () => {
       label: 'edge',
       subject: { entity: 'edge', type: 'new:relationship' },
       draft: { name: 'Knows', color: 'edge-color-seq-2' },
-      expected: { name: 'Knows', color: 'edge-color-seq-2', variables: {} },
+      expected: {
+        name: 'Knows',
+        label: { en: 'Knows' },
+        color: 'edge-color-seq-2',
+        variables: {},
+      },
     },
     {
       label: 'ego',

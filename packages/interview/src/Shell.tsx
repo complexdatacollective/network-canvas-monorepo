@@ -1,10 +1,10 @@
 'use client';
 'use no memo';
 
+import { DirectionProvider } from '@base-ui/react/direction-provider';
 import { Toast } from '@base-ui/react/toast';
 import type { Store } from '@reduxjs/toolkit';
 import { AnimatePresence, motion } from 'motion/react';
-import type { PostHog } from 'posthog-js';
 import {
   type CSSProperties,
   type ReactNode,
@@ -14,7 +14,7 @@ import {
   useRef,
   useState,
 } from 'react';
-import { Provider } from 'react-redux';
+import { Provider, useSelector } from 'react-redux';
 
 import { useAppLocale } from '@codaco/app-i18n/react';
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
@@ -23,7 +23,11 @@ import { ThemedRegion } from '@codaco/fresco-ui/ThemedRegion';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 
 import { AnalyticsProvider } from './analytics/AnalyticsProvider';
-import { NULL_TRACKER, type Tracker } from './analytics/tracker';
+import {
+  type AnalyticsClient,
+  NULL_TRACKER,
+  type Tracker,
+} from './analytics/tracker';
 import { useStageNavigationAnalytics } from './analytics/useStageNavigationAnalytics';
 import { GeospatialOfflineIndicator } from './components/GeospatialOfflineIndicator';
 import Navigation, { TEXT_SCALE_OPTIONS } from './components/Navigation';
@@ -37,15 +41,22 @@ import type {
   InterviewAnalyticsMetadata,
   InterviewerFlags,
   InterviewPayload,
+  ProtocolLocaleChangeHandler,
   StepChangeHandler,
   SyncHandler,
 } from './contract/types';
 import useInterviewNavigation from './hooks/useInterviewNavigation';
 import useMediaQuery from './hooks/useMediaQuery';
 import { InterviewI18nProvider } from './i18n/InterviewI18nProvider';
-import type { RequestedLocale } from './i18n/locales';
+import {
+  ProtocolLocalizationProvider,
+  useProtocolLocale,
+} from './localization/ProtocolLocalizationProvider';
+import { getLocalePreference, getRecordedLocale } from './selectors/session';
 import { getLastAvailableAuthoredStageIndex } from './selectors/skip-logic';
-import { store, type RootState } from './store/store';
+import { getProtocolLocalization } from './store/modules/protocol';
+import { recordLocale, setLocalePreference } from './store/modules/session';
+import { store, useAppDispatch, type RootState } from './store/store';
 import { SyncFlushProvider } from './store/SyncFlushContext';
 import {
   InterviewToastProvider,
@@ -98,7 +109,6 @@ function Interview({
   navigationClassnames,
   allowStageNavigation,
   allowUserScaling,
-  allowLanguageSelection,
   initialTextScale,
   onTextScaleChange,
   initialStageOverrideIndex,
@@ -110,13 +120,13 @@ function Interview({
   navigationClassnames?: NavigationClassnames;
   allowStageNavigation?: boolean;
   allowUserScaling?: boolean;
-  allowLanguageSelection?: boolean;
   initialTextScale?: number;
   onTextScaleChange?: (scale: number) => void;
   initialStageOverrideIndex?: number;
   reviewMode?: boolean;
 }) {
   const { locale, direction } = useAppLocale();
+  const { metadata: contentLocale } = useProtocolLocale();
   const {
     stage,
     displayedStep,
@@ -230,25 +240,34 @@ function Interview({
                     variants={variants}
                     transition={{ duration: 0.5 }}
                   >
+                    {/*
+                     * The stage lays out in the direction of the protocol
+                     * translation shown; the language stays the interface's,
+                     * because protocol text carries its own `lang` and
+                     * built-in text here is in the interface language.
+                     */}
                     <div
                       className="relative flex size-full flex-col items-center justify-center"
                       id="stage"
                       key={stage.id}
+                      dir={contentLocale.direction}
                     >
-                      {canRenderStage && (
-                        <GeospatialOfflineIndicator
-                          active={stage.type === 'Geospatial'}
-                        />
-                      )}
-                      <StageErrorBoundary>
-                        {canRenderStage && CurrentInterface && (
-                          <CurrentInterface
-                            key={stage.id}
-                            stage={stage}
-                            getNavigationHelpers={getNavigationHelpers}
+                      <DirectionProvider direction={contentLocale.direction}>
+                        {canRenderStage && (
+                          <GeospatialOfflineIndicator
+                            active={stage.type === 'Geospatial'}
                           />
                         )}
-                      </StageErrorBoundary>
+                        <StageErrorBoundary>
+                          {canRenderStage && CurrentInterface && (
+                            <CurrentInterface
+                              key={stage.id}
+                              stage={stage}
+                              getNavigationHelpers={getNavigationHelpers}
+                            />
+                          )}
+                        </StageErrorBoundary>
+                      </DirectionProvider>
                     </div>
                   </motion.div>
                 )}
@@ -272,7 +291,6 @@ function Interview({
               onExit={onExit}
               reviewMode={reviewMode}
               allowUserScaling={allowUserScaling}
-              allowLanguageSelection={allowLanguageSelection}
               textScale={textScale}
               onTextScaleChange={handleTextScaleChange}
             />
@@ -295,6 +313,54 @@ function Interview({
 }
 
 /**
+ * Connects both languages to the session: the interface language follows the
+ * participant's stated preference when it has that language, and the protocol
+ * translation is chosen, recorded, and changed through the session store.
+ */
+function InterviewLocalization({
+  requestedLocales,
+  localeOptions,
+  children,
+}: {
+  requestedLocales: readonly string[];
+  localeOptions: InterviewPayload['session']['localeOptions'];
+  children: ReactNode;
+}) {
+  const dispatch = useAppDispatch();
+  const localization = useSelector(getProtocolLocalization);
+  const localePreference = useSelector(getLocalePreference);
+  const recordedLocale = useSelector(getRecordedLocale);
+
+  const handleLocalePreferenceChange = useCallback(
+    (locale: string) => dispatch(setLocalePreference(locale)),
+    [dispatch],
+  );
+  const handleLocaleRecorded = useCallback(
+    (locale: string) => dispatch(recordLocale(locale)),
+    [dispatch],
+  );
+
+  return (
+    <InterviewI18nProvider
+      requestedLocale={requestedLocales}
+      localePreference={localePreference}
+    >
+      <ProtocolLocalizationProvider
+        localization={localization}
+        localeOptions={localeOptions}
+        requestedLocales={requestedLocales}
+        localePreference={localePreference}
+        recordedLocale={recordedLocale}
+        onLocalePreferenceChange={handleLocalePreferenceChange}
+        onLocaleRecorded={handleLocaleRecorded}
+      >
+        {children}
+      </ProtocolLocalizationProvider>
+    </InterviewI18nProvider>
+  );
+}
+
+/**
  * `currentStep` and `onStepChange` together implement the controlled-component
  * pattern for the rendered stage index. Provide both to drive the step from
  * the host (e.g. to persist it in the URL or session storage); omit both to
@@ -303,36 +369,28 @@ function Interview({
  */
 type ShellProps = {
   /**
-   * Requested language for the package's built-in controls and messages. A
-   * host may pass a device preference, its negotiated locale, or an ordered
-   * preference list. The package best-fits this against its own supported
-   * languages and falls back to English. It does not read browser/storage
-   * globals, inherit the host registry, or translate protocol-authored text.
+   * The browser's languages, most preferred first: `navigator.languages` in a
+   * browser host, the parsed `Accept-Language` header in a server-rendered one
+   * (serialised to the client so both choose alike). Until the participant
+   * states a preference, these choose both the protocol translation and the
+   * language of the interview's built-in text. The package reads no browser
+   * or storage globals itself.
    */
-  requestedLocale?: RequestedLocale;
-  /**
-   * Optional controlled menu preference. Undefined uses package-local state;
-   * null follows requestedLocale; a string is matched against package locales.
-   * Pair with onLocaleChange to mirror a host's persisted explicit/automatic choice.
-   */
-  localePreference?: string | null;
-  /**
-   * Called when the menu selects an interface language. Hosts may persist
-   * the canonical tag; null clears the menu override and follows requestedLocale.
-   * Choosing a language never changes the payload or collected answers.
-   */
-  onLocaleChange?: (locale: string | null) => void;
-  /** Show the interface-language chooser in the settings menu. Default true. */
-  allowLanguageSelection?: boolean;
+  requestedLocales: readonly string[];
   payload: InterviewPayload;
   onSync: SyncHandler;
+  /**
+   * Persists the session's `locale` and `localePreference`, which the general
+   * `onSync` route never writes.
+   */
+  onProtocolLocaleChange: ProtocolLocaleChangeHandler;
   onFinish: FinishHandler;
   onRequestAsset: AssetRequestHandler;
   currentStep?: number;
   onStepChange?: StepChangeHandler;
   flags?: InterviewerFlags;
   analytics: InterviewAnalyticsMetadata;
-  posthogClient?: PostHog;
+  posthogClient?: AnalyticsClient;
   disableAnalytics?: boolean;
   /**
    * Host-specific explanation shown in the finish confirmation dialog.
@@ -366,8 +424,7 @@ type ShellProps = {
    * Let the participant adjust the interview's text size from a settings menu
    * in the Navigation. The chosen size multiplies the whole interview scale
    * (type, spacing, and touch targets together) and lasts for the current
-   * session. A settings menu is shown when language selection, scaling, or
-   * exiting is available.
+   * session. A settings menu is shown when scaling or exiting is available.
    */
   allowUserScaling?: boolean;
   /**
@@ -391,12 +448,10 @@ type ShellProps = {
 };
 
 const Shell = ({
-  requestedLocale,
-  localePreference,
-  onLocaleChange,
-  allowLanguageSelection = true,
+  requestedLocales,
   payload,
   onSync,
+  onProtocolLocaleChange,
   onFinish,
   onRequestAsset,
   currentStep,
@@ -427,6 +482,12 @@ const Shell = ({
     (...args) => onSyncRef.current(...args),
     [],
   );
+  const onProtocolLocaleChangeRef = useRef(onProtocolLocaleChange);
+  onProtocolLocaleChangeRef.current = onProtocolLocaleChange;
+  const stableOnProtocolLocaleChange = useCallback<ProtocolLocaleChangeHandler>(
+    (...args) => onProtocolLocaleChangeRef.current(...args),
+    [],
+  );
 
   // Tracker holder. The AnalyticsProvider mounts asynchronously (dynamic
   // import of posthog-js) so we cannot pass the tracker directly into the
@@ -447,10 +508,17 @@ const Shell = ({
     () =>
       store(payload, {
         onSync: stableOnSync,
+        onProtocolLocaleChange: stableOnProtocolLocaleChange,
         isDevelopment: flags?.isDevelopment,
         tracker: trackerHolder,
       }),
-    [payload, stableOnSync, flags?.isDevelopment, trackerHolder],
+    [
+      payload,
+      stableOnSync,
+      stableOnProtocolLocaleChange,
+      flags?.isDevelopment,
+      trackerHolder,
+    ],
   );
 
   // A host that batches writes (see createDebouncedSyncHandler) may be holding
@@ -546,19 +614,18 @@ const Shell = ({
   ]);
 
   return (
-    <InterviewI18nProvider
-      requestedLocale={requestedLocale}
-      localePreference={localePreference}
-      onLocaleChange={onLocaleChange}
+    <AnalyticsProvider
+      analytics={analytics}
+      posthogClient={posthogClient}
+      disableAnalytics={disableAnalytics || reviewMode === true}
+      payload={payload}
+      onTrackerChange={onTrackerChange}
     >
-      <AnalyticsProvider
-        analytics={analytics}
-        posthogClient={posthogClient}
-        disableAnalytics={disableAnalytics || reviewMode === true}
-        payload={payload}
-        onTrackerChange={onTrackerChange}
-      >
-        <Provider store={reduxStore}>
+      <Provider store={reduxStore}>
+        <InterviewLocalization
+          requestedLocales={requestedLocales}
+          localeOptions={payload.session.localeOptions}
+        >
           <SyncFlushProvider flush={reduxStore.flushSync}>
             <ContractProvider
               onFinish={onFinish}
@@ -580,7 +647,6 @@ const Shell = ({
                     (currentStep === undefined || onStepChange !== undefined)
                   }
                   allowUserScaling={allowUserScaling}
-                  allowLanguageSelection={allowLanguageSelection}
                   initialTextScale={initialTextScale}
                   onTextScaleChange={onTextScaleChange}
                   initialStageOverrideIndex={
@@ -591,9 +657,9 @@ const Shell = ({
               </CurrentStepProvider>
             </ContractProvider>
           </SyncFlushProvider>
-        </Provider>
-      </AnalyticsProvider>
-    </InterviewI18nProvider>
+        </InterviewLocalization>
+      </Provider>
+    </AnalyticsProvider>
   );
 };
 

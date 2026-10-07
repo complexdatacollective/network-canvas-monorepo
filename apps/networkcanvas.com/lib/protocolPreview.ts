@@ -10,12 +10,13 @@ import {
   type CurrentProtocol,
   detectSchemaVersion,
   extractProtocolFromZip,
+  getLocaleMetadata,
   getMigrationInfo,
+  getProtocolFileErrorKind,
   hashProtocol,
   loadNetcanvasArchive,
   migrateProtocol,
   validateProtocol,
-  VersionedProtocolSchema,
 } from '@codaco/protocol-validation';
 
 /**
@@ -90,13 +91,17 @@ export async function installPreviewProtocol(
       });
       migrated = true;
     }
-  } catch {
-    return { ok: false, reason: 'invalid' };
+  } catch (cause) {
+    return {
+      ok: false,
+      reason:
+        getProtocolFileErrorKind(cause) === 'newerVersion'
+          ? 'unsupported-version'
+          : 'invalid',
+    };
   }
 
-  const versioned = VersionedProtocolSchema.safeParse(document);
-  if (!versioned.success) return { ok: false, reason: 'invalid' };
-  const validation = await validateProtocol(versioned.data);
+  const validation = await validateProtocol(document);
   if (
     !validation.success ||
     validation.data.schemaVersion !== COMPATIBLE_PROTOCOL_SCHEMA_VERSION
@@ -129,6 +134,11 @@ export function createPreviewPayload(
     exportTime: null,
     lastUpdated: now,
     network: createInitialNetwork(),
+    localePreference: null,
+    locale: null,
+    localeOptions: install.protocol.localization.locales.map((locale) =>
+      getLocaleMetadata(locale),
+    ),
   };
   return { session, protocol: install.protocol };
 }

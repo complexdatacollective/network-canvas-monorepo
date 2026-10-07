@@ -4,6 +4,7 @@ import { expect, screen, userEvent, waitFor } from 'storybook/test';
 
 import Button from '../../../Button';
 import { Popover, PopoverContent, PopoverTrigger } from '../../../Popover';
+import { presentationalTextValue } from '../../../PresentationalText';
 import Heading from '../../../typography/Heading';
 import Paragraph from '../../../typography/Paragraph';
 import { UnorderedList } from '../../../typography/UnorderedList';
@@ -737,5 +738,125 @@ export const InsidePopover: Story = {
 
     await userEvent.click(option);
     await waitFor(() => expect(trigger).toHaveTextContent('1 item selected'));
+  },
+};
+
+const localizedOptions: ComboboxOption[] = [
+  { value: 'ar', label: { text: 'العربية', lang: 'ar', dir: 'rtl' } },
+  { value: 'fa', label: { text: 'فارسی', lang: 'fa', dir: 'rtl' } },
+  { value: 'es', label: { text: 'Español', lang: 'es', dir: 'ltr' } },
+  { value: 'en', label: 'English' },
+];
+
+/**
+ * Protocol copy arrives as `PresentationalText`: each listed option carries
+ * the text's own `lang` and `dir`, so Arabic and Persian options lay out
+ * right-to-left inside a left-to-right page. Search filters on the bare text.
+ */
+export const LocalizedOptions: Story = {
+  render: () => {
+    const [value, setValue] = useState<(string | number)[]>([]);
+
+    return (
+      <div className="w-80">
+        <ComboboxField
+          name="localized"
+          aria-label="Languages spoken"
+          options={localizedOptions}
+          searchPlaceholder="Type to filter..."
+          value={value}
+          onChange={(v) => setValue(v ?? [])}
+        />
+      </div>
+    );
+  },
+  play: async () => {
+    await userEvent.click(
+      await screen.findByRole('combobox', { name: 'Languages spoken' }),
+    );
+
+    const arabic = await screen.findByRole('option', { name: 'العربية' });
+    await expect(arabic).toHaveAttribute('lang', 'ar');
+    await expect(getComputedStyle(arabic).direction).toBe('rtl');
+    await expect(
+      screen.getByRole('option', { name: 'English' }),
+    ).not.toHaveAttribute('lang');
+
+    await userEvent.type(
+      screen.getByPlaceholderText('Type to filter...'),
+      'فار',
+    );
+    await waitFor(() =>
+      expect(screen.queryByRole('option', { name: 'العربية' })).toBeNull(),
+    );
+    await expect(screen.getByRole('option', { name: 'فارسی' })).toHaveAttribute(
+      'dir',
+      'rtl',
+    );
+  },
+};
+
+const languageOptions: ComboboxOption[] = [
+  { value: 'bs', label: 'Bosnian' },
+  { value: 'pt-BR', label: 'Brazilian Portuguese' },
+  { value: 'br', label: 'Breton' },
+  { value: 'en-GB', label: 'British English' },
+  { value: 'bg', label: 'Bulgarian' },
+  { value: 'my', label: 'Burmese' },
+  { value: 'ca', label: 'Catalan' },
+  { value: 'zh-Hans', label: 'Chinese (Simplified)' },
+  { value: 'zh-Hant', label: 'Chinese (Traditional)' },
+  { value: 'hr', label: 'Croatian' },
+  { value: 'cs', label: 'Czech' },
+  { value: 'da', label: 'Danish' },
+];
+
+/**
+ * `renderValue` can list the whole selection, which is far longer than the
+ * field. The trigger stays inside its container and truncates the text instead
+ * of widening to fit it, and the chevron stays visible at the end.
+ */
+export const LongSelection: Story = {
+  render: function LongSelectionStory() {
+    const [value, setValue] = useState<(string | number)[]>(
+      languageOptions.map((option) => option.value),
+    );
+
+    return (
+      <div className="w-80" data-testid="long-selection-container">
+        <ComboboxField
+          name="long-selection"
+          aria-label="Protocol languages"
+          options={languageOptions}
+          renderValue={(selectedOptions) =>
+            selectedOptions
+              .map((option) => presentationalTextValue(option.label))
+              .join(', ')
+          }
+          value={value}
+          onChange={(v) => setValue(v ?? [])}
+        />
+      </div>
+    );
+  },
+  play: async () => {
+    const trigger = await screen.findByRole('combobox', {
+      name: 'Protocol languages',
+    });
+    const container = screen.getByTestId('long-selection-container');
+    await expect(trigger).toHaveTextContent('Bosnian, Brazilian Portuguese');
+
+    const chevron = trigger.querySelector('svg');
+    await expect(chevron).toBeInTheDocument();
+
+    await waitFor(() => {
+      const triggerBox = trigger.getBoundingClientRect();
+      expect(triggerBox.width).toBeLessThanOrEqual(
+        container.getBoundingClientRect().width,
+      );
+      expect(chevron?.getBoundingClientRect().right).toBeLessThanOrEqual(
+        triggerBox.right,
+      );
+    });
   },
 };

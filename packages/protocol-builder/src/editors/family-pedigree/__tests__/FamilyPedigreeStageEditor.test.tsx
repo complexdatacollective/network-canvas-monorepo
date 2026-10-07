@@ -33,6 +33,7 @@ import {
   FAMILY_MEMBER_SECTION,
   RELATIVES_NOT_RECORDED_VARIABLE,
   familyPedigreeStageWith,
+  familyPedigreeStageWithout,
 } from './pedigreeFixtures.ts';
 
 shimMarkdownEditorMeasurement();
@@ -167,7 +168,12 @@ describe('the family pedigree stage editor', () => {
     const harness = renderStageEditor({
       stage: familyPedigreeStageWith({
         form: {
-          fields: [{ variable: 'fm_occupation', prompt: 'What do they do?' }],
+          fields: [
+            {
+              variable: 'fm_occupation',
+              prompt: { 'en-US': 'What do they do?' },
+            },
+          ],
         },
       }),
       editor: familyPedigreeEditor,
@@ -220,9 +226,9 @@ describe('the family pedigree stage editor', () => {
       id: expect.any(String),
       type: 'FamilyPedigree',
       // Named for the person type and the interface until the researcher says otherwise.
-      label: expect.any(String),
+      label: { 'en-US': expect.any(String) },
       subject: { entity: 'node', type: 'family_member' },
-      prompt: PROMPT_TEXT,
+      prompt: { 'en-US': PROMPT_TEXT },
       nodeConfiguration: {
         nameAttribute: 'fm_name',
         genderIdentity: {
@@ -371,12 +377,15 @@ describe('the attribute slots', () => {
     ).toMatchObject({
       type: 'categorical',
       options: [
-        { value: 'woman', label: 'Woman' },
-        { value: 'man', label: 'Man' },
-        { value: 'nonBinary', label: 'Non-binary' },
-        { value: 'differentIdentity', label: 'A different identity' },
-        { value: 'unknown', label: 'Don’t know' },
-        { value: 'preferNotToSay', label: 'Prefer not to say' },
+        { value: 'woman', label: { 'en-US': 'Woman' } },
+        { value: 'man', label: { 'en-US': 'Man' } },
+        { value: 'nonBinary', label: { 'en-US': 'Non-binary' } },
+        {
+          value: 'differentIdentity',
+          label: { 'en-US': 'A different identity' },
+        },
+        { value: 'unknown', label: { 'en-US': 'Don’t know' } },
+        { value: 'preferNotToSay', label: { 'en-US': 'Prefer not to say' } },
       ],
     });
     expect(
@@ -1131,19 +1140,19 @@ describe('the gender identity words', () => {
       name: 'customGender',
       type: 'categorical',
       options: [
-        { value: 'woman', label: 'Female' },
-        { value: 'agender', label: 'Agender' },
-        { value: 'man', label: 'Male' },
-        { value: 'unknown', label: 'Unsure' },
+        { value: 'woman', label: { 'en-US': 'Female' } },
+        { value: 'agender', label: { 'en-US': 'Agender' } },
+        { value: 'man', label: { 'en-US': 'Male' } },
+        { value: 'unknown', label: { 'en-US': 'Unsure' } },
       ],
     };
     const OTHER_GENDER = {
       name: 'otherGender',
       type: 'categorical',
       options: [
-        { value: 'preferNotToSay', label: 'No answer' },
-        { value: 'woman', label: 'W' },
-        { value: 'nonbinary', label: 'NB' },
+        { value: 'preferNotToSay', label: { 'en-US': 'No answer' } },
+        { value: 'woman', label: { 'en-US': 'W' } },
+        { value: 'nonbinary', label: { 'en-US': 'NB' } },
       ],
     };
 
@@ -1327,6 +1336,8 @@ describe('the wording', () => {
 
 describe('the nomination prompts', () => {
   const HEART_DISEASE = 'has_heart_disease';
+  /** The boolean the fixture pedigree's own nomination prompt sets. */
+  const FIXTURE_PROMPT_FLAG = 'hasConditionX';
 
   const nominationPromptsOf = (
     document: SectionDoc | undefined,
@@ -1335,9 +1346,19 @@ describe('the nomination prompts', () => {
       ? document.nominationPrompts.filter(isRecord)
       : [];
 
+  /**
+   * The fixture pedigree asks one nomination prompt (the narrative pedigree's
+   * disease reads it), so these start from the stage without it.
+   */
+  const openWithoutPrompts = () =>
+    renderStageEditor({
+      stage: familyPedigreeStageWithout(['nominationPrompts']),
+      editor: familyPedigreeEditor,
+    });
+
   const savedPrompt = {
     id: 'nomination-1',
-    text: 'Who in your family has had heart disease?',
+    text: { 'en-US': 'Who in your family has had heart disease?' },
     attribute: HEART_DISEASE,
     onlyForSexAssignedAtBirth: 'female',
   };
@@ -1375,7 +1396,7 @@ describe('the nomination prompts', () => {
   };
 
   it('asks nothing of the whole family until a prompt is created, and saves no key', async () => {
-    const harness = openFixture();
+    const harness = openWithoutPrompts();
     await harness.opened();
 
     expect(
@@ -1388,7 +1409,7 @@ describe('the nomination prompts', () => {
   });
 
   it('saves a schema-valid stage for a prompt with a created attribute and a sex limit', async () => {
-    const harness = openFixture();
+    const harness = openWithoutPrompts();
     await harness.opened();
     const dialog = await startAPrompt(harness);
 
@@ -1418,7 +1439,7 @@ describe('the nomination prompts', () => {
     expect(nominationPromptsOf(request?.stageDocument)).toEqual([
       {
         id: expect.any(String),
-        text: 'Who has had diabetes?',
+        text: { 'en-US': 'Who has had diabetes?' },
         attribute: created,
         onlyForSexAssignedAtBirth: 'female',
       },
@@ -1429,10 +1450,7 @@ describe('the nomination prompts', () => {
   });
 
   it('writes no limit for a prompt open to anyone', async () => {
-    const harness = renderStageEditor({
-      stage: familyPedigreeStageWith({}),
-      editor: familyPedigreeEditor,
-    });
+    const harness = openWithoutPrompts();
     addFamilyMemberVariable(harness, HEART_DISEASE, {
       name: HEART_DISEASE,
       type: 'boolean',
@@ -1453,7 +1471,7 @@ describe('the nomination prompts', () => {
     const [prompt] = nominationPromptsOf(request?.stageDocument);
     expect(prompt).toEqual({
       id: expect.any(String),
-      text: 'Who has had diabetes?',
+      text: { 'en-US': 'Who has had diabetes?' },
       attribute: HEART_DISEASE,
     });
     expect(prompt).not.toHaveProperty('onlyForSexAssignedAtBirth');
@@ -1517,7 +1535,7 @@ describe('the nomination prompts', () => {
       randomUUID.mockRestore();
     }
 
-    const harness = openFixture();
+    const harness = openWithoutPrompts();
     await harness.opened();
     const dialog = await startAPrompt(harness);
     await inventAttribute(
@@ -1540,7 +1558,9 @@ describe('the nomination prompts', () => {
   it('offers only boolean attributes nothing else has claimed', async () => {
     const harness = renderStageEditor({
       stage: familyPedigreeStageWith({
-        form: { fields: [{ variable: 'has_pets', prompt: 'Any pets?' }] },
+        form: {
+          fields: [{ variable: 'has_pets', prompt: { 'en-US': 'Any pets?' } }],
+        },
       }),
       editor: familyPedigreeEditor,
     });
@@ -1554,13 +1574,14 @@ describe('the nomination prompts', () => {
 
     // Not the participant marker, which the interface owns; not the attribute
     // an additional field of this very stage collects, which is validated;
-    // and not the text one.
+    // and not the text one. The fixture's own prompt flag is offered: two
+    // prompts may set the same attribute.
     expect(
       await offeredAttributes(
         harness.user,
         attributeField('Attribute', dialog),
       ),
-    ).toEqual([HEART_DISEASE]);
+    ).toEqual([HEART_DISEASE, FIXTURE_PROMPT_FLAG]);
   });
 
   /**
@@ -1589,7 +1610,7 @@ describe('the nomination prompts', () => {
     });
 
     it('counts a prompt added in this edit, before anything is saved', async () => {
-      const harness = openFixture();
+      const harness = openWithoutPrompts();
       addFamilyMemberVariables(harness, {
         [HEART_DISEASE]: { name: HEART_DISEASE, type: 'boolean' },
         [OTHER_FLAG]: { name: OTHER_FLAG, type: 'boolean' },
@@ -1613,7 +1634,7 @@ describe('the nomination prompts', () => {
     });
 
     it('does not offer a prompt the attribute the participant marker has just taken', async () => {
-      const harness = openFixture();
+      const harness = openWithoutPrompts();
       addFamilyMemberVariables(harness, {
         [HEART_DISEASE]: { name: HEART_DISEASE, type: 'boolean' },
         [OTHER_FLAG]: { name: OTHER_FLAG, type: 'boolean' },
@@ -1627,7 +1648,7 @@ describe('the nomination prompts', () => {
           harness.user,
           attributeField('Attribute', dialog),
         ),
-      ).toEqual([HEART_DISEASE]);
+      ).toEqual([HEART_DISEASE, FIXTURE_PROMPT_FLAG]);
     });
   });
 

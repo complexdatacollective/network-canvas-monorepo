@@ -18,6 +18,7 @@ export type InterfaceMotif =
   | 'anonymisation'
   | 'one-to-many'
   | 'family-pedigree'
+  | 'narrative-pedigree'
   | 'network-composer'
   | 'validation'
   | 'enhanced-skip-logic'
@@ -37,6 +38,7 @@ type ScreenshotType =
   | 'Anonymisation'
   | 'OneToManyDyadCensus'
   | 'FamilyPedigree'
+  | 'NarrativePedigree'
   | 'NetworkComposer';
 
 type FeatureDefinition = {
@@ -75,6 +77,13 @@ const featureDefinitions = [
     href: `${documentationRoot}/design-protocols/interface-documentation/family-pedigree`,
     motif: 'family-pedigree',
     screenshotType: 'FamilyPedigree',
+  },
+  {
+    id: 'narrativePedigree',
+    group: 'interfaces',
+    href: `${documentationRoot}/design-protocols/interface-documentation/narrative-pedigree`,
+    motif: 'narrative-pedigree',
+    screenshotType: 'NarrativePedigree',
   },
   {
     id: 'networkComposer',

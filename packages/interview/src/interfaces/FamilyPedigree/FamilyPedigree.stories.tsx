@@ -17,7 +17,7 @@ import {
   entitySecureAttributesMeta,
 } from '@codaco/shared-consts';
 
-import type { SessionPayload, SyncHandler } from '../..';
+import type { SessionSnapshot, SyncHandler } from '../..';
 import StoryInterviewShell from '../../storybook-support/StoryInterviewShell';
 import { generateSecureAttributes } from '../Anonymisation/utils';
 
@@ -2065,7 +2065,7 @@ export const NameIsOptionalByDefault: Story = {
 };
 
 /** The session as the interview last wrote it, for the story recording it. */
-let lastSynced: SessionPayload | undefined;
+let lastSynced: SessionSnapshot | undefined;
 const recordSession: SyncHandler = (_interviewId, session) => {
   lastSynced = session;
   return Promise.resolve();
@@ -2214,6 +2214,7 @@ async function encryptJulie(): Promise<EncryptedSeedName> {
           type: 'text',
           component: 'Text',
           name: 'name',
+          label: 'name',
           encrypted: true,
         },
       },

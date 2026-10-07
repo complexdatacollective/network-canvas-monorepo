@@ -259,7 +259,8 @@ export function generateNetwork(
     }
 
     // Content stages run no handler at all: they add no node or edge and write
-    // onto none.
+    // onto none. NarrativePedigree is one of them because it reads the shared
+    // network its source FamilyPedigree stage already wrote.
     //
     // Narrowed away here rather than cased below, so that `CONTENT_STAGE_TYPES`
     // and this dispatch cannot come to disagree about what a stage does — which

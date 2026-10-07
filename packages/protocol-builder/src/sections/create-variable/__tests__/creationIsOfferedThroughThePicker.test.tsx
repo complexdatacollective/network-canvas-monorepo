@@ -215,7 +215,7 @@ const expectNoInventControl = (where: string): void => {
  * sweep from passing by seeing nothing. A row dialog that stopped opening, or
  * a section that stopped mounting its picker, would otherwise leave the
  * criterion checked against an empty page — which is how a guard over
- * eighteen editors comes to guard nothing.
+ * twenty editors comes to guard nothing.
  *
  * These are the pickers a researcher reaches without turning anything on. The
  * optional sections the fixture leaves switched off hold four more — the two
@@ -231,13 +231,15 @@ const PICKERS_REACHED: Readonly<Record<string, number>> = {
   'categorical-bin-1': 1,
   'dyad-census-1': 0,
   'ego-form-1': 1,
-  'family-pedigree-1': 7,
+  'family-pedigree-1': 8,
   'geospatial-1': 1,
   'information-1': 0,
+  'language-chooser-1': 0,
   'name-generator-1': 1,
   'name-generator-quick-add-1': 1,
   'name-generator-roster-1': 0,
   'narrative-1': 2,
+  'narrative-pedigree-1': 1,
   'network-composer-1': 3,
   'one-to-many-dyad-census-1': 0,
   'ordinal-bin-1': 1,
@@ -572,6 +574,30 @@ describe('the sites Architect refused creation at stay creation-free', () => {
       harness.user,
       attributeField('Grouping attribute', dialog),
       'The narrative preset’s grouping attribute',
+    );
+  });
+
+  /**
+   * A disease only READS its attribute — which family members are marked as
+   * affected — so a bare new one would mark nobody, and the condition a study
+   * does not record yet is added where it IS recorded, as a nomination prompt
+   * of the source pedigree. Architect's `NarrativePedigree/DiseaseFields.tsx:198`
+   * passes neither `onCreateOption` nor `disallowCreation`, so it draws a
+   * create row that clears the field and writes nothing; the package does not
+   * port a dead affordance.
+   */
+  it('refuses creation on a narrative pedigree’s affected-status attribute', async () => {
+    const harness = renderStageEditor({ stageId: 'narrative-pedigree-1' });
+    await harness.opened();
+    const dialog = await openRowDialog(
+      harness,
+      screen.getByRole('button', { name: 'Edit disease' }),
+    );
+
+    await expectCreationFree(
+      harness.user,
+      attributeField('Node attribute', dialog),
+      'The narrative pedigree’s affected-status attribute',
     );
   });
 });

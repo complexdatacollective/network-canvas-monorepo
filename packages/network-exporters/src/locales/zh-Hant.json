@@ -2,5 +2,16 @@
   "networkExporters.stage.fetching": "正在擷取訪談資料…",
   "networkExporters.stage.formatting": "正在整理訪談資料格式…",
   "networkExporters.stage.generating": "正在產生檔案…",
-  "networkExporters.stage.outputting": "正在寫入輸出檔案…"
+  "networkExporters.stage.outputting": "正在寫入輸出檔案…",
+  "networkExporters.warning.columnRenamed.description": "部分欄的名稱會與同一檔案中的另一欄相同。為避免遺失任何答案，這些欄已改用加上編號的名稱寫入。已重新命名的欄如下：",
+  "networkExporters.warning.columnRenamed.fromVariableItem": "在「{protocolName}」的 {format, select, csv {CSV} other {GraphML}} 檔案中，{entity, select, ego {自我的} other {「{entityTypeName}」的}}「{column}」欄（來自變項「{variable}」）已寫成「{renamedTo}」。",
+  "networkExporters.warning.columnRenamed.item": "在「{protocolName}」的 {format, select, csv {CSV} other {GraphML}} 檔案中，{entity, select, ego {自我的} other {「{entityTypeName}」的}}「{column}」欄已寫成「{renamedTo}」。",
+  "networkExporters.warning.columnRenamed.title": "部分欄已重新命名",
+  "networkExporters.warning.protocolText.description": "協定本身的部分文字含有 GraphML 無法儲存的字元，因此已在 GraphML 檔案中移除這些字元。這些字元通常看不見，所以每個字元都以其 Unicode 碼位標示，例如 U+0007。受影響的文字如下：",
+  "networkExporters.warning.protocolText.item": "{text, select, protocolName {協定名稱「{name}」，已移除 {characters}} nodeTypeName {「{protocolName}」中的節點類型名稱「{name}」，已移除 {characters}} edgeTypeName {「{protocolName}」中的關係類型名稱「{name}」，已移除 {characters}} other {「{protocolName}」中的欄名稱「{name}」，已移除 {characters}}}",
+  "networkExporters.warning.protocolText.title": "GraphML 檔案中的協定文字已移除部分字元",
+  "networkExporters.warning.xmlCharacters.caseId": "個案 ID",
+  "networkExporters.warning.xmlCharacters.description": "部分答案含有 GraphML 無法儲存的字元，因此只在 GraphML 檔案中移除了這些字元。CSV 檔案中的每個答案都維持原樣。受影響的訪談與變項如下：",
+  "networkExporters.warning.xmlCharacters.interview": "訪談 {caseId}：{variables}",
+  "networkExporters.warning.xmlCharacters.title": "GraphML 檔案中已移除部分字元"
 }

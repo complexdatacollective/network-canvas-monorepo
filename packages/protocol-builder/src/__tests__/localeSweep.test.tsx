@@ -53,9 +53,9 @@ const FIXTURE_ROW_EDITOR_WORDS = [
  * out of.
  *
  * The whole protocol, not this stage and the codebook: a section can show a
- * researcher's words from anywhere in it. A section that lists other stages
- * shows them BY THEIR OWN LABELS, and the fixture protocol names one of them
- * "Family Pedigree" — which is also what
+ * researcher's words from anywhere in it. A narrative pedigree lists the
+ * pedigree stages it may read BY THEIR OWN LABELS, and the fixture protocol
+ * names one of them "Family Pedigree" — which is also what
  * `protocolBuilder.interface.familyPedigree` says in English, so a sweep
  * reading only this stage reports a researcher's own stage name as a
  * translation defect.

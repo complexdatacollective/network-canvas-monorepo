@@ -213,10 +213,12 @@
       "FamilyPedigree": "Familiestamboom",
       "Geospatial": "Interface voor geografische gegevens",
       "Information": "Informatie",
+      "LanguageChooser": "Taalkeuze",
       "NameGenerator": "Naamgenerator (met formulieren)",
       "NameGeneratorQuickAdd": "Naamgenerator (snel toevoegen)",
       "NameGeneratorRoster": "Naamgenerator voor gegevens uit een namenlijst",
       "Narrative": "Narratief",
+      "NarrativePedigree": "Narratieve stamboom",
       "NetworkComposer": "Netwerkbouwer",
       "OneToManyDyadCensus": "Een-op-veel-dyadencensus",
       "OrdinalBin": "Ordinale indeling",
@@ -313,7 +315,7 @@
       "bestFor": "Ideaal voor",
       "downloadVersion": "Versie {version} downloaden",
       "platformAccessibleName": "{platform} voor {app}",
-      "schemaVersionInfo": "Architect Classic en Interviewer Classic ondersteunen protocollen in schema 7. Architect, Interviewer en Fresco in de browser gebruiken schema 8, met alle nieuwste functies. Het omzetten van een protocol is onomkeerbaar. Bewaar daarom het originele bestand in schema 7 als je de Classic-apps nog nodig hebt.",
+      "schemaVersionInfo": "Architect Classic en Interviewer Classic ondersteunen protocollen in schema 7. Architect, Interviewer en Fresco in de browser gebruiken schema 9, met alle nieuwste functies. Het omzetten van een protocol is onomkeerbaar. Bewaar daarom het originele bestand in schema 7 als je de Classic-apps nog nodig hebt.",
       "schemaVersionLink": "Meer over schemaversies"
     },
     "platforms": {
@@ -532,6 +534,16 @@
           "0": "Maak familieleden en relaties in één keer aan, terwijl een automatische lay-out de stamboom leesbaar houdt naarmate die groeit.",
           "1": "Breng biologische, sociale, adoptie-, donor-, draagouder- en partnerrelaties in beeld en verzamel attributen voor elk familielid.",
           "2": "Voeg een optionele stap toe waarin deelnemers aangeven welke familieleden door specifieke aandoeningen zijn aangedaan, zodat je dit later kunt visualiseren."
+        }
+      },
+      "narrativePedigree": {
+        "shortName": "Narratieve stamboom",
+        "name": "Interface voor de narratieve stamboom",
+        "summary": "Zet een familiestamboom uit een eerdere fase om in een alleen-lezenvisualisatie met de standaard klinische stamboomnotatie.",
+        "details": {
+          "0": "Toon aangedane familieleden en zekere dragers van een of meer aandoeningen, voor de ondersteunde overervingspatronen.",
+          "1": "Toon eventueel mogelijke statussen met verhoogd risico, als het onderzoek is opgezet voor een interpretatie met passende begeleiding.",
+          "2": "Focus op de afstammingslijn die bijdraagt aan de overerving bij één persoon en exporteer een afdrukbare momentopname. De visualisatie is een hulpmiddel, geen diagnose."
         }
       },
       "networkComposer": {

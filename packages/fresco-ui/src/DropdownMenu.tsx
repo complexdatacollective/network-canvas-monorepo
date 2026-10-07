@@ -247,7 +247,9 @@ const DropdownMenuRadioItem = React.forwardRef<
       keepMounted
       className={cx(
         proportionalLucideIconVariants(),
-        'flex items-center justify-center',
+        // Kept mounted so every item reserves the tick's space; only the
+        // checked item shows it.
+        'flex items-center justify-center data-unchecked:invisible',
       )}
     >
       {icon}

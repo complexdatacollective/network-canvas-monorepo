@@ -1,6 +1,6 @@
 ---
 title: Upgrading Fresco
-date: 22nd July 2026
+date: 5th October 2026
 navOrder: 10
 wip: false
 ---
@@ -44,6 +44,17 @@ This version information is accessible from several places:
 - **Exported Data**: The version number of your Fresco instance is included in the exported data within the ego file. This information is useful for tracking the version of Fresco used to collect data.
 
 The health check endpoint, `/api/health`, does not report the version. If you monitored your instance's version through it, use the **Settings** page instead.
+
+## Upgrading to 5.0.0
+
+Fresco 5.0.0 runs protocol schema 9, which lets protocols be written in more than one language, and lets variables, node and edge types, and options be named in any language. Check the following before you upgrade.
+
+- **Update Fresco before you upload a schema 9 protocol.** Architect 9.0 and later saves every protocol as schema 9, and Fresco 4.x can't open one. See [Schema version 9](/en/get-started/protocol-schema-information#schema-version-9).
+- **Your protocols are upgraded when Fresco starts.** The first time the new version starts, it upgrades the protocols you have already uploaded to schema 9. Their text is kept as it is, and is marked as an unspecified language, with the code `und`. Node types, edge types and attributes get a label that is the same as their name. See [Schema version 9](/en/get-started/protocol-schema-information#schema-version-9).
+- **Interviews follow the participant's browser.** An interview no longer uses the dashboard's language, and its settings menu no longer has a language option. It uses the first of the browser's languages that the protocol is written in, and participants can change language only on a [Language Chooser](/en/design-protocols/interface-documentation/language-chooser) stage. See [Language in interviews](/en/collect-data/fresco/using-fresco#language-in-interviews).
+- **Export file names can change.** File names now keep a node or edge type's name as you wrote it, including hyphens, dots, spaces and letters from any language. A type called "Close-Friend" now exports to a file ending `_Close-Friend.csv` rather than `_CloseFriend.csv`. If your analysis scripts find export files by name, check them. See [Data Export](/en/analyze-data/data-export).
+- **Exports have a new column.** The ego file has a `networkCanvasInterviewLocale` column, and GraphML files have an `nc:interviewLocale` attribute, recording the language each interview was shown in. It is empty for interviews from before the upgrade that aren't opened again. See [Interview language](/en/analyze-data/data-export#interview-language).
+- **Exports can show warnings.** If an export has to rename a column or remove characters that GraphML can't store, Fresco tells you in a notification that stays until you close it. See [Export warnings](/en/analyze-data/data-export#export-warnings).
 
 ## Upgrading to 4.2.0
 

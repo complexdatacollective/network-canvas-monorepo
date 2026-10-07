@@ -145,6 +145,9 @@ export default defineConfig({
             '@codaco/fresco-ui > zustand/react/shallow',
             '@codaco/fresco-ui > zustand/shallow',
             '@codaco/fresco-ui > zustand/vanilla',
+            // `readRosterCsv` loads it with a dynamic import, which the
+            // scanner never follows.
+            '@codaco/protocol-validation > csvtojson',
             '@codaco/interview > concaveman',
             '@codaco/interview > ohash',
             '@reduxjs/toolkit > immer',
@@ -153,7 +156,10 @@ export default defineConfig({
             'cva',
             'cva/config',
             'jszip',
-            'posthog-js',
+            // The app's own analytics entrypoints; @codaco/interview's
+            // resolveClient lazily imports the no-external build too.
+            'posthog-js/dist/exception-autocapture',
+            'posthog-js/dist/module.no-external',
             'redux-logger',
             'tailwind-merge',
             'wouter',

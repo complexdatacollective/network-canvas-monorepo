@@ -686,9 +686,9 @@ function EntityTypeCodebookControls({
    * hold different definition types, and one indexed by a union is a union of
    * maps nothing can be read out of without narrowing it again. Each map is
    * carried with its kind for the same reason the name is judged across both:
-   * a record key belongs to ONE map, and `VariableNameSchema`'s alphabet is
-   * the protocol author's, so a codebook may legally key a node and an edge
-   * the same. Excluded by id alone, editing that node would take the edge's
+   * a record key is an id that belongs to ONE map, and nothing keeps the two
+   * maps' ids apart, so a codebook may legally key a node and an edge the
+   * same. Excluded by id alone, editing that node would take the edge's
    * name out of the collision list too, and the rename would be refused by
    * the schema instead of by the field.
    */
@@ -930,8 +930,8 @@ export default function EntityTypePickerField({
    * the second reading has to be the CURRENT one: a confirmation is awaited,
    * so the handler that resumes is a closure from the render that put the
    * question. Read from that closure, a dependency a collaborator created
-   * while the researcher was reading the question — a stage
-   * pointed at this type, say — would be invisible, and the confirmed change
+   * while the researcher was reading the question — a narrative pedigree
+   * pointed at this stage, say — would be invisible, and the confirmed change
    * would go through against a refusal the latest render is already showing.
    * The same seam the pedigree's own slot gate reads its live inputs through.
    *

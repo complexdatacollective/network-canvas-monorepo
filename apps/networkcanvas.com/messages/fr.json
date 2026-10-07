@@ -213,10 +213,12 @@
       "FamilyPedigree": "Arbre généalogique",
       "Geospatial": "Interface géospatiale",
       "Information": "Information",
+      "LanguageChooser": "Choix de la langue",
       "NameGenerator": "Générateur de noms (avec formulaires)",
       "NameGeneratorQuickAdd": "Générateur de noms (ajout rapide)",
       "NameGeneratorRoster": "Générateur de noms à partir d’une liste",
       "Narrative": "Narration",
+      "NarrativePedigree": "Arbre généalogique narratif",
       "NetworkComposer": "Compositeur de réseau",
       "OneToManyDyadCensus": "Recensement des dyades (un à plusieurs)",
       "OrdinalBin": "Classement ordinal",
@@ -313,7 +315,7 @@
       "bestFor": "Idéal pour",
       "downloadVersion": "Télécharger la version {version}",
       "platformAccessibleName": "{platform} pour {app}",
-      "schemaVersionInfo": "Architect Classic et Interviewer Classic prennent en charge les protocoles en schéma 7. Les versions web d’Architect, d’Interviewer et de Fresco utilisent le schéma 8, qui inclut les dernières fonctionnalités. La mise à niveau d’un protocole est irréversible : conservez le fichier d’origine en schéma 7 si vous avez encore besoin des applications Classic.",
+      "schemaVersionInfo": "Architect Classic et Interviewer Classic prennent en charge les protocoles en schéma 7. Les versions web d’Architect, d’Interviewer et de Fresco utilisent le schéma 9, qui inclut les dernières fonctionnalités. La mise à niveau d’un protocole est irréversible : conservez le fichier d’origine en schéma 7 si vous avez encore besoin des applications Classic.",
       "schemaVersionLink": "En savoir plus sur les versions de schéma"
     },
     "platforms": {
@@ -532,6 +534,16 @@
           "0": "Créez les membres de la famille et leurs relations en même temps, avec une disposition automatique qui garde l’arbre généalogique lisible à mesure qu’il s’agrandit.",
           "1": "Représentez les relations biologiques, sociales, adoptives, de don, de gestation pour autrui et de couple, et recueillez des attributs pour chaque membre de la famille.",
           "2": "Ajoutez si vous le souhaitez une étape de désignation des maladies pour indiquer quels membres de la famille sont atteints de certaines affections, en vue d’une visualisation ultérieure."
+        }
+      },
+      "narrativePedigree": {
+        "shortName": "Arbre généalogique narratif",
+        "name": "Interface d’arbre généalogique narratif",
+        "summary": "Transformez un arbre généalogique créé précédemment en une visualisation en lecture seule qui utilise la notation clinique standard des arbres généalogiques.",
+        "details": {
+          "0": "Montrez les membres de la famille atteints et les personnes porteuses obligatoires d’une ou plusieurs affections, selon les modes de transmission pris en charge.",
+          "1": "Affichez si vous le souhaitez les statuts « à risque » possibles, lorsque l’étude prévoit un accompagnement adapté pour leur interprétation.",
+          "2": "Concentrez-vous sur la lignée qui transmet à une personne donnée et exportez un instantané imprimable. La visualisation est une aide, pas un diagnostic."
         }
       },
       "networkComposer": {

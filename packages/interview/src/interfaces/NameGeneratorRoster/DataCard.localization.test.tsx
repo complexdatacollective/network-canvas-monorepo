@@ -2,13 +2,13 @@ import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { InterviewI18nProvider } from '../../i18n/InterviewI18nProvider';
-import DataCard from './DataCard';
+import DataCard, { type DataCardDetail } from './DataCard';
 
-const details = {
-  'Authored question': [true, false],
-  'Authored name': 'Zoë Álvarez',
-  'Authored number': 7,
-};
+const details: DataCardDetail[] = [
+  { id: 'question', label: 'Authored question', value: [true, false] },
+  { id: 'name', label: 'Authored name', value: 'Zoë Álvarez' },
+  { id: 'number', label: 'Authored number', value: 7 },
+];
 
 function Example({ locale }: { locale?: string }) {
   const card = <DataCard label="Researcher label" details={details} />;
@@ -42,5 +42,26 @@ describe('roster built-in value localization', () => {
   it('keeps English defaults when rendered without any localization provider', () => {
     render(<Example />);
     expect(screen.getByText('Yes, No')).toBeInTheDocument();
+  });
+
+  it('marks a detail label shown in another language with that language and direction', () => {
+    render(
+      <DataCard
+        label="Researcher label"
+        details={[
+          {
+            id: 'age',
+            label: { text: 'العمر', lang: 'ar', dir: 'rtl' },
+            value: 34,
+          },
+          { id: 'city', label: 'City', value: 'Lyon' },
+        ]}
+      />,
+    );
+
+    const translated = screen.getByText('العمر');
+    expect(translated).toHaveAttribute('lang', 'ar');
+    expect(translated).toHaveAttribute('dir', 'rtl');
+    expect(screen.getByText('City')).not.toHaveAttribute('lang');
   });
 });

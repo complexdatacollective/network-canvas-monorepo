@@ -15,6 +15,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { formatMessageError } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 
+import type { PresentationalText } from '../../PresentationalText';
 import {
   type FieldElements,
   fieldDescribedBy,
@@ -186,7 +187,7 @@ type UseFieldConfig = {
    * it shares the `${id}-hint` element with the validation summary, and
    * `aria-describedby` must not name an element that was never rendered.
    */
-  hint?: ReactNode;
+  hint?: ReactNode | PresentationalText;
   /**
    * Which of the elements `fieldElementIds` names the caller actually renders.
    *

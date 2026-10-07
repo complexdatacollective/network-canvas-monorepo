@@ -302,8 +302,8 @@ export class InMemoryProtocolStore {
    * A stage other stages depend on is refused, not swept. The refactors strip
    * the references they remove because a codebook dialog is the researcher
    * deciding a variable is gone; nothing here is a decision about ANOTHER
-   * stage, and a sweep would silently rewrite a collaborator's skip logic as a side
-   * effect
+   * stage, and a sweep would silently rewrite a collaborator's skip logic — or
+   * cut a NarrativePedigree from the pedigree it describes — as a side effect
    * of removing something else. So the dependants are named and the deletion
    * is the researcher's to make once they have dealt with them.
    */
@@ -394,7 +394,7 @@ export class InMemoryProtocolStore {
    * The one way a section stops being held that publishes no lock event.
    * Studio renews a lease for as long as the tab is there, but a renewal that
    * the storage answers "no such row" to is a lease that ran out
-   * (`server/src/protocol-builder/runtime.ts`): an acquire that TOOK it
+   * (`apps/studio/api/src/protocol-builder/leases.ts`): an acquire that TOOK it
    * publishes its own event, and an expiry nobody took has none to publish.
    * The holder learns of it from the refusal its next save comes back with.
    */

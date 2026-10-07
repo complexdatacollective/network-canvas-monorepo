@@ -11,11 +11,11 @@ const es = createAppIntl({
   locale: 'es',
   messages: protocolValidationCatalogs.es,
 });
-const notes = getMigrationInfo(4, 8).notes;
+const notes = getMigrationInfo(4).notes;
 
 describe('localized migration approval notes', () => {
   it('covers every current note-bearing migration in its original order', () => {
-    expect(notes.map(({ version }) => version)).toEqual([5, 6, 7, 8]);
+    expect(notes.map(({ version }) => version)).toEqual([5, 6, 7, 8, 9]);
   });
 
   it.each(notes)(
@@ -37,7 +37,7 @@ describe('localized migration approval notes', () => {
 
   it('retains literal English defaults and code braces instead of treating them as ICU values', () => {
     const latest = notes.find(({ version }) => version === 8);
-    if (!latest) throw new Error('Expected current migration notes');
+    if (!latest) throw new Error('Expected schema 8 migration notes');
     const translated = formatMigrationNotes(latest.version, latest.notes, es);
     for (const value of [
       'Stage 3',

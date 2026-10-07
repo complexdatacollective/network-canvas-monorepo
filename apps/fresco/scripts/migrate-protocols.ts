@@ -71,6 +71,7 @@ type ProtocolRow = {
   schemaVersion: number;
   stages: unknown;
   codebook: unknown;
+  localization: unknown;
   experiments: unknown;
   assets: ProtocolAssetRow[];
 };
@@ -86,6 +87,7 @@ function isConformant(row: ProtocolRow): boolean {
     schemaVersion: TARGET_SCHEMA_VERSION,
     stages: row.stages,
     codebook: row.codebook,
+    localization: row.localization,
     experiments: row.experiments ?? {},
     // The whole-protocol schema cross-references stage asset ids (roster,
     // geospatial) against the manifest, so it must be reconstructed here or
@@ -126,10 +128,20 @@ async function writeMigratedProtocol(
   await prisma.protocol.update({ where: { id: row.id }, data });
 }
 
+/**
+ * Bring a row stored below the target version up to it, and say how.
+ *
+ * A row stored after `NORMALIZATION_SOURCE_VERSION` whose migration fails can
+ * be one written before its own version's current validation rules shipped:
+ * the same rows `normalizeNonConformantProtocol` exists for, caught here
+ * because the target has since moved past the version they were stored at.
+ * Their migration fails that version's pre-validation, so they are normalized
+ * instead of being left behind.
+ */
 async function migrateOneProtocol(
   prisma: Prisma.TransactionClient,
   row: ProtocolRow,
-): Promise<void> {
+): Promise<'migrated' | 'normalized'> {
   const cleanName = row.name.replace(/\.netcanvas$/i, '');
 
   const reconstructed = {
@@ -153,10 +165,27 @@ async function migrateOneProtocol(
     });
   } catch (err) {
     const cause = err instanceof Error ? err.message : String(err);
-    throw new Error(
-      `Failed to migrate protocol "${row.name}" (id=${row.id}): ${cause}`,
-      { cause: err },
-    );
+    if (row.schemaVersion <= NORMALIZATION_SOURCE_VERSION) {
+      throw new Error(
+        `Failed to migrate protocol "${row.name}" (id=${row.id}): ${cause}`,
+        { cause: err },
+      );
+    }
+    try {
+      await normalizeNonConformantProtocol(prisma, row);
+    } catch (normalizationErr) {
+      const normalizationCause =
+        normalizationErr instanceof Error
+          ? normalizationErr.message
+          : String(normalizationErr);
+      throw new Error(
+        `Failed to migrate protocol "${row.name}" (id=${row.id}): ${cause}. ` +
+          `Normalizing it from schema version ${NORMALIZATION_SOURCE_VERSION} ` +
+          `also failed: ${normalizationCause}`,
+        { cause: normalizationErr },
+      );
+    }
+    return 'normalized';
   }
   const newHash = hashProtocol(migrated);
 
@@ -169,6 +198,7 @@ async function migrateOneProtocol(
       // the brand at the Prisma JSON boundary.
       stages: migrated.stages as Prisma.InputJsonValue,
       codebook: migrated.codebook,
+      localization: migrated.localization,
       // Fall back to the stored value like the normalization path below: the
       // migration chain predates experiments and may not carry them through.
       // A future migration that means to clear them should set `{}`, not drop
@@ -182,11 +212,13 @@ async function migrateOneProtocol(
   console.log(
     `Migrated "${row.name}" (id=${row.id})... ok (new hash: ${newHash.slice(0, 8)}...)`,
   );
+  return 'migrated';
 }
 
 /**
- * Normalize a protocol already stored at the target version whose body fails
- * the strict read-time schema.
+ * Normalize a protocol whose body fails the strict schema of the version it is
+ * stored at: one already at the target version, or one after
+ * `NORMALIZATION_SOURCE_VERSION` whose migration failed.
  *
  * This is a one-time cleanup for rows persisted before the current validation
  * rules shipped: they were written when the stored shape was accepted, and
@@ -225,6 +257,7 @@ async function normalizeNonConformantProtocol(
       schemaVersion: TARGET_SCHEMA_VERSION,
       stages: migrated.stages as Prisma.InputJsonValue,
       codebook: migrated.codebook,
+      localization: migrated.localization,
       // Preserve the protocol's existing experiments; a migration chain
       // starting below the version that introduced them has no knowledge of
       // them and would otherwise reset them to its default.
@@ -244,7 +277,9 @@ async function normalizeNonConformantProtocol(
  * with the strict schema the app applies on read.
  *
  * Two classes of protocol need work:
- * - below the target version: migrated up to it.
+ * - below the target version: migrated up to it, or normalized when a row
+ *   stored after `NORMALIZATION_SOURCE_VERSION` fails to migrate (see
+ *   `migrateOneProtocol`).
  * - at the target version but non-conformant: rows persisted before the
  *   current validation rules shipped, mechanically re-normalized through the
  *   migration chain (see `normalizeNonConformantProtocol`).
@@ -269,6 +304,7 @@ export async function migrateProtocolsToCompatibleVersion(
       schemaVersion: true,
       stages: true,
       codebook: true,
+      localization: true,
       experiments: true,
       assets: {
         select: { assetId: true, name: true, type: true, value: true },
@@ -290,8 +326,11 @@ export async function migrateProtocolsToCompatibleVersion(
       // match the runtime's, so its interviews report the mismatch instead of
       // running incorrectly.
       try {
-        await migrateOneProtocol(prisma, row);
-        migrated += 1;
+        if ((await migrateOneProtocol(prisma, row)) === 'migrated') {
+          migrated += 1;
+        } else {
+          normalized += 1;
+        }
       } catch (err) {
         skipped += 1;
         const cause = err instanceof Error ? err.message : String(err);

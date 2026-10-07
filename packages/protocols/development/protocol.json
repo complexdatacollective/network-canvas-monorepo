@@ -6,11 +6,20 @@
   "stages": [
     {
       "id": "anonymisation-interface",
-      "label": "Anonymisation Interface",
+      "label": {
+        "en-US": "Anonymisation Interface",
+        "es": "Interfaz de anonimización"
+      },
       "type": "Anonymisation",
       "explanationText": {
-        "title": "This interview uses enhanced privacy protection",
-        "body": "This interview allows you to encrypt the names of the people you mention so that they cannot be seen by anyone but you - even the researchers running this study. \n\nTo use this feature, enter a passphrase below, and click the button."
+        "title": {
+          "en-US": "This interview uses enhanced privacy protection",
+          "es": "Esta entrevista usa una protección de privacidad reforzada"
+        },
+        "body": {
+          "en-US": "This interview allows you to encrypt the names of the people you mention so that they cannot be seen by anyone but you - even the researchers running this study. \n\nTo use this feature, enter a passphrase below, and click the button.",
+          "es": "Esta entrevista te permite cifrar los nombres de las personas que menciones para que nadie más que tú pueda verlos, ni siquiera el equipo de investigación que realiza este estudio. \n\nPara usar esta función, introduce una frase de contraseña abajo y haz clic en el botón."
+        }
       },
       "validation": {
         "minLength": 4,
@@ -21,67 +30,115 @@
       "id": "ego-form-1",
       "interviewScript": "This is a **markdown field** that contains notes for the interviewer that are printed with the codebook, and can be reviewed during the interview.\n\nFor now it will only support rich text, but not images or audio.",
       "type": "EgoForm",
-      "label": "Ego Form",
+      "label": {
+        "en-US": "Ego Form",
+        "es": "Formulario de ego"
+      },
       "form": {
         "fields": [
           {
             "variable": "3377af3f-3c79-41da-9b0b-6570fb519b93",
-            "prompt": "What is your name?"
+            "prompt": {
+              "en-US": "What is your name?",
+              "es": "¿Cómo te llamas?"
+            }
           },
           {
             "variable": "b4956387-cada-412f-9e97-fe352c3cc44e",
-            "prompt": "Tell us about **yourself** maybe"
+            "prompt": {
+              "en-US": "Tell us about **yourself** maybe",
+              "es": "Cuéntanos sobre **ti**, quizás"
+            }
           },
           {
             "variable": "f3eb5f0b-84ad-43f0-8db5-9f83cd3a56de",
-            "prompt": "What is your age?"
+            "prompt": {
+              "en-US": "What is your age?",
+              "es": "¿Qué edad tienes?"
+            }
           },
           {
             "variable": "683ad529-66c6-4c84-8e31-a31452d6b5e9",
-            "prompt": "How much do you like likert scales?"
+            "prompt": {
+              "en-US": "How much do you like likert scales?",
+              "es": "¿Cuánto te gustan las escalas Likert?"
+            }
           },
           {
             "variable": "f3537457-41a2-4fbf-a1f8-9235b3c1edc6",
-            "prompt": "Which of these things do you like?"
+            "prompt": {
+              "en-US": "Which of these things do you like?",
+              "es": "¿Cuáles de estas cosas te gustan?"
+            }
           },
           {
             "variable": "7c647977-f2d1-426f-b0c5-6d44c795c554",
-            "prompt": "Which of these other things do you like?"
+            "prompt": {
+              "en-US": "Which of these other things do you like?",
+              "es": "¿Cuáles de estas otras cosas te gustan?"
+            }
           },
           {
             "variable": "67fefac9-561f-454a-8f78-81bd9470efaa",
-            "prompt": "Is the switch below not turned on?"
+            "prompt": {
+              "en-US": "Is the switch below not turned on?",
+              "es": "¿El interruptor de abajo no está encendido?"
+            }
           },
           {
             "variable": "300a798f-d11b-4195-91ee-3221bc586c0a",
-            "prompt": "Do you like scales"
+            "prompt": {
+              "en-US": "Do you like scales",
+              "es": "¿Te gustan las escalas?"
+            }
           },
           {
             "variable": "03c54247-aa12-497a-b8f8-c4cb69048455",
-            "prompt": "Pick somewhere on the line"
+            "prompt": {
+              "en-US": "Pick somewhere on the line",
+              "es": "Elige un punto de la línea"
+            }
           },
           {
             "variable": "23a10bcb-bd71-46a1-a36d-4ab80cb5a1d1",
-            "prompt": "What is your date of birth?"
+            "prompt": {
+              "en-US": "What is your date of birth?",
+              "es": "¿Cuál es tu fecha de nacimiento?"
+            }
           },
           {
             "variable": "9c47f32e-b72f-4b1b-93a2-e29766dc3012",
-            "prompt": "Pick your *favourite* day in the last 60 days"
+            "prompt": {
+              "en-US": "Pick your *favourite* day in the last 60 days",
+              "es": "Elige tu día *favorito* de los últimos 60 días"
+            }
           },
           {
             "variable": "cc7d7fdb-c6e8-4c67-a3f3-e76c56511c41",
-            "prompt": "Pick your favourite day that is _after_ than the day above\n"
+            "prompt": {
+              "en-US": "Pick your favourite day that is _after_ than the day above\n",
+              "es": "Elige tu día favorito que sea _posterior_ al día de arriba\n"
+            }
           }
         ]
       },
       "introductionPanel": {
-        "title": "Introduction to the ego form",
-        "text": "There are multiple ways to describe **you**."
+        "title": {
+          "en-US": "Introduction to the ego form",
+          "es": "Introducción al formulario de ego"
+        },
+        "text": {
+          "en-US": "There are multiple ways to describe **you**.",
+          "es": "Hay muchas maneras de describirte **a ti**."
+        }
       }
     },
     {
       "id": "quick-add-ng-encryption",
-      "label": "Quick Add NG with Encryption",
+      "label": {
+        "en-US": "Quick Add NG with Encryption",
+        "es": "GN de adición rápida con cifrado"
+      },
       "type": "NameGeneratorQuickAdd",
       "subject": {
         "entity": "node",
@@ -91,13 +148,19 @@
       "prompts": [
         {
           "id": "quick-add-ng-encryption",
-          "text": "This is a quick add name generator with encryption"
+          "text": {
+            "en-US": "This is a quick add name generator with encryption",
+            "es": "Este es un generador de nombres de adición rápida con cifrado"
+          }
         }
       ]
     },
     {
       "id": "one-to-many-dyad-census",
-      "label": "One to Many Dyad Census",
+      "label": {
+        "en-US": "One to Many Dyad Census",
+        "es": "Censo de díadas de uno a muchos"
+      },
       "type": "OneToManyDyadCensus",
       "behaviours": {
         "removeAfterConsideration": true
@@ -109,7 +172,10 @@
       "prompts": [
         {
           "id": "friends",
-          "text": "Tap on all the people who would consider this person a friend",
+          "text": {
+            "en-US": "Tap on all the people who would consider this person a friend",
+            "es": "Toca a todas las personas que considerarían a esta persona un amigo"
+          },
           "createEdge": "friend_edge_type",
           "bucketSortOrder": [
             {
@@ -126,19 +192,31 @@
         },
         {
           "id": "professional",
-          "text": "Tap on all the people who work with this person.",
+          "text": {
+            "en-US": "Tap on all the people who work with this person.",
+            "es": "Toca a todas las personas que trabajan con esta persona."
+          },
           "createEdge": "professional_edge_type"
         }
       ]
     },
     {
-      "label": "Ego name contains",
+      "label": {
+        "en-US": "Ego name contains",
+        "es": "El nombre de ego contiene"
+      },
       "type": "Information",
-      "title": "Ego name contains Josh",
+      "title": {
+        "en-US": "Ego name contains Josh",
+        "es": "El nombre de ego contiene Josh"
+      },
       "items": [
         {
           "id": "08964cf2-4c7b-4ecd-a6ef-9d68c2b13bf4",
-          "content": "Hello fellow Josh!\n",
+          "content": {
+            "en-US": "Hello fellow Josh!\n",
+            "es": "¡Hola, colega Josh!\n"
+          },
           "type": "text"
         }
       ],
@@ -164,21 +242,36 @@
       "id": "namegen1",
       "interviewScript": "This is an example of interview script on a name generator.",
       "type": "NameGenerator",
-      "label": "NG with external data",
+      "label": {
+        "en-US": "NG with external data",
+        "es": "GN con datos externos"
+      },
       "form": {
-        "title": "Add A Person",
+        "title": {
+          "en-US": "Add A Person",
+          "es": "Añadir una persona"
+        },
         "fields": [
           {
             "variable": "name_variable",
-            "prompt": "What is this person's name?"
+            "prompt": {
+              "en-US": "What is this person's name?",
+              "es": "¿Cómo se llama esta persona?"
+            }
           },
           {
             "variable": "0e75ec18-2cb1-4606-9f18-034d28b07c19",
-            "prompt": "What is this person's *nickname*?"
+            "prompt": {
+              "en-US": "What is this person's *nickname*?",
+              "es": "¿Cuál es el *apodo* de esta persona?"
+            }
           },
           {
             "variable": "c5fee926-855d-4419-b5bb-54e89010cea6",
-            "prompt": "What is this person's age?"
+            "prompt": {
+              "en-US": "What is this person's age?",
+              "es": "¿Qué edad tiene esta persona?"
+            }
           }
         ]
       },
@@ -189,12 +282,18 @@
       "panels": [
         {
           "id": "cab85e8a-0a9e-4d5f-9242-930b5d9ce3e4",
-          "title": "Already mentioned",
+          "title": {
+            "en-US": "Already mentioned",
+            "es": "Ya mencionados"
+          },
           "dataSource": "existing"
         },
         {
           "id": "another-unique-id",
-          "title": "External data not using UUIDs",
+          "title": {
+            "en-US": "External data not using UUIDs",
+            "es": "Datos externos sin UUID"
+          },
           "dataSource": "previousInterview-json",
           "filter": {
             "join": "OR",
@@ -216,7 +315,10 @@
       "prompts": [
         {
           "id": "6cl",
-          "text": "Who would _you_ consider to be a **close friend**?",
+          "text": {
+            "en-US": "Who would _you_ consider to be a **close friend**?",
+            "es": "¿A quién considerarías _tú_ un **amigo cercano**?"
+          },
           "additionalAttributes": [
             {
               "variable": "ae44b6ba-ad49-4ecf-bf38-b65decfce000",
@@ -230,7 +332,10 @@
         },
         {
           "id": "6su",
-          "text": "This is a particularly long prompt, which will be discouraged in the Architect interface but might still be desired by a researcher. What does this look like rendered?",
+          "text": {
+            "en-US": "This is a particularly long prompt, which will be discouraged in the Architect interface but might still be desired by a researcher. What does this look like rendered?",
+            "es": "Esta es una instrucción especialmente larga, que la interfaz de Architect desaconsejará, pero que un investigador podría querer de todos modos. ¿Cómo se ve al mostrarse?"
+          },
           "additionalAttributes": [
             {
               "variable": "94e2dee9-1c25-4b64-b8bb-4946465c3c07",
@@ -240,32 +345,53 @@
         },
         {
           "id": "2we",
-          "text": "Prompt with no additional attributes"
+          "text": {
+            "en-US": "Prompt with no additional attributes",
+            "es": "Instrucción sin atributos adicionales"
+          }
         },
         {
           "id": "2wj",
-          "text": "Second prompt with no additional attributes"
+          "text": {
+            "en-US": "Second prompt with no additional attributes",
+            "es": "Segunda instrucción sin atributos adicionales"
+          }
         }
       ]
     },
     {
       "id": "namegen1a",
       "type": "NameGenerator",
-      "label": "NG CSV File",
+      "label": {
+        "en-US": "NG CSV File",
+        "es": "GN con archivo CSV"
+      },
       "form": {
-        "title": "Add A Person",
+        "title": {
+          "en-US": "Add A Person",
+          "es": "Añadir una persona"
+        },
         "fields": [
           {
             "variable": "name_variable",
-            "prompt": "What is this person's name?"
+            "prompt": {
+              "en-US": "What is this person's name?",
+              "es": "¿Cómo se llama esta persona?"
+            }
           },
           {
             "variable": "0e75ec18-2cb1-4606-9f18-034d28b07c19",
-            "prompt": "What is this person's nickname?"
+            "prompt": {
+              "en-US": "What is this person's nickname?",
+              "es": "¿Cuál es el apodo de esta persona?"
+            }
           },
           {
             "variable": "c5fee926-855d-4419-b5bb-54e89010cea6",
-            "prompt": "What is this person's age?"
+            "prompt": {
+              "en-US": "What is this person's age?",
+              "es": "¿Qué edad tiene esta persona?"
+            }
           }
         ]
       },
@@ -276,21 +402,30 @@
       "panels": [
         {
           "id": "another-unique-id-123",
-          "title": "External data from CSV",
+          "title": {
+            "en-US": "External data from CSV",
+            "es": "Datos externos de un CSV"
+          },
           "dataSource": "previousInterview-csv"
         }
       ],
       "prompts": [
         {
           "id": "2wedwee",
-          "text": "NameGen with CSV external data"
+          "text": {
+            "en-US": "NameGen with CSV external data",
+            "es": "Generador de nombres con datos externos CSV"
+          }
         }
       ]
     },
     {
       "id": "namegen2",
       "type": "NameGeneratorQuickAdd",
-      "label": "NG Quick add",
+      "label": {
+        "en-US": "NG Quick add",
+        "es": "GN de adición rápida"
+      },
       "quickAdd": "venue_name_variable",
       "subject": {
         "entity": "node",
@@ -299,7 +434,10 @@
       "panels": [
         {
           "id": "cab85e8a-0a9e-4d5f-9242-930b5d9ce3e4",
-          "title": "Other Venues",
+          "title": {
+            "en-US": "Other Venues",
+            "es": "Otros lugares"
+          },
           "dataSource": "existing"
         }
       ],
@@ -310,7 +448,10 @@
       "prompts": [
         {
           "id": "6cl",
-          "text": "This name generator creates venue nodes using the quick add form",
+          "text": {
+            "en-US": "This name generator creates venue nodes using the quick add form",
+            "es": "Este generador de nombres crea nodos de lugares con el formulario de adición rápida"
+          },
           "additionalAttributes": [
             {
               "variable": "55f1fbbe-2fe5-42a7-88fb-9a8e5e659d2f",
@@ -320,31 +461,49 @@
         },
         {
           "id": "6su",
-          "text": "Another venue prompt"
+          "text": {
+            "en-US": "Another venue prompt",
+            "es": "Otra instrucción de lugares"
+          }
         }
       ]
     },
     {
       "id": "dyadcensus",
       "type": "DyadCensus",
-      "label": "Dyad Census",
+      "label": {
+        "en-US": "Dyad Census",
+        "es": "Censo de díadas"
+      },
       "subject": {
         "entity": "node",
         "type": "person_node_type"
       },
       "introductionPanel": {
-        "title": "Introduction to the Dyad Census",
-        "text": "This section will go through all possible node pairs and ask you how they are connected."
+        "title": {
+          "en-US": "Introduction to the Dyad Census",
+          "es": "Introducción al censo de díadas"
+        },
+        "text": {
+          "en-US": "This section will go through all possible node pairs and ask you how they are connected.",
+          "es": "Esta sección recorrerá todos los pares de nodos posibles y te preguntará cómo están conectados."
+        }
       },
       "prompts": [
         {
           "id": "friends",
-          "text": "Are these people friends?",
+          "text": {
+            "en-US": "Are these people friends?",
+            "es": "¿Son amigas estas personas?"
+          },
           "createEdge": "friend_edge_type"
         },
         {
           "id": "professional",
-          "text": "Do these people work together?",
+          "text": {
+            "en-US": "Do these people work together?",
+            "es": "¿Trabajan juntas estas personas?"
+          },
           "createEdge": "professional_edge_type"
         }
       ]
@@ -352,36 +511,60 @@
     {
       "id": "tie-strength-census",
       "type": "TieStrengthCensus",
-      "label": "Tie-Strength Census",
+      "label": {
+        "en-US": "Tie-Strength Census",
+        "es": "Censo de intensidad de vínculos"
+      },
       "subject": {
         "entity": "node",
         "type": "person_node_type"
       },
       "introductionPanel": {
-        "title": "Introduction to the Tie-Strength Census",
-        "text": "This interface both creates an edge and assigns an ordinal value to it."
+        "title": {
+          "en-US": "Introduction to the Tie-Strength Census",
+          "es": "Introducción al censo de intensidad de vínculos"
+        },
+        "text": {
+          "en-US": "This interface both creates an edge and assigns an ordinal value to it.",
+          "es": "Esta interfaz crea un vínculo y además le asigna un valor ordinal."
+        }
       },
       "prompts": [
         {
           "id": "friendship-strength",
-          "text": "Thinking about each pair of people, please choose the option that best describes **how close they are to one another**.",
+          "text": {
+            "en-US": "Thinking about each pair of people, please choose the option that best describes **how close they are to one another**.",
+            "es": "Pensando en cada par de personas, elige la opción que mejor describa **lo cercanas que son entre sí**."
+          },
           "createEdge": "friend_edge_type",
           "edgeVariable": "e343a91f-628d-4175-870c-75429857399e",
-          "negativeLabel": "Don't know each other"
+          "negativeLabel": {
+            "en-US": "Don't know each other",
+            "es": "No se conocen"
+          }
         },
         {
           "id": "professional-strength",
-          "text": "How often do these people work together on important projects?",
+          "text": {
+            "en-US": "How often do these people work together on important projects?",
+            "es": "¿Con qué frecuencia trabajan juntas estas personas en proyectos importantes?"
+          },
           "createEdge": "professional_edge_type",
           "edgeVariable": "f984jk23-628d-4175-870c-ejd8e7al8vc3",
-          "negativeLabel": "Do not work together"
+          "negativeLabel": {
+            "en-US": "Do not work together",
+            "es": "No trabajan juntas"
+          }
         }
       ]
     },
     {
       "id": "ordinalBin1",
       "type": "OrdinalBin",
-      "label": "Contact Freq for close ties",
+      "label": {
+        "en-US": "Contact Freq for close ties",
+        "es": "Frecuencia de contacto para vínculos cercanos"
+      },
       "subject": {
         "entity": "node",
         "type": "person_node_type"
@@ -404,7 +587,10 @@
       "prompts": [
         {
           "id": "contactFreq",
-          "text": "Contact frequency ordinal variable for close ties only",
+          "text": {
+            "en-US": "Contact frequency ordinal variable for close ties only",
+            "es": "Variable ordinal de frecuencia de contacto solo para vínculos cercanos"
+          },
           "variable": "1096204b-48fe-444c-b642-4ab211f7f57c",
           "color": "ord-color-seq-1",
           "bucketSortOrder": [
@@ -426,7 +612,10 @@
         },
         {
           "id": "discussFreq",
-          "text": "Discussion Frequency variable, with a much longer prompt than the previous prompt. Please also note that this prompt uses the color override to style these bins differently than the main prompt.",
+          "text": {
+            "en-US": "Discussion Frequency variable, with a much longer prompt than the previous prompt. Please also note that this prompt uses the color override to style these bins differently than the main prompt.",
+            "es": "Variable de frecuencia de conversación, con una instrucción mucho más larga que la anterior. Ten en cuenta también que esta instrucción usa la sustitución de color para dar a estos contenedores un estilo distinto al de la instrucción principal."
+          },
           "variable": "23c5a7b9-b553-4ff1-b515-6a81999773d2",
           "color": "ord-color-seq-2"
         }
@@ -435,7 +624,10 @@
     {
       "id": "ordinalBin2",
       "type": "OrdinalBin",
-      "label": "Contact Freq.",
+      "label": {
+        "en-US": "Contact Freq.",
+        "es": "Frec. de contacto"
+      },
       "subject": {
         "entity": "node",
         "type": "venue_node_type"
@@ -443,7 +635,10 @@
       "prompts": [
         {
           "id": "visitFreq",
-          "text": "Showing an ordinalbin interface with a node type other than person.",
+          "text": {
+            "en-US": "Showing an ordinalbin interface with a node type other than person.",
+            "es": "Se muestra una interfaz de contenedores ordinales con un tipo de nodo distinto de persona."
+          },
           "variable": "venueVisitFreqVariable",
           "color": "ord-color-seq-7"
         }
@@ -452,7 +647,10 @@
     {
       "id": "namegenroster2a",
       "type": "NameGeneratorRoster",
-      "label": "NG HIV Services",
+      "label": {
+        "en-US": "NG HIV Services",
+        "es": "GN de servicios de VIH"
+      },
       "subject": {
         "entity": "node",
         "type": "venue_node_type"
@@ -465,14 +663,20 @@
       "prompts": [
         {
           "id": "7tk",
-          "text": "HIV Venue CSV data, with no sort options or additional attributes."
+          "text": {
+            "en-US": "HIV Venue CSV data, with no sort options or additional attributes.",
+            "es": "Datos CSV de lugares de VIH, sin opciones de orden ni atributos adicionales."
+          }
         }
       ]
     },
     {
       "id": "namegenroster2",
       "type": "NameGeneratorRoster",
-      "label": "NG Classmates",
+      "label": {
+        "en-US": "NG Classmates",
+        "es": "GN de compañeros de clase"
+      },
       "subject": {
         "entity": "node",
         "type": "person_node_type"
@@ -481,11 +685,17 @@
       "cardOptions": {
         "additionalProperties": [
           {
-            "label": "Name",
+            "label": {
+              "en-US": "Name",
+              "es": "Nombre"
+            },
             "variable": "last_name"
           },
           {
-            "label": "Age",
+            "label": {
+              "en-US": "Age",
+              "es": "Edad"
+            },
             "variable": "age"
           }
         ]
@@ -499,11 +709,17 @@
         ],
         "sortableProperties": [
           {
-            "label": "Nickname",
+            "label": {
+              "en-US": "Nickname",
+              "es": "Apodo"
+            },
             "variable": "nickname"
           },
           {
-            "label": "Age",
+            "label": {
+              "en-US": "Age",
+              "es": "Edad"
+            },
             "variable": "age"
           }
         ]
@@ -511,7 +727,10 @@
       "prompts": [
         {
           "id": "7cl",
-          "text": "previous interview JSON",
+          "text": {
+            "en-US": "previous interview JSON",
+            "es": "JSON de la entrevista anterior"
+          },
           "additionalAttributes": [
             {
               "variable": "ae44b6ba-ad49-4ecf-bf38-b65decfce000",
@@ -524,45 +743,78 @@
     {
       "id": "namegen4",
       "type": "NameGenerator",
-      "label": "NG Inputs",
+      "label": {
+        "en-US": "NG Inputs",
+        "es": "GN de campos"
+      },
       "form": {
-        "title": "Test for form input controls",
+        "title": {
+          "en-US": "Test for form input controls",
+          "es": "Prueba de los controles de los formularios"
+        },
         "fields": [
           {
             "variable": "2377af3f-3c79-41da-9b0b-6570fb519b93",
-            "prompt": "What is this person's _name_?"
+            "prompt": {
+              "en-US": "What is this person's _name_?",
+              "es": "¿Cuál es el _nombre_ de esta persona?"
+            }
           },
           {
             "variable": "e3eb5f0b-84ad-43f0-8db5-9f83cd3a56de",
-            "prompt": "What is this person's _age_?"
+            "prompt": {
+              "en-US": "What is this person's _age_?",
+              "es": "¿Cuál es la _edad_ de esta persona?"
+            }
           },
           {
             "variable": "583ad529-66c6-4c84-8e31-a31452d6b5e9",
-            "prompt": "How much do you like **likert scales**?"
+            "prompt": {
+              "en-US": "How much do you like **likert scales**?",
+              "es": "¿Cuánto te gustan las **escalas Likert**?"
+            }
           },
           {
             "variable": "e3537457-41a2-4fbf-a1f8-9235b3c1edc6",
-            "prompt": "Which of *these things* do you like?"
+            "prompt": {
+              "en-US": "Which of *these things* do you like?",
+              "es": "¿Cuáles de *estas cosas* te gustan?"
+            }
           },
           {
             "variable": "6c647977-f2d1-426f-b0c5-6d44c795c554",
-            "prompt": "Which of these **other** things do you like?"
+            "prompt": {
+              "en-US": "Which of these **other** things do you like?",
+              "es": "¿Cuáles de estas **otras** cosas te gustan?"
+            }
           },
           {
             "variable": "57fefac9-561f-454a-8f78-81bd9470efaa",
-            "prompt": "Is the switch below not turned _on_?"
+            "prompt": {
+              "en-US": "Is the switch below not turned _on_?",
+              "es": "¿El interruptor de abajo no está _encendido_?"
+            }
           },
           {
             "variable": "683ad529-66c6-4c84-8e31-a31452dsf74k",
-            "prompt": "This is a variable whose **value** you must choose!"
+            "prompt": {
+              "en-US": "This is a variable whose **value** you must choose!",
+              "es": "¡Esta es una variable cuyo **valor** debes elegir!"
+            }
           },
           {
             "variable": "e4e0df51-4b53-4e16-9249-8587537370e9",
-            "prompt": "Do you like **likert scales**?"
+            "prompt": {
+              "en-US": "Do you like **likert scales**?",
+              "es": "¿Te gustan las **escalas Likert**?"
+            }
           },
           {
             "variable": "720224a3-e2d3-4729-968a-29d3f3e4fca6",
-            "prompt": "How _far away_ is the moon?"
+            "prompt": {
+              "en-US": "How _far away_ is the moon?",
+              "es": "¿A qué _distancia_ está la luna?"
+            }
           }
         ]
       },
@@ -573,14 +825,20 @@
       "prompts": [
         {
           "id": "6cl",
-          "text": "This name generator is designed to test input types"
+          "text": {
+            "en-US": "This name generator is designed to test input types",
+            "es": "Este generador de nombres está pensado para probar los tipos de campo"
+          }
         }
       ]
     },
     {
       "id": "sociogram",
       "type": "Sociogram",
-      "label": "Sociogram",
+      "label": {
+        "en-US": "Sociogram",
+        "es": "Sociograma"
+      },
       "subject": {
         "entity": "node",
         "type": "person_node_type"
@@ -595,7 +853,10 @@
       "prompts": [
         {
           "id": "closeness1",
-          "text": "This interface uses the concentric circles background and excludes John and William",
+          "text": {
+            "en-US": "This interface uses the concentric circles background and excludes John and William",
+            "es": "Esta interfaz usa el fondo de círculos concéntricos y excluye a John y a William"
+          },
           "sortOrder": [
             {
               "property": "*",
@@ -615,7 +876,10 @@
         },
         {
           "id": "edgeType2",
-          "text": "Creates a second edge type",
+          "text": {
+            "en-US": "Creates a second edge type",
+            "es": "Crea un segundo tipo de vínculo"
+          },
           "layout": {
             "layoutVariable": "layout_variable"
           },
@@ -635,7 +899,10 @@
         },
         {
           "id": "closeness2",
-          "text": "Toggle variable",
+          "text": {
+            "en-US": "Toggle variable",
+            "es": "Variable de interruptor"
+          },
           "layout": {
             "layoutVariable": "layout_variable"
           },
@@ -655,7 +922,10 @@
         },
         {
           "id": "closeness3",
-          "text": "This prompt shows 3 concentric circles and creates friend edges.",
+          "text": {
+            "en-US": "This prompt shows 3 concentric circles and creates friend edges.",
+            "es": "Esta instrucción muestra 3 círculos concéntricos y crea vínculos de amistad."
+          },
           "layout": {
             "layoutVariable": "layout_variable"
           },
@@ -694,7 +964,10 @@
     {
       "id": "sociogram2",
       "type": "Sociogram",
-      "label": "Sociogram with background image",
+      "label": {
+        "en-US": "Sociogram with background image",
+        "es": "Sociograma con imagen de fondo"
+      },
       "subject": {
         "entity": "node",
         "type": "venue_node_type"
@@ -706,7 +979,10 @@
       "prompts": [
         {
           "id": "23423",
-          "text": "This interface uses a background image. Nodes are placed in reverse nomination order.",
+          "text": {
+            "en-US": "This interface uses a background image. Nodes are placed in reverse nomination order.",
+            "es": "Esta interfaz usa una imagen de fondo. Los nodos se colocan en orden inverso de nominación."
+          },
           "sortOrder": [
             {
               "property": "*",
@@ -722,7 +998,10 @@
     {
       "id": "namegenroster1",
       "type": "NameGeneratorRoster",
-      "label": "NG Classmates",
+      "label": {
+        "en-US": "NG Classmates",
+        "es": "GN de compañeros de clase"
+      },
       "subject": {
         "entity": "node",
         "type": "person_node_type"
@@ -731,11 +1010,17 @@
       "cardOptions": {
         "additionalProperties": [
           {
-            "label": "Name",
+            "label": {
+              "en-US": "Name",
+              "es": "Nombre"
+            },
             "variable": "last_name"
           },
           {
-            "label": "Age",
+            "label": {
+              "en-US": "Age",
+              "es": "Edad"
+            },
             "variable": "age"
           }
         ]
@@ -747,7 +1032,10 @@
       "prompts": [
         {
           "id": "7cl1",
-          "text": "Which classmates would you also think of as friends?",
+          "text": {
+            "en-US": "Which classmates would you also think of as friends?",
+            "es": "¿A qué compañeros de clase considerarías también amigos?"
+          },
           "additionalAttributes": [
             {
               "variable": "ae44b6ba-ad49-4ecf-bf38-b65decfce000",
@@ -757,7 +1045,10 @@
         },
         {
           "id": "31f7ee2e-6ff8-4881-9db4-ee1fc369dc5f",
-          "text": "Which of these classmates would help you with homework?\n",
+          "text": {
+            "en-US": "Which of these classmates would help you with homework?\n",
+            "es": "¿Cuáles de estos compañeros de clase te ayudarían con las tareas?\n"
+          },
           "additionalAttributes": [
             {
               "variable": "e1dda563-f6f6-47b7-91cb-31b4c2fdb73a",
@@ -770,7 +1061,10 @@
     {
       "id": "namegenroster3",
       "type": "NameGeneratorRoster",
-      "label": "Roster Autocomplete HIV",
+      "label": {
+        "en-US": "Roster Autocomplete HIV",
+        "es": "Lista de autocompletado de VIH"
+      },
       "subject": {
         "entity": "node",
         "type": "venue_node_type"
@@ -779,11 +1073,17 @@
       "cardOptions": {
         "additionalProperties": [
           {
-            "label": "Address",
+            "label": {
+              "en-US": "Address",
+              "es": "Dirección"
+            },
             "variable": "67132d2b-c371-4c57-a5eb-6520083f9d22"
           },
           {
-            "label": "Subsidiary/Program/Project",
+            "label": {
+              "en-US": "Subsidiary/Program/Project",
+              "es": "Filial/Programa/Proyecto"
+            },
             "variable": "8ee3a187-d4be-458e-8abb-71efcc071949"
           }
         ]
@@ -799,7 +1099,10 @@
       "prompts": [
         {
           "id": "7su",
-          "text": "Which of these venues have you visited in the previous 6 months?",
+          "text": {
+            "en-US": "Which of these venues have you visited in the previous 6 months?",
+            "es": "¿Cuáles de estos lugares has visitado en los últimos 6 meses?"
+          },
           "additionalAttributes": [
             {
               "variable": "55f1fbbe-2fe5-42a7-88fb-9a8e5e659d2f",
@@ -812,7 +1115,10 @@
     {
       "id": "catBin1",
       "type": "CategoricalBin",
-      "label": "Contact Types",
+      "label": {
+        "en-US": "Contact Types",
+        "es": "Tipos de contacto"
+      },
       "subject": {
         "entity": "node",
         "type": "person_node_type"
@@ -821,24 +1127,42 @@
         {
           "variable": "e343a91f-628d-4175-870c-957beffa0152",
           "id": "cat2",
-          "text": "Categorical bin excluding nodes called \"William\""
+          "text": {
+            "en-US": "Categorical bin excluding nodes called \"William\"",
+            "es": "Contenedor categórico que excluye los nodos llamados \"William\""
+          }
         },
         {
           "variable": "e343a91f-628d-4175-870c-957beffa0153",
           "id": "cat3",
-          "text": "Three with other",
+          "text": {
+            "en-US": "Three with other",
+            "es": "Tres con otro"
+          },
           "otherVariable": "979c9ad7-74cb-402d-8574-3f0a91c9174d",
-          "otherVariablePrompt": "What were you thinking of instead?",
-          "otherOptionLabel": "Not Listed"
+          "otherVariablePrompt": {
+            "en-US": "What were you thinking of instead?",
+            "es": "¿En qué estabas pensando en su lugar?"
+          },
+          "otherOptionLabel": {
+            "en-US": "Not Listed",
+            "es": "No aparece"
+          }
         },
         {
           "id": "cat4",
-          "text": "Four",
+          "text": {
+            "en-US": "Four",
+            "es": "Cuatro"
+          },
           "variable": "e343a91f-628d-4175-870c-957beffa0154"
         },
         {
           "id": "contactType",
-          "text": "What is the most frequent type of contact you have?",
+          "text": {
+            "en-US": "What is the most frequent type of contact you have?",
+            "es": "¿Cuál es el tipo de contacto más frecuente que tienes?"
+          },
           "variable": "e343a91f-628d-4175-870c-957beffa0151",
           "bucketSortOrder": [
             {
@@ -863,7 +1187,10 @@
         },
         {
           "id": "discussType",
-          "text": "Discussion type variable, with a much longer prompt than the previous prompt. Please also note that this prompt uses the max number of bins.",
+          "text": {
+            "en-US": "Discussion type variable, with a much longer prompt than the previous prompt. Please also note that this prompt uses the max number of bins.",
+            "es": "Variable de tipo de conversación, con una instrucción mucho más larga que la anterior. Ten en cuenta también que esta instrucción usa el número máximo de contenedores."
+          },
           "variable": "4ccba4e2-a246-46ee-a3ff-1c70fb4c449c"
         }
       ],
@@ -886,7 +1213,10 @@
     {
       "id": "alter-form-1",
       "type": "AlterForm",
-      "label": "Alter Form",
+      "label": {
+        "en-US": "Alter Form",
+        "es": "Formulario de alter"
+      },
       "subject": {
         "entity": "node",
         "type": "person_node_type"
@@ -895,21 +1225,36 @@
         "fields": [
           {
             "variable": "246c4d84-ebd7-41a6-8c1a-ef83938227ba",
-            "prompt": "What is this person's life story?"
+            "prompt": {
+              "en-US": "What is this person's life story?",
+              "es": "¿Cuál es la historia de vida de esta persona?"
+            }
           },
           {
             "variable": "9b56bc6d-6b20-4e38-9aab-4057e78e1130",
-            "prompt": "Choose a date"
+            "prompt": {
+              "en-US": "Choose a date",
+              "es": "Elige una fecha"
+            }
           },
           {
             "variable": "490db003-3289-4969-b426-919cefb4cdf0",
-            "prompt": "Do you want to do another likert?"
+            "prompt": {
+              "en-US": "Do you want to do another likert?",
+              "es": "¿Quieres hacer otra escala Likert?"
+            }
           }
         ]
       },
       "introductionPanel": {
-        "title": "Introduction to the alter form",
-        "text": "This is some **markdown** that \n* explains this interface and \n* is *marked down*. \n\nBelow this might be as much additional text as the researcher desires. The container that this content is in should dynamically expand to accommodate that."
+        "title": {
+          "en-US": "Introduction to the alter form",
+          "es": "Introducción al formulario de alter"
+        },
+        "text": {
+          "en-US": "This is some **markdown** that \n* explains this interface and \n* is *marked down*. \n\nBelow this might be as much additional text as the researcher desires. The container that this content is in should dynamically expand to accommodate that.",
+          "es": "Esto es un poco de **markdown** que \n* explica esta interfaz y \n* está *en markdown*. \n\nDebajo puede haber tanto texto adicional como quiera el investigador. El contenedor de este contenido debería ampliarse de forma dinámica para acomodarlo."
+        }
       },
       "skipLogic": {
         "action": "SKIP",
@@ -933,7 +1278,10 @@
     {
       "id": "alter-edge-form-1",
       "type": "AlterEdgeForm",
-      "label": "Alter Edge Form (friends)",
+      "label": {
+        "en-US": "Alter Edge Form (friends)",
+        "es": "Formulario de vínculos de alter (amigos)"
+      },
       "subject": {
         "entity": "edge",
         "type": "friend_edge_type"
@@ -942,21 +1290,36 @@
         "fields": [
           {
             "variable": "e343a91f-628d-4175-870c-957beffa0002",
-            "prompt": "Two item categorical variable"
+            "prompt": {
+              "en-US": "Two item categorical variable",
+              "es": "Variable categórica de dos elementos"
+            }
           },
           {
             "variable": "e343a91f-628d-4175-870c-957beffa0003",
-            "prompt": "_Three_ item categorical variable"
+            "prompt": {
+              "en-US": "_Three_ item categorical variable",
+              "es": "Variable categórica de _tres_ elementos"
+            }
           },
           {
             "variable": "e343a91f-628d-4175-870c-957beffa0004",
-            "prompt": "Four item categorical variable"
+            "prompt": {
+              "en-US": "Four item categorical variable",
+              "es": "Variable categórica de cuatro elementos"
+            }
           }
         ]
       },
       "introductionPanel": {
-        "title": "Introduction to the alter edge form",
-        "text": "This per alter edge form shows friend edges, but filters\n\n\n- Any edges where either node also also has a professional edge\n- Any nodes where contact frequency is over two years ago, or last two years\n\n"
+        "title": {
+          "en-US": "Introduction to the alter edge form",
+          "es": "Introducción al formulario de vínculos de alter"
+        },
+        "text": {
+          "en-US": "This per alter edge form shows friend edges, but filters\n\n\n- Any edges where either node also also has a professional edge\n- Any nodes where contact frequency is over two years ago, or last two years\n\n",
+          "es": "Este formulario de vínculos por alter muestra los vínculos de amistad, pero filtra\n\n\n- Los vínculos en los que cualquiera de los nodos también tiene un vínculo profesional\n- Los nodos cuya frecuencia de contacto es de hace más de dos años, o de los últimos dos años\n\n"
+        }
       },
       "filter": {
         "join": "AND",
@@ -985,7 +1348,10 @@
     {
       "id": "alter-edge-form-2",
       "type": "AlterEdgeForm",
-      "label": "Alter Edge Form (professional)",
+      "label": {
+        "en-US": "Alter Edge Form (professional)",
+        "es": "Formulario de vínculos de alter (profesional)"
+      },
       "subject": {
         "entity": "edge",
         "type": "professional_edge_type"
@@ -994,19 +1360,31 @@
         "fields": [
           {
             "variable": "d343a91f-628d-4175-870c-957beffa0002",
-            "prompt": "Two item categorical variable"
+            "prompt": {
+              "en-US": "Two item categorical variable",
+              "es": "Variable categórica de dos elementos"
+            }
           }
         ]
       },
       "introductionPanel": {
-        "title": "An alternative alter edge interface",
-        "text": "This interface acts on professional edges."
+        "title": {
+          "en-US": "An alternative alter edge interface",
+          "es": "Una interfaz alternativa de vínculos de alter"
+        },
+        "text": {
+          "en-US": "This interface acts on professional edges.",
+          "es": "Esta interfaz actúa sobre los vínculos profesionales."
+        }
       }
     },
     {
       "id": "narrative1",
       "type": "Narrative",
-      "label": "Narrative",
+      "label": {
+        "en-US": "Narrative",
+        "es": "Narrativa"
+      },
       "subject": {
         "entity": "node",
         "type": "person_node_type"
@@ -1014,26 +1392,52 @@
       "presets": [
         {
           "id": "preset1",
-          "label": "My preset",
+          "label": {
+            "en-US": "My preset",
+            "es": "Mi ajuste predefinido"
+          },
           "layoutVariable": "layout_variable",
           "groupVariable": "e343a91f-628d-4175-870c-957beffa0154",
           "edges": {
             "display": ["friend_edge_type", "professional_edge_type"]
           },
           "highlight": [
-            "03b03617-46ae-41cb-9462-9acd8a17edd6",
-            "ae44b6ba-ad49-4ecf-bf38-b65decfce000"
+            {
+              "variable": "03b03617-46ae-41cb-9462-9acd8a17edd6",
+              "label": {
+                "en-US": "has_given_advice",
+                "es": "ha dado consejos"
+              }
+            },
+            {
+              "variable": "ae44b6ba-ad49-4ecf-bf38-b65decfce000",
+              "label": {
+                "en-US": "close_friend",
+                "es": "amigo cercano"
+              }
+            }
           ]
         },
         {
           "id": "preset2",
-          "label": "Another preset (with more text than will fit)",
+          "label": {
+            "en-US": "Another preset (with more text than will fit)",
+            "es": "Otro ajuste predefinido (con más texto del que cabe)"
+          },
           "layoutVariable": "e13ca72d-aefe-4f48-841d-09f020e0e987",
           "groupVariable": "e343a91f-628d-4175-870c-957beffa0154",
           "edges": {
             "display": ["professional_edge_type"]
           },
-          "highlight": ["03b03617-46ae-41cb-9462-9acd8a17edd6"]
+          "highlight": [
+            {
+              "variable": "03b03617-46ae-41cb-9462-9acd8a17edd6",
+              "label": {
+                "en-US": "has_given_advice",
+                "es": "ha dado consejos"
+              }
+            }
+          ]
         }
       ],
       "background": {
@@ -1047,9 +1451,15 @@
     },
     {
       "id": "rubberduck",
-      "label": "Audio test",
+      "label": {
+        "en-US": "Audio test",
+        "es": "Prueba de audio"
+      },
       "type": "Information",
-      "title": "Title for the screen",
+      "title": {
+        "en-US": "Title for the screen",
+        "es": "Título de la pantalla"
+      },
       "items": [
         {
           "id": "a",
@@ -1073,14 +1483,23 @@
     },
     {
       "id": "info-sound",
-      "label": "InfoSound",
+      "label": {
+        "en-US": "InfoSound",
+        "es": "Información con sonido"
+      },
       "type": "Information",
-      "title": "This interface has a video with sound.",
+      "title": {
+        "en-US": "This interface has a video with sound.",
+        "es": "Esta interfaz tiene un vídeo con sonido."
+      },
       "items": [
         {
           "id": "65192318-0ef0-454d-91b7-bbaf51380069",
           "type": "text",
-          "content": "The video below has sound. Some arbitrary text content that can _contain_ **formatting**."
+          "content": {
+            "en-US": "The video below has sound. Some arbitrary text content that can _contain_ **formatting**.",
+            "es": "El vídeo de abajo tiene sonido. Un texto cualquiera que puede _contener_ **formato**."
+          }
         },
         {
           "id": "27eee84a-52c0-440d-951c-5ac35bc75168",
@@ -1092,27 +1511,45 @@
     },
     {
       "id": "markdown",
-      "label": "Markdown",
+      "label": {
+        "en-US": "Markdown",
+        "es": "Markdown"
+      },
       "type": "Information",
-      "title": "Testing markdown",
+      "title": {
+        "en-US": "Testing markdown",
+        "es": "Prueba de markdown"
+      },
       "items": [
         {
           "id": "d3e52e4b-0d22-42e3-a82f-7a150daf7b6b",
           "type": "text",
-          "content": "# h1 Heading 8-)\n## h2 Heading\n### h3 Heading\n#### h4 Heading\n##### h5 Heading\n###### h6 Heading\n\n## Emphasis\n\n**This is bold text**\n\n__This is bold text__\n\n*This is italic text* \n\n_This is italic text_ \n# Emoji \n:blush: :heartpulse: :wave:"
+          "content": {
+            "en-US": "# h1 Heading 8-)\n## h2 Heading\n### h3 Heading\n#### h4 Heading\n##### h5 Heading\n###### h6 Heading\n\n## Emphasis\n\n**This is bold text**\n\n__This is bold text__\n\n*This is italic text* \n\n_This is italic text_ \n# Emoji \n:blush: :heartpulse: :wave:",
+            "es": "# Encabezado h1 8-)\n## Encabezado h2\n### Encabezado h3\n#### Encabezado h4\n##### Encabezado h5\n###### Encabezado h6\n\n## Énfasis\n\n**Este texto está en negrita**\n\n__Este texto está en negrita__\n\n*Este texto está en cursiva* \n\n_Este texto está en cursiva_ \n# Emoji \n:blush: :heartpulse: :wave:"
+          }
         }
       ]
     },
     {
       "id": "skippable screen",
-      "label": "Skip or Show",
+      "label": {
+        "en-US": "Skip or Show",
+        "es": "Omitir o mostrar"
+      },
       "type": "Information",
-      "title": "To skip or not to skip...",
+      "title": {
+        "en-US": "To skip or not to skip...",
+        "es": "Omitir o no omitir..."
+      },
       "items": [
         {
           "id": "ffaf2249-00e7-4fdb-99fc-5757a24f5605",
           "type": "text",
-          "content": "...that is the question."
+          "content": {
+            "en-US": "...that is the question.",
+            "es": "...esa es la cuestión."
+          }
         }
       ],
       "skipLogic": {
@@ -1146,7 +1583,10 @@
     {
       "id": "network-composer-dev",
       "type": "NetworkComposer",
-      "label": "Network Composer",
+      "label": {
+        "en-US": "Network Composer",
+        "es": "Compositor de redes"
+      },
       "subject": {
         "entity": "node",
         "type": "person_node_type"
@@ -1160,7 +1600,10 @@
     {
       "id": "geospatial-dev",
       "type": "Geospatial",
-      "label": "Geospatial",
+      "label": {
+        "en-US": "Geospatial",
+        "es": "Geoespacial"
+      },
       "subject": {
         "entity": "node",
         "type": "venue_node_type"
@@ -1177,7 +1620,10 @@
       "prompts": [
         {
           "id": "geospatial-prompt-dev",
-          "text": "Where is this place located?",
+          "text": {
+            "en-US": "Where is this place located?",
+            "es": "¿Dónde está este lugar?"
+          },
           "variable": "7316d500-6c1e-4188-a531-b2ef587721e0"
         }
       ]
@@ -1185,12 +1631,18 @@
     {
       "id": "family-pedigree-dev",
       "type": "FamilyPedigree",
-      "label": "Family Pedigree",
+      "label": {
+        "en-US": "Family Pedigree",
+        "es": "Árbol genealógico familiar"
+      },
       "subject": {
         "entity": "node",
         "type": "family_member"
       },
-      "prompt": "Who is in your family?",
+      "prompt": {
+        "en-US": "Who is in your family?",
+        "es": "¿Quién forma parte de tu familia?"
+      },
       "nodeConfiguration": {
         "nameAttribute": "fm_name",
         "genderIdentity": {
@@ -1231,12 +1683,24 @@
         "gestationalCarrierAttribute": "isGestationalCarrier",
         "currentPartnerAttribute": "isCurrentPartner"
       }
+    },
+    {
+      "id": "language-chooser",
+      "type": "LanguageChooser",
+      "label": {
+        "en-US": "Language",
+        "es": "Idioma"
+      }
     }
   ],
   "codebook": {
     "node": {
       "person_node_type": {
         "name": "person",
+        "label": {
+          "en-US": "person",
+          "es": "persona"
+        },
         "color": "node-color-seq-1",
         "icon": "add-a-person",
         "shape": {
@@ -1246,6 +1710,7 @@
           "name_variable": {
             "encrypted": true,
             "name": "name",
+            "label": "name",
             "component": "Text",
             "type": "text",
             "validation": {
@@ -1255,10 +1720,12 @@
           },
           "0ff25001-a2b8-46de-82a9-53143aa00d10": {
             "name": "last_name",
+            "label": "last_name",
             "type": "text"
           },
           "c5fee926-855d-4419-b5bb-54e89010cea6": {
             "name": "age",
+            "label": "age",
             "type": "number",
             "component": "Number",
             "validation": {
@@ -1267,6 +1734,7 @@
           },
           "0e75ec18-2cb1-4606-9f18-034d28b07c19": {
             "name": "nickname",
+            "label": "nickname",
             "component": "Text",
             "type": "text",
             "validation": {
@@ -1275,49 +1743,70 @@
           },
           "ae44b6ba-ad49-4ecf-bf38-b65decfce000": {
             "name": "close_friend",
+            "label": "close_friend",
             "component": "Toggle",
             "type": "boolean"
           },
           "94e2dee9-1c25-4b64-b8bb-4946465c3c07": {
             "name": "support_friend",
+            "label": "support_friend",
             "type": "boolean"
           },
           "ec5b462e-a033-4cbc-8b73-82d90938ec82": {
             "name": "advice_friend",
+            "label": "advice_friend",
             "type": "boolean"
           },
           "03b03617-46ae-41cb-9462-9acd8a17edd6": {
             "name": "has_given_advice",
+            "label": "has_given_advice",
             "type": "boolean"
           },
           "1096204b-48fe-444c-b642-4ab211f7f57c": {
             "name": "contactFreq",
+            "label": "contactFreq",
             "type": "ordinal",
             "options": [
               {
-                "label": "Last 24 hours",
+                "label": {
+                  "en-US": "Last 24 hours",
+                  "es": "Últimas 24 horas"
+                },
                 "value": 4
               },
               {
-                "label": "Last week",
+                "label": {
+                  "en-US": "Last week",
+                  "es": "La última semana"
+                },
                 "value": 3
               },
               {
-                "label": "Last six months",
+                "label": {
+                  "en-US": "Last six months",
+                  "es": "Los últimos seis meses"
+                },
                 "value": 2
               },
               {
-                "label": "Last two years",
+                "label": {
+                  "en-US": "Last two years",
+                  "es": "Los últimos dos años"
+                },
                 "value": 1
               },
               {
-                "label": "_Over_ two years ago",
+                "label": {
+                  "en-US": "_Over_ two years ago",
+                  "es": "Hace _más_ de dos años"
+                },
                 "value": -1
               }
             ]
           },
           "23c5a7b9-b553-4ff1-b515-6a81999773d2": {
             "name": "discussFreq",
+            "label": "discussFreq",
             "type": "ordinal",
             "component": "RadioGroup",
             "validation": {
@@ -1325,53 +1814,80 @@
             },
             "options": [
               {
-                "label": "Three",
+                "label": {
+                  "en-US": "Three",
+                  "es": "Tres"
+                },
                 "value": 3
               },
               {
-                "label": "Two",
+                "label": {
+                  "en-US": "Two",
+                  "es": "Dos"
+                },
                 "value": 2
               },
               {
-                "label": "One",
+                "label": {
+                  "en-US": "One",
+                  "es": "Uno"
+                },
                 "value": 1
               },
               {
-                "label": "Missing Value",
+                "label": {
+                  "en-US": "Missing Value",
+                  "es": "Valor faltante"
+                },
                 "value": -1
               }
             ]
           },
           "e343a91f-628d-4175-870c-957beffa0152": {
             "name": "catvar2",
+            "label": "catvar2",
             "type": "categorical",
             "options": [
               {
-                "label": "One",
+                "label": {
+                  "en-US": "One",
+                  "es": "Uno"
+                },
                 "value": "one"
               },
               {
-                "label": "Two",
+                "label": {
+                  "en-US": "Two",
+                  "es": "Dos"
+                },
                 "value": "two"
               }
             ]
           },
           "e343a91f-628d-4175-870c-957beffa0153": {
             "name": "catvar3",
+            "label": "catvar3",
             "type": "categorical",
             "options": [
               {
-                "label": "One",
+                "label": {
+                  "en-US": "One",
+                  "es": "Uno"
+                },
                 "value": "one"
               },
               {
-                "label": "Two",
+                "label": {
+                  "en-US": "Two",
+                  "es": "Dos"
+                },
                 "value": "two"
               }
             ]
           },
           "e343a91f-628d-4175-870c-957beffa0154": {
             "name": "catvar4",
+            "label": "catvar4",
             "type": "categorical",
             "component": "ToggleButtonGroup",
             "validation": {
@@ -1379,51 +1895,80 @@
             },
             "options": [
               {
-                "label": "One",
+                "label": {
+                  "en-US": "One",
+                  "es": "Uno"
+                },
                 "value": "one"
               },
               {
-                "label": "Two",
+                "label": {
+                  "en-US": "Two",
+                  "es": "Dos"
+                },
                 "value": "two"
               },
               {
-                "label": "***Three***",
+                "label": {
+                  "en-US": "***Three***",
+                  "es": "***Tres***"
+                },
                 "value": "three"
               },
               {
-                "label": "Four",
+                "label": {
+                  "en-US": "Four",
+                  "es": "Cuatro"
+                },
                 "value": "four"
               }
             ]
           },
           "e343a91f-628d-4175-870c-957beffa0151": {
             "name": "contactType",
+            "label": "contactType",
             "type": "categorical",
             "options": [
               {
-                "label": "In person",
+                "label": {
+                  "en-US": "In person",
+                  "es": "En persona"
+                },
                 "value": "person"
               },
               {
-                "label": "Phone call",
+                "label": {
+                  "en-US": "Phone call",
+                  "es": "Llamada telefónica"
+                },
                 "value": "call"
               },
               {
-                "label": "Text",
+                "label": {
+                  "en-US": "Text",
+                  "es": "Mensaje de texto"
+                },
                 "value": "text"
               },
               {
-                "label": "Email",
+                "label": {
+                  "en-US": "Email",
+                  "es": "Correo electrónico"
+                },
                 "value": "email"
               },
               {
-                "label": "Social media",
+                "label": {
+                  "en-US": "Social media",
+                  "es": "Redes sociales"
+                },
                 "value": "media"
               }
             ]
           },
           "4ccba4e2-a246-46ee-a3ff-1c70fb4c449c": {
             "name": "discussType",
+            "label": "discussType",
             "type": "categorical",
             "component": "ToggleButtonGroup",
             "validation": {
@@ -1433,57 +1978,86 @@
             },
             "options": [
               {
-                "label": "Politics",
+                "label": {
+                  "en-US": "Politics",
+                  "es": "Política"
+                },
                 "value": "politics"
               },
               {
-                "label": "Weather",
+                "label": {
+                  "en-US": "Weather",
+                  "es": "El tiempo"
+                },
                 "value": "weather"
               },
               {
-                "label": "Work",
+                "label": {
+                  "en-US": "Work",
+                  "es": "Trabajo"
+                },
                 "value": "work"
               },
               {
-                "label": "Current events",
+                "label": {
+                  "en-US": "Current events",
+                  "es": "Actualidad"
+                },
                 "value": "current"
               },
               {
-                "label": "Entertainment",
+                "label": {
+                  "en-US": "Entertainment",
+                  "es": "Entretenimiento"
+                },
                 "value": "entertainment"
               },
               {
-                "label": "School",
+                "label": {
+                  "en-US": "School",
+                  "es": "Escuela"
+                },
                 "value": "school"
               },
               {
-                "label": "Friends",
+                "label": {
+                  "en-US": "Friends",
+                  "es": "Amigos"
+                },
                 "value": "friends"
               },
               {
-                "label": "Money",
+                "label": {
+                  "en-US": "Money",
+                  "es": "Dinero"
+                },
                 "value": "money"
               }
             ]
           },
           "layout_variable": {
             "name": "closenessLayout",
+            "label": "closenessLayout",
             "type": "layout"
           },
           "layout_variable_manual": {
             "name": "manualLayout",
+            "label": "manualLayout",
             "type": "layout"
           },
           "e13ca72d-aefe-4f48-841d-09f020e0e987": {
             "name": "anotherLayout",
+            "label": "anotherLayout",
             "type": "layout"
           },
           "d2d8091e-8170-42c1-9dc0-c0d54553b3e6": {
             "name": "talk_friend",
+            "label": "talk_friend",
             "type": "boolean"
           },
           "04298634-eb5f-450a-84dd-95d2708e10c1": {
             "name": "dataSource",
+            "label": "dataSource",
             "type": "text"
           },
           "490db003-3289-4969-b426-919cefb4cdf0": {
@@ -1491,32 +2065,45 @@
             "component": "LikertScale",
             "options": [
               {
-                "label": "Yes",
+                "label": {
+                  "en-US": "Yes",
+                  "es": "Sí"
+                },
                 "value": "yes"
               },
               {
                 "value": "maybe",
-                "label": "Maybe"
+                "label": {
+                  "en-US": "Maybe",
+                  "es": "Quizás"
+                }
               },
               {
-                "label": "No",
+                "label": {
+                  "en-US": "No",
+                  "es": "No"
+                },
                 "value": "no"
               }
             ],
-            "name": "likertScaleTwo"
+            "name": "likertScaleTwo",
+            "label": "likertScaleTwo"
           },
           "9b56bc6d-6b20-4e38-9aab-4057e78e1130": {
             "type": "datetime",
             "component": "DatePicker",
-            "name": "compactdate"
+            "name": "compactdate",
+            "label": "compactdate"
           },
           "246c4d84-ebd7-41a6-8c1a-ef83938227ba": {
             "type": "text",
             "component": "TextArea",
-            "name": "bio"
+            "name": "bio",
+            "label": "bio"
           },
           "979c9ad7-74cb-402d-8574-3f0a91c9174d": {
             "name": "other_variable",
+            "label": "other_variable",
             "type": "text",
             "validation": {
               "required": true
@@ -1524,12 +2111,17 @@
           },
           "e1dda563-f6f6-47b7-91cb-31b4c2fdb73a": {
             "name": "homework_friend",
+            "label": "homework_friend",
             "type": "boolean"
           }
         }
       },
       "dummy_node_type": {
         "name": "dummytype",
+        "label": {
+          "en-US": "dummytype",
+          "es": "tipo ficticio"
+        },
         "color": "node-color-seq-6",
         "shape": {
           "default": "circle"
@@ -1537,21 +2129,25 @@
         "variables": {
           "2377af3f-3c79-41da-9b0b-6570fb519b93": {
             "name": "label",
+            "label": "label",
             "component": "Text",
             "type": "text"
           },
           "e3eb5f0b-84ad-43f0-8db5-9f83cd3a56de": {
             "name": "numberVariable",
+            "label": "numberVariable",
             "component": "Number",
             "type": "number"
           },
           "57fefac9-561f-454a-8f78-81bd9470efaa": {
             "name": "booleanVariable",
+            "label": "booleanVariable",
             "component": "Toggle",
             "type": "boolean"
           },
           "683ad529-66c6-4c84-8e31-a31452dsf74k": {
             "name": "booleanVariable3",
+            "label": "booleanVariable3",
             "type": "boolean",
             "component": "Boolean",
             "validation": {
@@ -1559,25 +2155,34 @@
             },
             "options": [
               {
-                "label": "Yes",
+                "label": {
+                  "en-US": "Yes",
+                  "es": "Sí"
+                },
                 "value": true
               },
               {
-                "label": "No",
+                "label": {
+                  "en-US": "No",
+                  "es": "No"
+                },
                 "value": false
               }
             ]
           },
           "d7b5f733-bec1-49be-8c33-f3c772ca0653": {
             "name": "booleanVariable2",
+            "label": "booleanVariable2",
             "type": "boolean"
           },
           "3eaad411-0530-41ca-bb43-9fb6ea846d6e": {
             "name": "checkboxVariable",
+            "label": "checkboxVariable",
             "type": "boolean"
           },
           "583ad529-66c6-4c84-8e31-a31452d6b5e9": {
             "name": "ordinalVariable",
+            "label": "ordinalVariable",
             "type": "ordinal",
             "component": "RadioGroup",
             "validation": {
@@ -1585,29 +2190,45 @@
             },
             "options": [
               {
-                "label": "Value Four",
+                "label": {
+                  "en-US": "Value Four",
+                  "es": "Valor cuatro"
+                },
                 "value": 4
               },
               {
-                "label": "Value Three is quite long",
+                "label": {
+                  "en-US": "Value Three is quite long",
+                  "es": "El valor tres es bastante largo"
+                },
                 "value": 3
               },
               {
-                "label": "Value Two",
+                "label": {
+                  "en-US": "Value Two",
+                  "es": "Valor dos"
+                },
                 "value": 2
               },
               {
-                "label": "Value One is also long, with break",
+                "label": {
+                  "en-US": "Value One is also long, with break",
+                  "es": "El valor uno también es largo, con salto"
+                },
                 "value": 1
               },
               {
-                "label": "Missing Value",
+                "label": {
+                  "en-US": "Missing Value",
+                  "es": "Valor faltante"
+                },
                 "value": -1
               }
             ]
           },
           "e3537457-41a2-4fbf-a1f8-9235b3c1edc6": {
             "name": "categoricalVariable",
+            "label": "categoricalVariable",
             "type": "categorical",
             "component": "CheckboxGroup",
             "validation": {
@@ -1615,29 +2236,45 @@
             },
             "options": [
               {
-                "label": "Value A has additional text to go along with it",
+                "label": {
+                  "en-US": "Value A has additional text to go along with it",
+                  "es": "El valor A tiene texto adicional que lo acompaña"
+                },
                 "value": "Value_A"
               },
               {
-                "label": "Value B",
+                "label": {
+                  "en-US": "Value B",
+                  "es": "Valor B"
+                },
                 "value": "Value_B"
               },
               {
-                "label": "Value C is a label that has too much text - shorten it",
+                "label": {
+                  "en-US": "Value C is a label that has too much text - shorten it",
+                  "es": "El valor C es una etiqueta con demasiado texto - acórtala"
+                },
                 "value": "Value_C"
               },
               {
-                "label": "Value D",
+                "label": {
+                  "en-US": "Value D",
+                  "es": "Valor D"
+                },
                 "value": "Value_D"
               },
               {
-                "label": "Value E",
+                "label": {
+                  "en-US": "Value E",
+                  "es": "Valor E"
+                },
                 "value": "Value_E"
               }
             ]
           },
           "6c647977-f2d1-426f-b0c5-6d44c795c554": {
             "name": "categoricalVariable2",
+            "label": "categoricalVariable2",
             "type": "categorical",
             "component": "ToggleButtonGroup",
             "validation": {
@@ -1646,43 +2283,73 @@
             },
             "options": [
               {
-                "label": "Friends",
+                "label": {
+                  "en-US": "Friends",
+                  "es": "Amigos"
+                },
                 "value": "Value_A"
               },
               {
-                "label": "Family",
+                "label": {
+                  "en-US": "Family",
+                  "es": "Familia"
+                },
                 "value": "Value_B"
               },
               {
-                "label": "Work",
+                "label": {
+                  "en-US": "Work",
+                  "es": "Trabajo"
+                },
                 "value": "Value_C"
               },
               {
-                "label": "Church",
+                "label": {
+                  "en-US": "Church",
+                  "es": "Iglesia"
+                },
                 "value": "Value_D"
               },
               {
-                "label": "Vikings",
+                "label": {
+                  "en-US": "Vikings",
+                  "es": "Vikingos"
+                },
                 "value": "Value_E"
               },
               {
-                "label": "German Course",
+                "label": {
+                  "en-US": "German Course",
+                  "es": "Curso de alemán"
+                },
                 "value": "Value_F"
               },
               {
-                "label": "Gardening Club",
+                "label": {
+                  "en-US": "Gardening Club",
+                  "es": "Club de jardinería"
+                },
                 "value": "Value_G"
               },
               {
-                "label": "Neighbors",
+                "label": {
+                  "en-US": "Neighbors",
+                  "es": "Vecinos"
+                },
                 "value": "Value_H"
               },
               {
-                "label": "Oxford Friends",
+                "label": {
+                  "en-US": "Oxford Friends",
+                  "es": "Amigos de Oxford"
+                },
                 "value": "Value_I"
               },
               {
-                "label": "Band",
+                "label": {
+                  "en-US": "Band",
+                  "es": "Banda"
+                },
                 "value": "Value_J"
               }
             ]
@@ -1692,47 +2359,74 @@
             "component": "LikertScale",
             "options": [
               {
-                "label": "Agree",
+                "label": {
+                  "en-US": "Agree",
+                  "es": "De acuerdo"
+                },
                 "value": "agree"
               },
               {
-                "label": "Somewhat Agree",
+                "label": {
+                  "en-US": "Somewhat Agree",
+                  "es": "Algo de acuerdo"
+                },
                 "value": "somewhat_agree"
               },
               {
                 "value": "neutral",
-                "label": "Neutral"
+                "label": {
+                  "en-US": "Neutral",
+                  "es": "Neutral"
+                }
               },
               {
-                "label": "Somewhat disagree",
+                "label": {
+                  "en-US": "Somewhat disagree",
+                  "es": "Algo en desacuerdo"
+                },
                 "value": "somewhat_disagree"
               },
               {
-                "label": "Disagree",
+                "label": {
+                  "en-US": "Disagree",
+                  "es": "En desacuerdo"
+                },
                 "value": "disagree"
               }
             ],
             "validation": {
               "required": true
             },
-            "name": "likertScale"
+            "name": "likertScale",
+            "label": "likertScale"
           },
           "720224a3-e2d3-4729-968a-29d3f3e4fca6": {
             "type": "scalar",
             "component": "VisualAnalogScale",
             "parameters": {
-              "minLabel": "Not very far",
-              "maxLabel": "Really quite far"
+              "minLabel": {
+                "en-US": "Not very far",
+                "es": "No muy lejos"
+              },
+              "maxLabel": {
+                "en-US": "Really quite far",
+                "es": "Realmente bastante lejos"
+              }
             },
             "validation": {
               "required": true
             },
-            "name": "visualAnalogScale"
+            "name": "visualAnalogScale",
+            "label": "visualAnalogScale"
           }
         }
       },
       "venue_node_type": {
         "name": "venue",
+        "label": {
+          "en-US": "venue",
+          "es": "lugar"
+        },
         "color": "node-color-seq-4",
         "icon": "add-a-place",
         "shape": {
@@ -1741,6 +2435,7 @@
         "variables": {
           "venue_name_variable": {
             "name": "name",
+            "label": "name",
             "type": "text",
             "validation": {
               "required": true
@@ -1748,76 +2443,104 @@
           },
           "7316d500-6c1e-4188-a531-b2ef587721e0": {
             "name": "location",
+            "label": "location",
             "type": "location"
           },
           "venueVisitFreqVariable": {
             "name": "visitfreq",
+            "label": "visitfreq",
             "type": "ordinal",
             "options": [
               {
-                "label": "Every day",
+                "label": {
+                  "en-US": "Every day",
+                  "es": "Todos los días"
+                },
                 "value": 4
               },
               {
-                "label": "Every other day",
+                "label": {
+                  "en-US": "Every other day",
+                  "es": "Cada dos días"
+                },
                 "value": 3
               },
               {
-                "label": "Every week",
+                "label": {
+                  "en-US": "Every week",
+                  "es": "Cada semana"
+                },
                 "value": 2
               },
               {
-                "label": "Sometimes",
+                "label": {
+                  "en-US": "Sometimes",
+                  "es": "A veces"
+                },
                 "value": 1
               },
               {
-                "label": "Never",
+                "label": {
+                  "en-US": "Never",
+                  "es": "Nunca"
+                },
                 "value": -1
               }
             ]
           },
           "55f1fbbe-2fe5-42a7-88fb-9a8e5e659d2f": {
             "name": "primary_venue",
+            "label": "primary_venue",
             "type": "boolean"
           },
           "8a35cd77-7bc4-4c7e-b98a-673b6a21321f": {
             "name": "parentorg",
+            "label": "parentorg",
             "type": "text"
           },
           "8ee3a187-d4be-458e-8abb-71efcc071949": {
             "name": "subsidiary",
+            "label": "subsidiary",
             "type": "text"
           },
           "1e9ce62c-44c5-484d-9c26-0d20cc7d7238": {
             "name": "Abbreviated_Name",
+            "label": "Abbreviated_Name",
             "type": "text"
           },
           "18fbc928-d027-42de-bc96-ff5c09bf4944": {
             "name": "standardwordabbrev",
+            "label": "standardwordabbrev",
             "type": "text"
           },
           "67132d2b-c371-4c57-a5eb-6520083f9d22": {
             "name": "addr",
+            "label": "addr",
             "type": "text"
           },
           "bdc60147-fe7a-4c3c-a164-e5b370f6a281": {
             "name": "lat",
+            "label": "lat",
             "type": "number"
           },
           "931a7b23-e433-4e7e-8e13-48b72e5f0549": {
             "name": "long",
+            "label": "long",
             "type": "number"
           },
           "0a5f7952-a9a7-4e87-9353-2d17a59284ee": {
             "name": "rawaddr",
+            "label": "rawaddr",
             "type": "text"
           },
           "venue_layout_variable": {
             "name": "Layout",
+            "label": "Layout",
             "type": "layout"
           },
           "venue_layout_variable_manual": {
             "name": "Layout_Manual",
+            "label": "Layout_Manual",
             "type": "layout"
           }
         }
@@ -1832,6 +2555,7 @@
         "variables": {
           "fm_name": {
             "name": "fm_name",
+            "label": "fm_name",
             "type": "text",
             "component": "Text",
             "validation": {
@@ -1840,6 +2564,7 @@
           },
           "is_ego": {
             "name": "is_ego",
+            "label": "is_ego",
             "type": "boolean",
             "component": "Toggle"
           },
@@ -1849,29 +2574,48 @@
             "options": [
               {
                 "value": "woman",
-                "label": "Woman"
+                "label": {
+                  "en-US": "Woman",
+                  "es": "Mujer"
+                }
               },
               {
                 "value": "man",
-                "label": "Man"
+                "label": {
+                  "en-US": "Man",
+                  "es": "Hombre"
+                }
               },
               {
                 "value": "nonBinary",
-                "label": "Non-binary"
+                "label": {
+                  "en-US": "Non-binary",
+                  "es": "No binario"
+                }
               },
               {
                 "value": "differentIdentity",
-                "label": "A different identity"
+                "label": {
+                  "en-US": "A different identity",
+                  "es": "Otra identidad"
+                }
               },
               {
                 "value": "unknown",
-                "label": "Don’t know"
+                "label": {
+                  "en-US": "Don’t know",
+                  "es": "No lo sé"
+                }
               },
               {
                 "value": "preferNotToSay",
-                "label": "Prefer not to say"
+                "label": {
+                  "en-US": "Prefer not to say",
+                  "es": "Prefiero no decirlo"
+                }
               }
-            ]
+            ],
+            "label": "genderIdentity"
           },
           "sexAssignedAtBirth": {
             "name": "sexAssignedAtBirth",
@@ -1879,26 +2623,46 @@
             "options": [
               {
                 "value": "female",
-                "label": "Female"
+                "label": {
+                  "en-US": "Female",
+                  "es": "Femenino"
+                }
               },
               {
                 "value": "male",
-                "label": "Male"
+                "label": {
+                  "en-US": "Male",
+                  "es": "Masculino"
+                }
               },
               {
                 "value": "intersex",
-                "label": "Intersex"
+                "label": {
+                  "en-US": "Intersex",
+                  "es": "Intersexual"
+                }
               },
               {
                 "value": "unknown",
-                "label": "Don’t know"
+                "label": {
+                  "en-US": "Don’t know",
+                  "es": "No lo sé"
+                }
               },
               {
                 "value": "preferNotToSay",
-                "label": "Prefer not to say"
+                "label": {
+                  "en-US": "Prefer not to say",
+                  "es": "Prefiero no decirlo"
+                }
               }
-            ]
+            ],
+            "label": "sexAssignedAtBirth"
           }
+        },
+        "label": {
+          "en-US": "family member",
+          "es": "familiar"
         }
       }
     },
@@ -1906,6 +2670,7 @@
       "variables": {
         "3377af3f-3c79-41da-9b0b-6570fb519b93": {
           "name": "name",
+          "label": "name",
           "type": "text",
           "component": "Text",
           "validation": {
@@ -1914,6 +2679,7 @@
         },
         "f3eb5f0b-84ad-43f0-8db5-9f83cd3a56de": {
           "name": "numberVariable",
+          "label": "numberVariable",
           "type": "number",
           "component": "Number",
           "validation": {
@@ -1922,19 +2688,23 @@
         },
         "67fefac9-561f-454a-8f78-81bd9470efaa": {
           "name": "booleanVariable",
+          "label": "booleanVariable",
           "component": "Toggle",
           "type": "boolean"
         },
         "e7b5f733-bec1-49be-8c33-f3c772ca0653": {
           "name": "booleanVariable2",
+          "label": "booleanVariable2",
           "type": "boolean"
         },
         "4eaad411-0530-41ca-bb43-9fb6ea846d6e": {
           "name": "checkboxVariable",
+          "label": "checkboxVariable",
           "type": "boolean"
         },
         "683ad529-66c6-4c84-8e31-a31452d6b5e9": {
           "name": "ordinalVariable",
+          "label": "ordinalVariable",
           "type": "ordinal",
           "component": "RadioGroup",
           "validation": {
@@ -1942,29 +2712,45 @@
           },
           "options": [
             {
-              "label": "Value Four",
+              "label": {
+                "en-US": "Value Four",
+                "es": "Valor cuatro"
+              },
               "value": 4
             },
             {
-              "label": "Value Three is quite long",
+              "label": {
+                "en-US": "Value Three is quite long",
+                "es": "El valor tres es bastante largo"
+              },
               "value": 3
             },
             {
-              "label": "Value Two",
+              "label": {
+                "en-US": "Value Two",
+                "es": "Valor dos"
+              },
               "value": 2
             },
             {
-              "label": "Value One is also long, _with break_",
+              "label": {
+                "en-US": "Value One is also long, _with break_",
+                "es": "El valor uno también es largo, _con salto_"
+              },
               "value": 1
             },
             {
-              "label": "Missing Value",
+              "label": {
+                "en-US": "Missing Value",
+                "es": "Valor faltante"
+              },
               "value": -1
             }
           ]
         },
         "f3537457-41a2-4fbf-a1f8-9235b3c1edc6": {
           "name": "categoricalVariable",
+          "label": "categoricalVariable",
           "type": "categorical",
           "component": "CheckboxGroup",
           "validation": {
@@ -1972,29 +2758,45 @@
           },
           "options": [
             {
-              "label": "Value A **has additional** text to go along with it",
+              "label": {
+                "en-US": "Value A **has additional** text to go along with it",
+                "es": "El valor A **tiene texto** adicional que lo acompaña"
+              },
               "value": "Value_A"
             },
             {
-              "label": "Value B",
+              "label": {
+                "en-US": "Value B",
+                "es": "Valor B"
+              },
               "value": "Value_B"
             },
             {
-              "label": "Value C is a label that has too much text - **shorten it**",
+              "label": {
+                "en-US": "Value C is a label that has too much text - **shorten it**",
+                "es": "El valor C es una etiqueta con demasiado texto - **acórtala**"
+              },
               "value": "Value_C"
             },
             {
-              "label": "Value D",
+              "label": {
+                "en-US": "Value D",
+                "es": "Valor D"
+              },
               "value": "Value_D"
             },
             {
-              "label": "Value E",
+              "label": {
+                "en-US": "Value E",
+                "es": "Valor E"
+              },
               "value": "Value_E"
             }
           ]
         },
         "7c647977-f2d1-426f-b0c5-6d44c795c554": {
           "name": "categoricalVariable2",
+          "label": "categoricalVariable2",
           "type": "categorical",
           "component": "ToggleButtonGroup",
           "validation": {
@@ -2003,43 +2805,73 @@
           },
           "options": [
             {
-              "label": "Friends",
+              "label": {
+                "en-US": "Friends",
+                "es": "Amigos"
+              },
               "value": "Value_A"
             },
             {
-              "label": "Family",
+              "label": {
+                "en-US": "Family",
+                "es": "Familia"
+              },
               "value": "Value_B"
             },
             {
-              "label": "Work",
+              "label": {
+                "en-US": "Work",
+                "es": "Trabajo"
+              },
               "value": "Value_C"
             },
             {
-              "label": "Church",
+              "label": {
+                "en-US": "Church",
+                "es": "Iglesia"
+              },
               "value": "Value_D"
             },
             {
-              "label": "Vikings",
+              "label": {
+                "en-US": "Vikings",
+                "es": "Vikingos"
+              },
               "value": "Value_E"
             },
             {
-              "label": "German Course",
+              "label": {
+                "en-US": "German Course",
+                "es": "Curso de alemán"
+              },
               "value": "Value_F"
             },
             {
-              "label": "_Gardening_ Club",
+              "label": {
+                "en-US": "_Gardening_ Club",
+                "es": "Club de _jardinería_"
+              },
               "value": "Value_G"
             },
             {
-              "label": "Neighbors",
+              "label": {
+                "en-US": "Neighbors",
+                "es": "Vecinos"
+              },
               "value": "Value_H"
             },
             {
-              "label": "Oxford Friends",
+              "label": {
+                "en-US": "Oxford Friends",
+                "es": "Amigos de Oxford"
+              },
               "value": "Value_I"
             },
             {
-              "label": "Band",
+              "label": {
+                "en-US": "Band",
+                "es": "Banda"
+              },
               "value": "Value_J"
             }
           ]
@@ -2047,35 +2879,53 @@
         "b4956387-cada-412f-9e97-fe352c3cc44e": {
           "type": "text",
           "component": "TextArea",
-          "name": "bio"
+          "name": "bio",
+          "label": "bio"
         },
         "300a798f-d11b-4195-91ee-3221bc586c0a": {
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
             {
-              "label": "0",
+              "label": {
+                "en-US": "0",
+                "es": "0"
+              },
               "value": 0
             },
             {
-              "label": "Sometimes",
+              "label": {
+                "en-US": "Sometimes",
+                "es": "A veces"
+              },
               "value": "sometimes"
             },
             {
-              "label": "_Lots_",
+              "label": {
+                "en-US": "_Lots_",
+                "es": "_Mucho_"
+              },
               "value": "lots"
             }
           ],
-          "name": "Choose_from_a_scale"
+          "name": "Choose_from_a_scale",
+          "label": "Choose_from_a_scale"
         },
         "03c54247-aa12-497a-b8f8-c4cb69048455": {
           "type": "scalar",
           "component": "VisualAnalogScale",
           "parameters": {
-            "minLabel": "Here",
-            "maxLabel": "There"
+            "minLabel": {
+              "en-US": "Here",
+              "es": "Aquí"
+            },
+            "maxLabel": {
+              "en-US": "There",
+              "es": "Allí"
+            }
           },
-          "name": "vas_scale"
+          "name": "vas_scale",
+          "label": "vas_scale"
         },
         "23a10bcb-bd71-46a1-a36d-4ab80cb5a1d1": {
           "type": "datetime",
@@ -2087,7 +2937,8 @@
           "validation": {
             "required": true
           },
-          "name": "dob"
+          "name": "dob",
+          "label": "dob"
         },
         "9c47f32e-b72f-4b1b-93a2-e29766dc3012": {
           "type": "datetime",
@@ -2096,6 +2947,7 @@
             "before": 60
           },
           "name": "favourite_day",
+          "label": "favourite_day",
           "validation": {
             "differentFrom": "23a10bcb-bd71-46a1-a36d-4ab80cb5a1d1"
           }
@@ -2109,63 +2961,95 @@
           "validation": {
             "greaterThanVariable": "9c47f32e-b72f-4b1b-93a2-e29766dc3012"
           },
-          "name": "favourite_day_later"
+          "name": "favourite_day_later",
+          "label": "favourite_day_later"
         }
       }
     },
     "edge": {
       "friend_edge_type": {
         "name": "friend",
+        "label": {
+          "en-US": "friend",
+          "es": "amigo"
+        },
         "color": "edge-color-seq-1",
         "variables": {
           "e343a91f-628d-4175-870c-75429857399e": {
             "name": "friendship-strength",
+            "label": "friendship-strength",
             "type": "ordinal",
             "options": [
               {
-                "label": "Very close",
+                "label": {
+                  "en-US": "Very close",
+                  "es": "Muy cercanos"
+                },
                 "value": 3
               },
               {
-                "label": "Sort of close",
+                "label": {
+                  "en-US": "Sort of close",
+                  "es": "Algo cercanos"
+                },
                 "value": 2
               },
               {
-                "label": "Not very close",
+                "label": {
+                  "en-US": "Not very close",
+                  "es": "No muy cercanos"
+                },
                 "value": 1
               }
             ]
           },
           "e343a91f-628d-4175-870c-957beffa0002": {
             "name": "catvar2",
+            "label": "catvar2",
             "type": "categorical",
             "component": "ToggleButtonGroup",
             "options": [
               {
-                "label": "One",
+                "label": {
+                  "en-US": "One",
+                  "es": "Uno"
+                },
                 "value": "one"
               },
               {
-                "label": "Two",
+                "label": {
+                  "en-US": "Two",
+                  "es": "Dos"
+                },
                 "value": "two"
               }
             ]
           },
           "e343a91f-628d-4175-870c-957beffa0003": {
             "name": "catvar3",
+            "label": "catvar3",
             "type": "categorical",
             "component": "ToggleButtonGroup",
             "options": [
               {
-                "label": "One",
+                "label": {
+                  "en-US": "One",
+                  "es": "Uno"
+                },
                 "value": "one"
               },
               {
-                "label": "Two",
+                "label": {
+                  "en-US": "Two",
+                  "es": "Dos"
+                },
                 "value": "two"
               },
               {
-                "label": "Three",
+                "label": {
+                  "en-US": "Three",
+                  "es": "Tres"
+                },
                 "value": "three"
               }
             ],
@@ -2175,23 +3059,36 @@
           },
           "e343a91f-628d-4175-870c-957beffa0004": {
             "name": "catvar4",
+            "label": "catvar4",
             "type": "categorical",
             "component": "ToggleButtonGroup",
             "options": [
               {
-                "label": "One",
+                "label": {
+                  "en-US": "One",
+                  "es": "Uno"
+                },
                 "value": "one"
               },
               {
-                "label": "Two",
+                "label": {
+                  "en-US": "Two",
+                  "es": "Dos"
+                },
                 "value": "two"
               },
               {
-                "label": "Three",
+                "label": {
+                  "en-US": "Three",
+                  "es": "Tres"
+                },
                 "value": "three"
               },
               {
-                "label": "Four",
+                "label": {
+                  "en-US": "Four",
+                  "es": "Cuatro"
+                },
                 "value": "four"
               }
             ]
@@ -2200,45 +3097,72 @@
       },
       "professional_edge_type": {
         "name": "professional",
+        "label": {
+          "en-US": "professional",
+          "es": "profesional"
+        },
         "color": "edge-color-seq-2",
         "variables": {
           "f984jk23-628d-4175-870c-ejd8e7al8vc3": {
             "name": "professional-strength",
+            "label": "professional-strength",
             "type": "ordinal",
             "options": [
               {
-                "label": "Constantly",
+                "label": {
+                  "en-US": "Constantly",
+                  "es": "Constantemente"
+                },
                 "value": 5
               },
               {
-                "label": "Very often",
+                "label": {
+                  "en-US": "Very often",
+                  "es": "Muy a menudo"
+                },
                 "value": 4
               },
               {
-                "label": "Somewhat often",
+                "label": {
+                  "en-US": "Somewhat often",
+                  "es": "Bastante a menudo"
+                },
                 "value": 3
               },
               {
-                "label": "Rarely",
+                "label": {
+                  "en-US": "Rarely",
+                  "es": "Rara vez"
+                },
                 "value": 2
               },
               {
-                "label": "Almost never",
+                "label": {
+                  "en-US": "Almost never",
+                  "es": "Casi nunca"
+                },
                 "value": 1
               }
             ]
           },
           "d343a91f-628d-4175-870c-957beffa0002": {
             "name": "catvar2",
+            "label": "catvar2",
             "type": "categorical",
             "component": "ToggleButtonGroup",
             "options": [
               {
-                "label": "One",
+                "label": {
+                  "en-US": "One",
+                  "es": "Uno"
+                },
                 "value": "one"
               },
               {
-                "label": "Two",
+                "label": {
+                  "en-US": "Two",
+                  "es": "Dos"
+                },
                 "value": "two"
               }
             ]
@@ -2247,6 +3171,10 @@
       },
       "visits_edge_type": {
         "name": "visits",
+        "label": {
+          "en-US": "visits",
+          "es": "visitas"
+        },
         "color": "edge-color-seq-3"
       },
       "family_edge": {
@@ -2259,38 +3187,63 @@
             "options": [
               {
                 "value": "partner",
-                "label": "Partner"
+                "label": {
+                  "en-US": "Partner",
+                  "es": "Pareja"
+                }
               },
               {
                 "value": "biological",
-                "label": "Biological parent"
+                "label": {
+                  "en-US": "Biological parent",
+                  "es": "Progenitor biológico"
+                }
               },
               {
                 "value": "adoptive",
-                "label": "Adoptive parent"
+                "label": {
+                  "en-US": "Adoptive parent",
+                  "es": "Progenitor adoptivo"
+                }
               },
               {
                 "value": "social",
-                "label": "Step or social parent"
+                "label": {
+                  "en-US": "Step or social parent",
+                  "es": "Padrastro, madrastra o progenitor social"
+                }
               },
               {
                 "value": "donor",
-                "label": "Donor"
+                "label": {
+                  "en-US": "Donor",
+                  "es": "Donante"
+                }
               },
               {
                 "value": "surrogate",
-                "label": "Surrogate"
+                "label": {
+                  "en-US": "Surrogate",
+                  "es": "Gestante subrogada"
+                }
               }
-            ]
+            ],
+            "label": "relationshipKind"
           },
           "isGestationalCarrier": {
             "name": "isGestationalCarrier",
+            "label": "isGestationalCarrier",
             "type": "boolean"
           },
           "isCurrentPartner": {
             "name": "isCurrentPartner",
-            "type": "boolean"
+            "type": "boolean",
+            "label": "isCurrentPartner"
           }
+        },
+        "label": {
+          "en-US": "family_edge",
+          "es": "vínculo familiar"
         }
       }
     }
@@ -2354,5 +3307,9 @@
   },
   "description": "The Network Canvas development protocol is designed for our team to test new features. It is not intended for general use.",
   "lastModified": "2022-09-09T13:58:16.838Z",
-  "schemaVersion": 8
+  "schemaVersion": 9,
+  "localization": {
+    "defaultLocale": "en-US",
+    "locales": ["en-US", "es"]
+  }
 }

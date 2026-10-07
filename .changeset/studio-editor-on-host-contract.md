@@ -1,7 +1,7 @@
 ---
-'@codaco/studio-client': patch
-'@codaco/studio-server': patch
-'@codaco/studio-rpc': patch
+'@codaco/studio-web': patch
+'@codaco/studio-api': patch
+'@codaco/studio-contract': patch
 ---
 
 The protocol editor runs on the `@codaco/protocol-builder` host contract. The

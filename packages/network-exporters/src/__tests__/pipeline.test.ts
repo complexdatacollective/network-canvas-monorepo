@@ -106,6 +106,7 @@ describe('exportPipeline', () => {
         ego: { _uid: 'ego-1', [entityAttributesProperty]: {} },
       },
       protocolHash: 'h1',
+      locale: null,
     };
 
     const MockRepo = Layer.succeed(InterviewRepository, {
@@ -163,6 +164,7 @@ describe('exportPipeline', () => {
         ego: { _uid: 'ego-2', [entityAttributesProperty]: {} },
       },
       protocolHash: 'h2',
+      locale: null,
     };
 
     const MockRepo = Layer.succeed(InterviewRepository, {
@@ -207,6 +209,7 @@ describe('exportPipeline', () => {
           ego: { _uid: 'ego', [entityAttributesProperty]: {} },
         },
         protocolHash: 'hA',
+        locale: null,
       },
       {
         id: 's-missing',
@@ -219,6 +222,7 @@ describe('exportPipeline', () => {
           ego: { _uid: 'ego', [entityAttributesProperty]: {} },
         },
         protocolHash: 'hMISSING',
+        locale: null,
       },
     ];
 

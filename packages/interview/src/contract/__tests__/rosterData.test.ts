@@ -30,20 +30,26 @@ const codebook: Codebook = {
   node: {
     person: {
       name: 'Person',
+      label: { en: 'Person' },
       color: 'node-color-seq-1',
       shape: { default: 'circle' },
       variables: {
-        'var-name': { name: 'Name', type: 'text' },
-        'var-age': { name: 'Age', type: 'number' },
-        'var-position': { name: 'Position', type: 'layout' },
+        'var-name': { name: 'Name', label: 'Name', type: 'text' },
+        'var-age': { name: 'Age', label: 'Age', type: 'number' },
+        'var-position': {
+          name: 'Position',
+          label: 'Position',
+          type: 'layout',
+        },
       },
     },
     place: {
       name: 'Place',
+      label: { en: 'Place' },
       color: 'node-color-seq-2',
       shape: { default: 'square' },
       variables: {
-        'var-place-name': { name: 'Name', type: 'text' },
+        'var-place-name': { name: 'Name', label: 'Name', type: 'text' },
       },
     },
   },
@@ -51,17 +57,17 @@ const codebook: Codebook = {
 
 const nameField: FormField = {
   variable: asEntityAttributeReference('var-name'),
-  prompt: 'Name',
+  prompt: { en: 'Name' },
 };
 
 function rosterStage(id: string, dataSource: string): Stage {
   return {
     id,
-    label: 'Roster',
+    label: { en: 'Roster' },
     type: 'NameGeneratorRoster',
     subject: { entity: 'node', type: 'person' },
     dataSource,
-    prompts: [{ id: 'p1', text: 'Pick people' }],
+    prompts: [{ id: 'p1', text: { en: 'Pick people' } }],
   };
 }
 
@@ -72,12 +78,12 @@ function nameGeneratorStage(
 ): Stage {
   return {
     id,
-    label: 'Name Generator',
+    label: { en: 'Name Generator' },
     type: 'NameGenerator',
-    form: { title: 'Add people', fields: [nameField] },
+    form: { title: { en: 'Add people' }, fields: [nameField] },
     subject: { entity: 'node', type: subjectType },
     panels,
-    prompts: [{ id: 'p1', text: 'Add people' }],
+    prompts: [{ id: 'p1', text: { en: 'Add people' } }],
   };
 }
 
@@ -154,11 +160,16 @@ describe('parseExternalNetworkAsset', () => {
       node: {
         person: {
           name: 'Person',
+          label: { en: 'Person' },
           color: 'node-color-seq-1',
           shape: { default: 'circle' },
           variables: {
-            'var-name': { name: 'Full Name', type: 'text' },
-            'var-age': { name: 'Age', type: 'number' },
+            'var-name': {
+              name: 'Full Name',
+              label: 'Full Name',
+              type: 'text',
+            },
+            'var-age': { name: 'Age', label: 'Age', type: 'number' },
           },
         },
       },
@@ -235,6 +246,143 @@ describe('parseExternalNetworkAsset', () => {
       }),
     ).rejects.toThrow();
   });
+
+  describe('with names a researcher may now choose', () => {
+    const unrestrictedCodebook: Codebook = {
+      node: {
+        person: {
+          name: 'Person',
+          label: { en: 'Person' },
+          color: 'node-color-seq-1',
+          shape: { default: 'circle' },
+          variables: {
+            'var-name': {
+              name: 'Full name',
+              label: 'Full name',
+              type: 'text',
+            },
+            'var-age': { name: '年龄', label: '年龄', type: 'number' },
+            'var-cafe': { name: 'Café', label: 'Café', type: 'text' },
+            'var-dotted': { name: 'a.b', label: 'a.b', type: 'text' },
+            'var-closeness': {
+              name: 'Closeness',
+              label: 'Closeness',
+              type: 'categorical',
+              options: [
+                { label: { en: 'Close friend' }, value: 'close friend' },
+                { label: { en: 'Colleague' }, value: '同事' },
+                { label: { en: 'Null' }, value: 'null' },
+                { label: { en: 'One' }, value: 1 },
+              ],
+            },
+          },
+        },
+      },
+    };
+
+    const parseRoster = (body: string, rosterCodebook: Codebook) => {
+      stubFetch({ 'stub://roster': body });
+
+      return parseExternalNetworkAsset({
+        sourceFileName: 'roster.csv',
+        url: 'stub://roster',
+        codebook: rosterCodebook,
+        subject: { entity: 'node', type: 'person' },
+      });
+    };
+
+    it('remaps columns named with spaces, other scripts, dots and decomposed letters', async () => {
+      const nodes = await parseRoster(
+        [
+          'Full name,年龄,Cafe\u0301,a.b',
+          'Ada Lovelace,36,espresso,dotted',
+          '',
+        ].join('\n'),
+        unrestrictedCodebook,
+      );
+
+      expect(nodes.map((node) => node[entityAttributesProperty])).toEqual([
+        {
+          'var-name': 'Ada Lovelace',
+          'var-age': 36,
+          'var-cafe': 'espresso',
+          'var-dotted': 'dotted',
+        },
+      ]);
+    });
+
+    it('collects categorical option columns into the codebook option values', async () => {
+      const nodes = await parseRoster(
+        [
+          'Closeness_close friend,Closeness_同事,Closeness_null,Closeness_1',
+          'true,true,true,false',
+          'false,false,false,true',
+          '',
+        ].join('\n'),
+        unrestrictedCodebook,
+      );
+
+      expect(nodes.map((node) => node[entityAttributesProperty])).toEqual([
+        { 'var-closeness': ['close friend', '同事', 'null'] },
+        { 'var-closeness': [1] },
+      ]);
+    });
+
+    it('derives the type of an unmatched column from its data whatever its header contains', async () => {
+      const [node] = await parseRoster(
+        'Full name,score[1],x]y,toString\nAda,5,6,7\n',
+        unrestrictedCodebook,
+      );
+
+      expect(node?.[entityAttributesProperty]).toEqual({
+        'var-name': 'Ada',
+        'score[1]': 5,
+        'x]y': 6,
+        'toString': 7,
+      });
+    });
+
+    it('remaps a column to a variable that is named __proto__', async () => {
+      const [node] = await parseRoster('Full name,__proto__\nAda,payload\n', {
+        node: {
+          person: {
+            name: 'Person',
+            label: { en: 'Person' },
+            color: 'node-color-seq-1',
+            shape: { default: 'circle' },
+            variables: {
+              'var-name': {
+                name: 'Full name',
+                label: 'Full name',
+                type: 'text',
+              },
+              'var-proto': {
+                name: '__proto__',
+                label: '__proto__',
+                type: 'text',
+              },
+            },
+          },
+        },
+      });
+
+      expect(node?.[entityAttributesProperty]).toEqual({
+        'var-name': 'Ada',
+        'var-proto': 'payload',
+      });
+    });
+
+    it('does not let an unmatched __proto__ column reach the prototype of the attributes', async () => {
+      const [node] = await parseRoster(
+        'Full name,__proto__\nAda,payload\n',
+        unrestrictedCodebook,
+      );
+      const attributes = node?.[entityAttributesProperty];
+
+      expect(Object.getPrototypeOf(attributes)).toBe(Object.prototype);
+      expect(attributes).toEqual({ 'var-name': 'Ada' });
+    });
+  });
 });
 
 describe('collectRosterExternalData', () => {
@@ -268,7 +416,7 @@ describe('collectRosterExternalData', () => {
     const panels: Panel[] = [
       {
         id: 'b',
-        title: 'Older people',
+        title: { en: 'Older people' },
         dataSource: 'panel',
         filter: ageFilter,
       },
@@ -300,9 +448,9 @@ describe('collectRosterExternalData', () => {
     });
 
     const panels: Panel[] = [
-      { id: 'a', title: 'Previously', dataSource: 'existing' },
-      { id: 'b', title: 'People', dataSource: 'panel-people' },
-      { id: 'c', title: 'Places', dataSource: 'panel-places' },
+      { id: 'a', title: { en: 'Previously' }, dataSource: 'existing' },
+      { id: 'b', title: { en: 'People' }, dataSource: 'panel-people' },
+      { id: 'c', title: { en: 'Places' }, dataSource: 'panel-places' },
     ];
 
     const result = await collectRosterExternalData({
@@ -328,11 +476,11 @@ describe('collectRosterExternalData', () => {
         rosterStage('as-person-b', 'roster'),
         {
           id: 'as-place',
-          label: 'Roster',
+          label: { en: 'Roster' },
           type: 'NameGeneratorRoster',
           subject: { entity: 'node', type: 'place' },
           dataSource: 'roster',
-          prompts: [{ id: 'p1', text: 'Pick places' }],
+          prompts: [{ id: 'p1', text: { en: 'Pick places' } }],
         },
       ],
       codebook,
@@ -491,8 +639,8 @@ describe('collectRosterExternalData', () => {
     });
 
     const panels: Panel[] = [
-      { id: 'a', title: 'First', dataSource: 'panel-a' },
-      { id: 'b', title: 'Second', dataSource: 'panel-b' },
+      { id: 'a', title: { en: 'First' }, dataSource: 'panel-a' },
+      { id: 'b', title: { en: 'Second' }, dataSource: 'panel-b' },
     ];
 
     const result = await collectRosterExternalData({
@@ -537,7 +685,7 @@ describe('collectRosterExternalData', () => {
     const panels: Panel[] = [
       {
         id: 'b',
-        title: 'Nobody',
+        title: { en: 'Nobody' },
         dataSource: 'panel',
         filter: impossibleAgeFilter,
       },
@@ -580,8 +728,8 @@ describe('collectRosterExternalData', () => {
     );
 
     const panels: Panel[] = [
-      { id: 'a', title: 'Broken', dataSource: 'broken' },
-      { id: 'b', title: 'Empty', dataSource: 'empty' },
+      { id: 'a', title: { en: 'Broken' }, dataSource: 'broken' },
+      { id: 'b', title: { en: 'Empty' }, dataSource: 'empty' },
     ];
 
     const result = await collectRosterExternalData({
@@ -604,9 +752,9 @@ describe('collectRosterExternalData', () => {
       stages: [
         {
           id: 'info',
-          label: 'Info',
+          label: { en: 'Info' },
           type: 'Information',
-          title: 'Info',
+          title: { en: 'Info' },
           items: [],
         },
       ],

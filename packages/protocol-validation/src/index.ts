@@ -1,4 +1,4 @@
-import { asEntityAttributeReference } from './schemas/8/entity-attribute-reference.ts';
+import { asEntityAttributeReference } from './schemas/9/entity-attribute-reference.ts';
 import { getAssetMimeType } from './utils/asset-mime-type.ts';
 import {
   type AssetReferenceHit,
@@ -37,7 +37,9 @@ import {
   type ProtocolFileErrorKind,
 } from './utils/protocolFileErrorKind.ts';
 import {
+  findCollidingAttributeNames,
   getVariableNamesFromNetwork,
+  isUsableExternalAttributeName,
   type Network,
   validateNames,
 } from './utils/validateExternalData.ts';
@@ -48,7 +50,34 @@ import validateProtocol, {
   type ProtocolValidationResult,
 } from './validation/validate-protocol.ts';
 
-export { parseAcceptLanguage } from './localization/parseAcceptLanguage.ts';
+export {
+  analyzeProtocolLocalization,
+  type ProtocolLocalizationWarning,
+} from './localization/analyzeProtocolLocalization.ts';
+export {
+  getLocaleMetadata,
+  type LocaleMetadata,
+  sortByLanguageName,
+} from './localization/localeMetadata.ts';
+export {
+  normalizeLocalePreferences,
+  parseAcceptLanguage,
+  selectProtocolLocale,
+} from './localization/localePreferences.ts';
+export {
+  canonicalizeLocale,
+  type LocaleTag,
+  type LocalizationDeclaration,
+} from './localization/localeTag.ts';
+export { escapeMarkdownText } from './localization/markdownText.ts';
+export {
+  escapeMessageText,
+  messageText,
+} from './localization/messageSyntax.ts';
+export {
+  type ResolvedLocalizedString,
+  resolveLocalizedString,
+} from './localization/resolveLocalizedString.ts';
 export {
   MigrationChain,
   type ProtocolMigration as Migration,
@@ -68,9 +97,8 @@ export {
 // Export schema types and constants (Protocol, Codebook, etc)
 export * from './schemas/index.ts';
 // Interface-owned value sets that are part of the current schema's contract.
-// They live in the schema version directory and are copied — never shared —
-// when a new version directory is created, so a host always reads the set the
-// version it targets defines.
+// They live in the schema version directory, so a host always reads the set
+// the version it targets defines.
 export {
   FRAMING_IDS,
   FRAMING_SETTINGS,
@@ -92,11 +120,19 @@ export {
   type PedigreeRelationshipKind,
   type PedigreeRelativesNotRecorded,
   type PedigreeSexAssignedAtBirth,
-} from './schemas/8/family-pedigree-values.ts';
+} from './schemas/9/family-pedigree-values.ts';
+export {
+  type LocalizedString,
+  type LocalizedStringFormat,
+} from './schemas/9/localized-string.ts';
+export {
+  INHERITANCE_PATTERNS,
+  type InheritancePattern,
+} from './schemas/9/narrative-pedigree-values.ts';
 export {
   findValidationContradictions,
   type ValidationContradiction,
-} from './schemas/8/variables/validation-contradictions.ts';
+} from './schemas/9/variables/validation-contradictions.ts';
 export {
   collectVariableRoleHits,
   findVariableRoleConflicts,
@@ -114,10 +150,21 @@ export {
   isExclusiveVariantContainer,
   schemaRefusesContainer,
   VARIANT_ROW_SEGMENT,
-} from './schemas/8/exclusive-variant-containers.ts';
+} from './schemas/9/exclusive-variant-containers.ts';
 // `findExclusiveVariableConflicts` stays internal: it exists to feed the
 // protocol schema's own refinement, and a host that wants to know whether a
 // protocol is admissible should call `validateProtocol`.
+export {
+  collectLocalizedStrings,
+  type LocalizedStringHit,
+} from './utils/collectLocalizedStrings.ts';
+export { readRosterCsv } from './utils/readRosterCsv.ts';
+export {
+  findRosterCharacterProblems,
+  type RosterCharacterProblem,
+  type RosterCharacterReport,
+  type RosterFormat,
+} from './utils/rosterCharacters.ts';
 export {
   type ExclusiveVariableSlot,
   findExclusiveVariableSlots,
@@ -143,12 +190,14 @@ export {
   type ExtractedAssets,
   extractProtocol,
   extractProtocolFromZip,
+  findCollidingAttributeNames,
   formatProtocolValidationIssues,
   getAssetMimeType,
   getProtocolFileErrorKind,
   getVariableNamesFromNetwork,
   hashProtocol,
   isProtocolFileFault,
+  isUsableExternalAttributeName,
   loadNetcanvasArchive,
   MalformedNetcanvasError,
   type MalformedNetcanvasReason,

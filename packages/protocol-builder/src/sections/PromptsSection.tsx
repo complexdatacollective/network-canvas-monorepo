@@ -25,7 +25,7 @@ import BuilderSection from './BuilderSection.tsx';
 /** Every interface that asks questions keeps them here. */
 const PROMPTS_FIELD = 'prompts';
 
-const messages = defineMessages({
+export const promptsSectionMessages = defineMessages({
   atLeastOne: {
     id: 'protocolBuilder.promptsSection.atLeastOne',
     defaultMessage:
@@ -88,7 +88,9 @@ const messages = defineMessages({
   },
 });
 
-const AT_LEAST_ONE_PROMPT = createMessageError(messages.atLeastOne);
+const AT_LEAST_ONE_PROMPT = createMessageError(
+  promptsSectionMessages.atLeastOne,
+);
 
 export type PromptsSectionProps = Readonly<{
   /**
@@ -270,19 +272,19 @@ export default function PromptsSection({
   expand,
   itemTemplate,
   collapseRow,
-  description = messages.description,
+  description = promptsSectionMessages.description,
   waitingDescription,
   rowDescription,
-  fieldHint = messages.fieldHint,
-  emptyState = messages.emptyState,
+  fieldHint = promptsSectionMessages.fieldHint,
+  emptyState = promptsSectionMessages.emptyState,
   name = PROMPTS_FIELD,
   optional = false,
-  title = messages.title,
-  fieldLabel = messages.fieldLabel,
-  addLabel = messages.addLabel,
-  addTitle = messages.addTitle,
-  editTitle = messages.editTitle,
-  itemNoun = messages.itemNoun,
+  title = promptsSectionMessages.title,
+  fieldLabel = promptsSectionMessages.fieldLabel,
+  addLabel = promptsSectionMessages.addLabel,
+  addTitle = promptsSectionMessages.addTitle,
+  editTitle = promptsSectionMessages.editTitle,
+  itemNoun = promptsSectionMessages.itemNoun,
 }: PromptsSectionProps) {
   const intl = useAppIntl();
   const subject = useStageValue('subject');

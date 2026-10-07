@@ -24,6 +24,7 @@ const mkSession = (
     ego: { _uid: ego, [entityAttributesProperty]: {} },
   },
   protocolHash: hash,
+  locale: null,
 });
 
 const protocol = (hash: string): ProtocolExportInput => ({

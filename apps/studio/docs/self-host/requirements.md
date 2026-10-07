@@ -5,7 +5,7 @@ one of its own. Numbers below are from the stack as it ships — measured on a
 running instance, not estimated.
 
 Individual variables are not repeated here. They are in
-[`server/.env.example`](../../server/.env.example) and in the
+[`api/.env.example`](../../api/.env.example) and in the
 [Environment](../../README.md#environment) section of the app's README, which
 are generated from the server's environment catalogue and stay current with it.
 
@@ -186,7 +186,7 @@ slot — a single logical database is what this expects.
 
 `REDIS_URL` names the store, and is the only part of this you configure. **The
 limits themselves are constants of the build**, in
-[`server/src/rate-limit/scopes.ts`](../../server/src/rate-limit/scopes.ts):
+[`api/src/rate-limit/scopes.ts`](../../api/src/rate-limit/scopes.ts):
 they are not settings, there is nothing to put in `.env`, and there is no
 supported way to change them on a self-hosted instance. A wrong number here is
 a security decision rather than a preference, and each is a ceiling a
@@ -209,6 +209,7 @@ seconds, minutes or hours:
 | `rpc_team`                   | `3000/1m` | The instance, against a whole team at once                                |
 | `storage_read`               | `2000/5m` | Asset delivery, generously: an interview fetches every stimulus it shows  |
 | `public_api`                 | `300/1m`  | `/api/v1`, leaving the instance responsive while a script pages results   |
+| `api_docs`                   | `30/1m`   | `/api/v1/docs`, against the reference page becoming a bandwidth amplifier |
 | `ws_upgrade`                 | `30/1m`   | Reconnection, against a flapping client becoming a connection storm       |
 
 <!-- rate-limits end -->

@@ -3,23 +3,26 @@ import {
   type ProtocolDocument,
 } from '../../migration/index.ts';
 import { traverseAndTransform } from '../../utils/traverse-and-transform.ts';
-import { NodeColorSequence, OrdinalColorSequence } from './color-reference.ts';
-import { duplicateFormFieldIndices } from './common/forms.ts';
-import { NON_RENDERABLE_VARIABLE_TYPES } from './variables/types.ts';
+import {
+  NodeColorSequence,
+  OrdinalColorSequence,
+} from '../9/color-reference.ts';
+import { duplicateFormFieldIndices } from '../9/common/forms.ts';
+import { NON_RENDERABLE_VARIABLE_TYPES } from '../9/variables/types.ts';
 import {
   type ContradictionClass,
   findValidationContradictions,
   isRelativeDatePickerShape,
   type ValidationContradiction,
-} from './variables/validation-contradictions.ts';
-import { VARIABLE_REFERENCE_VALIDATIONS } from './variables/validation.ts';
+} from '../9/variables/validation-contradictions.ts';
+import { VARIABLE_REFERENCE_VALIDATIONS } from '../9/variables/validation.ts';
 import {
   DATE_RESOLUTION,
   isIsoDate,
   isValidDateAtResolution,
   VARIABLE_TYPE_COMPONENTS,
   VARIABLE_TYPE_VALIDATIONS,
-} from './variables/variable.ts';
+} from '../9/variables/variable.ts';
 
 // Operators whose operand is a categorical option value (as opposed to a count,
 // like OPTIONS_*, or a regex). Their legacy scalar operands are wrapped in a

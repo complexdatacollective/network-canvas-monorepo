@@ -20,7 +20,7 @@ import MultiSelect, {
   makeMultiSelectValidation,
   type PropertyField,
 } from '../MultiSelect.tsx';
-import Options, { optionsValidation } from '../Options.tsx';
+import Options, { optionsValidationFor } from '../Options.tsx';
 
 const OPTIONS_CAPABILITY = {
   fields: ['options'],
@@ -99,7 +99,7 @@ const optionList = (disabled: boolean) => (
     component={Options}
     addButtonLabel="Create new option"
     disabled={disabled}
-    {...optionsValidation}
+    {...optionsValidationFor()}
   />
 );
 
@@ -132,8 +132,8 @@ const renderSortRules = (fields: SectionDoc) =>
 
 /** A stage the schema accepts, so a refused save can only be the list's doing. */
 const SAVEABLE_STAGE = {
-  label: 'Welcome',
-  title: 'Welcome',
+  label: { 'en-US': 'Welcome' },
+  title: { 'en-US': 'Welcome' },
   items: [],
 };
 
@@ -141,7 +141,7 @@ describe('Options', () => {
   it('adds a row and lands every keystroke after it on that row alone', async () => {
     const { user, draft } = renderOptions({
       ...SAVEABLE_STAGE,
-      options: [{ label: 'Yes', value: 'yes' }],
+      options: [{ label: { 'en-US': 'Yes' }, value: 'yes' }],
     });
 
     await user.click(
@@ -157,7 +157,7 @@ describe('Options', () => {
     // on every keystroke could not promise.
     await waitFor(() =>
       expect(draft().options).toEqual([
-        { label: 'Yes', value: 'yes' },
+        { label: { 'en-US': 'Yes' }, value: 'yes' },
         { value: 'no' },
       ]),
     );
@@ -188,7 +188,7 @@ describe('Options', () => {
   it('says nothing about an option the researcher has not touched', async () => {
     const { user } = renderOptions({
       ...SAVEABLE_STAGE,
-      options: [{ label: 'Yes', value: 'yes' }],
+      options: [{ label: { 'en-US': 'Yes' }, value: 'yes' }],
     });
 
     await user.click(
@@ -221,8 +221,8 @@ describe('Options', () => {
     const { user } = renderOptions({
       ...SAVEABLE_STAGE,
       options: [
-        { label: 'Alpha', value: 'yes' },
-        { label: 'Bravo', value: 'yes!' },
+        { label: { 'en-US': 'Alpha' }, value: 'yes' },
+        { label: { 'en-US': 'Bravo' }, value: 'yes\tplease' },
       ],
     });
 
@@ -234,16 +234,42 @@ describe('Options', () => {
       optionCell(0, 'value').queryByText('Values must be unique'),
     ).toBeNull();
 
-    // Now it exports as the same answer as Bravo, and `!` cannot appear in an
-    // export column name.
-    await user.type(valueCell, '!');
+    // Now it exports as the same answer as Bravo, and a tab cannot appear in
+    // an export column name.
+    fireEvent.change(valueCell, { target: { value: 'yes\tplease' } });
 
     // Both, not just the first: a row is edited in place, so a cell that
     // reported its problems one at a time would send the researcher back to
     // the same box for each of them.
     await optionCell(0, 'value').findByText('Values must be unique');
-    optionCell(0, 'value').getByText(/Not a valid option value/);
+    optionCell(0, 'value').getByText(
+      'Cannot contain line breaks, tabs or other control characters',
+    );
   });
+
+  it.each(['yes please', '友人', 'amigo cercano', 'Collègue', 'a.b [1]'])(
+    'accepts the option value %j',
+    async (value) => {
+      const { user } = renderOptions({
+        ...SAVEABLE_STAGE,
+        options: [
+          { label: { 'en-US': 'Alpha' }, value: 'yes' },
+          { label: { 'en-US': 'Bravo' }, value: 'no' },
+        ],
+      });
+
+      await user.click(
+        await screen.findByRole('button', { name: 'Edit option 1' }),
+      );
+      const valueCell = await screen.findByRole('textbox', { name: 'Value' });
+      fireEvent.change(valueCell, { target: { value } });
+
+      await waitFor(() => expect(valueCell).toHaveValue(value));
+      expect(
+        optionCell(0, 'value').queryByText(/Cannot contain/u),
+      ).not.toBeInTheDocument();
+    },
+  );
 
   it('reveals a blank option’s problems when it refuses to collapse', async () => {
     const { user } = renderOptions({ ...SAVEABLE_STAGE, options: [] });
@@ -269,8 +295,8 @@ describe('Options', () => {
     const { user, draft } = renderOptions({
       ...SAVEABLE_STAGE,
       options: [
-        { label: 'Alpha', value: 'alpha' },
-        { label: 'Bravo', value: 'bravo' },
+        { label: { 'en-US': 'Alpha' }, value: 'alpha' },
+        { label: { 'en-US': 'Bravo' }, value: 'bravo' },
       ],
     });
 
@@ -282,7 +308,9 @@ describe('Options', () => {
     );
 
     await waitFor(() =>
-      expect(draft().options).toEqual([{ label: 'Alpha', value: 'alpha' }]),
+      expect(draft().options).toEqual([
+        { label: { 'en-US': 'Alpha' }, value: 'alpha' },
+      ]),
     );
   });
 
@@ -298,8 +326,8 @@ describe('Options', () => {
     const { user, draft, stopAcceptingChanges } = renderOptions({
       ...SAVEABLE_STAGE,
       options: [
-        { label: 'Alpha', value: 'alpha' },
-        { label: 'Bravo', value: 'bravo' },
+        { label: { 'en-US': 'Alpha' }, value: 'alpha' },
+        { label: { 'en-US': 'Bravo' }, value: 'bravo' },
       ],
     });
 
@@ -320,8 +348,8 @@ describe('Options', () => {
       ),
     ).toBeInTheDocument();
     expect(draft().options).toEqual([
-      { label: 'Alpha', value: 'alpha' },
-      { label: 'Bravo', value: 'bravo' },
+      { label: { 'en-US': 'Alpha' }, value: 'alpha' },
+      { label: { 'en-US': 'Bravo' }, value: 'bravo' },
     ]);
   });
 
@@ -329,8 +357,8 @@ describe('Options', () => {
     const { harness, user, draft } = renderOptions({
       ...SAVEABLE_STAGE,
       options: [
-        { label: 'Yes', value: 'yes' },
-        { label: 'No', value: 'no' },
+        { label: { 'en-US': 'Yes' }, value: 'yes' },
+        { label: { 'en-US': 'No' }, value: 'no' },
       ],
     });
 
@@ -344,8 +372,8 @@ describe('Options', () => {
     // protocol carrying an option with neither half.
     await waitFor(() =>
       expect(draft().options).toEqual([
-        { label: 'Yes', value: 'yes' },
-        { label: 'No', value: 'no' },
+        { label: { 'en-US': 'Yes' }, value: 'yes' },
+        { label: { 'en-US': 'No' }, value: 'no' },
         {},
       ]),
     );
@@ -366,8 +394,8 @@ describe('Options', () => {
       {
         ...SAVEABLE_STAGE,
         options: [
-          { label: 'Yes', value: 'yes' },
-          { label: 'No', value: 'no' },
+          { label: { 'en-US': 'Yes' }, value: 'yes' },
+          { label: { 'en-US': 'No' }, value: 'no' },
         ],
       },
       { optional: true },
@@ -407,7 +435,10 @@ describe('Options', () => {
    */
   it('adds the first row after a switch-off to an empty list', async () => {
     const { user, draft } = renderOptions(
-      { ...SAVEABLE_STAGE, options: [{ label: 'Yes', value: 'yes' }] },
+      {
+        ...SAVEABLE_STAGE,
+        options: [{ label: { 'en-US': 'Yes' }, value: 'yes' }],
+      },
       { optional: true },
     );
 
@@ -428,7 +459,9 @@ describe('Options', () => {
     // One row, and it is the researcher's. The list they are typing into and
     // the list the next save will write are the same list.
     await waitFor(() =>
-      expect(draft().options).toEqual([{ label: 'No', value: 'no' }]),
+      expect(draft().options).toEqual([
+        { label: { 'en-US': 'No' }, value: 'no' },
+      ]),
     );
     expect(screen.getAllByRole('textbox', { name: 'Label' })).toHaveLength(1);
   });

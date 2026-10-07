@@ -4,15 +4,16 @@ import { useMemo } from 'react';
 import { describe, expect, it } from 'vitest';
 
 import Field from '@codaco/fresco-ui/form/Field/Field';
-import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import allInterfaces from '@codaco/protocols/e2e/all-interfaces/protocol.json';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
+import { LocalizedInputField } from '../../../fields/LocalizedStringField.tsx';
 import type { SortableProperty } from '../../../fields/sortOrderOptions.ts';
 import type {
   RowEditorProps,
   RowPreviewProps,
 } from '../../../form/rowDialog.tsx';
+import { useLocalizedText } from '../../../localization/ProtocolLocalization.tsx';
 import { variablesForSubject } from '../../../protocol-context.ts';
 import { useProtocolContext } from '../../../state/protocolContext.ts';
 import {
@@ -23,6 +24,9 @@ import PromptsSection from '../../PromptsSection.tsx';
 import SortOrderRows from '../SortOrderRows.tsx';
 
 const SUBJECT = { entity: 'node', type: 'person' } as const;
+
+/** Copy in the fixture protocol's only language, as schema 9 holds it. */
+const en = (text: string) => ({ 'en-US': text });
 
 /** The fixture's own person type, minus the named attributes. */
 const personWithout = (dropped: readonly string[]): SectionDoc => {
@@ -102,7 +106,7 @@ const makeEditor =
       <Field
         name="text"
         label="Prompt text"
-        component={InputField}
+        component={LocalizedInputField}
         required="Enter the question this prompt asks."
       />
       {sortRows(properties, item)}
@@ -135,7 +139,7 @@ function CodebookPromptEditor({ item }: RowEditorProps) {
       <Field
         name="text"
         label="Prompt text"
-        component={InputField}
+        component={LocalizedInputField}
         required="Enter the question this prompt asks."
       />
       {sortRows(properties, item)}
@@ -178,7 +182,8 @@ const attributeGone = (attribute: string) =>
   );
 
 function SortOrderPromptPreview({ item }: RowPreviewProps) {
-  return <span>{typeof item.text === 'string' ? item.text : 'Empty'}</span>;
+  const localize = useLocalizedText();
+  return <span>{localize(item.text).text || 'Empty'}</span>;
 }
 
 const sectionsFor = (
@@ -213,14 +218,14 @@ const seededWith = (
     id: 'sociogram-1',
     type: 'Sociogram' as const,
     fields: {
-      label: 'Sociogram',
+      label: en('Sociogram'),
       subject: { entity: 'node', type: 'person' },
       background: { concentricCircles: 4, skewedTowardCenter: true },
       behaviours: { automaticLayout: true },
       prompts: [
         {
           id: 'sociogram-prompt-1',
-          text: 'Place the people who know each other close together',
+          text: en('Place the people who know each other close together'),
           layout: { layoutVariable: 'layout' },
           sortOrder: rules,
         },
@@ -380,8 +385,8 @@ describe('the sort order a prompt carries', () => {
     // prompt that sorts by nothing has to say so by not carrying the key at
     // all. An empty array would round-trip as a configured-but-empty order.
     expect(Object.hasOwn(saved, 'sortOrder')).toBe(false);
-    expect(saved.text).toBe(
-      'Place the people who know each other close together',
+    expect(saved.text).toEqual(
+      en('Place the people who know each other close together'),
     );
   });
 
@@ -409,8 +414,8 @@ describe('the sort order a prompt carries', () => {
 
     const saved = savedPrompt(await harness.submit());
     expect(Object.hasOwn(saved, 'sortOrder')).toBe(false);
-    expect(saved.text).toBe(
-      'Place the people who know each other close together',
+    expect(saved.text).toEqual(
+      en('Place the people who know each other close together'),
     );
   });
 });

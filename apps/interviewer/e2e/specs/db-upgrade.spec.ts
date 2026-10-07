@@ -307,6 +307,8 @@ test.describe('booting over a legacy (Dexie v1) database', () => {
         caseId: string;
         currentStep: number;
         finishedAt: string | null;
+        localePreference?: string | null;
+        locale?: string | null;
         network?: {
           nodes?: { attributes?: Record<string, unknown> }[];
           edges?: unknown[];
@@ -367,6 +369,8 @@ test.describe('booting over a legacy (Dexie v1) database', () => {
             caseId: s.caseId,
             currentStep: s.currentStep,
             finishedAt: s.finishedAt,
+            localePreference: s.localePreference,
+            locale: s.locale,
             nodeNames: (s.network?.nodes ?? [])
               .map((n) => String(n.attributes?.name))
               .toSorted(),
@@ -383,9 +387,9 @@ test.describe('booting over a legacy (Dexie v1) database', () => {
     });
 
     // Native version = declared Dexie version × 10. When db.ts gains a
-    // version(4) this becomes 40 — update it together with the unit suite's
+    // version(5) this becomes 50 — update it together with the unit suite's
     // CURRENT_DEXIE_VERSION, which forces a seed for the new version there.
-    expect(state.nativeVersion).toBe(30);
+    expect(state.nativeVersion).toBe(40);
     expect(state.storeNames).toEqual([
       'assets',
       'protocolMigrations',
@@ -413,6 +417,8 @@ test.describe('booting over a legacy (Dexie v1) database', () => {
         caseId: 'legacy-case-complete',
         currentStep: 3,
         finishedAt: '2026-01-05T11:00:00.000Z',
+        localePreference: null,
+        locale: null,
         nodeNames: ['Legacy Alice', 'Legacy Bob'],
         edgeCount: 1,
       },
@@ -422,6 +428,8 @@ test.describe('booting over a legacy (Dexie v1) database', () => {
         caseId: 'legacy-case-in-progress',
         currentStep: 2,
         finishedAt: null,
+        localePreference: null,
+        locale: null,
         nodeNames: ['Legacy Alice', 'Legacy Bob'],
         edgeCount: 1,
       },

@@ -3,10 +3,8 @@ import { describe, expect, it } from 'vitest';
 import { CSP_DIRECTIVES } from '../../vite.renderer.config';
 
 describe('production content security policy', () => {
-  it('permits scripts from the controlled PostHog relay', () => {
-    expect(CSP_DIRECTIVES).toContain(
-      "script-src 'self' https://ph-relay.networkcanvas.com",
-    );
+  it('only permits scripts bundled with the app', () => {
+    expect(CSP_DIRECTIVES).toContain("script-src 'self'");
   });
 
   it('permits fetching protocol asset object URLs', () => {

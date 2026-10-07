@@ -7,6 +7,7 @@ import { expose } from 'comlink';
 import Fuse, { type IFuseOptions } from 'fuse.js';
 
 import type { Key } from '../types';
+import type { FilterProperty } from './types';
 
 type SearchableItem = Record<string, unknown> & { _key: Key };
 
@@ -20,7 +21,7 @@ class SearchEngine {
    */
   init(
     items: SearchableItem[],
-    keys: string[],
+    keys: FilterProperty[],
     options: IFuseOptions<SearchableItem> = {},
   ): void {
     this.items = items;

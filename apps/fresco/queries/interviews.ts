@@ -225,6 +225,7 @@ async function prisma_getInterviewsForExport(interviewIds: string[]) {
       startTime: true,
       finishTime: true,
       network: true,
+      locale: true,
       protocol: { select: { hash: true } },
       participant: { select: { label: true, identifier: true } },
     },

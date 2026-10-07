@@ -22,6 +22,7 @@ import StageEditor from '@codaco/protocol-builder/StageEditor';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 import StageEditorNav from '~/components/ProjectNav/StageEditorNav';
 import { routeFocusTargetProps } from '~/components/RouteFocus';
+import { architectStageEditors } from '~/components/StageEditor/architectStageEditors';
 import {
   readStageDraft,
   useStageDraft,
@@ -38,8 +39,14 @@ import {
   guardState,
   stageDiscardDescriptions,
 } from '~/hooks/useProtocolNavGuard';
-import { createArchitectClient } from '~/protocolBuilder/createArchitectRouter';
-import { getProtocol, getStage, getStageIndex } from '~/selectors/protocol';
+import { useArchitectClient } from '~/protocolBuilder/useArchitectClient';
+import {
+  getLocalization,
+  getProtocol,
+  getStage,
+  getStageIndex,
+} from '~/selectors/protocol';
+import { localizedText } from '~/utils/localizedText';
 const messages = defineMessages({
   stageNotFound: {
     id: 'architect.stageEditor.stageEditor.stageNotFound',
@@ -152,10 +159,7 @@ const StageEditorPage = () => {
   // One client per store, because a new one re-opens the protocol channel
   // behind it. The name follows the researcher's language, which changes about
   // as often as the store does.
-  const client = useMemo(
-    () => createArchitectClient(reduxStore, otherTabName),
-    [otherTabName, reduxStore],
-  );
+  const client = useArchitectClient(reduxStore, otherTabName);
 
   const target = useMemo<StageEditTarget | undefined>(() => {
     if (stageId !== null) {
@@ -249,10 +253,11 @@ const StageEditorPage = () => {
     };
   }, []);
 
-  const draftName = useStageDraft((beacon) => beacon.stage?.label);
+  const localization = useSelector(getLocalization);
+  const draftLabel = useStageDraft((beacon) => beacon.stage?.label);
   const stageName =
-    (typeof draftName === 'string' && draftName !== '' ? draftName : null) ??
-    stage?.label ??
+    localizedText(draftLabel, localization) ||
+    localizedText(stage?.label, localization) ||
     intl.formatMessage(messages.newStage);
 
   const renderChrome = useCallback(
@@ -368,7 +373,10 @@ const StageEditorPage = () => {
               package states nothing of its own.
             */}
             <div className="phone-landscape:-mx-6 -mx-4">
-              <ProtocolBuilder client={client} protocolId={activeProtocolId}>
+              <ProtocolBuilder
+                adapter={client.adapter}
+                protocolId={activeProtocolId}
+              >
                 <EnclosingHeadingLevel level="h2">
                   <StageEditor
                     target={target}
@@ -376,6 +384,7 @@ const StageEditorPage = () => {
                     actions={renderChrome}
                     header={renderHeader}
                     onSaved={handleSaved}
+                    registry={architectStageEditors}
                   />
                 </EnclosingHeadingLevel>
               </ProtocolBuilder>

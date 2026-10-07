@@ -12,6 +12,11 @@ import {
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { type DragMetadata, useDropTarget } from '@codaco/fresco-ui/dnd/dnd';
 import {
+  type PresentationalText,
+  presentationalTextProps,
+  presentationalTextValue,
+} from '@codaco/fresco-ui/PresentationalText';
+import {
   getMarkdownLabelText,
   RenderMarkdown,
 } from '@codaco/fresco-ui/RenderMarkdown';
@@ -37,7 +42,7 @@ type CategoricalBinItemProps = {
    * drop resolve to the wrong bin, or unregister a still-mounted target).
    */
   index: number;
-  label: string;
+  label: PresentationalText;
   isExpanded: boolean;
   onToggleExpand: () => void;
   catColor: string | null;
@@ -166,7 +171,11 @@ const CategoricalBinItem = (props: CategoricalBinItemProps) => {
   const summaryTextRef = useRef<HTMLParagraphElement>(null);
   // Announced names take the label's text, not its markdown source: a screen
   // reader should not read the asterisks around an emphasised word.
-  const spokenLabel = useMemo(() => getMarkdownLabelText(label), [label]);
+  const labelText = presentationalTextValue(label);
+  const spokenLabel = useMemo(
+    () => getMarkdownLabelText(labelText),
+    [labelText],
+  );
   const hasSummary = nodes.length > 0;
   const summaryFits = useSummaryFits(
     contentRef,
@@ -252,8 +261,12 @@ const CategoricalBinItem = (props: CategoricalBinItemProps) => {
             { label: spokenLabel, count: nodes.length },
           )}
         >
-          <Heading level="h3" className="[&_strong]:font-black">
-            <RenderMarkdown>{label}</RenderMarkdown>
+          <Heading
+            level="h3"
+            className="[&_strong]:font-black"
+            {...presentationalTextProps(label)}
+          >
+            <RenderMarkdown>{labelText}</RenderMarkdown>
           </Heading>
           <span className="ml-auto text-sm opacity-60">
             {intl.formatNumber(nodes.length)}
@@ -323,15 +336,19 @@ const CategoricalBinItem = (props: CategoricalBinItemProps) => {
         className="catbin-content"
         data-has-summary={hasSummary || undefined}
       >
-        <BinLabel
-          label={label}
-          variant="circle"
-          containerRef={contentRef}
-          elementRef={titleRef}
-          // The bin reserves part of itself the moment it holds anyone, which
-          // changes the label's cap without changing the box it is fitted in.
-          refitOn={hasSummary ? 'reserved' : 'whole-bin'}
-        />
+        {/* BinLabel takes a plain string, so the label's language rides on a
+            box-less wrapper that the fitted heading inherits it from. */}
+        <div className="contents" {...presentationalTextProps(label)}>
+          <BinLabel
+            label={labelText}
+            variant="circle"
+            containerRef={contentRef}
+            elementRef={titleRef}
+            // The bin reserves part of itself the moment it holds anyone, which
+            // changes the label's cap without changing the box it is fitted in.
+            refitOn={hasSummary ? 'reserved' : 'whole-bin'}
+          />
+        </div>
         <AnimatePresence>
           {hasSummary && (
             <motion.div

@@ -4,10 +4,15 @@ import type {
   Codebook,
   ColorReference,
   FilterOperator,
+  LocaleTag,
   NodeShape,
   VariableType,
 } from '@codaco/protocol-validation';
 
+import {
+  type ProtocolLocalization,
+  resolveTranslation,
+} from '../localization/localizedText.ts';
 import {
   isCompilablePattern,
   isFilterOperator,
@@ -263,6 +268,16 @@ export type DescribeRuleInput = Readonly<{
    * formatter in, so what the row says and what the editor says agree.
    */
   intl?: IntlShape;
+  /**
+   * The protocol's languages, and the one an option label is read in.
+   *
+   * An operand picked from a categorical or ordinal attribute is named by its
+   * option's label, which is written per language; it is read in `locale`,
+   * falling back as the interview does. Omitted — a host holding only the
+   * codebook — each label reads in the first language it is written in.
+   */
+  localization?: ProtocolLocalization;
+  locale?: LocaleTag;
 }>;
 
 /**
@@ -573,6 +588,8 @@ export function describeRule({
   targets,
   duplicateIds,
   intl = englishIntl,
+  localization,
+  locale,
 }: DescribeRuleInput): RuleDescription {
   const problems: RuleProblem[] = [];
   const say = (message: MessageDescriptor, values?: Record<string, string>) =>
@@ -680,7 +697,11 @@ export function describeRule({
     text: operatorText(operatorId, { isEgo, isPresenceRule }, intl),
   });
 
-  const choices = ruleVariableChoices(variables, attributeId);
+  const choices = ruleVariableChoices(
+    variables,
+    attributeId,
+    (label) => resolveTranslation(label, localization, locale).text,
+  );
   const authoredLabels =
     attributeType === 'categorical' || attributeType === 'ordinal';
   const labelFor = (item: string | number) =>

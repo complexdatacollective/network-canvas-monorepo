@@ -1,6 +1,6 @@
 'use client';
 
-import { useLocale, useTranslations } from 'next-intl';
+import { useTranslations } from 'next-intl';
 import { useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 
@@ -43,6 +43,9 @@ const PREVIEW_GENERATION = 'preview';
 
 const noopSync = async () => {};
 
+// The preview persists nothing, so a stated language is never stored.
+const noopProtocolLocaleChange = async () => {};
+
 function useWave(waves: PreviewWave[]): PreviewWave | undefined {
   const requested = Number(useSearchParams().get('wave'));
   return waves.find(({ wave }) => wave === requested) ?? waves[0];
@@ -56,11 +59,13 @@ async function fetchProtocolBytes(path: string): Promise<Uint8Array> {
 
 export function ProtocolPreview({ waves, backHref }: ProtocolPreviewProps) {
   const t = useTranslations('ProtocolGallery.preview');
-  const locale = useLocale();
   const wave = useWave(waves);
 
   const [install, setInstall] = useState<PreviewProtocolInstall | null>(null);
   const [payload, setPayload] = useState<InterviewPayload | null>(null);
+  const [requestedLocales, setRequestedLocales] = useState<
+    readonly string[] | null
+  >(null);
   const [failure, setFailure] = useState<PreviewFailure | null>(null);
   const [finished, setFinished] = useState(false);
   const [attempt, setAttempt] = useState(0);
@@ -91,6 +96,7 @@ export function ProtocolPreview({ waves, backHref }: ProtocolPreviewProps) {
     setInstall(null);
     installRef.current = null;
     setPayload(null);
+    setRequestedLocales(null);
     setFailure(null);
     setFinished(false);
     setCurrentStep(0);
@@ -111,6 +117,9 @@ export function ProtocolPreview({ waves, backHref }: ProtocolPreviewProps) {
       }
       installRef.current = result.install;
       setInstall(result.install);
+      // Read here, after the protocol has loaded in the browser, so the
+      // server render never depends on the visitor's languages.
+      setRequestedLocales(navigator.languages);
       setPayload(createPreviewPayload(result.install));
     };
     void load();
@@ -203,18 +212,19 @@ export function ProtocolPreview({ waves, backHref }: ProtocolPreviewProps) {
     );
   }
 
-  if (!payload) {
+  if (!payload || !requestedLocales) {
     return <PreviewLoadingScreen label={t('loading')} />;
   }
 
   return (
     <div className="h-dvh">
       <Shell
-        requestedLocale={locale}
+        requestedLocales={requestedLocales}
         payload={payload}
         currentStep={currentStep}
         onStepChange={setCurrentStep}
         onSync={noopSync}
+        onProtocolLocaleChange={noopProtocolLocaleChange}
         onFinish={onFinish}
         onRequestAsset={onRequestAsset}
         finishConfirmationDescription={t('finishConfirmation')}

@@ -15,6 +15,7 @@ import {
   findVariableRoleConflicts,
   INTERFACE_OWNED_OPTION_SETS,
   type InterfaceOwnedOptionSetKey,
+  type LocalizedString,
   optionsMatchInterfaceOwnedSet,
   type VariableRoleConflict,
   type Variables,
@@ -443,10 +444,12 @@ export const interfaceOwnedPickIssue = (
 /**
  * An option list an editor must render read-only. Widened over a variable's
  * own `options` because an interface-owned canonical set is `readonly`, and
- * both are rendered by the same control.
+ * both are rendered by the same control. The canonical set's labels are plain
+ * text, where a variable's are participant copy in each of the protocol's
+ * languages — and a boolean answer nobody has named has none.
  */
 export type LockedOptionList = readonly Readonly<{
-  label: string;
+  label?: LocalizedString | string;
   value: string | number | boolean;
 }>[];
 

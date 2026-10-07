@@ -45,9 +45,9 @@ test('reads a seeded stage back from the store', async ({
     stages: [
       {
         id: 'info-1',
-        label: 'Info',
+        label: { en: 'Info' },
         type: 'Information',
-        title: 'Info',
+        title: { en: 'Info' },
         items: [],
       },
     ],
@@ -60,5 +60,5 @@ test('reads a seeded stage back from the store', async ({
 
   const stage = await readStageJson(architectPage, 0);
   expect(stage.id).toBe('info-1');
-  expect(stage.label).toBe('Info');
+  expect(stage.label).toEqual({ en: 'Info' });
 });

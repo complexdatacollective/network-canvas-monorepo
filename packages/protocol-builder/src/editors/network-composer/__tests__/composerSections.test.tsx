@@ -82,7 +82,14 @@ describe('what a network composer lets the participant build', () => {
       composerHolding({
         convexHullVariable: 'contactType',
         nodeForm: {
-          fields: [{ id: 'field-1', variable: 'age', component: 'Number' }],
+          fields: [
+            {
+              id: 'field-1',
+              variable: 'age',
+              component: 'Number',
+              label: { 'en-US': 'age' },
+            },
+          ],
         },
         edges: [
           {
@@ -93,6 +100,7 @@ describe('what a network composer lets the participant build', () => {
                   id: 'edge-field-1',
                   variable: 'edgeNotes',
                   component: 'TextArea',
+                  label: { 'en-US': 'edgeNotes' },
                 },
               ],
             },
@@ -121,7 +129,7 @@ describe('what a network composer lets the participant build', () => {
               id: 'field-1',
               variable: 'age',
               component: 'Number',
-              label: 'How old are they?',
+              label: { 'en-US': 'How old are they?' },
             },
           ],
         },
@@ -134,7 +142,7 @@ describe('what a network composer lets the participant build', () => {
                   id: 'edge-field-1',
                   variable: 'edgeNotes',
                   component: 'TextArea',
-                  label: 'Anything else?',
+                  label: { 'en-US': 'Anything else?' },
                 },
               ],
             },
@@ -247,7 +255,7 @@ describe('what a network composer lets the participant build', () => {
                   id: 'edge-field-1',
                   variable: 'edgeNotes',
                   component: 'TextArea',
-                  label: 'Anything else?',
+                  label: { 'en-US': 'Anything else?' },
                 },
               ],
             },
@@ -297,7 +305,7 @@ describe('what a network composer lets the participant build', () => {
                   id: 'edge-field-1',
                   variable: 'edgeNotes',
                   component: 'TextArea',
-                  label: 'Anything else?',
+                  label: { 'en-US': 'Anything else?' },
                 },
               ],
             },
@@ -345,7 +353,7 @@ describe('what a network composer lets the participant build', () => {
                   id: 'edge-field-1',
                   variable: 'edgeNotes',
                   component: 'TextArea',
-                  label: 'Anything else?',
+                  label: { 'en-US': 'Anything else?' },
                 },
               ],
             },
@@ -389,7 +397,7 @@ describe('what a network composer lets the participant build', () => {
                   id: 'edge-field-1',
                   variable: 'edgeNotes',
                   component: 'TextArea',
-                  label: 'Anything else?',
+                  label: { 'en-US': 'Anything else?' },
                 },
               ],
             },
@@ -403,7 +411,7 @@ describe('what a network composer lets the participant build', () => {
                   id: 'edge-field-2',
                   variable: 'isActive',
                   component: 'Boolean',
-                  label: 'Still in touch?',
+                  label: { 'en-US': 'Still in touch?' },
                 },
               ],
             },
@@ -434,21 +442,28 @@ describe('what a network composer lets the participant build', () => {
   /**
    * The same rule one row down: a form field naming an attribute the codebook
    * has lost is a reference only the researcher can repair, and the row read
-   * "Empty field" — which says the field asks for nothing at all.
+   * "Empty field" — which says the field asks for nothing at all. Its caption
+   * stays, and the lost reference is named under it.
    */
   it('names the attribute a form field has lost, rather than reading as empty', async () => {
     renderStageEditor(
       composerHolding({
         nodeForm: {
           fields: [
-            { id: 'field-1', variable: 'former_attribute', component: 'Text' },
+            {
+              id: 'field-1',
+              variable: 'former_attribute',
+              component: 'Text',
+              label: { 'en-US': 'What did they do?' },
+            },
           ],
         },
       }),
     );
 
+    expect(await screen.findByText('What did they do?')).toBeInTheDocument();
     expect(
-      await screen.findByText(
+      screen.getByText(
         'former_attribute — this attribute is no longer in the codebook',
       ),
     ).toBeInTheDocument();
@@ -564,6 +579,7 @@ describe('what a network composer lets the participant build', () => {
                   id: 'edge-field-1',
                   variable: 'edgeNotes',
                   component: 'TextArea',
+                  label: { 'en-US': 'edgeNotes' },
                 },
               ],
             },
@@ -613,10 +629,12 @@ describe('what a network composer lets the participant build', () => {
       dialog.getByRole('combobox', { name: 'Input control' }),
       'TextArea',
     );
-    await harness.user.type(
-      dialog.getByRole('textbox', { name: 'Question' }),
-      'Who?',
-    );
+    // The caption starts as the attribute's name, and the researcher's own
+    // words replace it.
+    const question = dialog.getByRole('textbox', { name: 'Question' });
+    await waitFor(() => expect(question.textContent).toBe('composerName'));
+    await harness.user.clear(question);
+    await harness.user.type(question, 'Who?');
     await harness.user.click(dialog.getByRole('button', { name: 'Add' }));
     await waitFor(() =>
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
@@ -631,7 +649,7 @@ describe('what a network composer lets the participant build', () => {
         id: expect.any(String) as unknown as string,
         variable: 'composerName',
         component: 'TextArea',
-        label: 'Who?',
+        label: { 'en-US': 'Who?' },
       },
     ]);
     // And the codebook is untouched: the same attribute goes on being a single
@@ -639,6 +657,76 @@ describe('what a network composer lets the participant build', () => {
     expect(
       harness.hostCodebook().node?.person?.variables?.composerName,
     ).toMatchObject({ component: 'Text' });
+  });
+
+  /**
+   * The attribute's name is plain text and the caption is markdown, so the
+   * name is written escaped: an underscore in it is shown as typed rather than
+   * read as emphasis. The caption follows a later pick only while it is still
+   * the name it was given.
+   */
+  it('captions a field with its attribute’s name, until the researcher writes one', async () => {
+    const harness = renderStageEditor(composerHolding({}));
+    await switchOnNodeForm(harness);
+
+    const dialog = await addRow(harness, 'Create new node attribute');
+    const question = dialog.getByRole('textbox', { name: 'Question' });
+    expect(question.textContent).toBe('');
+
+    await chooseAttributeById(harness.user, picker('Attribute'), 'age');
+    await waitFor(() => expect(question.textContent).toBe('age'));
+
+    await chooseAttributeById(
+      harness.user,
+      picker('Attribute'),
+      'relationship_to_ego',
+    );
+    await waitFor(() =>
+      expect(question.textContent).toBe('relationship_to_ego'),
+    );
+    await harness.user.click(dialog.getByRole('button', { name: 'Add' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+    expect(screen.getByText('relationship_to_ego')).toBeVisible();
+    expect(screen.queryByText(/relationship\\_to/)).not.toBeInTheDocument();
+
+    const saved = await harness.submit();
+    expect(nodeFormFieldsOf(saved?.stageDocument ?? {})[0]).toMatchObject({
+      variable: 'relationship_to_ego',
+      label: { 'en-US': 'relationship\\_to\\_ego' },
+    });
+
+    const editing = await openRow(harness, 'Edit form field');
+    const caption = editing.getByRole('textbox', { name: 'Question' });
+    await harness.user.clear(caption);
+    await harness.user.type(caption, 'How old are they?');
+    await chooseAttributeById(harness.user, picker('Attribute'), 'age');
+    await waitFor(() =>
+      expect(
+        editing.getByRole('combobox', { name: 'Input control' }),
+      ).toHaveValue('Number'),
+    );
+    expect(caption.textContent).toBe('How old are they?');
+  });
+
+  it('refuses a field whose question has been emptied', async () => {
+    const harness = renderStageEditor(composerHolding({}));
+    await switchOnNodeForm(harness);
+
+    const dialog = await addRow(harness, 'Create new node attribute');
+    await chooseAttributeById(harness.user, picker('Attribute'), 'age');
+    const question = dialog.getByRole('textbox', { name: 'Question' });
+    await waitFor(() => expect(question.textContent).toBe('age'));
+    await harness.user.clear(question);
+    await harness.user.click(dialog.getByRole('button', { name: 'Add' }));
+
+    expect(
+      await dialog.findByText(
+        'Write what the participant is asked for this field.',
+      ),
+    ).toBeVisible();
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
   });
 
   /**
@@ -656,6 +744,7 @@ describe('what a network composer lets the participant build', () => {
     await switchOnNodeForm(harness);
     addPersonVariable(harness, 'notes', {
       name: 'notes',
+      label: 'notes',
       type: 'text',
       component: 'TextArea',
     });
@@ -716,10 +805,11 @@ describe('what a network composer lets the participant build', () => {
     // would leave the case passing whether the grouping was picked or not.
     addPersonVariable(harness, 'circle', {
       name: 'circle',
+      label: 'circle',
       type: 'categorical',
       options: [
-        { label: 'Inner', value: 'inner' },
-        { label: 'Outer', value: 'outer' },
+        { label: { 'en-US': 'Inner' }, value: 'inner' },
+        { label: { 'en-US': 'Outer' }, value: 'outer' },
       ],
     });
 
@@ -748,6 +838,7 @@ describe('what a network composer lets the participant build', () => {
             {
               id: 'field-1',
               variable: 'contactType',
+              label: { 'en-US': 'contactType' },
               component: 'CheckboxGroup',
             },
           ],
@@ -759,10 +850,11 @@ describe('what a network composer lets the participant build', () => {
     // control with nothing to offer at all.
     addPersonVariable(harness, 'circle', {
       name: 'circle',
+      label: 'circle',
       type: 'categorical',
       options: [
-        { label: 'Inner', value: 'inner' },
-        { label: 'Outer', value: 'outer' },
+        { label: { 'en-US': 'Inner' }, value: 'inner' },
+        { label: { 'en-US': 'Outer' }, value: 'outer' },
       ],
     });
 
@@ -790,8 +882,18 @@ describe('what a network composer lets the participant build', () => {
       composerHolding({
         nodeForm: {
           fields: [
-            { id: 'field-1', variable: 'age', component: 'Number' },
-            { id: 'field-2', variable: 'age', component: 'Number' },
+            {
+              id: 'field-1',
+              variable: 'age',
+              component: 'Number',
+              label: { 'en-US': 'age' },
+            },
+            {
+              id: 'field-2',
+              variable: 'age',
+              component: 'Number',
+              label: { 'en-US': 'age' },
+            },
           ],
         },
       }),
@@ -906,16 +1008,19 @@ describe('what a network composer lets the participant build', () => {
     });
     expect(created[1]).toMatchObject({
       name: 'favouriteFood',
+      label: 'favouriteFood',
       type: 'number',
       component: 'Number',
     });
 
+    // Captioned with the name the researcher gave the attribute it invented.
     const saved = await harness.submit();
     expect(nodeFormFieldsOf(saved?.stageDocument ?? {})).toEqual([
       {
         id: expect.any(String) as unknown as string,
         variable: created[0],
         component: 'Number',
+        label: { 'en-US': 'favouriteFood' },
       },
     ]);
   });
@@ -932,7 +1037,15 @@ describe('what a network composer lets the participant build', () => {
   it('changes the values a composer field’s attribute offers', async () => {
     const harness = renderStageEditor(
       composerHolding({
-        nodeForm: { fields: [{ id: 'field-1', variable: 'contactType' }] },
+        nodeForm: {
+          fields: [
+            {
+              id: 'field-1',
+              variable: 'contactType',
+              label: { 'en-US': 'contactType' },
+            },
+          ],
+        },
       }),
     );
 
@@ -964,10 +1077,10 @@ describe('what a network composer lets the participant build', () => {
       ).toEqual(
         expect.objectContaining({
           options: [
-            { label: 'In person', value: 'in_person' },
-            { label: 'Phone or video call', value: 'call' },
-            { label: 'Text or messaging', value: 'text' },
-            { label: 'Letter', value: 'letter' },
+            { label: { 'en-US': 'In person' }, value: 'in_person' },
+            { label: { 'en-US': 'Phone or video call' }, value: 'call' },
+            { label: { 'en-US': 'Text or messaging' }, value: 'text' },
+            { label: { 'en-US': 'Letter' }, value: 'letter' },
           ],
         }),
       ),
@@ -1031,8 +1144,8 @@ describe('what a network composer lets the participant build', () => {
       type: 'boolean',
       component: 'Boolean',
       options: [
-        { label: 'Nearby', value: true },
-        { label: 'Further away', value: false },
+        { label: { 'en-US': 'Nearby' }, value: true },
+        { label: { 'en-US': 'Further away' }, value: false },
       ],
     });
   });
@@ -1165,8 +1278,8 @@ describe('what a network composer lets the participant build', () => {
     expect(created?.[1]).toMatchObject({
       type: 'ordinal',
       options: [
-        { label: 'Not at all close', value: 'far' },
-        { label: 'Very close', value: 'near' },
+        { label: { 'en-US': 'Not at all close' }, value: 'far' },
+        { label: { 'en-US': 'Very close' }, value: 'near' },
       ],
     });
 
@@ -1176,6 +1289,7 @@ describe('what a network composer lets the participant build', () => {
         id: expect.any(String) as unknown as string,
         variable: created?.[0],
         component: 'LikertScale',
+        label: { 'en-US': 'closeness' },
       },
     ]);
   });
@@ -1397,7 +1511,12 @@ describe('inventing the attribute a connection form records', () => {
           subject: { entity: 'edge', type },
           form: {
             fields: [
-              { id: 'field-1', variable: 'edgeNotes', component: 'TextArea' },
+              {
+                id: 'field-1',
+                variable: 'edgeNotes',
+                component: 'TextArea',
+                label: { 'en-US': 'edgeNotes' },
+              },
             ],
           },
         },
@@ -1503,7 +1622,12 @@ describe('an attribute another stage starts writing mid-edit', () => {
       composerHolding({
         nodeForm: {
           fields: [
-            { id: 'field-1', variable: 'highlighted', component: 'Boolean' },
+            {
+              id: 'field-1',
+              variable: 'highlighted',
+              component: 'Boolean',
+              label: { 'en-US': 'highlighted' },
+            },
           ],
         },
       }),
@@ -1520,6 +1644,7 @@ describe('an attribute another stage starts writing mid-edit', () => {
       id: 'field-1',
       variable: 'highlighted',
       component: 'Boolean',
+      label: { 'en-US': 'highlighted' },
     });
   });
 });
@@ -1587,6 +1712,7 @@ describe('an attribute a collaborator retypes mid-edit', () => {
         id: expect.any(String) as unknown as string,
         variable: 'age',
         component: 'Text',
+        label: { 'en-US': 'age' },
       },
     ]);
   });
@@ -1603,7 +1729,14 @@ describe('validation hints on a composer form field', () => {
   const fieldOn = (variable: string) =>
     composerHolding({
       nodeForm: {
-        fields: [{ id: 'field-1', variable, component: 'Number' }],
+        fields: [
+          {
+            id: 'field-1',
+            variable,
+            component: 'Number',
+            label: { 'en-US': variable },
+          },
+        ],
       },
     });
 
@@ -1624,6 +1757,7 @@ describe('validation hints on a composer form field', () => {
       id: 'field-1',
       variable: 'age',
       component: 'Number',
+      label: { 'en-US': 'age' },
       showValidationHints: true,
     });
 
@@ -1641,6 +1775,7 @@ describe('validation hints on a composer form field', () => {
       id: 'field-1',
       variable: 'age',
       component: 'Number',
+      label: { 'en-US': 'age' },
     });
   });
 });
@@ -1657,6 +1792,7 @@ describe('what a composer field’s control accepts', () => {
               id: 'field-1',
               variable: DATE_ATTRIBUTE,
               component: 'DatePicker',
+              label: { 'en-US': 'When did you meet?' },
               parameters: { type: 'full', min: '2020-01-01' },
             },
           ],
@@ -1665,6 +1801,7 @@ describe('what a composer field’s control accepts', () => {
     );
     addPersonVariable(harness, DATE_ATTRIBUTE, {
       name: DATE_ATTRIBUTE,
+      label: DATE_ATTRIBUTE,
       type: 'datetime',
       component: 'DatePicker',
       parameters: { type: 'full' },
@@ -1681,7 +1818,7 @@ describe('what a composer field’s control accepts', () => {
    */
   it('saves a stage whose fields already carry settings, unchanged', async () => {
     const harness = openWithADate();
-    await screen.findByText(DATE_ATTRIBUTE);
+    await screen.findByText(`Records the attribute “${DATE_ATTRIBUTE}”`);
 
     const saved = await harness.roundTrip({
       unowned: ['subject', 'background'],
@@ -1707,7 +1844,7 @@ describe('what a composer field’s control accepts', () => {
    */
   it('refuses a window that ends before it starts, against the date that ends it', async () => {
     const harness = openWithADate();
-    await screen.findByText(DATE_ATTRIBUTE);
+    await screen.findByText(`Records the attribute “${DATE_ATTRIBUTE}”`);
 
     const dialog = await openRow(harness, 'Edit form field');
     fireEvent.change(dialog.getByLabelText('Latest date'), {
@@ -1734,7 +1871,7 @@ describe('what a composer field’s control accepts', () => {
    */
   it('swaps the settings, and drops the old ones, when the control changes', async () => {
     const harness = openWithADate();
-    await screen.findByText(DATE_ATTRIBUTE);
+    await screen.findByText(`Records the attribute “${DATE_ATTRIBUTE}”`);
 
     const dialog = await openRow(harness, 'Edit form field');
     await harness.user.selectOptions(
@@ -1767,6 +1904,7 @@ describe('what a composer field’s control accepts', () => {
               id: 'field-1',
               variable: DATE_ATTRIBUTE,
               component: 'DatePicker',
+              label: { 'en-US': 'When did you meet?' },
             },
           ],
         },
@@ -1774,11 +1912,12 @@ describe('what a composer field’s control accepts', () => {
     );
     addPersonVariable(harness, DATE_ATTRIBUTE, {
       name: DATE_ATTRIBUTE,
+      label: DATE_ATTRIBUTE,
       type: 'datetime',
       component: 'DatePicker',
       parameters: { type: 'year' },
     });
-    await screen.findByText(DATE_ATTRIBUTE);
+    await screen.findByText(`Records the attribute “${DATE_ATTRIBUTE}”`);
 
     const dialog = await openRow(harness, 'Edit form field');
     expect(
@@ -1810,7 +1949,14 @@ describe('the live preview beside a composer form field', () => {
   const fieldOnAge = () =>
     composerHolding({
       nodeForm: {
-        fields: [{ id: 'field-1', variable: 'age', component: 'Number' }],
+        fields: [
+          {
+            id: 'field-1',
+            variable: 'age',
+            component: 'Number',
+            label: { 'en-US': 'age' },
+          },
+        ],
       },
     });
 
@@ -1835,14 +1981,11 @@ describe('the live preview beside a composer form field', () => {
     const preview = within(
       dialog.getByRole('region', { name: 'Interactive preview' }),
     );
-    // No label authored yet, so the attribute's own name stands in — the
-    // composer's rule, and never the form family's placeholder question.
     expect(preview.getByRole('spinbutton', { name: 'age' })).toBeVisible();
 
-    await harness.user.type(
-      dialog.getByRole('textbox', { name: 'Question' }),
-      'How old are they?',
-    );
+    const question = dialog.getByRole('textbox', { name: 'Question' });
+    await harness.user.clear(question);
+    await harness.user.type(question, 'How old are they?');
     await waitFor(() =>
       expect(
         preview.getByRole('spinbutton', { name: 'How old are they?' }),
@@ -1872,10 +2015,11 @@ describe('a composer pick that conflicts with the rest of the protocol', () => {
     // the one the picker is holding, which it goes on offering either way.
     addPersonVariable(harness, 'region', {
       name: 'region',
+      label: 'region',
       type: 'categorical',
       options: [
-        { label: 'North', value: 'north' },
-        { label: 'South', value: 'south' },
+        { label: { 'en-US': 'North' }, value: 'north' },
+        { label: { 'en-US': 'South' }, value: 'south' },
       ],
     });
     const grouping = await waitFor(() =>
@@ -2003,6 +2147,7 @@ describe('the rules a composer field authors', () => {
             {
               id: 'field-1',
               variable: 'metOn',
+              label: { 'en-US': 'metOn' },
               ...YEAR_PICKER('2020', '2025'),
             },
           ],
@@ -2014,11 +2159,13 @@ describe('the rules a composer field authors', () => {
     // through the window this field puts on it.
     addPersonVariable(harness, 'bornOn', {
       name: 'bornOn',
+      label: 'bornOn',
       type: 'datetime',
       ...YEAR_PICKER('1990', '1995'),
     });
     addPersonVariable(harness, 'metOn', {
       name: 'metOn',
+      label: 'metOn',
       type: 'datetime',
       validation: { sameAs: 'bornOn' },
       ...YEAR_PICKER('1990', '1995'),
@@ -2066,12 +2213,14 @@ describe('the rules a composer field authors', () => {
     // question, and a list with neither would answer it by accident.
     addPersonVariable(harness, 'bornOn', {
       name: 'bornOn',
+      label: 'bornOn',
       type: 'datetime',
       component: 'DatePicker',
       parameters: { type: 'full', min: '1990-01-01', max: '1995-12-31' },
     });
     addPersonVariable(harness, 'movedOn', {
       name: 'movedOn',
+      label: 'movedOn',
       type: 'datetime',
       component: 'DatePicker',
       parameters: { type: 'full', min: '2020-01-01', max: '2025-12-31' },
@@ -2129,16 +2278,19 @@ describe('the rules a composer field authors', () => {
             {
               id: 'field-1',
               variable: 'metOn',
+              label: { 'en-US': 'metOn' },
               ...YEAR_PICKER('2020', '2025'),
             },
             {
               id: 'field-2',
               variable: 'bornOn',
+              label: { 'en-US': 'bornOn' },
               ...YEAR_PICKER('1990', '1995'),
             },
             {
               id: 'field-3',
               variable: 'movedOn',
+              label: { 'en-US': 'movedOn' },
               ...YEAR_PICKER('2020', '2025'),
             },
           ],
@@ -2151,6 +2303,7 @@ describe('the rules a composer field authors', () => {
     for (const variableId of ['bornOn', 'metOn', 'movedOn']) {
       addPersonVariable(harness, variableId, {
         name: variableId,
+        label: variableId,
         type: 'datetime',
         ...YEAR_PICKER('2020', '2025'),
       });
@@ -2201,16 +2354,19 @@ describe('the rules a composer field authors', () => {
             {
               id: 'field-1',
               variable: 'metOn',
+              label: { 'en-US': 'metOn' },
               ...YEAR_PICKER('2020', '2025'),
             },
             {
               id: 'field-2',
               variable: 'bornOn',
+              label: { 'en-US': 'bornOn' },
               ...YEAR_PICKER('2020', '2025'),
             },
             {
               id: 'field-3',
               variable: 'movedOn',
+              label: { 'en-US': 'movedOn' },
               ...YEAR_PICKER('2020', '2025'),
             },
           ],
@@ -2221,16 +2377,19 @@ describe('the rules a composer field authors', () => {
     // together only by the window the second field renders it with.
     addPersonVariable(harness, 'bornOn', {
       name: 'bornOn',
+      label: 'bornOn',
       type: 'datetime',
       ...YEAR_PICKER('1990', '1995'),
     });
     addPersonVariable(harness, 'metOn', {
       name: 'metOn',
+      label: 'metOn',
       type: 'datetime',
       ...YEAR_PICKER('2020', '2025'),
     });
     addPersonVariable(harness, 'movedOn', {
       name: 'movedOn',
+      label: 'movedOn',
       type: 'datetime',
       ...YEAR_PICKER('2020', '2025'),
     });
@@ -2275,11 +2434,13 @@ describe('the rules a composer field authors', () => {
             {
               id: 'field-1',
               variable: 'metOn',
+              label: { 'en-US': 'metOn' },
               ...YEAR_PICKER('2020', '2025'),
             },
             {
               id: 'field-2',
               variable: 'bornOn',
+              label: { 'en-US': 'bornOn' },
               ...YEAR_PICKER('2020', '2025'),
             },
           ],
@@ -2289,6 +2450,7 @@ describe('the rules a composer field authors', () => {
     for (const variableId of ['bornOn', 'metOn']) {
       addPersonVariable(harness, variableId, {
         name: variableId,
+        label: variableId,
         type: 'datetime',
         ...YEAR_PICKER('2020', '2025'),
       });
@@ -2348,8 +2510,18 @@ describe('the rules a composer field authors', () => {
       composerHolding({
         nodeForm: {
           fields: [
-            { id: 'field-1', variable: 'isKin', component: 'Boolean' },
-            { id: 'field-2', variable: 'isClose', component: 'Boolean' },
+            {
+              id: 'field-1',
+              variable: 'isKin',
+              component: 'Boolean',
+              label: { 'en-US': 'isKin' },
+            },
+            {
+              id: 'field-2',
+              variable: 'isClose',
+              component: 'Boolean',
+              label: { 'en-US': 'isClose' },
+            },
           ],
         },
       }),
@@ -2360,14 +2532,16 @@ describe('the rules a composer field authors', () => {
     // form chose these controls.
     addPersonVariable(harness, 'isKin', {
       name: 'isKin',
+      label: 'isKin',
       type: 'boolean',
-      options: [{ label: 'Yes', value: true }],
+      options: [{ label: { 'en-US': 'Yes' }, value: true }],
       validation: { differentFrom: 'isClose' },
     });
     addPersonVariable(harness, 'isClose', {
       name: 'isClose',
+      label: 'isClose',
       type: 'boolean',
-      options: [{ label: 'Yes', value: true }],
+      options: [{ label: { 'en-US': 'Yes' }, value: true }],
     });
 
     // The attribute arrives holding the rule, so its nested Validation section
@@ -2409,8 +2583,18 @@ describe('the rules a composer field authors', () => {
       composerHolding({
         nodeForm: {
           fields: [
-            { id: 'field-1', variable: 'isKin', component: 'Boolean' },
-            { id: 'field-2', variable: 'isPinned', component: 'Boolean' },
+            {
+              id: 'field-1',
+              variable: 'isKin',
+              component: 'Boolean',
+              label: { 'en-US': 'isKin' },
+            },
+            {
+              id: 'field-2',
+              variable: 'isPinned',
+              component: 'Boolean',
+              label: { 'en-US': 'isPinned' },
+            },
           ],
         },
       }),
@@ -2418,16 +2602,22 @@ describe('the rules a composer field authors', () => {
     for (const variableId of ['isKin', 'isPinned', 'isClose']) {
       addPersonVariable(harness, variableId, {
         name: variableId,
+        label: variableId,
         type: 'boolean',
         component: 'Boolean',
-        options: [{ label: 'Yes', value: true }],
+        options: [{ label: { 'en-US': 'Yes' }, value: true }],
       });
     }
     // `isKin` is asked for by another composer as well, with a control this
     // editor cannot see — so once this row moves off it, nothing here renders
     // it.
     composerInAnotherStage(harness, [
-      { id: 'other-field-1', variable: 'isKin', component: 'Toggle' },
+      {
+        id: 'other-field-1',
+        variable: 'isKin',
+        component: 'Toggle',
+        label: { 'en-US': 'isKin' },
+      },
     ]);
 
     const dialog = await openRow(harness, 'Edit form field');
@@ -2470,8 +2660,18 @@ describe('the rules a composer field authors', () => {
       composerHolding({
         nodeForm: {
           fields: [
-            { id: 'field-1', variable: 'isKin', component: 'Boolean' },
-            { id: 'field-2', variable: 'isPinned', component: 'Boolean' },
+            {
+              id: 'field-1',
+              variable: 'isKin',
+              component: 'Boolean',
+              label: { 'en-US': 'isKin' },
+            },
+            {
+              id: 'field-2',
+              variable: 'isPinned',
+              component: 'Boolean',
+              label: { 'en-US': 'isPinned' },
+            },
           ],
         },
       }),
@@ -2482,15 +2682,21 @@ describe('the rules a composer field authors', () => {
     for (const variableId of ['isKin', 'isPinned', 'isClose']) {
       addPersonVariable(harness, variableId, {
         name: variableId,
+        label: variableId,
         type: 'boolean',
         component: 'Boolean',
-        options: [{ label: 'Yes', value: true }],
+        options: [{ label: { 'en-US': 'Yes' }, value: true }],
       });
     }
     // `isClose` is asked for by another composer, with a control that offers
     // both answers — which this editor cannot see, and must not guess at.
     composerInAnotherStage(harness, [
-      { id: 'other-field-1', variable: 'isClose', component: 'Toggle' },
+      {
+        id: 'other-field-1',
+        variable: 'isClose',
+        component: 'Toggle',
+        label: { 'en-US': 'isClose' },
+      },
     ]);
 
     const dialog = await openRow(harness, 'Edit form field');

@@ -63,6 +63,7 @@ export async function encryptedPerson(
           type: 'text',
           component: 'Text',
           name: 'name',
+          label: 'name',
           encrypted: true,
         },
       },

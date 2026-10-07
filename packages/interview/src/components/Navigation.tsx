@@ -25,7 +25,6 @@ import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import { Button, IconButton } from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
-import LocaleSelect from '@codaco/fresco-ui/form/fields/LocaleSelect';
 import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
 import {
   Popover,
@@ -36,8 +35,6 @@ import { usePortalContainer } from '@codaco/fresco-ui/PortalContainer';
 import ProgressBar from '@codaco/fresco-ui/ProgressBar';
 import { cva, cx } from '@codaco/fresco-ui/utils/cva';
 
-import { useInterviewLocale } from '../i18n/InterviewI18nProvider';
-import { interviewLocales } from '../i18n/locales';
 import { navigationMessages as messages } from '../i18n/navigationMessages';
 import type { UnavailableStage } from '../selectors/skip-logic';
 import type { NavigationOrientation } from '../Shell';
@@ -166,7 +163,6 @@ type NavigationProps = {
   reviewMode?: boolean;
   allowStageNavigation?: boolean;
   allowUserScaling?: boolean;
-  allowLanguageSelection?: boolean;
   textScale?: number;
   onTextScaleChange?: (scale: number) => void;
   className?: string;
@@ -190,16 +186,12 @@ const Navigation = ({
   reviewMode,
   allowStageNavigation,
   allowUserScaling,
-  allowLanguageSelection,
   textScale = 1,
   onTextScaleChange,
   className,
   goToStage,
 }: NavigationProps) => {
   const intl = useAppIntl();
-  const language = useInterviewLocale();
-  const languageSelectionEnabled =
-    !!allowLanguageSelection && language !== null;
   const BackIcon = orientation === 'vertical' ? ChevronUp : ChevronLeft;
   const ForwardIcon = orientation === 'vertical' ? ChevronDown : ChevronRight;
 
@@ -213,8 +205,7 @@ const Navigation = ({
 
   // The settings popover hosts the exit action and the text-size control; with
   // neither available there is nothing to show, so the trigger is omitted.
-  const showSettingsPopover =
-    !!onExit || userScalingEnabled || languageSelectionEnabled;
+  const showSettingsPopover = !!onExit || userScalingEnabled;
 
   const matchedTextScaleIndex = TEXT_SCALE_OPTIONS.findIndex(
     (scale) => scale === textScale,
@@ -229,7 +220,6 @@ const Navigation = ({
     (TEXT_SCALE_OPTIONS[textScaleIndex] ?? 1) * 100,
   );
   const textSizeLabelId = useId();
-  const languageLabelId = useId();
   const textSizeControlRef = useRef<HTMLDivElement>(null);
   const [textScaleInputValue, setTextScaleInputValue] = useState(
     String(textScalePercent),
@@ -386,29 +376,6 @@ const Navigation = ({
                 aria-label={intl.formatMessage(messages.interviewSettings)}
               >
                 <div className="flex flex-col gap-2">
-                  {languageSelectionEnabled && (
-                    <div className="flex min-w-0 flex-col gap-1.5 px-2 py-1.5">
-                      <label
-                        id={languageLabelId}
-                        htmlFor={`${languageLabelId}-select`}
-                        className="text-sm font-semibold"
-                      >
-                        <AppMessage message={messages.interfaceLanguage} />
-                      </label>
-                      <LocaleSelect
-                        id={`${languageLabelId}-select`}
-                        options={interviewLocales}
-                        value={language.preference}
-                        onChange={language.setPreference}
-                        automaticLabel={intl.formatMessage(
-                          messages.automaticLanguage,
-                        )}
-                        aria-labelledby={languageLabelId}
-                        size="sm"
-                        className="w-full"
-                      />
-                    </div>
-                  )}
                   {userScalingEnabled && (
                     <fieldset className="m-0 flex min-w-0 flex-col gap-1.5 border-0 p-0">
                       <legend
@@ -487,10 +454,9 @@ const Navigation = ({
                       </div>
                     </fieldset>
                   )}
-                  {(userScalingEnabled || languageSelectionEnabled) &&
-                    onExit && (
-                      <hr className="mx-auto my-1 h-px w-full rounded border-0 bg-current/20" />
-                    )}
+                  {userScalingEnabled && onExit && (
+                    <hr className="mx-auto my-1 h-px w-full rounded border-0 bg-current/20" />
+                  )}
                   {onExit && (
                     <Button
                       color="dynamic"

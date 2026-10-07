@@ -213,10 +213,12 @@
       "FamilyPedigree": "Familienstammbaum",
       "Geospatial": "Geodaten-Oberfläche",
       "Information": "Information",
+      "LanguageChooser": "Sprachauswahl",
       "NameGenerator": "Namensgenerator (mit Formularen)",
       "NameGeneratorQuickAdd": "Namensgenerator (Schnelleingabe)",
       "NameGeneratorRoster": "Namensgenerator mit Namensliste",
       "Narrative": "Narrativ",
+      "NarrativePedigree": "Narrativer Stammbaum",
       "NetworkComposer": "Netzwerkeditor",
       "OneToManyDyadCensus": "Eins-zu-viele-Dyadenzensus",
       "OrdinalBin": "Ordinale Einordnung",
@@ -313,7 +315,7 @@
       "bestFor": "Ideal für",
       "downloadVersion": "Version {version} herunterladen",
       "platformAccessibleName": "{app} für {platform}",
-      "schemaVersionInfo": "Architect Classic und Interviewer Classic unterstützen Protokolle mit Schema 7. Die browserbasierten Apps Architect und Interviewer sowie Fresco verwenden Schema 8, das die neuesten Funktionen enthält. Die Aktualisierung eines Protokolls lässt sich nicht rückgängig machen. Bewahren Sie daher die ursprüngliche Datei mit Schema 7 auf, wenn Sie die Classic-Apps weiterhin benötigen.",
+      "schemaVersionInfo": "Architect Classic und Interviewer Classic unterstützen Protokolle mit Schema 7. Die browserbasierten Apps Architect und Interviewer sowie Fresco verwenden Schema 9, das die neuesten Funktionen enthält. Die Aktualisierung eines Protokolls lässt sich nicht rückgängig machen. Bewahren Sie daher die ursprüngliche Datei mit Schema 7 auf, wenn Sie die Classic-Apps weiterhin benötigen.",
       "schemaVersionLink": "Mehr über Schemaversionen erfahren"
     },
     "platforms": {
@@ -532,6 +534,16 @@
           "0": "Erstellen Sie Familienmitglieder und Beziehungen gemeinsam; ein automatisches Layout hält den Stammbaum übersichtlich, während er wächst.",
           "1": "Bilden Sie biologische und soziale Beziehungen ebenso ab wie Beziehungen durch Adoption, Keimzellspende, Leihmutterschaft und Partnerschaft, und erheben Sie Attribute für jedes Familienmitglied.",
           "2": "Fügen Sie optional einen Schritt zur Nennung von Erkrankungen hinzu, um festzuhalten, welche Angehörigen von bestimmten Erkrankungen betroffen sind, damit dies später visualisiert werden kann."
+        }
+      },
+      "narrativePedigree": {
+        "shortName": "Narrativer Stammbaum",
+        "name": "Oberfläche „Narrativer Stammbaum“",
+        "summary": "Wandeln Sie einen zuvor erstellten Familienstammbaum in eine schreibgeschützte Visualisierung um, die die standardisierte klinische Stammbaumnotation verwendet.",
+        "details": {
+          "0": "Zeigen Sie für eine oder mehrere Erkrankungen betroffene und sicher anlagetragende Angehörige an – für alle unterstützten Erbgänge.",
+          "1": "Zeigen Sie optional mögliche Risikoeinstufungen an, wenn die Studie eine angemessen begleitete Interpretation vorsieht.",
+          "2": "Konzentrieren Sie sich auf die für eine Person relevante Abstammungslinie und exportieren Sie eine druckbare Momentaufnahme. Die Visualisierung ist eine Hilfe, keine Diagnose."
         }
       },
       "networkComposer": {

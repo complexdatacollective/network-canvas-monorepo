@@ -20,6 +20,7 @@ import {
   wordsFor,
 } from '../editors/family-pedigree/sections/genderWords.ts';
 import { familyPedigreeMessages as messages } from '../editors/family-pedigree/sections/pedigreeMessages.ts';
+import { useLocalizedText } from '../localization/ProtocolLocalization.tsx';
 
 type TermList = Record<string, unknown>[];
 
@@ -69,6 +70,7 @@ export default function GenderIdentityWordsSummaryField({
   'aria-describedby': ariaDescribedBy,
 }: GenderIdentityWordsSummaryFieldProps) {
   const intl = useAppIntl();
+  const localize = useLocalizedText();
 
   const stale = namesAnotherValue(value, options);
   useEffect(() => {
@@ -96,22 +98,29 @@ export default function GenderIdentityWordsSummaryField({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {options.map((option) => (
-            <TableRow key={String(option.value)} className="h-auto">
-              {/* Wrapped rather than kept on one line: an option's label and
+          {options.map((option) => {
+            const label = localize(option.label);
+            return (
+              <TableRow key={String(option.value)} className="h-auto">
+                {/* Wrapped rather than kept on one line: an option's label and
                   the longest words both run past a narrow panel. The option
                   column is given a third of the width, because a cell that
                   may wrap is otherwise squeezed to its longest word. */}
-              <TableCell className="w-1/3 py-2 whitespace-normal">
-                {getMarkdownLabelText(option.label)}
-              </TableCell>
-              <TableCell className="py-2 whitespace-normal">
-                {intl.formatMessage(
-                  GENDER_WORDS_LABELS[wordsFor(value, option.value)],
-                )}
-              </TableCell>
-            </TableRow>
-          ))}
+                <TableCell
+                  className="w-1/3 py-2 whitespace-normal"
+                  lang={label.lang}
+                  dir={label.dir}
+                >
+                  {getMarkdownLabelText(label.text)}
+                </TableCell>
+                <TableCell className="py-2 whitespace-normal">
+                  {intl.formatMessage(
+                    GENDER_WORDS_LABELS[wordsFor(value, option.value)],
+                  )}
+                </TableCell>
+              </TableRow>
+            );
+          })}
         </TableBody>
       </Table>
     </div>

@@ -38,6 +38,10 @@ import type {
 import useReadyForNextStage from './useReadyForNextStage';
 import { useStageSelector } from './useStageSelector';
 
+type CurrentInterfaceProps = Omit<StageProps, 'stage'> & {
+  stage: ReturnType<typeof getCurrentStage>;
+};
+
 export default function useInterviewNavigation(
   initialStageOverrideIndex?: number,
   reviewMode = false,
@@ -86,7 +90,7 @@ export default function useInterviewNavigation(
   // Selectors
   const stage = useStageSelector(getCurrentStage);
   const CurrentInterface = stage
-    ? (getInterface(stage.type) as ElementType<StageProps>)
+    ? (getInterface(stage.type) as ElementType<CurrentInterfaceProps>)
     : null;
 
   const { isReady: isReadyForNextStage } = useReadyForNextStage();

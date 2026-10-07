@@ -16,9 +16,9 @@ const SEX: ShapeMappingVariable = {
   name: 'sex',
   type: 'categorical',
   options: [
-    { value: 'female', label: 'Female' },
-    { value: 'male', label: 'Male' },
-    { value: 'intersex', label: 'Intersex' },
+    { value: 'female', label: { en: 'Female' } },
+    { value: 'male', label: { en: 'Male' } },
+    { value: 'intersex', label: { en: 'Intersex' } },
   ],
 };
 
@@ -26,9 +26,9 @@ const GENDER: ShapeMappingVariable = {
   name: 'gender',
   type: 'categorical',
   options: [
-    { value: 'woman', label: 'Woman' },
-    { value: 'man', label: 'Man' },
-    { value: 'nonBinary', label: 'Non-binary' },
+    { value: 'woman', label: { en: 'Woman' } },
+    { value: 'man', label: { en: 'Man' } },
+    { value: 'nonBinary', label: { en: 'Non-binary' } },
   ],
 };
 
@@ -208,7 +208,7 @@ describe('what the symbols follow', () => {
               ...GENDER,
               options: [
                 ...(GENDER.options ?? []),
-                { value: 'transWoman', label: 'Trans woman' },
+                { value: 'transWoman', label: { en: 'Trans woman' } },
               ],
             },
           },
@@ -226,8 +226,8 @@ describe('what the symbols follow', () => {
             gender: {
               ...GENDER,
               options: [
-                { value: 'female', label: 'Woman' },
-                { value: 'man', label: 'Man' },
+                { value: 'female', label: { en: 'Woman' } },
+                { value: 'man', label: { en: 'Man' } },
               ],
             },
           },

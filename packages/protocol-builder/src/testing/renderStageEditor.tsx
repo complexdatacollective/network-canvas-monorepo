@@ -17,7 +17,6 @@ import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import { resolveFieldPath } from '@codaco/fresco-ui/form/FieldNamespace';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import { frescoUiCatalogs } from '@codaco/fresco-ui/locales';
-import type { ProtocolBuilderClient } from '@codaco/protocol-builder-core/contract';
 import type { Codebook, StageType } from '@codaco/protocol-validation';
 import { protocolValidationCatalogs } from '@codaco/protocol-validation/locales';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
@@ -34,6 +33,7 @@ import {
 import StageEditorShell from '../form/StageEditorShell.tsx';
 import { getInterfaceTemplate } from '../interfaces/templates.ts';
 import { protocolBuilderCatalogs } from '../locales/catalogs.ts';
+import type { ProtocolLocalization } from '../localization/localizedText.ts';
 import { protocolContextFromSections } from '../protocol-context.ts';
 import { ProtocolBuilder } from '../ProtocolBuilder.tsx';
 import { ResourceClientProvider } from '../resources/client.tsx';
@@ -53,6 +53,7 @@ import {
   type StageEditTarget,
 } from '../stageEdit.tsx';
 import StageEditor from '../StageEditor.tsx';
+import type { ProtocolBuilderAdapter } from '../state/context.ts';
 import {
   createInMemoryHost,
   type InMemoryHost,
@@ -179,7 +180,7 @@ export type StageEditorHarness = RenderResult &
     /**
      * The protocol, served from memory over the package's own host contract.
      *
-     * `host.client` is what the editor is mounted over, `host.store` is what
+     * `host.adapter` is what the editor is mounted over, `host.store` is what
      * the protocol actually holds, and `host.asCollaborator` is a second
      * connection — which is a second lock owner.
      */
@@ -486,6 +487,12 @@ export type RenderStageEditorOptions<T extends StageType = StageType> =
     /** Open the stage as a spectator. */
     readOnly?: boolean;
     /**
+     * The languages the protocol declares, in place of the fixture's own. The
+     * fixture's copy stays as it is, so a language added here starts with no
+     * translations.
+     */
+    localization?: ProtocolLocalization;
+    /**
      * Read the editor in this language.
      *
      * Left out, NO provider is mounted at all, `useAppIntl()` falls back to a
@@ -511,21 +518,18 @@ export type RenderStageEditorOptions<T extends StageType = StageType> =
       displayName: string;
     }>[];
     /**
-     * Wraps the seeded host's own client, the way `renderResourceEditor` does,
-     * for a test about a host that holds its answer.
-     *
      * Between the editor and the host rather than inside it: this host answers
      * in a microtask, so a request that is still in flight is something only
      * the transport can be. A stubbed store method would be answering for a
      * write the host decides, and would go on compiling after the host stopped
-     * asking it the same question. Everything the wrapper does not override
+     * asking it the same question. Everything the adapter does not override
      * stays the real host's.
      *
      * NOT the way to say what is inside an imported data file: this host reads
      * the bytes it holds, so a roster's columns are seeded through
      * `assetBytes` and come back through the host's own `inspect`.
      */
-    client?: (host: InMemoryHost) => ProtocolBuilderClient;
+    adapter?: (host: InMemoryHost) => ProtocolBuilderAdapter;
   }> &
     StageEditorMounting<T> &
     StageEditorSeeding<T>;
@@ -648,12 +652,12 @@ export function renderStageEditor<T extends StageType = StageType>(
   };
 
   const host = createInMemoryHost({
-    sections: seededSections(seeded, assetManifest),
+    sections: seededSections(seeded, assetManifest, options.localization),
     assetContent: fixtureAssetContentFor(assetManifest, options.assetBytes),
     principal: HARNESS_PRINCIPAL,
   });
   const { protocolId, store } = host;
-  const editorClient = options.client?.(host) ?? host.client;
+  const editorAdapter = options.adapter?.(host) ?? host.adapter;
 
   // Locks taken before the editor opens, which is what a collaborator holding
   // a section IS: the acquire the editor is about to make comes back read-only
@@ -688,7 +692,7 @@ export function renderStageEditor<T extends StageType = StageType>(
       {...(options.locale === undefined ? {} : { locale: options.locale })}
     >
       <DialogProvider>
-        <ProtocolBuilder client={editorClient} protocolId={protocolId}>
+        <ProtocolBuilder adapter={editorAdapter} protocolId={protocolId}>
           <SeedProtocolCache store={store}>
             <HarnessEditor
               target={target}
@@ -1220,7 +1224,10 @@ function seedFrom<T extends StageType>(
       type,
       // What a host opens a create session with: the interface's own authored
       // defaults, not a blank document and not a schema default.
-      fields: { ...getInterfaceTemplate(type), ...fields },
+      fields: {
+        ...getInterfaceTemplate(type),
+        ...fields,
+      },
       creation: { position },
     };
   }
@@ -1264,9 +1271,14 @@ function codebookSections(
 function seededSections(
   seeded: SeededStage,
   assetManifest: Readonly<Record<string, unknown>>,
+  localization: ProtocolLocalization | undefined,
 ): Record<string, SectionDoc> {
   const base = fixtureProtocolSections();
   const sections: Record<string, SectionDoc> = { ...base };
+  if (localization !== undefined) {
+    const settings = sectionId({ kind: 'settings' });
+    sections[settings] = { ...base[settings], localization };
+  }
   if (seeded.creation === undefined) {
     sections[sectionId({ kind: 'stage', stageId: seeded.id })] = {
       id: seeded.id,

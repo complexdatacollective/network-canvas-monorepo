@@ -94,6 +94,7 @@ describe('Codebook delete type confirmation', () => {
       ...withUnusedType.codebook.node,
       [unusedType]: {
         name: 'Unused',
+        label: { en: 'Unused' },
         color: 'node-color-seq-1',
         shape: { default: 'circle' },
       },

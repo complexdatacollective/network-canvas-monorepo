@@ -1,5 +1,17 @@
+import { isEqual } from 'es-toolkit';
+
 import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
-import { ComponentTypes, VariableTypes } from '@codaco/protocol-validation';
+import {
+  ComponentTypes,
+  type LocalizedString,
+  VariableTypes,
+} from '@codaco/protocol-validation';
+
+import { isOptionLabelEmpty } from '../form/arrayFields/optionCompleteness.ts';
+import {
+  asLocalizedString,
+  translationText,
+} from '../localization/localizedText.ts';
 
 const messages = defineMessages({
   unnamedAnswer: {
@@ -64,9 +76,12 @@ export const optionsShapeFor = (
   return component === ComponentTypes.Toggle ? null : 'boolean';
 };
 
-/** One of the two answers a boolean offers, as the schema holds it. */
+/**
+ * One of the two answers a boolean offers, as the schema holds it — except
+ * that an answer nobody has written words for yet holds no label at all.
+ */
 export type BooleanAnswer = Readonly<{
-  label: string;
+  label?: LocalizedString;
   value: boolean;
   /** Shown in red when the participant selects it. */
   negative?: boolean;
@@ -83,8 +98,9 @@ const readBooleanAnswer = (
   fallbackValue: boolean,
 ): BooleanAnswer => {
   const held = isRecord(option) ? option : {};
+  const label = asLocalizedString(held.label);
   return {
-    label: typeof held.label === 'string' ? held.label : '',
+    ...(label === undefined ? {} : { label }),
     value: typeof held.value === 'boolean' ? held.value : fallbackValue,
     ...(typeof held.negative === 'boolean' ? { negative: held.negative } : {}),
   };
@@ -155,7 +171,7 @@ const holdsEditableBooleanAnswers = (options: unknown): boolean =>
 /**
  * Every answer this attribute holds, for an editor that can only show them.
  *
- * Read the way the pair is read — a label of nothing where none was written,
+ * Read the way the pair is read — no label where none was written,
  * the recorded boolean as the protocol holds it — but positionally faithful
  * and never repaired: this is what the participant meets, not something being
  * edited.
@@ -190,9 +206,24 @@ export const readBooleanAnswers = (options: unknown): BooleanAnswers => {
   return [readBooleanAnswer(held[0], true), readBooleanAnswer(held[1], false)];
 };
 
+/** Whether this answer has no words in any language. */
+const isUnnamed = (answer: BooleanAnswer): boolean =>
+  isOptionLabelEmpty(answer.label);
+
 /** Whether neither of these two answers has been given any words. */
 const namesNoAnswer = (answers: BooleanAnswers): boolean =>
-  answers.every((answer) => answer.label.trim() === '');
+  answers.every(isUnnamed);
+
+/**
+ * Whether the two answers say the same thing in some language both are
+ * written in, after trimming and case-sensitively — see
+ * `validateBooleanAnswers`.
+ */
+const repeatsWords = (first: BooleanAnswer, second: BooleanAnswer): boolean =>
+  Object.keys(first.label ?? {}).some((locale) => {
+    const text = translationText(first.label, locale).trim();
+    return text !== '' && translationText(second.label, locale).trim() === text;
+  });
 
 /**
  * Whether these two answers are, entry for entry, the pair already stored.
@@ -219,7 +250,7 @@ const isThePairAlreadyStored = (
     const other = held[index];
     return (
       other !== undefined &&
-      answer.label === other.label &&
+      isEqual(answer.label, other.label) &&
       answer.value === other.value &&
       answer.negative === other.negative
     );
@@ -314,14 +345,17 @@ export type BooleanAnswerIssues = Readonly<Record<number, readonly string[]>>;
 /**
  * What is wrong with these two answers, per answer.
  *
- * One named and the other blank is the case the schema accepts (`label` is any
- * string) and a participant cannot answer: a control with one button they can
+ * One named and the other blank is the case the schema accepts (a translation
+ * may be any string) and a participant cannot answer: a control with one button they can
  * read and one they cannot. Reported against the answer that is blank rather
  * than against the pair, so the researcher is told which of the two to write.
  *
  * Both named the same words is the same failure by the other route, and the
- * schema accepts it for the same reason — `booleanOptionsSchema.label` is a
- * bare `z.string()`, and nothing downstream compares the two. It is reported
+ * schema accepts it for the same reason — each translation of
+ * `booleanOptionsSchema.label` is a bare `z.string()`, and nothing downstream
+ * compares the two. The two are compared one language at a time, in the
+ * languages both are written in: a language one of them has no words in is a
+ * gap to translate, not a repetition. It is reported
  * against the SECOND answer, which is the one repeating what the first already
  * says, and only when the first has no complaint of its own: a blank beside a
  * named one is not a repetition, and telling the researcher both at once about
@@ -356,12 +390,12 @@ export const validateBooleanAnswers = (
   if (namesNoAnswer(written)) return {};
   const issues: Record<number, string[]> = {};
   written.forEach((answer, index) => {
-    if (answer.label.trim() === '') {
+    if (isUnnamed(answer)) {
       issues[index] = [createMessageError(messages.unnamedAnswer)];
     }
   });
   const [first, second] = written;
-  if (issues[1] === undefined && first.label.trim() === second.label.trim()) {
+  if (issues[1] === undefined && repeatsWords(first, second)) {
     issues[1] = [createMessageError(messages.repeatedAnswer)];
   }
   return issues;

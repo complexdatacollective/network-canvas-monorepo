@@ -28,6 +28,7 @@ import type {
   RegisterBeforeNext,
   StageProps,
 } from '../../../types';
+import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
 import DyadCensus from '../DyadCensus';
 
 const NODE_TYPE = 'person';
@@ -36,28 +37,31 @@ const EDGE_TYPE = 'friend';
 const twoPromptStage = {
   id: 'dc1',
   type: 'DyadCensus',
-  label: 'Dyad Census',
+  label: { en: 'Dyad Census' },
   subject: { entity: 'node', type: NODE_TYPE },
-  introductionPanel: { title: 'Welcome', text: 'Intro copy' },
+  introductionPanel: { title: { en: 'Welcome' }, text: { en: 'Intro copy' } },
   prompts: [
-    { id: 'p1', text: 'Are they friends (q1)?', createEdge: EDGE_TYPE },
-    { id: 'p2', text: 'Are they friends (q2)?', createEdge: EDGE_TYPE },
+    { id: 'p1', text: { en: 'Are they friends (q1)?' }, createEdge: EDGE_TYPE },
+    { id: 'p2', text: { en: 'Are they friends (q2)?' }, createEdge: EDGE_TYPE },
   ],
 };
 
 const onePromptStage = {
   id: 'dc1',
   type: 'DyadCensus',
-  label: 'Dyad Census',
+  label: { en: 'Dyad Census' },
   subject: { entity: 'node', type: NODE_TYPE },
-  introductionPanel: { title: 'Welcome', text: 'Intro copy' },
-  prompts: [{ id: 'p1', text: 'Are they friends?', createEdge: EDGE_TYPE }],
+  introductionPanel: { title: { en: 'Welcome' }, text: { en: 'Intro copy' } },
+  prompts: [
+    { id: 'p1', text: { en: 'Are they friends?' }, createEdge: EDGE_TYPE },
+  ],
 };
 
 const codebook = {
   node: {
     [NODE_TYPE]: {
       name: 'Person',
+      label: { en: 'Person' },
       color: 'node-color-seq-1',
       shape: { default: 'circle' },
       variables: {},
@@ -66,6 +70,7 @@ const codebook = {
   edge: {
     [EDGE_TYPE]: {
       name: 'Friend',
+      label: { en: 'Friend' },
       color: 'edge-color-seq-1',
       variables: {},
     },
@@ -106,7 +111,8 @@ function renderInterface(
       protocol: {
         id: 'p',
         hash: 'h',
-        schemaVersion: 8,
+        schemaVersion: 9,
+        localization: { defaultLocale: 'en', locales: ['en'] },
         codebook,
         stages: [stage],
       } as never,
@@ -160,15 +166,17 @@ function renderInterface(
 
   function Wrapper({ children }: { children: ReactNode }) {
     return (
-      <Provider store={store}>
-        <MotionConfig reducedMotion="never" skipAnimations={skipAnimations}>
-          <CurrentStepProvider currentStep={0} onStepChange={() => undefined}>
-            <StageMetadataContext.Provider value={registerBeforeNext}>
-              {children}
-            </StageMetadataContext.Provider>
-          </CurrentStepProvider>
-        </MotionConfig>
-      </Provider>
+      <TestProtocolLocalization>
+        <Provider store={store}>
+          <MotionConfig reducedMotion="never" skipAnimations={skipAnimations}>
+            <CurrentStepProvider currentStep={0} onStepChange={() => undefined}>
+              <StageMetadataContext.Provider value={registerBeforeNext}>
+                {children}
+              </StageMetadataContext.Provider>
+            </CurrentStepProvider>
+          </MotionConfig>
+        </Provider>
+      </TestProtocolLocalization>
     );
   }
 

@@ -425,6 +425,40 @@ describe('Collection Filtering', () => {
       });
     });
 
+    it('searches a path whose segment contains a dot', async () => {
+      // A roster column named `a.b` is addressed as ['data', 'attributes',
+      // 'a.b']; joining the path with '.' would look for a.b as two nested keys.
+      const rosterItems = [
+        { id: 'p1', data: { attributes: { 'a.b': 'Alice' } } },
+        { id: 'p2', data: { attributes: { 'a.b': 'Bob' } } },
+      ];
+
+      render(
+        <Collection
+          items={rosterItems}
+          keyExtractor={(item) => item.id}
+          textValueExtractor={(item) => item.id}
+          layout={new ListLayout<(typeof rosterItems)[number]>({ gap: 2 })}
+          filterExecution="sync"
+          filterQuery="Bob"
+          filterKeys={[['data', 'attributes', 'a.b']]}
+          filterDebounceMs={0}
+          renderItem={(item, itemProps) => (
+            <div {...itemProps} data-testid={`roster-item-${item.id}`}>
+              {item.id}
+            </div>
+          )}
+        >
+          {(CollectionElements) => CollectionElements}
+        </Collection>,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('roster-item-p2')).toBeInTheDocument();
+        expect(screen.queryByTestId('roster-item-p1')).not.toBeInTheDocument();
+      });
+    });
+
     it('preserves numeric item keys', async () => {
       const numericItems = [
         { id: 1, name: 'Apple' },

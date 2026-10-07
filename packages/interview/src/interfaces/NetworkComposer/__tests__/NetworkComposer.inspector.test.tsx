@@ -23,6 +23,7 @@ import protocol from '../../../store/modules/protocol';
 import session from '../../../store/modules/session';
 import ui from '../../../store/modules/ui';
 import type { RegisterBeforeNext, StageProps } from '../../../types';
+import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
 import NetworkComposer from '../NetworkComposer';
 
 beforeAll(() => {
@@ -82,7 +83,8 @@ const nodeForm = {
   fields: [
     {
       variable: NODE_NAME_VAR,
-      prompt: 'Full name',
+      component: 'Text',
+      label: { en: 'Full name' },
     },
   ],
 };
@@ -91,7 +93,8 @@ const edgeForm = {
   fields: [
     {
       variable: EDGE_STRENGTH_VAR,
-      prompt: 'Strength',
+      component: 'Text',
+      label: { en: 'Strength' },
     },
   ],
 };
@@ -99,7 +102,7 @@ const edgeForm = {
 const stage = {
   id: 'nc1',
   type: 'NetworkComposer' as const,
-  label: 'Network Composer',
+  label: { en: 'Network Composer' },
   subject: { entity: 'node' as const, type: NODE_TYPE },
   layoutVariable: LAYOUT_VAR,
   quickAdd: QUICK_ADD_VAR,
@@ -120,17 +123,24 @@ const codebook = {
   node: {
     [NODE_TYPE]: {
       name: 'Person',
+      label: { en: 'Person' },
       color: 'node-color-seq-1',
       shape: { default: 'circle' as const },
       variables: {
         [QUICK_ADD_VAR]: {
           name: 'name',
+          label: 'Name',
           type: 'text' as const,
           component: 'Text' as const,
         },
-        [LAYOUT_VAR]: { name: 'position', type: 'layout' as const },
+        [LAYOUT_VAR]: {
+          name: 'position',
+          label: 'Position',
+          type: 'layout' as const,
+        },
         [NODE_NAME_VAR]: {
           name: 'Full name',
+          label: 'Full name',
           type: 'text' as const,
           component: 'Text' as const,
         },
@@ -140,10 +150,12 @@ const codebook = {
   edge: {
     [EDGE_TYPE]: {
       name: 'Knows',
+      label: { en: 'Knows' },
       color: 'edge-color-seq-1',
       variables: {
         [EDGE_STRENGTH_VAR]: {
           name: 'Strength',
+          label: 'Strength',
           type: 'text' as const,
           component: 'Text' as const,
         },
@@ -214,7 +226,8 @@ function makeStore(
       protocol: {
         id: 'p',
         hash: 'h',
-        schemaVersion: 8,
+        schemaVersion: 9,
+        localization: { defaultLocale: 'en', locales: ['en'] },
         codebook: codebookForStore,
         stages: [stageForStore],
       } as never,
@@ -248,7 +261,7 @@ function renderInterface(
           <DialogProvider>
             <CurrentStepProvider currentStep={0} onStepChange={() => undefined}>
               <StageMetadataContext.Provider value={registerBeforeNext}>
-                {children}
+                <TestProtocolLocalization>{children}</TestProtocolLocalization>
               </StageMetadataContext.Provider>
             </CurrentStepProvider>
           </DialogProvider>
@@ -338,7 +351,13 @@ describe('NetworkComposer inspector — node', () => {
     const prototypeStage = {
       ...stage,
       nodeForm: {
-        fields: [{ prompt: 'Prototype value', variable: PROTOTYPE_VAR }],
+        fields: [
+          {
+            variable: PROTOTYPE_VAR,
+            component: 'Text',
+            label: { en: 'Prototype value' },
+          },
+        ],
       },
     };
     const prototypeCodebook = {
@@ -352,6 +371,7 @@ describe('NetworkComposer inspector — node', () => {
             [PROTOTYPE_VAR]: {
               component: 'Text',
               name: 'Prototype value',
+              label: 'Prototype value',
               type: 'text',
             },
           },

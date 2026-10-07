@@ -1,9 +1,10 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, within } from 'storybook/test';
 
-import type { Variable } from '@codaco/protocol-validation';
+import type { CurrentProtocol, Variable } from '@codaco/protocol-validation';
 import { ArchitectI18nProvider } from '~/i18n/ArchitectI18nProvider';
 
+import SummaryContext from './SummaryContext';
 import Variables from './Variables';
 
 const NAME = 'consentPreference';
@@ -14,10 +15,19 @@ const variables = {
     name: NAME,
     type: 'categorical',
     options: [
-      { value: STORED_VALUE, label: 'Prefer not to say' },
-      { value: 'yes', label: 'Yes' },
+      { value: STORED_VALUE, label: { en: 'Prefer not to say' } },
+      { value: 'yes', label: { en: 'Yes' } },
     ],
   } as unknown as Variable,
+};
+
+const protocol: CurrentProtocol = {
+  name: 'Study',
+  schemaVersion: 9,
+  localization: { defaultLocale: 'en', locales: ['en'] },
+  assetManifest: {},
+  codebook: {},
+  stages: [],
 };
 
 const meta = {
@@ -27,7 +37,11 @@ const meta = {
   decorators: [
     (Story) => (
       <ArchitectI18nProvider>
-        <Story />
+        <SummaryContext.Provider
+          value={{ protocol, protocolName: 'Study', index: [] }}
+        >
+          <Story />
+        </SummaryContext.Provider>
       </ArchitectI18nProvider>
     ),
   ],
@@ -59,5 +73,63 @@ export const StoredValuesPrintVerbatim: Story = {
     );
     await expect(valueCell.hyphens).toBe('manual');
     await expect(valueCell.overflowWrap).toBe('normal');
+  },
+};
+
+const multilingualProtocol: CurrentProtocol = {
+  ...protocol,
+  localization: { defaultLocale: 'en', locales: ['en', 'fr', 'ar'] },
+};
+
+export const OptionLabelsInEveryLanguage: Story = {
+  args: {
+    variables: {
+      'consent-preference': {
+        name: NAME,
+        label: 'Consent preference',
+        type: 'categorical',
+        options: [
+          {
+            value: STORED_VALUE,
+            label: {
+              en: 'Prefer not to say',
+              fr: 'Je préfère ne pas répondre',
+              ar: 'أفضل عدم الإجابة',
+            },
+          },
+          { value: 'yes', label: { en: 'Yes', fr: 'Oui' } },
+        ],
+      },
+    } satisfies Record<string, Variable>,
+  },
+  decorators: [
+    (Story) => (
+      <SummaryContext.Provider
+        value={{
+          protocol: multilingualProtocol,
+          protocolName: 'Study',
+          index: [],
+        }}
+      >
+        <Story />
+      </SummaryContext.Provider>
+    ),
+  ],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    // Each label is marked with its language on the element holding it,
+    // which markdown wraps in a paragraph of its own.
+    await expect(
+      canvas.getByText('Je préfère ne pas répondre').closest('[lang]'),
+    ).toHaveAttribute('lang', 'fr');
+    await expect(
+      canvas.getByText('أفضل عدم الإجابة').closest('[lang]'),
+    ).toHaveAttribute('dir', 'rtl');
+    await expect(
+      canvas.getByText(
+        'Not translated yet. Participants see the English text, unless their browser also lists a language that has it.',
+      ),
+    ).toBeVisible();
   },
 };

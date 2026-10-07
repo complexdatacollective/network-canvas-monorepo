@@ -28,6 +28,11 @@ import Paragraph from './typography/Paragraph';
 
 type SectionBaseProps = {
   title: ReactNode;
+  /**
+   * Text shown beneath the title, which also describes the section. A string
+   * is one paragraph; elements, such as paragraphs and a list, are laid out as
+   * given.
+   */
   description?: ReactNode;
   disabled?: boolean;
   /**
@@ -190,6 +195,9 @@ export default function Section({
                 id={descriptionId}
                 emphasis="muted"
                 className="mt-2 mb-0!"
+                // A description made of elements can hold paragraphs and
+                // lists, which a <p> cannot contain.
+                render={typeof description === 'string' ? undefined : <div />}
               >
                 {description}
               </Paragraph>
@@ -215,7 +223,7 @@ export default function Section({
           )}
         </header>
 
-        <Collapsible.Panel className="h-(--collapsible-panel-height) overflow-hidden border-t border-current/10 opacity-100 transition-[height,opacity] duration-200 data-[ending-style]:h-0 data-[ending-style]:opacity-0 data-[starting-style]:h-0 data-[starting-style]:opacity-0">
+        <Collapsible.Panel className="h-(--collapsible-panel-height) overflow-hidden border-t border-current/10 opacity-100 transition-[height,opacity] duration-200 data-ending-style:h-0 data-ending-style:opacity-0 data-starting-style:h-0 data-starting-style:opacity-0">
           {open && (
             <FieldUnmountPolicyProvider discardOnUnmount={discardOnUnmount}>
               <fieldset

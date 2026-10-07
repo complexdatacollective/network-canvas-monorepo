@@ -2,35 +2,44 @@
 
 import { useMemo } from 'react';
 
+import type { LocalizedString } from '@codaco/protocol-validation';
+
+import { useResolveLocalizedString } from '../localization/ProtocolLocalizationProvider';
+
 /**
  * The shape every authored field has in common: the variable it collects, and
  * whichever of `label`/`prompt` its schema happens to call the caption.
- * `FormField` carries `prompt`, `ComposerFormField` carries an optional
- * `label`; widened to plain `string` so both branded and unbranded variable
- * references fit.
+ * `FormField` carries `prompt`, `ComposerFormField` carries `label`; widened
+ * to plain `string` so both branded and unbranded variable references fit.
  */
-export type AuthoredField = {
+type AuthoredField = {
+  variable: string;
+  label?: LocalizedString;
+  prompt?: LocalizedString;
+};
+
+/** A variable and the text a screen captions it with, already resolved. */
+type VariableCaption = {
   variable: string;
   label?: string;
-  prompt?: string;
 };
 
 /**
- * What a field is called, as the researcher wrote it.
+ * What a field is called, as the researcher wrote it, given the resolved text
+ * of its authored caption.
  *
- * The one rule. `createFieldMetadata` resolves the caption the participant
- * reads from this, and `buildVariableLabels` decides what a validator may name
- * the variable by from this, so the two cannot disagree about which text is
- * the researcher's and which is a fallback the participant never authored.
+ * The one rule. `useProtocolForm` decides the caption the participant reads
+ * from this, and `buildVariableLabels` decides what a validator may name the
+ * variable by from this, so the two cannot disagree about which text is the
+ * researcher's and which is a fallback.
  *
  * Whitespace-only text counts as nothing authored: a stray space must not
  * produce `your answer to ''`, nor a field captioned with a blank.
  */
-export const authoredFieldLabel = (field: {
-  label?: string;
-  prompt?: string;
-}): string | undefined => {
-  const authored = (field.label ?? field.prompt ?? '').trim();
+export const authoredFieldLabel = (
+  text: string | undefined,
+): string | undefined => {
+  const authored = (text ?? '').trim();
   return authored.length > 0 ? authored : undefined;
 };
 
@@ -38,14 +47,13 @@ export const authoredFieldLabel = (field: {
  * The participant-facing text for each variable a screen asks about, for the
  * variable-comparison validators to name their target with.
  *
- * Built from `authoredFieldLabel` only. A codebook variable's `name` is the
- * researcher's identifier for a column of data and must never reach a
- * participant, so a field with nothing authored is simply left out and the
+ * Built from `authoredFieldLabel` only, over captions already resolved to the
+ * interview language. A field with nothing authored is simply left out and the
  * validator falls back to a complete label-free sentence — which is also what a
  * comparison against a variable answered on an earlier stage gets, since it has
  * no caption on this screen.
  *
- * ACCUMULATED THROUGH A MAP. `VariableNameSchema` is `/^[a-zA-Z0-9._:-]+$/`,
+ * ACCUMULATED THROUGH A MAP. `CodebookIdSchema` is `/^[a-zA-Z0-9._:-]+$/`,
  * which admits `__proto__` as a codebook variable id, and
  * `labels.__proto__ = 'How old are you?'` on an ordinary object hits
  * `Object.prototype`'s setter rather than defining anything: the caption is
@@ -56,18 +64,19 @@ export const authoredFieldLabel = (field: {
  * ordinary object every caller can index.
  */
 export const buildVariableLabels = (
-  fields: readonly AuthoredField[],
+  fields: readonly VariableCaption[],
 ): Readonly<Record<string, string>> => {
   const labels = new Map<string, string>();
   for (const field of fields) {
-    const authored = authoredFieldLabel(field);
+    const authored = authoredFieldLabel(field.label);
     if (authored !== undefined) labels.set(field.variable, authored);
   }
   return Object.fromEntries(labels);
 };
 
 /**
- * The same map, with a referentially stable identity.
+ * The same map for protocol-authored fields, resolved to the interview
+ * language, with a referentially stable identity.
  *
  * Memoised on the map's CONTENT rather than on `fields`: callers routinely pass
  * `form.fields ?? []`, a fresh array on every render whenever the form has no
@@ -78,15 +87,19 @@ export const buildVariableLabels = (
 export const useVariableLabels = (
   fields: readonly AuthoredField[],
 ): Readonly<Record<string, string>> => {
+  const resolve = useResolveLocalizedString();
   const contentKey = JSON.stringify(
-    fields.map((field) => ({
-      variable: field.variable,
-      label: authoredFieldLabel(field) ?? '',
-    })),
+    fields.map((field): VariableCaption => {
+      const caption = field.label ?? field.prompt;
+      return {
+        variable: field.variable,
+        label: caption === undefined ? '' : resolve(caption).text,
+      };
+    }),
   );
 
   return useMemo<Readonly<Record<string, string>>>(
-    () => buildVariableLabels(JSON.parse(contentKey) as AuthoredField[]),
+    () => buildVariableLabels(JSON.parse(contentKey) as VariableCaption[]),
     // Deliberately keyed on the serialised content alone: including `fields`
     // would restore the unstable identity this exists to avoid.
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -58,6 +58,12 @@ export const interfaceNameMessages = defineMessages({
     description:
       'Researcher-facing interface name. Interface for presenting researcher-authored information. Not a protocol-authored stage label.',
   },
+  LanguageChooser: {
+    id: 'protocolBuilder.interface.languageChooser',
+    defaultMessage: 'Language Chooser',
+    description:
+      'Researcher-facing interface name. Interface where the participant chooses which of the protocol languages the rest of the interview is shown in. Not a protocol-authored stage label.',
+  },
   NameGenerator: {
     id: 'protocolBuilder.interface.nameGenerator',
     defaultMessage: 'Name Generator (using forms)',
@@ -81,6 +87,12 @@ export const interfaceNameMessages = defineMessages({
     defaultMessage: 'Narrative',
     description:
       'Researcher-facing interface name. Interface for recording a narrative. Not a protocol-authored stage label.',
+  },
+  NarrativePedigree: {
+    id: 'protocolBuilder.interface.narrativePedigree',
+    defaultMessage: 'Narrative Pedigree',
+    description:
+      'Researcher-facing interface name. Interface combining a narrative with a family genealogy. Not a protocol-authored stage label.',
   },
   NetworkComposer: {
     id: 'protocolBuilder.interface.networkComposer',

@@ -171,8 +171,96 @@ describe('Button', () => {
 
     const button = screen.getByRole('button', { name: 'Continue' });
 
-    expect(button.firstElementChild).toBeNull();
     expect(button).not.toHaveClass('group/link', 'text-link');
+    expect(button.firstElementChild).not.toHaveClass(
+      'group-hover/link:bg-[length:var(--link-underline-active,100%_2px)]',
+    );
+  });
+
+  describe('text label', () => {
+    const LABEL_CLASSES = ['min-w-0', 'overflow-hidden', 'text-ellipsis'];
+
+    it('wraps a string label in its own truncating element', () => {
+      render(<Button>Save</Button>);
+
+      const button = screen.getByRole('button', { name: 'Save' });
+      const label = button.firstElementChild;
+
+      expect(button.children).toHaveLength(1);
+      expect(label?.tagName).toBe('SPAN');
+      expect(label).toHaveTextContent('Save');
+      expect(label).toHaveClass(...LABEL_CLASSES);
+      // White-space is inherited, so a call site that lets the button wrap
+      // lets its label wrap too.
+      expect(label).not.toHaveClass('whitespace-nowrap');
+      expect(label).not.toHaveClass('truncate');
+      expect(
+        [...button.childNodes].some((node) => node.nodeType === Node.TEXT_NODE),
+      ).toBe(false);
+    });
+
+    it('keeps text and numbers interpolated into one label together', () => {
+      const count = 6;
+      render(<Button>Show {count} missing translations</Button>);
+
+      const button = screen.getByRole('button', {
+        name: 'Show 6 missing translations',
+      });
+
+      expect(button.children).toHaveLength(1);
+      expect(button.firstElementChild?.textContent).toBe(
+        'Show 6 missing translations',
+      );
+    });
+
+    it('leaves element children beside the label as direct children', () => {
+      render(
+        <Button>
+          <Check data-testid="leading" />
+          Save {2} files
+          <Check data-testid="trailing" />{' '}
+        </Button>,
+      );
+
+      const button = screen.getByRole('button', { name: 'Save 2 files' });
+      const [leading, label, trailing] = button.children;
+
+      expect(button.children).toHaveLength(3);
+      expect(leading).toBe(screen.getByTestId('leading'));
+      expect(label).toHaveClass(...LABEL_CLASSES);
+      expect(label).toHaveTextContent('Save 2 files');
+      expect(trailing).toBe(screen.getByTestId('trailing'));
+      // The flex container ignores a whitespace-only run; a span would not
+      // be ignored, and would add a gap.
+      expect(button.lastChild?.nodeType).toBe(Node.TEXT_NODE);
+    });
+
+    it('leaves the children of a slotted element as they are', () => {
+      render(
+        <Button asChild>
+          <a href="/docs">Documentation</a>
+        </Button>,
+      );
+
+      const link = screen.getByRole('link', { name: 'Documentation' });
+
+      expect(link.children).toHaveLength(0);
+      expect(link).toHaveTextContent('Documentation');
+    });
+
+    it('keeps a link button label in its single animated element', () => {
+      render(<Button variant="link">Clear {3} filters</Button>);
+
+      const button = screen.getByRole('button', { name: 'Clear 3 filters' });
+      const label = button.firstElementChild;
+
+      expect(button.children).toHaveLength(1);
+      expect(label).toHaveClass(
+        'group-hover/link:bg-[length:var(--link-underline-active,100%_2px)]',
+      );
+      expect(label).not.toHaveClass('text-ellipsis');
+      expect(label?.children).toHaveLength(0);
+    });
   });
 
   it('styles toggle buttons from aria-pressed using selected colors', () => {

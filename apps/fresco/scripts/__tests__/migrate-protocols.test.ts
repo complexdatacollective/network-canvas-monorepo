@@ -231,6 +231,88 @@ describe('migrateProtocolsToCompatibleVersion', () => {
     errorSpy.mockRestore();
   });
 
+  it('normalizes a version 8 row that fails its own version when the target has moved past it', async () => {
+    // A version 8 row persisted before version 8's current rules shipped,
+    // still carrying legacy field shapes. Once the target is past 8 it is
+    // migrated rather than checked for conformance, and its migration fails
+    // version 8's pre-validation; it must still reach the target.
+    const legacyShaped = makeV7Protocol();
+    const storedExperiments = { encryptedVariables: true };
+    const prisma = makeMockPrisma();
+    prisma.protocol.findMany.mockResolvedValue([
+      {
+        id: 'cm-legacy-v8',
+        assets: [],
+        name: 'Legacy V8.netcanvas',
+        schemaVersion: 8,
+        stages: legacyShaped.stages,
+        codebook: legacyShaped.codebook,
+        experiments: storedExperiments,
+        description: legacyShaped.description,
+        lastModified: new Date(legacyShaped.lastModified),
+      },
+    ]);
+    expect(() =>
+      migrateProtocol(
+        { ...legacyShaped, name: 'Legacy V8', schemaVersion: 8 },
+        COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
+      ),
+    ).toThrow();
+
+    await migrateProtocolsToCompatibleVersion(
+      prisma as unknown as Parameters<
+        typeof migrateProtocolsToCompatibleVersion
+      >[0],
+    );
+
+    expect(prisma.protocol.update).toHaveBeenCalledTimes(1);
+    expect(prisma.protocol.update).toHaveBeenCalledWith({
+      where: { id: 'cm-legacy-v8' },
+      data: expect.objectContaining({
+        schemaVersion: COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
+        experiments: storedExperiments,
+        // iconVariant → icon proves the legacy shape was rewritten.
+        codebook: expect.objectContaining({
+          node: {
+            person: expect.objectContaining({ icon: 'add-a-person' }),
+          },
+        }),
+      }),
+    });
+  });
+
+  it('leaves a version 8 row in place when neither migration nor normalization succeeds', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const prisma = makeMockPrisma();
+    prisma.protocol.findMany.mockResolvedValue([
+      {
+        id: 'cm-broken-v8',
+        assets: [],
+        name: 'Broken V8.netcanvas',
+        schemaVersion: 8,
+        stages: 'not-an-array',
+        codebook: { node: {}, edge: {}, ego: { variables: {} } },
+        experiments: null,
+        description: null,
+        lastModified: new Date('2024-01-01T00:00:00.000Z'),
+      },
+    ]);
+
+    await expect(
+      migrateProtocolsToCompatibleVersion(
+        prisma as unknown as Parameters<
+          typeof migrateProtocolsToCompatibleVersion
+        >[0],
+      ),
+    ).resolves.toBeUndefined();
+
+    expect(prisma.protocol.update).not.toHaveBeenCalled();
+    const logged = errorSpy.mock.calls.map((call) => String(call[0])).join(' ');
+    expect(logged).toMatch(/Broken V8\.netcanvas/);
+    expect(logged).toMatch(/Normalizing it from schema version 7 also failed/);
+    errorSpy.mockRestore();
+  });
+
   it('normalizes a protocol stored at the compatible version that is not conformant', async () => {
     // A protocol stored at the compatible version but still carrying legacy
     // field shapes (iconVariant, Toggle options). These slip past the
@@ -400,6 +482,7 @@ describe('migrateProtocolsToCompatibleVersion', () => {
         schemaVersion: COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
         stages: conformant.stages,
         codebook: conformant.codebook,
+        localization: conformant.localization,
         experiments: conformant.experiments ?? null,
         description: null,
         lastModified: new Date('2024-01-01T00:00:00.000Z'),
@@ -434,6 +517,7 @@ describe('migrateProtocolsToCompatibleVersion', () => {
         schemaVersion: COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
         stages: conformant.stages,
         codebook: conformant.codebook,
+        localization: conformant.localization,
         experiments: conformant.experiments ?? null,
         description: null,
         lastModified: new Date('2024-01-01T00:00:00.000Z'),

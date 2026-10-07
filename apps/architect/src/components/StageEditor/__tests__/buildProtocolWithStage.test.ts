@@ -2,43 +2,53 @@ import { describe, expect, it } from 'vitest';
 
 import {
   type CurrentProtocol,
+  type LocalizedString,
   type Stage,
   validateProtocol,
 } from '@codaco/protocol-validation';
 
 import { buildProtocolWithStage } from '../buildProtocolWithStage';
 
-// A minimal, valid v8 protocol containing a single name generator stage whose
-// codebook subject ("person") exists. Tests insert/replace panels onto this
-// stage to exercise how `buildProtocolWithStage` normalises wip stage edits
-// before they are validated/previewed.
+// A minimal, valid current-schema protocol containing a single name generator
+// stage whose codebook subject ("person") exists. Tests insert/replace panels
+// onto this stage to exercise how `buildProtocolWithStage` normalises wip stage
+// edits before they are validated/previewed.
 const STAGE_ID = 'stage-1';
+
+const localized = (text: string): LocalizedString => ({ en: text });
 
 function makeProtocol(stageOverrides: Partial<Stage> = {}): CurrentProtocol {
   const stage = {
     id: STAGE_ID,
     type: 'NameGenerator',
-    label: 'Name some people',
+    label: localized('Name some people'),
     subject: { entity: 'node', type: 'person' },
     form: {
-      title: 'Add person',
-      fields: [{ variable: 'name', prompt: 'Name' }],
+      title: localized('Add person'),
+      fields: [{ variable: 'name', prompt: localized('Name') }],
     },
-    prompts: [{ id: 'prompt-1', text: 'Who do you know?' }],
+    prompts: [{ id: 'prompt-1', text: localized('Who do you know?') }],
     ...stageOverrides,
   } as Stage;
 
   return {
     name: 'Test Protocol',
-    schemaVersion: 8,
+    schemaVersion: 9,
+    localization: { defaultLocale: 'en', locales: ['en'] },
     codebook: {
       node: {
         person: {
           name: 'Person',
+          label: { en: 'Person' },
           color: 'node-color-seq-1',
           shape: { default: 'circle' },
           variables: {
-            name: { name: 'Name', type: 'text', component: 'Text' },
+            name: {
+              name: 'Name',
+              label: 'Name',
+              type: 'text',
+              component: 'Text',
+            },
           },
         },
       },
@@ -47,7 +57,7 @@ function makeProtocol(stageOverrides: Partial<Stage> = {}): CurrentProtocol {
     },
     assetManifest: {},
     stages: [stage],
-  } as CurrentProtocol;
+  };
 }
 
 describe('buildProtocolWithStage', () => {
@@ -59,7 +69,7 @@ describe('buildProtocolWithStage', () => {
       panels: [
         {
           id: 'panel-1',
-          title: 'My roster',
+          title: { en: 'My roster' },
           dataSource: 'roster-asset-id',
           filter: null,
         },
@@ -128,7 +138,7 @@ describe('buildProtocolWithStage', () => {
     const protocol = makeProtocol();
     const newStage = {
       type: 'Information',
-      label: 'Intro',
+      label: { en: 'Intro' },
     } as unknown as Stage;
 
     const built = buildProtocolWithStage(protocol, newStage, null, 0);

@@ -146,6 +146,19 @@ export function npmPackageUrl(registryUrl, packageName) {
   return new URL(encodedName, base).href;
 }
 
+function arrivesWithItsRelease(repoRoot, baseRef, { name, version }) {
+  const tag = `${name}@${version}`;
+  if (git(repoRoot, ['tag', '--list', tag, '--merged', 'HEAD']) === '') {
+    return false;
+  }
+  const inBase = spawnSync(
+    'git',
+    ['merge-base', '--is-ancestor', `refs/tags/${tag}`, baseRef],
+    { cwd: repoRoot, stdio: 'ignore' },
+  );
+  return inBase.status === 1;
+}
+
 export function changedPublicPackageVersions({ repoRoot, baseRef }) {
   git(repoRoot, ['rev-parse', '--verify', `${baseRef}^{commit}`]);
 
@@ -193,6 +206,7 @@ export function changedPublicPackageVersions({ repoRoot, baseRef }) {
     ) {
       continue;
     }
+    if (arrivesWithItsRelease(repoRoot, baseRef, current)) continue;
 
     changed.push({
       manifestPath,

@@ -26,7 +26,7 @@ import {
 const SORT_ORDER = 'sortOptions.sortOrder';
 const SORTABLE_PROPERTIES = 'sortOptions.sortableProperties';
 
-const messages = defineMessages({
+export const sortOptionsMessages = defineMessages({
   title: {
     id: 'protocolBuilder.sortOptions.title',
     defaultMessage: 'Roster sorting',
@@ -138,33 +138,33 @@ const messages = defineMessages({
 const sortOrderColumns = (intl: IntlShape): PropertyField[] => [
   {
     fieldName: 'property',
-    label: intl.formatMessage(messages.attributeColumn),
+    label: intl.formatMessage(sortOptionsMessages.attributeColumn),
   },
   {
     fieldName: 'direction',
-    label: intl.formatMessage(messages.directionColumn),
+    label: intl.formatMessage(sortOptionsMessages.directionColumn),
   },
 ];
 
 const sortableColumns = (intl: IntlShape): PropertyField[] => [
   {
     fieldName: 'variable',
-    label: intl.formatMessage(messages.attributeColumn),
+    label: intl.formatMessage(sortOptionsMessages.attributeColumn),
   },
   {
     fieldName: 'label',
-    control: 'input',
-    label: intl.formatMessage(messages.labelColumn),
-    placeholder: intl.formatMessage(messages.labelPlaceholder),
+    control: 'localizedInput',
+    label: intl.formatMessage(sortOptionsMessages.labelColumn),
+    placeholder: intl.formatMessage(sortOptionsMessages.labelPlaceholder),
   },
 ];
 
 const SORT_CAPABILITY: SectionCapability = {
   fields: [SORT_ORDER, SORTABLE_PROPERTIES],
   confirmClear: {
-    title: messages.clearTitle,
-    description: messages.clearDescription,
-    confirmLabel: messages.clearConfirm,
+    title: sortOptionsMessages.clearTitle,
+    description: sortOptionsMessages.clearDescription,
+    confirmLabel: sortOptionsMessages.clearConfirm,
   },
 };
 
@@ -219,8 +219,8 @@ export default function SortOptionsSection() {
 
   const shell = useColumnSectionShell(
     columns,
-    messages.description,
-    messages.waitingDescription,
+    sortOptionsMessages.description,
+    sortOptionsMessages.waitingDescription,
   );
   const orderProperties = useMemo(() => sortOrderColumns(intl), [intl]);
   const sortableProperties = useMemo(() => sortableColumns(intl), [intl]);
@@ -236,7 +236,7 @@ export default function SortOptionsSection() {
 
   return (
     <BuilderSection
-      title={intl.formatMessage(messages.title)}
+      title={intl.formatMessage(sortOptionsMessages.title)}
       description={shell.description}
       disabled={shell.disabled}
       // Everything below names a column of the data file, so a different file
@@ -257,10 +257,10 @@ export default function SortOptionsSection() {
       */}
       <Field<typeof OptionalList>
         name={SORT_ORDER}
-        label={intl.formatMessage(messages.orderLabel)}
-        hint={intl.formatMessage(messages.orderHint)}
+        label={intl.formatMessage(sortOptionsMessages.orderLabel)}
+        hint={intl.formatMessage(sortOptionsMessages.orderHint)}
         component={OptionalList}
-        addButtonLabel={intl.formatMessage(messages.orderAddLabel)}
+        addButtonLabel={intl.formatMessage(sortOptionsMessages.orderAddLabel)}
         properties={orderProperties}
         options={orderOptions}
         maxItems={1}
@@ -268,10 +268,12 @@ export default function SortOptionsSection() {
       />
       <Field<typeof OptionalList>
         name={SORTABLE_PROPERTIES}
-        label={intl.formatMessage(messages.sortableLabel)}
-        hint={intl.formatMessage(messages.sortableHint)}
+        label={intl.formatMessage(sortOptionsMessages.sortableLabel)}
+        hint={intl.formatMessage(sortOptionsMessages.sortableHint)}
         component={OptionalList}
-        addButtonLabel={intl.formatMessage(messages.sortableAddLabel)}
+        addButtonLabel={intl.formatMessage(
+          sortOptionsMessages.sortableAddLabel,
+        )}
         properties={sortableProperties}
         options={sortableOptions}
         // An orphan counts: the row holding it is one of the rows this limit

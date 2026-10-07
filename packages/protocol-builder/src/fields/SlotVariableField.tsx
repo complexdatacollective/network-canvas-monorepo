@@ -27,6 +27,8 @@ import {
 import { REQUIRED } from '../form/requiredField.ts';
 import { useStageEditorForm } from '../form/stageEditorContext.ts';
 import { useStageValue } from '../form/stageFormHooks.ts';
+import { localizedFromText } from '../localization/localizedText.ts';
+import { useProtocolLocalization } from '../localization/ProtocolLocalization.tsx';
 import type { CodebookSubject } from '../protocol-context.ts';
 import { variablesForSubject } from '../protocol-context.ts';
 import { useCreateAttributeForSlot } from '../sections/create-variable/useCreateAttributeForSlot.ts';
@@ -157,10 +159,27 @@ export default function SlotVariableField({
       ? undefined
       : INTERFACE_OWNED_OPTION_SETS[ownedOptions].options;
 
+  const localization = useProtocolLocalization();
+  // The canonical set's labels are plain text; an attribute created here holds
+  // them as participant copy in the protocol's default language. Until the
+  // protocol's languages are known they cannot be written, so creating an
+  // attribute for an owned set is not offered.
+  const seededOptions = useMemo<readonly VariableOption[] | undefined>(
+    () =>
+      lockedOptions === undefined || localization === undefined
+        ? undefined
+        : lockedOptions.map((option) => ({
+            value: option.value,
+            label: localizedFromText(localization, option.label),
+          })),
+    [localization, lockedOptions],
+  );
+  const createOffered =
+    lockedOptions === undefined || seededOptions !== undefined;
   const { createProps, editor } = useCreateAttributeForSlot({
     subject,
     variableType,
-    ...(lockedOptions === undefined ? {} : { lockedOptions }),
+    ...(seededOptions === undefined ? {} : { lockedOptions: seededOptions }),
     ...(seedOptions === undefined ? {} : { seedOptions }),
     title: intl.formatMessage(createLabel),
     ...(editorOptions === undefined ? {} : { editorOptions }),
@@ -315,7 +334,7 @@ export default function SlotVariableField({
                 if (variableId !== currentValue) onBound(variableId);
               },
             })}
-        {...createProps}
+        {...(createOffered ? createProps : {})}
       />
       {editor}
       {offerValidation && (

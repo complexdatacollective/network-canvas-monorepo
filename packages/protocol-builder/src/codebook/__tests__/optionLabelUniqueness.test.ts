@@ -12,16 +12,22 @@ const SUBJECT = { entity: 'node', type: 'person' } as const;
 
 const personDocument = (options: readonly unknown[]): SectionDoc => ({
   name: 'Person',
+  label: { en: 'Person' },
   color: 'node-color-seq-1',
   shape: { default: 'circle' },
   variables: {
-    closeness: { name: 'closeness', type: 'ordinal', options },
+    closeness: {
+      name: 'closeness',
+      label: 'closeness',
+      type: 'ordinal',
+      options,
+    },
   },
 });
 
 const SOUND: readonly unknown[] = [
-  { label: 'Close', value: 'close' },
-  { label: 'Distant', value: 'distant' },
+  { label: { en: 'Close' }, value: 'close' },
+  { label: { en: 'Distant' }, value: 'distant' },
 ];
 
 /**
@@ -74,8 +80,8 @@ describe('the write that records the answers an attribute offers', () => {
   it('refuses two labels differing only in case', () => {
     expect(
       refusal([
-        { label: 'Close', value: 'close' },
-        { label: 'close', value: 'nearby' },
+        { label: { en: 'Close' }, value: 'close' },
+        { label: { en: 'close' }, value: 'nearby' },
       ]),
     ).toBe(DUPLICATE);
   });
@@ -94,10 +100,36 @@ describe('the write that records the answers an attribute offers', () => {
 
     expect(
       refusal([
-        { label: PRECOMPOSED, value: 'very' },
-        { label: DECOMPOSED, value: 'close' },
+        { label: { en: PRECOMPOSED }, value: 'very' },
+        { label: { en: DECOMPOSED }, value: 'close' },
       ]),
     ).toBe(DUPLICATE);
+  });
+
+  /**
+   * Each language is its own question: a Spanish-speaking participant meets
+   * the Spanish words, whatever the English ones say.
+   */
+  it('refuses two labels that read the same in one language only', () => {
+    expect(
+      refusal([
+        { label: { en: 'Close', es: 'Cerca' }, value: 'close' },
+        { label: { en: 'Nearby', es: 'cerca' }, value: 'nearby' },
+      ]),
+    ).toBe(DUPLICATE);
+  });
+
+  it('does not compare a label with a translation it has not got', () => {
+    // Neither of the last two is written in Spanish, so in Spanish they hold
+    // the same nothing — which is a gap to translate, not two answers a
+    // participant could confuse.
+    expect(
+      refusal([
+        { label: { en: 'Close', es: 'Cerca' }, value: 'close' },
+        { label: { en: 'Distant' }, value: 'distant' },
+        { label: { en: 'Far' }, value: 'far' },
+      ]),
+    ).toBeUndefined();
   });
 
   it('says what is missing before it says two labels read the same', () => {
@@ -106,15 +138,18 @@ describe('the write that records the answers an attribute offers', () => {
     // send them looking for a clash that is not there.
     expect(
       refusal([
-        { label: '   ', value: 'close' },
-        { label: '', value: 'distant' },
+        { label: { en: '   ' }, value: 'close' },
+        { label: { en: '' }, value: 'distant' },
       ]),
     ).toBe('Every option needs both a label and a value.');
   });
 
   it.each([
     { count: 'no values', options: [] },
-    { count: 'one value', options: [{ label: 'Close', value: 'close' }] },
+    {
+      count: 'one value',
+      options: [{ label: { en: 'Close' }, value: 'close' }],
+    },
   ])('says a list of $count is too short to hold', ({ options }) => {
     expect(refusal(options)).toBe(
       'Requires a minimum of two options. If you need fewer options, consider using a boolean attribute.',

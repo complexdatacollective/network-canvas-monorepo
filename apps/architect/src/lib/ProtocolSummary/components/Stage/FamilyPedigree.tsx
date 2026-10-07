@@ -9,15 +9,16 @@ import { getMarkdownLabelText } from '@codaco/fresco-ui/RenderMarkdown';
 import { UnorderedList } from '@codaco/fresco-ui/typography/UnorderedList';
 import type {
   FramingSetting,
+  LocalizedString,
   PedigreeCompletenessScope,
   PedigreeGenderWords,
 } from '@codaco/protocol-validation';
-import Markdown from '~/components/Markdown';
 import { summaryMessages } from '~/lib/ProtocolSummary/summaryMessages';
 
 import EntityBadge from '../EntityBadge';
 import MiniTable from '../MiniTable';
 import SummaryContext from '../SummaryContext';
+import { SummaryMarkdown, useDefaultLanguageText } from '../SummaryText';
 import Variable from '../Variable';
 import SectionFrame from './SectionFrame';
 
@@ -289,7 +290,7 @@ type Completeness = {
 
 type NominationPrompt = {
   id: string;
-  text: string;
+  text: LocalizedString;
   attribute: string;
   onlyForSexAssignedAtBirth?: 'female' | 'male';
 };
@@ -297,7 +298,7 @@ type NominationPrompt = {
 type FamilyPedigreeProps = {
   /** The node type of the people, whose attribute holds gender identity. */
   personType: string | null;
-  prompt: string | null;
+  prompt: LocalizedString | null;
   nodeConfiguration: NodeConfiguration | null;
   edgeConfiguration: EdgeConfiguration | null;
   completeness: Completeness | null;
@@ -330,6 +331,7 @@ const FamilyPedigree = ({
 }: FamilyPedigreeProps) => {
   const intl = useAppIntl();
   const { protocol } = useContext(SummaryContext);
+  const defaultLanguageText = useDefaultLanguageText();
   if (
     prompt === null &&
     nodeConfiguration === null &&
@@ -361,7 +363,9 @@ const FamilyPedigree = ({
     genderOptions !== undefined
       ? genderOptions.map(({ value, label }) => ({
           value,
-          label: getMarkdownLabelText(label),
+          label: getMarkdownLabelText(
+            defaultLanguageText(label)?.text ?? String(value),
+          ),
         }))
       : (genderTerms ?? []).map(({ value }) => ({
           value,
@@ -373,7 +377,7 @@ const FamilyPedigree = ({
       ? ([
           [
             intl.formatMessage(summaryMessages.prompt),
-            <Markdown key="prompt" label={prompt} />,
+            <SummaryMarkdown key="prompt" value={prompt} />,
           ],
         ] as [string, ReactNode][])
       : []),
@@ -499,7 +503,7 @@ const FamilyPedigree = ({
               ({ id, text, attribute, onlyForSexAssignedAtBirth }) => (
                 <li className="my-5" key={id}>
                   <div className="break-inside-avoid">
-                    <Markdown label={text} />
+                    <SummaryMarkdown value={text} />
                     <MiniTable
                       rotated
                       rows={[

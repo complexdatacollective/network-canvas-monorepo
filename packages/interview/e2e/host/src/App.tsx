@@ -14,12 +14,17 @@ import type {
   StepChangeHandler,
 } from '@codaco/interview';
 import { Shell } from '@codaco/interview';
+import { getLocaleMetadata } from '@codaco/protocol-validation';
 
-import { mockFinish, mockSync } from './mockCallbacks';
+import {
+  mockFinish,
+  mockProtocolLocaleChange,
+  mockSync,
+} from './mockCallbacks';
 import {
   createInterview as createInterviewHook,
   getAllowStageNavigation,
-  getRequestedLocale,
+  getRequestedLocales,
   getTestState,
   installProtocol as installProtocolHook,
   installTestHooks,
@@ -72,7 +77,7 @@ function useTestState() {
         .map(([id]) => id)
         .join(
           ',',
-        )}|${getAllowStageNavigation()}|${JSON.stringify(getRequestedLocale())}`,
+        )}|${getAllowStageNavigation()}|${JSON.stringify(getRequestedLocales())}`,
     () => '',
   );
 }
@@ -140,7 +145,15 @@ export default function App() {
     const e = entryRef.current;
     const p = protocolRef.current;
     if (!e || !p) return null;
-    return { session: e.session, protocol: p };
+    return {
+      session: {
+        ...e.session,
+        localeOptions: p.localization.locales.map((locale) =>
+          getLocaleMetadata(locale),
+        ),
+      },
+      protocol: p,
+    };
   }, [activeId]);
 
   if (!activeId) {
@@ -163,8 +176,9 @@ export default function App() {
     <AnimationProvider disableAnimations reducedMotion="always">
       <Shell
         payload={payload}
-        requestedLocale={getRequestedLocale()}
+        requestedLocales={getRequestedLocales()}
         onSync={mockSync}
+        onProtocolLocaleChange={mockProtocolLocaleChange}
         onFinish={mockFinish}
         onRequestAsset={mockAssetReq}
         currentStep={currentStep}

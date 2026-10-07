@@ -1,0 +1,61 @@
+import { z } from 'zod';
+
+import { findDuplicateId } from '../../../utils/validation-helpers.ts';
+import { canvasBehavioursSchema } from '../common/behaviours.ts';
+import {
+  imageOrCirclesBackgroundSchema,
+  NodeStageSubjectSchema,
+} from '../common/index.ts';
+import { entityAttributeReference } from '../entity-attribute-reference.ts';
+import { entityTypeReference } from '../entity-type-reference.ts';
+import { FilterSchema } from '../filters/index.ts';
+import { localizedString } from '../localized-string.ts';
+import { baseStageSchema } from './base.ts';
+
+export const narrativeStage = baseStageSchema.extend({
+  type: z.literal('Narrative'),
+  filter: FilterSchema.optional(),
+  subject: NodeStageSubjectSchema,
+  presets: z
+    .array(
+      z.strictObject({
+        id: z.string(),
+        label: localizedString(z.string().min(1), 'plain'),
+        layoutVariable: entityAttributeReference({
+          subject: 'stageSubject',
+        }),
+        groupVariable: entityAttributeReference({
+          subject: 'stageSubject',
+        }).optional(),
+        edges: z
+          .strictObject({
+            display: z
+              .array(entityTypeReference({ entity: 'edge' }))
+              .optional(),
+          })
+          .optional(),
+        highlight: z
+          .array(
+            z.strictObject({
+              variable: entityAttributeReference({ subject: 'stageSubject' }),
+              label: localizedString(z.string().min(1), 'plain'),
+            }),
+          )
+          .optional(),
+      }),
+    )
+    .min(1)
+    .superRefine((prompts, ctx) => {
+      // Check for duplicate prompt IDs
+      const duplicatePromptId = findDuplicateId(prompts);
+      if (duplicatePromptId) {
+        ctx.addIssue({
+          code: 'custom' as const,
+          message: `Prompts contain duplicate ID "${duplicatePromptId}"`,
+          path: [],
+        });
+      }
+    }),
+  background: imageOrCirclesBackgroundSchema,
+  behaviours: canvasBehavioursSchema,
+});

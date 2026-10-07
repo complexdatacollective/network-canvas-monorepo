@@ -25,11 +25,31 @@ const initialStage = {
   label: '',
 };
 
-type StageDependencyCandidate = Pick<Stage, 'id' | 'label' | 'type'> & {
+type StageDependencyCandidate = Pick<Stage, 'id' | 'type'> & {
+  sourceStageId?: string;
   skipLogic?: {
     destination?: SkipLogicDestination;
   };
 };
+
+export const getFamilyPedigreeDependentStages = <
+  T extends StageDependencyCandidate,
+>(
+  stages: T[],
+  stageId: string,
+) =>
+  stages.filter(
+    (candidate): candidate is T & { sourceStageId: string } =>
+      candidate.type === 'NarrativePedigree' &&
+      candidate.sourceStageId === stageId,
+  );
+
+export const getFamilyPedigreeNodeTypeChangeBlock = <
+  T extends StageDependencyCandidate,
+>(
+  stages: T[],
+  stageId: string,
+) => getFamilyPedigreeDependentStages(stages, stageId);
 
 export const getSkipDestinationDependentStages = <
   T extends StageDependencyCandidate,
@@ -87,6 +107,16 @@ const deleteStageAsync = createAppAsyncThunk(
 
     if (isStageReferencedAsSkipDestination(allStages, stageId)) {
       return stageId;
+    }
+
+    // A NarrativePedigree renders a FamilyPedigree's finalised network via
+    // sourceStageId; deleting that source leaves the dependent stage invalid.
+    if (stage?.type === 'FamilyPedigree') {
+      const dependents = getFamilyPedigreeDependentStages(allStages, stageId);
+
+      if (dependents.length > 0) {
+        return stageId;
+      }
     }
 
     dispatch(

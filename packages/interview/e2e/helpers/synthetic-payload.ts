@@ -13,7 +13,7 @@ import {
 import type {
   ProtocolPayload,
   ResolvedAsset,
-  SessionPayload,
+  SessionSnapshot,
 } from '../../src/contract/types.js';
 
 type FileAssetSpec = {
@@ -43,7 +43,7 @@ export type BuildSyntheticPayloadOptions = {
 
 export type SyntheticPayloadResult = {
   protocol: ProtocolPayload;
-  session: SessionPayload;
+  session: SessionSnapshot;
   // SessionState carries no step — the host derives the step from the URL
   // (?step=) and passes it to Shell as a prop, so the runner navigates with
   // interview.goto(currentStep) instead of seeding it into the session.
@@ -52,7 +52,7 @@ export type SyntheticPayloadResult = {
 };
 
 /**
- * Convert a SyntheticInterview into the real ProtocolPayload/SessionPayload
+ * Convert a SyntheticInterview into the real ProtocolPayload/SessionSnapshot
  * contract the e2e host's window.__test hooks expect. The assembled protocol
  * is parsed with CurrentProtocolSchema (including its cross-reference
  * superRefines) so an invalid builder config fails loudly at build time with
@@ -85,6 +85,7 @@ export function buildSyntheticPayload(
 
   const candidate = {
     name: opts.protocolName,
+    localization: raw.protocol.localization,
     schemaVersion: raw.protocol.schemaVersion,
     codebook: raw.protocol.codebook,
     stages: raw.protocol.stages,
@@ -115,7 +116,7 @@ export function buildSyntheticPayload(
     assets: resolvedAssets,
   };
 
-  const session: SessionPayload = {
+  const session: SessionSnapshot = {
     id: uuid(),
     startTime: new Date().toISOString(),
     finishTime: null,
@@ -138,6 +139,8 @@ export function buildSyntheticPayload(
             [entityAttributesProperty]: {},
           },
         },
+    localePreference: null,
+    locale: null,
     ...(parsedStageMetadata.success && opts.stageMetadata != null
       ? { stageMetadata: parsedStageMetadata.data }
       : {}),

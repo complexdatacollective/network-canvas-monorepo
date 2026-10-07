@@ -186,10 +186,11 @@ export const AnAttributeWhoseValuesChanged: Story = {
           ...variables,
           sexAssignedAtBirth: {
             name: 'sexAssignedAtBirth',
+            label: 'sexAssignedAtBirth',
             type: 'categorical',
             options: [
-              { value: 'female', label: 'Female' },
-              { value: 'male', label: 'Male' },
+              { value: 'female', label: { 'en-US': 'Female' } },
+              { value: 'male', label: { 'en-US': 'Male' } },
             ],
           },
         },

@@ -21,7 +21,10 @@ import {
 
 import { AppMessage } from '@codaco/app-i18n/react';
 import { AnimationProvider } from '@codaco/fresco-ui/AnimationProvider';
-import { asEntityAttributeReference } from '@codaco/protocol-validation';
+import {
+  asEntityAttributeReference,
+  getLocaleMetadata,
+} from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -112,6 +115,9 @@ function makePayload(id: string): InterviewPayload {
       finishTime: null,
       exportTime: null,
       lastUpdated: '2026-01-01T00:00:00.000Z',
+      localePreference: null,
+      locale: null,
+      localeOptions: [getLocaleMetadata('und')],
       network: {
         ego: {
           [entityPrimaryKeyProperty]: `${id}-ego`,
@@ -126,16 +132,20 @@ function makePayload(id: string): InterviewPayload {
       hash: `${id}-hash`,
       importedAt: '2026-01-01T00:00:00.000Z',
       name: `Authored_${id}`,
-      schemaVersion: 8,
+      schemaVersion: 9,
+      localization: { defaultLocale: 'und', locales: ['und'] },
       codebook: {
         ego: { variables: {} },
         node: {
           person: {
             name: 'Person',
+            label: { und: 'Person' },
             color: 'node-color-seq-1',
             shape: { default: 'circle' },
             icon: 'add-a-person',
-            variables: { name: { name: 'Name', type: 'text' } },
+            variables: {
+              name: { name: 'Name', label: 'Name', type: 'text' },
+            },
           },
         },
         edge: {},
@@ -145,10 +155,12 @@ function makePayload(id: string): InterviewPayload {
         {
           id: `${id}-names`,
           type: 'NameGeneratorQuickAdd',
-          label: `Original_${id}`,
+          label: { und: `Original_${id}` },
           subject: { entity: 'node', type: 'person' },
           quickAdd: asEntityAttributeReference('name'),
-          prompts: [{ id: `${id}-prompt`, text: `Original prompt ${id}` }],
+          prompts: [
+            { id: `${id}-prompt`, text: { und: `Original prompt ${id}` } },
+          ],
           behaviours: { minNodes: 1 },
         },
       ],
@@ -158,6 +170,7 @@ function makePayload(id: string): InterviewPayload {
 
 const handlers = {
   onFinish: () => Promise.resolve(),
+  onProtocolLocaleChange: () => Promise.resolve(),
   onRequestAsset: () => Promise.resolve(''),
   analytics: { installationId: 'test', hostApp: 'test' },
 };
@@ -238,7 +251,7 @@ describe('Shell toast ownership', () => {
           {...handlers}
           payload={firstPayload}
           onSync={firstSync}
-          requestedLocale={requestedLocale}
+          requestedLocales={[requestedLocale]}
           flags={{ isE2E: true }}
           disableAnalytics
         />
@@ -254,7 +267,7 @@ describe('Shell toast ownership', () => {
           {...handlers}
           payload={secondPayload}
           onSync={secondSync}
-          requestedLocale="es"
+          requestedLocales={['es']}
           flags={{ isE2E: true }}
           disableAnalytics
         />
@@ -451,7 +464,7 @@ describe('Shell stage portal ownership', () => {
           {...handlers}
           payload={firstPayload}
           onSync={firstSync}
-          requestedLocale="en"
+          requestedLocales={['en']}
           flags={{ isE2E: true }}
           disableAnalytics
         />
@@ -469,7 +482,7 @@ describe('Shell stage portal ownership', () => {
           {...handlers}
           payload={secondPayload}
           onSync={secondSync}
-          requestedLocale={requestedLocale}
+          requestedLocales={[requestedLocale]}
           flags={{ isE2E: true }}
           disableAnalytics
         />

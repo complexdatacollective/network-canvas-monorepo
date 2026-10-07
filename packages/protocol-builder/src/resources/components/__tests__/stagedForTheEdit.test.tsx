@@ -4,7 +4,6 @@ import { expect, it } from 'vitest';
 
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import Field from '@codaco/fresco-ui/form/Field/Field';
-import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import allInterfaces from '@codaco/protocols/e2e/all-interfaces/protocol.json';
 import {
@@ -13,6 +12,7 @@ import {
 } from '@codaco/studio-sync/taxonomy';
 
 import AssetPickerField from '../../../fields/AssetPickerField.tsx';
+import { LocalizedInputField } from '../../../fields/LocalizedStringField.tsx';
 import StageEditorShell from '../../../form/StageEditorShell.tsx';
 import { ProtocolBuilder } from '../../../ProtocolBuilder.tsx';
 import BuilderSection from '../../../sections/BuilderSection.tsx';
@@ -190,7 +190,7 @@ function EditProbe() {
 const NameAndProbe: StageEditorComponent = ({ actions }) => (
   <StageEditorShell {...(actions === undefined ? {} : { actions })}>
     <BuilderSection title="Stage name">
-      <Field name="label" label="Stage name" component={InputField} />
+      <Field name="label" label="Stage name" component={LocalizedInputField} />
     </BuilderSection>
     <EditProbe />
   </StageEditorShell>
@@ -204,7 +204,7 @@ it('ends the edit when the host opens another stage in the same editor', async (
   };
   const editorOn = (stage: ProtocolSectionId) => (
     <DialogProvider>
-      <ProtocolBuilder client={host.client} protocolId={host.protocolId}>
+      <ProtocolBuilder adapter={host.adapter} protocolId={host.protocolId}>
         <StageEditor
           target={{ sectionId: stage }}
           registry={registry}
@@ -251,9 +251,9 @@ it('ends the edit when the host opens another stage in the same editor', async (
   await user.type(field, 'The second screen, renamed');
   await user.click(screen.getByRole('button', { name: 'Save screen' }));
   await waitFor(() =>
-    expect(host.store.read(SECOND_STAGE).document.label).toBe(
-      'The second screen, renamed',
-    ),
+    expect(host.store.read(SECOND_STAGE).document.label).toEqual({
+      'en-US': 'The second screen, renamed',
+    }),
   );
   expect(Object.keys(host.store.read(ASSETS).document)).toEqual(manifestBefore);
 });

@@ -3,12 +3,16 @@
     "removeAfterConsideration": true
   },
   "id": "id-1",
-  "label": "Who Knows This Person?",
+  "label": {
+    "en": "Who Knows This Person?"
+  },
   "prompts": [
     {
       "createEdge": "id-2",
       "id": "id-3",
-      "text": "Who does this person know?"
+      "text": {
+        "en": "Who does this person know?"
+      }
     }
   ],
   "subject": {

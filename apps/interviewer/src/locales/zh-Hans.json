@@ -124,7 +124,7 @@
   "interviewer.interviewComplete.thankYouThisInterviewIsFinishedAnd": "谢谢。此访谈已结束，其回答无法再更改。请将设备交还给研究人员。",
   "interviewer.language.automatic": "自动（跟随浏览器）",
   "interviewer.language.failed": "本次会话的语言已更改，但无法保存该偏好设置。您的浏览器可能阻止了设备存储。",
-  "interviewer.language.hint": "选择此设备上 Interviewer 及其内置访谈控件的语言。这不会更改协议内容或已收集的数据。",
+  "interviewer.language.hint": "选择 Interviewer 在此设备上使用的语言。访谈会使用参与者浏览器的语言，或参与者在访谈中选择的语言。",
   "interviewer.language.label": "应用语言",
   "interviewer.language.saved": "语言偏好设置已保存在此设备上。",
   "interviewer.launchFailureToast.couldNotOpenFile": "无法打开文件",

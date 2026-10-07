@@ -8,9 +8,10 @@ import {
   VariableSchema,
 } from '@codaco/protocol-validation';
 import {
-  hasDuplicateOptionLabels,
+  CodebookNameSchema,
+  type ExportColumnVariable,
+  normalizeCodebookName,
   normalizeForComparison,
-  VariableNameSchema,
 } from '@codaco/shared-consts';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import {
@@ -18,6 +19,17 @@ import {
   type ProtocolSectionId,
 } from '@codaco/studio-sync/taxonomy';
 
+import { exportColumnRefusals } from '../fields/variableNameRules.ts';
+import {
+  hasDuplicateLocalizedOptionLabels,
+  isOptionLabelEmpty,
+  isOptionValueEmpty,
+} from '../form/arrayFields/optionCompleteness.ts';
+import {
+  asLocalizedString,
+  localizedFromText,
+  type ProtocolLocalization,
+} from '../localization/localizedText.ts';
 import type {
   CodebookSubject,
   ProtocolBuilderProtocolContext,
@@ -88,9 +100,9 @@ const messages = defineMessages({
   optionsInvalidValue: {
     id: 'protocolBuilder.codebookEditing.optionsInvalidValue',
     defaultMessage:
-      'Not a valid option value. Only letters, numbers and the symbols ._-: are supported',
+      'An option value cannot contain line breaks, tabs or other control characters.',
     description:
-      'Refusal shown when an allowed answer’s stored value holds characters the export formats cannot carry. The listed symbols are literal characters and must not be translated.',
+      'Refusal shown when an allowed answer’s stored value holds a character that cannot be stored in a value, such as a line break or a tab. Values may otherwise be written in any language or script, with spaces and punctuation.',
   },
   duplicateVariableName: {
     id: 'protocolBuilder.codebookEditing.duplicateVariableName',
@@ -120,6 +132,23 @@ export class InvalidCodebookDraftError extends Error {
     super(message);
     this.issues = Object.freeze([...issues]);
     this.refusal = refusal;
+  }
+}
+
+/**
+ * A write refused because the export would put two things in one column. Its
+ * words are written for the researcher and anchored at the name or the options
+ * that cause the clash, wherever the write was made from.
+ */
+export class ExportColumnConflictError extends InvalidCodebookDraftError {
+  declare readonly refusal: string;
+
+  constructor(path: 'name' | 'options', message: string) {
+    super(
+      'the variable draft is invalid',
+      [{ path: [path], message }],
+      message,
+    );
   }
 }
 
@@ -173,6 +202,8 @@ export class MissingVariableError extends Error {
 export type CreateEntityEditInput = Readonly<{
   subject: CodebookSubject;
   draft: CodebookEntityDraft;
+  /** The protocol's languages, which a label seeded from the name is written in. */
+  localization: ProtocolLocalization | undefined;
 }>;
 
 export type UpdateEntityEditInput = Readonly<{
@@ -319,10 +350,81 @@ const validateEntityDocument = (
   }
 };
 
+/**
+ * The draft with the names in it as they will be stored. A name is trimmed and
+ * put in Unicode canonical form here, before anything judges it, so a trailing
+ * space or a decomposed accent is repaired once instead of being refused by one
+ * rule and compared wrongly by another. Only strings are names: a numeric or
+ * boolean option value is left as the editor parsed it.
+ */
+const withNormalizedVariableNames = (draft: SectionDoc): SectionDoc => {
+  if (typeof draft.name === 'string') {
+    draft.name = normalizeCodebookName(draft.name);
+  }
+  if (Array.isArray(draft.options)) {
+    draft.options = draft.options.map((option: unknown) =>
+      isRecord(option) && typeof option.value === 'string'
+        ? { ...option, value: normalizeCodebookName(option.value) }
+        : option,
+    );
+  }
+  return draft;
+};
+
+const withNormalizedEntityName = (document: SectionDoc): SectionDoc => {
+  if (typeof document.name === 'string') {
+    document.name = normalizeCodebookName(document.name);
+  }
+  return document;
+};
+
+/**
+ * `draft` with a label written from its name where it holds none.
+ *
+ * A node type or edge type needs participant-facing wording beside its name,
+ * but the researcher names it first and may never word it separately, so the
+ * name stands in — in the protocol's default language — until they do. Until
+ * the protocol's languages are known nothing can be written, and the schema
+ * refuses the missing label.
+ */
+export const withSeededLabel = <
+  Draft extends Readonly<Record<string, unknown>>,
+>(
+  draft: Draft,
+  localization: ProtocolLocalization | undefined,
+): Draft => {
+  if (localization === undefined) return draft;
+  if (asLocalizedString(draft.label) !== undefined) return draft;
+  const name =
+    typeof draft.name === 'string' ? normalizeCodebookName(draft.name) : '';
+  return name === ''
+    ? draft
+    : { ...draft, label: localizedFromText(localization, name) };
+};
+
+/**
+ * An attribute `draft` with its name standing in for a label it does not
+ * hold. An attribute's label is not translated, so it is plain text.
+ */
+export const withSeededVariableLabel = <
+  Draft extends Readonly<Record<string, unknown>>,
+>(
+  draft: Draft,
+): Draft => {
+  if (typeof draft.label === 'string' && draft.label.trim() !== '') {
+    return draft;
+  }
+  const name =
+    typeof draft.name === 'string' ? normalizeCodebookName(draft.name) : '';
+  return name === '' ? draft : { ...draft, label: name };
+};
+
 const validateVariableDraft = (draft: CodebookVariableDraft): Variable => {
-  const normalized = cloneDocument(draft);
+  const normalized = withNormalizedVariableNames(cloneDocument(draft));
   const tooFew = tooFewOptionsIssue(normalized);
   if (tooFew !== null) throw researcherIssue(tooFew);
+  const incomplete = incompleteOptionsIssue(normalized);
+  if (incomplete !== null) throw researcherIssue(incomplete);
   const result = VariableSchema.safeParse(normalized);
   if (!result.success) {
     throw invalidDraft('the variable draft is invalid', result.error.issues);
@@ -346,22 +448,38 @@ const tooFewOptionsIssue = (
   });
 };
 
+/**
+ * An option with no label in any language, or no value.
+ *
+ * Asked before the schema parses the draft, because an option that has lost
+ * its last translation holds no label at all, and the schema's own refusal of
+ * a missing key names a path rather than the half of the option to fill in.
+ */
+const incompleteOptionsIssue = (
+  draft: Readonly<Record<string, unknown>>,
+): CodebookDraftIssue | null => {
+  if (typeof draft.type !== 'string' || !isOptionType(draft.type)) return null;
+  const { options } = draft;
+  if (!Array.isArray(options)) return null;
+  const incomplete = options.some(
+    (option: unknown) =>
+      !isRecord(option) ||
+      isOptionLabelEmpty(option.label) ||
+      isOptionValueEmpty(option.value),
+  );
+  return incomplete
+    ? Object.freeze({
+        path: Object.freeze(['options']),
+        message: createMessageError(messages.optionsIncomplete),
+      })
+    : null;
+};
+
 const categoricalOptionIssue = (
   variable: Variable,
 ): CodebookDraftIssue | null => {
   if (variable.type !== 'categorical' && variable.type !== 'ordinal') {
     return null;
-  }
-
-  if (
-    variable.options.some(
-      ({ label, value }) => label.trim() === '' || value === '',
-    )
-  ) {
-    return Object.freeze({
-      path: Object.freeze(['options']),
-      message: createMessageError(messages.optionsIncomplete),
-    });
   }
 
   const seen = new Set<string>();
@@ -382,11 +500,11 @@ const categoricalOptionIssue = (
   // The write's own reading of the same question the row cell asks while the
   // researcher is typing. Not the same code — the cell compares one row
   // against its siblings (`isDuplicatedInColumn`), this compares a whole list
-  // — and they agree for every label a protocol can hold, which is what makes
-  // the refusal here the one the row already showed rather than a second
-  // surprise. Asked here as well as there because a caller writing straight to
-  // the codebook never met the cell.
-  if (hasDuplicateOptionLabels(variable.options)) {
+  // — and they agree for every label a protocol can hold, language by
+  // language, which is what makes the refusal here the one the row already
+  // showed rather than a second surprise. Asked here as well as there because
+  // a caller writing straight to the codebook never met the cell.
+  if (hasDuplicateLocalizedOptionLabels(variable.options)) {
     return Object.freeze({
       path: Object.freeze(['options']),
       message: createMessageError(messages.optionsDuplicateLabel),
@@ -395,7 +513,7 @@ const categoricalOptionIssue = (
 
   if (
     variable.options.some(
-      ({ value }) => !VariableNameSchema.safeParse(String(value)).success,
+      ({ value }) => !CodebookNameSchema.safeParse(String(value)).success,
     )
   ) {
     return Object.freeze({
@@ -427,7 +545,13 @@ const variablesFromDocument = (
 
 /** The whole section document a new node, edge or ego type is created from. */
 export function documentForNewEntity(input: CreateEntityEditInput): SectionDoc {
-  const document = cloneDocument(input.draft);
+  const document = withNormalizedEntityName(
+    cloneDocument(
+      input.subject.entity === 'ego'
+        ? input.draft
+        : withSeededLabel(input.draft, input.localization),
+    ),
+  );
   if (!Object.hasOwn(document, 'variables')) {
     document.variables = Object.create(null);
   }
@@ -452,6 +576,7 @@ export function documentWithEntityProperties(
   for (const key of input.unsetProperties ?? []) {
     if (key !== 'variables') delete next[key];
   }
+  withNormalizedEntityName(next);
   validateEntityDocument(input.subject, next);
   return next;
 }
@@ -472,6 +597,107 @@ const assertVariableNameAvailable = (
       throw new DuplicateVariableNameError(variable.name);
     }
   }
+};
+
+const isExportOptionValue = (
+  value: unknown,
+): value is string | number | boolean =>
+  typeof value === 'string' ||
+  typeof value === 'number' ||
+  typeof value === 'boolean';
+
+/**
+ * The part of an attribute already in the codebook that its export columns
+ * depend on. Read structurally, not through the schema: a codebook written
+ * before names were relaxed, or by a collaborator's older Studio, must still
+ * have its columns counted.
+ */
+const exportColumnVariableOf = (
+  held: unknown,
+): ExportColumnVariable | undefined => {
+  if (
+    !isRecord(held) ||
+    typeof held.name !== 'string' ||
+    typeof held.type !== 'string'
+  ) {
+    return undefined;
+  }
+  return {
+    name: held.name,
+    type: held.type,
+    ...(Array.isArray(held.options)
+      ? {
+          options: held.options.flatMap((option: unknown) =>
+            isRecord(option) && isExportOptionValue(option.value)
+              ? [{ value: option.value }]
+              : [],
+          ),
+        }
+      : {}),
+  };
+};
+
+const exportColumnRefusalsFor = (
+  subject: CodebookSubject,
+  variables: Readonly<Record<string, unknown>>,
+  candidate: ExportColumnVariable,
+  excludedVariableId?: string,
+) =>
+  exportColumnRefusals({
+    entity: subject.entity,
+    candidate,
+    siblings: Object.entries(variables).flatMap(([variableId, held]) => {
+      const sibling = exportColumnVariableOf(held);
+      return variableId === excludedVariableId || sibling === undefined
+        ? []
+        : [sibling];
+    }),
+  });
+
+/**
+ * Refuses a write that would make the export put two things in one column: an
+ * attribute named like a column a categorical attribute's option, a layout
+ * attribute's position or the export itself already writes, or an option or
+ * layout position that would land on another attribute's column. Judged on the
+ * attribute as it will be stored, beside the others of the same type, so a
+ * rename, a new option and a change of type are all asked the same question.
+ *
+ * Only a clash this write introduces is refused. A codebook written when names
+ * were narrower can already hold one, and refusing every later save of the
+ * attributes involved would stop the researcher changing anything but the
+ * thing they are asked to fix.
+ */
+const assertNoExportColumnConflict = (
+  subject: CodebookSubject,
+  variables: Readonly<Record<string, unknown>>,
+  variable: Variable,
+  excludedVariableId?: string,
+): void => {
+  const held =
+    excludedVariableId === undefined
+      ? undefined
+      : exportColumnVariableOf(variables[excludedVariableId]);
+  const alreadyThere = new Set(
+    held === undefined
+      ? []
+      : exportColumnRefusalsFor(
+          subject,
+          variables,
+          held,
+          excludedVariableId,
+        ).map(({ message }) => message),
+  );
+  const introduced = exportColumnRefusalsFor(
+    subject,
+    variables,
+    variable,
+    excludedVariableId,
+  ).find(({ message }) => !alreadyThere.has(message));
+  if (introduced === undefined) return;
+  throw new ExportColumnConflictError(
+    introduced.origin.kind === 'option' ? 'options' : 'name',
+    introduced.message,
+  );
 };
 
 const variableIdExists = (
@@ -509,8 +735,9 @@ export function documentWithCreatedVariable(
   if (Object.hasOwn(variables, input.variableId)) {
     throw new DuplicateVariableIdError(input.variableId);
   }
-  const variable = validateVariableDraft(input.draft);
+  const variable = validateVariableDraft(withSeededVariableLabel(input.draft));
   assertVariableNameAvailable(variables, variable);
+  assertNoExportColumnConflict(input.subject, variables, variable);
   defineOwn(variables, input.variableId, cloneValue(variable));
   return entityDocumentWithVariables(input, variables);
 }
@@ -568,6 +795,12 @@ export function documentWithRebasedVariable(
         ),
   );
   assertVariableNameAvailable(variables, variable, input.variableId);
+  assertNoExportColumnConflict(
+    input.subject,
+    variables,
+    variable,
+    input.variableId,
+  );
   defineOwn(variables, input.variableId, cloneValue(variable));
   return entityDocumentWithVariables(input, variables);
 }
@@ -622,6 +855,12 @@ export function documentWithUpdatedVariable(
   }
   const variable = validateVariableDraft(nextVariable);
   assertVariableNameAvailable(variables, variable, input.variableId);
+  assertNoExportColumnConflict(
+    input.subject,
+    variables,
+    variable,
+    input.variableId,
+  );
   defineOwn(variables, input.variableId, cloneValue(variable));
   return entityDocumentWithVariables(input, variables);
 }

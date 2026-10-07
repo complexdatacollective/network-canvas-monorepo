@@ -158,7 +158,8 @@ export function entityTypeReferences(
 
 /**
  * Every reference to one STAGE the current schema declares: a skip-logic
- * destination, and whatever a stage type is tagged with next.
+ * destination, the FamilyPedigree a NarrativePedigree describes the people of,
+ * and whatever a stage type is tagged with next.
  *
  * The stage's own place in the stage order is not among them. That pointer is
  * how the protocol holds the stage rather than something naming it, and a

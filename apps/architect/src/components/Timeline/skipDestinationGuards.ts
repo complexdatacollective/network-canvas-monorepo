@@ -52,7 +52,10 @@ const finalMessages = defineMessages({
   },
 });
 
-type TimelineStage = Pick<Stage, 'id' | 'label' | 'type'> & {
+// `label` is the display text, already resolved from the stage's localized
+// label (see `getStageList`).
+type TimelineStage = Pick<Stage, 'id' | 'type'> & {
+  label: string;
   skipLogic?: {
     destination?: SkipLogicDestination;
   };

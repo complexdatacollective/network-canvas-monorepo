@@ -3,6 +3,7 @@ import { v4 as uuid } from 'uuid';
 import {
   getInterviewProgress,
   getLastAvailableAuthoredStageIndex,
+  type ProtocolLocaleChange,
 } from '@codaco/interview';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import type { NcNetwork } from '@codaco/shared-consts';
@@ -19,6 +20,7 @@ import type {
   SessionStatusKind,
   StoredSession,
   StoredSessionLite,
+  StoredSessionPatch,
 } from './types';
 
 // Status reflects interview *completion*, not export. `finishedAt` is the
@@ -283,6 +285,8 @@ export async function createSession(args: {
     network: args.initialNetwork,
     stageMetadata: undefined,
     isSynthetic: args.isSynthetic ?? false,
+    localePreference: null,
+    locale: null,
   };
   const row = await encryptSession(session);
   await db.sessions.put(row);
@@ -360,7 +364,7 @@ export async function whenSessionWritesSettle(): Promise<void> {
 
 export function updateSession(
   id: string,
-  patch: Partial<StoredSession>,
+  patch: StoredSessionPatch,
 ): Promise<StoredSession | undefined> {
   return enqueueSessionMutation(id, async () => {
     const existingRow = await db.sessions.get(id);
@@ -378,12 +382,35 @@ export function updateSession(
     // `protocolHash`, or the session may have been deleted. `protocolHash` is
     // never legitimately part of a session patch, so commit it from the
     // freshest stored row, and drop the write entirely rather than resurrect
-    // a deleted session.
+    // a deleted session. The locale fields are committed the same way: only
+    // `setSessionLocale` writes them, and another tab may have just done so.
     return db.transaction('rw', db.sessions, async () => {
       const latest = await db.sessions.get(id);
       if (!latest) return undefined;
-      await db.sessions.put({ ...row, protocolHash: latest.protocolHash });
-      return { ...updated, protocolHash: latest.protocolHash };
+      const owned = {
+        protocolHash: latest.protocolHash,
+        localePreference: latest.localePreference,
+        locale: latest.locale,
+      };
+      await db.sessions.put({ ...row, ...owned });
+      return { ...updated, ...owned };
+    });
+  });
+}
+
+// Joins the per-id chain, so a participant's language changes are stored in
+// the order they were made.
+export function setSessionLocale(
+  id: string,
+  change: ProtocolLocaleChange,
+): Promise<void> {
+  return enqueueSessionMutation(id, async () => {
+    // Plaintext fields only, so no key is needed; `update` skips a session
+    // that has been deleted rather than recreating it.
+    await db.sessions.update(id, {
+      localePreference: change.localePreference,
+      locale: change.locale,
+      lastUpdatedAt: new Date().toISOString(),
     });
   });
 }

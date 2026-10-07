@@ -27,9 +27,7 @@ export type OptionRowChoice = Readonly<{
   label(index: string): string;
   choices: readonly Readonly<{ value: string; label: string }>[];
   /** What an option the editor opens with starts on. Read once per open. */
-  initialValue(
-    option: Readonly<{ label: string; value: string | number }>,
-  ): string;
+  initialValue(option: Readonly<{ value: string | number }>): string;
   /** What an option the researcher adds starts on. */
   addedValue: string;
 }>;

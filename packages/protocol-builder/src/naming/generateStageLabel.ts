@@ -40,6 +40,7 @@ export const STAGE_TYPE_NAMES: Record<StageType, string> = {
   NameGeneratorQuickAdd: 'Quick Add Name Generator',
   NameGeneratorRoster: 'Roster Name Generator',
   FamilyPedigree: 'Family Pedigree',
+  NarrativePedigree: 'Narrative Pedigree',
   DyadCensus: 'Dyad Census',
   OneToManyDyadCensus: 'One to Many Dyad Census',
   TieStrengthCensus: 'Tie-Strength Census',
@@ -54,6 +55,7 @@ export const STAGE_TYPE_NAMES: Record<StageType, string> = {
   EgoForm: 'Ego Form',
   Information: 'Information',
   Anonymisation: 'Anonymisation',
+  LanguageChooser: 'Language Chooser',
 };
 
 export function composeStageName(parts: {

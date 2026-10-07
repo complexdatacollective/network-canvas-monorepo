@@ -140,12 +140,19 @@ export default defineConfig({
             '@codaco/interview > @reduxjs/toolkit',
             '@codaco/interview > concaveman',
             '@codaco/interview > csvtojson',
+            '@codaco/interview > html-to-image',
             '@codaco/interview > mapbox-gl/esm',
             '@codaco/interview > ohash',
             '@codaco/interview > react-redux',
             '@codaco/interview > redux-logger',
+            '@codaco/protocol-validation > csvtojson',
             'chromatic/isChromatic',
             'jszip',
+            // Reached through @codaco/interview: OnlineStatusProvider imports
+            // its package entry, which pulls in Shell → analytics →
+            // resolveClient's lazy import of the no-external build. Resolvable
+            // from this root because the app depends on posthog-js itself.
+            'posthog-js/dist/module.no-external',
             'zod',
             'zod/mini',
           ],

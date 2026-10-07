@@ -1,0 +1,149 @@
+import { describe, expect, it } from '@effect/vitest';
+import { Context, Effect, Fiber, Layer } from 'effect';
+import { afterAll, beforeAll } from 'vitest';
+
+import { applySchema } from '../../../scripts/apply.ts';
+import {
+  createScratchDatabase,
+  reachableDb,
+} from '../../__tests__/support/postgres.ts';
+import { ReadinessDatabase } from '../../db/client.ts';
+import { type DbEnv, Environment, readEnv } from '../../env.ts';
+import { SchemaStatus, StaleSchema } from '../schema-gate.ts';
+import { collectLogs } from './support/logs.ts';
+
+const APPLY_TIMEOUT_MS = 180_000;
+
+const RESET_CASE_TIMEOUT_MS = 240_000;
+
+const BECOMES_CURRENT_TIMEOUT = '60 seconds';
+
+const ABSENT_WARNING =
+  'Database has no Studio schema; sign-in will fail until it is created: pnpm --filter @codaco/studio-api db:reset';
+
+const db = await reachableDb();
+
+const gate = (scratch: DbEnv, devDefaults: boolean) =>
+  SchemaStatus.layer.pipe(
+    Layer.provide(
+      Layer.orDie(ReadinessDatabase.layer('app', { url: scratch.url })),
+    ),
+    Layer.provide(
+      Layer.succeed(Environment, { ...readEnv(), db: scratch, devDefaults }),
+    ),
+  );
+
+describe.skipIf(!db)('SchemaStatus.layer', () => {
+  let applied: Awaited<ReturnType<typeof createScratchDatabase>>;
+
+  beforeAll(async () => {
+    if (!db) throw new Error('unreachable: probe guaranteed a database');
+    applied = await createScratchDatabase(db);
+    await applySchema(applied.pool);
+  }, APPLY_TIMEOUT_MS);
+
+  afterAll(async () => {
+    await applied.dispose();
+  });
+
+  it.live('refuses a database with no Studio schema outside development', () =>
+    Effect.gen(function* () {
+      if (!db) throw new Error('unreachable: probe guaranteed a database');
+      const empty = yield* Effect.promise(() => createScratchDatabase(db));
+      try {
+        const outcome = yield* Effect.result(
+          Effect.scoped(Layer.build(gate(empty.db, false))),
+        );
+
+        expect(outcome._tag).toBe('Failure');
+        if (outcome._tag !== 'Failure') return;
+        expect(outcome.failure).toBeInstanceOf(StaleSchema);
+        expect(outcome.failure.message).toMatch(
+          /^The database has no Studio schema\.\n/,
+        );
+      } finally {
+        yield* Effect.promise(empty.dispose);
+      }
+    }),
+  );
+
+  it.live(
+    'comes up waiting in development and completes once the schema arrives',
+    () =>
+      Effect.gen(function* () {
+        if (!db) throw new Error('unreachable: probe guaranteed a database');
+        const scratch = yield* Effect.promise(() => createScratchDatabase(db));
+        const logs = collectLogs();
+        try {
+          yield* Effect.scoped(
+            Effect.gen(function* () {
+              const context = yield* Layer.build(gate(scratch.db, true));
+              const status = Context.get(context, SchemaStatus);
+
+              const waiting = yield* Effect.forkChild(status.current);
+              expect(
+                yield* Effect.sync(() => waiting.pollUnsafe()),
+              ).toBeUndefined();
+              expect(logs.messages).toContain(ABSENT_WARNING);
+
+              yield* Effect.promise(() => applySchema(scratch.pool));
+
+              yield* Effect.timeoutOrElse(Fiber.join(waiting), {
+                duration: BECOMES_CURRENT_TIMEOUT,
+                orElse: () =>
+                  Effect.die(
+                    new Error(
+                      'the schema gate never saw the applied schema become current',
+                    ),
+                  ),
+              });
+              expect(logs.messages).toContain('Database schema current.');
+            }),
+          ).pipe(Effect.provide(logs.layer));
+        } finally {
+          yield* Effect.promise(scratch.dispose);
+        }
+      }),
+    RESET_CASE_TIMEOUT_MS,
+  );
+
+  it.live('reads a fresh verdict for readiness', () =>
+    Effect.gen(function* () {
+      if (!db) throw new Error('unreachable: probe guaranteed a database');
+      const empty = yield* Effect.promise(() => createScratchDatabase(db));
+      try {
+        const current = yield* Effect.scoped(
+          Effect.gen(function* () {
+            const context = yield* Layer.build(gate(applied.db, false));
+            return yield* Context.get(context, SchemaStatus).read;
+          }),
+        );
+        expect(current).toEqual({ kind: 'current' });
+
+        const absent = yield* Effect.scoped(
+          Effect.gen(function* () {
+            const context = yield* Layer.build(gate(empty.db, true));
+            return yield* Context.get(context, SchemaStatus).read;
+          }),
+        );
+        expect(absent.kind).not.toBe('current');
+      } finally {
+        yield* Effect.promise(empty.dispose);
+      }
+    }),
+  );
+});
+
+describe('SchemaStatus.layerCurrent', () => {
+  // Under the TestClock nothing that waited could ever complete, so this
+  // passing is the assertion.
+  it.effect('is already current, and never waits', () =>
+    Effect.gen(function* () {
+      const context = yield* Layer.build(SchemaStatus.layerCurrent);
+      const status = Context.get(context, SchemaStatus);
+
+      yield* status.current;
+      expect(yield* status.read).toEqual({ kind: 'current' });
+    }),
+  );
+});

@@ -1,5 +1,3 @@
-import type { z } from 'zod';
-
 import type {
   ResourceDescriptorSchema,
   ResourceGatewayFailureSchema,
@@ -23,12 +21,12 @@ import {
 
 import type { ArchitectStore } from './architectStore.ts';
 
-type Descriptor = z.output<typeof ResourceDescriptorSchema>;
-type Failure = z.output<typeof ResourceGatewayFailureSchema>;
-type Inspection = z.output<typeof ResourceInspectionSchema>;
-type ListInput = z.output<typeof ResourceListInputSchema>;
-type Preview = z.output<typeof ResourcePreviewSchema>;
-type StageRequest = z.output<typeof StageResourceInputSchema>['request'];
+type Descriptor = (typeof ResourceDescriptorSchema)['Type'];
+type Failure = (typeof ResourceGatewayFailureSchema)['Type'];
+type Inspection = (typeof ResourceInspectionSchema)['Type'];
+type ListInput = (typeof ResourceListInputSchema)['Type'];
+type Preview = (typeof ResourcePreviewSchema)['Type'];
+type StageRequest = (typeof StageResourceInputSchema)['Type']['request'];
 
 export type ResourceOutcome<TData> =
   | Readonly<{ status: 'ok'; data: TData }>
@@ -137,8 +135,9 @@ export class ResourceBridge {
     // imports of different pictures both called `portrait.png` must stay two
     // assets wherever the protocol is opened next.
     const openedFor = getActiveProtocolId(this.#store.getState());
-    const source = await contentAddressedSource(request.bytes, request.source);
-    const file = new File([request.bytes], source, {
+    const bytes = new Uint8Array(request.bytes);
+    const source = await contentAddressedSource(bytes, request.source);
+    const file = new File([bytes], source, {
       type: request.contentType,
     });
     // Hashing is the one part of this that takes long enough for the
@@ -370,13 +369,10 @@ function requestKey(editId: string, kind: string, requestId: string): string {
  * file is.
  */
 async function contentAddressedSource(
-  bytes: Blob,
+  bytes: Uint8Array<ArrayBuffer>,
   source: string,
 ): Promise<string> {
-  const digest = await crypto.subtle.digest(
-    'SHA-256',
-    await bytes.arrayBuffer(),
-  );
+  const digest = await crypto.subtle.digest('SHA-256', bytes);
   const hex = [...new Uint8Array(digest)]
     .map((byte) => byte.toString(16).padStart(2, '0'))
     .join('');

@@ -6,7 +6,7 @@ import { validateAndMigrateProtocol } from '../validateAndMigrateProtocol';
 
 const protocolWithRawColor = {
   name: 'Invalid color protocol',
-  schemaVersion: 8,
+  schemaVersion: 9,
   codebook: {
     node: {
       person: {

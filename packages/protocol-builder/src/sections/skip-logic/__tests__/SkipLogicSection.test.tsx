@@ -18,13 +18,13 @@ import InterviewerGuidanceSection from '../../interviewer-guidance/InterviewerGu
 import SkipLogicSection from '../SkipLogicSection.tsx';
 
 /**
- * The stage most of these open: the third of the fixture's eighteen, and the
+ * The stage most of these open: the third of the fixture's twenty, and the
  * simplest one there is — a name, a heading and the blocks under it.
  */
 const STAGE = loadFixtureStage('information-1');
 
 /**
- * The stage the destination tests open instead: the fifteenth of eighteen, so
+ * The stage the destination tests open instead: the fifteenth of twenty, so
  * every destination it may offer fits in one assertion and the fourteen stages
  * before it are all there to be left out of it.
  */
@@ -527,6 +527,7 @@ describe('a rule set the researcher cannot save', () => {
       personWith(harness, {
         born: {
           name: 'Born',
+          label: 'Born',
           type: 'datetime',
           component: 'DatePicker',
           parameters: { type: 'full' },
@@ -543,6 +544,7 @@ describe('a rule set the researcher cannot save', () => {
         // for one. Only the dates it records have changed.
         born: {
           name: 'Born',
+          label: 'Born',
           type: 'datetime',
           component: 'DatePicker',
           parameters: { type: 'year' },
@@ -611,7 +613,9 @@ describe('a rule set the researcher cannot save', () => {
     // The attribute is still there; comparing text with "greater than" is not
     // something the schema accepts.
     harness.receiveCodebookUpdate(
-      personWith(harness, { age: { name: 'Age', type: 'text' } }),
+      personWith(harness, {
+        age: { name: 'Age', label: 'Age', type: 'text' },
+      }),
     );
 
     expect(
@@ -665,10 +669,11 @@ describe('a rule set the researcher cannot save', () => {
         // for one. Only the option this rule names has gone.
         contactType: {
           name: 'contactType',
+          label: 'contactType',
           type: 'categorical',
           options: [
-            { label: 'Not working', value: 'not-working' },
-            { label: 'Text message', value: 'text' },
+            { label: { 'en-US': 'Not working' }, value: 'not-working' },
+            { label: { 'en-US': 'Text message' }, value: 'text' },
           ],
         },
       }),
@@ -899,12 +904,14 @@ describe('choosing where the interview continues', () => {
     });
 
     // The fourteen stages before this one are not among them, and each of the
-    // three that are is numbered where the researcher will find it.
+    // five that are is numbered where the researcher will find it.
     expect(destinationOptions()).toEqual([
       'Next available stage',
       'Stage 16 — Family Pedigree',
-      'Stage 17 — Network Composer',
-      'Stage 18 — Geospatial',
+      'Stage 17 — Narrative Pedigree',
+      'Stage 18 — Network Composer',
+      'Stage 19 — Geospatial',
+      'Stage 20 — Language Chooser',
       'End the interview',
     ]);
   });
@@ -919,8 +926,8 @@ describe('choosing where the interview continues', () => {
     renderStageEditor({
       create: {
         type: STAGE.type,
-        // Between the sixteenth and the seventeenth stage, counting from zero.
-        position: 16,
+        // Between the seventeenth and the eighteenth stage, counting from zero.
+        position: 17,
         fields: { ...STAGE.fields, ...configuredFields() },
       },
       sections: skipLogicOnly,
@@ -928,10 +935,11 @@ describe('choosing where the interview continues', () => {
 
     expect(destinationOptions()).toEqual([
       'Next available stage',
-      // The stage this one displaces comes after it, and it and the stage
-      // beyond it are both numbered one higher than they are today.
-      'Stage 18 — Network Composer',
-      'Stage 19 — Geospatial',
+      // The stage this one displaces comes after it, and it and the stages
+      // beyond it are all numbered one higher than they are today.
+      'Stage 19 — Network Composer',
+      'Stage 20 — Geospatial',
+      'Stage 21 — Language Chooser',
       'End the interview',
     ]);
   });

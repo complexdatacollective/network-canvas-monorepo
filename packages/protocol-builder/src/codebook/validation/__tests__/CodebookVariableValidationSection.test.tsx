@@ -1,4 +1,5 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -7,7 +8,6 @@ import {
 } from '@codaco/studio-sync/taxonomy';
 
 import type { CodebookSubject } from '../../../protocol-context.ts';
-import type { InMemoryClient } from '../../../testing/host/createInMemoryHost.ts';
 import {
   renderStageEditor,
   type StageEditorHarness,
@@ -58,21 +58,19 @@ const openWithHeldWrite = (
   let held = true;
   const harness = renderStageEditor({
     stageId: 'ego-form-1',
-    client: (host) => {
-      const submit: InMemoryClient['submit'] = async (
-        ...args: Parameters<InMemoryClient['submit']>
-      ) => {
-        if (held) {
-          held = false;
-          await first.promise;
-        }
-        return host.client.submit(...args);
-      };
-      return new Proxy(host.client, {
-        get: (target, property) =>
-          property === 'submit' ? submit : Reflect.get(target, property),
-      });
-    },
+    adapter: (host) =>
+      host.adapterWith({
+        Submit: (input) =>
+          Effect.flatMap(
+            Effect.promise(async () => {
+              if (held) {
+                held = false;
+                await first.promise;
+              }
+            }),
+            () => host.handle.Submit(input),
+          ),
+      }),
     sections: (
       <CodebookVariableValidationSection
         subject={subject}
@@ -119,12 +117,23 @@ const personHolding = (type: string) => ({
   node: {
     person: {
       name: 'person',
+      label: { 'en-US': 'person' },
       color: 'node-color-seq-1',
       icon: 'add-a-person',
       shape: { default: 'circle' },
       variables: {
-        story: { name: 'story', type, component: COMPONENTS[type] },
-        retelling: { name: 'retelling', type, component: COMPONENTS[type] },
+        story: {
+          name: 'story',
+          label: 'story',
+          type,
+          component: COMPONENTS[type],
+        },
+        retelling: {
+          name: 'retelling',
+          label: 'retelling',
+          type,
+          component: COMPONENTS[type],
+        },
       },
     },
   },
@@ -368,6 +377,7 @@ describe('rules written while the codebook is moving', () => {
         variables: {
           ego_name: {
             name: 'ego_name',
+            label: 'ego_name',
             type: 'text',
             validation: { maxLength: 9 },
           },
@@ -535,6 +545,7 @@ describe('the switch, while a collaborator is changing the same attribute', () =
         variables: {
           ego_name: {
             name: 'ego_name',
+            label: 'ego_name',
             type: 'text',
             validation: { required: true },
           },
@@ -557,6 +568,7 @@ describe('the switch, while a collaborator is changing the same attribute', () =
         variables: {
           ego_name: {
             name: 'ego_name',
+            label: 'ego_name',
             type: 'text',
             validation: { required: true },
           },
@@ -569,7 +581,15 @@ describe('the switch, while a collaborator is changing the same attribute', () =
     );
 
     harness.receiveCodebookUpdate({
-      ego: { variables: { ego_name: { name: 'ego_name', type: 'text' } } },
+      ego: {
+        variables: {
+          ego_name: {
+            name: 'ego_name',
+            label: 'ego_name',
+            type: 'text',
+          },
+        },
+      },
     });
 
     await waitFor(() =>
@@ -594,6 +614,7 @@ describe('the switch, while a collaborator is changing the same attribute', () =
         variables: {
           ego_name: {
             name: 'ego_name',
+            label: 'ego_name',
             type: 'text',
             validation: { required: true },
           },
@@ -630,7 +651,7 @@ describe('a refusal the researcher has moved on from', () => {
         userId: 'user-2',
         displayName: 'Robin',
       })
-      .acquireLock({
+      .rpcCall('AcquireLock', {
         protocolId: harness.host.protocolId,
         sectionId: EGO_SECTION,
       });
@@ -679,7 +700,7 @@ describe('a rule on screen that the codebook has not taken yet', () => {
       userId: 'user-2',
       displayName: 'Robin',
     });
-    await robin.acquireLock({
+    await robin.rpcCall('AcquireLock', {
       protocolId: harness.host.protocolId,
       sectionId: EGO_SECTION,
     });
@@ -697,7 +718,7 @@ describe('a rule on screen that the codebook has not taken yet', () => {
     ).toBeInTheDocument();
     expect(egoValidation(harness, 'ego_name')).toBeUndefined();
 
-    await robin.releaseLock({
+    await robin.rpcCall('ReleaseLock', {
       protocolId: harness.host.protocolId,
       sectionId: EGO_SECTION,
     });
@@ -763,23 +784,16 @@ describe('the marker a refused write leaves behind', () => {
     let drop = true;
     const harness = renderStageEditor({
       stageId: 'ego-form-1',
-      client: (host) => {
-        const submit: InMemoryClient['submit'] = async (
-          ...args: Parameters<InMemoryClient['submit']>
-        ) => {
-          if (drop) {
-            drop = false;
-            // What a dropped socket is: the host took the lock and handed back
-            // the document, and the answer to the write never arrived.
-            throw new Error('the connection dropped');
-          }
-          return host.client.submit(...args);
-        };
-        return new Proxy(host.client, {
-          get: (target, property) =>
-            property === 'submit' ? submit : Reflect.get(target, property),
-        });
-      },
+      adapter: (host) =>
+        host.adapterWith({
+          Submit: (input) => {
+            if (drop) {
+              drop = false;
+              return Effect.die(new Error('the connection dropped'));
+            }
+            return host.handle.Submit(input);
+          },
+        }),
       sections: (
         <CodebookVariableValidationSection
           subject={EGO}
@@ -792,6 +806,7 @@ describe('the marker a refused write leaves behind', () => {
         variables: {
           ego_name: {
             name: 'ego_name',
+            label: 'ego_name',
             type: 'text',
             validation: { required: true },
           },
@@ -813,7 +828,15 @@ describe('the marker a refused write leaves behind', () => {
     expect(egoValidation(harness, 'ego_name')).toEqual({ required: true });
 
     harness.receiveCodebookUpdate({
-      ego: { variables: { ego_name: { name: 'ego_name', type: 'text' } } },
+      ego: {
+        variables: {
+          ego_name: {
+            name: 'ego_name',
+            label: 'ego_name',
+            type: 'text',
+          },
+        },
+      },
     });
 
     await waitFor(() =>

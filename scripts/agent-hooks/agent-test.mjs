@@ -24,7 +24,8 @@ import {
   workspacePackages,
 } from './lib.mjs';
 
-const root = resolveRepoRoot({});
+// No hook event: the checkout is the one the command runs in.
+const root = resolveRepoRoot({ cwd: process.cwd() });
 const relative = (file) => path.relative(root, file);
 const includeDependents = process.argv.includes('--dependents');
 // --list prints the plan without running vitest.

@@ -63,6 +63,7 @@ let protocol = protocolWithName('Person');
 vi.mock('~/selectors/protocol', () => ({
   getProtocol: () => protocol,
   getCodebook: () => protocol.codebook,
+  getLocalization: () => undefined,
 }));
 
 vi.mock('~/ducks/hooks', () => ({

@@ -2,5 +2,16 @@
   "networkExporters.stage.fetching": "Interviewdaten werden abgerufen…",
   "networkExporters.stage.formatting": "Sitzungen werden formatiert…",
   "networkExporters.stage.generating": "Dateien werden erstellt…",
-  "networkExporters.stage.outputting": "Ausgabe wird geschrieben…"
+  "networkExporters.stage.outputting": "Ausgabe wird geschrieben…",
+  "networkExporters.warning.columnRenamed.description": "Einige Spalten hätten denselben Namen gehabt wie eine andere Spalte in derselben Datei. Damit keine Antworten verloren gehen, wurde jede davon stattdessen unter einem nummerierten Namen geschrieben. Die umbenannten Spalten sind:",
+  "networkExporters.warning.columnRenamed.fromVariableItem": "In den {format, select, csv {CSV} other {GraphML}}-Dateien zu {protocolName} wurde die Spalte „{column}“, die zur Variablen {variable} gehört, für {entity, select, ego {Ego} other {{entityTypeName}}} als „{renamedTo}“ geschrieben.",
+  "networkExporters.warning.columnRenamed.item": "In den {format, select, csv {CSV} other {GraphML}}-Dateien zu {protocolName} wurde die Spalte „{column}“ für {entity, select, ego {Ego} other {{entityTypeName}}} als „{renamedTo}“ geschrieben.",
+  "networkExporters.warning.columnRenamed.title": "Einige Spalten haben neue Namen erhalten",
+  "networkExporters.warning.protocolText.description": "Einige Texte im Protokoll selbst enthielten Zeichen, die GraphML nicht speichern kann; sie wurden daher in den GraphML-Dateien entfernt. Diese Zeichen sind meist unsichtbar und werden deshalb mit ihrem Unicode-Codepunkt benannt, zum Beispiel U+0007. Betroffen sind folgende Texte:",
+  "networkExporters.warning.protocolText.item": "{text, select, protocolName {Der Protokollname „{name}“ (entfernt: {characters})} nodeTypeName {Der Name des Knotentyps „{name}“ in {protocolName} (entfernt: {characters})} edgeTypeName {Der Name des Kantentyps „{name}“ in {protocolName} (entfernt: {characters})} other {Der Spaltenname „{name}“ in {protocolName} (entfernt: {characters})}}",
+  "networkExporters.warning.protocolText.title": "In den GraphML-Dateien wurden einige Zeichen aus Protokolltexten entfernt",
+  "networkExporters.warning.xmlCharacters.caseId": "Fall-ID",
+  "networkExporters.warning.xmlCharacters.description": "Einige Antworten enthielten Zeichen, die GraphML nicht speichern kann; sie wurden daher nur aus den GraphML-Dateien entfernt. Die CSV-Dateien enthalten jede Antwort unverändert. Betroffen sind folgende Interviews und Variablen:",
+  "networkExporters.warning.xmlCharacters.interview": "Interview {caseId}: {variables}",
+  "networkExporters.warning.xmlCharacters.title": "Aus den GraphML-Dateien wurden einige Zeichen entfernt"
 }

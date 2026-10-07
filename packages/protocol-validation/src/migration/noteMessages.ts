@@ -352,6 +352,20 @@ export const migrationNoteMessages = defineMessages({
     description:
       'One complete Markdown bullet in schema 8 migration approval guidance: duplicateFormAttributes. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text.',
   },
+  schema9AttributeNames: {
+    id: 'protocolValidation.migrationNotes.schema9.attributeNames',
+    defaultMessage:
+      'Attribute names can now use letters from any language, as well as spaces and punctuation. Existing attribute names are not changed.',
+    description:
+      'One complete Markdown bullet in schema 9 migration approval guidance: attributeNames. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text.',
+  },
+  schema9UnspecifiedLanguage: {
+    id: 'protocolValidation.migrationNotes.schema9.unspecifiedLanguage',
+    defaultMessage:
+      'Text that participants see is now marked as written in "Unspecified language", because older protocols do not record which language they use. You can change it to the language it is actually written in on the Languages page in Architect.',
+    description:
+      'One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded. "Unspecified language" must match the name Network Canvas shows for text with no language, and "Languages" must match the name of the Architect page where languages are managed.',
+  },
 });
 
 // Each descriptor is a whole bullet. Markdown separators are structural:
@@ -430,6 +444,14 @@ const migrationNoteSets = {
       migrationNoteMessages.schema8OptionValueTypes,
       migrationNoteMessages.schema8OtherAndQuickAddValidation,
       migrationNoteMessages.schema8DuplicateFormAttributes,
+    ],
+  },
+  9: {
+    prefix: '',
+    suffix: '',
+    messages: [
+      migrationNoteMessages.schema9AttributeNames,
+      migrationNoteMessages.schema9UnspecifiedLanguage,
     ],
   },
 };

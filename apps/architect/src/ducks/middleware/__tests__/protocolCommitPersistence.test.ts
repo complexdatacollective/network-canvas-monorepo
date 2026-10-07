@@ -53,15 +53,15 @@ import { protocolLibraryListenerMiddleware } from '../protocolLibraryListener';
 import { protocolValidationListenerMiddleware } from '../protocolValidationListener';
 import createTimeline, { timelineActions } from '../timeline';
 
-const makeProtocol = (description?: string): CurrentProtocol =>
-  ({
-    name: 'Study',
-    description,
-    schemaVersion: 8,
-    stages: [],
-    codebook: { node: {}, edge: {}, ego: {} },
-    assetManifest: {},
-  }) as CurrentProtocol;
+const makeProtocol = (description?: string): CurrentProtocol => ({
+  name: 'Study',
+  description,
+  schemaVersion: 9,
+  localization: { defaultLocale: 'en', locales: ['en'] },
+  stages: [],
+  codebook: { node: {}, edge: {}, ego: {} },
+  assetManifest: {},
+});
 
 const reducer = combineReducers({
   app,
@@ -273,19 +273,33 @@ describe('validated protocol commit persistence', () => {
       {
         id: 'anon',
         type: 'Anonymisation',
-        label: 'Anonymisation',
-        explanationText: { title: 'Privacy', body: 'Choose a passphrase.' },
+        label: { en: 'Anonymisation' },
+        explanationText: {
+          title: { en: 'Privacy' },
+          body: { en: 'Choose a passphrase.' },
+        },
       },
     ];
     protocol.codebook = {
       node: {
         person: {
           name: 'Person',
+          label: { en: 'Person' },
           color: 'node-color-seq-1',
           shape: { default: 'circle' },
           variables: {
-            first: { name: 'first', type: 'text', encrypted: true },
-            second: { name: 'second', type: 'text', encrypted: true },
+            first: {
+              name: 'first',
+              label: 'first',
+              type: 'text',
+              encrypted: true,
+            },
+            second: {
+              name: 'second',
+              label: 'second',
+              type: 'text',
+              encrypted: true,
+            },
           },
         },
       },

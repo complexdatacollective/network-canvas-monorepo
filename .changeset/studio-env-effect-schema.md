@@ -1,5 +1,5 @@
 ---
-'@codaco/studio-server': minor
+'@codaco/studio-api': minor
 ---
 
 The Studio server's environment is one Effect Schema.
@@ -34,7 +34,7 @@ the one module that reads `process.env` — now actually enforced. The repo-wide
 `no-process-env` entry the README and that module both claimed as the
 enforcement was inert: the rule belongs to oxlint's `node` plugin, which is not
 in the repo-wide `plugins` list, so it did nothing anywhere. It is now on for
-`apps/studio/server/src/**`, together with a ban on importing `node:process`,
+`apps/studio/api/src/**`, together with a ban on importing `node:process`,
 because the linter only sees `process.env` reached through the global.
 
 Beside `readEnv` there is an `Environment` service (an Effect `Context.Tag` and

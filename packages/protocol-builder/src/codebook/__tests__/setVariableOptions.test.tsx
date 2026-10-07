@@ -23,15 +23,15 @@ const FAMILY_MEMBER: CodebookSubject = {
 
 /** The canonical set, plus one value the pedigree does not know. */
 const WITH_AN_EXTRA_VALUE = [
-  { value: 'female', label: 'Female' },
-  { value: 'male', label: 'Male' },
+  { value: 'female', label: { 'en-US': 'Female' } },
+  { value: 'male', label: { 'en-US': 'Male' } },
   {
     value: 'intersex',
-    label: 'Intersex',
+    label: { 'en-US': 'Intersex' },
   },
-  { value: 'unknown', label: 'Don’t know' },
-  { value: 'preferNotToSay', label: 'Prefer not to say' },
-  { value: 'other', label: 'Something else' },
+  { value: 'unknown', label: { 'en-US': 'Don’t know' } },
+  { value: 'preferNotToSay', label: { 'en-US': 'Prefer not to say' } },
+  { value: 'other', label: { 'en-US': 'Something else' } },
 ];
 
 /**
@@ -135,11 +135,11 @@ describe('writing the answers an attribute offers', () => {
   /** An unchanged list is not a revision anybody has to merge. */
   it('writes nothing when the list already matches', async () => {
     const { harness, outcome, before } = await write('sexAssignedAtBirth', [
-      { value: 'female', label: 'Female' },
-      { value: 'male', label: 'Male' },
-      { value: 'intersex', label: 'Intersex' },
-      { value: 'unknown', label: 'Don’t know' },
-      { value: 'preferNotToSay', label: 'Prefer not to say' },
+      { value: 'female', label: { 'en-US': 'Female' } },
+      { value: 'male', label: { 'en-US': 'Male' } },
+      { value: 'intersex', label: { 'en-US': 'Intersex' } },
+      { value: 'unknown', label: { 'en-US': 'Don’t know' } },
+      { value: 'preferNotToSay', label: { 'en-US': 'Prefer not to say' } },
     ]);
 
     await waitFor(() => expect(outcome()).toBe('unchanged'));
@@ -149,8 +149,8 @@ describe('writing the answers an attribute offers', () => {
   /** And an attribute a collaborator deleted is said to be gone. */
   it('refuses an attribute the codebook no longer holds', async () => {
     const { harness, outcome, before } = await write('neverExisted', [
-      { value: 'one', label: 'One' },
-      { value: 'two', label: 'Two' },
+      { value: 'one', label: { 'en-US': 'One' } },
+      { value: 'two', label: { 'en-US': 'Two' } },
     ]);
 
     await waitFor(() =>
@@ -165,7 +165,7 @@ describe('writing the answers an attribute offers', () => {
     const knows: CodebookSubject = { entity: 'edge', type: 'knows' };
     const { harness, outcome, before } = await write(
       'closeness',
-      [{ value: 1, label: 'Some' }],
+      [{ value: 1, label: { 'en-US': 'Some' } }],
       knows,
     );
 
@@ -186,9 +186,9 @@ describe('writing the answers an attribute offers', () => {
    */
   describe('a list a stage manages', () => {
     const WITH_A_NEW_OPTION = [
-      { value: 'woman', label: 'Woman' },
-      { value: 'man', label: 'Man' },
-      { value: 'agender', label: 'Agender' },
+      { value: 'woman', label: { 'en-US': 'Woman' } },
+      { value: 'man', label: { 'en-US': 'Man' } },
+      { value: 'agender', label: { 'en-US': 'Agender' } },
     ];
 
     it('is refused from another stage’s editor, naming the stage that manages it', async () => {
@@ -223,11 +223,11 @@ describe('writing the answers an attribute offers', () => {
       const { outcome } = await write(
         'sexAssignedAtBirth',
         [
-          { value: 'female', label: 'Female' },
-          { value: 'male', label: 'Male' },
-          { value: 'intersex', label: 'Intersex' },
-          { value: 'unknown', label: 'Don’t know' },
-          { value: 'preferNotToSay', label: 'Prefer not to say' },
+          { value: 'female', label: { 'en-US': 'Female' } },
+          { value: 'male', label: { 'en-US': 'Male' } },
+          { value: 'intersex', label: { 'en-US': 'Intersex' } },
+          { value: 'unknown', label: { 'en-US': 'Don’t know' } },
+          { value: 'preferNotToSay', label: { 'en-US': 'Prefer not to say' } },
         ],
         FAMILY_MEMBER,
         'name-generator-1',

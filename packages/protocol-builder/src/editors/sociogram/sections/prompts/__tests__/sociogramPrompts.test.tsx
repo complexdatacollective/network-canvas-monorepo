@@ -112,7 +112,7 @@ describe('the tasks a sociogram sets', () => {
     const saved = await harness.submit();
     expect(promptsOf(saved?.stageDocument ?? {})[0]).toEqual({
       id: 'sociogram-prompt-1',
-      text: 'Place the people who know each other close together',
+      text: { 'en-US': 'Place the people who know each other close together' },
       layout: { layoutVariable: 'layout' },
       edges: { display: ['knows'] },
       highlight: { allowHighlighting: false },
@@ -151,7 +151,7 @@ describe('the tasks a sociogram sets', () => {
   it('opens a prompt that taps do nothing on with the section off, and saves it unchanged', async () => {
     const SILENT_PROMPT = {
       id: 'sociogram-prompt-1',
-      text: 'Place the people who know each other close together',
+      text: { 'en-US': 'Place the people who know each other close together' },
       layout: { layoutVariable: 'layout' },
     };
     const harness = renderStageEditor(sociogramHolding(SILENT_PROMPT));
@@ -181,7 +181,9 @@ describe('the tasks a sociogram sets', () => {
     const harness = renderStageEditor(
       sociogramHolding({
         id: 'sociogram-prompt-1',
-        text: 'Place the people who know each other close together',
+        text: {
+          'en-US': 'Place the people who know each other close together',
+        },
         layout: { layoutVariable: 'layout' },
       }),
     );
@@ -337,7 +339,7 @@ describe('a connection type this protocol does not define', () => {
 
   const DISPLAYING_A_LOST_TYPE = {
     id: 'sociogram-prompt-1',
-    text: 'Place the people who know each other close together',
+    text: { 'en-US': 'Place the people who know each other close together' },
     layout: { layoutVariable: 'layout' },
     edges: { display: ['knows', LOST_EDGE] },
   };
@@ -391,11 +393,16 @@ describe('a connection type this protocol does not define', () => {
     // the tick list without the dialog asking for it, which is what makes it
     // tickable and then losable.
     harness.receiveCodebookUpdate({
-      edge: { [LOST_EDGE]: { name: 'Former' } },
+      edge: { [LOST_EDGE]: { name: 'Former', label: { 'en-US': 'Former' } } },
     });
 
     const prompt = await openPrompt(harness);
-    await harness.user.click(prompt.getByRole('checkbox', { name: 'Former' }));
+    await harness.user.click(
+      prompt.getByRole('checkbox', {
+        name: 'Former',
+        label: { 'en-US': 'Former' },
+      }),
+    );
 
     harness.receiveCodebookUpdate({ edge: { [LOST_EDGE]: null } });
 
@@ -454,7 +461,7 @@ describe('a connection type this protocol does not define', () => {
 describe('a prompt that only highlights its nodes', () => {
   const DISPLAY_ONLY_PROMPT = {
     id: 'sociogram-prompt-1',
-    text: 'Place the people who know each other close together',
+    text: { 'en-US': 'Place the people who know each other close together' },
     layout: { layoutVariable: 'layout' },
     highlight: { variable: 'highlighted', allowHighlighting: false },
   };
@@ -537,7 +544,7 @@ describe('a prompt that only highlights its nodes', () => {
 describe('a prompt that draws a connection it does not show', () => {
   const COLLECTS_WITHOUT_SHOWING = {
     id: 'sociogram-prompt-1',
-    text: 'Place the people who know each other close together',
+    text: { 'en-US': 'Place the people who know each other close together' },
     layout: { layoutVariable: 'layout' },
     edges: { create: 'knows', display: [] },
   };
@@ -625,7 +632,7 @@ describe('what tapping a node does, against what the prompt already said', () =>
     highlight?: Record<string, unknown>,
   ): Record<string, unknown> => ({
     id: 'sociogram-prompt-1',
-    text: 'Place the people who know each other close together',
+    text: { 'en-US': 'Place the people who know each other close together' },
     layout: { layoutVariable: 'layout' },
     ...(highlight === undefined ? {} : { highlight }),
   });
@@ -925,7 +932,9 @@ describe('a connections list with nothing in it', () => {
     const harness = renderStageEditor(
       sociogramHolding({
         id: 'sociogram-prompt-1',
-        text: 'Place the people who know each other close together',
+        text: {
+          'en-US': 'Place the people who know each other close together',
+        },
         layout: { layoutVariable: 'layout' },
       }),
     );
@@ -960,7 +969,7 @@ describe('a connections list with nothing in it', () => {
 describe('the order a sociogram hands unplaced nodes over in', () => {
   const SORTED_PROMPT = {
     id: 'sociogram-prompt-1',
-    text: 'Place the people who know each other close together',
+    text: { 'en-US': 'Place the people who know each other close together' },
     layout: { layoutVariable: 'layout' },
     sortOrder: [{ property: 'name', direction: 'asc' }],
   };
@@ -1129,7 +1138,7 @@ describe('the order a sociogram hands unplaced nodes over in', () => {
       stage: {
         type: 'Sociogram' as const,
         fields: {
-          label: 'Sociogram',
+          label: { 'en-US': 'Sociogram' },
           subject: { entity: 'node', type: '' },
           prompts: [
             {

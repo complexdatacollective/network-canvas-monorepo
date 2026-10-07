@@ -1,7 +1,7 @@
 ---
-'@codaco/studio-server': minor
-'@codaco/studio-client': minor
-'@codaco/studio-rpc': minor
+'@codaco/studio-api': minor
+'@codaco/studio-web': minor
+'@codaco/studio-contract': minor
 ---
 
 A freshly installed Studio instance can now be set up by the person who

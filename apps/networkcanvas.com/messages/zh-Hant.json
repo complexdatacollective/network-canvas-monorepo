@@ -213,10 +213,12 @@
       "FamilyPedigree": "家族譜系",
       "Geospatial": "地理空間介面",
       "Information": "資訊",
+      "LanguageChooser": "語言選擇",
       "NameGenerator": "名字產生器（使用表單）",
       "NameGeneratorQuickAdd": "名字產生器（快速新增）",
       "NameGeneratorRoster": "名冊資料名字產生器",
       "Narrative": "敘事",
+      "NarrativePedigree": "敘事譜系",
       "NetworkComposer": "網絡編輯器",
       "OneToManyDyadCensus": "一對多二元組普查",
       "OrdinalBin": "順序分箱",
@@ -313,7 +315,7 @@
       "bestFor": "最適合",
       "downloadVersion": "下載 {version} 版",
       "platformAccessibleName": "{app}（{platform}）",
-      "schemaVersionInfo": "Architect Classic 與 Interviewer Classic 支援架構 7 協定。瀏覽器版的 Architect、Interviewer 與 Fresco 則使用架構 8，並包含所有最新功能。協定升級是單向的，如果您仍需要使用 Classic 應用程式，請保留原始的架構 7 檔案。",
+      "schemaVersionInfo": "Architect Classic 與 Interviewer Classic 支援架構 7 協定。瀏覽器版的 Architect、Interviewer 與 Fresco 則使用架構 9，並包含所有最新功能。協定升級是單向的，如果您仍需要使用 Classic 應用程式，請保留原始的架構 7 檔案。",
       "schemaVersionLink": "瞭解架構版本"
     },
     "platforms": {
@@ -532,6 +534,16 @@
           "0": "同時建立家庭成員與彼此的關係，自動版面配置讓譜系在擴大時依然清晰易讀。",
           "1": "呈現血緣、社會、收養、捐贈、代孕與伴侶關係，並蒐集每位家庭成員的屬性。",
           "2": "可加入選用的疾病提名步驟，記錄哪些親屬罹患特定病症，以供日後視覺化呈現。"
+        }
+      },
+      "narrativePedigree": {
+        "shortName": "敘事譜系",
+        "name": "敘事譜系介面",
+        "summary": "將先前完成的家族譜系，轉換為採用標準臨床譜系符號的唯讀視覺化圖表。",
+        "details": {
+          "0": "針對支援的遺傳模式，顯示一種或多種病症的罹病親屬與確定帶因者。",
+          "1": "若研究設計能在適當引導下進行解讀，可選擇顯示「有風險」等可能狀態。",
+          "2": "聚焦於特定一人的相關世系，並匯出可列印的快照。此視覺化圖表僅為輔助工具，並非診斷。"
         }
       },
       "networkComposer": {

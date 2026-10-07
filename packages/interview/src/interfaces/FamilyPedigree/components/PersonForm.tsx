@@ -17,6 +17,7 @@ import type {
   FormSubmitHandler,
   ValidationContext,
 } from '@codaco/fresco-ui/form/store/types';
+import type { PresentationalText } from '@codaco/fresco-ui/PresentationalText';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import {
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH,
@@ -34,6 +35,7 @@ import {
 import { formValuesToAttributePatch } from '../../../forms/formValuesToAttributePatch';
 import useProtocolForm from '../../../forms/useProtocolForm';
 import { useStageSelector } from '../../../hooks/useStageSelector';
+import { useResolveLocalizedString } from '../../../localization/ProtocolLocalizationProvider';
 import {
   getValidationContext,
   selectValidationMetadataForVariable,
@@ -129,7 +131,10 @@ const PARENT_KINDS: PedigreeParentKind[] = [
 ];
 const CHILD_KINDS = ['biological', 'adoptive', 'social'] as const;
 
-export type GenderIdentityOption = { value: string | number; label: string };
+export type GenderIdentityOption = {
+  value: string | number;
+  label: PresentationalText;
+};
 
 type PersonFormProps = {
   formId: string;
@@ -187,6 +192,7 @@ export default function PersonForm({
   onSubmit,
 }: PersonFormProps) {
   const intl = useAppIntl();
+  const resolve = useResolveLocalizedString();
   const person = mode.kind === 'edit' ? mode.person : undefined;
 
   const isEgo = person?.isEgo ?? false;
@@ -347,13 +353,21 @@ export default function PersonForm({
     disabled: ruledOut.has(value),
   }));
 
+  // A researcher's question, in the interview's language, names the detail
+  // still missing; the attribute's own name stands in without one.
+  const fieldPromptText = (variable: string) => {
+    const prompt = formFields.find(
+      (field) => field.variable === variable,
+    )?.prompt;
+    return prompt === undefined ? variable : resolve(prompt).text;
+  };
+
   const missingLabels =
     mode.kind === 'edit'
       ? mode.missing.map((detail) =>
           typeof detail === 'string'
             ? intl.formatMessage(BUILT_IN_DETAIL_LABELS[detail])
-            : (formFields.find((field) => field.variable === detail.variable)
-                ?.prompt ?? detail.variable),
+            : fieldPromptText(detail.variable),
         )
       : [];
 

@@ -12,6 +12,8 @@ import {
   TestPromptPreview,
 } from './rowFixtures.tsx';
 
+const en = (text: string) => ({ 'en-US': text });
+
 const prompts = (
   <PromptsSection
     PromptEditor={TestPromptEditor}
@@ -47,7 +49,7 @@ describe('the prompt list a stage owns', () => {
 
   it('reports an empty list as unfinished, and says a prompt is wanted', async () => {
     const harness = renderStageEditor({
-      stage: { type: 'NameGenerator', fields: { label: 'New stage' } },
+      stage: { type: 'NameGenerator', fields: { label: en('New stage') } },
       sections: <>{prompts}</>,
     });
 
@@ -134,15 +136,15 @@ describe('the prompt list a stage owns', () => {
       stage: {
         type: 'NameGenerator',
         fields: {
-          label: 'Name Generator',
+          label: en('Name Generator'),
           subject: { entity: 'node', type: 'person' },
           form: {
-            title: 'Add a person',
-            fields: [{ variable: 'name', prompt: 'Name?' }],
+            title: en('Add a person'),
+            fields: [{ variable: 'name', prompt: en('Name?') }],
           },
           prompts: [
-            { id: 'prompt-a', text: 'First question' },
-            { id: 'prompt-b', text: 'Second question' },
+            { id: 'prompt-a', text: en('First question') },
+            { id: 'prompt-b', text: en('Second question') },
           ],
         },
       },
@@ -216,7 +218,7 @@ describe('the prompt list a stage owns', () => {
     const added = Array.isArray(rows) ? rows.at(-1) : undefined;
     expect(added).toEqual({
       id: expect.any(String) as unknown as string,
-      text: 'And who else?',
+      text: en('And who else?'),
     });
     expect(Object.hasOwn(added as object, 'negativeLabel')).toBe(false);
   });
@@ -239,7 +241,7 @@ describe('the prompt list a stage owns', () => {
             PromptEditor={TestPromptEditor}
             PromptPreview={TestPromptPreview}
             requiresSubject={false}
-            itemTemplate={() => ({ text: 'And who else?' })}
+            itemTemplate={() => ({ text: en('And who else?') })}
           />
         </>
       ),
@@ -263,19 +265,19 @@ describe('the prompt list a stage owns', () => {
     const added = Array.isArray(rows) ? rows.at(-1) : undefined;
     expect(added).toEqual({
       id: expect.any(String) as unknown as string,
-      text: 'And who else?',
+      text: en('And who else?'),
     });
     // The seed is for a row being ADDED. The prompt the stage already holds is
     // not rewritten by it.
     const existing = Array.isArray(rows) ? rows[0] : undefined;
-    expect(existing).toMatchObject({ text: SEEDED_QUESTION });
+    expect(existing).toMatchObject({ text: en(SEEDED_QUESTION) });
   });
 
   it('waits for a subject when the prompts describe one', async () => {
     const harness = renderStageEditor({
       stage: {
         type: 'NameGenerator',
-        fields: { label: 'New stage' },
+        fields: { label: en('New stage') },
       },
       sections: (
         <PromptsSection
@@ -308,8 +310,10 @@ describe('the prompt list a stage owns', () => {
       stage: {
         type: 'EgoForm',
         fields: {
-          label: 'About you',
-          prompts: [{ id: 'ego-prompt-1', text: 'Tell us about yourself.' }],
+          label: en('About you'),
+          prompts: [
+            { id: 'ego-prompt-1', text: en('Tell us about yourself.') },
+          ],
         },
       },
       sections: (
@@ -404,7 +408,7 @@ describe('a stage whose subject names no type yet', () => {
     const harness = renderStageEditor({
       stage: {
         type: 'NameGenerator',
-        fields: { label: 'New stage', subject: { entity: 'node' } },
+        fields: { label: en('New stage'), subject: { entity: 'node' } },
       },
       sections: (
         <PromptsSection
@@ -437,8 +441,10 @@ describe('a stage whose subject names no type yet', () => {
       stage: {
         type: 'EgoForm',
         fields: {
-          label: 'About you',
-          prompts: [{ id: 'ego-prompt-1', text: 'Tell us about yourself.' }],
+          label: en('About you'),
+          prompts: [
+            { id: 'ego-prompt-1', text: en('Tell us about yourself.') },
+          ],
         },
       },
       sections: (
@@ -590,7 +596,7 @@ describe('what a family says about its own prompt', () => {
     ).not.toBeInTheDocument();
     const written = await harness.submit();
     expect(written?.stageDocument.prompts).toEqual([
-      { id: 'name-generator-prompt-1', text: SEEDED_QUESTION },
+      { id: 'name-generator-prompt-1', text: en(SEEDED_QUESTION) },
     ]);
   });
 
@@ -606,16 +612,16 @@ describe('what a family says about its own prompt', () => {
         id: 'name-generator-assigning',
         type: 'NameGenerator',
         fields: {
-          label: 'Name Generator',
+          label: en('Name Generator'),
           subject: { entity: 'node', type: 'person' },
           form: {
-            title: 'Add a person',
-            fields: [{ variable: 'name', prompt: 'Name?' }],
+            title: en('Add a person'),
+            fields: [{ variable: 'name', prompt: en('Name?') }],
           },
           prompts: [
             {
               id: 'prompt-a',
-              text: SEEDED_QUESTION,
+              text: en(SEEDED_QUESTION),
               additionalAttributes: [],
             },
           ],
@@ -644,7 +650,7 @@ describe('what a family says about its own prompt', () => {
 
     const request = await harness.submit();
     expect(request?.stageDocument.prompts).toEqual([
-      { id: 'prompt-a', text: `${SEEDED_QUESTION} Anyone else?` },
+      { id: 'prompt-a', text: en(`${SEEDED_QUESTION} Anyone else?`) },
     ]);
   });
 });

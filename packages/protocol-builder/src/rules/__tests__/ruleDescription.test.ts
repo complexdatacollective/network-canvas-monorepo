@@ -731,11 +731,12 @@ describe('describeRule', () => {
       node: {
         person: {
           name: '',
+          label: { en: '' },
           color: 'node-color-seq-2',
           shape: { default: 'square' },
         },
       },
-      edge: { friend: { name: '' } },
+      edge: { friend: { name: '', label: { en: '' } } },
     });
 
     it('names a node type by its id', () => {
@@ -835,15 +836,17 @@ describe('describeRule', () => {
           node: {
             person: {
               name: 'Person',
+              label: { en: 'Person' },
               color: 'node-color-seq-2',
               shape: { default: 'square' },
               variables: {
                 consent: {
                   name: 'Consent',
+                  label: 'Consent',
                   type: 'categorical',
                   options: [
-                    { label: 'Consented', value: 'true' },
-                    { label: 'Declined', value: 'false' },
+                    { label: { en: 'Consented' }, value: 'true' },
+                    { label: { en: 'Declined' }, value: 'false' },
                   ],
                 },
               },
@@ -880,11 +883,13 @@ describe('a problem beside an operator that negates its comparison', () => {
     node: {
       person: {
         name: 'Person',
+        label: { en: 'Person' },
         color: 'node-color-seq-1',
         shape: { default: 'circle' },
         variables: {
           met: {
             name: 'Met on',
+            label: 'Met on',
             type: 'datetime',
             component: 'DatePicker',
             parameters: { type: 'year' },
@@ -941,11 +946,13 @@ describe('a problem beside an operator that negates its comparison', () => {
       node: {
         person: {
           name: 'Person',
+          label: { en: 'Person' },
           color: 'node-color-seq-1',
           shape: { default: 'circle' },
           variables: {
             met: {
               name: 'Met on',
+              label: 'Met on',
               type: 'datetime',
               component: 'DatePicker',
               parameters: {

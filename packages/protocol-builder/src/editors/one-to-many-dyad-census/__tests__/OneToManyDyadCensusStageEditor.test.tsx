@@ -95,14 +95,14 @@ describe('creating a one-to-many dyad census stage', () => {
     const request = await harness.submit();
     expect(request?.stageDocument).toMatchObject({
       type: 'OneToManyDyadCensus',
-      label: 'Person One to Many Dyad Census',
+      label: { 'en-US': 'Person One to Many Dyad Census' },
       subject: { entity: 'node', type: 'person' },
       behaviours: { removeAfterConsideration: false },
     });
     expect(prompts(request?.stageDocument ?? {})).toEqual([
       {
         id: expect.any(String) as unknown as string,
-        text: 'Who does this person know?',
+        text: { 'en-US': 'Who does this person know?' },
         createEdge: 'knows',
       },
     ]);

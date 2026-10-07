@@ -43,7 +43,9 @@ catalog:
   '@chromatic-com/storybook': ^5.3.1
   # Every `@effect/*` entry must be the exact version `effect` is pinned to
   # below; the ecosystem ships one version number for all of them.
-  '@effect/vitest': 4.0.0-rc.115
+  '@effect/sql-pg': 4.0.0
+  '@effect/platform-node': 4.0.0
+  '@effect/vitest': 4.0.0
   # Tilde, not caret: a faker minor can reorder its locale data (10.6 did), which
   # moves every seeded SyntheticInterview value that protocol-utilities
   # publishes. Take each minor deliberately, with the pinned expectations and
@@ -57,7 +59,7 @@ catalog:
   '@formatjs/icu-messageformat-parser': ^3.5.20
   # oxc-based build transform (no babel) compiling defineMessages
   # defaultMessage strings to pre-parsed AST in @codaco/app-i18n's vite
-  # integration, keeping the ICU parser out of production bundles.
+  # integration.
   '@formatjs/unplugin': ^1.2.12
   # BCP 47 best-fit matching for app locale negotiation (@codaco/app-i18n);
   # the protocol localization design (§7.1) adopts this same entry when
@@ -66,16 +68,6 @@ catalog:
   '@microsoft/api-extractor': ^7.59.3
   '@next/bundle-analyzer': ^16.3.8
   '@next/third-parties': ^16.3.8
-  # oRPC v2 ships only on the `beta` dist-tag (`latest` is still the 1.x
-  # line), and its packages only interoperate at the same beta: the
-  # contract, the server's `implement`, the client's links, and the TanStack
-  # utils share internal symbols. Pin every one to the same exact release.
-  '@orpc/client': 2.0.0-beta.40
-  '@orpc/contract': 2.0.0-beta.40
-  '@orpc/openapi': 2.0.0-beta.40
-  '@orpc/server': 2.0.0-beta.40
-  '@orpc/tanstack-query': 2.0.0-beta.40
-  '@orpc/zod': 2.0.0-beta.40
   # Keep in lock-step with `playwright` below (grouped in .github/dependabot.yml);
   # the interview-e2e Docker image tag is derived from this resolved version.
   '@playwright/test': ^1.63.0
@@ -107,7 +99,6 @@ catalog:
   '@types/node': ^24.19.0
   '@types/react': ^19.3.0
   '@types/react-dom': ^19.3.0
-  '@types/ws': ^8.18.2
   # vite-plugin-dts/unplugin-dts needs the TypeScript JavaScript Compiler API,
   # which TS7 does not ship; it looks for this exact fallback package name.
   '@typescript/typescript6': ^6.0.2
@@ -133,10 +124,12 @@ catalog:
   # 0.31.x `push` silently drops RLS policy USING/WITH CHECK expressions, which
   # #1249's tenancy layer depends on. Keep both in lock-step; unpin to a normal
   # range once 1.0.0 stable ships.
-  drizzle-kit: 1.0.0-rc.4
-  drizzle-orm: 1.0.0-rc.4
-  # Pinned exactly: the `rc` dist-tag moves. Bumping is a chore PR of its own.
-  effect: 4.0.0-rc.115
+  # The rc5 snapshot: rc.4's `drizzle-orm/effect-postgres` calls
+  # `Schema.TaggedErrorClass`, which Effect 4 removed.
+  drizzle-kit: 1.0.0-rc.5-5935859
+  drizzle-orm: 1.0.0-rc.5-5935859
+  # Pinned exactly, in lock-step with every `@effect/*` entry above.
+  effect: 4.0.0
   electron: ^43.7.7
   electron-builder: ^26.16.1
   electron-vite: ^6.0.0-beta.1
@@ -145,6 +138,9 @@ catalog:
   eslint-plugin-formatjs: ^8.1.0
   es-toolkit: ^1.52.0
   fuse.js: ^7.5.0
+  # The FormatJS runtime react-intl already pins; the interview formats
+  # protocol-authored ICU messages with it directly, in their source locale.
+  intl-messageformat: ^12.1.2
   # Held on 30.0: 30.1.1 models focus across frames like a browser (focus
   # inside an iframe keeps the <iframe> focused in the outer document, and
   # `frame.blur()` no longer clears it), and fresco-ui's NavDrawer iframe test
@@ -187,10 +183,6 @@ catalog:
   vite-plugin-dts: ^5.1.1
   vitest: ^5.0.3
   wrangler: ^4.144.0
-  ws: ^8.22.0
-  # `@orpc/zod`'s converter declares a `zod >=4.5.0` peer, so the catalog has
-  # to resolve at least that: below it the OpenAPI conversion Studio publishes
-  # runs on a combination the adapter does not support.
   zod: ^4.6.5
   zustand: ^5.0.15
 overrides:
@@ -227,7 +219,7 @@ overrides:
   # externals (better-auth, better-call, @codaco/network-exporters, knip) still
   # ask for 4.4.x, which splits drizzle-orm into two peer-resolved copies; the
   # one pnpm hoists for drizzle-kit's own types is then not the one
-  # apps/studio/server resolves, and `pushSchema` stops accepting the database
+  # apps/studio/api resolves, and `pushSchema` stops accepting the database
   # handle it is handed (TS2345).
   zod: 'catalog:'
   '@types/react-dom': 'catalog:'
@@ -291,6 +283,13 @@ overrides:
   sharp: '^0.35.5'
   valibot: '^1.4.2'
 autoInstallPeers: true
+packageExtensions:
+  # A hard peer for NodeClusterSocket, which Studio never imports;
+  # `autoInstallPeers` would otherwise ship a second Redis client.
+  '@effect/platform-node':
+    peerDependenciesMeta:
+      redis:
+        optional: true
 peerDependencyRules:
   allowedVersions:
     # `vite-plugin-pwa@1.3.0` is the newest release and still declares its
@@ -333,6 +332,12 @@ minimumReleaseAgeExclude:
   - '@next/third-parties@16.3.8'
   - 'better-auth@1.7.5'
   - 'electron@43.7.7'
+  # Effect 4.0.0; inert once it ages out at 2026-10-02T03:12Z.
+  - 'effect@4.0.0'
+  - '@effect/platform-node@4.0.0'
+  - '@effect/platform-node-shared@4.0.0'
+  - '@effect/sql-pg@4.0.0'
+  - '@effect/vitest@4.0.0'
 patchedDependencies:
   # The addon applies a story's `viewport` parameter by importing `page` from
   # `@vitest/browser/context`, an entry point Vitest 5 no longer serves to a
@@ -344,3 +349,4 @@ patchedDependencies:
   # Vitest 5 serves. 10.6.1 declares Vitest 5 peers but still imports the old
   # entry point; drop this once a release imports `vitest/browser` itself.
   '@storybook/addon-vitest@10.6.1': patches/@storybook__addon-vitest@10.6.1.patch
+  drizzle-orm@1.0.0-rc.5-5935859: patches/drizzle-orm@1.0.0-rc.5-5935859.patch

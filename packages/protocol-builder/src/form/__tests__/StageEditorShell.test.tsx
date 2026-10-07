@@ -8,15 +8,19 @@ import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
+import { LocalizedInputField } from '../../fields/LocalizedStringField.tsx';
 import BuilderSection from '../../sections/BuilderSection.tsx';
 import { fixtureMessage } from '../../testing/i18n.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import { REQUIRED } from '../requiredField.ts';
 import { createStageDraftProbe } from './stageDraftProbe.tsx';
 
+/** Copy in the fixture protocol's only language, as schema 9 holds it. */
+const en = (text: string) => ({ 'en-US': text });
+
 const initialFields: SectionDoc = {
-  label: 'Welcome',
-  title: 'Welcome to the study',
+  label: en('Welcome'),
+  title: en('Welcome to the study'),
   items: [],
 };
 
@@ -64,7 +68,7 @@ const threeSections = (pageContentTitle = 'Page content') => (
       <Field
         name="title"
         label="Page heading"
-        component={InputField}
+        component={LocalizedInputField}
         required={REQUIRED}
       />
     </BuilderSection>
@@ -170,7 +174,7 @@ describe('StageEditorShell', () => {
 
   it('reports a section whose required field is empty as unfinished', async () => {
     const harness = renderEditor({
-      fields: { label: '', title: '', items: [] },
+      fields: { label: en('Welcome'), items: [] },
     });
 
     await waitFor(() => expect(harness.outline()).toHaveLength(2));
@@ -209,8 +213,8 @@ describe('StageEditorShell', () => {
     expect(written?.stageDocument).toEqual({
       id: harness.seeded.id,
       type: 'Information',
-      label: 'Welcome',
-      title: 'A new heading',
+      label: en('Welcome'),
+      title: en('A new heading'),
       items: [],
     });
   });
@@ -291,7 +295,7 @@ describe('StageEditorShell', () => {
             <Field
               name="title"
               label="Page heading"
-              component={InputField}
+              component={LocalizedInputField}
               required
             />
           </BuilderSection>
@@ -299,7 +303,7 @@ describe('StageEditorShell', () => {
       );
     }
     const harness = renderEditor({
-      fields: { label: 'Welcome', items: [] },
+      fields: { label: en('Welcome'), items: [] },
       sections: <RenameableSection />,
     });
     await waitFor(() =>
@@ -332,7 +336,7 @@ describe('StageEditorShell', () => {
 
   it('reports exactly one problem for a field that owns it', async () => {
     const harness = renderEditor({
-      fields: { label: 'Welcome', items: [] },
+      fields: { label: en('Welcome'), items: [] },
     });
 
     expect(await harness.submit()).toBeNull();
@@ -402,16 +406,25 @@ describe('StageEditorShell', () => {
 
   it('does not call a whitespace-only answer finished', async () => {
     const harness = renderEditor({
-      fields: { label: '   ', title: '  ', items: [] },
+      fields: { ...initialFields, interviewScript: '  ' },
+      sections: (
+        <BuilderSection title="Interviewer guidance">
+          <Field
+            name="interviewScript"
+            label="Interviewer script text"
+            component={InputField}
+            required={REQUIRED}
+          />
+        </BuilderSection>
+      ),
     });
 
     // Fresco's required validator trims, so a form that accepted this would
     // reject it on submit. The outline has to say the same thing the submit
     // will.
-    await waitFor(() => expect(harness.outline()).toHaveLength(2));
+    await waitFor(() => expect(harness.outline()).toHaveLength(1));
     expect(harness.outline()).toEqual([
-      { title: 'Page content', state: 'Not finished' },
-      { title: 'Interviewer guidance', state: 'Switched off' },
+      { title: 'Interviewer guidance', state: 'Not finished' },
     ]);
   });
 
@@ -582,7 +595,7 @@ describe('StageEditorShell', () => {
               <Field
                 name={title === 'Introduction' ? 'title' : 'label'}
                 label={`${title} text`}
-                component={InputField}
+                component={LocalizedInputField}
               />
             </BuilderSection>
           ))}
@@ -1053,7 +1066,7 @@ describe('StageEditorShell', () => {
           <Field
             name="title"
             label="Page heading"
-            component={InputField}
+            component={LocalizedInputField}
             required
           />
         </BuilderSection>
