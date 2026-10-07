@@ -136,6 +136,69 @@ describe('useDecryptedNodes', () => {
     expect(store.getState().ui.showPassphrasePrompter).toBe(false);
   });
 
+  it('reuses the plaintext at once when only other attributes change', async () => {
+    const store = makeStore();
+    store.dispatch(setPassphrase(PASSPHRASE));
+    const stored = await encryptedNode('n1', 'Alice');
+    const { result, rerender } = renderDecrypted(store, [stored]);
+    await waitFor(() => {
+      expect(result.current.status).toBe('ready');
+    });
+
+    rerender({
+      nodes: [
+        {
+          ...stored,
+          [entityAttributesProperty]: {
+            ...stored[entityAttributesProperty],
+            close: true,
+          },
+        },
+      ],
+    });
+
+    if (result.current.status !== 'ready') throw new Error('Expected ready');
+    expect(result.current.nodes[0]?.[entityAttributesProperty]).toEqual({
+      name: 'Alice',
+      close: true,
+    });
+    expect(
+      result.current.nodes[0]?.[entitySecureAttributesMeta],
+    ).toBeUndefined();
+  });
+
+  it('decrypts again when a value has new ciphertext', async () => {
+    const store = makeStore();
+    store.dispatch(setPassphrase(PASSPHRASE));
+    const stored = await encryptedNode('n1', 'Alice');
+    const { result, rerender } = renderDecrypted(store, [stored]);
+    await waitFor(() => {
+      expect(result.current.status).toBe('ready');
+    });
+
+    // Ciphertext that does not belong to the kept metadata cannot decrypt, so
+    // a result other than failure means the old plaintext was reused.
+    const otherCiphertext = (await encryptedNode('n1', 'Bob'))[
+      entityAttributesProperty
+    ].name;
+    if (otherCiphertext === undefined) throw new Error('Expected ciphertext');
+    rerender({
+      nodes: [
+        {
+          ...stored,
+          [entityAttributesProperty]: {
+            ...stored[entityAttributesProperty],
+            name: otherCiphertext,
+          },
+        },
+      ],
+    });
+
+    await waitFor(() => {
+      expect(result.current.status).toBe('failed');
+    });
+  });
+
   it('fails and marks the passphrase invalid when decryption fails', async () => {
     const store = makeStore();
     store.dispatch(setPassphrase('wrong passphrase'));
