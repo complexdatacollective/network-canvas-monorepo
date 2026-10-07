@@ -77,9 +77,11 @@ type ProtocolRow = {
 
 /**
  * Whether a stored protocol already satisfies the whole-protocol schema. That
- * is stricter than `parseStoredProtocol` (lib/db/storedProtocol.ts), which
- * every read path applies and refuses on, so a protocol this returns `true`
- * for cannot be refused by a read.
+ * is stricter than any reader's own parse: `parseStoredProtocol`
+ * (lib/db/storedProtocol.ts) where an interview is started or synthetic data
+ * generated, and `CodebookSchema` alone where only the codebook is read
+ * (export, the interview data API, the dashboard's filter options). No reader
+ * refuses or degrades a protocol this returns `true` for.
  */
 function isConformant(row: ProtocolRow): boolean {
   return CurrentProtocolSchema.safeParse({
@@ -254,9 +256,10 @@ async function normalizeNonConformantProtocol(
  * normalized is logged and left in place, because one bad row must never
  * block a customer's deployment. A left-behind row is safe at runtime: the
  * interview payload refuses a protocol whose stored version does not match
- * the runtime's, and every read path refuses (and reports) one whose stored
- * stages, codebook or experiments do not parse, rather than running an
- * interview or export against an empty stand-in.
+ * the runtime's, and no reader substitutes an empty stand-in for fields that
+ * do not parse. Starting an interview, generating synthetic data, exporting
+ * and the interview data API refuse it and report the refusal; the
+ * dashboard's filter options leave out its node and edge types.
  *
  * Idempotent: conformant protocols at the target version are skipped.
  */

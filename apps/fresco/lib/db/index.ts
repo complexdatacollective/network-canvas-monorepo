@@ -17,9 +17,11 @@ const createPrismaClient = () => {
      * JSON columns are deliberately not parsed here. A fallback in place of a
      * row that does not parse would hand every reader an empty stand-in: an
      * interview started without the participant's answers (which its first
-     * sync then overwrites), or one run against an empty protocol. Readers
-     * parse what they need with `parseStoredInterviewSession` and
-     * `parseStoredProtocol`, and refuse to go on when that fails.
+     * sync then overwrites), or one run against an empty protocol. Each reader
+     * parses the columns it uses (`parseStoredInterviewSession`,
+     * `parseStoredProtocol`, or `CodebookSchema` where only the codebook is
+     * read) and, when that fails, refuses to go on or goes without that data;
+     * none substitutes an empty stand-in.
      */
     query: {
       appSettings: {
