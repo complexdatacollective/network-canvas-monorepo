@@ -25,6 +25,7 @@ export const SYNC_TRANSACTION_POLICIES = {
   acquire: 'sync.acquire',
   takeover: 'sync.takeover',
   renew: 'sync.renew',
+  renewHeld: 'sync.renewHeld',
   release: 'sync.release',
   commit: 'sync.commit',
   resume: 'sync.resume',

@@ -362,14 +362,17 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
     return listed.data.resources.map((resource) => resource.id);
   };
 
-  const keeperTick = async (millis: number = RENEW_INTERVAL_MS) => {
+  const keeperTick = async (
+    millis: number = RENEW_INTERVAL_MS,
+    over: ReturnType<typeof makeShiftableClock> = clock,
+  ) => {
     await until(
-      () => clock.pending(RENEW_INTERVAL_MS) > 0,
+      () => over.pending(RENEW_INTERVAL_MS) > 0,
       'the lease keeper to be waiting',
     );
-    clock.advance(millis);
+    over.advance(millis);
     await until(
-      () => clock.pending(RENEW_INTERVAL_MS) > 0,
+      () => over.pending(RENEW_INTERVAL_MS) > 0,
       'the lease keeper to finish its tick',
     );
   };
@@ -1852,6 +1855,93 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       ADA,
       host.rpc('ReleaseLock', { protocolId, sectionId: stage.sectionId }),
     );
+  });
+
+  it('keeps a tab’s lock when its watch reconnects to a restarted server', async () => {
+    const stage = await createStage(ADA, 'Edited across a restart');
+    const sectionId = stage.sectionId;
+    const tab: Caller = {
+      principal: ADA.principal,
+      connection: 'pb-ada-restart-connection',
+      tab: 'pb-ada-restart-tab',
+    };
+    const otherTab: Caller = {
+      principal: ADA.principal,
+      connection: 'pb-ada-restart-other-connection',
+      tab: 'pb-ada-restart-other-tab',
+    };
+    const owner = `${ADA.principal.userId}:pb-ada-restart-tab`;
+    const otherOwner = `${ADA.principal.userId}:pb-ada-restart-other-tab`;
+    const expiresAt = async () => {
+      const [row] = await teamRows<{ expires_at: Date }>(
+        `SELECT expires_at FROM leases
+         WHERE draft_id = $1 AND section_id = $2 AND owner = $3`,
+        [draftId, sectionId, owner],
+      );
+      if (row === undefined) throw new Error('the tab holds no lease row');
+      return row.expires_at.getTime();
+    };
+
+    const held = await call(
+      tab,
+      host.rpc('AcquireLock', { protocolId, sectionId }),
+    );
+    if (held.lock !== 'held') throw new Error('the section was already taken');
+    // The process that granted the lease is gone, and its keeper with it.
+    await host.run(
+      Leases.use((leases) => leases.drop(draftId, sectionId, owner)),
+    );
+
+    const restartedClock = makeShiftableClock();
+    const restarted = await createProtocolBuilderClient(studio, {
+      clock: restartedClock.clock,
+      objectStore,
+    });
+    const heldOnRestarted = (who: string) =>
+      restarted.run(Leases.use((leases) => leases.heldSections(draftId, who)));
+    const channels: { stop: () => Promise<void> }[] = [];
+    try {
+      const granted = await expiresAt();
+      channels.push(await watching(otherTab, protocolId, restarted));
+      expect(await heldOnRestarted(otherOwner)).toEqual([]);
+      expect(await expiresAt()).toBe(granted);
+
+      channels.push(await watching(tab, protocolId, restarted));
+      expect(await heldOnRestarted(owner)).toEqual([sectionId]);
+      const adopted = await expiresAt();
+      expect(adopted).toBeGreaterThan(granted);
+      const presentOnRestarted = await restarted.run(
+        Presence.use((presence) => presence.list(draftId)),
+      );
+      expect(
+        presentOnRestarted.find(
+          (who) => who.sessionId === 'pb-ada-restart-connection',
+        ),
+      ).toMatchObject({ mode: 'editing', sectionId });
+
+      await keeperTick(RENEW_INTERVAL_MS, restartedClock);
+      expect(await expiresAt()).toBeGreaterThan(adopted);
+      expect(await heldOnRestarted(owner)).toEqual([sectionId]);
+
+      const written = await restarted.call(
+        tab,
+        restarted.rpc('Submit', {
+          protocolId,
+          requestId: randomUUID(),
+          sectionId,
+          document: { ...held.document, label: 'Saved after the restart' },
+          revision: held.revision,
+        }),
+      );
+      expect(written.revision.sequence).toBeGreaterThan(held.revision.sequence);
+      await restarted.call(
+        tab,
+        restarted.rpc('ReleaseLock', { protocolId, sectionId }),
+      );
+    } finally {
+      for (const channel of channels) await channel.stop();
+      await restarted.dispose();
+    }
   });
 
   it('commits promoted bytes under their content hash, keeping the display name', async () => {

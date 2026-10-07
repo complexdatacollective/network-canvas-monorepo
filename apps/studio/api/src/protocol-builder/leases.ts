@@ -17,8 +17,10 @@ import type { ProtocolSectionId } from '@codaco/studio-sync/taxonomy';
 export const RENEW_INTERVAL_MS = 10_000;
 
 /**
- * Shorter than the 30s lease TTL, but long enough for five rungs of the
- * client's reconnect ladder (0.5s to 15.5s).
+ * Shorter than the 30s lease TTL, but long enough for a client to come back:
+ * its socket's retries (Effect RpcClient's default, 0.5s growing by 1.5x and
+ * capped at 5s) make five attempts in about 6.6s, and its watch re-runs
+ * after 0.25s to 4s.
  */
 export const RECONNECT_GRACE_MS = 20_000;
 
