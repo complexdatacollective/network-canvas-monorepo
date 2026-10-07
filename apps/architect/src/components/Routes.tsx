@@ -4,7 +4,6 @@ import Home from '~/components/Home/Home';
 import {
   AssetsPage,
   CodebookPage,
-  ExperimentsPage,
   StageEditorPage,
   SummaryPage,
 } from '~/components/pages';
@@ -49,7 +48,6 @@ const Routes = () => {
             </ProjectLayout>
           </Route>
           <Route path="/protocol/stage/:stageId" component={StageEditorPage} />
-          <Route path="/protocol/experiments" component={ExperimentsPage} />
 
           <Route path="/" component={Home} />
         </Switch>

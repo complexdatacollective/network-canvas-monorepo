@@ -20,8 +20,6 @@ describe('resolveTimelineNavTarget', () => {
     ['/protocol/stage/stage-1', '/protocol', ''],
     // No page reveals these.
     ['/protocol/summary', '/protocol', ''],
-    ['/protocol/experiments', '/protocol', ''],
-    ['/protocol/experiments', '/protocol/codebook', ''],
     ['/', '/protocol', ''],
     ['/unknown', '/protocol', ''],
     // A path-less (legacy/non-browser) entry records no page at all.

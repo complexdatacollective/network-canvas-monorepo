@@ -1783,30 +1783,6 @@
     "defaultMessage": "Overview of the ego, node and edge types, their attributes, and network assets defined in your protocol. Create, edit, and delete types and attributes here. Unused entities can be deleted.",
     "description": "The description text in components / pages / CodebookPage."
   },
-  "architect.pages.experimentsPage.enableSupportForEncryptedAttributesIn": {
-    "defaultMessage": "Enable support for encrypted attributes in the codebook. This allows sensitive data to be collected securely.",
-    "description": "Visible text in components / pages / ExperimentsPage."
-  },
-  "architect.pages.experimentsPage.encryptedAttributes": {
-    "defaultMessage": "Encrypted Attributes",
-    "description": "Visible text in components / pages / ExperimentsPage."
-  },
-  "architect.pages.experimentsPage.experimentalFeatures": {
-    "defaultMessage": "Experimental Features",
-    "description": "Visible text in components / pages / ExperimentsPage."
-  },
-  "architect.pages.experimentsPage.experimentsActions": {
-    "defaultMessage": "Experiments actions",
-    "description": "The 'aria-label' text in components / pages / ExperimentsPage."
-  },
-  "architect.pages.experimentsPage.goBack": {
-    "defaultMessage": "Go Back",
-    "description": "Visible text in components / pages / ExperimentsPage."
-  },
-  "architect.pages.experimentsPage.theseFeaturesAreExperimentalAndMay": {
-    "defaultMessage": "These features are experimental and may not be fully supported.",
-    "description": "Visible text in components / pages / ExperimentsPage."
-  },
   "architect.pages.summaryPage.belowIsAComprehensiveSummaryOf": {
     "defaultMessage": "Below is a comprehensive summary of your protocol configuration, including all stages, codebook, and assets.",
     "description": "The description text in components / pages / SummaryPage."

@@ -160,8 +160,8 @@ const NOT_APPLIED: TimelineOperationOutcome = {
 // it is needed to reveal the result — `resolveTimelineNavTarget` owns that
 // decision — so a change recorded on another page that hosts the controls is
 // applied AND brought into view in the same activation, while same-page,
-// experiments, Summary and legacy (path-less) entries apply in place without
-// moving the researcher.
+// Summary and legacy (path-less) entries apply in place without moving the
+// researcher.
 //
 // Undo and redo differ only in which end of the history they read, so they are
 // two specs over one implementation rather than two copies of it: every guard,

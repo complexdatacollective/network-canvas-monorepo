@@ -197,17 +197,11 @@ test.describe.serial('sample protocol built from scratch', () => {
     escapedMapbox = await installMapboxMocks(context);
     page = await context.newPage();
     editor = new StageEditor(page);
-    // `experiments: {}` is seeded because it is UNWRITABLE through the
-    // running editor (ExperimentsPage can only ever write an
-    // `encryptedVariables` boolean; only the v7→v8 migration emits `{}`).
-    // Every activeProtocol reducer spreads state, so the seeded key
-    // survives all subsequent edits. The name is seeded (the seed fixture
-    // requires one); the description is authored through the UI in the
-    // first test.
+    // The name is seeded (the seed fixture requires one); the description is
+    // authored through the UI in the first test.
     await seedProtocol(page, {
       ...emptyProtocol(),
       name: s('name'),
-      experiments: {},
     });
     await gotoProtocol(page);
   });

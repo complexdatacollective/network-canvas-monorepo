@@ -14,8 +14,8 @@ test('creates a valid Anonymisation stage from scratch', async ({
   const editor = new StageEditor(architectPage);
   // `editor.createNew` navigates straight to
   // `/protocol/stage/new?type=Anonymisation&...`, bypassing the New Stage
-  // picker screen's experiment gate that hides this interface from
-  // discovery — the interface itself is fully functional once reached.
+  // picker; that the picker offers this interface is covered by
+  // NewStageScreen.test.tsx.
   await editor.createNew('Anonymisation');
   await editor.setStageName('Anonymise Your Data');
 
