@@ -18,6 +18,7 @@ declare global {
         },
       ): string;
       getNetworkState(): SessionPayload['network'] | undefined;
+      getStoredSession(interviewId: string): SessionPayload | undefined;
       remountInterview(interviewId: string): void;
       reset(): void;
       setFinishBehavior(behavior: FinishBehavior): void;
