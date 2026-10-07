@@ -66,6 +66,7 @@ type RuleListItemProps = ArrayFieldItemProps<RuleDraft> &
   Readonly<{
     codebook: Readonly<Codebook>;
     allowedTargets: readonly RuleTargetType[];
+    allowEncryptedAttributes: boolean;
     duplicateIds: ReadonlySet<string>;
   }>;
 
@@ -84,6 +85,7 @@ function RuleListItem({
   readOnly,
   codebook,
   allowedTargets,
+  allowEncryptedAttributes,
   duplicateIds,
 }: RuleListItemProps) {
   const rule = asRule(item);
@@ -100,11 +102,21 @@ function RuleListItem({
         codebook,
         targets: allowedTargets,
         duplicateIds,
+        allowEncryptedAttributes,
         intl,
         localization,
         locale,
       }),
-    [allowedTargets, codebook, duplicateIds, intl, locale, localization, rule],
+    [
+      allowEncryptedAttributes,
+      allowedTargets,
+      codebook,
+      duplicateIds,
+      intl,
+      locale,
+      localization,
+      rule,
+    ],
   );
 
   // External editors own the active row while their dialog is open. Hiding it
@@ -226,6 +238,7 @@ const RuleTypesContext = createContext<readonly RuleTypeOption[]>([]);
 type RuleListEditorProps = ArrayFieldEditorProps<RuleDraft> &
   Readonly<{
     allowedTargets: readonly RuleTargetType[];
+    allowEncryptedAttributes: boolean;
     duplicateIds: ReadonlySet<string>;
   }>;
 
@@ -236,6 +249,7 @@ function RuleListEditor({
   onCancel,
   getEditorTrigger,
   allowedTargets,
+  allowEncryptedAttributes,
   duplicateIds,
 }: RuleListEditorProps) {
   const ruleTypes = useContext(RuleTypesContext);
@@ -285,6 +299,7 @@ function RuleListEditor({
       seed={session.seed}
       ruleTypes={ruleTypes}
       allowedTargets={allowedTargets}
+      allowEncryptedAttributes={allowEncryptedAttributes}
       idIsShared={session.idIsShared}
       onSave={onSave}
       onCancel={onCancel}
@@ -304,6 +319,11 @@ export type RuleListProps = Readonly<{
    * left for the protocol schema to refuse.
    */
   allowedTargets: readonly RuleTargetType[];
+  /**
+   * Whether a rule in this set may name an encrypted attribute. Off unless the
+   * set says so; see `ruleSetAllowsEncryptedAttributes`.
+   */
+  allowEncryptedAttributes?: boolean;
   addButtonLabel: string;
   onChange: (rules: RuleDraft[]) => void;
   hasError?: boolean;
@@ -378,6 +398,7 @@ export default function RuleList({
   codebook,
   ruleTypes,
   allowedTargets,
+  allowEncryptedAttributes = false,
   addButtonLabel,
   onChange,
   hasError = false,
@@ -398,11 +419,12 @@ export default function RuleList({
             {...props}
             codebook={codebook}
             allowedTargets={allowedTargets}
+            allowEncryptedAttributes={allowEncryptedAttributes}
             duplicateIds={duplicateIds}
           />
         );
       },
-    [allowedTargets, codebook, duplicateIds],
+    [allowEncryptedAttributes, allowedTargets, codebook, duplicateIds],
   );
 
   // Deliberately not memoised on `ruleTypes`: see `RuleTypesContext`. Its
@@ -415,11 +437,12 @@ export default function RuleList({
           <RuleListEditor
             {...props}
             allowedTargets={allowedTargets}
+            allowEncryptedAttributes={allowEncryptedAttributes}
             duplicateIds={duplicateIds}
           />
         );
       },
-    [allowedTargets, duplicateIds],
+    [allowEncryptedAttributes, allowedTargets, duplicateIds],
   );
 
   const getId = useMemo(() => ruleRowId(duplicateIds), [duplicateIds]);

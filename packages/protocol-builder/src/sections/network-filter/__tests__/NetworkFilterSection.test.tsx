@@ -5,6 +5,10 @@ import type { Codebook } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
+import {
+  alreadyProtecting,
+  personRule,
+} from '../../../editors/anonymisation/__tests__/anonymisationFixtures.tsx';
 import { ruleSetIssues, ruleSetTargets } from '../../../rules/ruleSet.ts';
 import { loadFixtureStage } from '../../../testing/protocolFixture.ts';
 import {
@@ -489,6 +493,36 @@ describe('a rule this filter cannot be about', () => {
     expect(ruleSetIssues(egoFilter, codebook, ruleSetTargets('query'))).toEqual(
       [],
     );
+  });
+});
+
+/**
+ * A stage filter reads the interview, and rules are checked without the
+ * participant's passphrase, so the schema refuses one on an encrypted
+ * attribute. A rule that already holds one says so on its row and keeps the
+ * stage from saving, in the field's own words rather than only the schema's.
+ */
+describe('a rule on an encrypted attribute', () => {
+  it('marks the rule on its own row and refuses the stage', async () => {
+    const harness = renderStageEditor({
+      stage: alterForm({ filter: { rules: [personRule('rule-a', 'name')] } }),
+      sections: nodeFilterSection,
+      adapter: alreadyProtecting('name'),
+    });
+
+    expect(
+      await screen.findByText(
+        'This rule uses an encrypted attribute. Rules are checked without the participant’s passphrase, so this rule cannot read the attribute’s answers. Edit or delete the rule.',
+      ),
+    ).toBeInTheDocument();
+
+    expect(await harness.submit()).toBeNull();
+
+    expect(
+      await screen.findByText(
+        'Rule 1 cannot be used as it stands. Open it to fix it, or delete it.',
+      ),
+    ).toBeInTheDocument();
   });
 });
 

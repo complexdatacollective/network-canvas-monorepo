@@ -14,12 +14,16 @@ import Field from '@codaco/fresco-ui/form/Field/Field';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 
-import { QueryRuleSetField } from '../../fields/RuleSetField.tsx';
+import {
+  FilterRuleSetField,
+  QueryRuleSetField,
+} from '../../fields/RuleSetField.tsx';
 import { RULE_VALUE_FIELD } from '../../fields/RuleValueField.tsx';
 import BuilderSection from '../../sections/BuilderSection.tsx';
 import {
   attributeField,
   chooseAttributeById,
+  offeredAttributes,
 } from '../../testing/attributePicker.ts';
 import type { RuleDraft } from '../rule.ts';
 import {
@@ -31,7 +35,11 @@ import RuleEditorDialog, {
   ruleDraftRefusal,
   type RuleTypeOption,
 } from '../RuleEditorDialog.tsx';
-import { type RuleSetValue, ruleSetTargets } from '../ruleSet.ts';
+import {
+  type RuleSetValue,
+  ruleSetTargets,
+  type RuleSetVariant,
+} from '../ruleSet.ts';
 import { nodeRule, ruleSections, testCodebook } from './fixtures.ts';
 import { RuleEditorHost } from './ruleEditorHost.tsx';
 
@@ -973,6 +981,142 @@ describe('a choice a stored rule holds that the editor does not offer', () => {
 });
 
 /**
+ * A rule set of each kind, as a stage editor mounts it: the three filters
+ * share one field asked which it is, and skip logic has its own.
+ */
+function renderRuleSetOf(
+  variant: RuleSetVariant,
+  rules?: readonly RuleDraft[],
+) {
+  render(
+    <RuleEditorHost sections={ruleSections(rules)}>
+      <BuilderSection title="Rules">
+        {variant === 'query' ? (
+          <Field
+            name={RULE_SET_FIELD}
+            label="Rules"
+            component={QueryRuleSetField}
+          />
+        ) : (
+          <Field
+            name={RULE_SET_FIELD}
+            label="Rules"
+            component={FilterRuleSetField}
+            variant={variant}
+          />
+        )}
+      </BuilderSection>
+    </RuleEditorHost>,
+  );
+}
+
+const ENCRYPTED_ROW_PROBLEM =
+  'This rule uses an encrypted attribute. Rules are checked without the participant’s passphrase, so this rule cannot read the attribute’s answers. Edit or delete the rule.';
+
+/**
+ * An encrypted answer is stored as ciphertext only the participant's
+ * passphrase opens, and rules are checked without it. The protocol schema
+ * refuses a rule on one wherever the rule reads interview answers, and accepts
+ * one in a panel over an imported file, whose rows nothing encrypts — so the
+ * editor offers it in exactly that one place.
+ */
+describe('an encrypted attribute', () => {
+  const ADD_LABELS: Readonly<Record<RuleSetVariant, string>> = {
+    query: ADD_RULE,
+    filter: 'Add new filter rule',
+    interviewNetworkPanel: 'Add new filter rule',
+    externalDataPanel: 'Add new filter rule',
+  };
+
+  const offeredForANewNodeRule = async (variant: RuleSetVariant) => {
+    const user = userEvent.setup();
+    renderRuleSetOf(variant);
+    await user.click(screen.getByRole('button', { name: ADD_LABELS[variant] }));
+    await screen.findByRole('dialog', { name: RULE_EDITOR });
+    await user.click(
+      screen.getByRole('radio', {
+        name: 'Node - match a node type or one of its attributes.',
+      }),
+    );
+    await user.click(await screen.findByRole('radio', { name: 'Person' }));
+    await user.click(await screen.findByRole('option', { name: /Attribute/ }));
+    return offeredAttributes(
+      user,
+      await waitFor(() => attributeField('Node attribute')),
+    );
+  };
+
+  it.each<RuleSetVariant>(['query', 'filter', 'interviewNetworkPanel'])(
+    'is not offered where a rule reads interview answers: %s',
+    async (variant) => {
+      const offered = await offeredForANewNodeRule(variant);
+      // The picker is offering the type's other text attribute, so the absence
+      // below is about encryption rather than about an empty list.
+      expect(offered).toContain('note');
+      expect(offered).not.toContain('secret');
+    },
+  );
+
+  it('is offered in a panel over an imported file', async () => {
+    expect(await offeredForANewNodeRule('externalDataPanel')).toContain(
+      'secret',
+    );
+  });
+
+  const storedRule: RuleDraft = {
+    id: 'rule-a',
+    type: 'node',
+    options: {
+      type: 'person',
+      attribute: 'secret',
+      operator: 'EXACTLY',
+      value: 'Ada',
+    },
+  };
+
+  it('is shown on a rule that already holds one, named for why it cannot stay', async () => {
+    const user = userEvent.setup();
+    renderRuleSetOf('query', [storedRule]);
+
+    expect(screen.getByText(ENCRYPTED_ROW_PROBLEM)).toBeInTheDocument();
+
+    await openExistingRule(user);
+    const attribute = await waitFor(() => attributeField('Node attribute'));
+    expect(
+      within(attribute).getByText(
+        'Secret — encrypted, so a rule cannot read it',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'This attribute is encrypted. Rules are checked without the participant’s passphrase, so a rule cannot read its answers. Choose another one.',
+      ),
+    ).toBeInTheDocument();
+    // Still in the codebook, so it is not reported as one that went.
+    expect(screen.queryByText(/no longer in the codebook/)).toBeNull();
+
+    await finishAndClose(user);
+    expect(
+      await screen.findByText(
+        'This rule cannot use an encrypted attribute. Choose another attribute.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('is accepted on a rule in a panel over an imported file', async () => {
+    const user = userEvent.setup();
+    renderRuleSetOf('externalDataPanel', [storedRule]);
+
+    expect(screen.queryByText(ENCRYPTED_ROW_PROBLEM)).toBeNull();
+
+    await openExistingRule(user);
+    const attribute = await waitFor(() => attributeField('Node attribute'));
+    expect(within(attribute).getByText('Secret')).toBeInTheDocument();
+    expect(screen.queryByText(/encrypted/)).toBeNull();
+  });
+});
+
+/**
  * The dialog reads a draft through the same `describeRule` the row and the
  * rule-set field do, so a rule the LIST would mark as broken cannot be
  * finished from the editor that is holding it. Before this, the dialog ran
@@ -1126,6 +1270,18 @@ describe('a rule the codebook has moved out from under', () => {
           attribute: 'favouriteColour',
           operator: 'EXACTLY',
           value: 1,
+        },
+      },
+      // Finished, and about an attribute the codebook still has — which is
+      // encrypted, so no filter over interview answers can read it.
+      encryptedAttribute: {
+        id: 'rule-1',
+        type: 'node',
+        options: {
+          type: 'person',
+          attribute: 'secret',
+          operator: 'EXACTLY',
+          value: 'blue',
         },
       },
       invalidOperator: {

@@ -181,6 +181,13 @@ export const anonymisationMessages = defineMessages({
     description:
       'Announced to a screen reader after a checkbox in the encrypted-attributes section is cleared and the codebook change has been applied. Never shown on screen. attributeName is the researcher’s own name for the attribute.',
   },
+  attributeUsedByRule: {
+    id: 'protocolBuilder.anonymisation.attributeUsedByRule',
+    defaultMessage:
+      '{ruleCount, plural, one {"{attributeName}" cannot be encrypted while a rule in {stageNames} uses it. Rules are checked without the participant’s passphrase, so that rule could not read the encrypted answers. Remove or change the rule first.} other {"{attributeName}" cannot be encrypted while # rules in {stageNames} use it. Rules are checked without the participant’s passphrase, so those rules could not read the encrypted answers. Remove or change those rules first.}}',
+    description:
+      'Shown in the encrypted-attributes section when a researcher ticks an attribute that a rule already uses — in a stage’s skip logic, a stage’s filter, or the filter of a side panel listing people from the interview — and the tick is refused. ruleCount is how many such rules there are; attributeName is the researcher’s own name for the attribute; stageNames is the names of the stages holding those rules, each in quotation marks, already joined into one phrase in the reader’s language. A stage is one step of an interview.',
+  },
 
   typeSwitchDescription: {
     id: 'protocolBuilder.anonymisation.typeSwitchDescription',

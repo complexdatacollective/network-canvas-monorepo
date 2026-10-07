@@ -528,7 +528,30 @@ describe('reading the codebook for a rule', () => {
       { value: 'note', label: 'Note', type: 'text', usable: true },
       { value: 'born', label: 'Born', type: 'datetime', usable: true },
       { value: 'home', label: 'Home', type: 'layout', usable: false },
+      {
+        value: 'secret',
+        label: 'Secret',
+        type: 'text',
+        usable: false,
+        unusableWords: {
+          optionLabel: 'Secret — encrypted, so a rule cannot read it',
+          note: 'This attribute is encrypted. Rules are checked without the participant’s passphrase, so a rule cannot read its answers. Choose another one.',
+        },
+      },
     ]);
+  });
+
+  it('offers an encrypted attribute only to a rule set that may read one', () => {
+    expect(
+      ruleVariableOptions(ruleVariables(codebook, 'node', 'person'), {
+        allowEncryptedAttributes: true,
+      }),
+    ).toContainEqual({
+      value: 'secret',
+      label: 'Secret',
+      type: 'text',
+      usable: true,
+    });
   });
 
   it('reads an ego rule against the ego codebook', () => {

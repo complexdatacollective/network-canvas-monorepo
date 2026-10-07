@@ -75,6 +75,10 @@
     "defaultMessage": "Encrypted attributes for {typeName}",
     "description": "Accessible name of one node type’s group of checkboxes in the encrypted-attributes section — read aloud rather than shown, because the type’s name is already a heading above it. typeName is the researcher’s own name for the node type, such as \"person\"."
   },
+  "protocolBuilder.anonymisation.attributeUsedByRule": {
+    "defaultMessage": "{ruleCount, plural, one {\"{attributeName}\" cannot be encrypted while a rule in {stageNames} uses it. Rules are checked without the participant’s passphrase, so that rule could not read the encrypted answers. Remove or change the rule first.} other {\"{attributeName}\" cannot be encrypted while # rules in {stageNames} use it. Rules are checked without the participant’s passphrase, so those rules could not read the encrypted answers. Remove or change those rules first.}}",
+    "description": "Shown in the encrypted-attributes section when a researcher ticks an attribute that a rule already uses — in a stage’s skip logic, a stage’s filter, or the filter of a side panel listing people from the interview — and the tick is refused. ruleCount is how many such rules there are; attributeName is the researcher’s own name for the attribute; stageNames is the names of the stages holding those rules, each in quotation marks, already joined into one phrase in the reader’s language. A stage is one step of an interview."
+  },
   "protocolBuilder.anonymisation.clearTypeConfirmDescription": {
     "defaultMessage": "This will deselect all encrypted attributes for the {typeName} node type. Do you want to continue?",
     "description": "Body of the confirmation shown when a researcher switches encryption off for a whole node type. typeName is the researcher’s own name for the type, such as \"person\"."
@@ -4963,6 +4967,14 @@
     "defaultMessage": "The chosen data file could not be read, so there is nothing to choose from. The settings this stage already holds are kept.",
     "description": "Shown in place of a roster section’s description when the chosen data file could not be read, so its attributes are not known. Says both why the section offers nothing and that what the stage holds is not lost, because the section is showing empty controls over settings that are still there. The reason the file could not be read is shown by the roster-source section, in the host’s own words."
   },
+  "protocolBuilder.ruleCodebook.encryptedNote": {
+    "defaultMessage": "This attribute is encrypted. Rules are checked without the participant’s passphrase, so a rule cannot read its answers. Choose another one.",
+    "description": "Shown under the attribute control of a rule that uses an encrypted attribute. An encrypted attribute’s answers can only be read with the passphrase the participant chose, and rules are checked without it."
+  },
+  "protocolBuilder.ruleCodebook.encryptedOptionLabel": {
+    "defaultMessage": "{attributeName} — encrypted, so a rule cannot read it",
+    "description": "Name of the one option standing for an encrypted attribute that a stored rule already uses, in a rule set whose rules cannot read encrypted answers. attributeName is the researcher’s own name for the attribute, from the codebook, and is not translated."
+  },
   "protocolBuilder.ruleCodebook.operatorNoLongerOffered": {
     "defaultMessage": "{operator} (no longer offered)",
     "description": "Label for an operator a stored rule already uses which this editor no longer offers, shown so the researcher can read their own rule. The protocol schema still accepts it, so it can be chosen again. operator is the operator phrase, e.g. \"is greater than\"."
@@ -5146,6 +5158,10 @@
   "protocolBuilder.ruleDescription.problemDuplicateId": {
     "defaultMessage": "Another rule in this set has the same identifier, so this protocol cannot be saved with both. Edit or delete the rule.",
     "description": "Shown on the rows of both rules in a rule set that share one internal identifier. Opening and saving either rule gives it a fresh one."
+  },
+  "protocolBuilder.ruleDescription.problemEncryptedAttribute": {
+    "defaultMessage": "This rule uses an encrypted attribute. Rules are checked without the participant’s passphrase, so this rule cannot read the attribute’s answers. Edit or delete the rule.",
+    "description": "Shown on a rule’s row in the rule list when the attribute the rule asks about is encrypted. An encrypted attribute’s answers can only be read with the passphrase the participant chose, and rules are checked without it."
   },
   "protocolBuilder.ruleDescription.problemIncomplete": {
     "defaultMessage": "This rule is not complete. Edit it to fill in every part, or delete it.",
@@ -5350,6 +5366,10 @@
   "protocolBuilder.ruleEditor.presenceConditionSection": {
     "defaultMessage": "Presence condition",
     "description": "Heading of the section where a researcher says whether the rule matches when an entity type is present or when it is absent."
+  },
+  "protocolBuilder.ruleEditor.refuseEncryptedAttribute": {
+    "defaultMessage": "This rule cannot use an encrypted attribute. Choose another attribute.",
+    "description": "Refusal shown on the attribute control when the rule asks about an encrypted attribute, in a rule set whose rules are checked without the participant’s passphrase and so cannot read encrypted answers."
   },
   "protocolBuilder.ruleEditor.refuseIncomplete": {
     "defaultMessage": "This rule cannot be saved until this question is answered.",

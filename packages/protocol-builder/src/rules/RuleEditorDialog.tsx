@@ -413,6 +413,13 @@ const messages = defineMessages({
     description:
       'Refusal shown on the attribute control when the attribute the rule asks about has been deleted and the rule records no identifier to name.',
   },
+  refuseEncryptedAttribute: {
+    id: 'protocolBuilder.ruleEditor.refuseEncryptedAttribute',
+    defaultMessage:
+      'This rule cannot use an encrypted attribute. Choose another attribute.',
+    description:
+      'Refusal shown on the attribute control when the rule asks about an encrypted attribute, in a rule set whose rules are checked without the participant’s passphrase and so cannot read encrypted answers.',
+  },
   refuseMissingEgo: {
     id: 'protocolBuilder.ruleEditor.refuseMissingEgo',
     defaultMessage:
@@ -897,6 +904,10 @@ const RULE_PROBLEM_PLACEMENTS: Readonly<
     field: ATTRIBUTE_FIELD,
     message: missingAttributeMessage(draftString(rule, 'attribute')),
   }),
+  encryptedAttribute: () => ({
+    field: ATTRIBUTE_FIELD,
+    message: ENCRYPTED_ATTRIBUTE_MESSAGE,
+  }),
   // The presence of the `attribute` KEY is what tells the two rule shapes
   // apart, here as everywhere else, and it decides which question the operator
   // was answering.
@@ -986,6 +997,9 @@ export const ruleDraftRefusal = (
   rule: RuleDraft,
   codebook: Readonly<Codebook>,
   allowedTargets: readonly RuleTargetType[],
+  {
+    allowEncryptedAttributes = false,
+  }: Readonly<{ allowEncryptedAttributes?: boolean }> = {},
 ): DialogFormErrors | undefined => {
   // One refusal, however many problems the rule has: the dialog focuses the
   // first control it names, and the researcher fixes them one at a time.
@@ -993,6 +1007,7 @@ export const ruleDraftRefusal = (
     rule,
     codebook,
     targets: allowedTargets,
+    allowEncryptedAttributes,
   }).problems;
   if (problem === undefined) return undefined;
 
@@ -1210,10 +1225,12 @@ function EntityRuleFields({
 function RuleEditorFields({
   seed,
   ruleTypes,
+  allowEncryptedAttributes,
   description,
 }: Readonly<{
   seed: RuleDraft;
   ruleTypes: readonly RuleTypeOption[];
+  allowEncryptedAttributes: boolean;
   description: ReactNode;
 }>) {
   const protocolContext = useProtocolContext();
@@ -1237,7 +1254,10 @@ function RuleEditorFields({
       target === undefined ? {} : ruleVariables(codebook, target, entityTypeId);
     const variableType = ruleVariableType(variables, attributeId);
     return {
-      variableOptions: ruleVariableOptions(variables),
+      variableOptions: ruleVariableOptions(variables, {
+        allowEncryptedAttributes,
+        intl,
+      }),
       variableType,
       variableChoices: ruleVariableChoices(
         variables,
@@ -1246,7 +1266,15 @@ function RuleEditorFields({
       ),
       dateParameters: ruleVariableDateParameters(variables, attributeId),
     };
-  }, [attributeId, codebook, entityTypeId, localize, target]);
+  }, [
+    allowEncryptedAttributes,
+    attributeId,
+    codebook,
+    entityTypeId,
+    intl,
+    localize,
+    target,
+  ]);
 
   // The operator the rule HOLDS is part of the list, because a stored operator
   // the editor no longer offers has to be visible rather than left showing the
@@ -1354,6 +1382,11 @@ export type RuleEditorDialogProps = Readonly<{
    */
   allowedTargets: readonly RuleTargetType[];
   /**
+   * Whether this rule may name an encrypted attribute. Off unless the set it
+   * was opened from says so; see `ruleSetAllowsEncryptedAttributes`.
+   */
+  allowEncryptedAttributes?: boolean;
+  /**
    * Takes the finished rule, or REFUSES it.
    *
    * A caller that cannot accept the rule right now — a list that has stopped
@@ -1402,6 +1435,7 @@ export default function RuleEditorDialog({
   seed,
   ruleTypes,
   allowedTargets,
+  allowEncryptedAttributes = false,
   idIsShared = false,
   onSave,
   onCancel,
@@ -1444,6 +1478,8 @@ export default function RuleEditorDialog({
    */
   const targetsRef = useRef(allowedTargets);
   targetsRef.current = allowedTargets;
+  const allowEncryptedRef = useRef(allowEncryptedAttributes);
+  allowEncryptedRef.current = allowEncryptedAttributes;
 
   /**
    * The id this session's rule will be filed under.
@@ -1476,6 +1512,7 @@ export default function RuleEditorDialog({
         { id: ruleId.current, ...ruleDraftFromValues(values) },
         codebookRef.current,
         targetsRef.current,
+        { allowEncryptedAttributes: allowEncryptedRef.current },
       ),
     [],
   );
@@ -1517,6 +1554,7 @@ export default function RuleEditorDialog({
       <RuleEditorFields
         seed={seed}
         ruleTypes={ruleTypes}
+        allowEncryptedAttributes={allowEncryptedAttributes}
         description={intl.formatMessage(messages.description, {
           // The links are tags inside the sentence rather than markup around
           // fragments of it, so a translator moves the whole clause and the
@@ -1576,6 +1614,9 @@ const missingAttributeMessage = (attributeId: string | undefined): string =>
     ? createMessageError(messages.refuseMissingAttributeUnnamed)
     : createMessageError(messages.refuseMissingAttribute, { attributeId });
 
+const ENCRYPTED_ATTRIBUTE_MESSAGE = createMessageError(
+  messages.refuseEncryptedAttribute,
+);
 const MISSING_EGO_MESSAGE = createMessageError(messages.refuseMissingEgo);
 const INVALID_OPERATOR_MESSAGE = createMessageError(
   messages.refuseInvalidOperator,

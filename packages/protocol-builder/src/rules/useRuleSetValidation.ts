@@ -8,6 +8,7 @@ import { useStageEditorForm } from '../form/stageEditorContext.ts';
 import { useStageValue } from '../form/stageFormHooks.ts';
 import { useProtocolContext } from '../state/protocolContext.ts';
 import {
+  ruleSetAllowsEncryptedAttributes,
   type RuleSetVariant,
   ruleSetTargets,
   ruleSetValidationMessage,
@@ -46,6 +47,7 @@ export function useRuleSetValidation(
   const codebook = protocolContext.codebook;
   const value = useStageValue(name);
   const targets = ruleSetTargets(variant);
+  const allowEncryptedAttributes = ruleSetAllowsEncryptedAttributes(variant);
 
   // `useField` memoises its validation function on `JSON.stringify` of the
   // validation props, and a function does not survive that serialisation: a
@@ -60,6 +62,8 @@ export function useRuleSetValidation(
   // when the field registered.
   const targetsRef = useRef(targets);
   targetsRef.current = targets;
+  const allowEncryptedRef = useRef(allowEncryptedAttributes);
+  allowEncryptedRef.current = allowEncryptedAttributes;
   // And the reader's own formatter, for the same reason: the one registered
   // validation has to state its verdict in the language the researcher is
   // reading right now, not the one they were reading when the field
@@ -78,7 +82,10 @@ export function useRuleSetValidation(
             fieldValue,
             codebookRef.current,
             targetsRef.current,
-            intlRef.current,
+            {
+              intl: intlRef.current,
+              allowEncryptedAttributes: allowEncryptedRef.current,
+            },
           );
           if (message === undefined) return;
           ctx.addIssue({
@@ -91,7 +98,10 @@ export function useRuleSetValidation(
       ),
   };
 
-  const message = ruleSetValidationMessage(value, codebook, targets, intl);
+  const message = ruleSetValidationMessage(value, codebook, targets, {
+    intl,
+    allowEncryptedAttributes,
+  });
 
   // Field validation runs when the researcher touches a field, and on submit.
   // Neither covers the two ways a rule set goes wrong on its own: an edit made

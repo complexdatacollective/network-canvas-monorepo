@@ -64,8 +64,17 @@ export type RuleVariableOption = Readonly<{
    * apart. It read a stored layout reference, still described by the codebook
    * and still on screen in the codebook editor, as an attribute that had been
    * deleted.
+   *
+   * False, too, for an encrypted attribute in a rule set that reads interview
+   * answers: those rules are checked without the participant's passphrase.
    */
   usable: boolean;
+  /**
+   * What the picker says about an attribute ruled out for a reason of this
+   * module's own, rather than the picker's default for one no rule can ask
+   * about at all.
+   */
+  unusableWords?: Readonly<{ optionLabel: string; note: string }>;
 }>;
 
 /** One authored option of a categorical or ordinal attribute. */
@@ -159,21 +168,60 @@ export const ruleEntityTypeExists = (
  */
 export const ruleVariableOptions = (
   variables: Readonly<Variables>,
+  {
+    allowEncryptedAttributes = false,
+    intl = englishIntl,
+  }: Readonly<{
+    /** Whether the rule set may name an encrypted attribute; see `describeRule`. */
+    allowEncryptedAttributes?: boolean;
+    intl?: IntlShape;
+  }> = {},
 ): RuleVariableOption[] =>
   Object.entries(variables).flatMap<RuleVariableOption>(
     ([variableId, definition]) => {
       const type: unknown = definition.type;
       if (!isVariableType(type)) return [];
-      return [
-        {
-          value: variableId,
-          label: codebookLabel(definition.name, variableId),
-          type,
-          usable: canAuthorRuleForType(type),
-        },
-      ];
+      const label = codebookLabel(definition.name, variableId);
+      if (!canAuthorRuleForType(type)) {
+        return [{ value: variableId, label, type, usable: false }];
+      }
+      if (definition.encrypted === true && !allowEncryptedAttributes) {
+        return [
+          {
+            value: variableId,
+            label,
+            type,
+            usable: false,
+            unusableWords: {
+              optionLabel: intl.formatMessage(
+                encryptedVariableMessages.optionLabel,
+                { attributeName: label },
+              ),
+              note: intl.formatMessage(encryptedVariableMessages.note),
+            },
+          },
+        ];
+      }
+      return [{ value: variableId, label, type, usable: true }];
     },
   );
+
+/** What the attribute picker says about an encrypted attribute a rule holds. */
+const encryptedVariableMessages = defineMessages({
+  optionLabel: {
+    id: 'protocolBuilder.ruleCodebook.encryptedOptionLabel',
+    defaultMessage: '{attributeName} — encrypted, so a rule cannot read it',
+    description:
+      'Name of the one option standing for an encrypted attribute that a stored rule already uses, in a rule set whose rules cannot read encrypted answers. attributeName is the researcher’s own name for the attribute, from the codebook, and is not translated.',
+  },
+  note: {
+    id: 'protocolBuilder.ruleCodebook.encryptedNote',
+    defaultMessage:
+      'This attribute is encrypted. Rules are checked without the participant’s passphrase, so a rule cannot read its answers. Choose another one.',
+    description:
+      'Shown under the attribute control of a rule that uses an encrypted attribute. An encrypted attribute’s answers can only be read with the passphrase the participant chose, and rules are checked without it.',
+  },
+});
 
 export const ruleVariable = (
   variables: Readonly<Variables>,

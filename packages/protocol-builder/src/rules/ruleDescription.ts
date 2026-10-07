@@ -127,6 +127,7 @@ export const RULE_PROBLEM_CODES = [
   'targetNotOffered',
   'missingEntityType',
   'missingAttribute',
+  'encryptedAttribute',
   'invalidOperator',
   'invalidOperand',
   'invalidPattern',
@@ -257,6 +258,16 @@ export type DescribeRuleInput = Readonly<{
    * committing a second copy of one.
    */
   duplicateIds?: ReadonlySet<string>;
+  /**
+   * Whether the rule set holding this rule may name an encrypted attribute.
+   *
+   * Only an external-data panel may: its rules read the researcher's own rows,
+   * which are never encrypted. Every other rule set reads interview answers
+   * without the participant's passphrase, and the protocol schema refuses an
+   * encrypted attribute there. Off unless the set says otherwise, so a caller
+   * that says nothing is told about a rule the schema would refuse.
+   */
+  allowEncryptedAttributes?: boolean;
   /**
    * The reader's own formatter, for every word in the sentence and every
    * problem reported beside it.
@@ -587,6 +598,7 @@ export function describeRule({
   codebook,
   targets,
   duplicateIds,
+  allowEncryptedAttributes = false,
   intl = englishIntl,
   localization,
   locale,
@@ -681,6 +693,13 @@ export function describeRule({
     problems.push({
       code: 'missingAttribute',
       message: say(problemMessages.missingAttribute),
+    });
+  }
+
+  if (definition?.encrypted === true && !allowEncryptedAttributes) {
+    problems.push({
+      code: 'encryptedAttribute',
+      message: say(problemMessages.encryptedAttribute),
     });
   }
 
@@ -1112,6 +1131,13 @@ const problemMessages = defineMessages({
       'This rule refers to an attribute that is no longer in the codebook. Edit or delete the rule.',
     description:
       'Shown on a rule’s row in the rule list when the attribute the rule asks about has been deleted. An attribute is one variable a study records about a node, an edge or the ego.',
+  },
+  encryptedAttribute: {
+    id: 'protocolBuilder.ruleDescription.problemEncryptedAttribute',
+    defaultMessage:
+      'This rule uses an encrypted attribute. Rules are checked without the participant’s passphrase, so this rule cannot read the attribute’s answers. Edit or delete the rule.',
+    description:
+      'Shown on a rule’s row in the rule list when the attribute the rule asks about is encrypted. An encrypted attribute’s answers can only be read with the passphrase the participant chose, and rules are checked without it.',
   },
   invalidOperator: {
     id: 'protocolBuilder.ruleDescription.problemInvalidOperator',

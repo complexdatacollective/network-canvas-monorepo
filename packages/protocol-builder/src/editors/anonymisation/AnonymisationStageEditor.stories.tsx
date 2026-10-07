@@ -4,6 +4,7 @@ import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPassiveEffects';
 
 import StageEditor from '../../StageEditor.tsx';
+import { loadFixtureStage } from '../../testing/protocolFixture.ts';
 import { StageEditorStoryHost } from '../../testing/StageEditorStoryHost.tsx';
 import { anonymisationStageEditor } from './AnonymisationStageEditor.ts';
 
@@ -88,6 +89,65 @@ export const ChoosingWhatIsProtected: Story = {
     await expect(
       within(group).queryByRole('checkbox', { name: 'age' }),
     ).toBeNull();
+  },
+};
+
+const ANONYMISATION = loadFixtureStage('anonymisation-1');
+
+/**
+ * An attribute a rule reads cannot be protected.
+ *
+ * Rules are checked without the participant's passphrase, so a rule on an
+ * encrypted attribute could never read its answers, and the schema refuses
+ * one. The tick is refused before anything is written, and the notice names
+ * the stage whose rule reads it — here this stage's own skip logic, so the
+ * rule is on the same page as the refusal.
+ */
+export const AttributeARuleReads: Story = {
+  args: {
+    stage: {
+      type: ANONYMISATION.type,
+      fields: {
+        ...ANONYMISATION.fields,
+        skipLogic: {
+          action: 'SKIP',
+          filter: {
+            rules: [
+              {
+                id: 'rule-1',
+                type: 'node',
+                options: {
+                  type: 'person',
+                  attribute: 'name',
+                  operator: 'EXACTLY',
+                  value: 'Ada',
+                },
+              },
+            ],
+          },
+        },
+      },
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await awaitPassiveEffects();
+
+    await userEvent.click(
+      await canvas.findByRole('switch', { name: 'person' }),
+    );
+    const group = await canvas.findByRole('group', {
+      name: 'Encrypted attributes for person',
+    });
+    const name = within(group).getByRole('checkbox', { name: 'name' });
+    await userEvent.click(name);
+
+    await expect(
+      await canvas.findByText(
+        '"name" cannot be encrypted while a rule in "Anonymisation" uses it. Rules are checked without the participant’s passphrase, so that rule could not read the encrypted answers. Remove or change the rule first.',
+      ),
+    ).toBeInTheDocument();
+    await expect(name).not.toBeChecked();
   },
 };
 

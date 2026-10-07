@@ -496,6 +496,53 @@ describe('describeRule', () => {
   });
 
   /**
+   * An encrypted answer is stored as ciphertext only the participant's
+   * passphrase opens, and rules are checked without it — so the protocol
+   * schema refuses a rule on one wherever the rule reads interview answers.
+   * Only a panel over an imported file may hold one.
+   */
+  describe('an attribute the participant’s passphrase protects', () => {
+    const encryptedRule = {
+      id: 'rule-11',
+      type: 'node',
+      options: {
+        type: 'person',
+        attribute: 'secret',
+        operator: 'EXACTLY',
+        value: 'Ada',
+      },
+    };
+
+    it('reports the rule unless the rule set allows it', () => {
+      const description = describeRule({ rule: encryptedRule, codebook });
+
+      // Still the attribute the codebook has, not one it lost.
+      expect(description.attribute).toMatchObject({
+        id: 'secret',
+        label: 'Secret',
+        missing: false,
+      });
+      expect(description.problems).toEqual([
+        {
+          code: 'encryptedAttribute',
+          message:
+            'This rule uses an encrypted attribute. Rules are checked without the participant’s passphrase, so this rule cannot read the attribute’s answers. Edit or delete the rule.',
+        },
+      ]);
+    });
+
+    it('reports nothing in a rule set that may read encrypted attributes', () => {
+      expect(
+        describeRule({
+          rule: encryptedRule,
+          codebook,
+          allowEncryptedAttributes: true,
+        }).problems,
+      ).toEqual([]);
+    });
+  });
+
+  /**
    * An operator can survive a retype while the operand it was entered for
    * cannot: both `number` and `categorical` accept `EXACTLY`, but a number
    * answers with a number and a categorical answers with a list of the options

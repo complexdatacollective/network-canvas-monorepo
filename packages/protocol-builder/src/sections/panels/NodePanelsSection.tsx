@@ -45,6 +45,7 @@ import type {
   ResourceKind,
 } from '../../resources/types.ts';
 import {
+  ruleSetAllowsEncryptedAttributes,
   ruleSetRules,
   ruleSetTargets,
   ruleSetValidationMessage,
@@ -863,6 +864,11 @@ function usePanelFilterValidation(variant: PanelRuleSetVariant) {
                 value,
                 codebook.current,
                 ruleSetTargets(currentVariant.current),
+                {
+                  allowEncryptedAttributes: ruleSetAllowsEncryptedAttributes(
+                    currentVariant.current,
+                  ),
+                },
               ),
       ]),
     }),

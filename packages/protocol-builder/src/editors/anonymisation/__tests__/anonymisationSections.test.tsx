@@ -21,8 +21,10 @@ import {
   collaboratorSets,
   heldWrites,
   personDocument,
+  personRule,
   personVariable,
   switchOnType,
+  withStageFields,
 } from './anonymisationFixtures.tsx';
 
 /**
@@ -582,6 +584,129 @@ describe('the attributes a passphrase protects', () => {
         'This type has no text attributes, so it has nothing that can be encrypted.',
       ),
     ).toBeInTheDocument();
+  });
+
+  /**
+   * Rules are checked without the participant's passphrase, so the protocol
+   * schema refuses a rule over interview answers on an encrypted attribute.
+   * Encrypting one a rule already reads would leave that rule refused on a
+   * stage this editor is not editing, so the tick is refused here instead,
+   * naming the stages to go to.
+   */
+  describe('an attribute a rule reads', () => {
+    it('refuses to encrypt it, naming the stages whose rules read it', async () => {
+      const harness = renderStageEditor({
+        stageId: 'anonymisation-1',
+        registry: anonymisationStageEditor,
+        adapter: withStageFields({
+          'name-generator-1': {
+            skipLogic: {
+              action: 'SKIP',
+              filter: { rules: [personRule('skip-a', 'name')] },
+            },
+          },
+          'sociogram-1': {
+            filter: { rules: [personRule('filter-a', 'name')] },
+          },
+        }),
+      });
+      await switchOnType(harness, 'person');
+
+      await harness.user.click(attributeCheckbox('person', 'name'));
+
+      const refusal = await screen.findByText(
+        '"name" cannot be encrypted while 2 rules in "Name Generator" and "Sociogram" use it. Rules are checked without the participant’s passphrase, so those rules could not read the encrypted answers. Remove or change those rules first.',
+      );
+      // A notice rather than an alert: nothing is wrong with the protocol, and
+      // the tick is fine once the rules are gone.
+      expect(refusal.closest('[role]')).toHaveAttribute('role', 'status');
+      expect(attributeCheckbox('person', 'name')).not.toBeChecked();
+      expect(Object.hasOwn(personVariable(harness, 'name'), 'encrypted')).toBe(
+        false,
+      );
+    });
+
+    /**
+     * A panel over an imported file reads the researcher's own rows, which
+     * nothing encrypts — so its rules do not stand in the way. One over the
+     * interview's own network reads interview answers, and does.
+     */
+    it('counts only the panels that read the interview’s own network', async () => {
+      const harness = renderStageEditor({
+        stageId: 'anonymisation-1',
+        registry: anonymisationStageEditor,
+        adapter: withStageFields({
+          'name-generator-1': {
+            panels: [
+              {
+                id: 'panel-network',
+                title: { 'en-US': 'People already named' },
+                dataSource: 'existing',
+                filter: { rules: [personRule('panel-a', 'name')] },
+              },
+              {
+                id: 'panel-roster',
+                title: { 'en-US': 'Roster' },
+                dataSource: 'roster_data',
+                filter: {
+                  rules: [personRule('panel-b', 'relationship_to_ego')],
+                },
+              },
+            ],
+          },
+        }),
+      });
+      await switchOnType(harness, 'person');
+
+      await harness.user.click(attributeCheckbox('person', 'name'));
+      expect(
+        await screen.findByText(
+          '"name" cannot be encrypted while a rule in "Name Generator" uses it. Rules are checked without the participant’s passphrase, so that rule could not read the encrypted answers. Remove or change the rule first.',
+        ),
+      ).toBeInTheDocument();
+
+      await harness.user.click(
+        attributeCheckbox('person', 'relationship_to_ego'),
+      );
+      await waitFor(() =>
+        expect(personVariable(harness, 'relationship_to_ego').encrypted).toBe(
+          true,
+        ),
+      );
+      expect(screen.queryByText(/cannot be encrypted/)).toBeNull();
+    });
+
+    /** Unticking is the way out of a protocol that already holds both. */
+    it('still lets it be unencrypted', async () => {
+      const harness = renderStageEditor({
+        stageId: 'anonymisation-1',
+        registry: anonymisationStageEditor,
+        adapter: withStageFields(
+          {
+            'name-generator-1': {
+              skipLogic: {
+                action: 'SKIP',
+                filter: { rules: [personRule('skip-a', 'name')] },
+              },
+            },
+          },
+          alreadyProtecting('name'),
+        ),
+      });
+      await screen.findByRole('group', {
+        name: 'Encrypted attributes for person',
+      });
+      expect(attributeCheckbox('person', 'name')).toBeChecked();
+
+      await harness.user.click(attributeCheckbox('person', 'name'));
+
+      await waitFor(() =>
+        expect(
+          Object.hasOwn(personVariable(harness, 'name'), 'encrypted'),
+        ).toBe(false),
+      );
+      expect(screen.queryByText(/cannot be encrypted/)).toBeNull();
+    });
   });
 
   /**

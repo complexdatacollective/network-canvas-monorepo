@@ -12,7 +12,7 @@ import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import CheckboxGroupField from '@codaco/fresco-ui/form/fields/CheckboxGroup';
 import Section from '@codaco/fresco-ui/Section';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { VariableTypes } from '@codaco/protocol-validation';
+import { type Stage, VariableTypes } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import { codebookEditingMessages } from '../../../codebook/codebookMessages.ts';
@@ -20,6 +20,7 @@ import { documentWithUpdatedVariable } from '../../../codebook/editing.ts';
 import { useCodebookSectionWrite } from '../../../codebook/writes.ts';
 import { READ_ONLY_MESSAGE } from '../../../form/readOnlyRefusal.ts';
 import { useStageEditorForm } from '../../../form/stageEditorContext.ts';
+import { useLocalizedText } from '../../../localization/ProtocolLocalization.tsx';
 import type { CodebookSubject } from '../../../protocol-context.ts';
 import BuilderSection from '../../../sections/BuilderSection.tsx';
 import { useProtocolContext } from '../../../state/protocolContext.ts';
@@ -47,6 +48,40 @@ type NodeTypeView = Readonly<{
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const INTERVIEW_NETWORK = 'existing';
+
+/**
+ * The rules in one stage that read interview answers: its own filter, its skip
+ * logic, and any side panel over the interview's own network. These are the
+ * rule sets the protocol schema refuses an encrypted attribute in — rules are
+ * checked without the participant's passphrase. A panel over an imported file
+ * reads the researcher's own rows, which are never encrypted.
+ */
+const rulesReadingInterview = (stage: Readonly<Stage>) => [
+  ...('filter' in stage ? (stage.filter?.rules ?? []) : []),
+  ...(stage.skipLogic?.filter.rules ?? []),
+  ...('panels' in stage ? (stage.panels ?? []) : []).flatMap((panel) =>
+    panel.dataSource === INTERVIEW_NETWORK ? (panel.filter?.rules ?? []) : [],
+  ),
+];
+
+/** How many rules each stage holds about one node attribute. */
+const stagesWithRulesOn = (
+  stages: readonly Readonly<Stage>[],
+  typeId: string,
+  variableId: string,
+): readonly Readonly<{ stage: Readonly<Stage>; ruleCount: number }>[] =>
+  stages.flatMap((stage) => {
+    const ruleCount = rulesReadingInterview(stage).filter(
+      (rule) =>
+        rule.type === 'node' &&
+        rule.options.type === typeId &&
+        'attribute' in rule.options &&
+        rule.options.attribute === variableId,
+    ).length;
+    return ruleCount === 0 ? [] : [{ stage, ruleCount }];
+  });
 
 /**
  * Every attribute of one type carrying the flag, read from the AUTHORITATIVE
@@ -176,6 +211,7 @@ function NodeTypeAttributes({
  */
 export default function EncryptedAttributesSection() {
   const intl = useAppIntl();
+  const localize = useLocalizedText();
   const { readOnly } = useStageEditorForm();
   const protocolContext = useProtocolContext();
   const writeCodebookSection = useCodebookSectionWrite();
@@ -447,8 +483,42 @@ export default function EncryptedAttributesSection() {
       next.filter((value): value is string => typeof value === 'string'),
     );
     const current = new Set(view.encrypted);
-    for (const { value } of view.options) {
+    for (const { value, label } of view.options) {
       if (chosen.has(value) === current.has(value)) continue;
+      if (chosen.has(value)) {
+        // Refused before anything is written, because the codebook change
+        // would leave a rule elsewhere in the protocol that the schema then
+        // refuses — on a stage this editor is not editing. Unticking is never
+        // refused: it is the way out of exactly that state.
+        const using = stagesWithRulesOn(
+          protocolContext.orderedStages,
+          view.typeId,
+          value,
+        );
+        if (using.length > 0) {
+          setFailure({
+            message: createMessageError(
+              anonymisationMessages.attributeUsedByRule,
+              {
+                attributeName: label,
+                ruleCount: using.reduce(
+                  (total, { ruleCount }) => total + ruleCount,
+                  0,
+                ),
+                stageNames: {
+                  list: using.map(
+                    ({ stage }) => `"${localize(stage.label).text}"`,
+                  ),
+                },
+              },
+            ),
+            // Said as a notice, as a read-only refusal is: nothing is wrong
+            // with the protocol, and the tick is fine once the rule is gone.
+            held: true,
+          });
+          continue;
+        }
+      }
       void setEncrypted(view, value, chosen.has(value));
     }
   };
