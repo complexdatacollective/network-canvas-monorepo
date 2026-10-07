@@ -113,8 +113,34 @@ const rowOf = (language: string) => {
   return row;
 };
 
-const removeButton = (language: string) =>
-  within(rowOf(language)).getByRole('button', { name: 'Remove' });
+const actionsTrigger = (language: string) =>
+  within(rowOf(language)).getByRole('button', {
+    name: `Actions for ${language}`,
+  });
+
+const openActions = async (language: string) => {
+  await userEvent.click(actionsTrigger(language));
+  return screen.findByRole('menu', { name: `Actions for ${language}` });
+};
+
+const closeActions = async (language: string) => {
+  await userEvent.keyboard('{Escape}');
+  await waitFor(() =>
+    expect(
+      screen.queryByRole('menu', { name: `Actions for ${language}` }),
+    ).not.toBeInTheDocument(),
+  );
+};
+
+const chooseAction = async (language: string, action: string) => {
+  const menu = await openActions(language);
+  await userEvent.click(within(menu).getByRole('menuitem', { name: action }));
+};
+
+const removeItem = async (language: string) => {
+  const menu = await openActions(language);
+  return within(menu).getByRole('menuitem', { name: 'Remove' });
+};
 
 const finishedEditing = () =>
   screen.queryByRole('button', { name: 'Finished Editing' });
@@ -127,11 +153,15 @@ describe('the language chooser’s languages in Architect', () => {
       screen.getByRole('heading', { name: 'Languages' }),
     ).toBeInTheDocument();
     for (const language of ['English', 'French', 'German']) {
-      expect(removeButton(language)).toBeInTheDocument();
+      expect(actionsTrigger(language)).toBeInTheDocument();
     }
-    expect(
-      within(rowOf('French')).getByRole('button', { name: 'Make default' }),
-    ).toBeInTheDocument();
+    const menu = await openActions('French');
+    for (const action of ['Make default', 'Relabel translations…', 'Remove']) {
+      expect(
+        within(menu).getByRole('menuitem', { name: action }),
+      ).toBeInTheDocument();
+    }
+    await closeActions('French');
     expect(
       screen.getByRole('button', { name: 'Add languages' }),
     ).toBeInTheDocument();
@@ -147,12 +177,14 @@ describe('the language chooser’s languages in Architect', () => {
   it('leaves nothing to save after removing a language from an untouched stage', async () => {
     const { store } = await openEditor();
 
-    await userEvent.click(removeButton('French'));
+    await chooseAction('French', 'Remove');
 
-    expect(getProtocol(store.getState())?.localization.locales).toEqual([
-      'en',
-      'de',
-    ]);
+    await waitFor(() =>
+      expect(getProtocol(store.getState())?.localization.locales).toEqual([
+        'en',
+        'de',
+      ]),
+    );
     expect(savedStage(store)?.label).toEqual({ en: LABEL.en });
     await waitFor(() =>
       expect(readStageDraft().stage?.label).toEqual({ en: LABEL.en }),
@@ -168,7 +200,7 @@ describe('the language chooser’s languages in Architect', () => {
     await userEvent.type(name, 'Pick a language');
     await waitFor(() => expect(readStageDraft().dirty).toBe(true));
 
-    await userEvent.click(removeButton('French'));
+    await chooseAction('French', 'Remove');
 
     await waitFor(() =>
       expect(readStageDraft().stage?.label).toEqual({
@@ -180,18 +212,16 @@ describe('the language chooser’s languages in Architect', () => {
     expect(savedStage(store)?.label).toEqual({ en: LABEL.en });
   });
 
-  it('renames a changed language in the open stage too', async () => {
+  it('relabels a language’s translations in the open stage too', async () => {
     const { store } = await openEditor();
     globalThis.__architectDialogMocks.openDialog.mockResolvedValueOnce({
       language: 'fr-CA',
     });
 
-    await userEvent.click(
-      within(rowOf('French')).getByRole('button', { name: 'Change language' }),
-    );
+    await chooseAction('French', 'Relabel translations…');
 
     const renamed = { 'en': LABEL.en, 'fr-CA': LABEL.fr };
-    expect(savedStage(store)?.label).toEqual(renamed);
+    await waitFor(() => expect(savedStage(store)?.label).toEqual(renamed));
     await waitFor(() => expect(readStageDraft().stage?.label).toEqual(renamed));
     await waitFor(() => expect(readStageDraft().dirty).toBe(false));
   });
@@ -201,7 +231,7 @@ describe('the language chooser’s languages in Architect', () => {
 
     await userEvent.clear(name);
     await userEvent.type(name, 'Pick a language');
-    await userEvent.click(removeButton('French'));
+    await chooseAction('French', 'Remove');
     await waitFor(() =>
       expect(readStageDraft().stage?.label).toEqual({
         en: 'Pick a language',
@@ -225,7 +255,8 @@ describe('the language chooser’s languages in Architect', () => {
 
   it('counts the open stage’s unsaved text when a language would be removed', async () => {
     const { name } = await openEditor();
-    expect(removeButton('French')).not.toHaveAttribute('aria-disabled');
+    expect(await removeItem('French')).not.toHaveAttribute('aria-disabled');
+    await closeActions('French');
 
     // The stage's name is now only in French, though the protocol still has
     // it in English as well.
@@ -234,7 +265,7 @@ describe('the language chooser’s languages in Architect', () => {
       expect(readStageDraft().stage?.label).toEqual({ fr: LABEL.fr }),
     );
 
-    const remove = removeButton('French');
+    const remove = await removeItem('French');
     expect(remove).toHaveAttribute('aria-disabled', 'true');
     expect(remove).toHaveAccessibleDescription(
       '1 text exists only in French. Translate it into another language before removing French.',

@@ -49,21 +49,28 @@ const LocalizationPage = () => {
         title={intl.formatMessage(messages.title)}
         description={intl.formatMessage(messages.description)}
       />
-      <div className="mx-auto my-10 w-full max-w-4xl">
-        <LanguageList onShowMissing={showMissing} />
-        <div
-          ref={missingSectionRef}
-          // Keeps the section clear of the sticky navigation bar when it is
-          // scrolled to.
-          style={{
-            scrollMarginTop: `calc(var(${NAV_HEIGHT_VARIABLE}) + 1rem)`,
-          }}
-        >
-          <MissingTranslations
-            language={language}
-            onLanguageChange={setLanguage}
-            headingRef={missingHeadingRef}
-          />
+      {/* Side by side once there is room for both, languages narrower on the
+          inline-start side; stacked, languages first, below that. */}
+      <div className="@container mx-auto my-10 w-full max-w-7xl">
+        <div className="grid grid-cols-1 items-start gap-10 @min-[64rem]:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
+          <div className="min-w-0">
+            <LanguageList onShowMissing={showMissing} />
+          </div>
+          <div
+            ref={missingSectionRef}
+            className="min-w-0"
+            // Keeps the section clear of the sticky navigation bar when it is
+            // scrolled to.
+            style={{
+              scrollMarginTop: `calc(var(${NAV_HEIGHT_VARIABLE}) + 1rem)`,
+            }}
+          >
+            <MissingTranslations
+              language={language}
+              onLanguageChange={setLanguage}
+              headingRef={missingHeadingRef}
+            />
+          </div>
         </div>
       </div>
     </div>

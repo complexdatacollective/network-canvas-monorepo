@@ -64,6 +64,21 @@ function languageRows(page: Page): Locator {
     .getByRole('listitem');
 }
 
+/** Opens a language's actions menu, which holds every change to it. */
+async function openActions(page: Page, language: string): Promise<Locator> {
+  await page
+    .getByRole('button', { name: `Actions for ${language}`, exact: true })
+    .click();
+  const menu = page.getByRole('menu', { name: `Actions for ${language}` });
+  await expect(menu).toBeVisible();
+  return menu;
+}
+
+async function closeActions(page: Page, menu: Locator) {
+  await page.keyboard.press('Escape');
+  await expect(menu).toBeHidden();
+}
+
 test('adds a language, lists its missing translations, keeps the default language from being removed, translates a listed text, and lists languages alphabetically', async ({
   architectPage: page,
   seed,
@@ -114,9 +129,11 @@ test('adds a language, lists its missing translations, keeps the default languag
   await expect(french).toContainText('0 of 3 texts translated');
   await expect(french.getByText('Default', { exact: true })).toHaveCount(0);
   // A language with no translations of its own strands nothing, so it can go.
+  const frenchActions = await openActions(page, 'French');
   await expect(
-    french.getByRole('button', { name: 'Remove', exact: true }),
+    frenchActions.getByRole('menuitem', { name: 'Remove', exact: true }),
   ).toBeEnabled();
+  await closeActions(page, frenchActions);
   await expect(
     page.getByRole('link', { name: /^Languages\b/ }),
   ).toHaveAccessibleName(/has missing translations/);
@@ -135,7 +152,7 @@ test('adds a language, lists its missing translations, keeps the default languag
   // The missing translations, listed under the stage they belong to. French is
   // the only language with gaps, so there is no language to choose between.
   await french
-    .getByRole('button', { name: 'Show 3 missing translations' })
+    .getByRole('button', { name: 'Show 3 missing French translations' })
     .click();
   await expect(missing).toContainText('3 texts have no French translation.');
   await expect(missing.getByRole('combobox')).toHaveCount(0);
@@ -162,14 +179,13 @@ test('adds a language, lists its missing translations, keeps the default languag
   ).toHaveText('Welcome to the study');
 
   // Make French the default.
-  await french
-    .getByRole('button', { name: 'Make default', exact: true })
+  await (
+    await openActions(page, 'French')
+  )
+    .getByRole('menuitem', { name: 'Make default', exact: true })
     .click();
   await expect(french.getByText('Default', { exact: true })).toBeVisible();
   await expect(english.getByText('Default', { exact: true })).toHaveCount(0);
-  await expect(
-    english.getByRole('button', { name: 'Make default', exact: true }),
-  ).toBeVisible();
   // The default keeps its place in the alphabetical list.
   await expect(languageRows(page)).toHaveText([/^English/, /^French/]);
   const frenchDefault = await readProtocolJson(
@@ -182,21 +198,48 @@ test('adds a language, lists its missing translations, keeps the default languag
   });
   expect(frenchDefault.stages).toEqual(before.stages);
 
-  // The default language cannot be removed, and its Remove button says why.
-  // The button stays focusable, so the reason reaches keyboard users too.
-  const removeFrench = french.getByRole('button', {
+  // The default language cannot be removed, and its Remove item says why.
+  // The item stays reachable with the arrow keys, so the reason reaches
+  // keyboard users too, and choosing it does nothing.
+  const frenchActionsButton = page.getByRole('button', {
+    name: 'Actions for French',
+    exact: true,
+  });
+  await frenchActionsButton.focus();
+  await page.keyboard.press('Enter');
+  const defaultActions = page.getByRole('menu', {
+    name: 'Actions for French',
+  });
+  await expect(
+    defaultActions.getByRole('menuitem', {
+      name: 'Relabel translations…',
+      exact: true,
+    }),
+  ).toBeFocused();
+  await expect(
+    defaultActions.getByRole('menuitem', { name: 'Make default' }),
+  ).toHaveCount(0);
+  await page.keyboard.press('ArrowDown');
+  const removeFrench = defaultActions.getByRole('menuitem', {
     name: 'Remove',
     exact: true,
   });
+  await expect(removeFrench).toBeFocused();
   await expect(removeFrench).toBeDisabled();
   await expect(removeFrench).toHaveAccessibleDescription(
     'To remove the default language, make another language the default first.',
   );
-  await removeFrench.focus();
-  await expect(removeFrench).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await closeActions(page, defaultActions);
+  await expect(frenchActionsButton).toBeFocused();
   // Nor can English, though it is no longer the default: its texts exist in
   // no other language yet.
-  const removeEnglish = english.getByRole('button', {
+  const englishActions = await openActions(page, 'English');
+  await expect(
+    englishActions.getByRole('menuitem', { name: 'Make default', exact: true }),
+  ).toBeVisible();
+  const removeEnglish = englishActions.getByRole('menuitem', {
     name: 'Remove',
     exact: true,
   });
@@ -204,6 +247,7 @@ test('adds a language, lists its missing translations, keeps the default languag
   await expect(removeEnglish).toHaveAccessibleDescription(
     '3 texts exist only in English. Translate them into another language before removing English.',
   );
+  await closeActions(page, englishActions);
   expect((await readProtocolJson(page)).localization.locales).toEqual([
     'en',
     'fr',
@@ -294,9 +338,11 @@ function stageLanguageRow(page: Page, code: string): Locator {
     .filter({ has: page.getByText(code, { exact: true }) });
 }
 
-async function removeLanguage(page: Page, code: string, language: string) {
-  await stageLanguageRow(page, code)
-    .getByRole('button', { name: 'Remove', exact: true })
+async function removeLanguage(page: Page, language: string) {
+  await (
+    await openActions(page, language)
+  )
+    .getByRole('menuitem', { name: 'Remove', exact: true })
     .click();
   const confirm = page.getByRole('dialog', { name: `Remove ${language}?` });
   await confirm
@@ -332,7 +378,7 @@ test('changes the protocol’s languages from the language chooser stage, and th
 
   // Removing a language from a stage that has not been touched leaves nothing
   // to save, and nothing to be asked about on the way out.
-  await removeLanguage(page, 'es', 'Spanish');
+  await removeLanguage(page, 'Spanish');
   const withoutSpanish = await readProtocolJson(
     page,
     (protocol) => !protocol.localization.locales.includes('es'),
@@ -355,7 +401,7 @@ test('changes the protocol’s languages from the language chooser stage, and th
   await expect(
     page.getByRole('button', { name: 'Finished Editing' }),
   ).toBeVisible();
-  await removeLanguage(page, 'fr', 'French');
+  await removeLanguage(page, 'French');
   await expect(stageLanguageRow(page, 'fr')).toHaveCount(0);
   await expect(name).toHaveValue('Pick a language');
   await page.getByRole('button', { name: 'Finished Editing' }).click();
@@ -367,4 +413,79 @@ test('changes the protocol’s languages from the language chooser stage, and th
   );
   expect(saved.localization).toEqual({ defaultLocale: 'en', locales: ['en'] });
   expect(saved.stages[0]?.label).toEqual({ en: 'Pick a language' });
+});
+
+function bilingualProtocol(): CurrentProtocol {
+  return CurrentProtocolSchema.parse({
+    ...englishProtocol(),
+    localization: { defaultLocale: 'en', locales: ['en', 'fr'] },
+  });
+}
+
+test('puts the languages beside their missing translations when there is room, and above them when there is not', async ({
+  architectPage: page,
+  seed,
+}) => {
+  await seed(bilingualProtocol());
+  await gotoProtocol(page);
+  await page.goto('/protocol/localization');
+  const languages = page.getByRole('region', { name: 'Protocol languages' });
+  const missing = page.getByRole('region', { name: 'Missing translations' });
+  await expect(languageRows(page)).toHaveCount(2);
+
+  const boxes = async () => {
+    const [list, gaps] = await Promise.all([
+      languages.boundingBox(),
+      missing.boundingBox(),
+    ]);
+    if (!list || !gaps) throw new Error('A section is not on the page.');
+    return { list, gaps };
+  };
+
+  // Side by side, the languages narrower and first in reading order.
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await expect(async () => {
+    const { list, gaps } = await boxes();
+    expect(list.x + list.width).toBeLessThan(gaps.x);
+    expect(list.width).toBeLessThan(gaps.width);
+    expect(Math.abs(list.y - gaps.y)).toBeLessThan(1);
+  }).toPass();
+
+  // Stacked, languages first.
+  await page.setViewportSize({ width: 800, height: 900 });
+  await expect(async () => {
+    const { list, gaps } = await boxes();
+    expect(list.y + list.height).toBeLessThanOrEqual(gaps.y);
+    expect(Math.abs(list.x - gaps.x)).toBeLessThan(1);
+  }).toPass();
+
+  // Asking for a language's missing translations still brings their section
+  // into view, with focus on its heading.
+  await languageRow(page, 'fr')
+    .getByRole('button', { name: 'Show 3 missing French translations' })
+    .click();
+  const heading = missing.getByRole('heading', {
+    name: 'Missing translations',
+    exact: true,
+  });
+  await expect(heading).toBeInViewport();
+  await expect
+    .poll(() =>
+      heading.evaluate((element) => element.contains(document.activeElement)),
+    )
+    .toBe(true);
+
+  // Scrolled to the end, nothing on the page is left under the page's
+  // floating actions.
+  await page.mouse.move(400, 450);
+  await page.mouse.wheel(0, 10_000);
+  const pageActions = page.getByRole('toolbar', { name: 'Page actions' });
+  await expect(async () => {
+    const [gaps, actions] = await Promise.all([
+      missing.boundingBox(),
+      pageActions.boundingBox(),
+    ]);
+    if (!gaps || !actions) throw new Error('A section is not on the page.');
+    expect(gaps.y + gaps.height).toBeLessThanOrEqual(actions.y);
+  }).toPass();
 });

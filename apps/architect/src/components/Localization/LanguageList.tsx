@@ -1,20 +1,21 @@
-import { Plus } from 'lucide-react';
-import { useId, useMemo, useRef } from 'react';
-import { flushSync } from 'react-dom';
+import { Check, Ellipsis, Languages, Plus, Star, Trash2 } from 'lucide-react';
+import { useId, useMemo, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import { Badge } from '@codaco/fresco-ui/Badge';
-import Button from '@codaco/fresco-ui/Button';
+import Button, { IconButton } from '@codaco/fresco-ui/Button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@codaco/fresco-ui/DropdownMenu';
 import ProgressBar from '@codaco/fresco-ui/ProgressBar';
 import Section from '@codaco/fresco-ui/Section';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@codaco/fresco-ui/Tooltip';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import {
   type LocaleTag,
@@ -30,7 +31,12 @@ import { getProtocol } from '~/selectors/protocol';
 import { UNSPECIFIED_LOCALE } from '~/utils/localizedText';
 
 import { describeLanguage } from './languageChoices';
-import { type OpenStageDraft, useLanguageActions } from './useLanguageActions';
+import TranslationFallback from './TranslationFallback';
+import {
+  type OpenStageDraft,
+  type ReturnFocus,
+  useLanguageActions,
+} from './useLanguageActions';
 import { useLanguageName } from './useLanguageName';
 
 const messages = defineMessages({
@@ -55,9 +61,9 @@ const messages = defineMessages({
   description: {
     id: 'architect.localization.languageList.description',
     defaultMessage:
-      'Participants can take the interview in any of these languages. Each text is shown in the closest language that has it: the participant’s own language, then a related language, then another language their browser lists, then the default language, then any other.',
+      'Participants can take the interview in any of these languages.',
     description:
-      'Explanation of the list of protocol languages, shown when the protocol has more than one. A related language is, for example, Brazilian Portuguese for a participant using European Portuguese. The list is in alphabetical order; its order has no effect.',
+      'Lead sentence of the list of protocol languages, shown when the protocol has more than one. The list is in alphabetical order; its order has no effect on which language participants see.',
   },
   descriptionSingle: {
     id: 'architect.localization.languageList.descriptionSingle',
@@ -76,16 +82,23 @@ const messages = defineMessages({
     defaultMessage: 'Default',
     description: 'Badge marking the default language of a protocol.',
   },
+  actionsFor: {
+    id: 'architect.localization.languageList.actionsFor',
+    defaultMessage: 'Actions for {language}',
+    description:
+      'Accessible name of the button that opens the menu of actions for one protocol language, and of that menu. language is the language name.',
+  },
   makeDefault: {
     id: 'architect.localization.languageList.makeDefault',
     defaultMessage: 'Make default',
-    description: 'Button that makes a language the default.',
-  },
-  changeLanguage: {
-    id: 'architect.localization.languageList.changeLanguage',
-    defaultMessage: 'Change language',
     description:
-      'Button that says which language the text marked with this language is really written in.',
+      'Item in the menu of actions for one protocol language that makes it the default language.',
+  },
+  relabel: {
+    id: 'architect.localization.languageList.relabel',
+    defaultMessage: 'Relabel translations…',
+    description:
+      'Item in the menu of actions for one protocol language. It opens a dialog that marks every text written in this language as written in another language, for when the language was chosen wrongly. Nothing is translated.',
   },
   identifyLanguage: {
     id: 'architect.localization.languageList.identifyLanguage',
@@ -93,10 +106,17 @@ const messages = defineMessages({
     description:
       'Button that names the language of text whose language has not been identified.',
   },
+  identifyItem: {
+    id: 'architect.localization.languageList.identifyItem',
+    defaultMessage: 'Identify language…',
+    description:
+      'Item in the menu of actions for the unidentified language. It opens a dialog that names the language the text is written in.',
+  },
   remove: {
     id: 'architect.localization.languageList.remove',
     defaultMessage: 'Remove',
-    description: 'Button that removes a language from a protocol.',
+    description:
+      'Item in the menu of actions for one protocol language that removes it from the protocol.',
   },
   coverage: {
     id: 'architect.localization.languageList.coverage',
@@ -116,23 +136,23 @@ const messages = defineMessages({
   showMissing: {
     id: 'architect.localization.languageList.showMissing',
     defaultMessage:
-      '{count, plural, one {Show # missing translation} other {Show # missing translations}}',
+      '{count, plural, one {Show # missing {language} translation} other {Show # missing {language} translations}}',
     description:
-      'Button that lists the texts not yet translated into one language.',
+      'Button that lists the texts not yet translated into one language. language is the language name.',
   },
   defaultNote: {
     id: 'architect.localization.languageList.defaultNote',
     defaultMessage:
       'To remove the default language, make another language the default first.',
     description:
-      'Tooltip and screen-reader description of the unavailable Remove button of the default language, saying why it cannot be removed.',
+      'Shown under the unavailable Remove item in the menu of actions for the default language, saying why it cannot be removed.',
   },
   strandedNote: {
     id: 'architect.localization.languageList.strandedNote',
     defaultMessage:
       '{count, plural, one {# text exists only in {language}. Translate it into another language before removing {language}.} other {# texts exist only in {language}. Translate them into another language before removing {language}.}}',
     description:
-      'Tooltip and screen-reader description of an unavailable Remove button, saying why the language cannot be removed: some text has no other translation.',
+      'Shown under the unavailable Remove item in the menu of actions for a language, saying why it cannot be removed: some text has no other translation.',
   },
 });
 
@@ -150,13 +170,16 @@ const LanguageList = ({ onShowMissing }: LanguageListProps) => {
 
   if (!protocol) return null;
 
+  const multilingual = locales.length > 1;
+
   return (
     <Section
       title={intl.formatMessage(messages.title)}
       description={intl.formatMessage(
-        locales.length > 1 ? messages.description : messages.descriptionSingle,
+        multilingual ? messages.description : messages.descriptionSingle,
       )}
     >
+      {multilingual && <TranslationFallback />}
       <ProtocolLanguages onShowMissing={onShowMissing} />
     </Section>
   );
@@ -183,7 +206,7 @@ export const ProtocolLanguages = ({
   const coverage = useSelector(getLocalizationCoverage);
   const languageName = useLanguageName();
   const addButtonRef = useRef<HTMLButtonElement>(null);
-  const { addLanguages, changeLanguage, removeLanguage, removalImpact } =
+  const { addLanguages, relabelLanguage, removeLanguage, removalImpact } =
     useLanguageActions(addButtonRef, draft);
   const locales = protocol?.localization.locales ?? EMPTY_LOCALES;
   const sortedLocales = useMemo(
@@ -217,7 +240,7 @@ export const ProtocolLanguages = ({
             <Button
               size="sm"
               color="warning"
-              onClick={() => void changeLanguage(UNSPECIFIED_LOCALE)}
+              onClick={() => void relabelLanguage(UNSPECIFIED_LOCALE)}
             >
               {intl.formatMessage(messages.identifyLanguage)}
             </Button>
@@ -239,8 +262,8 @@ export const ProtocolLanguages = ({
               onMakeDefault={() =>
                 dispatch(setProtocolDefaultLocale({ locale }))
               }
-              onChange={() => void changeLanguage(locale)}
-              onRemove={() => void removeLanguage(locale)}
+              onRelabel={(returnFocus) => relabelLanguage(locale, returnFocus)}
+              onRemove={(returnFocus) => removeLanguage(locale, returnFocus)}
               onShowMissing={
                 onShowMissing ? () => onShowMissing(locale) : undefined
               }
@@ -265,8 +288,8 @@ type LanguageRowProps = {
   total: number;
   strandedCount: number;
   onMakeDefault: () => void;
-  onChange: () => void;
-  onRemove: () => void;
+  onRelabel: (returnFocus: ReturnFocus) => Promise<void>;
+  onRemove: (returnFocus: ReturnFocus) => Promise<void>;
   onShowMissing?: () => void;
 };
 
@@ -275,16 +298,19 @@ const LanguageRow = ({
   total,
   strandedCount,
   onMakeDefault,
-  onChange,
+  onRelabel,
   onRemove,
   onShowMissing,
 }: LanguageRowProps) => {
   const intl = useAppIntl();
   const languageName = useLanguageName();
-  const changeButtonRef = useRef<HTMLButtonElement>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const removeLabelId = useId();
   const removalReasonId = useId();
   const { locale, isDefault, translated, missing } = entry;
   const isUnspecified = locale === UNSPECIFIED_LOCALE;
+  const isComplete = total > 0 && translated === total;
   const language = languageName(locale);
   const own = isUnspecified ? null : describeLanguage(locale, intl.locale);
   const removalBlockedReason = isDefault
@@ -296,16 +322,17 @@ const LanguageRow = ({
         })
       : null;
 
-  // Making this language the default unmounts the button that did it; focus
-  // moves on to the row's next action instead of falling to the page.
-  const makeDefault = () => {
-    flushSync(onMakeDefault);
-    changeButtonRef.current?.focus();
-  };
+  // A dialog opened from the menu waits for the menu to close, so the menu
+  // handing focus back to its button cannot pull it out of the dialog.
+  const runMenuAction =
+    (action: (returnFocus: ReturnFocus) => Promise<void>) => () => {
+      setMenuOpen(false);
+      void Promise.resolve().then(() => action(() => triggerRef.current));
+    };
 
   return (
-    <li className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3 py-5">
-      <div className="flex min-w-0 flex-1 basis-72 flex-col gap-2">
+    <li className="flex items-start gap-4 py-5">
+      <div className="flex min-w-0 flex-1 flex-col gap-2">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
           <span className="text-lg font-semibold">{language}</span>
           {own && own.autonym !== language && (
@@ -331,82 +358,104 @@ const LanguageRow = ({
             {intl.formatMessage(messages.noText)}
           </Paragraph>
         ) : (
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
             <div className="w-40">
               <ProgressBar
                 orientation="horizontal"
                 percentProgress={(translated / total) * 100}
                 nudge={false}
+                tone="info"
                 label={intl.formatMessage(messages.coverageLabel, {
                   language,
                 })}
               />
             </div>
-            <span className="text-sm">
+            <span className="flex items-center gap-1 text-sm">
+              {isComplete && (
+                <Check aria-hidden className="text-success size-4 shrink-0" />
+              )}
               {intl.formatMessage(messages.coverage, { translated, total })}
             </span>
-            {missing > 0 && onShowMissing && (
-              <Button size="sm" variant="text" onClick={onShowMissing}>
-                {intl.formatMessage(messages.showMissing, { count: missing })}
-              </Button>
-            )}
           </div>
         )}
-      </div>
-      <div className="flex flex-wrap items-center gap-1">
-        {!isDefault && (
-          <Button size="sm" variant="text" onClick={makeDefault}>
-            {intl.formatMessage(messages.makeDefault)}
-          </Button>
-        )}
-        <Button
-          ref={changeButtonRef}
-          size="sm"
-          variant={isUnspecified ? 'default' : 'text'}
-          color={isUnspecified ? 'warning' : 'default'}
-          onClick={onChange}
-        >
-          {intl.formatMessage(
-            isUnspecified ? messages.identifyLanguage : messages.changeLanguage,
-          )}
-        </Button>
-        {removalBlockedReason ? (
-          // `aria-disabled` rather than `disabled`, which would take the
-          // button out of the focus order and stop the pointer events that
-          // open the tooltip, leaving keyboard and screen-reader users with
-          // no way to learn why it is unavailable. It has no click handler.
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <Button
-                  size="sm"
-                  variant="text"
-                  color="destructive"
-                  aria-disabled
-                  aria-describedby={removalReasonId}
-                >
-                  {intl.formatMessage(messages.remove)}
-                </Button>
-              }
-            />
-            <span id={removalReasonId} className="sr-only">
-              {removalBlockedReason}
-            </span>
-            <TooltipContent aria-hidden="true">
-              {removalBlockedReason}
-            </TooltipContent>
-          </Tooltip>
-        ) : (
+        {total > 0 && missing > 0 && onShowMissing && (
           <Button
             size="sm"
-            variant="text"
-            color="destructive"
-            onClick={onRemove}
+            variant="link"
+            className="self-start"
+            onClick={onShowMissing}
           >
-            {intl.formatMessage(messages.remove)}
+            {intl.formatMessage(messages.showMissing, {
+              count: missing,
+              language,
+            })}
           </Button>
         )}
       </div>
+      <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
+        <DropdownMenuTrigger
+          render={
+            <IconButton
+              ref={triggerRef}
+              variant="text"
+              color="dynamic"
+              aria-label={intl.formatMessage(messages.actionsFor, {
+                language,
+              })}
+              icon={<Ellipsis aria-hidden />}
+            />
+          }
+        />
+        <DropdownMenuContent side="bottom" align="end">
+          {!isDefault && (
+            <DropdownMenuItem
+              icon={<Star aria-hidden />}
+              onClick={onMakeDefault}
+            >
+              {intl.formatMessage(messages.makeDefault)}
+            </DropdownMenuItem>
+          )}
+          <DropdownMenuItem
+            icon={<Languages aria-hidden />}
+            onClick={runMenuAction(onRelabel)}
+          >
+            {intl.formatMessage(
+              isUnspecified ? messages.identifyItem : messages.relabel,
+            )}
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          {removalBlockedReason ? (
+            // Disabled items stay reachable with the arrow keys, and the
+            // reason is part of the item rather than a tooltip, so it is read
+            // out and seen by everyone who finds the item unavailable.
+            <DropdownMenuItem
+              disabled
+              aria-labelledby={removeLabelId}
+              aria-describedby={removalReasonId}
+              icon={<Trash2 aria-hidden className="opacity-50" />}
+              className="items-start data-disabled:opacity-100"
+            >
+              <span className="flex flex-col gap-1">
+                <span id={removeLabelId} className="opacity-50">
+                  {intl.formatMessage(messages.remove)}
+                </span>
+                <span id={removalReasonId} className="max-w-64 text-sm">
+                  {removalBlockedReason}
+                </span>
+              </span>
+            </DropdownMenuItem>
+          ) : (
+            <DropdownMenuItem
+              icon={<Trash2 aria-hidden className="text-destructive-ink" />}
+              onClick={runMenuAction(onRemove)}
+            >
+              <span className="text-destructive-ink">
+                {intl.formatMessage(messages.remove)}
+              </span>
+            </DropdownMenuItem>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
     </li>
   );
 };

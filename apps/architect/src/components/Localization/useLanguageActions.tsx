@@ -57,18 +57,18 @@ const messages = defineMessages({
     defaultMessage: 'Languages',
     description: 'Label of the searchable list of languages to add.',
   },
-  changeTitle: {
-    id: 'architect.localization.languageActions.changeTitle',
-    defaultMessage: 'Change {language}',
+  relabelTitle: {
+    id: 'architect.localization.languageActions.relabelTitle',
+    defaultMessage: 'Relabel {language} translations',
     description:
-      'Title of the dialog that says which language a protocol language really is. language is its current name.',
+      'Title of the dialog that marks every text written in one protocol language as written in another. language is the current language name.',
   },
-  changeDescription: {
-    id: 'architect.localization.languageActions.changeDescription',
+  relabelDescription: {
+    id: 'architect.localization.languageActions.relabelDescription',
     defaultMessage:
-      'Every text marked as {language} will be marked as the language you choose. Nothing is translated or deleted.',
+      'Use this when these translations are really in another language or regional variant, such as Mexican Spanish rather than Spanish. Every text marked as {language} will be marked as the language you choose. Nothing is translated or deleted.',
     description:
-      'Explanation in the dialog that changes a protocol language. language is its current name.',
+      'Explanation in the dialog that relabels a protocol language: when to use it and what it does. language is the current language name. The example names a regional variant of a language.',
   },
   identifyTitle: {
     id: 'architect.localization.languageActions.identifyTitle',
@@ -87,22 +87,31 @@ const messages = defineMessages({
     id: 'architect.localization.languageActions.languageLabel',
     defaultMessage: 'Language',
     description:
-      'Label of the list of languages in the change-language dialog.',
+      'Label of the list of languages in the dialog that relabels a protocol language, or identifies the language of unidentified text.',
   },
   chooseALanguage: {
     id: 'architect.localization.languageActions.chooseALanguage',
     defaultMessage: 'Choose a language',
-    description: 'Placeholder of the list of languages to change to.',
+    description:
+      'Placeholder of the list of languages that text can be relabelled as.',
   },
   chooseOne: {
     id: 'architect.localization.languageActions.chooseOne',
     defaultMessage: 'Choose a language.',
-    description: 'Error when the change-language dialog is submitted empty.',
+    description:
+      'Error when the dialog that relabels a protocol language is submitted without a language.',
   },
-  changeSubmit: {
-    id: 'architect.localization.languageActions.changeSubmit',
-    defaultMessage: 'Change language',
-    description: 'Submit button of the change-language dialog.',
+  relabelSubmit: {
+    id: 'architect.localization.languageActions.relabelSubmit',
+    defaultMessage: 'Relabel translations',
+    description:
+      'Submit button of the dialog that marks every text written in one protocol language as written in another.',
+  },
+  identifySubmit: {
+    id: 'architect.localization.languageActions.identifySubmit',
+    defaultMessage: 'Identify language',
+    description:
+      'Submit button of the dialog that names the language of text whose language has not been identified.',
   },
   removeTitle: {
     id: 'architect.localization.languageActions.removeTitle',
@@ -141,9 +150,16 @@ export type OpenStageDraft = Readonly<{
 }>;
 
 /**
+ * The control a dialog hands focus back to when it closes, asked for only then:
+ * the control that asked for the change may be gone by that time.
+ */
+export type ReturnFocus = () => HTMLElement | null;
+
+/**
  * The dialogs behind each change to a protocol's languages. Each change is
  * validated here and then dispatched as one protocol edit, so it is one undo
- * step.
+ * step. A dialog returns focus to `returnFocus` while it is still in the page,
+ * and otherwise to `finalFocus`.
  */
 export const useLanguageActions = (
   finalFocus: RefObject<HTMLElement | null>,
@@ -180,6 +196,14 @@ export const useLanguageActions = (
     [store],
   );
 
+  const focusAfter = useCallback(
+    (returnFocus?: ReturnFocus) => () => {
+      const target = returnFocus?.();
+      return target?.isConnected ? target : finalFocus.current;
+    },
+    [finalFocus],
+  );
+
   const availableChoices = useCallback(
     (declaredLocales: readonly LocaleTag[]) =>
       getLanguageChoices(intl.locale).filter(
@@ -209,24 +233,26 @@ export const useLanguageActions = (
     if (locales.length > 0) dispatch(addProtocolLocales({ locales }));
   }, [availableChoices, declared, dispatch, finalFocus, intl, openDialog]);
 
-  const changeLanguage = useCallback(
-    async (from: LocaleTag) => {
+  const relabelLanguage = useCallback(
+    async (from: LocaleTag, returnFocus?: ReturnFocus) => {
       if (!declared) return;
       const isUnspecified = from === UNSPECIFIED_LOCALE;
       const values = await openDialog({
         type: 'form',
         title: isUnspecified
           ? intl.formatMessage(messages.identifyTitle)
-          : intl.formatMessage(messages.changeTitle, {
+          : intl.formatMessage(messages.relabelTitle, {
               language: languageName(from),
             }),
         description: isUnspecified
           ? intl.formatMessage(messages.identifyDescription)
-          : intl.formatMessage(messages.changeDescription, {
+          : intl.formatMessage(messages.relabelDescription, {
               language: languageName(from),
             }),
-        submitLabel: intl.formatMessage(messages.changeSubmit),
-        finalFocus,
+        submitLabel: intl.formatMessage(
+          isUnspecified ? messages.identifySubmit : messages.relabelSubmit,
+        ),
+        finalFocus: focusAfter(returnFocus),
         children: (
           <Field<typeof NativeSelectField>
             name="language"
@@ -256,7 +282,6 @@ export const useLanguageActions = (
       declared,
       declaredNow,
       dispatch,
-      finalFocus,
       intl,
       languageName,
       openDialog,
@@ -265,7 +290,7 @@ export const useLanguageActions = (
   );
 
   const removeLanguage = useCallback(
-    async (locale: LocaleTag) => {
+    async (locale: LocaleTag, returnFocus?: ReturnFocus) => {
       if (!protocol) return;
       const language = languageName(locale);
       const { translationCount } = removalImpact(locale);
@@ -277,7 +302,7 @@ export const useLanguageActions = (
         }),
         confirmLabel: intl.formatMessage(messages.removeConfirm),
         intent: 'destructive',
-        finalFocus,
+        finalFocus: focusAfter(returnFocus),
         onConfirm: () => {
           dispatch(removeProtocolLocale({ locale }));
           const after = declaredNow();
@@ -291,7 +316,6 @@ export const useLanguageActions = (
       confirm,
       declaredNow,
       dispatch,
-      finalFocus,
       intl,
       languageName,
       protocol,
@@ -300,5 +324,5 @@ export const useLanguageActions = (
     ],
   );
 
-  return { addLanguages, changeLanguage, removeLanguage, removalImpact };
+  return { addLanguages, relabelLanguage, removeLanguage, removalImpact };
 };
