@@ -36,6 +36,7 @@ import IntroductionPanel from './IntroductionPanel';
 import Items from './Items';
 import MapOptions from './MapOptions';
 import NameGenerationStep from './NameGenerationStep';
+import NarrativePedigree from './NarrativePedigree';
 import PageHeading from './PageHeading';
 import Panels from './Panels';
 import Presets from './Presets';
@@ -224,6 +225,21 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
   const nominationPrompts = configuration.nominationPrompts as
     | FamilyPedigreeNominationPrompt[]
     | undefined;
+  // NarrativePedigree
+  const narrativePedigree =
+    type === 'NarrativePedigree'
+      ? {
+          sourceStageId: String(configuration.sourceStageId ?? ''),
+          showAtRiskStatuses: configuration.showAtRiskStatuses === true,
+          diseases: (configuration.diseases ?? []) as {
+            id: string;
+            label: LocalizedString;
+            color: string;
+            attribute: string;
+            inheritancePattern: string;
+          }[],
+        }
+      : null;
   // Anonymisation
   const explanationText = configuration.explanationText as
     | {
@@ -387,6 +403,7 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
         framing={framing ?? null}
         nominationPrompts={nominationPrompts ?? null}
       />
+      {narrativePedigree && <NarrativePedigree {...narrativePedigree} />}
       <ScaffoldingStep scaffoldingStep={scaffoldingStep ?? null} />
       <NameGenerationStep nameGenerationStep={nameGenerationStep ?? null} />
       <Anonymisation

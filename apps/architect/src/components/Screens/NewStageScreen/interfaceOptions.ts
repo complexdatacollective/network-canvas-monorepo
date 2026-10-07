@@ -35,6 +35,13 @@ const descriptionMessages = defineMessages({
     description:
       'Description of the interview interface in the New Stage chooser.',
   },
+  NarrativePedigree: {
+    id: 'architect.interface.description.NarrativePedigree',
+    defaultMessage:
+      'A read-only visualisation interface that overlays disease status and inheritance patterns onto a family pedigree collected by a Family Pedigree stage.',
+    description:
+      'Description of the interview interface in the New Stage chooser.',
+  },
   DyadCensus: {
     id: 'architect.interface.description.DyadCensus',
     defaultMessage:
@@ -245,6 +252,7 @@ const INTERFACE_TYPE_NAMES = [
   'NameGeneratorQuickAdd',
   'NameGeneratorRoster',
   'FamilyPedigree',
+  'NarrativePedigree',
   'DyadCensus',
   'OneToManyDyadCensus',
   'TieStrengthCensus',
@@ -324,6 +332,15 @@ const INTERFACE_DEFINITIONS: InterfaceDefinition[] = [
       'family pedigree tree census namegenerator name generator nodes node edges edge',
     type: 'FamilyPedigree',
     description: descriptionMessages.FamilyPedigree,
+  },
+  {
+    category: CATEGORIES.SOCIOGRAMS,
+    // Read-only visualisation: displays data, captures nothing.
+    tags: [TAGS.PROVIDE_INFORMATION],
+    keywords:
+      'narrative pedigree disease visualize visualise genetics inheritance focal hereditary',
+    type: 'NarrativePedigree',
+    description: descriptionMessages.NarrativePedigree,
   },
   {
     category: CATEGORIES.GENERATORS,

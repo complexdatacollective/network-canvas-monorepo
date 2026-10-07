@@ -1623,6 +1623,10 @@
     "defaultMessage": "A qualitative interface that uses \"presets\" to switch between different views of the data in the network.",
     "description": "Description of the interview interface in the New Stage chooser."
   },
+  "architect.interface.description.NarrativePedigree": {
+    "defaultMessage": "A read-only visualisation interface that overlays disease status and inheritance patterns onto a family pedigree collected by a Family Pedigree stage.",
+    "description": "Description of the interview interface in the New Stage chooser."
+  },
   "architect.interface.description.NetworkComposer": {
     "defaultMessage": "A free-form, single-screen canvas for building a whole network — create nodes, draw multiple edge types, and capture node and edge attributes in one place.",
     "description": "Description of the interview interface in the New Stage chooser."
@@ -2834,6 +2838,10 @@
   "architect.protocolSummary.stage.nameGenerationStep.nameGenerationStepInstructions": {
     "defaultMessage": "Name Generation Step Instructions",
     "description": "Visible text in lib / ProtocolSummary / components / Stage / NameGenerationStep."
+  },
+  "architect.protocolSummary.stage.narrativePedigree.atRiskStatusesShown": {
+    "defaultMessage": "{shown, select, true {Shown} other {Not shown}}",
+    "description": "Value, in the printable protocol summary, saying whether a Narrative Pedigree stage draws the possible (at-risk) statuses it infers, beside the label \"Show possible (at-risk) statuses\"."
   },
   "architect.protocolSummary.stage.pageHeading.pageHeading": {
     "defaultMessage": "Page Heading",
