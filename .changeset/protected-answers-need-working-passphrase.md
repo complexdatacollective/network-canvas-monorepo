@@ -14,6 +14,8 @@ answers; other interviews work as before.
   participant can try again. Before, a mistyped passphrase was accepted and
   could protect new answers that could then never be read alongside the
   earlier ones. The passphrase box in the navigation also hides what is typed.
+  A passphrase box that opens over the interview is emptied as soon as it
+  closes, even if it is opened again straight away.
 - Protected answers stay locked when an interview is resumed, until the
   passphrase is entered again. Names that had been unlocked no longer stay
   visible after the passphrase is replaced with one that cannot read them,
@@ -54,6 +56,10 @@ answers; other interviews work as before.
   answers brought in from a side panel on a name generator, were saved without
   protection. They are now protected like every other answer, and these stages
   ask for the passphrase before they show or save them.
+- While names are protected, the summary of the family that the Family
+  Pedigree saves as plain text names each relative by their relationship to
+  the participant. Before, it held protected names, both as a relative's own
+  label and inside another relative's, such as "Alice's Parent".
 - Undoing or redoing a change in the Network Composer keeps protected names
   readable.
 - A family pedigree is saved whole or not at all. If a relative's name cannot

@@ -398,6 +398,27 @@ export const createFamilyPedigreeStore = (
           );
           const egoId = egoEntry?.[0];
 
+          // The metadata is saved as plain text, so while names are encrypted
+          // every label in it is derived as though nobody were named. A name
+          // must reach it neither as a person's own label nor inside another
+          // person's, as in "Alice's Parent".
+          const labelVariable = variableConfig.nodeLabelVariable;
+          const labelledNodes = encryptedVariableIds.has(labelVariable)
+            ? new Map(
+                [...nodes].map(([id, node]): [string, NcNode] => [
+                  id,
+                  {
+                    ...node,
+                    [entityAttributesProperty]: Object.fromEntries(
+                      Object.entries(node[entityAttributesProperty]).filter(
+                        ([variable]) => variable !== labelVariable,
+                      ),
+                    ),
+                  },
+                ]),
+              )
+            : nodes;
+
           // framing ?? 'gamete': safe fallback — per spec §4.1, when framing is
           // null only the intro/chooser steps render and no gamete-parent labels exist.
           // Preserve the established English metadata snapshot; it is research data.
@@ -405,24 +426,19 @@ export const createFamilyPedigreeStore = (
           const computedLabels = egoId
             ? computeAllDisplayLabels(
                 egoId,
-                nodes,
+                labelledNodes,
                 edges,
                 variableConfig,
                 get().framing ?? 'gamete',
               )
             : new Map<string, string>();
 
-          const serializedNodes = [...nodes.entries()].map(([id, node]) => {
+          const serializedNodes = [...labelledNodes].map(([id, node]) => {
             const isEgo =
               node[entityAttributesProperty][variableConfig.egoVariable] ===
               true;
-            const storedLabel =
-              node[entityAttributesProperty][variableConfig.nodeLabelVariable];
-            let label =
-              typeof storedLabel === 'string' &&
-              !encryptedVariableIds.has(variableConfig.nodeLabelVariable)
-                ? storedLabel
-                : '';
+            const storedLabel = node[entityAttributesProperty][labelVariable];
+            let label = typeof storedLabel === 'string' ? storedLabel : '';
 
             if (!label && !isEgo) {
               label = computedLabels.get(id) ?? 'Family Member';

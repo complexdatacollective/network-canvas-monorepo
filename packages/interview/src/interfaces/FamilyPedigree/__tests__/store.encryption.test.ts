@@ -204,10 +204,46 @@ describe('finalizeNetwork with an encrypted name variable', () => {
     if (!isFamilyPedigreeStageMetadata(metadata)) {
       throw new Error('Expected pedigree metadata');
     }
-    // Unnamed relatives fall back to a relationship label, as before.
+    // A relative whose name is encrypted is labelled by relationship, as an
+    // unnamed one is.
     expect(metadata.nodes?.map(({ label }) => label).toSorted()).toEqual([
       '',
-      'Family Member',
+      'Parent',
+    ]);
+    expect(JSON.stringify(metadata)).not.toMatch(/Mum|Sam/);
+  });
+
+  it('keeps names out of the labels derived for other relatives', async () => {
+    const reduxStore = makeReduxStore();
+    const store = buildFamily(reduxStore);
+    const parentId = [...store.getState().network.nodes].find(
+      ([, node]) =>
+        node[entityAttributesProperty][config.nodeLabelVariable] === 'Mum',
+    )?.[0];
+    if (!parentId) throw new Error('Expected the named parent');
+    // Unnamed, so labelled through the nearest named relative.
+    const grandparentId = store.getState().addNode({
+      attributes: { [config.egoVariable]: false },
+    });
+    store.getState().addEdge({
+      from: grandparentId,
+      to: parentId,
+      attributes: {
+        [config.relationshipTypeVariable]: ['biological'],
+        [config.isActiveVariable]: true,
+      },
+    });
+
+    await store.getState().finalizeNetwork();
+
+    const metadata = reduxStore.getState().session.stageMetadata?.[0];
+    if (!isFamilyPedigreeStageMetadata(metadata)) {
+      throw new Error('Expected pedigree metadata');
+    }
+    expect(metadata.nodes?.map(({ label }) => label).toSorted()).toEqual([
+      '',
+      'Grandparent',
+      'Parent',
     ]);
     expect(JSON.stringify(metadata)).not.toMatch(/Mum|Sam/);
   });

@@ -1,4 +1,10 @@
-import { act, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Provider } from 'react-redux';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
@@ -76,6 +82,71 @@ describe('PassphrasePrompter', () => {
     await waitFor(() =>
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
     );
+  });
+
+  it('opens again empty after a passphrase was turned away', async () => {
+    const { user } = await renderPrompter('pw');
+
+    const field = await findPassphraseField();
+    await user.type(field, 'not-the-passphrase');
+    await user.click(screen.getByRole('button', { name: 'Submit passphrase' }));
+    await waitFor(() => expect(field).toHaveAttribute('aria-invalid', 'true'));
+
+    await user.click(screen.getByRole('button', { name: 'Close' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+    expect(document.body.innerHTML).not.toContain('not-the-passphrase');
+
+    await user.click(
+      screen.getByRole('button', { name: 'Enter your Passphrase' }),
+    );
+    const reopened = await findPassphraseField();
+    expect(reopened).toHaveValue('');
+    expect(reopened).not.toHaveAttribute('aria-invalid', 'true');
+    expect(reopened).not.toHaveAccessibleDescription(
+      expect.stringContaining('does not match'),
+    );
+  });
+
+  // Until the close animation ends the form is still mounted, so nothing but
+  // the close itself empties it.
+  it('opens again empty when reopened while it is still closing', async () => {
+    const { user } = await renderPrompter('pw');
+
+    const field = await findPassphraseField();
+    await user.type(field, 'not-the-passphrase');
+    await user.click(screen.getByRole('button', { name: 'Submit passphrase' }));
+    await waitFor(() => expect(field).toHaveAttribute('aria-invalid', 'true'));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Enter your Passphrase' }),
+    );
+
+    const reopened = await findPassphraseField();
+    expect(reopened).toBe(field);
+    expect(reopened).toHaveValue('');
+    expect(reopened).not.toHaveAttribute('aria-invalid', 'true');
+  });
+
+  it('opens again empty after a passphrase was accepted', async () => {
+    const { store, user } = await renderPrompter('pw');
+
+    await user.type(await findPassphraseField(), 'pw');
+    await user.click(screen.getByRole('button', { name: 'Submit passphrase' }));
+    await waitFor(() => expect(store.getState().ui.passphrase).toBe('pw'));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+
+    act(() => {
+      store.dispatch(setShowPassphrasePrompter(true));
+    });
+    await user.click(
+      await screen.findByRole('button', { name: 'Enter your Passphrase' }),
+    );
+    expect(await findPassphraseField()).toHaveValue('');
   });
 
   it('cannot be closed while it checks a passphrase', async () => {

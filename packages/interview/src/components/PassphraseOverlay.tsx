@@ -9,6 +9,7 @@ import Field from '@codaco/fresco-ui/form/Field/Field';
 import PasswordField from '@codaco/fresco-ui/form/fields/PasswordField';
 import { FormWithoutProvider } from '@codaco/fresco-ui/form/Form';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
+import ResetFormWhenClosed from '@codaco/fresco-ui/form/ResetFormWhenClosed';
 import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
 import type { FormSubmitHandler } from '@codaco/fresco-ui/form/store/types';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
@@ -27,11 +28,13 @@ type PassphraseOverlayProps = {
 /**
  * Asks for the passphrase and puts it in force, if it unlocks what the
  * interview already holds. Opened from inside another modal, it is nested in
- * that modal and stays usable over it.
+ * that modal and stays usable over it. Each opening starts empty: what was
+ * typed, and why it was turned away, go when the overlay closes.
  */
 export default function PassphraseOverlay(props: PassphraseOverlayProps) {
   return (
     <FormStoreProvider>
+      <ResetFormWhenClosed open={props.show} />
       <PassphraseOverlayContent {...props} />
     </FormStoreProvider>
   );
