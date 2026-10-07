@@ -175,7 +175,7 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
 
   it('createProtocol rejects a section that fails write-time validation', async () => {
     const protocol = baseProtocol();
-    (protocol.stages[0] as { label?: string }).label = '';
+    protocol.stages[0]!.label = { en: '' };
     await expect(create(protocol)).rejects.toThrow(
       SectionValidationFailedError,
     );
@@ -195,13 +195,13 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
         owner: 'tab-1',
         epoch: lease!.epoch,
         clientSeq: 1n,
-        commands: [{ op: 'set', key: 'label', value: 'Renamed' }],
+        commands: [{ op: 'set', key: 'label', value: { en: 'Renamed' } }],
       }),
     );
     const document = (await run(getDraftDocument(TEST_TEAM_ID, draftId))) as {
-      stages: { id: string; label: string }[];
+      stages: { id: string; label: unknown }[];
     };
-    expect(document.stages[0]!.label).toBe('Renamed');
+    expect(document.stages[0]!.label).toEqual({ en: 'Renamed' });
   });
 
   it('sync commits can share an existing transaction and preserve deduplication', async () => {
@@ -248,9 +248,9 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
         stage: {
           id: 'info1',
           type: 'Information',
-          label: 'About',
-          title: 'About this study',
-          items: [{ id: 'item1', type: 'text', content: 'Welcome.' }],
+          label: { en: 'About' },
+          title: { en: 'About this study' },
+          items: [{ id: 'item1', type: 'text', content: { en: 'Welcome.' } }],
         },
         index: 1,
       }),
@@ -281,8 +281,8 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
           stage: {
             id: 'transactionalInfo',
             type: 'Information',
-            label: 'Transactional',
-            title: 'Transactional',
+            label: { en: 'Transactional' },
+            title: { en: 'Transactional' },
             items: [],
           },
           index: 1,
@@ -332,9 +332,9 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
           stage: {
             id: 'info2',
             type: 'Information',
-            label: 'X',
-            title: 'X',
-            items: [{ id: 'item1', type: 'text', content: 'Y.' }],
+            label: { en: 'X' },
+            title: { en: 'X' },
+            items: [{ id: 'item1', type: 'text', content: { en: 'Y.' } }],
           },
           index: 99,
         }),
@@ -356,9 +356,9 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
             stage: {
               id: 'info3',
               type: 'Information',
-              label: 'X',
-              title: 'X',
-              items: [{ id: 'item1', type: 'text', content: 'Y.' }],
+              label: { en: 'X' },
+              title: { en: 'X' },
+              items: [{ id: 'item1', type: 'text', content: { en: 'Y.' } }],
             },
             index,
           }),
@@ -397,6 +397,7 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
         ref: { entity: 'node', typeId: 'place' },
         definition: {
           name: 'Place',
+          label: { en: 'Place' },
           color: 'node-color-seq-3',
           shape: { default: 'square' },
         },
@@ -417,6 +418,7 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
           ref: { entity: 'node', typeId: 'place' },
           definition: {
             name: 'Place',
+            label: { en: 'Place' },
             color: 'node-color-seq-3',
             shape: { default: 'square' },
           },
@@ -445,6 +447,7 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
           ref: { entity: 'node', typeId: 'person type' },
           definition: {
             name: 'Person Type',
+            label: { en: 'Person type' },
             color: 'node-color-seq-3',
             shape: { default: 'square' },
           },
@@ -517,9 +520,9 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
         stage: {
           id: 'infoFence',
           type: 'Information',
-          label: 'Fence',
-          title: 'Fence',
-          items: [{ id: 'item1', type: 'text', content: 'Z.' }],
+          label: { en: 'Fence' },
+          title: { en: 'Fence' },
+          items: [{ id: 'item1', type: 'text', content: { en: 'Z.' } }],
         },
         index: 0,
       }),
@@ -557,7 +560,11 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
       addCodebookEntity(TEST_TEAM_ID, {
         draftId,
         ref: { entity: 'edge', typeId: 'knows' },
-        definition: { name: 'Knows', color: 'edge-color-seq-2' },
+        definition: {
+          name: 'Knows',
+          label: { en: 'Knows' },
+          color: 'edge-color-seq-2',
+        },
       }),
     );
 

@@ -88,12 +88,12 @@ function buildOptions(
   const options: VariableOption[] = [];
 
   if (hasMissingValue) {
-    options.push({ label: 'N/A', value: -1 });
+    options.push({ label: { en: 'N/A' }, value: -1 });
   }
 
   if (labelSet === 'markdown') {
     MARKDOWN_CATEGORY_LABELS.forEach((label, i) => {
-      options.push({ label, value: i });
+      options.push({ label: { en: label }, value: i });
     });
     return options;
   }
@@ -101,7 +101,9 @@ function buildOptions(
   if (labelSet === 'sentences') {
     for (let i = 0; i < categoryCount; i++) {
       options.push({
-        label: SENTENCE_CATEGORY_LABELS[i % SENTENCE_CATEGORY_LABELS.length]!,
+        label: {
+          en: SENTENCE_CATEGORY_LABELS[i % SENTENCE_CATEGORY_LABELS.length]!,
+        },
         value: i + 1,
       });
     }
@@ -112,7 +114,7 @@ function buildOptions(
     // The survey set is a fixed instrument; its own length decides the bin
     // count, so `categoryCount` does not apply.
     SURVEY_CATEGORY_LABELS.forEach((label, i) => {
-      options.push({ label, value: i });
+      options.push({ label: { en: label }, value: i });
     });
     return options;
   }
@@ -122,7 +124,7 @@ function buildOptions(
       longLabels && i === 0
         ? LONG_CATEGORY_LABEL
         : (CATEGORY_LABELS[i] ?? `Category ${i + 1}`);
-    options.push({ label, value: i + 1 });
+    options.push({ label: { en: label }, value: i + 1 });
   }
 
   return options;

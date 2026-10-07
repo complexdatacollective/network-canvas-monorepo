@@ -1,3 +1,6 @@
+import { tmpdir } from 'node:os';
+
+import { resolveConfig } from 'vite';
 import { describe, expect, it } from 'vitest';
 
 import { appI18n } from '../vite.ts';
@@ -6,11 +9,10 @@ import { appI18n } from '../vite.ts';
  * Which module ids the catalog compiler claims.
  *
  * Getting this wrong fails silently and expensively: an id that does not match
- * is simply not compiled, the catalog stays a map of ICU strings, and the
- * runtime parser it was supposed to make unnecessary comes back into the
- * production bundle. Nothing errors — the app just carries a parser and does
- * the work at runtime — so the only thing standing between that and a release
- * is this matching.
+ * is simply not compiled and the catalog stays a map of ICU strings that the
+ * app parses at run time. Nothing errors — the app just does the work on the
+ * client — so the only thing standing between that and a release is this
+ * matching.
  */
 
 type TransformFn = (
@@ -39,24 +41,25 @@ function catalogTransform(): TransformFn {
 
 const CATALOG = JSON.stringify({ 'demo.hello': 'Hello {name}' });
 
-const pluginNames = (plugins: ReturnType<typeof appI18n>): string[] =>
-  plugins.flatMap((entry) =>
-    typeof entry === 'object' && entry !== null && 'name' in entry
-      ? [entry.name]
-      : [],
-  );
-
-describe('the build kind', () => {
-  it('drops the ICU parser from an app bundle', () => {
-    expect(pluginNames(appI18n())).toContain('app-i18n-no-parser');
-  });
-
-  it('compiles a library’s messages but leaves it the parser', () => {
-    // A package cannot know whether its consumer's bundle keeps the parser,
-    // so it compiles its own messages and takes no view on the alias.
-    const names = pluginNames(appI18n({ build: 'library' }));
-    expect(names).toContain('app-i18n-catalogs');
-    expect(names).not.toContain('app-i18n-no-parser');
+describe('the ICU parser', () => {
+  it('is left resolvable in a production build', async () => {
+    // Protocol strings are ICU messages that protocol-validation and the
+    // interview runtime parse at run time, so no plugin may swap the parser
+    // for FormatJS's no-parser build. Resolving the config runs every
+    // plugin's `config` hook, which is where such an alias is installed.
+    const config = await resolveConfig(
+      { configFile: false, root: tmpdir(), plugins: appI18n() },
+      'build',
+      'production',
+    );
+    expect(config.plugins.map((plugin) => plugin.name)).toContain(
+      'app-i18n-catalogs',
+    );
+    expect(
+      config.resolve.alias.filter(({ replacement }) =>
+        replacement.includes('icu-messageformat-parser'),
+      ),
+    ).toEqual([]);
   });
 });
 

@@ -148,3 +148,77 @@ export const StackedWhenNarrow: Story = {
     await expect(handle).not.toBeVisible();
   },
 };
+
+/**
+ * A protocol in two languages: the preview carries a language menu of its own,
+ * and choosing from it moves the whole dialog.
+ *
+ * The question is written in both languages and the hint only in English, so
+ * the menu has something to flag, and a participant reading Spanish would meet
+ * the English hint — which is what the preview shows once Spanish is chosen.
+ */
+export const SwitchingLanguage: Story = {
+  args: {
+    localization: { defaultLocale: 'en-US', locales: ['en-US', 'es'] },
+    stage: {
+      type: 'EgoForm',
+      fields: {
+        label: { 'en-US': 'Ego Form', 'es': 'Formulario' },
+        form: {
+          fields: [
+            {
+              variable: 'ego_name',
+              prompt: {
+                'en-US': 'What is your name?',
+                'es': '¿Cómo te llamas?',
+              },
+              hint: { 'en-US': 'Use the name you go by.' },
+            },
+          ],
+        },
+      },
+    },
+  },
+  play: async () => {
+    const dialog = await openTheFieldDialog();
+    const { fields, preview } = panesOf(dialog);
+
+    await expect(
+      within(preview).getByRole('textbox', { name: 'What is your name?' }),
+    ).toBeVisible();
+
+    const trigger = within(preview).getByRole('button', {
+      name: /Editing language/,
+    });
+    await userEvent.click(trigger);
+    const spanish = await screen.findByRole('menuitemradio', {
+      name: /^español/i,
+    });
+    await waitFor(async () => {
+      await expect(within(spanish).getByText('Missing')).toBeVisible();
+    });
+    await userEvent.click(spanish);
+    await waitFor(async () => {
+      await expect(screen.queryByRole('menu')).toBeNull();
+      await expect(trigger).toHaveFocus();
+    });
+
+    // The preview reads in Spanish, with the English hint a participant
+    // reading Spanish would be shown in its place.
+    await expect(
+      within(preview).getByRole('textbox', { name: '¿Cómo te llamas?' }),
+    ).toBeVisible();
+    await expect(
+      within(preview).getByText('Use the name you go by.'),
+    ).toBeVisible();
+    await expect(trigger).toHaveTextContent(/español/i);
+
+    // One language for the whole dialog: the settings beside the preview have
+    // moved with it.
+    for (const menu of within(fields).getAllByRole('button', {
+      name: /Editing language/,
+    })) {
+      await expect(menu).toHaveTextContent(/español/i);
+    }
+  },
+};

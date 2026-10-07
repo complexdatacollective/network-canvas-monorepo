@@ -21,6 +21,7 @@ import FamilyPedigree from './FamilyPedigree/FamilyPedigree';
 import FinishSession from './FinishSession';
 import Geospatial from './Geospatial/Geospatial';
 import Information from './Information/Information';
+import LanguageChooser from './LanguageChooser/LanguageChooser';
 import { interfaceMessages } from './messages';
 import NameGenerator from './NameGenerator/NameGenerator';
 import NameGeneratorQuickAdd from './NameGenerator/NameGeneratorQuickAdd';
@@ -89,6 +90,8 @@ const getInterface = (interfaceType: InterfaceType) => {
       return FamilyPedigree;
     case 'NarrativePedigree':
       return NarrativePedigree;
+    case 'LanguageChooser':
+      return LanguageChooser;
     default:
       return () => <NotFoundInterface interfaceType={interfaceType} />;
   }

@@ -42,6 +42,11 @@ export const getActiveSession = (state: RootState) => {
 
 export const getInterviewId = (state: RootState) => state.session.id;
 
+export const getLocalePreference = (state: RootState) =>
+  state.session.localePreference;
+
+export const getRecordedLocale = (state: RootState) => state.session.locale;
+
 /**
  * The package no longer stores currentStep in Redux, so every selector that
  * needs it must accept it from the caller. Current step should be derived from
@@ -76,7 +81,7 @@ export const getCurrentStage = createSelector(
 
 /**
  * Returns the subject for the current stage, or `null` for subjectless stages
- * (Information, Anonymisation).
+ * (Information, Anonymisation, LanguageChooser, the appended finish stage).
  *
  * This selector must never throw because Redux dispatches trigger synchronous
  * subscription notifications. During stage transitions, components from the
@@ -88,6 +93,8 @@ export const getStageSubject = createSelector(getCurrentStage, (stage) => {
   invariant(stage, 'getStageSubject: No current stage found');
 
   if (
+    stage.type === 'FinishSession' ||
+    stage.type === 'LanguageChooser' ||
     stage.type === 'Information' ||
     stage.type === 'Anonymisation' ||
     stage.type === 'FamilyPedigree' ||

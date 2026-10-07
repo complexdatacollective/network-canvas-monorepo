@@ -25,7 +25,7 @@ const initialStage = {
   label: '',
 };
 
-type StageDependencyCandidate = Pick<Stage, 'id' | 'label' | 'type'> & {
+type StageDependencyCandidate = Pick<Stage, 'id' | 'type'> & {
   sourceStageId?: string;
   skipLogic?: {
     destination?: SkipLogicDestination;

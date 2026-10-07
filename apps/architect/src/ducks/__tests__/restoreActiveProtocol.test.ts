@@ -24,6 +24,7 @@ import {
 const makeProtocol = (name: string): CurrentProtocol => ({
   name,
   schemaVersion: 9,
+  localization: { defaultLocale: 'en', locales: ['en'] },
   stages: [],
   codebook: {},
 });

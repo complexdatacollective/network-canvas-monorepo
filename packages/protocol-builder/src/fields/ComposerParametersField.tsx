@@ -1,3 +1,5 @@
+import { isEqual } from 'es-toolkit';
+
 import { useAppIntl } from '@codaco/app-i18n/react';
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 
@@ -34,18 +36,18 @@ export type ComposerParametersFieldProps = CreateFormFieldProps<
   }
 >;
 
-/** Whether two blocks say the same thing. Flat: a block is strings and numbers. */
+/**
+ * Whether two blocks say the same thing. Compared structurally: a scale's two
+ * end labels are localized maps, so two blocks with the same translations are
+ * different objects.
+ */
 const sameParameters = (
   first: ComposerParameters | undefined,
   second: ComposerParameters | undefined,
-): boolean => {
-  if (first === undefined || second === undefined) return first === second;
-  const keys = Object.keys(first);
-  return (
-    keys.length === Object.keys(second).length &&
-    keys.every((key) => first[key] === second[key])
-  );
-};
+): boolean =>
+  first === undefined || second === undefined
+    ? first === second
+    : isEqual(first, second);
 
 /**
  * The settings a network composer form field's chosen input control takes.

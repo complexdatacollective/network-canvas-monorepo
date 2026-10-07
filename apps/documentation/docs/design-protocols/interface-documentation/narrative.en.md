@@ -26,7 +26,7 @@ Everything you configure on the Narrative lives in one or more **presets**. A pr
 | **Links** (optional)      | One or more edge types to draw between the nodes.                                                                                                                                                                |
 | **Attributes** (optional) | One or more boolean variables. Nodes whose value is true are highlighted while the preset is active.                                                                                                             |
 
-Each preset has a label that identifies it in the interface. During the interview, a floating preset switcher lets the researcher or participant step between presets and toggle the groups, links, and highlighted attributes on and off. Where a preset lists several highlight attributes, they choose which one to show at a time. Nothing done here is written back to the data — the Narrative only ever reads.
+Each preset has a label that identifies it in the interface. During the interview, a floating preset switcher lets the researcher or participant step between presets and toggle the groups, links, and highlighted attributes on and off. Where a preset lists several highlight attributes, they choose which one to show at a time, from a list that shows the label you gave each attribute. Nothing done here is written back to the data — the Narrative only ever reads.
 
 ![An example Narrative preset, with highlighted nodes, edges between them, and colored group hulls](/assets/img/interface-documentation/narrative/narrative-example.png)
 
@@ -38,7 +38,7 @@ A Narrative needs at least one preset. For each preset you set:
 - **Layout Variable** — the variable used to position the nodes for this preset.
 - **Group Variable** (optional) — a categorical variable used to draw convex hulls around the nodes that share each value.
 - **Display Edges** (optional) — one or more edge types to draw.
-- **Highlight Node Attributes** (optional) — one or more boolean variables; nodes whose value is true are highlighted while the preset is active.
+- **Highlight Node Attributes** (optional) — one or more boolean variables; nodes whose value is true are highlighted while the preset is active. Each variable you choose also needs a label, which participants see in the preset switcher. The label starts as the variable's name, and you can translate it like any other text (see [Translating Your Protocol](/en/design-protocols/translating-your-protocol#labels-for-highlighted-attributes-on-a-narrative-stage)).
 
 The group, edge, and highlight options each pick from the variables already in your codebook, so define the variables a preset needs before you build it.
 

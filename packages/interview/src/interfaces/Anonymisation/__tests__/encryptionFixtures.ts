@@ -1,6 +1,7 @@
 import {
   asEntityAttributeReference,
   type Codebook,
+  getLocaleMetadata,
   type Variable,
 } from '@codaco/protocol-validation';
 import {
@@ -23,18 +24,26 @@ import { generateSecureAttributes } from '../utils';
 export const NODE_TYPE = 'person';
 
 export const encryptedVariables: Record<string, Variable> = {
-  name: { name: 'name', type: 'text', component: 'Text', encrypted: true },
-  nickname: {
-    name: 'nickname',
+  name: {
+    name: 'name',
+    label: 'name',
     type: 'text',
     component: 'Text',
     encrypted: true,
   },
-  age: { name: 'age', type: 'number', component: 'Number' },
+  nickname: {
+    name: 'nickname',
+    label: 'nickname',
+    type: 'text',
+    component: 'Text',
+    encrypted: true,
+  },
+  age: { name: 'age', label: 'age', type: 'number', component: 'Number' },
 };
 
 const personDefinition = {
   name: 'Person',
+  label: { en: 'Person' },
   color: 'node-color-seq-1',
   shape: { default: 'circle' },
   variables: encryptedVariables,
@@ -109,16 +118,19 @@ const nameGeneratorStages: Stages = [
   {
     id: 'stage-1',
     type: 'NameGenerator',
-    label: 'Name generator',
+    label: { en: 'Name generator' },
     subject: { entity: 'node', type: NODE_TYPE },
     form: {
-      title: 'Add a person',
+      title: { en: 'Add a person' },
       fields: [
-        { variable: asEntityAttributeReference('name'), prompt: 'Name' },
-        { variable: asEntityAttributeReference('age'), prompt: 'Age' },
+        {
+          variable: asEntityAttributeReference('name'),
+          prompt: { en: 'Name' },
+        },
+        { variable: asEntityAttributeReference('age'), prompt: { en: 'Age' } },
       ],
     },
-    prompts: [{ id: 'prompt-1', text: 'Name people' }],
+    prompts: [{ id: 'prompt-1', text: { en: 'Name people' } }],
   },
 ];
 
@@ -127,21 +139,27 @@ export const alterFormStages: Stages = [
   {
     id: 'alter-form',
     type: 'AlterForm',
-    label: 'Alter form',
+    label: { en: 'Alter form' },
     subject: { entity: 'node', type: NODE_TYPE },
-    introductionPanel: { title: 'About each person', text: 'Intro' },
+    introductionPanel: {
+      title: { en: 'About each person' },
+      text: { en: 'Intro' },
+    },
     form: {
       fields: [
-        { variable: asEntityAttributeReference('name'), prompt: 'Name' },
-        { variable: asEntityAttributeReference('age'), prompt: 'Age' },
+        {
+          variable: asEntityAttributeReference('name'),
+          prompt: { en: 'Name' },
+        },
+        { variable: asEntityAttributeReference('age'), prompt: { en: 'Age' } },
       ],
     },
   },
   {
     id: 'next-screen',
     type: 'Information',
-    label: 'Next screen',
-    title: 'Next screen',
+    label: { en: 'Next screen' },
+    title: { en: 'Next screen' },
     items: [],
   },
 ];
@@ -183,6 +201,9 @@ export function createEncryptionStore(
       finishTime: null,
       exportTime: null,
       lastUpdated: '2026-01-01T00:00:00.000Z',
+      localePreference: null,
+      locale: null,
+      localeOptions: [getLocaleMetadata('en')],
       network: {
         ...createInitialNetwork(),
         nodes,
@@ -197,6 +218,7 @@ export function createEncryptionStore(
       importedAt: '2026-01-01T00:00:00.000Z',
       name: 'Encryption protocol',
       schemaVersion: 9,
+      localization: { defaultLocale: 'en', locales: ['en'] },
       assets: [],
       codebook: {
         node: {
@@ -208,5 +230,8 @@ export function createEncryptionStore(
     },
   };
 
-  return createStore(payload, { onSync });
+  return createStore(payload, {
+    onSync,
+    onProtocolLocaleChange: () => Promise.resolve(),
+  });
 }

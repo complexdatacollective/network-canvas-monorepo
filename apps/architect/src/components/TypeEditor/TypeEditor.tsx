@@ -8,7 +8,9 @@ import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import type { NodeShape } from '@codaco/fresco-ui/Node';
 import Section from '@codaco/fresco-ui/Section';
+import type { LocalizedString } from '@codaco/protocol-validation';
 import ArchitectField from '~/components/Form/ArchitectField';
+import LabelField from '~/components/Localization/LabelField';
 import { useAppSelector } from '~/ducks/hooks';
 import type { RootState } from '~/ducks/store';
 import { getCodebook } from '~/selectors/protocol';
@@ -50,6 +52,20 @@ const messages = defineMessages({
       'Enter a name for this {entity, select, node {node} edge {edge} other {ego}} type...',
     description:
       'The placeholder text in components / TypeEditor / TypeEditor.',
+  },
+  typeLabel: {
+    id: 'architect.typeEditor.typeEditor.typeLabel',
+    defaultMessage:
+      '{entity, select, node {Node type label} other {Edge type label}}',
+    description:
+      'Label of the field holding the words participants are shown for this node or edge type, as opposed to the type name the researcher and the exported data use. entity is node or edge.',
+  },
+  typeLabelHint: {
+    id: 'architect.typeEditor.typeEditor.typeLabelHint',
+    defaultMessage:
+      '{entity, select, node {The words participants are shown for this node type.} other {The words participants are shown for this edge type.}}',
+    description:
+      'Hint under the node or edge type label field, which sits below the type name field. When the protocol has several languages, a language menu above the field chooses which translation is being written. entity is node or edge.',
   },
   typeColor: {
     id: 'architect.typeEditor.typeEditor.typeColor',
@@ -112,6 +128,7 @@ const DEFAULT_NODE_SHAPE: NodeShape = 'circle';
 /** The entity-type definition as the dialog holds it before it is committed. */
 export type EntityTypeValues = {
   name?: string;
+  label?: LocalizedString;
   color?: string;
   icon?: string;
   shape?: { default?: NodeShape; dynamic?: ShapeMappingDraft };
@@ -196,6 +213,14 @@ const TypeEditor = ({
             entity: entity,
           })}
         />
+        {!isNew && (
+          <LabelField
+            name="label"
+            label={intl.formatMessage(messages.typeLabel, { entity })}
+            hint={intl.formatMessage(messages.typeLabelHint, { entity })}
+            initialValue={initialValues.label}
+          />
+        )}
       </Section>
 
       <Section title={intl.formatMessage(messages.typeColor)}>

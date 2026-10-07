@@ -93,21 +93,21 @@ function buildOptions(
 
   if (labels) {
     labels.forEach((label, i) => {
-      options.push({ label, value: i });
+      options.push({ label: { en: label }, value: i });
     });
     if (hasMissingValue) {
-      options.push({ label: 'N/A', value: -1 });
+      options.push({ label: { en: 'N/A' }, value: -1 });
     }
     return options;
   }
 
   for (let i = 0; i < binCount; i++) {
     const label = ORDINAL_LABELS[i] ?? `Option ${i + 1}`;
-    options.push({ label, value: i + 1 });
+    options.push({ label: { en: label }, value: i + 1 });
   }
 
   if (hasMissingValue) {
-    options.push({ label: 'N/A', value: -1 });
+    options.push({ label: { en: 'N/A' }, value: -1 });
   }
 
   return options;

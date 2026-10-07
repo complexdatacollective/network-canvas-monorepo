@@ -9,14 +9,16 @@ type ProtocolState = ProtocolPayload;
 
 const initialState = {} as ProtocolState;
 
-// FinishSession is a UI sentinel appended to every interview's stage list;
-// it is not part of the protocol schema, so it has no Stage variant. The
-// cast at the use site below bridges it into the Stage union expected
-// downstream — runtime consumers branch on `stage.type === 'FinishSession'`.
-const DefaultFinishStage = {
+/**
+ * The stage the runtime appends to every interview's stage list. It is not
+ * part of the protocol, so it carries no protocol-authored copy: the
+ * FinishSession interface takes its text from the interview's own catalog.
+ */
+type FinishStage = Readonly<{ id: string; type: 'FinishSession' }>;
+
+const DefaultFinishStage: FinishStage = {
   id: v4(),
   type: 'FinishSession',
-  label: 'Finish Interview',
 };
 
 const protocolSlice = createSlice({
@@ -25,9 +27,13 @@ const protocolSlice = createSlice({
   reducers: {},
   selectors: {
     getCodebook: (state) => state.codebook,
+    getProtocolLocalization: (state) => state.localization,
     getStages: createSelector(
       [(state: ProtocolState) => state.stages],
-      (stages) => [...(stages ?? []), DefaultFinishStage as Stage],
+      (stages): (Stage | FinishStage)[] => [
+        ...(stages ?? []),
+        DefaultFinishStage,
+      ],
     ),
     getProtocolStages: createSelector(
       [(state: ProtocolState) => state.stages],
@@ -42,7 +48,12 @@ const protocolSlice = createSlice({
 });
 
 // export selectors
-export const { getCodebook, getStages, getProtocolStages, getAssetManifest } =
-  protocolSlice.selectors;
+export const {
+  getCodebook,
+  getProtocolLocalization,
+  getStages,
+  getProtocolStages,
+  getAssetManifest,
+} = protocolSlice.selectors;
 
 export default protocolSlice.reducer;

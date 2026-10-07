@@ -27,6 +27,7 @@ import { StageMetadataContext } from '../../../contexts/StageMetadataContext';
 import { ContractProvider } from '../../../contract/context';
 import { InterviewI18nProvider } from '../../../i18n/InterviewI18nProvider';
 import type { BeforeNextFunction, StageProps } from '../../../types';
+import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
 import {
   createEncryptionStore,
   encryptionFor,
@@ -119,26 +120,39 @@ const GAMETE_VAR = 'gameteRole';
 const nodeVariables: Record<string, Variable> = {
   [NAME_VAR]: {
     name: 'name',
+    label: 'name',
     type: 'text',
     component: 'Text',
     encrypted: true,
   },
-  [EGO_VAR]: { name: 'isEgo', type: 'boolean' },
-  [REL_VAR]: { name: 'relationshipToEgo', type: 'text' },
-  [BIO_SEX_VAR]: { name: 'biologicalSex', type: 'text' },
-  [NOMINATED_VAR]: { name: 'nominated', type: 'boolean' },
-  [AFFECTED_VAR]: { name: 'affected', type: 'boolean' },
+  [EGO_VAR]: { name: 'isEgo', label: 'isEgo', type: 'boolean' },
+  [REL_VAR]: {
+    name: 'relationshipToEgo',
+    label: 'relationshipToEgo',
+    type: 'text',
+  },
+  [BIO_SEX_VAR]: {
+    name: 'biologicalSex',
+    label: 'biologicalSex',
+    type: 'text',
+  },
+  [NOMINATED_VAR]: { name: 'nominated', label: 'nominated', type: 'boolean' },
+  [AFFECTED_VAR]: { name: 'affected', label: 'affected', type: 'boolean' },
 };
 
 const edgeTypes: Codebook['edge'] = {
-  [EDGE_TYPE]: { name: 'Family', color: 'edge-color-seq-1' },
+  [EDGE_TYPE]: {
+    name: 'Family',
+    label: { en: 'Family' },
+    color: 'edge-color-seq-1',
+  },
 };
 
 const stage: StageProps<'FamilyPedigree'>['stage'] = {
   id: 'pedigree',
   type: 'FamilyPedigree',
-  label: 'Family Pedigree',
-  censusPrompt: 'Build your pedigree.',
+  label: { en: 'Family Pedigree' },
+  censusPrompt: { en: 'Build your pedigree.' },
   framing: { mode: 'fixed', value: 'gendered' },
   boundaries: {
     requireGrandparents: 'off',
@@ -147,7 +161,7 @@ const stage: StageProps<'FamilyPedigree'>['stage'] = {
   nominationPrompts: [
     {
       id: 'nominate',
-      text: 'Who has been unwell?',
+      text: { en: 'Who has been unwell?' },
       variable: asEntityAttributeReference(NOMINATED_VAR),
     },
   ],
@@ -170,13 +184,13 @@ const stage: StageProps<'FamilyPedigree'>['stage'] = {
 const narrativeStage: StageProps<'NarrativePedigree'>['stage'] = {
   id: 'narrative',
   type: 'NarrativePedigree',
-  label: 'Family health',
+  label: { en: 'Family health' },
   sourceStageId: 'pedigree',
   showAtRiskStatuses: false,
   diseases: [
     {
       id: 'condition',
-      label: 'Condition',
+      label: { en: 'Condition' },
       color: 'node-color-seq-1',
       variable: asEntityAttributeReference(AFFECTED_VAR),
       inheritancePattern: 'autosomalDominant',
@@ -313,26 +327,28 @@ function renderPedigree(store: Store) {
   function Wrapper({ children }: { children: ReactNode }) {
     return (
       <Provider store={store}>
-        <ContractProvider
-          onFinish={vi.fn()}
-          onRequestAsset={vi.fn()}
-          flags={{ isE2E: false, isDevelopment: false }}
-        >
-          <InterviewI18nProvider requestedLocale="en">
-            <DialogProvider>
-              <DndStoreProvider>
-                <CurrentStepProvider
-                  currentStep={0}
-                  onStepChange={() => undefined}
-                >
-                  <StageMetadataContext.Provider value={registerBeforeNext}>
-                    {children}
-                  </StageMetadataContext.Provider>
-                </CurrentStepProvider>
-              </DndStoreProvider>
-            </DialogProvider>
-          </InterviewI18nProvider>
-        </ContractProvider>
+        <TestProtocolLocalization>
+          <ContractProvider
+            onFinish={vi.fn()}
+            onRequestAsset={vi.fn()}
+            flags={{ isE2E: false, isDevelopment: false }}
+          >
+            <InterviewI18nProvider requestedLocale="en">
+              <DialogProvider>
+                <DndStoreProvider>
+                  <CurrentStepProvider
+                    currentStep={0}
+                    onStepChange={() => undefined}
+                  >
+                    <StageMetadataContext.Provider value={registerBeforeNext}>
+                      {children}
+                    </StageMetadataContext.Provider>
+                  </CurrentStepProvider>
+                </DndStoreProvider>
+              </DialogProvider>
+            </InterviewI18nProvider>
+          </ContractProvider>
+        </TestProtocolLocalization>
       </Provider>
     );
   }
@@ -444,11 +460,13 @@ describe('FamilyPedigree with an encrypted name variable', () => {
 function renderNarrative(store: Store) {
   render(
     <Provider store={store}>
-      <InterviewI18nProvider requestedLocale="en">
-        <CurrentStepProvider currentStep={1} onStepChange={() => undefined}>
-          <NarrativePedigreeView stage={narrativeStage} />
-        </CurrentStepProvider>
-      </InterviewI18nProvider>
+      <TestProtocolLocalization>
+        <InterviewI18nProvider requestedLocale="en">
+          <CurrentStepProvider currentStep={1} onStepChange={() => undefined}>
+            <NarrativePedigreeView stage={narrativeStage} />
+          </CurrentStepProvider>
+        </InterviewI18nProvider>
+      </TestProtocolLocalization>
     </Provider>,
   );
 }

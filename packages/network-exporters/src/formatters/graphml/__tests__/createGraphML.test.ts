@@ -95,6 +95,22 @@ describe('buildGraphML', () => {
     expect(graphElement?.getAttribute('edgedefault')).toEqual('undirected');
   });
 
+  it('writes the interview locale as a graph attribute', () => {
+    const graphElement = xml.getElementsByTagName('graph')[0];
+    expect(graphElement?.getAttribute('nc:interviewLocale')).toEqual('en-US');
+  });
+
+  it('omits the interview locale attribute when none was reported', async () => {
+    const withoutLocale = processMockNetworks([mockNetwork, mockNetwork2])[
+      'protocol-uid-1'
+    ]?.[1];
+    if (!withoutLocale) throw new Error('No second session');
+    const result = await buildXML(withoutLocale, codebook, exportOptions);
+
+    const graphElement = result.getElementsByTagName('graph')[0];
+    expect(graphElement?.hasAttribute('nc:interviewLocale')).toBe(false);
+  });
+
   it('adds nodes', () => {
     expect(xml.getElementsByTagName('node')).toHaveLength(4);
   });
@@ -339,55 +355,70 @@ describe('buildGraphML', () => {
           ...representedNodeType,
           variables: {
             ...representedNodeType.variables,
-            unansweredNumber: { name: 'unansweredNumber', type: 'number' },
+            unansweredNumber: {
+              name: 'unansweredNumber',
+              label: 'Unanswered number',
+              type: 'number',
+            },
             unansweredNumericOrdinal: {
               name: 'unansweredNumericOrdinal',
+              label: 'Unanswered numeric ordinal',
               type: 'ordinal',
               options: [
-                { label: 'One', value: 1 },
-                { label: 'Two', value: 2 },
+                { label: { en: 'One' }, value: 1 },
+                { label: { en: 'Two' }, value: 2 },
               ],
             },
           },
         },
         'unanswered': {
           name: 'unanswered',
+          label: { en: 'Unanswered' },
           color: 'node-color-seq-1',
           shape: { default: 'circle' },
           variables: {
             unrepresentedNumber: {
               name: 'unrepresentedNumber',
+              label: 'Unrepresented number',
               type: 'number',
             },
             unrepresentedNumericOrdinal: {
               name: 'unrepresentedNumericOrdinal',
+              label: 'Unrepresented numeric ordinal',
               type: 'ordinal',
               options: [
-                { label: 'One', value: 1 },
-                { label: 'Two', value: 2 },
+                { label: { en: 'One' }, value: 1 },
+                { label: { en: 'Two' }, value: 2 },
               ],
             },
             stringOrdinal: {
               name: 'stringOrdinal',
+              label: 'String ordinal',
               type: 'ordinal',
               options: [
-                { label: 'One', value: 'one' },
-                { label: 'Two', value: 'two' },
+                { label: { en: 'One' }, value: 'one' },
+                { label: { en: 'Two' }, value: 'two' },
               ],
             },
             emptyOrdinal: {
               name: 'emptyOrdinal',
+              label: 'Empty ordinal',
               type: 'ordinal',
               options: [],
             },
-            text: { name: 'text', type: 'text' },
-            boolean: { name: 'boolean', type: 'boolean' },
+            text: { name: 'text', label: 'Text', type: 'text' },
+            boolean: {
+              name: 'boolean',
+              label: 'Boolean',
+              type: 'boolean',
+            },
             categorical: {
               name: 'categorical',
+              label: 'Categorical',
               type: 'categorical',
               options: [
-                { label: 'One', value: 1 },
-                { label: 'Two', value: 2 },
+                { label: { en: 'One' }, value: 1 },
+                { label: { en: 'Two' }, value: 2 },
               ],
             },
           },
@@ -500,10 +531,15 @@ describe('buildGraphML', () => {
         ...codebook.node,
         'declared-shared-node': {
           name: 'declared shared node',
+          label: { en: 'Declared shared node' },
           color: 'node-color-seq-1',
           shape: { default: 'circle' },
           variables: {
-            shared: { name: 'declaredShared', type: 'text' },
+            shared: {
+              name: 'declaredShared',
+              label: 'Declared shared',
+              type: 'text',
+            },
           },
         },
       },

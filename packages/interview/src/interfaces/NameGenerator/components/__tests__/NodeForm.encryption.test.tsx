@@ -13,6 +13,7 @@ import { CurrentStepProvider } from '../../../../contexts/CurrentStepContext';
 import { writeSubmissionResult } from '../../../../forms/writeSubmissionResult';
 import { InterviewI18nProvider } from '../../../../i18n/InterviewI18nProvider';
 import { addNode as addSessionNode } from '../../../../store/modules/session';
+import { TestProtocolLocalization } from '../../../__tests__/TestProtocolLocalization';
 import {
   createEncryptionStore,
   encryptedVariables,
@@ -84,17 +85,19 @@ async function renderNodeForm({
 
   const tree = () => (
     <Provider store={store}>
-      <InterviewI18nProvider requestedLocale="en">
-        <CurrentStepProvider currentStep={0} onStepChange={vi.fn()}>
-          <NodeForm
-            selectedNode={selected}
-            form={stage.form}
-            disabled={false}
-            onClose={onClose}
-            addNode={addNode}
-          />
-        </CurrentStepProvider>
-      </InterviewI18nProvider>
+      <TestProtocolLocalization>
+        <InterviewI18nProvider requestedLocale="en">
+          <CurrentStepProvider currentStep={0} onStepChange={vi.fn()}>
+            <NodeForm
+              selectedNode={selected}
+              form={stage.form}
+              disabled={false}
+              onClose={onClose}
+              addNode={addNode}
+            />
+          </CurrentStepProvider>
+        </InterviewI18nProvider>
+      </TestProtocolLocalization>
     </Provider>
   );
   const { rerender } = render(tree());

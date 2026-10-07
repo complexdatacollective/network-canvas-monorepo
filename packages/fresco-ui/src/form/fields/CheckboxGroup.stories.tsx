@@ -408,3 +408,40 @@ export const UnrestrictedOptionValues: Story = {
     }
   },
 };
+
+/**
+ * Protocol copy arrives as `PresentationalText`: each label renders on an
+ * element carrying the text's own `lang` and `dir`, so Arabic options lay out
+ * right-to-left inside a left-to-right page. A plain string label keeps the
+ * page's language.
+ */
+export const LocalizedLabels: Story = {
+  args: {
+    'name': 'localized',
+    'aria-label': 'Languages spoken at home',
+    'options': [
+      { value: 'arabic', label: { text: 'العربية', lang: 'ar', dir: 'rtl' } },
+      { value: 'farsi', label: { text: 'فارسی', lang: 'fa', dir: 'rtl' } },
+      { value: 'spanish', label: { text: 'Español', lang: 'es', dir: 'ltr' } },
+      { value: 'other', label: 'Another language' },
+    ],
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    const arabic = canvas.getByText('العربية');
+    await expect(arabic.closest('[lang]')).toHaveAttribute('lang', 'ar');
+    await expect(getComputedStyle(arabic).direction).toBe('rtl');
+    await expect(canvas.getByText('فارسی').closest('[lang]')).toHaveAttribute(
+      'lang',
+      'fa',
+    );
+    await expect(canvas.getByText('Another language').closest('[lang]')).toBe(
+      document.documentElement,
+    );
+
+    await expect(
+      canvas.getByRole('checkbox', { name: 'Español' }),
+    ).toBeInTheDocument();
+  },
+};

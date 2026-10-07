@@ -7,6 +7,7 @@ import type {
   codebookHashProperty,
   edgeExportIDProperty,
   egoProperty,
+  interviewLocaleProperty,
   ncSourceUUID,
   ncTargetUUID,
   nodeExportIDProperty,
@@ -32,6 +33,7 @@ export type SessionVariables = {
   [protocolProperty]: string;
   [protocolName]: string;
   [codebookHashProperty]: string;
+  [interviewLocaleProperty]: string | null;
   [sessionExportTimeProperty]: string;
   [sessionStartTimeProperty]: string | undefined;
   [sessionFinishTimeProperty]: string | undefined;
@@ -82,4 +84,10 @@ export type InterviewExportInput = {
   finishTime: Date | null;
   network: NcNetwork;
   protocolHash: string;
+  /**
+   * The language the participant was last shown, as a BCP 47 tag (`und` for a
+   * protocol that declares no language), or `null` when the runtime never
+   * reported one.
+   */
+  locale: string | null;
 };

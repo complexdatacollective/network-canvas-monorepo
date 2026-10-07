@@ -124,7 +124,7 @@
   "interviewer.interviewComplete.thankYouThisInterviewIsFinishedAnd": "Merci. Cet entretien est terminé et ses réponses ne peuvent plus être modifiées. Veuillez rendre l’appareil à la personne responsable de l’étude.",
   "interviewer.language.automatic": "Automatique (navigateur)",
   "interviewer.language.failed": "La langue a été modifiée pour cette session, mais la préférence n’a pas pu être enregistrée. Votre navigateur bloque peut-être le stockage sur l’appareil.",
-  "interviewer.language.hint": "Choisissez la langue d’Interviewer et de ses commandes d’entretien intégrées sur cet appareil. Cela ne modifie ni le contenu des protocoles ni les données collectées.",
+  "interviewer.language.hint": "Choisissez la langue utilisée par Interviewer sur cet appareil. Les entretiens s’affichent dans la langue du navigateur de la personne participante ou dans celle qu’elle choisit pendant l’entretien.",
   "interviewer.language.label": "Langue de l’application",
   "interviewer.language.saved": "Préférence de langue enregistrée sur cet appareil.",
   "interviewer.launchFailureToast.couldNotOpenFile": "Impossible d’ouvrir le fichier",

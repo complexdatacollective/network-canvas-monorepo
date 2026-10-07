@@ -74,6 +74,7 @@
   "protocolValidation.migrationNotes.schema9.attributeNames": "Attribuutnamen mogen nu letters uit elke taal bevatten, evenals spaties en leestekens. Bestaande attribuutnamen worden niet gewijzigd.",
   "protocolValidation.migrationNotes.schema9.contradictoryPassphraseRules": "Als een anonimiseringsfase een minimale lengte voor de wachtzin vereiste die groter was dan de maximale lengte, kon geen enkele deelnemer een wachtzin kiezen. Daarom worden beide lengtes verwijderd en geldt de standaard minimale lengte.",
   "protocolValidation.migrationNotes.schema9.encryptedAttributes": "Versleutelde attributen zijn niet langer experimenteel: de anonimiseringsinterface is altijd beschikbaar en een attribuut dat als versleuteld is gemarkeerd, wordt altijd versleuteld. Als dit protocol attributen als versleuteld markeerde zonder de experimentele functie “Versleutelde attributen” in te schakelen, zijn die attributen niet langer gemarkeerd en worden ze dus nog steeds onversleuteld verzameld.",
+  "protocolValidation.migrationNotes.schema9.unspecifiedLanguage": "Tekst die deelnemers zien, is nu gemarkeerd als geschreven in “Niet-opgegeven taal”, omdat oudere protocollen niet vastleggen in welke taal ze zijn geschreven. Op de pagina “Talen” in Architect kun je de taal kiezen waarin de tekst echt is geschreven.",
   "protocolValidation.rule.additionalAttributes": "Vaste attributen",
   "protocolValidation.rule.component": "Invoerelement",
   "protocolValidation.rule.differentFrom": "Verschillend van een ander attribuut",

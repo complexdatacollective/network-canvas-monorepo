@@ -24,7 +24,7 @@ import BuilderSection from './BuilderSection.tsx';
 /** Every interface that asks questions keeps them here. */
 const PROMPTS_FIELD = 'prompts';
 
-const messages = defineMessages({
+export const promptsSectionMessages = defineMessages({
   atLeastOne: {
     id: 'protocolBuilder.promptsSection.atLeastOne',
     defaultMessage:
@@ -87,7 +87,9 @@ const messages = defineMessages({
   },
 });
 
-const AT_LEAST_ONE_PROMPT = createMessageError(messages.atLeastOne);
+const AT_LEAST_ONE_PROMPT = createMessageError(
+  promptsSectionMessages.atLeastOne,
+);
 
 export type PromptsSectionProps = Readonly<{
   /**
@@ -238,11 +240,11 @@ export default function PromptsSection({
   expand,
   itemTemplate,
   collapseRow,
-  description = messages.description,
+  description = promptsSectionMessages.description,
   waitingDescription,
   rowDescription,
-  fieldHint = messages.fieldHint,
-  emptyState = messages.emptyState,
+  fieldHint = promptsSectionMessages.fieldHint,
+  emptyState = promptsSectionMessages.emptyState,
 }: PromptsSectionProps) {
   const intl = useAppIntl();
   const subject = useStageValue('subject');
@@ -256,8 +258,8 @@ export default function PromptsSection({
     () => ({
       Preview: PromptPreview,
       Editor: PromptEditor,
-      addTitle: messages.addTitle,
-      editTitle: messages.editTitle,
+      addTitle: promptsSectionMessages.addTitle,
+      editTitle: promptsSectionMessages.editTitle,
       ...(rowDescription === undefined ? {} : { description: rowDescription }),
       formId: 'prompt-editor',
       name: PROMPTS_FIELD,
@@ -283,7 +285,7 @@ export default function PromptsSection({
 
   return (
     <BuilderSection
-      title={intl.formatMessage(messages.title)}
+      title={intl.formatMessage(promptsSectionMessages.title)}
       description={intl.formatMessage(
         waiting ? (waitingDescription ?? description) : description,
       )}
@@ -292,12 +294,12 @@ export default function PromptsSection({
       <RowList config={rowList}>
         <Field<typeof ArrayField<RowValues>>
           name={PROMPTS_FIELD}
-          label={intl.formatMessage(messages.fieldLabel)}
+          label={intl.formatMessage(promptsSectionMessages.fieldLabel)}
           hint={intl.formatMessage(fieldHint)}
           component={ArrayField}
           getId={rowId}
-          addButtonLabel={intl.formatMessage(messages.addLabel)}
-          itemLabel={messages.itemNoun}
+          addButtonLabel={intl.formatMessage(promptsSectionMessages.addLabel)}
+          itemLabel={promptsSectionMessages.itemNoun}
           emptyStateMessage={intl.formatMessage(emptyState)}
           itemComponent={RowListItem}
           editorComponent={RowDialog}

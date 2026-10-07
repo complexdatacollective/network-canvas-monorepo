@@ -35,16 +35,23 @@ vi.mock('wouter', () => ({
 const protocol: CurrentProtocol = {
   name: 'Test Protocol',
   schemaVersion: 9,
+  localization: { defaultLocale: 'en', locales: ['en'] },
   stages: [],
   codebook: {},
 };
 
-const stage = { id: 'stage-1', type: 'Information', label: 'A' } as Stage;
+const stage: Stage = {
+  id: 'stage-1',
+  type: 'Information',
+  label: { en: 'A' },
+  title: { en: 'A' },
+  items: [],
+};
 
 // What the form holds after the researcher has typed into it. Genuinely
 // different from the document the editor opened on, so the beacon reports
 // dirty.
-const editedStage = { ...stage, label: 'A, edited' } as Stage;
+const editedStage: Stage = { ...stage, label: { en: 'A, edited' } };
 
 const createTestStore = () =>
   configureStore({
@@ -124,7 +131,11 @@ describe('ProtocolLockBanner', () => {
     mockLocation.mockReturnValue('/protocol/stage/stage-1');
     // An editor open on a stage, holding an edit the researcher made: what
     // "Discard Changes" is offered about.
-    publishStageDraft(editedStage, { label: 'A' }, { label: 'A, edited' });
+    publishStageDraft(
+      editedStage,
+      { label: { en: 'A' } },
+      { label: { en: 'A, edited' } },
+    );
     store.dispatch(setProtocolLockState('open-elsewhere'));
 
     expect(readStageDraft().dirty).toBe(true);
@@ -151,7 +162,11 @@ describe('ProtocolLockBanner', () => {
   // them looking for a tab that no longer exists.
   it('stops blaming the other tab once it has closed and a choice is outstanding', () => {
     mockLocation.mockReturnValue('/protocol/stage/stage-1');
-    publishStageDraft(editedStage, { label: 'A' }, { label: 'A, edited' });
+    publishStageDraft(
+      editedStage,
+      { label: { en: 'A' } },
+      { label: { en: 'A, edited' } },
+    );
     store.dispatch(setProtocolLockState('reclaim-blocked'));
 
     renderBanner(store);

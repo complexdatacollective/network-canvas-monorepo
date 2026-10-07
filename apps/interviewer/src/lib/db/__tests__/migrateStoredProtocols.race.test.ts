@@ -2,8 +2,9 @@
 import 'fake-indexeddb/auto';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
-import { hashProtocol } from '@codaco/protocol-validation';
+import { hashProtocol, migrateProtocol } from '@codaco/protocol-validation';
 
 import type { StoredProtocol } from '../types';
 
@@ -59,9 +60,10 @@ function pauseNextEncrypt() {
 const asStoredDocument = (document: Record<string, unknown>): CurrentProtocol =>
   document as unknown as CurrentProtocol;
 
-// An empty v7 document migrates to an identical structure (the hash covers
-// codebook + stages only), so its row keeps its key — the rewrite-in-place
-// path. The person-typed document changes structurally, so its hash moves.
+// Every migration to schema 9 adds the localization declaration, which the
+// hash covers, so no real document keeps its hash. A row stored under the hash
+// its migration produces keeps its key, which reaches the rewrite-in-place
+// path. A row stored under any other key takes the re-keying path.
 const emptyV7 = (): Record<string, unknown> => ({
   schemaVersion: 7,
   codebook: { node: {}, edge: {}, ego: {} },
@@ -116,7 +118,11 @@ describe('the sweep against concurrent writers', () => {
 
   it('leaves a row re-imported mid-migration alone (rewrite-in-place path)', async () => {
     const doc = emptyV7();
-    const hash = hashProtocol(asStoredDocument(doc));
+    const hash = hashProtocol(
+      migrateProtocol(doc, COMPATIBLE_PROTOCOL_SCHEMA_VERSION, {
+        name: 'Empty Study',
+      }),
+    );
     await seedProtocol(storedRow(hash, 'Empty Study', doc));
 
     const pause = pauseNextEncrypt();

@@ -1,11 +1,15 @@
 {
   "dataSource": "roster_data",
   "id": "id-1",
-  "label": "Select From Roster",
+  "label": {
+    "en": "Select From Roster"
+  },
   "prompts": [
     {
       "id": "id-2",
-      "text": "Choose someone from the roster"
+      "text": {
+        "en": "Choose someone from the roster"
+      }
     }
   ],
   "subject": {

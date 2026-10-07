@@ -4,6 +4,7 @@ import { type ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
+import { asEntityAttributeReference } from '@codaco/protocol-validation';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
@@ -13,6 +14,7 @@ import protocol from '../../../store/modules/protocol';
 import session from '../../../store/modules/session';
 import ui from '../../../store/modules/ui';
 import type { RegisterBeforeNext, StageProps } from '../../../types';
+import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
 import NetworkComposer from '../NetworkComposer';
 
 // jsdom has no Worker, and automatic mode would otherwise construct the shared
@@ -49,11 +51,16 @@ const QUICK_ADD_VAR = 'var-quick-add';
 const makeStage = (defaultEnabled: boolean) => ({
   id: 'nc1',
   type: 'NetworkComposer' as const,
-  label: 'Network Composer',
+  label: { en: 'Network Composer' },
   subject: { entity: 'node' as const, type: NODE_TYPE },
-  layoutVariable: LAYOUT_VAR,
-  quickAdd: QUICK_ADD_VAR,
-  edges: [{ subject: { entity: 'edge' as const, type: EDGE_TYPE } }],
+  layoutVariable: asEntityAttributeReference(LAYOUT_VAR),
+  quickAdd: asEntityAttributeReference(QUICK_ADD_VAR),
+  edges: [
+    {
+      id: 'edge-config',
+      subject: { entity: 'edge' as const, type: EDGE_TYPE },
+    },
+  ],
   background: { concentricCircles: 4 },
   behaviours: { automaticLayout: defaultEnabled },
 });
@@ -62,16 +69,30 @@ const codebook = {
   node: {
     [NODE_TYPE]: {
       name: 'Person',
+      label: { en: 'Person' },
       color: 'node-color-seq-1',
       shape: { default: 'circle' as const },
       variables: {
-        [QUICK_ADD_VAR]: { name: 'name', type: 'text' as const },
-        [LAYOUT_VAR]: { name: 'position', type: 'layout' as const },
+        [QUICK_ADD_VAR]: {
+          name: 'name',
+          label: 'Name',
+          type: 'text' as const,
+        },
+        [LAYOUT_VAR]: {
+          name: 'position',
+          label: 'Position',
+          type: 'layout' as const,
+        },
       },
     },
   },
   edge: {
-    [EDGE_TYPE]: { name: 'Knows', color: 'edge-color-seq-1', variables: {} },
+    [EDGE_TYPE]: {
+      name: 'Knows',
+      label: { en: 'Knows' },
+      color: 'edge-color-seq-1',
+      variables: {},
+    },
   },
   ego: { variables: {} },
 };
@@ -101,6 +122,7 @@ function renderInterface({
         id: 'p',
         hash: 'h',
         schemaVersion: 9,
+        localization: { defaultLocale: 'en', locales: ['en'] },
         codebook,
         stages: [stage],
       } as never,
@@ -128,7 +150,7 @@ function renderInterface({
             <StageMetadataContext.Provider
               value={vi.fn() as unknown as RegisterBeforeNext}
             >
-              {children}
+              <TestProtocolLocalization>{children}</TestProtocolLocalization>
             </StageMetadataContext.Provider>
           </CurrentStepProvider>
         </ContractProvider>

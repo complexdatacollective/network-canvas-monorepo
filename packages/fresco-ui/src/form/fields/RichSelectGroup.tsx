@@ -4,6 +4,11 @@ import { motion } from 'motion/react';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 
 import { Label } from '../../Label';
+import {
+  type PresentationalText,
+  presentationalTextProps,
+  presentationalTextValue,
+} from '../../PresentationalText';
 import { RenderMarkdown } from '../../RenderMarkdown';
 import {
   controlVariants,
@@ -121,8 +126,10 @@ const indicatorVariants = cva({
   ],
 });
 
+// `justify-self-start` keeps a label or description written in the other
+// direction beside the indicator instead of stretched to the far edge.
 const descriptionVariants = cva({
-  base: 'col-start-2 leading-snug text-pretty text-current/70',
+  base: 'col-start-2 justify-self-start leading-snug text-pretty text-current/70',
   variants: {
     size: {
       sm: 'text-xs',
@@ -158,8 +165,8 @@ const selectionSpring = {
 
 export type RichSelectOption = {
   value: string | number;
-  label: string;
-  description?: string;
+  label: PresentationalText;
+  description?: PresentationalText;
   disabled?: boolean;
   className?: string;
 };
@@ -490,12 +497,22 @@ export default function RichSelectGroupField(props: RichSelectGroupProps) {
               </svg>
             )}
           </span>
-          <Label className="m-0!">
-            <RenderMarkdown>{option.label}</RenderMarkdown>
+          <Label
+            className="m-0! justify-self-start"
+            {...presentationalTextProps(option.label)}
+          >
+            <RenderMarkdown>
+              {presentationalTextValue(option.label)}
+            </RenderMarkdown>
           </Label>
           {option.description && (
-            <span className={descriptionVariants({ size })}>
-              <RenderMarkdown>{option.description}</RenderMarkdown>
+            <span
+              className={descriptionVariants({ size })}
+              {...presentationalTextProps(option.description)}
+            >
+              <RenderMarkdown>
+                {presentationalTextValue(option.description)}
+              </RenderMarkdown>
             </span>
           )}
         </motion.button>

@@ -1,4 +1,12 @@
 {
+  "interview.contentItem.audioLabel": {
+    "defaultMessage": "Audio",
+    "description": "Accessible name of an audio player in protocol content that the researcher has not described."
+  },
+  "interview.contentItem.videoLabel": {
+    "defaultMessage": "Video",
+    "description": "Accessible name of a video player in protocol content that the researcher has not described."
+  },
   "interview.familyPedigree.aboutYou": {
     "defaultMessage": "About you",
     "description": "Wizard step title for recording the participant's own birth-recorded sex, before asking about relatives."
@@ -1395,6 +1403,14 @@
     "defaultMessage": "Zoom Out",
     "description": "Accessible name of the geospatial map button that decreases magnification. Keeps the existing title capitalization."
   },
+  "interview.language.chooseLanguage": {
+    "defaultMessage": "Choose a language",
+    "description": "Heading of the interview screen where the participant picks the language the interview is shown in."
+  },
+  "interview.language.unspecifiedLanguage": {
+    "defaultMessage": "Unspecified language",
+    "description": "Name of the language choice for interview content whose language the researcher did not specify."
+  },
   "interview.narrativePedigree.affected": {
     "defaultMessage": "Affected",
     "description": "Clinical status tooltip and screen-reader label for a person recorded as affected by the condition; the stable model key remains affected."
@@ -1535,10 +1551,6 @@
     "defaultMessage": "Zoom out",
     "description": "Accessible action reducing the diagram magnification while preserving the view centre."
   },
-  "interview.navigation.automaticLanguage": {
-    "defaultMessage": "Automatic",
-    "description": "Language option that follows the host's requested interface language."
-  },
   "interview.navigation.currentTextSize": {
     "defaultMessage": "Current text size: {size, number, ::percent}",
     "description": "Screen-reader announcement after the participant changes text size; size is a multiplier."
@@ -1582,10 +1594,6 @@
   "interview.navigation.increaseTextSize": {
     "defaultMessage": "Increase text size",
     "description": "Accessible action that increases interview text size."
-  },
-  "interview.navigation.interfaceLanguage": {
-    "defaultMessage": "Interface language",
-    "description": "Label for the language of the interview package's built-in controls; protocol text is separate."
   },
   "interview.navigation.interviewSettings": {
     "defaultMessage": "Interview settings",

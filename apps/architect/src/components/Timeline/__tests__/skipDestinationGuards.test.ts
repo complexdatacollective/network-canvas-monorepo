@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 
-import type { Stage } from '@codaco/protocol-validation';
 import { messageFields } from '~/test/messageText';
 
 import {
@@ -8,20 +7,26 @@ import {
   getSkipDestinationReorderGuard,
 } from '../skipDestinationGuards';
 
-const committedStages = [
-  {
-    id: 'source',
-    type: 'Information',
-    label: 'Repeated label',
-    skipLogic: {
-      action: 'SKIP',
-      filter: { join: 'AND', rules: [] },
-      destination: { type: 'stage', stageId: 'destination' },
-    },
-  },
-  { id: 'middle', type: 'Information', label: 'Middle' },
-  { id: 'destination', type: 'Information', label: 'Repeated label' },
-] as Stage[];
+// The Timeline passes each stage with its label already resolved to text.
+type GuardStage = Parameters<typeof getSkipDestinationDeleteWarning>[0][number];
+
+const source: GuardStage = {
+  id: 'source',
+  type: 'Information',
+  label: 'Repeated label',
+  skipLogic: { destination: { type: 'stage', stageId: 'destination' } },
+};
+const middle: GuardStage = {
+  id: 'middle',
+  type: 'Information',
+  label: 'Middle',
+};
+const destination: GuardStage = {
+  id: 'destination',
+  type: 'Information',
+  label: 'Repeated label',
+};
+const committedStages = [source, middle, destination];
 
 describe('Timeline skip destination guards', () => {
   it('builds a dependent-delete dialog with absolute stage numbers', () => {
@@ -37,11 +42,7 @@ describe('Timeline skip destination guards', () => {
   });
 
   it('builds an invalid-reorder dialog with unambiguous stage references', () => {
-    const proposedStages = [
-      committedStages[2],
-      committedStages[0],
-      committedStages[1],
-    ] as Stage[];
+    const proposedStages = [destination, source, middle];
     const guard = getSkipDestinationReorderGuard(
       committedStages,
       proposedStages,
@@ -61,11 +62,7 @@ describe('Timeline skip destination guards', () => {
   });
 
   it('returns the committed order for local Timeline restoration', () => {
-    const proposedStages = [
-      committedStages[2],
-      committedStages[0],
-      committedStages[1],
-    ] as Stage[];
+    const proposedStages = [destination, source, middle];
     const guard = getSkipDestinationReorderGuard(
       committedStages,
       proposedStages,

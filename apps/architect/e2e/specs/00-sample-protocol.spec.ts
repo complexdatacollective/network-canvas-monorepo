@@ -5,6 +5,7 @@ import type { BrowserContext, Page } from '@playwright/test';
 
 import {
   type CurrentProtocol,
+  messageText,
   validateProtocol,
 } from '@codaco/protocol-validation';
 
@@ -111,12 +112,37 @@ function at(...segments: (string | number)[]): unknown {
   return current;
 }
 
-function s(...segments: (string | number)[]): string {
-  const value = at(...segments);
-  if (typeof value !== 'string') {
-    throw new Error(`canonical value at ${segments.join('.')} is not a string`);
+function canonicalLocalization(): CurrentProtocol['localization'] {
+  const defaultLocale = at('localization', 'defaultLocale');
+  const locales = at('localization', 'locales');
+  if (
+    typeof defaultLocale !== 'string' ||
+    !Array.isArray(locales) ||
+    !locales.every((locale): locale is string => typeof locale === 'string')
+  ) {
+    throw new Error('canonical localization has an unexpected shape');
   }
-  return value;
+  return { defaultLocale, locales };
+}
+
+const CANONICAL_LOCALE = canonicalLocalization().defaultLocale;
+
+// The text a researcher types for a canonical value. A schema
+// `LocalizedString` holds one ICU literal message per language, and the
+// editors show and save its default-language translation as plain text.
+function textOf(value: unknown, where: string): string {
+  if (typeof value === 'string') return value;
+  if (isRecord(value)) {
+    const message = value[CANONICAL_LOCALE];
+    if (typeof message === 'string') return messageText(message);
+  }
+  throw new Error(
+    `canonical value at ${where} is neither a string nor a ${CANONICAL_LOCALE} translation`,
+  );
+}
+
+function s(...segments: (string | number)[]): string {
+  return textOf(at(...segments), segments.join('.'));
 }
 
 // Canonical codebook option lists as rows for the attribute editor that
@@ -130,16 +156,17 @@ function optionRows(...segments: (string | number)[]): OptionRow[] {
     throw new Error(`canonical value at ${segments.join('.')} is not an array`);
   }
   return value.map((option, index) => {
+    const where = `${segments.join('.')}[${index}]`;
     if (
       !isRecord(option) ||
-      typeof option.label !== 'string' ||
       (typeof option.value !== 'string' && typeof option.value !== 'number')
     ) {
-      throw new Error(
-        `canonical option at ${segments.join('.')}[${index}] has an unexpected shape`,
-      );
+      throw new Error(`canonical option at ${where} has an unexpected shape`);
     }
-    return { label: option.label.trim(), value: String(option.value) };
+    return {
+      label: textOf(option.label, `${where}.label`).trim(),
+      value: String(option.value),
+    };
   });
 }
 
@@ -198,10 +225,13 @@ test.describe.serial('sample protocol built from scratch', () => {
     page = await context.newPage();
     editor = new StageEditor(page);
     // The name is seeded (the seed fixture requires one); the description is
-    // authored through the UI in the first test.
+    // authored through the UI in the first test. So are the protocol's
+    // languages: the sample is written in `en-US`, and every editor saves its
+    // text under the default language.
     await seedProtocol(page, {
       ...emptyProtocol(),
       name: s('name'),
+      localization: canonicalLocalization(),
     });
     await gotoProtocol(page);
   });

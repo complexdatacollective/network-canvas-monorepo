@@ -19,10 +19,14 @@ import {
   InterviewI18nProvider,
   ProtocolField,
   type ProtocolFieldDefinition,
+  ProtocolLocalizationProvider,
 } from '@codaco/interview';
 import {
   type ComponentType,
   ComponentTypesKeys,
+  getLocaleMetadata,
+  type LocaleTag,
+  type LocalizedString,
   type Variable,
 } from '@codaco/protocol-validation';
 
@@ -31,6 +35,16 @@ import {
   variableTypeForComponent,
 } from '../../codebook/variableValidation.ts';
 import type { RowValues } from '../../form/rowDialog.tsx';
+import { EditingLanguageSwitcher } from '../../localization/EditingLanguageSwitcher.tsx';
+import {
+  asLocalizedString,
+  localizedFromText,
+  type ProtocolLocalization,
+} from '../../localization/localizedText.ts';
+import {
+  useEditingLanguage,
+  useLocalizedText,
+} from '../../localization/ProtocolLocalization.tsx';
 import {
   type CodebookSubject,
   variablesForSubject,
@@ -80,12 +94,6 @@ const messages = defineMessages({
     description:
       'Notice shown in the preview of a form field bound to an attribute the codebook already holds, because the control and the rules belong to that attribute rather than to this one question.',
   },
-  placeholderLabel: {
-    id: 'protocolBuilder.fieldPreview.placeholderLabel',
-    defaultMessage: 'Attribute label',
-    description:
-      'Stands in for the label of a network composer’s form field in its preview, while the researcher has authored none and the attribute it collects has no name to borrow.',
-  },
   placeholderQuestion: {
     id: 'protocolBuilder.fieldPreview.placeholderQuestion',
     defaultMessage: 'Your question will appear here.',
@@ -133,13 +141,14 @@ const isInputControl = (value: unknown): value is ComponentType =>
   ComponentTypesKeys.some((control) => control === value);
 
 /**
- * What the researcher has actually written, by the interview's own rule.
+ * Whether the researcher has actually written anything, by the interview's own
+ * rule.
  *
- * `@codaco/interview`'s `authoredFieldLabel` TRIMS before deciding whether
- * anything was authored, so a caption of nothing but spaces is nothing
- * authored and the participant meets the fallback — the attribute's name in a
- * composer, the stand-in sentence in a form. Read through `asText` first,
- * because a row may hold anything at all here.
+ * `@codaco/interview`'s `authoredFieldLabel` TRIMS the caption as resolved in
+ * the interview language before deciding whether anything was authored, so a
+ * caption of nothing but spaces is nothing authored, and the preview shows the
+ * stand-in it shows for a caption not yet written. Asked of the text a
+ * participant in the editing language would be shown, fallback included.
  *
  * Replicated rather than imported: that helper is internal to the runtime and
  * its root entry does not export it. `FieldPreviewPane.test.tsx` pins the
@@ -147,10 +156,44 @@ const isInputControl = (value: unknown): value is ComponentType =>
  * ordinary text — so the preview cannot caption a field the interview would
  * not.
  */
-const authoredText = (value: unknown): string | undefined => {
-  const text = asText(value)?.trim();
-  return text === undefined || text === '' ? undefined : text;
-};
+const isAuthored = (text: string): boolean => text.trim() !== '';
+
+type PreviewOption = NonNullable<ProtocolFieldDefinition['options']>[number];
+
+/**
+ * The values a row offers, as the interview takes them.
+ *
+ * A value the row is still writing can have no label in any language yet, and
+ * the interview has no way to show one: it is left out until it has.
+ */
+const previewOptions = (options: readonly unknown[]): PreviewOption[] =>
+  options.flatMap((option) => {
+    if (!isRecord(option)) return [];
+    const label = asLocalizedString(option.label);
+    const { value } = option;
+    if (
+      label === undefined ||
+      !(
+        typeof value === 'string' ||
+        typeof value === 'number' ||
+        typeof value === 'boolean'
+      )
+    ) {
+      return [];
+    }
+    return [
+      {
+        label,
+        value,
+        ...(option.negative === true && { negative: true }),
+      },
+    ];
+  });
+
+/** The preview has no participant whose language choice could be recorded. */
+const ignoreLocaleChange = () => undefined;
+
+const NO_REQUESTED_LOCALES: readonly string[] = [];
 
 /**
  * A trial answer is checked against the attribute's own rules and nothing
@@ -174,16 +217,48 @@ function PreviewLocaleRegion({ children }: Readonly<{ children: ReactNode }>) {
   );
 }
 
+/**
+ * The protocol's languages, as the interview resolves the field's copy in
+ * them: the language being edited, falling back as a participant's would.
+ */
+function PreviewProtocolLanguage({
+  localization,
+  locale,
+  children,
+}: Readonly<{
+  localization: ProtocolLocalization;
+  locale: LocaleTag;
+  children: ReactNode;
+}>) {
+  const localeOptions = useMemo(
+    () => localization.locales.map((declared) => getLocaleMetadata(declared)),
+    [localization],
+  );
+  return (
+    <ProtocolLocalizationProvider
+      localization={localization}
+      localeOptions={localeOptions}
+      requestedLocales={NO_REQUESTED_LOCALES}
+      localePreference={locale}
+      recordedLocale={locale}
+      onLocalePreferenceChange={ignoreLocaleChange}
+      onLocaleRecorded={ignoreLocaleChange}
+    >
+      {children}
+    </ProtocolLocalizationProvider>
+  );
+}
+
 export type FieldPreviewPaneProps = Readonly<{
   /** Whose codebook the previewed field collects into. */
   subject: CodebookSubject | undefined;
   /**
    * Which family's row this is.
    *
-   * The two ask the participant differently: a form field asks a question, and
-   * a network composer's field labels one box of a form the participant is
-   * filling in — so what stands in while nothing is authored differs, and so
-   * does where the chosen control lives.
+   * The two keep their caption and their control in different places: a form
+   * field's caption is its `prompt` and its control is written to the
+   * codebook, while a network composer's field carries a `label` and a control
+   * of its own.
    */
   mode?: 'form' | 'composer';
   /** The row as the dialog opened on it; see {@link RowValues}. */
@@ -212,6 +287,8 @@ export default function FieldPreviewPane({
   item,
 }: FieldPreviewPaneProps) {
   const intl = useAppIntl();
+  const { localization, locale } = useEditingLanguage();
+  const localize = useLocalizedText();
   const headingId = useId();
   const liveValues = useFormValue(PREVIEW_DRAFT_FIELDS);
   // A field the dialog has not registered yet has no live value to show — the
@@ -292,18 +369,20 @@ export default function FieldPreviewPane({
         ? attributeControl
         : undefined;
 
-  const authoredLabel = authoredText(draft.label);
-  const prompt = authoredText(draft.prompt);
-  const label =
-    mode === 'composer'
-      ? (authoredLabel ??
-        codebookVariable?.name ??
-        inventedName ??
-        // The sentinel is not a name: a composer row that is inventing and has
-        // been given no name yet borrows the stand-in, as an unnamed row does.
-        (inventing ? undefined : variableId) ??
-        intl.formatMessage(messages.placeholderLabel))
-      : (prompt ?? intl.formatMessage(messages.placeholderQuestion));
+  // The caption as written, in every language, where it says anything in the
+  // language being edited; otherwise a stand-in until it is written.
+  const authored = mode === 'composer' ? draft.label : draft.prompt;
+  const authoredCopy = isAuthored(localize(authored).text)
+    ? asLocalizedString(authored)
+    : undefined;
+  const caption: LocalizedString | string =
+    authoredCopy ?? intl.formatMessage(messages.placeholderQuestion);
+  const label = typeof caption === 'string' ? caption : localize(caption).text;
+  const hint = asLocalizedString(draft.hint);
+  const languages =
+    localization === undefined || locale === undefined
+      ? undefined
+      : { localization, locale };
 
   const previewVariableId =
     codebookVariable === undefined
@@ -363,12 +442,15 @@ export default function FieldPreviewPane({
     // have no participant-facing control at all.
     if (control === undefined || variableType === undefined) return null;
     if (!isCollectableType(variableType)) return null;
+    // Protocol copy cannot be shown before the languages it is written in are
+    // known.
+    if (localization === undefined) return null;
 
     // A list of answers is authored after the attribute that holds them, so
     // there is a real intermediate state with no values yet. An empty control
     // says so; the alternative is a preview that throws on `options.map`.
     const options = Array.isArray(attributeOptions)
-      ? attributeOptions
+      ? previewOptions(attributeOptions)
       : isOptionType(variableType)
         ? []
         : undefined;
@@ -376,10 +458,13 @@ export default function FieldPreviewPane({
 
     return {
       variable: previewVariableId,
-      label,
+      label:
+        typeof caption === 'string'
+          ? localizedFromText(localization, caption)
+          : caption,
       type: variableType,
       component: control,
-      ...(asText(draft.hint) === undefined ? {} : { hint: asText(draft.hint) }),
+      ...(hint === undefined ? {} : { hint }),
       ...(draft.showValidationHints === true && { showValidationHints: true }),
       ...(options === undefined ? {} : { options }),
       ...(isRecord(parameters) && { parameters }),
@@ -387,21 +472,44 @@ export default function FieldPreviewPane({
     };
   }, [
     attributeOptions,
+    caption,
     control,
-    draft.hint,
     draft.showValidationHints,
-    label,
+    hint,
+    localization,
     parameters,
     previewVariableId,
     rules,
     variableType,
   ]);
 
+  // The words the participant is shown in this field, for the language menu to
+  // say which languages leave some of them untranslated. What the researcher
+  // has not written is left out: an absent hint has no translations to lack,
+  // and counting it would make every language missing. A scale's end labels
+  // count only on the one control that shows them.
+  const scaleLabels =
+    field?.component === 'VisualAnalogScale' && isRecord(field.parameters)
+      ? [
+          Reflect.get(field.parameters, 'minLabel'),
+          Reflect.get(field.parameters, 'maxLabel'),
+        ]
+      : [];
+  const shownTexts = [
+    authoredCopy,
+    hint,
+    ...(field?.options ?? []).map((option) => option.label),
+    ...scaleLabels,
+  ].filter((text) => text !== undefined);
+
   return (
     <section aria-labelledby={headingId}>
-      <Heading id={headingId} level="h3" margin="none">
-        {intl.formatMessage(messages.title)}
-      </Heading>
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+        <Heading id={headingId} level="h3" margin="none">
+          {intl.formatMessage(messages.title)}
+        </Heading>
+        <EditingLanguageSwitcher values={shownTexts} />
+      </div>
       <Paragraph className="mt-2 max-w-[65ch]">
         {intl.formatMessage(messages.description)}
       </Paragraph>
@@ -414,7 +522,7 @@ export default function FieldPreviewPane({
       )}
       <ThemedRegion theme="interview" className="mt-4 rounded-lg">
         <Surface noContainer spacing="lg" shadow="lg" className="min-h-80">
-          {field === null ? (
+          {field === null || languages === undefined ? (
             <div className="flex min-h-56 items-center justify-center text-center">
               <Paragraph className="max-w-[36ch]" margin="none">
                 {intl.formatMessage(messages.empty)}
@@ -434,20 +542,22 @@ export default function FieldPreviewPane({
               onSubmit={passPreviewValidation}
             >
               <InterviewI18nProvider requestedLocale={intl.locale}>
-                <PreviewLocaleRegion>
-                  {/* Re-parents the participant's own popups — a scale's
-                      value bubble, a date picker — into the region that
-                      carries their language and writing direction. */}
-                  <PortalContainerProvider>
-                    <ProtocolField
-                      field={field}
-                      name="preview-value"
-                      {...(validationContext === undefined
-                        ? {}
-                        : { validationContext })}
-                    />
-                  </PortalContainerProvider>
-                </PreviewLocaleRegion>
+                <PreviewProtocolLanguage {...languages}>
+                  <PreviewLocaleRegion>
+                    {/* Re-parents the participant's own popups — a scale's
+                        value bubble, a date picker — into the region that
+                        carries their language and writing direction. */}
+                    <PortalContainerProvider>
+                      <ProtocolField
+                        field={field}
+                        name="preview-value"
+                        {...(validationContext === undefined
+                          ? {}
+                          : { validationContext })}
+                      />
+                    </PortalContainerProvider>
+                  </PreviewLocaleRegion>
+                </PreviewProtocolLanguage>
               </InterviewI18nProvider>
               <div className="flex justify-end">
                 <Button type="submit">

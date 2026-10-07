@@ -10,12 +10,16 @@ import {
 } from '../../pageobjects/editor-sections/variables.js';
 import { StageEditor } from '../../pageobjects/stage-editor.js';
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null;
+
+// `text` and `negativeLabel` are schema `LocalizedString`s, keyed by language.
 type TieStrengthPrompt = {
   id: string;
-  text: string;
+  text: Record<string, unknown>;
   createEdge: string;
   edgeVariable: string;
-  negativeLabel: string;
+  negativeLabel: Record<string, unknown>;
 };
 
 // Narrow one element of the saved `prompts` array with a real runtime guard
@@ -34,13 +38,13 @@ function toTieStrengthPrompt(value: unknown): TieStrengthPrompt {
     'id' in value &&
     typeof value.id === 'string' &&
     'text' in value &&
-    typeof value.text === 'string' &&
+    isRecord(value.text) &&
     'createEdge' in value &&
     typeof value.createEdge === 'string' &&
     'edgeVariable' in value &&
     typeof value.edgeVariable === 'string' &&
     'negativeLabel' in value &&
-    typeof value.negativeLabel === 'string' &&
+    isRecord(value.negativeLabel) &&
     Object.keys(value).length === 5
   ) {
     return {
@@ -160,8 +164,9 @@ test('creates a valid TieStrengthCensus stage from scratch', async ({
     throw new Error('expected exactly one saved TieStrengthCensus prompt');
   }
   const prompt = toTieStrengthPrompt(prompts[0]);
-  expect(prompt.text).toContain('How close are you?');
-  expect(prompt.negativeLabel).toContain('We are not close');
+  // Authored in `emptyProtocol()`'s only language, `en`.
+  expect(prompt.text).toEqual({ en: 'How close are you?' });
+  expect(prompt.negativeLabel).toEqual({ en: 'We are not close' });
 
   const protocol = await readProtocolJson(architectPage);
   expect(protocol.codebook.edge?.[prompt.createEdge]?.name).toBe('close');

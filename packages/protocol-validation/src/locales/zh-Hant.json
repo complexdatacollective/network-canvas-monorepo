@@ -74,6 +74,7 @@
   "protocolValidation.migrationNotes.schema9.attributeNames": "屬性名稱現在可以使用任何語言的文字，也可以包含空格與標點符號。既有的屬性名稱不會變更。",
   "protocolValidation.migrationNotes.schema9.contradictoryPassphraseRules": "若某個匿名化階段要求的通關密語長度下限大於其長度上限，參與者便無法選擇任何通關密語，因此這兩個長度都會移除，並改用預設的長度下限。",
   "protocolValidation.migrationNotes.schema9.encryptedAttributes": "加密屬性不再是實驗性功能：匿名化介面一律可用，標記為加密的屬性一律會加密。若此協定在未啟用實驗性功能「加密屬性」的情況下將屬性標記為加密，這些屬性將不再帶有該標記，因此仍會以未加密的方式收集。",
+  "protocolValidation.migrationNotes.schema9.unspecifiedLanguage": "參與者看到的文字現在標示為「未指定語言」，因為舊版協定沒有記錄其使用的語言。您可以在 Architect 的「語言」頁面將其變更為實際使用的語言。",
   "protocolValidation.rule.additionalAttributes": "固定屬性",
   "protocolValidation.rule.component": "輸入控制項",
   "protocolValidation.rule.differentFrom": "與另一個屬性不同",

@@ -80,6 +80,7 @@ type ProtocolRow = {
   schemaVersion: number;
   stages: unknown;
   codebook: unknown;
+  localization: unknown;
   experiments: unknown;
   assets: ProtocolAssetRow[];
 };
@@ -95,6 +96,7 @@ function isConformant(row: ProtocolRow): boolean {
     schemaVersion: TARGET_SCHEMA_VERSION,
     stages: row.stages,
     codebook: row.codebook,
+    localization: row.localization,
     // The whole-protocol schema cross-references stage asset ids (roster,
     // geospatial) against the manifest, so it must be reconstructed here or
     // every asset-referencing protocol would fail and be re-normalized on
@@ -203,6 +205,7 @@ async function migrateOneProtocol(
       // the brand at the Prisma JSON boundary.
       stages: migrated.stages as Prisma.InputJsonValue,
       codebook: migrated.codebook,
+      localization: migrated.localization,
       // The target version has no experiments, and an import leaves the
       // column empty too.
       experiments: Prisma.DbNull,
@@ -277,6 +280,7 @@ async function normalizeNonConformantProtocol(
       schemaVersion: TARGET_SCHEMA_VERSION,
       stages: migrated.stages as Prisma.InputJsonValue,
       codebook: migrated.codebook,
+      localization: migrated.localization,
       experiments: Prisma.DbNull,
       hash: newHash,
     },
@@ -320,6 +324,7 @@ export async function migrateProtocolsToCompatibleVersion(
       schemaVersion: true,
       stages: true,
       codebook: true,
+      localization: true,
       experiments: true,
       assets: {
         select: { assetId: true, name: true, type: true, value: true },

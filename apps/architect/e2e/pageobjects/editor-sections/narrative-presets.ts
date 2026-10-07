@@ -25,7 +25,9 @@ import { chooseAttribute, chooseOrCreateAttribute } from './variables.js';
 // - "Displayed edges" holds the tick list "Edge types" (`edges.display`), and
 //   "Node highlighting" the tick list "Highlight attributes" (`highlight`).
 //   Both name codebook entries, and both drop the key entirely when nothing is
-//   ticked.
+//   ticked. Each ticked highlight attribute adds a required, translatable
+//   "Label for “<attribute name>”" box that starts as the attribute's name, so
+//   ticking alone saves `{ variable, label }` with that name as the label.
 //
 // The behaviours are one section again, as released Architect had them:
 // `CanvasPermissionsSection` ("Narrative behaviors") holds three switches, in

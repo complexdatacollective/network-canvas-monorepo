@@ -5,6 +5,10 @@ import { Check, ChevronDown } from 'lucide-react';
 import type { ComponentPropsWithoutRef } from 'react';
 
 import { usePortalContainer } from '../../../PortalContainer';
+import {
+  presentationalTextProps,
+  presentationalTextValue,
+} from '../../../PresentationalText';
 import { dropdownItemVariants } from '../../../styles/controlVariants';
 import { cx, type VariantProps } from '../../../utils/cva';
 import type { FieldValueProps, InjectedFieldProps } from '../../Field/types';
@@ -125,7 +129,14 @@ function SelectField(props: SelectProps) {
                 Object.is(opt.value, currentValue) ||
                 String(opt.value) === String(currentValue),
             );
-            return option?.label ?? currentValue;
+            if (!option) return currentValue;
+            return typeof option.label === 'string' ? (
+              option.label
+            ) : (
+              <span {...presentationalTextProps(option.label)}>
+                {option.label.text}
+              </span>
+            );
           }}
         </Select.Value>
         <Select.Icon className="shrink-0">
@@ -150,8 +161,11 @@ function SelectField(props: SelectProps) {
                   disabled={option.disabled}
                   className={dropdownItemVariants()}
                 >
-                  <Select.ItemText className="min-w-0 flex-1 wrap-break-word whitespace-normal">
-                    {option.label}
+                  <Select.ItemText
+                    className="min-w-0 flex-1 wrap-break-word whitespace-normal"
+                    {...presentationalTextProps(option.label)}
+                  >
+                    {presentationalTextValue(option.label)}
                   </Select.ItemText>
                   <Select.ItemIndicator>
                     <Check className="h-[1.2em] w-[1.2em]" />

@@ -5,14 +5,17 @@ import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import Field from '@codaco/fresco-ui/form/Field/Field';
-import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 
 import AssetPickerField from '../../fields/AssetPickerField.tsx';
-import RichTextField from '../../fields/RichTextField.tsx';
+import {
+  LocalizedInputField,
+  LocalizedRichTextField,
+} from '../../fields/LocalizedStringField.tsx';
 import type { RowEditorProps } from '../../form/rowDialog.tsx';
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
+import { asLocalizedString } from '../../localization/localizedText.ts';
 import { useProtocolContext } from '../../state/protocolContext.ts';
 import {
   CONTENT_BLOCK_SLOTS,
@@ -47,7 +50,7 @@ export const contentBlockDescription = defineMessage({
   description: 'Description under the item dialog’s title.',
 });
 
-const messages = defineMessages({
+export const contentBlockMessages = defineMessages({
   kindLabel: {
     id: 'protocolBuilder.contentBlock.kindLabel',
     defaultMessage: 'Content type',
@@ -190,16 +193,16 @@ const MEDIA_COPY: Readonly<
   >
 > = Object.freeze({
   image: Object.freeze({
-    required: messages.imageRequired,
-    description: messages.imageDescriptionHint,
+    required: contentBlockMessages.imageRequired,
+    description: contentBlockMessages.imageDescriptionHint,
   }),
   audio: Object.freeze({
-    required: messages.audioRequired,
-    description: messages.audioDescriptionHint,
+    required: contentBlockMessages.audioRequired,
+    description: contentBlockMessages.audioDescriptionHint,
   }),
   video: Object.freeze({
-    required: messages.videoRequired,
-    description: messages.videoDescriptionHint,
+    required: contentBlockMessages.videoRequired,
+    description: contentBlockMessages.videoDescriptionHint,
   }),
 });
 
@@ -248,8 +251,8 @@ export default function ContentBlockEditor({ item }: RowEditorProps) {
     kind !== undefined || asString(item.content) === undefined
       ? undefined
       : protocolContext.assets[asString(item.content) ?? ''] === undefined
-        ? messages.missingResource
-        : messages.unpresentableResource;
+        ? contentBlockMessages.missingResource
+        : contentBlockMessages.unpresentableResource;
 
   // No group of its own: the dialog's title names the item being edited and
   // `contentBlockDescription` says what these fields decide, so a section
@@ -267,27 +270,29 @@ export default function ContentBlockEditor({ item }: RowEditorProps) {
       <Field<typeof RadioGroupField>
         name="type"
         component={RadioGroupField}
-        label={intl.formatMessage(messages.kindLabel)}
-        hint={intl.formatMessage(messages.kindHint)}
+        label={intl.formatMessage(contentBlockMessages.kindLabel)}
+        hint={intl.formatMessage(contentBlockMessages.kindHint)}
         options={contentBlockKindOptions(intl)}
-        required={intl.formatMessage(messages.kindRequired)}
+        required={intl.formatMessage(contentBlockMessages.kindRequired)}
       />
       {unusable !== undefined && (
         <Alert variant="warning">
-          <AlertTitle>{intl.formatMessage(messages.unusableTitle)}</AlertTitle>
+          <AlertTitle>
+            {intl.formatMessage(contentBlockMessages.unusableTitle)}
+          </AlertTitle>
           <AlertDescription>{intl.formatMessage(unusable)}</AlertDescription>
         </Alert>
       )}
       {kind === 'text' && (
-        <Field<typeof RichTextField>
+        <Field<typeof LocalizedRichTextField>
           name={CONTENT_BLOCK_SLOTS.text}
-          component={RichTextField}
-          label={intl.formatMessage(messages.contentLabel)}
-          hint={intl.formatMessage(messages.contentHint, {
+          component={LocalizedRichTextField}
+          label={intl.formatMessage(contentBlockMessages.contentLabel)}
+          hint={intl.formatMessage(contentBlockMessages.contentHint, {
             slotType: 'text',
           })}
-          placeholder={intl.formatMessage(messages.textPlaceholder)}
-          required={intl.formatMessage(messages.textRequired)}
+          placeholder={intl.formatMessage(contentBlockMessages.textPlaceholder)}
+          required={intl.formatMessage(contentBlockMessages.textRequired)}
         />
       )}
       {kind !== undefined && kind !== 'text' && (
@@ -295,8 +300,8 @@ export default function ContentBlockEditor({ item }: RowEditorProps) {
           <Field<typeof ResourcePicker>
             name={CONTENT_BLOCK_SLOTS[kind]}
             component={ResourcePicker}
-            label={intl.formatMessage(messages.contentLabel)}
-            hint={intl.formatMessage(messages.contentHint, {
+            label={intl.formatMessage(contentBlockMessages.contentLabel)}
+            hint={intl.formatMessage(contentBlockMessages.contentHint, {
               slotType: kind,
             })}
             kind={kind}
@@ -308,12 +313,12 @@ export default function ContentBlockEditor({ item }: RowEditorProps) {
               name and needs neither a slot nor a place in the collapse. An
               empty one is spelled by the key being absent, which the section's
               own normaliser does for every control that holds nothing. */}
-          <Field<typeof InputField>
+          <Field<typeof LocalizedInputField>
             name="description"
-            component={InputField}
-            label={intl.formatMessage(messages.descriptionLabel)}
+            component={LocalizedInputField}
+            label={intl.formatMessage(contentBlockMessages.descriptionLabel)}
             hint={intl.formatMessage(MEDIA_COPY[kind].description)}
-            initialValue={asString(item.description) ?? ''}
+            initialValue={asLocalizedString(item.description)}
           />
         </>
       )}
@@ -322,8 +327,8 @@ export default function ContentBlockEditor({ item }: RowEditorProps) {
           <Field<typeof RadioGroupField>
             name="size"
             component={RadioGroupField}
-            label={intl.formatMessage(messages.sizeLabel)}
-            hint={intl.formatMessage(messages.sizeHint)}
+            label={intl.formatMessage(contentBlockMessages.sizeLabel)}
+            hint={intl.formatMessage(contentBlockMessages.sizeHint)}
             options={contentBlockSizeOptions(intl)}
             orientation="horizontal"
             initialValue={asString(item.size) ?? ''}

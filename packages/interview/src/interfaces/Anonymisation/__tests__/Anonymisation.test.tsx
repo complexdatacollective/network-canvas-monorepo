@@ -12,6 +12,7 @@ import { StageMetadataProvider } from '../../../contexts/StageMetadataContext';
 import useInterviewNavigation from '../../../hooks/useInterviewNavigation';
 import { InterviewI18nProvider } from '../../../i18n/InterviewI18nProvider';
 import type { StageProps } from '../../../types';
+import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
 import Anonymisation from '../Anonymisation';
 import { unlockEncryption } from '../unlockEncryption';
 import {
@@ -109,10 +110,10 @@ function renderStage({
   const stage: AnonymisationStage = {
     id: 'anonymisation',
     type: 'Anonymisation',
-    label: 'Protect your answers',
+    label: { en: 'Protect your answers' },
     explanationText: {
-      title: 'Protect your answers',
-      body: 'Some of your answers are protected by a passphrase.',
+      title: { en: 'Protect your answers' },
+      body: { en: 'Some of your answers are protected by a passphrase.' },
     },
     validation,
   };
@@ -123,8 +124,8 @@ function renderStage({
       {
         id: 'next-screen',
         type: 'Information',
-        label: 'Next screen',
-        title: 'Next screen',
+        label: { en: 'Next screen' },
+        title: { en: 'Next screen' },
         items: [],
       },
     ],
@@ -157,11 +158,13 @@ function renderStage({
   const { unmount } = render(
     <AnalyticsContext.Provider value={tracker}>
       <Provider store={store}>
-        <InterviewI18nProvider requestedLocale="en">
-          <CurrentStepProvider currentStep={0} onStepChange={onStepChange}>
-            <Harness />
-          </CurrentStepProvider>
-        </InterviewI18nProvider>
+        <TestProtocolLocalization>
+          <InterviewI18nProvider requestedLocale="en">
+            <CurrentStepProvider currentStep={0} onStepChange={onStepChange}>
+              <Harness />
+            </CurrentStepProvider>
+          </InterviewI18nProvider>
+        </TestProtocolLocalization>
       </Provider>
     </AnalyticsContext.Provider>,
   );

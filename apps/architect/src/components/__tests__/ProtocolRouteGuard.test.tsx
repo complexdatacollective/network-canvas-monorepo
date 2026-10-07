@@ -48,16 +48,23 @@ vi.mock('~/components/ProjectNav/ProjectLayout', () => ({
 const protocol: CurrentProtocol = {
   name: 'Test Protocol',
   schemaVersion: 9,
+  localization: { defaultLocale: 'en', locales: ['en'] },
   stages: [],
   codebook: {},
 };
 
-const stage = { id: 'stage-1', type: 'Information', label: 'A' } as Stage;
+const stage: Stage = {
+  id: 'stage-1',
+  type: 'Information',
+  label: { en: 'A' },
+  title: { en: 'A' },
+  items: [],
+};
 
 // What the form holds after the researcher has typed into it. Genuinely
 // different from the document the editor opened on, so the beacon reports
 // dirty.
-const editedStage = { ...stage, label: 'A, edited' } as Stage;
+const editedStage: Stage = { ...stage, label: { en: 'A, edited' } };
 
 const createTestStore = () =>
   configureStore({
@@ -73,7 +80,11 @@ type TestStore = ReturnType<typeof createTestStore>;
 
 // A stage editor holding a real edit, exactly as its own chrome publishes one.
 const openDirtyStageDraft = () => {
-  publishStageDraft(editedStage, { label: 'A' }, { label: 'A, edited' });
+  publishStageDraft(
+    editedStage,
+    { label: { en: 'A' } },
+    { label: { en: 'A, edited' } },
+  );
 };
 
 const renderGuard = (store: TestStore) =>
@@ -174,6 +185,7 @@ describe('ProtocolRouteGuard', () => {
   it.each([
     '/protocol/codebook',
     '/protocol/assets',
+    '/protocol/localization',
     '/protocol/summary',
     '/protocol/stage/new',
   ])('blocks %s when no protocol is open', (path) => {
@@ -254,7 +266,7 @@ describe('ProtocolRouteGuard', () => {
       // editor publishes those. Deliberately against the SAME baseline — a
       // published pair whose baseline had moved too would report clean even if
       // the form still held the edit.
-      publishStageDraft(stage, { label: 'A' }, { label: 'A' });
+      publishStageDraft(stage, { label: { en: 'A' } }, { label: { en: 'A' } });
     });
 
     expect(readStageDraft().dirty).toBe(false);

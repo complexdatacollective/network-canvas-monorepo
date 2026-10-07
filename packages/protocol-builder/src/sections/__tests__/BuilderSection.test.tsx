@@ -126,7 +126,7 @@ const CARDS: SectionCapability = {
 
 const CARD_COLUMNS = [
   { fieldName: 'variable', label: 'Attribute' },
-  { fieldName: 'label', control: 'input' as const, label: 'Label' },
+  { fieldName: 'label', control: 'localizedInput' as const, label: 'Label' },
 ];
 
 /** What each file turned out to hold. The two share only `name`. */
@@ -425,7 +425,7 @@ describe('a capability the researcher switches off', () => {
 
     const saved = await harness.submit();
     expect(saved?.stageDocument.cardOptions).toEqual({
-      additionalProperties: [{ variable: 'name', label: 'Name' }],
+      additionalProperties: [{ variable: 'name', label: { 'en-US': 'Name' } }],
     });
   });
 });

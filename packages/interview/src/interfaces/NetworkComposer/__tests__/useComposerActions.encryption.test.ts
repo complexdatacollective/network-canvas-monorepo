@@ -34,17 +34,18 @@ const PASSPHRASE = 'composer passphrase';
 const variables: Record<string, Variable> = {
   [QUICK_ADD_VAR]: {
     name: 'name',
+    label: 'name',
     type: 'text',
     component: 'Text',
     encrypted: true,
   },
-  [LAYOUT_VAR]: { name: 'position', type: 'layout' },
+  [LAYOUT_VAR]: { name: 'position', label: 'position', type: 'layout' },
 };
 
 const stage: StageProps<'NetworkComposer'>['stage'] = {
   id: 'nc1',
   type: 'NetworkComposer',
-  label: 'Network Composer',
+  label: { en: 'Network Composer' },
   subject: { entity: 'node', type: NODE_TYPE },
   layoutVariable: asEntityAttributeReference(LAYOUT_VAR),
   quickAdd: asEntityAttributeReference(QUICK_ADD_VAR),

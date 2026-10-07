@@ -25,6 +25,7 @@ function seedDb() {
       finishedAt: 1722776400000,
       network: { nodes: [], edges: [], ego: {} },
       protocolHash: 'hash-1',
+      locale: 'fr',
     },
   ]);
   getProtocolsByHashes.mockResolvedValue([
@@ -98,6 +99,7 @@ describe('runExport via the export worker', () => {
     if (!start) throw new Error('start message not posted');
     expect(start.type).toBe('start');
     expect(start.data.sessions.map((s) => s.id)).toEqual(['s1']);
+    expect(start.data.sessions.map((s) => s.locale)).toEqual(['fr']);
     expect(Object.keys(start.data.protocols)).toEqual(['hash-1']);
 
     worker.reply({

@@ -9,8 +9,10 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
   BIOLOGICAL_SEX_OPTIONS,
+  escapeMessageText,
   GAMETE_ROLE_OPTIONS,
   RELATIONSHIP_TYPE_OPTIONS,
+  VariableSchema,
 } from '@codaco/protocol-validation';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
@@ -53,10 +55,15 @@ const openFixture = () => ({
   sections: pedigreeSections,
 });
 
+/** A canonical value set as the options an attribute stores, worded in English. */
+const asAttributeOptions = (
+  options: readonly Readonly<{ value: string; label: string }>[],
+) => options.map(({ value, label }) => ({ value, label: { 'en-US': label } }));
+
 const NOMINATION_ROWS = [
   {
     id: 'nomination-1',
-    text: 'Who has been unwell?',
+    text: { 'en-US': 'Who has been unwell?' },
     variable: 'hasConditionX',
   },
 ];
@@ -98,7 +105,9 @@ const openWithFamilyMemberForm = () => ({
   stage: familyPedigreeStageWith({
     nodeConfig: {
       ...FIXTURE_NODE_CONFIG,
-      form: [{ variable: 'fm_name', prompt: 'What do they go by?' }],
+      form: [
+        { variable: 'fm_name', prompt: { 'en-US': 'What do they go by?' } },
+      ],
     },
   }),
   sections: pedigreeSections,
@@ -397,8 +406,9 @@ const addFamilyEdgeVariable = (
 const seedTheOtherCandidate = (harness: StageEditorHarness): void => {
   addFamilyMemberVariable(harness, 'recordedSex', {
     name: 'recordedSex',
+    label: 'recordedSex',
     type: 'categorical',
-    options: BIOLOGICAL_SEX_OPTIONS,
+    options: asAttributeOptions(BIOLOGICAL_SEX_OPTIONS),
   });
 };
 
@@ -424,6 +434,7 @@ const SEEDED_UNWELL = 'seeded-unwell';
 const seedCollectableBoolean = (harness: StageEditorHarness): string => {
   addFamilyMemberVariable(harness, SEEDED_UNWELL, {
     name: 'unwell',
+    label: 'unwell',
     type: 'boolean',
     component: 'Boolean',
   });
@@ -626,7 +637,7 @@ describe('the pedigree’s own configuration', () => {
             {
               id: 'intro-1',
               type: 'text',
-              content: 'We are going to draw your family.',
+              content: { 'en-US': 'We are going to draw your family.' },
             },
           ],
         },
@@ -642,7 +653,7 @@ describe('the pedigree’s own configuration', () => {
         {
           id: 'intro-1',
           type: 'text',
-          content: 'We are going to draw your family.',
+          content: { 'en-US': 'We are going to draw your family.' },
         },
       ],
     });
@@ -671,7 +682,9 @@ describe('what the family-building prompt may hold', () => {
     'Who is in your family? See the [study guide](https://example.org/guide).\n\nTake as long as you need.';
 
   const openWithStoredPrompt = () => ({
-    stage: familyPedigreeStageWith({ censusPrompt: STORED_PROMPT }),
+    stage: familyPedigreeStageWith({
+      censusPrompt: { 'en-US': STORED_PROMPT },
+    }),
     sections: pedigreeSections,
   });
 
@@ -698,9 +711,9 @@ describe('what the family-building prompt may hold', () => {
       'Now: ',
     );
 
-    expect((await savedStage(harness)).censusPrompt).toBe(
-      `Now: ${STORED_PROMPT}`,
-    );
+    expect((await savedStage(harness)).censusPrompt).toEqual({
+      'en-US': `Now: ${STORED_PROMPT}`,
+    });
   });
 });
 
@@ -833,6 +846,7 @@ describe('the attributes a pedigree may bind', () => {
     const harness = renderStageEditor(openFixture());
     addFamilyMemberVariable(harness, 'name', {
       name: 'preferred_name',
+      label: 'preferred_name',
       type: 'text',
       component: 'Text',
     });
@@ -870,6 +884,7 @@ describe('the attributes a pedigree may bind', () => {
     const harness = renderStageEditor(openFixture());
     addFamilyMemberVariable(harness, 'preferred_name', {
       name: 'preferred_name',
+      label: 'preferred_name',
       type: 'text',
       component: 'Text',
     });
@@ -916,6 +931,7 @@ describe('the attributes a pedigree may bind', () => {
     const collectable = seedCollectableBoolean(harness);
     addFamilyMemberVariable(harness, 'kinship', {
       name: 'kinship',
+      label: 'kinship',
       type: 'text',
     });
     await awaitOffered(harness, 'Relationship to participant', 'kinship');
@@ -955,6 +971,7 @@ describe('the attributes a pedigree may bind', () => {
     const harness = renderStageEditor(openFixture());
     addFamilyMemberVariable(harness, 'kinship', {
       name: 'kinship',
+      label: 'kinship',
       type: 'text',
     });
     // On offer while nothing has claimed it, so the exclusion below is a
@@ -1004,6 +1021,7 @@ describe('the attributes a pedigree may bind', () => {
     const harness = renderStageEditor(openFixture());
     addFamilyMemberVariable(harness, 'preferred_name', {
       name: 'preferred_name',
+      label: 'preferred_name',
       type: 'text',
     });
 
@@ -1118,7 +1136,7 @@ describe('a family member form the researcher edits', () => {
         {
           id: expect.any(String) as unknown as string,
           variable: unwell,
-          prompt: 'Q?',
+          prompt: { 'en-US': 'Q?' },
         },
       ],
     });
@@ -1182,7 +1200,7 @@ describe('the pedigree’s nomination prompts', () => {
     expect(request?.stageDocument.nominationPrompts).toEqual([
       {
         id: 'nomination-1',
-        text: 'Who else?',
+        text: { 'en-US': 'Who else?' },
         variable: 'hasConditionX',
       },
     ]);
@@ -1249,7 +1267,7 @@ describe('the pedigree’s nomination prompts', () => {
     expect(request?.stageDocument.nominationPrompts).toEqual([
       {
         id: 'nomination-1',
-        text: 'Who has been unwell?',
+        text: { 'en-US': 'Who has been unwell?' },
         variable: created[0],
       },
     ]);
@@ -1299,6 +1317,7 @@ describe('a codebook that changes while the pedigree is open', () => {
     // is read below is the reference the deletion left behind.
     addFamilyMemberVariable(harness, 'housebound', {
       name: 'housebound',
+      label: 'housebound',
       type: 'boolean',
       component: 'Boolean',
     });
@@ -1339,6 +1358,7 @@ describe('a codebook that changes while the pedigree is open', () => {
     // would take the dangling pick's own name with it.
     addFamilyMemberVariable(harness, 'preferred_name', {
       name: 'preferred_name',
+      label: 'preferred_name',
       type: 'text',
     });
 
@@ -1359,6 +1379,7 @@ describe('a codebook that changes while the pedigree is open', () => {
     const harness = renderStageEditor(openFixture());
     addFamilyMemberVariable(harness, 'preferred_name', {
       name: 'preferred_name',
+      label: 'preferred_name',
       type: 'text',
     });
     removeFamilyMemberVariable(harness, 'fm_name');
@@ -1367,6 +1388,7 @@ describe('a codebook that changes while the pedigree is open', () => {
 
     addFamilyMemberVariable(harness, 'fm_name', {
       name: 'fm_name',
+      label: 'fm_name',
       type: 'text',
     });
 
@@ -1415,10 +1437,11 @@ describe('a codebook that changes while the pedigree is open', () => {
 
     redefineFamilyMemberVariable(harness, 'biologicalSex', {
       name: 'biologicalSex',
+      label: 'biologicalSex',
       type: 'categorical',
       options: [
-        { value: 'female', label: 'Female' },
-        { value: 'male', label: 'Male' },
+        { value: 'female', label: { 'en-US': 'Female' } },
+        { value: 'male', label: { 'en-US': 'Male' } },
       ],
     });
 
@@ -1460,10 +1483,11 @@ describe('a codebook that changes while the pedigree is open', () => {
 
     redefineFamilyMemberVariable(harness, 'biologicalSex', {
       name: 'biologicalSex',
+      label: 'biologicalSex',
       type: 'categorical',
       options: [
-        { value: 'female', label: 'Female' },
-        { value: 'male', label: 'Male' },
+        { value: 'female', label: { 'en-US': 'Female' } },
+        { value: 'male', label: { 'en-US': 'Male' } },
       ],
     });
 
@@ -1504,17 +1528,19 @@ describe('a codebook that changes while the pedigree is open', () => {
     // `seedTheOtherCandidate` gives about the node one.
     addFamilyEdgeVariable(harness, 'donorGamete', {
       name: 'donorGamete',
+      label: 'donorGamete',
       type: 'categorical',
-      options: GAMETE_ROLE_OPTIONS,
+      options: asAttributeOptions(GAMETE_ROLE_OPTIONS),
     });
 
     redefineFamilyEdgeVariable(harness, 'gameteRole', {
       name: 'gameteRole',
+      label: 'gameteRole',
       type: 'categorical',
       options: [
-        { value: 'egg', label: 'Egg' },
-        { value: 'sperm', label: 'Sperm' },
-        { value: 'unknown', label: 'Unknown' },
+        { value: 'egg', label: { 'en-US': 'Egg' } },
+        { value: 'sperm', label: { 'en-US': 'Sperm' } },
+        { value: 'unknown', label: { 'en-US': 'Unknown' } },
       ],
     });
 
@@ -1633,6 +1659,38 @@ describe('creating an attribute a slot needs without leaving the stage', () => {
     expect(
       screen.queryByRole('button', { name: 'Create new option' }),
     ).not.toBeInTheDocument();
+  });
+
+  it('stores the canonical values as answers worded in the protocol’s default language', async () => {
+    const harness = renderStageEditor(openFixture());
+    await harness.opened();
+
+    await inventAttribute(
+      harness.user,
+      attributeField('Biological sex'),
+      'sexAtBirth',
+    );
+    const creator = within(await screen.findByRole('dialog'));
+    await harness.user.click(
+      creator.getByRole('button', { name: 'Create attribute' }),
+    );
+
+    await waitFor(() =>
+      expect(variableIdByName(harness, 'sexAtBirth')).toEqual(
+        expect.any(String),
+      ),
+    );
+    const created =
+      harness.hostCodebook().node?.family_member?.variables?.[
+        variableIdByName(harness, 'sexAtBirth') ?? ''
+      ];
+    expect(created).toMatchObject({
+      options: BIOLOGICAL_SEX_OPTIONS.map(({ value, label }) => ({
+        value,
+        label: { 'en-US': escapeMessageText(label) },
+      })),
+    });
+    expect(VariableSchema.safeParse(created).success).toBe(true);
   });
 
   /**
@@ -1827,11 +1885,12 @@ describe('what a family member form field’s attribute holds', () => {
   const seedCategorical = (harness: StageEditorHarness): string => {
     addFamilyMemberVariable(harness, 'seeded-household-role', {
       name: 'household_role',
+      label: 'household_role',
       type: 'categorical',
       component: 'CheckboxGroup',
       options: [
-        { label: 'Parent', value: 'parent' },
-        { label: 'Sibling', value: 'sibling' },
+        { label: { 'en-US': 'Parent' }, value: 'parent' },
+        { label: { 'en-US': 'Sibling' }, value: 'sibling' },
       ],
     });
     return 'seeded-household-role';
@@ -1844,6 +1903,7 @@ describe('what a family member form field’s attribute holds', () => {
   const seedDatetime = (harness: StageEditorHarness): string => {
     addFamilyMemberVariable(harness, 'seeded-diagnosed-on', {
       name: 'diagnosed_on',
+      label: 'diagnosed_on',
       type: 'datetime',
       component: 'DatePicker',
     });
@@ -1891,8 +1951,8 @@ describe('what a family member form field’s attribute holds', () => {
     expect(created[1]).toMatchObject({
       type: 'categorical',
       options: [
-        { label: 'Parent', value: 'parent' },
-        { label: 'Sibling', value: 'sibling' },
+        { label: { 'en-US': 'Parent' }, value: 'parent' },
+        { label: { 'en-US': 'Sibling' }, value: 'sibling' },
       ],
     });
 
@@ -1900,7 +1960,7 @@ describe('what a family member form field’s attribute holds', () => {
       {
         id: expect.any(String) as unknown as string,
         variable: created[0],
-        prompt: 'Q?',
+        prompt: { 'en-US': 'Q?' },
       },
     ]);
   });
@@ -1960,7 +2020,7 @@ describe('what a family member form field’s attribute holds', () => {
       {
         id: expect.any(String) as unknown as string,
         variable: householdRole,
-        prompt: 'Q?',
+        prompt: { 'en-US': 'Q?' },
       },
     ]);
   });
@@ -1995,6 +2055,7 @@ describe('what a family member form field’s attribute holds', () => {
           : {},
       ).toMatchObject({
         name: 'diagnosed_on',
+        label: 'diagnosed_on',
         type: 'datetime',
         component: 'DatePicker',
         parameters: { type: 'year' },
@@ -2007,7 +2068,7 @@ describe('what a family member form field’s attribute holds', () => {
       {
         id: expect.any(String) as unknown as string,
         variable: diagnosedOn,
-        prompt: 'Q?',
+        prompt: { 'en-US': 'Q?' },
       },
     ]);
   });
@@ -2614,6 +2675,7 @@ describe('picks this session has already claimed', () => {
     const harness = renderStageEditor(openWithNominationPrompts());
     addFamilyMemberVariable(harness, 'unwell', {
       name: 'unwell',
+      label: 'unwell',
       type: 'boolean',
       component: 'Boolean',
     });
@@ -2622,6 +2684,7 @@ describe('picks this session has already claimed', () => {
     // this type carries is written unvalidated somewhere.
     addFamilyMemberVariable(harness, 'housebound', {
       name: 'housebound',
+      label: 'housebound',
       type: 'boolean',
       component: 'Boolean',
     });
@@ -2672,6 +2735,7 @@ describe('picks this session has already claimed', () => {
     const harness = renderStageEditor(openFixture());
     addFamilyEdgeVariable(harness, 'together', {
       name: 'together',
+      label: 'together',
       type: 'boolean',
     });
 

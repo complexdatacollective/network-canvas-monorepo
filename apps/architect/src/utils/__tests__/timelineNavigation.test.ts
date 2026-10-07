@@ -11,12 +11,14 @@ describe('resolveTimelineNavTarget', () => {
     ['/protocol', '/protocol/assets', '/protocol'],
     ['/protocol/assets', '/protocol', '/protocol/assets'],
     ['/protocol/codebook', '/protocol/assets', '/protocol/codebook'],
+    ['/protocol/localization', '/protocol', '/protocol/localization'],
     // Committed stage edits collapse to the stage list, never the editor.
     ['/protocol/stage/stage-1', '/protocol/codebook', '/protocol'],
     ['/protocol/stage/new', '/protocol/codebook', '/protocol'],
     // Already there: nothing to reveal by moving.
     ['/protocol', '/protocol', ''],
     ['/protocol/codebook', '/protocol/codebook', ''],
+    ['/protocol/localization', '/protocol/localization', ''],
     ['/protocol/stage/stage-1', '/protocol', ''],
     // No page reveals these.
     ['/protocol/summary', '/protocol', ''],
@@ -41,6 +43,7 @@ describe('resolveTimelineNavTarget', () => {
       '/protocol',
       '/protocol/assets',
       '/protocol/codebook',
+      '/protocol/localization',
       '/protocol/stage/stage-1',
     ]) {
       expect(resolveTimelineNavTarget(recordedPath, '/protocol/summary')).toBe(

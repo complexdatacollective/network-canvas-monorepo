@@ -13,6 +13,7 @@ const STAGE_TYPE_COVERAGE = {
   FamilyPedigree: true,
   Geospatial: true,
   Information: true,
+  LanguageChooser: true,
   NameGenerator: true,
   NameGeneratorQuickAdd: true,
   NameGeneratorRoster: true,

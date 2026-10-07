@@ -36,6 +36,7 @@ import { writeSubmissionResult } from '../../../forms/writeSubmissionResult';
 import { useCelebrate } from '../../../hooks/useCelebrate';
 import { useStageSelector } from '../../../hooks/useStageSelector';
 import { runtimeMessages } from '../../../i18n/runtimeMessages';
+import { LocalizedText } from '../../../localization/LocalizedText';
 import { getNodeIconName } from '../../../selectors/name-generator';
 import { getCodebookVariablesForSubjectType } from '../../../selectors/protocol';
 import { getPromptAdditionalAttributes } from '../../../selectors/session';
@@ -233,7 +234,7 @@ const NodeForm = (props: NodeFormProps) => {
       </AnimatePresence>
       <Dialog
         open={show && editing.status === 'ready'}
-        title={form.title}
+        title={<LocalizedText value={form.title} render={<span />} />}
         closeDialog={handleClose}
         footer={
           <Button

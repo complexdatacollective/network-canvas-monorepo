@@ -122,6 +122,7 @@ describe('the entity type picker', () => {
       node: {
         organisation: {
           name: 'organisation',
+          label: { 'en-US': 'organisation' },
           color: 'node-color-seq-3',
           shape: { default: 'square' },
         },
@@ -183,11 +184,13 @@ describe('the attribute picker', () => {
       node: {
         person: {
           name: 'person',
+          label: { 'en-US': 'person' },
           color: 'node-color-seq-1',
           shape: { default: 'circle' },
           variables: {
             nominated_early: {
               name: 'nominated_early',
+              label: 'nominated_early',
               type: 'boolean',
               component: 'Boolean',
             },

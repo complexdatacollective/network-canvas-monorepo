@@ -4,6 +4,7 @@ import migrationV1toV2 from '../../schemas/2/migration.ts';
 import migrationV2toV3 from '../../schemas/3/migration.ts';
 import migrationV4toV5 from '../../schemas/5/migration.ts';
 import migrationV6toV7 from '../../schemas/7/migration.ts';
+import { V8OutputSchema } from '../../schemas/8/__tests__/v8-output-schema.ts';
 import {
   CURRENT_SCHEMA_VERSION,
   VersionedProtocolSchema,
@@ -386,7 +387,7 @@ describe('Protocol Migrations', () => {
         name: 'Test Protocol',
       });
       expect(migrated.schemaVersion).toBe(8);
-      const person = migrated.codebook.node?.person;
+      const person = V8OutputSchema.parse(migrated).codebook.node?.person;
       expect(person?.name).toBe('My_Type');
       expect(person?.variables?.var1?.name).toBe('First_name');
       expect(person?.variables?.var2?.name).toBe('var2');
@@ -394,8 +395,8 @@ describe('Protocol Migrations', () => {
       expect(
         closeness && 'options' in closeness ? closeness.options : undefined,
       ).toEqual([
-        { label: 'Close friend', value: 'close_friend' },
-        { label: 'Colleague', value: 'colleague' },
+        { label: { und: 'Close friend' }, value: 'close_friend' },
+        { label: { und: 'Colleague' }, value: 'colleague' },
       ]);
     });
 

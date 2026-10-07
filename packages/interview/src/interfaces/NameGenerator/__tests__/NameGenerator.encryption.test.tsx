@@ -14,6 +14,7 @@ import { entityPrimaryKeyProperty, type NcNode } from '@codaco/shared-consts';
 
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import { InterviewI18nProvider } from '../../../i18n/InterviewI18nProvider';
+import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
 import {
   createEncryptionStore,
   encryptedVariables,
@@ -59,10 +60,10 @@ const quickAddStages: Stages = [
   {
     id: 'quick-add',
     type: 'NameGeneratorQuickAdd',
-    label: 'Quick add',
+    label: { en: 'Quick add' },
     subject: { entity: 'node', type: NODE_TYPE },
     quickAdd: asEntityAttributeReference('name'),
-    prompts: [{ id: 'prompt-1', text: 'Name people' }],
+    prompts: [{ id: 'prompt-1', text: { en: 'Name people' } }],
   },
 ];
 
@@ -85,17 +86,19 @@ async function renderNameGenerator({
 
   render(
     <Provider store={store}>
-      <InterviewI18nProvider requestedLocale="en">
-        <CurrentStepProvider currentStep={0} onStepChange={vi.fn()}>
-          <NameGenerator
-            stage={stage}
-            getNavigationHelpers={() => ({
-              moveForward: vi.fn(),
-              moveBackward: vi.fn(),
-            })}
-          />
-        </CurrentStepProvider>
-      </InterviewI18nProvider>
+      <TestProtocolLocalization>
+        <InterviewI18nProvider requestedLocale="en">
+          <CurrentStepProvider currentStep={0} onStepChange={vi.fn()}>
+            <NameGenerator
+              stage={stage}
+              getNavigationHelpers={() => ({
+                moveForward: vi.fn(),
+                moveBackward: vi.fn(),
+              })}
+            />
+          </CurrentStepProvider>
+        </InterviewI18nProvider>
+      </TestProtocolLocalization>
     </Provider>,
   );
 

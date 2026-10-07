@@ -10,16 +10,23 @@ import { AnimationProvider } from '@codaco/fresco-ui/AnimationProvider';
 import type {
   AssetRequestHandler,
   InterviewPayload,
+  ProtocolPayload,
+  SessionSnapshot,
   StepChangeHandler,
 } from '@codaco/interview';
 import { Shell } from '@codaco/interview';
+import { getLocaleMetadata } from '@codaco/protocol-validation';
 
-import { mockFinish, mockSync } from './mockCallbacks';
+import {
+  mockFinish,
+  mockProtocolLocaleChange,
+  mockSync,
+} from './mockCallbacks';
 import {
   createInterview as createInterviewHook,
   getAllowStageNavigation,
   getMountGeneration,
-  getRequestedLocale,
+  getRequestedLocales,
   getTestState,
   installProtocol as installProtocolHook,
   installTestHooks,
@@ -73,7 +80,7 @@ function useTestState() {
         .map(([id]) => id)
         .join(
           ',',
-        )}|${getAllowStageNavigation()}|${JSON.stringify(getRequestedLocale())}|${getMountGeneration()}`,
+        )}|${getAllowStageNavigation()}|${JSON.stringify(getRequestedLocales())}|${getMountGeneration()}`,
     () => '',
   );
 }
@@ -152,7 +159,7 @@ export default function App() {
         key={`${activeId}:${getMountGeneration()}`}
         session={entry.session}
         protocol={protocol}
-        requestedLocale={getRequestedLocale()}
+        requestedLocales={getRequestedLocales()}
         allowStageNavigation={getAllowStageNavigation()}
         currentStep={currentStep}
         onStepChange={onStepChange}
@@ -161,11 +168,13 @@ export default function App() {
   );
 }
 
-type MountedInterviewProps = InterviewPayload &
-  Pick<
-    ComponentProps<typeof Shell>,
-    'requestedLocale' | 'allowStageNavigation' | 'currentStep' | 'onStepChange'
-  >;
+type MountedInterviewProps = {
+  session: SessionSnapshot;
+  protocol: ProtocolPayload;
+} & Pick<
+  ComponentProps<typeof Shell>,
+  'requestedLocales' | 'allowStageNavigation' | 'currentStep' | 'onStepChange'
+>;
 
 function MountedInterview({
   session,
@@ -175,13 +184,22 @@ function MountedInterview({
   // The payload seeds the Shell's store, so it is fixed for the life of this
   // mount; the session the host goes on to hold reaches the Shell only by a
   // remount, never by re-seeding a running one.
-  const [payload] = useState<InterviewPayload>(() => ({ session, protocol }));
+  const [payload] = useState<InterviewPayload>(() => ({
+    session: {
+      ...session,
+      localeOptions: protocol.localization.locales.map((locale) =>
+        getLocaleMetadata(locale),
+      ),
+    },
+    protocol,
+  }));
 
   return (
     <Shell
       {...shellProps}
       payload={payload}
       onSync={mockSync}
+      onProtocolLocaleChange={mockProtocolLocaleChange}
       onFinish={mockFinish}
       onRequestAsset={mockAssetReq}
       flags={{ isE2E: true }}

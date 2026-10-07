@@ -4,7 +4,7 @@ import {
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import type {
   Presence,
@@ -22,6 +22,7 @@ import {
   type ProtocolSectionId,
 } from '@codaco/studio-sync/taxonomy';
 
+import { useLocalizedText } from '../localization/ProtocolLocalization.tsx';
 import { attempt } from './attempt.ts';
 import {
   lockQueryKey,
@@ -98,24 +99,32 @@ export function useEntityTypes(
 export type StageSummary = Readonly<{
   id: string;
   type: string;
+  /** The stage's name in the editing language, or the one it falls back to. */
   label: string;
+}>;
+
+type StoredStageSummary = Readonly<{
+  id: string;
+  type: string;
+  label: unknown;
 }>;
 
 /** The protocol's stages in order, for a destination picker or a heading. */
 export function useStageIndex(): readonly StageSummary[] {
   const { protocolId, adapter } = useProtocolBuilderContext();
+  const localize = useLocalizedText();
   const stageIds = useSection(STAGE_ORDER, (section) =>
     stageIdsOf(section.document),
   );
   const ids = stageIds ?? [];
 
-  return useQueries({
+  const stored = useQueries({
     queries: ids.map((id) => ({
       ...adapter.rpcQuery('GetSection', {
         protocolId,
         sectionId: sectionId({ kind: 'stage', stageId: id }),
       }),
-      select: (section: SectionAtRevision): StageSummary =>
+      select: (section: SectionAtRevision): StoredStageSummary =>
         stageSummary(id, section.document),
     })),
     combine: (results) =>
@@ -123,6 +132,16 @@ export function useStageIndex(): readonly StageSummary[] {
         result.data === undefined ? [] : [result.data],
       ),
   });
+
+  return useMemo(
+    () =>
+      stored.map((stage) => ({
+        id: stage.id,
+        type: stage.type,
+        label: localize(stage.label).text,
+      })),
+    [localize, stored],
+  );
 }
 
 /**
@@ -470,11 +489,11 @@ function entityTypeSummary(
   };
 }
 
-function stageSummary(id: string, document: SectionDoc): StageSummary {
+function stageSummary(id: string, document: SectionDoc): StoredStageSummary {
   return {
     id,
     type: typeof document.type === 'string' ? document.type : '',
-    label: typeof document.label === 'string' ? document.label : '',
+    label: document.label,
   };
 }
 

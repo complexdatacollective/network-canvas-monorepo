@@ -11,6 +11,14 @@ import {
 } from '@codaco/shared-consts';
 
 import { exportColumnRefusals } from '../../fields/variableNameRules.ts';
+import {
+  asLocalizedString,
+  translationText,
+} from '../../localization/localizedText.ts';
+import {
+  isOptionLabelEmpty,
+  optionsWithLabelText,
+} from './optionCompleteness.ts';
 
 /**
  * Case-insensitive AND Unicode-canonical: a precomposed and a decomposed
@@ -189,24 +197,37 @@ const duplicateLabelMessage = defineMessage({
 });
 
 /**
- * What one option's label cell complains about: nothing written, or another
- * option in the same list a participant would read the same way.
+ * What one option's label cell complains about: nothing written in any
+ * language, or another option in the same list a participant would read the
+ * same way.
  *
  * Shared by every surface that authors an option label — the inline list a
  * form-field, composer, bin or tie-strength row mounts, and the codebook's own
  * attribute editor — so the complaint a researcher reads, and the moment they
  * read it, does not depend on which door they came through. The array-level
- * and codebook-write counterparts of the same rule are
- * `hasDuplicateOptionLabels`; this is the one that says it where they are
- * typing.
+ * and codebook-write counterpart of the same rule is
+ * `hasDuplicateLocalizedOptionLabels`; this is the one that says it where they
+ * are typing.
+ *
+ * A label is compared one language at a time, against the others' labels in
+ * that language: two options collide where both have a translation that reads
+ * the same, and a missing translation never collides.
  */
 export const optionLabelIssues = (
   value: unknown,
   rows: readonly unknown[],
 ): string[] =>
   cellIssues(
-    requiredCell(value),
-    isDuplicatedInColumn(rows, 'label', value)
+    isOptionLabelEmpty(value)
+      ? createMessageError(rowRequiredMessage)
+      : undefined,
+    Object.keys(asLocalizedString(value) ?? {}).some((locale) =>
+      isDuplicatedInColumn(
+        optionsWithLabelText(rows, locale),
+        'label',
+        translationText(value, locale),
+      ),
+    )
       ? createMessageError(duplicateLabelMessage)
       : undefined,
   );

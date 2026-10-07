@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   asEntityAttributeReference,
+  type LocalizedString,
   RELATIONSHIP_TYPE_OPTIONS,
   type Stage,
   type Variables,
@@ -30,13 +31,15 @@ import { SyntheticDataConstraintError } from '../error.ts';
 
 const config = resolveGenerationConfig({ today: '2026-07-27' });
 
+const en = (text: string): LocalizedString => ({ 'en-US': text });
+
 function nameGenerator(overrides: Record<string, unknown> = {}): Stage {
   return {
     id: 'stage-1',
     type: 'NameGenerator',
-    label: 'Name generator',
+    label: en('Name generator'),
     subject: { entity: 'node', type: 'person' },
-    prompts: [{ id: 'p1', text: 'Name people' }],
+    prompts: [{ id: 'p1', text: en('Name people') }],
     ...overrides,
   } as Stage;
 }
@@ -1644,7 +1647,12 @@ describe('worstCaseEntityCounts with roster rows the rules reject', () => {
   }
 
   const adult = personConstraints({
-    age: { name: 'Age', type: 'number', validation: { minValue: 18 } },
+    age: {
+      name: 'Age',
+      label: 'Age',
+      type: 'number',
+      validation: { minValue: 18 },
+    },
   });
 
   const census = {
@@ -1730,9 +1738,10 @@ describe('worstCaseEntityCounts with roster rows the rules reject', () => {
 
   it('counts no node for a row breaking a rule between two of its own values', () => {
     const dated = personConstraints({
-      startYear: { name: 'Start', type: 'number' },
+      startYear: { name: 'Start', label: 'Start', type: 'number' },
       endYear: {
         name: 'End',
+        label: 'End',
         type: 'number',
         validation: {
           greaterThanVariable: asEntityAttributeReference('startYear'),
@@ -1761,9 +1770,10 @@ describe('worstCaseEntityCounts with roster rows the rules reject', () => {
     // partner nothing under its own ceiling. That is the completability fold
     // `completionCheckFor` performs, and the draw passes the row over by it.
     const capped = personConstraints({
-      startYear: { name: 'Start', type: 'number' },
+      startYear: { name: 'Start', label: 'Start', type: 'number' },
       endYear: {
         name: 'End',
+        label: 'End',
         type: 'number',
         validation: {
           maxValue: 2000,
@@ -1795,9 +1805,14 @@ describe('worstCaseEntityCounts with roster rows the rules reject', () => {
    */
   describe('against the values a prompt fixes', () => {
     const exclusive = personConstraints({
-      consented: { name: 'Consented', type: 'boolean' },
+      consented: {
+        name: 'Consented',
+        label: 'Consented',
+        type: 'boolean',
+      },
       flag: {
         name: 'Flag',
+        label: 'Flag',
         type: 'boolean',
         validation: {
           differentFrom: asEntityAttributeReference('consented'),
@@ -1869,6 +1884,7 @@ describe('worstCaseEntityCounts with roster rows the rules reject', () => {
     const uniqueNickname = personConstraints({
       nickname: {
         name: 'Nickname',
+        label: 'Nickname',
         type: 'text',
         validation: { unique: true },
       },
@@ -1916,7 +1932,9 @@ describe('worstCaseEntityCounts with roster rows the rules reject', () => {
         { 'roster-person': shared, 'roster-org': shared },
         constraintsFor({
           person: {},
-          organization: { flag: { name: 'Flag', type: 'boolean' } },
+          organization: {
+            flag: { name: 'Flag', label: 'Flag', type: 'boolean' },
+          },
         }),
       );
 
@@ -1937,7 +1955,12 @@ describe('worstCaseEntityCounts with roster rows the rules reject', () => {
       constraintsFor(
         {
           person: {
-            age: { name: 'Age', type: 'number', validation: { minValue: 18 } },
+            age: {
+              name: 'Age',
+              label: 'Age',
+              type: 'number',
+              validation: { minValue: 18 },
+            },
           },
         },
         new Set(['age']),

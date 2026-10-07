@@ -32,7 +32,7 @@ const COLLABORATOR = {
 };
 
 const CONFIGURED: SectionDoc = {
-  label: 'Welcome',
+  label: { 'en-US': 'Welcome' },
   title: 'Welcome to the study',
   items: [],
   interviewScript: 'Read the welcome text aloud before continuing.',
@@ -56,6 +56,7 @@ function StageEditorHost({
         [sectionId({ kind: 'settings' })]: {
           name: 'Protocol builder proof host',
           schemaVersion: 9,
+          localization: { defaultLocale: 'en-US', locales: ['en-US'] },
         },
         [sectionId({ kind: 'stageOrder' })]: { stages: [STAGE_ID] },
         [sectionId({ kind: 'assets' })]: {},
@@ -128,7 +129,7 @@ type Story = StoryObj<typeof meta>;
 export const Editing: Story = {
   args: {
     readOnly: false,
-    fields: { label: 'Welcome', title: '', items: [] },
+    fields: { label: { 'en-US': 'Welcome' }, title: '', items: [] },
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);

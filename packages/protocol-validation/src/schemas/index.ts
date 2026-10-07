@@ -41,5 +41,4 @@ export type Protocol<V extends SchemaVersion> = Extract<
   { schemaVersion: V }
 >;
 
-export * from './7/schema.ts';
-export * from './8/schema.ts';
+export * from './9/schema.ts';

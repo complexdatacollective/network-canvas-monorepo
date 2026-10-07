@@ -93,8 +93,8 @@ describe('the sections of an anonymisation stage', () => {
 
     const saved = await harness.submit();
     expect(saved?.stageDocument.explanationText).toEqual({
-      title: 'Your answers are protected',
-      body: expect.stringContaining('encrypt the names of people'),
+      title: { 'en-US': 'Your answers are protected' },
+      body: { 'en-US': expect.stringContaining('encrypt the names of people') },
     });
   });
 
@@ -115,6 +115,37 @@ describe('the sections of an anonymisation stage', () => {
       'aria-invalid',
       'true',
     );
+  });
+
+  it('refuses an explanation heading over 50 characters in any of the protocol languages', async () => {
+    const harness = renderStageEditor({
+      stageId: 'anonymisation-1',
+      registry: anonymisationStageEditor,
+      localization: { defaultLocale: 'en-US', locales: ['en-US', 'es'] },
+    });
+
+    // Every localized field draws the one shared menu, so any of them will do.
+    const [languageMenu] = await screen.findAllByRole('button', {
+      name: /Editing language/,
+    });
+    if (languageMenu === undefined) throw new Error('No language menu');
+    await harness.user.click(languageMenu);
+    await harness.user.click(
+      await screen.findByRole('menuitemradio', { name: /^español/ }),
+    );
+    const heading = screen.getByRole('textbox', { name: 'Title' });
+    await harness.user.type(heading, 'x'.repeat(51));
+
+    expect(await harness.submit()).toBeNull();
+    expect(
+      await screen.findByText('Too long. Enter at most 50 characters.'),
+    ).toBeInTheDocument();
+
+    await harness.user.type(heading, '{Backspace}');
+    const saved = await harness.submit();
+    expect(saved?.stageDocument.explanationText).toMatchObject({
+      title: { es: 'x'.repeat(50) },
+    });
   });
 
   it('refuses passphrase rules whose shortest allowed length exceeds its longest', async () => {
@@ -372,8 +403,11 @@ describe('how the passphrase rules are put on screen', () => {
         id: 'anonymisation-contradictory',
         type: 'Anonymisation',
         fields: {
-          label: 'Anonymisation',
-          explanationText: { title: 'Privacy', body: 'Choose a passphrase.' },
+          label: { 'en-US': 'Anonymisation' },
+          explanationText: {
+            title: { 'en-US': 'Privacy' },
+            body: { 'en-US': 'Choose a passphrase.' },
+          },
           validation: { minLength: 40, maxLength: 5 },
         },
       },
@@ -489,7 +523,7 @@ describe('the attributes a passphrase protects', () => {
     );
     const saved = await harness.submit();
     expect(saved?.stageDocument.explanationText).toMatchObject({
-      title: 'Rewritten heading',
+      title: { 'en-US': 'Rewritten heading' },
     });
   });
 
@@ -518,7 +552,7 @@ describe('the attributes a passphrase protects', () => {
     const person = personDocument(harness);
     const variables = {
       ...(person.variables as Record<string, unknown>),
-      name: { name: 'name', type: 'number' },
+      name: { name: 'name', label: 'name', type: 'number' },
     };
 
     harness.receiveCodebookUpdate({
@@ -749,6 +783,7 @@ describe('the attributes a passphrase protects', () => {
               ...(person.variables as Record<string, unknown>),
               relationship_to_ego: {
                 name: 'relationship_to_ego',
+                label: 'relationship_to_ego',
                 type: 'text',
                 encrypted: true,
               },
@@ -862,6 +897,7 @@ describe('the attributes a passphrase protects', () => {
 
       collaboratorSets(harness, 'person', 'name', {
         name: 'name',
+        label: 'name',
         type: 'text',
         encrypted: true,
       });
@@ -886,6 +922,7 @@ describe('the attributes a passphrase protects', () => {
 
       collaboratorSets(harness, 'person', 'name', {
         name: 'name',
+        label: 'name',
         type: 'text',
       });
 
@@ -907,6 +944,7 @@ describe('the attributes a passphrase protects', () => {
 
       collaboratorSets(harness, 'person', 'relationship_to_ego', {
         name: 'relationship_to_ego',
+        label: 'relationship_to_ego',
         type: 'text',
       });
       await waitFor(() =>
@@ -977,7 +1015,12 @@ describe('the attributes a passphrase protects', () => {
         harness,
         'family_member',
         'fm_name',
-        { name: 'fm_name', type: 'text', encrypted: true },
+        {
+          name: 'fm_name',
+          label: 'fm_name',
+          type: 'text',
+          encrypted: true,
+        },
         { name: 'household member' },
       );
       // The revision is on screen while the write is still in flight: the
@@ -1023,7 +1066,7 @@ describe('the attributes a passphrase protects', () => {
         harness,
         'family_member',
         'fm_name',
-        { name: 'fm_name', type: 'text' },
+        { name: 'fm_name', label: 'fm_name', type: 'text' },
         { name: 'household member' },
       );
       expect(

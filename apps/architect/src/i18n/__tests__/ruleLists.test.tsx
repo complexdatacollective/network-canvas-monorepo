@@ -83,11 +83,11 @@ it.each(['default', 'summary'] as const)(
               name: 'Authored_Groups',
               type: 'categorical',
               options: [
-                { value: 'first', label: 'Bravo' },
-                { value: 'second', label: '**Bravo**' },
+                { value: 'first', label: { en: 'Bravo' } },
+                { value: 'second', label: { en: '**Bravo**' } },
                 {
                   value: 'third',
-                  label: '[Isabel](https://example.org/authored)',
+                  label: { en: '[Isabel](https://example.org/authored)' },
                 },
               ],
             },
@@ -226,8 +226,8 @@ it.each([
             name: 'Authored_Groups',
             type: 'categorical',
             options: [
-              { value: 'bravo', label: 'Bravo' },
-              { value: 'isabel', label },
+              { value: 'bravo', label: { en: 'Bravo' } },
+              { value: 'isabel', label: { en: label } },
             ],
           },
         },

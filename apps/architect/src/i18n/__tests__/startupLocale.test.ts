@@ -24,6 +24,7 @@ it('uses the persisted researcher locale for startup restoration before React mo
   const protocol: CurrentProtocol = {
     name: 'Research_Name',
     schemaVersion: 9,
+    localization: { defaultLocale: 'en', locales: ['en'] },
     stages: [],
     codebook: {},
   };

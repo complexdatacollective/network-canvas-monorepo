@@ -513,9 +513,18 @@ describe('findExportColumnConflicts', () => {
         'sessionFinish',
         'sessionExported',
         'COMMIT_HASH',
+        'networkCanvasInterviewLocale',
       ]) {
         expect(conflicts(text(name), [], 'ego')).not.toEqual([]);
         expect(conflicts(text(name), [], 'node')).toEqual([]);
+      }
+    });
+
+    // Earlier protocols can name an ego variable after the interview locale;
+    // only the column the export prints it under is reserved.
+    it('accepts the interview locale property names that are not printed', () => {
+      for (const name of ['interviewLocale', 'INTERVIEW_LOCALE']) {
+        expect(conflicts(text(name), [], 'ego')).toEqual([]);
       }
     });
 

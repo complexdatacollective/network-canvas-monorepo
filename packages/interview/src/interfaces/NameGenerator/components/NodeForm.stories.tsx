@@ -30,11 +30,13 @@ const buildMockProtocol = (icon: string) => ({
     node: {
       person: {
         name: 'Person',
+        label: { en: 'Person' },
         displayVariable: 'name',
         icon,
         variables: {
           name: {
             name: 'Name',
+            label: 'Name',
             type: 'text',
             component: 'Text',
             validation: {
@@ -45,6 +47,7 @@ const buildMockProtocol = (icon: string) => ({
           },
           age: {
             name: 'Age',
+            label: 'Age',
             type: 'number',
             component: 'Number',
             validation: {
@@ -54,13 +57,14 @@ const buildMockProtocol = (icon: string) => ({
           },
           gender: {
             name: 'Gender',
+            label: 'Gender',
             type: 'categorical',
             component: 'RadioGroup',
             options: [
-              { label: 'Male', value: 'male' },
-              { label: 'Female', value: 'female' },
-              { label: 'Non-binary', value: 'non_binary' },
-              { label: 'Prefer not to say', value: 'prefer_not_say' },
+              { label: { en: 'Male' }, value: 'male' },
+              { label: { en: 'Female' }, value: 'female' },
+              { label: { en: 'Non-binary' }, value: 'non_binary' },
+              { label: { en: 'Prefer not to say' }, value: 'prefer_not_say' },
             ],
             validation: {
               required: true,
@@ -68,19 +72,21 @@ const buildMockProtocol = (icon: string) => ({
           },
           occupation: {
             name: 'Occupation',
+            label: 'Occupation',
             type: 'text',
             component: 'Text',
           },
           favoriteColors: {
             name: 'Favorite Colors',
+            label: 'Favorite Colors',
             type: 'categorical',
             component: 'CheckboxGroup',
             options: [
-              { label: 'Red', value: 'red' },
-              { label: 'Blue', value: 'blue' },
-              { label: 'Green', value: 'green' },
-              { label: 'Yellow', value: 'yellow' },
-              { label: 'Purple', value: 'purple' },
+              { label: { en: 'Red' }, value: 'red' },
+              { label: { en: 'Blue' }, value: 'blue' },
+              { label: { en: 'Green' }, value: 'green' },
+              { label: { en: 'Yellow' }, value: 'yellow' },
+              { label: { en: 'Purple' }, value: 'purple' },
             ],
             validation: {
               required: true,
@@ -90,11 +96,13 @@ const buildMockProtocol = (icon: string) => ({
           },
           birthDate: {
             name: 'Birth Date',
+            label: 'Birth Date',
             type: 'datetime',
             component: 'DatePicker',
           },
           happiness: {
             name: 'Happiness Level',
+            label: 'Happiness Level',
             type: 'scalar',
             component: 'Slider',
             parameters: {
@@ -104,11 +112,13 @@ const buildMockProtocol = (icon: string) => ({
           },
           isEmployed: {
             name: 'Currently Employed',
+            label: 'Currently Employed',
             type: 'boolean',
             component: 'Toggle',
           },
           bio: {
             name: 'Biography',
+            label: 'Biography',
             type: 'text',
             component: 'TextArea',
             validation: {
@@ -117,15 +127,16 @@ const buildMockProtocol = (icon: string) => ({
           },
           skills: {
             name: 'Skills',
+            label: 'Skills',
             type: 'categorical',
             component: 'CheckboxGroup',
             options: [
-              { label: 'JavaScript', value: 'javascript' },
-              { label: 'Python', value: 'python' },
-              { label: 'Java', value: 'java' },
-              { label: 'C++', value: 'cpp' },
-              { label: 'Ruby', value: 'ruby' },
-              { label: 'Go', value: 'go' },
+              { label: { en: 'JavaScript' }, value: 'javascript' },
+              { label: { en: 'Python' }, value: 'python' },
+              { label: { en: 'Java' }, value: 'java' },
+              { label: { en: 'C++' }, value: 'cpp' },
+              { label: { en: 'Ruby' }, value: 'ruby' },
+              { label: { en: 'Go' }, value: 'go' },
             ],
             validation: {
               required: true,
@@ -135,13 +146,14 @@ const buildMockProtocol = (icon: string) => ({
           },
           communicationPreference: {
             name: 'Communication Preference',
+            label: 'Communication Preference',
             type: 'categorical',
             component: 'ToggleButtonGroup',
             options: [
-              { label: 'Email', value: 'email' },
-              { label: 'Phone', value: 'phone' },
-              { label: 'Text', value: 'text' },
-              { label: 'Video Call', value: 'video' },
+              { label: { en: 'Email' }, value: 'email' },
+              { label: { en: 'Phone' }, value: 'phone' },
+              { label: { en: 'Text' }, value: 'text' },
+              { label: { en: 'Video Call' }, value: 'video' },
             ],
             validation: {
               required: true,
@@ -154,7 +166,7 @@ const buildMockProtocol = (icon: string) => ({
   stages: [
     {
       type: 'NameGenerator',
-      label: 'Name Generator',
+      label: { en: 'Name Generator' },
       subject: {
         entity: 'node',
         type: 'person',
@@ -162,47 +174,47 @@ const buildMockProtocol = (icon: string) => ({
       prompts: [
         {
           id: 'prompt-1',
-          text: 'Name the people in your network',
+          text: { en: 'Name the people in your network' },
         },
       ],
       form: {
-        title: 'Add Person Details',
+        title: { en: 'Add Person Details' },
         fields: [
           {
             variable: asEntityAttributeReference('name'),
-            prompt: "What is this person's name?",
+            prompt: { en: "What is this person's name?" },
           },
           {
             variable: asEntityAttributeReference('age'),
-            prompt: 'How old is this person?',
+            prompt: { en: 'How old is this person?' },
           },
           {
             variable: asEntityAttributeReference('gender'),
-            prompt: 'What is their gender?',
+            prompt: { en: 'What is their gender?' },
           },
           {
             variable: asEntityAttributeReference('occupation'),
-            prompt: 'What is their occupation?',
+            prompt: { en: 'What is their occupation?' },
           },
           {
             variable: asEntityAttributeReference('favoriteColors'),
-            prompt: 'What are their favorite colors?',
+            prompt: { en: 'What are their favorite colors?' },
           },
           {
             variable: asEntityAttributeReference('birthDate'),
-            prompt: 'When were they born?',
+            prompt: { en: 'When were they born?' },
           },
           {
             variable: asEntityAttributeReference('happiness'),
-            prompt: 'How happy are they generally?',
+            prompt: { en: 'How happy are they generally?' },
           },
           {
             variable: asEntityAttributeReference('isEmployed'),
-            prompt: 'Are they currently employed?',
+            prompt: { en: 'Are they currently employed?' },
           },
           {
             variable: asEntityAttributeReference('bio'),
-            prompt: 'Tell us a bit about them',
+            prompt: { en: 'Tell us a bit about them' },
           },
         ],
       },
@@ -218,6 +230,8 @@ const mockSession = {
   finishTime: null,
   exportTime: null,
   lastUpdated: new Date().toISOString(),
+  localePreference: null,
+  locale: null,
   network: {
     nodes: [
       {
@@ -351,42 +365,42 @@ type Story = StoryObj<StoryArgs>;
 
 // Basic form with all field types
 const basicForm: TForm = {
-  title: 'Add Person to Your Network',
+  title: { en: 'Add Person to Your Network' },
   fields: [
     {
       variable: asEntityAttributeReference('name'),
-      prompt: 'What is their name?',
+      prompt: { en: 'What is their name?' },
     },
     {
       variable: asEntityAttributeReference('age'),
-      prompt: 'How old are they?',
+      prompt: { en: 'How old are they?' },
     },
     {
       variable: asEntityAttributeReference('gender'),
-      prompt: 'What is their gender?',
+      prompt: { en: 'What is their gender?' },
     },
     {
       variable: asEntityAttributeReference('occupation'),
-      prompt: 'What do they do for work?',
+      prompt: { en: 'What do they do for work?' },
     },
   ],
 };
 
 // Form with validation
 const validatedForm: TForm = {
-  title: 'Add Person (with validation)',
+  title: { en: 'Add Person (with validation)' },
   fields: [
     {
       variable: asEntityAttributeReference('name'),
-      prompt: 'Name (required)',
+      prompt: { en: 'Name (required)' },
     },
     {
       variable: asEntityAttributeReference('age'),
-      prompt: 'Age (18-100)',
+      prompt: { en: 'Age (18-100)' },
     },
     {
       variable: asEntityAttributeReference('favoriteColors'),
-      prompt: 'Select at least 2 favorite colors',
+      prompt: { en: 'Select at least 2 favorite colors' },
     },
   ],
 };
@@ -466,7 +480,7 @@ export const EmptyForm: Story = {
   args: {
     selectedNode: null,
     form: {
-      title: 'Quick Add',
+      title: { en: 'Quick Add' },
       fields: [],
     },
     disabled: false,
@@ -477,11 +491,11 @@ export const SingleFieldForm: Story = {
   args: {
     selectedNode: null,
     form: {
-      title: 'Add Name Only',
+      title: { en: 'Add Name Only' },
       fields: [
         {
           variable: asEntityAttributeReference('name'),
-          prompt: "Enter the person's name",
+          prompt: { en: "Enter the person's name" },
         },
       ],
     },
@@ -491,35 +505,35 @@ export const SingleFieldForm: Story = {
 
 // Form with multiple field types to demonstrate initialValues comprehensively
 const comprehensiveForm: TForm = {
-  title: 'Complete Profile',
+  title: { en: 'Complete Profile' },
   fields: [
     {
       variable: asEntityAttributeReference('name'),
-      prompt: 'What is their name?',
+      prompt: { en: 'What is their name?' },
     },
     {
       variable: asEntityAttributeReference('age'),
-      prompt: 'How old are they?',
+      prompt: { en: 'How old are they?' },
     },
     {
       variable: asEntityAttributeReference('gender'),
-      prompt: 'What is their gender?',
+      prompt: { en: 'What is their gender?' },
     },
     {
       variable: asEntityAttributeReference('occupation'),
-      prompt: 'What do they do for work?',
+      prompt: { en: 'What do they do for work?' },
     },
     {
       variable: asEntityAttributeReference('favoriteColors'),
-      prompt: 'What are their favorite colors?',
+      prompt: { en: 'What are their favorite colors?' },
     },
     {
       variable: asEntityAttributeReference('isEmployed'),
-      prompt: 'Are they currently employed?',
+      prompt: { en: 'Are they currently employed?' },
     },
     {
       variable: asEntityAttributeReference('bio'),
-      prompt: 'Tell us a bit about them',
+      prompt: { en: 'Tell us a bit about them' },
     },
   ],
 };
@@ -557,12 +571,13 @@ export const WithUniqueValidation: Story = {
   args: {
     selectedNode: null,
     form: {
-      title: 'Add Unique Person',
+      title: { en: 'Add Unique Person' },
       fields: [
         {
           variable: asEntityAttributeReference('name'),
-          prompt:
-            'Enter a unique name (Alice Smith and Bob Johnson already exist)',
+          prompt: {
+            en: 'Enter a unique name (Alice Smith and Bob Johnson already exist)',
+          },
         },
       ],
     },
@@ -580,15 +595,15 @@ export const WithUniqueValidation: Story = {
 
 // CheckboxGroup with validation
 const checkboxGroupForm: TForm = {
-  title: 'Select Your Skills',
+  title: { en: 'Select Your Skills' },
   fields: [
     {
       variable: asEntityAttributeReference('name'),
-      prompt: 'Your name',
+      prompt: { en: 'Your name' },
     },
     {
       variable: asEntityAttributeReference('skills'),
-      prompt: 'Select your programming skills (1-4 required)',
+      prompt: { en: 'Select your programming skills (1-4 required)' },
     },
   ],
 };
@@ -634,15 +649,15 @@ export const CheckboxGroupWithInitialValues: Story = {
 
 // ToggleButtonGroup with validation
 const toggleButtonGroupForm: TForm = {
-  title: 'Communication Preferences',
+  title: { en: 'Communication Preferences' },
   fields: [
     {
       variable: asEntityAttributeReference('name'),
-      prompt: 'Your name',
+      prompt: { en: 'Your name' },
     },
     {
       variable: asEntityAttributeReference('communicationPreference'),
-      prompt: 'How would you prefer to be contacted?',
+      prompt: { en: 'How would you prefer to be contacted?' },
     },
   ],
 };

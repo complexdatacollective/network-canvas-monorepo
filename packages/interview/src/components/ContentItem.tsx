@@ -3,21 +3,41 @@
 import { useState } from 'react';
 import { useSelector } from 'react-redux';
 
-import { AppMessage } from '@codaco/app-i18n/react';
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import {
-  ALLOWED_MARKDOWN_SECTION_TAGS,
-  RenderMarkdown,
-} from '@codaco/fresco-ui/RenderMarkdown';
+  type PresentationalText,
+  presentationalTextProps,
+  presentationalTextValue,
+} from '@codaco/fresco-ui/PresentationalText';
+import { ALLOWED_MARKDOWN_SECTION_TAGS } from '@codaco/fresco-ui/RenderMarkdown';
 import Spinner from '@codaco/fresco-ui/Spinner';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { cx } from '@codaco/fresco-ui/utils/cva';
-import type { Item } from '@codaco/protocol-validation';
+import type { Item, LocalizedString } from '@codaco/protocol-validation';
 
 import { useCaptureException } from '../analytics/useTrack';
 import { useContractFlags } from '../contract/context';
 import { useAssetUrl } from '../hooks/useAssetUrl';
 import { runtimeMessages as messages } from '../i18n/runtimeMessages';
+import { LocalizedMarkdown } from '../localization/LocalizedMarkdown';
+import { useResolvePresentationalText } from '../localization/ProtocolLocalizationProvider';
 import { getAssetManifest } from '../store/modules/protocol';
+
+const mediaMessages = defineMessages({
+  audioLabel: {
+    id: 'interview.contentItem.audioLabel',
+    defaultMessage: 'Audio',
+    description:
+      'Accessible name of an audio player in protocol content that the researcher has not described.',
+  },
+  videoLabel: {
+    id: 'interview.contentItem.videoLabel',
+    defaultMessage: 'Video',
+    description:
+      'Accessible name of a video player in protocol content that the researcher has not described.',
+  },
+});
 
 // UploadThing's CDN serves files uploaded via the `blob` router with an invalid
 // Content-Type (e.g. `video` instead of `video/mp4`). Safari strictly requires
@@ -95,21 +115,23 @@ function ItemFallback() {
 }
 
 /**
- * What the researcher wrote about a file, or `undefined` when they wrote
- * nothing a participant could use.
+ * What the researcher wrote about a file, in the interview language, or
+ * `undefined` when they wrote nothing a participant could use.
  *
- * The schema accepts any optional string, and an item nobody has reopened in
- * the builder is never rewritten, so an imported or hand-authored protocol can
- * carry a description of `""` or `"   "`. Read literally that is an accessible
- * name made of whitespace — announced as nothing, or as a run of spaces, in
- * place of the file's own name — so a blank description is the same answer as
- * no description at all. Every place this item's description is read for a
- * participant goes through here, so the two cannot drift apart.
+ * An imported or hand-authored protocol can carry a description of `""` or
+ * `"   "`. Read literally that is an accessible name made of whitespace,
+ * announced as nothing or as a run of spaces, so a blank description is the
+ * same answer as no description at all. Every place this item's description
+ * is read for a participant goes through here, so the two cannot drift apart.
  */
-const describedAs = (description: string | undefined) =>
-  description !== undefined && description.trim() !== ''
-    ? description
-    : undefined;
+function useDescription(
+  description: LocalizedString | undefined,
+): PresentationalText | undefined {
+  const toPresentationalText = useResolvePresentationalText();
+  if (description === undefined) return undefined;
+  const text = toPresentationalText(description);
+  return presentationalTextValue(text).trim() === '' ? undefined : text;
+}
 
 type MediaLoadState = 'loading' | 'loaded' | 'error';
 
@@ -126,14 +148,15 @@ function VideoPlayer({
   /**
    * What the researcher wrote about this video, which names the player for a
    * participant who cannot see it. The same key an image reads as its alt text
-   * and an audio player reads as its own name; the file's name is only what is
-   * left when nobody has written one.
+   * and an audio player reads as its own name. The file's name is the
+   * researcher's filing label and never names the player.
    */
-  description: string | undefined;
+  description: PresentationalText | undefined;
   source: string | undefined;
   isE2E: boolean;
   size: string | undefined;
 }) {
+  const intl = useAppIntl();
   const [state, setState] = useState<MediaLoadState>('loading');
   const captureException = useCaptureException();
 
@@ -162,7 +185,14 @@ function VideoPlayer({
       <video
         loop
         controls
-        aria-label={describedAs(description) ?? name}
+        aria-label={
+          description === undefined
+            ? intl.formatMessage(mediaMessages.videoLabel)
+            : presentationalTextValue(description)
+        }
+        // The description's language without its direction: `dir` would also
+        // mirror the player's own controls.
+        lang={presentationalTextProps(description).lang}
         autoPlay={!isE2E}
         muted={!isE2E}
         playsInline
@@ -191,12 +221,19 @@ function VideoPlayer({
   );
 }
 
-function AssetItem({ item, isE2E }: { item: Item; isE2E: boolean }) {
+function AssetItem({
+  item,
+  isE2E,
+}: {
+  item: Extract<Item, { type: 'asset' }>;
+  isE2E: boolean;
+}) {
+  const intl = useAppIntl();
   const assetManifest = useSelector(getAssetManifest);
   const assetMeta = assetManifest[item.content];
   const { url, isLoading } = useAssetUrl(item.content);
-  // `size` exists only on asset items (text items have no size).
-  const itemSize = item.type === 'asset' ? item.size : undefined;
+  const description = useDescription(item.description);
+  const itemSize = item.size;
 
   if (!assetMeta) {
     return <ItemFallback />;
@@ -228,7 +265,12 @@ function AssetItem({ item, isE2E }: { item: Item; isE2E: boolean }) {
       return (
         <img
           src={url}
-          alt={describedAs(item.description) ?? ''}
+          alt={
+            description === undefined
+              ? ''
+              : presentationalTextValue(description)
+          }
+          {...presentationalTextProps(description)}
           className={cx('size-full object-contain', getSizeClass(itemSize))}
         />
       );
@@ -237,7 +279,12 @@ function AssetItem({ item, isE2E }: { item: Item; isE2E: boolean }) {
         <audio
           controls
           autoPlay
-          aria-label={describedAs(item.description) ?? assetMeta.name}
+          aria-label={
+            description === undefined
+              ? intl.formatMessage(mediaMessages.audioLabel)
+              : presentationalTextValue(description)
+          }
+          lang={presentationalTextProps(description).lang}
         >
           <source
             src={url}
@@ -254,7 +301,7 @@ function AssetItem({ item, isE2E }: { item: Item; isE2E: boolean }) {
         <VideoPlayer
           src={url}
           name={assetMeta.name}
-          description={item.description}
+          description={description}
           source={assetMeta.source}
           isE2E={isE2E}
           size={itemSize}
@@ -292,9 +339,10 @@ export default function ContentItem({
   switch (item.type) {
     case 'text':
       return (
-        <RenderMarkdown allowedElements={allowedTextElements}>
-          {item.content}
-        </RenderMarkdown>
+        <LocalizedMarkdown
+          value={item.content}
+          allowedElements={allowedTextElements}
+        />
       );
     case 'asset':
       return <AssetItem item={item} isE2E={isE2E} />;

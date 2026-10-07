@@ -112,7 +112,10 @@ describe.each(hosts)('one contract, served $name', ({ serve }) => {
       protocolId: host.protocolId,
       requestId: nextRequestId(),
       sectionId: INFORMATION,
-      document: { ...before.document, label: 'Renamed without the lock' },
+      document: {
+        ...before.document,
+        label: { 'en-US': 'Renamed without the lock' },
+      },
       revision: before.revision,
     });
 
@@ -122,7 +125,7 @@ describe.each(hosts)('one contract, served $name', ({ serve }) => {
       protocolId: host.protocolId,
       sectionId: INFORMATION,
     });
-    expect(after.document.label).toBe(before.document.label);
+    expect(after.document.label).toEqual(before.document.label);
   });
 
   it('opens read-only behind a holder, and names them', async () => {
@@ -185,7 +188,10 @@ describe.each(hosts)('one contract, served $name', ({ serve }) => {
       protocolId: host.protocolId,
       requestId: nextRequestId(),
       sectionId: INFORMATION,
-      document: { ...held.document, label: 'Written before anyone watched' },
+      document: {
+        ...held.document,
+        label: { 'en-US': 'Written before anyone watched' },
+      },
       revision: held.revision,
     });
 
@@ -209,9 +215,9 @@ describe.each(hosts)('one contract, served $name', ({ serve }) => {
     expect(revision?.type === 'revision' && revision.sectionId).toBe(
       INFORMATION,
     );
-    expect(revision?.type === 'revision' && revision.document?.label).toBe(
-      'Written before anyone watched',
-    );
+    expect(revision?.type === 'revision' && revision.document?.label).toEqual({
+      'en-US': 'Written before anyone watched',
+    });
   });
 
   it('removes a stage and its place in the stage order in one revision', async () => {
@@ -367,8 +373,8 @@ describe.each(hosts)('one contract, served $name', ({ serve }) => {
       kind: 'stage',
       document: {
         type: 'Information',
-        label: 'Information',
-        title: 'Welcome',
+        label: { 'en-US': 'Information' },
+        title: { 'en-US': 'Welcome' },
         items: [{ id: 'item-1', type: 'asset', content: resourceId }],
       },
       promote: { editId: EDIT, resourceIds: [resourceId] },

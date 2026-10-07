@@ -8,7 +8,7 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
-import type { SessionPayload, SyncHandler } from '../../../contract/types';
+import type { SessionSnapshot, SyncHandler } from '../../../contract/types';
 import { addNode, updateNode } from '../../../store/modules/session';
 import {
   getDecryptionScope,
@@ -140,7 +140,7 @@ describe('unlocking an interview', () => {
   });
 
   it('keeps the key out of Redux state and out of the session handed to the host', async () => {
-    const synced: SessionPayload[] = [];
+    const synced: SessionSnapshot[] = [];
     const onSync: SyncHandler = (_id, session) => {
       synced.push(session);
       return Promise.resolve();

@@ -1,7 +1,9 @@
 import { LayoutGroup } from 'motion/react';
 import {
+  type Dispatch,
   type ReactNode,
   type RefObject,
+  type SetStateAction,
   useCallback,
   useContext,
   useEffect,
@@ -53,6 +55,7 @@ import {
   type SectionValidationIssue,
 } from './outlineStore.ts';
 import { READ_ONLY_MESSAGE } from './readOnlyRefusal.ts';
+import { rewriteFormStore } from './rewriteFormStore.ts';
 import {
   type OwnCommandsResult,
   StageEditorFormContext,
@@ -187,9 +190,9 @@ function StageDocument({
   children: (
     document: StageFormDraft,
     working: RefObject<StageFormDraft>,
-    setDocument: (fields: StageFormDraft) => void,
+    setDocument: Dispatch<SetStateAction<StageFormDraft>>,
     saved: StageFormDraft,
-    setSaved: (fields: StageFormDraft) => void,
+    setSaved: Dispatch<SetStateAction<StageFormDraft>>,
   ) => ReactNode;
 }>) {
   const working = useRef<StageFormDraft>(committedFields);
@@ -221,9 +224,9 @@ function StageEditorFormBody({
     identity: StageIdentity;
     document: StageFormDraft;
     working: RefObject<StageFormDraft>;
-    setDocument: (fields: StageFormDraft) => void;
+    setDocument: Dispatch<SetStateAction<StageFormDraft>>;
     saved: StageFormDraft;
-    setSaved: (fields: StageFormDraft) => void;
+    setSaved: Dispatch<SetStateAction<StageFormDraft>>;
     lostMessage: string | undefined;
     discardDraft: (message: string) => void;
   }>) {
@@ -323,6 +326,23 @@ function StageEditorFormBody({
       return { draft: next, refused: false };
     },
     [clearRefusedWrite, liveDraft, readOnly, reportRefusedWrite, writeRefusal],
+  );
+
+  /**
+   * Carries a change the host made to the stored stage into every copy of it
+   * the editor holds. Not refused while read-only: it writes nothing the
+   * protocol does not already hold.
+   */
+  const mapDocuments = useCallback(
+    (rewrite: (fields: StageFormDraft) => StageFormDraft) => {
+      if (storeApi !== undefined) {
+        rewriteFormStore(storeApi, liveDraft(), rewrite);
+      }
+      working.current = rewrite(working.current);
+      setDocument(rewrite);
+      setSaved(rewrite);
+    },
+    [liveDraft, setDocument, setSaved, storeApi],
   );
 
   const handleSubmit = useCallback<FormSubmitHandler>(
@@ -476,6 +496,7 @@ function StageEditorFormBody({
             savedFields: saved,
             liveDraft,
             applyOwnCommands,
+            mapDocuments,
             reportRefusedWrite,
             identity,
             creation,
@@ -489,6 +510,7 @@ function StageEditorFormBody({
       formId,
       identity,
       liveDraft,
+      mapDocuments,
       outline,
       readOnly,
       reportRefusedWrite,

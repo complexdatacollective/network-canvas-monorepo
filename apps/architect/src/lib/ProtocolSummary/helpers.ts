@@ -3,6 +3,7 @@ import { flatMap, get, reduce } from 'es-toolkit/compat';
 import {
   type Codebook,
   collectEntityAttributeReferences,
+  type LocalizedString,
 } from '@codaco/protocol-validation';
 
 type VariableConfiguration = {
@@ -14,7 +15,7 @@ type VariableConfiguration = {
 
 type Field = {
   variable: string;
-  prompt?: string;
+  prompt?: LocalizedString;
   [key: string]: unknown;
 };
 

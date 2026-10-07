@@ -139,6 +139,7 @@ after the fact is marked in place.
 | `searchOptions`             | `editors/name-generator-roster/sections/SearchOptionsSection.tsx`                                                                                                                                                                                                                     | family E  |
 | `rosterColumns`             | `editors/name-generator-roster/sections/rosterColumns.ts`                                                                                                                                                                                                                             | family E  |
 | `networkCanvas`             | `sections/background/`, `sections/canvas/`, `sections/canvas-behaviours/`, `sections/form-fields/composerFormFieldMessages.ts`, `editors/sociogram/sections/prompts/`, `editors/narrative/sections/presets/`, `editors/network-composer/sections/composerMessages.ts`                 | family F  |
+| `localizedTextNames`        | `localization/localizedTextNames.ts`                                                                                                                                                                                                                                                  | languages |
 
 Family E added one the reserved list did not hold, on the same terms:
 

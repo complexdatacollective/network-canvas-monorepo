@@ -28,6 +28,7 @@ import session, {
 } from '../../../../store/modules/session';
 import ui from '../../../../store/modules/ui';
 import type { StageProps } from '../../../../types';
+import { TestProtocolLocalization } from '../../../__tests__/TestProtocolLocalization';
 import {
   encryptionFor,
   unlockWith,
@@ -81,12 +82,14 @@ function buildCodebook(
     node: {
       [NODE_TYPE]: {
         name: 'Person',
+        label: { en: 'Person' },
         color: 'node-color-seq-1',
         shape: { default: 'circle' },
         icon: 'add-a-person',
         variables: {
           [TARGET_VARIABLE]: {
             name: 'Name',
+            label: 'Name',
             type: 'text',
             ...(omitComponent ? {} : { component: 'Text' }),
             ...(validation ? { validation } : {}),
@@ -94,6 +97,7 @@ function buildCodebook(
           },
           [SIBLING_VARIABLE]: {
             name: 'Flag',
+            label: 'Flag',
             type: 'boolean',
             component: 'Toggle',
           },
@@ -111,13 +115,13 @@ function buildStage(fixedSiblingValue?: boolean): QuickAddStage {
   return {
     id: STAGE_ID,
     type: 'NameGeneratorQuickAdd',
-    label: 'Add people',
+    label: { en: 'Add people' },
     subject: { entity: 'node', type: NODE_TYPE },
     quickAdd: asEntityAttributeReference(TARGET_VARIABLE),
     prompts: [
       {
         id: PROMPT_ID,
-        text: 'Name the people in your network',
+        text: { en: 'Name the people in your network' },
         ...(fixedSiblingValue === undefined
           ? {}
           : {
@@ -143,6 +147,8 @@ function buildSession(
     finishTime: null,
     exportTime: null,
     lastUpdated: '2024-01-01T00:00:00.000Z',
+    localePreference: null,
+    locale: null,
     network: {
       ego: {
         [entityPrimaryKeyProperty]: 'ego',
@@ -168,6 +174,7 @@ function buildProtocol(
     assets: [],
     name: 'Test protocol',
     schemaVersion: 9,
+    localization: { defaultLocale: 'en', locales: ['en'] },
     codebook: buildCodebook(validation, omitComponent, encrypted),
     stages: [buildStage(fixedSiblingValue)],
   };
@@ -209,13 +216,15 @@ async function renderQuickNodeForm({
 
   render(
     <Provider store={store}>
-      <CurrentStepProvider currentStep={0} onStepChange={vi.fn()}>
-        <QuickNodeForm
-          disabled={false}
-          targetVariable={TARGET_VARIABLE}
-          addNode={addNode}
-        />
-      </CurrentStepProvider>
+      <TestProtocolLocalization>
+        <CurrentStepProvider currentStep={0} onStepChange={vi.fn()}>
+          <QuickNodeForm
+            disabled={false}
+            targetVariable={TARGET_VARIABLE}
+            addNode={addNode}
+          />
+        </CurrentStepProvider>
+      </TestProtocolLocalization>
     </Provider>,
   );
 

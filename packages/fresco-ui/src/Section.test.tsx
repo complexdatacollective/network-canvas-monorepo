@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -9,6 +15,8 @@ import Form from './form/Form';
 import useFormStore from './form/hooks/useFormStore';
 import SubmitButton from './form/SubmitButton';
 import Section, { type SectionProps } from './Section';
+import Paragraph from './typography/Paragraph';
+import { OrderedList } from './typography/UnorderedList';
 
 function RegisteredFields() {
   const names = useFormStore((state) =>
@@ -373,6 +381,50 @@ describe('Section', () => {
     expect(section).not.toHaveAttribute('aria-describedby');
     expect(section.querySelector('p')).not.toBeInTheDocument();
     expect(screen.getByText('Section content')).toBeVisible();
+  });
+
+  it('shows a text description as a paragraph, and one made of elements as given', () => {
+    render(
+      <>
+        <Section title="Text" description="One paragraph of description." />
+        <Section
+          title="Elements"
+          description={
+            <>
+              <Paragraph>Participants see the first of these:</Paragraph>
+              <OrderedList>
+                <li>Their own language.</li>
+                <li>The default language.</li>
+              </OrderedList>
+            </>
+          }
+        />
+      </>,
+    );
+
+    const describedBy = (name: string) => {
+      const section = screen.getByRole('region', { name });
+      const id = section.getAttribute('aria-describedby');
+      return id === null ? null : document.getElementById(id);
+    };
+
+    expect(describedBy('Text')?.tagName).toBe('P');
+
+    const description = describedBy('Elements');
+    expect(description?.tagName).toBe('DIV');
+    const steps = within(
+      screen.getByRole('region', { name: 'Elements' }),
+    ).getByRole('list');
+    expect(steps.tagName).toBe('OL');
+    expect(description).toContainElement(steps);
+    expect(steps.closest('p')).toBeNull();
+    expect(
+      screen.getByRole('region', { name: 'Elements' }),
+    ).toHaveAccessibleDescription(
+      expect.stringMatching(
+        /^Participants see the first of these:.*Their own language\..*The default language\.$/,
+      ),
+    );
   });
 
   it('reduces heading level and typography when nested in another section', () => {

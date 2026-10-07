@@ -81,6 +81,9 @@ import {
   REDIS_DATABASES,
 } from './support/valkey.ts';
 
+// The sample protocol declares en-US as its only language.
+const enUS = (text: string) => ({ 'en-US': text });
+
 const TEAM_ID = 'protocol-builder-team';
 
 const limiterUrl = await reachableRedis(REDIS_DATABASES.protocolBuilder);
@@ -327,7 +330,12 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         protocolId,
         requestId: randomUUID(),
         kind: 'stage',
-        document: { type: 'Information', label, title: label, items: [] },
+        document: {
+          type: 'Information',
+          label: enUS(label),
+          title: enUS(label),
+          items: [],
+        },
       }),
     );
 
@@ -583,7 +591,10 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
           protocolId,
           requestId: randomUUID(),
           sectionId,
-          document: { ...before.document, label: 'Renamed without the lock' },
+          document: {
+            ...before.document,
+            label: enUS('Renamed without the lock'),
+          },
           revision: before.revision,
         }),
       ),
@@ -627,7 +638,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       host.rpc('AcquireLock', { protocolId, sectionId }),
     );
     if (held.lock !== 'held') throw new Error('the section was already taken');
-    const document = { ...held.document, label: 'Renamed by its holder' };
+    const document = { ...held.document, label: enUS('Renamed by its holder') };
     const written = await call(
       ADA,
       host.rpc('Submit', {
@@ -644,7 +655,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       ADA,
       host.rpc('GetSection', { protocolId, sectionId }),
     );
-    expect(read.document.label).toBe('Renamed by its holder');
+    expect(read.document.label).toEqual(enUS('Renamed by its holder'));
     expect(read.revision.sequence).toBe(written.revision.sequence);
 
     await call(ADA, host.rpc('ReleaseLock', { protocolId, sectionId }));
@@ -673,8 +684,8 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         kind: 'stage',
         document: {
           type: 'Information',
-          label: 'Created by the host',
-          title: 'Created by the host',
+          label: enUS('Created by the host'),
+          title: enUS('Created by the host'),
           items: [],
         },
         position: 1,
@@ -848,7 +859,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         protocolId,
         requestId: randomUUID(),
         sectionId: stage.sectionId,
-        document: { ...held.document, label: 'Names a secret' },
+        document: { ...held.document, label: enUS('Names a secret') },
         revision: held.revision,
         promote: { editId: EDIT, resourceIds: [staged.data.descriptor.id] },
       }),
@@ -891,7 +902,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
           protocolId,
           requestId: randomUUID(),
           sectionId: stage.sectionId,
-          document: { ...held.document, label: 'Renamed' },
+          document: { ...held.document, label: enUS('Renamed') },
           revision: held.revision,
           promote: { editId: EDIT, resourceIds: ['never-staged'] },
         }),
@@ -907,7 +918,9 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       ADA,
       host.rpc('GetSection', { protocolId, sectionId: stage.sectionId }),
     );
-    expect(after.document.label).toBe('Renamed beside a bad promotion');
+    expect(after.document.label).toEqual(
+      enUS('Renamed beside a bad promotion'),
+    );
     expect(after.revision).toEqual(held.revision);
     const assets = await call(
       ADA,
@@ -956,7 +969,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         protocolId,
         requestId: randomUUID(),
         sectionId: stage.sectionId,
-        document: { ...held.document, label: 'Reads its key back' },
+        document: { ...held.document, label: enUS('Reads its key back') },
         revision: held.revision,
         promote: { editId: EDIT, resourceIds: [resourceId] },
       }),
@@ -1002,7 +1015,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         protocolId,
         requestId: randomUUID(),
         sectionId: stage.sectionId,
-        document: { ...held.document, label: 'Seals its key' },
+        document: { ...held.document, label: enUS('Seals its key') },
         revision: held.revision,
         promote: { editId: EDIT, resourceIds: [resourceId] },
       }),
@@ -1087,7 +1100,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         protocolId,
         requestId: randomUUID(),
         sectionId: stage.sectionId,
-        document: { ...held.document, label: 'Keeps its key' },
+        document: { ...held.document, label: enUS('Keeps its key') },
         revision: held.revision,
         promote: { editId: EDIT, resourceIds: [resourceId] },
       }),
@@ -1338,7 +1351,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
             protocolId,
             requestId: randomUUID(),
             sectionId: stage.sectionId,
-            document: { ...held.document, label: 'Renamed' },
+            document: { ...held.document, label: enUS('Renamed') },
             revision: held.revision,
             promote: {
               editId: EDIT,
@@ -1389,8 +1402,8 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
             kind: 'stage',
             document: {
               type: 'Information',
-              label: 'Never registered',
-              title: 'Never registered',
+              label: enUS('Never registered'),
+              title: enUS('Never registered'),
               items: [],
             },
           }),
@@ -1434,8 +1447,8 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         kind: 'stage',
         document: {
           type: 'Information',
-          label: 'Carries a secret',
-          title: 'Carries a secret',
+          label: enUS('Carries a secret'),
+          title: enUS('Carries a secret'),
           items: [],
         },
         promote: { editId: EDIT, resourceIds: [staged.data.descriptor.id] },
@@ -1477,8 +1490,8 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
           kind: 'stage',
           document: {
             type: 'Information',
-            label: 'Never made',
-            title: 'Never made',
+            label: enUS('Never made'),
+            title: enUS('Never made'),
             items: [],
           },
           promote: { editId: EDIT, resourceIds: ['never-staged'] },
@@ -1512,8 +1525,8 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
     if (staged.status !== 'ok') throw new Error('staging failed');
     const document = {
       type: 'Information',
-      label: 'Made once',
-      title: 'Made once',
+      label: enUS('Made once'),
+      title: enUS('Made once'),
       items: [],
     };
     const promote = {
@@ -1587,7 +1600,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         protocolId,
         requestId,
         sectionId: stage.sectionId,
-        document: { ...held.document, label: 'Saved once' },
+        document: { ...held.document, label: enUS('Saved once') },
         revision: held.revision,
         promote,
       }),
@@ -1603,7 +1616,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         protocolId,
         requestId,
         sectionId: stage.sectionId,
-        document: { ...held.document, label: 'Saved once' },
+        document: { ...held.document, label: enUS('Saved once') },
         revision: held.revision,
         promote,
       }),
@@ -1756,7 +1769,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       protocolId,
       requestId: submitId,
       sectionId: stage.sectionId,
-      document: { ...held.document, label: 'Saved without a promotion' },
+      document: { ...held.document, label: enUS('Saved without a promotion') },
       revision: held.revision,
     };
     const written = await call(ADA, host.rpc('Submit', submitted));
@@ -1771,8 +1784,8 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       kind: 'stage' as const,
       document: {
         type: 'Information',
-        label: 'Made without a promotion',
-        title: 'Made without a promotion',
+        label: enUS('Made without a promotion'),
+        title: enUS('Made without a promotion'),
         items: [],
       },
     };
@@ -1805,7 +1818,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       protocolId,
       requestId: randomUUID(),
       sectionId: stage.sectionId,
-      document: { ...held.document, label: 'Saved before the restart' },
+      document: { ...held.document, label: enUS('Saved before the restart') },
       revision: held.revision,
     };
     const written = await call(ADA, host.rpc('Submit', payload));
@@ -2040,7 +2053,12 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         kind: 'codebookEgo',
         document: {
           variables: {
-            ego_age: { name: 'ego_age', type: 'number', component: 'Number' },
+            ego_age: {
+              name: 'ego_age',
+              label: 'Age',
+              type: 'number',
+              component: 'Number',
+            },
           },
         },
       }),
@@ -2083,8 +2101,8 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         kind: 'stage',
         document: {
           type: 'Information',
-          label: 'Watched write',
-          title: 'Watched write',
+          label: enUS('Watched write'),
+          title: enUS('Watched write'),
           items: [],
         },
       }),
@@ -2125,7 +2143,12 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
           protocolId,
           requestId: randomUUID(),
           kind: 'stage',
-          document: { type: 'Information', label, title: label, items: [] },
+          document: {
+            type: 'Information',
+            label: enUS(label),
+            title: enUS(label),
+            items: [],
+          },
         }),
       );
     const revisions = () =>
@@ -2196,7 +2219,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
             sectionId,
             document: {
               ...behind.document,
-              label: 'Renamed by the second tab',
+              label: enUS('Renamed by the second tab'),
             },
             revision: behind.revision,
           }),
@@ -2334,7 +2357,10 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         protocolId,
         requestId: randomUUID(),
         sectionId: stage.sectionId,
-        document: { ...held.document, label: 'Renamed, and hashed as itself' },
+        document: {
+          ...held.document,
+          label: enUS('Renamed, and hashed as itself'),
+        },
         revision: held.revision,
       }),
     );
@@ -2533,7 +2559,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
           protocolId,
           requestId: randomUUID(),
           sectionId: stage.sectionId,
-          document: { ...held.document, label: 'Renamed with a file' },
+          document: { ...held.document, label: enUS('Renamed with a file') },
           revision: held.revision,
           promote,
         }),
@@ -2557,7 +2583,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         protocolId,
         requestId: randomUUID(),
         sectionId: stage.sectionId,
-        document: { ...held.document, label: 'Renamed with a file' },
+        document: { ...held.document, label: enUS('Renamed with a file') },
         revision: held.revision,
         promote,
       }),
@@ -2650,7 +2676,12 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         protocolId,
         requestId: randomUUID(),
         kind: 'stage',
-        document: { type: 'Information', label, title: label, items: [] },
+        document: {
+          type: 'Information',
+          label: enUS(label),
+          title: enUS(label),
+          items: [],
+        },
       }),
     );
 
@@ -2807,7 +2838,10 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
             protocolId,
             requestId: randomUUID(),
             sectionId,
-            document: { ...held.document, label: 'Written as the tab closed' },
+            document: {
+              ...held.document,
+              label: enUS('Written as the tab closed'),
+            },
             revision: held.revision,
           }),
           { signal: leaving.signal },
@@ -2919,8 +2953,8 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
             kind: 'stage',
             document: {
               type: 'Information',
-              label: 'Created as the tab closed',
-              title: 'Created as the tab closed',
+              label: enUS('Created as the tab closed'),
+              title: enUS('Created as the tab closed'),
               items: [],
             },
           }),
@@ -3042,7 +3076,11 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
             ...held.document,
             variables: {
               ...(held.document.variables as Record<string, unknown>),
-              [variableId]: { name: variableId, type: 'text' },
+              [variableId]: {
+                name: variableId,
+                label: 'Interrupted',
+                type: 'text',
+              },
             },
           },
           revision: held.revision,

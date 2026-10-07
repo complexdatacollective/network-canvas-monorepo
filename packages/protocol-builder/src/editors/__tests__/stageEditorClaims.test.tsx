@@ -1,8 +1,10 @@
 import { screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { translationText } from '../../localization/localizedText.ts';
 import { stageEditorRegistry } from '../../stageEditorRegistry.ts';
 import {
+  fixtureLocalization,
   loadFixtureStage,
   type FixtureStageId,
 } from '../../testing/protocolFixture.ts';
@@ -17,6 +19,7 @@ import { shimMarkdownEditorMeasurement } from '../family-pedigree/__tests__/edit
 import { familyPedigreeStageEditor } from '../family-pedigree/FamilyPedigreeStageEditor.ts';
 import { geospatialStageEditor } from '../geospatial/GeospatialStageEditor.ts';
 import { informationStageEditor } from '../information/InformationStageEditor.ts';
+import { languageChooserStageEditor } from '../language-chooser/LanguageChooserStageEditor.ts';
 import { nameGeneratorQuickAddStageEditor } from '../name-generator-quick-add/NameGeneratorQuickAddStageEditor.ts';
 import { nameGeneratorRosterStageEditor } from '../name-generator-roster/NameGeneratorRosterStageEditor.ts';
 import { nameGeneratorStageEditor } from '../name-generator/NameGeneratorStageEditor.ts';
@@ -115,6 +118,11 @@ const CLAIMS = [
     editor: informationStageEditor.Information,
   },
   {
+    stageType: 'LanguageChooser',
+    stageId: 'language-chooser-1',
+    editor: languageChooserStageEditor.LanguageChooser,
+  },
+  {
     stageType: 'NameGenerator',
     stageId: 'name-generator-1',
     editor: nameGeneratorStageEditor.NameGenerator,
@@ -171,15 +179,19 @@ const CLAIMS = [
 }>[];
 
 /**
- * What the fixture calls that stage, which is what its editor must show.
+ * What the fixture calls that stage in its default language, which is the
+ * language the editor opens on and so what it must show.
  *
  * Thrown rather than compared as-is: a section document holds `unknown`s, and
- * a stage with no name would otherwise be compared against `undefined` — which
- * an editor that rendered nothing at all would satisfy.
+ * a stage with no name would otherwise be compared against `''` — which an
+ * editor that rendered an empty field would satisfy.
  */
 const labelOf = (stageId: FixtureStageId): string => {
-  const label = loadFixtureStage(stageId).fields.label;
-  if (typeof label !== 'string') {
+  const label = translationText(
+    loadFixtureStage(stageId).fields.label,
+    fixtureLocalization().defaultLocale,
+  );
+  if (label === '') {
     throw new TypeError(
       `The fixture stage "${stageId}" has no name, so there is nothing for its editor to be checked against.`,
     );
@@ -224,7 +236,7 @@ describe('the interfaces the package’s editors claim', () => {
   /**
    * And the list is every interface there is, read off the registry.
    *
-   * Five of these nineteen were here for a long time while fourteen families
+   * Five of these were here for a long time while fourteen families
    * were still landing, and nothing said which fourteen were missing. Derived
    * rather than counted, so the interface a later schema adds arrives as a
    * failure here rather than as an interface nothing in this file mentions.

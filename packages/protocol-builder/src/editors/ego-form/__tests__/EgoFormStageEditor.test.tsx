@@ -118,10 +118,10 @@ describe('the editor for a form about the participant', () => {
     );
 
     const request = await harness.submit();
-    expect(request?.stageDocument.label).toBe('About you');
+    expect(request?.stageDocument.label).toEqual({ 'en-US': 'About you' });
     expect(request?.stageDocument.introductionPanel).toEqual({
-      title: 'About you',
-      text: 'A few questions about you before we begin.',
+      title: { 'en-US': 'About you' },
+      text: { 'en-US': 'A few questions about you before we begin.' },
     });
     // The id is the row's own identity, minted on add so a reorder or a
     // removal is committed as the operation it was.
@@ -129,7 +129,7 @@ describe('the editor for a form about the participant', () => {
       {
         id: expect.any(String) as unknown as string,
         variable: 'ego_name',
-        prompt: 'What is your name?',
+        prompt: { 'en-US': 'What is your name?' },
       },
     ]);
   });

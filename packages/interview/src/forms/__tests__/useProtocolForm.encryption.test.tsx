@@ -19,6 +19,7 @@ import {
 
 import { CurrentStepProvider } from '../../contexts/CurrentStepContext';
 import type { ProtocolPayload } from '../../contract/types';
+import { TestProtocolLocalization } from '../../interfaces/__tests__/TestProtocolLocalization';
 import {
   encryptionFor,
   unlockWith,
@@ -39,6 +40,7 @@ const PASSPHRASE = 'protocol form passphrase';
 const variables: Record<string, Variable> = {
   [NAME_VAR]: {
     name: 'name',
+    label: 'name',
     type: 'text',
     component: 'Text',
     encrypted: true,
@@ -46,17 +48,24 @@ const variables: Record<string, Variable> = {
   },
   [NICKNAME_VAR]: {
     name: 'nickname',
+    label: 'nickname',
     type: 'text',
     component: 'Text',
     validation: { differentFrom: asEntityAttributeReference(NAME_VAR) },
   },
-  [NOTES_VAR]: { name: 'notes', type: 'text', component: 'Text' },
+  [NOTES_VAR]: {
+    name: 'notes',
+    label: 'notes',
+    type: 'text',
+    component: 'Text',
+  },
 };
 
 const codebook: Codebook = {
   node: {
     [NODE_TYPE]: {
       name: 'Person',
+      label: { en: 'Person' },
       color: 'node-color-seq-1',
       shape: { default: 'circle' },
       variables,
@@ -67,7 +76,12 @@ const codebook: Codebook = {
 };
 
 function fieldFor(variable: string): FormField[] {
-  return [{ variable: asEntityAttributeReference(variable), prompt: 'Answer' }];
+  return [
+    {
+      variable: asEntityAttributeReference(variable),
+      prompt: { en: 'Answer' },
+    },
+  ];
 }
 
 /**
@@ -97,6 +111,8 @@ async function makeStore(nodes: NcNode[], unlocked: boolean) {
     finishTime: null,
     exportTime: null,
     lastUpdated: '2026-01-01T00:00:00.000Z',
+    localePreference: null,
+    locale: null,
     promptIndex: 0,
     network: {
       ego: {
@@ -115,15 +131,16 @@ async function makeStore(nodes: NcNode[], unlocked: boolean) {
     assets: [],
     name: 'Encrypted form protocol',
     schemaVersion: 9,
+    localization: { defaultLocale: 'en', locales: ['en'] },
     codebook,
     stages: [
       {
         id: 'stage-1',
         type: 'NameGenerator',
-        label: 'Name the people you know',
+        label: { en: 'Name the people you know' },
         subject: { entity: 'node', type: NODE_TYPE },
-        form: { title: 'Add a person', fields: fieldFor(NOTES_VAR) },
-        prompts: [{ id: 'prompt-1', text: 'Name the people you know' }],
+        form: { title: { en: 'Add a person' }, fields: fieldFor(NOTES_VAR) },
+        prompts: [{ id: 'prompt-1', text: { en: 'Name the people you know' } }],
       },
     ],
   };
@@ -145,9 +162,11 @@ function renderForm(
   function Wrapper({ children }: { children: ReactNode }) {
     return (
       <Provider store={store}>
-        <CurrentStepProvider currentStep={0} onStepChange={() => undefined}>
-          {children}
-        </CurrentStepProvider>
+        <TestProtocolLocalization>
+          <CurrentStepProvider currentStep={0} onStepChange={() => undefined}>
+            {children}
+          </CurrentStepProvider>
+        </TestProtocolLocalization>
       </Provider>
     );
   }

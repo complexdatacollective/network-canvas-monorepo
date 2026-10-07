@@ -4,12 +4,13 @@ import {
   getMigrationInfo,
   migrateProtocol,
 } from '../../../migration/migrate-protocol.ts';
-import { createBaseProtocol } from '../../../utils/test-utils.ts';
+import { createBaseProtocol, localized } from '../../../utils/test-utils.ts';
 import ProtocolSchemaV8 from '../../8/schema.ts';
 import ProtocolSchemaV9 from '../schema.ts';
+import { asSchema8Protocol } from './schema-8-protocol.ts';
 
-// The base protocol with its `person.name` attribute marked encrypted, as
-// schema 8 stored it, under the given experiments.
+// The base protocol with its `person.name` attribute marked encrypted, under
+// the given experiments.
 const protocolWithEncryptedName = (
   experiments: { encryptedVariables?: boolean } | undefined,
 ) => {
@@ -34,10 +35,19 @@ const protocolWithEncryptedName = (
   };
 };
 
+// The same protocol as schema 8 stored it.
+const schema8WithEncryptedName = (
+  experiments: { encryptedVariables?: boolean } | undefined,
+) => asSchema8Protocol(protocolWithEncryptedName(experiments));
+
+// The base protocol, never encrypted, as the migration leaves it.
+const migratedBase = () =>
+  migrateProtocol(asSchema8Protocol(createBaseProtocol()), 9);
+
 describe('Migrating encrypted attributes from schema 8 to 9', () => {
   it('keeps them encrypted when the experiment was on', () => {
     const migrated = migrateProtocol(
-      protocolWithEncryptedName({ encryptedVariables: true }),
+      schema8WithEncryptedName({ encryptedVariables: true }),
       9,
     );
 
@@ -54,27 +64,28 @@ describe('Migrating encrypted attributes from schema 8 to 9', () => {
   ])(
     'unmarks them when the experiment was %s, since they were never encrypted',
     (_description, experiments) => {
-      const source = protocolWithEncryptedName(experiments);
-      const migrated = migrateProtocol(source, 9);
+      const migrated = migrateProtocol(
+        schema8WithEncryptedName(experiments),
+        9,
+      );
 
-      const { encrypted: _encrypted, ...unmarked } =
-        source.codebook.node.person.variables.name;
-      expect(migrated.codebook.node?.person?.variables?.name).toEqual(unmarked);
+      expect(migrated.codebook.node?.person?.variables?.name).toEqual(
+        migratedBase().codebook.node?.person?.variables?.name,
+      );
       expect(Object.hasOwn(migrated, 'experiments')).toBe(false);
     },
   );
 
   it('changes nothing else in the codebook', () => {
-    const source = protocolWithEncryptedName(undefined);
-    const migrated = migrateProtocol(source, 9);
+    const migrated = migrateProtocol(schema8WithEncryptedName(undefined), 9);
 
-    expect(migrated.codebook).toEqual(createBaseProtocol().codebook);
+    expect(migrated.codebook).toEqual(migratedBase().codebook);
   });
 });
 
 describe('The experiments setting', () => {
   it('is still accepted by schema 8', () => {
-    const protocol = protocolWithEncryptedName({ encryptedVariables: true });
+    const protocol = schema8WithEncryptedName({ encryptedVariables: true });
     expect(ProtocolSchemaV8.safeParse(protocol).success).toBe(true);
   });
 
@@ -114,25 +125,33 @@ const protocolWithPassphraseRules = (
       {
         id: 'anonymisation',
         type: 'Anonymisation' as const,
-        label: 'Anonymisation',
-        explanationText: { title: 'Privacy', body: 'Choose a passphrase.' },
+        label: localized('Anonymisation'),
+        explanationText: {
+          title: localized('Privacy'),
+          body: localized('Choose a passphrase.'),
+        },
         ...(validation !== undefined && { validation }),
       },
     ],
   };
 };
 
+// The same protocol as schema 8 stored it.
+const schema8WithPassphraseRules = (
+  validation: { minLength?: number; maxLength?: number } | undefined,
+) => asSchema8Protocol(protocolWithPassphraseRules(validation));
+
 describe('Migrating passphrase length rules from schema 8 to 9', () => {
   it('removes both lengths when the minimum is longer than the maximum', () => {
     const migrated = migrateProtocol(
-      protocolWithPassphraseRules({ minLength: 9, maxLength: 6 }),
+      schema8WithPassphraseRules({ minLength: 9, maxLength: 6 }),
       9,
     );
 
     // No passphrase could meet both, so neither is kept and the interview's
     // default applies. Every stage stays, in its order.
     expect(migrated.stages).toEqual(
-      protocolWithPassphraseRules(undefined).stages,
+      migrateProtocol(schema8WithPassphraseRules(undefined), 9).stages,
     );
   });
 
@@ -142,9 +161,12 @@ describe('Migrating passphrase length rules from schema 8 to 9', () => {
     { maxLength: 6 },
     { minLength: 10 },
   ])('keeps %j, which a passphrase can meet', (validation) => {
-    const source = protocolWithPassphraseRules(validation);
+    const migrated = migrateProtocol(schema8WithPassphraseRules(validation), 9);
 
-    expect(migrateProtocol(source, 9).stages).toEqual(source.stages);
+    expect(migrated.stages.at(-1)).toMatchObject({
+      type: 'Anonymisation',
+      validation,
+    });
   });
 
   it('says so in the migration notes', () => {

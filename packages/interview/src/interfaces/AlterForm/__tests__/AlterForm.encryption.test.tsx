@@ -14,6 +14,7 @@ import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import { StageMetadataProvider } from '../../../contexts/StageMetadataContext';
 import useInterviewNavigation from '../../../hooks/useInterviewNavigation';
 import { InterviewI18nProvider } from '../../../i18n/InterviewI18nProvider';
+import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
 import {
   alterFormStages,
   createEncryptionStore,
@@ -121,13 +122,15 @@ async function renderAlterForm({
 
   render(
     <Provider store={store}>
-      <InterviewI18nProvider requestedLocale="en">
-        <CurrentStepProvider currentStep={0} onStepChange={onStepChange}>
-          <DialogProvider>
-            <Harness />
-          </DialogProvider>
-        </CurrentStepProvider>
-      </InterviewI18nProvider>
+      <TestProtocolLocalization>
+        <InterviewI18nProvider requestedLocale="en">
+          <CurrentStepProvider currentStep={0} onStepChange={onStepChange}>
+            <DialogProvider>
+              <Harness />
+            </DialogProvider>
+          </CurrentStepProvider>
+        </InterviewI18nProvider>
+      </TestProtocolLocalization>
     </Provider>,
   );
 

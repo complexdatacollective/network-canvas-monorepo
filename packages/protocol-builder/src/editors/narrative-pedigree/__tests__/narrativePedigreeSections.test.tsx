@@ -119,7 +119,7 @@ const alsoRecording = (
       ...prompts,
       ...[...Object.keys(added), ...alsoPrompted].map((variableId) => ({
         id: `nomination-${variableId}`,
-        text: 'Who?',
+        text: { 'en-US': 'Who?' },
         variable: variableId,
       })),
     ],
@@ -130,7 +130,7 @@ const alsoRecording = (
         add: Object.fromEntries(
           Object.entries(added).map(([variableId, type]) => [
             variableId,
-            { name: variableId, type },
+            { name: variableId, label: variableId, type },
           ]),
         ),
       }),
@@ -193,7 +193,7 @@ describe('the pedigree a narrative pedigree reads', () => {
     const saved = await harness.submit();
     expect(saved?.stageDocument.showAtRiskStatuses).toBe(true);
     expect(saved?.stageDocument.diseases).toEqual([
-      { ...fixtureDisease(), label: 'Condition Y' },
+      { ...fixtureDisease(), label: { 'en-US': 'Condition Y' } },
     ]);
   });
 
@@ -384,7 +384,7 @@ describe('the diseases a narrative pedigree defines', () => {
           fixtureDisease(),
           {
             id: 'disease-2',
-            label: 'Condition X, again',
+            label: { 'en-US': 'Condition X, again' },
             color: 'node-color-seq-2',
             variable: 'hasConditionX',
             inheritancePattern: 'unknown',
@@ -410,7 +410,7 @@ describe('the diseases a narrative pedigree defines', () => {
           fixtureDisease(),
           {
             id: 'disease-2',
-            label: 'Condition Z',
+            label: { 'en-US': 'Condition Z' },
             color: 'node-color-seq-2',
             variable: 'hasConditionZ',
             inheritancePattern: 'unknown',
@@ -479,6 +479,9 @@ describe('a disease the source pedigree stopped recording', () => {
     await screen.findByText('Condition X');
 
     receiveSection(harness, SOURCE_STAGE_SECTION, pedigreeRecordingNothing());
+    expect(
+      await screen.findByText('Nothing records this attribute'),
+    ).toBeInTheDocument();
     expect(await harness.submit()).toBeNull();
 
     receiveSection(harness, SOURCE_STAGE_SECTION, sourcePedigreeDocument());
@@ -521,7 +524,13 @@ describe('a disease the source pedigree stopped recording', () => {
     harness.receiveCodebookUpdate({
       node: {
         family_member: familyMemberCodebook({
-          add: { hasConditionX: { name: 'hasConditionX', type: 'text' } },
+          add: {
+            hasConditionX: {
+              name: 'hasConditionX',
+              label: 'hasConditionX',
+              type: 'text',
+            },
+          },
         }),
       },
     });
@@ -595,7 +604,13 @@ describe('a disease whose attribute the codebook can no longer carry', () => {
     harness.receiveCodebookUpdate({
       node: {
         family_member: familyMemberCodebook({
-          add: { hasConditionX: { name: 'hasConditionX', type: 'text' } },
+          add: {
+            hasConditionX: {
+              name: 'hasConditionX',
+              label: 'hasConditionX',
+              type: 'text',
+            },
+          },
         }),
       },
     });

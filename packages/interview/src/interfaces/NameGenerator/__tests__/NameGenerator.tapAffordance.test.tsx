@@ -26,9 +26,9 @@ vi.mock('../components/QuickNodeForm', () => ({ default: () => null }));
 
 vi.mock('../../../components/Prompts/usePrompts', () => ({
   usePrompts: () => ({
-    prompt: { id: 'p1', text: 'Prompt' },
+    prompt: { id: 'p1', text: { en: 'Prompt' } },
     promptIndex: 0,
-    prompts: [{ id: 'p1', text: 'Prompt' }],
+    prompts: [{ id: 'p1', text: { en: 'Prompt' } }],
   }),
 }));
 vi.mock('../../../contexts/CurrentStepContext', () => ({
@@ -56,9 +56,9 @@ const { default: NameGenerator } = await import('../NameGenerator');
 const stage = (overrides: Record<string, unknown>) =>
   ({
     id: 'stage-1',
-    label: 'Stage',
+    label: { en: 'Stage' },
     subject: { entity: 'node' as const, type: 'person' },
-    prompts: [{ id: 'p1', text: 'Prompt' }],
+    prompts: [{ id: 'p1', text: { en: 'Prompt' } }],
     ...overrides,
   }) as unknown as StageProps<'NameGenerator'>['stage'];
 
@@ -90,7 +90,7 @@ describe('NameGenerator main list tap affordance', () => {
     const props = renderStage(
       stage({
         type: 'NameGenerator',
-        form: { title: 'Edit', fields: [] } as unknown as Form,
+        form: { title: { en: 'Edit' }, fields: [] } as unknown as Form,
       }),
     );
 

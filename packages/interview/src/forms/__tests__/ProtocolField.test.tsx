@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import Form from '@codaco/fresco-ui/form/Form';
 
+import { TestProtocolLocalization } from '../../interfaces/__tests__/TestProtocolLocalization';
 import ProtocolField from '../ProtocolField';
 
 describe('ProtocolField', () => {
@@ -10,19 +11,21 @@ describe('ProtocolField', () => {
     const onSubmit = vi.fn(() => ({ success: true as const }));
 
     render(
-      <Form onSubmit={onSubmit}>
-        <ProtocolField
-          name="preview-value"
-          field={{
-            variable: 'nickname',
-            label: 'What should we call you?',
-            type: 'text',
-            component: 'Text',
-            validation: { required: true, minLength: 4 },
-          }}
-        />
-        <button type="submit">Check response</button>
-      </Form>,
+      <TestProtocolLocalization>
+        <Form onSubmit={onSubmit}>
+          <ProtocolField
+            name="preview-value"
+            field={{
+              variable: 'nickname',
+              label: { en: 'What should we call you?' },
+              type: 'text',
+              component: 'Text',
+              validation: { required: true, minLength: 4 },
+            }}
+          />
+          <button type="submit">Check response</button>
+        </Form>
+      </TestProtocolLocalization>,
     );
 
     const input = screen.getByRole('textbox', {

@@ -12,8 +12,11 @@ import {
   createInitialNetwork,
   type FinishHandler,
   type InterviewPayload,
+  type ProtocolLocaleChangeHandler,
   type SessionPayload,
+  type SessionSnapshot,
   Shell,
+  type SyncHandler,
 } from '@codaco/interview';
 import {
   type ConstraintConflict,
@@ -21,16 +24,24 @@ import {
   SyntheticDataConstraintError,
 } from '@codaco/protocol-utilities';
 import { formatConstraintConflictReason } from '@codaco/protocol-utilities/messages';
-import type { CurrentProtocol, Stage } from '@codaco/protocol-validation';
+import {
+  type CurrentProtocol,
+  getLocaleMetadata,
+  type LocaleTag,
+  selectProtocolLocale,
+  type Stage,
+} from '@codaco/protocol-validation';
 import { type StageMetadata, StageMetadataSchema } from '@codaco/shared-consts';
 import { architectCatalogs } from '~/locales/catalogs';
 import { assetKey } from '~/utils/assetDB';
 import { hydrateMemoryAsset } from '~/utils/inMemoryAssetStore';
+import { UNSPECIFIED_LOCALE } from '~/utils/localizedText';
 import { reportError } from '~/utils/reportError';
 
 import { currentProtocolToPayload } from './currentProtocolToPayload';
 import { isPreviewMessage, type PreviewPayload } from './messages';
 import { collectPreviewRosterData } from './previewRosterData';
+import PreviewToolbar from './PreviewToolbar';
 import { useAssetResolver } from './useAssetResolver';
 const messages = defineMessages({
   finishConfirmation: {
@@ -137,7 +148,14 @@ const extraMessages = defineMessages({
 });
 
 const PAYLOAD_TIMEOUT_MS = 5000;
-const noopSync = async () => {};
+
+// The interview chooses its language from the browser's languages, never from
+// Architect's own interface language.
+function readBrowserLanguages(): readonly string[] {
+  return navigator.languages.length > 0
+    ? navigator.languages
+    : [navigator.language];
+}
 
 // Shown in the interview's finish confirmation instead of the participant
 // default ("…satisfied with your responses"), which is untrue in a preview:
@@ -176,6 +194,13 @@ async function buildSession(payload: PreviewPayload): Promise<SessionPayload> {
     exportTime: null,
     lastUpdated: now,
     network: createInitialNetwork(),
+    // Each run starts as it would for a participant with this browser: no
+    // language stated yet.
+    localePreference: null,
+    locale: null,
+    localeOptions: payload.protocol.localization.locales.map((locale) =>
+      getLocaleMetadata(locale),
+    ),
   };
   if (!payload.useSyntheticData) {
     return base;
@@ -218,6 +243,28 @@ async function buildSession(payload: PreviewPayload): Promise<SessionPayload> {
     stageMetadata,
   };
 }
+/**
+ * The interview re-created from the session so far with another stated
+ * language. The step is the host's and stays put; the prompt reached within it
+ * is not part of what the interview reports, so the stage restarts at its first
+ * prompt, as a resumed interview does.
+ */
+function withLocalePreference(
+  payload: InterviewPayload,
+  latestSession: SessionSnapshot | null,
+  localePreference: LocaleTag | null,
+): InterviewPayload {
+  return {
+    protocol: payload.protocol,
+    session: {
+      ...(latestSession ?? payload.session),
+      promptIndex: 0,
+      localePreference,
+      localeOptions: payload.session.localeOptions,
+    },
+  };
+}
+
 // A preview fails for exactly one reason — the payload never arrived, or the
 // build it started failed — so the reasons share one slot: a later failure can
 // never leave an earlier one's screen behind. A payload that arrives is no
@@ -245,6 +292,20 @@ export function PreviewHost() {
     number | null
   >(null);
   const onRequestAsset = useAssetResolver(protocolId);
+  const [browserLanguages] = useState(readBrowserLanguages);
+  // The language this preview states, held only while the window is open: the
+  // author's choice in the toolbar, or one a language chooser stage stated.
+  // Null follows the browser.
+  const [statedLocale, setStatedLocale] = useState<LocaleTag | null>(null);
+  // The preference the running interview holds in its own store. Requested
+  // languages cannot override it, and the Shell reads one only from its
+  // payload.
+  const heldPreferenceRef = useRef<LocaleTag | null>(null);
+  // The session as the interview last reported it, to re-create the interview
+  // from when its held preference has to change.
+  const latestSessionRef = useRef<SessionSnapshot | null>(null);
+  // Remounts the Shell when the interview is re-created mid-run.
+  const [interviewRun, setInterviewRun] = useState(0);
   useEffect(() => {
     const opener = window.opener as Window | null;
     if (!opener) return;
@@ -279,6 +340,9 @@ export function PreviewHost() {
       }
       setFailure(null);
       setInterviewPayload(nextPayload);
+      setStatedLocale(null);
+      heldPreferenceRef.current = null;
+      latestSessionRef.current = null;
       setProtocolId(previewPayload.protocolId);
       setCurrentStep(previewPayload.startStage);
       setInitialStageOverrideIndex(
@@ -332,6 +396,45 @@ export function PreviewHost() {
   const handleFinish = useCallback<FinishHandler>(async () => {
     setFinished(true);
   }, []);
+  // Nothing in a preview is saved; the latest session is kept only in memory.
+  const handleSync = useCallback<SyncHandler>(async (_interviewId, session) => {
+    latestSessionRef.current = session;
+  }, []);
+  // A language chooser stage stated a preference: the toolbar follows it.
+  // Calls that only record the language shown carry no preference.
+  const handleProtocolLocaleChange = useCallback<ProtocolLocaleChangeHandler>(
+    async (_interviewId, { localePreference }) => {
+      if (localePreference === null) return;
+      heldPreferenceRef.current = localePreference;
+      setStatedLocale(localePreference);
+    },
+    [],
+  );
+  // The Shell applies a change of requested languages in place, keeping the
+  // step, answers and unsaved input, so the stated language is passed as the
+  // first requested one. `und` cannot be: the interface language would read a
+  // requested `und` as English, where a stated `und` leaves it to the browser.
+  const requestedLocales = useMemo(
+    () =>
+      statedLocale === null || statedLocale === UNSPECIFIED_LOCALE
+        ? browserLanguages
+        : [statedLocale, ...browserLanguages],
+    [statedLocale, browserLanguages],
+  );
+  const changePreviewLocale = (locale: LocaleTag) => {
+    setStatedLocale(locale);
+    const preference = locale === UNSPECIFIED_LOCALE ? locale : null;
+    if (heldPreferenceRef.current === preference) return;
+    // The interview's store holds a preference that has to change, which only a
+    // new payload can do: re-create the interview from the session so far.
+    heldPreferenceRef.current = preference;
+    const latestSession = latestSessionRef.current;
+    setInterviewPayload(
+      (current) =>
+        current && withLocalePreference(current, latestSession, preference),
+    );
+    setInterviewRun((run) => run + 1);
+  };
   // Re-run the handshake: the opener answers `preview:ready` with the payload
   // it captured at launch, and processPayload rebuilds a fresh session from it.
   //
@@ -502,26 +605,40 @@ export function PreviewHost() {
       </div>
     );
   }
+  // The language the interview shows, chosen as the interview chooses it.
+  const shownLocale = selectProtocolLocale(
+    statedLocale === null ? browserLanguages : [statedLocale],
+    interviewPayload.protocol.localization,
+  );
   return (
-    <div className="h-screen">
-      <Shell
-        requestedLocale={intl.locale}
-        payload={interviewPayload}
-        onSync={noopSync}
-        onFinish={handleFinish}
-        finishConfirmationDescription={<PreviewFinishConfirmation />}
-        onRequestAsset={onRequestAsset}
-        currentStep={currentStep}
-        onStepChange={setCurrentStep}
-        flags={{ isDevelopment: import.meta.env.DEV }}
-        initialStageOverrideIndex={initialStageOverrideIndex ?? undefined}
-        allowStageNavigation
-        disableAnalytics
-        analytics={{
-          installationId: 'architect-preview',
-          hostApp: 'architect-preview',
-        }}
+    <div className="flex h-screen flex-col">
+      <PreviewToolbar
+        options={interviewPayload.session.localeOptions}
+        value={shownLocale}
+        onChange={changePreviewLocale}
       />
+      <div className="min-h-0 flex-1">
+        <Shell
+          key={interviewRun}
+          requestedLocales={requestedLocales}
+          payload={interviewPayload}
+          onSync={handleSync}
+          onProtocolLocaleChange={handleProtocolLocaleChange}
+          onFinish={handleFinish}
+          finishConfirmationDescription={<PreviewFinishConfirmation />}
+          onRequestAsset={onRequestAsset}
+          currentStep={currentStep}
+          onStepChange={setCurrentStep}
+          flags={{ isDevelopment: import.meta.env.DEV }}
+          initialStageOverrideIndex={initialStageOverrideIndex ?? undefined}
+          allowStageNavigation
+          disableAnalytics
+          analytics={{
+            installationId: 'architect-preview',
+            hostApp: 'architect-preview',
+          }}
+        />
+      </div>
     </div>
   );
 }

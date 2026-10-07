@@ -11,6 +11,7 @@ import {
 } from '@codaco/shared-consts';
 
 import { encryptionUnlocked } from '../../../store/modules/ui';
+import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
 import { installEncryptionKey } from '../unlockEncryption';
 import { useNodeLabel } from '../useNodeLabel';
 import {
@@ -33,7 +34,9 @@ async function lockedStore(nodes: NcNode[]) {
 function renderLabel(store: EncryptionStore, node: NcNode) {
   const seen: (string | undefined)[] = [];
   const wrapper = ({ children }: { children: ReactNode }) => (
-    <Provider store={store}>{children}</Provider>
+    <Provider store={store}>
+      <TestProtocolLocalization>{children}</TestProtocolLocalization>
+    </Provider>
   );
   const rendered = renderHook(
     () => {

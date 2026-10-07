@@ -76,11 +76,12 @@ vi.mock('../ExternalNodeItem', () => ({
   default: () => <div data-testid="external-node-item" />,
 }));
 
+import { TestProtocolLocalization } from '../../../__tests__/TestProtocolLocalization';
 import NodePanel from '../NodePanel';
 
 const externalPanelConfig: PanelType = {
   id: 'panel-1',
-  title: 'External Panel',
+  title: { en: 'External Panel' },
   dataSource: 'asset-1',
 };
 
@@ -92,16 +93,18 @@ const makeNode = (id: string): NcNode => ({
 
 const renderPanel = (disableDragging = false) =>
   render(
-    <NodePanel
-      panelConfig={externalPanelConfig}
-      disableDragging={disableDragging}
-      accepts={[]}
-      panelNumber={0}
-      minimize={false}
-      onDrop={vi.fn()}
-      onUpdate={vi.fn()}
-      id="panel-1"
-    />,
+    <TestProtocolLocalization>
+      <NodePanel
+        panelConfig={externalPanelConfig}
+        disableDragging={disableDragging}
+        accepts={[]}
+        panelNumber={0}
+        minimize={false}
+        onDrop={vi.fn()}
+        onUpdate={vi.fn()}
+        id="panel-1"
+      />
+    </TestProtocolLocalization>,
   );
 
 describe('NodePanel external-data status handling', () => {

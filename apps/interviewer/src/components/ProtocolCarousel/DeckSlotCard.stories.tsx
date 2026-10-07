@@ -34,6 +34,7 @@ function makeProtocol({
     name,
     description,
     schemaVersion: 9,
+    localization: { defaultLocale: 'en', locales: ['en'] },
     codebook: {},
     stages: [],
   };

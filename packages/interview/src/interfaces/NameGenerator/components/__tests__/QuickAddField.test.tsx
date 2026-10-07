@@ -6,13 +6,23 @@ import {
   waitFor,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { useState } from 'react';
+import { type ReactElement, useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import Form from '@codaco/fresco-ui/form/Form';
 
 vi.mock('../../../../hooks/useCelebrate', () => ({
   useCelebrate: () => vi.fn(),
+}));
+
+// The stable `name` is protocol bookkeeping; only the localized `label` is
+// shown to the participant, so the two deliberately differ.
+const { nodeTypeDefinition } = vi.hoisted(() => ({
+  nodeTypeDefinition: {
+    name: 'person_internal',
+    label: { en: 'Friend' },
+    shape: 'circle',
+  },
 }));
 
 // QuickAddField reads node presentation state through useStageSelector.
@@ -35,7 +45,7 @@ vi.mock('../../../../hooks/useStageSelector', () => ({
       case 'getNodeColorSelector':
         return 'node-color-seq-1';
       case 'getNodeTypeDefinition':
-        return { shape: 'circle' };
+        return nodeTypeDefinition;
       case 'getPromptAdditionalAttributes':
         return {};
       case 'getNodeIconName':
@@ -48,7 +58,11 @@ vi.mock('../../../../hooks/useStageSelector', () => ({
   },
 }));
 
+import { TestProtocolLocalization } from '../../../__tests__/TestProtocolLocalization';
 import QuickAddField from '../QuickAddField';
+
+const renderField = (ui: ReactElement) =>
+  render(ui, { wrapper: TestProtocolLocalization });
 
 function createDeferred() {
   let resolve!: () => void;
@@ -79,7 +93,7 @@ describe('QuickAddField', () => {
       return { success: true };
     });
 
-    render(
+    renderField(
       <Form onSubmit={onSubmit}>
         <QuickAddField name="name" placeholder="Type a name" disabled={false} />
       </Form>,
@@ -120,7 +134,7 @@ describe('QuickAddField', () => {
   it('treats a dotted protocol variable containing a dangerous segment as opaque', async () => {
     const onSubmit = vi.fn(async () => ({ success: true as const }));
 
-    render(
+    renderField(
       <Form onSubmit={onSubmit}>
         <QuickAddField
           name="safe.__proto__.polluted"
@@ -164,7 +178,7 @@ describe('QuickAddField', () => {
       );
     }
 
-    render(<Harness />);
+    renderField(<Harness />);
 
     const input = await openField();
     await userEvent.type(input, 'Alice');
@@ -179,8 +193,21 @@ describe('QuickAddField', () => {
     );
   });
 
+  it('names the input after the codebook node type label, not its name', async () => {
+    renderField(
+      <Form onSubmit={vi.fn(async () => ({ success: true }))}>
+        <QuickAddField name="name" placeholder="Type a name" disabled={false} />
+      </Form>,
+    );
+
+    const input = await openField();
+
+    expect(input).toHaveAccessibleName(/Friend/);
+    expect(input).not.toHaveAccessibleName(/person_internal/);
+  });
+
   it('closes when the user blurs the enabled input', async () => {
-    render(
+    renderField(
       <Form onSubmit={vi.fn(async () => ({ success: true }))}>
         <QuickAddField name="name" placeholder="Type a name" disabled={false} />
       </Form>,

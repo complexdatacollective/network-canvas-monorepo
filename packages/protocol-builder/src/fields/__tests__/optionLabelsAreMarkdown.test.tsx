@@ -4,6 +4,10 @@ import { describe, expect, it, vi } from 'vitest';
 
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import { getMarkdownLabelText } from '@codaco/fresco-ui/RenderMarkdown';
+import {
+  escapeMessageText,
+  type LocalizedString,
+} from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
@@ -15,6 +19,11 @@ import { createStageDraftProbe } from '../../form/__tests__/stageDraftProbe.tsx'
 import Options, {
   optionsValidationFor,
 } from '../../form/arrayFields/Options.tsx';
+import {
+  type ProtocolLocalization,
+  translationText,
+} from '../../localization/localizedText.ts';
+import { ProtocolLocalizationProvider } from '../../localization/ProtocolLocalization.tsx';
 import BuilderSection from '../../sections/BuilderSection.tsx';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import { richTextOf } from '../../testing/text.ts';
@@ -61,17 +70,36 @@ const EMPHASISED = '**Very** close';
 const DECOMPOSED = 'Trés proche';
 const COMPOSED = 'Trés proche';
 
+/** The fixture protocol's one language, which every label here is written in. */
+const LOCALE = 'en-US';
+const ENGLISH: ProtocolLocalization = {
+  defaultLocale: LOCALE,
+  locales: [LOCALE],
+};
+
+/**
+ * A label as the protocol stores it: its markdown source, held as the literal
+ * message of its one translation.
+ */
+const storedLabel = (source: string): LocalizedString => ({
+  [LOCALE]: escapeMessageText(source),
+});
+
+/** The markdown source a stored label's translation holds. */
+const sourceOf = (label: unknown): string => translationText(label, LOCALE);
+
 /**
  * What the participant reads for a stored label.
  *
- * The interview renders an option label through `RenderMarkdown`'s label
- * dialect wherever it shows one, and this is that dialect's own reading of the
- * string — so a label that lost its punctuation on the way through markdown
- * fails here rather than being described as "escaped correctly" by a test that
- * only read the bytes.
+ * The interview reads an option label's translation as the literal text of its
+ * message and renders that through `RenderMarkdown`'s label dialect wherever
+ * it shows one, and this is that dialect's own reading of the string — so a
+ * label that lost its punctuation on the way through either fails here rather
+ * than being described as "escaped correctly" by a test that only read the
+ * bytes.
  */
 const readByTheParticipant = (label: unknown): string =>
-  getMarkdownLabelText(typeof label === 'string' ? label : '');
+  getMarkdownLabelText(sourceOf(label));
 
 /**
  * Bold and italic, and nothing a single line cannot hold.
@@ -116,6 +144,7 @@ const personDocument = (
   variables: Readonly<Record<string, unknown>> = {},
 ): SectionDoc => ({
   name: 'Person',
+  label: { [LOCALE]: 'Person' },
   color: 'node-color-seq-1',
   shape: { default: 'circle' },
   variables,
@@ -131,7 +160,12 @@ function renderAttributeEditor(
   options: readonly Readonly<Record<string, unknown>>[],
 ) {
   const onSubmitDocument = vi.fn<SubmitDocument>(async () => APPLIED);
-  const committed = { name: 'closeness', type: 'ordinal', options };
+  const committed = {
+    name: 'closeness',
+    label: 'closeness',
+    type: 'ordinal',
+    options,
+  };
   const props: VariableEditorProps = {
     openId: 'open-1',
     mode: 'update',
@@ -142,7 +176,11 @@ function renderAttributeEditor(
     onSubmitDocument,
     onComplete: () => undefined,
   };
-  render(<VariableEditor {...props} />);
+  render(
+    <ProtocolLocalizationProvider localization={ENGLISH}>
+      <VariableEditor {...props} />
+    </ProtocolLocalizationProvider>,
+  );
 
   return {
     user: userEvent.setup(),
@@ -176,15 +214,17 @@ const attributeLabelBox = (position: number) =>
 
 describe('the codebook’s own attribute editor', () => {
   it('offers bold and italic on an option label, and nothing else', () => {
-    renderAttributeEditor([{ label: 'Distant', value: 'distant' }]);
+    renderAttributeEditor([
+      { label: storedLabel('Distant'), value: 'distant' },
+    ]);
 
     expectBoldAndItalicOnly(attributeLabelField(1));
   });
 
   it('leaves punctuation the researcher typed as punctuation', async () => {
     const { user, saved } = renderAttributeEditor([
-      { label: 'Distant', value: 'distant' },
-      { label: 'Close', value: 'close' },
+      { label: storedLabel('Distant'), value: 'distant' },
+      { label: storedLabel('Close'), value: 'close' },
     ]);
 
     await user.clear(attributeLabelBox(1));
@@ -204,8 +244,8 @@ describe('the codebook’s own attribute editor', () => {
    */
   it('carries a markdown pair, and a hyphen, through the round trip unchanged', async () => {
     const { user, saved } = renderAttributeEditor([
-      { label: PAIRED_SOURCE, value: 'starred' },
-      { label: 'Close', value: 'close' },
+      { label: storedLabel(PAIRED_SOURCE), value: 'starred' },
+      { label: storedLabel('Close'), value: 'close' },
     ]);
 
     // What the participant reads, before anything is saved: the characters,
@@ -223,7 +263,7 @@ describe('the codebook’s own attribute editor', () => {
     await user.click(screen.getByRole('button', { name: 'Save attribute' }));
 
     const written = await saved();
-    const stored = String(written[0]?.label ?? '');
+    const stored = sourceOf(written[0]?.label);
     // The stored source keeps the escape that holds the pair apart from
     // emphasis the researcher never asked for, and does NOT escape a hyphen
     // markdown reads as nothing — which is what stored `18\\-24` and showed it
@@ -233,13 +273,13 @@ describe('the codebook’s own attribute editor', () => {
     expect(stored).toContain('18-24');
     expect(stored).not.toContain('18\\-24');
     // And the participant still reads the characters rather than emphasis.
-    expect(readByTheParticipant(stored)).toContain(PAIRED_AS_READ);
+    expect(readByTheParticipant(written[0]?.label)).toContain(PAIRED_AS_READ);
   });
 
   it('saves a label authored elsewhere exactly as it was written', async () => {
     const { user, saved } = renderAttributeEditor([
-      { label: EMPHASISED, value: 'very' },
-      { label: 'Distant', value: 'distant' },
+      { label: storedLabel(EMPHASISED), value: 'very' },
+      { label: storedLabel('Distant'), value: 'distant' },
     ]);
 
     // The label is shown as the participant will read it, not as its source.
@@ -252,13 +292,13 @@ describe('the codebook’s own attribute editor', () => {
     await user.type(name, 'closeness_2');
     await user.click(screen.getByRole('button', { name: 'Save attribute' }));
 
-    expect((await saved())[0]?.label).toBe(EMPHASISED);
+    expect((await saved())[0]?.label).toEqual(storedLabel(EMPHASISED));
   });
 
   it('stores a label in canonical form however it was typed', async () => {
     const { user, saved } = renderAttributeEditor([
-      { label: 'Distant', value: 'distant' },
-      { label: 'Close', value: 'close' },
+      { label: storedLabel('Distant'), value: 'distant' },
+      { label: storedLabel('Close'), value: 'close' },
     ]);
 
     await user.clear(attributeLabelBox(1));
@@ -266,14 +306,14 @@ describe('the codebook’s own attribute editor', () => {
     await user.click(screen.getByRole('button', { name: 'Save attribute' }));
 
     const written = await saved();
-    expect(written[0]?.label).toBe(COMPOSED);
-    expect(written[0]?.label).not.toBe(DECOMPOSED);
+    expect(written[0]?.label).toEqual(storedLabel(COMPOSED));
+    expect(written[0]?.label).not.toEqual(storedLabel(DECOMPOSED));
   });
 
   it('says which labels a participant could not tell apart', async () => {
     const { user } = renderAttributeEditor([
-      { label: 'Close', value: 'close' },
-      { label: 'Distant', value: 'distant' },
+      { label: storedLabel('Close'), value: 'close' },
+      { label: storedLabel('Distant'), value: 'distant' },
     ]);
 
     await user.clear(attributeLabelBox(2));
@@ -288,7 +328,11 @@ describe('the codebook’s own attribute editor', () => {
 // ───────────────────────────── the inline list a row mounts
 
 /** A stage the schema accepts, so nothing here is refused for its shape. */
-const SAVEABLE_STAGE = { label: 'Welcome', title: 'Welcome', items: [] };
+const SAVEABLE_STAGE = {
+  label: { [LOCALE]: 'Welcome' },
+  title: { [LOCALE]: 'Welcome' },
+  items: [],
+};
 
 /**
  * The list a form-field, composer, bin or tie-strength row mounts under its
@@ -331,7 +375,9 @@ const rowLabelBox = () => screen.getByRole('textbox', { name: 'Label' });
 
 describe('the inline list a row mounts', () => {
   it('offers bold and italic on an option label, and nothing else', async () => {
-    const { user } = renderInlineList([{ label: 'Close', value: 'close' }]);
+    const { user } = renderInlineList([
+      { label: storedLabel('Close'), value: 'close' },
+    ]);
 
     await user.click(
       await screen.findByRole('button', { name: 'Edit option 1' }),
@@ -343,7 +389,7 @@ describe('the inline list a row mounts', () => {
 
   it('leaves punctuation the researcher typed as punctuation', async () => {
     const { user, labels } = renderInlineList([
-      { label: 'Close', value: 'close' },
+      { label: storedLabel('Close'), value: 'close' },
     ]);
 
     await user.click(
@@ -361,8 +407,8 @@ describe('the inline list a row mounts', () => {
 
   it('leaves a label alone when the row is only opened and closed', async () => {
     const { user, labels } = renderInlineList([
-      { label: EMPHASISED, value: 'very' },
-      { label: 'Distant', value: 'distant' },
+      { label: storedLabel(EMPHASISED), value: 'very' },
+      { label: storedLabel('Distant'), value: 'distant' },
     ]);
 
     await user.click(
@@ -373,7 +419,7 @@ describe('the inline list a row mounts', () => {
       screen.getByRole('button', { name: 'Finish editing option' }),
     );
 
-    expect(labels()).toEqual([EMPHASISED, 'Distant']);
+    expect(labels()).toEqual([storedLabel(EMPHASISED), storedLabel('Distant')]);
   });
 
   /**
@@ -386,8 +432,8 @@ describe('the inline list a row mounts', () => {
    */
   it('does not rewrite a label whose accent was composed differently', async () => {
     const { user, labels } = renderInlineList([
-      { label: DECOMPOSED, value: 'very' },
-      { label: 'Distant', value: 'distant' },
+      { label: storedLabel(DECOMPOSED), value: 'very' },
+      { label: storedLabel('Distant'), value: 'distant' },
     ]);
 
     await user.click(
@@ -395,12 +441,12 @@ describe('the inline list a row mounts', () => {
     );
     await screen.findByRole('textbox', { name: 'Label' });
 
-    expect(labels()).toEqual([DECOMPOSED, 'Distant']);
+    expect(labels()).toEqual([storedLabel(DECOMPOSED), storedLabel('Distant')]);
   });
 
   it('stores a label in canonical form however it was typed', async () => {
     const { user, labels } = renderInlineList([
-      { label: 'Close', value: 'close' },
+      { label: storedLabel('Close'), value: 'close' },
     ]);
 
     await user.click(
@@ -411,12 +457,14 @@ describe('the inline list a row mounts', () => {
       DECOMPOSED,
     );
 
-    await waitFor(() => expect(labels()[1]).toBe(COMPOSED));
-    expect(labels()[1]).not.toBe(DECOMPOSED);
+    await waitFor(() => expect(labels()[1]).toEqual(storedLabel(COMPOSED)));
+    expect(labels()[1]).not.toEqual(storedLabel(DECOMPOSED));
   });
 
   it('says which labels a participant could not tell apart', async () => {
-    const { user } = renderInlineList([{ label: 'Close', value: 'close' }]);
+    const { user } = renderInlineList([
+      { label: storedLabel('Close'), value: 'close' },
+    ]);
 
     await user.click(
       await screen.findByRole('button', { name: 'Create new option' }),
@@ -475,8 +523,8 @@ const answerBox = (records: 'true' | 'false') =>
 describe('the two answers of a yes-or-no attribute', () => {
   it('offers bold and italic on an answer’s words, and nothing else', async () => {
     renderBooleanAnswers([
-      { label: 'Related', value: true },
-      { label: 'Not related', value: false },
+      { label: storedLabel('Related'), value: true },
+      { label: storedLabel('Not related'), value: false },
     ]);
 
     await screen.findByRole('textbox', { name: 'Label for “true”' });
@@ -486,8 +534,8 @@ describe('the two answers of a yes-or-no attribute', () => {
 
   it('leaves punctuation the researcher typed as punctuation', async () => {
     const { user, labels } = renderBooleanAnswers([
-      { label: 'Related', value: true },
-      { label: 'Not related', value: false },
+      { label: storedLabel('Related'), value: true },
+      { label: storedLabel('Not related'), value: false },
     ]);
 
     await screen.findByRole('textbox', { name: 'Label for “true”' });
@@ -501,8 +549,8 @@ describe('the two answers of a yes-or-no attribute', () => {
 
   it('leaves the pair alone when nothing about it is touched', async () => {
     const { labels } = renderBooleanAnswers([
-      { label: EMPHASISED, value: true },
-      { label: 'Distant', value: false },
+      { label: storedLabel(EMPHASISED), value: true },
+      { label: storedLabel('Distant'), value: false },
     ]);
 
     const box = await screen.findByRole('textbox', {
@@ -510,21 +558,21 @@ describe('the two answers of a yes-or-no attribute', () => {
     });
     expect(richTextOf(box)).toBe('Very close');
 
-    expect(labels()).toEqual([EMPHASISED, 'Distant']);
+    expect(labels()).toEqual([storedLabel(EMPHASISED), storedLabel('Distant')]);
   });
 
   it('stores an answer in canonical form however it was typed', async () => {
     const { user, labels } = renderBooleanAnswers([
-      { label: 'Related', value: true },
-      { label: 'Not related', value: false },
+      { label: storedLabel('Related'), value: true },
+      { label: storedLabel('Not related'), value: false },
     ]);
 
     await screen.findByRole('textbox', { name: 'Label for “true”' });
     await user.clear(answerBox('true'));
     await user.type(answerBox('true'), DECOMPOSED);
 
-    await waitFor(() => expect(labels()[0]).toBe(COMPOSED));
-    expect(labels()[0]).not.toBe(DECOMPOSED);
+    await waitFor(() => expect(labels()[0]).toEqual(storedLabel(COMPOSED)));
+    expect(labels()[0]).not.toEqual(storedLabel(DECOMPOSED));
   });
 
   /**
@@ -539,15 +587,15 @@ describe('the two answers of a yes-or-no attribute', () => {
    */
   it('turns emphasis the researcher types into the markdown it holds', async () => {
     const { user, labels } = renderBooleanAnswers([
-      { label: 'Related', value: true },
-      { label: 'Not related', value: false },
+      { label: storedLabel('Related'), value: true },
+      { label: storedLabel('Not related'), value: false },
     ]);
 
     await screen.findByRole('textbox', { name: 'Label for “true”' });
     await user.clear(answerBox('true'));
     await user.type(answerBox('true'), EMPHASISED);
 
-    await waitFor(() => expect(labels()[0]).toBe(EMPHASISED));
+    await waitFor(() => expect(labels()[0]).toEqual(storedLabel(EMPHASISED)));
   });
 
   /**
@@ -562,8 +610,8 @@ describe('the two answers of a yes-or-no attribute', () => {
    */
   it('still refuses two answers written the same way', async () => {
     const { user } = renderBooleanAnswers([
-      { label: 'Related', value: true },
-      { label: 'Not related', value: false },
+      { label: storedLabel('Related'), value: true },
+      { label: storedLabel('Not related'), value: false },
     ]);
 
     await screen.findByRole('textbox', { name: 'Label for “true”' });

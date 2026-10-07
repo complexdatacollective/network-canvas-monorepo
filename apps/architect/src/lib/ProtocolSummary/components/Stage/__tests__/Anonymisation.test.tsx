@@ -10,6 +10,7 @@ import Anonymisation from '../Anonymisation';
 const protocol = {
   schemaVersion: 9,
   name: 'Anonymisation protocol',
+  localization: { defaultLocale: 'en', locales: ['en'] },
   codebook: { node: {}, edge: {}, ego: {} },
   assetManifest: {},
   stages: [],

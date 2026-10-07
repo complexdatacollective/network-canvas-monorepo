@@ -7,7 +7,6 @@ import ArrayField, {
 } from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
 import { MINIMUM_VARIABLE_OPTIONS } from '@codaco/protocol-validation';
-import { hasDuplicateOptionLabels } from '@codaco/shared-consts';
 
 import { minimumOptionsMessage } from '../../codebook/editing.ts';
 import {
@@ -21,7 +20,11 @@ import Option, {
   OptionsContext,
   type OptionValue,
 } from './Option.tsx';
-import { isOptionComplete, isOptionValueEmpty } from './optionCompleteness.ts';
+import {
+  hasDuplicateLocalizedOptionLabels,
+  isOptionComplete,
+  isOptionValueEmpty,
+} from './optionCompleteness.ts';
 
 export type { OptionValue } from './Option.tsx';
 
@@ -118,10 +121,11 @@ const uniqueOptionValues = (value: unknown) =>
  * The label counterpart of `uniqueOptionValues`, asked of the one predicate
  * every surface and the codebook write itself ask — so a list this rule lets
  * through is never refused again on the way to the protocol, and a list it
- * refuses reads the same in both places.
+ * refuses reads the same in both places. Labels are compared one language at
+ * a time.
  */
 const uniqueOptionLabels = (value: unknown) =>
-  hasDuplicateOptionLabels(value)
+  hasDuplicateLocalizedOptionLabels(value)
     ? createMessageError(messages.duplicateLabels)
     : undefined;
 

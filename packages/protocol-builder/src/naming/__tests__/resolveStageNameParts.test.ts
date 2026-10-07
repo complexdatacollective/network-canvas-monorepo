@@ -168,7 +168,7 @@ describe('resolveStageQualifier', () => {
       resolveStageQualifier(
         {
           type: 'Information',
-          items: [{ id: 'i1', type: 'text', content: 'hello' }],
+          items: [{ id: 'i1', type: 'text', content: { en: 'hello' } }],
         },
         r,
       ),

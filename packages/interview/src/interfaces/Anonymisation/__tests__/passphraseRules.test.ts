@@ -74,8 +74,11 @@ describe('protocolPassphraseLengthRules', () => {
   const anonymisation = {
     id: 'anonymisation',
     type: 'Anonymisation',
-    label: 'Anonymisation',
-    explanationText: { title: 'Privacy', body: 'Choose a passphrase.' },
+    label: { en: 'Anonymisation' },
+    explanationText: {
+      title: { en: 'Privacy' },
+      body: { en: 'Choose a passphrase.' },
+    },
     validation: { maxLength: 6 },
   } satisfies Stage;
 

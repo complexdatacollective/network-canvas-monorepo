@@ -74,6 +74,7 @@
   "protocolValidation.migrationNotes.schema9.attributeNames": "Attribute names can now use letters from any language, as well as spaces and punctuation. Existing attribute names are not changed.",
   "protocolValidation.migrationNotes.schema9.contradictoryPassphraseRules": "If an Anonymisation stage required a minimum passphrase length longer than its maximum, no participant could choose a passphrase, so both lengths are removed and the default minimum length applies.",
   "protocolValidation.migrationNotes.schema9.encryptedAttributes": "Encrypted attributes are no longer experimental: the Anonymisation interface is always available, and an attribute marked as encrypted is always encrypted. If this protocol marked attributes as encrypted without turning on the experimental \"Encrypted Attributes\" feature, those attributes are no longer marked, so they keep being collected without encryption.",
+  "protocolValidation.migrationNotes.schema9.unspecifiedLanguage": "Text that participants see is now marked as written in \"Unspecified language\", because older protocols do not record which language they use. You can change it to the language it is actually written in on the Languages page in Architect.",
   "protocolValidation.rule.additionalAttributes": "Fixed attributes",
   "protocolValidation.rule.component": "Input control",
   "protocolValidation.rule.differentFrom": "Different from another attribute",

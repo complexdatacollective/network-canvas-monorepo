@@ -7,6 +7,9 @@ import { fixtureStageIds } from '../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import SkipLogicSection from '../skip-logic/SkipLogicSection.tsx';
 
+/** Copy in the fixture protocol's only language, as schema 9 holds it. */
+const en = (text: string) => ({ 'en-US': text });
+
 const destinations = () =>
   within(screen.getByRole('combobox', { name: /When this stage is skipped/ }))
     .getAllByRole('option')
@@ -29,8 +32,8 @@ describe('the creation signal a new stage carries', () => {
         type: 'Information',
         position: 0,
         fields: {
-          label: 'New page',
-          title: 'New page',
+          label: en('New page'),
+          title: en('New page'),
           items: [],
           skipLogic: { action: 'SKIP', filter: { rules: [] } },
         },
@@ -51,8 +54,8 @@ describe('the creation signal a new stage carries', () => {
         type: 'Information',
         position: fixtureStageIds().length,
         fields: {
-          label: 'New page',
-          title: 'New page',
+          label: en('New page'),
+          title: en('New page'),
           items: [],
           skipLogic: { action: 'SKIP', filter: { rules: [] } },
         },
@@ -72,7 +75,7 @@ describe('the creation signal a new stage carries', () => {
       create: {
         type: 'Information',
         position: 0,
-        fields: { title: 'New page', items: [] },
+        fields: { title: en('New page'), items: [] },
       },
       sections: <></>,
     });

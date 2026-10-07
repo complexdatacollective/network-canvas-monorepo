@@ -33,6 +33,7 @@ import {
 import StageEditorShell from '../form/StageEditorShell.tsx';
 import { getInterfaceTemplate } from '../interfaces/templates.ts';
 import { protocolBuilderCatalogs } from '../locales/catalogs.ts';
+import type { ProtocolLocalization } from '../localization/localizedText.ts';
 import { protocolContextFromSections } from '../protocol-context.ts';
 import { ProtocolBuilder } from '../ProtocolBuilder.tsx';
 import { ResourceClientProvider } from '../resources/client.tsx';
@@ -63,6 +64,7 @@ import { readMessage } from './i18n.ts';
 import {
   fixtureAssetContentFor,
   fixtureAssetManifest,
+  fixtureLocalization,
   fixtureProtocolSections,
   type FixtureStageId,
   loadFixtureStage,
@@ -486,6 +488,12 @@ export type RenderStageEditorOptions<T extends StageType = StageType> =
     /** Open the stage as a spectator. */
     readOnly?: boolean;
     /**
+     * The languages the protocol declares, in place of the fixture's own. The
+     * fixture's copy stays as it is, so a language added here starts with no
+     * translations.
+     */
+    localization?: ProtocolLocalization;
+    /**
      * Read the editor in this language.
      *
      * Left out, NO provider is mounted at all, `useAppIntl()` falls back to a
@@ -645,7 +653,7 @@ export function renderStageEditor<T extends StageType = StageType>(
   };
 
   const host = createInMemoryHost({
-    sections: seededSections(seeded, assetManifest),
+    sections: seededSections(seeded, assetManifest, options.localization),
     assetContent: fixtureAssetContentFor(assetManifest, options.assetBytes),
     principal: HARNESS_PRINCIPAL,
   });
@@ -1217,7 +1225,13 @@ function seedFrom<T extends StageType>(
       type,
       // What a host opens a create session with: the interface's own authored
       // defaults, not a blank document and not a schema default.
-      fields: { ...getInterfaceTemplate(type), ...fields },
+      fields: {
+        ...getInterfaceTemplate(
+          type,
+          options.localization ?? fixtureLocalization(),
+        ),
+        ...fields,
+      },
       creation: { position },
     };
   }
@@ -1261,9 +1275,14 @@ function codebookSections(
 function seededSections(
   seeded: SeededStage,
   assetManifest: Readonly<Record<string, unknown>>,
+  localization: ProtocolLocalization | undefined,
 ): Record<string, SectionDoc> {
   const base = fixtureProtocolSections();
   const sections: Record<string, SectionDoc> = { ...base };
+  if (localization !== undefined) {
+    const settings = sectionId({ kind: 'settings' });
+    sections[settings] = { ...base[settings], localization };
+  }
   if (seeded.creation === undefined) {
     sections[sectionId({ kind: 'stage', stageId: seeded.id })] = {
       id: seeded.id,

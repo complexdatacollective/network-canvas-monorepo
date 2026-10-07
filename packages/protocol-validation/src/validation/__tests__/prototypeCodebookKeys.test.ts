@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { ValidationError } from '../../migration/errors.ts';
 import { migrateProtocol } from '../../migration/migrate-protocol.ts';
-import { createBaseProtocol } from '../../utils/test-utils.ts';
+import { createBaseProtocol, localized } from '../../utils/test-utils.ts';
 import validateProtocol from '../validate-protocol.ts';
 
 // `JSON.parse` gives a protocol file's `"__proto__"` key an own, enumerable
@@ -17,10 +17,11 @@ const addPrototypeKey = (record: object, value: unknown) =>
 
 const nodeType = {
   name: 'Proto',
+  label: localized('Proto'),
   color: 'node-color-seq-3',
   shape: { default: 'circle' },
 };
-const textVariable = { name: 'Proto', type: 'text' };
+const textVariable = { name: 'Proto', label: 'Proto', type: 'text' };
 
 const cases = [
   {
@@ -35,6 +36,7 @@ const cases = [
     add: (protocol: ReturnType<typeof createBaseProtocol>) =>
       addPrototypeKey(protocol.codebook.edge, {
         name: 'Proto',
+        label: localized('Proto'),
         color: 'edge-color-seq-3',
       }),
   },

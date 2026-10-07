@@ -35,6 +35,7 @@ import { writeFailureMessage } from '../../forms/writeSubmissionResult';
 import useNodeLimits from '../../hooks/useNodeLimits';
 import { useStageSelector } from '../../hooks/useStageSelector';
 import { runtimeMessages } from '../../i18n/runtimeMessages';
+import { useResolveLocalizedString } from '../../localization/ProtocolLocalizationProvider';
 import { getNodeVariables } from '../../selectors/interface';
 import {
   getSearchOptions,
@@ -164,13 +165,24 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
 
   // --- Sort setup ---
   const sortOptions = useStageSelector(getSortOptions);
+  const resolve = useResolveLocalizedString();
 
+  // Sort buttons take plain text, so their labels are resolved here.
   const { initialSortRules, sortableProperties } = useMemo<{
     initialSortRules: SortRule[] | undefined;
     sortableProperties: SortableProperty[] | undefined;
   }>(
-    () => buildRosterSortConfig(sortOptions, nodeVariables),
-    [sortOptions, nodeVariables],
+    () =>
+      buildRosterSortConfig(
+        sortOptions && {
+          sortOrder: sortOptions.sortOrder,
+          sortableProperties: sortOptions.sortableProperties?.map(
+            ({ label, variable }) => ({ label: resolve(label).text, variable }),
+          ),
+        },
+        nodeVariables,
+      ),
+    [sortOptions, nodeVariables, resolve],
   );
 
   // --- Encryption detection ---

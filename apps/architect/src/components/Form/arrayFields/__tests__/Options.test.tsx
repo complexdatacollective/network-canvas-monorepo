@@ -1,3 +1,4 @@
+import { configureStore } from '@reduxjs/toolkit';
 import {
   fireEvent,
   render,
@@ -7,6 +8,7 @@ import {
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useContext, type ContextType } from 'react';
+import { Provider } from 'react-redux';
 import { describe, expect, it, vi } from 'vitest';
 
 import { createAppIntl } from '@codaco/app-i18n/messages';
@@ -18,9 +20,28 @@ import ArchitectArrayField from '../../ArchitectArrayField';
 import type { OptionValue } from '../Option';
 import Options, { minimumOptionsMessage, optionsValidation } from '../Options';
 
+const en = (text: string) => ({ en: text });
+
+// The label cells edit the protocol's default language.
+const store = configureStore({
+  reducer: {
+    activeProtocol: (
+      state = {
+        present: {
+          name: 'Test protocol',
+          localization: { defaultLocale: 'en', locales: ['en'] },
+          stages: [],
+          codebook: {},
+          assetManifest: {},
+        },
+      },
+    ) => state,
+  },
+});
+
 const TWO_VALID_OPTIONS: OptionValue[] = [
-  { label: 'One', value: 1 },
-  { label: 'Two', value: 2 },
+  { label: en('One'), value: 1 },
+  { label: en('Two'), value: 2 },
 ];
 
 type StoreApi = NonNullable<ContextType<typeof FormStoreContext>>;
@@ -47,20 +68,22 @@ const setup = (options: Partial<OptionValue>[] = TWO_VALID_OPTIONS) => {
   const onSubmit = vi.fn(() => ({ success: true as const }));
 
   const view = render(
-    <Form onSubmit={onSubmit}>
-      <CaptureStore />
-      <ArchitectArrayField
-        name="options"
-        label="Options"
-        component={Options}
-        addButtonLabel="Create new option"
-        // The field's prop type describes finished options; seeding a
-        // half-filled row is the point of several cases below.
-        initialValue={options as OptionValue[]}
-        validation={optionsValidation()}
-      />
-      <button type="submit">Save</button>
-    </Form>,
+    <Provider store={store}>
+      <Form onSubmit={onSubmit}>
+        <CaptureStore />
+        <ArchitectArrayField
+          name="options"
+          label="Options"
+          component={Options}
+          addButtonLabel="Create new option"
+          // The field's prop type describes finished options; seeding a
+          // half-filled row is the point of several cases below.
+          initialValue={options as OptionValue[]}
+          validation={optionsValidation()}
+        />
+        <button type="submit">Save</button>
+      </Form>
+    </Provider>,
   );
 
   return { ...view, getOptions, onSubmit };
@@ -121,7 +144,7 @@ describe('Options', () => {
   });
 
   it('collapses an option that has both a label and a value', async () => {
-    setup([...TWO_VALID_OPTIONS, { label: 'Three', value: 3 }]);
+    setup([...TWO_VALID_OPTIONS, { label: en('Three'), value: 3 }]);
 
     fireEvent.click(screen.getByRole('button', { name: 'Edit option 3' }));
     await waitFor(() => expect(finishButton()).toBeInTheDocument());
@@ -134,7 +157,7 @@ describe('Options', () => {
   });
 
   it('shows a whitespace-only label as untitled', () => {
-    setup([...TWO_VALID_OPTIONS, { label: '   ', value: 3 }]);
+    setup([...TWO_VALID_OPTIONS, { label: en('   '), value: 3 }]);
 
     expect(screen.getByText('Untitled option')).toBeInTheDocument();
   });
@@ -142,7 +165,7 @@ describe('Options', () => {
   it('keeps the indexed data-field-name paths E2E specs target', async () => {
     const { container } = setup([
       ...TWO_VALID_OPTIONS,
-      { label: 'Three', value: 3 },
+      { label: en('Three'), value: 3 },
     ]);
 
     fireEvent.click(screen.getByRole('button', { name: 'Edit option 3' }));
@@ -158,19 +181,19 @@ describe('Options', () => {
   });
 
   it('writes an edited value back into the whole array, parsing numbers', async () => {
-    setup([...TWO_VALID_OPTIONS, { label: 'Three', value: '' }]);
+    setup([...TWO_VALID_OPTIONS, { label: en('Three'), value: '' }]);
 
     fireEvent.click(screen.getByRole('button', { name: 'Edit option 3' }));
     const valueInput = await screen.findByRole('textbox', { name: 'Value' });
     fireEvent.change(valueInput, { target: { value: '42' } });
 
     await waitFor(() => {
-      expect(getOptions()[2]).toEqual({ label: 'Three', value: 42 });
+      expect(getOptions()[2]).toEqual({ label: en('Three'), value: 42 });
     });
   });
 
   it('reports a duplicate value against the rest of the array', async () => {
-    setup([...TWO_VALID_OPTIONS, { label: 'Three', value: '' }]);
+    setup([...TWO_VALID_OPTIONS, { label: en('Three'), value: '' }]);
 
     fireEvent.click(screen.getByRole('button', { name: 'Edit option 3' }));
     const valueInput = await screen.findByRole('textbox', { name: 'Value' });
@@ -184,7 +207,7 @@ describe('Options', () => {
   });
 
   it('surfaces the array-level rules on the array field, not the rows', async () => {
-    const { container } = setup([{ label: 'Only', value: 'only' }]);
+    const { container } = setup([{ label: en('Only'), value: 'only' }]);
 
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
@@ -213,7 +236,7 @@ describe('Options', () => {
     'This can’t contain tabs, line breaks or other control characters';
 
   it('refuses to submit an option value with a control character', async () => {
-    const { onSubmit } = setup([...TWO_VALID_OPTIONS, { label: 'Three' }]);
+    const { onSubmit } = setup([...TWO_VALID_OPTIONS, { label: en('Three') }]);
 
     fireEvent.click(screen.getByRole('button', { name: 'Edit option 3' }));
     const valueInput = await screen.findByRole('textbox', { name: 'Value' });
@@ -231,7 +254,7 @@ describe('Options', () => {
   it('keeps refusing after the row is collapsed and its message hidden', async () => {
     const { onSubmit } = setup([
       ...TWO_VALID_OPTIONS,
-      { label: 'Three', value: 'has\ttab' },
+      { label: en('Three'), value: 'has\ttab' },
     ]);
 
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
@@ -244,10 +267,10 @@ describe('Options', () => {
 
   it('submits option values in any script, with spaces and punctuation', async () => {
     const { onSubmit } = setup([
-      { label: 'Close friend', value: 'amigo cercano' },
-      { label: 'Colleague', value: 'Collègue' },
-      { label: 'Friend', value: '友人' },
-      { label: 'Percent', value: '100% (roughly)' },
+      { label: en('Close friend'), value: 'amigo cercano' },
+      { label: en('Colleague'), value: 'Collègue' },
+      { label: en('Friend'), value: '友人' },
+      { label: en('Percent'), value: '100% (roughly)' },
     ]);
 
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
@@ -258,7 +281,7 @@ describe('Options', () => {
   it('does not let a row of spaces stand in for a value', async () => {
     const { onSubmit } = setup([
       ...TWO_VALID_OPTIONS,
-      { label: 'Three', value: '   ' },
+      { label: en('Three'), value: '   ' },
     ]);
 
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
@@ -310,8 +333,7 @@ describe('an option label', () => {
     return await screen.findByRole('textbox', { name: 'Label' });
   };
 
-  const labelOf = (position: number): unknown =>
-    (getOptions()[position] as Record<string, unknown> | undefined)?.label;
+  const labelOf = (position: number) => getOptions()[position]?.label?.en;
 
   it('offers bold and italic, and nothing a single line cannot hold', async () => {
     const { container } = setup();
@@ -355,8 +377,8 @@ describe('an option label', () => {
   it('carries a markdown pair, and a hyphen, through an edit unchanged', async () => {
     const user = userEvent.setup();
     setup([
-      { label: PAIRED_SOURCE, value: 'starred' },
-      { label: 'Distant', value: 'distant' },
+      { label: en(PAIRED_SOURCE), value: 'starred' },
+      { label: en('Distant'), value: 'distant' },
     ]);
 
     const box = await openRow(1);
@@ -391,8 +413,8 @@ describe('an option label', () => {
 
   it('keeps an authored label when a row is only opened and closed', async () => {
     setup([
-      { label: EMPHASISED, value: 'very' },
-      { label: 'Distant', value: 'distant' },
+      { label: en(EMPHASISED), value: 'very' },
+      { label: en('Distant'), value: 'distant' },
     ]);
 
     const box = await openRow(1);
@@ -404,8 +426,8 @@ describe('an option label', () => {
 
     await waitFor(() => expect(finishButton()).not.toBeInTheDocument());
     expect(getOptions()).toEqual([
-      { label: EMPHASISED, value: 'very' },
-      { label: 'Distant', value: 'distant' },
+      { label: en(EMPHASISED), value: 'very' },
+      { label: en('Distant'), value: 'distant' },
     ]);
   });
 

@@ -13,6 +13,7 @@ import { CurrentStepProvider } from '../../contexts/CurrentStepContext';
 import { InterviewI18nProvider } from '../../i18n/InterviewI18nProvider';
 import { interviewToastManager } from '../../toast/interviewToastManager';
 import type { StageProps } from '../../types';
+import { TestProtocolLocalization } from '../__tests__/TestProtocolLocalization';
 import {
   createEncryptionStore,
   encryptedVariables,
@@ -81,10 +82,10 @@ afterEach(() => {
 const stage: StageProps<'NameGeneratorRoster'>['stage'] = {
   id: 'roster-stage',
   type: 'NameGeneratorRoster',
-  label: 'Roster',
+  label: { en: 'Roster' },
   subject: { entity: 'node', type: NODE_TYPE },
   dataSource: 'roster-data',
-  prompts: [{ id: 'prompt-1', text: 'Who do you know?' }],
+  prompts: [{ id: 'prompt-1', text: { en: 'Who do you know?' } }],
 };
 
 const PASSPHRASE = 'roster passphrase';
@@ -109,17 +110,19 @@ async function renderRoster(
   render(
     <InterviewI18nProvider requestedLocale="en">
       <Provider store={store}>
-        <CurrentStepProvider currentStep={0} onStepChange={vi.fn()}>
-          <DndStoreProvider>
-            <NameGeneratorRoster
-              stage={stage}
-              getNavigationHelpers={() => ({
-                moveForward: () => {},
-                moveBackward: () => {},
-              })}
-            />
-          </DndStoreProvider>
-        </CurrentStepProvider>
+        <TestProtocolLocalization>
+          <CurrentStepProvider currentStep={0} onStepChange={vi.fn()}>
+            <DndStoreProvider>
+              <NameGeneratorRoster
+                stage={stage}
+                getNavigationHelpers={() => ({
+                  moveForward: () => {},
+                  moveBackward: () => {},
+                })}
+              />
+            </DndStoreProvider>
+          </CurrentStepProvider>
+        </TestProtocolLocalization>
       </Provider>
     </InterviewI18nProvider>,
   );

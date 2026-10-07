@@ -78,6 +78,11 @@ describe('installPreviewProtocol', () => {
     expect(first.session.id).not.toBe(second.session.id);
     expect(first.session.finishTime).toBeNull();
     expect(first.session.network.ego).toBeDefined();
+    expect(first.session.localePreference).toBeNull();
+    expect(first.session.locale).toBeNull();
+    expect(first.session.localeOptions.map(({ locale }) => locale)).toEqual(
+      first.protocol.localization.locales,
+    );
   });
 
   it('reports a protocol from a newer version as an unsupported version', async () => {

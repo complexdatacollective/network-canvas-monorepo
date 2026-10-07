@@ -2,29 +2,32 @@ import { describe, expect, it } from 'vitest';
 
 import { stageSchema } from '@codaco/protocol-validation';
 
+import type { ProtocolLocalization } from '../../localization/localizedText.ts';
 import { STAGE_TYPES } from '../../stage-types.ts';
-import { getInterfaceTemplate } from '../templates.ts';
+import { getInterfaceDefaults, getInterfaceTemplate } from '../templates.ts';
+
+const ENGLISH: ProtocolLocalization = { defaultLocale: 'en', locales: ['en'] };
 
 describe('getInterfaceTemplate', () => {
   it('answers with a template object for every stage type', () => {
     expect(STAGE_TYPES.length).toBeGreaterThan(0);
     for (const stageType of STAGE_TYPES) {
-      const template = getInterfaceTemplate(stageType);
+      const template = getInterfaceTemplate(stageType, ENGLISH);
       expect(template, stageType).toBeTypeOf('object');
       expect(Array.isArray(template), stageType).toBe(false);
     }
   });
 
   it('answers with an empty template for an interface that authors no defaults', () => {
-    expect(getInterfaceTemplate('NameGenerator')).toEqual({});
+    expect(getInterfaceTemplate('NameGenerator', ENGLISH)).toEqual({});
     // The three form interfaces used to be listed in the map holding `{}`,
     // which reads as a template whose contents went missing rather than as an
     // interface with no defaults to give. They are unlisted now, and answer
     // the same thing. What they still need is the subject of the second
     // describe below.
-    expect(getInterfaceTemplate('AlterForm')).toEqual({});
-    expect(getInterfaceTemplate('AlterEdgeForm')).toEqual({});
-    expect(getInterfaceTemplate('EgoForm')).toEqual({});
+    expect(getInterfaceTemplate('AlterForm', ENGLISH)).toEqual({});
+    expect(getInterfaceTemplate('AlterEdgeForm', ENGLISH)).toEqual({});
+    expect(getInterfaceTemplate('EgoForm', ENGLISH)).toEqual({});
   });
 
   /**
@@ -36,15 +39,15 @@ describe('getInterfaceTemplate', () => {
    * because the template seeds `true`.
    */
   it('seeds the layout and consideration behaviours their interfaces are designed around', () => {
-    expect(getInterfaceTemplate('Narrative')).toEqual({
+    expect(getInterfaceTemplate('Narrative', ENGLISH)).toEqual({
       behaviours: { allowRepositioning: true, automaticLayout: true },
       background: { concentricCircles: 4, skewedTowardCenter: false },
     });
-    expect(getInterfaceTemplate('NetworkComposer')).toEqual({
+    expect(getInterfaceTemplate('NetworkComposer', ENGLISH)).toEqual({
       behaviours: { automaticLayout: true },
       background: { concentricCircles: 4, skewedTowardCenter: false },
     });
-    expect(getInterfaceTemplate('OneToManyDyadCensus')).toEqual({
+    expect(getInterfaceTemplate('OneToManyDyadCensus', ENGLISH)).toEqual({
       behaviours: { removeAfterConsideration: true },
     });
   });
@@ -61,7 +64,10 @@ describe('getInterfaceTemplate', () => {
       'Narrative',
       'NetworkComposer',
     ] as const) {
-      expect(getInterfaceTemplate(stageType).background, stageType).toEqual({
+      expect(
+        getInterfaceTemplate(stageType, ENGLISH).background,
+        stageType,
+      ).toEqual({
         concentricCircles: 4,
         skewedTowardCenter: false,
       });
@@ -69,7 +75,7 @@ describe('getInterfaceTemplate', () => {
   });
 
   it('seeds the pedigree interfaces with their framing, boundaries and intro copy', () => {
-    const familyPedigree = getInterfaceTemplate('FamilyPedigree');
+    const familyPedigree = getInterfaceTemplate('FamilyPedigree', ENGLISH);
     expect(familyPedigree.framing).toEqual({ mode: 'fixed', value: 'gamete' });
     expect(familyPedigree.boundaries).toEqual({
       requireGrandparents: 'off',
@@ -77,18 +83,34 @@ describe('getInterfaceTemplate', () => {
     });
     // The intro screen is a content list, so assert its shape rather than
     // restating the researcher-facing copy here.
-    expect(familyPedigree.introScreen).toMatchObject({
-      items: [{ id: 'intro-text', type: 'text' }],
+    // Written in the protocol's default language, for the researcher to
+    // translate into the others.
+    expect(familyPedigree.introScreen).toEqual({
+      items: [
+        {
+          id: 'intro-text',
+          type: 'text',
+          content: { en: expect.stringMatching(/\S/) },
+        },
+      ],
     });
-    const introItems = (
-      familyPedigree.introScreen as { items: { content: string }[] }
-    ).items;
-    expect(introItems[0]?.content.trim()).not.toBe('');
 
-    expect(getInterfaceTemplate('NarrativePedigree')).toEqual({
+    expect(getInterfaceTemplate('NarrativePedigree', ENGLISH)).toEqual({
       sourceStageId: '',
       diseases: [],
       showAtRiskStatuses: false,
+    });
+  });
+});
+
+describe('getInterfaceDefaults', () => {
+  it('holds a template’s defaults without the copy it seeds', () => {
+    expect(getInterfaceDefaults('FamilyPedigree')).toEqual({
+      framing: { mode: 'fixed', value: 'gamete' },
+      boundaries: {
+        requireGrandparents: 'off',
+        requireChildrenContributors: 'off',
+      },
     });
   });
 });
@@ -107,7 +129,7 @@ describe('getInterfaceTemplate', () => {
  *
  * Written down because the alternative is discovering the same fact one
  * interface at a time, which is how `AlterForm`'s empty template came to look
- * like a defect rather than like the eighteen beside it. If a template ever
+ * like a defect rather than like the nineteen beside it. If a template ever
  * does start covering one of these, this list is what says so.
  */
 const STILL_NEEDED: Readonly<Record<string, readonly string[]>> = {
@@ -120,6 +142,8 @@ const STILL_NEEDED: Readonly<Record<string, readonly string[]>> = {
   FamilyPedigree: ['censusPrompt', 'edgeConfig', 'nodeConfig'],
   Geospatial: ['mapOptions', 'prompts', 'subject'],
   Information: ['items', 'title'],
+  // Its choices are the protocol's own languages, so a name is all it needs.
+  LanguageChooser: [],
   NameGenerator: ['form', 'prompts', 'subject'],
   NameGeneratorQuickAdd: ['prompts', 'quickAdd', 'subject'],
   NameGeneratorRoster: ['dataSource', 'prompts', 'subject'],
@@ -138,15 +162,15 @@ const STILL_NEEDED: Readonly<Record<string, readonly string[]>> = {
 /**
  * A new stage of `type`, exactly as a stage editor mounts one, plus a name.
  *
- * `CreatingStage` mounts its form on `{ ...getInterfaceTemplate(type) }` and
+ * `CreatingStage` mounts its form on `{ ...getInterfaceTemplate(type, ENGLISH) }` and
  * submits it through `stageDocument`, which stamps the identity — so this is
  * that composition with nothing in between.
  */
 const newStage = (type: (typeof STAGE_TYPES)[number]) => ({
-  ...getInterfaceTemplate(type),
+  ...getInterfaceTemplate(type, ENGLISH),
   type,
   id: 'stage-1',
-  label: 'A new stage',
+  label: { en: 'A new stage' },
 });
 
 /** The top-level properties the schema refuses, in a stable order. */
@@ -172,7 +196,7 @@ describe('a new stage given nothing but a name', () => {
    */
   it.each(STAGE_TYPES)('is the %s template under its stage type', (type) => {
     const { id: _id, label: _label, ...seeded } = newStage(type);
-    expect(seeded).toEqual({ ...getInterfaceTemplate(type), type });
+    expect(seeded).toEqual({ ...getInterfaceTemplate(type, ENGLISH), type });
   });
 
   it.each(STAGE_TYPES)('still needs the listed properties on %s', (type) => {
@@ -181,15 +205,17 @@ describe('a new stage given nothing but a name', () => {
 
   /**
    * Stated once, plainly, because it is what a reader of the list above would
-   * otherwise have to work out by scanning it. The day an interface can be
-   * saved straight from its template, this fails and someone reads the list.
+   * otherwise have to work out by scanning it. The day another interface can
+   * be saved straight from its template, this fails and someone reads the
+   * list. The language chooser is the one exception: it has nothing to
+   * configure beyond its name.
    */
-  it('is not a saveable stage for any interface', () => {
+  it('is a saveable stage only for the language chooser', () => {
     const saveable = STAGE_TYPES.filter(
       (type) => stageSchema.safeParse(newStage(type)).success,
     );
 
-    expect(saveable).toEqual([]);
+    expect(saveable).toEqual(['LanguageChooser']);
   });
 
   /**

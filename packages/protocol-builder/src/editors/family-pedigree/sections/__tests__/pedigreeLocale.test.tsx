@@ -151,7 +151,7 @@ describe('the pedigree’s own configuration, read in Spanish', () => {
         nominationPrompts: [
           {
             id: 'nomination-1',
-            text: 'Who has been unwell?',
+            text: { 'en-US': 'Who has been unwell?' },
             variable: 'hasConditionX',
           },
         ],
@@ -203,10 +203,11 @@ describe('the pedigree’s own configuration, read in Spanish', () => {
             ...variables,
             biologicalSex: {
               name: 'biologicalSex',
+              label: 'biologicalSex',
               type: 'categorical',
               options: [
-                { value: 'female', label: 'Female' },
-                { value: 'male', label: 'Male' },
+                { value: 'female', label: { 'en-US': 'Female' } },
+                { value: 'male', label: { 'en-US': 'Male' } },
               ],
             },
             // A replacement carrying the values the interface owns, so this
@@ -217,8 +218,12 @@ describe('the pedigree’s own configuration, read in Spanish', () => {
             // read below is the attribute the slot is still bound to.
             recordedSex: {
               name: 'recordedSex',
+              label: 'recordedSex',
               type: 'categorical',
-              options: BIOLOGICAL_SEX_OPTIONS,
+              options: BIOLOGICAL_SEX_OPTIONS.map(({ value, label }) => ({
+                value,
+                label: { 'en-US': label },
+              })),
             },
           },
         },

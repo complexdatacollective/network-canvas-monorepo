@@ -1,8 +1,12 @@
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Heading from '@codaco/fresco-ui/typography/Heading';
+import type { LocalizedString } from '@codaco/protocol-validation';
+import { summaryMessages } from '~/lib/ProtocolSummary/summaryMessages';
 
 import EntityBadge from './EntityBadge';
+import MiniTable from './MiniTable';
+import { SummaryText } from './SummaryText';
 import Variables from './Variables';
 const messages = defineMessages({
   ego: {
@@ -15,9 +19,10 @@ const messages = defineMessages({
 type EntityProps = {
   type?: string;
   entity?: string;
+  label?: LocalizedString;
   variables?: Record<string, unknown>;
 };
-const Entity = ({ type, entity, variables }: EntityProps) => {
+const Entity = ({ type, entity, label, variables }: EntityProps) => {
   const intl = useAppIntl();
   return (
     <div
@@ -27,6 +32,18 @@ const Entity = ({ type, entity, variables }: EntityProps) => {
     >
       {entity !== 'ego' && type && entity && (
         <EntityBadge type={type} entity={entity} iconSize="tiny" />
+      )}
+
+      {label && (
+        <MiniTable
+          rotated
+          rows={[
+            [
+              intl.formatMessage(summaryMessages.label),
+              <SummaryText key="label" value={label} />,
+            ],
+          ]}
+        />
       )}
 
       {entity === 'ego' && (

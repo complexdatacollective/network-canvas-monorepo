@@ -6,17 +6,21 @@ vi.mock('../../../hooks/useStageSelector', () => ({
     categoricalOptions: undefined,
     groupValues: [],
     edges: [],
-    highlightLabels: [],
   }),
 }));
 
+import { asEntityAttributeReference } from '@codaco/protocol-validation';
+
+import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
 import PresetSwitcher from '../PresetSwitcher';
 
-const PRESETS = [
-  { label: 'First' },
-  { label: 'Second' },
-  { label: 'Third' },
-] as unknown as React.ComponentProps<typeof PresetSwitcher>['presets'];
+const layoutVariable = asEntityAttributeReference('layout');
+
+const PRESETS: React.ComponentProps<typeof PresetSwitcher>['presets'] = [
+  { id: 'first', label: { en: 'First' }, layoutVariable },
+  { id: 'second', label: { en: 'Second' }, layoutVariable },
+  { id: 'third', label: { en: 'Third' }, layoutVariable },
+];
 
 function renderSwitcher(activePreset: number) {
   return render(
@@ -34,6 +38,7 @@ function renderSwitcher(activePreset: number) {
       onToggleHighlighting={vi.fn()}
       dragConstraints={{ current: null }}
     />,
+    { wrapper: TestProtocolLocalization },
   );
 }
 

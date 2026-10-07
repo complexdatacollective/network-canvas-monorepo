@@ -23,6 +23,12 @@ type ProgressBarProps = {
   percentProgress?: number;
   nudge?: boolean;
   label?: string;
+  /**
+   * How an unfinished bar is drawn. `neutral` tints it with the surrounding
+   * text colour; `info` fills it with the info colour, so a bar under way
+   * reads apart from both an empty track and a complete bar.
+   */
+  tone?: 'neutral' | 'info';
   className?: string;
 };
 
@@ -33,6 +39,7 @@ const ProgressBar = ({
   percentProgress = 0,
   nudge = true,
   label,
+  tone = 'neutral',
   className,
 }: ProgressBarProps) => {
   const intl = useAppIntl();
@@ -67,8 +74,9 @@ const ProgressBar = ({
         <Progress.Indicator
           className={cx(
             'absolute rounded-[inherit]',
-            // Background using color-mix
-            '[background-color:color-mix(in_oklch,currentColor_20%,transparent)]',
+            tone === 'neutral' &&
+              '[background-color:color-mix(in_oklch,currentColor_20%,transparent)]',
+            tone === 'info' && 'bg-info',
             // Complete state
             'data-complete:bg-sea-green',
             // Orientation-specific sizing and transitions

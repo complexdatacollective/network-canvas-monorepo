@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
+import { expect, within } from 'storybook/test';
 
 import Paragraph from '../../typography/Paragraph';
 import RichSelectGroupField, {
@@ -133,6 +134,92 @@ export const WithMarkdown: Story = {
         />
       </div>
     );
+  },
+};
+
+const localizedOptions: RichSelectOption[] = [
+  {
+    value: 'close',
+    label: { text: '**قريب جدا**', lang: 'ar', dir: 'rtl' },
+    description: {
+      text: 'نتحدث كل يوم تقريبا.',
+      lang: 'ar',
+      dir: 'rtl',
+    },
+  },
+  {
+    value: 'distant',
+    label: { text: '**Distante**', lang: 'es', dir: 'ltr' },
+    description: {
+      text: 'Hablamos *pocas veces* al año.',
+      lang: 'es',
+      dir: 'ltr',
+    },
+  },
+  {
+    value: 'unsure',
+    label: 'Not sure',
+    description: 'Neither description fits.',
+  },
+];
+
+/**
+ * Protocol copy arrives as `PresentationalText`: label and description each
+ * render as Markdown on an element carrying their own `lang` and `dir`, so an
+ * Arabic option lays out right-to-left inside a left-to-right page, still
+ * beside its indicator rather than pushed to the far edge. Plain strings keep
+ * the page's language.
+ */
+export const LocalizedLabels: Story = {
+  render: function Render() {
+    const [value, setValue] = useState<
+      string | number | (string | number)[] | undefined
+    >(undefined);
+
+    return (
+      <div className="w-full max-w-lg">
+        <RichSelectGroupField
+          options={localizedOptions}
+          value={value}
+          onChange={setValue}
+          aria-label="Closeness"
+        />
+      </div>
+    );
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await document.fonts.ready;
+
+    const close = canvas.getByText('قريب جدا');
+    await expect(close.tagName).toBe('STRONG');
+    await expect(close.closest('[lang]')).toHaveAttribute('lang', 'ar');
+    await expect(getComputedStyle(close).direction).toBe('rtl');
+    await expect(
+      canvas.getByText('نتحدث كل يوم تقريبا.').closest('[lang]'),
+    ).toHaveAttribute('dir', 'rtl');
+    await expect(
+      canvas.getByText('pocas veces').closest('[lang]'),
+    ).toHaveAttribute('lang', 'es');
+    await expect(canvas.getByText('Not sure').closest('[lang]')).toBe(
+      document.documentElement,
+    );
+
+    // Measures the text rather than its box: a box stretched across the column
+    // would hide right-to-left text drawn against the far edge.
+    const indicatorEdge = canvas
+      .getByRole('option', { name: /قريب جدا/ })
+      .querySelector('[aria-hidden]')
+      ?.getBoundingClientRect().right;
+    const gapAfterIndicator = (text: Node) => {
+      const range = document.createRange();
+      range.selectNodeContents(text);
+      return range.getBoundingClientRect().left - (indicatorEdge ?? -Infinity);
+    };
+    await expect(gapAfterIndicator(close)).toBeLessThan(24);
+    await expect(
+      gapAfterIndicator(canvas.getByText('نتحدث كل يوم تقريبا.')),
+    ).toBeLessThan(24);
   },
 };
 

@@ -14,10 +14,7 @@ import type {
   ValidationContext,
 } from '@codaco/fresco-ui/form/store/types';
 
-import {
-  buildVariableLabels,
-  useVariableLabels,
-} from '../../../forms/buildVariableLabels';
+import { useVariableLabels } from '../../../forms/buildVariableLabels';
 import { useStageSelector } from '../../../hooks/useStageSelector';
 import {
   getValidationContext,
@@ -142,7 +139,7 @@ export default function PersonNameField({
       stageSubject: { entity: 'node', type: nodeType },
       variableLabels: {
         ...formVariableLabels,
-        ...buildVariableLabels([{ variable: nodeLabelVariable, label }]),
+        ...Object.fromEntries([[nodeLabelVariable, label]]),
       },
       ...(currentEntityId !== undefined ? { currentEntityId } : {}),
       network: {

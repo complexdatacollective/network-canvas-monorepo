@@ -20,6 +20,7 @@ import {
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
 import { CurrentStepProvider } from '../../contexts/CurrentStepContext';
+import { TestProtocolLocalization } from '../../interfaces/__tests__/TestProtocolLocalization';
 import protocol from '../../store/modules/protocol';
 import session from '../../store/modules/session';
 import ui from '../../store/modules/ui';
@@ -51,45 +52,54 @@ function makeWrapper() {
         id: 'p',
         hash: 'h',
         schemaVersion: 9,
+        localization: { defaultLocale: 'en', locales: ['en'] },
         codebook: {
           node: {
             [NODE_TYPE]: {
               name: NODE_TYPE,
+              label: { en: NODE_TYPE },
               variables: {
                 [NAME_VAR]: {
                   name: NAME_VAR,
+                  label: 'Full name',
                   type: 'text',
                   component: 'Text',
                   validation: { unique: true },
                 },
                 [DISPLAY_NAME_VAR]: {
                   name: DISPLAY_NAME_VAR,
+                  label: 'Display name',
                   type: 'text',
                   component: 'Text',
                 },
                 [ALIAS_VAR]: {
                   name: ALIAS_VAR,
+                  label: 'Alias',
                   type: 'text',
                   component: 'Text',
                   validation: { sameAs: DISPLAY_NAME_VAR },
                 },
                 [DOTTED_VAR]: {
                   name: DOTTED_VAR,
+                  label: 'Favorite colour',
                   type: 'text',
                   component: 'Text',
                 },
                 ['__proto__']: {
                   name: '__proto__',
+                  label: '__proto__',
                   type: 'text',
                   component: 'Text',
                 },
                 constructor: {
                   name: 'constructor',
+                  label: 'constructor',
                   type: 'text',
                   component: 'Text',
                 },
                 prototype: {
                   name: 'prototype',
+                  label: 'prototype',
                   type: 'text',
                   component: 'Text',
                 },
@@ -105,17 +115,19 @@ function makeWrapper() {
 
   return function Wrapper({ children }: { children: ReactNode }) {
     return (
-      <Provider store={store}>
-        <CurrentStepProvider currentStep={0} onStepChange={() => undefined}>
-          {children}
-        </CurrentStepProvider>
-      </Provider>
+      <TestProtocolLocalization>
+        <Provider store={store}>
+          <CurrentStepProvider currentStep={0} onStepChange={() => undefined}>
+            {children}
+          </CurrentStepProvider>
+        </Provider>
+      </TestProtocolLocalization>
     );
   };
 }
 
 const fields: FormField[] = [
-  { variable: asEntityAttributeReference(NAME_VAR), prompt: 'Name' },
+  { variable: asEntityAttributeReference(NAME_VAR), prompt: { en: 'Name' } },
 ];
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -167,7 +179,7 @@ describe('useProtocolForm stageSubject', () => {
     const comparisonFields: FormField[] = [
       {
         variable: asEntityAttributeReference(ALIAS_VAR),
-        prompt: 'Alias',
+        prompt: { en: 'Alias' },
       },
     ];
     const { result } = renderHook(
@@ -197,7 +209,7 @@ describe('useProtocolForm stageSubject', () => {
     const dottedFields: FormField[] = [
       {
         variable: asEntityAttributeReference(DOTTED_VAR),
-        prompt: 'Favorite color',
+        prompt: { en: 'Favorite color' },
       },
     ];
 
@@ -245,7 +257,7 @@ describe('useProtocolForm stageSubject', () => {
       const dangerousFields: FormField[] = [
         {
           variable: asEntityAttributeReference(variable),
-          prompt: 'Legacy variable',
+          prompt: { en: 'Legacy variable' },
         },
       ];
 
@@ -295,20 +307,22 @@ describe('useProtocolForm stageSubject', () => {
  */
 describe('useProtocolForm variableLabels', () => {
   it('carries only authored participant-facing text', () => {
+    // A NetworkComposer field whose caption is blank: the codebook variable's
+    // name must NOT stand in for one.
+    const blankCaptionField: ComposerFormField = {
+      variable: asEntityAttributeReference(DISPLAY_NAME_VAR),
+      label: { en: '   ' },
+      component: 'Text',
+    };
     const { result } = renderHook(
       () =>
         useProtocolForm({
           fields: [
             {
               variable: asEntityAttributeReference(NAME_VAR),
-              prompt: 'What is your name?',
+              prompt: { en: 'What is your name?' },
             },
-            // A NetworkComposer field with no authored label: the codebook
-            // variable's name must NOT stand in for one.
-            {
-              variable: asEntityAttributeReference(DISPLAY_NAME_VAR),
-              component: 'Text',
-            } as ComposerFormField,
+            blankCaptionField,
           ],
           subject: { entity: 'node', type: NODE_TYPE },
         }),

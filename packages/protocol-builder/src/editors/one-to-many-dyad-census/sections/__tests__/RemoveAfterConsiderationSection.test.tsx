@@ -53,9 +53,11 @@ describe('what becomes of a person already considered', () => {
       stage: {
         type: 'OneToManyDyadCensus',
         fields: {
-          label: 'One to Many Dyad Census',
+          label: { 'en-US': 'One to Many Dyad Census' },
           subject: { entity: 'node', type: 'person' },
-          prompts: [{ id: 'prompt-a', text: 'Who?', createEdge: 'knows' }],
+          prompts: [
+            { id: 'prompt-a', text: { 'en-US': 'Who?' }, createEdge: 'knows' },
+          ],
         },
       },
       sections: <RemoveAfterConsiderationSection />,

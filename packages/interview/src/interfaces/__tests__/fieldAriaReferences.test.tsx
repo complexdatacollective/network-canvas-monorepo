@@ -29,7 +29,11 @@ vi.mock('../../hooks/useStageSelector', () => ({
       case 'getNodeColorSelector':
         return 'node-color-seq-1';
       case 'getNodeTypeDefinition':
-        return { name: 'Person', shape: { default: 'circle' } };
+        return {
+          name: 'Person',
+          label: { en: 'Person' },
+          shape: { default: 'circle' },
+        };
       case 'getPromptAdditionalAttributes':
         return {};
       case 'getNodeIconName':
@@ -44,6 +48,7 @@ vi.mock('../../hooks/useStageSelector', () => ({
 
 import QuickAddField from '../NameGenerator/components/QuickAddField';
 import AddNodeInput from '../NetworkComposer/AddNodeInput';
+import { TestProtocolLocalization } from './TestProtocolLocalization';
 
 /**
  * Both of these components spread `useField`'s `fieldProps` onto markup of
@@ -66,13 +71,15 @@ afterEach(() => {
 describe('QuickAddField ARIA references', () => {
   it('resolves every ARIA reference on the quick-add input', async () => {
     const { container } = render(
-      <Form onSubmit={() => ({ success: true })}>
-        <QuickAddField
-          name="name"
-          placeholder="Type a label and press enter..."
-          disabled={false}
-        />
-      </Form>,
+      <TestProtocolLocalization>
+        <Form onSubmit={() => ({ success: true })}>
+          <QuickAddField
+            name="name"
+            placeholder="Type a label and press enter..."
+            disabled={false}
+          />
+        </Form>
+      </TestProtocolLocalization>,
     );
 
     await userEvent.click(screen.getByTestId('quick-add-toggle'));
@@ -85,14 +92,16 @@ describe('QuickAddField ARIA references', () => {
     // `required` is what used to add a `${id}-required` IDREF: BaseField
     // renders that marker, and this component does not.
     const { container } = render(
-      <Form onSubmit={() => ({ success: true })}>
-        <QuickAddField
-          name="name"
-          placeholder="Type a label and press enter..."
-          disabled={false}
-          required
-        />
-      </Form>,
+      <TestProtocolLocalization>
+        <Form onSubmit={() => ({ success: true })}>
+          <QuickAddField
+            name="name"
+            placeholder="Type a label and press enter..."
+            disabled={false}
+            required
+          />
+        </Form>
+      </TestProtocolLocalization>,
     );
 
     await userEvent.click(screen.getByTestId('quick-add-toggle'));
@@ -103,13 +112,15 @@ describe('QuickAddField ARIA references', () => {
 
   it('names the quick-add input after the entity being added', async () => {
     render(
-      <Form onSubmit={() => ({ success: true })}>
-        <QuickAddField
-          name="name"
-          placeholder="Type a label and press enter..."
-          disabled={false}
-        />
-      </Form>,
+      <TestProtocolLocalization>
+        <Form onSubmit={() => ({ success: true })}>
+          <QuickAddField
+            name="name"
+            placeholder="Type a label and press enter..."
+            disabled={false}
+          />
+        </Form>
+      </TestProtocolLocalization>,
     );
 
     await userEvent.click(screen.getByTestId('quick-add-toggle'));

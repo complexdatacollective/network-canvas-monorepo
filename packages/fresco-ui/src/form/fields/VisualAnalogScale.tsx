@@ -7,6 +7,11 @@ import { useRef, useState } from 'react';
 import { defineMessages, type IntlShape } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 
+import {
+  type PresentationalText,
+  presentationalTextProps,
+  presentationalTextValue,
+} from '../../PresentationalText';
 import { RenderMarkdown } from '../../RenderMarkdown';
 import {
   controlLabelVariants,
@@ -30,8 +35,8 @@ type VisualAnalogScaleFieldProps = CreateFormFieldProps<
     min?: number;
     max?: number;
     step?: number;
-    minLabel?: string;
-    maxLabel?: string;
+    minLabel?: PresentationalText;
+    maxLabel?: PresentationalText;
   }
 >;
 
@@ -276,8 +281,11 @@ export default function VisualAnalogScaleField(
                   controlLabelVariants({ size: 'sm' }),
                   'max-w-24 text-left',
                 )}
+                {...presentationalTextProps(minLabel)}
               >
-                <RenderMarkdown>{minLabel}</RenderMarkdown>
+                <RenderMarkdown>
+                  {presentationalTextValue(minLabel)}
+                </RenderMarkdown>
               </div>
             )}
             {maxLabel && (
@@ -286,8 +294,11 @@ export default function VisualAnalogScaleField(
                   controlLabelVariants({ size: 'sm' }),
                   'max-w-24 text-right',
                 )}
+                {...presentationalTextProps(maxLabel)}
               >
-                <RenderMarkdown>{maxLabel}</RenderMarkdown>
+                <RenderMarkdown>
+                  {presentationalTextValue(maxLabel)}
+                </RenderMarkdown>
               </div>
             )}
           </div>

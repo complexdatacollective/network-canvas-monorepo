@@ -12,11 +12,15 @@ import { entityPrimaryKeyProperty, type NcNode } from '@codaco/shared-consts';
 import { getGroupKeys } from './groupMembership';
 import type { CanvasStoreApi } from './useCanvasStore';
 
+// Hulls are coloured by option position, so an option's value is all a hull
+// reads from it.
+type GroupOption = Pick<VariableOption, 'value'>;
+
 type ConvexHullLayerProps = {
   store: CanvasStoreApi;
   nodes: NcNode[];
   groupVariable: string;
-  categoricalOptions: VariableOption[];
+  categoricalOptions: readonly GroupOption[];
 };
 
 type GroupData = {
@@ -39,7 +43,7 @@ type GroupData = {
 function buildColorIndexResolver(
   nodes: NcNode[],
   groupVariable: string,
-  categoricalOptions: VariableOption[],
+  categoricalOptions: readonly GroupOption[],
 ): (value: VariableOptionValue) => number {
   const knownValues = new Set(categoricalOptions.map((opt) => opt.value));
 
@@ -70,7 +74,7 @@ function buildColorIndexResolver(
 export function groupNodesByVariable(
   nodes: NcNode[],
   groupVariable: string,
-  categoricalOptions: VariableOption[],
+  categoricalOptions: readonly GroupOption[],
 ): Map<VariableOptionValue, GroupData> {
   const groups = new Map<VariableOptionValue, GroupData>();
   const resolveColorIndex = buildColorIndexResolver(

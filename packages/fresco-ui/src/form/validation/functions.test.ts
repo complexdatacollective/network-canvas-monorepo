@@ -22,23 +22,28 @@ describe('Validation Functions', () => {
       node: {
         person: {
           name: 'Person',
+          label: { en: 'Person' },
           color: 'node-color-seq-1',
           shape: { default: 'circle' },
           variables: {
             testAttribute: {
               name: 'Test Attribute',
+              label: 'Test Attribute',
               type: 'text',
             },
             numberAttribute: {
               name: 'Number Attribute',
+              label: 'Number Attribute',
               type: 'number',
             },
             dateAttribute: {
               name: 'Date Attribute',
+              label: 'Date Attribute',
               type: 'datetime',
             },
             toString: {
               name: 'Prototype-named Attribute',
+              label: 'Prototype-named Attribute',
               type: 'number' as const,
             },
           },
@@ -1117,11 +1122,13 @@ describe('Validation Functions', () => {
             node: {
               person: {
                 name: 'Person',
+                label: { en: 'Person' },
                 color: 'node-color-seq-1',
                 shape: { default: 'circle' },
                 variables: {
                   displayName: {
                     name: 'Display name',
+                    label: 'Display name',
                     type: 'text',
                   },
                 },
@@ -1653,7 +1660,11 @@ describe('Validation Functions', () => {
           codebook: {
             ego: {
               variables: {
-                testAttribute: { name: 'Test Attribute', type: 'text' },
+                testAttribute: {
+                  name: 'Test Attribute',
+                  label: 'Test Attribute',
+                  type: 'text',
+                },
               },
             },
           },

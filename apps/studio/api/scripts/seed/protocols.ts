@@ -10,14 +10,18 @@ import { fileURLToPath } from 'node:url';
 
 import { Effect } from 'effect';
 
-import type { CurrentProtocol, Stage } from '@codaco/protocol-validation';
-import type { SectionDoc } from '@codaco/studio-sync/apply';
-import { sectionId } from '@codaco/studio-sync/taxonomy';
+import {
+  type CurrentProtocol,
+  CurrentProtocolSchema,
+  type Stage,
+  escapeMessageText,
+  messageText,
+} from '@codaco/protocol-validation';
 
+import { withPlaceholderAssetKeys } from '../../src/protocol/asset-keys.ts';
 import { addStage, removeStage } from '../../src/protocol/draft-structure.ts';
 import {
   createProtocol,
-  getDraftSections,
   getVersionDocument,
   getVersionSections,
   publishDraft,
@@ -57,39 +61,35 @@ let sampleProtocol: CurrentProtocol | undefined;
 
 /** The bundled sample protocol, read once and cloned per team. */
 function loadSampleProtocol(): CurrentProtocol {
-  sampleProtocol ??= JSON.parse(
-    readFileSync(
-      fileURLToPath(import.meta.resolve('@codaco/protocols/sample')),
-      'utf8',
+  sampleProtocol ??= CurrentProtocolSchema.parse(
+    JSON.parse(
+      readFileSync(
+        fileURLToPath(import.meta.resolve('@codaco/protocols/sample')),
+        'utf8',
+      ),
     ),
-  ) as CurrentProtocol;
+  );
   return structuredClone(sampleProtocol);
 }
 
-function stageOrderOf(doc: SectionDoc | undefined): string[] {
-  const value = doc?.stages;
-  return Array.isArray(value)
-    ? value.filter((entry): entry is string => typeof entry === 'string')
-    : [];
-}
-
-/** The first stage carrying an editable prompt, which v2's edit rewords. */
-function editableStage(
-  sections: Record<string, SectionDoc>,
-): { stageId: string; index: number; doc: SectionDoc } | undefined {
-  const order = stageOrderOf(sections[sectionId({ kind: 'stageOrder' })]);
-  for (const [index, stageId] of order.entries()) {
-    const doc = sections[sectionId({ kind: 'stage', stageId })];
-    const prompts = doc?.prompts;
-    if (
-      doc !== undefined &&
-      Array.isArray(prompts) &&
-      typeof (prompts[0] as { text?: unknown } | undefined)?.text === 'string'
-    ) {
-      return { stageId, index, doc };
-    }
-  }
-  return undefined;
+/** A copy of the first stage carrying a prompt, with the prompt v2's edit rewords. */
+function revisedStage(
+  stages: readonly Stage[],
+): { stage: Stage; index: number } | undefined {
+  const index = stages.findIndex(
+    (stage) => 'prompts' in stage && stage.prompts.length > 0,
+  );
+  const stage = structuredClone(stages[index]);
+  const prompt =
+    stage !== undefined && 'prompts' in stage ? stage.prompts[0] : undefined;
+  if (stage === undefined || prompt === undefined) return undefined;
+  prompt.text = Object.fromEntries(
+    Object.entries(prompt.text).map(([locale, message]) => [
+      locale,
+      escapeMessageText(`${messageText(message)} (revised for wave 2)`),
+    ]),
+  );
+  return { stage, index };
 }
 
 const readVersion = Effect.fnUntraced(function* (
@@ -100,10 +100,10 @@ const readVersion = Effect.fnUntraced(function* (
   publishedAt: Date,
 ) {
   const { sectionHashes } = yield* getVersionSections(teamId, versionId);
-  const document = (yield* getVersionDocument(
-    teamId,
-    versionId,
-  )) as unknown as CurrentProtocol;
+  // The stored document carries no API-key values, which the schema requires.
+  const document = CurrentProtocolSchema.parse(
+    withPlaceholderAssetKeys(yield* getVersionDocument(teamId, versionId)),
+  );
   return {
     versionId,
     versionNumber,
@@ -174,26 +174,22 @@ export const seedProtocolLine = Effect.fnUntraced(function* (
     );
   }
 
-  const created = yield* getDraftSections(teamId, draftId);
-  const target = editableStage(created.sections);
+  const target = revisedStage(protocol.stages);
   if (target === undefined) {
     return yield* Effect.die(
       new Error('the seed protocol carries no stage with an editable prompt'),
     );
   }
-  const edited = structuredClone(target.doc);
-  const prompts = edited.prompts as { text: string }[];
-  prompts[0]!.text = `${prompts[0]!.text} (revised for wave 2)`;
   // The edit that version 2 was published from, dated the day before it —
   // both halves, since each writes a stage-order section of its own.
   yield* removeStage(teamId, {
     draftId,
-    stageId: target.stageId,
+    stageId: target.stage.id,
     createdAt: seedTime(-341),
   });
   yield* addStage(teamId, {
     draftId,
-    stage: edited,
+    stage: target.stage,
     index: target.index,
     createdAt: seedTime(-341),
   });

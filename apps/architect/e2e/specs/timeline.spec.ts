@@ -1,11 +1,14 @@
 import { type Locator, type Page } from '@playwright/test';
 
+import type { CurrentProtocol } from '@codaco/protocol-validation';
+
 import { expect, gotoProtocol, test } from '../fixtures/architect-test.js';
 import {
   readAnnouncements,
   recordAnnouncements,
 } from '../helpers/announcements.js';
 import { loadAllInterfacesFixture } from '../helpers/load-fixture.js';
+import { defaultLanguageText } from '../helpers/localized-text.js';
 import { readProtocolJson, settleAfterRefusal } from '../helpers/read-store.js';
 import { acknowledgeRefusal } from '../helpers/refusal.js';
 import { Timeline } from '../pageobjects/timeline.js';
@@ -49,35 +52,14 @@ const anyNodeOfFirstType = (protocol: {
   };
 };
 
-// Narrow one element of the protocol JSON's `stages` array with a real
-// runtime guard (mirroring `isRow` in helpers/read-store.ts) rather than an
-// `as` cast, so a drifted/malformed stage throws here instead of silently
-// producing a mis-typed object the assertions would then trust.
-function toStage(value: unknown): Stage {
-  if (
-    typeof value === 'object' &&
-    value !== null &&
-    'id' in value &&
-    typeof value.id === 'string' &&
-    'label' in value &&
-    typeof value.label === 'string' &&
-    'type' in value &&
-    typeof value.type === 'string'
-  ) {
-    return { id: value.id, label: value.label, type: value.type };
-  }
-  throw new Error('protocol stage missing a string id, label, or type');
-}
-
-// `readProtocolJson` returns `Record<string, unknown>`; extract its stages as
-// a typed array via `toStage` (no `as`). Each `unknown` element is narrowed
-// runtime-side, so callers get a real `Stage[]`.
-function stagesOf(protocol: Record<string, unknown>): Stage[] {
-  const stages = protocol.stages;
-  if (!Array.isArray(stages)) {
-    throw new Error('protocol JSON has no stages array');
-  }
-  return stages.map((value: unknown) => toStage(value));
+// The timeline names each stage by its label in the protocol's default
+// language, so that is the label the specs locate rows by.
+function stagesOf(protocol: CurrentProtocol): Stage[] {
+  return protocol.stages.map(({ id, label, type }) => ({
+    id,
+    label: defaultLanguageText(protocol, label),
+    type,
+  }));
 }
 
 // The persisting edit this route offers `settleAfterRefusal`: ProtocolInfoCard
@@ -107,7 +89,9 @@ test('shows the skip-logic icon without a destination note', async ({
   await seed(protocol, { name: 'All Interfaces', assets });
   await gotoProtocol(architectPage);
 
-  const row = new Timeline(architectPage).stageRowByLabel(firstStage.label);
+  const row = new Timeline(architectPage).stageRowByLabel(
+    defaultLanguageText(protocol, firstStage.label),
+  );
   await expect(row.getByRole('img', { name: 'Has skip logic' })).toBeVisible();
   await expect(row.getByText(/^If skipped:/)).toHaveCount(0);
 });
@@ -185,7 +169,10 @@ test('keeps the timeline tab order insertion-point-then-stage', async ({
   // asserted directly: the point that inserts before a stage comes immediately
   // before that stage's own controls, for every stage.
   await tabUntilFocused(architectPage, timeline.insertButtons().first());
-  for (const label of [first.label, second.label]) {
+  for (const label of [
+    defaultLanguageText(protocol, first.label),
+    defaultLanguageText(protocol, second.label),
+  ]) {
     await architectPage.keyboard.press('Tab');
     await expect(timeline.openControl(label)).toBeFocused();
     await architectPage.keyboard.press('Tab');
@@ -616,7 +603,9 @@ test('blocks a keyboard reorder that would strand a skip destination', async ({
 
   const before = stagesOf(await readProtocolJson(architectPage));
   const timeline = new Timeline(architectPage);
-  const openControl = timeline.openControl(destination.label);
+  const openControl = timeline.openControl(
+    defaultLanguageText(protocol, destination.label),
+  );
   await openControl.focus();
   await openControl.press('ArrowUp');
 
@@ -811,7 +800,9 @@ test('falls back to the add control when the last stage is deleted', async ({
   await recordAnnouncements(architectPage);
 
   const timeline = new Timeline(architectPage);
-  const deleteControl = timeline.deleteControl(only.label);
+  const deleteControl = timeline.deleteControl(
+    defaultLanguageText(protocol, only.label),
+  );
   await deleteControl.focus();
   await deleteControl.press('Enter');
   await architectPage

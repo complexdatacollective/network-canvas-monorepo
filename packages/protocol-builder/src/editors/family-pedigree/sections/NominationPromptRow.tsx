@@ -7,13 +7,15 @@ import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
 
-import RichTextField from '../../../fields/RichTextField.tsx';
+import { LocalizedRichTextField } from '../../../fields/LocalizedStringField.tsx';
 import VariablePickerField from '../../../fields/VariablePickerField.tsx';
 import type {
   RowEditorProps,
   RowPreviewProps,
 } from '../../../form/rowDialog.tsx';
 import { useStageValue } from '../../../form/stageFormHooks.ts';
+import { asLocalizedString } from '../../../localization/localizedText.ts';
+import { useLocalizedText } from '../../../localization/ProtocolLocalization.tsx';
 import type { CodebookSubject } from '../../../protocol-context.ts';
 import { variablesForSubject } from '../../../protocol-context.ts';
 import { useCreateAttributeForSlot } from '../../../sections/create-variable/useCreateAttributeForSlot.ts';
@@ -131,14 +133,14 @@ export function NominationPromptEditor({ item }: RowEditorProps) {
     <>
       <Field
         name={TEXT_FIELD}
-        component={RichTextField}
+        component={LocalizedRichTextField}
         singleLine
         label={intl.formatMessage(pedigreeMessages.nominationTextLabel)}
         hint={intl.formatMessage(pedigreeMessages.nominationTextHint)}
         placeholder={intl.formatMessage(
           pedigreeMessages.nominationTextPlaceholder,
         )}
-        initialValue={asString(item.text)}
+        initialValue={asLocalizedString(item.text)}
         required={intl.formatMessage(pedigreeMessages.nominationTextRequired)}
       />
       <Field
@@ -164,9 +166,11 @@ export function NominationPromptEditor({ item }: RowEditorProps) {
 /** How one nomination prompt reads in the list when its dialog is closed. */
 export function NominationPromptPreview({ item }: RowPreviewProps) {
   const intl = useAppIntl();
+  const localize = useLocalizedText();
   const protocolContext = useProtocolContext();
   const subject = useNominationSubject();
   const variableId = asString(item.variable);
+  const text = localize(item.text);
   const attribute =
     subject === null || variableId === undefined
       ? undefined
@@ -174,10 +178,15 @@ export function NominationPromptPreview({ item }: RowPreviewProps) {
 
   return (
     <div className="flex flex-col gap-2.5">
-      <RenderMarkdown>
-        {asString(item.text) ??
-          intl.formatMessage(pedigreeMessages.nominationPreviewEmptyText)}
-      </RenderMarkdown>
+      {text.text === '' ? (
+        <RenderMarkdown>
+          {intl.formatMessage(pedigreeMessages.nominationPreviewEmptyText)}
+        </RenderMarkdown>
+      ) : (
+        <div lang={text.lang} dir={text.dir}>
+          <RenderMarkdown>{text.text}</RenderMarkdown>
+        </div>
+      )}
       {attribute !== undefined && (
         <div>
           {/* One whole sentence rather than assembled fragments: what reads

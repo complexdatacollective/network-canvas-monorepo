@@ -36,7 +36,13 @@ async function encryptedRawPayload(
   const variables = Object.fromEntries(
     encryptedVariableIds.map((id): [string, Variable] => [
       id,
-      { name: id, type: 'text', component: 'Text', encrypted: true },
+      {
+        name: id,
+        label: id,
+        type: 'text',
+        component: 'Text',
+        encrypted: true,
+      },
     ]),
   );
   const payload = interview.getInterviewPayload({ currentStep });

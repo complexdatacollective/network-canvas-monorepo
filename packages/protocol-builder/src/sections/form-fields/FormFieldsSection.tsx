@@ -17,7 +17,6 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import ArrayField from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
-import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import FormErrors from '@codaco/fresco-ui/form/FormErrors';
@@ -58,7 +57,10 @@ import {
   variableDisplayName,
   variableTypeForComponent,
 } from '../../codebook/variableValidation.ts';
-import RichTextField from '../../fields/RichTextField.tsx';
+import {
+  LocalizedInputField,
+  LocalizedRichTextField,
+} from '../../fields/LocalizedStringField.tsx';
 import VariablePickerField, {
   type CreateOptionOutcome,
   type VariablePickerOption,
@@ -84,6 +86,8 @@ import {
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import { useStageValue } from '../../form/stageFormHooks.ts';
 import { protocolAuthoringLinks } from '../../interfaces/documentation.ts';
+import { asLocalizedString } from '../../localization/localizedText.ts';
+import { useLocalizedText } from '../../localization/ProtocolLocalization.tsx';
 import type { CodebookSubject } from '../../protocol-context.ts';
 import { variablesForSubject } from '../../protocol-context.ts';
 import { useProtocolContext } from '../../state/protocolContext.ts';
@@ -144,7 +148,7 @@ const renderInputControlsLink = (chunks: ReactNode) => (
   </NativeLink>
 );
 
-const messages = defineMessages({
+export const formFieldsMessages = defineMessages({
   atLeastOne: {
     id: 'protocolBuilder.formFields.atLeastOne',
     defaultMessage: 'You must create at least one item.',
@@ -414,15 +418,15 @@ const messages = defineMessages({
   },
 });
 
-const AT_LEAST_ONE_FIELD = createMessageError(messages.atLeastOne);
+const AT_LEAST_ONE_FIELD = createMessageError(formFieldsMessages.atLeastOne);
 
-const INCOMPLETE_FIELD = createMessageError(messages.incompleteField);
+const INCOMPLETE_FIELD = createMessageError(formFieldsMessages.incompleteField);
 
-const MALFORMED_FIELD = createMessageError(messages.malformedField);
+const MALFORMED_FIELD = createMessageError(formFieldsMessages.malformedField);
 
-const DUPLICATE_FIELD = createMessageError(messages.duplicateField);
+const DUPLICATE_FIELD = createMessageError(formFieldsMessages.duplicateField);
 
-const NO_INPUT_CONTROL = createMessageError(messages.noInputControl);
+const NO_INPUT_CONTROL = createMessageError(formFieldsMessages.noInputControl);
 
 /** Stable identity: `options` is a memo dependency of the picker below. */
 const NO_OPTIONS: VariablePickerOption[] = [];
@@ -472,8 +476,7 @@ const everyFieldComplete = (value: unknown) =>
     (row) =>
       typeof row.variable === 'string' &&
       row.variable !== '' &&
-      typeof row.prompt === 'string' &&
-      row.prompt !== '',
+      asLocalizedString(row.prompt) !== undefined,
   )
     ? undefined
     : INCOMPLETE_FIELD;
@@ -728,12 +731,12 @@ export default function FormFieldsSection({
   draftUnvalidatedVariables,
   reservedVariables,
   reservedVariableRefusal,
-  title = messages.title,
-  description = messages.description,
-  fieldLabel = messages.fieldLabel,
-  fieldHint = messages.fieldHint,
-  addLabel = messages.addLabel,
-  emptyState = messages.emptyState,
+  title = formFieldsMessages.title,
+  description = formFieldsMessages.description,
+  fieldLabel = formFieldsMessages.fieldLabel,
+  fieldHint = formFieldsMessages.fieldHint,
+  addLabel = formFieldsMessages.addLabel,
+  emptyState = formFieldsMessages.emptyState,
 }: FormFieldsSectionProps) {
   const intl = useAppIntl();
   const codebookSubject = useStageSubject(subject, subjectTypePath);
@@ -816,8 +819,8 @@ export default function FormFieldsSection({
       Preview: FormFieldPreview,
       Editor: FormFieldEditor,
       Aside: FormFieldPreviewPane,
-      addTitle: messages.addTitle,
-      editTitle: messages.editTitle,
+      addTitle: formFieldsMessages.addTitle,
+      editTitle: formFieldsMessages.editTitle,
       formId: 'form-field-editor',
       name: fieldsPath,
       // The answers the attribute already offers, so the save can tell a list
@@ -849,19 +852,21 @@ export default function FormFieldsSection({
     <BuilderSection
       title={intl.formatMessage(title)}
       description={intl.formatMessage(
-        waiting ? messages.waitingDescription : description,
+        waiting ? formFieldsMessages.waitingDescription : description,
       )}
       disabled={waiting}
       {...(capability === undefined ? {} : { capability })}
     >
       {hasTitle && (
-        <Field<typeof InputField>
+        <Field<typeof LocalizedInputField>
           name={TITLE}
-          component={InputField}
-          label={intl.formatMessage(messages.formTitleLabel)}
-          hint={intl.formatMessage(messages.formTitleHint)}
-          placeholder={intl.formatMessage(messages.formTitlePlaceholder)}
-          required={intl.formatMessage(messages.formTitleRequired)}
+          component={LocalizedInputField}
+          label={intl.formatMessage(formFieldsMessages.formTitleLabel)}
+          hint={intl.formatMessage(formFieldsMessages.formTitleHint)}
+          placeholder={intl.formatMessage(
+            formFieldsMessages.formTitlePlaceholder,
+          )}
+          required={intl.formatMessage(formFieldsMessages.formTitleRequired)}
         />
       )}
       <FormFieldsScopeContext value={scope}>
@@ -873,7 +878,7 @@ export default function FormFieldsSection({
             component={ArrayField}
             getId={rowId}
             addButtonLabel={intl.formatMessage(addLabel)}
-            itemLabel={messages.itemNoun}
+            itemLabel={formFieldsMessages.itemNoun}
             emptyStateMessage={intl.formatMessage(emptyState)}
             itemComponent={RowListItem}
             editorComponent={RowDialog}
@@ -1008,7 +1013,7 @@ function useCommitFormField(
               refused: {
                 fieldErrors: {
                   [INPUT_CONTROL]: intl.formatMessage(
-                    messages.componentInventsRequired,
+                    formFieldsMessages.componentInventsRequired,
                   ),
                 },
               },
@@ -1142,7 +1147,7 @@ function useCommitFormField(
           return {
             refused: {
               formErrors: [
-                createMessageError(messages.controlLandedElsewhere, {
+                createMessageError(formFieldsMessages.controlLandedElsewhere, {
                   variableName: variableDisplayName(
                     variablesForSubject(protocolContext, codebookSubject),
                     variableId,
@@ -1165,7 +1170,7 @@ function useCommitFormField(
           refused: {
             fieldErrors: {
               [INPUT_CONTROL]: intl.formatMessage(
-                messages.componentInventsRequired,
+                formFieldsMessages.componentInventsRequired,
               ),
             },
           },
@@ -1343,7 +1348,9 @@ function useFormFieldValidate(
         variable !== NEW_VARIABLE &&
         siblings.some((row) => row.variable === variable)
       ) {
-        return { variable: intl.formatMessage(messages.attributeTaken) };
+        return {
+          variable: intl.formatMessage(formFieldsMessages.attributeTaken),
+        };
       }
       // An attribute the interface around this form collects for itself, which
       // the interview drops this field for. Refused with no escape for a
@@ -1501,8 +1508,10 @@ function FormFieldEditor({ item, editIndex }: RowEditorProps) {
   return (
     <>
       <Section
-        title={intl.formatMessage(messages.attributeSectionTitle)}
-        description={intl.formatMessage(messages.attributeSectionDescription)}
+        title={intl.formatMessage(formFieldsMessages.attributeSectionTitle)}
+        description={intl.formatMessage(
+          formFieldsMessages.attributeSectionDescription,
+        )}
       >
         <AttributePicker item={item} editIndex={editIndex} />
         <AttributeCodebookControls
@@ -1517,33 +1526,35 @@ function FormFieldEditor({ item, editIndex }: RowEditorProps) {
         />
       </Section>
       <Section
-        title={intl.formatMessage(messages.questionSectionTitle)}
-        description={intl.formatMessage(messages.questionSectionDescription)}
+        title={intl.formatMessage(formFieldsMessages.questionSectionTitle)}
+        description={intl.formatMessage(
+          formFieldsMessages.questionSectionDescription,
+        )}
       >
-        <Field<typeof RichTextField>
+        <Field<typeof LocalizedRichTextField>
           name="prompt"
-          component={RichTextField}
-          label={intl.formatMessage(messages.promptLabel)}
-          hint={intl.formatMessage(messages.promptHint)}
-          placeholder={intl.formatMessage(messages.promptPlaceholder)}
+          component={LocalizedRichTextField}
+          label={intl.formatMessage(formFieldsMessages.promptLabel)}
+          hint={intl.formatMessage(formFieldsMessages.promptHint)}
+          placeholder={intl.formatMessage(formFieldsMessages.promptPlaceholder)}
           singleLine
-          initialValue={asString(item.prompt)}
-          required={intl.formatMessage(messages.promptRequired)}
+          initialValue={asLocalizedString(item.prompt)}
+          required={intl.formatMessage(formFieldsMessages.promptRequired)}
         />
-        <Field<typeof RichTextField>
+        <Field<typeof LocalizedRichTextField>
           name="hint"
-          component={RichTextField}
-          label={intl.formatMessage(messages.hintLabel)}
-          hint={intl.formatMessage(messages.hintHint)}
-          placeholder={intl.formatMessage(messages.hintPlaceholder)}
+          component={LocalizedRichTextField}
+          label={intl.formatMessage(formFieldsMessages.hintLabel)}
+          hint={intl.formatMessage(formFieldsMessages.hintHint)}
+          placeholder={intl.formatMessage(formFieldsMessages.hintPlaceholder)}
           singleLine
-          initialValue={asString(item.hint)}
+          initialValue={asLocalizedString(item.hint)}
         />
         <Field<typeof ToggleField>
           name="showValidationHints"
           component={ToggleField}
-          label={intl.formatMessage(messages.validationHintsLabel)}
-          hint={intl.formatMessage(messages.validationHintsHint)}
+          label={intl.formatMessage(formFieldsMessages.validationHintsLabel)}
+          hint={intl.formatMessage(formFieldsMessages.validationHintsHint)}
           inline
           initialValue={item.showValidationHints === true}
         />
@@ -1738,9 +1749,11 @@ function InputControlField({
       <Field<typeof SelectControl>
         name={INPUT_CONTROL}
         component={SelectControl}
-        label={intl.formatMessage(messages.componentLabel)}
+        label={intl.formatMessage(formFieldsMessages.componentLabel)}
         hint={intl.formatMessage(
-          inventing ? messages.componentInventsHint : messages.componentHint,
+          inventing
+            ? formFieldsMessages.componentInventsHint
+            : formFieldsMessages.componentHint,
           { link: renderInputControlsLink },
         )}
         options={options}
@@ -1751,7 +1764,9 @@ function InputControlField({
         initialValue={seeded}
         {...(inventing
           ? {
-              required: intl.formatMessage(messages.componentInventsRequired),
+              required: intl.formatMessage(
+                formFieldsMessages.componentInventsRequired,
+              ),
             }
           : {})}
       />
@@ -1771,10 +1786,10 @@ function InputControlField({
         ) : (
           <Alert variant="warning" className="my-7">
             <AlertTitle>
-              {intl.formatMessage(messages.lockedTypeTitle)}
+              {intl.formatMessage(formFieldsMessages.lockedTypeTitle)}
             </AlertTitle>
             <AlertDescription>
-              {intl.formatMessage(messages.lockedTypeDescription, {
+              {intl.formatMessage(formFieldsMessages.lockedTypeDescription, {
                 variableType: intl.formatMessage(typeLabel),
                 strong: renderStrong,
               })}
@@ -2015,11 +2030,11 @@ function AttributePicker({
     <Field<typeof VariablePicker>
       name="variable"
       component={VariablePicker}
-      label={intl.formatMessage(messages.attributeLabel)}
-      hint={intl.formatMessage(messages.attributeHint)}
+      label={intl.formatMessage(formFieldsMessages.attributeLabel)}
+      hint={intl.formatMessage(formFieldsMessages.attributeHint)}
       options={offered}
       initialValue={committed}
-      required={intl.formatMessage(messages.attributeRequired)}
+      required={intl.formatMessage(formFieldsMessages.attributeRequired)}
       {...(subject === undefined
         ? {}
         : {
@@ -2033,17 +2048,19 @@ function AttributePicker({
 /** How one field reads in the list when its dialog is closed. */
 function FormFieldPreview({ item }: RowPreviewProps) {
   const protocolContext = useProtocolContext();
+  const localize = useLocalizedText();
   const { subject } = useFormFieldsScope();
   const variableId = asString(item.variable) ?? '';
   const variable =
     subject === undefined
       ? undefined
       : variablesForSubject(protocolContext, subject)[variableId];
+  const prompt = localize(item.prompt);
 
   return (
     <div className="flex flex-col gap-2.5">
-      <RenderMarkdown render={<div />}>
-        {asString(item.prompt) ?? ''}
+      <RenderMarkdown render={<div lang={prompt.lang} dir={prompt.dir} />}>
+        {prompt.text}
       </RenderMarkdown>
       <div>
         <AttributeControlBadge

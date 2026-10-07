@@ -19,6 +19,7 @@ const protocol: ProtocolWithInterviews = {
   lastModified: new Date('2026-09-05T00:00:00Z'),
   stages: [],
   codebook: {},
+  localization: { defaultLocale: 'en', locales: ['en'] },
   originalFileKey: null,
   originalFileUrl: null,
   interviews: [],

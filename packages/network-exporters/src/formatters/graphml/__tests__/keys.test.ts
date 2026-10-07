@@ -47,6 +47,7 @@ const personCodebook = (
     node: {
       person: {
         name: 'Person',
+        label: { en: 'Person' },
         color: 'node-color-seq-1',
         shape: { default: 'circle' },
         variables,
@@ -173,9 +174,13 @@ describe('GraphML keys for names that are already valid', () => {
   it('leaves attr.name as written and adds no <desc>', async () => {
     const xml = await render(
       personCodebook({
-        'v-1': { name: 'name', type: 'text' },
-        'v-2': { name: 'a.b-c:d_e', type: 'number' },
-        'v-3': { name: '年齢', type: 'number' },
+        'v-1': { name: 'name', label: 'Name', type: 'text' },
+        'v-2': {
+          name: 'a.b-c:d_e',
+          label: 'A b c d e',
+          type: 'number',
+        },
+        'v-3': { name: '年齢', label: '年齢', type: 'number' },
       }),
       sessionWithNode({ 'v-1': 'Dee', 'v-2': 1, 'v-3': 2 }),
     );
@@ -194,9 +199,9 @@ describe('GraphML keys for names that derive the same attr.name', () => {
   it('numbers them in codebook order, and each <desc> says which is which', async () => {
     const xml = await render(
       personCodebook({
-        'v-space': { name: 'a b', type: 'text' },
-        'v-question': { name: 'a?b', type: 'text' },
-        'v-valid': { name: 'a_b', type: 'text' },
+        'v-space': { name: 'a b', label: 'A b', type: 'text' },
+        'v-question': { name: 'a?b', label: 'A b', type: 'text' },
+        'v-valid': { name: 'a_b', label: 'A b', type: 'text' },
       }),
       sessionWithNode({
         'v-space': 'one',
@@ -226,7 +231,9 @@ describe('GraphML keys for names that derive the same attr.name', () => {
 
   it('escapes the original name in <desc>', async () => {
     const xml = await render(
-      personCodebook({ 'v-1': { name: 'R&D <team>', type: 'text' } }),
+      personCodebook({
+        'v-1': { name: 'R&D <team>', label: 'R d team', type: 'text' },
+      }),
       sessionWithNode({ 'v-1': 'x' }),
     );
 
@@ -237,11 +244,19 @@ describe('GraphML keys for names that derive the same attr.name', () => {
 
 describe('GraphML keys for variables whose id is a built-in key id', () => {
   const codebook = personCodebook({
-    label: { name: 'Nickname', type: 'text' },
-    networkCanvasType: { name: 'Kind', type: 'text' },
-    networkCanvasUUID: { name: 'Reference', type: 'text' },
-    plain: { name: 'Plain', type: 'text' },
-    label_1: { name: 'Second nickname', type: 'text' },
+    label: { name: 'Nickname', label: 'Nickname', type: 'text' },
+    networkCanvasType: { name: 'Kind', label: 'Kind', type: 'text' },
+    networkCanvasUUID: {
+      name: 'Reference',
+      label: 'Reference',
+      type: 'text',
+    },
+    plain: { name: 'Plain', label: 'Plain', type: 'text' },
+    label_1: {
+      name: 'Second nickname',
+      label: 'Second nickname',
+      type: 'text',
+    },
   });
   const session = sessionWithNode({
     label: 'Dee',
@@ -303,17 +318,22 @@ describe('GraphML key ids that would be the same', () => {
   // be given.
   const renderWithHashedId = async (hashed: string) => {
     const codebook = personCodebook({
-      pos_X: { name: 'Position text', type: 'text' },
-      pos: { name: 'Position', type: 'layout' },
+      pos_X: {
+        name: 'Position text',
+        label: 'Position text',
+        type: 'text',
+      },
+      pos: { name: 'Position', label: 'Position', type: 'layout' },
       rating: {
         name: 'Rating',
+        label: 'Rating',
         type: 'categorical',
         options: [
-          { label: 'One', value: 1 },
-          { label: 'Also one', value: '1' },
+          { label: { en: 'One' }, value: 1 },
+          { label: { en: 'Also one' }, value: '1' },
         ],
       },
-      [hashed]: { name: 'Hashed', type: 'text' },
+      [hashed]: { name: 'Hashed', label: 'Hashed', type: 'text' },
     });
     const session: FormattedSession = {
       ...sessionWithNode({}),
@@ -408,11 +428,11 @@ describe('GraphML columns the export renames', () => {
   it('reports each column numbered to keep it apart from another', async () => {
     const { xml, warnings } = await renderReporting(
       personCodebook({
-        'v-label': { name: 'label', type: 'text' },
-        'v-text': { name: 'pos_X', type: 'text' },
-        'v-layout': { name: 'pos', type: 'layout' },
-        'v-space': { name: 'a b', type: 'text' },
-        'v-valid': { name: 'a_b', type: 'text' },
+        'v-label': { name: 'label', label: 'Label', type: 'text' },
+        'v-text': { name: 'pos_X', label: 'Pos x', type: 'text' },
+        'v-layout': { name: 'pos', label: 'Pos', type: 'layout' },
+        'v-space': { name: 'a b', label: 'A b', type: 'text' },
+        'v-valid': { name: 'a_b', label: 'A b', type: 'text' },
       }),
       sessionWithNode({ 'v-label': 'Dee' }),
     );
@@ -434,15 +454,29 @@ describe('GraphML columns the export renames', () => {
       node: {
         person: {
           name: 'Person',
+          label: { en: 'Person' },
           color: 'node-color-seq-1',
           shape: { default: 'circle' },
-          variables: { 'p-name': { name: 'Full name', type: 'text' } },
+          variables: {
+            'p-name': {
+              name: 'Full name',
+              label: 'Full name',
+              type: 'text',
+            },
+          },
         },
         place: {
           name: 'Place',
+          label: { en: 'Place' },
           color: 'node-color-seq-2',
           shape: { default: 'circle' },
-          variables: { 'pl-name': { name: 'Full name', type: 'text' } },
+          variables: {
+            'pl-name': {
+              name: 'Full name',
+              label: 'Full name',
+              type: 'text',
+            },
+          },
         },
       },
     } satisfies Codebook;

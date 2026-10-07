@@ -2,8 +2,20 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import type { VariableValue } from '@codaco/shared-consts';
 
-import DataCard from './DataCard';
+import DataCard, { type DataCardDetail } from './DataCard';
+
+// Stories write details as label → value pairs; the card takes an ordered
+// array so each label can carry its own language and direction.
+const toDetails = (
+  record: Record<string, VariableValue | undefined>,
+): DataCardDetail[] =>
+  Object.entries(record).map(([label, value]) => ({
+    id: label,
+    label,
+    value,
+  }));
 
 const meta = {
   title: 'Interfaces/NameGeneratorRoster/DataCard',
@@ -21,15 +33,15 @@ const meta = {
     details: {
       control: 'object',
       description:
-        'A `Record<string, VariableValue | undefined>` of label → value pairs to render as a description list below the title',
+        'An ordered array of `{ id, label, value }` entries to render as a description list below the title. `label` is a plain string or `{ text, lang, dir }`; `value` is a `VariableValue | undefined`',
     },
   },
   args: {
     label: 'Moses Crist',
-    details: {
+    details: toDetails({
       Age: 21,
       Location: 'New Haven',
-    },
+    }),
   },
 } satisfies Meta<typeof DataCard>;
 
@@ -59,7 +71,7 @@ export const Default: Story = {
 export const TitleOnly: Story = {
   args: {
     label: 'Moses Crist',
-    details: {},
+    details: [],
   },
   render: (args) => (
     <div className="max-w-md">
@@ -77,7 +89,7 @@ export const TitleOnly: Story = {
 export const ManyDetailTypes: Story = {
   args: {
     label: 'Dr. Arthur Wintheiser',
-    details: {
+    details: toDetails({
       'Age': 61,
       'Location': 'Bonitamouth',
       'Occupation': 'Veterinarian',
@@ -87,10 +99,34 @@ export const ManyDetailTypes: Story = {
       'Hobbies': ['Hiking', 'Birdwatching', 'Pottery'],
       'Coordinates': { x: -72.9279, y: 41.3083 },
       'Notes': undefined,
-    },
+    }),
   },
   render: (args) => (
     <div className="max-w-lg">
+      <DataCard {...args} />
+    </div>
+  ),
+};
+
+/**
+ * A detail label written in a different language and direction from the
+ * interface carries its own `lang` and `dir`, so right-to-left text reads in
+ * order and assistive technology pronounces it correctly.
+ */
+export const DetailLabelInAnotherLanguage: Story = {
+  args: {
+    label: 'Moses Crist',
+    details: [
+      {
+        id: 'age',
+        label: { text: 'العمر', lang: 'ar', dir: 'rtl' },
+        value: 34,
+      },
+      { id: 'location', label: 'Location', value: 'New Haven' },
+    ],
+  },
+  render: (args) => (
+    <div className="max-w-md">
       <DataCard {...args} />
     </div>
   ),
@@ -111,7 +147,7 @@ export const LongContent: Story = {
   args: {
     label:
       'Professor Henrietta Maximillian-Wellington III, Esq., Director of Interdisciplinary Studies',
-    details: {
+    details: toDetails({
       'Primary institutional affiliation':
         'The Royal Institute for the Advancement of Computational Network Science and Sociometric Methodologies',
       'Approximate annual household income range':
@@ -127,7 +163,7 @@ export const LongContent: Story = {
       ],
       'Personal website URL':
         'https://example.research.institute/people/henrietta-maximillian-wellington/publications',
-    },
+    }),
   },
   render: (args) => (
     <div className="max-w-md">
@@ -150,15 +186,15 @@ export const InListLayout: Story = {
       <div className="flex flex-col gap-3">
         <DataCard
           label="Moses Crist"
-          details={{ Age: 21, Location: 'New Haven' }}
+          details={toDetails({ Age: 21, Location: 'New Haven' })}
         />
         <DataCard
           label="Warren Effertz"
-          details={{ Age: 29, Location: 'New Hollie' }}
+          details={toDetails({ Age: 29, Location: 'New Hollie' })}
         />
         <DataCard
           label="Brody Hilll"
-          details={{ Age: 67, Location: 'New Larryton' }}
+          details={toDetails({ Age: 67, Location: 'New Larryton' })}
         />
       </div>
     </div>
@@ -180,27 +216,27 @@ export const InGridLayout: Story = {
       <div className="tablet-portrait:grid-cols-2 tablet-landscape:grid-cols-3 grid grid-cols-1 gap-4">
         <DataCard
           label="Moses Crist"
-          details={{ Age: 21, Location: 'New Haven' }}
+          details={toDetails({ Age: 21, Location: 'New Haven' })}
         />
         <DataCard
           label="Warren Effertz"
-          details={{ Age: 29, Location: 'New Hollie' }}
+          details={toDetails({ Age: 29, Location: 'New Hollie' })}
         />
         <DataCard
           label="Brody Hilll"
-          details={{ Age: 67, Location: 'New Larryton' }}
+          details={toDetails({ Age: 67, Location: 'New Larryton' })}
         />
         <DataCard
           label="Dr. Arthur Wintheiser"
-          details={{ Age: 61, Location: 'Bonitamouth' }}
+          details={toDetails({ Age: 61, Location: 'Bonitamouth' })}
         />
         <DataCard
           label="Destinee Hahn"
-          details={{ Age: 52, Location: 'Fort Opheliashire' }}
+          details={toDetails({ Age: 52, Location: 'Fort Opheliashire' })}
         />
         <DataCard
           label="Theodora Dietrich"
-          details={{ Age: 34, Location: 'Schaeferside' }}
+          details={toDetails({ Age: 34, Location: 'Schaeferside' })}
         />
       </div>
     </div>
@@ -221,11 +257,11 @@ export const NarrowContainer: Story = {
       </Paragraph>
       <DataCard
         label="Dr. Arthur Wintheiser"
-        details={{
+        details={toDetails({
           Age: 61,
           Location: 'Bonitamouth-on-the-Sea',
           Bio: 'Long-form biographical note that needs to wrap.',
-        }}
+        })}
       />
     </div>
   ),
@@ -250,7 +286,7 @@ export const Accessibility: Story = {
       </div>
       <DataCard
         label="Moses Crist"
-        details={{ Age: 21, Location: 'New Haven' }}
+        details={toDetails({ Age: 21, Location: 'New Haven' })}
       />
     </div>
   ),

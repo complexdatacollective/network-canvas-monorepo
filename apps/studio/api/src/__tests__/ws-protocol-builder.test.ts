@@ -67,6 +67,9 @@ import {
 import { testCipher } from './support/secrets.ts';
 import { startStudioServer } from './support/serve.ts';
 
+// The sample protocol declares en-US as its only language.
+const enUS = (text: string) => ({ 'en-US': text });
+
 const env = readEnv();
 
 const TEAM_ID = 'protocol-builder-ws-team';
@@ -287,7 +290,12 @@ describe.skipIf(!testDb || !env.auth)(
             protocolId,
             requestId: randomUUID(),
             kind: 'stage',
-            document: { type: 'Information', label, title: label, items: [] },
+            document: {
+              type: 'Information',
+              label: enUS(label),
+              title: enUS(label),
+              items: [],
+            },
           }),
         )
         .then((created) => created.sectionId);
@@ -401,8 +409,8 @@ describe.skipIf(!testDb || !env.auth)(
           kind: 'stage',
           document: {
             type: 'Information',
-            label: 'Made over the socket',
-            title: 'Made over the socket',
+            label: enUS('Made over the socket'),
+            title: enUS('Made over the socket'),
             items: [],
           },
         }),
@@ -539,7 +547,7 @@ describe.skipIf(!testDb || !env.auth)(
           sectionId,
           document: {
             ...resumed.document,
-            label: 'Renamed after the reconnect',
+            label: enUS('Renamed after the reconnect'),
           },
           revision: resumed.revision,
         }),
@@ -550,7 +558,7 @@ describe.skipIf(!testDb || !env.auth)(
       const read = await second.run(
         second.client('GetSection', { protocolId, sectionId }),
       );
-      expect(read.document.label).toBe('Renamed after the reconnect');
+      expect(read.document.label).toEqual(enUS('Renamed after the reconnect'));
       await second.run(second.client('ReleaseLock', { protocolId, sectionId }));
       await watched.stop();
     });
@@ -926,7 +934,7 @@ describe.skipIf(!testDb || !env.auth)(
             protocolId,
             requestId: randomUUID(),
             sectionId,
-            document: { ...acquired.value.document, label: 'Written' },
+            document: { ...acquired.value.document, label: enUS('Written') },
             revision: acquired.value.revision,
           }),
         );
@@ -964,7 +972,7 @@ describe.skipIf(!testDb || !env.auth)(
       { lock: 'readOnly', holder: ADA.userId },
       'NotLockHolder',
       'ok',
-      'Written',
+      enUS('Written'),
       'SectionNotFound',
       'ok',
     ];

@@ -64,11 +64,11 @@ describe('the ways of looking at the network a narrative stage offers', () => {
     expect(presetsOf(saved?.stageDocument ?? {})).toEqual([
       {
         id: 'narrative-preset-1',
-        label: 'Ties',
+        label: { 'en-US': 'Ties' },
         layoutVariable: 'layout',
         groupVariable: 'contactType',
         edges: { display: ['knows'] },
-        highlight: ['flagged'],
+        highlight: [{ variable: 'flagged', label: { 'en-US': 'Flagged' } }],
       },
     ]);
   });
@@ -96,7 +96,7 @@ describe('the ways of looking at the network a narrative stage offers', () => {
     expect(rows).toHaveLength(2);
     expect(rows[1]).toEqual({
       id: expect.any(String) as unknown as string,
-      label: 'All',
+      label: { 'en-US': 'All' },
       layoutVariable: 'layout',
     });
     expect(rows[1]?.id).not.toBe('narrative-preset-1');
@@ -140,6 +140,66 @@ describe('the ways of looking at the network a narrative stage offers', () => {
     expect(
       await screen.findByText(/Create at least one preset/),
     ).toBeInTheDocument();
+  });
+});
+
+/**
+ * What the interview calls each highlighted attribute. An attribute's codebook
+ * label is not translated, so every highlight carries a label of its own.
+ */
+describe('the label of a highlighted attribute', () => {
+  const highlightLabel = 'Label for “highlighted”';
+
+  it('starts at the attribute’s name, and saves what the researcher writes', async () => {
+    const harness = renderStageEditor(openEditor());
+
+    const preset = await addPreset(harness);
+    await harness.user.type(
+      preset.getByRole('textbox', { name: 'Preset label' }),
+      'Standing out',
+    );
+    await chooseAttributeById(
+      harness.user,
+      attributeField('Layout attribute'),
+      'layout',
+    );
+    await harness.user.click(
+      preset.getByRole('checkbox', { name: 'highlighted' }),
+    );
+    const label = await preset.findByRole('textbox', { name: highlightLabel });
+    expect(label).toHaveValue('highlighted');
+
+    await harness.user.clear(label);
+    await harness.user.type(label, 'Close ties');
+    await harness.user.click(preset.getByRole('button', { name: 'Add' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+
+    const saved = await harness.submit();
+    expect(presetsOf(saved?.stageDocument ?? {})[1]).toMatchObject({
+      highlight: [
+        { variable: 'highlighted', label: { 'en-US': 'Close ties' } },
+      ],
+    });
+  });
+
+  it('refuses a highlighted attribute with no label', async () => {
+    const harness = renderStageEditor(openEditor());
+
+    const preset = await openPreset(harness);
+    await harness.user.clear(
+      preset.getByRole('textbox', { name: 'Label for “flagged”' }),
+    );
+    await harness.user.click(preset.getByRole('button', { name: 'Save' }));
+
+    expect(
+      await preset.findByText('Enter a label for this attribute.'),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(
+      preset.queryByRole('textbox', { name: highlightLabel }),
+    ).not.toBeInTheDocument();
   });
 });
 
@@ -192,7 +252,7 @@ describe('an attribute another interface owns', () => {
     stage: {
       type: 'Narrative' as const,
       fields: {
-        label: 'Family narrative',
+        label: { 'en-US': 'Family narrative' },
         subject: { entity: 'node', type: 'family_member' },
         background: { concentricCircles: 4, skewedTowardCenter: true },
         behaviours: { freeDraw: true, allowRepositioning: true },
@@ -305,10 +365,13 @@ describe('a preset naming what the codebook no longer has', () => {
     const harness = renderStageEditor(
       narrativeHolding({
         id: 'narrative-preset-1',
-        label: 'Default layout',
+        label: { 'en-US': 'Default layout' },
         layoutVariable: 'layout',
         edges: { display: ['knows', LOST_EDGE] },
-        highlight: ['flagged', LOST_HIGHLIGHT],
+        highlight: [
+          { variable: 'flagged', label: { 'en-US': 'Flagged' } },
+          { variable: LOST_HIGHLIGHT, label: { 'en-US': 'Formerly flagged' } },
+        ],
       }),
     );
     return { harness, preset: await openPreset(harness) };
@@ -347,10 +410,10 @@ describe('a preset naming what the codebook no longer has', () => {
     const saved = await harness.submit();
     expect(presetsOf(saved?.stageDocument ?? {})[0]).toEqual({
       id: 'narrative-preset-1',
-      label: 'Default layout',
+      label: { 'en-US': 'Default layout' },
       layoutVariable: 'layout',
       edges: { display: ['knows'] },
-      highlight: ['flagged'],
+      highlight: [{ variable: 'flagged', label: { 'en-US': 'Flagged' } }],
     });
   });
 });
@@ -414,6 +477,7 @@ describe('a codebook change made while a preset dialog is open', () => {
       node: {
         person: personWithVariable(harness, 'seating', {
           name: 'seating',
+          label: 'seating',
           type: 'layout',
         }),
       },

@@ -5,6 +5,7 @@ import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
+import { translationText } from '../../../localization/localizedText.ts';
 import BuilderSection from '../../../sections/BuilderSection.tsx';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import { createStageDraftProbe } from '../../__tests__/stageDraftProbe.tsx';
@@ -106,19 +107,20 @@ const documentOptions = (options: unknown): Option[] =>
     : [];
 
 /**
- * A row field as text. Defensive only — these sequences write strings — but a
+ * A row's value as text. Defensive only — these sequences write strings — but a
  * failure message built from a foreign value has to read as that value rather
  * than as `[object Object]`.
  */
 const asText = (value: unknown): string =>
   typeof value === 'string' ? value : (JSON.stringify(value) ?? '');
 
+/** The all-interfaces protocol's one language, which every label here is in. */
+const LOCALE = 'en-US';
+
 /** A collapsed row's own text, built from the document exactly as it draws. */
 const asRowText = (row: Option) => {
-  const label =
-    typeof row.label === 'string' && row.label.trim() !== ''
-      ? row.label
-      : 'Untitled option';
+  const text = translationText(row.label, LOCALE);
+  const label = text.trim() !== '' ? text : 'Untitled option';
   const value =
     row.value === undefined || row.value === null || row.value === ''
       ? 'No value'
@@ -126,8 +128,7 @@ const asRowText = (row: Option) => {
   return `${label} — ${value}`.replace(/\s+/g, ' ').trim();
 };
 
-const labelOf = (row: Option) =>
-  typeof row.label === 'string' ? row.label : asText(row.label);
+const labelOf = (row: Option) => translationText(row.label, LOCALE);
 
 const SEQUENCES = 200;
 const STEPS_PER_SEQUENCE = 8;
@@ -135,9 +136,9 @@ const STEPS_PER_SEQUENCE = 8;
 const LIST_START: SectionDoc = {
   title: 'Welcome',
   options: [
-    { label: 'Alpha', value: 'alpha' },
-    { label: 'Bravo', value: 'bravo' },
-    { label: 'Charlie', value: 'charlie' },
+    { label: { [LOCALE]: 'Alpha' }, value: 'alpha' },
+    { label: { [LOCALE]: 'Bravo' }, value: 'bravo' },
+    { label: { [LOCALE]: 'Charlie' }, value: 'charlie' },
   ],
 };
 

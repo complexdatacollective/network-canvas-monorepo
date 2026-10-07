@@ -9,6 +9,11 @@ import {
   useState,
 } from 'react';
 
+import {
+  type PresentationalText,
+  presentationalTextProps,
+  presentationalTextValue,
+} from '../../../PresentationalText';
 import { RenderMarkdown } from '../../../RenderMarkdown';
 import { controlLabelVariants } from '../../../styles/controlVariants';
 import { cx } from '../../../utils/cva';
@@ -61,7 +66,7 @@ export function useScaleLabelLayout({
   labels,
 }: {
   rootRef: React.RefObject<HTMLElement | null>;
-  labels: string[];
+  labels: PresentationalText[];
 }): { layout: ScaleLabelLayout; measurementNode: ReactNode } {
   const [layout, setLayout] = useState<ScaleLabelLayout>(INITIAL);
 
@@ -161,14 +166,17 @@ export function useScaleLabelLayout({
         ))}
       </div>
       {labels.map((label, i) => (
-        <Fragment key={`${i}-${label}`}>
+        <Fragment key={`${i}-${presentationalTextValue(label)}`}>
           <span
             ref={(el) => {
               minRefs.current[i] = el;
             }}
             className={cx(probeClass, ROTATED_LABEL_WRAP_CLASS)}
+            // Measured under the label's own language, as it is shown: script
+            // and language pick the font and the line-break opportunities.
+            {...presentationalTextProps(label)}
           >
-            <RenderMarkdown>{label}</RenderMarkdown>
+            <RenderMarkdown>{presentationalTextValue(label)}</RenderMarkdown>
           </span>
         </Fragment>
       ))}

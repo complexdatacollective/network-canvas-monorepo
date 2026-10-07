@@ -39,7 +39,7 @@ describe('INTERFACE_NAMES in Architect', () => {
    * interface is the package's now, and reads the same map.
    */
   it('is one name per interface across every surface that shows one', () => {
-    const optionTitles = new Map(
+    const optionTitles = new Map<StageType, string>(
       getInterfaceTypes().map((option) => [option.type, option.title]),
     );
 

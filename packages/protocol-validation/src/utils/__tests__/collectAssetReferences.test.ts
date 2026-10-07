@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { collectAssetReferences } from '../collectEntityAttributeReferences.ts';
+import { localized } from '../test-utils.ts';
 
 // Walks the REAL protocol schema, so this covers both the walker and the
 // `assetReference` tagging of each schema spot. Stage fixtures are minimal:
@@ -20,7 +21,11 @@ const protocol = {
       type: 'NameGenerator',
       subject: { entity: 'node', type: 'person' },
       panels: [
-        { id: 'panel-1', title: 'From roster', dataSource: 'panel-asset' },
+        {
+          id: 'panel-1',
+          title: localized('From roster'),
+          dataSource: 'panel-asset',
+        },
         // The sentinel names the interview network, not the manifest.
         { id: 'panel-2', title: 'Already added', dataSource: 'existing' },
       ],
@@ -48,9 +53,13 @@ const protocol = {
     {
       id: 'info',
       type: 'Information',
-      title: 'About this study',
+      title: localized('About this study'),
       items: [
-        { id: 'i1', type: 'text', content: 'Some words about the study.' },
+        {
+          id: 'i1',
+          type: 'text',
+          content: localized('Some words about the study.'),
+        },
         { id: 'i2', type: 'asset', content: 'information-asset' },
       ],
     },
@@ -59,7 +68,11 @@ const protocol = {
       type: 'FamilyPedigree',
       introScreen: {
         items: [
-          { id: 'ii1', type: 'text', content: 'Introductory words.' },
+          {
+            id: 'ii1',
+            type: 'text',
+            content: localized('Introductory words.'),
+          },
           { id: 'ii2', type: 'asset', content: 'intro-asset' },
         ],
       },
@@ -137,7 +150,7 @@ describe('collectAssetReferences', () => {
           {
             id: 'empty-asset',
             type: 'Information',
-            title: 'Invalid asset item',
+            title: localized('Invalid asset item'),
             items: [{ id: 'item-1', type: 'asset', content: '' }],
           },
         ],

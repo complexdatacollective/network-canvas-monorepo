@@ -46,13 +46,13 @@ import { loadAllInterfacesFixture } from '../helpers/load-fixture.js';
  * No `@visual` tag: this reads the accessibility tree, not pixels.
  *
  * ONE TEST PER STAGE TYPE, not one test for all of them. As a single test the
- * work — 19 editors, every collapsed section in each expanded, one
+ * work — 19 editors at the time, every collapsed section in each expanded, one
  * representative row-editor dialog opened per list — took 35s of the 60s
  * budget on a developer machine, and on a CI runner it spent the whole 60s
  * getting partway into the fourteenth editor, which had taken 26s here: about
  * 2.3× slower, deterministically over budget, and it failed that way on the
  * first run and both retries. Raising the timeout would only move the cliff to
- * whatever the twentieth editor costs, and the walk is not doing anything it
+ * whatever the next editor costs, and the walk is not doing anything it
  * can skip — every editor and every one of its row-editor dialogs is the
  * coverage. Split, the slowest editor is 2.8s of its own 60s, and a failure
  * names the editor in the test title rather than in a list at the end.

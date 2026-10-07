@@ -14,6 +14,11 @@ import {
   AccordionTrigger,
 } from '@codaco/fresco-ui/Accordion';
 import { RadioItem } from '@codaco/fresco-ui/form/fields/RadioGroup';
+import {
+  type PresentationalText,
+  presentationalTextProps,
+  presentationalTextValue,
+} from '@codaco/fresco-ui/PresentationalText';
 import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
 import {
   SegmentedToolbar,
@@ -23,6 +28,7 @@ import {
   ToolbarPopover,
 } from '@codaco/fresco-ui/SegmentedToolbar';
 import type {
+  LocalizedString,
   Stage,
   VariableOption,
   VariableOptionValue,
@@ -30,6 +36,8 @@ import type {
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
 import { useStageSelector } from '../../hooks/useStageSelector';
+import { LocalizedText } from '../../localization/LocalizedText';
+import { useResolvePresentationalText } from '../../localization/ProtocolLocalizationProvider';
 import { getNetworkNodes, getSubjectType } from '../../selectors/session';
 import { getCodebook } from '../../store/modules/protocol';
 import { interfaceMessages } from '../messages';
@@ -38,7 +46,7 @@ type NarrativeStage = Extract<Stage, { type: 'Narrative' }>;
 type Preset = NarrativeStage['presets'][number];
 
 type GroupLegendEntry = {
-  label: string;
+  label: PresentationalText;
   colorIndex: number;
 };
 
@@ -54,9 +62,10 @@ type GroupLegendEntry = {
 export function buildGroupLegend(
   categoricalOptions: VariableOption[],
   groupValues: VariableOptionValue[],
+  toPresentationalText: (label: LocalizedString) => PresentationalText,
 ): GroupLegendEntry[] {
   const known = categoricalOptions.map((option, index) => ({
-    label: option.label,
+    label: toPresentationalText(option.label),
     colorIndex: index + 1,
   }));
 
@@ -107,6 +116,7 @@ export default function PresetSwitcher({
   dragConstraints,
 }: PresetSwitcherProps) {
   const intl = useAppIntl();
+  const toPresentationalText = useResolvePresentationalText();
   const currentPreset = presets[activePreset];
 
   const selector = useMemo(
@@ -116,16 +126,9 @@ export default function PresetSwitcher({
         getSubjectType,
         getNetworkNodes,
         (codebook, subjectType, nodes) => {
-          const highlightLabels = (currentPreset?.highlight ?? []).map(
-            (variableId: string) =>
-              (subjectType &&
-                codebook?.node?.[subjectType]?.variables?.[variableId]?.name) ??
-              '',
-          );
-
           const edges = (currentPreset?.edges?.display ?? []).map(
             (type: string) => ({
-              label: codebook?.edge?.[type]?.name ?? '',
+              label: codebook?.edge?.[type]?.label,
               color: codebook?.edge?.[type]?.color ?? 'edge-color-seq-1',
             }),
           );
@@ -137,11 +140,8 @@ export default function PresetSwitcher({
             const variable =
               codebook?.node?.[subjectType]?.variables?.[groupVariable];
             categoricalOptions =
-              variable && 'options' in variable && variable.options
-                ? variable.options.filter(
-                    (option): option is VariableOption =>
-                      typeof option.value !== 'boolean',
-                  )
+              variable?.type === 'categorical' || variable?.type === 'ordinal'
+                ? variable.options
                 : undefined;
 
             for (const node of nodes) {
@@ -155,21 +155,26 @@ export default function PresetSwitcher({
             }
           }
 
-          return { categoricalOptions, groupValues, edges, highlightLabels };
+          return { categoricalOptions, groupValues, edges };
         },
       ),
     [currentPreset],
   );
 
-  const { categoricalOptions, groupValues, edges, highlightLabels } =
-    useStageSelector(selector);
+  const { categoricalOptions, groupValues, edges } = useStageSelector(selector);
+  const highlights = currentPreset?.highlight ?? [];
 
   const groupLegend = useMemo(
-    () => buildGroupLegend(categoricalOptions ?? [], groupValues),
-    [categoricalOptions, groupValues],
+    () =>
+      buildGroupLegend(
+        categoricalOptions ?? [],
+        groupValues,
+        toPresentationalText,
+      ),
+    [categoricalOptions, groupValues, toPresentationalText],
   );
 
-  const hasHighlights = highlightLabels.length > 0;
+  const hasHighlights = highlights.length > 0;
   const hasEdges = edges.length > 0;
   const hasGroups = groupLegend.length > 0;
 
@@ -250,7 +255,7 @@ export default function PresetSwitcher({
             // stops shouting. Scoped to this trigger on purpose — every other
             // disclosure in the app is transient and wants the default.
             <ToolbarButton className="aria-expanded:bg-selected/15 aria-expanded:text-(--component-text)">
-              {currentPreset.label}
+              <LocalizedText value={currentPreset.label} render={<span />} />
             </ToolbarButton>
           }
           contentProps={{
@@ -277,14 +282,14 @@ export default function PresetSwitcher({
                     onValueChange={(v) => onChangeHighlightIndex(Number(v))}
                     className="flex flex-col gap-2"
                   >
-                    {highlightLabels.map((label, index) => {
+                    {highlights.map((highlight, index) => {
                       const radioId = `highlight-radio-${index}`;
                       return (
                         <RadioItem
                           key={index}
                           id={radioId}
                           value={String(index)}
-                          label={label}
+                          label={toPresentationalText(highlight.label)}
                         />
                       );
                     })}
@@ -308,7 +313,9 @@ export default function PresetSwitcher({
                         className="flex items-center gap-4 text-base"
                       >
                         <EdgeSwatch color={edge.color} />
-                        {edge.label}
+                        {edge.label && (
+                          <LocalizedText value={edge.label} render={<span />} />
+                        )}
                       </div>
                     ))}
                   </div>
@@ -336,7 +343,11 @@ export default function PresetSwitcher({
                             backgroundColor: `var(--cat-${entry.colorIndex})`,
                           }}
                         />
-                        <RenderMarkdown>{entry.label}</RenderMarkdown>
+                        <div {...presentationalTextProps(entry.label)}>
+                          <RenderMarkdown>
+                            {presentationalTextValue(entry.label)}
+                          </RenderMarkdown>
+                        </div>
                       </div>
                     ))}
                   </div>

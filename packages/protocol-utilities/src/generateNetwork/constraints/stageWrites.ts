@@ -219,6 +219,7 @@ export function nodeVariablesWrittenOnCreation(
     case 'EgoForm':
     case 'Geospatial':
     case 'Information':
+    case 'LanguageChooser':
     case 'Narrative':
     case 'NarrativePedigree':
     case 'OneToManyDyadCensus':
@@ -283,6 +284,7 @@ function nodeVariablesWrittenOnExisting(
     case 'DyadCensus':
     case 'EgoForm':
     case 'Information':
+    case 'LanguageChooser':
     case 'NameGenerator':
     case 'NameGeneratorQuickAdd':
     case 'NameGeneratorRoster':

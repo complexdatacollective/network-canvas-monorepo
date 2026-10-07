@@ -216,7 +216,11 @@ describe('Validation Utils', () => {
       codebook: {
         ego: {
           variables: {
-            yearsHere: { name: 'yearsHere', type: 'number' },
+            yearsHere: {
+              name: 'yearsHere',
+              label: 'Years here',
+              type: 'number',
+            },
           },
         },
       },

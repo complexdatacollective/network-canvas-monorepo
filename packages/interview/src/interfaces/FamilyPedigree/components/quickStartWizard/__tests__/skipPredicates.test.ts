@@ -19,7 +19,7 @@ describe('shouldSkipIntroStep', () => {
   it('returns false when introScreen has items', () => {
     expect(
       shouldSkipIntroStep({
-        items: [{ id: 't1', type: 'text', content: 'Hello' }],
+        items: [{ id: 't1', type: 'text', content: { en: 'Hello' } }],
       }),
     ).toBe(false);
   });
@@ -28,7 +28,7 @@ describe('shouldSkipIntroStep', () => {
     expect(
       shouldSkipIntroStep({
         items: [
-          { id: 't1', type: 'text', content: 'This is the intro.' },
+          { id: 't1', type: 'text', content: { en: 'This is the intro.' } },
           { id: 'v1', type: 'asset', content: 'abc123' },
         ],
       }),

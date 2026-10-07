@@ -6,6 +6,7 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -22,6 +23,11 @@ import {
 import { frescoUiCatalogs } from '@codaco/fresco-ui/locales';
 
 import { protocolBuilderCatalogs } from '../../../locales/catalogs.ts';
+import type { ProtocolLocalization } from '../../../localization/localizedText.ts';
+import {
+  ProtocolLocalizationProvider,
+  useEditingLanguage,
+} from '../../../localization/ProtocolLocalization.tsx';
 import type {
   CodebookSubject,
   ProtocolBuilderProtocolContext,
@@ -42,11 +48,13 @@ import type {
 const mocks = vi.hoisted(() => {
   const person = {
     name: 'Person',
+    label: { en: 'Person' },
     color: 'node-color-seq-1' as const,
     shape: { default: 'circle' as const },
     variables: {
       age: {
         name: 'Age',
+        label: 'Age',
         type: 'number' as const,
         component: 'Number' as const,
       },
@@ -54,17 +62,23 @@ const mocks = vi.hoisted(() => {
       // control alone — the pair a rebound row is told apart by.
       yearsKnown: {
         name: 'Years known',
+        label: 'Years known',
         type: 'number' as const,
         component: 'Number' as const,
       },
       satisfaction: {
         name: 'Satisfaction',
+        label: 'Satisfaction',
         type: 'scalar' as const,
         component: 'VisualAnalogScale' as const,
-        parameters: { minLabel: 'Not at all', maxLabel: 'Completely' },
+        parameters: {
+          minLabel: { en: 'Not at all' },
+          maxLabel: { en: 'Completely' },
+        },
       },
       consents: {
         name: 'Consents',
+        label: 'Consents',
         type: 'boolean' as const,
         component: 'Boolean' as const,
         validation: { required: true },
@@ -96,6 +110,10 @@ const REQUIRED_EN = 'You must answer this question before continuing.';
 const REQUIRED_ES = 'Debes responder a esta pregunta antes de continuar.';
 
 const PERSON: CodebookSubject = { entity: 'node', type: 'person' };
+
+const ENGLISH: ProtocolLocalization = { defaultLocale: 'en', locales: ['en'] };
+
+const en = (text: string) => ({ en: text });
 
 /** The create sentinel, written out so a change to it has to be made twice. */
 const CREATE_NEW_ATTRIBUTE = '#create-new-attribute';
@@ -134,6 +152,12 @@ function ParentResponseProbe() {
       </output>
     </>
   );
+}
+
+/** The editing language the provider holds, for a test of what moves it. */
+function EditingLanguageProbe() {
+  const { locale } = useEditingLanguage();
+  return <output data-testid="editing-language">{locale}</output>;
 }
 
 const expectUnchangedParent = () => {
@@ -176,6 +200,7 @@ const renderPreview = (
     mode?: 'form' | 'composer';
     subject?: CodebookSubject | undefined;
     locale?: string;
+    localization?: ProtocolLocalization;
     probe?: boolean;
     onSubmit?: () => { success: true };
     fields?: ReactNode;
@@ -186,15 +211,19 @@ const renderPreview = (
     <LocaleFrame
       {...(options.locale === undefined ? {} : { locale: options.locale })}
     >
-      <Form onSubmit={submitAuthoring}>
-        {options.probe === true && <ParentResponseProbe />}
-        {options.fields}
-        <FieldPreviewPane
-          subject={'subject' in options ? options.subject : PERSON}
-          {...(options.mode === undefined ? {} : { mode: options.mode })}
-          item={item}
-        />
-      </Form>
+      <ProtocolLocalizationProvider
+        localization={options.localization ?? ENGLISH}
+      >
+        <Form onSubmit={submitAuthoring}>
+          {options.probe === true && <ParentResponseProbe />}
+          {options.fields}
+          <FieldPreviewPane
+            subject={'subject' in options ? options.subject : PERSON}
+            {...(options.mode === undefined ? {} : { mode: options.mode })}
+            item={item}
+          />
+        </Form>
+      </ProtocolLocalizationProvider>
     </LocaleFrame>,
   );
   return screen.getByRole('region', {
@@ -282,7 +311,7 @@ describe('FieldPreviewPane', () => {
       variable: CREATE_NEW_ATTRIBUTE,
       _newVariableName: 'Nickname',
       _component: 'Text',
-      prompt: 'Research_Question_Á1',
+      prompt: en('Research_Question_Á1'),
     });
 
     expect(
@@ -292,7 +321,7 @@ describe('FieldPreviewPane', () => {
 
   it('names a composer’s field by its label, and stands in when it has none', () => {
     renderPreview(
-      { variable: 'age', component: 'Number', label: 'Research_Label_Á1' },
+      { variable: 'age', component: 'Number', label: en('Research_Label_Á1') },
       { mode: 'composer' },
     );
     expect(
@@ -301,38 +330,53 @@ describe('FieldPreviewPane', () => {
 
     cleanup();
 
-    // No authored label, so the attribute's own name stands in — which is the
-    // composer's rule and never the form family's.
+    // No label written yet. The attribute's own name is never a caption, so
+    // the stand-in the form family uses stands in here too.
     renderPreview(
       { variable: 'age', component: 'Number' },
       { mode: 'composer' },
     );
-    expect(screen.getByRole('spinbutton', { name: 'Age' })).toBeVisible();
+    expect(
+      screen.getByRole('spinbutton', {
+        name: 'Your question will appear here.',
+      }),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole('spinbutton', { name: 'Age' }),
+    ).not.toBeInTheDocument();
   });
 
   it('treats a caption of nothing but spaces as nothing authored', () => {
     // The same rule the interview applies: `authoredFieldLabel` trims before
     // deciding whether the researcher wrote anything, so a stray space is not
-    // a caption and the participant meets the fallback rather than a blank.
+    // a caption.
     renderPreview(
-      { variable: 'age', component: 'Number', label: '   ' },
+      { variable: 'age', component: 'Number', label: en('   ') },
       { mode: 'composer' },
     );
-    expect(screen.getByRole('spinbutton', { name: 'Age' })).toBeVisible();
+    expect(
+      screen.getByRole('spinbutton', {
+        name: 'Your question will appear here.',
+      }),
+    ).toBeVisible();
 
     cleanup();
 
     // An emptied box reads the same way, and an authored one still wins.
     renderPreview(
-      { variable: 'age', component: 'Number', label: '' },
+      { variable: 'age', component: 'Number', label: en('') },
       { mode: 'composer' },
     );
-    expect(screen.getByRole('spinbutton', { name: 'Age' })).toBeVisible();
+    expect(
+      screen.getByRole('spinbutton', {
+        name: 'Your question will appear here.',
+      }),
+    ).toBeVisible();
 
     cleanup();
 
     renderPreview(
-      { variable: 'age', component: 'Number', label: 'Research_Label_Á1' },
+      { variable: 'age', component: 'Number', label: en('Research_Label_Á1') },
       { mode: 'composer' },
     );
     expect(
@@ -342,7 +386,7 @@ describe('FieldPreviewPane', () => {
     cleanup();
 
     // And the form family's question, which is read by the same rule.
-    renderPreview({ variable: 'age', prompt: '  \n  ' });
+    renderPreview({ variable: 'age', prompt: en('  \n  ') });
     expect(
       screen.getByRole('spinbutton', {
         name: 'Your question will appear here.',
@@ -357,7 +401,7 @@ describe('FieldPreviewPane', () => {
       variable: CREATE_NEW_ATTRIBUTE,
       _newVariableName: 'Nickname',
       _component: 'Text',
-      prompt: 'Research_Question_Á2',
+      prompt: en('Research_Question_Á2'),
     });
 
     expect(
@@ -373,7 +417,7 @@ describe('FieldPreviewPane', () => {
       variable: CREATE_NEW_ATTRIBUTE,
       _newVariableName: 'Nickname',
       _component: 'Number',
-      prompt: 'Research_Question_Á2',
+      prompt: en('Research_Question_Á2'),
     });
 
     expect(
@@ -398,7 +442,7 @@ describe('FieldPreviewPane', () => {
     renderPreview({
       variable: CREATE_NEW_ATTRIBUTE,
       _component: 'RadioGroup',
-      prompt: 'How often?',
+      prompt: en('How often?'),
     });
 
     const group = screen.getByRole('radiogroup', { name: 'How often?' });
@@ -410,8 +454,8 @@ describe('FieldPreviewPane', () => {
       variable: CREATE_NEW_ATTRIBUTE,
       _newVariableName: 'closeness',
       _component: 'VisualAnalogScale',
-      _parameters: { minLabel: 'Not close', maxLabel: 'Very close' },
-      prompt: 'How close are you?',
+      _parameters: { minLabel: en('Not close'), maxLabel: en('Very close') },
+      prompt: en('How close are you?'),
     });
 
     expect(within(pane).getByText('Not close')).toBeVisible();
@@ -424,10 +468,10 @@ describe('FieldPreviewPane', () => {
       _newVariableName: 'frequency',
       _component: 'RadioGroup',
       _options: [
-        { label: 'Daily', value: 'daily' },
-        { label: 'Weekly', value: 'weekly' },
+        { label: en('Daily'), value: 'daily' },
+        { label: en('Weekly'), value: 'weekly' },
       ],
-      prompt: 'How often?',
+      prompt: en('How often?'),
     });
 
     const group = screen.getByRole('radiogroup', { name: 'How often?' });
@@ -445,9 +489,14 @@ describe('FieldPreviewPane', () => {
     // answer typed for the first must not stand under the second's question
     // and be checked against the second's rules.
     const previewOf = (variable: string, prompt: string) => (
-      <Form onSubmit={() => ({ success: true as const })}>
-        <FieldPreviewPane subject={PERSON} item={{ variable, prompt }} />
-      </Form>
+      <ProtocolLocalizationProvider localization={ENGLISH}>
+        <Form onSubmit={() => ({ success: true as const })}>
+          <FieldPreviewPane
+            subject={PERSON}
+            item={{ variable, prompt: en(prompt) }}
+          />
+        </Form>
+      </ProtocolLocalizationProvider>
     );
     const { rerender } = render(previewOf('age', 'Research_Question_Á1'));
 
@@ -497,7 +546,7 @@ describe('FieldPreviewPane', () => {
   });
 
   it('runs the attribute’s own rules against a trial answer without touching the draft', async () => {
-    const item = { variable: 'consents', prompt: 'Research_Question_Á1' };
+    const item = { variable: 'consents', prompt: en('Research_Question_Á1') };
     const original = structuredClone(item);
     const submitAuthoring = vi.fn(() => ({ success: true as const }));
     renderPreview(item, { probe: true, onSubmit: submitAuthoring });
@@ -520,8 +569,8 @@ describe('FieldPreviewPane', () => {
   it('reads the pane and the participant’s own field in Spanish, leaving authored words alone', async () => {
     const item = {
       variable: 'consents',
-      prompt: 'Research_Question_Á1',
-      hint: 'Authored_Hint_Á1',
+      prompt: en('Research_Question_Á1'),
+      hint: en('Authored_Hint_Á1'),
     };
     const original = structuredClone(item);
     const submitAuthoring = vi.fn(() => ({ success: true as const }));
@@ -559,7 +608,7 @@ describe('FieldPreviewPane', () => {
   });
 
   it('keeps a participant scale’s own popup inside the locale region and the portal boundary', async () => {
-    const item = { variable: 'satisfaction', prompt: 'Research_Scale_Á1' };
+    const item = { variable: 'satisfaction', prompt: en('Research_Scale_Á1') };
     const original = structuredClone(item);
     renderPreview(item, { locale: 'es', probe: true });
 
@@ -585,12 +634,13 @@ describe('FieldPreviewPane', () => {
         variable: CREATE_NEW_ATTRIBUTE,
         _newVariableName: 'favouriteFood',
         component: 'Text',
+        label: en('Favourite food'),
       },
       { mode: 'composer' },
     );
 
     expect(
-      screen.getByRole('textbox', { name: 'favouriteFood' }),
+      screen.getByRole('textbox', { name: 'Favourite food' }),
     ).toBeVisible();
     expect(screen.queryByText(EMPTY_STATE)).not.toBeInTheDocument();
   });
@@ -602,12 +652,290 @@ describe('FieldPreviewPane', () => {
     // control the row still carries would show a working field the participant
     // will never meet.
     renderPreview(
-      { variable: 'favouriteFood', component: 'Text', label: 'Favourite food' },
+      {
+        variable: 'favouriteFood',
+        component: 'Text',
+        label: en('Favourite food'),
+      },
       { mode: 'composer' },
     );
 
     expect(screen.getByText(EMPTY_STATE)).toBeVisible();
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+  });
+
+  it('captions the field in the language being edited, falling back as a participant would', () => {
+    const bilingual: ProtocolLocalization = {
+      defaultLocale: 'es',
+      locales: ['es', 'en'],
+    };
+    renderPreview(
+      {
+        variable: 'age',
+        prompt: { en: 'How old are you?', es: '¿Cuántos años tienes?' },
+      },
+      { localization: bilingual },
+    );
+    expect(
+      screen.getByRole('spinbutton', { name: '¿Cuántos años tienes?' }),
+    ).toBeVisible();
+
+    cleanup();
+
+    renderPreview(
+      { variable: 'age', prompt: en('How old are you?') },
+      { localization: bilingual },
+    );
+    expect(
+      screen.getByRole('spinbutton', { name: 'How old are you?' }),
+    ).toBeVisible();
+    expect(
+      screen.getByText('How old are you?').closest('[lang]'),
+    ).toHaveAttribute('lang', 'en');
+  });
+
+  describe('language menu', () => {
+    const BILINGUAL: ProtocolLocalization = {
+      defaultLocale: 'en',
+      locales: ['en', 'es'],
+    };
+
+    const translated = (english: string, spanish: string) => ({
+      en: english,
+      es: spanish,
+    });
+
+    /**
+     * A list attribute the row is inventing, every word of it written in both
+     * languages unless a case says otherwise.
+     */
+    const frequencyRow = (overrides: Record<string, unknown> = {}) => ({
+      variable: CREATE_NEW_ATTRIBUTE,
+      _newVariableName: 'frequency',
+      _component: 'RadioGroup',
+      prompt: translated('How often?', '¿Con qué frecuencia?'),
+      hint: translated('Pick one.', 'Elige una.'),
+      _options: [
+        { label: translated('Daily', 'Diario'), value: 'daily' },
+        { label: translated('Weekly', 'Semanal'), value: 'weekly' },
+      ],
+      ...overrides,
+    });
+
+    /** A scale attribute the row is inventing, written in both languages. */
+    const closenessRow = (parameters: Record<string, unknown> = {}) => ({
+      variable: CREATE_NEW_ATTRIBUTE,
+      _newVariableName: 'closeness',
+      _component: 'VisualAnalogScale',
+      prompt: translated('How close are you?', '¿Qué tan cerca están?'),
+      _parameters: {
+        minLabel: translated('Not close', 'Nada cerca'),
+        maxLabel: translated('Very close', 'Muy cerca'),
+        ...parameters,
+      },
+    });
+
+    const languageMenu = () =>
+      screen.getByRole('button', { name: /Editing language/ });
+
+    async function chooseLanguage(name: RegExp) {
+      const user = userEvent.setup();
+      await user.click(languageMenu());
+      await user.click(await screen.findByRole('menuitemradio', { name }));
+    }
+
+    /** The languages the open menu tags "Missing", as their language tags. */
+    async function languagesMarkedMissing() {
+      const user = userEvent.setup();
+      await user.click(languageMenu());
+      const items = await screen.findAllByRole('menuitemradio');
+      const marked = items
+        .filter((item) => within(item).queryByText('Missing') !== null)
+        .map((item) => item.querySelector('[lang]')?.getAttribute('lang'));
+      await user.keyboard('{Escape}');
+      return marked;
+    }
+
+    it('draws no language menu for a protocol written in one language', () => {
+      renderPreview({ variable: 'age', prompt: en('How old are you?') });
+
+      expect(
+        screen.queryByRole('button', { name: /Editing language/ }),
+      ).not.toBeInTheDocument();
+    });
+
+    it('offers the protocol’s languages in the pane’s own region', () => {
+      const preview = renderPreview(
+        { variable: 'age', prompt: translated('How old?', '¿Qué edad?') },
+        { localization: BILINGUAL },
+      );
+
+      expect(
+        within(preview).getByRole('button', { name: /Editing language/ }),
+      ).toBeVisible();
+    });
+
+    it('captions the field in the language chosen from the preview', async () => {
+      renderPreview(
+        {
+          variable: 'age',
+          prompt: translated('How old are you?', '¿Cuántos años tienes?'),
+        },
+        { localization: BILINGUAL },
+      );
+      expect(
+        screen.getByRole('spinbutton', { name: 'How old are you?' }),
+      ).toBeVisible();
+
+      await chooseLanguage(/^español/i);
+
+      expect(
+        screen.getByRole('spinbutton', { name: '¿Cuántos años tienes?' }),
+      ).toBeVisible();
+      expect(
+        screen.getByText('¿Cuántos años tienes?').closest('[lang]'),
+      ).toHaveAttribute('lang', 'es');
+    });
+
+    it('shows a participant’s fallback text, in the fallback’s language, where a translation is missing', async () => {
+      // The fallback is Spanish and the pane's own language is English, so the
+      // language the text is tagged with can only have come from the fallback.
+      renderPreview(
+        { variable: 'age', prompt: { es: '¿Cuántos años tienes?' } },
+        { localization: { defaultLocale: 'es', locales: ['es', 'en'] } },
+      );
+
+      await chooseLanguage(/^english/i);
+
+      expect(languageMenu()).toHaveTextContent('English');
+      expect(
+        screen.getByRole('spinbutton', { name: '¿Cuántos años tienes?' }),
+      ).toBeVisible();
+      expect(
+        screen.getByText('¿Cuántos años tienes?').closest('[lang]'),
+      ).toHaveAttribute('lang', 'es');
+    });
+
+    it('shows each answer’s label in the chosen language', async () => {
+      renderPreview(frequencyRow(), { localization: BILINGUAL });
+      expect(screen.getByText('Daily')).toBeVisible();
+
+      await chooseLanguage(/^español/i);
+
+      expect(screen.getByText('Diario')).toBeVisible();
+      expect(screen.queryByText('Daily')).not.toBeInTheDocument();
+    });
+
+    it('moves every localized field to the language chosen from the preview', async () => {
+      renderPreview(
+        { variable: 'age', prompt: translated('How old?', '¿Qué edad?') },
+        {
+          localization: BILINGUAL,
+          fields: <EditingLanguageProbe />,
+        },
+      );
+      expect(screen.getByTestId('editing-language')).toHaveTextContent('en');
+
+      await chooseLanguage(/^español/i);
+
+      expect(screen.getByTestId('editing-language')).toHaveTextContent('es');
+    });
+
+    it.each([
+      ['every word is written in both languages', frequencyRow(), []],
+      [
+        'the caption has no Spanish',
+        frequencyRow({ prompt: en('How often?') }),
+        ['es'],
+      ],
+      [
+        'the hint has no Spanish',
+        frequencyRow({ hint: en('Pick one.') }),
+        ['es'],
+      ],
+      [
+        'one answer’s label has no Spanish',
+        frequencyRow({
+          _options: [
+            { label: translated('Daily', 'Diario'), value: 'daily' },
+            { label: en('Weekly'), value: 'weekly' },
+          ],
+        }),
+        ['es'],
+      ],
+      [
+        'only the Spanish is written',
+        frequencyRow({
+          prompt: { es: '¿Con qué frecuencia?' },
+          hint: { es: 'Elige una.' },
+          _options: [{ label: { es: 'Diario' }, value: 'daily' }],
+        }),
+        ['en'],
+      ],
+      [
+        'every word of a scale is written in both languages',
+        closenessRow(),
+        [],
+      ],
+      [
+        'a scale’s end label has no Spanish',
+        closenessRow({ maxLabel: en('Very close') }),
+        ['es'],
+      ],
+    ])(
+      'tags the languages that lack a translation when %s',
+      async (_case, row, expected) => {
+        renderPreview(row, { localization: BILINGUAL });
+
+        expect(await languagesMarkedMissing()).toEqual(expected);
+        if (expected.length === 0) {
+          expect(screen.queryByText(/translations? missing/)).toBeNull();
+        } else {
+          expect(screen.getByText('1 translation missing')).toBeVisible();
+        }
+      },
+    );
+
+    it('does not count a hint nobody has written as a missing translation', async () => {
+      const { hint: _hint, ...withoutHint } = frequencyRow();
+      renderPreview(withoutHint, { localization: BILINGUAL });
+
+      expect(await languagesMarkedMissing()).toEqual([]);
+    });
+
+    it('does not count an answer with no label yet, which the preview does not show', async () => {
+      renderPreview(
+        frequencyRow({
+          _options: [
+            { label: translated('Daily', 'Diario'), value: 'daily' },
+            { value: 'weekly' },
+          ],
+        }),
+        { localization: BILINGUAL },
+      );
+
+      expect(await languagesMarkedMissing()).toEqual([]);
+    });
+
+    it('does not count the stand-in for a question nobody has written', async () => {
+      renderPreview({ variable: 'age' }, { localization: BILINGUAL });
+
+      expect(await languagesMarkedMissing()).toEqual([]);
+    });
+  });
+
+  it('offers nothing to answer before the protocol’s languages are known', () => {
+    render(
+      <Form onSubmit={() => ({ success: true as const })}>
+        <FieldPreviewPane
+          subject={PERSON}
+          item={{ variable: 'age', prompt: en('How old are you?') }}
+        />
+      </Form>,
+    );
+
+    expect(screen.getByText(EMPTY_STATE)).toBeVisible();
+    expect(screen.queryByRole('spinbutton')).not.toBeInTheDocument();
   });
 
   it('previews nothing at all when the section cannot say whose codebook it collects into', () => {

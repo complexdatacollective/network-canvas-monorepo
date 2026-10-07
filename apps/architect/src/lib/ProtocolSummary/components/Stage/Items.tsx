@@ -1,10 +1,11 @@
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
-import Markdown from '~/components/Markdown';
+import type { Item } from '@codaco/protocol-validation';
 import { summaryMessages } from '~/lib/ProtocolSummary/summaryMessages';
 
 import Asset from '../Asset';
 import MiniTable from '../MiniTable';
+import { SummaryMarkdown } from '../SummaryText';
 import SectionFrame from './SectionFrame';
 const messages = defineMessages({
   items: {
@@ -16,12 +17,7 @@ const messages = defineMessages({
 });
 
 type ItemsProps = {
-  items?: Array<{
-    id?: string;
-    type?: string;
-    content?: string;
-    size?: string;
-  }> | null;
+  items?: Item[] | null;
 };
 
 const Items = ({ items = null }: ItemsProps) => {
@@ -32,40 +28,29 @@ const Items = ({ items = null }: ItemsProps) => {
 
   return (
     <SectionFrame title={intl.formatMessage(messages.items)}>
-      {items.map(({ type, content, size, id }) => {
-        switch (type) {
-          case 'asset':
-            return (
-              <div key={id}>
-                <Asset id={content ?? ''} size={size ?? ''} />
-              </div>
-            );
-          default:
-            return (
-              <div key={id}>
-                <MiniTable
-                  rotated
-                  rows={[
-                    ...(type === 'text'
-                      ? []
-                      : [
-                          [intl.formatMessage(summaryMessages.blockSize), size],
-                        ]),
-                    [
-                      intl.formatMessage(summaryMessages.type),
-                      intl.formatMessage(summaryMessages.text),
-                    ],
-                    // eslint-disable-next-line jsx-a11y/media-has-caption
-                    [
-                      intl.formatMessage(summaryMessages.content),
-                      <Markdown key="content" label={content ?? ''} />,
-                    ],
-                  ]}
-                />
-              </div>
-            );
-        }
-      })}
+      {items.map((item) =>
+        item.type === 'asset' ? (
+          <div key={item.id}>
+            <Asset id={item.content} size={item.size ?? ''} />
+          </div>
+        ) : (
+          <div key={item.id}>
+            <MiniTable
+              rotated
+              rows={[
+                [
+                  intl.formatMessage(summaryMessages.type),
+                  intl.formatMessage(summaryMessages.text),
+                ],
+                [
+                  intl.formatMessage(summaryMessages.content),
+                  <SummaryMarkdown key="content" value={item.content} />,
+                ],
+              ]}
+            />
+          </div>
+        ),
+      )}
     </SectionFrame>
   );
 };

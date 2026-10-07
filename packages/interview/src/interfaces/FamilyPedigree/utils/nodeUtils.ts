@@ -1,7 +1,11 @@
 import { createSelector } from '@reduxjs/toolkit';
 import { invariant } from 'es-toolkit';
 
-import type { Codebook, FormField } from '@codaco/protocol-validation';
+import type {
+  Codebook,
+  FormField,
+  LocalizedString,
+} from '@codaco/protocol-validation';
 
 import { getCurrentStage } from '../../../selectors/session';
 import { getCodebook } from '../../../store/modules/protocol';
@@ -9,7 +13,7 @@ import type { RootState } from '../../../store/store';
 
 type ResolvedNodeFormField = {
   variableId: string;
-  prompt: string;
+  prompt: LocalizedString;
   component: string;
   type: string;
   options: unknown;

@@ -74,6 +74,7 @@
   "protocolValidation.migrationNotes.schema9.attributeNames": "Los nombres de atributo ahora pueden usar letras de cualquier idioma, además de espacios y signos de puntuación. Los nombres de atributo existentes no cambian.",
   "protocolValidation.migrationNotes.schema9.contradictoryPassphraseRules": "Si una etapa de anonimización exigía una longitud mínima de la frase de contraseña mayor que su longitud máxima, ningún participante podía elegir una frase de contraseña, así que se eliminan ambas longitudes y se aplica la longitud mínima predeterminada.",
   "protocolValidation.migrationNotes.schema9.encryptedAttributes": "Los atributos cifrados ya no son experimentales: la interfaz de anonimización está siempre disponible y un atributo marcado como cifrado siempre se cifra. Si este protocolo marcaba atributos como cifrados sin activar la función experimental «Atributos cifrados», esos atributos dejan de estar marcados, por lo que se siguen recogiendo sin cifrar.",
+  "protocolValidation.migrationNotes.schema9.unspecifiedLanguage": "El texto que ven los participantes ahora aparece marcado como «Idioma no especificado», porque los protocolos anteriores no registran en qué idioma están escritos. Puedes cambiarlo al idioma en el que está escrito realmente en la página «Idiomas» de Architect.",
   "protocolValidation.rule.additionalAttributes": "Atributos fijos",
   "protocolValidation.rule.component": "Control de entrada",
   "protocolValidation.rule.differentFrom": "Diferente de otro atributo",

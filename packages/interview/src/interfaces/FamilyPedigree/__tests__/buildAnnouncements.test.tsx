@@ -10,6 +10,7 @@ import { InterviewI18nProvider } from '../../../i18n/InterviewI18nProvider';
 import type * as sessionSelectors from '../../../selectors/session';
 import type * as interviewStore from '../../../store/store';
 import type { StageProps } from '../../../types';
+import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
 import { createEncryptionStore } from '../../Anonymisation/__tests__/encryptionFixtures';
 import FamilyPedigree from '../FamilyPedigree';
 import { useFamilyPedigreeStore } from '../FamilyPedigreeContext';
@@ -144,8 +145,8 @@ const props = {
   stage: {
     id: 'pedigree',
     type: 'FamilyPedigree',
-    label: 'Original stage label',
-    censusPrompt: 'Original prompt',
+    label: { en: 'Original stage label' },
+    censusPrompt: { en: 'Original prompt' },
     framing: { mode: 'fixed', value: 'gamete' },
     boundaries: {
       requireGrandparents: 'off',
@@ -179,7 +180,9 @@ describe('FamilyPedigree build announcements', () => {
     const view = (locale: string) => (
       <Provider store={store}>
         <InterviewI18nProvider requestedLocale={locale}>
-          <FamilyPedigree {...props} />
+          <TestProtocolLocalization>
+            <FamilyPedigree {...props} />
+          </TestProtocolLocalization>
         </InterviewI18nProvider>
       </Provider>
     );

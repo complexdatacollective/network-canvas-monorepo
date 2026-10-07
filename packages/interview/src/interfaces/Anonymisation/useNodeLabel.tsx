@@ -11,6 +11,7 @@ import {
 } from '@codaco/shared-consts';
 
 import { runtimeMessages } from '../../i18n/runtimeMessages';
+import { useResolveLocalizedString } from '../../localization/ProtocolLocalizationProvider';
 import { makeGetCodebookForNodeType } from '../../selectors/protocol';
 import { getNodeLabelAttribute } from '../../utils/getNodeLabelAttribute';
 import {
@@ -28,6 +29,10 @@ export function useNodeLabel(node: NcNode | undefined) {
   const intl = useAppIntl();
   const getCodebookForNodeType = useSelector(makeGetCodebookForNodeType);
   const codebook = node ? getCodebookForNodeType(node.type) : undefined;
+  const resolve = useResolveLocalizedString();
+  const typeLabel = codebook ? resolve(codebook.label).text : '';
+  const fallback =
+    typeLabel.trim() === '' ? node?.[entityPrimaryKeyProperty] : typeLabel;
   const scope = useDecryptionScope();
   const { requirePassphrase, encryptionUnavailable } = usePassphrase();
   const reportUnreadable = useReportUnreadable();
@@ -58,7 +63,6 @@ export function useNodeLabel(node: NcNode | undefined) {
   const syncLabel = useMemo(() => {
     if (!node) return undefined;
     if (stored) return undefined;
-    const fallback = codebook?.name ?? node[entityPrimaryKeyProperty];
     if (!labelAttributeId) return fallback;
     const value = node[entityAttributesProperty]?.[labelAttributeId];
     // getNodeLabelAttribute only nominates text/number-valued attributes;
@@ -66,7 +70,7 @@ export function useNodeLabel(node: NcNode | undefined) {
     return typeof value === 'string' || typeof value === 'number'
       ? String(value)
       : fallback;
-  }, [node, stored, codebook, labelAttributeId]);
+  }, [node, stored, fallback, labelAttributeId]);
 
   // Plaintext is read from the key's decryption scope on every render rather
   // than copied into component state, so it disappears from the label the

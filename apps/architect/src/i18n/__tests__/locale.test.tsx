@@ -180,6 +180,7 @@ it('uses the switched researcher locale for a later thunk failure without changi
     setActiveProtocol({
       name: 'Research_Name',
       schemaVersion: 9,
+      localization: { defaultLocale: 'en', locales: ['en'] },
       stages: [],
       codebook: {},
     }),

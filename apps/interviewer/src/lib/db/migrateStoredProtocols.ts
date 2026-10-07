@@ -172,10 +172,11 @@ async function migrateStoredProtocolRow(
   };
   const protocolRow = await encryptProtocol(nextStored);
 
-  // The hash covers a protocol's structure (codebook + stages) only, so a
-  // migration that changed nothing structural — an empty protocol, say — keeps
-  // the row's key. Nothing moves: rewrite the row in place and leave sessions
-  // and assets alone.
+  // The hash covers a protocol's structure only (codebook and stages, and from
+  // schema 9 the localization declaration), so a migration that changed
+  // nothing structural keeps the row's key. Nothing moves: rewrite the row in
+  // place and leave sessions and assets alone. A migration to schema 9 always
+  // moves the key, because it adds the localization declaration.
   if (hash === previousHash) {
     // Guarded like every other commit in this sweep: the async work above
     // left a gap in which another tab may have re-imported (same hash, and —
@@ -199,7 +200,7 @@ async function migrateStoredProtocolRow(
   }
 
   // Two different protocols migrating onto one hash share a structure, but
-  // the hash covers codebook and stages only — the rows can still carry
+  // the hash covers structure only — the rows can still carry
   // different assets (images, API keys). Merging them would
   // resume this row's interviews against the other row's resources, so a
   // cross-row collision is refused: this row, its sessions, and its assets

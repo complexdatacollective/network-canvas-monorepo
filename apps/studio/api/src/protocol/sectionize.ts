@@ -8,14 +8,16 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 /** @public */
 export class SectionizeError extends Error {}
 
-// Branded reference fields make the literal uncastable directly.
+// Nothing asks the researcher for a language yet, so a new protocol declares
+// the undetermined one, as a protocol migrated from schema 8 does.
 export function emptyProtocol(name: string): CurrentProtocol {
   return {
     name,
     schemaVersion: CURRENT_SCHEMA_VERSION,
+    localization: { defaultLocale: 'und', locales: ['und'] },
     codebook: {},
     stages: [],
-  } as unknown as CurrentProtocol;
+  };
 }
 
 export function sectionizeProtocol(
@@ -26,6 +28,7 @@ export function sectionizeProtocol(
   const settings: SectionDoc = {
     name: protocol.name,
     schemaVersion: protocol.schemaVersion,
+    localization: protocol.localization,
   };
   if (protocol.description !== undefined) {
     settings.description = protocol.description;

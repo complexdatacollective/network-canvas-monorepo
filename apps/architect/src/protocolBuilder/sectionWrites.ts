@@ -157,6 +157,7 @@ function submitSettings(
     name: parsed.data.name,
     schemaVersion: parsed.data.schemaVersion,
     description: parsed.data.description,
+    localization: parsed.data.localization,
     lastModified: parsed.data.lastModified,
   };
   store.dispatch(protocolActionCreators.updateProtocol(settings));

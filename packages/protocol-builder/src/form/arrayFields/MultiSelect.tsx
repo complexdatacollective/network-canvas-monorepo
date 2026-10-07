@@ -21,6 +21,8 @@ import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
 
+import { LocalizedInputField } from '../../fields/LocalizedStringField.tsx';
+import { asLocalizedString } from '../../localization/localizedText.ts';
 import { DEFAULT_ITEM_LABEL } from './arrayMessages.ts';
 import { cellIssues, requiredCell } from './cellRules.ts';
 import { useEditedCells } from './useEditedCells.ts';
@@ -74,7 +76,11 @@ const FrescoInputField = InputField as ComponentType<Record<string, unknown>>;
 
 export type PropertyField = {
   fieldName: string;
-  control?: 'input' | 'select';
+  /**
+   * `localizedInput` is participant-facing text, written in each of the
+   * protocol's languages; `input` is plain text.
+   */
+  control?: 'input' | 'localizedInput' | 'select';
   /**
    * Visible text and accessible name of this column's control — REQUIRED, for
    * the reason `addButtonLabel` below is. It used to default to
@@ -104,12 +110,13 @@ const readRows = (value: unknown): ItemValue[] =>
 /**
  * Judged the way the cells' own `required` judges emptiness (fresco-ui trims
  * strings), so the array and its rows never disagree about which cell is
- * unanswered.
+ * unanswered. A localized cell is empty when it holds no translation at all.
  */
-const isCellEmpty = (cell: unknown) =>
-  cell === undefined ||
-  cell === null ||
-  (typeof cell === 'string' && cell.trim() === '');
+const isCellEmpty = (cell: unknown) => {
+  if (cell === undefined || cell === null) return true;
+  if (typeof cell === 'string') return cell.trim() === '';
+  return typeof cell === 'object' && asLocalizedString(cell) === undefined;
+};
 
 /**
  * A column whose cells can hold an id that no longer names anything.
@@ -297,6 +304,31 @@ function MultiSelectRow({
             const errors = cellIssues(requiredCell(cellValue));
             const showErrors =
               hasEdited(propertyFieldName) && errors.length > 0;
+
+            if (control === 'localizedInput') {
+              return (
+                <div
+                  className={MULTI_SELECT_OPTION_CLASSES}
+                  key={propertyFieldName}
+                >
+                  <UnconnectedField
+                    {...rest}
+                    name={`${rowFieldName}.${propertyFieldName}`}
+                    label={label}
+                    component={LocalizedInputField}
+                    value={asLocalizedString(cellValue)}
+                    onChange={(value) => {
+                      markEdited(propertyFieldName, value, cellValue);
+                      handleChange(propertyIndex, value);
+                    }}
+                    errors={errors}
+                    showErrors={showErrors}
+                    aria-invalid={showErrors}
+                    disabled={interactionDisabled}
+                  />
+                </div>
+              );
+            }
 
             return (
               <div

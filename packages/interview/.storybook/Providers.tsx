@@ -12,6 +12,7 @@ import { TooltipProvider } from '@codaco/fresco-ui/Tooltip';
 
 import { CurrentStepProvider } from '../src/contexts/CurrentStepContext';
 import { ContractProvider } from '../src/contract/context';
+import { TestProtocolLocalization } from '../src/interfaces/__tests__/TestProtocolLocalization';
 
 const noopAssetUrl = (assetId: string) =>
   Promise.resolve(
@@ -39,6 +40,14 @@ const noopFinish = () => Promise.resolve();
  * - DialogProvider: required by stages that pop a confirmation dialog.
  * - TooltipProvider: required by any Tooltip-using component.
  * - Toast.Provider + Toaster: default toast surface.
+ * - TestProtocolLocalization: protocol strings resolve through
+ *   `ProtocolLocalizationProvider`, which atomic stories would otherwise
+ *   lack. It declares an English-only protocol because this decorator
+ *   wraps outside the redux store each story builds, so it cannot read
+ *   that store's protocol. Shell stories get Shell's provider, built from
+ *   the payload protocol; an atomic story whose protocol declares other
+ *   languages wraps itself in TestProtocolLocalization with that
+ *   declaration. Either shadows this one.
  *
  * Interview-specific toasts (validation errors, etc.) are rendered by
  * Shell's own internal Toast.Provider + InterviewToastViewport, so this
@@ -57,7 +66,9 @@ export default function Providers({ children }: { children: ReactNode }) {
                   onRequestAsset={noopAssetUrl}
                   flags={{ isDevelopment: true }}
                 >
-                  <CurrentStepProvider>{children}</CurrentStepProvider>
+                  <TestProtocolLocalization>
+                    <CurrentStepProvider>{children}</CurrentStepProvider>
+                  </TestProtocolLocalization>
                 </ContractProvider>
               </DialogProvider>
             </DndStoreProvider>

@@ -74,6 +74,7 @@
   "protocolValidation.migrationNotes.schema9.attributeNames": "属性名称现在可以使用任何语言的文字，也可以包含空格和标点符号。现有的属性名称不会更改。",
   "protocolValidation.migrationNotes.schema9.contradictoryPassphraseRules": "如果某个匿名化阶段要求的密码短语最小长度大于其最大长度，参与者将无法选择任何密码短语，因此这两个长度都会被移除，并改用默认的最小长度。",
   "protocolValidation.migrationNotes.schema9.encryptedAttributes": "加密属性不再是实验性功能：匿名化界面始终可用，标记为加密的属性始终会被加密。如果此协议在未启用实验性功能“加密属性”的情况下将属性标记为加密，这些属性将不再带有该标记，因此仍会以未加密的方式收集。",
+  "protocolValidation.migrationNotes.schema9.unspecifiedLanguage": "参与者看到的文字现在被标记为“未指定语言”，因为旧版协议没有记录其使用的语言。您可以在 Architect 的“语言”页面中将其更改为实际使用的语言。",
   "protocolValidation.rule.additionalAttributes": "固定属性",
   "protocolValidation.rule.component": "输入控件",
   "protocolValidation.rule.differentFrom": "不同于另一属性",

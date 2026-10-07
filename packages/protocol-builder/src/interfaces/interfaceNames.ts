@@ -58,6 +58,12 @@ export const interfaceNameMessages = defineMessages({
     description:
       'Researcher-facing interface name. Interface for presenting researcher-authored information. Not a protocol-authored stage label.',
   },
+  LanguageChooser: {
+    id: 'protocolBuilder.interface.languageChooser',
+    defaultMessage: 'Language Chooser',
+    description:
+      'Researcher-facing interface name. Interface where the participant chooses which of the protocol languages the rest of the interview is shown in. Not a protocol-authored stage label.',
+  },
   NameGenerator: {
     id: 'protocolBuilder.interface.nameGenerator',
     defaultMessage: 'Name Generator (using forms)',

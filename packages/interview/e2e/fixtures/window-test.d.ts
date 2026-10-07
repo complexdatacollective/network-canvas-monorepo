@@ -1,4 +1,4 @@
-import type { ProtocolPayload, SessionPayload } from '@codaco/interview';
+import type { ProtocolPayload, SessionSnapshot } from '@codaco/interview';
 
 import type { FinishBehavior } from '../host/src/mockCallbacks.js';
 
@@ -13,12 +13,12 @@ declare global {
         protocolId: string,
         participantId?: string,
         seed?: {
-          network?: SessionPayload['network'];
-          stageMetadata?: SessionPayload['stageMetadata'];
+          network?: SessionSnapshot['network'];
+          stageMetadata?: SessionSnapshot['stageMetadata'];
         },
       ): string;
-      getNetworkState(): SessionPayload['network'] | undefined;
-      getStoredSession(interviewId: string): SessionPayload | undefined;
+      getNetworkState(): SessionSnapshot['network'] | undefined;
+      getStoredSession(interviewId: string): SessionSnapshot | undefined;
       remountInterview(interviewId: string): void;
       reset(): void;
       setFinishBehavior(behavior: FinishBehavior): void;
@@ -26,7 +26,7 @@ declare global {
       rejectManualFinish(message: string): void;
       getFinishCalls(): { interviewId: string; aborted: boolean }[];
       setAllowStageNavigation(enabled: boolean): void;
-      setRequestedLocale(locale: string | readonly string[] | null): void;
+      setRequestedLocales(locales: readonly string[]): void;
     };
     __e2eMap?: {
       getSource(id: string): unknown;

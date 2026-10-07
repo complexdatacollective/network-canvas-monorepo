@@ -23,6 +23,7 @@ import { ContractProvider } from '../../../contract/context';
 import { InterviewI18nProvider } from '../../../i18n/InterviewI18nProvider';
 import { interviewToastManager } from '../../../toast/interviewToastManager';
 import type { StageProps } from '../../../types';
+import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
 import {
   createEncryptionStore,
   encryptionFor,
@@ -48,9 +49,10 @@ beforeAll(() => {
 });
 
 const variables: Record<string, Variable> = {
-  name: { name: 'name', type: 'text', component: 'Text' },
+  name: { name: 'name', label: 'name', type: 'text', component: 'Text' },
   neighbourhood: {
     name: 'Neighbourhood',
+    label: 'Neighbourhood',
     type: 'text',
     component: 'Text',
     encrypted: true,
@@ -60,7 +62,7 @@ const variables: Record<string, Variable> = {
 const stage: StageProps<'Geospatial'>['stage'] = {
   id: 'geospatial-stage',
   type: 'Geospatial',
-  label: 'Where people live',
+  label: { en: 'Where people live' },
   subject: { entity: 'node', type: 'person' },
   mapOptions: {
     tokenAssetId: 'mapbox-token',
@@ -74,7 +76,7 @@ const stage: StageProps<'Geospatial'>['stage'] = {
   prompts: [
     {
       id: 'prompt-1',
-      text: 'Where does this person live?',
+      text: { en: 'Where does this person live?' },
       variable: asEntityAttributeReference('neighbourhood'),
     },
   ],
@@ -102,17 +104,19 @@ async function renderGeospatial({ unlocked = false } = {}) {
       flags={{ isE2E: true }}
     >
       <Provider store={store}>
-        <InterviewI18nProvider requestedLocale="en">
-          <CurrentStepProvider currentStep={0} onStepChange={vi.fn()}>
-            <GeospatialInterface
-              stage={stage}
-              getNavigationHelpers={() => ({
-                moveForward: vi.fn(),
-                moveBackward: vi.fn(),
-              })}
-            />
-          </CurrentStepProvider>
-        </InterviewI18nProvider>
+        <TestProtocolLocalization>
+          <InterviewI18nProvider requestedLocale="en">
+            <CurrentStepProvider currentStep={0} onStepChange={vi.fn()}>
+              <GeospatialInterface
+                stage={stage}
+                getNavigationHelpers={() => ({
+                  moveForward: vi.fn(),
+                  moveBackward: vi.fn(),
+                })}
+              />
+            </CurrentStepProvider>
+          </InterviewI18nProvider>
+        </TestProtocolLocalization>
       </Provider>
     </ContractProvider>,
   );

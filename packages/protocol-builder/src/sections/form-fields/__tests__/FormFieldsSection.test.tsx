@@ -57,6 +57,9 @@ vi.mock('../../fields/RichTextField.tsx', () => ({
   ),
 }));
 
+/** Copy in the fixture protocol's only language, as schema 9 holds it. */
+const en = (text: string) => ({ 'en-US': text });
+
 /**
  * A row's open editor: the queries scoped to it, and the element itself.
  *
@@ -187,8 +190,10 @@ const COLLECTS_A_POSITION = {
   type: 'AlterForm',
   fields: {
     ...loadFixtureStage('alter-form-1').fields,
-    label: 'Where everyone sits',
-    form: { fields: [{ variable: 'layout', prompt: 'Where do they sit?' }] },
+    label: en('Where everyone sits'),
+    form: {
+      fields: [{ variable: 'layout', prompt: en('Where do they sit?') }],
+    },
   },
 } as const;
 
@@ -257,12 +262,12 @@ describe('the fields a form collects', () => {
     const fields = fieldsOf(await harness.submit());
     expect(fields[0]).toEqual({
       variable: 'relationship_to_ego',
-      prompt: 'How do you know this person?',
+      prompt: en('How do you know this person?'),
     });
     // The field the researcher did not touch is still exactly as it was.
     expect(fields[1]).toEqual({
       variable: 'flagged',
-      prompt: 'Does this person have this attribute?',
+      prompt: en('Does this person have this attribute?'),
     });
   });
 
@@ -288,7 +293,7 @@ describe('the fields a form collects', () => {
     expect(fieldsOf(await harness.submit()).at(-1)).toEqual({
       id: expect.any(String) as unknown as string,
       variable: 'age',
-      prompt: 'How old are they?',
+      prompt: en('How old are they?'),
     });
   });
 
@@ -330,15 +335,15 @@ describe('the fields a form collects', () => {
         id: 'repeats-an-attribute',
         type: 'AlterForm',
         fields: {
-          label: 'Alter form',
+          label: en('Alter form'),
           subject: { entity: 'node', type: 'person' },
           form: {
             fields: [
               {
                 variable: 'relationship_to_ego',
-                prompt: 'How do you know them?',
+                prompt: en('How do you know them?'),
               },
-              { variable: 'relationship_to_ego', prompt: 'And how else?' },
+              { variable: 'relationship_to_ego', prompt: en('And how else?') },
             ],
           },
         },
@@ -473,7 +478,7 @@ describe('the fields a form collects', () => {
     await harness.user.type(title, 'Add someone you know');
     const request = await harness.submit();
     expect(request?.stageDocument.form).toMatchObject({
-      title: 'Add someone you know',
+      title: en('Add someone you know'),
     });
   });
 
@@ -501,7 +506,7 @@ describe('the fields a form collects', () => {
     ]);
     expect(fields[1]).toEqual({
       variable: 'relationship_to_ego',
-      prompt: "What is this person's relationship to you?",
+      prompt: en("What is this person's relationship to you?"),
     });
   });
 
@@ -520,17 +525,29 @@ describe('the fields a form collects', () => {
       node: {
         person: {
           name: 'person',
+          label: en('person'),
           color: 'node-color-seq-1',
           icon: 'add-a-person',
           shape: { default: 'circle' },
           variables: {
             relationship_to_ego: {
               name: 'relationship_to_ego',
+              label: 'relationship_to_ego',
               type: 'text',
               component: 'Text',
             },
-            flagged: { name: 'flagged', type: 'boolean', component: 'Boolean' },
-            nickname: { name: 'nickname', type: 'text', component: 'Text' },
+            flagged: {
+              name: 'flagged',
+              label: 'flagged',
+              type: 'boolean',
+              component: 'Boolean',
+            },
+            nickname: {
+              name: 'nickname',
+              label: 'nickname',
+              type: 'text',
+              component: 'Text',
+            },
           },
         },
       },
@@ -548,6 +565,7 @@ describe('the fields a form collects', () => {
     expect(await harness.submit()).not.toBeNull();
     expect(asRecord(personVariables(harness).nickname)).toEqual({
       name: 'nickname',
+      label: 'nickname',
       type: 'text',
       component: 'Text',
     });
@@ -573,7 +591,7 @@ describe('the fields a form collects', () => {
     expect(fieldsOf(await harness.submit()).at(-1)).toEqual({
       id: expect.any(String) as unknown as string,
       variable: created?.[0],
-      prompt: 'What do people call them?',
+      prompt: en('What do people call them?'),
     });
   });
 
@@ -596,7 +614,7 @@ describe('the fields a form collects', () => {
         // researcher could finish yet.
         fields: {
           ...loadFixtureStage('alter-form-1').fields,
-          label: 'New alter form',
+          label: en('New alter form'),
           form: { fields: [] },
         },
       },
@@ -610,7 +628,7 @@ describe('the fields a form collects', () => {
     expect(fieldsOf(await harness.submit()).at(-1)).toEqual({
       id: expect.any(String) as unknown as string,
       variable: created?.[0],
-      prompt: 'What do people call them?',
+      prompt: en('What do people call them?'),
     });
   });
 
@@ -682,7 +700,7 @@ describe('the fields a form collects', () => {
       expect(screen.queryAllByRole('dialog')).toHaveLength(0),
     );
     expect(fieldsOf(await harness.submit())).toEqual([
-      { variable: 'relationship_to_ego', prompt: 'Where do they sit?' },
+      { variable: 'relationship_to_ego', prompt: en('Where do they sit?') },
     ]);
   });
 });
@@ -896,16 +914,16 @@ const STAMPING_NAME_GENERATOR = {
   id: 'stamps-an-attribute-it-also-asks-about',
   type: 'NameGenerator' as const,
   fields: {
-    label: 'Name generator',
+    label: en('Name generator'),
     subject: { entity: 'node', type: 'person' },
     form: {
-      title: 'Add a person',
-      fields: [{ variable: 'name', prompt: "What is this person's name?" }],
+      title: en('Add a person'),
+      fields: [{ variable: 'name', prompt: en("What is this person's name?") }],
     },
     prompts: [
       {
         id: 'name-generator-prompt-1',
-        text: 'Who are the people you know?',
+        text: en('Who are the people you know?'),
         additionalAttributes: [{ variable: 'flagged', value: true }],
       },
     ],
@@ -992,7 +1010,7 @@ const UNSTAMPED_NAME_GENERATOR = {
     prompts: [
       {
         id: 'name-generator-prompt-1',
-        text: 'Who are the people you know?',
+        text: en('Who are the people you know?'),
       },
     ],
   },
@@ -1316,7 +1334,7 @@ describe('a form the stage keeps somewhere other than `form.fields`', () => {
   it('reads and writes the list at `fieldsPath`', async () => {
     const harness = renderStageEditor({
       stage: pedigreeHoldingForm([
-        { variable: 'fm_name', prompt: 'What is their name?' },
+        { variable: 'fm_name', prompt: en('What is their name?') },
       ]),
       sections: familyMemberForm(),
     });
@@ -1340,7 +1358,7 @@ describe('a form the stage keeps somewhere other than `form.fields`', () => {
     // rewritten field went back where the seeded one came from, and nothing was
     // written to `form.fields`.
     expect(pedigreeForm(await harness.submit())).toEqual([
-      { variable: 'fm_name', prompt: 'What do people call them?' },
+      { variable: 'fm_name', prompt: en('What do people call them?') },
     ]);
   });
 
@@ -1372,7 +1390,7 @@ describe('a form the stage keeps somewhere other than `form.fields`', () => {
   it('accepts a form emptied down to nothing when it is optional', async () => {
     const harness = renderStageEditor({
       stage: pedigreeHoldingForm([
-        { variable: 'fm_name', prompt: 'What is their name?' },
+        { variable: 'fm_name', prompt: en('What is their name?') },
       ]),
       sections: familyMemberForm({ optional: true }),
     });
@@ -1401,7 +1419,7 @@ describe('a form the stage keeps somewhere other than `form.fields`', () => {
 
   it('leaves the rest of the node configuration to the sections that own it', async () => {
     const seeded = pedigreeHoldingForm([
-      { variable: 'fm_name', prompt: 'What is their name?' },
+      { variable: 'fm_name', prompt: en('What is their name?') },
     ]);
     const harness = renderStageEditor({
       stage: seeded,
@@ -1425,14 +1443,14 @@ describe('a form the stage keeps somewhere other than `form.fields`', () => {
       asRecord((await harness.submit())?.stageDocument.nodeConfig),
     ).toEqual({
       ...asRecord(seeded.fields.nodeConfig),
-      form: [{ variable: 'fm_name', prompt: 'What do people call them?' }],
+      form: [{ variable: 'fm_name', prompt: en('What do people call them?') }],
     });
   });
 
   it('asks in the owning interface’s words before switching the form off', async () => {
     const harness = renderStageEditor({
       stage: pedigreeHoldingForm([
-        { variable: 'fm_name', prompt: 'What is their name?' },
+        { variable: 'fm_name', prompt: en('What is their name?') },
       ]),
       sections: familyMemberForm({
         optional: true,
@@ -1578,7 +1596,12 @@ const collectNotesInATextArea = (
         ...personDocument(harness),
         variables: {
           ...personVariables(harness),
-          notes: { name: 'notes', type: 'text', component: 'TextArea' },
+          notes: {
+            name: 'notes',
+            label: 'notes',
+            type: 'text',
+            component: 'TextArea',
+          },
         },
       },
     },
@@ -1624,6 +1647,7 @@ const seedContactSetting = (
           ...personVariables(harness),
           [SEEDED_CONTACT_SETTING]: {
             name: 'contact_setting',
+            label: 'contact_setting',
             type: 'categorical',
             // One of the two controls the schema lets a categorical be
             // collected with. A control belonging to another type — `RadioGroup`
@@ -1632,8 +1656,8 @@ const seedContactSetting = (
             // the person's attributes rather than complain about this one.
             component: 'CheckboxGroup',
             options: [
-              { label: 'At home', value: 'home' },
-              { label: 'At work', value: 'work' },
+              { label: en('At home'), value: 'home' },
+              { label: en('At work'), value: 'work' },
             ],
           },
         },
@@ -1671,6 +1695,7 @@ const seedDateAttribute = (
           ...personVariables(harness),
           [SEEDED_MET_ON]: {
             name: 'met_on',
+            label: 'met_on',
             type: 'datetime',
             component: 'DatePicker',
             ...(parameters === undefined ? {} : { parameters }),
@@ -1732,14 +1757,14 @@ describe('the codebook an attribute a form field collects lives in', () => {
     expect(created[1]).toMatchObject({
       type: 'categorical',
       options: [
-        { label: 'At home', value: 'home' },
-        { label: 'At work', value: 'work' },
+        { label: en('At home'), value: 'home' },
+        { label: en('At work'), value: 'work' },
       ],
     });
 
     expect(fieldsOf(await harness.submit()).at(-1)).toMatchObject({
       variable: created[0],
-      prompt: 'Where do you usually meet?',
+      prompt: en('Where do you usually meet?'),
     });
   });
 
@@ -1791,7 +1816,7 @@ describe('the codebook an attribute a form field collects lives in', () => {
     expect(fieldsOf(await harness.submit()).at(-1)).toEqual({
       id: expect.any(String) as unknown as string,
       variable: variableId,
-      prompt: 'Where do you usually meet?',
+      prompt: en('Where do you usually meet?'),
     });
   });
 
@@ -1823,7 +1848,7 @@ describe('the codebook an attribute a form field collects lives in', () => {
 
     expect(fieldsOf(await harness.submit())[0]).toEqual({
       variable: 'relationship_to_ego',
-      prompt: 'How do you know them?',
+      prompt: en('How do you know them?'),
     });
     expect(harness.host.store.read(person)).toEqual(before);
   });
@@ -1931,6 +1956,7 @@ describe('the codebook an attribute a form field collects lives in', () => {
             ...personVariables(harness),
             [SEEDED_CONTACT_SETTING]: {
               name: 'contact_setting',
+              label: 'contact_setting',
               type: 'categorical',
               //  is one of the two a categorical may be
               // collected with; a control belonging to another kind makes the
@@ -1938,8 +1964,8 @@ describe('the codebook an attribute a form field collects lives in', () => {
               component: 'CheckboxGroup',
               readOnly: true,
               options: [
-                { label: 'At home', value: 'home' },
-                { label: 'At work', value: 'work' },
+                { label: en('At home'), value: 'home' },
+                { label: en('At work'), value: 'work' },
               ],
             },
           },
@@ -2077,9 +2103,9 @@ describe('the codebook an attribute a form field collects lives in', () => {
       ).toHaveLength(3),
     );
     expect(asRecord(personVariables(harness)[variableId]).options).toEqual([
-      { label: 'At home', value: 'home' },
-      { label: 'At work', value: 'work' },
-      { label: 'Somewhere else', value: 'elsewhere' },
+      { label: en('At home'), value: 'home' },
+      { label: en('At work'), value: 'work' },
+      { label: en('Somewhere else'), value: 'elsewhere' },
     ]);
   });
 
@@ -2115,6 +2141,7 @@ describe('the codebook an attribute a form field collects lives in', () => {
                 ...asRecord(current.variables),
                 [COLLABORATORS_ATTRIBUTE]: {
                   name: 'metThrough',
+                  label: 'metThrough',
                   type: 'text',
                   component: 'Text',
                 },
@@ -2372,11 +2399,12 @@ describe('the codebook an attribute a form field collects lives in', () => {
 
     expect(asRecord(personVariables(harness).flagged)).toEqual({
       name: 'flagged',
+      label: 'flagged',
       type: 'boolean',
       component: 'Boolean',
       options: [
-        { label: 'Yes, definitely', value: true },
-        { label: 'No, not at all', value: false },
+        { label: en('Yes, definitely'), value: true },
+        { label: en('No, not at all'), value: false },
       ],
     });
   });
@@ -2414,6 +2442,7 @@ describe('the codebook an attribute a form field collects lives in', () => {
 
     expect(asRecord(personVariables(harness).flagged)).toEqual({
       name: 'flagged',
+      label: 'flagged',
       type: 'boolean',
       component: 'Toggle',
     });
@@ -2455,8 +2484,8 @@ describe('the codebook an attribute a form field collects lives in', () => {
     expect(created).toMatchObject({
       type: 'ordinal',
       options: [
-        { label: 'At home', value: 'home' },
-        { label: 'At work', value: 'work' },
+        { label: en('At home'), value: 'home' },
+        { label: en('At work'), value: 'work' },
       ],
     });
   });
@@ -2870,6 +2899,7 @@ describe('an attribute id that collides with the create option', () => {
             ...personVariables(harness),
             [COLLIDING_ID]: {
               name: 'nickname',
+              label: 'nickname',
               type: 'text',
               component: 'Text',
             },
@@ -2947,7 +2977,7 @@ describe('an attribute id that collides with the create option', () => {
     expect(fieldsOf(await harness.submit()).at(-1)).toEqual({
       id: expect.any(String) as unknown as string,
       variable: COLLIDING_ID,
-      prompt: 'What do people call them?',
+      prompt: en('What do people call them?'),
     });
     expect(Object.keys(personVariables(harness))).toHaveLength(before);
   });
@@ -3025,6 +3055,7 @@ describe('an attribute that stops being collectable under an open row', () => {
             ...personVariables(harness),
             relationship_to_ego: {
               name: 'relationship_to_ego',
+              label: 'relationship_to_ego',
               type: 'layout',
             },
           },
@@ -3066,9 +3097,12 @@ describe('an attribute that stops being collectable under an open row', () => {
     expect(fieldsOf(await harness.submit())).toEqual([
       {
         variable: 'name',
-        prompt: "What is this person's relationship to you?",
+        prompt: en("What is this person's relationship to you?"),
       },
-      { variable: 'flagged', prompt: 'Does this person have this attribute?' },
+      {
+        variable: 'flagged',
+        prompt: en('Does this person have this attribute?'),
+      },
     ]);
   });
 });
@@ -3092,7 +3126,10 @@ describe('a form whose list holds something that is not a field', () => {
       ...loadFixtureStage('alter-form-1').fields,
       form: {
         fields: [
-          { variable: 'relationship_to_ego', prompt: 'How do you know them?' },
+          {
+            variable: 'relationship_to_ego',
+            prompt: en('How do you know them?'),
+          },
           null,
         ],
       },
@@ -3138,7 +3175,7 @@ describe('a form whose list is not a list', () => {
       // too high — which is what a hand-edit or a half-applied migration
       // leaves behind here.
       stage: pedigreeHoldingForm({
-        fields: [{ variable: 'fm_name', prompt: 'What is their name?' }],
+        fields: [{ variable: 'fm_name', prompt: en('What is their name?') }],
       }),
       sections: familyMemberForm({ optional: true }),
     });
@@ -3223,13 +3260,13 @@ describe('a stored field the schema refuses for its own shape', () => {
   /** A field of the fixture's own form, plus a key no form field has. */
   const CARRIES_AN_UNKNOWN_KEY = {
     variable: 'flagged',
-    prompt: 'Does this person have this attribute?',
+    prompt: en('Does this person have this attribute?'),
     notAThing: 'left behind by a half-applied migration',
   };
 
   const RELATIONSHIP = {
     variable: 'relationship_to_ego',
-    prompt: 'What is this person’s relationship to you?',
+    prompt: en('What is this person’s relationship to you?'),
   };
 
   it('names the fault on this section rather than on the stage', async () => {
@@ -3408,8 +3445,8 @@ describe('the answers a boolean a field is inventing offers', () => {
       type: 'boolean',
       component: 'Boolean',
       options: [
-        { label: 'Nearby', value: true },
-        { label: 'Further away', value: false },
+        { label: en('Nearby'), value: true },
+        { label: en('Further away'), value: false },
       ],
     });
   });
@@ -3454,8 +3491,8 @@ describe('the answers a boolean a field is inventing offers', () => {
     });
     expect(created[1]).toMatchObject({
       options: [
-        { label: 'Nearby', value: true },
-        { label: 'Further away', value: false, negative: true },
+        { label: en('Nearby'), value: true },
+        { label: en('Further away'), value: false, negative: true },
       ],
     });
   });
@@ -3609,7 +3646,7 @@ describe('rules for the attribute a field is inventing', () => {
     expect(fieldsOf(await harness.submit()).at(-1)).toEqual({
       id: expect.any(String) as unknown as string,
       variable: created?.[0],
-      prompt: 'What do people call them?',
+      prompt: en('What do people call them?'),
     });
   });
 
@@ -3685,6 +3722,7 @@ describe('rules for the attribute a field is inventing', () => {
     // The row saved, and what it wrote is the rule a number answer does take.
     expect(inventedNickname(harness)?.[1]).toEqual({
       name: 'nickname',
+      label: 'nickname',
       type: 'number',
       component: 'Number',
       validation: { required: true },
@@ -3736,6 +3774,7 @@ describe('rules for the attribute a field is inventing', () => {
 
     expect(inventedNickname(harness)?.[1]).toEqual({
       name: 'nickname',
+      label: 'nickname',
       type: 'text',
       component: 'Text',
       validation: { sameAs: 'composerName' },
@@ -3932,8 +3971,8 @@ describe('rules for the attribute a field is inventing', () => {
       component: 'CheckboxGroup',
       validation: { required: true },
       options: [
-        { label: 'At home', value: 'home' },
-        { label: 'At work', value: 'work' },
+        { label: en('At home'), value: 'home' },
+        { label: en('At work'), value: 'work' },
       ],
     });
   });
@@ -4030,17 +4069,18 @@ describe('inventing an attribute whose control takes settings', () => {
     const created = savedAttribute(harness, 'closeness');
     expect(created?.[1]).toEqual({
       name: 'closeness',
+      label: 'closeness',
       type: 'scalar',
       component: 'VisualAnalogScale',
       parameters: {
-        minLabel: 'Not at all close',
-        maxLabel: 'As close as can be',
+        minLabel: en('Not at all close'),
+        maxLabel: en('As close as can be'),
       },
     });
     expect(fieldsOf(await harness.submit()).at(-1)).toEqual({
       id: expect.any(String) as unknown as string,
       variable: created?.[0],
-      prompt: 'How close are you?',
+      prompt: en('How close are you?'),
     });
   });
 
@@ -4100,6 +4140,7 @@ describe('inventing an attribute whose control takes settings', () => {
 
     expect(savedAttribute(harness, 'last_contact')?.[1]).toEqual({
       name: 'last_contact',
+      label: 'last_contact',
       type: 'datetime',
       component: 'RelativeDatePicker',
       parameters: { before: 30, after: 7 },
@@ -4507,6 +4548,7 @@ describe('the live preview beside a form field’s settings', () => {
             ...personVariables(harness),
             [FOLLOW_UP]: {
               name: 'follow_up',
+              label: 'follow_up',
               type: 'boolean',
               component: 'Boolean',
             },
@@ -4572,7 +4614,7 @@ describe('the live preview beside a form field’s settings', () => {
       expect(screen.queryAllByRole('dialog')).toHaveLength(0),
     );
     expect(fieldsOf(await harness.submit())).not.toContainEqual(
-      expect.objectContaining({ prompt: QUESTION }),
+      expect.objectContaining({ prompt: en(QUESTION) }),
     );
   });
 
@@ -4665,7 +4707,7 @@ describe('the live preview beside a form field’s settings', () => {
     // would not see it.
     const saved = fieldsOf(await harness.submit()).at(-1) ?? {};
     expect(Object.keys(saved).toSorted()).toEqual(['id', 'prompt', 'variable']);
-    expect(saved).toMatchObject({ variable: FOLLOW_UP, prompt: QUESTION });
+    expect(saved).toMatchObject({ variable: FOLLOW_UP, prompt: en(QUESTION) });
   });
 
   /**

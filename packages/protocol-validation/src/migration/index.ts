@@ -50,7 +50,6 @@ import type { z } from 'zod';
 
 import type ProtocolSchemaV7 from '../schemas/7/schema.ts';
 import type ProtocolSchemaV8 from '../schemas/8/schema.ts';
-import type ProtocolSchemaV9 from '../schemas/9/schema.ts';
 import type { SchemaVersion } from '../schemas/index.ts';
 import {
   MigrationNotPossibleError,
@@ -58,11 +57,13 @@ import {
   VersionMismatchError,
 } from './errors.ts';
 
-// Map schema versions to their inferred types
+// Map schema versions to their inferred types. Versions 7 and 8 have loose
+// stub schemas. A complete schema is left out: a step builds its output
+// without parsing it, so that output is typed by its version number alone and
+// `migrateProtocol` validates it against the full schema.
 type ProtocolTypeMap = {
   7: z.infer<typeof ProtocolSchemaV7>;
   8: z.infer<typeof ProtocolSchemaV8>;
-  9: z.infer<typeof ProtocolSchemaV9>;
 };
 
 export type ProtocolDocument<V extends SchemaVersion> =

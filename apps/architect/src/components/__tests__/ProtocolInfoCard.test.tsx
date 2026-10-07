@@ -42,6 +42,7 @@ const protocol: CurrentProtocol = {
   name: 'Original protocol',
   description: 'Original description',
   schemaVersion: 9,
+  localization: { defaultLocale: 'en', locales: ['en'] },
   stages: [],
   codebook: { node: {}, edge: {}, ego: {} },
   assetManifest: {},

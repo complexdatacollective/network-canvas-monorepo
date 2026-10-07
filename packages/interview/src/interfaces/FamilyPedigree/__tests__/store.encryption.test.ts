@@ -42,24 +42,34 @@ const config: VariableConfig = {
 const nodeVariables: Record<string, Variable> = {
   [config.nodeLabelVariable]: {
     name: 'label',
+    label: 'label',
     type: 'text',
     component: 'Text',
     encrypted: true,
   },
-  [config.relationshipVariable]: { name: 'relationship', type: 'text' },
-  [config.egoVariable]: { name: 'isEgo', type: 'boolean' },
+  [config.relationshipVariable]: {
+    name: 'relationship',
+    label: 'relationship',
+    type: 'text',
+  },
+  [config.egoVariable]: { name: 'isEgo', label: 'isEgo', type: 'boolean' },
 };
 
 const edgeVariables: Record<string, Variable> = {
   [config.relationshipTypeVariable]: {
     name: 'relationshipType',
+    label: 'relationshipType',
     type: 'categorical',
     options: [
-      { label: 'Biological', value: 'biological' },
-      { label: 'Social', value: 'social' },
+      { label: { en: 'Biological' }, value: 'biological' },
+      { label: { en: 'Social' }, value: 'social' },
     ],
   },
-  [config.isActiveVariable]: { name: 'isActive', type: 'boolean' },
+  [config.isActiveVariable]: {
+    name: 'isActive',
+    label: 'isActive',
+    type: 'boolean',
+  },
 };
 
 const encryptedVariableIds: ReadonlySet<string> = new Set([
@@ -69,8 +79,8 @@ const encryptedVariableIds: ReadonlySet<string> = new Set([
 const stage: StageProps<'FamilyPedigree'>['stage'] = {
   id: 'pedigree',
   type: 'FamilyPedigree',
-  label: 'Family Pedigree',
-  censusPrompt: 'Build your pedigree.',
+  label: { en: 'Family Pedigree' },
+  censusPrompt: { en: 'Build your pedigree.' },
   framing: { mode: 'fixed', value: 'gendered' },
   boundaries: {
     requireGrandparents: 'off',
@@ -111,6 +121,7 @@ async function makeReduxStore({ locked = false } = {}): Promise<ReduxStore> {
     edgeTypes: {
       [config.edgeType]: {
         name: 'Family',
+        label: { en: 'Family' },
         color: 'edge-color-seq-1',
         variables: edgeVariables,
       },

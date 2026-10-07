@@ -13,6 +13,7 @@ import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import { PortalContainerProvider } from '@codaco/fresco-ui/PortalContainer';
 import { Toaster } from '@codaco/fresco-ui/Toast';
 
+import { ArchitectLanguageNaming } from './components/Localization/ArchitectLanguageNaming';
 import AppView from './components/ViewManager/views/App';
 import { restoreActiveProtocolAfterStoreRehydration } from './ducks/restoreActiveProtocol';
 import { store, storeRehydrated } from './ducks/store';
@@ -108,9 +109,11 @@ async function startApp(): Promise<void> {
                 dialog that happened to be open. */}
             <Toast.Provider>
               <DialogProvider>
-                <div className="root h-full">
-                  <AppView />
-                </div>
+                <ArchitectLanguageNaming>
+                  <div className="root h-full">
+                    <AppView />
+                  </div>
+                </ArchitectLanguageNaming>
               </DialogProvider>
               <Toaster />
             </Toast.Provider>

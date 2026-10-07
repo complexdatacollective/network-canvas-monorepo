@@ -3,6 +3,7 @@
 import { LayoutGroup } from 'motion/react';
 import { createElement, type ReactNode, useId } from 'react';
 
+import type { PresentationalText } from '../../PresentationalText';
 import type { ValidationContext } from '../store/types';
 import type { ValidationPropKey } from '../validation/functions';
 import { BaseField } from './BaseField';
@@ -23,13 +24,13 @@ type ManagedKeys = 'id' | 'aria-required' | 'aria-describedby';
  */
 type FieldOwnProps<C extends ValidFieldComponent> = {
   name: string;
-  label: ReactNode;
+  label: ReactNode | PresentationalText;
   /**
    * Visually hide the label while keeping it as the control's accessible name.
    * Use when a surrounding heading already names the field.
    */
   labelHidden?: boolean;
-  hint?: ReactNode;
+  hint?: ReactNode | PresentationalText;
   inline?: boolean;
   initialValue?: ExtractValue<C> | undefined;
   showValidationHints?: boolean;

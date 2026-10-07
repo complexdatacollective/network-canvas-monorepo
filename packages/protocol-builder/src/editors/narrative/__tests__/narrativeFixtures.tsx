@@ -47,7 +47,7 @@ export const narrativeHolding = (preset: Record<string, unknown>) => ({
   stage: {
     type: 'Narrative' as const,
     fields: {
-      label: 'Narrative',
+      label: { 'en-US': 'Narrative' },
       subject: { entity: 'node', type: 'person' },
       background: { concentricCircles: 4, skewedTowardCenter: true },
       behaviours: { freeDraw: true, allowRepositioning: true },

@@ -9,6 +9,7 @@ const PROTOCOL_ROUTES = [
   '/protocol',
   '/protocol/codebook',
   '/protocol/assets',
+  '/protocol/localization',
   '/protocol/summary',
   '/protocol/stage/new?type=Information',
 ];

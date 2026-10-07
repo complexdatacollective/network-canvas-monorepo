@@ -12,6 +12,7 @@ import {
 import { AnalyticsContext } from '../../../analytics/AnalyticsContext';
 import type { Tracker } from '../../../analytics/tracker';
 import { setShowPassphrasePrompter } from '../../../store/modules/ui';
+import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
 import { useDecryptedNodes } from '../useDecryptedNodes';
 import { useNodeLabel } from '../useNodeLabel';
 import { usePassphrase } from '../usePassphrase';
@@ -40,7 +41,9 @@ function renderInInterview<T>(store: EncryptionStore, hook: () => T) {
   const tracker: Tracker = { track: vi.fn(), captureException };
   const wrapper = ({ children }: { children: ReactNode }) => (
     <AnalyticsContext.Provider value={tracker}>
-      <Provider store={store}>{children}</Provider>
+      <Provider store={store}>
+        <TestProtocolLocalization>{children}</TestProtocolLocalization>
+      </Provider>
     </AnalyticsContext.Provider>
   );
   return { ...renderHook(hook, { wrapper }), captureException };

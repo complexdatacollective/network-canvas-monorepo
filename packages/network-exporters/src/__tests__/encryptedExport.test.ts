@@ -30,24 +30,40 @@ const options: ExportOptions = {
 };
 
 const codebook: Codebook = {
-  ego: { variables: { 'e-note': { name: 'note', type: 'text' } } },
+  ego: {
+    variables: { 'e-note': { name: 'note', label: 'Note', type: 'text' } },
+  },
   node: {
     person: {
       name: 'Person',
+      label: { en: 'Person' },
       color: 'node-color-seq-1',
       shape: { default: 'circle' },
       variables: {
-        'p-name': { name: 'name', type: 'text', encrypted: true },
-        'p-nickname': { name: 'nickname', type: 'text', encrypted: true },
-        'p-city': { name: 'city', type: 'text' },
+        'p-name': {
+          name: 'name',
+          label: 'Name',
+          type: 'text',
+          encrypted: true,
+        },
+        'p-nickname': {
+          name: 'nickname',
+          label: 'Nickname',
+          type: 'text',
+          encrypted: true,
+        },
+        'p-city': { name: 'city', label: 'City', type: 'text' },
       },
     },
   },
   edge: {
     knows: {
       name: 'Knows',
+      label: { en: 'Knows' },
       color: 'edge-color-seq-1',
-      variables: { 'k-since': { name: 'since', type: 'text' } },
+      variables: {
+        'k-since': { name: 'since', label: 'Since', type: 'text' },
+      },
     },
   },
 };
@@ -107,6 +123,7 @@ const interview = (
   startTime: new Date('2025-01-01'),
   finishTime: new Date('2025-01-02'),
   protocolHash: 'protocol-1',
+  locale: null,
   network: {
     ...(header ? { encryption: header } : {}),
     nodes: [

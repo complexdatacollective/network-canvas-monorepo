@@ -28,6 +28,7 @@ import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import { InterviewI18nProvider } from '../../../i18n/InterviewI18nProvider';
 import { interviewToastManager } from '../../../toast/interviewToastManager';
 import type { StageProps } from '../../../types';
+import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
 import {
   createEncryptionStore,
   encryptionFor,
@@ -88,15 +89,17 @@ const PROMPT_ID = 'prompt-1';
 const OTHER_BIN_INDEX = 1;
 
 const variables: Record<string, Variable> = {
-  name: { name: 'name', type: 'text', component: 'Text' },
+  name: { name: 'name', label: 'name', type: 'text', component: 'Text' },
   category: {
     name: 'Category',
+    label: 'Category',
     type: 'categorical',
     component: 'CheckboxGroup',
-    options: [{ label: 'Family', value: 1 }],
+    options: [{ label: { en: 'Family' }, value: 1 }],
   },
   otherReason: {
     name: 'Other reason',
+    label: 'Other reason',
     type: 'text',
     component: 'Text',
     encrypted: true,
@@ -106,16 +109,16 @@ const variables: Record<string, Variable> = {
 const stage: StageProps<'CategoricalBin'>['stage'] = {
   id: STAGE_ID,
   type: 'CategoricalBin',
-  label: 'Categorise people',
+  label: { en: 'Categorise people' },
   subject: { entity: 'node', type: 'person' },
   prompts: [
     {
       id: PROMPT_ID,
-      text: 'Which category?',
+      text: { en: 'Which category?' },
       variable: asEntityAttributeReference('category'),
       otherVariable: asEntityAttributeReference('otherReason'),
-      otherVariablePrompt: 'Please specify',
-      otherOptionLabel: 'Other',
+      otherVariablePrompt: { en: 'Please specify' },
+      otherOptionLabel: { en: 'Other' },
     },
   ],
 };
@@ -160,24 +163,26 @@ async function renderCategoricalBin({
   render(
     <InterviewI18nProvider requestedLocale="en">
       <Provider store={store}>
-        <CurrentStepProvider currentStep={0} onStepChange={vi.fn()}>
-          <DialogProvider>
-            <DndStoreProvider>
-              <CaptureDndStore
-                onStore={(captured) => {
-                  dndStore = captured;
-                }}
-              />
-              <CategoricalBin
-                stage={stage}
-                getNavigationHelpers={() => ({
-                  moveForward: () => {},
-                  moveBackward: () => {},
-                })}
-              />
-            </DndStoreProvider>
-          </DialogProvider>
-        </CurrentStepProvider>
+        <TestProtocolLocalization>
+          <CurrentStepProvider currentStep={0} onStepChange={vi.fn()}>
+            <DialogProvider>
+              <DndStoreProvider>
+                <CaptureDndStore
+                  onStore={(captured) => {
+                    dndStore = captured;
+                  }}
+                />
+                <CategoricalBin
+                  stage={stage}
+                  getNavigationHelpers={() => ({
+                    moveForward: () => {},
+                    moveBackward: () => {},
+                  })}
+                />
+              </DndStoreProvider>
+            </DialogProvider>
+          </CurrentStepProvider>
+        </TestProtocolLocalization>
       </Provider>
     </InterviewI18nProvider>,
   );
@@ -262,6 +267,7 @@ describe('CategoricalBin validating an encrypted "other" answer', () => {
       ...variables,
       otherReason: {
         name: 'Other reason',
+        label: 'Other reason',
         type: 'text',
         component: 'Text',
         encrypted: true,

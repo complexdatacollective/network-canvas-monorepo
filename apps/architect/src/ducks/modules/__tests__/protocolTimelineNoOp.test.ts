@@ -37,27 +37,28 @@ const makeStore = () =>
 const VARIABLE_ID = 'variable-1';
 const NODE_TYPE_ID = 'node-type-1';
 
-const protocol = (name = 'Kinship Study'): CurrentProtocol =>
-  ({
-    name,
-    schemaVersion: 9,
-    stages: [],
-    assetManifest: {},
-    codebook: {
-      node: {
-        [NODE_TYPE_ID]: {
-          name: 'Person',
-          color: 'node-color-seq-1',
-          shape: { default: 'circle' },
-          variables: {
-            [VARIABLE_ID]: { name: 'Age', type: 'number' },
-          },
+const protocol = (name = 'Kinship Study'): CurrentProtocol => ({
+  name,
+  schemaVersion: 9,
+  localization: { defaultLocale: 'en', locales: ['en'] },
+  stages: [],
+  assetManifest: {},
+  codebook: {
+    node: {
+      [NODE_TYPE_ID]: {
+        name: 'Person',
+        label: { en: 'Person' },
+        color: 'node-color-seq-1',
+        shape: { default: 'circle' },
+        variables: {
+          [VARIABLE_ID]: { name: 'Age', label: 'Age', type: 'number' },
         },
       },
-      edge: {},
-      ego: {},
     },
-  }) as CurrentProtocol;
+    edge: {},
+    ego: {},
+  },
+});
 
 const history = (store: ReturnType<typeof makeStore>) => {
   const { past, future, timeline, futureTimeline } = store.getState()
@@ -132,7 +133,7 @@ describe('operations that change nothing and the protocol timeline', () => {
     store.dispatch(
       codebookActions.updateVariable({
         variable: VARIABLE_ID,
-        configuration: { name: 'Age', type: 'number' },
+        configuration: { name: 'Age', label: 'Age', type: 'number' },
       }),
     );
 
@@ -146,7 +147,11 @@ describe('operations that change nothing and the protocol timeline', () => {
     store.dispatch(
       codebookActions.updateVariable({
         variable: VARIABLE_ID,
-        configuration: { name: 'Age in years', type: 'number' },
+        configuration: {
+          name: 'Age in years',
+          label: 'Age in years',
+          type: 'number',
+        },
       }),
     );
 
@@ -195,12 +200,21 @@ describe('operations that change nothing and the protocol timeline', () => {
  * `protocolValidationListener` do.
  */
 describe('clearing the active protocol and undo history', () => {
-  const seed = (): CurrentProtocol =>
-    ({
-      name: 'Pilot study',
-      stages: [{ id: 's1', label: 'Sensitive prompt text' }],
-      codebook: {},
-    }) as unknown as CurrentProtocol;
+  const seed = (): CurrentProtocol => ({
+    name: 'Pilot study',
+    schemaVersion: 9,
+    localization: { defaultLocale: 'en', locales: ['en'] },
+    stages: [
+      {
+        id: 's1',
+        type: 'Information',
+        label: { en: 'Sensitive prompt text' },
+        title: { en: 'Sensitive prompt text' },
+        items: [],
+      },
+    ],
+    codebook: {},
+  });
 
   it('retains the cleared protocol in past when the timeline is not reset', () => {
     const store = makeStore();

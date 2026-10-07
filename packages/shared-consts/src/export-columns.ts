@@ -6,6 +6,7 @@ import {
   egoProperty,
   graphMLLabelKey,
   ncCaseProperty,
+  ncInterviewLocaleProperty,
   ncProtocolNameProperty,
   ncSessionProperty,
   ncSourceUUID,
@@ -168,7 +169,9 @@ export const variableExportColumnEntries = (
  * The CSV formatters read a built-in column from an internal property
  * (`_uid`, `caseId`) and print it under another name (`networkCanvasUUID`,
  * `networkCanvasCaseID`). Both spellings are reserved: an export renames a
- * variable column that has either one, and reports it.
+ * variable column that has either one, and reports it. The interview locale is
+ * the exception: only its printed name is reserved, so a variable called
+ * `interviewLocale` (a valid name in earlier protocols) is exported unchanged.
  *
  * GraphML declares `label`, `networkCanvasType` and `networkCanvasUUID` for
  * every element, the graph (ego) included.
@@ -189,6 +192,7 @@ export const reservedExportColumns = {
       sessionExportTimeProperty,
       appVersionProperty,
       commitHashProperty,
+      ncInterviewLocaleProperty,
     ],
     node: [
       nodeExportIDProperty,

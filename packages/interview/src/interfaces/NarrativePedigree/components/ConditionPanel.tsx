@@ -4,6 +4,11 @@ import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import { Button } from '@codaco/fresco-ui/Button';
 import Icon from '@codaco/fresco-ui/Icon';
 import Surface from '@codaco/fresco-ui/layout/Surface';
+import {
+  type PresentationalText,
+  presentationalTextProps,
+  presentationalTextValue,
+} from '@codaco/fresco-ui/PresentationalText';
 import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 
@@ -12,7 +17,7 @@ import { NotationKey } from './NotationKey';
 
 type Disease = {
   id: string;
-  label: string;
+  label: PresentationalText;
   color: string;
 };
 
@@ -96,7 +101,9 @@ export default function ConditionPanel({
                       className="size-4 shrink-0 rounded-full"
                       style={{ backgroundColor: disease.color }}
                     />
-                    {disease.label}
+                    <span {...presentationalTextProps(disease.label)}>
+                      {presentationalTextValue(disease.label)}
+                    </span>
                   </button>
                 );
               })}

@@ -3,6 +3,7 @@ import { hash } from 'ohash';
 import {
   caseProperty,
   codebookHashProperty,
+  interviewLocaleProperty,
   protocolName,
   protocolProperty,
   sessionExportTimeProperty,
@@ -30,6 +31,7 @@ export const formatExportableSession = (
     [protocolProperty]: protocol.hash,
     [protocolName]: protocol.name,
     [codebookHashProperty]: hash(protocol.codebook),
+    [interviewLocaleProperty]: session.locale,
     [sessionStartTimeProperty]: session.startTime.toISOString(),
     [sessionFinishTimeProperty]: session.finishTime?.toISOString() ?? undefined,
     [sessionExportTimeProperty]: new Date().toISOString(),

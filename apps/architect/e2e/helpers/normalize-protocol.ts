@@ -2,6 +2,7 @@ import {
   markdownToRichTextContent,
   richTextContentToMarkdown,
 } from '@codaco/protocol-builder/markdown/markdownAdapter';
+import { messageText } from '@codaco/protocol-validation';
 
 // Whole-document normalizer for the sample-protocol comparison: the built
 // protocol (read back from IndexedDB) and the canonical
@@ -50,9 +51,21 @@ const ISO_DATETIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$/;
 // survive the round-trip as differences). Verified live by the build spike:
 // typed-in canonical content parses to a document identical to the canonical
 // string's parse.
+//
+// Each value is a schema `LocalizedString`: one ICU literal message per
+// language, so every translation is read back to its markdown first.
 const canonicalizeMarkdown = (value: unknown): unknown =>
-  typeof value === 'string'
-    ? richTextContentToMarkdown(markdownToRichTextContent(value))
+  isRecord(value)
+    ? Object.fromEntries(
+        Object.entries(value).map(([locale, message]) => [
+          locale,
+          typeof message === 'string'
+            ? richTextContentToMarkdown(
+                markdownToRichTextContent(messageText(message)),
+              )
+            : message,
+        ]),
+      )
     : value;
 
 type Path = (string | number)[];

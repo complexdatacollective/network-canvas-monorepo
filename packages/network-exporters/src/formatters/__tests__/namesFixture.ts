@@ -4,6 +4,7 @@ import {
   codebookHashProperty,
   entityAttributesProperty,
   entityPrimaryKeyProperty,
+  interviewLocaleProperty,
   protocolName,
   protocolProperty,
   sessionExportTimeProperty,
@@ -37,14 +38,19 @@ export const exportOptions = (
 export const namesCodebook = {
   ego: {
     variables: {
-      'ego-name': { name: 'Nom (prénom)', type: 'text' },
+      'ego-name': {
+        name: 'Nom (prénom)',
+        label: 'Name (first name)',
+        type: 'text',
+      },
       'ego-answer': {
         name: 'Réponse oui/non',
+        label: 'Yes/no answer',
         type: 'categorical',
         options: [
-          { label: 'Oui', value: 'oui' },
-          { label: 'Peut-être', value: 'peut être' },
-          { label: 'Non', value: 'non' },
+          { label: { en: 'Yes' }, value: 'oui' },
+          { label: { en: 'Maybe' }, value: 'peut être' },
+          { label: { en: 'No' }, value: 'non' },
         ],
       },
     },
@@ -52,56 +58,90 @@ export const namesCodebook = {
   node: {
     person: {
       name: 'Close Friend',
+      label: { en: 'Close friend' },
       color: 'node-color-seq-1',
       shape: { default: 'circle' },
       variables: {
-        'p-name': { name: 'Full name', type: 'text' },
-        'p-age': { name: '年齢 (years)', type: 'number' },
-        'p-pos': { name: 'map position', type: 'layout' },
+        'p-name': {
+          name: 'Full name',
+          label: 'Full name',
+          type: 'text',
+        },
+        'p-age': {
+          name: '年齢 (years)',
+          label: 'Age (years)',
+          type: 'number',
+        },
+        'p-pos': {
+          name: 'map position',
+          label: 'Map position',
+          type: 'layout',
+        },
         'p-eyes': {
           name: 'Eye colour, "natural"',
+          label: 'Eye colour',
           type: 'categorical',
           options: [
-            { label: 'Light blue', value: 'light blue' },
-            { label: 'Brown', value: '褐色' },
-            { label: 'Five', value: 5 },
+            { label: { en: 'Light blue' }, value: 'light blue' },
+            { label: { en: 'Brown' }, value: '褐色' },
+            { label: { en: 'Five' }, value: 5 },
           ],
         },
         'p-rank': {
           name: 'Rank #',
+          label: 'Rank',
           type: 'ordinal',
           options: [
-            { label: 'Low', value: 1 },
-            { label: 'High', value: 2 },
+            { label: { en: 'Low' }, value: 1 },
+            { label: { en: 'High' }, value: 2 },
           ],
         },
-        'p-close': { name: 'Is this person close?', type: 'boolean' },
+        'p-close': {
+          name: 'Is this person close?',
+          label: 'Is this person close?',
+          type: 'boolean',
+        },
       },
     },
     place: {
       name: '場所',
+      label: { en: 'Place' },
       color: 'node-color-seq-2',
       shape: { default: 'square' },
       variables: {
-        'pl-name': { name: 'Full name', type: 'text' },
-        'pl-note': { name: 'Note / remarks', type: 'text' },
+        'pl-name': {
+          name: 'Full name',
+          label: 'Full name',
+          type: 'text',
+        },
+        'pl-note': {
+          name: 'Note / remarks',
+          label: 'Note',
+          type: 'text',
+        },
       },
     },
   },
   edge: {
     knows: {
       name: 'Knows well',
+      label: { en: 'Knows well' },
       color: 'edge-color-seq-1',
       variables: {
         'k-kind': {
           name: 'Kind of tie',
+          label: 'Kind of tie',
           type: 'categorical',
           options: [
-            { label: 'Family', value: 'family member' },
-            { label: 'Friend', value: 'ami' },
+            { label: { en: 'Family' }, value: 'family member' },
+            { label: { en: 'Friend' }, value: 'ami' },
           ],
         },
-        'k-weight': { name: 'weight (%)', type: 'number' },
+        'k-weight': {
+          name: 'weight (%)',
+          label: 'Weight (%)',
+          type: 'number',
+        },
       },
     },
   },
@@ -163,6 +203,7 @@ export const namesSession = (): FormattedSession => ({
     [sessionFinishTimeProperty]: '200',
     [sessionExportTimeProperty]: '300',
     [codebookHashProperty]: 'hash',
+    [interviewLocaleProperty]: null,
     APP_VERSION: 'v',
     COMMIT_HASH: 'c',
   },

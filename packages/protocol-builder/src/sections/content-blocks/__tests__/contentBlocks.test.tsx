@@ -4,11 +4,15 @@ import { describe, expect, it, vi } from 'vitest';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
+import { protocolContextFromSections } from '../../../protocol-context.ts';
 import { loadFixtureStage } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import type { PageContentVariant } from '../../page-content/PageContentSection.tsx';
 import { contentBlocks } from '../contentBlocks.tsx';
-import { pageBlocksCarrySize } from '../contentBlockTypes.ts';
+import {
+  contentBlockSlots,
+  pageBlocksCarrySize,
+} from '../contentBlockTypes.ts';
 
 /**
  * The block editor's text control is a rich-text editor, and ProseMirror
@@ -50,6 +54,9 @@ vi.mock('../../../fields/RichTextField.tsx', () => ({
 const pageOfBlocks = (variant?: PageContentVariant) =>
   contentBlocks(variant === undefined ? {} : { variant })();
 
+/** Copy in the fixture protocol's only language, as schema 9 holds it. */
+const en = (text: string) => ({ 'en-US': text });
+
 const itemsOf = (document: SectionDoc): Record<string, unknown>[] => {
   const items = document.items;
   return Array.isArray(items) ? (items as Record<string, unknown>[]) : [];
@@ -60,10 +67,10 @@ const mediaPage = () => ({
     id: 'information-media',
     type: 'Information' as const,
     fields: {
-      label: 'Information',
-      title: 'Welcome',
+      label: en('Information'),
+      title: en('Welcome'),
       items: [
-        { id: 'block-text', type: 'text', content: 'Read this.' },
+        { id: 'block-text', type: 'text', content: en('Read this.') },
         { id: 'block-image', type: 'asset', content: 'welcome_image' },
       ],
     },
@@ -124,7 +131,7 @@ describe('a page whose blocks are text and media', () => {
 
     const request = await harness.submit();
     expect(itemsOf(request?.stageDocument ?? {})).toEqual([
-      { id: 'block-text', type: 'text', content: 'Read this.' },
+      { id: 'block-text', type: 'text', content: en('Read this.') },
       {
         id: 'block-image',
         type: 'asset',
@@ -173,7 +180,7 @@ describe('a page whose blocks are text and media', () => {
 
     const request = await harness.submit();
     expect(itemsOf(request?.stageDocument ?? {})).toEqual([
-      { id: 'block-text', type: 'text', content: 'Read this instead.' },
+      { id: 'block-text', type: 'text', content: en('Read this instead.') },
       { id: 'block-image', type: 'asset', content: 'welcome_image' },
     ]);
   });
@@ -184,9 +191,11 @@ describe('a page whose blocks are text and media', () => {
         id: 'information-added',
         type: 'Information',
         fields: {
-          label: 'Information',
-          title: 'Welcome',
-          items: [{ id: 'block-text', type: 'text', content: 'Read this.' }],
+          label: en('Information'),
+          title: en('Welcome'),
+          items: [
+            { id: 'block-text', type: 'text', content: en('Read this.') },
+          ],
         },
       },
       sections: pageOfBlocks(),
@@ -207,11 +216,11 @@ describe('a page whose blocks are text and media', () => {
 
     const request = await harness.submit();
     expect(itemsOf(request?.stageDocument ?? {})).toEqual([
-      { id: 'block-text', type: 'text', content: 'Read this.' },
+      { id: 'block-text', type: 'text', content: en('Read this.') },
       {
         id: expect.any(String) as unknown as string,
         type: 'text',
-        content: 'Thank you for taking part.',
+        content: en('Thank you for taking part.'),
       },
     ]);
   });
@@ -232,15 +241,17 @@ describe('describing a media block for a participant who cannot see it', () => {
       id: 'information-described',
       type: 'Information' as const,
       fields: {
-        label: 'Information',
-        title: 'Welcome',
+        label: en('Information'),
+        title: en('Welcome'),
         items: [
-          { id: 'block-text', type: 'text', content: 'Read this.' },
+          { id: 'block-text', type: 'text', content: en('Read this.') },
           {
             id: 'block-image',
             type: 'asset',
             content: 'welcome_image',
-            ...(description === undefined ? {} : { description }),
+            ...(description === undefined
+              ? {}
+              : { description: en(description) }),
           },
         ],
       },
@@ -291,12 +302,12 @@ describe('describing a media block for a participant who cannot see it', () => {
 
     const request = await harness.submit();
     expect(itemsOf(request?.stageDocument ?? {})).toEqual([
-      { id: 'block-text', type: 'text', content: 'Read this.' },
+      { id: 'block-text', type: 'text', content: en('Read this.') },
       {
         id: 'block-image',
         type: 'asset',
         content: 'welcome_image',
-        description: 'A researcher waving at the camera.',
+        description: en('A researcher waving at the camera.'),
       },
     ]);
   });
@@ -324,7 +335,7 @@ describe('describing a media block for a participant who cannot see it', () => {
 
     const request = await harness.submit();
     expect(itemsOf(request?.stageDocument ?? {})).toEqual([
-      { id: 'block-text', type: 'text', content: 'Read this.' },
+      { id: 'block-text', type: 'text', content: en('Read this.') },
       { id: 'block-image', type: 'asset', content: 'welcome_image' },
     ]);
   });
@@ -437,8 +448,8 @@ describe('a block naming a resource no page can present', () => {
       id: 'information-unpresentable',
       type: 'Information' as const,
       fields: {
-        label: 'Information',
-        title: 'Welcome',
+        label: en('Information'),
+        title: en('Welcome'),
         items: [
           {
             id: 'block-layer',
@@ -608,7 +619,7 @@ describe('the same blocks on a task’s introduction screen', () => {
         id: 'intro-image',
         type: 'asset',
         content: 'intro_image',
-        description: 'The family tree this task builds.',
+        description: en('The family tree this task builds.'),
       },
     ]);
   });
@@ -624,5 +635,74 @@ describe('the same blocks on a task’s introduction screen', () => {
     expect(
       screen.queryByRole('radio', { name: 'Medium' }),
     ).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * A block's prose and a media block's description are written once per
+ * protocol language, and the editor's own working shape — one slot per kind —
+ * sits between the saved block and the dialog. Every translation has to come
+ * out of that shape exactly as it went in, including the ones the researcher
+ * never looked at: they are not editing a language they are not reading.
+ */
+describe('a block written in more than one language', () => {
+  const context = protocolContextFromSections({
+    [sectionId({ kind: 'assets' })]: {
+      welcome_image: {
+        name: 'Welcome image',
+        type: 'image',
+        source: 'welcome.png',
+      },
+    },
+  });
+
+  it('opens and saves every translation of a text block', () => {
+    const saved = {
+      id: 'block-text',
+      type: 'text',
+      content: { en: 'Read this.', es: 'Lee esto.', fr: 'Lisez ceci.' },
+    };
+
+    const opened = contentBlockSlots.expand(context, saved);
+    expect(opened).toMatchObject({ type: 'text', contentText: saved.content });
+    expect(contentBlockSlots.collapse(opened, 'Information')).toEqual(saved);
+  });
+
+  it('saves the translations the text slot holds, not the ones it opened on', () => {
+    const opened = contentBlockSlots.expand(context, {
+      id: 'block-text',
+      type: 'text',
+      content: { en: 'Read this.', es: 'Lee esto.' },
+    });
+
+    expect(
+      contentBlockSlots.collapse(
+        {
+          ...opened,
+          contentText: { en: 'Read this instead.', es: 'Lee esto.' },
+        },
+        'Information',
+      ),
+    ).toEqual({
+      id: 'block-text',
+      type: 'text',
+      content: { en: 'Read this instead.', es: 'Lee esto.' },
+    });
+  });
+
+  it('opens and saves every translation of a media block’s description', () => {
+    const saved = {
+      id: 'block-image',
+      type: 'asset',
+      content: 'welcome_image',
+      description: { en: 'Two people talking.', es: 'Dos personas hablando.' },
+    };
+
+    const opened = contentBlockSlots.expand(context, saved);
+    expect(opened).toMatchObject({
+      type: 'image',
+      contentImage: 'welcome_image',
+    });
+    expect(contentBlockSlots.collapse(opened, 'Information')).toEqual(saved);
   });
 });

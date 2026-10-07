@@ -38,16 +38,19 @@ const anonymisationStage = (
 ): StageProps<'Anonymisation'>['stage'] => ({
   id,
   type: 'Anonymisation',
-  label: 'Protect your answers',
-  explanationText: { title: 'Protect your answers', body: 'Choose one.' },
+  label: { en: 'Protect your answers' },
+  explanationText: {
+    title: { en: 'Protect your answers' },
+    body: { en: 'Choose one.' },
+  },
   validation,
 });
 
 const informationStage: Stages[number] = {
   id: 'information',
   type: 'Information',
-  label: 'Welcome',
-  title: 'Welcome',
+  label: { en: 'Welcome' },
+  title: { en: 'Welcome' },
   items: [],
 };
 

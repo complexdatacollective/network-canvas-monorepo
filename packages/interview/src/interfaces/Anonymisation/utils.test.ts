@@ -19,6 +19,7 @@ describe('generateSecureAttributes', () => {
       component: 'Text',
       encrypted: true,
       name: '__proto__',
+      label: '__proto__',
       type: 'text',
     };
     const codebookVariables: Record<string, Variable> = Object.fromEntries([
@@ -52,8 +53,19 @@ describe('generateSecureAttributes', () => {
 
 describe('writesEncryptedValue', () => {
   const variables: Record<string, Variable> = {
-    name: { name: 'name', type: 'text', component: 'Text', encrypted: true },
-    nickname: { name: 'nickname', type: 'text', component: 'Text' },
+    name: {
+      name: 'name',
+      label: 'name',
+      type: 'text',
+      component: 'Text',
+      encrypted: true,
+    },
+    nickname: {
+      name: 'nickname',
+      label: 'nickname',
+      type: 'text',
+      component: 'Text',
+    },
   };
 
   it.each([

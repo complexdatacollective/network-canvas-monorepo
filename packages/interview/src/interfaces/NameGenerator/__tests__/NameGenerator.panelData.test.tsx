@@ -56,11 +56,17 @@ const PASSPHRASE = 'name generator passphrase';
 const variables: Record<string, Variable> = {
   [NAME_VAR]: {
     name: 'name',
+    label: 'name',
     type: 'text',
     component: 'Text',
     encrypted: true,
   },
-  [NICKNAME_VAR]: { name: 'nickname', type: 'text', component: 'Text' },
+  [NICKNAME_VAR]: {
+    name: 'nickname',
+    label: 'nickname',
+    type: 'text',
+    component: 'Text',
+  },
 };
 
 // The stage's own form asks only for a value that is not encrypted, so the
@@ -68,19 +74,21 @@ const variables: Record<string, Variable> = {
 const stage: StageProps<'NameGenerator'>['stage'] = {
   id: 'ng1',
   type: 'NameGenerator',
-  label: 'Name Generator',
+  label: { en: 'Name Generator' },
   subject: { entity: 'node', type: NODE_TYPE },
   form: {
-    title: 'Add a person',
+    title: { en: 'Add a person' },
     fields: [
       {
         variable: asEntityAttributeReference(NICKNAME_VAR),
-        prompt: 'Nickname',
+        prompt: { en: 'Nickname' },
       },
     ],
   },
-  panels: [{ id: 'panel-1', title: 'Roster', dataSource: 'roster-asset' }],
-  prompts: [{ id: 'p1', text: 'Name the people you know' }],
+  panels: [
+    { id: 'panel-1', title: { en: 'Roster' }, dataSource: 'roster-asset' },
+  ],
+  prompts: [{ id: 'p1', text: { en: 'Name the people you know' } }],
 };
 
 const externalNode: NcNode = {

@@ -74,6 +74,7 @@
   "protocolValidation.migrationNotes.schema9.attributeNames": "Attributnamen dürfen jetzt Buchstaben aus beliebigen Sprachen sowie Leerzeichen und Satzzeichen enthalten. Vorhandene Attributnamen werden nicht geändert.",
   "protocolValidation.migrationNotes.schema9.contradictoryPassphraseRules": "Wenn ein Anonymisierungsabschnitt eine Mindestlänge der Passphrase verlangte, die größer als ihre Höchstlänge war, konnten Teilnehmende keine Passphrase wählen. Daher werden beide Längen entfernt, und es gilt die Standard-Mindestlänge.",
   "protocolValidation.migrationNotes.schema9.encryptedAttributes": "Verschlüsselte Attribute sind nicht mehr experimentell: Die Anonymisierungsoberfläche ist immer verfügbar, und ein als verschlüsselt markiertes Attribut wird immer verschlüsselt. Wenn dieses Protokoll Attribute als verschlüsselt markiert hat, ohne die experimentelle Funktion „Verschlüsselte Attribute“ zu aktivieren, sind diese Attribute nicht mehr markiert und werden daher weiterhin unverschlüsselt erhoben.",
+  "protocolValidation.migrationNotes.schema9.unspecifiedLanguage": "Text, den Teilnehmende sehen, ist jetzt als „Nicht angegebene Sprache“ gekennzeichnet, weil ältere Protokolle nicht festhalten, in welcher Sprache sie verfasst sind. Auf der Seite „Sprachen“ in Architect können Sie die Sprache angeben, in der er tatsächlich verfasst ist.",
   "protocolValidation.rule.additionalAttributes": "Feste Attribute",
   "protocolValidation.rule.component": "Eingabeelement",
   "protocolValidation.rule.differentFrom": "Verschieden von einem anderen Attribut",

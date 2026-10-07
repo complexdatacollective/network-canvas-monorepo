@@ -21,6 +21,7 @@ import {
 import { useRunOnce } from '~/hooks/useRunOnce';
 import { getProtocol, getStageList } from '~/selectors/protocol';
 import { cx } from '~/utils/cva';
+import { localizedText } from '~/utils/localizedText';
 
 import NewStageScreen from '../Screens/NewStageScreen';
 import {
@@ -246,7 +247,7 @@ const Timeline = () => {
           const names = {
             list: dependents.map(
               (dependent) =>
-                dependent.label || {
+                localizedText(dependent.label, protocol?.localization) || {
                   messageError: createMessageError(finalMessages.untitledStage),
                 },
             ),

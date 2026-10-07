@@ -20,8 +20,8 @@ const makeNode = (
 describe('resolveRosterNodeLabel', () => {
   it('returns the value found by the name heuristic when one matches', () => {
     const codebookVariables: NodeDefinition['variables'] = {
-      'var-name': { name: 'name', type: 'text' },
-      'var-age': { name: 'age', type: 'number' },
+      'var-name': { name: 'name', label: 'Name', type: 'text' },
+      'var-age': { name: 'age', label: 'Age', type: 'number' },
     };
 
     const node = makeNode({ 'var-name': 'John Doe', 'var-age': 30 });
@@ -41,7 +41,11 @@ describe('resolveRosterNodeLabel', () => {
     // keyed by UUIDs that are NOT present in the codebook (e.g. a preview-export
     // roster), so the heuristic finds nothing.
     const codebookVariables: NodeDefinition['variables'] = {
-      'codebook-name-uuid': { name: 'name', type: 'text' },
+      'codebook-name-uuid': {
+        name: 'name',
+        label: 'Name',
+        type: 'text',
+      },
     };
 
     const node = makeNode({
@@ -81,7 +85,11 @@ describe('resolveRosterNodeLabel', () => {
 
     const result = resolveRosterNodeLabel({
       codebookVariables: {
-        'codebook-name-uuid': { name: 'name', type: 'text' },
+        'codebook-name-uuid': {
+          name: 'name',
+          label: 'Name',
+          type: 'text',
+        },
       },
       node,
       subjectLabel: 'Person',

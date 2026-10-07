@@ -6,8 +6,9 @@ import type { StageOfType } from './context.ts';
  * The stage types `generateNetwork`'s dispatch deliberately runs no handler
  * for. A content stage presents what other stages collected — an Information
  * screen, an Anonymisation notice, a Narrative's canvas, a NarrativePedigree
- * reading the network its source FamilyPedigree wrote — so it creates no
- * entity and writes no attribute onto one.
+ * reading the network its source FamilyPedigree wrote — or, like a
+ * LanguageChooser, records a session setting rather than network data, so it
+ * creates no entity and writes no attribute onto one.
  *
  * This list is the dispatch's own record of that decision rather than a second
  * opinion about it: `generateNetwork` narrows these stages away before its
@@ -34,6 +35,7 @@ export const CONTENT_STAGE_TYPES = [
   'Anonymisation',
   'Narrative',
   'NarrativePedigree',
+  'LanguageChooser',
 ] as const satisfies readonly Stage['type'][];
 
 type ContentStageType = (typeof CONTENT_STAGE_TYPES)[number];

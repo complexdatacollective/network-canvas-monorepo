@@ -71,7 +71,7 @@ describe('creating a roster name generator', () => {
     expect(request?.stageDocument.prompts).toEqual([
       {
         id: expect.any(String) as unknown as string,
-        text: 'Select people from the roster',
+        text: { 'en-US': 'Select people from the roster' },
       },
     ]);
     // A roster whose cards, order and search were never configured saves none

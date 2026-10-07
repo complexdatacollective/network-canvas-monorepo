@@ -25,6 +25,7 @@ import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import { StageMetadataContext } from '../../../contexts/StageMetadataContext';
 import { ContractProvider } from '../../../contract/context';
 import type { RegisterBeforeNext, StageProps } from '../../../types';
+import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
 import {
   createEncryptionStore,
   encryptionFor,
@@ -118,6 +119,7 @@ const PASSPHRASE = 'composer passphrase';
 
 const encryptedText = (name: string): Variable => ({
   name,
+  label: name,
   type: 'text',
   component: 'Text',
   encrypted: true,
@@ -125,7 +127,7 @@ const encryptedText = (name: string): Variable => ({
 
 const variables: Record<string, Variable> = {
   [QUICK_ADD_VAR]: encryptedText('name'),
-  [LAYOUT_VAR]: { name: 'position', type: 'layout' },
+  [LAYOUT_VAR]: { name: 'position', label: 'position', type: 'layout' },
   [NOTES_VAR]: encryptedText('notes'),
 };
 
@@ -133,6 +135,7 @@ const uniqueNameVariables: Record<string, Variable> = {
   ...variables,
   [QUICK_ADD_VAR]: {
     name: 'name',
+    label: 'name',
     type: 'text',
     component: 'Text',
     encrypted: true,
@@ -143,7 +146,7 @@ const uniqueNameVariables: Record<string, Variable> = {
 const stage: StageProps<'NetworkComposer'>['stage'] = {
   id: 'nc1',
   type: 'NetworkComposer',
-  label: 'Network Composer',
+  label: { en: 'Network Composer' },
   subject: { entity: 'node', type: NODE_TYPE },
   layoutVariable: asEntityAttributeReference(LAYOUT_VAR),
   quickAdd: asEntityAttributeReference(QUICK_ADD_VAR),
@@ -152,7 +155,7 @@ const stage: StageProps<'NetworkComposer'>['stage'] = {
       {
         variable: asEntityAttributeReference(NOTES_VAR),
         component: 'Text',
-        label: 'Notes',
+        label: { en: 'Notes' },
       },
     ],
   },
@@ -217,19 +220,24 @@ function renderComposer(store: Store) {
   function Wrapper({ children }: { children: ReactNode }) {
     return (
       <Provider store={store}>
-        <ContractProvider
-          onFinish={vi.fn()}
-          onRequestAsset={vi.fn()}
-          flags={{ isE2E: false, isDevelopment: false }}
-        >
-          <DialogProvider>
-            <CurrentStepProvider currentStep={0} onStepChange={() => undefined}>
-              <StageMetadataContext.Provider value={registerBeforeNext}>
-                {children}
-              </StageMetadataContext.Provider>
-            </CurrentStepProvider>
-          </DialogProvider>
-        </ContractProvider>
+        <TestProtocolLocalization>
+          <ContractProvider
+            onFinish={vi.fn()}
+            onRequestAsset={vi.fn()}
+            flags={{ isE2E: false, isDevelopment: false }}
+          >
+            <DialogProvider>
+              <CurrentStepProvider
+                currentStep={0}
+                onStepChange={() => undefined}
+              >
+                <StageMetadataContext.Provider value={registerBeforeNext}>
+                  {children}
+                </StageMetadataContext.Provider>
+              </CurrentStepProvider>
+            </DialogProvider>
+          </ContractProvider>
+        </TestProtocolLocalization>
       </Provider>
     );
   }

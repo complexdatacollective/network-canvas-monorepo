@@ -4,8 +4,8 @@ import { type IntlShape, defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import type { LocalizedString } from '@codaco/protocol-validation';
 import { effectivePassphraseMinLength } from '@codaco/shared-consts';
-import Markdown from '~/components/Markdown';
 import { summaryMessages } from '~/lib/ProtocolSummary/summaryMessages';
 
 import DualLink from '../DualLink';
@@ -13,6 +13,11 @@ import EntityBadge from '../EntityBadge';
 import { SummaryValue } from '../helpers';
 import MiniTable from '../MiniTable';
 import SummaryContext from '../SummaryContext';
+import {
+  SummaryMarkdown,
+  SummaryText,
+  useMultilingualSummary,
+} from '../SummaryText';
 import SectionFrame from './SectionFrame';
 const messages = defineMessages({
   defaultMinimumPassphraseLength: {
@@ -50,8 +55,8 @@ const finalMessages = defineMessages({
 
 type AnonymisationProps = {
   explanationText?: {
-    title: string;
-    body: string;
+    title: LocalizedString;
+    body: LocalizedString;
   } | null;
   validation?: {
     minLength?: number;
@@ -130,6 +135,7 @@ const Anonymisation = ({
 }: AnonymisationProps) => {
   const intl = useAppIntl();
   const { protocol } = useContext(SummaryContext);
+  const multilingual = useMultilingualSummary();
   const encryptedVariables = getEncryptedVariables(protocol.codebook);
   const hasExplanation = !!explanationText;
   const hasEncryptedVariables = encryptedVariables.length > 0;
@@ -137,8 +143,29 @@ const Anonymisation = ({
     <>
       {hasExplanation && (
         <SectionFrame title={intl.formatMessage(messages.explanationText)}>
-          <Heading level="h1">{explanationText.title}</Heading>
-          <Markdown label={explanationText.body} />
+          {multilingual ? (
+            <MiniTable
+              rotated
+              wide
+              rows={[
+                [
+                  intl.formatMessage(summaryMessages.title),
+                  <SummaryText key="title" value={explanationText.title} />,
+                ],
+                [
+                  intl.formatMessage(summaryMessages.text),
+                  <SummaryMarkdown key="text" value={explanationText.body} />,
+                ],
+              ]}
+            />
+          ) : (
+            <>
+              <Heading level="h1">
+                <SummaryText value={explanationText.title} />
+              </Heading>
+              <SummaryMarkdown value={explanationText.body} />
+            </>
+          )}
         </SectionFrame>
       )}
 
