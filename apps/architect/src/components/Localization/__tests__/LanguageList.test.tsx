@@ -66,10 +66,20 @@ const renderLanguageList = (protocol: CurrentProtocol = trilingual) => {
   return { store };
 };
 
-const rowOf = (language: string) => {
-  const row = screen
+// The explanation of which translation participants see is a list too, so a
+// language's row is told apart by its delete button.
+const languageRows = () =>
+  screen
     .getAllByRole('listitem')
-    .find((item) => within(item).queryByText(language, { exact: true }));
+    .filter(
+      (item) =>
+        within(item).queryByRole('button', { name: /^Remove / }) !== null,
+    );
+
+const rowOf = (language: string) => {
+  const row = languageRows().find((item) =>
+    within(item).queryByText(language, { exact: true }),
+  );
   if (!row) throw new Error(`No row for ${language}`);
   return row;
 };
@@ -86,7 +96,7 @@ describe('LanguageList', () => {
       localization: { defaultLocale: 'en', locales: ['es', 'de', 'fr', 'en'] },
     });
 
-    const rows = screen.getAllByRole('listitem');
+    const rows = languageRows();
     expect(
       ['English', 'French', 'German', 'Spanish'].map((language) =>
         rows.indexOf(rowOf(language)),
@@ -97,7 +107,7 @@ describe('LanguageList', () => {
   it('offers no way to reorder languages', () => {
     renderLanguageList();
 
-    expect(screen.getByRole('list').tagName).toBe('UL');
+    expect(rowOf('English').parentElement?.tagName).toBe('UL');
     expect(
       screen.queryByRole('button', { name: /reorder/i }),
     ).not.toBeInTheDocument();
@@ -257,22 +267,23 @@ describe('LanguageList', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('explains which translation participants see, in a closed disclosure', () => {
+  it('explains which translation participants see under the heading', () => {
     renderLanguageList();
 
-    const toggle = screen.getByRole('button', {
-      name: 'Which translation participants see',
-    });
-    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    const section = screen.getByRole('region', { name: 'Protocol languages' });
+    expect(section).toHaveAccessibleDescription(
+      expect.stringMatching(
+        /^Participants can take the interview in any of these languages\. They see each text in the first of the following languages that has a translation of it:/,
+      ),
+    );
+    expect(
+      screen.queryByRole('button', { name: /^Which translation/ }),
+    ).not.toBeInTheDocument();
 
-    fireEvent.click(toggle);
-    expect(toggle).toHaveAttribute('aria-expanded', 'true');
-
-    const panel = screen.getByRole('region', {
-      name: 'Which translation participants see',
-    });
-    const steps = within(panel).getByRole('list');
-    expect(steps.tagName).toBe('OL');
+    const steps = within(section)
+      .getAllByRole('list')
+      .find((list) => list.tagName === 'OL');
+    if (!steps) throw new Error('No numbered list of languages');
     expect(
       within(steps)
         .getAllByRole('listitem')
@@ -285,7 +296,7 @@ describe('LanguageList', () => {
       'Any other language that has the text.',
     ]);
     expect(
-      within(panel).getByRole('link', { name: 'Translating your protocol' }),
+      within(section).getByRole('link', { name: 'Translating your protocol' }),
     ).toHaveAttribute(
       'href',
       expect.stringMatching(
@@ -302,9 +313,12 @@ describe('LanguageList', () => {
     });
 
     expect(
-      screen.queryByRole('button', {
-        name: 'Which translation participants see',
-      }),
+      screen.getByRole('region', { name: 'Protocol languages' }),
+    ).toHaveAccessibleDescription(
+      'Participants take the interview in this language. Add more languages to let them choose one.',
+    );
+    expect(
+      screen.queryByRole('link', { name: 'Translating your protocol' }),
     ).not.toBeInTheDocument();
   });
 

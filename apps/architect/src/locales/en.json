@@ -1788,8 +1788,8 @@
     "description": "Tooltip and accessible description of the unavailable delete button of the default language, saying why it cannot be removed."
   },
   "architect.localization.languageList.description": {
-    "defaultMessage": "Participants can take the interview in any of these languages.",
-    "description": "Lead sentence of the list of protocol languages, shown when the protocol has more than one. The list is in alphabetical order; its order has no effect on which language participants see."
+    "defaultMessage": "Participants can take the interview in any of these languages. They see each text in the first of the following languages that has a translation of it:",
+    "description": "Introduction to the list of protocol languages, shown when the protocol has more than one. Its second sentence introduces a numbered list, under it, of the languages a participant may see a text in, in the order they are tried. The list of protocol languages is in alphabetical order; its order has no effect on which language participants see."
   },
   "architect.localization.languageList.descriptionSingle": {
     "defaultMessage": "Participants take the interview in this language. Add more languages to let them choose one.",
@@ -1899,10 +1899,6 @@
     "defaultMessage": "The protocol’s default language.",
     "description": "Fourth item of the numbered list of the languages a participant may see a text in."
   },
-  "architect.localization.translationFallback.intro": {
-    "defaultMessage": "Participants see each text in the first of these languages that has a translation of it:",
-    "description": "Introduces a numbered list of the languages a participant may see a text in, in the order they are tried."
-  },
   "architect.localization.translationFallback.own": {
     "defaultMessage": "Their own language: the one they chose, or the one their browser or device is set to.",
     "description": "First item of the numbered list of the languages a participant may see a text in."
@@ -1914,10 +1910,6 @@
   "architect.localization.translationFallback.related": {
     "defaultMessage": "A closely related language, such as Brazilian Portuguese for a participant using European Portuguese.",
     "description": "Second item of the numbered list of the languages a participant may see a text in."
-  },
-  "architect.localization.translationFallback.title": {
-    "defaultMessage": "Which translation participants see",
-    "description": "Button that shows or hides the explanation of which language participants see each text in."
   },
   "architect.localization.translationTable.about": {
     "defaultMessage": "Every text participants see, beside its translation into each language. Empty cells show the text participants see instead.",

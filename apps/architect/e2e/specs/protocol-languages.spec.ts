@@ -70,10 +70,15 @@ function languageRow(page: Page, code: string): Locator {
   });
 }
 
+/**
+ * The rows of the "Protocol languages" list, told apart from the numbered
+ * explanation of which translation participants see by their delete button.
+ */
 function languageRows(page: Page): Locator {
   return page
     .getByRole('region', { name: 'Protocol languages' })
-    .getByRole('listitem');
+    .getByRole('listitem')
+    .filter({ has: page.getByRole('button', { name: /^Remove / }) });
 }
 
 /** The delete button at the end of a language's row. */
@@ -171,6 +176,13 @@ test('adds a language, keeps the default language from being removed, translates
   await expect(openTable).toHaveAttribute(
     'href',
     '/protocol/localization?table=open',
+  );
+  // With a second language, the list explains which translation participants
+  // see.
+  await expect(
+    page.getByRole('region', { name: 'Protocol languages' }),
+  ).toHaveAccessibleDescription(
+    /They see each text in the first of the following languages that has a translation of it:/,
   );
   // A language with no translations of its own strands nothing, so it can go.
   await expect(removeButton(page, 'French')).toBeEnabled();

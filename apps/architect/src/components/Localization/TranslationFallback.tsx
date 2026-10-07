@@ -2,32 +2,12 @@ import type { ReactNode } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
-import {
-  Accordion,
-  AccordionHeader,
-  AccordionItem,
-  AccordionPanel,
-  AccordionTrigger,
-} from '@codaco/fresco-ui/Accordion';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { OrderedList } from '@codaco/fresco-ui/typography/UnorderedList';
 import ExternalLink from '~/components/ExternalLink';
 import { documentationLinks } from '~/utils/documentationLinks';
 
 const messages = defineMessages({
-  title: {
-    id: 'architect.localization.translationFallback.title',
-    defaultMessage: 'Which translation participants see',
-    description:
-      'Button that shows or hides the explanation of which language participants see each text in.',
-  },
-  intro: {
-    id: 'architect.localization.translationFallback.intro',
-    defaultMessage:
-      'Participants see each text in the first of these languages that has a translation of it:',
-    description:
-      'Introduces a numbered list of the languages a participant may see a text in, in the order they are tried.',
-  },
   own: {
     id: 'architect.localization.translationFallback.own',
     defaultMessage:
@@ -82,31 +62,24 @@ const renderGuideLink = (chunks: ReactNode[]) => (
   </ExternalLink>
 );
 
-/** How a participant comes to see a text in one language rather than another. */
+/**
+ * The languages a participant may see a text in, in the order they are tried,
+ * and where to read more. It follows a sentence that introduces the list.
+ */
 const TranslationFallback = () => {
   const intl = useAppIntl();
 
   return (
-    <Accordion className="mb-6">
-      <AccordionItem value="translation-fallback">
-        <AccordionHeader>
-          <AccordionTrigger>
-            {intl.formatMessage(messages.title)}
-          </AccordionTrigger>
-        </AccordionHeader>
-        <AccordionPanel>
-          <Paragraph>{intl.formatMessage(messages.intro)}</Paragraph>
-          <OrderedList>
-            {STEPS.map((step) => (
-              <li key={step.id}>{intl.formatMessage(step)}</li>
-            ))}
-          </OrderedList>
-          <Paragraph margin="none">
-            {intl.formatMessage(messages.readMore, { link: renderGuideLink })}
-          </Paragraph>
-        </AccordionPanel>
-      </AccordionItem>
-    </Accordion>
+    <>
+      <OrderedList>
+        {STEPS.map((step) => (
+          <li key={step.id}>{intl.formatMessage(step)}</li>
+        ))}
+      </OrderedList>
+      <Paragraph>
+        {intl.formatMessage(messages.readMore, { link: renderGuideLink })}
+      </Paragraph>
+    </>
   );
 };
 

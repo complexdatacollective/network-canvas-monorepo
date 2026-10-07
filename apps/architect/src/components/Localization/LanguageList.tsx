@@ -69,9 +69,9 @@ const messages = defineMessages({
   description: {
     id: 'architect.localization.languageList.description',
     defaultMessage:
-      'Participants can take the interview in any of these languages.',
+      'Participants can take the interview in any of these languages. They see each text in the first of the following languages that has a translation of it:',
     description:
-      'Lead sentence of the list of protocol languages, shown when the protocol has more than one. The list is in alphabetical order; its order has no effect on which language participants see.',
+      'Introduction to the list of protocol languages, shown when the protocol has more than one. Its second sentence introduces a numbered list, under it, of the languages a participant may see a text in, in the order they are tried. The list of protocol languages is in alphabetical order; its order has no effect on which language participants see.',
   },
   descriptionSingle: {
     id: 'architect.localization.languageList.descriptionSingle',
@@ -173,11 +173,17 @@ const LanguageList = () => {
   return (
     <Section
       title={intl.formatMessage(messages.title)}
-      description={intl.formatMessage(
-        multilingual ? messages.description : messages.descriptionSingle,
-      )}
+      description={
+        multilingual ? (
+          <>
+            <Paragraph>{intl.formatMessage(messages.description)}</Paragraph>
+            <TranslationFallback />
+          </>
+        ) : (
+          intl.formatMessage(messages.descriptionSingle)
+        )
+      }
     >
-      {multilingual && <TranslationFallback />}
       <ProtocolLanguages />
     </Section>
   );
