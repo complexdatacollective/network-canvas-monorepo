@@ -1,38 +1,20 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  entityAttributesProperty,
-  entityPrimaryKeyProperty,
-  type NcEdge,
-  type NcNode,
-} from '@codaco/shared-consts';
-
-import { buildGeneticGraph } from '../geneticGraph';
+  buildGeneticGraph,
+  type GeneticLink,
+  type GeneticPerson,
+  type Gamete,
+} from '../geneticGraph';
 import { computeAutosomalRecessive } from '../patterns/autosomal';
 
-const RELATIONSHIP_TYPE_VAR = 'relationshipType';
-
-function makeNode(id: string): NcNode {
-  return {
-    [entityPrimaryKeyProperty]: id,
-    type: 'person',
-    [entityAttributesProperty]: {},
-  };
+function makeNode(id: string): GeneticPerson {
+  return { id };
 }
 
-function makeGeneticEdge(from: string, to: string): NcEdge {
-  return {
-    [entityPrimaryKeyProperty]: `${from}->${to}`,
-    type: 'family',
-    from,
-    to,
-    [entityAttributesProperty]: {
-      [RELATIONSHIP_TYPE_VAR]: ['biological'],
-    },
-  };
+function makeGeneticEdge(from: string, to: string): GeneticLink {
+  return { source: from, target: to, kind: 'biological' };
 }
-
-const config = { relationshipTypeVariable: RELATIONSHIP_TYPE_VAR };
 
 // Sex stubs for the fixture
 function stubResolveSex(
@@ -60,7 +42,7 @@ const fatherId = 'father';
 const fullSibId = 'fullSib';
 const halfSibId = 'halfSib'; // shares only mother
 
-const fixtureNodes: NcNode[] = [
+const fixtureNodes: GeneticPerson[] = [
   makeNode(egoId),
   makeNode(motherId),
   makeNode(fatherId),
@@ -68,7 +50,7 @@ const fixtureNodes: NcNode[] = [
   makeNode(halfSibId),
 ];
 
-const fixtureEdges: NcEdge[] = [
+const fixtureEdges: GeneticLink[] = [
   makeGeneticEdge(motherId, egoId),
   makeGeneticEdge(fatherId, egoId),
   makeGeneticEdge(motherId, fullSibId),
@@ -88,9 +70,7 @@ const resolveSex = stubResolveSex(fixtureSexMap);
 
 describe('buildGeneticGraph — basic fixture', () => {
   const graph = buildGeneticGraph(
-    fixtureNodes,
-    fixtureEdges,
-    config,
+    { people: fixtureNodes, links: fixtureEdges },
     resolveSex,
   );
 
@@ -155,8 +135,12 @@ describe('buildGeneticGraph — basic fixture', () => {
  *
  * propagate from A over childrenOf must terminate without infinite recursion.
  */
-const cyclicNodes: NcNode[] = [makeNode('A'), makeNode('B'), makeNode('C')];
-const cyclicEdges: NcEdge[] = [
+const cyclicNodes: GeneticPerson[] = [
+  makeNode('A'),
+  makeNode('B'),
+  makeNode('C'),
+];
+const cyclicEdges: GeneticLink[] = [
   makeGeneticEdge('A', 'B'),
   makeGeneticEdge('B', 'C'),
   makeGeneticEdge('C', 'A'), // closes the loop
@@ -164,9 +148,7 @@ const cyclicEdges: NcEdge[] = [
 
 describe('buildGeneticGraph — consanguinity loop termination', () => {
   const cyclicGraph = buildGeneticGraph(
-    cyclicNodes,
-    cyclicEdges,
-    config,
+    { people: cyclicNodes, links: cyclicEdges },
     stubResolveSex({}),
   );
 
@@ -191,21 +173,11 @@ describe('buildGeneticGraph — consanguinity loop termination', () => {
 });
 
 describe('buildGeneticGraph — non-genetic edges ignored', () => {
-  const socialEdge: NcEdge = {
-    [entityPrimaryKeyProperty]: 'social-edge',
-    type: 'family',
-    from: 'x',
-    to: 'y',
-    [entityAttributesProperty]: {
-      [RELATIONSHIP_TYPE_VAR]: ['social'],
-    },
-  };
+  const socialEdge: GeneticLink = { source: 'x', target: 'y', kind: 'social' };
 
   it('social edges do not count as genetic parent edges', () => {
     const g = buildGeneticGraph(
-      [makeNode('x'), makeNode('y')],
-      [socialEdge],
-      config,
+      { people: [makeNode('x'), makeNode('y')], links: [socialEdge] },
       stubResolveSex({}),
     );
     expect(g.parentsOf('y')).toHaveLength(0);
@@ -214,21 +186,15 @@ describe('buildGeneticGraph — non-genetic edges ignored', () => {
 });
 
 describe('buildGeneticGraph — donor edges', () => {
-  const donorEdge: NcEdge = {
-    [entityPrimaryKeyProperty]: 'donor-edge',
-    type: 'family',
-    from: 'donor',
-    to: 'child',
-    [entityAttributesProperty]: {
-      [RELATIONSHIP_TYPE_VAR]: ['donor'],
-    },
+  const donorEdge: GeneticLink = {
+    source: 'donor',
+    target: 'child',
+    kind: 'donor',
   };
 
   it('donor edges count as genetic parent edges', () => {
     const g = buildGeneticGraph(
-      [makeNode('donor'), makeNode('child')],
-      [donorEdge],
-      config,
+      { people: [makeNode('donor'), makeNode('child')], links: [donorEdge] },
       stubResolveSex({ donor: 'male' }),
     );
     const parents = g.parentsOf('child');
@@ -238,29 +204,21 @@ describe('buildGeneticGraph — donor edges', () => {
 });
 
 describe('buildGeneticGraph — mitochondrial donation (MRT) inference', () => {
-  const GAMETE_ROLE_VAR = 'gameteRole';
-  const mrtConfig = {
-    relationshipTypeVariable: RELATIONSHIP_TYPE_VAR,
-    gameteRoleVariable: GAMETE_ROLE_VAR,
-  };
+  type TaggedLink = GeneticLink & { gamete: Gamete };
 
   function makeGameteEdge(
     from: string,
     to: string,
     relType: 'biological' | 'donor',
-    gameteRole: 'egg' | 'sperm',
-  ): NcEdge {
-    return {
-      [entityPrimaryKeyProperty]: `${from}->${to}`,
-      type: 'family',
-      from,
-      to,
-      [entityAttributesProperty]: {
-        [RELATIONSHIP_TYPE_VAR]: [relType],
-        [GAMETE_ROLE_VAR]: [gameteRole],
-      },
-    };
+    gamete: Gamete,
+  ): TaggedLink {
+    return { source: from, target: to, kind: relType, gamete };
   }
+
+  const gametesOf =
+    (links: readonly TaggedLink[]) => (parentId: string, childId: string) =>
+      links.find((link) => link.source === parentId && link.target === childId)
+        ?.gamete;
 
   // MRT birth: nucleus from the intended mother's egg, mtDNA from the enucleated
   // donor egg, sperm from the father.
@@ -283,7 +241,11 @@ describe('buildGeneticGraph — mitochondrial donation (MRT) inference', () => {
   });
 
   it('nuclear parents are the intended mother and father, not the mtDNA donor', () => {
-    const g = buildGeneticGraph(mrtNodes, mrtEdges, mrtConfig, mrtSex);
+    const g = buildGeneticGraph(
+      { people: mrtNodes, links: mrtEdges },
+      mrtSex,
+      gametesOf(mrtEdges),
+    );
     expect(
       g
         .parentsOf('child')
@@ -295,7 +257,11 @@ describe('buildGeneticGraph — mitochondrial donation (MRT) inference', () => {
   });
 
   it('mtDNA comes from the donor egg, not the intended mother', () => {
-    const g = buildGeneticGraph(mrtNodes, mrtEdges, mrtConfig, mrtSex);
+    const g = buildGeneticGraph(
+      { people: mrtNodes, links: mrtEdges },
+      mrtSex,
+      gametesOf(mrtEdges),
+    );
     expect(g.mitochondrialParentsOf('child')).toEqual(['donor']);
     expect(g.mitochondrialChildrenOf('donor')).toEqual(['child']);
     expect(g.mitochondrialChildrenOf('mother')).toHaveLength(0);
@@ -308,10 +274,9 @@ describe('buildGeneticGraph — mitochondrial donation (MRT) inference', () => {
       makeGameteEdge('father', 'child', 'biological', 'sperm'),
     ];
     const g = buildGeneticGraph(
-      nodes,
-      edges,
-      mrtConfig,
+      { people: nodes, links: edges },
       stubResolveSex({ donor: 'female', father: 'male' }),
+      gametesOf(edges),
     );
     // The lone donor egg is BOTH the nuclear mother and the mtDNA source.
     expect(
@@ -330,9 +295,7 @@ describe('buildGeneticGraph — mitochondrial donation (MRT) inference', () => {
       makeGeneticEdge('dad', 'kid'),
     ];
     const g = buildGeneticGraph(
-      nodes,
-      edges,
-      config,
+      { people: nodes, links: edges },
       stubResolveSex({ mum: 'female', dad: 'male' }),
     );
     expect(g.mitochondrialParentsOf('kid')).toEqual(['mum']);
@@ -348,29 +311,23 @@ describe('buildGeneticGraph — mitochondrial donation (MRT) inference', () => {
 describe('buildGeneticGraph — duplicate edge de-duplication', () => {
   const parentId = 'parent-A';
   const childId = 'child-X';
-  const dupNodes: NcNode[] = [makeNode(parentId), makeNode(childId)];
+  const dupNodes: GeneticPerson[] = [makeNode(parentId), makeNode(childId)];
 
-  const dupEdge1: NcEdge = {
-    [entityPrimaryKeyProperty]: 'edge-1',
-    type: 'family',
-    from: parentId,
-    to: childId,
-    [entityAttributesProperty]: { [RELATIONSHIP_TYPE_VAR]: ['biological'] },
+  const dupEdge1: GeneticLink = {
+    source: parentId,
+    target: childId,
+    kind: 'biological',
   };
 
-  const dupEdge2: NcEdge = {
-    [entityPrimaryKeyProperty]: 'edge-2',
-    type: 'family',
-    from: parentId,
-    to: childId,
-    [entityAttributesProperty]: { [RELATIONSHIP_TYPE_VAR]: ['biological'] },
+  const dupEdge2: GeneticLink = {
+    source: parentId,
+    target: childId,
+    kind: 'biological',
   };
 
   it('two identical parent→child edges produce exactly one parent entry', () => {
     const g = buildGeneticGraph(
-      dupNodes,
-      [dupEdge1, dupEdge2],
-      config,
+      { people: dupNodes, links: [dupEdge1, dupEdge2] },
       stubResolveSex({}),
     );
     const parents = g.parentsOf(childId);
@@ -380,9 +337,7 @@ describe('buildGeneticGraph — duplicate edge de-duplication', () => {
 
   it('two identical parent→child edges produce exactly one child entry', () => {
     const g = buildGeneticGraph(
-      dupNodes,
-      [dupEdge1, dupEdge2],
-      config,
+      { people: dupNodes, links: [dupEdge1, dupEdge2] },
       stubResolveSex({}),
     );
     expect(g.childrenOf(parentId)).toHaveLength(1);
@@ -398,29 +353,23 @@ describe('buildGeneticGraph — duplicate edge correctness guard (AR pseudodomin
   const parentAId = 'parent-A-ar';
   const childId = 'child-ar';
 
-  const dupNodes: NcNode[] = [makeNode(parentAId), makeNode(childId)];
+  const dupNodes: GeneticPerson[] = [makeNode(parentAId), makeNode(childId)];
 
-  const dupEdge1: NcEdge = {
-    [entityPrimaryKeyProperty]: 'ar-dup-1',
-    type: 'family',
-    from: parentAId,
-    to: childId,
-    [entityAttributesProperty]: { [RELATIONSHIP_TYPE_VAR]: ['biological'] },
+  const dupEdge1: GeneticLink = {
+    source: parentAId,
+    target: childId,
+    kind: 'biological',
   };
 
-  const dupEdge2: NcEdge = {
-    [entityPrimaryKeyProperty]: 'ar-dup-2',
-    type: 'family',
-    from: parentAId,
-    to: childId,
-    [entityAttributesProperty]: { [RELATIONSHIP_TYPE_VAR]: ['biological'] },
+  const dupEdge2: GeneticLink = {
+    source: parentAId,
+    target: childId,
+    kind: 'biological',
   };
 
   it('single affected parent via duplicated edge → child is obligateCarrier, NOT obligateAffected', () => {
     const g = buildGeneticGraph(
-      dupNodes,
-      [dupEdge1, dupEdge2],
-      config,
+      { people: dupNodes, links: [dupEdge1, dupEdge2] },
       stubResolveSex({}),
     );
     const affected = new Set([parentAId]);

@@ -4,21 +4,24 @@ import { type CSSProperties, forwardRef, type ReactNode } from 'react';
 
 import { AppMessage } from '@codaco/app-i18n/react';
 import type { NodeShape } from '@codaco/fresco-ui/Node';
-import type { NcEdge, NcNode } from '@codaco/shared-consts';
 
-import PedigreeLayout from '../../LegacyFamilyPedigree/pedigree-layout/components/PedigreeLayout';
-import type { VariableConfig } from '../../LegacyFamilyPedigree/store';
+import PedigreeLayout from '../../FamilyPedigree/pedigree-layout/components/PedigreeLayout';
+import type { PedigreeLink } from '../../FamilyPedigree/pedigree-layout/types';
 import { NotationKey } from '../components/NotationKey';
 import { messages } from '../messages';
 
 type PedigreeSnapshotDocumentProps = {
   title: string;
-  nodes: Map<string, NcNode>;
-  edges: Map<string, NcEdge>;
-  variableConfig: VariableConfig;
+  /** Everyone in the family, and the links between them, as the canvas lays
+   * them out. */
+  nodeIds: readonly string[];
+  links: readonly PedigreeLink[];
+  nodeNames: ReadonlyMap<string, string>;
+  edgeColor: string;
   nodeWidth: number;
   nodeHeight: number;
-  renderNode: (node: NcNode & { id: string }) => ReactNode;
+  /** Each person's symbol, without the canvas's controls. */
+  renderNode: (nodeId: string) => ReactNode;
   highlightedNodeIds?: Set<string>;
   highlightedEdgeKeys?: Set<string>;
   // Colour of the notation-key glyphs (the shown condition's colour).
@@ -33,7 +36,7 @@ type PedigreeSnapshotDocumentProps = {
 /**
  * A light-themed, printable rendering of the current pedigree, built off-screen
  * and captured to a PNG by the snapshot action. Unlike the on-screen interface
- * (dark, scrollable, interactive) this lays the whole pedigree out at natural
+ * (dark, panned and zoomed, interactive) this lays the whole pedigree out at natural
  * size on a white background with dark ink — via `--np-label-color` — so it
  * prints legibly, and pairs it with a heading and the symbol key.
  *
@@ -46,9 +49,10 @@ export const PedigreeSnapshotDocument = forwardRef<
 >(function PedigreeSnapshotDocument(
   {
     title,
-    nodes,
-    edges,
-    variableConfig,
+    nodeIds,
+    links,
+    nodeNames,
+    edgeColor,
     nodeWidth,
     nodeHeight,
     renderNode,
@@ -100,12 +104,17 @@ export const PedigreeSnapshotDocument = forwardRef<
 
       <div style={{ display: 'flex', justifyContent: 'center' }}>
         <PedigreeLayout
-          nodes={nodes}
-          edges={edges}
-          variableConfig={variableConfig}
+          nodeIds={nodeIds}
+          links={links}
+          nodeNames={nodeNames}
+          edgeColor={edgeColor}
           nodeWidth={nodeWidth}
           nodeHeight={nodeHeight}
-          renderNode={renderNode}
+          renderNode={(nodeId) => (
+            <div className="flex size-full items-center justify-center">
+              {renderNode(nodeId)}
+            </div>
+          )}
           highlightedNodeIds={highlightedNodeIds}
           highlightedEdgeKeys={highlightedEdgeKeys}
         />

@@ -4,8 +4,9 @@ This document records the research-gated modelling decisions baked into the
 NarrativePedigree genetics engine (`genetics/`). Each entry states **what the
 engine does**, the **rationale**, any **citations**, and the **decision reached**.
 
-The engine takes the shared interview network (nodes + genetic edges) plus a
-disease's `InheritancePattern` and computes a per-person `Status` for one selected
+The engine takes the participant's family as the source Family Pedigree
+recorded it (people, their sex assigned at birth, and the relationships
+between them; see `familyGenetics.ts`) plus a disease's `InheritancePattern` and computes a per-person `Status` for one selected
 condition. Statuses drive the (decorative) pedigree markers and the screen-reader
 status summary. The engine is **display-only**: it never writes back to the
 network, and every inference is derived from the recorded pedigree structure.
@@ -127,23 +128,40 @@ old marker did:
 `buildGeneticGraph` maintains two parallel adjacencies per child: the **nuclear**
 relation (`parentsOf` / `childrenOf`, autosomal / X / Y) and a **mitochondrial**
 relation (`mitochondrialParentsOf` / `mitochondrialChildrenOf`, the egg-cytoplasm
-line). `splitParents` (`geneticGraph.ts`) partitions each child's genetic parent
-edges by counting how many carry `gameteRole === 'egg'`:
+line). `splitParents` (`geneticGraph.ts`) partitions each child's genetic
+parents (`biological` and `donor` relationships) by how many are known to have
+given an egg:
 
-- **0 eggs recorded** → fall back to the sex rule: every genetic parent is nuclear,
-  and the mtDNA source is the female-resolved parent(s). This is byte-identical to
-  the pre-inference behaviour, so pedigrees without gamete tagging are unaffected.
+- **No egg known** → fall back to the sex rule: every genetic parent is nuclear,
+  and the mtDNA source is the female-resolved parent(s).
 - **1 egg** → that single egg is _both_ the nucleus and the mtDNA source. Normal
   birth and **standard egg donation** are unchanged (the donor egg carries both the
   nuclear contribution and the cytoplasm).
 - **≥2 eggs (mitochondrial replacement therapy, MRT)** → the mtDNA source is the
-  **`donor`-tagged** egg (`eggEdges.find(relType === 'donor')`, else the first
-  egg); the nuclear parents are everyone _except_ that donor egg.
+  egg from the **`donor`** relationship (else the first egg); the nuclear parents
+  are everyone _except_ that donor egg.
 
 The mtDNA line is a **separate adjacency** — mtDNA does not follow the female
 nuclear parent under MRT; it follows the egg cytoplasm. Maternal-lineage inference
 (mitochondrial inheritance, X-linked maternal transmission) reads the mitochondrial
 adjacency, not the nuclear one.
+
+**Where the gametes come from.** The Family Pedigree records no gametes. It
+records each person's sex assigned at birth, and it allows a child at most one
+genetic parent recorded female at birth and one recorded male, since one gave
+the egg and the other the sperm. `inferGametes` (`familyGenetics.ts`) reads
+the gametes back from that:
+
+- a genetic parent recorded female at birth gave the egg, one recorded male the
+  sperm;
+- a genetic parent recorded otherwise (intersex, not known, preferred not to
+  say, or not answered) gave the other gamete when the child's one other
+  genetic parent is recorded female or male. This is how the Family Pedigree
+  itself fills in an unnamed parent added to complete a pair;
+- otherwise the gamete is not known, and the sex rule applies.
+
+So an intersex parent whose co-parent is recorded male gave the egg, and
+their children inherit their mtDNA; the egg follows the gamete, not the sex.
 
 ### Rationale
 
@@ -169,23 +187,14 @@ line correctly.
 
 ### Reachability boundary (important)
 
-**MRT is not authorable through the FamilyPedigree participant interface.** A
-reachability analysis of the onboarding wizard and every participant building flow
-found two independent structural caps, either alone sufficient:
-
-1. **Only one egg edge can ever be minted.** Both parentage transforms
-   (`buildChildParentage`, `egoCellTransform`) are hardwired to a fixed
-   egg-source / sperm-source / carrier-source triad; there is exactly one egg-source
-   per child and no "add another egg parent" control anywhere.
-2. **Genetic parents are hard-capped at two.** The add-parent flow strips the
-   `biological` and `donor` options once two genetic slots are filled, and never
-   writes `gameteRole` on that path anyway.
-
-Standard egg donation, sperm donation, and surrogacy **are** participant-reachable
-(the `donor` + `gameteRole='egg'` primitives already coexist); only "more than one
-egg contributor" is missing. Consequently the `eggEdges.length >= 2` branch is fed
-**only** by Architect-authored protocols, hand-authored fixtures, or imported data
-— never by participant input.
+**MRT is not authorable through the Family Pedigree participant interface.**
+It allows a child at most one genetic parent recorded female at birth, so the
+gametes it records can never include two eggs. Standard egg donation, sperm
+donation, and surrogacy **are** participant-reachable (a `donor` relationship
+from a parent recorded female, or a `surrogate` relationship, which is not
+genetic). Two eggs arise only from data the Family Pedigree did not write:
+two genetic parents recorded female at birth, in hand-authored fixtures or
+imported network data.
 
 ### Decision
 
@@ -202,46 +211,39 @@ built.
 
 ### What the engine does
 
-`splitParents` **assumes** coherent gamete tagging and does not validate it. A
-coherent MRT birth tags **both** eggs `gameteRole='egg'` with the **donor** egg
-additionally `relationshipType='donor'`. Given that, the engine routes the donor
-egg to the mtDNA-only adjacency and the remaining egg(s) to the nucleus.
-Malformed input — two eggs with _no_ `donor` tag, or _only_ the donor egg tagged —
-would route mtDNA/nuclear parentage by **edge order** (the first-egg fallback)
-rather than by intent. The engine's own docstring records this explicitly: _"It
-does not validate the tagging … Garbage in, garbage out; upstream (the schema +
-Architect UI) is responsible for coherent tags."_
+`splitParents` **assumes** coherent input and does not validate it. A coherent
+MRT birth, in data the Family Pedigree did not write, records two genetic
+parents female at birth — so both gave an egg — one of them through a `donor`
+relationship. Given that, the engine routes the donor egg to the mtDNA-only
+adjacency and the other egg to the nucleus. Malformed input — two eggs with
+_no_ `donor` relationship — routes mtDNA/nuclear parentage by **link order**
+(the first-egg fallback) rather than by intent.
 
 ### Rationale
 
-Coherence is enforced **at creation**, not by defensive guessing in the display
-engine — but the practical target turned out narrower than "add a schema rule":
+Coherence holds **at creation**, not by defensive guessing in the display
+engine:
 
-- **The participant path is already safe by construction** — it cannot produce ≥2
-  eggs at all (see §2), so no guard is needed for participant data.
-- **A `@codaco/protocol-validation` schema invariant is not feasible.** That package
-  validates the _protocol document_ (codebook + stages + assets); it never sees
-  participant **network data** (nodes/edges carrying attribute values), which is
-  where a "child with ≥2 egg edges" would exist. And `gameteRole` /
-  `relationshipType` are **configurable, reference-by-name variables**
-  (`EdgeConfigSchema` binds _which_ variable holds the value, not the value), so
-  there is nothing fixed in the schema to key a rule on. Architect only binds those
-  variable slots; it never mints edges carrying `gameteRole='egg'`, so there is no
-  Architect "save" moment where such a rule could fire either.
+- **The participant path is safe by construction** — the Family Pedigree
+  cannot record two genetic parents female at birth for one child (see §2).
+- **A `@codaco/protocol-validation` schema invariant is not feasible.** That
+  package validates the _protocol document_ (codebook + stages + assets); it
+  never sees participant **network data** (nodes/edges carrying attribute
+  values), which is where such a child would exist. Architect authors protocol
+  structure, never network data.
 - **The residual risk is confined to hand-authored fixtures / raw imported network
   data** — data that never passes through `@codaco/protocol-validation` at all.
 
 ### Decision
 
-**Coherence holds by construction at every supported authoring surface, so no schema
-guard is built — and none is cleanly feasible.** The participant UI cannot create
-≥2 eggs, and Architect authors protocol _structure_, not network data. The only way
-to obtain incoherent ≥2-egg data is to hand-edit or import a raw network; for that
-the engine keeps its simple order-based fallback and documents its
-garbage-in/garbage-out trust boundary rather than silently guessing. If fail-loud
-behaviour on such malformed input is ever wanted, the appropriate home is a
-**dev-only assertion in `buildGeneticGraph`** (throw/warn when ≥2 eggs lack exactly
-one `donor` tag) — not a schema rule, and not silent guessing in the display path.
+**Coherence holds by construction at every supported authoring surface, so no
+schema guard is built — and none is cleanly feasible.** For hand-edited or
+imported data the engine keeps its simple order-based fallback and documents its
+garbage-in/garbage-out trust boundary rather than silently guessing. If
+fail-loud behaviour on such input is ever wanted, the appropriate home is a
+**dev-only assertion in `buildGeneticGraph`** (throw/warn when ≥2 eggs lack
+exactly one `donor` relationship) — not a schema rule, and not silent guessing
+in the display path.
 
 ---
 
@@ -328,33 +330,35 @@ data-collection concern, not an inference the engine should manufacture.
 **Decision.** **Accept as-is; document the data-completeness dependence. No new
 runtime signal.**
 
-### 5b. `resolveSex` sex-blocked → `unknown`, with an inclusive gamete-role fallback
+### 5b. Sex for the sex-linked rules: intersex and unknown resolve to `unknown`, with a gamete fallback
 
-**What the engine does.** `resolveSex` (`resolveSex.ts`) resolves biological sex for
-sex-linked inheritance in this order:
+**What the engine does.** `geneticSexResolver` (`familyGenetics.ts`) resolves
+the sex the sex-linked rules read, from the source Family Pedigree's sex
+assigned at birth attribute:
 
-1. The node's `biologicalSex` attribute, but **only** if it is exactly `'female'`
-   or `'male'`. Every other stored value — `'intersex'`, `'unknown'`,
-   `'preferNotToSay'`, or absent — **falls through** rather than being coerced.
-2. Otherwise, a **gamete-role fallback**: scan the person's outgoing _genetic_
-   parent edges; `gameteRole === 'egg'` → `'female'`, `gameteRole === 'sperm'` →
-   `'male'`, **regardless of any recorded sex**. This resolves the sex of a person
-   who contributed a gamete without asking them to state a sex.
-3. Otherwise `'unknown'`.
+1. Recorded `'female'` or `'male'`: that.
+2. Recorded `'intersex'`: `'unknown'`, always. Intersex variations include
+   chromosome patterns other than XX and XY, so neither one X nor two can be
+   assumed, whichever gamete the person gave.
+3. Recorded `'unknown'`, `'preferNotToSay'`, or not answered: the sex of the
+   gamete they gave a child (egg → `'female'`, sperm → `'male'`), as
+   `inferGametes` reads it (§2), when that is known and consistent.
+4. Otherwise `'unknown'`.
+
+Gender identity has no bearing on it.
 
 **Rationale.** Sex-linked patterns need a _biological_ sex signal, but the engine
-must neither guess nor mis-gender. Step 1 refuses to invent a binary sex from a
-non-binary or withheld answer — it treats that as **uncertainty** and lets the
-sex-linked rules handle it conservatively, rather than guessing. Step 2 is
-**inclusive**: a person's gamete contribution (egg → female-role, sperm →
-male-role) is a factual biological signal that lets the engine resolve sex-linked
-inheritance for gamete providers _without_ requiring them to have stated a sex, and
-without contradicting a recorded non-binary identity for their own sake. So
-`'unknown'` is returned **only** for leaf nodes that are non-binary /
-prefer-not-to-say / absent-sex **and** contribute no gamete — precisely the cases
-where the engine genuinely lacks the biological signal a sex-linked rule needs.
-`'unknown'` there means _"insufficient data to place this person on a sex-linked
-lineage,"_ not "no risk."
+must neither guess nor mis-gender. Step 2 refuses to invent a chromosome count
+from an intersex answer, and step 1 never coerces a non-binary or withheld
+answer into a binary one — both are treated as **uncertainty**, which the
+sex-linked rules handle conservatively. Step 3 is **inclusive**: a gamete
+contribution is a factual biological signal that places a person who did not
+state their sex on a sex-linked lineage without asking them to. (The
+mitochondrial line does not need step 3: it follows the egg itself, §2, so it
+reaches an intersex person's children too.) `'unknown'` is returned only where
+the engine genuinely lacks the biological signal a sex-linked rule needs, and
+means _"insufficient data to place this person on a sex-linked lineage,"_ not
+"no risk."
 
 **Decision.** **Accept as-is; document the data-completeness dependence and the
-inclusive gamete-role fallback. No new runtime signal.**
+inclusive gamete fallback. No new runtime signal.**

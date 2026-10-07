@@ -1,20 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import type { NcNode, VariableValue } from '@codaco/shared-consts';
-import {
-  entityAttributesProperty,
-  entityPrimaryKeyProperty,
-} from '@codaco/shared-consts';
+import type { VariableValue } from '@codaco/shared-consts';
 
 import { affectedSet, mergeStatus } from '../status';
 
-const makeNode = (
-  id: string,
-  attrs: Record<string, VariableValue>,
-): NcNode => ({
-  [entityPrimaryKeyProperty]: id,
-  [entityAttributesProperty]: attrs,
-  type: 'person',
+const makePerson = (id: string, attributes: Record<string, VariableValue>) => ({
+  id,
+  attributes,
 });
 
 describe('mergeStatus', () => {
@@ -62,14 +54,14 @@ describe('mergeStatus', () => {
 describe('affectedSet', () => {
   const DISEASE = 'hasDisease';
 
-  it('includes only nodes whose disease attribute is strictly true', () => {
-    const nodes: NcNode[] = [
-      makeNode('a', { [DISEASE]: true }),
-      makeNode('b', { [DISEASE]: false }),
-      makeNode('c', {}),
+  it('includes only people whose disease attribute is strictly true', () => {
+    const people = [
+      makePerson('a', { [DISEASE]: true }),
+      makePerson('b', { [DISEASE]: false }),
+      makePerson('c', {}),
     ];
 
-    const result = affectedSet(nodes, DISEASE);
+    const result = affectedSet(people, DISEASE);
 
     expect(result.has('a')).toBe(true);
     expect(result.has('b')).toBe(false);

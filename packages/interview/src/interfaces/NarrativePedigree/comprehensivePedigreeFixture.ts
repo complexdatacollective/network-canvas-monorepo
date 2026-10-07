@@ -1,8 +1,5 @@
 import { SyntheticInterview } from '@codaco/protocol-utilities';
-import {
-  PEDIGREE_RELATIONSHIP_KIND_OPTIONS,
-  PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
-} from '@codaco/protocol-validation';
+import type { PedigreeSexAssignedAtBirth } from '@codaco/protocol-validation';
 
 // Shared fixture for the NarrativePedigree examples: one integrated five-
 // generation family whose six conditions all reach ego's own household, so the
@@ -20,42 +17,18 @@ import {
 // which coincidentally matches David's; the "Bauer" birth surname shows only in
 // the `née Bauer` annotations below, not in the rendered pedigree.)
 //
-// TODO(narrative-pedigree-rebuild): the source stage is the redesigned Family
-// Pedigree, whose attributes the variables below are named to match (the
-// stage binds an existing attribute of the same name). The seeded family and
-// its gamete roles still follow the old pedigree's model.
+// The source stage is a Family Pedigree, which binds its own person and
+// relationship attributes; the family is seeded through them, as the stage
+// records a family the participant draws.
 
-const NAME_VAR = 'name';
-const EGO_VAR = 'isEgo';
-const BIO_SEX_VAR = 'biologicalSex';
-const GENDER_VAR = 'gender';
-const REL_TO_EGO_VAR = 'relationshipToEgo';
-
-const REL_TYPE_VAR = 'relType';
-const IS_ACTIVE_VAR = 'isActive';
-const IS_GEST_VAR = 'isGestationalCarrier';
-const GAMETE_ROLE_VAR = 'gameteRole';
-
-// One boolean node attribute per condition.
+// One boolean person attribute per condition, each set by one of the Family
+// Pedigree's nomination prompts.
 const HD_VAR = 'hasHuntingtons'; // autosomal dominant
 const CF_VAR = 'hasCysticFibrosis'; // autosomal recessive
 const HAEM_VAR = 'hasHaemophilia'; // X-linked recessive
 const XLH_VAR = 'hasHypophosphataemia'; // X-linked dominant
 const YHL_VAR = 'hasYLinkedHearingLoss'; // Y-linked
 const MITO_VAR = 'hasMitochondrialMyopathy'; // mitochondrial
-
-// SyntheticInterview.getNetwork() may fill an unset boolean on a manual node, so
-// every condition flag (and the ego flag) is seeded false by default and only
-// the affected/ego nodes override it — keeping the pedigree deterministic.
-const BOOL_DEFAULTS = {
-  [EGO_VAR]: false,
-  [HD_VAR]: false,
-  [CF_VAR]: false,
-  [HAEM_VAR]: false,
-  [XLH_VAR]: false,
-  [YHL_VAR]: false,
-  [MITO_VAR]: false,
-};
 
 /**
  * Add the shared comprehensive pedigree to `si`: the Person node type and Family
@@ -87,11 +60,12 @@ const BOOL_DEFAULTS = {
  * caller that prepends its own stages knows the resulting indices by construction.
  *
  * The default pedigree contains only structure a participant can actually build
- * through the FamilyPedigree onboarding + building interactions (at most one egg
- * contributor per child). Mitochondrial replacement therapy (MRT) — a child
- * conceived from TWO eggs, one donor-tagged to supply the mtDNA — is NOT reachable
+ * on the Family Pedigree (at most one genetic parent recorded female at birth,
+ * so one egg, per child). Mitochondrial replacement therapy (MRT) — a child
+ * conceived from TWO eggs, the donor's supplying the mtDNA — is NOT reachable
  * through that participant interface; it is demonstrated only with seeded or
- * imported interview data. Pass `includeMrtBranch` to add that seeded/imported
+ * imported interview data, where a child has two genetic parents recorded female
+ * at birth, one of them a donor. Pass `includeMrtBranch` to add that seeded/imported
  * contrast: ego's aunt Margaret (also at risk down the maternal line) conceives
  * Chloe by mitochondrial donation (a donor egg supplies the mtDNA), so Chloe
  * escapes the mito condition while still inheriting Margaret's autosomes (she stays
@@ -109,81 +83,12 @@ export function addComprehensivePedigree(
   showAtRisk = true,
   includeMrtBranch = false,
 ): void {
-  const nodeType = si.addNodeType({
-    name: 'Person',
-    shape: {
-      default: 'diamond',
-      dynamic: {
-        type: 'discrete',
-        variable: GENDER_VAR,
-        map: [
-          { value: 'man', shape: 'square' },
-          { value: 'woman', shape: 'circle' },
-          { value: 'gender_diverse', shape: 'diamond' },
-        ],
-      },
-    },
-  });
-  // addNodeType auto-seeds a "name" text variable keyed by a generated UID.
-  // Re-declaring it dedupes to that variable, so capture the returned id and use
-  // it for both the label config and the seeded attributes — otherwise the label
-  // would be stored under the literal key "name" that no codebook variable owns.
-  const nameVarId = nodeType.addVariable({ name: NAME_VAR, type: 'text' }).id;
-  nodeType.addVariable({ id: EGO_VAR, name: EGO_VAR, type: 'boolean' });
-  nodeType.addVariable({
-    id: BIO_SEX_VAR,
-    name: 'sexAssignedAtBirth',
-    type: 'categorical',
-    options: PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
-  });
-  nodeType.addVariable({
-    id: GENDER_VAR,
-    name: 'Gender',
-    type: 'categorical',
-    options: [
-      { value: 'man', label: 'Man' },
-      { value: 'woman', label: 'Woman' },
-      { value: 'gender_diverse', label: 'Gender diverse' },
-    ],
-  });
-  nodeType.addVariable({
-    id: REL_TO_EGO_VAR,
-    name: REL_TO_EGO_VAR,
-    type: 'text',
-  });
-  for (const id of [HD_VAR, CF_VAR, HAEM_VAR, XLH_VAR, YHL_VAR, MITO_VAR]) {
-    nodeType.addVariable({ id, name: id, type: 'boolean' });
-  }
-
-  const edgeType = si.addEdgeType({ name: 'Family' });
-  edgeType.addVariable({
-    id: REL_TYPE_VAR,
-    name: 'kind',
-    type: 'categorical',
-    options: PEDIGREE_RELATIONSHIP_KIND_OPTIONS,
-  });
-  edgeType.addVariable({
-    id: IS_ACTIVE_VAR,
-    name: 'currentPartner',
-    type: 'boolean',
-  });
-  edgeType.addVariable({
-    id: IS_GEST_VAR,
-    name: 'gestationalCarrier',
-    type: 'boolean',
-  });
-  edgeType.addVariable({
-    id: GAMETE_ROLE_VAR,
-    name: GAMETE_ROLE_VAR,
-    type: 'text',
-  });
+  const people = si.addNodeType({ name: 'Person' });
 
   const fpStage = si.addStage('FamilyPedigree', {
     label: 'Family Pedigree',
-    subject: { entity: 'node', type: nodeType.id },
-    relationshipType: edgeType.id,
+    subject: { entity: 'node', type: people.id },
     framing: 'gamete',
-    askGenderIdentity: false,
     prompt: 'Build your family pedigree.',
     nominationPrompts: [
       { text: "Who has Huntington's disease?", variableName: HD_VAR },
@@ -194,6 +99,26 @@ export function addComprehensivePedigree(
       { text: 'Who has mitochondrial myopathy?', variableName: MITO_VAR },
     ],
   });
+  const [hd, cf, haem, xlh, yhl, mito] = fpStage.nominations;
+  if (!hd || !cf || !haem || !xlh || !yhl || !mito) {
+    throw new Error('The Family Pedigree is missing a nomination prompt');
+  }
+  // Circles for women, squares for men, diamonds for anyone else, as the
+  // researcher might map the person type's shape in the codebook.
+  const genderIdentity = fpStage.genderIdentity;
+  if (genderIdentity) {
+    people.setShape({
+      default: 'diamond',
+      dynamic: {
+        variable: genderIdentity,
+        type: 'discrete',
+        map: [
+          { value: 'woman', shape: 'circle' },
+          { value: 'man', shape: 'square' },
+        ],
+      },
+    });
+  }
 
   si.addStage('NarrativePedigree', {
     label: 'Inheritance Pathways',
@@ -204,204 +129,244 @@ export function addComprehensivePedigree(
         id: 'huntingtons',
         label: "Huntington's Disease",
         color: 'node-color-seq-1',
-        variable: HD_VAR,
+        attribute: hd,
         inheritancePattern: 'autosomalDominant',
       },
       {
         id: 'cysticFibrosis',
         label: 'Cystic Fibrosis',
         color: 'node-color-seq-3',
-        variable: CF_VAR,
+        attribute: cf,
         inheritancePattern: 'autosomalRecessive',
       },
       {
         id: 'haemophilia',
         label: 'Haemophilia A',
         color: 'node-color-seq-6',
-        variable: HAEM_VAR,
+        attribute: haem,
         inheritancePattern: 'xLinkedRecessive',
       },
       {
         id: 'hypophosphataemia',
         label: 'X-linked Hypophosphataemia',
         color: 'node-color-seq-4',
-        variable: XLH_VAR,
+        attribute: xlh,
         inheritancePattern: 'xLinkedDominant',
       },
       {
         id: 'yLinkedHearingLoss',
         label: 'Y-linked Hearing Loss',
         color: 'node-color-seq-7',
-        variable: YHL_VAR,
+        attribute: yhl,
         inheritancePattern: 'yLinked',
       },
       {
         id: 'mitochondrial',
         label: 'Mitochondrial Myopathy',
         color: 'node-color-seq-5',
-        variable: MITO_VAR,
+        attribute: mito,
         inheritancePattern: 'mitochondrial',
       },
     ],
   });
 
-  const fpId = fpStage.id;
-  const person = (uid: string, attrs: Record<string, unknown>) =>
-    si.addManualNode(fpId, nodeType.id, uid, { ...BOOL_DEFAULTS, ...attrs });
+  // The condition each attribute marks, for seeding who is affected.
+  const conditions = {
+    [HD_VAR]: hd,
+    [CF_VAR]: cf,
+    [HAEM_VAR]: haem,
+    [XLH_VAR]: xlh,
+    [YHL_VAR]: yhl,
+    [MITO_VAR]: mito,
+  };
+  // SyntheticInterview.getNetwork() may fill an unset boolean on a manual node,
+  // so every condition flag (and the participant marker) is seeded false by
+  // default and only the affected people and the participant override it —
+  // keeping the pedigree deterministic.
+  const boolDefaults = {
+    [fpStage.ego]: false,
+    ...Object.fromEntries(Object.values(conditions).map((id) => [id, false])),
+  };
+
+  type Seed = {
+    name: string;
+    sex: PedigreeSexAssignedAtBirth;
+    gender: 'woman' | 'man';
+    isEgo?: boolean;
+    affected?: (keyof typeof conditions)[];
+  };
+  const person = (uid: string, seed: Seed) =>
+    si.addManualNode(fpStage.id, people.id, uid, {
+      ...boolDefaults,
+      [fpStage.name]: seed.name,
+      [fpStage.sexAssignedAtBirth]: [seed.sex],
+      ...(genderIdentity ? { [genderIdentity]: [seed.gender] } : {}),
+      ...(seed.isEgo ? { [fpStage.ego]: true } : {}),
+      ...Object.fromEntries(
+        (seed.affected ?? []).map((condition) => [conditions[condition], true]),
+      ),
+    });
 
   // --- Gen I: the shared Marsh great-grandparents --------------------------
   // Eleanor founds the mitochondrial line. Arthur + Eleanor are the common
   // ancestors that make ego's parents first cousins (the CF consanguinity).
   person('ggf', {
-    [nameVarId]: 'Arthur Marsh',
-    [BIO_SEX_VAR]: 'male',
-    [GENDER_VAR]: ['man'],
+    name: 'Arthur Marsh',
+    sex: 'male',
+    gender: 'man',
   });
   person('ggm', {
-    [nameVarId]: 'Eleanor Marsh',
-    [BIO_SEX_VAR]: 'female',
-    [GENDER_VAR]: ['woman'],
-    [MITO_VAR]: true,
+    name: 'Eleanor Marsh',
+    sex: 'female',
+    gender: 'woman',
+    affected: [MITO_VAR],
   });
 
   // --- Gen II: ego's grandparents (a Marsh sibling pair + married-in spouses)
   // Nancy (Eleanor's daughter) and Frank (Eleanor's son) are siblings; their
   // children Rose and David marry, which is the consanguineous union.
   person('mgm', {
-    [nameVarId]: 'Nancy Bauer',
-    [BIO_SEX_VAR]: 'female',
-    [GENDER_VAR]: ['woman'],
+    name: 'Nancy Bauer',
+    sex: 'female',
+    gender: 'woman',
   }); // née Marsh
   person('mgf', {
-    [nameVarId]: 'George Bauer',
-    [BIO_SEX_VAR]: 'male',
-    [GENDER_VAR]: ['man'],
-    [HD_VAR]: true,
+    name: 'George Bauer',
+    sex: 'male',
+    gender: 'man',
+    affected: [HD_VAR],
   });
   person('pgf', {
-    [nameVarId]: 'Frank Marsh',
-    [BIO_SEX_VAR]: 'male',
-    [GENDER_VAR]: ['man'],
+    name: 'Frank Marsh',
+    sex: 'male',
+    gender: 'man',
   });
   person('pgm', {
-    [nameVarId]: 'Irene Marsh',
-    [BIO_SEX_VAR]: 'female',
-    [GENDER_VAR]: ['woman'],
+    name: 'Irene Marsh',
+    sex: 'female',
+    gender: 'woman',
   });
 
   // --- Gen III: ego's parents (first cousins), aunt, uncle, partner's parents
   person('mother', {
-    [nameVarId]: 'Rose Marsh',
-    [BIO_SEX_VAR]: 'female',
-    [GENDER_VAR]: ['woman'],
-    [HD_VAR]: true,
+    name: 'Rose Marsh',
+    sex: 'female',
+    gender: 'woman',
+    affected: [HD_VAR],
   }); // née Bauer
   person('father', {
-    [nameVarId]: 'David Marsh',
-    [BIO_SEX_VAR]: 'male',
-    [GENDER_VAR]: ['man'],
-    [XLH_VAR]: true,
+    name: 'David Marsh',
+    sex: 'male',
+    gender: 'man',
+    affected: [XLH_VAR],
   });
   // Ego's maternal aunt Margaret — at risk down the maternal (mito) line. In the
   // MRT branch she conceives Chloe by mitochondrial donation.
   person('maunt', {
-    [nameVarId]: 'Margaret Nolan',
-    [BIO_SEX_VAR]: 'female',
-    [GENDER_VAR]: ['woman'],
+    name: 'Margaret Nolan',
+    sex: 'female',
+    gender: 'woman',
   }); // née Bauer
   person('mhusb', {
-    [nameVarId]: 'Paul Nolan',
-    [BIO_SEX_VAR]: 'male',
-    [GENDER_VAR]: ['man'],
+    name: 'Paul Nolan',
+    sex: 'male',
+    gender: 'man',
   });
   // Ego's maternal uncles Thomas and Robert — two affected haemophiliac brothers,
   // which makes their mother Nancy an OBLIGATE carrier (the classic pattern).
   person('muncle', {
-    [nameVarId]: 'Thomas Bauer',
-    [BIO_SEX_VAR]: 'male',
-    [GENDER_VAR]: ['man'],
-    [HAEM_VAR]: true,
+    name: 'Thomas Bauer',
+    sex: 'male',
+    gender: 'man',
+    affected: [HAEM_VAR],
   });
   person('muncle2', {
-    [nameVarId]: 'Robert Bauer',
-    [BIO_SEX_VAR]: 'male',
-    [GENDER_VAR]: ['man'],
-    [HAEM_VAR]: true,
+    name: 'Robert Bauer',
+    sex: 'male',
+    gender: 'man',
+    affected: [HAEM_VAR],
   });
   // The mitochondrial-egg donor (an unaffected outsider) — MRT branch only.
   if (includeMrtBranch) {
     person('donor', {
-      [nameVarId]: 'Ivy Brooks',
-      [BIO_SEX_VAR]: 'female',
-      [GENDER_VAR]: ['woman'],
+      name: 'Ivy Brooks',
+      sex: 'female',
+      gender: 'woman',
     });
   }
   // Partner's Adler line — Y-linked hearing loss.
   person('pf', {
-    [nameVarId]: 'Walter Adler',
-    [BIO_SEX_VAR]: 'male',
-    [GENDER_VAR]: ['man'],
-    [YHL_VAR]: true,
+    name: 'Walter Adler',
+    sex: 'male',
+    gender: 'man',
+    affected: [YHL_VAR],
   });
   person('pm', {
-    [nameVarId]: 'Diane Adler',
-    [BIO_SEX_VAR]: 'female',
-    [GENDER_VAR]: ['woman'],
+    name: 'Diane Adler',
+    sex: 'female',
+    gender: 'woman',
   });
 
   // --- Gen IV: ego's household + ego's affected sibling (MRT child below) ---
   person('ego', {
-    [nameVarId]: 'You',
-    [EGO_VAR]: true,
-    [BIO_SEX_VAR]: 'female',
-    [GENDER_VAR]: ['woman'],
+    name: 'You',
+    sex: 'female',
+    gender: 'woman',
+    isEgo: true,
   });
   // Ego's brother Sam is affected with cystic fibrosis (autozygous via the
   // cousin union), making Rose & David obligate carriers and ego at-risk.
   person('sib', {
-    [nameVarId]: 'Sam Marsh',
-    [BIO_SEX_VAR]: 'male',
-    [GENDER_VAR]: ['man'],
-    [CF_VAR]: true,
+    name: 'Sam Marsh',
+    sex: 'male',
+    gender: 'man',
+    affected: [CF_VAR],
   });
   person('partner', {
-    [nameVarId]: 'Chris Adler',
-    [BIO_SEX_VAR]: 'male',
-    [GENDER_VAR]: ['man'],
-    [YHL_VAR]: true,
+    name: 'Chris Adler',
+    sex: 'male',
+    gender: 'man',
+    affected: [YHL_VAR],
   });
   // Chloe — Margaret's daughter by mitochondrial donation (MRT branch only).
   // Nucleus from Margaret, mtDNA from the donor Ivy, sperm from Paul.
   if (includeMrtBranch) {
     person('mrtchild', {
-      [nameVarId]: 'Chloe Nolan',
-      [BIO_SEX_VAR]: 'female',
-      [GENDER_VAR]: ['woman'],
+      name: 'Chloe Nolan',
+      sex: 'female',
+      gender: 'woman',
     });
   }
 
   // --- Gen V: ego's children -----------------------------------------------
   person('son', {
-    [nameVarId]: 'Noah Adler',
-    [BIO_SEX_VAR]: 'male',
-    [GENDER_VAR]: ['man'],
+    name: 'Noah Adler',
+    sex: 'male',
+    gender: 'man',
   });
   person('daughter', {
-    [nameVarId]: 'Ava Adler',
-    [BIO_SEX_VAR]: 'female',
-    [GENDER_VAR]: ['woman'],
+    name: 'Ava Adler',
+    sex: 'female',
+    gender: 'woman',
   });
 
   // --- Edges ---------------------------------------------------------------
-  const bioEdge = (uid: string, from: string, to: string) =>
-    si.addManualEdge(edgeType.id, uid, from, to, {
-      [REL_TYPE_VAR]: ['biological'],
-      [IS_ACTIVE_VAR]: true,
+  const parentEdge = (
+    uid: string,
+    from: string,
+    to: string,
+    kind: 'biological' | 'donor' = 'biological',
+  ) =>
+    si.addManualEdge(fpStage.edgeType, uid, from, to, {
+      [fpStage.kind]: [kind],
+      [fpStage.gestationalCarrier]: false,
     });
+  const bioEdge = (uid: string, from: string, to: string) =>
+    parentEdge(uid, from, to);
   const partnerEdge = (uid: string, a: string, b: string) =>
-    si.addManualEdge(edgeType.id, uid, a, b, {
-      [REL_TYPE_VAR]: ['partner'],
-      [IS_ACTIVE_VAR]: true,
+    si.addManualEdge(fpStage.edgeType, uid, a, b, {
+      [fpStage.kind]: ['partner'],
+      [fpStage.currentPartner]: true,
     });
 
   // Unions.
@@ -441,28 +406,17 @@ export function addComprehensivePedigree(
   bioEdge('b-pm-partner', 'pm', 'partner');
 
   // Mitochondrial donation → Chloe (MRT branch only). The intended mother
-  // Margaret supplies the egg NUCLEUS (a biological egg), the donor Ivy supplies
-  // the egg CYTOPLASM / mtDNA (a donor egg), Paul supplies the sperm. Because two
-  // egg edges reach Chloe, the genetics engine routes her mtDNA down the donor's
-  // line while her nuclear genome comes from Margaret + Paul. A participant cannot
-  // build a two-egg child through the FamilyPedigree interface, so this branch is
-  // Architect/import-authored only.
+  // Margaret supplies the egg NUCLEUS (a biological parent), the donor Ivy
+  // supplies the egg CYTOPLASM / mtDNA (a donor), Paul supplies the sperm. Both
+  // women are recorded female at birth, so each gave an egg; with two eggs the
+  // genetics engine routes Chloe's mtDNA down the donor's line while her nuclear
+  // genome comes from Margaret + Paul. A participant cannot give a child two
+  // genetic parents recorded female on the Family Pedigree, so this branch is
+  // seeded/imported only.
   if (includeMrtBranch) {
-    si.addManualEdge(edgeType.id, 'e-maunt-chloe', 'maunt', 'mrtchild', {
-      [REL_TYPE_VAR]: ['biological'],
-      [IS_ACTIVE_VAR]: true,
-      [GAMETE_ROLE_VAR]: 'egg',
-    });
-    si.addManualEdge(edgeType.id, 'e-donor-chloe', 'donor', 'mrtchild', {
-      [REL_TYPE_VAR]: ['donor'],
-      [IS_ACTIVE_VAR]: true,
-      [GAMETE_ROLE_VAR]: 'egg',
-    });
-    si.addManualEdge(edgeType.id, 'e-paul-chloe', 'mhusb', 'mrtchild', {
-      [REL_TYPE_VAR]: ['biological'],
-      [IS_ACTIVE_VAR]: true,
-      [GAMETE_ROLE_VAR]: 'sperm',
-    });
+    bioEdge('e-maunt-chloe', 'maunt', 'mrtchild');
+    parentEdge('e-donor-chloe', 'donor', 'mrtchild', 'donor');
+    bioEdge('e-paul-chloe', 'mhusb', 'mrtchild');
   }
 
   // Gen IV → V: ego's children.

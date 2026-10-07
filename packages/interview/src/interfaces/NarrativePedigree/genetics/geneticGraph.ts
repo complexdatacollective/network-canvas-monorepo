@@ -1,32 +1,38 @@
-import { type NcEdge, type NcNode } from '@codaco/shared-consts';
-
-import {
-  isGeneticRelationshipType,
-  readGameteRole,
-  readRelationshipType,
-} from './geneticEdge';
+/** Someone in the family, as the genetics engine sees them. */
+export type GeneticPerson = { id: string };
 
 /**
- * Minimal config needed by the genetics engine.
- * Kept narrow so NarrativePedigree stays independent of FamilyPedigree's config types.
+ * A family link, as the genetics engine reads it: the kind of parent `source`
+ * is to `target`, or a partnership. The Family Pedigree's `FamilyLink` is one.
  */
-export type GeneticGraphConfig = {
-  relationshipTypeVariable: string;
-  /**
-   * When provided, the mtDNA source is inferred from the egg gamete edge — so
-   * mitochondrial donation routes mtDNA down the donor's line. When absent, the
-   * engine falls back to the female-resolved parent as the mtDNA source
-   * (byte-identical to the pre-inference behaviour).
-   */
-  gameteRoleVariable?: string;
+export type GeneticLink = { source: string; target: string; kind: string };
+
+/** The people and links the engine builds its graph from: the Family
+ * Pedigree's `Family`, or any subset of it. */
+export type GeneticFamily = {
+  people: readonly GeneticPerson[];
+  links: readonly GeneticLink[];
 };
+
+/** Which gamete a genetic parent gave a child. */
+export type Gamete = 'egg' | 'sperm';
+
+/**
+ * Biological parents and gamete donors each gave the child an egg or a sperm,
+ * so they are the child's genetic parents. Adoptive and social parents, and
+ * surrogates (who carried the pregnancy but gave no gamete), are not; nor is a
+ * partnership.
+ */
+export function isGeneticKind(kind: string): boolean {
+  return kind === 'biological' || kind === 'donor';
+}
 
 type Sex = 'female' | 'male' | 'unknown';
 
 type ParentEdge = {
   parentId: string;
   relType: string;
-  gameteRole: string | undefined;
+  gameteRole: Gamete | undefined;
 };
 
 function pushInto(
@@ -44,7 +50,7 @@ function pushInto(
  * X / Y) and the single mitochondrial (mtDNA) source, applying the
  * egg-cytoplasm rule:
  *
- * - No egg roles recorded → fall back to the sex rule: every genetic parent is
+ * - No egg known → fall back to the sex rule: every genetic parent is
  *   nuclear, and the mtDNA source is the female-resolved parent(s).
  * - One egg → that egg is both the nucleus and the mtDNA source (normal birth
  *   and standard egg donation are unchanged).
@@ -52,14 +58,11 @@ function pushInto(
  *   egg (the enucleated donor egg retains its cytoplasm), else the first egg;
  *   the nuclear parents are everyone EXCEPT that donor egg.
  *
- * This assumes COHERENT gamete tagging (as produced by Architect / the fixture):
- * an MRT birth tags both eggs `gameteRole='egg'` with the donor egg additionally
- * `relationshipType='donor'`. It does not validate the tagging — malformed input
- * (e.g. two eggs with no `donor` tag, or only the donor egg tagged) would route
- * mtDNA/nuclear parentage by edge order rather than intent. Garbage in, garbage
- * out: the participant UI cannot create a second egg, so coherent tagging is only
- * ever required of Architect-authored or imported networks; there is no
- * schema-level guard (see genetics/MODELLING_DECISIONS.md §3).
+ * The Family Pedigree records no gametes; they are inferred from sex assigned
+ * at birth (`inferGametes`). It allows at most one genetic parent recorded
+ * female at birth, so two eggs arise only from data it did not record, and
+ * the engine then trusts the tags it is given (see
+ * genetics/MODELLING_DECISIONS.md §2–3).
  */
 function splitParents(
   parentEdges: ParentEdge[],
@@ -96,8 +99,8 @@ export type AnnotatedParent = {
 /**
  * The annotated genetic graph produced by `buildGeneticGraph`.
  *
- * Adjacency is built from `biological`|`donor` edges only, directed
- * parent(`from`) → child(`to`). The primary (`parentsOf`/`childrenOf`) relation
+ * Adjacency is built from `biological`|`donor` links only, directed
+ * parent(`source`) → child(`target`). The primary (`parentsOf`/`childrenOf`) relation
  * is the NUCLEAR adjacency (autosomal / X / Y); a parallel mitochondrial (mtDNA)
  * relation is exposed via `mitochondrialParentsOf`/`mitochondrialChildrenOf` so
  * mitochondrial donation can route mtDNA independently of the nuclear genome.
@@ -176,57 +179,56 @@ export type GeneticGraph = {
   ) => Set<string>;
 
   /**
-   * All node ids known to this graph (every node passed to `buildGeneticGraph`).
+   * Every person id known to this graph (every person passed to `buildGeneticGraph`).
    */
   nodeIds: () => string[];
 };
 
 /**
- * Builds an annotated genetic graph from the shared interview network.
+ * Builds an annotated genetic graph from the family.
  *
- * @param nodes       All network nodes.
- * @param edges       All network edges.
- * @param config      Genetics engine config (at minimum: `relationshipTypeVariable`).
- * @param resolveSex  Injected sex resolver (Task 4). Receives a node id and
- *                    returns its resolved biological sex.
+ * @param family      The people and links (the Family Pedigree's `Family`).
+ * @param resolveSex  Receives a person id and returns their sex for the
+ *                    sex-linked rules (`geneticSexResolver`).
+ * @param gameteOf    Which gamete a genetic parent gave a child, when known
+ *                    (`inferGametes`). Without it, mtDNA follows the
+ *                    female-resolved parent.
  */
 export function buildGeneticGraph(
-  nodes: NcNode[],
-  edges: NcEdge[],
-  config: GeneticGraphConfig,
+  family: GeneticFamily,
   resolveSex: (nodeId: string) => 'female' | 'male' | 'unknown',
+  gameteOf?: (parentId: string, childId: string) => Gamete | undefined,
 ): GeneticGraph {
   // Nuclear adjacency (autosomal / X / Y): all genetic parents except a donor
   // egg displaced to mtDNA-only under mitochondrial donation.
   const parentMap = new Map<string, string[]>();
   const childMap = new Map<string, string[]>();
   // Mitochondrial adjacency (egg-cytoplasm): the single mtDNA source per child,
-  // or the female-resolved parents when no gamete roles are recorded.
+  // or the female-resolved parents when no egg is known.
   const mitoParentMap = new Map<string, string[]>();
   const mitoChildMap = new Map<string, string[]>();
 
-  // Initialise every known node with empty arrays to allow lookups on nodes
-  // that have no parents/children.
-  for (const node of nodes) {
-    parentMap.set(node._uid, []);
-    childMap.set(node._uid, []);
-    mitoParentMap.set(node._uid, []);
-    mitoChildMap.set(node._uid, []);
+  // Initialise every known person with empty arrays to allow lookups on
+  // people who have no parents/children.
+  for (const person of family.people) {
+    parentMap.set(person.id, []);
+    childMap.set(person.id, []);
+    mitoParentMap.set(person.id, []);
+    mitoChildMap.set(person.id, []);
   }
 
-  // First pass: collect each child's genetic parent edges (deduped on
-  // parent>child) with their relationship type and gamete role.
+  // First pass: collect each child's genetic parent links (deduped on
+  // parent>child) with their kind and gamete.
   const parentEdgesByChild = new Map<string, ParentEdge[]>();
   const seenGeneticEdges = new Set<string>();
 
-  for (const edge of edges) {
-    const relType = readRelationshipType(edge, config.relationshipTypeVariable);
-    if (!isGeneticRelationshipType(relType)) {
+  for (const link of family.links) {
+    if (!isGeneticKind(link.kind)) {
       continue;
     }
 
-    const parentId = edge.from;
-    const childId = edge.to;
+    const parentId = link.source;
+    const childId = link.target;
 
     const edgeKey = `${parentId}>${childId}`;
     if (seenGeneticEdges.has(edgeKey)) {
@@ -234,13 +236,12 @@ export function buildGeneticGraph(
     }
     seenGeneticEdges.add(edgeKey);
 
-    const gameteRole =
-      config.gameteRoleVariable === undefined
-        ? undefined
-        : readGameteRole(edge, config.gameteRoleVariable);
-
     const list = parentEdgesByChild.get(childId) ?? [];
-    list.push({ parentId, relType, gameteRole });
+    list.push({
+      parentId,
+      relType: link.kind,
+      gameteRole: gameteOf?.(parentId, childId),
+    });
     parentEdgesByChild.set(childId, list);
   }
 
@@ -406,7 +407,7 @@ export function buildGeneticGraph(
   }
 
   function nodeIds(): string[] {
-    return nodes.map((n) => n._uid);
+    return family.people.map((person) => person.id);
   }
 
   return {

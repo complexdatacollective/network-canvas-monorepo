@@ -1,9 +1,13 @@
 import { configureStore } from '@reduxjs/toolkit';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { Provider } from 'react-redux';
-import { expect, userEvent, within } from 'storybook/test';
+import { expect, fireEvent, userEvent, waitFor, within } from 'storybook/test';
 
-import { asEntityAttributeReference } from '@codaco/protocol-validation';
+import {
+  asEntityAttributeReference,
+  type PedigreeRelationshipKind,
+  type PedigreeSexAssignedAtBirth,
+} from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -15,6 +19,7 @@ import {
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import protocol from '../../../store/modules/protocol';
 import session from '../../../store/modules/session';
+import ui from '../../../store/modules/ui';
 import type { StageProps } from '../../../types';
 import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
 import NarrativePedigreeView from './NarrativePedigreeView';
@@ -23,11 +28,10 @@ const NODE_TYPE = 'person';
 const EDGE_TYPE = 'family';
 const NAME_VAR = 'name';
 const EGO_VAR = 'isEgo';
-const REL_TYPE_VAR = 'relationshipType';
-const BIO_SEX_VAR = 'biologicalSex';
-const IS_ACTIVE_VAR = 'isActive';
-const IS_GEST_VAR = 'isGestationalCarrier';
-const GENDER_VAR = 'gender';
+const SEX_VAR = 'sexAssignedAtBirth';
+const KIND_VAR = 'kind';
+const CURRENT_VAR = 'currentPartner';
+const CARRIER_VAR = 'gestationalCarrier';
 const BREAST_CANCER_VAR = 'breastCancer';
 const HAEMOPHILIA_VAR = 'haemophilia';
 
@@ -35,104 +39,75 @@ const SOURCE_STAGE_ID = 'source-fp';
 
 type Attrs = Record<string, VariableValue>;
 
-function node(id: string, attributes: Attrs): NcNode {
+function person(
+  id: string,
+  name: string,
+  sex: PedigreeSexAssignedAtBirth,
+  attributes: Attrs = {},
+): NcNode {
   return {
     [entityPrimaryKeyProperty]: id,
     type: NODE_TYPE,
-    [entityAttributesProperty]: attributes,
+    [entityAttributesProperty]: {
+      [NAME_VAR]: name,
+      [SEX_VAR]: [sex],
+      ...attributes,
+    },
   };
 }
 
-function edge(id: string, from: string, to: string, attributes: Attrs): NcEdge {
+function link(
+  from: string,
+  to: string,
+  kind: PedigreeRelationshipKind,
+): NcEdge {
   return {
-    [entityPrimaryKeyProperty]: id,
+    [entityPrimaryKeyProperty]: `${from}->${to}`,
     type: EDGE_TYPE,
     from,
     to,
-    [entityAttributesProperty]: attributes,
+    [entityAttributesProperty]: {
+      [KIND_VAR]: [kind],
+      ...(kind === 'partner'
+        ? { [CURRENT_VAR]: true }
+        : { [CARRIER_VAR]: false }),
+    },
   };
 }
 
-function bio(from: string, to: string): NcEdge {
-  return edge(`${from}->${to}`, from, to, {
-    [REL_TYPE_VAR]: ['biological'],
-    [IS_ACTIVE_VAR]: true,
-  });
-}
-
-// A three-generation pedigree:
-//   grandmother (breast cancer +) --- grandfather
+// A three-generation pedigree, as a Family Pedigree records it:
+//   grandmother (breast cancer) --- grandfather
 //                       |
-//            mother --- father
-//              |          |
-//             +-- ego (haemophilia carrier line) --+
-//              |
-//            child
+//            mother --- father (haemophilia)
+//                   |
+//                  ego --- partner
+//                       |
+//                     child
+// and a colleague, added on another stage, who shares the person type but is
+// not family.
 const nodes: NcNode[] = [
-  node('grandmother', {
-    [NAME_VAR]: 'Grandmother',
-    [BIO_SEX_VAR]: 'female',
-    [GENDER_VAR]: 'woman',
-    [BREAST_CANCER_VAR]: true,
-  }),
-  node('grandfather', {
-    [NAME_VAR]: 'Grandfather',
-    [BIO_SEX_VAR]: 'male',
-    [GENDER_VAR]: 'man',
-  }),
-  node('mother', {
-    [NAME_VAR]: 'Mother',
-    [BIO_SEX_VAR]: 'female',
-    [GENDER_VAR]: 'woman',
-  }),
-  node('father', {
-    [NAME_VAR]: 'Father',
-    [BIO_SEX_VAR]: 'male',
-    [GENDER_VAR]: 'man',
-    [HAEMOPHILIA_VAR]: true,
-  }),
-  node('ego', {
-    [NAME_VAR]: 'You',
-    [EGO_VAR]: true,
-    [BIO_SEX_VAR]: 'female',
-    [GENDER_VAR]: 'woman',
-  }),
-  node('partner', {
-    [NAME_VAR]: 'Partner',
-    [BIO_SEX_VAR]: 'male',
-    [GENDER_VAR]: 'man',
-  }),
-  node('child', {
-    [NAME_VAR]: 'Child',
-    [BIO_SEX_VAR]: 'male',
-    [GENDER_VAR]: 'man',
-  }),
+  person('grandmother', 'Grandmother', 'female', { [BREAST_CANCER_VAR]: true }),
+  person('grandfather', 'Grandfather', 'male'),
+  person('mother', 'Mother', 'female'),
+  person('father', 'Father', 'male', { [HAEMOPHILIA_VAR]: true }),
+  person('ego', 'Jo', 'female', { [EGO_VAR]: true }),
+  person('partner', 'Partner', 'male'),
+  person('child', 'Child', 'male'),
+  person('colleague', 'Colleague', 'female'),
 ];
 
 const edges: NcEdge[] = [
-  bio('grandmother', 'mother'),
-  bio('grandfather', 'mother'),
-  bio('mother', 'ego'),
-  bio('father', 'ego'),
-  bio('ego', 'child'),
-  bio('partner', 'child'),
-  edge('gm-gf', 'grandmother', 'grandfather', {
-    [REL_TYPE_VAR]: ['partner'],
-    [IS_ACTIVE_VAR]: true,
-  }),
-  edge('m-f', 'mother', 'father', {
-    [REL_TYPE_VAR]: ['partner'],
-    [IS_ACTIVE_VAR]: true,
-  }),
-  edge('ego-partner', 'ego', 'partner', {
-    [REL_TYPE_VAR]: ['partner'],
-    [IS_ACTIVE_VAR]: true,
-  }),
+  link('grandmother', 'grandfather', 'partner'),
+  link('grandmother', 'mother', 'biological'),
+  link('grandfather', 'mother', 'biological'),
+  link('mother', 'father', 'partner'),
+  link('mother', 'ego', 'biological'),
+  link('father', 'ego', 'biological'),
+  link('ego', 'partner', 'partner'),
+  link('ego', 'child', 'biological'),
+  link('partner', 'child', 'biological'),
 ];
 
-// TODO(narrative-pedigree-rebuild): the source is the redesigned Family
-// Pedigree; the seeded family and its gamete roles still follow the old
-// pedigree's model.
 const sourceStage = {
   id: SOURCE_STAGE_ID,
   type: 'FamilyPedigree' as const,
@@ -141,14 +116,14 @@ const sourceStage = {
   prompt: { en: 'Build your pedigree.' },
   nodeConfiguration: {
     nameAttribute: NAME_VAR,
-    sexAssignedAtBirthAttribute: BIO_SEX_VAR,
+    sexAssignedAtBirthAttribute: SEX_VAR,
     egoAttribute: EGO_VAR,
   },
   edgeConfiguration: {
     type: EDGE_TYPE,
-    kindAttribute: REL_TYPE_VAR,
-    gestationalCarrierAttribute: IS_GEST_VAR,
-    currentPartnerAttribute: IS_ACTIVE_VAR,
+    kindAttribute: KIND_VAR,
+    gestationalCarrierAttribute: CARRIER_VAR,
+    currentPartnerAttribute: CURRENT_VAR,
   },
 };
 
@@ -165,14 +140,14 @@ const narrativeStage: NarrativeStage = {
       id: 'breast-cancer',
       label: { en: 'Breast Cancer' },
       color: 'node-color-seq-1',
-      variable: asEntityAttributeReference(BREAST_CANCER_VAR),
+      attribute: asEntityAttributeReference(BREAST_CANCER_VAR),
       inheritancePattern: 'autosomalDominant',
     },
     {
       id: 'haemophilia',
       label: { en: 'Haemophilia' },
       color: 'node-color-seq-6',
-      variable: asEntityAttributeReference(HAEMOPHILIA_VAR),
+      attribute: asEntityAttributeReference(HAEMOPHILIA_VAR),
       inheritancePattern: 'xLinkedRecessive',
     },
   ],
@@ -183,15 +158,15 @@ const codebook = {
     [NODE_TYPE]: {
       name: 'Person',
       label: { en: 'Person' },
-      color: 'node-color-seq-1',
+      color: 'node-color-seq-2',
       shape: {
         default: 'diamond',
         dynamic: {
-          variable: GENDER_VAR,
+          variable: SEX_VAR,
           type: 'discrete',
           map: [
-            { value: 'man', shape: 'square' },
-            { value: 'woman', shape: 'circle' },
+            { value: 'male', shape: 'square' },
+            { value: 'female', shape: 'circle' },
           ],
         },
       },
@@ -210,7 +185,7 @@ const codebook = {
 
 function makeStore() {
   return configureStore({
-    reducer: { protocol, session },
+    reducer: { protocol, session, ui },
     preloadedState: {
       protocol: {
         localization: { defaultLocale: 'en', locales: ['en'] },
@@ -251,28 +226,123 @@ export default meta;
 
 type Story = StoryObj<typeof NarrativePedigreeView>;
 
+/** The canvas's panned and zoomed content. */
+const contentOf = (canvasElement: HTMLElement) => {
+  const viewport = within(canvasElement).getByTestId('pedigree-canvas');
+  const content = viewport.lastElementChild;
+  if (!(content instanceof HTMLElement)) throw new Error('No canvas content');
+  return content;
+};
+const scaleOf = (content: HTMLElement) =>
+  new DOMMatrix(getComputedStyle(content).transform).a;
+
+/**
+ * The participant's family, opened whole on the Family Pedigree's canvas. The
+ * colleague added on another stage is not family, so is not drawn.
+ */
 export const Default: Story = {
   args: { stage: narrativeStage },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      await canvas.findByRole('button', { name: 'Focus on You' }),
+    ).toBeInTheDocument();
+    await expect(
+      canvas.getByRole('button', { name: 'Focus on Grandmother' }),
+    ).toBeInTheDocument();
+    await expect(
+      canvas.queryByRole('button', { name: 'Focus on Colleague' }),
+    ).not.toBeInTheDocument();
+    const box = canvas.getByTestId('pedigree-canvas').getBoundingClientRect();
+    await waitFor(() => {
+      for (const member of canvasElement.querySelectorAll(
+        '[data-pedigree-member]',
+      )) {
+        const shown = member.getBoundingClientRect();
+        expect(shown.left).toBeGreaterThanOrEqual(box.left);
+        expect(shown.right).toBeLessThanOrEqual(box.right);
+      }
+    });
+  },
 };
 
+/**
+ * Zoom with the toolbar, the wheel, or + and −, and bring the whole family
+ * back into view.
+ */
 export const Zoom: Story = {
   args: { stage: narrativeStage },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const content = canvasElement.querySelector<HTMLElement>(
-      '[data-testid="np-zoom-content"]',
-    );
+    await canvas.findByRole('button', { name: 'Focus on You' });
+    const content = contentOf(canvasElement);
+    const viewport = canvas.getByTestId('pedigree-canvas');
 
-    expect(content?.getAttribute('data-zoom-level')).toBe('1');
+    const opened = scaleOf(content);
+    await userEvent.click(canvas.getByRole('button', { name: 'Zoom in' }));
+    await waitFor(() => expect(scaleOf(content)).toBeGreaterThan(opened));
+
+    const zoomedIn = scaleOf(content);
+    const box = viewport.getBoundingClientRect();
+    for (let notch = 0; notch < 3; notch++) {
+      fireEvent.wheel(viewport, {
+        deltaY: 100,
+        clientX: box.left + box.width / 2,
+        clientY: box.top + box.height / 2,
+      });
+    }
+    await waitFor(() => expect(scaleOf(content)).toBeLessThan(zoomedIn));
 
     await userEvent.click(
-      await canvas.findByRole('button', { name: 'Zoom in' }),
+      canvas.getByRole('button', { name: 'Show the whole family' }),
     );
-    expect(Number(content?.getAttribute('data-zoom-level'))).toBeGreaterThan(1);
+    await waitFor(() => expect(scaleOf(content)).toBeCloseTo(opened, 2));
+  },
+};
+
+/**
+ * The family is a single tab stop; the arrow keys move between people by where
+ * they sit in the tree, and + zooms in. Once a condition is chosen, Enter
+ * focuses on a person and Escape clears it.
+ */
+export const KeyboardOperation: Story = {
+  args: { stage: narrativeStage },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const you = await canvas.findByRole('button', { name: 'Focus on You' });
+    await expect(you).toHaveAttribute('tabindex', '0');
+    you.focus();
+
+    await userEvent.keyboard('{ArrowUp}');
+    await expect(document.activeElement?.getAttribute('aria-label')).toMatch(
+      /^Focus on (Mother|Father)$/,
+    );
+
+    const content = contentOf(canvasElement);
+    const before = scaleOf(content);
+    await userEvent.keyboard('+');
+    await waitFor(() => expect(scaleOf(content)).toBeGreaterThan(before));
 
     await userEvent.click(
-      await canvas.findByRole('button', { name: 'Reset zoom' }),
+      canvas.getByRole('button', { name: 'Breast Cancer' }),
     );
-    expect(content?.getAttribute('data-zoom-level')).toBe('1');
+    const youNow = canvas.getByRole('button', { name: 'Focus on You' });
+    youNow.focus();
+    await expect(youNow).toHaveFocus();
+    await userEvent.keyboard('{Enter}');
+    await waitFor(() =>
+      expect(
+        canvas.getByRole('button', { name: 'Focus on You' }),
+      ).toHaveAttribute('aria-pressed', 'true'),
+    );
+    await expect(
+      await canvas.findByRole('button', { name: 'Clear focus' }),
+    ).toBeVisible();
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() =>
+      expect(
+        canvas.queryByRole('button', { name: 'Clear focus' }),
+      ).not.toBeInTheDocument(),
+    );
   },
 };

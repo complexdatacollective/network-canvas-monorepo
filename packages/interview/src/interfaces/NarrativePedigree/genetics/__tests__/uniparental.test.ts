@@ -1,39 +1,22 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  entityAttributesProperty,
-  entityPrimaryKeyProperty,
-  type NcEdge,
-  type NcNode,
-} from '@codaco/shared-consts';
-
-import { buildGeneticGraph, type GeneticGraph } from '../geneticGraph';
+  buildGeneticGraph,
+  type GeneticLink,
+  type GeneticGraph,
+  type GeneticPerson,
+} from '../geneticGraph';
 import { computeMitochondrial, computeYLinked } from '../patterns/uniparental';
 import type { Status } from '../status';
 
-const RELATIONSHIP_TYPE_VAR = 'relationshipType';
-const config = { relationshipTypeVariable: RELATIONSHIP_TYPE_VAR };
-
 type Sex = 'female' | 'male' | 'unknown';
 
-function makeNode(id: string): NcNode {
-  return {
-    [entityPrimaryKeyProperty]: id,
-    type: 'person',
-    [entityAttributesProperty]: {},
-  };
+function makeNode(id: string): GeneticPerson {
+  return { id };
 }
 
-function makeGeneticEdge(from: string, to: string): NcEdge {
-  return {
-    [entityPrimaryKeyProperty]: `${from}->${to}`,
-    type: 'family',
-    from,
-    to,
-    [entityAttributesProperty]: {
-      [RELATIONSHIP_TYPE_VAR]: ['biological'],
-    },
-  };
+function makeGeneticEdge(from: string, to: string): GeneticLink {
+  return { source: from, target: to, kind: 'biological' };
 }
 
 /**
@@ -46,11 +29,11 @@ function sexResolver(sexes: Record<string, Sex>): (id: string) => Sex {
 }
 
 function buildGraph(
-  nodes: NcNode[],
-  edges: NcEdge[],
+  nodes: GeneticPerson[],
+  edges: GeneticLink[],
   resolveSex: (id: string) => Sex,
 ): GeneticGraph {
-  return buildGeneticGraph(nodes, edges, config, resolveSex);
+  return buildGeneticGraph({ people: nodes, links: edges }, resolveSex);
 }
 
 function status(map: Map<string, Status>, id: string): Status {

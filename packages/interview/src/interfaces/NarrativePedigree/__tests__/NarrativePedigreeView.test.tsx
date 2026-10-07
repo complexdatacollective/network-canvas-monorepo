@@ -1,12 +1,16 @@
 import { configureStore } from '@reduxjs/toolkit';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
-import { asEntityAttributeReference } from '@codaco/protocol-validation';
-import type { FramingId } from '@codaco/protocol-validation';
+import {
+  asEntityAttributeReference,
+  type FramingId,
+  type PedigreeRelationshipKind,
+  type PedigreeSexAssignedAtBirth,
+} from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -19,8 +23,10 @@ import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import { InterviewI18nProvider } from '../../../i18n/InterviewI18nProvider';
 import protocol from '../../../store/modules/protocol';
 import session from '../../../store/modules/session';
+import ui from '../../../store/modules/ui';
 import type { StageProps } from '../../../types';
 import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
+import { encryptedPerson } from '../../FamilyPedigree/__tests__/fixtures';
 
 const exportSnapshotMock =
   vi.fn<(element: HTMLElement, filename: string) => Promise<void>>();
@@ -61,6 +67,11 @@ class StubResizeObserver {
 
 beforeAll(() => {
   vi.stubGlobal('ResizeObserver', StubResizeObserver);
+  // jsdom lacks pointer capture, which the canvas's drag-to-pan takes on
+  // every press.
+  Element.prototype.setPointerCapture = () => undefined;
+  Element.prototype.releasePointerCapture = () => undefined;
+  Element.prototype.hasPointerCapture = () => false;
   // jsdom's getBoundingClientRect returns all-zeros; give the measurement node
   // a real size so the initial synchronous measurement is also non-zero.
   vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue({
@@ -80,16 +91,15 @@ afterEach(() => {
   exportSnapshotMock.mockClear();
 });
 
-// --- Variable + type identifiers shared by the codebook + the network ---
+// --- The Family Pedigree's configuration, as the source stage records it ---
 const NODE_TYPE = 'person';
 const EDGE_TYPE = 'family';
 const NAME_VAR = 'name';
 const EGO_VAR = 'isEgo';
-const REL_TYPE_VAR = 'relationshipType';
-const GAMETE_VAR = 'gameteRole';
-const BIO_SEX_VAR = 'biologicalSex';
-const IS_ACTIVE_VAR = 'isActive';
-const IS_GEST_VAR = 'isGestationalCarrier';
+const SEX_VAR = 'sex';
+const KIND_VAR = 'kind';
+const CARRIER_VAR = 'carrier';
+const CURRENT_VAR = 'current';
 const DISEASE_A_VAR = 'diseaseA';
 const DISEASE_B_VAR = 'diseaseB';
 
@@ -97,25 +107,48 @@ const SOURCE_STAGE_ID = 'source-fp';
 
 type Attrs = Record<string, VariableValue>;
 
-function makeNode(id: string, attributes: Attrs): NcNode {
+function person(
+  id: string,
+  sex: PedigreeSexAssignedAtBirth | undefined,
+  attributes: Attrs = {},
+): NcNode {
   return {
     [entityPrimaryKeyProperty]: id,
     type: NODE_TYPE,
-    [entityAttributesProperty]: attributes,
+    [entityAttributesProperty]: {
+      ...(sex ? { [SEX_VAR]: [sex] } : {}),
+      ...attributes,
+    },
   };
 }
 
-function makeEdge(from: string, to: string): NcEdge {
+function link(
+  from: string,
+  to: string,
+  kind: PedigreeRelationshipKind = 'biological',
+  attributes: Attrs = {},
+): NcEdge {
   return {
-    [entityPrimaryKeyProperty]: `${from}->${to}`,
+    [entityPrimaryKeyProperty]: `${from}->${to}-${kind}`,
     type: EDGE_TYPE,
     from,
     to,
     [entityAttributesProperty]: {
-      [REL_TYPE_VAR]: ['biological'],
-      [IS_ACTIVE_VAR]: true,
-      [GAMETE_VAR]: [from === 'mother' || from === 'partner' ? 'egg' : 'sperm'],
+      [KIND_VAR]: [kind],
+      ...(kind === 'partner' ? { [CURRENT_VAR]: true } : {}),
+      ...attributes,
     },
+  };
+}
+
+/** A tie of another type, as a sociogram on another stage might draw. */
+function friendship(from: string, to: string): NcEdge {
+  return {
+    [entityPrimaryKeyProperty]: `${from}->${to}-friend`,
+    type: 'friendship',
+    from,
+    to,
+    [entityAttributesProperty]: {},
   };
 }
 
@@ -124,45 +157,30 @@ function makeEdge(from: string, to: string): NcEdge {
  *   mother (affected disease A) --- father
  *                 |
  *                ego --- partner
- *                 |
- *               child
+ *                     |
+ *                   child
+ * and a colleague of the same type, added on another stage and tied to the
+ * participant only by a friendship: not family.
  */
 const nodes: NcNode[] = [
-  makeNode('mother', {
-    [NAME_VAR]: 'Mother',
-    [BIO_SEX_VAR]: 'female',
-    [DISEASE_A_VAR]: true,
-  }),
-  makeNode('father', { [NAME_VAR]: 'Father', [BIO_SEX_VAR]: 'male' }),
-  makeNode('ego', {
-    [NAME_VAR]: 'Ego',
-    [EGO_VAR]: true,
-    [BIO_SEX_VAR]: 'male',
-  }),
-  makeNode('partner', { [NAME_VAR]: 'Partner', [BIO_SEX_VAR]: 'female' }),
-  makeNode('child', { [NAME_VAR]: 'Child', [BIO_SEX_VAR]: 'female' }),
+  person('mother', 'female', { [NAME_VAR]: 'Mother', [DISEASE_A_VAR]: true }),
+  person('father', 'male', { [NAME_VAR]: 'Father' }),
+  person('ego', 'male', { [NAME_VAR]: 'Ego', [EGO_VAR]: true }),
+  person('partner', 'female', { [NAME_VAR]: 'Partner' }),
+  person('child', 'female', { [NAME_VAR]: 'Child' }),
+  person('colleague', 'female', { [NAME_VAR]: 'Colleague' }),
 ];
 
 const edges: NcEdge[] = [
-  makeEdge('mother', 'ego'),
-  makeEdge('father', 'ego'),
-  makeEdge('ego', 'child'),
-  makeEdge('partner', 'child'),
-  {
-    [entityPrimaryKeyProperty]: 'partner-ego',
-    type: EDGE_TYPE,
-    from: 'mother',
-    to: 'father',
-    [entityAttributesProperty]: {
-      [REL_TYPE_VAR]: ['partner'],
-      [IS_ACTIVE_VAR]: true,
-    },
-  },
+  link('mother', 'father', 'partner'),
+  link('mother', 'ego'),
+  link('father', 'ego'),
+  link('ego', 'partner', 'partner'),
+  link('ego', 'child'),
+  link('partner', 'child'),
+  friendship('ego', 'colleague'),
 ];
 
-// TODO(narrative-pedigree-rebuild): the source is the redesigned Family
-// Pedigree; the seeded family and its gamete roles still follow the old
-// pedigree's model.
 const sourceStage = {
   id: SOURCE_STAGE_ID,
   type: 'FamilyPedigree' as const,
@@ -171,18 +189,19 @@ const sourceStage = {
   prompt: { en: 'Build your pedigree.' },
   nodeConfiguration: {
     nameAttribute: NAME_VAR,
-    sexAssignedAtBirthAttribute: BIO_SEX_VAR,
+    sexAssignedAtBirthAttribute: SEX_VAR,
     egoAttribute: EGO_VAR,
   },
   edgeConfiguration: {
     type: EDGE_TYPE,
-    kindAttribute: REL_TYPE_VAR,
-    gestationalCarrierAttribute: IS_GEST_VAR,
-    currentPartnerAttribute: IS_ACTIVE_VAR,
+    kindAttribute: KIND_VAR,
+    gestationalCarrierAttribute: CARRIER_VAR,
+    currentPartnerAttribute: CURRENT_VAR,
   },
 };
 
 type NarrativeStage = StageProps<'NarrativePedigree'>['stage'];
+type SourceFraming = StageProps<'FamilyPedigree'>['stage']['framing'];
 
 function makeNarrativeStage(): NarrativeStage {
   return {
@@ -196,101 +215,97 @@ function makeNarrativeStage(): NarrativeStage {
         id: 'da',
         label: { en: 'Disease A' },
         color: 'node-color-seq-1',
-        variable: asEntityAttributeReference(DISEASE_A_VAR),
+        attribute: asEntityAttributeReference(DISEASE_A_VAR),
         inheritancePattern: 'autosomalDominant',
       },
       {
         id: 'db',
         label: { en: 'Disease B' },
         color: 'node-color-seq-5',
-        variable: asEntityAttributeReference(DISEASE_B_VAR),
+        attribute: asEntityAttributeReference(DISEASE_B_VAR),
         inheritancePattern: 'autosomalRecessive',
       },
     ],
   };
 }
 
-const codebook = {
-  node: {
-    [NODE_TYPE]: {
-      name: 'Person',
-      label: { en: 'Person' },
-      color: 'node-color-seq-1',
-      shape: { default: 'square' },
-      variables: {},
+function makeCodebook(encryptNames = false) {
+  return {
+    node: {
+      [NODE_TYPE]: {
+        name: 'Person',
+        label: { en: 'Person' },
+        color: 'node-color-seq-1',
+        shape: { default: 'square' },
+        variables: encryptNames
+          ? {
+              [NAME_VAR]: {
+                type: 'text',
+                name: NAME_VAR,
+                label: { en: 'Name' },
+                encrypted: true,
+              },
+            }
+          : {},
+      },
     },
-  },
-  edge: {
-    [EDGE_TYPE]: {
-      name: 'Family',
-      label: { en: 'Family' },
-      color: 'edge-color-seq-1',
+    edge: {
+      [EDGE_TYPE]: {
+        name: 'Family',
+        label: { en: 'Family' },
+        color: 'edge-color-seq-1',
+      },
     },
-  },
-  ego: { variables: {} },
+    ego: { variables: {} },
+  };
+}
+
+type StoreOptions = {
+  narrativeStage?: NarrativeStage;
+  sourceFraming?: SourceFraming;
+  /** The framing the participant chose on the source stage. */
+  chosenFraming?: FramingId;
+  network?: { nodes: NcNode[]; edges: NcEdge[] };
+  /** Store names encrypted, and the passphrase entered so far. */
+  encryption?: { passphrase: string | null };
 };
 
-type FramingOptions = {
-  framing: StageProps<'FamilyPedigree'>['stage']['framing'];
-  selectedFraming?: FramingId;
-};
-
-function makeStore(
+function makeStore({
   narrativeStage = makeNarrativeStage(),
-  framingOptions?: FramingOptions,
-) {
+  sourceFraming,
+  chosenFraming,
+  network = { nodes, edges },
+  encryption,
+}: StoreOptions = {}) {
   return configureStore({
-    reducer: { protocol, session },
+    reducer: { protocol, session, ui },
     preloadedState: {
       protocol: {
         localization: { defaultLocale: 'en', locales: ['en'] },
-        codebook,
-        stages: [
-          { ...sourceStage, framing: framingOptions?.framing },
-          narrativeStage,
-        ],
+        codebook: makeCodebook(encryption !== undefined),
+        experiments: { encryptedVariables: encryption !== undefined },
+        stages: [{ ...sourceStage, framing: sourceFraming }, narrativeStage],
         assets: [],
       } as never,
       session: {
         id: 'test-session',
-        network: {
-          nodes: framingOptions
-            ? nodes.map((node) => ({
-                ...node,
-                [entityAttributesProperty]: {
-                  ...node[entityAttributesProperty],
-                  [NAME_VAR]: '',
-                },
-              }))
-            : nodes,
-          edges,
-          ego: { [entityAttributesProperty]: {} },
-        },
-        stageMetadata: framingOptions
-          ? {
-              0: {
-                isNetworkCommitted: true,
-                framing: framingOptions.selectedFraming,
-                nodes: nodes.map((node) => ({
-                  id: node._uid,
-                  label: '',
-                  isEgo: node._uid === 'ego',
-                })),
-              },
-            }
-          : {},
+        network: { ...network, ego: { [entityAttributesProperty]: {} } },
+        stageMetadata: chosenFraming ? { 0: { framing: chosenFraming } } : {},
       } as never,
+      ui: {
+        FORM_IS_READY: false,
+        passphrase: encryption?.passphrase ?? null,
+        showPassphrasePrompter: false,
+        passphraseInvalid: false,
+      },
     },
     middleware: (g) => g({ serializableCheck: false }),
   });
 }
 
-function renderView(
-  stage = makeNarrativeStage(),
-  locale = 'en',
-  framingOptions?: FramingOptions,
-) {
-  const store = makeStore(stage, framingOptions);
+function renderView(options: StoreOptions = {}, locale = 'en') {
+  const stage = options.narrativeStage ?? makeNarrativeStage();
+  const store = makeStore({ ...options, narrativeStage: stage });
 
   function Wrapper({ children }: { children: ReactNode }) {
     return (
@@ -307,9 +322,7 @@ function renderView(
       <NarrativePedigreeView stage={stage} />
     </InterviewI18nProvider>
   );
-  const rendered = render(view(locale), {
-    wrapper: Wrapper,
-  });
+  const rendered = render(view(locale), { wrapper: Wrapper });
   return {
     ...rendered,
     store,
@@ -335,17 +348,107 @@ function viewMarker(selector: string): Element | null {
   );
 }
 
-describe('NarrativePedigreeView — node mode selection', () => {
-  // TODO(narrative-pedigree-rebuild): unnamed relatives are labelled from the
-  // old pedigree's gamete roles, which the redesigned Family Pedigree does not
-  // record, so the source framing no longer reaches these labels.
-  it.skip.each([
-    { framing: 'gendered', selectedFraming: 'gamete' },
-    { framing: 'participantPreference', selectedFraming: 'gendered' },
-  ] satisfies FramingOptions[])(
-    'preserves gendered labels from source framing $framing',
-    async (framingOptions) => {
-      renderView(makeNarrativeStage(), 'en', framingOptions);
+function member(nodeId: string): HTMLElement {
+  const el = document.querySelector(`[data-node-id="${nodeId}"]`);
+  if (!(el instanceof HTMLElement)) {
+    throw new Error(`No pedigree member for "${nodeId}"`);
+  }
+  return el;
+}
+
+const memberIds = () =>
+  Array.from(document.querySelectorAll('[data-pedigree-member]'))
+    .map((el) => el.getAttribute('data-node-id') ?? '')
+    .sort((a, b) => a.localeCompare(b));
+
+const waitForFamily = () =>
+  waitFor(() =>
+    expect(document.querySelector('[data-pedigree-member]')).toBeTruthy(),
+  );
+
+/** The family with every name left blank, as the source stage saves it when
+ * the participant names no one and labels have not yet been written. */
+const unnamed = {
+  nodes: nodes.map((node) => ({
+    ...node,
+    [entityAttributesProperty]: {
+      ...node[entityAttributesProperty],
+      [NAME_VAR]: '',
+    },
+  })),
+  edges,
+};
+
+describe('NarrativePedigreeView — who is drawn', () => {
+  it('draws the participant and everyone connected to them as family, and no one else', async () => {
+    renderView();
+    await waitForFamily();
+    expect(memberIds()).toEqual([
+      'child',
+      'ego',
+      'father',
+      'mother',
+      'partner',
+    ]);
+    expect(
+      screen.queryByRole('button', { name: 'Focus on Colleague' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows the participant as "You" and everyone else by name', async () => {
+    renderView();
+    expect(
+      await screen.findByRole('button', { name: 'Focus on You' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Focus on Partner' }),
+    ).toBeInTheDocument();
+  });
+
+  it('draws ended partnerships, donors and surrogates as part of the family', async () => {
+    renderView({
+      network: {
+        nodes: [
+          ...nodes,
+          person('ex', 'female', { [NAME_VAR]: 'Ex' }),
+          person('donor', 'male', { [NAME_VAR]: 'Donor' }),
+          person('surrogate', 'female', { [NAME_VAR]: 'Surrogate' }),
+          person('baby', 'unknown', { [NAME_VAR]: 'Baby' }),
+        ],
+        edges: [
+          ...edges,
+          link('ego', 'ex', 'partner', { [CURRENT_VAR]: false }),
+          link('ex', 'baby'),
+          link('donor', 'baby', 'donor'),
+          link('surrogate', 'baby', 'surrogate', { [CARRIER_VAR]: true }),
+        ],
+      },
+    });
+    for (const name of ['Ex', 'Donor', 'Surrogate', 'Baby']) {
+      expect(
+        await screen.findByRole('button', { name: `Focus on ${name}` }),
+      ).toBeInTheDocument();
+    }
+  });
+
+  it('explains that the family cannot be found when the source is not a Family Pedigree', async () => {
+    const stage = { ...makeNarrativeStage(), sourceStageId: 'missing' };
+    renderView({ narrativeStage: stage });
+    expect(
+      await screen.findByText(/family/i, { selector: 'p' }),
+    ).toBeInTheDocument();
+    expect(document.querySelector('[data-pedigree-member]')).toBeNull();
+  });
+});
+
+describe('NarrativePedigreeView — labels for unnamed relatives', () => {
+  it.each([
+    { sourceFraming: 'gendered', chosenFraming: 'gamete' },
+    { sourceFraming: 'participantPreference', chosenFraming: 'gendered' },
+  ] satisfies { sourceFraming: SourceFraming; chosenFraming: FramingId }[])(
+    'describes them in gendered words when the source framing is $sourceFraming and the participant chose $chosenFraming',
+    async ({ sourceFraming, chosenFraming }) => {
+      renderView({ network: unnamed, sourceFraming, chosenFraming });
       await selectCondition('Disease A');
       expect(
         await screen.findByRole('button', { name: 'Focus on Mother' }),
@@ -356,13 +459,62 @@ describe('NarrativePedigreeView — node mode selection', () => {
     },
   );
 
+  it('describes them by the gametes they gave when the participant chose that framing', async () => {
+    renderView({
+      network: unnamed,
+      sourceFraming: 'participantPreference',
+      chosenFraming: 'gamete',
+    });
+    expect(
+      await screen.findByRole('button', { name: 'Focus on Egg parent' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Focus on Sperm parent' }),
+    ).toBeInTheDocument();
+  });
+});
+
+describe('NarrativePedigreeView — encrypted names', () => {
+  const encryptedNetwork = async () => ({
+    nodes: [
+      ...nodes.filter((node) => node[entityPrimaryKeyProperty] !== 'father'),
+      await encryptedPerson('father', 'David', 'secret', {
+        [SEX_VAR]: ['male'],
+      }),
+    ],
+    edges,
+  });
+
+  it('asks for the passphrase, and describes the person by how they are related until it is entered', async () => {
+    const { store } = renderView({
+      network: await encryptedNetwork(),
+      encryption: { passphrase: null },
+    });
+    expect(
+      await screen.findByRole('button', { name: 'Focus on Father' }),
+    ).toBeInTheDocument();
+    expect(store.getState().ui.showPassphrasePrompter).toBe(true);
+  });
+
+  it('shows the decrypted name once the passphrase is entered', async () => {
+    renderView({
+      network: await encryptedNetwork(),
+      encryption: { passphrase: 'secret' },
+    });
+    expect(
+      await screen.findByRole('button', { name: 'Focus on David' }),
+    ).toBeInTheDocument();
+  });
+});
+
+describe('NarrativePedigreeView — node mode selection', () => {
   it('reformats selected condition, status, focus and snapshot in place while preserving authored copy and network data', async () => {
     const stage = makeNarrativeStage();
     stage.label = { en: 'Árbol **del estudio**' };
     const firstDisease = stage.diseases[0];
     if (!firstDisease) throw new Error('The condition fixture is missing');
     firstDisease.label = { en: 'Condition <b>A</b>' };
-    const rendered = renderView(stage);
+    const rendered = renderView({ narrativeStage: stage });
     const before = JSON.stringify(rendered.store.getState().session.network);
     await selectCondition('Condition <b>A</b>');
     await userEvent.click(
@@ -415,19 +567,13 @@ describe('NarrativePedigreeView — node mode selection', () => {
 
   it('renders plain nodes with no status symbol by default', async () => {
     renderView();
-
-    await waitFor(() =>
-      expect(document.querySelector('[data-pedigree-member]')).toBeTruthy(),
-    );
+    await waitForFamily();
     expect(viewMarker('[data-notation-status]')).toBeNull();
   });
 
   it('renders classic-notation nodes when a condition is selected from the key', async () => {
     renderView();
-
-    await waitFor(() =>
-      expect(document.querySelector('[data-pedigree-member]')).toBeTruthy(),
-    );
+    await waitForFamily();
     expect(viewMarker('[data-notation-status]')).toBeNull();
 
     await selectCondition('Disease A');
@@ -439,10 +585,7 @@ describe('NarrativePedigreeView — node mode selection', () => {
 
   it('returns to plain nodes when the selected condition is clicked again', async () => {
     renderView();
-
-    await waitFor(() =>
-      expect(document.querySelector('[data-pedigree-member]')).toBeTruthy(),
-    );
+    await waitForFamily();
 
     await selectCondition('Disease A');
     await waitFor(() =>
@@ -470,7 +613,7 @@ describe('NarrativePedigreeView — condition colours', () => {
         index === 0 ? { ...disease, color: 'node-color-seq-3' } : disease,
       ),
     };
-    renderView(stage);
+    renderView({ narrativeStage: stage });
 
     const conditionButton = await screen.findByRole('button', {
       name: 'Disease A',
@@ -480,19 +623,13 @@ describe('NarrativePedigreeView — condition colours', () => {
     });
 
     await userEvent.click(conditionButton);
-    const mother = await waitFor(() => {
-      const member = document.querySelector('[data-node-id="mother"]');
-      expect(member).toBeTruthy();
-      return member;
-    });
-    expect(mother?.querySelector('[data-filled-shape]')).toHaveAttribute(
-      'fill',
-      'var(--node-3)',
+    await waitFor(() =>
+      expect(
+        member('mother').querySelector('[data-filled-shape]'),
+      ).toHaveAttribute('fill', 'var(--node-3)'),
     );
 
-    const egoFocal = document.querySelector('[data-node-id="ego"]');
-    expect(egoFocal).toBeInstanceOf(HTMLElement);
-    await userEvent.click(egoFocal as HTMLElement);
+    await userEvent.click(member('ego'));
     const dimmedOutline = await waitFor(() => {
       const outline = document.querySelector(
         '[data-pedigree-member][data-dimmed="true"] [data-shape-outline]',
@@ -520,74 +657,88 @@ describe('NarrativePedigreeView — condition colours', () => {
 });
 
 describe('NarrativePedigreeView — focal selection', () => {
-  it('sets focus when a member node is clicked', async () => {
+  const dimmedIds = () =>
+    Array.from(document.querySelectorAll('[data-pedigree-member]'))
+      .filter((el) => el.getAttribute('data-dimmed') === 'true')
+      .map((el) => el.getAttribute('data-node-id') ?? '')
+      .sort((a, b) => a.localeCompare(b));
+
+  it('cannot focus on anyone until a condition is chosen', async () => {
     renderView();
-
-    await waitFor(() =>
-      expect(document.querySelector('[data-pedigree-member]')).toBeTruthy(),
-    );
-
-    // Focusing is only enabled once a single condition is shown.
-    await selectCondition('Disease A');
-
-    const dimmedIds = () =>
-      Array.from(document.querySelectorAll('[data-pedigree-member]'))
-        .filter((el) => el.getAttribute('data-dimmed') === 'true')
-        .map((el) => el.getAttribute('data-node-id') ?? '')
-        .sort((a, b) => a.localeCompare(b));
-
-    const before = dimmedIds();
-
-    // The focal container is the [data-pedigree-member] div itself — it carries
-    // role="button" directly (no wrapping button inside it).
-    const motherContainer = document.querySelector('[data-node-id="mother"]');
-    if (motherContainer instanceof HTMLElement) {
-      await userEvent.click(motherContainer);
-    }
-
-    await waitFor(() => expect(dimmedIds()).not.toEqual(before));
+    await waitForFamily();
+    const mother = screen.getByRole('button', { name: 'Focus on Mother' });
+    expect(mother).toHaveAttribute('aria-disabled', 'true');
+    await userEvent.click(mother);
+    expect(
+      screen.queryByRole('button', { name: 'Clear focus' }),
+    ).not.toBeInTheDocument();
   });
 
-  it('shows "Clear focus" button after a member is clicked', async () => {
+  it('focuses on a person when they are clicked, and says so', async () => {
     renderView();
-
-    await waitFor(() =>
-      expect(document.querySelector('[data-pedigree-member]')).toBeTruthy(),
-    );
-
-    // Focusing is only enabled once a single condition is shown.
+    await waitForFamily();
     await selectCondition('Disease A');
 
-    // Click any member to set focus.
-    const memberContainer = document.querySelector('[data-pedigree-member]');
-    if (memberContainer instanceof HTMLElement) {
-      await userEvent.click(memberContainer);
-    }
+    const before = dimmedIds();
+    const mother = screen.getByRole('button', { name: 'Focus on Mother' });
+    await userEvent.click(mother);
 
-    await screen.findByRole('button', { name: 'Clear focus' });
+    await waitFor(() => expect(dimmedIds()).not.toEqual(before));
+    expect(mother).toHaveAttribute('aria-pressed', 'true');
+    expect(
+      await screen.findByRole('button', { name: 'Clear focus' }),
+    ).toBeInTheDocument();
   });
 
   it('clears dimming when "Clear focus" is clicked', async () => {
     renderView();
+    await waitForFamily();
+    await selectCondition('Disease A');
+    await userEvent.click(member('mother'));
 
-    await waitFor(() =>
-      expect(document.querySelector('[data-pedigree-member]')).toBeTruthy(),
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Clear focus' }),
     );
 
-    // Focusing is only enabled once a single condition is shown.
-    await selectCondition('Disease A');
-
-    const memberContainer = document.querySelector('[data-pedigree-member]');
-    if (memberContainer instanceof HTMLElement) {
-      await userEvent.click(memberContainer);
+    for (const el of document.querySelectorAll('[data-pedigree-member]')) {
+      expect(el.getAttribute('data-dimmed')).toBe('false');
     }
+  });
 
-    const clearBtn = await screen.findByRole('button', { name: 'Clear focus' });
-    await userEvent.click(clearBtn);
+  it('clears the focus with Escape', async () => {
+    renderView();
+    await waitForFamily();
+    await selectCondition('Disease A');
+    await userEvent.click(member('mother'));
+    await screen.findByRole('button', { name: 'Clear focus' });
 
-    const allMembers = document.querySelectorAll('[data-pedigree-member]');
-    for (const member of allMembers) {
-      expect(member.getAttribute('data-dimmed')).toBe('false');
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('button', { name: 'Clear focus' }),
+      ).not.toBeInTheDocument(),
+    );
+  });
+});
+
+describe('NarrativePedigreeView — the canvas', () => {
+  it('is a named region holding the family as a single tab stop, starting at the participant', async () => {
+    renderView();
+    await waitForFamily();
+    expect(
+      screen.getByRole('region', { name: 'Your family' }),
+    ).toContainElement(member('ego'));
+    const tabStops = Array.from(
+      document.querySelectorAll('[data-pedigree-member]'),
+    ).filter((el) => el.getAttribute('tabindex') === '0');
+    expect(tabStops).toEqual([member('ego')]);
+  });
+
+  it('offers zoom controls and a way back to the whole family', async () => {
+    renderView();
+    await waitForFamily();
+    for (const name of ['Zoom out', 'Zoom in', 'Show the whole family']) {
+      expect(screen.getByRole('button', { name })).toBeInTheDocument();
     }
   });
 });
@@ -606,19 +757,27 @@ describe('NarrativePedigreeView — snapshot', () => {
     expect(element).toBeInstanceOf(HTMLElement);
     expect(typeof filename).toBe('string');
   });
-});
 
-describe('NarrativePedigreeView — within Provider smoke', () => {
-  it('renders the pedigree members for every network node', async () => {
+  it('captures the whole family, untransformed, however the canvas is zoomed', async () => {
     renderView();
-    await waitFor(() =>
-      expect(
-        within(document.body).getAllByText(
-          (_content, el) => el?.getAttribute('data-pedigree-member') === 'true',
-          { exact: false },
-        ).length,
-      ).toBeGreaterThan(0),
+    await waitForFamily();
+    await userEvent.click(screen.getByRole('button', { name: 'Zoom in' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Zoom in' }));
+    await userEvent.click(
+      screen.getByRole('button', { name: /save snapshot/i }),
     );
+
+    await waitFor(() => expect(exportSnapshotMock).toHaveBeenCalledTimes(1));
+    const snapshot = exportSnapshotMock.mock.calls[0]?.[0];
+    const text = snapshot?.textContent ?? '';
+    for (const name of ['You', 'Mother', 'Father', 'Partner', 'Child']) {
+      expect(text).toContain(name);
+    }
+    expect(text).not.toContain('Colleague');
+    const transformed = [...(snapshot?.querySelectorAll('*') ?? [])].filter(
+      (el) => el instanceof HTMLElement && el.style.transform !== '',
+    );
+    expect(transformed).toEqual([]);
   });
 });
 
@@ -634,127 +793,56 @@ describe('NarrativePedigreeView — within Provider smoke', () => {
 // atRiskCarrier (1 carrier parent each), so the fixture exercises the at-risk
 // display gate (whether the probabilistic "?" markers are drawn).
 const AR_DISEASE_VAR = 'arDisease';
-const AR_DISEASE_ID = 'ar';
-
-const SOURCE_STAGE_ID_COUSIN = 'source-fp-cousin';
-
-function makeCNode(id: string, attributes: Attrs): NcNode {
-  return {
-    [entityPrimaryKeyProperty]: id,
-    type: NODE_TYPE,
-    [entityAttributesProperty]: attributes,
-  };
-}
-
-function makeCEdge(
-  from: string,
-  to: string,
-  relType: string[] = ['biological'],
-): NcEdge {
-  return {
-    [entityPrimaryKeyProperty]: `${from}->${to}-${relType[0] ?? 'bio'}`,
-    type: EDGE_TYPE,
-    from,
-    to,
-    [entityAttributesProperty]: {
-      [REL_TYPE_VAR]: relType,
-      [IS_ACTIVE_VAR]: true,
-    },
-  };
-}
 
 const cousinNodes: NcNode[] = [
-  makeCNode('ggp', { [BIO_SEX_VAR]: 'male', [AR_DISEASE_VAR]: true }),
-  makeCNode('ggpPartner', { [BIO_SEX_VAR]: 'female' }),
-  makeCNode('childA', { [BIO_SEX_VAR]: 'male' }),
-  makeCNode('partnerA', { [BIO_SEX_VAR]: 'female' }),
-  makeCNode('childB', { [BIO_SEX_VAR]: 'female' }),
-  makeCNode('partnerB', { [BIO_SEX_VAR]: 'male' }),
-  makeCNode('cousin1', { [BIO_SEX_VAR]: 'male', [EGO_VAR]: true }),
-  makeCNode('cousin2', { [BIO_SEX_VAR]: 'female' }),
-  makeCNode('sharedChild', { [BIO_SEX_VAR]: 'male' }),
+  person('ggp', 'male', { [AR_DISEASE_VAR]: true }),
+  person('ggpPartner', 'female'),
+  person('childA', 'male'),
+  person('partnerA', 'female'),
+  person('childB', 'female'),
+  person('partnerB', 'male'),
+  person('cousin1', 'male', { [EGO_VAR]: true }),
+  person('cousin2', 'female'),
+  person('sharedChild', 'male'),
 ];
 
 const cousinEdges: NcEdge[] = [
-  // GGP + ggpPartner → childA, childB
-  makeCEdge('ggp', 'childA'),
-  makeCEdge('ggpPartner', 'childA'),
-  makeCEdge('ggp', 'childB'),
-  makeCEdge('ggpPartner', 'childB'),
-  makeCEdge('ggp', 'ggpPartner', ['partner']),
-  // childA + partnerA → cousin1
-  makeCEdge('childA', 'cousin1'),
-  makeCEdge('partnerA', 'cousin1'),
-  makeCEdge('childA', 'partnerA', ['partner']),
-  // childB + partnerB → cousin2
-  makeCEdge('childB', 'cousin2'),
-  makeCEdge('partnerB', 'cousin2'),
-  makeCEdge('childB', 'partnerB', ['partner']),
-  // cousin1 + cousin2 → sharedChild
-  makeCEdge('cousin1', 'sharedChild'),
-  makeCEdge('cousin2', 'sharedChild'),
-  makeCEdge('cousin1', 'cousin2', ['partner']),
+  link('ggp', 'ggpPartner', 'partner'),
+  link('ggp', 'childA'),
+  link('ggpPartner', 'childA'),
+  link('ggp', 'childB'),
+  link('ggpPartner', 'childB'),
+  link('childA', 'partnerA', 'partner'),
+  link('childA', 'cousin1'),
+  link('partnerA', 'cousin1'),
+  link('childB', 'partnerB', 'partner'),
+  link('childB', 'cousin2'),
+  link('partnerB', 'cousin2'),
+  link('cousin1', 'cousin2', 'partner'),
+  link('cousin1', 'sharedChild'),
+  link('cousin2', 'sharedChild'),
 ];
 
-const cousinSourceStage = {
-  ...sourceStage,
-  id: SOURCE_STAGE_ID_COUSIN,
-};
-
-function makeCousinNarrativeStage(showAtRiskStatuses = true): NarrativeStage {
-  return {
-    id: 'np-cousin',
-    type: 'NarrativePedigree',
-    label: { en: 'Cousin Union Disease Pedigree' },
-    sourceStageId: SOURCE_STAGE_ID_COUSIN,
-    showAtRiskStatuses,
-    diseases: [
-      {
-        id: AR_DISEASE_ID,
-        label: { en: 'AR Disease' },
-        color: 'node-color-seq-1',
-        variable: asEntityAttributeReference(AR_DISEASE_VAR),
-        inheritancePattern: 'autosomalRecessive',
-      },
-    ],
-  };
-}
-
 function renderCousinView(showAtRiskStatuses = true) {
-  const stage = makeCousinNarrativeStage(showAtRiskStatuses);
-  const store = configureStore({
-    reducer: { protocol, session },
-    preloadedState: {
-      protocol: {
-        localization: { defaultLocale: 'en', locales: ['en'] },
-        codebook,
-        stages: [cousinSourceStage, stage],
-        assets: [],
-      } as never,
-      session: {
-        id: 'cousin-session',
-        network: {
-          nodes: cousinNodes,
-          edges: cousinEdges,
-          ego: { [entityAttributesProperty]: {} },
+  return renderView({
+    narrativeStage: {
+      id: 'np-cousin',
+      type: 'NarrativePedigree',
+      label: { en: 'Cousin Union Disease Pedigree' },
+      sourceStageId: SOURCE_STAGE_ID,
+      showAtRiskStatuses,
+      diseases: [
+        {
+          id: 'ar',
+          label: { en: 'AR Disease' },
+          color: 'node-color-seq-1',
+          attribute: asEntityAttributeReference(AR_DISEASE_VAR),
+          inheritancePattern: 'autosomalRecessive',
         },
-        stageMetadata: {},
-      } as never,
+      ],
     },
-    middleware: (g) => g({ serializableCheck: false }),
+    network: { nodes: cousinNodes, edges: cousinEdges },
   });
-
-  function Wrapper({ children }: { children: ReactNode }) {
-    return (
-      <Provider store={store}>
-        <CurrentStepProvider currentStep={1} onStepChange={() => undefined}>
-          <TestProtocolLocalization>{children}</TestProtocolLocalization>
-        </CurrentStepProvider>
-      </Provider>
-    );
-  }
-
-  return render(<NarrativePedigreeView stage={stage} />, { wrapper: Wrapper });
 }
 
 // ---------------------------------------------------------------------------
@@ -775,10 +863,8 @@ describe('NarrativePedigreeView — at-risk display gate', () => {
 
     // cousin1 is atRiskCarrier per the engine, but with the option off its
     // status collapses to unknown, so no "?"-bearing marker is drawn.
-    const cousin1Member = document.querySelector('[data-node-id="cousin1"]');
-    expect(cousin1Member).toBeTruthy();
     expect(
-      cousin1Member?.querySelector('[data-notation-status="atRiskCarrier"]'),
+      member('cousin1').querySelector('[data-notation-status="atRiskCarrier"]'),
     ).toBeNull();
   });
 
@@ -789,18 +875,14 @@ describe('NarrativePedigreeView — at-risk display gate', () => {
       expect(viewMarker('[data-notation-status]')).toBeTruthy(),
     );
 
-    const cousin1Member = document.querySelector('[data-node-id="cousin1"]');
     expect(
-      cousin1Member?.querySelector('[data-notation-status="atRiskCarrier"]'),
+      member('cousin1').querySelector('[data-notation-status="atRiskCarrier"]'),
     ).toBeTruthy();
   });
 
   it('drops the at-risk rows from the key panel when showAtRiskStatuses is off', async () => {
     renderCousinView(false);
-
-    await waitFor(() =>
-      expect(document.querySelector('[data-pedigree-member]')).toBeTruthy(),
-    );
+    await waitForFamily();
 
     expect(screen.queryByText('May develop this condition')).toBeNull();
     expect(screen.queryByText('May carry this condition')).toBeNull();
@@ -808,10 +890,7 @@ describe('NarrativePedigreeView — at-risk display gate', () => {
 
   it('lists the at-risk rows in the key panel when showAtRiskStatuses is on', async () => {
     renderCousinView(true);
-
-    await waitFor(() =>
-      expect(document.querySelector('[data-pedigree-member]')).toBeTruthy(),
-    );
+    await waitForFamily();
 
     expect(screen.getByText('May develop this condition')).toBeTruthy();
     expect(screen.getByText('May carry this condition')).toBeTruthy();
@@ -827,82 +906,56 @@ describe('NarrativePedigreeView — at-risk display gate', () => {
 
     // cousin1 is atRiskCarrier per the engine; with the option off it must be
     // announced as status-unknown, never "At risk".
-    const cousin1 = focalMember('cousin1');
-    expect(cousin1).toHaveAccessibleDescription(/Status unknown/);
-    expect(cousin1).not.toHaveAccessibleDescription(/At risk/i);
+    expect(member('cousin1')).toHaveAccessibleDescription(/Status unknown/);
+    expect(member('cousin1')).not.toHaveAccessibleDescription(/At risk/i);
   });
 });
 
 // ---------------------------------------------------------------------------
-// Per-node disease-status summary exposed to assistive technology.
+// Per-person disease-status summary exposed to assistive technology.
 //
 // The visual status markers (stickers / classic notation) are aria-hidden, so
 // the only way a screen-reader user can learn who is affected/carrier/at-risk
-// is the visually-hidden summary referenced by the focal container's
-// aria-describedby. These tests assert that accessibility outcome directly via
-// the computed accessible name/description rather than DOM attributes.
+// is the visually-hidden summary referenced by the person's aria-describedby.
+// These tests assert that accessibility outcome directly via the computed
+// accessible name/description rather than DOM attributes.
 // ---------------------------------------------------------------------------
-
-function focalMember(nodeId: string): HTMLElement {
-  const el = document.querySelector(`[data-node-id="${nodeId}"]`);
-  if (!(el instanceof HTMLElement)) {
-    throw new Error(`No focal member for node "${nodeId}"`);
-  }
-  return el;
-}
-
-describe('NarrativePedigreeView — per-node status summary (a11y)', () => {
-  it("exposes each member's disease status via the focal container's accessible description", async () => {
+describe('NarrativePedigreeView — per-person status summary (a11y)', () => {
+  it("exposes each member's disease status via their accessible description", async () => {
     renderView();
+    await waitForFamily();
 
-    await waitFor(() =>
-      expect(document.querySelector('[data-node-id="mother"]')).toBeTruthy(),
-    );
-
-    const mother = focalMember('mother');
     // The name conveys the focal action + person; the description conveys the
     // disease status. Mother has Disease A (autosomal dominant) → affected.
-    expect(mother).toHaveAccessibleName(/^Focus on /);
-    expect(mother).toHaveAccessibleDescription(/Disease A: Affected/);
+    expect(member('mother')).toHaveAccessibleName('Focus on Mother');
+    expect(member('mother')).toHaveAccessibleDescription(/Disease A: Affected/);
   });
 
   it('summarises every condition in the default view (before one is selected)', async () => {
     renderView();
+    await waitForFamily();
 
-    await waitFor(() =>
-      expect(document.querySelector('[data-node-id="mother"]')).toBeTruthy(),
-    );
-
-    const mother = focalMember('mother');
-    expect(mother).toHaveAccessibleDescription(/Disease A:/);
-    expect(mother).toHaveAccessibleDescription(/Disease B:/);
+    expect(member('mother')).toHaveAccessibleDescription(/Disease A:/);
+    expect(member('mother')).toHaveAccessibleDescription(/Disease B:/);
   });
 
   it('narrows the summary to the selected condition', async () => {
     renderView();
-
-    await waitFor(() =>
-      expect(document.querySelector('[data-node-id="mother"]')).toBeTruthy(),
-    );
+    await waitForFamily();
 
     await selectCondition('Disease A');
     await waitFor(() =>
       expect(viewMarker('[data-notation-status]')).toBeTruthy(),
     );
 
-    const mother = focalMember('mother');
-    expect(mother).toHaveAccessibleDescription('Disease A: Affected');
+    expect(member('mother')).toHaveAccessibleDescription('Disease A: Affected');
   });
 
   it('references the summary via a non-aria-hidden, reachable element', async () => {
     renderView();
+    await waitForFamily();
 
-    await waitFor(() =>
-      expect(document.querySelector('[data-node-id="mother"]')).toBeTruthy(),
-    );
-
-    const mother = focalMember('mother');
-    const summaryId = mother.getAttribute('aria-describedby');
+    const summaryId = member('mother').getAttribute('aria-describedby');
     expect(summaryId).toBeTruthy();
 
     const summary = summaryId ? document.getElementById(summaryId) : null;
@@ -919,86 +972,74 @@ describe('NarrativePedigreeView — per-node status summary (a11y)', () => {
 });
 
 // ---------------------------------------------------------------------------
-// No-focal dimming. When no focal node is selected, NOTHING should be dimmed —
-// including a couple connector where one partner is a SOCIAL/gestational parent
-// (no genetic edge). Before the fix, the couple-bar splitter ran in the
-// "everything highlighted" state and dimmed that partner's half of the bar.
-// The view now passes no highlight sets when there is no focal node.
+// Sex assigned at birth. The genetics engine reads it from the source stage's
+// attribute; anyone recorded intersex, unknown or not at all is still drawn
+// and described, and is never inferred to have an X-linked condition.
 // ---------------------------------------------------------------------------
-describe('NarrativePedigreeView — no dimming without a focal node', () => {
-  const SRC_SOCIAL = 'source-fp-social';
-
-  it('does not dim a social parent’s couple connector when nothing is focused', async () => {
-    const socialSource = { ...sourceStage, id: SRC_SOCIAL };
-    // Social mother + biological father → child. The mother's link to the child
-    // is a non-genetic `social` edge, so she has no genetic parent→child edge.
-    const socialNodes: NcNode[] = [
-      makeNode('socialMum', { [NAME_VAR]: 'Mum', [BIO_SEX_VAR]: 'female' }),
-      makeNode('bioDad', { [NAME_VAR]: 'Dad', [BIO_SEX_VAR]: 'male' }),
-      makeNode('kid', {
-        [NAME_VAR]: 'Kid',
-        [EGO_VAR]: true,
-        [BIO_SEX_VAR]: 'male',
-      }),
-    ];
-    const socialEdges: NcEdge[] = [
-      makeCEdge('socialMum', 'kid', ['social']),
-      makeCEdge('bioDad', 'kid', ['biological']),
-      makeCEdge('socialMum', 'bioDad', ['partner']),
-    ];
-    const stage: NarrativeStage = {
-      id: 'np-social',
-      type: 'NarrativePedigree',
-      label: { en: 'Social Parent Pedigree' },
-      sourceStageId: SRC_SOCIAL,
-      showAtRiskStatuses: false,
-      diseases: [
-        {
-          id: 'da',
-          label: { en: 'Disease A' },
-          color: 'node-color-seq-1',
-          variable: asEntityAttributeReference(DISEASE_A_VAR),
-          inheritancePattern: 'autosomalDominant',
-        },
-      ],
-    };
-    const store = configureStore({
-      reducer: { protocol, session },
-      preloadedState: {
-        protocol: {
-          localization: { defaultLocale: 'en', locales: ['en'] },
-          codebook,
-          stages: [socialSource, stage],
-          assets: [],
-        } as never,
-        session: {
-          id: 'social-session',
-          network: {
-            nodes: socialNodes,
-            edges: socialEdges,
-            ego: { [entityAttributesProperty]: {} },
+describe('NarrativePedigreeView — sex assigned at birth', () => {
+  it('draws and describes people whose sex assigned at birth is intersex, unknown or missing', async () => {
+    renderView({
+      narrativeStage: {
+        ...makeNarrativeStage(),
+        diseases: [
+          {
+            id: 'xl',
+            label: { en: 'X-linked' },
+            color: 'node-color-seq-2',
+            attribute: asEntityAttributeReference(DISEASE_A_VAR),
+            inheritancePattern: 'xLinkedRecessive',
           },
-          stageMetadata: {},
-        } as never,
+        ],
       },
-      middleware: (g) => g({ serializableCheck: false }),
+      network: {
+        nodes: [
+          ...nodes,
+          person('sib1', 'intersex', { [NAME_VAR]: 'Sam' }),
+          person('sib2', 'unknown', { [NAME_VAR]: 'Alex' }),
+          person('sib3', undefined, { [NAME_VAR]: 'Kim' }),
+        ],
+        edges: [
+          ...edges,
+          ...['sib1', 'sib2', 'sib3'].flatMap((id) => [
+            link('mother', id),
+            link('father', id),
+          ]),
+        ],
+      },
     });
-    function Wrapper({ children }: { children: ReactNode }) {
-      return (
-        <Provider store={store}>
-          <CurrentStepProvider currentStep={1} onStepChange={() => undefined}>
-            <TestProtocolLocalization>{children}</TestProtocolLocalization>
-          </CurrentStepProvider>
-        </Provider>
-      );
+    await waitForFamily();
+    for (const name of ['Sam', 'Alex', 'Kim']) {
+      const sibling = screen.getByRole('button', { name: `Focus on ${name}` });
+      expect(sibling).toHaveAccessibleDescription(/^X-linked: /);
+      expect(sibling).not.toHaveAccessibleDescription(/Affected/);
     }
-    render(<NarrativePedigreeView stage={stage} />, { wrapper: Wrapper });
+  });
+});
 
-    await waitFor(() =>
-      expect(document.querySelector('[data-pedigree-member]')).toBeTruthy(),
-    );
+// ---------------------------------------------------------------------------
+// No-focal dimming. When no focal person is selected, NOTHING should be dimmed —
+// including a couple connector where one partner is a SOCIAL parent (no
+// genetic edge). The view passes no highlight sets when there is no focal
+// person.
+// ---------------------------------------------------------------------------
+describe('NarrativePedigreeView — no dimming without a focal person', () => {
+  it('does not dim a social parent’s couple connector when nothing is focused', async () => {
+    renderView({
+      network: {
+        nodes: [
+          person('socialMum', 'female', { [NAME_VAR]: 'Mum' }),
+          person('bioDad', 'male', { [NAME_VAR]: 'Dad' }),
+          person('kid', 'male', { [NAME_VAR]: 'Kid', [EGO_VAR]: true }),
+        ],
+        edges: [
+          link('socialMum', 'bioDad', 'partner'),
+          link('socialMum', 'kid', 'social'),
+          link('bioDad', 'kid'),
+        ],
+      },
+    });
+    await waitForFamily();
 
-    // No focal node is selected → no edge anywhere may be dimmed.
     const view = document.querySelector('[data-narrative-pedigree-view]');
     expect(view?.querySelectorAll('[data-edge-dimmed]').length).toBe(0);
   });
@@ -1013,7 +1054,7 @@ describe('NarrativePedigreeView — localized condition labels', () => {
     firstDisease.label = { en: 'Huntington disease', ar: arabicLabel };
 
     render(
-      <Provider store={makeStore(stage)}>
+      <Provider store={makeStore({ narrativeStage: stage })}>
         <CurrentStepProvider currentStep={1} onStepChange={() => undefined}>
           <TestProtocolLocalization
             localization={{ defaultLocale: 'en', locales: ['en', 'ar'] }}

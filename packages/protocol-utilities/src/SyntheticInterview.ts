@@ -295,6 +295,9 @@ type FamilyPedigreeHandle = StageHandleBase & {
   /** The relatives-not-recorded attribute id, when the stage has a
    * completeness requirement. */
   relativesNotRecorded: string | undefined;
+  /** The boolean person attribute id each nomination prompt sets, in the
+   * order the prompts were given. */
+  nominations: string[];
   /** Appends a researcher-defined person field to the stage's `form`. */
   addFormField: (opts: AddFormFieldOpts) => void;
 };
@@ -1191,6 +1194,9 @@ export class SyntheticInterview {
           currentPartner: relationship.currentPartnerAttribute,
           relativesNotRecorded:
             entry.completeness?.relativesNotRecordedAttribute,
+          nominations: (entry.nominationPrompts ?? []).map(
+            (prompt) => prompt.attribute,
+          ),
           addFormField: (opts: AddFormFieldOpts) => {
             const field = this.resolveFormField(
               {
