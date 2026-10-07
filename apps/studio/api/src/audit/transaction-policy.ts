@@ -70,6 +70,16 @@ export const NO_AUDIT_TRANSACTION_POLICIES = {
     reason:
       'Switching what a connection shows its colleagues between viewing and editing is presence, which the audit-log design excludes.',
   },
+  'protocolBuilder.relayRead': {
+    kind: 'none',
+    reason:
+      'Reading the event log, presence and live leases a watcher is sent changes nothing a team can see; it only relays what was already written and audited.',
+  },
+  'protocolBuilder.reap': {
+    kind: 'none',
+    reason:
+      'Logging the release of a lease that lapsed with no one to give it back is lease release, excluded from the team audit log like any other.',
+  },
   'protocolBuilder.releaseOwner': {
     kind: 'none',
     reason:

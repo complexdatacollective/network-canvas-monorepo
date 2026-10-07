@@ -12,7 +12,7 @@
 // skip the head.
 import { randomUUID } from 'node:crypto';
 
-import { and, asc, eq, gt, inArray, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, inArray, max, sql } from 'drizzle-orm';
 import { Context, Effect } from 'effect';
 import type { SqlError } from 'effect/sql';
 
@@ -31,6 +31,7 @@ import { TenantScope, type TeamAccess, Transaction } from '../db/tenant.ts';
 import { createProtocolSyncServer } from '../protocol/sync.ts';
 import {
   appendProtocolEvents,
+  readRelayBatch,
   type LoggedProtocolEvent,
   type ProtocolEventRecord,
 } from './events.ts';
@@ -42,7 +43,8 @@ import {
 import { PROTOCOL_BUILDER_TABLES } from './schema.ts';
 
 const { drafts, leases } = SYNC_TABLES;
-const { protocolConnections: connections } = PROTOCOL_BUILDER_TABLES;
+const { protocolConnections: connections, protocolEvents } =
+  PROTOCOL_BUILDER_TABLES;
 
 const sync = createProtocolSyncServer();
 
@@ -435,52 +437,48 @@ export const releaseOwner: (
   );
 });
 
-/**
- * One entry per socket, across every replica: a socket carrying several
- * watches shows once, editing if any of them is. Listed in the order the
- * sockets first connected.
- */
-export const livePresence: (
-  access: TeamAccess,
-  draftIds: ReadonlyArray<string>,
-) => Effect.Effect<
-  ReadonlyMap<string, ReadonlyArray<Presence>>,
-  SqlError.SqlError,
-  Database
-> = Effect.fn('protocolBuilder.livePresence')(function* (
-  access: TeamAccess,
+type PresenceRow = {
+  readonly draftId: string;
+  readonly socketId: string | null;
+  readonly userId: string;
+  readonly displayName: string;
+  readonly mode: string;
+  readonly sectionId: string | null;
+};
+
+const presenceRows = Effect.fn('protocolBuilder.presenceRows')(function* (
+  teamId: string,
   draftIds: ReadonlyArray<string>,
 ) {
-  if (draftIds.length === 0) {
-    return new Map<string, ReadonlyArray<Presence>>();
-  }
-  const rows = yield* TenantScope.open(
-    access,
-    Effect.gen(function* () {
-      const { tx } = yield* Transaction;
-      return yield* tx
-        .select({
-          draftId: connections.draftId,
-          socketId: connections.socketId,
-          userId: connections.userId,
-          displayName: connections.displayName,
-          mode: connections.mode,
-          sectionId: connections.sectionId,
-        })
-        .from(connections)
-        .where(
-          and(
-            eq(connections.teamId, access.teamId),
-            inArray(connections.draftId, [...draftIds]),
-            eq(connections.kind, 'socket'),
-            // The transaction's start rather than the clock: only a stable
-            // bound lets the socket index range over `expires_at`.
-            gt(connections.expiresAt, sql`now()`),
-          ),
-        )
-        .orderBy(asc(connections.createdAt), asc(connections.connectionId));
-    }).pipe(sqlErrorsOnly),
-  );
+  if (draftIds.length === 0) return [];
+  const { tx } = yield* Transaction;
+  const rows: ReadonlyArray<PresenceRow> = yield* tx
+    .select({
+      draftId: connections.draftId,
+      socketId: connections.socketId,
+      userId: connections.userId,
+      displayName: connections.displayName,
+      mode: connections.mode,
+      sectionId: connections.sectionId,
+    })
+    .from(connections)
+    .where(
+      and(
+        eq(connections.teamId, teamId),
+        inArray(connections.draftId, [...draftIds]),
+        eq(connections.kind, 'socket'),
+        // The transaction's start rather than the clock: only a stable
+        // bound lets the socket index range over `expires_at`.
+        gt(connections.expiresAt, sql`now()`),
+      ),
+    )
+    .orderBy(asc(connections.createdAt), asc(connections.connectionId));
+  return rows;
+}, sqlErrorsOnly);
+
+const groupPresence = (
+  rows: ReadonlyArray<PresenceRow>,
+): ReadonlyMap<string, ReadonlyArray<Presence>> => {
   const present = new Map<string, Map<string, Presence>>();
   for (const row of rows) {
     if (row.socketId === null) continue;
@@ -502,6 +500,32 @@ export const livePresence: (
   return new Map(
     [...present].map(([draftId, inDraft]) => [draftId, [...inDraft.values()]]),
   );
+};
+
+/**
+ * One entry per socket, across every replica: a socket carrying several
+ * watches shows once, editing if any of them is. Listed in the order the
+ * sockets first connected.
+ */
+export const livePresence: (
+  access: TeamAccess,
+  draftIds: ReadonlyArray<string>,
+) => Effect.Effect<
+  ReadonlyMap<string, ReadonlyArray<Presence>>,
+  SqlError.SqlError,
+  Database
+> = Effect.fn('protocolBuilder.livePresence')(function* (
+  access: TeamAccess,
+  draftIds: ReadonlyArray<string>,
+) {
+  if (draftIds.length === 0) {
+    return new Map<string, ReadonlyArray<Presence>>();
+  }
+  const rows = yield* TenantScope.open(
+    access,
+    presenceRows(access.teamId, draftIds),
+  );
+  return groupPresence(rows);
 });
 
 /**
@@ -557,6 +581,228 @@ export const setSocketMode: (
           ),
         )
         .returning({ connectionId: connections.connectionId });
+    }).pipe(sqlErrorsOnly),
+  );
+});
+
+/** Where a relay starts: the next cursor it delivers, and the sections held. */
+type RelaySeed = {
+  readonly next: bigint;
+  /** The sections whose latest lock event names a holder. */
+  readonly locks: ReadonlySet<string>;
+};
+
+type RelayRead = {
+  readonly events: ReadonlyMap<string, ReadonlyArray<LoggedProtocolEvent>>;
+  readonly presence: ReadonlyMap<string, ReadonlyArray<Presence>>;
+};
+
+type RelayPoll = RelayRead & {
+  /** `relaySection` keys of the live leases on the polled drafts. */
+  readonly live: ReadonlySet<string>;
+};
+
+export const relaySection = (draftId: string, sectionId: string): string =>
+  `${draftId}\u0000${sectionId}`;
+
+/**
+ * One statement, so the cursor and the locks come from one snapshot; a lock
+ * event from `next` on reaches the relay through its reads.
+ */
+export const seedRelay: (
+  access: TeamAccess,
+  draftId: string,
+) => Effect.Effect<RelaySeed, SqlError.SqlError, Database> = Effect.fn(
+  'protocolBuilder.seedRelay',
+)(function* (access: TeamAccess, draftId: string) {
+  return yield* noAuditTransaction(
+    'protocolBuilder.relayRead',
+    access,
+    Effect.gen(function* () {
+      const { tx } = yield* Transaction;
+      const ofDraft = and(
+        eq(protocolEvents.teamId, access.teamId),
+        eq(protocolEvents.draftId, draftId),
+      );
+      const head = tx
+        .select({ last: max(protocolEvents.cursor).as('last') })
+        .from(protocolEvents)
+        .where(ofDraft)
+        .as('head');
+      const latest = tx
+        .selectDistinctOn([protocolEvents.sectionId], {
+          sectionId: protocolEvents.sectionId,
+          owner: protocolEvents.owner,
+        })
+        .from(protocolEvents)
+        .where(and(ofDraft, eq(protocolEvents.kind, 'lock')))
+        .orderBy(asc(protocolEvents.sectionId), desc(protocolEvents.cursor))
+        .as('latest');
+      const rows = yield* tx
+        .select({
+          last: head.last,
+          sectionId: latest.sectionId,
+          owner: latest.owner,
+        })
+        .from(head)
+        .leftJoin(latest, sql`true`);
+      const seed: RelaySeed = {
+        next: (rows[0]?.last ?? 0n) + 1n,
+        locks: new Set(
+          rows.flatMap((row) =>
+            row.sectionId !== null && row.owner !== null ? [row.sectionId] : [],
+          ),
+        ),
+      };
+      return seed;
+    }).pipe(sqlErrorsOnly),
+  );
+});
+
+/** A woken relay's read: its log from `next`, when given, and who is present. */
+export const readRelay: (
+  access: TeamAccess,
+  draftId: string,
+  want: { readonly next: bigint | undefined; readonly presence: boolean },
+) => Effect.Effect<RelayRead, SqlError.SqlError, Database> = Effect.fn(
+  'protocolBuilder.relayRead',
+)(function* (
+  access: TeamAccess,
+  draftId: string,
+  want: { readonly next: bigint | undefined; readonly presence: boolean },
+) {
+  return yield* noAuditTransaction(
+    'protocolBuilder.relayRead',
+    access,
+    Effect.gen(function* () {
+      const events = yield* readRelayBatch(
+        access.teamId,
+        want.next === undefined ? [] : [{ draftId, next: want.next }],
+      );
+      const rows = yield* presenceRows(
+        access.teamId,
+        want.presence ? [draftId] : [],
+      );
+      const read: RelayRead = { events, presence: groupPresence(rows) };
+      return read;
+    }).pipe(sqlErrorsOnly),
+  );
+});
+
+const liveSections = Effect.fn('protocolBuilder.liveSections')(function* (
+  teamId: string,
+  draftIds: ReadonlyArray<string>,
+) {
+  if (draftIds.length === 0) return new Set<string>();
+  const { tx } = yield* Transaction;
+  const rows = yield* tx
+    .select({ draftId: leases.draftId, sectionId: leases.sectionId })
+    .from(leases)
+    .where(
+      and(
+        eq(leases.teamId, teamId),
+        inArray(leases.draftId, [...draftIds]),
+        gt(leases.expiresAt, now()),
+      ),
+    );
+  return new Set(rows.map((row) => relaySection(row.draftId, row.sectionId)));
+}, sqlErrorsOnly);
+
+/**
+ * The safety poll's read for one team's relays: their logs, who is present,
+ * and the leases still live, which tells the reaper where to look.
+ */
+export const pollRelays: (
+  access: TeamAccess,
+  wants: ReadonlyArray<{ readonly draftId: string; readonly next: bigint }>,
+) => Effect.Effect<RelayPoll, SqlError.SqlError, Database> = Effect.fn(
+  'protocolBuilder.relayPoll',
+)(function* (
+  access: TeamAccess,
+  wants: ReadonlyArray<{ readonly draftId: string; readonly next: bigint }>,
+) {
+  return yield* noAuditTransaction(
+    'protocolBuilder.relayRead',
+    access,
+    Effect.gen(function* () {
+      const draftIds = wants.map((want) => want.draftId);
+      const events = yield* readRelayBatch(access.teamId, wants);
+      const rows = yield* presenceRows(access.teamId, draftIds);
+      const leased = yield* liveSections(access.teamId, draftIds);
+      const poll: RelayPoll = {
+        events,
+        presence: groupPresence(rows),
+        live: leased,
+      };
+      return poll;
+    }).pipe(sqlErrorsOnly),
+  );
+});
+
+/**
+ * Logs the release of each candidate section whose latest lock event still
+ * names a holder but whose lease has lapsed, as when the replica that held it
+ * stopped without giving it back. Asked again under the head held
+ * exclusively, so replicas reaping at once log one release between them.
+ */
+export const reapExpired: (
+  access: TeamAccess,
+  draftId: string,
+  candidates: ReadonlyArray<string>,
+) => Effect.Effect<
+  ReadonlyArray<LoggedProtocolEvent>,
+  SqlError.SqlError,
+  Database
+> = Effect.fn('protocolBuilder.reap')(function* (
+  access: TeamAccess,
+  draftId: string,
+  candidates: ReadonlyArray<string>,
+) {
+  if (candidates.length === 0) return [];
+  const teamId = access.teamId;
+  return yield* noAuditTransaction(
+    'protocolBuilder.reap',
+    access,
+    Effect.gen(function* () {
+      if (!(yield* lockHead(teamId, draftId, 'update'))) return [];
+      const { tx } = yield* Transaction;
+      const latest = yield* tx
+        .selectDistinctOn([protocolEvents.sectionId], {
+          sectionId: protocolEvents.sectionId,
+          owner: protocolEvents.owner,
+        })
+        .from(protocolEvents)
+        .where(
+          and(
+            eq(protocolEvents.teamId, teamId),
+            eq(protocolEvents.draftId, draftId),
+            eq(protocolEvents.kind, 'lock'),
+            inArray(protocolEvents.sectionId, [...candidates]),
+          ),
+        )
+        .orderBy(asc(protocolEvents.sectionId), desc(protocolEvents.cursor));
+      const leased = yield* tx
+        .select({ sectionId: leases.sectionId })
+        .from(leases)
+        .where(
+          and(
+            eq(leases.teamId, teamId),
+            eq(leases.draftId, draftId),
+            inArray(leases.sectionId, [...candidates]),
+            gt(leases.expiresAt, now()),
+          ),
+        );
+      const held = new Set(leased.map((row) => row.sectionId));
+      return yield* appendProtocolEvents(
+        teamId,
+        draftId,
+        latest
+          .filter((row) => row.owner !== null && !held.has(row.sectionId))
+          .map((row): ProtocolEventRecord => ({
+            kind: 'lock',
+            sectionId: makeSectionId(parseSectionId(row.sectionId)),
+          })),
+      );
     }).pipe(sqlErrorsOnly),
   );
 });

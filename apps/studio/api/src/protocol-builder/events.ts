@@ -1,4 +1,4 @@
-import { and, asc, eq, gt, max } from 'drizzle-orm';
+import { and, asc, eq, gt, max, sql } from 'drizzle-orm';
 import { Effect } from 'effect';
 import type { SqlError } from 'effect/sql';
 
@@ -172,3 +172,48 @@ export const readProtocolEvents: (
     for (const row of rows) events.push(yield* toLoggedEvent(row));
     return events;
   }, sqlErrorsOnly);
+
+/**
+ * The most a relay reads of one draft at a time: a quarter of a watcher's
+ * queue, so a watcher that keeps up drains between reads however far the relay
+ * has to catch up.
+ */
+export const RELAY_BATCH = 256;
+
+/**
+ * Up to `RELAY_BATCH` events from each draft's `next`, for several drafts in
+ * one statement, in cursor order within each draft. The log is dense, so a
+ * cursor range bounds the rows.
+ */
+export const readRelayBatch: (
+  teamId: string,
+  wants: ReadonlyArray<{ readonly draftId: string; readonly next: bigint }>,
+) => Effect.Effect<
+  ReadonlyMap<string, ReadonlyArray<LoggedProtocolEvent>>,
+  SqlError.SqlError,
+  Transaction
+> = Effect.fn('protocolBuilder.readRelayBatch')(function* (
+  teamId: string,
+  wants: ReadonlyArray<{ readonly draftId: string; readonly next: bigint }>,
+) {
+  const batch = new Map<string, LoggedProtocolEvent[]>();
+  if (wants.length === 0) return batch;
+  const { tx } = yield* Transaction;
+  const draftIds = sql.param(wants.map((want) => want.draftId));
+  const nexts = sql.param(wants.map((want) => String(want.next)));
+  const rows = yield* tx
+    .select({ draftId: protocolEvents.draftId, ...EVENT_COLUMNS })
+    .from(protocolEvents)
+    .innerJoin(
+      sql`unnest(${draftIds}::uuid[], ${nexts}::bigint[]) AS want(draft_id, next)`,
+      sql`want.draft_id = ${protocolEvents.draftId} AND ${protocolEvents.cursor} >= want.next AND ${protocolEvents.cursor} < want.next + ${RELAY_BATCH}`,
+    )
+    .where(eq(protocolEvents.teamId, teamId))
+    .orderBy(asc(protocolEvents.draftId), asc(protocolEvents.cursor));
+  for (const row of rows) {
+    const inDraft = batch.get(row.draftId) ?? [];
+    batch.set(row.draftId, inDraft);
+    inDraft.push(yield* toLoggedEvent(row));
+  }
+  return batch;
+}, sqlErrorsOnly);
