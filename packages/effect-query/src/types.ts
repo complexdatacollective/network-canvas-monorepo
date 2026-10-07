@@ -54,6 +54,7 @@ export type RpcAdapter<Rpcs extends Rpc.Any> = {
   readonly rpcCall: <Tag extends Rpcs['_tag']>(
     tag: Tag,
     payload: PayloadOf<Rpcs, Tag>,
+    signal?: AbortSignal,
   ) => Promise<SuccessOf<Rpcs, Tag>>;
 
   readonly rpcQuery: <Tag extends Rpcs['_tag']>(

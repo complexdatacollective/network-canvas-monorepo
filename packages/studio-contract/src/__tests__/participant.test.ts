@@ -80,7 +80,11 @@ describe('the participant payloads', () => {
     [
       'RedeemResult',
       RedeemResult,
-      { sessionToken: 'team-1.secret-secret-secret', sessionId: 'session-1' },
+      {
+        sessionToken: 'team-1.secret-secret-secret',
+        sessionId: 'session-1',
+        anonymous: false,
+      },
     ],
     ['SessionInput', SessionInput, { holderId: 'page-1' }],
     ['SessionPayload', SessionPayload, sessionPayload],
@@ -96,7 +100,8 @@ describe('the participant payloads', () => {
         stageMetadata: {},
       },
     ],
-    ['SyncResult', SyncResult, { revision: '8' }],
+    ['SyncResult', SyncResult, { revision: '8', applied: true }],
+    ['SyncResult', SyncResult, { revision: '8', applied: false }],
     ['FinishInput', FinishInput, { holderEpoch: 2, revision: '9' }],
     ['FinishResult', FinishResult, { state: 'completed' }],
   ] as const)('%s round-trips', (_name, schema, value) => {
@@ -199,6 +204,25 @@ describe('the network the contract declares', () => {
 
   it('accepts what NcNetworkSchema accepts, unchanged', () => {
     const parsed = NcNetworkSchema.parse(network);
+    expect(roundTrips(InterviewNetwork, parsed)).toEqual(parsed);
+  });
+
+  it('accepts the optional keys the interview runtime leaves undefined', () => {
+    const unset = {
+      nodes: [
+        {
+          ...network.nodes[0],
+          stageId: undefined,
+          promptIDs: undefined,
+          _secureAttributes: undefined,
+        },
+      ],
+      edges: [{ ...network.edges[0], _secureAttributes: undefined }],
+      ego: { ...network.ego, _secureAttributes: undefined },
+    };
+    const parsed = NcNetworkSchema.parse(unset);
+
+    expect(() => InterviewNetwork.make(parsed)).not.toThrow();
     expect(roundTrips(InterviewNetwork, parsed)).toEqual(parsed);
   });
 });

@@ -70,7 +70,11 @@ export const redeemLink = Effect.fn('interview.redeemLink')(function* (
       return {
         actor: participantAuditActor(opened.sessionId, link.participantCode),
         result: changed(
-          { sessionToken: minted.token, sessionId: opened.sessionId },
+          {
+            sessionToken: minted.token,
+            sessionId: opened.sessionId,
+            anonymous: link.participantId === null,
+          },
           [
             {
               eventType: 'interview.started',

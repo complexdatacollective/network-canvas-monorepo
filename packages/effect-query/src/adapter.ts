@@ -111,7 +111,8 @@ export const makeRpcAdapter = <Rpcs extends Rpc.Any, R, Id extends R>(options: {
   const rpcCall = <Tag extends Rpcs['_tag']>(
     tag: Tag,
     payload: PayloadOf<Rpcs, Tag>,
-  ): Promise<SuccessOf<Rpcs, Tag>> => call(tag, payload);
+    signal?: AbortSignal,
+  ): Promise<SuccessOf<Rpcs, Tag>> => call(tag, payload, signal);
 
   const rpcQuery = <Tag extends Rpcs['_tag']>(
     tag: Tag,

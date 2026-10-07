@@ -11,7 +11,7 @@ import type { AuthService, SessionPrincipal } from '../auth/service.ts';
 import { readEnv } from '../env.ts';
 import { deliveryFor } from '../http/storage.ts';
 import { objectStoreFor } from '../storage/live.ts';
-import { ObjectStore } from '../storage/object-store.ts';
+import { fromBackend, type ObjectStore } from '../storage/object-store.ts';
 import { authServiceStub } from './support/auth.ts';
 import { composeStudio, startStudioServer } from './support/serve.ts';
 
@@ -40,36 +40,45 @@ const PRINCIPAL: SessionPrincipal = {
   sessionId: 'session-1',
 };
 
+class MissingObject extends Error {}
+
+// In memory, through `fromBackend`, so these cases run the port's own range
+// and existence logic rather than a copy of it.
 function memoryStore(): ObjectStore['Service'] {
   const objects = new Map<
     string,
     { bytes: Uint8Array<ArrayBuffer>; mediaType: string }
   >();
-  return ObjectStore.of({
-    configured: true,
-    put: (bytes, mediaType) =>
-      Effect.sync(() => {
-        const hash = createHash('sha256').update(bytes).digest('hex');
-        const stored = objects.get(hash) ?? {
-          bytes: new Uint8Array(bytes),
-          mediaType,
-        };
-        objects.set(hash, stored);
+  const found = (key: string) => {
+    const stored = objects.get(key);
+    return stored === undefined
+      ? Promise.reject(new MissingObject(key))
+      : Promise.resolve(stored);
+  };
+  return fromBackend({
+    stat: (key) =>
+      found(key).then((stored) => ({
+        size: stored.bytes.byteLength,
+        mediaType: stored.mediaType,
+      })),
+    write: (key, bytes, mediaType) => {
+      objects.set(key, { bytes: new Uint8Array(bytes), mediaType });
+      return Promise.resolve();
+    },
+    read: (key, _signal, range) =>
+      found(key).then((stored) => {
+        const bytes =
+          range === undefined
+            ? stored.bytes
+            : stored.bytes.slice(range.start, range.end + 1);
         return {
-          hash,
-          size: stored.bytes.byteLength,
+          body: new Blob([bytes]).stream(),
+          size: bytes.byteLength,
           mediaType: stored.mediaType,
         };
       }),
-    get: (hash) =>
-      Effect.sync(() =>
-        Option.map(Option.fromUndefinedOr(objects.get(hash)), (stored) => ({
-          body: new Blob([stored.bytes]).stream(),
-          mediaType: stored.mediaType,
-          size: stored.bytes.byteLength,
-        })),
-      ),
-    head: Effect.void,
+    probe: () => Promise.resolve(),
+    isNotFound: (error) => error instanceof MissingObject,
   });
 }
 
@@ -288,6 +297,66 @@ describe('asset delivery policy', () => {
     expect(res.headers.get('X-Content-Type-Options')).toBe('nosniff');
   });
 
+  // Every audio, video and raster image type protocol-builder's
+  // `EXTENSION_CONTENT_TYPES` gives an accepted stimulus: an interview puts the
+  // storage URL straight into an <img>, <audio> or <video>. SVG stays an
+  // opaque download (above); the interview renders it from the bytes.
+  it.each([
+    'audio/aiff',
+    'audio/mp4',
+    'audio/mpeg',
+    'image/gif',
+    'image/jpeg',
+    'image/png',
+    'video/mp4',
+    'video/quicktime',
+  ])('serves %s, a stimulus Studio accepts, inline as itself', (type) => {
+    expect(deliveryFor(type)).toEqual({
+      contentType: type,
+      disposition: 'inline',
+    });
+  });
+
+  it.each([
+    ['audio/x-m4a', 'audio/mp4'],
+    ['audio/m4a', 'audio/mp4'],
+    ['audio/x-aiff', 'audio/aiff'],
+    ['audio/mp3', 'audio/mpeg'],
+    ['audio/x-mpeg-3', 'audio/mpeg'],
+    ['image/pjpeg', 'image/jpeg'],
+    ['image/jpg', 'image/jpeg'],
+    ['image/x-png', 'image/png'],
+  ])(
+    'serves a stimulus a browser reported as %s inline as %s',
+    (reported, canonical) => {
+      expect(deliveryFor(`${reported}; charset=binary`)).toEqual({
+        contentType: canonical,
+        disposition: 'inline',
+      });
+    },
+  );
+
+  it.each([
+    ['video/x-quicktime', 'video/quicktime'],
+    ['video/mov', 'video/quicktime'],
+    // Unnamed, but audio, video or raster: served as reported.
+    ['video/x-msvideo', 'video/x-msvideo'],
+    ['audio/x-caf', 'audio/x-caf'],
+    ['image/heic', 'image/heic'],
+  ])('serves %s inline as %s', (reported, served) => {
+    expect(deliveryFor(reported)).toEqual({
+      contentType: served,
+      disposition: 'inline',
+    });
+  });
+
+  it.each(['image/svg+xml', 'image/svg', 'image/x-svg', 'image/foo+xml'])(
+    'serves %s, an image that can carry script, as an opaque download',
+    (mediaType) => {
+      expect(deliveryFor(mediaType).disposition).toBe('attachment');
+    },
+  );
+
   it('classifies a parameterised media type by its essence', () => {
     expect(deliveryFor('image/png; charset=binary')).toEqual({
       contentType: 'image/png',
@@ -300,6 +369,64 @@ describe('asset delivery policy', () => {
     expect(deliveryFor('text/html;charset=utf-8').disposition).toBe(
       'attachment',
     );
+  });
+});
+
+describe('asset ranges, which iOS needs to play audio and video', () => {
+  const store = memoryStore();
+  const BODY = 'abcdefghij';
+
+  const stored = async (): Promise<string> => {
+    const res = await send('/storage', spaUpload(bytesOf(BODY), 'video/mp4'), {
+      objectStore: store,
+    });
+    return ((await res.json()) as { hash: string }).hash;
+  };
+
+  const ranged = async (range: string) =>
+    send(
+      `/storage/${await stored()}`,
+      { headers: { range } },
+      { objectStore: store },
+    );
+
+  it.each([
+    ['bytes=2-5', 'cdef', 'bytes 2-5/10'],
+    ['bytes=7-', 'hij', 'bytes 7-9/10'],
+    ['bytes=8-100', 'ij', 'bytes 8-9/10'],
+    ['bytes=0-1', 'ab', 'bytes 0-1/10'],
+  ])('answers %s with those bytes alone', async (range, body, contentRange) => {
+    const res = await ranged(range);
+    expect(res.status).toBe(206);
+    expect(res.headers.get('Content-Range')).toBe(contentRange);
+    expect(res.headers.get('Content-Length')).toBe(String(body.length));
+    expect(res.headers.get('Content-Type')).toBe('video/mp4');
+    expect(await res.text()).toBe(body);
+  });
+
+  it('refuses a range that starts past the last byte, naming the size', async () => {
+    const res = await ranged('bytes=10-');
+    expect(res.status).toBe(416);
+    expect(res.headers.get('Content-Range')).toBe('bytes */10');
+  });
+
+  it.each(['bytes=-3', 'bytes=0-1,4-5', 'items=0-1', 'bytes=5-2'])(
+    'answers %s with the whole object',
+    async (range) => {
+      const res = await ranged(range);
+      expect(res.status).toBe(200);
+      expect(await res.text()).toBe(BODY);
+    },
+  );
+
+  it('says it accepts ranges on a whole answer', async () => {
+    const res = await send(
+      `/storage/${await stored()}`,
+      {},
+      { objectStore: store },
+    );
+    expect(res.status).toBe(200);
+    expect(res.headers.get('Accept-Ranges')).toBe('bytes');
   });
 });
 

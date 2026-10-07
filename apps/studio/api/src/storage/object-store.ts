@@ -23,10 +23,32 @@ export type StoredAsset = {
   mediaType: string;
 };
 
+/** Bytes `start` to `end` inclusive; `end` left out runs to the last byte. */
+export type ByteRange = {
+  readonly start: number;
+  readonly end: number | undefined;
+};
+
+/**
+ * Which bytes `body` holds: the whole object, the satisfiable part of a range
+ * asked for (`total` is the object's size), or none, when the range starts at
+ * or past the last byte.
+ */
+export type StoredPart =
+  | { readonly kind: 'whole' }
+  | {
+      readonly kind: 'range';
+      readonly start: number;
+      readonly end: number;
+      readonly total: number;
+    }
+  | { readonly kind: 'unsatisfiable'; readonly total: number };
+
 export type StoredObject = {
   readonly body: ReadableStream<Uint8Array>;
   readonly mediaType: string;
   readonly size: number | undefined;
+  readonly part: StoredPart;
 };
 
 export class ObjectStoreError extends Schema.TaggedError<ObjectStoreError>()(
@@ -53,6 +75,7 @@ export class ObjectStore extends Context.Service<
     ) => Effect.Effect<StoredAsset, ObjectStoreError>;
     readonly get: (
       hash: string,
+      range?: ByteRange,
     ) => Effect.Effect<Option.Option<StoredObject>, ObjectStoreError>;
     readonly head: Effect.Effect<void, ObjectStoreError>;
   }
@@ -85,9 +108,11 @@ export type ObjectBackend = {
     mediaType: string,
     signal: AbortSignal,
   ) => Promise<unknown>;
+  /** With `range`, the bytes `start` to `end` inclusive, both in bounds. */
   readonly read: (
     key: string,
     signal: AbortSignal,
+    range?: { readonly start: number; readonly end: number },
   ) => Promise<
     ObjectMetadata & { readonly body: ReadableStream<Uint8Array> | undefined }
   >;
@@ -150,19 +175,59 @@ export function fromBackend(backend: ObjectBackend): ObjectStore['Service'] {
       );
       return { hash, size: bytes.byteLength, mediaType };
     }),
-    get: (hash) =>
-      Effect.map(
-        unlessAbsent('get', (signal) => backend.read(assetKey(hash), signal)),
-        Option.flatMap(({ body, mediaType, size }) =>
-          body === undefined
-            ? Option.none()
-            : Option.some({
-                body,
-                mediaType: mediaType ?? FALLBACK_MEDIA_TYPE,
-                size,
-              }),
-        ),
-      ),
+    get: Effect.fnUntraced(function* (hash: string, range?: ByteRange) {
+      const key = assetKey(hash);
+      const whole = (found: Awaited<ReturnType<ObjectBackend['read']>>) =>
+        found.body === undefined
+          ? Option.none<StoredObject>()
+          : Option.some<StoredObject>({
+              body: found.body,
+              mediaType: found.mediaType ?? FALLBACK_MEDIA_TYPE,
+              size: found.size,
+              part: { kind: 'whole' },
+            });
+      if (range === undefined) {
+        return Option.flatMap(
+          yield* unlessAbsent('get', (signal) => backend.read(key, signal)),
+          whole,
+        );
+      }
+      // The size first, from the metadata, so every provider bounds a range
+      // the same way rather than by its own refusal.
+      const stat = yield* unlessAbsent('get', (signal) =>
+        backend.stat(key, signal),
+      );
+      if (Option.isNone(stat)) return Option.none();
+      const total = stat.value.size;
+      if (total === undefined) {
+        return Option.flatMap(
+          yield* unlessAbsent('get', (signal) => backend.read(key, signal)),
+          whole,
+        );
+      }
+      const mediaType = stat.value.mediaType ?? FALLBACK_MEDIA_TYPE;
+      if (range.start >= total) {
+        return Option.some<StoredObject>({
+          body: new ReadableStream({ start: (c) => c.close() }),
+          mediaType,
+          size: 0,
+          part: { kind: 'unsatisfiable', total },
+        });
+      }
+      const end = Math.min(range.end ?? total - 1, total - 1);
+      const found = yield* unlessAbsent('get', (signal) =>
+        backend.read(key, signal, { start: range.start, end }),
+      );
+      if (Option.isNone(found) || found.value.body === undefined) {
+        return Option.none();
+      }
+      return Option.some<StoredObject>({
+        body: found.value.body,
+        mediaType,
+        size: end - range.start + 1,
+        part: { kind: 'range', start: range.start, end, total },
+      });
+    }),
     head: Effect.asVoid(request('head', backend.probe)),
   });
 }
