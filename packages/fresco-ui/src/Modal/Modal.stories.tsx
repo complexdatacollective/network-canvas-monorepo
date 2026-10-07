@@ -1,9 +1,10 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { motion } from 'motion/react';
+import { motion, MotionGlobalConfig } from 'motion/react';
 import { useState } from 'react';
 import { expect, fn, screen, userEvent, within } from 'storybook/test';
 
 import Modal from '.';
+import { AnimationProvider } from '../AnimationProvider';
 import Button from '../Button';
 import { awaitPassiveEffects } from '../storybook-support/awaitPassiveEffects';
 import Heading from '../typography/Heading';
@@ -488,7 +489,8 @@ const drawnOpacity = (element: Element) => {
 };
 
 /**
- * The morph opened under automation, where it must not run at all.
+ * The morph opened with animations disabled, the way Storybook tests and
+ * Chromatic open every story, where it must not run at all.
  *
  * A `layoutId` morph is a Motion layout animation, and those read only
  * Motion's page-wide `skipAnimations` flag, not the one `MotionConfig` puts in
@@ -496,17 +498,32 @@ const drawnOpacity = (element: Element) => {
  * frames, and an a11y check run in that window read its text as failed
  * contrast. Every frame after the popup appears must already show it settled:
  * fully opaque, at its final size and place.
+ *
+ * The story disables animations itself instead of relying on the preview's
+ * automation detection, so it holds when someone opens it by hand as well.
  */
-export const LayoutIdMorphUnderAutomation: Story = {
-  render: () => <LayoutIdMorphExample />,
-  parameters: {
-    docs: {
-      description: {
-        story:
-          'The layoutId morph with animations disabled for automation, as in Storybook tests and Chromatic: the modal opens at its final state on the first frame.',
-      },
-    },
+export const LayoutIdMorphWithAnimationsDisabled: Story = {
+  // On the docs page it would render beside `LayoutIdMorph` and switch that
+  // story's morph off too.
+  tags: ['!autodocs'],
+  decorators: [
+    (StoryComponent) => (
+      <AnimationProvider disableAnimations>
+        <StoryComponent />
+      </AnimationProvider>
+    ),
+  ],
+  // `disableAnimations` sets page-wide flags and never clears them, so put
+  // them back for whichever story is viewed next.
+  beforeEach: () => {
+    const { skipAnimations } = MotionGlobalConfig;
+    const baseUiAnimationsDisabled = globalThis.BASE_UI_ANIMATIONS_DISABLED;
+    return () => {
+      MotionGlobalConfig.skipAnimations = skipAnimations;
+      globalThis.BASE_UI_ANIMATIONS_DISABLED = baseUiAnimationsDisabled;
+    };
   },
+  render: () => <LayoutIdMorphExample />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await awaitPassiveEffects();
