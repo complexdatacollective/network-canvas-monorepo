@@ -58,6 +58,18 @@ export function encryptionFor(passphrase: string): Promise<Encryption> {
 }
 
 /**
+ * `header` as a corrupt or tampered copy might store it, asking for far more
+ * key derivation work than the runtime allows, so that no passphrase is ever
+ * checked against it.
+ */
+export const outOfBoundsHeader = (
+  header: NcEncryptionHeader,
+): NcEncryptionHeader => ({
+  ...header,
+  kdf: { ...header.kdf, iterations: 1_000_000_000 },
+});
+
+/**
  * Puts the key of `passphrase` in force in `store`, as entering it would,
  * without deriving it again.
  */

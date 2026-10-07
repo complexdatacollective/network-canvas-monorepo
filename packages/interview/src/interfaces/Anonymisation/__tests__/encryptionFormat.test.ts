@@ -6,6 +6,7 @@ import {
   createEncryptionHeader,
   decryptValue,
   encryptValue,
+  isUsableEncryptionHeader,
   openEncryptionHeader,
 } from '../encryptionFormat';
 import { encryptionFor } from './encryptionFixtures';
@@ -45,6 +46,10 @@ afterEach(() => {
  * (each field as a u32 big-endian length and its UTF-8 bytes) and the tag
  * appended to the ciphertext. The value is padded to 32 bytes with 0x80 and
  * zeros before encrypting.
+ *
+ * The second passphrase is typed fully decomposed (NFD), with a ligature that
+ * only compatibility normalisation would change, so its check value pins NFC
+ * itself: NFD, NFKC or no normalisation each derive another key.
  */
 const PASSPHRASE = 'correct horse battery staple';
 const SALT = sequence(0x00, 16);
@@ -57,6 +62,11 @@ const VALUE_DATA = fromHex(
   '0bf3bc62c1554aa8ecbff964b8dfff646487315bd097478fb568f0d9f22dc8e504229cfe78b5a06e50dc26aebb6f0f23',
 );
 const BINDING = { nodeId: 'node-1', variableId: 'name' };
+
+const DECOMPOSED_PASSPHRASE = `${String.fromCodePoint(0xfb01)}ne cafe${String.fromCodePoint(0x301)} au lait, u${String.fromCodePoint(0x308)}ber`;
+const DECOMPOSED_CHECK_DATA = fromHex(
+  '1f14a9c982c06cae30a25a82950b5c403211d977c79ed433801b0d32a63ade62092bb7dd119d225faa43173ba79c8177e635',
+);
 
 const KNOWN_HEADER: NcEncryptionHeader = {
   version: 1,
@@ -79,12 +89,14 @@ const CHECK_CONTEXT = 'network-canvas/passphrase-check/v1';
 async function buildHeader({
   iterations,
   salt,
+  hash = 'SHA-256',
   checkPlaintext = CHECK_CONTEXT,
 }: {
   iterations: number;
   salt: number[];
+  hash?: string;
   checkPlaintext?: string;
-}): Promise<NcEncryptionHeader> {
+}) {
   const encoder = new TextEncoder();
   const material = await crypto.subtle.importKey(
     'raw',
@@ -96,7 +108,7 @@ async function buildHeader({
   const key = await crypto.subtle.deriveKey(
     {
       name: 'PBKDF2',
-      hash: 'SHA-256',
+      hash,
       iterations,
       salt: new Uint8Array(salt),
     },
@@ -116,7 +128,7 @@ async function buildHeader({
   );
   return {
     ...KNOWN_HEADER,
-    kdf: { ...KNOWN_HEADER.kdf, iterations, salt },
+    kdf: { ...KNOWN_HEADER.kdf, hash, iterations, salt },
     check: { iv: CHECK_IV, data: Array.from(new Uint8Array(data)) },
   };
 }
@@ -132,6 +144,27 @@ describe('the encryption format', () => {
       iv: VALUE_IV,
       data: VALUE_DATA,
     });
+  });
+
+  it('writes the known header for a passphrase typed decomposed', async () => {
+    expect(DECOMPOSED_PASSPHRASE.normalize('NFD')).toBe(DECOMPOSED_PASSPHRASE);
+
+    returnRandomBytes(SALT, CHECK_IV);
+    const { header } = await createEncryptionHeader(DECOMPOSED_PASSPHRASE);
+    expect(header).toEqual({
+      ...KNOWN_HEADER,
+      check: { iv: CHECK_IV, data: DECOMPOSED_CHECK_DATA },
+    });
+  });
+
+  it('opens the known header for a passphrase typed decomposed', async () => {
+    const header = {
+      ...KNOWN_HEADER,
+      check: { iv: CHECK_IV, data: DECOMPOSED_CHECK_DATA },
+    };
+    await expect(
+      openEncryptionHeader(header, DECOMPOSED_PASSPHRASE),
+    ).resolves.toEqual(expect.any(CryptoKey));
   });
 
   it('reads the known header and value bytes', async () => {
@@ -251,6 +284,12 @@ describe('opening an encryption header', () => {
         PASSPHRASE,
       ),
     ).resolves.toBeUndefined();
+    await expect(
+      openEncryptionHeader(
+        await buildHeader({ iterations: 600_000, salt: SALT, hash: 'SHA-1' }),
+        PASSPHRASE,
+      ),
+    ).resolves.toBeUndefined();
   });
 
   it('refuses a header whose check value is not the check constant', async () => {
@@ -277,5 +316,160 @@ describe('opening an encryption header', () => {
         PASSPHRASE,
       ),
     ).resolves.toBeUndefined();
+  });
+});
+
+const withKdf = (kdf: Record<string, unknown>) => ({
+  ...KNOWN_HEADER,
+  kdf: { ...KNOWN_HEADER.kdf, ...kdf },
+});
+
+const withCheck = (check: Record<string, unknown>) => ({
+  ...KNOWN_HEADER,
+  check: { ...KNOWN_HEADER.check, ...check },
+});
+
+/*
+ * Every setting the runtime reads from a stored header, pushed just outside
+ * the bounds it accepts. Each would otherwise reach key derivation: an
+ * iteration count can keep a device busy for hours, a hash or salt can weaken
+ * the key, and the rest are not what this format writes.
+ */
+const refusedHeaders: { label: string; header: unknown }[] = [
+  { label: 'is not an object', header: 'AES-256-GCM' },
+  { label: 'is null', header: null },
+  {
+    label: 'has no key derivation',
+    header: { version: 1, method: 'AES-256-GCM', check: KNOWN_HEADER.check },
+  },
+  {
+    label: 'has no check value',
+    header: { version: 1, method: 'AES-256-GCM', kdf: KNOWN_HEADER.kdf },
+  },
+  { label: 'has another version', header: { ...KNOWN_HEADER, version: 2 } },
+  {
+    label: 'has another method',
+    header: { ...KNOWN_HEADER, method: 'AES-128-GCM' },
+  },
+  {
+    label: 'has another key derivation algorithm',
+    header: withKdf({ algorithm: 'scrypt' }),
+  },
+  { label: 'has a weaker hash', header: withKdf({ hash: 'SHA-1' }) },
+  { label: 'has a slower hash', header: withKdf({ hash: 'SHA-512' }) },
+  {
+    label: 'asks for more iterations than the maximum',
+    header: withKdf({ iterations: 10_000_001 }),
+  },
+  {
+    label: 'asks for an iteration count no device could finish',
+    header: withKdf({ iterations: 2 ** 32 - 1 }),
+  },
+  {
+    label: 'asks for fewer iterations than the minimum',
+    header: withKdf({ iterations: 599_999 }),
+  },
+  {
+    label: 'has a fractional iteration count',
+    header: withKdf({ iterations: 600_000.5 }),
+  },
+  {
+    label: 'has an infinite iteration count',
+    header: withKdf({ iterations: Number.POSITIVE_INFINITY }),
+  },
+  {
+    label: 'has an iteration count that is not a number',
+    header: withKdf({ iterations: '600000' }),
+  },
+  {
+    label: 'has a salt shorter than the minimum',
+    header: withKdf({ salt: sequence(0, 15) }),
+  },
+  {
+    label: 'has a salt longer than the maximum',
+    header: withKdf({ salt: sequence(0, 65) }),
+  },
+  {
+    label: 'has a salt with a value that is not a byte',
+    header: withKdf({ salt: [...sequence(0, 15), 256] }),
+  },
+  {
+    label: 'has a salt with a negative value',
+    header: withKdf({ salt: [...sequence(0, 15), -1] }),
+  },
+  {
+    label: 'has a salt with a fractional value',
+    header: withKdf({ salt: [...sequence(0, 15), 1.5] }),
+  },
+  {
+    label: 'has a salt that is not an array',
+    header: withKdf({ salt: 'AAECAwQFBgcICQoLDA0ODw==' }),
+  },
+  {
+    label: 'has a check IV shorter than the format’s',
+    header: withCheck({ iv: CHECK_IV.slice(1) }),
+  },
+  {
+    label: 'has a check IV longer than the format’s',
+    header: withCheck({ iv: [...CHECK_IV, 0] }),
+  },
+  {
+    label: 'has a check IV with a value that is not a byte',
+    header: withCheck({ iv: [...CHECK_IV.slice(1), 300] }),
+  },
+  {
+    label: 'has check data shorter than the check value',
+    header: withCheck({ data: CHECK_DATA.slice(1) }),
+  },
+  {
+    label: 'has check data longer than the check value',
+    header: withCheck({ data: [...CHECK_DATA, 0] }),
+  },
+  {
+    label: 'has check data with a value that is not a byte',
+    header: withCheck({ data: [...CHECK_DATA.slice(1), -5] }),
+  },
+];
+
+/**
+ * Makes any key derivation fail loudly, so a test can show that a header was
+ * refused before one started.
+ */
+function refuseKeyDerivation() {
+  const derived = new Error('A key was derived from a refused header');
+  return [
+    vi.spyOn(crypto.subtle, 'importKey').mockRejectedValue(derived),
+    vi.spyOn(crypto.subtle, 'deriveKey').mockRejectedValue(derived),
+  ];
+}
+
+describe('the bounds on an encryption header', () => {
+  it('accepts the header the format writes', () => {
+    expect(isUsableEncryptionHeader(KNOWN_HEADER)).toBe(true);
+  });
+
+  it.each(refusedHeaders)('refuses a header that $label', ({ header }) => {
+    expect(isUsableEncryptionHeader(header)).toBe(false);
+  });
+
+  it.each(refusedHeaders)(
+    'refuses to open a header that $label before deriving any key',
+    async ({ header }) => {
+      const derivation = refuseKeyDerivation();
+
+      await expect(
+        openEncryptionHeader(header, PASSPHRASE),
+      ).resolves.toBeUndefined();
+      for (const spy of derivation) expect(spy).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    { label: 'the fewest iterations', kdf: { iterations: 600_000 } },
+    { label: 'the most iterations', kdf: { iterations: 10_000_000 } },
+    { label: 'the shortest salt', kdf: { salt: sequence(0, 16) } },
+    { label: 'the longest salt', kdf: { salt: sequence(0, 64) } },
+  ])('accepts a header with $label it allows', ({ kdf }) => {
+    expect(isUsableEncryptionHeader(withKdf(kdf))).toBe(true);
   });
 });

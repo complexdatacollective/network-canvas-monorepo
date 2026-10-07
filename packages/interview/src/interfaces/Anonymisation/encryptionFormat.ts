@@ -14,17 +14,44 @@ import type { NcEncryptionHeader } from '@codaco/shared-consts';
  * `encryptionFormat.test.ts` pins it byte for byte.
  */
 
+const FORMAT_VERSION = 1;
+const METHOD = 'AES-256-GCM';
+const KDF_ALGORITHM = 'PBKDF2';
+const KDF_HASH = 'SHA-256';
 const PBKDF2_ITERATIONS = 600_000;
 const SALT_BYTES = 16;
 const IV_BYTES = 12;
+const GCM_TAG_BYTES = 16;
 const PADDING_BLOCK = 32;
 const PADDING_MARKER = 0x80;
+
+/*
+ * The bounds a stored header's key derivation must fall within before any
+ * key is derived under it. The header is read from the network the host
+ * hands over, which nothing validates on the way in, so these are the
+ * runtime's own limits rather than the header's.
+ *
+ * The minimums are what this format writes, so a header cannot weaken the
+ * key new answers are encrypted with. The iteration maximum bounds how long
+ * one unlock can keep a participant's device busy: about 16 times the
+ * format's own work, which takes a few seconds on a recent phone and under a
+ * minute on a slow one, leaving room for a later format to raise the count.
+ * Without it, a corrupt count of billions would hang the device for hours.
+ * A salt longer than 64 bytes adds nothing to a 256-bit key.
+ */
+const MIN_PBKDF2_ITERATIONS = PBKDF2_ITERATIONS;
+const MAX_PBKDF2_ITERATIONS = 10_000_000;
+const MIN_SALT_BYTES = SALT_BYTES;
+const MAX_SALT_BYTES = 64;
 
 const VALUE_CONTEXT = 'network-canvas/encrypted-attribute/v1';
 const CHECK_CONTEXT = 'network-canvas/passphrase-check/v1';
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder('utf-8', { fatal: true });
+
+/** The check value is the check context, unpadded, with GCM's tag. */
+const CHECK_DATA_BYTES = encoder.encode(CHECK_CONTEXT).length + GCM_TAG_BYTES;
 
 export type EncryptedBytes = { iv: number[]; data: number[] };
 
@@ -146,17 +173,61 @@ export async function createEncryptionHeader(
   passphrase: string,
 ): Promise<{ header: NcEncryptionHeader; key: CryptoKey }> {
   const kdf: NcEncryptionHeader['kdf'] = {
-    algorithm: 'PBKDF2',
-    hash: 'SHA-256',
+    algorithm: KDF_ALGORITHM,
+    hash: KDF_HASH,
     iterations: PBKDF2_ITERATIONS,
     salt: Array.from(randomBytes(SALT_BYTES)),
   };
   const key = await deriveKey(passphrase, kdf);
   const check = await encryptBytes(key, checkPlaintext(), checkContext());
   return {
-    header: { version: 1, method: 'AES-256-GCM', kdf, check },
+    header: { version: FORMAT_VERSION, method: METHOD, kdf, check },
     key,
   };
+}
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const isIntegerBetween = (value: unknown, min: number, max: number) =>
+  typeof value === 'number' &&
+  Number.isSafeInteger(value) &&
+  value >= min &&
+  value <= max;
+
+// The length is checked first, so an enormous array is refused without
+// visiting its elements.
+const isBytesOfLength = (value: unknown, min: number, max: number) =>
+  Array.isArray(value) &&
+  value.length >= min &&
+  value.length <= max &&
+  value.every((byte: unknown) => isIntegerBetween(byte, 0, 255));
+
+/**
+ * Whether a key may be derived under `header`: it names this format, and
+ * every setting it supplies is within the bounds the runtime sets. Anything
+ * else is refused whole, whatever passphrase is offered.
+ */
+export function isUsableEncryptionHeader(
+  header: unknown,
+): header is NcEncryptionHeader {
+  if (!isRecord(header)) return false;
+  const { kdf, check } = header;
+  if (!isRecord(kdf) || !isRecord(check)) return false;
+  return (
+    header.version === FORMAT_VERSION &&
+    header.method === METHOD &&
+    kdf.algorithm === KDF_ALGORITHM &&
+    kdf.hash === KDF_HASH &&
+    isIntegerBetween(
+      kdf.iterations,
+      MIN_PBKDF2_ITERATIONS,
+      MAX_PBKDF2_ITERATIONS,
+    ) &&
+    isBytesOfLength(kdf.salt, MIN_SALT_BYTES, MAX_SALT_BYTES) &&
+    isBytesOfLength(check.iv, IV_BYTES, IV_BYTES) &&
+    isBytesOfLength(check.data, CHECK_DATA_BYTES, CHECK_DATA_BYTES)
+  );
 }
 
 /**
@@ -164,20 +235,15 @@ export async function createEncryptionHeader(
  * does not decrypt the header's check value: the passphrase is not the one
  * the header was created with.
  *
- * A header asking for fewer iterations or a shorter salt than this format
- * writes is refused whatever the passphrase, so a tampered header cannot
- * weaken the key new answers are encrypted with.
+ * A header outside the runtime's bounds is refused before any key is
+ * derived (see `isUsableEncryptionHeader`), so a corrupt or tampered header
+ * can neither weaken the key nor keep the device deriving it indefinitely.
  */
 export async function openEncryptionHeader(
-  header: NcEncryptionHeader,
+  header: unknown,
   passphrase: string,
 ): Promise<CryptoKey | undefined> {
-  if (
-    header.kdf.iterations < PBKDF2_ITERATIONS ||
-    header.kdf.salt.length < SALT_BYTES
-  ) {
-    return undefined;
-  }
+  if (!isUsableEncryptionHeader(header)) return undefined;
 
   const key = await deriveKey(passphrase, header.kdf);
   try {
