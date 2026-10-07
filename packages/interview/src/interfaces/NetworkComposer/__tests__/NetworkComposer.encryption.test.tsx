@@ -26,7 +26,7 @@ import { StageMetadataContext } from '../../../contexts/StageMetadataContext';
 import { ContractProvider } from '../../../contract/context';
 import { setPassphrase, setPassphraseInvalid } from '../../../store/modules/ui';
 import { interviewToastManager } from '../../../toast/interviewToastManager';
-import type { RegisterBeforeNext, StageProps } from '../../../types';
+import type { BeforeNextFunction, StageProps } from '../../../types';
 import { createEncryptionStore } from '../../Anonymisation/__tests__/encryptionFixtures';
 import { isNumberArray } from '../../Anonymisation/decryptionScope';
 import {
@@ -209,7 +209,18 @@ function renderComposer(
   store: ReturnType<typeof makeStore>,
   composerStage = stage,
 ) {
-  const registerBeforeNext: RegisterBeforeNext = vi.fn();
+  const beforeNext = new Map<string, BeforeNextFunction>();
+  function registerBeforeNext(fn: BeforeNextFunction | null): void;
+  function registerBeforeNext(key: string, fn: BeforeNextFunction | null): void;
+  function registerBeforeNext(
+    keyOrFn: string | BeforeNextFunction | null,
+    maybeFn?: BeforeNextFunction | null,
+  ) {
+    const key = typeof keyOrFn === 'string' ? keyOrFn : 'stage';
+    const fn = typeof keyOrFn === 'string' ? maybeFn : keyOrFn;
+    if (fn) beforeNext.set(key, fn);
+    else beforeNext.delete(key);
+  }
   const props: StageProps<'NetworkComposer'> = {
     stage: composerStage,
     getNavigationHelpers: () => ({
@@ -239,6 +250,15 @@ function renderComposer(
   }
 
   render(<NetworkComposer {...props} />, { wrapper: Wrapper });
+
+  // What pressing Next asks of the stage: whether it may be left.
+  const leave = async () => {
+    for (const handler of beforeNext.values()) {
+      if ((await handler('forwards', 'step')) === false) return false;
+    }
+    return true;
+  };
+  return { leave };
 }
 
 function tapNode(nodeEl: HTMLElement) {
@@ -546,6 +566,145 @@ describe('NetworkComposer refusing to save without a working passphrase', () => 
     await waitFor(() =>
       expect(screen.queryByText(new RegExp(notSaved))).toBeNull(),
     );
+  });
+});
+
+describe('NetworkComposer leaving the stage with the drawer open', () => {
+  const notSaved = /Your answers have not been saved/;
+
+  async function openDrawer(store: ReturnType<typeof makeStore>) {
+    const { leave } = renderComposer(store);
+    const nodeButton = await screen.findByRole('button', { name: /alice/i });
+    act(() => {
+      tapNode(nodeButton);
+    });
+    const notesInput = await screen.findByLabelText(/notes/i);
+    await waitFor(() => expect(notesInput).toHaveValue('Met at work'));
+    return { leave, notesInput };
+  }
+
+  it('leaves without asking or saving when nothing was changed', async () => {
+    const stored = await makeEncryptedNode();
+    const store = makeStore([stored], true);
+    const { leave } = await openDrawer(store);
+
+    await expect(leave()).resolves.toBe(true);
+    expect(
+      screen.queryByRole('dialog', { name: 'Discard changes?' }),
+    ).toBeNull();
+    expect(store.getState().session.network.nodes[0]).toBe(stored);
+  });
+
+  it('saves an edit made too recently to have been saved yet', async () => {
+    const store = makeStore([await makeEncryptedNode()], true);
+    const { leave, notesInput } = await openDrawer(store);
+
+    fireEvent.change(notesInput, { target: { value: 'Old friend' } });
+    let left: Promise<boolean> | undefined;
+    act(() => {
+      left = leave();
+    });
+
+    await expect(left).resolves.toBe(true);
+    expect(
+      screen.queryByRole('dialog', { name: 'Discard changes?' }),
+    ).toBeNull();
+    expect(
+      await readStored(store.getState().session.network.nodes[0], NOTES_VAR),
+    ).toBe('Old friend');
+  });
+
+  it('asks before leaving an edit it could not save, and stays when the participant keeps it', async () => {
+    const stored = await makeEncryptedNode();
+    const store = makeStore([stored], true);
+    const { leave, notesInput } = await openDrawer(store);
+
+    act(() => {
+      store.dispatch(setPassphraseInvalid(true));
+    });
+    fireEvent.change(notesInput, { target: { value: 'Old friend' } });
+    let left: Promise<boolean> | undefined;
+    act(() => {
+      left = leave();
+    });
+
+    const warning = await screen.findByRole('dialog', {
+      name: 'Discard changes?',
+    });
+    expect(warning).toHaveTextContent(notSaved);
+    fireEvent.click(screen.getByRole('button', { name: 'Keep changes' }));
+
+    await expect(left).resolves.toBe(false);
+    expect(notesInput).toHaveValue('Old friend');
+    expect(store.getState().session.network.nodes[0]).toBe(stored);
+  });
+
+  it('asks before leaving an edit hidden while another passphrase is tried', async () => {
+    const stored = await makeEncryptedNode();
+    const store = makeStore([stored], true);
+    const { leave, notesInput } = await openDrawer(store);
+
+    fireEvent.change(notesInput, { target: { value: 'Old friend' } });
+    // The store would take a write encrypted with a passphrase still being
+    // tried, so leaving must not save the hidden edit with it.
+    let release: () => void = () => undefined;
+    decryptionGate.held = new Promise((resolve) => {
+      release = resolve;
+    });
+    try {
+      act(() => {
+        store.dispatch(setPassphrase('another passphrase'));
+      });
+      await waitFor(() =>
+        expect(screen.queryByRole('textbox', { name: /notes/i })).toBeNull(),
+      );
+      let left: Promise<boolean> | undefined;
+      act(() => {
+        left = leave();
+      });
+
+      const warning = await screen.findByRole('dialog', {
+        name: 'Discard changes?',
+      });
+      expect(warning).toHaveTextContent(notSaved);
+      fireEvent.click(screen.getByRole('button', { name: 'Discard changes' }));
+
+      await expect(left).resolves.toBe(true);
+      expect(store.getState().session.network.nodes[0]).toBe(stored);
+    } finally {
+      release();
+      decryptionGate.held = undefined;
+    }
+  });
+
+  it('asks before leaving an invalid edit, saying it is invalid', async () => {
+    const stored = await makeEncryptedNode();
+    const store = makeStore([stored], true, true, {
+      ...variables,
+      [NOTES_VAR]: {
+        name: 'notes',
+        type: 'text',
+        component: 'Text',
+        encrypted: true,
+        validation: { required: true },
+      },
+    });
+    const { leave, notesInput } = await openDrawer(store);
+
+    fireEvent.change(notesInput, { target: { value: '' } });
+    let left: Promise<boolean> | undefined;
+    act(() => {
+      left = leave();
+    });
+
+    const warning = await screen.findByRole('dialog', {
+      name: 'Discard changes?',
+    });
+    expect(warning).toHaveTextContent(/invalid data/);
+    fireEvent.click(screen.getByRole('button', { name: 'Keep changes' }));
+
+    await expect(left).resolves.toBe(false);
+    expect(store.getState().session.network.nodes[0]).toBe(stored);
   });
 });
 

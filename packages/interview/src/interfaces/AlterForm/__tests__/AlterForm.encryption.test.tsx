@@ -317,6 +317,62 @@ describe('AlterForm while a passphrase that cannot read the answers is in force'
     expect(warning).toHaveTextContent(/Your answers have not been saved/);
     expect(warning).not.toHaveTextContent(/invalid data/);
   });
+
+  it("says the first person's answers were not saved before going back to the introduction", async () => {
+    const { store, back } = await renderAlterForm('pw');
+    const user = userEvent.setup();
+
+    const name = await screen.findByRole('textbox', { name: 'Name' });
+    await user.clear(name);
+    await user.type(name, 'Alicia');
+    const before = store.getState().session.network;
+
+    act(() => {
+      store.dispatch(setPassphrase('another passphrase'));
+    });
+    await screen.findByText(/There was a problem decrypting the data/);
+    await back();
+
+    const warning = await screen.findByRole('dialog', {
+      name: 'Discard changes?',
+    });
+    expect(warning).toHaveTextContent(/Your answers have not been saved/);
+    await user.click(screen.getByRole('button', { name: 'Keep changes' }));
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', { name: 'Discard changes?' }),
+      ).toBeNull(),
+    );
+    expect(screen.queryByText('About each person')).toBeNull();
+    expect(store.getState().session.network).toBe(before);
+  });
+});
+
+describe('AlterForm going back from the first person', () => {
+  it('saves the answers entered before showing the introduction again', async () => {
+    const { store, back } = await renderAlterForm('pw');
+    const user = userEvent.setup();
+
+    const name = await screen.findByRole('textbox', { name: 'Name' });
+    await waitFor(() => expect(name).toHaveValue('Alice'));
+    await user.clear(name);
+    await user.type(name, 'Alicia');
+    await back();
+
+    expect(await screen.findByText('About each person')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('dialog', { name: 'Discard changes?' }),
+    ).toBeNull();
+    const [saved] = store.getState().session.network.nodes;
+    const stored = saved?.[entityAttributesProperty].name;
+    const secure = saved?.[entitySecureAttributesMeta]?.name;
+    if (!isNumberArray(stored)) throw new Error('Expected a stored ciphertext');
+    if (!secure) throw new Error('Expected secure-attribute metadata');
+    await expect(
+      decryptData({ secureAttributes: secure, data: stored }, 'pw'),
+    ).resolves.toBe('Alicia');
+  });
 });
 
 describe('AlterForm with the encrypted-variables experiment off', () => {

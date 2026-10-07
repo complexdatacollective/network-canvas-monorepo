@@ -9,11 +9,13 @@ import {
 } from '@codaco/app-i18n/messages';
 import { AppMessage } from '@codaco/app-i18n/react';
 import { Button } from '@codaco/fresco-ui/Button';
+import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
 import { FormWithoutProvider } from '@codaco/fresco-ui/form/Form';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import FormStoreProvider, {
   FormStoreContext,
+  selectIsFormDirty,
 } from '@codaco/fresco-ui/form/store/formStoreProvider';
 import type { FormSubmitHandler } from '@codaco/fresco-ui/form/store/types';
 import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
@@ -23,6 +25,7 @@ import type { entityAttributesProperty, NcNode } from '@codaco/shared-consts';
 import { formValuesToAttributePatch } from '../../forms/formValuesToAttributePatch';
 import useProtocolForm from '../../forms/useProtocolForm';
 import { rejectedWriteMessage } from '../../forms/writeSubmissionResult';
+import useBeforeNext from '../../hooks/useBeforeNext';
 import { runtimeMessages } from '../../i18n/runtimeMessages';
 import type { Subject } from '../../selectors/forms';
 import type { AttributePatch } from '../../store/entityAttributePatch';
@@ -30,6 +33,7 @@ import KeepWhileProtected from '../Anonymisation/KeepWhileProtected';
 import PassphraseNotice, {
   type PassphraseNoticeStatus,
 } from '../Anonymisation/PassphraseNotice';
+import discardChangesDialog from '../discardChangesDialog';
 import { interfaceMessages } from '../messages';
 
 type Attributes = NcNode[typeof entityAttributesProperty];
@@ -148,15 +152,12 @@ function AttributeFormInner({
     currentEntityId: entityId,
   });
   const storeApi = useContext(FormStoreContext);
+  const { confirm } = useDialog();
 
-  const handleValidValues = useCallback(
-    (values: Record<string, FieldValue>) => {
-      const patchResult = formValuesToAttributePatch(
-        coerceValues(values),
-        (form.fields ?? []).map((field) => field.variable),
-        initialValues,
-      );
-
+  // Resolves to why the values could not be saved, or to undefined once they
+  // are saved.
+  const persist = useCallback(
+    async (values: Record<string, FieldValue>) => {
       // The form keeps what was entered, so the edit can be saved again once
       // whatever refused it is resolved.
       const showSaveFailure = (message: MessageDescriptor) => {
@@ -164,28 +165,63 @@ function AttributeFormInner({
           formErrors: [createMessageError(message)],
           fieldErrors: {},
         });
+        return message;
       };
 
+      const patchResult = formValuesToAttributePatch(
+        coerceValues(values),
+        (form.fields ?? []).map((field) => field.variable),
+        initialValues,
+      );
       if (!patchResult.success) {
-        showSaveFailure(runtimeMessages.submissionFailed);
-        return;
+        return showSaveFailure(runtimeMessages.submissionFailed);
       }
 
-      void onSave(entityId, patchResult.patch).then(
-        () => {
-          // An edit refused earlier is saved now, so the refusal is gone.
-          const state = storeApi?.getState();
-          if (state && state.errors.formErrors.length > 0) {
-            state.setErrors(null);
-          }
-        },
-        (error: unknown) => {
-          showSaveFailure(rejectedWriteMessage(error));
-        },
-      );
+      try {
+        await onSave(entityId, patchResult.patch);
+      } catch (error) {
+        return showSaveFailure(rejectedWriteMessage(error));
+      }
+
+      // An edit refused earlier is saved now, so the refusal is gone.
+      const state = storeApi?.getState();
+      if (state && state.errors.formErrors.length > 0) {
+        state.setErrors(null);
+      }
+      return undefined;
     },
     [onSave, entityId, coerceValues, form.fields, initialValues, storeApi],
   );
+
+  const handleValidValues = useCallback(
+    (values: Record<string, FieldValue>) => {
+      void persist(values);
+    },
+    [persist],
+  );
+
+  // Leaving the stage saves an edit the autosave has not reached yet, and
+  // asks before discarding one that cannot be saved: an invalid edit, one the
+  // store refused, or one hidden because the passphrase cannot read it.
+  useBeforeNext(async () => {
+    const state = storeApi?.getState();
+    if (!state || !selectIsFormDirty(state)) return true;
+
+    let reason: MessageDescriptor | undefined =
+      runtimeMessages.protectedAnswersNotSaved;
+    if (canSave) {
+      reason = (await state.validateForm())
+        ? await persist(state.getFormValues())
+        : interfaceMessages.discardChangesDescription;
+      if (reason === undefined) return true;
+    }
+
+    const discarded = await confirm({
+      ...discardChangesDialog(reason),
+      onConfirm: () => undefined,
+    });
+    return discarded === true;
+  });
 
   return (
     <div data-testid="inspector-panel" className="flex min-h-0 flex-1 flex-col">
