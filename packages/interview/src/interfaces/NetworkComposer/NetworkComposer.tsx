@@ -177,8 +177,10 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
       : undefined;
 
   // Names added here, and values edited in the drawer, are stored encrypted
-  // when their variables are marked encrypted, which needs the passphrase.
-  const { passphrase, requirePassphrase, isEnabled } = usePassphrase();
+  // when their variables are marked encrypted, which needs a working
+  // passphrase.
+  const { passphrase, passphraseInvalid, requirePassphrase, isEnabled } =
+    usePassphrase();
   const quickAddEncrypted = isAttributeEncrypted(
     isEnabled,
     stageVariables,
@@ -189,7 +191,7 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
     (stage.nodeForm?.fields ?? []).some((field) =>
       isAttributeEncrypted(isEnabled, stageVariables, field.variable),
     );
-  const addNodeLocked = quickAddEncrypted && !passphrase;
+  const addNodeLocked = quickAddEncrypted && (!passphrase || passphraseInvalid);
   const { showToast } = useInterviewToast();
 
   useEffect(() => {
@@ -314,10 +316,6 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
   // each landing on the next free grid cell from the top-left.
   const handleAddNode = useCallback(
     async (name: string) => {
-      if (addNodeLocked) {
-        requirePassphrase();
-        return false;
-      }
       const occupied = nodes
         .map((n) => n[entityAttributesProperty]?.[layoutVariable])
         .filter(isPosition);
@@ -333,15 +331,7 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
         return false;
       }
     },
-    [
-      nodes,
-      layoutVariable,
-      actions,
-      addNodeLocked,
-      requirePassphrase,
-      showToast,
-      intl,
-    ],
+    [nodes, layoutVariable, actions, showToast, intl],
   );
 
   const handleBackgroundTap = useCallback(() => {

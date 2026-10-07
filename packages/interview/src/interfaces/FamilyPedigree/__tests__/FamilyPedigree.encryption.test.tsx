@@ -25,7 +25,7 @@ import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import { StageMetadataContext } from '../../../contexts/StageMetadataContext';
 import { ContractProvider } from '../../../contract/context';
 import { InterviewI18nProvider } from '../../../i18n/InterviewI18nProvider';
-import { setPassphrase } from '../../../store/modules/ui';
+import { setPassphrase, setPassphraseInvalid } from '../../../store/modules/ui';
 import type { BeforeNextFunction, StageProps } from '../../../types';
 import { createEncryptionStore } from '../../Anonymisation/__tests__/encryptionFixtures';
 import { generateSecureAttributes } from '../../Anonymisation/utils';
@@ -330,6 +330,25 @@ describe('FamilyPedigree with an encrypted name variable', () => {
       await screen.findByRole('heading', { name: /build your family/i }),
     ).toBeTruthy();
     expect(screen.queryByText(passphraseNotice)).toBeNull();
+  });
+
+  it('holds the pedigree while the passphrase is not working', async () => {
+    const store = makeStore({ withPassphrase: true });
+    store.dispatch(setPassphraseInvalid(true));
+    renderPedigree(store);
+
+    expect(await screen.findByText(passphraseNotice)).toBeTruthy();
+    expect(screen.queryByRole('heading', { name: /build your family/i })).toBe(
+      null,
+    );
+
+    act(() => {
+      store.dispatch(setPassphrase(PASSPHRASE));
+    });
+
+    expect(
+      await screen.findByRole('heading', { name: /build your family/i }),
+    ).toBeTruthy();
   });
 
   it('shows decrypted names when revisiting and on the nomination steps', async () => {

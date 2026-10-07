@@ -66,12 +66,14 @@ function NodePanel(props: NodePanelProps) {
   const nodes = useStageSelector(getPanelNodes(panelConfig, externalData));
 
   // Adding a person from external data stores its values, and those of
-  // encrypted variables can only be stored once the passphrase is known.
+  // encrypted variables can only be stored once a working passphrase is in
+  // force.
   const stageVariables = useStageSelector(getCodebookVariablesForSubjectType);
-  const { passphrase, requirePassphrase, isEnabled } = usePassphrase();
+  const { passphrase, passphraseInvalid, requirePassphrase, isEnabled } =
+    usePassphrase();
   const needsPassphrase =
     isExternalData &&
-    !passphrase &&
+    (!passphrase || passphraseInvalid) &&
     nodes.some((node) =>
       writesEncryptedValue(
         node[entityAttributesProperty],
