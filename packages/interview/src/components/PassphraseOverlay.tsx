@@ -106,6 +106,7 @@ function PassphraseOverlayContent({
             placeholder={intl.formatMessage(messages.passphrasePlaceholder)}
             required
             autoFocus
+            suppressPasswordManager
           />
         </FormWithoutProvider>
       </div>

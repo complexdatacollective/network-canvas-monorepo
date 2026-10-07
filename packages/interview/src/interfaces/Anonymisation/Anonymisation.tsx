@@ -178,6 +178,7 @@ function AnonymisationInner(props: AnonymisationProps) {
                         label={intl.formatMessage(runtimeMessages.passphrase)}
                         required
                         autoFocus
+                        suppressPasswordManager
                         {...(minLength !== undefined && { minLength })}
                         {...(maxLength !== undefined && { maxLength })}
                       />
@@ -192,6 +193,7 @@ function AnonymisationInner(props: AnonymisationProps) {
                         )}
                         required
                         sameAs="passphrase"
+                        suppressPasswordManager
                         {...(minLength !== undefined && { minLength })}
                         {...(maxLength !== undefined && { maxLength })}
                       />

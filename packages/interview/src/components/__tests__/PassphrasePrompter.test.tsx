@@ -52,6 +52,7 @@ describe('PassphrasePrompter', () => {
 
     const field = await findPassphraseField();
     expect(field).toHaveAttribute('type', 'password');
+    expect(field).toHaveAttribute('autocomplete', 'off');
     await user.type(field, 'wrong');
     await user.click(screen.getByRole('button', { name: 'Submit passphrase' }));
 
