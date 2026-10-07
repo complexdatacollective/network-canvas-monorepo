@@ -352,7 +352,59 @@ describe('useProtocolForm validating against encrypted values', () => {
       ).rejects.toThrow(
         createMessageError(runtimeMessages.protectedAnswersNotChecked),
       );
+      expect(result.current.passphraseNeeded).toBe(true);
       expect(store.getState().ui.showPassphrasePrompter).toBe(true);
+    },
+  );
+
+  // The stored answers each rule reads: `unique` reads the others', and a rule
+  // naming another variable reads the edited person's, so a new person's reads
+  // none.
+  const comparisonsReadingNoEncryptedValue: [
+    string,
+    string,
+    string | undefined,
+  ][] = [
+    ['`unique` on the edited person’s own encrypted value', NAME_VAR, NODE_ID],
+    ...VARIABLE_REFERENCE_VALIDATIONS.map(
+      (rule): [string, string, undefined] => [
+        `\`${rule}\` for a new person, though someone else’s value is encrypted`,
+        variableNamingNameBy[rule],
+        undefined,
+      ],
+    ),
+    ...VARIABLE_REFERENCE_VALIDATIONS.map((rule): [string, string, string] => [
+      `\`${rule}\` for a person whose value is not encrypted, though someone else’s is`,
+      variableNamingNameBy[rule],
+      'node-2',
+    ]),
+  ];
+
+  it.each(comparisonsReadingNoEncryptedValue)(
+    'needs no passphrase for %s',
+    async (_rule, variable, currentEntityId) => {
+      const node = await encryptedNode();
+      const store = await makeStore(
+        [
+          node,
+          {
+            [entityPrimaryKeyProperty]: 'node-2',
+            type: NODE_TYPE,
+            [entityAttributesProperty]: { [NAME_VAR]: 'Bob' },
+          },
+        ],
+        false,
+      );
+      const { result } = renderForm(store, variable, currentEntityId);
+
+      expect(result.current.passphraseNeeded).toBe(false);
+      expect(validatedValue(result.current.fieldComponents, NAME_VAR)).toBe(
+        node[entityAttributesProperty][NAME_VAR],
+      );
+      await expect(
+        resolveValidatedNetwork(result.current.fieldComponents),
+      ).rejects.toThrow('Expected the validation to resolve its network');
+      expect(store.getState().ui.showPassphrasePrompter).toBe(false);
     },
   );
 

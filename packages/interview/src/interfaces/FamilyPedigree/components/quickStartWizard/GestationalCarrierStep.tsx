@@ -22,7 +22,7 @@ export default function GestationalCarrierStep() {
   const framing = useFamilyPedigreeStore((s) => s.framing);
   const framingKey = framing ?? 'gamete';
 
-  const { fieldComponents } = usePedigreeNodeForm();
+  const { fieldComponents, passphraseNeeded } = usePedigreeNodeForm();
 
   return (
     <>
@@ -35,6 +35,7 @@ export default function GestationalCarrierStep() {
           label={intl.formatMessage(messages.whatName)}
           hint={intl.formatMessage(messages.unknownNameHint)}
           autoFocus
+          formNeedsPassphrase={passphraseNeeded}
         />
         {fieldComponents}
       </FieldNamespace>

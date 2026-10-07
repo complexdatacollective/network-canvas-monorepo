@@ -30,7 +30,7 @@ function AdditionalParentFields({ index }: { index: number }) {
     },
   ];
 
-  const { fieldComponents } = usePedigreeNodeForm();
+  const { fieldComponents, passphraseNeeded } = usePedigreeNodeForm();
 
   return (
     <Surface spacing="sm" shadow="sm">
@@ -51,6 +51,7 @@ function AdditionalParentFields({ index }: { index: number }) {
         <PersonNameField
           label={intl.formatMessage(messages.whatName)}
           autoFocus
+          formNeedsPassphrase={passphraseNeeded}
         />
         {fieldComponents}
       </FieldNamespace>

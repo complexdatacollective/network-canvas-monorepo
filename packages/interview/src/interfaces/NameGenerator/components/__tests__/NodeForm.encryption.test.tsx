@@ -1,8 +1,12 @@
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Provider } from 'react-redux';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
+import {
+  asEntityAttributeReference,
+  type Variable,
+} from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -25,6 +29,7 @@ import {
 } from '../../../Anonymisation/__tests__/encryptionFixtures';
 import { readEncryptedAttribute } from '../../../Anonymisation/decryptionScope';
 import { decryptValue } from '../../../Anonymisation/encryptionFormat';
+import { writesEncryptedValue } from '../../../Anonymisation/utils';
 import NodeForm from '../NodeForm';
 
 vi.mock('../../../../hooks/useCelebrate', () => ({
@@ -46,18 +51,20 @@ beforeAll(() => {
 async function renderNodeForm({
   selected,
   unlocked = false,
+  stored = selected ? [selected] : [],
+  stages,
+  variables = encryptedVariables,
 }: {
   /** The person being edited; none for a form adding a new one. */
   selected: NcNode | null;
   unlocked?: boolean;
+  /** Everyone in the interview, by default only the person being edited. */
+  stored?: NcNode[];
+  stages?: Parameters<typeof createEncryptionStore>[1];
+  variables?: Record<string, Variable>;
 }) {
   const { header } = await encryptionFor('pw');
-  const store = createEncryptionStore(
-    selected ? [selected] : [],
-    undefined,
-    undefined,
-    { header },
-  );
+  const store = createEncryptionStore(stored, stages, variables, { header });
   if (unlocked) await unlockWith(store, 'pw');
   const onClose = vi.fn();
 
@@ -78,7 +85,8 @@ async function renderNodeForm({
         addSessionNode({
           type: NODE_TYPE,
           attributeData: attributes,
-          useEncryption: true,
+          // As the name generator decides it.
+          useEncryption: writesEncryptedValue(attributes, variables),
           currentStep: 0,
         }),
       ),
@@ -283,5 +291,115 @@ describe('NodeForm adding a person with an encrypted answer', () => {
     expect(screen.getByRole('textbox', { name: 'Name' })).toHaveValue('Alicia');
     expect(onClose).not.toHaveBeenCalled();
     expect(store.getState().session.network).toBe(before);
+  });
+});
+
+// A form asking only for a nickname, which is not encrypted, that must differ
+// from the person's name, which is.
+const nicknameVariables: Record<string, Variable> = {
+  ...encryptedVariables,
+  nickname: {
+    name: 'nickname',
+    label: 'nickname',
+    type: 'text',
+    component: 'Text',
+    validation: { differentFrom: asEntityAttributeReference('name') },
+  },
+};
+
+const nicknameStages: Parameters<typeof createEncryptionStore>[1] = [
+  {
+    id: 'stage-1',
+    type: 'NameGenerator',
+    label: { en: 'Name generator' },
+    subject: { entity: 'node', type: NODE_TYPE },
+    form: {
+      title: { en: 'Add a person' },
+      fields: [
+        {
+          variable: asEntityAttributeReference('nickname'),
+          prompt: { en: 'Nickname' },
+        },
+      ],
+    },
+    prompts: [{ id: 'prompt-1', text: { en: 'Name people' } }],
+  },
+];
+
+describe('NodeForm whose answer is checked against a protected one', () => {
+  it('takes the passphrase inside the form, then checks and saves the answer', async () => {
+    const { store, onClose } = await renderNodeForm({
+      selected: await makeEncryptedPerson('n1', 'Alice', 'pw'),
+      stages: nicknameStages,
+      variables: nicknameVariables,
+    });
+    const user = userEvent.setup();
+
+    const nickname = await screen.findByRole('textbox', { name: 'Nickname' });
+    await user.type(nickname, 'Ali');
+    await user.click(screen.getByRole('button', { name: 'Finished' }));
+    await waitFor(() =>
+      expect(nickname).toHaveAccessibleDescription(
+        /checked against answers protected by your passphrase/,
+      ),
+    );
+
+    const form = screen.getByRole('dialog', { name: 'Add a person' });
+    await user.click(
+      within(form).getByRole('button', { name: 'Enter your Passphrase' }),
+    );
+    const prompt = await screen.findByRole('dialog', {
+      name: 'Enter your Passphrase',
+    });
+    await user.type(
+      within(prompt).getByLabelText(/^Passphrase/, { selector: 'input' }),
+      'pw',
+    );
+    await user.click(
+      within(prompt).getByRole('button', { name: 'Submit passphrase' }),
+    );
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Finished' })).toHaveFocus(),
+    );
+    expect(
+      within(form).queryByRole('button', { name: 'Enter your Passphrase' }),
+    ).toBeNull();
+    expect(nickname).toHaveValue('Ali');
+
+    await user.click(screen.getByRole('button', { name: 'Finished' }));
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+    expect(
+      store.getState().session.network.nodes[0]?.[entityAttributesProperty]
+        .nickname,
+    ).toBe('Ali');
+  });
+
+  it('asks for no passphrase for a new person, whose own name is not stored', async () => {
+    const { store, onClose } = await renderNodeForm({
+      selected: null,
+      stored: [await makeEncryptedPerson('n1', 'Alice', 'pw')],
+      stages: nicknameStages,
+      variables: nicknameVariables,
+    });
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole('button', { name: 'Add a person' }));
+    const nickname = await screen.findByRole('textbox', { name: 'Nickname' });
+    expect(
+      screen.queryByRole('button', { name: 'Enter your Passphrase' }),
+    ).toBeNull();
+
+    await user.type(nickname, 'Alice');
+    await user.click(screen.getByRole('button', { name: 'Finished' }));
+
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+    expect(
+      store
+        .getState()
+        .session.network.nodes.map(
+          (node) => node[entityAttributesProperty].nickname,
+        ),
+    ).toEqual([undefined, 'Alice']);
   });
 });

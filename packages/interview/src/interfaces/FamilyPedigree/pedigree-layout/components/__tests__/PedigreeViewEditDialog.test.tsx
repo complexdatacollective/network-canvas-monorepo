@@ -182,7 +182,15 @@ vi.mock('../../../../../selectors/protocol', () => ({
 // Decrypting stored values for validation needs the interview's key, held
 // against the Redux store; this pedigree has none to decrypt.
 vi.mock('../../../../../forms/useValidationNetwork', () => ({
-  useValidationNetwork: ({ network }: { network: unknown }) => ({ network }),
+  useValidationNetwork: ({ network }: { network: unknown }) => ({
+    context: { network },
+    passphraseNeeded: false,
+  }),
+}));
+
+// Nor is the passphrase ever needed, so nothing offers it.
+vi.mock('../../../../../components/PassphraseEntry', () => ({
+  default: () => null,
 }));
 
 vi.mock('../../../../../selectors/forms', async (importOriginal) => {

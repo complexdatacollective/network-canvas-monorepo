@@ -29,7 +29,7 @@ export default function PersonFields({
   currentEntityId,
 }: PersonFieldsProps) {
   const intl = useAppIntl();
-  const { fieldComponents } = usePedigreeNodeForm({
+  const { fieldComponents, passphraseNeeded } = usePedigreeNodeForm({
     initialValues: initial?.attributes as
       | Record<string, FieldValue>
       | undefined,
@@ -44,6 +44,7 @@ export default function PersonFields({
         hint={intl.formatMessage(messages.unknownNameHint)}
         initialValue={initial?.name ?? ''}
         currentEntityId={currentEntityId}
+        formNeedsPassphrase={passphraseNeeded}
       />
       <BiologicalSexField
         subject="other"

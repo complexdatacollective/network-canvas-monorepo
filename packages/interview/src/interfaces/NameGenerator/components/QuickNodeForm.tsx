@@ -95,10 +95,12 @@ const QuickNodeForm = ({
   // reach a participant. With nothing authored to offer, the comparison
   // validators' complete label-free sentences are the correct output.
   const baseValidationContext = useStageSelector(getValidationContext);
-  const validationNetwork = useValidationNetwork(
+  // A new person, so the rules read only the others' stored answers.
+  const { context: validationNetwork } = useValidationNetwork(
     baseValidationContext,
     baseValidationContext.stageSubject,
     [targetVariable],
+    undefined,
   );
   const validationContext: ValidationContext | undefined =
     baseValidationContext.stageSubject

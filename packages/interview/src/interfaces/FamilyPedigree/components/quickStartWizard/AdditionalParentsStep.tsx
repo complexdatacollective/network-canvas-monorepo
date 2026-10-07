@@ -27,7 +27,7 @@ function AdditionalParentFields({ index }: { index: number }) {
     { value: 'raised-me', label: intl.formatMessage(messages.raisedMeRole) },
   ];
 
-  const { fieldComponents } = usePedigreeNodeForm();
+  const { fieldComponents, passphraseNeeded } = usePedigreeNodeForm();
 
   return (
     <Surface spacing="sm" shadow="sm">
@@ -45,7 +45,10 @@ function AdditionalParentFields({ index }: { index: number }) {
           options={PARENT_ROLE_OPTIONS}
           required
         />
-        <PersonNameField label={intl.formatMessage(messages.whatName)} />
+        <PersonNameField
+          label={intl.formatMessage(messages.whatName)}
+          formNeedsPassphrase={passphraseNeeded}
+        />
         {fieldComponents}
       </FieldNamespace>
     </Surface>

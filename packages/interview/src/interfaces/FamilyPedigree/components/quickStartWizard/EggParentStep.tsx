@@ -23,7 +23,7 @@ export default function EggParentStep() {
   const framingKey = framing ?? 'gamete';
   const terms = getFramingTerms(framingKey, intl);
 
-  const { fieldComponents } = usePedigreeNodeForm();
+  const { fieldComponents, passphraseNeeded } = usePedigreeNodeForm();
 
   return (
     <>
@@ -36,6 +36,7 @@ export default function EggParentStep() {
           label={intl.formatMessage(messages.whatName)}
           hint={intl.formatMessage(messages.unknownNameHint)}
           autoFocus
+          formNeedsPassphrase={passphraseNeeded}
         />
         <Field
           name="is-donor"

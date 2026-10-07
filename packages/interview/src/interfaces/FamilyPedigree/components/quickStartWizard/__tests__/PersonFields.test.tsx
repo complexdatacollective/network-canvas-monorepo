@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import Form from '@codaco/fresco-ui/form/Form';
 
@@ -7,23 +7,40 @@ vi.mock('../../../../../hooks/useStageSelector', () => ({
   useStageSelector: () => undefined,
 }));
 
+const protocolForm = vi.hoisted(() => ({ passphraseNeeded: false }));
 vi.mock('../../../../../forms/useProtocolForm', () => ({
-  default: () => ({ fieldComponents: null }),
+  default: () => ({
+    fieldComponents: null,
+    passphraseNeeded: protocolForm.passphraseNeeded,
+  }),
 }));
 
 vi.mock('../../PersonNameField', () => ({
   default: ({
     initialValue,
     label,
+    formNeedsPassphrase,
   }: {
     initialValue?: string;
     label: string;
-  }) => <input aria-label={label} defaultValue={initialValue} />,
+    formNeedsPassphrase?: boolean;
+  }) => (
+    <>
+      <input aria-label={label} defaultValue={initialValue} />
+      {formNeedsPassphrase && (
+        <button type="button">Enter your Passphrase</button>
+      )}
+    </>
+  ),
 }));
 
 import PersonFields from '../PersonFields';
 
 describe('PersonFields', () => {
+  beforeEach(() => {
+    protocolForm.passphraseNeeded = false;
+  });
+
   it('renders the name field', () => {
     render(
       <Form onSubmit={() => ({ success: true })}>
@@ -75,5 +92,18 @@ describe('PersonFields', () => {
     );
 
     expect(screen.getByRole('radio', { name: 'Don’t know' })).toBeChecked();
+  });
+
+  it('has the name field offer the passphrase when the rest of the form needs it', () => {
+    protocolForm.passphraseNeeded = true;
+    render(
+      <Form onSubmit={() => ({ success: true })}>
+        <PersonFields />
+      </Form>,
+    );
+
+    expect(
+      screen.getByRole('button', { name: 'Enter your Passphrase' }),
+    ).toBeInTheDocument();
   });
 });

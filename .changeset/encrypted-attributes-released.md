@@ -69,6 +69,13 @@ Encrypted answers are now protected in a new way:
   "must be different from" or "must be unique", uses the decrypted answers.
   While the passphrase hasn't been entered, the check asks for it instead of
   passing or comparing with encrypted text.
+- A form shown over the screen, such as the add-a-person form, the "Other"
+  question of a categorical bin, or a family pedigree's person forms, now
+  offers the passphrase itself when one of its rules needs it, because the
+  prompt in the navigation can't be reached while the form is open. A rule
+  asks for the passphrase only when it reads a protected answer: a new
+  person's form no longer asks for it to check the new person's own answers,
+  which aren't saved yet.
 - A protected name is shown decrypted in a person's label and in the "Other"
   prompt of a categorical bin.
 - A list sorted by a protected answer, such as a name, is sorted by the

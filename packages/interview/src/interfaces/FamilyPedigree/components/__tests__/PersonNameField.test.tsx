@@ -76,7 +76,15 @@ vi.mock('../../../../hooks/useStageSelector', () => ({
 // No name here is encrypted, so the network is compared as stored; encrypted
 // names are covered by PersonNameField.encryption.test.tsx.
 vi.mock('../../../../forms/useValidationNetwork', () => ({
-  useValidationNetwork: ({ network }: { network: unknown }) => ({ network }),
+  useValidationNetwork: ({ network }: { network: unknown }) => ({
+    context: { network },
+    passphraseNeeded: false,
+  }),
+}));
+
+// Nor is the passphrase ever needed, so nothing offers it.
+vi.mock('../../../../components/PassphraseEntry', () => ({
+  default: () => null,
 }));
 
 vi.mock('../../utils/nodeUtils', () => ({

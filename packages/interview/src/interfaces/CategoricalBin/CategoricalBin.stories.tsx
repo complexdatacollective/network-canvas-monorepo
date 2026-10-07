@@ -586,3 +586,114 @@ export const ProtectedOtherReasonRefused: Story = {
     ).not.toBeInTheDocument();
   },
 };
+
+const PASSPHRASE = 'correct horse battery staple';
+
+function buildOtherComparedWithProtectedInterview() {
+  const interview = new SyntheticInterview();
+  const person = interview.addNodeType({ name: 'Person' });
+  const name = person.addVariable({
+    name: 'name',
+    type: 'text',
+    encrypted: true,
+  });
+  const otherReason = person.addVariable({
+    name: 'Other Reason',
+    type: 'text',
+    component: 'Text',
+    validation: { differentFrom: name.id },
+  });
+  const category = person.addVariable({
+    name: 'Category',
+    type: 'categorical',
+    // Plain labels are written in the protocol's default language.
+    options: CATEGORY_LABELS.slice(0, 2).map((label, index) => ({
+      label,
+      value: index + 1,
+    })),
+  });
+
+  const stage = interview.addStage('CategoricalBin', {
+    label: 'Categorise People',
+    subject: { entity: 'node', type: person.id },
+  });
+  stage.addPrompt({
+    variable: category.id,
+    text: 'Which category does each person belong to?',
+    otherVariable: otherReason.id,
+    otherVariablePrompt: 'Please specify the other category:',
+    otherOptionLabel: 'Other',
+  });
+  interview.addManualNode(stage.id, person.id, 'alice', {
+    [name.id]: 'Alice',
+  });
+  interview.unsetNodeAttribute(0, category.id);
+  interview.unsetNodeAttribute(0, otherReason.id);
+
+  return { interview, encryptedVariableIds: [name.id] };
+}
+
+export const OtherReasonComparedWithProtected: Story = {
+  render: () => (
+    <EncryptedStoryInterviewShell
+      build={buildOtherComparedWithProtectedInterview}
+      passphrase={PASSPHRASE}
+      currentStep={0}
+    />
+  ),
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'The "Other" reason must differ from the person\'s name, which is protected and has not been unlocked. The dialog asking for the reason covers the navigation\'s passphrase prompt, so it offers the passphrase itself; once entered, focus returns to Submit and the reason is checked against the name as the participant gave it.',
+      },
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const person = await canvas.findByRole(
+      'button',
+      { name: '🔒' },
+      { timeout: 10_000 },
+    );
+
+    person.focus();
+    await userEvent.keyboard('{Control>}d{/Control}');
+    // Past Family and Work, to Other.
+    await userEvent.keyboard('{ArrowRight}{ArrowRight}{ArrowRight}{Enter}');
+
+    const dialog = within(await screen.findByRole('dialog'));
+    await userEvent.click(
+      dialog.getByRole('button', { name: 'Enter your Passphrase' }),
+    );
+    const prompt = await screen.findByRole('dialog', {
+      name: 'Enter your Passphrase',
+    });
+    await userEvent.type(
+      within(prompt).getByLabelText(/^Passphrase/, { selector: 'input' }),
+      PASSPHRASE,
+    );
+    await userEvent.click(
+      within(prompt).getByRole('button', { name: 'Submit passphrase' }),
+    );
+    await waitFor(() => expect(prompt).not.toBeInTheDocument(), {
+      timeout: 10_000,
+    });
+    await expect(
+      dialog.queryByRole('button', { name: 'Enter your Passphrase' }),
+    ).not.toBeInTheDocument();
+    const submit = dialog.getByRole('button', { name: 'Submit' });
+    await expect(submit).toHaveFocus();
+
+    const reason = dialog.getByRole('textbox', {
+      name: /Please specify the other category/,
+    });
+    await userEvent.type(reason, 'Alice');
+    await userEvent.click(submit);
+    await waitFor(() =>
+      expect(reason).toHaveAccessibleDescription(
+        /Your answer must be different/,
+      ),
+    );
+  },
+};

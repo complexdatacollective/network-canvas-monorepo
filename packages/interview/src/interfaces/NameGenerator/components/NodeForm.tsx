@@ -36,6 +36,7 @@ import {
   actionPlusBadgeVariants,
   actionPlusIconClass,
 } from '../../../components/actionButtonVariants';
+import PassphraseEntry from '../../../components/PassphraseEntry';
 import { useCurrentStep } from '../../../contexts/CurrentStepContext';
 import useProtocolForm from '../../../forms/useProtocolForm';
 import { writeSubmissionResult } from '../../../forms/writeSubmissionResult';
@@ -167,13 +168,14 @@ const NodeForm = (props: NodeFormProps) => {
   const edited =
     selectedNode && editing.status === 'ready' ? editing : undefined;
 
-  const { fieldComponents, toAttributePatch } = useProtocolForm({
-    fields: form.fields,
-    autoFocus: true,
-    initialValues: edited?.values,
-    currentEntityId: selectedNode?.[entityPrimaryKeyProperty],
-    unavailableVariables: edited?.unavailable,
-  });
+  const { fieldComponents, toAttributePatch, passphraseNeeded } =
+    useProtocolForm({
+      fields: form.fields,
+      autoFocus: true,
+      initialValues: edited?.values,
+      currentEntityId: selectedNode?.[entityPrimaryKeyProperty],
+      unavailableVariables: edited?.unavailable,
+    });
 
   const handleSubmit: FormSubmitHandler = useCallback(
     async (values) => {
@@ -281,6 +283,7 @@ const NodeForm = (props: NodeFormProps) => {
           className="phone-landscape:min-w-sm desktop:min-w-md w-full"
         >
           <SubmittingObserver onChange={setSubmitting} />
+          <PassphraseEntry needed={passphraseNeeded} />
           {fieldComponents}
         </Form>
       </Dialog>

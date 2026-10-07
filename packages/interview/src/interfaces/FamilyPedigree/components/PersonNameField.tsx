@@ -14,6 +14,7 @@ import type {
   ValidationContext,
 } from '@codaco/fresco-ui/form/store/types';
 
+import PassphraseEntry from '../../../components/PassphraseEntry';
 import { useVariableLabels } from '../../../forms/buildVariableLabels';
 import { useValidationNetwork } from '../../../forms/useValidationNetwork';
 import { useStageSelector } from '../../../hooks/useStageSelector';
@@ -34,6 +35,11 @@ import {
 type PersonNameFieldProps = {
   autoFocus?: boolean;
   currentEntityId?: string;
+  /**
+   * Whether the protocol form asked alongside the name needs the passphrase
+   * to be saved (`passphraseNeeded` from its `usePedigreeNodeForm`).
+   */
+  formNeedsPassphrase?: boolean;
   hint?: ReactNode;
   initialValue?: string;
   label: string;
@@ -64,6 +70,7 @@ function countPendingNames(value: unknown, target: string): number {
 export default function PersonNameField({
   autoFocus,
   currentEntityId,
+  formNeedsPassphrase = false,
   hint,
   initialValue,
   label,
@@ -135,11 +142,13 @@ export default function PersonNameField({
       ],
     };
   }, [baseValidationContext.network, pedigreeNodes]);
-  const validationNetwork = useValidationNetwork(
-    { codebook: baseValidationContext.codebook, network: pedigreeNetwork },
-    { entity: 'node', type: nodeType },
-    [nodeLabelVariable],
-  );
+  const { context: validationNetwork, passphraseNeeded: nameNeedsPassphrase } =
+    useValidationNetwork(
+      { codebook: baseValidationContext.codebook, network: pedigreeNetwork },
+      { entity: 'node', type: nodeType },
+      [nodeLabelVariable],
+      currentEntityId,
+    );
 
   // The rest of the person's attributes are collected by the wizard's protocol
   // form, whose captions the participant has read; the label variable is
@@ -174,19 +183,25 @@ export default function PersonNameField({
     ],
   );
 
+  // Each person is entered in a modal wizard, whose dialog hides the
+  // navigation's passphrase prompt, so it is offered here for the name and for
+  // the rest of the person's form.
   return (
-    <Field
-      name="name"
-      label={label}
-      component={InputField}
-      placeholder={placeholder}
-      hint={validationProps.required === true ? undefined : hint}
-      initialValue={initialValue}
-      autoFocus={autoFocus}
-      showValidationHints
-      {...validationProps}
-      custom={pendingUniqueValidation}
-      validationContext={validationContext}
-    />
+    <>
+      <PassphraseEntry needed={nameNeedsPassphrase || formNeedsPassphrase} />
+      <Field
+        name="name"
+        label={label}
+        component={InputField}
+        placeholder={placeholder}
+        hint={validationProps.required === true ? undefined : hint}
+        initialValue={initialValue}
+        autoFocus={autoFocus}
+        showValidationHints
+        {...validationProps}
+        custom={pendingUniqueValidation}
+        validationContext={validationContext}
+      />
+    </>
   );
 }

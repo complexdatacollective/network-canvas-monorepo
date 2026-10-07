@@ -142,10 +142,11 @@ export default function useProtocolForm({
     })),
   );
 
-  const validationNetwork = useValidationNetwork(
+  const { context: validationNetwork, passphraseNeeded } = useValidationNetwork(
     stageValidationContext,
     subjectToStageSubject(stableSubject) ?? stageValidationContext.stageSubject,
     fieldsMetadata.map((field) => field.variable),
+    currentEntityId,
   );
 
   const validationContext = useMemo<ValidationContext | null>(() => {
@@ -276,5 +277,6 @@ export default function useProtocolForm({
     toAttributePatch,
     componentByVariable,
     variableByFieldPath,
+    passphraseNeeded,
   };
 }

@@ -178,10 +178,12 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
     stage.nodeForm?.fields ?? [],
   );
   const baseValidationContext = useStageSelector(getValidationContext);
-  const quickAddValidationNetwork = useValidationNetwork(
+  // A new person, so the rules read only the others' stored answers.
+  const { context: quickAddValidationNetwork } = useValidationNetwork(
     baseValidationContext,
     baseValidationContext.stageSubject,
     [stage.quickAdd],
+    undefined,
   );
   const quickAddValidationContext: ValidationContext | undefined =
     baseValidationContext.stageSubject

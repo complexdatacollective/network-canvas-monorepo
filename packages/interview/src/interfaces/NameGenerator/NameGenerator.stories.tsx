@@ -772,3 +772,106 @@ export const ProtectedAnswersRefused: Story = {
     ).toBeInTheDocument();
   },
 };
+
+const PASSPHRASE = 'correct horse battery staple';
+
+function buildComparedWithProtectedInterview() {
+  const interview = new SyntheticInterview();
+  const person = interview.addNodeType({ name: 'Person' });
+  const name = person.addVariable({
+    name: 'name',
+    type: 'text',
+    encrypted: true,
+  });
+  const nickname = person.addVariable({
+    name: 'nickname',
+    type: 'text',
+    component: 'Text',
+    validation: { differentFrom: name.id },
+  });
+
+  const stage = interview.addStage('NameGenerator', {
+    label: 'Name Generator (Compared with protected)',
+    subject: { entity: 'node', type: person.id },
+  });
+  stage.addFormField({
+    variable: nickname.id,
+    component: 'Text',
+    prompt: 'What nickname do you use for this person?',
+  });
+  stage.addPrompt({ text: 'Please name the people you know.' });
+  interview.addManualNode(
+    stage.id,
+    person.id,
+    'alice',
+    { [name.id]: 'Alice' },
+    { promptIndices: [0] },
+  );
+
+  return { interview, encryptedVariableIds: [name.id] };
+}
+
+export const PassphraseInsideTheForm: Story = {
+  render: () => (
+    <EncryptedStoryInterviewShell
+      build={buildComparedWithProtectedInterview}
+      passphrase={PASSPHRASE}
+      currentStep={0}
+    />
+  ),
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "The form asks for a nickname that must differ from the person's name, which is protected and has not been unlocked. The form covers the navigation's passphrase prompt, so it offers the passphrase itself; once entered, focus returns to Finished and the nickname is checked against the name as the participant gave it.",
+      },
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    // Shown locked, as the name is not yet readable.
+    await userEvent.click(
+      await within(
+        await canvas.findByRole(
+          'listbox',
+          { name: 'Added Nodes' },
+          { timeout: 10_000 },
+        ),
+      ).findByRole('option'),
+    );
+    const form = within(await screen.findByRole('dialog'));
+    await userEvent.click(
+      form.getByRole('button', { name: 'Enter your Passphrase' }),
+    );
+    const prompt = await screen.findByRole('dialog', {
+      name: 'Enter your Passphrase',
+    });
+    await userEvent.type(
+      within(prompt).getByLabelText(/^Passphrase/, { selector: 'input' }),
+      PASSPHRASE,
+    );
+    await userEvent.click(
+      within(prompt).getByRole('button', { name: 'Submit passphrase' }),
+    );
+    await waitFor(() => expect(prompt).not.toBeInTheDocument(), {
+      timeout: 10_000,
+    });
+    await expect(
+      form.queryByRole('button', { name: 'Enter your Passphrase' }),
+    ).not.toBeInTheDocument();
+    const finished = screen.getByRole('button', { name: 'Finished' });
+    await expect(finished).toHaveFocus();
+
+    const nickname = form.getByRole('textbox', {
+      name: /What nickname do you use/,
+    });
+    await userEvent.type(nickname, 'Alice');
+    await userEvent.click(finished);
+    await waitFor(() =>
+      expect(nickname).toHaveAccessibleDescription(
+        /Your answer must be different/,
+      ),
+    );
+  },
+};

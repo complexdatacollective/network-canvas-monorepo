@@ -357,8 +357,9 @@ describe('CategoricalBin validating an encrypted "other" answer', () => {
       stageVariables: uniqueVariables,
     });
 
-    await waitFor(() => expect(decryption.ready).toBe(true));
+    // The question reads the stored answers when it is asked.
     await dropIntoOther();
+    await waitFor(() => expect(decryption.ready).toBe(true));
     const input = await screen.findByRole('textbox');
     fireEvent.change(input, { target: { value: 'Neighbour' } });
     fireEvent.click(screen.getByTestId('dialog-submit'));
@@ -368,5 +369,89 @@ describe('CategoricalBin validating an encrypted "other" answer', () => {
       store.getState().session.network.nodes[0]?.[entityAttributesProperty]
         .otherReason,
     ).toBeUndefined();
+  });
+
+  it('takes the passphrase inside the dialog when the answer is checked against a protected one', async () => {
+    // The answer is not encrypted, but must differ from the person's name,
+    // which is.
+    const comparedVariables: Record<string, Variable> = {
+      ...variables,
+      name: {
+        name: 'name',
+        label: 'name',
+        type: 'text',
+        component: 'Text',
+        encrypted: true,
+      },
+      otherReason: {
+        name: 'Other reason',
+        label: 'Other reason',
+        type: 'text',
+        component: 'Text',
+        validation: { differentFrom: asEntityAttributeReference('name') },
+      },
+    };
+    const { encryptedAttributes, secureAttributes } =
+      await generateSecureAttributes(
+        { name: 'Alice' },
+        comparedVariables,
+        (await encryptionFor('pw')).key,
+        person[entityPrimaryKeyProperty],
+      );
+    const { store, dropIntoOther } = await renderCategoricalBin({
+      subject: {
+        ...person,
+        [entityAttributesProperty]: encryptedAttributes,
+        [entitySecureAttributesMeta]: secureAttributes,
+      },
+      stageVariables: comparedVariables,
+    });
+
+    await dropIntoOther();
+    const dialog = await screen.findByRole('dialog');
+    const input = within(dialog).getByRole('textbox');
+    const submit = within(dialog).getByTestId('dialog-submit');
+    fireEvent.change(input, { target: { value: 'Alice' } });
+    fireEvent.click(submit);
+    await waitFor(() =>
+      expect(input).toHaveAccessibleDescription(
+        /checked against answers protected by your passphrase/,
+      ),
+    );
+
+    fireEvent.click(
+      within(dialog).getByRole('button', { name: 'Enter your Passphrase' }),
+    );
+    const prompt = await screen.findByRole('dialog', {
+      name: 'Enter your Passphrase',
+    });
+    fireEvent.change(
+      within(prompt).getByLabelText(/^Passphrase/, { selector: 'input' }),
+      { target: { value: 'pw' } },
+    );
+    fireEvent.click(
+      within(prompt).getByRole('button', { name: 'Submit passphrase' }),
+    );
+    await waitFor(() => expect(prompt).not.toBeInTheDocument());
+    expect(
+      within(dialog).queryByRole('button', { name: 'Enter your Passphrase' }),
+    ).toBeNull();
+
+    // Now compared with the name as the participant gave it.
+    fireEvent.click(submit);
+    await waitFor(() =>
+      expect(input).toHaveAccessibleDescription(
+        /Your answer must be different/,
+      ),
+    );
+
+    fireEvent.change(input, { target: { value: 'Cousin' } });
+    fireEvent.click(submit);
+    await waitFor(() =>
+      expect(
+        store.getState().session.network.nodes[0]?.[entityAttributesProperty]
+          .otherReason,
+      ).toBe('Cousin'),
+    );
   });
 });
