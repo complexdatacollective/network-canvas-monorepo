@@ -39,6 +39,8 @@ export const RENEW_INTERVAL_MS = 10_000;
 /** Drafts whose liveness passes one tick runs side by side. */
 const RENEW_CONCURRENCY = 4;
 
+const LOCK_WAITS_BEFORE_WARNING = 3;
+
 /**
  * Shorter than the 30s lease TTL, but long enough for a client to come back:
  * its socket's retries (Effect RpcClient's default, 0.5s growing by 1.5x and
@@ -123,6 +125,8 @@ export class Leases extends Context.Service<
       const sockets = new Map<string, Socket>();
       const contacts = new Map<string, Contact>();
       const graces = new Map<string, Grace>();
+      /** Liveness passes in a row, by draft, that timed out on a lock. */
+      const lockWaits = new Map<string, number>();
 
       const withDatabase = <A, E>(
         effect: Effect.Effect<A, E, Database>,
@@ -150,6 +154,7 @@ export class Leases extends Context.Service<
        */
       const forget = (draftId: string) =>
         Effect.sync(() => {
+          lockWaits.delete(draftId);
           for (const [key, socket] of sockets) {
             if (socket.registration.session.draftId === draftId) {
               sockets.delete(key);
@@ -178,6 +183,9 @@ export class Leases extends Context.Service<
           draft.push(registration);
           byDraft.set(draftId, draft);
         }
+        for (const draftId of lockWaits.keys()) {
+          if (!byDraft.has(draftId)) lockWaits.delete(draftId);
+        }
         yield* Effect.forEach(
           byDraft,
           ([draftId, local]) =>
@@ -193,16 +201,25 @@ export class Leases extends Context.Service<
               // whether the connections are still there, and the next tick
               // asks again.
               if (Exit.isFailure(pass)) {
-                yield* isLockUnavailable(pass.cause)
-                  ? Effect.logInfo(
-                      'Renewing protocol-builder connections waited too long for a lock; the next tick retries',
-                    )
-                  : Effect.logWarning(
-                      'Renewing protocol-builder connections failed',
-                      pass.cause,
-                    );
+                if (!isLockUnavailable(pass.cause)) {
+                  lockWaits.delete(draftId);
+                  yield* Effect.logWarning(
+                    'Renewing protocol-builder connections failed',
+                    pass.cause,
+                  );
+                  return;
+                }
+                const waits = (lockWaits.get(draftId) ?? 0) + 1;
+                lockWaits.set(draftId, waits);
+                // One wait is ordinary contention; several in a row leave the
+                // leases a tick or two from lapsing.
+                const message = `Renewing protocol-builder connections waited too long for a lock (${waits} in a row); the next tick retries`;
+                yield* waits < LOCK_WAITS_BEFORE_WARNING
+                  ? Effect.logInfo(message)
+                  : Effect.logWarning(message);
                 return;
               }
+              lockWaits.delete(draftId);
               if (pass.value.gone) {
                 yield* forget(draftId);
                 return;

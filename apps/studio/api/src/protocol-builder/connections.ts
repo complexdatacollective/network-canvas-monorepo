@@ -21,7 +21,7 @@
 //   row it needs.
 import { randomUUID } from 'node:crypto';
 
-import { and, asc, desc, eq, gt, inArray, max, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, inArray, max, or, sql } from 'drizzle-orm';
 import { Context, Effect } from 'effect';
 import type { SqlError } from 'effect/sql';
 
@@ -741,25 +741,38 @@ const liveSections = Effect.fn('protocolBuilder.liveSections')(function* (
   return new Set(rows.map((row) => relaySection(row.draftId, row.sectionId)));
 }, sqlErrorsOnly);
 
+type PollWant = {
+  readonly draftId: string;
+  /** Where to read the draft's log from; undefined reads only presence. */
+  readonly next: bigint | undefined;
+};
+
 /**
  * The safety poll's read for one team's relays: their logs, who is present,
- * and the leases still live, which tells the reaper where to look.
+ * and the leases still live, which tells the reaper where to look. Three
+ * statements under READ COMMITTED, so not one snapshot: a lease can lapse or be
+ * taken between them. Nothing relies on them agreeing, since a relay delivers
+ * by cursor and the reaper asks again under the head held exclusively.
  */
 export const pollRelays: (
   access: TeamAccess,
-  wants: ReadonlyArray<{ readonly draftId: string; readonly next: bigint }>,
+  wants: ReadonlyArray<PollWant>,
 ) => Effect.Effect<RelayPoll, SqlError.SqlError, Database> = Effect.fn(
   'protocolBuilder.relayPoll',
-)(function* (
-  access: TeamAccess,
-  wants: ReadonlyArray<{ readonly draftId: string; readonly next: bigint }>,
-) {
+)(function* (access: TeamAccess, wants: ReadonlyArray<PollWant>) {
   return yield* noAuditTransaction(
     'protocolBuilder.relayRead',
     access,
     Effect.gen(function* () {
       const draftIds = wants.map((want) => want.draftId);
-      const events = yield* readRelayBatch(access.teamId, wants);
+      const events = yield* readRelayBatch(
+        access.teamId,
+        wants.flatMap((want) =>
+          want.next === undefined
+            ? []
+            : [{ draftId: want.draftId, next: want.next }],
+        ),
+      );
       const rows = yield* presenceRows(access.teamId, draftIds);
       const leased = yield* liveSections(access.teamId, draftIds);
       const poll: RelayPoll = {
@@ -772,32 +785,40 @@ export const pollRelays: (
   );
 });
 
+type Reaped = {
+  readonly events: ReadonlyArray<LoggedProtocolEvent>;
+  /** Whether a tab shown editing a reaped section is now shown otherwise. */
+  readonly reshown: boolean;
+};
+
+const NOTHING_REAPED: Reaped = { events: [], reshown: false };
+
 /**
  * Logs the release of each candidate section whose latest lock event still
  * names a holder but whose lease has lapsed, as when the replica that held it
- * stopped without giving it back. Asked again under the head held
- * exclusively, so replicas reaping at once log one release between them.
+ * stopped without giving it back, and shows the holder's tabs that still name
+ * the section as viewing. Asked again under the head held exclusively, so
+ * replicas reaping at once log one release between them. Lease rows are read
+ * here, never locked, so the connection rows are the last rows it locks.
  */
 export const reapExpired: (
   access: TeamAccess,
   draftId: string,
   candidates: ReadonlyArray<string>,
-) => Effect.Effect<
-  ReadonlyArray<LoggedProtocolEvent>,
-  SqlError.SqlError,
-  Database
-> = Effect.fn('protocolBuilder.reap')(function* (
+) => Effect.Effect<Reaped, SqlError.SqlError, Database> = Effect.fn(
+  'protocolBuilder.reap',
+)(function* (
   access: TeamAccess,
   draftId: string,
   candidates: ReadonlyArray<string>,
 ) {
-  if (candidates.length === 0) return [];
+  if (candidates.length === 0) return NOTHING_REAPED;
   const teamId = access.teamId;
   return yield* noAuditTransaction(
     'protocolBuilder.reap',
     access,
     Effect.gen(function* () {
-      if (!(yield* lockHead(teamId, draftId, 'update'))) return [];
+      if (!(yield* lockHead(teamId, draftId, 'update'))) return NOTHING_REAPED;
       const { tx } = yield* Transaction;
       const latest = yield* tx
         .selectDistinctOn([protocolEvents.sectionId], {
@@ -826,16 +847,84 @@ export const reapExpired: (
           ),
         );
       const held = new Set(leased.map((row) => row.sectionId));
-      return yield* appendProtocolEvents(
+      const lapsed = latest.flatMap((row) =>
+        row.owner === null || held.has(row.sectionId)
+          ? []
+          : [{ sectionId: row.sectionId, owner: row.owner }],
+      );
+      if (lapsed.length === 0) return NOTHING_REAPED;
+      const showing = yield* tx
+        .select({
+          connectionId: connections.connectionId,
+          owner: connections.owner,
+        })
+        .from(connections)
+        .where(
+          and(
+            eq(connections.teamId, teamId),
+            eq(connections.draftId, draftId),
+            live(),
+            or(
+              ...lapsed.map((row) =>
+                and(
+                  eq(connections.owner, row.owner),
+                  eq(connections.sectionId, row.sectionId),
+                ),
+              ),
+            ),
+          ),
+        )
+        .orderBy(asc(connections.connectionId))
+        .for('update');
+      const owners = new Set(showing.map((row) => row.owner));
+      // As `setSocketMode` shows a tab: the first section it still holds.
+      const stillHeld = yield* tx
+        .selectDistinctOn([leases.owner], {
+          owner: leases.owner,
+          sectionId: leases.sectionId,
+        })
+        .from(leases)
+        .where(
+          and(
+            eq(leases.teamId, teamId),
+            eq(leases.draftId, draftId),
+            inArray(leases.owner, [...owners]),
+            gt(leases.expiresAt, now()),
+          ),
+        )
+        .orderBy(asc(leases.owner), asc(leases.sectionId));
+      for (const owner of owners) {
+        const kept = stillHeld.find((row) => row.owner === owner);
+        yield* tx
+          .update(connections)
+          .set({
+            mode: kept === undefined ? 'viewing' : 'editing',
+            sectionId: kept?.sectionId ?? null,
+          })
+          .where(
+            and(
+              eq(connections.teamId, teamId),
+              eq(connections.draftId, draftId),
+              inArray(
+                connections.connectionId,
+                showing.flatMap((row) =>
+                  row.owner === owner ? [row.connectionId] : [],
+                ),
+              ),
+            ),
+          )
+          .returning({ connectionId: connections.connectionId });
+      }
+      const events = yield* appendProtocolEvents(
         teamId,
         draftId,
-        latest
-          .filter((row) => row.owner !== null && !held.has(row.sectionId))
-          .map((row): ProtocolEventRecord => ({
-            kind: 'lock',
-            sectionId: makeSectionId(parseSectionId(row.sectionId)),
-          })),
+        lapsed.map((row): ProtocolEventRecord => ({
+          kind: 'lock',
+          sectionId: makeSectionId(parseSectionId(row.sectionId)),
+        })),
       );
+      const reaped: Reaped = { events, reshown: showing.length > 0 };
+      return reaped;
     }).pipe(sqlErrorsOnly),
   );
 });

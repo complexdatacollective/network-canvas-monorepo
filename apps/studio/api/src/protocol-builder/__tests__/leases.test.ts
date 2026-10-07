@@ -1,4 +1,4 @@
-import { Effect, Option } from 'effect';
+import { Effect, Layer, Logger, type LogLevel, Option } from 'effect';
 import { beforeAll, describe, expect, it } from 'vitest';
 
 import type { ProtocolSectionId } from '@codaco/studio-sync/taxonomy';
@@ -752,6 +752,67 @@ describe.skipIf(!testDb)('the lease keeper', () => {
       }
     } finally {
       await a.client.dispose();
+    }
+  });
+
+  it('warns once a draft’s liveness pass has waited on a lock several ticks in a row', async () => {
+    const own = await suite.studioOnOwnPool(4);
+    const time = makeShiftableClock();
+    const logs: Array<{ level: LogLevel.LogLevel; text: string }> = [];
+    const client = await createProtocolBuilderClient(own.studio, {
+      clock: time.clock,
+      objectStore,
+      leases: Leases.layer.pipe(
+        Layer.provide(
+          Logger.layer([
+            Logger.make(({ logLevel, message }) => {
+              const parts: unknown[] = [message].flat();
+              logs.push({
+                level: logLevel,
+                text: parts
+                  .filter((part) => typeof part === 'string')
+                  .join(' '),
+              });
+            }),
+          ]),
+        ),
+      ),
+    });
+    const { on } = tabOf('starved');
+    const waits = () =>
+      logs
+        .filter((log) => log.text.startsWith('Renewing'))
+        .map((log) => log.level);
+    try {
+      const channel = await watching(
+        on('pb-ada-starved-connection'),
+        protocolId,
+        client,
+      );
+      try {
+        const held = await holdRow(
+          'SELECT 1 FROM drafts WHERE id = $1 FOR UPDATE',
+          [draftId],
+        );
+        try {
+          for (const tick of [1, 2, 3]) {
+            await keeperTick(RENEW_INTERVAL_MS, time);
+            await until(
+              () => waits().length >= tick,
+              `liveness pass ${tick} to give up on the lock`,
+              2 * LIVENESS_LOCK_TIMEOUT_MS,
+            );
+          }
+          expect(waits()).toEqual(['Info', 'Info', 'Warn']);
+        } finally {
+          await held.release();
+        }
+      } finally {
+        await channel.stop();
+      }
+    } finally {
+      await client.dispose();
+      await own.close();
     }
   });
 });

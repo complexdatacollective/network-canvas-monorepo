@@ -202,7 +202,9 @@ The relay's safety poll (§4) does a cheap read-only check on each draft that
 has local watchers: "is there a lease with `expires_at < now` whose latest
 lock event names a holder?" Only when the answer is yes does it take the head
 lock and append the release event, rechecking under the lock so the operation
-is idempotent across replicas.
+is idempotent across replicas. In the same transaction it shows the holder's
+live sockets that still name the section as no longer editing it, so a
+colleague does not see a tab editing a section it no longer holds.
 
 ## 4. Fan-out: a log-ordered relay, woken by a Valkey doorbell
 
@@ -228,6 +230,12 @@ c".
 - **Safety poll.** Every 5 s, for each active draft, the relay reads from
   `next` and runs the §3.4 check. This covers a dropped pub/sub message, a
   publisher that crashed between commit and publish, and a Valkey outage.
+  As built (plan §3 C2), the poll reads each team's drafts in one
+  transaction of three READ COMMITTED statements, which are not one
+  snapshot; correctness rests on delivering by cursor and on the reaper's
+  recheck under the head lock, not on the statements agreeing. A doorbell
+  resync runs this poll, jittered, rather than a read per relay. A relay
+  reads more only when every watcher's queue has room for a batch.
 - **Subscribe.** The handshake keeps today's order: register the queue, then
   read the backlog, then deliver live events filtered by `cursor > last`. Any
   event committed after registration is either in the backlog or delivered by

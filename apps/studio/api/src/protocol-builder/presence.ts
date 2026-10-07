@@ -1,16 +1,14 @@
 import { Context, Effect, Layer } from 'effect';
 import type { SqlError } from 'effect/sql';
 
-import type { Presence as PresenceValue } from '@codaco/protocol-builder-core/contract/schemas';
-
 import { Database } from '../db/client.ts';
-import { livePresence, setSocketMode } from './connections.ts';
+import { setSocketMode } from './connections.ts';
 import type { ProtocolBuilderSession } from './host.ts';
 
 /**
- * Who is on a protocol, read from the connection rows every replica keeps, so
- * a colleague connected through another replica is listed too. Joining and
- * leaving are `Leases.connect`'s: a watch's row is its presence.
+ * What a socket shows its colleagues. A watch's connection row is its
+ * presence: joining and leaving are `Leases.connect`'s, and every replica's
+ * relay lists who is present from those rows.
  */
 export class Presence extends Context.Service<
   Presence,
@@ -19,9 +17,6 @@ export class Presence extends Context.Service<
     readonly setMode: (
       session: ProtocolBuilderSession,
     ) => Effect.Effect<void, SqlError.SqlError>;
-    readonly list: (
-      session: ProtocolBuilderSession,
-    ) => Effect.Effect<ReadonlyArray<PresenceValue>, SqlError.SqlError>;
   }
 >()('@studio/Presence') {
   static readonly layer: Layer.Layer<Presence, never, Database> = Layer.effect(
@@ -33,12 +28,7 @@ export class Presence extends Context.Service<
       const setMode = (session: ProtocolBuilderSession) =>
         withDatabase(setSocketMode(session));
 
-      const list = (session: ProtocolBuilderSession) =>
-        withDatabase(livePresence(session.access, [session.draftId])).pipe(
-          Effect.map((present) => present.get(session.draftId) ?? []),
-        );
-
-      return Presence.of({ setMode, list });
+      return Presence.of({ setMode });
     }),
   );
 }
