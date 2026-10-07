@@ -141,11 +141,12 @@ type PanelState = {
 
 /** The attributes recording a link. */
 const linkAttributesFor = (config: PedigreeConfig, link: PlannedLink) => ({
-  [config.kindVariable]: [link.kind],
+  [config.kindAttribute]: [link.kind],
   ...(link.kind === 'partner'
-    ? { [config.currentPartnerVariable]: link.isCurrentPartner ?? true }
+    ? { [config.currentPartnerAttribute]: link.isCurrentPartner ?? true }
     : {
-        [config.gestationalCarrierVariable]: link.isGestationalCarrier ?? false,
+        [config.gestationalCarrierAttribute]:
+          link.isGestationalCarrier ?? false,
       }),
 });
 
@@ -166,7 +167,7 @@ const planAddition = (
     details,
     request,
     createId: () => ids[next++] ?? uuid(),
-    sexVariable: config.sexAssignedAtBirthVariable,
+    sexAttribute: config.sexAssignedAtBirthAttribute,
   });
 };
 
@@ -189,7 +190,8 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     (candidate) => candidate.id === prompt.id,
   );
   const isNominated = (person: Person) =>
-    nomination !== undefined && person.attributes[nomination.variable] === true;
+    nomination !== undefined &&
+    person.attributes[nomination.attribute] === true;
   // A prompt limited to one sex at birth leaves out people recorded as the
   // other; anyone whose sex at birth is not known either way can be chosen.
   const canNominate = (person: Person) => {
@@ -268,13 +270,13 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
 
   // The gender identity question offers the attribute's own options, with
   // the labels the researcher gave them.
-  const genderIdentityVariable = config.genderIdentity?.variable;
+  const genderIdentityAttribute = config.genderIdentity?.attribute;
   const genderIdentityOptions = useMemo(() => {
-    if (genderIdentityVariable === undefined) return [];
+    if (genderIdentityAttribute === undefined) return [];
     const definition =
-      codebook.node?.[config.personType]?.variables?.[genderIdentityVariable];
+      codebook.node?.[config.personType]?.variables?.[genderIdentityAttribute];
     return definition?.type === 'categorical' ? definition.options : [];
-  }, [codebook, config.personType, genderIdentityVariable]);
+  }, [codebook, config.personType, genderIdentityAttribute]);
 
   const requiredFormVariables = useMemo(() => {
     const variables = codebook.node?.[config.personType]?.variables ?? {};
@@ -298,7 +300,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     void dispatch(
       addNode({
         type: config.personType,
-        attributeData: { [config.egoVariable]: true },
+        attributeData: { [config.egoAttribute]: true },
         modelData: { [entityPrimaryKeyProperty]: uuid() },
         currentStep,
       }),
@@ -675,9 +677,9 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   // records it as the details panel's question would. "Don't know" is
   // answered in the panel.
   const handleTrackerAnswer = async (item: CompletenessItem) => {
-    const variable = config.relativesNotRecordedVariable;
+    const attribute = config.relativesNotRecordedAttribute;
     const person = family.byId.get(item.personId);
-    if (!variable || !person) return;
+    if (!attribute || !person) return;
     if (item.kind !== 'siblings' && item.kind !== 'children') return;
     const group = RELATIVES_NOT_RECORDED[item.kind];
     const recorded = person.relativesNotRecorded.filter(
@@ -687,7 +689,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       updateNode({
         nodeId: person.id,
         attributePatch: {
-          set: { [variable]: [...recorded, group.none] },
+          set: { [attribute]: [...recorded, group.none] },
           unset: [],
         },
         currentStep,
@@ -798,7 +800,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         updateNode({
           nodeId: personId,
           attributePatch: {
-            set: { [nomination.variable]: !isNominated(person) },
+            set: { [nomination.attribute]: !isNominated(person) },
             unset: [],
           },
           currentStep,
@@ -903,8 +905,8 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     personIds: readonly string[],
     relatives: 'siblings' | 'children',
   ) => {
-    const notRecordedVariable = config.relativesNotRecordedVariable;
-    if (!notRecordedVariable) return;
+    const notRecordedAttribute = config.relativesNotRecordedAttribute;
+    if (!notRecordedAttribute) return;
     const group = RELATIVES_NOT_RECORDED[relatives];
     const answers: readonly string[] = [group.none, group.unknown];
     for (const personId of personIds) {
@@ -915,7 +917,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
           nodeId: personId,
           attributePatch: {
             set: {
-              [notRecordedVariable]: recorded.filter(
+              [notRecordedAttribute]: recorded.filter(
                 (value) => !answers.includes(value),
               ),
             },
@@ -950,11 +952,13 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
             edgeId: update.linkId,
             attributePatch: {
               set: {
-                [config.kindVariable]: [update.kind],
+                [config.kindAttribute]: [update.kind],
                 ...(update.kind === 'partner'
-                  ? { [config.currentPartnerVariable]: update.isCurrentPartner }
+                  ? {
+                      [config.currentPartnerAttribute]: update.isCurrentPartner,
+                    }
                   : {
-                      [config.gestationalCarrierVariable]:
+                      [config.gestationalCarrierAttribute]:
                         update.isGestationalCarrier,
                     }),
               },
@@ -1481,7 +1485,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                   displayName={displayName}
                   onItemSelect={handleTrackerItem}
                   onItemAnswer={
-                    config.relativesNotRecordedVariable
+                    config.relativesNotRecordedAttribute
                       ? (item) => void handleTrackerAnswer(item)
                       : undefined
                   }

@@ -10,9 +10,9 @@ import type { PedigreeConfig } from '../model';
 
 export const config: PedigreeConfig = {
   personType: 'person',
-  nameVariable: 'name',
+  nameAttribute: 'name',
   genderIdentity: {
-    variable: 'gender',
+    attribute: 'gender',
     terms: [
       { value: 'woman', words: 'feminine' },
       { value: 'man', words: 'masculine' },
@@ -21,13 +21,13 @@ export const config: PedigreeConfig = {
       { value: 'transWoman', words: 'feminine' },
     ],
   },
-  sexAssignedAtBirthVariable: 'sex',
-  egoVariable: 'isEgo',
+  sexAssignedAtBirthAttribute: 'sex',
+  egoAttribute: 'isEgo',
   relationshipType: 'family',
-  kindVariable: 'kind',
-  gestationalCarrierVariable: 'carrier',
-  currentPartnerVariable: 'current',
-  relativesNotRecordedVariable: 'notRecorded',
+  kindAttribute: 'kind',
+  gestationalCarrierAttribute: 'carrier',
+  currentPartnerAttribute: 'current',
+  relativesNotRecordedAttribute: 'notRecorded',
 };
 
 /** The same stage with gender identity not collected. */

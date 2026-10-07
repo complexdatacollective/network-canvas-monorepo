@@ -199,7 +199,7 @@ function UnsortedPicker() {
   return (
     <Section title="What this question records">
       <Field<typeof VariablePickerField>
-        name="nodeConfig.egoVariable"
+        name="nodeConfig.egoAttribute"
         component={VariablePickerField}
         label={DIRECT_PICKER}
         options={[
@@ -225,7 +225,7 @@ function CollidingIds() {
   return (
     <Section title="What this question records">
       <Field<typeof VariablePickerField>
-        name="nodeConfig.egoVariable"
+        name="nodeConfig.egoAttribute"
         component={VariablePickerField}
         label={DIRECT_PICKER}
         options={[{ value: 'create:nick', label: 'nickname', type: 'text' }]}
@@ -1433,7 +1433,7 @@ describe('where an invented attribute is written', () => {
  */
 describe('the picker’s blur boundary', () => {
   const REQUIRED = 'Choose an attribute.';
-  const FIELD_NAME = 'nodeConfig.egoVariable';
+  const FIELD_NAME = 'nodeConfig.egoAttribute';
 
   /**
    * Whether the form thinks the researcher has LEFT this field.
@@ -1595,7 +1595,7 @@ describe('renaming the attribute a picker holds', () => {
   }>) => (
     <Section title="What this question records">
       <Field<typeof VariablePickerField>
-        name="nodeConfig.egoVariable"
+        name="nodeConfig.egoAttribute"
         component={VariablePickerField}
         label={DIRECT_PICKER}
         readOnly={readOnly}

@@ -22,14 +22,14 @@ import { baseStageSchema } from './base.ts';
  * themselves from the exclusivity check.
  */
 export const FAMILY_PEDIGREE_SLOTS = {
-  egoVariable: 'familyPedigree.nodeConfiguration.egoVariable',
-  relationshipKindVariable: 'familyPedigree.edgeConfiguration.kindVariable',
-  gestationalCarrierVariable:
-    'familyPedigree.edgeConfiguration.gestationalCarrierVariable',
-  currentPartnerVariable:
-    'familyPedigree.edgeConfiguration.currentPartnerVariable',
-  relativesNotRecordedVariable:
-    'familyPedigree.completeness.relativesNotRecordedVariable',
+  egoAttribute: 'familyPedigree.nodeConfiguration.egoAttribute',
+  relationshipKindAttribute: 'familyPedigree.edgeConfiguration.kindAttribute',
+  gestationalCarrierAttribute:
+    'familyPedigree.edgeConfiguration.gestationalCarrierAttribute',
+  currentPartnerAttribute:
+    'familyPedigree.edgeConfiguration.currentPartnerAttribute',
+  relativesNotRecordedAttribute:
+    'familyPedigree.completeness.relativesNotRecordedAttribute',
 } as const;
 
 /**
@@ -66,7 +66,7 @@ const GenderIdentitySchema = z.strictObject({
   // Categorical attribute holding gender identity. (A person's symbol is the
   // person type's codebook shape, which the researcher may map to this or to
   // sex assigned at birth.)
-  variable: entityAttributeReference({
+  attribute: entityAttributeReference({
     subject: 'stageSubject',
     usage: 'unvalidatedAttribute',
     requireType: ['categorical'],
@@ -88,7 +88,7 @@ const GenderIdentitySchema = z.strictObject({
  */
 export const NodeConfigurationSchema = z.strictObject({
   // Text attribute holding the person's name, shown beneath their symbol.
-  nameVariable: entityAttributeReference({
+  nameAttribute: entityAttributeReference({
     subject: 'stageSubject',
     usage: 'validatedAttribute',
     requireType: ['text'],
@@ -97,19 +97,19 @@ export const NodeConfigurationSchema = z.strictObject({
   // `GenderIdentitySchema`.
   genderIdentity: GenderIdentitySchema.optional(),
   // Categorical attribute holding sex assigned at birth.
-  sexAssignedAtBirthVariable: entityAttributeReference({
+  sexAssignedAtBirthAttribute: entityAttributeReference({
     subject: 'stageSubject',
     usage: 'unvalidatedAttribute',
     requireType: ['categorical'],
     ownedOptions: 'pedigreeSexAssignedAtBirth',
   }),
   // Boolean attribute marking the participant.
-  egoVariable: entityAttributeReference({
+  egoAttribute: entityAttributeReference({
     subject: 'stageSubject',
     usage: 'unvalidatedAttribute',
     requireType: ['boolean'],
     exclusive: {
-      slot: FAMILY_PEDIGREE_SLOTS.egoVariable,
+      slot: FAMILY_PEDIGREE_SLOTS.egoAttribute,
       owner: 'the Family Pedigree interface, which marks the participant',
     },
   }),
@@ -123,35 +123,35 @@ export const EdgeConfigurationSchema = z.strictObject({
   type: entityTypeReference({ entity: 'edge' }),
   // Categorical attribute holding the relationship's kind: partner, or the
   // kind of parent the edge's source is to its target.
-  kindVariable: entityAttributeReference({
+  kindAttribute: entityAttributeReference({
     subject: { sibling: 'type', entity: 'edge' },
     usage: 'unvalidatedAttribute',
     requireType: ['categorical'],
     exclusive: {
-      slot: FAMILY_PEDIGREE_SLOTS.relationshipKindVariable,
+      slot: FAMILY_PEDIGREE_SLOTS.relationshipKindAttribute,
       owner:
         'the Family Pedigree interface, which records the kind of each family relationship',
     },
     ownedOptions: 'pedigreeRelationship',
   }),
   // Boolean attribute on a parent edge: this parent carried the pregnancy.
-  gestationalCarrierVariable: entityAttributeReference({
+  gestationalCarrierAttribute: entityAttributeReference({
     subject: { sibling: 'type', entity: 'edge' },
     usage: 'unvalidatedAttribute',
     requireType: ['boolean'],
     exclusive: {
-      slot: FAMILY_PEDIGREE_SLOTS.gestationalCarrierVariable,
+      slot: FAMILY_PEDIGREE_SLOTS.gestationalCarrierAttribute,
       owner:
         'the Family Pedigree interface, which records who carried each pregnancy',
     },
   }),
   // Boolean attribute on a partner edge: the partnership is current.
-  currentPartnerVariable: entityAttributeReference({
+  currentPartnerAttribute: entityAttributeReference({
     subject: { sibling: 'type', entity: 'edge' },
     usage: 'unvalidatedAttribute',
     requireType: ['boolean'],
     exclusive: {
-      slot: FAMILY_PEDIGREE_SLOTS.currentPartnerVariable,
+      slot: FAMILY_PEDIGREE_SLOTS.currentPartnerAttribute,
       owner:
         'the Family Pedigree interface, which records whether a partnership is current',
     },
@@ -168,12 +168,12 @@ export const CompletenessSchema = z.strictObject({
   enforcement: z.enum(['required', 'recommended']),
   // Categorical attribute on a person recording that they have no siblings
   // or children, or that the participant does not know of any.
-  relativesNotRecordedVariable: entityAttributeReference({
+  relativesNotRecordedAttribute: entityAttributeReference({
     subject: 'stageSubject',
     usage: 'unvalidatedAttribute',
     requireType: ['categorical'],
     exclusive: {
-      slot: FAMILY_PEDIGREE_SLOTS.relativesNotRecordedVariable,
+      slot: FAMILY_PEDIGREE_SLOTS.relativesNotRecordedAttribute,
       owner:
         'the Family Pedigree interface, which records relatives a participant says are not in their family',
     },
@@ -201,7 +201,7 @@ const NominationPromptSchema = z.strictObject({
       message: `Nomination prompt id "${FAMILY_PEDIGREE_BUILD_PROMPT_ID}" is reserved for building the family`,
     }),
   text: z.string().min(1),
-  variable: entityAttributeReference({
+  attribute: entityAttributeReference({
     subject: 'stageSubject',
     usage: 'unvalidatedAttribute',
     requireType: ['boolean'],

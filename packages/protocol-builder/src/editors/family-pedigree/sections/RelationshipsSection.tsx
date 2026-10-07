@@ -87,37 +87,37 @@ export default function RelationshipsSection() {
       {relationshipSubject !== null && (
         <>
           <SlotVariableField
-            name={EDGE_CONFIGURATION_PATHS.kindVariable}
+            name={EDGE_CONFIGURATION_PATHS.kindAttribute}
             label={messages.kindLabel}
             hint={messages.kindHint}
             createLabel={messages.kindCreateLabel}
             subject={relationshipSubject}
             variableType="categorical"
             writerClass="unvalidated"
-            ownSlot={FAMILY_PEDIGREE_SLOTS.relationshipKindVariable}
+            ownSlot={FAMILY_PEDIGREE_SLOTS.relationshipKindAttribute}
             ownedOptions="pedigreeRelationship"
             draftSlotMap={draftSlotMap}
           />
           <SlotVariableField
-            name={EDGE_CONFIGURATION_PATHS.gestationalCarrierVariable}
+            name={EDGE_CONFIGURATION_PATHS.gestationalCarrierAttribute}
             label={messages.gestationalCarrierLabel}
             hint={messages.gestationalCarrierHint}
             createLabel={messages.gestationalCarrierCreateLabel}
             subject={relationshipSubject}
             variableType="boolean"
             writerClass="unvalidated"
-            ownSlot={FAMILY_PEDIGREE_SLOTS.gestationalCarrierVariable}
+            ownSlot={FAMILY_PEDIGREE_SLOTS.gestationalCarrierAttribute}
             draftSlotMap={draftSlotMap}
           />
           <SlotVariableField
-            name={EDGE_CONFIGURATION_PATHS.currentPartnerVariable}
+            name={EDGE_CONFIGURATION_PATHS.currentPartnerAttribute}
             label={messages.currentPartnerLabel}
             hint={messages.currentPartnerHint}
             createLabel={messages.currentPartnerCreateLabel}
             subject={relationshipSubject}
             variableType="boolean"
             writerClass="unvalidated"
-            ownSlot={FAMILY_PEDIGREE_SLOTS.currentPartnerVariable}
+            ownSlot={FAMILY_PEDIGREE_SLOTS.currentPartnerAttribute}
             draftSlotMap={draftSlotMap}
           />
         </>

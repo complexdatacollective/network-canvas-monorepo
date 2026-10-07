@@ -275,17 +275,17 @@ type FamilyPedigreeHandle = StageHandleBase & {
   personType: string;
   /** The family edge type id (`edgeConfiguration.type`). */
   edgeType: string;
-  /** Person variable ids, bound by `nodeConfiguration`. */
+  /** Person attribute ids, bound by `nodeConfiguration`. */
   name: string;
   /** Undefined when the stage was added with `askGenderIdentity: false`. */
   genderIdentity: string | undefined;
   sexAssignedAtBirth: string;
   ego: string;
-  /** Edge variable ids, bound by `edgeConfiguration`. */
+  /** Edge attribute ids, bound by `edgeConfiguration`. */
   kind: string;
   gestationalCarrier: string;
   currentPartner: string;
-  /** The relatives-not-recorded variable id, when the stage has a
+  /** The relatives-not-recorded attribute id, when the stage has a
    * completeness requirement. */
   relativesNotRecorded: string | undefined;
   /** Appends a researcher-defined person field to the stage's `form`. */
@@ -716,12 +716,12 @@ export class SyntheticInterview {
         }));
 
       entry.nodeConfiguration = {
-        nameVariable: personVariable('name', { type: 'text' }),
+        nameAttribute: personVariable('name', { type: 'text' }),
         ...(opts?.askGenderIdentity === false
           ? {}
           : {
               genderIdentity: {
-                variable: personVariable('genderIdentity', {
+                attribute: personVariable('genderIdentity', {
                   type: 'categorical',
                   options: genderIdentities.map(({ value, label }) => ({
                     value,
@@ -733,11 +733,11 @@ export class SyntheticInterview {
                 ),
               },
             }),
-        sexAssignedAtBirthVariable: personVariable('sexAssignedAtBirth', {
+        sexAssignedAtBirthAttribute: personVariable('sexAssignedAtBirth', {
           type: 'categorical',
           options: PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
         }),
-        egoVariable: personVariable('isEgo', { type: 'boolean' }),
+        egoAttribute: personVariable('isEgo', { type: 'boolean' }),
       };
 
       const edgeTypeId =
@@ -749,14 +749,14 @@ export class SyntheticInterview {
 
       entry.edgeConfiguration = {
         type: edgeTypeId,
-        kindVariable: edgeVariable('kind', {
+        kindAttribute: edgeVariable('kind', {
           type: 'categorical',
           options: PEDIGREE_RELATIONSHIP_KIND_OPTIONS,
         }),
-        gestationalCarrierVariable: edgeVariable('gestationalCarrier', {
+        gestationalCarrierAttribute: edgeVariable('gestationalCarrier', {
           type: 'boolean',
         }),
-        currentPartnerVariable: edgeVariable('currentPartner', {
+        currentPartnerAttribute: edgeVariable('currentPartner', {
           type: 'boolean',
         }),
       };
@@ -767,7 +767,7 @@ export class SyntheticInterview {
           ({ text, variableName, onlyForSexAssignedAtBirth }, index) => ({
             id: `nomination-${index + 1}`,
             text,
-            variable: personVariable(variableName ?? `condition${index + 1}`, {
+            attribute: personVariable(variableName ?? `condition${index + 1}`, {
               type: 'boolean',
             }),
             ...(onlyForSexAssignedAtBirth && { onlyForSexAssignedAtBirth }),
@@ -777,10 +777,13 @@ export class SyntheticInterview {
       if (opts?.completeness) {
         entry.completeness = {
           ...opts.completeness,
-          relativesNotRecordedVariable: personVariable('relativesNotRecorded', {
-            type: 'categorical',
-            options: PEDIGREE_RELATIVES_NOT_RECORDED_OPTIONS,
-          }),
+          relativesNotRecordedAttribute: personVariable(
+            'relativesNotRecorded',
+            {
+              type: 'categorical',
+              options: PEDIGREE_RELATIVES_NOT_RECORDED_OPTIONS,
+            },
+          ),
         };
       }
 
@@ -1129,21 +1132,21 @@ export class SyntheticInterview {
         const relationship = entry.edgeConfiguration;
         invariant(
           person !== undefined && relationship !== undefined,
-          'FamilyPedigree stage is missing its bound variables',
+          'FamilyPedigree stage is missing its bound attributes',
         );
         return {
           ...base,
           personType: entry.subject!.type,
           edgeType: relationship.type,
-          name: person.nameVariable,
-          genderIdentity: person.genderIdentity?.variable,
-          sexAssignedAtBirth: person.sexAssignedAtBirthVariable,
-          ego: person.egoVariable,
-          kind: relationship.kindVariable,
-          gestationalCarrier: relationship.gestationalCarrierVariable,
-          currentPartner: relationship.currentPartnerVariable,
+          name: person.nameAttribute,
+          genderIdentity: person.genderIdentity?.attribute,
+          sexAssignedAtBirth: person.sexAssignedAtBirthAttribute,
+          ego: person.egoAttribute,
+          kind: relationship.kindAttribute,
+          gestationalCarrier: relationship.gestationalCarrierAttribute,
+          currentPartner: relationship.currentPartnerAttribute,
           relativesNotRecorded:
-            entry.completeness?.relativesNotRecordedVariable,
+            entry.completeness?.relativesNotRecordedAttribute,
           addFormField: (opts: AddFormFieldOpts) => {
             const field = this.resolveFormField(
               {

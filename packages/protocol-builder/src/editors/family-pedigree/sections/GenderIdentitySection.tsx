@@ -100,7 +100,7 @@ export default function GenderIdentitySection() {
   );
 
   const genderVariableId = useStageValue(
-    NODE_CONFIGURATION_PATHS.genderIdentityVariable,
+    NODE_CONFIGURATION_PATHS.genderIdentityAttribute,
   );
   const genderVariable =
     personSubject === null || typeof genderVariableId !== 'string'
@@ -126,7 +126,7 @@ export default function GenderIdentitySection() {
       {!waiting && (
         <>
           <SlotVariableField
-            name={NODE_CONFIGURATION_PATHS.genderIdentityVariable}
+            name={NODE_CONFIGURATION_PATHS.genderIdentityAttribute}
             label={messages.genderIdentityLabel}
             hint={messages.genderIdentityHint}
             createLabel={messages.genderIdentityCreateLabel}

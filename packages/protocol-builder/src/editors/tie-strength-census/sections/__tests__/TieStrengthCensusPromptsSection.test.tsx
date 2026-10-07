@@ -767,7 +767,7 @@ function pedigreeClaimsTheScale(harness: StageEditorHarness): void {
       edgeConfiguration: {
         ...edgeConfiguration,
         type: CENSUS_EDGE,
-        currentPartnerVariable: SCALE_VARIABLE,
+        currentPartnerAttribute: SCALE_VARIABLE,
       },
     });
   });

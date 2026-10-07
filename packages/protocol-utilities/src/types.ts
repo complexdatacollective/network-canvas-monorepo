@@ -316,40 +316,40 @@ export type StageEntry = {
   convexHullVariable?: string;
 };
 
-/** The person-node variable ids a FamilyPedigree stage binds. */
+/** The person-node attribute ids a FamilyPedigree stage binds. */
 export type FamilyPedigreeNodeConfigurationEntry = {
-  nameVariable: string;
+  nameAttribute: string;
   /** Absent when the stage does not ask about gender identity. */
   genderIdentity?: {
-    variable: string;
+    attribute: string;
     terms: { value: string | number; words: PedigreeGenderWords }[];
   };
-  sexAssignedAtBirthVariable: string;
-  egoVariable: string;
+  sexAssignedAtBirthAttribute: string;
+  egoAttribute: string;
 };
 
 /** A FamilyPedigree stage's completeness requirement. */
 export type FamilyPedigreeCompletenessEntry = {
   scope: PedigreeCompletenessScope;
   enforcement: 'required' | 'recommended';
-  relativesNotRecordedVariable: string;
+  relativesNotRecordedAttribute: string;
 };
 
-/** A question asked of the drawn family, and the boolean person variable
+/** A question asked of the drawn family, and the boolean person attribute
  * recording who it applies to. */
 export type FamilyPedigreeNominationPromptEntry = {
   id: string;
   text: string;
-  variable: string;
+  attribute: string;
   onlyForSexAssignedAtBirth?: 'female' | 'male';
 };
 
-/** The family edge type and edge variable ids a FamilyPedigree stage binds. */
+/** The family edge type and edge attribute ids a FamilyPedigree stage binds. */
 export type FamilyPedigreeEdgeConfigurationEntry = {
   type: string;
-  kindVariable: string;
-  gestationalCarrierVariable: string;
-  currentPartnerVariable: string;
+  kindAttribute: string;
+  gestationalCarrierAttribute: string;
+  currentPartnerAttribute: string;
 };
 
 export type NodeEntry = {
@@ -484,7 +484,7 @@ export type AddStageInput = {
   };
   validation?: { minLength?: number; maxLength?: number };
   // FamilyPedigree. The person node type is the stage `subject`; the family
-  // edge type is created when omitted. Every variable the interface owns is
+  // edge type is created when omitted. Every attribute the interface owns is
   // created on those types.
   prompt?: string;
   relationshipType?: string;
@@ -502,17 +502,17 @@ export type AddStageInput = {
     label: string;
     words?: PedigreeGenderWords;
   }[];
-  /** Each creates a boolean person variable, named `variableName` or
+  /** Each creates a boolean person attribute, named `variableName` or
    * `condition<n>`, recording who the prompt applies to. */
   nominationPrompts?: {
     text: string;
     variableName?: string;
     onlyForSexAssignedAtBirth?: 'female' | 'male';
   }[];
-  /** Creates the relatives-not-recorded variable when set. */
+  /** Creates the relatives-not-recorded attribute when set. */
   completeness?: Omit<
     FamilyPedigreeCompletenessEntry,
-    'relativesNotRecordedVariable'
+    'relativesNotRecordedAttribute'
   >;
   // Geospatial
   mapOptions?: MapOptionsEntry;

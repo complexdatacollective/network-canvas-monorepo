@@ -18,7 +18,7 @@ const NAME_FIELD = { variable: 'fm_name', prompt: 'What is their name?' };
 const PEDIGREE: SectionDoc = {
   type: 'FamilyPedigree',
   label: 'Your family',
-  nodeConfiguration: { nameVariable: 'fm_name', egoVariable: 'is_ego' },
+  nodeConfiguration: { nameAttribute: 'fm_name', egoAttribute: 'is_ego' },
   form: { fields: [NAME_FIELD] },
 };
 
@@ -28,7 +28,7 @@ const FORM = ['form', 'fields'];
 const pedigreeHolding = (fields: readonly unknown[]): SectionDoc => ({
   type: 'FamilyPedigree',
   label: 'Your family',
-  nodeConfiguration: { nameVariable: 'fm_name', egoVariable: 'is_ego' },
+  nodeConfiguration: { nameAttribute: 'fm_name', egoAttribute: 'is_ego' },
   form: { fields },
 });
 
@@ -70,13 +70,16 @@ describe('a command addressed at a nested path', () => {
     expect(
       applyCommand(PEDIGREE, {
         op: 'set',
-        key: ['nodeConfiguration', 'nameVariable'],
+        key: ['nodeConfiguration', 'nameAttribute'],
         value: 'fm_nickname',
       }),
     ).toEqual({
       type: 'FamilyPedigree',
       label: 'Your family',
-      nodeConfiguration: { nameVariable: 'fm_nickname', egoVariable: 'is_ego' },
+      nodeConfiguration: {
+        nameAttribute: 'fm_nickname',
+        egoAttribute: 'is_ego',
+      },
       form: { fields: [NAME_FIELD] },
     });
   });
@@ -88,7 +91,7 @@ describe('a command addressed at a nested path', () => {
     expect(applyCommand(PEDIGREE, { op: 'unset', key: FORM })).toEqual({
       type: 'FamilyPedigree',
       label: 'Your family',
-      nodeConfiguration: { nameVariable: 'fm_name', egoVariable: 'is_ego' },
+      nodeConfiguration: { nameAttribute: 'fm_name', egoAttribute: 'is_ego' },
       form: {},
     });
   });

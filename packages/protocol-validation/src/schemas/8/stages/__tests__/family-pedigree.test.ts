@@ -22,16 +22,16 @@ const base = {
   subject: { entity: 'node' as const, type: 'person' },
   prompt: 'Draw your family',
   nodeConfiguration: {
-    nameVariable: 'name',
-    genderIdentity: { variable: 'gender', terms: GENDER_IDENTITY_TERMS },
-    sexAssignedAtBirthVariable: 'sab',
-    egoVariable: 'isEgo',
+    nameAttribute: 'name',
+    genderIdentity: { attribute: 'gender', terms: GENDER_IDENTITY_TERMS },
+    sexAssignedAtBirthAttribute: 'sab',
+    egoAttribute: 'isEgo',
   },
   edgeConfiguration: {
     type: 'family',
-    kindVariable: 'kind',
-    gestationalCarrierVariable: 'carrier',
-    currentPartnerVariable: 'current',
+    kindAttribute: 'kind',
+    gestationalCarrierAttribute: 'carrier',
+    currentPartnerAttribute: 'current',
   },
 };
 
@@ -119,7 +119,7 @@ describe('familyPedigreeStage', () => {
   });
 
   it('requires every person attribute', () => {
-    const { egoVariable: _omitted, ...incomplete } = base.nodeConfiguration;
+    const { egoAttribute: _omitted, ...incomplete } = base.nodeConfiguration;
     expect(
       familyPedigreeStage.safeParse({ ...base, nodeConfiguration: incomplete })
         .success,
@@ -144,11 +144,11 @@ describe('familyPedigreeStage', () => {
       familyPedigreeStage.safeParse({
         ...base,
         nominationPrompts: [
-          { id: 'heart', text: 'Who has had heart disease?', variable: 'hd' },
+          { id: 'heart', text: 'Who has had heart disease?', attribute: 'hd' },
           {
             id: 'ovarian',
             text: 'Who has had ovarian cancer?',
-            variable: 'oc',
+            attribute: 'oc',
             onlyForSexAssignedAtBirth: 'female',
           },
         ],
@@ -157,11 +157,11 @@ describe('familyPedigreeStage', () => {
   });
 
   it('rejects nomination prompts that reuse an id, or the family prompt id', () => {
-    const prompt = { id: 'heart', text: 'Who?', variable: 'hd' };
+    const prompt = { id: 'heart', text: 'Who?', attribute: 'hd' };
     expect(
       familyPedigreeStage.safeParse({
         ...base,
-        nominationPrompts: [prompt, { ...prompt, variable: 'other' }],
+        nominationPrompts: [prompt, { ...prompt, attribute: 'other' }],
       }).success,
     ).toBe(false);
     expect(
@@ -183,7 +183,7 @@ describe('familyPedigreeStage', () => {
           {
             id: 'heart',
             text: 'Who?',
-            variable: 'hd',
+            attribute: 'hd',
             onlyForSexAssignedAtBirth: 'intersex',
           },
         ],
@@ -229,24 +229,24 @@ describe('FamilyPedigree in a whole protocol', () => {
         ...base,
         nodeConfiguration: {
           ...base.nodeConfiguration,
-          genderIdentity: { variable: 'gender' },
+          genderIdentity: { attribute: 'gender' },
         },
       }).success,
     ).toBe(false);
   });
 
-  it('requires each nomination prompt variable to be a boolean', () => {
-    const withNomination = (variable: string) =>
+  it('requires each nomination prompt attribute to be a boolean', () => {
+    const withNomination = (attribute: string) =>
       ProtocolSchemaV8.safeParse({
         ...protocolWith({
           ...base,
-          nominationPrompts: [{ id: 'heart', text: 'Who?', variable }],
+          nominationPrompts: [{ id: 'heart', text: 'Who?', attribute }],
         }),
       });
     const accepted = withNomination('hd');
     expect(accepted.success ? null : accepted.error.issues).toBeNull();
     expect(withNomination('name').success).toBe(false);
-    // Nor can it be the variable marking the participant.
+    // Nor can it be the attribute marking the participant.
     expect(withNomination('isEgo').success).toBe(false);
   });
 

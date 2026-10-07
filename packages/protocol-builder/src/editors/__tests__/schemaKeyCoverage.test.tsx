@@ -54,9 +54,9 @@ const FAMILY_PEDIGREE_FIELDS: SectionDoc = {
   subject: { entity: 'node', type: 'family_member' },
   prompt: 'Add the members of your family.',
   nodeConfiguration: {
-    nameVariable: 'fm_name',
+    nameAttribute: 'fm_name',
     genderIdentity: {
-      variable: 'genderIdentity',
+      attribute: 'genderIdentity',
       terms: [
         { value: 'woman', words: 'feminine' },
         { value: 'man', words: 'masculine' },
@@ -66,26 +66,26 @@ const FAMILY_PEDIGREE_FIELDS: SectionDoc = {
         { value: 'preferNotToSay', words: 'neutral' },
       ],
     },
-    sexAssignedAtBirthVariable: 'sexAssignedAtBirth',
-    egoVariable: 'is_ego',
+    sexAssignedAtBirthAttribute: 'sexAssignedAtBirth',
+    egoAttribute: 'is_ego',
   },
   edgeConfiguration: {
     type: 'family_edge',
-    kindVariable: 'relationshipKind',
-    gestationalCarrierVariable: 'isGestationalCarrier',
-    currentPartnerVariable: 'isCurrentPartner',
+    kindAttribute: 'relationshipKind',
+    gestationalCarrierAttribute: 'isGestationalCarrier',
+    currentPartnerAttribute: 'isCurrentPartner',
   },
   completeness: {
     scope: 'thirdDegree',
     enforcement: 'recommended',
-    relativesNotRecordedVariable: RELATIVES_NOT_RECORDED_ATTRIBUTE,
+    relativesNotRecordedAttribute: RELATIVES_NOT_RECORDED_ATTRIBUTE,
   },
   framing: 'participantPreference',
   nominationPrompts: [
     {
       id: 'nomination-1',
       text: 'Who in your family has had heart disease?',
-      variable: NOMINATION_ATTRIBUTE,
+      attribute: NOMINATION_ATTRIBUTE,
       onlyForSexAssignedAtBirth: 'female',
     },
   ],

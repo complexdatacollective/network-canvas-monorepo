@@ -2689,23 +2689,23 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
           subject: { entity: 'node' as const, type: 'person' },
           prompt: 'Build your family',
           nodeConfiguration: {
-            nameVariable: 'name',
+            nameAttribute: 'name',
             ...(askGenderIdentity
               ? {
                   genderIdentity: {
-                    variable: 'gender',
+                    attribute: 'gender',
                     terms: genderIdentityTerms,
                   },
                 }
               : {}),
-            sexAssignedAtBirthVariable: 'sab',
-            egoVariable: 'isEgo',
+            sexAssignedAtBirthAttribute: 'sab',
+            egoAttribute: 'isEgo',
           },
           edgeConfiguration: {
             type: 'family',
-            kindVariable: 'kind',
-            gestationalCarrierVariable: 'carrier',
-            currentPartnerVariable: 'current',
+            kindAttribute: 'kind',
+            gestationalCarrierAttribute: 'carrier',
+            currentPartnerAttribute: 'current',
           },
         },
       ],
@@ -2833,7 +2833,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
           'stages',
           0,
           'nodeConfiguration',
-          'sexAssignedAtBirthVariable',
+          'sexAssignedAtBirthAttribute',
         ]);
       }
     });
@@ -2860,7 +2860,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
           'stages',
           0,
           'edgeConfiguration',
-          'kindVariable',
+          'kindAttribute',
         ]);
       }
     });

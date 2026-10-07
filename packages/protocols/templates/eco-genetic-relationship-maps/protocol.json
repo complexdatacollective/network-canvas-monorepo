@@ -467,9 +467,9 @@
       },
       "prompt": "Let's map out your family. Who is in it?",
       "nodeConfiguration": {
-        "nameVariable": "name",
+        "nameAttribute": "name",
         "genderIdentity": {
-          "variable": "genderIdentity",
+          "attribute": "genderIdentity",
           "terms": [
             {
               "value": "woman",
@@ -497,14 +497,14 @@
             }
           ]
         },
-        "sexAssignedAtBirthVariable": "sexAssignedAtBirth",
-        "egoVariable": "is_ego"
+        "sexAssignedAtBirthAttribute": "sexAssignedAtBirth",
+        "egoAttribute": "is_ego"
       },
       "edgeConfiguration": {
         "type": "family_relationship",
-        "kindVariable": "relationshipKind",
-        "gestationalCarrierVariable": "isGestationalCarrier",
-        "currentPartnerVariable": "isCurrentPartner"
+        "kindAttribute": "relationshipKind",
+        "gestationalCarrierAttribute": "isGestationalCarrier",
+        "currentPartnerAttribute": "isCurrentPartner"
       },
       "form": {
         "fields": [

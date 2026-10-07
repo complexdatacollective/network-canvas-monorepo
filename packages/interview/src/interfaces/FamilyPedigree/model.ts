@@ -23,7 +23,7 @@ import {
  */
 export type PedigreeConfig = {
   personType: string;
-  nameVariable: string;
+  nameAttribute: string;
   /**
    * The gender identity question. Absent when the stage does not ask about
    * gender identity: no question is shown, and the gendered framing's words
@@ -31,7 +31,7 @@ export type PedigreeConfig = {
    */
   genderIdentity:
     | {
-        variable: string;
+        attribute: string;
         /**
          * Which kinship words each option of the attribute takes. An option
          * not listed (or no longer an option) takes neutral words.
@@ -42,14 +42,14 @@ export type PedigreeConfig = {
         }[];
       }
     | undefined;
-  sexAssignedAtBirthVariable: string;
-  egoVariable: string;
+  sexAssignedAtBirthAttribute: string;
+  egoAttribute: string;
   relationshipType: string;
-  kindVariable: string;
-  gestationalCarrierVariable: string;
-  currentPartnerVariable: string;
+  kindAttribute: string;
+  gestationalCarrierAttribute: string;
+  currentPartnerAttribute: string;
   /** Set when the stage has a completeness requirement. */
-  relativesNotRecordedVariable: string | undefined;
+  relativesNotRecordedAttribute: string | undefined;
 };
 
 export function pedigreeConfigFromStage(
@@ -60,18 +60,18 @@ export function pedigreeConfigFromStage(
 ): PedigreeConfig {
   return {
     personType: stage.subject.type,
-    nameVariable: stage.nodeConfiguration.nameVariable,
+    nameAttribute: stage.nodeConfiguration.nameAttribute,
     genderIdentity: stage.nodeConfiguration.genderIdentity,
-    sexAssignedAtBirthVariable:
-      stage.nodeConfiguration.sexAssignedAtBirthVariable,
-    egoVariable: stage.nodeConfiguration.egoVariable,
+    sexAssignedAtBirthAttribute:
+      stage.nodeConfiguration.sexAssignedAtBirthAttribute,
+    egoAttribute: stage.nodeConfiguration.egoAttribute,
     relationshipType: stage.edgeConfiguration.type,
-    kindVariable: stage.edgeConfiguration.kindVariable,
-    gestationalCarrierVariable:
-      stage.edgeConfiguration.gestationalCarrierVariable,
-    currentPartnerVariable: stage.edgeConfiguration.currentPartnerVariable,
-    relativesNotRecordedVariable:
-      stage.completeness?.relativesNotRecordedVariable,
+    kindAttribute: stage.edgeConfiguration.kindAttribute,
+    gestationalCarrierAttribute:
+      stage.edgeConfiguration.gestationalCarrierAttribute,
+    currentPartnerAttribute: stage.edgeConfiguration.currentPartnerAttribute,
+    relativesNotRecordedAttribute:
+      stage.completeness?.relativesNotRecordedAttribute,
   };
 }
 
@@ -165,18 +165,18 @@ export function readFamily(
     .filter((node) => node.type === config.personType)
     .map((node) => {
       const attributes = node[entityAttributesProperty];
-      const name = attributes[config.nameVariable];
+      const name = attributes[config.nameAttribute];
       const genderIdentityConfig = config.genderIdentity;
       const genderIdentity = genderIdentityConfig
-        ? readOption(attributes[genderIdentityConfig.variable])
+        ? readOption(attributes[genderIdentityConfig.attribute])
         : undefined;
       const sexAssignedAtBirth = readCategorical(
-        attributes[config.sexAssignedAtBirthVariable],
+        attributes[config.sexAssignedAtBirthAttribute],
         PEDIGREE_SEX_ASSIGNED_AT_BIRTH,
       );
       return {
         id: node[entityPrimaryKeyProperty],
-        isEgo: attributes[config.egoVariable] === true,
+        isEgo: attributes[config.egoAttribute] === true,
         name: typeof name === 'string' && name.trim() !== '' ? name : undefined,
         genderIdentity,
         genderWords: genderIdentityConfig
@@ -188,8 +188,8 @@ export function readFamily(
           : wordsFromSexAssignedAtBirth(sexAssignedAtBirth),
         sexAssignedAtBirth,
         relativesNotRecorded: readCategoricalSet(
-          config.relativesNotRecordedVariable
-            ? attributes[config.relativesNotRecordedVariable]
+          config.relativesNotRecordedAttribute
+            ? attributes[config.relativesNotRecordedAttribute]
             : undefined,
           PEDIGREE_RELATIVES_NOT_RECORDED,
         ),
@@ -204,7 +204,7 @@ export function readFamily(
     if (!byId.has(edge.from) || !byId.has(edge.to)) continue;
     const attributes = edge[entityAttributesProperty];
     const kind = readCategorical(
-      attributes[config.kindVariable],
+      attributes[config.kindAttribute],
       PEDIGREE_RELATIONSHIP_KINDS,
     );
     if (!kind) continue;
@@ -214,9 +214,9 @@ export function readFamily(
       target: edge.to,
       kind,
       isGestationalCarrier:
-        attributes[config.gestationalCarrierVariable] === true,
+        attributes[config.gestationalCarrierAttribute] === true,
       // A partnership is current unless recorded otherwise.
-      isCurrentPartner: attributes[config.currentPartnerVariable] !== false,
+      isCurrentPartner: attributes[config.currentPartnerAttribute] !== false,
     });
   }
 
@@ -388,7 +388,7 @@ export function planAddRelative({
   details,
   request,
   createId,
-  sexVariable,
+  sexAttribute,
 }: {
   family: Family;
   anchorId: string;
@@ -398,7 +398,7 @@ export function planAddRelative({
   createId: () => string;
   /** Where an unnamed parent's sex at birth is recorded, when it follows
    * from the gamete they gave. */
-  sexVariable: string;
+  sexAttribute: string;
 }): AdditionPlan {
   const people: PlannedPerson[] = [{ id: newPersonId, details }];
   const links: PlannedLink[] = [];
@@ -406,7 +406,7 @@ export function planAddRelative({
   // that is known.
   const addPlaceholder = (sex: 'female' | 'male' | undefined) => {
     const id = createId();
-    people.push({ id, details: sex ? { [sexVariable]: [sex] } : {} });
+    people.push({ id, details: sex ? { [sexAttribute]: [sex] } : {} });
     return id;
   };
 

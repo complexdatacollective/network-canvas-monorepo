@@ -45,7 +45,7 @@ export default function NodeConfigurationSection() {
       {!waiting && (
         <>
           <SlotVariableField
-            name={NODE_CONFIGURATION_PATHS.nameVariable}
+            name={NODE_CONFIGURATION_PATHS.nameAttribute}
             label={messages.nameLabel}
             hint={messages.nameHint}
             createLabel={messages.nameCreateLabel}
@@ -57,7 +57,7 @@ export default function NodeConfigurationSection() {
             offerValidation
           />
           <SlotVariableField
-            name={NODE_CONFIGURATION_PATHS.sexAssignedAtBirthVariable}
+            name={NODE_CONFIGURATION_PATHS.sexAssignedAtBirthAttribute}
             label={messages.sexAssignedAtBirthLabel}
             hint={messages.sexAssignedAtBirthHint}
             createLabel={messages.sexAssignedAtBirthCreateLabel}
@@ -69,14 +69,14 @@ export default function NodeConfigurationSection() {
             draftSlotMap={draftSlotMap}
           />
           <SlotVariableField
-            name={NODE_CONFIGURATION_PATHS.egoVariable}
+            name={NODE_CONFIGURATION_PATHS.egoAttribute}
             label={messages.egoLabel}
             hint={messages.egoHint}
             createLabel={messages.egoCreateLabel}
             subject={personSubject}
             variableType="boolean"
             writerClass="unvalidated"
-            ownSlot={FAMILY_PEDIGREE_SLOTS.egoVariable}
+            ownSlot={FAMILY_PEDIGREE_SLOTS.egoAttribute}
             draftConflicting={validatedPersonVariables}
             draftSlotMap={draftSlotMap}
           />

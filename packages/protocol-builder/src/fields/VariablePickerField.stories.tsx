@@ -59,7 +59,7 @@ function AttributePicker({
   const options = useAttributeOptions(PERSON);
   return (
     <Field<typeof VariablePickerField>
-      name="nodeConfiguration.egoVariable"
+      name="nodeConfiguration.egoAttribute"
       component={VariablePickerField}
       label={FIELD_LABEL}
       hint="Every answer to this question is stored under this attribute."
@@ -144,7 +144,7 @@ export const NothingChosen: Story = {
           : {};
       host.store.applyAsCollaborator(stage, {
         ...stageDocument,
-        nodeConfiguration: { ...nodeConfiguration, egoVariable: undefined },
+        nodeConfiguration: { ...nodeConfiguration, egoAttribute: undefined },
       });
     },
   },
@@ -194,7 +194,7 @@ export const Unanswered: Story = {
           : {};
       host.store.applyAsCollaborator(stage, {
         ...stageDocument,
-        nodeConfiguration: { ...nodeConfiguration, egoVariable: undefined },
+        nodeConfiguration: { ...nodeConfiguration, egoAttribute: undefined },
       });
     },
   },
@@ -317,7 +317,7 @@ export const AChoiceThatIsRuledOut: Story = {
           : {};
       host.store.applyAsCollaborator(stage, {
         ...stageDocument,
-        nodeConfiguration: { ...nodeConfiguration, egoVariable: 'layout' },
+        nodeConfiguration: { ...nodeConfiguration, egoAttribute: 'layout' },
       });
     },
   },
@@ -352,7 +352,7 @@ export const AChoiceNothingOffers: Story = {
         ...stageDocument,
         nodeConfiguration: {
           ...nodeConfiguration,
-          egoVariable: 'deleted_attribute',
+          egoAttribute: 'deleted_attribute',
         },
       });
     },

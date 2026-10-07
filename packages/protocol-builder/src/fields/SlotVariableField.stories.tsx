@@ -29,14 +29,14 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 function ParticipantSlot() {
   return (
     <SlotVariableField
-      name="nodeConfiguration.egoVariable"
+      name="nodeConfiguration.egoAttribute"
       label={familyPedigreeMessages.egoLabel}
       hint={familyPedigreeMessages.egoHint}
       createLabel={familyPedigreeMessages.egoCreateLabel}
       subject={PERSON}
       variableType="boolean"
       writerClass="unvalidated"
-      ownSlot={FAMILY_PEDIGREE_SLOTS.egoVariable}
+      ownSlot={FAMILY_PEDIGREE_SLOTS.egoAttribute}
     />
   );
 }
@@ -45,7 +45,7 @@ function ParticipantSlot() {
 function SexAssignedAtBirthSlot() {
   return (
     <SlotVariableField
-      name="nodeConfiguration.sexAssignedAtBirthVariable"
+      name="nodeConfiguration.sexAssignedAtBirthAttribute"
       label={familyPedigreeMessages.sexAssignedAtBirthLabel}
       hint={familyPedigreeMessages.sexAssignedAtBirthHint}
       createLabel={familyPedigreeMessages.sexAssignedAtBirthCreateLabel}
@@ -148,7 +148,7 @@ export const ASpectator: Story = {
 /** The attribute a slot names has been deleted from the codebook. */
 export const AnAttributeTheCodebookHasLost: Story = {
   args: {
-    seedEdit: holdingPersonAttribute('egoVariable', 'was_the_participant'),
+    seedEdit: holdingPersonAttribute('egoAttribute', 'was_the_participant'),
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);

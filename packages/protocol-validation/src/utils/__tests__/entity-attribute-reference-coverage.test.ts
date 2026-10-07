@@ -59,11 +59,11 @@ const EXPECTED_TAGGED_FIELD_COUNT = 39;
 // structural slot without listing it here — or listing one that no longer
 // exists — fails.
 const EXPECTED_EXCLUSIVE_SLOTS = [
-  'familyPedigree.completeness.relativesNotRecordedVariable',
-  'familyPedigree.edgeConfiguration.currentPartnerVariable',
-  'familyPedigree.edgeConfiguration.gestationalCarrierVariable',
-  'familyPedigree.edgeConfiguration.kindVariable',
-  'familyPedigree.nodeConfiguration.egoVariable',
+  'familyPedigree.completeness.relativesNotRecordedAttribute',
+  'familyPedigree.edgeConfiguration.currentPartnerAttribute',
+  'familyPedigree.edgeConfiguration.gestationalCarrierAttribute',
+  'familyPedigree.edgeConfiguration.kindAttribute',
+  'familyPedigree.nodeConfiguration.egoAttribute',
 ];
 
 const EXPECTED_OWNED_OPTION_SETS = [

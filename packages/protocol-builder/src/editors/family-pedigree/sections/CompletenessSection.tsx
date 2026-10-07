@@ -188,7 +188,7 @@ export default function CompletenessSection() {
             subject={personSubject}
             variableType="categorical"
             writerClass="unvalidated"
-            ownSlot={FAMILY_PEDIGREE_SLOTS.relativesNotRecordedVariable}
+            ownSlot={FAMILY_PEDIGREE_SLOTS.relativesNotRecordedAttribute}
             ownedOptions="pedigreeRelativesNotRecorded"
             draftConflicting={validatedPersonVariables}
             draftSlotMap={draftSlotMap}

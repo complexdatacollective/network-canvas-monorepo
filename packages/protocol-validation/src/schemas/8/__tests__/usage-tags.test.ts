@@ -109,16 +109,16 @@ describe('attribute-writer usage tags', () => {
           subject: { entity: 'node', type: 'person' },
           prompt: 'Build your family',
           nodeConfiguration: {
-            nameVariable: 'name',
-            genderIdentity: { variable: 'gender', terms: [] },
-            sexAssignedAtBirthVariable: 'sab',
-            egoVariable: 'isEgo',
+            nameAttribute: 'name',
+            genderIdentity: { attribute: 'gender', terms: [] },
+            sexAssignedAtBirthAttribute: 'sab',
+            egoAttribute: 'isEgo',
           },
           edgeConfiguration: {
             type: 'family',
-            kindVariable: 'kind',
-            gestationalCarrierVariable: 'carrier',
-            currentPartnerVariable: 'current',
+            kindAttribute: 'kind',
+            gestationalCarrierAttribute: 'carrier',
+            currentPartnerAttribute: 'current',
           },
         },
       ],
@@ -126,13 +126,13 @@ describe('attribute-writer usage tags', () => {
 
     const hits = hitsFor(protocol);
     const name = hits.find(
-      (hit) => hit.path[hit.path.length - 1] === 'nameVariable',
+      (hit) => hit.path[hit.path.length - 1] === 'nameAttribute',
     );
     const ego = hits.find(
-      (hit) => hit.path[hit.path.length - 1] === 'egoVariable',
+      (hit) => hit.path[hit.path.length - 1] === 'egoAttribute',
     );
     const kind = hits.find(
-      (hit) => hit.path[hit.path.length - 1] === 'kindVariable',
+      (hit) => hit.path[hit.path.length - 1] === 'kindAttribute',
     );
 
     expect(name?.usage).toBe('validatedAttribute');

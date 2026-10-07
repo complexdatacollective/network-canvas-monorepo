@@ -24,19 +24,19 @@ const familyPedigree = (overrides: Stage = {}): Stage => ({
   subject: { entity: 'node', type: 'family_member' },
   prompt: 'Build your family',
   nodeConfiguration: {
-    nameVariable: 'fmName',
+    nameAttribute: 'fmName',
     genderIdentity: {
-      variable: 'genderIdentity',
+      attribute: 'genderIdentity',
       terms: GENDER_IDENTITY_TERMS,
     },
-    sexAssignedAtBirthVariable: 'sexAssignedAtBirth',
-    egoVariable: 'isEgo',
+    sexAssignedAtBirthAttribute: 'sexAssignedAtBirth',
+    egoAttribute: 'isEgo',
   },
   edgeConfiguration: {
     type: 'family_edge',
-    kindVariable: 'relationshipKind',
-    gestationalCarrierVariable: 'isGestationalCarrier',
-    currentPartnerVariable: 'isCurrentPartner',
+    kindAttribute: 'relationshipKind',
+    gestationalCarrierAttribute: 'isGestationalCarrier',
+    currentPartnerAttribute: 'isCurrentPartner',
   },
   ...overrides,
 });
@@ -119,13 +119,13 @@ describe('stage subjects resolve during collection', () => {
     const protocol = protocolWith([
       familyPedigree({
         nodeConfiguration: {
-          nameVariable: 'notInCodebook',
+          nameAttribute: 'notInCodebook',
           genderIdentity: {
-            variable: 'genderIdentity',
+            attribute: 'genderIdentity',
             terms: GENDER_IDENTITY_TERMS,
           },
-          sexAssignedAtBirthVariable: 'sexAssignedAtBirth',
-          egoVariable: 'isEgo',
+          sexAssignedAtBirthAttribute: 'sexAssignedAtBirth',
+          egoAttribute: 'isEgo',
         },
       }),
     ]);
@@ -134,7 +134,7 @@ describe('stage subjects resolve during collection', () => {
         'stages',
         0,
         'nodeConfiguration',
-        'nameVariable',
+        'nameAttribute',
       ]),
     ).toContain('The attribute "notInCodebook" does not exist in the codebook');
   });
@@ -167,10 +167,10 @@ describe('stage subjects resolve during collection', () => {
       type: 'family_member',
     });
     expect(
-      subjectAt(['stages', 0, 'nodeConfiguration', 'egoVariable']),
+      subjectAt(['stages', 0, 'nodeConfiguration', 'egoAttribute']),
     ).toEqual({ entity: 'node', type: 'family_member' });
     expect(
-      subjectAt(['stages', 0, 'edgeConfiguration', 'kindVariable']),
+      subjectAt(['stages', 0, 'edgeConfiguration', 'kindAttribute']),
     ).toEqual({
       entity: 'edge',
       type: 'family_edge',

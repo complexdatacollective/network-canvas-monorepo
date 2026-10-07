@@ -187,9 +187,9 @@ describe('the family pedigree stage editor', () => {
       prompt:
         'Add the members of your family. Select a person to add their relatives.',
       nodeConfiguration: {
-        nameVariable: 'fm_name',
+        nameAttribute: 'fm_name',
         genderIdentity: {
-          variable: 'genderIdentity',
+          attribute: 'genderIdentity',
           // The fixture attribute's options are the interface's defaults, so
           // binding it maps each to the words its default takes.
           terms: PEDIGREE_DEFAULT_GENDER_IDENTITIES.map(({ value, words }) => ({
@@ -197,14 +197,14 @@ describe('the family pedigree stage editor', () => {
             words,
           })),
         },
-        sexAssignedAtBirthVariable: 'sexAssignedAtBirth',
-        egoVariable: 'is_ego',
+        sexAssignedAtBirthAttribute: 'sexAssignedAtBirth',
+        egoAttribute: 'is_ego',
       },
       edgeConfiguration: {
         type: 'family_edge',
-        kindVariable: 'relationshipKind',
-        gestationalCarrierVariable: 'isGestationalCarrier',
-        currentPartnerVariable: 'isCurrentPartner',
+        kindAttribute: 'relationshipKind',
+        gestationalCarrierAttribute: 'isGestationalCarrier',
+        currentPartnerAttribute: 'isCurrentPartner',
       },
     });
     expect(familyPedigreeStage.safeParse(request?.stageDocument).success).toBe(
@@ -229,9 +229,9 @@ describe('the family pedigree stage editor', () => {
     const harness = renderStageEditor({
       stage: familyPedigreeStageWith({
         nodeConfiguration: {
-          nameVariable: 'fm_name',
-          genderIdentity: { variable: 'genderIdentity', terms: [] },
-          sexAssignedAtBirthVariable: 'sexAssignedAtBirth',
+          nameAttribute: 'fm_name',
+          genderIdentity: { attribute: 'genderIdentity', terms: [] },
+          sexAssignedAtBirthAttribute: 'sexAssignedAtBirth',
         },
       }),
       editor: familyPedigreeEditor,
@@ -321,7 +321,7 @@ describe('the attribute slots', () => {
     const request = await harness.submit();
     expect(nodeConfigurationOf(request?.stageDocument)).toMatchObject({
       genderIdentity: {
-        variable: created,
+        attribute: created,
         terms: PEDIGREE_DEFAULT_GENDER_IDENTITIES.map(({ value, words }) => ({
           value,
           words,
@@ -347,7 +347,7 @@ describe('the attribute slots', () => {
     const created = variableIdByName(harness, 'nickname');
     expect(created).toEqual(expect.any(String));
     const request = await harness.submit();
-    expect(nodeConfigurationOf(request?.stageDocument).nameVariable).toBe(
+    expect(nodeConfigurationOf(request?.stageDocument).nameAttribute).toBe(
       created,
     );
   });
@@ -371,7 +371,7 @@ describe('the attribute slots', () => {
       stage: familyPedigreeStageWith({
         edgeConfiguration: {
           type: 'family_edge',
-          kindVariable: 'relationshipKind',
+          kindAttribute: 'relationshipKind',
         },
       }),
       editor: familyPedigreeEditor,
@@ -472,9 +472,9 @@ describe('asking about gender identity', () => {
     const request = await harness.submit();
 
     expect(nodeConfigurationOf(request?.stageDocument)).toEqual({
-      nameVariable: 'fm_name',
-      sexAssignedAtBirthVariable: 'sexAssignedAtBirth',
-      egoVariable: 'is_ego',
+      nameAttribute: 'fm_name',
+      sexAssignedAtBirthAttribute: 'sexAssignedAtBirth',
+      egoAttribute: 'is_ego',
     });
     expect(familyPedigreeStage.safeParse(request?.stageDocument).success).toBe(
       true,
@@ -629,7 +629,7 @@ describe('the completeness requirement', () => {
       completeness: {
         scope: 'parents',
         enforcement: 'required',
-        relativesNotRecordedVariable: 'relativesNotRecorded',
+        relativesNotRecordedAttribute: 'relativesNotRecorded',
       },
     });
     expect(familyPedigreeStage.safeParse(request?.stageDocument).success).toBe(
@@ -710,7 +710,7 @@ describe('the completeness requirement', () => {
         completeness: {
           scope: 'firstDegree',
           enforcement: 'required',
-          relativesNotRecordedVariable: 'relativesNotRecorded',
+          relativesNotRecordedAttribute: 'relativesNotRecorded',
         },
       }),
       editor: familyPedigreeEditor,
@@ -903,9 +903,9 @@ describe('the gender identity words', () => {
       const harness = renderStageEditor({
         stage: familyPedigreeStageWith({
           nodeConfiguration: {
-            nameVariable: 'fm_name',
-            sexAssignedAtBirthVariable: 'sexAssignedAtBirth',
-            egoVariable: 'is_ego',
+            nameAttribute: 'fm_name',
+            sexAssignedAtBirthAttribute: 'sexAssignedAtBirth',
+            egoAttribute: 'is_ego',
           },
         }),
         editor: familyPedigreeEditor,
@@ -1086,7 +1086,7 @@ describe('the nomination prompts', () => {
   const savedPrompt = {
     id: 'nomination-1',
     text: 'Who in your family has had heart disease?',
-    variable: HEART_DISEASE,
+    attribute: HEART_DISEASE,
     onlyForSexAssignedAtBirth: 'female',
   };
 
@@ -1167,7 +1167,7 @@ describe('the nomination prompts', () => {
       {
         id: expect.any(String),
         text: 'Who has had diabetes?',
-        variable: created,
+        attribute: created,
         onlyForSexAssignedAtBirth: 'female',
       },
     ]);
@@ -1202,7 +1202,7 @@ describe('the nomination prompts', () => {
     expect(prompt).toEqual({
       id: expect.any(String),
       text: 'Who has had diabetes?',
-      variable: HEART_DISEASE,
+      attribute: HEART_DISEASE,
     });
     expect(prompt).not.toHaveProperty('onlyForSexAssignedAtBirth');
     expect(familyPedigreeStage.safeParse(request?.stageDocument).success).toBe(

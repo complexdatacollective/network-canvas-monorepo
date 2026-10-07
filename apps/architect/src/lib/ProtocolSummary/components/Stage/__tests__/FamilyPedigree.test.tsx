@@ -46,7 +46,7 @@ describe('Protocol Summary family pedigree', () => {
           prompt={null}
           nodeConfiguration={{
             genderIdentity: {
-              variable: 'gender',
+              attribute: 'gender',
               terms: [
                 { value: 'woman', words: 'feminine' },
                 { value: 'transWoman', words: 'feminine' },
@@ -81,7 +81,7 @@ describe('Protocol Summary family pedigree', () => {
         <FamilyPedigree
           personType="person"
           prompt={null}
-          nodeConfiguration={{ nameVariable: 'name' }}
+          nodeConfiguration={{ nameAttribute: 'name' }}
           edgeConfiguration={null}
           completeness={null}
           framing={null}
@@ -107,7 +107,7 @@ describe('Protocol Summary family pedigree', () => {
         <FamilyPedigree
           personType="person"
           prompt={null}
-          nodeConfiguration={{ nameVariable: 'name' }}
+          nodeConfiguration={{ nameAttribute: 'name' }}
           edgeConfiguration={null}
           completeness={null}
           framing={null}
@@ -133,7 +133,7 @@ describe('Protocol Summary family pedigree', () => {
         <FamilyPedigree
           personType="person"
           prompt={null}
-          nodeConfiguration={{ nameVariable: 'name' }}
+          nodeConfiguration={{ nameAttribute: 'name' }}
           edgeConfiguration={null}
           completeness={null}
           framing="participantPreference"
@@ -163,13 +163,13 @@ describe('Protocol Summary family pedigree', () => {
             {
               id: 'nomination-1',
               text: 'Who has had **ovarian** cancer?',
-              variable: 'gender',
+              attribute: 'gender',
               onlyForSexAssignedAtBirth: 'female',
             },
             {
               id: 'nomination-2',
               text: 'Who has had diabetes?',
-              variable: 'gender',
+              attribute: 'gender',
             },
           ]}
         />

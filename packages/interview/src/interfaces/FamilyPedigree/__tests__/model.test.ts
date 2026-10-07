@@ -51,7 +51,7 @@ const plan = (
     details: { name: 'New' },
     request,
     createId,
-    sexVariable: config.sexAssignedAtBirthVariable,
+    sexAttribute: config.sexAssignedAtBirthAttribute,
   });
 };
 
@@ -134,7 +134,7 @@ describe('readFamily', () => {
       {
         ...config,
         genderIdentity: {
-          variable: 'gender',
+          attribute: 'gender',
           terms: [
             ...(config.genderIdentity?.terms ?? []),
             { value: 'removedOption', words: 'masculine' },

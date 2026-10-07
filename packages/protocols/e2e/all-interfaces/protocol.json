@@ -611,9 +611,9 @@
       },
       "prompt": "Who is in your family?",
       "nodeConfiguration": {
-        "nameVariable": "fm_name",
+        "nameAttribute": "fm_name",
         "genderIdentity": {
-          "variable": "genderIdentity",
+          "attribute": "genderIdentity",
           "terms": [
             {
               "value": "woman",
@@ -641,14 +641,14 @@
             }
           ]
         },
-        "sexAssignedAtBirthVariable": "sexAssignedAtBirth",
-        "egoVariable": "is_ego"
+        "sexAssignedAtBirthAttribute": "sexAssignedAtBirth",
+        "egoAttribute": "is_ego"
       },
       "edgeConfiguration": {
         "type": "family_edge",
-        "kindVariable": "relationshipKind",
-        "gestationalCarrierVariable": "isGestationalCarrier",
-        "currentPartnerVariable": "isCurrentPartner"
+        "kindAttribute": "relationshipKind",
+        "gestationalCarrierAttribute": "isGestationalCarrier",
+        "currentPartnerAttribute": "isCurrentPartner"
       }
     },
     {

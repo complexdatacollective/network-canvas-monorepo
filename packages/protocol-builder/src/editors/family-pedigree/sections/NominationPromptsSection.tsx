@@ -31,7 +31,7 @@ import {
 } from './pedigreeSlots.ts';
 
 /** Where a nomination prompt keeps what it sets, and who it is limited to. */
-const VARIABLE_FIELD = 'variable';
+const VARIABLE_FIELD = 'attribute';
 const SEX_FIELD = 'onlyForSexAssignedAtBirth';
 
 /** What a nomination prompt with no limit means: anyone can be selected. */

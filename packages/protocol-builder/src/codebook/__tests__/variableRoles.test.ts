@@ -33,7 +33,7 @@ const BIN_STAGE_ID = 'bin-stage';
 const SUBJECT = { entity: 'node', type: 'person' } as const;
 const FAMILY_SUBJECT = { entity: 'node', type: 'family-member' } as const;
 const FAMILY_STAGE_ID = 'family-stage';
-const EGO_SLOT = 'familyPedigree.nodeConfiguration.egoVariable';
+const EGO_SLOT = 'familyPedigree.nodeConfiguration.egoAttribute';
 
 const sections = (): Record<string, SectionDoc> => ({
   [sectionId({ kind: 'codebookNode', typeId: 'person' })]: {
@@ -81,16 +81,16 @@ const familySections = (): Record<string, SectionDoc> => ({
     subject: FAMILY_SUBJECT,
     prompt: 'Build your family',
     nodeConfiguration: {
-      nameVariable: 'name',
-      genderIdentity: { variable: 'genderIdentity', terms: [] },
-      sexAssignedAtBirthVariable: 'sexAssignedAtBirth',
-      egoVariable: 'isEgo',
+      nameAttribute: 'name',
+      genderIdentity: { attribute: 'genderIdentity', terms: [] },
+      sexAssignedAtBirthAttribute: 'sexAssignedAtBirth',
+      egoAttribute: 'isEgo',
     },
     edgeConfiguration: {
       type: 'family-edge',
-      kindVariable: 'relationshipKind',
-      gestationalCarrierVariable: 'isGestationalCarrier',
-      currentPartnerVariable: 'isCurrentPartner',
+      kindAttribute: 'relationshipKind',
+      gestationalCarrierAttribute: 'isGestationalCarrier',
+      currentPartnerAttribute: 'isCurrentPartner',
     },
   },
   [sectionId({ kind: 'stageOrder' })]: { stages: [FAMILY_STAGE_ID] },
@@ -350,15 +350,15 @@ describe('variable role helpers', () => {
           subject: FAMILY_SUBJECT,
           prompt: 'Build your family',
           nodeConfiguration: {
-            nameVariable: 'name',
-            sexAssignedAtBirthVariable: 'sexAssignedAtBirth',
-            egoVariable: 'isEgo',
+            nameAttribute: 'name',
+            sexAssignedAtBirthAttribute: 'sexAssignedAtBirth',
+            egoAttribute: 'isEgo',
           },
           edgeConfiguration: {
             type: 'family-edge',
-            kindVariable: 'relationshipKind',
-            gestationalCarrierVariable: 'isGestationalCarrier',
-            currentPartnerVariable: 'isCurrentPartner',
+            kindAttribute: 'relationshipKind',
+            gestationalCarrierAttribute: 'isGestationalCarrier',
+            currentPartnerAttribute: 'isCurrentPartner',
           },
         },
       });

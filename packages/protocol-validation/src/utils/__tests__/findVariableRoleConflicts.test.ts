@@ -38,16 +38,16 @@ const familyPedigreeStage = (formVariable: string) => ({
   subject: { entity: 'node', type: 'person' },
   prompt: 'Who is related to you?',
   nodeConfiguration: {
-    nameVariable: 'pedigreeName',
-    genderIdentity: { variable: 'pedigreeGender', terms: [] },
-    sexAssignedAtBirthVariable: 'pedigreeSab',
-    egoVariable: 'pedigreeEgo',
+    nameAttribute: 'pedigreeName',
+    genderIdentity: { attribute: 'pedigreeGender', terms: [] },
+    sexAssignedAtBirthAttribute: 'pedigreeSab',
+    egoAttribute: 'pedigreeEgo',
   },
   edgeConfiguration: {
     type: 'knows',
-    kindVariable: 'pedigreeKind',
-    gestationalCarrierVariable: 'pedigreeGestCarrier',
-    currentPartnerVariable: 'pedigreeCurrent',
+    kindAttribute: 'pedigreeKind',
+    gestationalCarrierAttribute: 'pedigreeGestCarrier',
+    currentPartnerAttribute: 'pedigreeCurrent',
   },
   form: { fields: [{ variable: formVariable, prompt: 'Family history' }] },
 });

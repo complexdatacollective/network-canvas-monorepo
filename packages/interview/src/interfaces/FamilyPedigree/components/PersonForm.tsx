@@ -190,17 +190,17 @@ export default function PersonForm({
   const handleSubmit: FormSubmitHandler = (values) => {
     const set: PersonDetails = readOwnDetails(values, config);
     const unset = [
-      config.nameVariable,
-      ...(config.genderIdentity ? [config.genderIdentity.variable] : []),
-      config.sexAssignedAtBirthVariable,
+      config.nameAttribute,
+      ...(config.genderIdentity ? [config.genderIdentity.attribute] : []),
+      config.sexAssignedAtBirthAttribute,
     ].filter((variable) => !(variable in set));
 
     // "No" and "Don't know" are recorded; "Yes" leaves the question to the
     // siblings or children the participant goes on to add.
-    const notRecordedVariable = config.relativesNotRecordedVariable;
+    const notRecordedAttribute = config.relativesNotRecordedAttribute;
     if (
       person &&
-      notRecordedVariable &&
+      notRecordedAttribute &&
       (askAbout?.siblings || askAbout?.children)
     ) {
       let recorded: string[] = person.relativesNotRecorded;
@@ -221,7 +221,7 @@ export default function PersonForm({
       if (askAbout.children) {
         answer(ROLE.hasChildren, RELATIVES_NOT_RECORDED.children);
       }
-      set[notRecordedVariable] = recorded;
+      set[notRecordedAttribute] = recorded;
     }
 
     if (formFields.length > 0) {
@@ -290,7 +290,7 @@ export default function PersonForm({
           </Heading>
           <Field
             component={InputField}
-            name={config.nameVariable}
+            name={config.nameAttribute}
             nameMode="opaque"
             label={intl.formatMessage(
               isEgo ? messages.yourNameLabel : messages.nameLabel,
@@ -302,7 +302,7 @@ export default function PersonForm({
           {config.genderIdentity && (
             <Field
               component={RadioGroupField}
-              name={config.genderIdentity.variable}
+              name={config.genderIdentity.attribute}
               nameMode="opaque"
               label={intl.formatMessage(messages.genderIdentityLabel)}
               options={genderIdentityOptions}
@@ -312,7 +312,7 @@ export default function PersonForm({
           )}
           <Field
             component={RadioGroupField}
-            name={config.sexAssignedAtBirthVariable}
+            name={config.sexAssignedAtBirthAttribute}
             nameMode="opaque"
             label={intl.formatMessage(messages.sexAssignedAtBirthLabel)}
             options={sexOptions}
@@ -653,16 +653,16 @@ function readOwnDetails(
   config: PedigreeConfig,
 ): PersonDetails {
   const details: PersonDetails = {};
-  const name = asString(values[config.nameVariable])?.trim();
-  if (name) details[config.nameVariable] = name;
+  const name = asString(values[config.nameAttribute])?.trim();
+  if (name) details[config.nameAttribute] = name;
   if (config.genderIdentity) {
-    const gender = asOption(values[config.genderIdentity.variable]);
+    const gender = asOption(values[config.genderIdentity.attribute]);
     if (gender !== undefined && gender !== '') {
-      details[config.genderIdentity.variable] = [gender];
+      details[config.genderIdentity.attribute] = [gender];
     }
   }
-  const sex = asString(values[config.sexAssignedAtBirthVariable]);
-  if (sex) details[config.sexAssignedAtBirthVariable] = [sex];
+  const sex = asString(values[config.sexAssignedAtBirthAttribute]);
+  if (sex) details[config.sexAssignedAtBirthAttribute] = [sex];
   return details;
 }
 
@@ -682,9 +682,9 @@ function DraftWatcher({
   onDraftChange: (draft: PersonDraft) => void;
 }) {
   const values = useFormValue([
-    config.nameVariable,
-    ...(config.genderIdentity ? [config.genderIdentity.variable] : []),
-    config.sexAssignedAtBirthVariable,
+    config.nameAttribute,
+    ...(config.genderIdentity ? [config.genderIdentity.attribute] : []),
+    config.sexAssignedAtBirthAttribute,
     ...Object.values(ROLE),
   ]);
   const report = useRef(onDraftChange);
@@ -869,8 +869,8 @@ function ParentFields({
     ROLE.alsoParentOf,
   ]);
   const sexAssignedAtBirth = asString(
-    useFormValue([config.sexAssignedAtBirthVariable], 'opaque')[
-      config.sexAssignedAtBirthVariable
+    useFormValue([config.sexAssignedAtBirthAttribute], 'opaque')[
+      config.sexAssignedAtBirthAttribute
     ],
   );
   const chosenKind = asString(values[ROLE.parentKind]);

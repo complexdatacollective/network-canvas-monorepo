@@ -911,19 +911,19 @@ describe('SyntheticInterview', () => {
       });
       expect(typeof config.prompt).toBe('string');
       expect(config.nodeConfiguration).toEqual({
-        nameVariable: stage.name,
+        nameAttribute: stage.name,
         genderIdentity: {
-          variable: stage.genderIdentity,
+          attribute: stage.genderIdentity,
           terms: [...PEDIGREE_DEFAULT_GENDER_IDENTITIES],
         },
-        sexAssignedAtBirthVariable: stage.sexAssignedAtBirth,
-        egoVariable: stage.ego,
+        sexAssignedAtBirthAttribute: stage.sexAssignedAtBirth,
+        egoAttribute: stage.ego,
       });
       expect(config.edgeConfiguration).toEqual({
         type: stage.edgeType,
-        kindVariable: stage.kind,
-        gestationalCarrierVariable: stage.gestationalCarrier,
-        currentPartnerVariable: stage.currentPartner,
+        kindAttribute: stage.kind,
+        gestationalCarrierAttribute: stage.gestationalCarrier,
+        currentPartnerAttribute: stage.currentPartner,
       });
       expect(config).not.toHaveProperty('form');
     });
@@ -1002,9 +1002,9 @@ describe('SyntheticInterview', () => {
         nodeConfiguration: Record<string, unknown>;
       };
       expect(config.nodeConfiguration).toEqual({
-        nameVariable: stage.name,
-        sexAssignedAtBirthVariable: stage.sexAssignedAtBirth,
-        egoVariable: stage.ego,
+        nameAttribute: stage.name,
+        sexAssignedAtBirthAttribute: stage.sexAssignedAtBirth,
+        egoAttribute: stage.ego,
       });
       // No gender identity variable is created either.
       type Typed = Record<string, { variables: Record<string, unknown> }>;

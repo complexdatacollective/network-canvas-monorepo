@@ -262,33 +262,33 @@ const isGenderWords = (value: string): value is PedigreeGenderWords =>
   Object.hasOwn(GENDER_WORDS_MESSAGES, value);
 
 type NodeConfiguration = {
-  nameVariable?: string;
+  nameAttribute?: string;
   /** Absent when the stage does not ask about gender identity. */
   genderIdentity?: {
-    variable?: string;
+    attribute?: string;
     terms?: { value: string | number; words: string }[];
   };
-  sexAssignedAtBirthVariable?: string;
-  egoVariable?: string;
+  sexAssignedAtBirthAttribute?: string;
+  egoAttribute?: string;
 };
 
 type EdgeConfiguration = {
   type?: string;
-  kindVariable?: string;
-  gestationalCarrierVariable?: string;
-  currentPartnerVariable?: string;
+  kindAttribute?: string;
+  gestationalCarrierAttribute?: string;
+  currentPartnerAttribute?: string;
 };
 
 type Completeness = {
   scope?: PedigreeCompletenessScope;
   enforcement?: 'required' | 'recommended';
-  relativesNotRecordedVariable?: string;
+  relativesNotRecordedAttribute?: string;
 };
 
 type NominationPrompt = {
   id: string;
   text: string;
-  variable: string;
+  attribute: string;
   onlyForSexAssignedAtBirth?: 'female' | 'male';
 };
 
@@ -343,10 +343,10 @@ const FamilyPedigree = ({
   // an option the stage does not list reads as the neutral words it gets.
   const genderIdentity = nodeConfiguration?.genderIdentity;
   const genderVariable =
-    personType === null || !genderIdentity?.variable
+    personType === null || !genderIdentity?.attribute
       ? undefined
       : protocol.codebook?.node?.[personType]?.variables?.[
-          genderIdentity.variable
+          genderIdentity.attribute
         ];
   const genderOptions =
     genderVariable?.type === 'categorical' ? genderVariable.options : undefined;
@@ -378,7 +378,7 @@ const FamilyPedigree = ({
     ...variableRow(
       intl.formatMessage(messages.name),
       'name',
-      nodeConfiguration?.nameVariable,
+      nodeConfiguration?.nameAttribute,
     ),
     ...(nodeConfiguration !== null && genderIdentity === undefined
       ? ([
@@ -390,7 +390,7 @@ const FamilyPedigree = ({
       : variableRow(
           intl.formatMessage(messages.genderIdentity),
           'gender-identity',
-          genderIdentity?.variable,
+          genderIdentity?.attribute,
         )),
     ...(genderTermLines.length > 0
       ? ([
@@ -414,12 +414,12 @@ const FamilyPedigree = ({
     ...variableRow(
       intl.formatMessage(messages.sexAssignedAtBirth),
       'sex-assigned-at-birth',
-      nodeConfiguration?.sexAssignedAtBirthVariable,
+      nodeConfiguration?.sexAssignedAtBirthAttribute,
     ),
     ...variableRow(
       intl.formatMessage(messages.participantMarker),
       'participant-marker',
-      nodeConfiguration?.egoVariable,
+      nodeConfiguration?.egoAttribute,
     ),
     ...(edgeConfiguration?.type
       ? ([
@@ -439,17 +439,17 @@ const FamilyPedigree = ({
     ...variableRow(
       intl.formatMessage(messages.relationshipKind),
       'relationship-kind',
-      edgeConfiguration?.kindVariable,
+      edgeConfiguration?.kindAttribute,
     ),
     ...variableRow(
       intl.formatMessage(messages.gestationalCarrier),
       'gestational-carrier',
-      edgeConfiguration?.gestationalCarrierVariable,
+      edgeConfiguration?.gestationalCarrierAttribute,
     ),
     ...variableRow(
       intl.formatMessage(messages.currentPartner),
       'current-partner',
-      edgeConfiguration?.currentPartnerVariable,
+      edgeConfiguration?.currentPartnerAttribute,
     ),
     ...(completeness?.scope
       ? ([
@@ -474,7 +474,7 @@ const FamilyPedigree = ({
     ...variableRow(
       intl.formatMessage(messages.relativesNotRecorded),
       'relatives-not-recorded',
-      completeness?.relativesNotRecordedVariable,
+      completeness?.relativesNotRecordedAttribute,
     ),
     // Always said, because a stage that stores no wording uses the everyday
     // words: the summary states what participants will read, not only what
@@ -494,7 +494,7 @@ const FamilyPedigree = ({
         <SectionFrame title={intl.formatMessage(messages.nominationPrompts)}>
           <UnorderedList>
             {nominationPrompts.map(
-              ({ id, text, variable, onlyForSexAssignedAtBirth }) => (
+              ({ id, text, attribute, onlyForSexAssignedAtBirth }) => (
                 <li className="my-5" key={id}>
                   <div className="break-inside-avoid">
                     <Markdown label={text} />
@@ -503,7 +503,7 @@ const FamilyPedigree = ({
                       rows={[
                         [
                           intl.formatMessage(summaryMessages.attribute),
-                          <Variable key="variable" id={variable} />,
+                          <Variable key="attribute" id={attribute} />,
                         ],
                         ...(onlyForSexAssignedAtBirth
                           ? [

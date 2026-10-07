@@ -17,17 +17,17 @@ import {
 type Stage = Record<string, unknown>;
 
 const nodeConfiguration = {
-  nameVariable: 'fmName',
-  genderIdentity: { variable: 'genderIdentity', terms: GENDER_IDENTITY_TERMS },
-  sexAssignedAtBirthVariable: 'sexAssignedAtBirth',
-  egoVariable: 'isEgo',
+  nameAttribute: 'fmName',
+  genderIdentity: { attribute: 'genderIdentity', terms: GENDER_IDENTITY_TERMS },
+  sexAssignedAtBirthAttribute: 'sexAssignedAtBirth',
+  egoAttribute: 'isEgo',
 };
 
 const edgeConfiguration = {
   type: 'family_edge',
-  kindVariable: 'relationshipKind',
-  gestationalCarrierVariable: 'isGestationalCarrier',
-  currentPartnerVariable: 'isCurrentPartner',
+  kindAttribute: 'relationshipKind',
+  gestationalCarrierAttribute: 'isGestationalCarrier',
+  currentPartnerAttribute: 'isCurrentPartner',
 };
 
 const familyPedigree = (overrides: Stage = {}): Stage => ({
@@ -168,7 +168,7 @@ describe('findExclusiveVariableConflicts', () => {
       ['stages', 0, 'form', 'fields', 0, 'variable'],
     ]);
     expect(conflicts[0]?.owner.slot).toBe(
-      'familyPedigree.nodeConfiguration.egoVariable',
+      'familyPedigree.nodeConfiguration.egoAttribute',
     );
     expect(conflicts[0]?.variableName).toBe('is_ego');
     expect(ProtocolSchemaV8.safeParse(protocol).success).toBe(false);
@@ -188,7 +188,7 @@ describe('findExclusiveVariableConflicts', () => {
       familyPedigree({
         edgeConfiguration: {
           ...edgeConfiguration,
-          currentPartnerVariable: 'isGestationalCarrier',
+          currentPartnerAttribute: 'isGestationalCarrier',
         },
       }),
     ]);
@@ -198,7 +198,7 @@ describe('findExclusiveVariableConflicts', () => {
       'stages',
       0,
       'edgeConfiguration',
-      'currentPartnerVariable',
+      'currentPartnerAttribute',
     ]);
   });
 
@@ -300,12 +300,12 @@ describe('findStageManagedOptionBindings', () => {
         descriptor: { owner: 'the kin words each option takes' },
         stageId: 'fp1',
         stageLabel: 'Family Pedigree',
-        path: ['stages', 0, 'nodeConfiguration', 'genderIdentity', 'variable'],
+        path: ['stages', 0, 'nodeConfiguration', 'genderIdentity', 'attribute'],
       },
     ]);
   });
 
-  it('returns one binding per stage when several stages bind the variable', () => {
+  it('returns one binding per stage when several stages bind the attribute', () => {
     const protocol = protocolWith([
       familyPedigree(),
       familyPedigree({ id: 'fp2', label: 'Second family' }),

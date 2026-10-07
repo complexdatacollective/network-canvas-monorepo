@@ -404,14 +404,14 @@ const FIXTURE_MAXIMAL_STAGES: MaximalStage[] = [
       completeness: {
         scope: 'thirdDegree',
         enforcement: 'recommended',
-        relativesNotRecordedVariable: 'relativesNotRecorded',
+        relativesNotRecordedAttribute: 'relativesNotRecorded',
       },
       framing: 'participantPreference',
       nominationPrompts: [
         {
           id: 'nomination-1',
           text: 'Who in your family has had heart disease?',
-          variable: 'has_heart_disease',
+          attribute: 'has_heart_disease',
           onlyForSexAssignedAtBirth: 'female',
         },
       ],

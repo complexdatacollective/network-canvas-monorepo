@@ -199,28 +199,28 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
       : null;
   const nodeConfiguration = configuration.nodeConfiguration as
     | {
-        nameVariable?: string;
+        nameAttribute?: string;
         genderIdentity?: {
-          variable?: string;
+          attribute?: string;
           terms?: { value: string | number; words: string }[];
         };
-        sexAssignedAtBirthVariable?: string;
-        egoVariable?: string;
+        sexAssignedAtBirthAttribute?: string;
+        egoAttribute?: string;
       }
     | undefined;
   const edgeConfiguration = configuration.edgeConfiguration as
     | {
         type?: string;
-        kindVariable?: string;
-        gestationalCarrierVariable?: string;
-        currentPartnerVariable?: string;
+        kindAttribute?: string;
+        gestationalCarrierAttribute?: string;
+        currentPartnerAttribute?: string;
       }
     | undefined;
   const completeness = configuration.completeness as
     | {
         scope?: PedigreeCompletenessScope;
         enforcement?: 'required' | 'recommended';
-        relativesNotRecordedVariable?: string;
+        relativesNotRecordedAttribute?: string;
       }
     | undefined;
   const framing = configuration.framing as FramingSetting | undefined;

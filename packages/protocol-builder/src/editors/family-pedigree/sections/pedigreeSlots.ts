@@ -15,25 +15,25 @@ import { useStageSubject } from '../../../sections/useStageSubject.ts';
 
 /**
  * Where the stage keeps each node configuration slot. `genderIdentity` is
- * optional and holds two things: the attribute (`variable`) and which kinship
+ * optional and holds two things: the attribute (`attribute`) and which kinship
  * words each of its options takes (`terms`, not an attribute).
  */
 export const NODE_CONFIGURATION_PATHS = Object.freeze({
-  nameVariable: 'nodeConfiguration.nameVariable',
+  nameAttribute: 'nodeConfiguration.nameAttribute',
   genderIdentity: 'nodeConfiguration.genderIdentity',
-  genderIdentityVariable: 'nodeConfiguration.genderIdentity.variable',
+  genderIdentityAttribute: 'nodeConfiguration.genderIdentity.attribute',
   genderIdentityTerms: 'nodeConfiguration.genderIdentity.terms',
-  sexAssignedAtBirthVariable: 'nodeConfiguration.sexAssignedAtBirthVariable',
-  egoVariable: 'nodeConfiguration.egoVariable',
+  sexAssignedAtBirthAttribute: 'nodeConfiguration.sexAssignedAtBirthAttribute',
+  egoAttribute: 'nodeConfiguration.egoAttribute',
 });
 
 export const EDGE_CONFIGURATION_TYPE_PATH = 'edgeConfiguration.type';
 
 /** Where the stage keeps each edge configuration slot. */
 export const EDGE_CONFIGURATION_PATHS = Object.freeze({
-  kindVariable: 'edgeConfiguration.kindVariable',
-  gestationalCarrierVariable: 'edgeConfiguration.gestationalCarrierVariable',
-  currentPartnerVariable: 'edgeConfiguration.currentPartnerVariable',
+  kindAttribute: 'edgeConfiguration.kindAttribute',
+  gestationalCarrierAttribute: 'edgeConfiguration.gestationalCarrierAttribute',
+  currentPartnerAttribute: 'edgeConfiguration.currentPartnerAttribute',
 });
 
 /** Where the stage keeps its completeness requirement, and its one slot. */
@@ -41,7 +41,7 @@ export const COMPLETENESS_PATH = 'completeness';
 export const COMPLETENESS_SCOPE_PATH = 'completeness.scope';
 export const COMPLETENESS_ENFORCEMENT_PATH = 'completeness.enforcement';
 export const RELATIVES_NOT_RECORDED_PATH =
-  'completeness.relativesNotRecordedVariable';
+  'completeness.relativesNotRecordedAttribute';
 
 const PERSON_FORM_FIELDS_PATH = 'form.fields';
 
@@ -81,24 +81,26 @@ export function usePedigreeDraftBindings(): Readonly<{
   const personSubject = useStageSubject('node') ?? null;
   const relationshipType = useStageValue(EDGE_CONFIGURATION_TYPE_PATH);
   const name = asVariableId(
-    useStageValue(NODE_CONFIGURATION_PATHS.nameVariable),
+    useStageValue(NODE_CONFIGURATION_PATHS.nameAttribute),
   );
   const gender = asVariableId(
-    useStageValue(NODE_CONFIGURATION_PATHS.genderIdentityVariable),
+    useStageValue(NODE_CONFIGURATION_PATHS.genderIdentityAttribute),
   );
   const sex = asVariableId(
-    useStageValue(NODE_CONFIGURATION_PATHS.sexAssignedAtBirthVariable),
+    useStageValue(NODE_CONFIGURATION_PATHS.sexAssignedAtBirthAttribute),
   );
-  const ego = asVariableId(useStageValue(NODE_CONFIGURATION_PATHS.egoVariable));
+  const ego = asVariableId(
+    useStageValue(NODE_CONFIGURATION_PATHS.egoAttribute),
+  );
   const relativesNotRecorded = asVariableId(
     useStageValue(RELATIVES_NOT_RECORDED_PATH),
   );
-  const kind = useStageValue(EDGE_CONFIGURATION_PATHS.kindVariable);
+  const kind = useStageValue(EDGE_CONFIGURATION_PATHS.kindAttribute);
   const carrier = useStageValue(
-    EDGE_CONFIGURATION_PATHS.gestationalCarrierVariable,
+    EDGE_CONFIGURATION_PATHS.gestationalCarrierAttribute,
   );
   const partner = useStageValue(
-    EDGE_CONFIGURATION_PATHS.currentPartnerVariable,
+    EDGE_CONFIGURATION_PATHS.currentPartnerAttribute,
   );
   const formRows = useStageValue(PERSON_FORM_FIELDS_PATH);
   const nominationRows = useStageValue(NOMINATION_PROMPTS_PATH);
@@ -116,27 +118,27 @@ export function usePedigreeDraftBindings(): Readonly<{
       draftExclusiveSlotClaims([
         {
           subject: personSubject,
-          slot: FAMILY_PEDIGREE_SLOTS.egoVariable,
+          slot: FAMILY_PEDIGREE_SLOTS.egoAttribute,
           variableId: ego,
         },
         {
           subject: personSubject,
-          slot: FAMILY_PEDIGREE_SLOTS.relativesNotRecordedVariable,
+          slot: FAMILY_PEDIGREE_SLOTS.relativesNotRecordedAttribute,
           variableId: relativesNotRecorded,
         },
         {
           subject: relationshipSubject,
-          slot: FAMILY_PEDIGREE_SLOTS.relationshipKindVariable,
+          slot: FAMILY_PEDIGREE_SLOTS.relationshipKindAttribute,
           variableId: kind,
         },
         {
           subject: relationshipSubject,
-          slot: FAMILY_PEDIGREE_SLOTS.gestationalCarrierVariable,
+          slot: FAMILY_PEDIGREE_SLOTS.gestationalCarrierAttribute,
           variableId: carrier,
         },
         {
           subject: relationshipSubject,
-          slot: FAMILY_PEDIGREE_SLOTS.currentPartnerVariable,
+          slot: FAMILY_PEDIGREE_SLOTS.currentPartnerAttribute,
           variableId: partner,
         },
       ]),
@@ -169,7 +171,7 @@ export function usePedigreeDraftBindings(): Readonly<{
       Array.isArray(nominationRows)
         ? nominationRows
             .filter(isRecord)
-            .map((row) => row.variable)
+            .map((row) => row.attribute)
             .filter(
               (variable): variable is string =>
                 typeof variable === 'string' && variable !== '',
