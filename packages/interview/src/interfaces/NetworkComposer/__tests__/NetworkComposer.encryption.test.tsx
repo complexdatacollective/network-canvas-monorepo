@@ -486,6 +486,67 @@ describe('NetworkComposer refusing to save without a working passphrase', () => 
     expect(notesInput).toHaveValue('Old friend');
     expect(store.getState().session.network.nodes[0]).toBe(stored);
   });
+
+  it('keeps an edit it could not save through a passphrase that cannot read it, then saves it once the right one is back', async () => {
+    const stored = await makeEncryptedNode();
+    const store = makeStore([stored], true);
+    renderComposer(store);
+
+    const nodeButton = await screen.findByRole('button', { name: /alice/i });
+    act(() => {
+      tapNode(nodeButton);
+    });
+    const notesInput = await screen.findByLabelText(/notes/i);
+    act(() => {
+      store.dispatch(setPassphraseInvalid(true));
+    });
+    fireEvent.change(notesInput, { target: { value: 'Old friend' } });
+    expect(
+      await screen.findByText(new RegExp(notSaved), {}, { timeout: 3000 }),
+    ).toBeTruthy();
+
+    // While the new passphrase is still being tried, the store would take a
+    // write encrypted with it, so the drawer must not make one.
+    let release: () => void = () => undefined;
+    decryptionGate.held = new Promise((resolve) => {
+      release = resolve;
+    });
+    try {
+      act(() => {
+        store.dispatch(setPassphrase('another passphrase'));
+      });
+      await waitFor(() =>
+        expect(screen.queryByRole('textbox', { name: /notes/i })).toBeNull(),
+      );
+      // Longer than the drawer waits before saving an edit.
+      await act(() => new Promise((resolve) => setTimeout(resolve, 600)));
+      expect(store.getState().session.network.nodes[0]).toBe(stored);
+    } finally {
+      release();
+      decryptionGate.held = undefined;
+    }
+    expect(await screen.findByText(passphraseNotice)).toBeTruthy();
+    expect(screen.queryByRole('textbox', { name: /notes/i })).toBeNull();
+    await act(() => new Promise((resolve) => setTimeout(resolve, 600)));
+    expect(store.getState().session.network.nodes[0]).toBe(stored);
+
+    act(() => {
+      store.dispatch(setPassphrase(PASSPHRASE));
+    });
+    expect(await screen.findByRole('textbox', { name: /notes/i })).toHaveValue(
+      'Old friend',
+    );
+    await waitFor(
+      async () => {
+        const [node] = store.getState().session.network.nodes;
+        expect(await readStored(node, NOTES_VAR)).toBe('Old friend');
+      },
+      { timeout: 3000 },
+    );
+    await waitFor(() =>
+      expect(screen.queryByText(new RegExp(notSaved))).toBeNull(),
+    );
+  });
 });
 
 describe('NetworkComposer while the encryptedVariables experiment is off', () => {

@@ -51,6 +51,7 @@ import type { AttributePatch } from '../../../store/entityAttributePatch';
 import { updateNode as updateNodeAction } from '../../../store/modules/session';
 import { useAppDispatch } from '../../../store/store';
 import { isAttributeEncrypted } from '../../Anonymisation/isAttributeEncrypted';
+import PassphraseNotice from '../../Anonymisation/PassphraseNotice';
 import { usePassphrase } from '../../Anonymisation/usePassphrase';
 import { useProtectedFormValues } from '../../Anonymisation/useProtectedFormValues';
 import { interfaceMessages } from '../../messages';
@@ -157,10 +158,24 @@ const NodeForm = (props: NodeFormProps) => {
     },
   };
 
-  // An edited person's encrypted answers are decrypted before the form opens,
-  // and the form closes if the passphrase that decrypted them goes.
+  // An edited person's encrypted answers are decrypted before the form opens.
+  // Once their form has been shown, a passphrase that cannot read them only
+  // hides it, keeping what was entered until it can be shown, and saved,
+  // again; before then, the form does not open.
   const editing = useProtectedFormValues(selectedNode, form.fields, variables);
-  const editingLocked = selectedNode !== null && editing.status === 'locked';
+  const selectedNodeId = selectedNode?.[entityPrimaryKeyProperty];
+  const [shownFor, setShownFor] = useState<string>();
+  if (show && editing.status === 'ready' && shownFor !== selectedNodeId) {
+    setShownFor(selectedNodeId);
+  }
+  if (!show && shownFor !== undefined) {
+    setShownFor(undefined);
+  }
+  const editingShown =
+    selectedNodeId !== undefined && shownFor === selectedNodeId;
+  const editingHidden = editingShown && editing.status !== 'ready';
+  const editingLocked =
+    selectedNode !== null && editing.status === 'locked' && !editingShown;
   useEffect(() => {
     if (!editingLocked) return;
     setShow(false);
@@ -271,7 +286,7 @@ const NodeForm = (props: NodeFormProps) => {
         </motion.div>
       </AnimatePresence>
       <Dialog
-        open={show && editing.status === 'ready'}
+        open={show && (editing.status === 'ready' || editingShown)}
         title={form.title}
         closeDialog={handleClose}
         dismissible={!submitting}
@@ -282,7 +297,7 @@ const NodeForm = (props: NodeFormProps) => {
             form="node-form"
             aria-label={intl.formatMessage(interfaceMessages.finished)}
             color="primary"
-            disabled={submitting}
+            disabled={submitting || editingHidden}
           >
             {intl.formatMessage(interfaceMessages.finished)}
           </Button>
@@ -295,7 +310,14 @@ const NodeForm = (props: NodeFormProps) => {
         >
           <SubmittingObserver onChange={setSubmitting} />
           {protectsAnswers && <PassphraseRecovery />}
-          {fieldComponents}
+          {editingHidden && (
+            <PassphraseNotice
+              status={editing.status === 'pending' ? 'pending' : 'locked'}
+            />
+          )}
+          <div hidden={editingHidden} className="contents">
+            {fieldComponents}
+          </div>
         </Form>
       </Dialog>
     </>

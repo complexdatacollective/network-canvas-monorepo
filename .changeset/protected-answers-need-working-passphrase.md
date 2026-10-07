@@ -75,7 +75,17 @@ answers; other interviews work as before.
   the protected answers as they were entered. Before, they compared with the
   stored, scrambled form, so a repeated name was accepted. This includes a
   relative's name in the Family Pedigree. Only the protected answers a
-  question compares with need to be readable, so another protected answer
-  that cannot be read no longer stops the question being checked. If the
-  answers it compares with cannot be read, the question says so and asks for
-  the passphrase instead of accepting the answer.
+  question compares with need to be readable: a question that must match
+  another of the same person's answers reads only that person's answers, and
+  a name that must not repeat reads only everyone else's. Another protected
+  answer that cannot be read no longer stops the question being checked. If
+  the answers it compares with cannot be read, the question says so and asks
+  for the passphrase instead of accepting the answer.
+- Answers being typed are kept when the passphrase is replaced with one that
+  cannot read them. The Network Composer's side panel, the questions asked
+  about each person or relationship, and the form for adding or editing a
+  person hide those answers and save none of them until the passphrase that
+  reads them is back, then show them as they were left. The side panel then
+  saves them and removes its message that they were not saved. Before, they
+  were lost. Leaving such a question before then warns that its answers have
+  not been saved.

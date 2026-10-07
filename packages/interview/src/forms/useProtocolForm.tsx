@@ -133,6 +133,7 @@ export default function useProtocolForm({
     stageValidationContext,
     subjectToStageSubject(stableSubject) ?? stageValidationContext.stageSubject,
     fieldsMetadata.map((field) => field.variable),
+    currentEntityId,
   );
 
   const validationContext = useMemo<ValidationContext | null>(() => {

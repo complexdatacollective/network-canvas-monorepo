@@ -99,6 +99,8 @@ const QuickNodeForm = ({
     baseValidationContext,
     baseValidationContext.stageSubject,
     [targetVariable],
+    // A new person, so the rules read only the others' stored answers.
+    undefined,
   );
   const validationContext: ValidationContext | undefined =
     baseValidationContext.stageSubject

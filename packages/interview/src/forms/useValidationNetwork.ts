@@ -30,20 +30,22 @@ const isReferenceRule = (rule: string) =>
   VARIABLE_REFERENCE_VALIDATIONS.some((reference) => reference === rule);
 
 /**
- * The variables stored encrypted (see `isAttributeEncrypted`) whose values the
- * rules of these variables compare with: `unique` reads every other person's
- * value for its own variable, and each rule that names another variable
- * (`sameAs`, `differentFrom` and the comparisons) falls back to that
- * variable's stored value.
+ * The variables stored encrypted (see `isAttributeEncrypted`) that the rules
+ * of these variables read from the network, by whose values they read:
+ * `unique` reads its own variable on every other person (`others`), and each
+ * rule that names another variable (`sameAs`, `differentFrom` and the
+ * comparisons) reads that variable on the person being edited (`current`),
+ * when the form does not hold it.
  */
 function getComparedEncryptedVariables(
   variables: Record<string, Variable>,
   variableIds: readonly string[],
   encryptionEnabled: boolean,
-): string[] {
+): { others: string[]; current: string[] } {
   const isEncrypted = (id: string) =>
     isAttributeEncrypted(encryptionEnabled, variables, id);
-  const compared = new Set<string>();
+  const others = new Set<string>();
+  const current = new Set<string>();
   for (const variableId of variableIds) {
     const variable = variables[variableId];
     if (!variable || !('validation' in variable) || !variable.validation) {
@@ -55,7 +57,7 @@ function getComparedEncryptedVariables(
       validation.unique &&
       isEncrypted(variableId)
     ) {
-      compared.add(variableId);
+      others.add(variableId);
     }
     for (const [rule, target] of Object.entries(validation)) {
       if (
@@ -63,44 +65,63 @@ function getComparedEncryptedVariables(
         typeof target === 'string' &&
         isEncrypted(target)
       ) {
-        compared.add(target);
+        current.add(target);
       }
     }
   }
-  return [...compared].toSorted();
+  return { others: [...others].toSorted(), current: [...current].toSorted() };
 }
 
-/** The network with its nodes of `type` replaced by `subjectNodes`. */
-const withSubjectNodes = (
+// A key rather than the array, so callers may pass a fresh `variableIds` on
+// every render without restarting the decryption. Variable ids cannot contain
+// a space (`VariableNameSchema`).
+const fromKey = (key: string) => (key === '' ? [] : key.split(' '));
+
+/** The network with each of `plaintextNodes` in place of the node it reads. */
+const withPlaintextNodes = (
   network: NcNetwork,
-  type: string,
-  subjectNodes: NcNode[],
-): NcNetwork => ({
-  ...network,
-  nodes: [
-    ...network.nodes.filter((node) => node.type !== type),
-    ...subjectNodes,
-  ],
-});
+  plaintextNodes: NcNode[],
+): NcNetwork => {
+  if (plaintextNodes.length === 0) return network;
+  const byId = new Map(plaintextNodes.map((node) => [node._uid, node]));
+  return {
+    ...network,
+    nodes: network.nodes.map((node) => byId.get(node._uid) ?? node),
+  };
+};
+
+type DecryptionStatus = ReturnType<typeof useDecryptedNodes>['status'];
+
+const combinedStatus = (statuses: DecryptionStatus[]): DecryptionStatus => {
+  if (statuses.includes('locked')) return 'locked';
+  if (statuses.includes('failed')) return 'failed';
+  if (statuses.includes('pending')) return 'pending';
+  return 'ready';
+};
 
 const unavailable = (message: string) => () =>
   Promise.reject(new Error(message));
 
 /**
  * The network that the validation rules of these variables' fields compare
- * against, to spread into their validation context. When a rule compares with
- * values stored encrypted, the subject's nodes come back with those values
- * decrypted, and the passphrase is asked for if it is not known yet. Only the
- * compared values are decrypted; the subject's other encrypted values are left
- * out. Until they are decrypted, `resolveNetwork` stands in: a validation run
- * waits for the decryption, or fails with the reason when no working
- * passphrase is in force, so a value is never checked against ciphertext. For
- * every other form it is the network as stored.
+ * against, to spread into their validation context alongside
+ * `currentEntityId`, the person being edited (none for a new one). When a rule
+ * compares with values stored encrypted, those values come back decrypted,
+ * and the passphrase is asked for if it is not known yet. Only the values the
+ * rules read are decrypted: `unique` on every other person, and the variables
+ * the other rules name on the person being edited. Everything else stays as
+ * stored, so an answer no rule reads, saved under another passphrase, can
+ * neither block validation nor flag the passphrase. Until they are decrypted,
+ * `resolveNetwork` stands in: a validation run waits for the decryption, or
+ * fails with the reason when no working passphrase is in force, so a value is
+ * never checked against ciphertext. For every other form it is the network as
+ * stored.
  */
 export function useValidationNetwork(
   { codebook, network }: { codebook: Codebook; network: NcNetwork },
   subject: StageSubject | null,
   variableIds: readonly string[],
+  currentEntityId: string | undefined,
 ): Pick<ValidationContext, 'network' | 'resolveNetwork'> {
   // Only node variables can be encrypted.
   const subjectType = subject?.entity === 'node' ? subject.type : undefined;
@@ -109,31 +130,41 @@ export function useValidationNetwork(
       ? codebook.node?.[subjectType]?.variables
       : undefined) ?? NO_VARIABLES;
   const { isEnabled } = usePassphrase();
-  // A key rather than the array, so callers may pass a fresh `variableIds`
-  // on every render without restarting the decryption. Variable ids cannot
-  // contain a space (`VariableNameSchema`).
-  const comparedKey = getComparedEncryptedVariables(
+  const compared = getComparedEncryptedVariables(
     variables,
     variableIds,
     isEnabled,
-  ).join(' ');
-  const compared = useMemo(
-    () => (comparedKey === '' ? [] : comparedKey.split(' ')),
-    [comparedKey],
   );
+  const othersKey = compared.others.join(' ');
+  const currentKey = compared.current.join(' ');
+  const othersRead = useMemo(() => fromKey(othersKey), [othersKey]);
+  const currentRead = useMemo(() => fromKey(currentKey), [currentKey]);
 
-  const comparedNodes = useMemo(() => {
-    if (compared.length === 0 || subjectType === undefined) return NO_NODES;
-    return network.nodes.filter((node) => node.type === subjectType);
-  }, [compared, subjectType, network.nodes]);
+  const otherNodes = useMemo(() => {
+    if (othersRead.length === 0 || subjectType === undefined) return NO_NODES;
+    return network.nodes.filter(
+      (node) => node.type === subjectType && node._uid !== currentEntityId,
+    );
+  }, [othersRead, subjectType, currentEntityId, network.nodes]);
+  const currentNodes = useMemo(() => {
+    if (currentRead.length === 0 || currentEntityId === undefined) {
+      return NO_NODES;
+    }
+    return network.nodes.filter(
+      (node) => node.type === subjectType && node._uid === currentEntityId,
+    );
+  }, [currentRead, subjectType, currentEntityId, network.nodes]);
 
-  const decrypted = useDecryptedNodes(comparedNodes, compared);
-  const comparesEncrypted = comparedNodes !== NO_NODES;
-  const status = comparesEncrypted ? decrypted.status : 'ready';
-  const decryptedNodes =
-    comparesEncrypted && decrypted.status === 'ready'
-      ? decrypted.nodes
-      : undefined;
+  const decryptedOthers = useDecryptedNodes(otherNodes, othersRead);
+  const decryptedCurrent = useDecryptedNodes(currentNodes, currentRead);
+  const status = combinedStatus([
+    decryptedOthers.status,
+    decryptedCurrent.status,
+  ]);
+  const plaintextOthers =
+    decryptedOthers.status === 'ready' ? decryptedOthers.nodes : NO_NODES;
+  const plaintextCurrent =
+    decryptedCurrent.status === 'ready' ? decryptedCurrent.nodes : NO_NODES;
 
   const scope = useDecryptionScope();
   const getCodebookVariablesForNodeType = useSelector(
@@ -143,10 +174,10 @@ export function useValidationNetwork(
   return useMemo(() => {
     if (status === 'ready') {
       return {
-        network:
-          decryptedNodes && subjectType !== undefined
-            ? withSubjectNodes(network, subjectType, decryptedNodes)
-            : network,
+        network: withPlaintextNodes(network, [
+          ...plaintextOthers,
+          ...plaintextCurrent,
+        ]),
       };
     }
     if (status === 'locked' || !scope) {
@@ -168,27 +199,32 @@ export function useValidationNetwork(
     return {
       network,
       resolveNetwork: async () => {
-        const plaintextNodes = await decryptNodes(
-          comparedNodes,
-          compared,
-          scope,
-          getCodebookVariablesForNodeType,
-          isEnabled,
-        ).catch(() => {
+        const decrypt = (nodes: NcNode[], reads: string[]) =>
+          decryptNodes(
+            nodes,
+            reads,
+            scope,
+            getCodebookVariablesForNodeType,
+            isEnabled,
+          );
+        const plaintextNodes = await Promise.all([
+          decrypt(otherNodes, othersRead),
+          decrypt(currentNodes, currentRead),
+        ]).catch(() => {
           throw new Error(createMessageError(runtimeMessages.decryptRetry));
         });
-        return subjectType === undefined
-          ? network
-          : withSubjectNodes(network, subjectType, plaintextNodes);
+        return withPlaintextNodes(network, plaintextNodes.flat());
       },
     };
   }, [
     status,
     network,
-    decryptedNodes,
-    comparedNodes,
-    compared,
-    subjectType,
+    plaintextOthers,
+    plaintextCurrent,
+    otherNodes,
+    othersRead,
+    currentNodes,
+    currentRead,
     scope,
     getCodebookVariablesForNodeType,
     isEnabled,

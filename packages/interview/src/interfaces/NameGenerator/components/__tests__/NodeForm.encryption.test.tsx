@@ -222,6 +222,54 @@ describe('NodeForm editing a person with an encrypted answer', () => {
     );
   });
 
+  it('hides an edit in progress, saving none of it, through a passphrase that cannot read it, then saves it once the right one is back', async () => {
+    const { store, onClose } = await renderEditing(
+      makeEncryptedPerson('n1', 'Alice', 'pw'),
+      'pw',
+    );
+    const user = userEvent.setup();
+
+    const name = await screen.findByRole('textbox', { name: 'Name' });
+    await user.clear(name);
+    await user.type(name, 'Alicia');
+    const before = store.getState().session.network;
+
+    act(() => {
+      store.dispatch(setPassphrase('another passphrase'));
+    });
+    const dialog = screen.getByRole('dialog', { name: 'Add a person' });
+    expect(
+      await within(dialog).findByText(
+        /enter your passphrase to see and change/i,
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: 'Name' })).toBeNull();
+    expect(
+      within(dialog).getByRole('button', { name: 'Finished' }),
+    ).toBeDisabled();
+    expect(onClose).not.toHaveBeenCalled();
+    expect(store.getState().session.network).toBe(before);
+
+    act(() => {
+      store.dispatch(setPassphrase('pw'));
+    });
+    expect(await screen.findByRole('textbox', { name: 'Name' })).toHaveValue(
+      'Alicia',
+    );
+    await user.click(screen.getByRole('button', { name: 'Finished' }));
+
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+    const { data, secureAttributes } = storedName(
+      store.getState().session.network.nodes[0],
+    );
+    if (!isNumberArray(data)) throw new Error('Expected a stored ciphertext');
+    if (!secureAttributes)
+      throw new Error('Expected secure-attribute metadata');
+    await expect(decryptData({ secureAttributes, data }, 'pw')).resolves.toBe(
+      'Alicia',
+    );
+  });
+
   it('keeps an edit in progress through a re-render and an unrelated change to the interview', async () => {
     const { store, rerender } = await renderEditing(
       makeEncryptedPerson('n1', 'Alice', 'pw'),

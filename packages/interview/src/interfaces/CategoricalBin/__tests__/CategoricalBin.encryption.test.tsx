@@ -433,13 +433,71 @@ describe('CategoricalBin validating an encrypted "other" answer', () => {
       stageVariables: uniqueVariables,
     });
 
-    await waitFor(() => expect(decryption.ready).toBe(true));
     await dropIntoOther();
     const input = await screen.findByRole('textbox');
+    await waitFor(() => expect(decryption.ready).toBe(true));
     fireEvent.change(input, { target: { value: 'Neighbour' } });
     fireEvent.click(screen.getByTestId('dialog-submit'));
 
     await waitFor(() => expect(input).toHaveAttribute('aria-invalid', 'true'));
+    expect(
+      store.getState().session.network.nodes[0]?.[entityAttributesProperty]
+        .otherReason,
+    ).toBeUndefined();
+  });
+
+  it("compares with the dropped person's own protected answer, whatever protects the others'", async () => {
+    const differentFromVariables: Record<string, Variable> = {
+      ...variables,
+      nickname: {
+        name: 'Nickname',
+        type: 'text',
+        component: 'Text',
+        encrypted: true,
+      },
+      otherReason: {
+        name: 'Other reason',
+        type: 'text',
+        component: 'Text',
+        encrypted: true,
+        validation: { differentFrom: asEntityAttributeReference('nickname') },
+      },
+    };
+    const withNickname = async (
+      id: string,
+      name: string,
+      nickname: string,
+      passphrase: string,
+    ): Promise<NcNode> => {
+      const { encryptedAttributes, secureAttributes } =
+        await generateSecureAttributes(
+          { name, nickname },
+          differentFromVariables,
+          passphrase,
+        );
+      return {
+        [entityPrimaryKeyProperty]: id,
+        type: 'person',
+        [entityAttributesProperty]: encryptedAttributes,
+        [entitySecureAttributesMeta]: secureAttributes,
+      };
+    };
+    const { store, dropIntoOther } = renderCategoricalBin('pw', {
+      subject: await withNickname('n1', 'Alice', 'Ally', 'pw'),
+      // Saved under another passphrase, and read by no rule of this answer.
+      others: [await withNickname('n2', 'Bob', 'Bobby', 'an older passphrase')],
+      stageVariables: differentFromVariables,
+    });
+
+    await dropIntoOther();
+    const input = await screen.findByRole('textbox');
+    fireEvent.change(input, { target: { value: 'Ally' } });
+    fireEvent.click(screen.getByTestId('dialog-submit'));
+
+    await waitFor(() => expect(input).toHaveAttribute('aria-invalid', 'true'));
+    expect(screen.queryByText(/problem decrypting the data/)).toBeNull();
+    expect(screen.queryByText(/Your answers have not been saved/)).toBeNull();
+    expect(store.getState().ui.passphraseInvalid).toBe(false);
     expect(
       store.getState().session.network.nodes[0]?.[entityAttributesProperty]
         .otherReason,

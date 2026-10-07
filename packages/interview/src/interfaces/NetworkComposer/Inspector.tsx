@@ -26,6 +26,7 @@ import { rejectedWriteMessage } from '../../forms/writeSubmissionResult';
 import { runtimeMessages } from '../../i18n/runtimeMessages';
 import type { Subject } from '../../selectors/forms';
 import type { AttributePatch } from '../../store/entityAttributePatch';
+import KeepWhileProtected from '../Anonymisation/KeepWhileProtected';
 import PassphraseNotice, {
   type PassphraseNoticeStatus,
 } from '../Anonymisation/PassphraseNotice';
@@ -40,7 +41,8 @@ export type InspectorProps = {
   attributes: Attributes;
   /**
    * Set while the entity's values cannot be shown or saved because they are
-   * encrypted; the form is replaced by an explanation.
+   * encrypted; the form is replaced by an explanation. A form already shown
+   * is only hidden, so what was entered comes back with it.
    */
   passphraseStatus?: PassphraseNoticeStatus;
   onSave: (id: string, attributePatch: AttributePatch) => Promise<void>;
@@ -55,10 +57,14 @@ const noopSubmit: FormSubmitHandler = () => ({ success: true as const });
 /**
  * Watches the form's values and, once they settle, validates and persists them
  * — so attribute edits save automatically (when valid) without a Save button.
+ * Nothing is saved while it is not `enabled`; an edit made before then is
+ * saved when it is enabled again.
  */
 function AutoPersist({
+  enabled,
   onValidValues,
 }: {
+  enabled: boolean;
   onValidValues: (values: Record<string, FieldValue>) => void;
 }) {
   const storeApi = useContext(FormStoreContext);
@@ -94,7 +100,7 @@ function AutoPersist({
       isInitial.current = false;
       return;
     }
-    if (!isDirty || !storeApi) return;
+    if (!enabled || !isDirty || !storeApi) return;
 
     const handle = setTimeout(() => {
       void storeApi
@@ -105,7 +111,7 @@ function AutoPersist({
         });
     }, AUTOSAVE_DELAY);
     return () => clearTimeout(handle);
-  }, [values, isDirty, storeApi, onValidValues]);
+  }, [enabled, values, isDirty, storeApi, onValidValues]);
 
   return null;
 }
@@ -115,9 +121,11 @@ function AttributeFormInner({
   form,
   subject,
   attributes,
+  canSave,
   onSave,
 }: Omit<InspectorProps, 'form' | 'onDelete' | 'passphraseStatus'> & {
   form: ComposerForm;
+  canSave: boolean;
 }) {
   const initialValues = useMemo(
     () =>
@@ -163,9 +171,18 @@ function AttributeFormInner({
         return;
       }
 
-      void onSave(entityId, patchResult.patch).catch((error: unknown) => {
-        showSaveFailure(rejectedWriteMessage(error));
-      });
+      void onSave(entityId, patchResult.patch).then(
+        () => {
+          // An edit refused earlier is saved now, so the refusal is gone.
+          const state = storeApi?.getState();
+          if (state && state.errors.formErrors.length > 0) {
+            state.setErrors(null);
+          }
+        },
+        (error: unknown) => {
+          showSaveFailure(rejectedWriteMessage(error));
+        },
+      );
     },
     [onSave, entityId, coerceValues, form.fields, initialValues, storeApi],
   );
@@ -177,7 +194,7 @@ function AttributeFormInner({
           <div>{fieldComponents}</div>
         </FormWithoutProvider>
       </ScrollArea>
-      <AutoPersist onValidValues={handleValidValues} />
+      <AutoPersist enabled={canSave} onValidValues={handleValidValues} />
     </div>
   );
 }
@@ -195,21 +212,31 @@ export default function Inspector({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      {hasFields && passphraseStatus ? (
-        <PassphraseNotice
-          status={passphraseStatus}
-          className="text-text/60 min-h-0 flex-1"
-        />
-      ) : hasFields ? (
-        <FormStoreProvider>
-          <AttributeFormInner
-            entityId={entityId}
-            form={form}
-            subject={subject}
-            attributes={attributes}
-            onSave={onSave}
-          />
-        </FormStoreProvider>
+      {hasFields ? (
+        <>
+          {passphraseStatus && (
+            <PassphraseNotice
+              status={passphraseStatus}
+              className="text-text/60 min-h-0 flex-1"
+            />
+          )}
+          <KeepWhileProtected
+            values={passphraseStatus ? undefined : attributes}
+          >
+            {(shownAttributes) => (
+              <FormStoreProvider>
+                <AttributeFormInner
+                  entityId={entityId}
+                  form={form}
+                  subject={subject}
+                  attributes={shownAttributes}
+                  canSave={!passphraseStatus}
+                  onSave={onSave}
+                />
+              </FormStoreProvider>
+            )}
+          </KeepWhileProtected>
+        </>
       ) : (
         <div className="text-text/60 flex min-h-0 flex-1 items-center justify-center p-6 text-center">
           <AppMessage message={interfaceMessages.noAttributes} />

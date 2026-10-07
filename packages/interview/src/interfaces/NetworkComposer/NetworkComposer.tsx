@@ -165,6 +165,8 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
     baseValidationContext,
     baseValidationContext.stageSubject,
     [stage.quickAdd],
+    // A new person, so the rules read only the others' stored answers.
+    undefined,
   );
   const quickAddValidationContext: ValidationContext | undefined =
     baseValidationContext.stageSubject

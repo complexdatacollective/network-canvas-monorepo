@@ -160,6 +160,7 @@ export default function PersonNameField({
     { codebook, network },
     stageSubject,
     [nodeLabelVariable],
+    currentEntityId,
   );
 
   const validationContext = useMemo<ValidationContext>(

@@ -13,7 +13,10 @@ import {
 } from 'react';
 import { useSelector } from 'react-redux';
 
-import { createMessageError } from '@codaco/app-i18n/messages';
+import {
+  createMessageError,
+  type MessageDescriptor,
+} from '@codaco/app-i18n/messages';
 import { useAppIntl, AppMessage } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
@@ -54,6 +57,7 @@ import type { Subject } from '../../selectors/forms';
 import { makeGetCodebookVariablesForNodeType } from '../../selectors/protocol';
 import type { AttributePatch } from '../../store/entityAttributePatch';
 import type { BeforeNextFunction, Direction } from '../../types';
+import KeepWhileProtected from '../Anonymisation/KeepWhileProtected';
 import { useProtectedFormValues } from '../Anonymisation/useProtectedFormValues';
 import { interfaceMessages } from '../messages';
 
@@ -86,20 +90,24 @@ const slideTransition = {
   damping: 15,
 };
 
-const discardChangesDialog = {
+const discardChangesDialog = (reason: MessageDescriptor | undefined) => ({
   title: <AppMessage message={interfaceMessages.discardChangesTitle} />,
   description: (
-    <AppMessage message={interfaceMessages.discardChangesDescription} />
+    <AppMessage
+      message={reason ?? interfaceMessages.discardChangesDescription}
+    />
   ),
   confirmLabel: <AppMessage message={interfaceMessages.discardChanges} />,
   cancelLabel: <AppMessage message={interfaceMessages.keepChanges} />,
   intent: 'destructive' as const,
-};
+});
 
 type SlideHandle = {
   validate: () => Promise<boolean>;
   submit: () => Promise<boolean>;
   isDirty: () => boolean;
+  /** Why the answers entered cannot be saved, for the warning before leaving. */
+  unsavedReason: () => MessageDescriptor;
   /**
    * Ask the slide's form to move to its first invalid question. The form does
    * that from a layout effect on the commit that renders the errors, so this
@@ -229,6 +237,7 @@ const SlideContentInner = forwardRef<SlideHandle, SlideFormProps>(
       // no longer had.
       isDirty: () =>
         storeApi ? selectIsFormDirty(storeApi.getState()) : false,
+      unsavedReason: () => interfaceMessages.discardChangesDescription,
       requestErrorFocus: () => storeApi?.getState().requestErrorFocus(),
       getFieldErrors: () =>
         buildProtocolFieldErrors(
@@ -283,6 +292,7 @@ const SlideContentInner = forwardRef<SlideHandle, SlideFormProps>(
  * Stands in for a slide whose answers are protected by the interview
  * passphrase while that passphrase is not in force (or its answers are still
  * being decrypted), so nothing can be entered that could not be saved.
+ * `isDirty` reports answers entered before the slide was hidden.
  */
 const ProtectedSlide = forwardRef<
   SlideHandle,
@@ -290,8 +300,9 @@ const ProtectedSlide = forwardRef<
     header: ReactNode;
     reason: 'pending' | 'passphrase-needed' | 'passphrase-invalid';
     onReadyChange: (ready: boolean) => void;
+    isDirty: () => boolean;
   }
->(function ProtectedSlide({ header, reason, onReadyChange }, ref) {
+>(function ProtectedSlide({ header, reason, onReadyChange, isDirty }, ref) {
   const noticeRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -301,7 +312,8 @@ const ProtectedSlide = forwardRef<
   useImperativeHandle(ref, () => ({
     validate: async () => false,
     submit: async () => false,
-    isDirty: () => false,
+    isDirty,
+    unsavedReason: () => runtimeMessages.protectedAnswersNotSaved,
     requestErrorFocus: () => noticeRef.current?.focus(),
     getFieldErrors: () => [],
   }));
@@ -335,6 +347,8 @@ const ProtectedSlide = forwardRef<
 
 const NO_VARIABLES = {};
 
+const ignoreReadiness = () => undefined;
+
 const SlideContent = forwardRef<SlideHandle, SlideContentProps>(
   function SlideContent(props, ref) {
     const { item, form, subject } = props;
@@ -348,37 +362,44 @@ const SlideContent = forwardRef<SlideHandle, SlideContentProps>(
       form.fields,
       variables,
     );
-
-    if (protectedValues.status === 'pending') {
-      return (
-        <ProtectedSlide
-          ref={ref}
-          header={props.header}
-          reason="pending"
-          onReadyChange={props.onReadyChange}
-        />
-      );
-    }
-
-    if (protectedValues.status === 'locked') {
-      return (
-        <ProtectedSlide
-          ref={ref}
-          header={props.header}
-          reason={protectedValues.reason}
-          onReadyChange={props.onReadyChange}
-        />
-      );
-    }
+    // The slide's form while it is hidden, which still knows what was entered.
+    const hiddenSlideRef = useRef<SlideHandle>(null);
+    const ready = protectedValues.status === 'ready';
 
     return (
-      <FormStoreProvider>
-        <SlideContentInner
-          ref={ref}
-          {...props}
-          initialValues={protectedValues.values}
-        />
-      </FormStoreProvider>
+      <>
+        {protectedValues.status !== 'ready' && (
+          <ProtectedSlide
+            ref={ref}
+            header={props.header}
+            reason={
+              protectedValues.status === 'pending'
+                ? 'pending'
+                : protectedValues.reason
+            }
+            onReadyChange={props.onReadyChange}
+            isDirty={() => hiddenSlideRef.current?.isDirty() ?? false}
+          />
+        )}
+        <KeepWhileProtected
+          values={
+            protectedValues.status === 'ready'
+              ? protectedValues.values
+              : undefined
+          }
+        >
+          {(initialValues) => (
+            <FormStoreProvider>
+              <SlideContentInner
+                ref={ready ? ref : hiddenSlideRef}
+                {...props}
+                onReadyChange={ready ? props.onReadyChange : ignoreReadiness}
+                initialValues={initialValues}
+              />
+            </FormStoreProvider>
+          )}
+        </KeepWhileProtected>
+      </>
     );
   },
 );
@@ -457,7 +478,7 @@ export default function SlidesForm({
       }
 
       const discarded = await confirm({
-        ...discardChangesDialog,
+        ...discardChangesDialog(slideRef.current?.unsavedReason()),
         onConfirm: () => {
           track('form_dismissed_without_save', { form_kind });
         },
@@ -479,7 +500,7 @@ export default function SlidesForm({
 
       if (!formIsValid && slideRef.current?.isDirty()) {
         await confirm({
-          ...discardChangesDialog,
+          ...discardChangesDialog(slideRef.current?.unsavedReason()),
           onConfirm: () => {
             track('form_dismissed_without_save', { form_kind });
             setActiveIndex((prev) => prev - 1);

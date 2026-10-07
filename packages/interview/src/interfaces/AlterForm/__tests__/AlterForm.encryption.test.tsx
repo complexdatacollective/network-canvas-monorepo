@@ -83,23 +83,29 @@ async function renderAlterForm(
   passphrase?: string,
   encryptionEnabled = true,
   storedPerson?: NcNode,
+  others: NcNode[] = [],
 ) {
   const person =
     storedPerson ??
     (encryptionEnabled
       ? await makeEncryptedPerson('n1', 'Alice', 'pw')
       : makePlainPerson('n1', 'Alice'));
-  const store = createEncryptionStore([person], alterFormStages, undefined, {
-    encryptionEnabled,
-  });
+  const store = createEncryptionStore(
+    [person, ...others],
+    alterFormStages,
+    undefined,
+    { encryptionEnabled },
+  );
   if (passphrase) store.dispatch(setPassphrase(passphrase));
 
   const onStepChange = vi.fn();
   let moveForward: (() => Promise<void>) | undefined;
+  let moveBackward: (() => Promise<void>) | undefined;
 
   function Harness() {
     const navigation = useInterviewNavigation(0);
     moveForward = navigation.moveForward;
+    moveBackward = navigation.moveBackward;
     if (alterFormStage?.type !== 'AlterForm') return null;
 
     return (
@@ -131,11 +137,16 @@ async function renderAlterForm(
     act(async () => {
       await moveForward?.();
     });
+  // Not awaited: going back can wait on a confirmation the test answers.
+  const back = () =>
+    act(() => {
+      void moveBackward?.();
+    });
 
   // Leave the introduction for the first person's questions.
   await next();
 
-  return { store, onStepChange, next };
+  return { store, onStepChange, next, back };
 }
 
 describe('AlterForm with an encrypted question', () => {
@@ -237,6 +248,74 @@ describe('AlterForm with an encrypted question', () => {
     expect(screen.getByRole('textbox', { name: 'Name' })).toHaveValue('Alicia');
     expect(onStepChange).not.toHaveBeenCalled();
     expect(store.getState().session.network).toBe(before);
+  });
+});
+
+describe('AlterForm while a passphrase that cannot read the answers is in force', () => {
+  it('keeps answers being entered, saving none, until the passphrase that reads them is back', async () => {
+    const { store, onStepChange, next } = await renderAlterForm('pw');
+    const user = userEvent.setup();
+
+    const name = await screen.findByRole('textbox', { name: 'Name' });
+    await user.clear(name);
+    await user.type(name, 'Alicia');
+    const before = store.getState().session.network;
+
+    act(() => {
+      store.dispatch(setPassphrase('another passphrase'));
+    });
+    expect(
+      await screen.findByText(/There was a problem decrypting the data/),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: 'Name' })).toBeNull();
+    await next();
+    expect(onStepChange).not.toHaveBeenCalled();
+    expect(store.getState().session.network).toBe(before);
+
+    act(() => {
+      store.dispatch(setPassphrase('pw'));
+    });
+    expect(await screen.findByRole('textbox', { name: 'Name' })).toHaveValue(
+      'Alicia',
+    );
+    await next();
+
+    await waitFor(() => expect(onStepChange).toHaveBeenCalled());
+    const [saved] = store.getState().session.network.nodes;
+    const stored = saved?.[entityAttributesProperty].name;
+    const secure = saved?.[entitySecureAttributesMeta]?.name;
+    if (!isNumberArray(stored)) throw new Error('Expected a stored ciphertext');
+    if (!secure) throw new Error('Expected secure-attribute metadata');
+    await expect(
+      decryptData({ secureAttributes: secure, data: stored }, 'pw'),
+    ).resolves.toBe('Alicia');
+  });
+
+  it('says the answers entered were not saved before leaving them behind', async () => {
+    const { store, next, back } = await renderAlterForm('pw', true, undefined, [
+      await makeEncryptedPerson('n2', 'Bob', 'pw'),
+    ]);
+    const user = userEvent.setup();
+
+    // Save the first person unchanged, for the second person's questions.
+    await screen.findByRole('textbox', { name: 'Name' });
+    await next();
+    const name = await screen.findByRole('textbox', { name: 'Name' });
+    await waitFor(() => expect(name).toHaveValue('Bob'));
+    await user.clear(name);
+    await user.type(name, 'Robert');
+
+    act(() => {
+      store.dispatch(setPassphrase('another passphrase'));
+    });
+    await screen.findByText(/There was a problem decrypting the data/);
+    await back();
+
+    const warning = await screen.findByRole('dialog', {
+      name: 'Discard changes?',
+    });
+    expect(warning).toHaveTextContent(/Your answers have not been saved/);
+    expect(warning).not.toHaveTextContent(/invalid data/);
   });
 });
 
