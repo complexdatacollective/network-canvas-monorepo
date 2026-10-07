@@ -337,6 +337,35 @@ export function makeSyncServer(options: SyncServerOptions = {}) {
   });
 
   /**
+   * Heartbeat for every live lease one owner holds on a draft, whatever its
+   * epoch: the owner is the tab, and a lease it re-acquired after an expiry is
+   * still its own to keep alive. Like `renew`, it cannot resurrect an expired
+   * lease, and it never touches another owner's.
+   */
+  const renewHeld = Effect.fn('sync.renewHeld')(function* (
+    draftId: string,
+    owner: string,
+  ) {
+    const { tx, teamId } = yield* tenant();
+    return yield* tx
+      .update(leases)
+      .set({ expiresAt: expiryFromNow(ttlMs) })
+      .where(
+        and(
+          eq(leases.draftId, draftId),
+          eq(leases.owner, owner),
+          eq(leases.teamId, teamId),
+          gt(leases.expiresAt, clockNow()),
+        ),
+      )
+      .returning({
+        sectionId: leases.sectionId,
+        epoch: leases.epoch,
+        expiresAt: leases.expiresAt,
+      });
+  });
+
+  /**
    * Clean release: expire in place. The row (and its epoch) survives so
    * epochs stay monotonic per section for the lifetime of the draft.
    */
@@ -684,6 +713,7 @@ export function makeSyncServer(options: SyncServerOptions = {}) {
     acquire,
     takeover,
     renew,
+    renewHeld,
     release,
     commit,
     resume,

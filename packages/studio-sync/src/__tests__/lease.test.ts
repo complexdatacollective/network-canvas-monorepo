@@ -178,6 +178,96 @@ describe.skipIf(!dbAvailable)('lease state machine', () => {
     expect(b?.epoch).toBe(2n);
   });
 
+  describe('renewing everything an owner holds', () => {
+    type ExpiryRow = { section_id: string; owner: string; expires_at: Date };
+
+    const expiries = async (draft: string): Promise<Map<string, ExpiryRow>> => {
+      const res = await db.query(
+        `SELECT section_id, owner, expires_at FROM leases WHERE draft_id = $1`,
+        [draft],
+      );
+      return new Map(
+        (res.rows as ExpiryRow[]).map((row) => [row.section_id, row]),
+      );
+    };
+
+    it("renews each of the owner's live leases on the draft, with its epoch", async () => {
+      const draft = await makeDraft(server);
+      const other = await makeDraft(server);
+      await server.acquire(draft, 'stage-1', 'tab-A');
+      await server.acquire(draft, 'stage-2', 'tab-A');
+      await expireLease(run, draft, 'stage-2');
+      expect((await server.acquire(draft, 'stage-2', 'tab-A'))?.epoch).toBe(2n);
+      await server.acquire(other, 'stage-1', 'tab-A');
+      const before = await expiries(draft);
+      const otherBefore = await expiries(other);
+
+      const renewed = await server.renewHeld(draft, 'tab-A');
+
+      expect(
+        renewed
+          .map(({ sectionId, epoch }) => ({ sectionId, epoch }))
+          .toSorted((a, b) => a.sectionId.localeCompare(b.sectionId)),
+      ).toEqual([
+        { sectionId: 'stage-1', epoch: 1n },
+        { sectionId: 'stage-2', epoch: 2n },
+      ]);
+      const after = await expiries(draft);
+      for (const lease of renewed) {
+        const previous = before.get(lease.sectionId)?.expires_at.getTime();
+        expect(previous).toBeDefined();
+        expect(lease.expiresAt.getTime()).toBeGreaterThan(previous ?? 0);
+        expect(after.get(lease.sectionId)?.expires_at.getTime()).toBe(
+          lease.expiresAt.getTime(),
+        );
+      }
+      expect((await expiries(other)).get('stage-1')?.expires_at).toEqual(
+        otherBefore.get('stage-1')?.expires_at,
+      );
+    });
+
+    it('never resurrects an expired lease', async () => {
+      const draft = await makeDraft(server);
+      await server.acquire(draft, 'stage-1', 'tab-A');
+      await server.acquire(draft, 'stage-2', 'tab-A');
+      await expireLease(run, draft, 'stage-1');
+      const before = await expiries(draft);
+
+      const renewed = await server.renewHeld(draft, 'tab-A');
+
+      expect(renewed.map((lease) => lease.sectionId)).toEqual(['stage-2']);
+      expect((await expiries(draft)).get('stage-1')?.expires_at).toEqual(
+        before.get('stage-1')?.expires_at,
+      );
+      expect((await server.acquire(draft, 'stage-1', 'tab-B'))?.epoch).toBe(2n);
+    });
+
+    it("leaves another owner's lease untouched", async () => {
+      const draft = await makeDraft(server);
+      await server.acquire(draft, 'stage-1', 'tab-A');
+      await server.acquire(draft, 'stage-2', 'tab-B');
+      const before = await expiries(draft);
+
+      const renewed = await server.renewHeld(draft, 'tab-A');
+
+      expect(renewed.map((lease) => lease.sectionId)).toEqual(['stage-1']);
+      const after = await expiries(draft);
+      expect(after.get('stage-2')?.owner).toBe('tab-B');
+      expect(after.get('stage-2')?.expires_at).toEqual(
+        before.get('stage-2')?.expires_at,
+      );
+    });
+
+    it('renews nothing for an owner that holds nothing', async () => {
+      const draft = await makeDraft(server);
+      await server.acquire(draft, 'stage-1', 'tab-A');
+      const before = await expiries(draft);
+
+      expect(await server.renewHeld(draft, 'tab-B')).toEqual([]);
+      expect(await expiries(draft)).toEqual(before);
+    });
+  });
+
   it('refuses a lease for a section the draft does not contain', async () => {
     const draft = await makeDraft(server);
     await expect(
