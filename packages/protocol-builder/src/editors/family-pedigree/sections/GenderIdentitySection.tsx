@@ -144,8 +144,17 @@ export default function GenderIdentitySection() {
       : variablesForSubject(protocolContext, personSubject)[genderVariableId];
   const genderOptions =
     genderVariable?.type === 'categorical' ? genderVariable.options : undefined;
-  const committedTerms = startingTerms(
-    get(committedFields, NODE_CONFIGURATION_PATHS.genderIdentityTerms),
+  // One array per committed mapping, not one per render: the field
+  // re-registers whenever its `initialValue` changes identity, and a
+  // registration is a form change the host re-renders this section for, so a
+  // fresh array every render loops until React gives up.
+  const committedTermsValue: unknown = get(
+    committedFields,
+    NODE_CONFIGURATION_PATHS.genderIdentityTerms,
+  );
+  const committedTerms = useMemo(
+    () => startingTerms(committedTermsValue),
+    [committedTermsValue],
   );
   const draftTerms = useStageValue(
     NODE_CONFIGURATION_PATHS.genderIdentityTerms,
