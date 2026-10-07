@@ -31,6 +31,8 @@ const NODE_TYPE = 'person';
 const NAME_VAR = 'name';
 const NICKNAME_VAR = 'nickname';
 const NOTES_VAR = 'notes';
+const SECRET_VAR = 'secret';
+const PET_TYPE = 'pet';
 const NODE_ID = 'node-1';
 const PASSPHRASE = 'protocol form passphrase';
 
@@ -49,6 +51,21 @@ const variables: Record<string, Variable> = {
     validation: { differentFrom: asEntityAttributeReference(NAME_VAR) },
   },
   [NOTES_VAR]: { name: 'notes', type: 'text', component: 'Text' },
+  [SECRET_VAR]: {
+    name: 'secret',
+    type: 'text',
+    component: 'Text',
+    encrypted: true,
+  },
+};
+
+const petVariables: Record<string, Variable> = {
+  [NAME_VAR]: {
+    name: 'name',
+    type: 'text',
+    component: 'Text',
+    encrypted: true,
+  },
 };
 
 const codebook: Codebook = {
@@ -59,6 +76,12 @@ const codebook: Codebook = {
       shape: { default: 'circle' },
       variables,
     },
+    [PET_TYPE]: {
+      name: 'Pet',
+      color: 'node-color-seq-2',
+      shape: { default: 'square' },
+      variables: petVariables,
+    },
   },
   edge: {},
   ego: { variables: {} },
@@ -68,16 +91,23 @@ function fieldFor(variable: string): FormField[] {
   return [{ variable: asEntityAttributeReference(variable), prompt: 'Answer' }];
 }
 
-async function encryptedNode(): Promise<NcNode> {
+async function encryptedNode(
+  attributes: Record<string, string> = { [NAME_VAR]: 'Alice' },
+  {
+    id = NODE_ID,
+    type = NODE_TYPE,
+    passphrase = PASSPHRASE,
+  }: { id?: string; type?: string; passphrase?: string } = {},
+): Promise<NcNode> {
   const { encryptedAttributes, secureAttributes } =
     await generateSecureAttributes(
-      { [NAME_VAR]: 'Alice' },
-      variables,
-      PASSPHRASE,
+      attributes,
+      type === PET_TYPE ? petVariables : variables,
+      passphrase,
     );
   return {
-    [entityPrimaryKeyProperty]: NODE_ID,
-    type: NODE_TYPE,
+    [entityPrimaryKeyProperty]: id,
+    type,
     [entityAttributesProperty]: encryptedAttributes,
     [entitySecureAttributesMeta]: secureAttributes,
   };
@@ -238,6 +268,36 @@ describe('useProtocolForm validating against encrypted values', () => {
     await expect(
       resolvedNetwork(result.current.fieldComponents),
     ).rejects.toThrow(createMessageError(runtimeMessages.decryptRetry));
+  });
+
+  it('compares with the values its rules need when other saved values cannot be decrypted', async () => {
+    const store = makeStore(
+      [
+        await encryptedNode(),
+        // Saved under another passphrase: an answer no rule here compares
+        // with, and a pet, whose names are not the people's.
+        await encryptedNode(
+          { [SECRET_VAR]: 'kept to themselves' },
+          { id: 'node-2', passphrase: 'an older passphrase' },
+        ),
+        await encryptedNode(
+          { [NAME_VAR]: 'Rex' },
+          { id: 'pet-1', type: PET_TYPE, passphrase: 'an older passphrase' },
+        ),
+      ],
+      PASSPHRASE,
+    );
+    const { result } = renderForm(store, NAME_VAR);
+
+    await waitFor(() => {
+      expect(validatedValue(result.current.fieldComponents, NAME_VAR)).toBe(
+        'Alice',
+      );
+    });
+    expect(
+      validationContextOf(result.current.fieldComponents)?.resolveNetwork,
+    ).toBeUndefined();
+    expect(store.getState().ui.passphraseInvalid).toBe(false);
   });
 
   it('leaves a form that compares with no encrypted value on the stored network', async () => {
