@@ -158,6 +158,7 @@ type LoadState =
   | { kind: 'unreadable' }
   | {
       kind: 'ready';
+      sessionId: string;
       payload: InterviewPayload;
       resolver: (id: string) => Promise<string>;
       readOnly: boolean;
@@ -185,7 +186,16 @@ const discardFinish: FinishHandler = () => Promise.resolve();
 export function InterviewRoute({ sessionId }: { sessionId: string }) {
   const intl = useAppIntl();
   const { preference, setPreference } = useInterviewerLocale();
-  const [state, setState] = useState<LoadState>({ kind: 'loading' });
+  const [loadState, setLoadState] = useState<LoadState>({ kind: 'loading' });
+  // This route re-renders rather than remounting when sessionId changes, so a
+  // ready state can still belong to the previous interview while the next one
+  // loads. Treat it as loading: leaving that Shell mounted would hand it
+  // handlers bound to the new id, and its next step change would write the old
+  // interview's progress into the new session.
+  const state: LoadState =
+    loadState.kind === 'ready' && loadState.sessionId !== sessionId
+      ? { kind: 'loading' }
+      : loadState;
   const [, navigate] = useLocation();
   const search = useSearch();
   const reviewRequested = new URLSearchParams(search).get('mode') === 'review';
@@ -258,8 +268,7 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
     enabled: analyticsEnabled,
     captureException,
   } = useAnalytics();
-  // An effect event, not a load-effect dependency: captureException changes
-  // identity when the analytics opt-in flips, and re-running the load would
+  // An effect event, not a load-effect dependency: re-running the load would
   // re-hydrate an interview already in progress.
   const reportLoadFailure = useEffectEvent((cause: unknown) => {
     captureException(cause, { feature: 'interview-load' });
@@ -305,7 +314,7 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
       if (!active) return;
       const session = await getSession(sessionId);
       if (!session) {
-        if (active) setState({ kind: 'missing' });
+        if (active) setLoadState({ kind: 'missing' });
         return;
       }
       // Bail if a sessionId change / unmount tore down this load while we
@@ -317,7 +326,7 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
       setAuthorizedInterviewId(sessionId);
       const protocol = await getProtocolByHash(session.protocolHash);
       if (!protocol) {
-        if (active) setState({ kind: 'missing' });
+        if (active) setLoadState({ kind: 'missing' });
         return;
       }
       // The launch-time sweep migrates stored protocols before routes render,
@@ -325,7 +334,7 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
       // not be migrated. Refuse to run rather than hand the runtime a document
       // it cannot execute.
       if (protocol.schemaVersion !== COMPATIBLE_PROTOCOL_SCHEMA_VERSION) {
-        if (active) setState({ kind: 'incompatible' });
+        if (active) setLoadState({ kind: 'incompatible' });
         return;
       }
       const assets = await buildResolvedAssets(session.protocolHash);
@@ -358,8 +367,9 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
       setCurrentStep(initialStep);
       currentStepRef.current = initialStep;
       setAllowStageNavigation(settings.allowStageNavigation);
-      setState({
+      setLoadState({
         kind: 'ready',
+        sessionId,
         payload,
         resolver: makeAssetResolver(session.protocolHash, protocol.importedAt),
         readOnly,
@@ -379,7 +389,7 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
     // Shell (and with it every autosave) and report the failure.
     load().catch((cause: unknown) => {
       if (!active) return;
-      setState({ kind: 'unreadable' });
+      setLoadState({ kind: 'unreadable' });
       reportLoadFailure(cause);
     });
     return () => {
