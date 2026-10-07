@@ -565,6 +565,109 @@ export const anonymisationScenarios: InterfaceScenarios = {
     },
 
     {
+      id: 'resume-in-portrait-unlocks-through-prompter',
+      covers: ['encryptedVariable.missingPassphrase.horizontalPrompter'],
+      slow: true,
+      build: () => {
+        const synth = new SyntheticInterview();
+        synth.addInformationStage({
+          title: 'Introduction',
+          text: 'Before the anonymisation stage.',
+        });
+        const person = synth.addNodeType();
+        const nameVar = person.addVariable({
+          name: 'name',
+          type: 'text',
+          encrypted: true,
+        });
+        synth.addStage('Anonymisation', {
+          explanationText: {
+            title: 'Protect your data',
+            body: 'This study encrypts participant names.',
+          },
+        });
+        const generator = synth.addStage('NameGeneratorQuickAdd', {
+          subject: { entity: 'node', type: person.id },
+          quickAdd: nameVar.id,
+        });
+        generator.addPrompt({ text: 'Add a person (this will be encrypted)' });
+        return synth;
+      },
+      currentStep: 0,
+      run: async ({ page, interview, stage }) => {
+        const anon = new AnonymisationFixture(page);
+        await interview.next(); // Introduction -> Anonymisation
+
+        await anon.fillPassphrase('first-phrase');
+        await anon.submit();
+        await expect(anon.successAlert()).toBeVisible();
+        await interview.next(); // -> NameGeneratorQuickAdd (step 2)
+
+        await stage.quickAdd.addNode('Alice');
+        await expect(page.getByRole('option', { name: 'Alice' })).toBeVisible();
+
+        // The participant resumes on a phone held upright, where the
+        // navigation is a bar along the bottom of the screen rather than a
+        // rail down its side. The key is gone from memory.
+        const portrait = { width: 390, height: 844 };
+        await page.setViewportSize(portrait);
+        await interview.resume();
+        await expect(page.getByRole('option', { name: '🔒' })).toBeVisible();
+        await expect.poll(() => stage.quickAdd.isDisabled()).toBe(true);
+
+        const navigation = page.getByRole('navigation');
+        await expect
+          .poll(async () => {
+            const bar = await navigation.boundingBox();
+            return (
+              bar !== null &&
+              bar.width > bar.height &&
+              Math.round(bar.y + bar.height) === portrait.height
+            );
+          })
+          .toBe(true);
+
+        // encryptedVariable.missingPassphrase.horizontalPrompter: the prompter
+        // is in the bottom bar, wholly on screen and inside it.
+        const prompter = navigation.getByRole('button', {
+          name: 'Enter your Passphrase',
+          exact: true,
+        });
+        await expect(prompter).toContainText('🔑');
+        await expect(prompter).toBeInViewport({ ratio: 1 });
+        await expect
+          .poll(async () => {
+            const bar = await navigation.boundingBox();
+            const button = await prompter.boundingBox();
+            return (
+              bar !== null &&
+              button !== null &&
+              button.x >= bar.x &&
+              button.y >= bar.y &&
+              button.x + button.width <= bar.x + bar.width &&
+              button.y + button.height <= bar.y + bar.height
+            );
+          })
+          .toBe(true);
+
+        // A passphrase was chosen in this interview, so the prompter asks for
+        // it once, and entering it unlocks the answer.
+        await anon.openPrompter();
+        await expect(
+          anon.prompterDialog('Enter your Passphrase'),
+        ).toBeVisible();
+        await expect(anon.confirmField()).toHaveCount(0);
+        await anon.submitPrompterPassphrase('first-phrase');
+        await expect(anon.prompterDialog('Enter your Passphrase')).toHaveCount(
+          0,
+        );
+        await expect(page.getByRole('option', { name: 'Alice' })).toBeVisible();
+        await expect(anon.prompterButton()).toHaveCount(0);
+        await expect.poll(() => stage.quickAdd.isDisabled()).toBe(false);
+      },
+    },
+
+    {
       id: 'resume-asks-for-chosen-passphrase',
       covers: [
         'passphrase.resume.verifyMode',
