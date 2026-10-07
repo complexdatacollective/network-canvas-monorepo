@@ -40,6 +40,7 @@ import {
 import { Doorbell } from './doorbell.ts';
 import { type LoggedProtocolEvent, RELAY_BATCH } from './events.ts';
 import type { ProtocolBuilderSession } from './host.ts';
+import { catchLoopDefect } from './loop-defects.ts';
 import { socketClosure } from './socket-closure.ts';
 
 const QUEUE_LIMIT = 1024;
@@ -201,12 +202,6 @@ export class ProtocolEvents extends Context.Service<
         const withDatabase = Effect.provideService(Database, database);
 
         const closed = Effect.map(socketClosure(triggers), Option.isSome);
-
-        /** Keeps a scheduled loop running past a defect in one of its passes. */
-        const logDefect = (message: string) =>
-          Effect.catchCause((cause: Cause.Cause<unknown>) =>
-            Effect.logError(message, cause),
-          );
 
         const offer = (
           relay: Relay,
@@ -522,7 +517,7 @@ export class ProtocolEvents extends Context.Service<
             concurrency: POLL_CONCURRENCY,
             discard: true,
           });
-        }).pipe(logDefect('Polling protocol-builder relays failed'));
+        }).pipe(catchLoopDefect('Polling protocol-builder relays failed'));
 
         yield* poll.pipe(
           Effect.schedule(Schedule.spaced(safetyPollMs)),
@@ -535,7 +530,7 @@ export class ProtocolEvents extends Context.Service<
             Queue.offerUnsafe(relay.wake, undefined);
           heldBack.clear();
         }).pipe(
-          logDefect('Reopening held-back protocol-builder relays failed'),
+          catchLoopDefect('Reopening held-back protocol-builder relays failed'),
           Effect.schedule(Schedule.spaced(REOPEN_CHECK_MS)),
           Effect.forkScoped,
         );
@@ -559,6 +554,9 @@ export class ProtocolEvents extends Context.Service<
           return Effect.asVoid(Effect.forkIn(jittered, scope));
         });
 
+        const signalDefect = catchLoopDefect(
+          'Handling a protocol-builder doorbell signal failed',
+        );
         const signals = yield* doorbell.signals;
         yield* Stream.runForEach(signals, (signal) =>
           Effect.suspend(() => {
@@ -570,9 +568,7 @@ export class ProtocolEvents extends Context.Service<
               return Effect.void;
             }
             return markDirty(relay, EVENTS);
-          }).pipe(
-            logDefect('Handling a protocol-builder doorbell signal failed'),
-          ),
+          }).pipe(signalDefect),
         ).pipe(Effect.forkScoped);
 
         const joinExisting = (draftId: string, watcher: Watcher) =>

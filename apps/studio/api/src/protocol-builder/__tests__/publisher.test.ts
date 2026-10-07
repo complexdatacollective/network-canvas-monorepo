@@ -1151,6 +1151,48 @@ describe.skipIf(!testDb)('the protocol-builder relay', () => {
       }
     });
 
+    it('logs a reopen check’s recurring defect once, not at every check', async () => {
+      const gate = closable();
+      const writer = scripted();
+      const reader = scripted();
+      const logs: Logged[] = [];
+      const { client: a } = await replica({ doorbell: writer.doorbell });
+      const { client: b } = await replica({
+        doorbell: reader.doorbell,
+        maintenance: gate.triggers,
+        logs,
+      });
+      const channel = await watching(socket('reopen-repeat'), protocolId, b);
+      try {
+        gate.setClosed(true);
+        const stage = await createOn(a, 'Held back past a recurring fault');
+        await until(
+          () => writer.rung.some((ring) => ring._tag === 'Advanced'),
+          'the writer to ring',
+        );
+        for (const ring of writer.rung) reader.send(ring);
+        await settle();
+
+        gate.setFaulty(true);
+        // Six reopen checks, each of which dies.
+        await settle(1_500);
+        gate.setFaulty(false);
+        gate.setClosed(false);
+        await until(
+          () => revisionsOf(channel.events, stage.sectionId).length > 0,
+          'the held-back read once the database reopens',
+          2_000,
+        );
+        expect(
+          logs.filter((log) => log.text.startsWith('Reopening')),
+        ).toHaveLength(1);
+      } finally {
+        gate.setFaulty(false);
+        gate.setClosed(false);
+        await channel.stop();
+      }
+    });
+
     it('keeps polling after a poll that died', async () => {
       const gate = closable();
       const { client: a } = await replica({ doorbell: scripted().doorbell });

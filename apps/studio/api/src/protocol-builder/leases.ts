@@ -30,6 +30,7 @@ import {
 } from './connections.ts';
 import type { LoggedProtocolEvent } from './events.ts';
 import { sessionOwner, type ProtocolBuilderSession } from './host.ts';
+import { catchLoopDefect } from './loop-defects.ts';
 import { IDLE_MS } from './schema.ts';
 import { socketClosure } from './socket-closure.ts';
 
@@ -279,9 +280,7 @@ export class Leases extends Context.Service<
       };
 
       yield* tick.pipe(
-        Effect.catchCause((cause) =>
-          Effect.logError('Renewing protocol-builder leases failed', cause),
-        ),
+        catchLoopDefect('Renewing protocol-builder leases failed'),
         Effect.schedule(Schedule.spaced(RENEW_INTERVAL_MS)),
         Effect.forkScoped,
       );
