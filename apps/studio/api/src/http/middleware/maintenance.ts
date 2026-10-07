@@ -1,4 +1,4 @@
-import { Context, Effect, Layer, Option } from 'effect';
+import { Context, Effect, Exit, Layer, Option, Ref } from 'effect';
 import { HttpRouter, HttpServerRequest, HttpServerResponse } from 'effect/http';
 
 import { MAINTENANCE_PROBLEM_TYPE } from '@codaco/studio-contract/schema/problem';
@@ -10,6 +10,7 @@ import { BootChecks } from '../../platform/boot-checks.ts';
 import {
   cachedReading,
   MaintenanceState,
+  READING_BOUND,
 } from '../../platform/maintenance-state.ts';
 import { SchemaStatus } from '../../platform/schema-gate.ts';
 import type { CheckVerdict, HealthCheck } from '../health.ts';
@@ -20,6 +21,14 @@ import type { CheckVerdict, HealthCheck } from '../health.ts';
 // so readiness says `maintenance` for as long as the flag is set. `starting`
 // is last because it reads nothing from the database: it is what keeps the
 // gate closed when every reading above has failed open.
+//
+// A closure the flag or the lock shut reopens only on a schema read taken
+// after it lifted. Nothing reads the schema while either is in force, which is
+// exactly when a migration runs, so the last schema reading is what was true
+// before: "current" for this build, which the migration may have made untrue.
+// A failed or slow reading answers that last value, so the first read after a
+// closure bypasses the cached reading, and one that fails or is slow keeps the
+// gate shut rather than reopening it on the old value.
 
 export type Closure = {
   readonly trigger: 'maintenance' | 'migration' | 'schema' | 'starting';
@@ -60,12 +69,40 @@ export class MaintenanceTriggers extends Context.Service<
           read: probes.schema,
           initial: CURRENT,
         });
+        // Counts the closures the flag or the lock has answered, and the
+        // count a schema read succeeded after: the schema is unread since a
+        // closure while the first is ahead. A read in flight when a new
+        // closure comes answers only for the closures before it.
+        const closures = yield* Ref.make(0);
+        const readAfter = yield* Ref.make(0);
         const bootPassed = probes.bootPassed ?? PASSED;
+
+        /**
+         * Reads the schema afresh, bypassing the cached reading, and puts what
+         * it read there in place of the value from before the closure.
+         * Nothing when the read fails or is slow.
+         */
+        const rereadSchema = Effect.gen(function* () {
+          const since = yield* Ref.get(closures);
+          const read = yield* Effect.exit(
+            probes.schema.pipe(Effect.timeout(READING_BOUND)),
+          );
+          if (Exit.isFailure(read)) return Option.none<SchemaState>();
+          yield* schema.seed(read.value);
+          yield* Ref.update(readAfter, (count) => Math.max(count, since));
+          return Option.some(read.value);
+        });
+
+        const closed = (closure: Closure) =>
+          Effect.as(
+            Ref.update(closures, (count) => count + 1),
+            Option.some(closure),
+          );
 
         const closure = Effect.gen(function* () {
           const flag = yield* state.read;
           if (flag.maintenance) {
-            return Option.some<Closure>({
+            return yield* closed({
               trigger: 'maintenance',
               detail:
                 flag.reason === null
@@ -73,18 +110,29 @@ export class MaintenanceTriggers extends Context.Service<
                   : `maintenance mode is on: ${flag.reason}`,
             });
           }
-          if (yield* lockHeld) {
-            return Option.some<Closure>({
+          if (yield* lockHeld.read) {
+            return yield* closed({
               trigger: 'migration',
               detail: 'a schema migration is running',
             });
           }
-          const verdict = yield* schema;
-          if (verdict.kind !== 'current') {
+          const unread =
+            (yield* Ref.get(closures)) > (yield* Ref.get(readAfter));
+          const verdict = unread
+            ? yield* rereadSchema
+            : Option.some(yield* schema.read);
+          if (Option.isNone(verdict)) {
             return Option.some<Closure>({
               trigger: 'schema',
               detail:
-                verdict.kind === 'absent'
+                'the schema has not been read since maintenance mode or a migration',
+            });
+          }
+          if (verdict.value.kind !== 'current') {
+            return Option.some<Closure>({
+              trigger: 'schema',
+              detail:
+                verdict.value.kind === 'absent'
                   ? 'the database has no Studio schema'
                   : 'the database schema is not this build’s',
             });

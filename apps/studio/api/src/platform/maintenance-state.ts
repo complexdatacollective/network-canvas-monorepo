@@ -1,12 +1,4 @@
-import {
-  Context,
-  Duration,
-  Effect,
-  Exit,
-  Layer,
-  MutableRef,
-  Ref,
-} from 'effect';
+import { Context, Duration, Effect, Layer, MutableRef, Ref } from 'effect';
 
 import type { Database, MaintenanceDatabase } from '../db/client.ts';
 import {
@@ -28,7 +20,18 @@ const OFF: MaintenanceFlag = { maintenance: false, reason: null };
 const READING_TTL = Duration.seconds(1);
 
 /** Half of readiness's one-second bound per check (`http/health.ts`). */
-const READING_BOUND = Duration.millis(500);
+export const READING_BOUND = Duration.millis(500);
+
+export type CachedReading<A> = {
+  /** The value, read at most once per `READING_TTL`. */
+  readonly read: Effect.Effect<A>;
+  /**
+   * Replaces the value a failed or slow reading falls back to, and drops the
+   * cached one, so the next `read` reads afresh: for a caller that has read
+   * past the cache and knows the value it held is no longer true.
+   */
+  readonly seed: (value: A) => Effect.Effect<void>;
+};
 
 /**
  * A reading that fails or times out answers the last value it read, and
@@ -38,7 +41,7 @@ export const cachedReading = <A>(options: {
   readonly name: string;
   readonly read: Effect.Effect<A, unknown>;
   readonly initial: A;
-}): Effect.Effect<Effect.Effect<A>> =>
+}): Effect.Effect<CachedReading<A>> =>
   Effect.gen(function* () {
     const last = yield* Ref.make({ value: options.initial, failing: false });
     const lastValue = Effect.map(Ref.get(last), ({ value }) => value);
@@ -61,10 +64,17 @@ export const cachedReading = <A>(options: {
       ),
     );
 
-    const cached = yield* Effect.cachedWithTTL(fresh, (exit) =>
-      Exit.isSuccess(exit) ? READING_TTL : Duration.zero,
+    // `fresh` cannot fail — a failed reading answers the last value — so every
+    // answer is kept for the whole TTL.
+    const [cached, invalidate] = yield* Effect.cachedInvalidateWithTTL(
+      fresh,
+      READING_TTL,
     );
-    return cached.pipe(Effect.catchCause(() => lastValue));
+    return {
+      read: cached.pipe(Effect.catchCause(() => lastValue)),
+      seed: (value) =>
+        Effect.andThen(Ref.set(last, { value, failing: false }), invalidate),
+    };
   });
 
 export class MaintenanceState extends Context.Service<
@@ -91,7 +101,7 @@ export class MaintenanceState extends Context.Service<
           ),
           initial: OFF,
         });
-        return MaintenanceState.of({ read: reading });
+        return MaintenanceState.of({ read: reading.read });
       }),
     );
 

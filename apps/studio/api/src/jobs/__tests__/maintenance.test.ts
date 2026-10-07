@@ -226,8 +226,17 @@ describe.skipIf(!db)('the maintenance gate', () => {
         TestClock.withLive(
           Effect.gen(function* () {
             yield* clearQueue;
+            const logs = collectLogs();
             const lockHeld = MutableRef.make(false);
             const schema = MutableRef.make<SchemaState>(CURRENT);
+            const calls: boolean[] = [];
+            const logged = (text: string) =>
+              awaitTrue(
+                Effect.sync(() =>
+                  logs.messages.some((line) => line.includes(text)),
+                ),
+                Duration.seconds(5),
+              );
 
             yield* Effect.gen(function* () {
               const worker = yield* JobWorker;
@@ -238,22 +247,37 @@ describe.skipIf(!db)('the maintenance gate', () => {
                 gateOver(
                   { lockHeld, schema },
                   { pollInterval: Duration.millis(50) },
-                ),
+                ).pipe(Layer.provide(recording(calls))),
               );
 
               // `migrate` takes the lock against the running worker, and
               // leaves a schema this worker's build did not write.
               MutableRef.set(lockHeld, true);
-              yield* Effect.sleep(WINDOW);
+              assert.isTrue(
+                Option.isSome(yield* logged('migration is running')),
+                'the gate never paused for the migration',
+              );
               yield* enqueueDelivery();
               yield* Effect.sleep(WINDOW);
               const [during] = yield* readJobs('invitation-delivery');
               assert.strictEqual(during?.state, 'created');
               assert.strictEqual(during?.attempts, 0);
 
+              // The gate's next answer, once it sees the lock let go, is the
+              // schema the migration left: it never reopens in between.
               MutableRef.set(schema, STALE);
               MutableRef.set(lockHeld, false);
+              assert.isTrue(
+                Option.isSome(yield* logged('not this build')),
+                'the gate never read the schema the migration left',
+              );
               yield* Effect.sleep(WINDOW);
+              assert.deepStrictEqual(calls, [true, false]);
+              assert.isFalse(
+                logs.messages.some((line) =>
+                  line.includes('claiming jobs again'),
+                ),
+              );
               const [after] = yield* readJobs('invitation-delivery');
               assert.strictEqual(after?.state, 'created');
               assert.strictEqual(after?.attempts, 0);
@@ -277,6 +301,7 @@ describe.skipIf(!db)('the maintenance gate', () => {
                   startPaused: true,
                 }),
               ),
+              Effect.provide(logs.layer),
             );
           }).pipe(Effect.provide(layerJobs)),
         ),
