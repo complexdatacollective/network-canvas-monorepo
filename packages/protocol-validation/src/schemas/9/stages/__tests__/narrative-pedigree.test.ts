@@ -41,7 +41,7 @@ const validNarrativePedigreeStageShape = {
       id: 'disease1',
       label: localized('Breast Cancer'),
       color: 'node-color-seq-1',
-      variable: 'hasBreastCancer',
+      attribute: 'hasBreastCancer',
       inheritancePattern: 'autosomalDominant' as const,
     },
   ],
@@ -186,14 +186,14 @@ describe('narrativePedigreeStage (stage-level shape)', () => {
           id: 'dup',
           label: localized('A'),
           color: 'node-color-seq-1',
-          variable: 'v1',
+          attribute: 'v1',
           inheritancePattern: 'autosomalDominant' as const,
         },
         {
           id: 'dup',
           label: localized('B'),
           color: 'node-color-seq-5',
-          variable: 'v2',
+          attribute: 'v2',
           inheritancePattern: 'yLinked' as const,
         },
       ],
@@ -201,7 +201,7 @@ describe('narrativePedigreeStage (stage-level shape)', () => {
     expect(result.success).toBe(false);
   });
 
-  it('rejects two diseases mapped to the same variable', () => {
+  it('rejects two diseases mapped to the same attribute', () => {
     const result = narrativePedigreeStage.safeParse({
       ...validNarrativePedigreeStageShape,
       diseases: [
@@ -209,14 +209,14 @@ describe('narrativePedigreeStage (stage-level shape)', () => {
           id: 'd1',
           label: localized('Condition X'),
           color: 'node-color-seq-1',
-          variable: 'shared',
+          attribute: 'shared',
           inheritancePattern: 'autosomalDominant' as const,
         },
         {
           id: 'd2',
           label: localized('Condition Y'),
           color: 'node-color-seq-5',
-          variable: 'shared',
+          attribute: 'shared',
           inheritancePattern: 'yLinked' as const,
         },
       ],
@@ -225,11 +225,11 @@ describe('narrativePedigreeStage (stage-level shape)', () => {
     expect(result.error?.issues.map((issue) => issue.path)).toContainEqual([
       'diseases',
       1,
-      'variable',
+      'attribute',
     ]);
   });
 
-  it('accepts two diseases with distinct labels and variables', () => {
+  it('accepts two diseases with distinct labels and attributes', () => {
     const result = narrativePedigreeStage.safeParse({
       ...validNarrativePedigreeStageShape,
       diseases: [
@@ -237,14 +237,14 @@ describe('narrativePedigreeStage (stage-level shape)', () => {
           id: 'd1',
           label: localized('Condition X'),
           color: 'node-color-seq-1',
-          variable: 'v1',
+          attribute: 'v1',
           inheritancePattern: 'autosomalDominant' as const,
         },
         {
           id: 'd2',
           label: localized('Condition Y'),
           color: 'node-color-seq-5',
-          variable: 'v2',
+          attribute: 'v2',
           inheritancePattern: 'yLinked' as const,
         },
       ],
@@ -335,14 +335,14 @@ describe('NarrativePedigree protocol-level cross-references', () => {
               id: 'd1',
               label: labels[0],
               color: 'node-color-seq-1',
-              variable: 'hasBreastCancer',
+              attribute: 'hasBreastCancer',
               inheritancePattern: 'autosomalDominant',
             },
             {
               id: 'd2',
               label: labels[1],
               color: 'node-color-seq-5',
-              variable: 'hasOvarianCancer',
+              attribute: 'hasOvarianCancer',
               inheritancePattern: 'yLinked',
             },
           ],
@@ -489,7 +489,7 @@ describe('NarrativePedigree protocol-level cross-references', () => {
     }
   });
 
-  it('rejects when a disease variable does not exist on the source node type', () => {
+  it('rejects when a disease attribute does not exist on the source node type', () => {
     const result = ProtocolSchemaV9.safeParse(
       makeProtocol({
         stages: [
@@ -501,7 +501,7 @@ describe('NarrativePedigree protocol-level cross-references', () => {
                 id: 'disease1',
                 label: localized('Breast Cancer'),
                 color: 'node-color-seq-1',
-                variable: 'nonexistentVariable',
+                attribute: 'nonexistentVariable',
                 inheritancePattern: 'autosomalDominant',
               },
             ],
@@ -518,8 +518,8 @@ describe('NarrativePedigree protocol-level cross-references', () => {
     }
   });
 
-  it('rejects when a disease variable is not a boolean', () => {
-    // personLabel is a 'text' variable; the affection predicate is boolean.
+  it('rejects when a disease attribute is not a boolean', () => {
+    // personLabel is a 'text' attribute; the affection predicate is boolean.
     const result = ProtocolSchemaV9.safeParse(
       makeProtocol({
         stages: [
@@ -531,7 +531,7 @@ describe('NarrativePedigree protocol-level cross-references', () => {
                 id: 'disease1',
                 label: localized('Breast Cancer'),
                 color: 'node-color-seq-1',
-                variable: 'personLabel',
+                attribute: 'personLabel',
                 inheritancePattern: 'autosomalDominant',
               },
             ],

@@ -523,7 +523,7 @@ export const completeProtocol = () => ({
           id: 'd1',
           label: localized('Condition'),
           color: 'node-color-seq-3',
-          variable: 'affected',
+          attribute: 'affected',
           inheritancePattern: 'autosomalDominant',
         },
       ],

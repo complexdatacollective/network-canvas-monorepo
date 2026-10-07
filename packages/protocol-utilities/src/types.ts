@@ -653,7 +653,8 @@ export type NarrativeDiseaseEntry = {
   id: string;
   label: TextInput;
   color: NodeColorReference;
-  variable: string;
+  /** The boolean person attribute marking who is affected. */
+  attribute: string;
   inheritancePattern: string;
 };
 

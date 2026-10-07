@@ -43,7 +43,7 @@ const countTagged = (
 // person attributes (name, gender identity, sex assigned at birth, ego) and
 // relationship attributes (kind, gestational carrier, current partner) and
 // completeness attribute (relatives not recorded) and each nomination
-// prompt's boolean `variable` — and NarrativePedigree diseases[].variable,
+// prompt's boolean `variable` — and NarrativePedigree diseases[].attribute,
 // plus the two node shape-mapping `variable` fields (discrete and breakpoints arms), plus
 // #1392's four existence-unchecked sites: the shared sort rule `property`
 // (SortRuleSchema, reached by every prompt-level sort order and the roster's

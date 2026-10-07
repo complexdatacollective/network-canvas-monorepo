@@ -1120,7 +1120,7 @@ const ProtocolSchema = z
       }
 
       // 3e.iii.c. NarrativePedigree: sourceStageId must reference a FamilyPedigree
-      // stage; disease variables must resolve on the source node type; disease
+      // stage; disease attributes must resolve on the source node type; disease
       // labels must differ in every language a participant can see them in.
       if (stage.type === 'NarrativePedigree') {
         if (localization) {
@@ -1161,10 +1161,9 @@ const ProtocolSchema = z
             path: ['stages', stageIndex, 'sourceStageId'],
           });
         } else {
-          // sourceStage is confirmed FamilyPedigree — resolve variables on its
-          // person node type.
-          // TODO(narrative-pedigree-rebuild): Narrative Pedigree still reads
-          // the pre-redesign pedigree; only the source node type is adapted.
+          // sourceStage is confirmed FamilyPedigree — resolve each disease
+          // attribute on its people, the stage's subject node type. These are
+          // typically the boolean attributes its nomination prompts set.
           const sourceNodeType = sourceStage.subject.type;
           const sourceSubject = {
             entity: 'node' as const,
@@ -1176,32 +1175,32 @@ const ProtocolSchema = z
           );
 
           stage.diseases.forEach((disease, diseaseIndex) => {
-            const sourceVariable = sourceVariables[disease.variable];
+            const sourceVariable = sourceVariables[disease.attribute];
             if (!sourceVariable) {
               ctx.addIssue({
                 code: 'custom' as const,
-                message: `NarrativePedigree disease attribute "${disease.variable}" does not exist on source node type "${sourceNodeType}".`,
+                message: `NarrativePedigree disease attribute "${disease.attribute}" does not exist on source node type "${sourceNodeType}".`,
                 path: [
                   'stages',
                   stageIndex,
                   'diseases',
                   diseaseIndex,
-                  'variable',
+                  'attribute',
                 ],
               });
             } else if (sourceVariable.type !== 'boolean') {
               // The genetics engine's affection predicate is a strict boolean
-              // `=== true`; a non-boolean variable would silently yield an empty
+              // `=== true`; a non-boolean attribute would silently yield an empty
               // affected set (a clinically blank pedigree).
               ctx.addIssue({
                 code: 'custom' as const,
-                message: `NarrativePedigree disease attribute "${disease.variable}" must be a boolean attribute (affected/not affected), but is "${sourceVariable.type}".`,
+                message: `NarrativePedigree disease attribute "${disease.attribute}" must be a boolean attribute (affected/not affected), but is "${sourceVariable.type}".`,
                 path: [
                   'stages',
                   stageIndex,
                   'diseases',
                   diseaseIndex,
-                  'variable',
+                  'attribute',
                 ],
               });
             }

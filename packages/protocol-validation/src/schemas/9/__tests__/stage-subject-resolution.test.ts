@@ -42,7 +42,7 @@ const familyPedigree = (overrides: Stage = {}): Stage => ({
   ...overrides,
 });
 
-const narrativePedigree = (variable: string): Stage => ({
+const narrativePedigree = (attribute: string): Stage => ({
   id: 'np1',
   label: localized('Narrative Pedigree'),
   type: 'NarrativePedigree',
@@ -52,7 +52,7 @@ const narrativePedigree = (variable: string): Stage => ({
       id: 'd1',
       label: localized('Condition X'),
       color: 'node-color-seq-1',
-      variable,
+      attribute,
       inheritancePattern: 'autosomalDominant',
     },
   ],
@@ -151,13 +151,13 @@ describe('stage subjects resolve during collection', () => {
     ).toContain('The attribute "notInCodebook" does not exist in the codebook');
   });
 
-  it('existence-checks a NarrativePedigree disease variable through sourceStageId', () => {
+  it('existence-checks a NarrativePedigree disease attribute through sourceStageId', () => {
     const protocol = protocolWith([
       familyPedigree(),
       narrativePedigree('notInCodebook'),
     ]);
     expect(
-      issueMessagesAt(protocol, ['stages', 1, 'diseases', 0, 'variable']),
+      issueMessagesAt(protocol, ['stages', 1, 'diseases', 0, 'attribute']),
     ).toContain('The attribute "notInCodebook" does not exist in the codebook');
   });
 
@@ -169,7 +169,7 @@ describe('stage subjects resolve during collection', () => {
     const hit = collectEntityAttributeReferences(protocol).find(
       (candidate) =>
         candidate.path.join('.') ===
-        ['stages', 1, 'diseases', 0, 'variable'].join('.'),
+        ['stages', 1, 'diseases', 0, 'attribute'].join('.'),
     );
     expect(hit?.subject).toEqual({ entity: 'node', type: 'family_member' });
     const result = ProtocolSchemaV9.safeParse(protocol);
@@ -186,7 +186,7 @@ describe('stage subjects resolve during collection', () => {
     const hit = collectEntityAttributeReferences(protocol).find(
       (candidate) =>
         candidate.path.join('.') ===
-        ['stages', 1, 'diseases', 0, 'variable'].join('.'),
+        ['stages', 1, 'diseases', 0, 'attribute'].join('.'),
     );
     expect(hit?.subject).toBeUndefined();
     expect(issueMessagesAt(protocol, ['stages', 1, 'sourceStageId'])).toEqual([
