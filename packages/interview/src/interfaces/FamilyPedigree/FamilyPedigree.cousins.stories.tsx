@@ -168,7 +168,7 @@ export const FirstCousinRepresentation: Story = {
           relationshipVariable: relationshipToEgoVar.id,
           biologicalSexVariable: biologicalSexVar.id,
           form: [
-            { variable: genderVar.id, prompt: { en: 'Gender identity?' } },
+            { variable: genderVar.id, prompt: { 'en-US': 'Gender identity?' } },
           ],
         },
         edgeConfig: {
@@ -343,7 +343,7 @@ export const FirstCousinCreationViaWizard: Story = {
           relationshipVariable: relationshipToEgoVar.id,
           biologicalSexVariable: biologicalSexVar.id,
           form: [
-            { variable: genderVar.id, prompt: { en: 'Gender identity?' } },
+            { variable: genderVar.id, prompt: { 'en-US': 'Gender identity?' } },
           ],
         },
         edgeConfig: {

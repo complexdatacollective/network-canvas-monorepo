@@ -172,7 +172,7 @@ export const ConsanguineousUnionRepresentation: Story = {
           relationshipVariable: relationshipToEgoVar.id,
           biologicalSexVariable: biologicalSexVar.id,
           form: [
-            { variable: genderVar.id, prompt: { en: 'Gender identity?' } },
+            { variable: genderVar.id, prompt: { 'en-US': 'Gender identity?' } },
           ],
         },
         edgeConfig: {
@@ -352,7 +352,7 @@ export const ConsanguineousUnionCreationViaWizard: Story = {
           relationshipVariable: relationshipToEgoVar.id,
           biologicalSexVariable: biologicalSexVar.id,
           form: [
-            { variable: genderVar.id, prompt: { en: 'Gender identity?' } },
+            { variable: genderVar.id, prompt: { 'en-US': 'Gender identity?' } },
           ],
         },
         edgeConfig: {
