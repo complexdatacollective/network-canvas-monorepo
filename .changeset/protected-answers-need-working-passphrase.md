@@ -27,3 +27,16 @@ answers; other interviews work as before.
   returns to it.
 - Replacing a protected answer with an unprotected one no longer leaves the
   answer unreadable.
+- Names added in the Network Composer and the Family Pedigree, and protected
+  answers brought in from a side panel on a name generator, were saved without
+  protection. They are now protected like every other answer, and these stages
+  ask for the passphrase before they show or save them.
+- Undoing or redoing a change in the Network Composer keeps protected names
+  readable.
+- A family pedigree is saved whole or not at all. If a relative's name cannot
+  be saved, nothing is saved, the participant is told why, and they can enter
+  the passphrase and save the pedigree again.
+- Questions that compare an answer with other answers, such as a name that
+  must not repeat or an answer that must match another one, now compare with
+  the protected answers as they were entered. Before, they compared with the
+  stored, scrambled form, so a repeated name was accepted.
