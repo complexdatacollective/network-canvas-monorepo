@@ -25,6 +25,7 @@ import Prompts from '../../components/Prompts';
 import { usePrompts } from '../../components/Prompts/usePrompts';
 import { useCurrentStep } from '../../contexts/CurrentStepContext';
 import { buildVariableLabels } from '../../forms/buildVariableLabels';
+import { useValidationNetwork } from '../../forms/useValidationNetwork';
 import {
   writeFailureMessage,
   writeSubmissionResult,
@@ -225,6 +226,11 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
   // other Field (codebook + network + this stage's subject); the dialog below
   // scopes it to the specific dropped node via currentEntityId.
   const baseValidationContext = useStageSelector(getValidationContext);
+  const validationNetwork = useValidationNetwork(
+    baseValidationContext,
+    baseValidationContext.stageSubject,
+    prompt.otherVariable !== undefined ? [prompt.otherVariable] : [],
+  );
   const intl = useAppIntl();
   const { passphrase, passphraseInvalid, requirePassphrase } = usePassphrase();
   const { showToast } = useInterviewToast();
@@ -316,7 +322,7 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
         baseValidationContext.stageSubject
           ? {
               codebook: baseValidationContext.codebook,
-              network: baseValidationContext.network,
+              network: validationNetwork,
               stageSubject: baseValidationContext.stageSubject,
               currentEntityId: nodeId,
               // …and the same comparison rule must word its error the same way

@@ -27,6 +27,7 @@ import { useAutoLayout } from '../../canvas/useAutoLayout';
 import { createCanvasStore } from '../../canvas/useCanvasStore';
 import { useCurrentStep } from '../../contexts/CurrentStepContext';
 import { useVariableLabels } from '../../forms/buildVariableLabels';
+import { useValidationNetwork } from '../../forms/useValidationNetwork';
 import { useNodeMeasurement } from '../../hooks/useNodeMeasurement';
 import { useStageSelector } from '../../hooks/useStageSelector';
 import {
@@ -155,11 +156,16 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
     stage.nodeForm?.fields ?? [],
   );
   const baseValidationContext = useStageSelector(getValidationContext);
+  const quickAddValidationNetwork = useValidationNetwork(
+    baseValidationContext,
+    baseValidationContext.stageSubject,
+    [stage.quickAdd],
+  );
   const quickAddValidationContext: ValidationContext | undefined =
     baseValidationContext.stageSubject
       ? {
           codebook: baseValidationContext.codebook,
-          network: baseValidationContext.network,
+          network: quickAddValidationNetwork,
           stageSubject: baseValidationContext.stageSubject,
           variableLabels: nodeFormVariableLabels,
         }

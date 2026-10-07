@@ -35,6 +35,24 @@ import {
 } from '../../Anonymisation/utils';
 import NetworkComposer from '../NetworkComposer';
 
+// Counts finished decryptions, so a test can wait for stored values to be
+// decrypted before it relies on them.
+const decryption = vi.hoisted(() => ({ settled: 0 }));
+vi.mock('../../Anonymisation/utils', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('../../Anonymisation/utils')>();
+  return {
+    ...actual,
+    decryptNodeAttributes: async (
+      ...args: Parameters<typeof actual.decryptNodeAttributes>
+    ) => {
+      const decrypted = await actual.decryptNodeAttributes(...args);
+      decryption.settled += 1;
+      return decrypted;
+    },
+  };
+});
+
 beforeAll(() => {
   if (typeof window.ResizeObserver === 'undefined') {
     window.ResizeObserver = class ResizeObserver {
@@ -71,18 +89,29 @@ const variables: Record<string, Variable> = {
   [NOTES_VAR]: encryptedText('notes'),
 };
 
-const codebook = {
+const uniqueNameVariables: Record<string, Variable> = {
+  ...variables,
+  [QUICK_ADD_VAR]: {
+    name: 'name',
+    type: 'text',
+    component: 'Text',
+    encrypted: true,
+    validation: { unique: true },
+  },
+};
+
+const codebookWith = (nodeVariables: Record<string, Variable>) => ({
   node: {
     [NODE_TYPE]: {
       name: 'Person',
       color: 'node-color-seq-1',
       shape: { default: 'circle' as const },
-      variables,
+      variables: nodeVariables,
     },
   },
   edge: {},
   ego: { variables: {} },
-};
+});
 
 const stage: StageProps<'NetworkComposer'>['stage'] = {
   id: 'nc1',
@@ -122,7 +151,11 @@ async function makeEncryptedNode(): Promise<NcNode> {
   };
 }
 
-function makeStore(nodes: NcNode[], withPassphrase: boolean) {
+function makeStore(
+  nodes: NcNode[],
+  withPassphrase: boolean,
+  nodeVariables = variables,
+) {
   const store = configureStore({
     reducer: { session, protocol, ui },
     preloadedState: {
@@ -139,7 +172,7 @@ function makeStore(nodes: NcNode[], withPassphrase: boolean) {
         id: 'p',
         hash: 'h',
         schemaVersion: 9,
-        codebook,
+        codebook: codebookWith(nodeVariables),
         stages: [stage],
       } as never,
     },
@@ -296,5 +329,28 @@ describe('NetworkComposer with encrypted variables', () => {
 
     const notesInput = await screen.findByLabelText(/notes/i);
     expect(notesInput).toHaveProperty('value', 'Met at work');
+  });
+});
+
+describe('NetworkComposer validating an encrypted name', () => {
+  it('rejects a name another person already has', async () => {
+    decryption.settled = 0;
+    const store = makeStore(
+      [await makeEncryptedNode()],
+      true,
+      uniqueNameVariables,
+    );
+    renderComposer(store);
+
+    await waitFor(() => expect(decryption.settled).toBe(1));
+    fireEvent.click(screen.getByRole('button', { name: /add node/i }));
+    const input = await screen.findByRole('textbox', { name: /name/i });
+    await act(async () => {
+      fireEvent.change(input, { target: { value: 'Alice' } });
+      fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' });
+    });
+
+    await waitFor(() => expect(input).toHaveAttribute('aria-invalid', 'true'));
+    expect(store.getState().session.network.nodes).toHaveLength(1);
   });
 });
