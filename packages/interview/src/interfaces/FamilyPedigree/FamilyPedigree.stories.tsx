@@ -21,6 +21,9 @@ const PROMPT =
  * given: the stage after the pedigree, when a story adds it. */
 const PEOPLE_PROMPT = 'Everyone in your family, by their saved names.';
 
+/** The question on the form after the pedigree, when a story adds it. */
+const NAME_FORM_PROMPT = 'What is this person called?';
+
 type SeedPerson = {
   id: string;
   name?: string;
@@ -70,6 +73,8 @@ type StoryOptions = {
   /** Follows the pedigree with a stage listing everyone in the family by
    * the name each was given. */
   followedByPeopleList?: boolean;
+  /** Follows the pedigree with a form asking each person's name again. */
+  followedByNameForm?: boolean;
 };
 
 type GenderIdentities = {
@@ -94,6 +99,7 @@ function buildInterview({
   askGenderIdentity = true,
   nameValidation,
   followedByPeopleList = false,
+  followedByNameForm = false,
 }: StoryOptions) {
   const si = new SyntheticInterview(1);
   si.addInformationStage({ title: 'Welcome', text: 'Before the pedigree.' });
@@ -165,13 +171,33 @@ function buildInterview({
     );
   }
 
+  if (followedByNameForm) {
+    si.addStage('AlterForm', {
+      subject: { entity: 'node', type: people.id },
+    }).addFormField({
+      component: 'Text',
+      variable: stage.name,
+      prompt: NAME_FORM_PROMPT,
+    });
+  }
   if (followedByPeopleList) {
     si.addStage('OrdinalBin', {
       subject: { entity: 'node', type: people.id },
     }).addPrompt({ text: PEOPLE_PROMPT });
   }
   si.addInformationStage({ title: 'Complete', text: 'After the pedigree.' });
-  return si;
+  const payload = si.getInterviewPayload({ currentStep: 1 });
+  if (followedByNameForm) {
+    // The form draws its question with the name attribute's own input
+    // control, which the builder leaves unset. Its codebook is built
+    // loosely typed, as variables keyed by id.
+    const personType = payload.protocol.codebook.node[people.id] as {
+      variables: Record<string, { component?: string }>;
+    };
+    const name = personType.variables[stage.name];
+    if (name) name.component = 'Text';
+  }
+  return payload;
 }
 
 function PedigreeStory({
@@ -185,6 +211,7 @@ function PedigreeStory({
   askGenderIdentity,
   nameValidation,
   followedByPeopleList,
+  followedByNameForm,
 }: StoryOptions) {
   const rawPayload = useMemo(
     () =>
@@ -200,7 +227,8 @@ function PedigreeStory({
           askGenderIdentity,
           nameValidation,
           followedByPeopleList,
-        }).getInterviewPayload({ currentStep: 1 }),
+          followedByNameForm,
+        }),
       ),
     [
       family,
@@ -213,6 +241,7 @@ function PedigreeStory({
       askGenderIdentity,
       nameValidation,
       followedByPeopleList,
+      followedByNameForm,
     ],
   );
 
@@ -1646,6 +1675,79 @@ export const UnnamedPeopleAreLabelledOnLeavingAndUnnamedOnReturn: Story = {
     await expect(
       await body.findByRole('textbox', { name: /^Name/ }),
     ).toHaveValue('Sister');
+  },
+};
+
+/**
+ * A form after the pedigree renames someone the pedigree gave a label. The
+ * pedigree's record identifies the value it wrote, not the label's words, so
+ * coming back it reads the new name as theirs: it shows it, and leaving
+ * again does not write a label over it.
+ */
+export const ANameGivenOnALaterStageIsKept: Story = {
+  args: { requirement: 'none' },
+  render: (args) => (
+    <PedigreeStory
+      {...settings(args)}
+      followedByNameForm
+      family={{
+        people: [
+          {
+            id: 'ego',
+            name: 'Ari',
+            gender: 'nonBinary',
+            sex: 'intersex',
+            ego: true,
+          },
+          { id: 'partner', gender: 'man', sex: 'male' },
+        ],
+        links: [{ from: 'ego', to: 'partner', kind: 'partner' }],
+      }}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const next = () => userEvent.click(canvas.getByTestId('next-button'));
+    const nameField = () =>
+      canvas.findByRole('textbox', { name: NAME_FORM_PROMPT });
+
+    /** From the pedigree, through the form's introduction and the
+     * participant, to the form for their partner. */
+    const toPartnersForm = async () => {
+      await next();
+      await canvas.findByText('Please continue.');
+      await next();
+      await waitFor(async () => expect(await nameField()).toHaveValue('Ari'));
+      await next();
+      await waitFor(async () =>
+        expect(await nameField()).not.toHaveValue('Ari'),
+      );
+      return nameField();
+    };
+
+    await canvas.findByRole('button', { name: 'Partner' });
+    const field = await toPartnersForm();
+    await expect(field).toHaveValue('Partner');
+    await userEvent.clear(field);
+    await userEvent.type(field, 'Sam');
+    await next();
+    await canvas.findByText('After the pedigree.');
+
+    // Back on the pedigree, Sam is named.
+    await waitFor(
+      async () => {
+        if (!canvas.queryByTestId('pedigree-canvas')) {
+          await userEvent.click(canvas.getByTestId('previous-button'));
+        }
+        await expect(canvas.getByTestId('pedigree-canvas')).toBeVisible();
+      },
+      { timeout: 10_000 },
+    );
+    await canvas.findByRole('button', { name: 'Sam' });
+    await expect(canvas.queryByRole('button', { name: 'Partner' })).toBeNull();
+
+    // Leaving again keeps the name.
+    await expect(await toPartnersForm()).toHaveValue('Sam');
   },
 };
 

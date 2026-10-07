@@ -1,3 +1,5 @@
+import { hash } from 'ohash';
+
 import {
   PEDIGREE_RELATIONSHIP_KINDS,
   PEDIGREE_RELATIVES_NOT_RECORDED,
@@ -78,7 +80,15 @@ export function pedigreeConfigFromStage(
 export type Person = {
   id: string;
   isEgo: boolean;
+  /** The name they were given, when there is one the stage can read. A label
+   * the stage generated for them is not a name. */
   name: string | undefined;
+  /**
+   * They hold a name the stage cannot read: one written encrypted by another
+   * stage. They count as named, so they are never given a label or offered
+   * the name question, and the canvas shows them by a label of their own.
+   */
+  hasUnreadableName: boolean;
   /** The value of the gender identity option the person was given, whatever
    * the researcher defined it to be. Undefined when not yet answered. */
   genderIdentity: string | number | undefined;
@@ -157,10 +167,38 @@ function wordsFromSexAssignedAtBirth(
 }
 
 /**
- * The family as recorded. `generatedLabels` are the labels the stage saved as
- * the names of people the participant left unnamed, by person id: someone
- * whose name is still their saved label is read as unnamed, so their label is
- * worked out afresh from the family as it stands.
+ * The fingerprint of a name attribute value, as recorded in the stage
+ * metadata's `generatedLabels` for each person the stage gave a label. It is
+ * taken from the value as stored, which is ciphertext when the attribute is
+ * encrypted, so it identifies the write without the label's text, and any
+ * later write (even of the same words, which encrypt differently each time)
+ * no longer matches it.
+ */
+export const nameFingerprint = (value: VariableValue): string => hash(value);
+
+/**
+ * Whether the person still holds the label the stage generated for them: they
+ * are recorded in `generatedLabels`, and their name attribute holds the very
+ * value the stage wrote. A name written since, by the participant here or on
+ * another stage, is theirs.
+ */
+export function holdsGeneratedLabel(
+  generatedLabels: Readonly<Record<string, string>>,
+  personId: string,
+  recorded: VariableValue | undefined,
+): boolean {
+  return (
+    recorded !== undefined &&
+    Object.hasOwn(generatedLabels, personId) &&
+    generatedLabels[personId] === nameFingerprint(recorded)
+  );
+}
+
+/**
+ * The family as recorded. `generatedLabels` records, by person id, the
+ * fingerprint of each label the stage saved as the name of someone the
+ * participant left unnamed: someone who still holds that label is read as
+ * unnamed, so their label is worked out afresh from the family as it stands.
  */
 export function readFamily(
   nodes: readonly NcNode[],
@@ -174,10 +212,15 @@ export function readFamily(
       const attributes = node[entityAttributesProperty];
       const recorded = attributes[config.nameAttribute];
       const id = node[entityPrimaryKeyProperty];
+      const isGenerated = holdsGeneratedLabel(generatedLabels, id, recorded);
       const name =
-        Object.hasOwn(generatedLabels, id) && generatedLabels[id] === recorded
-          ? undefined
-          : recorded;
+        !isGenerated && typeof recorded === 'string' && recorded.trim() !== ''
+          ? recorded
+          : undefined;
+      // Anything else in a text attribute is ciphertext, which the stage
+      // cannot read: an encrypted name.
+      const hasUnreadableName =
+        !isGenerated && recorded !== undefined && typeof recorded !== 'string';
       const genderIdentityConfig = config.genderIdentity;
       const genderIdentity = genderIdentityConfig
         ? readOption(attributes[genderIdentityConfig.attribute])
@@ -189,7 +232,8 @@ export function readFamily(
       return {
         id,
         isEgo: attributes[config.egoAttribute] === true,
-        name: typeof name === 'string' && name.trim() !== '' ? name : undefined,
+        name,
+        hasUnreadableName,
         genderIdentity,
         genderWords: genderIdentityConfig
           ? genderIdentity === undefined

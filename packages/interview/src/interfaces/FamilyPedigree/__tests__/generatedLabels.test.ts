@@ -452,4 +452,33 @@ describe('labelEveryone', () => {
       },
     );
   });
+
+  test('someone holding a name the stage cannot read is shown by a label but never given one to save', () => {
+    const family = readFamily(
+      [
+        person('ego', { isEgo: true }),
+        woman('mum'),
+        man('dad'),
+        // Their name was encrypted on another stage.
+        woman('sis1', { name: [181, 22, 9, 240] }),
+        woman('sis2'),
+        man('tom', { name: 'Tom' }),
+        man('sam', { name: 'Sam' }),
+      ],
+      [
+        ...parentLinks,
+        ...siblingLinks('sis1'),
+        ...siblingLinks('sis2'),
+        link('sis2', 'tom', 'partner'),
+        link('sis1', 'sam', 'partner'),
+      ],
+      config,
+    );
+    const saved = generateLabels(family, 'gendered', intl);
+    expect(saved.has('sis1')).toBe(false);
+    expect(saved.get('sis2')).toBe('Sister (partner of Tom)');
+    expect(labelEveryone(family, 'gendered', intl).get('sis1')).toBe(
+      'Sister (partner of Sam)',
+    );
+  });
 });

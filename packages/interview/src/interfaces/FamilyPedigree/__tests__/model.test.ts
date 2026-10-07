@@ -5,6 +5,7 @@ import {
   type Family,
   fullSiblingsOf,
   missingDetailsFor,
+  nameFingerprint,
   partnersOf,
   planAddRelative,
   planRemovePerson,
@@ -155,24 +156,69 @@ describe('readFamily', () => {
     expect(family.links).toEqual([]);
   });
 
-  test('reads a name that is still the label the stage saved for that person as no name', () => {
+  test('reads someone who still holds the label the stage saved for them as unnamed', () => {
     const family = readFamily(
       [
         person('saved', { name: 'Sister' }),
-        person('renamed', { name: 'Sam' }),
         person('typed', { name: 'Sister' }),
       ],
       [],
       config,
-      { saved: 'Sister', renamed: 'Brother', gone: 'Father' },
+      { saved: nameFingerprint('Sister'), gone: nameFingerprint('Father') },
     );
-    expect(family.byId.get('saved')?.name).toBeUndefined();
-    // Their name has changed since the label was saved.
-    expect(family.byId.get('renamed')?.name).toBe('Sam');
+    expect(family.byId.get('saved')).toMatchObject({
+      name: undefined,
+      hasUnreadableName: false,
+    });
     // The same words, typed for someone with no saved label.
     expect(family.byId.get('typed')?.name).toBe('Sister');
     // The attribute itself is untouched.
     expect(family.byId.get('saved')?.attributes.name).toBe('Sister');
+  });
+
+  test('re-entry follows the record, not the label text: an encrypted label is still unnamed', () => {
+    // An encrypted name is stored as ciphertext, with nothing in it to
+    // compare with any label's words.
+    const ciphertext = [181, 22, 9, 240, 77, 3, 145, 61, 200, 18];
+    const family = readFamily(
+      [person('saved', { name: ciphertext })],
+      [],
+      config,
+      { saved: nameFingerprint(ciphertext) },
+    );
+    expect(family.byId.get('saved')).toMatchObject({
+      name: undefined,
+      hasUnreadableName: false,
+    });
+  });
+
+  test('a name written on another stage since the label was saved is kept', () => {
+    const family = readFamily(
+      [
+        // Typed over the label on a later form.
+        person('renamed', { name: 'Bea' }),
+        // Retyped there as the very words of the label, so encrypted afresh.
+        person('reencrypted', { name: [12, 99, 4, 250, 31, 7] }),
+        // Encrypted, and never given a label by the stage.
+        person('encrypted', { name: [5, 5, 5, 5] }),
+      ],
+      [],
+      config,
+      {
+        renamed: nameFingerprint('Sister (partner of Tom)'),
+        reencrypted: nameFingerprint([181, 22, 9, 240, 77, 3]),
+      },
+    );
+    expect(family.byId.get('renamed')).toMatchObject({
+      name: 'Bea',
+      hasUnreadableName: false,
+    });
+    for (const id of ['reencrypted', 'encrypted']) {
+      expect(family.byId.get(id)).toMatchObject({
+        name: undefined,
+        hasUnreadableName: true,
+      });
+    }
   });
 });
 

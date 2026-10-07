@@ -23,9 +23,12 @@ const NetworkComposerStageMetadataSchema = z.object({
 // FamilyPedigree persists the framing a participant chose, when the stage lets
 // them choose (`framing: 'participantPreference'`), so they are asked once.
 // The values are schema 8's FRAMING_IDS, which this package cannot import.
-// It also records the labels it saved as the names of people the participant
-// left unnamed, by node ID, so that on a return visit a person whose name is
-// still their saved label is treated as unnamed and given a fresh one.
+// It also records who holds a label it saved as their name because the
+// participant left them unnamed: node ID to an opaque fingerprint of the name
+// attribute value it wrote, never the label's text (which would copy names
+// out of an encrypted attribute). On a return visit a person whose stored
+// value still matches is treated as unnamed and given a fresh label; a name
+// written since, here or on another stage, no longer matches and is kept.
 // Either may be absent, but not both: an entry holding neither is not one.
 const FamilyPedigreeStageMetadataSchema = z
   .object({

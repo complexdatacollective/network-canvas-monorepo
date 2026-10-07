@@ -68,6 +68,8 @@ const comparable = (text: string) => plain(text).trim().toLocaleLowerCase();
  * everyone else by the label `generateLabels` saves for them, keeping the
  * soft hyphens where a long kinship word may break inside a symbol. Without
  * those, each label is exactly the text saved when the participant leaves.
+ * Someone holding a name the stage cannot read is shown by a label too,
+ * though none is saved for them.
  */
 export function labelEveryone(
   family: Family,
@@ -89,7 +91,8 @@ export function labelEveryone(
 
 /**
  * The label to save as the name of everyone the participant has not named,
- * keyed by person id. The participant is never given one.
+ * keyed by person id. The participant is never given one, and nor is anyone
+ * holding a name the stage cannot read.
  *
  * Each label starts from the person's kinship word, in the framing's words.
  * Labels are distinct from one another and from every typed name, compared
@@ -108,14 +111,14 @@ export function generateLabels(
   intl: IntlShape,
 ): Map<string, string> {
   return new Map(
-    [...buildLabels(family, framing, intl)].map(([id, label]) => [
-      id,
-      plain(label),
-    ]),
+    [...buildLabels(family, framing, intl)]
+      .filter(([id]) => family.byId.get(id)?.hasUnreadableName !== true)
+      .map(([id, label]) => [id, plain(label)]),
   );
 }
 
-/** The generated labels, with the kinship words' soft hyphens. */
+/** The generated labels, with the kinship words' soft hyphens, for everyone
+ * without a name the stage can read. */
 function buildLabels(
   family: Family,
   framing: FramingId,

@@ -99,6 +99,7 @@ import {
   planConnection,
   type PlannedLink,
   planRemovePerson,
+  nameFingerprint,
   readFamily,
   type Family,
   type Person,
@@ -201,8 +202,8 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   };
 
   // The stage's own record: the framing the participant chose, when the
-  // stage leaves it to them, and the labels saved as the names of people they
-  // left unnamed.
+  // stage leaves it to them, and who holds a label saved as their name
+  // because they were left unnamed.
   const stageMetadata = useStageSelector(getStageMetadata);
   const pedigreeMetadata = isFamilyPedigreeStageMetadata(stageMetadata)
     ? stageMetadata
@@ -214,7 +215,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
 
   const nodes = useStageSelector(getNetworkNodes);
   const edges = useStageSelector(getNetworkEdges);
-  // Someone whose name is still the label saved for them is read as unnamed.
+  // Someone who still holds the label the stage saved for them is unnamed.
   const family = useMemo(
     () => readFamily(nodes, edges, config, generatedLabels),
     [nodes, edges, config, generatedLabels],
@@ -690,17 +691,25 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   // the participant's language and choice of words, so they can be recognised
   // in the rest of the interview. The labels are saved whenever the
   // participant moves on — to another prompt or out of the stage, forwards,
-  // back, or to another stage — before the next stage reads the family, and
-  // recorded in the stage's metadata, so that on a return visit those people
-  // are unnamed again and are given fresh labels when the participant leaves.
+  // back, or to another stage — before the next stage reads the family.
+  //
+  // The stage's metadata records who holds a generated label, by the
+  // fingerprint of the value written (ciphertext, when the name attribute is
+  // encrypted), so that on a return visit those people are unnamed again and
+  // are given fresh labels when the participant leaves, while a name written
+  // since on another stage no longer matches and is never overwritten.
   const saveGeneratedLabels = async () => {
     const saved = generateLabels(family, framing, intl);
+    const record: Record<string, string> = {};
     for (const [personId, label] of saved) {
       const person = family.byId.get(personId);
-      if (!person || person.attributes[config.nameAttribute] === label) {
+      if (!person) continue;
+      const current = person.attributes[config.nameAttribute];
+      if (current === label) {
+        record[personId] = nameFingerprint(current);
         continue;
       }
-      await dispatch(
+      const result = await dispatch(
         updateNode({
           nodeId: personId,
           attributePatch: {
@@ -710,17 +719,22 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
           currentStep,
         }),
       );
+      // The value as stored, which encryption may have turned to ciphertext.
+      const written = updateNode.fulfilled.match(result)
+        ? result.payload.attributePatch.set[config.nameAttribute]
+        : undefined;
+      if (written !== undefined) record[personId] = nameFingerprint(written);
     }
-    if (saved.size === 0 && pedigreeMetadata?.generatedLabels === undefined) {
+    if (
+      Object.keys(record).length === 0 &&
+      pedigreeMetadata?.generatedLabels === undefined
+    ) {
       return;
     }
     dispatch(
       updateStageMetadata({
         currentStep,
-        metadata: {
-          ...pedigreeMetadata,
-          generatedLabels: Object.fromEntries(saved),
-        },
+        metadata: { ...pedigreeMetadata, generatedLabels: record },
       }),
     );
   };

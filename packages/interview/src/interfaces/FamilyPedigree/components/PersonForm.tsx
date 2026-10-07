@@ -55,6 +55,7 @@ import {
   fullSiblingsOf,
   geneticParentSexes,
   geneticParentsPossible,
+  holdsGeneratedLabel,
   isGeneticKind,
   otherGameteSex,
   sexesRuledOut,
@@ -142,9 +143,8 @@ type PersonFormProps = {
    * identity. */
   genderIdentityOptions: GenderIdentityOption[];
   formFields: FormField[];
-  /** The labels the stage saved as the names of people the participant left
-   * unnamed, by person id. They are given afresh, so a typed name may repeat
-   * one. */
+  /** The stage's record of who holds a label it saved as their name, by
+   * person id. Labels are given afresh, so a typed name may repeat one. */
   generatedLabels: Readonly<Record<string, string>>;
   displayName: (personId: string) => string;
   /** Edit only: ask whether the person has siblings, and children. */
@@ -188,8 +188,10 @@ export default function PersonForm({
 
   const isEgo = person?.isEgo ?? false;
   // The participant is never asked their own name: they are shown as "You",
-  // and only what the family tree needs is asked about them.
-  const asksName = !isEgo;
+  // and only what the family tree needs is asked about them. Nor is anyone
+  // whose name the stage cannot read, which it would otherwise show as blank
+  // and clear.
+  const asksName = !isEgo && person?.hasUnreadableName !== true;
 
   // A typed name follows whatever validation the codebook gives the name
   // attribute (unique, length…), by the same mapping the interview's other
@@ -212,14 +214,12 @@ export default function PersonForm({
   const nameValidationContext = useMemo<ValidationContext | undefined>(() => {
     const { codebook, network, stageSubject } = baseValidationContext;
     if (!stageSubject) return undefined;
-    const isSavedLabel = (node: NcNode) => {
-      const id = node[entityPrimaryKeyProperty];
-      return (
-        Object.hasOwn(generatedLabels, id) &&
-        node[entityAttributesProperty][config.nameAttribute] ===
-          generatedLabels[id]
+    const isSavedLabel = (node: NcNode) =>
+      holdsGeneratedLabel(
+        generatedLabels,
+        node[entityPrimaryKeyProperty],
+        node[entityAttributesProperty][config.nameAttribute],
       );
-    };
     return {
       codebook,
       network: {
