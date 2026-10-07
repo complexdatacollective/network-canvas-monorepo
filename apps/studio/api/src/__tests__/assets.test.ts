@@ -308,6 +308,25 @@ describe('asset delivery policy', () => {
     });
   });
 
+  it.each([
+    ['audio/x-m4a', 'audio/mp4'],
+    ['audio/m4a', 'audio/mp4'],
+    ['audio/x-aiff', 'audio/aiff'],
+    ['audio/mp3', 'audio/mpeg'],
+    ['audio/x-mpeg-3', 'audio/mpeg'],
+    ['image/pjpeg', 'image/jpeg'],
+    ['image/jpg', 'image/jpeg'],
+    ['image/x-png', 'image/png'],
+  ])(
+    'serves a stimulus a browser reported as %s inline as %s',
+    (reported, canonical) => {
+      expect(deliveryFor(`${reported}; charset=binary`)).toEqual({
+        contentType: canonical,
+        disposition: 'inline',
+      });
+    },
+  );
+
   it('classifies a parameterised media type by its essence', () => {
     expect(deliveryFor('image/png; charset=binary')).toEqual({
       contentType: 'image/png',

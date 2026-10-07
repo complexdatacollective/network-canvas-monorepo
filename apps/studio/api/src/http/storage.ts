@@ -28,7 +28,6 @@ const INLINE_MEDIA_TYPES = new Set([
   'image/webp',
   'audio/aac',
   'audio/aiff',
-  'audio/x-aiff',
   'audio/mp4',
   'audio/mpeg',
   'audio/ogg',
@@ -40,11 +39,29 @@ const INLINE_MEDIA_TYPES = new Set([
   'video/webm',
 ]);
 
+// The upload keeps whatever type the researcher's browser reported, which for
+// an accepted stimulus is often an alias of the type above it belongs under.
+// Mapped here, at delivery, so assets already stored under one play too.
+const MEDIA_TYPE_ALIASES: Readonly<Record<string, string>> = {
+  'audio/m4a': 'audio/mp4',
+  'audio/mp3': 'audio/mpeg',
+  'audio/mpeg3': 'audio/mpeg',
+  'audio/x-aiff': 'audio/aiff',
+  'audio/x-m4a': 'audio/mp4',
+  'audio/x-mp3': 'audio/mpeg',
+  'audio/x-mpeg': 'audio/mpeg',
+  'audio/x-mpeg-3': 'audio/mpeg',
+  'image/jpg': 'image/jpeg',
+  'image/pjpeg': 'image/jpeg',
+  'image/x-png': 'image/png',
+};
+
 export function deliveryFor(mediaType: string): {
   contentType: string;
   disposition: 'inline' | 'attachment';
 } {
-  const essence = mediaType.split(';')[0]?.trim().toLowerCase() ?? '';
+  const reported = mediaType.split(';')[0]?.trim().toLowerCase() ?? '';
+  const essence = MEDIA_TYPE_ALIASES[reported] ?? reported;
   return INLINE_MEDIA_TYPES.has(essence)
     ? { contentType: essence, disposition: 'inline' }
     : { contentType: 'application/octet-stream', disposition: 'attachment' };
