@@ -35,6 +35,3 @@ their values only, so researchers can reword or translate the labels. The old
 stage's `nodeConfig`, `edgeConfig`, `boundaries`, `introScreen` and
 `censusPrompt`, and its `BIOLOGICAL_SEX`, `RELATIONSHIP_TYPES` and
 `GAMETE_ROLES` value sets, are not part of schema 9.
-
-The v8 to v9 migration does not convert a schema 8 Family Pedigree stage yet,
-so migrating a protocol that has one fails validation.
