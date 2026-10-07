@@ -31,7 +31,10 @@ import { InterviewI18nProvider } from '../../../i18n/InterviewI18nProvider';
 import { setPassphrase, setPassphraseInvalid } from '../../../store/modules/ui';
 import { interviewToastManager } from '../../../toast/interviewToastManager';
 import type { StageProps } from '../../../types';
-import { createEncryptionStore } from '../../Anonymisation/__tests__/encryptionFixtures';
+import {
+  createEncryptionStore,
+  makeEncryptedPerson,
+} from '../../Anonymisation/__tests__/encryptionFixtures';
 import { isNumberArray } from '../../Anonymisation/decryptionScope';
 import {
   decryptData,
@@ -142,17 +145,19 @@ function CaptureDndStore({
 function renderCategoricalBin(
   passphrase?: string,
   {
+    subject = person,
     others = [],
     stageVariables = variables,
     encryptionEnabled = true,
   }: {
+    subject?: NcNode;
     others?: NcNode[];
     stageVariables?: Record<string, Variable>;
     encryptionEnabled?: boolean;
   } = {},
 ) {
   const store = createEncryptionStore(
-    [person, ...others],
+    [subject, ...others],
     [stage],
     stageVariables,
     { encryptionEnabled },
@@ -190,9 +195,9 @@ function renderCategoricalBin(
     act(() => {
       dndStore?.getState().startDrag(
         {
-          id: person[entityPrimaryKeyProperty],
+          id: subject[entityPrimaryKeyProperty],
           type: 'NODE',
-          metadata: person,
+          metadata: subject,
           _sourceZone: null,
         },
         { x: 0, y: 0, width: 10, height: 10 },
@@ -346,6 +351,29 @@ describe('CategoricalBin asking for an encrypted "other" answer', () => {
     await expect(decryptData({ secureAttributes, data }, 'pw')).resolves.toBe(
       'Cousin',
     );
+  });
+});
+
+describe('CategoricalBin showing a person whose name is encrypted', () => {
+  it('shows their decrypted name in the "other" dialog', async () => {
+    const { dropIntoOther } = renderCategoricalBin('pw', {
+      subject: await makeEncryptedPerson('n1', 'Alice', 'pw'),
+      stageVariables: {
+        ...variables,
+        name: {
+          name: 'name',
+          type: 'text',
+          component: 'Text',
+          encrypted: true,
+        },
+      },
+    });
+
+    await dropIntoOther();
+
+    const dialog = await screen.findByRole('dialog', { name: 'Specify other' });
+    expect(await within(dialog).findByText('Alice')).toBeVisible();
+    expect(within(dialog).queryByText('Person')).toBeNull();
   });
 });
 
