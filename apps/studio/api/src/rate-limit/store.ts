@@ -47,7 +47,7 @@ export class RateLimitStore extends Context.Service<
         if (env.redis) return RateLimitStore.layerOf(env.redis);
         if (!env.devDefaults) {
           yield* Effect.logWarning(
-            'REDIS_URL is not set: no rate limit is enforced. Sign-in, invitation, RPC, storage, public API and WebSocket limits all depend on it.',
+            'REDIS_URL is not set: no rate limit is enforced. Sign-in, invitation, RPC, storage, public API and WebSocket limits all depend on it. Protocol-builder updates also reach other replicas only through the 5-second safety poll.',
           );
         }
         return RateLimitStore.layerAbsent;
