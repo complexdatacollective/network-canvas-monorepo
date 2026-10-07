@@ -1650,6 +1650,56 @@ export const UnnamedPeopleAreLabelledOnLeavingAndUnnamedOnReturn: Story = {
 };
 
 /**
+ * The participant is never asked their name: they are shown as "You", their
+ * panel asks only what the family tree needs (their gender identity, their
+ * sex assigned at birth and the researcher's own questions), and saving it
+ * leaves alone a name they were given elsewhere in the interview.
+ */
+export const TheParticipantIsNotAskedTheirName: Story = {
+  args: { requirement: 'none' },
+  render: (args) => (
+    <PedigreeStory
+      {...settings(args)}
+      family={sistersWithPartners}
+      withFormFields
+      followedByPeopleList
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
+
+    await userEvent.click(await canvas.findByRole('button', { name: 'You' }));
+    await body.findByText('About you');
+    await waitFor(() => expect(panelOf(canvasElement)).not.toBeNull());
+    const panel = within(panelOf(canvasElement) as HTMLElement);
+    await expect(panel.queryByRole('textbox', { name: /name/i })).toBeNull();
+    await expect(panel.queryByText(/name/i)).toBeNull();
+    // What the family tree needs, and the researcher's questions, remain.
+    await expect(
+      await body.findByRole('radiogroup', { name: /gender identity/i }),
+    ).toBeInTheDocument();
+    await expect(
+      await body.findByRole('radiogroup', { name: /sex assigned at birth/i }),
+    ).toBeInTheDocument();
+    await expect(
+      await body.findByRole('spinbutton', { name: /Age/ }),
+    ).toBeInTheDocument();
+    const [living] = await panel.findAllByRole('radio', { name: 'Yes' });
+    await userEvent.click(living!);
+    await userEvent.click(await body.findByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(panelOf(canvasElement)).toBeNull());
+    await canvas.findByRole('button', { name: 'You' });
+
+    // The name the participant's person already held is untouched, and
+    // nobody is given a label in its place.
+    await leaveForPeopleList(canvasElement);
+    await expect(await canvas.findByText('Ari')).toBeInTheDocument();
+    await expect(canvas.queryByText('You')).toBeNull();
+  },
+};
+
+/**
  * A relative added on a return visit changes who shares a kinship word, and
  * the labels follow, on the canvas and when saved on leaving again: the
  * sister first saved as "Sister" is numbered with the new one, since no

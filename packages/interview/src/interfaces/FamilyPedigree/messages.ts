@@ -202,11 +202,6 @@ export const messages = defineMessages({
     description:
       'Label of the field for a family member’s name, which the participant may not know.',
   },
-  yourNameLabel: {
-    id: 'interview.familyPedigree.yourNameLabel',
-    defaultMessage: 'Your name (optional)',
-    description: 'Label of the field for the participant’s own name.',
-  },
   nameHint: {
     id: 'interview.familyPedigree.nameHint',
     defaultMessage:

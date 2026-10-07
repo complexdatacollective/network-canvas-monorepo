@@ -187,6 +187,9 @@ export default function PersonForm({
   const person = mode.kind === 'edit' ? mode.person : undefined;
 
   const isEgo = person?.isEgo ?? false;
+  // The participant is never asked their own name: they are shown as "You",
+  // and only what the family tree needs is asked about them.
+  const asksName = !isEgo;
 
   // A typed name follows whatever validation the codebook gives the name
   // attribute (unique, length…), by the same mapping the interview's other
@@ -254,8 +257,9 @@ export default function PersonForm({
 
   const handleSubmit: FormSubmitHandler = (values) => {
     const set: PersonDetails = readOwnDetails(values, config);
+    // A name the form does not ask is left as it is.
     const unset = [
-      config.nameAttribute,
+      ...(asksName ? [config.nameAttribute] : []),
       ...(config.genderIdentity ? [config.genderIdentity.attribute] : []),
       config.sexAssignedAtBirthAttribute,
     ].filter((variable) => !(variable in set));
@@ -353,19 +357,19 @@ export default function PersonForm({
           <Heading level="h3" margin="none" className="mb-4">
             <AppMessage message={messages.aboutThisPerson} />
           </Heading>
-          <Field
-            component={InputField}
-            name={config.nameAttribute}
-            nameMode="opaque"
-            label={intl.formatMessage(
-              isEgo ? messages.yourNameLabel : messages.nameLabel,
-            )}
-            hint={isEgo ? undefined : intl.formatMessage(messages.nameHint)}
-            initialValue={person?.name}
-            autoComplete="off"
-            {...nameValidationProps}
-            validationContext={nameValidationContext}
-          />
+          {asksName && (
+            <Field
+              component={InputField}
+              name={config.nameAttribute}
+              nameMode="opaque"
+              label={intl.formatMessage(messages.nameLabel)}
+              hint={intl.formatMessage(messages.nameHint)}
+              initialValue={person?.name}
+              autoComplete="off"
+              {...nameValidationProps}
+              validationContext={nameValidationContext}
+            />
+          )}
           {config.genderIdentity && (
             <Field
               component={RadioGroupField}

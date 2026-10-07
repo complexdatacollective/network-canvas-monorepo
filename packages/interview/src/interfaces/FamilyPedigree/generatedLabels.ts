@@ -126,7 +126,8 @@ function buildLabels(
     (person) => !person.isEgo && person.name === undefined,
   );
 
-  // Every name the participant typed, the participant's own included.
+  // Every name typed, and any name the participant's own person was given
+  // elsewhere in the interview.
   const used = new Set<string>();
   for (const person of family.people) {
     if (person.name !== undefined) used.add(comparable(person.name));

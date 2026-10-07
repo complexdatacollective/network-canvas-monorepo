@@ -507,10 +507,6 @@
     "defaultMessage": "You",
     "description": "Label shown inside the participant’s own symbol in their family tree."
   },
-  "interview.familyPedigree.yourNameLabel": {
-    "defaultMessage": "Your name (optional)",
-    "description": "Label of the field for the participant’s own name."
-  },
   "interview.familyPedigree.zoomIn": {
     "defaultMessage": "Zoom in",
     "description": "Toolbar button that makes the family tree larger."

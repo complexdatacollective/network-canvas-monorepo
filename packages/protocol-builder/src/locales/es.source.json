@@ -926,7 +926,7 @@
   "protocolBuilder.pedigree.kindHint": "Records whether a relationship is a partnership or which kind of parent one person is to the other. The interface sets the options this attribute offers.",
   "protocolBuilder.pedigree.kindLabel": "Relationship kind",
   "protocolBuilder.pedigree.nameCreateLabel": "Create a new name attribute",
-  "protocolBuilder.pedigree.nameHint": "Each person’s name, typed by the participant in the side panel. A name may be left blank: when the participant leaves this stage, anyone unnamed is given a label from their relationship to the participant, such as “Maternal aunt” or “Sister (partner of Tom)”. The attribute’s validation rules apply to names the participant types.",
+  "protocolBuilder.pedigree.nameHint": "Each person’s name, typed by the participant in the side panel. A name may be left blank: when the participant leaves this stage, anyone unnamed is given a label from their relationship to the participant, such as “Maternal aunt” or “Sister (partner of Tom)”. The participant is not asked their own name and is shown as “You”. The attribute’s validation rules apply to names the participant types.",
   "protocolBuilder.pedigree.nameLabel": "Name",
   "protocolBuilder.pedigree.nominationAddLabel": "Create new nomination prompt",
   "protocolBuilder.pedigree.nominationAddTitle": "Create nomination prompt",
