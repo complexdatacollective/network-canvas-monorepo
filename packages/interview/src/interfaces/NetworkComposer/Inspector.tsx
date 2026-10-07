@@ -22,6 +22,9 @@ import useProtocolForm from '../../forms/useProtocolForm';
 import { runtimeMessages } from '../../i18n/runtimeMessages';
 import type { Subject } from '../../selectors/forms';
 import type { AttributePatch } from '../../store/entityAttributePatch';
+import PassphraseNotice, {
+  type PassphraseNoticeStatus,
+} from '../Anonymisation/PassphraseNotice';
 import { interfaceMessages } from '../messages';
 
 type Attributes = NcNode[typeof entityAttributesProperty];
@@ -31,7 +34,12 @@ export type InspectorProps = {
   form: ComposerForm | undefined;
   subject: Subject;
   attributes: Attributes;
-  onSave: (id: string, attributePatch: AttributePatch) => void;
+  /**
+   * Set while the entity's values cannot be shown or saved because they are
+   * encrypted; the form is replaced by an explanation.
+   */
+  passphraseStatus?: PassphraseNoticeStatus;
+  onSave: (id: string, attributePatch: AttributePatch) => Promise<void>;
   onDelete: (id: string) => void;
 };
 
@@ -104,7 +112,9 @@ function AttributeFormInner({
   subject,
   attributes,
   onSave,
-}: Omit<InspectorProps, 'form' | 'onDelete'> & { form: ComposerForm }) {
+}: Omit<InspectorProps, 'form' | 'onDelete' | 'passphraseStatus'> & {
+  form: ComposerForm;
+}) {
   const initialValues = useMemo(
     () =>
       Object.entries(attributes).reduce<Record<string, FieldValue>>(
@@ -134,15 +144,19 @@ function AttributeFormInner({
         (form.fields ?? []).map((field) => field.variable),
       );
 
-      if (!patchResult.success) {
+      const showSaveFailure = () => {
         storeApi?.getState().setErrors({
           formErrors: [createMessageError(runtimeMessages.submissionFailed)],
           fieldErrors: {},
         });
+      };
+
+      if (!patchResult.success) {
+        showSaveFailure();
         return;
       }
 
-      onSave(entityId, patchResult.patch);
+      void onSave(entityId, patchResult.patch).catch(showSaveFailure);
     },
     [onSave, entityId, coerceValues, form.fields, storeApi],
   );
@@ -164,6 +178,7 @@ export default function Inspector({
   form,
   subject,
   attributes,
+  passphraseStatus,
   onSave,
   onDelete,
 }: InspectorProps) {
@@ -171,7 +186,12 @@ export default function Inspector({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      {hasFields ? (
+      {hasFields && passphraseStatus ? (
+        <PassphraseNotice
+          status={passphraseStatus}
+          className="text-text/60 min-h-0 flex-1"
+        />
+      ) : hasFields ? (
         <FormStoreProvider>
           <AttributeFormInner
             entityId={entityId}
