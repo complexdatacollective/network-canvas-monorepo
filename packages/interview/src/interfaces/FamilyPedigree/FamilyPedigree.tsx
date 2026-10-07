@@ -388,8 +388,8 @@ const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
       confirmLabel: <AppMessage message={messages.finalize} />,
       cancelLabel: <AppMessage message={messages.keepEditing} />,
       intent: 'default',
-      onConfirm: async () => {
-        const refused = await finalizeNetwork();
+      onConfirm: async (signal) => {
+        const refused = await finalizeNetwork(signal);
         const failure = refused && writeFailureMessage(refused);
         // Keeps the dialog open with the reason, and the pedigree unsaved.
         if (failure) throw new Error(createMessageError(failure));

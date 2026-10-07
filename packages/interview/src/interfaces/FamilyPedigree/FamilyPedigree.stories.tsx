@@ -940,6 +940,53 @@ export const DiseaseNomination: ScenarioStory = {
   },
 };
 
+/** Chooses the passphrase and builds Linda and Robert's family. */
+async function buildEncryptedFamily() {
+  await expect(
+    await screen.findByText(/enter your passphrase to see and change/i),
+  ).toBeInTheDocument();
+  await expect(
+    screen.queryByTestId('pedigree-get-started'),
+  ).not.toBeInTheDocument();
+
+  // The wizard opens in a dialog of its own; this waits for the passphrase
+  // dialog to finish closing first.
+  await choosePassphraseInPrompter('storybook passphrase');
+
+  await clickGetStarted();
+  await selectEgoSex();
+
+  await setFieldInput('egg-parent.is-donor', false);
+  await setFieldInput('egg-parent.name', 'Linda');
+  await setFieldInput('egg-parent.gestationalCarrier', true);
+  await setFieldInput('egg-parent.gender_identity', 'woman');
+  await clickNext();
+
+  await setFieldInput('sperm-parent.is-donor', false);
+  await setFieldInput('sperm-parent.name', 'Robert');
+  await setFieldInput('sperm-parent.gender_identity', 'man');
+  await clickNext();
+
+  await setFieldInput('hasOtherParents', false);
+  await clickNext();
+
+  await setPartnership('egg-parent', 'Robert', 'current');
+  await clickNext();
+
+  await setFieldInput('hasPartner', false);
+  await clickNext();
+  await expectQuickStartComplete(['Linda', 'Robert']);
+}
+
+const renderEncryptedNames = () => (
+  <FamilyPedigreeStoryWrapper
+    buildFn={() =>
+      buildScenarioInterview({ withNomination: true, encryptedNames: true })
+    }
+    navigationOrientation="vertical"
+  />
+);
+
 /**
  * The name variable is marked encrypted. The pedigree waits for a passphrase,
  * chosen and confirmed from the key button in the navigation, before it can be
@@ -948,49 +995,9 @@ export const DiseaseNomination: ScenarioStory = {
  */
 export const EncryptedNames: ScenarioStory = {
   args: { scaffoldingText: '' },
-  render: () => (
-    <FamilyPedigreeStoryWrapper
-      buildFn={() =>
-        buildScenarioInterview({ withNomination: true, encryptedNames: true })
-      }
-      navigationOrientation="vertical"
-    />
-  ),
+  render: renderEncryptedNames,
   play: async () => {
-    await expect(
-      await screen.findByText(/enter your passphrase to see and change/i),
-    ).toBeInTheDocument();
-    await expect(
-      screen.queryByTestId('pedigree-get-started'),
-    ).not.toBeInTheDocument();
-
-    // The wizard opens in a dialog of its own; this waits for the passphrase
-    // dialog to finish closing first.
-    await choosePassphraseInPrompter('storybook passphrase');
-
-    await clickGetStarted();
-    await selectEgoSex();
-
-    await setFieldInput('egg-parent.is-donor', false);
-    await setFieldInput('egg-parent.name', 'Linda');
-    await setFieldInput('egg-parent.gestationalCarrier', true);
-    await setFieldInput('egg-parent.gender_identity', 'woman');
-    await clickNext();
-
-    await setFieldInput('sperm-parent.is-donor', false);
-    await setFieldInput('sperm-parent.name', 'Robert');
-    await setFieldInput('sperm-parent.gender_identity', 'man');
-    await clickNext();
-
-    await setFieldInput('hasOtherParents', false);
-    await clickNext();
-
-    await setPartnership('egg-parent', 'Robert', 'current');
-    await clickNext();
-
-    await setFieldInput('hasPartner', false);
-    await clickNext();
-    await expectQuickStartComplete(['Linda', 'Robert']);
+    await buildEncryptedFamily();
 
     await userEvent.click(await screen.findByTestId('next-button'));
     const confirmDialog = await getDialog();
@@ -1009,6 +1016,56 @@ export const EncryptedNames: ScenarioStory = {
       await screen.findByRole('button', { name: 'Linda' }, { timeout: 15000 }),
     );
     await screen.findByRole('button', { name: 'Linda', pressed: true });
+  },
+};
+
+/**
+ * Cancelling the finalize while the names are being encrypted saves nothing:
+ * finalizing is asked for again, and saves each relative once.
+ */
+export const EncryptedNamesFinalizeCancelled: ScenarioStory = {
+  args: { scaffoldingText: '' },
+  render: renderEncryptedNames,
+  play: async () => {
+    await buildEncryptedFamily();
+
+    await userEvent.click(await screen.findByTestId('next-button'));
+    const cancelledDialog = await getDialog();
+    const finalize = within(cancelledDialog).getByRole('button', {
+      name: 'Finalize',
+    });
+    const keepEditing = within(cancelledDialog).getByRole('button', {
+      name: 'Keep editing',
+    });
+    // Cancelled straight after finalizing, so while the names are still being
+    // encrypted.
+    finalize.click();
+    keepEditing.click();
+    await waitFor(async () => {
+      await expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+    await expect(
+      screen.queryByText(/diagnosed with breast cancer/i),
+    ).not.toBeInTheDocument();
+
+    await userEvent.click(await screen.findByTestId('next-button'));
+    const confirmDialog = await getDialog();
+    await userEvent.click(
+      within(confirmDialog).getByRole('button', { name: 'Finalize' }),
+    );
+
+    await screen.findByText(
+      /diagnosed with breast cancer/i,
+      {},
+      { timeout: 15000 },
+    );
+    await expect(
+      await screen.findAllByRole(
+        'button',
+        { name: 'Linda' },
+        { timeout: 15000 },
+      ),
+    ).toHaveLength(1);
   },
 };
 

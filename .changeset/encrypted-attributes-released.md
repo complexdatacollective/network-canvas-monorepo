@@ -82,7 +82,9 @@ Encrypted answers are now protected in a new way:
   found by "Answer unavailable", as it is shown.
 - The add-a-person form can't be closed or submitted twice while it saves.
   A family pedigree is saved all at once or not at all, and a relationship
-  that can't be saved is reported rather than skipped.
+  that can't be saved is reported rather than skipped. Choosing to keep
+  editing while it is being saved saves none of it, so finalizing it again
+  saves each relative once.
 - The summary of the family that a family pedigree saves alongside the
   interview names a relative whose name is protected by their relationship
   alone, so a protected name never reaches it, even inside another
