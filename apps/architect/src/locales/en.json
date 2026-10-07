@@ -2241,7 +2241,7 @@
   },
   "architect.protocolSummary.stage.familyPedigree.currentPartner": {
     "defaultMessage": "Current partner",
-    "description": "Label for the true/false attribute marking a partnership as current, in the printable protocol summary."
+    "description": "Label for the boolean attribute marking a partnership as current, in the printable protocol summary."
   },
   "architect.protocolSummary.stage.familyPedigree.framing": {
     "defaultMessage": "Words for family members",
@@ -2293,7 +2293,7 @@
   },
   "architect.protocolSummary.stage.familyPedigree.gestationalCarrier": {
     "defaultMessage": "Gestational carrier",
-    "description": "Label for the true/false attribute marking the parent who carried a pregnancy, in the printable protocol summary."
+    "description": "Label for the boolean attribute marking the parent who carried a pregnancy, in the printable protocol summary."
   },
   "architect.protocolSummary.stage.familyPedigree.name": {
     "defaultMessage": "Name",
@@ -2317,7 +2317,7 @@
   },
   "architect.protocolSummary.stage.familyPedigree.participantMarker": {
     "defaultMessage": "Participant marker",
-    "description": "Label for the true/false attribute that marks which family member is the participant, in the printable protocol summary."
+    "description": "Label for the boolean attribute that marks which family member is the participant, in the printable protocol summary."
   },
   "architect.protocolSummary.stage.familyPedigree.relationshipEdgeType": {
     "defaultMessage": "Relationship edge type",

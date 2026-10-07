@@ -37,8 +37,9 @@ export const familyPedigreeMessages = defineMessages({
   nameHint: {
     id: 'protocolBuilder.pedigree.nameHint',
     defaultMessage:
-      'A text attribute holding each person’s name. The participant types it in the side panel when describing each family member, and the attribute’s validation rules apply, such as requiring a name or making every name unique.',
-    description: 'Guidance under the name attribute control.',
+      'Each person’s name, typed by the participant in the side panel. A name may be left blank: when the participant leaves this stage, anyone unnamed is given a label from their relationship to the participant, such as “Maternal aunt” or “Sister (partner of Tom)”. The attribute’s validation rules apply to names the participant types.',
+    description:
+      'Guidance under the name attribute control. The side panel is where the participant describes each family member. The two labels in quotation marks are examples of what the interview generates for an unnamed person, and are translated like the rest of the sentence; Tom is a person’s name.',
   },
   nameCreateLabel: {
     id: 'protocolBuilder.pedigree.nameCreateLabel',
@@ -231,12 +232,12 @@ export const familyPedigreeMessages = defineMessages({
     id: 'protocolBuilder.pedigree.egoLabel',
     defaultMessage: 'Participant marker',
     description:
-      'Label of the control choosing the true/false attribute that marks which family member is the participant.',
+      'Label of the control choosing the boolean attribute that marks which family member is the participant.',
   },
   egoHint: {
     id: 'protocolBuilder.pedigree.egoHint',
     defaultMessage:
-      'The interface sets this true/false attribute to true on the participant’s own person, and leaves it blank on everyone else. Use it in a stage filter to keep the participant out of later stages, such as a name generator or sociogram of their relatives, or to tell them apart in exports and analysis. Because it is blank rather than false for everyone else, filter on “is not” true to leave the participant out. Nothing else in the protocol may write it.',
+      'The interface sets this boolean attribute to true on the participant’s own person, and leaves it blank on everyone else. Use it in a stage filter to keep the participant out of later stages, such as a name generator or sociogram of their relatives, or to tell them apart in exports and analysis. Because it is blank rather than false for everyone else, filter on “is not” true to leave the participant out.',
     description:
       'Guidance under the participant marker attribute control. A stage filter is the set of rules, in the stage’s Stage filter section, that decide which nodes a stage shows. A name generator and a sociogram are kinds of interview stage. “is not” is the name of a rule operator in the stage filter, written exactly as it appears there.',
   },
@@ -244,7 +245,7 @@ export const familyPedigreeMessages = defineMessages({
     id: 'protocolBuilder.pedigree.egoCreateLabel',
     defaultMessage: 'Create a new participant marker attribute',
     description:
-      'Title of the dialog that creates a new true/false attribute marking the participant.',
+      'Title of the dialog that creates a new boolean attribute marking the participant.',
   },
 
   relationshipsTitle: {
@@ -281,7 +282,7 @@ export const familyPedigreeMessages = defineMessages({
   kindHint: {
     id: 'protocolBuilder.pedigree.kindHint',
     defaultMessage:
-      'Records whether a relationship is a partnership or which kind of parent one person is to the other. The interface sets the options this attribute offers, and nothing else in the protocol may write it.',
+      'Records whether a relationship is a partnership or which kind of parent one person is to the other. The interface sets the options this attribute offers.',
     description:
       'Guidance under the relationship kind attribute control. The options are a fixed list the interface owns.',
   },
@@ -295,12 +296,12 @@ export const familyPedigreeMessages = defineMessages({
     id: 'protocolBuilder.pedigree.gestationalCarrierLabel',
     defaultMessage: 'Gestational carrier',
     description:
-      'Label of the control choosing the true/false attribute that marks the parent who carried a pregnancy.',
+      'Label of the control choosing the boolean attribute that marks the parent who carried a pregnancy.',
   },
   gestationalCarrierHint: {
     id: 'protocolBuilder.pedigree.gestationalCarrierHint',
     defaultMessage:
-      'True on the parent relationship of whoever carried the pregnancy (a surrogate, or a biological parent who did), and false on every other parent relationship. Nothing else in the protocol may write it.',
+      'True on the parent relationship of whoever carried the pregnancy (a surrogate, or a biological parent who did), and false on every other parent relationship.',
     description:
       'Guidance under the gestational carrier attribute control. A parent relationship is the connection between a parent and their child. The attribute is not set on partnerships.',
   },
@@ -308,18 +309,18 @@ export const familyPedigreeMessages = defineMessages({
     id: 'protocolBuilder.pedigree.gestationalCarrierCreateLabel',
     defaultMessage: 'Create a new gestational carrier attribute',
     description:
-      'Title of the dialog that creates a new true/false attribute marking the parent who carried a pregnancy.',
+      'Title of the dialog that creates a new boolean attribute marking the parent who carried a pregnancy.',
   },
   currentPartnerLabel: {
     id: 'protocolBuilder.pedigree.currentPartnerLabel',
     defaultMessage: 'Current partner',
     description:
-      'Label of the control choosing the true/false attribute that marks a partnership as current.',
+      'Label of the control choosing the boolean attribute that marks a partnership as current.',
   },
   currentPartnerHint: {
     id: 'protocolBuilder.pedigree.currentPartnerHint',
     defaultMessage:
-      'True when a partnership is current, and false when it has ended. Nothing else in the protocol may write it.',
+      'True when a partnership is current, and false when it has ended.',
     description:
       'Guidance under the current partner attribute control. It is set on every partnership, and on nothing else.',
   },
@@ -327,7 +328,7 @@ export const familyPedigreeMessages = defineMessages({
     id: 'protocolBuilder.pedigree.currentPartnerCreateLabel',
     defaultMessage: 'Create a new current partner attribute',
     description:
-      'Title of the dialog that creates a new true/false attribute marking a current partnership.',
+      'Title of the dialog that creates a new boolean attribute marking a current partnership.',
   },
   relationshipTypeChangeTitle: {
     id: 'protocolBuilder.pedigree.relationshipTypeChangeTitle',
@@ -484,7 +485,7 @@ export const familyPedigreeMessages = defineMessages({
   relativesNotRecordedHint: {
     id: 'protocolBuilder.pedigree.relativesNotRecordedHint',
     defaultMessage:
-      'Where “no siblings”, “no children” and “don’t know” answers are stored, on the person they are about. The interface sets the options this attribute offers, and nothing else in the protocol may write it.',
+      'Where “no siblings”, “no children” and “don’t know” answers are stored, on the person they are about. The interface sets the options this attribute offers.',
     description:
       'Guidance under the relatives-not-recorded attribute control. The options are a fixed list the interface owns.',
   },
@@ -616,7 +617,7 @@ export const familyPedigreeMessages = defineMessages({
   nominationDescription: {
     id: 'protocolBuilder.pedigree.nominationDescription',
     defaultMessage:
-      'Optionally ask questions about the whole family once it is drawn, such as “Who in your family has had heart disease?”. Participants answer each in turn by selecting everyone it applies to, and the interface sets a true/false attribute on them.',
+      'Optionally ask questions about the whole family once it is drawn, such as “Who in your family has had heart disease?”. Participants answer each in turn by selecting everyone it applies to, and the interface sets a boolean attribute on them.',
     description:
       'Description of the nomination prompts section. A prompt is one question a participant is asked. Nominating means selecting the people a question applies to. An attribute is a codebook variable.',
   },
@@ -695,19 +696,19 @@ export const familyPedigreeMessages = defineMessages({
     id: 'protocolBuilder.pedigree.nominationVariableLabel',
     defaultMessage: 'Attribute',
     description:
-      'Label of the control choosing the true/false attribute a nomination prompt sets on the people the participant selects.',
+      'Label of the control choosing the boolean attribute a nomination prompt sets on the people the participant selects.',
   },
   nominationVariableHint: {
     id: 'protocolBuilder.pedigree.nominationVariableHint',
     defaultMessage:
-      'A true/false attribute. The interface sets it to true on everyone the participant selects, and to false on anyone they select and then deselect. Everyone else is left blank.',
+      'A boolean attribute. The interface sets it to true on everyone the participant selects, and to false on anyone they select and then deselect. Everyone else is left blank.',
     description:
       'Guidance under the attribute control of a nomination prompt. An attribute is a codebook variable. Selecting a person a second time deselects them.',
   },
   nominationVariableEmpty: {
     id: 'protocolBuilder.pedigree.nominationVariableEmpty',
     defaultMessage:
-      'This type has no true/false attributes yet. Create one to record who the participant selects.',
+      'This type has no boolean attributes yet. Create one to record who the participant selects.',
     description:
       'Shown in place of the attribute picker’s options when the person node type has no attribute holding true or false.',
   },
@@ -721,14 +722,14 @@ export const familyPedigreeMessages = defineMessages({
     id: 'protocolBuilder.pedigree.nominationVariableCreateLabel',
     defaultMessage: 'Create a new nomination attribute',
     description:
-      'Title of the dialog that creates a new true/false attribute for a nomination prompt to set on the people the participant selects.',
+      'Title of the dialog that creates a new boolean attribute for a nomination prompt to set on the people the participant selects.',
   },
   nominationVariableGoneRefusal: {
     id: 'protocolBuilder.pedigree.nominationVariableGoneRefusal',
     defaultMessage:
       'This attribute can no longer record a nomination prompt. Choose another one.',
     description:
-      'Refusal shown when a researcher saves a nomination prompt whose attribute has been deleted from the codebook or is no longer a true/false attribute.',
+      'Refusal shown when a researcher saves a nomination prompt whose attribute has been deleted from the codebook or is no longer a boolean attribute.',
   },
   nominationSexLabel: {
     id: 'protocolBuilder.pedigree.nominationSexLabel',

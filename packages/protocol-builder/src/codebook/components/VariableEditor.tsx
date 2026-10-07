@@ -167,16 +167,16 @@ const messages = defineMessages({
   heldAnswersCaption: {
     id: 'protocolBuilder.codebookVariable.heldAnswersCaption',
     defaultMessage:
-      'A yes/no attribute is written here as two answers, and this one offers a different number of them. They are shown as they are, and saving leaves them unchanged.',
+      'A boolean attribute is written here as two answers, and this one offers a different number of them. They are shown as they are, and saving leaves them unchanged.',
     description:
-      'Caption over the read-only list of answers a yes/no attribute offers, shown when the attribute holds some number of answers other than the two this editor writes. It says that saving the attribute does not alter them.',
+      'Caption over the read-only list of answers a boolean (yes/no) attribute offers, shown when the attribute holds some number of answers other than the two this editor writes. It says that saving the attribute does not alter them.',
   },
   heldAnswerValuesCaption: {
     id: 'protocolBuilder.codebookVariable.heldAnswerValuesCaption',
     defaultMessage:
-      'A yes/no attribute is written here as two answers, one recording “true” and the other “false”. This one’s answers record something else, so they are shown as they are, and saving leaves them unchanged.',
+      'A boolean attribute is written here as two answers, one recording “true” and the other “false”. This one’s answers record something else, so they are shown as they are, and saving leaves them unchanged.',
     description:
-      'Caption over the read-only list of answers a yes/no attribute offers, shown when the attribute holds two answers that do not record one “true” and one “false” — both recording the same one, for instance. It says that saving the attribute does not alter them. “true” and “false” are the literal values the protocol stores and stay as they are.',
+      'Caption over the read-only list of answers a boolean (yes/no) attribute offers, shown when the attribute holds two answers that do not record one “true” and one “false” — both recording the same one, for instance. It says that saving the attribute does not alter them. “true” and “false” are the literal values the protocol stores and stay as they are.',
   },
   optionLabelField: {
     id: 'protocolBuilder.codebookVariable.optionLabelField',

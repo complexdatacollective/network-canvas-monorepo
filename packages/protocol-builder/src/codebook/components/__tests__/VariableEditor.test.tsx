@@ -1765,7 +1765,7 @@ describe('the two answers a boolean offers', () => {
     ).toBeNull();
     expect(
       screen.getByText(
-        'A yes/no attribute is written here as two answers, and this one offers a different number of them. They are shown as they are, and saving leaves them unchanged.',
+        'A boolean attribute is written here as two answers, and this one offers a different number of them. They are shown as they are, and saving leaves them unchanged.',
       ),
     ).toBeVisible();
     // All three, with the boolean each one records — which is what the
@@ -1873,7 +1873,7 @@ describe('the two answers a boolean offers', () => {
     // would be looking for an answer that is not on the screen.
     expect(
       screen.getByText(
-        'A yes/no attribute is written here as two answers, one recording “true” and the other “false”. This one’s answers record something else, so they are shown as they are, and saving leaves them unchanged.',
+        'A boolean attribute is written here as two answers, one recording “true” and the other “false”. This one’s answers record something else, so they are shown as they are, and saving leaves them unchanged.',
       ),
     ).toBeVisible();
     const answers = within(screen.getByRole('table'));

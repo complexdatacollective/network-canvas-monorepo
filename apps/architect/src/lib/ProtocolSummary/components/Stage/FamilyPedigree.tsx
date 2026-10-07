@@ -94,7 +94,7 @@ const messages = defineMessages({
     id: 'architect.protocolSummary.stage.familyPedigree.participantMarker',
     defaultMessage: 'Participant marker',
     description:
-      'Label for the true/false attribute that marks which family member is the participant, in the printable protocol summary.',
+      'Label for the boolean attribute that marks which family member is the participant, in the printable protocol summary.',
   },
   relationshipEdgeType: {
     id: 'architect.protocolSummary.stage.familyPedigree.relationshipEdgeType',
@@ -112,13 +112,13 @@ const messages = defineMessages({
     id: 'architect.protocolSummary.stage.familyPedigree.gestationalCarrier',
     defaultMessage: 'Gestational carrier',
     description:
-      'Label for the true/false attribute marking the parent who carried a pregnancy, in the printable protocol summary.',
+      'Label for the boolean attribute marking the parent who carried a pregnancy, in the printable protocol summary.',
   },
   currentPartner: {
     id: 'architect.protocolSummary.stage.familyPedigree.currentPartner',
     defaultMessage: 'Current partner',
     description:
-      'Label for the true/false attribute marking a partnership as current, in the printable protocol summary.',
+      'Label for the boolean attribute marking a partnership as current, in the printable protocol summary.',
   },
   completenessScope: {
     id: 'architect.protocolSummary.stage.familyPedigree.completenessScope',

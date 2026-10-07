@@ -78,7 +78,7 @@ export const Wording: Story = {
 };
 
 /**
- * Writing a nomination prompt: the question, the true/false attribute that
+ * Writing a nomination prompt: the question, the boolean attribute that
  * records who is selected, and an optional limit by sex assigned at birth,
  * which is open to anyone until the researcher says otherwise.
  */

@@ -1515,7 +1515,7 @@ describe('the nomination prompts', () => {
     expect(prompt?.id).not.toBe('pedigree');
   });
 
-  it('offers only true/false attributes nothing else has claimed', async () => {
+  it('offers only boolean attributes nothing else has claimed', async () => {
     const harness = renderStageEditor({
       stage: familyPedigreeStageWith({
         form: { fields: [{ variable: 'has_pets', prompt: 'Any pets?' }] },
