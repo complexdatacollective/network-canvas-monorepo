@@ -126,7 +126,7 @@ describe('LocalizationAlert', () => {
     );
     expect(
       screen.getByRole('link', { name: 'Show missing translations' }),
-    ).toHaveAttribute('href', '/protocol/localization/table?missing=any');
+    ).toHaveAttribute('href', '/protocol/localization?table=open&missing=any');
   });
 
   it('dismisses the missing-translations warning and remembers it', async () => {

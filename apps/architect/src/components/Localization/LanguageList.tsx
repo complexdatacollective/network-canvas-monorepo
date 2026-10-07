@@ -44,7 +44,10 @@ import { UNSPECIFIED_LOCALE } from '~/utils/localizedText';
 
 import { describeLanguage } from './languageChoices';
 import TranslationFallback from './TranslationFallback';
-import { translationTableHref } from './translationTableLinks';
+import {
+  openedFromLanguagesState,
+  translationTableHref,
+} from './translationTableLinks';
 import {
   type OpenStageDraft,
   type ReturnFocus,
@@ -238,9 +241,11 @@ export const ProtocolLanguages = ({ draft }: ProtocolLanguagesProps) => {
 
   if (!protocol) return null;
 
-  // The translation table is a page of its own, and going to it from the
-  // stage editor leaves the stage, so unsaved changes to it are confirmed
-  // first, as Back confirms them.
+  // The translation table opens over the Languages page, so going to it from
+  // the stage editor leaves the stage, and unsaved changes to it are confirmed
+  // first, as Back confirms them. From the Languages page itself, its entry in
+  // the history says so, and closing it goes back.
+  const tableLinkState = draft === undefined ? openedFromLanguagesState : null;
   const guardLeavingStage =
     (href: string) => (event: MouseEvent<HTMLAnchorElement>) => {
       if (draft === undefined || !readStageDraft().dirty) return;
@@ -292,6 +297,7 @@ export const ProtocolLanguages = ({ draft }: ProtocolLanguagesProps) => {
               onRelabel={(returnFocus) => relabelLanguage(locale, returnFocus)}
               onRemove={(returnFocus) => removeLanguage(locale, returnFocus)}
               missingHref={missingHref}
+              missingState={tableLinkState}
               onShowMissing={guardLeavingStage(missingHref)}
             />
           );
@@ -300,7 +306,11 @@ export const ProtocolLanguages = ({ draft }: ProtocolLanguagesProps) => {
       <div className="mt-6 flex flex-wrap gap-3">
         {locales.length > 1 && (
           <Button asChild color="primary" icon={<Table2 aria-hidden />}>
-            <Link href={tableHref} onClick={guardLeavingStage(tableHref)}>
+            <Link
+              href={tableHref}
+              state={tableLinkState}
+              onClick={guardLeavingStage(tableHref)}
+            >
               {intl.formatMessage(messages.openTable)}
             </Link>
           </Button>
@@ -326,6 +336,7 @@ type LanguageRowProps = {
   onRemove: (returnFocus: ReturnFocus) => Promise<void>;
   /** The translation table, showing this language's missing translations. */
   missingHref: string;
+  missingState: typeof openedFromLanguagesState | null;
   onShowMissing: (event: MouseEvent<HTMLAnchorElement>) => void;
 };
 
@@ -337,6 +348,7 @@ const LanguageRow = ({
   onRelabel,
   onRemove,
   missingHref,
+  missingState,
   onShowMissing,
 }: LanguageRowProps) => {
   const intl = useAppIntl();
@@ -417,7 +429,11 @@ const LanguageRow = ({
         )}
         {total > 0 && missing > 0 && (
           <Button asChild size="sm" variant="link" className="self-start">
-            <Link href={missingHref} onClick={onShowMissing}>
+            <Link
+              href={missingHref}
+              state={missingState}
+              onClick={onShowMissing}
+            >
               {intl.formatMessage(messages.showMissing, {
                 count: missing,
                 language,

@@ -50,15 +50,17 @@ In Architect:
 - A translation table shows every text participants see beside its
   translation into each of the protocol's languages, one column per language.
   Open translation table, on the Languages page and in the Language Chooser's
-  editor, opens it. It fills the window, and a Full screen button gives it the
-  whole screen. Rows are grouped by stage, with each stage's position, name
+  editor, opens it in a dialog over the Languages page that fills the window.
+  The page's address records that the table is open and which texts it shows,
+  so Back closes it. Rows are grouped by stage, with each stage's position, name
   and interface, then by codebook type, and each text is named the way its
   editor names it, such as "Page heading" or "Item 1 › Content". Each cell is
   edited where it is, formatted text with the stage editor's formatting
-  buttons, and saved when you leave it: Escape undoes a change until then, the
-  arrow keys move between rows, and Ctrl+Enter saves and moves to the next
-  row. An empty cell shows what participants using that language see instead,
-  tagged with that text's language. A menu shows every text, the texts missing
+  buttons, and saved when you leave it or close the table: Escape undoes a
+  change until then and otherwise closes the table, the arrow keys move
+  between rows, and Ctrl+Enter saves and moves to the next row. An empty cell
+  shows what participants using that language see instead, tagged with that
+  text's language. A menu shows every text, the texts missing
   a translation into any language shown, or those missing one language; a
   search finds texts by place or translation; and language columns can be
   hidden.

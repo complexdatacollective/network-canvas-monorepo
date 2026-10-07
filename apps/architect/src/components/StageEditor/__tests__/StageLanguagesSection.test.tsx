@@ -173,10 +173,10 @@ describe('the language chooser’s languages in Architect', () => {
       within(rowOf('German')).getByRole('link', {
         name: 'Show 1 missing German translation',
       }),
-    ).toHaveAttribute('href', '/protocol/localization/table?missing=de');
+    ).toHaveAttribute('href', '/protocol/localization?table=open&missing=de');
     expect(
       screen.getByRole('link', { name: 'Open translation table' }),
-    ).toHaveAttribute('href', '/protocol/localization/table');
+    ).toHaveAttribute('href', '/protocol/localization?table=open');
     // The sections the package's own editor has, besides its list.
     expect(
       screen.getByRole('heading', { name: 'Skip logic' }),
@@ -190,7 +190,9 @@ describe('the language chooser’s languages in Architect', () => {
       screen.getByRole('link', { name: 'Open translation table' }),
     );
 
-    expect(window.location.pathname).toBe('/protocol/localization/table');
+    expect(window.location.pathname + window.location.search).toBe(
+      '/protocol/localization?table=open',
+    );
     expect(globalThis.__architectDialogMocks.openDialog).not.toHaveBeenCalled();
   });
 
@@ -216,7 +218,7 @@ describe('the language chooser’s languages in Architect', () => {
     );
     await waitFor(() =>
       expect(window.location.pathname + window.location.search).toBe(
-        '/protocol/localization/table?missing=de',
+        '/protocol/localization?table=open&missing=de',
       ),
     );
     expect(openDialog).toHaveBeenCalledTimes(2);

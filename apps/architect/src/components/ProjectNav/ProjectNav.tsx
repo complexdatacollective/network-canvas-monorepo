@@ -174,11 +174,7 @@ const ProjectNav = () => {
   ];
 
   const tabs = formatConfig(TABS, intl).map(({ href, label, Icon }) => {
-    // A page opened from a tab, such as the translation table from Languages,
-    // keeps that tab marked. The stage list's own path prefixes every page.
-    const isActive =
-      location === href ||
-      (href !== '/protocol' && location.startsWith(`${href}/`));
+    const isActive = location === href;
     const warning = tabWarnings[href];
     return (
       <NavLink

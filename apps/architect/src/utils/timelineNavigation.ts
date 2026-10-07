@@ -15,13 +15,6 @@ const REVEALING_PAGES = new Set([
   '/protocol/localization',
 ]);
 
-// The translation table edits the same texts the Languages page lists, which
-// opens it, so the two count as one page here: an undo on either stays put, and
-// one made elsewhere returns to Languages.
-const TRANSLATION_TABLE_PAGE = '/protocol/localization/table';
-const pageOf = (path: string) =>
-  path === TRANSLATION_TABLE_PAGE ? '/protocol/localization' : path;
-
 // Committed stage edits collapse to the stage list rather than re-opening the
 // editor, so the main timeline and the stage editor's draft history never share
 // a screen. The list shows stages appearing, disappearing and being renamed; an
@@ -35,7 +28,7 @@ const STAGE_EDITOR_PREFIX = '/protocol/stage/';
 // recorded somewhere unexpected can never route the researcher out of the
 // protocol editor.
 const revealingPageFor = (path: string): string => {
-  if (REVEALING_PAGES.has(pageOf(path))) return pageOf(path);
+  if (REVEALING_PAGES.has(path)) return path;
   if (path.startsWith(STAGE_EDITOR_PREFIX)) return '/protocol';
 
   // Everything else has no page that would reveal the change:
@@ -63,5 +56,5 @@ export const resolveTimelineNavTarget = (
   if (currentPath === SUMMARY_PAGE) return '';
 
   const target = revealingPageFor(recordedPath);
-  return target && target !== pageOf(currentPath) ? target : '';
+  return target && target !== currentPath ? target : '';
 };

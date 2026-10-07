@@ -20,12 +20,6 @@ describe('resolveTimelineNavTarget', () => {
     ['/protocol/codebook', '/protocol/codebook', ''],
     ['/protocol/localization', '/protocol/localization', ''],
     ['/protocol/stage/stage-1', '/protocol', ''],
-    // The translation table and the Languages page show the same texts.
-    ['/protocol/localization/table', '/protocol/localization/table', ''],
-    ['/protocol/localization/table', '/protocol/localization', ''],
-    ['/protocol/localization', '/protocol/localization/table', ''],
-    ['/protocol/localization/table', '/protocol', '/protocol/localization'],
-    ['/protocol', '/protocol/localization/table', '/protocol'],
     // No page reveals these.
     ['/protocol/summary', '/protocol', ''],
     ['/protocol/experiments', '/protocol', ''],

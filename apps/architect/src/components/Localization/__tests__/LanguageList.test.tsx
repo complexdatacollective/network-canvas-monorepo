@@ -116,7 +116,7 @@ describe('LanguageList', () => {
       within(rowOf('German')).getByRole('link', {
         name: 'Show 2 missing German translations',
       }),
-    ).toHaveAttribute('href', '/protocol/localization/table?missing=de');
+    ).toHaveAttribute('href', '/protocol/localization?table=open&missing=de');
     expect(
       within(rowOf('French')).queryByRole('link', { name: /missing/ }),
     ).not.toBeInTheDocument();
@@ -127,7 +127,7 @@ describe('LanguageList', () => {
 
     expect(
       screen.getByRole('link', { name: 'Open translation table' }),
-    ).toHaveAttribute('href', '/protocol/localization/table');
+    ).toHaveAttribute('href', '/protocol/localization?table=open');
     expect(
       screen.getByRole('button', { name: 'Add languages' }),
     ).toBeInTheDocument();

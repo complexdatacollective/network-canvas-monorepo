@@ -62,12 +62,12 @@ const renderTable = () => {
       getDefaultMiddleware({ serializableCheck: false }),
   });
   store.dispatch(setActiveProtocol(structuredClone(trilingual)));
-  render(
+  const { unmount } = render(
     <Provider store={store}>
       <TranslationTable />
     </Provider>,
   );
-  return { store, user: userEvent.setup() };
+  return { store, unmount, user: userEvent.setup() };
 };
 
 type Rendered = ReturnType<typeof renderTable>;
@@ -175,6 +175,20 @@ describe('TranslationTable', () => {
     expect(stageTitle(store, 0)).toEqual({ en: 'Hello', es: 'Hola' });
 
     await user.tab();
+    expect(stageTitle(store, 0)).toEqual({
+      en: 'Hello',
+      es: 'Hola',
+      fr: 'Bonjour',
+    });
+  });
+
+  it('saves a translation still being typed when the table is taken away', async () => {
+    const { store, unmount, user } = renderTable();
+
+    await user.click(cell('1', 'Page heading', 'French'));
+    await user.keyboard('Bonjour');
+    unmount();
+
     expect(stageTitle(store, 0)).toEqual({
       en: 'Hello',
       es: 'Hola',
@@ -297,7 +311,7 @@ describe('TranslationTable', () => {
     window.history.replaceState(
       null,
       '',
-      '/protocol/localization/table?missing=es',
+      '/protocol/localization?table=open&missing=es',
     );
     renderTable();
 
@@ -309,7 +323,7 @@ describe('TranslationTable', () => {
     window.history.replaceState(
       null,
       '',
-      '/protocol/localization/table?missing=de',
+      '/protocol/localization?table=open&missing=de',
     );
     renderTable();
 

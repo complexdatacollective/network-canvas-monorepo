@@ -107,8 +107,27 @@ export type TranslationCellProps = {
   onMove: (delta: number) => boolean;
 };
 
-const CELL_CLASSES =
-  'border-outline relative border-e border-b p-0 align-top focus-within:outline-2 focus-within:-outline-offset-2 focus-within:outline-primary';
+// A cell pointed at gets a thin frame and a cell being edited a thick one, so
+// the two read apart without relying on colour.
+const CELL_CLASSES = cx(
+  'border-outline relative border-e border-b p-0 align-top',
+  'hover:not-focus-within:bg-current/3 hover:not-focus-within:outline-1 hover:not-focus-within:-outline-offset-1 hover:not-focus-within:outline-current/30',
+  'focus-within:bg-input focus-within:text-input-contrast focus-within:outline-primary focus-within:outline-2 focus-within:-outline-offset-2',
+);
+
+// A cell whose emptied text is refused is framed as an error, beside the
+// note that says why.
+const REFUSING_CELL_CLASSES = 'focus-within:outline-destructive';
+
+/**
+ * Marks a change not yet saved. Leaving the cell saves it, and the mark goes.
+ */
+const UnsavedMark = () => (
+  <span
+    aria-hidden
+    className="bg-primary pointer-events-none absolute inset-e-1.5 bottom-1.5 size-1.5 rounded-full"
+  />
+);
 
 // The text, the stand-in that shows through an empty cell, and the sizer that
 // grows the cell share one padding and wrapping, so each lines up over the
@@ -241,15 +260,18 @@ const Fallback = ({
   const { unlessBrowserLists } = shown;
   const language = languageName(shown.lang);
 
+  // The tag lines up with the text it names the language of, not with the
+  // column's language when the two are written in different directions.
   return (
     <div
       id={id}
+      dir={shown.dir}
       className={cx(
         format === 'markdown' ? CELL_TEXT_CLASSES : PLAIN_TEXT_CLASSES,
-        'pointer-events-none col-start-1 row-start-1 flex flex-col items-start gap-1.5',
+        'pointer-events-none col-start-1 row-start-1 flex flex-col items-start gap-1',
       )}
     >
-      <div lang={shown.lang} dir={shown.dir} className="w-full text-current/65">
+      <div lang={shown.lang} className="w-full text-current/60">
         {format === 'markdown' ? (
           <CellMarkdown>{shown.text}</CellMarkdown>
         ) : (
@@ -260,7 +282,7 @@ const Fallback = ({
         lang={intl.locale}
         dir="auto"
         aria-hidden
-        className="border-outline rounded-full border px-2 text-xs leading-5 whitespace-nowrap text-current/75"
+        className="max-w-full rounded-sm bg-current/8 px-1.5 text-xs leading-5 text-current/80"
       >
         {intl.formatMessage(
           unlessBrowserLists
@@ -347,22 +369,47 @@ const PlainTextCell = ({
   const fallbackId = useId();
   const noteId = useId();
   const feedback = useCommitFeedback(locale);
+  // Read as the cell unmounts, after the render that last changed it.
+  const draftRef = useRef<string | null>(null);
+  const onCommitRef = useRef(onCommit);
   const [draft, setDraft] = useState<string | null>(null);
   const stored = translationText(value, locale);
   const text = draft ?? stored;
   const empty = text.trim() === '';
   const refusing = empty && isOnlyTranslation(value, locale, localization);
 
+  const changeDraft = (next: string | null) => {
+    draftRef.current = next;
+    setDraft(next);
+  };
+
   const commit = () => {
     if (draft === null) return;
-    setDraft(null);
+    changeDraft(null);
     feedback(onCommit(draft));
   };
 
+  useEffect(() => {
+    onCommitRef.current = onCommit;
+  });
+
+  // A cell taken away mid-edit, as when the table is closed by going back,
+  // still saves what was typed in it.
+  useEffect(
+    () => () => {
+      const pending = draftRef.current;
+      if (pending !== null) onCommitRef.current(pending);
+    },
+    [],
+  );
+
   const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    // Escape undoes the change first; only a cell with nothing to undo lets
+    // it go on to close what holds the table.
     if (event.key === 'Escape' && draft !== null) {
       event.preventDefault();
-      setDraft(null);
+      event.stopPropagation();
+      changeDraft(null);
       return;
     }
     if (event.key === 'Enter' && !event.shiftKey && !event.altKey) {
@@ -391,7 +438,11 @@ const PlainTextCell = ({
     .join(' ');
 
   return (
-    <td lang={locale} dir={localeDirection(locale)} className={CELL_CLASSES}>
+    <td
+      lang={locale}
+      dir={localeDirection(locale)}
+      className={cx(CELL_CLASSES, refusing && REFUSING_CELL_CLASSES)}
+    >
       <div className="grid">
         <div
           aria-hidden
@@ -416,7 +467,7 @@ const PlainTextCell = ({
         <textarea
           rows={1}
           value={text}
-          onChange={(event) => setDraft(event.target.value)}
+          onChange={(event) => changeDraft(event.target.value)}
           onBlur={commit}
           onKeyDown={handleKeyDown}
           aria-labelledby={labelledBy}
@@ -431,6 +482,7 @@ const PlainTextCell = ({
         />
       </div>
       {refusing && <OnlyTranslationNote id={noteId} locale={locale} />}
+      {draft !== null && <UnsavedMark />}
     </td>
   );
 };
@@ -453,13 +505,16 @@ const isEditableCaretAt = (editable: HTMLElement, edge: 'start' | 'end') => {
 };
 
 // The stage editor's rich-text field, fitted to a cell: no frame of its own,
-// its text where the cell shows text, and its toolbar wrapped under the text,
-// in the cell, rather than over the rows below or across the next column.
+// its text where the cell shows text, with headings drawn as the cell draws
+// them when it is not being edited. Its toolbar wraps inside the cell's frame,
+// and stays in view below the sticky headings while a long text scrolls under
+// it, which it can only do while the editor's frame does not clip it.
 const CELL_EDITOR_CLASSES = cx(
-  'min-w-0 rounded-none border-0 bg-transparent text-current',
+  'min-w-0 overflow-visible rounded-none border-0 bg-transparent text-current',
   '[&>:first-child]:min-h-0 [&>:first-child]:px-3 [&>:first-child]:py-2',
   '[&_.tiptap.ProseMirror]:min-h-0',
-  '[&_[role=toolbar]]:order-3 [&_[role=toolbar]]:w-auto [&_[role=toolbar]]:min-w-0 [&_[role=toolbar]]:flex-wrap [&_[role=toolbar]]:gap-0.5 [&_[role=toolbar]]:border-t [&_[role=toolbar]]:border-b-0 [&_[role=toolbar]]:px-1 [&_[role=toolbar]]:py-1',
+  '[&_.tiptap_:is(h1,h2,h3,h4)]:mt-0 [&_.tiptap_:is(h1,h2,h3,h4)]:mb-2 [&_.tiptap_:is(h1,h2,h3,h4)]:font-[inherit] [&_.tiptap_:is(h1,h2,h3,h4)]:text-base [&_.tiptap_:is(h1,h2,h3,h4)]:font-semibold',
+  '[&_[role=toolbar]]:sticky [&_[role=toolbar]]:top-(--translation-table-sticky-top) [&_[role=toolbar]]:z-1 [&_[role=toolbar]]:mx-0.5 [&_[role=toolbar]]:mt-0.5 [&_[role=toolbar]]:w-auto [&_[role=toolbar]]:min-w-0 [&_[role=toolbar]]:flex-wrap [&_[role=toolbar]]:gap-0.5 [&_[role=toolbar]]:px-1 [&_[role=toolbar]]:py-1',
   '[&_[role=toolbar]_[role=separator]]:mx-1',
 );
 
@@ -630,7 +685,7 @@ const RichTextCell = ({
       onFocus={handleFocus}
       onBlur={handleBlur}
       onKeyDownCapture={editing ? handleKeyDownCapture : undefined}
-      className={cx(CELL_CLASSES, 'outline-none')}
+      className={cx(CELL_CLASSES, refusing && REFUSING_CELL_CLASSES)}
     >
       {editing ? (
         <>
@@ -660,6 +715,7 @@ const RichTextCell = ({
             autoFocus
           />
           {refusing && <OnlyTranslationNote id={noteId} locale={locale} />}
+          {draft !== null && <UnsavedMark />}
         </>
       ) : (
         <>

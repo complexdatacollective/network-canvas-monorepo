@@ -3,8 +3,9 @@ import { CircleHelp, Columns3, Search } from 'lucide-react';
 import {
   type CSSProperties,
   type ReactNode,
+  useCallback,
+  useEffect,
   useId,
-  useLayoutEffect,
   useRef,
   useState,
 } from 'react';
@@ -45,6 +46,7 @@ import {
 } from '@codaco/protocol-validation';
 import { useAppDispatch, useAppSelector, useAppStore } from '~/ducks/hooks';
 import { setProtocolLocalizedString } from '~/ducks/modules/activeProtocol';
+import { usePublishedBlockHeight } from '~/hooks/usePublishedBlockHeight';
 import {
   getLocalizationCoverage,
   getTranslationGroups,
@@ -214,7 +216,7 @@ const messages = defineMessages({
     defaultMessage:
       'Changes are saved when you leave a cell, and Escape undoes a change until then. The up and down arrow keys move between rows from the first or last line of a cell. Ctrl+Enter, or ⌘+Enter on a Mac, saves and moves to the next row, as Enter does in a text of one line. In formatted text, Tab moves to the formatting buttons and then to the next cell, except in a list, where it indents the item.',
     description:
-      'Help text for the translation table, explaining how editing its cells works. Ctrl, Enter, ⌘ and Tab are the names of keys; use the names printed on keyboards in your language. Formatted text is text with bold, italics, headings or lists, which is edited with a row of formatting buttons below it.',
+      'Help text for the translation table, explaining how editing its cells works. Ctrl, Enter, ⌘ and Tab are the names of keys; use the names printed on keyboards in your language. Formatted text is text with bold, italics, headings or lists, which is edited with a row of formatting buttons above it.',
   },
 });
 
@@ -243,7 +245,7 @@ type ShownGroup = {
 const NAME_SEPARATOR = ' › ';
 
 const renderMuted = (chunks: ReactNode[]) => (
-  <span className="text-sm text-current/70">{chunks}</span>
+  <span className="text-current/70">{chunks}</span>
 );
 
 const GroupHeading = ({ group }: { group: ShownGroup }) => {
@@ -331,19 +333,57 @@ const findRow = (
   return undefined;
 };
 
+/**
+ * A ref for each group's heading that publishes the heading's height to the
+ * group's rows. The toolbar of a formatted text being edited sticks below the
+ * column headings and the heading of its own group, which is taller where its
+ * text wraps.
+ */
+const useGroupHeadingHeights = () => {
+  const [observer] = useState(
+    () =>
+      new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          const height = entry.borderBoxSize[0]?.blockSize;
+          const group = entry.target.closest('tbody');
+          if (height === undefined || !group) continue;
+          group.style.setProperty('--translation-group-head', `${height}px`);
+        }
+      }),
+  );
+
+  useEffect(() => () => observer.disconnect(), [observer]);
+
+  return useCallback(
+    (heading: HTMLTableCellElement | null) => {
+      if (!heading) return;
+      observer.observe(heading);
+      return () => observer.unobserve(heading);
+    },
+    [observer],
+  );
+};
+
 type TranslationTableProps = {
-  /** Leads the toolbar: the page's title and its way back. */
+  /** Leads the toolbar. */
   heading?: ReactNode;
   /** Ends the toolbar, after the table's own controls. */
   actions?: ReactNode;
+  /** Kept in the toolbar's top corner, however its other controls wrap. */
+  closeButton?: ReactNode;
 };
 
 /**
  * Every participant-facing text in one table: a row per text, grouped by the
  * stage or codebook entry that holds it, and a column per language, each cell
- * edited where it is shown. One toolbar row above it holds everything else.
+ * edited where it is shown. A toolbar above it holds everything else, and the
+ * table scrolls within what is left of its container.
  */
-const TranslationTable = ({ heading, actions }: TranslationTableProps) => {
+const TranslationTable = ({
+  heading,
+  actions,
+  closeButton,
+}: TranslationTableProps) => {
   const intl = useAppIntl();
   const languageName = useLanguageName();
   const dispatch = useAppDispatch();
@@ -356,7 +396,12 @@ const TranslationTable = ({ heading, actions }: TranslationTableProps) => {
   const filterId = useId();
   const helpId = useId();
   const tableRef = useRef<HTMLTableElement>(null);
-  const headRef = useRef<HTMLTableSectionElement>(null);
+  // Sticky group headings sit below the sticky column headings, whose height
+  // depends on the languages' names and the width of the window.
+  const headRef = usePublishedBlockHeight<HTMLTableSectionElement>(
+    '--translation-table-head',
+  );
+  const groupHeadingRef = useGroupHeadingHeights();
   const [hidden, setHidden] = useState<ReadonlySet<LocaleTag>>(new Set());
   const [searchParams, setSearchParams] = useSearchParams();
   const [query, setQuery] = useState('');
@@ -364,22 +409,6 @@ const TranslationTable = ({ heading, actions }: TranslationTableProps) => {
   // translation is written or its text stops matching the search, so the
   // table does not shift under the cell in use.
   const [kept, setKept] = useState<ReadonlySet<string>>(new Set());
-
-  // Sticky group headings sit below the sticky column headings, whose height
-  // depends on the languages' names and the width of the page.
-  useLayoutEffect(() => {
-    const head = headRef.current;
-    const table = tableRef.current;
-    if (!head || !table) return;
-    const observer = new ResizeObserver(() => {
-      table.style.setProperty(
-        '--translation-table-head',
-        `${head.getBoundingClientRect().height}px`,
-      );
-    });
-    observer.observe(head);
-    return () => observer.disconnect();
-  }, []);
 
   if (!protocol) return null;
 
@@ -439,8 +468,11 @@ const TranslationTable = ({ heading, actions }: TranslationTableProps) => {
   const resetKept = () => setKept(new Set());
 
   const chooseFilter = (next: MissingFilter) => {
+    // The entry keeps its history state, which records where the table was
+    // opened from.
     setSearchParams((params) => writeMissingFilter(params, next), {
       replace: true,
+      state: window.history.state,
     });
     resetKept();
   };
@@ -536,112 +568,122 @@ const TranslationTable = ({ heading, actions }: TranslationTableProps) => {
   let rowIndex = -1;
 
   return (
-    <div className="flex min-h-80 flex-1 flex-col gap-2">
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-        {heading}
-        <InputField
-          id={searchId}
-          type="search"
-          value={query}
-          onChange={(value) => {
-            setQuery(value ?? '');
-            resetKept();
-          }}
-          placeholder={intl.formatMessage(messages.search)}
-          aria-label={intl.formatMessage(messages.search)}
-          prefixComponent={<Search aria-hidden className="size-4" />}
-          size="sm"
-          className="max-w-72 min-w-44 flex-1 basis-44"
-        />
-        <NativeSelectField
-          id={filterId}
-          name="translation-table-filter"
-          aria-label={intl.formatMessage(messages.filter)}
-          value={
-            filter.kind === 'language'
-              ? languageOption(filter.locale)
-              : filter.kind
-          }
-          onChange={handleFilterChange}
-          options={filterOptions}
-          size="sm"
-          className="w-auto max-w-72 min-w-44"
-        />
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            render={
-              <Button
-                size="sm"
-                variant="outline"
-                icon={<Columns3 aria-hidden />}
-                className="px-3"
-              />
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="border-outline flex items-start gap-2 border-b px-4 py-3">
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-2">
+          {heading}
+          <InputField
+            id={searchId}
+            type="search"
+            value={query}
+            onChange={(value) => {
+              setQuery(value ?? '');
+              resetKept();
+            }}
+            placeholder={intl.formatMessage(messages.search)}
+            aria-label={intl.formatMessage(messages.search)}
+            prefixComponent={<Search aria-hidden className="size-4" />}
+            size="sm"
+            className="max-w-72 min-w-44 flex-1 basis-44"
+          />
+          <NativeSelectField
+            id={filterId}
+            name="translation-table-filter"
+            aria-label={intl.formatMessage(messages.filter)}
+            value={
+              filter.kind === 'language'
+                ? languageOption(filter.locale)
+                : filter.kind
             }
-          >
-            {intl.formatMessage(messages.languages, {
-              shown: visible.length,
-              total: locales.length,
-            })}
-          </DropdownMenuTrigger>
-          <DropdownMenuContent side="bottom" align="start">
-            <DropdownMenuGroup>
-              <DropdownMenuLabel>
-                {intl.formatMessage(messages.languagesMenu)}
-              </DropdownMenuLabel>
-              {locales.map((locale) => {
-                const isShown = !hidden.has(locale);
-                return (
-                  <DropdownMenuCheckboxItem
-                    key={locale}
-                    checked={isShown}
-                    disabled={isShown && visible.length === 1}
-                    onCheckedChange={(checked) =>
-                      toggleLanguage(locale, checked)
-                    }
-                  >
-                    {languageName(locale)}
-                  </DropdownMenuCheckboxItem>
-                );
-              })}
-            </DropdownMenuGroup>
-            {visible.length === 1 && (
-              <p className="max-w-60 px-2 pt-2 text-sm text-current/70">
-                {intl.formatMessage(messages.lastLanguage)}
-              </p>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
-        <p role="status" className="text-sm text-current/70">
-          {intl.formatMessage(messages.shownCount, { shown, total })}
-        </p>
-        <div className="ms-auto flex items-center gap-1">
-          <Popover>
-            <PopoverTrigger asChild>
-              <IconButton
-                size="sm"
-                variant="text"
-                icon={<CircleHelp aria-hidden />}
-                aria-label={intl.formatMessage(messages.help)}
-              />
-            </PopoverTrigger>
-            <PopoverContent
-              side="bottom"
-              align="end"
-              className="flex max-w-md flex-col gap-2 text-sm"
+            onChange={handleFilterChange}
+            options={filterOptions}
+            size="sm"
+            className="w-auto max-w-72 min-w-44"
+          />
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={
+                <Button
+                  size="sm"
+                  variant="outline"
+                  icon={<Columns3 aria-hidden />}
+                  className="px-3"
+                />
+              }
             >
-              <p>{intl.formatMessage(messages.about)}</p>
-              <p>{intl.formatMessage(messages.keyboardHelp)}</p>
-            </PopoverContent>
-          </Popover>
-          {actions}
+              {intl.formatMessage(messages.languages, {
+                shown: visible.length,
+                total: locales.length,
+              })}
+            </DropdownMenuTrigger>
+            <DropdownMenuContent side="bottom" align="start">
+              <DropdownMenuGroup>
+                <DropdownMenuLabel>
+                  {intl.formatMessage(messages.languagesMenu)}
+                </DropdownMenuLabel>
+                {locales.map((locale) => {
+                  const isShown = !hidden.has(locale);
+                  return (
+                    <DropdownMenuCheckboxItem
+                      key={locale}
+                      checked={isShown}
+                      disabled={isShown && visible.length === 1}
+                      onCheckedChange={(checked) =>
+                        toggleLanguage(locale, checked)
+                      }
+                    >
+                      {languageName(locale)}
+                    </DropdownMenuCheckboxItem>
+                  );
+                })}
+              </DropdownMenuGroup>
+              {visible.length === 1 && (
+                <p className="max-w-60 px-2 pt-2 text-sm text-current/70">
+                  {intl.formatMessage(messages.lastLanguage)}
+                </p>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <p
+            role="status"
+            className="text-sm whitespace-nowrap text-current/70"
+          >
+            {intl.formatMessage(messages.shownCount, { shown, total })}
+          </p>
+          <div className="ms-auto flex items-center gap-1">
+            <Popover>
+              <PopoverTrigger asChild>
+                <IconButton
+                  size="sm"
+                  variant="text"
+                  color="dynamic"
+                  icon={<CircleHelp aria-hidden />}
+                  aria-label={intl.formatMessage(messages.help)}
+                />
+              </PopoverTrigger>
+              <PopoverContent
+                side="bottom"
+                align="end"
+                className="flex max-w-md flex-col gap-2 text-sm"
+              >
+                <p>{intl.formatMessage(messages.about)}</p>
+                <p>{intl.formatMessage(messages.keyboardHelp)}</p>
+              </PopoverContent>
+            </Popover>
+            {actions}
+          </div>
         </div>
+        {closeButton}
       </div>
       <Table
         ref={tableRef}
         bodyScroll
         aria-describedby={helpId}
         style={tableStyle}
-        className="w-[calc(var(--translation-table-names)+var(--translation-columns)*16rem)] min-w-full table-fixed border-separate border-spacing-0 [--translation-table-names:clamp(10rem,22vw,18rem)] [--translation-table-sticky-top:calc(var(--translation-table-head,0px)+3rem)]"
+        surfaceProps={{
+          className: 'bg-surface text-surface-contrast rounded-none border-0',
+        }}
+        className="w-[calc(var(--translation-table-names)+var(--translation-columns)*var(--translation-table-column))] min-w-full table-fixed border-separate border-spacing-0 [--translation-table-column:16rem] [--translation-table-names:clamp(10rem,16vw,15rem)]"
       >
         <caption className="sr-only">
           {intl.formatMessage(messages.caption)}
@@ -656,7 +698,7 @@ const TranslationTable = ({ heading, actions }: TranslationTableProps) => {
           <tr>
             <th
               scope="col"
-              className="bg-surface-2 border-outline sticky inset-s-0 top-0 z-40 border-e border-b px-3 py-2 text-start align-bottom text-sm font-semibold"
+              className="bg-surface-2 text-surface-2-contrast border-outline sticky inset-s-0 top-0 z-40 border-e border-b px-3 py-2.5 text-start text-sm font-semibold"
             >
               {intl.formatMessage(messages.textColumn)}
             </th>
@@ -673,10 +715,12 @@ const TranslationTable = ({ heading, actions }: TranslationTableProps) => {
                   // Named by the language alone: a screen reader repeats the
                   // name on every move between columns.
                   aria-labelledby={columnId(locale)}
-                  className="bg-surface-2 border-outline sticky top-0 z-30 border-e border-b px-3 py-2 text-start align-bottom font-normal"
+                  className="bg-surface-2 text-surface-2-contrast border-outline sticky top-0 z-30 border-e border-b px-3 py-2.5 text-start font-normal"
                 >
-                  <div className="flex flex-col gap-1.5">
-                    <div className="flex flex-wrap items-center gap-2">
+                  {/* One line where the column is wide enough, and the
+                      progress on a line of its own where it is not. */}
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                    <div className="flex items-center gap-2">
                       <span id={columnId(locale)} className="font-semibold">
                         {name}
                       </span>
@@ -686,25 +730,28 @@ const TranslationTable = ({ heading, actions }: TranslationTableProps) => {
                         </Badge>
                       )}
                     </div>
-                    <span className="text-sm text-current/70">
-                      {intl.formatMessage(messages.progress, {
-                        translated,
-                        total: coverage.total,
-                      })}
-                    </span>
-                    <div aria-hidden className="w-full max-w-40">
-                      <ProgressBar
-                        orientation="horizontal"
-                        percentProgress={
-                          coverage.total === 0
-                            ? 0
-                            : (translated / coverage.total) * 100
-                        }
-                        nudge={false}
-                        label={intl.formatMessage(messages.progressLabel, {
-                          language: name,
+                    <div className="flex flex-1 items-center gap-2">
+                      <div aria-hidden className="min-w-6 flex-1">
+                        <ProgressBar
+                          orientation="horizontal"
+                          percentProgress={
+                            coverage.total === 0
+                              ? 0
+                              : (translated / coverage.total) * 100
+                          }
+                          nudge={false}
+                          label={intl.formatMessage(messages.progressLabel, {
+                            language: name,
+                          })}
+                          className="h-1.5"
+                        />
+                      </div>
+                      <span className="text-xs whitespace-nowrap text-current/70">
+                        {intl.formatMessage(messages.progress, {
+                          translated,
+                          total: coverage.total,
                         })}
-                      />
+                      </span>
                     </div>
                   </div>
                 </th>
@@ -727,15 +774,21 @@ const TranslationTable = ({ heading, actions }: TranslationTableProps) => {
         {shownGroups.map((group, groupIndex) => {
           const groupId = `${baseId}-group-${groupIndex}`;
           return (
-            <tbody key={group.key}>
+            <tbody
+              key={group.key}
+              className="[--translation-table-sticky-top:calc(var(--translation-table-head,0px)+var(--translation-group-head,0px))]"
+            >
               <tr>
                 <th
+                  ref={groupHeadingRef}
                   id={groupId}
                   scope="rowgroup"
                   colSpan={visible.length + 1}
-                  className="bg-surface-1 border-outline sticky top-(--translation-table-head,0px) z-20 border-b p-0 text-start font-normal"
+                  className="bg-surface-1 text-surface-1-contrast border-outline sticky top-(--translation-table-head,0px) z-20 border-b p-0 text-start text-sm font-normal"
                 >
-                  <div className="sticky inset-s-0 w-max max-w-[min(100vw,60rem)] px-3 py-2">
+                  {/* Stays at the start of the visible width as the table
+                      scrolls sideways, so the heading is never cut off. */}
+                  <div className="sticky inset-s-0 w-max max-w-[min(calc(100vw-4rem),60rem)] px-3 py-2">
                     <GroupHeading group={group} />
                   </div>
                 </th>
@@ -756,17 +809,14 @@ const TranslationTable = ({ heading, actions }: TranslationTableProps) => {
                     <th
                       id={rowId}
                       scope="row"
-                      className="bg-surface border-outline sticky inset-s-0 z-10 border-e border-b px-3 py-2 text-start align-top font-normal"
+                      className="bg-surface border-outline sticky inset-s-0 z-10 border-e border-b px-3 py-2 text-start align-top text-sm font-normal text-current/80"
                     >
                       {row.rawName ? (
-                        <span
-                          dir="ltr"
-                          className="font-monospace text-sm break-words"
-                        >
+                        <span dir="ltr" className="font-monospace break-words">
                           {row.name}
                         </span>
                       ) : (
-                        <span className="text-sm break-words">{row.name}</span>
+                        <span className="break-words">{row.name}</span>
                       )}
                     </th>
                     {visible.map((locale, colIndex) => (
@@ -795,7 +845,7 @@ const TranslationTable = ({ heading, actions }: TranslationTableProps) => {
         {intl.formatMessage(messages.keyboardHelp)}
       </p>
       {footnote && (
-        <p className="text-sm text-current/70">
+        <p className="border-outline border-t px-4 py-2 text-sm text-current/70">
           {intl.formatMessage(messages.unlessBrowserLists)}
         </p>
       )}

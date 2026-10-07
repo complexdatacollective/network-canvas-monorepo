@@ -1981,7 +1981,7 @@
   },
   "architect.localization.translationTable.keyboardHelp": {
     "defaultMessage": "Changes are saved when you leave a cell, and Escape undoes a change until then. The up and down arrow keys move between rows from the first or last line of a cell. Ctrl+Enter, or ⌘+Enter on a Mac, saves and moves to the next row, as Enter does in a text of one line. In formatted text, Tab moves to the formatting buttons and then to the next cell, except in a list, where it indents the item.",
-    "description": "Help text for the translation table, explaining how editing its cells works. Ctrl, Enter, ⌘ and Tab are the names of keys; use the names printed on keyboards in your language. Formatted text is text with bold, italics, headings or lists, which is edited with a row of formatting buttons below it."
+    "description": "Help text for the translation table, explaining how editing its cells works. Ctrl, Enter, ⌘ and Tab are the names of keys; use the names printed on keyboards in your language. Formatted text is text with bold, italics, headings or lists, which is edited with a row of formatting buttons above it."
   },
   "architect.localization.translationTable.languages": {
     "defaultMessage": "Languages ({shown, number} of {total, number})",
@@ -2066,6 +2066,18 @@
   "architect.localization.translationTable.unlessBrowserLists": {
     "defaultMessage": "* Unless the participant’s browser also lists another language that has the text.",
     "description": "Note under the translation table, explaining the asterisk on the tag that says which language participants see where a translation is missing. Begins with the same asterisk."
+  },
+  "architect.localization.translationTableDialog.redo": {
+    "defaultMessage": "Redo",
+    "description": "Accessible name of the button in the toolbar of the translation table that redoes the last change undone."
+  },
+  "architect.localization.translationTableDialog.title": {
+    "defaultMessage": "Translation table",
+    "description": "Title of the dialog, opened from the Languages page, that shows every participant-facing text of a protocol beside its translation into each language."
+  },
+  "architect.localization.translationTableDialog.undo": {
+    "defaultMessage": "Undo",
+    "description": "Accessible name of the button in the toolbar of the translation table that undoes the last change to the protocol."
   },
   "architect.nestedDraftReclaimDialog.backToTheEditor": {
     "defaultMessage": "Back to the Editor",
@@ -2250,30 +2262,6 @@
   "architect.pages.summaryPage.protocolSummary": {
     "defaultMessage": "Protocol Summary",
     "description": "The title text in components / pages / SummaryPage."
-  },
-  "architect.pages.translationTablePage.exitFullScreen": {
-    "defaultMessage": "Exit full screen",
-    "description": "The same button while the translation table fills the screen, which returns it to the window."
-  },
-  "architect.pages.translationTablePage.fullScreen": {
-    "defaultMessage": "Full screen",
-    "description": "Button in the toolbar of the translation table that makes the table and its toolbar fill the screen."
-  },
-  "architect.pages.translationTablePage.redo": {
-    "defaultMessage": "Redo",
-    "description": "Accessible name of the button in the toolbar of the translation table that redoes the last change undone."
-  },
-  "architect.pages.translationTablePage.returnToLanguages": {
-    "defaultMessage": "Return to Languages",
-    "description": "Link in the toolbar of the translation table back to the Languages page, which opened it. “Languages” is the name of that page in the project navigation."
-  },
-  "architect.pages.translationTablePage.title": {
-    "defaultMessage": "Translation table",
-    "description": "Title of the page, opened from the Languages page, that shows every participant-facing text of a protocol beside its translation into each language."
-  },
-  "architect.pages.translationTablePage.undo": {
-    "defaultMessage": "Undo",
-    "description": "Accessible name of the button in the toolbar of the translation table that undoes the last change to the protocol."
   },
   "architect.presentation.conflictSubject": {
     "defaultMessage": "{entityName}: {variableNames}",

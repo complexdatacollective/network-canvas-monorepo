@@ -1,8 +1,11 @@
 import type { LocaleTag } from '@codaco/protocol-validation';
 
-const TRANSLATION_TABLE_PATH = '/protocol/localization/table';
+const LANGUAGES_PATH = '/protocol/localization';
+const TABLE_PARAM = 'table';
+const TABLE_OPEN = 'open';
 const MISSING_PARAM = 'missing';
 const ANY_LANGUAGE = 'any';
+const OPENED_FROM_LANGUAGES_KEY = 'translationTableOpenedFromLanguages';
 
 /**
  * Which texts the translation table shows: every text, those missing a
@@ -19,15 +22,44 @@ const filterValue = (filter: MissingFilter) => {
   return filter.kind === 'any' ? ANY_LANGUAGE : filter.locale;
 };
 
-/** The translation table, showing the texts `filter` picks. */
+/**
+ * The Languages page with the translation table open over it, showing the
+ * texts `filter` picks.
+ */
 export const translationTableHref = (
   filter: MissingFilter = { kind: 'all' },
 ) => {
+  const params = new URLSearchParams({ [TABLE_PARAM]: TABLE_OPEN });
   const value = filterValue(filter);
-  if (value === null) return TRANSLATION_TABLE_PATH;
-  const params = new URLSearchParams({ [MISSING_PARAM]: value });
-  return `${TRANSLATION_TABLE_PATH}?${params.toString()}`;
+  if (value !== null) params.set(MISSING_PARAM, value);
+  return `${LANGUAGES_PATH}?${params.toString()}`;
 };
+
+export const isTranslationTableOpen = (params: URLSearchParams) =>
+  params.get(TABLE_PARAM) === TABLE_OPEN;
+
+/** `params` with the translation table closed, and nothing else changed. */
+export const withoutTranslationTable = (params: URLSearchParams) => {
+  const next = new URLSearchParams(params);
+  next.delete(TABLE_PARAM);
+  next.delete(MISSING_PARAM);
+  return next;
+};
+
+/**
+ * History state for an entry that opens the table over the Languages page it
+ * was opened from, so closing it can return to that page's own entry instead
+ * of adding another one after it.
+ */
+export const openedFromLanguagesState = {
+  [OPENED_FROM_LANGUAGES_KEY]: true,
+} as const;
+
+export const wasOpenedFromLanguages = (state: unknown) =>
+  typeof state === 'object' &&
+  state !== null &&
+  OPENED_FROM_LANGUAGES_KEY in state &&
+  state[OPENED_FROM_LANGUAGES_KEY] === true;
 
 /**
  * The texts a translation table URL asks to show. A language the protocol

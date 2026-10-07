@@ -9,7 +9,6 @@ import {
   SummaryPage,
 } from '~/components/pages';
 import LocalizationPage from '~/components/pages/LocalizationPage';
-import TranslationTablePage from '~/components/pages/TranslationTablePage';
 import { ActionToolbarProvider } from '~/components/ProjectNav/ActionToolbar';
 import ProjectLayout from '~/components/ProjectNav/ProjectLayout';
 import Protocol from '~/components/Protocol';
@@ -48,11 +47,6 @@ const Routes = () => {
           <Route path="/protocol/localization">
             <ProjectLayout>
               <LocalizationPage />
-            </ProjectLayout>
-          </Route>
-          <Route path="/protocol/localization/table">
-            <ProjectLayout className="flex flex-col pb-0" actions={false}>
-              <TranslationTablePage />
             </ProjectLayout>
           </Route>
           <Route path="/protocol/summary">

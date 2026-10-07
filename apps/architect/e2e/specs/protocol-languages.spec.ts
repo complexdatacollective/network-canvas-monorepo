@@ -11,8 +11,8 @@ import { readProtocolJson } from '../helpers/read-store.js';
 
 /**
  * The Languages page (`/protocol/localization`), which manages the protocol's
- * languages, and the translation table (`/protocol/localization/table`),
- * where its texts are translated.
+ * languages, and the translation table, a dialog over that page
+ * (`/protocol/localization?table=open`), where its texts are translated.
  *
  * Seeded with one English stage holding three texts (its name, its heading and
  * one text block), so there is something to count and translate once a second
@@ -91,8 +91,14 @@ async function closeActions(page: Page, menu: Locator) {
   await expect(menu).toBeHidden();
 }
 
+function translationTableDialog(page: Page): Locator {
+  return page.getByRole('dialog', { name: 'Translation table', exact: true });
+}
+
 function translationTable(page: Page): Locator {
-  return page.getByRole('table', { name: /^Every text participants see/ });
+  return translationTableDialog(page).getByRole('table', {
+    name: /^Every text participants see/,
+  });
 }
 
 /**
@@ -162,7 +168,7 @@ test('adds a language, keeps the default language from being removed, translates
   await expect(french.getByText('Default', { exact: true })).toHaveCount(0);
   await expect(openTable).toHaveAttribute(
     'href',
-    '/protocol/localization/table',
+    '/protocol/localization?table=open',
   );
   // A language with no translations of its own strands nothing, so it can go.
   const frenchActions = await openActions(page, 'French');
@@ -265,9 +271,14 @@ test('adds a language, keeps the default language from being removed, translates
   await french
     .getByRole('link', { name: 'Show 3 missing French translations' })
     .click();
-  await expect(page).toHaveURL(/\/protocol\/localization\/table\?missing=fr$/);
+  await expect(page).toHaveURL(
+    /\/protocol\/localization\?table=open&missing=fr$/,
+  );
+  await expect(translationTableDialog(page)).toBeVisible();
   await expect(
-    page.getByRole('heading', { name: 'Translation table', level: 1 }),
+    translationTableDialog(page).getByRole('searchbox', {
+      name: 'Search texts and translations',
+    }),
   ).toBeFocused();
   await expect(textsToShow(page).locator('option:checked')).toHaveText(
     'Missing French',
@@ -325,8 +336,16 @@ test('adds a language, keeps the default language from being removed, translates
     page.getByText('Every text is translated into French.'),
   ).toBeVisible();
 
-  await page.getByRole('link', { name: 'Return to Languages' }).click();
+  // Closing goes back to the Languages page. The link that opened the table
+  // is gone, so focus goes to the page's heading.
+  await translationTableDialog(page)
+    .getByRole('button', { name: 'Close', exact: true })
+    .click();
+  await expect(translationTableDialog(page)).toBeHidden();
   await expect(page).toHaveURL(/\/protocol\/localization$/);
+  await expect(
+    page.getByRole('heading', { name: 'Languages', level: 1 }),
+  ).toBeFocused();
   await expect(french).toContainText('3 of 3 texts translated');
   await expect(french.getByRole('link', { name: /missing/ })).toHaveCount(0);
 
@@ -493,7 +512,9 @@ test('opens the translation table on every missing translation from the protocol
   await page
     .getByRole('link', { name: 'Show missing translations', exact: true })
     .click();
-  await expect(page).toHaveURL(/\/protocol\/localization\/table\?missing=any$/);
+  await expect(page).toHaveURL(
+    /\/protocol\/localization\?table=open&missing=any$/,
+  );
   await expect(textsToShow(page).locator('option:checked')).toHaveText(
     'Missing in any shown language',
   );
@@ -501,8 +522,18 @@ test('opens the translation table on every missing translation from the protocol
 
   // The filter is kept in the address, and every text has a row without it.
   await textsToShow(page).selectOption({ label: 'All texts' });
-  await expect(page).toHaveURL(/\/protocol\/localization\/table$/);
+  await expect(page).toHaveURL(/\/protocol\/localization\?table=open$/);
   await expect(translationTable(page).locator('th[scope="row"]')).toHaveText(
     STAGE_TEXT_ROWS,
   );
+
+  // Closed, the table leaves the Languages page it was opened over.
+  await translationTableDialog(page)
+    .getByRole('button', { name: 'Close', exact: true })
+    .click();
+  await expect(translationTableDialog(page)).toBeHidden();
+  await expect(page).toHaveURL(/\/protocol\/localization$/);
+  await expect(
+    page.getByRole('heading', { name: 'Languages', level: 1 }),
+  ).toBeFocused();
 });
