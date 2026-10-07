@@ -16,11 +16,12 @@ import type {
 } from '../contract/types';
 import { createAnalyticsListenerMiddleware } from './middleware/analyticsListener';
 import { createLocaleChangeMiddleware } from './middleware/localeChangeMiddleware';
-import logger from './middleware/logger';
+import { createInterviewLogger } from './middleware/logger';
 import { createSyncMiddleware } from './middleware/syncMiddleware';
 import protocol from './modules/protocol';
 import session from './modules/session';
 import ui from './modules/ui';
+import { createEncryptedValueRedaction } from './redactEncryptedValues';
 
 const rootReducer = combineReducers({
   session,
@@ -51,6 +52,9 @@ export const store = (
   const analyticsMiddleware = createAnalyticsListenerMiddleware({
     tracker,
   }).middleware;
+  // The protocol, and so which variables are encrypted, never changes during
+  // an interview.
+  const redaction = createEncryptedValueRedaction(protocolPayload.codebook);
 
   // Object.assign rather than a cast so the store's inferred type (dispatch
   // thunk overloads included) survives alongside the added flushSync.
@@ -63,12 +67,20 @@ export const store = (
             ignoredActions: ['dialogs/addDialog', 'dialogs/open/pending'],
           },
         }).concat(
-          ...(options.isDevelopment ? [logger] : []),
+          ...(options.isDevelopment ? [createInterviewLogger(redaction)] : []),
           syncMiddleware,
           localeChangeMiddleware,
           analyticsMiddleware,
           ...(options.extraMiddleware ?? []),
         ),
+      // Anyone with the extension could otherwise read an interview's state
+      // and actions in a production build.
+      devTools: options.isDevelopment
+        ? {
+            actionSanitizer: redaction.action,
+            stateSanitizer: redaction.state,
+          }
+        : false,
       preloadedState: {
         session: omit(sessionPayload, ['localeOptions']),
         protocol: protocolPayload,
