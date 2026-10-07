@@ -31,6 +31,7 @@ import Panel from '../../components/Panel';
 import Prompts from '../../components/Prompts';
 import { usePrompts } from '../../components/Prompts/usePrompts';
 import { useCurrentStep } from '../../contexts/CurrentStepContext';
+import { writeFailureMessage } from '../../forms/writeSubmissionResult';
 import useNodeLimits from '../../hooks/useNodeLimits';
 import { useStageSelector } from '../../hooks/useStageSelector';
 import { runtimeMessages } from '../../i18n/runtimeMessages';
@@ -50,6 +51,7 @@ import {
 } from '../../selectors/session';
 import { addNode, deleteNode } from '../../store/modules/session';
 import { useAppDispatch } from '../../store/store';
+import { useInterviewToast } from '../../toast/useInterviewToast';
 import getParentKeyByNameValue from '../../utils/getParentKeyByNameValue';
 import { usePassphrase } from '../Anonymisation/usePassphrase';
 import { interfaceMessages } from '../messages';
@@ -93,7 +95,8 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
 
   const { isLastPrompt } = usePrompts();
 
-  const { requirePassphrase, passphrase } = usePassphrase();
+  const { requirePassphrase, passphrase, passphraseInvalid } = usePassphrase();
+  const { showToast } = useInterviewToast();
 
   const interfaceRef = useRef(null);
 
@@ -218,6 +221,10 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
     }
   }, [useEncryption, requirePassphrase]);
 
+  // Answers this stage would encrypt can only be taken once a passphrase that
+  // works is in force.
+  const encryptionLocked = useEncryption && (!passphrase || passphraseInvalid);
+
   const { maxNodesReached } = useNodeLimits({
     stageNodeCount,
     minNodes,
@@ -225,9 +232,14 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
     isLastPrompt,
   });
 
-  const handleAddNode = (metadata?: Record<string, unknown>) => {
+  const handleAddNode = async (metadata?: Record<string, unknown>) => {
     const meta = metadata as UseItemElement | undefined;
     if (!meta) return;
+
+    if (encryptionLocked) {
+      requirePassphrase();
+      return;
+    }
 
     const { id, data } = meta;
     const attributeData = {
@@ -235,7 +247,7 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
       ...data[entityAttributesProperty],
     };
 
-    void dispatch(
+    const result = await dispatch(
       addNode({
         type: stage.subject.type,
         modelData: {
@@ -247,6 +259,14 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
         currentStep,
       }),
     );
+    const failure = writeFailureMessage(result);
+    if (failure) {
+      showToast({
+        description: intl.formatMessage(failure),
+        variant: 'destructive',
+        anchor: 'forward',
+      });
+    }
   };
 
   const handleRemoveNode = useCallback(
@@ -260,7 +280,7 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
   );
 
   const disabled = useMemo(() => {
-    if (!passphrase && useEncryption) {
+    if (encryptionLocked) {
       return true;
     }
     // Nothing may be dragged out of a roster that has not finished arriving —
@@ -274,7 +294,7 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
     }
 
     return false;
-  }, [maxNodesReached, itemsStatus, passphrase, useEncryption]);
+  }, [maxNodesReached, itemsStatus, encryptionLocked]);
 
   // --- Exclude already-added items from source panel ---
   const filteredItems = useMemo(() => {

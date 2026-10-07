@@ -6,6 +6,7 @@ import { createMessageError } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Form from '@codaco/fresco-ui/form/Form';
 import type {
+  FormSubmissionResult,
   FormSubmitHandler,
   ValidationContext,
 } from '@codaco/fresco-ui/form/store/types';
@@ -45,7 +46,9 @@ type QuickNodeFormProps = {
   disabled: boolean;
   targetVariable: string;
   onShowForm?: () => void;
-  addNode: (attributes: NcNode[EntityAttributesProperty]) => Promise<void>;
+  addNode: (
+    attributes: NcNode[EntityAttributesProperty],
+  ) => Promise<FormSubmissionResult>;
 };
 
 const QuickNodeForm = ({
@@ -118,15 +121,14 @@ const QuickNodeForm = ({
         };
       }
 
-      await addNode({
+      const saved = await addNode({
         ...newNodeAttributes,
         ...patchResult.patch.set,
       });
-      setSuccessfulSubmissionCount((count) => count + 1);
-
-      return {
-        success: true,
-      };
+      if (saved.success) {
+        setSuccessfulSubmissionCount((count) => count + 1);
+      }
+      return saved;
     },
     [disabled, addNode, newNodeAttributes, targetVariable],
   );

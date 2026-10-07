@@ -8,12 +8,10 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import { ResizableFlexPanel } from '@codaco/fresco-ui/ResizableFlexPanel';
 import type { Form } from '@codaco/protocol-validation';
 import {
-  type VariableValue,
   type EntityAttributesProperty,
   type EntityPrimaryKey,
   entityAttributesProperty,
   entityPrimaryKeyProperty,
-  entitySecureAttributesMeta,
   type NcNode,
 } from '@codaco/shared-consts';
 
@@ -22,6 +20,10 @@ import NodeList from '../../components/NodeList';
 import Prompts from '../../components/Prompts';
 import { usePrompts } from '../../components/Prompts/usePrompts';
 import { useCurrentStep } from '../../contexts/CurrentStepContext';
+import {
+  writeFailureMessage,
+  writeSubmissionResult,
+} from '../../forms/writeSubmissionResult';
 import useMediaQuery from '../../hooks/useMediaQuery';
 import useNodeLimits from '../../hooks/useNodeLimits';
 import usePortalTarget from '../../hooks/usePortalTarget';
@@ -38,19 +40,13 @@ import {
   deleteNode as deleteNodeAction,
 } from '../../store/modules/session';
 import { useAppDispatch } from '../../store/store';
+import { useInterviewToast } from '../../toast/useInterviewToast';
 import type { StageProps } from '../../types';
 import { usePassphrase } from '../Anonymisation/usePassphrase';
-import { decryptData } from '../Anonymisation/utils';
 import { interfaceMessages } from '../messages';
 import NodeForm from './components/NodeForm';
 import NodePanels from './components/NodePanels';
 import QuickNodeForm from './components/QuickNodeForm';
-
-function isNumberArray(value: unknown): value is number[] {
-  return (
-    Array.isArray(value) && value.every((item) => typeof item === 'number')
-  );
-}
 
 type NameGeneratorProps = StageProps<'NameGeneratorQuickAdd' | 'NameGenerator'>;
 
@@ -74,7 +70,8 @@ const NameGenerator = (props: NameGeneratorProps) => {
   const interfaceRef = useRef<HTMLDivElement>(null);
 
   const { isLastPrompt, promptIndex } = usePrompts();
-  const { requirePassphrase, passphrase } = usePassphrase();
+  const { requirePassphrase, passphrase, passphraseInvalid } = usePassphrase();
+  const { showToast } = useInterviewToast();
 
   const [selectedNode, setSelectedNode] = useState<NcNode | null>(null);
   const [isPanelsOpen, setIsPanelsOpen] = useState(false);
@@ -123,6 +120,10 @@ const NameGenerator = (props: NameGeneratorProps) => {
     }
   }, [useEncryption, requirePassphrase]);
 
+  // Answers this stage would encrypt can only be taken once a passphrase that
+  // works is in force.
+  const encryptionLocked = useEncryption && (!passphrase || passphraseInvalid);
+
   const addNodeToPrompt = useCallback(
     (
       nodeId: NcNode[EntityPrimaryKey],
@@ -145,15 +146,15 @@ const NameGenerator = (props: NameGeneratorProps) => {
     [dispatch],
   );
 
-  const addNode = useCallback(
-    async (
+  const dispatchAddNode = useCallback(
+    (
       attributes: NcNode[EntityAttributesProperty],
       options?: {
         allowUnknownAttributes?: boolean;
         modelData?: { [entityPrimaryKeyProperty]: NcNode[EntityPrimaryKey] };
       },
-    ) => {
-      await dispatch(
+    ) =>
+      dispatch(
         addNodeAction({
           type: stage.subject.type,
           attributeData: attributes,
@@ -162,9 +163,14 @@ const NameGenerator = (props: NameGeneratorProps) => {
           modelData: options?.modelData,
           currentStep,
         }),
-      );
-    },
+      ),
     [dispatch, stage.subject.type, useEncryption, currentStep],
+  );
+
+  const addNode = useCallback(
+    async (attributes: NcNode[EntityAttributesProperty]) =>
+      writeSubmissionResult(await dispatchAddNode(attributes)),
+    [dispatchAddNode],
   );
 
   const { maxNodesReached } = useNodeLimits({
@@ -178,102 +184,56 @@ const NameGenerator = (props: NameGeneratorProps) => {
    * Drop node handler
    * Adds prompt attributes to existing nodes, or adds new nodes to the network.
    */
-  const handleDropNode = (metadata?: Record<string, unknown>) => {
+  const handleDropNode = async (metadata?: Record<string, unknown>) => {
     const node = metadata as NcNode | undefined;
     if (!node) return;
 
     // Test if we are updating an existing network node, or adding it to the network
     if (has(node, 'promptIDs')) {
       void addNodeToPrompt(node[entityPrimaryKeyProperty], newNodeAttributes);
-    } else {
-      // Panel nodes may come from external data with attributes not in the codebook
-      void addNode(
-        { ...node[entityAttributesProperty], ...newNodeAttributes },
-        {
-          allowUnknownAttributes: true,
-          modelData: {
-            [entityPrimaryKeyProperty]: node[entityPrimaryKeyProperty],
-          },
+      return;
+    }
+
+    if (encryptionLocked) {
+      requirePassphrase();
+      return;
+    }
+
+    // Panel nodes may come from external data with attributes not in the codebook
+    const result = await dispatchAddNode(
+      { ...node[entityAttributesProperty], ...newNodeAttributes },
+      {
+        allowUnknownAttributes: true,
+        modelData: {
+          [entityPrimaryKeyProperty]: node[entityPrimaryKeyProperty],
         },
-      );
+      },
+    );
+    const failure = writeFailureMessage(result);
+    if (failure) {
+      showToast({
+        description: intl.formatMessage(failure),
+        variant: 'destructive',
+        anchor: 'forward',
+      });
     }
   };
 
-  // When a node is tapped, trigger editing.
+  // When a node is tapped, trigger editing. The form decrypts what it shows,
+  // and is not opened at all while answers it would encrypt could not be saved.
   const handleSelectNode = useCallback(
-    async (node: NcNode) => {
-      if (!form || (useEncryption && !passphrase)) {
+    (node: NcNode) => {
+      if (!form) return;
+      if (encryptionLocked) {
+        requirePassphrase();
         return;
       }
-
-      // Decrypt node attributes if required.
-      if (useEncryption && passphrase) {
-        // Map the node's attributes, check the codebook encrypted property, and pass to decryptData if required.
-        const decryptedAttributes = await Promise.all(
-          Object.entries(node[entityAttributesProperty]).map(
-            async ([variableId, value]): Promise<
-              readonly [string, VariableValue | null]
-            > => {
-              if (codebookForNodeType[variableId]?.encrypted) {
-                const secureAttributes = node[entitySecureAttributesMeta];
-                if (!secureAttributes?.[variableId]) {
-                  // The node id stays out of the message: errors are
-                  // reported to analytics, and a node id is a participant
-                  // network identifier the runtime otherwise pseudonymises.
-                  throw new Error(
-                    `Secure attributes missing for encrypted variable ${variableId}`,
-                  );
-                }
-                if (!isNumberArray(value)) {
-                  throw new Error(
-                    `Encrypted value missing for encrypted variable ${variableId}`,
-                  );
-                }
-
-                const decrypted = await decryptData(
-                  {
-                    secureAttributes: secureAttributes[variableId],
-                    data: value,
-                  },
-                  passphrase,
-                );
-
-                return [variableId, decrypted];
-              }
-              return [variableId, value];
-            },
-          ),
-        );
-
-        const attributes = decryptedAttributes.reduce<
-          Record<string, VariableValue>
-        >((result, [variableId, value]) => {
-          if (value !== null) {
-            result[variableId] = value;
-          }
-          return result;
-        }, {});
-
-        const decryptedNode: NcNode = {
-          ...node,
-          [entityAttributesProperty]: attributes,
-        };
-
-        setSelectedNode(decryptedNode);
-        return;
-      }
-      const attributes = Object.entries(node[entityAttributesProperty]).reduce<
-        Record<string, VariableValue>
-      >((result, [variableId, value]) => {
-        if (value !== null) {
-          result[variableId] = value;
-        }
-        return result;
-      }, {});
-      setSelectedNode({ ...node, [entityAttributesProperty]: attributes });
+      setSelectedNode(node);
     },
-    [form, passphrase, useEncryption, codebookForNodeType],
+    [form, encryptionLocked, requirePassphrase],
   );
+
+  const clearSelectedNode = useCallback(() => setSelectedNode(null), []);
 
   // Tapping a node opens it for editing, which only exists when the stage has
   // a form: a quick-add stage has none, and offering the tap anyway gives the
@@ -327,7 +287,7 @@ const NameGenerator = (props: NameGeneratorProps) => {
             orientation={isSmallScreen ? 'vertical' : 'horizontal'}
           >
             <NodePanels
-              disableAddNew={maxNodesReached}
+              disableAddNew={maxNodesReached || encryptionLocked}
               onOpenChange={setIsPanelsOpen}
               animationKey={promptIndex}
             />
@@ -364,13 +324,13 @@ const NameGenerator = (props: NameGeneratorProps) => {
           <NodeForm
             selectedNode={selectedNode}
             form={form}
-            disabled={maxNodesReached || (useEncryption && !passphrase)}
-            onClose={() => setSelectedNode(null)}
+            disabled={maxNodesReached || encryptionLocked}
+            onClose={clearSelectedNode}
             addNode={addNode}
           />
         ) : (
           <QuickNodeForm
-            disabled={maxNodesReached || (useEncryption && !passphrase)}
+            disabled={maxNodesReached || encryptionLocked}
             targetVariable={quickAdd!}
             addNode={addNode}
           />

@@ -3,7 +3,9 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { icons } from 'lucide-react';
 import type { ComponentProps } from 'react';
 import { Provider } from 'react-redux';
+import { fn } from 'storybook/test';
 
+import type { FormSubmissionResult } from '@codaco/fresco-ui/form/store/types';
 import {
   asEntityAttributeReference,
   type Form as TForm,
@@ -312,6 +314,7 @@ const meta: Meta<StoryArgs> = {
   },
   args: {
     icon: 'add-a-person',
+    addNode: fn(async (): Promise<FormSubmissionResult> => ({ success: true })),
   },
   argTypes: {
     icon: {
@@ -337,8 +340,8 @@ const meta: Meta<StoryArgs> = {
       description: 'Callback when form is closed',
     },
     addNode: {
-      action: 'node-added',
-      description: 'Callback when a new node is added',
+      description:
+        'Saves a new node, resolving to the outcome the form reports to the participant',
     },
   },
 };

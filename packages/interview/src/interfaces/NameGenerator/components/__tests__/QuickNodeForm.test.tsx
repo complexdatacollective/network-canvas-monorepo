@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { Provider } from 'react-redux';
 import { describe, expect, it, vi } from 'vitest';
 
+import type { FormSubmissionResult } from '@codaco/fresco-ui/form/store/types';
 import {
   asEntityAttributeReference,
   type Codebook,
@@ -17,6 +18,7 @@ import {
 
 import { CurrentStepProvider } from '../../../../contexts/CurrentStepContext';
 import type { ProtocolPayload } from '../../../../contract/types';
+import { writeSubmissionResult } from '../../../../forms/writeSubmissionResult';
 import protocol from '../../../../store/modules/protocol';
 import session, {
   addNode as addSessionNode,
@@ -147,7 +149,7 @@ function renderQuickNodeForm({
   existingNodes?: NcNode[];
   addNode: (
     attributes: NcNode[typeof entityAttributesProperty],
-  ) => Promise<void>;
+  ) => Promise<FormSubmissionResult>;
 }) {
   const store = configureStore({
     reducer: { session, protocol, ui },
@@ -179,9 +181,11 @@ const openField = async () => {
   return screen.findByTestId('quick-add-input');
 };
 
+const saved = async (): Promise<FormSubmissionResult> => ({ success: true });
+
 describe('QuickNodeForm honours codebook validation', () => {
   it('honours optional requiredness alongside the other codebook rules', async () => {
-    const addNode = vi.fn(async () => {});
+    const addNode = vi.fn(saved);
     renderQuickNodeForm({
       validation: { required: false, maxLength: 10 },
       addNode,
@@ -205,7 +209,7 @@ describe('QuickNodeForm honours codebook validation', () => {
   });
 
   it('accepts an empty entry when the codebook has no validation rules', async () => {
-    const addNode = vi.fn(async () => {});
+    const addNode = vi.fn(saved);
     renderQuickNodeForm({ validation: undefined, addNode });
 
     const input = await openField();
@@ -219,17 +223,16 @@ describe('QuickNodeForm honours codebook validation', () => {
   it('clears a successful value when adding the node updates the live validation context before submission finishes', async () => {
     let store: ReturnType<typeof renderQuickNodeForm>['store'];
     const addNode = vi.fn(
-      async (attributes: NcNode[typeof entityAttributesProperty]) => {
-        await store
-          .dispatch(
+      async (attributes: NcNode[typeof entityAttributesProperty]) =>
+        writeSubmissionResult(
+          await store.dispatch(
             addSessionNode({
               type: NODE_TYPE,
               attributeData: attributes,
               currentStep: 0,
             }),
-          )
-          .unwrap();
-      },
+          ),
+        ),
     );
     ({ store } = renderQuickNodeForm({
       validation: undefined,
@@ -257,7 +260,7 @@ describe('QuickNodeForm honours codebook validation', () => {
       type: NODE_TYPE,
       [entityAttributesProperty]: { [TARGET_VARIABLE]: 'Alice' },
     };
-    const addNode = vi.fn(async () => {});
+    const addNode = vi.fn(saved);
     renderQuickNodeForm({
       validation: { unique: true },
       existingNodes: [existingNode],
@@ -285,7 +288,7 @@ describe('QuickNodeForm honours codebook validation', () => {
   });
 
   it('still enforces validation for a component-less target variable (e.g. one created via Architect\'s "Create New Variable" dialog, which never sets `component`), without crashing', async () => {
-    const addNode = vi.fn(async () => {});
+    const addNode = vi.fn(saved);
     renderQuickNodeForm({
       validation: { required: true },
       omitComponent: true,
@@ -311,7 +314,7 @@ describe('QuickNodeForm honours codebook validation', () => {
   });
 
   it('compares the target against prompt-fixed sibling attributes on the new node', async () => {
-    const addNode = vi.fn(async () => {});
+    const addNode = vi.fn(saved);
     renderQuickNodeForm({
       validation: {
         sameAs: asEntityAttributeReference(SIBLING_VARIABLE),
