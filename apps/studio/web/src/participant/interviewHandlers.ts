@@ -18,6 +18,7 @@ const RATE_LIMIT_ATTEMPTS = 3;
 const RATE_LIMIT_LONGEST_WAIT_SECONDS = 60;
 const RESEND_ATTEMPTS = 3;
 const ORDINARY = { immediate: false, unloading: false };
+const UNLOADING = { immediate: true, unloading: true };
 
 type SyncPayload = Parameters<typeof participantUnloadingSync>[0];
 
@@ -34,6 +35,8 @@ type ParticipantHandlers = {
   readonly onSync: SyncHandler;
   readonly onFinish: FinishHandler;
   readonly saveStep: () => void;
+  /** Sends the stage reached as the unloading save when no save holds it. */
+  readonly flushStep: () => void;
 };
 
 const wait = (seconds: number) =>
@@ -53,6 +56,8 @@ export function createParticipantHandlers({
   // still waiting out the debounce, and sending it would settle that answer's
   // waiter on a write that never carried it.
   let offered = session;
+  // The stage the newest applied save recorded.
+  let savedStep = getCurrentStep();
   let stopped = false;
 
   const stop = (kind: ParticipantNoticeKind): void => {
@@ -101,28 +106,46 @@ export function createParticipantHandlers({
     }
   };
 
-  // A save the server did not apply is resent past what it holds, unless what
-  // it holds is one of this page's own later saves: that one carries a newer
-  // snapshot, which this one must not overwrite. Anything else at or past this
-  // save's number came from another page sharing the holder, such as the last
-  // save of the page this one reloaded, whose number this page may reuse.
-  const send = async (snapshot: SessionPayload): Promise<void> => {
+  type Saved = { readonly stored: bigint; readonly applied: boolean };
+
+  const deliverUnloading = async (payload: SyncPayload): Promise<Saved> => {
+    const result = await participantUnloadingSync(payload);
+    return { stored: BigInt(result.revision), applied: result.applied };
+  };
+
+  // A save the server did not apply found a write at or past its number. That
+  // write may be this page's own or one from a page sharing the holder — the
+  // reloaded tab's last saves — and a revision number cannot say which, so the
+  // page resends the newest snapshot it holds past everything the server
+  // holds. Whoever wrote what was in the way, the server ends with this page's
+  // newest answers; when it was this page's own, the resend repeats them.
+  const send = async (
+    snapshot: SessionPayload,
+    { unloading }: { readonly unloading: boolean },
+  ): Promise<void> => {
+    let next = snapshot;
     for (let attempt = 1; attempt <= RESEND_ATTEMPTS; attempt += 1) {
-      const payload = payloadFor(snapshot);
-      const { stored, applied } = await deliver(payload);
-      if (applied) return;
-      if (stored > BigInt(payload.revision) && stored <= issued) return;
+      const payload = payloadFor(next);
+      const { stored, applied } = await (unloading
+        ? deliverUnloading(payload)
+        : deliver(payload));
+      if (applied) {
+        savedStep = payload.stageIndex;
+        return;
+      }
       if (stored > issued) issued = stored;
+      next = offered;
     }
+    throw new Error(
+      `the server kept another save at revision ${String(issued)} through ${String(RESEND_ATTEMPTS)} attempts`,
+    );
   };
 
   const debouncedSync = createDebouncedSyncHandler(
     async (_id, snapshot, { unloading }) => {
       if (stopped) return;
       try {
-        await (unloading
-          ? participantUnloadingSync(payloadFor(snapshot))
-          : send(snapshot));
+        await send(snapshot, { unloading });
       } catch (error) {
         const kind = noticeOf(error);
         if (kind !== undefined) stop(kind);
@@ -153,7 +176,7 @@ export function createParticipantHandlers({
         await finish(signal);
       } catch (error) {
         if (!(error instanceof SessionOutOfDate)) throw error;
-        await send(offered);
+        await send(offered, ORDINARY);
         signal.throwIfAborted();
         await finish(signal);
       }
@@ -170,5 +193,14 @@ export function createParticipantHandlers({
     debouncedSync(offered.id, offered, ORDINARY).catch(() => undefined);
   };
 
-  return { onSync, onFinish, saveStep };
+  // Moving between stages that change no answer leaves the runtime's session
+  // clean, so its own unload flush writes nothing: a stage save still waiting
+  // or on the wire would be lost with the page. The host sends it as the
+  // unloading save itself.
+  const flushStep = (): void => {
+    if (stopped || savedStep === getCurrentStep()) return;
+    debouncedSync(offered.id, offered, UNLOADING).catch(() => undefined);
+  };
+
+  return { onSync, onFinish, saveStep, flushStep };
 }

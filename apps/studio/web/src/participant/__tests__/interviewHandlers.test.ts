@@ -50,6 +50,10 @@ const handlersFor = (step = 1) => {
 
 const SYNC = { immediate: true, unloading: false };
 
+const savedName = (payload: unknown): unknown =>
+  (payload as { network: SessionPayload['network'] }).network.ego.attributes
+    .name;
+
 afterEach(() => {
   vi.useRealTimers();
 });
@@ -199,7 +203,7 @@ describe('the participant sync handler’s recovery', () => {
     ]);
   });
 
-  it('does not resend over its own later save', async () => {
+  it('ends with its newest answers when its own later save overtook an older one', async () => {
     let releaseFirst: () => void = () => undefined;
     const firstHeld = new Promise<void>((resolve) => {
       releaseFirst = resolve;
@@ -226,10 +230,81 @@ describe('the participant sync handler’s recovery', () => {
     await first;
 
     expect(
-      harness.calls.map(({ payload }) =>
+      harness.calls.map(({ payload }) => [
         Reflect.get(Object(payload), 'revision'),
-      ),
-    ).toEqual(['8', '9']);
+        savedName(payload),
+      ]),
+    ).toEqual([
+      ['8', 'Ada'],
+      ['9', 'Grace'],
+      ['10', 'Grace'],
+    ]);
+  });
+
+  it('resends past the reloaded page’s saves, whichever numbers they took', async () => {
+    // The page before the reload had saves 8 and 9 on the wire when this page
+    // read revision 7; both landed before this page's first save.
+    const harness = installParticipantHarness({
+      'participant.sync': (payload) =>
+        Number(payload.revision) <= 9
+          ? Effect.succeed({ revision: '9', applied: false })
+          : Effect.succeed({ revision: payload.revision, applied: true }),
+    });
+    const { onSync } = handlersFor();
+
+    await onSync('session-1', session('Ada'), SYNC);
+    await onSync('session-1', session('Grace'), {
+      immediate: true,
+      unloading: true,
+    });
+
+    expect(
+      harness.calls.map(({ payload }) => [
+        Reflect.get(Object(payload), 'revision'),
+        savedName(payload),
+      ]),
+    ).toEqual([
+      ['8', 'Ada'],
+      ['10', 'Ada'],
+      ['11', 'Grace'],
+    ]);
+  });
+
+  it('resends a save made as the page goes when the server did not apply it', async () => {
+    const harness = installParticipantHarness({
+      'participant.sync': (payload) =>
+        payload.revision === '8'
+          ? Effect.succeed({ revision: '9', applied: false })
+          : Effect.succeed({ revision: payload.revision, applied: true }),
+    });
+    const { onSync } = handlersFor();
+
+    await onSync('session-1', session('Ada'), {
+      immediate: true,
+      unloading: true,
+    });
+
+    expect(
+      harness.calls.map(({ payload }) => [
+        Reflect.get(Object(payload), 'revision'),
+        savedName(payload),
+      ]),
+    ).toEqual([
+      ['8', 'Ada'],
+      ['10', 'Ada'],
+    ]);
+  });
+
+  it('fails a save the server keeps refusing, so the runtime offers it again', async () => {
+    installParticipantHarness({
+      'participant.sync': () =>
+        Effect.succeed({ revision: '99', applied: false }),
+    });
+    const { onSync } = handlersFor();
+
+    await expect(onSync('session-1', session('Ada'), SYNC)).rejects.toThrow(
+      'kept another save',
+    );
   });
 
   it('gives up on a rate limit after three attempts', async () => {
@@ -369,6 +444,57 @@ describe('the participant sync handler’s own saves', () => {
     expect(
       savedNames(harness.calls.filter(({ tag }) => tag === 'participant.sync')),
     ).toEqual(['Ada', 'Grace']);
+  });
+});
+
+describe('the participant stage flush', () => {
+  const stepHandlers = () => {
+    let step = 0;
+    const harness = installParticipantHarness({
+      'participant.sync': (payload) =>
+        Effect.succeed({ revision: payload.revision, applied: true }),
+    });
+    const handlers = createParticipantHandlers({
+      holderEpoch: 3,
+      revision: '7',
+      session: session('Initial'),
+      stageIds: ['first', 'second'],
+      getCurrentStep: () => step,
+      onNotice: vi.fn(),
+    });
+    return {
+      ...handlers,
+      harness,
+      moveTo: (next: number) => {
+        step = next;
+      },
+    };
+  };
+
+  it('sends the stage reached as the page goes when no save holds it', async () => {
+    vi.useFakeTimers();
+    const { onSync, saveStep, flushStep, harness, moveTo } = stepHandlers();
+    await onSync('session-1', session('Ada'), SYNC);
+    // Moving on inside the debounce window: the stage save waits.
+    moveTo(1);
+    saveStep();
+    flushStep();
+    await vi.waitFor(() => expect(harness.calls).toHaveLength(2));
+
+    expect(harness.calls.at(-1)?.payload).toEqual(
+      expect.objectContaining({ stageIndex: 1, stageId: 'second' }),
+    );
+  });
+
+  it('sends nothing as the page goes once the stage reached is saved', async () => {
+    const { onSync, flushStep, harness, moveTo } = stepHandlers();
+    moveTo(1);
+    await onSync('session-1', session('Ada'), SYNC);
+
+    flushStep();
+    await vi.waitFor(() => expect(harness.calls).toHaveLength(1));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(harness.calls).toHaveLength(1);
   });
 });
 

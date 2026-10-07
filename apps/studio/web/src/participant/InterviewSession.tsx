@@ -1,5 +1,5 @@
 import { getRouteApi } from '@tanstack/react-router';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { Shell } from '@codaco/interview';
 import type {
@@ -32,7 +32,7 @@ export default function InterviewSession() {
 
   const { payload } = loaded;
 
-  const { onSync, onFinish, saveStep } = useMemo(
+  const { onSync, onFinish, saveStep, flushStep } = useMemo(
     () =>
       createParticipantHandlers({
         holderEpoch: loaded.holderEpoch,
@@ -44,6 +44,18 @@ export default function InterviewSession() {
       }),
     [loaded, payload],
   );
+
+  useEffect(() => {
+    const onHidden = () => {
+      if (document.visibilityState === 'hidden') flushStep();
+    };
+    window.addEventListener('pagehide', flushStep);
+    document.addEventListener('visibilitychange', onHidden);
+    return () => {
+      window.removeEventListener('pagehide', flushStep);
+      document.removeEventListener('visibilitychange', onHidden);
+    };
+  }, [flushStep]);
 
   const onStepChange = useCallback<StepChangeHandler>(
     (step) => {
