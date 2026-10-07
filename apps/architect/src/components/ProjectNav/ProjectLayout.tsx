@@ -14,9 +14,18 @@ import ProjectActions, { type ProjectActionsMode } from './ProjectActions';
 type ProjectLayoutProps = {
   children: React.ReactNode;
   className?: string;
+  /**
+   * False for a page that offers its own way back and its own history
+   * controls, so the floating toolbar never covers what it shows.
+   */
+  actions?: boolean;
 };
 
-const ProjectLayout = ({ children, className }: ProjectLayoutProps) => {
+const ProjectLayout = ({
+  children,
+  className,
+  actions = true,
+}: ProjectLayoutProps) => {
   const [location] = useLocation();
   const ref = useRef<HTMLDivElement>(null);
 
@@ -60,10 +69,12 @@ const ProjectLayout = ({ children, className }: ProjectLayoutProps) => {
       <ProjectNav />
       <StorageUnavailableBanner />
       {children}
-      <ProjectActions
-        mode={mode}
-        additionalActions={presenting ? <PrintProtocolAction /> : undefined}
-      />
+      {actions && (
+        <ProjectActions
+          mode={mode}
+          additionalActions={presenting ? <PrintProtocolAction /> : undefined}
+        />
+      )}
     </div>
   );
 };

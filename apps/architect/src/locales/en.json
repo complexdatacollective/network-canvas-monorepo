@@ -403,10 +403,6 @@
     "defaultMessage": "{protocolCount, plural, one {Your protocol is saved only on this device. It is never uploaded to a server.} other {Your # protocols are saved only on this device. They are never uploaded to a server.}}",
     "description": "Researcher-facing explanatory text in components / Home / LibraryPanel."
   },
-  "architect.chrome.projectNav.projectActions.returnToLanguages": {
-    "defaultMessage": "Return to Languages",
-    "description": "Button in the toolbar of the translation table that goes back to the Languages page, which opened it."
-  },
   "architect.chrome.projectNav.projectActions.returnToStages": {
     "defaultMessage": "Return to Stages",
     "description": "Researcher-facing explanatory text in components / ProjectNav / ProjectActions."
@@ -2063,6 +2059,10 @@
     "defaultMessage": "Which translation participants see",
     "description": "Button that shows or hides the explanation of which language participants see each text in."
   },
+  "architect.localization.translationTable.about": {
+    "defaultMessage": "Every text participants see, beside its translation into each language. Empty cells show the text participants see instead.",
+    "description": "Opening paragraph of the help for the translation table, which explains what the table shows."
+  },
   "architect.localization.translationTable.allTranslated": {
     "defaultMessage": "Every text is translated into the languages shown.",
     "description": "Shown in the translation table when only texts with missing translations are shown and there are none."
@@ -2082,6 +2082,10 @@
   "architect.localization.translationTable.groupHeadingDetail": {
     "defaultMessage": "<muted>{place}</muted> · <title>{name}</title> · <muted>{detail}</muted>",
     "description": "Heading of a group of rows in the translation table, naming the stage that holds their texts. place is the stage’s position, such as “Stage 4”; name is the stage’s name, which links to it; detail is the kind of stage, such as “Name Generator”. Keep the tags around the same parts."
+  },
+  "architect.localization.translationTable.help": {
+    "defaultMessage": "Help",
+    "description": "Button in the toolbar of the translation table that opens a short explanation of the table and how to edit it."
   },
   "architect.localization.translationTable.keyboardHelp": {
     "defaultMessage": "Changes are saved when you leave a cell, and Escape undoes a change until then. The up and down arrow keys move between rows from the first or last line of a cell. Ctrl+Enter, or ⌘+Enter on a Mac, saves and moves to the next row, as Enter does in a text of one line. In formatted text, Tab moves to the formatting buttons and then to the next cell, except in a list, where it indents the item.",
@@ -2359,13 +2363,29 @@
     "defaultMessage": "Summary language",
     "description": "Label of the control that chooses which of the protocol languages the summary shows the protocol text in."
   },
-  "architect.pages.translationTablePage.description": {
-    "defaultMessage": "Every text participants see, beside its translation into each language. Empty cells show the text participants see instead.",
-    "description": "Description of the translation table page."
+  "architect.pages.translationTablePage.exitFullScreen": {
+    "defaultMessage": "Exit full screen",
+    "description": "The same button while the translation table fills the screen, which returns it to the window."
+  },
+  "architect.pages.translationTablePage.fullScreen": {
+    "defaultMessage": "Full screen",
+    "description": "Button in the toolbar of the translation table that makes the table and its toolbar fill the screen."
+  },
+  "architect.pages.translationTablePage.redo": {
+    "defaultMessage": "Redo",
+    "description": "Accessible name of the button in the toolbar of the translation table that redoes the last change undone."
+  },
+  "architect.pages.translationTablePage.returnToLanguages": {
+    "defaultMessage": "Return to Languages",
+    "description": "Link in the toolbar of the translation table back to the Languages page, which opened it. “Languages” is the name of that page in the project navigation."
   },
   "architect.pages.translationTablePage.title": {
     "defaultMessage": "Translation table",
     "description": "Title of the page, opened from the Languages page, that shows every participant-facing text of a protocol beside its translation into each language."
+  },
+  "architect.pages.translationTablePage.undo": {
+    "defaultMessage": "Undo",
+    "description": "Accessible name of the button in the toolbar of the translation table that undoes the last change to the protocol."
   },
   "architect.presentation.conflictSubject": {
     "defaultMessage": "{entityName}: {variableNames}",

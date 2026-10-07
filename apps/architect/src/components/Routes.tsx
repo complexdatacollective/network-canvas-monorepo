@@ -51,7 +51,7 @@ const Routes = () => {
             </ProjectLayout>
           </Route>
           <Route path="/protocol/localization/table">
-            <ProjectLayout className="flex flex-col pb-0">
+            <ProjectLayout className="flex flex-col pb-0" actions={false}>
               <TranslationTablePage />
             </ProjectLayout>
           </Route>

@@ -1,5 +1,5 @@
 import { isEqual } from 'es-toolkit';
-import { Columns3, Search } from 'lucide-react';
+import { CircleHelp, Columns3, Search } from 'lucide-react';
 import {
   type CSSProperties,
   type ReactNode,
@@ -13,7 +13,7 @@ import { Link } from 'wouter';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import { Badge } from '@codaco/fresco-ui/Badge';
-import Button from '@codaco/fresco-ui/Button';
+import Button, { IconButton } from '@codaco/fresco-ui/Button';
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -26,6 +26,11 @@ import CheckboxField from '@codaco/fresco-ui/form/fields/Checkbox';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import { Label } from '@codaco/fresco-ui/Label';
 import { NativeLink } from '@codaco/fresco-ui/NativeLink';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@codaco/fresco-ui/Popover';
 import ProgressBar from '@codaco/fresco-ui/ProgressBar';
 import { Table } from '@codaco/fresco-ui/Table';
 import {
@@ -61,6 +66,19 @@ import TranslationCell, {
 import { useLanguageName } from './useLanguageName';
 
 const messages = defineMessages({
+  about: {
+    id: 'architect.localization.translationTable.about',
+    defaultMessage:
+      'Every text participants see, beside its translation into each language. Empty cells show the text participants see instead.',
+    description:
+      'Opening paragraph of the help for the translation table, which explains what the table shows.',
+  },
+  help: {
+    id: 'architect.localization.translationTable.help',
+    defaultMessage: 'Help',
+    description:
+      'Button in the toolbar of the translation table that opens a short explanation of the table and how to edit it.',
+  },
   caption: {
     id: 'architect.localization.translationTable.caption',
     defaultMessage:
@@ -286,12 +304,19 @@ const findRow = (
   return undefined;
 };
 
+type TranslationTableProps = {
+  /** Leads the toolbar: the page's title and its way back. */
+  heading?: ReactNode;
+  /** Ends the toolbar, after the table's own controls. */
+  actions?: ReactNode;
+};
+
 /**
  * Every participant-facing text in one table: a row per text, grouped by the
  * stage or codebook entry that holds it, and a column per language, each cell
- * edited where it is shown.
+ * edited where it is shown. One toolbar row above it holds everything else.
  */
-const TranslationTable = () => {
+const TranslationTable = ({ heading, actions }: TranslationTableProps) => {
   const intl = useAppIntl();
   const languageName = useLanguageName();
   const dispatch = useAppDispatch();
@@ -433,8 +458,9 @@ const TranslationTable = () => {
   let rowIndex = -1;
 
   return (
-    <div className="flex min-h-96 flex-1 flex-col gap-4">
-      <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+    <div className="flex min-h-80 flex-1 flex-col gap-2">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+        {heading}
         <InputField
           id={searchId}
           type="search"
@@ -446,9 +472,10 @@ const TranslationTable = () => {
           placeholder={intl.formatMessage(messages.search)}
           aria-label={intl.formatMessage(messages.search)}
           prefixComponent={<Search aria-hidden className="size-4" />}
-          className="w-full max-w-sm"
+          size="sm"
+          className="max-w-72 min-w-44 flex-1 basis-44"
         />
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <CheckboxField
             id={missingOnlyId}
             value={missingOnly}
@@ -457,7 +484,7 @@ const TranslationTable = () => {
               resetKept();
             }}
           />
-          <Label htmlFor={missingOnlyId} className="cursor-pointer">
+          <Label htmlFor={missingOnlyId} className="cursor-pointer text-sm">
             {intl.formatMessage(messages.missingOnly)}
           </Label>
         </div>
@@ -468,6 +495,7 @@ const TranslationTable = () => {
                 size="sm"
                 variant="outline"
                 icon={<Columns3 aria-hidden />}
+                className="px-3"
               />
             }
           >
@@ -504,9 +532,30 @@ const TranslationTable = () => {
             )}
           </DropdownMenuContent>
         </DropdownMenu>
-        <p role="status" className="ms-auto text-sm text-current/70">
+        <p role="status" className="text-sm text-current/70">
           {intl.formatMessage(messages.shownCount, { shown, total })}
         </p>
+        <div className="ms-auto flex items-center gap-1">
+          <Popover>
+            <PopoverTrigger asChild>
+              <IconButton
+                size="sm"
+                variant="text"
+                icon={<CircleHelp aria-hidden />}
+                aria-label={intl.formatMessage(messages.help)}
+              />
+            </PopoverTrigger>
+            <PopoverContent
+              side="bottom"
+              align="end"
+              className="flex max-w-md flex-col gap-2 text-sm"
+            >
+              <p>{intl.formatMessage(messages.about)}</p>
+              <p>{intl.formatMessage(messages.keyboardHelp)}</p>
+            </PopoverContent>
+          </Popover>
+          {actions}
+        </div>
       </div>
       <Table
         ref={tableRef}
@@ -665,10 +714,14 @@ const TranslationTable = () => {
           );
         })}
       </Table>
-      <div className="flex flex-wrap gap-x-8 gap-y-1 text-sm text-current/70">
-        <p id={helpId}>{intl.formatMessage(messages.keyboardHelp)}</p>
-        {footnote && <p>{intl.formatMessage(messages.unlessBrowserLists)}</p>}
-      </div>
+      <p id={helpId} className="sr-only">
+        {intl.formatMessage(messages.keyboardHelp)}
+      </p>
+      {footnote && (
+        <p className="text-sm text-current/70">
+          {intl.formatMessage(messages.unlessBrowserLists)}
+        </p>
+      )}
     </div>
   );
 };
