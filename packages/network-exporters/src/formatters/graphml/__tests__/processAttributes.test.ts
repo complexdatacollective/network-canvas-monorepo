@@ -3,8 +3,11 @@ import { describe, expect, it } from 'vitest';
 
 import type { Codebook } from '@codaco/protocol-validation';
 import {
+  egoProperty,
   entityAttributesProperty,
   entityPrimaryKeyProperty,
+  entitySecureAttributesMeta,
+  nodeExportIDProperty,
 } from '@codaco/shared-consts';
 
 import type { NodeWithResequencedID } from '../../../input';
@@ -137,5 +140,61 @@ describe('processAttributes', () => {
       expect(trueCount).toBe(1); // Only '10' should be true
       expect(falseCount).toBe(2); // '1' and '100' should be false
     });
+  });
+
+  describe('encrypted variables', () => {
+    const codebook: Codebook = {
+      node: {
+        person: {
+          name: 'person',
+          color: 'node-color-seq-1',
+          shape: { default: 'circle' },
+          variables: {
+            'name-uuid': { name: 'name', type: 'text', encrypted: true },
+            'city-uuid': { name: 'city', type: 'text' },
+          },
+        },
+      },
+    };
+    const ciphertext = [201, 17, 93, 4, 250, 66, 128, 7, 33, 180, 2, 99];
+
+    it.each([
+      {
+        label: 'metadata without a salt',
+        metadata: { iv: [15, 243, 77, 120] },
+      },
+      {
+        label: 'schema 8 metadata with a salt',
+        metadata: { iv: [15, 243, 77, 120], salt: [44, 130, 213, 61] },
+      },
+    ])(
+      'writes the marker in place of the ciphertext, with $label',
+      async ({ metadata }) => {
+        const node: NodeWithResequencedID = {
+          [entityPrimaryKeyProperty]: '1',
+          [egoProperty]: 'ego-1',
+          [nodeExportIDProperty]: 1,
+          type: 'person',
+          [entityAttributesProperty]: {
+            'name-uuid': ciphertext,
+            'city-uuid': 'Lisbon',
+          },
+          [entitySecureAttributesMeta]: { 'name-uuid': metadata },
+        };
+
+        const result = processAttributes(
+          node,
+          codebook,
+          mockExportOptions,
+          await keyIdsFor(codebook, node),
+        );
+        const values = Object.values(getDataElements(result));
+
+        expect(values).toHaveLength(2);
+        expect(values).toContain('ENCRYPTED');
+        expect(values).toContain('Lisbon');
+        expect(values.join('')).not.toContain(ciphertext.join(','));
+      },
+    );
   });
 });
