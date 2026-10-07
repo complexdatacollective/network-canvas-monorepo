@@ -19,6 +19,7 @@ import { mockFinish, mockSync } from './mockCallbacks';
 import {
   createInterview as createInterviewHook,
   getAllowStageNavigation,
+  getMountGeneration,
   getRequestedLocale,
   getTestState,
   installProtocol as installProtocolHook,
@@ -68,11 +69,12 @@ function useTestState() {
       // Include allowStageNavigation so a mid-test setAllowStageNavigation()
       // toggle changes the snapshot and re-renders App (which re-reads the flag
       // and passes it to Shell). Without it useSyncExternalStore would bail out.
+      // The mount generation likewise re-renders App for remountInterview().
       `${Array.from(getTestState().interviews.entries())
         .map(([id]) => id)
         .join(
           ',',
-        )}|${getAllowStageNavigation()}|${JSON.stringify(getRequestedLocale())}`,
+        )}|${getAllowStageNavigation()}|${JSON.stringify(getRequestedLocale())}|${getMountGeneration()}`,
     () => '',
   );
 }
@@ -129,19 +131,20 @@ export default function App() {
     : undefined;
 
   // Stable ref to the current entry/protocol so useMemo only recreates the
-  // payload (and thus the Redux store inside Shell) when the interview ID
-  // changes, not on every step change or App re-render.
+  // payload (and thus the Redux store inside Shell) when the interview ID or
+  // mount generation changes, not on every step change or App re-render.
   const entryRef = useRef(entry);
   entryRef.current = entry;
   const protocolRef = useRef(protocol);
   protocolRef.current = protocol;
 
+  const mountGeneration = getMountGeneration();
   const payload: InterviewPayload | null = useMemo(() => {
     const e = entryRef.current;
     const p = protocolRef.current;
     if (!e || !p) return null;
     return { session: e.session, protocol: p };
-  }, [activeId]);
+  }, [activeId, mountGeneration]);
 
   if (!activeId) {
     return <div>No interview selected. Use ?interviewId=... in the URL.</div>;
@@ -162,6 +165,7 @@ export default function App() {
   return (
     <AnimationProvider disableAnimations reducedMotion="always">
       <Shell
+        key={mountGeneration}
         payload={payload}
         requestedLocale={getRequestedLocale()}
         onSync={mockSync}
