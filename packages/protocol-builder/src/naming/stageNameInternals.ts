@@ -50,8 +50,9 @@ export const stageNameMessages = defineMessages({
  * This edit's memory of who last wrote the name — the one thing the document
  * cannot say. A non-empty name this editor did not generate reads as the
  * researcher's, which is the safe direction. Keyed on the FORM STORE because
- * the hooks that read it may be mounted apart, and the store's lifetime is
- * exactly this edit's.
+ * the hooks that read it may be mounted apart, and the store is this edit's.
+ * It is forgotten when the editor is torn down, because the form empties its
+ * values then and the store lives on.
  */
 export type StageNameOwnership = {
   /** The name on the stage now is the researcher's, not this editor's. */
@@ -76,6 +77,10 @@ export function stageNameOwnership(
   };
   ownershipByForm.set(storeApi, fresh);
   return fresh;
+}
+
+export function forgetStageNameOwnership(storeApi: StageFormStoreApi): void {
+  ownershipByForm.delete(storeApi);
 }
 
 /**

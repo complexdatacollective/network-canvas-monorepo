@@ -4,6 +4,7 @@ import { useStageEditorForm } from '../form/stageEditorContext.ts';
 import { useProtocolLocalization } from '../localization/ProtocolLocalization.tsx';
 import { computeAutoNameUpdate } from './computeAutoNameUpdate.ts';
 import {
+  forgetStageNameOwnership,
   stageNameOwnership,
   useLiveStageLabel,
   useProposedStageLabel,
@@ -47,6 +48,11 @@ export function useAutoStageName(): AutoStageName {
   liveLabelRef.current = liveLabel;
   const proposalRef = useRef(proposal);
   proposalRef.current = proposal;
+
+  // StrictMode tears the editor down and mounts it again at once, and the form
+  // empties its values in between. A record kept across that would read the
+  // emptied name as one the researcher cleared, and never propose it again.
+  useEffect(() => () => forgetStageNameOwnership(storeApi), [storeApi]);
 
   useEffect(() => {
     // Nothing proposed into a stage this session may not write, and no

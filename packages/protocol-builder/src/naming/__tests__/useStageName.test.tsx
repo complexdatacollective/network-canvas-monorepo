@@ -6,7 +6,7 @@ import {
   waitFor,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { useState } from 'react';
+import { Fragment, StrictMode, useState } from 'react';
 import { describe, expect, it } from 'vitest';
 
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
@@ -91,6 +91,12 @@ type EditorOptions = Readonly<{
    * instead. What a host with a rename dialog and no stage title does.
    */
   headless?: boolean;
+  /**
+   * Mounts the editor under `StrictMode`, which runs every effect, its cleanup
+   * and the effect again before the first paint — what a host's development
+   * build does to the editor on every mount.
+   */
+  strict?: boolean;
 }>;
 
 function Editor({
@@ -177,6 +183,7 @@ function renderEditor(options: EditorOptions = {}) {
   const type = options.type ?? 'NameGenerator';
   const fields = options.fields ?? {};
   const existing = options.existing === true;
+  const Wrapper = options.strict === true ? StrictMode : Fragment;
   const sections: SectionMap = {
     ...(options.sections ?? protocolSections()),
     ...(existing
@@ -193,25 +200,27 @@ function renderEditor(options: EditorOptions = {}) {
   let readLiveDraft: (() => SectionDoc) | null = null;
 
   render(
-    <DialogProvider>
-      <Editor
-        sections={sections}
-        target={target}
-        headless={headless}
-        onStore={(api) => {
-          storeApi = api;
-        }}
-        onLiveDraft={(read) => {
-          readLiveDraft = read;
-        }}
-        onHost={(built) => {
-          host = built;
-        }}
-        onName={(name) => {
-          stageName = name;
-        }}
-      />
-    </DialogProvider>,
+    <Wrapper>
+      <DialogProvider>
+        <Editor
+          sections={sections}
+          target={target}
+          headless={headless}
+          onStore={(api) => {
+            storeApi = api;
+          }}
+          onLiveDraft={(read) => {
+            readLiveDraft = read;
+          }}
+          onHost={(built) => {
+            host = built;
+          }}
+          onName={(name) => {
+            stageName = name;
+          }}
+        />
+      </DialogProvider>
+    </Wrapper>,
   );
 
   const input = headless
@@ -264,6 +273,18 @@ describe('useStageName', () => {
     await waitFor(() =>
       expect(input).toHaveValue('Person Form Name Generator'),
     );
+  });
+
+  /**
+   * `StrictMode` unmounts the editor and mounts it again before anything is
+   * painted, and the form empties itself in between. The record of what the
+   * editor has already proposed has to go with the form's values: kept, it
+   * reads the emptied name as one the researcher cleared and leaves it empty.
+   */
+  it('proposes a name when the editor is mounted twice by StrictMode', async () => {
+    const { input } = renderEditor({ strict: true });
+
+    await waitFor(() => expect(input).toHaveValue('Form Name Generator'));
   });
 
   it('reads the subject from the committed draft when no field holds it', async () => {
