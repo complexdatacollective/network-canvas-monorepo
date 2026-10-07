@@ -1,6 +1,12 @@
 import { Trash2 } from 'lucide-react';
-import { Reorder, type Variants } from 'motion/react';
-import { useCallback, useRef, type MouseEvent, type PointerEvent } from 'react';
+import { Reorder, useDragControls, type Variants } from 'motion/react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  type MouseEvent,
+  type PointerEvent,
+} from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -147,6 +153,18 @@ const TimelineStageRow = ({
   const pointerStart = useRef({ x: 0, y: 0 });
   const didDrag = useRef(false);
 
+  // `dragListener={false}` only stops the NEXT pointer-down from starting a
+  // drag; a gesture already in flight when the protocol turns read-only keeps
+  // reordering the list. `stop()` rather than `cancel()`: it ends the gesture
+  // the way a release would — the row animates back to its origin and
+  // `onDragEnd` still fires, so the timeline's commit can discard the order
+  // the interrupted drag left behind. `cancel()` skips both, leaving the row
+  // displaced.
+  const dragControls = useDragControls();
+  useEffect(() => {
+    if (readOnly) dragControls.stop();
+  }, [readOnly, dragControls]);
+
   const stageName =
     stage.label || intl.formatMessage(finalMessages.untitledStage);
   const position = index + 1;
@@ -240,6 +258,7 @@ const TimelineStageRow = ({
       // what turns it off. Without a listener motion also leaves `touch-action`
       // and `user-select` alone, so the row scrolls and selects like any other.
       dragListener={!readOnly}
+      dragControls={dragControls}
       onDragStart={() => {
         didDrag.current = true;
       }}

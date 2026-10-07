@@ -324,23 +324,30 @@ function useHorizontalOverflow(
     setHorizontalOverflowVariables(frame, measureLaneOverflow(lane));
   }, [enabled]);
 
-  // Assigns even when nothing is hidden: the lane may still hold a scroll
-  // position from before the hand-off, and Chrome can leave a stale overshoot
-  // scrollable, so a lane whose segments fit is sent back to its start.
-  const anchorToEnd = React.useCallback(() => {
+  // Chrome can leave a stale overshoot scrollable after a hand-off, so the
+  // lane may still hold a scroll position past where its segments end. Whatever
+  // it rests at, the offset is clamped to the resting overflow: a lane whose
+  // segments fit returns to its start, an over-scrolled one to its true end.
+  // Only an end-anchored lane that is still pinned to its end is sent there.
+  const settleLane = React.useCallback(() => {
     const lane = laneRef.current;
-    if (!lane || !anchorsToEnd) return;
+    if (!lane || !enabled) return;
     const hidden = Math.max(
       0,
       measureRestingScrollWidth(lane) - lane.clientWidth,
     );
-    lane.scrollLeft = isRightToLeft(lane) ? -hidden : hidden;
-  }, [anchorsToEnd]);
+    const offset =
+      anchorsToEnd && pinnedToEnd.current
+        ? hidden
+        : Math.min(Math.abs(lane.scrollLeft), hidden);
+    const target = isRightToLeft(lane) ? -offset : offset;
+    if (lane.scrollLeft !== target) lane.scrollLeft = target;
+  }, [enabled, anchorsToEnd]);
 
   React.useLayoutEffect(() => {
-    if (pinnedToEnd.current) anchorToEnd();
+    settleLane();
     publishOverflow();
-  }, [anchorToEnd, publishOverflow, children]);
+  }, [settleLane, publishOverflow, children]);
 
   React.useEffect(() => {
     const lane = laneRef.current;
@@ -357,8 +364,8 @@ function useHorizontalOverflow(
             if (lane.clientWidth !== laneWidth.current) {
               laneWidth.current = lane.clientWidth;
               pinnedToEnd.current = true;
-              anchorToEnd();
             }
+            settleLane();
             publishOverflow();
           });
     observer?.observe(lane);
@@ -366,7 +373,7 @@ function useHorizontalOverflow(
       lane.removeEventListener('scroll', onScroll);
       observer?.disconnect();
     };
-  }, [anchorToEnd, publishOverflow]);
+  }, [settleLane, publishOverflow]);
 
   return { laneRef, frameRef };
 }

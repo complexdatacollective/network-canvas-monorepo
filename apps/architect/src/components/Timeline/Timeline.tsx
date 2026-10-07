@@ -331,16 +331,29 @@ const Timeline = () => {
   );
 
   // Visual-only during the drag: no dispatch, so the timeline isn't fragmented
-  // into one undo entry per crossing.
-  const handleReorder = useCallback((newOrder: typeof stages) => {
-    setOrderedStages(newOrder);
-  }, []);
+  // into one undo entry per crossing. A drag that was already under way when
+  // another tab took the protocol can still call this until its row stops it.
+  const handleReorder = useCallback(
+    (newOrder: typeof stages) => {
+      if (readOnly) return;
+      setOrderedStages(newOrder);
+    },
+    [readOnly],
+  );
 
   // Returns whether the move was committed. The keyboard path passes that
   // answer back to the open control, which is otherwise left waiting to
   // reclaim focus for a move that never happened.
   const commitReorder = useCallback(
     (stageId: string, proposedStages: typeof stages) => {
+      // A drag outliving the edit lock ends here, and the ownership gate would
+      // drop its write: dispatching and announcing would report a move that
+      // never persisted, while the order the drag left behind stayed on screen.
+      if (readOnly) {
+        setOrderedStages(stages);
+        return false;
+      }
+
       const oldIndex = stages.findIndex((s) => s.id === stageId);
       const newIndex = proposedStages.findIndex((s) => s.id === stageId);
 
@@ -381,7 +394,7 @@ const Timeline = () => {
       );
       return true;
     },
-    [announce, dispatch, openDialog, stages, intl],
+    [announce, dispatch, openDialog, readOnly, stages, intl],
   );
 
   // Commit the whole reorder as a single moveStage once the drag ends, using the

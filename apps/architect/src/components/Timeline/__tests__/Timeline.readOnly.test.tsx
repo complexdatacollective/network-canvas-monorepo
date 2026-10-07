@@ -1,14 +1,16 @@
 import { configureStore } from '@reduxjs/toolkit';
 import {
+  act,
   fireEvent,
   render,
   screen,
   waitFor,
   within,
 } from '@testing-library/react';
+import type { DragControls, HTMLMotionProps, PanInfo } from 'motion/react';
 import type { ReactNode } from 'react';
 import { Provider } from 'react-redux';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { actionCreators as protocolActions } from '~/ducks/modules/activeProtocol';
 import { rootReducer } from '~/ducks/modules/root';
@@ -32,6 +34,84 @@ vi.mock('../../Screens/NewStageScreen', () => ({
       <div data-testid="new-stage-screen">{`insert at ${insertAtIndex}`}</div>
     ) : null,
 }));
+
+// jsdom does no layout, so motion's pointer gesture never decides that a row
+// has crossed its neighbour and never ends a drag. The real Reorder components
+// stay; these wrappers only record what that gesture would call on them, so a
+// test can play a drag from the outside.
+const gesture = vi.hoisted(() => {
+  const state: {
+    values: unknown[];
+    dragControls: Map<unknown, DragControls>;
+    dragEnds: Map<unknown, () => void>;
+    moveRow: (from: number, to: number) => void;
+    endDrag: (value: unknown) => void;
+    reset: () => void;
+  } = {
+    values: [],
+    dragControls: new Map(),
+    dragEnds: new Map(),
+    moveRow: () => {},
+    endDrag: (value) => {
+      const end = state.dragEnds.get(value);
+      if (!end) throw new Error('No row is registered for that stage');
+      end();
+    },
+    reset: () => {
+      state.values = [];
+      state.dragControls.clear();
+      state.dragEnds.clear();
+    },
+  };
+  return state;
+});
+
+vi.mock('motion/react', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('motion/react')>();
+  const idle = { x: 0, y: 0 };
+  const settled: PanInfo = {
+    point: idle,
+    delta: idle,
+    offset: idle,
+    velocity: idle,
+  };
+
+  type GroupProps = Omit<HTMLMotionProps<'ul'>, 'values' | 'children'> & {
+    children?: ReactNode;
+    values: unknown[];
+    onReorder: (order: unknown[]) => void;
+  };
+  type ItemProps = Omit<
+    HTMLMotionProps<'div'>,
+    'value' | 'layout' | 'children'
+  > & {
+    children?: ReactNode;
+    as: 'div';
+    value: unknown;
+  };
+
+  const Group = (props: GroupProps) => {
+    gesture.values = props.values;
+    gesture.moveRow = (from, to) => {
+      const next = [...props.values];
+      next.splice(to, 0, ...next.splice(from, 1));
+      props.onReorder(next);
+    };
+    return <actual.Reorder.Group {...props} />;
+  };
+
+  const Item = (props: ItemProps) => {
+    gesture.dragEnds.set(props.value, () =>
+      props.onDragEnd?.(new MouseEvent('pointerup'), settled),
+    );
+    if (props.dragControls) {
+      gesture.dragControls.set(props.value, props.dragControls);
+    }
+    return <actual.Reorder.Item {...props} />;
+  };
+
+  return { ...actual, Reorder: { ...actual.Reorder, Group, Item } };
+});
 
 const makeStore = () => {
   const protocol = structuredClone(developmentProtocol);
@@ -223,5 +303,80 @@ describe('Timeline outside the guard', () => {
     expect(globalThis.__architectDialogMocks.confirm).toHaveBeenCalledTimes(1);
     await waitFor(() => expect(stageIds(store)).toEqual(rest));
     expect(stageIds(store)).not.toContain(firstId);
+  });
+});
+
+// A drag is a pointer gesture that outlives the render it started in. Another
+// tab can take the protocol while one is under way, and `dragListener={false}`
+// only refuses the NEXT pointer-down: the gesture in flight carries on
+// reordering and still ends in `onDragEnd`.
+describe('Timeline when another tab takes the protocol during a drag', () => {
+  beforeEach(() => {
+    gesture.reset();
+  });
+
+  const renderedLabels = () =>
+    within(screen.getByRole('list'))
+      .getAllByRole('heading', { level: 4 })
+      .map((heading) => heading.textContent);
+  const protocolLabels = (store: ReturnType<typeof makeStore>) =>
+    getProtocol(store.getState())?.stages.map((stage) => stage.label);
+  const announcements = () =>
+    screen
+      .queryAllByRole('status')
+      .map((region) => region.textContent)
+      .join('');
+
+  it('commits and announces the move when this tab still holds the protocol', () => {
+    const { store } = renderTimeline(false);
+    const [first, second, ...rest] = stageIds(store) ?? [];
+    const [dragged] = gesture.values;
+
+    act(() => gesture.moveRow(0, 1));
+    act(() => gesture.endDrag(dragged));
+
+    expect(stageIds(store)).toEqual([second, first, ...rest]);
+    expect(renderedLabels()).toEqual(protocolLabels(store));
+    expect(announcements()).toBe('Moved stage 1 to position 2 of 3.');
+  });
+
+  it('discards the move when the drag ends after the protocol went read-only', () => {
+    const { store, setReadOnly } = renderTimeline(false);
+    const before = stageIds(store);
+    const labels = protocolLabels(store);
+    const [dragged] = gesture.values;
+
+    act(() => gesture.moveRow(0, 1));
+    expect(renderedLabels()).not.toEqual(labels);
+
+    setReadOnly(true);
+    act(() => gesture.endDrag(dragged));
+
+    expect(stageIds(store)).toEqual(before);
+    expect(renderedLabels()).toEqual(labels);
+    expect(announcements()).toBe('');
+  });
+
+  it('ignores further crossings from a drag that outlives the lock', () => {
+    const { setReadOnly, store } = renderTimeline(false);
+    const labels = protocolLabels(store);
+
+    setReadOnly(true);
+    act(() => gesture.moveRow(0, 1));
+
+    expect(renderedLabels()).toEqual(labels);
+  });
+
+  it('stops the gesture on every row as soon as the protocol goes read-only', () => {
+    const { setReadOnly } = renderTimeline(false);
+    const stops = [...gesture.dragControls.values()].map((controls) =>
+      vi.spyOn(controls, 'stop'),
+    );
+    expect(stops).toHaveLength(3);
+    for (const stop of stops) expect(stop).not.toHaveBeenCalled();
+
+    setReadOnly(true);
+
+    for (const stop of stops) expect(stop).toHaveBeenCalledTimes(1);
   });
 });

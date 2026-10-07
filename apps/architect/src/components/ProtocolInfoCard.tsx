@@ -380,6 +380,23 @@ const ProtocolInfoCard = () => {
     }
   }, [description]);
 
+  // Demotion to read-only discards any uncommitted draft. The controls are
+  // disabled, so nothing will commit it, and when editing returns the reloaded
+  // protocol can carry the same name and description — leaving the effects
+  // above with no change to run on and the re-enabled fields showing text that
+  // was never saved.
+  useEffect(() => {
+    if (!readOnly) {
+      return;
+    }
+    setLocalName(name ?? '');
+    setLocalDescription(description);
+    setNotice(null);
+    lastAnnouncedThreshold.current = announceThresholdFor(
+      PROTOCOL_NAME_MAX_LENGTH - countGraphemes(name ?? ''),
+    );
+  }, [readOnly, name, description]);
+
   return (
     <ProtocolCard
       background={
@@ -455,6 +472,11 @@ const ProtocolInfoCard = () => {
               }
             }}
             onBlur={() => {
+              // A control that becomes disabled while focused can still blur
+              // before the draft above is discarded; that blur must not commit.
+              if (readOnly) {
+                return;
+              }
               const trimmed = localName.trim();
               if (!trimmed) {
                 setLocalName(name ?? '');
@@ -550,7 +572,7 @@ const ProtocolInfoCard = () => {
           value={localDescription}
           onChange={(value) => setLocalDescription(value ?? '')}
           onBlur={() => {
-            if (localDescription !== description) {
+            if (!readOnly && localDescription !== description) {
               dispatch(
                 updateProtocolDescription({
                   description: localDescription,

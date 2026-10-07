@@ -820,6 +820,44 @@ describe('SegmentedToolbar — overflowing lane', () => {
       '0px',
     );
   });
+
+  it('returns a start-aligned lane to its start when every control fits after a hand-off', () => {
+    const { rerender } = render(toolbar('Download'));
+    const lane = screen.getByRole('toolbar', { name: 'Page actions' });
+    const frame = lane.parentElement;
+    const scrollLeft = layOutLane(lane, LANE_WIDTH, LANE_WIDTH + 80);
+    lane.scrollLeft = 80;
+    expect(scrollLeft()).toBe(80);
+
+    rerender(toolbar('Print'));
+
+    expect(scrollLeft()).toBe(0);
+    expect(
+      frame?.style.getPropertyValue('--scroll-area-overflow-x-start'),
+    ).toBe('0px');
+    expect(frame?.style.getPropertyValue('--scroll-area-overflow-x-end')).toBe(
+      '0px',
+    );
+  });
+
+  it('pulls a start-aligned lane back to its true end when it is scrolled past it', () => {
+    const { rerender } = render(toolbar('Download'));
+    const lane = screen.getByRole('toolbar', { name: 'Page actions' });
+    const frame = lane.parentElement;
+    const scrollLeft = layOutLane(lane, CONTENT_WIDTH, CONTENT_WIDTH + 100);
+    lane.scrollLeft = HIDDEN + 100;
+    expect(scrollLeft()).toBe(HIDDEN + 100);
+
+    rerender(toolbar('Print'));
+
+    expect(scrollLeft()).toBe(HIDDEN);
+    expect(
+      frame?.style.getPropertyValue('--scroll-area-overflow-x-start'),
+    ).toBe(`${HIDDEN}px`);
+    expect(frame?.style.getPropertyValue('--scroll-area-overflow-x-end')).toBe(
+      '0px',
+    );
+  });
 });
 
 describe('SegmentedToolbar — dragging', () => {
