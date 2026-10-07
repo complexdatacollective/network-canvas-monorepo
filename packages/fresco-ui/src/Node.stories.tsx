@@ -270,7 +270,7 @@ export const Colors: Story = {
         <Node
           color="custom"
           label="Custom color"
-          style={{ '--base': 'oklch(var(--platinum))' } as CSSProperties}
+          style={{ '--base': '#767676' } as CSSProperties}
         />
         <span className="text-xs text-current/70">Custom</span>
       </div>

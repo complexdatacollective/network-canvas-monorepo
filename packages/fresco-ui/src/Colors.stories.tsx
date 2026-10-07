@@ -29,7 +29,9 @@ const ColorSwatch = ({
       className="border-outline flex h-24 w-full items-center justify-center rounded-lg border-2 font-medium"
       style={{
         backgroundColor: `var(${cssVar})`,
-        color: contrastVar ? `var(${contrastVar})` : 'inherit',
+        color: contrastVar
+          ? `var(${contrastVar})`
+          : `contrast-color(var(${cssVar}))`,
       }}
     >
       {name}
@@ -217,7 +219,6 @@ export const NodeColors: Story = {
               key={num}
               name={`Node ${num}`}
               cssVar={`--node-${num}`}
-              contrastVar={`--node-${num}-contrast`}
             />
           ))}
         </div>
@@ -369,7 +370,6 @@ export const AllColors: Story = {
               key={num}
               name={`Node ${num}`}
               cssVar={`--node-${num}`}
-              contrastVar={`--node-${num}-contrast`}
             />
           ))}
         </div>
