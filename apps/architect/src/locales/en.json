@@ -403,6 +403,10 @@
     "defaultMessage": "{protocolCount, plural, one {Your protocol is saved only on this device. It is never uploaded to a server.} other {Your # protocols are saved only on this device. They are never uploaded to a server.}}",
     "description": "Researcher-facing explanatory text in components / Home / LibraryPanel."
   },
+  "architect.chrome.projectNav.projectActions.returnToLanguages": {
+    "defaultMessage": "Return to Languages",
+    "description": "Button in the toolbar of the translation table that goes back to the Languages page, which opened it."
+  },
   "architect.chrome.projectNav.projectActions.returnToStages": {
     "defaultMessage": "Return to Stages",
     "description": "Researcher-facing explanatory text in components / ProjectNav / ProjectActions."
@@ -2059,6 +2063,114 @@
     "defaultMessage": "Which translation participants see",
     "description": "Button that shows or hides the explanation of which language participants see each text in."
   },
+  "architect.localization.translationTable.allTranslated": {
+    "defaultMessage": "Every text is translated into the languages shown.",
+    "description": "Shown in the translation table when only texts with missing translations are shown and there are none."
+  },
+  "architect.localization.translationTable.caption": {
+    "defaultMessage": "Every text participants see, with its translation into each of the protocol’s languages",
+    "description": "Caption of the translation table, read by screen readers. Each row is one text, each column one language."
+  },
+  "architect.localization.translationTable.defaultLanguage": {
+    "defaultMessage": "Default",
+    "description": "Badge beside the name of the protocol’s default language, in the heading of its column in the translation table."
+  },
+  "architect.localization.translationTable.editorTitle": {
+    "defaultMessage": "{language} translation",
+    "description": "Heading of the editor that opens over a cell of the translation table for rich text. language is the language being written."
+  },
+  "architect.localization.translationTable.groupHeading": {
+    "defaultMessage": "<muted>{place}</muted> · <title>{name}</title>",
+    "description": "Heading of a group of rows in the translation table, naming the codebook entry that holds their texts. place is the kind of entry, such as “Node type”; name is its name, which links to it. Keep the tags around the same parts."
+  },
+  "architect.localization.translationTable.groupHeadingDetail": {
+    "defaultMessage": "<muted>{place}</muted> · <title>{name}</title> · <muted>{detail}</muted>",
+    "description": "Heading of a group of rows in the translation table, naming the stage that holds their texts. place is the stage’s position, such as “Stage 4”; name is the stage’s name, which links to it; detail is the kind of stage, such as “Name Generator”. Keep the tags around the same parts."
+  },
+  "architect.localization.translationTable.keyboardHelp": {
+    "defaultMessage": "Changes are saved when you leave a cell. Press Escape to undo a change before it is saved, and the up and down arrow keys to move between rows.",
+    "description": "Help text below the translation table, explaining how editing its cells works."
+  },
+  "architect.localization.translationTable.languages": {
+    "defaultMessage": "Languages ({shown, number} of {total, number})",
+    "description": "Button above the translation table that opens a menu for showing and hiding language columns. shown is how many languages are shown, total how many the protocol has."
+  },
+  "architect.localization.translationTable.languagesMenu": {
+    "defaultMessage": "Show languages",
+    "description": "Heading of the menu that shows and hides the language columns of the translation table."
+  },
+  "architect.localization.translationTable.lastLanguage": {
+    "defaultMessage": "One language is always shown.",
+    "description": "Note in the menu of language columns when only one language is shown, which therefore cannot be hidden."
+  },
+  "architect.localization.translationTable.missingOnly": {
+    "defaultMessage": "Only texts with missing translations",
+    "description": "Checkbox above the translation table that hides the texts already translated into every language shown."
+  },
+  "architect.localization.translationTable.noMatches": {
+    "defaultMessage": "No texts match your search.",
+    "description": "Shown in the translation table when no text matches the search."
+  },
+  "architect.localization.translationTable.noTexts": {
+    "defaultMessage": "This protocol has no text for participants yet.",
+    "description": "Shown in the translation table when the protocol has no participant-facing text at all."
+  },
+  "architect.localization.translationTable.noTranslation": {
+    "defaultMessage": "Not translated into any language.",
+    "description": "Shown in an empty cell of the translation table when the text has no translation in any of the protocol’s languages."
+  },
+  "architect.localization.translationTable.notTranslated": {
+    "defaultMessage": "Not translated yet. Participants see the {language} text.",
+    "description": "Screen-reader description of an empty cell of the translation table, when participants see a closely related language instead, such as Brazilian Portuguese for European Portuguese. language is that language."
+  },
+  "architect.localization.translationTable.notTranslatedUnlessBrowserLists": {
+    "defaultMessage": "Not translated yet. Participants see the {language} text, unless their browser also lists a language that has it.",
+    "description": "Screen-reader description of an empty cell of the translation table. Participants see the text in another language their web browser lists, when the text has a translation in one, and otherwise in language: the protocol’s default language, or failing that another of its languages."
+  },
+  "architect.localization.translationTable.onlyTranslation": {
+    "defaultMessage": "This text exists only in {language}. Translate it into another language before clearing it.",
+    "description": "Shown in a cell of the translation table when its translation is emptied but is the only translation the text has, which cannot be removed. language is the language of the cell."
+  },
+  "architect.localization.translationTable.onlyTranslationKept": {
+    "defaultMessage": "The {language} translation was kept, because this text exists only in {language}.",
+    "description": "Screen-reader announcement after an emptied translation is restored, because it is the only translation the text has. language is the language of the translation."
+  },
+  "architect.localization.translationTable.progress": {
+    "defaultMessage": "{translated, number} of {total, number} translated",
+    "description": "Under a language’s name in the heading of its column in the translation table: how many of the protocol’s texts have a translation into it."
+  },
+  "architect.localization.translationTable.progressLabel": {
+    "defaultMessage": "{language} translation progress",
+    "description": "Accessible name of the progress bar in the heading of a language’s column in the translation table."
+  },
+  "architect.localization.translationTable.saveFailed": {
+    "defaultMessage": "This translation could not be saved, because the text or its language has been removed from the protocol.",
+    "description": "Screen-reader announcement when a translation typed into the translation table cannot be saved."
+  },
+  "architect.localization.translationTable.search": {
+    "defaultMessage": "Search texts and translations",
+    "description": "Label and placeholder of the search field above the translation table. It finds texts by where they are or by their translations into the languages shown."
+  },
+  "architect.localization.translationTable.shownCount": {
+    "defaultMessage": "Showing {shown, number} of {total, plural, one {# text} other {# texts}}",
+    "description": "Above the translation table: how many texts the search and filter leave in the table, out of every text the protocol has."
+  },
+  "architect.localization.translationTable.shownIn": {
+    "defaultMessage": "Shown in {language}",
+    "description": "Tag in an empty cell of the translation table, under the text participants see instead of the missing translation. language is the language of that text."
+  },
+  "architect.localization.translationTable.shownInUnlessBrowserLists": {
+    "defaultMessage": "Shown in {language}*",
+    "description": "Tag in an empty cell of the translation table, under the text participants see instead of the missing translation, when they may see another language instead. The asterisk refers to a note below the table explaining that the participant’s browser can list a language that has the text. language is the language of the text shown."
+  },
+  "architect.localization.translationTable.textColumn": {
+    "defaultMessage": "Text",
+    "description": "Heading of the first column of the translation table, which names each text by where it is in the protocol."
+  },
+  "architect.localization.translationTable.unlessBrowserLists": {
+    "defaultMessage": "* Unless the participant’s browser also lists another language that has the text.",
+    "description": "Note under the translation table, explaining the asterisk on the tag that says which language participants see where a translation is missing. Begins with the same asterisk."
+  },
   "architect.nestedDraftReclaimDialog.backToTheEditor": {
     "defaultMessage": "Back to the Editor",
     "description": "The label text in components / NestedDraftReclaimDialog."
@@ -2231,6 +2343,10 @@
     "defaultMessage": "Choose the languages participants can take the interview in, and see which text still needs translating.",
     "description": "Description of the page that manages protocol languages."
   },
+  "architect.pages.localizationPage.openTable": {
+    "defaultMessage": "Open translation table",
+    "description": "Link on the Languages page to the translation table, which shows every participant-facing text beside its translation into each language."
+  },
   "architect.pages.localizationPage.title": {
     "defaultMessage": "Languages",
     "description": "Title of the page that manages the languages of a protocol."
@@ -2246,6 +2362,14 @@
   "architect.pages.summaryPage.summaryLanguage": {
     "defaultMessage": "Summary language",
     "description": "Label of the control that chooses which of the protocol languages the summary shows the protocol text in."
+  },
+  "architect.pages.translationTablePage.description": {
+    "defaultMessage": "Every text participants see, beside its translation into each language. Empty cells show the text participants see instead.",
+    "description": "Description of the translation table page."
+  },
+  "architect.pages.translationTablePage.title": {
+    "defaultMessage": "Translation table",
+    "description": "Title of the page, opened from the Languages page, that shows every participant-facing text of a protocol beside its translation into each language."
   },
   "architect.presentation.conflictSubject": {
     "defaultMessage": "{entityName}: {variableNames}",

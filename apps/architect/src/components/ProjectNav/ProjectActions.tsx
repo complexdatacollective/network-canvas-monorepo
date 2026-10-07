@@ -48,6 +48,12 @@ const chromeMessages = defineMessages({
     description:
       'Researcher-facing explanatory text in components / ProjectNav / ProjectActions.',
   },
+  returnToLanguages: {
+    id: 'architect.chrome.projectNav.projectActions.returnToLanguages',
+    defaultMessage: 'Return to Languages',
+    description:
+      'Button in the toolbar of the translation table that goes back to the Languages page, which opened it.',
+  },
 });
 const messages = defineMessages({
   saveProtocolSource: {
@@ -194,10 +200,19 @@ const ProjectActions = ({
     '/protocol/localization',
     '/protocol/summary',
   ].includes(location);
-  const returnDestination = returnsToTimeline ? '/protocol' : '/';
-  const returnLabel = returnsToTimeline
-    ? intl.formatMessage(chromeMessages.returnToStages)
-    : intl.formatMessage(chromeMessages.returnToStartScreen);
+  const returnsToLanguages = location === '/protocol/localization/table';
+  const returnDestination = returnsToLanguages
+    ? '/protocol/localization'
+    : returnsToTimeline
+      ? '/protocol'
+      : '/';
+  const returnLabel = intl.formatMessage(
+    returnsToLanguages
+      ? chromeMessages.returnToLanguages
+      : returnsToTimeline
+        ? chromeMessages.returnToStages
+        : chromeMessages.returnToStartScreen,
+  );
   const handleReturn = useCallback(
     () => setLocation(returnDestination),
     [returnDestination, setLocation],

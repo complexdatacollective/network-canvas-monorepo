@@ -292,6 +292,54 @@ const locateTranslation = (
   return { key: 'protocol', place: { kind: 'protocol' }, field: [...path] };
 };
 
+/** One participant-facing string, as the translation table lists it. */
+export type TranslationRow = Omit<MissingTranslationField, 'gaps'>;
+
+export type TranslationGroup = {
+  key: string;
+  place: TranslationPlace;
+  rows: readonly TranslationRow[];
+};
+
+const PLACE_ORDER: Record<TranslationPlace['kind'], number> = {
+  stage: 0,
+  codebook: 1,
+  ego: 2,
+  protocol: 3,
+};
+
+/**
+ * Every participant-facing string grouped by the stage or codebook entry that
+ * holds it: the stages in protocol order, then the codebook, then the
+ * protocol's own texts.
+ */
+export const getTranslationGroups = createSelector(
+  [getProtocol, getLocalizedStrings],
+  (protocol, strings): readonly TranslationGroup[] => {
+    if (!protocol) return [];
+    const groups = new Map<
+      string,
+      { place: TranslationPlace; rows: TranslationRow[] }
+    >();
+    for (const hit of strings) {
+      const { key, place, field } = locateTranslation(protocol, hit.path);
+      const group = groups.get(key) ?? { place, rows: [] };
+      groups.set(key, group);
+      group.rows.push({
+        path: hit.path,
+        field,
+        format: hit.format,
+        value: hit.value,
+      });
+    }
+    return [...groups]
+      .map(([key, group]) => ({ key, place: group.place, rows: group.rows }))
+      .toSorted(
+        (a, b) => PLACE_ORDER[a.place.kind] - PLACE_ORDER[b.place.kind],
+      );
+  },
+);
+
 /**
  * Missing translations grouped by the stage or codebook entry that holds
  * them, one row per string, in the order the protocol declares them.

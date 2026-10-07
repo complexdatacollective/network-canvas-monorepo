@@ -221,7 +221,7 @@ const messages = defineMessages({
 
 type FieldPath = MissingTranslationField['field'];
 
-type PlaceDetails = {
+export type PlaceDetails = {
   /** What kind of place it is, such as "Stage 4" or "Node type". */
   kind: string;
   /**
@@ -238,7 +238,7 @@ type PlaceDetails = {
   variableNames: (id: string) => string | undefined;
 };
 
-const describePlace = (
+export const describePlace = (
   intl: IntlShape,
   protocol: CurrentProtocol,
   place: TranslationPlace,
@@ -355,10 +355,10 @@ type Step = Readonly<{ key: string; label: string }>;
  * such as "Prompt 2" then "Text". A text with no known name falls back to its
  * path, which reads as code.
  */
-const textSteps = (
+export const textSteps = (
   intl: IntlShape,
   protocol: CurrentProtocol,
-  field: MissingTranslationField,
+  field: Pick<MissingTranslationField, 'path' | 'field'>,
   details: PlaceDetails,
 ): Readonly<{ steps: readonly Step[]; raw: boolean }> => {
   const named = nameLocalizedText(intl, protocol, field.path);
