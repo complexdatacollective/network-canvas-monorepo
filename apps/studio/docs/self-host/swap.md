@@ -9,7 +9,7 @@ service. Three are set in `.env`; the fourth is a routing table.
 | Object store           | `S3_ENDPOINT` and the four other `S3_*`                                      | `garage`, `garage-init`, their two configs, the volume, and the `depends_on` entries naming them |
 | Object store, on Azure | `STUDIO_OBJECT_STORE=azure-blob` and the `AZURE_STORAGE_*`; empty the `S3_*` | the same as above                                                                                |
 | Rate-limit store       | `REDIS_URL`                                                                  | the `valkey` service and the `depends_on` entries naming it                                      |
-| Ingress                | reproduce the routing table below                                            | the `traefik` service, the `traefik-dynamic` config and the published ports                      |
+| Ingress                | reproduce the routing table below                                            | the `traefik` service, its two configs and the published ports                                   |
 
 Deleting the replaced service is tidying, not part of the swap: each of the
 three elements defaults to the stack's own service, so setting its variables
@@ -141,8 +141,12 @@ az storage container create \
 
 With the account URL, Studio signs in as the **managed identity** of the
 machine it runs on — the virtual machine, or the Container App — so there is
-no account key anywhere in `.env`. Give that identity the **Storage Blob Data
-Contributor** role on the one container, not on the whole account:
+no account key anywhere in `.env`. Both processes that touch the container, the
+API and the worker, sign in as it, and between them they read, write, **delete
+and list** blobs: the worker deletes and lists the staged imports it clears
+away. Give that identity the **Storage Blob Data Contributor** role on the one
+container, not on the whole account. That role already includes delete and
+list, so an identity set up for an earlier release needs no change:
 
 ```bash
 # The identity's principal id. For a Container App, use
@@ -225,9 +229,11 @@ on the store you gave it.
 ## The ingress
 
 The one swap that is not a variable, because Traefik holds a routing table
-rather than an address. Delete the `traefik` service, the `traefik-dynamic`
-config and the published ports, publish `web` and `api` where your proxy can
-reach them, and reproduce this table exactly.
+rather than an address. Delete the `traefik` service, its two configs
+(`traefik-dynamic` and `traefik-api-servers`) and the published ports, publish
+`web` and `api` where your proxy can reach them, and reproduce this table
+exactly. If you run [more than one `api`](./run.md#running-more-than-one-api),
+list every replica as a server; no replica needs to be preferred over another.
 
 ### The routing table
 

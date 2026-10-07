@@ -57,9 +57,9 @@
 #                  naming it.
 #   Ingress        the one that is not a variable, because it is a routing
 #                  table rather than an address: delete the `traefik` service,
-#                  the `traefik-dynamic` config and the published ports, and
-#                  reproduce that routing table in an institution's own proxy
-#                  against `web` and `api`.
+#                  the `traefik-dynamic` and `traefik-api-servers` configs and
+#                  the published ports, and reproduce that routing table in an
+#                  institution's own proxy against `web` and `api`.
 #
 # ── Where the secrets live ────────────────────────────────────────────────
 #
@@ -134,9 +134,12 @@ x-studio-secrets: &studio-secrets
 services:
   # The only service with published ports. Its static configuration is the
   # command flags; its routing table is the `traefik-dynamic` config below,
-  # read through the file provider. It is given no Docker socket: the routing
-  # is fixed, and a container-discovery provider would let any container on
-  # this network publish a route by setting a label.
+  # read through the file provider from one directory: the routes in
+  # `traefik-dynamic`, and the list of `api` servers in `traefik-api-servers`.
+  # The list is its own file so that running more than one `api` is a change to
+  # that file alone (docs/self-host/run.md). It is given no Docker socket: the
+  # routing is fixed, and a container-discovery provider would let any
+  # container on this network publish a route by setting a label.
   traefik:
     image: traefik:v3.6@sha256:31267173a15b4944e797a76ffd9c419707c8d8b32fe5b610f80cd0cfa05f372d
     restart: unless-stopped
@@ -152,7 +155,7 @@ services:
       - --certificatesResolvers.le.acme.email=${ACME_EMAIL}
       - --certificatesResolvers.le.acme.storage=/acme/acme.json
       - --certificatesResolvers.le.acme.httpChallenge.entryPoint=web
-      - --providers.file.filename=/etc/traefik/dynamic.yml
+      - --providers.file.directory=/etc/traefik/dynamic
       # No dashboard and no API: this instance routes one hostname and has
       # nothing an operator needs to inspect over HTTP.
       - --api=false
@@ -166,7 +169,9 @@ services:
       - traefik-acme:/acme
     configs:
       - source: traefik-dynamic
-        target: /etc/traefik/dynamic.yml
+        target: /etc/traefik/dynamic/routing.yml
+      - source: traefik-api-servers
+        target: /etc/traefik/dynamic/api-servers.yml
     depends_on:
       - web
       - api
@@ -395,14 +400,33 @@ configs:
                 "502-503": 503
 
         services:
-          api:
-            loadBalancer:
-              servers:
-                - url: "http://api:3000"
           web:
             loadBalancer:
               servers:
                 - url: "http://web:80"
+
+  # The `api` service Traefik balances across, apart from the routes so that a
+  # second replica is a one-file change. One `url` per replica, each named for
+  # its Compose service; `docs/self-host/run.md` shows the edit.
+  #
+  # The health check is liveness, not readiness, on purpose: `/healthz` answers
+  # whenever the process is up, so a replica that has lost its connection to
+  # Postgres or the object store stays in rotation and says so through
+  # `/readyz`, instead of every replica leaving it at once. A replica that is
+  # draining for a deploy also stays in until it stops; its clients are closed
+  # with a normal "going away" and reconnect.
+  traefik-api-servers:
+    content: |
+      http:
+        services:
+          api:
+            loadBalancer:
+              healthCheck:
+                path: /healthz
+                interval: 5s
+                timeout: 3s
+              servers:
+                - url: "http://api:3000"
 
   garage-config:
     content: |
