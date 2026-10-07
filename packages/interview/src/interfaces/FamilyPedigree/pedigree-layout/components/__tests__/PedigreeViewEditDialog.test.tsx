@@ -162,7 +162,6 @@ vi.mock('../../../../../hooks/useStageSelector', () => ({
 vi.mock('../../../../../store/modules/protocol', () => ({
   getCodebook: () => fixtures.codebook,
   getProtocol: () => ({}),
-  getShouldEncryptNames: () => false,
   getStages: () => [],
   getAssetManifest: () => ({}),
   default: (state = {}) => state,

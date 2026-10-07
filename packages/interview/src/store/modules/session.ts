@@ -34,7 +34,6 @@ import {
   type AttributePatch,
   validateAttributePatch,
 } from '../entityAttributePatch';
-import { getShouldEncryptNames } from './protocol';
 
 // reducer helpers:
 function flipEdge(edge: Partial<NcEdge>) {
@@ -312,13 +311,11 @@ export const updateNode = createAppAsyncThunk(
         : `Invalid node attribute patch for type "${node.type}": ${validation.error.keys.join(', ')} ${validation.error.code === 'unknown-keys' ? 'do not exist in protocol codebook' : 'cannot be both set and unset'}`,
     );
 
-    const useEncryption = getShouldEncryptNames(state);
-    // We know that encryption is enabled at the protocol level, but are the node attributes we are updating encrypted?
     const hasEncryptedAttributes = Object.keys(attributePatch.set).some(
       (key) => variablesForType[key]?.encrypted,
     );
 
-    if (!useEncryption || !hasEncryptedAttributes) {
+    if (!hasEncryptedAttributes) {
       return {
         nodeId,
         attributePatch,

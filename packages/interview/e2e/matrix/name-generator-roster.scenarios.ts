@@ -1004,7 +1004,6 @@ export const nameGeneratorRosterScenarios: InterfaceScenarios = {
           type: 'text',
           encrypted: true,
         });
-        synth.setExperiments({ encryptedVariables: true });
 
         synth.addAsset({
           id: 'jsonRoster',

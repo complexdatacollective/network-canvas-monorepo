@@ -473,7 +473,7 @@ function createTestStoreWithEdge(options: {
   }
 }
 
-function createMutationStore(encryptedVariables = false) {
+function createMutationStore() {
   const network = createInitialNetwork();
   network.nodes = [
     {
@@ -515,7 +515,6 @@ function createMutationStore(encryptedVariables = false) {
     promptIndex: 0,
   };
   const protocolState = {
-    experiments: { encryptedVariables },
     codebook: {
       node: {
         person: {
@@ -558,7 +557,7 @@ function createMutationStore(encryptedVariables = false) {
       },
     ],
   };
-  const uiState = { passphrase: encryptedVariables ? 'passphrase' : null };
+  const uiState = { passphrase: 'passphrase' };
 
   const store = configureStore({
     reducer: {
@@ -670,7 +669,7 @@ describe('attribute patch reducers', () => {
   });
 
   it('encrypts node values without mutating the patch', async () => {
-    const store = createMutationStore(true);
+    const store = createMutationStore();
     const patch = { set: { nodeRemove: 'secret' }, unset: [] };
 
     const result = await store.dispatch(

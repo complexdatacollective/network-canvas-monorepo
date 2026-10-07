@@ -1,8 +1,5 @@
 {
   "name": "Development Protocol",
-  "experiments": {
-    "encryptedVariables": true
-  },
   "stages": [
     {
       "id": "anonymisation-interface",

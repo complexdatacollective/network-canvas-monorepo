@@ -3,7 +3,6 @@
 import { useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 
-import { getShouldEncryptNames } from '../../store/modules/protocol';
 import {
   getPassphrase,
   getPassphraseInvalid,
@@ -15,8 +14,6 @@ import {
 
 export const usePassphrase = () => {
   const dispatch = useDispatch();
-
-  const isEnabled = useSelector(getShouldEncryptNames);
 
   const passphrase = useSelector(getPassphrase);
   const passphraseInvalid = useSelector(getPassphraseInvalid);
@@ -54,7 +51,6 @@ export const usePassphrase = () => {
   );
 
   return {
-    isEnabled,
     passphrase,
     passphraseInvalid,
     setPassphrase,

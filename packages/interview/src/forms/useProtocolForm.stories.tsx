@@ -307,9 +307,6 @@ const createMockStore = () => {
     codebook: mockProtocol.codebook,
     stages: mockProtocol.stages,
     assets: [],
-    experiments: {
-      encryptedVariables: false,
-    },
   };
 
   const mockSessionState = {

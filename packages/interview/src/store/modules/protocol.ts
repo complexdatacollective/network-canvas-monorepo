@@ -24,8 +24,6 @@ const protocolSlice = createSlice({
   initialState,
   reducers: {},
   selectors: {
-    getShouldEncryptNames: (state) =>
-      state.experiments?.encryptedVariables ?? false,
     getCodebook: (state) => state.codebook,
     getStages: createSelector(
       [(state: ProtocolState) => state.stages],
@@ -44,12 +42,7 @@ const protocolSlice = createSlice({
 });
 
 // export selectors
-export const {
-  getShouldEncryptNames,
-  getCodebook,
-  getStages,
-  getProtocolStages,
-  getAssetManifest,
-} = protocolSlice.selectors;
+export const { getCodebook, getStages, getProtocolStages, getAssetManifest } =
+  protocolSlice.selectors;
 
 export default protocolSlice.reducer;

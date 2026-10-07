@@ -319,7 +319,6 @@ export class SyntheticInterview {
   private nodeTypeCounter = 0;
   private edgeTypeCounter = 0;
   private ordinalPromptCounter = 0;
-  private experiments: { encryptedVariables?: boolean } | null = null;
 
   constructor(seed = DEFAULT_SYNTHETIC_SEED) {
     this.seed = seed;
@@ -1906,7 +1905,6 @@ export class SyntheticInterview {
         importedAt: now,
         isPreview: false,
         isPending: false,
-        experiments: this.experiments,
       },
     };
   }
@@ -2689,13 +2687,6 @@ export class SyntheticInterview {
    */
   addAsset(asset: Record<string, unknown>): void {
     this.assets.push(asset);
-  }
-
-  /**
-   * Set protocol-level experiments, emitted by getInterviewPayload().
-   */
-  setExperiments(experiments: { encryptedVariables?: boolean }): void {
-    this.experiments = experiments;
   }
 
   // --- Accessors for internal state (useful for tests) ---

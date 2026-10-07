@@ -61,9 +61,6 @@ const mockProtocol = {
       ],
     },
   ],
-  experiments: {
-    encryptedVariables: false,
-  },
   assets: [],
 };
 

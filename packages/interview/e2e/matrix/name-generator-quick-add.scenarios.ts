@@ -623,7 +623,6 @@ export const nameGeneratorQuickAddScenarios: InterfaceScenarios = {
           component: 'Text',
           encrypted: true,
         });
-        synth.setExperiments({ encryptedVariables: true });
         const stage = synth.addStage('NameGeneratorQuickAdd', {
           label: 'Confidential contacts',
           subject: { entity: 'node', type: person.id },

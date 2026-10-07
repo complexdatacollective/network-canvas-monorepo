@@ -48,7 +48,6 @@ vi.mock('../../Anonymisation/usePassphrase', () => ({
   usePassphrase: () => ({
     requirePassphrase: vi.fn(),
     passphrase: null,
-    isEnabled: false,
   }),
 }));
 

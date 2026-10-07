@@ -57,9 +57,6 @@ const buildMockProtocol = (icon: string, maxNodes: number) => ({
       ],
     },
   ],
-  experiments: {
-    encryptedVariables: false,
-  },
   assets: [],
 });
 
@@ -84,9 +81,6 @@ const createMockStore = (icon: string, maxNodes: number) => {
     codebook: mockProtocol.codebook,
     stages: mockProtocol.stages,
     assets: [],
-    experiments: {
-      encryptedVariables: false,
-    },
   };
 
   const mockSessionState = {

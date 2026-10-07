@@ -22,12 +22,8 @@ export const useNodeAttributes = (node: NcNode | undefined) => {
   const getCodebookVariablesForNodeType = useSelector(
     makeGetCodebookVariablesForNodeType,
   );
-  const {
-    requirePassphrase,
-    setPassphraseInvalid,
-    isEnabled,
-    passphraseInvalid,
-  } = usePassphrase();
+  const { requirePassphrase, setPassphraseInvalid, passphraseInvalid } =
+    usePassphrase();
 
   const getById = useCallback(
     async <T extends VariableValue>(
@@ -38,8 +34,7 @@ export const useNodeAttributes = (node: NcNode | undefined) => {
       const nodeAttributes = getEntityAttributes(node);
       const codebookVariables = getCodebookVariablesForNodeType(node.type);
 
-      const isEncrypted =
-        isEnabled && codebookVariables[attributeId]?.encrypted;
+      const isEncrypted = codebookVariables[attributeId]?.encrypted;
 
       // If the attribute is not encrypted, we can return it directly
       if (!isEncrypted) {
@@ -100,7 +95,6 @@ export const useNodeAttributes = (node: NcNode | undefined) => {
       requirePassphrase,
       setPassphraseInvalid,
       passphraseInvalid,
-      isEnabled,
     ],
   );
 

@@ -24,7 +24,7 @@ const labelCache = new Map<string, string>();
 export function useNodeLabel(node: NcNode | undefined) {
   const getCodebookForNodeType = useSelector(makeGetCodebookForNodeType);
   const codebook = node ? getCodebookForNodeType(node.type) : undefined;
-  const { passphrase, isEnabled } = usePassphrase();
+  const { passphrase } = usePassphrase();
   const prevPassphrase = usePrevious(passphrase);
   const prevNode = usePrevious(node);
 
@@ -36,14 +36,13 @@ export function useNodeLabel(node: NcNode | undefined) {
   );
 
   // Decryption is the ONLY genuinely asynchronous label source: it applies
-  // when anonymisation is enabled, the label attribute is marked encrypted,
-  // AND the node carries secure-attribute metadata for it (mirrors the gate
-  // in useNodeAttributes.getById — nodes without the metadata still hold
+  // when the label attribute is marked encrypted AND the node carries
+  // secure-attribute metadata for it (mirrors the gate in
+  // useNodeAttributes.getById — nodes without the metadata still hold
   // plaintext).
   const needsAsyncDecrypt = Boolean(
     node &&
     labelAttributeId &&
-    isEnabled &&
     codebook?.variables?.[labelAttributeId]?.encrypted &&
     node[entitySecureAttributesMeta]?.[labelAttributeId],
   );

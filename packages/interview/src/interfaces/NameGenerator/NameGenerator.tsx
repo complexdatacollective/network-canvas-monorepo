@@ -74,7 +74,7 @@ const NameGenerator = (props: NameGeneratorProps) => {
   const interfaceRef = useRef<HTMLDivElement>(null);
 
   const { isLastPrompt, promptIndex } = usePrompts();
-  const { requirePassphrase, passphrase, isEnabled } = usePassphrase();
+  const { requirePassphrase, passphrase } = usePassphrase();
 
   const [selectedNode, setSelectedNode] = useState<NcNode | null>(null);
   const [isPanelsOpen, setIsPanelsOpen] = useState(false);
@@ -93,13 +93,6 @@ const NameGenerator = (props: NameGeneratorProps) => {
   const { currentStep } = useCurrentStep();
 
   const useEncryption = useMemo(() => {
-    // The encrypted-variables experiment is the master switch: the decrypt
-    // path (useNodeAttributes) only runs when it is enabled, so writing
-    // ciphertext without it would store values that can never be displayed.
-    if (!isEnabled) {
-      return false;
-    }
-
     if (
       Object.keys(newNodeAttributes).some(
         (variableId) => codebookForNodeType[variableId]?.encrypted,
@@ -122,7 +115,7 @@ const NameGenerator = (props: NameGeneratorProps) => {
     }
 
     return false;
-  }, [stage, codebookForNodeType, newNodeAttributes, isEnabled]);
+  }, [stage, codebookForNodeType, newNodeAttributes]);
 
   useEffect(() => {
     if (useEncryption) {

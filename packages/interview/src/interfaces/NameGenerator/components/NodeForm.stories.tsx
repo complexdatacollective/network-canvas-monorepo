@@ -259,9 +259,6 @@ const createMockStore = (
     codebook: mockProtocol.codebook,
     stages: mockProtocol.stages, // This MUST be an array for the getStages selector
     assets: [], // Ensure assets is an array
-    experiments: {
-      encryptedVariables: false,
-    },
   };
 
   const mockSessionState = {

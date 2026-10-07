@@ -186,7 +186,6 @@ vi.mock('../../../components/quickStartWizard/PersonFields', () => ({
 vi.mock('../../../../../store/modules/protocol', () => ({
   getCodebook: () => ({}),
   getProtocol: () => ({}),
-  getShouldEncryptNames: () => false,
   getStages: () => [],
   getAssetManifest: () => ({}),
   default: (state = {}) => state,

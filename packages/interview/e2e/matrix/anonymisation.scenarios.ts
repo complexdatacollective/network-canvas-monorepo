@@ -1,10 +1,7 @@
 import { z } from 'zod';
 
 import { SyntheticInterview } from '@codaco/protocol-utilities';
-import {
-  entityAttributesProperty,
-  entitySecureAttributesMeta,
-} from '@codaco/shared-consts';
+import { entityAttributesProperty } from '@codaco/shared-consts';
 
 import { AnonymisationFixture } from '../fixtures/anonymisation-fixture.js';
 import { expect } from '../fixtures/matrix-test.js';
@@ -283,13 +280,12 @@ export const anonymisationScenarios: InterfaceScenarios = {
 
     {
       id: 'encrypted-downstream-write',
-      covers: ['experiments.encryptedVariables=true+encryptedVariable'],
+      covers: ['encryptedVariable.downstreamWrite'],
       visual: true,
       slow: true,
       captureMask: (page) => [page.locator('.transform-3d')],
       build: () => {
         const synth = new SyntheticInterview();
-        synth.setExperiments({ encryptedVariables: true });
         synth.addInformationStage({
           title: 'Introduction',
           text: 'Before the anonymisation stage.',
@@ -357,89 +353,6 @@ export const anonymisationScenarios: InterfaceScenarios = {
     },
 
     {
-      id: 'encrypted-off-not-decrypted',
-      covers: ['experiments.encryptedVariables=absent'],
-      // With the experiment off, useEncryption short-circuits to false, so the
-      // write is plaintext (no PBKDF2) — a fast round-trip, not crypto-heavy.
-      build: () => {
-        const synth = new SyntheticInterview();
-        // setExperiments is never called: getShouldEncryptNames stays false,
-        // so the decrypt path in useNodeAttributes is disabled.
-        synth.addInformationStage({
-          title: 'Introduction',
-          text: 'Before the anonymisation stage.',
-        });
-        const person = synth.addNodeType();
-        const nameVar = person.addVariable({
-          name: 'name',
-          type: 'text',
-          encrypted: true,
-        });
-        synth.addStage('Anonymisation', {
-          explanationText: {
-            title: 'Protect your data',
-            body: 'This study encrypts participant names.',
-          },
-        });
-        const generator = synth.addStage('NameGeneratorQuickAdd', {
-          subject: { entity: 'node', type: person.id },
-          quickAdd: nameVar.id,
-        });
-        generator.addPrompt({ text: 'Add a person' });
-        synth.addInformationStage({
-          title: 'Complete',
-          text: 'After the anonymisation stage.',
-        });
-        return synth;
-      },
-      currentStep: 0,
-      run: async ({ page, interview, protocol }) => {
-        const anon = new AnonymisationFixture(page);
-        await interview.next(); // Introduction -> Anonymisation
-
-        await anon.fillPassphrase('unused-phrase');
-        await anon.submit();
-        await expect(anon.successAlert()).toBeVisible();
-        await interview.next(); // Anonymisation -> NameGeneratorQuickAdd
-
-        await page.getByTestId('quick-add-toggle').click();
-        await page.getByTestId('quick-add-input').fill('Alice');
-        await page.getByTestId('quick-add-input').press('Enter');
-
-        await expect
-          .poll(
-            async () =>
-              (await protocol.getNetworkState(interview.interviewId))?.nodes
-                .length ?? 0,
-          )
-          .toBe(1);
-
-        // experiments.encryptedVariables=absent is the master switch: with it
-        // off, NameGenerator's useEncryption short-circuits to false so the name
-        // is written as plaintext, and useNodeAttributes likewise skips
-        // decryption. The two paths are aligned, so the label renders the stored
-        // plaintext directly — 'Alice' is visible, not undecryptable ciphertext.
-        await expect(page.getByRole('option', { name: 'Alice' })).toBeVisible();
-
-        const network = await protocol.getNetworkState(interview.interviewId);
-        const node = network!.nodes[0]!;
-        const attrs = node[entityAttributesProperty];
-        const nameVarId = Object.keys(attrs)[0]!;
-        // Stored as plaintext, not ciphertext: a plain string value and no
-        // secure-attribute metadata (contrast encrypted-downstream-write, which
-        // stores an array + entitySecureAttributesMeta with the experiment on).
-        expect(attrs[nameVarId]).toBe('Alice');
-        expect(node[entitySecureAttributesMeta]).toBeUndefined();
-
-        // End on the background-free closing Information stage.
-        await interview.next();
-        await expect(
-          page.getByRole('heading', { name: 'Complete' }),
-        ).toBeVisible();
-      },
-    },
-
-    {
       id: 'missing-and-wrong-passphrase-prompter',
       covers: [
         'encryptedVariable.missingPassphrase.prompter',
@@ -448,7 +361,6 @@ export const anonymisationScenarios: InterfaceScenarios = {
       slow: true,
       build: () => {
         const synth = new SyntheticInterview();
-        synth.setExperiments({ encryptedVariables: true });
         synth.addInformationStage({
           title: 'Introduction',
           text: 'Before the anonymisation stage.',
