@@ -221,7 +221,7 @@ describe('a reading the gate takes that fails for any other reason', () => {
           read: Effect.fail(new Error('connect ECONNREFUSED 127.0.0.1:1')),
           initial: false,
         });
-        for (let pass = 0; pass < 3; pass += 1) yield* reading.read;
+        for (let pass = 0; pass < 3; pass += 1) yield* reading;
 
         const warnings = logs.lines.filter((line) => line.level === 'Warn');
         assert.strictEqual(warnings.length, 1);

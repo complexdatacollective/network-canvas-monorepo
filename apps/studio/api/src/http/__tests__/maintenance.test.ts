@@ -29,6 +29,7 @@ import { SCHEMA_FINGERPRINT } from '../../db/fingerprint.generated.ts';
 import { SCHEMA_LOCK_KEY, type SchemaState } from '../../db/schema.ts';
 import { MaintenanceScope } from '../../db/tenant.ts';
 import { Environment, readEnv } from '../../env.ts';
+import { collectLogs } from '../../platform/__tests__/support/logs.ts';
 import { BootChecks } from '../../platform/boot-checks.ts';
 import { MaintenanceState } from '../../platform/maintenance-state.ts';
 import { SchemaStatus } from '../../platform/schema-gate.ts';
@@ -781,6 +782,7 @@ describe('a schema reading across a closure', () => {
           assert.strictEqual(triggerOf(yield* closure), UNREAD);
 
           MutableRef.set(switches.schema, 'stale');
+          yield* TestClock.adjust(Duration.millis(1001));
           assert.strictEqual(triggerOf(yield* closure), STALE);
         }),
       );
@@ -830,10 +832,10 @@ describe('a schema reading across a closure', () => {
           MutableRef.set(switches.schema, 'fails');
           yield* TestClock.adjust(Duration.millis(1001));
           assert.strictEqual(triggerOf(yield* closure), UNREAD);
-          // Still unread inside the TTL: a failed read is not cached.
-          assert.strictEqual(triggerOf(yield* closure), UNREAD);
-
+          // Still unread once it can be read, until the failure's TTL is up.
           MutableRef.set(switches.schema, 'current');
+          assert.strictEqual(triggerOf(yield* closure), UNREAD);
+          yield* TestClock.adjust(Duration.millis(1001));
           assert.strictEqual(triggerOf(yield* closure), 'open');
           // Once read, the schema answers from the cache again.
           MutableRef.set(switches.schema, 'fails');
@@ -867,6 +869,7 @@ describe('a schema reading across a closure', () => {
           assert.strictEqual(triggerOf(yield* Fiber.join(pending)), UNREAD);
 
           MutableRef.set(switches.schema, 'stale');
+          yield* TestClock.adjust(Duration.millis(1001));
           assert.strictEqual(triggerOf(yield* closure), STALE);
           MutableRef.set(switches.schema, 'current');
           yield* TestClock.adjust(Duration.millis(1001));
@@ -876,23 +879,35 @@ describe('a schema reading across a closure', () => {
     },
   );
 
+  /**
+   * A schema read whose `held`-th call waits on `release`, so it is still in
+   * flight while the test opens and shuts a window. `reads` counts every call.
+   */
+  const heldRead = (switches: Control, held: number) =>
+    Effect.gen(function* () {
+      const release = yield* Deferred.make<void>();
+      const reads = MutableRef.make(0);
+      const read = Effect.suspend(() => {
+        MutableRef.update(reads, (count) => count + 1);
+        return MutableRef.get(reads) === held
+          ? Effect.andThen(Deferred.await(release), SCHEMA_READS.current)
+          : SCHEMA_READS[MutableRef.get(switches.schema)];
+      });
+      return {
+        read,
+        reads,
+        release: Deferred.succeed(release, undefined),
+      };
+    });
+
+  const MAINTENANCE = 'maintenance: maintenance mode is on';
+
   it.effect(
-    'does not count a read begun before a closure as a read after it',
+    'keeps a closure shut on a read begun before it, though the read lands after',
     () => {
       const switches = control();
       return Effect.gen(function* () {
-        // The second schema read waits, so it is in flight while maintenance
-        // mode opens and shuts again.
-        const held = yield* Deferred.make<void>();
-        const reads = MutableRef.make(0);
-        const schemaRead = Effect.suspend(() => {
-          MutableRef.update(reads, (count) => count + 1);
-          return MutableRef.get(reads) === 2
-            ? Effect.andThen(Deferred.await(held), SCHEMA_READS.current)
-            : SCHEMA_READS[MutableRef.get(switches.schema)];
-        });
-        const MAINTENANCE = 'maintenance: maintenance mode is on';
-
+        const { read, reads, release } = yield* heldRead(switches, 2);
         return yield* closureOver(
           switches,
           (closure) =>
@@ -909,22 +924,127 @@ describe('a schema reading across a closure', () => {
               yield* Effect.yieldNow;
               assert.strictEqual(MutableRef.get(reads), 2);
 
+              // Maintenance mode opens and shuts again while that read waits,
+              // and the migration inside it makes the schema stale.
               MutableRef.set(switches.flag, true);
               assert.strictEqual(triggerOf(yield* closure), MAINTENANCE);
               MutableRef.set(switches.schema, 'stale');
               MutableRef.set(switches.flag, false);
-              yield* Deferred.succeed(held, undefined);
+              yield* release;
               assert.strictEqual(
                 triggerOf(yield* Fiber.join(inFlight)),
-                'open',
+                UNREAD,
               );
-              // The read that just landed began before the last window, so
-              // the schema is read again.
               assert.strictEqual(triggerOf(yield* closure), STALE);
             }),
-          schemaRead,
+          read,
         );
       });
+    },
+  );
+
+  it.effect(
+    'does not let a read from before a window replace one taken after it',
+    () => {
+      const switches = control();
+      return Effect.gen(function* () {
+        const { read, release } = yield* heldRead(switches, 1);
+        return yield* closureOver(
+          switches,
+          (closure) =>
+            Effect.gen(function* () {
+              // The first read is in flight when maintenance mode begins.
+              const before = yield* Effect.forkChild(closure);
+              yield* Effect.yieldNow;
+              MutableRef.set(switches.flag, true);
+              assert.strictEqual(triggerOf(yield* closure), MAINTENANCE);
+              MutableRef.set(switches.schema, 'stale');
+              MutableRef.set(switches.flag, false);
+              assert.strictEqual(triggerOf(yield* closure), STALE);
+
+              // It lands, answering "current" from before the migration.
+              yield* release;
+              assert.strictEqual(triggerOf(yield* Fiber.join(before)), STALE);
+              assert.strictEqual(triggerOf(yield* closure), STALE);
+              // Past the TTL the stale schema is read again, never the old
+              // value: a failed read answers what this window read.
+              MutableRef.set(switches.schema, 'fails');
+              yield* TestClock.adjust(Duration.millis(1001));
+              assert.strictEqual(triggerOf(yield* closure), STALE);
+            }),
+          read,
+        );
+      });
+    },
+  );
+
+  it.effect('shares one read among the calls that reopen a window', () => {
+    const switches = control();
+    return Effect.gen(function* () {
+      const { read, reads, release } = yield* heldRead(switches, 2);
+      return yield* closureOver(
+        switches,
+        (closure) =>
+          Effect.gen(function* () {
+            assert.strictEqual(triggerOf(yield* closure), 'open');
+            MutableRef.set(switches.flag, true);
+            assert.strictEqual(triggerOf(yield* closure), MAINTENANCE);
+            MutableRef.set(switches.flag, false);
+
+            const waiting = yield* Effect.forkChild(
+              Effect.all(
+                Array.from({ length: 20 }, () => closure),
+                {
+                  concurrency: 'unbounded',
+                },
+              ),
+            );
+            yield* Effect.yieldNow;
+            yield* release;
+            const answers = yield* Fiber.join(waiting);
+            assert.deepStrictEqual(
+              new Set(answers.map(triggerOf)),
+              new Set(['open']),
+            );
+            assert.strictEqual(MutableRef.get(reads), 2);
+
+            // A failing read is shared too, and kept for the TTL.
+            MutableRef.set(switches.flag, true);
+            assert.strictEqual(triggerOf(yield* closure), MAINTENANCE);
+            MutableRef.set(switches.flag, false);
+            MutableRef.set(switches.schema, 'fails');
+            for (let call = 0; call < 5; call++) {
+              assert.strictEqual(triggerOf(yield* closure), UNREAD);
+            }
+            assert.strictEqual(MutableRef.get(reads), 3);
+          }),
+        read,
+      );
+    });
+  });
+
+  it.effect(
+    'logs why the schema cannot be read once, however long it cannot',
+    () => {
+      const switches = control();
+      const logs = collectLogs();
+      return closureOver(switches, (closure) =>
+        Effect.gen(function* () {
+          MutableRef.set(switches.flag, true);
+          assert.strictEqual(triggerOf(yield* closure), MAINTENANCE);
+          MutableRef.set(switches.flag, false);
+          MutableRef.set(switches.schema, 'fails');
+          for (let tick = 0; tick < 3; tick++) {
+            assert.strictEqual(triggerOf(yield* closure), UNREAD);
+            yield* TestClock.adjust(Duration.millis(1001));
+          }
+          const failures = logs.messages.filter((line) =>
+            line.includes('could not read the schema fingerprint'),
+          );
+          assert.strictEqual(failures.length, 1);
+          assert.include(failures[0]!, 'ECONNREFUSED');
+        }),
+      ).pipe(Effect.provide(logs.layer));
     },
   );
 });
