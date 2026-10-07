@@ -268,7 +268,7 @@ seconds, minutes or hours:
 | `participant_redeem_link`    | `5/10m`   | One participant's own link, against repeated redemption                   |
 | `participant_sync`           | `600/1m`  | Interview sync, against a script replaying a session                      |
 | `participant_session`        | `60/1m`   | Reading an interview, against a script repeating the protocol's assembly  |
-| `participant_analytics`      | `120/1m`  | Interview usability events, against a page flooding the forwarder         |
+| `participant_analytics`      | `60/1m`   | Interview usability events, against a page flooding the forwarder         |
 | `rpc_user`                   | `600/1m`  | The instance, against one runaway client                                  |
 | `rpc_team`                   | `3000/1m` | The instance, against a whole team at once                                |
 | `storage_read`               | `2000/5m` | Asset delivery, generously: an interview fetches every stimulus it shows  |

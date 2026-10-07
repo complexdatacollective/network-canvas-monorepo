@@ -2,15 +2,12 @@ import type { ComponentProps } from 'react';
 
 import type { Shell } from '@codaco/interview';
 import {
-  analyticsPropertiesLength,
+  analyticsPropertiesBytes,
   MAX_ANALYTICS_EVENTS,
-  MAX_ANALYTICS_PROPERTIES_LENGTH,
+  MAX_ANALYTICS_PROPERTIES_BYTES,
 } from '@codaco/studio-contract/schema/participant';
 
-import {
-  participantCall,
-  participantUnloadingAnalytics,
-} from '../runtime/participantRpc.ts';
+import { participantAnalytics } from '../runtime/participantRpc.ts';
 
 type AnalyticsClient = NonNullable<
   ComponentProps<typeof Shell>['posthogClient']
@@ -33,10 +30,10 @@ export type ParticipantAnalyticsClient = AnalyticsClient & {
 
 const FLUSH_DELAY_MS = 2000;
 
-const sendThroughStudio: Send = (events, { unloading }) =>
-  unloading
-    ? participantUnloadingAnalytics({ events })
-    : participantCall('participant.analytics', { events });
+const sendThroughStudio =
+  (sessionToken: string): Send =>
+  (events, { unloading }) =>
+    participantAnalytics({ events }, { sessionToken, unloading });
 
 const exceptionProperties = (error: unknown) => {
   const type = error instanceof Error ? error.name : 'Error';
@@ -52,7 +49,8 @@ const exceptionProperties = (error: unknown) => {
 };
 
 export function createParticipantAnalyticsClient(
-  send: Send = sendThroughStudio,
+  sessionToken: string,
+  send: Send = sendThroughStudio(sessionToken),
   now: () => Date = () => new Date(),
 ): ParticipantAnalyticsClient {
   let queue: QueuedEvent[] = [];
@@ -73,9 +71,7 @@ export function createParticipantAnalyticsClient(
   };
 
   const enqueue = (event: string, properties: Record<string, unknown>) => {
-    if (
-      analyticsPropertiesLength(properties) > MAX_ANALYTICS_PROPERTIES_LENGTH
-    ) {
+    if (analyticsPropertiesBytes(properties) > MAX_ANALYTICS_PROPERTIES_BYTES) {
       return;
     }
     queue.push({ event, properties, timestamp: now().toISOString() });

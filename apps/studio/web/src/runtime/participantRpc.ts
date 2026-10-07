@@ -11,6 +11,7 @@ import type {
 import {
   ParticipantClient,
   participantRequestInit,
+  ParticipantSessionToken,
   type ParticipantRpcsType,
   participantRuntime,
 } from './participantRuntime.ts';
@@ -39,7 +40,7 @@ const ANALYTICS_KEEPALIVE_MAX_BYTES = 4_000;
 const bodyBytes = (payload: unknown) =>
   new Blob([JSON.stringify(payload)]).size;
 
-const unloading = <A, E>(
+const runWithKeepalive = <A, E>(
   effect: Effect.Effect<A, E, ParticipantClient>,
   keepalive: boolean,
 ): Promise<A> =>
@@ -55,19 +56,22 @@ const unloading = <A, E>(
 export const participantUnloadingSync = (
   payload: SyncPayload,
 ): Promise<SyncSuccess> =>
-  unloading(
+  runWithKeepalive(
     Effect.flatMap(ParticipantClient, (client) =>
       client('participant.sync', payload),
     ),
     bodyBytes(payload) <= KEEPALIVE_MAX_BYTES,
   );
 
-export const participantUnloadingAnalytics = (
+export const participantAnalytics = (
   payload: AnalyticsPayload,
+  options: { readonly sessionToken: string; readonly unloading: boolean },
 ): Promise<void> =>
-  unloading(
+  runWithKeepalive(
     Effect.flatMap(ParticipantClient, (client) =>
       client('participant.analytics', payload),
+    ).pipe(
+      Effect.provideService(ParticipantSessionToken, options.sessionToken),
     ),
-    bodyBytes(payload) <= ANALYTICS_KEEPALIVE_MAX_BYTES,
+    options.unloading && bodyBytes(payload) <= ANALYTICS_KEEPALIVE_MAX_BYTES,
   );

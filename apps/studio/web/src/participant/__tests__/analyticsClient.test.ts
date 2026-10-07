@@ -2,18 +2,22 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   MAX_ANALYTICS_EVENTS,
-  MAX_ANALYTICS_PROPERTIES_LENGTH,
+  MAX_ANALYTICS_PROPERTIES_BYTES,
 } from '@codaco/studio-contract/schema/participant';
 
 import { createParticipantAnalyticsClient } from '../analyticsClient.ts';
 
 const NOW = new Date('2026-10-07T09:00:00.000Z');
 
-type Send = Parameters<typeof createParticipantAnalyticsClient>[0];
+type Send = Parameters<typeof createParticipantAnalyticsClient>[1];
 
 const setup = () => {
   const send = vi.fn<NonNullable<Send>>(() => Promise.resolve());
-  const client = createParticipantAnalyticsClient(send, () => NOW);
+  const client = createParticipantAnalyticsClient(
+    'session-token',
+    send,
+    () => NOW,
+  );
   return { send, client };
 };
 
@@ -104,7 +108,7 @@ describe('the participant analytics client', () => {
     const { send, client } = setup();
     client.capture('stage_entered', { stage_index: 1 });
     client.capture('stage_entered', {
-      padding: 'x'.repeat(MAX_ANALYTICS_PROPERTIES_LENGTH),
+      padding: 'x'.repeat(MAX_ANALYTICS_PROPERTIES_BYTES),
     });
     client.flush();
     expect(send.mock.calls[0]?.[0]).toEqual([
@@ -116,11 +120,22 @@ describe('the participant analytics client', () => {
     ]);
   });
 
+  it('measures an event in bytes, not characters', () => {
+    const { send, client } = setup();
+    client.capture('stage_entered', { padding: '€'.repeat(2_000) });
+    client.flush();
+    expect(send).not.toHaveBeenCalled();
+  });
+
   it('never lets a failed send reach the interview', async () => {
     const send = vi.fn<NonNullable<Send>>(() =>
       Promise.reject(new Error('offline')),
     );
-    const client = createParticipantAnalyticsClient(send, () => NOW);
+    const client = createParticipantAnalyticsClient(
+      'session-token',
+      send,
+      () => NOW,
+    );
     client.capture('stage_entered', {});
     expect(() => client.flush()).not.toThrow();
     await vi.runAllTimersAsync();

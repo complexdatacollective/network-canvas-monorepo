@@ -14,7 +14,7 @@ import {
   NetworkNode,
   RedeemInput,
   MAX_ANALYTICS_EVENTS,
-  MAX_ANALYTICS_PROPERTIES_LENGTH,
+  MAX_ANALYTICS_PROPERTIES_BYTES,
   RedeemResult,
   SessionEnded,
   SessionInput,
@@ -190,7 +190,17 @@ describe('the participant payloads', () => {
       [
         {
           event: 'stage_entered',
-          properties: { padding: 'x'.repeat(MAX_ANALYTICS_PROPERTIES_LENGTH) },
+          properties: { padding: 'x'.repeat(MAX_ANALYTICS_PROPERTIES_BYTES) },
+          timestamp: '2026-10-07T09:00:00.000Z',
+        },
+      ],
+    ],
+    [
+      'properties within the character count but over the byte bound',
+      [
+        {
+          event: 'stage_entered',
+          properties: { padding: '€'.repeat(2_000) },
           timestamp: '2026-10-07T09:00:00.000Z',
         },
       ],

@@ -34,9 +34,13 @@ export default function InterviewSession() {
 
   const { payload } = loaded;
 
+  const { sessionToken } = route.useParams();
   const analyticsClient = useMemo(
-    () => (loaded.analytics ? createParticipantAnalyticsClient() : undefined),
-    [loaded.analytics],
+    () =>
+      loaded.analytics
+        ? createParticipantAnalyticsClient(sessionToken)
+        : undefined,
+    [loaded.analytics, sessionToken],
   );
 
   const { onSync, onFinish, saveStep, flushStep } = useMemo(
