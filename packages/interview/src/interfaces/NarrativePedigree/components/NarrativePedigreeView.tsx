@@ -39,6 +39,7 @@ import {
 } from '../../../selectors/session';
 import { getCodebook, getStages } from '../../../store/modules/protocol';
 import type { StageProps } from '../../../types';
+import { useDecryptedNodes } from '../../Anonymisation/useDecryptedNodes';
 import { messages as familyMessages } from '../../FamilyPedigree/messages';
 import PedigreeLayout from '../../FamilyPedigree/pedigree-layout/components/PedigreeLayout';
 import { computeNodeDisplayLabels } from '../../FamilyPedigree/pedigree-layout/components/PedigreeNode';
@@ -337,10 +338,17 @@ export default function NarrativePedigreeView({
     );
   }, [graph, focalId, shownDiseases, statusesByDisease, resolveSexFn]);
 
-  const nodesMap = useMemo(
-    () => new Map(pedigreeNodes.map((n) => [n._uid, n])),
-    [pedigreeNodes],
-  );
+  // Names are only for display, so the genetics above works from the stored
+  // nodes and, until the names are decrypted, the diagram shows each person's
+  // relationship instead.
+  const decrypted = useDecryptedNodes(pedigreeNodes);
+  const plaintextNodes = decrypted.status === 'ready' ? decrypted.nodes : null;
+  const nodesMap = useMemo(() => {
+    const plaintext = new Map(plaintextNodes?.map((n) => [n._uid, n]));
+    return new Map(
+      pedigreeNodes.map((n) => [n._uid, plaintext.get(n._uid) ?? n]),
+    );
+  }, [pedigreeNodes, plaintextNodes]);
   const edgesMap = useMemo(
     () => new Map(pedigreeEdges.map((e) => [e._uid, e])),
     [pedigreeEdges],
