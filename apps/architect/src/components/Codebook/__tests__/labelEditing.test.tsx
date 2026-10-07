@@ -1,5 +1,5 @@
 import { configureStore } from '@reduxjs/toolkit';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createRef } from 'react';
 import { Provider } from 'react-redux';
@@ -184,11 +184,11 @@ describe('Editing labels from the Codebook', () => {
       'href',
       '/protocol/codebook?entity=node&type=person',
     );
-    expect(
-      screen.getByRole('button', { name: 'label Person' }),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByRole('button', { name: /^variables/ }),
-    ).not.toBeInTheDocument();
+    const missing = screen.getByRole('region', {
+      name: 'Missing translations',
+    });
+    const texts = within(missing).getAllByRole('button');
+    expect(texts).toHaveLength(1);
+    expect(texts[0]).toHaveAccessibleName('Node type label Person');
   });
 });

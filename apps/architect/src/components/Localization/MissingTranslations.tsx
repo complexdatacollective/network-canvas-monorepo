@@ -23,6 +23,7 @@ import {
   type IntlShape,
 } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
+import { Badge } from '@codaco/fresco-ui/Badge';
 import { useAccessibilityAnnouncements } from '@codaco/fresco-ui/dnd/useAccessibilityAnnouncements';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import type { FormSubmissionResult } from '@codaco/fresco-ui/form/store/types';
@@ -30,6 +31,7 @@ import { Label } from '@codaco/fresco-ui/Label';
 import { NativeLink } from '@codaco/fresco-ui/NativeLink';
 import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
 import Section from '@codaco/fresco-ui/Section';
+import { Tabs, TabsPanel } from '@codaco/fresco-ui/Tabs';
 import {
   EnclosingHeadingLevel,
   type HeadingTag,
@@ -41,6 +43,7 @@ import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { interfaceDisplayName } from '@codaco/protocol-builder/interfaces/interfaceNames';
 import StageTypeImage from '@codaco/protocol-builder/interfaces/StageTypeImage';
 import { localeDirection } from '@codaco/protocol-builder/localization/localizedText';
+import { nameLocalizedText } from '@codaco/protocol-builder/localization/localizedTextNames';
 import {
   collectLocalizedStrings,
   type CurrentProtocol,
@@ -57,13 +60,22 @@ import {
   getLocalizationCoverage,
   getMissingTranslationGroups,
   type LocaleCoverage,
+  type LocalizationCoverage,
   type MissingTranslationField,
   type TranslationPlace,
 } from '~/selectors/issues';
 import { getProtocol } from '~/selectors/protocol';
-import { translationText } from '~/utils/localizedText';
+import { cx } from '~/utils/cva';
+import {
+  resolveLocalizedText,
+  translationText,
+  UNSPECIFIED_LOCALE,
+} from '~/utils/localizedText';
 
-import TranslationDialog from './TranslationDialog';
+import TranslationDialog, {
+  type TextName,
+  TextNameLabel,
+} from './TranslationDialog';
 import { useLanguageName } from './useLanguageName';
 
 const messages = defineMessages({
@@ -79,24 +91,30 @@ const messages = defineMessages({
       'Missing translations do not stop you from saving, previewing or using the protocol. Participants see the text in another language instead.',
     description: 'Explanation above the list of missing translations.',
   },
+  languagesLabel: {
+    id: 'architect.localization.missingTranslations.languagesLabel',
+    defaultMessage: 'Languages with missing translations',
+    description:
+      'Name of the row of tabs, one per language, that chooses which language’s missing translations are listed.',
+  },
+  languageTab: {
+    id: 'architect.localization.missingTranslations.languageTab',
+    defaultMessage:
+      '{language}, {count, plural, one {# missing translation} other {# missing translations}}',
+    description:
+      'What a screen reader reads for the tab that lists one language’s missing translations. The tab shows the language’s name beside the count. count is how many of its translations are missing.',
+  },
   filterLabel: {
     id: 'architect.localization.missingTranslations.filterLabel',
     defaultMessage: 'Show missing translations for',
     description:
-      'Label of the menu that chooses which language’s missing translations are listed.',
+      'Label of the menu that chooses which language’s missing translations are listed, used instead of tabs when many languages have missing translations.',
   },
   filterOption: {
     id: 'architect.localization.missingTranslations.filterOption',
     defaultMessage: '{language} ({count, number})',
     description:
       'Option for one language in the menu that chooses which language’s missing translations are listed. count is how many of its translations are missing.',
-  },
-  summary: {
-    id: 'architect.localization.missingTranslations.summary',
-    defaultMessage:
-      '{count, plural, one {# text has no {language} translation.} other {# texts have no {language} translation.}}',
-    description:
-      'Shown above the list of missing translations for one language. count is how many texts are listed; language is the language they are missing in.',
   },
   complete: {
     id: 'architect.localization.missingTranslations.complete',
@@ -121,11 +139,17 @@ const messages = defineMessages({
     description:
       'Heading of the part of the list of missing translations that holds the texts in the protocol’s codebook: its node types, edge types and ego.',
   },
+  stageTitle: {
+    id: 'architect.localization.missingTranslations.stageTitle',
+    defaultMessage: '{name} · {interfaceName}',
+    description:
+      'Names a stage that has missing translations, in the list and as the place in the title of the dialog that edits a text’s translations. name is the stage’s name in the protocol’s default language; interfaceName is its kind of interface, such as “Information”.',
+  },
   stagePosition: {
     id: 'architect.localization.missingTranslations.stagePosition',
     defaultMessage: 'Stage {position, number}',
     description:
-      'Shown above the interface name of a stage that has missing translations. position is the stage’s place in the protocol, counting from 1.',
+      'Shown above the name of a stage that has missing translations. position is the stage’s place in the protocol, counting from 1.',
   },
   nodeType: {
     id: 'architect.localization.missingTranslations.nodeType',
@@ -157,7 +181,7 @@ const messages = defineMessages({
     id: 'architect.localization.missingTranslations.placeTitle',
     defaultMessage: '{place} · {name}',
     description:
-      'Title of the dialog that edits a text’s translations, naming where the text is. place is the kind of place, such as “Stage 4” or “Node type”; name is the stage’s interface name or the type’s name.',
+      'Names where a text is in the codebook, in the title of the dialog that edits a text’s translations. place is the kind of place, such as “Node type”; name is the type’s name.',
   },
   saved: {
     id: 'architect.localization.missingTranslations.saved',
@@ -199,8 +223,15 @@ type FieldPath = MissingTranslationField['field'];
 type PlaceDetails = {
   /** What kind of place it is, such as "Stage 4" or "Node type". */
   kind: string;
-  /** The stage's interface name or the type's name; null where `kind` says it all. */
-  name: string | null;
+  /**
+   * A stage's name, in the protocol's default language, or a type's name;
+   * null where `kind` says it all.
+   */
+  name: Readonly<{ text: string; lang: LocaleTag | null }> | null;
+  /** A stage's kind of interface, such as "Information". */
+  interfaceName: string | null;
+  /** Where a text here is, as the dialog that edits it says. */
+  title: string;
   stageType: string | null;
   href: string | null;
   variableNames: (id: string) => string | undefined;
@@ -217,11 +248,26 @@ const describePlace = (
     case 'stage': {
       const index = protocol.stages.findIndex(({ id }) => id === place.stageId);
       const stage = protocol.stages[index];
+      const label = resolveLocalizedText(stage?.label, protocol.localization);
+      const name =
+        label === null || label.text === ''
+          ? { text: unnamed, lang: null }
+          : {
+              text: label.text,
+              lang: label.locale === UNSPECIFIED_LOCALE ? null : label.locale,
+            };
+      const interfaceName =
+        (stage && interfaceDisplayName(stage.type, intl)) ?? unnamed;
       return {
         kind: intl.formatMessage(messages.stagePosition, {
           position: index + 1,
         }),
-        name: (stage && interfaceDisplayName(stage.type, intl)) ?? unnamed,
+        name,
+        interfaceName,
+        title: intl.formatMessage(messages.stageTitle, {
+          name: name.text,
+          interfaceName,
+        }),
         stageType: stage?.type ?? null,
         href: `/protocol/stage/${place.stageId}`,
         variableNames: () => undefined,
@@ -229,32 +275,44 @@ const describePlace = (
     }
     case 'codebook': {
       const definition = codebook[place.entity]?.[place.entityType];
+      const kind = intl.formatMessage(
+        place.entity === 'node' ? messages.nodeType : messages.edgeType,
+      );
+      const name = definition?.name || unnamed;
       return {
-        kind: intl.formatMessage(
-          place.entity === 'node' ? messages.nodeType : messages.edgeType,
-        ),
-        name: definition?.name || unnamed,
+        kind,
+        name: { text: name, lang: null },
+        interfaceName: null,
+        title: intl.formatMessage(messages.placeTitle, { place: kind, name }),
         stageType: null,
         href: codebookHref({ entity: place.entity, type: place.entityType }),
         variableNames: (id) => definition?.variables?.[id]?.name,
       };
     }
-    case 'ego':
+    case 'ego': {
+      const kind = intl.formatMessage(messages.ego);
       return {
-        kind: intl.formatMessage(messages.ego),
+        kind,
         name: null,
+        interfaceName: null,
+        title: kind,
         stageType: null,
         href: codebookHref(),
         variableNames: (id) => codebook.ego?.variables?.[id]?.name,
       };
-    case 'protocol':
+    }
+    case 'protocol': {
+      const kind = intl.formatMessage(messages.protocol);
       return {
-        kind: intl.formatMessage(messages.protocol),
+        kind,
         name: null,
+        interfaceName: null,
+        title: kind,
         stageType: null,
         href: null,
         variableNames: () => undefined,
       };
+    }
   }
 };
 
@@ -272,7 +330,8 @@ const PATH_SEPARATOR = ' › ';
 
 /**
  * One step of a string's path, as researchers know it: an index counted from
- * 1, and a variable's name in place of its id.
+ * 1, and a variable's name in place of its id. Only for a text Architect has
+ * no name for.
  */
 const formatSegment = (
   intl: IntlShape,
@@ -288,25 +347,50 @@ const formatSegment = (
     : segment;
 };
 
-const formatFieldPath = (
+type Step = Readonly<{ key: string; label: string }>;
+
+/**
+ * The steps from a text's place down to the text, named by what each is,
+ * such as "Prompt 2" then "Text". A text with no known name falls back to its
+ * path, which reads as code.
+ */
+const textSteps = (
   intl: IntlShape,
-  field: FieldPath,
-  variableNames: PlaceDetails['variableNames'],
-) =>
-  field
-    .map((_, index) => formatSegment(intl, field, index, variableNames))
-    .join(PATH_SEPARATOR);
+  protocol: CurrentProtocol,
+  field: MissingTranslationField,
+  details: PlaceDetails,
+): Readonly<{ steps: readonly Step[]; raw: boolean }> => {
+  const named = nameLocalizedText(intl, protocol, field.path);
+  if (named !== undefined) {
+    // Prefixed so a named step and a path step never share a branch.
+    return {
+      steps: named.map(({ key, label }) => ({ key: `name:${key}`, label })),
+      raw: false,
+    };
+  }
+  return {
+    steps: field.field.map((_, index) => ({
+      key: `path:${JSON.stringify(field.field.slice(0, index + 1))}`,
+      label: formatSegment(intl, field.field, index, details.variableNames),
+    })),
+    raw: true,
+  };
+};
 
 /** One text with no translation in the language the list shows. */
 type MissingText = {
   key: string;
   field: MissingTranslationField;
   fallbackLocale: LocaleTag;
+  steps: readonly Step[];
+  /** What the dialog calls the text. */
+  name: TextName;
 };
 
 type PathNode = {
   key: string;
-  label: string;
+  /** The steps a single branch covers, as one name. */
+  name: TextName;
   /** Set where a missing text's path ends. */
   text: MissingText | undefined;
   children: readonly PathNode[];
@@ -319,55 +403,52 @@ type TrieNode = {
 };
 
 /**
- * The texts' paths below their place as a tree in which each run of steps
+ * The texts' steps below their place as a tree in which each run of steps
  * only one text takes is a single node, so a branch is drawn only where texts
  * part ways.
  */
-const buildPathTree = (
-  texts: readonly MissingText[],
-  formatStep: (field: FieldPath, index: number) => string,
-): PathNode[] => {
+const buildPathTree = (texts: readonly MissingText[]): PathNode[] => {
   const root: TrieNode = { label: '', text: undefined, children: new Map() };
   for (const text of texts) {
-    const { field } = text.field;
     let node = root;
-    field.forEach((segment, index) => {
-      // Stringified so an index and a key spelled with the same digits differ.
-      const id = JSON.stringify(segment);
-      const existing = node.children.get(id);
+    for (const step of text.steps) {
+      const existing = node.children.get(step.key);
       const child = existing ?? {
-        label: formatStep(field, index),
+        label: step.label,
         text: undefined,
         children: new Map<string, TrieNode>(),
       };
-      if (!existing) node.children.set(id, child);
+      if (!existing) node.children.set(step.key, child);
       node = child;
-    });
+    }
     node.text = text;
   }
 
-  const compress = (node: TrieNode, prefix: readonly string[]): PathNode[] =>
-    [...node.children].map(([id, child]) => {
-      const ids = [...prefix, id];
+  const compress = (node: TrieNode): PathNode[] =>
+    [...node.children].map(([key, child]) => {
       const labels = [child.label];
       let current = child;
+      let last = key;
       while (current.text === undefined && current.children.size === 1) {
         const only = current.children.entries().next().value;
         if (only === undefined) break;
-        const [nextId, next] = only;
-        ids.push(nextId);
+        const [nextKey, next] = only;
         labels.push(next.label);
+        last = nextKey;
         current = next;
       }
       return {
-        key: ids.join('/'),
-        label: labels.join(PATH_SEPARATOR),
+        key: last,
+        name: {
+          label: labels.join(PATH_SEPARATOR),
+          raw: last.startsWith('path:'),
+        },
         text: current.text,
-        children: compress(current, ids),
+        children: compress(current),
       };
     });
 
-  return compress(root, []);
+  return compress(root);
 };
 
 /** Identifies one missing translation: a text, in one language. */
@@ -411,6 +492,14 @@ const storedValue = (
         ?.value
     : undefined;
 };
+
+/** The keys of the texts still missing a translation in `locale`. */
+const missingKeys = (coverage: LocalizationCoverage, locale: LocaleTag) =>
+  new Set(
+    coverage.warnings
+      .filter((warning) => warning.locale === locale)
+      .map((warning) => textKey(warning.locale, warning.path)),
+  );
 
 const useHeadingTagBelow = (fallback: HeadingTag) => {
   const enclosingLevel = useEnclosingHeadingLevel();
@@ -457,8 +546,25 @@ const NESTED_ITEM_CLASSES =
   'before:border-outline relative before:absolute before:top-4 before:-start-4 before:w-3 before:border-t';
 
 const PlaceHeading = ({ details }: { details: PlaceDetails }) => {
+  const intl = useAppIntl();
   const headingTag = useHeadingTagBelow('h4');
-  const title = details.name ?? details.kind;
+  const { name, interfaceName, href } = details;
+  const linked = (content: ReactNode) =>
+    href ? (
+      <NativeLink render={<Link href={href} />}>{content}</NativeLink>
+    ) : (
+      content
+    );
+  const nameText =
+    name === null ? null : (
+      <span
+        lang={name.lang ?? undefined}
+        dir={name.lang === null ? undefined : localeDirection(name.lang)}
+      >
+        {name.text}
+      </span>
+    );
+
   return (
     <Heading
       level="h4"
@@ -478,25 +584,69 @@ const PlaceHeading = ({ details }: { details: PlaceDetails }) => {
         </span>
       )}
       <span className="flex min-w-0 flex-col">
-        {details.name !== null && (
+        {nameText !== null && (
           <span className="text-sm font-normal text-current/70">
             {details.kind}
           </span>
         )}
-        {details.href ? (
-          <NativeLink render={<Link href={details.href} />}>{title}</NativeLink>
-        ) : (
-          title
-        )}
+        <span>
+          {nameText !== null && interfaceName !== null
+            ? intl.formatMessage(messages.stageTitle, {
+                name: linked(nameText),
+                interfaceName: (
+                  <span className="font-normal text-current/70">
+                    {interfaceName}
+                  </span>
+                ),
+              })
+            : linked(nameText ?? details.kind)}
+        </span>
       </span>
     </Heading>
   );
 };
 
+const PREVIEW_ELEMENTS = [
+  'p',
+  'h1',
+  'h2',
+  'h3',
+  'h4',
+  'h5',
+  'h6',
+  'ul',
+  'ol',
+  'li',
+  'blockquote',
+  'br',
+  'em',
+  'strong',
+];
+
+// A button may only hold phrasing content, so each block participants see
+// becomes a span on its own line.
+const previewBlock = ({ children }: { children?: ReactNode }) => (
+  <span className="block">{children}</span>
+);
+
+const PREVIEW_COMPONENTS = {
+  p: previewBlock,
+  h1: previewBlock,
+  h2: previewBlock,
+  h3: previewBlock,
+  h4: previewBlock,
+  h5: previewBlock,
+  h6: previewBlock,
+  ul: previewBlock,
+  ol: previewBlock,
+  li: previewBlock,
+  blockquote: previewBlock,
+};
+
 /**
  * What participants see in place of the missing translation, cut to two
- * lines. Markdown keeps only its emphasis: anything else it can hold is not
- * allowed inside a button.
+ * lines, keeping its paragraphs and emphasis but nothing a button cannot
+ * hold, such as links.
  */
 const FallbackPreview = ({
   id,
@@ -516,7 +666,12 @@ const FallbackPreview = ({
     className="line-clamp-2 text-current/70"
   >
     {format === 'markdown' ? (
-      <RenderMarkdown allowedElements={['em', 'strong']}>{text}</RenderMarkdown>
+      <RenderMarkdown
+        allowedElements={PREVIEW_ELEMENTS}
+        components={PREVIEW_COMPONENTS}
+      >
+        {text}
+      </RenderMarkdown>
     ) : (
       text
     )}
@@ -525,7 +680,7 @@ const FallbackPreview = ({
 
 type MissingTextButtonProps = {
   text: MissingText;
-  label: string;
+  name: TextName;
   /** Keeps the button where focus can return to; returns its removal. */
   register: (key: string, element: HTMLElement) => () => void;
   onOpen: () => void;
@@ -533,7 +688,7 @@ type MissingTextButtonProps = {
 
 const MissingTextButton = ({
   text,
-  label,
+  name,
   register,
   onOpen,
 }: MissingTextButtonProps) => {
@@ -543,7 +698,7 @@ const MissingTextButton = ({
     <button
       type="button"
       aria-haspopup="dialog"
-      // The path, then the preview, as separate words whatever the spans'
+      // The name, then the preview, as separate words whatever the spans'
       // display, which naming from content does not promise.
       aria-labelledby={`${labelId} ${previewId}`}
       ref={(element) => (element ? register(text.key, element) : undefined)}
@@ -551,12 +706,8 @@ const MissingTextButton = ({
       className="focusable flex w-full items-start gap-3 rounded-sm px-2 py-1.5 text-start hover:bg-current/5"
     >
       <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <span
-          id={labelId}
-          dir="ltr"
-          className="font-monospace text-sm break-all"
-        >
-          {label}
+        <span id={labelId} className={name.raw ? 'text-sm' : 'font-semibold'}>
+          <TextNameLabel name={name} />
         </span>
         <FallbackPreview
           id={previewId}
@@ -570,16 +721,16 @@ const MissingTextButton = ({
   );
 };
 
-/** The listed texts' keys, in the order the tree draws them. */
-const treeKeys = (nodes: readonly PathNode[]): string[] =>
+/** The listed texts, in the order the tree draws them. */
+const treeTexts = (nodes: readonly PathNode[]): MissingText[] =>
   nodes.flatMap((node) => [
-    ...(node.text ? [node.text.key] : []),
-    ...treeKeys(node.children),
+    ...(node.text ? [node.text] : []),
+    ...treeTexts(node.children),
   ]);
 
 type PathListProps = {
   nodes: readonly PathNode[];
-  renderText: (text: MissingText, label: string) => ReactNode;
+  renderText: (text: MissingText, name: TextName) => ReactNode;
 };
 
 const PathList = ({ nodes, renderText }: PathListProps) => (
@@ -588,13 +739,15 @@ const PathList = ({ nodes, renderText }: PathListProps) => (
       {nodes.map((node) => (
         <TreeItem key={node.key} className={NESTED_ITEM_CLASSES}>
           {node.text ? (
-            renderText(node.text, node.label)
+            renderText(node.text, node.name)
           ) : (
             <span
-              dir="ltr"
-              className="font-monospace block px-2 py-1.5 text-sm break-all text-current/70"
+              className={cx(
+                'block px-2 py-1.5 text-current/70',
+                node.name.raw && 'text-sm',
+              )}
             >
-              {node.label}
+              <TextNameLabel name={node.name} />
             </span>
           )}
           {node.children.length > 0 && (
@@ -626,21 +779,42 @@ const CategoryHeading = ({
   );
 };
 
-/** The text being translated in the dialog, as it was when the dialog opened. */
-type Editing = {
-  /** Distinguishes each opening, so every one starts with a fresh form. */
-  session: number;
+/** A text the dialog can show, as it was listed when the dialog opened. */
+type QueuedText = Readonly<{
   key: string;
   path: readonly (string | number)[];
-  value: LocalizedString;
   format: LocalizedStringFormat;
+  place: string;
+  name: TextName;
+}>;
+
+/** The text being translated in the dialog. */
+type Editing = Readonly<{
+  /** Distinguishes each opening, so every one starts with a fresh form. */
+  session: number;
   /** The language the list showed. */
   locale: LocaleTag;
-  place: string;
-  fieldPath: string;
-  /** Every listed text, in order, for where focus goes if this one leaves. */
-  order: readonly string[];
+  /**
+   * Every text listed when the dialog opened, in the list's order: where Save
+   * and next goes, and where focus goes when the dialog closes.
+   */
+  queue: readonly QueuedText[];
+  /** Which of `queue` the dialog shows. */
+  index: number;
+  /** Its translations as the dialog started on it. */
+  value: LocalizedString;
+}>;
+
+/** The next text in the queue that is still missing a translation. */
+const nextIndex = (editing: Editing, missing: ReadonlySet<string>) => {
+  const index = editing.queue.findIndex(
+    (queued, position) => position > editing.index && missing.has(queued.key),
+  );
+  return index === -1 ? undefined : index;
 };
+
+// Tabs fit a handful of languages; past that a menu lists them.
+const MAX_LANGUAGE_TABS = 5;
 
 type MissingTranslationsProps = {
   /**
@@ -655,7 +829,7 @@ type MissingTranslationsProps = {
 /**
  * The texts participants see in another language, one language at a time, as
  * a tree of where each sits in the protocol. Choosing a text opens a dialog
- * for writing it in every language.
+ * for writing it in every language, which can go on to the next text.
  */
 const MissingTranslations = ({
   language,
@@ -698,19 +872,24 @@ const MissingTranslations = ({
       ? []
       : groups.flatMap((group) => {
           const details = describePlace(intl, protocol, group.place);
-          const texts = group.fields.flatMap((field) => {
+          const texts = group.fields.flatMap((field): MissingText[] => {
             const gap = field.gaps.find(
               ({ locale }) => locale === shown.locale,
             );
-            return gap
-              ? [
-                  {
-                    key: textKey(shown.locale, field.path),
-                    field,
-                    fallbackLocale: gap.fallbackLocale,
-                  },
-                ]
-              : [];
+            if (!gap) return [];
+            const { steps, raw } = textSteps(intl, protocol, field, details);
+            return [
+              {
+                key: textKey(shown.locale, field.path),
+                field,
+                fallbackLocale: gap.fallbackLocale,
+                steps,
+                name: {
+                  label: steps.map(({ label }) => label).join(PATH_SEPARATOR),
+                  raw,
+                },
+              },
+            ];
           });
           if (texts.length === 0) return [];
           return [
@@ -718,10 +897,7 @@ const MissingTranslations = ({
               key: group.key,
               category: categoryOf(group.place),
               details,
-              texts,
-              tree: buildPathTree(texts, (field, index) =>
-                formatSegment(intl, field, index, details.variableNames),
-              ),
+              tree: buildPathTree(texts),
             },
           ];
         });
@@ -729,8 +905,16 @@ const MissingTranslations = ({
     const members = places.filter((place) => place.category === category);
     return members.length > 0 ? [{ category, places: members }] : [];
   });
-  const shownKeys = categories.flatMap(({ places: members }) =>
-    members.flatMap(({ tree }) => treeKeys(tree)),
+  const queue: QueuedText[] = categories.flatMap(({ places: members }) =>
+    members.flatMap(({ details, tree }) =>
+      treeTexts(tree).map((text) => ({
+        key: text.key,
+        path: text.field.path,
+        format: text.field.format,
+        place: details.title,
+        name: text.name,
+      })),
+    ),
   );
 
   const categoryLabel: Record<Category, string> = {
@@ -739,34 +923,23 @@ const MissingTranslations = ({
     protocol: intl.formatMessage(messages.protocol),
   };
 
-  const openDialog = (
-    text: MissingText,
-    details: PlaceDetails,
-    locale: LocaleTag,
-  ) => {
+  const openDialog = (text: MissingText, locale: LocaleTag) => {
     sessions.current += 1;
     setEditing({
       session: sessions.current,
-      key: text.key,
-      path: text.field.path,
-      value: text.field.value,
-      format: text.field.format,
       locale,
-      place:
-        details.name === null
-          ? details.kind
-          : intl.formatMessage(messages.placeTitle, {
-              place: details.kind,
-              name: details.name,
-            }),
-      fieldPath: formatFieldPath(intl, text.field.field, details.variableNames),
-      order: shownKeys,
+      queue,
+      index: queue.findIndex(({ key }) => key === text.key),
+      value: text.field.value,
     });
     setDialogOpen(true);
   };
 
-  const announceSaved = (state: RootState, target: Editing) => {
-    const { locale, path } = target;
+  const announceSaved = (
+    state: RootState,
+    locale: LocaleTag,
+    path: readonly (string | number)[],
+  ) => {
     const { locales, warnings } = getLocalizationCoverage(state);
     if (
       warnings.some(
@@ -802,25 +975,45 @@ const MissingTranslations = ({
   const save = (
     target: Editing,
     value: LocalizedString,
+    advance: boolean,
   ): FormSubmissionResult => {
-    const before = store.getState();
-    const stored = storedValue(before, target.path);
-    if (stored !== undefined && sameTranslations(stored, value)) {
+    const current = target.queue[target.index];
+    if (current === undefined) {
       setDialogOpen(false);
       return { success: true };
     }
+    const before = store.getState();
+    const stored = storedValue(before, current.path);
+    const unchanged = stored !== undefined && sameTranslations(stored, value);
+    if (!unchanged) {
+      dispatch(setProtocolLocalizedString({ path: current.path, value }));
+      if (getProtocol(store.getState()) === getProtocol(before)) {
+        return {
+          success: false,
+          formErrors: [createMessageError(messages.saveFailed)],
+        };
+      }
+    }
 
-    dispatch(setProtocolLocalizedString({ path: target.path, value }));
     const state = store.getState();
-    if (getProtocol(state) === getProtocol(before)) {
-      return {
-        success: false,
-        formErrors: [createMessageError(messages.saveFailed)],
-      };
+    const next = advance
+      ? nextIndex(
+          target,
+          missingKeys(getLocalizationCoverage(state), target.locale),
+        )
+      : undefined;
+    const nextText = next === undefined ? undefined : target.queue[next];
+    if (next !== undefined && nextText !== undefined) {
+      setEditing({
+        ...target,
+        index: next,
+        value: storedValue(state, nextText.path) ?? {},
+      });
+      return { success: true };
     }
 
     setDialogOpen(false);
-    announceSaved(state, target);
+    if (!unchanged) announceSaved(state, target.locale, current.path);
     return { success: true };
   };
 
@@ -830,17 +1023,17 @@ const MissingTranslations = ({
   // text still listed has a gap in the listed language, and a button that is
   // leaving the list is inert.
   const returnFocus = () => {
-    if (editing === null) return headingRef.current;
-    const live = new Set(
-      getLocalizationCoverage(store.getState())
-        .warnings.filter(({ locale }) => locale === editing.locale)
-        .map(({ locale, path }) => textKey(locale, path)),
+    const current = editing?.queue[editing.index];
+    if (editing === null || current === undefined) return headingRef.current;
+    const live = missingKeys(
+      getLocalizationCoverage(store.getState()),
+      editing.locale,
     );
-    const index = editing.order.indexOf(editing.key);
+    const order = editing.queue.map(({ key }) => key);
     const candidates = [
-      editing.key,
-      ...editing.order.slice(index + 1),
-      ...editing.order.slice(0, Math.max(index, 0)).toReversed(),
+      current.key,
+      ...order.slice(editing.index + 1),
+      ...order.slice(0, editing.index).toReversed(),
     ];
     for (const key of candidates) {
       const element = live.has(key) ? entries.current.get(key) : undefined;
@@ -861,14 +1054,49 @@ const MissingTranslations = ({
   };
 
   const renderText =
-    (details: PlaceDetails, locale: LocaleTag) =>
-    (text: MissingText, label: string) => (
+    (locale: LocaleTag) => (text: MissingText, name: TextName) => (
       <MissingTextButton
         text={text}
-        label={label}
+        name={name}
         register={register}
-        onOpen={() => openDialog(text, details, locale)}
+        onOpen={() => openDialog(text, locale)}
       />
+    );
+
+  const editingText = editing?.queue[editing.index];
+
+  const list =
+    shown === undefined ? null : (
+      // Keyed by language, so switching languages swaps the list outright
+      // instead of animating one language's texts out.
+      <ul key={shown.locale} className="flex flex-col gap-8">
+        <AnimatePresence initial={false}>
+          {categories.map(({ category, places: members }) => (
+            <TreeItem key={category} className="flex flex-col gap-3">
+              <CategoryHeading label={categoryLabel[category]}>
+                <ul className={NESTED_LIST_CLASSES}>
+                  <AnimatePresence initial={false}>
+                    {members.map(({ key, details, tree }) => (
+                      <TreeItem
+                        key={key}
+                        className={`${NESTED_ITEM_CLASSES} flex flex-col gap-2 py-1`}
+                      >
+                        {category !== 'protocol' && (
+                          <PlaceHeading details={details} />
+                        )}
+                        <PathList
+                          nodes={tree}
+                          renderText={renderText(shown.locale)}
+                        />
+                      </TreeItem>
+                    ))}
+                  </AnimatePresence>
+                </ul>
+              </CategoryHeading>
+            </TreeItem>
+          ))}
+        </AnimatePresence>
+      </ul>
     );
 
   return (
@@ -891,79 +1119,86 @@ const MissingTranslations = ({
             {intl.formatMessage(messages.complete)}
           </Paragraph>
         )
-      ) : (
+      ) : languagesWithGaps.length > MAX_LANGUAGE_TABS ? (
         <div className="flex flex-col gap-6">
-          {languagesWithGaps.length > 1 && (
-            <div className="flex max-w-md flex-col gap-2">
-              <Label htmlFor={pickerId}>
-                {intl.formatMessage(messages.filterLabel)}
-              </Label>
-              <NativeSelectField
-                id={pickerId}
-                name="missing-translations-language"
-                value={shown.locale}
-                onChange={(value) => {
-                  if (typeof value === 'string') onLanguageChange(value);
-                }}
-                options={languagesWithGaps.map(({ locale, missing }) => ({
-                  value: locale,
-                  label: intl.formatMessage(messages.filterOption, {
+          <div className="flex max-w-md flex-col gap-2">
+            <Label htmlFor={pickerId}>
+              {intl.formatMessage(messages.filterLabel)}
+            </Label>
+            <NativeSelectField
+              id={pickerId}
+              name="missing-translations-language"
+              value={shown.locale}
+              onChange={(value) => {
+                if (typeof value === 'string') onLanguageChange(value);
+              }}
+              options={languagesWithGaps.map(({ locale, missing }) => ({
+                value: locale,
+                label: intl.formatMessage(messages.filterOption, {
+                  language: languageName(locale),
+                  count: missing,
+                }),
+              }))}
+            />
+          </div>
+          {list}
+        </div>
+      ) : (
+        <Tabs
+          layout="top"
+          aria-label={intl.formatMessage(messages.languagesLabel)}
+          value={shown.locale}
+          onValueChange={onLanguageChange}
+          className="gap-6"
+          tabs={languagesWithGaps.map(({ locale, missing }) => ({
+            value: locale,
+            label: (
+              <>
+                <span aria-hidden="true" className="flex items-center gap-2">
+                  {languageName(locale)}
+                  <Badge render={<span />} size="sm" tone="neutral">
+                    {intl.formatNumber(missing)}
+                  </Badge>
+                </span>
+                <span className="sr-only">
+                  {intl.formatMessage(messages.languageTab, {
                     language: languageName(locale),
                     count: missing,
-                  }),
-                }))}
-              />
-            </div>
-          )}
-          <Paragraph margin="none">
-            {intl.formatMessage(messages.summary, {
-              count: shown.missing,
-              language: languageName(shown.locale),
-            })}
-          </Paragraph>
-          {/* Keyed by language, so switching languages swaps the list
-              outright instead of animating one language's texts out. */}
-          <ul key={shown.locale} className="flex flex-col gap-8">
-            <AnimatePresence initial={false}>
-              {categories.map(({ category, places: members }) => (
-                <TreeItem key={category} className="flex flex-col gap-3">
-                  <CategoryHeading label={categoryLabel[category]}>
-                    <ul className={NESTED_LIST_CLASSES}>
-                      <AnimatePresence initial={false}>
-                        {members.map(({ key, details, tree }) => (
-                          <TreeItem
-                            key={key}
-                            className={`${NESTED_ITEM_CLASSES} flex flex-col gap-2 py-1`}
-                          >
-                            {category !== 'protocol' && (
-                              <PlaceHeading details={details} />
-                            )}
-                            <PathList
-                              nodes={tree}
-                              renderText={renderText(details, shown.locale)}
-                            />
-                          </TreeItem>
-                        ))}
-                      </AnimatePresence>
-                    </ul>
-                  </CategoryHeading>
-                </TreeItem>
-              ))}
-            </AnimatePresence>
-          </ul>
-        </div>
+                  })}
+                </span>
+              </>
+            ),
+          }))}
+        >
+          {languagesWithGaps.map(({ locale }) => (
+            <TabsPanel key={locale} value={locale}>
+              {locale === shown.locale ? list : null}
+            </TabsPanel>
+          ))}
+        </Tabs>
       )}
-      {editing && (
+      {editing && editingText && (
         <TranslationDialog
           key={editing.session}
           open={dialogOpen}
           onClose={() => setDialogOpen(false)}
-          place={editing.place}
-          fieldPath={editing.fieldPath}
-          value={editing.value}
-          format={editing.format}
-          initialLocale={editing.locale}
-          onSave={(value) => save(editing, value)}
+          text={{
+            id: editing.index,
+            place: editingText.place,
+            name: editingText.name,
+            value: editing.value,
+            format: editingText.format,
+          }}
+          listLocale={editing.locale}
+          progress={{
+            position: editing.index + 1,
+            count: editing.queue.length,
+          }}
+          hasNext={
+            nextIndex(editing, missingKeys(coverage, editing.locale)) !==
+            undefined
+          }
+          onSave={(value, advance) => save(editing, value, advance)}
           finalFocus={returnFocus}
         />
       )}

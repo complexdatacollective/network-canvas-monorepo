@@ -47,6 +47,16 @@ In Architect:
   a missing translation, in the default language or any other, is a warning and
   never an error. A language can't be removed while it is the default, or while
   it holds the only translation of some text.
+- The Languages page lists missing translations one language at a time, in a
+  tab for each language that is missing some, or from a menu when more than
+  five languages are. Stages are listed by position, name and interface, and
+  each text is named the way its editor names it, such as "Page heading" or
+  "Item 1 › Content". Clicking a text opens a dialog that shows it in a
+  language to translate from and as participants using each language will see
+  it, tags the languages that will see it in another language, and offers
+  Save and next to move straight on to the next missing text. While
+  translations are missing, a note in the stage list names the languages that
+  need them.
 - A new protocol asks which languages participants can take it in, and,
   when you choose more than one, which of them is the default. A protocol
   upgraded from an earlier version is marked as written in "Unspecified
@@ -54,10 +64,11 @@ In Architect:
 - Once a protocol has more than one language, each text field in the stage
   editors has a language menu that shows which languages its text still needs.
   All the menus switch together, so you can work through a stage in one
-  language. A note under a field with a missing translation tells you what
-  participants will see instead, and says when their browser's other languages
-  could change that. Node type and edge type labels can be translated too. An
-  attribute's label is plain text and is not translated.
+  language. The menus name each language in Architect's language, with its
+  own name beside it. A note under a field with a missing translation tells
+  you what participants will see instead, and says when their browser's other
+  languages could change that. Node type and edge type labels can be
+  translated too. An attribute's label is plain text and is not translated.
 - Each attribute a Narrative preset highlights has a label of its own, which
   participants see in the preset switcher. You write and translate it in the
   Narrative stage editor; it starts as the attribute's name.

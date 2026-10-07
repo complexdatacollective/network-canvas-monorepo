@@ -19,11 +19,15 @@ import { readProtocolJson } from '../helpers/read-store.js';
  */
 const STAGE_NAME = 'Welcome';
 
-/** Each text's row in the list: its path in the stage, then its English text. */
+/**
+ * Each text's row in the list: its name as the stage editor gives it, then its
+ * English text. The heading and the text block share the "Page content"
+ * branch, so their rows name only what follows it.
+ */
 const STAGE_TEXT_ROWS = [
-  'label Welcome',
-  'title Welcome to the study',
-  'items › 1 › content Thank you for taking part.',
+  'Stage name Welcome',
+  'Page heading Welcome to the study',
+  'Item 1 › Content Thank you for taking part.',
 ];
 
 function englishProtocol(): CurrentProtocol {
@@ -45,6 +49,11 @@ function englishProtocol(): CurrentProtocol {
       },
     ],
   });
+}
+
+function welcomeTitle(protocol: CurrentProtocol) {
+  const stage = protocol.stages[0];
+  return stage?.type === 'Information' ? stage.title : undefined;
 }
 
 /**
@@ -150,23 +159,26 @@ test('adds a language, lists its missing translations, keeps the default languag
   expect(added.stages).toEqual(before.stages);
 
   // The missing translations, listed under the stage they belong to. French is
-  // the only language with gaps, so there is no language to choose between.
+  // the only language with gaps, so it has the only tab.
   await french
     .getByRole('button', { name: 'Show 3 missing French translations' })
     .click();
-  await expect(missing).toContainText('3 texts have no French translation.');
+  await expect(missing.getByRole('tab')).toHaveCount(1);
+  await expect(
+    missing.getByRole('tab', { name: 'French, 3 missing translations' }),
+  ).toHaveAttribute('aria-selected', 'true');
   await expect(missing.getByRole('combobox')).toHaveCount(0);
   await expect(
     missing.getByRole('heading', { name: 'Stages', exact: true }),
   ).toBeVisible();
-  // A stage is headed by its position and interface, never by its name, which
-  // is itself a text to translate.
+  // A stage is headed by its position, its name in the default language and
+  // its interface, and its name links to it.
   const stageGroup = missing.getByRole('heading', {
-    name: /^Stage 1\s*Information$/,
+    name: /^Stage 1\s*Welcome · Information$/,
   });
   await expect(stageGroup).toBeVisible();
   await expect(
-    stageGroup.getByRole('link', { name: 'Information', exact: true }),
+    stageGroup.getByRole('link', { name: STAGE_NAME, exact: true }),
   ).toHaveAttribute('href', '/protocol/stage/welcome');
   const missingText = (name: string) =>
     missing.getByRole('button', { name, exact: true });
@@ -175,7 +187,7 @@ test('adds a language, lists its missing translations, keeps the default languag
   }
   // Each row previews the English text participants see in place of French.
   await expect(
-    missingText('title Welcome to the study').locator('[lang="en"]'),
+    missingText('Page heading Welcome to the study').locator('[lang="en"]'),
   ).toHaveText('Welcome to the study');
 
   // Make French the default.
@@ -254,35 +266,62 @@ test('adds a language, lists its missing translations, keeps the default languag
   ]);
 
   // A listed text opens in a dialog that edits the listed language first, and
-  // shows what participants in each language see as it is typed. Saved, the
-  // text leaves the list, the language's progress counts it, and focus moves
-  // on to the next text.
-  await missingText('label Welcome').click();
+  // shows what participants in each language see as it is typed. Save and next
+  // saves it and shows the next listed text, ready to type into; Save on the
+  // last one closes the dialog. Saved texts leave the list, the language's
+  // progress counts them, and focus moves on to the next text.
+  await missingText('Stage name Welcome').click();
   const translation = page.getByRole('dialog', {
-    name: 'Stage 1 · Information label',
+    name: 'Welcome · Information Stage name',
   });
   await expect(translation).toBeVisible();
-  await translation
-    .getByRole('textbox', { name: 'Text', exact: true })
-    .fill('Bienvenue');
+  await expect(translation).toHaveAccessibleDescription(
+    'Text 1 of 3 to translate into French',
+  );
+  const textField = translation.getByRole('textbox', {
+    name: 'Text',
+    exact: true,
+  });
+  await textField.fill('Bienvenue');
   const frenchView = translation
     .getByRole('region', { name: 'What participants see' })
     .getByRole('listitem')
-    .filter({ hasText: 'French' });
+    .filter({
+      has: page.getByRole('button', { name: 'Edit French', exact: true }),
+    });
   await expect(frenchView).toContainText('Editing');
   await expect(frenchView.locator('[lang="fr"]')).toHaveText('Bienvenue');
+  await translation
+    .getByRole('button', { name: 'Save and next', exact: true })
+    .click();
+  await expect(translation).toHaveAccessibleDescription(
+    'Text 2 of 3 to translate into French',
+  );
+  await expect(translation).toHaveAccessibleName(
+    'Welcome · Information Page content › Page heading',
+  );
+  await expect(textField).toBeFocused();
+  await textField.fill('Bienvenue dans l’étude');
   await translation.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(translation).toBeHidden();
-  await expect(missingText('label Welcome')).toHaveCount(0);
-  await expect(missingText('title Welcome to the study')).toBeFocused();
-  await expect(missing).toContainText('2 texts have no French translation.');
-  await expect(french).toContainText('1 of 3 texts translated');
+  await expect(missingText('Stage name Welcome')).toHaveCount(0);
+  await expect(
+    missingText('Page content › Item 1 › Content Thank you for taking part.'),
+  ).toBeFocused();
+  await expect(
+    missing.getByRole('tab', { name: 'French, 1 missing translation' }),
+  ).toBeVisible();
+  await expect(french).toContainText('2 of 3 texts translated');
   const translated = await readProtocolJson(page, (protocol) =>
-    Object.hasOwn(protocol.stages[0]?.label ?? {}, 'fr'),
+    Object.hasOwn(welcomeTitle(protocol) ?? {}, 'fr'),
   );
   expect(translated.stages[0]?.label).toEqual({
     en: STAGE_NAME,
     fr: 'Bienvenue',
+  });
+  expect(welcomeTitle(translated)).toEqual({
+    en: 'Welcome to the study',
+    fr: 'Bienvenue dans l’étude',
   });
 
   // Languages have no order: a language added last is listed by its name.
