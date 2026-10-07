@@ -366,6 +366,13 @@ export const migrationNoteMessages = defineMessages({
     description:
       'One complete Markdown bullet in schema 9 migration approval guidance: encryptedAttributes. "Encrypted Attributes" is the name of the former experimental feature switch in Architect. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text.',
   },
+  schema9ContradictoryPassphraseRules: {
+    id: 'protocolValidation.migrationNotes.schema9.contradictoryPassphraseRules',
+    defaultMessage:
+      'If an Anonymisation stage required a minimum passphrase length longer than its maximum, no participant could choose a passphrase, so both lengths are removed and the default minimum length applies.',
+    description:
+      'One complete Markdown bullet in schema 9 migration approval guidance: contradictoryPassphraseRules. Anonymisation is the name of the interface (stage type) that asks a participant to choose a passphrase protecting some of their answers; the lengths are the shortest and longest passphrase the researcher allowed. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text.',
+  },
 });
 
 // Each descriptor is a whole bullet. Markdown separators are structural:
@@ -452,6 +459,7 @@ const migrationNoteSets = {
     messages: [
       migrationNoteMessages.schema9AttributeNames,
       migrationNoteMessages.schema9EncryptedAttributes,
+      migrationNoteMessages.schema9ContradictoryPassphraseRules,
     ],
   },
 };

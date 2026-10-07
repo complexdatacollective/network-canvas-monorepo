@@ -72,6 +72,7 @@
   "protocolValidation.migrationNotes.schema8.unsupportedValidation": "新架構無法表達的驗證規則會被移除：從未定義過的規則名稱、值的型別錯誤的規則（例如加了引號的數字），以及不適用於屬性類型的規則（例如文字屬性上的 `minValue`，或任何地方的 `requiredAcceptsNull`）。被移除的 `minValue`/`minLength`/`minSelected` 仍會將屬性標示為必填，以保留舊有的隱含必填行為。版面配置屬性完全不接受驗證；其驗證規則會被移除。",
   "protocolValidation.migrationNotes.schema8.validationHints": "為表單欄位新增選用的「showValidationHints」屬性，可自動顯示根據驗證規則產生的提示。",
   "protocolValidation.migrationNotes.schema9.attributeNames": "屬性名稱現在可以使用任何語言的文字，也可以包含空格與標點符號。既有的屬性名稱不會變更。",
+  "protocolValidation.migrationNotes.schema9.contradictoryPassphraseRules": "若某個匿名化階段要求的通關密語長度下限大於其長度上限，參與者便無法選擇任何通關密語，因此這兩個長度都會移除，並改用預設的長度下限。",
   "protocolValidation.migrationNotes.schema9.encryptedAttributes": "加密屬性不再是實驗性功能：匿名化介面一律可用，標記為加密的屬性一律會加密。若此協定在未啟用實驗性功能「加密屬性」的情況下將屬性標記為加密，這些屬性將不再帶有該標記，因此仍會以未加密的方式收集。",
   "protocolValidation.rule.additionalAttributes": "固定屬性",
   "protocolValidation.rule.component": "輸入控制項",

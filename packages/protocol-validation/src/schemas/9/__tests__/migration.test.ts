@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { migrateProtocol } from '../../../migration/migrate-protocol.ts';
+import {
+  getMigrationInfo,
+  migrateProtocol,
+} from '../../../migration/migrate-protocol.ts';
 import { createBaseProtocol } from '../../../utils/test-utils.ts';
 import ProtocolSchemaV8 from '../../8/schema.ts';
 import ProtocolSchemaV9 from '../schema.ts';
@@ -97,5 +100,58 @@ describe('The experiments setting', () => {
     expect(
       ProtocolSchemaV9.safeParse({ ...protocol, schemaVersion: 9 }).success,
     ).toBe(true);
+  });
+});
+
+const protocolWithPassphraseRules = (
+  validation: { minLength?: number; maxLength?: number } | undefined,
+) => {
+  const base = createBaseProtocol();
+  return {
+    ...base,
+    stages: [
+      ...base.stages,
+      {
+        id: 'anonymisation',
+        type: 'Anonymisation' as const,
+        label: 'Anonymisation',
+        explanationText: { title: 'Privacy', body: 'Choose a passphrase.' },
+        ...(validation !== undefined && { validation }),
+      },
+    ],
+  };
+};
+
+describe('Migrating passphrase length rules from schema 8 to 9', () => {
+  it('removes both lengths when the minimum is longer than the maximum', () => {
+    const migrated = migrateProtocol(
+      protocolWithPassphraseRules({ minLength: 9, maxLength: 6 }),
+      9,
+    );
+
+    // No passphrase could meet both, so neither is kept and the interview's
+    // default applies. Every stage stays, in its order.
+    expect(migrated.stages).toEqual(
+      protocolWithPassphraseRules(undefined).stages,
+    );
+  });
+
+  it.each([
+    { minLength: 4, maxLength: 12 },
+    { minLength: 6, maxLength: 6 },
+    { maxLength: 6 },
+    { minLength: 10 },
+  ])('keeps %j, which a passphrase can meet', (validation) => {
+    const source = protocolWithPassphraseRules(validation);
+
+    expect(migrateProtocol(source, 9).stages).toEqual(source.stages);
+  });
+
+  it('says so in the migration notes', () => {
+    const note = getMigrationInfo(8).notes.find(({ version }) => version === 9);
+
+    expect(note?.notes).toContain(
+      'If an Anonymisation stage required a minimum passphrase length longer than its maximum',
+    );
   });
 });

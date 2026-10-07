@@ -88,6 +88,13 @@ export const anonymisationMessages = defineMessages({
     description:
       'Shown beneath the minimum-length rule in the passphrase rules, saying how short a passphrase a participant may choose when the researcher sets no minimum of their own. count is that default length. A minimum the researcher sets replaces it, even a shorter one.',
   },
+  passphraseRulesMinimumDefaultLowered: {
+    id: 'protocolBuilder.anonymisation.passphraseRulesMinimumDefaultLowered',
+    defaultMessage:
+      'Defaults to the maximum, {count, plural, one {# character} other {# characters}}, if no minimum is set, because the maximum is shorter than the usual default of {defaultCount, number}.',
+    description:
+      'Shown beneath the minimum-length rule in the passphrase rules in place of the usual default, when the researcher has set a maximum length shorter than that default and no minimum. The interview then lowers the default minimum to the maximum, so a participant can still choose a passphrase. count is the maximum length in characters, which becomes the minimum; defaultCount is the usual default minimum length in characters. A minimum the researcher sets replaces both.',
+  },
   passphraseRulesMinimumAboveMaximum: {
     id: 'protocolBuilder.anonymisation.passphraseRulesMinimumAboveMaximum',
     defaultMessage:

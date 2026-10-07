@@ -4,7 +4,7 @@ import { type IntlShape, defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { DEFAULT_PASSPHRASE_MIN_LENGTH } from '@codaco/shared-consts';
+import { effectivePassphraseMinLength } from '@codaco/shared-consts';
 import Markdown from '~/components/Markdown';
 import { summaryMessages } from '~/lib/ProtocolSummary/summaryMessages';
 
@@ -109,7 +109,7 @@ const validationRows = (
       intl.formatMessage(finalMessages.minimumPassphrase),
       validation?.minLength === undefined ? (
         intl.formatMessage(messages.defaultMinimumPassphraseLength, {
-          count: DEFAULT_PASSPHRASE_MIN_LENGTH,
+          count: effectivePassphraseMinLength(validation ?? undefined),
         })
       ) : (
         <SummaryValue key="minLength" value={validation.minLength} />

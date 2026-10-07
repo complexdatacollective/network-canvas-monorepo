@@ -54,6 +54,22 @@ const openEditor = (): StageEditorHarness =>
     registry: anonymisationStageEditor,
   });
 
+const openWithRules = (
+  validation: Readonly<{ minLength?: number; maxLength?: number }>,
+): StageEditorHarness =>
+  renderStageEditor({
+    stage: {
+      id: 'anonymisation-rules',
+      type: 'Anonymisation',
+      fields: {
+        label: 'Anonymisation',
+        explanationText: { title: 'Privacy', body: 'Choose a passphrase.' },
+        validation,
+      },
+    },
+    registry: anonymisationStageEditor,
+  });
+
 describe('the sections of an anonymisation stage', () => {
   it('reports each decision the stage holds separately', async () => {
     const harness = openEditor();
@@ -293,10 +309,58 @@ describe('how the passphrase rules are put on screen', () => {
   });
 
   /**
-   * A protocol that ARRIVES holding a contradiction — a minimum above the
-   * maximum — is the state of anyone opening one, and nothing has been typed
-   * or blurred, so the field states nothing and the rule editor's own sentence
-   * is the whole of what the researcher reads. It has to be the repair
+   * The interview never holds a participant to a default minimum longer than
+   * the researcher's own maximum (`effectivePassphraseMinLength`), so a short
+   * maximum on its own lowers the default to it. That is explained rather than
+   * refused: the stage works, and schema 8 protocols holding one exist.
+   */
+  it('says a shorter maximum lowers the default minimum, and saves it', async () => {
+    const harness = openWithRules({ maxLength: 6 });
+
+    const minimum = await screen.findByRole('switch', {
+      name: 'Minimum text length',
+    });
+    expect(minimum).not.toBeChecked();
+    expect(minimum).toHaveAccessibleDescription(
+      `Defaults to the maximum, 6 characters, if no minimum is set, because the maximum is shorter than the usual default of ${DEFAULT_PASSPHRASE_MIN_LENGTH}.`,
+    );
+
+    const saved = await harness.submit();
+    expect(saved?.stageDocument.validation).toEqual({ maxLength: 6 });
+  });
+
+  it('says the usual default minimum beside a maximum that does not lower it', async () => {
+    openWithRules({ maxLength: 12 });
+
+    expect(
+      await screen.findByRole('switch', { name: 'Minimum text length' }),
+    ).toHaveAccessibleDescription(
+      `Defaults to ${DEFAULT_PASSPHRASE_MIN_LENGTH} characters if no minimum is set.`,
+    );
+  });
+
+  it('still refuses a minimum above a maximum shorter than the default', async () => {
+    const harness = openWithRules({ minLength: 9, maxLength: 6 });
+
+    await screen.findByRole('switch', { name: 'Minimum text length' });
+    expect(await harness.submit()).toBeNull();
+    expect(
+      await screen.findByText(
+        'The shortest passphrase you allow cannot be longer than the longest one.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  /**
+   * A stage that ARRIVES holding a contradiction — a minimum above the
+   * maximum. A schema 9 protocol cannot carry one: the 8 to 9 migration
+   * removes the pair and schema 9 refuses it. A stored row can still bring
+   * one, though: Architect opens a current-schema row already marked
+   * validated without validating it again (`admitStoredProtocol`), so a row
+   * a development build saved before that refusal existed reaches this editor
+   * as it is. Nothing has been typed or blurred, so the field states nothing
+   * and the rule editor's own sentence is the whole of what the researcher
+   * reads. It has to be the repair
    * guidance in their language, never the analyser's technical diagnostic
    * (`Attribute "this attribute": minLength (40) is greater than maxLength
    * (5)`), which names the schema's own rule keys and is written for a

@@ -1,8 +1,10 @@
 import { describe, expect, expectTypeOf, it } from 'vitest';
 
 import {
+  DEFAULT_PASSPHRASE_MIN_LENGTH,
   NcNetworkSchema,
   VariableValueSchema,
+  effectivePassphraseMinLength,
   type NcEdge,
   type NcEgo,
   type NcEncryptionHeader,
@@ -365,5 +367,50 @@ describe('NcNetworkSchema encrypted attributes', () => {
     expectTypeOf<NcNetwork['encryption']>().toEqualTypeOf<
       NcEncryptionHeader | undefined
     >();
+  });
+});
+
+/**
+ * Every pair of lengths here has to leave a passphrase a participant can
+ * choose: a default minimum above the researcher's own maximum would refuse
+ * every one, and the interview could never be finished.
+ */
+describe('effectivePassphraseMinLength', () => {
+  it.each([
+    { label: 'no rules', rules: undefined, expected: 8 },
+    { label: 'empty rules', rules: {}, expected: 8 },
+    {
+      label: 'a maximum below the default',
+      rules: { maxLength: 6 },
+      expected: 6,
+    },
+    {
+      label: 'a maximum equal to the default',
+      rules: { maxLength: 8 },
+      expected: 8,
+    },
+    {
+      label: 'a maximum above the default',
+      rules: { maxLength: 12 },
+      expected: 8,
+    },
+    {
+      label: 'a lower minimum beside a maximum',
+      rules: { minLength: 4, maxLength: 6 },
+      expected: 4,
+    },
+    {
+      label: 'a higher minimum on its own',
+      rules: { minLength: 10 },
+      expected: 10,
+    },
+  ])('is $expected for $label', ({ rules, expected }) => {
+    expect(effectivePassphraseMinLength(rules)).toBe(expected);
+  });
+
+  it('is the shared default when nothing lowers it', () => {
+    expect(effectivePassphraseMinLength(undefined)).toBe(
+      DEFAULT_PASSPHRASE_MIN_LENGTH,
+    );
   });
 });

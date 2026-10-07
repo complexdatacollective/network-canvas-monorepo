@@ -168,3 +168,58 @@ describe('Schema 8 attribute names', () => {
     ).toBe(true);
   });
 });
+
+const protocolWithPassphraseRules = (
+  schemaVersion: 8 | 9,
+  validation: { minLength?: number; maxLength?: number },
+) => {
+  const base = createBaseProtocol();
+  return {
+    ...base,
+    schemaVersion,
+    stages: [
+      ...base.stages,
+      {
+        id: 'anonymisation',
+        type: 'Anonymisation',
+        label: 'Anonymisation',
+        explanationText: { title: 'Privacy', body: 'Choose a passphrase.' },
+        validation,
+      },
+    ],
+  };
+};
+
+describe('Schema 9 passphrase length rules', () => {
+  it.each([
+    { minLength: 4, maxLength: 12 },
+    { minLength: 6, maxLength: 6 },
+    { maxLength: 6 },
+    { minLength: 10 },
+  ])('accepts %j', (validation) => {
+    expect(
+      ProtocolSchemaV9.safeParse(protocolWithPassphraseRules(9, validation))
+        .success,
+    ).toBe(true);
+  });
+
+  it('refuses a minimum longer than the maximum, at the minimum', () => {
+    const protocol = protocolWithPassphraseRules(9, {
+      minLength: 9,
+      maxLength: 6,
+    });
+    const stageIndex = protocol.stages.length - 1;
+
+    expect(issuePaths(ProtocolSchemaV9.safeParse(protocol))).toEqual([
+      `stages.${stageIndex}.validation.minLength`,
+    ]);
+  });
+
+  it('leaves schema 8 accepting it, so the migration can repair it', () => {
+    expect(
+      ProtocolSchemaV8.safeParse(
+        protocolWithPassphraseRules(8, { minLength: 9, maxLength: 6 }),
+      ).success,
+    ).toBe(true);
+  });
+});

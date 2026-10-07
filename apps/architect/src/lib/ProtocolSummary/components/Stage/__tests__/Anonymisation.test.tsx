@@ -54,6 +54,17 @@ describe('Protocol Summary anonymisation stage', () => {
     ).toHaveTextContent('12');
   });
 
+  it('states the default minimum lowered to a shorter maximum', () => {
+    renderAnonymisation({ maxLength: 6 });
+
+    // The interview never holds a participant to a default minimum longer
+    // than the maximum, so neither does the summary.
+    expect(minimumRow()).toHaveTextContent('6 (default)');
+    expect(
+      screen.getByRole('row', { name: /Maximum passphrase length/ }),
+    ).toHaveTextContent('6');
+  });
+
   it('states the stage’s own minimum, even a lower one, without the default', () => {
     renderAnonymisation({ minLength: 4, maxLength: 12 });
 

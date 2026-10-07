@@ -63,7 +63,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'Holds what a participant’s passphrase has to look like: a shortest allowed length, a longest, or neither. It is the package’s own validation-rule editor pointed at the passphrase rule catalogue, so a rule is switched on with a checkbox and given its number beside it, and a rule switched on and left empty is kept rather than quietly discarded — which is why the save is refused while one is there. The stage’s own impossibilities are refused here too: a shortest longer than the longest, and a longest of no characters at all, which the interview could never accept because it asks every participant for a passphrase.',
+          'Holds what a participant’s passphrase has to look like: a shortest allowed length, a longest, or neither. It is the package’s own validation-rule editor pointed at the passphrase rule catalogue, so a rule is switched on with a checkbox and given its number beside it, and a rule switched on and left empty is kept rather than quietly discarded — which is why the save is refused while one is there. The stage’s own impossibilities are refused here too: a shortest longer than the longest, and a longest of no characters at all, which the interview could never accept because it asks every participant for a passphrase. A longest shorter than the default minimum is explained rather than refused: with no minimum set, the default drops to that longest, and the minimum row says so.',
       },
     },
   },
@@ -132,6 +132,41 @@ export const TheLengthsAStageHolds: Story = {
     await expect(
       canvas.getByRole('spinbutton', { name: 'Maximum text length' }),
     ).toHaveValue(12);
+  },
+};
+
+/**
+ * A longest passphrase shorter than the default minimum, and no minimum. The
+ * interview never asks for more than the researcher allows, so the default
+ * minimum drops to the maximum and the minimum row says so. It is explained
+ * rather than refused: a participant can still choose a passphrase. Raising
+ * the maximum past the default restores the usual hint.
+ */
+export const AShortMaximumLowersTheDefault: Story = {
+  args: { seedEdit: holdingLengths({ maxLength: 6 }) },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await awaitPassiveEffects();
+
+    const minimum = await canvas.findByRole('switch', {
+      name: 'Minimum text length',
+    });
+    await expect(minimum).not.toBeChecked();
+    await expect(minimum).toHaveAccessibleDescription(
+      `Defaults to the maximum, 6 characters, if no minimum is set, because the maximum is shorter than the usual default of ${DEFAULT_PASSPHRASE_MIN_LENGTH}.`,
+    );
+
+    const maximum = canvas.getByRole('spinbutton', {
+      name: 'Maximum text length',
+    });
+    await userEvent.clear(maximum);
+    await userEvent.type(maximum, '12');
+    // A number box commits when the researcher leaves it.
+    await userEvent.tab();
+
+    await waitFor(async () => {
+      await expect(minimum).toHaveAccessibleDescription(defaultMinimumHint);
+    });
   },
 };
 

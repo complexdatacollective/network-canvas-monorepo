@@ -100,9 +100,26 @@ export type NcEgo = z.infer<typeof BaseNcEntitySchema>;
 
 /**
  * The shortest passphrase an interview accepts when the stage that asks for
- * it sets no minimum of its own.
+ * it sets no minimum of its own, unless its maximum is shorter (see
+ * `effectivePassphraseMinLength`).
  */
 export const DEFAULT_PASSPHRASE_MIN_LENGTH = 8;
+
+/**
+ * The shortest passphrase an interview accepts under a stage's length rules.
+ *
+ * A minimum the researcher sets replaces the default, even when it is lower.
+ * Without one the default applies, lowered to the researcher's maximum when
+ * that is shorter: a default above the maximum would leave no passphrase a
+ * participant could choose.
+ */
+export function effectivePassphraseMinLength(
+  rules: { minLength?: number; maxLength?: number } | undefined,
+): number {
+  if (rules?.minLength !== undefined) return rules.minLength;
+  if (rules?.maxLength === undefined) return DEFAULT_PASSPHRASE_MIN_LENGTH;
+  return Math.min(DEFAULT_PASSPHRASE_MIN_LENGTH, rules.maxLength);
+}
 
 const ByteArraySchema = z.array(z.number().int().min(0).max(255));
 
