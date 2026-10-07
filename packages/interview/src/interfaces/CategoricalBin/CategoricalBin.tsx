@@ -24,7 +24,10 @@ import Prompts from '../../components/Prompts';
 import { usePrompts } from '../../components/Prompts/usePrompts';
 import { useCurrentStep } from '../../contexts/CurrentStepContext';
 import { buildVariableLabels } from '../../forms/buildVariableLabels';
-import { useValidationNetwork } from '../../forms/useValidationNetwork';
+import {
+  savingNeedsPassphrase,
+  useValidationNetwork,
+} from '../../forms/useValidationNetwork';
 import {
   writeFailureMessage,
   writeSubmissionResult,
@@ -330,9 +333,12 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
         title: <AppMessage message={interfaceMessages.specifyOther} />,
         children: (
           <>
-            {isAttributeEncrypted(isEnabled, stageVariables, otherVariable) && (
-              <PassphraseRecovery />
-            )}
+            {savingNeedsPassphrase(
+              stageVariables,
+              [otherVariable],
+              isEnabled,
+              nodeId,
+            ) && <PassphraseRecovery />}
             <div className="flex items-start gap-4">
               <div className="shrink-0">
                 <OtherResponseNode

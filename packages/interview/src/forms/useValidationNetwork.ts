@@ -72,6 +72,37 @@ function getComparedEncryptedVariables(
   return { others: [...others].toSorted(), current: [...current].toSorted() };
 }
 
+/**
+ * Whether saving the fields of these variables can need the passphrase: to
+ * encrypt one of their answers, or to read a protected answer that one of
+ * their rules compares with on `currentEntityId`, the person being edited. A
+ * modal form offers the passphrase on this condition (`PassphraseRecovery`),
+ * because a save refused for want of one could otherwise only be retried by
+ * leaving the form.
+ */
+export function savingNeedsPassphrase(
+  variables: Record<string, Variable>,
+  variableIds: readonly string[],
+  encryptionEnabled: boolean,
+  currentEntityId: string | undefined,
+): boolean {
+  if (
+    variableIds.some((id) =>
+      isAttributeEncrypted(encryptionEnabled, variables, id),
+    )
+  ) {
+    return true;
+  }
+  // `unique` only reads a variable that is itself encrypted, so what is left
+  // to read is the answers compared on the person being edited.
+  const { current } = getComparedEncryptedVariables(
+    variables,
+    variableIds,
+    encryptionEnabled,
+  );
+  return currentEntityId !== undefined && current.length > 0;
+}
+
 // A key rather than the array, so callers may pass a fresh `variableIds` on
 // every render without restarting the decryption. Variable ids cannot contain
 // a space (`VariableNameSchema`).

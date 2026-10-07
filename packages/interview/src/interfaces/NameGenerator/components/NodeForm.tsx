@@ -40,6 +40,7 @@ import PassphraseRecovery from '../../../components/PassphraseRecovery';
 import { useCurrentStep } from '../../../contexts/CurrentStepContext';
 import { formValuesToAttributePatch } from '../../../forms/formValuesToAttributePatch';
 import useProtocolForm from '../../../forms/useProtocolForm';
+import { savingNeedsPassphrase } from '../../../forms/useValidationNetwork';
 import { writeSubmissionResult } from '../../../forms/writeSubmissionResult';
 import { useCelebrate } from '../../../hooks/useCelebrate';
 import { useStageSelector } from '../../../hooks/useStageSelector';
@@ -50,7 +51,6 @@ import { getPromptAdditionalAttributes } from '../../../selectors/session';
 import type { AttributePatch } from '../../../store/entityAttributePatch';
 import { updateNode as updateNodeAction } from '../../../store/modules/session';
 import { useAppDispatch } from '../../../store/store';
-import { isAttributeEncrypted } from '../../Anonymisation/isAttributeEncrypted';
 import PassphraseNotice from '../../Anonymisation/PassphraseNotice';
 import { usePassphrase } from '../../Anonymisation/usePassphrase';
 import { useProtectedFormValues } from '../../Anonymisation/useProtectedFormValues';
@@ -186,8 +186,11 @@ const NodeForm = (props: NodeFormProps) => {
     selectedNode && editing.status === 'ready' ? editing.values : undefined;
 
   const { isEnabled } = usePassphrase();
-  const protectsAnswers = form.fields.some((field) =>
-    isAttributeEncrypted(isEnabled, variables, field.variable),
+  const offersPassphrase = savingNeedsPassphrase(
+    variables,
+    form.fields.map((field) => field.variable),
+    isEnabled,
+    selectedNodeId,
   );
 
   const { fieldComponents, coerceValues } = useProtocolForm({
@@ -309,7 +312,7 @@ const NodeForm = (props: NodeFormProps) => {
           className="phone-landscape:min-w-sm desktop:min-w-md w-full"
         >
           <SubmittingObserver onChange={setSubmitting} />
-          {protectsAnswers && <PassphraseRecovery />}
+          {offersPassphrase && <PassphraseRecovery />}
           {editingHidden && (
             <PassphraseNotice
               status={editing.status === 'pending' ? 'pending' : 'locked'}

@@ -16,11 +16,15 @@ import type {
 import type { StageSubject } from '@codaco/protocol-validation';
 import type { NcNetwork } from '@codaco/shared-consts';
 
+import PassphraseRecovery from '../../../components/PassphraseRecovery';
 import {
   buildVariableLabels,
   useVariableLabels,
 } from '../../../forms/buildVariableLabels';
-import { useValidationNetwork } from '../../../forms/useValidationNetwork';
+import {
+  savingNeedsPassphrase,
+  useValidationNetwork,
+} from '../../../forms/useValidationNetwork';
 import { useStageSelector } from '../../../hooks/useStageSelector';
 import {
   getValidationContext,
@@ -28,6 +32,7 @@ import {
   validationPropsFor,
 } from '../../../selectors/forms';
 import { getCodebook } from '../../../store/modules/protocol';
+import { usePassphrase } from '../../Anonymisation/usePassphrase';
 import { useFamilyPedigreeStore } from '../FamilyPedigreeContext';
 import { messages } from '../messages';
 import {
@@ -163,6 +168,16 @@ export default function PersonNameField({
     currentEntityId,
   );
 
+  // Each person is entered in a modal wizard, with the node form's answers
+  // about them, so the passphrase those answers can need is offered here.
+  const { isEnabled } = usePassphrase();
+  const offersPassphrase = savingNeedsPassphrase(
+    nodeVariables,
+    [nodeLabelVariable, ...(nodeForm ?? []).map((field) => field.variable)],
+    isEnabled,
+    currentEntityId,
+  );
+
   const validationContext = useMemo<ValidationContext>(
     () => ({
       ...baseValidationContext,
@@ -186,18 +201,21 @@ export default function PersonNameField({
   );
 
   return (
-    <Field
-      name="name"
-      label={label}
-      component={InputField}
-      placeholder={placeholder}
-      hint={validationProps.required === true ? undefined : hint}
-      initialValue={initialValue}
-      autoFocus={autoFocus}
-      showValidationHints
-      {...validationProps}
-      custom={pendingUniqueValidation}
-      validationContext={validationContext}
-    />
+    <>
+      {offersPassphrase && <PassphraseRecovery />}
+      <Field
+        name="name"
+        label={label}
+        component={InputField}
+        placeholder={placeholder}
+        hint={validationProps.required === true ? undefined : hint}
+        initialValue={initialValue}
+        autoFocus={autoFocus}
+        showValidationHints
+        {...validationProps}
+        custom={pendingUniqueValidation}
+        validationContext={validationContext}
+      />
+    </>
   );
 }

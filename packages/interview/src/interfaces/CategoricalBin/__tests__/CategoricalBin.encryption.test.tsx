@@ -529,3 +529,81 @@ describe('CategoricalBin validating an encrypted "other" answer', () => {
     expect(store.getState().ui.showPassphrasePrompter).toBe(false);
   });
 });
+
+describe('CategoricalBin comparing a plaintext "other" answer with a protected one', () => {
+  it('takes the passphrase the check needs from inside the dialog, then saves the kept answer', async () => {
+    // The answer is not protected, but must differ from the dropped person's
+    // nickname, which is.
+    const comparedVariables: Record<string, Variable> = {
+      ...variables,
+      nickname: {
+        name: 'Nickname',
+        type: 'text',
+        component: 'Text',
+        encrypted: true,
+      },
+      otherReason: {
+        name: 'Other reason',
+        type: 'text',
+        component: 'Text',
+        validation: { differentFrom: asEntityAttributeReference('nickname') },
+      },
+    };
+    const { encryptedAttributes, secureAttributes } =
+      await generateSecureAttributes(
+        { name: 'Alice', nickname: 'Ally' },
+        comparedVariables,
+        'pw',
+      );
+    const { store, dropIntoOther } = renderCategoricalBin(undefined, {
+      subject: {
+        [entityPrimaryKeyProperty]: 'n1',
+        type: 'person',
+        [entityAttributesProperty]: encryptedAttributes,
+        [entitySecureAttributesMeta]: secureAttributes,
+      },
+      stageVariables: comparedVariables,
+    });
+    const user = userEvent.setup();
+
+    await dropIntoOther();
+    await user.type(
+      await screen.findByRole('textbox', { name: /Please specify/ }),
+      'Cousin',
+    );
+    await user.click(screen.getByTestId('dialog-submit'));
+    expect(
+      await screen.findByText(/Your answers have not been saved/),
+    ).toBeVisible();
+
+    await user.click(
+      within(screen.getByRole('dialog', { name: 'Specify other' })).getByRole(
+        'button',
+        { name: 'Enter your Passphrase' },
+      ),
+    );
+    const prompt = await screen.findByRole('dialog', {
+      name: 'Enter your Passphrase',
+    });
+    await user.type(
+      within(prompt).getByLabelText(/^Passphrase/, { selector: 'input' }),
+      'pw',
+    );
+    await user.click(
+      within(prompt).getByRole('button', { name: 'Submit passphrase' }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', { name: 'Enter your Passphrase' }),
+      ).toBeNull(),
+    );
+
+    await user.click(screen.getByTestId('dialog-submit'));
+    await waitFor(() =>
+      expect(
+        store.getState().session.network.nodes[0]?.[entityAttributesProperty]
+          .otherReason,
+      ).toBe('Cousin'),
+    );
+  });
+});

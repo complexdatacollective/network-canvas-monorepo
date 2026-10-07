@@ -26,8 +26,10 @@ answers; other interviews work as before.
 - When a save is refused, the answers just typed stay on screen with a message
   that they were not saved, so the participant can enter the passphrase and
   try again. Before, they could disappear without a word. The form for adding
-  or editing a person and the category "other" question offer the passphrase
-  inside the form, so the answers can be saved without closing it.
+  or editing a person, the category "other" question and the Family Pedigree's
+  questions about a relative offer the passphrase inside the form whenever
+  saving can need it: to protect an answer, or to check an answer against a
+  protected one. The answers can then be saved without closing the form.
 - A save is refused if the passphrase is replaced, or found not to work, while
   the save is under way. Before, the answer was still saved with the earlier
   passphrase, which the one now in use might not be able to read.
@@ -64,7 +66,8 @@ answers; other interviews work as before.
   readable.
 - A family pedigree is saved whole or not at all. If a relative's name cannot
   be saved, nothing is saved, the participant is told why, and they can enter
-  the passphrase and save the pedigree again.
+  the passphrase and save the pedigree again. Choosing to keep editing while
+  the pedigree is being saved now saves none of it.
 - The Family Pedigree and Narrative Pedigree stages read only the protected
   answers they show or edit. Before, a relative's other protected answer that
   the passphrase could not read, such as one saved with a different
@@ -89,3 +92,8 @@ answers; other interviews work as before.
   saves them and removes its message that they were not saved. Before, they
   were lost. Leaving such a question before then warns that its answers have
   not been saved.
+- Going back from the first person or relationship on a stage that asks
+  about each one saves the answers entered, or warns that they have not been
+  saved, as going forward does. Before, they were lost. Leaving the Network
+  Composer saves a change in its side panel that has not been saved yet, and
+  asks before discarding one that cannot be saved.

@@ -4,6 +4,10 @@ import { Provider } from 'react-redux';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 import {
+  asEntityAttributeReference,
+  type Variable,
+} from '@codaco/protocol-validation';
+import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
   entitySecureAttributesMeta,
@@ -20,12 +24,16 @@ import {
 } from '../../../../store/modules/ui';
 import {
   createEncryptionStore,
+  encryptedVariables,
   makeEncryptedPerson,
   makePlainPerson,
   NODE_TYPE,
 } from '../../../Anonymisation/__tests__/encryptionFixtures';
 import { isNumberArray } from '../../../Anonymisation/decryptionScope';
-import { decryptData } from '../../../Anonymisation/utils';
+import {
+  decryptData,
+  generateSecureAttributes,
+} from '../../../Anonymisation/utils';
 import NodeForm from '../NodeForm';
 
 vi.mock('../../../../hooks/useCelebrate', () => ({
@@ -48,9 +56,10 @@ async function renderEditing(
   node: NcNode | Promise<NcNode>,
   passphrase?: string,
   encryptionEnabled = true,
+  variables?: Record<string, Variable>,
 ) {
   const selected = await node;
-  const store = createEncryptionStore([selected], undefined, undefined, {
+  const store = createEncryptionStore([selected], undefined, variables, {
     encryptionEnabled,
   });
   if (passphrase) store.dispatch(setPassphrase(passphrase));
@@ -402,5 +411,59 @@ describe('NodeForm with the encrypted-variables experiment off', () => {
     );
     expect(data).toBe('Alicia');
     expect(secureAttributes).toBeUndefined();
+  });
+});
+
+describe('NodeForm comparing a plaintext answer with a protected one', () => {
+  // The name is not protected, but must differ from the nickname, which is
+  // and is not on the form.
+  const comparedVariables: Record<string, Variable> = {
+    ...encryptedVariables,
+    name: {
+      name: 'name',
+      type: 'text',
+      component: 'Text',
+      validation: { differentFrom: asEntityAttributeReference('nickname') },
+    },
+  };
+
+  it('takes the passphrase the check needs from inside the dialog, then saves the kept answers', async () => {
+    const { encryptedAttributes, secureAttributes } =
+      await generateSecureAttributes(
+        { name: 'Alice', nickname: 'Ally', age: 40 },
+        comparedVariables,
+        'pw',
+      );
+    const { store, onClose } = await renderEditing(
+      {
+        [entityPrimaryKeyProperty]: 'n1',
+        type: NODE_TYPE,
+        [entityAttributesProperty]: encryptedAttributes,
+        [entitySecureAttributesMeta]: secureAttributes,
+      },
+      undefined,
+      true,
+      comparedVariables,
+    );
+    const user = userEvent.setup();
+
+    const name = await screen.findByRole('textbox', { name: 'Name' });
+    await user.clear(name);
+    await user.type(name, 'Alicia');
+    await user.click(screen.getByRole('button', { name: 'Finished' }));
+    expect(
+      await screen.findAllByText(/Your answers have not been saved/),
+    ).not.toHaveLength(0);
+    expect(onClose).not.toHaveBeenCalled();
+
+    await reenterPassphrase(user, 'pw');
+    expect(screen.getByRole('textbox', { name: 'Name' })).toHaveValue('Alicia');
+    await user.click(screen.getByRole('button', { name: 'Finished' }));
+
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+    expect(
+      store.getState().session.network.nodes[0]?.[entityAttributesProperty]
+        .name,
+    ).toBe('Alicia');
   });
 });
