@@ -116,6 +116,8 @@
   "architect.chrome.stageEditor.stageEditor.preview": "Pré-visualizar",
   "architect.chrome.timeline.timelineStageRow.editStage": "Editar etapa {position, number}: {stageName}, {interfaceName}",
   "architect.chrome.timeline.timelineStageRow.editStage76e56": "Editar etapa {position, number}: {stageName}",
+  "architect.chrome.timeline.timelineStageRow.viewStage": "Ver etapa {position, number}: {stageName}, {interfaceName}",
+  "architect.chrome.timeline.timelineStageRow.viewStageWithoutInterface": "Ver etapa {position, number}: {stageName}",
   "architect.codebook.codebook.createEdgeType": "Criar tipo de laço",
   "architect.codebook.codebook.createNodeType": "Criar tipo de nó",
   "architect.codebook.codebook.edgeTypes": "Tipos de laço ({value1, number})",

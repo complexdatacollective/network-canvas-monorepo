@@ -81,9 +81,9 @@ const addAfterLastButton = () =>
 // By label, not by role: an accessible name is empty for a node hidden from
 // assistive technology, which is the very state under test.
 const insertButtons = () => screen.queryAllByLabelText(/^Add stage here/);
-const openControls = () =>
+const openControls = (verb: 'Edit' | 'View') =>
   within(screen.getByRole('list')).getAllByRole('button', {
-    name: /^Edit stage/,
+    name: new RegExp(`^${verb} stage`),
   });
 const deleteControls = () =>
   screen.getAllByRole('button', { name: /^Delete stage/, hidden: true });
@@ -116,7 +116,7 @@ describe('Timeline while another tab owns the protocol', () => {
     const { store } = renderTimeline(true);
     const before = stageIds(store);
 
-    fireEvent.keyDown(nth(openControls(), 0), { key: 'ArrowDown' });
+    fireEvent.keyDown(nth(openControls('View'), 0), { key: 'ArrowDown' });
 
     expect(stageIds(store)).toEqual(before);
   });
@@ -152,10 +152,34 @@ describe('Timeline while another tab owns the protocol', () => {
   it('still lets every stage be opened', () => {
     renderTimeline(true);
 
-    expect(openControls()).toHaveLength(3);
-    for (const control of openControls()) {
+    expect(openControls('View')).toHaveLength(3);
+    for (const control of openControls('View')) {
       expect(control).toBeEnabled();
     }
+  });
+
+  it('names the controls that open a stage for viewing, not editing', () => {
+    renderTimeline(true);
+
+    expect(
+      within(screen.getByRole('list')).queryAllByRole('button', {
+        name: /^Edit stage/,
+      }),
+    ).toHaveLength(0);
+  });
+
+  it('names them for editing again once this tab can edit', () => {
+    const { setReadOnly } = renderTimeline(true);
+    expect(openControls('View')).toHaveLength(3);
+
+    setReadOnly(false);
+
+    expect(openControls('Edit')).toHaveLength(3);
+    expect(
+      within(screen.getByRole('list')).queryAllByRole('button', {
+        name: /^View stage/,
+      }),
+    ).toHaveLength(0);
   });
 });
 
@@ -183,7 +207,7 @@ describe('Timeline outside the guard', () => {
     const { store } = renderTimeline(null);
     const [firstId, secondId, ...rest] = stageIds(store) ?? [];
 
-    fireEvent.keyDown(nth(openControls(), 0), { key: 'ArrowDown' });
+    fireEvent.keyDown(nth(openControls('Edit'), 0), { key: 'ArrowDown' });
 
     expect(stageIds(store)).toEqual([secondId, firstId, ...rest]);
   });

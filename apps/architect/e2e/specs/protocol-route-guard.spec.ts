@@ -115,7 +115,7 @@ const VIEW_CONTROLS: readonly ViewControl[] = [
     name: /./,
     within: { role: 'navigation', name: /^breadcrumb$/i },
   },
-  { role: 'button', name: /^edit stage \d+:/i },
+  { role: 'button', name: /^view stage \d+:/i },
   { role: 'button', name: /^how to get a mapbox token$/i },
   { role: 'searchbox', name: /^search the codebook/i },
   { role: 'checkbox', name: /^show unused only$/i },
@@ -267,11 +267,14 @@ test('a second tab on the same protocol can look through every page, changes not
   // The stage list, and the editor of a stage opened from it.
   await expect(secondTab).toHaveURL(/\/protocol$/);
   await expect(
-    secondTab.getByRole('button', { name: /^Edit stage 1:/ }),
+    secondTab.getByRole('button', { name: /^View stage 1:/ }),
   ).toBeVisible();
+  await expect(
+    secondTab.getByRole('button', { name: /^Edit stage/ }),
+  ).toHaveCount(0);
   expect(await editingControls(secondTab)).toEqual([]);
 
-  await secondTab.getByRole('button', { name: /^Edit stage 1:/ }).click();
+  await secondTab.getByRole('button', { name: /^View stage 1:/ }).click();
   await expect(secondTab.getByText(STAGE_READ_ONLY_MESSAGE)).toBeVisible();
   expect(await editingControls(secondTab)).toEqual([]);
   await secondTab.getByRole('button', { name: 'Cancel' }).click();
@@ -334,7 +337,7 @@ test('a stage editor open read-only becomes editable in place when the other tab
 
   const secondTab = await openInSecondTab(context, protocolId, '/protocol');
   await expect(readOnlyBanner(secondTab)).toBeVisible();
-  await secondTab.getByRole('button', { name: /^Edit stage 1:/ }).click();
+  await secondTab.getByRole('button', { name: /^View stage 1:/ }).click();
   await expect(secondTab.getByText(STAGE_READ_ONLY_MESSAGE)).toBeVisible();
   const stageUrl = secondTab.url();
   const stageName = secondTab.getByRole('textbox', { name: 'Stage name' });
@@ -355,6 +358,17 @@ test('a stage editor open read-only becomes editable in place when the other tab
     (row) => row.stages[0]?.label === 'Renamed after the reclaim',
   );
   expect(saved.stages[0]?.label).toBe('Renamed after the reclaim');
+
+  // Back on the stage list, this tab holds the protocol: the same control that
+  // read "View stage" while it could not edit now says "Edit stage".
+  await expect(
+    secondTab.getByRole('button', {
+      name: /^Edit stage 1: Renamed after the reclaim/,
+    }),
+  ).toBeVisible();
+  await expect(
+    secondTab.getByRole('button', { name: /^View stage/ }),
+  ).toHaveCount(0);
 });
 
 // Regaining the lock must not turn this tab's snapshot into the truth. Its

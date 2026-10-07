@@ -258,7 +258,61 @@ describe('TimelineStageRow', () => {
   });
 
   describe('while another tab owns the protocol', () => {
-    const openControlName = 'Edit stage 1: Consent, Information';
+    const editControlName = 'Edit stage 1: Consent, Information';
+    const viewControlName = 'View stage 1: Consent, Information';
+
+    // The control opens the same read-only editor either way, but its name is
+    // what a screen reader announces as the action: "Edit" would promise an
+    // editor this tab is refused.
+    it('names the open control for viewing, not editing', () => {
+      renderRow(0, {}, true);
+
+      expect(
+        screen.getByRole('button', { name: viewControlName }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: /^Edit stage/ }),
+      ).not.toBeInTheDocument();
+    });
+
+    it('names the open control for viewing when the stage type is unknown', () => {
+      render(
+        <ProtocolReadOnlyContext value>
+          <Reorder.Group axis="y" values={stages} onReorder={vi.fn()}>
+            <li>
+              <TimelineStageRow
+                stage={{ ...stages[0]!, type: 'SomeFutureInterface' }}
+                index={0}
+                stageCount={1}
+                onOpen={vi.fn()}
+                onMove={vi.fn(acceptMove)}
+                onDelete={vi.fn()}
+                onDragCommit={vi.fn()}
+                registerOpenControl={vi.fn()}
+              />
+            </li>
+          </Reorder.Group>
+        </ProtocolReadOnlyContext>,
+      );
+
+      expect(
+        screen.getByRole('button', { name: 'View stage 1: Consent' }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: /^Edit stage/ }),
+      ).not.toBeInTheDocument();
+    });
+
+    it('names the open control for editing when the protocol is editable', () => {
+      renderRow(0);
+
+      expect(
+        screen.getByRole('button', { name: editControlName }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: /^View stage/ }),
+      ).not.toBeInTheDocument();
+    });
 
     // jsdom does not drive motion's pointer gesture, so the drag is read off
     // the one thing motion leaves on a row that listens for it: `touch-action:
@@ -268,7 +322,7 @@ describe('TimelineStageRow', () => {
       renderRow(0);
 
       const row = screen.getByRole('button', {
-        name: openControlName,
+        name: editControlName,
       }).parentElement!;
       expect(row.style.touchAction).toBe('pan-x');
     });
@@ -277,7 +331,7 @@ describe('TimelineStageRow', () => {
       renderRow(0, {}, true);
 
       const row = screen.getByRole('button', {
-        name: openControlName,
+        name: viewControlName,
       }).parentElement!;
       expect(row.style.touchAction).toBe('');
     });
@@ -285,7 +339,7 @@ describe('TimelineStageRow', () => {
     it('leaves the arrow keys alone and does not advertise them', () => {
       const onMove = vi.fn(acceptMove);
       renderRow(0, { onMove }, true);
-      const openControl = screen.getByRole('button', { name: openControlName });
+      const openControl = screen.getByRole('button', { name: viewControlName });
 
       fireEvent.keyDown(openControl, { key: 'ArrowDown' });
       fireEvent.keyDown(openControl, { key: 'ArrowUp' });
@@ -297,7 +351,7 @@ describe('TimelineStageRow', () => {
     it('still opens the stage from the button and from the row', () => {
       const onOpen = vi.fn();
       renderRow(0, { onOpen }, true);
-      const openControl = screen.getByRole('button', { name: openControlName });
+      const openControl = screen.getByRole('button', { name: viewControlName });
 
       fireEvent.click(openControl);
       expect(onOpen).toHaveBeenCalledTimes(1);
@@ -328,7 +382,7 @@ describe('TimelineStageRow', () => {
       const onDelete = vi.fn();
       const onMove = vi.fn(acceptMove);
       renderRow(0, { onDelete, onMove });
-      const openControl = screen.getByRole('button', { name: openControlName });
+      const openControl = screen.getByRole('button', { name: editControlName });
 
       expect(openControl).toHaveAttribute(
         'aria-keyshortcuts',

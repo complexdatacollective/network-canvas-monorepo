@@ -57,7 +57,7 @@ const ALLOWED: readonly AllowedControl[] = [
     within: { role: 'navigation', name: /^breadcrumb$/i },
   },
   // Stages: opening a stage opens its editor, which is read-only too.
-  { role: 'button', name: /^edit stage \d+:/i },
+  { role: 'button', name: /^view stage \d+:/i },
   { role: 'button', name: /^how to get a mapbox token$/i },
   // Codebook: search, filter and sort, and a look at a network resource.
   { role: 'searchbox', name: /^search the codebook/i },

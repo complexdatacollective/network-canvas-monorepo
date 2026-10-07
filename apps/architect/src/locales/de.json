@@ -116,6 +116,8 @@
   "architect.chrome.stageEditor.stageEditor.preview": "Vorschau",
   "architect.chrome.timeline.timelineStageRow.editStage": "Abschnitt {position, number} bearbeiten: {stageName}, {interfaceName}",
   "architect.chrome.timeline.timelineStageRow.editStage76e56": "Abschnitt {position, number} bearbeiten: {stageName}",
+  "architect.chrome.timeline.timelineStageRow.viewStage": "Abschnitt {position, number} anzeigen: {stageName}, {interfaceName}",
+  "architect.chrome.timeline.timelineStageRow.viewStageWithoutInterface": "Abschnitt {position, number} anzeigen: {stageName}",
   "architect.codebook.codebook.createEdgeType": "Kantentyp erstellen",
   "architect.codebook.codebook.createNodeType": "Knotentyp erstellen",
   "architect.codebook.codebook.edgeTypes": "Kantentypen ({value1, number})",

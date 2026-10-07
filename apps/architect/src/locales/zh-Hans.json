@@ -116,6 +116,8 @@
   "architect.chrome.stageEditor.stageEditor.preview": "预览",
   "architect.chrome.timeline.timelineStageRow.editStage": "编辑阶段 {position, number}：{stageName}，{interfaceName}",
   "architect.chrome.timeline.timelineStageRow.editStage76e56": "编辑阶段 {position, number}：{stageName}",
+  "architect.chrome.timeline.timelineStageRow.viewStage": "查看阶段 {position, number}：{stageName}，{interfaceName}",
+  "architect.chrome.timeline.timelineStageRow.viewStageWithoutInterface": "查看阶段 {position, number}：{stageName}",
   "architect.codebook.codebook.createEdgeType": "创建关系类型",
   "architect.codebook.codebook.createNodeType": "创建节点类型",
   "architect.codebook.codebook.edgeTypes": "关系类型（{value1, number}）",

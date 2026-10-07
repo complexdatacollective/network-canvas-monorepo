@@ -116,6 +116,8 @@
   "architect.chrome.stageEditor.stageEditor.preview": "Anteprima",
   "architect.chrome.timeline.timelineStageRow.editStage": "Modifica la fase {position, number}: {stageName}, {interfaceName}",
   "architect.chrome.timeline.timelineStageRow.editStage76e56": "Modifica la fase {position, number}: {stageName}",
+  "architect.chrome.timeline.timelineStageRow.viewStage": "Consulta la fase {position, number}: {stageName}, {interfaceName}",
+  "architect.chrome.timeline.timelineStageRow.viewStageWithoutInterface": "Consulta la fase {position, number}: {stageName}",
   "architect.codebook.codebook.createEdgeType": "Crea un tipo di legame",
   "architect.codebook.codebook.createNodeType": "Crea un tipo di nodo",
   "architect.codebook.codebook.edgeTypes": "Tipi di legame ({value1, number})",

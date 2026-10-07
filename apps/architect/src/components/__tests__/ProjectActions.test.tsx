@@ -55,13 +55,22 @@ vi.mock('~/ducks/modules/activeProtocol', () => ({
 }));
 
 const exportUnwrap = vi.fn();
-const exportNetcanvasMock = vi.fn(() => ({
+// Records the protocol the export would write, not the thunk's argument: the
+// real thunk falls back to the active protocol when given no override, and
+// the mock does the same so the record says which protocol reaches the file.
+const exportNetcanvasMock = vi.fn((_protocol: CurrentProtocol) => ({
   type: 'webUserActions/exportNetcanvas',
   unwrap: exportUnwrap,
 }));
 
 vi.mock('~/ducks/modules/userActions/userActions', () => ({
-  exportNetcanvas: () => exportNetcanvasMock(),
+  exportNetcanvas:
+    (override: CurrentProtocol | undefined) =>
+    (
+      _dispatch: unknown,
+      getState: () => { activeProtocol: { present: CurrentProtocol } },
+    ) =>
+      exportNetcanvasMock(override ?? getState().activeProtocol.present),
 }));
 
 const sourceAuthoringMock = vi.hoisted(() => ({
@@ -322,6 +331,62 @@ describe('<ProjectActions />', () => {
       ).toBeInTheDocument();
     });
     expect(exportNetcanvasMock).toHaveBeenCalled();
+  });
+
+  // The saved copy is what a tab that no longer holds the cross-tab lock may
+  // offer: its own buffer is a snapshot from before the owning tab started
+  // saving over the library row.
+  it('exports the saved library copy, not the tab buffer, when the protocol is locked', async () => {
+    const savedProtocol: CurrentProtocol = {
+      ...protocol,
+      name: 'Saved in library',
+    };
+    protocolLibraryMock.getStoredProtocol.mockResolvedValue({
+      id: 'protocol-1',
+      name: savedProtocol.name,
+      protocol: savedProtocol,
+      schemaVersion: 8,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+    exportUnwrap.mockResolvedValueOnce({ status: 'exported' });
+    const store = createTestStore();
+
+    render(<ProjectActions mode="locked" />, { wrapper: wrap(store) });
+
+    fireEvent.click(screen.getByRole('button', { name: /^download$/i }));
+
+    await waitFor(() => {
+      expect(exportNetcanvasMock).toHaveBeenCalledTimes(1);
+    });
+    expect(protocolLibraryMock.getStoredProtocol).toHaveBeenCalledWith(
+      'protocol-1',
+    );
+    expect(exportNetcanvasMock).toHaveBeenCalledWith(savedProtocol);
+    expect(exportNetcanvasMock).not.toHaveBeenCalledWith(protocol);
+  });
+
+  it('exports the tab buffer when the protocol is not locked', async () => {
+    protocolLibraryMock.getStoredProtocol.mockResolvedValue({
+      id: 'protocol-1',
+      name: 'Saved in library',
+      protocol: { ...protocol, name: 'Saved in library' },
+      schemaVersion: 8,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+    exportUnwrap.mockResolvedValueOnce({ status: 'exported' });
+    const store = createTestStore();
+
+    render(<ProjectActions />, { wrapper: wrap(store) });
+
+    fireEvent.click(screen.getByRole('button', { name: /^download$/i }));
+
+    await waitFor(() => {
+      expect(exportNetcanvasMock).toHaveBeenCalledTimes(1);
+    });
+    expect(exportNetcanvasMock).toHaveBeenCalledWith(protocol);
+    expect(protocolLibraryMock.getStoredProtocol).not.toHaveBeenCalled();
   });
 
   it('navigates to the start screen when Return-to-start is clicked', () => {

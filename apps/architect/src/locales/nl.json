@@ -116,6 +116,8 @@
   "architect.chrome.stageEditor.stageEditor.preview": "Voorbeeld",
   "architect.chrome.timeline.timelineStageRow.editStage": "Fase {position, number} bewerken: {stageName}, {interfaceName}",
   "architect.chrome.timeline.timelineStageRow.editStage76e56": "Fase {position, number} bewerken: {stageName}",
+  "architect.chrome.timeline.timelineStageRow.viewStage": "Fase {position, number} bekijken: {stageName}, {interfaceName}",
+  "architect.chrome.timeline.timelineStageRow.viewStageWithoutInterface": "Fase {position, number} bekijken: {stageName}",
   "architect.codebook.codebook.createEdgeType": "Relatietype aanmaken",
   "architect.codebook.codebook.createNodeType": "Knooppunttype aanmaken",
   "architect.codebook.codebook.edgeTypes": "Relatietypen ({value1, number})",

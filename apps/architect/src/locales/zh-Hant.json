@@ -116,6 +116,8 @@
   "architect.chrome.stageEditor.stageEditor.preview": "預覽",
   "architect.chrome.timeline.timelineStageRow.editStage": "編輯階段 {position, number}：{stageName}，{interfaceName}",
   "architect.chrome.timeline.timelineStageRow.editStage76e56": "編輯階段 {position, number}：{stageName}",
+  "architect.chrome.timeline.timelineStageRow.viewStage": "檢視階段 {position, number}：{stageName}，{interfaceName}",
+  "architect.chrome.timeline.timelineStageRow.viewStageWithoutInterface": "檢視階段 {position, number}：{stageName}",
   "architect.codebook.codebook.createEdgeType": "建立關係類型",
   "architect.codebook.codebook.createNodeType": "建立節點類型",
   "architect.codebook.codebook.edgeTypes": "關係類型（{value1, number}）",

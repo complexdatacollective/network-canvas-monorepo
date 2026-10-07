@@ -29,6 +29,19 @@ const chromeMessages = defineMessages({
     description:
       'Researcher-facing explanatory text in components / Timeline / TimelineStageRow.',
   },
+  viewStage: {
+    id: 'architect.chrome.timeline.timelineStageRow.viewStage',
+    defaultMessage:
+      'View stage {position, number}: {stageName}, {interfaceName}',
+    description:
+      'Accessible name of the control that opens a stage on the timeline while this tab can only view the protocol, because another tab is editing it.',
+  },
+  viewStageWithoutInterface: {
+    id: 'architect.chrome.timeline.timelineStageRow.viewStageWithoutInterface',
+    defaultMessage: 'View stage {position, number}: {stageName}',
+    description:
+      'Accessible name of the control that opens a stage on the timeline while this tab can only view the protocol, because another tab is editing it. Used when the stage type has no known name.',
+  },
 });
 const messages = defineMessages({
   hasFilter: {
@@ -143,13 +156,19 @@ const TimelineStageRow = ({
   // not know — an imported protocol can carry one — in which case the label
   // says what it can rather than inventing a name.
   const interfaceName = interfaceDisplayName(stage.type, intl);
+  const withInterface = readOnly
+    ? chromeMessages.viewStage
+    : chromeMessages.editStage;
+  const withoutInterface = readOnly
+    ? chromeMessages.viewStageWithoutInterface
+    : chromeMessages.editStage76e56;
   const openControlLabel = interfaceName
-    ? intl.formatMessage(chromeMessages.editStage, {
+    ? intl.formatMessage(withInterface, {
         position: position,
         stageName: stageName,
         interfaceName: interfaceName,
       })
-    : intl.formatMessage(chromeMessages.editStage76e56, {
+    : intl.formatMessage(withoutInterface, {
         position: position,
         stageName: stageName,
       });

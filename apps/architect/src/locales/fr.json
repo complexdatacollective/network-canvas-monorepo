@@ -116,6 +116,8 @@
   "architect.chrome.stageEditor.stageEditor.preview": "Aperçu",
   "architect.chrome.timeline.timelineStageRow.editStage": "Modifier l’étape {position, number} : {stageName}, {interfaceName}",
   "architect.chrome.timeline.timelineStageRow.editStage76e56": "Modifier l’étape {position, number} : {stageName}",
+  "architect.chrome.timeline.timelineStageRow.viewStage": "Consulter l’étape {position, number} : {stageName}, {interfaceName}",
+  "architect.chrome.timeline.timelineStageRow.viewStageWithoutInterface": "Consulter l’étape {position, number} : {stageName}",
   "architect.codebook.codebook.createEdgeType": "Créer un type de lien",
   "architect.codebook.codebook.createNodeType": "Créer un type de nœud",
   "architect.codebook.codebook.edgeTypes": "Types de liens ({value1, number})",
