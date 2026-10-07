@@ -8,6 +8,8 @@ Their text is declared as US English (`en-US`), and their codebook types and
 variables have labels. The development protocol is also translated into
 Spanish (`es`) and opens with a language chooser stage. Neither has an
 `experiments` setting any more, because schema 9 has none: the development
-protocol's encrypted attribute is still encrypted. Reading them needs a
+protocol's encrypted attribute is still encrypted. Its stage filters and skip
+logic no longer have rules on that attribute, which schema 9 refuses: they
+only ever compared its encrypted text, so its stages behave as they did. Reading them needs a
 version of `@codaco/protocol-validation` that knows schema 9, because earlier
 versions can't read a schema 9 protocol.

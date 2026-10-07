@@ -22,7 +22,10 @@ minimum to match, and that a forgotten passphrase cannot be recovered by
 anyone. A new section explains what a participant sees when an interview's
 protection details are damaged or come from a newer version, and the export
 section now says that only answers saved encrypted are replaced with
-`ENCRYPTED`.
+`ENCRYPTED`. Another new section explains that skip logic and filters can't
+use an encrypted attribute, except a panel over an external data file, that
+upgrading removes such rules, and that a list sorted by an encrypted attribute
+is sorted by the participant's answers only once the passphrase is entered.
 
 The schema information page explains what upgrading a schema 8 protocol does
 to its encrypted attributes. If the experiment was on, they stay marked and

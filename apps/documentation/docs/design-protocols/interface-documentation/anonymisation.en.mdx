@@ -17,6 +17,16 @@ Adding this interface to your protocol will enable you to select which node attr
 
 In the **Encrypted attributes** section of the stage editor, each node type in your protocol has its own switch. Turn a type's switch on, then tick the text attributes of that type that should be encrypted. Only text attributes can be encrypted, and edge attributes are not offered. Turning a type's switch off stops encrypting every attribute of that type at once; Architect asks you to confirm before it clears them.
 
+### Encrypted attributes in skip logic, filters and sorting
+
+Skip logic and filters can't use an encrypted attribute. They are checked without the participant's passphrase, so they could never read its answers, only the encrypted text. Architect doesn't offer encrypted attributes when you build a rule, and it won't let you encrypt an attribute that a rule already uses until you remove or change that rule.
+
+There is one exception. A panel that lists people from an external data file can still filter on an encrypted attribute, because the data in that file isn't encrypted.
+
+If you upgrade a schema 8 protocol that encrypts attributes, any skip logic or filter rule that used one of them is removed, because it never worked. Skip logic or a filter that is left with no rules is removed too, so a stage that had such skip logic is now always shown. Check the stages that used these rules, because the rules that remain may now match differently.
+
+You can still sort a list by an encrypted attribute, such as a name. Once the participant has entered their passphrase, the list is sorted by their answers. Until then, or if an answer can't be read, the list ignores that sort rule, so its order never hints at what the answers say.
+
 ### Passphrase length
 
 By default, a participant must choose a passphrase of at least 8 characters.

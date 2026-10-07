@@ -73,6 +73,15 @@ Schema 9:
   longer than its maximum, since no participant could choose a passphrase.
   The v8 to v9 migration removes both lengths from such a stage, so the
   interview's default minimum applies, and its migration notes say so.
+- Schema 9 refuses a skip logic, stage filter or panel filter rule on an
+  encrypted node attribute. Rules are checked without the participant's
+  passphrase, so such a rule only ever compared the encrypted text and never
+  worked. A panel over an external data file may still filter on one, because
+  that file's rows are not encrypted. When `experiments.encryptedVariables`
+  was on, the v8 to v9 migration removes these rules, and with them any filter
+  left with no rules and any skip logic left with none, so that stage is
+  always shown. Its migration notes tell researchers to check those stages,
+  because an `AND` or `OR` filter that loses a rule may match differently.
 - Schema 8 still refuses names outside `a-z`, `A-Z`, digits and `. _ - :`, with
   a message that says so. `VersionlessProtocolSchema`, the version 8 body
   without its `schemaVersion`, is now exported.

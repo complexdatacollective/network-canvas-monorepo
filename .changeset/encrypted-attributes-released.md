@@ -70,9 +70,26 @@ Encrypted answers are now protected in a new way:
   passing or comparing with encrypted text.
 - A protected name is shown decrypted in a person's label and in the "Other"
   prompt of a categorical bin.
+- A list sorted by a protected answer, such as a name, is sorted by the
+  decrypted answers once the passphrase has been entered. Until then, and
+  when an answer can't be read, the list ignores that sort rule and keeps the
+  order its other rules give it, so the order never hints at what the answers
+  say.
+- Typing a letter to move through a list of people finds them by their
+  decrypted names once the passphrase has been entered. Until then, typing
+  never finds anyone by a protected name, and a name that can't be read is
+  found by "Answer unavailable", as it is shown.
 - The add-a-person form can't be closed or submitted twice while it saves.
   A family pedigree is saved all at once or not at all, and a relationship
   that can't be saved is reported rather than skipped.
+
+Skip logic and filters are checked without the participant's passphrase, so a
+rule on an encrypted attribute could only ever compare its encrypted text.
+Architect no longer offers encrypted attributes when you build skip logic, a
+stage filter or a panel filter, except in a panel that lists people from an
+external data file, whose rows are not encrypted. It won't let you encrypt an
+attribute that one of these rules uses until the rule is removed or changed.
+Upgrading a protocol to schema 9 removes such rules.
 
 Answers encrypted by the experimental feature in schema 8 can't be read after
 the upgrade, and a forgotten passphrase still can't be recovered. A schema 8
