@@ -1,5 +1,6 @@
 import { after, type NextRequest, NextResponse } from 'next/server';
 
+import { CodebookSchema } from '@codaco/protocol-validation';
 import { ensureError } from '@codaco/shared-consts';
 import {
   createCorsHeaders,
@@ -78,13 +79,15 @@ export async function GET(
       );
     }
 
-    // Answer with the participant data as the deployment reads it, or not at
-    // all: presenting an empty network for one that does not parse would
-    // misreport what the interview holds.
+    // Answer with the interview as the deployment reads it, or not at all:
+    // presenting an empty network or codebook for one that does not parse
+    // would misreport what the interview holds.
     const stored = parseStoredInterviewSession(interview);
-    if (!stored.success) {
+    const codebook = CodebookSchema.safeParse(interview.protocol.codebook);
+    if (!stored.success || !codebook.success) {
+      const error = stored.success ? codebook.error : stored.error;
       after(async () => {
-        await captureException(stored.error, {
+        await captureException(error, {
           context: 'api.interview.unreadable',
         });
         await flushPostHog();
@@ -97,7 +100,13 @@ export async function GET(
     }
 
     return NextResponse.json(
-      { data: { ...interview, ...stored.data } },
+      {
+        data: {
+          ...interview,
+          ...stored.data,
+          protocol: { ...interview.protocol, codebook: codebook.data },
+        },
+      },
       { headers: corsHeaders },
     );
   } catch (e) {

@@ -76,9 +76,10 @@ type ProtocolRow = {
 };
 
 /**
- * Whether a stored protocol already satisfies the strict schema the Prisma
- * result extension applies on every read (lib/db/index.ts). Mirrors that
- * reconstruction so a protocol this returns `true` for cannot make a read throw.
+ * Whether a stored protocol already satisfies the whole-protocol schema. That
+ * is stricter than `parseStoredProtocol` (lib/db/storedProtocol.ts), which
+ * every read path applies and refuses on, so a protocol this returns `true`
+ * for cannot be refused by a read.
  */
 function isConformant(row: ProtocolRow): boolean {
   return CurrentProtocolSchema.safeParse({
@@ -251,10 +252,11 @@ async function normalizeNonConformantProtocol(
  *
  * Both classes tolerate failure: a protocol that cannot be migrated or
  * normalized is logged and left in place, because one bad row must never
- * block a customer's deployment. A left-behind below-target row is safe at
- * runtime — the interview payload refuses a protocol whose stored version
- * does not match the runtime's — and a left-behind non-conformant row
- * degrades gracefully through the read path's per-field parsing.
+ * block a customer's deployment. A left-behind row is safe at runtime: the
+ * interview payload refuses a protocol whose stored version does not match
+ * the runtime's, and every read path refuses (and reports) one whose stored
+ * stages, codebook or experiments do not parse, rather than running an
+ * interview or export against an empty stand-in.
  *
  * Idempotent: conformant protocols at the target version are skipped.
  */
@@ -317,7 +319,9 @@ export async function migrateProtocolsToCompatibleVersion(
       const cause = err instanceof Error ? err.message : String(err);
       console.warn(
         `Could not normalize protocol "${row.name}" (id=${row.id}): ${cause}. ` +
-          `Leaving it in place; the read path will fall back for this protocol.`,
+          `Leaving it in place; if it cannot be read, interviews and exports ` +
+          `using it will be refused until it is repaired in Architect and ` +
+          `uploaded again.`,
       );
     }
   }

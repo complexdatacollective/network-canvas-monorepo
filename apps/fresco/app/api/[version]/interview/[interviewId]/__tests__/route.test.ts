@@ -40,12 +40,28 @@ const get = () =>
     { params: Promise.resolve({ version: 'v1', interviewId: 'interview-1' }) },
   );
 
-const row = (network: unknown, stageMetadata: unknown = null) => ({
+const readableNetwork = {
+  nodes: [],
+  edges: [],
+  ego: { _uid: 'ego-1', attributes: {} },
+};
+
+const row = (
+  network: unknown,
+  stageMetadata: unknown = null,
+  codebook: unknown = { node: {}, edge: {} },
+) => ({
   id: 'interview-1',
   network,
   stageMetadata,
   participant: { id: 'participant-1', identifier: 'P001', label: null },
-  protocol: { id: 'protocol-1', name: 'Study' },
+  protocol: {
+    id: 'protocol-1',
+    name: 'Study',
+    schemaVersion: 8,
+    description: null,
+    codebook,
+  },
 });
 
 describe('interview data API', () => {
@@ -93,6 +109,35 @@ describe('interview data API', () => {
         edges: [],
         ego: { _uid: 'ego-1', attributes: {} },
       }),
+    );
+
+    const response = await get();
+
+    expect(response.status).toBe(500);
+    await expect(response.json()).resolves.toEqual({
+      error: 'Stored interview data could not be read',
+    });
+    expect(captureExceptionMock).toHaveBeenCalledWith(expect.anything(), {
+      context: 'api.interview.unreadable',
+    });
+  });
+
+  it('returns the protocol codebook it reads', async () => {
+    const codebook = { node: {}, edge: {}, ego: { variables: {} } };
+    findUniqueMock.mockResolvedValue(row(readableNetwork, null, codebook));
+
+    const response = await get();
+
+    expect(response.status).toBe(200);
+    const { data } = (await response.json()) as {
+      data: { protocol: { codebook: unknown } };
+    };
+    expect(data.protocol.codebook).toEqual(codebook);
+  });
+
+  it('refuses to answer for a protocol codebook it cannot read, rather than presenting an empty one', async () => {
+    findUniqueMock.mockResolvedValue(
+      row(readableNetwork, null, { node: { person: 'not an entity type' } }),
     );
 
     const response = await get();
