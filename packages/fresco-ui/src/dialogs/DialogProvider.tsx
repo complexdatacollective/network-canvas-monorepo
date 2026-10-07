@@ -26,6 +26,7 @@ import { FormWithoutProvider } from '../form/Form';
 import FormStoreProvider, {
   FormStoreContext,
 } from '../form/store/formStoreProvider';
+import type { FormSubmitHandler } from '../form/store/types';
 import SubmitButton from '../form/SubmitButton';
 import Paragraph from '../typography/Paragraph';
 import {
@@ -140,6 +141,14 @@ type FormDialog = BaseDialog & {
   type: 'form';
   submitLabel?: React.ReactNode;
   cancelLabel?: React.ReactNode;
+  /**
+   * Acts on the submitted values before the dialog closes. A failed result
+   * keeps the dialog open with the values as entered and the result's errors
+   * shown, so the submission can be retried; only a successful one closes the
+   * dialog, which then resolves with the values. Without it, submitting
+   * closes the dialog straight away.
+   */
+  onSubmit?: FormSubmitHandler;
 };
 
 export type GetFieldValue = (fieldName: string) => FieldValue | undefined;
@@ -733,6 +742,7 @@ const DialogProvider: React.FC<{ children: React.ReactNode }> = ({
 
     if (dialog.type === 'form') {
       const formId = `dialog-form-${dialog.id}`;
+      const { onSubmit } = dialog;
       return (
         <FormStoreProvider key={dialog.id}>
           <Dialog
@@ -761,7 +771,11 @@ const DialogProvider: React.FC<{ children: React.ReactNode }> = ({
           >
             <FormWithoutProvider
               id={formId}
-              onSubmit={(values) => {
+              onSubmit={async (values) => {
+                if (onSubmit) {
+                  const result = await onSubmit(values);
+                  if (!result.success) return result;
+                }
                 void closeDialog(dialog.id, values);
                 return { success: true };
               }}
