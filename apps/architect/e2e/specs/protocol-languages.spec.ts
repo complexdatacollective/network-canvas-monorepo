@@ -142,6 +142,12 @@ test('adds a language, keeps the default language from being removed, translates
     exact: true,
   });
   await expect(openTable).toHaveCount(0);
+  // Nor is there a choice of default.
+  const defaultLanguage = page.getByRole('combobox', {
+    name: 'Default language',
+    exact: true,
+  });
+  await expect(defaultLanguage).toHaveCount(0);
 
   // Add French from the list of languages.
   await page
@@ -198,11 +204,10 @@ test('adds a language, keeps the default language from being removed, translates
   expect(added.stages).toEqual(before.stages);
 
   // Make French the default.
-  await (
-    await openActions(page, 'French')
-  )
-    .getByRole('menuitem', { name: 'Make default', exact: true })
-    .click();
+  await expect(defaultLanguage).toHaveAccessibleDescription(
+    'Participants see a text in this language when it has no translation in a language they use.',
+  );
+  await defaultLanguage.selectOption({ label: 'French' });
   await expect(french.getByText('Default', { exact: true })).toBeVisible();
   await expect(english.getByText('Default', { exact: true })).toHaveCount(0);
   // The default keeps its place in the alphabetical list.
@@ -247,9 +252,6 @@ test('adds a language, keeps the default language from being removed, translates
   // Nor can English, though it is no longer the default: its texts exist in
   // no other language yet.
   const englishActions = await openActions(page, 'English');
-  await expect(
-    englishActions.getByRole('menuitem', { name: 'Make default', exact: true }),
-  ).toBeVisible();
   const removeEnglish = englishActions.getByRole('menuitem', {
     name: 'Remove',
     exact: true,

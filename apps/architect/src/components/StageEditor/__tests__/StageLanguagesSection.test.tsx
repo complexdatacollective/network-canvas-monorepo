@@ -169,12 +169,13 @@ describe('the language chooser’s languages in Architect', () => {
       expect(actionsTrigger(language)).toBeInTheDocument();
     }
     const menu = await openActions('French');
-    for (const action of ['Make default', 'Remove']) {
-      expect(
-        within(menu).getByRole('menuitem', { name: action }),
-      ).toBeInTheDocument();
-    }
+    expect(
+      within(menu).getByRole('menuitem', { name: 'Remove' }),
+    ).toBeInTheDocument();
     await closeActions('French');
+    expect(
+      screen.getByRole('combobox', { name: 'Default language' }),
+    ).toHaveDisplayValue('English');
     expect(
       screen.getByRole('button', { name: 'Add languages' }),
     ).toBeInTheDocument();
@@ -191,6 +192,23 @@ describe('the language chooser’s languages in Architect', () => {
     expect(
       screen.getByRole('heading', { name: 'Skip logic' }),
     ).toBeInTheDocument();
+  });
+
+  it('changes the default language without touching the open stage', async () => {
+    const { store } = await openEditor();
+
+    await userEvent.selectOptions(
+      screen.getByRole('combobox', { name: 'Default language' }),
+      'French',
+    );
+
+    expect(getProtocol(store.getState())?.localization.defaultLocale).toBe(
+      'fr',
+    );
+    expect(within(rowOf('French')).getByText('Default')).toBeVisible();
+    expect(readStageDraft().stage?.label).toEqual(LABEL);
+    expect(readStageDraft().dirty).toBe(false);
+    expect(finishedEditing()).not.toBeInTheDocument();
   });
 
   it('opens the translation table from an untouched stage without asking', async () => {

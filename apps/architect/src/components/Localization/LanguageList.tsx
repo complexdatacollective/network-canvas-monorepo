@@ -1,4 +1,4 @@
-import { Check, Ellipsis, Plus, Star, Table2, Trash2 } from 'lucide-react';
+import { Check, Ellipsis, Plus, Table2, Trash2 } from 'lucide-react';
 import { type MouseEvent, useId, useMemo, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { Link, useLocation } from 'wouter';
@@ -13,9 +13,10 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@codaco/fresco-ui/DropdownMenu';
+import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
+import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import ProgressBar from '@codaco/fresco-ui/ProgressBar';
 import Section from '@codaco/fresco-ui/Section';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
@@ -80,6 +81,19 @@ const messages = defineMessages({
     description:
       'Explanation of the list of protocol languages, shown when the protocol has only one language.',
   },
+  defaultLanguage: {
+    id: 'architect.localization.languageList.defaultLanguage',
+    defaultMessage: 'Default language',
+    description:
+      'Label of the list above the protocol languages that chooses which of them is the default.',
+  },
+  defaultLanguageHint: {
+    id: 'architect.localization.languageList.defaultLanguageHint',
+    defaultMessage:
+      'Participants see a text in this language when it has no translation in a language they use.',
+    description:
+      'Hint under the list that chooses the protocol’s default language, saying what the default language does.',
+  },
   addLanguages: {
     id: 'architect.localization.languageList.addLanguages',
     defaultMessage: 'Add languages',
@@ -101,12 +115,6 @@ const messages = defineMessages({
     defaultMessage: 'Actions for {language}',
     description:
       'Accessible name of the button that opens the menu of actions for one protocol language, and of that menu. language is the language name.',
-  },
-  makeDefault: {
-    id: 'architect.localization.languageList.makeDefault',
-    defaultMessage: 'Make default',
-    description:
-      'Item in the menu of actions for one protocol language that makes it the default language.',
   },
   identifyLanguage: {
     id: 'architect.localization.languageList.identifyLanguage',
@@ -254,6 +262,24 @@ export const ProtocolLanguages = ({ draft }: ProtocolLanguagesProps) => {
           </AlertDescription>
         </Alert>
       )}
+      {locales.length > 1 && (
+        <UnconnectedField
+          name="default-language"
+          label={intl.formatMessage(messages.defaultLanguage)}
+          hint={intl.formatMessage(messages.defaultLanguageHint)}
+          component={NativeSelectField}
+          options={sortedLocales.map((locale) => ({
+            value: locale,
+            label: languageName(locale),
+          }))}
+          value={protocol.localization.defaultLocale}
+          onChange={(locale) => {
+            if (typeof locale === 'string') {
+              dispatch(setProtocolDefaultLocale({ locale }));
+            }
+          }}
+        />
+      )}
       <ul className="divide-outline flex flex-col divide-y">
         {sortedLocales.map((locale) => {
           const entry = coverageByLocale.get(locale);
@@ -265,9 +291,6 @@ export const ProtocolLanguages = ({ draft }: ProtocolLanguagesProps) => {
               total={coverage.total}
               strandedCount={
                 removalImpacts.get(locale)?.strandedStrings.length ?? 0
-              }
-              onMakeDefault={() =>
-                dispatch(setProtocolDefaultLocale({ locale }))
               }
               onRemove={(returnFocus) => removeLanguage(locale, returnFocus)}
             />
@@ -302,7 +325,6 @@ type LanguageRowProps = {
   entry: LocaleCoverage;
   total: number;
   strandedCount: number;
-  onMakeDefault: () => void;
   onRemove: (returnFocus: ReturnFocus) => Promise<void>;
 };
 
@@ -310,7 +332,6 @@ const LanguageRow = ({
   entry,
   total,
   strandedCount,
-  onMakeDefault,
   onRemove,
 }: LanguageRowProps) => {
   const intl = useAppIntl();
@@ -410,17 +431,6 @@ const LanguageRow = ({
           }
         />
         <DropdownMenuContent side="bottom" align="end">
-          {!isDefault && (
-            <>
-              <DropdownMenuItem
-                icon={<Star aria-hidden />}
-                onClick={onMakeDefault}
-              >
-                {intl.formatMessage(messages.makeDefault)}
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-            </>
-          )}
           {removalBlockedReason ? (
             // Disabled items stay reachable with the arrow keys, and the
             // reason is part of the item rather than a tooltip, so it is read

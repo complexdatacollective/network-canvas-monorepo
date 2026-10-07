@@ -1779,6 +1779,14 @@
     "defaultMessage": "Default",
     "description": "Badge marking the default language of a protocol."
   },
+  "architect.localization.languageList.defaultLanguage": {
+    "defaultMessage": "Default language",
+    "description": "Label of the list above the protocol languages that chooses which of them is the default."
+  },
+  "architect.localization.languageList.defaultLanguageHint": {
+    "defaultMessage": "Participants see a text in this language when it has no translation in a language they use.",
+    "description": "Hint under the list that chooses the protocol’s default language, saying what the default language does."
+  },
   "architect.localization.languageList.defaultNote": {
     "defaultMessage": "To remove the default language, make another language the default first.",
     "description": "Shown under the unavailable Remove item in the menu of actions for the default language, saying why it cannot be removed."
@@ -1794,10 +1802,6 @@
   "architect.localization.languageList.identifyLanguage": {
     "defaultMessage": "Identify language",
     "description": "Button that names the language of text whose language has not been identified."
-  },
-  "architect.localization.languageList.makeDefault": {
-    "defaultMessage": "Make default",
-    "description": "Item in the menu of actions for one protocol language that makes it the default language."
   },
   "architect.localization.languageList.missingBadge": {
     "defaultMessage": "Missing translations",

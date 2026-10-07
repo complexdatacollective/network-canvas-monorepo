@@ -220,17 +220,33 @@ describe('LanguageList', () => {
     );
   });
 
-  it('makes a language the default from its menu', async () => {
-    const { store } = renderLanguageList();
+  it('chooses the default language from a list above the languages, in alphabetical order', async () => {
+    const user = userEvent.setup();
+    const { store } = renderLanguageList({
+      ...trilingual,
+      localization: { defaultLocale: 'en', locales: ['fr', 'de', 'en'] },
+    });
 
-    const menu = await openActions('German');
-    fireEvent.click(
-      within(menu).getByRole('menuitem', { name: 'Make default' }),
+    const select = screen.getByRole('combobox', { name: 'Default language' });
+    expect(select).toHaveAccessibleDescription(
+      'Participants see a text in this language when it has no translation in a language they use.',
     );
+    expect(select).toHaveDisplayValue('English');
+    expect(
+      within(select)
+        .getAllByRole('option')
+        .map((option) => option.textContent),
+    ).toEqual(['English', 'French', 'German']);
+
+    await user.selectOptions(select, 'German');
 
     expect(getProtocol(store.getState())?.localization.defaultLocale).toBe(
       'de',
     );
+    expect(within(rowOf('German')).getByText('Default')).toBeVisible();
+    expect(
+      within(rowOf('English')).queryByText('Default'),
+    ).not.toBeInTheDocument();
   });
 
   it('offers no way to rename a language', async () => {
@@ -241,7 +257,7 @@ describe('LanguageList', () => {
       within(menu)
         .getAllByRole('menuitem')
         .map((item) => item.textContent),
-    ).toEqual(['Make default', 'Remove']);
+    ).toEqual(['Remove']);
   });
 
   it('identifies the language of unidentified text from its notice', async () => {
@@ -321,7 +337,7 @@ describe('LanguageList', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('offers the translation table only once there is a language to translate into', () => {
+  it('offers the translation table and a choice of default only once there are two languages', () => {
     renderLanguageList({
       ...trilingual,
       localization: { defaultLocale: 'en', locales: ['en'] },
@@ -330,6 +346,9 @@ describe('LanguageList', () => {
 
     expect(
       screen.queryByRole('link', { name: 'Open translation table' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('combobox', { name: 'Default language' }),
     ).not.toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: 'Add languages' }),
