@@ -6,6 +6,7 @@ import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPa
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { REQUIRED } from '../form/requiredField.ts';
+import { LanguageNamingProvider } from '../localization/LanguageNaming.tsx';
 import type { ProtocolLocalization } from '../localization/localizedText.ts';
 import { chooseEditingLanguage } from '../testing/chooseEditingLanguage.ts';
 import { FieldStoryHost } from '../testing/FieldStoryHost.tsx';
@@ -120,8 +121,7 @@ export const SeveralLanguages: Story = {
 /**
  * A right-to-left language is edited right to left. Arabic is the default
  * language here and has no translation yet, so the note says participants
- * will see the English instead unless their browser lists another language
- * that has it.
+ * will see the English instead: the only language the text is written in.
  */
 export const RightToLeft: Story = {
   args: {
@@ -136,6 +136,64 @@ export const RightToLeft: Story = {
     await expect(
       canvas.getAllByText(/Not translated into العربية yet/).length,
     ).toBeGreaterThan(0);
+  },
+};
+
+const englishName = (locale: string) =>
+  new Intl.DisplayNames(['en'], { type: 'language' }).of(locale) ?? locale;
+
+/**
+ * A host can name the languages in its own interface language. The menu then
+ * shows each language's own name beside it when the two differ, and the note
+ * uses the host's name.
+ */
+export const NamedByTheHost: Story = {
+  args: {
+    seedEdit: writtenIn({ defaultLocale: 'en-US', locales: ['en-US', 'fr'] }),
+  },
+  decorators: [
+    (Story) => (
+      <LanguageNamingProvider name={englishName}>
+        <Story />
+      </LanguageNamingProvider>
+    ),
+  ],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await awaitPassiveEffects();
+
+    await canvas.findByRole('textbox', { name: TITLE_LABEL });
+    await chooseEditingLanguage(canvasElement, /^French français/);
+    await expect(
+      canvas.getAllByText(/Not translated into French yet/).length,
+    ).toBeGreaterThan(0);
+  },
+};
+
+/**
+ * A host that already shows every language's text beside the field can leave
+ * out the note under it.
+ */
+export const WithoutTheNote: Story = {
+  args: {
+    seedEdit: writtenIn({ defaultLocale: 'en-US', locales: ['en-US', 'fr'] }),
+    children: (
+      <Field<typeof LocalizedInputField>
+        name={TITLE_FIELD}
+        component={LocalizedInputField}
+        label={TITLE_LABEL}
+        required={REQUIRED}
+        hideUntranslatedNote
+      />
+    ),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await awaitPassiveEffects();
+
+    await canvas.findByRole('textbox', { name: TITLE_LABEL });
+    await chooseEditingLanguage(canvasElement, /^français/);
+    await expect(canvas.queryByText(/Not translated/)).toBeNull();
   },
 };
 

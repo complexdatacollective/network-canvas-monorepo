@@ -11,9 +11,13 @@ import {
   DropdownMenuTrigger,
 } from '@codaco/fresco-ui/DropdownMenu';
 import { cx } from '@codaco/fresco-ui/utils/cva';
-import { sortByLanguageName } from '@codaco/protocol-validation';
+import {
+  sortByLanguageName,
+  type LocaleTag,
+} from '@codaco/protocol-validation';
 
-import { languageMessages, useLanguageName } from './languageNames.ts';
+import { languageMessages } from './languageNames.ts';
+import { useLanguageNaming } from './LanguageNaming.tsx';
 import { localeDirection, missingLocalesAcross } from './localizedText.ts';
 import { useEditingLanguage } from './ProtocolLocalization.tsx';
 
@@ -42,7 +46,7 @@ export function EditingLanguageSwitcher({
   className,
 }: EditingLanguageSwitcherProps) {
   const intl = useAppIntl();
-  const languageName = useLanguageName();
+  const { name, autonym } = useLanguageNaming();
   const { localization, locale, setLocale } = useEditingLanguage();
 
   if (
@@ -54,11 +58,7 @@ export function EditingLanguageSwitcher({
   }
 
   const missing = missingLocalesAcross(values, localization);
-  const languages = sortByLanguageName(
-    localization.locales,
-    languageName,
-    intl.locale,
-  );
+  const languages = sortByLanguageName(localization.locales, name, intl.locale);
 
   return (
     <div className={cx('flex flex-wrap items-center gap-2', className)}>
@@ -76,9 +76,7 @@ export function EditingLanguageSwitcher({
           <span className="sr-only">
             {intl.formatMessage(languageMessages.editingLanguage)}
           </span>
-          <span lang={locale} dir={localeDirection(locale)}>
-            {languageName(locale)}
-          </span>
+          <LanguageName locale={locale} />
           <ChevronDown aria-hidden="true" />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start">
@@ -96,8 +94,17 @@ export function EditingLanguageSwitcher({
                 closeOnClick
                 className="gap-3"
               >
-                <span lang={declared} dir={localeDirection(declared)}>
-                  {languageName(declared)}
+                <span className="flex flex-wrap items-baseline gap-x-2">
+                  <LanguageName locale={declared} />
+                  {name(declared) !== autonym(declared) && (
+                    <span
+                      lang={declared}
+                      dir={localeDirection(declared)}
+                      className="text-sm text-current/70"
+                    >
+                      {autonym(declared)}
+                    </span>
+                  )}
                 </span>
                 {declared === localization.defaultLocale && (
                   <Badge size="sm" tone="neutral" appearance="outline">
@@ -127,5 +134,21 @@ export function EditingLanguageSwitcher({
         </Badge>
       )}
     </div>
+  );
+}
+
+/**
+ * A language's name, marked as written in that language when it is its
+ * autonym, so a screen reader pronounces it in that language.
+ */
+function LanguageName({ locale }: Readonly<{ locale: LocaleTag }>) {
+  const { name, autonym } = useLanguageNaming();
+  const text = name(locale);
+  return text === autonym(locale) ? (
+    <span lang={locale} dir={localeDirection(locale)}>
+      {text}
+    </span>
+  ) : (
+    <span>{text}</span>
   );
 }

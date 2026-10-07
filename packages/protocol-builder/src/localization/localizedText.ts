@@ -118,6 +118,22 @@ export function missingLocales(
   return missingLocalesAcross([value], localization);
 }
 
+/**
+ * Whether the participant's browser could show `value` in a language other
+ * than `shown`, the one it falls back to for a participant whose browser lists
+ * only the language they chose. It can only when the fallback is not a related
+ * language and another declared language has the text for the browser to pick.
+ */
+export function fallbackDependsOnBrowser(
+  value: unknown,
+  localization: ProtocolLocalization,
+  shown: ResolvedTranslation,
+): boolean {
+  const translatedCount =
+    localization.locales.length - missingLocales(value, localization).size;
+  return shown.matchedBy !== 'selected' && translatedCount > 1;
+}
+
 export function localeDirection(locale: LocaleTag): 'ltr' | 'rtl' {
   return getLocaleMetadata(locale).direction;
 }

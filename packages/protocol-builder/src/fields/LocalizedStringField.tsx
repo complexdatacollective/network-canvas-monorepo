@@ -7,11 +7,10 @@ import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import type { LocalizedString } from '@codaco/protocol-validation';
 
 import { EditingLanguageSwitcher } from '../localization/EditingLanguageSwitcher.tsx';
+import { languageMessages } from '../localization/languageNames.ts';
+import { useLanguageNaming } from '../localization/LanguageNaming.tsx';
 import {
-  languageMessages,
-  useLanguageName,
-} from '../localization/languageNames.ts';
-import {
+  fallbackDependsOnBrowser,
   localeDirection,
   missingLocales,
   resolveTranslation,
@@ -36,7 +35,17 @@ export type LocalizedStringFieldProps = FieldValueProps<LocalizedString> &
   Readonly<{
     /** The text control, drawn for the editing language's translation. */
     children: (translation: TranslationControl) => ReactNode;
-  }>;
+  }> &
+  UntranslatedNoteOption;
+
+type UntranslatedNoteOption = Readonly<{
+  /**
+   * Leaves out the note under the control that says which language
+   * participants see while the editing language has no translation. For a
+   * host that already shows every language's text beside the field.
+   */
+  hideUntranslatedNote?: boolean;
+}>;
 
 /**
  * Participant-facing text written in each of the protocol's languages.
@@ -58,9 +67,10 @@ export function LocalizedStringField({
   value,
   onChange,
   children,
+  hideUntranslatedNote = false,
 }: LocalizedStringFieldProps) {
   const intl = useAppIntl();
-  const languageName = useLanguageName();
+  const { name: languageName } = useLanguageNaming();
   const { localization, locale } = useEditingLanguage();
 
   if (localization === undefined || locale === undefined) {
@@ -73,15 +83,17 @@ export function LocalizedStringField({
 
   const shown = resolveTranslation(value, localization, locale);
   const untranslated =
+    !hideUntranslatedNote &&
     localization.locales.length > 1 &&
     missingLocales(value, localization).has(locale) &&
     shown.lang !== undefined;
-  // Only a related language is certain: the editor cannot know which other
-  // languages a participant's browser lists.
-  const untranslatedMessage =
-    shown.matchedBy === 'selected'
-      ? languageMessages.notTranslated
-      : languageMessages.notTranslatedUnlessBrowserLists;
+  const untranslatedMessage = fallbackDependsOnBrowser(
+    value,
+    localization,
+    shown,
+  )
+    ? languageMessages.notTranslatedUnlessBrowserLists
+    : languageMessages.notTranslated;
 
   return (
     <div className="flex flex-col gap-2">
@@ -111,16 +123,22 @@ export function LocalizedStringField({
 }
 
 type LocalizedControlProps<Props> = Omit<Props, 'value' | 'onChange'> &
-  FieldValueProps<LocalizedString>;
+  FieldValueProps<LocalizedString> &
+  UntranslatedNoteOption;
 
 /** Plain participant-facing text, one line per language. */
 export function LocalizedInputField({
   value,
   onChange,
+  hideUntranslatedNote,
   ...props
 }: LocalizedControlProps<ComponentProps<typeof InputField>>) {
   return (
-    <LocalizedStringField value={value} onChange={onChange}>
+    <LocalizedStringField
+      value={value}
+      onChange={onChange}
+      hideUntranslatedNote={hideUntranslatedNote}
+    >
       {(translation) => (
         <InputField
           {...props}
@@ -137,10 +155,15 @@ export function LocalizedInputField({
 export function LocalizedRichTextField({
   value,
   onChange,
+  hideUntranslatedNote,
   ...props
 }: LocalizedControlProps<ComponentProps<typeof RichTextField>>) {
   return (
-    <LocalizedStringField value={value} onChange={onChange}>
+    <LocalizedStringField
+      value={value}
+      onChange={onChange}
+      hideUntranslatedNote={hideUntranslatedNote}
+    >
       {(translation) => (
         <RichTextField
           {...props}
@@ -157,10 +180,15 @@ export function LocalizedRichTextField({
 export function LocalizedOptionLabelField({
   value,
   onChange,
+  hideUntranslatedNote,
   ...props
 }: LocalizedControlProps<ComponentProps<typeof OptionLabelField>>) {
   return (
-    <LocalizedStringField value={value} onChange={onChange}>
+    <LocalizedStringField
+      value={value}
+      onChange={onChange}
+      hideUntranslatedNote={hideUntranslatedNote}
+    >
       {(translation) => (
         <OptionLabelField
           {...props}

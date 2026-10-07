@@ -10,6 +10,7 @@ import {
   type LocalizedString,
 } from '@codaco/protocol-validation';
 
+import { LanguageNamingProvider } from '../../localization/LanguageNaming.tsx';
 import type { ProtocolLocalization } from '../../localization/localizedText.ts';
 import { ProtocolLocalizationProvider } from '../../localization/ProtocolLocalization.tsx';
 import {
@@ -24,16 +25,25 @@ const ENGLISH_AND_SPANISH: ProtocolLocalization = {
 
 type Saved = { title?: LocalizedString };
 
+const ENGLISH_NAMES: Readonly<Record<string, string>> = {
+  de: 'German',
+  en: 'English',
+  es: 'Spanish',
+  fr: 'French',
+};
+
 function renderTitle({
   initialValue,
   localization = ENGLISH_AND_SPANISH,
   initialLocale,
   required = false,
+  hideUntranslatedNote,
 }: {
   initialValue?: LocalizedString;
   localization?: ProtocolLocalization;
   initialLocale?: string;
   required?: boolean;
+  hideUntranslatedNote?: boolean;
 }) {
   const saved: { current: Saved | undefined } = { current: undefined };
   render(
@@ -53,6 +63,7 @@ function renderTitle({
           component={LocalizedInputField}
           initialValue={initialValue}
           required={required}
+          hideUntranslatedNote={hideUntranslatedNote}
         />
         <button type="submit">Save</button>
       </Form>
@@ -171,7 +182,7 @@ describe('LocalizedStringField', () => {
     await chooseLanguage(/^español/);
     expect(
       screen.getByText(
-        'Not translated into español yet. Participants using español will see the English text, unless their browser also lists a language that has it.',
+        'Not translated into español yet. Participants using español will see the English text.',
       ),
     ).toBeInTheDocument();
 
@@ -179,6 +190,73 @@ describe('LocalizedStringField', () => {
     await waitFor(() =>
       expect(saved.current).toEqual({ title: { en: 'Hello' } }),
     );
+  });
+
+  it('says the browser may choose when another language also has the text', async () => {
+    renderTitle({
+      initialValue: { en: 'Hello', fr: 'Bonjour' },
+      localization: { defaultLocale: 'en', locales: ['en', 'es', 'fr'] },
+    });
+
+    await chooseLanguage(/^español/);
+    expect(
+      screen.getByText(
+        'Not translated into español yet. Participants using español will see the English text, unless their browser also lists a language that has it.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('leaves the note out when the host asks it to', async () => {
+    renderTitle({
+      initialValue: { en: 'Hello' },
+      hideUntranslatedNote: true,
+    });
+
+    await chooseLanguage(/^español/);
+    expect(screen.getByRole('textbox', { name: 'Title' })).toHaveValue('');
+    expect(screen.queryByText(/Not translated/)).not.toBeInTheDocument();
+  });
+
+  it('names languages as the host does, with each autonym beside it in the menu', async () => {
+    const user = userEvent.setup();
+    render(
+      <LanguageNamingProvider
+        name={(locale) => ENGLISH_NAMES[locale] ?? locale}
+      >
+        <ProtocolLocalizationProvider
+          localization={{ defaultLocale: 'en', locales: ['fr', 'en', 'de'] }}
+        >
+          <Form onSubmit={() => ({ success: true })}>
+            <Field
+              name="title"
+              label="Title"
+              component={LocalizedInputField}
+              initialValue={{ en: 'Hello' }}
+            />
+          </Form>
+        </ProtocolLocalizationProvider>
+      </LanguageNamingProvider>,
+    );
+
+    await user.click(screen.getByRole('button', { name: /Editing language/ }));
+    const languages = await screen.findAllByRole('menuitemradio');
+    expect(languages.map((item) => item.textContent)).toEqual([
+      'EnglishDefault',
+      'FrenchfrançaisMissing',
+      'GermanDeutschMissing',
+    ]);
+    const french = screen.getByText('français');
+    expect(french).toHaveAttribute('lang', 'fr');
+
+    await user.click(screen.getByRole('menuitemradio', { name: /^French/ }));
+    expect(
+      screen.getByRole('button', { name: /Editing language/ }),
+    ).toHaveTextContent('French');
+    expect(
+      screen.getByText(
+        'Not translated into French yet. Participants using French will see the English text.',
+      ),
+    ).toBeInTheDocument();
   });
 
   it('says a closely related translation is shown, whatever the browser lists', async () => {
