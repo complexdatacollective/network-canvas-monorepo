@@ -7,16 +7,17 @@ import { createMessageError } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Button from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
-import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
 import Form from '@codaco/fresco-ui/form/Form';
-import type { FormSubmitHandler } from '@codaco/fresco-ui/form/store/types';
+import type {
+  FormSubmissionResult,
+  FormSubmitHandler,
+} from '@codaco/fresco-ui/form/store/types';
 import Icon, { type InterviewerIconName } from '@codaco/fresco-ui/Icon';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import type { Form as TForm } from '@codaco/protocol-validation';
 import {
   type EntityAttributesProperty,
   type EntityPrimaryKey,
-  entityAttributesProperty,
   entityPrimaryKeyProperty,
   type NcNode,
 } from '@codaco/shared-consts';
@@ -31,14 +32,17 @@ import {
 import { useCurrentStep } from '../../../contexts/CurrentStepContext';
 import { formValuesToAttributePatch } from '../../../forms/formValuesToAttributePatch';
 import useProtocolForm from '../../../forms/useProtocolForm';
+import { writeSubmissionResult } from '../../../forms/writeSubmissionResult';
 import { useCelebrate } from '../../../hooks/useCelebrate';
 import { useStageSelector } from '../../../hooks/useStageSelector';
 import { runtimeMessages } from '../../../i18n/runtimeMessages';
 import { getNodeIconName } from '../../../selectors/name-generator';
+import { getCodebookVariablesForSubjectType } from '../../../selectors/protocol';
 import { getPromptAdditionalAttributes } from '../../../selectors/session';
 import type { AttributePatch } from '../../../store/entityAttributePatch';
 import { updateNode as updateNodeAction } from '../../../store/modules/session';
 import { useAppDispatch } from '../../../store/store';
+import { useProtectedFormValues } from '../../Anonymisation/useProtectedFormValues';
 import { interfaceMessages } from '../../messages';
 
 type NodeFormProps = {
@@ -48,7 +52,7 @@ type NodeFormProps = {
   onClose: () => void;
   addNode: (
     attributes: NcNode[EntityAttributesProperty],
-  ) => void | Promise<void>;
+  ) => Promise<FormSubmissionResult>;
 };
 
 const NodeForm = (props: NodeFormProps) => {
@@ -57,6 +61,7 @@ const NodeForm = (props: NodeFormProps) => {
 
   const newNodeAttributes = useStageSelector(getPromptAdditionalAttributes);
   const icon = useStageSelector(getNodeIconName);
+  const variables = useStageSelector(getCodebookVariablesForSubjectType);
 
   const [show, setShow] = useState(false);
 
@@ -120,16 +125,18 @@ const NodeForm = (props: NodeFormProps) => {
     },
   };
 
-  const initialValues = selectedNode?.[entityAttributesProperty]
-    ? Object.entries(selectedNode[entityAttributesProperty]).reduce<
-        Record<string, FieldValue>
-      >((values, [name, value]) => {
-        if (value !== null) {
-          values[name] = value;
-        }
-        return values;
-      }, {})
-    : undefined;
+  // An edited person's encrypted answers are decrypted before the form opens,
+  // and the form closes if the passphrase that decrypted them goes.
+  const editing = useProtectedFormValues(selectedNode, form.fields, variables);
+  const editingLocked = selectedNode !== null && editing.status === 'locked';
+  useEffect(() => {
+    if (!editingLocked) return;
+    setShow(false);
+    onClose();
+  }, [editingLocked, onClose]);
+
+  const initialValues =
+    selectedNode && editing.status === 'ready' ? editing.values : undefined;
 
   const { fieldComponents, coerceValues } = useProtocolForm({
     fields: form.fields,
@@ -154,15 +161,15 @@ const NodeForm = (props: NodeFormProps) => {
 
       const isNewNode = !selectedNode;
 
-      if (isNewNode) {
-        await addNode({ ...newNodeAttributes, ...patchResult.patch.set });
-      } else {
-        const selectedUID = selectedNode[entityPrimaryKeyProperty];
-        await updateNode({
-          nodeId: selectedUID,
-          attributePatch: patchResult.patch,
-        });
-      }
+      const saved = isNewNode
+        ? await addNode({ ...newNodeAttributes, ...patchResult.patch.set })
+        : writeSubmissionResult(
+            await updateNode({
+              nodeId: selectedNode[entityPrimaryKeyProperty],
+              attributePatch: patchResult.patch,
+            }),
+          );
+      if (!saved.success) return saved;
 
       setShow(false);
       onClose();
@@ -225,7 +232,7 @@ const NodeForm = (props: NodeFormProps) => {
         </motion.div>
       </AnimatePresence>
       <Dialog
-        open={show}
+        open={show && editing.status === 'ready'}
         title={form.title}
         closeDialog={handleClose}
         footer={

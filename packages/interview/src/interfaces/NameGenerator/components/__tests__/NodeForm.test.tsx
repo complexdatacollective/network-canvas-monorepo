@@ -18,6 +18,7 @@ import {
 
 import { CurrentStepProvider } from '../../../../contexts/CurrentStepContext';
 import type { ProtocolPayload } from '../../../../contract/types';
+import { writeSubmissionResult } from '../../../../forms/writeSubmissionResult';
 import protocol from '../../../../store/modules/protocol';
 import session, {
   addNode as addSessionNode,
@@ -124,19 +125,16 @@ function renderNodeForm(variable: Variable) {
       getDefaultMiddleware({ serializableCheck: false }),
   });
 
-  const addNode = async (
-    attributes: NcNode[typeof entityAttributesProperty],
-  ) => {
-    await store
-      .dispatch(
+  const addNode = async (attributes: NcNode[typeof entityAttributesProperty]) =>
+    writeSubmissionResult(
+      await store.dispatch(
         addSessionNode({
           type: NODE_TYPE,
           attributeData: attributes,
           currentStep: 0,
         }),
-      )
-      .unwrap();
-  };
+      ),
+    );
 
   render(
     <Provider store={store}>
