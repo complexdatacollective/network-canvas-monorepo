@@ -1,3 +1,4 @@
+import { toMerged } from 'es-toolkit';
 import { useCallback, useContext, useRef, useState } from 'react';
 
 import { commonMessages } from '@codaco/app-i18n/common';
@@ -41,6 +42,8 @@ export type DialogFormProps = {
   /** Closes the dialog — called on Cancel and after a successful submit. */
   onClose: () => void;
   title?: React.ReactNode;
+  /** Text under the title that the dialog is described by. */
+  description?: DialogProps['description'];
   /**
    * Stable, human-readable NAME for the underlying `<form>` (e.g.
    * `'editable-list-form'`). It is only the stem of the element's DOM id — a
@@ -53,9 +56,9 @@ export type DialogFormProps = {
   /**
    * Label of a second submit button after the main one, for submitting
    * without finishing, such as "Save and next". `onSubmit` is told which
-   * button sent the form. A secondary submission that succeeds takes the
-   * submitted values as saved, so the dialog can stay open without claiming
-   * they are unsaved.
+   * button sent the form. A secondary submission that succeeds counts the
+   * submitted values, and any field that mounts while it saves, as saved, so
+   * the dialog can stay open without claiming they are unsaved.
    */
   secondarySubmitLabel?: string;
   cancelLabel?: string;
@@ -107,6 +110,7 @@ const DialogFormBody = ({
   open,
   onClose,
   title,
+  description,
   formId,
   submitLabel,
   secondarySubmitLabel,
@@ -182,7 +186,10 @@ const DialogFormBody = ({
       if (refusal) return { success: false, formErrors: [refusal] };
       const result = await onSubmit(values, sentBy);
       if (sentBy === 'secondary' && (result === undefined || result.success)) {
-        storeApi?.getState().rebaseToDocument(values);
+        // A field that mounted while the submission was saving — the next
+        // item's, say — was not part of it, and keeps what it holds as saved.
+        const store = storeApi?.getState();
+        store?.rebaseToDocument(toMerged(store.getFormValues(), values));
       }
       return result;
     },
@@ -199,6 +206,7 @@ const DialogFormBody = ({
       closeDialog={requestClose}
       dismissible={!isSubmitting}
       title={title}
+      description={description}
       layoutId={layoutId}
       style={style}
       finalFocus={finalFocus}
