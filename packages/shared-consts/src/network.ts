@@ -51,17 +51,25 @@ export const EntityAttributesSchema = z.preprocess(
   z.record(z.string(), VariableValueSchema),
 );
 
+/**
+ * How one stored encrypted value was produced: the initialisation vector of
+ * its encryption. The key it was encrypted with is the interview's, described
+ * once by the network's `encryption` header.
+ *
+ * `salt` is only ever present on a value written by the experimental schema 8
+ * feature, which derived a key per value. Such a value cannot be decrypted
+ * any more; it is accepted so the network it belongs to still loads.
+ */
+const SecureAttributeMetaSchema = z.object({
+  iv: z.array(z.number()),
+  salt: z.array(z.number()).optional(),
+});
+
 const BaseNcEntitySchema = z.object({
   [entityPrimaryKeyProperty]: z.string().readonly(),
   [entityAttributesProperty]: EntityAttributesSchema,
   [entitySecureAttributesMeta]: z
-    .record(
-      z.string(),
-      z.object({
-        iv: z.array(z.number()),
-        salt: z.array(z.number()),
-      }),
-    )
+    .record(z.string(), SecureAttributeMetaSchema)
     .optional(),
 });
 
@@ -90,10 +98,43 @@ export type NcEntity = z.infer<typeof NcEntity>;
 
 export type NcEgo = z.infer<typeof BaseNcEntitySchema>;
 
+/**
+ * The shortest passphrase an interview accepts when the stage that asks for
+ * it sets no minimum of its own.
+ */
+export const DEFAULT_PASSPHRASE_MIN_LENGTH = 8;
+
+const ByteArraySchema = z.array(z.number().int().min(0).max(255));
+
+/**
+ * Describes the one key an interview encrypts its protected answers with. The
+ * key itself is never stored: it is derived from the participant's passphrase
+ * with `kdf`, and a passphrase is the right one only if the key it derives
+ * decrypts `check`.
+ */
+const NcEncryptionHeaderSchema = z.object({
+  /** Versions how a value is encoded before encryption. */
+  version: z.literal(1),
+  method: z.literal('AES-256-GCM'),
+  kdf: z.object({
+    algorithm: z.literal('PBKDF2'),
+    hash: z.literal('SHA-256'),
+    iterations: z.number().int().positive(),
+    salt: ByteArraySchema,
+  }),
+  check: z.object({
+    iv: ByteArraySchema,
+    data: ByteArraySchema,
+  }),
+});
+
+export type NcEncryptionHeader = z.infer<typeof NcEncryptionHeaderSchema>;
+
 export const NcNetworkSchema = z.object({
   nodes: z.array(NcNodeSchema),
   edges: z.array(NcEdgeSchema),
   ego: BaseNcEntitySchema,
+  encryption: NcEncryptionHeaderSchema.optional(),
 });
 
 export type NcNetwork = z.output<typeof NcNetworkSchema>;
