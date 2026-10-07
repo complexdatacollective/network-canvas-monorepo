@@ -520,7 +520,7 @@ describe.skipIf(!testDb)('the participant procedures', () => {
         sessionToken,
         syncInput(session.holderEpoch, '1', ['n1', 'n2', 'n3'], [['n1', 'n2']]),
       );
-      expect(exit).toEqual(Exit.succeed({ revision: '1' }));
+      expect(exit).toEqual(Exit.succeed({ revision: '1', applied: true }));
 
       expect(
         await query(
@@ -561,7 +561,7 @@ describe.skipIf(!testDb)('the participant procedures', () => {
       );
       expect(
         await sync(sessionToken, syncInput(holderEpoch, '2', ['n1'])),
-      ).toEqual(Exit.succeed({ revision: '2' }));
+      ).toEqual(Exit.succeed({ revision: '2', applied: true }));
       expect(
         await query('SELECT node_id FROM nodes WHERE session_id = $1', [
           sessionId,
@@ -589,7 +589,7 @@ describe.skipIf(!testDb)('the participant procedures', () => {
       );
       expect(
         await sync(sessionToken, syncInput(holderEpoch, '3', ['n1', 'n2'])),
-      ).toEqual(Exit.succeed({ revision: '3' }));
+      ).toEqual(Exit.succeed({ revision: '3', applied: false }));
       expect(
         await query(
           'SELECT node_id, attributes FROM nodes WHERE session_id = $1',

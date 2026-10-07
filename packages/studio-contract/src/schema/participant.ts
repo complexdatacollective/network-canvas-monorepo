@@ -108,8 +108,15 @@ export const SyncInput = Schema.Struct({
   stageMetadata: StageMetadata,
 });
 
+/**
+ * `applied` is false when the presented revision was not past the stored one,
+ * so the snapshot was not written: `revision` is then the stored revision,
+ * which another page sharing this holder (a reloaded tab's last save from the
+ * page before) may have written with the same number.
+ */
 export const SyncResult = Schema.Struct({
   revision: DecimalSequence,
+  applied: Schema.Boolean,
 });
 
 export const FinishInput = Schema.Struct({

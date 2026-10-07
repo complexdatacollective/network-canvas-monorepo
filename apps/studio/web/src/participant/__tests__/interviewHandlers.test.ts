@@ -58,7 +58,7 @@ describe('the participant sync handler', () => {
   it('numbers each save from the stored revision and records the current stage', async () => {
     const harness = installParticipantHarness({
       'participant.sync': (payload) =>
-        Effect.succeed({ revision: payload.revision }),
+        Effect.succeed({ revision: payload.revision, applied: true }),
     });
     const { onSync } = handlersFor();
 
@@ -85,7 +85,7 @@ describe('the participant sync handler', () => {
   it('records no stage id on the runtime’s own finish stage', async () => {
     const harness = installParticipantHarness({
       'participant.sync': (payload) =>
-        Effect.succeed({ revision: payload.revision }),
+        Effect.succeed({ revision: payload.revision, applied: true }),
     });
     const { onSync } = handlersFor(2);
 
@@ -104,7 +104,7 @@ describe('the participant sync handler', () => {
         attempts += 1;
         return attempts === 1
           ? Effect.fail(new RateLimited({ retryAfterSeconds: 2 }))
-          : Effect.succeed({ revision: payload.revision });
+          : Effect.succeed({ revision: payload.revision, applied: true });
       },
     });
     const { onSync, onNotice } = handlersFor();
@@ -152,9 +152,11 @@ describe('the participant sync handler’s recovery', () => {
   it('saves again past the server when an earlier page left it ahead', async () => {
     const harness = installParticipantHarness({
       'participant.sync': (payload) =>
-        Effect.succeed({
-          revision: payload.revision === '8' ? '12' : payload.revision,
-        }),
+        Effect.succeed(
+          payload.revision === '8'
+            ? { revision: '12', applied: false }
+            : { revision: payload.revision, applied: true },
+        ),
     });
     const { onSync } = handlersFor();
 
@@ -165,6 +167,69 @@ describe('the participant sync handler’s recovery', () => {
         Reflect.get(Object(payload), 'revision'),
       ),
     ).toEqual(['8', '13']);
+  });
+
+  it('saves again when the server already holds another page’s save at this number', async () => {
+    // The page this one reloaded saved revision 8 as it unloaded, after this
+    // page read revision 7, so this page's first save is a replay.
+    const harness = installParticipantHarness({
+      'participant.sync': (payload) =>
+        Effect.succeed(
+          payload.revision === '8'
+            ? { revision: '8', applied: false }
+            : { revision: payload.revision, applied: true },
+        ),
+      'participant.finish': () => Effect.succeed({ state: 'completed' }),
+    });
+    const { onSync, onFinish } = handlersFor();
+
+    await onSync('session-1', session('Ada'), SYNC);
+    await onFinish('session-1', new AbortController().signal);
+
+    expect(harness.calls.map(({ tag, payload }) => [tag, payload])).toEqual([
+      ['participant.sync', expect.objectContaining({ revision: '8' })],
+      [
+        'participant.sync',
+        expect.objectContaining({
+          revision: '9',
+          network: session('Ada').network,
+        }),
+      ],
+      ['participant.finish', { holderEpoch: 3, revision: '9' }],
+    ]);
+  });
+
+  it('does not resend over its own later save', async () => {
+    let releaseFirst: () => void = () => undefined;
+    const firstHeld = new Promise<void>((resolve) => {
+      releaseFirst = resolve;
+    });
+    const harness = installParticipantHarness({
+      'participant.sync': (payload) =>
+        payload.revision === '8'
+          ? Effect.promise(() => firstHeld).pipe(
+              Effect.as({ revision: '9', applied: false }),
+            )
+          : Effect.succeed({ revision: payload.revision, applied: true }),
+    });
+    const { onSync } = handlersFor();
+
+    const first = onSync('session-1', session('Ada'), SYNC);
+    await vi.waitFor(() => expect(harness.calls).toHaveLength(1));
+    // The tab is hidden while the first save is on the wire: its unloading
+    // save, numbered 9, lands first.
+    await onSync('session-1', session('Grace'), {
+      immediate: true,
+      unloading: true,
+    });
+    releaseFirst();
+    await first;
+
+    expect(
+      harness.calls.map(({ payload }) =>
+        Reflect.get(Object(payload), 'revision'),
+      ),
+    ).toEqual(['8', '9']);
   });
 
   it('gives up on a rate limit after three attempts', async () => {
@@ -216,7 +281,7 @@ describe('the participant sync handler’s recovery', () => {
     let step = 0;
     const harness = installParticipantHarness({
       'participant.sync': (payload) =>
-        Effect.succeed({ revision: payload.revision }),
+        Effect.succeed({ revision: payload.revision, applied: true }),
     });
     const { saveStep } = createParticipantHandlers({
       holderEpoch: 3,
@@ -257,7 +322,7 @@ describe('the participant sync handler’s own saves', () => {
     let step = 0;
     const harness = installParticipantHarness({
       'participant.sync': (payload) =>
-        Effect.succeed({ revision: payload.revision }),
+        Effect.succeed({ revision: payload.revision, applied: true }),
     });
     const { onSync, saveStep } = createParticipantHandlers({
       holderEpoch: 3,
@@ -287,7 +352,7 @@ describe('the participant sync handler’s own saves', () => {
     let finishes = 0;
     const harness = installParticipantHarness({
       'participant.sync': (payload) =>
-        Effect.succeed({ revision: payload.revision }),
+        Effect.succeed({ revision: payload.revision, applied: true }),
       'participant.finish': () => {
         finishes += 1;
         return finishes === 1
@@ -313,7 +378,7 @@ describe('the participant finish handler', () => {
   it('finishes at the last revision it saved, then shows the finished notice', async () => {
     const harness = installParticipantHarness({
       'participant.sync': (payload) =>
-        Effect.succeed({ revision: payload.revision }),
+        Effect.succeed({ revision: payload.revision, applied: true }),
       'participant.finish': () => Effect.succeed({ state: 'completed' }),
     });
     const { onSync, onFinish, onNotice } = handlersFor();
@@ -334,7 +399,7 @@ describe('the participant finish handler', () => {
       'participant.sync': (payload) =>
         payload.revision === '8'
           ? Effect.fail(new RateLimited({ retryAfterSeconds: 0 }))
-          : Effect.succeed({ revision: payload.revision }),
+          : Effect.succeed({ revision: payload.revision, applied: true }),
       'participant.finish': () => {
         finishes += 1;
         return finishes === 1
@@ -365,6 +430,49 @@ describe('the participant finish handler', () => {
       ['participant.finish', { holderEpoch: 3, revision: '9' }],
     ]);
     expect(onNotice).toHaveBeenCalledWith('finished');
+  });
+
+  it('stops when the participant cancels while the finish is on the wire', async () => {
+    const harness = installParticipantHarness({
+      'participant.sync': (payload) =>
+        Effect.succeed({ revision: payload.revision, applied: true }),
+      'participant.finish': () => Effect.never,
+    });
+    const { onSync, onFinish, onNotice } = handlersFor();
+    const cancel = new AbortController();
+
+    await onSync('session-1', session('Ada'), SYNC);
+    const finishing = onFinish('session-1', cancel.signal);
+    await vi.waitFor(() => expect(harness.calls).toHaveLength(2));
+    cancel.abort();
+
+    await expect(finishing).rejects.toMatchObject({ name: 'AbortError' });
+    expect(onNotice).not.toHaveBeenCalled();
+  });
+
+  it('does not finish again after a resend the participant cancelled', async () => {
+    const cancel = new AbortController();
+    const harness = installParticipantHarness({
+      'participant.sync': (payload) => {
+        if (payload.revision === '9') cancel.abort();
+        return Effect.succeed({ revision: payload.revision, applied: true });
+      },
+      'participant.finish': () =>
+        Effect.fail(new SessionOutOfDate({ revision: '7' })),
+    });
+    const { onSync, onFinish, onNotice } = handlersFor();
+
+    await onSync('session-1', session('Ada'), SYNC);
+    await expect(onFinish('session-1', cancel.signal)).rejects.toMatchObject({
+      name: 'AbortError',
+    });
+
+    expect(harness.calls.map(({ tag }) => tag)).toEqual([
+      'participant.sync',
+      'participant.finish',
+      'participant.sync',
+    ]);
+    expect(onNotice).not.toHaveBeenCalled();
   });
 
   it('shows the finished notice when the interview was already finished', async () => {

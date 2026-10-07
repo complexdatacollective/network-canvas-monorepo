@@ -16,6 +16,7 @@ import { noticeFor, type ParticipantNoticeKind } from './ParticipantNotice.tsx';
 const SYNC_WAIT_MS = 3000;
 const RATE_LIMIT_ATTEMPTS = 3;
 const RATE_LIMIT_LONGEST_WAIT_SECONDS = 60;
+const RESEND_ATTEMPTS = 3;
 const ORDINARY = { immediate: false, unloading: false };
 
 type SyncPayload = Parameters<typeof participantUnloadingSync>[0];
@@ -77,11 +78,13 @@ export function createParticipantHandlers({
     };
   };
 
-  const deliver = async (payload: SyncPayload): Promise<bigint> => {
+  const deliver = async (
+    payload: SyncPayload,
+  ): Promise<{ readonly stored: bigint; readonly applied: boolean }> => {
     for (let attempt = 1; ; attempt += 1) {
       try {
         const result = await participantCall('participant.sync', payload);
-        return BigInt(result.revision);
+        return { stored: BigInt(result.revision), applied: result.applied };
       } catch (error) {
         const delay = retryAfterSeconds(error);
         if (
@@ -98,12 +101,18 @@ export function createParticipantHandlers({
     }
   };
 
+  // A save the server did not apply is resent past what it holds, unless what
+  // it holds is one of this page's own later saves: that one carries a newer
+  // snapshot, which this one must not overwrite. Anything else at or past this
+  // save's number came from another page sharing the holder, such as the last
+  // save of the page this one reloaded, whose number this page may reuse.
   const send = async (snapshot: SessionPayload): Promise<void> => {
-    const payload = payloadFor(snapshot);
-    const stored = await deliver(payload);
-    if (stored > issued) {
-      issued = stored;
-      await deliver(payloadFor(snapshot));
+    for (let attempt = 1; attempt <= RESEND_ATTEMPTS; attempt += 1) {
+      const payload = payloadFor(snapshot);
+      const { stored, applied } = await deliver(payload);
+      if (applied) return;
+      if (stored > BigInt(payload.revision) && stored <= issued) return;
+      if (stored > issued) issued = stored;
     }
   };
 
@@ -128,20 +137,25 @@ export function createParticipantHandlers({
     return debouncedSync(id, snapshot, options);
   };
 
-  const finish = () =>
-    participantCall('participant.finish', {
-      holderEpoch,
-      revision: String(issued),
-    });
+  const finish = (signal: AbortSignal) =>
+    participantCall(
+      'participant.finish',
+      { holderEpoch, revision: String(issued) },
+      signal,
+    );
 
-  const onFinish: FinishHandler = async () => {
+  // Cancelling the finish dialog aborts `signal`: the request in flight is
+  // abandoned, and nothing after it runs, so a cancelled finish never shows
+  // the finished notice or finishes again after a resend.
+  const onFinish: FinishHandler = async (_id, signal) => {
     try {
       try {
-        await finish();
+        await finish(signal);
       } catch (error) {
         if (!(error instanceof SessionOutOfDate)) throw error;
         await send(offered);
-        await finish();
+        signal.throwIfAborted();
+        await finish(signal);
       }
     } catch (error) {
       const kind = noticeOf(error);
