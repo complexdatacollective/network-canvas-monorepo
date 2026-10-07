@@ -688,9 +688,22 @@ describe('the participant finish handler', () => {
     });
     const { onFinish, onNotice } = handlersFor();
 
-    await onFinish('session-1', signal);
+    await expect(onFinish('session-1', signal)).resolves.toBeUndefined();
 
     expect(onNotice).toHaveBeenCalledWith('finished');
+  });
+
+  it('shows the refusal and rejects, so the runtime does not count a finish', async () => {
+    installParticipantHarness({
+      'participant.finish': () =>
+        Effect.fail(new SessionTakenOver({ holderEpoch: 3 })),
+    });
+    const { onFinish, onNotice } = handlersFor();
+
+    await expect(onFinish('session-1', signal)).rejects.toBeInstanceOf(
+      SessionTakenOver,
+    );
+    expect(onNotice).toHaveBeenCalledWith('takenOver');
   });
 
   it('leaves any other failure to the finish dialog', async () => {
