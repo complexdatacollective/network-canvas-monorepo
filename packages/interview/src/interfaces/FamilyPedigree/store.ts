@@ -145,6 +145,10 @@ export const createFamilyPedigreeStore = (
   preexistingReduxEdgeIds: ReadonlySet<string> = new Set(),
   initialFraming: FramingId | null = null,
   framingMode: 'fixed' | 'participantChoice' = 'fixed',
+  // Node variables encrypted in this interview (see `isAttributeEncrypted`).
+  // The store holds their plaintext while the pedigree is built; it must only
+  // reach Redux encrypted.
+  encryptedVariableIds: ReadonlySet<string> = new Set(),
 ) => {
   // Guard the network invariant that at most one edge of a given relationship
   // type connects any pair of nodes. Throwing surfaces edge-creation bugs (e.g.
@@ -405,10 +409,13 @@ export const createFamilyPedigreeStore = (
             const isEgo =
               node[entityAttributesProperty][variableConfig.egoVariable] ===
               true;
+            const storedLabel =
+              node[entityAttributesProperty][variableConfig.nodeLabelVariable];
             let label =
-              (node[entityAttributesProperty][
-                variableConfig.nodeLabelVariable
-              ] as string) ?? '';
+              typeof storedLabel === 'string' &&
+              !encryptedVariableIds.has(variableConfig.nodeLabelVariable)
+                ? storedLabel
+                : '';
 
             if (!label && !isEgo) {
               label = computedLabels.get(id) ?? 'Family Member';
@@ -499,6 +506,10 @@ export const createFamilyPedigreeStore = (
               addNodeToNetwork({
                 type: variableConfig.nodeType,
                 attributeData,
+                useEncryption: Object.entries(attributeData).some(
+                  ([key, value]) =>
+                    encryptedVariableIds.has(key) && typeof value === 'string',
+                ),
                 modelData: { _uid: reduxId },
                 allowUnknownAttributes: true,
                 currentStep: currentStep ?? 0,
