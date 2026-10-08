@@ -255,6 +255,7 @@
   "interview.interfaces.discardChanges": "Descartar cambios",
   "interview.interfaces.discardChangesDescription": "Este formulario contiene datos que no son válidos y no se puede guardar. Si continúas, se restablecerá y se perderán los cambios. ¿Quieres descartar los cambios?",
   "interview.interfaces.discardChangesTitle": "¿Descartar los cambios?",
+  "interview.interfaces.discardOvertakenEditDescription": "Deshacer o rehacer cambió una respuesta mientras la editabas, así que tu cambio no se ha guardado. Para conservarlo, vuelve a cambiar esa respuesta. Si continúas, se perderá tu cambio.",
   "interview.interfaces.dragToReposition": "Arrastra para cambiar de posición",
   "interview.interfaces.drawEdge": "Dibujar una conexión",
   "interview.interfaces.drawingControls": "Controles de dibujo",

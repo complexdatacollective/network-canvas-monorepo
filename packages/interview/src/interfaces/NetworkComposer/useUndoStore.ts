@@ -7,7 +7,7 @@ export type UndoCommand = {
   undo: () => void | Promise<void>;
   redo: () => void | Promise<void>;
   /**
-   * When set, a pushed command replaces the previous one if it is on top of the
+   * When set, a pushed command joins the previous one if it is on top of the
    * stack and shares the same key. Used to collapse a run of live edits to the
    * same entity (e.g. drawer auto-saves) into a single undo step.
    */
@@ -21,11 +21,38 @@ type UndoState = {
 
 type UndoActions = {
   push: (command: UndoCommand) => Promise<void>;
+  /**
+   * Makes a change and records the command that reverses it as one step of
+   * the history. An undo or redo asked for while the change is being made
+   * waits for it, so it applies to this change instead of overtaking it, and
+   * a change asked for while an undo or redo is being made waits for that.
+   * `change` resolves to the command, or to null when it changed nothing.
+   */
+  record: (change: () => Promise<UndoCommand | null>) => Promise<void>;
   undo: () => Promise<void>;
   redo: () => Promise<void>;
 };
 
 export type UndoStore = UndoState & UndoActions;
+
+/**
+ * One step made of `earlier` followed by `later`. Undoing it reverses `later`
+ * before `earlier`, so an answer only the later edit changed is put back too.
+ */
+const joinCommands = (
+  earlier: UndoCommand,
+  later: UndoCommand,
+): UndoCommand => ({
+  ...later,
+  undo: async () => {
+    await later.undo();
+    await earlier.undo();
+  },
+  redo: async () => {
+    await earlier.redo();
+    await later.redo();
+  },
+});
 
 export const createUndoStore = (limit = 50) =>
   createStore<UndoStore>()((set, get) => {
@@ -40,34 +67,37 @@ export const createUndoStore = (limit = 50) =>
       return chain;
     };
 
+    const pushNow = (command: UndoCommand) => {
+      set((state) => {
+        const previous = state.past[state.past.length - 1];
+        // Join consecutive same-key commands so a run of live edits is a
+        // single undo step.
+        if (
+          command.coalesceKey !== undefined &&
+          previous?.coalesceKey === command.coalesceKey
+        ) {
+          return {
+            past: [...state.past.slice(0, -1), joinCommands(previous, command)],
+            future: [],
+          };
+        }
+        return {
+          past: [...state.past, command].slice(-limit),
+          future: [],
+        };
+      });
+    };
+
     return {
       past: [],
       future: [],
 
-      push: (command) =>
-        enqueue(() => {
-          set((state) => {
-            const previous = state.past[state.past.length - 1];
-            // Collapse consecutive same-key commands so a run of live edits is a
-            // single undo step (the first command's `undo` already restores the
-            // pre-edit state; only its `redo` needs to advance).
-            if (
-              command.coalesceKey !== undefined &&
-              previous?.coalesceKey === command.coalesceKey
-            ) {
-              return {
-                past: [
-                  ...state.past.slice(0, -1),
-                  { ...command, undo: previous.undo },
-                ],
-                future: [],
-              };
-            }
-            return {
-              past: [...state.past, command].slice(-limit),
-              future: [],
-            };
-          });
+      push: (command) => enqueue(() => pushNow(command)),
+
+      record: (change) =>
+        enqueue(async () => {
+          const command = await change();
+          if (command) pushNow(command);
         }),
 
       undo: () =>

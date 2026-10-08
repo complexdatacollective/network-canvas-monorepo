@@ -139,30 +139,32 @@ export function useComposerActions({
   ): Promise<string> {
     const id = uuid();
 
-    await dispatch(
-      addNode({
-        type: subjectType,
-        attributeData: {
-          [quickAdd]: name,
-          [layoutVariable]: position,
+    await undoStore.getState().record(async () => {
+      await dispatch(
+        addNode({
+          type: subjectType,
+          attributeData: {
+            [quickAdd]: name,
+            [layoutVariable]: position,
+          },
+          modelData: { [entityPrimaryKeyProperty]: id },
+          useEncryption,
+          currentStep,
+        }),
+      ).unwrap();
+
+      const created = readNode(id);
+      invariant(created, 'The created node is missing from the network');
+
+      return {
+        label: `Add node`,
+        undo: () => {
+          dispatch(deleteNode(id));
         },
-        modelData: { [entityPrimaryKeyProperty]: id },
-        useEncryption,
-        currentStep,
-      }),
-    ).unwrap();
-
-    const created = readNode(id);
-    invariant(created, 'The created node is missing from the network');
-
-    void undoStore.getState().push({
-      label: `Add node`,
-      undo: () => {
-        dispatch(deleteNode(id));
-      },
-      redo: () => {
-        dispatch(restoreNode(created));
-      },
+        redo: () => {
+          dispatch(restoreNode(created));
+        },
+      };
     });
 
     return id;
@@ -173,23 +175,25 @@ export function useComposerActions({
     to: string,
     edgeType: string,
   ): Promise<void> {
-    const { edgeId } = await dispatch(
-      addEdge({ from, to, type: edgeType, currentStep }),
-    ).unwrap();
+    await undoStore.getState().record(async () => {
+      const { edgeId } = await dispatch(
+        addEdge({ from, to, type: edgeType, currentStep }),
+      ).unwrap();
 
-    let liveEdgeId = edgeId;
+      let liveEdgeId = edgeId;
 
-    void undoStore.getState().push({
-      label: `Connect nodes`,
-      undo: () => {
-        dispatch(deleteEdge(liveEdgeId));
-      },
-      redo: async () => {
-        const { edgeId: newId } = await dispatch(
-          addEdge({ from, to, type: edgeType, currentStep }),
-        ).unwrap();
-        liveEdgeId = newId;
-      },
+      return {
+        label: `Connect nodes`,
+        undo: () => {
+          dispatch(deleteEdge(liveEdgeId));
+        },
+        redo: async () => {
+          const { edgeId: newId } = await dispatch(
+            addEdge({ from, to, type: edgeType, currentStep }),
+          ).unwrap();
+          liveEdgeId = newId;
+        },
+      };
     });
   }
 
@@ -288,26 +292,31 @@ export function useComposerActions({
     attributePatch: AttributePatch,
     coalesceKey?: string,
   ): Promise<void> {
-    const editedKeys = [
-      ...new Set([...Object.keys(attributePatch.set), ...attributePatch.unset]),
-    ];
-    const before = snapshotAttributes(readNode(id), editedKeys);
+    await undoStore.getState().record(async () => {
+      const editedKeys = [
+        ...new Set([
+          ...Object.keys(attributePatch.set),
+          ...attributePatch.unset,
+        ]),
+      ];
+      const before = snapshotAttributes(readNode(id), editedKeys);
 
-    await dispatch(
-      updateNode({ nodeId: id, attributePatch, currentStep }),
-    ).unwrap();
+      await dispatch(
+        updateNode({ nodeId: id, attributePatch, currentStep }),
+      ).unwrap();
 
-    const after = snapshotAttributes(readNode(id), editedKeys);
+      const after = snapshotAttributes(readNode(id), editedKeys);
 
-    void undoStore.getState().push({
-      label: `Update node attributes`,
-      coalesceKey,
-      undo: () => {
-        dispatch(restoreNodeAttributes({ nodeId: id, snapshot: before }));
-      },
-      redo: () => {
-        dispatch(restoreNodeAttributes({ nodeId: id, snapshot: after }));
-      },
+      return {
+        label: `Update node attributes`,
+        coalesceKey,
+        undo: () => {
+          dispatch(restoreNodeAttributes({ nodeId: id, snapshot: before }));
+        },
+        redo: () => {
+          dispatch(restoreNodeAttributes({ nodeId: id, snapshot: after }));
+        },
+      };
     });
   }
 
@@ -316,57 +325,62 @@ export function useComposerActions({
     attributePatch: AttributePatch,
     coalesceKey?: string,
   ): Promise<void> {
-    let priorAttributes: NcEdge[typeof entityAttributesProperty] = {};
+    await undoStore.getState().record(async () => {
+      let priorAttributes: NcEdge[typeof entityAttributesProperty] = {};
 
-    dispatch((_, getState) => {
-      const { session: sessionState } = getState() as {
-        session: { network: { edges: NcEdge[] } };
+      dispatch((_, getState) => {
+        const { session: sessionState } = getState() as {
+          session: { network: { edges: NcEdge[] } };
+        };
+        const edge = sessionState.network.edges.find(
+          (e) => e[entityPrimaryKeyProperty] === id,
+        );
+        if (edge) {
+          priorAttributes = edge[entityAttributesProperty];
+        }
+      });
+
+      await dispatch(updateEdge({ edgeId: id, attributePatch })).unwrap();
+
+      const editedKeys = [
+        ...new Set([
+          ...Object.keys(attributePatch.set),
+          ...attributePatch.unset,
+        ]),
+      ];
+      const inverseSet: Record<string, VariableValue> = {};
+      const inverseUnset: string[] = [];
+
+      for (const key of editedKeys) {
+        const priorValue = priorAttributes[key];
+        if (
+          Object.hasOwn(priorAttributes, key) &&
+          priorValue !== null &&
+          priorValue !== undefined
+        ) {
+          inverseSet[key] = priorValue;
+        } else {
+          inverseUnset.push(key);
+        }
+      }
+
+      const inversePatch: AttributePatch = {
+        set: inverseSet,
+        unset: inverseUnset,
       };
-      const edge = sessionState.network.edges.find(
-        (e) => e[entityPrimaryKeyProperty] === id,
-      );
-      if (edge) {
-        priorAttributes = edge[entityAttributesProperty];
-      }
-    });
 
-    await dispatch(updateEdge({ edgeId: id, attributePatch })).unwrap();
-
-    const editedKeys = [
-      ...new Set([...Object.keys(attributePatch.set), ...attributePatch.unset]),
-    ];
-    const inverseSet: Record<string, VariableValue> = {};
-    const inverseUnset: string[] = [];
-
-    for (const key of editedKeys) {
-      const priorValue = priorAttributes[key];
-      if (
-        Object.hasOwn(priorAttributes, key) &&
-        priorValue !== null &&
-        priorValue !== undefined
-      ) {
-        inverseSet[key] = priorValue;
-      } else {
-        inverseUnset.push(key);
-      }
-    }
-
-    const inversePatch: AttributePatch = {
-      set: inverseSet,
-      unset: inverseUnset,
-    };
-
-    void undoStore.getState().push({
-      label: `Update edge attributes`,
-      coalesceKey,
-      undo: async () => {
-        await dispatch(
-          updateEdge({ edgeId: id, attributePatch: inversePatch }),
-        ).unwrap();
-      },
-      redo: async () => {
-        await dispatch(updateEdge({ edgeId: id, attributePatch })).unwrap();
-      },
+      return {
+        label: `Update edge attributes`,
+        coalesceKey,
+        undo: async () => {
+          await dispatch(
+            updateEdge({ edgeId: id, attributePatch: inversePatch }),
+          ).unwrap();
+        },
+        redo: async () => {
+          await dispatch(updateEdge({ edgeId: id, attributePatch })).unwrap();
+        },
+      };
     });
   }
 
@@ -375,43 +389,45 @@ export function useComposerActions({
     position: Position,
     previous: Position,
   ): Promise<void> {
-    await dispatch(
-      updateNode({
-        nodeId: id,
-        attributePatch: {
-          set: { [layoutVariable]: position },
-          unset: [],
-        },
-        currentStep,
-      }),
-    ).unwrap();
+    await undoStore.getState().record(async () => {
+      await dispatch(
+        updateNode({
+          nodeId: id,
+          attributePatch: {
+            set: { [layoutVariable]: position },
+            unset: [],
+          },
+          currentStep,
+        }),
+      ).unwrap();
 
-    void undoStore.getState().push({
-      label: `Move node`,
-      undo: async () => {
-        await dispatch(
-          updateNode({
-            nodeId: id,
-            attributePatch: {
-              set: { [layoutVariable]: previous },
-              unset: [],
-            },
-            currentStep,
-          }),
-        ).unwrap();
-      },
-      redo: async () => {
-        await dispatch(
-          updateNode({
-            nodeId: id,
-            attributePatch: {
-              set: { [layoutVariable]: position },
-              unset: [],
-            },
-            currentStep,
-          }),
-        ).unwrap();
-      },
+      return {
+        label: `Move node`,
+        undo: async () => {
+          await dispatch(
+            updateNode({
+              nodeId: id,
+              attributePatch: {
+                set: { [layoutVariable]: previous },
+                unset: [],
+              },
+              currentStep,
+            }),
+          ).unwrap();
+        },
+        redo: async () => {
+          await dispatch(
+            updateNode({
+              nodeId: id,
+              attributePatch: {
+                set: { [layoutVariable]: position },
+                unset: [],
+              },
+              currentStep,
+            }),
+          ).unwrap();
+        },
+      };
     });
   }
 
@@ -457,90 +473,17 @@ export function useComposerActions({
     return snapshot;
   }
 
-  async function writeGroupValues(
-    id: string,
-    variable: string,
-    prior: GroupValuesSnapshot,
-    next: string[],
-    label: string,
-  ): Promise<void> {
-    await dispatch(
-      updateNode({
-        nodeId: id,
-        attributePatch: { set: { [variable]: next }, unset: [] },
-        currentStep,
-      }),
-    ).unwrap();
-
-    void undoStore.getState().push({
-      label,
-      undo: async () => {
-        await dispatch(
-          updateNode({
-            nodeId: id,
-            attributePatch: prior.present
-              ? { set: { [variable]: prior.values }, unset: [] }
-              : { set: {}, unset: [variable] },
-            currentStep,
-          }),
-        ).unwrap();
-      },
-      redo: async () => {
-        await dispatch(
-          updateNode({
-            nodeId: id,
-            attributePatch: { set: { [variable]: next }, unset: [] },
-            currentStep,
-          }),
-        ).unwrap();
-      },
-    });
-  }
-
   async function toggleGroupMembership(
     id: string,
     variable: string,
     value: string,
   ): Promise<void> {
-    const prior = readGroupValues(id, variable);
-    const next = prior.values.includes(value)
-      ? prior.values.filter((v) => v !== value)
-      : [...prior.values, value];
-    await writeGroupValues(
-      id,
-      variable,
-      prior,
-      next,
-      `Toggle group membership`,
-    );
-  }
-
-  async function setGroupMembership(
-    ids: string[],
-    variable: string,
-    value: string,
-    member: boolean,
-  ): Promise<void> {
-    const changes: {
-      id: string;
-      prior: GroupValuesSnapshot;
-      next: string[];
-    }[] = [];
-    for (const id of ids) {
+    await undoStore.getState().record(async () => {
       const prior = readGroupValues(id, variable);
-      if (prior.values.includes(value) === member) continue;
-      changes.push({
-        id,
-        prior,
-        next: member
-          ? [...prior.values, value]
-          : prior.values.filter((groupValue) => groupValue !== value),
-      });
-    }
+      const next = prior.values.includes(value)
+        ? prior.values.filter((v) => v !== value)
+        : [...prior.values, value];
 
-    if (changes.length === 0) return;
-
-    for (const { id, next } of changes) {
       await dispatch(
         updateNode({
           nodeId: id,
@@ -548,12 +491,10 @@ export function useComposerActions({
           currentStep,
         }),
       ).unwrap();
-    }
 
-    void undoStore.getState().push({
-      label: `${member ? 'Add' : 'Remove'} ${changes.length} ${member ? 'to' : 'from'} group`,
-      undo: async () => {
-        for (const { id, prior } of changes) {
+      return {
+        label: `Toggle group membership`,
+        undo: async () => {
           await dispatch(
             updateNode({
               nodeId: id,
@@ -563,10 +504,8 @@ export function useComposerActions({
               currentStep,
             }),
           ).unwrap();
-        }
-      },
-      redo: async () => {
-        for (const { id, next } of changes) {
+        },
+        redo: async () => {
           await dispatch(
             updateNode({
               nodeId: id,
@@ -574,8 +513,74 @@ export function useComposerActions({
               currentStep,
             }),
           ).unwrap();
-        }
-      },
+        },
+      };
+    });
+  }
+
+  async function setGroupMembership(
+    ids: string[],
+    variable: string,
+    value: string,
+    member: boolean,
+  ): Promise<void> {
+    await undoStore.getState().record(async () => {
+      const changes: {
+        id: string;
+        prior: GroupValuesSnapshot;
+        next: string[];
+      }[] = [];
+      for (const id of ids) {
+        const prior = readGroupValues(id, variable);
+        if (prior.values.includes(value) === member) continue;
+        changes.push({
+          id,
+          prior,
+          next: member
+            ? [...prior.values, value]
+            : prior.values.filter((groupValue) => groupValue !== value),
+        });
+      }
+
+      if (changes.length === 0) return null;
+
+      for (const { id, next } of changes) {
+        await dispatch(
+          updateNode({
+            nodeId: id,
+            attributePatch: { set: { [variable]: next }, unset: [] },
+            currentStep,
+          }),
+        ).unwrap();
+      }
+
+      return {
+        label: `${member ? 'Add' : 'Remove'} ${changes.length} ${member ? 'to' : 'from'} group`,
+        undo: async () => {
+          for (const { id, prior } of changes) {
+            await dispatch(
+              updateNode({
+                nodeId: id,
+                attributePatch: prior.present
+                  ? { set: { [variable]: prior.values }, unset: [] }
+                  : { set: {}, unset: [variable] },
+                currentStep,
+              }),
+            ).unwrap();
+          }
+        },
+        redo: async () => {
+          for (const { id, next } of changes) {
+            await dispatch(
+              updateNode({
+                nodeId: id,
+                attributePatch: { set: { [variable]: next }, unset: [] },
+                currentStep,
+              }),
+            ).unwrap();
+          }
+        },
+      };
     });
   }
 

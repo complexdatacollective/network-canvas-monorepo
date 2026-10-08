@@ -1190,6 +1190,150 @@ describe('NetworkComposer saving edits in the order they were made', () => {
     ).toBe('Met at work');
     expect(screen.getByLabelText(/notes/i)).toHaveValue('Met at work');
   });
+  const pressUndo = () =>
+    act(async () => {
+      fireEvent.keyDown(screen.getByTestId('network-composer'), {
+        key: 'z',
+        metaKey: true,
+      });
+    });
+
+  const storedNotes = (store: ReturnType<typeof makeStore>) =>
+    readStored(store.getState().session.network.nodes[0], NOTES_VAR);
+
+  it('applies an undo pressed while an edit is being saved to that edit', async () => {
+    const store = makeStore(await makeNodes(), true);
+    const notesInput = await openAlice(store);
+    const saving = holdNextEncryption();
+
+    fireEvent.change(notesInput, { target: { value: 'First' } });
+    await waitFor(() => expect(saving.begun()).toBe(true), { timeout: 2000 });
+    await pressUndo();
+    saving.release();
+
+    await allSaved();
+    await waitFor(() => expect(notesInput).toHaveValue('Met at work'));
+    // Long enough for an answer the form wrongly showed again to be saved.
+    await act(() => new Promise((resolve) => setTimeout(resolve, 600)));
+    await allSaved();
+    expect(await storedNotes(store)).toBe('Met at work');
+  });
+
+  it('keeps an edit an undo overtook while its save waited its turn, without saving it', async () => {
+    const store = makeStore(await makeNodes(), true);
+    const notesInput = await openAlice(store);
+    const first = holdNextEncryption();
+
+    fireEvent.change(notesInput, { target: { value: 'First' } });
+    await waitFor(() => expect(first.begun()).toBe(true), { timeout: 2000 });
+    fireEvent.change(notesInput, { target: { value: 'Second' } });
+    // Long enough for the second save to be asked for, and to wait for the
+    // first.
+    await act(() => new Promise((resolve) => setTimeout(resolve, 600)));
+    await pressUndo();
+    first.release();
+
+    await allSaved();
+    await act(() => new Promise((resolve) => setTimeout(resolve, 600)));
+    await allSaved();
+    expect(await storedNotes(store)).toBe('Met at work');
+    expect(notesInput).toHaveValue('Second');
+  });
+
+  it('does not save back an answer an undo replaced while a save waited its turn', async () => {
+    const store = makeStore(
+      await makeNodes(),
+      true,
+      true,
+      ageVariables,
+      notesAndAgeStage,
+    );
+    const notesInput = await openAlice(store, notesAndAgeStage);
+    const age = screen.getByLabelText(/age/i);
+    const storedCiphertext = () =>
+      store.getState().session.network.nodes[0]?.[entityAttributesProperty][
+        NOTES_VAR
+      ];
+    const original = storedCiphertext();
+    const first = holdNextEncryption();
+
+    fireEvent.change(notesInput, { target: { value: 'First' } });
+    await waitFor(() => expect(first.begun()).toBe(true), { timeout: 2000 });
+    fireEvent.change(age, { target: { value: '30' } });
+    // Long enough for the second save, which also carries the notes, to be
+    // asked for and to wait for the first.
+    await act(() => new Promise((resolve) => setTimeout(resolve, 600)));
+    await pressUndo();
+    first.release();
+
+    await allSaved();
+    await act(() => new Promise((resolve) => setTimeout(resolve, 600)));
+    await allSaved();
+    // What the undo put back, not the same answer saved again over it.
+    expect(storedCiphertext()).toEqual(original);
+    expect(storedAge(store)).toBe(30);
+    expect(notesInput).toHaveValue('Met at work');
+  });
+
+  it('keeps an edit an undo overtook while another passphrase hid it, without saving it', async () => {
+    const store = makeStore(await makeNodes(), true);
+    const notesInput = await openAlice(store);
+    fireEvent.change(notesInput, { target: { value: 'First' } });
+    await waitFor(async () => expect(await storedNotes(store)).toBe('First'), {
+      timeout: 2000,
+    });
+    await allSaved();
+
+    fireEvent.change(notesInput, { target: { value: 'Draft' } });
+    act(() => {
+      store.dispatch(setPassphrase('another passphrase'));
+    });
+    await waitFor(() =>
+      expect(screen.queryByRole('textbox', { name: /notes/i })).toBeNull(),
+    );
+    await pressUndo();
+    await waitFor(async () =>
+      expect(await storedNotes(store)).toBe('Met at work'),
+    );
+
+    act(() => {
+      store.dispatch(setPassphrase(PASSPHRASE));
+    });
+    expect(await screen.findByRole('textbox', { name: /notes/i })).toHaveValue(
+      'Draft',
+    );
+    // Long enough for the drawer to save an edit it was holding back.
+    await act(() => new Promise((resolve) => setTimeout(resolve, 600)));
+    await allSaved();
+    expect(await storedNotes(store)).toBe('Met at work');
+  });
+
+  it('follows an undo of a save whose answers the drawer was never given', async () => {
+    const store = makeStore(await makeNodes(), true);
+    const notesInput = await openAlice(store);
+
+    answersLag.held = true;
+    fireEvent.change(notesInput, { target: { value: 'First' } });
+    await waitFor(async () => expect(await storedNotes(store)).toBe('First'), {
+      timeout: 2000,
+    });
+    await allSaved();
+    await pressUndo();
+    await waitFor(async () =>
+      expect(await storedNotes(store)).toBe('Met at work'),
+    );
+
+    // The drawer is given the answers stored after the undo, without ever
+    // having been given those of the save it undid.
+    answersLag.held = false;
+    act(() => {
+      answersLag.rerender?.();
+    });
+    await waitFor(() => expect(notesInput).toHaveValue('Met at work'));
+    await act(() => new Promise((resolve) => setTimeout(resolve, 600)));
+    await allSaved();
+    expect(await storedNotes(store)).toBe('Met at work');
+  });
 });
 
 describe('NetworkComposer while the encryptedVariables experiment is off', () => {

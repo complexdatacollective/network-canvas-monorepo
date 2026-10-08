@@ -255,6 +255,7 @@
   "interview.interfaces.discardChanges": "Wijzigingen verwerpen",
   "interview.interfaces.discardChangesDescription": "Dit formulier bevat ongeldige gegevens en kan daarom niet worden opgeslagen. Als je doorgaat, wordt het formulier teruggezet en gaan je wijzigingen verloren. Wil je je wijzigingen verwerpen?",
   "interview.interfaces.discardChangesTitle": "Wijzigingen verwerpen?",
+  "interview.interfaces.discardOvertakenEditDescription": "Ongedaan maken of opnieuw uitvoeren heeft een antwoord gewijzigd terwijl je het aan het bewerken was, dus je wijziging is niet opgeslagen. Wijzig dat antwoord opnieuw om je wijziging te behouden. Als je doorgaat, gaat je wijziging verloren.",
   "interview.interfaces.dragToReposition": "Slepen om te verplaatsen",
   "interview.interfaces.drawEdge": "Relatie tekenen",
   "interview.interfaces.drawingControls": "Tekengereedschap",

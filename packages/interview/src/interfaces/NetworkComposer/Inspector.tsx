@@ -69,6 +69,14 @@ const AUTOSAVE_DELAY = 400;
 // has taken them.
 type OwnWrite = { stored: Record<string, FieldValue>; done: boolean };
 
+// An edit not saved yet whose stored answer an undo or redo has changed
+// since: the stored answer it was made from, and the value the form showed
+// for it then.
+type HeldEdit = { from: FieldValue; shown: FieldValue };
+
+const ownValue = (values: Record<string, FieldValue>, name: string) =>
+  Object.hasOwn(values, name) ? values[name] : undefined;
+
 const noopSubmit: FormSubmitHandler = () => ({ success: true as const });
 
 // A save resolves to why it was refused, or to nothing once it is stored.
@@ -179,17 +187,25 @@ function AttributeFormInner({
   // when it shows the answers it was given, and the next save builds on the
   // newest of these rather than on those.
   const ownWritesRef = useRef<OwnWrite[]>([]);
+  // Edits an undo or redo overtook, by question. Each stays on screen but is
+  // saved only over the answer it was made from, so the participant has to
+  // change that question again before it replaces what the undo or redo
+  // stored.
+  const heldRef = useRef(new Map<string, HeldEdit>());
 
-  // An answer changed outside the form, as an undo does, replaces the one
-  // shown unless the participant has changed that question since. Otherwise
-  // the form would go on showing the undone answer, and save it back when the
-  // Inspector closes. The answers the form's own save stored are not such a
-  // change, even when the participant has put back the earlier answer since.
+  // An answer changed outside the form, as an undo or redo does, replaces
+  // the one shown unless the participant has changed that question since.
+  // Otherwise the form would go on showing the undone answer, and save it
+  // back when the Inspector closes. An answer the participant has changed
+  // stays on screen, held until they change that question again or the
+  // stored answer is again the one they changed. The answers the form's own
+  // save stored are not such a change, even when the participant has put
+  // back the earlier answer since.
   useEffect(() => {
-    const previous = givenRef.current;
+    const given = givenRef.current;
     givenRef.current = initialValues;
     const state = storeApi?.getState();
-    if (previous === initialValues || !state?.pathOperations) return;
+    if (given === initialValues || !state?.pathOperations) return;
 
     const fields = form.fields ?? [];
     // Several saves can land in one render, so the answers given may be those
@@ -204,18 +220,51 @@ function AttributeFormInner({
       ownWritesRef.current = ownWrites.slice(landed + 1);
       return;
     }
+    // The change was made after any save the store has taken, even one whose
+    // answers never reached the form.
+    const previous = ownWrites.findLast(({ done }) => done)?.stored ?? given;
     ownWritesRef.current = ownWrites.filter(({ done }) => !done);
 
     const shown = coerceValues(state.getFormValues());
+    const held = heldRef.current;
     for (const { variable } of fields) {
-      if (
-        isEqual(shown[variable], previous[variable]) &&
-        !isEqual(shown[variable], initialValues[variable])
-      ) {
+      const was = previous[variable];
+      const now = initialValues[variable];
+      if (isEqual(was, now)) continue;
+
+      const hold = held.get(variable);
+      const from = hold ? hold.from : was;
+      if (isEqual(shown[variable], now)) {
+        held.delete(variable);
+      } else if (!hold && isEqual(shown[variable], was)) {
         state.pathOperations.resetField([variable]);
+      } else if (isEqual(now, from)) {
+        // The stored answer is again the one this edit was made from, so the
+        // autosave that follows the change saves the edit.
+        held.delete(variable);
+      } else {
+        held.set(variable, {
+          from,
+          shown: hold
+            ? hold.shown
+            : state.pathOperations.getFieldState([variable])?.value,
+        });
       }
     }
   }, [initialValues, storeApi, form.fields, coerceValues]);
+
+  // Changing a question whose edit is held makes the new answer an edit of
+  // the stored one.
+  useEffect(
+    () =>
+      storeApi?.subscribe((state) => {
+        for (const [variable, { shown }] of heldRef.current) {
+          const value = state.pathOperations?.getFieldState([variable])?.value;
+          if (!isEqual(value, shown)) heldRef.current.delete(variable);
+        }
+      }),
+    [storeApi],
+  );
 
   // Resolves to why the values could not be saved, or to undefined once they
   // are saved.
@@ -231,10 +280,24 @@ function AttributeFormInner({
         return message;
       };
 
+      const fieldState = storeApi?.getState().pathOperations?.getFieldState;
       const stored = ownWritesRef.current.at(-1)?.stored ?? givenRef.current;
+      // An answer is saved only while the form still shows it, so a save
+      // asked for before an undo cannot put back an answer the form has since
+      // replaced, and never over an answer an undo or redo overtook.
+      const savable = (form.fields ?? [])
+        .map(({ variable }) => variable)
+        .filter(
+          (variable) =>
+            !heldRef.current.has(variable) &&
+            isEqual(
+              ownValue(values, variable),
+              fieldState?.([variable])?.value,
+            ),
+        );
       const patchResult = formValuesToAttributePatch(
         coerceValues(values),
-        (form.fields ?? []).map((field) => field.variable),
+        savable,
         stored,
       );
       if (!patchResult.success) {
@@ -294,7 +357,8 @@ function AttributeFormInner({
   // Closing the Inspector, by leaving the stage or by moving the selection
   // off this entity, saves an edit the autosave has not reached yet, and asks
   // before discarding one that cannot be saved: an invalid edit, one the
-  // store refused, or one hidden because the passphrase cannot read it.
+  // store refused, one hidden because the passphrase cannot read it, or one
+  // an undo or redo overtook.
   const confirmLeave = useCallback((): true | Promise<boolean> => {
     const state = storeApi?.getState();
     if (!state) return true;
@@ -309,6 +373,11 @@ function AttributeFormInner({
         reason = (await state.validateForm())
           ? await persist(state.getFormValues())
           : interfaceMessages.discardChangesDescription;
+        // Leaving is not changing the question again, so an edit an undo or
+        // redo overtook is not saved by it.
+        if (reason === undefined && heldRef.current.size > 0) {
+          reason = interfaceMessages.discardOvertakenEditDescription;
+        }
         if (reason === undefined) return true;
       }
 
