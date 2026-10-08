@@ -2,7 +2,6 @@ import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import Form from '@codaco/fresco-ui/form/Form';
 import { findDanglingIdReferences } from '@codaco/fresco-ui/utils/ariaIdReferences';
 
 vi.mock('../../hooks/useCelebrate', () => ({
@@ -66,13 +65,12 @@ afterEach(() => {
 describe('QuickAddField ARIA references', () => {
   it('resolves every ARIA reference on the quick-add input', async () => {
     const { container } = render(
-      <Form onSubmit={() => ({ success: true })}>
-        <QuickAddField
-          name="name"
-          placeholder="Type a label and press enter..."
-          disabled={false}
-        />
-      </Form>,
+      <QuickAddField
+        name="name"
+        placeholder="Type a label and press enter..."
+        disabled={false}
+        onAdd={() => ({ success: true })}
+      />,
     );
 
     await userEvent.click(screen.getByTestId('quick-add-toggle'));
@@ -85,14 +83,13 @@ describe('QuickAddField ARIA references', () => {
     // `required` is what used to add a `${id}-required` IDREF: BaseField
     // renders that marker, and this component does not.
     const { container } = render(
-      <Form onSubmit={() => ({ success: true })}>
-        <QuickAddField
-          name="name"
-          placeholder="Type a label and press enter..."
-          disabled={false}
-          required
-        />
-      </Form>,
+      <QuickAddField
+        name="name"
+        placeholder="Type a label and press enter..."
+        disabled={false}
+        onAdd={() => ({ success: true })}
+        required
+      />,
     );
 
     await userEvent.click(screen.getByTestId('quick-add-toggle'));
@@ -103,13 +100,12 @@ describe('QuickAddField ARIA references', () => {
 
   it('names the quick-add input after the entity being added', async () => {
     render(
-      <Form onSubmit={() => ({ success: true })}>
-        <QuickAddField
-          name="name"
-          placeholder="Type a label and press enter..."
-          disabled={false}
-        />
-      </Form>,
+      <QuickAddField
+        name="name"
+        placeholder="Type a label and press enter..."
+        disabled={false}
+        onAdd={() => ({ success: true })}
+      />,
     );
 
     await userEvent.click(screen.getByTestId('quick-add-toggle'));

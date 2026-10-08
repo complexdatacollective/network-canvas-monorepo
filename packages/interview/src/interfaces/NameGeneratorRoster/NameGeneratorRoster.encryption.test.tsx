@@ -11,6 +11,7 @@ import {
 
 import { CurrentStepProvider } from '../../contexts/CurrentStepContext';
 import { InterviewI18nProvider } from '../../i18n/InterviewI18nProvider';
+import { runtimeMessages } from '../../i18n/runtimeMessages';
 import { setPassphrase, setPassphraseInvalid } from '../../store/modules/ui';
 import { interviewToastManager } from '../../toast/interviewToastManager';
 import type { StageProps } from '../../types';
@@ -114,6 +115,14 @@ function renderRoster(passphrase?: string, encryptionEnabled = true) {
     return roster.items.filter((item) => !disabled.has(item.id));
   };
 
+  // Starts adding Alice the way a drop onto the added list does, without
+  // waiting for the add to finish.
+  const startDroppingAlice = (alice: UseItemElement) => {
+    act(() => {
+      dropOnAddedList?.({ ...alice, itemType: 'SOURCE_NODES' });
+    });
+  };
+
   const dropAlice = async () => {
     const [alice] = roster.items;
     if (!alice) throw new Error('The roster lists Alice');
@@ -124,7 +133,7 @@ function renderRoster(passphrase?: string, encryptionEnabled = true) {
     });
   };
 
-  return { store, draggable, dropAlice };
+  return { store, draggable, dropAlice, startDroppingAlice };
 }
 
 describe('NameGeneratorRoster adding people whose answers are encrypted', () => {
@@ -202,5 +211,59 @@ describe('NameGeneratorRoster with the encrypted-variables experiment off', () =
     const [added] = store.getState().session.network.nodes;
     expect(added?.[entityAttributesProperty].name).toBe('Alice');
     expect(added?.[entitySecureAttributesMeta]).toBeUndefined();
+  });
+});
+
+describe('NameGeneratorRoster while a dropped person is being added', () => {
+  it('takes them out of the roster as soon as they are dropped', () => {
+    const { store, startDroppingAlice } = renderRoster('pw');
+    const [alice] = roster.items;
+    if (!alice) throw new Error('The roster lists Alice');
+
+    startDroppingAlice(alice);
+
+    expect(store.getState().session.network.nodes).toEqual([]);
+    expect(roster.items).toEqual([]);
+  });
+
+  it('adds someone dropped again before their add finishes only once, holding nothing back', async () => {
+    const toast = vi.spyOn(interviewToastManager, 'add');
+    const { store, startDroppingAlice } = renderRoster('pw');
+    const [alice] = roster.items;
+    if (!alice) throw new Error('The roster lists Alice');
+
+    startDroppingAlice(alice);
+    // A drag that began before the card left the roster, ending on the list.
+    startDroppingAlice(alice);
+
+    // Leaving the stage waits for the adds under way, and stays if any was
+    // refused.
+    expect(await store.writesSettled()).toBe(true);
+    expect(store.getState().session.network.nodes).toHaveLength(1);
+    expect(toast).not.toHaveBeenCalled();
+  });
+
+  it('puts them back in the roster, and says why, when they could not be added', async () => {
+    const toast = vi.spyOn(interviewToastManager, 'add');
+    const { store, startDroppingAlice } = renderRoster('pw');
+    const [alice] = roster.items;
+    if (!alice) throw new Error('The roster lists Alice');
+
+    startDroppingAlice(alice);
+    // Their answers were being protected with a passphrase no longer in force.
+    act(() => {
+      store.dispatch(setPassphrase('another passphrase'));
+    });
+
+    expect(await store.writesSettled()).toBe(false);
+    await waitFor(() =>
+      expect(roster.items.map((item) => item.id)).toEqual([alice.id]),
+    );
+    expect(store.getState().session.network.nodes).toEqual([]);
+    expect(toast).toHaveBeenCalledWith(
+      expect.objectContaining({
+        description: runtimeMessages.protectedAnswersNotSaved.defaultMessage,
+      }),
+    );
   });
 });

@@ -8,7 +8,7 @@ import {
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Provider } from 'react-redux';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 import type { FormSubmissionResult } from '@codaco/fresco-ui/form/store/types';
 import {
@@ -26,6 +26,7 @@ import {
 import { CurrentStepProvider } from '../../../../contexts/CurrentStepContext';
 import type { ProtocolPayload } from '../../../../contract/types';
 import { writeSubmissionResult } from '../../../../forms/writeSubmissionResult';
+import { runtimeMessages } from '../../../../i18n/runtimeMessages';
 import protocol from '../../../../store/modules/protocol';
 import session, {
   addNode as addSessionNode,
@@ -500,5 +501,85 @@ describe('QuickNodeForm while a name is being added', () => {
 
     await act(async () => finish({ success: false }));
     expect(screen.getByTestId('quick-add-input')).toHaveValue('Bob');
+  });
+});
+
+// A refused add's reason is shown with Motion's viewport features, which use
+// IntersectionObserver; jsdom has none.
+class StubObserver {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+
+describe('QuickNodeForm adding to the session', () => {
+  beforeAll(() => {
+    vi.stubGlobal('IntersectionObserver', StubObserver);
+  });
+
+  const notSaved = runtimeMessages.protectedAnswersNotSaved.defaultMessage;
+
+  // Protected answers are refused when the passphrase they were being
+  // encrypted with is replaced before encryption finishes.
+  function renderAddingToSession() {
+    const tracked: Promise<boolean>[] = [];
+    const passphrase = { replacedWhileAdding: false };
+    let store: ReturnType<typeof renderQuickNodeForm>['store'];
+    ({ store } = renderQuickNodeForm({
+      encrypted: true,
+      addNode: async (attributes) => {
+        const adding = store.dispatch(
+          addSessionNode({
+            type: NODE_TYPE,
+            attributeData: attributes,
+            currentStep: 0,
+            useEncryption: true,
+          }),
+        );
+        if (passphrase.replacedWhileAdding) {
+          store.dispatch(setPassphrase('another passphrase'));
+        }
+        return writeSubmissionResult(await adding);
+      },
+      trackWrite: (write) => tracked.push(write),
+    }));
+    return { store, tracked, passphrase };
+  }
+
+  async function addName(input: HTMLElement, name: string) {
+    await userEvent.type(input, name);
+    fireEvent.submit(input.closest('form')!);
+    await waitFor(() => expect(input).not.toBeDisabled());
+  }
+
+  it('keeps a name the session could not store, and says why', async () => {
+    const { store, tracked, passphrase } = renderAddingToSession();
+    passphrase.replacedWhileAdding = true;
+
+    const input = await openField();
+    await addName(input, 'Alice');
+
+    expect(input).toHaveValue('Alice');
+    expect(await screen.findByText(notSaved)).toBeInTheDocument();
+    expect(store.getState().session.network.nodes).toHaveLength(0);
+    expect(await tracked[0]).toBe(false);
+  });
+
+  it('keeps the next name, and says why, when the session cannot store it after storing one', async () => {
+    const { store, tracked, passphrase } = renderAddingToSession();
+
+    const input = await openField();
+    await addName(input, 'Alice');
+    expect(input).toHaveValue('');
+    expect(store.getState().session.network.nodes).toHaveLength(1);
+    expect(await tracked[0]).toBe(true);
+
+    passphrase.replacedWhileAdding = true;
+    await addName(input, 'Bob');
+
+    expect(input).toHaveValue('Bob');
+    expect(await screen.findByText(notSaved)).toBeInTheDocument();
+    expect(store.getState().session.network.nodes).toHaveLength(1);
+    expect(await tracked[1]).toBe(false);
   });
 });
