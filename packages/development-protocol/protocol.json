@@ -1,5 +1,6 @@
 {
   "name": "Development Protocol",
+  "experiments": {},
   "stages": [
     {
       "id": "language-chooser",

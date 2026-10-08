@@ -33,6 +33,7 @@ node packages/protocol-validation/scripts/cli.js <path-to-your-protocol.json>; e
   "lastModified": "2026-06-15T00:00:00.000Z", // optional ISO datetime
   "codebook": { … },              // REQUIRED (see §3)
   "stages": [ … ],                // REQUIRED array (see §5)
+  "experiments": {},              // optional; schema 9 defines no experiments yet
   "assetManifest": { … }          // optional — OMIT IT (see §6)
 }
 ```
