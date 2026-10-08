@@ -8,7 +8,13 @@ import {
   Schedule,
 } from 'effect';
 
-const RETRY_INTERVAL = Duration.seconds(30);
+const RETRY_CEILING = Duration.seconds(30);
+
+const retry = Schedule.exponential(Duration.seconds(1)).pipe(
+  Schedule.modifyDelay(({ duration }) =>
+    Effect.succeed(Duration.min(duration, RETRY_CEILING)),
+  ),
+);
 
 export class InstallationIdentity extends Context.Service<
   InstallationIdentity,
@@ -55,7 +61,7 @@ export class InstallationIdentity extends Context.Service<
       InstallationIdentity.resolveOnce(read).pipe(
         Effect.repeat({
           until: (found) => found,
-          schedule: Schedule.spaced(RETRY_INTERVAL),
+          schedule: retry,
         }),
         Effect.forkScoped,
       ),

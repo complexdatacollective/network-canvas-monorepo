@@ -18,11 +18,13 @@ template, final status (including for requests that end in an error) and
 duration, and no longer its URL, query string, headers, user agent or client
 address; a `traceparent` a client sends is ignored. Database spans keep their
 statement text, with placeholders, but not the database host or name. A
-failure is exported as its type and stack frames, never its message. Every
-export carries the instance's `studio.installation_id`, including those from
-the `migrate`, `maintenance` and `rotate-secrets` commands, and each exported log
-record carries the same `request_id`, `team_id`, `trace_id` and `span_id` as
-the line on stdout.
+failure is exported as its type and stack frames, never its message. Once the
+installation row exists, every export carries the instance's
+`studio.installation_id`, including those from the `migrate`, `maintenance` and
+`rotate-secrets` commands; a process that starts before `migrate` has created
+the row reads it again after one second, backing off to every thirty, until it
+appears. Each exported log record carries the same `request_id`, `team_id`,
+`trace_id` and `span_id` as the line on stdout.
 
 Both processes now report event-loop delay (p99 and mean) and memory as
 `studio_runtime_*` gauges every ten seconds.
