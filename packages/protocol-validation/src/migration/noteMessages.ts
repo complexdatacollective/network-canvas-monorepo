@@ -383,9 +383,16 @@ export const migrationNoteMessages = defineMessages({
   schema9FamilyPedigreeCompleteness: {
     id: 'protocolValidation.migrationNotes.schema9.familyPedigreeCompleteness',
     defaultMessage:
-      'A Family Pedigree that required or recommended recording grandparents now requires or recommends recording the family up to the grandparents, which also includes siblings, children, aunts and uncles. A new attribute, "relativesNotRecorded", is added for the people in the pedigree, to record when a participant says someone has no siblings or no children, or does not know.',
+      "The old Family Pedigree always required two of the participant's parents. A converted Family Pedigree requires both of the participant's biological parents or, where it required recording grandparents, the family up to the grandparents, which also includes siblings, children, aunts and uncles. Where it recommended recording grandparents, it now recommends recording the family up to the grandparents, so recording both parents becomes a recommendation rather than a requirement, because a stage has only one completeness setting. Only biological parents and gamete donors now count as parents; the old interface also counted adoptive parents and surrogates.",
     description:
-      'One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded: familyPedigreeCompleteness. "Family Pedigree" and "Information" are interface names. Keep quoted IDs and attribute names ("pedigree", "relativesNotRecorded") exactly as written.',
+      'One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded: familyPedigreeCompleteness. "Family Pedigree" is an interface name. "Parents" are the participant\'s mother and father or other parents; "biological parents" are those who gave the participant their genes.',
+  },
+  schema9FamilyPedigreeRelativesNotRecorded: {
+    id: 'protocolValidation.migrationNotes.schema9.familyPedigreeRelativesNotRecorded',
+    defaultMessage:
+      'A new attribute, "relativesNotRecorded", is added for the people in every converted Family Pedigree, to record when a participant says someone has no siblings or no children, or does not know. If the person type already has an attribute with that name, the new attribute\'s name ends in a number instead, such as "relativesNotRecorded2".',
+    description:
+      'One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded: familyPedigreeRelativesNotRecorded. "Family Pedigree" is an interface name. Keep the attribute names "relativesNotRecorded" and "relativesNotRecorded2" exactly as written.',
   },
   schema9FamilyPedigreeRemoved: {
     id: 'protocolValidation.migrationNotes.schema9.familyPedigreeRemoved',
@@ -504,6 +511,7 @@ const migrationNoteSets = {
       migrationNoteMessages.schema9FamilyPedigree,
       migrationNoteMessages.schema9FamilyPedigreeLabels,
       migrationNoteMessages.schema9FamilyPedigreeCompleteness,
+      migrationNoteMessages.schema9FamilyPedigreeRelativesNotRecorded,
       migrationNoteMessages.schema9FamilyPedigreeRemoved,
       migrationNoteMessages.schema9FamilyPedigreeGenderIdentity,
       migrationNoteMessages.schema9FamilyPedigreeOwnFields,

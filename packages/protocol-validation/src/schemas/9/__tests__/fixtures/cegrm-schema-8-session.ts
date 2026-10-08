@@ -69,7 +69,47 @@ export const pedigreePeople = [
   }),
 ];
 
+/**
+ * Schema 8 wrote its `isActive` flag as true on every parent relationship as
+ * well as on current partnerships, and the gestational carrier flag only when
+ * it was true.
+ */
 export const pedigreeRelationships = [
+  relationship('edge-mother-ego', 'mother-1', 'ego-1', {
+    relationshipType: ['biological'],
+    isActive: true,
+    gameteRole: ['egg'],
+    isGestationalCarrier: true,
+  }),
+  relationship('edge-father-ego', 'father-1', 'ego-1', {
+    relationshipType: ['biological'],
+    isActive: true,
+    gameteRole: ['sperm'],
+  }),
+  relationship('edge-mother-sister', 'mother-1', 'sister-1', {
+    relationshipType: ['biological'],
+    isActive: true,
+    gameteRole: ['egg'],
+    isGestationalCarrier: true,
+  }),
+  relationship('edge-father-sister', 'father-1', 'sister-1', {
+    relationshipType: ['biological'],
+    isActive: true,
+    gameteRole: ['sperm'],
+  }),
+  relationship('edge-parents', 'mother-1', 'father-1', {
+    relationshipType: ['partner'],
+    isActive: false,
+  }),
+];
+
+/**
+ * The same relationships as the redesigned interface writes them: a parent
+ * relationship has no current partner flag (schema 8's `isActive`) and a
+ * gestational carrier flag that is true or false. The partnership is as
+ * recorded.
+ */
+export const migratedRelationships = [
   relationship('edge-mother-ego', 'mother-1', 'ego-1', {
     relationshipType: ['biological'],
     gameteRole: ['egg'],
@@ -78,6 +118,7 @@ export const pedigreeRelationships = [
   relationship('edge-father-ego', 'father-1', 'ego-1', {
     relationshipType: ['biological'],
     gameteRole: ['sperm'],
+    isGestationalCarrier: false,
   }),
   relationship('edge-mother-sister', 'mother-1', 'sister-1', {
     relationshipType: ['biological'],
@@ -87,6 +128,7 @@ export const pedigreeRelationships = [
   relationship('edge-father-sister', 'father-1', 'sister-1', {
     relationshipType: ['biological'],
     gameteRole: ['sperm'],
+    isGestationalCarrier: false,
   }),
   relationship('edge-parents', 'mother-1', 'father-1', {
     relationshipType: ['partner'],

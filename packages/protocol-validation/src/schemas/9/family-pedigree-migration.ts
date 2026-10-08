@@ -136,20 +136,30 @@ const convertFraming = (framing: unknown): unknown => {
 };
 
 /**
- * Schema 8's grandparents requirement becomes the grandparents scope at the
- * same enforcement. The children requirement has no counterpart and is
- * dropped, as is a grandparents requirement that was off.
+ * Schema 8 always required two of the participant's parents, whatever its
+ * boundaries said, and its grandparents boundary added both parents of each
+ * of them. A stage now has one completeness setting, so:
+ *
+ * - With the grandparents boundary off (or missing), the parents scope is
+ *   required, as schema 8's own minimum was.
+ * - With it required, the grandparents scope is required. It covers the
+ *   parents.
+ * - With it recommended, the grandparents scope is recommended, which makes
+ *   the parents a recommendation too. The migration notes say so.
+ *
+ * Schema 8's children requirement has no counterpart and is dropped.
  */
 const convertBoundaries = (
   boundaries: unknown,
   relativesNotRecorded: () => string | undefined,
-): Fields | undefined => {
-  const enforcement = asRecord(boundaries).requireGrandparents;
-  if (enforcement !== 'required' && enforcement !== 'recommended') {
-    return undefined;
-  }
+): Fields => {
+  const grandparents = asRecord(boundaries).requireGrandparents;
+  const { scope, enforcement } =
+    grandparents === 'required' || grandparents === 'recommended'
+      ? { scope: 'grandparents', enforcement: grandparents }
+      : { scope: 'parents', enforcement: 'required' };
   return withoutUndefined({
-    scope: 'grandparents',
+    scope,
     enforcement,
     relativesNotRecordedAttribute: relativesNotRecorded(),
   });
@@ -227,12 +237,21 @@ const isEmptyText = (item: unknown) =>
 const DEFAULT_PEDIGREE_LABEL = 'Family pedigree';
 
 /**
+ * The heading schema 8 showed above an introduction screen: the setup
+ * questions' generic "Introduction" step title. Schema 8 never showed a
+ * stage's label to participants, so the label is not used.
+ */
+const INTRODUCTION_TITLE = 'Introduction';
+
+/**
  * Schema 9's pedigree has no introduction screen, so a schema 8 one becomes an
- * Information stage shown just before the pedigree. Its heading is the
- * pedigree's label. It is shown or skipped by the pedigree's own skip logic,
- * so the two still appear or are skipped together. Text items with no text,
- * which showed nothing, are left out; an introduction left with no items
- * adds no stage.
+ * Information stage shown just before the pedigree. Schema 9 requires an
+ * Information stage to have a title, so it takes the heading schema 8 showed
+ * above the screen; the pedigree's label only names the stage for
+ * researchers. It is shown or skipped by the pedigree's own skip logic, so
+ * the two still appear or are skipped together. Text items with no text,
+ * which showed nothing, are left out; an introduction left with no items adds
+ * no stage.
  */
 const introductionStage = (
   pedigree: Fields,
@@ -251,7 +270,7 @@ const introductionStage = (
     id,
     type: 'Information',
     label: `${label} (introduction)`,
-    title: label,
+    title: INTRODUCTION_TITLE,
     items: structuredClone(shown),
     skipLogic:
       pedigree.skipLogic === undefined
@@ -351,8 +370,12 @@ const retargetSkipDestination = (
  * Converts every schema 8 Family Pedigree stage in place, inserting the
  * Information stage that carries its introduction screen, if it had one.
  *
- * A skip that jumped to the pedigree used to land on its introduction screen,
- * so it now jumps to the new Information stage instead.
+ * A skip that jumped to the pedigree now jumps to its new Information stage.
+ * Schema 8 landed such a skip on the pedigree itself, and showed the
+ * introduction screen as the first of the setup questions the participant
+ * opened there before building their family. The introduction is now a stage
+ * of its own before the pedigree, so the skip lands on it, and the
+ * participant still reads it before they start.
  */
 export const migrateFamilyPedigreeStages = (protocol: Fields) => {
   if (!Array.isArray(protocol.stages)) return;

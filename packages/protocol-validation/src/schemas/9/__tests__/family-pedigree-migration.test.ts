@@ -381,16 +381,21 @@ describe('v8 to v9 Family Pedigree migration', () => {
           'relativesNotRecorded',
         );
 
-        if (requireGrandparents === 'off') {
-          expect(pedigree).not.toHaveProperty('completeness');
-          expect(relativesNotRecorded).toBeUndefined();
-          return;
-        }
-        expect(pedigree.completeness).toEqual({
-          scope: 'grandparents',
-          enforcement: requireGrandparents,
-          relativesNotRecordedAttribute: 'relativesNotRecorded',
-        });
+        // Schema 8 always required two parents; its grandparents boundary
+        // added their parents. Children contributors have no counterpart.
+        expect(pedigree.completeness).toEqual(
+          requireGrandparents === 'off'
+            ? {
+                scope: 'parents',
+                enforcement: 'required',
+                relativesNotRecordedAttribute: 'relativesNotRecorded',
+              }
+            : {
+                scope: 'grandparents',
+                enforcement: requireGrandparents,
+                relativesNotRecordedAttribute: 'relativesNotRecorded',
+              },
+        );
         expect(relativesNotRecorded).toEqual({
           name: 'relativesNotRecorded',
           label: 'relativesNotRecorded',
@@ -400,11 +405,18 @@ describe('v8 to v9 Family Pedigree migration', () => {
       },
     );
 
-    it('leaves out completeness when schema 8 had no boundaries', () => {
+    it('requires both parents when schema 8 had no boundaries', () => {
       const pedigree = schema8Pedigree();
       delete pedigree.boundaries;
       const migrated = migrateValid(schema8Protocol([pedigree]));
-      expect(pedigreeOf(migrated)).not.toHaveProperty('completeness');
+      expect(pedigreeOf(migrated).completeness).toEqual({
+        scope: 'parents',
+        enforcement: 'required',
+        relativesNotRecordedAttribute: 'relativesNotRecorded',
+      });
+      expect(
+        variableAt(migrated, 'node', 'person', 'relativesNotRecorded'),
+      ).toMatchObject({ type: 'categorical' });
     });
 
     it('gives the new attribute a key and a name the person type does not use', () => {
@@ -472,7 +484,7 @@ describe('v8 to v9 Family Pedigree migration', () => {
         id: 'pedigree-introduction',
         type: 'Information',
         label: en('Your family (introduction)'),
-        title: en('Your family'),
+        title: en('Introduction'),
         items: [
           {
             id: 'intro-text',
@@ -893,6 +905,11 @@ describe('v8 to v9 Family Pedigree migration', () => {
           currentPartnerAttribute: 'isActive',
         },
         framing: 'gendered',
+        completeness: {
+          scope: 'parents',
+          enforcement: 'required',
+          relativesNotRecordedAttribute: 'relativesNotRecorded',
+        },
       },
     ]);
   });
@@ -986,7 +1003,7 @@ describe('v8 to v9 Family Pedigree migration', () => {
       expect(stageById(migrated, 'family-pedigree-introduction')).toMatchObject(
         {
           type: 'Information',
-          title: en('Family pedigree'),
+          title: en('Introduction'),
           items: [{ id: 'pedigree-intro', type: 'text' }],
         },
       );

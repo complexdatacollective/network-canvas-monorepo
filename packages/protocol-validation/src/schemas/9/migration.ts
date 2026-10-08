@@ -190,7 +190,8 @@ const migrationV8toV9 = createMigration({
 - Text that participants see is now marked as written in English, because older protocols do not record which language they use. If your protocol is written in another language, add that language on the Languages page in Architect, enter each text in it, and then remove English.
 - Family Pedigree stages are converted to the redesigned Family Pedigree. If a stage had an introduction screen, the screen becomes an Information stage just before the pedigree, which is skipped whenever the pedigree is skipped.
 - The Family Pedigree answers for sex assigned at birth and for the kind of each relationship keep the values already recorded, but their labels change to the wording of the redesigned interface. A nomination prompt with the ID "pedigree", which is now reserved, is given a new ID.
-- A Family Pedigree that required or recommended recording grandparents now requires or recommends recording the family up to the grandparents, which also includes siblings, children, aunts and uncles. A new attribute, "relativesNotRecorded", is added for the people in the pedigree, to record when a participant says someone has no siblings or no children, or does not know.
+- The old Family Pedigree always required two of the participant's parents. A converted Family Pedigree requires both of the participant's biological parents or, where it required recording grandparents, the family up to the grandparents, which also includes siblings, children, aunts and uncles. Where it recommended recording grandparents, it now recommends recording the family up to the grandparents, so recording both parents becomes a recommendation rather than a requirement, because a stage has only one completeness setting. Only biological parents and gamete donors now count as parents; the old interface also counted adoptive parents and surrogates.
+- A new attribute, "relativesNotRecorded", is added for the people in every converted Family Pedigree, to record when a participant says someone has no siblings or no children, or does not know. If the person type already has an attribute with that name, the new attribute's name ends in a number instead, such as "relativesNotRecorded2".
 - Three Family Pedigree settings are removed because the redesigned interface does not use them: requiring the other biological parent of the participant's children and that parent's family, the attribute for each person's relationship to the participant, and the attribute for which gamete each parent gave. Both attributes stay in the codebook with any answers already recorded, but are no longer filled in.
 - The converted Family Pedigree does not ask about gender identity. Where it uses gendered words such as mother or sister, they follow each person's sex assigned at birth.
 - Additional person fields on a Family Pedigree that collected the name or sex assigned at birth are removed, because the redesigned interface asks every person for both itself. The old interface never showed a field for the name. Answers already recorded are kept.
@@ -234,8 +235,8 @@ const migrationV8toV9 = createMigration({
   // each session's stage records and resume position with their stages
   // before this runs. The redesigned pedigree keeps a different stage record,
   // which is translated without losing anything the participant recorded.
-  migrateSession: (session, { after }) => {
-    migrateFamilyPedigreeSessionRecords(session, after);
+  migrateSession: (session, { before, after }) => {
+    migrateFamilyPedigreeSessionRecords(session, after, before);
     return session;
   },
 });

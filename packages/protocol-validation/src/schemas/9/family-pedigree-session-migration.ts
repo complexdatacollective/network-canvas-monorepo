@@ -42,10 +42,25 @@
  *   kind, the current partner flag (schema 8's `isActive` attribute) and the
  *   gamete role, whose attribute schema 9 keeps in the codebook. A
  *   relationship already in the network between the same two people with the
- *   same kind is not written again, which also covers the older records whose
- *   edge ids were the interface's own.
+ *   same kind is not written again, which also covers the older records
+ *   whose edge ids were the interface's own.
+ *
+ * Then, for every converted pedigree, whether or not it left a record:
+ *
+ * - Every parent relationship of the pedigree's relationship type carries
+ *   what the redesigned interface writes on one: no current partner flag,
+ *   and the gestational carrier flag as true or false. Schema 8 wrote its
+ *   `isActive` flag, which schema 9 reads as "current partner", as true on
+ *   parent relationships too, and wrote the carrier flag only when true.
+ *   Partner relationships keep the values recorded.
+ * - A person with no sex at birth recorded who gave an egg or sperm, by the
+ *   gamete role on a biological or donor relationship to their child, is
+ *   recorded as female or male, as the redesigned interface records the egg
+ *   and sperm parents it adds itself. Someone recorded as giving both, or
+ *   with any sex at birth recorded, including "don't know", is left as they
+ *   are.
  * - `noChildrenAffirmed` is recorded as "no children" on the participant's
- *   relatives-not-recorded attribute, when the converted stage has one and
+ *   relatives-not-recorded attribute, which every converted stage has, when
  *   the participant has no children in the network.
  * - The membership list, `isNetworkCommitted` and `edgeIdVersion` are
  *   dropped, and a record left with nothing in it is removed.
@@ -58,10 +73,10 @@
  *   their name rather than risk discarding a typed one.
  * - A label is not written into an encrypted name attribute, which only the
  *   interview can encrypt; that person stays unnamed.
- * - Sex at birth and the stage's form answers were never stored outside the
- *   interview's memory; the redesigned stage asks for what it needs.
- * - "No children" is dropped where the converted stage has no attribute to
- *   record it in (no completeness setting) or the participant has children.
+ * - The stage's form answers, and a sex at birth the gamete role does not
+ *   settle, were never stored outside the interview's memory; the redesigned
+ *   stage asks for what it needs.
+ * - "No children" is dropped where the participant has children.
  */
 import { FAMILY_PEDIGREE_BUILD_PROMPT_ID } from './stages/family-pedigree.ts';
 
@@ -103,13 +118,23 @@ type PedigreeBindings = {
   nameAttribute: string | undefined;
   nameEncrypted: boolean;
   egoAttribute: string;
+  sexAttribute: string | undefined;
   edgeType: string;
   kindAttribute: string;
+  gestationalCarrierAttribute: string | undefined;
+  currentPartnerAttribute: string | undefined;
+  /** Schema 8's gamete role attribute, which schema 9 no longer binds. */
+  gameteRoleAttribute: string | undefined;
   relativesNotRecordedAttribute: string | undefined;
 };
 
+/**
+ * `stage` is the converted pedigree; `schema8Stage` is the stage it was
+ * converted from, which named the gamete role attribute.
+ */
 const bindingsOf = (
   stage: Fields,
+  schema8Stage: Fields | undefined,
   codebook: unknown,
 ): PedigreeBindings | undefined => {
   const stageId = stringOrUndefined(stage.id);
@@ -143,8 +168,16 @@ const bindingsOf = (
     nameAttribute,
     nameEncrypted: nameVariable?.encrypted === true,
     egoAttribute,
+    sexAttribute: stringOrUndefined(node.sexAssignedAtBirthAttribute),
     edgeType,
     kindAttribute,
+    gestationalCarrierAttribute: stringOrUndefined(
+      edge.gestationalCarrierAttribute,
+    ),
+    currentPartnerAttribute: stringOrUndefined(edge.currentPartnerAttribute),
+    gameteRoleAttribute: stringOrUndefined(
+      asRecord(schema8Stage?.edgeConfig).gameteRoleVariable,
+    ),
     relativesNotRecordedAttribute: stringOrUndefined(
       asRecord(stage.completeness).relativesNotRecordedAttribute,
     ),
@@ -261,6 +294,100 @@ const commitMissingFamily = (
   }
 };
 
+/**
+ * The kinds of parent relationship. Partner is the only other kind; a
+ * relationship with no kind, or one schema 9 does not know, is not part of
+ * the family the redesigned stage draws.
+ */
+const PARENT_KINDS = new Set([
+  'biological',
+  'adoptive',
+  'social',
+  'donor',
+  'surrogate',
+]);
+
+/** Biological parents and gamete donors gave the child an egg or a sperm. */
+const GENETIC_KINDS = new Set(['biological', 'donor']);
+
+const familyEdges = (network: SessionNetwork, bindings: PedigreeBindings) =>
+  network.edges.filter((edge) => edge.type === bindings.edgeType);
+
+/**
+ * Gives every parent relationship exactly what the redesigned interface
+ * writes on one: the gestational carrier flag as true or false, and no
+ * current partner flag. Schema 8 wrote its `isActive` flag, now the current
+ * partner attribute, as true on parent relationships too. Partner
+ * relationships keep what was recorded.
+ */
+const normalizeParentRelationships = (
+  network: SessionNetwork,
+  bindings: PedigreeBindings,
+) => {
+  const { currentPartnerAttribute, gestationalCarrierAttribute } = bindings;
+  for (const edge of familyEdges(network, bindings)) {
+    const attributes = attributesOf(edge);
+    const kind = kindOf(attributes, bindings.kindAttribute);
+    if (typeof kind !== 'string' || !PARENT_KINDS.has(kind)) continue;
+    const next = { ...attributes };
+    if (currentPartnerAttribute !== undefined) {
+      delete next[currentPartnerAttribute];
+    }
+    if (gestationalCarrierAttribute !== undefined) {
+      next[gestationalCarrierAttribute] =
+        attributes[gestationalCarrierAttribute] === true;
+    }
+    edge.attributes = next;
+  }
+};
+
+const SEX_FOR_GAMETE: Readonly<Record<string, string>> = {
+  egg: 'female',
+  sperm: 'male',
+};
+
+/**
+ * Records the sex at birth of a person who has none recorded but gave an egg
+ * or a sperm, by schema 8's gamete role on a genetic relationship to their
+ * child: female for an egg, male for a sperm, as the redesigned interface
+ * records the egg and sperm parents it adds itself. Someone recorded as
+ * giving both is left unrecorded, and a recorded value is never replaced.
+ */
+const deriveSexFromGameteRole = (
+  network: SessionNetwork,
+  bindings: PedigreeBindings,
+) => {
+  const { sexAttribute, gameteRoleAttribute } = bindings;
+  if (sexAttribute === undefined || gameteRoleAttribute === undefined) return;
+
+  const sexesByPerson = new Map<unknown, Set<string>>();
+  for (const edge of familyEdges(network, bindings)) {
+    const attributes = attributesOf(edge);
+    const kind = kindOf(attributes, bindings.kindAttribute);
+    if (typeof kind !== 'string' || !GENETIC_KINDS.has(kind)) continue;
+    const role = kindOf(attributes, gameteRoleAttribute);
+    const sex = typeof role === 'string' ? SEX_FOR_GAMETE[role] : undefined;
+    if (sex === undefined) continue;
+    const sexes = sexesByPerson.get(edge.from) ?? new Set<string>();
+    sexes.add(sex);
+    sexesByPerson.set(edge.from, sexes);
+  }
+
+  for (const node of network.nodes) {
+    if (node.type !== bindings.personType) continue;
+    const sexes = sexesByPerson.get(node._uid);
+    if (sexes?.size !== 1) continue;
+    const attributes = attributesOf(node);
+    const recorded = attributes[sexAttribute];
+    const isRecorded =
+      recorded !== undefined &&
+      recorded !== null &&
+      !(Array.isArray(recorded) && recorded.length === 0);
+    if (isRecorded) continue;
+    node.attributes = { ...attributes, [sexAttribute]: [...sexes] };
+  }
+};
+
 const NO_CHILDREN = 'noChildren';
 
 /** Records schema 8's "no children" answer on the participant. */
@@ -290,15 +417,30 @@ const recordNoChildren = (
   }
 };
 
+const schema8StageById = (protocol: unknown, id: unknown) => {
+  const stages = asRecord(protocol).stages;
+  if (!Array.isArray(stages)) return undefined;
+  const stage: unknown = stages.find(
+    (candidate: unknown) =>
+      isRecord(candidate) &&
+      candidate.type === 'FamilyPedigree' &&
+      candidate.id === id,
+  );
+  return isRecord(stage) ? stage : undefined;
+};
+
 /**
  * Translates every schema 8 Family Pedigree record in a session whose stage
- * records already sit at their schema 9 indices. `protocol` is the migrated,
- * schema 9 document. Records of every other stage, and pedigree records
- * already in the schema 9 shape, are left as they are.
+ * records already sit at their schema 9 indices, and brings the family each
+ * converted pedigree draws into the shape the redesigned interface writes.
+ * `protocol` is the migrated, schema 9 document and `schema8Protocol` the
+ * document it was migrated from. Records of every other stage, and pedigree
+ * records already in the schema 9 shape, are left as they are.
  */
 export const migrateFamilyPedigreeSessionRecords = (
   session: { network: SessionNetwork; stageMetadata: Fields },
   protocol: unknown,
+  schema8Protocol: unknown,
 ) => {
   const stages = asRecord(protocol).stages;
   if (!Array.isArray(stages)) return;
@@ -308,20 +450,29 @@ export const migrateFamilyPedigreeSessionRecords = (
     if (!isRecord(stage) || stage.type !== 'FamilyPedigree') return;
     const key = String(index);
     const record = session.stageMetadata[key];
-    if (!isSchema8Record(record)) return;
+    const bindings = bindingsOf(
+      stage,
+      schema8StageById(schema8Protocol, stage.id),
+      codebook,
+    );
+    const schema8Record = isSchema8Record(record) ? record : undefined;
 
-    const bindings = bindingsOf(stage, codebook);
     if (bindings) {
-      commitMissingFamily(record, session.network, bindings);
-      if (record.noChildrenAffirmed === true) {
+      if (schema8Record) {
+        commitMissingFamily(schema8Record, session.network, bindings);
+      }
+      normalizeParentRelationships(session.network, bindings);
+      deriveSexFromGameteRole(session.network, bindings);
+      if (schema8Record?.noChildrenAffirmed === true) {
         recordNoChildren(session.network, bindings);
       }
     }
+    if (!schema8Record) return;
 
     const framing =
-      typeof record.selectedFraming === 'string' &&
-      FRAMINGS.has(record.selectedFraming)
-        ? record.selectedFraming
+      typeof schema8Record.selectedFraming === 'string' &&
+      FRAMINGS.has(schema8Record.selectedFraming)
+        ? schema8Record.selectedFraming
         : undefined;
     if (framing === undefined) {
       delete session.stageMetadata[key];

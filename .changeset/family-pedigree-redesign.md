@@ -88,16 +88,27 @@ boolean person attribute as `attribute` (it was `variable`).
 
 **The v8 to v9 migration** converts a schema 8 Family Pedigree. The old
 attributes map to their new places, `censusPrompt` becomes `prompt`, and the
-framing carries over. A `requireGrandparents` boundary becomes a `completeness`
-setting, with a new `relativesNotRecorded` attribute. An `introScreen` becomes
-an Information stage inserted just before the pedigree. That stage takes the
-pedigree's skip logic, and skips that jumped to the pedigree now jump to it.
-Interviews recorded against a migrated protocol are migrated with it: each
-stage's metadata and the resume position follow their stage, so an interview
-in progress resumes where its participant left it. A schema 8 pedigree's
-stage metadata becomes the new shape, keeping the participant's framing and
-"no children" answer, and writing to the network any people and relationships
-that were only held in it. `requireChildrenContributors`, `relationshipVariable` and
+framing carries over. Every converted stage gets a `completeness` setting,
+since schema 8 always required both of the participant's parents: the
+parents scope, required, or the grandparents scope at the `requireGrandparents`
+boundary's enforcement. A recommended grandparents boundary therefore makes
+the parents a recommendation too, and the migration notes say so. Each
+person type a converted stage uses gets a new `relativesNotRecorded`
+attribute, whose name ends in a number when the type already uses that name.
+An `introScreen` becomes an Information stage titled "Introduction", the
+heading schema 8 showed above it, inserted just before the pedigree. That
+stage takes the pedigree's skip logic, and skips that jumped to the pedigree
+now jump to it. Interviews recorded against a migrated protocol are migrated
+with it: each stage's metadata and the resume position follow their stage, so
+an interview in progress resumes where its participant left it. A schema 8
+pedigree's stage metadata becomes the new shape, keeping the participant's
+framing and "no children" answer, and writing to the network any people and
+relationships that were only held in it. Parent relationships lose the
+`isActive` flag schema 8 wrote on them, which schema 9 reads as "current
+partner", and carry the gestational carrier flag as true or false, as the
+redesigned stage writes them. A person with no sex at birth recorded who gave
+an egg or a sperm, by schema 8's gamete role, is recorded as female or male.
+`requireChildrenContributors`, `relationshipVariable` and
 `gameteRoleVariable` are dropped; their attributes stay in the codebook. Node
 form fields collecting the name or sex at birth attribute are left out, since
 the stage asks both itself. A pedigree whose answers share an attribute (two

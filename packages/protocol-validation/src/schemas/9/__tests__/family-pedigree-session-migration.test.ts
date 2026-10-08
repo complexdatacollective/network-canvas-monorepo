@@ -11,9 +11,9 @@ import {
   committedRecord,
   committedSession,
   friend,
+  migratedRelationships,
   PEDIGREE_INDEX,
   pedigreePeople,
-  pedigreeRelationships,
   uncommittedSession,
 } from './fixtures/cegrm-schema-8-session.ts';
 // The CEGRM template as `main` released it, when the Family Pedigree was a
@@ -161,8 +161,7 @@ describe('migrationV8toV9 session step', () => {
       );
     });
 
-    it('leaves every person and relationship as they were', () => {
-      expect(result.network.edges).toEqual(pedigreeRelationships);
+    it('leaves every person as they were', () => {
       expect(
         result.network.nodes.filter((node) => node._uid !== 'ego-1'),
       ).toEqual(
@@ -212,8 +211,178 @@ describe('migrationV8toV9 session step', () => {
         })),
       } as ReturnType<typeof committedRecord>;
       expect(migrated(migrateSession(legacy)).network.edges).toEqual(
-        pedigreeRelationships,
+        migratedRelationships,
       );
+    });
+
+    it('writes each relationship as the redesigned interface does', () => {
+      expect(result.network.edges).toEqual(migratedRelationships);
+    });
+  });
+
+  describe('the relationships of a converted pedigree', () => {
+    const { migrateSession } = migrate();
+    const edgeById = (edges: readonly Fields[], id: string) =>
+      edges.find((edge) => edge._uid === id)?.attributes;
+
+    it.for(['biological', 'adoptive', 'social', 'donor', 'surrogate'] as const)(
+      'gives a %s parent no current partner flag, as the redesigned interface does',
+      (kind) => {
+        const session = committedSession(9);
+        session.network.edges.push({
+          _uid: 'edge-other-parent',
+          type: 'family_relationship',
+          from: 'friend-1',
+          to: 'ego-1',
+          attributes: { relationshipType: [kind], isActive: true },
+        });
+        const { edges } = migrated(migrateSession(session)).network;
+        expect(edgeById(edges, 'edge-other-parent')).toEqual({
+          relationshipType: [kind],
+          isGestationalCarrier: false,
+        });
+      },
+    );
+
+    it.for([true, false])(
+      'keeps a partnership recorded as current %s',
+      (current) => {
+        const session = committedSession(9);
+        session.network.edges.push({
+          _uid: 'edge-ego-partner',
+          type: 'family_relationship',
+          from: 'ego-1',
+          to: 'friend-1',
+          attributes: { relationshipType: ['partner'], isActive: current },
+        });
+        const { edges } = migrated(migrateSession(session)).network;
+        expect(edgeById(edges, 'edge-ego-partner')).toEqual({
+          relationshipType: ['partner'],
+          isActive: current,
+        });
+      },
+    );
+
+    it('leaves relationships of another type as they were', () => {
+      const session = committedSession(9);
+      const knows = {
+        _uid: 'edge-knows',
+        type: 'knows',
+        from: 'ego-1',
+        to: 'friend-1',
+        attributes: { relationshipType: ['biological'], isActive: true },
+      };
+      session.network.edges.push(structuredClone(knows));
+      const { edges } = migrated(migrateSession(session)).network;
+      expect(edges.find((edge) => edge._uid === 'edge-knows')).toEqual(knows);
+    });
+
+    it('rewrites them when the pedigree left no record', () => {
+      const session = committedSession(9);
+      session.stageMetadata = {};
+      expect(migrated(migrateSession(session)).network.edges).toEqual(
+        migratedRelationships,
+      );
+    });
+  });
+
+  describe('sex at birth from the gamete someone gave', () => {
+    const { migrateSession } = migrate();
+    const withoutSex = (ids: readonly string[]) => {
+      const session = committedSession(9);
+      for (const node of session.network.nodes) {
+        if (!ids.includes(node._uid)) continue;
+        const { biologicalSex: _biologicalSex, ...attributes } =
+          node.attributes as Fields;
+        node.attributes = attributes;
+      }
+      return session;
+    };
+    const sexOf = (nodes: readonly Fields[], id: string) =>
+      (nodeById(nodes, id)?.attributes as Fields | undefined)?.biologicalSex;
+
+    it('records an egg parent as female and a sperm parent as male', () => {
+      const { nodes } = migrated(
+        migrateSession(withoutSex(['mother-1', 'father-1'])),
+      ).network;
+      expect(sexOf(nodes, 'mother-1')).toEqual(['female']);
+      expect(sexOf(nodes, 'father-1')).toEqual(['male']);
+    });
+
+    it('records a gamete donor the same way', () => {
+      const session = withoutSex(['friend-1']);
+      session.network.edges.push({
+        _uid: 'edge-donor',
+        type: 'family_relationship',
+        from: 'friend-1',
+        to: 'sister-1',
+        attributes: { relationshipType: ['donor'], gameteRole: ['sperm'] },
+      });
+      const { nodes } = migrated(migrateSession(session)).network;
+      expect(sexOf(nodes, 'friend-1')).toEqual(['male']);
+    });
+
+    it('treats a sex at birth left as an empty answer as not recorded', () => {
+      const session = committedSession(9);
+      const mother = nodeById(session.network.nodes, 'mother-1');
+      if (mother) {
+        mother.attributes = {
+          ...(mother.attributes as Fields),
+          biologicalSex: [],
+        };
+      }
+      const { nodes } = migrated(migrateSession(session)).network;
+      expect(sexOf(nodes, 'mother-1')).toEqual(['female']);
+    });
+
+    it.for([['intersex'], ['unknown'], ['male']])(
+      'never replaces a recorded %o',
+      (recorded) => {
+        const session = committedSession(9);
+        const mother = nodeById(session.network.nodes, 'mother-1');
+        if (mother) {
+          mother.attributes = {
+            ...(mother.attributes as Fields),
+            biologicalSex: recorded,
+          };
+        }
+        const { nodes } = migrated(migrateSession(session)).network;
+        expect(sexOf(nodes, 'mother-1')).toEqual(recorded);
+      },
+    );
+
+    it('leaves someone recorded as giving both gametes unrecorded', () => {
+      const session = withoutSex(['mother-1']);
+      session.network.edges.push({
+        _uid: 'edge-mother-friend',
+        type: 'family_relationship',
+        from: 'mother-1',
+        to: 'friend-1',
+        attributes: { relationshipType: ['biological'], gameteRole: ['sperm'] },
+      });
+      const { nodes } = migrated(migrateSession(session)).network;
+      expect(sexOf(nodes, 'mother-1')).toBeUndefined();
+    });
+
+    it('reads a gamete role only on a biological or donor relationship', () => {
+      const session = withoutSex(['friend-1']);
+      session.network.edges.push({
+        _uid: 'edge-adoptive',
+        type: 'family_relationship',
+        from: 'friend-1',
+        to: 'sister-1',
+        attributes: { relationshipType: ['adoptive'], gameteRole: ['egg'] },
+      });
+      const { nodes } = migrated(migrateSession(session)).network;
+      expect(sexOf(nodes, 'friend-1')).toBeUndefined();
+    });
+
+    it('leaves people without a gamete role unrecorded', () => {
+      const { nodes } = migrated(
+        migrateSession(withoutSex(['ego-1', 'sister-1'])),
+      ).network;
+      expect(sexOf(nodes, 'ego-1')).toBeUndefined();
+      expect(sexOf(nodes, 'sister-1')).toBeUndefined();
     });
   });
 
@@ -221,7 +390,7 @@ describe('migrationV8toV9 session step', () => {
     const { migrateSession } = migrate();
     const result = migrated(migrateSession(uncommittedSession()));
 
-    it('writes every person, with their name and the participant flag', () => {
+    it('writes every person, with their name, the participant flag and the sex at birth their gamete gives', () => {
       expect(result.network.nodes).toEqual([
         {
           _uid: 'ego-1',
@@ -233,14 +402,14 @@ describe('migrationV8toV9 session step', () => {
         {
           _uid: 'mother-1',
           type: 'person',
-          attributes: { name: 'Mother' },
+          attributes: { name: 'Mother', biologicalSex: ['female'] },
           stageId: 'family-pedigree',
           promptIDs: ['pedigree'],
         },
         {
           _uid: 'father-1',
           type: 'person',
-          attributes: { name: 'Joe' },
+          attributes: { name: 'Joe', biologicalSex: ['male'] },
           stageId: 'family-pedigree',
           promptIDs: ['pedigree'],
         },
@@ -254,8 +423,8 @@ describe('migrationV8toV9 session step', () => {
       ]);
     });
 
-    it('writes every relationship with all its attributes', () => {
-      expect(result.network.edges).toEqual(pedigreeRelationships);
+    it('writes every relationship as the redesigned interface does', () => {
+      expect(result.network.edges).toEqual(migratedRelationships);
     });
 
     it('keeps the chosen framing and nothing else in the record', () => {
@@ -362,21 +531,35 @@ describe('migrationV8toV9 session step', () => {
     expect(result.network.nodes).toEqual([]);
   });
 
-  it('drops "no children" where the converted stage cannot record it', () => {
-    const source = withStages(template(), (stages) =>
-      stages.map((stage) =>
-        stage.type === 'FamilyPedigree'
-          ? { ...stage, boundaries: { requireGrandparents: 'off' } }
-          : stage,
-      ),
-    );
-    const { migrateSession } = migrate(source);
-    const ego = nodeById(
-      migrated(migrateSession(committedSession(9))).network.nodes,
-      'ego-1',
-    );
-    expect(ego?.attributes).toEqual(pedigreePeople[0]?.attributes);
-  });
+  // Every converted stage has a completeness setting, and so the attribute
+  // that records "no children": schema 8 always required both parents.
+  it.for(['off', 'required', 'recommended'] as const)(
+    'records "no children" when the grandparents boundary was %s',
+    (requireGrandparents) => {
+      const source = withStages(template(), (stages) =>
+        stages.map((stage) =>
+          stage.type === 'FamilyPedigree'
+            ? {
+                ...stage,
+                boundaries: {
+                  requireGrandparents,
+                  requireChildrenContributors: 'off',
+                },
+              }
+            : stage,
+        ),
+      );
+      const { migrateSession } = migrate(source);
+      const ego = nodeById(
+        migrated(migrateSession(committedSession(9))).network.nodes,
+        'ego-1',
+      );
+      expect(ego?.attributes).toEqual({
+        ...(pedigreePeople[0]?.attributes as Fields),
+        relativesNotRecorded: ['noChildren'],
+      });
+    },
+  );
 
   it('does not change the session passed in', () => {
     const { migrateSession } = migrate();
