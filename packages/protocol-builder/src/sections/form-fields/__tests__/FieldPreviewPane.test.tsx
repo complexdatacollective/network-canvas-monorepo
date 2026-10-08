@@ -595,7 +595,9 @@ describe('FieldPreviewPane', () => {
     expect(
       screen.getByRole('radiogroup', { name: 'Research_Question_Á1' }),
     ).toBeVisible();
-    expect(field.closest('[lang]')).toHaveAttribute('lang', 'es');
+    // The field sits in the protocol's language, as the interview's region
+    // does, whatever language the pane around it speaks.
+    expect(field.closest('[lang]')).toHaveAttribute('lang', 'en');
     expect(field.closest('[dir]')).toHaveAttribute('dir', 'ltr');
 
     fireEvent.click(field);
@@ -615,7 +617,7 @@ describe('FieldPreviewPane', () => {
     fireEvent.keyDown(slider, { key: 'Enter' });
     const popup = await screen.findByTestId('scale-value-popover');
 
-    expect(popup.closest('[lang]')).toHaveAttribute('lang', 'es');
+    expect(popup.closest('[lang]')).toHaveAttribute('lang', 'en');
     expect(popup.closest('[dir]')).toHaveAttribute('dir', 'ltr');
     // Inside the locale region rather than merely under one: a popup portalled
     // to the document body would satisfy `closest` through the wrong ancestor.
@@ -688,9 +690,11 @@ describe('FieldPreviewPane', () => {
     expect(
       screen.getByRole('spinbutton', { name: 'How old are you?' }),
     ).toBeVisible();
+    // The English fallback marks no language of its own: it sits in the
+    // Spanish region being previewed, as it would in the interview.
     expect(
       screen.getByText('How old are you?').closest('[lang]'),
-    ).toHaveAttribute('lang', 'en');
+    ).toHaveAttribute('lang', 'es');
   });
 
   describe('language menu', () => {
@@ -796,9 +800,10 @@ describe('FieldPreviewPane', () => {
       ).toHaveAttribute('lang', 'es');
     });
 
-    it('shows a participant’s fallback text, in the fallback’s language, where a translation is missing', async () => {
-      // The fallback is Spanish and the pane's own language is English, so the
-      // language the text is tagged with can only have come from the fallback.
+    it('shows a participant’s fallback text where a translation is missing, marking no language of its own', async () => {
+      // The interview marks its language once, at its boundary, and the
+      // preview stands in for that boundary: the Spanish fallback sits in the
+      // English region the participant chose, as it would in the interview.
       renderPreview(
         { variable: 'age', prompt: { es: '¿Cuántos años tienes?' } },
         { localization: { defaultLocale: 'es', locales: ['es', 'en'] } },
@@ -812,7 +817,18 @@ describe('FieldPreviewPane', () => {
       ).toBeVisible();
       expect(
         screen.getByText('¿Cuántos años tienes?').closest('[lang]'),
-      ).toHaveAttribute('lang', 'es');
+      ).toHaveAttribute('lang', 'en');
+    });
+
+    it('lays the field out right to left for a right-to-left protocol language', () => {
+      renderPreview(
+        { variable: 'age', prompt: { ar: 'كم عمرك؟' } },
+        { localization: { defaultLocale: 'ar', locales: ['ar'] } },
+      );
+
+      const field = screen.getByRole('spinbutton', { name: 'كم عمرك؟' });
+      expect(field.closest('[lang]')).toHaveAttribute('lang', 'ar');
+      expect(field.closest('[dir]')).toHaveAttribute('dir', 'rtl');
     });
 
     it('shows each answer’s label in the chosen language', async () => {

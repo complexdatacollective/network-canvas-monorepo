@@ -43,7 +43,7 @@ import useBeforeNext from '../../hooks/useBeforeNext';
 import { useNodeMeasurement } from '../../hooks/useNodeMeasurement';
 import useReadyForNextStage from '../../hooks/useReadyForNextStage';
 import { useStageSelector } from '../../hooks/useStageSelector';
-import { useResolvePresentationalText } from '../../localization/ProtocolLocalizationProvider';
+import { useResolveLocalizedString } from '../../localization/ProtocolLocalizationProvider';
 import {
   getEdgeColorForType,
   getNetworkEdges,
@@ -376,7 +376,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   // The gender identity question offers the attribute's own options, with
   // the labels the researcher gave them.
   const genderIdentityAttribute = config.genderIdentity?.attribute;
-  const toPresentationalText = useResolvePresentationalText();
+  const resolve = useResolveLocalizedString();
   const genderIdentityOptions = useMemo(() => {
     if (genderIdentityAttribute === undefined) return [];
     const definition =
@@ -384,15 +384,10 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     return definition?.type === 'categorical'
       ? definition.options.map((option) => ({
           value: option.value,
-          label: toPresentationalText(option.label),
+          label: resolve(option.label).text,
         }))
       : [];
-  }, [
-    codebook,
-    config.personType,
-    genderIdentityAttribute,
-    toPresentationalText,
-  ]);
+  }, [codebook, config.personType, genderIdentityAttribute, resolve]);
 
   const requiredFormVariables = useMemo(() => {
     const variables = codebook.node?.[config.personType]?.variables ?? {};

@@ -371,18 +371,17 @@ describe('protocol text in the interview language', () => {
     locales: ['en', 'ar'],
   };
 
-  it('marks a title shown in a fallback language with that language and direction', () => {
+  it('leaves a title shown in a fallback language to the interview’s boundary', () => {
     renderInformation(makeStage([], { en: 'Before you begin' }), [], {
       localization: ENGLISH_AND_ARABIC,
       locale: 'ar',
     });
 
     const heading = screen.getByRole('heading', { name: 'Before you begin' });
-    expect(heading).toHaveAttribute('lang', 'en');
-    expect(heading).toHaveAttribute('dir', 'ltr');
+    expect(heading.closest('[lang], [dir]')).toBeNull();
   });
 
-  it('marks a translated title with the interview language and direction', () => {
+  it('shows a translated title with no language of its own', () => {
     renderInformation(
       makeStage([], { en: 'Before you begin', ar: 'قبل أن تبدأ' }),
       [],
@@ -390,8 +389,7 @@ describe('protocol text in the interview language', () => {
     );
 
     const heading = screen.getByRole('heading', { name: 'قبل أن تبدأ' });
-    expect(heading).toHaveAttribute('lang', 'ar');
-    expect(heading).toHaveAttribute('dir', 'rtl');
+    expect(heading.closest('[lang], [dir]')).toBeNull();
   });
 
   it('formats a text item as a message before rendering it as markdown', () => {
@@ -455,7 +453,7 @@ describe('protocol text in the interview language', () => {
     expect(screen.getByText('context').closest('[lang], [dir]')).toBeNull();
   });
 
-  it('marks an image description shown in a fallback language with that language', async () => {
+  it('leaves an image description shown in a fallback language to the interview’s boundary', async () => {
     renderInformation(
       makeStage([
         {
@@ -475,7 +473,6 @@ describe('protocol text in the interview language', () => {
       'alt',
       'Two people talking at a kitchen table.',
     );
-    expect(image).toHaveAttribute('lang', 'en');
-    expect(image).toHaveAttribute('dir', 'ltr');
+    expect(image?.closest('[lang], [dir]')).toBeNull();
   });
 });

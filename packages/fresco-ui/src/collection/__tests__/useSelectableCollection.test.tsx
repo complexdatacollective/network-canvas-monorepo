@@ -1,3 +1,4 @@
+import { DirectionProvider } from '@base-ui/react/direction-provider';
 import { fireEvent, render } from '@testing-library/react';
 import { useRef } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -265,6 +266,35 @@ describe('useSelectableCollection', () => {
         expect(keyboardDelegate.getKeyRightOf).toHaveBeenCalledWith('2');
         expect(selectionManager.setFocusedKey).toHaveBeenCalledWith('3');
       });
+
+      it.each([
+        { key: 'ArrowLeft', follows: true, moves: 'getKeyRightOf' },
+        { key: 'ArrowRight', follows: true, moves: 'getKeyLeftOf' },
+        { key: 'ArrowLeft', follows: false, moves: 'getKeyLeftOf' },
+      ] as const)(
+        'in a right-to-left layout, $key moves through $moves when the order is followed: $follows',
+        ({ key, follows, moves }) => {
+          selectionManager = createMockSelectionManager({ focusedKey: '2' });
+          keyboardDelegate = createMockKeyboardDelegate({
+            horizontalFollowsOrder: follows,
+            getKeyLeftOf: vi.fn(() => '1'),
+            getKeyRightOf: vi.fn(() => '3'),
+          });
+
+          const { getByTestId } = render(
+            <DirectionProvider direction="rtl">
+              <TestComponent
+                selectionManager={selectionManager}
+                keyboardDelegate={keyboardDelegate}
+              />
+            </DirectionProvider>,
+          );
+
+          fireEvent.keyDown(getByTestId('collection'), { key });
+
+          expect(keyboardDelegate[moves]).toHaveBeenCalledWith('2');
+        },
+      );
     });
 
     describe('Home/End', () => {

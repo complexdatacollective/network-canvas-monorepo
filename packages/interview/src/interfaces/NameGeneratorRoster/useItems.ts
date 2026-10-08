@@ -3,7 +3,6 @@ import { invariant } from 'es-toolkit';
 import { useCallback, useMemo } from 'react';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
-import type { PresentationalText } from '@codaco/fresco-ui/PresentationalText';
 import type { LocalizedString } from '@codaco/protocol-validation';
 import {
   type EntityPrimaryKey,
@@ -14,10 +13,7 @@ import {
 
 import useExternalData from '../../hooks/useExternalData';
 import { useStageSelector } from '../../hooks/useStageSelector';
-import {
-  useResolveLocalizedString,
-  useResolvePresentationalText,
-} from '../../localization/ProtocolLocalizationProvider';
+import { useResolveLocalizedString } from '../../localization/ProtocolLocalizationProvider';
 import { getStageCardOptions } from '../../selectors/name-generator';
 import {
   getNetworkNodes,
@@ -39,14 +35,11 @@ const detailsWithVariableUUIDs =
     visibleSupplementaryFields: ReturnType<
       typeof getStageCardOptions
     >['additionalProperties'];
-    toPresentationalText: (value: LocalizedString) => PresentationalText;
+    resolveText: (value: LocalizedString) => string;
   }) =>
   (node: NcNode): DataCardDetail[] | undefined => {
-    const {
-      nodeTypeDefinition,
-      visibleSupplementaryFields,
-      toPresentationalText,
-    } = props;
+    const { nodeTypeDefinition, visibleSupplementaryFields, resolveText } =
+      props;
 
     invariant(
       nodeTypeDefinition,
@@ -64,7 +57,7 @@ const detailsWithVariableUUIDs =
 
     return withUUIDReplacement?.map((field) => ({
       id: field.variable,
-      label: toPresentationalText(field.label),
+      label: resolveText(field.label),
       value: Object.hasOwn(attrs, field.variable)
         ? attrs[field.variable]
         : undefined,
@@ -84,7 +77,6 @@ export type UseItemElement = {
 const useItems = (props: NameGeneratorRosterProps) => {
   const intl = useAppIntl();
   const resolve = useResolveLocalizedString();
-  const toPresentationalText = useResolvePresentationalText();
   const nodeTypeDefinition = useStageSelector(getNodeTypeDefinition);
   const { externalData, status } = useExternalData(
     props.stage.dataSource,
@@ -133,7 +125,7 @@ const useItems = (props: NameGeneratorRosterProps) => {
         data: detailsWithVariableUUIDs({
           nodeTypeDefinition,
           visibleSupplementaryFields: cardOptions.additionalProperties,
-          toPresentationalText,
+          resolveText: (value) => resolve(value).text,
         })(item),
       },
     })) as UseItemElement[];
@@ -142,7 +134,7 @@ const useItems = (props: NameGeneratorRosterProps) => {
     getNodeLabel,
     nodeTypeDefinition,
     cardOptions.additionalProperties,
-    toPresentationalText,
+    resolve,
   ]);
 
   return { status, items, excludeItems };
