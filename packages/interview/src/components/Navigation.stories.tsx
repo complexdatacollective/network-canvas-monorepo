@@ -326,18 +326,20 @@ export const TextSize: Story = {
     await expect(decrease).toBeEnabled();
     await expect(increase).toBeEnabled();
 
-    // Language is the first setting. Tab reaches the native number field;
-    // arrow-key stepping then proves scaling works without a pointer.
+    // Text size is the first setting, so opening the popover focuses its
+    // native number field (the steppers are out of the tab order), and Tab
+    // moves on to the exit action. Arrow-key stepping then proves scaling
+    // works without a pointer.
     //
     // Waited for rather than read once: the popover moves focus itself, a
     // frame or more after it opens, and until it does focus is still on the
     // trigger.
-    await waitFor(() =>
-      expect(
-        within(popover).getByRole('combobox', { name: /interface language/i }),
-      ).toHaveFocus(),
-    );
+    await waitFor(() => expect(input).toHaveFocus());
     await userEvent.tab();
+    await expect(
+      within(popover).getByRole('button', { name: /exit interview/i }),
+    ).toHaveFocus();
+    await userEvent.tab({ shift: true });
     await expect(input).toHaveFocus();
     await userEvent.keyboard('{ArrowUp}{ArrowUp}');
     await expect(input).toHaveValue(120);

@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useEffect, useState } from 'react';
-import { expect, within } from 'storybook/test';
+import { expect, waitFor, within } from 'storybook/test';
 import SuperJSON from 'superjson';
 
 import { SyntheticInterview } from '@codaco/protocol-utilities';
@@ -159,17 +159,22 @@ export const NarrativeReflection: Story = {
   render: () => <PerceivedFamilyStory step={6} />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(await canvas.findByText('Maya')).toBeVisible();
-    await expect(await canvas.findByText('Jo')).toBeVisible();
-    await expect(await canvas.findByText('Avery')).toBeVisible();
+    // The stage animates in, so a name can be in the document before it is
+    // visible; a loaded runner can reach the assertion mid-animation.
+    for (const name of ['Maya', 'Jo', 'Avery']) {
+      const node = await canvas.findByText(name);
+      await waitFor(() => expect(node).toBeVisible());
+    }
   },
 };
 
 export const FullWalkthrough: Story = {
   render: () => <PerceivedFamilyStory step={1} />,
   play: async ({ canvasElement }) => {
-    await expect(
-      await within(canvasElement).findByText('Who feels like family to you?'),
-    ).toBeVisible();
+    const prompt = await within(canvasElement).findByText(
+      'Who feels like family to you?',
+    );
+    // As above: the prompt is in the document before the stage is visible.
+    await waitFor(() => expect(prompt).toBeVisible());
   },
 };

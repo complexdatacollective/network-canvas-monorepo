@@ -148,7 +148,10 @@ export default defineConfig({
             // `readRosterCsv` loads it with a dynamic import, which the
             // scanner never follows.
             '@codaco/protocol-validation > csvtojson',
+            '@codaco/interview > @use-gesture/react',
             '@codaco/interview > concaveman',
+            '@codaco/interview > html-to-image',
+            '@codaco/interview > intl-messageformat',
             '@codaco/interview > ohash',
             '@reduxjs/toolkit > immer',
             '@tanstack/react-table',

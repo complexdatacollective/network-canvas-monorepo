@@ -4,7 +4,6 @@ import { expect, waitFor } from 'storybook/test';
 import SuperJSON from 'superjson';
 
 import { SyntheticInterview } from '@codaco/protocol-utilities';
-import type { VariableOption } from '@codaco/protocol-validation';
 
 import StoryInterviewShell from '../../storybook-support/StoryInterviewShell';
 
@@ -80,7 +79,9 @@ function buildOptions(
   hasMissingValue: boolean,
   labelSet: LabelSet,
 ) {
-  const options: VariableOption[] = [];
+  // Plain-string labels: SyntheticInterview writes them in the protocol's
+  // declared default language.
+  const options: { label: string; value: number }[] = [];
 
   // These sets are fixed instruments; their own length decides the bin count,
   // so `binCount` does not apply.
@@ -93,21 +94,21 @@ function buildOptions(
 
   if (labels) {
     labels.forEach((label, i) => {
-      options.push({ label: { en: label }, value: i });
+      options.push({ label, value: i });
     });
     if (hasMissingValue) {
-      options.push({ label: { en: 'N/A' }, value: -1 });
+      options.push({ label: 'N/A', value: -1 });
     }
     return options;
   }
 
   for (let i = 0; i < binCount; i++) {
     const label = ORDINAL_LABELS[i] ?? `Option ${i + 1}`;
-    options.push({ label: { en: label }, value: i + 1 });
+    options.push({ label, value: i + 1 });
   }
 
   if (hasMissingValue) {
-    options.push({ label: { en: 'N/A' }, value: -1 });
+    options.push({ label: 'N/A', value: -1 });
   }
 
   return options;

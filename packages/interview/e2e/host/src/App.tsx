@@ -202,6 +202,10 @@ function MountedInterview({
       onProtocolLocaleChange={mockProtocolLocaleChange}
       onFinish={mockFinish}
       onRequestAsset={mockAssetReq}
+      // Every production host (Interviewer, Fresco, the website preview)
+      // enables text scaling, so the navigation's settings trigger renders
+      // here as it does for participants.
+      allowUserScaling
       flags={{ isE2E: true }}
       analytics={{ installationId: 'e2e', hostApp: 'e2e' }}
       disableAnalytics={true}

@@ -25,6 +25,7 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 
 import { Button, type ButtonProps, IconButton } from '../Button';
 import InputField from '../form/fields/InputField';
+import { useComboboxTriggerEscape } from '../hooks/useComboboxTriggerEscape';
 import Surface from '../layout/Surface';
 import { ArrowSvg } from '../Popover';
 import {
@@ -215,6 +216,15 @@ export default function LocaleSwitcher({
     state: Exclude<LocaleSwitcherSaveState, 'idle'>;
     key: number;
   } | null>(null);
+  const { open, onOpenChange, onTriggerKeyDown } = useComboboxTriggerEscape({
+    defaultOpen,
+    onOpenChange: (nextOpen) => {
+      if (!nextOpen) {
+        setQuery('');
+        setNotice(null);
+      }
+    },
+  });
   useEffect(() => {
     if (saveState === 'idle') {
       setNotice(null);
@@ -264,7 +274,7 @@ export default function LocaleSwitcher({
     <Combobox.Root
       items={items}
       value={selected}
-      defaultOpen={defaultOpen}
+      open={open}
       onValueChange={(next) => {
         if (next !== null) choose(next.value);
       }}
@@ -277,16 +287,12 @@ export default function LocaleSwitcher({
       onInputValueChange={(next, details) => {
         if (details.reason === 'input-change') setQuery(next);
       }}
-      onOpenChange={(open) => {
-        if (!open) {
-          setQuery('');
-          setNotice(null);
-        }
-      }}
+      onOpenChange={onOpenChange}
     >
       {display === 'icon' ? (
         <Combobox.Trigger
           aria-label={triggerName}
+          onKeyDown={onTriggerKeyDown}
           render={
             renderTrigger ?? (
               <IconButton
@@ -305,6 +311,7 @@ export default function LocaleSwitcher({
       ) : (
         <Combobox.Trigger
           aria-label={triggerName}
+          onKeyDown={onTriggerKeyDown}
           render={
             renderTrigger ?? (
               <Button
