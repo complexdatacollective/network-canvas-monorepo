@@ -217,6 +217,8 @@ const migrateStep = (document: Fields): Fields =>
 const migrateValid = (document: Fields): Fields =>
   migrateProtocol(document, 9) as unknown as Fields;
 
+const asRecord = (value: unknown): Fields => (isRecord(value) ? value : {});
+
 const stagesOf = (document: Fields): Fields[] =>
   Array.isArray(document.stages) ? document.stages.filter(isRecord) : [];
 
@@ -630,7 +632,56 @@ describe('v8 to v9 Family Pedigree migration', () => {
       );
       expect(pedigreeOf(migrated)).not.toHaveProperty('nominationPrompts');
     });
+
+    // Schema 8 let two prompts set one attribute: the second started with the
+    // first's selections and its changes overwrote them. Schema 9 gives each
+    // prompt an attribute of its own, and no conversion can tell which prompt
+    // a recorded answer came from.
+    it('leaves two prompts that set one attribute for validation to refuse', () => {
+      const document = schema8Protocol([
+        schema8Pedigree({
+          nominationPrompts: [
+            {
+              id: 'heart',
+              text: 'Who has heart disease?',
+              variable: 'hasCondition',
+            },
+            {
+              id: 'attack',
+              text: 'Who had a heart attack?',
+              variable: 'hasCondition',
+            },
+          ],
+        }),
+      ]);
+      expect(
+        (pedigreeOf(migrateStep(document)).nominationPrompts as Fields[]).map(
+          (prompt) => prompt.attribute,
+        ),
+      ).toEqual(['hasCondition', 'hasCondition']);
+      expect(() => migrateValid(document)).toThrow(MigrationResultInvalidError);
+      expect(() => migrateValid(document)).toThrow(
+        'Attribute \\"hasCondition\\" is already the attribute of another nomination prompt of this Family Pedigree stage. Each nomination prompt needs an attribute of its own.',
+      );
+    });
   });
+
+  // Schema 8 did not check the name attribute's type, so the name could share
+  // an attribute with sex at birth or a nomination prompt, each answer
+  // overwriting the other. Nothing tells the answers apart afterwards.
+  it.for([
+    ['sex assigned at birth', 'biologicalSex'],
+    ['nomination prompt', 'hasCondition'],
+  ] as const)(
+    'leaves a name attribute that is also the %s attribute for validation to refuse',
+    ([role, variable]) => {
+      const pedigree = schema8Pedigree();
+      (pedigree.nodeConfig as Fields).nodeLabelVariable = variable;
+      expect(() => migrateValid(schema8Protocol([pedigree]))).toThrow(
+        `is already the name attribute of this Family Pedigree stage, so it cannot also hold its ${role} answer.`,
+      );
+    },
+  );
 
   describe('form', () => {
     it('leaves out an empty field list, which schema 9 does not accept', () => {
@@ -651,6 +702,114 @@ describe('v8 to v9 Family Pedigree migration', () => {
           { variable: 'living', prompt: und('Living?'), hint: { und: '' } },
         ],
       });
+    });
+
+    /**
+     * A pedigree whose form collects `variables` beside the age field, each
+     * attribute given an input control so schema 8 could render it.
+     */
+    const pedigreeCollecting = (
+      variables: string[],
+      nodeConfig: Fields = {},
+    ): Fields[] => {
+      const pedigree = schema8Pedigree();
+      pedigree.nodeConfig = {
+        ...(pedigree.nodeConfig as Fields),
+        ...nodeConfig,
+        form: [
+          { id: 'field-age', variable: 'age', prompt: 'How old?' },
+          ...variables.map((variable) => ({
+            variable,
+            prompt: `Their ${variable}?`,
+          })),
+        ],
+      };
+      return [pedigree];
+    };
+
+    const withControls = (document: Fields): Fields => {
+      const controls: Record<string, string> = {
+        name: 'Text',
+        fullName: 'Text',
+        biologicalSex: 'ToggleButtonGroup',
+        hasCondition: 'Toggle',
+      };
+      for (const [variable, component] of Object.entries(controls)) {
+        const definition = variableAt(document, 'node', 'person', variable);
+        if (definition) definition.component = component;
+      }
+      return document;
+    };
+
+    const AGE_FIELD = {
+      id: 'field-age',
+      variable: 'age',
+      prompt: und('How old?'),
+    };
+
+    // The schema 8 interface asked the name itself and never showed a field
+    // collecting the name attribute, so leaving it out changes nothing a
+    // participant saw.
+    it('leaves out a field collecting the name attribute, which schema 8 never showed', () => {
+      const migrated = migrateValid(
+        withControls(schema8Protocol(pedigreeCollecting(['name']))),
+      );
+      expect(pedigreeOf(migrated).form).toEqual({ fields: [AGE_FIELD] });
+    });
+
+    it('leaves out a field collecting a variable with the id "name", which schema 8 also hid', () => {
+      const document = schema8Protocol(
+        pedigreeCollecting(['name'], { nodeLabelVariable: 'fullName' }),
+      );
+      const person = asRecord(
+        asRecord(asRecord(document.codebook).node).person,
+      );
+      person.variables = {
+        ...asRecord(person.variables),
+        fullName: { name: 'fullName', type: 'text' },
+      };
+      const migrated = migrateValid(withControls(document));
+      expect(pedigreeOf(migrated)).toMatchObject({
+        nodeConfiguration: { nameAttribute: 'fullName' },
+        form: { fields: [AGE_FIELD] },
+      });
+    });
+
+    // The redesigned stage asks every person's sex assigned at birth itself,
+    // with the same fixed options a field on that attribute had to offer.
+    it('leaves out a field collecting sex assigned at birth, which the stage asks itself', () => {
+      const migrated = migrateValid(
+        withControls(schema8Protocol(pedigreeCollecting(['biologicalSex']))),
+      );
+      expect(pedigreeOf(migrated).form).toEqual({ fields: [AGE_FIELD] });
+    });
+
+    it('leaves the form out when it collected nothing else', () => {
+      const pedigree = schema8Pedigree();
+      (pedigree.nodeConfig as Fields).form = [
+        { variable: 'name', prompt: 'Their name?' },
+        { variable: 'biologicalSex', prompt: 'Their sex at birth?' },
+      ];
+      const migrated = migrateValid(withControls(schema8Protocol([pedigree])));
+      expect(pedigreeOf(migrated)).not.toHaveProperty('form');
+    });
+
+    // The field's answer decided who the prompt started with selected, and
+    // schema 9 cannot ask both, so the researcher chooses.
+    it('leaves a field collecting a nomination prompt’s attribute for validation to refuse', () => {
+      const document = withControls(
+        schema8Protocol(pedigreeCollecting(['hasCondition'])),
+      );
+      expect(pedigreeOf(migrateStep(document)).form).toEqual({
+        fields: [
+          AGE_FIELD,
+          { variable: 'hasCondition', prompt: und('Their hasCondition?') },
+        ],
+      });
+      expect(() => migrateValid(document)).toThrow(MigrationResultInvalidError);
+      expect(() => migrateValid(document)).toThrow(
+        'Attribute \\"hasCondition\\" is the nomination prompt attribute of this Family Pedigree stage, which the stage records itself, so its additional person fields cannot collect it as well.',
+      );
     });
   });
 

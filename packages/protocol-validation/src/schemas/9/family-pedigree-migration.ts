@@ -183,10 +183,39 @@ const convertNominationPrompts = (prompts: unknown): unknown => {
   });
 };
 
-/** Schema 8's bare field list becomes a form; an empty list is left out. */
-const convertForm = (form: unknown): unknown => {
+/**
+ * The variable id schema 8's interface reserved for its own name control. It
+ * hid a form field collecting a variable with this id, whatever the name
+ * attribute was.
+ */
+const SCHEMA_8_NAME_FIELD_ID = 'name';
+
+/**
+ * Schema 8's bare field list becomes a form; a list left empty is left out.
+ *
+ * Schema 9 asks every person's name and sex assigned at birth itself, and
+ * refuses a field collecting either attribute, so such fields are left out.
+ * The participant still answers both for everyone. Schema 8's interface never
+ * showed a field collecting the name attribute (or a variable with the id
+ * "name"). Where it asked for sex at birth itself, which was when adding most
+ * people, its own answer replaced the field's; the parents its opening
+ * questions added kept the field's answer, and are now asked the stage's own
+ * question, with the same fixed options a field on that attribute had to
+ * offer.
+ *
+ * A field collecting a nomination prompt's attribute is kept, for validation
+ * to refuse: its answer decided who that prompt started with selected, and
+ * schema 9 cannot ask both.
+ */
+const convertForm = (
+  form: unknown,
+  askedByTheStage: ReadonlySet<unknown>,
+): unknown => {
   if (!Array.isArray(form)) return form;
-  return form.length > 0 ? { fields: form } : undefined;
+  const fields = form.filter(
+    (field) => !isRecord(field) || !askedByTheStage.has(field.variable),
+  );
+  return fields.length > 0 ? { fields } : undefined;
 };
 
 const isEmptyText = (item: unknown) =>
@@ -294,7 +323,14 @@ const convertFamilyPedigreeStage = (
         relativesNotRecordedByType,
       ),
     ),
-    form: convertForm(node.form),
+    form: convertForm(
+      node.form,
+      new Set([
+        node.nodeLabelVariable,
+        SCHEMA_8_NAME_FIELD_ID,
+        node.biologicalSexVariable,
+      ]),
+    ),
     nominationPrompts: convertNominationPrompts(nominationPrompts),
   });
 };

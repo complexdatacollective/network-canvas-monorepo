@@ -386,7 +386,9 @@ describe('FamilyPedigree in a whole protocol', () => {
     expect(
       issuesAt(protocol, ['stages', 0, 'nominationPrompts', 1, 'attribute']),
     ).toEqual([
-      expect.stringContaining('is already the nomination prompt attribute'),
+      expect.stringContaining(
+        'is already the attribute of another nomination prompt of this Family Pedigree stage. Each nomination prompt needs an attribute of its own.',
+      ),
     ]);
   });
 

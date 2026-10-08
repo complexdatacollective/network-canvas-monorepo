@@ -307,9 +307,17 @@
     "defaultMessage": "The Family Pedigree answers for sex assigned at birth and for the kind of each relationship keep the values already recorded, but their labels change to the wording of the redesigned interface. A nomination prompt with the ID \"pedigree\", which is now reserved, is given a new ID.",
     "description": "One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded: familyPedigreeLabels. \"Family Pedigree\" and \"Information\" are interface names. Keep quoted IDs and attribute names (\"pedigree\", \"relativesNotRecorded\") exactly as written."
   },
+  "protocolValidation.migrationNotes.schema9.familyPedigreeOwnFields": {
+    "defaultMessage": "Additional person fields on a Family Pedigree that collected the name or sex assigned at birth are removed, because the redesigned interface asks every person for both itself. The old interface never showed a field for the name. Answers already recorded are kept.",
+    "description": "One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded: familyPedigreeOwnFields. \"Family Pedigree\" is an interface name and \"Architect\" is an app name."
+  },
   "protocolValidation.migrationNotes.schema9.familyPedigreeRemoved": {
     "defaultMessage": "Three Family Pedigree settings are removed because the redesigned interface does not use them: requiring the other biological parent of the participant's children and that parent's family, the attribute for each person's relationship to the participant, and the attribute for which gamete each parent gave. Both attributes stay in the codebook with any answers already recorded, but are no longer filled in.",
     "description": "One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded: familyPedigreeRemoved. \"Family Pedigree\" and \"Information\" are interface names. Keep quoted IDs and attribute names (\"pedigree\", \"relativesNotRecorded\") exactly as written."
+  },
+  "protocolValidation.migrationNotes.schema9.familyPedigreeSharedAttributes": {
+    "defaultMessage": "A Family Pedigree cannot be converted if two of its answers use the same attribute: two nomination prompts, a nomination prompt and an additional person field, or the name and another answer. Each now needs an attribute of its own. Give each its own attribute in the version of Architect that made the protocol, then upgrade it.",
+    "description": "One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded: familyPedigreeSharedAttributes. \"Family Pedigree\" is an interface name and \"Architect\" is an app name."
   },
   "protocolValidation.migrationNotes.schema9.unspecifiedLanguage": {
     "defaultMessage": "Text that participants see is now marked as written in \"Unspecified language\", because older protocols do not record which language they use. You can change it to the language it is actually written in on the Languages page in Architect.",

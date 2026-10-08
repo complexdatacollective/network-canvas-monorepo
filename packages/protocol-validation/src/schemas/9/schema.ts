@@ -813,9 +813,17 @@ const ProtocolSchema = z
       for (const binding of bindings) {
         const earlier = roleOf.get(binding.variable);
         if (earlier !== undefined) {
+          const name = variableNameFor(
+            protocol,
+            stage.subject,
+            binding.variable,
+          );
           ctx.addIssue({
             code: 'custom' as const,
-            message: `Attribute "${variableNameFor(protocol, stage.subject, binding.variable)}" is already the ${earlier} attribute of this Family Pedigree stage, so it cannot also hold its ${binding.role} answer. Each needs an attribute of its own.`,
+            message:
+              earlier === binding.role
+                ? `Attribute "${name}" is already the attribute of another ${earlier} of this Family Pedigree stage. Each ${earlier} needs an attribute of its own.`
+                : `Attribute "${name}" is already the ${earlier} attribute of this Family Pedigree stage, so it cannot also hold its ${binding.role} answer. Each needs an attribute of its own.`,
             path: binding.path,
           });
         } else {

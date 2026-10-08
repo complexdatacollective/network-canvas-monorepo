@@ -300,6 +300,56 @@ describe('migrationV8toV9 session step', () => {
     });
   });
 
+  // The conversion leaves out a form field collecting the name or sex at
+  // birth, which the redesigned stage asks itself. The answers already
+  // recorded stay on each person.
+  describe('a pedigree whose form collected the name and sex at birth', () => {
+    const source = withStages(template(), (stages) =>
+      stages.map((stage) => {
+        if (stage.type !== 'FamilyPedigree') return stage;
+        const nodeConfig = stage.nodeConfig as Fields;
+        return {
+          ...stage,
+          nodeConfig: {
+            ...nodeConfig,
+            form: [
+              { variable: 'name', prompt: 'Their name?' },
+              { variable: 'biologicalSex', prompt: 'Their sex at birth?' },
+              ...(nodeConfig.form as Fields[]),
+            ],
+          },
+        };
+      }),
+    );
+    const codebook = source.codebook as {
+      node: { person: { variables: { biologicalSex: Fields } } };
+    };
+    codebook.node.person.variables.biologicalSex.component =
+      'ToggleButtonGroup';
+    const { migrateSession, protocol } = migrate(source);
+
+    it('converts the stage without those fields', () => {
+      expect(protocol.stages[PEDIGREE_INDEX + 1]).toMatchObject({
+        form: {
+          fields: [{ variable: 'living_status' }, { variable: 'birth_year' }],
+        },
+      });
+    });
+
+    it('keeps every person’s recorded name and sex at birth', () => {
+      const session = committedSession(9);
+      const result = migrated(migrateSession(session));
+      expect(
+        result.network.nodes.filter((node) => node._uid !== 'ego-1'),
+      ).toEqual(
+        [...pedigreePeople, friend].filter((node) => node._uid !== 'ego-1'),
+      );
+      expect(result.stageMetadata).toEqual({
+        [PEDIGREE_INDEX + 1]: { framing: 'gendered' },
+      });
+    });
+  });
+
   it('removes the record a reset pedigree left', () => {
     const { migrateSession } = migrate();
     const result = migrated(

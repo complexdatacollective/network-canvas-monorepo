@@ -98,8 +98,12 @@ in progress resumes where its participant left it. A schema 8 pedigree's
 stage metadata becomes the new shape, keeping the participant's framing and
 "no children" answer, and writing to the network any people and relationships
 that were only held in it. `requireChildrenContributors`, `relationshipVariable` and
-`gameteRoleVariable` are dropped; their attributes stay in the codebook. The
-migration notes describe all of this to researchers.
+`gameteRoleVariable` are dropped; their attributes stay in the codebook. Node
+form fields collecting the name or sex at birth attribute are left out, since
+the stage asks both itself. A pedigree whose answers share an attribute (two
+nomination prompts, a nomination prompt and a node form field, or the name
+and another answer) is not converted: the migrated protocol fails validation,
+naming the attribute. The migration notes describe all of this to researchers.
 
 **In Architect**, the stage editor configures the new stage. It has a
 setting that gives person symbols a shape for each sex assigned at birth or

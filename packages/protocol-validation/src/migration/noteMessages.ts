@@ -401,6 +401,20 @@ export const migrationNoteMessages = defineMessages({
     description:
       'One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded: familyPedigreeGenderIdentity. "Family Pedigree" and "Information" are interface names. Keep quoted IDs and attribute names ("pedigree", "relativesNotRecorded") exactly as written.',
   },
+  schema9FamilyPedigreeOwnFields: {
+    id: 'protocolValidation.migrationNotes.schema9.familyPedigreeOwnFields',
+    defaultMessage:
+      'Additional person fields on a Family Pedigree that collected the name or sex assigned at birth are removed, because the redesigned interface asks every person for both itself. The old interface never showed a field for the name. Answers already recorded are kept.',
+    description:
+      'One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded: familyPedigreeOwnFields. "Family Pedigree" is an interface name and "Architect" is an app name.',
+  },
+  schema9FamilyPedigreeSharedAttributes: {
+    id: 'protocolValidation.migrationNotes.schema9.familyPedigreeSharedAttributes',
+    defaultMessage:
+      'A Family Pedigree cannot be converted if two of its answers use the same attribute: two nomination prompts, a nomination prompt and an additional person field, or the name and another answer. Each now needs an attribute of its own. Give each its own attribute in the version of Architect that made the protocol, then upgrade it.',
+    description:
+      'One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded: familyPedigreeSharedAttributes. "Family Pedigree" is an interface name and "Architect" is an app name.',
+  },
 });
 
 // Each descriptor is a whole bullet. Markdown separators are structural:
@@ -492,6 +506,8 @@ const migrationNoteSets = {
       migrationNoteMessages.schema9FamilyPedigreeCompleteness,
       migrationNoteMessages.schema9FamilyPedigreeRemoved,
       migrationNoteMessages.schema9FamilyPedigreeGenderIdentity,
+      migrationNoteMessages.schema9FamilyPedigreeOwnFields,
+      migrationNoteMessages.schema9FamilyPedigreeSharedAttributes,
     ],
   },
 };
