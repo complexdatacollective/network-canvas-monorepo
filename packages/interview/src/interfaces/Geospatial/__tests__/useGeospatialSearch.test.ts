@@ -3,7 +3,6 @@ import {
   renderHook as renderHookBase,
   type RenderHookOptions,
 } from '@testing-library/react';
-import { createElement, type ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // --- Module mocks (must appear before imports that use them) ---
@@ -15,7 +14,10 @@ type SuggestOptions = {
 };
 const mockSuggest = vi
   .fn<
-    (query: string, options: SuggestOptions) => Promise<{ suggestions: [] }>
+    (
+      query: string,
+      options: SuggestOptions,
+    ) => Promise<{ suggestions: unknown[] }>
   >()
   .mockResolvedValue({ suggestions: [] });
 const mockRetrieve = vi
@@ -47,35 +49,8 @@ vi.mock('es-toolkit', async (importOriginal) => ({
 // The hook under test (imported after mocks are declared)
 import type { Map as MapboxMap } from 'mapbox-gl/esm';
 
-import { InterviewI18nProvider } from '../../../i18n/InterviewI18nProvider';
-import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
 import { type Suggestion, useGeospatialSearch } from '../useGeospatialSearch';
-
-const PROTOCOL_LOCALES = {
-  defaultLocale: 'en',
-  locales: ['en', 'hu', 'pt-BR', 'zh-Hans', 'sw'],
-};
-
-// The protocol language (the participant's stated preference) and interface
-// language (the Shell's) the hook runs in. Read at render, so a test changes
-// them and re-renders.
-const current = { protocol: 'en', interface: 'en' };
-const setLanguages = (protocol: string, interfaceLocale = 'en') => {
-  current.protocol = protocol;
-  current.interface = interfaceLocale;
-};
-
-function Languages({ children }: { children: ReactNode }) {
-  return createElement(
-    InterviewI18nProvider,
-    { requestedLocale: current.interface },
-    createElement(
-      TestProtocolLocalization,
-      { localization: PROTOCOL_LOCALES, locale: current.protocol },
-      children,
-    ),
-  );
-}
+import { Languages, setLanguages } from './Languages';
 
 // Every hook here runs inside a protocol localization, as it does in the Shell.
 const renderHook = <Result, Props>(
@@ -621,7 +596,7 @@ describe('useGeospatialSearch', () => {
     });
 
     it('discards a response still in flight in the old language', async () => {
-      let settleEnglish: (value: { suggestions: never[] }) => void = () => {};
+      let settleEnglish: (value: { suggestions: unknown[] }) => void = () => {};
       mockSuggest.mockImplementationOnce(
         () =>
           new Promise((resolve) => {
@@ -636,7 +611,7 @@ describe('useGeospatialSearch', () => {
       setLanguages('hu');
       rerender();
       await act(async () => {
-        settleEnglish({ suggestions: [{ name: 'Hungary' } as never] });
+        settleEnglish({ suggestions: [{ name: 'Hungary' }] });
         await Promise.resolve();
       });
 
