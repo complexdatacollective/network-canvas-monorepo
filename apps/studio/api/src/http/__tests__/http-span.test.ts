@@ -25,7 +25,10 @@ const ALLOWED = new Set([
   'http.response.status_code',
 ]);
 
-const serverSpans = (telemetry: Layer.Layer<never>) =>
+const serverSpans = (
+  telemetry: Layer.Layer<never>,
+  path = `/probe/42?${SEEDS.query}`,
+) =>
   Effect.gen(function* () {
     const spans: Tracer.NativeSpan[] = [];
     const recording = Tracer.make({
@@ -35,10 +38,14 @@ const serverSpans = (telemetry: Layer.Layer<never>) =>
         return span;
       },
     });
-    const Probe = HttpRouter.add(
-      'GET',
-      '/probe/:id',
-      HttpServerResponse.text('ok', { status: 202 }),
+    const Probe = Layer.mergeAll(
+      HttpRouter.add(
+        'GET',
+        '/probe/:id',
+        HttpServerResponse.text('ok', { status: 202 }),
+      ),
+      HttpRouter.add('GET', '/failing', Effect.fail(new Error('refused'))),
+      HttpRouter.add('GET', '/dying', Effect.die(new Error('broken'))),
     ).pipe(Layer.provideMerge(HttpSpanLive));
     const Served = HttpRouter.serve(Probe, {
       disableLogger: true,
@@ -56,7 +63,7 @@ const serverSpans = (telemetry: Layer.Layer<never>) =>
         return yield* Effect.die(new Error('expected a TCP listener'));
       }
       yield* Effect.promise(() =>
-        fetch(`http://127.0.0.1:${address.port}/probe/42?${SEEDS.query}`, {
+        fetch(`http://127.0.0.1:${address.port}${path}`, {
           headers: {
             [PARTICIPANT_SESSION_HEADER]: SEEDS.session,
             'user-agent': SEEDS.userAgent,
@@ -96,6 +103,16 @@ describe('the span a request records', () => {
         for (const seed of Object.values(SEEDS)) {
           expect(attributeText(span!)).not.toContain(seed);
         }
+      }),
+  );
+
+  it.live.each(['/failing', '/dying'])(
+    'records the status of the error response a %s route ends in',
+    (path) =>
+      Effect.gen(function* () {
+        const spans = yield* serverSpans(ServerTelemetryLive, path);
+        expect(spans).toHaveLength(1);
+        expect(spans[0]?.attributes.get('http.response.status_code')).toBe(500);
       }),
   );
 

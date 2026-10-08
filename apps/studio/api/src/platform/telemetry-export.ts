@@ -31,6 +31,8 @@ type ResourceMetrics = OtlpMetrics.MetricsData['resourceMetrics'][number];
 
 const STACK_FRAME = /^\s+at /;
 
+const INFRASTRUCTURE_ATTRIBUTES = new Set(['server.address', 'db.namespace']);
+
 const stackFrames = (stack: string | null | undefined): string =>
   (stack ?? '')
     .split('\n')
@@ -71,7 +73,9 @@ const exceptionAttribute = (attribute: KeyValue): KeyValue[] => {
 
 const scrubSpan = (span: OtlpSpan): OtlpSpan => ({
   ...span,
-  attributes: span.attributes.flatMap(exceptionAttribute),
+  attributes: span.attributes
+    .filter((attribute) => !INFRASTRUCTURE_ATTRIBUTES.has(attribute.key))
+    .flatMap(exceptionAttribute),
   status: { code: span.status.code },
   events: span.events.map((event) => ({
     ...event,

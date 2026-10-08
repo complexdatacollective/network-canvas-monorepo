@@ -187,11 +187,12 @@ const OtlpHeaders = Schema.String.check(
   Schema.makeFilter<string>((value) => {
     try {
       const pairs = value.split(',').filter((pair) => pair.trim().length > 0);
-      return (
-        pairs.length > 0 &&
-        pairs.every((pair) => pair.indexOf('=') > 0) &&
-        headerPairs(value).every(([name]) => name.length > 0)
-      );
+      if (pairs.length === 0 || !pairs.every((pair) => pair.indexOf('=') > 0)) {
+        return false;
+      }
+      const decoded = headerPairs(value);
+      new Headers(decoded.map(([name, header]) => [name, header]));
+      return decoded.every(([name]) => name.length > 0);
     } catch {
       return false;
     }

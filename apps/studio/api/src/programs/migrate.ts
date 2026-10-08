@@ -11,6 +11,7 @@ import {
 import { readBundledMigrations } from '../db/migrations-document.ts';
 import { OwnerScope, Transaction } from '../db/tenant.ts';
 import { Environment } from '../env.ts';
+import { InstallationIdentity } from '../platform/installation-identity.ts';
 import { LoggerLive, LogLevelLive } from '../platform/logger.ts';
 import { TracingLive } from '../platform/tracing.ts';
 import { SecretsCipher } from '../secrets/services.ts';
@@ -18,6 +19,7 @@ import { verifyStoredKeys } from '../secrets/verify.ts';
 import {
   issueBootstrapToken,
   printBootstrapToken,
+  readInstallationId,
 } from '../setup/bootstrap.ts';
 import { STUDIO_VERSION } from '../version.ts';
 import { reportingRefusals } from './command.ts';
@@ -116,6 +118,10 @@ const migrate = (document: Effect.Effect<string, unknown>) =>
       Effect.catch((cause) => new MigrateFailed({ cause })),
     );
     const secrets = yield* Layer.build(SecretsCipher.layerFromEnvironment);
+    const resolveInstallation = InstallationIdentity.resolveOnce(
+      OwnerScope.open(readInstallationId()),
+    ).pipe(Effect.provide(owner));
+    yield* resolveInstallation;
 
     // A refusal of the keyring, of a statement or of the COMMIT already names
     // itself and says whether anything was applied; anything else is
@@ -137,6 +143,7 @@ const migrate = (document: Effect.Effect<string, unknown>) =>
     yield* Console.log(
       'Stored secrets are readable with the configured keyring.',
     );
+    yield* resolveInstallation;
 
     // On the OWNER scope, because neither application role holds INSERT on the
     // installation table. After the commit, so a refused database never

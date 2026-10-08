@@ -29,32 +29,35 @@ export class InstallationIdentity extends Context.Service<
     },
   );
 
+  static readonly resolveOnce = <R>(
+    read: Effect.Effect<string | null, unknown, R>,
+  ): Effect.Effect<boolean, never, InstallationIdentity | R> =>
+    Effect.flatMap(InstallationIdentity, (identity) =>
+      read.pipe(
+        Effect.flatMap((installationId) =>
+          installationId === null
+            ? Effect.succeed(false)
+            : Effect.as(identity.record(installationId), true),
+        ),
+        Effect.catchCause((cause) =>
+          Effect.as(
+            Effect.logDebug('The installation id could not be read', cause),
+            false,
+          ),
+        ),
+      ),
+    );
+
   static readonly resolvedBy = <R>(
     read: Effect.Effect<string | null, unknown, R>,
   ): Layer.Layer<never, never, InstallationIdentity | R> =>
     Layer.effectDiscard(
-      Effect.gen(function* () {
-        const identity = yield* InstallationIdentity;
-        const attempt = read.pipe(
-          Effect.flatMap((installationId) =>
-            installationId === null
-              ? Effect.succeed(false)
-              : Effect.as(identity.record(installationId), true),
-          ),
-          Effect.catchCause((cause) =>
-            Effect.as(
-              Effect.logDebug('The installation id could not be read', cause),
-              false,
-            ),
-          ),
-        );
-        yield* attempt.pipe(
-          Effect.repeat({
-            until: (found) => found,
-            schedule: Schedule.spaced(RETRY_INTERVAL),
-          }),
-          Effect.forkScoped,
-        );
-      }),
+      InstallationIdentity.resolveOnce(read).pipe(
+        Effect.repeat({
+          until: (found) => found,
+          schedule: Schedule.spaced(RETRY_INTERVAL),
+        }),
+        Effect.forkScoped,
+      ),
     );
 }

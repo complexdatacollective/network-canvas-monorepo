@@ -47,11 +47,16 @@ const telemetryDestination = (
   };
 };
 
+const signalUrl = (baseUrl: string, path: string): string => {
+  const url = new URL(baseUrl);
+  url.pathname = `${url.pathname.replace(/\/+$/, '')}${path}`;
+  return url.toString();
+};
+
 const exporters = (
   program: TracedProgram,
   destination: TelemetryDestination,
 ): Layer.Layer<never, never, InstallationIdentity> => {
-  const base = destination.baseUrl.replace(/\/+$/, '');
   const options = {
     resource: {
       serviceName: 'studio-api',
@@ -61,12 +66,21 @@ const exporters = (
     headers: destination.headers,
   };
   return Layer.mergeAll(
-    OtlpTracer.layer({ ...options, url: `${base}/v1/traces` }),
-    OtlpMetrics.layer({ ...options, url: `${base}/v1/metrics` }),
+    OtlpTracer.layer({
+      ...options,
+      url: signalUrl(destination.baseUrl, '/v1/traces'),
+    }),
+    OtlpMetrics.layer({
+      ...options,
+      url: signalUrl(destination.baseUrl, '/v1/metrics'),
+    }),
     Logger.layer(
       [
         Effect.map(
-          OtlpLogger.make({ ...options, url: `${base}/v1/logs` }),
+          OtlpLogger.make({
+            ...options,
+            url: signalUrl(destination.baseUrl, '/v1/logs'),
+          }),
           exportedLogger,
         ),
       ],

@@ -5,6 +5,7 @@ import { Duration } from 'effect';
 import { describe, expect, it } from 'vitest';
 import { parse } from 'yaml';
 
+import { EnvironmentSchema } from '../env/schema.ts';
 import { GRACEFUL_SHUTDOWN_TIMEOUT } from '../platform/http-server.ts';
 import { DRAIN_TIMEOUT } from '../platform/ws-drain.ts';
 
@@ -87,6 +88,17 @@ function composeOverlays(): [string, string][] {
 }
 
 const compose = parse(composeSource) as ComposeFile;
+
+const NOT_FORWARDED: Record<string, string> = {
+  HOST: 'the server default, 0.0.0.0, is what a container must listen on',
+  PORT: 'the server default, 3000, is the port Traefik and the healthcheck use',
+  WORKER_HEALTH_PORT:
+    'the server default, 3001, is the port the worker healthcheck probes',
+  STUDIO_DEPLOYMENT_MODE: 'managed deployments only; the stack is self-hosted',
+  STUDIO_DEV_DEFAULTS: 'development only',
+  STUDIO_SEED_ADMIN_PASSWORD: 'read only by the seed command',
+  STUDIO_SECRETS_KEY: 'delivered as the STUDIO_SECRETS_KEY_FILE secret',
+};
 const devCompose = parse(devComposeSource) as ComposeFile;
 const localCompose = parse(localComposeSource) as ComposeFile;
 
@@ -151,6 +163,21 @@ describe('the reference compose stack', () => {
       )
       .map(([name]) => name);
     expect(unpinned).toEqual([]);
+  });
+
+  it('forwards every setting an operator may make to the Studio processes', () => {
+    const forwarded = new Set(
+      Object.keys(compose.services.api?.environment ?? {}),
+    );
+    const missing = Object.keys(EnvironmentSchema.fields).filter(
+      (name) => !forwarded.has(name) && !(name in NOT_FORWARDED),
+    );
+    expect(missing).toEqual([]);
+    for (const service of ['api', 'worker', 'migrate']) {
+      for (const name of forwarded) {
+        expect(compose.services[service]?.environment).toHaveProperty(name);
+      }
+    }
   });
 
   it('declares every variable it interpolates in the env example', () => {

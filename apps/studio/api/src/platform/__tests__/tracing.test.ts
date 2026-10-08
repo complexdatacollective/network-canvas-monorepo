@@ -79,6 +79,16 @@ const exercise = Effect.gen(function* () {
     Effect.withSpan('failing probe'),
     Effect.ignore,
   );
+  yield* Effect.void.pipe(
+    Effect.withSpan('sql.execute', {
+      kind: 'client',
+      attributes: {
+        'server.address': 'studio-db.internal.example.org',
+        'db.namespace': 'studio_production',
+        'db.query.text': 'select 1',
+      },
+    }),
+  );
   yield* Metric.update(Metric.gauge('studio_test_probe'), 1);
 });
 
@@ -170,6 +180,30 @@ describe('TracingLive', () => {
   );
 
   it.live(
+    'appends the signal paths to the endpoint’s path and keeps its query',
+    () =>
+      withSink((sink) =>
+        Effect.gen(function* () {
+          yield* exportUnder(
+            {
+              telemetry: true,
+              telemetryEndpoint: `${sink.url}/otlp/?tenant=lab`,
+            },
+            globalThis.fetch,
+          );
+          expect(sink.received.length).toBeGreaterThan(0);
+          expect(new Set(sink.received.map((request) => request.path))).toEqual(
+            new Set([
+              '/otlp/v1/traces?tenant=lab',
+              '/otlp/v1/logs?tenant=lab',
+              '/otlp/v1/metrics?tenant=lab',
+            ]),
+          );
+        }),
+      ),
+  );
+
+  it.live(
     'sends them to Codaco’s PostHog project with its project key when no endpoint is set',
     () =>
       withSink((sink) =>
@@ -195,7 +229,7 @@ describe('TracingLive', () => {
   );
 
   it.live(
-    'exports a failure as its type and stack frames, never its message',
+    'exports a failure as its type and stack frames, and no database host or name',
     () =>
       withSink((sink) =>
         Effect.gen(function* () {
@@ -213,6 +247,9 @@ describe('TracingLive', () => {
           for (const request of sink.received) {
             expect(request.body).not.toContain(SECRET);
           }
+          expect(traces).toContain('select 1');
+          expect(traces).not.toContain('studio-db.internal.example.org');
+          expect(traces).not.toContain('studio_production');
         }),
       ),
   );
