@@ -83,8 +83,9 @@ export const TitleOnly: Story = {
 /**
  * Multiple property types in the details record. `formatValue` handles
  * each `VariableValue` shape: strings, numbers, booleans (Yes/No),
- * arrays (joined), location objects (lat/lng), and missing values
- * (em dash placeholder).
+ * arrays (listed), location objects (lat/lng), and missing values
+ * (the interface language's "no value" text). Numbers, lists and
+ * coordinates follow the protocol language.
  */
 export const ManyDetailTypes: Story = {
   args: {

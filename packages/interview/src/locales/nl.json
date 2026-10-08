@@ -262,6 +262,7 @@
   "interview.interfaces.drawingControls": "Tekengereedschap",
   "interview.interfaces.editingTools": "Bewerkingsgereedschap",
   "interview.interfaces.emptyRoster": "Er is niets uit deze lijst toe te voegen.",
+  "interview.interfaces.emptyValue": "Geen waarde",
   "interview.interfaces.enableDrawing": "Tekenen inschakelen",
   "interview.interfaces.entityName": "Naam van {entityLabel}",
   "interview.interfaces.equalSplit": "Gelijke verdeling",

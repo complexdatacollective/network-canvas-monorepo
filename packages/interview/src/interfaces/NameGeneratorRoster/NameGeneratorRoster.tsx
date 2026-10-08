@@ -34,7 +34,10 @@ import { useCurrentStep } from '../../contexts/CurrentStepContext';
 import useNodeLimits from '../../hooks/useNodeLimits';
 import { useStageSelector } from '../../hooks/useStageSelector';
 import { runtimeMessages } from '../../i18n/runtimeMessages';
-import { useResolveLocalizedString } from '../../localization/ProtocolLocalizationProvider';
+import {
+  useContentLocale,
+  useResolveLocalizedString,
+} from '../../localization/ProtocolLocalizationProvider';
 import { getNodeVariables } from '../../selectors/interface';
 import {
   getSearchOptions,
@@ -163,6 +166,7 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
   // --- Sort setup ---
   const sortOptions = useStageSelector(getSortOptions);
   const resolve = useResolveLocalizedString();
+  const contentLocale = useContentLocale();
 
   // Sort buttons take plain text, so their labels are resolved here.
   const { initialSortRules, sortableProperties } = useMemo<{
@@ -442,6 +446,7 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
                 filterFuseOptions={filterFuseOptions}
                 onFilterChange={handleFilterChange}
                 sortRules={initialSortRules}
+                sortLocale={contentLocale}
                 dragAndDropHooks={dragAndDropHooks}
                 disabledKeys={disabledKeys}
                 virtualized

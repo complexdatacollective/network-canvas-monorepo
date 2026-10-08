@@ -26,6 +26,7 @@ import {
 } from '@codaco/protocol-validation';
 
 import { languageMessages } from '../i18n/languageMessages';
+import { resolveContentLocale } from './contentFormat';
 import {
   createLocalizedMessageFormatter,
   type LocalizedMessageFormatter,
@@ -210,6 +211,23 @@ export function useProtocolLocale(): Readonly<{
     () => ({ locale, metadata, options, setLocale }),
     [locale, metadata, options, setLocale],
   );
+}
+
+/**
+ * The language the protocol's own values are written for, to format and
+ * alphabetise them in: the protocol language the interview shows, or the
+ * interface language when the protocol does not say (`und`). Participant and
+ * protocol data sit among the protocol's text, so a participant reading
+ * Hungarian gets Hungarian number formats and Hungarian alphabetical order even
+ * when the interface falls back to English for want of a Hungarian catalog.
+ *
+ * Outside a `ProtocolLocalizationProvider` (a component shown on its own) it is
+ * the interface language.
+ */
+export function useContentLocale(): string {
+  const interfaceLocale = useAppIntl().locale;
+  const protocolLocale = useContext(ProtocolLocalizationContext)?.locale;
+  return resolveContentLocale(protocolLocale, interfaceLocale);
 }
 
 /**
