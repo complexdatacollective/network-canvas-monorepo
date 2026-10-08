@@ -191,6 +191,64 @@ export const familyPedigreeMessages = defineMessages({
     description:
       'Button that confirms switching off the gender identity question and discarding the attribute and words chosen for it.',
   },
+  relationshipToParticipantTitle: {
+    id: 'protocolBuilder.pedigree.relationshipToParticipantTitle',
+    defaultMessage: 'Record each person’s relationship to the participant',
+    description:
+      'Title of the switch, and of the part of the person attributes section it opens, that makes a Family Pedigree save each family member’s relationship to the participant (parent, sibling, cousin…) as an attribute. Off by default.',
+  },
+  relationshipToParticipantDescription: {
+    id: 'protocolBuilder.pedigree.relationshipToParticipantDescription',
+    defaultMessage:
+      'Saves how each person is related to the participant, such as parent, sibling or cousin, so that later stages can filter or skip on it. The interview works it out from the family the participant draws; it is never asked.',
+    description:
+      'Explains what recording the relationship to the participant does. A filter or skip logic in a later stage can only test a person’s own attributes, which is why the relationship is saved as one. It is updated every time the participant leaves the stage.',
+  },
+  relationshipToParticipantClearTitle: {
+    id: 'protocolBuilder.pedigree.relationshipToParticipantClearTitle',
+    defaultMessage: 'Stop recording relationships to the participant?',
+    description:
+      'Title of the confirmation shown before a researcher switches off recording each family member’s relationship to the participant.',
+  },
+  relationshipToParticipantClearDescription: {
+    id: 'protocolBuilder.pedigree.relationshipToParticipantClearDescription',
+    defaultMessage:
+      'The attribute will be removed from this stage, and the interview will stop updating it. The attribute stays in the codebook, and any filter or skip logic that uses it will no longer find new relationships.',
+    description:
+      'Body of the confirmation shown before recording the relationship to the participant is switched off, saying what changes. An attribute is a codebook variable.',
+  },
+  relationshipToParticipantClearConfirm: {
+    id: 'protocolBuilder.pedigree.relationshipToParticipantClearConfirm',
+    defaultMessage: 'Stop recording',
+    description:
+      'Button that confirms switching off recording the relationship to the participant.',
+  },
+  relationshipToParticipantLabel: {
+    id: 'protocolBuilder.pedigree.relationshipToParticipantLabel',
+    defaultMessage: 'Relationship to the participant',
+    description:
+      'Label of the control choosing the categorical attribute that holds each family member’s relationship to the participant.',
+  },
+  relationshipToParticipantHint: {
+    id: 'protocolBuilder.pedigree.relationshipToParticipantHint',
+    defaultMessage:
+      'The interface sets this attribute’s options: parent, sibling, cousin and so on, naming neither gender nor side of the family. Everyone connected to the participant is given one; the participant is not. To show a later stage only first-degree biological relatives, for example, filter on parent, donor, sibling, child and donor-conceived child.',
+    description:
+      'Guidance under the relationship-to-the-participant attribute control. The option values are fixed by the interface; their labels can be translated in the codebook. Donor-conceived child is a child conceived with the person as a gamete donor.',
+  },
+  relationshipToParticipantCreateLabel: {
+    id: 'protocolBuilder.pedigree.relationshipToParticipantCreateLabel',
+    defaultMessage: 'Create a new relationship to the participant attribute',
+    description:
+      'Title of the dialog that creates a new categorical attribute for each family member’s relationship to the participant, with the options the interface sets.',
+  },
+  relationshipToParticipantOption: {
+    id: 'protocolBuilder.pedigree.relationshipToParticipantOption',
+    defaultMessage:
+      '{value, select, parent {Parent} adoptiveParent {Adoptive parent} stepParent {Step-parent} donor {Donor} surrogate {Surrogate} child {Child} adoptiveChild {Adoptive child} stepChild {Stepchild} donorConceivedChild {Donor-conceived child} surrogacyChild {Child born through surrogacy} sibling {Sibling} halfSibling {Half-sibling} adoptiveSibling {Adoptive sibling} stepSibling {Step-sibling} partner {Partner} formerPartner {Former partner} grandparent {Grandparent} greatGrandparent {Great-grandparent} grandchild {Grandchild} greatGrandchild {Great-grandchild} parentsSibling {Parent’s sibling} grandparentsSibling {Grandparent’s sibling} siblingsChild {Sibling’s child} cousin {Cousin} parentInLaw {Parent-in-law} siblingInLaw {Sibling-in-law} childInLaw {Child-in-law} other {Other relative}}',
+    description:
+      'Default label of one option of a new relationship-to-the-participant attribute: how a family member is related to the participant, in words that name neither gender nor side of the family. The label is written into the protocol as participant-facing text, and researchers can change it. parent, child and sibling are biological; donor is an egg or sperm donor; surrogate carried the pregnancy without giving a gamete; donorConceivedChild is a child conceived with the participant as a donor; surrogacyChild is a child the participant carried as a surrogate; adoptiveSibling is related through adoption only; stepParent is a step or social parent.',
+  },
   genderOptionsEdit: {
     id: 'protocolBuilder.pedigree.genderOptionsEdit',
     defaultMessage: 'Edit options',
@@ -952,6 +1010,6 @@ export const familyPedigreeMessages = defineMessages({
     defaultMessage:
       'The interface already records this attribute itself, so these fields cannot collect it as well. Choose another attribute, or remove the field.',
     description:
-      'Refusal shown when an additional person field collects an attribute already chosen as one of the Family Pedigree’s own person attributes (name, gender identity, sex assigned at birth or participant marker) or as the attribute a nomination prompt sets.',
+      'Refusal shown when an additional person field collects an attribute already chosen as one of the Family Pedigree’s own person attributes (name, gender identity, sex assigned at birth, participant marker or relationship to the participant) or as the attribute a nomination prompt sets.',
   },
 });

@@ -4,12 +4,14 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   familyPedigreeStage,
   PEDIGREE_DEFAULT_GENDER_IDENTITIES,
+  PEDIGREE_RELATIONSHIPS_TO_PARTICIPANT,
   PEDIGREE_RELATIVES_NOT_RECORDED_OPTIONS,
 } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import {
   attributeField,
+  awaitOfferedAttributes,
   chooseAttributeById,
   FIELD_LABEL,
   inventAttribute,
@@ -43,6 +45,7 @@ const SECTIONS = [
   'Prompt',
   'Person attributes',
   'Ask about gender identity',
+  'Record each person’s relationship to the participant',
   'Relationships',
   'Wording',
   'Additional person fields',
@@ -1774,5 +1777,127 @@ describe('the node type, while a narrative pedigree reads this stage', () => {
     expect(
       screen.queryByText('Other stages read this pedigree'),
     ).not.toBeInTheDocument();
+  });
+});
+
+describe('recording the relationship to the participant', () => {
+  const TITLE = 'Record each person’s relationship to the participant';
+  const LABEL = 'Relationship to the participant';
+  const RELATIONSHIP_VARIABLE = {
+    name: 'fm_relationship',
+    type: 'categorical',
+    options: PEDIGREE_RELATIONSHIPS_TO_PARTICIPANT.map((value) => ({
+      value,
+      label: { 'en-US': value },
+    })),
+  };
+  const switchOn = async (harness: StageEditorHarness) => {
+    await harness.user.click(
+      await screen.findByRole('switch', { name: TITLE }),
+    );
+  };
+
+  it('is off by default, and a stage saved that way records none', async () => {
+    const harness = openFixture();
+    await harness.opened();
+
+    expect(
+      await screen.findByRole('switch', { name: TITLE }),
+    ).not.toBeChecked();
+    const request = await harness.submit();
+    expect(nodeConfigurationOf(request?.stageDocument)).not.toHaveProperty(
+      'relationshipToParticipantAttribute',
+    );
+  });
+
+  it('offers only an attribute carrying the interface’s values, and saves a stage the schema accepts', async () => {
+    const harness = openFixture();
+    await harness.opened();
+    addFamilyMemberVariables(harness, {
+      fm_relationship: RELATIONSHIP_VARIABLE,
+      fm_someRelationships: {
+        name: 'fm_someRelationships',
+        type: 'categorical',
+        options: [
+          { value: 'parent', label: { 'en-US': 'Parent' } },
+          { value: 'sibling', label: { 'en-US': 'Sibling' } },
+        ],
+      },
+    });
+
+    await switchOn(harness);
+    await screen.findByText(LABEL, { selector: FIELD_LABEL });
+    const offered = await awaitOfferedAttributes(
+      harness.user,
+      attributeField(LABEL),
+      (ids) => {
+        expect(ids).toContain('fm_relationship');
+      },
+    );
+    expect(offered).not.toContain('sexAssignedAtBirth');
+    expect(offered).not.toContain('fm_someRelationships');
+
+    await bindSlot(harness, LABEL, 'fm_relationship');
+    const request = await harness.submit();
+    expect(nodeConfigurationOf(request?.stageDocument)).toMatchObject({
+      relationshipToParticipantAttribute: 'fm_relationship',
+    });
+    expect(familyPedigreeStage.safeParse(request?.stageDocument).success).toBe(
+      true,
+    );
+  });
+
+  it('seeds a new attribute with the interface’s values, locked, labelled in the researcher’s language', async () => {
+    const harness = openFixture();
+    await harness.opened();
+
+    await switchOn(harness);
+    await screen.findByText(LABEL, { selector: FIELD_LABEL });
+    await inventAttribute(
+      harness.user,
+      attributeField(LABEL),
+      'fm_relationship',
+    );
+
+    const table = await screen.findByRole('table', {
+      name: /automatically configured by the interface and cannot be modified/i,
+    });
+    const rows = [...table.querySelectorAll('tbody tr')].map((row) =>
+      [...row.querySelectorAll('td')].map(
+        (cell) => cell.textContent?.trim() ?? '',
+      ),
+    );
+    expect(rows.map(([, value]) => value)).toEqual([
+      ...PEDIGREE_RELATIONSHIPS_TO_PARTICIPANT,
+    ]);
+    expect(rows.slice(0, 3)).toEqual([
+      ['Parent', 'parent'],
+      ['Adoptive parent', 'adoptiveParent'],
+      ['Step-parent', 'stepParent'],
+    ]);
+    expect(rows.at(-1)).toEqual(['Other relative', 'otherRelative']);
+  });
+
+  it('keeps the bound attribute out of the additional fields', async () => {
+    const harness = openFixture();
+    await harness.opened();
+    addFamilyMemberVariables(harness, {
+      fm_relationship: RELATIONSHIP_VARIABLE,
+    });
+
+    await switchOn(harness);
+    await bindSlot(harness, LABEL, 'fm_relationship');
+    await harness.user.click(
+      await screen.findByRole('switch', { name: 'Additional person fields' }),
+    );
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Create new person field' }),
+    );
+    const dialog = await screen.findByRole('dialog');
+    const offered = await offeredAttributes(
+      harness.user,
+      attributeField('Attribute', dialog),
+    );
+    expect(offered).not.toContain('fm_relationship');
   });
 });

@@ -10,6 +10,7 @@ import {
   usePedigreeDraftBindings,
 } from './pedigreeSlots.ts';
 import PersonSymbolsControl from './PersonSymbolsControl.tsx';
+import RelationshipToParticipantSection from './RelationshipToParticipantSection.tsx';
 
 /**
  * The attributes of the person node type the interface records about every
@@ -25,9 +26,11 @@ import PersonSymbolsControl from './PersonSymbolsControl.tsx';
  * participant marker is exclusive to its slot: no other control of this stage,
  * a nomination prompt included, may write it.
  *
- * The section ends with the person type's symbols (`PersonSymbolsControl`),
- * one choice that can draw them from sex assigned at birth or gender
- * identity, so it comes after both.
+ * The person type's symbols (`PersonSymbolsControl`) follow, one choice that
+ * can draw them from sex assigned at birth or gender identity, so it comes
+ * after both. The section ends with the optional relationship to the
+ * participant (`RelationshipToParticipantSection`), which the interface works
+ * out rather than asks.
  */
 export default function NodeConfigurationSection() {
   const intl = useAppIntl();
@@ -95,6 +98,7 @@ export default function NodeConfigurationSection() {
           {personSubject.entity === 'node' && (
             <PersonSymbolsControl personSubject={personSubject} />
           )}
+          <RelationshipToParticipantSection />
         </>
       )}
     </BuilderSection>

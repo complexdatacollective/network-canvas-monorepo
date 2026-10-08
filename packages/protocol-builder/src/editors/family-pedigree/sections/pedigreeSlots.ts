@@ -28,6 +28,8 @@ export const NODE_CONFIGURATION_PATHS = Object.freeze({
   genderIdentityTerms: 'nodeConfiguration.genderIdentity.terms',
   sexAssignedAtBirthAttribute: 'nodeConfiguration.sexAssignedAtBirthAttribute',
   egoAttribute: 'nodeConfiguration.egoAttribute',
+  relationshipToParticipantAttribute:
+    'nodeConfiguration.relationshipToParticipantAttribute',
 });
 
 export const EDGE_CONFIGURATION_TYPE_PATH = 'edgeConfiguration.type';
@@ -71,8 +73,8 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
  * pickers before it is saved.
  *
  * - `draftSlotMap` holds the exclusive slot claims (participant marker,
- *   relatives not recorded, relationship kind, gestational carrier, current
- *   partner). A nomination prompt's attribute is judged against these.
+ *   relationship to the participant, relatives not recorded, relationship
+ *   kind, gestational carrier, current partner). A nomination prompt's attribute is judged against these.
  * - `draftWriterMap` holds those claims and also the attribute of each
  *   nomination prompt. An exclusive slot picker is judged against it, because
  *   an exclusive attribute may be written by nothing else, and a nomination
@@ -81,8 +83,9 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
  *   participant with validation: the name attribute and every additional
  *   person field.
  * - `unvalidatedPersonVariables` is what the interface writes onto people
- *   itself: gender identity, sex assigned at birth, the participant marker, the
- *   relatives not recorded and the attribute each nomination prompt sets.
+ *   itself: gender identity, sex assigned at birth, the participant marker,
+ *   the relationship to the participant, the relatives not recorded and the
+ *   attribute each nomination prompt sets.
  * - `otherAnswerVariables` holds, for each of the stage's own answers about a
  *   person that is no exclusive slot (name, gender identity, sex assigned at
  *   birth, and the nomination prompts together), the attributes the OTHER
@@ -124,6 +127,9 @@ export function usePedigreeDraftBindings(): Readonly<{
   const relativesNotRecorded = asVariableId(
     useStageValue(RELATIVES_NOT_RECORDED_PATH),
   );
+  const relationshipToParticipant = asVariableId(
+    useStageValue(NODE_CONFIGURATION_PATHS.relationshipToParticipantAttribute),
+  );
   const kind = useStageValue(EDGE_CONFIGURATION_PATHS.kindAttribute);
   const carrier = useStageValue(
     EDGE_CONFIGURATION_PATHS.gestationalCarrierAttribute,
@@ -155,6 +161,11 @@ export function usePedigreeDraftBindings(): Readonly<{
         variableId: relativesNotRecorded,
       },
       {
+        subject: personSubject,
+        slot: FAMILY_PEDIGREE_SLOTS.relationshipToParticipantAttribute,
+        variableId: relationshipToParticipant,
+      },
+      {
         subject: relationshipSubject,
         slot: FAMILY_PEDIGREE_SLOTS.relationshipKindAttribute,
         variableId: kind,
@@ -177,6 +188,7 @@ export function usePedigreeDraftBindings(): Readonly<{
       partner,
       personSubject,
       relationshipSubject,
+      relationshipToParticipant,
       relativesNotRecorded,
     ],
   );
@@ -230,10 +242,22 @@ export function usePedigreeDraftBindings(): Readonly<{
 
   const unvalidatedPersonVariables = useMemo(
     () =>
-      [gender, sex, ego, relativesNotRecorded, ...nominationVariables].filter(
-        (variable): variable is string => variable !== undefined,
-      ),
-    [ego, gender, nominationVariables, relativesNotRecorded, sex],
+      [
+        gender,
+        sex,
+        ego,
+        relationshipToParticipant,
+        relativesNotRecorded,
+        ...nominationVariables,
+      ].filter((variable): variable is string => variable !== undefined),
+    [
+      ego,
+      gender,
+      nominationVariables,
+      relationshipToParticipant,
+      relativesNotRecorded,
+      sex,
+    ],
   );
 
   const personAttributeVariables = useMemo(
