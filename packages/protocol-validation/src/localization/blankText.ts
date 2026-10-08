@@ -13,8 +13,9 @@ export const isBlankText = (text: string): boolean => BLANK_TEXT.test(text);
 
 /**
  * `isBlankText` for one translation as the protocol stores it. The message is
- * read as the literal text it makes, so a message that quotes a space
- * (`' '`) is as blank as the space it stands for.
+ * read as the literal text it makes, so escaping changes nothing: a message
+ * escaped from spaces is blank, while `' '` is not, because an apostrophe
+ * quotes only before an ICU syntax character and so shows as written.
  */
 export const isBlankMessage = (message: string): boolean =>
   isBlankText(messageText(message));
