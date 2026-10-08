@@ -314,6 +314,82 @@ describe('FamilyPedigree in a whole protocol', () => {
     ).not.toEqual([]);
   });
 
+  /** The issues a protocol earns at one path. */
+  const issuesAt = (
+    protocol: ReturnType<typeof protocolWith>,
+    path: (string | number)[],
+  ) => {
+    const result = ProtocolSchemaV9.safeParse(protocol);
+    return result.success
+      ? []
+      : result.error.issues
+          .filter(
+            (issue) => JSON.stringify(issue.path) === JSON.stringify(path),
+          )
+          .map((issue) => issue.message);
+  };
+
+  it('refuses additional person fields that collect an attribute the stage records itself', () => {
+    const withField = (variable: string) =>
+      issuesAt(
+        protocolWith({
+          ...base,
+          nominationPrompts: [
+            { id: 'heart', text: localized('Who?'), attribute: 'hd' },
+          ],
+          form: { fields: [{ variable, prompt: localized('Tell us') }] },
+        }),
+        ['stages', 0, 'form', 'fields', 0, 'variable'],
+      );
+    for (const [variable, role] of [
+      ['name', 'name'],
+      ['gender', 'gender identity'],
+      ['sab', 'sex assigned at birth'],
+      ['hd', 'nomination prompt'],
+    ]) {
+      expect(withField(variable)).toContainEqual(
+        expect.stringContaining(
+          `is the ${role} attribute of this Family Pedigree stage`,
+        ),
+      );
+    }
+  });
+
+  it('refuses gender identity bound to the sex assigned at birth attribute', () => {
+    expect(
+      issuesAt(
+        protocolWith({
+          ...base,
+          nodeConfiguration: {
+            ...base.nodeConfiguration,
+            genderIdentity: { attribute: 'sab', terms: [] },
+          },
+        }),
+        ['stages', 0, 'nodeConfiguration', 'sexAssignedAtBirthAttribute'],
+      ),
+    ).toEqual([
+      'Attribute "Sab" is already the gender identity attribute of this Family Pedigree stage, so it cannot also hold its sex assigned at birth answer. Each needs an attribute of its own.',
+    ]);
+  });
+
+  it('refuses two nomination prompts that set the same attribute', () => {
+    const protocol = protocolWith({
+      ...base,
+      nominationPrompts: [
+        { id: 'heart', text: localized('Who?'), attribute: 'hd' },
+        { id: 'again', text: localized('And who?'), attribute: 'hd' },
+      ],
+    });
+    expect(
+      issuesAt(protocol, ['stages', 0, 'nominationPrompts', 0, 'attribute']),
+    ).toEqual([]);
+    expect(
+      issuesAt(protocol, ['stages', 0, 'nominationPrompts', 1, 'attribute']),
+    ).toEqual([
+      expect.stringContaining('is already the nomination prompt attribute'),
+    ]);
+  });
+
   it('detects the participant marker being reused as a form field', () => {
     const stage = {
       ...base,

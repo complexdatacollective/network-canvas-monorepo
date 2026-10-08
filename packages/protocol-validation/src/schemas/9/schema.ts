@@ -758,6 +758,81 @@ const ProtocolSchema = z
       });
     });
 
+    // A Family Pedigree stage records each of its own answers about a person
+    // in an attribute of its own: the name, gender identity, sex assigned at
+    // birth and each nomination prompt's selection. Two of them sharing an
+    // attribute would overwrite each other, and the stage's additional person
+    // fields may collect none of them, as the stage already asks or sets them
+    // itself. (The participant marker and the relatives-not-recorded
+    // attribute are exclusive slots, which the exclusivity check above
+    // already keeps from every other writer.)
+    protocol.stages.forEach((stage, stageIndex) => {
+      if (stage.type !== 'FamilyPedigree') return;
+      const { nodeConfiguration } = stage;
+      const stagePath = ['stages', stageIndex] as const;
+      const bindings: {
+        variable: string;
+        role: string;
+        path: (string | number)[];
+      }[] = [
+        {
+          variable: nodeConfiguration.nameAttribute,
+          role: 'name',
+          path: [...stagePath, 'nodeConfiguration', 'nameAttribute'],
+        },
+        ...(nodeConfiguration.genderIdentity
+          ? [
+              {
+                variable: nodeConfiguration.genderIdentity.attribute,
+                role: 'gender identity',
+                path: [
+                  ...stagePath,
+                  'nodeConfiguration',
+                  'genderIdentity',
+                  'attribute',
+                ],
+              },
+            ]
+          : []),
+        {
+          variable: nodeConfiguration.sexAssignedAtBirthAttribute,
+          role: 'sex assigned at birth',
+          path: [
+            ...stagePath,
+            'nodeConfiguration',
+            'sexAssignedAtBirthAttribute',
+          ],
+        },
+        ...(stage.nominationPrompts ?? []).map((prompt, promptIndex) => ({
+          variable: prompt.attribute,
+          role: 'nomination prompt',
+          path: [...stagePath, 'nominationPrompts', promptIndex, 'attribute'],
+        })),
+      ];
+      const roleOf = new Map<string, string>();
+      for (const binding of bindings) {
+        const earlier = roleOf.get(binding.variable);
+        if (earlier !== undefined) {
+          ctx.addIssue({
+            code: 'custom' as const,
+            message: `Attribute "${variableNameFor(protocol, stage.subject, binding.variable)}" is already the ${earlier} attribute of this Family Pedigree stage, so it cannot also hold its ${binding.role} answer. Each needs an attribute of its own.`,
+            path: binding.path,
+          });
+        } else {
+          roleOf.set(binding.variable, binding.role);
+        }
+      }
+      stage.form?.fields.forEach((field, fieldIndex) => {
+        const role = roleOf.get(field.variable);
+        if (role === undefined) return;
+        ctx.addIssue({
+          code: 'custom' as const,
+          message: `Attribute "${variableNameFor(protocol, stage.subject, field.variable)}" is the ${role} attribute of this Family Pedigree stage, which the stage records itself, so its additional person fields cannot collect it as well.`,
+          path: [...stagePath, 'form', 'fields', fieldIndex, 'variable'],
+        });
+      });
+    });
+
     const composerFieldOverrides = collectComposerFieldOverrides(
       protocol.stages,
     );
