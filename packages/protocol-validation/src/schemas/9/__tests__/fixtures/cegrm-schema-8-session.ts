@@ -146,12 +146,12 @@ export const committedRecord = () => ({
  * in the network. Person attributes other than the label and ego flag were
  * never written anywhere.
  */
-export const uncommittedRecord = () => ({
+const uncommittedRecord = () => ({
   ...committedRecord(),
   selectedFraming: 'gamete' as const,
 });
 
-export const ego = {
+const ego = {
   _uid: 'network-ego',
   attributes: { participant_consent: true, ego_age: 54 },
 };
