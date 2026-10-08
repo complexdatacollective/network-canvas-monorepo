@@ -3,7 +3,8 @@ import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-s
 import {
   CurrentProtocolSchema,
   hashProtocol,
-  migrateProtocol,
+  migrateProtocolWithSessions,
+  type SessionMigrator,
 } from '@codaco/protocol-validation';
 import { Prisma } from '~/lib/db/generated/client';
 
@@ -128,6 +129,89 @@ async function writeMigratedProtocol(
   await prisma.protocol.update({ where: { id: row.id }, data });
 }
 
+const INTERVIEW_BATCH_SIZE = 200;
+
+export type InterviewMigrationCounts = {
+  migrated: number;
+  failed: number;
+};
+
+/**
+ * Carry every interview recorded against a protocol across that protocol's
+ * migration: its network, stage metadata and resume position
+ * (`currentStep`), with `migrateSession` from the same
+ * `migrateProtocolWithSessions` call that produced the protocol written.
+ * Runs inside the protocol migration's transaction, after the protocol row is
+ * written, so the two land together.
+ *
+ * Reads the raw rows: the app's Prisma result extension would parse
+ * `stageMetadata` against the current schema and drop the old shape this
+ * exists to translate.
+ *
+ * An interview whose session cannot be migrated is logged and left exactly as
+ * it was, like a protocol that cannot be migrated: one damaged interview must
+ * not hold back its protocol, the others, or the deployment. Its stage
+ * metadata then fails the read path's parse and reads as none.
+ */
+async function migrateInterviewsOf(
+  prisma: Prisma.TransactionClient,
+  row: Pick<ProtocolRow, 'id' | 'name'>,
+  migrateSession: SessionMigrator,
+): Promise<InterviewMigrationCounts> {
+  const counts: InterviewMigrationCounts = { migrated: 0, failed: 0 };
+  let cursor: string | undefined;
+
+  for (;;) {
+    const batch = await prisma.interview.findMany({
+      where: { protocolId: row.id },
+      take: INTERVIEW_BATCH_SIZE,
+      ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
+      orderBy: { id: 'asc' },
+      select: {
+        id: true,
+        network: true,
+        stageMetadata: true,
+        currentStep: true,
+      },
+    });
+    if (batch.length === 0) break;
+
+    for (const interview of batch) {
+      const result = migrateSession({
+        network: interview.network,
+        stageMetadata: interview.stageMetadata,
+        currentStep: interview.currentStep,
+      });
+      if (!result.success) {
+        counts.failed += 1;
+        console.error(
+          `Could not migrate interview ${interview.id} of protocol ` +
+            `"${row.name}" (id=${row.id}): ${result.error.message} ` +
+            `Leaving it unchanged.`,
+        );
+        continue;
+      }
+      if (!result.changed) continue;
+      const { network, stageMetadata, currentStep } = result.session;
+      await prisma.interview.update({
+        where: { id: interview.id },
+        data: {
+          network,
+          // Absent only when the row stored none and none was added.
+          ...(stageMetadata !== undefined ? { stageMetadata } : {}),
+          currentStep,
+        },
+      });
+      counts.migrated += 1;
+    }
+
+    cursor = batch[batch.length - 1]?.id;
+    if (batch.length < INTERVIEW_BATCH_SIZE) break;
+  }
+
+  return counts;
+}
+
 /**
  * Bring a row stored below the target version up to it, and say how.
  *
@@ -141,7 +225,10 @@ async function writeMigratedProtocol(
 async function migrateOneProtocol(
   prisma: Prisma.TransactionClient,
   row: ProtocolRow,
-): Promise<'migrated' | 'normalized'> {
+): Promise<{
+  outcome: 'migrated' | 'normalized';
+  interviews: InterviewMigrationCounts;
+}> {
   const cleanName = row.name.replace(/\.netcanvas$/i, '');
 
   const reconstructed = {
@@ -158,11 +245,14 @@ async function migrateOneProtocol(
     assetManifest: buildAssetManifest(row.assets),
   };
 
-  let migrated: ReturnType<typeof migrateProtocol>;
+  let migrated: ReturnType<typeof migrateProtocolWithSessions>['protocol'];
+  let migrateSession: SessionMigrator;
   try {
-    migrated = migrateProtocol(reconstructed, TARGET_SCHEMA_VERSION, {
-      name: cleanName,
-    });
+    ({ protocol: migrated, migrateSession } = migrateProtocolWithSessions(
+      reconstructed,
+      TARGET_SCHEMA_VERSION,
+      { name: cleanName },
+    ));
   } catch (err) {
     const cause = err instanceof Error ? err.message : String(err);
     if (row.schemaVersion <= NORMALIZATION_SOURCE_VERSION) {
@@ -171,8 +261,13 @@ async function migrateOneProtocol(
         { cause: err },
       );
     }
+    let interviews: InterviewMigrationCounts;
     try {
-      await normalizeNonConformantProtocol(prisma, row);
+      // Its interviews were recorded against the stored, older version, so
+      // they are migrated with the normalized protocol.
+      interviews = await normalizeNonConformantProtocol(prisma, row, {
+        migrateInterviews: true,
+      });
     } catch (normalizationErr) {
       const normalizationCause =
         normalizationErr instanceof Error
@@ -185,7 +280,7 @@ async function migrateOneProtocol(
         { cause: normalizationErr },
       );
     }
-    return 'normalized';
+    return { outcome: 'normalized', interviews };
   }
   const newHash = hashProtocol(migrated);
 
@@ -209,10 +304,13 @@ async function migrateOneProtocol(
     newHash,
   );
 
+  const interviews = await migrateInterviewsOf(prisma, row, migrateSession);
+
   console.log(
-    `Migrated "${row.name}" (id=${row.id})... ok (new hash: ${newHash.slice(0, 8)}...)`,
+    `Migrated "${row.name}" (id=${row.id})... ok (new hash: ${newHash.slice(0, 8)}...; ` +
+      `${interviews.migrated} interviews migrated, ${interviews.failed} left unchanged)`,
   );
-  return 'migrated';
+  return { outcome: 'migrated', interviews };
 }
 
 /**
@@ -231,7 +329,8 @@ async function migrateOneProtocol(
 async function normalizeNonConformantProtocol(
   prisma: Prisma.TransactionClient,
   row: ProtocolRow,
-): Promise<void> {
+  { migrateInterviews }: { migrateInterviews: boolean },
+): Promise<InterviewMigrationCounts> {
   const cleanName = row.name.replace(/\.netcanvas$/i, '');
 
   const asSourceVersion = {
@@ -242,9 +341,11 @@ async function normalizeNonConformantProtocol(
     assetManifest: buildAssetManifest(row.assets),
   };
 
-  const migrated = migrateProtocol(asSourceVersion, TARGET_SCHEMA_VERSION, {
-    name: cleanName,
-  });
+  const { protocol: migrated, migrateSession } = migrateProtocolWithSessions(
+    asSourceVersion,
+    TARGET_SCHEMA_VERSION,
+    { name: cleanName },
+  );
 
   // The hash is derived from stages + codebook only, so re-normalizing gives
   // the same hash the import flow would now compute for this protocol.
@@ -267,9 +368,14 @@ async function normalizeNonConformantProtocol(
     newHash,
   );
 
+  const interviews = migrateInterviews
+    ? await migrateInterviewsOf(prisma, row, migrateSession)
+    : { migrated: 0, failed: 0 };
+
   console.log(
     `Normalized non-conformant protocol "${row.name}" (id=${row.id})... ok (new hash: ${newHash.slice(0, 8)}...)`,
   );
+  return interviews;
 }
 
 /**
@@ -283,6 +389,11 @@ async function normalizeNonConformantProtocol(
  * - at the target version but non-conformant: rows persisted before the
  *   current validation rules shipped, mechanically re-normalized through the
  *   migration chain (see `normalizeNonConformantProtocol`).
+ *
+ * A protocol migrated up from an older version carries its interviews with
+ * it (see `migrateInterviewsOf`): the migration may move stages, so each
+ * interview's stage metadata and resume position follow their stages, and any
+ * data the migration re-spells is rewritten, in the same transaction.
  *
  * Both classes tolerate failure: a protocol that cannot be migrated or
  * normalized is logged and left in place, because one bad row must never
@@ -315,6 +426,8 @@ export async function migrateProtocolsToCompatibleVersion(
   let migrated = 0;
   let normalized = 0;
   let skipped = 0;
+  let interviewsMigrated = 0;
+  let interviewsFailed = 0;
 
   for (const row of protocols) {
     if (row.schemaVersion < TARGET_SCHEMA_VERSION) {
@@ -326,11 +439,14 @@ export async function migrateProtocolsToCompatibleVersion(
       // match the runtime's, so its interviews report the mismatch instead of
       // running incorrectly.
       try {
-        if ((await migrateOneProtocol(prisma, row)) === 'migrated') {
+        const { outcome, interviews } = await migrateOneProtocol(prisma, row);
+        if (outcome === 'migrated') {
           migrated += 1;
         } else {
           normalized += 1;
         }
+        interviewsMigrated += interviews.migrated;
+        interviewsFailed += interviews.failed;
       } catch (err) {
         skipped += 1;
         const cause = err instanceof Error ? err.message : String(err);
@@ -349,7 +465,10 @@ export async function migrateProtocolsToCompatibleVersion(
     }
 
     try {
-      await normalizeNonConformantProtocol(prisma, row);
+      // Already at the target version, so its interviews already are too.
+      await normalizeNonConformantProtocol(prisma, row, {
+        migrateInterviews: false,
+      });
       normalized += 1;
     } catch (err) {
       skipped += 1;
@@ -364,6 +483,7 @@ export async function migrateProtocolsToCompatibleVersion(
   console.log(
     `Protocol migration complete: ${migrated} migrated up to schema version ` +
       `${TARGET_SCHEMA_VERSION}, ${normalized} non-conformant normalized, ` +
-      `${skipped} left in place.`,
+      `${skipped} left in place. Interviews: ${interviewsMigrated} migrated ` +
+      `with their protocol, ${interviewsFailed} left unchanged.`,
   );
 }
