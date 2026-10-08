@@ -32,6 +32,7 @@ import type { entityAttributesProperty, NcNode } from '@codaco/shared-consts';
 import useProtocolForm from '../../forms/useProtocolForm';
 import { rejectedWriteMessage } from '../../forms/writeSubmissionResult';
 import useBeforeNext from '../../hooks/useBeforeNext';
+import useSavesInOrder from '../../hooks/useSavesInOrder';
 import { runtimeMessages } from '../../i18n/runtimeMessages';
 import type { Subject } from '../../selectors/forms';
 import type { AttributePatch } from '../../store/entityAttributePatch';
@@ -66,6 +67,9 @@ export type InspectorProps = {
 const AUTOSAVE_DELAY = 400;
 
 const noopSubmit: FormSubmitHandler = () => ({ success: true as const });
+
+// A save resolves to why it was refused, or to nothing once it is stored.
+const isSaved = (reason: MessageDescriptor | undefined) => reason === undefined;
 
 /**
  * Watches the form's values and, once they settle, calls `onSettled` to
@@ -162,7 +166,7 @@ function AttributeFormInner({
 
   // Resolves to why the values could not be saved, or to undefined once they
   // are saved.
-  const persist = useCallback(
+  const save = useCallback(
     async (values: Record<string, FieldValue>) => {
       // The form keeps what was entered, so the edit can be saved again once
       // whatever refused it is resolved.
@@ -188,6 +192,9 @@ function AttributeFormInner({
     },
     [onSave, entityId, toAttributePatch, storeApi],
   );
+  // A save that takes longer, as encrypting an answer can, never lands after
+  // a newer one.
+  const persist = useSavesInOrder(save, isSaved);
 
   const saveIfValid = useCallback(async () => {
     const state = storeApi?.getState();

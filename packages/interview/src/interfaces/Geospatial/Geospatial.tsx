@@ -32,6 +32,7 @@ import { writeFailureMessage } from '../../forms/writeSubmissionResult';
 import { useAssetUrl } from '../../hooks/useAssetUrl';
 import useBeforeNext from '../../hooks/useBeforeNext';
 import useReadyForNextStage from '../../hooks/useReadyForNextStage';
+import useSavesInOrder from '../../hooks/useSavesInOrder';
 import { useStageSelector } from '../../hooks/useStageSelector';
 import { getCodebookVariablesForSubjectType } from '../../selectors/protocol';
 import { getNetworkNodesForType } from '../../selectors/session';
@@ -111,6 +112,8 @@ function readFirstFeatureProperty(json: unknown, property: string): unknown {
   return properties[property];
 }
 
+const isStored = (stored: boolean) => stored;
+
 type GeospatialInterfaceProps = StageProps<'Geospatial'>;
 
 export function locationValueToAttributePatch(
@@ -183,9 +186,9 @@ export default function GeospatialInterface({
   const saveLocationValue = useCallback(
     async (value: string | null, selectionKind: 'search' | 'pin') => {
       const variable = currentPrompt.variable;
-      if (!variable) return;
+      if (!variable) return true;
       const activeNode = stageNodes[navState.activeIndex];
-      if (!activeNode) return;
+      if (!activeNode) return true;
       const nodeId = activeNode[entityPrimaryKeyProperty];
 
       if (value !== null && locationLocked) {
@@ -195,7 +198,7 @@ export default function GeospatialInterface({
           variant: 'info',
           anchor: 'forward',
         });
-        return;
+        return false;
       }
 
       if (value !== null) {
@@ -216,6 +219,7 @@ export default function GeospatialInterface({
           anchor: 'forward',
         });
       }
+      return !failure;
     },
     [
       updateNode,
@@ -232,11 +236,12 @@ export default function GeospatialInterface({
   );
 
   // Every outcome of the save, including a refusal, is reported inside it.
+  const saveLocationInOrder = useSavesInOrder(saveLocationValue, isStored);
   const setLocationValue = useCallback(
     (value: string | null, selectionKind: 'search' | 'pin' = 'pin') => {
-      void saveLocationValue(value, selectionKind);
+      void saveLocationInOrder(value, selectionKind);
     },
-    [saveLocationValue],
+    [saveLocationInOrder],
   );
 
   // A saved location that is encrypted is decrypted before it is shown.

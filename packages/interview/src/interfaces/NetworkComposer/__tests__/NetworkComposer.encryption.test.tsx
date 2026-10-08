@@ -7,7 +7,7 @@ import {
 } from '@testing-library/react';
 import { type ReactNode } from 'react';
 import { Provider } from 'react-redux';
-import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import {
@@ -80,6 +80,38 @@ vi.mock('../../Anonymisation/encryptionFormat', async (importOriginal) => {
       decryptionGate.attempts.push({ nodeId, variableId });
       await decryptionGate.held;
       return actual.decryptValue(...args);
+    },
+  };
+});
+
+// Holds back the result of the next encryption while `held` is set, so a
+// test can make an earlier save slower than a later one. Counts every
+// encryption begun and ended, so a test can wait for all of them.
+const encryptionGate = vi.hoisted(() => {
+  const gate: { held?: Promise<void>; begun: number; ended: number } = {
+    begun: 0,
+    ended: 0,
+  };
+  return gate;
+});
+vi.mock('../../Anonymisation/utils', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('../../Anonymisation/utils')>();
+  return {
+    ...actual,
+    generateSecureAttributes: async (
+      ...args: Parameters<typeof actual.generateSecureAttributes>
+    ) => {
+      encryptionGate.begun += 1;
+      const held = encryptionGate.held;
+      encryptionGate.held = undefined;
+      try {
+        const result = await actual.generateSecureAttributes(...args);
+        await held;
+        return result;
+      } finally {
+        encryptionGate.ended += 1;
+      }
     },
   };
 });
@@ -638,4 +670,66 @@ describe('NetworkComposer validating an encrypted name', () => {
       decryptionGate.held = undefined;
     }
   });
+});
+
+describe('NetworkComposer saving edits in the order they were made', () => {
+  afterEach(() => {
+    encryptionGate.held = undefined;
+  });
+
+  function holdNextEncryption() {
+    const begunBefore = encryptionGate.begun;
+    let release: () => void = () => undefined;
+    encryptionGate.held = new Promise((resolve) => {
+      release = resolve;
+    });
+    return { begun: () => encryptionGate.begun > begunBefore, release };
+  }
+
+  // Every encryption begun has ended and its write has been applied.
+  async function allSaved() {
+    await waitFor(() =>
+      expect(encryptionGate.ended).toBe(encryptionGate.begun),
+    );
+    await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+  }
+
+  async function openAlice(store: Store) {
+    renderComposer(store);
+    const nodeButton = await screen.findByRole('button', { name: /alice/i });
+    act(() => {
+      tapNode(nodeButton);
+    });
+    const notesInput = await screen.findByLabelText(/notes/i);
+    await waitFor(() => expect(notesInput).toHaveValue('Met at work'));
+    return notesInput;
+  }
+
+  it.each([
+    ['stores the latest edit', 'Old friend'],
+    ['keeps an answer put back', 'Met at work'],
+  ])(
+    '%s when an earlier save is still encrypting its answers',
+    async (_case, latest) => {
+      const store = await makeStore({ nodes: [await makeEncryptedNode()] });
+      const notesInput = await openAlice(store);
+      const earlier = holdNextEncryption();
+
+      fireEvent.change(notesInput, { target: { value: 'First' } });
+      await waitFor(() => expect(earlier.begun()).toBe(true), {
+        timeout: 2000,
+      });
+      fireEvent.change(notesInput, { target: { value: latest } });
+      // Long enough for a later save that did not wait for the earlier one to
+      // be stored first.
+      await act(() => new Promise((resolve) => setTimeout(resolve, 600)));
+      earlier.release();
+
+      await allSaved();
+      expect(
+        await readStored(store.getState().session.network.nodes[0], NOTES_VAR),
+      ).toBe(latest);
+      expect(screen.getByLabelText(/notes/i)).toHaveValue(latest);
+    },
+  );
 });

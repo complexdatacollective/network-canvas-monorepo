@@ -116,6 +116,10 @@ Encrypted answers are now protected in a new way:
   passphrase was entered, no longer looks chosen. The map highlights only the
   location saved for the person shown, even when moving on while it is still
   loading.
+- Answers changed one after another in the Network Composer's side panel, and
+  locations picked one after another on the map, are saved in the order they
+  were made, so an earlier answer that takes longer to encrypt can't be saved
+  last and replace a later one.
 - The summary of the family that a family pedigree saves alongside the
   interview names a relative whose name is protected by their relationship
   alone, so a protected name never reaches it, even inside another
