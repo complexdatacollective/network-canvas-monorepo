@@ -28,11 +28,10 @@ import {
   WorkerHealthServerLive,
 } from '../platform/http-server.ts';
 import { InstallationIdentity } from '../platform/installation-identity.ts';
-import { LoggerLive, LogLevelLive } from '../platform/logger.ts';
 import { MaintenanceState } from '../platform/maintenance-state.ts';
 import { RuntimeMetricsLive } from '../platform/runtime-metrics.ts';
 import { SchemaStatus } from '../platform/schema-gate.ts';
-import { TracingLive } from '../platform/tracing.ts';
+import { ObservabilityLive } from '../platform/tracing.ts';
 import { RateLimiter } from '../rate-limit/limiter.ts';
 import { RateLimitStore } from '../rate-limit/store.ts';
 import { SecretsCipher } from '../secrets/services.ts';
@@ -200,9 +199,7 @@ const WorkerProgramLayer = Layer.unwrap(
   }),
 ).pipe(
   Layer.provide(RuntimeMetricsLive),
-  Layer.provide(
-    Layer.mergeAll(LoggerLive, LogLevelLive, TracingLive('worker')),
-  ),
+  Layer.provide(ObservabilityLive('worker')),
   Layer.provide(Environment.layerWithMail),
 );
 
