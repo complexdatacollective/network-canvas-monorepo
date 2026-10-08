@@ -54,6 +54,9 @@ export type PedigreeConfig = {
   currentPartnerAttribute: string;
   /** Set when the stage has a completeness requirement. */
   relativesNotRecordedAttribute: string | undefined;
+  /** Set when the stage records each person's relationship to the
+   * participant. */
+  relationshipToParticipantAttribute: string | undefined;
 };
 
 export function pedigreeConfigFromStage(
@@ -76,6 +79,8 @@ export function pedigreeConfigFromStage(
     currentPartnerAttribute: stage.edgeConfiguration.currentPartnerAttribute,
     relativesNotRecordedAttribute:
       stage.completeness?.relativesNotRecordedAttribute,
+    relationshipToParticipantAttribute:
+      stage.nodeConfiguration.relationshipToParticipantAttribute,
   };
 }
 

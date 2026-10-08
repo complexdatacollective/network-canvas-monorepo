@@ -369,6 +369,9 @@ export type FamilyPedigreeNodeConfigurationEntry = {
   };
   sexAssignedAtBirthAttribute: string;
   egoAttribute: string;
+  /** Present when the stage records each person's relationship to the
+   * participant. */
+  relationshipToParticipantAttribute?: string;
 };
 
 /** A FamilyPedigree stage's completeness requirement. */
@@ -558,6 +561,10 @@ export type AddStageInput = {
     variableName?: string;
     onlyForSexAssignedAtBirth?: 'female' | 'male';
   }[];
+  /** Creates a categorical person attribute holding each person's
+   * relationship to the participant, and binds it, when true. Its options
+   * are the interface's values, each labelled with its own value. */
+  recordRelationshipToParticipant?: boolean;
   /** Creates the relatives-not-recorded attribute when set. */
   completeness?: Omit<
     FamilyPedigreeCompletenessEntry,

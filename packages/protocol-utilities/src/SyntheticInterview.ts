@@ -6,6 +6,7 @@ import {
   PEDIGREE_DEFAULT_GENDER_IDENTITIES,
   type PedigreeDefaultGenderIdentityValue,
   PEDIGREE_RELATIONSHIP_KIND_OPTIONS,
+  PEDIGREE_RELATIONSHIPS_TO_PARTICIPANT,
   PEDIGREE_RELATIVES_NOT_RECORDED_OPTIONS,
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
   escapeMarkdownText,
@@ -295,6 +296,9 @@ type FamilyPedigreeHandle = StageHandleBase & {
   /** The relatives-not-recorded attribute id, when the stage has a
    * completeness requirement. */
   relativesNotRecorded: string | undefined;
+  /** The relationship-to-participant attribute id, when the stage was added
+   * with `recordRelationshipToParticipant`. */
+  relationshipToParticipant: string | undefined;
   /** The boolean person attribute id each nomination prompt sets, in the
    * order the prompts were given. */
   nominations: string[];
@@ -772,6 +776,19 @@ export class SyntheticInterview {
           options: PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
         }),
         egoAttribute: personVariable('isEgo', { type: 'boolean' }),
+        ...(opts?.recordRelationshipToParticipant
+          ? {
+              relationshipToParticipantAttribute: personVariable(
+                'relationshipToParticipant',
+                {
+                  type: 'categorical',
+                  options: PEDIGREE_RELATIONSHIPS_TO_PARTICIPANT.map(
+                    (value) => ({ value, label: value }),
+                  ),
+                },
+              ),
+            }
+          : {}),
       };
 
       const edgeTypeId =
@@ -1194,6 +1211,7 @@ export class SyntheticInterview {
           currentPartner: relationship.currentPartnerAttribute,
           relativesNotRecorded:
             entry.completeness?.relativesNotRecordedAttribute,
+          relationshipToParticipant: person.relationshipToParticipantAttribute,
           nominations: (entry.nominationPrompts ?? []).map(
             (prompt) => prompt.attribute,
           ),

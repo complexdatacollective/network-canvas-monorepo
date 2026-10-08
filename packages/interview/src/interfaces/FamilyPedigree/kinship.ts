@@ -149,7 +149,7 @@ export type PersonLabel =
 type ParentKind = Exclude<PedigreeRelationshipKind, 'partner'>;
 
 /** One step from a person to a relative of theirs. */
-type Step =
+export type Step =
   | { type: 'parent'; kind: ParentKind; to: string }
   | { type: 'child'; kind: ParentKind; to: string }
   | { type: 'sibling'; half: boolean; to: string }
@@ -192,7 +192,7 @@ function siblingParentsOf(family: Family, personId: string): string[] {
  * They share a biological or adoptive parent; someone who shares only a
  * step-parent is reached through that parent instead.
  */
-function stepsFrom(family: Family, personId: string): Step[] {
+export function stepsFrom(family: Family, personId: string): Step[] {
   const steps: Step[] = [];
   for (const link of family.links) {
     if (link.kind !== 'partner' && link.target === personId) {
@@ -340,9 +340,9 @@ const isDescent = (step: Step) =>
  * The kinship word for a relative more than one step away, or undefined when
  * there is no everyday word for them. `path` runs from the participant.
  */
-function kinTermFor(
+export function kinTermFor(
   family: Family,
-  path: Step[],
+  path: readonly Step[],
   framing: FramingId,
 ): KinTerm | undefined {
   const target = family.byId.get(path[path.length - 1]!.to);

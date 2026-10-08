@@ -30,6 +30,7 @@ export const config: PedigreeConfig = {
   gestationalCarrierAttribute: 'carrier',
   currentPartnerAttribute: 'current',
   relativesNotRecordedAttribute: 'notRecorded',
+  relationshipToParticipantAttribute: undefined,
 };
 
 /** The same stage with gender identity not collected. */

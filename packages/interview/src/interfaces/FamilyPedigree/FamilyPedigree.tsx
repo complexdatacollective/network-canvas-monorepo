@@ -118,6 +118,7 @@ import {
 } from './model';
 import PedigreeLayout from './pedigree-layout/components/PedigreeLayout';
 import type { PedigreeLink } from './pedigree-layout/types';
+import { relationshipWrites } from './relationshipToParticipant';
 import type { Point } from './spatialNavigation';
 import { usePanZoom, type View } from './usePanZoom';
 
@@ -807,6 +808,32 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     return false;
   };
 
+  // When the stage records each person's relationship to the participant, it
+  // is worked out afresh from the family whenever the participant leaves, in
+  // whichever direction, as the labels are: written for everyone connected
+  // to the participant, named or not, and cleared from anyone who holds one
+  // but is no longer connected. The participant has none. It is not typed
+  // input, and only text attributes can be encrypted, so it never waits for
+  // the passphrase.
+  const saveRelationships = async () => {
+    const attribute = config.relationshipToParticipantAttribute;
+    if (!attribute) return;
+    await Promise.all(
+      relationshipWrites(nodes, family, config, attribute).map((write) =>
+        dispatch(
+          updateNode({
+            nodeId: write.personId,
+            attributePatch:
+              write.relationship === undefined
+                ? { set: {}, unset: [attribute] }
+                : { set: { [attribute]: [write.relationship] }, unset: [] },
+            currentStep,
+          }),
+        ),
+      ),
+    );
+  };
+
   // Everyone the participant left unnamed is given a label as their name, in
   // the participant's language and choice of words, so they can be recognised
   // in the rest of the interview. The labels are saved whenever the
@@ -894,11 +921,15 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   const framingUnanswered = participantFraming && chosenFraming === undefined;
   useBeforeNext(async (direction) => {
     if (framingUnanswered) {
-      if (direction === 'backwards') return true;
-      setFramingOpen(true);
-      return false;
+      if (direction === 'forwards') {
+        setFramingOpen(true);
+        return false;
+      }
+      await saveRelationships();
+      return true;
     }
     if (!completeEnoughToLeave(direction)) return false;
+    await saveRelationships();
     return saveGeneratedLabels(direction);
   });
 

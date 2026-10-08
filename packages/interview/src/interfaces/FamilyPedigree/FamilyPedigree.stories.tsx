@@ -4,12 +4,13 @@ import { expect, fireEvent, userEvent, waitFor, within } from 'storybook/test';
 import SuperJSON from 'superjson';
 
 import { SyntheticInterview } from '@codaco/protocol-utilities';
-import type {
-  FramingSetting,
-  PedigreeCompletenessScope,
-  PedigreeGenderWords,
-  PedigreeRelationshipKind,
-  PedigreeSexAssignedAtBirth,
+import {
+  PEDIGREE_RELATIONSHIPS_TO_PARTICIPANT,
+  type FramingSetting,
+  type PedigreeCompletenessScope,
+  type PedigreeGenderWords,
+  type PedigreeRelationshipKind,
+  type PedigreeSexAssignedAtBirth,
 } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
@@ -55,6 +56,9 @@ type SeedPerson = {
   /** Answers already given that the person has no siblings or children, or
    * that the participant doesn't know (needs `completeness`). */
   notRecorded?: string[];
+  /** A relationship to the participant already recorded (needs
+   * `recordsRelationship`). */
+  relationship?: string;
 };
 
 type SeedLink = {
@@ -104,6 +108,8 @@ type StoryOptions = {
   /** Adds a text field, Nickname, encrypted with the participant's
    * passphrase (the name is not encrypted unless `encryptedNames`). */
   encryptedFormField?: boolean;
+  /** Records each person's relationship to the participant. */
+  recordsRelationship?: boolean;
 };
 
 /** What only the story's shell takes: how the interview is hosted. */
@@ -141,6 +147,7 @@ export function buildInterview({
   followedByNameForm = false,
   encryptedNames = false,
   encryptedFormField = false,
+  recordsRelationship = false,
 }: StoryOptions) {
   const si = new SyntheticInterview(1);
   if (encryptedNames || encryptedFormField) {
@@ -157,6 +164,7 @@ export function buildInterview({
     genderIdentities,
     askGenderIdentity,
     nameValidation,
+    recordRelationshipToParticipant: recordsRelationship,
   });
   // The researcher's choice of symbol, made in the codebook: circles for
   // women (or female), squares for men (or male), diamonds for anyone else.
@@ -204,6 +212,9 @@ export function buildInterview({
       ...(person.sex ? { [stage.sexAssignedAtBirth]: [person.sex] } : {}),
       ...(person.notRecorded && stage.relativesNotRecorded
         ? { [stage.relativesNotRecorded]: person.notRecorded }
+        : {}),
+      ...(person.relationship && stage.relationshipToParticipant
+        ? { [stage.relationshipToParticipant]: [person.relationship] }
         : {}),
       ...Object.fromEntries(
         (person.nominatedFor ?? []).flatMap((index) => {
@@ -302,6 +313,7 @@ function PedigreeStory({
   followedByNameForm,
   encryptedNames,
   encryptedFormField,
+  recordsRelationship,
   protoAttribute,
   onSync,
 }: StoryOptions & ShellOptions) {
@@ -322,6 +334,7 @@ function PedigreeStory({
           followedByNameForm,
           encryptedNames,
           encryptedFormField,
+          recordsRelationship,
         }),
       ),
     [
@@ -338,6 +351,7 @@ function PedigreeStory({
       followedByNameForm,
       encryptedNames,
       encryptedFormField,
+      recordsRelationship,
     ],
   );
 
@@ -2378,6 +2392,105 @@ export const LabelsAreGivenAfreshAfterAddingARelative: Story = {
     await expect(await canvas.findByText('Sister 1')).toBeInTheDocument();
     await expect(await canvas.findByText('Sister 2')).toBeInTheDocument();
     await expect(canvas.queryByText('Sister')).toBeNull();
+  },
+};
+
+/** A person's relationship to the participant in the session last written,
+ * or undefined when they hold none. */
+const nodesInSession = () => lastSynced?.network.nodes ?? [];
+
+const relationshipInSession = (personId: string) => {
+  const node = nodesInSession().find(
+    (candidate) => candidate[entityPrimaryKeyProperty] === personId,
+  );
+  const values = Object.values(node?.[entityAttributesProperty] ?? {});
+  const held = values.find(
+    (value): value is [string] =>
+      Array.isArray(value) &&
+      typeof value[0] === 'string' &&
+      (PEDIGREE_RELATIONSHIPS_TO_PARTICIPANT as readonly string[]).includes(
+        value[0],
+      ),
+  );
+  return held?.[0];
+};
+
+/**
+ * The stage records each person's relationship to the participant. Leaving
+ * it writes the relationship of everyone connected to the participant, named
+ * or not, already in the family or just added; clears one the participant
+ * holds; and clears one held by someone no longer connected to them, whose
+ * relationship it can no longer say.
+ */
+export const RelationshipsAreRecordedOnLeaving: Story = {
+  args: { requirement: 'none' },
+  render: (args) => (
+    <PedigreeStory
+      {...settings(args)}
+      recordsRelationship
+      followedByPeopleList
+      onSync={recordSession}
+      family={{
+        people: [
+          {
+            id: 'ego',
+            name: 'Ari',
+            gender: 'nonBinary',
+            sex: 'intersex',
+            ego: true,
+            relationship: 'child',
+          },
+          { id: 'mum', gender: 'woman', sex: 'female' },
+          { id: 'dad', name: 'Rob', gender: 'man', sex: 'male' },
+          // Recorded as a sibling on an earlier visit, but no longer
+          // connected to the participant.
+          {
+            id: 'former',
+            name: 'Kim',
+            gender: 'woman',
+            sex: 'female',
+            relationship: 'sibling',
+          },
+        ],
+        links: [
+          { from: 'mum', to: 'dad', kind: 'partner' },
+          { from: 'mum', to: 'ego', kind: 'biological', carrier: true },
+          { from: 'dad', to: 'ego', kind: 'biological' },
+        ],
+      }}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    lastSynced = undefined;
+    const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
+    await canvas.findByRole('button', { name: /^Mother/ });
+
+    // Add a sister, unnamed.
+    await userEvent.hover(await canvas.findByRole('button', { name: /^You/ }));
+    await userEvent.click(await canvas.findByTestId('pedigree-menu-sibling'));
+    await userEvent.click(await body.findByRole('radio', { name: 'Woman' }));
+    await userEvent.click(await body.findByRole('radio', { name: 'Female' }));
+    await userEvent.click(
+      await body.findByRole('button', { name: 'Add to family' }),
+    );
+    await waitFor(() => expect(panelOf(canvasElement)).toBeNull());
+    await canvas.findByRole('button', { name: /^Sister/ });
+
+    await leaveForPeopleList(canvasElement);
+    await waitFor(() => expect(relationshipInSession('mum')).toBe('parent'));
+    await expect(relationshipInSession('dad')).toBe('parent');
+    await expect(relationshipInSession('ego')).toBeUndefined();
+    await expect(relationshipInSession('former')).toBeUndefined();
+    const sister = nodesInSession().find(
+      (node) =>
+        !['ego', 'mum', 'dad', 'former'].includes(
+          node[entityPrimaryKeyProperty],
+        ),
+    );
+    await expect(
+      relationshipInSession(sister?.[entityPrimaryKeyProperty] ?? ''),
+    ).toBe('sibling');
   },
 };
 
