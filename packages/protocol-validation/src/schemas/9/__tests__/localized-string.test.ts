@@ -20,7 +20,7 @@ const issuesOf = (schema: z.ZodType, value: unknown) => {
 };
 
 describe('LocaleTagSchema', () => {
-  it.each(['en', 'en-US', 'zh-Hant-TW', 'und', 'es-419'])(
+  it.each(['en', 'en-US', 'zh-Hant-TW', 'es-419'])(
     'accepts the canonical tag %s',
     (tag) => {
       expect(LocaleTagSchema.safeParse(tag).success).toBe(true);
@@ -44,6 +44,18 @@ describe('LocaleTagSchema', () => {
       },
     ]);
   });
+
+  it.each(['und', 'UND', 'und-Latn'])(
+    'rejects the undetermined language %s',
+    (tag) => {
+      expect(issuesOf(LocaleTagSchema, tag)).toEqual([
+        {
+          message: `"${tag}" does not name a language. A protocol must be written in a specific language, such as "en".`,
+          path: [],
+        },
+      ]);
+    },
+  );
 
   it.each(['', 'english!', 'e'])('rejects the malformed tag %j', (tag) => {
     expect(issuesOf(LocaleTagSchema, tag)).toEqual([
@@ -111,6 +123,15 @@ describe('ProtocolLocalizationSchema', () => {
     });
   });
 
+  it('rejects the undetermined language as a declared or default language', () => {
+    const paths = issuesOf(ProtocolLocalizationSchema, {
+      defaultLocale: 'und',
+      locales: ['und', 'en'],
+    }).map(({ path }) => path);
+    expect(paths).toContainEqual(['defaultLocale']);
+    expect(paths).toContainEqual(['locales', 0]);
+  });
+
   it('rejects keys it does not define', () => {
     expect(
       ProtocolLocalizationSchema.safeParse({
@@ -165,6 +186,16 @@ describe('localizedString', () => {
       {
         message: '"en-us" is not a canonical language tag. Use "en-US".',
         path: ['en-us'],
+      },
+    ]);
+  });
+
+  it('rejects the undetermined language as a key', () => {
+    expect(issuesOf(required, { und: 'Hello' })).toEqual([
+      {
+        message:
+          '"und" does not name a language. A protocol must be written in a specific language, such as "en".',
+        path: ['und'],
       },
     ]);
   });

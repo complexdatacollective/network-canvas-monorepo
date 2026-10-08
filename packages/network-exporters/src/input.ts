@@ -85,9 +85,8 @@ export type InterviewExportInput = {
   network: NcNetwork;
   protocolHash: string;
   /**
-   * The language the participant was last shown, as a BCP 47 tag (`und` for a
-   * protocol that declares no language), or `null` when the runtime never
-   * reported one.
+   * The language the participant was last shown, as a BCP 47 tag, or `null`
+   * when the runtime never reported one.
    */
   locale: string | null;
 };

@@ -25,6 +25,7 @@ import {
   type ComponentType,
   ComponentTypesKeys,
   getLocaleMetadata,
+  isBlankText,
   type LocaleTag,
   type LocalizedString,
   type Variable,
@@ -141,22 +142,17 @@ const isInputControl = (value: unknown): value is ComponentType =>
   ComponentTypesKeys.some((control) => control === value);
 
 /**
- * Whether the researcher has actually written anything, by the interview's own
- * rule.
+ * Whether the researcher has actually written anything.
  *
- * `@codaco/interview`'s `authoredFieldLabel` TRIMS the caption as resolved in
- * the interview language before deciding whether anything was authored, so a
- * caption of nothing but spaces is nothing authored, and the preview shows the
- * stand-in it shows for a caption not yet written. Asked of the text a
- * participant in the editing language would be shown, fallback included.
+ * A caption of nothing but spaces is nothing authored, as the schema holds
+ * (`isBlankText`), so the preview shows the stand-in it shows for a caption not
+ * yet written. Asked of the text a participant in the editing language would
+ * be shown, fallback included.
  *
- * Replicated rather than imported: that helper is internal to the runtime and
- * its root entry does not export it. `FieldPreviewPane.test.tsx` pins the
- * three cases the runtime's own rule turns on — whitespace-only, empty, and
- * ordinary text — so the preview cannot caption a field the interview would
- * not.
+ * `FieldPreviewPane.test.tsx` pins the three cases the rule turns on:
+ * whitespace-only, empty, and ordinary text.
  */
-const isAuthored = (text: string): boolean => text.trim() !== '';
+const isAuthored = (text: string): boolean => !isBlankText(text);
 
 type PreviewOption = NonNullable<ProtocolFieldDefinition['options']>[number];
 

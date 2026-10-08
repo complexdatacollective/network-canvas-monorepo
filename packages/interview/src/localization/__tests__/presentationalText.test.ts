@@ -7,7 +7,7 @@ import {
 
 import { toPresentationalText } from '../presentationalText';
 
-const options = ['en', 'ar', 'und'].map((locale) => getLocaleMetadata(locale));
+const options = ['en', 'ar'].map((locale) => getLocaleMetadata(locale));
 
 const resolved = (text: string, locale: string): ResolvedLocalizedString => ({
   text,
@@ -29,12 +29,6 @@ describe('toPresentationalText', () => {
       lang: 'en',
       dir: 'ltr',
     });
-  });
-
-  it('leaves text in the unspecified language as a plain string', () => {
-    expect(toPresentationalText(resolved('Hello', 'und'), options)).toBe(
-      'Hello',
-    );
   });
 
   it('refuses a language the options do not describe', () => {

@@ -21,7 +21,7 @@ const SummaryContext = createContext<SummaryContextType>({
   protocol: {
     name: 'Untitled Protocol',
     schemaVersion: 9,
-    localization: { defaultLocale: 'und', locales: ['und'] },
+    localization: { defaultLocale: 'en', locales: ['en'] },
     assetManifest: {},
     codebook: {},
     stages: [],

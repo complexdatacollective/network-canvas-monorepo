@@ -39,7 +39,7 @@ function makeSource(schemaVersion: number): NonNullable<GetInterviewByIdQuery> {
       importedAt: new Date('2026-01-01T00:00:00.000Z'),
       stages: [],
       codebook: { node: {}, edge: {} },
-      localization: { defaultLocale: 'und', locales: ['und'] },
+      localization: { defaultLocale: 'en', locales: ['en'] },
       experiments: {},
       originalFileKey: null,
       originalFileUrl: null,

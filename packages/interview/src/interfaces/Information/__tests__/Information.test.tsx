@@ -394,23 +394,6 @@ describe('protocol text in the interview language', () => {
     expect(heading).toHaveAttribute('dir', 'rtl');
   });
 
-  it('gives text in the unspecified language no language of its own', () => {
-    renderInformation(
-      makeStage(
-        [{ id: 'i1', type: 'text', content: { und: 'Some **context**.' } }],
-        { und: 'Before you begin' },
-      ),
-      [],
-      { localization: { defaultLocale: 'und', locales: ['und'] } },
-    );
-
-    const heading = screen.getByRole('heading', { name: 'Before you begin' });
-    expect(heading).not.toHaveAttribute('lang');
-    expect(heading).not.toHaveAttribute('dir');
-    const emphasis = screen.getByText('context');
-    expect(emphasis.closest('[lang]')).toBeNull();
-  });
-
   it('formats a text item as a message before rendering it as markdown', () => {
     renderInformation(
       makeStage([
@@ -433,7 +416,7 @@ describe('protocol text in the interview language', () => {
     ).toBeInTheDocument();
   });
 
-  it('keeps the blocks of a text item in a named language beside the title', () => {
+  it('keeps the blocks of a text item beside the title', () => {
     renderInformation(
       makeStage(
         [
@@ -448,9 +431,9 @@ describe('protocol text in the interview language', () => {
       [],
     );
 
-    // Siblings, exactly as text in the unspecified language renders: the
-    // typography's `not-first:`/`not-last:` spacing reads that order, so a
-    // wrapper carrying the language would respace the item.
+    // Siblings, though the text carries its own language: the typography's
+    // `not-first:`/`not-last:` spacing reads that order, so a wrapper carrying
+    // the language would respace the item.
     const title = screen.getByRole('heading', { name: 'Before you begin' });
     const section = screen.getByRole('heading', { name: 'Section' });
     expect(section.previousElementSibling).toBe(title);

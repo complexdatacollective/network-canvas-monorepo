@@ -70,22 +70,6 @@ export const SeveralLanguages: Story = {
   },
 };
 
-/**
- * A protocol upgraded from before languages were declared. Its language has
- * no name of its own, so the option is named in Architect's language.
- */
-export const UnspecifiedLanguage: Story = {
-  args: { locales: ['und', 'es'], initialLocale: 'und' },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    const menu = canvas.getByRole('combobox', { name: 'Preview language' });
-    const unspecified = within(menu).getByRole('option', {
-      name: 'Unspecified language',
-    });
-    await expect(unspecified).not.toHaveAttribute('lang');
-  },
-};
-
 /** One language: the menu names it and offers nothing to switch to. */
 export const OneLanguage: Story = {
   args: { locales: ['en'], initialLocale: 'en' },

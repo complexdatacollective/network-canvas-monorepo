@@ -12,9 +12,9 @@ import {
 } from 'react';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
+import { ContentLocaleProvider } from '@codaco/fresco-ui/form/ContentLocale';
 import type { PresentationalText } from '@codaco/fresco-ui/PresentationalText';
 import {
-  escapeMessageText,
   type LocaleMetadata,
   type LocaleTag,
   type LocalizationDeclaration,
@@ -25,7 +25,7 @@ import {
   sortByLanguageName,
 } from '@codaco/protocol-validation';
 
-import { languageMessages } from '../i18n/languageMessages';
+import { resolveContentLocale } from './contentFormat';
 import {
   createLocalizedMessageFormatter,
   type LocalizedMessageFormatter,
@@ -54,8 +54,6 @@ const useProtocolLocalizationState = () => {
   );
   return state;
 };
-
-const UNSPECIFIED_LOCALE = 'und';
 
 /** The options describe each declared locale once, in any order. */
 function assertOptionsMatchDeclaration(
@@ -109,21 +107,14 @@ export function ProtocolLocalizationProvider({
   children: ReactNode;
 }) {
   const intl = useAppIntl();
-  const unspecifiedLabel = intl.formatMessage(
-    languageMessages.unspecifiedLanguage,
-  );
-
   const options = useMemo(() => {
     assertOptionsMatchDeclaration(localization, localeOptions);
-    // `Intl.DisplayNames` names `und` "root", which means nothing to a
-    // participant.
-    const named = localeOptions.map((option) =>
-      option.locale === UNSPECIFIED_LOCALE
-        ? { ...option, label: unspecifiedLabel }
-        : option,
+    return sortByLanguageName(
+      localeOptions,
+      (option) => option.label,
+      intl.locale,
     );
-    return sortByLanguageName(named, (option) => option.label, intl.locale);
-  }, [localization, localeOptions, unspecifiedLabel, intl.locale]);
+  }, [localization, localeOptions, intl.locale]);
 
   // A stated preference is passed as the only request, so a preference the
   // protocol no longer matches yields its default rather than a browser
@@ -187,7 +178,7 @@ export function ProtocolLocalizationProvider({
 
   return (
     <ProtocolLocalizationContext.Provider value={value}>
-      {children}
+      <ContentLocaleProvider locale={locale}>{children}</ContentLocaleProvider>
     </ProtocolLocalizationContext.Provider>
   );
 }
@@ -213,6 +204,25 @@ export function useProtocolLocale(): Readonly<{
 }
 
 /**
+ * The language the protocol's own values are written for, to format and
+ * alphabetise them in: the protocol language the interview shows. Participant
+ * and protocol data sit among the protocol's text, so a participant reading
+ * Hungarian gets Hungarian number formats and Hungarian alphabetical order even
+ * when the interface falls back to English for want of a Hungarian catalog.
+ * The form fields inside the interview follow it too (see
+ * `ContentLocaleProvider`); sentences the interface itself speaks stay in the
+ * interface language.
+ *
+ * Outside a `ProtocolLocalizationProvider` (a component shown on its own) it is
+ * the interface language.
+ */
+export function useContentLocale(): string {
+  const interfaceLocale = useAppIntl().locale;
+  const protocolLocale = useContext(ProtocolLocalizationContext)?.locale;
+  return resolveContentLocale(protocolLocale, interfaceLocale);
+}
+
+/**
  * Resolves protocol-authored strings for the interview language, falling back
  * to the browser's other languages, then to the protocol's default. `text` is
  * the formatted message, in the locale the text is actually written in.
@@ -232,20 +242,6 @@ export function useResolveLocalizedString(): (
       return { ...resolved, text: format(resolved.locale, resolved.text) };
     },
     [localization, resolutionOrder, format],
-  );
-}
-
-/**
- * Researcher text the protocol does not translate, as copy written in the
- * protocol's default language, so it is shown as written in every language.
- */
-export function useUntranslatedText(): (text: string) => LocalizedString {
-  const { localization } = useProtocolLocalizationState();
-  return useCallback(
-    (text: string) => ({
-      [localization.defaultLocale]: escapeMessageText(text),
-    }),
-    [localization],
   );
 }
 

@@ -8,7 +8,7 @@ import {
   uniqueFormFieldVariables,
 } from '../common/index.ts';
 import { entityAttributeReference } from '../entity-attribute-reference.ts';
-import { localizedString } from '../localized-string.ts';
+import { localizedString, nonBlankText } from '../localized-string.ts';
 import { ComponentTypes } from '../variables/types.ts';
 import {
   datePickerParametersSchema,
@@ -39,7 +39,7 @@ const ComposerComponentSchema = z.enum([
 // not on the codebook variable, so the same variable can render with different
 // controls in different stages. The runtime side panel reads the control from
 // this field (see interview/src/selectors/forms.ts). `label` captions the
-// field in the drawer. It is required and non-empty, like a shared form
+// field in the drawer. It is required and not blank, like a shared form
 // field's `prompt`: the codebook variable's own label is plain text that is
 // never translated, so it cannot stand in for a caption the participant reads.
 const composerFormFieldShape = {
@@ -51,7 +51,7 @@ const composerFormFieldShape = {
     subject: 'stageSubject',
     usage: 'validatedAttribute',
   }),
-  label: localizedString(z.string().min(1), 'markdown'),
+  label: localizedString(nonBlankText(), 'markdown'),
   hint: localizedString(z.string(), 'markdown').optional(),
   showValidationHints: z.boolean().optional(),
 };
