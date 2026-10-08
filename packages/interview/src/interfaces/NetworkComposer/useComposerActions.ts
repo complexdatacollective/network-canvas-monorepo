@@ -41,9 +41,9 @@ type UseComposerActionsArgs = {
 type ComposerActions = {
   createNodeAt: (name: string, position: Position) => Promise<string>;
   connect: (from: string, to: string, edgeType: string) => Promise<void>;
-  deleteNodeById: (id: string) => void;
-  deleteNodesById: (ids: string[]) => void;
-  deleteEdgeById: (id: string) => void;
+  deleteNodeById: (id: string) => Promise<void>;
+  deleteNodesById: (ids: string[]) => Promise<void>;
+  deleteEdgeById: (id: string) => Promise<void>;
   updateNodeAttributes: (
     id: string,
     attributePatch: AttributePatch,
@@ -197,93 +197,99 @@ export function useComposerActions({
     });
   }
 
-  function deleteNodeById(id: string): void {
-    // Capture the node and its incident edges before deleting: the reducer
-    // cascades edge removal.
-    const nodeSnapshot = readNode(id);
-    const edgeSnapshots = readIncidentEdges(new Set([id]));
+  async function deleteNodeById(id: string): Promise<void> {
+    await undoStore.getState().record(async () => {
+      // Capture the node and its incident edges before deleting: the reducer
+      // cascades edge removal.
+      const nodeSnapshot = readNode(id);
+      const edgeSnapshots = readIncidentEdges(new Set([id]));
 
-    dispatch(deleteNode(id));
+      dispatch(deleteNode(id));
 
-    if (!nodeSnapshot) return;
+      if (!nodeSnapshot) return null;
 
-    void undoStore.getState().push({
-      label: `Delete node`,
-      undo: async () => {
-        dispatch(restoreNode(nodeSnapshot));
-        await restoreEdges(edgeSnapshots);
-      },
-      redo: () => {
-        dispatch(deleteNode(id));
-      },
+      return {
+        label: `Delete node`,
+        undo: async () => {
+          dispatch(restoreNode(nodeSnapshot));
+          await restoreEdges(edgeSnapshots);
+        },
+        redo: () => {
+          dispatch(deleteNode(id));
+        },
+      };
     });
   }
 
-  function deleteNodesById(ids: string[]): void {
+  async function deleteNodesById(ids: string[]): Promise<void> {
     if (ids.length === 0) return;
 
-    // Capture every node and its incident edges before any deletion; an edge
-    // joining two deleted nodes is captured once.
-    const capturedNodes = ids.flatMap((id) => readNode(id) ?? []);
-    const capturedEdges = readIncidentEdges(new Set(ids));
+    await undoStore.getState().record(async () => {
+      // Capture every node and its incident edges before any deletion; an
+      // edge joining two deleted nodes is captured once.
+      const capturedNodes = ids.flatMap((id) => readNode(id) ?? []);
+      const capturedEdges = readIncidentEdges(new Set(ids));
 
-    // Delete all nodes (the reducer cascades incident edge removal).
-    for (const id of ids) {
-      dispatch(deleteNode(id));
-    }
+      // Delete all nodes (the reducer cascades incident edge removal).
+      for (const id of ids) {
+        dispatch(deleteNode(id));
+      }
 
-    void undoStore.getState().push({
-      label: `Delete ${ids.length} nodes`,
-      undo: async () => {
-        for (const node of capturedNodes) {
-          dispatch(restoreNode(node));
-        }
-        await restoreEdges(capturedEdges);
-      },
-      redo: () => {
-        for (const node of capturedNodes) {
-          dispatch(deleteNode(node[entityPrimaryKeyProperty]));
-        }
-      },
+      return {
+        label: `Delete ${ids.length} nodes`,
+        undo: async () => {
+          for (const node of capturedNodes) {
+            dispatch(restoreNode(node));
+          }
+          await restoreEdges(capturedEdges);
+        },
+        redo: () => {
+          for (const node of capturedNodes) {
+            dispatch(deleteNode(node[entityPrimaryKeyProperty]));
+          }
+        },
+      };
     });
   }
 
-  function deleteEdgeById(id: string): void {
-    let capturedEdge: NcEdge | undefined;
+  async function deleteEdgeById(id: string): Promise<void> {
+    await undoStore.getState().record(async () => {
+      let capturedEdge: NcEdge | undefined;
 
-    dispatch((_, getState) => {
-      const { session: sessionState } = getState() as {
-        session: { network: { edges: NcEdge[] } };
+      dispatch((_, getState) => {
+        const { session: sessionState } = getState() as {
+          session: { network: { edges: NcEdge[] } };
+        };
+        capturedEdge = sessionState.network.edges.find(
+          (e) => e[entityPrimaryKeyProperty] === id,
+        );
+      });
+
+      dispatch(deleteEdge(id));
+
+      if (!capturedEdge) return null;
+
+      const edgeSnapshot = capturedEdge;
+      let liveEdgeId = edgeSnapshot[entityPrimaryKeyProperty];
+
+      return {
+        label: `Delete edge`,
+        undo: async () => {
+          const { edgeId: newId } = await dispatch(
+            addEdge({
+              from: edgeSnapshot.from,
+              to: edgeSnapshot.to,
+              type: edgeSnapshot.type,
+              attributeData: edgeSnapshot[entityAttributesProperty],
+              currentStep,
+            }),
+          ).unwrap();
+          liveEdgeId = newId;
+        },
+        redo: () => {
+          dispatch(deleteEdge(liveEdgeId));
+        },
       };
-      capturedEdge = sessionState.network.edges.find(
-        (e) => e[entityPrimaryKeyProperty] === id,
-      );
-    });
-
-    dispatch(deleteEdge(id));
-
-    if (!capturedEdge) return;
-
-    const edgeSnapshot = capturedEdge;
-    let liveEdgeId = edgeSnapshot[entityPrimaryKeyProperty];
-
-    void undoStore.getState().push({
-      label: `Delete edge`,
-      undo: async () => {
-        const { edgeId: newId } = await dispatch(
-          addEdge({
-            from: edgeSnapshot.from,
-            to: edgeSnapshot.to,
-            type: edgeSnapshot.type,
-            attributeData: edgeSnapshot[entityAttributesProperty],
-            currentStep,
-          }),
-        ).unwrap();
-        liveEdgeId = newId;
-      },
-      redo: () => {
-        dispatch(deleteEdge(liveEdgeId));
-      },
     });
   }
 

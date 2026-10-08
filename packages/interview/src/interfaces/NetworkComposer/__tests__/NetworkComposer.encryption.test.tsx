@@ -1308,6 +1308,54 @@ describe('NetworkComposer saving edits in the order they were made', () => {
     expect(await storedNotes(store)).toBe('Met at work');
   });
 
+  it('deletes a person only once an edit being saved is stored, so undo and redo keep the answer', async () => {
+    const store = makeStore(await makeNodes(), true);
+    const notesInput = await openAlice(store);
+    const aliceNotes = () =>
+      readStored(
+        store
+          .getState()
+          .session.network.nodes.find(
+            (node) => node[entityPrimaryKeyProperty] === NODE_ID,
+          ),
+        NOTES_VAR,
+      );
+    const aliceExists = () =>
+      store
+        .getState()
+        .session.network.nodes.some(
+          (node) => node[entityPrimaryKeyProperty] === NODE_ID,
+        );
+    const pressRedo = () =>
+      act(async () => {
+        fireEvent.keyDown(screen.getByTestId('network-composer'), {
+          key: 'z',
+          metaKey: true,
+          shiftKey: true,
+        });
+      });
+    const saving = holdNextEncryption();
+
+    fireEvent.change(notesInput, { target: { value: 'First' } });
+    await waitFor(() => expect(saving.begun()).toBe(true), { timeout: 2000 });
+    act(() => {
+      fireEvent.click(screen.getByRole('button', { name: /delete/i }));
+    });
+    saving.release();
+    await allSaved();
+    await waitFor(() => expect(aliceExists()).toBe(false));
+
+    // Undoing the deletion puts back the answer that was being saved.
+    await pressUndo();
+    await waitFor(() => expect(aliceExists()).toBe(true));
+    expect(await aliceNotes()).toBe('First');
+
+    await pressUndo();
+    await waitFor(async () => expect(await aliceNotes()).toBe('Met at work'));
+    await pressRedo();
+    await waitFor(async () => expect(await aliceNotes()).toBe('First'));
+  });
+
   it('follows an undo of a save whose answers the drawer was never given', async () => {
     const store = makeStore(await makeNodes(), true);
     const notesInput = await openAlice(store);

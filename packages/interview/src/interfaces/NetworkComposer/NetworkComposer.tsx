@@ -419,7 +419,7 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
       );
 
       if (existing) {
-        actions.deleteEdgeById(existing[entityPrimaryKeyProperty]);
+        await actions.deleteEdgeById(existing[entityPrimaryKeyProperty]);
       } else {
         await actions.connect(source, tappedId, edgeType);
       }
@@ -476,10 +476,10 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
           deselectDeleted,
         } = composerStore.getState();
         if (nodeIds.size > 0) {
-          actions.deleteNodesById([...nodeIds]);
+          void actions.deleteNodesById([...nodeIds]);
           deselectDeleted();
         } else if (edgeId !== null) {
-          actions.deleteEdgeById(edgeId);
+          void actions.deleteEdgeById(edgeId);
           deselectDeleted();
         }
       }
@@ -824,9 +824,9 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
             }
             onDelete={(id) => {
               if (editor.kind === 'node') {
-                actions.deleteNodeById(id);
+                void actions.deleteNodeById(id);
               } else {
-                actions.deleteEdgeById(id);
+                void actions.deleteEdgeById(id);
               }
               composerStore.getState().deselectDeleted();
             }}

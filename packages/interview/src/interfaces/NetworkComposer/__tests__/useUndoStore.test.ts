@@ -19,19 +19,19 @@ describe('createUndoStore', () => {
     expect(s.future).toHaveLength(0);
   });
 
-  it('push records a command and clears redo future', async () => {
+  it('record adds a command and clears redo future', async () => {
     const store = createUndoStore();
     const log: string[] = [];
-    await store.getState().push(cmd(log, 'a'));
+    await store.getState().record(async () => cmd(log, 'a'));
     await store.getState().undo();
-    await store.getState().push(cmd(log, 'b'));
+    await store.getState().record(async () => cmd(log, 'b'));
     expect(store.getState().future).toHaveLength(0);
   });
 
   it('undo then redo calls the command hooks in order', async () => {
     const store = createUndoStore();
     const log: string[] = [];
-    await store.getState().push(cmd(log, 'a'));
+    await store.getState().record(async () => cmd(log, 'a'));
     await store.getState().undo();
     await store.getState().redo();
     expect(log).toEqual(['undo:a', 'redo:a']);
@@ -46,17 +46,21 @@ describe('createUndoStore', () => {
   it('trims the past to the limit (oldest dropped)', async () => {
     const store = createUndoStore(2);
     const log: string[] = [];
-    await store.getState().push(cmd(log, 'a'));
-    await store.getState().push(cmd(log, 'b'));
-    await store.getState().push(cmd(log, 'c'));
+    await store.getState().record(async () => cmd(log, 'a'));
+    await store.getState().record(async () => cmd(log, 'b'));
+    await store.getState().record(async () => cmd(log, 'c'));
     expect(store.getState().past.map((c) => c.label)).toEqual(['b', 'c']);
   });
 
   it('undoes a step of joined edits latest first, and redoes them in order', async () => {
     const store = createUndoStore();
     const log: string[] = [];
-    await store.getState().push({ ...cmd(log, 'a'), coalesceKey: 'k' });
-    await store.getState().push({ ...cmd(log, 'b'), coalesceKey: 'k' });
+    await store
+      .getState()
+      .record(async () => ({ ...cmd(log, 'a'), coalesceKey: 'k' }));
+    await store
+      .getState()
+      .record(async () => ({ ...cmd(log, 'b'), coalesceKey: 'k' }));
     expect(store.getState().past).toHaveLength(1);
 
     await store.getState().undo();
@@ -96,13 +100,13 @@ describe('createUndoStore record', () => {
     const store = createUndoStore();
     const log: string[] = [];
     const undone = deferred();
-    await store.getState().push({
+    await store.getState().record(async () => ({
       ...cmd(log, 'a'),
       undo: async () => {
         await undone.promise;
         log.push('undo:a');
       },
-    });
+    }));
 
     const undoing = store.getState().undo();
     const recording = store.getState().record(async () => {
@@ -120,7 +124,7 @@ describe('createUndoStore record', () => {
   it('keeps what can be redone when a change changes nothing', async () => {
     const store = createUndoStore();
     const log: string[] = [];
-    await store.getState().push(cmd(log, 'a'));
+    await store.getState().record(async () => cmd(log, 'a'));
     await store.getState().undo();
 
     await store.getState().record(async () => null);

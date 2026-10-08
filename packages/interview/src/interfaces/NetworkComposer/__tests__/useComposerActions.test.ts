@@ -257,8 +257,8 @@ describe('useComposerActions', () => {
       { wrapper: makeWrapper(store) },
     );
 
-    act(() => {
-      result.current.deleteNodeById('a');
+    await act(async () => {
+      await result.current.deleteNodeById('a');
     });
 
     expect(store.getState().session.network.nodes).toHaveLength(1);
@@ -433,8 +433,8 @@ describe('useComposerActions', () => {
       { wrapper: makeWrapper(store) },
     );
 
-    act(() => {
-      result.current.deleteEdgeById('e-ab');
+    await act(async () => {
+      await result.current.deleteEdgeById('e-ab');
     });
     expect(store.getState().session.network.edges).toHaveLength(0);
 
@@ -757,4 +757,89 @@ describe('useComposerActions', () => {
     );
     expect(byId('d')![entityAttributesProperty][GROUP_VAR]).toEqual([]);
   });
+});
+
+describe('useComposerActions deleting while another change is being made', () => {
+  const node = (id: string): NcNode => ({
+    [entityPrimaryKeyProperty]: id,
+    type: NODE_TYPE,
+    [entityAttributesProperty]: {},
+  });
+  const edgeAB: NcEdge = {
+    [entityPrimaryKeyProperty]: 'e-ab',
+    type: EDGE_TYPE,
+    from: 'a',
+    to: 'b',
+    [entityAttributesProperty]: {},
+  };
+
+  const deletions: [
+    string,
+    (actions: ReturnType<typeof useComposerActions>) => Promise<void>,
+    (store: ReturnType<typeof makeStore>) => boolean,
+  ][] = [
+    [
+      'a person',
+      (actions) => actions.deleteNodeById('a'),
+      (store) =>
+        store
+          .getState()
+          .session.network.nodes.some(
+            (n) => n[entityPrimaryKeyProperty] === 'a',
+          ),
+    ],
+    [
+      'several people',
+      (actions) => actions.deleteNodesById(['a', 'b']),
+      (store) => store.getState().session.network.nodes.length > 0,
+    ],
+    [
+      'a relationship',
+      (actions) => actions.deleteEdgeById('e-ab'),
+      (store) => store.getState().session.network.edges.length > 0,
+    ],
+  ];
+
+  it.each(deletions)(
+    'deletes %s only once the change before it is made',
+    async (_, deleteIt, stillThere) => {
+      const store = makeStore([node('a'), node('b')], [edgeAB]);
+      const undoStore = createUndoStore();
+      const { result } = renderHook(
+        () =>
+          useComposerActions({
+            subjectType: NODE_TYPE,
+            quickAdd: QUICK_ADD_VAR,
+            layoutVariable: LAYOUT_VAR,
+            useEncryption: false,
+            currentStep: 0,
+            undoStore,
+            dispatch: store.dispatch as Parameters<
+              typeof useComposerActions
+            >[0]['dispatch'],
+          }),
+        { wrapper: makeWrapper(store) },
+      );
+
+      let finishChange: () => void = () => undefined;
+      const change = undoStore.getState().record(
+        () =>
+          new Promise((resolve) => {
+            finishChange = () => resolve(null);
+          }),
+      );
+      let deleting: Promise<void> = Promise.resolve();
+      act(() => {
+        deleting = deleteIt(result.current);
+      });
+      await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+      expect(stillThere(store)).toBe(true);
+
+      finishChange();
+      await act(async () => {
+        await Promise.all([change, deleting]);
+      });
+      expect(stillThere(store)).toBe(false);
+    },
+  );
 });

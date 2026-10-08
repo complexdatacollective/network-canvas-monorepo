@@ -7,7 +7,7 @@ export type UndoCommand = {
   undo: () => void | Promise<void>;
   redo: () => void | Promise<void>;
   /**
-   * When set, a pushed command joins the previous one if it is on top of the
+   * When set, a recorded command joins the previous one if it is on top of the
    * stack and shares the same key. Used to collapse a run of live edits to the
    * same entity (e.g. drawer auto-saves) into a single undo step.
    */
@@ -20,12 +20,13 @@ type UndoState = {
 };
 
 type UndoActions = {
-  push: (command: UndoCommand) => Promise<void>;
   /**
    * Makes a change and records the command that reverses it as one step of
-   * the history. An undo or redo asked for while the change is being made
-   * waits for it, so it applies to this change instead of overtaking it, and
-   * a change asked for while an undo or redo is being made waits for that.
+   * the history. Every step is recorded this way, so changes are made in the
+   * order their steps are recorded and undone. An undo or redo asked for
+   * while the change is being made waits for it, so it applies to this change
+   * instead of overtaking it, and a change asked for while an undo or redo is
+   * being made waits for that.
    * `change` resolves to the command, or to null when it changed nothing.
    */
   record: (change: () => Promise<UndoCommand | null>) => Promise<void>;
@@ -67,7 +68,7 @@ export const createUndoStore = (limit = 50) =>
       return chain;
     };
 
-    const pushNow = (command: UndoCommand) => {
+    const addStep = (command: UndoCommand) => {
       set((state) => {
         const previous = state.past[state.past.length - 1];
         // Join consecutive same-key commands so a run of live edits is a
@@ -92,12 +93,10 @@ export const createUndoStore = (limit = 50) =>
       past: [],
       future: [],
 
-      push: (command) => enqueue(() => pushNow(command)),
-
       record: (change) =>
         enqueue(async () => {
           const command = await change();
-          if (command) pushNow(command);
+          if (command) addStep(command);
         }),
 
       undo: () =>
