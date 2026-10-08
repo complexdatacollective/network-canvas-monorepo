@@ -77,6 +77,22 @@ const EXPECTED_SITES: readonly ExpectedSite[] = [
   site([...personVariable('flag'), 'options', 0, 'label'], 'markdown', true),
   site([...personVariable('flag'), 'options', 1, 'label'], 'markdown', true),
   site(['codebook', 'node', 'relative', 'label'], 'plain', true),
+  ...Array.from({ length: 5 }, (_, index) =>
+    site(
+      [
+        'codebook',
+        'node',
+        'relative',
+        'variables',
+        'sex',
+        'options',
+        index,
+        'label',
+      ],
+      'markdown',
+      true,
+    ),
+  ),
   site(['codebook', 'edge', 'knows', 'label'], 'plain', true),
   site(
     [...knowsVariable('tieStrength'), 'options', 0, 'label'],
@@ -89,6 +105,22 @@ const EXPECTED_SITES: readonly ExpectedSite[] = [
     true,
   ),
   site(['codebook', 'edge', 'family', 'label'], 'plain', true),
+  ...Array.from({ length: 6 }, (_, index) =>
+    site(
+      [
+        'codebook',
+        'edge',
+        'family',
+        'variables',
+        'relType',
+        'options',
+        index,
+        'label',
+      ],
+      'markdown',
+      true,
+    ),
+  ),
 
   // Every stage's label.
   ...Array.from({ length: 21 }, (_, index) =>
@@ -175,11 +207,9 @@ const EXPECTED_SITES: readonly ExpectedSite[] = [
 
   site(stage(17, 'prompts', 0, 'text'), 'markdown'),
 
-  site(stage(18, 'nodeConfig', 'form', 0, 'prompt'), 'markdown'),
-  site(stage(18, 'nodeConfig', 'form', 0, 'hint'), 'markdown', true),
-  site(stage(18, 'introScreen', 'items', 0, 'content'), 'markdown', true),
-  site(stage(18, 'introScreen', 'items', 1, 'description'), 'plain', true),
-  site(stage(18, 'censusPrompt'), 'markdown'),
+  site(stage(18, 'prompt'), 'markdown'),
+  site(stage(18, 'form', 'fields', 0, 'prompt'), 'markdown'),
+  site(stage(18, 'form', 'fields', 0, 'hint'), 'markdown', true),
   site(stage(18, 'nominationPrompts', 0, 'text'), 'markdown'),
 
   site(stage(19, 'diseases', 0, 'label'), 'plain'),

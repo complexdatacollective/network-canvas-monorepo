@@ -84,6 +84,7 @@ export {
   MigrationChain,
   type ProtocolMigration as Migration,
   protocolMigrations,
+  type SessionMigrationStep,
 } from './migration/index.ts';
 export * from './migration/errors.ts';
 export {
@@ -92,9 +93,18 @@ export {
   type MigrationInfo,
   type MigrationNote,
   migrateProtocol,
+  migrateProtocolWithSessions,
+  type ProtocolWithSessionMigrator,
   ProtocolMigrator,
   protocolMigrator,
 } from './migration/migrate-protocol.ts';
+export type {
+  MigratedSession,
+  PersistedSession,
+  SessionDocument,
+  SessionMigrationResult,
+  SessionMigrator,
+} from './migration/session.ts';
 
 // Export schema types and constants (Protocol, Codebook, etc)
 export * from './schemas/index.ts';
@@ -102,17 +112,28 @@ export * from './schemas/index.ts';
 // They live in the schema version directory, so a host always reads the set
 // the version it targets defines.
 export {
-  BIOLOGICAL_SEX_OPTIONS,
-  BIOLOGICAL_SEX_VALUES,
-  type BiologicalSex,
   FRAMING_IDS,
+  FRAMING_SETTINGS,
   type FramingId,
-  GAMETE_ROLE_OPTIONS,
-  GAMETE_ROLES,
-  type GameteRole,
-  RELATIONSHIP_TYPE_OPTIONS,
-  RELATIONSHIP_TYPES,
-  type RelationshipType,
+  type FramingSetting,
+  PEDIGREE_COMPLETENESS_SCOPES,
+  PEDIGREE_DEFAULT_GENDER_IDENTITIES,
+  PEDIGREE_GENDER_WORDS,
+  PEDIGREE_RELATIONSHIP_KIND_OPTIONS,
+  PEDIGREE_RELATIONSHIP_KINDS,
+  PEDIGREE_RELATIONSHIPS_TO_PARTICIPANT,
+  PEDIGREE_RELATIVES_NOT_RECORDED,
+  PEDIGREE_RELATIVES_NOT_RECORDED_OPTIONS,
+  PEDIGREE_SEX_ASSIGNED_AT_BIRTH,
+  PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
+  type PedigreeCompletenessScope,
+  type PedigreeDefaultGenderIdentityValue,
+  type PedigreeGenderWords,
+  type PedigreeParentKind,
+  type PedigreeRelationshipKind,
+  type PedigreeRelationshipToParticipant,
+  type PedigreeRelativesNotRecorded,
+  type PedigreeSexAssignedAtBirth,
 } from './schemas/9/family-pedigree-values.ts';
 export {
   type LocalizedString,
@@ -178,7 +199,9 @@ export {
   type ExclusiveVariableSlot,
   findExclusiveVariableSlots,
   findInterfaceOwnedOptionBindings,
+  findStageManagedOptionBindings,
   type InterfaceOwnedOptionBinding,
+  type StageManagedOptionBinding,
 } from './utils/findExclusiveVariableConflicts.ts';
 export {
   asEntityAttributeReference,

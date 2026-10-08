@@ -79,10 +79,10 @@ literature. Delete that stage before deployment, but only after transferring its
 instructions into your study documentation and interviewer training materials.
 
 The template is a **methodological starting point**. It is not a clinical
-instrument that can be fielded unchanged. Its consent text is illustrative,
-every reference to "this condition" must be replaced, and the inheritance
-display uses conservative defaults. The research team remains responsible for
-condition-specific validity and for the required ethical and clinical review.
+instrument that can be fielded unchanged. Its consent text is illustrative, and
+every reference to "this condition" must be replaced. The research team remains
+responsible for condition-specific validity and for the required ethical and
+clinical review.
 
 ## The protocol as a methodological translation
 
@@ -90,27 +90,27 @@ Network Canvas represents a CEGRM as one interview with 14 stages. The order
 follows the data dependencies in the protocol. Each stage writes a bounded part
 of the record; later stages interpret or extend what is already present.
 
-| Stage                                    | Interface                  | Methodological purpose                                                                         |
-| ---------------------------------------- | -------------------------- | ---------------------------------------------------------------------------------------------- |
-| 1. Template notes                        | Information                | Researcher instructions and sources; remove before fielding.                                   |
-| 2. Welcome and consent                   | Ego Form                   | Explain the mapping task, its sensitive content, and participation choice.                     |
-| 3. About you                             | Ego Form                   | Collect the participant attributes needed by the study.                                        |
-| 4. Family pedigree                       | Family Pedigree            | Co-construct the multi-generational family and nominate condition and testing status.          |
-| 5. Beyond the family                     | Information                | Mark the transition from pedigree construction to the wider social environment.                |
-| 6. People in your life                   | Name Generator (quick add) | Add friends, colleagues, group members, and health professionals to the same person node type. |
-| 7. How you know each person              | Categorical Bin            | Classify non-family contacts without overwriting pedigree-derived kinship.                     |
-| 8. How close you feel                    | Ordinal Bin                | Add perceived closeness for all people except the participant.                                 |
-| 9. How often you are in contact          | Ordinal Bin                | Add current contact frequency, excluding people recorded as deceased.                          |
-| 10. Exchanges of support                 | Sociogram                  | Record who knows whom and the four CEGRM support domains.                                      |
-| 11. Talking about the condition          | Sociogram                  | Identify family information gatherers, disseminators, and blockers.                            |
-| 12. The completed map                    | Narrative                  | Compare support and communication overlays on one stable layout and elicit interpretation.     |
-| 13. How the condition runs in the family | Narrative Pedigree         | Revisit disease incidence in its multi-generational family structure.                          |
-| 14. Closing                              | Information                | Debrief and connect the participant with the approved support pathway.                         |
+| Stage                                    | Interface                  | Methodological purpose                                                                               |
+| ---------------------------------------- | -------------------------- | ---------------------------------------------------------------------------------------------------- |
+| 1. Template notes                        | Information                | Researcher instructions and sources; remove before fielding.                                         |
+| 2. Welcome and consent                   | Ego Form                   | Explain the mapping task, its sensitive content, and participation choice.                           |
+| 3. About you                             | Ego Form                   | Collect the participant attributes needed by the study.                                              |
+| 4. Family pedigree                       | Family Pedigree            | Co-construct the multi-generational family and record who has had the condition and genetic testing. |
+| 5. Beyond the family                     | Information                | Mark the transition from pedigree construction to the wider social environment.                      |
+| 6. People in your life                   | Name Generator (quick add) | Add friends, colleagues, group members, and health professionals to the same person node type.       |
+| 7. How you know each person              | Categorical Bin            | Classify non-family contacts without overwriting pedigree-derived kinship.                           |
+| 8. How close you feel                    | Ordinal Bin                | Add perceived closeness for all people except the participant.                                       |
+| 9. How often you are in contact          | Ordinal Bin                | Add current contact frequency, excluding people recorded as deceased.                                |
+| 10. Exchanges of support                 | Sociogram                  | Record who knows whom and the four CEGRM support domains.                                            |
+| 11. Talking about the condition          | Sociogram                  | Identify family information gatherers, disseminators, and blockers.                                  |
+| 12. The completed map                    | Narrative                  | Compare support and communication overlays on one stable layout and elicit interpretation.           |
+| 13. How the condition runs in the family | Narrative Pedigree         | Revisit who has had the condition in its multi-generational family structure.                        |
+| 14. Closing                              | Information                | Debrief and connect the participant with the approved support pathway.                               |
 
 ![The CEGRM sequence moving from the family pedigree to people beyond the family.](/assets/img/cegrm-tutorial/interview-sequence.jpg 'The Family pedigree, Beyond the family, and People in your life stages on the protocol timeline')
 
 Changing the order can change the meaning of the data. The non-kin relationship
-stage assumes that pedigree relationships have already been derived. The
+stage assumes that the family pedigree has already been drawn. The
 Narrative stage expects a Sociogram to have established a stable layout. After
 reordering the protocol, review every stage filter, layout variable, and
 interviewer instruction. The timeline records these dependencies alongside the
@@ -131,18 +131,32 @@ overlapping roles through variables and relationships.
 The distinction between family and non-family is stored through variables and
 relationships:
 
-- `relationship_to_ego` is calculated by the Family Pedigree interface for
-  people in the pedigree.
+- `non_kin` is a boolean that the "People in your life" name generator sets to
+  true on every person it creates. People from the Family Pedigree never have
+  it, so later stage filters use it to tell the participant's family from the
+  non-kin members of their social network. Relatives the participant did not
+  describe, such as an unnamed parent the interface added, still count as
+  family, and the distinction does not depend on any pedigree question being
+  asked.
 - `tie_type` and `tie_type_other` classify people added beyond the pedigree.
 - `is_ego` identifies exactly one node as the participant.
-- `biologicalSex` supports pedigree symbols and sex-linked inheritance logic; it
-  is not a measure of gender identity.
+- `sexAssignedAtBirth` is used by the Family Pedigree to name biological
+  parents and donors, work out who could have carried a pregnancy, and check
+  that a child's biological parents are possible. `genderIdentity` records how
+  each person describes themselves, and decides the kinship words and the
+  symbol drawn for them. Neither is a measure of the other.
 
 The same `name` variable labels people in the Family Pedigree and the Quick Add
-Name Generator. It is configured as **required** and **unique**. Pedigree labels
-are protocol data and follow the same codebook validation rules as names entered
-elsewhere. Create a separate pedigree-name variable only when the analysis
-requires two different concepts.
+Name Generator. It is configured as **required** and **unique**. Names typed in
+the Family Pedigree follow the same codebook validation rules as names entered
+elsewhere, so no two typed names can be the same. A participant may still leave
+a relative's name blank, because they may not know it. When they leave the
+stage, the interface saves a label as the name of each unnamed relative,
+including any unnamed parent it added: their kinship word, such as "Maternal
+grandmother", told apart by a relative where needed, such as "Sister (partner
+of Tom)". Every relative therefore has a distinct name that later stages can
+show. Create a separate pedigree-name variable only when the analysis requires
+two different concepts.
 
 ## Construct the family pedigree inclusively
 
@@ -153,28 +167,35 @@ and gestational carriers. This permits the reproductive pathway needed for
 inheritance analysis to coexist with the family relationships that matter
 socially.
 
-The template uses **participant-choice framing**. At the beginning of the task,
-the participant can choose between gendered parent terms and gamete-based terms.
-The latter asks about egg and sperm contribution and works without assuming that
-parental role, gender identity, biological sex, gestation, and genetic
-contribution are interchangeable. This configuration supports donor conception,
-surrogacy, adoption, same-sex parents, and other family structures while
-preserving the information needed by the pedigree data model.
+The template keeps the stage's defaults for wording and completeness. Family
+members the participant has not named are described with everyday kinship words
+(mother, aunt, cousin), which follow each person's gender identity, and the
+participant can continue with whatever family they have drawn. Both are settings
+of the stage. The **Wording** section can switch to egg parent and sperm parent
+words, or let the participant choose between the two, which avoids assuming that
+parental role, gender identity, sex assigned at birth, gestation, and genetic
+contribution are interchangeable. The **Completeness** section can require or
+recommend that participants record a minimum part of their family, such as their
+parents, siblings and children, or their grandparents. Set stricter boundaries
+only when the sampling frame, condition, and analysis require them and the added
+interview burden is acceptable. See the
+[Family Pedigree](/en/design-protocols/interface-documentation/family-pedigree)
+interface for each setting.
 
-![The Family Pedigree stage configured to let the participant choose its framing.](/assets/img/cegrm-tutorial/family-pedigree-configuration.jpg 'Participant-choice framing in the CEGRM Family Pedigree stage')
+Whatever the wording, participants can record biological, adoptive, step or
+social parents, egg or sperm donors, and surrogates, and who carried each
+pregnancy. This supports donor conception, surrogacy, adoption, same-sex
+parents, and other family structures while preserving the information needed by
+the pedigree data model.
 
-The template marks grandparents and the families of a participant's children's
-other genetic contributors as **recommended**. Participants receive a visible
-reminder, but missing family history does not block completion or invite
-guessing. Set stricter boundaries only when the sampling frame, condition, and
-analysis require them and the added interview burden is acceptable.
+The template asks about condition and testing as nomination prompts, once the
+family is drawn: "Who in your family has had this condition?" and "Who has had
+genetic testing for it?" let the participant select everyone each question
+applies to, and populate `has_condition` and `had_testing`. Each person's
+details ask only for living status and birth year. The Narrative Pedigree later
+in the interview reads `has_condition`.
 
-Two nomination prompts follow construction of the pedigree:
-
-1. Who in the family has had the condition.
-2. Who has had genetic testing for it.
-
-These populate `has_condition` and `had_testing`. They record the participant's
+These answers record the participant's
 report; they do not establish diagnosis, genotype, or verified clinical status.
 If verified data are available from another source, preserve the provenance of
 both reports rather than silently replacing one with the other.
@@ -209,10 +230,12 @@ The same person may be a friend, colleague, and member of a faith community. The
 without creating a duplicate node.
 
 The next Categorical Bin asks how the participant knows only the people added
-beyond the pedigree. Its filter selects people for whom
-`relationship_to_ego` does not exist. This protects pedigree-derived kinship
-from being overwritten by the non-family classification and makes the analytic
-distinction explicit: use `relationship_to_ego` for family and `tie_type` for
+beyond the pedigree. Each prompt of the preceding name generator sets `non_kin`
+to true on the people it creates (through the prompt's additional attributes),
+and this stage's filter selects people other than the participant who have
+`non_kin` set to true. This keeps the non-family classification from being
+applied to people from the pedigree and makes the analytic distinction
+explicit: use `non_kin` to separate the two groups and `tie_type` to classify
 contacts outside the pedigree.
 
 Review this boundary for your study. "Family" is not exhausted by biological
@@ -293,8 +316,9 @@ person
 template therefore asks who finds the subject hard to talk about, rather than
 labelling someone as obstructive in participant-facing language.
 
-The stage is filtered to people who have `relationship_to_ego`, so the roles are
-asked about the participant's family system. Widen that filter only if
+The stage is filtered to people other than the participant who are not marked
+`non_kin`, so the roles are asked about the participant's family system,
+including relatives the participant did not describe. Widen that filter only if
 non-family brokerage is part of the research question. It also disables
 automatic layout and reuses the coordinates established by the preceding
 all-person Sociogram. Recomputing a layout for the family subset would make its
@@ -331,12 +355,14 @@ confidentiality.
 
 The following Narrative Pedigree returns to the multi-generational family view
 and colors people identified as having the condition. Its inheritance pattern
-defaults to `unknown`, and inferred at-risk statuses are disabled for safety.
+defaults to unknown, and inferred at-risk statuses are switched off for safety.
 Select an inheritance pattern only when the condition supports it. Enable
 inferred statuses only when qualified personnel will interpret the display under
 an approved disclosure procedure. The visualization is not a diagnosis, and its
 inference model cannot represent incomplete penetrance, phenocopies, uncertain
-variants, mosaicism, or every clinically relevant complexity.
+variants, mosaicism, or every clinically relevant complexity. See the
+[Narrative Pedigree](/en/design-protocols/interface-documentation/narrative-pedigree)
+interface.
 
 ## Plan the quantitative analysis before fieldwork
 
@@ -346,7 +372,7 @@ The template supports several complementary analytic representations:
 | ---------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------ |
 | Family structure             | `family_relationship` edges and their relationship variables | Reconstruct pedigree and social, adoptive, donor, gestational, and partnership relations.  |
 | Condition and testing        | `has_condition`, `had_testing`                               | Describe participant-reported incidence and testing across generations.                    |
-| Personal network composition | `relationship_to_ego`, `tie_type`, `tie_type_other`          | Compare kin, non-kin, professional, group, and other sources of support.                   |
+| Personal network composition | `non_kin`, `tie_type`, `tie_type_other`                      | Compare kin, non-kin, professional, group, and other sources of support.                   |
 | Relationship context         | `closeness`, `contact_frequency`                             | Relate support roles to subjective closeness and interaction frequency.                    |
 | Network structure            | `knows` edges                                                | Calculate size, density, components, brokerage, or other measures justified by the design. |
 | Support domains              | Four `exch_*` booleans                                       | Count providers by domain and identify multiplex support ties.                             |
@@ -423,15 +449,6 @@ number of contacts is methodologically defensible.
 communication, support, or awareness of the condition between network members,
 ask that construct directly and name the edge accordingly. Edge density is
 determined by the question, not by the visual appearance of the finished map.
-
-### Configure inheritance conservatively
-
-Select `autosomalDominant`, `autosomalRecessive`, `xLinkedDominant`,
-`xLinkedRecessive`, or another supported pattern only when it is appropriate to
-the condition and study purpose. Decide whether the participant should ever see
-an inferred risk status. If the answer is yes, establish clinical review,
-uncertainty language, disclosure procedures, and a response plan before enabling
-the feature.
 
 ### Replace consent, debriefing, and referral text
 

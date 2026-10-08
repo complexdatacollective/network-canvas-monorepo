@@ -1,0 +1,23 @@
+- main:
+  - status:
+    - heading "Add the members of your family." [level=2]
+  - region "Your family":
+    - button "Julie"
+    - button "Rob, some details missing"
+    - button "You, some details missing"
+    - button "Bea"
+  - toolbar "Family tree tools":
+    - group "What clicking a person does":
+      - button "Add and edit" [pressed]
+      - button "Connect"
+      - button "Disconnect"
+    - separator
+    - button "Zoom out"
+    - button "Zoom in"
+    - button "Show the whole family"
+  - text: Bea added to your family.
+  - navigation:
+    - button "Previous Step" [disabled]
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

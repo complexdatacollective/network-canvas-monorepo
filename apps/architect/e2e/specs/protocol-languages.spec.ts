@@ -100,6 +100,14 @@ function languageRows(page: Page): Locator {
     .filter({ has: page.getByRole('button', { name: /^Remove / }) });
 }
 
+/** The button that records a language's text as another language. */
+function changeButton(page: Page, language: string): Locator {
+  return page.getByRole('button', {
+    name: `Change ${language} to a different language`,
+    exact: true,
+  });
+}
+
 /** The delete button at the end of a language's row. */
 function removeButton(page: Page, language: string): Locator {
   return page.getByRole('button', { name: `Remove ${language}`, exact: true });
@@ -228,7 +236,7 @@ test('adds a language, keeps the default language from being removed, translates
 
   // Make French the default.
   await expect(defaultLanguage).toHaveAccessibleDescription(
-    'Participants see a text in this language when it has no translation in a language they use.',
+    'Participants see text in this language when it has no translation in a language they use.',
   );
   await defaultLanguage.selectOption({ label: 'French' });
   await expect(french.getByText('Default', { exact: true })).toBeVisible();
@@ -247,12 +255,21 @@ test('adds a language, keeps the default language from being removed, translates
 
   // The default language cannot be removed, and its delete button says why.
   // The button stays in the tab order, so the reason reaches keyboard users
-  // too, and pressing it does nothing.
+  // too, and pressing it does nothing. A row's controls are in the order
+  // change, then delete, so Tab from English's delete button reaches French's
+  // change button first and its delete button second.
   const defaultReason =
     'To remove the default language, make another language the default first.';
   const removeFrench = removeButton(page, 'French');
   const removeEnglish = removeButton(page, 'English');
-  await removeEnglish.focus();
+  const changeEnglish = changeButton(page, 'English');
+  const changeFrench = changeButton(page, 'French');
+  await changeEnglish.focus();
+  await page.keyboard.press('Tab');
+  await expect(removeEnglish).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(changeFrench).toBeFocused();
+  await expect(changeFrench).toBeEnabled();
   await page.keyboard.press('Tab');
   await expect(removeFrench).toBeFocused();
   await expect(removeFrench).toBeDisabled();

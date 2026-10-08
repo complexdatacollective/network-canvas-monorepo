@@ -21,8 +21,7 @@ export const VARIANT_ROW_SEGMENT = '*';
  *
  * A sociogram's `background` is one: an image, or a number of concentric
  * circles, and never both (`imageOrCirclesBackgroundSchema` says so twice —
- * once as an author-facing refinement, once as the union it narrows to). A
- * family pedigree's `framing` is another, discriminated on `mode`. So is the
+ * once as an author-facing refinement, once as the union it narrows to). So is the
  * `destination` a skip-logic rule jumps to, discriminated on `type`.
  *
  * Read off the schemas themselves rather than written down beside them,

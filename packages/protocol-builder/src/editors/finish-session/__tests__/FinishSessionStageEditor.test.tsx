@@ -2,7 +2,6 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
-import { DEFAULT_FINISH_SESSION_TEXT } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
@@ -115,23 +114,20 @@ describe('the editor for the screen that ends the interview', () => {
     });
   });
 
-  it('starts a new finish screen with the supplied closing text, ending as completed', async () => {
-    const harness = renderStageEditor({
+  // Architect and Studio add a protocol's finish stage with the supplied
+  // closing text; the editor's own template holds only the outcome.
+  it('starts a new finish screen ending as completed', async () => {
+    renderStageEditor({
       create: { type: 'FinishSession', position: 0 },
       editor: mountedAs(finishSessionStageEditor.FinishSession),
     });
 
     await waitFor(() =>
-      expect(screen.getByRole('textbox', { name: /Heading/ })).toHaveValue(
-        DEFAULT_FINISH_SESSION_TEXT.en.title,
-      ),
+      expect(
+        within(
+          screen.getByRole('listbox', { name: /How the interview ended/ }),
+        ).getByRole('option', { name: /Completed/ }),
+      ).toHaveAttribute('aria-selected', 'true'),
     );
-    const saved = await harness.submit();
-    expect(saved?.stageDocument).toMatchObject({
-      type: 'FinishSession',
-      title: { [FIXTURE_LANGUAGE]: DEFAULT_FINISH_SESSION_TEXT.en.title },
-      content: { [FIXTURE_LANGUAGE]: DEFAULT_FINISH_SESSION_TEXT.en.content },
-      outcome: 'completed',
-    });
   });
 });

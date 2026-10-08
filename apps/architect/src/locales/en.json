@@ -1592,7 +1592,7 @@
     "description": "Description of the interview interface in the New Stage chooser."
   },
   "architect.interface.description.FamilyPedigree": {
-    "defaultMessage": "An interface for collecting family pedigrees, allowing for the capture of complex family relationships and attributes as well as hereditary disease information.",
+    "defaultMessage": "An interface where participants draw their family: they select a person and add that person’s parents, siblings, partners or children, describing each new person as they go.",
     "description": "Description of the interview interface in the New Stage chooser."
   },
   "architect.interface.description.Geospatial": {
@@ -1784,7 +1784,7 @@
     "description": "Label of the list above the protocol languages that chooses which of them is the default."
   },
   "architect.localization.languageList.defaultLanguageHint": {
-    "defaultMessage": "Participants see a text in this language when it has no translation in a language they use.",
+    "defaultMessage": "Participants see text in this language when it has no translation in a language they use.",
     "description": "Hint under the list that chooses the protocol’s default language, saying what the default language does."
   },
   "architect.localization.languageList.defaultNote": {
@@ -2627,6 +2627,146 @@
     "defaultMessage": "DataSource",
     "description": "The title text in lib / ProtocolSummary / components / Stage / DataSource."
   },
+  "architect.protocolSummary.stage.familyPedigree.completenessEnforcement": {
+    "defaultMessage": "When the family is incomplete",
+    "description": "Label for whether a participant may continue while the required relatives are not all recorded, in the printable protocol summary."
+  },
+  "architect.protocolSummary.stage.familyPedigree.completenessEnforcementRecommended": {
+    "defaultMessage": "Participants are shown what is missing but may continue.",
+    "description": "Printable protocol summary text for a completeness requirement that shows the participant what is missing but lets them continue."
+  },
+  "architect.protocolSummary.stage.familyPedigree.completenessEnforcementRequired": {
+    "defaultMessage": "Participants cannot continue until the required relatives and details are recorded.",
+    "description": "Printable protocol summary text for a completeness requirement that stops the participant continuing until the required relatives, and the required details about each person, are recorded."
+  },
+  "architect.protocolSummary.stage.familyPedigree.completenessScope": {
+    "defaultMessage": "Relatives to record",
+    "description": "Label for how much of the family a participant must record before continuing, in the printable protocol summary."
+  },
+  "architect.protocolSummary.stage.familyPedigree.currentPartner": {
+    "defaultMessage": "Current partner",
+    "description": "Label for the boolean attribute marking a partnership as current, in the printable protocol summary."
+  },
+  "architect.protocolSummary.stage.familyPedigree.framing": {
+    "defaultMessage": "Words for family members",
+    "description": "Label for the setting choosing the words used to describe family members, in the printable protocol summary."
+  },
+  "architect.protocolSummary.stage.familyPedigree.framingGamete": {
+    "defaultMessage": "Egg parent and sperm parent",
+    "description": "Printable protocol summary text for the wording setting that describes biological parents by the egg or sperm they gave, without gendered words."
+  },
+  "architect.protocolSummary.stage.familyPedigree.framingGendered": {
+    "defaultMessage": "Everyday kinship words (mother, father, sister, brother)",
+    "description": "Printable protocol summary text for the wording setting that uses the usual kinship words. It is what the stage uses when no wording is chosen."
+  },
+  "architect.protocolSummary.stage.familyPedigree.framingParticipantPreference": {
+    "defaultMessage": "The participant chooses between the two",
+    "description": "Printable protocol summary text for the wording setting that lets the participant choose between everyday kinship words and egg parent and sperm parent words."
+  },
+  "architect.protocolSummary.stage.familyPedigree.genderIdentity": {
+    "defaultMessage": "Gender identity",
+    "description": "Label for the attribute that holds each family member’s gender identity, in the printable protocol summary."
+  },
+  "architect.protocolSummary.stage.familyPedigree.genderIdentityNotAsked": {
+    "defaultMessage": "Not asked. Words such as mother or brother follow sex assigned at birth.",
+    "description": "Value shown beside the gender identity label in the printable protocol summary when the Family Pedigree stage does not ask about gender identity, saying what the kinship words (mother, brother, parent) follow instead."
+  },
+  "architect.protocolSummary.stage.familyPedigree.genderIdentityTerm": {
+    "defaultMessage": "{option}: {words}",
+    "description": "One line of the printable protocol summary’s list of gender identity words. option is a gender identity option’s own label, as the researcher wrote it, and words is the name of the kinship words it takes."
+  },
+  "architect.protocolSummary.stage.familyPedigree.genderIdentityTerms": {
+    "defaultMessage": "Gender identity words",
+    "description": "Label for the list saying which kinship words each gender identity option takes, in the printable protocol summary."
+  },
+  "architect.protocolSummary.stage.familyPedigree.genderWordsFeminine": {
+    "defaultMessage": "Feminine words (mother, sister)",
+    "description": "Printable protocol summary name of the kinship words used for women, with examples."
+  },
+  "architect.protocolSummary.stage.familyPedigree.genderWordsMasculine": {
+    "defaultMessage": "Masculine words (father, brother)",
+    "description": "Printable protocol summary name of the kinship words used for men, with examples."
+  },
+  "architect.protocolSummary.stage.familyPedigree.genderWordsNeutral": {
+    "defaultMessage": "Neutral words (parent, sibling)",
+    "description": "Printable protocol summary name of the kinship words that do not depend on gender, with examples."
+  },
+  "architect.protocolSummary.stage.familyPedigree.genderWordsUnknown": {
+    "defaultMessage": "Not known (neutral words; biological mother or father for a biological parent)",
+    "description": "Printable protocol summary name of the kinship words for an option meaning the person’s gender is not known. Every relative gets neutral words, such as parent or sibling, except a biological parent whose sex assigned at birth is known, who is called biological mother or biological father."
+  },
+  "architect.protocolSummary.stage.familyPedigree.gestationalCarrier": {
+    "defaultMessage": "Gestational carrier",
+    "description": "Label for the boolean attribute marking the parent who carried a pregnancy, in the printable protocol summary."
+  },
+  "architect.protocolSummary.stage.familyPedigree.name": {
+    "defaultMessage": "Name",
+    "description": "Label for the text attribute that holds each family member’s name, in the printable protocol summary."
+  },
+  "architect.protocolSummary.stage.familyPedigree.nominationLimit": {
+    "defaultMessage": "Who can be selected",
+    "description": "Label, in the printable protocol summary, for the limit a nomination prompt places on who can be selected by sex assigned at birth."
+  },
+  "architect.protocolSummary.stage.familyPedigree.nominationLimitFemale": {
+    "defaultMessage": "Anyone except people assigned male at birth",
+    "description": "Printable protocol summary text for a nomination prompt that leaves out only the people whose sex assigned at birth is male. Everyone else can still be selected."
+  },
+  "architect.protocolSummary.stage.familyPedigree.nominationLimitMale": {
+    "defaultMessage": "Anyone except people assigned female at birth",
+    "description": "Printable protocol summary text for a nomination prompt that leaves out only the people whose sex assigned at birth is female. Everyone else can still be selected."
+  },
+  "architect.protocolSummary.stage.familyPedigree.nominationPrompts": {
+    "defaultMessage": "Nomination prompts",
+    "description": "Heading of the list, in the printable protocol summary, of the questions a Family Pedigree asks about the whole family once it is drawn."
+  },
+  "architect.protocolSummary.stage.familyPedigree.participantMarker": {
+    "defaultMessage": "Participant marker",
+    "description": "Label for the boolean attribute that marks which family member is the participant, in the printable protocol summary."
+  },
+  "architect.protocolSummary.stage.familyPedigree.relationshipEdgeType": {
+    "defaultMessage": "Relationship edge type",
+    "description": "Label for the kind of connection family relationships are recorded as, in the printable protocol summary."
+  },
+  "architect.protocolSummary.stage.familyPedigree.relationshipKind": {
+    "defaultMessage": "Relationship kind",
+    "description": "Label for the attribute recording whether a relationship is a partnership or a kind of parenthood, in the printable protocol summary."
+  },
+  "architect.protocolSummary.stage.familyPedigree.relationshipToParticipant": {
+    "defaultMessage": "Relationship to the participant",
+    "description": "Label for the categorical attribute in which the interview records each family member’s relationship to the participant (parent, sibling, cousin and so on), in the printable protocol summary."
+  },
+  "architect.protocolSummary.stage.familyPedigree.relativesNotRecorded": {
+    "defaultMessage": "Relatives not recorded",
+    "description": "Label for the attribute recording that a family member has no siblings or children, or that the participant does not know, in the printable protocol summary."
+  },
+  "architect.protocolSummary.stage.familyPedigree.scopeFirstDegree": {
+    "defaultMessage": "Parents, siblings and children",
+    "description": "Printable protocol summary name of the completeness choice requiring the participant’s parents, siblings and children."
+  },
+  "architect.protocolSummary.stage.familyPedigree.scopeGrandparents": {
+    "defaultMessage": "Three generations",
+    "description": "Printable protocol summary name of the completeness choice requiring three generations: the participant, their parents and grandparents, with aunts and uncles on both sides."
+  },
+  "architect.protocolSummary.stage.familyPedigree.scopeParents": {
+    "defaultMessage": "Both biological parents",
+    "description": "Printable protocol summary name of the completeness choice requiring the participant’s two biological parents."
+  },
+  "architect.protocolSummary.stage.familyPedigree.scopeSecondDegree": {
+    "defaultMessage": "All second-degree relatives",
+    "description": "Printable protocol summary name of the completeness choice requiring every second-degree relative, adding nieces, nephews and grandchildren."
+  },
+  "architect.protocolSummary.stage.familyPedigree.scopeThirdDegree": {
+    "defaultMessage": "Three generations, to first cousins",
+    "description": "Printable protocol summary name of the completeness choice requiring three generations including first cousins."
+  },
+  "architect.protocolSummary.stage.familyPedigree.sexAssignedAtBirth": {
+    "defaultMessage": "Sex assigned at birth",
+    "description": "Label for the attribute that holds each family member’s sex assigned at birth, in the printable protocol summary."
+  },
+  "architect.protocolSummary.stage.familyPedigree.title": {
+    "defaultMessage": "Family Pedigree",
+    "description": "Heading of the printable protocol summary section describing how a Family Pedigree stage records each family member and each relationship."
+  },
   "architect.protocolSummary.stage.form.form": {
     "defaultMessage": "Form",
     "description": "The title text in lib / ProtocolSummary / components / Stage / Form."
@@ -2663,9 +2803,9 @@
     "defaultMessage": "Name Generation Step Instructions",
     "description": "Visible text in lib / ProtocolSummary / components / Stage / NameGenerationStep."
   },
-  "architect.protocolSummary.stage.nominationPrompts.nominationPrompts": {
-    "defaultMessage": "Nomination Prompts",
-    "description": "The title text in lib / ProtocolSummary / components / Stage / NominationPrompts. A Family Pedigree stage asks these after the family is built; each records a condition or trait as a boolean attribute of the family members the participant picks."
+  "architect.protocolSummary.stage.narrativePedigree.atRiskStatusesShown": {
+    "defaultMessage": "{shown, select, true {Shown} other {Not shown}}",
+    "description": "Value, in the printable protocol summary, saying whether a Narrative Pedigree stage draws the possible (at-risk) statuses it infers, beside the label \"Show possible (at-risk) statuses\"."
   },
   "architect.protocolSummary.stage.pageHeading.pageHeading": {
     "defaultMessage": "Page Heading",

@@ -12,8 +12,8 @@ import {
   sourceFiles,
   sourcePath,
 } from '../../__tests__/packageSource.ts';
-import { familyPedigreeStageWithout } from '../../editors/family-pedigree/sections/__tests__/pedigreeFixtures.tsx';
-import PedigreeNodeConfigurationSection from '../../editors/family-pedigree/sections/PedigreeNodeConfigurationSection.tsx';
+import { familyPedigreeStageWithout } from '../../editors/family-pedigree/__tests__/pedigreeFixtures.ts';
+import SubjectSection from '../../sections/subject-picker/SubjectSection.tsx';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import EntityTypePickerField from '../EntityTypePickerField.tsx';
 
@@ -28,8 +28,8 @@ import EntityTypePickerField from '../EntityTypePickerField.tsx';
  * different state from the one under test.
  */
 const pedigreeOnAProtocolWithNoNodeTypes = () => ({
-  stage: familyPedigreeStageWithout(['nodeConfig']),
-  sections: <PedigreeNodeConfigurationSection />,
+  stage: familyPedigreeStageWithout(['subject']),
+  sections: <SubjectSection entity="node" />,
 });
 
 const FAMILY_MEMBER_SECTION = sectionId({
@@ -74,7 +74,7 @@ describe('making and changing a codebook type from the control that names it', (
   /**
    * The empty state is not a dead end.
    *
-   * Every pedigree slot below this control is gated on a node type, so a
+   * Every attribute slot below this control is gated on a node type, so a
    * researcher who has none can configure nothing here at all — and until this
    * landed the only way out was the codebook screen, which a stage editor does
    * not say the way to. Architect has offered the way out from inside this
@@ -118,9 +118,9 @@ describe('making and changing a codebook type from the control that names it', (
     // Selecting the new type moves the stage exactly as pressing a chip does,
     // so it costs the stage exactly the same and is asked about in the same
     // words — asked while the editor is still open, which is what keeps focus
-    // on a live control.
+    // on a live control. The stage has no type yet, so it is a first choice.
     await harness.user.click(
-      await screen.findByRole('button', { name: 'Change the node type' }),
+      await screen.findByRole('button', { name: 'Choose the node type' }),
     );
 
     expect(
@@ -208,7 +208,7 @@ describe('making and changing a codebook type from the control that names it', (
   it('opens the held type in the codebook editor, and writes what it changed', async () => {
     const harness = renderStageEditor({
       stageId: 'family-pedigree-1',
-      sections: <PedigreeNodeConfigurationSection />,
+      sections: <SubjectSection entity="node" />,
     });
     await harness.opened();
 
@@ -258,7 +258,7 @@ describe('making and changing a codebook type from the control that names it', (
   it('refuses a node type the name an edge type keyed the same already has', async () => {
     const harness = renderStageEditor({
       stageId: 'family-pedigree-1',
-      sections: <PedigreeNodeConfigurationSection />,
+      sections: <SubjectSection entity="node" />,
     });
     await harness.opened();
     // The same record key in both maps, which is what a codebook may hold.
@@ -341,7 +341,7 @@ describe('making and changing a codebook type from the control that names it', (
   it('offers neither to a spectator', async () => {
     const harness = renderStageEditor({
       stageId: 'family-pedigree-1',
-      sections: <PedigreeNodeConfigurationSection />,
+      sections: <SubjectSection entity="node" />,
       readOnly: true,
     });
     await harness.opened();
@@ -381,7 +381,7 @@ describe('making and changing a codebook type from the control that names it', (
   it('keeps an attribute a collaborator added while the write was taking the lock', async () => {
     const harness = renderStageEditor({
       stageId: 'family-pedigree-1',
-      sections: <PedigreeNodeConfigurationSection />,
+      sections: <SubjectSection entity="node" />,
     });
     await harness.opened();
 

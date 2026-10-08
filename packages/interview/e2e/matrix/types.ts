@@ -41,7 +41,7 @@ export type ScenarioDefinition = {
    * before finish stages existed was (`unrecorded`)
    */
   finished?: 'recorded' | 'unrecorded';
-  /** seeded stage metadata (e.g. NarrativePedigree source-stage state) */
+  /** seeded stage metadata (e.g. dyad-census pair state) */
   stageMetadata?: unknown;
   /** extra pixel-capture masks (visual suite only, e.g. EncryptedBackground) */
   captureMask?: (page: Page) => Locator[];

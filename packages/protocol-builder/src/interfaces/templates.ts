@@ -1,13 +1,5 @@
 import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
-import {
-  defaultFinishSessionFields,
-  type StageType,
-} from '@codaco/protocol-validation';
-
-import {
-  localizedFromText,
-  type ProtocolLocalization,
-} from '../localization/localizedText.ts';
+import type { StageType } from '@codaco/protocol-validation';
 
 /**
  * What a NEW stage of each interface type starts life holding.
@@ -20,8 +12,7 @@ import {
  * OneToManyDyadCensus that keeps considered alters).
  *
  * Only interfaces with such a default appear here. Everything else resolves to
- * `{}`, which is why `getInterfaceDefaults` and `getInterfaceTemplate` answer
- * for every stage type rather than only the ones listed.
+ * `{}`, which is why `getInterfaceTemplate` answers for every stage type rather than only the ones listed.
  *
  * A TEMPLATE IS NOT A HEAD START ON A SAVEABLE STAGE, and no interface's is.
  * Every one of the twenty needs something the schema requires and only a
@@ -70,13 +61,6 @@ const INTERFACE_TEMPLATES: Partial<
     },
     background: DEFAULT_CIRCLES_BACKGROUND,
   },
-  FamilyPedigree: {
-    framing: { mode: 'fixed', value: 'gamete' },
-    boundaries: {
-      requireGrandparents: 'off',
-      requireChildrenContributors: 'off',
-    },
-  },
   FinishSession: {
     outcome: 'completed',
   },
@@ -87,60 +71,11 @@ const INTERFACE_TEMPLATES: Partial<
   },
 };
 
-const FAMILY_PEDIGREE_INTRO =
-  "Building a pedigree means asking about the people you're biologically related to — the people whose egg and sperm you came from — not necessarily the people who raised you. A pedigree maps genetic relationships, so we focus on biological parents. Don't worry — you'll be able to include non-biological parents later.";
-
-/**
- * Template copy a participant reads, written in the protocol's default
- * language: the editor's English, for the researcher to translate. The finish
- * stage's closing text is the exception, supplied already translated.
- */
-const localizedTemplateCopy = (
-  interfaceType: StageType,
-  localization: ProtocolLocalization,
-): Record<string, FieldValue> => {
-  if (interfaceType === 'FinishSession') {
-    // The closing text Network Canvas supplies, in every protocol language it
-    // is supplied in, already translated: the same text a new protocol's
-    // finish stage starts with.
-    const { title, content } = defaultFinishSessionFields(localization.locales);
-    return { title, content };
-  }
-  return interfaceType === 'FamilyPedigree'
-    ? {
-        introScreen: {
-          items: [
-            {
-              id: 'intro-text',
-              type: 'text',
-              content: localizedFromText(localization, FAMILY_PEDIGREE_INTRO),
-            },
-          ],
-        },
-      }
-    : {};
-};
-
-/**
- * The authored defaults of `interfaceType` without any of its template copy,
- * or `{}` when it has none: what a change of subject puts back. No interface
- * that offers a subject seeds copy, so putting its defaults back needs no
- * language.
- */
-export const getInterfaceDefaults = (
-  interfaceType: StageType,
-): Record<string, FieldValue> => ({ ...INTERFACE_TEMPLATES[interfaceType] });
-
 /**
  * The configuration a new stage of `interfaceType` starts from, or `{}` when
- * that interface has no authored defaults. Its copy is written in the
- * protocol's default language, so a new stage cannot start until the
- * protocol's languages are known.
+ * that interface has no authored defaults. It is also what a change of
+ * subject puts back.
  */
 export const getInterfaceTemplate = (
   interfaceType: StageType,
-  localization: ProtocolLocalization,
-): Record<string, FieldValue> => ({
-  ...getInterfaceDefaults(interfaceType),
-  ...localizedTemplateCopy(interfaceType, localization),
-});
+): Record<string, FieldValue> => ({ ...INTERFACE_TEMPLATES[interfaceType] });

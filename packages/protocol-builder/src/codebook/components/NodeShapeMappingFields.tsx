@@ -452,7 +452,7 @@ export default function NodeShapeMappingFields({
                   >
                     {answer.label.text}
                   </span>
-                  <div className="w-48 shrink-0">
+                  <div className="shrink-0">
                     <UnconnectedField
                       name={`shape-for-${index + 1}`}
                       label={intl.formatMessage(messages.shapeForValue, {
@@ -497,7 +497,7 @@ export default function NodeShapeMappingFields({
                 {/* Mathematical mapping symbol, independent of locale. */}
                 {/* oxlint-disable-next-line formatjs/no-literal-string-in-jsx */}
                 <span className="text-xl text-current/70">→</span>
-                <div className="w-48 shrink-0">
+                <div className="shrink-0">
                   <UnconnectedField
                     name="shape-below-first-threshold"
                     label={intl.formatMessage(messages.shapeDefaultSwatch)}

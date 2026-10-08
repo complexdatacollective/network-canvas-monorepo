@@ -8,6 +8,11 @@ import { DEVELOPMENT_PROTOCOL } from '~/lib/protocol/developmentProtocol';
 import type { ImportPhase } from '~/lib/protocol/importProtocol';
 import { protocolRequiresInternet } from '~/lib/protocol/protocolRequiresInternet';
 import { SAMPLE_PROTOCOL } from '~/lib/protocol/sampleProtocol';
+import {
+  canRunStoredProtocol,
+  type StoredProtocolMigrationFailureKind,
+  useStoredProtocolMigrationFailure,
+} from '~/lib/protocol/storedProtocolMigrationFailures';
 
 import { NewSessionForm } from '../NewSessionForm';
 import {
@@ -80,6 +85,7 @@ type DeckSlotCardProps = {
 
 function slotCardProps(
   {
+    migrationFailure,
     entry,
     isActive,
     activate,
@@ -89,7 +95,9 @@ function slotCardProps(
     onInstallSample,
     onInstallDevelopment,
     newSession,
-  }: DeckSlotCardProps,
+  }: DeckSlotCardProps & {
+    migrationFailure: StoredProtocolMigrationFailureKind | undefined;
+  },
   intl: IntlShape,
 ): DeckCardProps {
   if (entry.kind === 'protocol') {
@@ -98,6 +106,9 @@ function slotCardProps(
       isActive,
       sessionCount,
       requiresInternetConnection: protocolRequiresInternet(entry.protocol),
+      // The launch sweep could not bring it, or its interviews, up to date
+      // (opening it says which).
+      unavailable: !canRunStoredProtocol(entry.protocol, migrationFailure),
       onActivate: activate,
       // While the case-ID form is open it takes over the card: the
       // controls row, description, and metadata animate out (their exits
@@ -210,5 +221,8 @@ function slotCardProps(
 // and snap its content into place.
 export function DeckSlotCard(props: DeckSlotCardProps) {
   const intl = useAppIntl();
-  return <DeckCard {...slotCardProps(props, intl)} />;
+  const migrationFailure = useStoredProtocolMigrationFailure(
+    props.entry.kind === 'protocol' ? props.entry.protocol.hash : '',
+  );
+  return <DeckCard {...slotCardProps({ ...props, migrationFailure }, intl)} />;
 }

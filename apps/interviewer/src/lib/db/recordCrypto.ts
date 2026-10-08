@@ -95,6 +95,40 @@ export function withoutSessionFinish(row: StoredSessionRow): StoredSessionRow {
   return { ...rest, _enc: enc };
 }
 
+/**
+ * The row with `finish` recorded as its finish stage id and outcome, encrypted
+ * when the row's answers are. The rest of the row is left exactly as stored,
+ * so recording a finish never parses the network, which after a protocol
+ * migration can be in a schema this build cannot read.
+ */
+export async function withSessionFinish(
+  row: StoredSessionRow,
+  finish: { stageId: string; outcome: StoredSession['finishOutcome'] },
+): Promise<StoredSessionRow> {
+  const unfinished = withoutSessionFinish(row);
+  if (!unfinished._enc) {
+    assertNotLockedSecuredVault('session');
+    return {
+      ...unfinished,
+      finishStageId: finish.stageId,
+      finishOutcome: finish.outcome,
+    };
+  }
+  const dek = getSessionDek();
+  if (!dek) throw new Error('Cannot encrypt session: vault is locked (no key)');
+  return {
+    ...unfinished,
+    _enc: {
+      ...unfinished._enc,
+      finish: await encryptJson(
+        { stageId: finish.stageId, outcome: finish.outcome },
+        dek,
+        sessionAad(row.id),
+      ),
+    },
+  };
+}
+
 export type StoredProtocolRow = Omit<
   StoredProtocol,
   'protocol' | 'codebook'
@@ -166,9 +200,20 @@ export async function encryptSession(
   };
 }
 
-export async function decryptSession(
+/**
+ * A stored session decrypted but not parsed: its network and stage metadata
+ * exactly as stored. The stored-protocol migration reads sessions this way,
+ * because a session recorded against an older protocol schema can hold stage
+ * metadata the current schema no longer accepts until it is migrated.
+ */
+export type DecryptedSessionRecord = Omit<
+  StoredSession,
+  'network' | 'stageMetadata'
+> & { network: unknown; stageMetadata: unknown };
+
+export async function decryptSessionRecord(
   row: StoredSessionRow,
-): Promise<StoredSession> {
+): Promise<DecryptedSessionRecord> {
   const {
     _enc,
     network,
@@ -185,8 +230,8 @@ export async function decryptSession(
     }
     return {
       ...rest,
-      network: NcNetworkSchema.parse(network),
-      stageMetadata: parseStageMetadata(stageMetadata),
+      network,
+      stageMetadata,
       // Absent on a session that has not recorded a finish: left out rather
       // than read as null, like `stageMetadata`.
       ...(finishStageId === undefined && finishOutcome === undefined
@@ -209,9 +254,20 @@ export async function decryptSession(
     : {};
   return {
     ...rest,
-    network: NcNetworkSchema.parse(decNetwork),
-    stageMetadata: parseStageMetadata(decStageMetadata),
+    network: decNetwork,
+    stageMetadata: decStageMetadata,
     ...finish,
+  };
+}
+
+export async function decryptSession(
+  row: StoredSessionRow,
+): Promise<StoredSession> {
+  const { network, stageMetadata, ...rest } = await decryptSessionRecord(row);
+  return {
+    ...rest,
+    network: NcNetworkSchema.parse(network),
+    stageMetadata: parseStageMetadata(stageMetadata),
   };
 }
 

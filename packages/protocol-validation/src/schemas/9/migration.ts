@@ -7,6 +7,14 @@ import {
   collectLocalizedStringSites,
   type LocalizedStringSite,
 } from '../../utils/collectLocalizedStrings.ts';
+import {
+  migrateFamilyPedigreeStages,
+  migrateNarrativePedigreeStages,
+} from './family-pedigree-migration.ts';
+import {
+  migrateFamilyPedigreeSessionRecords,
+  resumeUnstartedPedigreeAtIntroduction,
+} from './family-pedigree-session-migration.ts';
 import { DEFAULT_FINISH_SESSION_TEXT } from './finish-session-defaults.ts';
 import ProtocolSchemaV9 from './schema.ts';
 
@@ -166,6 +174,23 @@ const finishStageId = (stages: unknown): string => {
  * the end, carrying the text that screen showed, recorded in the protocol's
  * default language.
  */
+/**
+ * A session the framework left past the last stage, where the interview
+ * engine's own finish screen used to be, resumes on the finish stage the
+ * migration appended in its place.
+ */
+const resumeAtAppendedFinishStage = (
+  session: { currentStep: number },
+  after: unknown,
+) => {
+  const stages =
+    typeof after === 'object' && after !== null && 'stages' in after
+      ? after.stages
+      : undefined;
+  if (!Array.isArray(stages) || stages.length === 0) return;
+  session.currentStep = Math.min(session.currentStep, stages.length - 1);
+};
+
 const finishStageFor = (stages: unknown, defaultLocale: string) => {
   const text = DEFAULT_FINISH_SESSION_TEXT.en;
   return {
@@ -264,11 +289,24 @@ const migrationV8toV9 = createMigration({
   to: 9,
   dependencies: {},
   notes: `- Attribute names can now use letters from any language, as well as spaces and punctuation. Existing attribute names are not changed.
-- Text that participants see is now recorded as English, because older protocols do not record which language they use. If your protocol is written in another language, you can change it on the Languages page in Architect.
+- Text that participants see is now recorded as English, because older protocols do not record which language they use. After upgrading, confirm the protocol's default language: if your protocol is written in another language, change it on the Languages page in Architect.
 - A form field whose question was empty or contained only spaces now uses the name of its attribute as the question, because every question must contain some text.
+- Family Pedigree stages are converted to the redesigned Family Pedigree. If a stage had an introduction screen, the screen becomes an Information stage just before the pedigree, which is skipped whenever the pedigree is skipped.
+- The Family Pedigree answers for sex assigned at birth and for the kind of each relationship keep the values already recorded, but their labels change to the wording of the redesigned interface. A nomination prompt with the ID "pedigree", which is now reserved, is given a new ID.
+- The old Family Pedigree always required two of the participant's parents. A converted Family Pedigree requires both of the participant's biological parents or, where it required recording grandparents, the family up to the grandparents, which also includes siblings, children, the other biological parent of each of the participant's children, aunts and uncles. Where it recommended recording grandparents, it now recommends recording the family up to the grandparents, so recording both parents becomes a recommendation rather than a requirement, because a stage has only one completeness setting. Only biological parents and gamete donors now count as parents; the old interface also counted adoptive parents and surrogates.
+- A new attribute, "relativesNotRecorded", is added for the people in every converted Family Pedigree, to record when a participant says someone has no siblings or no children, or does not know. If the person type already has an attribute with that name, the new attribute's name ends in a number instead, such as "relativesNotRecorded2".
+- Two Family Pedigree settings change because the redesigned interface does not use them as they were. Requiring the other biological parent of the participant's children is now part of every completeness setting from parents, siblings and children upwards, and that parent's own family is no longer required. The attribute for which gamete each parent gave is removed, because the interface now works the gamete out from sex assigned at birth; it stays in the codebook with any answers already recorded, but is no longer filled in.
+- The old Family Pedigree could write each person's relationship to the participant as English text. The redesigned interface records it in a categorical attribute with fixed values that do not depend on language, which a text attribute cannot hold, so a converted stage records no relationship. To keep recording it, for example to filter later stages to the participant's parents, choose or create a categorical attribute for it in the Family Pedigree stage in Architect. The old attribute stays in the codebook with any answers already recorded, but is no longer filled in.
+- The converted Family Pedigree does not ask about gender identity. Where it uses gendered words such as mother or sister, they follow each person's sex assigned at birth.
+- Additional person fields on a Family Pedigree that collected the name or sex assigned at birth are removed, because the redesigned interface asks every person for both itself. The old interface never showed a field for the name. Answers already recorded are kept.
+- A Family Pedigree cannot be converted if two of its answers use the same attribute: two nomination prompts, a nomination prompt and an additional person field, or the name and another answer. Each now needs an attribute of its own. Give each its own attribute in the version of Architect that made the protocol, then upgrade it.
 - The screen that ends the interview is now a Finish Screen stage at the end of your protocol, so you can change its heading and text and translate them like the rest of your protocol. It starts with the text the interview has always shown there.`,
   migrate: (doc) => {
     const migrated = structuredClone(doc);
+    // Before the codebook labels and the localization pass, so the attribute
+    // and stage the conversion adds are labelled and localized with the rest.
+    migrateFamilyPedigreeStages(migrated);
+    migrateNarrativePedigreeStages(migrated);
     addCodebookLabels(migrated.codebook);
     addHighlightLabels(migrated);
     addComposerCaptions(migrated);
@@ -303,6 +341,24 @@ const migrationV8toV9 = createMigration({
       schemaVersion: 9 as const,
       localization,
     };
+  },
+  // A pedigree's introduction screen becomes a stage of its own, which moves
+  // the pedigree and every stage after it one place on; the framework moves
+  // each session's stage records and resume position with their stages
+  // before this runs. A session on a pedigree it had not started had not yet
+  // seen the introduction, so it resumes on the new stage instead. The
+  // redesigned pedigree keeps a different stage record, which is translated
+  // without losing anything the participant recorded.
+  //
+  // The finish stage this step appends is the screen the interview engine
+  // used to add after the last stage. The framework keeps a session that was
+  // on that screen past the end of the stages, so it resumes on the finish
+  // stage instead.
+  migrateSession: (session, { before, after }) => {
+    resumeAtAppendedFinishStage(session, after);
+    resumeUnstartedPedigreeAtIntroduction(session, after, before);
+    migrateFamilyPedigreeSessionRecords(session, after, before);
+    return session;
   },
 });
 

@@ -8,6 +8,7 @@ import {
   type AttributeWriterUsage,
   type ExclusiveSlotDescriptor,
   type InterfaceOwnedOptionSetKey,
+  type StageManagedOptionsDescriptor,
   type SubjectResolution,
 } from '../schemas/9/entity-attribute-reference.ts';
 import { getEntityTypeReferenceDescriptor } from '../schemas/9/entity-type-reference.ts';
@@ -40,6 +41,7 @@ export type EntityAttributeReferenceHit = {
   usage?: AttributeWriterUsage;
   exclusive?: ExclusiveSlotDescriptor;
   ownedOptions?: InterfaceOwnedOptionSetKey;
+  stageManagedOptions?: StageManagedOptionsDescriptor;
 };
 
 export type EntityTypeReferenceHit = {
@@ -299,6 +301,7 @@ const walk = (
           usage: writes ? attributeDescriptor.usage : undefined,
           exclusive: attributeDescriptor.exclusive,
           ownedOptions: attributeDescriptor.ownedOptions,
+          stageManagedOptions: attributeDescriptor.stageManagedOptions,
         },
       ];
     }
@@ -465,7 +468,7 @@ export const collectEntityAttributeReferences = (
  * schema's `entityTypeReference` tags — the entity-type counterpart of
  * `collectEntityAttributeReferences`. Covers stage subjects (including the
  * NetworkComposer's per-edge-type entries), edge creation/display prompt
- * settings, the FamilyPedigree node/edge configs, and filter rules.
+ * settings, the FamilyPedigree subject and relationship type, and filter rules.
  *
  * Stated once, over any fragment of the schema and any value shaped like it,
  * so a caller holding one STAGE rather than a whole protocol — a stage editor,
@@ -495,7 +498,7 @@ export const collectEntityTypeReferences = (
  * schema's `assetReference` tags — the asset counterpart of
  * `collectEntityAttributeReferences`. Covers name generator and panel data
  * sources, sociogram/narrative background images, the Geospatial map's token
- * and data-source assets, and Information / FamilyPedigree intro-screen asset
+ * and data-source assets, and Information intro-screen asset
  * items.
  *
  * Consumers that need to know whether an asset is in use must derive it from

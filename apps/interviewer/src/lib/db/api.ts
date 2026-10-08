@@ -105,8 +105,9 @@ export async function createSession(args: {
 export async function updateSession(
   id: string,
   patch: StoredSessionPatch,
+  basis: dexieSessions.SessionWriteBasis,
 ): Promise<StoredSession | undefined> {
-  return dexieSessions.updateSession(id, patch);
+  return dexieSessions.updateSession(id, patch, basis);
 }
 
 export async function setSessionLocale(
@@ -130,8 +131,9 @@ export async function markSessionFinished(
 export async function markSessionUnfinished(
   id: string,
   stages: CurrentProtocol['stages'],
+  basis: dexieSessions.SessionWriteBasis,
 ): Promise<void> {
-  return dexieSessions.markSessionUnfinished(id, stages);
+  return dexieSessions.markSessionUnfinished(id, stages, basis);
 }
 
 export async function markSessionsExported(ids: string[]): Promise<void> {

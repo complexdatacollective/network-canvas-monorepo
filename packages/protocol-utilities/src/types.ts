@@ -1,11 +1,6 @@
 import type {
   ColorReference,
   ComponentType,
-  FamilyPedigreeBoundaries,
-  FamilyPedigreeEdgeConfigInput,
-  FamilyPedigreeFraming,
-  FamilyPedigreeNodeConfigInput,
-  FamilyPedigreeNominationPromptInput,
   EdgeColorReference,
   FilterOperator,
   FinishOutcome,
@@ -13,7 +8,10 @@ import type {
   LocaleTag,
   LocalizedString,
   NodeColorReference,
+  FramingSetting,
   OrdinalColorReference,
+  PedigreeCompletenessScope,
+  PedigreeGenderWords,
   StageType,
   VariableType,
 } from '@codaco/protocol-validation';
@@ -190,12 +188,6 @@ export type TieStrengthCensusPromptEntry = {
   negativeLabel: TextInput;
 };
 
-export type DiseaseNominationStepEntry = {
-  id: string;
-  text: TextInput;
-  variable: string;
-};
-
 export type GeospatialPromptEntry = {
   id: string;
   text: TextInput;
@@ -293,29 +285,6 @@ export type ItemInput =
   | TextItemInput
   | (AssetItemInput & { size?: Extract<Item, { type: 'asset' }>['size'] });
 
-// The pedigree intro screen has no item-resizing UI, so its asset items carry
-// no `size`.
-export type IntroItemInput = TextItemInput | AssetItemInput;
-
-export type NominationPromptInput = Omit<
-  FamilyPedigreeNominationPromptInput,
-  'text'
-> & { text: TextInput };
-
-type FamilyPedigreeFormItemInput = NonNullable<
-  FamilyPedigreeNodeConfigInput['form']
->[number];
-
-export type FamilyPedigreeNodeConfigEntryInput = Omit<
-  FamilyPedigreeNodeConfigInput,
-  'form'
-> & {
-  form?: (Omit<FamilyPedigreeFormItemInput, 'prompt' | 'hint'> & {
-    prompt: TextInput;
-    hint?: TextInput;
-  })[];
-};
-
 export type StageEntry = {
   id: string;
   type: StageType;
@@ -371,21 +340,17 @@ export type StageEntry = {
   validation?: { minLength?: number; maxLength?: number };
   // TieStrengthCensus (edge type reference on stage)
   edgeType?: { entity: 'edge'; type: string };
-  // FamilyPedigree-specific fields, derived from the protocol-validation schema
-  // so they cannot drift from it.
-  nodeConfig?: FamilyPedigreeNodeConfigEntryInput;
-  edgeConfig?: FamilyPedigreeEdgeConfigInput;
-  framing?: FamilyPedigreeFraming;
+  // FamilyPedigree
+  prompt?: TextInput;
+  nodeConfiguration?: FamilyPedigreeNodeConfigurationEntry;
+  edgeConfiguration?: FamilyPedigreeEdgeConfigurationEntry;
+  completeness?: FamilyPedigreeCompletenessEntry;
+  framing?: FramingSetting;
+  nominationPrompts?: FamilyPedigreeNominationPromptEntry[];
   // NarrativePedigree-specific fields
   narrativePedigreeSourceStageId?: string;
   narrativePedigreeDiseases?: NarrativeDiseaseEntry[];
   narrativePedigreeShowAtRiskStatuses?: boolean;
-  boundaries?: FamilyPedigreeBoundaries;
-  introScreen?: {
-    items: IntroItemInput[];
-  };
-  censusPrompt?: TextInput;
-  nominationPrompts?: NominationPromptInput[];
   // Geospatial
   mapOptions?: MapOptionsEntry;
   // NetworkComposer
@@ -396,6 +361,45 @@ export type StageEntry = {
   // FinishSession (its `title` is the shared `title` above)
   content?: TextInput;
   outcome?: FinishOutcome;
+};
+
+/** The person-node attribute ids a FamilyPedigree stage binds. */
+export type FamilyPedigreeNodeConfigurationEntry = {
+  nameAttribute: string;
+  /** Absent when the stage does not ask about gender identity. */
+  genderIdentity?: {
+    attribute: string;
+    terms: { value: string | number; words: PedigreeGenderWords }[];
+  };
+  sexAssignedAtBirthAttribute: string;
+  egoAttribute: string;
+  /** Present when the stage records each person's relationship to the
+   * participant. */
+  relationshipToParticipantAttribute?: string;
+};
+
+/** A FamilyPedigree stage's completeness requirement. */
+export type FamilyPedigreeCompletenessEntry = {
+  scope: PedigreeCompletenessScope;
+  enforcement: 'required' | 'recommended';
+  relativesNotRecordedAttribute: string;
+};
+
+/** A question asked of the drawn family, and the boolean person attribute
+ * recording who it applies to. */
+export type FamilyPedigreeNominationPromptEntry = {
+  id: string;
+  text: TextInput;
+  attribute: string;
+  onlyForSexAssignedAtBirth?: 'female' | 'male';
+};
+
+/** The family edge type and edge attribute ids a FamilyPedigree stage binds. */
+export type FamilyPedigreeEdgeConfigurationEntry = {
+  type: string;
+  kindAttribute: string;
+  gestationalCarrierAttribute: string;
+  currentPartnerAttribute: string;
 };
 
 export type NodeEntry = {
@@ -532,24 +536,44 @@ export type AddStageInput = {
     body?: TextInput;
   };
   validation?: { minLength?: number; maxLength?: number };
-  // FamilyPedigree
-  nodeConfig?: FamilyPedigreeNodeConfigEntryInput;
-  // Derived from the schema's edge config, but the builder fills the non-core
-  // variables when omitted, so they are optional here.
-  edgeConfig?: Pick<
-    FamilyPedigreeEdgeConfigInput,
-    'type' | 'relationshipTypeVariable'
-  > &
-    Partial<
-      Omit<FamilyPedigreeEdgeConfigInput, 'type' | 'relationshipTypeVariable'>
-    >;
-  framing?: FamilyPedigreeFraming;
-  boundaries?: FamilyPedigreeBoundaries;
-  introScreen?: {
-    items: IntroItemInput[];
-  };
-  censusPrompt?: TextInput;
-  nominationPrompts?: NominationPromptInput[];
+  // FamilyPedigree. The person node type is the stage `subject`; the family
+  // edge type is created when omitted. Every attribute the interface owns is
+  // created on those types.
+  prompt?: TextInput;
+  relationshipType?: string;
+  framing?: FramingSetting;
+  /** Whether the stage asks about gender identity. Defaults to true; when
+   * false, no gender identity variable is created, `genderIdentities` is
+   * ignored, and the gendered framing's words follow sex assigned at birth. */
+  askGenderIdentity?: boolean;
+  /** The validation of the name attribute in the codebook, such as
+   * `{ required: true, unique: true }`. Defaults to none. */
+  nameValidation?: Record<string, unknown>;
+  /** The options of the gender identity variable and the words each takes;
+   * an option with no `words` is left out of the stage's terms, so it takes
+   * neutral words. Defaults to the six options Architect seeds a new
+   * attribute with. */
+  genderIdentities?: {
+    value: string | number;
+    label: TextInput;
+    words?: PedigreeGenderWords;
+  }[];
+  /** Each creates a boolean person attribute, named `variableName` or
+   * `condition<n>`, recording who the prompt applies to. */
+  nominationPrompts?: {
+    text: TextInput;
+    variableName?: string;
+    onlyForSexAssignedAtBirth?: 'female' | 'male';
+  }[];
+  /** Creates a categorical person attribute holding each person's
+   * relationship to the participant, and binds it, when true. Its options
+   * are the interface's values, each labelled with its own value. */
+  recordRelationshipToParticipant?: boolean;
+  /** Creates the relatives-not-recorded attribute when set. */
+  completeness?: Omit<
+    FamilyPedigreeCompletenessEntry,
+    'relativesNotRecordedAttribute'
+  >;
   // Geospatial
   mapOptions?: MapOptionsEntry;
   // NarrativePedigree
@@ -621,11 +645,6 @@ export type AddTieStrengthCensusPromptInput = {
   negativeLabel?: TextInput;
 };
 
-export type AddDiseaseNominationStepInput = {
-  text?: TextInput;
-  variable?: string;
-};
-
 export type AddGeospatialPromptInput = {
   text?: TextInput;
   variable?: string;
@@ -645,7 +664,8 @@ export type NarrativeDiseaseEntry = {
   id: string;
   label: TextInput;
   color: NodeColorReference;
-  variable: string;
+  /** The boolean person attribute marking who is affected. */
+  attribute: string;
   inheritancePattern: string;
 };
 

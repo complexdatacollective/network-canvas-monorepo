@@ -149,7 +149,6 @@ export default defineConfig({
             // scanner never follows.
             '@codaco/protocol-validation > csvtojson',
             '@codaco/interview > concaveman',
-            '@codaco/interview > html-to-image',
             '@codaco/interview > ohash',
             '@reduxjs/toolkit > immer',
             '@tanstack/react-table',

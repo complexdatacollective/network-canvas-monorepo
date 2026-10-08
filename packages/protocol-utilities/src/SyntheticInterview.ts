@@ -5,6 +5,12 @@ import {
   CURRENT_SCHEMA_VERSION,
   defaultFinishSessionFields,
   DEFAULT_FINISH_SESSION_TEXT,
+  PEDIGREE_DEFAULT_GENDER_IDENTITIES,
+  type PedigreeDefaultGenderIdentityValue,
+  PEDIGREE_RELATIONSHIP_KIND_OPTIONS,
+  PEDIGREE_RELATIONSHIPS_TO_PARTICIPANT,
+  PEDIGREE_RELATIVES_NOT_RECORDED_OPTIONS,
+  PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
   escapeMarkdownText,
   escapeMessageText,
   type FinishOutcome,
@@ -71,7 +77,6 @@ import {
 } from './generateNetwork/nodes.ts';
 import type {
   AddCategoricalBinPromptInput,
-  AddDiseaseNominationStepInput,
   AddDyadCensusPromptInput,
   AddEdgeTypeInput,
   AddGeospatialPromptInput,
@@ -85,7 +90,6 @@ import type {
   AddTieStrengthCensusPromptInput,
   AddVariableInput,
   CategoricalBinPromptEntry,
-  DiseaseNominationStepEntry,
   DyadCensusPromptEntry,
   EdgeEntry,
   EdgeTypeEntry,
@@ -263,8 +267,46 @@ type AlterEdgeFormHandle = StageHandleBase & {
 
 type AnonymisationHandle = StageHandleBase;
 
+/** English labels for the default gender identity options; a synthetic
+ * protocol has no translation to draw on. */
+const DEFAULT_GENDER_IDENTITY_LABELS: Record<
+  PedigreeDefaultGenderIdentityValue,
+  string
+> = {
+  woman: 'Woman',
+  man: 'Man',
+  nonBinary: 'Non-binary',
+  differentIdentity: 'A different identity',
+  unknown: 'Don’t know',
+  preferNotToSay: 'Prefer not to say',
+};
+
 type FamilyPedigreeHandle = StageHandleBase & {
-  addDiseaseNominationStep: (opts?: AddDiseaseNominationStepInput) => void;
+  /** The person node type id (the stage's `subject.type`). */
+  personType: string;
+  /** The family edge type id (`edgeConfiguration.type`). */
+  edgeType: string;
+  /** Person attribute ids, bound by `nodeConfiguration`. */
+  name: string;
+  /** Undefined when the stage was added with `askGenderIdentity: false`. */
+  genderIdentity: string | undefined;
+  sexAssignedAtBirth: string;
+  ego: string;
+  /** Edge attribute ids, bound by `edgeConfiguration`. */
+  kind: string;
+  gestationalCarrier: string;
+  currentPartner: string;
+  /** The relatives-not-recorded attribute id, when the stage has a
+   * completeness requirement. */
+  relativesNotRecorded: string | undefined;
+  /** The relationship-to-participant attribute id, when the stage was added
+   * with `recordRelationshipToParticipant`. */
+  relationshipToParticipant: string | undefined;
+  /** The boolean person attribute id each nomination prompt sets, in the
+   * order the prompts were given. */
+  nominations: string[];
+  /** Appends a researcher-defined person field to the stage's `form`. */
+  addFormField: (opts: AddFormFieldOpts) => void;
 };
 
 type GeospatialHandle = StageHandleBase & {
@@ -299,8 +341,8 @@ type StageHandleMap = {
   Anonymisation: AnonymisationHandle;
   FamilyPedigree: FamilyPedigreeHandle;
   Geospatial: GeospatialHandle;
-  NarrativePedigree: NarrativePedigreeHandle;
   NetworkComposer: NetworkComposerHandle;
+  NarrativePedigree: NarrativePedigreeHandle;
   LanguageChooser: LanguageChooserHandle;
   FinishSession: FinishSessionHandle;
 };
@@ -442,6 +484,10 @@ export class SyntheticInterview {
       // auto-seeded "name" variable is the most common encryption target.
       if (opts?.encrypted) {
         existing.encrypted = true;
+      }
+      // Likewise validation: redeclaring "name" with a rule must keep the rule.
+      if (opts?.validation) {
+        existing.validation = opts.validation;
       }
       return { id: existing.id };
     }
@@ -690,76 +736,116 @@ export class SyntheticInterview {
       }
     }
 
-    // FamilyPedigree
+    // FamilyPedigree: the person type is the subject, and the interface owns
+    // one variable per slot on it and on the family edge type.
     if (type === 'FamilyPedigree') {
-      if (opts?.nodeConfig) {
-        entry.nodeConfig = {
-          ...opts.nodeConfig,
-          form: opts.nodeConfig.form ?? [],
+      if (subject?.entity !== 'node') {
+        throw new Error('FamilyPedigree stages require a node subject');
+      }
+      const personType = subject.type;
+      const personVariable = (
+        name: string,
+        varOpts: Omit<AddVariableInput, 'name'>,
+      ) => this.addVariableToNodeType(personType, { name, ...varOpts }).id;
+
+      const genderIdentities =
+        opts?.genderIdentities ??
+        PEDIGREE_DEFAULT_GENDER_IDENTITIES.map(({ value, words }) => ({
+          value,
+          label: DEFAULT_GENDER_IDENTITY_LABELS[value],
+          words,
+        }));
+
+      entry.nodeConfiguration = {
+        nameAttribute: personVariable('name', {
+          type: 'text',
+          ...(opts?.nameValidation ? { validation: opts.nameValidation } : {}),
+        }),
+        ...(opts?.askGenderIdentity === false
+          ? {}
+          : {
+              genderIdentity: {
+                attribute: personVariable('genderIdentity', {
+                  type: 'categorical',
+                  options: genderIdentities.map(({ value, label }) => ({
+                    value,
+                    label,
+                  })),
+                }),
+                terms: genderIdentities.flatMap(({ value, words }) =>
+                  words === undefined ? [] : [{ value, words }],
+                ),
+              },
+            }),
+        sexAssignedAtBirthAttribute: personVariable('sexAssignedAtBirth', {
+          type: 'categorical',
+          options: PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
+        }),
+        egoAttribute: personVariable('isEgo', { type: 'boolean' }),
+        ...(opts?.recordRelationshipToParticipant
+          ? {
+              relationshipToParticipantAttribute: personVariable(
+                'relationshipToParticipant',
+                {
+                  type: 'categorical',
+                  options: PEDIGREE_RELATIONSHIPS_TO_PARTICIPANT.map(
+                    (value) => ({ value, label: value }),
+                  ),
+                },
+              ),
+            }
+          : {}),
+      };
+
+      const edgeTypeId =
+        opts?.relationshipType ?? this.addEdgeType({ name: 'Family' }).id;
+      const edgeVariable = (
+        name: string,
+        varOpts: Omit<AddVariableInput, 'name'>,
+      ) => this.addVariableToEdgeType(edgeTypeId, { name, ...varOpts }).id;
+
+      entry.edgeConfiguration = {
+        type: edgeTypeId,
+        kindAttribute: edgeVariable('kind', {
+          type: 'categorical',
+          options: PEDIGREE_RELATIONSHIP_KIND_OPTIONS,
+        }),
+        gestationalCarrierAttribute: edgeVariable('gestationalCarrier', {
+          type: 'boolean',
+        }),
+        currentPartnerAttribute: edgeVariable('currentPartner', {
+          type: 'boolean',
+        }),
+      };
+
+      if (opts?.framing) entry.framing = opts.framing;
+      if (opts?.nominationPrompts) {
+        entry.nominationPrompts = opts.nominationPrompts.map(
+          ({ text, variableName, onlyForSexAssignedAtBirth }, index) => ({
+            id: `nomination-${index + 1}`,
+            text,
+            attribute: personVariable(variableName ?? `condition${index + 1}`, {
+              type: 'boolean',
+            }),
+            ...(onlyForSexAssignedAtBirth && { onlyForSexAssignedAtBirth }),
+          }),
+        );
+      }
+      if (opts?.completeness) {
+        entry.completeness = {
+          ...opts.completeness,
+          relativesNotRecordedAttribute: personVariable(
+            'relativesNotRecorded',
+            {
+              type: 'categorical',
+              options: PEDIGREE_RELATIVES_NOT_RECORDED_OPTIONS,
+            },
+          ),
         };
-      } else if (subject) {
-        const nodeLabelVar = this.nextId('label-var');
-        const egoVar = this.nextId('ego-var');
-        const relToEgoVar = this.nextId('rel-to-ego-var');
-        const bioSexVar = this.nextId('biological-sex-var');
-        entry.nodeConfig = {
-          type: subject.type,
-          nodeLabelVariable: nodeLabelVar,
-          egoVariable: egoVar,
-          relationshipVariable: relToEgoVar,
-          biologicalSexVariable: bioSexVar,
-          form: [],
-        };
       }
 
-      if (opts?.edgeConfig) {
-        const isActiveVar =
-          opts.edgeConfig.isActiveVariable ?? this.nextId('is-active-var');
-        const isGestCarrierVar =
-          opts.edgeConfig.isGestationalCarrierVariable ??
-          this.nextId('is-gest-carrier-var');
-        const gameteRoleVar =
-          opts.edgeConfig.gameteRoleVariable ?? this.nextId('gamete-role-var');
-        entry.edgeConfig = {
-          type: opts.edgeConfig.type,
-          relationshipTypeVariable: opts.edgeConfig.relationshipTypeVariable,
-          isActiveVariable: isActiveVar,
-          isGestationalCarrierVariable: isGestCarrierVar,
-          gameteRoleVariable: gameteRoleVar,
-        };
-      } else {
-        let edgeTypeId: string;
-        if (this.edgeTypes.size > 0) {
-          edgeTypeId = this.edgeTypes.keys().next().value!;
-        } else {
-          edgeTypeId = this.addEdgeType({ name: 'Family' }).id;
-        }
-        entry.edgeConfig = {
-          type: edgeTypeId,
-          relationshipTypeVariable: this.nextId('rel-type-var'),
-          isActiveVariable: this.nextId('is-active-var'),
-          isGestationalCarrierVariable: this.nextId('is-gest-carrier-var'),
-          gameteRoleVariable: this.nextId('gamete-role-var'),
-        };
-      }
-
-      entry.censusPrompt =
-        opts?.censusPrompt ??
-        this.valueGen.generatePromptText('FamilyPedigree');
-
-      entry.nominationPrompts = opts?.nominationPrompts ?? [];
-
-      if (opts?.framing) {
-        entry.framing = opts.framing;
-      }
-
-      if (opts?.boundaries) {
-        entry.boundaries = opts.boundaries;
-      }
-
-      if (opts?.introScreen) {
-        entry.introScreen = opts.introScreen;
-      }
+      entry.prompt =
+        opts?.prompt ?? this.valueGen.generatePromptText('FamilyPedigree');
     }
 
     // Geospatial
@@ -1142,19 +1228,48 @@ export class SyntheticInterview {
       case 'Anonymisation':
         return base as StageHandleMap[T];
 
-      case 'FamilyPedigree':
+      case 'FamilyPedigree': {
+        const person = entry.nodeConfiguration;
+        const relationship = entry.edgeConfiguration;
+        invariant(
+          person !== undefined && relationship !== undefined,
+          'FamilyPedigree stage is missing its bound attributes',
+        );
         return {
           ...base,
-          addDiseaseNominationStep: (opts?: AddDiseaseNominationStepInput) => {
-            const step: DiseaseNominationStepEntry = {
-              id: this.nextId('disease-nom'),
-              text: opts?.text ?? 'Which family members have this condition?',
-              variable: opts?.variable ?? this.nextId('disease-var'),
-            };
-            entry.nominationPrompts ??= [];
-            entry.nominationPrompts.push(step);
+          personType: entry.subject!.type,
+          edgeType: relationship.type,
+          name: person.nameAttribute,
+          genderIdentity: person.genderIdentity?.attribute,
+          sexAssignedAtBirth: person.sexAssignedAtBirthAttribute,
+          ego: person.egoAttribute,
+          kind: relationship.kindAttribute,
+          gestationalCarrier: relationship.gestationalCarrierAttribute,
+          currentPartner: relationship.currentPartnerAttribute,
+          relativesNotRecorded:
+            entry.completeness?.relativesNotRecordedAttribute,
+          relationshipToParticipant: person.relationshipToParticipantAttribute,
+          nominations: (entry.nominationPrompts ?? []).map(
+            (prompt) => prompt.attribute,
+          ),
+          addFormField: (opts: AddFormFieldOpts) => {
+            const field = this.resolveFormField(
+              {
+                component: opts.component,
+                variable: opts.variable,
+                prompt: opts.prompt,
+                hint: opts.hint,
+                showValidationHints: opts.showValidationHints,
+                parameters: opts.parameters,
+                validation: opts.validation,
+              },
+              entry.subject!.type,
+            );
+            entry.form ??= { title: 'Add a person', fields: [] };
+            entry.form.fields.push(field);
           },
         } as StageHandleMap[T];
+      }
 
       case 'Geospatial':
         return {
@@ -2142,11 +2257,6 @@ export class SyntheticInterview {
           );
         }
       }
-      if (stage.type === 'FamilyPedigree' && stage.nodeConfig !== undefined) {
-        for (const field of stage.nodeConfig.form ?? []) {
-          addOrdinaryField('node', stage.nodeConfig.type, field.variable);
-        }
-      }
     }
 
     const { renderings, disagreements } = resolveComposerRenderings(
@@ -2594,9 +2704,7 @@ export class SyntheticInterview {
       config.filter = stage.filter;
     }
 
-    // FamilyPedigree references its entity types via nodeConfig/edgeConfig;
-    // its strict schema rejects a stage-level subject.
-    if (stage.subject && stage.type !== 'FamilyPedigree') {
+    if (stage.subject) {
       config.subject = stage.subject;
     }
 
@@ -2608,12 +2716,13 @@ export class SyntheticInterview {
           ? { hint: this.localized(field.hint) }
           : {}),
       }));
-      // TitlelessFormSchema: AlterForm/AlterEdgeForm/EgoForm forms must not
+      // TitlelessFormSchema: AlterForm/AlterEdgeForm/EgoForm/FamilyPedigree forms must not
       // carry a title; every other form stage keeps it.
       config.form =
         stage.type === 'AlterForm' ||
         stage.type === 'AlterEdgeForm' ||
-        stage.type === 'EgoForm'
+        stage.type === 'EgoForm' ||
+        stage.type === 'FamilyPedigree'
           ? { fields }
           : { title: this.localized(stage.form.title), fields };
     }
@@ -2719,34 +2828,18 @@ export class SyntheticInterview {
 
     // FamilyPedigree
     if (stage.type === 'FamilyPedigree') {
-      if (stage.nodeConfig) {
-        config.nodeConfig = {
-          ...stage.nodeConfig,
-          form: (stage.nodeConfig.form ?? []).map((field) => ({
-            ...field,
-            prompt: this.localized(field.prompt),
-            ...(field.hint !== undefined
-              ? { hint: this.localized(field.hint) }
-              : {}),
-          })),
-        };
+      if (stage.prompt !== undefined) {
+        config.prompt = this.localized(stage.prompt);
       }
-      if (stage.edgeConfig) config.edgeConfig = stage.edgeConfig;
-      if (stage.censusPrompt) {
-        config.censusPrompt = this.localized(stage.censusPrompt);
-      }
-      if (stage.nominationPrompts?.length) {
+      config.nodeConfiguration = stage.nodeConfiguration;
+      config.edgeConfiguration = stage.edgeConfiguration;
+      if (stage.completeness) config.completeness = stage.completeness;
+      if (stage.framing) config.framing = stage.framing;
+      if (stage.nominationPrompts) {
         config.nominationPrompts = stage.nominationPrompts.map((prompt) => ({
           ...prompt,
           text: this.localized(prompt.text),
         }));
-      }
-      if (stage.framing) config.framing = stage.framing;
-      if (stage.boundaries) config.boundaries = stage.boundaries;
-      if (stage.introScreen) {
-        config.introScreen = {
-          items: stage.introScreen.items.map((item) => this.buildItem(item)),
-        };
       }
     }
 

@@ -489,7 +489,7 @@ export function useSessionMutations({
 
   const handleMarkUnfinished = useCallback(
     async (
-      session: Pick<StoredSessionLite, 'id' | 'caseId'>,
+      session: Pick<StoredSessionLite, 'id' | 'caseId' | 'protocolHash'>,
       stages: CurrentProtocol['stages'],
     ) => {
       // Guarded against the export flow so a session mutation can't race an
@@ -526,7 +526,10 @@ export function useSessionMutations({
       if (confirmed !== true) return;
       setMarkingUnfinishedId(session.id);
       try {
-        await markSessionUnfinished(session.id, stages);
+        // `stages` are those of the session's protocol as listed.
+        await markSessionUnfinished(session.id, stages, {
+          protocolHash: session.protocolHash,
+        });
         toast.add({
           title: createElement(AppMessage, {
             message: messages.interviewMarkedUnfinished,

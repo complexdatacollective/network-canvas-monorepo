@@ -140,25 +140,6 @@ describe('proposeStageLabel', () => {
     ).toBe('Information with Image & Video');
   });
 
-  /**
-   * A nomination prompt names an attribute by key alone, so the lookup cannot
-   * be scoped to the node codebook: an attribute only an edge type declares
-   * would come back nameless and drop out of the proposal.
-   */
-  it('names a nomination attribute that only an edge type declares', () => {
-    expect(
-      proposeStageLabel(
-        {
-          id: 'stage-1',
-          type: 'FamilyPedigree',
-          subject: { entity: 'node', type: 'person' },
-          nominationPrompts: [{ variable: 'closeness' }],
-        },
-        contextWith(),
-      ),
-    ).toBe('Person Family Pedigree with Closeness Nomination');
-  });
-
   it('avoids a name another stage in the interview already has', () => {
     expect(
       proposeStageLabel(

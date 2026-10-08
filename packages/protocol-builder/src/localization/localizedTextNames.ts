@@ -9,7 +9,7 @@ import { parameterFieldMessages } from '../codebook/components/VariableParameter
 import { anonymisationMessages } from '../editors/anonymisation/sections/anonymisationMessages.ts';
 import { categoricalBinPromptMessages } from '../editors/categorical-bin/sections/CategoricalBinPromptsSection.tsx';
 import { censusMessages } from '../editors/dyad-census/sections/censusMessages.ts';
-import { pedigreeMessages } from '../editors/family-pedigree/sections/pedigreeMessages.ts';
+import { familyPedigreeMessages } from '../editors/family-pedigree/sections/pedigreeMessages.ts';
 import { finishSessionMessages } from '../editors/finish-session/sections/finishSessionMessages.ts';
 import { cardDisplayMessages } from '../editors/name-generator-roster/sections/CardDisplaySection.tsx';
 import { sortOptionsMessages } from '../editors/name-generator-roster/sections/SortOptionsSection.tsx';
@@ -317,16 +317,15 @@ const highlightLabel: Label = (context) => {
   );
 };
 
-const pedigreeSubject: SubjectOf = ({ place }) => {
-  const type = textAt(place, ['nodeConfig', 'type']);
-  return type === undefined ? undefined : { entity: 'node', type };
-};
-
-const PEDIGREE_MEMBER_DATA: Step = [1, words(pedigreeMessages.nodeTitle)];
-const PEDIGREE_MEMBER_FORM: Step = [2, words(pedigreeMessages.memberFormTitle)];
-const PEDIGREE_MEMBER_FIELD: Step = [
+// The pedigree's own prompt, and the extra questions it asks about each
+// person, which read the stage subject like any other form.
+const PEDIGREE_PERSON_FORM: Step = [
+  1,
+  words(familyPedigreeMessages.personFormTitle),
+];
+const PEDIGREE_PERSON_FIELD: Step = [
   3,
-  attributeOr(messages.fieldPosition, pedigreeSubject),
+  attributeOr(messages.fieldPosition, stageSubject),
 ];
 
 const composerEdgeSubject: SubjectOf = ({ place, at }) =>
@@ -398,33 +397,23 @@ const STAGE_RULES: Readonly<Record<StageType, readonly Rule[]>> = {
   EgoForm: [...INTRODUCTION_RULES, ...formFieldRules(egoSubject)],
   FamilyPedigree: [
     rule(
-      'censusPrompt',
-      [0, words(pedigreeMessages.censusTitle)],
-      [1, words(pedigreeMessages.censusFieldLabel)],
+      'prompt',
+      [0, words(familyPedigreeMessages.promptTitle)],
+      [1, words(familyPedigreeMessages.promptLabel)],
     ),
-    ...contentItemRules(
-      [1, words(pageContentMessages.introTitle)],
-      'introScreen.items',
-    ),
-    rule(
-      'nodeConfig.form.#.prompt',
-      PEDIGREE_MEMBER_DATA,
-      PEDIGREE_MEMBER_FORM,
-      PEDIGREE_MEMBER_FIELD,
-      [4, words(formFieldsMessages.promptLabel)],
-    ),
-    rule(
-      'nodeConfig.form.#.hint',
-      PEDIGREE_MEMBER_DATA,
-      PEDIGREE_MEMBER_FORM,
-      PEDIGREE_MEMBER_FIELD,
-      [4, words(formFieldsMessages.hintLabel)],
-    ),
+    rule('form.fields.#.prompt', PEDIGREE_PERSON_FORM, PEDIGREE_PERSON_FIELD, [
+      4,
+      words(formFieldsMessages.promptLabel),
+    ]),
+    rule('form.fields.#.hint', PEDIGREE_PERSON_FORM, PEDIGREE_PERSON_FIELD, [
+      4,
+      words(formFieldsMessages.hintLabel),
+    ]),
     rule(
       'nominationPrompts.#.text',
-      [1, words(pedigreeMessages.nominationTitle)],
+      [1, words(familyPedigreeMessages.nominationTitle)],
       [2, numbered(messages.promptPosition)],
-      [3, words(pedigreeMessages.nominationTextLabel)],
+      [3, words(censusMessages.promptTextLabel)],
     ),
   ],
   Geospatial: [promptText(geospatialMessages.promptTextLabel)],

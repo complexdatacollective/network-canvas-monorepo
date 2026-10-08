@@ -172,20 +172,20 @@ function makeFamilyPedigreeStage(overrides?: Record<string, unknown>): Stage {
     id: 'stage-fp',
     label: en('Family'),
     type: 'FamilyPedigree',
-    nodeConfig: {
-      type: 'node-type-1',
-      nodeLabelVariable: 'var-name',
-      egoVariable: 'var-ego',
-      biologicalSexVariable: 'var-sex',
-      relationshipVariable: 'var-rel',
+    subject: { entity: 'node', type: 'node-type-1' },
+    prompt: en('Tell us about your family'),
+    nodeConfiguration: {
+      nameAttribute: 'var-name',
+      genderIdentity: { attribute: 'var-gender', terms: [] },
+      sexAssignedAtBirthAttribute: 'var-sex',
+      egoAttribute: 'var-ego',
     },
-    edgeConfig: {
+    edgeConfiguration: {
       type: 'edge-type-1',
-      relationshipTypeVariable: 'var-rel-type',
-      isActiveVariable: 'var-active',
-      isGestationalCarrierVariable: 'var-gestational',
+      kindAttribute: 'var-kind',
+      gestationalCarrierAttribute: 'var-gestational',
+      currentPartnerAttribute: 'var-partner',
     },
-    censusPrompt: en('Tell us about your family'),
     ...overrides,
   } as unknown as Stage;
 }
@@ -498,129 +498,19 @@ describe('generateNetwork', () => {
   });
 
   describe('FamilyPedigree stage', () => {
-    it('should use nodeConfig.type for node types, not a hardcoded fallback', () => {
+    it('adds no people or relationships, since the participant draws them', () => {
       const codebook = makeCodebook();
       const stages = [makeFamilyPedigreeStage()];
 
-      const { network } = generateNetwork({ codebook, stages, seed: 42 });
-
-      expect(network.nodes.length).toBeGreaterThan(0);
-
-      for (const node of network.nodes) {
-        expect(node.type).toBe('node-type-1');
-      }
-    });
-
-    it('should use edgeConfig.type for edge types', () => {
-      const codebook = makeCodebook();
-      const stages = [makeFamilyPedigreeStage()];
-
-      const { network } = generateNetwork({ codebook, stages, seed: 42 });
-
-      expect(network.edges.length).toBeGreaterThan(0);
-
-      for (const edge of network.edges) {
-        expect(edge.type).toBe('edge-type-1');
-      }
-    });
-
-    it('should only produce node types that exist in the codebook', () => {
-      const codebook = makeCodebook();
-      const stages = [makeFamilyPedigreeStage()];
-
-      const { network } = generateNetwork({ codebook, stages, seed: 42 });
-
-      const codebookNodeTypes = new Set(Object.keys(codebook.node ?? {}));
-
-      for (const node of network.nodes) {
-        expect(codebookNodeTypes.has(node.type)).toBe(true);
-      }
-    });
-
-    it('should generate the configured label for family members but not ego', () => {
-      const codebook = makeCodebook();
-      const stages = [makeFamilyPedigreeStage()];
-
-      const { network } = generateNetwork({ codebook, stages, seed: 42 });
-
-      for (const node of network.nodes) {
-        const attrs = node[entityAttributesProperty];
-        if (attrs['var-ego'] === true) {
-          expect(attrs).not.toHaveProperty('var-name');
-        } else {
-          expect(attrs).toHaveProperty('var-name');
-        }
-      }
-    });
-
-    it('should not create nodes when nodeConfig is missing', () => {
-      const codebook = makeCodebook();
-      const stages = [
-        makeFamilyPedigreeStage({
-          nodeConfig: undefined,
-          edgeConfig: undefined,
-        }),
-      ];
-
-      const { network } = generateNetwork({ codebook, stages, seed: 42 });
-
-      expect(network.nodes.length).toBe(0);
-      expect(network.edges.length).toBe(0);
-    });
-
-    it('marks exactly one node as ego, and false on every other node', () => {
-      const codebook = makeCodebook({
-        node: {
-          'node-type-1': {
-            color: 'node-color-seq-1',
-            variables: {
-              'var-name': {
-                name: 'Name',
-                label: 'Name',
-                type: 'text',
-              },
-              'var-ego': {
-                name: 'Is ego',
-                label: 'Is ego',
-                type: 'boolean',
-              },
-            },
-          },
-        },
+      const { network, stageMetadata } = generateNetwork({
+        codebook,
+        stages,
+        seed: 42,
       });
-      const stages = [makeFamilyPedigreeStage()];
 
-      const { network } = generateNetwork({ codebook, stages, seed: 42 });
-
-      expect(network.nodes.length).toBeGreaterThan(1);
-
-      const egoNodes = network.nodes.filter(
-        (node) => node[entityAttributesProperty]['var-ego'] === true,
-      );
-      expect(egoNodes).toHaveLength(1);
-      expect(egoNodes[0]).toBe(network.nodes[0]);
-
-      for (const node of network.nodes.slice(1)) {
-        expect(node[entityAttributesProperty]['var-ego']).toBe(false);
-      }
-    });
-
-    it('does not throw and skips ego marking when nodeConfig has no egoVariable', () => {
-      const codebook = makeCodebook();
-      const stages = [
-        makeFamilyPedigreeStage({
-          nodeConfig: {
-            type: 'node-type-1',
-            nodeLabelVariable: 'var-name',
-            biologicalSexVariable: 'var-sex',
-            relationshipVariable: 'var-rel',
-          },
-        }),
-      ];
-
-      expect(() =>
-        generateNetwork({ codebook, stages, seed: 42 }),
-      ).not.toThrow();
+      expect(network.nodes).toHaveLength(0);
+      expect(network.edges).toHaveLength(0);
+      expect(stageMetadata).toBeNull();
     });
   });
 
@@ -675,21 +565,6 @@ describe('generateNetwork', () => {
   });
 
   describe('stageMetadata schema compliance', () => {
-    it('FamilyPedigree writes isNetworkCommitted keyed by stage step', () => {
-      const codebook = makeCodebook();
-      const stages = [makeFamilyPedigreeStage()];
-
-      const { stageMetadata } = generateNetwork({ codebook, stages, seed: 42 });
-
-      expect(stageMetadata?.[0]).toEqual(
-        expect.objectContaining({
-          isNetworkCommitted: true,
-          edgeIdVersion: 1,
-        }),
-      );
-      expect(StageMetadataSchema.safeParse(stageMetadata).success).toBe(true);
-    });
-
     it('DyadCensus writes [promptIndex, fromId, toId, answer] tuples keyed by stage step', () => {
       const codebook = makeCodebook();
       const stages = [makeNameGeneratorStage(), makeDyadCensusStage()];
@@ -768,9 +643,7 @@ describe('generateNetwork', () => {
 
       const result = StageMetadataSchema.safeParse(stageMetadata);
       expect(result.success).toBe(true);
-      expect(stageMetadata?.[2]).toEqual(
-        expect.objectContaining({ isNetworkCommitted: true }),
-      );
+      expect(stageMetadata?.[2]).toBeUndefined();
     });
   });
 
@@ -1412,21 +1285,6 @@ describe('generateNetwork', () => {
           // whichever branch runs has something to work with.
           subject: { entity: 'node', type: 'node-type-1' },
           prompts: [{ id: 'prompt-1', text: 'Test prompt' }],
-          // FamilyPedigree-specific
-          nodeConfig: {
-            type: 'node-type-1',
-            nodeLabelVariable: 'var-name',
-            egoVariable: 'var-ego',
-            biologicalSexVariable: 'var-sex',
-            relationshipVariable: 'var-rel',
-          },
-          edgeConfig: {
-            type: 'edge-type-1',
-            relationshipTypeVariable: 'var-rel-type',
-            isActiveVariable: 'var-active',
-            isGestationalCarrierVariable: 'var-gestational',
-          },
-          censusPrompt: 'Test',
         } as unknown as Stage;
 
         expect(
@@ -1647,17 +1505,6 @@ describe('generateNetwork', () => {
 
       expect(droppedOut).toBe(true);
       expect(currentStep).toBe(0);
-    });
-
-    it('the family-specific node budget caps optional branches', () => {
-      const { network } = generateNetwork({
-        codebook: makeCodebook(),
-        stages: [makeFamilyPedigreeStage()],
-        seed: 42,
-        familyPedigree: { scenario: 'none', maxNodes: 7 },
-      });
-
-      expect(network.nodes).toHaveLength(7);
     });
   });
 });

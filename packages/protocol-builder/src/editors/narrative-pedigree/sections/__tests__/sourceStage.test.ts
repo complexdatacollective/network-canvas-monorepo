@@ -112,6 +112,28 @@ describe('the pedigrees a narrative pedigree may read', () => {
   });
 
   /**
+   * Every pedigree offered precedes the stage being created, so inserting it
+   * moves none of them: each keeps the number it has today, as an existing
+   * stage's offer would show it.
+   */
+  it('numbers the pedigrees a stage being created would read where they stay', () => {
+    const context = contextInOrder(FIXTURE_ORDER);
+    const pedigreeIndex = FIXTURE_ORDER.indexOf('family-pedigree-1');
+    const positionsWhenInsertedAt = (position?: number) =>
+      resolveSourceStages(
+        context,
+        'not-in-the-order-yet',
+        undefined,
+        position,
+      ).options.map((option) => option.position);
+
+    expect(positionsWhenInsertedAt(pedigreeIndex + 1)).toEqual([
+      pedigreeIndex + 1,
+    ]);
+    expect(positionsWhenInsertedAt()).toEqual([pedigreeIndex + 1]);
+  });
+
+  /**
    * The same rule seen from the stored choice: a pedigree that will run after
    * the stage being created is the problem it is for an existing stage, not a
    * choice silently left standing.
@@ -220,13 +242,13 @@ describe('a disease that would mark nobody', () => {
   const recorded = new Set(['hasConditionX']);
 
   it('is one mapping an attribute nothing records', () => {
-    expect(diseaseMarksNobody({ variable: 'biologicalSex' }, recorded)).toBe(
+    expect(diseaseMarksNobody({ attribute: 'biologicalSex' }, recorded)).toBe(
       true,
     );
   });
 
   it('is not one mapping an attribute a nomination prompt writes', () => {
-    expect(diseaseMarksNobody({ variable: 'hasConditionX' }, recorded)).toBe(
+    expect(diseaseMarksNobody({ attribute: 'hasConditionX' }, recorded)).toBe(
       false,
     );
   });
@@ -236,7 +258,7 @@ describe('a disease that would mark nobody', () => {
    * marks nobody would put two refusals on one empty control.
    */
   it('is not an unfinished row, or something that is not a row at all', () => {
-    expect(diseaseMarksNobody({ variable: '' }, recorded)).toBe(false);
+    expect(diseaseMarksNobody({ attribute: '' }, recorded)).toBe(false);
     expect(diseaseMarksNobody({}, recorded)).toBe(false);
     expect(diseaseMarksNobody(null, recorded)).toBe(false);
     expect(diseaseMarksNobody(['hasConditionZ'], recorded)).toBe(false);

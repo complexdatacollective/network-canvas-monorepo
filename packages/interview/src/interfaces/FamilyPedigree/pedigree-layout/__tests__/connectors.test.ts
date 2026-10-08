@@ -236,7 +236,7 @@ describe('computeConnectors', () => {
     expect(pc2ParentX).toBeCloseTo(1.5, 1);
   });
 
-  it('produces auxiliary connectors for unpartnered-parent edges', () => {
+  it('produces auxiliary connectors for a parent outside the couple', () => {
     const bioLayout: PedigreeLayout = {
       n: [3, 1],
       nid: [

@@ -385,7 +385,7 @@ describe('useSessionMutations — export flow lifecycle', () => {
 
     await act(async () => {
       await result.current.handleMarkUnfinished(
-        { id: 's1', caseId: 'case-1' },
+        { id: 's1', caseId: 'case-1', protocolHash: 'h1' },
         [],
       );
     });
@@ -764,6 +764,7 @@ describe('useSessionMutations — mark unfinished', () => {
         {
           id: 's1',
           caseId: 'case-1',
+          protocolHash: 'h1',
         },
         stages,
       );
@@ -774,7 +775,9 @@ describe('useSessionMutations — mark unfinished', () => {
         title: renderedMessage('Mark unfinished?'),
       }),
     );
-    expect(markSessionUnfinished).toHaveBeenCalledWith('s1', stages);
+    expect(markSessionUnfinished).toHaveBeenCalledWith('s1', stages, {
+      protocolHash: 'h1',
+    });
     expect(toastAdd).toHaveBeenCalledWith(
       expect.objectContaining({
         title: renderedMessage('Interview marked unfinished'),
@@ -791,6 +794,7 @@ describe('useSessionMutations — mark unfinished', () => {
         {
           id: 's1',
           caseId: 'case-1',
+          protocolHash: 'h1',
         },
         stages,
       );

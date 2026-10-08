@@ -29,7 +29,6 @@ import {
   type SyncHandler,
   getLastAvailableAuthoredStageIndex,
 } from '@codaco/interview';
-import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
 import {
   getLocaleMetadata,
   type LocalizationDeclaration,
@@ -53,8 +52,14 @@ import {
   updateSession,
   updateSettings,
 } from '~/lib/db/api';
+import type { SessionWriteBasis } from '~/lib/db/sessions';
 import type { StoredSession } from '~/lib/db/types';
 import { getInstallationId } from '~/lib/installationId';
+import {
+  canRunStoredProtocol,
+  getStoredProtocolMigrationFailure,
+  useStoredProtocolMigrationFailure,
+} from '~/lib/protocol/storedProtocolMigrationFailures';
 import { useHistoryBackGuard } from '~/lib/pwa/useHistoryBackGuard';
 import { interviewerCatalogs } from '~/locales/catalogs';
 
@@ -85,6 +90,13 @@ const messages = defineMessages({
     defaultMessage:
       'The protocol this interview uses could not be updated to work with this version of the app, so this interview cannot be continued. Its responses remain available on the data screen. To start new interviews, repair the protocol in Architect and import it again.',
     description: 'Visible copy in Interviewer Interview.',
+  },
+  interviewsOfProtocolCouldNotBeUpdated: {
+    id: 'interviewer.interview.interviewsOfProtocolCouldNotBeUpdated',
+    defaultMessage:
+      'Some interviews recorded with this protocol could not be updated to work with this version of the app, so this interview cannot be continued yet. The protocol and all its interviews have been kept exactly as they were, and the app will try again each time it starts. Its responses remain available on the data screen.',
+    description:
+      'Visible copy in Interviewer Interview, shown when the interviews recorded with this interview’s protocol could not be updated to work with this version of the app, so the protocol was left as it was. A later version of the app may be able to update them.',
   },
   returnHome: {
     id: 'interviewer.interview.returnHome',
@@ -151,7 +163,7 @@ const SYNC_BATCH_MS = 0;
 type LoadState =
   | { kind: 'loading' }
   | { kind: 'missing' }
-  | { kind: 'incompatible' }
+  | { kind: 'incompatible'; protocolHash: string }
   | {
       kind: 'ready';
       payload: InterviewPayload;
@@ -180,6 +192,9 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
   // loads, until the participant chooses a language.
   const [requestedLocales] = useState(browserLanguages);
   const [state, setState] = useState<LoadState>({ kind: 'loading' });
+  const migrationFailure = useStoredProtocolMigrationFailure(
+    state.kind === 'incompatible' ? state.protocolHash : '',
+  );
   const [, navigate] = useLocation();
   const search = useSearch();
   const reviewRequested = new URLSearchParams(search).get('mode') === 'review';
@@ -205,6 +220,22 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
   // step. Mirror it into a ref so handleSync sees the latest value rather
   // than the stale closure value.
   const currentStepRef = useRef(0);
+  // Every write from this route is the session's whole state — network, stage
+  // metadata and resume position — computed against the protocol it loaded
+  // (`writeBasisRef`). If another tab updates the app and migrates that
+  // protocol while this interview is open, a whole-state write is stored
+  // under the protocol it was made against and the next launch carries it
+  // across the migration, so nothing is lost; a partial one could not be
+  // applied to the migrated data at all (see `updateSession`). The step
+  // change carries no network of its own, so it writes the state most
+  // recently handed to storage, which `syncedStateRef` holds: it is set as
+  // each sync write is queued, and writes to one session land in the order
+  // they were queued, so a step change never puts back an older network.
+  const writeBasisRef = useRef<SessionWriteBasis | null>(null);
+  const syncedStateRef = useRef<Pick<
+    StoredSession,
+    'network' | 'stageMetadata'
+  > | null>(null);
 
   // A history-back (browser button or a swipe gesture the CSS/wheel guards
   // can't intercept, e.g. iPadOS edge swipe) would leave the interview WITHOUT
@@ -296,10 +327,18 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
       }
       // The launch-time sweep migrates stored protocols before routes render,
       // so a row still below the runtime's schema version is one that could
-      // not be migrated. Refuse to run rather than hand the runtime a document
-      // it cannot execute.
-      if (protocol.schemaVersion !== COMPATIBLE_PROTOCOL_SCHEMA_VERSION) {
-        if (active) setState({ kind: 'incompatible' });
+      // not be migrated, and a row it reported a failure for was held back
+      // with its interviews. Refuse to run rather than hand the runtime a
+      // document it cannot execute or a session it cannot read.
+      if (
+        !canRunStoredProtocol(
+          protocol,
+          getStoredProtocolMigrationFailure(protocol.hash),
+        )
+      ) {
+        if (active) {
+          setState({ kind: 'incompatible', protocolHash: protocol.hash });
+        }
         return;
       }
       const assets = await buildResolvedAssets(session.protocolHash);
@@ -332,6 +371,11 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
           : session.currentStep;
       setCurrentStep(initialStep);
       currentStepRef.current = initialStep;
+      writeBasisRef.current = { protocolHash: protocol.hash };
+      syncedStateRef.current = {
+        network: session.network,
+        stageMetadata: session.stageMetadata,
+      };
       setAllowStageNavigation(settings.allowStageNavigation);
       setState({
         kind: 'ready',
@@ -402,11 +446,23 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
             `Sync for interview ${id} reached the handler for ${ownerId}`,
           );
         }
-        await updateSession(id, {
+        const basis = writeBasisRef.current;
+        if (!basis) {
+          throw new Error(`Sync for interview ${id} arrived before it loaded`);
+        }
+        syncedStateRef.current = {
           network: session.network,
-          currentStep: currentStepRef.current,
           stageMetadata: session.stageMetadata,
-        });
+        };
+        await updateSession(
+          id,
+          {
+            network: session.network,
+            currentStep: currentStepRef.current,
+            stageMetadata: session.stageMetadata,
+          },
+          basis,
+        );
       },
       { waitMs: SYNC_BATCH_MS },
     );
@@ -436,11 +492,19 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
       if (readOnly) return;
       // Persist the participant-facing progress alongside the step so the
       // dashboard shows exactly what the participant saw, without re-deriving it.
-      void updateSession(sessionId, {
-        currentStep: step,
-        progress: meta.progress,
-        resumeStageOverrideIndex: undefined,
-      });
+      const basis = writeBasisRef.current;
+      const synced = syncedStateRef.current;
+      if (!basis || !synced) return;
+      void updateSession(
+        sessionId,
+        {
+          ...synced,
+          currentStep: step,
+          progress: meta.progress,
+          resumeStageOverrideIndex: undefined,
+        },
+        basis,
+      );
     },
     [readOnly, sessionId],
   );
@@ -466,7 +530,11 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
             {intl.formatMessage(messages.interviewUnavailable)}
           </Heading>
           <Paragraph>
-            {intl.formatMessage(messages.theProtocolThisInterviewUsesCouldNot)}
+            {intl.formatMessage(
+              migrationFailure === 'sessions'
+                ? messages.interviewsOfProtocolCouldNotBeUpdated
+                : messages.theProtocolThisInterviewUsesCouldNot,
+            )}
           </Paragraph>
           <Button
             onClick={() => {

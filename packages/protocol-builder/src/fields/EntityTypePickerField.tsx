@@ -1154,6 +1154,8 @@ export type EntitySubjectPickerFieldProps = CreateFormFieldProps<
     entityType: EntitySubject['entity'];
     /** See `EntityTypePickerFieldProps`. */
     confirmChange?: () => EntityTypeChangeConfirmation | undefined;
+    /** See `EntityTypePickerFieldProps`. */
+    blockChangeReason?: string;
   }
 >;
 

@@ -2,15 +2,10 @@ import { screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { getInterfaceTemplate } from '../../../interfaces/templates.ts';
-import {
-  fixtureLocalization,
-  fixtureStageIds,
-} from '../../../testing/protocolFixture.ts';
+import { fixtureStageIds } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import { writeInto } from '../../__tests__/writeInto.ts';
 import { oneToManyDyadCensusStageEditor } from '../OneToManyDyadCensusStageEditor.ts';
-
-const FIXTURE_LOCALIZATION = fixtureLocalization();
 
 /** Where a host would insert a new one: over the stage the fixture holds. */
 const ONE_TO_MANY_INDEX = fixtureStageIds().indexOf(
@@ -52,9 +47,7 @@ describe('creating a one-to-many dyad census stage', () => {
     );
     // The template's answer, on screen as the answer rather than as an
     // unanswered question: the schema requires one either way.
-    expect(
-      getInterfaceTemplate('OneToManyDyadCensus', FIXTURE_LOCALIZATION),
-    ).toEqual({
+    expect(getInterfaceTemplate('OneToManyDyadCensus')).toEqual({
       behaviours: { removeAfterConsideration: true },
     });
     expect(

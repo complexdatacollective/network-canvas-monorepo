@@ -48,9 +48,36 @@ export type ExclusiveSlotDescriptor = {
  * while its options stay locked.
  */
 export type InterfaceOwnedOptionSetKey =
-  | 'biologicalSex'
-  | 'relationshipType'
-  | 'gameteRole';
+  | 'pedigreeSexAssignedAtBirth'
+  | 'pedigreeRelationship'
+  | 'pedigreeRelativesNotRecorded'
+  | 'pedigreeRelationshipToParticipant';
+
+/**
+ * Declares a reference as a stage-managed OPTION LIST: the variable's options
+ * belong to the stage that binds it, because the stage attaches meaning to
+ * each option (the Family Pedigree's kinship words for each gender identity).
+ * Editing the options anywhere else would leave that meaning describing
+ * options that no longer exist.
+ *
+ * So the options may be added, removed, relabelled or re-valued only from the
+ * stage that binds the variable at such a slot, and Architect shows them
+ * read-only everywhere else. Only one stage may manage a variable's options:
+ * each managing stage keeps its own copy of what the options mean, and an
+ * options edit made from one stage cannot rewrite another's, so the protocol
+ * refuses every stage that shares a variable's options with another. This is NOT write
+ * exclusivity and is independent of `exclusive`: other stages stay free to
+ * WRITE the variable (a categorical bin assigning it, a form field asking
+ * it). Ownership is derived from the stages that bind the variable, never
+ * stored in the codebook. See `findStageManagedOptionBindings`.
+ */
+export type StageManagedOptionsDescriptor = {
+  /**
+   * Researcher-facing description of what the stage decides about the
+   * options ("the kinship words each option takes"), as a whole phrase.
+   */
+  owner: string;
+};
 
 /**
  * Whether the value at this site is GUARANTEED to name a codebook attribute.
@@ -102,6 +129,8 @@ export type EntityAttributeReferenceDescriptor = {
   exclusive?: ExclusiveSlotDescriptor;
   /** See `InterfaceOwnedOptionSetKey`. */
   ownedOptions?: InterfaceOwnedOptionSetKey;
+  /** See `StageManagedOptionsDescriptor`. */
+  stageManagedOptions?: StageManagedOptionsDescriptor;
 };
 
 export const entityAttributeReference = (

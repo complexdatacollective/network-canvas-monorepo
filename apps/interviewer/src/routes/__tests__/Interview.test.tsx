@@ -15,6 +15,7 @@ import { getLocaleMetadata } from '@codaco/protocol-validation';
 import { InterviewerI18nProvider } from '~/i18n/InterviewerI18nProvider';
 import { interviewerProductionLocales } from '~/i18n/locales';
 import { LOCALE_PREFERENCE_KEY } from '~/i18n/preference';
+import { recordStoredProtocolMigrationFailures } from '~/lib/protocol/storedProtocolMigrationFailures';
 
 const navigateMock = vi.fn();
 const useSearchMock = vi.fn(() => '');
@@ -764,11 +765,69 @@ describe('InterviewRoute finish flow', () => {
       lastShellProps().onStepChange(1, { progress: 50, totalSteps: 4 });
     });
 
-    expect(updateSessionMock).toHaveBeenCalledWith('s1', {
-      currentStep: 1,
-      progress: 50,
-      resumeStageOverrideIndex: undefined,
+    expect(updateSessionMock).toHaveBeenCalledWith(
+      's1',
+      expect.objectContaining({
+        currentStep: 1,
+        progress: 50,
+        resumeStageOverrideIndex: undefined,
+      }),
+      { protocolHash: 'h1' },
+    );
+  });
+
+  // Every write names the protocol the interview loaded and carries the
+  // session's whole state, so a write made after another tab migrated the
+  // protocol can be kept under the protocol it was made against and carried
+  // across the migration at the next launch, instead of being refused.
+  it('writes the whole state, against the loaded protocol, on a step change and a sync', async () => {
+    render(<InterviewRoute sessionId="s1" />);
+    await screen.findByTestId('shell-mounted');
+    updateSessionMock.mockClear();
+    const stored = makeSession();
+
+    act(() => {
+      lastShellProps().onStepChange(1, { progress: 50, totalSteps: 4 });
     });
+    expect(updateSessionMock).toHaveBeenLastCalledWith(
+      's1',
+      {
+        network: stored.network,
+        stageMetadata: undefined,
+        currentStep: 1,
+        progress: 50,
+        resumeStageOverrideIndex: undefined,
+      },
+      { protocolHash: 'h1' },
+    );
+
+    const answered = {
+      ...stored.network,
+      nodes: [{ _uid: 'n1', type: 'person', attributes: {} }],
+    } as SessionPayload['network'];
+    await act(async () => {
+      await lastShellProps().onSync(
+        's1',
+        makeSyncPayload({ network: answered }),
+        { immediate: true, unloading: false },
+      );
+    });
+    await waitFor(() =>
+      expect(updateSessionMock).toHaveBeenLastCalledWith(
+        's1',
+        expect.objectContaining({ network: answered, currentStep: 1 }),
+        { protocolHash: 'h1' },
+      ),
+    );
+
+    act(() => {
+      lastShellProps().onStepChange(2, { progress: 75, totalSteps: 4 });
+    });
+    expect(updateSessionMock).toHaveBeenLastCalledWith(
+      's1',
+      expect.objectContaining({ network: answered, currentStep: 2 }),
+      { protocolHash: 'h1' },
+    );
   });
 
   it('honours explicit review intent when the stored session is unfinished', async () => {
@@ -860,6 +919,40 @@ describe('InterviewRoute finish flow', () => {
       await screen.findByRole('heading', { name: /interview unavailable/i }),
     ).toBeInTheDocument();
     expect(shellMock).not.toHaveBeenCalled();
+  });
+
+  // A protocol at the runtime's version is held back when interviews a
+  // pre-update tab wrote back under a hash it superseded could not be
+  // carried onto it: none of its interviews runs until every one can.
+  it('refuses to run a session whose protocol the sweep held back with its interviews', async () => {
+    const protocol = makeProtocol();
+    act(() => {
+      recordStoredProtocolMigrationFailures([
+        {
+          name: 'Study',
+          hash: protocol.hash,
+          reason: 'one interview could not be migrated',
+          kind: 'sessions',
+          sessions: [{ id: 'late', reason: 'invalid' }],
+        },
+      ]);
+    });
+
+    try {
+      render(<InterviewRoute sessionId="s1" />);
+
+      expect(
+        await screen.findByRole('heading', { name: /interview unavailable/i }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          /Some interviews recorded with this protocol could not be updated/,
+        ),
+      ).toBeInTheDocument();
+      expect(shellMock).not.toHaveBeenCalled();
+    } finally {
+      act(() => recordStoredProtocolMigrationFailures([]));
+    }
   });
 
   it('applies the exit gate from the completed state', async () => {

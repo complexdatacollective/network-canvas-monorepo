@@ -647,19 +647,38 @@ const toolbarButtonStyles = iconButtonVariants({
 
 const toolbarSeparatorStyles = cx('mx-2 h-5 w-px shrink-0 bg-current/20');
 
-const editorContentStyles = cx(
-  multilineContentVariants(),
-  'order-2 flex-1',
-  'outline-none',
-  '[&_.tiptap]:min-h-[120px] [&_.tiptap]:outline-none',
-  // Placeholder styles
-  '[&_.tiptap_p.is-editor-empty:first-child::before]:text-input-contrast/50',
-  '[&_.tiptap_p.is-editor-empty:first-child::before]:pointer-events-none',
-  '[&_.tiptap_p.is-editor-empty:first-child::before]:float-left',
-  '[&_.tiptap_p.is-editor-empty:first-child::before]:h-0',
-  '[&_.tiptap_p.is-editor-empty:first-child::before]:italic',
-  '[&_.tiptap_p.is-editor-empty:first-child::before]:content-[attr(data-placeholder)]',
-);
+const editorContentVariants = cva({
+  base: cx(
+    'order-2 flex-1',
+    'outline-none',
+    '[&_.tiptap]:outline-none',
+    // Placeholder styles
+    '[&_.tiptap_p.is-editor-empty:first-child::before]:text-input-contrast/50',
+    '[&_.tiptap_p.is-editor-empty:first-child::before]:pointer-events-none',
+    '[&_.tiptap_p.is-editor-empty:first-child::before]:float-left',
+    '[&_.tiptap_p.is-editor-empty:first-child::before]:h-0',
+    '[&_.tiptap_p.is-editor-empty:first-child::before]:italic',
+    '[&_.tiptap_p.is-editor-empty:first-child::before]:content-[attr(data-placeholder)]',
+  ),
+  variants: {
+    compact: {
+      // The text area is at least as tall as the toolbar above it, so the
+      // editor reads as two equal rows. The toolbar is a 40px icon button
+      // (`h-10`) between 8px of padding (`py-2`) on each side, and a 1px
+      // bottom border; the variable states those same terms. The single line
+      // sits in the middle of the row, and the whole row is the `.tiptap`
+      // element, so a click anywhere in it focuses the editor. Text that
+      // wraps still grows the row.
+      true: cx(
+        'w-full px-6',
+        '[--editable-min-h:calc(var(--spacing)*10+var(--spacing)*2*2+1px)]',
+        'min-h-(--editable-min-h)',
+        '[&_.tiptap]:grid [&_.tiptap]:min-h-(--editable-min-h) [&_.tiptap]:content-center',
+      ),
+      false: cx(multilineContentVariants(), '[&_.tiptap]:min-h-[120px]'),
+    },
+  },
+});
 
 type ToolbarOptions = {
   bold?: boolean;
@@ -705,6 +724,14 @@ type RichTextEditorFieldProps = CreateFormFieldProps<
      * made in this schema, so the toolbar does not offer one.
      */
     'singleLine'?: boolean;
+    /**
+     * For a field that holds a short label, not a prompt or a passage: the
+     * text area is one line tall, as tall as the toolbar above it, rather than
+     * the 120px box a multi-line editor opens at. Implies `singleLine`, since
+     * a compact multi-line editor makes no sense. `singleLine` alone changes
+     * only the value, never the height.
+     */
+    'compact'?: boolean;
     'id': string;
     'name': string;
     'aria-describedby': string;
@@ -757,12 +784,14 @@ export default function RichTextEditorField({
   changeMode = 'blur',
   autoFocus = false,
   placeholder,
-  singleLine = false,
+  singleLine: singleLineProp = false,
+  compact = false,
   className,
   onFocus,
   onBlur,
   ...props
 }: RichTextEditorFieldProps) {
+  const singleLine = singleLineProp || compact;
   const intl = useAppIntl();
   const onChangeRef = useRef(onChange);
   const changeModeRef = useRef(changeMode);
@@ -1199,7 +1228,10 @@ export default function RichTextEditorField({
         onBlur?.(event);
       }}
     >
-      <EditorContent editor={editor} className={editorContentStyles} />
+      <EditorContent
+        editor={editor}
+        className={editorContentVariants({ compact })}
+      />
       {hasToolbar && (
         <FieldUnavailableContext.Provider value={isDisabled}>
           <Toolbar.Root className={toolbarStyles}>

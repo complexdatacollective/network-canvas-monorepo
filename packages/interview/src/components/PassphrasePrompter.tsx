@@ -132,7 +132,7 @@ export default function PassphrasePrompter() {
   );
 }
 
-const PassphraseOverlay = ({
+export const PassphraseOverlay = ({
   handleSubmit,
   show,
   onClose,

@@ -113,31 +113,7 @@ export const messages = defineMessages({
     id: 'interview.narrativePedigree.zoomControls',
     defaultMessage: 'Zoom controls',
     description:
-      'Accessible name for the toolbar or button group that enlarges and reduces the family-tree view.',
-  },
-  zoomOut: {
-    id: 'interview.narrativePedigree.zoomOut',
-    defaultMessage: 'Zoom out',
-    description:
-      'Accessible action reducing the diagram magnification while preserving the view centre.',
-  },
-  zoomIn: {
-    id: 'interview.narrativePedigree.zoomIn',
-    defaultMessage: 'Zoom in',
-    description:
-      'Accessible action increasing the diagram magnification while preserving the view centre.',
-  },
-  viewportControls: {
-    id: 'interview.narrativePedigree.viewportControls',
-    defaultMessage: 'Viewport controls',
-    description:
-      'Accessible group name for controls that reset the diagram view rather than change family data.',
-  },
-  resetZoom: {
-    id: 'interview.narrativePedigree.resetZoom',
-    defaultMessage: 'Reset zoom',
-    description:
-      'Accessible action restoring default diagram magnification and recentering the scroll position.',
+      'Accessible name for the toolbar under the family tree with buttons that zoom out, zoom in and show the whole family.',
   },
   focusOn: {
     id: 'interview.narrativePedigree.focusOn',

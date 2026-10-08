@@ -1965,6 +1965,9 @@ const migrationV7toV8 = createMigration({
 
     return result as ProtocolDocument<8>;
   },
+  // Dropping a form stage with no fields moves every later stage up. The
+  // framework moves each session's stage records and resume position with
+  // their stages, so this step needs no session step of its own.
 });
 
 export default migrationV7toV8;

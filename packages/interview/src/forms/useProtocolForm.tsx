@@ -111,7 +111,7 @@ export default function useProtocolForm({
    * The participant-facing text for each variable this form asks about, for
    * the variable-comparison validators to name their target with. Shared with
    * the screens that render a field without going through this hook (a
-   * categorical "other" input, a quick-add popover, the pedigree's name field),
+   * categorical "other" input, a quick-add popover, the pedigree's side panel),
    * so one comparison rule reads the same way wherever it is asked — see
    * `buildVariableLabels` for what may and may not go in it.
    *
@@ -131,7 +131,7 @@ export default function useProtocolForm({
   const validationContext = useMemo<ValidationContext | null>(() => {
     if (!baseValidationContext) return null;
 
-    // Stages without a top-level subject (e.g. FamilyPedigree) leave
+    // Stages without a top-level subject (e.g. Information) leave
     // stageSubject null, which the context-dependent validators
     // (unique/sameAs/differentFrom/greaterThanVariable) dereference. When the
     // caller supplies a concrete subject for the rendered fields, use it as the

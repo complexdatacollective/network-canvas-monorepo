@@ -1,8 +1,32 @@
-import type { RelationshipType } from '@codaco/protocol-validation';
+/**
+ * The kind of a family link as the layout reads it: a partnership, or the kind
+ * of parent the link's source is to its target.
+ */
+export type PedigreeEdgeType =
+  | 'biological'
+  | 'social'
+  | 'adoptive'
+  | 'donor'
+  | 'surrogate'
+  | 'partner';
+
+/**
+ * One family link handed to the layout. Parent links run from the parent
+ * (`source`) to the child (`target`); partner links may run either way.
+ */
+export type PedigreeLink = {
+  source: string;
+  target: string;
+  kind: PedigreeEdgeType;
+  /** Partner links only: false draws the partnership as separated. */
+  isActive?: boolean;
+  /** Parent links only: this parent carried the pregnancy. */
+  isGestationalCarrier?: boolean;
+};
 
 export type ParentConnection = {
   parentIndex: number;
-  edgeType: RelationshipType;
+  edgeType: PedigreeEdgeType;
   isGestationalCarrier?: boolean;
 };
 
@@ -45,6 +69,9 @@ export type PedigreeLayout = {
   n: number[];
   nid: number[][]; // integer person indices (no .5)
   pos: number[][]; // optimized x-coordinates
+  /** Each person's family on the level above: the 1-based column of a
+   * couple's left partner, the negated 1-based column of a single parent, or
+   * 0 for none. */
   fam: number[][];
   group: number[][]; // replaces spouse: 0=none, >0=parent group membership
   twins: number[][] | null; // 0=none, 1=MZ, 2=DZ, 3=unknown
@@ -74,8 +101,9 @@ type ArcPath = {
 export type ParentGroupConnector = {
   type: 'parent-group';
   segment: LineSegment;
-  /** Vertical endpoint leads for a routed, non-adjacent partnership. */
-  endpointSegments?: [LineSegment, LineSegment];
+  /** Leads joining each partner to a routed partnership line: partners who
+   * are not side by side, or who sit on different rows. */
+  endpointSegments?: LineSegment[];
   double: boolean;
   isActive: boolean;
   doubleSegment?: LineSegment;
@@ -87,7 +115,7 @@ export type ParentGroupConnector = {
 
 export type ParentChildConnector = {
   type: 'parent-child';
-  edgeType: RelationshipType;
+  edgeType: PedigreeEdgeType;
   uplines: LineSegment[];
   siblingBar: LineSegment;
   parentLink: LineSegment[];
@@ -97,8 +125,7 @@ export type ParentChildConnector = {
 
 export type AuxiliaryConnector = {
   type: 'auxiliary';
-  // Relationship types plus a layout-only kind for parents with no partner.
-  edgeType: RelationshipType | 'unpartnered-parent';
+  edgeType: PedigreeEdgeType;
   segment: LineSegment;
   endpointIds?: [string | undefined, string | undefined];
 };

@@ -1,8 +1,11 @@
-import type { RelationshipType } from '@codaco/protocol-validation';
-
 import { kindepth } from './kindepth';
-import type { ParentConnection, PedigreeInput, PedigreeLayout } from './types';
-import { ancestor } from './utils';
+import type {
+  ParentConnection,
+  PedigreeInput,
+  PedigreeLayout,
+  PedigreeEdgeType,
+} from './types';
+import { ancestor, layerConstraints } from './utils';
 
 type PartnerGroup = {
   members: number[];
@@ -32,10 +35,10 @@ type PedigreeGraph = {
   familyUnits: FamilyUnit[];
   siblingGroups: SiblingGroup[];
   auxiliaryParents: Map<number, number[]>;
-  parentEdgeTypes: Map<string, RelationshipType>;
+  parentEdgeTypes: Map<string, PedigreeEdgeType>;
 };
 
-function isPrimaryEdge(edgeType: RelationshipType): boolean {
+function isPrimaryEdge(edgeType: PedigreeEdgeType): boolean {
   return (
     edgeType === 'biological' ||
     edgeType === 'social' ||
@@ -43,7 +46,7 @@ function isPrimaryEdge(edgeType: RelationshipType): boolean {
   );
 }
 
-function isAuxiliaryEdge(edgeType: RelationshipType): boolean {
+function isAuxiliaryEdge(edgeType: PedigreeEdgeType): boolean {
   return edgeType === 'donor' || edgeType === 'surrogate';
 }
 
@@ -180,33 +183,80 @@ function buildPedigreeGraph(ped: PedigreeInput): PedigreeGraph {
 
   const partnerGroups = [...groupMap.values()];
 
-  // 3b. Align partner group members to the same layer
+  // 3b. Settle layers. Each child sits below its primary parents (below all
+  // of its parents when it has none); partners share a layer; and a donor or
+  // surrogate sits no higher than the parents they contribute alongside.
+  // Descent always holds. Some families cannot have every alignment as well
+  // (someone partnered with their own grandchild), so each alignment is kept
+  // only if it leaves the constraints satisfiable — in order, partnerships
+  // first — and one that would need a person above their own descendant is
+  // dropped: its people then sit on different layers.
+  const { constrain, settle } = layerConstraints(n);
+  for (let i = 0; i < n; i++) {
+    const pConns = ped.parents[i]!;
+    const primary = pConns.filter((p) => isPrimaryEdge(p.edgeType));
+    for (const p of primary.length > 0 ? primary : pConns) {
+      constrain([[p.parentIndex, i]], 1);
+    }
+  }
   for (const group of partnerGroups) {
-    const maxLayer = Math.max(...group.members.map((m) => layers[m]!));
-    for (const m of group.members) {
-      layers[m] = maxLayer;
+    const [first, ...rest] = group.members;
+    for (const m of rest) {
+      constrain(
+        [
+          [first!, m],
+          [m, first!],
+        ],
+        0,
+      );
+    }
+  }
+  for (let i = 0; i < n; i++) {
+    const pConns = ped.parents[i]!;
+    for (const aux of pConns.filter((p) => isAuxiliaryEdge(p.edgeType))) {
+      for (const p of pConns.filter((q) => isPrimaryEdge(q.edgeType))) {
+        constrain([[p.parentIndex, aux.parentIndex]], 0);
+      }
+    }
+  }
+  settle(layers);
+
+  // 4. Build family units. A child belongs to a partner group when every
+  // member is one of its primary parents. A child with three or more primary
+  // parents can match several groups (its biological parents' couple, and a
+  // parent's partner who is a social parent); it descends from the group most
+  // strongly its parents — a social parent weighs less than a biological or
+  // adoptive one — and from the first such group on a tie.
+  const parentWeight = (edgeType: PedigreeEdgeType) =>
+    edgeType === 'social' ? 1 : 2;
+  const familyGroupOf = new Map<number, PartnerGroup>();
+  for (let i = 0; i < n; i++) {
+    const primaryEdges = ped.parents[i]!.filter((p) =>
+      isPrimaryEdge(p.edgeType),
+    );
+    let bestWeight = 0;
+    for (const group of partnerGroups) {
+      let weight = 0;
+      for (const member of group.members) {
+        const edge = primaryEdges.find((p) => p.parentIndex === member);
+        if (!edge) {
+          weight = 0;
+          break;
+        }
+        weight += parentWeight(edge.edgeType);
+      }
+      if (weight > bestWeight) {
+        bestWeight = weight;
+        familyGroupOf.set(i, group);
+      }
     }
   }
 
-  // 4. Build family units
   const familyUnits: FamilyUnit[] = [];
   for (const group of partnerGroups) {
     const children: number[] = [];
-
     for (let i = 0; i < n; i++) {
-      const pConns = ped.parents[i]!;
-      if (pConns.length === 0) continue;
-      const primaryParents = new Set(
-        pConns
-          .filter((p) => isPrimaryEdge(p.edgeType))
-          .map((p) => p.parentIndex),
-      );
-
-      // Child belongs to this family if all group members are among its primary parents
-      const allMatch = group.members.every((m) => primaryParents.has(m));
-      if (allMatch) {
-        children.push(i);
-      }
+      if (familyGroupOf.get(i) === group) children.push(i);
     }
 
     if (children.length > 0) {
@@ -264,7 +314,7 @@ function buildPedigreeGraph(ped: PedigreeInput): PedigreeGraph {
   }
 
   // 7. Store edge types
-  const parentEdgeTypes = new Map<string, RelationshipType>();
+  const parentEdgeTypes = new Map<string, PedigreeEdgeType>();
   for (let i = 0; i < n; i++) {
     for (const p of ped.parents[i]!) {
       parentEdgeTypes.set(`${p.parentIndex}-${i}`, p.edgeType);
@@ -308,6 +358,40 @@ function getParentsOf(node: number, graph: PedigreeGraph): number[] {
   return graph.parents[node]!.map((p) => p.parentIndex);
 }
 
+/**
+ * The people of a set of partnerships in an order that puts every couple
+ * side by side, when one exists: the partnerships must form a single chain,
+ * each person partnered with at most two others and no partnership closing a
+ * loop. The chain starts from its lower-indexed end. Returns null otherwise.
+ */
+function partnershipChain(
+  nodes: number[],
+  couples: number[][],
+): number[] | null {
+  const partnersOf = new Map<number, number[]>(nodes.map((n) => [n, []]));
+  for (const couple of couples) {
+    if (couple.length !== 2) return null;
+    const [a, b] = couple as [number, number];
+    if (!partnersOf.has(a) || !partnersOf.has(b)) continue;
+    partnersOf.get(a)!.push(b);
+    partnersOf.get(b)!.push(a);
+  }
+
+  const ends = nodes.filter((n) => partnersOf.get(n)!.length === 1);
+  if (ends.length !== 2 || nodes.some((n) => partnersOf.get(n)!.length > 2)) {
+    return null;
+  }
+
+  const chain = [Math.min(...ends)];
+  while (chain.length < nodes.length) {
+    const last = chain.at(-1)!;
+    const next = partnersOf.get(last)!.find((p) => !chain.includes(p));
+    if (next === undefined) return null;
+    chain.push(next);
+  }
+  return chain;
+}
+
 function buildConstraintBlocks(
   nodesOnLayer: number[],
   graph: PedigreeGraph,
@@ -349,6 +433,37 @@ function buildConstraintBlocks(
       (sp) => !inRealSibship.has(sp) && !assigned.has(sp),
     );
 
+  // The partnerships joining `nodes` to one another.
+  const couplesAmong = (nodes: number[]): number[][] =>
+    graph.partnerGroups
+      .filter((pg) => pg.members.every((m) => nodes.includes(m)))
+      .map((pg) => pg.members);
+
+  // People joined to `start` by partnerships, nearest first, among those
+  // `canJoin` admits. Only partnerships are followed, so a sibling comes along
+  // only when they are a partner on the way.
+  const partnersBeyond = (
+    start: number,
+    canJoin: (node: number) => boolean,
+  ): number[] => {
+    const seen = new Set([start]);
+    const found: number[] = [];
+    let frontier = [start];
+    while (frontier.length > 0) {
+      const next: number[] = [];
+      for (const node of frontier) {
+        for (const partner of spousesOf.get(node) ?? []) {
+          if (seen.has(partner) || !canJoin(partner)) continue;
+          seen.add(partner);
+          next.push(partner);
+        }
+      }
+      found.push(...next);
+      frontier = next;
+    }
+    return found;
+  };
+
   // 1. One block per real sibship: siblings in index order, with each married
   //    sibling's attachable spouse(s) beside it so couples stay adjacent while
   //    the sibship stays contiguous. A sibling that anchors TWO OR MORE marriages
@@ -356,10 +471,54 @@ function buildConstraintBlocks(
   //    spouse non-adjacent and silently drop that marriage line. A single spouse
   //    goes on the outer side (the leftmost sibling's to its left, later siblings'
   //    to their right) to keep the block compact.
+  //
+  //    When a spouse has partners of their own, the sibling's partnerships form
+  //    a chain; the whole chain joins the block in chain order, so no couple in
+  //    it is left outside to be split (a sibling at the end of the chain keeps
+  //    the rest of it on the outer side).
   for (const members of realSibships) {
     const siblings = members.toSorted((a, b) => a - b);
+    const siblingSet = new Set(siblings);
     const ordered: number[] = [];
     siblings.forEach((sib, idx) => {
+      // Placed already, as part of an earlier sibling's chain.
+      if (assigned.has(sib)) return;
+
+      // Everyone joined to this sibling by partnerships, through people
+      // outside any sibship and through its own siblings: a chain can leave
+      // the sibship and come back to it.
+      const group = new Set([sib]);
+      const toVisit = [sib];
+      while (toVisit.length > 0) {
+        for (const partner of spousesOf.get(toVisit.pop()!) ?? []) {
+          if (group.has(partner) || assigned.has(partner)) continue;
+          if (inRealSibship.has(partner) && !siblingSet.has(partner)) continue;
+          group.add(partner);
+          toVisit.push(partner);
+        }
+      }
+      const groupNodes = [...group];
+      const chain =
+        groupNodes.length > 2
+          ? partnershipChain(groupNodes, couplesAmong(groupNodes))
+          : null;
+      if (chain) {
+        for (const node of chain) assigned.add(node);
+        const atEnd = chain[0] === sib || chain.at(-1) === sib;
+        const endingAtSibling = chain[0] === sib ? chain.toReversed() : chain;
+        const holdsOtherSiblings = chain.some(
+          (node) => node !== sib && siblingSet.has(node),
+        );
+        if (!atEnd || holdsOtherSiblings) {
+          ordered.push(...chain);
+        } else if (idx === 0) {
+          ordered.push(...endingAtSibling);
+        } else {
+          ordered.push(...endingAtSibling.toReversed());
+        }
+        return;
+      }
+
       const spouses = attachableSpouses(sib).toSorted((a, b) => a - b);
       assigned.add(sib);
       for (const sp of spouses) assigned.add(sp);
@@ -383,28 +542,38 @@ function buildConstraintBlocks(
   // Put the partnered member of the left block at its right boundary and the
   // partnered member of the right block at its left boundary. The combined
   // block can still move or reverse as one unit during crossing minimization.
-  // If an anchor already has a partner inside its block, carry that partner with
-  // it so a two-partnership chain remains contiguous around the anchor.
+  // If an anchor already has partners inside its block, carry them with it,
+  // nearest first, so a chain of partnerships remains contiguous from the
+  // anchor inward.
   const movePartnerAnchorToBoundary = (
     nodes: number[],
     anchor: number,
     boundary: 'left' | 'right',
   ): number[] => {
-    const partnersInBlock = graph.partnerGroups
-      .filter((pg) => pg.members.includes(anchor))
-      .flatMap((pg) => pg.members.filter((member) => member !== anchor))
-      .filter(
-        (partner, index, partners) =>
-          nodes.includes(partner) && partners.indexOf(partner) === index,
+    // Each of the anchor's partners in the block leads one arm of its chain:
+    // the partner, then everyone beyond them, nearest first. Arms are kept
+    // whole and placed one after another, so the only partnership drawn apart
+    // is between the anchor and a second arm, which it cannot sit beside once
+    // it is on the boundary.
+    const carried = new Set([anchor]);
+    const arms: number[][] = [];
+    for (const partner of spousesOf.get(anchor) ?? []) {
+      if (!nodes.includes(partner) || carried.has(partner)) continue;
+      carried.add(partner);
+      const beyond = partnersBeyond(
+        partner,
+        (node) => nodes.includes(node) && !carried.has(node),
       );
-    const boundaryNodes = new Set([anchor, ...partnersInBlock]);
-    const remaining = nodes.filter((node) => !boundaryNodes.has(node));
+      for (const node of beyond) carried.add(node);
+      arms.push([partner, ...beyond]);
+    }
+    const remaining = nodes.filter((node) => !carried.has(node));
 
     if (boundary === 'left') {
-      return [anchor, ...partnersInBlock, ...remaining];
+      return [anchor, ...arms.flat(), ...remaining];
     }
 
-    return [...remaining, ...partnersInBlock, anchor];
+    return [...remaining, ...arms.flat().toReversed(), anchor];
   };
 
   for (const pg of graph.partnerGroups) {
@@ -485,7 +654,22 @@ function buildConstraintBlocks(
     const anchors = blockNodes.filter(
       (n) => (nodeToPartnerGroups.get(n)?.length ?? 0) > 1,
     );
-    if (anchors.length === 1) {
+    // Two or more anchors form a chain (a participant between a former and a
+    // current partner, the current partner beside their own former partner).
+    // Index order would split a couple, so follow the chain instead.
+    const chain =
+      anchors.length > 1
+        ? partnershipChain(
+            blockNodes,
+            [...graph.partnerGroups.entries()]
+              .filter(([gi]) => eligible.has(gi))
+              .map(([, pg]) => pg.members),
+          )
+        : null;
+    if (chain) {
+      for (const n of chain) assigned.add(n);
+      blocks.push({ nodes: chain, barycenter: 0 });
+    } else if (anchors.length === 1) {
       const anchor = anchors[0]!;
       const others = blockNodes.filter((n) => n !== anchor);
       const half = Math.floor(others.length / 2);
@@ -540,10 +724,26 @@ function buildConstraintBlocks(
       const rightPos = Math.max(...couplePositions);
       const distToLeftEdge = leftPos;
       const distToRightEdge = targetBlock.nodes.length - 1 - rightPos;
+      // Never seat it between two partners: when the couple sits inside a
+      // chain of partnerships, go out past the end of the chain.
+      const nodes = targetBlock.nodes;
+      const partnered = (a: number, b: number) =>
+        (spousesOf.get(a) ?? []).includes(b);
       if (distToRightEdge <= distToLeftEdge) {
-        targetBlock.nodes.splice(rightPos + 1, 0, aux);
+        let end = rightPos;
+        while (
+          end + 1 < nodes.length &&
+          partnered(nodes[end]!, nodes[end + 1]!)
+        ) {
+          end++;
+        }
+        nodes.splice(end + 1, 0, aux);
       } else {
-        targetBlock.nodes.splice(leftPos, 0, aux);
+        let start = leftPos;
+        while (start > 0 && partnered(nodes[start - 1]!, nodes[start]!)) {
+          start--;
+        }
+        nodes.splice(start, 0, aux);
       }
       assigned.add(aux);
     }
@@ -1289,32 +1489,43 @@ function encodePedigreeLayout(
       }
 
       if (parentsAbove.length >= 2) {
-        // Find partner group containing these parents
+        // The partner group the child descends from (see buildPedigreeGraph)
         const parentSet = new Set(parentsAbove);
+        const pg = graph.familyUnits.find(
+          (fu) =>
+            fu.children.includes(node) &&
+            fu.parentGroup.members.length > 1 &&
+            fu.parentGroup.members.every((m) => parentSet.has(m)),
+        )?.parentGroup;
+        // A family is its leftmost partner's column, and the connectors take
+        // the person beside them as the other partner, so only a couple sitting
+        // side by side can be named. A couple that could not be seated
+        // together (one of three partnerships, say) gets no family: each
+        // parent is then joined to the child directly, rather than the line of
+        // descent coming from whichever partnership sits beside the left one.
         let famCol = 0;
-        for (const pg of graph.partnerGroups) {
-          if (pg.members.every((m) => parentSet.has(m))) {
-            // Find leftmost member of this group in the layer above
-            let leftCol = Number.POSITIVE_INFINITY;
-            for (const m of pg.members) {
-              const loc = nodeLocation.get(m);
-              if (loc?.layer === layer - 1 && loc.col < leftCol) {
-                leftCol = loc.col;
-              }
-            }
-            if (leftCol < Number.POSITIVE_INFINITY) {
-              famCol = leftCol + 1; // 1-based
-            }
-            break;
+        if (pg) {
+          const cols = pg.members
+            .map((m) => nodeLocation.get(m))
+            .filter((loc) => loc?.layer === layer - 1)
+            .map((loc) => loc!.col);
+          const leftCol = Math.min(...cols);
+          if (
+            cols.length === pg.members.length &&
+            Math.max(...cols) - leftCol === cols.length - 1
+          ) {
+            famCol = leftCol + 1; // 1-based
           }
         }
         layerFam.push(famCol);
       } else {
-        // Single parent
+        // Single parent: the negated column, so the parent's own children
+        // stay apart from any they have with a partner (keyed by the
+        // couple's left column).
         const parentIdx = parentsAbove[0]!;
         const parentLoc = nodeLocation.get(parentIdx);
         if (parentLoc) {
-          layerFam.push(parentLoc.col + 1); // 1-based
+          layerFam.push(-(parentLoc.col + 1)); // 1-based, negated
         } else {
           layerFam.push(0);
         }

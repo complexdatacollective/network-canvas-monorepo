@@ -1,36 +1,30 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  DEFAULT_FINISH_SESSION_TEXT,
-  stageSchema,
-} from '@codaco/protocol-validation';
+import { stageSchema } from '@codaco/protocol-validation';
 
-import type { ProtocolLocalization } from '../../localization/localizedText.ts';
 import { STAGE_TYPES } from '../../stage-types.ts';
-import { getInterfaceDefaults, getInterfaceTemplate } from '../templates.ts';
-
-const ENGLISH: ProtocolLocalization = { defaultLocale: 'en', locales: ['en'] };
+import { getInterfaceTemplate } from '../templates.ts';
 
 describe('getInterfaceTemplate', () => {
   it('answers with a template object for every stage type', () => {
     expect(STAGE_TYPES.length).toBeGreaterThan(0);
     for (const stageType of STAGE_TYPES) {
-      const template = getInterfaceTemplate(stageType, ENGLISH);
+      const template = getInterfaceTemplate(stageType);
       expect(template, stageType).toBeTypeOf('object');
       expect(Array.isArray(template), stageType).toBe(false);
     }
   });
 
   it('answers with an empty template for an interface that authors no defaults', () => {
-    expect(getInterfaceTemplate('NameGenerator', ENGLISH)).toEqual({});
+    expect(getInterfaceTemplate('NameGenerator')).toEqual({});
     // The three form interfaces used to be listed in the map holding `{}`,
     // which reads as a template whose contents went missing rather than as an
     // interface with no defaults to give. They are unlisted now, and answer
     // the same thing. What they still need is the subject of the second
     // describe below.
-    expect(getInterfaceTemplate('AlterForm', ENGLISH)).toEqual({});
-    expect(getInterfaceTemplate('AlterEdgeForm', ENGLISH)).toEqual({});
-    expect(getInterfaceTemplate('EgoForm', ENGLISH)).toEqual({});
+    expect(getInterfaceTemplate('AlterForm')).toEqual({});
+    expect(getInterfaceTemplate('AlterEdgeForm')).toEqual({});
+    expect(getInterfaceTemplate('EgoForm')).toEqual({});
   });
 
   /**
@@ -42,15 +36,15 @@ describe('getInterfaceTemplate', () => {
    * because the template seeds `true`.
    */
   it('seeds the layout and consideration behaviours their interfaces are designed around', () => {
-    expect(getInterfaceTemplate('Narrative', ENGLISH)).toEqual({
+    expect(getInterfaceTemplate('Narrative')).toEqual({
       behaviours: { allowRepositioning: true, automaticLayout: true },
       background: { concentricCircles: 4, skewedTowardCenter: false },
     });
-    expect(getInterfaceTemplate('NetworkComposer', ENGLISH)).toEqual({
+    expect(getInterfaceTemplate('NetworkComposer')).toEqual({
       behaviours: { automaticLayout: true },
       background: { concentricCircles: 4, skewedTowardCenter: false },
     });
-    expect(getInterfaceTemplate('OneToManyDyadCensus', ENGLISH)).toEqual({
+    expect(getInterfaceTemplate('OneToManyDyadCensus')).toEqual({
       behaviours: { removeAfterConsideration: true },
     });
   });
@@ -67,75 +61,37 @@ describe('getInterfaceTemplate', () => {
       'Narrative',
       'NetworkComposer',
     ] as const) {
-      expect(
-        getInterfaceTemplate(stageType, ENGLISH).background,
-        stageType,
-      ).toEqual({
+      expect(getInterfaceTemplate(stageType).background, stageType).toEqual({
         concentricCircles: 4,
         skewedTowardCenter: false,
       });
     }
   });
 
-  it('seeds the pedigree interfaces with their framing, boundaries and intro copy', () => {
-    const familyPedigree = getInterfaceTemplate('FamilyPedigree', ENGLISH);
-    expect(familyPedigree.framing).toEqual({ mode: 'fixed', value: 'gamete' });
-    expect(familyPedigree.boundaries).toEqual({
-      requireGrandparents: 'off',
-      requireChildrenContributors: 'off',
-    });
-    // The intro screen is a content list, so assert its shape rather than
-    // restating the researcher-facing copy here.
-    // Written in the protocol's default language, for the researcher to
-    // translate into the others.
-    expect(familyPedigree.introScreen).toEqual({
-      items: [
-        {
-          id: 'intro-text',
-          type: 'text',
-          content: { en: expect.stringMatching(/\S/) },
-        },
-      ],
-    });
+  /**
+   * The prompt is the researcher's wording to the participant, so a new
+   * pedigree stage starts without one and cannot be saved until it has one.
+   */
+  it('leaves the family pedigree prompt for the researcher to write', () => {
+    expect(getInterfaceTemplate('FamilyPedigree')).not.toHaveProperty('prompt');
+    expect(getInterfaceTemplate('FamilyPedigree')).toEqual({});
+  });
 
-    expect(getInterfaceTemplate('NarrativePedigree', ENGLISH)).toEqual({
+  /**
+   * A narrative pedigree starts reading no pedigree and drawing no disease,
+   * with the probabilistic markers off until a researcher asks for them.
+   */
+  it('starts a narrative pedigree with no source, no diseases, and the at-risk markers off', () => {
+    expect(getInterfaceTemplate('NarrativePedigree')).toEqual({
       sourceStageId: '',
       diseases: [],
       showAtRiskStatuses: false,
     });
   });
 
-  it('seeds a finish screen with the supplied closing text in each language that has it, ending as completed', () => {
-    expect(
-      getInterfaceTemplate('FinishSession', {
-        defaultLocale: 'en',
-        locales: ['en', 'fr', 'ja'],
-      }),
-    ).toEqual({
+  it('starts a finish screen as completed', () => {
+    expect(getInterfaceTemplate('FinishSession')).toEqual({
       outcome: 'completed',
-      title: {
-        en: DEFAULT_FINISH_SESSION_TEXT.en.title,
-        fr: DEFAULT_FINISH_SESSION_TEXT.fr.title,
-      },
-      content: {
-        en: DEFAULT_FINISH_SESSION_TEXT.en.content,
-        fr: DEFAULT_FINISH_SESSION_TEXT.fr.content,
-      },
-    });
-    expect(getInterfaceDefaults('FinishSession')).toEqual({
-      outcome: 'completed',
-    });
-  });
-});
-
-describe('getInterfaceDefaults', () => {
-  it('holds a template’s defaults without the copy it seeds', () => {
-    expect(getInterfaceDefaults('FamilyPedigree')).toEqual({
-      framing: { mode: 'fixed', value: 'gamete' },
-      boundaries: {
-        requireGrandparents: 'off',
-        requireChildrenContributors: 'off',
-      },
     });
   });
 });
@@ -164,9 +120,15 @@ const STILL_NEEDED: Readonly<Record<string, readonly string[]>> = {
   CategoricalBin: ['prompts', 'subject'],
   DyadCensus: ['introductionPanel', 'prompts', 'subject'],
   EgoForm: ['form', 'introductionPanel'],
-  FamilyPedigree: ['censusPrompt', 'edgeConfig', 'nodeConfig'],
-  // Its closing text is supplied, so a name is all it needs.
-  FinishSession: [],
+  FamilyPedigree: [
+    'edgeConfiguration',
+    'nodeConfiguration',
+    'prompt',
+    'subject',
+  ],
+  // Its closing text is supplied when Architect adds it to a protocol, in
+  // each of the protocol's languages; the template holds only the outcome.
+  FinishSession: ['content', 'title'],
   Geospatial: ['mapOptions', 'prompts', 'subject'],
   Information: ['items', 'title'],
   // Its choices are the protocol's own languages, so a name is all it needs.
@@ -175,9 +137,6 @@ const STILL_NEEDED: Readonly<Record<string, readonly string[]>> = {
   NameGeneratorQuickAdd: ['prompts', 'quickAdd', 'subject'],
   NameGeneratorRoster: ['dataSource', 'prompts', 'subject'],
   Narrative: ['presets', 'subject'],
-  // Its template DOES set `diseases: []`, and the schema wants at least one —
-  // so this key is present and still refused, which is a different thing from
-  // the absences above and worth being able to tell apart.
   NarrativePedigree: ['diseases'],
   NetworkComposer: ['layoutVariable', 'quickAdd', 'subject'],
   OneToManyDyadCensus: ['prompts', 'subject'],
@@ -189,12 +148,12 @@ const STILL_NEEDED: Readonly<Record<string, readonly string[]>> = {
 /**
  * A new stage of `type`, exactly as a stage editor mounts one, plus a name.
  *
- * `CreatingStage` mounts its form on `{ ...getInterfaceTemplate(type, ENGLISH) }` and
+ * `CreatingStage` mounts its form on `{ ...getInterfaceTemplate(type) }` and
  * submits it through `stageDocument`, which stamps the identity — so this is
  * that composition with nothing in between.
  */
 const newStage = (type: (typeof STAGE_TYPES)[number]) => ({
-  ...getInterfaceTemplate(type, ENGLISH),
+  ...getInterfaceTemplate(type),
   type,
   id: 'stage-1',
   label: { en: 'A new stage' },
@@ -223,7 +182,7 @@ describe('a new stage given nothing but a name', () => {
    */
   it.each(STAGE_TYPES)('is the %s template under its stage type', (type) => {
     const { id: _id, label: _label, ...seeded } = newStage(type);
-    expect(seeded).toEqual({ ...getInterfaceTemplate(type, ENGLISH), type });
+    expect(seeded).toEqual({ ...getInterfaceTemplate(type), type });
   });
 
   it.each(STAGE_TYPES)('still needs the listed properties on %s', (type) => {
@@ -234,16 +193,17 @@ describe('a new stage given nothing but a name', () => {
    * Stated once, plainly, because it is what a reader of the list above would
    * otherwise have to work out by scanning it. The day another interface can
    * be saved straight from its template, this fails and someone reads the
-   * list. The language chooser and the finish screen are the exceptions: one
-   * has nothing to configure beyond its name, and the other starts with the
-   * closing text Network Canvas supplies.
+   * list. The language chooser is the exception: it has nothing to configure
+   * beyond its name. (A finish screen is never made from its template:
+   * Architect adds it to a new protocol with the closing text Network Canvas
+   * supplies.)
    */
-  it('is a saveable stage only for the finish screen and the language chooser', () => {
+  it('is a saveable stage only for the language chooser', () => {
     const saveable = STAGE_TYPES.filter(
       (type) => stageSchema.safeParse(newStage(type)).success,
     );
 
-    expect(saveable).toEqual(['FinishSession', 'LanguageChooser']);
+    expect(saveable).toEqual(['LanguageChooser']);
   });
 
   /**

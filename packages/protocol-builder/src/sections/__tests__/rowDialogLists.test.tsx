@@ -4,8 +4,6 @@ import { describe, expect, it } from 'vitest';
 
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
-import { familyPedigreeStageWith } from '../../editors/family-pedigree/sections/__tests__/pedigreeFixtures.tsx';
-import NominationPromptsSection from '../../editors/family-pedigree/sections/NominationPromptsSection.tsx';
 import type { RowValues } from '../../form/rowDialog.tsx';
 import { translationText } from '../../localization/localizedText.ts';
 import { attributeField } from '../../testing/attributePicker.ts';
@@ -250,24 +248,6 @@ const lists: readonly ListCase[] = [
         },
       },
       sections: <FormFieldsSection subject="node" />,
-    }),
-  },
-  {
-    list: 'the questions a pedigree asks about everybody',
-    noun: 'nomination prompt',
-    addLabel: 'Create new nomination prompt',
-    read: rowsAt('nominationPrompts'),
-    row: (id, text) => ({ id, text: en(text), variable: 'hasConditionX' }),
-    label: (row) => englishOf(row.text),
-    write: typeInto('Prompt text'),
-    // Every nomination prompt writes one attribute, and the picker is where it
-    // comes from.
-    complete: async (harness, dialog) => {
-      await choosePickerOption(harness, dialog, 'hasConditionX');
-    },
-    open: (rows) => ({
-      stage: familyPedigreeStageWith({ nominationPrompts: rows }),
-      sections: <NominationPromptsSection />,
     }),
   },
 ];

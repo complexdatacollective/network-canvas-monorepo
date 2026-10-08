@@ -42,7 +42,7 @@ import {
 
 const LABEL_FIELD = 'label';
 const COLOR_FIELD = 'color';
-const VARIABLE_FIELD = 'variable';
+const ATTRIBUTE_FIELD = 'attribute';
 const INHERITANCE_FIELD = 'inheritancePattern';
 const SOURCE_FIELD = 'sourceStageId';
 const DISEASES_FIELD = 'diseases';
@@ -92,7 +92,7 @@ const siblingVariables = (
   const used = new Set<string>();
   rows.forEach((row, index) => {
     if (index === editIndex || !isRecord(row)) return;
-    if (typeof row.variable === 'string') used.add(row.variable);
+    if (typeof row.attribute === 'string') used.add(row.attribute);
   });
   return used;
 };
@@ -132,7 +132,7 @@ export function DiseaseEditor({ item, editIndex }: RowEditorProps) {
   const subject = useDiseaseSubject();
   const sourceStageId = useStageValue(SOURCE_FIELD);
   const rows = useStageValue(DISEASES_FIELD);
-  const currentVariable = asString(item.variable);
+  const currentVariable = asString(item.attribute);
 
   // Both lists are the same every render, and both are a control's `options`:
   // a fresh array each time re-registers the control on every keystroke.
@@ -213,7 +213,7 @@ export function DiseaseEditor({ item, editIndex }: RowEditorProps) {
         )}
       />
       <Field<typeof VariablePickerField>
-        name={VARIABLE_FIELD}
+        name={ATTRIBUTE_FIELD}
         component={VariablePickerField}
         label={intl.formatMessage(
           narrativePedigreeMessages.diseaseVariableLabel,
@@ -289,7 +289,7 @@ export function DiseasePreview({ item }: RowPreviewProps) {
     slotMap,
     subject,
     sourceStageId,
-    variableId: item.variable,
+    variableId: item.attribute,
   });
   // Narrowed against the palette rather than cast: a stored colour the theme
   // no longer defines loses its swatch, and the row still reads.
