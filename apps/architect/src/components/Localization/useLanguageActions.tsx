@@ -14,14 +14,14 @@ import {
 import { useAppDispatch, useAppStore } from '~/ducks/hooks';
 import {
   addProtocolLocales,
-  identifyProtocolLocale,
+  relabelProtocolDefaultLocale,
   removeProtocolLocale,
 } from '~/ducks/modules/activeProtocol';
 import {
   getLocaleRemovalImpact,
-  identifiedLocale,
   type LocaleRemovalImpact,
   type LocalizedStringRewrite,
+  relabelledLocale,
   withoutLocale,
 } from '~/ducks/modules/protocol/localeOperations';
 import { getProtocol } from '~/selectors/protocol';
@@ -56,42 +56,49 @@ const messages = defineMessages({
     defaultMessage: 'Languages',
     description: 'Label of the searchable list of languages to add.',
   },
-  identifyTitle: {
-    id: 'architect.localization.languageActions.identifyTitle',
-    defaultMessage: 'Identify the language of your text',
+  relabelTitle: {
+    id: 'architect.localization.languageActions.relabelTitle',
+    defaultMessage: 'Relabel the {language} text',
     description:
-      'Title of the dialog that names the language of text whose language has not been identified.',
+      'Title of the dialog that marks every text written in the protocol’s default language as written in another language. language is the current default language’s name.',
   },
-  identifyDescription: {
-    id: 'architect.localization.languageActions.identifyDescription',
+  relabelDescription: {
+    id: 'architect.localization.languageActions.relabelDescription',
     defaultMessage:
-      'This protocol’s text is marked as an unidentified language, because the protocol does not record which language it is written in. Choose the language it is written in. Nothing is translated or deleted.',
+      'Use this when the text marked as {language} is really written in another language, as it can be in a protocol upgraded from an earlier version of Network Canvas, whose text was assumed to be English. Every text marked as {language} will be marked as the language you choose, which becomes the default language. Nothing is translated or deleted.',
     description:
-      'Explanation in the dialog that names the language of text whose language has not been identified.',
+      'Explanation in the dialog that marks every text written in the protocol’s default language as written in another language: when to use it and what it does. language is the current default language’s name.',
   },
   languageLabel: {
     id: 'architect.localization.languageActions.languageLabel',
     defaultMessage: 'Language',
     description:
-      'Label of the list of languages in the dialog that identifies the language of unidentified text.',
+      'Label of the list of languages in the dialog that marks the text of the protocol’s default language as written in another language.',
+  },
+  relabelHint: {
+    id: 'architect.localization.languageActions.relabelHint',
+    defaultMessage:
+      'The protocol’s other languages are not listed. To make one of them the default instead, choose it as the default language.',
+    description:
+      'Hint under the list of languages in the dialog that marks the text of the protocol’s default language as written in another language, shown when the protocol has other languages. Those languages cannot be chosen, because their translations would collide.',
   },
   chooseALanguage: {
     id: 'architect.localization.languageActions.chooseALanguage',
     defaultMessage: 'Choose a language',
     description:
-      'Placeholder of the list of languages that unidentified text can be identified as.',
+      'Placeholder of the list of languages that the text of the protocol’s default language can be marked as.',
   },
   chooseOne: {
     id: 'architect.localization.languageActions.chooseOne',
     defaultMessage: 'Choose a language.',
     description:
-      'Error when the dialog that identifies the language of unidentified text is submitted without a language.',
+      'Error when the dialog that marks the text of the protocol’s default language as written in another language is submitted without a language.',
   },
-  identifySubmit: {
-    id: 'architect.localization.languageActions.identifySubmit',
-    defaultMessage: 'Identify language',
+  relabelSubmit: {
+    id: 'architect.localization.languageActions.relabelSubmit',
+    defaultMessage: 'Relabel text',
     description:
-      'Submit button of the dialog that names the language of text whose language has not been identified.',
+      'Submit button of the dialog that marks every text written in the protocol’s default language as written in another language.',
   },
   removeTitle: {
     id: 'architect.localization.languageActions.removeTitle',
@@ -214,50 +221,65 @@ export const useLanguageActions = (
   }, [availableChoices, declared, dispatch, finalFocus, intl, openDialog]);
 
   /**
-   * Names the language of a protocol's unidentified text, the only language
-   * that can be renamed.
+   * Marks the text of the default language as written in another language,
+   * one the protocol does not have yet, without translating anything.
    */
-  const identifyLanguage = useCallback(async () => {
-    if (!declared) return;
-    const values = await openDialog({
-      type: 'form',
-      title: intl.formatMessage(messages.identifyTitle),
-      description: intl.formatMessage(messages.identifyDescription),
-      submitLabel: intl.formatMessage(messages.identifySubmit),
-      finalFocus,
-      children: (
-        <Field<typeof NativeSelectField>
-          name="language"
-          label={intl.formatMessage(messages.languageLabel)}
-          component={NativeSelectField}
-          placeholder={intl.formatMessage(messages.chooseALanguage)}
-          options={availableChoices(declared).map((choice) => ({
-            value: choice.locale,
-            label: languageOptionText(intl, choice),
-          }))}
-          required={intl.formatMessage(messages.chooseOne)}
-        />
-      ),
-    });
-    if (!values) return;
-    const tag = values.language;
-    if (typeof tag !== 'string') return;
-    const before = declaredNow() ?? [];
-    dispatch(identifyProtocolLocale({ locale: tag }));
-    // The language as the protocol now declares it, which is the tag after
-    // canonicalisation, and nothing at all if the change was refused.
-    const to = declaredNow()?.find((locale) => !before.includes(locale));
-    if (to !== undefined) rewriteDraft?.(identifiedLocale(to));
-  }, [
-    availableChoices,
-    declared,
-    declaredNow,
-    dispatch,
-    finalFocus,
-    intl,
-    openDialog,
-    rewriteDraft,
-  ]);
+  const relabelDefaultLanguage = useCallback(
+    async (returnFocus?: ReturnFocus) => {
+      if (!protocol || !declared) return;
+      const from = protocol.localization.defaultLocale;
+      const language = languageName(from);
+      const values = await openDialog({
+        type: 'form',
+        title: intl.formatMessage(messages.relabelTitle, { language }),
+        description: intl.formatMessage(messages.relabelDescription, {
+          language,
+        }),
+        submitLabel: intl.formatMessage(messages.relabelSubmit),
+        finalFocus: focusAfter(returnFocus),
+        children: (
+          <Field<typeof NativeSelectField>
+            name="language"
+            label={intl.formatMessage(messages.languageLabel)}
+            hint={
+              declared.length > 1
+                ? intl.formatMessage(messages.relabelHint)
+                : undefined
+            }
+            component={NativeSelectField}
+            placeholder={intl.formatMessage(messages.chooseALanguage)}
+            options={availableChoices(declared).map((choice) => ({
+              value: choice.locale,
+              label: languageOptionText(intl, choice),
+            }))}
+            required={intl.formatMessage(messages.chooseOne)}
+          />
+        ),
+      });
+      if (!values) return;
+      const tag = values.language;
+      if (typeof tag !== 'string') return;
+      dispatch(relabelProtocolDefaultLocale({ locale: tag }));
+      // The language as the protocol now records it, which is the tag after
+      // canonicalisation; unchanged if the change was refused.
+      const to = getProtocol(store.getState())?.localization.defaultLocale;
+      if (to !== undefined && to !== from) {
+        rewriteDraft?.(relabelledLocale(from, to));
+      }
+    },
+    [
+      availableChoices,
+      declared,
+      dispatch,
+      focusAfter,
+      intl,
+      languageName,
+      openDialog,
+      protocol,
+      rewriteDraft,
+      store,
+    ],
+  );
 
   const removeLanguage = useCallback(
     async (locale: LocaleTag, returnFocus?: ReturnFocus) => {
@@ -294,5 +316,10 @@ export const useLanguageActions = (
     ],
   );
 
-  return { addLanguages, identifyLanguage, removeLanguage, removalImpact };
+  return {
+    addLanguages,
+    relabelDefaultLanguage,
+    removeLanguage,
+    removalImpact,
+  };
 };

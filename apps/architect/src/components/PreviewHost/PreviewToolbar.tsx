@@ -9,8 +9,6 @@ import {
   type LocaleTag,
   sortByLanguageName,
 } from '@codaco/protocol-validation';
-import { useLanguageName } from '~/components/Localization/useLanguageName';
-import { UNSPECIFIED_LOCALE } from '~/utils/localizedText';
 
 const messages = defineMessages({
   previewLanguage: {
@@ -41,18 +39,11 @@ export default function PreviewToolbar({
 }: PreviewToolbarProps) {
   const intl = useAppIntl();
   const selectId = useId();
-  const languageName = useLanguageName();
-
-  // `und` has no name of its own, so its label is written in Architect's
-  // language and keeps the page's `lang`.
-  const optionName = (option: LocaleMetadata) =>
-    option.locale === UNSPECIFIED_LOCALE
-      ? languageName(option.locale)
-      : option.label;
-  const optionLabel = (option: LocaleMetadata): PresentationalText =>
-    option.locale === UNSPECIFIED_LOCALE
-      ? optionName(option)
-      : { text: option.label, lang: option.locale, dir: option.direction };
+  const optionLabel = (option: LocaleMetadata): PresentationalText => ({
+    text: option.label,
+    lang: option.locale,
+    dir: option.direction,
+  });
 
   return (
     <header className="border-outline bg-surface text-surface-contrast flex shrink-0 flex-wrap items-center justify-end gap-x-3 gap-y-1 border-b px-4 py-2">
@@ -63,12 +54,14 @@ export default function PreviewToolbar({
         id={selectId}
         size="sm"
         className="w-auto"
-        options={sortByLanguageName(options, optionName, intl.locale).map(
-          (option) => ({
-            value: option.locale,
-            label: optionLabel(option),
-          }),
-        )}
+        options={sortByLanguageName(
+          options,
+          (option) => option.label,
+          intl.locale,
+        ).map((option) => ({
+          value: option.locale,
+          label: optionLabel(option),
+        }))}
         value={value}
         // A protocol with one language has nothing to switch to; the control
         // still names the language the preview is in.

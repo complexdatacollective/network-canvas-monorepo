@@ -30,20 +30,46 @@ const trilingual: CurrentProtocol = {
   ],
 };
 
-// Its language is not recorded (as in a protocol made in Studio), so its
-// text is marked as the unidentified language.
+// Upgraded from schema 8, so its text was taken to be English, though it is
+// written in French.
 const migrated: CurrentProtocol = {
   ...trilingual,
-  localization: { defaultLocale: 'und', locales: ['und'] },
+  localization: { defaultLocale: 'en', locales: ['en'] },
   stages: [
     {
       id: 'welcome',
       type: 'Information',
-      label: { und: 'Welcome' },
-      title: { und: 'Hello' },
+      label: { en: 'Bienvenue' },
+      title: { en: 'Bonjour' },
       items: [],
     },
   ],
+};
+
+type DialogOptions = {
+  title?: unknown;
+  description?: unknown;
+  submitLabel?: unknown;
+  finalFocus?: unknown;
+  children?: unknown;
+};
+
+/** The props of the language field the relabel dialog asks with. */
+const relabelFieldProps = (options: DialogOptions | undefined) => {
+  const field = options?.children;
+  if (
+    typeof field !== 'object' ||
+    field === null ||
+    !('props' in field) ||
+    typeof field.props !== 'object' ||
+    field.props === null
+  ) {
+    throw new Error('The dialog asks for no language');
+  }
+  return field.props as {
+    hint?: unknown;
+    options?: { value: string; label: string }[];
+  };
 };
 
 const DEFAULT_REASON =
@@ -241,30 +267,63 @@ describe('LanguageList', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('identifies the language of unidentified text from its notice', async () => {
+  it('relabels the default language’s text as another language, in one change', async () => {
     const { store } = renderLanguageList(migrated);
     const { openDialog } = globalThis.__architectDialogMocks;
-    openDialog.mockResolvedValueOnce({ language: 'en' });
+    openDialog.mockResolvedValueOnce({ language: 'fr' });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Identify language' }));
+    const relabel = screen.getByRole('button', {
+      name: 'Relabel default language',
+    });
+    fireEvent.click(relabel);
 
     await vi.waitFor(() => expect(openDialog).toHaveBeenCalledOnce());
-    expect(openDialog.mock.lastCall?.[0]).toMatchObject({
-      title: 'Identify the language of your text',
-      submitLabel: 'Identify language',
+    const options: DialogOptions | undefined = openDialog.mock.lastCall?.[0];
+    expect(options).toMatchObject({
+      title: 'Relabel the English text',
+      submitLabel: 'Relabel text',
     });
+    expect(options?.description).toEqual(
+      expect.stringContaining('Nothing is translated or deleted.'),
+    );
+    expect(relabelFieldProps(options).hint).toBeUndefined();
     await vi.waitFor(() =>
       expect(getProtocol(store.getState())?.localization).toEqual({
-        defaultLocale: 'en',
-        locales: ['en'],
+        defaultLocale: 'fr',
+        locales: ['fr'],
       }),
     );
-    expect(getProtocol(store.getState())?.stages[0]?.label).toEqual({
-      en: 'Welcome',
+    expect(getProtocol(store.getState())?.stages[0]).toMatchObject({
+      label: { fr: 'Bienvenue' },
+      title: { fr: 'Bonjour' },
     });
-    expect(
-      screen.queryByRole('button', { name: 'Identify language' }),
-    ).not.toBeInTheDocument();
+    expect(within(rowOf('French')).getByText('Default')).toBeVisible();
+
+    const { finalFocus } = options ?? {};
+    if (typeof finalFocus !== 'function') throw new Error('No finalFocus');
+    expect(finalFocus()).toBe(relabel);
+  });
+
+  it('offers only languages the protocol does not have, and says how to choose one it has', async () => {
+    renderLanguageList();
+    const { openDialog } = globalThis.__architectDialogMocks;
+    openDialog.mockResolvedValueOnce(null);
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Relabel default language' }),
+    );
+
+    await vi.waitFor(() => expect(openDialog).toHaveBeenCalledOnce());
+    const field = relabelFieldProps(openDialog.mock.lastCall?.[0]);
+    const offered = field.options?.map(({ value }) => value) ?? [];
+    expect(offered).not.toEqual([]);
+    expect(offered).not.toContain('en');
+    expect(offered).not.toContain('fr');
+    expect(offered).not.toContain('de');
+    expect(offered).toContain('es');
+    expect(field.hint).toBe(
+      'The protocol’s other languages are not listed. To make one of them the default instead, choose it as the default language.',
+    );
   });
 
   it('explains which translation participants see under the heading', () => {
@@ -322,7 +381,7 @@ describe('LanguageList', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('offers the translation table and a choice of default only once there are two languages', () => {
+  it('offers the translation table and a choice of default only once there are two languages, and relabelling always', () => {
     renderLanguageList({
       ...trilingual,
       localization: { defaultLocale: 'en', locales: ['en'] },
@@ -337,6 +396,9 @@ describe('LanguageList', () => {
     ).not.toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: 'Add languages' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Relabel default language' }),
     ).toBeInTheDocument();
   });
 });

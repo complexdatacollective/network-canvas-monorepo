@@ -5,7 +5,6 @@ import { Link, useLocation } from 'wouter';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
-import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import { Badge } from '@codaco/fresco-ui/Badge';
 import Button, { IconButton } from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
@@ -32,7 +31,6 @@ import {
   type LocaleCoverage,
 } from '~/selectors/issues';
 import { getProtocol } from '~/selectors/protocol';
-import { UNSPECIFIED_LOCALE } from '~/utils/localizedText';
 
 import { describeLanguage } from './languageChoices';
 import TranslationFallback from './TranslationFallback';
@@ -48,19 +46,6 @@ import {
 import { useLanguageName } from './useLanguageName';
 
 const messages = defineMessages({
-  unspecifiedTitle: {
-    id: 'architect.localization.languageList.unspecifiedTitle',
-    defaultMessage: 'Which language is your text written in?',
-    description:
-      'Title of the notice asking the researcher to identify the language of text whose language has not been identified.',
-  },
-  unspecifiedDescription: {
-    id: 'architect.localization.languageList.unspecifiedDescription',
-    defaultMessage:
-      'This protocol does not record which language it is written in, so its text is marked as an unidentified language. Identify the language before you add translations, so participants and exported data show the right language.',
-    description:
-      'Notice asking the researcher to identify the language of text whose language has not been identified.',
-  },
   title: {
     id: 'architect.localization.languageList.title',
     defaultMessage: 'Protocol languages',
@@ -109,11 +94,11 @@ const messages = defineMessages({
     defaultMessage: 'Default',
     description: 'Badge marking the default language of a protocol.',
   },
-  identifyLanguage: {
-    id: 'architect.localization.languageList.identifyLanguage',
-    defaultMessage: 'Identify language',
+  relabelDefault: {
+    id: 'architect.localization.languageList.relabelDefault',
+    defaultMessage: 'Relabel default language',
     description:
-      'Button that names the language of text whose language has not been identified.',
+      'Button beside the choice of the protocol’s default language. It opens a dialog that marks every text written in the default language as written in another language, for a protocol whose text is in a different language than it says, such as one upgraded from an earlier version and assumed to be English. Nothing is translated.',
   },
   removeLanguage: {
     id: 'architect.localization.languageList.removeLanguage',
@@ -207,8 +192,13 @@ export const ProtocolLanguages = ({ draft }: ProtocolLanguagesProps) => {
   const coverage = useSelector(getLocalizationCoverage);
   const languageName = useLanguageName();
   const addButtonRef = useRef<HTMLButtonElement>(null);
-  const { addLanguages, identifyLanguage, removeLanguage, removalImpact } =
-    useLanguageActions(addButtonRef, draft);
+  const relabelButtonRef = useRef<HTMLButtonElement>(null);
+  const {
+    addLanguages,
+    relabelDefaultLanguage,
+    removeLanguage,
+    removalImpact,
+  } = useLanguageActions(addButtonRef, draft);
   const locales = protocol?.localization.locales ?? EMPTY_LOCALES;
   const sortedLocales = useMemo(
     () => sortByLanguageName(locales, languageName, intl.locale),
@@ -242,43 +232,41 @@ export const ProtocolLanguages = ({ draft }: ProtocolLanguagesProps) => {
 
   return (
     <>
-      {locales.includes(UNSPECIFIED_LOCALE) && (
-        <Alert variant="warning" className="mb-6">
-          <AlertTitle>
-            {intl.formatMessage(messages.unspecifiedTitle)}
-          </AlertTitle>
-          <AlertDescription className="space-y-4">
-            <span className="block">
-              {intl.formatMessage(messages.unspecifiedDescription)}
-            </span>
-            <Button
-              size="sm"
-              color="warning"
-              onClick={() => void identifyLanguage()}
-            >
-              {intl.formatMessage(messages.identifyLanguage)}
-            </Button>
-          </AlertDescription>
-        </Alert>
-      )}
-      {locales.length > 1 && (
-        <UnconnectedField
-          name="default-language"
-          label={intl.formatMessage(messages.defaultLanguage)}
-          hint={intl.formatMessage(messages.defaultLanguageHint)}
-          component={NativeSelectField}
-          options={sortedLocales.map((locale) => ({
-            value: locale,
-            label: languageName(locale),
-          }))}
-          value={protocol.localization.defaultLocale}
-          onChange={(locale) => {
-            if (typeof locale === 'string') {
-              dispatch(setProtocolDefaultLocale({ locale }));
-            }
-          }}
-        />
-      )}
+      {/* The default language is chosen, or its text relabelled, here. The
+          field sits in a wrapper of its own, so its spacing for a following
+          field does not part it from the button. */}
+      <div className="mb-4 flex flex-col items-start gap-3">
+        {locales.length > 1 && (
+          <div className="w-full">
+            <UnconnectedField
+              name="default-language"
+              label={intl.formatMessage(messages.defaultLanguage)}
+              hint={intl.formatMessage(messages.defaultLanguageHint)}
+              component={NativeSelectField}
+              options={sortedLocales.map((locale) => ({
+                value: locale,
+                label: languageName(locale),
+              }))}
+              value={protocol.localization.defaultLocale}
+              onChange={(locale) => {
+                if (typeof locale === 'string') {
+                  dispatch(setProtocolDefaultLocale({ locale }));
+                }
+              }}
+            />
+          </div>
+        )}
+        <Button
+          ref={relabelButtonRef}
+          size="sm"
+          variant="link"
+          onClick={() =>
+            void relabelDefaultLanguage(() => relabelButtonRef.current)
+          }
+        >
+          {intl.formatMessage(messages.relabelDefault)}
+        </Button>
+      </div>
       <ul className="divide-outline flex flex-col divide-y">
         {sortedLocales.map((locale) => {
           const entry = coverageByLocale.get(locale);
@@ -338,10 +326,9 @@ const LanguageRow = ({
   const removeButtonRef = useRef<HTMLButtonElement>(null);
   const removalReasonId = useId();
   const { locale, isDefault, translated, missing } = entry;
-  const isUnspecified = locale === UNSPECIFIED_LOCALE;
   const isComplete = total > 0 && translated === total;
   const language = languageName(locale);
-  const own = isUnspecified ? null : describeLanguage(locale, intl.locale);
+  const own = describeLanguage(locale, intl.locale);
   const removalBlockedReason = isDefault
     ? intl.formatMessage(messages.defaultNote)
     : strandedCount > 0
@@ -356,7 +343,7 @@ const LanguageRow = ({
       <div className="flex min-w-0 flex-1 flex-col gap-2">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
           <span className="text-lg font-semibold">{language}</span>
-          {own && own.autonym !== language && (
+          {own.autonym !== language && (
             <span
               lang={own.locale}
               dir={own.direction}

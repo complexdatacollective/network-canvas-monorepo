@@ -516,3 +516,98 @@ test('opens the translation table on every missing translation from the protocol
     page.getByRole('heading', { name: 'Languages', level: 1 }),
   ).toBeFocused();
 });
+
+/**
+ * A protocol upgraded from schema 8, whose text the upgrade took to be
+ * English, though it is written in French.
+ */
+function frenchTaggedAsEnglishProtocol(): CurrentProtocol {
+  return CurrentProtocolSchema.parse({
+    ...emptyProtocol(),
+    stages: [
+      {
+        id: 'welcome',
+        type: 'Information',
+        label: { en: 'Bienvenue' },
+        title: { en: 'Bienvenue dans l’étude' },
+        items: [
+          {
+            id: 'welcome-text',
+            type: 'text',
+            content: { en: 'Merci de votre participation.' },
+          },
+        ],
+      },
+    ],
+  });
+}
+
+test('relabels the default language’s text as the language it is written in, as one step that undo takes back', async ({
+  architectPage: page,
+  seed,
+}) => {
+  const seeded = frenchTaggedAsEnglishProtocol();
+  await seed(seeded);
+  await gotoProtocol(page);
+  await page.goto('/protocol/localization');
+  await expect(languageRow(page, 'en')).toContainText(
+    '3 of 3 texts translated',
+  );
+
+  const relabel = page.getByRole('button', {
+    name: 'Relabel default language',
+    exact: true,
+  });
+  await relabel.click();
+  const dialog = page.getByRole('dialog', { name: 'Relabel the English text' });
+  await expect(dialog).toContainText('Nothing is translated or deleted.');
+  const language = dialog.getByRole('combobox', {
+    name: 'Language',
+    exact: true,
+  });
+  // Only languages the protocol does not have yet can be chosen.
+  await expect(
+    language.getByRole('option', { name: /^English \(en\)/ }),
+  ).toHaveCount(0);
+  await language.selectOption({ label: 'French (fr)' });
+  await dialog
+    .getByRole('button', { name: 'Relabel text', exact: true })
+    .click();
+  await expect(dialog).toBeHidden();
+  await expect(relabel).toBeFocused();
+
+  // Every text moves to French, and nothing is lost or left untranslated.
+  const french = languageRow(page, 'fr');
+  await expect(languageRows(page)).toHaveCount(1);
+  await expect(french).toContainText('French');
+  await expect(french.getByText('Default', { exact: true })).toBeVisible();
+  await expect(french).toContainText('3 of 3 texts translated');
+  const relabelled = await readProtocolJson(
+    page,
+    (protocol) => protocol.localization.defaultLocale === 'fr',
+  );
+  expect(relabelled.localization).toEqual({
+    defaultLocale: 'fr',
+    locales: ['fr'],
+  });
+  expect(relabelled.stages[0]?.label).toEqual({ fr: 'Bienvenue' });
+  expect(welcomeTitle(relabelled)).toEqual({ fr: 'Bienvenue dans l’étude' });
+  expect(welcomeContent(relabelled)).toEqual({
+    fr: 'Merci de votre participation.',
+  });
+
+  // One undo restores the protocol as it was.
+  await page
+    .getByRole('toolbar', { name: 'History actions' })
+    .getByRole('button', { name: 'Undo' })
+    .click();
+  await expect(languageRow(page, 'en')).toContainText(
+    '3 of 3 texts translated',
+  );
+  const undone = await readProtocolJson(
+    page,
+    (protocol) => protocol.localization.defaultLocale === 'en',
+  );
+  expect(undone.localization).toEqual(seeded.localization);
+  expect(undone.stages).toEqual(seeded.stages);
+});
