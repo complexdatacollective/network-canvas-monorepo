@@ -262,6 +262,7 @@
   "interview.interfaces.drawingControls": "Commandes de dessin",
   "interview.interfaces.editingTools": "Outils de modification",
   "interview.interfaces.emptyRoster": "Il n’y a rien à ajouter depuis cette liste.",
+  "interview.interfaces.emptyValue": "Aucune valeur",
   "interview.interfaces.enableDrawing": "Activer le dessin",
   "interview.interfaces.entityName": "Nom ({entityLabel})",
   "interview.interfaces.equalSplit": "Répartition égale",

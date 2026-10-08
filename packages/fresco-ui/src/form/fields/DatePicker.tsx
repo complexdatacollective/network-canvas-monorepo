@@ -7,6 +7,7 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import { datePickerWindows } from '@codaco/shared-consts';
 
 import { cx } from '../../utils/cva';
+import { useFieldValueFormat } from '../ContentLocale';
 import type { CreateFormFieldProps } from '../Field/types';
 import { todayYmd } from '../utils/ymd';
 import InputField from './InputField';
@@ -132,6 +133,7 @@ const getMonthParts = (value: unknown) => {
 
 export default function DatePickerField(props: DatePickerFieldProps) {
   const intl = useAppIntl();
+  const format = useFieldValueFormat();
   const {
     type: resolutionType = 'full',
     min,
@@ -238,16 +240,18 @@ export default function DatePickerField(props: DatePickerFieldProps) {
       // be a different thing entirely.
       arr.push({
         value: y.toString(),
-        label: intl.formatNumber(y, { useGrouping: false }),
+        label: format.formatNumber(y, { useGrouping: false }),
       });
     }
     return arr;
-  }, [coarseMinYmd.year, coarseMaxYmd.year, intl]);
+  }, [coarseMinYmd.year, coarseMaxYmd.year, format]);
 
   const months = useMemo(
     () =>
-      datePickerMonthOptions((date, options) => intl.formatDate(date, options)),
-    [intl],
+      datePickerMonthOptions((date, options) =>
+        format.formatDate(date, options),
+      ),
+    [format],
   );
 
   const getAvailableMonths = (yearValue?: string) => {

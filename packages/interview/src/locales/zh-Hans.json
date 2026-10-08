@@ -262,6 +262,7 @@
   "interview.interfaces.drawingControls": "绘图控件",
   "interview.interfaces.editingTools": "编辑工具",
   "interview.interfaces.emptyRoster": "此列表中没有可添加的内容。",
+  "interview.interfaces.emptyValue": "无值",
   "interview.interfaces.enableDrawing": "开启绘图",
   "interview.interfaces.entityName": "{entityLabel} 名称",
   "interview.interfaces.equalSplit": "平均分配",

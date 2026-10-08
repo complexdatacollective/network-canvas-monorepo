@@ -262,6 +262,7 @@
   "interview.interfaces.drawingControls": "Drawing controls",
   "interview.interfaces.editingTools": "Editing tools",
   "interview.interfaces.emptyRoster": "There is nothing to add from this list.",
+  "interview.interfaces.emptyValue": "No value",
   "interview.interfaces.enableDrawing": "Enable drawing",
   "interview.interfaces.entityName": "{entityLabel} name",
   "interview.interfaces.equalSplit": "Equal split",

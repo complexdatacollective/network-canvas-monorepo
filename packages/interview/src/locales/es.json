@@ -262,6 +262,7 @@
   "interview.interfaces.drawingControls": "Controles de dibujo",
   "interview.interfaces.editingTools": "Herramientas de edición",
   "interview.interfaces.emptyRoster": "No hay nada que añadir de esta lista.",
+  "interview.interfaces.emptyValue": "Sin valor",
   "interview.interfaces.enableDrawing": "Activar el dibujo",
   "interview.interfaces.entityName": "Nombre de {entityLabel}",
   "interview.interfaces.equalSplit": "División en partes iguales",
