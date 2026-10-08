@@ -2935,3 +2935,139 @@ export const WrongPassphrase: Story = {
     });
   },
 };
+
+/**
+ * Recording an answer never stands in for the family. The schema 8 pedigree
+ * lost a whole family when "no children" was ticked before it was finalized:
+ * the answer marked the pedigree as finalized, so the family was never
+ * written. Here a parent is added, the participant chooses their wording and
+ * says they have no siblings and no children, and leaves and returns: the
+ * parent and the relationship are in the session from the moment they are
+ * added, the answers sit on the participant beside them, and the stage's
+ * record holds only the wording and the labels it saved.
+ */
+export const RecordingAnswersKeepsTheFamily: Story = {
+  args: {
+    framing: 'participantPreference',
+    requirement: 'firstDegree',
+    enforcement: 'recommended',
+  },
+  render: (args) => (
+    <PedigreeStory
+      {...settings(args)}
+      family={{
+        people: [
+          {
+            id: 'ego',
+            name: 'Ari',
+            gender: 'nonBinary',
+            sex: 'intersex',
+            ego: true,
+          },
+        ],
+        links: [],
+      }}
+      followedByPeopleList
+      onSync={recordSession}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    lastSynced = undefined;
+    const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
+    // The participant is seeded as `ego`; the only other person is the
+    // parent this adds.
+    const parentId = () =>
+      lastSynced?.network.nodes.find(
+        (node) => node[entityPrimaryKeyProperty] !== 'ego',
+      )?.[entityPrimaryKeyProperty];
+    const expectFamilyInSession = async () => {
+      await waitFor(() => expect(parentId()).toBeDefined());
+      const parent = parentId();
+      await expect(
+        lastSynced?.network.edges.some(
+          (edge) =>
+            (edge.from === parent && edge.to === 'ego') ||
+            (edge.from === 'ego' && edge.to === parent),
+        ),
+      ).toBe(true);
+      await expect(notRecordedInSession('ego')).toEqual([
+        'noSiblings',
+        'noChildren',
+      ]);
+      const records = Object.values(lastSynced?.stageMetadata ?? {});
+      await expect(records).toContainEqual(
+        expect.objectContaining({ framing: 'gamete' }),
+      );
+      for (const record of records) {
+        await expect(
+          Object.keys(record as Record<string, unknown>).every((key) =>
+            ['framing', 'generatedLabels'].includes(key),
+          ),
+        ).toBe(true);
+      }
+    };
+
+    await body.findByText(FRAMING_TITLE, {}, { timeout: 5000 });
+    await userEvent.click(
+      body.getByRole('option', { name: /Egg parent, sperm parent, sibling/ }),
+    );
+    await waitFor(() => expect(body.queryByText(FRAMING_TITLE)).toBeNull());
+
+    // A parent, left unnamed, written as soon as they are added.
+    await userEvent.hover(await canvas.findByRole('button', { name: /^You/ }));
+    await userEvent.click(await canvas.findByTestId('pedigree-menu-parent'));
+    await waitFor(() => expect(panelOf(canvasElement)).not.toBeNull());
+    const panel = within(panelOf(canvasElement) as HTMLElement);
+    await userEvent.click(
+      within(
+        await panel.findByRole('radiogroup', { name: /^Gender identity/ }),
+      ).getByRole('radio', { name: 'Woman' }),
+    );
+    await userEvent.click(
+      within(
+        await panel.findByRole('radiogroup', {
+          name: /^Sex assigned at birth/,
+        }),
+      ).getByRole('radio', { name: 'Female' }),
+    );
+    await userEvent.click(
+      within(
+        await panel.findByRole('radiogroup', {
+          name: /^Did this parent carry the pregnancy\?/,
+        }),
+      ).getByRole('radio', { name: 'Yes' }),
+    );
+    await userEvent.click(
+      await body.findByRole('button', { name: 'Add to family' }),
+    );
+    await waitFor(() => expect(panelOf(canvasElement)).toBeNull());
+    await waitFor(() => expect(parentId()).toBeDefined());
+
+    // "No siblings" and "no children", answered from the checklist.
+    await userEvent.click(canvas.getByTestId('pedigree-completeness'));
+    await userEvent.click(
+      await body.findByRole('button', {
+        name: 'I have no biological siblings',
+      }),
+    );
+    await userEvent.click(
+      await body.findByRole('button', {
+        name: 'I have no biological children',
+      }),
+    );
+    await expectFamilyInSession();
+
+    // Leaving (Next again past the recommended list) and coming back changes
+    // none of it, and the parent is still drawn.
+    await userEvent.click(canvas.getByTestId('next-button'));
+    await leaveForPeopleList(canvasElement);
+    await expect(await canvas.findByText('Egg parent')).toBeInTheDocument();
+    await expectFamilyInSession();
+    await returnToPedigree(canvasElement);
+    await waitFor(() =>
+      expect(canvas.getAllByTestId('pedigree-person')).toHaveLength(2),
+    );
+    await expectFamilyInSession();
+  },
+};
