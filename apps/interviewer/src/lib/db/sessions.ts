@@ -15,6 +15,7 @@ import {
   decryptSessionRecord,
   encryptSession,
   type StoredSessionRow,
+  prepareSessionFinish,
   withoutSessionFinish,
   withSessionFinish,
 } from './recordCrypto';
@@ -513,31 +514,41 @@ export function setSessionLocale(
 // Records the finish the participant confirmed: when, at which finish stage,
 // and that stage's outcome. The stage id and outcome are encrypted with the
 // network, so this needs the key, like any write of answers.
+//
+// The finish is encrypted before the write and then applied to the row as it
+// stands inside the transaction, changing nothing else, so a launch-time
+// migration another tab made in the meantime is kept: its network, stage
+// metadata, resume position and protocol hash all stay as it wrote them.
+// Stage ids survive a migration, so the recorded finish stage still names
+// the same stage.
 export function markSessionFinished(
   id: string,
   finish: SessionFinish,
 ): Promise<void> {
   return enqueueSessionMutation(id, async () => {
-    const existingRow = await db.sessions.get(id);
-    if (!existingRow) return;
-    const now = new Date().toISOString();
-    const row = {
-      ...(await withSessionFinish(existingRow, finish)),
-      finishedAt: now,
-      lastUpdatedAt: now,
-    };
-    // As in updateSession: the fields only other writers own come from the
-    // freshest row, and a session deleted in the gap stays deleted.
-    await db.transaction('rw', db.sessions, async () => {
-      const latest = await db.sessions.get(id);
-      if (!latest) return;
-      await db.sessions.put({
-        ...row,
-        protocolHash: latest.protocolHash,
-        localePreference: latest.localePreference,
-        locale: latest.locale,
+    // A row whose storage changed between encrypted and plaintext while the
+    // finish was being prepared is prepared again.
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const existingRow = await db.sessions.get(id);
+      if (!existingRow) return;
+      const prepared = await prepareSessionFinish(existingRow, finish);
+      const recorded = await db.transaction('rw', db.sessions, async () => {
+        const latest = await db.sessions.get(id);
+        // A session deleted in the gap stays deleted.
+        if (!latest) return true;
+        const updated = withSessionFinish(latest, prepared);
+        if (!updated) return false;
+        const now = new Date().toISOString();
+        await db.sessions.put({
+          ...updated,
+          finishedAt: now,
+          lastUpdatedAt: now,
+        });
+        return true;
       });
-    });
+      if (recorded) return;
+    }
+    throw new Error(`Could not record the finish of interview ${id}`);
   });
 }
 

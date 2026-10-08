@@ -2,7 +2,7 @@
 '@codaco/protocol-validation': minor
 '@codaco/interview': major
 '@codaco/protocol-utilities': minor
-'@codaco/network-exporters': minor
+'@codaco/network-exporters': major
 '@codaco/network-query': minor
 '@codaco/shared-consts': minor
 '@codaco/fresco-ui': minor
@@ -57,8 +57,8 @@ ended early. That outcome is saved with each interview and exported.
 
 - Each interview's outcome is exported: CSV ego files have a
   `networkCanvasFinishOutcome` column after `networkCanvasInterviewLocale`, and
-  GraphML graphs an `nc:finishOutcome` attribute. `InterviewExportInput`
-  requires `finishOutcome`; pass `null` for an interview with no recorded
+  GraphML graphs an `nc:finishOutcome` attribute. **Breaking:**
+  `InterviewExportInput` requires `finishOutcome`; pass `null` for an interview with no recorded
   outcome, whose CSV cell is then empty and whose GraphML attribute is left
   out. A variable exported under the column's name is renamed
   `networkCanvasFinishOutcome_2`, with a `'column-renamed'` warning.

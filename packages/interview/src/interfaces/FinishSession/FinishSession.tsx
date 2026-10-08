@@ -146,13 +146,19 @@ const FinishSession = ({ stage }: StageProps<'FinishSession'>) => {
  *
  * `stage` is absent only for a protocol with no finish stage, which a
  * validated protocol cannot be; the notice is then shown alone.
+ *
+ * `notice` is off for a review of an interview with nothing before its finish
+ * stage: it shows the finish stage's text read-only, but the interview is not
+ * finished, so it does not say it is.
  */
 export function CompletedInterview({
   stage,
   focusOnMount,
+  notice = true,
 }: {
   stage: FinishSessionText | undefined;
   focusOnMount: boolean;
+  notice?: boolean;
 }) {
   const { completedAction } = useInterviewCompletion();
   const headingRef = useRef<HTMLHeadingElement>(null);
@@ -169,16 +175,18 @@ export function CompletedInterview({
   return (
     <FinishSessionLayout>
       {stage && <FinishSessionText stage={stage} headingRef={headingRef} />}
-      <Alert
-        ref={noticeRef}
-        tabIndex={stage ? undefined : -1}
-        variant="success"
-        density="compact"
-      >
-        <AlertDescription>
-          <AppMessage message={interfaceMessages.interviewFinishedNotice} />
-        </AlertDescription>
-      </Alert>
+      {notice && (
+        <Alert
+          ref={noticeRef}
+          tabIndex={stage ? undefined : -1}
+          variant="success"
+          density="compact"
+        >
+          <AlertDescription>
+            <AppMessage message={interfaceMessages.interviewFinishedNotice} />
+          </AlertDescription>
+        </Alert>
+      )}
       {completedAction && (
         <Button color="primary" onClick={completedAction.onAction}>
           {completedAction.label}

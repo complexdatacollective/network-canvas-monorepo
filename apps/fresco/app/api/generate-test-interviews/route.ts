@@ -5,6 +5,7 @@ import {
   generateNetwork,
   type GenerateNetworkParams,
 } from '@codaco/protocol-utilities';
+import { isFinishSessionStage } from '@codaco/protocol-validation';
 import { syntheticGenerationMessages } from '~/i18n/syntheticGenerationMessages';
 import { addEvent } from '~/lib/activityFeed';
 import { requireApiAuth } from '~/lib/auth/guards';
@@ -92,6 +93,15 @@ export async function POST(request: Request) {
           respectSkipLogicAndFiltering,
         } satisfies GenerateNetworkParams;
 
+        // A synthetic interview runs straight through, so a completed one ends
+        // at the protocol's last finish stage, and is recorded with its
+        // outcome as a participant's finish is.
+        const finishStage = genParams.stages.findLast(isFinishSessionStage);
+        const finish = {
+          finishStageId: finishStage?.id ?? null,
+          finishOutcome: finishStage?.outcome ?? null,
+        };
+
         let completedCount = 0;
         const incompleteInterviewIds: string[] = [];
 
@@ -122,6 +132,7 @@ export async function POST(request: Request) {
               currentStep,
               startTime,
               finishTime,
+              ...(isCompleted ? finish : {}),
               isSynthetic: true,
               stageMetadata: stageMetadata as object | undefined,
               participant: {
@@ -176,6 +187,7 @@ export async function POST(request: Request) {
                       Math.floor(Math.random() * 1800000) +
                       300000,
                   ),
+                  ...finish,
                 },
               });
             }

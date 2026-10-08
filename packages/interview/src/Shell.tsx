@@ -122,16 +122,65 @@ type InterviewProps = {
   reviewMode?: boolean;
 };
 
+type TextScaleStyle = CSSProperties & { '--interview-text-scale': number };
+
 /**
  * A finished interview shows its completed state; a review of one shows its
- * stages, because reading them is what a review is for.
+ * stages, because reading them is what a review is for. A review of a
+ * protocol with no stage before its finish stage has nothing to show, so it
+ * shows the finish stage's text, read-only, without the Finish button.
+ *
+ * The participant's text size is held here, above both, so it carries from
+ * the interview into its completed state.
  */
 function Interview(props: InterviewProps) {
+  const { initialTextScale, onTextScaleChange } = props;
   const { completion } = useInterviewCompletion();
-  if (completion && props.reviewMode !== true) {
-    return <CompletedShell completion={completion} />;
+  const stages = useSelector(getStages);
+  const [textScale, setTextScale] = useState(() =>
+    snapTextScale(initialTextScale),
+  );
+  const handleTextScaleChange = useCallback(
+    (scale: number) => {
+      setTextScale(scale);
+      onTextScaleChange?.(scale);
+    },
+    [onTextScaleChange],
+  );
+  const textScaleStyle: TextScaleStyle = {
+    '--interview-text-scale': textScale,
+  };
+
+  if (props.reviewMode === true) {
+    const hasReviewableStage =
+      stages.length > 0 && stages[0]?.type !== 'FinishSession';
+    if (!hasReviewableStage) {
+      return (
+        <CompletedShell
+          stageId={undefined}
+          focusOnMount={false}
+          notice={false}
+          textScaleStyle={textScaleStyle}
+        />
+      );
+    }
+  } else if (completion) {
+    return (
+      <CompletedShell
+        stageId={completion.stageId}
+        focusOnMount={completion.finishedHere}
+        notice
+        textScaleStyle={textScaleStyle}
+      />
+    );
   }
-  return <ActiveInterview {...props} />;
+  return (
+    <ActiveInterview
+      {...props}
+      textScale={textScale}
+      onTextScaleChange={handleTextScaleChange}
+    />
+  );
 }
 
 /**
@@ -139,7 +188,17 @@ function Interview(props: InterviewProps) {
  * ended at, in its completed state. There is no navigation, so there is no
  * way back into the interview.
  */
-function CompletedShell({ completion }: { completion: InterviewCompletion }) {
+function CompletedShell({
+  stageId,
+  focusOnMount,
+  notice,
+  textScaleStyle,
+}: {
+  stageId: string | null | undefined;
+  focusOnMount: boolean;
+  notice: boolean;
+  textScaleStyle: TextScaleStyle;
+}) {
   const { locale, direction } = useAppLocale();
   const { metadata: contentLocale } = useProtocolLocale();
   const stages = useSelector(getStages);
@@ -149,7 +208,7 @@ function CompletedShell({ completion }: { completion: InterviewCompletion }) {
   // The stage the host recorded, or, for an interview finished before finish
   // stages were recorded, the last one: where a linear interview ends.
   const stage =
-    finishStages.find((candidate) => candidate.id === completion.stageId) ??
+    finishStages.find((candidate) => candidate.id === stageId) ??
     finishStages.at(-1);
 
   return (
@@ -158,18 +217,23 @@ function CompletedShell({ completion }: { completion: InterviewCompletion }) {
       lang={locale}
       dir={direction}
       render={
-        <main className="shell-type-ramp relative flex size-full flex-1 overflow-hidden" />
+        <main
+          style={textScaleStyle}
+          className="shell-type-ramp relative flex size-full flex-1 overflow-hidden"
+        />
       }
     >
       <div
         className="relative flex size-full flex-col items-center justify-center pt-[env(safe-area-inset-top)]"
         id="stage"
+        data-interview-completed=""
         dir={contentLocale.direction}
       >
         <DirectionProvider direction={contentLocale.direction}>
           <CompletedInterview
             stage={stage}
-            focusOnMount={completion.finishedHere}
+            focusOnMount={focusOnMount}
+            notice={notice}
           />
         </DirectionProvider>
       </div>
@@ -184,11 +248,14 @@ function ActiveInterview({
   navigationClassnames,
   allowStageNavigation,
   allowUserScaling,
-  initialTextScale,
+  textScale,
   onTextScaleChange,
   initialStageOverrideIndex,
   reviewMode,
-}: InterviewProps) {
+}: InterviewProps & {
+  textScale: number;
+  onTextScaleChange: (scale: number) => void;
+}) {
   const { locale, direction } = useAppLocale();
   const { metadata: contentLocale } = useProtocolLocale();
   const {
@@ -233,21 +300,12 @@ function ActiveInterview({
     orientationProp ?? (prefersHorizontalNav ? 'horizontal' : 'vertical');
   const isHorizontalNav = navigationOrientation === 'horizontal';
 
-  // Participant-chosen multiplier applied on top of the viewport ramp below.
-  // Owned here so it survives stage navigation; hosts opt in via
-  // `allowUserScaling` and may persist it across remounts (e.g. the
-  // Interviewer's lock screen) with `initialTextScale`/`onTextScaleChange`.
-  const [textScale, setTextScale] = useState(() =>
-    snapTextScale(initialTextScale),
-  );
-  const handleTextScaleChange = useCallback(
-    (scale: number) => {
-      setTextScale(scale);
-      onTextScaleChange?.(scale);
-    },
-    [onTextScaleChange],
-  );
-  const textScaleStyle: CSSProperties & { '--interview-text-scale': number } = {
+  // The participant-chosen multiplier, applied on top of the viewport ramp
+  // below, is owned by `Interview` so it survives stage navigation and carries
+  // into the completed state; hosts opt in via `allowUserScaling` and may
+  // persist it across remounts (e.g. the Interviewer's lock screen) with
+  // `initialTextScale`/`onTextScaleChange`.
+  const textScaleStyle: TextScaleStyle = {
     '--interview-text-scale': textScale,
   };
 
@@ -356,7 +414,7 @@ function ActiveInterview({
               reviewMode={reviewMode}
               allowUserScaling={allowUserScaling}
               textScale={textScale}
-              onTextScaleChange={handleTextScaleChange}
+              onTextScaleChange={onTextScaleChange}
             />
           )}
           {/*

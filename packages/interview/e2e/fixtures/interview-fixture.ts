@@ -107,6 +107,7 @@ export class InterviewFixture {
     );
     const main = this.page.locator('main[data-theme-interview]');
     await expect(main).toBeVisible({ timeout: 15_000 });
+    await expect(main.locator('[data-interview-completed]')).toBeVisible();
     await expect(main.getByRole('heading', { level: 1 })).toBeVisible();
     await this.waitForMotionCommit();
   }
@@ -304,9 +305,12 @@ export class InterviewFixture {
       // If we know the expected step, wait for the Shell's two-phase
       // transition to complete. The motion.div gets data-stage-step={n} only
       // after handleExitComplete updates Redux (via onExitComplete or timer).
+      // A finished interview shows its completed state instead, which has no
+      // stage step: it is marked data-interview-completed.
       if (currentStep !== null) {
         await this.page
           .locator(`[data-stage-step="${currentStep}"]`)
+          .or(this.page.locator('[data-interview-completed]'))
           .waitFor({ state: 'attached', timeout: 5_000 });
       }
       await this.waitForMotionCommit();

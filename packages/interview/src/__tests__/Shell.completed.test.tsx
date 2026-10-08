@@ -117,12 +117,14 @@ function renderShell({
   onFinish = () => Promise.resolve(),
   completedAction,
   reviewMode,
+  initialTextScale,
 }: {
   payload: InterviewPayload;
   currentStep?: number;
   onFinish?: FinishHandler;
   completedAction?: CompletedAction;
   reviewMode?: boolean;
+  initialTextScale?: number;
 }) {
   return render(
     <Shell
@@ -138,6 +140,7 @@ function renderShell({
       disableAnalytics
       completedAction={completedAction}
       reviewMode={reviewMode}
+      initialTextScale={initialTextScale}
     />,
     { wrapper: WithoutMotion },
   );
@@ -231,5 +234,63 @@ describe('Shell completed state', () => {
       await within(dialog).findByText(/The interview could not be finished/),
     ).toBeInTheDocument();
     expect(screen.queryByText(NOTICE)).toBeNull();
+  });
+
+  // A protocol whose only stage is its finish stage has nothing to review.
+  // Its finish stage's text is shown read-only: no Finish button, and no
+  // notice that the interview is finished, because it is not.
+  it('shows a review with nothing before the finish stage its text, without a way to finish', async () => {
+    const onAction = vi.fn();
+    const payload = makePayload(null);
+    payload.protocol.stages = [finishStage];
+    renderShell({
+      payload,
+      reviewMode: true,
+      completedAction: { label: 'Exit', onAction },
+    });
+
+    expect(
+      await screen.findByRole('heading', { name: 'All done' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(NOTICE)).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Finish' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Next Step' })).toBeNull();
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Exit' }));
+    expect(onAction).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the participant’s text size when an interview is opened finished', async () => {
+    const { container } = renderShell({
+      payload: makePayload({ finishStageId: finishStage.id }),
+      initialTextScale: 1.3,
+    });
+    await expectCompletedState();
+    expect(
+      container
+        .querySelector('main')
+        ?.style.getPropertyValue('--interview-text-scale'),
+    ).toBe('1.3');
+  });
+
+  it('keeps the participant’s text size from the interview into its completed state', async () => {
+    const { container } = renderShell({
+      payload: makePayload(null),
+      currentStep: 1,
+      initialTextScale: 1.2,
+    });
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole('button', { name: 'Finish' }));
+    const dialog = await screen.findByRole('dialog');
+    await user.click(
+      within(dialog).getByRole('button', { name: 'Finish Interview' }),
+    );
+
+    await expectCompletedState();
+    expect(
+      container
+        .querySelector('main')
+        ?.style.getPropertyValue('--interview-text-scale'),
+    ).toBe('1.2');
   });
 });

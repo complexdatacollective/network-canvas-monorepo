@@ -96,20 +96,27 @@ export function withoutSessionFinish(row: StoredSessionRow): StoredSessionRow {
 }
 
 /**
- * The row with `finish` recorded as its finish stage id and outcome, encrypted
- * when the row's answers are. The rest of the row is left exactly as stored,
- * so recording a finish never parses the network, which after a protocol
- * migration can be in a schema this build cannot read.
+ * A finish stage id and outcome ready to be written onto a stored session: in
+ * plaintext for a row stored without a key, or encrypted for a row whose
+ * answers are encrypted. Prepared apart from the row, so the crypto await
+ * happens before the write and the write can apply it to the freshest row.
  */
-export async function withSessionFinish(
+export type PreparedSessionFinish =
+  | Readonly<{
+      kind: 'plaintext';
+      finishStageId: string;
+      finishOutcome: StoredSession['finishOutcome'];
+    }>
+  | Readonly<{ kind: 'encrypted'; finish: EncryptedField }>;
+
+export async function prepareSessionFinish(
   row: StoredSessionRow,
   finish: { stageId: string; outcome: StoredSession['finishOutcome'] },
-): Promise<StoredSessionRow> {
-  const unfinished = withoutSessionFinish(row);
-  if (!unfinished._enc) {
+): Promise<PreparedSessionFinish> {
+  if (!row._enc) {
     assertNotLockedSecuredVault('session');
     return {
-      ...unfinished,
+      kind: 'plaintext',
       finishStageId: finish.stageId,
       finishOutcome: finish.outcome,
     };
@@ -117,15 +124,39 @@ export async function withSessionFinish(
   const dek = getSessionDek();
   if (!dek) throw new Error('Cannot encrypt session: vault is locked (no key)');
   return {
+    kind: 'encrypted',
+    finish: await encryptJson(
+      { stageId: finish.stageId, outcome: finish.outcome },
+      dek,
+      sessionAad(row.id),
+    ),
+  };
+}
+
+/**
+ * `row` with a prepared finish recorded on it and nothing else changed, so
+ * recording a finish never parses or rewrites the network, which after a
+ * protocol migration can be in a schema this build cannot read. `undefined`
+ * when the row is no longer stored the way the finish was prepared for
+ * (encrypted or not), so the caller prepares it again.
+ */
+export function withSessionFinish(
+  row: StoredSessionRow,
+  prepared: PreparedSessionFinish,
+): StoredSessionRow | undefined {
+  const unfinished = withoutSessionFinish(row);
+  if (prepared.kind === 'plaintext') {
+    if (unfinished._enc) return undefined;
+    return {
+      ...unfinished,
+      finishStageId: prepared.finishStageId,
+      finishOutcome: prepared.finishOutcome,
+    };
+  }
+  if (!unfinished._enc) return undefined;
+  return {
     ...unfinished,
-    _enc: {
-      ...unfinished._enc,
-      finish: await encryptJson(
-        { stageId: finish.stageId, outcome: finish.outcome },
-        dek,
-        sessionAad(row.id),
-      ),
-    },
+    _enc: { ...unfinished._enc, finish: prepared.finish },
   };
 }
 
