@@ -67,8 +67,8 @@ const nodeVariants = cva({
     // a wider gap keeps the ring legible against the node's own colour.
     'focusable relative inline-flex items-center justify-center focus-visible:outline-offset-6',
     'aspect-square min-w-0 shrink-0',
-    'text-white',
-    '[--base:var(--node-1)] [--dark:oklch(from_var(--base)_calc(l-0.05)_c_h)]',
+    'text-(--ink)',
+    '[--base:var(--node-1)] [--dark:oklch(from_var(--base)_calc(l-0.05)_c_h)] [--ink:contrast-color(var(--base))]',
   ],
   variants: {
     size: {
@@ -84,14 +84,22 @@ const nodeVariants = cva({
       diamond: 'rounded',
     },
     color: {
-      'node-color-seq-1': 'outline-node-1 [--base:var(--node-1)]',
-      'node-color-seq-2': 'outline-node-2 [--base:var(--node-2)]',
-      'node-color-seq-3': 'outline-node-3 [--base:var(--node-3)]',
-      'node-color-seq-4': 'outline-node-4 [--base:var(--node-4)]',
-      'node-color-seq-5': 'outline-node-5 [--base:var(--node-5)]',
-      'node-color-seq-6': 'outline-node-6 [--base:var(--node-6)]',
-      'node-color-seq-7': 'outline-node-7 [--base:var(--node-7)]',
-      'node-color-seq-8': 'outline-node-8 [--base:var(--node-8)]',
+      'node-color-seq-1':
+        'outline-node-1 [--base:var(--node-1)] [--ink:var(--node-1-contrast)]',
+      'node-color-seq-2':
+        'outline-node-2 [--base:var(--node-2)] [--ink:var(--node-2-contrast)]',
+      'node-color-seq-3':
+        'outline-node-3 [--base:var(--node-3)] [--ink:var(--node-3-contrast)]',
+      'node-color-seq-4':
+        'outline-node-4 [--base:var(--node-4)] [--ink:var(--node-4-contrast)]',
+      'node-color-seq-5':
+        'outline-node-5 [--base:var(--node-5)] [--ink:var(--node-5-contrast)]',
+      'node-color-seq-6':
+        'outline-node-6 [--base:var(--node-6)] [--ink:var(--node-6-contrast)]',
+      'node-color-seq-7':
+        'outline-node-7 [--base:var(--node-7)] [--ink:var(--node-7-contrast)]',
+      'node-color-seq-8':
+        'outline-node-8 [--base:var(--node-8)] [--ink:var(--node-8-contrast)]',
       'custom': '', // Custom color - set via style prop
     },
     disabled: {
