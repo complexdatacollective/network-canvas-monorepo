@@ -4,6 +4,7 @@ import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-s
 import { hashProtocol, migrateProtocol } from '@codaco/protocol-validation';
 import {
   buildAssetManifest,
+  InterviewMigrationFailedError,
   migrateProtocolsToCompatibleVersion,
 } from '~/scripts/migrate-protocols';
 
@@ -427,35 +428,69 @@ describe('migrateProtocolsToCompatibleVersion', () => {
       logSpy.mockRestore();
     });
 
-    it('leaves an interview that cannot be migrated unchanged, and migrates the rest', async () => {
+    it('fails the whole migration when one interview cannot be migrated, naming every failed interview', async () => {
       const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       const prisma = makeMockPrisma();
-      prisma.protocol.findMany.mockResolvedValue([v8PedigreeRow('cm-p')]);
-      prisma.interview.findMany.mockResolvedValueOnce([
-        {
-          id: 'int-broken',
-          network: null,
-          stageMetadata: null,
-          currentStep: 0,
-        },
-        makeV8PedigreeInterview('int-ok', 2),
+      prisma.protocol.findMany.mockResolvedValue([
+        v8PedigreeRow('cm-p'),
+        { ...v8PedigreeRow('cm-q'), name: 'Second.netcanvas' },
       ]);
+      prisma.interview.findMany
+        .mockResolvedValueOnce([
+          {
+            id: 'int-broken',
+            network: null,
+            stageMetadata: null,
+            currentStep: 0,
+          },
+          makeV8PedigreeInterview('int-ok', 2),
+        ])
+        .mockResolvedValueOnce([
+          makeV8PedigreeInterview('int-fine', 1),
+          {
+            ...makeV8PedigreeInterview('int-bad-metadata', 1),
+            stageMetadata: [],
+          },
+        ]);
 
-      await migrateProtocolsToCompatibleVersion(
+      const run = migrateProtocolsToCompatibleVersion(
         prisma as unknown as Parameters<
           typeof migrateProtocolsToCompatibleVersion
         >[0],
       );
+      await expect(run).rejects.toBeInstanceOf(InterviewMigrationFailedError);
+      const error = (await run.catch(
+        (caught: unknown) => caught,
+      )) as InterviewMigrationFailedError;
 
-      expect(prisma.protocol.update).toHaveBeenCalledTimes(1);
-      expect(prisma.interview.update).toHaveBeenCalledTimes(1);
-      expect(prisma.interview.update).toHaveBeenCalledWith(
+      // Every protocol was tried, so the report is complete.
+      expect(error.failures).toEqual([
+        {
+          interviewId: 'int-broken',
+          protocolId: 'cm-p',
+          protocolName: 'Pedigree.netcanvas',
+          reason: expect.stringContaining('no network') as unknown,
+        },
+        {
+          interviewId: 'int-bad-metadata',
+          protocolId: 'cm-q',
+          protocolName: 'Second.netcanvas',
+          reason: expect.stringContaining('not keyed by stage') as unknown,
+        },
+      ]);
+      expect(error.message).toMatch(/^2 interviews could not be migrated/);
+      expect(error.message).toMatch(/Nothing was changed/);
+      expect(error.message).toContain(
+        '- interview int-broken of protocol "Pedigree.netcanvas" (id=cm-p): ',
+      );
+      expect(error.message).toContain(
+        '- interview int-bad-metadata of protocol "Second.netcanvas" (id=cm-q): ',
+      );
+      // Thrown, not tolerated, so setup-database's transaction rolls back
+      // whatever was written before the failure was found.
+      expect(prisma.interview.update).not.toHaveBeenCalledWith(
         expect.objectContaining({ where: { id: 'int-ok' } }),
       );
-      const logged = errorSpy.mock.calls
-        .map((call) => String(call[0]))
-        .join(' ');
-      expect(logged).toMatch(/int-broken/);
       errorSpy.mockRestore();
     });
 

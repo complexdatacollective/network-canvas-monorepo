@@ -131,10 +131,61 @@ async function writeMigratedProtocol(
 
 const INTERVIEW_BATCH_SIZE = 200;
 
+/** One interview whose session could not be carried across its protocol's
+ * migration. */
+export type FailedInterviewMigration = {
+  interviewId: string;
+  protocolId: string;
+  protocolName: string;
+  reason: string;
+};
+
 export type InterviewMigrationCounts = {
   migrated: number;
-  failed: number;
+  failed: FailedInterviewMigration[];
 };
+
+/**
+ * Thrown once every protocol has been tried, when any interview of any
+ * protocol could not be migrated. Thrown inside setup-database's transaction,
+ * it rolls back every protocol and interview this run changed, so the
+ * database is left exactly as the previous Fresco version wrote it and
+ * rolling back to that image works. setup-database prints the report and
+ * stops startup.
+ */
+export class InterviewMigrationFailedError extends Error {
+  readonly failures: readonly FailedInterviewMigration[];
+
+  constructor(failures: readonly FailedInterviewMigration[]) {
+    const count = failures.length;
+    super(
+      `${count} ${count === 1 ? 'interview' : 'interviews'} could not be ` +
+        `migrated to schema version ${TARGET_SCHEMA_VERSION}. Nothing was ` +
+        `changed: no protocol or interview has been migrated, and Fresco ` +
+        `will not start until every interview can be. To keep running, ` +
+        `restore the previous Fresco image, which reads the unchanged data. ` +
+        `Report these interviews:\n` +
+        failures
+          .map(
+            (failure) =>
+              `- interview ${failure.interviewId} of protocol ` +
+              `"${failure.protocolName}" (id=${failure.protocolId}): ` +
+              failure.reason,
+          )
+          .join('\n'),
+    );
+    this.name = 'InterviewMigrationFailedError';
+    this.failures = failures;
+  }
+}
+
+/** The failure, with the error that caused it when a migration step threw. */
+function describeSessionFailure(error: Error): string {
+  const { cause } = error;
+  return cause instanceof Error && cause.message !== ''
+    ? `${error.message} ${cause.message}`
+    : error.message;
+}
 
 /**
  * Carry every interview recorded against a protocol across that protocol's
@@ -148,17 +199,20 @@ export type InterviewMigrationCounts = {
  * `stageMetadata` against the current schema and drop the old shape this
  * exists to translate.
  *
- * An interview whose session cannot be migrated is logged and left exactly as
- * it was, like a protocol that cannot be migrated: one damaged interview must
- * not hold back its protocol, the others, or the deployment. Its stage
- * metadata then fails the read path's parse and reads as none.
+ * An interview whose session cannot be migrated is reported in `failed`, and
+ * every other interview is still tried so the report is complete. Any
+ * failure aborts the whole deploy migration (see
+ * `InterviewMigrationFailedError`), so what this wrote for the protocol's
+ * other interviews is rolled back with everything else: a database is never
+ * left holding a mixture of migrated and unmigrated data, which the previous
+ * Fresco version could not read.
  */
 async function migrateInterviewsOf(
   prisma: Prisma.TransactionClient,
   row: Pick<ProtocolRow, 'id' | 'name'>,
   migrateSession: SessionMigrator,
 ): Promise<InterviewMigrationCounts> {
-  const counts: InterviewMigrationCounts = { migrated: 0, failed: 0 };
+  const counts: InterviewMigrationCounts = { migrated: 0, failed: [] };
   let cursor: string | undefined;
 
   for (;;) {
@@ -183,15 +237,23 @@ async function migrateInterviewsOf(
         currentStep: interview.currentStep,
       });
       if (!result.success) {
-        counts.failed += 1;
+        const failure: FailedInterviewMigration = {
+          interviewId: interview.id,
+          protocolId: row.id,
+          protocolName: row.name,
+          reason: describeSessionFailure(result.error),
+        };
+        counts.failed.push(failure);
         console.error(
-          `Could not migrate interview ${interview.id} of protocol ` +
-            `"${row.name}" (id=${row.id}): ${result.error.message} ` +
-            `Leaving it unchanged.`,
+          `Could not migrate interview ${failure.interviewId} of protocol ` +
+            `"${failure.protocolName}" (id=${failure.protocolId}): ` +
+            failure.reason,
         );
         continue;
       }
-      if (!result.changed) continue;
+      // Nothing more is written once one interview has failed: the
+      // transaction is going to be rolled back.
+      if (!result.changed || counts.failed.length > 0) continue;
       const { network, stageMetadata, currentStep } = result.session;
       await prisma.interview.update({
         where: { id: interview.id },
@@ -306,10 +368,12 @@ async function migrateOneProtocol(
 
   const interviews = await migrateInterviewsOf(prisma, row, migrateSession);
 
-  console.log(
-    `Migrated "${row.name}" (id=${row.id})... ok (new hash: ${newHash.slice(0, 8)}...; ` +
-      `${interviews.migrated} interviews migrated, ${interviews.failed} left unchanged)`,
-  );
+  if (interviews.failed.length === 0) {
+    console.log(
+      `Migrated "${row.name}" (id=${row.id})... ok (new hash: ${newHash.slice(0, 8)}...; ` +
+        `${interviews.migrated} interviews migrated)`,
+    );
+  }
   return { outcome: 'migrated', interviews };
 }
 
@@ -370,7 +434,7 @@ async function normalizeNonConformantProtocol(
 
   const interviews = migrateInterviews
     ? await migrateInterviewsOf(prisma, row, migrateSession)
-    : { migrated: 0, failed: 0 };
+    : { migrated: 0, failed: [] };
 
   console.log(
     `Normalized non-conformant protocol "${row.name}" (id=${row.id})... ok (new hash: ${newHash.slice(0, 8)}...)`,
@@ -395,12 +459,20 @@ async function normalizeNonConformantProtocol(
  * interview's stage metadata and resume position follow their stages, and any
  * data the migration re-spells is rewritten, in the same transaction.
  *
- * Both classes tolerate failure: a protocol that cannot be migrated or
- * normalized is logged and left in place, because one bad row must never
- * block a customer's deployment. A left-behind below-target row is safe at
- * runtime — the interview payload refuses a protocol whose stored version
- * does not match the runtime's — and a left-behind non-conformant row
- * degrades gracefully through the read path's per-field parsing.
+ * Interviews are all or nothing: if any interview of any protocol cannot be
+ * migrated, every protocol is still tried so the report names each failed
+ * interview, and then `InterviewMigrationFailedError` is thrown, which rolls
+ * back the whole transaction and stops startup. A database must never hold a
+ * mixture of migrated and unmigrated interview data, because that blocks
+ * rolling back to the previous Fresco image.
+ *
+ * A protocol that cannot be migrated or normalized at all is different: it
+ * is logged and left in place, together with all its interviews, because one
+ * bad row must never block a customer's deployment. A left-behind below-target
+ * row is safe at runtime — the interview payload refuses a protocol whose
+ * stored version does not match the runtime's — and a left-behind
+ * non-conformant row degrades gracefully through the read path's per-field
+ * parsing.
  *
  * Idempotent: conformant protocols at the target version are skipped.
  */
@@ -427,7 +499,7 @@ export async function migrateProtocolsToCompatibleVersion(
   let normalized = 0;
   let skipped = 0;
   let interviewsMigrated = 0;
-  let interviewsFailed = 0;
+  const interviewsFailed: FailedInterviewMigration[] = [];
 
   for (const row of protocols) {
     if (row.schemaVersion < TARGET_SCHEMA_VERSION) {
@@ -446,7 +518,7 @@ export async function migrateProtocolsToCompatibleVersion(
           normalized += 1;
         }
         interviewsMigrated += interviews.migrated;
-        interviewsFailed += interviews.failed;
+        interviewsFailed.push(...interviews.failed);
       } catch (err) {
         skipped += 1;
         const cause = err instanceof Error ? err.message : String(err);
@@ -480,10 +552,14 @@ export async function migrateProtocolsToCompatibleVersion(
     }
   }
 
+  if (interviewsFailed.length > 0) {
+    throw new InterviewMigrationFailedError(interviewsFailed);
+  }
+
   console.log(
     `Protocol migration complete: ${migrated} migrated up to schema version ` +
       `${TARGET_SCHEMA_VERSION}, ${normalized} non-conformant normalized, ` +
       `${skipped} left in place. Interviews: ${interviewsMigrated} migrated ` +
-      `with their protocol, ${interviewsFailed} left unchanged.`,
+      `with their protocol.`,
   );
 }
