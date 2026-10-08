@@ -1,12 +1,28 @@
 ---
 name: ci-and-e2e-policy
-description: 'Use when working on CI configuration in the network-canvas monorepo, or when interpreting a CI result — which E2E suites run and why, how the two-job pixel/native split works, verdict reuse on generated release branches, Storybook interaction-test determinism, Chromatic and TurboSnap wiring, and the E2E visual snapshot baseline workflow. Keywords: CI, quality gate, E2E selection, affected E2E, release-e2e-policy, e2e-native, merge group, Chromatic, TurboSnap, preview-stats.json, optimizeDeps, test:storybook, visual baseline, snapshot PR, E2E status comment.'
+description: 'Use when working on CI configuration in the network-canvas monorepo, or when interpreting a CI result — which E2E suites run and why, how the two-job pixel/native split works, verdict reuse on generated release branches, Storybook interaction-test determinism, Chromatic and TurboSnap wiring, and the E2E visual snapshot baseline workflow. Keywords: CI, quality gate, E2E selection, affected E2E, release-e2e-policy, e2e-native, merge group, Chromatic, TurboSnap, preview-stats.json, optimizeDeps, test:storybook, visual baseline, snapshot PR, E2E status comment, integration branch, schema-9, pull_request branches.'
 ---
 
 # CI and E2E policy
 
 How this repository decides what CI runs, and the constraints that keep each
 suite deterministic.
+
+#### Which pull requests get CI
+
+Pull requests into `main` and into long-lived integration branches run the same
+CI. Name an integration branch `integration/<name>`; schema-version branches
+(`schema-<n>`, such as `schema-9`) are covered too. The trigger is a branch
+pattern (`pull_request: branches: [main, 'integration/**', 'schema-*']` in
+`.github/workflows/ci-and-release.yml`), so a new branch that follows the
+convention needs no workflow change.
+
+A pull request into an integration branch gets full CI but no merge queue and no
+required checks, because the rulesets target only `main`: `quality` is advisory
+there, and the pull request merges when its author decides. `push` stays
+`[main]`, so no release, publish, deploy or mirror job ever runs for an
+integration base. Chromatic stays `main`-only: its zero-snapshot statuses exist
+to satisfy required contexts that only `main` has.
 
 #### Storybook interaction tests
 
@@ -98,8 +114,8 @@ on the build page).
 #### Affected E2E checks
 
 CI runs the Architect, Interview, and Interviewer E2E suites on feature PRs
-targeting `main` when the cumulative PR diff touches the suite subject or
-anything in its workspace dependency closure. A change to `@codaco/interview`,
+(into `main` or an integration branch) when the cumulative PR diff touches the
+suite subject or anything in its workspace dependency closure. A change to `@codaco/interview`,
 for example, runs all downstream suites; an Architect-only change runs
 Architect E2E. The classifier treats `docs/`, `.changeset/`, and Markdown as
 inert, and fails closed for root configs, workflows, scripts, the lockfile,

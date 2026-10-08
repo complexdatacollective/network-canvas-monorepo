@@ -1,10 +1,18 @@
 name: CI and Release
 
 on:
+  # Release, publish, deploy and mirror jobs hang off this trigger (and are
+  # additionally guarded by `github.ref == 'refs/heads/main'`), so it stays
+  # `main` only: an integration branch never releases.
   push:
     branches: [main]
+  # Pull requests into `main` and into long-lived integration branches get the
+  # same CI. `integration/<name>` is the convention for new integration
+  # branches; `schema-*` covers schema-version branches such as `schema-9`.
+  # Rulesets (merge queue, required `quality`) still apply only to `main`, so
+  # on an integration base this run is advisory.
   pull_request:
-    branches: [main]
+    branches: [main, 'integration/**', 'schema-*']
   merge_group:
     types: [checks_requested]
   workflow_dispatch:
