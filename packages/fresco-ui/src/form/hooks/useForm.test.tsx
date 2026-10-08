@@ -371,6 +371,8 @@ describe('useForm while a submission is in flight', () => {
   }) {
     const { formProps } = useForm({ onSubmit });
     const isSubmitting = useFormStore((state) => state.isSubmitting);
+    // What `ResetFormWhenClosed` calls when its dialog closes.
+    const resetForm = useFormStore((state) => state.resetForm);
 
     return (
       <>
@@ -391,6 +393,9 @@ describe('useForm while a submission is in flight', () => {
         {/* Not a SubmitButton, so nothing disables it while submitting. */}
         <button type="submit" form="guarded-form">
           Save from outside
+        </button>
+        <button type="button" onClick={resetForm}>
+          Reset form
         </button>
         <output data-testid="submitting">{String(isSubmitting)}</output>
       </>
@@ -442,6 +447,33 @@ describe('useForm while a submission is in flight', () => {
     await waitForSubmissionToFinish();
     await drainMicrotasks();
     expect(onSubmit).toHaveBeenCalledTimes(1);
+  });
+
+  // Resetting the store clears `isSubmitting`, but the submission it started
+  // is still running, so a second one must not start beside it.
+  it('ignores a submit after the form is reset while its submission is still running', async () => {
+    const { onSubmit, resolveNext } = deferredSubmit();
+    const { form, outsideButton } = renderHarness({ onSubmit });
+
+    act(() => form.requestSubmit());
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalledTimes(1);
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Reset form' }));
+    expect(screen.getByTestId('submitting')).toHaveTextContent('false');
+
+    act(() => form.requestSubmit());
+    fireEvent.click(outsideButton);
+    await drainMicrotasks();
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+
+    // Once the original settles, the form takes the next submit.
+    await resolveNext({ success: true });
+    act(() => form.requestSubmit());
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalledTimes(2);
+    });
   });
 
   it('accepts a new submit once the submission has finished', async () => {
