@@ -148,6 +148,16 @@ where the repository records one.
     - **No `und` anywhere.** Stored protocols, Fresco's database default,
       interview data, exports, templates and fixtures contain `en` where they
       would have had `und`.
+17. **One language boundary, at the Shell.** The proposal gave every rendered
+    protocol text its own `lang` and `dir`, describing the translation it
+    resolved to, while the Shell root carried the interface language. The
+    product owner ruled on 8 October 2026 that the interview is a single
+    language environment. The Shell root carries the interview language and
+    its direction for everything the Shell renders, stage, navigation, dialogs
+    and toasts alike, and no text inside marks a language of its own, even
+    when it falls back to another of the protocol's languages (§8.3, §8.8).
+    Built-in interface text inside the Shell is to come from the protocol in
+    the interview language, so that the boundary holds for it too.
 
 ## 1. Summary
 
@@ -984,8 +994,10 @@ language:
   script, as in §6.2.
 - The result is never stored. Each Shell owns its formatter, so one interview's
   language cannot leak into another on the same page.
-- Protocol text carries the `lang` of the translation it is written in; the
-  Shell root carries the interface `lang` and `dir`.
+- The Shell root carries the interview language and direction, not the
+  interface language (§8.8). Built-in text that the interface has no catalog
+  for is therefore shown in English inside a region marked with the interview
+  language, until that text comes from the protocol (revision 17).
 
 ### 8.4 Interviewer (Vite SPA)
 
@@ -1117,14 +1129,15 @@ Studio's own message catalogs are separate work.
 
 ### 8.8 Language and direction in the DOM
 
-- Every rendered protocol-authored string is associated with the actual
-  locale returned by the resolver.
-- The nearest practical text container receives `lang` and `dir`; when a
-  string falls back, those attributes describe the fallback language, not the
-  selected protocol locale.
-- The stage container takes the direction of the translation shown. The Shell
-  root keeps the interface language and direction, because built-in text is in
-  the interface language and protocol text carries its own `lang`.
+- The Shell root is the interview's one language boundary. It carries the
+  interview language and that language's direction, and provides the
+  direction to the components inside it. Everything the Shell renders sits
+  inside it: the stage, the navigation, and the dialogs and toasts, which
+  portal into the same region (revision 17).
+- No protocol text inside the Shell marks a language of its own, even when it
+  falls back to another of the protocol's languages, and no wrapper is added to
+  carry one: a wrapper would separate typography siblings whose spacing depends
+  on their order.
 - The host owns the document-level `<html lang>`. The Interview package does
   not rewrite it because surrounding host chrome may remain in another
   language.
