@@ -1,5 +1,7 @@
 import { randomBytes } from 'node:crypto';
 
+import type { Redacted } from 'effect';
+
 import {
   openSecret,
   type SealedSecret,
@@ -29,6 +31,18 @@ export type AssetKeyIdentity = {
   teamId: string;
   protocolId: string;
   assetId: string;
+};
+
+/**
+ * `protocol_staged_resources`: an `apikey` a protocol-builder editor staged
+ * and has not submitted yet. The owner is the staging caller's session owner,
+ * so a key staged by one tab never opens under another's row.
+ */
+export type StagedSecretIdentity = {
+  teamId: string;
+  draftId: string;
+  owner: string;
+  resourceId: string;
 };
 
 /**
@@ -63,28 +77,54 @@ export type SecretsCipherApi = {
 
   sealWebhookSecret(
     identity: WebhookSecretIdentity,
-    secret: string,
+    secret: Redacted.Redacted,
   ): SealedSecret;
   openWebhookSecret(
     identity: WebhookSecretIdentity,
     sealed: StoredSecret,
-  ): string;
+  ): Redacted.Redacted;
   /** Returns `sealed` unchanged when it is already under the current key. */
   resealWebhookSecret(
     identity: WebhookSecretIdentity,
     sealed: SealedSecret,
   ): SealedSecret;
 
-  sealAssetKey(identity: AssetKeyIdentity, value: string): SealedSecret;
-  openAssetKey(identity: AssetKeyIdentity, sealed: StoredSecret): string;
+  sealAssetKey(
+    identity: AssetKeyIdentity,
+    value: Redacted.Redacted,
+  ): SealedSecret;
+  openAssetKey(
+    identity: AssetKeyIdentity,
+    sealed: StoredSecret,
+  ): Redacted.Redacted;
   /** Returns `sealed` unchanged when it is already under the current key. */
   resealAssetKey(
     identity: AssetKeyIdentity,
     sealed: SealedSecret,
   ): SealedSecret;
 
-  sealOAuthToken(identity: OAuthTokenIdentity, token: string): string;
-  openOAuthToken(identity: OAuthTokenIdentity, stored: string): string;
+  sealStagedSecret(
+    identity: StagedSecretIdentity,
+    value: Redacted.Redacted,
+  ): SealedSecret;
+  openStagedSecret(
+    identity: StagedSecretIdentity,
+    sealed: StoredSecret,
+  ): Redacted.Redacted;
+  /** Returns `sealed` unchanged when it is already under the current key. */
+  resealStagedSecret(
+    identity: StagedSecretIdentity,
+    sealed: SealedSecret,
+  ): SealedSecret;
+
+  sealOAuthToken(
+    identity: OAuthTokenIdentity,
+    token: Redacted.Redacted,
+  ): string;
+  openOAuthToken(
+    identity: OAuthTokenIdentity,
+    stored: string,
+  ): Redacted.Redacted;
   /** Returns `stored` unchanged when it is already under the current key. */
   resealOAuthToken(identity: OAuthTokenIdentity, stored: string): string;
 };
@@ -126,7 +166,10 @@ export function createSecretsCipher(
   // secrets are reproducible; everything else takes the CSPRNG.
   const random = options.random ?? randomBytes;
 
-  function seal(identity: readonly string[], plaintext: string): SealedSecret {
+  function seal(
+    identity: readonly string[],
+    plaintext: Redacted.Redacted,
+  ): SealedSecret {
     return sealSecret(keyring, identity, plaintext, random);
   }
 
@@ -143,11 +186,24 @@ export function createSecretsCipher(
     ];
   }
 
+  function stagedSecretIdentity(identity: StagedSecretIdentity): string[] {
+    return [
+      'staged-secret',
+      identity.teamId,
+      identity.draftId,
+      identity.owner,
+      identity.resourceId,
+    ];
+  }
+
   function oauthIdentity(identity: OAuthTokenIdentity): string[] {
     return ['oauth', identity.providerId, identity.accountId, identity.column];
   }
 
-  function sealOAuthToken(identity: OAuthTokenIdentity, token: string): string {
+  function sealOAuthToken(
+    identity: OAuthTokenIdentity,
+    token: Redacted.Redacted,
+  ): string {
     const sealed = seal(oauthIdentity(identity), token);
     return `${OAUTH_PREFIX}${sealed.keyId}:${sealed.ciphertext.toString('base64url')}`;
   }
@@ -155,7 +211,7 @@ export function createSecretsCipher(
   function openOAuthToken(
     identity: OAuthTokenIdentity,
     stored: string,
-  ): string {
+  ): Redacted.Redacted {
     const keyId = parseOAuthTokenKeyId(stored);
     if (!keyId) {
       // A token in this column that Studio did not seal is a fault, never a
@@ -202,6 +258,18 @@ export function createSecretsCipher(
         : seal(
             assetKeyIdentity(identity),
             openSecret(keyring, assetKeyIdentity(identity), sealed),
+          ),
+
+    sealStagedSecret: (identity, value) =>
+      seal(stagedSecretIdentity(identity), value),
+    openStagedSecret: (identity, sealed) =>
+      openSecret(keyring, stagedSecretIdentity(identity), sealed),
+    resealStagedSecret: (identity, sealed) =>
+      sealed.keyId === keyring.currentId
+        ? sealed
+        : seal(
+            stagedSecretIdentity(identity),
+            openSecret(keyring, stagedSecretIdentity(identity), sealed),
           ),
 
     sealOAuthToken,

@@ -1,4 +1,4 @@
-import { Schema } from 'effect';
+import { Redacted, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { Me, UpdateAccountLocaleResult } from '../schema/account.ts';
@@ -16,7 +16,7 @@ import {
   ProtocolSummary,
 } from '../schema/protocol.ts';
 import { CompleteSetupResult } from '../schema/setup.ts';
-import { InstanceStatus } from '../schema/status.ts';
+import { InstanceStatus, UpdateAvailable } from '../schema/status.ts';
 import { StudyDetail, StudySummary } from '../schema/study.ts';
 import {
   AcceptTeamInvitationResult,
@@ -39,9 +39,9 @@ const OCCURRED_AT_ISO = '2026-09-16T10:11:12.013Z';
 
 const VALID_ME = {
   userId: 'user-1',
-  email: 'ada@example.com',
+  email: Redacted.make('ada@example.com'),
   emailVerified: true,
-  name: 'Ada Lovelace',
+  name: Redacted.make('Ada Lovelace'),
   locale: null,
   teams: [{ teamId: TeamId.make('team-1'), role: 'owner' }],
 };
@@ -83,7 +83,7 @@ const ENCODED_STATUS = {
 
 const VALID_STUDY_SUMMARY = {
   id: STUDY_UUID,
-  name: 'Belfast pilot',
+  name: Redacted.make('Belfast pilot'),
   state: 'draft',
   participationMode: 'managed',
   protocolId: null,
@@ -111,8 +111,8 @@ const VALID_AUDIT_EVENT = {
   eventVersion: 1,
   category: 'team_access',
   outcome: 'succeeded',
-  actor: { kind: 'user', id: 'user-1', label: 'Ada Lovelace' },
-  subject: { type: 'user', id: 'user-2', label: 'Grace Hopper' },
+  actor: { kind: 'user', id: 'user-1', label: Redacted.make('Ada Lovelace') },
+  subject: { type: 'user', id: 'user-2', label: Redacted.make('Grace Hopper') },
   resource: null,
   title: 'Added a member',
   rendered: true,
@@ -134,6 +134,32 @@ const ENCODED_AUDIT_EVENT = {
 };
 
 describe('the documents the rpc plane puts on the wire', () => {
+  it('round-trips UpdateAvailable, and the null that answers everyone else', () => {
+    const answer = Schema.NullOr(UpdateAvailable);
+    const available = {
+      version: '1.3.0',
+      releasedAt: OCCURRED_AT,
+      notesUrl: 'https://releases.networkcanvas.com/studio/1.3.0',
+      schemaChange: true,
+    };
+    const encoded = {
+      ...available,
+      releasedAt: OCCURRED_AT_ISO,
+    };
+
+    expect(encode(answer)(available)).toStrictEqual(encoded);
+    expect(decode(answer)(encoded)).toStrictEqual(available);
+    expect(encode(answer)(null)).toBeNull();
+    expect(decode(answer)(null)).toBeNull();
+    // The wire shape is the four fields and no more: nothing about the
+    // instance's own state rides along with the notice.
+    expect(
+      Object.keys(
+        encode(answer)(available) as Record<string, unknown>,
+      ).toSorted(),
+    ).toEqual(['notesUrl', 'releasedAt', 'schemaChange', 'version']);
+  });
+
   it('encodes InstanceStatus', () => {
     expect(encode(InstanceStatus)(VALID_STATUS)).toStrictEqual(ENCODED_STATUS);
   });
@@ -161,7 +187,7 @@ describe('the documents the rpc plane puts on the wire', () => {
     expect(
       encode(CreateTeamInvitationResult)({
         invitationId: 'inv-1',
-        email: 'ada@example.com',
+        email: Redacted.make('ada@example.com'),
         role: 'member',
         status: 'pending',
         expiresAt: new Date('2026-10-01T09:00:00.000Z'),
@@ -180,7 +206,7 @@ describe('the documents the rpc plane puts on the wire', () => {
       encode(AcceptTeamInvitationResult)({
         invitationId: 'inv-1',
         teamId: 'team-1',
-        teamName: 'Team One',
+        teamName: Redacted.make('Team One'),
         memberId: 'member-1',
         role: 'member',
         status: 'accepted',
@@ -220,7 +246,7 @@ describe('the documents the rpc plane puts on the wire', () => {
       encode(ProtocolSummary)({
         id: PROTOCOL_UUID,
         draftId: DRAFT_UUID,
-        name: 'Belfast protocol',
+        name: Redacted.make('Belfast protocol'),
         createdAt: OCCURRED_AT,
         updatedAt: OCCURRED_AT,
       }),
@@ -248,12 +274,14 @@ describe('the documents the rpc plane puts on the wire', () => {
         protocol: {
           id: PROTOCOL_UUID,
           draftId: DRAFT_UUID,
-          name: 'Belfast protocol',
+          name: Redacted.make('Belfast protocol'),
           createdAt: OCCURRED_AT,
           updatedAt: OCCURRED_AT,
         },
         revision: { sequence: '7', hash: 'sha256:abc' },
-        sections: { stages: { order: ['stage-1'], count: 1 } },
+        sections: {
+          stages: Redacted.make({ order: ['stage-1'], count: 1 }),
+        },
       }),
     ).toStrictEqual({
       protocol: {
@@ -287,9 +315,9 @@ describe('the documents the rpc plane puts on the wire', () => {
     expect(
       encode(AuditEventDetail)({
         ...VALID_AUDIT_EVENT,
-        teamLabel: 'Team One',
+        teamLabel: Redacted.make('Team One'),
         requestId: REQUEST_UUID,
-        details: { role: 'member', invited: true },
+        details: Redacted.make({ role: 'member', invited: true }),
       }),
     ).toStrictEqual({
       ...ENCODED_AUDIT_EVENT,
@@ -303,7 +331,9 @@ describe('the documents the rpc plane puts on the wire', () => {
     expect(
       encode(AuditFilterOptions)({
         actions: [{ eventType: 'team.member.added', title: 'Added a member' }],
-        actors: [{ kind: 'user', id: 'user-1', label: 'Ada Lovelace' }],
+        actors: [
+          { kind: 'user', id: 'user-1', label: Redacted.make('Ada Lovelace') },
+        ],
         truncated: false,
       }),
     ).toStrictEqual({

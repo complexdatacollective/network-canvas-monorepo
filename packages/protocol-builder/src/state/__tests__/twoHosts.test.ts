@@ -1,9 +1,13 @@
+import { Redacted, Schema } from 'effect';
 // @vitest-environment node
 // jsdom's realm has a `Uint8Array` of its own, which the contract's
 // `instanceof` check refuses.
 import { afterEach, describe, expect, it } from 'vitest';
 
-import type { ProtocolEvent } from '@codaco/protocol-builder-core/contract/schemas';
+import {
+  ResourceDescriptorSchema,
+  type ProtocolEvent,
+} from '@codaco/protocol-builder-core/contract/schemas';
 import allInterfaces from '@codaco/protocols/e2e/all-interfaces/protocol.json';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
@@ -37,9 +41,15 @@ function base64Of(bytes: Uint8Array): string {
 /** Everything a procedure answered with, as text a secret could hide in. */
 function wholeAnswer(value: unknown): string {
   return JSON.stringify(value, (_key, item: unknown) =>
-    typeof item === 'bigint' ? item.toString() : item,
+    typeof item === 'bigint'
+      ? item.toString()
+      : Redacted.isRedacted(item)
+        ? Redacted.value(item)
+        : item,
   );
 }
+
+const plainDescriptor = Schema.encodeSync(ResourceDescriptorSchema);
 
 const HOLDER = {
   sessionId: 'holder-session',
@@ -112,10 +122,10 @@ describe.each(hosts)('one contract, served $name', ({ serve }) => {
       protocolId: host.protocolId,
       requestId: nextRequestId(),
       sectionId: INFORMATION,
-      document: {
-        ...before.document,
+      document: Redacted.make({
+        ...Redacted.value(before.document),
         label: { 'en-US': 'Renamed without the lock' },
-      },
+      }),
       revision: before.revision,
     });
 
@@ -125,7 +135,9 @@ describe.each(hosts)('one contract, served $name', ({ serve }) => {
       protocolId: host.protocolId,
       sectionId: INFORMATION,
     });
-    expect(after.document.label).toEqual(before.document.label);
+    expect(Redacted.value(after.document).label).toEqual(
+      Redacted.value(before.document).label,
+    );
   });
 
   it('opens read-only behind a holder, and names them', async () => {
@@ -141,9 +153,9 @@ describe.each(hosts)('one contract, served $name', ({ serve }) => {
     });
 
     expect(result.lock).toBe('readOnly');
-    expect(result.lock === 'readOnly' && result.holder.displayName).toBe(
-      'Grace',
-    );
+    expect(
+      result.lock === 'readOnly' && Redacted.value(result.holder.displayName),
+    ).toBe('Grace');
   });
 
   it('registers a created stage in the stage order', async () => {
@@ -152,13 +164,13 @@ describe.each(hosts)('one contract, served $name', ({ serve }) => {
       protocolId: host.protocolId,
       sectionId: INFORMATION,
     });
-    const { id: _id, ...withoutId } = template.document;
+    const { id: _id, ...withoutId } = Redacted.value(template.document);
 
     const created = await adapter.rpcCall('Create', {
       protocolId: host.protocolId,
       requestId: nextRequestId(),
       kind: 'stage',
-      document: withoutId,
+      document: Redacted.make(withoutId),
       position: 0,
     });
     const stage = await adapter.rpcCall('GetSection', {
@@ -170,11 +182,11 @@ describe.each(hosts)('one contract, served $name', ({ serve }) => {
       sectionId: STAGE_ORDER,
     });
 
-    expect(stage.document.id).toBe(String(stage.document.id));
-    expect(order.document.stages).toContain(stage.document.id);
-    expect(
-      Array.isArray(order.document.stages) && order.document.stages[0],
-    ).toBe(stage.document.id);
+    const stageDocument = Redacted.value(stage.document);
+    const stages = Redacted.value(order.document).stages;
+    expect(stageDocument.id).toBe(String(stageDocument.id));
+    expect(stages).toContain(stageDocument.id);
+    expect(Array.isArray(stages) && stages[0]).toBe(stageDocument.id);
   });
 
   it('replays the revisions after a cursor', async () => {
@@ -188,10 +200,10 @@ describe.each(hosts)('one contract, served $name', ({ serve }) => {
       protocolId: host.protocolId,
       requestId: nextRequestId(),
       sectionId: INFORMATION,
-      document: {
-        ...held.document,
+      document: Redacted.make({
+        ...Redacted.value(held.document),
         label: { 'en-US': 'Written before anyone watched' },
-      },
+      }),
       revision: held.revision,
     });
 
@@ -215,9 +227,11 @@ describe.each(hosts)('one contract, served $name', ({ serve }) => {
     expect(revision?.type === 'revision' && revision.sectionId).toBe(
       INFORMATION,
     );
-    expect(revision?.type === 'revision' && revision.document?.label).toEqual({
-      'en-US': 'Written before anyone watched',
-    });
+    expect(
+      revision?.type === 'revision' &&
+        revision.document !== undefined &&
+        Redacted.value(revision.document).label,
+    ).toEqual({ 'en-US': 'Written before anyone watched' });
   });
 
   it('removes a stage and its place in the stage order in one revision', async () => {
@@ -237,10 +251,13 @@ describe.each(hosts)('one contract, served $name', ({ serve }) => {
       sectionId: STAGE_ORDER,
     });
     expect(deleted.changedSections).toEqual([INFORMATION, STAGE_ORDER]);
-    expect(order.document.stages).not.toContain('information-1');
-    expect(
-      Array.isArray(before.document.stages) && before.document.stages,
-    ).toContain('information-1');
+    expect(Redacted.value(order.document).stages).not.toContain(
+      'information-1',
+    );
+    const stagesBefore = Redacted.value(before.document).stages;
+    expect(Array.isArray(stagesBefore) && stagesBefore).toContain(
+      'information-1',
+    );
     expect(order.revision.sequence).toBe(deleted.revision.sequence);
     const { refusal } = await attempt(adapter, 'GetSection', {
       protocolId: host.protocolId,
@@ -260,15 +277,15 @@ describe.each(hosts)('one contract, served $name', ({ serve }) => {
       request: {
         kind: 'content',
         contentKind: 'image',
-        name: 'Nook',
-        source: 'nook.png',
+        name: Redacted.make('Nook'),
+        source: Redacted.make('nook.png'),
         contentType: 'image/png',
-        bytes,
+        bytes: Redacted.make(bytes),
       },
     });
     if (staged.status !== 'ok') throw new Error(staged.failure.message);
     const resourceId = staged.data.descriptor.id;
-    expect(staged.data.descriptor).toMatchObject({
+    expect(plainDescriptor(staged.data.descriptor)).toMatchObject({
       kind: 'image',
       name: 'Nook',
       status: 'staged',
@@ -281,9 +298,10 @@ describe.each(hosts)('one contract, served $name', ({ serve }) => {
       editId: EDIT,
       resourceId,
     });
-    expect(inspected.status === 'ok' && inspected.data.descriptor.name).toBe(
-      'Nook',
-    );
+    expect(
+      inspected.status === 'ok' &&
+        Redacted.value(inspected.data.descriptor.name),
+    ).toBe('Nook');
 
     // The section naming the resource and the resource itself are one
     // revision: promotion happens as part of the submit that references it.
@@ -313,7 +331,9 @@ describe.each(hosts)('one contract, served $name', ({ serve }) => {
     // researcher picked: two imports called `nook.png` are two assets, and a
     // protocol that carried both under one name could only export one of them.
     const committed = committedSource(bytes, 'nook.png');
-    expect(listed.data.resources).toContainEqual(
+    expect(
+      listed.data.resources.map((descriptor) => plainDescriptor(descriptor)),
+    ).toContainEqual(
       expect.objectContaining({
         id: resourceId,
         name: 'Nook',
@@ -327,7 +347,7 @@ describe.each(hosts)('one contract, served $name', ({ serve }) => {
       protocolId: host.protocolId,
       sectionId: ASSETS,
     });
-    expect(manifest.document[resourceId]).toMatchObject({
+    expect(Redacted.value(manifest.document)[resourceId]).toMatchObject({
       name: 'Nook',
       type: 'image',
       source: committed,
@@ -342,8 +362,12 @@ describe.each(hosts)('one contract, served $name', ({ serve }) => {
       resourceId,
     });
     if (preview.status !== 'ok') throw new Error(preview.failure.message);
-    expect(preview.data.url.endsWith(base64Of(bytes))).toBe(true);
-    expect(preview.data.url.startsWith('data:image/png;base64,')).toBe(true);
+    expect(Redacted.value(preview.data.url).endsWith(base64Of(bytes))).toBe(
+      true,
+    );
+    expect(
+      Redacted.value(preview.data.url).startsWith('data:image/png;base64,'),
+    ).toBe(true);
   });
 
   it('promotes a staged file with the stage being created, not a later submit', async () => {
@@ -356,10 +380,10 @@ describe.each(hosts)('one contract, served $name', ({ serve }) => {
       request: {
         kind: 'content',
         contentKind: 'image',
-        name: 'Nook',
-        source: 'nook.png',
+        name: Redacted.make('Nook'),
+        source: Redacted.make('nook.png'),
         contentType: 'image/png',
-        bytes,
+        bytes: Redacted.make(bytes),
       },
     });
     if (staged.status !== 'ok') throw new Error(staged.failure.message);
@@ -371,12 +395,12 @@ describe.each(hosts)('one contract, served $name', ({ serve }) => {
       protocolId: host.protocolId,
       requestId: nextRequestId(),
       kind: 'stage',
-      document: {
+      document: Redacted.make({
         type: 'Information',
         label: { 'en-US': 'Information' },
         title: { 'en-US': 'Welcome' },
         items: [{ id: 'item-1', type: 'asset', content: resourceId }],
-      },
+      }),
       promote: { editId: EDIT, resourceIds: [resourceId] },
     });
     expect(created.promoted).toEqual([
@@ -387,7 +411,7 @@ describe.each(hosts)('one contract, served $name', ({ serve }) => {
       protocolId: host.protocolId,
       sectionId: ASSETS,
     });
-    expect(manifest.document[resourceId]).toMatchObject({
+    expect(Redacted.value(manifest.document)[resourceId]).toMatchObject({
       name: 'Nook',
       type: 'image',
       source: committedSource(bytes, 'nook.png'),
@@ -406,7 +430,9 @@ describe.each(hosts)('one contract, served $name', ({ serve }) => {
       resourceId,
     });
     if (preview.status !== 'ok') throw new Error(preview.failure.message);
-    expect(preview.data.url.endsWith(base64Of(bytes))).toBe(true);
+    expect(Redacted.value(preview.data.url).endsWith(base64Of(bytes))).toBe(
+      true,
+    );
   });
 
   it('forgets a staged resource that is discarded', async () => {
@@ -418,10 +444,10 @@ describe.each(hosts)('one contract, served $name', ({ serve }) => {
       request: {
         kind: 'content',
         contentKind: 'network',
-        name: 'A roster',
-        source: 'roster.csv',
+        name: Redacted.make('A roster'),
+        source: Redacted.make('roster.csv'),
         contentType: 'text/csv',
-        bytes: new TextEncoder().encode('name\nAda\n'),
+        bytes: Redacted.make(new TextEncoder().encode('name\nAda\n')),
       },
     });
     if (staged.status !== 'ok') throw new Error(staged.failure.message);
@@ -489,7 +515,11 @@ describe.each(hosts)('one contract, served $name', ({ serve }) => {
       protocolId: host.protocolId,
       editId: EDIT,
       requestId: 'request-1',
-      request: { kind: 'secret', name: 'Mapbox token', value },
+      request: {
+        kind: 'secret',
+        name: Redacted.make('Mapbox token'),
+        value: Redacted.make(value),
+      },
     });
     if (staged.status !== 'ok') throw new Error(staged.failure.message);
     const resourceId = staged.data.descriptor.id;
@@ -503,7 +533,9 @@ describe.each(hosts)('one contract, served $name', ({ serve }) => {
       resourceId,
     });
     expect(
-      stagedInspection.status === 'ok' && stagedInspection.data.value,
+      stagedInspection.status === 'ok' &&
+        stagedInspection.data.value !== undefined &&
+        Redacted.value(stagedInspection.data.value),
     ).toBe(value);
 
     const held = await adapter.rpcCall('AcquireLock', {
@@ -525,7 +557,9 @@ describe.each(hosts)('one contract, served $name', ({ serve }) => {
       protocolId: host.protocolId,
     });
     if (listed.status !== 'ok') throw new Error(listed.failure.message);
-    expect(listed.data.resources).toContainEqual(
+    expect(
+      listed.data.resources.map((descriptor) => plainDescriptor(descriptor)),
+    ).toContainEqual(
       expect.objectContaining({
         id: resourceId,
         kind: 'apikey',
@@ -542,7 +576,9 @@ describe.each(hosts)('one contract, served $name', ({ serve }) => {
       resourceId,
     });
     expect(
-      committedInspection.status === 'ok' && committedInspection.data.value,
+      committedInspection.status === 'ok' &&
+        committedInspection.data.value !== undefined &&
+        Redacted.value(committedInspection.data.value),
     ).toBe(value);
   });
 });

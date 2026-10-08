@@ -1,17 +1,18 @@
-import { Context, Schema } from 'effect';
+import { Context, type Redacted, Schema } from 'effect';
 import { RpcMiddleware } from 'effect/rpc';
 
 import { RateLimited, Unauthorized } from '../schema/errors.ts';
 import type { UserId } from '../schema/ids.ts';
+import type { AuditActor } from './auditActor.ts';
 
 export class Principal extends Context.Service<
   Principal,
   {
     readonly kind: 'user';
     readonly userId: UserId;
-    readonly email: string;
+    readonly email: Redacted.Redacted;
     readonly emailVerified: boolean;
-    readonly name: string;
+    readonly name: Redacted.Redacted;
     readonly locale: string | null;
     readonly sessionId: string;
   }
@@ -23,7 +24,7 @@ export class Principal extends Context.Service<
  */
 export class Authenticated extends RpcMiddleware.Service<
   Authenticated,
-  { provides: Principal }
+  { provides: Principal | AuditActor }
 >()('@studio/Authenticated', {
   error: Schema.Union([Unauthorized, RateLimited]),
   requiredForClient: false,

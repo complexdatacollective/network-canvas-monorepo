@@ -1,5 +1,8 @@
+import { randomUUID } from 'node:crypto';
+
 import {
   Clock,
+  Context,
   Duration,
   Effect,
   Exit,
@@ -7,9 +10,11 @@ import {
   ManagedRuntime,
   Option,
   Scope,
+  Tracer,
 } from 'effect';
 import * as RpcClient from 'effect/rpc/RpcClient';
 import * as RpcServer from 'effect/rpc/RpcServer';
+import { SqlError } from 'effect/sql';
 
 import {
   ProtocolBuilderGroup,
@@ -19,6 +24,13 @@ import { CLIENT_SESSION_HEADER } from '@codaco/studio-contract/client-session';
 
 import type { Studio } from '../../app.ts';
 import { AuthService, type SessionPrincipal } from '../../auth/service.ts';
+import { Database } from '../../db/client.ts';
+import { MaintenanceTriggers } from '../../http/middleware/maintenance.ts';
+import { ReplicaId } from '../../protocol-builder/connections.ts';
+import {
+  Doorbell,
+  makeMemoryDoorbell,
+} from '../../protocol-builder/doorbell.ts';
 import { ProtocolBuilderHandlers } from '../../protocol-builder/handlers.ts';
 import { Leases } from '../../protocol-builder/leases.ts';
 import { Presence } from '../../protocol-builder/presence.ts';
@@ -174,39 +186,94 @@ export const makeShiftableClock = () => {
   };
 };
 
+/**
+ * A tracer that counts the spans it is asked for by name, so a test can tell
+ * how often the lease keeper reached the database, and whether an attempt has
+ * finished, without a seam in it.
+ */
+export const makeSpanCounter = () => {
+  const spans: Tracer.NativeSpan[] = [];
+  const tracer = Tracer.make({
+    span: (options) => {
+      const span = new Tracer.NativeSpan(options);
+      spans.push(span);
+      return span;
+    },
+  });
+  const named = (name: string) => spans.filter((span) => span.name === name);
+  return {
+    tracer,
+    count: (name: string) => named(name).length,
+    ended: (name: string) =>
+      named(name).filter((span) => span.status._tag === 'Ended').length,
+  };
+};
+
 export async function createProtocolBuilderClient(
   studio: Studio,
   options: {
     readonly clock?: Clock.Clock;
     readonly objectStore?: ObjectStore['Service'];
-    readonly leases?: Layer.Layer<Leases>;
-    readonly events?: Layer.Layer<ProtocolEvents>;
+    readonly leases?: Layer.Layer<
+      Leases,
+      never,
+      Database | MaintenanceTriggers
+    >;
+    readonly presence?: Layer.Layer<Presence, never, Database>;
+    readonly maintenance?: MaintenanceTriggers['Service'];
+    readonly tracer?: Tracer.Tracer;
+    readonly events?: Layer.Layer<
+      ProtocolEvents,
+      never,
+      Database | Doorbell | MaintenanceTriggers
+    >;
+    /** Share one `makeMemoryDoorbell` between clients to ring across them. */
+    readonly doorbell?: Doorbell['Service'];
+    readonly staged?: Layer.Layer<StagedImports, never, Database | ObjectStore>;
     readonly layer?: Layer.Layer<never>;
+    /** Each client is a replica of its own unless two are given one id. */
+    readonly replicaId?: string;
   } = {},
 ): Promise<ProtocolBuilderTestClient> {
   const sessions: Sessions = new Map();
   const state = Layer.mergeAll(
     options.leases ?? Leases.layer,
-    Presence.layer,
+    options.presence ?? Presence.layer,
     options.events ?? ProtocolEvents.layer,
-    StagedImports.layer,
+    options.staged ?? StagedImports.layer,
   );
   const withAuth = Layer.merge(
     studioServices(studio),
     Layer.succeed(AuthService)(harnessAuth(studio.auth, sessions)),
   );
+  const triggers = Layer.mergeAll(
+    withAuth,
+    Layer.succeed(ReplicaId)(options.replicaId ?? randomUUID()),
+    options.maintenance === undefined
+      ? MaintenanceTriggers.layerOpen
+      : Layer.succeed(MaintenanceTriggers)(options.maintenance),
+    options.doorbell === undefined
+      ? Doorbell.layerMemory
+      : Layer.succeed(Doorbell)(options.doorbell),
+  );
   const services =
     options.objectStore === undefined
-      ? withAuth
-      : Layer.merge(withAuth, Layer.succeed(ObjectStore)(options.objectStore));
+      ? triggers
+      : Layer.merge(triggers, Layer.succeed(ObjectStore)(options.objectStore));
   const built = Layer.mergeAll(ProtocolBuilderHandlers, HostSessionLive).pipe(
     Layer.provideMerge(state),
     Layer.provide(services),
   );
-  const clocked =
-    options.clock === undefined
+  const traced =
+    options.tracer === undefined
       ? built
       : built.pipe(
+          Layer.provideMerge(Layer.succeed(Tracer.Tracer)(options.tracer)),
+        );
+  const clocked =
+    options.clock === undefined
+      ? traced
+      : traced.pipe(
           Layer.provideMerge(Layer.succeed(Clock.Clock)(options.clock)),
         );
   const runtime = ManagedRuntime.make(
@@ -226,6 +293,164 @@ export async function createProtocolBuilderClient(
     dispose: async () => {
       await runtime.runPromise(Scope.close(scope, Exit.void));
       await runtime.dispose();
+    },
+  };
+}
+
+type ProtocolBuilderReplica = ProtocolBuilderTestClient & {
+  readonly replicaId: string;
+  readonly spans: ReturnType<typeof makeSpanCounter>;
+};
+
+const refusedTransaction = () =>
+  Effect.fail(
+    new SqlError.SqlError({
+      reason: new SqlError.UnknownError({
+        cause: new Error('the database is down'),
+        message: 'the database is down',
+      }),
+    }),
+  );
+
+/**
+ * `real`, refusing every transaction it is asked to begin while it is down.
+ * Only `db` switches, once for each transaction, and `sql` stays the real
+ * one, so a transaction open when the fault is raised or cleared ends on the
+ * client it began on. A second client for the fault, each with its one
+ * connection, switched mid-transaction left a transaction on each waiting for
+ * the other's connection: both idle in a transaction, neither blocked in the
+ * database.
+ */
+export const faultyDatabase = (real: Database['Service']) => {
+  let down = false;
+  const refusing = new Proxy(real.db, {
+    get: (target, key, receiver) => {
+      const value: unknown = Reflect.get(target, key, receiver);
+      return key === 'transaction' ? refusedTransaction : value;
+    },
+  });
+  const service: Database['Service'] = {
+    identity: real.identity,
+    sql: real.sql,
+    get db() {
+      return down ? refusing : real.db;
+    },
+  };
+  return {
+    service,
+    setDown: (value: boolean) => {
+      down = value;
+    },
+  };
+};
+
+/**
+ * Replicas of one Studio sharing its database, one object store and one
+ * doorbell hub, each with its own replica id, keeper, relay and tracer.
+ */
+export async function createProtocolBuilderReplicas(
+  studio: Studio,
+  options: {
+    readonly count: number;
+    readonly clock?: Clock.Clock;
+    readonly objectStore?: ObjectStore['Service'];
+    /** Wraps one replica's view of the shared hub. */
+    readonly doorbell?: (
+      replica: number,
+      hub: Doorbell['Service'],
+    ) => Doorbell['Service'];
+    readonly safetyPollMs?: number;
+    /** A pool of each replica's own, as a process would hold; else the studio's. */
+    readonly database?: () => Promise<{
+      readonly service: Database['Service'];
+      readonly close: () => Promise<void>;
+    }>;
+  },
+) {
+  const services = studio.rpc.services;
+  if (services === undefined) throw new Error('the studio has no services');
+  const shared = Context.get(services, Database);
+  const hubScope = Scope.makeUnsafe();
+  const hub = await Effect.runPromise(
+    Scope.provide(makeMemoryDoorbell, hubScope),
+  );
+  const events = ProtocolEvents.layerWith(
+    options.safetyPollMs === undefined
+      ? {}
+      : { safetyPollMs: options.safetyPollMs },
+  );
+
+  const open = async (index: number) => {
+    const pool =
+      options.database === undefined
+        ? { service: shared, close: () => Promise.resolve() }
+        : await options.database();
+    const database = faultyDatabase(pool.service);
+    const spans = makeSpanCounter();
+    const replicaId = `replica-${index}-${randomUUID()}`;
+    const client = await createProtocolBuilderClient(
+      {
+        ...studio,
+        rpc: {
+          ...studio.rpc,
+          services: Context.add(services, Database, database.service),
+        },
+      },
+      {
+        ...(options.clock === undefined ? {} : { clock: options.clock }),
+        ...(options.objectStore === undefined
+          ? {}
+          : { objectStore: options.objectStore }),
+        tracer: spans.tracer,
+        events,
+        doorbell:
+          options.doorbell === undefined ? hub : options.doorbell(index, hub),
+        replicaId,
+      },
+    );
+    let disposed: Promise<void> | undefined;
+    const replica: ProtocolBuilderReplica = {
+      ...client,
+      replicaId,
+      spans,
+      dispose: () => {
+        disposed ??= client.dispose().then(pool.close);
+        return disposed;
+      },
+    };
+    return { replica, crash: () => database.setDown(true) };
+  };
+
+  const opened: Awaited<ReturnType<typeof open>>[] = [];
+  for (let index = 0; index < options.count; index += 1) {
+    opened.push(await open(index));
+  }
+  const replicas = opened.map((entry) => entry.replica);
+  const entryAt = (index: number) => {
+    const entry = opened[index];
+    if (entry === undefined) throw new Error(`no replica ${index}`);
+    return entry;
+  };
+
+  return {
+    replicas,
+    /** Stops replica `index` as a killed process would, cleaning nothing up. */
+    crash: async (index: number) => {
+      const entry = entryAt(index);
+      entry.crash();
+      await entry.replica.dispose();
+    },
+    /** A new process in place of replica `index`, under a new replica id. */
+    restart: async (index: number) => {
+      await entryAt(index).replica.dispose();
+      const entry = await open(index);
+      opened[index] = entry;
+      replicas[index] = entry.replica;
+      return entry.replica;
+    },
+    dispose: async () => {
+      for (const entry of opened.toReversed()) await entry.replica.dispose();
+      await Effect.runPromise(Scope.close(hubScope, Exit.void));
     },
   };
 }

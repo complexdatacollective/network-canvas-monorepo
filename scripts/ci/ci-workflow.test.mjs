@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import {
   existsSync,
   mkdirSync,
@@ -10,7 +10,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 
 import { test } from 'vitest';
 import { parse } from 'yaml';
@@ -434,6 +434,12 @@ test('every reader of earlier runs, releases or release PRs is scoped to the bas
       .env.BASE_REF,
     /github\.base_ref/,
     'the E2E policy is told the pull request base',
+  );
+  assert.match(
+    parsedWorkflow.jobs.detect.steps.find(({ id }) => id === 'flags').env
+      .HEAD_REF,
+    /github\.base_ref == 'main' && github\.head_ref/,
+    'only a pull request into main counts as the Studio release PR',
   );
   // Lookups of "the" release PR by head branch name.
   assert.match(
@@ -1998,13 +2004,16 @@ test('the studio-stack job runs every variant through up, assert and down', () =
   assert.ok(studioStack, 'studio-stack job exists');
 
   const variants = stackTestVariants();
-  // The reference stack and every swap docs/self-host/swap.md documents.
+  // The reference stack, every swap docs/self-host/swap.md documents, and the
+  // stack with a second API replica (docs/self-host/run.md).
   assert.deepEqual(variants, [
     'external-bucket',
+    'external-bucket-azure',
     'external-postgres',
     'external-redis',
     'own-proxy',
     'reference',
+    'two-api',
   ]);
 
   for (const variant of variants) {
@@ -2028,6 +2037,23 @@ test('the studio-stack job runs every variant through up, assert and down', () =
     variants.length,
     'each down.sh step is if: always()',
   );
+});
+
+// The object-store contract suite inside @codaco/studio-api#test refuses to
+// skip under CI, so every job that runs that suite has to start the dev Garage
+// and Azurite before it — in the job, ahead of the suite, not merely somewhere.
+test('every job running the Studio server suite starts its object stores first', () => {
+  for (const name of ['test-studio-server', 'seed-turbo-cache']) {
+    const body = job(name);
+    assert.ok(body, `${name} job exists`);
+    const start = body.indexOf(
+      'pnpm --filter @codaco/studio-api dev:object-stores',
+    );
+    const suite = body.indexOf("turbo run '@codaco/studio-api#test'");
+    assert.ok(suite > -1, `${name} runs the Studio server suite`);
+    assert.ok(start > -1, `${name} starts the dev object stores`);
+    assert.ok(start < suite, `${name} starts them before the suite runs`);
+  }
 });
 
 test('the stack-test scripts and the workflow agree on the variant list', () => {
@@ -2067,6 +2093,234 @@ test('own-proxy has a guide block to extract its configuration from', () => {
     );
   }
 });
+
+function runDetectFlag(pkg, env) {
+  const detectJob = job('detect');
+  const definition = detectJob.match(
+    /^(?<indent> +)flag\(\) \{\n[\s\S]*?^\k<indent>\}$/m,
+  );
+  assert.ok(definition, 'detect defines flag()');
+  const body = definition[0]
+    .split('\n')
+    .map((line) => line.slice(definition.groups.indent.length))
+    .join('\n');
+  const script = [
+    'set -eo pipefail',
+    `npx() {
+      case "$*" in
+        *"--filter=@codaco/known..."*) echo '{"packages":{"items":[{"path":"packages/known"}]}}' ;;
+        *) echo "x No package found with name '$*' in workspace" >&2; return 1 ;;
+      esac
+    }`,
+    body,
+    `result=$(flag ${JSON.stringify(pkg)})`,
+    'echo "result=$result"',
+  ].join('\n');
+  return spawnSync('bash', ['-c', script], {
+    encoding: 'utf8',
+    env: {
+      PATH: process.env.PATH,
+      TURBO_VERSION: '0.0.0',
+      PREV: '',
+      CURR: 'HEAD',
+      FORCE_RUN: 'false',
+      WORKFLOW_CHANGED: 'false',
+      ...env,
+    },
+  });
+}
+
+test('detect fails closed on a flag naming no workspace package', () => {
+  const known = runDetectFlag('@codaco/known', {});
+  assert.equal(known.status, 0, known.stderr);
+  assert.match(known.stdout, /^result=true$/m);
+
+  for (const forced of [
+    {},
+    { FORCE_RUN: 'true' },
+    { WORKFLOW_CHANGED: 'true' },
+    { PREV: 'HEAD' },
+  ]) {
+    const unknown = runDetectFlag('@codaco/renamed-away', forced);
+    assert.notEqual(
+      unknown.status,
+      0,
+      `a stale name answers ${unknown.stdout} under ${JSON.stringify(forced)}`,
+    );
+    assert.doesNotMatch(unknown.stdout, /^result=/m);
+    assert.match(
+      unknown.stderr,
+      /::error::detect: '@codaco\/renamed-away' names no workspace package/,
+    );
+  }
+});
+
+// ── Flags that decide what the quality gate requires ──────────────────────
+//
+// `quality` requires a conditional job only when its detect flag is true and
+// reads no earlier run's verdict, so every such flag must be judged on the
+// whole pull request. A push-to-push flag would let an unrelated push after a
+// failing run skip the job and pass the gate.
+
+// The detect outputs `quality` requires a job on, each proved cumulative by
+// `runGateSelection` below.
+const GATE_FLAGS = ['studio', 'studio_upgrade'];
+
+test('every job quality requires on a detect flag is decided by a cumulative flag', () => {
+  const qualityJob = job('quality');
+  const needs = qualityJob
+    .match(/^ {4}needs:\n(?<list>(?: {6}- \S+\n)+)/m)
+    ?.groups?.list.match(/(?<=- )\S+/g);
+  assert.ok(needs?.length, 'quality lists its needs');
+  // Flags read by the `if:` of a job quality needs, and flags quality itself
+  // reads to decide whether a job is required.
+  const selecting = new Set();
+  for (const name of needs) {
+    const condition = job(name)?.match(/^ {4}if: [\s\S]*?(?=^ {4}\S)/m)?.[0];
+    for (const [, flag] of condition?.matchAll(
+      /needs\.detect\.outputs\.(\w+)/g,
+    ) ?? []) {
+      selecting.add(flag);
+    }
+  }
+  const required = new Set(
+    [...qualityJob.matchAll(/needs\.detect\.outputs\.(\w+)/g)].map(
+      ([, flag]) => flag,
+    ),
+  );
+  assert.deepEqual(
+    [...selecting].sort((a, b) => a.localeCompare(b)),
+    GATE_FLAGS,
+    'a job quality needs is selected by a detect flag not proved cumulative',
+  );
+  assert.deepEqual(
+    [...required].sort((a, b) => a.localeCompare(b)),
+    GATE_FLAGS,
+    'quality requires a job on a detect flag not proved cumulative',
+  );
+});
+
+// Runs detect's gate block — the merge base, the studio flag (which also
+// defines the stack's path list) and the upgrade flag — against a throwaway
+// repository. `flag` is stubbed by the package's paths — studio-api and
+// studio-sync stand in for its dependency closure — and diffs over whatever
+// PREV it is handed, so the block's merge-base range is exercised for real.
+// Each entry of `pushes` is one commit; PREV is the last push's parent, as on
+// a `synchronize`, and origin/main is the commit before the first push.
+function runGateSelection({ headRef = '', pushes = [] }) {
+  const detectJob = job('detect');
+  const block = detectJob.match(
+    /^(?<indent> +)gate_base="\$PREV"\n[\s\S]*?^\k<indent>studio_upgrade=false\n[\s\S]*?^\k<indent>fi$/m,
+  );
+  assert.ok(block, 'detect computes the gate flags in one block');
+  const stub = [
+    'flag() {',
+    '  [[ -z "$PREV" ]] && { echo true; return; }',
+    '  git diff --quiet "$PREV" "$CURR" -- apps/studio/api packages/studio-sync && echo false || echo true',
+    '}',
+  ].join('\n');
+  const body = [
+    stub,
+    block[0]
+      .split('\n')
+      .map((line) => line.slice(block.groups.indent.length))
+      .join('\n'),
+    ...GATE_FLAGS.map((flag) => `echo "${flag}=$${flag}"`),
+  ].join('\n');
+  const repo = mkdtempSync(join(tmpdir(), 'gate-flags-detect-'));
+  try {
+    const git = (...args) =>
+      execFileSync('git', ['-C', repo, ...args], { encoding: 'utf8' }).trim();
+    git('init', '-q');
+    git('config', 'user.email', 'ci@example.org');
+    git('config', 'user.name', 'CI');
+    writeFileSync(join(repo, 'README'), 'base\n');
+    git('add', '-A');
+    git('commit', '-qm', 'base');
+    git('update-ref', 'refs/remotes/origin/main', 'HEAD');
+    for (const [index, changed] of pushes.entries()) {
+      for (const file of changed) {
+        mkdirSync(dirname(join(repo, file)), { recursive: true });
+        writeFileSync(join(repo, file), `push ${index}\n`);
+      }
+      git('add', '-A');
+      git('commit', '-q', '--allow-empty', '-m', `push ${index}`);
+    }
+    const result = spawnSync('bash', ['-c', `set -eo pipefail\n${body}`], {
+      cwd: repo,
+      encoding: 'utf8',
+      env: {
+        PATH: process.env.PATH,
+        GITHUB_EVENT_NAME: 'pull_request',
+        GITHUB_BASE_REF: 'main',
+        HEAD_REF: headRef,
+        FORCE_RUN: 'false',
+        // The push-to-push answer, set so a flag that leans on it shows.
+        WORKFLOW_CHANGED: 'false',
+        PREV: git('rev-parse', 'HEAD^1'),
+        CURR: git('rev-parse', 'HEAD'),
+      },
+    });
+    assert.equal(result.status, 0, result.stderr);
+    return Object.fromEntries(
+      GATE_FLAGS.map((flag) => [
+        flag,
+        result.stdout.match(new RegExp(`^${flag}=(?<value>.*)$`, 'm'))?.groups
+          ?.value,
+      ]),
+    );
+  } finally {
+    rmSync(repo, { recursive: true, force: true });
+  }
+}
+
+test('detect selects studio-stack on the whole pull request', () => {
+  // Anything in the api image's package graph, the stack's files outside it,
+  // and the workflow that defines the job — each on its own.
+  for (const file of [
+    'apps/studio/api/src/server.ts',
+    'packages/studio-sync/src/jobs.ts',
+    'apps/studio/Dockerfile',
+    'apps/studio/docker-compose.yml',
+    'apps/studio/docker-compose.local.yml',
+    'apps/studio/.env.example',
+    'apps/studio/stack-test/run.sh',
+    'apps/studio/docs/self-host/upgrade.md',
+    '.github/workflows/ci-and-release.yml',
+    '.dockerignore',
+    'package.json',
+    'pnpm-lock.yaml',
+    'pnpm-workspace.yaml',
+    'patches/some-package.patch',
+    'turbo.json',
+  ]) {
+    assert.equal(
+      runGateSelection({ pushes: [[file]] }).studio,
+      'true',
+      `a change to ${file} selects studio-stack`,
+    );
+    // The gap this guards: a later push that touches nothing the stack reads
+    // still runs it, so a failed stack test cannot be skipped past.
+    assert.equal(
+      runGateSelection({ pushes: [[file], ['README.md']] }).studio,
+      'true',
+      `an unrelated push after a change to ${file} still selects studio-stack`,
+    );
+  }
+  // Studio's web app is not in the api image's graph and does not select it,
+  // nor do the upgrade lane's own inputs.
+  for (const file of [
+    'apps/studio/web/src/main.tsx',
+    'apps/studio/release-test/run.sh',
+  ]) {
+    assert.equal(runGateSelection({ pushes: [[file]] }).studio, 'false');
+  }
+  assert.equal(
+    runGateSelection({ pushes: [['apps/architect/x.ts'], ['README.md']] })
+      .studio,
+    'false',
+  );
+}, 120_000);
 
 test('studio-stack is selected by detect and required by the quality gate', () => {
   const detectJob = job('detect');
@@ -2125,6 +2379,140 @@ test('studio-stack is selected by detect and required by the quality gate', () =
     qualityJob,
     /if \[\[ "\$STUDIO_STACK_REQUIRED" == "true" \]\]; then\n\s+if \[\[ "\$STUDIO_STACK_RESULT" != "success" \]\]; then\n\s+echo "::error::quality gate failed/,
     'quality fails when a required studio-stack did not succeed',
+  );
+});
+
+// ── The Studio upgrade lane (#1901) ────────────────────────────────────────
+//
+// `apps/studio/release-test/run.sh` is the whole lane; the job runs it and
+// nothing else, so these tests pin what selects it, what it is given, and
+// that the gate cannot read a job that never ran as a pass.
+
+test('detect selects the upgrade lane whenever what the api image is built from changes, and for its own inputs', () => {
+  const detectJob = job('detect');
+  assert.match(
+    detectJob,
+    /studio_upgrade: \$\{\{ steps\.flags\.outputs\.studio_upgrade \}\}/,
+    'detect publishes the studio_upgrade flag',
+  );
+  assert.match(
+    detectJob,
+    /HEAD_REF: \$\{\{ github\.base_ref == 'main' && github\.head_ref \|\| '' \}\}/,
+    'detect receives the head ref of a pull request into main',
+  );
+
+  // Every Studio release PR, whatever it changed.
+  assert.equal(
+    runGateSelection({
+      headRef: 'changeset-release/studio',
+      pushes: [['README.md']],
+    }).studio_upgrade,
+    'true',
+  );
+  // Anything in the api image's package graph, the stack's files, the lane's
+  // own inputs and the workflow that defines the job — each on its own.
+  for (const file of [
+    'apps/studio/api/migrations/0002_next/delta.sql',
+    'apps/studio/api/src/secrets/verify.ts',
+    'apps/studio/api/scripts/sync-fingerprint.ts',
+    'apps/studio/api/scripts/apply.ts',
+    'packages/studio-sync/src/jobs.ts',
+    'apps/studio/docs/self-host/upgrade.md',
+    'apps/studio/docs/self-host/backup.md',
+    'apps/studio/Dockerfile',
+    'apps/studio/docker-compose.yml',
+    'apps/studio/docker-compose.local.yml',
+    'apps/studio/release-test/run.sh',
+    'apps/studio/release-test/window.mjs',
+    'apps/studio/web/public/maintenance.html',
+    '.github/workflows/ci-and-release.yml',
+    '.dockerignore',
+    'package.json',
+    'pnpm-lock.yaml',
+    'pnpm-workspace.yaml',
+    'patches/some-package.patch',
+    'turbo.json',
+  ]) {
+    assert.equal(
+      runGateSelection({ pushes: [[file]] }).studio_upgrade,
+      'true',
+      `a change to ${file} selects the upgrade lane`,
+    );
+    assert.equal(
+      runGateSelection({ pushes: [[file], ['README.md']] }).studio_upgrade,
+      'true',
+      `an unrelated push after a change to ${file} still selects the lane`,
+    );
+  }
+  // Judged on the whole pull request: a later push that touches nothing the
+  // lane reads still runs it, so a failed lane cannot be skipped past.
+  assert.equal(
+    runGateSelection({
+      pushes: [['apps/studio/api/src/db/migrate.ts'], ['README.md']],
+    }).studio_upgrade,
+    'true',
+    'an unrelated push after an upgrade-path push still selects the lane',
+  );
+  // Studio's web app is not in the api image's graph and does not select it.
+  assert.equal(
+    runGateSelection({ pushes: [['apps/studio/web/src/main.tsx']] })
+      .studio_upgrade,
+    'false',
+  );
+  // Nothing outside Studio selects it.
+  assert.equal(
+    runGateSelection({ pushes: [['apps/architect/x.ts'], ['README.md']] })
+      .studio_upgrade,
+    'false',
+  );
+}, 120_000);
+
+test('studio-upgrade runs the lane and is required by the quality gate', () => {
+  const upgrade = job('studio-upgrade');
+  assert.ok(upgrade, 'studio-upgrade job exists');
+  assert.ok(
+    existsSync(
+      new URL('../../apps/studio/release-test/run.sh', import.meta.url),
+    ),
+    'apps/studio/release-test/run.sh exists on disk',
+  );
+  assert.match(
+    upgrade,
+    /run: apps\/studio\/release-test\/run\.sh --runs A,B\n/,
+  );
+  assert.match(
+    upgrade,
+    /needs\.detect\.outputs\.studio_upgrade == 'true'/,
+    'the job is gated on its flag',
+  );
+  for (const excluded of ['merge_group', 'push']) {
+    assert.match(
+      upgrade,
+      new RegExp(`github\\.event_name != '${excluded}'`),
+      `the job never runs on ${excluded}`,
+    );
+  }
+  // Run C pulls a tagged release's images from ghcr.io, logging in with the
+  // job's token, which needs the permission to read packages.
+  assert.match(upgrade, /packages: read/);
+  assert.match(upgrade, /GITHUB_TOKEN: \$\{\{ secrets\.GITHUB_TOKEN \}\}/);
+  // build-next.sh seals against history and run C checks out a tag.
+  assert.match(upgrade, /fetch-depth: 0/);
+
+  const qualityJob = job('quality');
+  assert.match(qualityJob, /^ {6}- studio-upgrade$/m, 'quality needs the job');
+  assert.match(
+    qualityJob,
+    /STUDIO_UPGRADE_REQUIRED: \$\{\{ needs\.detect\.outputs\.studio_upgrade \}\}/,
+  );
+  assert.match(
+    qualityJob,
+    /STUDIO_UPGRADE_RESULT: \$\{\{ needs\.studio-upgrade\.result \}\}/,
+  );
+  assert.match(
+    qualityJob,
+    /if \[\[ "\$STUDIO_UPGRADE_REQUIRED" == "true" \]\]; then\n\s+if \[\[ "\$STUDIO_UPGRADE_RESULT" != "success" \]\]; then\n\s+echo "::error::quality gate failed/,
+    'quality fails when a required studio-upgrade did not succeed',
   );
 });
 

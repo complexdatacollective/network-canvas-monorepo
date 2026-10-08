@@ -70,8 +70,8 @@ export const rotateSecrets: (
       if (batch === 0) break;
       rotated += batch;
       // After the commit, never before.
-      yield* Effect.logInfo(
-        `${store.name}: ${rotated} re-sealed under ${cipher.currentKeyId}`,
+      yield* Effect.logInfo('secrets re-sealed under the current key').pipe(
+        Effect.annotateLogs({ store: store.name, rotated }),
       );
     }
     counts[store.name] = rotated;

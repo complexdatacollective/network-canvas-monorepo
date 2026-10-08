@@ -1,5 +1,14 @@
 import { act, render } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { ReactElement, ReactNode } from 'react';
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest';
 
 // --- Module mocks (must appear before imports that use them) ---
 
@@ -122,6 +131,7 @@ vi.mock('react-redux', () => ({
   useSelector: (selector: (state: unknown) => unknown) => selector({}),
 }));
 
+import { interviewCatalogSource } from '../../../i18n/catalog';
 import { InterviewI18nProvider } from '../../../i18n/InterviewI18nProvider';
 import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
 // The hook under test (imported after mocks are declared)
@@ -269,6 +279,14 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+});
+
+// Loaded before anything renders, as a host loads a language before it
+// mounts an interview, so renders in these languages are synchronous.
+beforeAll(async () => {
+  await Promise.all(
+    ['es', 'en-GB'].map((locale) => interviewCatalogSource.load(locale)),
+  );
 });
 
 describe('useMapbox resize handling', () => {
@@ -553,5 +571,140 @@ describe('useMapbox protocol language', () => {
     render(withProtocolLocale('fil'));
 
     expect(constructedWith().language).toBe('tl');
+  });
+});
+
+// Rendered as an interface is inside the Shell, in an English-only protocol;
+// a rerender keeps the wrapper.
+function InEnglish({ children }: { children: ReactNode }) {
+  return (
+    <TestProtocolLocalization localization={ENGLISH_ONLY}>
+      {children}
+    </TestProtocolLocalization>
+  );
+}
+const renderInEnglish = (ui: ReactElement) =>
+  render(ui, { wrapper: InEnglish });
+
+describe('useMapbox highlighted area', () => {
+  // The layer colours are resolved through a canvas, which jsdom lacks.
+  beforeEach(() => {
+    const getContext = vi
+      .spyOn(HTMLCanvasElement.prototype, 'getContext')
+      .mockReturnValue(null);
+    return () => getContext.mockRestore();
+  });
+
+  const highlights = (value: string) =>
+    ['selection', ['==', 'id', value]] as const;
+
+  it('stops highlighting a saved location once it can no longer be read', () => {
+    const { rerender } = renderInEnglish(
+      <TestHarness
+        mapOptions={baseMapOptions}
+        initialSelectionValue="tract-a"
+      />,
+    );
+    act(() => {
+      mapEvents.fire('load');
+    });
+    expect(mapInstance.setFilter).toHaveBeenLastCalledWith(
+      ...highlights('tract-a'),
+    );
+
+    rerender(<TestHarness mapOptions={baseMapOptions} />);
+
+    expect(mapInstance.setFilter).toHaveBeenLastCalledWith(...highlights(''));
+  });
+
+  it('follows the saved location while tiles are still loading', () => {
+    // Mapbox reports its style as not loaded while any tile is loading.
+    mapInstance.isStyleLoaded.mockReturnValue(false);
+    const { rerender } = renderInEnglish(
+      <TestHarness
+        mapOptions={baseMapOptions}
+        initialSelectionValue="tract-a"
+      />,
+    );
+    act(() => {
+      mapEvents.fire('load');
+      mapEvents.fire('styledata');
+    });
+    expect(mapInstance.setFilter).toHaveBeenLastCalledWith(
+      ...highlights('tract-a'),
+    );
+
+    rerender(<TestHarness mapOptions={baseMapOptions} />);
+    expect(mapInstance.setFilter).toHaveBeenLastCalledWith(...highlights(''));
+
+    act(() => {
+      mapEvents.fire('styledata');
+    });
+    expect(mapInstance.setFilter).toHaveBeenLastCalledWith(...highlights(''));
+  });
+
+  it('highlights a picked area only once the pick is saved', () => {
+    const onSelectionChange = vi.fn();
+    const { rerender } = renderInEnglish(
+      <TestHarness
+        mapOptions={baseMapOptions}
+        onSelectionChange={onSelectionChange}
+      />,
+    );
+    act(() => {
+      mapEvents.fire('load');
+    });
+
+    act(() => {
+      mapEvents.fire('click', 'layerToSelect', {
+        features: [{ properties: { id: 'tract-b' } }],
+      });
+    });
+
+    expect(onSelectionChange).toHaveBeenCalledWith('tract-b');
+    expect(mapInstance.setFilter).not.toHaveBeenCalledWith(
+      ...highlights('tract-b'),
+    );
+
+    rerender(
+      <TestHarness
+        mapOptions={baseMapOptions}
+        initialSelectionValue="tract-b"
+        onSelectionChange={onSelectionChange}
+      />,
+    );
+
+    expect(mapInstance.setFilter).toHaveBeenLastCalledWith(
+      ...highlights('tract-b'),
+    );
+  });
+
+  it('highlights the saved location again once the map is rebuilt', () => {
+    const { rerender } = renderInEnglish(
+      <TestHarness
+        mapOptions={baseMapOptions}
+        initialSelectionValue="tract-a"
+      />,
+    );
+    act(() => {
+      mapEvents.fire('load');
+    });
+
+    rerender(
+      <TestHarness
+        mapOptions={{ ...baseMapOptions, targetFeatureProperty: 'name' }}
+        initialSelectionValue="tract-a"
+      />,
+    );
+    expect(MapConstructor).toHaveBeenCalledTimes(2);
+
+    act(() => {
+      mapEvents.fire('load');
+    });
+    expect(mapInstance.setFilter).toHaveBeenLastCalledWith('selection', [
+      '==',
+      'name',
+      'tract-a',
+    ]);
   });
 });

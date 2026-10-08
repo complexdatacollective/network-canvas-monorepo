@@ -1,0 +1,9 @@
+# Two API replicas behind the stack's own Traefik: docs/self-host/run.md,
+# "Running more than one API".
+#
+# Empty on purpose. The override this variant applies is the guide's own
+# block, which lib.sh extracts from docs/self-host/run.md into
+# .work/two-api.override.yml and layers after this file: a copy here would be
+# a second thing to keep in step, and this variant would then be testing the
+# copy. This file stays so the variant is listed beside the others.
+services: {}

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod/mini';
 
+import { createCatalogSource } from '@codaco/app-i18n/locales';
 import {
   createAppIntl,
   createMessageError,
@@ -12,10 +13,13 @@ import {
   type NcNetwork,
 } from '@codaco/shared-consts';
 
-import { frescoUiCatalogs } from '../../locales/catalogs';
+import { frescoUiCatalogLoaders } from '../../locales/catalogs';
 import type { FieldValue, ValidationContext } from '../store/types';
 import { required, validations } from './functions';
 import { makeValidationFunction } from './helpers';
+
+const catalogs = createCatalogSource(frescoUiCatalogLoaders);
+await catalogs.load('es');
 
 describe('Validation Functions', () => {
   const createMockContext = (
@@ -201,7 +205,7 @@ describe('Validation Functions', () => {
     ({ locale, maxHint, maxError, minHint, minError }) => {
       const intl = createAppIntl({
         locale,
-        messages: frescoUiCatalogs[locale],
+        messages: catalogs.peek(locale),
       });
       const maximum = validations.maxLength(1, createMockContext(), intl)({});
       expect(maximum.safeParse('a').success).toBe(true);

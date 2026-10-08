@@ -1,5 +1,5 @@
 import type { Cause } from 'effect';
-import { Effect, Exit, Schema } from 'effect';
+import { Effect, Exit, Redacted, Schema } from 'effect';
 import type { SqlError } from 'effect/sql';
 
 import type { TeamRole } from '@codaco/studio-contract/schema/team';
@@ -115,13 +115,11 @@ export const invitationDelivery = (deps: InvitationDeliveryDeps) => {
             }>`SELECT id FROM team_invitation_deliveries WHERE id = ${deliveryId}`,
         ),
       );
-      yield* Effect.logInfo(
-        `${QUEUE} ${job.id}: ${
-          known.length === 1
-            ? 'the delivery had already ended'
-            : 'no delivery row remains for this job'
-        }`,
-      );
+      yield* (
+        known.length === 1
+          ? Effect.logInfo('the delivery had already ended')
+          : Effect.logInfo('no delivery row remains for this job')
+      ).pipe(Effect.annotateLogs({ queue: QUEUE, job_id: job.id }));
       return 'completed';
     }
 
@@ -172,16 +170,18 @@ export const invitationDelivery = (deps: InvitationDeliveryDeps) => {
           // Sent while the invitation lock is held, so a cancellation cannot slip in.
           const sent = yield* Effect.exit(
             mailer.sendTeamInvitation({
-              email: delivery.email,
+              email: Redacted.make(delivery.email),
               expiresAt: delivery.expiresAt,
-              invitationUrl: new URL(
-                `/invitations/${encodeURIComponent(delivery.invitationId)}`,
-                publicBaseUrl,
-              ).toString(),
-              inviterLabel: delivery.inviterLabel,
+              invitationUrl: Redacted.make(
+                new URL(
+                  `/invitations/${encodeURIComponent(delivery.invitationId)}`,
+                  publicBaseUrl,
+                ).toString(),
+              ),
+              inviterLabel: Redacted.make(delivery.inviterLabel),
               messageId: invitationMessageId(delivery.invitationId),
               role: delivery.role,
-              teamLabel: delivery.teamLabel,
+              teamLabel: Redacted.make(delivery.teamLabel),
             }),
           );
 
@@ -244,7 +244,10 @@ export const invitationDelivery = (deps: InvitationDeliveryDeps) => {
                AND ${sql.literal(STILL_PENDING)}`,
         ),
       );
-      yield* Effect.logError(`${QUEUE} ${job.id}: uncertain — ${reason}`);
+      yield* Effect.logError(
+        'the delivery attempt failed; its outcome is uncertain',
+        attempt.cause,
+      ).pipe(Effect.annotateLogs({ queue: QUEUE, job_id: job.id }));
       return 'uncertain';
     }
 

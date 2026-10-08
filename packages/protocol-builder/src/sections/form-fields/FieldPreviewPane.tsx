@@ -1,5 +1,5 @@
 import { DirectionProvider } from '@base-ui/react/direction-provider';
-import { type ReactNode, useId, useMemo } from 'react';
+import { type ReactNode, Suspense, useId, useMemo } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -12,6 +12,7 @@ import {
 } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import { PortalContainerProvider } from '@codaco/fresco-ui/PortalContainer';
+import Spinner from '@codaco/fresco-ui/Spinner';
 import { ThemedRegion } from '@codaco/fresco-ui/ThemedRegion';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
@@ -532,22 +533,35 @@ export default function FieldPreviewPane({
               key={`${previewIdentity}:${field.type}:${field.component}`}
               onSubmit={passPreviewValidation}
             >
-              <InterviewI18nProvider requestedLocale={intl.locale}>
-                <PreviewProtocolLanguage {...languages}>
-                  {/* Re-parents the participant's own popups — a scale's
-                        value bubble, a date picker — into the region that
-                        carries the previewed language and direction. */}
-                  <PortalContainerProvider>
-                    <ProtocolField
-                      field={field}
-                      name="preview-value"
-                      {...(validationContext === undefined
-                        ? {}
-                        : { validationContext })}
-                    />
-                  </PortalContainerProvider>
-                </PreviewProtocolLanguage>
-              </InterviewI18nProvider>
+              {/* The interview's catalog for this language may not have
+                  loaded yet, and the provider suspends until it has. */}
+              <Suspense
+                fallback={
+                  <div
+                    aria-busy
+                    className="flex min-h-56 items-center justify-center"
+                  >
+                    <Spinner />
+                  </div>
+                }
+              >
+                <InterviewI18nProvider requestedLocale={intl.locale}>
+                  <PreviewProtocolLanguage {...languages}>
+                    {/* Re-parents the participant's own popups — a scale's
+                          value bubble, a date picker — into the region that
+                          carries the previewed language and direction. */}
+                    <PortalContainerProvider>
+                      <ProtocolField
+                        field={field}
+                        name="preview-value"
+                        {...(validationContext === undefined
+                          ? {}
+                          : { validationContext })}
+                      />
+                    </PortalContainerProvider>
+                  </PreviewProtocolLanguage>
+                </InterviewI18nProvider>
+              </Suspense>
               <div className="flex justify-end">
                 <Button type="submit">
                   {intl.formatMessage(messages.checkResponse)}

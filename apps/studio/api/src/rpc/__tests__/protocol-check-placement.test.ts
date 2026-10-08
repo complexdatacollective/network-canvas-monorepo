@@ -161,18 +161,39 @@ function checkUsesIn(source: string): CheckUse[] {
   return uses;
 }
 
+const ALONE = `the scope opened around ${CHECK} does nothing else`;
+
+/** These sites gate work outside the database, with no transaction to share. */
+const STANDALONE_CHECKS: Record<string, string> = {
+  'protocol-builder/host.ts › protocolBuilder.authorizeCaller':
+    'gates live watch events, which are held in memory',
+};
+
 const placementProblems = (source: string): string[] =>
   checkUsesIn(source).flatMap((use) => use.problems);
 
-function checkUses(): { site: string; problems: string[] }[] {
+function checkUses(): {
+  site: string;
+  problems: string[];
+  standalone: boolean;
+}[] {
   return productionFiles(SERVER_ROOT)
     .toSorted()
     .flatMap((file) => {
       const path = relative(SERVER_ROOT, file);
-      return checkUsesIn(readFileSync(file, 'utf8')).map((use) => ({
-        site: use.span === null ? path : `${path} › ${use.span}`,
-        problems: use.problems.map((problem) => `${path}: ${problem}`),
-      }));
+      return checkUsesIn(readFileSync(file, 'utf8')).map((use) => {
+        const site = use.span === null ? path : `${path} › ${use.span}`;
+        return {
+          site,
+          problems: use.problems
+            .filter(
+              (problem) =>
+                !(STANDALONE_CHECKS[site] !== undefined && problem === ALONE),
+            )
+            .map((problem) => `${path}: ${problem}`),
+          standalone: use.problems.includes(ALONE),
+        };
+      });
     });
 }
 
@@ -188,15 +209,35 @@ describe('the protocol reachability check', () => {
   it('never runs in a transaction of its own', () => {
     const uses = checkUses();
     expect(uses.map((use) => use.site)).toEqual([
+      'protocol-builder/handlers.ts',
+      'protocol-builder/handlers.ts',
+      'protocol-builder/handlers.ts › protocolBuilder.Submit',
+      'protocol-builder/handlers.ts › protocolBuilder.Create',
+      'protocol-builder/host.ts › protocolBuilder.authorizeCaller',
+      'protocol-builder/host.ts › protocolBuilder.readSection',
+      'protocol-builder/host.ts › protocolBuilder.listSectionIds',
       'protocol-builder/host.ts › protocolBuilder.acquireLock',
+      'protocol-builder/host.ts › protocolBuilder.releaseLock',
       'protocol-builder/host.ts › protocolBuilder.submit',
       'protocol-builder/host.ts › protocolBuilder.create',
       'protocol-builder/host.ts › protocolBuilder.refactor',
+      'protocol-builder/resources.ts',
+      'protocol-builder/resources.ts',
+      'protocol-builder/resources.ts',
+      'protocol-builder/resources.ts',
       'protocol/commands.ts › protocol.addInformationStage',
       'protocol/commands.ts › protocol.moveStage',
       'rpc/handlers/protocols.ts',
     ]);
     expect(uses.flatMap((use) => use.problems)).toEqual([]);
+  });
+
+  it('stands alone only where it is exempt, and every exemption is used', () => {
+    expect(
+      checkUses()
+        .filter((use) => use.standalone)
+        .map((use) => use.site),
+    ).toEqual(Object.keys(STANDALONE_CHECKS));
   });
 });
 

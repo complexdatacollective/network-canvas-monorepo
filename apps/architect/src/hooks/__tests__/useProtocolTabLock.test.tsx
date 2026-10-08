@@ -108,7 +108,12 @@ const editedStage: Stage = { ...stage, label: { en: 'A, edited' } };
 
 /** What the stage editor's chrome publishes while it is open and untouched. */
 const openPristineStageDraft = () => {
-  publishStageDraft(stage, { label: { en: 'A' } }, { label: { en: 'A' } });
+  publishStageDraft(
+    stage,
+    { label: { en: 'A' } },
+    { label: { en: 'A' } },
+    true,
+  );
 };
 
 const createTestStore = () =>
@@ -139,6 +144,7 @@ const openDirtyStageDraft = () => {
     editedStage,
     { label: { en: 'A' } },
     { label: { en: 'A, edited' } },
+    true,
   );
 };
 
@@ -450,6 +456,41 @@ describe('useProtocolTabLock', () => {
     expect(mockBrowserNavigate).toHaveBeenCalledWith('/protocol', {
       replace: true,
     });
+    expect(getProtocolLockState(store.getState())).toBe('owned');
+  });
+
+  // A stage editor opened while the other tab held the protocol was never
+  // granted its stage, so it holds nothing to lose: the researcher stays on the
+  // stage they were reading, and the page re-opens it for editing
+  // (StageEditorPage) once this tab owns the protocol again.
+  it('reclaims in place under a stage editor that was only ever read-only', async () => {
+    const fake = makeFakeLock();
+    mockLocation.mockReturnValue('/protocol/stage/stage-1');
+    window.history.replaceState(null, '', '/protocol/stage/stage-1');
+    const { store, refreshActiveProtocol } = renderTabLock(fake.factory);
+    act(() => {
+      store.dispatch(setActiveProtocolId('p1'));
+      store.dispatch(setActiveProtocol(protocol));
+    });
+    act(() => {
+      fake.fireExclusivity(false);
+    });
+    act(() => {
+      publishStageDraft(
+        stage,
+        { label: { en: 'A' } },
+        { label: { en: 'A' } },
+        false,
+      );
+    });
+
+    await act(async () => {
+      fake.fireExclusivity(true);
+      await Promise.resolve();
+    });
+
+    expect(refreshActiveProtocol).toHaveBeenCalledTimes(1);
+    expect(mockBrowserNavigate).not.toHaveBeenCalled();
     expect(getProtocolLockState(store.getState())).toBe('owned');
   });
 

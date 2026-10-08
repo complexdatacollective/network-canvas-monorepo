@@ -1,9 +1,10 @@
 import { randomUUID } from 'node:crypto';
 
 import { and, eq } from 'drizzle-orm';
-import { Effect, Schema } from 'effect';
+import { Effect, Redacted, Schema } from 'effect';
 import type { SqlError } from 'effect/sql';
 
+import type { AuditActor } from '@codaco/studio-contract/middleware/audit-actor';
 import { Principal } from '@codaco/studio-contract/middleware/authenticated';
 import type { NotFound } from '@codaco/studio-contract/schema/errors';
 import {
@@ -35,6 +36,7 @@ import { roleGrantsTeamAdministration } from '../team/roles.ts';
 import { type LockedMember, lockActor } from '../team/store.ts';
 import { STUDY_ROLE_TABLES } from './roles-schema.ts';
 import { STUDY_TABLES } from './schema.ts';
+import { participantAnalyticsEnabled, studySettings } from './settings.ts';
 
 const { studies } = STUDY_TABLES;
 const { studyRoleGrants } = STUDY_ROLE_TABLES;
@@ -72,8 +74,9 @@ const STUDY_EVENT = {
 const insertStudy: (input: {
   studyId: string;
   teamId: string;
-  name: string;
+  name: Redacted.Redacted;
   protocolId: string;
+  participantAnalytics: boolean;
 }) => Effect.Effect<
   InsertedStudy,
   StudyCommandError | SqlError.SqlError,
@@ -81,8 +84,9 @@ const insertStudy: (input: {
 > = Effect.fn('study.store.insertStudy')(function* (input: {
   studyId: string;
   teamId: string;
-  name: string;
+  name: Redacted.Redacted;
   protocolId: string;
+  participantAnalytics: boolean;
 }) {
   const { tx } = yield* Transaction;
   // `.returning()` is what makes the idempotence branch real: without it the
@@ -92,8 +96,9 @@ const insertStudy: (input: {
     .values({
       id: input.studyId,
       teamId: input.teamId,
-      name: input.name,
+      name: Redacted.value(input.name),
       protocolId: input.protocolId,
+      settings: studySettings(input),
     })
     .onConflictDoNothing({ target: studies.id })
     .returning({ participationMode: studies.participationMode });
@@ -107,13 +112,21 @@ const insertStudy: (input: {
   }
 
   const existing = yield* tx
-    .select({ name: studies.name, protocolId: studies.protocolId })
+    .select({
+      name: studies.name,
+      protocolId: studies.protocolId,
+      settings: studies.settings,
+    })
     .from(studies)
     .where(
       and(eq(studies.id, input.studyId), eq(studies.teamId, input.teamId)),
     );
   const row = existing[0];
-  if (row?.name === input.name && row.protocolId === input.protocolId) {
+  if (
+    row?.name === Redacted.value(input.name) &&
+    row.protocolId === input.protocolId &&
+    participantAnalyticsEnabled(row.settings) === input.participantAnalytics
+  ) {
     return { created: false } satisfies InsertedStudy as InsertedStudy;
   }
   return yield* new StudyCommandError({ code: 'CONFLICT' });
@@ -147,10 +160,11 @@ const insertCreatorGrant: (input: {
 export const createAuditedStudy: (
   access: TeamAccess,
   input: {
-    name: string;
+    name: Redacted.Redacted;
     studyId: string;
     protocolId: string;
     draftId: string;
+    participantAnalytics?: boolean;
   },
 ) => Effect.Effect<
   CreatedStudy,
@@ -161,6 +175,7 @@ export const createAuditedStudy: (
   | SqlError.SqlError,
   | Database
   | Principal
+  | AuditActor
   | RequestId
   | AuditSignal
   | SecretsCipher
@@ -168,14 +183,19 @@ export const createAuditedStudy: (
 > = Effect.fn('study.create')(function* (
   access: TeamAccess,
   input: {
-    name: string;
+    name: Redacted.Redacted;
     studyId: string;
     protocolId: string;
     draftId: string;
+    participantAnalytics?: boolean;
   },
 ) {
   const studyName = yield* Effect.sync(() =>
-    Schema.decodeUnknownSync(StudyName)(input.name).trim(),
+    Redacted.make(
+      Redacted.value(
+        Schema.decodeUnknownSync(StudyName)(Redacted.value(input.name)),
+      ).trim(),
+    ),
   );
   const cipher = yield* SecretsCipher;
 
@@ -214,7 +234,7 @@ export const createAuditedStudy: (
 
         // The protocol line first: `studies.protocol_id` references it.
         const protocol = yield* createProtocol(access.teamId, cipher, {
-          protocol: emptyProtocol(studyName),
+          protocol: emptyProtocol(Redacted.value(studyName)),
           protocolId: input.protocolId,
           draftId: input.draftId,
         });
@@ -223,6 +243,7 @@ export const createAuditedStudy: (
           teamId: access.teamId,
           name: studyName,
           protocolId: protocol.protocolId,
+          participantAnalytics: input.participantAnalytics ?? true,
         });
         // Only on creation: a grant written on a replay would go to whoever replays
         // it, and commit unaudited.
@@ -255,7 +276,7 @@ export const createAuditedStudy: (
 
 const studyCreated = (
   studyId: string,
-  studyName: string,
+  studyName: Redacted.Redacted,
   study: Extract<InsertedStudy, { created: true }>,
   protocol: { protocolId: string; draftId: string },
 ) =>
@@ -275,7 +296,7 @@ const studyCreated = (
 
 const protocolCreated = (
   protocol: { protocolId: string; draftId: string },
-  studyName: string,
+  studyName: Redacted.Redacted,
 ) =>
   ({
     eventVersion: 1,

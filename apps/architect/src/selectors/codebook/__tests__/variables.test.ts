@@ -21,6 +21,7 @@ const openStageDraft = (fields: Record<string, unknown>) => {
     { id: 'stage-1', type: 'Information', ...fields } as unknown as Stage,
     {},
     fields,
+    true,
   );
 };
 

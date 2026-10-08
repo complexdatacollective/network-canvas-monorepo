@@ -24,6 +24,7 @@ import type {
   ProtocolLocaleChangeHandler,
   SyncHandler,
 } from '../../../contract/types';
+import { interviewCatalogSource } from '../../../i18n/catalog';
 import Shell from '../../../Shell';
 
 vi.mock('../../../hooks/useMediaQuery', () => ({ default: () => false }));
@@ -47,6 +48,10 @@ class ResizeObserverStub {
   unobserve() {}
   disconnect() {}
 }
+
+// Loaded before anything renders, as a host loads a language before it
+// mounts an interview, so the Shell renders in Spanish without waiting.
+beforeAll(() => interviewCatalogSource.load('es'));
 
 beforeAll(() => {
   vi.stubGlobal('ResizeObserver', ResizeObserverStub);

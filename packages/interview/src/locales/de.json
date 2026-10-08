@@ -160,6 +160,7 @@
   "interview.interfaces.discardChanges": "Änderungen verwerfen",
   "interview.interfaces.discardChangesDescription": "Dieses Formular enthält ungültige Angaben und kann daher nicht gespeichert werden. Wenn Sie fortfahren, wird es zurückgesetzt und Ihre Änderungen gehen verloren. Möchten Sie Ihre Änderungen verwerfen?",
   "interview.interfaces.discardChangesTitle": "Änderungen verwerfen?",
+  "interview.interfaces.discardOvertakenEditDescription": "„Rückgängig“ oder „Wiederholen“ hat eine Antwort geändert, während Sie sie bearbeitet haben. Deshalb wurde Ihre Änderung nicht gespeichert. Um Ihre Änderung zu behalten, ändern Sie diese Antwort erneut. Wenn Sie fortfahren, geht Ihre Änderung verloren.",
   "interview.interfaces.dragToReposition": "Zum Verschieben ziehen",
   "interview.interfaces.drawEdge": "Verbindung zeichnen",
   "interview.interfaces.drawingControls": "Zeichenwerkzeuge",

@@ -531,6 +531,21 @@ export const useMapbox = ({
     appliedMapLanguageRef.current = mapLanguage;
     mapRef.current?.setLanguage(mapLanguage);
   }, [mapLanguage]);
+  // The highlighted area is the saved location as it can be read now, and this
+  // is its only writer: none while nothing is saved or the saved location
+  // cannot be read, and a picked area only once the pick is saved. The filter
+  // is set as soon as the selection layer exists: `isStyleLoaded()` is no
+  // guide, as it is false whenever tiles are still loading. A map being
+  // rebuilt has no layer yet, and is filtered once it loads.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!isMapLoaded || !map?.getLayer('selection')) return;
+    map.setFilter('selection', [
+      '==',
+      targetFeatureProperty,
+      initialSelectionValue ?? '',
+    ]);
+  }, [isMapLoaded, initialSelectionValue, targetFeatureProperty]);
 
   // handle selections
   useEffect(() => {

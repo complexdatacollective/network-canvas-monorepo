@@ -643,6 +643,10 @@
     "defaultMessage": "Discard changes?",
     "description": "Title of the warning shown when a participant tries to leave a form containing invalid unsaved answers."
   },
+  "interview.interfaces.discardOvertakenEditDescription": {
+    "defaultMessage": "Undo or redo changed an answer while you were editing it, so your edit has not been saved. To keep your edit, change that answer again. If you continue, your edit will be lost.",
+    "description": "Warning when leaving a side panel after undo or redo changed an answer the participant had edited but not yet saved. The edit stays on screen, and is saved only if the participant changes that answer again."
+  },
   "interview.interfaces.dragToReposition": {
     "defaultMessage": "Drag to reposition",
     "description": "Accessible name of the handle that moves the floating narrative preset toolbar."

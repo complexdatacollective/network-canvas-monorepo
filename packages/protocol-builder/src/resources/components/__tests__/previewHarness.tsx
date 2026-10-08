@@ -1,4 +1,5 @@
 import { act, render, screen, type RenderResult } from '@testing-library/react';
+import { Redacted } from 'effect';
 import { expect, vi } from 'vitest';
 
 import type { ProtocolBuilderAdapter } from '../../../state/context.ts';
@@ -79,7 +80,9 @@ export function createPreviewHost(): PreviewHost {
         status: 'ok' as const,
         data: {
           resourceId: result.data.resourceId,
-          url: `${result.data.url}#url-${issued}`,
+          url: Redacted.make(
+            `${Redacted.value(result.data.url)}#url-${issued}`,
+          ),
           ...(expiresAt === undefined ? {} : { expiresAt }),
         },
       };
@@ -131,10 +134,12 @@ async function stageImage(
     request: {
       kind: 'content',
       contentKind: 'image',
-      name: source,
-      source,
+      name: Redacted.make(source),
+      source: Redacted.make(source),
       contentType: 'image/png',
-      bytes: new Uint8Array(new TextEncoder().encode(`png-${source}`)),
+      bytes: Redacted.make(
+        new Uint8Array(new TextEncoder().encode(`png-${source}`)),
+      ),
     },
   });
   if (staged.status !== 'ok') throw new Error('could not stage the image');

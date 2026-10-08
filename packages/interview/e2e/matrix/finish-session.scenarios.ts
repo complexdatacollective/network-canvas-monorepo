@@ -345,17 +345,17 @@ export const finishSessionScenarios: InterfaceScenarios = {
     },
 
     {
-      id: 'abort-path-dismiss-while-pending',
-      covers: ['onFinish.abort-on-dismiss'],
+      id: 'held-open-while-pending',
+      covers: ['onFinish.held-open-while-pending'],
       build: () => {
         const synth = new SyntheticInterview();
         synth.addInformationStage({ title: 'Study overview' });
         return synth;
       },
       currentStep: 1,
-      run: async ({ page }) => {
+      run: async ({ page, interview }) => {
         await page.evaluate(() =>
-          window.__test.setFinishBehavior({ mode: 'hang-until-abort' }),
+          window.__test.setFinishBehavior({ mode: 'manual' }),
         );
 
         await page.getByRole('button', { name: 'Finish' }).click();
@@ -366,26 +366,23 @@ export const finishSessionScenarios: InterfaceScenarios = {
         await expect(primary).toBeDisabled();
         await expect(primary).toHaveText('Please wait...');
 
-        // Dismiss while pending — this aborts the in-flight onFinish call.
-        await dialog.getByTestId('dialog-cancel').click();
+        // A host's finish runs to completion whatever happens to the dialog,
+        // so it cannot be left while the finish is under way: Cancel is
+        // disabled, there is no close button, and Escape is refused.
+        await expect(dialog.getByTestId('dialog-cancel')).toBeDisabled();
+        await expect(dialog.getByRole('button', { name: 'Close' })).toHaveCount(
+          0,
+        );
+        await page.keyboard.press('Escape');
+        await expect(dialog).toBeVisible();
+
+        await page.evaluate(() => window.__test.resolveManualFinish());
         await expect(dialog).toBeHidden();
 
         const calls = await page.evaluate(() => window.__test.getFinishCalls());
         expect(calls).toHaveLength(1);
-        expect(calls[0]?.aborted).toBe(true);
-
-        // AbortError is swallowed — no error text ever renders anywhere.
-        await expect(page.getByText('finish failed')).toHaveCount(0);
-        await expect(page.locator('[class*="text-destructive"]')).toHaveCount(
-          0,
-        );
-
-        // Finish stage still usable.
-        await expect(
-          page.getByRole('heading', { name: 'Finish Interview' }),
-        ).toBeVisible();
-        await page.getByRole('button', { name: 'Finish' }).click();
-        await expect(page.getByRole('dialog')).toBeVisible();
+        expect(calls[0]?.interviewId).toBe(interview.interviewId);
+        expect(calls[0]?.aborted).toBe(false);
       },
     },
 

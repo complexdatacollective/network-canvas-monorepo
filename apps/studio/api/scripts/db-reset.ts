@@ -26,7 +26,7 @@ const { db, secrets, target, local } = confirmDestructiveTarget(
 
 console.log(`Resetting ${target}`);
 
-const pool = createOwnerPool(db);
+const pool = createOwnerPool(db, { logLevel: env.logLevel });
 
 try {
   await resetSchemaAndSeed(pool, db, {

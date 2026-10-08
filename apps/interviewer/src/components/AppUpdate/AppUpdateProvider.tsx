@@ -55,10 +55,18 @@ export function AppUpdateProvider({ children }: { children: ReactNode }) {
     const intervalId = window.setInterval(() => {
       // `update()` fetches sw.js over the network, so in an offline-first PWA
       // it routinely rejects: no connectivity, a captive portal, or a deploy
-      // swapping assets mid-flight. That is not actionable — the next tick
-      // retries — but an unhandled rejection is reported as a crash. Swallow
-      // it so a failed background check stays silent.
-      registration.update().catch(() => undefined);
+      // swapping assets mid-flight. Firefox additionally throws
+      // `InvalidStateError` *synchronously* when the registration has no worker
+      // left to update (an unregistered or redundant worker), and a promise
+      // handler never sees that — it escaped the interval callback and was
+      // reported as a crash. Neither failure is actionable, because the next
+      // tick retries, so swallow both and keep a failed background check
+      // silent.
+      try {
+        registration.update().catch(() => undefined);
+      } catch {
+        // Synchronous throw from `update()`; nothing to recover, retry later.
+      }
     }, UPDATE_CHECK_INTERVAL_MS);
     return () => window.clearInterval(intervalId);
   }, [registration]);

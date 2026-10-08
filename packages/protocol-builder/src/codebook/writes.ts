@@ -1,3 +1,4 @@
+import { Redacted } from 'effect';
 import { useCallback } from 'react';
 import { v4 as uuid } from 'uuid';
 
@@ -90,7 +91,7 @@ const protocolRefusal = (
 const heldRefusal = (holder: Presence | undefined): CodebookRefusal =>
   holder === undefined
     ? { kind: 'held' }
-    : { kind: 'held', holders: [holder.displayName] };
+    : { kind: 'held', holders: [Redacted.value(holder.displayName)] };
 
 /**
  * Everyone a `SectionsLocked` refusal names, once each and in the order the
@@ -106,7 +107,9 @@ export const blockedHolders = (
 ): readonly string[] => [
   ...new Set(
     blocked.flatMap((section) =>
-      section.holder === undefined ? [] : [section.holder.displayName],
+      section.holder === undefined
+        ? []
+        : [Redacted.value(section.holder.displayName)],
     ),
   ),
 ];
@@ -229,7 +232,7 @@ export function useCodebookSectionWrite(): (
       try {
         let document: SectionDoc;
         try {
-          document = next(acquired.data.document);
+          document = next(Redacted.value(acquired.data.document));
         } catch (error: unknown) {
           return builderRefusal(error);
         }
@@ -238,7 +241,7 @@ export function useCodebookSectionWrite(): (
           protocolId,
           requestId: nextRequestId(),
           sectionId: id,
-          document,
+          document: Redacted.make(document),
           revision: acquired.data.revision,
         });
         if (submitted.isSuccess) return { status: 'applied', sectionId: id };
@@ -288,7 +291,7 @@ async function createEgoCodebook(
     protocolId,
     requestId,
     kind: 'codebookEgo',
-    document,
+    document: Redacted.make(document),
   });
   if (created.isSuccess || created.refusal !== undefined) {
     egoKey.settled(requestId);
@@ -337,7 +340,7 @@ export function useCreateCodebookEntity(): (
         protocolId,
         requestId,
         kind,
-        document,
+        document: Redacted.make(document),
       });
       if (created.isSuccess || created.refusal !== undefined) {
         createKey.settled(requestId);

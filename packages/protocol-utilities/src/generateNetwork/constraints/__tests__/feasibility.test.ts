@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { loadCatalog } from '@codaco/app-i18n/locales';
 import { createAppIntl } from '@codaco/app-i18n/messages';
 import type { Stage, StructuralCodebook } from '@codaco/protocol-validation';
 import {
@@ -9,7 +10,7 @@ import {
 } from '@codaco/shared-consts';
 
 import { generateNetwork } from '../../../generateNetwork.ts';
-import { protocolUtilitiesCatalogs } from '../../../locales/catalogs.ts';
+import { protocolUtilitiesCatalogLoaders } from '../../../locales/catalogs.ts';
 import { formatConstraintConflictReason } from '../../../messages.ts';
 import { resolveGenerationConfig } from '../../config.ts';
 import { CONTENT_STAGE_TYPES } from '../../contentStages.ts';
@@ -18,6 +19,10 @@ import { analyseFeasibility } from '../feasibility.ts';
 import { MAX_TEXT_DRAW_LENGTH } from '../valueSpace.ts';
 
 const config = resolveGenerationConfig({ today: '2026-07-27' });
+const spanishMessages = await loadCatalog(
+  'es',
+  protocolUtilitiesCatalogLoaders,
+);
 
 const nameGenerator = {
   id: 'stage-1',
@@ -3007,7 +3012,7 @@ describe('localized generation refusal metadata', () => {
       const diagnostic = conflict.reason;
       const intl = createAppIntl({
         locale: 'es',
-        messages: protocolUtilitiesCatalogs.es,
+        messages: spanishMessages,
       });
       expect(formatConstraintConflictReason(conflict, intl)).toContain(spanish);
       expect(conflict.variableNames).toEqual(['Researcher name']);

@@ -1,5 +1,6 @@
 import { skipToken, useQuery } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from '@tanstack/react-router';
+import { Redacted } from 'effect';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -208,7 +209,7 @@ function useStudySegment(
         [study.data.study, ...listed.filter((row) => row.id !== studyId)].map(
           (row) => ({
             id: row.id,
-            name: row.name,
+            name: Redacted.value(row.name),
             // The state, and how much of the study there is — the two things a
             // researcher picking between studies is choosing on.
             meta: studySummaryLine(intl, row),

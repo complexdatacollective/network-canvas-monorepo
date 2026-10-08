@@ -10,6 +10,7 @@ import type {
   InstallationReader,
 } from '../domain.ts';
 import type { Jobs } from '../jobs/jobs.ts';
+import type { Analytics } from '../platform/analytics.ts';
 import type { RateLimiter } from '../rate-limit/limiter.ts';
 import type { SecretsCipher } from '../secrets/services.ts';
 
@@ -25,6 +26,7 @@ export type StudioServices =
   | AuditSignal
   | Jobs
   | SecretsCipher
-  | DeniedAttempts;
+  | DeniedAttempts
+  | Analytics;
 
 export type RpcServices = StudioServices | AuthService | RateLimiter;

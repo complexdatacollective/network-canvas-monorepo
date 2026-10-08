@@ -1,6 +1,13 @@
-import { Context, DateTime, Effect, Layer, Schema } from 'effect';
+import { Context, DateTime, Effect, Layer, Option, Schema } from 'effect';
 
-import type { JobPayload, JobQueueName } from '@codaco/studio-sync/jobs';
+import {
+  type EncodedJobPayload,
+  JOB_PAYLOAD_PARSE_OPTIONS,
+  type JobCorrelation,
+  JobCorrelationSchema,
+  type JobPayload,
+  type JobQueueName,
+} from '@codaco/studio-sync/jobs';
 
 import { Transaction } from '../db/tenant.ts';
 import { JobClock, type JobClockShape } from './clock.ts';
@@ -19,6 +26,7 @@ export class JobRefused extends Schema.TaggedError<JobRefused>()('JobRefused', {
 export type EnqueueOptions = {
   readonly startAfter?: DateTime.Utc | undefined;
   readonly singletonKey?: string | undefined;
+  readonly correlate?: boolean | undefined;
 };
 
 export type JobsConfig = {
@@ -52,7 +60,7 @@ export class Jobs extends Context.Service<
         const enqueue = Effect.fnUntraced(function* <
           Queue extends JobQueueName,
         >(queue: Queue, payload: JobPayload<Queue>, options?: EnqueueOptions) {
-          const encoded = yield* decodePayload(queue, payload);
+          const encoded = yield* encodePayload(queue, payload);
           // Requires the service without using it: a recorded enqueue must be no easier to
           // reach than a real one.
           yield* Transaction;
@@ -98,11 +106,28 @@ export class RecordedJobs extends Context.Service<
   }
 >()('@studio/jobs/RecordedJobs') {}
 
-const decodePayload = <Queue extends JobQueueName>(
+const encodePayload = <Queue extends JobQueueName>(
   queue: Queue,
   payload: JobPayload<Queue>,
-): Effect.Effect<JobPayload<Queue>> =>
-  Effect.orDie(payloadCodec(queue).decode(payload));
+): Effect.Effect<EncodedJobPayload<Queue>> =>
+  Effect.orDie(payloadCodec(queue).encode(payload));
+
+const decodeCorrelation = Schema.decodeUnknownOption(
+  JobCorrelationSchema,
+  JOB_PAYLOAD_PARSE_OPTIONS,
+);
+
+const currentCorrelation: Effect.Effect<JobCorrelation | null> = Effect.map(
+  Effect.option(Effect.currentParentSpan),
+  (span) =>
+    Option.getOrNull(
+      Option.flatMap(span, ({ traceId, spanId, sampled }) =>
+        decodeCorrelation({
+          traceparent: `00-${traceId}-${spanId}-${sampled ? '01' : '00'}`,
+        }),
+      ),
+    ),
+);
 
 const makeEnqueue = (config: JobsConfig, clock: JobClockShape) => {
   const schema = assertSchemaName(config.schema);
@@ -112,9 +137,11 @@ const makeEnqueue = (config: JobsConfig, clock: JobClockShape) => {
     payload: JobPayload<Queue>,
     options?: EnqueueOptions,
   ) {
-    const encoded = yield* decodePayload(queue, payload);
+    const encoded = yield* encodePayload(queue, payload);
     const { sql } = yield* Transaction;
     const now = yield* clock.now;
+    const correlation =
+      options?.correlate === false ? null : yield* currentCorrelation;
     const statement = insertJobStatement({
       schema,
       queue,
@@ -125,6 +152,7 @@ const makeEnqueue = (config: JobsConfig, clock: JobClockShape) => {
         options?.startAfter === undefined
           ? null
           : DateTime.toDate(options.startAfter),
+      correlation,
     });
 
     // Not the caller's to recover: the transaction is already aborted.

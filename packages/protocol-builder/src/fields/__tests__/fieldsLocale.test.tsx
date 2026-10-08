@@ -3,14 +3,14 @@ import userEvent from '@testing-library/user-event';
 import { useState, type ReactNode } from 'react';
 import { describe, expect, it } from 'vitest';
 
-import { ecosystemLocales } from '@codaco/app-i18n/locales';
+import { ecosystemLocales, loadCatalog } from '@codaco/app-i18n/locales';
 import { AppI18nProvider } from '@codaco/app-i18n/react';
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import StageEditorShell from '../../form/StageEditorShell.tsx';
-import { protocolBuilderCatalogs } from '../../locales/catalogs.ts';
+import { protocolBuilderCatalogLoaders } from '../../locales/catalogs.ts';
 import { ProtocolBuilder } from '../../ProtocolBuilder.tsx';
 import { ResourceClientProvider } from '../../resources/client.tsx';
 import { StageEditSession } from '../../stageEdit.tsx';
@@ -145,12 +145,14 @@ function Harness({
   );
 }
 
+const spanishMessages = await loadCatalog('es', protocolBuilderCatalogLoaders);
+
 /** A control that reads the editor's protocol context, in Spanish. */
 const inEditor = (children: ReactNode, sections = baseSections) => (
   <AppI18nProvider
     locale="es"
     locales={ecosystemLocales}
-    messages={protocolBuilderCatalogs.es}
+    messages={spanishMessages}
   >
     <DialogProvider>
       <Harness sections={sections}>{children}</Harness>
@@ -163,7 +165,7 @@ const standalone = (children: ReactNode) => (
   <AppI18nProvider
     locale="es"
     locales={ecosystemLocales}
-    messages={protocolBuilderCatalogs.es}
+    messages={spanishMessages}
   >
     {children}
   </AppI18nProvider>
@@ -179,7 +181,7 @@ describe('the fields in this directory, read in Spanish', () => {
   it('ships Spanish for the ids this directory declares', () => {
     // Checked first so a merge that has not landed this directory's catalog
     // entries fails saying so, rather than as an unexplained missing string.
-    expect(Object.keys(protocolBuilderCatalogs.es ?? {})).toEqual(
+    expect(Object.keys(spanishMessages)).toEqual(
       expect.arrayContaining([
         'protocolBuilder.entitySelect.nodeEmptyState',
         'protocolBuilder.entitySelect.nodeGroupLabel',

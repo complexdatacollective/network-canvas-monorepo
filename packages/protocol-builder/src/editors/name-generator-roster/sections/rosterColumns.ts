@@ -1,3 +1,4 @@
+import { Redacted } from 'effect';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 
 import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
@@ -101,7 +102,10 @@ export function useRosterColumns(): RosterColumns {
       // The inspection is dropped before a newly chosen file is asked about,
       // so this carries the `undefined` that `RosterColumns.names` documents
       // in every state where the file the stage holds NOW is unread.
-      names: inspection?.variableNames,
+      names:
+        inspection?.variableNames === undefined
+          ? undefined
+          : Redacted.value(inspection.variableNames),
       waiting: resourceId === undefined,
       ...(failure === undefined ? {} : { problem: failure.message }),
     }),

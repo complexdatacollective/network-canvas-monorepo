@@ -4,7 +4,9 @@
 #   apps/studio/stack-test/up.sh --variant reference
 #   apps/studio/stack-test/up.sh --variant external-postgres
 #   apps/studio/stack-test/up.sh --variant external-bucket
+#   apps/studio/stack-test/up.sh --variant external-bucket-azure
 #   apps/studio/stack-test/up.sh --variant own-proxy
+#   apps/studio/stack-test/up.sh --variant two-api
 #
 # What `dev:stack` does (api/scripts/dev-stack.ts), from bash and without
 # pnpm, plus one per-variant override: write the secrets and the environment,
@@ -71,7 +73,9 @@ fi
 # Every variable `.env.example` carries, so the stack is interpolated from the
 # same set a self-hoster fills in. The three swap variables are always present
 # and empty for the variants that do not use them: each is read as
-# `${VAR:-<the stack's own service>}`, so empty is the reference value.
+# `${VAR:-<the stack's own service>}`, so empty is the reference value. The
+# Azure Blob variables are always present too, and empty everywhere but the
+# variant that selects that provider; every other variant names `s3`.
 DATABASE_URL=""
 REDIS_URL=""
 S3_ENDPOINT=""
@@ -79,6 +83,17 @@ S3_REGION="garage"
 S3_BUCKET="studio"
 S3_ACCESS_KEY_ID="GK$(hex 12)"
 S3_SECRET_ACCESS_KEY="$(hex 32)"
+STUDIO_OBJECT_STORE="s3"
+AZURE_STORAGE_ACCOUNT_URL=""
+AZURE_STORAGE_CONTAINER=""
+AZURE_STORAGE_CONNECTION_STRING=""
+AZURE_CLIENT_ID=""
+# The account variants/external-bucket-azure.yml's Azurite serves, generated
+# like every other credential here. Azurite's account-name rule is a storage
+# account's: 3-24 lowercase letters and digits. The key is any base64 string;
+# 32 random bytes is the shape a real account key has.
+EXTERNAL_AZURITE_ACCOUNT="stacktest$(hex 4)"
+EXTERNAL_AZURITE_KEY="$(openssl rand -base64 32)"
 
 case "$VARIANT" in
   external-postgres)
@@ -98,6 +113,22 @@ case "$VARIANT" in
     S3_ACCESS_KEY_ID="GK$(hex 12)"
     S3_SECRET_ACCESS_KEY="$(hex 32)"
     ;;
+  external-bucket-azure)
+    # What docs/self-host/swap.md tells an Azure deployer to write, with the
+    # connection-string fallback in place of the account URL: there is no
+    # managed identity off Azure. Every `S3_*` value is emptied rather
+    # than left at the reference's, because the guide says to and because the
+    # server refuses any of them beside `azure-blob` — and an empty access key
+    # is what turns the compose file's `S3_ENDPOINT` default off.
+    STUDIO_OBJECT_STORE="azure-blob"
+    AZURE_STORAGE_CONTAINER="studio-assets"
+    AZURE_STORAGE_CONNECTION_STRING="DefaultEndpointsProtocol=http;AccountName=$EXTERNAL_AZURITE_ACCOUNT;AccountKey=$EXTERNAL_AZURITE_KEY;BlobEndpoint=http://external-azurite:10000/$EXTERNAL_AZURITE_ACCOUNT;"
+    S3_ENDPOINT=""
+    S3_REGION=""
+    S3_BUCKET=""
+    S3_ACCESS_KEY_ID=""
+    S3_SECRET_ACCESS_KEY=""
+    ;;
   external-redis)
     # The whole swap. No credentials: the guide's line is a bare
     # `redis://host:port`, and any Redis 7-compatible server is the contract.
@@ -113,6 +144,9 @@ cat > "$ENV_FILE" <<ENV
 #     -f $STUDIO_DIR/docker-compose.yml \\
 #     -f $STUDIO_DIR/docker-compose.local.yml \\
 #     -f $STACK_TEST_DIR/variants/$VARIANT.yml ps
+#
+# two-api adds \`-f $TWO_API_OVERRIDE\` after the variant file: the guide's
+# override block, which lib.sh extracts from docs/self-host/run.md.
 STUDIO_HOSTNAME=$HOSTNAME_
 ACME_EMAIL=nobody@localhost
 STUDIO_API_IMAGE=$API_IMAGE
@@ -130,12 +164,24 @@ GARAGE_ADMIN_TOKEN=$(hex 32)
 DATABASE_URL=$DATABASE_URL
 S3_ENDPOINT=$S3_ENDPOINT
 REDIS_URL=$REDIS_URL
+STUDIO_OBJECT_STORE=$STUDIO_OBJECT_STORE
+AZURE_STORAGE_ACCOUNT_URL=$AZURE_STORAGE_ACCOUNT_URL
+AZURE_STORAGE_CONTAINER=$AZURE_STORAGE_CONTAINER
+# Single-quoted, so Compose reads it literally: a connection string is a list
+# of name=value pairs separated by semicolons, and its base64 key can carry a
+# slash, a plus and trailing equals signs of its own.
+AZURE_STORAGE_CONNECTION_STRING='$AZURE_STORAGE_CONNECTION_STRING'
+AZURE_CLIENT_ID=$AZURE_CLIENT_ID
 SMTP_URL=
 EMAIL_FROM=
 # Read only by variants/external-bucket.yml, whose stub is a second Garage
 # with secrets of its own.
 EXTERNAL_GARAGE_RPC_SECRET=$(hex 32)
 EXTERNAL_GARAGE_ADMIN_TOKEN=$(hex 32)
+# Read only by variants/external-bucket-azure.yml, whose stub is Azurite
+# serving this one account.
+EXTERNAL_AZURITE_ACCOUNT=$EXTERNAL_AZURITE_ACCOUNT
+EXTERNAL_AZURITE_KEY=$EXTERNAL_AZURITE_KEY
 # Read only by variants/*, which attach the stubs to a network of their own.
 EXTERNAL_NETWORK=$EXTERNAL_NETWORK
 EXTERNAL_SUBNET=$EXTERNAL_SUBNET
@@ -245,13 +291,48 @@ if [ "$VARIANT" = "own-proxy" ]; then
 fi
 
 # ── Ready ─────────────────────────────────────────────────────────────────
+#
+# One replica is ready when the ingress answers 200 once. With two, the ingress
+# alternates between them, so one 200 can come from a replica that has opened
+# while the other has not — and the first request `assert.sh` makes would then
+# meet the maintenance page. Each replica is asked directly, from inside its own
+# container, and then the ingress has to answer 200 several times in a row,
+# which it can only do once it is sending traffic to both.
 url="$(ingress_url)"
+needed=1
+if [ "$VARIANT" = "two-api" ]; then
+  needed=8
+  for service in $(api_services); do
+    say "waiting for $service to open"
+    opened=''
+    for _ in $(seq 1 120); do
+      if compose exec -T "$service" node -e \
+        "fetch('http://127.0.0.1:3000/readyz').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))" \
+        >/dev/null 2>&1; then
+        opened=yes
+        break
+      fi
+      sleep 1
+    done
+    if [ -z "$opened" ]; then
+      compose ps
+      compose logs --tail 200 "$service"
+      die "$service did not answer /readyz with 200 from inside its container within 120s"
+    fi
+  done
+fi
 say "waiting for $url/readyz"
+streak=0
 for attempt in $(seq 1 120); do
   code="$(curl -k -s -o /dev/null -w '%{http_code}' --max-time 5 "$url/readyz" || true)"
   if [ "$code" = "200" ]; then
-    say "$url/readyz answered 200 after ${attempt}s"
-    exit 0
+    streak=$((streak + 1))
+    if [ "$streak" -ge "$needed" ]; then
+      say "$url/readyz answered 200 $streak time(s) in a row after ${attempt}s"
+      exit 0
+    fi
+  else
+    streak=0
   fi
   sleep 1
 done

@@ -186,7 +186,10 @@ describe.skipIf(!db)('recurring work', () => {
             'protocol-store-gc',
             {},
           );
-          assert.strictEqual((yield* schedules()).length, 3);
+          assert.strictEqual(
+            (yield* schedules()).length,
+            JOB_SCHEDULES.length + 1,
+          );
 
           const dropped = yield* worker.dropUndeclaredSchedules(
             JOB_SCHEDULES.map(({ queue }) => queue),
@@ -247,10 +250,18 @@ describe.skipIf(!db)('recurring work', () => {
           const [skipped] = yield* schedules();
           assert.strictEqual(skipped?.next_run_at.getTime(), 0);
           assert.deepStrictEqual(
-            logs.lines
+            logs.records
               .filter(({ level }) => level === 'Error')
-              .map(({ message }) => message.split(':')[0]),
-            ['schedule hand-written carries a payload that does not decode'],
+              .map(({ message, annotations }) => ({ message, annotations })),
+            [
+              {
+                message: 'schedule carries a payload that does not decode',
+                annotations: {
+                  schedule: 'hand-written',
+                  queue: 'invitation-delivery',
+                },
+              },
+            ],
           );
         }).pipe(
           Effect.provide(layerWorker()),
@@ -348,11 +359,17 @@ describe.skipIf(!db)('recurring work', () => {
             ],
           );
           assert.deepStrictEqual(
-            logs.lines
+            logs.records
               .filter(({ level }) => level === 'Error')
-              .map(({ message }) => message),
+              .map(({ message, annotations }) => ({ message, annotations })),
             [
-              'schedule hand-written names a queue this build does not declare: retired-queue',
+              {
+                message: 'schedule names a queue this build does not declare',
+                annotations: {
+                  schedule: 'hand-written',
+                  queue: 'retired-queue',
+                },
+              },
             ],
           );
           assert.isTrue(Exit.isSuccess(ticked) && ticked.value);

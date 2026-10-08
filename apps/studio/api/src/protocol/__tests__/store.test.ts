@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import { eq } from 'drizzle-orm';
-import { Effect, Exit } from 'effect';
+import { Effect, Exit, Redacted } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
@@ -911,7 +911,7 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
             teamId: TEST_TEAM_ID,
             protocolId,
             assetId: 'mapKey',
-          }),
+          }).pipe(Effect.map((key) => key && Redacted.value(key))),
         ),
       ).resolves.toBe(KEY);
     });

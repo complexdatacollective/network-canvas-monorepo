@@ -7,6 +7,7 @@ import {
   Effect,
   Layer,
   Option,
+  Redacted,
   Scope,
 } from 'effect';
 
@@ -444,8 +445,10 @@ export const layerNotifiedWorker = (listen: boolean) =>
 export function payloadFor(queue: JobQueueName): JobPayload<JobQueueName> {
   if (queue === 'sign-in-email') {
     return {
-      email: 'researcher@example.org',
-      url: 'https://studio.example.org/api/auth/magic-link/verify?token=abc',
+      email: Redacted.make('researcher@example.org'),
+      url: Redacted.make(
+        'https://studio.example.org/api/auth/magic-link/verify?token=abc',
+      ),
     };
   }
   if (queue.startsWith('invitation-delivery')) {

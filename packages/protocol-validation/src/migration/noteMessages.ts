@@ -275,6 +275,13 @@ export const migrationNoteMessages = defineMessages({
     description:
       'One complete Markdown bullet in schema 8 migration approval guidance: otherTextAttribute. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text.',
   },
+  schema8AdditionalAttributesBoolean: {
+    id: 'protocolValidation.migrationNotes.schema8.additionalAttributesBoolean',
+    defaultMessage:
+      "A name generator prompt's `additionalAttributes` must reference boolean attributes. The interview sets each one when a node is added to the prompt and clears it when the node is removed, so a non-boolean target had any value collected for it elsewhere overwritten with true/false and then erased. Entries referencing a non-boolean attribute are removed.",
+    description:
+      'One complete Markdown bullet in schema 8 migration approval guidance: additionalAttributesBoolean. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text.',
+  },
   schema8SociogramHighlightAndEdges: {
     id: 'protocolValidation.migrationNotes.schema8.sociogramHighlightAndEdges',
     defaultMessage:
@@ -531,6 +538,7 @@ const migrationNoteSets = {
       migrationNoteMessages.schema8OrphanOtherConfig,
       migrationNoteMessages.schema8OtherLabels,
       migrationNoteMessages.schema8OtherTextAttribute,
+      migrationNoteMessages.schema8AdditionalAttributesBoolean,
       migrationNoteMessages.schema8SociogramHighlightAndEdges,
       migrationNoteMessages.schema8AutomaticLayoutBoolean,
       migrationNoteMessages.schema8ContradictoryRules,

@@ -1,8 +1,9 @@
 import { randomUUID } from 'node:crypto';
 
-import { Effect, Schema } from 'effect';
+import { Effect, Redacted, Schema } from 'effect';
 import type { SqlError } from 'effect/sql';
 
+import type { AuditActor } from '@codaco/studio-contract/middleware/audit-actor';
 import { Principal } from '@codaco/studio-contract/middleware/authenticated';
 import type { NotFound } from '@codaco/studio-contract/schema/errors';
 import { TeamInvitationId } from '@codaco/studio-contract/schema/ids';
@@ -83,8 +84,13 @@ const isOwner = (
 ): Effect.Effect<boolean, TeamCommandError> =>
   Effect.map(parseRoles(member.role), (roles) => roles.includes('owner'));
 
-const memberLabel = (member: store.LockedMember): string =>
-  (member.name.trim() || member.email).slice(0, 320);
+const memberLabel = (member: store.LockedMember): Redacted.Redacted =>
+  Redacted.make(
+    (Redacted.value(member.name).trim() || Redacted.value(member.email)).slice(
+      0,
+      320,
+    ),
+  );
 
 type AuditableTeamFailure = TeamCommandError & AuditableFailure;
 
@@ -130,7 +136,7 @@ export const updateTeamMemberRole: (
 ) => Effect.Effect<
   UpdatedTeamMember,
   TeamCommandError | NotFound | SqlError.SqlError,
-  Database | Principal | RequestId | AuditSignal | DeniedAttempts
+  Database | Principal | AuditActor | RequestId | AuditSignal | DeniedAttempts
 > = Effect.fn('team.updateMemberRole')(function* (
   access: TeamAccess,
   input: { memberId: string; role: TeamRole },
@@ -222,7 +228,7 @@ export const updateTeamMemberRole: (
 
 export type CreatedTeamInvitation = {
   invitationId: string;
-  email: string;
+  email: Redacted.Redacted;
   role: TeamRole;
   status: 'pending';
   expiresAt: Date;
@@ -230,17 +236,23 @@ export type CreatedTeamInvitation = {
 
 export const createTeamInvitation: (
   access: TeamAccess,
-  input: { email: string; role: TeamRole },
+  input: { email: Redacted.Redacted; role: TeamRole },
 ) => Effect.Effect<
   CreatedTeamInvitation,
   TeamCommandError | NotFound | SqlError.SqlError,
-  Database | Principal | RequestId | AuditSignal | Jobs | DeniedAttempts
+  | Database
+  | Principal
+  | AuditActor
+  | RequestId
+  | AuditSignal
+  | Jobs
+  | DeniedAttempts
 > = Effect.fn('team.createInvitation')(function* (
   access: TeamAccess,
-  input: { email: string; role: TeamRole },
+  input: { email: Redacted.Redacted; role: TeamRole },
 ) {
   const email = yield* Effect.sync(() =>
-    decodeEmail(input.email.trim().toLowerCase()),
+    decodeEmail(Redacted.value(input.email).trim().toLowerCase()),
   );
 
   return yield* reserved(
@@ -348,7 +360,7 @@ export const cancelTeamInvitation: (
 ) => Effect.Effect<
   CancelledTeamInvitation,
   TeamCommandError | NotFound | SqlError.SqlError,
-  Database | Principal | RequestId | AuditSignal | DeniedAttempts
+  Database | Principal | AuditActor | RequestId | AuditSignal | DeniedAttempts
 > = Effect.fn('team.cancelInvitation')(function* (
   access: TeamAccess,
   input: { invitationId: string },
@@ -447,7 +459,7 @@ export const cancelTeamInvitation: (
 export type AcceptedTeamInvitation = {
   invitationId: string;
   teamId: string;
-  teamName: string;
+  teamName: Redacted.Redacted;
   memberId: string;
   role: TeamRole;
   status: 'accepted';
@@ -458,7 +470,7 @@ export const acceptTeamInvitation: (input: {
 }) => Effect.Effect<
   AcceptedTeamInvitation,
   TeamCommandError | NotFound | SqlError.SqlError,
-  Database | Principal | RequestId | AuditSignal | DeniedAttempts
+  Database | Principal | AuditActor | RequestId | AuditSignal | DeniedAttempts
 > = Effect.fn('team.acceptInvitation')(function* (input: {
   invitationId: string;
 }) {
@@ -511,8 +523,8 @@ export const acceptTeamInvitation: (input: {
 
         if (!principal.emailVerified) return yield* refuse('email_unverified');
         if (
-          invitation.email.toLowerCase() !==
-          principal.email.trim().toLowerCase()
+          Redacted.value(invitation.email).toLowerCase() !==
+          Redacted.value(principal.email).trim().toLowerCase()
         ) {
           return yield* refuse('email_mismatch');
         }

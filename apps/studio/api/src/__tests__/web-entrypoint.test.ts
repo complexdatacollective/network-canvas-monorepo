@@ -6,6 +6,8 @@
 import { Predicate } from 'effect';
 import { describe, expect, it } from 'vitest';
 
+import { MAINTENANCE_PROBLEM_TYPE } from '@codaco/studio-contract/schema/problem';
+
 import { applySchema } from '../../scripts/apply.ts';
 import { JOB_SCHEMA } from '../jobs/queues.ts';
 import { freePort, startEntrypoint } from './support/entrypoint.ts';
@@ -52,9 +54,21 @@ describe.skipIf(!db)('the web entrypoint', () => {
         // does while `pnpm dev` runs its reset.
         await web.waitForOutput(/Database has no Studio schema/);
         await web.waitForOutput(/listening on/);
+        const listening = web
+          .output()
+          .split('\n')
+          .find((line) => line.includes('listening on'));
+        expect(listening).toMatch(/"version":"\d+\.\d+\.\d+/);
+        expect(listening).not.toMatch(/"address"|127\.0\.0\.1|0\.0\.0\.0/);
 
         await applySchema(scratch.pool);
         await web.waitForOutput(/Database schema current\./, SCHEMA_WAIT_MS);
+        // The gate stays closed until the keyring check after it has passed
+        // too (#1901); a request between the two lines would be answered 503.
+        await web.waitForOutput(
+          /Schema current and keyring verified; serving\./,
+          SCHEMA_WAIT_MS,
+        );
 
         const email = `late-schema-${Date.now()}@example.org`;
         const response = await fetch(`${origin}/api/auth/sign-in/magic-link`, {
@@ -95,6 +109,7 @@ describe.skipIf(!db)('the web entrypoint', () => {
         expect(refused.status).toBe(503);
         expect(refused.headers.get('retry-after')).toBe('30');
         expect(await refused.json()).toEqual({
+          type: MAINTENANCE_PROBLEM_TYPE,
           title: 'Down for maintenance',
           status: 503,
         });

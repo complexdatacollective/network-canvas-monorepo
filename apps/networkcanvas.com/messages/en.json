@@ -20,7 +20,7 @@
   },
   "News": {
     "label": "Latest News:",
-    "fullStory": "[Full story]"
+    "readMore": "[Read more]"
   },
   "Tools": {
     "heading": "A selection of tools to facilitate your research",
@@ -101,6 +101,27 @@
     "citing": "For guidance on citing Network Canvas, see our <article>documentation article</article>.",
     "submission": "If you would like to feature your publication, please let us know by posting in our community site <thread>thread</thread>."
   },
+  "UpdatesPage": {
+    "metadata": {
+      "title": "Updates",
+      "description": "News from across the Network Canvas project: software releases, funding, research papers, workshops and other milestones."
+    },
+    "heading": "Updates",
+    "introduction": "News from across the Network Canvas project since it began in 2013: software releases, funding, research papers, workshops and other milestones.",
+    "search": {
+      "label": "Search updates",
+      "placeholder": "Search updates",
+      "clear": "Clear search",
+      "results": "{count} of {total, plural, =1 {# update} other {# updates}}",
+      "emptyHeading": "No updates found",
+      "emptyDescription": "Try a different search."
+    },
+    "details": {
+      "show": "Show full details",
+      "hide": "Hide details"
+    },
+    "readMore": "Read the full announcement"
+  },
   "Team": {
     "heading": "Core Team",
     "introduction": "Our project team comprises individuals across a variety of disciplines and specializations."
@@ -145,6 +166,7 @@
   },
   "Footer": {
     "terms": "Terms of Use",
+    "updates": "Updates",
     "privacy": "Privacy Policy",
     "copyright": "Copyright Complex Data Collective 2016-{year}",
     "youtube": "YouTube",

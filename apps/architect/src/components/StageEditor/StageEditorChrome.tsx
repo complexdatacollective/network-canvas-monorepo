@@ -203,7 +203,8 @@ export function StageEditorHeader({
  */
 function StageDraftPublisher() {
   const { liveDraft, storeApi, identity } = useStageEditorForm();
-  const { committedFields } = useStageEdit();
+  const { committedFields, access } = useStageEdit();
+  const editing = access === 'editing';
 
   useEffect(() => {
     if (committedFields === undefined) return;
@@ -213,6 +214,7 @@ function StageDraftPublisher() {
         stageDocument(identity, draft) as unknown as Stage,
         committedFields,
         draft,
+        editing,
       );
     };
     publish();
@@ -221,7 +223,7 @@ function StageDraftPublisher() {
       unsubscribe();
       closeStageDraft();
     };
-  }, [committedFields, identity, liveDraft, storeApi]);
+  }, [committedFields, editing, identity, liveDraft, storeApi]);
 
   return null;
 }

@@ -99,6 +99,31 @@ export const JOB_QUEUES = [
       expireInSeconds: 3600,
     },
   },
+  {
+    // The daily check for a newer Studio release (#1901). `singleton` because
+    // two runs alongside each other would both read the same manifest and
+    // race for the one-email-per-version claim; the claim is correct on its
+    // own, but a second run has nothing to add. A missed day is picked up by
+    // tomorrow's run, so a failed fetch retries only twice. The expiry is the
+    // outer bound on one attempt and sits above the manifest fetch's own bound
+    // (20s) plus the SMTP transport's (10s connect, 10s greeting, 20s socket),
+    // so a slow send is never reaped while it is still running: a reaped
+    // attempt would release the version's claim and a second email would follow.
+    name: 'update-check',
+    options: {
+      policy: 'singleton',
+      retryLimit: 2,
+      expireInSeconds: 120,
+      retentionSeconds: 7 * 24 * 3600,
+      deleteAfterSeconds: 24 * 3600,
+    },
+  },
+  {
+    name: 'session-completed',
+    options: {
+      policy: 'standard',
+    },
+  },
 ] as const satisfies readonly JobQueueDeclaration[];
 
 export type JobQueueName = (typeof JOB_QUEUES)[number]['name'];
@@ -115,6 +140,12 @@ export const JOB_SCHEDULES = [
   // longer cadence would leave a burst unrecorded for as long as the cadence,
   // and the job does nothing at all when no window was suppressed.
   { queue: 'denied-attempts-summary', cron: '* * * * *', tz: 'UTC' },
+  // Daily, at a fixed minute off the hour. The minute is the same for every
+  // instance, so the manifest host sees them arrive together; that is accepted
+  // (no jitter, by decision, 16 Sep 2026). The off-the-hour minute only keeps
+  // the check clear of the top-of-the-hour crons, and a fixed minute rather
+  // than a random one keeps the schedule row from changing on each boot.
+  { queue: 'update-check', cron: '23 4 * * *', tz: 'UTC' },
 ] as const satisfies readonly JobSchedule[];
 
 const RowId = Schema.String.check(Schema.isUUID());
@@ -154,10 +185,15 @@ export type InvitationDeliveryJob = typeof InvitationDeliveryJobSchema.Type;
 
 /** The documented exception to identifiers-only — see JOB_PAYLOAD_POLICY. */
 export const SignInEmailJobSchema = Schema.Struct({
-  email: Schema.String.check(Schema.isMinLength(1)),
-  url: Schema.String.check(isUrlString),
+  email: Schema.RedactedFromValue(Schema.String.check(Schema.isMinLength(1))),
+  url: Schema.RedactedFromValue(Schema.String.check(isUrlString)),
 });
 export type SignInEmailJob = typeof SignInEmailJobSchema.Type;
+
+export const SessionCompletedJobSchema = Schema.Struct({
+  sessionId: RowId,
+});
+export type SessionCompletedJob = typeof SessionCompletedJobSchema.Type;
 
 /** The sweep visits every tenant; there is nothing to address it at. */
 export const ProtocolStoreGcJobSchema = Schema.Struct({}).check(isEmptyObject);
@@ -170,6 +206,20 @@ export const DeniedAttemptsSummaryJobSchema = Schema.Struct({}).check(
 export type DeniedAttemptsSummaryJob =
   typeof DeniedAttemptsSummaryJobSchema.Type;
 
+/** The check reads one fixed manifest; there is nothing to address it at. */
+export const UpdateCheckJobSchema = Schema.Struct({}).check(isEmptyObject);
+export type UpdateCheckJob = typeof UpdateCheckJobSchema.Type;
+
+const TRACEPARENT =
+  /^00-(?!0{32})[0-9a-f]{32}-(?!0{16})[0-9a-f]{16}-[0-9a-f]{2}$/;
+
+export const JobCorrelationSchema = Schema.Struct({
+  traceparent: Schema.String.check(
+    Schema.isPattern(TRACEPARENT, { expected: 'a W3C traceparent' }),
+  ),
+});
+export type JobCorrelation = typeof JobCorrelationSchema.Type;
+
 export const JOB_PAYLOAD_SCHEMAS = {
   'invitation-delivery': InvitationDeliveryJobSchema,
   // A dead-lettered job is a copy of the one that failed, so the shape is the
@@ -178,10 +228,15 @@ export const JOB_PAYLOAD_SCHEMAS = {
   'sign-in-email': SignInEmailJobSchema,
   'protocol-store-gc': ProtocolStoreGcJobSchema,
   'denied-attempts-summary': DeniedAttemptsSummaryJobSchema,
+  'update-check': UpdateCheckJobSchema,
+  'session-completed': SessionCompletedJobSchema,
 } as const satisfies Record<JobQueueName, Schema.Struct<Schema.Struct.Fields>>;
 
 export type JobPayload<Queue extends JobQueueName> =
   (typeof JOB_PAYLOAD_SCHEMAS)[Queue]['Type'];
+
+export type EncodedJobPayload<Queue extends JobQueueName> =
+  (typeof JOB_PAYLOAD_SCHEMAS)[Queue]['Encoded'];
 
 /**
  * `Schema.Struct` strips an undeclared key by default; a field the policy forbids
@@ -215,4 +270,6 @@ export const JOB_PAYLOAD_POLICY = {
   },
   'protocol-store-gc': { kind: 'identifiers' },
   'denied-attempts-summary': { kind: 'identifiers' },
+  'update-check': { kind: 'identifiers' },
+  'session-completed': { kind: 'identifiers' },
 } as const satisfies Record<JobQueueName, JobPayloadPolicy>;

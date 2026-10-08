@@ -1,10 +1,11 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import { loadCatalog } from '@codaco/app-i18n/locales';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
-import { protocolBuilderCatalogs } from '../../locales/catalogs.ts';
+import { protocolBuilderCatalogLoaders } from '../../locales/catalogs.ts';
 import { attributeField } from '../../testing/attributePicker.ts';
 import {
   expectNoLocaleLeaks,
@@ -23,6 +24,7 @@ import SkipLogicSection from '../skip-logic/SkipLogicSection.tsx';
 
 /** Protocol copy in the fixture's one language. */
 const en = (text: string) => ({ 'en-US': text });
+const spanishMessages = await loadCatalog('es', protocolBuilderCatalogLoaders);
 
 /**
  * The three sections every stage editor composes, read in Spanish.
@@ -83,7 +85,7 @@ describe('the shared stage-editor sections in Spanish', () => {
   it('ships Spanish for the ids these sections declare', () => {
     // Checked first so a merge that has not landed this directory's catalog
     // entries fails saying so, rather than as an unexplained English string.
-    expect(Object.keys(protocolBuilderCatalogs.es ?? {})).toEqual(
+    expect(Object.keys(spanishMessages)).toEqual(
       expect.arrayContaining([
         'protocolBuilder.networkFilter.title',
         'protocolBuilder.networkFilter.rulesHint',

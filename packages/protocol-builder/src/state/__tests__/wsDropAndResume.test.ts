@@ -1,4 +1,4 @@
-import { Schema } from 'effect';
+import { Redacted, Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import type { ProtocolEvent } from '@codaco/protocol-builder-core/contract/schemas';
@@ -61,7 +61,10 @@ describe('a protocol stream over a socket that drops mid-stream', () => {
       if (event.type !== 'revision') return;
       if (event.sectionId !== INFORMATION) return;
       revisions.push(event.revision.sequence);
-      const label = event.document?.label;
+      const label =
+        event.document === undefined
+          ? undefined
+          : Redacted.value(event.document).label;
       if (isEnglishLabel(label)) labels.push(label['en-US']);
     };
     const channel = streamProtocolEvents(
@@ -81,7 +84,10 @@ describe('a protocol stream over a socket that drops mid-stream', () => {
         protocolId: host.protocolId,
         requestId: nextRequestId(),
         sectionId: INFORMATION,
-        document: { ...held.document, label: { 'en-US': label } },
+        document: Redacted.make({
+          ...Redacted.value(held.document),
+          label: { 'en-US': label },
+        }),
         revision: held.revision,
       });
     };
@@ -131,7 +137,10 @@ describe('a protocol stream over a socket that drops mid-stream', () => {
       host.protocolId,
       (event) => {
         if (event.type !== 'revision') return;
-        const label = event.document?.label;
+        const label =
+          event.document === undefined
+            ? undefined
+            : Redacted.value(event.document).label;
         if (isEnglishLabel(label)) labels.push(label['en-US']);
       },
       controller.signal,
@@ -149,7 +158,10 @@ describe('a protocol stream over a socket that drops mid-stream', () => {
         protocolId: host.protocolId,
         requestId: nextRequestId(),
         sectionId: EGO_FORM,
-        document: { ...other.document, label: { 'en-US': label } },
+        document: Redacted.make({
+          ...Redacted.value(other.document),
+          label: { 'en-US': label },
+        }),
         revision: other.revision,
       });
     };
@@ -169,10 +181,10 @@ describe('a protocol stream over a socket that drops mid-stream', () => {
       protocolId: host.protocolId,
       requestId: nextRequestId(),
       sectionId: INFORMATION,
-      document: {
-        ...held.document,
+      document: Redacted.make({
+        ...Redacted.value(held.document),
         label: { 'en-US': 'Saved after the drop' },
-      },
+      }),
       revision: held.revision,
     });
     expect(written.revision.sequence).toBeGreaterThan(held.revision.sequence);

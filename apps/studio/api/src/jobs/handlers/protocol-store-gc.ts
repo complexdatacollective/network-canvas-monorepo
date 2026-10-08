@@ -6,9 +6,11 @@ import { TENANT_ROLES } from '@codaco/studio-sync/rls';
 import { noAuditMaintenanceTransaction } from '../../audit/no-audit.ts';
 import { MaintenanceDatabase } from '../../db/client.ts';
 import { MaintenanceScope, Transaction } from '../../db/tenant.ts';
+import type { ObjectStore } from '../../storage/object-store.ts';
 import { exitSqlState, INSUFFICIENT_PRIVILEGE } from '../errors.ts';
 import { maintenanceTeamAccess } from '../team-access.ts';
 import type { HandledJob, JobOutcome } from '../worker.ts';
+import { gcStagedResources } from './staged-resources-gc.ts';
 
 export type GcResult = {
   manifestsDeleted: number;
@@ -260,11 +262,39 @@ export const protocolStoreGc = Effect.fn('job.protocol-store-gc')(function* (
 ): Effect.fn.Return<
   JobOutcome,
   GcBoundsError | GcRoleError | SqlError.SqlError,
-  MaintenanceDatabase
+  MaintenanceDatabase | ObjectStore
 > {
-  const swept = yield* gcProtocolStore(PROTOCOL_STORE_GC_BOUNDS);
-  yield* Effect.logInfo(
-    `protocol-store-gc ${job.id}: manifests ${swept.manifestsDeleted}, sections ${swept.sectionsDeleted}, command log ${swept.commandLogDeleted}`,
+  const swept = yield* Effect.exit(gcProtocolStore(PROTOCOL_STORE_GC_BOUNDS));
+  if (Exit.isSuccess(swept)) {
+    yield* Effect.logInfo('protocol store swept').pipe(
+      Effect.annotateLogs({
+        queue: 'protocol-store-gc',
+        job_id: job.id,
+        manifests_deleted: swept.value.manifestsDeleted,
+        sections_deleted: swept.value.sectionsDeleted,
+        command_log_deleted: swept.value.commandLogDeleted,
+      }),
+    );
+  }
+  // After the sweep, whether or not it succeeded, and apart from it: an
+  // unreachable object store must not cost the protocol store its collection,
+  // nor the reverse. A failed sweep still fails the job, once this has run.
+  yield* gcStagedResources().pipe(
+    Effect.tap((staged) =>
+      Effect.logInfo('staged resources swept').pipe(
+        Effect.annotateLogs({
+          queue: 'protocol-store-gc',
+          job_id: job.id,
+          staged_rows_deleted: staged.stagedRowsDeleted,
+          staged_objects_deleted: staged.stagedObjectsDeleted,
+          connections_deleted: staged.connectionsDeleted,
+        }),
+      ),
+    ),
+    Effect.catchCause((cause) =>
+      Effect.logError('Collecting staged resources failed', cause),
+    ),
   );
+  if (Exit.isFailure(swept)) return yield* Effect.failCause(swept.cause);
   return 'completed';
 });

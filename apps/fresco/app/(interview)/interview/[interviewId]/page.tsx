@@ -3,23 +3,53 @@ import { after, connection } from 'next/server';
 import { Suspense } from 'react';
 import SuperJSON from 'superjson';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
 import Spinner from '@codaco/fresco-ui/Spinner';
+import { loadInterviewCatalog } from '@codaco/interview/catalog';
 import { type ActivityType } from '~/app/dashboard/_components/ActivityFeed/types';
 import type { ActivityLocalization } from '~/i18n/activityDetails';
-import { getRequestedLocales } from '~/i18n/server';
+import { getRequestedLocales, getServerIntl } from '~/i18n/server';
 import { getAdmittedSession } from '~/lib/auth/guards';
 import { safeRevalidateTag } from '~/lib/cache';
 import { prisma } from '~/lib/db';
 import { getLimitedInterviewId } from '~/lib/limitInterviewsCookie';
-import { captureEvent, flushPostHog } from '~/lib/posthog-server';
+import {
+  captureEvent,
+  captureException,
+  flushPostHog,
+} from '~/lib/posthog-server';
 import { getAppSetting, getDisableAnalytics } from '~/queries/appSettings';
 import {
   getInterviewById,
   type GetInterviewByIdQuery,
 } from '~/queries/interviews';
 
+import { ErrorMessage } from '../_components/ErrorMessage';
 import InterviewClient from './InterviewClient';
 import { mapInterviewForViewer } from './mapInterviewPayload';
+
+const messages = defineMessages({
+  unreadableTitle: {
+    id: 'fresco.interview.page.unreadableTitle',
+    defaultMessage: 'This interview could not be opened',
+    description:
+      'Participant-facing heading shown instead of an interview whose stored protocol or answers could not be read.',
+  },
+  protocolUnreadable: {
+    id: 'fresco.interview.page.protocolUnreadable',
+    defaultMessage:
+      'This interview could not be loaded, so it has not been started. Nothing has been changed. Please contact the person who recruited you to this study for assistance.',
+    description:
+      'Participant-facing explanation shown when the protocol an interview uses could not be read, so the interview was not started.',
+  },
+  sessionUnreadable: {
+    id: 'fresco.interview.page.sessionUnreadable',
+    defaultMessage:
+      'The answers saved for this interview could not be read, so it has not been started. Nothing has been changed. Please contact the person who recruited you to this study for assistance.',
+    description:
+      'Participant-facing explanation shown when the answers saved for an interview could not be read, so the interview was not started.',
+  },
+});
 
 export default function Page(props: {
   params: Promise<{ interviewId: string }>;
@@ -84,6 +114,45 @@ async function InterviewContent({
     }
   }
 
+  // A finished interview's answers reach the browser only for a researcher
+  // who may still change them.
+  const mapped = mapInterviewForViewer(interview, {
+    researcher: session !== null,
+    freezeCompletedInterviews: await getAppSetting(
+      'freezeInterviewsAfterCompletion',
+    ),
+  });
+
+  if (!mapped.success) {
+    // Starting anyway would hand the client a network built without the stored
+    // one, which its first sync would replace, or run it against an empty
+    // design. The report carries no interview id: the id is the participant's
+    // access link, and the report leaves the deployment.
+    after(async () => {
+      await captureException(mapped.error, {
+        context:
+          mapped.unreadable === 'protocol'
+            ? 'interview.load.protocolUnreadable'
+            : 'interview.load.unreadable',
+      });
+      await flushPostHog();
+    });
+
+    const intl = await getServerIntl();
+    return (
+      <ErrorMessage
+        title={intl.formatMessage(messages.unreadableTitle)}
+        message={intl.formatMessage(
+          mapped.unreadable === 'protocol'
+            ? messages.protocolUnreadable
+            : messages.sessionUnreadable,
+        )}
+      />
+    );
+  }
+
+  // Recorded only once the interview can actually be opened: a refusal above
+  // must not leave an activity entry claiming it was.
   after(async () => {
     try {
       const message = session
@@ -131,15 +200,7 @@ async function InterviewContent({
     }
   });
 
-  // A finished interview's answers reach the browser only for a researcher
-  // who may still change them.
-  const { payload, assetUrls, initialStep, initialSyncRevision, view } =
-    mapInterviewForViewer(interview, {
-      researcher: session !== null,
-      freezeCompletedInterviews: await getAppSetting(
-        'freezeInterviewsAfterCompletion',
-      ),
-    });
+  const { payload, assetUrls, initialStep, initialSyncRevision, view } = mapped;
 
   const installationId = (await getAppSetting('installationId')) ?? 'unknown';
   // Use the same helper as the rest of the app, so a DISABLE_ANALYTICS
@@ -148,6 +209,14 @@ async function InterviewContent({
   // Negotiated from the request rather than in the browser so the server
   // render and hydration choose the same protocol language.
   const requestedLocales = await getRequestedLocales();
+  // The interview's own messages, in the language its Shell will negotiate
+  // from the same request and the participant's stated language, travel with
+  // the page: otherwise hydration waits on a separate download before the
+  // participant sees anything.
+  const catalog = await loadInterviewCatalog(
+    requestedLocales,
+    payload.session.localePreference,
+  );
 
   return (
     <InterviewClient
@@ -159,6 +228,7 @@ async function InterviewContent({
       installationId={installationId}
       disableAnalytics={disableAnalytics}
       view={view}
+      catalog={catalog}
     />
   );
 }

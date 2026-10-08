@@ -4,6 +4,8 @@ import type { ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import type { ProtocolLockState } from '~/ducks/modules/app';
+
 import ProjectNav from '../ProjectNav/ProjectNav';
 
 // Mock wouter's useLocation but keep the real Link so anchors render with proper hrefs
@@ -18,7 +20,7 @@ vi.mock('wouter', async () => {
   };
 });
 
-const createTestStore = () =>
+const createTestStore = (lockState: ProtocolLockState = 'owned') =>
   configureStore({
     reducer: {
       activeProtocol: (
@@ -31,6 +33,7 @@ const createTestStore = () =>
           future: [],
         },
       ) => state,
+      app: (state = { protocolLockState: lockState }) => state,
     },
   });
 
@@ -68,5 +71,29 @@ describe('<ProjectNav />', () => {
       'href',
       '/protocol/assets',
     );
+  });
+
+  // Every page renders read-only in a tab another tab has taken the protocol
+  // from, so every page stays a destination.
+  it('keeps every tab while another tab holds the protocol, and says it is read-only', () => {
+    mockLocation.mockReturnValue('/protocol/codebook');
+    const store = createTestStore('open-elsewhere');
+    render(<ProjectNav />, { wrapper: wrap(store) });
+
+    for (const name of [/stages/i, /resources/i, /codebook/i, /summary/i]) {
+      expect(screen.getByRole('link', { name })).toBeInTheDocument();
+    }
+    expect(screen.getByRole('link', { name: /codebook/i })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+    expect(screen.getByText('Read only')).toBeInTheDocument();
+  });
+
+  it('says nothing about read-only while this tab holds the protocol', () => {
+    const store = createTestStore();
+    render(<ProjectNav />, { wrapper: wrap(store) });
+
+    expect(screen.queryByText('Read only')).not.toBeInTheDocument();
   });
 });

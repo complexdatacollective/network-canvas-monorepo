@@ -170,4 +170,10 @@ export type DragAndDropOptions<_T = unknown> = {
   ) => React.ReactNode;
   /** Name for accessibility announcements */
   announcedName: string;
+  /**
+   * Name announced while a single item is dragged, such as the label it
+   * shows. Called per draggable item with the item's key; without it, or when
+   * it returns `undefined`, the item is announced as `Item <key>`.
+   */
+  getItemAnnouncedName?: (key: Key) => string | undefined;
 };

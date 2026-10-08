@@ -1,4 +1,11 @@
-import { Context, Effect, Layer, ManagedRuntime, Queue } from 'effect';
+import {
+  Context,
+  Effect,
+  Layer,
+  ManagedRuntime,
+  Queue,
+  Redacted,
+} from 'effect';
 import * as NetAddress from 'effect/net/NetAddress';
 import * as RpcClient from 'effect/rpc/RpcClient';
 import * as RpcSerialization from 'effect/rpc/RpcSerialization';
@@ -20,8 +27,8 @@ import type { HandlersLayer } from '@codaco/protocol-builder/testing/host/create
 import { CLIENT_SESSION_PARAM } from '@codaco/studio-contract/client-session';
 import { MAX_SOCKET_FRAME_BYTES } from '@codaco/studio-contract/limits';
 
+import { HostClient } from '../runtime/hostClient.ts';
 import { setHostClientLayer } from '../runtime/hostSession.ts';
-import { HostClient } from '../runtime/runtime.ts';
 
 const restoreHostClient = () => setHostClientLayer(HostClient.layer);
 
@@ -280,7 +287,7 @@ export async function installSocketHost(
               connectionId: tab,
               clientSessionId: tab,
               userId: account.userId,
-              displayName: account.displayName,
+              displayName: Redacted.make(account.displayName),
             }),
             socket: FakeWebSocket.opened.indexOf(webSocket) + 1,
           };

@@ -11,6 +11,7 @@ import {
 import { exportNetcanvas } from '~/ducks/modules/userActions/userActions';
 import type { AppDispatch } from '~/ducks/store';
 
+import { getStoredProtocol } from './protocolLibrary';
 import { reportError } from './reportError';
 const utilityMessages = defineMessages({
   someAssetsCouldNotBeExported: {
@@ -44,30 +45,18 @@ const finalMessages = defineMessages({
   },
 });
 
-/**
- * Downloads the open protocol as a .netcanvas file, reporting failure to the
- * researcher.
- *
- * A protocol whose resources cannot all be read is not downloaded at all. The
- * alternative — writing the file without them — hands the researcher a backup
- * that no version of Architect can open, because the stages referring to those
- * resources would have nothing to refer to. Nothing is lost by refusing: the
- * protocol is still in the library exactly as it was.
- *
- * `protocol` overrides what is written into the file. Pass it only where the
- * canonical protocol is not what the researcher is being offered — rescuing an
- * uncommitted stage draft, which lives outside `activeProtocol`.
- *
- * Nor is one whose finish stage has no heading or text in its default
- * language: no host would import it (`MissingFinishStageTextError`).
- */
-export const downloadActiveProtocol = async (
+const runDownload = async (
   dispatch: AppDispatch,
   openDialog: DialogContextType['openDialog'],
-  protocol?: CurrentProtocol,
+  readProtocol: () => Promise<{
+    protocol?: CurrentProtocol;
+    protocolId?: string;
+  }>,
 ): Promise<boolean> => {
   try {
-    const result = await dispatch(exportNetcanvas(protocol)).unwrap();
+    const result = await dispatch(
+      exportNetcanvas(await readProtocol()),
+    ).unwrap();
     if (result.status === 'missing-finish-stage-text') {
       void openDialog({
         type: 'acknowledge',
@@ -131,3 +120,51 @@ export const downloadActiveProtocol = async (
     return false;
   }
 };
+
+/**
+ * Downloads the open protocol as a .netcanvas file, reporting failure to the
+ * researcher.
+ *
+ * A protocol whose resources cannot all be read is not downloaded at all. The
+ * alternative — writing the file without them — hands the researcher a backup
+ * that no version of Architect can open, because the stages referring to those
+ * resources would have nothing to refer to. Nothing is lost by refusing: the
+ * protocol is still in the library exactly as it was.
+ *
+ * `protocol` overrides what is written into the file. Pass it only where the
+ * canonical protocol is not what the researcher is being offered — rescuing an
+ * uncommitted stage draft, which lives outside `activeProtocol`.
+ *
+ * Nor is one whose finish stage has no heading or text in its default
+ * language: no host would import it (`MissingFinishStageTextError`).
+ */
+export const downloadActiveProtocol = (
+  dispatch: AppDispatch,
+  openDialog: DialogContextType['openDialog'],
+  protocol?: CurrentProtocol,
+): Promise<boolean> =>
+  runDownload(dispatch, openDialog, () => Promise.resolve({ protocol }));
+
+/**
+ * Downloads the open protocol as it is saved in the library, rather than as
+ * this tab holds it — the same file the start screen's Download writes.
+ *
+ * For a tab another tab has taken the protocol from. This tab's copy is a
+ * snapshot from when it last owned the protocol (or opened it), and the other
+ * tab has been saving over the library row since: the snapshot can be out of
+ * date, and can name resources the other tab has since removed, which would
+ * refuse the whole download. The saved copy is what the researcher would get
+ * from anywhere else.
+ */
+export const downloadSavedProtocol = (
+  dispatch: AppDispatch,
+  openDialog: DialogContextType['openDialog'],
+  protocolId: string,
+): Promise<boolean> =>
+  runDownload(dispatch, openDialog, async () => {
+    const row = await getStoredProtocol(protocolId);
+    if (!row) throw new Error('No saved copy of the open protocol to export');
+    // The row's own id, not whichever protocol is active once the read
+    // resolves: its assets are stored under this id.
+    return { protocol: row.protocol, protocolId };
+  });

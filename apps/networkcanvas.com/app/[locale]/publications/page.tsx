@@ -5,13 +5,13 @@ import { notFound } from 'next/navigation';
 import type { ReactNode } from 'react';
 
 import { NativeLink } from '@codaco/fresco-ui/NativeLink';
-import { SITE_NAVIGATION_SKIP_TARGET_ID } from '@codaco/fresco-ui/navigation/SiteNavigation.constants';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Footer } from '~/components/layout/Footer';
 import { Header } from '~/components/layout/Header';
 import { Container } from '~/components/ui/Container';
 import { HomepagePageBackground } from '~/components/ui/HomepagePageBackground';
+import { PageIntro } from '~/components/ui/PageIntro';
 import { externalLinks } from '~/lib/content';
 import { routing } from '~/lib/i18n/routing';
 import { loadSiteContent } from '~/lib/siteContent';
@@ -95,37 +95,17 @@ export default async function PublicationsPage({
   );
 
   return (
-    <main className="relative isolate">
+    <div className="relative isolate">
       <HomepagePageBackground />
-      <div>
-        <Header />
-        <div
-          id={SITE_NAVIGATION_SKIP_TARGET_ID}
-          className="tablet-portrait:pt-24 mx-auto max-w-4xl px-6 pt-16 text-center"
-        >
-          <Heading
-            level="h1"
-            variant="display-heading"
-            margin="none"
-            className="text-text"
-          >
-            {t('heading')}
-          </Heading>
-          <Paragraph
-            intent="lead"
-            margin="none"
-            className="text-text/75 mt-6 text-lg text-pretty"
-          >
-            {t.rich('citing', { article: renderArticleLink })}
-          </Paragraph>
-          <Paragraph
-            intent="lead"
-            margin="none"
-            className="text-text/75 mt-3 text-lg text-pretty"
-          >
-            {t.rich('submission', { thread: renderThreadLink })}
-          </Paragraph>
-        </div>
+      <Header />
+      <main>
+        <PageIntro
+          heading={t('heading')}
+          paragraphs={[
+            t.rich('citing', { article: renderArticleLink }),
+            t.rich('submission', { thread: renderThreadLink }),
+          ]}
+        />
         <Container>
           <ul className="divide-text/10 mx-auto max-w-4xl divide-y">
             {sorted.map((publication) => (
@@ -156,8 +136,8 @@ export default async function PublicationsPage({
             ))}
           </ul>
         </Container>
-        <Footer />
-      </div>
-    </main>
+      </main>
+      <Footer />
+    </div>
   );
 }

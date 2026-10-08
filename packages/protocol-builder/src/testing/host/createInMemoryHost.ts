@@ -5,6 +5,7 @@ import {
   Layer,
   ManagedRuntime,
   Queue,
+  Redacted,
   Scheduler,
   Stream,
 } from 'effect';
@@ -104,7 +105,7 @@ export function hostSessionFor(principal: HostPrincipal) {
     connectionId: principal.sessionId,
     clientSessionId: principal.sessionId,
     userId: principal.userId,
-    displayName: principal.displayName,
+    displayName: Redacted.make(principal.displayName),
   });
   return Layer.succeed(HostSession)(
     HostSession.of((effect) =>
@@ -198,7 +199,7 @@ const callerPrincipal = Effect.gen(function* () {
   const principal: HostPrincipal = {
     sessionId: caller.connectionId,
     userId: caller.userId,
-    displayName: caller.displayName,
+    displayName: Redacted.value(caller.displayName),
   };
   return principal;
 });
@@ -262,7 +263,8 @@ function buildHandlers(
     GetSection: Effect.fnUntraced(function* (input) {
       yield* inProtocol(input);
       yield* inSection(input.sectionId);
-      return store.read(input.sectionId);
+      const { document, revision } = store.read(input.sectionId);
+      return { document: Redacted.make(document), revision };
     }),
 
     ListSections: Effect.fnUntraced(function* (input) {
@@ -344,7 +346,7 @@ function buildHandlers(
       }
       const outcome = store.submit(
         input.sectionId,
-        input.document,
+        Redacted.value(input.document),
         principal,
         entries,
       );
@@ -418,7 +420,7 @@ function buildHandlers(
       }
       const outcome = store.create(
         input.kind,
-        input.document,
+        Redacted.value(input.document),
         input.position,
         entries,
       );
@@ -508,7 +510,7 @@ function buildHandlers(
         request.kind === 'content'
           ? {
               ...request,
-              bytes: new Blob([new Uint8Array(request.bytes)], {
+              bytes: new Blob([new Uint8Array(Redacted.value(request.bytes))], {
                 type: request.contentType,
               }),
             }

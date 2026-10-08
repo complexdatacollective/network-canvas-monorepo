@@ -38,7 +38,7 @@ const { db, secrets, local } = confirmDestructiveTarget(
   'wipe and reseed',
 );
 
-const pool = createOwnerPool(db);
+const pool = createOwnerPool(db, { logLevel: env.logLevel });
 
 try {
   const state = await checkSchema(pool);

@@ -1,8 +1,9 @@
-import { Effect, Layer } from 'effect';
+import { Effect, Layer, Option, Redacted, Schema } from 'effect';
 import type { RpcGroup } from 'effect/rpc';
 import { RpcTest } from 'effect/rpc';
 import { onTestFinished } from 'vitest';
 
+import { AuditActor } from '@codaco/studio-contract/middleware/audit-actor';
 import {
   Authenticated,
   Principal,
@@ -48,6 +49,11 @@ const unimplementedHandlers: StudioHandlers = {
   'audit.get': unimplemented('audit.get'),
   'audit.list': unimplemented('audit.list'),
   'me': unimplemented('me'),
+  'participant.analytics': unimplemented('participant.analytics'),
+  'participant.finish': unimplemented('participant.finish'),
+  'participant.redeem': unimplemented('participant.redeem'),
+  'participant.session': unimplemented('participant.session'),
+  'participant.sync': unimplemented('participant.sync'),
   'protocols.addInformationStage': unimplemented(
     'protocols.addInformationStage',
   ),
@@ -57,6 +63,9 @@ const unimplementedHandlers: StudioHandlers = {
   'protocols.moveStage': unimplemented('protocols.moveStage'),
   'setup.complete': unimplemented('setup.complete'),
   'status': unimplemented('status'),
+  // Answered, not unimplemented: the notice sits in the shell, so every shell
+  // test asks it, and "no update" is the answer that leaves them undisturbed.
+  'status.updateAvailable': () => Effect.succeed(null),
   'studies.counts': unimplemented('studies.counts'),
   'studies.create': unimplemented('studies.create'),
   'studies.get': unimplemented('studies.get'),
@@ -70,9 +79,9 @@ const unimplementedHandlers: StudioHandlers = {
 export const HARNESS_PRINCIPAL: Principal['Service'] = Principal.of({
   kind: 'user',
   userId: UserId.make('harness-user'),
-  email: 'researcher@example.org',
+  email: Redacted.make('researcher@example.org'),
   emailVerified: true,
-  name: 'Harness Researcher',
+  name: Redacted.make('Harness Researcher'),
   locale: null,
   sessionId: 'harness-session',
 });
@@ -84,14 +93,42 @@ const authenticatedLayer = (
     Authenticated.of((effect) =>
       principal === null
         ? Effect.fail(new Unauthorized({}))
-        : Effect.provideService(effect, Principal, principal),
+        : effect.pipe(
+            Effect.provideService(Principal, principal),
+            Effect.provideService(
+              AuditActor,
+              AuditActor.of({
+                kind: 'user',
+                id: principal.userId,
+                label: principal.name,
+              }),
+            ),
+          ),
     ),
   );
+
+export const onTheWire = (
+  group: {
+    readonly requests: ReadonlyMap<
+      string,
+      { readonly payloadSchema: Schema.Codec<unknown, unknown> }
+    >;
+  },
+  tag: string,
+  payload: unknown,
+): unknown => {
+  const rpc = group.requests.get(tag);
+  if (rpc === undefined) return payload;
+  return Option.getOrElse(
+    Schema.encodeUnknownOption(rpc.payloadSchema)(payload),
+    () => payload,
+  );
+};
 
 const recording =
   (client: StudioRpcClient, calls: RpcCall[]): StudioRpcClient =>
   (tag, payload, options) => {
-    calls.push({ tag, payload });
+    calls.push({ tag, payload: onTheWire(StudioRpcs, tag, payload) });
     return client(tag, payload, options);
   };
 

@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { Effect, Option } from 'effect';
+import { Effect, Option, Redacted } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
@@ -50,9 +50,9 @@ function researcher(slug: string, role: string): Researcher {
     principal: {
       kind: 'user',
       userId: `rpc-protocols-${slug}-user`,
-      email: `rpc-protocols-${slug}@example.com`,
+      email: Redacted.make(`rpc-protocols-${slug}@example.com`),
       emailVerified: true,
-      name: `RPC Protocols ${slug}`,
+      name: Redacted.make(`RPC Protocols ${slug}`),
       locale: null,
       sessionId: `rpc-protocols-${slug}-session`,
     },
@@ -96,7 +96,7 @@ describe.skipIf(!testDb)('the protocol RPC surface', () => {
       studyId: StudyId.make(randomUUID()),
       protocolId: ProtocolId.make(randomUUID()),
       draftId: DraftId.make(randomUUID()),
-      name,
+      name: Redacted.make(name),
     };
     await asClient(ADMIN).call(asClient(ADMIN).rpc('studies.create', input));
     return {
@@ -116,7 +116,11 @@ describe.skipIf(!testDb)('the protocol RPC surface', () => {
         ownerAffected(
           `INSERT INTO "user" (id, name, email, "emailVerified")
            VALUES ($1, $2, $3, true)`,
-          [who.principal.userId, who.principal.name, who.principal.email],
+          [
+            who.principal.userId,
+            Redacted.value(who.principal.name),
+            Redacted.value(who.principal.email),
+          ],
         ),
       );
       await database.run(
@@ -185,7 +189,7 @@ describe.skipIf(!testDb)('the protocol RPC surface', () => {
     await asClient(ADMIN).call(
       asClient(ADMIN).rpc('protocols.create', {
         teamId: TEAM_ID,
-        name: 'Study-less protocol',
+        name: Redacted.make('Study-less protocol'),
         ...orphan,
       }),
     );
@@ -283,7 +287,8 @@ describe.skipIf(!testDb)('the protocol RPC surface', () => {
         draftId: ungranted.draftId,
       }),
     );
-    expect(draft.sections.stageOrder).toEqual({
+    const stageOrder = draft.sections.stageOrder;
+    expect(stageOrder && Redacted.value(stageOrder)).toEqual({
       stages: [NEW_PROTOCOL_FINISH_STAGE_ID],
     });
     expect(draft.sections[`stage:${stageId}`]).toBeUndefined();
@@ -305,7 +310,8 @@ describe.skipIf(!testDb)('the protocol RPC surface', () => {
       }),
     );
     // A new screen goes in front of the finish stage the protocol started with.
-    expect(edited.sections.stageOrder).toEqual({
+    const editedOrder = edited.sections.stageOrder;
+    expect(editedOrder && Redacted.value(editedOrder)).toEqual({
       stages: [grantedStageId, NEW_PROTOCOL_FINISH_STAGE_ID],
     });
   });
@@ -313,7 +319,7 @@ describe.skipIf(!testDb)('the protocol RPC surface', () => {
   it('refuses protocol creation by a team Member', async () => {
     const input = {
       teamId: TEAM_ID,
-      name: 'Must not be created',
+      name: Redacted.make('Must not be created'),
       protocolId: ProtocolId.make(randomUUID()),
       draftId: DraftId.make(randomUUID()),
     };

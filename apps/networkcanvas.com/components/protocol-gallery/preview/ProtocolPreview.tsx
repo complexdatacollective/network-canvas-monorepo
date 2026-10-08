@@ -13,6 +13,7 @@ import {
   type InterviewPayload,
   Shell,
 } from '@codaco/interview';
+import { loadInterviewCatalog } from '@codaco/interview/catalog';
 import {
   type AssetUrlOwner,
   createAssetUrlOwner,
@@ -114,6 +115,13 @@ export function ProtocolPreview({
     return () => {
       owner.release();
     };
+  }, []);
+
+  // The interview's messages load while the protocol downloads and installs,
+  // rather than once the Shell mounts, for the browser's languages the Shell
+  // is later given. A failure here is retried by the Shell itself.
+  useEffect(() => {
+    loadInterviewCatalog(navigator.languages).catch(() => undefined);
   }, []);
 
   useEffect(() => {

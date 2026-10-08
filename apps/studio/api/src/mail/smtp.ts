@@ -1,15 +1,52 @@
-import { Effect, Layer } from 'effect';
+import { Effect, Layer, Redacted } from 'effect';
 import nodemailer from 'nodemailer';
+
+import { UPGRADE_GUIDE_URL } from '@codaco/studio-contract/surfaces';
 
 import {
   MailFailed,
   Mailer,
   type MagicLinkInput,
   type TeamInvitationInput,
+  type UpdateNoticeInput,
 } from './mailer.ts';
 
 // The only module in the server that imports nodemailer, which
 // src/__tests__/process-separation.test.ts holds.
+
+/** The update notice, as a pure function so its wording is tested without a transport. */
+export function updateNoticeMessage({
+  name,
+  version,
+  notesUrl,
+  schemaChange,
+  deploymentMode,
+}: UpdateNoticeInput): { readonly subject: string; readonly text: string } {
+  return {
+    subject: `Network Canvas Studio ${version} is available`,
+    text: [
+      `Hello ${Redacted.value(name)},`,
+      '',
+      `Network Canvas Studio ${version} has been released. You are receiving this because you own this Studio installation.`,
+      '',
+      'Release notes:',
+      notesUrl,
+      '',
+      schemaChange
+        ? 'Upgrading to this release changes the database. Rolling back means restoring the backup taken during the upgrade.'
+        : 'Upgrading to this release does not change the database.',
+      ...(deploymentMode === 'self-hosted'
+        ? [
+            '',
+            'To upgrade, follow the upgrade guide in the self-hosting documentation:',
+            UPGRADE_GUIDE_URL,
+          ]
+        : []),
+      '',
+      'This message is sent once for each new release.',
+    ].join('\n'),
+  };
+}
 
 export function MailerSmtp(transport: {
   readonly url: string;
@@ -46,12 +83,12 @@ export function MailerSmtp(transport: {
       return Mailer.of({
         sendMagicLink: ({ email, url }: MagicLinkInput) =>
           send({
-            to: email,
+            to: Redacted.value(email),
             subject: 'Sign in to Network Canvas Studio',
             text: [
               'Use this link to sign in to Network Canvas Studio:',
               '',
-              url,
+              Redacted.value(url),
               '',
               'The link expires in 5 minutes and can be used once.',
               'If you did not request it, you can ignore this email.',
@@ -67,20 +104,25 @@ export function MailerSmtp(transport: {
           teamLabel,
         }: TeamInvitationInput) =>
           send({
-            to: email,
+            to: Redacted.value(email),
             messageId,
-            subject: `Invitation to join ${teamLabel} in Network Canvas Studio`,
+            subject: `Invitation to join ${Redacted.value(teamLabel)} in Network Canvas Studio`,
             text: [
-              `${inviterLabel} invited you to join ${teamLabel} in Network Canvas Studio.`,
+              `${Redacted.value(inviterLabel)} invited you to join ${Redacted.value(teamLabel)} in Network Canvas Studio.`,
               '',
               `Your team role will be ${role}.`,
               '',
               'Review and accept the invitation:',
-              invitationUrl,
+              Redacted.value(invitationUrl),
               '',
               `The invitation expires ${expiresAt.toUTCString()}.`,
               'If you were not expecting this invitation, you can ignore this email.',
             ].join('\n'),
+          }),
+        sendUpdateNotice: (input: UpdateNoticeInput) =>
+          send({
+            to: Redacted.value(input.email),
+            ...updateNoticeMessage(input),
           }),
       });
     }),

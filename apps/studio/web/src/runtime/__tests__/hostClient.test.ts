@@ -5,6 +5,7 @@ import {
   Layer,
   ManagedRuntime,
   Option,
+  Redacted,
   Stream,
 } from 'effect';
 import * as TestClock from 'effect/testing/TestClock';
@@ -15,7 +16,7 @@ import { createInMemoryHost } from '@codaco/protocol-builder/testing/host/create
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { FakeWebSocket, installSocketHost } from '../../test/hostHarness.ts';
-import { HostClient } from '../runtime.ts';
+import { HostClient } from '../hostClient.ts';
 
 const PROTOCOL_ID = 'protocol-under-test';
 const STAGE_ORDER = sectionId({ kind: 'stageOrder' });
@@ -119,7 +120,7 @@ describe('a frame above the default bound', () => {
         ...host.handle,
         GetSection: () =>
           Effect.succeed({
-            document: { large },
+            document: Redacted.make({ large }),
             revision: { sequence: 1n, contentHash: 'large' },
           }),
       }),
@@ -138,6 +139,8 @@ describe('a frame above the default bound', () => {
 
     expect(exit._tag).toBe('Success');
     if (exit._tag !== 'Success') return;
-    expect(exit.value.document.large).toHaveLength(large.length);
+    expect(Redacted.value(exit.value.document)['large']).toHaveLength(
+      large.length,
+    );
   });
 });

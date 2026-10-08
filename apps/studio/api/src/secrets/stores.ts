@@ -1,11 +1,12 @@
-import { and, eq, like, ne, sql, type SQL } from 'drizzle-orm';
+import { and, eq, isNotNull, like, ne, sql, type SQL } from 'drizzle-orm';
 import { union, unionAll } from 'drizzle-orm/pg-core';
-import { Effect, Option, Schema } from 'effect';
+import { Effect, Option, type Redacted, Schema } from 'effect';
 import type { SqlError } from 'effect/sql';
 
 import { AUTH_TABLES } from '../db/auth-schema.ts';
 import { sqlErrorsOnly } from '../db/errors.ts';
 import { Transaction } from '../db/tenant.ts';
+import { PROTOCOL_BUILDER_TABLES } from '../protocol-builder/schema.ts';
 import { PROTOCOL_TABLES } from '../protocol/schema.ts';
 import { WEBHOOK_TABLES } from '../webhook/schema.ts';
 import {
@@ -23,8 +24,9 @@ import { SecretsCipher } from './services.ts';
 const { account } = AUTH_TABLES;
 const { webhookSubscriptions } = WEBHOOK_TABLES;
 const { protocolAssetKeys } = PROTOCOL_TABLES;
+const { protocolStagedResources } = PROTOCOL_BUILDER_TABLES;
 
-export type SecretOpener = (cipher: SecretsCipherApi) => string;
+export type SecretOpener = (cipher: SecretsCipherApi) => Redacted.Redacted;
 
 export type SecretStore = {
   name: string;
@@ -417,8 +419,134 @@ const protocolAssetKeysStore: SecretStore = {
   ),
 };
 
+const staged = protocolStagedResources;
+
+/** Only a staged `apikey` row holds a secret; a staged file holds none. */
+const stagedSecretUnder = (keyId: string) =>
+  and(isNotNull(staged.secretCiphertext), eq(staged.secretKeyId, keyId));
+const stagedSecretNotUnder = (keyId: string) =>
+  and(isNotNull(staged.secretCiphertext), ne(staged.secretKeyId, keyId));
+
+const protocolStagedResourcesStore: SecretStore = {
+  name: 'protocol_staged_resources',
+
+  keyIdsInUse: Effect.fn('secrets.stores.protocolStagedResources.keyIdsInUse')(
+    function* () {
+      const { tx } = yield* Transaction;
+      const rows = yield* tx
+        .selectDistinct({ keyId: staged.secretKeyId })
+        .from(staged)
+        .where(isNotNull(staged.secretKeyId));
+      return rows.flatMap((row) => (row.keyId === null ? [] : [row.keyId]));
+    },
+    sqlErrorsOnly,
+  )(),
+
+  probe: Effect.fn('secrets.stores.protocolStagedResources.probe')(function* (
+    keyId: string,
+  ) {
+    const { tx } = yield* Transaction;
+    const rows = yield* tx
+      .select({
+        teamId: staged.teamId,
+        draftId: staged.draftId,
+        owner: staged.owner,
+        resourceId: staged.resourceId,
+        ciphertext: staged.secretCiphertext,
+      })
+      .from(staged)
+      .where(stagedSecretUnder(keyId))
+      .limit(1);
+    const row = rows[0];
+    if (row === undefined || row.ciphertext === null) return Option.none();
+    const ciphertext = row.ciphertext;
+    return Option.some((cipher: SecretsCipherApi) =>
+      cipher.openStagedSecret(
+        {
+          teamId: row.teamId,
+          draftId: row.draftId,
+          owner: row.owner,
+          resourceId: row.resourceId,
+        },
+        { ciphertext, keyId },
+      ),
+    );
+  }, sqlErrorsOnly),
+
+  remaining: Effect.fn('secrets.stores.protocolStagedResources.remaining')(
+    function* (currentKeyId: string) {
+      const { tx } = yield* Transaction;
+      const rows = yield* tx
+        .select({ count: COUNT })
+        .from(staged)
+        .where(stagedSecretNotUnder(currentKeyId));
+      return countOf(rows);
+    },
+    sqlErrorsOnly,
+  ),
+
+  rotateBatch: Effect.fn('secrets.stores.protocolStagedResources.rotateBatch')(
+    function* (batchSize: number) {
+      const cipher = yield* SecretsCipher;
+      const { tx } = yield* Transaction;
+      const rows = yield* tx
+        .select({
+          teamId: staged.teamId,
+          draftId: staged.draftId,
+          owner: staged.owner,
+          editId: staged.editId,
+          resourceId: staged.resourceId,
+          ciphertext: staged.secretCiphertext,
+          keyId: staged.secretKeyId,
+        })
+        .from(staged)
+        .where(stagedSecretNotUnder(cipher.currentKeyId))
+        .limit(batchSize)
+        .for('update', { skipLocked: true });
+
+      for (const row of rows) {
+        const what = `protocol_staged_resources ${row.draftId} ${row.resourceId}`;
+        const { ciphertext, keyId } = row;
+        if (ciphertext === null || keyId === null) {
+          return yield* Effect.die(new Error(`${what}: no sealed secret`));
+        }
+        const resealed = reseal(what, () =>
+          cipher.resealStagedSecret(
+            {
+              teamId: row.teamId,
+              draftId: row.draftId,
+              owner: row.owner,
+              resourceId: row.resourceId,
+            },
+            { ciphertext, keyId },
+          ),
+        );
+        const updated = yield* tx
+          .update(staged)
+          .set({
+            secretCiphertext: resealed.ciphertext,
+            secretKeyId: resealed.keyId,
+          })
+          .where(
+            and(
+              eq(staged.draftId, row.draftId),
+              eq(staged.owner, row.owner),
+              eq(staged.editId, row.editId),
+              eq(staged.resourceId, row.resourceId),
+            ),
+          )
+          .returning({ resourceId: staged.resourceId });
+        yield* oneUpdatedRow(what, updated);
+      }
+      return rows.length;
+    },
+    sqlErrorsOnly,
+  ),
+};
+
 export const SECRET_STORES: readonly SecretStore[] = [
   webhookSubscriptionsStore,
   accountStore,
   protocolAssetKeysStore,
+  protocolStagedResourcesStore,
 ];

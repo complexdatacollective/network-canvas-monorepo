@@ -1,41 +1,14 @@
-import {
-  Context,
-  Effect,
-  Layer,
-  ManagedRuntime,
-  Option,
-  Schema,
-  type Scope,
-} from 'effect';
+import { Context, Effect, Layer, ManagedRuntime, type Scope } from 'effect';
 import * as FetchHttpClient from 'effect/http/FetchHttpClient';
-import type * as Headers from 'effect/http/Headers';
 import * as HttpClient from 'effect/http/HttpClient';
-import * as HttpClientError from 'effect/http/HttpClientError';
-import * as HttpClientRequest from 'effect/http/HttpClientRequest';
-import type * as HttpClientResponse from 'effect/http/HttpClientResponse';
 import * as RpcClient from 'effect/rpc/RpcClient';
 import type * as RpcClientError from 'effect/rpc/RpcClientError';
 import type * as RpcGroup from 'effect/rpc/RpcGroup';
 import * as RpcSerialization from 'effect/rpc/RpcSerialization';
-import * as Socket from 'effect/socket/Socket';
 
-import {
-  ProtocolBuilderGroup,
-  type ProtocolBuilderClient,
-} from '@codaco/protocol-builder-core/contract';
-import {
-  CLIENT_SESSION_HEADER,
-  CLIENT_SESSION_PARAM,
-} from '@codaco/studio-contract/client-session';
-import { MAX_SOCKET_FRAME_BYTES } from '@codaco/studio-contract/limits';
 import { RPC_PATH, StudioRpcs } from '@codaco/studio-contract/rpc/studio';
-import {
-  Forbidden,
-  Maintenance,
-  RateLimited,
-} from '@codaco/studio-contract/schema/errors';
 
-import { clientSessionId } from '../lib/clientSession.ts';
+import { delegatingRuntime, interceptRefusals } from './transport.ts';
 
 export type StudioRpcsType = RpcGroup.Rpcs<typeof StudioRpcs>;
 
@@ -43,125 +16,6 @@ export type StudioRpcClient = RpcClient.RpcClient.Flat<
   StudioRpcsType,
   RpcClientError.RpcClientError
 >;
-
-// `layerProtocolHttp` applies no status filter, so a refusal made before a handler
-// would reach the ndjson parser and lose its status; it is read below the protocol.
-
-const ProblemDocument = Schema.Struct({
-  detail: Schema.optionalKey(Schema.String),
-  instance: Schema.optionalKey(Schema.String),
-  /**
-   * Unbounded on purpose: `Maintenance` does not bound it as `RateLimited` does;
-   * the rate limiter's bound is applied on the 429 branch below.
-   */
-  retryAfterSeconds: Schema.optionalKey(Schema.Number),
-});
-
-type ProblemDocument = typeof ProblemDocument.Type;
-
-const decodeProblem = Schema.decodeUnknownOption(ProblemDocument);
-
-const DELTA_SECONDS = /^\d+$/;
-
-const retryAfterHeader = (headers: Headers.Headers): number | undefined => {
-  const raw = headers['retry-after']?.trim();
-  return raw !== undefined && DELTA_SECONDS.test(raw) ? Number(raw) : undefined;
-};
-
-/**
- * The server's own limiter never sends zero: a `Retry-After: 0` invites an immediate retry.
- */
-const RETRY_AFTER_FLOOR_SECONDS = 1;
-
-/**
- * Applied before the class is constructed: an Effect class constructor validates,
- * and a throw inside the interceptor would turn a refusal into a defect.
- */
-const rateLimitInterval = Schema.decodeUnknownOption(
-  RateLimited.fields.retryAfterSeconds,
-);
-
-const refusalFor = (
-  status: number,
-  problem: ProblemDocument | undefined,
-  retryAfter: number | undefined,
-): Forbidden | Maintenance | RateLimited | undefined => {
-  const members = {
-    ...(problem?.detail === undefined ? {} : { detail: problem.detail }),
-    ...(problem?.instance === undefined ? {} : { instance: problem.instance }),
-  };
-  const interval = retryAfter ?? problem?.retryAfterSeconds;
-  switch (status) {
-    case 403:
-      return new Forbidden(members);
-    case 429:
-      return new RateLimited({
-        ...members,
-        retryAfterSeconds:
-          Option.getOrUndefined(rateLimitInterval(interval)) ??
-          RETRY_AFTER_FLOOR_SECONDS,
-      });
-    case 503:
-      return new Maintenance({
-        ...members,
-        ...(interval === undefined ? {} : { retryAfterSeconds: interval }),
-      });
-    default:
-      return undefined;
-  }
-};
-
-const problemOf = (
-  response: HttpClientResponse.HttpClientResponse,
-): Effect.Effect<ProblemDocument | undefined> =>
-  response.json.pipe(
-    Effect.catch(() => Effect.succeed(null)),
-    Effect.map((body) => Option.getOrUndefined(decodeProblem(body))),
-  );
-
-/**
- * The typed refusal rides as the `cause` of the `StatusCodeError`: `transformClient`
- * admits no new error type.
- */
-const refuse = Effect.fnUntraced(function* (
-  response: HttpClientResponse.HttpClientResponse,
-) {
-  if (response.status < 400) return response;
-  const problem = yield* problemOf(response);
-  const refusal = refusalFor(
-    response.status,
-    problem,
-    retryAfterHeader(response.headers),
-  );
-  return yield* new HttpClientError.HttpClientError({
-    reason: new HttpClientError.StatusCodeError({
-      request: response.request,
-      response,
-      ...(refusal === undefined ? {} : { cause: refusal }),
-      description: `the request was refused with ${String(response.status)}`,
-    }),
-  });
-});
-
-const interceptRefusals = (
-  client: HttpClient.HttpClient,
-): HttpClient.HttpClient =>
-  HttpClient.transformResponse(client, Effect.flatMap(refuse));
-
-/**
- * On the transport rather than `RpcClient.CurrentHeaders`, deliberately: a call site
- * could forget it.
- */
-const stampClientSession = <E, R>(
-  client: HttpClient.HttpClient.With<E, R>,
-): HttpClient.HttpClient.With<E, R> =>
-  HttpClient.mapRequest(client, (request) =>
-    HttpClientRequest.setHeader(
-      request,
-      CLIENT_SESSION_HEADER,
-      clientSessionId(),
-    ),
-  );
 
 const FetchLive = FetchHttpClient.layer.pipe(
   Layer.provide(
@@ -175,7 +29,6 @@ const HttpClientLive = Layer.effect(HttpClient.HttpClient)(
 
 const HttpProtocol = RpcClient.layerProtocolHttp({
   url: RPC_PATH,
-  transformClient: stampClientSession,
 }).pipe(
   Layer.provide(RpcSerialization.layerNdjson),
   Layer.provide(HttpClientLive),
@@ -212,81 +65,4 @@ export const setWebRuntime = (next: WebRuntime): void => {
   current = next;
 };
 
-/**
- * `makeRpcAdapter` reads its `runtime` once, so this resolves the current one at each
- * use.
- */
-export const delegatingRuntime = <R>(
-  resolve: () => ManagedRuntime.ManagedRuntime<R, never>,
-): ManagedRuntime.ManagedRuntime<R, never> => ({
-  get ['~effect/ManagedRuntime']() {
-    return resolve()['~effect/ManagedRuntime'];
-  },
-  get 'memoMap'() {
-    return resolve().memoMap;
-  },
-  get 'contextEffect'() {
-    return resolve().contextEffect;
-  },
-  get 'scope'() {
-    return resolve().scope;
-  },
-  get 'cachedContext'() {
-    return resolve().cachedContext;
-  },
-  set 'cachedContext'(context) {
-    resolve().cachedContext = context;
-  },
-  get 'disposeEffect'() {
-    return resolve().disposeEffect;
-  },
-  'context': () => resolve().context(),
-  'runFork': (effect, options) => resolve().runFork(effect, options),
-  'runSync': (effect) => resolve().runSync(effect),
-  'runSyncExit': (effect) => resolve().runSyncExit(effect),
-  'runCallback': (effect, options) => resolve().runCallback(effect, options),
-  'runPromise': (effect, options) => resolve().runPromise(effect, options),
-  'runPromiseExit': (effect, options) =>
-    resolve().runPromiseExit(effect, options),
-  'dispose': () => resolve().dispose(),
-  [Symbol.asyncDispose]: () => resolve().dispose(),
-});
-
 export const runtime: WebRuntime = delegatingRuntime(() => current);
-
-/**
- * The tab names itself on the query string because a browser cannot put a
- * header on a WebSocket handshake.
- */
-function hostSocketUrl(): string {
-  const scheme = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const url = new URL(`${scheme}//${window.location.host}/ws`);
-  url.searchParams.set(CLIENT_SESSION_PARAM, clientSessionId());
-  return url.toString();
-}
-
-/**
- * `retryTransientErrors` is off, so a dead socket fails the in-flight call and
- * the open stream rather than holding them across the reconnect.
- */
-export class HostClient extends Context.Service<
-  HostClient,
-  ProtocolBuilderClient
->()('@studio/HostClient') {
-  static readonly layer: Layer.Layer<HostClient> = Layer.effect(HostClient)(
-    RpcClient.make(ProtocolBuilderGroup, { flatten: true }),
-  ).pipe(
-    Layer.provide(
-      RpcClient.layerProtocolSocket({ retryTransientErrors: false }),
-    ),
-    Layer.provide(Socket.layerWebSocket(Effect.sync(hostSocketUrl))),
-    Layer.provide(Socket.layerWebSocketConstructorGlobal),
-    // The default 16 MiB would refuse an asset the server stores, and a
-    // refused frame poisons the connection rather than closing it.
-    Layer.provide(
-      RpcSerialization.layerSchemaBinary({
-        maxFrameSize: MAX_SOCKET_FRAME_BYTES,
-      }),
-    ),
-  );
-}

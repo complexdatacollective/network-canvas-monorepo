@@ -1,13 +1,15 @@
 import { randomUUID } from 'node:crypto';
 
 import { assert } from '@effect/vitest';
-import { Cause, Effect, Exit, Layer, Schema } from 'effect';
+import { Cause, Effect, Exit, Layer, Redacted, Schema } from 'effect';
 import { describe, it } from 'vitest';
 
+import { AuditActor } from '@codaco/studio-contract/middleware/audit-actor';
 import { Principal } from '@codaco/studio-contract/middleware/authenticated';
 import { UserId } from '@codaco/studio-contract/schema/ids';
 
 import { testCipher } from '../../__tests__/support/secrets.ts';
+import { userAuditActor } from '../../audit/actor.ts';
 import { AuditSignal } from '../../audit/signal.ts';
 import { DatabaseAbsent } from '../../db/client.ts';
 import { unsafeMakeTeamAccess } from '../../db/tenant.ts';
@@ -18,9 +20,9 @@ import { createAuditedProtocol } from '../commands.ts';
 const PRINCIPAL = Principal.of({
   kind: 'user',
   userId: Schema.decodeSync(UserId)('protocol-command-owner'),
-  email: 'protocol-command-owner@example.com',
+  email: Redacted.make('protocol-command-owner@example.com'),
   emailVerified: true,
-  name: 'Protocol Command Owner',
+  name: Redacted.make('Protocol Command Owner'),
   locale: null,
   sessionId: 'protocol-command-owner-session',
 });
@@ -30,6 +32,7 @@ const Harness = Layer.mergeAll(
   AuditSignal.layer,
   Layer.succeed(SecretsCipher)(testCipher()),
   Layer.succeed(Principal, PRINCIPAL),
+  Layer.succeed(AuditActor, userAuditActor(PRINCIPAL)),
   Layer.succeed(RequestId, RequestId.of(randomUUID())),
 );
 
@@ -40,7 +43,7 @@ describe('audited protocol commands', () => {
         createAuditedProtocol(
           unsafeMakeTeamAccess('protocol-command-team', 'owner'),
           {
-            name: '   ',
+            name: Redacted.make('   '),
             protocolId: randomUUID(),
             draftId: randomUUID(),
           },

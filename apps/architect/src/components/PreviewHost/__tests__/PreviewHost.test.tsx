@@ -7,7 +7,15 @@ import {
   within,
 } from '@testing-library/react';
 import type { ComponentProps, ReactNode } from 'react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest';
 
 import { createAppIntl } from '@codaco/app-i18n/messages';
 import { AppI18nProvider } from '@codaco/app-i18n/react';
@@ -31,7 +39,7 @@ import { entityAttributesProperty } from '@codaco/shared-consts';
 import { ArchitectI18nProvider } from '~/i18n/ArchitectI18nProvider';
 import { architectProductionLocales } from '~/i18n/locales';
 import { ARCHITECT_LOCALE_KEY } from '~/i18n/preference';
-import { architectCatalogs } from '~/locales/catalogs';
+import { architectCatalogSource } from '~/locales/catalogs';
 
 import type { PreviewPayload } from '../messages';
 
@@ -352,6 +360,16 @@ function postPayload(
     );
   });
 }
+
+// The provider shows a language once its catalog has loaded. Loading these
+// up front lets a switch to either render synchronously, as the assertions
+// below expect.
+beforeAll(() =>
+  Promise.all([
+    architectCatalogSource.load('es'),
+    architectCatalogSource.load('en-GB'),
+  ]),
+);
 
 describe('PreviewHost', () => {
   let originalOpener: Window | null;
@@ -1083,7 +1101,7 @@ describe('PreviewHost', () => {
         expect(lastShellProps().completedActions).toHaveLength(1);
         const spanish = createAppIntl({
           locale: 'es',
-          messages: architectCatalogs.es,
+          messages: await architectCatalogSource.load('es'),
         }).formatMessage({
           id: 'architect.previewHost.previewHost.startThePreviewAgain',
           defaultMessage: 'Start the preview again',
@@ -1091,8 +1109,9 @@ describe('PreviewHost', () => {
             'Visible text in components / PreviewHost / PreviewHost.',
         });
         expect(spanish).not.toBe('Start the preview again');
+        // The Shell changes language once its own Spanish catalog has loaded.
         expect(
-          screen.getByRole('button', { name: spanish }),
+          await screen.findByRole('button', { name: spanish }),
         ).toBeInTheDocument();
       } finally {
         languages.mockRestore();
@@ -1143,14 +1162,18 @@ describe('PreviewHost', () => {
           );
         });
 
-        expect(document.documentElement.lang).toBe('de');
+        // Architect keeps its current language until German has loaded.
+        await waitFor(() => expect(document.documentElement.lang).toBe('de'));
         expect(lastShellProps().requestedLocales).toEqual(['es-MX', 'en-US']);
         expect(lastShellProps().payload).toBe(initialPayload);
         expect(screen.getByTestId('shell-finish-description')).toBe(
           description,
         );
-        expect(description).toHaveTextContent(
-          'Esto es una vista previa, así que no se guarda nada.',
+        // The Shell changes language once its own Spanish catalog has loaded.
+        await waitFor(() =>
+          expect(description).toHaveTextContent(
+            'Esto es una vista previa, así que no se guarda nada.',
+          ),
         );
       } finally {
         languages.mockRestore();
@@ -1190,14 +1213,19 @@ describe('PreviewHost', () => {
       );
       queued.rerender(content('es-MX'));
       expect(screen.getByRole('dialog')).toBe(dialog);
-      expect(dialog).toHaveTextContent(
-        'Esto es una vista previa, así que no se guarda nada. Al finalizar se cierra esta prueba del protocolo, y puedes iniciarla de nuevo después.',
+      // Each switch lands once the interview's own catalog for it has loaded.
+      await waitFor(() =>
+        expect(dialog).toHaveTextContent(
+          'Esto es una vista previa, así que no se guarda nada. Al finalizar se cierra esta prueba del protocolo, y puedes iniciarla de nuevo después.',
+        ),
       );
       expect(document.documentElement.lang).toBe('en-GB');
       queued.rerender(content('en-GB'));
       expect(screen.getByRole('dialog')).toBe(dialog);
-      expect(dialog).toHaveTextContent(
-        'This is a preview, so nothing is saved. Finishing ends this run of the protocol, and you can start it again afterwards.',
+      await waitFor(() =>
+        expect(dialog).toHaveTextContent(
+          'This is a preview, so nothing is saved. Finishing ends this run of the protocol, and you can start it again afterwards.',
+        ),
       );
       expect(document.documentElement.lang).toBe('en-GB');
       expect(finish).not.toHaveBeenCalled();

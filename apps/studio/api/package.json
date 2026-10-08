@@ -13,9 +13,11 @@
   "scripts": {
     "dev": "node scripts/dev.ts --prepare && concurrently -k -n stack,server,worker,client \"node scripts/dev.ts --follow\" \"node --env-file-if-exists=.env.development --env-file-if-exists=.env --watch --watch-path=src --watch-path=../../../packages/studio-contract/src --watch-path=../../../packages/studio-sync/src --watch-path=../../../packages/shared-consts/src --watch-path=../../../packages/protocol-validation/src --watch-path=package.json src/index.ts\" \"node --env-file-if-exists=.env.development --env-file-if-exists=.env --watch --watch-path=src --watch-path=../../../packages/studio-contract/src --watch-path=../../../packages/studio-sync/src --watch-path=../../../packages/shared-consts/src --watch-path=../../../packages/protocol-validation/src --watch-path=package.json src/worker.ts\" \"pnpm --filter @codaco/studio-web dev\"",
     "dev:down": "node scripts/dev.ts --down",
+    "dev:object-stores": "node scripts/dev.ts --object-stores",
     "dev:stack": "node scripts/dev-stack.ts",
     "dev:stack:down": "node scripts/dev-stack.ts --down",
-    "build": "vite build && node scripts/render-schema-ddl.ts",
+    "build": "vite build && node scripts/render-migrations.ts",
+    "migrate:generate": "node scripts/migrate-generate.ts",
     "apply-schema": "pnpm run sync-fingerprint && node --env-file-if-exists=.env scripts/apply-schema.ts",
     "rotate-secrets": "node --env-file-if-exists=.env src/rotate-secrets.ts",
     "sync-fingerprint": "node scripts/sync-fingerprint.ts",
@@ -31,10 +33,14 @@
     "start:maintenance": "NODE_ENV=production node --env-file-if-exists=.env dist/maintenance.js",
     "typecheck": "tsc --build --noEmit",
     "test": "vitest run",
+    "test:released-migrations": "vitest run --config ../../../scripts/vitest.config.ts scripts/ci/studio-released-migrations.test.mjs",
     "test:watch": "vitest"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1143.0",
+    "@azure/identity": "^4.13.3",
+    "@azure/storage-blob": "^12.34.0",
+    "@codaco/interview": "workspace:^",
     "@codaco/protocol-builder-core": "workspace:^",
     "@codaco/protocol-utilities": "workspace:^",
     "@codaco/protocol-validation": "workspace:^",
@@ -51,7 +57,6 @@
     "effect": "catalog:",
     "ioredis": "6.0.0",
     "nodemailer": "10.0.13",
-    "pg": "^8.23.1",
     "pg-connection-string": "^2.14.1"
   },
   "devDependencies": {
@@ -62,6 +67,7 @@
     "@types/pg": "^8.23.1",
     "concurrently": "^10.0.5",
     "drizzle-kit": "catalog:",
+    "pg": "^8.23.1",
     "typescript": "catalog:",
     "vite": "catalog:",
     "vitest": "catalog:",

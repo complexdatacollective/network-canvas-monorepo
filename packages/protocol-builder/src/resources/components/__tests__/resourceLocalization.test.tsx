@@ -1,13 +1,14 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { Redacted } from 'effect';
 import { useState, type ReactNode } from 'react';
 import { describe, expect, it } from 'vitest';
 
-import { ecosystemLocales } from '@codaco/app-i18n/locales';
+import { ecosystemLocales, loadCatalog } from '@codaco/app-i18n/locales';
 import { AppI18nProvider } from '@codaco/app-i18n/react';
 
 import AssetPickerField from '../../../fields/AssetPickerField.tsx';
-import { protocolBuilderCatalogs } from '../../../locales/catalogs.ts';
+import { protocolBuilderCatalogLoaders } from '../../../locales/catalogs.ts';
 import { esIntl } from '../../../testing/i18n.ts';
 import type {
   ResourceGatewayFailure,
@@ -27,6 +28,8 @@ import {
   type CommittedResource,
 } from './resourceHost.ts';
 
+const spanishMessages = await loadCatalog('es', protocolBuilderCatalogLoaders);
+
 /**
  * Every other test in this directory renders without a provider, which is what
  * makes their English literals real assertions: `useAppIntl` falls back to the
@@ -38,7 +41,7 @@ function inSpanish(children: ReactNode) {
     <AppI18nProvider
       locale="es"
       locales={ecosystemLocales}
-      messages={protocolBuilderCatalogs.es}
+      messages={spanishMessages}
     >
       {children}
     </AppI18nProvider>
@@ -49,9 +52,9 @@ const IMAGE_INSPECTION: ResourceInspection = Object.freeze({
   descriptor: Object.freeze({
     id: 'staged-image',
     kind: 'image' as const,
-    name: 'Skyline',
+    name: Redacted.make('Skyline'),
     status: 'staged' as const,
-    source: 'skyline.png',
+    source: Redacted.make('skyline.png'),
     byteLength: 2048,
     contentType: 'image/png',
   }),
@@ -225,7 +228,7 @@ describe('resource surfaces in a reader’s own language', () => {
       <AppI18nProvider
         locale="es"
         locales={ecosystemLocales}
-        messages={protocolBuilderCatalogs.es}
+        messages={spanishMessages}
       >
         {picker}
       </AppI18nProvider>,

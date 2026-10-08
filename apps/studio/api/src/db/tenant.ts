@@ -8,6 +8,7 @@ import {
   unsafeMakeTeamAccess,
 } from '@codaco/studio-sync/tenant';
 
+import { recordRequestTeam } from '../platform/request-team.ts';
 import {
   Database,
   type DatabaseService,
@@ -88,6 +89,7 @@ const openOn = <A, E, R>(
             // Before anything reads, so no statement in the body can run
             // unstamped. The role is the connection's own (`client.ts`).
             if (teamId !== null) {
+              yield* recordRequestTeam(teamId);
               yield* service.sql`select set_config(${TEAM_GUC}, ${teamId}, true)`;
             }
             return yield* body;
@@ -134,6 +136,17 @@ export const OwnerScope = {
     OwnerDatabase | Exclude<R, Transaction>
   > => OwnerDatabase.use((service) => openOn(service, null, body, options)),
 } as const;
+
+export const tenantTeamId: Effect.Effect<string, never, Transaction> =
+  Effect.flatMap(Transaction, ({ teamId }) =>
+    teamId === null
+      ? Effect.die(
+          new Error(
+            'this store requires a tenant scope; the transaction stamps no team',
+          ),
+        )
+      : Effect.succeed(teamId),
+  );
 
 export const savepoint = <A, E, R>(
   body: Effect.Effect<A, E, R>,

@@ -143,8 +143,11 @@ describe.skipIf(!db)('the queue’s metrics', () => {
           yield* pass({ warned, warningQueueSize: 1 });
           assert.strictEqual(logs.messages.length, 1);
           assert.include(logs.messages[0]!, 'large queue backlog');
-          assert.include(logs.messages[0]!, 'invitation-delivery holds 2 jobs');
-          assert.include(logs.messages[0]!, 'warning size of 1');
+          assert.deepStrictEqual(logs.records[0]?.annotations, {
+            queue: 'invitation-delivery',
+            waiting: 2,
+            warning_size: 1,
+          });
 
           yield* pass({ warned, warningQueueSize: 1 });
           assert.strictEqual(logs.messages.length, 1);

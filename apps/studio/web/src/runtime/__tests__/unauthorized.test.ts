@@ -1,4 +1,4 @@
-import { Effect, Predicate } from 'effect';
+import { Effect, Predicate, Redacted } from 'effect';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { ChunkOf } from '@codaco/effect-query/types';
@@ -10,7 +10,7 @@ import {
   reportUnauthorizedResponse,
   setUnauthorizedResponseHandler,
 } from '../../lib/session.ts';
-import { installFetchStub } from '../../test/fetchStub.ts';
+import { installFetchStub, problemResponse } from '../../test/fetchStub.ts';
 import { HARNESS_PRINCIPAL, installRpcHarness } from '../../test/rpcHarness.ts';
 import { rpcCall } from '../rpc.ts';
 import { getWebRuntime, type StudioRpcsType } from '../runtime.ts';
@@ -41,6 +41,18 @@ describe('an Unauthorized refusal', () => {
     const error = await rejectionOf(rpcCall('me', undefined));
 
     expect(error).toBeInstanceOf(Unauthorized);
+    expect(reported).toHaveBeenCalledTimes(1);
+  });
+
+  it('is reported when the HTTP plane answers 401', async () => {
+    fetchStub.mockImplementation(() =>
+      Promise.resolve(
+        problemResponse(401, { title: 'Unauthorized', status: 401 }),
+      ),
+    );
+
+    await rejectionOf(rpcCall('me', undefined));
+
     expect(reported).toHaveBeenCalledTimes(1);
   });
 
@@ -100,12 +112,14 @@ describe('the harness', () => {
   it('signs the suite in as a researcher its handlers can read', async () => {
     const harness = installRpcHarness({
       'account.updateLocale': () =>
-        Effect.map(Principal, (principal) => ({ locale: principal.email })),
+        Effect.map(Principal, (principal) => ({
+          locale: Redacted.value(principal.email),
+        })),
     });
 
     await expect(
       rpcCall('account.updateLocale', { locale: null }),
-    ).resolves.toEqual({ locale: HARNESS_PRINCIPAL.email });
+    ).resolves.toEqual({ locale: Redacted.value(HARNESS_PRINCIPAL.email) });
 
     expect(harness.calls).toEqual([
       { tag: 'account.updateLocale', payload: { locale: null } },

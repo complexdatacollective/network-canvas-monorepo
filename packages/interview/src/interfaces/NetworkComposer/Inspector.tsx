@@ -30,6 +30,7 @@ import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
 import type { ComposerForm } from '@codaco/protocol-validation';
 import type { entityAttributesProperty, NcNode } from '@codaco/shared-consts';
 
+import { formValuesToAttributePatch } from '../../forms/formValuesToAttributePatch';
 import useProtocolForm from '../../forms/useProtocolForm';
 import { rejectedWriteMessage } from '../../forms/writeSubmissionResult';
 import useBeforeNext from '../../hooks/useBeforeNext';
@@ -63,7 +64,15 @@ export type InspectorProps = {
    * encrypted; the form is replaced by an explanation.
    */
   passphraseStatus?: PassphraseNoticeStatus;
-  onSave: (id: string, attributePatch: AttributePatch) => Promise<void>;
+  /**
+   * Saves the entity's answers. The patch is built when the save is made,
+   * after every change asked for before it, and building it returns `null`
+   * when there is nothing to save.
+   */
+  onSave: (
+    id: string,
+    buildPatch: () => AttributePatch | null,
+  ) => Promise<void>;
   onDelete: (id: string) => void;
   /**
    * Holds the selection on this entity while its form is open, so whatever
@@ -81,6 +90,17 @@ const noopSubmit: FormSubmitHandler = () => ({ success: true as const });
 
 // A save resolves to why it was refused, or to nothing once it is stored.
 const isSaved = (reason: MessageDescriptor | undefined) => reason === undefined;
+
+// One of the form's own saves: the answers it stores, and whether the store
+// has taken them.
+type OwnWrite = { stored: Record<string, FieldValue>; done: boolean };
+
+// An edit not saved yet whose stored answer an undo or redo has changed
+// since: the stored answer it was made from, and the value the form showed
+// for it then.
+type HeldEdit = { from: FieldValue; shown: FieldValue };
+
+const NO_UNAVAILABLE: readonly string[] = [];
 
 const ownValue = (values: Record<string, FieldValue>, name: string) =>
   Object.hasOwn(values, name) ? values[name] : undefined;
@@ -172,14 +192,13 @@ function AttributeFormInner({
     [attributes],
   );
 
-  const { fieldComponents, coerceValues, toAttributePatch, passphraseNeeded } =
-    useProtocolForm({
-      fields: form.fields ?? [],
-      initialValues,
-      subject,
-      currentEntityId: entityId,
-      unavailableVariables: unavailable,
-    });
+  const { fieldComponents, coerceValues, passphraseNeeded } = useProtocolForm({
+    fields: form.fields ?? [],
+    initialValues,
+    subject,
+    currentEntityId: entityId,
+    unavailableVariables: unavailable,
+  });
   const storeApi = useContext(FormStoreContext);
   const { confirm } = useDialog();
   const pendingSave = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -188,6 +207,96 @@ function AttributeFormInner({
   const savedRef = useRef(initialValues);
   // While saves are under way, settles once every one of them has.
   const savesUnderWay = useRef<Promise<void> | null>(null);
+  // The stored answers the form was last given.
+  const givenRef = useRef(initialValues);
+  // The answers each of the form's own saves stores, oldest first, from just
+  // before it is made until the form is given them back. While any is
+  // pending, the form may hold answers that differ from the stored ones even
+  // when it shows the answers it was given, and the next save builds on the
+  // newest of these rather than on those.
+  const ownWritesRef = useRef<OwnWrite[]>([]);
+  // Edits an undo or redo overtook, by question. Each stays on screen but is
+  // saved only over the answer it was made from, so the participant has to
+  // change that question again before it replaces what the undo or redo
+  // stored.
+  const heldRef = useRef(new Map<string, HeldEdit>());
+
+  // An answer changed outside the form, as an undo or redo does, replaces
+  // the one shown unless the participant has changed that question since.
+  // Otherwise the form would go on showing the undone answer, and save it
+  // back when the Inspector closes. An answer the participant has changed
+  // stays on screen, held until they change that question again or the
+  // stored answer is again the one they changed. The answers the form's own
+  // save stored are not such a change, even when the participant has put
+  // back the earlier answer since.
+  useEffect(() => {
+    const given = givenRef.current;
+    givenRef.current = initialValues;
+    const state = storeApi?.getState();
+    if (given === initialValues || !state?.pathOperations) return;
+
+    const fields = form.fields ?? [];
+    // Several saves can land in one render, so the answers given may be those
+    // of any pending save, and every save before it has landed too.
+    const ownWrites = ownWritesRef.current;
+    const landed = ownWrites.findIndex(({ stored }) =>
+      fields.every(({ variable }) =>
+        isEqual(initialValues[variable], stored[variable]),
+      ),
+    );
+    if (landed !== -1) {
+      ownWritesRef.current = ownWrites.slice(landed + 1);
+      return;
+    }
+    // The change was made after any save the store has taken, even one whose
+    // answers never reached the form.
+    const previous = ownWrites.findLast(({ done }) => done)?.stored ?? given;
+    ownWritesRef.current = ownWrites.filter(({ done }) => !done);
+
+    const shown = coerceValues(state.getFormValues());
+    const held = heldRef.current;
+    const saved = { ...savedRef.current };
+    for (const { variable } of fields) {
+      const was = previous[variable];
+      const now = initialValues[variable];
+      if (isEqual(was, now)) continue;
+
+      // Whatever the form does with it, the stored answer is now this one.
+      saved[variable] = now;
+      const hold = held.get(variable);
+      const from = hold ? hold.from : was;
+      if (isEqual(shown[variable], now)) {
+        held.delete(variable);
+      } else if (!hold && isEqual(shown[variable], was)) {
+        state.pathOperations.resetField([variable]);
+      } else if (isEqual(now, from)) {
+        // The stored answer is again the one this edit was made from, so the
+        // autosave that follows the change saves the edit.
+        held.delete(variable);
+      } else {
+        held.set(variable, {
+          from,
+          shown: hold
+            ? hold.shown
+            : state.pathOperations.getFieldState([variable])?.value,
+        });
+      }
+    }
+    savedRef.current = saved;
+  }, [initialValues, storeApi, form.fields, coerceValues]);
+
+  // Changing a question whose edit is held makes the new answer an edit of
+  // the stored one.
+  useEffect(
+    () =>
+      storeApi?.subscribe((state) => {
+        for (const [variable, { shown }] of heldRef.current) {
+          const value = state.pathOperations?.getFieldState([variable])?.value;
+          if (!isEqual(value, shown)) heldRef.current.delete(variable);
+        }
+      }),
+    [storeApi],
+  );
 
   // Resolves to why the values could not be saved, or to undefined once they
   // are saved.
@@ -203,20 +312,80 @@ function AttributeFormInner({
         return message;
       };
 
-      const patchResult = toAttributePatch(values);
-      if (!patchResult.success) {
-        return showSaveFailure(runtimeMessages.submissionFailed);
-      }
+      let failure: MessageDescriptor | undefined;
+      let ownWrite: OwnWrite | undefined;
+      // Built when the save is made, once the form has followed every undo or
+      // redo made before it.
+      const buildPatch = () => {
+        const fieldState = storeApi?.getState().pathOperations?.getFieldState;
+        const stored = ownWritesRef.current.at(-1)?.stored ?? givenRef.current;
+        // An answer is saved only while the form still shows it, so a save
+        // asked for before an undo cannot put back an answer the form has
+        // since replaced, and never over an answer an undo or redo overtook.
+        const savable = (form.fields ?? [])
+          .map(({ variable }) => variable)
+          .filter(
+            (variable) =>
+              !heldRef.current.has(variable) &&
+              isEqual(
+                ownValue(values, variable),
+                fieldState?.([variable])?.value,
+              ),
+          );
+        const patchResult = formValuesToAttributePatch(
+          coerceValues(values),
+          savable,
+          { keepWhenUnanswered: unavailable ?? NO_UNAVAILABLE },
+        );
+        if (!patchResult.success) {
+          failure = runtimeMessages.submissionFailed;
+          return null;
+        }
+
+        // Every save adds an undo step, and a new step discards what could
+        // be redone, so a save that changes nothing, as after the form
+        // follows an undo, is not made.
+        const { set, unset } = patchResult.patch;
+        const changesAnswers =
+          unset.some((name) => stored[name] !== undefined) ||
+          Object.entries(set).some(
+            ([name, value]) => !isEqual(value, stored[name]),
+          );
+        if (!changesAnswers) return null;
+
+        ownWrite = {
+          stored: Object.fromEntries(
+            [...Object.entries(stored), ...Object.entries(set)].filter(
+              ([name]) => !unset.includes(name),
+            ),
+          ),
+          done: false,
+        };
+        ownWritesRef.current = [...ownWritesRef.current, ownWrite];
+        return patchResult.patch;
+      };
 
       try {
-        await onSave(entityId, patchResult.patch);
+        await onSave(entityId, buildPatch);
       } catch (error) {
+        ownWritesRef.current = ownWritesRef.current.filter(
+          (pending) => pending !== ownWrite,
+        );
         return showSaveFailure(rejectedWriteMessage(error));
       }
-      savedRef.current = coerceValues(values);
+      if (failure) return showSaveFailure(failure);
+      if (ownWrite) ownWrite.done = true;
+
+      // What is stored now: the answers saved, and, for an edit an undo or
+      // redo overtook, the stored answer it was not saved over.
+      const saved = coerceValues(values);
+      for (const variable of heldRef.current.keys()) {
+        saved[variable] = ownValue(savedRef.current, variable);
+      }
+      savedRef.current = saved;
       return undefined;
     },
-    [onSave, entityId, toAttributePatch, coerceValues, storeApi],
+    [onSave, entityId, coerceValues, form.fields, unavailable, storeApi],
   );
   // A save that takes longer, as encrypting an answer can, never lands after
   // a newer one.
@@ -262,7 +431,7 @@ function AttributeFormInner({
   // Closing the Inspector, by leaving the stage or by moving the selection
   // off this entity, saves an edit not saved yet, even one the autosave has
   // not reached, and asks before discarding one that cannot be saved: an
-  // invalid edit, or one the store refused.
+  // invalid edit, one the store refused, or one an undo or redo overtook.
   const confirmLeave = useCallback((): true | Promise<boolean> => {
     const state = storeApi?.getState();
     if (!state) return true;
@@ -280,9 +449,14 @@ function AttributeFormInner({
       await savesUnderWay.current;
       if (showsSaved(state.getFormValues())) return true;
 
-      const reason = (await state.validateForm())
+      let reason = (await state.validateForm())
         ? await persist(state.getFormValues())
         : failedCheckReason(passphraseNeeded);
+      // Leaving is not changing the question again, so an edit an undo or
+      // redo overtook is not saved by it.
+      if (reason === undefined && heldRef.current.size > 0) {
+        reason = interfaceMessages.discardOvertakenEditDescription;
+      }
       if (reason === undefined) return true;
 
       const discarded = await confirm({

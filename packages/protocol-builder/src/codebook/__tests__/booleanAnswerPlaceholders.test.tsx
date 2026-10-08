@@ -2,27 +2,30 @@ import { render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { describe, expect, it } from 'vitest';
 
-import { commonCatalogs } from '@codaco/app-i18n/common';
-import { ecosystemLocales, mergeCatalogs } from '@codaco/app-i18n/locales';
+import { commonCatalogLoaders } from '@codaco/app-i18n/common';
+import { ecosystemLocales, loadCatalog } from '@codaco/app-i18n/locales';
 import { AppI18nProvider } from '@codaco/app-i18n/react';
 import BooleanField from '@codaco/fresco-ui/form/fields/Boolean';
-import { frescoUiCatalogs } from '@codaco/fresco-ui/locales';
+import { frescoUiCatalogLoaders } from '@codaco/fresco-ui/locales';
 
-import { protocolBuilderCatalogs } from '../../locales/catalogs.ts';
+import { protocolBuilderCatalogLoaders } from '../../locales/catalogs.ts';
 import { ProtocolLocalizationProvider } from '../../localization/ProtocolLocalization.tsx';
 import VariableBooleanAnswerFields from '../components/VariableBooleanAnswerFields.tsx';
 import { optionsForShape, validateBooleanAnswers } from '../variableOptions.ts';
+
+const spanishMessages = await loadCatalog(
+  'es',
+  commonCatalogLoaders,
+  frescoUiCatalogLoaders,
+  protocolBuilderCatalogLoaders,
+);
 
 const inSpanish = (node: ReactNode) =>
   render(
     <AppI18nProvider
       locale="es"
       locales={ecosystemLocales}
-      messages={mergeCatalogs(
-        commonCatalogs.es ?? {},
-        frescoUiCatalogs.es ?? {},
-        protocolBuilderCatalogs.es ?? {},
-      )}
+      messages={spanishMessages}
       manageDocument={false}
     >
       <ProtocolLocalizationProvider

@@ -63,14 +63,13 @@ export default async function GetStartedPage({ params }: GetStartedPageProps) {
   ];
 
   return (
-    <main className="relative isolate">
+    <div className="relative isolate">
       <HomepagePageBackground target="[data-get-started-weave-target]" />
-      <div>
-        <GetStartedIntro />
+      <GetStartedIntro>
         <WorkflowPath workflow="design" apps={designApps} />
         <WorkflowPath workflow="collect" apps={collectApps} />
-        <Footer />
-      </div>
-    </main>
+      </GetStartedIntro>
+      <Footer />
+    </div>
   );
 }

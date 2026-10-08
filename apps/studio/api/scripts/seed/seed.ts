@@ -24,7 +24,11 @@ import {
   earliestSessionByParticipant,
   seedSessionsAndNetworks,
 } from './network.ts';
-import { seedProtocolLine, type SeededVersion } from './protocols.ts';
+import {
+  seedProtocolLine,
+  seedStagedSecret,
+  type SeededVersion,
+} from './protocols.ts';
 import { seedBytes, seedTime } from './rng.ts';
 import {
   closeStudy,
@@ -101,7 +105,8 @@ export type SeedOptions = {
 export type SeedResult = {
   /**
    * Every secret this seed wrote, in plaintext: the webhook signing secrets,
-   * the admin's three OAuth tokens, and each team's protocol API key.
+   * the admin's three OAuth tokens, and each team's protocol API key and
+   * staged API key.
    * Returned so the dump-and-search test knows what to search the database
    * for; nothing else needs them, and they are never printed.
    */
@@ -147,8 +152,9 @@ const SCALES: Record<
 };
 
 /**
- * `schemaFingerprint` and `deployment_state` are kept: both rows are written
- * only by the schema step.
+ * `schemaFingerprint`, `deployment_state` and `studio_migrations` are kept:
+ * their rows are written only by the schema step, and a migrated database
+ * whose history was wiped is one `migrate` refuses as foreign (#1901).
  *
  * Driven off `pg_tables` rather than a hardcoded list, so a table added to
  * the schema later is wiped too instead of silently accumulating stale rows
@@ -171,7 +177,7 @@ const wipe = Effect.fnUntraced(function* () {
       for r in
         select tablename from pg_tables
         where schemaname = current_schema()
-          and tablename not in ('schemaFingerprint', 'deployment_state')
+          and tablename not in ('schemaFingerprint', 'deployment_state', 'studio_migrations')
       loop
         execute format('select exists (select 1 from %I)', r.tablename)
           into populated;
@@ -256,7 +262,10 @@ const populate = Effect.fnUntraced(function* (
     yield* scopeToTeam(team.id);
 
     const line = yield* seedProtocolLine(team.id, cipher);
-    totals.plaintextSecrets.push(line.plaintextAssetKey);
+    totals.plaintextSecrets.push(
+      line.plaintextAssetKey,
+      yield* seedStagedSecret(team.id, line.draftId, team.adminUserId, cipher),
+    );
     const versionsById = new Map<string, SeededVersion>(
       line.versions.map((version) => [version.versionId, version]),
     );

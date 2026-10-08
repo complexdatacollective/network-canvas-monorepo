@@ -3,60 +3,55 @@
 import { DirectionProvider } from '@base-ui/react/direction-provider';
 import { type ReactNode, useMemo } from 'react';
 
-import { commonCatalogs } from '@codaco/app-i18n/common';
-import { mergeCatalogs, type CatalogMessages } from '@codaco/app-i18n/locales';
-import { AppI18nProvider } from '@codaco/app-i18n/react';
-import { frescoUiCatalogs } from '@codaco/fresco-ui/locales';
+import { AppI18nProvider, useLocaleCatalog } from '@codaco/app-i18n/react';
 
-import { interviewCatalogs } from '../locales/catalogs';
+import { type InterviewCatalog, interviewCatalogSource } from './catalog';
 import {
   interviewLocales,
   type RequestedLocale,
   resolveInterviewLocale,
 } from './locales';
 
-// Static imports keep every supported interface language available offline.
-// Each Shell owns its formatter; no parent catalog or mutable global locale
-// can leak a researcher's language into another interview on the same page.
-const messages: Readonly<Record<string, CatalogMessages>> = Object.fromEntries(
-  interviewLocales.map(({ locale }) => [
-    locale,
-    mergeCatalogs(
-      commonCatalogs[locale] ?? {},
-      frescoUiCatalogs[locale] ?? {},
-      interviewCatalogs[locale] ?? {},
-    ),
-  ]),
-);
-
 /**
  * The built-in interface language: the participant's stated protocol language
  * when the interface has it, otherwise the first of the browser's languages it
  * has, otherwise English. Never stored; a host only supplies the browser's
  * languages.
+ *
+ * Mounting in a language whose catalog this page has not loaded yet suspends
+ * until it has, rather than render English and swap, so a host renders this
+ * under a Suspense boundary (`Shell` brings its own) or passes the matching
+ * `catalog` from `loadInterviewCatalog`. Once mounted it never suspends again:
+ * a later change keeps the current language on screen until the new one is
+ * ready. A language that cannot be loaded leaves English (or, after a change,
+ * the current language) on screen and is reported as `useLocaleLoadFailure`.
  */
 export function InterviewI18nProvider({
   requestedLocale,
   localePreference,
+  catalog,
   children,
 }: {
   requestedLocale?: RequestedLocale;
   localePreference?: string | null;
+  catalog?: InterviewCatalog;
   children: ReactNode;
 }) {
   const locale = useMemo(
     () => resolveInterviewLocale(requestedLocale, localePreference),
     [requestedLocale, localePreference],
   );
+  const rendered = useLocaleCatalog(interviewCatalogSource, locale, catalog);
   const direction = interviewLocales.find(
-    (entry) => entry.locale === locale,
+    (entry) => entry.locale === rendered.locale,
   )!.direction;
 
   return (
     <AppI18nProvider
-      locale={locale}
+      locale={rendered.locale}
       locales={interviewLocales}
-      messages={messages[locale]}
+      messages={rendered.messages}
+      loadFailure={rendered.failure}
       manageDocument={false}
     >
       <DirectionProvider direction={direction}>{children}</DirectionProvider>

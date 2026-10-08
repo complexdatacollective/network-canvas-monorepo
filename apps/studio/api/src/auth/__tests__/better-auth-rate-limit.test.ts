@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import { assert, layer } from '@effect/vitest';
-import { Effect, Layer, Logger } from 'effect';
+import { Effect, Layer, Logger, References } from 'effect';
 import { describe } from 'vitest';
 
 import { TestDatabaseLive, testDb } from '../../__tests__/support/database.ts';
@@ -23,9 +23,12 @@ const env = readEnv();
 
 function capturingLogger(lines: string[]): Layer.Layer<never> {
   return Logger.layer([
-    Logger.make(({ message }: Logger.Options<unknown>) => {
+    Logger.make(({ message, fiber }: Logger.Options<unknown>) => {
       lines.push(
-        (Array.isArray(message) ? message : [message]).map(String).join(' '),
+        [
+          ...(Array.isArray(message) ? message : [message]).map(String),
+          JSON.stringify(fiber.getRef(References.CurrentLogAnnotations)),
+        ].join(' '),
       );
     }),
   ]);
@@ -73,7 +76,7 @@ describe.skipIf(!testDb || !url)("better-auth's sign-in limit", () => {
         assert.deepStrictEqual(
           lines.filter((line) => line.startsWith('Rate limit reached')),
           [
-            'Rate limit reached for sign_in_address; callers are refused for up to 60s.',
+            'Rate limit reached; callers are refused until it resets. {"scope":"sign_in_address","retry_after_seconds":60}',
           ],
         );
       }),

@@ -1,22 +1,25 @@
 # The stack test
 
 Four bash scripts that stand the reference stack up, exercise it, and tear it
-down — once as a self-hoster runs it, and once for each documented swap with
-the swapped element replaced by a stub. CI runs exactly these scripts, as the
-`studio-stack` job in `.github/workflows/ci-and-release.yml`; nothing about a
-CI run differs from a run on your machine except which images are in the
-daemon's cache.
+down — once as a self-hoster runs it, once for each documented swap with the
+swapped element replaced by a stub, and once with a second API replica added.
+CI runs exactly these scripts, as the `studio-stack` job in
+`.github/workflows/ci-and-release.yml`; nothing about a CI run differs from a
+run on your machine except which images are in the daemon's cache.
 
 ```bash
 apps/studio/stack-test/build.sh                          # both images, once
 apps/studio/stack-test/up.sh     --variant reference
 apps/studio/stack-test/assert.sh --variant reference
+apps/studio/stack-test/participants.sh --variant reference  # optional, see below
 apps/studio/stack-test/down.sh   --variant reference
 ```
 
 Requires Docker and `openssl`, and nothing else — no pnpm, no Node, no
-checkout state beyond this directory and the compose files beside it. Ports
-**80**, **443** and **127.0.0.1:8443** must be free.
+checkout state beyond this directory and the compose files beside it — except
+for `participants.sh`, which needs the workspace installed and Playwright's
+Chromium (`pnpm --filter @codaco/studio-web exec playwright install chromium`).
+Ports **80**, **443** and **127.0.0.1:8443** must be free.
 
 Compose **v2.24.4** or newer, which is above the v2.23.1 the stack itself
 requires: the overrides use `!override` and `!reset` to empty a `depends_on`
@@ -24,13 +27,15 @@ map and a `ports` list that a merging override would otherwise keep. That is a
 floor on testing this, not on deploying it — a self-hoster deleting a service
 by hand needs neither.
 
-| Variant             | What is replaced                        | With                                                                 |
-| ------------------- | --------------------------------------- | -------------------------------------------------------------------- |
-| `reference`         | nothing                                 | —                                                                    |
-| `external-postgres` | the `postgres` service                  | a Postgres on a separate Docker network, named by `DATABASE_URL`     |
-| `external-bucket`   | the `garage` and `garage-init` services | a second Garage on that network, named by the five `S3_*`            |
-| `external-redis`    | the `valkey` service                    | a second Valkey on that network, named by `REDIS_URL`                |
-| `own-proxy`         | the `traefik` service and its ports     | nginx carrying the configuration block from `docs/self-host/swap.md` |
+| Variant                 | What is replaced                        | With                                                                  |
+| ----------------------- | --------------------------------------- | --------------------------------------------------------------------- |
+| `reference`             | nothing                                 | —                                                                     |
+| `external-postgres`     | the `postgres` service                  | a Postgres on a separate Docker network, named by `DATABASE_URL`      |
+| `external-bucket`       | the `garage` and `garage-init` services | a second Garage on that network, named by the five `S3_*`             |
+| `external-bucket-azure` | the `garage` and `garage-init` services | Azurite on that network, selected by `STUDIO_OBJECT_STORE=azure-blob` |
+| `external-redis`        | the `valkey` service                    | a second Valkey on that network, named by `REDIS_URL`                 |
+| `own-proxy`             | the `traefik` service and its ports     | nginx carrying the configuration block from `docs/self-host/swap.md`  |
+| `two-api`               | nothing: a second `api` is added        | `api-b` and a server list naming both, from `docs/self-host/run.md`   |
 
 ## What the scripts do
 
@@ -50,14 +55,27 @@ to `.work/setup-token`, and waits for `/readyz` through the variant's ingress.
 deliberately: a swapped element has to meet the contract the element it
 replaced met, so a swap is proved by the same list passing rather than by a
 shorter one. Each variant adds only a structural check that the service it
-replaced is really gone. Every assertion prints what it checked and the value
-it saw; a failure exits non-zero after printing `docker compose ps` and the
+replaced is really gone. (`two-api` replaces nothing, so its check is that both
+replicas exist, each reports its doorbell subscribed, and its maintenance
+window stops both.) Every assertion prints what it checked and the value it
+saw; a failure exits non-zero after printing `docker compose ps` and the
 last 200 lines of the logs.
 
 **`down.sh --variant <name>`** removes every container, both networks and all
 of the volumes. `--profile migrate` is why it works: `migrate` depends on
 `garage-init`, so Compose creates that as an ordinary container and a plain
 `down` leaves it holding the network — the same trap `dev:stack:down` documents.
+
+**`participants.sh --variant <name>`** walks a participant through an
+interview on the built images (#1899). `api/scripts/e2e-participant-links.ts`
+publishes the lean e2e protocol (`packages/protocols/e2e/interviewer-e2e`)
+through the server's own protocol store and creates a live managed study with a
+participant link and a live anonymous study with its link, printing both
+tokens. It runs in a Node container on the stack's network, because Postgres
+publishes no port, and reads the stack's own secrets. The Playwright spec in
+`web/e2e` then opens each link, answers every stage, reloads mid-interview to
+check the answers were saved, finishes, and reopens the link to find the
+already-finished notice. CI runs it for the reference variant.
 
 Everything generated lands in `.work/`, which is gitignored: the environment
 file, the captured token, `migrate`'s output, and own-proxy's nginx
@@ -72,11 +90,11 @@ explainable after it has been cleaned up.
 **The stubs are on their own Docker network** (`studio-ci-external`,
 172.31.244.0/24), and each variant attaches to it only the Studio processes
 that have to reach the service it replaced — `api`, `worker` and `migrate` for
-the database and the bucket; `api` and `worker` alone for the rate-limit store,
-which `migrate` never opens a connection to. That is what makes a swap a real
-one: the stack reaches the institution's service across a boundary rather than
-over the bridge its own services share, and nothing on that boundary is in
-`TRUSTED_PROXIES`.
+the database, the bucket and the blob container; `api` and `worker` alone for
+the rate-limit store, which `migrate` never opens a connection to. That is
+what makes a swap a real one: the stack reaches the institution's service
+across a boundary rather than over the bridge its own services share, and
+nothing on that boundary is in `TRUSTED_PROXIES`.
 
 **`external-bucket` bootstraps its stub with the stack's own `garage-init`
 script**, referenced as a Compose config rather than copied, so there is one
@@ -86,6 +104,21 @@ on the external network — where the stack's own Garage, disabled by a profile,
 does not exist. Its region is deliberately not the stack Garage's, so a request
 still being signed for the store it replaced would fail rather than pass by
 coincidence.
+
+**`external-bucket-azure` swaps the provider, not only the address.** Azure
+Blob Storage does not speak S3, so this variant sets `STUDIO_OBJECT_STORE` to
+`azure-blob`, names the container, and authenticates with a connection string
+— the guide's fallback for a host with no managed identity, which a CI runner
+is. It also empties every `S3_*` value, as the guide tells an Azure
+deployer to: the server refuses any of them beside `azure-blob`, and an empty
+access key is what turns off the compose file's `S3_ENDPOINT` default of the
+stack's Garage. The stub is Azurite serving one generated account, set through
+`AZURITE_ACCOUNTS`, which also disables the emulator's well-known
+`devstoreaccount1` — so, like external-bucket's region, a request signed for
+any other store fails rather than passing by coincidence. Studio never creates
+the container, so a one-shot does, in the `migrate` profile where `garage-init`
+was: it runs from the `studio-api` image, which already carries
+`@azure/storage-blob`, with its script inline in the override.
 
 **`own-proxy` extracts its nginx configuration from `docs/self-host/swap.md` at
 run time.** A copy in this directory would drift from the block an institution
@@ -118,15 +151,62 @@ other assertion in this suite green. Every variant therefore signs in until the
 sign-in limit refuses it, and asserts that the refusal lands on the eleventh
 attempt; then that the limiter's `studio:rl:*` keys are in the store
 `REDIS_URL` names, which for this variant is the stub and for the others is the
-stack's own Valkey.
+stack's own Valkey, and that every API replica is subscribed to the
+`studio:protocol-events` doorbell in that same store.
 
-The eleventh because the limits are **constants of the build** — `sign_in_address`
-is `10/10m` — and not a knob the stack offers, so there is no value for this
-suite to turn down and none it needs to. Asserting which attempt is refused
-rather than that some attempt was is what makes it an assertion about the
-limiter at all. The attempts use a different address each time, because
-`sign_in_email` is `5/10m` and would otherwise refuse the sixth and prove a
-different limit.
+The eleventh because the limits are **constants of the build** —
+`sign_in_address` is `10/10m` — and not a knob the stack offers, so there is
+no value for this suite to turn down and none it needs to. Asserting which
+attempt is refused rather than that some attempt was is what makes it an
+assertion about the limiter at all. The attempts use a different address each
+time, because `sign_in_email` is `5/10m` and would otherwise refuse the sixth
+and prove a different limit.
+
+**`two-api` is the multi-replica claim, tested from outside.** Its override is
+the `docker-compose.override.yml` block in
+[Run](../docs/self-host/run.md#running-more-than-one-api), which `lib.sh`
+extracts between its `<!-- two-api-override -->` markers into
+`.work/two-api.override.yml` on every use, the way `own-proxy` takes its nginx
+block from the swap guide; `variants/two-api.yml` is empty. The block adds
+`api-b` with Compose's `extends`, so the second replica is the first with
+nothing changed but its name, and replaces the Traefik server list with one
+naming both, with a health check: the edits the guide asks of a self-hoster,
+and no sticky sessions. `up.sh` fails unless each replica answers its own
+`/readyz` from inside its container.
+
+After the common assertions it runs two scenarios, both on the unary plane,
+because that is the one a shell can speak and it holds the same lease as a
+WebSocket does.
+
+The first is an editor across a replica stop, with `curl` alone. The first
+replica is the only one up, and an editor's tab takes a section's lock on it.
+The second replica then starts, and the first stops, as a lost host or a
+restart would stop it. The tab goes on working against the second replica,
+one call every five seconds, until forty seconds have passed since the first
+stopped. A lock's lease is thirty seconds, renewed every ten by each replica
+that has heard from its owner in the last five minutes, so a save made at that
+point is written only if the second replica really took the renewals over,
+and is refused as `NotLockHolder` if it did not.
+
+The second is the relay. With both replicas up again, and both subscribed to
+the doorbell, a second tab watches the protocol on `api-b` while the editor
+saves on `api`, each call made with `node` from inside that replica's
+container so Traefik cannot put both on one replica. The watcher must receive
+the new revision, and the run prints how long after the save it arrived: a few
+milliseconds through the doorbell, or up to five seconds if only the safety
+poll carried it.
+
+A WebSocket reconnecting to another replica is covered by the API's own
+multi-replica tests, which can age rows and crash a replica deterministically;
+what only a real stack can show is that the ingress, the health check and the
+replicas agree.
+
+The scenarios never sleep to wait for state. Where the first has to wait for
+the ingress to stop sending requests to the replica that was stopped, it polls
+for a run of consecutive good answers, because Traefik alternates between
+servers until its next health check and a single good answer proves nothing.
+The one team it needs is inserted as a row, because no HTTP route creates a
+team.
 
 ## Adding a variant
 

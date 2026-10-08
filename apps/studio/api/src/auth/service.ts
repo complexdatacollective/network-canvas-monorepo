@@ -1,8 +1,9 @@
 import { and, eq } from 'drizzle-orm';
-import { Context, Effect, Layer, Option } from 'effect';
+import { Context, Effect, Layer, Option, Redacted } from 'effect';
 import type { Headers } from 'effect/http';
 import type { SqlError } from 'effect/sql';
 
+import { AUTH_NOT_CONFIGURED_PROBLEM_TYPE } from '@codaco/studio-contract/schema/problem';
 import type { SignInEmailJob } from '@codaco/studio-sync/jobs';
 
 import { AUTH_TABLES } from '../db/auth-schema.ts';
@@ -25,9 +26,9 @@ import { makeSqlBridge } from './sql-bridge.ts';
 export type SessionPrincipal = {
   kind: 'user';
   userId: string;
-  email: string;
+  email: Redacted.Redacted;
   emailVerified: boolean;
-  name: string;
+  name: Redacted.Redacted;
   locale: string | null;
   sessionId: string;
 };
@@ -71,13 +72,13 @@ export class AuthService extends Context.Service<
       userId: string,
     ) => Effect.Effect<ReadonlyArray<IdentifiedTeamMembership>>;
     readonly signUpEmail: (input: {
-      name: string;
-      email: string;
-      password: string;
+      name: Redacted.Redacted;
+      email: Redacted.Redacted;
+      password: Redacted.Redacted;
     }) => Effect.Effect<SignUpOutcome>;
     readonly signInEmail: (input: {
-      email: string;
-      password: string;
+      email: Redacted.Redacted;
+      password: Redacted.Redacted;
     }) => Effect.Effect<SignInOutcome>;
   }
 >()('@studio/AuthService') {
@@ -85,7 +86,11 @@ export class AuthService extends Context.Service<
     handler: () =>
       Effect.succeed(
         Response.json(
-          { title: 'Authentication Not Configured', status: 503 },
+          {
+            type: AUTH_NOT_CONFIGURED_PROBLEM_TYPE,
+            title: 'Authentication Not Configured',
+            status: 503,
+          },
           {
             status: 503,
             headers: { 'Content-Type': 'application/problem+json' },
@@ -183,8 +188,14 @@ export const makeSendMagicLink: Effect.Effect<
   Database | Jobs
 > = Effect.map(
   Effect.context<Database | Jobs>(),
-  (services) => (data) =>
-    Effect.runPromiseWith(services)(enqueueSignInEmail(data)),
+  (services) =>
+    ({ email, url }) =>
+      Effect.runPromiseWith(services)(
+        enqueueSignInEmail({
+          email: Redacted.make(email),
+          url: Redacted.make(url),
+        }),
+      ),
 );
 
 const makeLive = Effect.gen(function* () {
@@ -227,9 +238,9 @@ const makeLive = Effect.gen(function* () {
       return Option.some({
         kind: 'user',
         userId: result.user.id,
-        email: result.user.email,
+        email: Redacted.make(result.user.email),
         emailVerified: result.user.emailVerified,
-        name: result.user.name,
+        name: Redacted.make(result.user.name),
         locale: result.user.locale ?? null,
         sessionId: result.session.id,
       });
@@ -251,14 +262,18 @@ const makeLive = Effect.gen(function* () {
         email,
         password,
       }: {
-        name: string;
-        email: string;
-        password: string;
+        name: Redacted.Redacted;
+        email: Redacted.Redacted;
+        password: Redacted.Redacted;
       }): Effect.fn.Return<SignUpOutcome, unknown> {
         const { headers, response } = yield* Effect.tryPromise({
           try: () =>
             instance.api.signUpEmail({
-              body: { name, email, password },
+              body: {
+                name: Redacted.value(name),
+                email: Redacted.value(email),
+                password: Redacted.value(password),
+              },
               returnHeaders: true,
             }),
           catch: (cause: unknown) => cause,
@@ -282,13 +297,16 @@ const makeLive = Effect.gen(function* () {
         email,
         password,
       }: {
-        email: string;
-        password: string;
+        email: Redacted.Redacted;
+        password: Redacted.Redacted;
       }): Effect.fn.Return<SignInOutcome, unknown> {
         const { headers, response } = yield* Effect.tryPromise({
           try: () =>
             instance.api.signInEmail({
-              body: { email, password },
+              body: {
+                email: Redacted.value(email),
+                password: Redacted.value(password),
+              },
               returnHeaders: true,
             }),
           catch: (cause: unknown) => cause,

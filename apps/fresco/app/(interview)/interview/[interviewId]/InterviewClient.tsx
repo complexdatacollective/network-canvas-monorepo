@@ -14,6 +14,7 @@ import {
   type StepChangeHandler,
   type SyncHandler,
 } from '@codaco/interview';
+import type { InterviewCatalog } from '@codaco/interview/catalog';
 import { env } from '~/env.js';
 import { POSTHOG_APP_NAME, POSTHOG_APP_VERSION } from '~/fresco.config';
 
@@ -30,6 +31,7 @@ type Props = {
   installationId: string;
   disableAnalytics: boolean;
   view: InterviewView;
+  catalog: InterviewCatalog;
 };
 
 // The completed view is built from a payload with an empty network, so it must
@@ -48,6 +50,7 @@ export default function InterviewClient({
   installationId,
   disableAnalytics,
   view,
+  catalog,
 }: Props) {
   const [currentStep, setCurrentStep] = useQueryState(
     'step',
@@ -141,6 +144,7 @@ export default function InterviewClient({
   return (
     <Shell
       requestedLocales={requestedLocales}
+      catalog={catalog}
       payload={payload}
       currentStep={currentStep}
       onStepChange={onStepChange}

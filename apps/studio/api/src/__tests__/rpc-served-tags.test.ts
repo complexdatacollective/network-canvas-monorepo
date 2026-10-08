@@ -9,10 +9,11 @@ import { DatabaseAbsent } from '../db/client.ts';
 import { getDeploymentStatus } from '../domain.ts';
 import { Jobs } from '../jobs/jobs.ts';
 import { JOB_SCHEMA } from '../jobs/queues.ts';
+import { Analytics } from '../platform/analytics.ts';
 import { RateLimiter } from '../rate-limit/limiter.ts';
 import { RateLimitStore } from '../rate-limit/store.ts';
 import type { RpcDeps } from '../rpc/deps.ts';
-import { StudioRpcHandlers } from '../rpc/handlers.ts';
+import { StudioRpcHandlers, StudioRpcMiddleware } from '../rpc/handlers.ts';
 import { SecretsCipher } from '../secrets/services.ts';
 import { AuthServiceStub } from './support/auth.ts';
 
@@ -22,6 +23,11 @@ const STUDIO_TAGS = [
   'audit.get',
   'audit.list',
   'me',
+  'participant.analytics',
+  'participant.finish',
+  'participant.redeem',
+  'participant.session',
+  'participant.sync',
   'protocols.addInformationStage',
   'protocols.create',
   'protocols.draft',
@@ -29,6 +35,7 @@ const STUDIO_TAGS = [
   'protocols.moveStage',
   'setup.complete',
   'status',
+  'status.updateAvailable',
   'studies.counts',
   'studies.create',
   'studies.get',
@@ -47,7 +54,7 @@ const deps: RpcDeps = {
     socialProviders: [],
   },
   deployment: getDeploymentStatus('self-hosted'),
-  readInstallation: () => Promise.resolve(null),
+  readInstallation: Effect.succeed(null),
 };
 
 /**
@@ -75,6 +82,7 @@ const handlerContext = await Effect.runPromise(
             DatabaseAbsent,
             SecretsCipher.layerAbsent,
             AuditSignal.layer,
+            Analytics.layerDisabled,
             Jobs.layer({ schema: JOB_SCHEMA }),
             DeniedAttempts.layer.pipe(
               Layer.provide(RateLimitStore.layerAbsent),
@@ -87,6 +95,38 @@ const handlerContext = await Effect.runPromise(
     ),
   ),
 );
+
+const middlewareContext = await Effect.runPromise(
+  Effect.scoped(
+    Layer.build(
+      StudioRpcMiddleware(deps).pipe(
+        Layer.provide(
+          Layer.mergeAll(
+            DatabaseAbsent,
+            AuthServiceStub(),
+            RateLimiter.layer.pipe(Layer.provide(RateLimitStore.layerAbsent)),
+          ),
+        ),
+      ),
+    ),
+  ),
+);
+
+describe('the middleware served at /rpc', () => {
+  it('provides exactly the middleware the procedures declare', () => {
+    const declared = new Set(
+      [...StudioRpcs.requests.values()].flatMap((rpc) =>
+        [...rpc.middlewares].map((middleware) => middleware.key),
+      ),
+    );
+    const provided = [...middlewareContext.mapUnsafe.entries()]
+      .filter(([, entry]: [string, unknown]) => Predicate.isFunction(entry))
+      .map(([key]) => key)
+      .toSorted();
+
+    expect(provided).toEqual([...declared].toSorted());
+  });
+});
 
 describe('the handlers served at /rpc', () => {
   it('implements every procedure StudioRpcs declares', () => {

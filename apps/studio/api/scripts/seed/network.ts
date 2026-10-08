@@ -17,12 +17,17 @@ import type { SqlError } from 'effect/sql';
 
 import { generateNetwork } from '@codaco/protocol-utilities';
 import type { NcNetwork } from '@codaco/shared-consts';
-import { canonicalize } from '@codaco/studio-sync/apply';
 
 import type { Transaction } from '../../src/db/tenant.ts';
+import {
+  edgeRow,
+  egoColumns,
+  nodeRow,
+  snapshotPayload,
+} from '../../src/network/mapping.ts';
 import { insertRows, type SeedRowValue } from './insert.ts';
 import type { SeededVersion } from './protocols.ts';
-import { seedUuid, sha256Hex, shiftDays, shiftMinutes } from './rng.ts';
+import { seedUuid, shiftDays, shiftMinutes } from './rng.ts';
 import type { SeedStudy } from './studies.ts';
 import type { SeedTeam } from './teams.ts';
 
@@ -269,6 +274,7 @@ export const seedSessionsAndNetworks = Effect.fnUntraced(function* (
         );
 
         const sessionId = seedUuid();
+        const ego = egoColumns(generated.network.ego);
         // Inside the wave's window, and never before the participant was
         // enrolled — or, for a visit through their link, before the link
         // was issued (the day after enrolment, as studies.ts dates it).
@@ -322,63 +328,60 @@ export const seedSessionsAndNetworks = Effect.fnUntraced(function* (
           stageIndex,
           stageId,
           JSON.stringify(generated.stageMetadata ?? {}),
-          generated.network.ego._uid,
-          JSON.stringify(generated.network.ego.attributes),
-          generated.network.ego._secureAttributes === undefined
+          ego.egoUid,
+          JSON.stringify(ego.egoAttributes),
+          ego.egoSecureAttributes === null
             ? null
-            : JSON.stringify(generated.network.ego._secureAttributes),
+            : JSON.stringify(ego.egoSecureAttributes),
           startedAt,
           lastActivityAt,
           status === 'completed' ? lastActivityAt : null,
           status === 'abandoned' ? lastActivityAt : null,
         ]);
 
-        for (const node of generated.network.nodes) {
+        for (const row of generated.network.nodes.map(nodeRow)) {
           nodeRows.push([
             team.id,
             sessionId,
-            node._uid,
-            node.type,
-            JSON.stringify(node.attributes),
-            node._secureAttributes === undefined
+            row.nodeId,
+            row.type,
+            JSON.stringify(row.attributes),
+            row.secureAttributes === null
               ? null
-              : JSON.stringify(node._secureAttributes),
-            node.stageId ?? null,
-            node.promptIDs ?? null,
+              : JSON.stringify(row.secureAttributes),
+            row.stageId,
+            row.promptIds === null ? null : [...row.promptIds],
           ]);
         }
-        for (const edge of generated.network.edges) {
+        for (const row of generated.network.edges.map(edgeRow)) {
           edgeRows.push([
             team.id,
             sessionId,
-            edge._uid,
-            edge.type,
-            edge.from,
-            edge.to,
-            JSON.stringify(edge.attributes),
-            edge._secureAttributes === undefined
+            row.edgeId,
+            row.type,
+            row.fromNode,
+            row.toNode,
+            JSON.stringify(row.attributes),
+            row.secureAttributes === null
               ? null
-              : JSON.stringify(edge._secureAttributes),
+              : JSON.stringify(row.secureAttributes),
           ]);
         }
 
         if (status === 'completed') {
-          const payload = {
+          const snapshot = snapshotPayload({
             network: generated.network,
             stageMetadata: generated.stageMetadata ?? {},
             currentStep: generated.currentStep,
-          };
-          // Hashed in canonical form: jsonb does not keep key order, so the
-          // evidence must be checkable from the payload as it is read back.
-          const serialized = canonicalize(payload);
+          });
           snapshotRows.push([
             sessionId,
             team.id,
             study.id,
             versionId,
             version.schemaVersion,
-            serialized,
-            sha256Hex(serialized),
+            snapshot.payload,
+            snapshot.payloadHash,
             lastActivityAt,
           ]);
         }

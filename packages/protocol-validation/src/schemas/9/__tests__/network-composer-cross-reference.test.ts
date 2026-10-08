@@ -71,6 +71,51 @@ describe('NetworkComposer cross-reference validation', () => {
     expect(result.success).toBe(false);
   });
 
+  // The canvas persists every node's { x, y } under layoutVariable, merging it
+  // into the node's attributes — a non-layout variable would be overwritten.
+  it.each(['name', 'age', 'category'])(
+    'rejects a layoutVariable naming the non-layout variable "%s"',
+    (variable) => {
+      const result = ProtocolSchemaV9.safeParse(
+        composerProtocol({ ...baseStage, layoutVariable: variable }),
+      );
+      expect(result.success).toBe(false);
+      expect(result.error?.issues).toContainEqual(
+        expect.objectContaining({
+          path: ['stages', 0, 'layoutVariable'],
+          message: `The attribute "${variable}" must be of type layout`,
+        }),
+      );
+    },
+  );
+
+  it('accepts a categorical convexHullVariable', () => {
+    const result = ProtocolSchemaV9.safeParse(
+      withFinishStage(
+        composerProtocol({ ...baseStage, convexHullVariable: 'category' }),
+      ),
+    );
+    expect(result.success).toBe(true);
+  });
+
+  // The Groups tool and lasso write a categorical membership array to this
+  // variable directly, so it must be categorical.
+  it.each(['strength', 'layoutPosition', 'name'])(
+    'rejects a convexHullVariable naming the non-categorical variable "%s"',
+    (variable) => {
+      const result = ProtocolSchemaV9.safeParse(
+        composerProtocol({ ...baseStage, convexHullVariable: variable }),
+      );
+      expect(result.success).toBe(false);
+      expect(result.error?.issues).toContainEqual(
+        expect.objectContaining({
+          path: ['stages', 0, 'convexHullVariable'],
+          message: `The attribute "${variable}" must be of type categorical`,
+        }),
+      );
+    },
+  );
+
   it('rejects a node form field referencing a missing node variable', () => {
     const result = ProtocolSchemaV9.safeParse(
       withFinishStage(

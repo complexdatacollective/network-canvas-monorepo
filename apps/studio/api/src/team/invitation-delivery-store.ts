@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import { and, eq, sql } from 'drizzle-orm';
-import { Effect } from 'effect';
+import { Effect, Redacted } from 'effect';
 import type { SqlError } from 'effect/sql';
 
 import type { TeamRole } from '@codaco/studio-contract/schema/team';
@@ -17,10 +17,10 @@ const { team_invitations: invitations } = AUTH_TABLES;
 export type EnqueueInvitationDeliveryInput = {
   invitationId: string;
   teamId: string;
-  email: string;
+  email: Redacted.Redacted;
   role: TeamRole;
-  teamLabel: string;
-  inviterLabel: string;
+  teamLabel: Redacted.Redacted;
+  inviterLabel: Redacted.Redacted;
   expiresAt: Date;
 };
 
@@ -47,6 +47,9 @@ export const enqueueInvitationDelivery: (
   ) {
     const { tx } = yield* Transaction;
     const deliveryId = randomUUID();
+    const email = Redacted.value(input.email);
+    const teamLabel = Redacted.value(input.teamLabel);
+    const inviterLabel = Redacted.value(input.inviterLabel);
     const inserted = yield* tx
       .insert(invitationDeliveries)
       .select((query) =>
@@ -57,8 +60,8 @@ export const enqueueInvitationDelivery: (
             teamId: invitations.team_id,
             email: invitations.email,
             role: sql<string>`${invitations.role}`.as('role'),
-            teamLabel: sql`${input.teamLabel}::text`.as('team_label'),
-            inviterLabel: sql`${input.inviterLabel}::text`.as('inviter_label'),
+            teamLabel: sql`${teamLabel}::text`.as('team_label'),
+            inviterLabel: sql`${inviterLabel}::text`.as('inviter_label'),
             expiresAt: invitations.expires_at,
           })
           .from(invitations)
@@ -66,7 +69,7 @@ export const enqueueInvitationDelivery: (
             and(
               eq(invitations.id, input.invitationId),
               eq(invitations.team_id, input.teamId),
-              sql`lower(${invitations.email}) = lower(${input.email})`,
+              sql`lower(${invitations.email}) = lower(${email})`,
               eq(invitations.role, input.role),
               eq(invitations.status, 'pending'),
               sql`${invitations.expires_at} > clock_timestamp()`,
@@ -95,10 +98,10 @@ export const enqueueInvitationDelivery: (
         and(
           eq(invitationDeliveries.invitationId, input.invitationId),
           eq(invitationDeliveries.teamId, input.teamId),
-          sql`lower(${invitationDeliveries.email}) = lower(${input.email})`,
+          sql`lower(${invitationDeliveries.email}) = lower(${email})`,
           eq(invitationDeliveries.role, input.role),
-          eq(invitationDeliveries.teamLabel, input.teamLabel),
-          eq(invitationDeliveries.inviterLabel, input.inviterLabel),
+          eq(invitationDeliveries.teamLabel, teamLabel),
+          eq(invitationDeliveries.inviterLabel, inviterLabel),
           sql`abs(extract(
               epoch FROM ${invitationDeliveries.expiresAt}
                         - ${input.expiresAt}::timestamptz

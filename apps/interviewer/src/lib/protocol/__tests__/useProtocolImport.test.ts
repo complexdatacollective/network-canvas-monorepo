@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AppI18nProvider } from '@codaco/app-i18n/react';
 import { interviewerProductionLocales } from '~/i18n/locales';
-import { interviewerCatalogs } from '~/locales/catalogs';
+import { interviewerCatalogSource } from '~/locales/catalogs';
 import { renderedMessage } from '~/testUtils/renderedMessage';
 
 import { useProtocolImport } from '../useProtocolImport';
@@ -27,11 +27,15 @@ vi.mock('~/lib/db/api', () => ({
   updateSettings: vi.fn(),
 }));
 vi.mock('../importProtocol', () => ({
+  importBundledProtocol: vi.fn(() => new Promise(() => {})),
   importProtocolFromFile: vi.fn(() => new Promise(() => {})),
   peekProtocolName: vi.fn(async () => null),
 }));
 
-import { importProtocolFromFile } from '../importProtocol';
+import {
+  importBundledProtocol,
+  importProtocolFromFile,
+} from '../importProtocol';
 
 type ToastCall = {
   title?: ReactNode;
@@ -49,6 +53,7 @@ describe('useProtocolImport', () => {
   });
   afterEach(() => {
     vi.useRealTimers();
+    vi.unstubAllGlobals();
     vi.restoreAllMocks();
     vi.clearAllMocks();
   });
@@ -74,7 +79,7 @@ describe('useProtocolImport', () => {
       createElement(AppI18nProvider, {
         locale: 'es',
         locales: interviewerProductionLocales,
-        messages: interviewerCatalogs.es,
+        messages: await interviewerCatalogSource.load('es'),
         manageDocument: false,
         // oxlint-disable-next-line react/no-children-prop -- The provider requires children in its props; this .ts hook test uses createElement rather than JSX.
         children: createElement(
@@ -127,6 +132,38 @@ describe('useProtocolImport', () => {
       vi.advanceTimersByTime(1000);
     });
     expect(importProtocolFromFile).toHaveBeenCalledTimes(1);
+  });
+
+  it('loads the bundled sample when it is installed, without network', async () => {
+    const throwingFetch = vi.fn(() => {
+      throw new Error('fetch must not be called during a bundled install');
+    });
+    vi.stubGlobal('fetch', throwingFetch);
+    // Transforming the sample's inlined media takes real time that the fake
+    // clock cannot advance. Load the module here so the hook's own import()
+    // settles from the module cache inside vi.waitFor's window.
+    await import('../bundledSampleProtocol');
+    const { result } = renderHook(() =>
+      useProtocolImport({ onInstalled: () => {} }),
+    );
+
+    await act(async () => {
+      await result.current.startImport({ source: 'sample' });
+    });
+    expect(result.current.pendingImports).toEqual([
+      expect.objectContaining({ source: 'sample', label: 'Sample Protocol' }),
+    ]);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(600);
+    });
+    await vi.waitFor(() => {
+      expect(importBundledProtocol).toHaveBeenCalledTimes(1);
+    });
+    const [bundled] = vi.mocked(importBundledProtocol).mock.calls[0] ?? [];
+    expect(bundled?.name).toBe('Sample Protocol');
+    expect(bundled?.assets.length).toBeGreaterThan(0);
+    expect(throwingFetch).not.toHaveBeenCalled();
   });
 
   it('adds a details action to validation failure toasts', async () => {

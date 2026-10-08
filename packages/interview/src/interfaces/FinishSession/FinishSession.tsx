@@ -16,6 +16,7 @@ import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import type { FinishSessionStage } from '@codaco/protocol-validation';
 
+import { useTrack } from '../../analytics/useTrack';
 import { useInterviewCompletion } from '../../contexts/InterviewCompletionContext';
 import {
   useContractHandlers,
@@ -26,6 +27,7 @@ import { runtimeMessages } from '../../i18n/runtimeMessages';
 import { LocalizedMarkdown } from '../../localization/LocalizedMarkdown';
 import { useLocalizedString } from '../../localization/ProtocolLocalizationProvider';
 import { getInterviewId } from '../../selectors/session';
+import { getStages } from '../../store/modules/protocol';
 import { useSyncFlush } from '../../store/SyncFlushContext';
 import type { StageProps } from '../../types';
 import { interfaceMessages } from '../messages';
@@ -120,6 +122,8 @@ const FinishSession = ({ stage }: StageProps<'FinishSession'>) => {
   const flushSync = useSyncFlush();
   const { complete } = useInterviewCompletion();
   const { confirm } = useDialog();
+  const track = useTrack();
+  const stageCount = useSelector(getStages).length;
 
   const finishInterviewConfirmation = async () => {
     if (!interviewId) return;
@@ -135,9 +139,13 @@ const FinishSession = ({ stage }: StageProps<'FinishSession'>) => {
         // an interview the moment it is finished and reject anything that
         // arrives afterwards, so the pending write has to land first, and an
         // answer that could not be saved keeps the interview from finishing.
+        //
+        // The confirmation cannot be cancelled while this runs: a host's
+        // finish is a server request or a storage write that completes
+        // whatever the signal says. The signal still aborts if the
+        // confirmation is torn down (the Shell unmounting), and then the
+        // interview is not handed over.
         const stored = await flushSync();
-        // Cancelled while the answers were being saved, the interview stays
-        // open.
         if (signal.aborted) return;
         if (!stored) {
           throw new Error('An answer still being saved was refused');
@@ -147,6 +155,7 @@ const FinishSession = ({ stage }: StageProps<'FinishSession'>) => {
           { stageId: stage.id, outcome: stage.outcome },
           signal,
         );
+        track('interview_finished', { stage_count: stageCount });
       },
     });
     // After the dialog has closed rather than inside its confirm handler, so

@@ -1,0 +1,325 @@
+import {
+  act,
+  cleanup,
+  fireEvent,
+  screen,
+  within,
+} from '@testing-library/react';
+import type { ComponentProps } from 'react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+
+import { updateIllustrations } from '~/components/updates/illustrations/updateIllustrations';
+import { locales } from '~/lib/i18n/locales';
+import { loadUpdates } from '~/lib/siteContent';
+import { renderWithIntl } from '~/test/renderWithIntl';
+
+import UpdatesPage, { generateMetadata } from '../page';
+
+vi.mock('next-intl/server', async () => {
+  const { createTranslator } = await import('next-intl');
+  const { loadLocaleMessages } = await import('~/lib/i18n/messages');
+
+  return {
+    setRequestLocale: vi.fn(),
+    getTranslations: async ({
+      locale,
+      namespace,
+    }: {
+      locale: 'en-US' | 'en-GB' | 'es';
+      namespace: string;
+    }) =>
+      createTranslator({
+        locale,
+        messages: loadLocaleMessages(locale),
+        namespace,
+      }),
+  };
+});
+
+vi.mock('~/lib/i18n/navigation', () => ({
+  Link: ({ children, href, ...props }: ComponentProps<'a'>) => (
+    <a {...props} href={`/en-US${href}`}>
+      {children}
+    </a>
+  ),
+  usePathname: () => '/updates',
+  useRouter: () => ({ replace: vi.fn() }),
+}));
+
+vi.mock('@codaco/art', () => ({
+  PageBackground: () => <div data-testid="page-background" />,
+}));
+
+afterEach(() => {
+  cleanup();
+  window.history.replaceState(null, '', '/');
+  vi.restoreAllMocks();
+});
+
+async function renderPage(locale: 'en-US' | 'es' = 'en-US') {
+  const page = await UpdatesPage({
+    params: Promise.resolve({ locale }),
+  });
+  renderWithIntl(page, locale);
+}
+
+function entryTitles(titles: readonly string[]) {
+  return screen.queryAllByRole('article', { hidden: true }).map((article) =>
+    titles.find((title) =>
+      within(article).queryByRole('heading', {
+        level: 2,
+        name: title,
+        hidden: true,
+      }),
+    ),
+  );
+}
+
+function updateEntry(title: string) {
+  return screen.getByRole('article', { name: title, hidden: true });
+}
+
+// jsdom cannot compute the styles of the accordion's animated panels, so role
+// queries skip the visibility check and assert aria-expanded instead.
+function detailsTrigger(title: string) {
+  return within(updateEntry(title)).getByRole('button', { hidden: true });
+}
+
+describe('updates page', () => {
+  it('shows each update’s summary with its details collapsed', async () => {
+    const updates = await loadUpdates('en-US');
+    await renderPage();
+
+    expect(screen.getAllByRole('article', { hidden: true })).toHaveLength(
+      updates.length,
+    );
+    expect(updates.length).toBeGreaterThan(1);
+
+    for (const update of updates) {
+      const toggle = within(updateEntry(update.title)).queryByRole('button', {
+        hidden: true,
+      });
+      if (update.details) {
+        expect(toggle).toHaveAttribute('aria-expanded', 'false');
+        expect(toggle).toHaveTextContent('Show full details');
+      } else {
+        expect(toggle).toBeNull();
+      }
+    }
+  });
+
+  it('has an illustration for every launch and featured update, and no other', async () => {
+    const updates = await loadUpdates('en-US');
+    const prominent = updates
+      .filter(
+        ({ prominence }) =>
+          prominence === 'launch' || prominence === 'featured',
+      )
+      .map(({ id }) => id);
+
+    expect(Object.keys(updateIllustrations).toSorted()).toEqual(
+      prominent.toSorted(),
+    );
+  });
+
+  it('expands an update’s full details on request', async () => {
+    const [newest] = await loadUpdates('en-US');
+    await renderPage();
+
+    fireEvent.click(detailsTrigger(newest!.title));
+
+    expect(detailsTrigger(newest!.title)).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
+    expect(detailsTrigger(newest!.title)).toHaveTextContent('Hide details');
+  });
+
+  it('opens the update a link points at', async () => {
+    const [newest] = await loadUpdates('en-US');
+    window.history.replaceState(null, '', `/en-US/updates#${newest!.id}`);
+    await renderPage();
+
+    expect(detailsTrigger(newest!.title)).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
+  });
+
+  it('ignores a link whose fragment is not valid percent-encoding', async () => {
+    const [newest] = await loadUpdates('en-US');
+    window.history.replaceState(null, '', '/en-US/updates#%E0%A4');
+    await renderPage();
+
+    expect(detailsTrigger(newest!.title)).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    );
+  });
+
+  it('opens an update when the address changes to point at it', async () => {
+    const [newest] = await loadUpdates('en-US');
+    await renderPage();
+    expect(detailsTrigger(newest!.title)).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    );
+
+    act(() => {
+      window.history.replaceState(null, '', `#${newest!.id}`);
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
+    });
+
+    expect(detailsTrigger(newest!.title)).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
+  });
+
+  it('keeps links to the site’s own pages in the visitor’s locale', async () => {
+    window.history.replaceState(null, '', '/en-US/updates#summer-2026');
+    await renderPage();
+
+    expect(
+      screen.getByRole('link', {
+        name: 'Read the full announcement',
+        hidden: true,
+      }),
+    ).toHaveAttribute('href', '/en-US/summer-2026-update');
+  });
+
+  it('narrows the list to updates that match every search word', async () => {
+    const updates = await loadUpdates('en-US');
+    const titles = updates.map((update) => update.title);
+    const [newest] = updates;
+    const summer = updates.find((update) => update.id === 'summer-2026');
+    await renderPage();
+
+    fireEvent.change(screen.getByRole('searchbox', { hidden: true }), {
+      target: { value: 'schema  TABLETS' },
+    });
+
+    expect(entryTitles(titles)).toEqual([summer!.title]);
+    expect(
+      screen.getByText(`1 of ${updates.length} updates`),
+    ).toBeInTheDocument();
+    expect(entryTitles(titles)).not.toContain(newest!.title);
+  });
+
+  it('opens the details of every update a search matches', async () => {
+    const [newest] = await loadUpdates('en-US');
+    await renderPage();
+
+    fireEvent.change(screen.getByRole('searchbox', { hidden: true }), {
+      target: { value: 'compensation' },
+    });
+
+    expect(detailsTrigger(newest!.title)).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
+  });
+
+  it('ignores accents when searching', async () => {
+    const updates = await loadUpdates('en-US');
+    const titles = updates.map((update) => update.title);
+    const [newest] = updates;
+    await renderPage();
+
+    fireEvent.change(screen.getByRole('searchbox', { hidden: true }), {
+      target: { value: 'LÓCALIZÁTION SPÁNISH' },
+    });
+
+    expect(entryTitles(titles)).toEqual([newest!.title]);
+  });
+
+  it('shows each update in the language of the page', async () => {
+    const english = await loadUpdates('en-US');
+    const spanish = await loadUpdates('es');
+    await renderPage('es');
+
+    for (const [index, update] of spanish.entries()) {
+      // A title can read the same in both languages ("Fresco 3.0"), so the
+      // title and summary together must differ.
+      expect([update.title, update.summary]).not.toEqual([
+        english[index]!.title,
+        english[index]!.summary,
+      ]);
+      const heading = within(updateEntry(update.title)).getByRole('heading', {
+        level: 2,
+        hidden: true,
+      });
+      expect(heading).toHaveTextContent(update.title);
+      expect(heading).not.toHaveAttribute('lang');
+    }
+  });
+
+  it('has every update in every language', async () => {
+    const english = await loadUpdates('en-US');
+
+    for (const locale of locales) {
+      const translated = await loadUpdates(locale);
+      expect(translated.map(({ id }) => id)).toEqual(
+        english.map(({ id }) => id),
+      );
+    }
+  });
+
+  it('does not match link destinations', async () => {
+    const titles = (await loadUpdates('en-US')).map((update) => update.title);
+    await renderPage();
+
+    fireEvent.change(screen.getByRole('searchbox', { hidden: true }), {
+      target: { value: 'community.networkcanvas' },
+    });
+
+    expect(entryTitles(titles)).toHaveLength(0);
+    expect(screen.getByText('No updates found')).toBeInTheDocument();
+  });
+
+  it('restores every update when the search is cleared', async () => {
+    const updates = await loadUpdates('en-US');
+    const titles = updates.map((update) => update.title);
+    await renderPage();
+
+    fireEvent.change(screen.getByRole('searchbox', { hidden: true }), {
+      target: { value: 'no such words anywhere' },
+    });
+    expect(screen.getByText('No updates found')).toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Clear search', hidden: true }),
+    );
+
+    expect(entryTitles(titles)).toEqual(updates.map((update) => update.title));
+    expect(detailsTrigger(updates[0]!.title)).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    );
+  });
+
+  it('generates Spanish metadata and language alternates', async () => {
+    const metadata = await generateMetadata({
+      params: Promise.resolve({ locale: 'es' }),
+    });
+
+    expect(metadata).toMatchObject({
+      title: 'Novedades',
+      alternates: {
+        canonical: 'https://networkcanvas.com/es/updates',
+        languages: {
+          'en-US': 'https://networkcanvas.com/en-US/updates',
+          'en-GB': 'https://networkcanvas.com/en-GB/updates',
+          'es': 'https://networkcanvas.com/es/updates',
+          'zh-Hans': 'https://networkcanvas.com/zh-Hans/updates',
+          'zh-Hant': 'https://networkcanvas.com/zh-Hant/updates',
+          'de': 'https://networkcanvas.com/de/updates',
+          'nl': 'https://networkcanvas.com/nl/updates',
+          'pt-BR': 'https://networkcanvas.com/pt-BR/updates',
+          'it': 'https://networkcanvas.com/it/updates',
+          'fr': 'https://networkcanvas.com/fr/updates',
+        },
+      },
+    });
+  });
+});

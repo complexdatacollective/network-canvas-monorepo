@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Suspense,
+  useCallback,
+  useEffect,
+  useEffectEvent,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useLocation, useRoute, useSearch } from 'wouter';
 
 import {
@@ -10,6 +18,7 @@ import {
   AppMessage,
   useAppIntl,
   useAppLocale,
+  useLocaleCatalog,
 } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
@@ -29,6 +38,7 @@ import {
   type SyncHandler,
   getLastAvailableAuthoredStageIndex,
 } from '@codaco/interview';
+import { loadInterviewCatalog } from '@codaco/interview/catalog';
 import {
   getLocaleMetadata,
   type LocalizationDeclaration,
@@ -61,7 +71,7 @@ import {
   useStoredProtocolMigrationFailure,
 } from '~/lib/protocol/storedProtocolMigrationFailures';
 import { useHistoryBackGuard } from '~/lib/pwa/useHistoryBackGuard';
-import { interviewerCatalogs } from '~/locales/catalogs';
+import { interviewerCatalogSource } from '~/locales/catalogs';
 
 const messages = defineMessages({
   // The id is older than this file: the message moved here from the
@@ -114,6 +124,19 @@ const messages = defineMessages({
       'This interview may have been deleted, or the protocol it used is no longer installed.',
     description: 'Visible copy in Interviewer Interview.',
   },
+  interviewCouldNotBeOpened: {
+    id: 'interviewer.interview.interviewCouldNotBeOpened',
+    defaultMessage: 'Interview could not be opened',
+    description:
+      'Heading shown in place of an interview whose saved data could not be read, so the interview was not opened.',
+  },
+  theDataSavedForThisInterviewCouldNot: {
+    id: 'interviewer.interview.theDataSavedForThisInterviewCouldNot',
+    defaultMessage:
+      'The data saved for this interview could not be read, so the interview has not been opened. The saved data has not been changed.',
+    description:
+      'Explains that an interview was not opened because its saved data could not be read, and reassures that the saved data was left unchanged.',
+  },
   readOnlyReview: {
     id: 'interviewer.interview.readOnlyReview',
     defaultMessage: 'Read-only review',
@@ -164,8 +187,10 @@ type LoadState =
   | { kind: 'loading' }
   | { kind: 'missing' }
   | { kind: 'incompatible'; protocolHash: string }
+  | { kind: 'unreadable' }
   | {
       kind: 'ready';
+      sessionId: string;
       payload: InterviewPayload;
       resolver: (id: string) => Promise<string>;
       // An explicit review request: the Shell shows the stages, read-only.
@@ -176,6 +201,21 @@ type LoadState =
       writable: boolean;
       initialStageOverrideIndex?: number;
     };
+
+const loadFailureCopy = {
+  incompatible: {
+    heading: messages.interviewUnavailable,
+    body: messages.theProtocolThisInterviewUsesCouldNot,
+  },
+  missing: {
+    heading: messages.interviewNotFound,
+    body: messages.thisInterviewMayHaveBeenDeletedOr,
+  },
+  unreadable: {
+    heading: messages.interviewCouldNotBeOpened,
+    body: messages.theDataSavedForThisInterviewCouldNot,
+  },
+};
 
 const discardSessionChanges: SyncHandler = () => Promise.resolve();
 const discardLocaleChange: ProtocolLocaleChangeHandler = () =>
@@ -191,7 +231,16 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
   // Read once per mount: the interview matches these again each time it
   // loads, until the participant chooses a language.
   const [requestedLocales] = useState(browserLanguages);
-  const [state, setState] = useState<LoadState>({ kind: 'loading' });
+  const [loadState, setLoadState] = useState<LoadState>({ kind: 'loading' });
+  // This route re-renders rather than remounting when sessionId changes, so a
+  // ready state can still belong to the previous interview while the next one
+  // loads. Treat it as loading: leaving that Shell mounted would hand it
+  // handlers bound to the new id, and its next step change would write the old
+  // interview's progress into the new session.
+  const state: LoadState =
+    loadState.kind === 'ready' && loadState.sessionId !== sessionId
+      ? { kind: 'loading' }
+      : loadState;
   const migrationFailure = useStoredProtocolMigrationFailure(
     state.kind === 'incompatible' ? state.protocolHash : '',
   );
@@ -277,6 +326,27 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
     [textScaleStorageKey],
   );
 
+  const {
+    client: posthogClient,
+    enabled: analyticsEnabled,
+    captureException,
+  } = useAnalytics();
+  // An effect event, not a load-effect dependency: re-running the load would
+  // re-hydrate an interview already in progress.
+  const reportLoadFailure = useEffectEvent((cause: unknown) => {
+    captureException(cause, { feature: 'interview-load' });
+  });
+
+  // The interview's messages load while the session below is unlocked and
+  // decrypted, rather than once the Shell mounts, and with them Interviewer's
+  // own messages in that language for the finish dialog's description. A
+  // failure here is retried by the Shell itself.
+  useEffect(() => {
+    loadInterviewCatalog(requestedLocales)
+      .then(({ locale }) => interviewerCatalogSource.load(locale))
+      .catch(() => undefined);
+  }, [requestedLocales]);
+
   // Gated exit shared by the Shell exit button and the completed state's Exit.
   const handleExit = useCallback(async () => {
     const settings = await getSettings();
@@ -310,7 +380,7 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
       if (!active) return;
       const session = await getSession(sessionId);
       if (!session) {
-        if (active) setState({ kind: 'missing' });
+        if (active) setLoadState({ kind: 'missing' });
         return;
       }
       // Bail if a sessionId change / unmount tore down this load while we
@@ -322,7 +392,7 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
       setAuthorizedInterviewId(sessionId);
       const protocol = await getProtocolByHash(session.protocolHash);
       if (!protocol) {
-        if (active) setState({ kind: 'missing' });
+        if (active) setLoadState({ kind: 'missing' });
         return;
       }
       // The launch-time sweep migrates stored protocols before routes render,
@@ -337,7 +407,7 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
         )
       ) {
         if (active) {
-          setState({ kind: 'incompatible', protocolHash: protocol.hash });
+          setLoadState({ kind: 'incompatible', protocolHash: protocol.hash });
         }
         return;
       }
@@ -377,8 +447,9 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
         stageMetadata: session.stageMetadata,
       };
       setAllowStageNavigation(settings.allowStageNavigation);
-      setState({
+      setLoadState({
         kind: 'ready',
+        sessionId,
         payload,
         resolver: makeAssetResolver(session.protocolHash, protocol.importedAt),
         reviewMode: reviewRequested,
@@ -394,7 +465,14 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
         });
       }
     };
-    void load();
+    // Fail closed: a session whose stored data cannot be read must never be
+    // replaced by one the Shell builds without it, so refuse to mount the
+    // Shell (and with it every autosave) and report the failure.
+    load().catch((cause: unknown) => {
+      if (!active) return;
+      setLoadState({ kind: 'unreadable' });
+      reportLoadFailure(cause);
+    });
     return () => {
       active = false;
     };
@@ -408,7 +486,6 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
     isLiveRoute,
   ]);
 
-  const { client: posthogClient, enabled: analyticsEnabled } = useAnalytics();
   const reviewMode = state.kind === 'ready' && state.reviewMode;
   const readOnly = state.kind === 'ready' && !state.writable;
 
@@ -519,66 +596,28 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
     );
   }
 
-  if (state.kind === 'incompatible') {
+  if (
+    state.kind === 'incompatible' ||
+    state.kind === 'missing' ||
+    state.kind === 'unreadable'
+  ) {
+    const copy = loadFailureCopy[state.kind];
     return (
-      <div className="mx-auto flex h-full max-w-lg items-center justify-center p-8">
-        <Surface
-          floating
-          spacing="lg"
-          shadow="lg"
-          className="flex flex-col items-center gap-4 text-center"
-        >
-          <Heading level="h1">
-            {intl.formatMessage(messages.interviewUnavailable)}
-          </Heading>
-          <Paragraph>
-            {intl.formatMessage(
-              migrationFailure === 'sessions'
-                ? messages.interviewsOfProtocolCouldNotBeUpdated
-                : messages.theProtocolThisInterviewUsesCouldNot,
-            )}
-          </Paragraph>
-          <Button
-            onClick={() => {
-              setAuthorizedInterviewId(null);
-              goHome();
-            }}
-          >
-            {intl.formatMessage(messages.returnHome)}
-          </Button>
-        </Surface>
-      </div>
-    );
-  }
-
-  if (state.kind === 'missing') {
-    return (
-      <div className="mx-auto flex h-full max-w-lg items-center justify-center p-8">
-        <Surface
-          floating
-          spacing="lg"
-          shadow="lg"
-          className="flex flex-col items-center gap-4 text-center"
-        >
-          <Heading level="h1">
-            {intl.formatMessage(messages.interviewNotFound)}
-          </Heading>
-          <Paragraph>
-            {intl.formatMessage(messages.thisInterviewMayHaveBeenDeletedOr)}
-          </Paragraph>
-          <Button
-            onClick={() => {
-              // Not gated (don't trap the user on an error screen), but clear
-              // the entry authorization so a transient load failure can't leave
-              // a stale id that would later skip the enter gate.
-              setAuthorizedInterviewId(null);
-              goHome();
-            }}
-          >
-            {intl.formatMessage(messages.returnHome)}
-          </Button>
-        </Surface>
-      </div>
+      <LoadFailure
+        heading={intl.formatMessage(copy.heading)}
+        body={intl.formatMessage(
+          state.kind === 'incompatible' && migrationFailure === 'sessions'
+            ? messages.interviewsOfProtocolCouldNotBeUpdated
+            : copy.body,
+        )}
+        onReturnHome={() => {
+          // Not gated (don't trap the user on an error screen), but clear the
+          // entry authorization so a transient load failure can't leave a
+          // stale id that would later skip the enter gate.
+          setAuthorizedInterviewId(null);
+          goHome();
+        }}
+      />
     );
   }
 
@@ -643,19 +682,67 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
   );
 }
 
+function LoadFailure({
+  heading,
+  body,
+  onReturnHome,
+}: {
+  heading: string;
+  body: string;
+  onReturnHome: () => void;
+}) {
+  const intl = useAppIntl();
+  return (
+    <div className="mx-auto flex h-full max-w-lg items-center justify-center p-8">
+      <Surface
+        floating
+        spacing="lg"
+        shadow="lg"
+        className="flex flex-col items-center gap-4 text-center"
+      >
+        <Heading level="h1">{heading}</Heading>
+        <Paragraph>{body}</Paragraph>
+        <Button onClick={onReturnHome}>
+          {intl.formatMessage(messages.returnHome)}
+        </Button>
+      </Surface>
+    </div>
+  );
+}
+
 // Host messages that render inside the Shell (the finish dialog's explanation,
 // the completed state's Exit) take the interview's interface language from the
 // Shell's provider; the interview never uses Interviewer's own language.
+// Interviewer's catalog for that language is loaded when the interview is (see
+// the route), so this normally renders at once; the boundary keeps a late
+// catalog from suspending the whole interview behind the Shell's loading
+// screen.
 function InterviewLanguageMessage({ message }: { message: MessageDescriptor }) {
-  const { locale, direction } = useAppLocale();
+  return (
+    <Suspense fallback={null}>
+      <InterviewLanguageMessageText message={message} />
+    </Suspense>
+  );
+}
+
+function InterviewLanguageMessageText({
+  message,
+}: {
+  message: MessageDescriptor;
+}) {
+  const { locale } = useAppLocale();
+  const catalog = useLocaleCatalog(interviewerCatalogSource, locale);
+  const direction =
+    interviewerLocales.find((entry) => entry.locale === catalog.locale)
+      ?.direction ?? 'ltr';
   return (
     <AppI18nProvider
-      locale={locale}
+      locale={catalog.locale}
       locales={interviewerLocales}
-      messages={interviewerCatalogs[locale]}
+      messages={catalog.messages}
       manageDocument={false}
     >
-      <span lang={locale} dir={direction}>
+      <span lang={catalog.locale} dir={direction}>
         <AppMessage message={message} />
       </span>
     </AppI18nProvider>

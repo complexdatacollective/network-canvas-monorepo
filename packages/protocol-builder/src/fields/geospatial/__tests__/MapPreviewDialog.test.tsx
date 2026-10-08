@@ -1,4 +1,5 @@
 import { act, screen, waitFor, within } from '@testing-library/react';
+import { Redacted } from 'effect';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -69,7 +70,7 @@ vi.mock('../../../resources/client.tsx', async (importOriginal) => {
                     descriptor: {
                       id: resourceId,
                       kind: 'apikey' as const,
-                      name: 'Mapbox Token',
+                      name: Redacted.make('Mapbox Token'),
                       status: 'committed' as const,
                     },
                   }),

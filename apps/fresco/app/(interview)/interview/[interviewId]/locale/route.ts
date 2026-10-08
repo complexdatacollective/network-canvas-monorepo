@@ -1,6 +1,7 @@
 import { after, NextResponse, type NextRequest } from 'next/server';
 import { z } from 'zod';
 
+import { CurrentProtocolSchema } from '@codaco/protocol-validation';
 import { ensureError } from '@codaco/shared-consts';
 import { prisma } from '~/lib/db';
 import { captureException, flushPostHog } from '~/lib/posthog-server';
@@ -65,7 +66,24 @@ const routeHandler = async (
 
   // The stored locale reaches every export, and this endpoint is
   // unauthenticated, so only a language the protocol declares is accepted.
-  const declared = interview.protocol.localization.locales;
+  // Read as stored, with no fallback: a protocol whose languages do not parse
+  // declares none this endpoint could accept.
+  const localization = CurrentProtocolSchema.shape.localization.safeParse(
+    interview.protocol.localization,
+  );
+  if (!localization.success) {
+    after(async () => {
+      await captureException(localization.error, {
+        context: 'interview.locale',
+      });
+      await flushPostHog();
+    });
+    return NextResponse.json(
+      { error: "The interview's protocol could not be read" },
+      { status: 500 },
+    );
+  }
+  const declared = localization.data.locales;
   if (
     !declared.includes(locale) ||
     (localePreference !== null && !declared.includes(localePreference))

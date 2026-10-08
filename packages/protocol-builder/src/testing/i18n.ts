@@ -1,7 +1,8 @@
+import { loadCatalog } from '@codaco/app-i18n/locales';
 import { createAppIntl, formatMessageError } from '@codaco/app-i18n/messages';
 import type { IntlShape, MessageDescriptor } from '@codaco/app-i18n/messages';
 
-import { protocolBuilderCatalogs } from '../locales/catalogs.ts';
+import { protocolBuilderCatalogLoaders } from '../locales/catalogs.ts';
 
 /**
  * Formatters for tests, in the two languages the package ships copy for.
@@ -14,12 +15,16 @@ import { protocolBuilderCatalogs } from '../locales/catalogs.ts';
  * preview beside an English verdict fails; and a value that is a message
  * DESCRIPTOR rather than a phrase has to be formatted before an assertion can
  * name the words a researcher reads.
+ *
+ * `esIntl` is a plain constant, not a promise: Spanish loads on demand, so the
+ * module awaits it once at evaluation and every importer — all of them tests
+ * and one story, none of them runtime code — keeps reading it synchronously.
  */
 export const enIntl: IntlShape = createAppIntl({ locale: 'en' });
 
 export const esIntl: IntlShape = createAppIntl({
   locale: 'es',
-  messages: protocolBuilderCatalogs.es,
+  messages: await loadCatalog('es', protocolBuilderCatalogLoaders),
 });
 
 /**

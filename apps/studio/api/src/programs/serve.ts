@@ -1,4 +1,4 @@
-import { Cause, Effect, Layer } from 'effect';
+import { Deferred, Effect, Layer } from 'effect';
 import { HttpRouter, HttpServer } from 'effect/http';
 
 import { createStudio, type Studio } from '../app.ts';
@@ -6,6 +6,7 @@ import { DeniedAttempts } from '../audit/denial-rate-limit.ts';
 import { AuditSignal } from '../audit/signal.ts';
 import { AuthService } from '../auth/service.ts';
 import { Database, DatabaseAbsent, ReadinessDatabase } from '../db/client.ts';
+import { UntenantedScope } from '../db/tenant.ts';
 import { type DbEnv, Environment, type StudioEnv } from '../env.ts';
 import { type HealthChecks, schemaCheck } from '../http/health.ts';
 import {
@@ -16,17 +17,26 @@ import { Routes } from '../http/router.ts';
 import { JobClock } from '../jobs/clock.ts';
 import { Jobs } from '../jobs/jobs.ts';
 import { JOB_SCHEMA } from '../jobs/queues.ts';
-import { HttpServerLive } from '../platform/http-server.ts';
-import { LoggerLive } from '../platform/logger.ts';
+import { Analytics } from '../platform/analytics.ts';
+import { BootChecks, type BootRefusal } from '../platform/boot-checks.ts';
+import {
+  HttpServerLive,
+  ServerTelemetryLive,
+} from '../platform/http-server.ts';
+import { InstallationIdentity } from '../platform/installation-identity.ts';
+import { LoggerLive, LogLevelLive } from '../platform/logger.ts';
 import { MaintenanceState } from '../platform/maintenance-state.ts';
+import { RuntimeMetricsLive } from '../platform/runtime-metrics.ts';
 import { SchemaStatus } from '../platform/schema-gate.ts';
 import { TracingLive } from '../platform/tracing.ts';
 import { WebSocketDrain } from '../platform/ws-drain.ts';
+import { Doorbell, doorbellCheck } from '../protocol-builder/doorbell.ts';
 import { RateLimiter } from '../rate-limit/limiter.ts';
 import { RateLimitStore } from '../rate-limit/store.ts';
 import type { StudioServices } from '../rpc/deps.ts';
 import { SecretsCipher } from '../secrets/services.ts';
-import { KeyringVerified, verifyKeyring } from '../secrets/verify.ts';
+import { readInstallationId } from '../setup/bootstrap.ts';
+import { ObjectStoreLive } from '../storage/live.ts';
 import { ObjectStore } from '../storage/object-store.ts';
 import { STUDIO_VERSION } from '../version.ts';
 import { reportingRefusals } from './command.ts';
@@ -38,9 +48,9 @@ import { reportingRefusals } from './command.ts';
 function Serve(studio: Studio, checks: HealthChecks) {
   const Listening = Layer.effectDiscard(
     Effect.gen(function* () {
-      const server = yield* HttpServer.HttpServer;
-      yield* Effect.log(
-        `Network Canvas Studio ${STUDIO_VERSION} listening on ${HttpServer.formatAddress(server.address)}`,
+      yield* HttpServer.HttpServer;
+      yield* Effect.log('Network Canvas Studio listening on its address').pipe(
+        Effect.annotateLogs({ version: STUDIO_VERSION }),
       );
     }),
   );
@@ -51,39 +61,18 @@ function Serve(studio: Studio, checks: HealthChecks) {
         // The default logger would print a second request log line.
         disableLogger: true,
         disableListenLog: true,
-      }),
+      }).pipe(Layer.provide(ServerTelemetryLive)),
     ),
     Layer.provideMerge(WebSocketDrain.layer),
     Layer.provideMerge(HttpServerLive),
   );
 }
 
-function BootChecks(env: StudioEnv) {
-  if (!env.devDefaults) {
-    return KeyringVerified.pipe(
-      Layer.provide(
-        Layer.effectDiscard(SchemaStatus.use((status) => status.current)),
-      ),
-    );
-  }
-  return Layer.effectDiscard(
-    Effect.forkScoped(
-      Effect.tapCause(
-        SchemaStatus.use((status) =>
-          Effect.andThen(status.current, verifyKeyring),
-        ),
-        (cause) =>
-          Cause.hasInterruptsOnly(cause)
-            ? Effect.void
-            : Effect.logError(cause).pipe(
-                Effect.andThen(Effect.sync(() => process.exit(1))),
-              ),
-      ),
-    ),
-  );
-}
-
-function withDatabase(env: StudioEnv, db: DbEnv) {
+function withDatabase(
+  env: StudioEnv,
+  db: DbEnv,
+  refusal: Deferred.Deferred<never, BootRefusal>,
+) {
   return Layer.unwrap(
     Effect.gen(function* () {
       const readiness = yield* ReadinessDatabase;
@@ -92,6 +81,7 @@ function withDatabase(env: StudioEnv, db: DbEnv) {
       const auth = yield* AuthService;
       const objectStore = yield* ObjectStore;
       const triggers = yield* MaintenanceTriggers;
+      const doorbell = yield* Doorbell;
 
       const services = yield* Effect.context<StudioServices>();
 
@@ -106,14 +96,25 @@ function withDatabase(env: StudioEnv, db: DbEnv) {
         ...studio.checks,
         schema: schemaCheck(status.read),
         maintenance: maintenanceCheck(triggers),
+        doorbell: doorbellCheck(env, doorbell),
       });
     }),
   ).pipe(
-    Layer.provide(BootChecks(env)),
+    Layer.provide(Doorbell.layer),
+    Layer.provide(
+      InstallationIdentity.resolvedBy(
+        UntenantedScope.open(readInstallationId()),
+      ),
+    ),
+    // Listening does not wait for the schema or the keyring: an upgrade starts
+    // this process before `migrate` runs, and it answers closed meanwhile.
+    // `BootChecks` runs both in the background and holds the gate closed
+    // until they pass (#1901).
     Layer.provide(MaintenanceTriggers.layer),
+    Layer.provide(BootChecks.layer(refusal)),
     Layer.provide(MaintenanceState.layer),
     Layer.provide(SchemaStatus.layer),
-    Layer.provide(ObjectStore.layer),
+    Layer.provide(ObjectStoreLive),
     Layer.provide(AuthService.layerFromEnvironment),
     // Acquired before anything that charges a limit, so it releases after the
     // listener closes.
@@ -127,6 +128,7 @@ function withDatabase(env: StudioEnv, db: DbEnv) {
     Layer.provide(Jobs.layer({ schema: JOB_SCHEMA })),
     Layer.provide(JobClock.layerApplication()),
     Layer.provide(AuditSignal.layer),
+    Layer.provide(Analytics.layerFromEnvironment),
     Layer.provideMerge(Layer.orDie(Database.layerFromEnvironment)),
   );
 }
@@ -139,11 +141,15 @@ function withoutDatabase(env: StudioEnv) {
         auth: yield* AuthService,
         objectStore: yield* ObjectStore,
       });
-      return Serve(studio, studio.checks);
+      return Serve(studio, {
+        ...studio.checks,
+        doorbell: doorbellCheck(env, yield* Doorbell),
+      });
     }),
   ).pipe(
+    Layer.provide(Doorbell.layer),
     Layer.provide(MaintenanceTriggers.layerOpen),
-    Layer.provide(ObjectStore.layer),
+    Layer.provide(ObjectStoreLive),
     Layer.provide(AuthService.layerFromEnvironment),
     Layer.provide(DeniedAttempts.layer),
     Layer.provide(RateLimiter.layer),
@@ -151,19 +157,34 @@ function withoutDatabase(env: StudioEnv) {
     Layer.provide(SecretsCipher.layerAbsent),
     Layer.provide(Jobs.layer({ schema: JOB_SCHEMA })),
     Layer.provide(AuditSignal.layer),
+    Layer.provide(Analytics.layerDisabled),
     Layer.provide(DatabaseAbsent),
   );
 }
 
-const ServeProgramLayer = Layer.unwrap(
-  Effect.gen(function* () {
-    const env = yield* Environment;
-    return env.db ? withDatabase(env, env.db) : withoutDatabase(env);
-  }),
-).pipe(
-  Layer.provide(Layer.mergeAll(LoggerLive, TracingLive('serve'))),
-  Layer.provide(Environment.layer),
-);
+const ServeProgramLayer = (refusal: Deferred.Deferred<never, BootRefusal>) =>
+  Layer.unwrap(
+    Effect.gen(function* () {
+      const env = yield* Environment;
+      return env.db ? withDatabase(env, env.db, refusal) : withoutDatabase(env);
+    }),
+  ).pipe(
+    Layer.provide(RuntimeMetricsLive),
+    Layer.provide(
+      Layer.mergeAll(LoggerLive, LogLevelLive, TracingLive('serve')),
+    ),
+    Layer.provide(Environment.layer),
+  );
 
-export const ServeProgram =
-  Layer.launch(ServeProgramLayer).pipe(reportingRefusals);
+/**
+ * Serves until interrupted, or until a boot check refuses: the server is
+ * already listening by then, so the refusal is raced against it, and losing
+ * the race shuts it down before the refusal is reported.
+ */
+export const ServeProgram = Effect.gen(function* () {
+  const refusal = yield* Deferred.make<never, BootRefusal>();
+  return yield* Effect.raceFirst(
+    Layer.launch(ServeProgramLayer(refusal)),
+    Deferred.await(refusal),
+  );
+}).pipe(reportingRefusals);

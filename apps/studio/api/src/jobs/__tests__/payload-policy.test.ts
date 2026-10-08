@@ -10,6 +10,7 @@ import {
   JOB_PAYLOAD_SCHEMAS,
   JOB_QUEUES,
   JOB_SCHEDULES,
+  JobCorrelationSchema,
   type JobQueueName,
 } from '@codaco/studio-sync/jobs';
 
@@ -91,13 +92,25 @@ describe('job payload policy', () => {
     expect(codecAdmits('sign-in-email', grown)).toBe(false);
   });
 
-  it.each(['protocol-store-gc', 'denied-attempts-summary'] as const)(
-    'admits an empty object from another realm on %s',
-    (queue) => {
-      expect(codecAdmits(queue, runInNewContext('({})'))).toBe(true);
-      expect(codecAdmits(queue, Object.create(null))).toBe(true);
-    },
-  );
+  it('admits only an empty object on the update check, as identifiers', () => {
+    expect(JOB_PAYLOAD_POLICY['update-check']).toEqual({ kind: 'identifiers' });
+    expect(codecAdmits('update-check', {})).toBe(true);
+    // Nothing the instance knows may ride a job whose worker then contacts a
+    // host outside the instance.
+    expect(codecAdmits('update-check', { instanceId: randomUUID() })).toBe(
+      false,
+    );
+    expect(codecAdmits('update-check', { version: '1.0.0' })).toBe(false);
+  });
+
+  it.each([
+    'protocol-store-gc',
+    'denied-attempts-summary',
+    'update-check',
+  ] as const)('admits an empty object from another realm on %s', (queue) => {
+    expect(codecAdmits(queue, runInNewContext('({})'))).toBe(true);
+    expect(codecAdmits(queue, Object.create(null))).toBe(true);
+  });
 
   it.each(
     QUEUE_NAMES.filter(
@@ -125,5 +138,47 @@ describe('job payload policy', () => {
     expect(codecAdmits(queue, 'not-a-payload')).toBe(false);
     expect(codecAdmits(queue, new Map())).toBe(false);
     expect(codecAdmits(queue, new Date(0))).toBe(false);
+  });
+});
+
+const TRACE_ID = '4bf92f3577b34da6a3ce929d0e0e4736';
+const SPAN_ID = '00f067aa0ba902b7';
+const TRACEPARENT = `00-${TRACE_ID}-${SPAN_ID}-01`;
+
+describe('job correlation', () => {
+  it('carries the traceparent and nothing else', () => {
+    expect(Object.keys(JobCorrelationSchema.fields)).toEqual(['traceparent']);
+    expect(admits(JobCorrelationSchema, { traceparent: TRACEPARENT })).toBe(
+      true,
+    );
+    expect(
+      admits(JobCorrelationSchema, {
+        traceparent: `00-${TRACE_ID}-${SPAN_ID}-00`,
+      }),
+    ).toBe(true);
+  });
+
+  it.each([
+    ['an extra key', { traceparent: TRACEPARENT, teamId: randomUUID() }],
+    ['a tracestate', { traceparent: TRACEPARENT, tracestate: 'vendor=value' }],
+    ['no traceparent', {}],
+    ['a bare traceparent', TRACEPARENT],
+  ])('refuses %s', (_, value) => {
+    expect(admits(JobCorrelationSchema, value)).toBe(false);
+  });
+
+  it.each([
+    ['another version', `01-${TRACE_ID}-${SPAN_ID}-01`],
+    ['a short trace id', `00-${TRACE_ID.slice(1)}-${SPAN_ID}-01`],
+    ['a short span id', `00-${TRACE_ID}-${SPAN_ID.slice(1)}-01`],
+    ['uppercase hex', `00-${TRACE_ID.toUpperCase()}-${SPAN_ID}-01`],
+    ['a zero trace id', `00-${'0'.repeat(32)}-${SPAN_ID}-01`],
+    ['a zero span id', `00-${TRACE_ID}-${'0'.repeat(16)}-01`],
+    ['no flags', `00-${TRACE_ID}-${SPAN_ID}`],
+    ['a trailing field', `${TRACEPARENT}-00`],
+    ['an address', 'researcher@example.org'],
+    ['a row id', randomUUID()],
+  ])('refuses a traceparent with %s', (_, traceparent) => {
+    expect(admits(JobCorrelationSchema, { traceparent })).toBe(false);
   });
 });

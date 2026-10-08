@@ -178,8 +178,11 @@ describe('the rpc client', () => {
       ),
     ).toEqual([
       'runtime/errors.ts',
+      'runtime/hostClient.ts',
+      'runtime/participantRuntime.ts',
       'runtime/runtime.ts',
       'test/hostHarness.ts',
+      'test/participantHarness.ts',
       'test/rpcHarness.ts',
     ]);
   });
@@ -194,17 +197,19 @@ describe('the editor’s host socket', () => {
       );
     }).map((file) => relative(SRC, file));
 
-  it('is dialled from the runtime module alone', () => {
+  it('is dialled from the host client module alone', () => {
     expect(filesWithTokens(['layerProtocolSocket'])).toEqual([
-      'runtime/runtime.ts',
+      'runtime/hostClient.ts',
     ]);
-    expect(filesWithTokens(['layerWebSocket'])).toEqual(['runtime/runtime.ts']);
+    expect(filesWithTokens(['layerWebSocket'])).toEqual([
+      'runtime/hostClient.ts',
+    ]);
   });
 
   it('never retries a transient error underneath the call waiting on it', () => {
     expect(filesWithTokens(['retryTransientErrors', ':', 'true'])).toEqual([]);
     expect(filesWithTokens(['retryTransientErrors', ':', 'false'])).toEqual([
-      'runtime/runtime.ts',
+      'runtime/hostClient.ts',
     ]);
   });
 });
@@ -214,5 +219,138 @@ describe('the oRPC stack', () => {
     expect(
       filesImporting((specifier) => specifier.startsWith('@orpc/')),
     ).toEqual([]);
+  });
+});
+
+describe('the protocol editor', () => {
+  const isAppSource = (file: string): boolean =>
+    !/(^|\/)(__tests__|test)\//.test(relative(SRC, file));
+
+  const staticImporters = (
+    matches: (file: string, specifier: string) => boolean,
+  ): string[] =>
+    FILES.filter(isAppSource)
+      .filter((file) =>
+        importClauses(read(file)).some((clause) =>
+          matches(file, clause.specifier),
+        ),
+      )
+      .map((file) => relative(SRC, file));
+
+  const ofModule = (target: string) => (file: string, specifier: string) =>
+    specifier.startsWith('.') && resolveRelative(file, specifier) === target;
+
+  it('is reached only through its lazy route', () => {
+    expect(staticImporters(ofModule('routes/Editor.tsx'))).toEqual([]);
+    expect(staticImporters(ofModule('runtime/hostSession.ts'))).toEqual([
+      'routes/Editor.tsx',
+    ]);
+    expect(staticImporters(ofModule('runtime/hostClient.ts'))).toEqual([
+      'routes/Editor.tsx',
+      'runtime/hostSession.ts',
+    ]);
+  });
+
+  it('keeps the protocol builder in the editor’s chunk', () => {
+    expect(
+      staticImporters(
+        (_file, specifier) =>
+          (specifier.startsWith('@codaco/protocol-builder') ||
+            specifier.startsWith('@codaco/protocol-validation')) &&
+          specifier !== '@codaco/protocol-builder/locales',
+      ),
+    ).toEqual(['routes/Editor.tsx', 'runtime/hostClient.ts']);
+  });
+});
+
+describe('the tab’s client session id', () => {
+  const appFilesWith = (token: string): string[] =>
+    FILES.filter(
+      (file) => !/(^|\/)(__tests__|test)\//.test(relative(SRC, file)),
+    )
+      .filter((file) =>
+        sourceTokens(read(file)).some(({ raw }) => raw === token),
+      )
+      .map((file) => relative(SRC, file));
+
+  it('is named on the host socket alone, never on a /rpc request', () => {
+    expect(appFilesWith('CLIENT_SESSION_HEADER')).toEqual([]);
+    expect(appFilesWith('CLIENT_SESSION_PARAM')).toEqual([
+      'runtime/hostClient.ts',
+    ]);
+    expect(appFilesWith('clientSessionId')).toEqual([
+      'lib/clientSession.ts',
+      'runtime/hostClient.ts',
+    ]);
+  });
+});
+
+describe('the participant runtime', () => {
+  const isAppSource = (file: string): boolean =>
+    !/(^|\/)(__tests__|test)\//.test(relative(SRC, file));
+
+  const localImports = (file: string): string[] =>
+    moduleSpecifiers(read(file))
+      .filter((specifier) => specifier.startsWith('.'))
+      .map((specifier) => resolveRelative(file, specifier));
+
+  const reachableFrom = (entries: ReadonlyArray<string>): Set<string> => {
+    const reached = new Set<string>();
+    const visit = (path: string): void => {
+      if (reached.has(path)) return;
+      reached.add(path);
+      for (const next of localImports(resolve(SRC, path))) visit(next);
+    };
+    for (const entry of entries) visit(entry);
+    return reached;
+  };
+
+  const PARTICIPANT_MODULES = FILES.filter(isAppSource)
+    .map((file) => relative(SRC, file))
+    .filter(
+      (path) =>
+        path.startsWith('participant/') ||
+        path.startsWith('runtime/participant'),
+    );
+
+  const RESEARCHER_RUNTIME = [
+    'lib/auth.ts',
+    'lib/session.ts',
+    'runtime/runtime.ts',
+    'runtime/rpc.ts',
+  ];
+
+  it('never reaches the researcher runtime from a participant module', () => {
+    const reached = reachableFrom(PARTICIPANT_MODULES);
+
+    expect(RESEARCHER_RUNTIME.filter((path) => reached.has(path))).toEqual([]);
+  });
+
+  it('is imported by participant modules alone', () => {
+    const importers = FILES.filter(isAppSource)
+      .filter((file) =>
+        localImports(file).some((path) =>
+          path.startsWith('runtime/participant'),
+        ),
+      )
+      .map((file) => relative(SRC, file));
+
+    expect(
+      importers.filter((path) => !PARTICIPANT_MODULES.includes(path)),
+    ).toEqual([]);
+  });
+
+  it('carries the session header and its cookie-free credentials alone', () => {
+    const appFilesWith = (raw: string): string[] =>
+      FILES.filter(isAppSource)
+        .filter((file) =>
+          sourceTokens(read(file)).some((token) => token.raw === raw),
+        )
+        .map((file) => relative(SRC, file));
+
+    expect(appFilesWith('PARTICIPANT_SESSION_HEADER')).toEqual([
+      'runtime/participantRuntime.ts',
+    ]);
+    expect(appFilesWith("'omit'")).toEqual(['runtime/participantRuntime.ts']);
   });
 });

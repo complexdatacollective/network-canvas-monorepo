@@ -22,3 +22,9 @@ export const asProblem =
       HttpApiSchema.status(status),
       HttpApiSchema.asJson({ contentType: 'application/problem+json' }),
     );
+
+export const MAINTENANCE_PROBLEM_TYPE =
+  'urn:networkcanvas:studio:problem:maintenance';
+
+export const AUTH_NOT_CONFIGURED_PROBLEM_TYPE =
+  'urn:networkcanvas:studio:problem:auth-not-configured';

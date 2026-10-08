@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useRouter } from '@tanstack/react-router';
+import { Redacted } from 'effect';
 import { useRef, useState } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
@@ -9,6 +10,7 @@ import { Alert } from '@codaco/fresco-ui/Alert';
 import { Badge, type BadgeProps } from '@codaco/fresco-ui/Badge';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
+import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import Form from '@codaco/fresco-ui/form/Form';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import Surface from '@codaco/fresco-ui/layout/Surface';
@@ -70,6 +72,7 @@ import { rpcKey, rpcMutation, rpcQuery } from '../runtime/rpc.ts';
 type StudyCreationAttempt = {
   teamId: TeamId;
   name: string;
+  participantAnalytics: boolean;
   studyId: StudyId;
   protocolId: ProtocolId;
   draftId: DraftId;
@@ -144,6 +147,19 @@ const messages = defineMessages({
     id: 'studio.teamStudies.nameLabel',
     defaultMessage: 'Study name',
     description: "Label of the creation form's study name field.",
+  },
+  participantAnalyticsLabel: {
+    id: 'studio.teamStudies.participantAnalyticsLabel',
+    defaultMessage: 'Collect anonymous usability analytics from participants',
+    description:
+      "Label of the creation form's switch for participant usability analytics.",
+  },
+  participantAnalyticsHint: {
+    id: 'studio.teamStudies.participantAnalyticsHint',
+    defaultMessage:
+      'Records how participants move through the interview, such as time spent on each screen. Never their answers or anything that identifies them.',
+    description:
+      "Hint under the creation form's participant analytics switch, explaining what is and is not collected.",
   },
   create: {
     id: 'studio.teamStudies.create',
@@ -246,7 +262,7 @@ export default function TeamStudies({ teamId: teamParam }: { teamId: string }) {
                     to="/study/$studyId"
                     params={{ studyId: study.id }}
                   >
-                    {study.name}
+                    {Redacted.value(study.name)}
                   </Link>
                   <div className="flex flex-wrap items-center gap-2">
                     <Badge {...stateBadge(study.state)}>
@@ -315,13 +331,18 @@ export default function TeamStudies({ teamId: teamParam }: { teamId: string }) {
               className="mt-4 max-w-xl"
               onSubmit={async (values) => {
                 const name = typeof values.name === 'string' ? values.name : '';
+                const participantAnalytics =
+                  values.participantAnalytics !== false;
                 const previous = creationAttempt.current;
                 const attempt =
-                  previous?.name === name && previous.teamId === teamId
+                  previous?.name === name &&
+                  previous.teamId === teamId &&
+                  previous.participantAnalytics === participantAnalytics
                     ? previous
                     : {
                         teamId,
                         name,
+                        participantAnalytics,
                         studyId: StudyId.make(createUuid()),
                         protocolId: ProtocolId.make(createUuid()),
                         draftId: DraftId.make(createUuid()),
@@ -365,7 +386,10 @@ export default function TeamStudies({ teamId: teamParam }: { teamId: string }) {
                   // are exactly what the procedure takes, so a retry cannot
                   // send them against a different team than the one they were
                   // minted for.
-                  const created = await createStudy.mutateAsync(attempt);
+                  const created = await createStudy.mutateAsync({
+                    ...attempt,
+                    name: Redacted.make(attempt.name),
+                  });
                   if (creationAttempt.current === attempt) {
                     creationAttempt.current = undefined;
                   }
@@ -406,6 +430,13 @@ export default function TeamStudies({ teamId: teamParam }: { teamId: string }) {
                 label={intl.formatMessage(messages.nameLabel)}
                 component={InputField}
                 required
+              />
+              <Field
+                name="participantAnalytics"
+                label={intl.formatMessage(messages.participantAnalyticsLabel)}
+                hint={intl.formatMessage(messages.participantAnalyticsHint)}
+                component={ToggleField}
+                initialValue={true}
               />
               <SubmitButton disabled={creating}>
                 {intl.formatMessage(messages.create)}

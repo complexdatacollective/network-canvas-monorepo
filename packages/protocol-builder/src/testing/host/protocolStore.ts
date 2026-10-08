@@ -1,3 +1,5 @@
+import { Redacted } from 'effect';
+
 import type {
   CodebookSubject,
   Presence,
@@ -39,14 +41,26 @@ export type SectionAtRevision = Readonly<{
 
 export type LoggedEvent = Readonly<{ cursor: string; event: ProtocolEvent }>;
 
+type StoredEvent =
+  | Exclude<ProtocolEvent, Readonly<{ type: 'revision' }>>
+  | (Omit<Extract<ProtocolEvent, Readonly<{ type: 'revision' }>>, 'document'> &
+      Readonly<{ document?: SectionDoc }>);
+
+type StoredEntry = Readonly<{ cursor: string; event: StoredEvent }>;
+
 export type SectionHolder = Readonly<{
   sectionId: ProtocolSectionId;
   holder?: Presence;
 }>;
 
+type SentSection = Readonly<{
+  document: Redacted.Redacted<SectionDoc>;
+  revision: Revision;
+}>;
+
 export type AcquireOutcome =
-  | Readonly<{ lock: 'held' } & SectionAtRevision>
-  | Readonly<{ lock: 'readOnly'; holder: Presence } & SectionAtRevision>;
+  | Readonly<{ lock: 'held' } & SentSection>
+  | Readonly<{ lock: 'readOnly'; holder: Presence } & SentSection>;
 
 export type SubmitOutcome =
   | Readonly<{ status: 'written'; revision: Revision }>
@@ -110,8 +124,8 @@ export class InMemoryProtocolStore {
   readonly #sections = new Map<ProtocolSectionId, SectionAtRevision>();
   readonly #locks = new Map<ProtocolSectionId, HostPrincipal>();
   readonly #presence = new Map<string, Presence>();
-  readonly #log: LoggedEvent[] = [];
-  readonly #watchers = new Set<EventQueue<LoggedEvent>>();
+  readonly #log: StoredEntry[] = [];
+  readonly #watchers = new Set<EventQueue<StoredEntry>>();
   readonly #nextId: () => string;
   #sequence = 0n;
   #cursor = 0;
@@ -181,7 +195,7 @@ export class InMemoryProtocolStore {
     if (owner !== undefined && owner.sessionId !== principal.sessionId) {
       const holder = this.holderOf(id);
       if (holder === undefined) throw new Error(`no holder for locked ${id}`);
-      return { lock: 'readOnly', ...state, holder };
+      return { lock: 'readOnly', ...sent(state), holder };
     }
     this.#locks.set(id, principal);
     this.#setPresence(principal, 'editing', id);
@@ -191,7 +205,7 @@ export class InMemoryProtocolStore {
       holder: this.#presence.get(principal.sessionId),
     });
     this.#publishPresence();
-    return { lock: 'held', ...state };
+    return { lock: 'held', ...sent(state) };
   }
 
   release(id: ProtocolSectionId, principal: HostPrincipal): void {
@@ -420,7 +434,7 @@ export class InMemoryProtocolStore {
     since: string | undefined,
     signal?: AbortSignal,
   ): AsyncGenerator<LoggedEvent> {
-    const queue = new EventQueue<LoggedEvent>();
+    const queue = new EventQueue<StoredEntry>();
     const stop = () => queue.close();
     signal?.addEventListener('abort', stop, { once: true });
     // Subscribed before the backlog is taken, so an event published between
@@ -627,9 +641,9 @@ export class InMemoryProtocolStore {
     return this.#sequence;
   }
 
-  #publish(event: ProtocolEvent): void {
+  #publish(event: StoredEvent): void {
     this.#cursor += 1;
-    const entry: LoggedEvent = { cursor: String(this.#cursor), event };
+    const entry: StoredEntry = { cursor: String(this.#cursor), event };
     this.#log.push(entry);
     for (const watcher of this.#watchers) watcher.push(entry);
   }
@@ -638,7 +652,7 @@ export class InMemoryProtocolStore {
     this.#publish({ type: 'presence', present: [...this.#presence.values()] });
   }
 
-  #eventsAfter(since: string | undefined): LoggedEvent[] {
+  #eventsAfter(since: string | undefined): StoredEntry[] {
     if (since === undefined) return [...this.#log];
     const after = Number(since);
     return this.#log.filter((entry) => Number(entry.cursor) > after);
@@ -652,7 +666,7 @@ export class InMemoryProtocolStore {
     return {
       sessionId: principal.sessionId,
       userId: principal.userId,
-      displayName: principal.displayName,
+      displayName: Redacted.make(principal.displayName),
       mode,
       ...(id === undefined ? {} : { sectionId: id }),
     };
@@ -750,8 +764,24 @@ function stageList(order: SectionDoc): string[] {
     : [];
 }
 
-function copyOf(entry: LoggedEvent): LoggedEvent {
-  return { cursor: entry.cursor, event: structuredClone(entry.event) };
+function sent(state: SectionAtRevision): SentSection {
+  return { document: Redacted.make(state.document), revision: state.revision };
+}
+
+function copyOf(entry: StoredEntry): LoggedEvent {
+  const { cursor, event } = entry;
+  if (event.type === 'presence') {
+    return { cursor, event: { ...event, present: [...event.present] } };
+  }
+  if (event.type === 'lock') return { cursor, event: { ...event } };
+  const { document, ...rest } = event;
+  return {
+    cursor,
+    event:
+      document === undefined
+        ? rest
+        : { ...rest, document: Redacted.make(structuredClone(document)) },
+  };
 }
 
 function codebookSectionId(subject: CodebookSubject): ProtocolSectionId {

@@ -1,15 +1,16 @@
 import { randomUUID } from 'node:crypto';
 
+import { Redacted } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { renderAuditEventDetail } from '../render.ts';
+import { renderAuditEventDetail, renderAuditEventSummary } from '../render.ts';
 import type { StoredAuditEvent } from '../store.ts';
 
 function storedEvent(details: Record<string, unknown>): StoredAuditEvent {
   return {
     id: randomUUID(),
     teamId: 'render-team',
-    teamLabel: 'Render Team',
+    teamLabel: Redacted.make('Render Team'),
     sequence: '1',
     occurredAt: new Date('2026-08-30T10:00:00.000Z'),
     eventType: 'audit.read_denied',
@@ -18,7 +19,7 @@ function storedEvent(details: Record<string, unknown>): StoredAuditEvent {
     outcome: 'denied',
     actorKind: 'user',
     actorId: 'render-user',
-    actorLabel: 'Render User',
+    actorLabel: Redacted.make('Render User'),
     subjectType: null,
     subjectId: null,
     subjectLabel: null,
@@ -26,7 +27,7 @@ function storedEvent(details: Record<string, unknown>): StoredAuditEvent {
     resourceId: null,
     resourceLabel: null,
     requestId: randomUUID(),
-    details,
+    details: Redacted.make(details),
   };
 }
 
@@ -41,7 +42,7 @@ describe('renderAuditEventDetail details allowlist', () => {
       }),
     );
 
-    expect(rendered.details).toEqual({
+    expect(Redacted.value(rendered.details)).toEqual({
       procedure: 'audit.list',
       reason: 'insufficient_permission',
     });
@@ -61,6 +62,21 @@ describe('renderAuditEventDetail details allowlist', () => {
 
     const rendered = renderAuditEventDetail(storedEvent(inherited));
 
-    expect(rendered.details).toEqual({});
+    expect(Redacted.value(rendered.details)).toEqual({});
   });
+});
+
+describe('renderAuditEventSummary', () => {
+  it.each([
+    ['category', { category: 'not_a_category' }],
+    ['outcome', { outcome: 'not_an_outcome' }],
+    ['actorKind', { actorKind: 'not_an_actor' }],
+  ] as const)(
+    'refuses a stored %s the contract does not name',
+    (_field, row) => {
+      expect(() =>
+        renderAuditEventSummary({ ...storedEvent({}), ...row }),
+      ).toThrow();
+    },
+  );
 });

@@ -120,8 +120,8 @@ const OPENERS: Record<string, { count: number; why: string }> = {
     why: 'the deployment-status read of the installation row, which belongs to no team',
   },
   [`${SERVER}/src/db/deployment-state.ts › UntenantedScope.open`]: {
-    count: 1,
-    why: '`readDeploymentState`: one untenanted row, read-only',
+    count: 2,
+    why: '`readDeploymentState` and `readLatestRelease`: the one untenanted row, read-only, as two selects so the flag read never names the release columns (#1901 R-1)',
   },
   [`${SERVER}/src/db/deployment-state.ts › MaintenanceScope.open`]: {
     count: 1,
@@ -137,8 +137,25 @@ const OPENERS: Record<string, { count: number; why: string }> = {
     why: '`studio-api migrate` applying the schema DDL as the owner; no team exists at this layer',
   },
   [`${SERVER}/src/programs/migrate.ts › OwnerScope.open`]: {
+    count: 2,
+    why: 'issuing the `/setup` bootstrap token, which only the owner may write, and reading the installation id the command’s telemetry is stamped with, read-only',
+  },
+  [`${SERVER}/src/programs/maintenance.ts › maintenance › MaintenanceScope.open`]:
+    {
+      count: 1,
+      why: 'reading the installation id the command’s telemetry is stamped with, read-only; the row belongs to no team',
+    },
+  [`${SERVER}/src/programs/rotate-secrets.ts › MaintenanceScope.open`]: {
     count: 1,
-    why: 'issuing the `/setup` bootstrap token, which only the owner may write',
+    why: 'reading the installation id the command’s telemetry is stamped with, read-only; the row belongs to no team',
+  },
+  [`${SERVER}/src/programs/serve.ts › UntenantedScope.open`]: {
+    count: 1,
+    why: 'reading the installation id the server’s telemetry is stamped with, read-only and retried until the row exists; it belongs to no team',
+  },
+  [`${SERVER}/src/programs/worker.ts › MaintenanceScope.open`]: {
+    count: 1,
+    why: 'reading the installation id the worker’s telemetry is stamped with, read-only and retried until the row exists; it belongs to no team',
   },
   [`${SERVER}/src/jobs/clock.ts › MaintenanceScope.open`]: {
     count: 1,
@@ -177,6 +194,10 @@ const OPENERS: Record<string, { count: number; why: string }> = {
       count: 4,
       why: 'the delivery state machine’s bookkeeping on `team_invitations` (attempt count, send, outcome); the invitation’s creation and cancellation are the audited acts',
     },
+  [`${SERVER}/src/jobs/handlers/update-check.ts › MaintenanceScope.open`]: {
+    count: 1,
+    why: 'the daily update check’s four touches of rows that belong to no team, through the one helper `inMaintenance`: recording the manifest on `deployment_state`, reading the installation owner’s name and address, claiming the notification for a version, and giving that claim back',
+  },
   [`${SERVER}/src/jobs/handlers/protocol-store-gc.ts › protocol.gcProtocolStore › MaintenanceScope.open`]:
     {
       count: 1,
@@ -186,6 +207,11 @@ const OPENERS: Record<string, { count: number; why: string }> = {
     {
       count: 1,
       why: 'listing one tenant’s drafts for the sweep, read-only',
+    },
+  [`${SERVER}/src/jobs/handlers/staged-resources-gc.ts › protocol.gcStagedResources › MaintenanceScope.open`]:
+    {
+      count: 1,
+      why: 'the staging collection’s cross-team tenant enumeration, read-only; its writes go through `noAuditMaintenanceTransaction`',
     },
   [`${SERVER}/src/jobs/worker.ts › JobWorker.drainOnce › MaintenanceScope.open`]:
     {
@@ -247,6 +273,25 @@ const OPENERS: Record<string, { count: number; why: string }> = {
     count: 2,
     why: '`protocols.list` and `protocols.draft`, reads (the draft read with its #1257 check in the same transaction)',
   },
+  [`${SERVER}/src/rpc/require-session.ts › TenantScope.open`]: {
+    count: 1,
+    why: 'resolving a presented participant session token to its session, read-only, before any procedure runs',
+  },
+  [`${SERVER}/src/interview/session.ts › interview.readParticipantSession › TenantScope.open`]:
+    {
+      count: 1,
+      why: '`participant.session`: reading a session and claiming it for the page that opens it, unaudited by policy',
+    },
+  [`${SERVER}/src/interview/sync.ts › interview.syncParticipantSession › TenantScope.open`]:
+    {
+      count: 1,
+      why: '`participant.sync`: one of an interview’s many writes, unaudited by policy; the session row carries its activity',
+    },
+  [`${SERVER}/src/interview/analytics.ts › interview.forwardParticipantEvents › TenantScope.open`]:
+    {
+      count: 1,
+      why: '`participant.analytics`: reading whether the session’s study allows analytics before forwarding, read-only and unaudited by policy',
+    },
   [`${SERVER}/src/rpc/handlers/studies.ts › TenantScope.open`]: {
     count: 2,
     why: '`studies.list` and `studies.counts`, reads',
@@ -261,6 +306,11 @@ const OPENERS: Record<string, { count: number; why: string }> = {
       count: 1,
       why: 'probing each membership’s team for the protocol and its draft, read-only',
     },
+  [`${SERVER}/src/protocol-builder/host.ts › protocolBuilder.authorizeCaller › TenantScope.open`]:
+    {
+      count: 1,
+      why: 'rereading the caller’s role and grants for work held in memory, read-only',
+    },
   [`${SERVER}/src/protocol-builder/host.ts › protocolBuilder.readSection › TenantScope.open`]:
     {
       count: 1,
@@ -272,8 +322,8 @@ const OPENERS: Record<string, { count: number; why: string }> = {
       why: 'the editor listing a draft’s sections, read-only',
     },
   [`${SERVER}/src/protocol-builder/handlers.ts › TenantScope.open`]: {
-    count: 1,
-    why: 'the event backlog a watch replays, read-only',
+    count: 2,
+    why: 'the event backlog a watch replays, and a resource inspection with its committed asset key, read-only',
   },
   [`${SERVER}/src/protocol-builder/handlers.ts › protocolBuilder.Submit › TenantScope.open`]:
     {
@@ -285,11 +335,6 @@ const OPENERS: Record<string, { count: number; why: string }> = {
       count: 1,
       why: 'the write receipt that answers a retried create, read-only',
     },
-  [`${SERVER}/src/protocol-builder/handlers.ts › withCommittedAssetKey › TenantScope.open`]:
-    {
-      count: 1,
-      why: 'opening a committed asset key for the editor’s preview, read-only',
-    },
   [`${SERVER}/scripts/apply-schema.ts › OwnerScope.open`]: {
     count: 1,
     why: 'the development schema script issuing the bootstrap token as the owner',
@@ -297,6 +342,10 @@ const OPENERS: Record<string, { count: number; why: string }> = {
   [`${SERVER}/scripts/seed/seed.ts › db.seed › OwnerScope.open`]: {
     count: 1,
     why: 'the development seed, populating fixtures as the owner',
+  },
+  [`${SERVER}/scripts/e2e-participant-links.ts › program › OwnerScope.open`]: {
+    count: 1,
+    why: 'the stack e2e fixture, publishing the lean protocol and creating participant links as the owner',
   },
   [`${SERVER}/scripts/protocol-demo.ts › TenantScope.open`]: {
     count: 1,

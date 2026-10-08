@@ -160,6 +160,7 @@
   "interview.interfaces.discardChanges": "捨棄變更",
   "interview.interfaces.discardChangesDescription": "此表單含有無效的資料，因此無法儲存。如果繼續，表單將會重設，您所做的變更也會遺失。要捨棄變更嗎？",
   "interview.interfaces.discardChangesTitle": "要捨棄變更嗎？",
+  "interview.interfaces.discardOvertakenEditDescription": "復原或重做在您編輯某個回答時變更了該回答，因此您的修改尚未儲存。若要保留您的修改，請再次變更該回答。如果繼續，您的修改將會遺失。",
   "interview.interfaces.dragToReposition": "拖曳以調整位置",
   "interview.interfaces.drawEdge": "繪製關係",
   "interview.interfaces.drawingControls": "繪圖控制項",

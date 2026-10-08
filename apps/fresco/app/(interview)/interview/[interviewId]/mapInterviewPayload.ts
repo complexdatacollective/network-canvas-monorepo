@@ -6,14 +6,33 @@ import {
 } from '@codaco/interview/contract';
 import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
 import { getLocaleMetadata } from '@codaco/protocol-validation';
+import { parseStoredInterviewSession } from '~/lib/db/storedInterviewSession';
+import { parseStoredProtocol } from '~/lib/db/storedProtocol';
 import type { GetInterviewByIdQuery } from '~/queries/interviews';
 
-type MappedInterview = {
-  payload: InterviewPayload;
-  assetUrls: Record<string, string>;
-  initialStep: number;
-  initialSyncRevision: number;
-};
+type MappedInterview =
+  | {
+      success: true;
+      payload: InterviewPayload;
+      assetUrls: Record<string, string>;
+      initialStep: number;
+      initialSyncRevision: number;
+    }
+  | {
+      // Nothing may start the interview. Without the participant data the
+      // client would build a network that its first sync writes over the
+      // stored one; without the protocol it would run a design other than the
+      // researcher's.
+      success: false;
+      unreadable: 'session' | 'protocol';
+      error: unknown;
+    };
+
+type ReadableInterview = Extract<MappedInterview, { success: true }>;
+
+type ViewedInterview =
+  | (ReadableInterview & { view: InterviewView })
+  | Extract<MappedInterview, { success: false }>;
 
 /**
  * How a request opens an interview, decided on the server.
@@ -46,8 +65,10 @@ export function mapInterviewForViewer(
     researcher,
     freezeCompletedInterviews,
   }: { researcher: boolean; freezeCompletedInterviews: boolean },
-): MappedInterview & { view: InterviewView } {
+): ViewedInterview {
   const mapped = mapInterviewPayload(source);
+  // Unreadable stored data opens nothing, finished or not.
+  if (!mapped.success) return mapped;
   if (source.finishTime === null) {
     return { ...mapped, view: 'active' };
   }
@@ -86,6 +107,20 @@ export function mapInterviewPayload(
     );
   }
 
+  const storedProtocol = parseStoredProtocol(protocol);
+  if (!storedProtocol.success) {
+    return {
+      success: false,
+      unreadable: 'protocol',
+      error: storedProtocol.error,
+    };
+  }
+
+  const stored = parseStoredInterviewSession(session);
+  if (!stored.success) {
+    return { success: false, unreadable: 'session', error: stored.error };
+  }
+
   const assets: ResolvedAsset[] = protocol.assets.map((a) => {
     if (!isValidAssetType(a.type)) {
       throw new Error(`Unrecognised asset type from database: "${a.type}"`);
@@ -114,16 +149,17 @@ export function mapInterviewPayload(
       finishStageId: session.finishStageId,
       exportTime: session.exportTime?.toISOString() ?? null,
       lastUpdated: session.lastUpdated.toISOString(),
-      network: session.network,
-      stageMetadata: session.stageMetadata ?? undefined,
+      network: stored.data.network,
+      stageMetadata: stored.data.stageMetadata ?? undefined,
       localePreference: session.localePreference,
       locale: session.locale,
-      localeOptions: protocol.localization.locales.map((locale) =>
+      localeOptions: storedProtocol.data.localization.locales.map((locale) =>
         getLocaleMetadata(locale),
       ),
     },
     protocol: {
       ...protocol,
+      ...storedProtocol.data,
       schemaVersion,
       hash: protocol.hash,
       description: protocol.description ?? undefined,
@@ -133,6 +169,7 @@ export function mapInterviewPayload(
   };
 
   return {
+    success: true,
     payload,
     assetUrls,
     initialStep: session.currentStep,

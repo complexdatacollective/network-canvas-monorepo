@@ -1,0 +1,5 @@
+# Artículo en Network Science: ¿qué tan estables son las redes personales con el tiempo?
+
+Cuando se entrevista a las personas sobre sus redes más de una vez, muchas de las personas que mencionan desaparecen y reaparecen entre una entrevista y otra. Este artículo se pregunta si ese cambio refleja una renovación real en la vida de las personas o es un efecto de la propia entrevista: que los participantes se basen en cómo creen que debería ser una red, o que mencionen a menos personas para acortar la entrevista.
+
+A partir de tres oleadas de un estudio de panel realizado en Chicago con hombres jóvenes que tienen relaciones sexuales con hombres, recopiladas con el sociograma táctil de Network Canvas, los autores encontraron pocos cambios en el tamaño medio de la red entre una oleada y otra. Entre la primera y la segunda oleada aparecieron cambios pequeños pero significativos, sobre todo entre las personas con las redes más grandes, y casi ninguno entre la segunda y la tercera en cuanto a tamaño, composición o densidad de la red. [Lea el artículo](https://doi.org/10.1017/nws.2019.27).

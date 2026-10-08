@@ -23,6 +23,7 @@ import type {
   ProtocolLocaleChangeHandler,
   SyncHandler,
 } from '../contract/types';
+import { interviewCatalogSource } from '../i18n/catalog';
 import Shell from '../Shell';
 import { updateStageMetadata } from '../store/modules/session';
 
@@ -179,6 +180,13 @@ function liveStore() {
   return store;
 }
 
+// Loaded before anything renders, as a host loads a language before it
+// mounts an interview, so renders in these languages are synchronous.
+beforeAll(async () => {
+  await Promise.all(
+    ['es', 'en-GB'].map((locale) => interviewCatalogSource.load(locale)),
+  );
+});
 // The built-in Next button's name, in the language of the catalog it came from.
 const nextStep = { es: 'Siguiente paso', en: 'Next Step' };
 

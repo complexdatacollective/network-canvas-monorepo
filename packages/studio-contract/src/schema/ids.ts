@@ -1,8 +1,15 @@
 import { Schema } from 'effect';
 
+const TEAM_ID_MAX_LENGTH = 255;
+
+export const PRESENTED_TOKEN_SECRET_LENGTH = 43;
+
+const PRESENTED_TOKEN_MAX_LENGTH =
+  TEAM_ID_MAX_LENGTH + 1 + PRESENTED_TOKEN_SECRET_LENGTH;
+
 export const TeamId = Schema.String.check(
   Schema.isMinLength(1),
-  Schema.isMaxLength(255),
+  Schema.isMaxLength(TEAM_ID_MAX_LENGTH),
 ).pipe(Schema.brand('TeamId'));
 export type TeamId = (typeof TeamId)['Type'];
 
@@ -50,14 +57,18 @@ export const TeamInvitationId = Schema.String.check(
 ).pipe(Schema.brand('TeamInvitationId'));
 export type TeamInvitationId = (typeof TeamInvitationId)['Type'];
 
-export const SessionToken = Schema.String.check(
-  Schema.isMinLength(16),
-  Schema.isMaxLength(255),
-).pipe(Schema.brand('SessionToken'));
+export const SessionToken = Schema.RedactedFromValue(
+  Schema.String.check(
+    Schema.isMinLength(16),
+    Schema.isMaxLength(PRESENTED_TOKEN_MAX_LENGTH),
+  ).pipe(Schema.brand('SessionToken')),
+);
 export type SessionToken = (typeof SessionToken)['Type'];
 
-export const LinkToken = Schema.String.check(
-  Schema.isMinLength(16),
-  Schema.isMaxLength(255),
-).pipe(Schema.brand('LinkToken'));
+export const LinkToken = Schema.RedactedFromValue(
+  Schema.String.check(
+    Schema.isMinLength(16),
+    Schema.isMaxLength(PRESENTED_TOKEN_MAX_LENGTH),
+  ).pipe(Schema.brand('LinkToken')),
+);
 export type LinkToken = (typeof LinkToken)['Type'];

@@ -83,6 +83,13 @@ export const interfaceMessages = defineMessages({
     description:
       'Warning when leaving a form with invalid unsaved answers. Continuing resets the form, so its unsaved changes will be lost.',
   },
+  discardOvertakenEditDescription: {
+    id: 'interview.interfaces.discardOvertakenEditDescription',
+    defaultMessage:
+      'Undo or redo changed an answer while you were editing it, so your edit has not been saved. To keep your edit, change that answer again. If you continue, your edit will be lost.',
+    description:
+      'Warning when leaving a side panel after undo or redo changed an answer the participant had edited but not yet saved. The edit stays on screen, and is saved only if the participant changes that answer again.',
+  },
   discardChanges: {
     id: 'interview.interfaces.discardChanges',
     defaultMessage: 'Discard changes',

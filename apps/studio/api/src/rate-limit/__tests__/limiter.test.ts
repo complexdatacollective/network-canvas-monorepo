@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 
 import { describe, expect, it, layer } from '@effect/vitest';
-import { Effect, Layer, Logger, Predicate } from 'effect';
+import { Effect, Layer, Logger, Predicate, References } from 'effect';
 import { TestClock } from 'effect/testing';
 
 import { freePort } from '../../__tests__/support/entrypoint.ts';
@@ -32,6 +32,8 @@ const INJECTED: RateLimitSettings = {
   public_api: { max: 10, windowMs: 60_000 },
   ws_upgrade: { max: 11, windowMs: 60_000 },
   api_docs: { max: 12, windowMs: 60_000 },
+  participant_session: { max: 13, windowMs: 60_000 },
+  participant_analytics: { max: 14, windowMs: 60_000 },
 };
 
 const limiterWith = (limits: Partial<RateLimitSettings> = {}) =>
@@ -41,9 +43,12 @@ const limiterWith = (limits: Partial<RateLimitSettings> = {}) =>
 
 function capturingLogger(lines: string[]): Layer.Layer<never> {
   return Logger.layer([
-    Logger.make(({ message }: Logger.Options<unknown>) => {
+    Logger.make(({ message, fiber }: Logger.Options<unknown>) => {
       lines.push(
-        (Array.isArray(message) ? message : [message]).map(String).join(' '),
+        [
+          ...(Array.isArray(message) ? message : [message]).map(String),
+          JSON.stringify(fiber.getRef(References.CurrentLogAnnotations)),
+        ].join(' '),
       );
     }),
   ]);
@@ -204,7 +209,7 @@ describe.skipIf(!url)('the limiter against a real store', () => {
           yield* deny;
           yield* deny;
           expect(denials()).toEqual([
-            'Rate limit reached for participant_redeem_link; callers are refused for up to 60s.',
+            'Rate limit reached; callers are refused until it resets. {"scope":"participant_redeem_link","retry_after_seconds":60}',
           ]);
 
           yield* TestClock.adjust('59 seconds');

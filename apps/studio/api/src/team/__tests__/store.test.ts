@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import { assert, layer } from '@effect/vitest';
-import { Cause, Effect, Exit } from 'effect';
+import { Cause, Effect, Exit, Redacted } from 'effect';
 import { describe } from 'vitest';
 
 import {
@@ -138,7 +138,9 @@ describe.skipIf(!testDb)('the team store’s writes', () => {
             store.createInvitation({
               id: randomUUID(),
               teamId,
-              email: `plain-${randomUUID().slice(0, 8)}@example.com`,
+              email: Redacted.make(
+                `plain-${randomUUID().slice(0, 8)}@example.com`,
+              ),
               role: 'member',
               inviterId: userId,
             }),
@@ -186,7 +188,7 @@ describe.skipIf(!testDb)('the team store’s writes', () => {
             store.createInvitation({
               id: invitationId,
               teamId,
-              email,
+              email: Redacted.make(email),
               role: 'member',
               inviterId: userId,
             }),
@@ -194,10 +196,10 @@ describe.skipIf(!testDb)('the team store’s writes', () => {
           const payload = {
             invitationId,
             teamId,
-            email,
+            email: Redacted.make(email),
             role: 'member' as const,
-            teamLabel: 'Delivery Team',
-            inviterLabel: 'Delivery Inviter',
+            teamLabel: Redacted.make('Delivery Team'),
+            inviterLabel: Redacted.make('Delivery Inviter'),
             expiresAt: invitation.expiresAt,
           };
 
@@ -216,7 +218,7 @@ describe.skipIf(!testDb)('the team store’s writes', () => {
               access,
               enqueueInvitationDelivery({
                 ...payload,
-                inviterLabel: 'Somebody Else',
+                inviterLabel: Redacted.make('Somebody Else'),
               }),
             ),
           );
@@ -243,7 +245,7 @@ describe.skipIf(!testDb)('the team store’s writes', () => {
               store.createInvitation({
                 id: invitationId,
                 teamId,
-                email,
+                email: Redacted.make(email),
                 role: 'member',
                 inviterId: userId,
               }),
@@ -251,10 +253,10 @@ describe.skipIf(!testDb)('the team store’s writes', () => {
             return {
               invitationId,
               teamId,
-              email,
+              email: Redacted.make(email),
               role: 'member' as const,
-              teamLabel: 'Guard Team',
-              inviterLabel: 'Guard Inviter',
+              teamLabel: Redacted.make('Guard Team'),
+              inviterLabel: Redacted.make('Guard Inviter'),
               expiresAt: invitation.expiresAt,
             };
           });
@@ -279,7 +281,10 @@ describe.skipIf(!testDb)('the team store’s writes', () => {
           yield* refused({ ...(yield* invite()), role: 'admin' });
 
           const recipient = yield* invite();
-          yield* refused({ ...recipient, email: `x-${recipient.email}` });
+          yield* refused({
+            ...recipient,
+            email: Redacted.make(`x-${Redacted.value(recipient.email)}`),
+          });
 
           const lifetime = yield* invite();
           yield* refused({

@@ -1,4 +1,4 @@
-import { Effect, Queue, Stream } from 'effect';
+import { Effect, Queue, Redacted, Stream } from 'effect';
 
 import { ProtocolBuilderGroup } from '@codaco/protocol-builder-core/contract';
 import {
@@ -58,7 +58,7 @@ import { WriteLedger } from './writeLedger.ts';
 
 export const ArchitectHandlers = (
   store: ArchitectStore,
-  otherTabName: string,
+  otherTabName: () => string,
 ) =>
   ProtocolBuilderGroup.toLayer(
     Effect.gen(function* () {
@@ -80,7 +80,7 @@ export const ArchitectHandlers = (
           : {
               sessionId: OTHER_TAB_SESSION,
               userId: OTHER_TAB_SESSION,
-              displayName: otherTabName,
+              displayName: Redacted.make(otherTabName()),
               mode: 'editing' as const,
             };
 
@@ -93,11 +93,21 @@ export const ArchitectHandlers = (
               return yield* new SectionNotFound({ sectionId: input.sectionId });
             }
             const holder = otherTab();
+            const document = Redacted.make(state.document);
             if (holder !== undefined) {
-              return { lock: 'readOnly' as const, ...state, holder };
+              return {
+                lock: 'readOnly' as const,
+                document,
+                revision: state.revision,
+                holder,
+              };
             }
             revisions.acquire(input.sectionId);
-            return { lock: 'held' as const, ...state };
+            return {
+              lock: 'held' as const,
+              document,
+              revision: state.revision,
+            };
           }),
 
         ReleaseLock: (input) =>
@@ -113,7 +123,10 @@ export const ArchitectHandlers = (
             if (state === undefined) {
               return yield* new SectionNotFound({ sectionId: input.sectionId });
             }
-            return state;
+            return {
+              document: Redacted.make(state.document),
+              revision: state.revision,
+            };
           }),
 
         ListSections: (input) =>
@@ -159,10 +172,11 @@ export const ArchitectHandlers = (
               });
             }
             const promotion = input.promote;
+            const document = Redacted.value(input.document);
             if (revisions.holderOf(input.sectionId) === undefined) {
               return yield* new NotLockHolder({ sectionId: input.sectionId });
             }
-            const issues = sectionShapeIssues(input.sectionId, input.document);
+            const issues = sectionShapeIssues(input.sectionId, document);
             if (issues.length > 0) {
               return yield* new InvalidShape({
                 sectionId: input.sectionId,
@@ -200,7 +214,7 @@ export const ArchitectHandlers = (
               if (planned === undefined) return;
               resources.completePromotion(planned.data.ids);
             };
-            if (contentHash(input.document) === before.revision.contentHash) {
+            if (contentHash(document) === before.revision.contentHash) {
               complete(before.revision);
               return {
                 revision: before.revision,
@@ -209,11 +223,7 @@ export const ArchitectHandlers = (
             }
             const { result } = yield* Effect.promise(() =>
               revisions.write(() =>
-                submitSection(
-                  store,
-                  parseSectionId(input.sectionId),
-                  input.document,
-                ),
+                submitSection(store, parseSectionId(input.sectionId), document),
               ),
             );
             if (result.status === 'refused') {
@@ -280,7 +290,7 @@ export const ArchitectHandlers = (
                 createSection(
                   store,
                   input.kind,
-                  input.document,
+                  Redacted.value(input.document),
                   input.position,
                 ),
               ),

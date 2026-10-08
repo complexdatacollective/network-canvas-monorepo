@@ -1,97 +1,34 @@
-import { commonCatalogs } from '@codaco/app-i18n/common';
-import { mergeCatalogs } from '@codaco/app-i18n/locales';
-import type { CatalogMessages } from '@codaco/app-i18n/locales';
-import { frescoUiCatalogs } from '@codaco/fresco-ui/locales';
-import { networkExporterCatalogs } from '@codaco/network-exporters/locales';
-import { protocolUtilitiesCatalogs } from '@codaco/protocol-utilities/locales';
-import { protocolValidationCatalogs } from '@codaco/protocol-validation/locales';
+import { commonCatalogLoaders } from '@codaco/app-i18n/common';
+import { createCatalogSource } from '@codaco/app-i18n/locales';
+import type { CatalogLoaders } from '@codaco/app-i18n/locales';
+import { frescoUiCatalogLoaders } from '@codaco/fresco-ui/locales';
+import { networkExporterCatalogLoaders } from '@codaco/network-exporters/locales';
+import { protocolUtilitiesCatalogLoaders } from '@codaco/protocol-utilities/locales';
+import { protocolValidationCatalogLoaders } from '@codaco/protocol-validation/locales';
 
-import de from './de.json';
-import enGb from './en-GB.json';
-import es from './es.json';
-import fr from './fr.json';
-import it from './it.json';
-import nl from './nl.json';
-import ptBR from './pt-BR.json';
-import zhHans from './zh-Hans.json';
-import zhHant from './zh-Hant.json';
-
-// Static imports ship every language in the precached app, including on a
-// device that has never chosen Spanish before going offline. English renders
-// descriptor defaults; en.json is the extraction artifact, not a runtime input.
-export const interviewerCatalogs: Readonly<
-  Record<string, CatalogMessages | undefined>
-> = {
-  'en-GB': mergeCatalogs(
-    commonCatalogs['en-GB'] ?? {},
-    frescoUiCatalogs['en-GB'] ?? {},
-    networkExporterCatalogs['en-GB'] ?? {},
-    protocolValidationCatalogs['en-GB'] ?? {},
-    protocolUtilitiesCatalogs['en-GB'] ?? {},
-    enGb,
-  ),
-  'es': mergeCatalogs(
-    commonCatalogs.es ?? {},
-    frescoUiCatalogs.es ?? {},
-    networkExporterCatalogs.es ?? {},
-    protocolValidationCatalogs.es ?? {},
-    protocolUtilitiesCatalogs.es ?? {},
-    es,
-  ),
-  'zh-Hans': mergeCatalogs(
-    commonCatalogs['zh-Hans'] ?? {},
-    frescoUiCatalogs['zh-Hans'] ?? {},
-    networkExporterCatalogs['zh-Hans'] ?? {},
-    protocolValidationCatalogs['zh-Hans'] ?? {},
-    protocolUtilitiesCatalogs['zh-Hans'] ?? {},
-    zhHans,
-  ),
-  'zh-Hant': mergeCatalogs(
-    commonCatalogs['zh-Hant'] ?? {},
-    frescoUiCatalogs['zh-Hant'] ?? {},
-    networkExporterCatalogs['zh-Hant'] ?? {},
-    protocolValidationCatalogs['zh-Hant'] ?? {},
-    protocolUtilitiesCatalogs['zh-Hant'] ?? {},
-    zhHant,
-  ),
-  'de': mergeCatalogs(
-    commonCatalogs.de ?? {},
-    frescoUiCatalogs.de ?? {},
-    networkExporterCatalogs.de ?? {},
-    protocolValidationCatalogs.de ?? {},
-    protocolUtilitiesCatalogs.de ?? {},
-    de,
-  ),
-  'nl': mergeCatalogs(
-    commonCatalogs.nl ?? {},
-    frescoUiCatalogs.nl ?? {},
-    networkExporterCatalogs.nl ?? {},
-    protocolValidationCatalogs.nl ?? {},
-    protocolUtilitiesCatalogs.nl ?? {},
-    nl,
-  ),
-  'pt-BR': mergeCatalogs(
-    commonCatalogs['pt-BR'] ?? {},
-    frescoUiCatalogs['pt-BR'] ?? {},
-    networkExporterCatalogs['pt-BR'] ?? {},
-    protocolValidationCatalogs['pt-BR'] ?? {},
-    protocolUtilitiesCatalogs['pt-BR'] ?? {},
-    ptBR,
-  ),
-  'it': mergeCatalogs(
-    commonCatalogs.it ?? {},
-    frescoUiCatalogs.it ?? {},
-    networkExporterCatalogs.it ?? {},
-    protocolValidationCatalogs.it ?? {},
-    protocolUtilitiesCatalogs.it ?? {},
-    it,
-  ),
-  'fr': mergeCatalogs(
-    commonCatalogs.fr ?? {},
-    frescoUiCatalogs.fr ?? {},
-    networkExporterCatalogs.fr ?? {},
-    protocolValidationCatalogs.fr ?? {},
-    protocolUtilitiesCatalogs.fr ?? {},
-    fr,
-  ),
+// English renders descriptor defaults; en.json is the extraction artifact,
+// not a runtime input.
+export const interviewerCatalogLoaders: CatalogLoaders = {
+  'en-GB': () => import('./en-GB.json'),
+  'es': () => import('./es.json'),
+  'zh-Hans': () => import('./zh-Hans.json'),
+  'zh-Hant': () => import('./zh-Hant.json'),
+  'de': () => import('./de.json'),
+  'nl': () => import('./nl.json'),
+  'pt-BR': () => import('./pt-BR.json'),
+  'it': () => import('./it.json'),
+  'fr': () => import('./fr.json'),
 };
+
+// Every language is its own chunk (vite.config.ts groups each tag's catalogs
+// from all of these packages into one), so a device downloads and parses only
+// the language it shows. The precache still holds every chunk, which is what
+// lets a device that has never chosen Spanish switch to it offline.
+export const interviewerCatalogSource = createCatalogSource(
+  commonCatalogLoaders,
+  frescoUiCatalogLoaders,
+  networkExporterCatalogLoaders,
+  protocolValidationCatalogLoaders,
+  protocolUtilitiesCatalogLoaders,
+  interviewerCatalogLoaders,
+);

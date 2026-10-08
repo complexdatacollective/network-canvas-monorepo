@@ -1,0 +1,5 @@
+# Joshua Melville obtient deux ans de financement des NIH pour assurer la maintenance de Network Canvas
+
+Le National Institute on Drug Abuse a décerné à Joshua Melville, responsable du développement de Network Canvas, une bourse NIH Research Specialist (R50) destinée aux ingénieurs logiciels de recherche. Elle finance deux ans de travail, de juillet 2026 à juin 2028, pour que Network Canvas reste maintenable, sûr et durable en tant que logiciel de science ouverte.
+
+Cette bourse s’appuie sur près d’une décennie de financement des NIH pour Network Canvas, désormais utilisé dans au moins 55 études financées par les NIH, des troubles liés à l’usage d’opioïdes aux influences sociales sur les communautés microbiennes. Pendant ces deux ans, Joshua migrera le code vers TypeScript et résorbera les principaux points de dette technique, améliorera Architect, prendra en charge les entretiens hors ligne avec l’application d’entretien web, et fera grandir la communauté autour du logiciel grâce à de nouvelles ressources de formation. [Consulter les détails du projet sur NIH RePORTER](https://reporter.nih.gov/project-details/11339209).

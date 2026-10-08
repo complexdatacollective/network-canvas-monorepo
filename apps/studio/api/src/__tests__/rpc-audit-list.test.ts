@@ -1,8 +1,13 @@
 import { randomUUID } from 'node:crypto';
 
-import { Effect, Exit, Option } from 'effect';
+import { Effect, Exit, Option, Redacted, Schema } from 'effect';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
+import {
+  AuditEventDetail,
+  AuditEventSummary,
+  AuditFilterOptions,
+} from '@codaco/studio-contract/schema/audit';
 import { AuditEventId, TeamId } from '@codaco/studio-contract/schema/ids';
 
 import { createStudio } from '../app.ts';
@@ -25,6 +30,10 @@ import {
 } from './support/rpc.ts';
 import { reachableDeniedAuditStore } from './support/valkey.ts';
 
+const encodeSummary = Schema.encodeSync(AuditEventSummary);
+const encodeDetail = Schema.encodeSync(AuditEventDetail);
+const encodeFilterOptions = Schema.encodeSync(AuditFilterOptions);
+
 const TEAM = TeamId.make(uniqueTeamId('audit-list-team'));
 const OTHER_TEAM = TeamId.make(uniqueTeamId('audit-list-other'));
 const T0 = '2026-08-30T10:00:00.000Z';
@@ -37,9 +46,9 @@ function principal(userId: string, name: string): SessionPrincipal {
   return {
     kind: 'user',
     userId,
-    email: `${userId}@example.com`,
+    email: Redacted.make(`${userId}@example.com`),
     emailVerified: true,
-    name,
+    name: Redacted.make(name),
     locale: null,
     sessionId: `${userId}-session`,
   };
@@ -180,7 +189,7 @@ describe.skipIf(!testDb)('audit list/get RPC', () => {
       await query(
         `INSERT INTO "user" (id, name, email, "emailVerified")
          VALUES ($1, $2, $3, true)`,
-        [seat.userId, seat.name, seat.email],
+        [seat.userId, Redacted.value(seat.name), Redacted.value(seat.email)],
       );
       await query(
         `INSERT INTO team_members (id, team_id, user_id, role)
@@ -340,7 +349,7 @@ describe.skipIf(!testDb)('audit list/get RPC', () => {
     });
 
     const cancelled = page.items[1];
-    expect(cancelled).toMatchObject({
+    expect(cancelled && encodeSummary(cancelled)).toMatchObject({
       title: 'Invitation cancelled',
       rendered: true,
       eventVersion: 2,
@@ -492,7 +501,7 @@ describe.skipIf(!testDb)('audit list/get RPC', () => {
         eventId: eventId(1),
       }),
     );
-    expect(roleChange).toMatchObject({
+    expect(encodeDetail(roleChange)).toMatchObject({
       title: 'Member role changed',
       rendered: true,
       teamLabel: TEAM,
@@ -507,7 +516,9 @@ describe.skipIf(!testDb)('audit list/get RPC', () => {
         eventId: eventId(5),
       }),
     );
-    expect(cancelledV2.details).toEqual({ roles: ['admin', 'member'] });
+    expect(Redacted.value(cancelledV2.details)).toEqual({
+      roles: ['admin', 'member'],
+    });
 
     // Unknown pairs disclose nothing beyond the machine identity.
     const future = await client.call(
@@ -516,7 +527,10 @@ describe.skipIf(!testDb)('audit list/get RPC', () => {
         eventId: eventId(6),
       }),
     );
-    expect(future).toMatchObject({ rendered: false, details: {} });
+    expect(encodeDetail(future)).toMatchObject({
+      rendered: false,
+      details: {},
+    });
   });
 
   it('works for admins and denies members with a committed denial event', async () => {
@@ -606,7 +620,8 @@ describe.skipIf(!testDb)('audit list/get RPC', () => {
     expect(systemOnly.items.map((item) => item.sequence)).toEqual([
       String(systemSequence),
     ]);
-    expect(systemOnly.items[0]?.actor).toEqual({
+    const systemRow = systemOnly.items[0];
+    expect(systemRow && encodeSummary(systemRow).actor).toEqual({
       kind: 'system',
       id: null,
       label: 'Studio',
@@ -671,12 +686,13 @@ describe.skipIf(!testDb)('audit list/get RPC', () => {
       eventType: 'audit.future_event',
       title: 'audit.future_event',
     });
-    expect(options.actors).toContainEqual({
+    const actors = encodeFilterOptions(options).actors;
+    expect(actors).toContainEqual({
       kind: 'user',
       id: 'future-actor',
       label: 'Future Actor',
     });
-    expect(options.actors).toContainEqual({
+    expect(actors).toContainEqual({
       kind: 'system',
       id: null,
       label: 'Studio',
@@ -769,7 +785,11 @@ describe.skipIf(!testDb)('audit list/get RPC', () => {
     await query(
       `INSERT INTO "user" (id, name, email, "emailVerified")
        VALUES ($1, $2, $3, true)`,
-      [demoted.userId, demoted.name, demoted.email],
+      [
+        demoted.userId,
+        Redacted.value(demoted.name),
+        Redacted.value(demoted.email),
+      ],
     );
     await query(
       `INSERT INTO team_members (id, team_id, user_id, role)
@@ -841,7 +861,11 @@ describe.skipIf(!testDb)('audit list/get RPC', () => {
     await query(
       `INSERT INTO "user" (id, name, email, "emailVerified")
        VALUES ($1, $2, $3, true)`,
-      [promoted.userId, promoted.name, promoted.email],
+      [
+        promoted.userId,
+        Redacted.value(promoted.name),
+        Redacted.value(promoted.email),
+      ],
     );
     await query(
       `INSERT INTO team_members (id, team_id, user_id, role)
@@ -913,7 +937,11 @@ describe.skipIf(!testDb)('audit list/get RPC', () => {
     await query(
       `INSERT INTO "user" (id, name, email, "emailVerified")
        VALUES ($1, $2, $3, true)`,
-      [unrecorded.userId, unrecorded.name, unrecorded.email],
+      [
+        unrecorded.userId,
+        Redacted.value(unrecorded.name),
+        Redacted.value(unrecorded.email),
+      ],
     );
     await query(
       `INSERT INTO team_members (id, team_id, user_id, role)
@@ -974,10 +1002,8 @@ describe.skipIf(!testDb)('audit list/get RPC', () => {
       teamId: TEAM,
       actorId: unrecorded.userId,
       requestId: expect.any(String),
-      // The failure the DATABASE reported, not the wrapper's: `@effect/sql-pg`'s
-      // own message is always `PgConnection: Query failed`.
-      causeName: 'effect/sql/SqlError',
-      causeMessage: expect.stringContaining('audit read denial rejected'),
+      error_type: 'SqlError',
+      sql_state: expect.stringMatching(/^[0-9A-Z]{5}$/),
     });
 
     // The signal exists precisely because nothing was recorded.
@@ -990,13 +1016,79 @@ describe.skipIf(!testDb)('audit list/get RPC', () => {
   });
 
   it.skipIf(!limiterStore)(
+    'suppresses a denial past the window without reporting it lost',
+    async () => {
+      const demoted = principal(`audit-spent-${randomUUID()}`, 'Audit Spent');
+      await query(
+        `INSERT INTO "user" (id, name, email, "emailVerified")
+         VALUES ($1, $2, $3, true)`,
+        [
+          demoted.userId,
+          Redacted.value(demoted.name),
+          Redacted.value(demoted.email),
+        ],
+      );
+      await query(
+        `INSERT INTO team_members (id, team_id, user_id, role)
+         VALUES ($1, $2, $3, 'member')`,
+        [`${demoted.userId}-member`, TEAM, demoted.userId],
+      );
+      const demotedClient = await createRpcClient(
+        createStudio(readEnv(), {
+          auth: authServiceStub({
+            getSession: () => Effect.succeedSome(demoted),
+            getMembership: () => Effect.succeedSome({ role: 'owner' }),
+          }),
+          services: database.services,
+        }),
+      );
+      extraClients.push(demotedClient);
+
+      const warning = vi
+        .spyOn(process, 'emitWarning')
+        .mockImplementation(() => undefined);
+      let calls: (typeof warning)['mock']['calls'];
+      try {
+        for (let attempt = 0; attempt < 6; attempt += 1) {
+          await expectRpcFailure(
+            demotedClient.callExit(
+              demotedClient.rpc('audit.list', { teamId: TEAM }),
+            ),
+            'Forbidden',
+          );
+        }
+        calls = [...warning.mock.calls];
+      } finally {
+        warning.mockRestore();
+      }
+
+      expect(
+        await query(
+          `SELECT id FROM audit_events
+           WHERE team_id = $1 AND actor_id = $2
+             AND event_type = 'audit.read_denied'`,
+          [TEAM, demoted.userId],
+        ),
+      ).toHaveLength(5);
+      expect(
+        calls.filter(
+          ([, options]) =>
+            typeof options === 'object' &&
+            options !== null &&
+            Reflect.get(options, 'code') === 'STUDIO_AUDIT_DENIAL_EVENT_LOST',
+        ),
+      ).toEqual([]);
+    },
+  );
+
+  it.skipIf(!limiterStore)(
     'spends the denial window only on denial events that committed',
     async () => {
       const lost = principal(`audit-window-${randomUUID()}`, 'Audit Window');
       await query(
         `INSERT INTO "user" (id, name, email, "emailVerified")
          VALUES ($1, $2, $3, true)`,
-        [lost.userId, lost.name, lost.email],
+        [lost.userId, Redacted.value(lost.name), Redacted.value(lost.email)],
       );
       await query(
         `INSERT INTO team_members (id, team_id, user_id, role)

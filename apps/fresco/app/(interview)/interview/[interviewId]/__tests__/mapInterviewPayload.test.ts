@@ -14,12 +14,20 @@ import {
   mapInterviewPayload,
 } from '../mapInterviewPayload';
 
+type Source = NonNullable<GetInterviewByIdQuery>;
+type StoredProtocol = Partial<
+  Pick<Source['protocol'], 'stages' | 'codebook' | 'experiments'>
+>;
+
 /**
- * A minimal interview row shaped exactly as `getInterviewById` returns it
- * (JSON columns already parsed by the Prisma result extension), parameterised
- * by the protocol's persisted schema version.
+ * A minimal interview row shaped exactly as `getInterviewById` returns it, with
+ * every JSON column (the interview's and its protocol's) exactly as stored.
  */
-function makeSource(schemaVersion: number): NonNullable<GetInterviewByIdQuery> {
+function makeSource(
+  schemaVersion: number,
+  stored: Partial<Pick<Source, 'network' | 'stageMetadata'>> = {},
+  storedProtocol: StoredProtocol = {},
+): Source {
   return {
     id: 'interview-1',
     startTime: new Date('2026-01-01T00:00:00.000Z'),
@@ -55,13 +63,21 @@ function makeSource(schemaVersion: number): NonNullable<GetInterviewByIdQuery> {
       originalFileKey: null,
       originalFileUrl: null,
       assets: [],
+      ...storedProtocol,
     },
+    ...stored,
   };
+}
+
+function mapReady(source: Source) {
+  const result = mapInterviewPayload(source);
+  if (!result.success) throw new Error('Expected a readable interview');
+  return result;
 }
 
 describe('mapInterviewPayload', () => {
   it('stamps the payload with the protocol row’s own schema version', () => {
-    const { payload, initialStep } = mapInterviewPayload(
+    const { payload, initialStep } = mapReady(
       makeSource(COMPATIBLE_PROTOCOL_SCHEMA_VERSION),
     );
 
@@ -75,7 +91,7 @@ describe('mapInterviewPayload', () => {
   it('carries the row’s stored sync revision through, so writes are numbered from it', () => {
     // Numbering from zero instead would make every write a reloaded tab makes
     // older than what is stored, and the endpoint would discard all of them.
-    const { initialSyncRevision } = mapInterviewPayload(
+    const { initialSyncRevision } = mapReady(
       makeSource(COMPATIBLE_PROTOCOL_SCHEMA_VERSION),
     );
 
@@ -84,7 +100,7 @@ describe('mapInterviewPayload', () => {
 
   it('offers every declared locale, with its text direction', () => {
     const source = makeSource(COMPATIBLE_PROTOCOL_SCHEMA_VERSION);
-    const { payload } = mapInterviewPayload({
+    const { payload } = mapReady({
       ...source,
       protocol: {
         ...source.protocol,
@@ -105,7 +121,7 @@ describe('mapInterviewPayload', () => {
 
   it('carries the stored locale fields into the session', () => {
     const source = makeSource(COMPATIBLE_PROTOCOL_SCHEMA_VERSION);
-    const { payload } = mapInterviewPayload({
+    const { payload } = mapReady({
       ...source,
       localePreference: 'fr',
       locale: 'en',
@@ -117,7 +133,7 @@ describe('mapInterviewPayload', () => {
 
   it('carries a finished interview’s finish stage into the session', () => {
     const source = makeSource(COMPATIBLE_PROTOCOL_SCHEMA_VERSION);
-    const { payload } = mapInterviewPayload({
+    const { payload } = mapReady({
       ...source,
       finishTime: new Date('2026-01-03T00:00:00.000Z'),
       finishStageId: 'finish-ineligible',
@@ -130,7 +146,7 @@ describe('mapInterviewPayload', () => {
 
   it('leaves the finish stage null for an interview finished before one was recorded', () => {
     const source = makeSource(COMPATIBLE_PROTOCOL_SCHEMA_VERSION);
-    const { payload } = mapInterviewPayload({
+    const { payload } = mapReady({
       ...source,
       finishTime: new Date('2026-01-03T00:00:00.000Z'),
     });
@@ -155,6 +171,143 @@ describe('mapInterviewPayload', () => {
     ).toThrow(/must be migrated/);
   });
 
+  describe('stored participant data', () => {
+    // Still holds the participant's answers, but no longer parses: a node
+    // attribute holding a nested object.
+    const unreadableNetwork = {
+      nodes: [
+        {
+          _uid: 'node-1',
+          type: 'person',
+          attributes: { name: 'Ada', invalid: { nested: 'value' } },
+        },
+      ],
+      edges: [],
+      ego: { _uid: 'ego-1', attributes: {} },
+    };
+
+    it('refuses to start from a stored network it cannot read, rather than from an empty one', () => {
+      const result = mapInterviewPayload(
+        makeSource(COMPATIBLE_PROTOCOL_SCHEMA_VERSION, {
+          network: unreadableNetwork,
+        }),
+      );
+
+      expect(result).toMatchObject({ success: false, unreadable: 'session' });
+      expect(result).not.toHaveProperty('payload');
+    });
+
+    it('refuses to start from stored stage metadata it cannot read', () => {
+      const result = mapInterviewPayload(
+        makeSource(COMPATIBLE_PROTOCOL_SCHEMA_VERSION, {
+          stageMetadata: { 'stage-1': 'not a list of answers' },
+        }),
+      );
+
+      expect(result).toMatchObject({ success: false, unreadable: 'session' });
+      expect(result).not.toHaveProperty('payload');
+    });
+
+    it('refuses a stored network that is missing altogether', () => {
+      const result = mapInterviewPayload(
+        makeSource(COMPATIBLE_PROTOCOL_SCHEMA_VERSION, { network: null }),
+      );
+
+      expect(result).toMatchObject({ success: false, unreadable: 'session' });
+    });
+
+    it('hands the client the stored network and stage metadata it read', () => {
+      const network = {
+        nodes: [
+          { _uid: 'node-1', type: 'person', attributes: { name: 'Ada' } },
+        ],
+        edges: [],
+        ego: { _uid: 'ego-1', attributes: { age: 42 } },
+      };
+      const stageMetadata = { 'stage-1': [[0, 'node-1', 'node-2', false]] };
+
+      const { payload } = mapReady(
+        makeSource(COMPATIBLE_PROTOCOL_SCHEMA_VERSION, {
+          network,
+          stageMetadata,
+        }),
+      );
+
+      expect(payload.session.network).toEqual(network);
+      expect(payload.session.stageMetadata).toEqual(stageMetadata);
+    });
+
+    it('starts without stage metadata when none is stored', () => {
+      const { payload } = mapReady(
+        makeSource(COMPATIBLE_PROTOCOL_SCHEMA_VERSION, { stageMetadata: null }),
+      );
+
+      expect(payload.session.stageMetadata).toBeUndefined();
+    });
+  });
+
+  describe('stored protocol', () => {
+    // Each of these still holds the researcher's design, but no longer parses.
+    // An interview run against an empty stand-in for it would collect nothing,
+    // and the participant could finish it believing they had taken part.
+    it.each<[string, StoredProtocol]>([
+      ['stages', { stages: [{ id: 'stage-1', type: 'NotAnInterface' }] }],
+      ['codebook', { codebook: { node: { person: 'not an entity type' } } }],
+      ['experiments', { experiments: { notAnExperiment: true } }],
+    ])(
+      'refuses to start from %s it cannot read, rather than from an empty stand-in',
+      (_field, storedProtocol) => {
+        const result = mapInterviewPayload(
+          makeSource(COMPATIBLE_PROTOCOL_SCHEMA_VERSION, {}, storedProtocol),
+        );
+
+        expect(result).toMatchObject({
+          success: false,
+          unreadable: 'protocol',
+        });
+        expect(result).not.toHaveProperty('payload');
+      },
+    );
+
+    it('refuses a protocol whose stages are missing altogether', () => {
+      const result = mapInterviewPayload(
+        makeSource(COMPATIBLE_PROTOCOL_SCHEMA_VERSION, {}, { stages: null }),
+      );
+
+      expect(result).toMatchObject({ success: false, unreadable: 'protocol' });
+    });
+
+    it('hands the client the protocol it read', () => {
+      const codebook = { node: {}, edge: {}, ego: { variables: {} } };
+      // Schema 9 declares no experiments; the setting is kept, empty.
+      const experiments = {};
+
+      const { payload } = mapReady(
+        makeSource(
+          COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
+          {},
+          { stages: [], codebook, experiments },
+        ),
+      );
+
+      expect(payload.protocol.stages).toEqual([]);
+      expect(payload.protocol.codebook).toEqual(codebook);
+      expect(payload.protocol.experiments).toEqual(experiments);
+    });
+
+    it('reads a protocol that stores no experiments as having none enabled', () => {
+      const { payload } = mapReady(
+        makeSource(
+          COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
+          {},
+          { experiments: null },
+        ),
+      );
+
+      expect(payload.protocol.experiments).toEqual({});
+    });
+  });
+
   it.each([
     {
       label: 'the encryption header and IV-only values',
@@ -165,10 +318,9 @@ describe('mapInterviewPayload', () => {
       stored: schema8EncryptedNetwork,
     },
   ])('hands the interview a network with $label unchanged', ({ stored }) => {
-    const { payload } = mapInterviewPayload({
-      ...makeSource(COMPATIBLE_PROTOCOL_SCHEMA_VERSION),
-      network: stored,
-    });
+    const { payload } = mapReady(
+      makeSource(COMPATIBLE_PROTOCOL_SCHEMA_VERSION, { network: stored }),
+    );
 
     expect(payload.session.network).toStrictEqual(stored);
   });
@@ -218,6 +370,15 @@ function makeFinishedSource(): NonNullable<GetInterviewByIdQuery> {
   };
 }
 
+function viewReady(
+  source: Source,
+  viewer: Parameters<typeof mapInterviewForViewer>[1],
+) {
+  const result = mapInterviewForViewer(source, viewer);
+  if (!result.success) throw new Error('Expected a readable interview');
+  return result;
+}
+
 const ANSWER_MARKERS = [
   'node-answer-1',
   'node-answer-2',
@@ -237,7 +398,7 @@ describe('mapInterviewForViewer', () => {
   ])(
     'sends a finished interview with no answers when researcher=$researcher and freezing=$freezeCompletedInterviews',
     (viewer) => {
-      const result = mapInterviewForViewer(makeFinishedSource(), viewer);
+      const result = viewReady(makeFinishedSource(), viewer);
 
       // Serialised as the page hands it to the browser.
       const sent = JSON.stringify(SuperJSON.serialize(result));
@@ -265,7 +426,7 @@ describe('mapInterviewForViewer', () => {
 
   it('sends a researcher the whole finished interview to change while freezing is off', () => {
     const source = makeFinishedSource();
-    const result = mapInterviewForViewer(source, {
+    const result = viewReady(source, {
       researcher: true,
       freezeCompletedInterviews: false,
     });
@@ -286,13 +447,29 @@ describe('mapInterviewForViewer', () => {
     'sends an unfinished interview whole when researcher=$researcher and freezing=$freezeCompletedInterviews',
     (viewer) => {
       const source = { ...makeFinishedSource(), finishTime: null };
-      const result = mapInterviewForViewer(source, viewer);
+      const result = viewReady(source, viewer);
 
       expect(result.view).toBe('active');
       expect(result.payload.session.network).toStrictEqual(source.network);
       expect(result.payload.session.stageMetadata).toStrictEqual(
         source.stageMetadata,
       );
+    },
+  );
+
+  it.each([
+    { researcher: false, freezeCompletedInterviews: true },
+    { researcher: true, freezeCompletedInterviews: false },
+  ])(
+    'opens no view of a finished interview whose answers cannot be read when researcher=$researcher and freezing=$freezeCompletedInterviews',
+    (viewer) => {
+      const result = mapInterviewForViewer(
+        { ...makeFinishedSource(), network: { nodes: 'unreadable' } },
+        viewer,
+      );
+
+      expect(result).toMatchObject({ success: false, unreadable: 'session' });
+      expect(result).not.toHaveProperty('payload');
     },
   );
 });

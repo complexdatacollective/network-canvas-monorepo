@@ -1,5 +1,9 @@
 // @vitest-environment jsdom
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import {
+  QueryClient,
+  QueryClientProvider,
+  QueryObserver,
+} from '@tanstack/react-query';
 import { createMemoryHistory, RouterProvider } from '@tanstack/react-router';
 import {
   act,
@@ -8,9 +12,10 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
-import { Effect } from 'effect';
+import { Effect, Redacted } from 'effect';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { Maintenance } from '@codaco/studio-contract/schema/errors';
 import {
   DraftId,
   ProtocolId,
@@ -21,7 +26,7 @@ import type { InstanceStatus } from '@codaco/studio-contract/schema/status';
 import { unclassifiedSurfacePaths } from '@codaco/studio-contract/surfaces';
 
 import { createAppRouter } from '../../router.tsx';
-import { installRpcHarness } from '../../test/rpcHarness.ts';
+import { installRpcHarness, type RpcHarness } from '../../test/rpcHarness.ts';
 
 /**
  * §5.2's route table, asserted by rendering it.
@@ -57,7 +62,7 @@ const DRAFT_ID = '4d0f5f2e-0000-4000-8000-000000000005';
 
 const STUDY = {
   id: StudyId.make(STUDY_ID),
-  name: 'Shell proof',
+  name: Redacted.make('Shell proof'),
   state: 'draft',
   participationMode: 'managed',
   protocolId: ProtocolId.make(PROTOCOL_ID),
@@ -68,7 +73,7 @@ const STUDY = {
 
 const SIBLING_STUDY = {
   id: StudyId.make(SIBLING_STUDY_ID),
-  name: 'Second study',
+  name: Redacted.make('Second study'),
   state: 'live',
   participationMode: 'managed',
   protocolId: ProtocolId.make(SIBLING_PROTOCOL_ID),
@@ -80,7 +85,7 @@ const SIBLING_STUDY = {
 const PROTOCOL = {
   id: ProtocolId.make(PROTOCOL_ID),
   draftId: DraftId.make(DRAFT_ID),
-  name: 'Shell proof',
+  name: Redacted.make('Shell proof'),
   createdAt: new Date('2026-08-28T00:00:00Z'),
   updatedAt: new Date('2026-08-28T00:00:00Z'),
 } as const;
@@ -167,20 +172,24 @@ const DESTINATIONS: Destination[] = [
   { path: '/no-team', url: '/no-team', heading: 'No team yet', teamless: true },
 
   // Participant
-  { path: '/enter/$token', url: '/enter/token-1', heading: 'Welcome' },
   {
-    path: '/enter/$token/consent',
-    url: '/enter/token-1/consent',
+    path: '/enter/$token',
+    url: '/enter/token-1',
+    heading: "This link doesn't work",
+  },
+  {
+    path: '/session/$sessionToken',
+    url: '/session/token-1',
+    heading: 'This interview has ended',
+  },
+  {
+    path: '/session/$sessionToken/consent',
+    url: '/session/token-1/consent',
     heading: 'Consent',
   },
   {
-    path: '/enter/$token/interview',
-    url: '/enter/token-1/interview',
-    heading: 'Interview',
-  },
-  {
-    path: '/enter/$token/complete',
-    url: '/enter/token-1/complete',
+    path: '/session/$sessionToken/complete',
+    url: '/session/token-1/complete',
     heading: 'Interview complete',
   },
 
@@ -320,8 +329,10 @@ const DESTINATIONS: Destination[] = [
   },
 ];
 
+let queryClient: QueryClient;
+
 function renderAt(url: string) {
-  const queryClient = new QueryClient({
+  queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
   const router = createAppRouter(
@@ -436,6 +447,8 @@ function menuDestinations(
 // which for the one-team fixture below is that team's studies.
 const HEADER = ['/team/$teamId', '/gallery', '/templates'];
 
+let harness: RpcHarness;
+
 beforeEach(() => {
   fixtures.deployment = { mode: 'managed', billing: false };
   fixtures.setup = { required: true };
@@ -444,7 +457,7 @@ beforeEach(() => {
     data: { user: {}, session: { activeOrganizationId: fixtures.TEAM.id } },
     error: null,
   });
-  installRpcHarness({
+  harness = installRpcHarness({
     'status': () =>
       Effect.succeed({
         name: 'Network Canvas Studio',
@@ -461,9 +474,9 @@ beforeEach(() => {
     'me': () =>
       Effect.succeed({
         userId: 'user-1',
-        email: 'researcher@example.org',
+        email: Redacted.make('researcher@example.org'),
         emailVerified: true,
-        name: 'Researcher',
+        name: Redacted.make('Researcher'),
         locale: null,
         teams: [{ teamId: TeamId.make(fixtures.TEAM.id), role: 'owner' }],
       }),
@@ -486,12 +499,12 @@ beforeEach(() => {
         protocol: PROTOCOL,
         revision: { sequence: '1', hash: 'revision-1' },
         sections: {
-          settings: {
-            name: PROTOCOL.name,
+          settings: Redacted.make({
+            name: Redacted.value(PROTOCOL.name),
             schemaVersion: 9,
             localization: { defaultLocale: 'en-US', locales: ['en-US'] },
-          },
-          stageOrder: { stages: [] },
+          }),
+          stageOrder: Redacted.make({ stages: [] }),
         },
       }),
     'audit.list': () => Effect.succeed({ items: [], nextCursor: null }),
@@ -510,6 +523,8 @@ beforeEach(() => {
  * it is a screen on an instance nobody owns and gone the moment somebody does
  * (#1909). Both halves are the guard's, so both are asserted here.
  */
+await import('../Editor.tsx');
+
 describe('first-run setup', () => {
   // A self-hosted instance throughout: `/setup` is classified self-host-only,
   // so on the managed service the topology guard refuses it before the setup
@@ -554,6 +569,52 @@ describe('first-run setup', () => {
       'href',
       '/sign-in',
     );
+  });
+});
+
+describe('an address naming an id the contract refuses', () => {
+  it.each([
+    ['/study/not-a-study/editor'],
+    ['/study/not-a-study/participants'],
+    [`/team/${'t'.repeat(256)}/activity`],
+  ])(
+    'is a not-found screen at %s, and asks the server nothing about it',
+    async (url) => {
+      renderAt(url);
+
+      expect(
+        await screen.findByRole('heading', {
+          level: 1,
+          name: 'Page not available',
+        }),
+      ).toBeInTheDocument();
+      const addressed = harness.calls.filter(({ tag }) =>
+        ['studies.get', 'studies.counts', 'audit.list'].includes(tag),
+      );
+      expect(addressed).toEqual([]);
+    },
+  );
+});
+
+describe('a read refused for maintenance', () => {
+  it('is explained above every screen of the app shell', async () => {
+    renderAt('/team/team-a');
+    await screen.findByRole('heading', { level: 1, name: 'Studies' });
+    expect(screen.queryByText(/down for maintenance/)).toBeNull();
+
+    const refused = new QueryObserver(queryClient, {
+      queryKey: ['refused-for-maintenance'],
+      queryFn: () => Promise.reject(new Maintenance({})),
+    });
+    const stop = refused.subscribe(() => undefined);
+
+    const notice = await screen.findByText(/Studio is down for maintenance/);
+    expect(notice.closest('main')).toBeNull();
+
+    act(() => stop());
+    await waitFor(() => {
+      expect(screen.queryByText(/down for maintenance/)).toBeNull();
+    });
   });
 });
 

@@ -5,16 +5,19 @@ import {
   DecimalSequence,
   NonBlankString,
   NonNegativeInt,
+  PrivateString,
 } from './primitives.ts';
 import { problemFields } from './problem.ts';
 import { TeamScoped } from './team.ts';
 
-export const ProtocolName = NonBlankString(320, 'Protocol name');
+export const ProtocolName = Schema.RedactedFromValue(
+  NonBlankString(320, 'Protocol name'),
+);
 
 export const ProtocolSummary = Schema.Struct({
   id: ProtocolId,
   draftId: Schema.NullOr(DraftId),
-  name: Schema.String,
+  name: PrivateString,
   createdAt: Schema.Date,
   updatedAt: Schema.Date,
 });
@@ -31,7 +34,9 @@ export const CreateProtocolResult = Schema.Struct({
   draftId: DraftId,
 });
 
-export const SectionDocument = Schema.Record(Schema.String, Schema.Unknown);
+export const SectionDocument = Schema.RedactedFromValue(
+  Schema.Record(Schema.String, Schema.Unknown),
+);
 
 export const ProtocolDraftInput = Schema.Struct({
   ...TeamScoped.fields,

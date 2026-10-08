@@ -8,7 +8,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
-import { Effect } from 'effect';
+import { Effect, Redacted } from 'effect';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { SuccessOf } from '@codaco/effect-query/types';
@@ -37,7 +37,7 @@ const STUDY_2_ID = '4d0f5f2e-0000-4000-8000-000000000002';
 const STUDY_1: StudyFixture = {
   summary: {
     id: StudyId.make(STUDY_1_ID),
-    name: 'Wave one pilot',
+    name: Redacted.make('Wave one pilot'),
     state: 'live',
     participationMode: 'managed',
     protocolId: ProtocolId.make('4d0f5f2e-0000-4000-8000-000000000003'),
@@ -51,7 +51,7 @@ const STUDY_1: StudyFixture = {
 const STUDY_2: StudyFixture = {
   summary: {
     id: StudyId.make(STUDY_2_ID),
-    name: 'Methods comparison',
+    name: Redacted.make('Methods comparison'),
     state: 'draft',
     participationMode: 'anonymous',
     protocolId: null,
@@ -212,9 +212,9 @@ beforeEach(() => {
     'me': () =>
       Effect.succeed({
         userId: 'user-1',
-        email: 'researcher@example.org',
+        email: Redacted.make('researcher@example.org'),
         emailVerified: true,
-        name: 'Researcher',
+        name: Redacted.make('Researcher'),
         locale: null,
         teams: [
           { teamId: TeamId.make(fixtures.TEAM_A.id), role: 'owner' },

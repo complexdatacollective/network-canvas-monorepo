@@ -5,7 +5,6 @@ import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPa
 
 import StageEditor from '../../StageEditor.tsx';
 import { StageEditorStoryHost } from '../../testing/StageEditorStoryHost.tsx';
-import { storyDialogVisible } from '../../testing/storyDialogVisible.ts';
 import { categoricalBinStageEditor } from './CategoricalBinStageEditor.ts';
 
 const meta = {
@@ -50,7 +49,6 @@ export const AddingTheBinForEverythingElse: Story = {
     // document rather than inside the editor that opened it.
     const panel = await screen.findByRole('dialog');
     const dialog = within(panel);
-    await storyDialogVisible(panel);
     // The picker states what it holds as a typed pill, not as a selected
     // option: the closed control names the attribute, not its id.
     await waitFor(async () => {

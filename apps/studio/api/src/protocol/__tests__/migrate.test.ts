@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import type { Effect } from 'effect';
+import { Effect, Redacted } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
@@ -315,7 +315,7 @@ describe.skipIf(!storeDb)('migrateStoredVersionToDraft', () => {
           teamId: TEST_TEAM_ID,
           protocolId,
           assetId: 'mapKey',
-        }),
+        }).pipe(Effect.map((key) => key && Redacted.value(key))),
       ),
     ).resolves.toBe(KEY);
   });

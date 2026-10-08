@@ -18,9 +18,8 @@ const UUID_PATTERN =
 const OFFSET_DATETIME_PATTERN =
   /^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$/;
 
-const Label = Schema.String.check(
-  Schema.isMinLength(1),
-  Schema.isMaxLength(320),
+const Label = Schema.RedactedFromValue(
+  Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(320)),
 );
 const Identifier = Schema.String.check(
   Schema.isMinLength(1),
@@ -375,6 +374,51 @@ const StudyCreationDeniedV1EventSchema = Schema.Struct({
   }),
 });
 
+const CommonInterviewV1EventSchema = Schema.Struct({
+  teamId: Identifier,
+  teamLabel: Label,
+  actorKind: Schema.Literal('participant'),
+  actorId: Identifier,
+  actorLabel: Label,
+  requestId: RequestId,
+  eventVersion: Schema.Literal(1),
+  category: Schema.Literal('participant_data'),
+  outcome: Schema.Literal('succeeded'),
+  subjectType: Schema.NullOr(Schema.Literal('participant')),
+  subjectId: Schema.NullOr(Identifier),
+  subjectLabel: Schema.NullOr(Label),
+  resourceType: Schema.Literal('interview_session'),
+  resourceId: Identifier,
+  resourceLabel: Schema.Null,
+});
+
+const InterviewStartedV1EventSchema = Schema.Struct({
+  ...CommonInterviewV1EventSchema.fields,
+  eventType: Schema.Literal('interview.started'),
+  details: Schema.Struct({
+    studyId: Identifier,
+    waveId: Identifier,
+    resumed: Schema.Boolean,
+  }),
+});
+
+const InterviewCompletedV1EventSchema = Schema.Struct({
+  ...CommonInterviewV1EventSchema.fields,
+  eventType: Schema.Literal('interview.completed'),
+  details: Schema.Struct({
+    studyId: Identifier,
+    waveId: Identifier,
+    nodeCount: Schema.Number.check(
+      Schema.isInt(),
+      Schema.isGreaterThanOrEqualTo(0),
+    ),
+    edgeCount: Schema.Number.check(
+      Schema.isInt(),
+      Schema.isGreaterThanOrEqualTo(0),
+    ),
+  }),
+});
+
 // A plain union is intentional: eventType alone cannot remain the
 // discriminator once two retained versions of the same immutable event exist.
 export const AuditEventInputSchema = Schema.Union([
@@ -396,9 +440,12 @@ export const AuditEventInputSchema = Schema.Union([
   ProtocolDraftCommittedV1EventSchema,
   StudyCreatedV1EventSchema,
   StudyCreationDeniedV1EventSchema,
+  InterviewStartedV1EventSchema,
+  InterviewCompletedV1EventSchema,
 ]);
 
 export type AuditEventInput = typeof AuditEventInputSchema.Type;
+export type EncodedAuditEventInput = typeof AuditEventInputSchema.Encoded;
 type AuditEventKeyFor<Event extends AuditEventInput> =
   Event extends AuditEventInput
     ? `${Event['eventType']}@${Event['eventVersion']}`
@@ -406,12 +453,12 @@ type AuditEventKeyFor<Event extends AuditEventInput> =
 export type AuditEventKey = AuditEventKeyFor<AuditEventInput>;
 
 type AuditEventDefinition = {
-  inputSchema: Schema.Codec<AuditEventInput, unknown>;
+  inputSchema: Schema.Codec<AuditEventInput, EncodedAuditEventInput>;
   title: string;
   detailFields: readonly string[];
   sensitiveFields: readonly string[];
   createsAlert: boolean;
-  fixture: AuditEventInput;
+  fixture: EncodedAuditEventInput;
 };
 
 const FIXTURE_USER_COMMON = {
@@ -463,6 +510,24 @@ const FIXTURE_STUDY_V1_COMMON = {
   subjectType: null,
   subjectId: null,
   subjectLabel: null,
+} as const;
+
+const FIXTURE_INTERVIEW_V1_COMMON = {
+  teamId: 'fixture-team',
+  teamLabel: 'Fixture team',
+  actorKind: 'participant',
+  actorId: 'fixture-session',
+  actorLabel: 'P-0001',
+  requestId: '00000000-0000-4000-8000-000000000001',
+  eventVersion: 1,
+  category: 'participant_data',
+  outcome: 'succeeded',
+  subjectType: 'participant',
+  subjectId: 'fixture-participant',
+  subjectLabel: 'P-0001',
+  resourceType: 'interview_session',
+  resourceId: 'fixture-session',
+  resourceLabel: null,
 } as const;
 
 export const AUDIT_EVENT_REGISTRY = {
@@ -784,6 +849,39 @@ export const AUDIT_EVENT_REGISTRY = {
       details: { reason: 'insufficient_permission' },
     },
   },
+  'interview.started@1': {
+    inputSchema: InterviewStartedV1EventSchema,
+    title: 'Interview started',
+    detailFields: ['studyId', 'waveId', 'resumed'],
+    sensitiveFields: [],
+    createsAlert: false,
+    fixture: {
+      ...FIXTURE_INTERVIEW_V1_COMMON,
+      eventType: 'interview.started',
+      details: {
+        studyId: 'fixture-study',
+        waveId: 'fixture-wave',
+        resumed: false,
+      },
+    },
+  },
+  'interview.completed@1': {
+    inputSchema: InterviewCompletedV1EventSchema,
+    title: 'Interview completed',
+    detailFields: ['studyId', 'waveId', 'nodeCount', 'edgeCount'],
+    sensitiveFields: [],
+    createsAlert: false,
+    fixture: {
+      ...FIXTURE_INTERVIEW_V1_COMMON,
+      eventType: 'interview.completed',
+      details: {
+        studyId: 'fixture-study',
+        waveId: 'fixture-wave',
+        nodeCount: 12,
+        edgeCount: 9,
+      },
+    },
+  },
 } as const satisfies Record<AuditEventKey, AuditEventDefinition>;
 
 export function auditEventKey(event: AuditEventInput): AuditEventKey {
@@ -806,7 +904,7 @@ const decodeAuditEventIdentity = Schema.decodeUnknownSync(
   }),
 );
 
-export function parseAuditEventInput(input: unknown): AuditEventInput {
+function definitionOf(input: unknown): AuditEventDefinition {
   const identity = decodeAuditEventIdentity(input);
   const key = `${identity.eventType}@${identity.eventVersion}`;
   const definition = (
@@ -815,8 +913,28 @@ export function parseAuditEventInput(input: unknown): AuditEventInput {
   if (!definition) {
     throw new Error(`unregistered audit event definition: ${key}`);
   }
+  return definition;
+}
+
+export function parseAuditEventInput(input: unknown): AuditEventInput {
   return Schema.decodeUnknownSync(
-    definition.inputSchema,
+    definitionOf(input).inputSchema,
     AUDIT_EVENT_PARSE_OPTIONS,
   )(input);
+}
+
+export function checkAuditEventInput(event: unknown): AuditEventInput {
+  return Schema.decodeUnknownSync(
+    Schema.toType(definitionOf(event).inputSchema),
+    AUDIT_EVENT_PARSE_OPTIONS,
+  )(event);
+}
+
+export function encodeAuditEventInput(
+  event: AuditEventInput,
+): EncodedAuditEventInput {
+  return Schema.encodeUnknownSync(
+    definitionOf(event).inputSchema,
+    AUDIT_EVENT_PARSE_OPTIONS,
+  )(event);
 }

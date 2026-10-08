@@ -1,5 +1,6 @@
 import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { Redacted } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import Field from '@codaco/fresco-ui/form/Field/Field';
@@ -398,7 +399,7 @@ describe('AssetPickerField', () => {
               data: {
                 ...inspected.data,
                 counts: { nodes: 2, edges: 1 },
-                variableNames: ['age', 'name'],
+                variableNames: Redacted.make(['age', 'name']),
               },
             };
           },
@@ -1380,7 +1381,9 @@ describe('two files chosen before either has been read', () => {
         withResourceProcedures(host, {
           stage: (input) => {
             const source =
-              input.request.kind === 'content' ? input.request.source : '';
+              input.request.kind === 'content'
+                ? Redacted.value(input.request.source)
+                : '';
             requests.push(source);
             return new Promise((settle) => {
               staging.set(source, () => {

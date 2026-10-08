@@ -8,6 +8,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import {
   type CSSProperties,
   type ReactNode,
+  Suspense,
   useCallback,
   useEffect,
   useMemo,
@@ -16,11 +17,15 @@ import {
 } from 'react';
 import { Provider, useSelector } from 'react-redux';
 
-import { AppMessage } from '@codaco/app-i18n/react';
+import { AppMessage, useLocaleLoadFailure } from '@codaco/app-i18n/react';
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import { DndStoreProvider } from '@codaco/fresco-ui/dnd/dnd';
+import LocaleLoadFailureToast from '@codaco/fresco-ui/LocaleLoadFailureToast';
+import Spinner from '@codaco/fresco-ui/Spinner';
 import { ThemedRegion } from '@codaco/fresco-ui/ThemedRegion';
+import { Toaster } from '@codaco/fresco-ui/Toast';
 import { cx } from '@codaco/fresco-ui/utils/cva';
+import { ensureError } from '@codaco/shared-consts';
 
 import { AnalyticsProvider } from './analytics/AnalyticsProvider';
 import {
@@ -29,6 +34,7 @@ import {
   type Tracker,
 } from './analytics/tracker';
 import { useStageNavigationAnalytics } from './analytics/useStageNavigationAnalytics';
+import { useCaptureException } from './analytics/useTrack';
 import { GeospatialOfflineIndicator } from './components/GeospatialOfflineIndicator';
 import Navigation, { TEXT_SCALE_OPTIONS } from './components/Navigation';
 import StageErrorBoundary from './components/StageErrorBoundary';
@@ -53,6 +59,7 @@ import type {
 } from './contract/types';
 import useInterviewNavigation from './hooks/useInterviewNavigation';
 import useMediaQuery from './hooks/useMediaQuery';
+import type { InterviewCatalog } from './i18n/catalog';
 import { InterviewI18nProvider } from './i18n/InterviewI18nProvider';
 import { navigationMessages } from './i18n/navigationMessages';
 import { CompletedInterview } from './interfaces/FinishSession/FinishSession';
@@ -254,6 +261,7 @@ function CompletedShell({
             actions={actions}
           />
         </div>
+        <LanguageUnavailableNotice />
       </DirectionProvider>
     </ThemedRegion>
   );
@@ -444,6 +452,7 @@ function ActiveInterview({
             <Toast.Provider toastManager={toastManager}>
               <InterviewToastViewport />
             </Toast.Provider>
+            <LanguageUnavailableNotice />
           </DndStoreProvider>
         </DialogProvider>
       </DirectionProvider>
@@ -459,10 +468,12 @@ function ActiveInterview({
 function InterviewLocalization({
   requestedLocales,
   localeOptions,
+  catalog,
   children,
 }: {
   requestedLocales: readonly string[];
   localeOptions: InterviewPayload['session']['localeOptions'];
+  catalog: InterviewCatalog | undefined;
   children: ReactNode;
 }) {
   const dispatch = useAppDispatch();
@@ -483,6 +494,7 @@ function InterviewLocalization({
     <InterviewI18nProvider
       requestedLocale={requestedLocales}
       localePreference={localePreference}
+      catalog={catalog}
     >
       <ProtocolLocalizationProvider
         localization={localization}
@@ -496,6 +508,53 @@ function InterviewLocalization({
         {children}
       </ProtocolLocalizationProvider>
     </InterviewI18nProvider>
+  );
+}
+
+/**
+ * A third toast channel, mounted only while the interview's language cannot be
+ * loaded, so an interview that has its language carries no extra notification
+ * region. Interview toasts anchor to the navigation and take focus, and a
+ * host's toasts may be in another language. It offers no reload, which would
+ * cost the participant more than the language.
+ */
+function LanguageUnavailableNotice() {
+  const failure = useLocaleLoadFailure();
+  const captureException = useCaptureException();
+  if (failure === undefined) return null;
+  return (
+    <Toast.Provider>
+      <LocaleLoadFailureToast
+        onFailure={(error, locale) =>
+          captureException(ensureError(error), {
+            feature: 'locale-load',
+            locale,
+          })
+        }
+      />
+      <Toaster />
+    </Toast.Provider>
+  );
+}
+
+/**
+ * What the Shell shows while the catalog for the language it mounts in loads:
+ * the interview's own surface, so the region does not flash the host's
+ * background, and a spinner, which has no words to show in the wrong
+ * language. It matches the interview frame's box so nothing shifts when the
+ * interview replaces it.
+ */
+function LoadingInterview() {
+  return (
+    <ThemedRegion
+      theme="interview"
+      aria-busy
+      render={
+        <main className="relative flex size-full flex-1 items-center justify-center overflow-hidden" />
+      }
+    >
+      <Spinner size="lg" />
+    </ThemedRegion>
   );
 }
 
@@ -516,6 +575,15 @@ type ShellProps = {
    * or storage globals itself.
    */
   requestedLocales: readonly string[];
+  /**
+   * The interface language's messages, from `loadInterviewCatalog` given the
+   * same `requestedLocales` and the session's `localePreference`. Without it,
+   * a Shell opening in a language this page has not loaded shows its loading
+   * screen while that language downloads; a server host passes it so the
+   * interview renders, and hydrates, without waiting. Used only while it
+   * matches the negotiated language, so a later change loads normally.
+   */
+  catalog?: InterviewCatalog;
   payload: InterviewPayload;
   onSync: SyncHandler;
   /**
@@ -603,6 +671,7 @@ type ShellProps = {
 
 const Shell = ({
   requestedLocales,
+  catalog,
   payload,
   onSync,
   onProtocolLocaleChange,
@@ -795,6 +864,15 @@ const Shell = ({
     reviewMode,
   ]);
 
+  // The provider suspends the first render in a language this page has not
+  // loaded yet, so the interview never appears in English only to switch a
+  // moment later. The boundary sits below everything this component owns: the
+  // store, its flush listeners and the tracker holder are created and
+  // committed while the fallback shows, so nothing is lost or created twice
+  // when the interview mounts. A server render suspends here too and streams
+  // the interview once the catalog is in, and hydration waits for the same
+  // catalog rather than mismatch. A host that passes `catalog` skips both. A
+  // catalog that cannot be loaded ends the wait in English, with a notice.
   return (
     <AnalyticsProvider
       analytics={analytics}
@@ -804,57 +882,60 @@ const Shell = ({
       onTrackerChange={onTrackerChange}
     >
       <Provider store={reduxStore}>
-        <InterviewLocalization
-          requestedLocales={requestedLocales}
-          localeOptions={payload.session.localeOptions}
-        >
-          <SyncFlushProvider flush={reduxStore.flushSync}>
-            <WritesInFlightProvider
-              writesSettled={reduxStore.writesSettled}
-              trackWrite={reduxStore.trackWrite}
-            >
-              <ContractProvider
-                onFinish={onFinish}
-                onRequestAsset={onRequestAsset}
-                flags={flags}
-                finishConfirmationDescription={finishConfirmationDescription}
+        <Suspense fallback={<LoadingInterview />}>
+          <InterviewLocalization
+            requestedLocales={requestedLocales}
+            localeOptions={payload.session.localeOptions}
+            catalog={catalog}
+          >
+            <SyncFlushProvider flush={reduxStore.flushSync}>
+              <WritesInFlightProvider
+                writesSettled={reduxStore.writesSettled}
+                trackWrite={reduxStore.trackWrite}
               >
-                <InterviewCompletionProvider
-                  // A new payload is a new interview.
-                  key={payload.session.id}
-                  initialCompletion={initialCompletion}
-                  completedActions={completedActions}
-                  // A finished interview never records a language change.
-                  onComplete={reduxStore.markFinished}
+                <ContractProvider
+                  onFinish={onFinish}
+                  onRequestAsset={onRequestAsset}
+                  flags={flags}
+                  finishConfirmationDescription={finishConfirmationDescription}
                 >
-                  <CurrentStepProvider
-                    currentStep={reviewEntry.currentStep}
-                    onStepChange={onStepChange}
+                  <InterviewCompletionProvider
+                    // A new payload is a new interview.
+                    key={payload.session.id}
+                    initialCompletion={initialCompletion}
+                    completedActions={completedActions}
+                    // A finished interview never records a language change.
+                    onComplete={reduxStore.markFinished}
                   >
-                    <Interview
-                      onExit={onExit}
-                      hideNavigation={hideNavigation}
-                      navigationOrientation={navigationOrientation}
-                      navigationClassnames={navigationClassnames}
-                      allowStageNavigation={
-                        allowStageNavigation &&
-                        (currentStep === undefined ||
-                          onStepChange !== undefined)
-                      }
-                      allowUserScaling={allowUserScaling}
-                      initialTextScale={initialTextScale}
-                      onTextScaleChange={onTextScaleChange}
-                      initialStageOverrideIndex={
-                        reviewEntry.initialStageOverrideIndex
-                      }
-                      reviewMode={reviewMode}
-                    />
-                  </CurrentStepProvider>
-                </InterviewCompletionProvider>
-              </ContractProvider>
-            </WritesInFlightProvider>
-          </SyncFlushProvider>
-        </InterviewLocalization>
+                    <CurrentStepProvider
+                      currentStep={reviewEntry.currentStep}
+                      onStepChange={onStepChange}
+                    >
+                      <Interview
+                        onExit={onExit}
+                        hideNavigation={hideNavigation}
+                        navigationOrientation={navigationOrientation}
+                        navigationClassnames={navigationClassnames}
+                        allowStageNavigation={
+                          allowStageNavigation &&
+                          (currentStep === undefined ||
+                            onStepChange !== undefined)
+                        }
+                        allowUserScaling={allowUserScaling}
+                        initialTextScale={initialTextScale}
+                        onTextScaleChange={onTextScaleChange}
+                        initialStageOverrideIndex={
+                          reviewEntry.initialStageOverrideIndex
+                        }
+                        reviewMode={reviewMode}
+                      />
+                    </CurrentStepProvider>
+                  </InterviewCompletionProvider>
+                </ContractProvider>
+              </WritesInFlightProvider>
+            </SyncFlushProvider>
+          </InterviewLocalization>
+        </Suspense>
       </Provider>
     </AnalyticsProvider>
   );

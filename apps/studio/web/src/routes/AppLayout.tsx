@@ -9,6 +9,8 @@ import AppFrame from '@codaco/fresco-ui/layout/AppFrame';
 
 import { useSessionRevalidation } from '../lib/session.ts';
 import AppHeader from '../shell/AppHeader.tsx';
+import MaintenanceNotice from '../shell/MaintenanceNotice.tsx';
+import UpdateNotice from '../shell/UpdateNotice.tsx';
 import {
   useActiveTeamReconciler,
   type ActiveTeamFailure,
@@ -112,6 +114,8 @@ export default function AppLayout() {
       header={
         <>
           <AppHeader />
+          <MaintenanceNotice />
+          <UpdateNotice />
           {teamSwitchFailure && (
             <TeamSwitchFailure failure={teamSwitchFailure} />
           )}

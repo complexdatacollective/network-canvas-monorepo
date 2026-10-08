@@ -56,21 +56,39 @@ vi.mock('~/lib/posthog-server', () => ({
 
 import { POST } from '../route';
 
+// A stored schema 9 design, which the route parses before it trusts it.
 const STAGES = [
-  { id: 'intro', type: 'Information', label: 'Intro' },
+  {
+    id: 'intro',
+    type: 'Information',
+    label: { en: 'Intro' },
+    title: { en: 'Intro' },
+    items: [],
+  },
   {
     id: 'finish-ineligible',
     type: 'FinishSession',
-    label: 'Ineligible',
+    label: { en: 'Ineligible' },
+    title: { en: 'Ineligible' },
+    content: { en: 'Thank you.' },
     outcome: 'ineligible',
   },
   {
     id: 'finish-completed',
     type: 'FinishSession',
-    label: 'Done',
+    label: { en: 'Done' },
+    title: { en: 'Done' },
+    content: { en: 'Thank you.' },
     outcome: 'completed',
   },
 ];
+
+const STORED_PROTOCOL = {
+  stages: STAGES,
+  codebook: { node: {}, edge: {} },
+  localization: { defaultLocale: 'en', locales: ['en'] },
+  experiments: null,
+};
 
 function post(body: unknown) {
   return POST(
@@ -87,7 +105,7 @@ function installInterview(finishTime: Date | null = null) {
   findUniqueMock.mockResolvedValue({
     finishTime,
     protocolId: 'protocol-1',
-    protocol: { stages: STAGES },
+    protocol: STORED_PROTOCOL,
   });
 }
 
@@ -96,7 +114,12 @@ beforeEach(() => {
   getAppSettingMock.mockResolvedValue(false);
   updateMock.mockResolvedValue({
     protocolId: 'protocol-1',
-    network: { nodes: [{}], edges: [] },
+    network: {
+      nodes: [{ _uid: 'node-1', type: 'person', attributes: {} }],
+      edges: [],
+      ego: { _uid: 'ego-1', attributes: {} },
+    },
+    stageMetadata: null,
     participant: { label: null, identifier: 'P001' },
   });
 });
@@ -180,6 +203,26 @@ describe('interview finish route', () => {
     expect(response.status).toBe(400);
     expect(findUniqueMock).not.toHaveBeenCalled();
     expect(updateMock).not.toHaveBeenCalled();
+  });
+
+  it('refuses to finish against a stored protocol that does not parse, without touching the row', async () => {
+    findUniqueMock.mockResolvedValue({
+      finishTime: null,
+      protocolId: 'protocol-1',
+      protocol: {
+        ...STORED_PROTOCOL,
+        stages: [...STAGES, { id: 'broken', type: 'NotAnInterface' }],
+      },
+    });
+
+    const response = await post({
+      stageId: 'finish-completed',
+      outcome: 'completed',
+    });
+
+    expect(response.status).toBe(500);
+    expect(updateMock).not.toHaveBeenCalled();
+    expect(cookieSetMock).not.toHaveBeenCalled();
   });
 
   it('answers 404 for an interview id that does not exist', async () => {

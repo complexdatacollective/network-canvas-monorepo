@@ -8,8 +8,10 @@ import {
 } from '../db/deployment-state.ts';
 import { MaintenanceScope } from '../db/tenant.ts';
 import { Environment } from '../env.ts';
-import { LoggerLive } from '../platform/logger.ts';
+import { InstallationIdentity } from '../platform/installation-identity.ts';
+import { LoggerLive, LogLevelLive } from '../platform/logger.ts';
 import { TracingLive } from '../platform/tracing.ts';
+import { readInstallationId } from '../setup/bootstrap.ts';
 import { STUDIO_VERSION } from '../version.ts';
 import { reportingRefusals } from './command.ts';
 
@@ -102,6 +104,9 @@ const maintenance = Effect.fnUntraced(function* (args: ReadonlyArray<string>) {
     ...db,
     applicationName: 'studio-maintenance',
   });
+  yield* InstallationIdentity.resolveOnce(
+    MaintenanceScope.open(readInstallationId()),
+  ).pipe(Effect.provide(Maintenance));
   return yield* applyMaintenanceWindow(window).pipe(
     Effect.provide(Maintenance),
     Effect.catchTag('SqlError', (cause) => new MaintenanceFailed({ cause })),
@@ -111,7 +116,7 @@ const maintenance = Effect.fnUntraced(function* (args: ReadonlyArray<string>) {
 export const MaintenanceProgram = (args: ReadonlyArray<string>) =>
   maintenance(args).pipe(
     Effect.provide(
-      Layer.mergeAll(LoggerLive, TracingLive('maintenance')).pipe(
+      Layer.mergeAll(LoggerLive, LogLevelLive, TracingLive('maintenance')).pipe(
         Layer.provideMerge(Environment.layer),
       ),
     ),

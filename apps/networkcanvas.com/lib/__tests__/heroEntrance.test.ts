@@ -6,11 +6,8 @@ describe('createHeroEntrance', () => {
   it('uses ordered spring entrances for normal motion', () => {
     expect(createHeroEntrance(false)).toMatchObject({
       initial: 'hidden',
-      pageVariants: {
-        visible: { transition: { staggerChildren: 0.16 } },
-      },
       heroVariants: {
-        visible: { transition: { staggerChildren: 0.12 } },
+        visible: { transition: { delayChildren: 0.16, staggerChildren: 0.12 } },
       },
       backdropItemVariants: {
         hidden: { opacity: 1, visibility: 'hidden', y: 16 },
@@ -44,13 +41,9 @@ describe('createHeroEntrance', () => {
         },
       },
       initial: false,
-      pageVariants: {
-        hidden: {},
-        visible: { transition: { staggerChildren: 0 } },
-      },
       heroVariants: {
         hidden: {},
-        visible: { transition: { staggerChildren: 0 } },
+        visible: { transition: { delayChildren: 0, staggerChildren: 0 } },
       },
       itemVariants: {
         hidden: { opacity: 1, y: 0 },

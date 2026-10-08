@@ -676,16 +676,22 @@ export const openBundledTemplate = createAppAsyncThunk(
 
 // Export protocol as .netcanvas file.
 //
-// `protocolOverride` exists for the one case where the file must NOT be the
-// canonical protocol: rescuing an uncommitted stage draft, whose stage and
-// codebook edits live outside `activeProtocol` and would otherwise be missing
-// from the very download offered to preserve them. It changes nothing on disk
-// or in the library — assets still resolve against the active protocol id.
+// `protocol` overrides the canonical protocol where the file must not be it:
+// rescuing an uncommitted stage draft, or a read-only tab exporting the saved
+// library row. It changes nothing on disk or in the library. `protocolId` names
+// the library entry whose assets the file bundles; it defaults to the active
+// protocol's id, and a caller that read a row by id passes that id, because
+// the active id can change while the row is being read.
+type ExportNetcanvasOptions = {
+  protocol?: CurrentProtocol;
+  protocolId?: string;
+};
+
 export const exportNetcanvas = createAppAsyncThunk(
   'webUserActions/exportNetcanvas',
-  async (protocolOverride: CurrentProtocol | undefined, { getState }) => {
+  async (options: ExportNetcanvasOptions | undefined, { getState }) => {
     const state = getState();
-    const protocol = protocolOverride ?? state.activeProtocol?.present;
+    const protocol = options?.protocol ?? state.activeProtocol?.present;
 
     if (!protocol) {
       throw new Error('No active protocol to export');
@@ -698,7 +704,7 @@ export const exportNetcanvas = createAppAsyncThunk(
       await downloadProtocolAsNetcanvas(
         protocol as CurrentProtocol,
         protocol.name,
-        getActiveProtocolId(state) ?? undefined,
+        options?.protocolId ?? getActiveProtocolId(state) ?? undefined,
       );
       return { status: 'exported' } as const;
     } catch (error) {

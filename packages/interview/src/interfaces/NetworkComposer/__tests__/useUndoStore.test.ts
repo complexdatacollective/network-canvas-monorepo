@@ -19,19 +19,19 @@ describe('createUndoStore', () => {
     expect(s.future).toHaveLength(0);
   });
 
-  it('push records a command and clears redo future', async () => {
+  it('record adds a command and clears redo future', async () => {
     const store = createUndoStore();
     const log: string[] = [];
-    await store.getState().push(cmd(log, 'a'));
+    await store.getState().record(async () => cmd(log, 'a'));
     await store.getState().undo();
-    await store.getState().push(cmd(log, 'b'));
+    await store.getState().record(async () => cmd(log, 'b'));
     expect(store.getState().future).toHaveLength(0);
   });
 
   it('undo then redo calls the command hooks in order', async () => {
     const store = createUndoStore();
     const log: string[] = [];
-    await store.getState().push(cmd(log, 'a'));
+    await store.getState().record(async () => cmd(log, 'a'));
     await store.getState().undo();
     await store.getState().redo();
     expect(log).toEqual(['undo:a', 'redo:a']);
@@ -46,9 +46,193 @@ describe('createUndoStore', () => {
   it('trims the past to the limit (oldest dropped)', async () => {
     const store = createUndoStore(2);
     const log: string[] = [];
-    await store.getState().push(cmd(log, 'a'));
-    await store.getState().push(cmd(log, 'b'));
-    await store.getState().push(cmd(log, 'c'));
+    await store.getState().record(async () => cmd(log, 'a'));
+    await store.getState().record(async () => cmd(log, 'b'));
+    await store.getState().record(async () => cmd(log, 'c'));
     expect(store.getState().past.map((c) => c.label)).toEqual(['b', 'c']);
+  });
+
+  it('undoes a step of joined edits latest first, and redoes them in order', async () => {
+    const store = createUndoStore();
+    const log: string[] = [];
+    await store
+      .getState()
+      .record(async () => ({ ...cmd(log, 'a'), coalesceKey: 'k' }));
+    await store
+      .getState()
+      .record(async () => ({ ...cmd(log, 'b'), coalesceKey: 'k' }));
+    expect(store.getState().past).toHaveLength(1);
+
+    await store.getState().undo();
+    expect(log).toEqual(['undo:b', 'undo:a']);
+    await store.getState().redo();
+    expect(log).toEqual(['undo:b', 'undo:a', 'redo:a', 'redo:b']);
+  });
+});
+
+describe('createUndoStore record', () => {
+  const deferred = () => {
+    let resolve: () => void = () => undefined;
+    const promise = new Promise<void>((done) => {
+      resolve = done;
+    });
+    return { promise, resolve };
+  };
+
+  it('applies an undo asked for while a change is being made to that change', async () => {
+    const store = createUndoStore();
+    const log: string[] = [];
+    const change = deferred();
+
+    const recording = store.getState().record(async () => {
+      await change.promise;
+      return cmd(log, 'a');
+    });
+    const undoing = store.getState().undo();
+    change.resolve();
+    await Promise.all([recording, undoing]);
+
+    expect(log).toEqual(['undo:a']);
+    expect(store.getState().future.map((c) => c.label)).toEqual(['a']);
+  });
+
+  it.each([
+    ['records nothing', () => null],
+    [
+      'is refused',
+      () => {
+        throw new Error('refused');
+      },
+    ],
+  ])(
+    'leaves earlier steps alone for an undo asked for while a change that %s is being made',
+    async (_, outcome) => {
+      const store = createUndoStore();
+      const log: string[] = [];
+      await store.getState().record(async () => cmd(log, 'a'));
+      const change = deferred();
+
+      const recording = store.getState().record(async () => {
+        await change.promise;
+        return outcome();
+      });
+      const undoing = store.getState().undo();
+      change.resolve();
+      await Promise.allSettled([recording, undoing]);
+
+      expect(log).toEqual([]);
+      expect(store.getState().past.map((c) => c.label)).toEqual(['a']);
+    },
+  );
+
+  it('goes on to earlier steps for a second undo asked for while a change that records nothing is being made', async () => {
+    const store = createUndoStore();
+    const log: string[] = [];
+    await store.getState().record(async () => cmd(log, 'a'));
+    const change = deferred();
+
+    const recording = store.getState().record(async () => {
+      await change.promise;
+      return null;
+    });
+    const undoing = [store.getState().undo(), store.getState().undo()];
+    change.resolve();
+    await Promise.all([recording, ...undoing]);
+
+    expect(log).toEqual(['undo:a']);
+    expect(store.getState().past).toHaveLength(0);
+  });
+
+  it('applies each undo asked for while changes are being made to one of them, newest first', async () => {
+    const store = createUndoStore();
+    const log: string[] = [];
+    await store.getState().record(async () => cmd(log, 'a'));
+    const change = deferred();
+
+    const first = store.getState().record(async () => {
+      await change.promise;
+      return null;
+    });
+    const second = store.getState().record(async () => cmd(log, 'c'));
+    const undoing = [store.getState().undo(), store.getState().undo()];
+    change.resolve();
+    await Promise.all([first, second, ...undoing]);
+
+    // The first undo is for 'c'; the second is for the change that recorded
+    // nothing, so 'a' stays.
+    expect(log).toEqual(['undo:c']);
+    expect(store.getState().past.map((c) => c.label)).toEqual(['a']);
+  });
+
+  it('makes a change asked for while an undo is being made once the undo is done', async () => {
+    const store = createUndoStore();
+    const log: string[] = [];
+    const undone = deferred();
+    await store.getState().record(async () => ({
+      ...cmd(log, 'a'),
+      undo: async () => {
+        await undone.promise;
+        log.push('undo:a');
+      },
+    }));
+
+    const undoing = store.getState().undo();
+    const recording = store.getState().record(async () => {
+      log.push('change');
+      return null;
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(log).toEqual([]);
+
+    undone.resolve();
+    await Promise.all([undoing, recording]);
+    expect(log).toEqual(['undo:a', 'change']);
+  });
+
+  it('counts a change as one to undo from when it is asked for until it is recorded', async () => {
+    const store = createUndoStore();
+    const log: string[] = [];
+    const change = deferred();
+
+    const recording = store.getState().record(async () => {
+      await change.promise;
+      return cmd(log, 'a');
+    });
+    expect(store.getState().recording).toBe(1);
+    change.resolve();
+    await recording;
+    expect(store.getState().recording).toBe(0);
+    expect(store.getState().past.map((c) => c.label)).toEqual(['a']);
+
+    await expect(
+      store.getState().record(async () => {
+        throw new Error('refused');
+      }),
+    ).rejects.toThrow('refused');
+    expect(store.getState().recording).toBe(0);
+  });
+
+  it('keeps what can be redone when a change changes nothing', async () => {
+    const store = createUndoStore();
+    const log: string[] = [];
+    await store.getState().record(async () => cmd(log, 'a'));
+    await store.getState().undo();
+
+    await store.getState().record(async () => null);
+    expect(store.getState().past).toHaveLength(0);
+    expect(store.getState().future.map((c) => c.label)).toEqual(['a']);
+  });
+
+  it('records nothing for a change that fails, and goes on to the next', async () => {
+    const store = createUndoStore();
+    const log: string[] = [];
+
+    await expect(
+      store.getState().record(async () => {
+        throw new Error('refused');
+      }),
+    ).rejects.toThrow('refused');
+    await store.getState().record(async () => cmd(log, 'b'));
+    expect(store.getState().past.map((c) => c.label)).toEqual(['b']);
   });
 });

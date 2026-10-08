@@ -12,7 +12,7 @@ afterEach(() => {
 it('uses the persisted researcher locale for startup restoration before React mounts', async () => {
   localStorage.setItem('architect.locale', 'es');
   vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['en-GB']);
-  const { getArchitectIntl } = await import('../imperative');
+  const { getArchitectIntl, loadStartupLocale } = await import('../imperative');
   const { rootReducer } = await import('~/ducks/modules/root');
   const { setActiveProtocolId } = await import('~/ducks/modules/app');
   const { restoreActiveProtocolFromLibrary } =
@@ -31,6 +31,10 @@ it('uses the persisted researcher locale for startup restoration before React mo
   const onInvalid = vi.fn();
 
   expect(document.body).toBeEmptyDOMElement();
+  // What main.tsx awaits before restoring: Spanish is its own chunk, and
+  // until it arrives there is nothing to format Spanish with.
+  expect(getArchitectIntl().locale).toBe('en');
+  await loadStartupLocale();
   expect(getArchitectIntl().locale).toBe('es');
   const result = await restoreActiveProtocolFromLibrary(store, {
     getStoredProtocol: vi.fn().mockResolvedValue({

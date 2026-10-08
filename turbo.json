@@ -74,6 +74,13 @@
         "CONTEXT",
         "REVIEW_ID",
         "SITE_URL",
+        // The footer's copyright year. `next.config.ts` falls back to the
+        // build machine's year when this is unset, and that value is baked into
+        // the static export — so without declaring it here a build cached
+        // before 1 January could be replayed for a deployment made after it,
+        // publishing the previous year. Setting it in the deploy environment is
+        // what makes a new year invalidate the cache.
+        "NEXT_PUBLIC_BUILD_YEAR",
         // See the note on the generic build task's `env`.
         "POSTHOG_PERSONAL_API_KEY",
         "POSTHOG_PROJECT_ID"
@@ -145,16 +152,18 @@
       "env": ["NODE_ENV"],
       "outputs": ["dist/**"]
     },
-    // The generic `build` inputs do not cover scripts/, and this build runs
-    // one: after vite, `scripts/render-schema-ddl.ts` renders the DDL
-    // `studio-api migrate` executes, from `scripts/apply.ts`. Without these a
-    // change to the rendering would replay a cached bundle carrying the old
+    // The generic `build` inputs do not cover scripts/ or migrations/, and
+    // this build reads both: after vite, `scripts/render-migrations.ts`
+    // renders the numbered migrations under `migrations/` into the
+    // `dist/migrations.json` `studio-api migrate` executes (#1901). Without
+    // these an edited migration would replay a cached bundle carrying the old
     // statements.
     "@codaco/studio-api#build": {
       "dependsOn": ["^topo"],
       "inputs": [
         "src/**",
         "scripts/**",
+        "migrations/**",
         "vite.config.*",
         "tsconfig*.json",
         "package.json"
@@ -238,6 +247,13 @@
         "NODE_ENV",
         "NEXT_PUBLIC_DOCUMENTATION_URL",
         "NEXT_PUBLIC_PROTOCOL_GALLERY_URL",
+        // The footer's copyright year. `next.config.ts` falls back to the
+        // build machine's year when this is unset, and that value is baked into
+        // the static export — so without declaring it here a build cached
+        // before 1 January could be replayed for a deployment made after it,
+        // publishing the previous year. Setting it in the deploy environment is
+        // what makes a new year invalidate the cache.
+        "NEXT_PUBLIC_BUILD_YEAR",
         "CONTEXT",
         "REVIEW_ID",
         // See the note on the generic build task's `env`.
@@ -413,8 +429,9 @@
       // .agents/skills; the release-test suites read .claude/workflows; the
       // changeset guards read .changeset; the release guards read the fresco
       // and studio deployment trees; the CI workflow guard reads
-      // apps/studio/stack-test and the self-host guide the `studio-stack` job
-      // runs.
+      // apps/studio/stack-test, apps/studio/release-test and the self-host
+      // guide the Studio jobs run; the released-migration guard reads
+      // apps/studio/api/migrations.
       "inputs": [
         "scripts/**",
         ".github/**",
@@ -428,10 +445,22 @@
         "apps/fresco/release-test/**",
         "apps/fresco/CLAUDE.md",
         "apps/studio/stack-test/**",
+        "apps/studio/release-test/**",
+        "apps/studio/api/migrations/**",
         "apps/studio/docs/self-host/**",
         "tooling/vitest/**",
         "!**/node_modules/**"
       ],
+      "outputs": [],
+      "dependsOn": ["@codaco/studio-api#test:released-migrations"]
+    },
+    // The released-migration guard (#1901 S-4) again, on its own and never
+    // cached: its verdict depends on origin/main, which no input describes, so
+    // a tree whose migrations match an earlier passing tree (a conflict over
+    // the same 0002_* resolved "ours") would otherwise replay that green. It
+    // also runs inside //#test:scripts, whose cached replay is then harmless.
+    "@codaco/studio-api#test:released-migrations": {
+      "cache": false,
       "outputs": []
     },
     "dev": {
@@ -663,17 +692,28 @@
       ],
       "outputs": []
     },
+    // Every tree a suite reads, or a change confined to it replays a cached
+    // green: the migration suites read migrations/, the formatter guard reads
+    // .oxfmtrc.json, the drizzle-kit pin reads pnpm-workspace.yaml, and the
+    // self-host, compose and lane suites read the docs and stack files.
     "@codaco/studio-api#test": {
       "dependsOn": ["^topo"],
       "inputs": [
         "src/**",
         "scripts/**",
+        "migrations/**",
         "vitest.config.*",
         "package.json",
         ".env",
         ".env.development",
         ".env.example",
-        "$TURBO_ROOT$/apps/studio/README.md"
+        "$TURBO_ROOT$/apps/studio/README.md",
+        "$TURBO_ROOT$/apps/studio/docs/**",
+        "$TURBO_ROOT$/apps/studio/*.yml",
+        "$TURBO_ROOT$/apps/studio/stack-test/**",
+        "$TURBO_ROOT$/apps/studio/release-test/**",
+        "$TURBO_ROOT$/.oxfmtrc.json",
+        "$TURBO_ROOT$/pnpm-workspace.yaml"
       ],
       "outputs": []
     },

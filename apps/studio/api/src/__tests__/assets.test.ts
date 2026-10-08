@@ -1,8 +1,7 @@
 import { createHash } from 'node:crypto';
 import { request as httpRequest } from 'node:http';
 
-import { ListBucketsCommand, S3Client } from '@aws-sdk/client-s3';
-import { Effect, Option } from 'effect';
+import { Effect, Exit, Option, Redacted } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { MAX_UPLOAD_BYTES } from '@codaco/studio-contract/limits';
@@ -11,34 +10,23 @@ import { createStudio } from '../app.ts';
 import type { AuthService, SessionPrincipal } from '../auth/service.ts';
 import { readEnv } from '../env.ts';
 import { deliveryFor } from '../http/storage.ts';
-import { ObjectStore } from '../storage/object-store.ts';
+import { objectStoreFor } from '../storage/live.ts';
+import type { ObjectStore } from '../storage/object-store.ts';
 import { authServiceStub } from './support/auth.ts';
+import { memoryObjectStore } from './support/object-store.ts';
 import { composeStudio, startStudioServer } from './support/serve.ts';
 
 const env = readEnv();
 
+const liveStore =
+  env.objectStore === undefined ? undefined : objectStoreFor(env.objectStore);
+
 async function storeReachable(): Promise<boolean> {
-  if (!env.s3) return false;
-  const client = new S3Client({
-    endpoint: env.s3.endpoint,
-    region: env.s3.region,
-    credentials: {
-      accessKeyId: env.s3.accessKeyId,
-      secretAccessKey: env.s3.secretAccessKey,
-    },
-    forcePathStyle: true,
-  });
-  try {
-    await Promise.race([
-      client.send(new ListBucketsCommand({})),
-      new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('probe timeout')), 3000),
-      ),
-    ]);
-    return true;
-  } catch {
-    return false;
-  }
+  if (liveStore === undefined) return false;
+  const exit = await Effect.runPromiseExit(
+    Effect.timeout(liveStore.head, '3 seconds'),
+  );
+  return Exit.isSuccess(exit);
 }
 
 const reachable = await storeReachable();
@@ -46,45 +34,12 @@ const reachable = await storeReachable();
 const PRINCIPAL: SessionPrincipal = {
   kind: 'user',
   userId: 'user-1',
-  email: 'researcher@example.com',
+  email: Redacted.make('researcher@example.com'),
   emailVerified: true,
-  name: 'Researcher',
+  name: Redacted.make('Researcher'),
   locale: null,
   sessionId: 'session-1',
 };
-
-function memoryStore(): ObjectStore['Service'] {
-  const objects = new Map<
-    string,
-    { bytes: Uint8Array<ArrayBuffer>; mediaType: string }
-  >();
-  return ObjectStore.of({
-    configured: true,
-    put: (bytes, mediaType) =>
-      Effect.sync(() => {
-        const hash = createHash('sha256').update(bytes).digest('hex');
-        const stored = objects.get(hash) ?? {
-          bytes: new Uint8Array(bytes),
-          mediaType,
-        };
-        objects.set(hash, stored);
-        return {
-          hash,
-          size: stored.bytes.byteLength,
-          mediaType: stored.mediaType,
-        };
-      }),
-    get: (hash) =>
-      Effect.sync(() =>
-        Option.map(Option.fromUndefinedOr(objects.get(hash)), (stored) => ({
-          body: new Blob([stored.bytes]).stream(),
-          mediaType: stored.mediaType,
-          size: stored.bytes.byteLength,
-        })),
-      ),
-    head: Effect.void,
-  });
-}
 
 function countingAuth(signedIn: boolean): {
   readonly auth: AuthService['Service'];
@@ -149,7 +104,7 @@ describe('asset upload authorisation', () => {
   it('refuses an unauthenticated upload', async () => {
     const res = await send('/storage', spaUpload('bytes', 'text/plain'), {
       auth: countingAuth(false).auth,
-      objectStore: memoryStore(),
+      objectStore: memoryObjectStore().store,
     });
     expect(res.status).toBe(401);
     expect(res.headers.get('Content-Type')).toContain(
@@ -166,7 +121,7 @@ describe('asset upload authorisation', () => {
         body: 'bytes',
         headers: { origin: 'https://evil.example' },
       },
-      { auth, objectStore: memoryStore() },
+      { auth, objectStore: memoryObjectStore().store },
     );
     expect(res.status).toBe(403);
     expect(lookups()).toBe(0);
@@ -178,7 +133,7 @@ describe('asset upload authorisation', () => {
       { method: 'DELETE' },
       {
         auth: countingAuth(false).auth,
-        objectStore: memoryStore(),
+        objectStore: memoryObjectStore().store,
       },
     );
     expect(res.status).toBe(403);
@@ -188,7 +143,7 @@ describe('asset upload authorisation', () => {
 describe('asset retrieval authorisation', () => {
   it('leaves retrieval public', async () => {
     const { auth, lookups } = countingAuth(false);
-    const store = memoryStore();
+    const store = memoryObjectStore().store;
     const { hash } = await Effect.runPromise(
       store.put(bytesOf('public bytes'), 'image/png'),
     );
@@ -217,7 +172,9 @@ describe('the upload cap', () => {
       ...spaUpload(endless, 'application/octet-stream'),
       duplex: 'half',
     };
-    const res = await send('/storage', init, { objectStore: memoryStore() });
+    const res = await send('/storage', init, {
+      objectStore: memoryObjectStore().store,
+    });
     expect(res.status).toBe(413);
     expect(res.headers.get('Content-Type')).toContain(
       'application/problem+json',
@@ -233,7 +190,7 @@ describe('the upload cap', () => {
       env,
       createStudio(env, {
         auth: countingAuth(true).auth,
-        objectStore: memoryStore(),
+        objectStore: memoryObjectStore().store,
       }),
     );
     try {
@@ -263,7 +220,7 @@ describe('the upload cap', () => {
 });
 
 describe('asset delivery policy', () => {
-  const store = memoryStore();
+  const store = memoryObjectStore().store;
 
   async function upload(body: string, mediaType: string): Promise<string> {
     const res = await send('/storage', spaUpload(bytesOf(body), mediaType), {
@@ -301,6 +258,66 @@ describe('asset delivery policy', () => {
     expect(res.headers.get('X-Content-Type-Options')).toBe('nosniff');
   });
 
+  // Every audio, video and raster image type protocol-builder's
+  // `EXTENSION_CONTENT_TYPES` gives an accepted stimulus: an interview puts the
+  // storage URL straight into an <img>, <audio> or <video>. SVG stays an
+  // opaque download (above); the interview renders it from the bytes.
+  it.each([
+    'audio/aiff',
+    'audio/mp4',
+    'audio/mpeg',
+    'image/gif',
+    'image/jpeg',
+    'image/png',
+    'video/mp4',
+    'video/quicktime',
+  ])('serves %s, a stimulus Studio accepts, inline as itself', (type) => {
+    expect(deliveryFor(type)).toEqual({
+      contentType: type,
+      disposition: 'inline',
+    });
+  });
+
+  it.each([
+    ['audio/x-m4a', 'audio/mp4'],
+    ['audio/m4a', 'audio/mp4'],
+    ['audio/x-aiff', 'audio/aiff'],
+    ['audio/mp3', 'audio/mpeg'],
+    ['audio/x-mpeg-3', 'audio/mpeg'],
+    ['image/pjpeg', 'image/jpeg'],
+    ['image/jpg', 'image/jpeg'],
+    ['image/x-png', 'image/png'],
+  ])(
+    'serves a stimulus a browser reported as %s inline as %s',
+    (reported, canonical) => {
+      expect(deliveryFor(`${reported}; charset=binary`)).toEqual({
+        contentType: canonical,
+        disposition: 'inline',
+      });
+    },
+  );
+
+  it.each([
+    ['video/x-quicktime', 'video/quicktime'],
+    ['video/mov', 'video/quicktime'],
+    // Unnamed, but audio, video or raster: served as reported.
+    ['video/x-msvideo', 'video/x-msvideo'],
+    ['audio/x-caf', 'audio/x-caf'],
+    ['image/heic', 'image/heic'],
+  ])('serves %s inline as %s', (reported, served) => {
+    expect(deliveryFor(reported)).toEqual({
+      contentType: served,
+      disposition: 'inline',
+    });
+  });
+
+  it.each(['image/svg+xml', 'image/svg', 'image/x-svg', 'image/foo+xml'])(
+    'serves %s, an image that can carry script, as an opaque download',
+    (mediaType) => {
+      expect(deliveryFor(mediaType).disposition).toBe('attachment');
+    },
+  );
+
   it('classifies a parameterised media type by its essence', () => {
     expect(deliveryFor('image/png; charset=binary')).toEqual({
       contentType: 'image/png',
@@ -316,6 +333,64 @@ describe('asset delivery policy', () => {
   });
 });
 
+describe('asset ranges, which iOS needs to play audio and video', () => {
+  const { store } = memoryObjectStore();
+  const BODY = 'abcdefghij';
+
+  const stored = async (): Promise<string> => {
+    const res = await send('/storage', spaUpload(bytesOf(BODY), 'video/mp4'), {
+      objectStore: store,
+    });
+    return ((await res.json()) as { hash: string }).hash;
+  };
+
+  const ranged = async (range: string) =>
+    send(
+      `/storage/${await stored()}`,
+      { headers: { range } },
+      { objectStore: store },
+    );
+
+  it.each([
+    ['bytes=2-5', 'cdef', 'bytes 2-5/10'],
+    ['bytes=7-', 'hij', 'bytes 7-9/10'],
+    ['bytes=8-100', 'ij', 'bytes 8-9/10'],
+    ['bytes=0-1', 'ab', 'bytes 0-1/10'],
+  ])('answers %s with those bytes alone', async (range, body, contentRange) => {
+    const res = await ranged(range);
+    expect(res.status).toBe(206);
+    expect(res.headers.get('Content-Range')).toBe(contentRange);
+    expect(res.headers.get('Content-Length')).toBe(String(body.length));
+    expect(res.headers.get('Content-Type')).toBe('video/mp4');
+    expect(await res.text()).toBe(body);
+  });
+
+  it('refuses a range that starts past the last byte, naming the size', async () => {
+    const res = await ranged('bytes=10-');
+    expect(res.status).toBe(416);
+    expect(res.headers.get('Content-Range')).toBe('bytes */10');
+  });
+
+  it.each(['bytes=-3', 'bytes=0-1,4-5', 'items=0-1', 'bytes=5-2'])(
+    'answers %s with the whole object',
+    async (range) => {
+      const res = await ranged(range);
+      expect(res.status).toBe(200);
+      expect(await res.text()).toBe(BODY);
+    },
+  );
+
+  it('says it accepts ranges on a whole answer', async () => {
+    const res = await send(
+      `/storage/${await stored()}`,
+      {},
+      { objectStore: store },
+    );
+    expect(res.status).toBe(200);
+    expect(res.headers.get('Accept-Ranges')).toBe('bytes');
+  });
+});
+
 describe('asset storage when unconfigured', () => {
   it('refuses with 503 problem JSON', async () => {
     const res = await send('/storage', spaUpload(bytesOf('x'), 'text/plain'));
@@ -327,8 +402,7 @@ describe('asset storage when unconfigured', () => {
 });
 
 describe.skipIf(!reachable)('asset storage', () => {
-  const objectStore = env.s3 ? ObjectStore.make(env.s3) : undefined;
-  const through = objectStore ? { objectStore } : {};
+  const through = liveStore ? { objectStore: liveStore } : {};
   const bytes = bytesOf(
     `studio asset round-trip ${Math.trunc(Date.now() / 86_400_000)}`,
   );

@@ -1,6 +1,7 @@
 import { Effect } from 'effect';
 import { describe, expect, it, vi } from 'vitest';
 
+import { DatabaseError } from '@codaco/network-exporters/errors';
 import { InterviewRepository } from '@codaco/network-exporters/services/InterviewRepository';
 import {
   entityAttributesProperty,
@@ -55,6 +56,17 @@ const getForExport = (ids: string[]) =>
       const repository = yield* InterviewRepository;
       return yield* repository.getForExport(ids);
     }).pipe(Effect.provide(PrismaInterviewRepository)),
+  );
+
+// The batch route reports and closes the stream only for a typed failure; a
+// thrown parse error would be a defect that bypasses it and leaves the export
+// hanging. This rejects unless the export failed in the error channel.
+const getForExportFailure = (ids: string[]) =>
+  Effect.runPromise(
+    Effect.gen(function* () {
+      const repository = yield* InterviewRepository;
+      return yield* repository.getForExport(ids);
+    }).pipe(Effect.flip, Effect.provide(PrismaInterviewRepository)),
   );
 
 describe('PrismaInterviewRepository', () => {
@@ -129,7 +141,7 @@ describe('PrismaInterviewRepository', () => {
     expect(inputs[0]?.network.ego.attributes).toEqual({ answered: false });
   });
 
-  it('throws invalid defined values into the existing export error path', async () => {
+  it('fails the export with a typed error when a stored network does not parse', async () => {
     mockGetInterviewsForExport.mockResolvedValue([
       row(
         { identifier: 'P004', label: null },
@@ -143,7 +155,19 @@ describe('PrismaInterviewRepository', () => {
       ),
     ]);
 
-    await expect(getForExport(['interview-1'])).rejects.toThrow();
+    const error = await getForExportFailure(['interview-1']);
+
+    expect(error).toBeInstanceOf(DatabaseError);
+  });
+
+  it('fails the export rather than exporting an empty network for a missing one', async () => {
+    mockGetInterviewsForExport.mockResolvedValue([
+      row({ identifier: 'P005', label: null }, null),
+    ]);
+
+    const error = await getForExportFailure(['interview-1']);
+
+    expect(error).toBeInstanceOf(DatabaseError);
   });
 
   it.each([

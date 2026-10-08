@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import { layer } from '@effect/vitest';
-import { Cause, Effect, Exit, Layer, Ref } from 'effect';
+import { Cause, Effect, Exit, Layer, Redacted, Ref } from 'effect';
 import { describe, expect } from 'vitest';
 
 import {
@@ -52,7 +52,7 @@ const storeSecretUnder = Effect.fnUntraced(function* (keyId: string) {
   const id = randomUUID();
   const sealed = createSecretsCipher(testKeyring([keyId])).sealWebhookSecret(
     { teamId: TEAM, subscriptionId: id },
-    `whsec_${randomUUID().replaceAll('-', '')}`,
+    Redacted.make(`whsec_${randomUUID().replaceAll('-', '')}`),
   );
   yield* harness.onOwner(
     harness.owner

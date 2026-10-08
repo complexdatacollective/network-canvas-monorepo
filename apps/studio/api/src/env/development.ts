@@ -6,9 +6,9 @@ import type { VariableName } from './schema.ts';
 // `src/env.ts` imports `./schema.ts`, and anything `schema.ts` could reach
 // would be compiled into the production server bundle — which is how the
 // publicly-known development auth secret once shipped inside a built
-// deployable. Only `scripts/` and the environment suites import this file, and
-// the `import type` above is erased, so there is no runtime edge from the
-// schema to here in either direction.
+// deployable. Only `scripts/`, the environment suites and the Azure Blob
+// contract suite import this file, and the `import type` above is erased, so
+// there is no runtime edge from the schema to here in either direction.
 
 /**
  * `scripts/dev.ts` imports these values rather than restating them: it exports
@@ -50,6 +50,16 @@ export const DEV = {
   garageAdminToken:
     '00000000000000000073747564696f2d6465762d6761726167652d61646d696e',
   valkeyPort: 63790,
+  // Azurite, Azure Blob Storage's emulator, from docker-compose.dev.yml. The
+  // development server never stores assets in it — it runs on Garage, like the
+  // reference stack — but the object-store contract suite runs against both
+  // (#2077). 10100 rather than Azurite's own 10000, beside Garage's 9100, so a
+  // developer's own Azurite can keep its port. The account is the emulator's
+  // built-in one, and its key is the one Microsoft publishes for it.
+  azuritePort: 10100,
+  azuriteAccount: 'devstoreaccount1',
+  azuriteAccountKey:
+    'Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==',
   // Mailpit, from docker-compose.dev.yml: SMTP in, and a browser UI to read
   // what came out.
   smtpPort: 1025,
@@ -72,6 +82,7 @@ export const DEV_DATABASE_URL = `postgres://${DEV.pgUser}:${DEV.pgPassword}@${DE
 export const DEV_S3_ENDPOINT = `http://localhost:${DEV.s3Port}`;
 export const DEV_SMTP_URL = `smtp://127.0.0.1:${DEV.smtpPort}`;
 export const DEV_REDIS_URL = `redis://127.0.0.1:${DEV.valkeyPort}`;
+export const DEV_AZURITE_CONNECTION_STRING = `DefaultEndpointsProtocol=http;AccountName=${DEV.azuriteAccount};AccountKey=${DEV.azuriteAccountKey};BlobEndpoint=http://127.0.0.1:${DEV.azuritePort}/${DEV.azuriteAccount};`;
 
 /**
  * The committed `.env.development`, as data: every variable the development
@@ -90,6 +101,7 @@ export const DEV_ENVIRONMENT: Partial<Record<VariableName, string>> = {
   STUDIO_TELEMETRY: 'false',
   STUDIO_DEPLOYMENT_MODE: 'managed',
 
+  STUDIO_OBJECT_STORE: 's3',
   S3_ENDPOINT: DEV_S3_ENDPOINT,
   S3_REGION: DEV.s3Region,
   S3_BUCKET: DEV.s3Bucket,

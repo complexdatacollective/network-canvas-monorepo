@@ -9,7 +9,9 @@ import {
   entityPrimaryKeyProperty,
 } from '@codaco/shared-consts';
 
+import { encryptJson } from '../../vault/crypto';
 import { db } from '../db';
+import type { StoredSessionRow } from '../recordCrypto';
 import { setSessionDek } from '../sessionKey';
 import {
   createSession,
@@ -755,5 +757,86 @@ describe('sessions repo — concurrent updateSession (#756)', () => {
     const back = await getSession(created.id);
     expect(back?.currentStep).toBe(1);
     expect(back?.progress).toBe(77);
+  });
+});
+
+// A row whose network no longer parses must never be replaced by one the
+// client built without it: reads reject, and so do writes, because every
+// read-modify-write decrypts the existing row before encrypting the new one.
+describe('sessions repo — an unreadable stored network fails closed', () => {
+  const unparseableNetwork = {
+    ego: { [entityPrimaryKeyProperty]: 'ego', [entityAttributesProperty]: {} },
+    nodes: [
+      {
+        [entityPrimaryKeyProperty]: 'n1',
+        type: 'person',
+        [entityAttributesProperty]: { invalid: { nested: 'value' } },
+      },
+    ],
+    edges: [],
+  };
+  const freshNetwork: NcNetwork = {
+    ego: { [entityPrimaryKeyProperty]: 'ego', [entityAttributesProperty]: {} },
+    nodes: [],
+    edges: [],
+  };
+
+  function unreadableRow(id: string): StoredSessionRow {
+    return {
+      id,
+      protocolHash: 'h1',
+      protocolName: 'Study',
+      caseId: 'case-1',
+      startedAt: '2026-01-01T00:00:00.000Z',
+      lastUpdatedAt: '2026-01-01T00:00:00.000Z',
+      finishedAt: null,
+      exportedAt: null,
+      currentStep: 2,
+      localePreference: null,
+      locale: null,
+    };
+  }
+
+  async function expectRowUntouched(id: string, stored: StoredSessionRow) {
+    await expect(getSession(id)).rejects.toThrow();
+    await expect(
+      updateSession(id, { network: freshNetwork }, { protocolHash: 'h1' }),
+    ).rejects.toThrow();
+    expect(await db.sessions.get(id)).toEqual(stored);
+  }
+
+  beforeEach(async () => {
+    await db.sessions.clear();
+  });
+  afterEach(async () => {
+    await db.sessions.clear();
+    setSessionDek(null);
+  });
+
+  it('refuses to read or overwrite an encrypted row', async () => {
+    const dek = await makeDek();
+    setSessionDek(dek);
+    const id = 'unreadable-encrypted';
+    const stored: StoredSessionRow = {
+      ...unreadableRow(id),
+      _enc: {
+        network: await encryptJson(unparseableNetwork, dek, `sessions:${id}`),
+      },
+    };
+    await db.sessions.put(stored);
+
+    await expectRowUntouched(id, stored);
+  });
+
+  it('refuses to read or overwrite a plaintext row', async () => {
+    setSessionDek(null);
+    const id = 'unreadable-plaintext';
+    const stored: StoredSessionRow = {
+      ...unreadableRow(id),
+      network: unparseableNetwork,
+    };
+    await db.sessions.put(stored);
+
+    await expectRowUntouched(id, stored);
   });
 });

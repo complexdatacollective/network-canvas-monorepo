@@ -10,6 +10,7 @@ import {
   MutableRef,
   Option,
   Predicate,
+  Redacted,
   Scope,
 } from 'effect';
 import * as RpcClient from 'effect/rpc/RpcClient';
@@ -24,6 +25,7 @@ import { authServiceStub } from '../../__tests__/support/auth.ts';
 import { startStudioServer } from '../../__tests__/support/serve.ts';
 import { createStudio } from '../../app.ts';
 import type { SessionPrincipal } from '../../auth/service.ts';
+import type { SchemaState } from '../../db/schema.ts';
 import { resolve } from '../../env/resolve.ts';
 import { MaintenanceTriggers } from '../../http/middleware/maintenance.ts';
 import { MaintenanceState } from '../../platform/maintenance-state.ts';
@@ -31,9 +33,9 @@ import { MaintenanceState } from '../../platform/maintenance-state.ts';
 const PRINCIPAL: SessionPrincipal = {
   kind: 'user',
   userId: 'ws-route-user',
-  email: 'ws-route@example.com',
+  email: Redacted.make('ws-route@example.com'),
   emailVerified: true,
-  name: 'Socket Researcher',
+  name: Redacted.make('Socket Researcher'),
   locale: null,
   sessionId: 'ws-route-session',
 };
@@ -56,9 +58,10 @@ function counting() {
 async function serverWithFlag(studio: ReturnType<typeof counting>['studio']) {
   const flag = MutableRef.make(false);
   const lock = MutableRef.make(false);
+  const schema = MutableRef.make<SchemaState>({ kind: 'current' });
   const triggers = MaintenanceTriggers.layerWith({
     lockHeld: Effect.sync(() => MutableRef.get(lock)),
-    schema: Effect.succeed({ kind: 'current' }),
+    schema: Effect.sync(() => MutableRef.get(schema)),
   }).pipe(Layer.provide(MaintenanceState.layerTest(flag)));
   const server = await startStudioServer(
     resolve({ NODE_ENV: 'test' }),
@@ -66,7 +69,7 @@ async function serverWithFlag(studio: ReturnType<typeof counting>['studio']) {
     studio.checks,
     triggers,
   );
-  return { ...server, flag, lock };
+  return { ...server, flag, lock, schema };
 }
 
 const wsUrlOf = (origin: string) => `${origin.replace('http://', 'ws://')}/ws`;
@@ -222,6 +225,40 @@ describe('the /ws route', () => {
         reason: 'down for maintenance',
       });
     } finally {
+      await tab.close();
+      await dispose();
+    }
+  });
+
+  it('closes a socket once the schema is no longer this build’s', async () => {
+    const { studio, dispatched } = counting();
+    const { origin, dispose, schema } = await serverWithFlag(studio);
+    const idle = await openIdle(origin);
+    const tab = await connect(origin);
+    try {
+      expect(answered(await tab.list())).toBe(true);
+      expect(dispatched()).toBe(1);
+
+      // A newer release's migrate committed under this server.
+      const movedAt = performance.now();
+      MutableRef.set(schema, {
+        kind: 'stale',
+        reason: 'mismatch',
+        found: 'f'.repeat(64),
+        appliedAt: new Date(),
+      });
+      const event = await closedWithin(idle, 2500);
+      expect(event.code).toBe(1013);
+      expect(event.at - movedAt).toBeLessThan(2500);
+
+      const during = await tab.list();
+      expect(dispatched()).toBe(1);
+      expect(closeOf(during)).toEqual({
+        code: 1013,
+        reason: 'down for maintenance',
+      });
+    } finally {
+      idle.close();
       await tab.close();
       await dispose();
     }

@@ -14,9 +14,13 @@ import { interviewerProductionLocales } from '~/i18n/locales';
 import { db } from '~/lib/db/db';
 import type { StoredSessionRow } from '~/lib/db/recordCrypto';
 import type { ProtocolWithCounts } from '~/lib/db/types';
-import { interviewerCatalogs } from '~/locales/catalogs';
+import { interviewerCatalogSource } from '~/locales/catalogs';
 
 import { DataView } from '../DataView';
+
+// The renders below show Spanish synchronously, as a device that has already
+// loaded it would, so its catalog loads before any of them.
+await interviewerCatalogSource.load('es');
 
 // Render the actual option labels/values supplied by DataView. The toolbar's
 // popup mechanics are unrelated to the parent's memoized ordering.
@@ -90,7 +94,7 @@ function Harness({ locale }: { locale: 'en' | 'es' }) {
     <AppI18nProvider
       locale={locale}
       locales={interviewerProductionLocales}
-      messages={interviewerCatalogs[locale]}
+      messages={interviewerCatalogSource.peek(locale)}
     >
       <DataView protocols={protocols} onReload={reload} />
     </AppI18nProvider>

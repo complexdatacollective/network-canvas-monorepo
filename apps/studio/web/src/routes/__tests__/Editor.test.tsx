@@ -8,7 +8,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
-import { Effect, Layer, Predicate } from 'effect';
+import { Effect, Layer, Predicate, Redacted } from 'effect';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ProtocolBuilderGroup } from '@codaco/protocol-builder-core/contract';
@@ -43,8 +43,8 @@ import { closeStudioEditorSessions } from '../../editor/sessionLifecycle.ts';
 import { authClient } from '../../lib/auth.ts';
 import { reportUnauthorizedResponse } from '../../lib/session.ts';
 import { createAppRouter } from '../../router.tsx';
+import { HostClient } from '../../runtime/hostClient.ts';
 import { hostRuntime } from '../../runtime/hostSession.ts';
-import { HostClient } from '../../runtime/runtime.ts';
 import {
   FakeWebSocket,
   installInProcessHost,
@@ -74,38 +74,45 @@ const PROTOCOL_UUID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 /** Text written in the only language the sample protocol declares. */
 const enUS = (text: string) => ({ 'en-US': text });
 
+const DRAFT_SECTIONS = {
+  settings: {
+    name: 'Shell proof',
+    schemaVersion: 9,
+    localization: { defaultLocale: 'en-US', locales: ['en-US'] },
+  },
+  stageOrder: { stages: [STAGE_A, STAGE_B] },
+  [`stage:${STAGE_A}`]: {
+    id: STAGE_A,
+    type: 'Information',
+    label: enUS('Welcome'),
+    title: enUS('Welcome'),
+    items: [],
+  },
+  [`stage:${STAGE_B}`]: {
+    id: STAGE_B,
+    type: 'Information',
+    label: enUS('Follow-up'),
+    title: enUS('Follow-up'),
+    items: [],
+  },
+  assets: {},
+};
+
 const DRAFT = {
   protocol: {
     id: ProtocolId.make(PROTOCOL_UUID),
     draftId: DraftId.make('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'),
-    name: 'Shell proof',
+    name: Redacted.make('Shell proof'),
     createdAt: new Date('2026-08-28T00:00:00Z'),
     updatedAt: new Date('2026-08-28T00:00:00Z'),
   },
   revision: { sequence: '2', hash: 'revision-2' },
-  sections: {
-    settings: {
-      name: 'Shell proof',
-      schemaVersion: 9,
-      localization: { defaultLocale: 'en-US', locales: ['en-US'] },
-    },
-    stageOrder: { stages: [STAGE_A, STAGE_B] },
-    [`stage:${STAGE_A}`]: {
-      id: STAGE_A,
-      type: 'Information',
-      label: enUS('Welcome'),
-      title: enUS('Welcome'),
-      items: [],
-    },
-    [`stage:${STAGE_B}`]: {
-      id: STAGE_B,
-      type: 'Information',
-      label: enUS('Follow-up'),
-      title: enUS('Follow-up'),
-      items: [],
-    },
-    assets: {},
-  },
+  sections: Object.fromEntries(
+    Object.entries(DRAFT_SECTIONS).map(([id, document]) => [
+      id,
+      Redacted.make(document),
+    ]),
+  ),
 };
 
 /**
@@ -120,9 +127,9 @@ const DRAFT = {
  * drawn from a second reading nothing keeps current (#1810).
  */
 const HOST_SECTIONS: Readonly<Record<string, SectionDoc>> = {
-  ...DRAFT.sections,
+  ...DRAFT_SECTIONS,
   [`stage:${STAGE_A}`]: {
-    ...DRAFT.sections[`stage:${STAGE_A}`],
+    ...DRAFT_SECTIONS[`stage:${STAGE_A}`],
     label: enUS('Welcome, from the host'),
   },
 };
@@ -182,9 +189,9 @@ function studyDetail(owner: string): (typeof StudyDetail)['Type'] {
 
 const ME: Me = {
   userId: 'user-1',
-  email: 'researcher@example.org',
+  email: Redacted.make('researcher@example.org'),
   emailVerified: true,
-  name: 'Researcher',
+  name: Redacted.make('Researcher'),
   locale: null,
   teams: [{ teamId: TeamId.make('team-a'), role: 'owner' }],
 };
@@ -263,7 +270,10 @@ function servedBy(handle: InMemoryHandlers): HandlersLayer {
         }
         const written = commandWriteFor(input.sectionId);
         if (written !== undefined) {
-          return { document: written, revision: COMMAND_REVISION };
+          return {
+            document: Redacted.make(written),
+            revision: COMMAND_REVISION,
+          };
         }
         return yield* handle.GetSection(input);
       }),
@@ -273,7 +283,7 @@ function servedBy(handle: InMemoryHandlers): HandlersLayer {
         ? handle.AcquireLock(input)
         : Effect.succeed({
             lock: 'held' as const,
-            document: written,
+            document: Redacted.make(written),
             revision: COMMAND_REVISION,
           });
     },
@@ -313,12 +323,12 @@ async function collaboratorAddsScreen(label: string): Promise<void> {
     protocolId: DRAFT.protocol.id,
     requestId: nextRequestId(),
     kind: 'stage',
-    document: {
+    document: Redacted.make({
       type: 'Information',
       label: enUS(label),
       title: enUS(label),
       items: [],
-    },
+    }),
   });
 }
 
@@ -336,7 +346,10 @@ async function collaboratorRenamesScreen(
     protocolId: DRAFT.protocol.id,
     requestId: nextRequestId(),
     sectionId: target,
-    document: { ...held.document, label: enUS(label) },
+    document: Redacted.make({
+      ...Redacted.value(held.document),
+      label: enUS(label),
+    }),
     revision: held.revision,
   });
   await client.rpcCall('ReleaseLock', {
@@ -358,7 +371,7 @@ async function collaboratorRepairsStageOrder(
     protocolId: DRAFT.protocol.id,
     requestId: nextRequestId(),
     sectionId: STAGE_ORDER,
-    document: { stages },
+    document: Redacted.make({ stages }),
     revision: held.revision,
   });
   await client.rpcCall('ReleaseLock', {
@@ -505,6 +518,8 @@ async function findStageNameField() {
  * they got there. Everything here is a way of arriving that does NOT pass
  * through the owning team's screens first.
  */
+await import('../Editor.tsx');
+
 describe('opening a study by its URL', () => {
   it('opens one owned by a team that is not the active one', async () => {
     // A bookmark, or a link a colleague sent. The setting still names the team
@@ -1046,18 +1061,18 @@ describe('Studio editor shell', () => {
 describe('a protocol written in two languages', () => {
   async function seedEnglishAndFrench() {
     await seedHost({
-      ...DRAFT.sections,
+      ...DRAFT_SECTIONS,
       settings: {
-        ...DRAFT.sections.settings,
+        ...DRAFT_SECTIONS.settings,
         localization: { defaultLocale: 'en-US', locales: ['en-US', 'fr'] },
       },
       [`stage:${STAGE_A}`]: {
-        ...DRAFT.sections[`stage:${STAGE_A}`],
+        ...DRAFT_SECTIONS[`stage:${STAGE_A}`],
         label: { 'en-US': 'Hello', 'fr': 'Bonjour' },
       },
       // Named in French alone, so English has nothing to show for it.
       [`stage:${STAGE_B}`]: {
-        ...DRAFT.sections[`stage:${STAGE_B}`],
+        ...DRAFT_SECTIONS[`stage:${STAGE_B}`],
         label: { fr: 'Suite' },
       },
     });
@@ -1536,7 +1551,10 @@ describe('the socket the editor opens', () => {
             ? current
             : {
                 ...current,
-                protocol: { ...current.protocol, name: 'Renamed' },
+                protocol: {
+                  ...current.protocol,
+                  name: Redacted.make('Renamed'),
+                },
               },
       );
     });

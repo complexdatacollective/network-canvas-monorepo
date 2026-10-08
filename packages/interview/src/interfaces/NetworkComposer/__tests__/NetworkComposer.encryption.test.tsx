@@ -867,6 +867,160 @@ describe('NetworkComposer saving edits in the order they were made', () => {
       await readStored(store.getState().session.network.nodes[0], NOTES_VAR),
     ).toBe('Old friend');
   });
+
+  const pressUndo = () =>
+    act(async () => {
+      fireEvent.keyDown(screen.getByTestId('network-composer'), {
+        key: 'z',
+        metaKey: true,
+      });
+    });
+
+  const storedNotes = (store: Store) =>
+    readStored(store.getState().session.network.nodes[0], NOTES_VAR);
+
+  it('applies an undo pressed while an edit is being saved to that edit', async () => {
+    const store = await makeStore({ nodes: [await makeEncryptedNode()] });
+    const notesInput = await openAlice(store);
+    const saving = holdNextEncryption();
+
+    fireEvent.change(notesInput, { target: { value: 'First' } });
+    await waitFor(() => expect(saving.begun()).toBe(true), { timeout: 2000 });
+    await pressUndo();
+    saving.release();
+
+    await allSaved();
+    await waitFor(() => expect(notesInput).toHaveValue('Met at work'));
+    // Long enough for an answer the form wrongly showed again to be saved.
+    await act(() => new Promise((resolve) => setTimeout(resolve, 600)));
+    await allSaved();
+    expect(await storedNotes(store)).toBe('Met at work');
+  });
+
+  it('lets Undo be pressed while the first edit is being saved, and applies it to that edit', async () => {
+    const store = await makeStore({ nodes: [await makeEncryptedNode()] });
+    const notesInput = await openAlice(store);
+    const saving = holdNextEncryption();
+
+    fireEvent.change(notesInput, { target: { value: 'First' } });
+    await waitFor(() => expect(saving.begun()).toBe(true), { timeout: 2000 });
+    const undo = screen.getByRole('button', { name: 'Undo' });
+    // Toolbar controls stay focusable and say they are disabled this way.
+    expect(undo).not.toHaveAttribute('aria-disabled', 'true');
+    act(() => {
+      fireEvent.click(undo);
+    });
+    saving.release();
+
+    await allSaved();
+    await waitFor(() => expect(notesInput).toHaveValue('Met at work'));
+    expect(await storedNotes(store)).toBe('Met at work');
+  });
+
+  it('keeps an edit an undo overtook while its save waited its turn, without saving it', async () => {
+    const store = await makeStore({ nodes: [await makeEncryptedNode()] });
+    const notesInput = await openAlice(store);
+    const first = holdNextEncryption();
+
+    fireEvent.change(notesInput, { target: { value: 'First' } });
+    await waitFor(() => expect(first.begun()).toBe(true), { timeout: 2000 });
+    fireEvent.change(notesInput, { target: { value: 'Second' } });
+    // Long enough for the second save to be asked for, and to wait for the
+    // first.
+    await act(() => new Promise((resolve) => setTimeout(resolve, 600)));
+    await pressUndo();
+    first.release();
+
+    await allSaved();
+    await act(() => new Promise((resolve) => setTimeout(resolve, 600)));
+    await allSaved();
+    expect(await storedNotes(store)).toBe('Met at work');
+    expect(notesInput).toHaveValue('Second');
+  });
+
+  it('does not save back an answer an undo replaced while a save waited its turn', async () => {
+    const store = await makeStore({ nodes: [await makeEncryptedNode()] });
+    const notesInput = await openAlice(store);
+    const place = screen.getByLabelText(/place/i);
+    const storedCiphertext = () =>
+      store.getState().session.network.nodes[0]?.[entityAttributesProperty][
+        NOTES_VAR
+      ];
+    const original = storedCiphertext();
+    const first = holdNextEncryption();
+
+    fireEvent.change(notesInput, { target: { value: 'First' } });
+    await waitFor(() => expect(first.begun()).toBe(true), { timeout: 2000 });
+    fireEvent.change(place, { target: { value: 'Lisbon' } });
+    // Long enough for the second save, which also carries the notes, to be
+    // asked for and to wait for the first.
+    await act(() => new Promise((resolve) => setTimeout(resolve, 600)));
+    await pressUndo();
+    first.release();
+
+    await allSaved();
+    await act(() => new Promise((resolve) => setTimeout(resolve, 600)));
+    await allSaved();
+    // What the undo put back, not the same answer saved again over it.
+    expect(storedCiphertext()).toEqual(original);
+    expect(
+      store.getState().session.network.nodes[0]?.[entityAttributesProperty][
+        PLACE_VAR
+      ],
+    ).toBe('Lisbon');
+    expect(notesInput).toHaveValue('Met at work');
+  });
+
+  it('deletes a person only once an edit being saved is stored, so undo and redo keep the answer', async () => {
+    const store = await makeStore({ nodes: [await makeEncryptedNode()] });
+    const notesInput = await openAlice(store);
+    const aliceNotes = () =>
+      readStored(
+        store
+          .getState()
+          .session.network.nodes.find(
+            (node) => node[entityPrimaryKeyProperty] === NODE_ID,
+          ),
+        NOTES_VAR,
+      );
+    const aliceExists = () =>
+      store
+        .getState()
+        .session.network.nodes.some(
+          (node) => node[entityPrimaryKeyProperty] === NODE_ID,
+        );
+    const pressRedo = () =>
+      act(async () => {
+        fireEvent.keyDown(screen.getByTestId('network-composer'), {
+          key: 'z',
+          metaKey: true,
+          shiftKey: true,
+        });
+      });
+    const saving = holdNextEncryption();
+
+    fireEvent.change(notesInput, { target: { value: 'First' } });
+    await waitFor(() => expect(saving.begun()).toBe(true), { timeout: 2000 });
+    act(() => {
+      fireEvent.click(screen.getByRole('button', { name: /delete/i }));
+    });
+    // Shown as gone, and so out of reach, while the deletion waits its turn.
+    expect(aliceExists()).toBe(true);
+    expect(screen.queryByRole('button', { name: /alice/i })).toBeNull();
+    saving.release();
+    await allSaved();
+    await waitFor(() => expect(aliceExists()).toBe(false));
+
+    // Undoing the deletion puts back the answer that was being saved.
+    await pressUndo();
+    await waitFor(() => expect(aliceExists()).toBe(true));
+    expect(await aliceNotes()).toBe('First');
+
+    await pressUndo();
+    await waitFor(async () => expect(await aliceNotes()).toBe('Met at work'));
+    await pressRedo();
+    await waitFor(async () => expect(await aliceNotes()).toBe('First'));
+  });
 });
 
 describe('NetworkComposer side panel checking an answer against a protected one', () => {

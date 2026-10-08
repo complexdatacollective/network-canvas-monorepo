@@ -18,6 +18,7 @@ import NewVariableWindow from '~/components/NewVariableWindow/NewVariableWindow'
 import { useAppDispatch } from '~/ducks/hooks';
 import { deleteTypeAsync } from '~/ducks/modules/protocol/codebook';
 import type { RootState } from '~/ducks/store';
+import { useProtocolReadOnly } from '~/hooks/useProtocolReadOnly';
 
 import EntityIcon from './EntityIcon';
 import { filterEntityType } from './filterEntityType';
@@ -137,6 +138,7 @@ const EntityType = ({
 }: EntityTypeProps) => {
   const intl = useAppIntl();
   const dispatch = useAppDispatch();
+  const readOnly = useProtocolReadOnly();
   const { confirm, openDialog } = useDialog();
   const [showAddVariable, setShowAddVariable] = useState(false);
   const variableArray = Object.values(variables);
@@ -270,7 +272,7 @@ const EntityType = ({
             </div>
           )}
         </div>
-        <Button onClick={handleEdit} color="primary">
+        <Button onClick={handleEdit} color="primary" disabled={readOnly}>
           {intl.formatMessage(messages.editEntity)}
         </Button>
         <span
@@ -283,7 +285,11 @@ const EntityType = ({
           }
           className="inline-block"
         >
-          <Button color="destructive" onClick={handleDelete} disabled={inUse}>
+          <Button
+            color="destructive"
+            onClick={handleDelete}
+            disabled={inUse || readOnly}
+          >
             {intl.formatMessage(messages.deleteEntity)}
           </Button>
         </span>
@@ -293,6 +299,7 @@ const EntityType = ({
           <Button
             color="primary"
             size="sm"
+            disabled={readOnly}
             onClick={() => setShowAddVariable(true)}
           >
             {intl.formatMessage(messages.addAttribute)}

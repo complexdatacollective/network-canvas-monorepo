@@ -1,7 +1,6 @@
 export type ProtocolFieldErrorEntry = {
   field_index: number;
   component: string;
-  message: string;
 };
 
 export function buildProtocolFieldErrors(
@@ -22,9 +21,7 @@ export function buildProtocolFieldErrors(
     const index = fields.findIndex((field) => field.variable === variable);
     if (index === -1) continue;
     const component = componentByVariable[variable] ?? 'unknown';
-    for (const message of messages) {
-      result.push({ field_index: index, component, message });
-    }
+    result.push({ field_index: index, component });
   }
 
   return result;

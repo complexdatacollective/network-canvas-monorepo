@@ -1,6 +1,7 @@
 import { Cause, Effect, Exit, Schema } from 'effect';
 import type { SqlError } from 'effect/sql';
 
+import type { AuditActor } from '@codaco/studio-contract/middleware/audit-actor';
 import { Principal } from '@codaco/studio-contract/middleware/authenticated';
 import { AuditReadDenied } from '@codaco/studio-contract/schema/audit';
 import type { NotFound } from '@codaco/studio-contract/schema/errors';
@@ -16,7 +17,7 @@ import {
 } from '../audit/read-authorization.ts';
 import { AuditSignal } from '../audit/signal.ts';
 import type { Database } from '../db/client.ts';
-import { deepestMessage } from '../db/errors.ts';
+import { failureCodes } from '../db/errors.ts';
 import type { TeamAccess, Transaction } from '../db/tenant.ts';
 import { RequestId } from '../http/middleware/request-id.ts';
 
@@ -27,6 +28,11 @@ export type AuditReadProcedure =
 
 class AuditReadRefused extends Schema.TaggedError<AuditReadRefused>()(
   'AuditReadRefused',
+  {},
+) {}
+
+class AuditReadDenialSuppressed extends Schema.TaggedError<AuditReadDenialSuppressed>()(
+  'AuditReadDenialSuppressed',
   {},
 ) {}
 
@@ -80,9 +86,7 @@ const denyAuditRead = Effect.fnUntraced(function* (
           {
             operation: 'audit.read',
             teamId: access.teamId,
-            // Still a denial, not a rate-limit refusal, so the suppression
-            // stays unobservable.
-            refusal: () => new AuditReadDenied({}),
+            refusal: () => new AuditReadDenialSuppressed(),
             isDenial: (error) => error instanceof AuditReadRefused,
           },
           append,
@@ -95,16 +99,16 @@ const denyAuditRead = Effect.fnUntraced(function* (
     if (error instanceof AuditReadRefused) {
       return yield* new AuditReadDenialRecorded();
     }
+    if (error instanceof AuditReadDenialSuppressed) {
+      return yield* new AuditReadDenied({});
+    }
     yield* signal.warn('STUDIO_AUDIT_DENIAL_EVENT_LOST', {
       eventType: 'audit.read_denied',
       procedure,
       teamId: access.teamId,
       actorId: principal.userId,
       requestId,
-      causeName: error instanceof Error ? error.name : typeof error,
-      // A `SqlError`'s own message is always `PgConnection: Query failed`; the
-      // operator needs the Postgres one underneath it.
-      causeMessage: deepestMessage(error) ?? String(error),
+      ...failureCodes(error),
     });
   }
   return yield* new AuditReadDenied({});
@@ -145,7 +149,13 @@ export const guardAuditRead = <A, R>(
 ): Effect.Effect<
   A,
   AuditReadDenied | NotFound | SqlError.SqlError,
-  R | Database | Principal | RequestId | AuditSignal | DeniedAttempts
+  | R
+  | Database
+  | Principal
+  | AuditActor
+  | RequestId
+  | AuditSignal
+  | DeniedAttempts
 > => {
   const predictsDenial = !grantsAuditRead(access.role);
   const decided = Effect.catchTag(read, 'AuditReadRefused', () =>

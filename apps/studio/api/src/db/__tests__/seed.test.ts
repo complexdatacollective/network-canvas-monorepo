@@ -1,6 +1,6 @@
 import { layer } from '@effect/vitest';
 import { verifyPassword } from 'better-auth/crypto';
-import { Context, Effect, Layer } from 'effect';
+import { Context, Effect, Layer, Redacted } from 'effect';
 import { describe, expect } from 'vitest';
 
 import { canonicalize } from '@codaco/studio-sync/apply';
@@ -937,9 +937,11 @@ describe.skipIf(!testDb)('the seeded dataset', () => {
           if (!row)
             throw new Error('unreachable: the seed writes subscriptions');
 
-          const opened = testCipher(keyring).openWebhookSecret(
-            { teamId: row.team_id, subscriptionId: row.id },
-            { ciphertext: row.secret_ciphertext, keyId: row.secret_key_id },
+          const opened = Redacted.value(
+            testCipher(keyring).openWebhookSecret(
+              { teamId: row.team_id, subscriptionId: row.id },
+              { ciphertext: row.secret_ciphertext, keyId: row.secret_key_id },
+            ),
           );
           expect(plaintextSecrets).toContain(opened);
           expect(opened).toMatch(/^whsec_[0-9a-f]{48}$/);
@@ -978,9 +980,11 @@ describe.skipIf(!testDb)('the seeded dataset', () => {
             expect(
               stored.startsWith(`studio-secret:${keyring.currentId}:`),
             ).toBe(true);
-            const opened = cipher.openOAuthToken(
-              { providerId: 'google', accountId: row.accountId, column },
-              stored,
+            const opened = Redacted.value(
+              cipher.openOAuthToken(
+                { providerId: 'google', accountId: row.accountId, column },
+                stored,
+              ),
             );
             expect(plaintextSecrets).toContain(opened);
             expect(stored).not.toContain(opened);
@@ -1016,13 +1020,15 @@ describe.skipIf(!testDb)('the seeded dataset', () => {
        from protocol_asset_keys order by team_id limit 1`,
           );
           const row = stored[0]!;
-          const opened = testCipher(keyring).openAssetKey(
-            {
-              teamId: row.team_id,
-              protocolId: row.protocol_id,
-              assetId: row.asset_id,
-            },
-            { ciphertext: row.ciphertext, keyId: row.key_id },
+          const opened = Redacted.value(
+            testCipher(keyring).openAssetKey(
+              {
+                teamId: row.team_id,
+                protocolId: row.protocol_id,
+                assetId: row.asset_id,
+              },
+              { ciphertext: row.ciphertext, keyId: row.key_id },
+            ),
           );
           expect(opened).toMatch(/^sk\.seed-[0-9a-f]{32}$/);
           expect(plaintextSecrets).toContain(opened);
@@ -1068,6 +1074,8 @@ const IRREPRODUCIBLE = {
   session_stats: ['computed_at'],
   schemaFingerprint: ['appliedAt'],
   deployment_state: ['updated_at'],
+  // Stamped by the production insert the seed stages through.
+  protocol_staged_resources: ['created_at'],
 } as const;
 
 /**
@@ -1112,6 +1120,41 @@ describe.skipIf(!testDb)('seed', () => {
           });
           expect(differences).toEqual([]);
           expect([...first.values()].flat().length).toBeGreaterThan(1000);
+        }),
+      SEEDING_TIMEOUT_MS,
+    );
+
+    it.effect(
+      'keeps the migration history of a migrated database',
+      () =>
+        Effect.gen(function* () {
+          // A migrated database: `migrate` writes the history beside the
+          // schema. The scratch schema is applied without it, so the table
+          // is created here with the shape `db/history.ts` gives it.
+          yield* ownerRows(
+            `create table studio_migrations (
+               version text primary key,
+               ordinal int not null unique,
+               manifest_hash text not null,
+               artefact_hashes jsonb not null,
+               applied_at timestamptz not null default now(),
+               applied_by text not null
+             )`,
+          );
+          yield* ownerRows(
+            `insert into studio_migrations
+               (version, ordinal, manifest_hash, artefact_hashes, applied_by)
+             values ('0001_initial', 1, 'hash', '{}'::jsonb, 'seed-test')`,
+          );
+
+          yield* seed({ secrets: testKeyring(), scale: 'tiny' });
+
+          // A wiped history makes `migrate` refuse the database as one it
+          // did not create, so the seed must leave it as it found it.
+          const history = yield* ownerRows<{ version: string }>(
+            `select version from studio_migrations order by ordinal`,
+          );
+          expect(history).toEqual([{ version: '0001_initial' }]);
         }),
       SEEDING_TIMEOUT_MS,
     );

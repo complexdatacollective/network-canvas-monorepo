@@ -8,6 +8,7 @@ import Button from '@codaco/fresco-ui/Button';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import NewVariableWindow from '~/components/NewVariableWindow/NewVariableWindow';
 import type { RootState } from '~/ducks/store';
+import { useProtocolReadOnly } from '~/hooks/useProtocolReadOnly';
 
 import { getEntityProperties } from './helpers';
 import Variables from './Variables';
@@ -56,6 +57,7 @@ const EgoType = ({
   unusedOnly = false,
 }: EgoTypeProps) => {
   const intl = useAppIntl();
+  const readOnly = useProtocolReadOnly();
   const [showAddVariable, setShowAddVariable] = useState(false);
   const variableArray = Object.values(variables);
   const term = search.trim().toLowerCase();
@@ -76,6 +78,7 @@ const EgoType = ({
         <Button
           color="primary"
           size="sm"
+          disabled={readOnly}
           onClick={() => setShowAddVariable(true)}
         >
           {intl.formatMessage(messages.addAttribute)}

@@ -2,7 +2,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryHistory, RouterProvider } from '@tanstack/react-router';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { Effect } from 'effect';
+import { Effect, Redacted } from 'effect';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { Me } from '@codaco/studio-contract/schema/account';
@@ -29,11 +29,15 @@ const invitationCreated: AuditEventSummary = {
   eventVersion: 1,
   category: 'team_access',
   outcome: 'succeeded',
-  actor: { kind: 'user', id: 'user-owner', label: 'Owner Researcher' },
+  actor: {
+    kind: 'user',
+    id: 'user-owner',
+    label: Redacted.make('Owner Researcher'),
+  },
   subject: {
     type: 'team_invitation',
     id: 'invitation-1',
-    label: 'invitee@example.com',
+    label: Redacted.make('invitee@example.com'),
   },
   resource: null,
   title: 'Invitation created',
@@ -48,8 +52,16 @@ const roleDenied: AuditEventSummary = {
   eventVersion: 1,
   category: 'team_access',
   outcome: 'denied',
-  actor: { kind: 'user', id: 'user-admin', label: 'Admin Researcher' },
-  subject: { type: 'team_member', id: 'member-1', label: 'Member One' },
+  actor: {
+    kind: 'user',
+    id: 'user-admin',
+    label: Redacted.make('Admin Researcher'),
+  },
+  subject: {
+    type: 'team_member',
+    id: 'member-1',
+    label: Redacted.make('Member One'),
+  },
   resource: null,
   title: 'Member role change denied',
   rendered: true,
@@ -63,7 +75,7 @@ const futureEvent: AuditEventSummary = {
   eventVersion: 7,
   category: 'audit',
   outcome: 'succeeded',
-  actor: { kind: 'system', id: null, label: 'Studio' },
+  actor: { kind: 'system', id: null, label: Redacted.make('Studio') },
   subject: null,
   resource: null,
   title: 'audit.future_event',
@@ -81,9 +93,9 @@ const fixtures = {
 
 const ME: Me = {
   userId: 'user-1',
-  email: 'researcher@example.org',
+  email: Redacted.make('researcher@example.org'),
   emailVerified: true,
-  name: 'Researcher',
+  name: Redacted.make('Researcher'),
   locale: null,
   teams: [{ teamId: TeamId.make('team-a'), role: 'owner' }],
 };
@@ -178,9 +190,9 @@ beforeEach(() => {
   fixtures.getAudit.mockReturnValue(
     Effect.succeed({
       ...fixtures.invitationCreated,
-      teamLabel: 'Alpha research team',
+      teamLabel: Redacted.make('Alpha research team'),
       requestId: '00000000-0000-4000-8000-00000000aaaa',
-      details: { role: 'member' },
+      details: Redacted.make({ role: 'member' }),
     }),
   );
   // Deliberately a superset of the loaded pages: these are the team's whole
@@ -196,9 +208,22 @@ beforeEach(() => {
         { eventType: 'protocol.created', title: 'Protocol created' },
       ],
       actors: [
-        { kind: 'user', id: 'user-owner', label: 'Owner Researcher' },
-        { kind: 'user', id: 'user-departed', label: 'Departed Researcher' },
-        { kind: 'system', id: null, label: 'Studio' },
+        {
+          kind: 'user',
+          id: 'user-owner',
+          label: Redacted.make('Owner Researcher'),
+        },
+        {
+          kind: 'user',
+          id: 'user-departed',
+          label: Redacted.make('Departed Researcher'),
+        },
+        { kind: 'system', id: null, label: Redacted.make('Studio') },
+        {
+          kind: 'participant',
+          id: 'session-1',
+          label: Redacted.make('P-0001'),
+        },
       ],
       truncated: false,
     }),
@@ -408,6 +433,16 @@ describe('Team activity screen', () => {
     });
   });
 
+  it('names a participant by their code and kind', async () => {
+    renderActivity();
+    await screen.findByRole('cell', { name: 'Invitation created' });
+    await waitFor(() => {
+      expect(optionLabels(screen.getByLabelText('Actor'))).toContain(
+        'P-0001 (Participant)',
+      );
+    });
+  });
+
   it('filters for a system actor that carries no id', async () => {
     renderActivity();
     await screen.findByRole('cell', { name: 'Invitation created' });
@@ -549,9 +584,12 @@ describe('Team activity screen', () => {
     fixtures.getAudit.mockReturnValue(
       Effect.succeed({
         ...fixtures.invitationCreated,
-        teamLabel: 'Alpha research team',
+        teamLabel: Redacted.make('Alpha research team'),
         requestId: '00000000-0000-4000-8000-00000000aaaa',
-        details: { role: 'member', attemptCount: 9007199254740993n },
+        details: Redacted.make({
+          role: 'member',
+          attemptCount: 9007199254740993n,
+        }),
       }),
     );
     renderActivity();

@@ -3,7 +3,15 @@ import {
   renderHook as renderHookBase,
   type RenderHookOptions,
 } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest';
 
 // --- Module mocks (must appear before imports that use them) ---
 
@@ -60,8 +68,17 @@ vi.mock('es-toolkit', async (importOriginal) => ({
 // The hook under test (imported after mocks are declared)
 import type { Map as MapboxMap } from 'mapbox-gl/esm';
 
+import { interviewCatalogSource } from '../../../i18n/catalog';
 import { type Suggestion, useGeospatialSearch } from '../useGeospatialSearch';
 import { afterHookLayoutEffects, Languages, setLanguages } from './Languages';
+
+// Loaded before anything renders, as a host loads a language before it
+// mounts an interview, so renders in these languages are synchronous.
+beforeAll(async () => {
+  await Promise.all(
+    ['de', 'zh-Hans'].map((locale) => interviewCatalogSource.load(locale)),
+  );
+});
 
 // Every hook here runs inside a protocol localization, as it does in the Shell.
 const renderHook = <Result, Props>(

@@ -9,10 +9,10 @@ import {
   Fiber,
   Layer,
   Predicate,
+  Redacted,
   Scope,
 } from 'effect';
 
-import { Principal } from '@codaco/studio-contract/middleware/authenticated';
 import { TENANT_ROLES } from '@codaco/studio-sync/rls';
 
 import {
@@ -23,6 +23,7 @@ import {
   testDb,
 } from '../../../__tests__/support/database.ts';
 import { testDeniedAttempts } from '../../../__tests__/support/valkey.ts';
+import { provideCaller } from '../../../audit/actor.ts';
 import { AuditSignal } from '../../../audit/signal.ts';
 import type { SessionPrincipal } from '../../../auth/service.ts';
 import { MaintenanceDatabase, Database } from '../../../db/client.ts';
@@ -71,9 +72,9 @@ const PUBLIC_BASE_URL = 'https://studio.example.test';
 const PRINCIPAL: SessionPrincipal = {
   kind: 'user',
   userId: INVITER_ID,
-  email: 'inviter@example.com',
+  email: Redacted.make('inviter@example.com'),
   emailVerified: true,
-  name: 'Inviting Researcher',
+  name: Redacted.make('Inviting Researcher'),
   locale: null,
   sessionId: 'effect-invitation-delivery-session',
 };
@@ -359,15 +360,25 @@ describe.skipIf(!testDb)('invitation delivery on the native queue', () => {
           mail.invitations.length = 0;
           const second = yield* runDelivery(deliveryId, succeeds);
           assert.strictEqual(second._tag, 'settled');
-          assert.deepStrictEqual(mail.invitations.at(-1), {
-            email: invitation.email,
-            expiresAt: invitation.expiresAt,
-            invitationUrl: `${PUBLIC_BASE_URL}/invitations/${invitation.invitationId}`,
-            inviterLabel: 'Inviting Researcher',
-            messageId: `<studio-invitation.${invitation.invitationId}@networkcanvas.local>`,
-            role: 'member',
-            teamLabel: 'Invitation Delivery Team',
-          });
+          const sent = mail.invitations.at(-1);
+          assert.deepStrictEqual(
+            sent && {
+              ...sent,
+              email: Redacted.value(sent.email),
+              invitationUrl: Redacted.value(sent.invitationUrl),
+              inviterLabel: Redacted.value(sent.inviterLabel),
+              teamLabel: Redacted.value(sent.teamLabel),
+            },
+            {
+              email: invitation.email,
+              expiresAt: invitation.expiresAt,
+              invitationUrl: `${PUBLIC_BASE_URL}/invitations/${invitation.invitationId}`,
+              inviterLabel: 'Inviting Researcher',
+              messageId: `<studio-invitation.${invitation.invitationId}@networkcanvas.local>`,
+              role: 'member',
+              teamLabel: 'Invitation Delivery Team',
+            },
+          );
           const afterSecond = yield* deliveryState(deliveryId);
           assert.strictEqual(afterSecond.attempt_count, 1);
           assert.strictEqual(afterSecond.last_error, null);
@@ -896,7 +907,7 @@ describe.skipIf(!testDb)('invitation delivery on the native queue', () => {
     const asInviter = <A, E, R>(command: Effect.Effect<A, E, R>) =>
       Effect.flatMap(DeliveryHarness, (harness) =>
         command.pipe(
-          Effect.provideService(Principal, principalOf(PRINCIPAL)),
+          provideCaller(principalOf(PRINCIPAL)),
           Effect.provideService(RequestId, RequestId.of(randomUUID())),
           Effect.provide(Jobs.layer({ schema: harness.schema })),
           Effect.provideService(Database, harness.app),
@@ -912,7 +923,7 @@ describe.skipIf(!testDb)('invitation delivery on the native queue', () => {
 
         const created = yield* asInviter(
           createTeamInvitation(unsafeMakeTeamAccess(TEAM_ID, 'owner'), {
-            email,
+            email: Redacted.make(email),
             role: 'member',
           }),
         );
@@ -941,10 +952,10 @@ describe.skipIf(!testDb)('invitation delivery on the native queue', () => {
 
         const refusal = yield* Effect.exit(
           createTeamInvitation(unsafeMakeTeamAccess(TEAM_ID, 'owner'), {
-            email,
+            email: Redacted.make(email),
             role: 'member',
           }).pipe(
-            Effect.provideService(Principal, principalOf(PRINCIPAL)),
+            provideCaller(principalOf(PRINCIPAL)),
             Effect.provideService(RequestId, RequestId.of(randomUUID())),
             Effect.provideService(
               Jobs,

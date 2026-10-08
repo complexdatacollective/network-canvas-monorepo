@@ -1,11 +1,11 @@
 import {
-  Cause,
   Context,
   Duration,
   Effect,
   Exit,
   Layer,
   MutableRef,
+  Option,
   Ref,
 } from 'effect';
 
@@ -15,6 +15,7 @@ import {
   readDeploymentState,
   readDeploymentStateAsMaintenance,
 } from '../db/deployment-state.ts';
+import { logFailedReading } from '../db/errors.ts';
 
 // The tag lives here, beside no implementation either process may not load.
 
@@ -51,9 +52,13 @@ export const cachedReading = <A>(options: {
           const previous = yield* Ref.get(last);
           if (!previous.failing) {
             yield* Ref.set(last, { ...previous, failing: true });
-            yield* Effect.logWarning(
-              `could not read ${options.name}; answering with the last value read until it can: ${Cause.pretty(cause)}`,
-            );
+            yield* logFailedReading(
+              (level) =>
+                Effect.logWithLevel(level)(
+                  'could not take a reading; answering with the last value read until it can',
+                ),
+              cause,
+            ).pipe(Effect.annotateLogs({ reading: options.name }));
           }
           return previous.value;
         }),
@@ -64,6 +69,84 @@ export const cachedReading = <A>(options: {
       Exit.isSuccess(exit) ? READING_TTL : Duration.zero,
     );
     return cached.pipe(Effect.catchCause(() => lastValue));
+  });
+
+/**
+ * A reading that answers only for the window it was taken in. `window` counts
+ * the windows its caller has seen, and moves when one begins; a value whose
+ * read began before its last move answers nothing, so the caller can
+ * tell "not read since" from any value. Within one window it is
+ * `cachedReading`: one read at a time, kept for `READING_TTL`, and a failed or
+ * slow read answering the last value read in that window. Each window has its
+ * own cache, so a read still running when a window begins can neither answer
+ * nor be kept for the windows after it.
+ */
+export const windowedReading = <A>(options: {
+  readonly name: string;
+  readonly read: Effect.Effect<A, unknown>;
+  readonly initial: A;
+  readonly window: Effect.Effect<number>;
+}): Effect.Effect<Effect.Effect<Option.Option<A>>> =>
+  Effect.gen(function* () {
+    const last = yield* Ref.make({ value: options.initial, window: 0 });
+    const failing = yield* Ref.make(false);
+
+    const readIn = (window: number) =>
+      options.read.pipe(
+        Effect.timeout(READING_BOUND),
+        Effect.matchCauseEffect({
+          onSuccess: (value) =>
+            Effect.gen(function* () {
+              yield* Ref.set(failing, false);
+              // Tagged with the window it began in, so it cannot answer once
+              // the window has moved, and in one step, so it never replaces
+              // what a later window read.
+              yield* Ref.update(last, (held) =>
+                held.window > window ? held : { value, window },
+              );
+            }),
+          onFailure: (cause) =>
+            Effect.gen(function* () {
+              if (yield* Ref.getAndSet(failing, true)) return;
+              yield* logFailedReading(
+                (level) =>
+                  Effect.logWithLevel(level)(
+                    'could not take a reading; answering with the last value read since the deployment last closed, or nothing, until it can',
+                  ),
+                cause,
+              ).pipe(Effect.annotateLogs({ reading: options.name }));
+            }),
+        }),
+      );
+
+    const caches = yield* Ref.make<{
+      readonly window: number;
+      readonly sample: Effect.Effect<void>;
+    } | null>(null);
+    const cacheFor = Effect.fnUntraced(function* (window: number) {
+      const installed = yield* Ref.get(caches);
+      if (installed !== null && installed.window >= window) {
+        return installed.sample;
+      }
+      const sample = yield* Effect.cachedWithTTL(readIn(window), READING_TTL);
+      // Concurrent first reads of a window share whichever cache lands first,
+      // and a caller still in an older window joins the newer one: its answer
+      // is decided against the window it ends in, not the one it began in.
+      return yield* Ref.modify(caches, (current) =>
+        current !== null && current.window >= window
+          ? [current.sample, current]
+          : [sample, { window, sample }],
+      );
+    });
+
+    return Effect.gen(function* () {
+      const sample = yield* cacheFor(yield* options.window);
+      yield* Effect.ignoreCause(sample);
+      const held = yield* Ref.get(last);
+      return held.window === (yield* options.window)
+        ? Option.some(held.value)
+        : Option.none();
+    });
   });
 
 export class MaintenanceState extends Context.Service<

@@ -18,6 +18,7 @@ import {
   actionCreators as stageActions,
   getFamilyPedigreeDependentStages,
 } from '~/ducks/modules/protocol/stages';
+import { useProtocolReadOnly } from '~/hooks/useProtocolReadOnly';
 import { useRunOnce } from '~/hooks/useRunOnce';
 import { getProtocol, getStageList } from '~/selectors/protocol';
 import { cx } from '~/utils/cva';
@@ -141,6 +142,7 @@ const Timeline = () => {
   const isFirstMount = useRunOnce('timeline-entrance');
   const animate = !shouldReduceMotion && isFirstMount;
   const { announce } = useAccessibilityAnnouncements();
+  const readOnly = useProtocolReadOnly();
 
   // Local order the Reorder list renders from. motion's onReorder fires per
   // row-crossing during a drag; we track the visual order here and only commit a
@@ -197,6 +199,10 @@ const Timeline = () => {
   );
   const appendIndex =
     firstFinishIndex === -1 ? stages.length : firstFinishIndex;
+
+  // Another tab taking the protocol closes a new-stage screen that was open,
+  // rather than leaving it to start a stage this tab can no longer add.
+  if (readOnly && showNewStageDialog) setShowNewStageDialog(false);
 
   const handleInsertStage = useCallback((index: number) => {
     setInsertAtIndex(index);
@@ -335,16 +341,29 @@ const Timeline = () => {
   );
 
   // Visual-only during the drag: no dispatch, so the timeline isn't fragmented
-  // into one undo entry per crossing.
-  const handleReorder = useCallback((newOrder: typeof stages) => {
-    setOrderedStages(newOrder);
-  }, []);
+  // into one undo entry per crossing. A drag that was already under way when
+  // another tab took the protocol can still call this until its row stops it.
+  const handleReorder = useCallback(
+    (newOrder: typeof stages) => {
+      if (readOnly) return;
+      setOrderedStages(newOrder);
+    },
+    [readOnly],
+  );
 
   // Returns whether the move was committed. The keyboard path passes that
   // answer back to the open control, which is otherwise left waiting to
   // reclaim focus for a move that never happened.
   const commitReorder = useCallback(
     (stageId: string, proposedStages: typeof stages) => {
+      // A drag outliving the edit lock ends here, and the ownership gate would
+      // drop its write: dispatching and announcing would report a move that
+      // never persisted, while the order the drag left behind stayed on screen.
+      if (readOnly) {
+        setOrderedStages(stages);
+        return false;
+      }
+
       const oldIndex = stages.findIndex((s) => s.id === stageId);
       const newIndex = proposedStages.findIndex((s) => s.id === stageId);
 
@@ -388,7 +407,7 @@ const Timeline = () => {
       );
       return true;
     },
-    [announce, dispatch, openDialog, stages, intl],
+    [announce, dispatch, openDialog, readOnly, stages, intl],
   );
 
   // Commit the whole reorder as a single moveStage once the drag ends, using the
@@ -523,9 +542,14 @@ const Timeline = () => {
         <motion.button
           type="button"
           ref={addStageRef}
+          disabled={readOnly}
+          // The fade is on the circle and the label, not here: the entrance
+          // animation owns this element's inline `opacity`, which would
+          // override a class. Dropping `group` silences the hover styling.
           className={cx(
             timelineRowGrid,
-            'focusable group relative z-1 mt-3 cursor-pointer p-4',
+            'focusable relative z-1 mt-3 p-4',
+            readOnly ? 'cursor-not-allowed' : 'group cursor-pointer',
           )}
           // A new stage goes before the stage that ends the interview, which
           // stays last.
@@ -535,10 +559,20 @@ const Timeline = () => {
           variants={addStageVariants}
         >
           <div />
-          <div className="bg-action text-primary-contrast flex h-10 w-10 items-center justify-center rounded-full transition-transform duration-300 ease-in-out group-hover:scale-110">
+          <div
+            className={cx(
+              'bg-action text-primary-contrast flex h-10 w-10 items-center justify-center rounded-full transition-transform duration-300 ease-in-out group-hover:scale-110',
+              readOnly && 'opacity-50',
+            )}
+          >
             <Plus className="h-6 w-6" strokeWidth={2.5} />
           </div>
-          <span className="justify-self-start text-lg font-semibold transition-all group-hover:font-bold">
+          <span
+            className={cx(
+              'justify-self-start text-lg font-semibold transition-all group-hover:font-bold',
+              readOnly && 'opacity-50',
+            )}
+          >
             {intl.formatMessage(messages.addNewStage)}
           </span>
         </motion.button>

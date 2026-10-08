@@ -8,10 +8,11 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
-import { Effect } from 'effect';
+import { Effect, Redacted } from 'effect';
 import type { ReactElement } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { Maintenance } from '@codaco/studio-contract/schema/errors';
 import {
   DraftId,
   ProtocolId,
@@ -43,7 +44,7 @@ import { installRpcHarness } from '../../test/rpcHarness.ts';
 const fixtures = vi.hoisted(() => ({
   TEAM: { id: 'team-a', name: 'Alpha research team', slug: 'alpha' },
   /** Which of the two mocked components throws, if either. */
-  failing: undefined as 'area' | 'screen' | undefined,
+  failing: undefined as 'area' | 'screen' | 'maintenance' | undefined,
 }));
 
 const STUDY_ID = '4d0f5f2e-0000-4000-8000-000000000001';
@@ -52,7 +53,7 @@ const DRAFT_ID = '4d0f5f2e-0000-4000-8000-000000000003';
 
 const STUDY = {
   id: StudyId.make(STUDY_ID),
-  name: 'Shell proof',
+  name: Redacted.make('Shell proof'),
   state: 'draft',
   participationMode: 'managed',
   protocolId: ProtocolId.make(PROTOCOL_ID),
@@ -70,6 +71,9 @@ vi.mock('../../shell/Placeholder.tsx', async (importOriginal) => {
     default: (props: PlaceholderProps) => {
       if (fixtures.failing === 'screen') {
         throw new Error('this screen could not be rendered');
+      }
+      if (fixtures.failing === 'maintenance') {
+        throw new Maintenance({});
       }
       return actual.default(props);
     },
@@ -176,9 +180,9 @@ beforeEach(() => {
     'me': () =>
       Effect.succeed({
         userId: 'user-1',
-        email: 'researcher@example.org',
+        email: Redacted.make('researcher@example.org'),
         emailVerified: true,
-        name: 'Researcher',
+        name: Redacted.make('Researcher'),
         locale: null,
         teams: [{ teamId: TeamId.make(fixtures.TEAM.id), role: 'owner' }],
       }),
@@ -262,6 +266,22 @@ describe('a screen that throws outside the app shell', () => {
     const mains = screen.getAllByRole('main');
     expect(mains).toHaveLength(1);
     expect(mains[0]).toHaveAttribute('id', 'main-content');
+  });
+});
+
+describe('a screen refused for maintenance', () => {
+  it('says so rather than that the page failed', async () => {
+    fixtures.failing = 'maintenance';
+    renderAt('/team/team-a/roles');
+
+    expect(
+      await screen.findByText(
+        'Studio is down for maintenance. Reload this page in a few minutes.',
+      ),
+    ).toHaveAttribute('role', 'alert');
+    expect(
+      screen.queryByText('This page could not be loaded. Reload to try again.'),
+    ).toBeNull();
   });
 });
 

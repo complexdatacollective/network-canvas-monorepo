@@ -30,6 +30,7 @@ import { Presence } from './presence.ts';
 import { ProtocolEvents } from './publisher.ts';
 import { StagedImports } from './resources.ts';
 import { HostSessionLive, WatchCutoff, WsConnection } from './session.ts';
+import { socketClosure } from './socket-closure.ts';
 
 export const PROTOCOL_BUILDER_RPC_PATH = '/rpc/protocol-builder';
 
@@ -53,19 +54,9 @@ const closeWith = (socket: Socket.Socket, event: Socket.CloseEvent) =>
     Effect.ignore,
   );
 
-/**
- * The operator's window alone: a `migrate` with nothing to apply takes the lock
- * for milliseconds on every deploy.
- */
-const operatorWindow = (triggers: MaintenanceTriggers['Service']) =>
-  Effect.map(
-    triggers.closure,
-    Option.filter((closure) => closure.trigger === 'maintenance'),
-  );
-
 const windowOpened = (triggers: MaintenanceTriggers['Service']) =>
   Effect.gen(function* () {
-    while (Option.isNone(yield* operatorWindow(triggers))) {
+    while (Option.isNone(yield* socketClosure(triggers))) {
       yield* Effect.sleep(MAINTENANCE_WATCH_INTERVAL);
     }
   });
@@ -115,7 +106,7 @@ const WsRoute = HttpRouter.use((router) =>
         reader: Effect.map(socket.reader, (reader) => ({
           upgrade: reader.upgrade,
           pull: Effect.flatMap(reader.pull, (frames) =>
-            Effect.flatMap(operatorWindow(triggers), (closure) =>
+            Effect.flatMap(socketClosure(triggers), (closure) =>
               Option.isNone(closure)
                 ? Effect.succeed(frames)
                 : Effect.andThen(

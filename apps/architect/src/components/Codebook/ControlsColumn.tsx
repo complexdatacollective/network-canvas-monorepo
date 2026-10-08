@@ -3,6 +3,7 @@ import { Tag, Trash2 } from 'lucide-react';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { IconButton } from '@codaco/fresco-ui/Button';
+import { useProtocolReadOnly } from '~/hooks/useProtocolReadOnly';
 const chromeMessages = defineMessages({
   inUseCannotBeDeleted: {
     id: 'architect.chrome.codebook.controlsColumn.inUseCannotBeDeleted',
@@ -40,6 +41,7 @@ const ControlsColumn = ({
   onEditLabel,
 }: ControlsColumnProps) => {
   const intl = useAppIntl();
+  const readOnly = useProtocolReadOnly();
   const label = inUse
     ? intl.formatMessage(chromeMessages.inUseCannotBeDeleted)
     : intl.formatMessage(chromeMessages.deleteAttribute);
@@ -53,6 +55,7 @@ const ControlsColumn = ({
         variant="text"
         icon={<Tag />}
         onClick={() => onEditLabel(id)}
+        disabled={readOnly}
         aria-haspopup="dialog"
         aria-label={editLabel}
         title={editLabel}
@@ -69,7 +72,7 @@ const ControlsColumn = ({
           variant="text"
           icon={<Trash2 />}
           onClick={() => onDelete(id)}
-          disabled={inUse}
+          disabled={inUse || readOnly}
           aria-label={label}
         />
       </span>

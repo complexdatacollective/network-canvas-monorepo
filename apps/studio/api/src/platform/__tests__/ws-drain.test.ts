@@ -93,8 +93,12 @@ describe('WebSocketDrain', () => {
           yield* Fiber.interrupt(held);
         }).pipe(Effect.provide(logs.layer));
 
-        expect(logs.messages).toContain(
-          'Closing with 1 WebSocket connection(s) still open after 5 seconds.',
+        expect(logs.records).toContainEqual(
+          expect.objectContaining({
+            message:
+              'Closing with WebSocket connections still open after the drain timeout.',
+            annotations: { open_connections: 1, drain_timeout: '5 seconds' },
+          }),
         );
       }),
   );
@@ -134,6 +138,31 @@ describe('WebSocketDrain', () => {
       yield* close;
       yield* Fiber.join(waiting);
     }),
+  );
+
+  it.effect('reports draining from the moment a drain starts', () =>
+    Effect.gen(function* () {
+      const { record } = journal();
+      const { drain, close } = yield* build(record);
+      const held = yield* holdOpen(drain);
+
+      expect(yield* drain.draining).toBe(false);
+
+      const closing = yield* Effect.forkChild(close);
+      yield* drain.closing;
+      expect(yield* drain.draining).toBe(true);
+
+      yield* Fiber.interrupt(held);
+      yield* Fiber.join(closing);
+    }),
+  );
+
+  it.effect('never reports draining from the test layer', () =>
+    Effect.gen(function* () {
+      const drain = yield* WebSocketDrain;
+      yield* drain.drain;
+      expect(yield* drain.draining).toBe(false);
+    }).pipe(Effect.provide(WebSocketDrain.layerTest)),
   );
 
   it.effect('does not wait when nothing entered', () =>

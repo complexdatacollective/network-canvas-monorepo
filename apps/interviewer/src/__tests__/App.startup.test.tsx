@@ -7,6 +7,7 @@ import type * as I18nProviderModule from '~/i18n/InterviewerI18nProvider';
 
 import App from '../App';
 import { LOCALE_PREFERENCE_KEY } from '../i18n/preference';
+import { interviewerCatalogSource } from '../locales/catalogs';
 
 const failures = vi.hoisted(() => ({ locale: false, providers: false }));
 
@@ -53,6 +54,9 @@ vi.mock('@codaco/fresco-ui/dialogs/Dialog', () => ({
       </dialog>
     ) : null,
 }));
+
+// main.tsx loads the stored language before it renders App; so does this.
+await interviewerCatalogSource.load('es');
 
 beforeEach(() => {
   failures.locale = false;

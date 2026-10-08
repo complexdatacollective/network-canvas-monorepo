@@ -9,6 +9,8 @@ import { ensureError } from '@codaco/shared-consts';
 import { addEvent } from '~/lib/activityFeed';
 import { safeRevalidateTag } from '~/lib/cache';
 import { prisma } from '~/lib/db';
+import { parseStoredInterviewSession } from '~/lib/db/storedInterviewSession';
+import { parseStoredProtocol } from '~/lib/db/storedProtocol';
 import { setLimitInterviewsCookie } from '~/lib/limitInterviewsCookie';
 import { captureException, flushPostHog } from '~/lib/posthog-server';
 import { getAppSetting } from '~/queries/appSettings';
@@ -67,7 +69,14 @@ export async function POST(
       select: {
         finishTime: true,
         protocolId: true,
-        protocol: { select: { stages: true } },
+        protocol: {
+          select: {
+            stages: true,
+            codebook: true,
+            localization: true,
+            experiments: true,
+          },
+        },
       },
     });
 
@@ -78,11 +87,21 @@ export async function POST(
       );
     }
 
+    // A protocol whose stored design does not parse cannot say which finish
+    // stages it has, so the finish is refused rather than recorded unchecked.
+    const storedProtocol = parseStoredProtocol(interview.protocol);
+    if (!storedProtocol.success) {
+      throw new Error(
+        'The protocol of an interview being finished could not be read',
+        { cause: storedProtocol.error },
+      );
+    }
+
     // The outcome reaches every export, and this endpoint is unauthenticated,
     // so a finish is accepted only as the protocol declares it: the stage must
     // be one of the protocol's finish stages, and the outcome the one that
     // stage declares.
-    const finishStage = interview.protocol.stages
+    const finishStage = storedProtocol.data.stages
       .filter(isFinishSessionStage)
       .find((stage) => stage.id === stageId);
 
@@ -122,7 +141,9 @@ export async function POST(
     const { label, identifier } = updatedInterview.participant;
     const participantDisplay = label ? `${label} (${identifier})` : identifier;
 
-    const network = updatedInterview.network;
+    // Only the sizes are recorded, so stored data that does not parse costs the
+    // activity its counts and nothing else: finishing writes no network.
+    const stored = parseStoredInterviewSession(updatedInterview);
 
     void addEvent(
       'Interview Completed',
@@ -131,10 +152,12 @@ export async function POST(
         kind: 'interviewCompleted',
         values: { participant: participantDisplay },
       },
-      {
-        nodeCount: network?.nodes?.length ?? 0,
-        edgeCount: network?.edges?.length ?? 0,
-      },
+      stored.success
+        ? {
+            nodeCount: stored.data.network.nodes.length,
+            edgeCount: stored.data.network.edges.length,
+          }
+        : undefined,
     );
 
     await setLimitInterviewsCookie(updatedInterview.protocolId, interviewId);

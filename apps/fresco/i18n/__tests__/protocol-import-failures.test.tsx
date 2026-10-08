@@ -8,7 +8,7 @@ import { Toaster } from '@codaco/fresco-ui/Toast';
 import { createDefaultFinishSessionStage } from '@codaco/protocol-validation';
 import { useProtocolImport } from '~/hooks/useProtocolImport';
 import { frescoLocales } from '~/i18n/locales';
-import { frescoCatalogs } from '~/src/locales/catalogs';
+import { frescoCatalogSource } from '~/src/locales/catalogs';
 
 const {
   getProtocolByHash,
@@ -41,11 +41,15 @@ function ImportButton({ file }: { file: File }) {
   const { importProtocols } = useProtocolImport();
   return <button onClick={() => importProtocols([file])}>Start import</button>;
 }
+// Loaded up front, so every render and formatter below has Spanish
+// synchronously.
+await frescoCatalogSource.load('es');
+
 const view = (locale: string, file: File) => (
   <AppI18nProvider
     locale={locale}
     locales={frescoLocales}
-    messages={frescoCatalogs[locale]}
+    messages={frescoCatalogSource.peek(locale)}
   >
     <Toast.Provider>
       <ImportButton file={file} />

@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import { layer } from '@effect/vitest';
-import { Cause, Effect, Exit, Fiber, Layer, Logger } from 'effect';
+import { Cause, Effect, Exit, Fiber, Layer, Logger, Redacted } from 'effect';
 import { describe, expect } from 'vitest';
 
 import {
@@ -32,6 +32,8 @@ const PROTOCOL = '3f1c9b4e-0a2d-4c5e-9b8a-6d7e5f4c3b2a';
 const OTHER_TEAM = 'team-rotation-other';
 const OTHER_PROTOCOL = '8b2d4f6a-1c3e-4a5b-8d7f-9e0a1b2c3d4e';
 const MISSING = 'gone';
+const DRAFT = '6a1e3c5b-7d92-4f04-a816-2b9c0d4e7f13';
+const OWNER = `${USER}:tab-1`;
 
 const BEFORE = testKeyring(['test-2', 'test-1']);
 const AFTER = testKeyring(['test-1', 'test-2']);
@@ -80,6 +82,7 @@ const reset = Effect.fnUntraced(function* () {
       yield* sql`delete from webhook_subscriptions`;
       yield* sql`delete from account`;
       yield* sql`delete from protocol_asset_keys`;
+      yield* sql`delete from protocol_staged_resources`;
       yield* sql`insert into teams (id, name, slug)
                  values (${TEAM}, ${TEAM}, ${TEAM})
                  on conflict (id) do nothing`;
@@ -88,6 +91,9 @@ const reset = Effect.fnUntraced(function* () {
                  on conflict (id) do nothing`;
       yield* sql`insert into protocols (id, team_id, name)
                  values (${PROTOCOL}, ${TEAM}, 'Rotation protocol')
+                 on conflict (id) do nothing`;
+      yield* sql`insert into drafts (id, team_id, head_manifest_hash)
+                 values (${DRAFT}, ${TEAM}, 'h')
                  on conflict (id) do nothing`;
     }),
   );
@@ -102,7 +108,7 @@ const newSubscription = Effect.fnUntraced(function* (
   const secret = `whsec_${randomUUID().replaceAll('-', '')}`;
   const sealed = cipher.sealWebhookSecret(
     { teamId: TEAM, subscriptionId: id },
-    secret,
+    Redacted.make(secret),
   );
   yield* harness.onOwner(
     harness.owner
@@ -133,7 +139,7 @@ const newAccount = Effect.fnUntraced(function* (
     if (typeof value !== 'string') return value.plaintext;
     return cipher.sealOAuthToken(
       { providerId: 'google', accountId, column },
-      value,
+      Redacted.make(value),
     );
   };
   yield* harness.onOwner(
@@ -156,7 +162,7 @@ const newAssetKey = Effect.fnUntraced(function* (
   const value = `pk.${randomUUID().replaceAll('-', '')}`;
   const sealed = cipher.sealAssetKey(
     { teamId: TEAM, protocolId: PROTOCOL, assetId },
-    value,
+    Redacted.make(value),
   );
   yield* harness.onOwner(
     harness.owner
@@ -166,6 +172,43 @@ const newAssetKey = Effect.fnUntraced(function* (
                    ${keyIdOverride ?? sealed.keyId})`,
   );
   return { assetId, value };
+});
+
+const newStagedSecret = Effect.fnUntraced(function* () {
+  const harness = yield* TestDatabase;
+  const resourceId = `resource-${randomUUID()}`;
+  const value = `sk.${randomUUID().replaceAll('-', '')}`;
+  const sealed = beforeCipher.sealStagedSecret(
+    { teamId: TEAM, draftId: DRAFT, owner: OWNER, resourceId },
+    Redacted.make(value),
+  );
+  const descriptor = {
+    id: resourceId,
+    kind: 'apikey',
+    name: 'Key',
+    status: 'staged',
+  };
+  yield* harness.onOwner(
+    harness.owner.sql`insert into protocol_staged_resources
+             (team_id, draft_id, owner, edit_id, resource_id, request_id, kind,
+              descriptor, secret_ciphertext, secret_key_id)
+           values (${TEAM}, ${DRAFT}, ${OWNER}, 'edit-1', ${resourceId},
+                   ${randomUUID()}, 'secret', ${JSON.stringify(descriptor)}::jsonb,
+                   ${sealed.ciphertext}, ${sealed.keyId})`,
+  );
+  return { resourceId, value };
+});
+
+const stagedSecretRows = Effect.fnUntraced(function* () {
+  const harness = yield* TestDatabase;
+  return yield* harness.onOwner(
+    harness.owner.sql<{
+      resource_id: string;
+      secret_ciphertext: Uint8Array;
+      secret_key_id: string;
+    }>`select resource_id, secret_ciphertext, secret_key_id
+       from protocol_staged_resources order by resource_id`,
+  );
 });
 
 const subscriptionRows = Effect.fnUntraced(function* () {
@@ -223,6 +266,7 @@ describe.skipIf(!testDb)('rotating stored secrets', () => {
             const subscription = yield* newSubscription();
             const account = yield* newAccount();
             const assetKey = yield* newAssetKey();
+            const staged = yield* newStagedSecret();
             const storedAt = (yield* accountRows())[0]!.updatedAt;
             const assetStoredAt = (yield* assetKeyRows())[0]!.updated_at;
 
@@ -231,17 +275,39 @@ describe.skipIf(!testDb)('rotating stored secrets', () => {
               webhook_subscriptions: 1,
               account: 1,
               protocol_asset_keys: 1,
+              protocol_staged_resources: 1,
             });
+
+            const [rotatedStaged] = yield* stagedSecretRows();
+            expect(rotatedStaged?.secret_key_id).toBe('test-1');
+            expect(
+              Redacted.value(
+                afterCipher.openStagedSecret(
+                  {
+                    teamId: TEAM,
+                    draftId: DRAFT,
+                    owner: OWNER,
+                    resourceId: staged.resourceId,
+                  },
+                  {
+                    ciphertext: rotatedStaged!.secret_ciphertext,
+                    keyId: rotatedStaged!.secret_key_id,
+                  },
+                ),
+              ),
+            ).toBe(staged.value);
 
             const [rotatedSubscription] = yield* subscriptionRows();
             expect(rotatedSubscription?.secret_key_id).toBe('test-1');
             expect(
-              afterCipher.openWebhookSecret(
-                { teamId: TEAM, subscriptionId: subscription.id },
-                {
-                  ciphertext: rotatedSubscription!.secret_ciphertext,
-                  keyId: rotatedSubscription!.secret_key_id,
-                },
+              Redacted.value(
+                afterCipher.openWebhookSecret(
+                  { teamId: TEAM, subscriptionId: subscription.id },
+                  {
+                    ciphertext: rotatedSubscription!.secret_ciphertext,
+                    keyId: rotatedSubscription!.secret_key_id,
+                  },
+                ),
               ),
             ).toBe(subscription.secret);
 
@@ -250,13 +316,15 @@ describe.skipIf(!testDb)('rotating stored secrets', () => {
               const value = rotatedAccount![column];
               expect(value?.startsWith('studio-secret:test-1:')).toBe(true);
               expect(
-                afterCipher.openOAuthToken(
-                  {
-                    providerId: 'google',
-                    accountId: account.accountId,
-                    column,
-                  },
-                  value!,
+                Redacted.value(
+                  afterCipher.openOAuthToken(
+                    {
+                      providerId: 'google',
+                      accountId: account.accountId,
+                      column,
+                    },
+                    value!,
+                  ),
                 ),
               ).toBe(account.tokens[column]);
             }
@@ -264,16 +332,18 @@ describe.skipIf(!testDb)('rotating stored secrets', () => {
             const [rotatedAssetKey] = yield* assetKeyRows();
             expect(rotatedAssetKey?.key_id).toBe('test-1');
             expect(
-              afterCipher.openAssetKey(
-                {
-                  teamId: TEAM,
-                  protocolId: PROTOCOL,
-                  assetId: assetKey.assetId,
-                },
-                {
-                  ciphertext: rotatedAssetKey!.ciphertext,
-                  keyId: rotatedAssetKey!.key_id,
-                },
+              Redacted.value(
+                afterCipher.openAssetKey(
+                  {
+                    teamId: TEAM,
+                    protocolId: PROTOCOL,
+                    assetId: assetKey.assetId,
+                  },
+                  {
+                    ciphertext: rotatedAssetKey!.ciphertext,
+                    keyId: rotatedAssetKey!.key_id,
+                  },
+                ),
               ),
             ).toBe(assetKey.value);
 
@@ -302,7 +372,10 @@ describe.skipIf(!testDb)('rotating stored secrets', () => {
               return {
                 identity,
                 value,
-                sealed: beforeCipher.sealAssetKey(identity, value),
+                sealed: beforeCipher.sealAssetKey(
+                  identity,
+                  Redacted.make(value),
+                ),
               };
             };
             const sameTeam = sealedAt(TEAM, PROTOCOL);
@@ -354,10 +427,12 @@ describe.skipIf(!testDb)('rotating stored secrets', () => {
               );
               expect(row?.key_id).toBe('test-1');
               expect(
-                afterCipher.openAssetKey(identity, {
-                  ciphertext: row!.ciphertext,
-                  keyId: row!.key_id,
-                }),
+                Redacted.value(
+                  afterCipher.openAssetKey(identity, {
+                    ciphertext: row!.ciphertext,
+                    keyId: row!.key_id,
+                  }),
+                ),
               ).toBe(value);
             }
           }).pipe(Effect.orDie),
@@ -413,13 +488,15 @@ describe.skipIf(!testDb)('rotating stored secrets', () => {
             expect(row?.refreshToken).toBeNull();
             expect(row?.idToken).toBeNull();
             expect(
-              afterCipher.openOAuthToken(
-                {
-                  providerId: 'google',
-                  accountId: account.accountId,
-                  column: 'accessToken',
-                },
-                row!.accessToken!,
+              Redacted.value(
+                afterCipher.openOAuthToken(
+                  {
+                    providerId: 'google',
+                    accountId: account.accountId,
+                    column: 'accessToken',
+                  },
+                  row!.accessToken!,
+                ),
               ),
             ).toBe('ya29.only');
           }).pipe(Effect.orDie),
@@ -442,6 +519,7 @@ describe.skipIf(!testDb)('rotating stored secrets', () => {
               webhook_subscriptions: 0,
               account: 0,
               protocol_asset_keys: 0,
+              protocol_staged_resources: 0,
             });
             expect(yield* subscriptionRows()).toEqual(first);
             expect(yield* accountRows()).toEqual(firstAccounts);
@@ -482,6 +560,7 @@ describe.skipIf(!testDb)('rotating stored secrets', () => {
               webhook_subscriptions: 2,
               account: 0,
               protocol_asset_keys: 0,
+              protocol_staged_resources: 0,
             });
             expect(
               (yield* subscriptionRows()).every(
@@ -523,6 +602,7 @@ describe.skipIf(!testDb)('rotating stored secrets', () => {
               webhook_subscriptions: 1,
               account: 0,
               protocol_asset_keys: 0,
+              protocol_staged_resources: 0,
             });
             expect(
               (yield* subscriptionRows()).every(

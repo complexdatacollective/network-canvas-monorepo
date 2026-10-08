@@ -57,9 +57,14 @@ describe('AppUpdateProvider', () => {
 
     // jsdom makes Location.reload non-configurable, so observe its underlying
     // jsdomError event. This fails if the callback attempts a real navigation.
+    // Vitest exposes the environment's JSDOM instance as the `jsdom` global,
+    // and `virtualConsole` is that instance's public accessor for the console
+    // the window reports to.
     const virtualConsole = (
-      window as unknown as { _virtualConsole?: JsdomVirtualConsole }
-    )._virtualConsole;
+      globalThis as unknown as {
+        jsdom?: { virtualConsole?: JsdomVirtualConsole };
+      }
+    ).jsdom?.virtualConsole;
     expect(virtualConsole).toBeDefined();
     if (!virtualConsole) throw new Error('jsdom virtual console unavailable');
     const navigationError = vi.fn();
@@ -140,6 +145,59 @@ describe('AppUpdateProvider', () => {
 
       expect(update).toHaveBeenCalledTimes(1);
       expect(rejectionHandled).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('survives an update() that throws synchronously', () => {
+    // Firefox throws `InvalidStateError` out of `update()` itself — not through
+    // the returned promise — when the registration has no worker left to
+    // update. A promise handler cannot see that, so it escaped the interval
+    // callback and was reported as an uncaught DOMException crash. Assert the
+    // throw stays inside the callback and the hourly check keeps running.
+    vi.useFakeTimers();
+
+    try {
+      render(
+        <AppUpdateProvider>
+          <ContextProbe />
+        </AppUpdateProvider>,
+      );
+
+      const options = mockUseRegisterSW.mock.calls[0]?.[0] as {
+        onRegisteredSW?: (
+          url: string,
+          registration: ServiceWorkerRegistration,
+        ) => void;
+      };
+
+      const update = vi.fn(() => {
+        throw new DOMException(
+          'An attempt was made to use an object that is not, or is no longer, usable',
+          'InvalidStateError',
+        );
+      });
+
+      act(() => {
+        options.onRegisteredSW?.('/sw.js', {
+          update,
+        } as unknown as ServiceWorkerRegistration);
+      });
+
+      // Each tick must survive on its own: an escaping throw would surface here
+      // as a failed test, and a swallowed one leaves the interval intact.
+      expect(() => {
+        act(() => {
+          // Mirrors UPDATE_CHECK_INTERVAL_MS in AppUpdateProvider.
+          vi.advanceTimersByTime(60 * 60 * 1000);
+        });
+      }).not.toThrow();
+      act(() => {
+        vi.advanceTimersByTime(60 * 60 * 1000);
+      });
+
+      expect(update).toHaveBeenCalledTimes(2);
     } finally {
       vi.useRealTimers();
     }

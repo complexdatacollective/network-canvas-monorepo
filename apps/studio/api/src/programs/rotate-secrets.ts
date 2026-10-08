@@ -1,11 +1,14 @@
 import { Console, Effect, Layer, Schema } from 'effect';
 
 import { MaintenanceDatabase } from '../db/client.ts';
+import { MaintenanceScope } from '../db/tenant.ts';
 import { Environment } from '../env.ts';
-import { LoggerLive } from '../platform/logger.ts';
+import { InstallationIdentity } from '../platform/installation-identity.ts';
+import { LoggerLive, LogLevelLive } from '../platform/logger.ts';
 import { TracingLive } from '../platform/tracing.ts';
 import { rotateSecrets as rotate } from '../secrets/rotate.ts';
 import { Keyring, SecretsCipher } from '../secrets/services.ts';
+import { readInstallationId } from '../setup/bootstrap.ts';
 import { STUDIO_VERSION } from '../version.ts';
 import { reportingRefusals } from './command.ts';
 
@@ -45,6 +48,10 @@ const rotateSecrets = Effect.gen(function* () {
     applicationName: 'studio-rotate-secrets',
   });
 
+  yield* InstallationIdentity.resolveOnce(
+    MaintenanceScope.open(readInstallationId()),
+  ).pipe(Effect.provide(Maintenance));
+
   const { counts, currentKeyId } = yield* Effect.gen(function* () {
     const keyring = yield* Keyring;
     return {
@@ -68,9 +75,11 @@ const rotateSecrets = Effect.gen(function* () {
 
 export const RotateSecretsProgram = rotateSecrets.pipe(
   Effect.provide(
-    Layer.mergeAll(LoggerLive, TracingLive('rotate-secrets')).pipe(
-      Layer.provideMerge(Environment.layer),
-    ),
+    Layer.mergeAll(
+      LoggerLive,
+      LogLevelLive,
+      TracingLive('rotate-secrets'),
+    ).pipe(Layer.provideMerge(Environment.layer)),
   ),
   // Outside the environment, so a refusal to read it is printed too.
   reportingRefusals,

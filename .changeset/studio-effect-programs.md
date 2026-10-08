@@ -10,8 +10,7 @@ programs on Effect's Node HTTP server (stage 1 of the Effect 4 migration,
   message.
 - Exit codes come from the runtime's teardown: 0 after a clean stop, 130 on
   SIGTERM/SIGINT, 1 when the process refuses to start (missing database, a
-  schema this build did not create, a keyring that cannot open the stored
-  secrets).
+  keyring that cannot open the stored secrets).
 - On a deploy, open editor sessions are asked to finish and their sockets are
   closed with a plain close frame rather than the previous `1001 Server
 shutting down`; browsers report it as a clean close (#1247).

@@ -20,7 +20,7 @@
   },
   "News": {
     "label": "Laatste nieuws:",
-    "fullStory": "[Volledig bericht]"
+    "readMore": "[Lees meer]"
   },
   "Tools": {
     "heading": "Een reeks tools die je onderzoek makkelijker maken",
@@ -101,6 +101,27 @@
     "citing": "Lees ons <article>documentatieartikel</article> voor richtlijnen over het citeren van Network Canvas.",
     "submission": "Wil je jouw publicatie hier laten zien? Laat het ons weten in de <thread>discussie</thread> op onze communitysite."
   },
+  "UpdatesPage": {
+    "metadata": {
+      "title": "Updates",
+      "description": "Nieuws uit het hele Network Canvas-project: softwarereleases, financiering, onderzoeksartikelen, workshops en andere mijlpalen."
+    },
+    "heading": "Updates",
+    "introduction": "Nieuws uit het hele Network Canvas-project sinds de start in 2013: softwarereleases, financiering, onderzoeksartikelen, workshops en andere mijlpalen.",
+    "search": {
+      "label": "Updates zoeken",
+      "placeholder": "Updates zoeken",
+      "clear": "Zoekopdracht wissen",
+      "results": "{count} van {total, plural, =1 {# update} other {# updates}}",
+      "emptyHeading": "Geen updates gevonden",
+      "emptyDescription": "Probeer een andere zoekopdracht."
+    },
+    "details": {
+      "show": "Alle details tonen",
+      "hide": "Details verbergen"
+    },
+    "readMore": "Lees de volledige aankondiging"
+  },
   "Team": {
     "heading": "Kernteam",
     "introduction": "Ons projectteam bestaat uit mensen uit uiteenlopende disciplines en specialisaties."
@@ -145,6 +166,7 @@
   },
   "Footer": {
     "terms": "Gebruiksvoorwaarden",
+    "updates": "Updates",
     "privacy": "Privacybeleid",
     "copyright": "Copyright Complex Data Collective 2016-{year}",
     "youtube": "YouTube",

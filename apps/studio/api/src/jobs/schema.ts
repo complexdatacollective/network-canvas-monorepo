@@ -76,6 +76,8 @@ CREATE TABLE IF NOT EXISTS ${s}.jobs (
   completed_at timestamptz
 );
 
+ALTER TABLE ${s}.jobs ADD COLUMN IF NOT EXISTS correlation jsonb;
+
 CREATE INDEX IF NOT EXISTS jobs_claim_idx ON ${s}.jobs (queue, run_at, created_at)
   WHERE state = 'created';
 

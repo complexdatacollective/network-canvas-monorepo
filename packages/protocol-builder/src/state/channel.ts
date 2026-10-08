@@ -12,6 +12,7 @@ import {
   type LockState,
   type ProtocolBuilderAdapter,
 } from './context.ts';
+import type { CachedSection } from './hooks.ts';
 
 const FIRST_RECONNECT_DELAY_MS = 250;
 const MAX_RECONNECT_DELAY_MS = 4_000;
@@ -23,10 +24,6 @@ type ChannelDeps = Readonly<{
 }>;
 
 type SectionList = Readonly<{ sectionIds: readonly ProtocolSectionId[] }>;
-type SectionAtRevision = Readonly<{
-  document: Readonly<Record<string, unknown>>;
-  revision: Readonly<{ sequence: bigint; contentHash: string }>;
-}>;
 
 /**
  * The one subscription an open protocol has.
@@ -113,7 +110,7 @@ function applyEvent(deps: ChannelDeps, event: ProtocolEvent): void {
         updateSectionList(deps, event.sectionId, 'removed');
         return;
       }
-      queryClient.setQueryData<SectionAtRevision>(key, {
+      queryClient.setQueryData<CachedSection>(key, {
         document: event.document,
         revision: event.revision,
       });

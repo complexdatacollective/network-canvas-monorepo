@@ -20,7 +20,7 @@
   },
   "News": {
     "label": "Dernières actualités :",
-    "fullStory": "[Lire la suite]"
+    "readMore": "[Lire la suite]"
   },
   "Tools": {
     "heading": "Une sélection d’outils pour faciliter vos recherches",
@@ -101,6 +101,27 @@
     "citing": "Pour savoir comment citer Network Canvas, consultez notre <article>article de documentation</article>.",
     "submission": "Si vous souhaitez que votre publication soit mise en avant, faites-le-nous savoir en répondant au <thread>fil de discussion</thread> de notre site communautaire."
   },
+  "UpdatesPage": {
+    "metadata": {
+      "title": "Nouveautés",
+      "description": "Les nouveautés de l’ensemble du projet Network Canvas : versions logicielles, financements, articles de recherche, ateliers et autres jalons."
+    },
+    "heading": "Nouveautés",
+    "introduction": "Les nouveautés du projet Network Canvas depuis ses débuts en 2013 : versions logicielles, financements, articles de recherche, ateliers et autres jalons.",
+    "search": {
+      "label": "Rechercher dans les nouveautés",
+      "placeholder": "Rechercher dans les nouveautés",
+      "clear": "Effacer la recherche",
+      "results": "{count} sur {total, plural, =1 {# nouveauté} one {# nouveauté} other {# nouveautés}}",
+      "emptyHeading": "Aucune nouveauté trouvée",
+      "emptyDescription": "Essayez une autre recherche."
+    },
+    "details": {
+      "show": "Afficher tous les détails",
+      "hide": "Masquer les détails"
+    },
+    "readMore": "Lire l’annonce complète"
+  },
   "Team": {
     "heading": "Équipe principale",
     "introduction": "Notre équipe de projet réunit des personnes issues de disciplines et de spécialités variées."
@@ -145,6 +166,7 @@
   },
   "Footer": {
     "terms": "Conditions d’utilisation",
+    "updates": "Nouveautés",
     "privacy": "Politique de confidentialité",
     "copyright": "Copyright Complex Data Collective 2016-{year}",
     "youtube": "YouTube",

@@ -4,7 +4,6 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { AppI18nProvider } from '@codaco/app-i18n/react';
 import { frescoLocales } from '~/i18n/locales';
-import { frescoCatalogs } from '~/src/locales/catalogs';
 
 const { mockUseReducedMotion } = vi.hoisted(() => ({
   mockUseReducedMotion: vi.fn<() => boolean | null>(),
@@ -48,11 +47,7 @@ import { NavigationBar } from '../NavigationBar';
 const serverMarkupFor = (preference: boolean | null) => {
   mockUseReducedMotion.mockReturnValue(preference);
   return renderToString(
-    <AppI18nProvider
-      locale="en"
-      locales={frescoLocales}
-      messages={frescoCatalogs.en}
-    >
+    <AppI18nProvider locale="en" locales={frescoLocales}>
       <NavigationBar />
     </AppI18nProvider>,
   );

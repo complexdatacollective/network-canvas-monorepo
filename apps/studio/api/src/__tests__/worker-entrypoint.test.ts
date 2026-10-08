@@ -5,6 +5,7 @@
 // of the worker layers can answer.
 import { networkInterfaces } from 'node:os';
 
+import { Redacted } from 'effect';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { RPC_PATH } from '@codaco/studio-contract/rpc/studio';
@@ -100,8 +101,8 @@ const LOOPBACK_CASE_TIMEOUT_MS = 60_000;
 /**
  * The deployment's environment, minus the development lane: the committed
  * `.env.development` this suite runs under would otherwise hand the child a
- * console mailer and the lenient schema wait, which are precisely the two
- * behaviours these cases are about.
+ * console mailer and the development lane's remedies, which these cases are
+ * not about.
  */
 function startWorker(overrides: Record<string, string>): Entrypoint {
   return startEntrypoint('src/worker.ts', {
@@ -120,11 +121,11 @@ function startWorker(overrides: Record<string, string>): Entrypoint {
 }
 
 /**
- * The development lane, which waits for a schema rather than exiting on one it
- * does not have. It is the only way to hold a real worker process in the state
- * the readiness case is about: up and answering, with no queue behind it —
- * the queue's layers are built after the schema gate and the secrets check,
- * because nothing may claim a job against a schema this build did not make.
+ * The development lane, waiting for a schema it does not have. Either lane
+ * holds a real worker process in the state the readiness case is about: up and
+ * answering, with no queue behind it — the queue's layers are built after the
+ * schema gate and the secrets check, because nothing may claim a job against a
+ * schema this build did not make. This one also has a mail transport.
  */
 function startWaitingWorker(overrides: Record<string, string>): Entrypoint {
   return startEntrypoint('src/worker.ts', {
@@ -161,12 +162,14 @@ describe.skipIf(!db)('the worker entrypoint', () => {
     });
     try {
       await worker.waitForOutput(
-        /Network Canvas Studio worker \d+\.\d+\.\d+.* started/,
+        /Network Canvas Studio worker started.*"version":"\d+\.\d+\.\d+/,
       );
       // Unset SMTP is a supported state, not a refusal: the jobs queue until
       // a worker with mail configured returns (#1895). It only has to be loud.
       await worker.waitForOutput(/No mail transport is configured/);
-      expect(worker.output()).toMatch(/invitation-delivery and sign-in-email/);
+      expect(worker.output()).toMatch(
+        /"queues":\["invitation-delivery","sign-in-email"\]/,
+      );
 
       // It serves the health routes and nothing else: the port a deployment
       // would route users to refuses a connection.
@@ -200,7 +203,7 @@ describe.skipIf(!db)('the worker entrypoint', () => {
       );
       try {
         await worker.waitForOutput(
-          /the deployment is in maintenance: the job worker has stopped claiming jobs/,
+          /the job worker has stopped claiming jobs.*"trigger":"maintenance"/,
           MAINTENANCE_WAIT_MS,
         );
       } finally {
@@ -208,7 +211,10 @@ describe.skipIf(!db)('the worker entrypoint', () => {
           'update deployment_state set maintenance = false, reason = null',
         );
       }
-      await worker.waitForOutput(/maintenance is over/, MAINTENANCE_WAIT_MS);
+      await worker.waitForOutput(
+        /the deployment is open again/,
+        MAINTENANCE_WAIT_MS,
+      );
 
       worker.child.kill('SIGTERM');
       // The process exits 130 — `NodeRuntime.runMain`'s code for an interruption
@@ -257,7 +263,7 @@ describe.skipIf(!db)('the worker entrypoint', () => {
 
         await applySchema(scratch.pool);
         await worker.waitForOutput(
-          /Network Canvas Studio worker \d+\.\d+\.\d+.* started/,
+          /Network Canvas Studio worker started.*"version":"\d+\.\d+\.\d+/,
           SCHEMA_WAIT_MS,
         );
 
@@ -294,7 +300,7 @@ describe.skipIf(!db)('the worker entrypoint', () => {
     });
     try {
       await worker.waitForOutput(
-        /Network Canvas Studio worker \d+\.\d+\.\d+.* started/,
+        /Network Canvas Studio worker started.*"version":"\d+\.\d+\.\d+/,
       );
       await vi.waitFor(
         async () => {
@@ -322,7 +328,7 @@ describe.skipIf(!db)('the worker entrypoint', () => {
       });
       try {
         await worker.waitForOutput(
-          /Network Canvas Studio worker \d+\.\d+\.\d+.* started/,
+          /Network Canvas Studio worker started.*"version":"\d+\.\d+\.\d+/,
         );
         await vi.waitFor(
           async () =>
@@ -355,7 +361,7 @@ describe.skipIf(!db)('the worker entrypoint', () => {
       });
       try {
         await worker.waitForOutput(
-          /Network Canvas Studio worker \d+\.\d+\.\d+.* started/,
+          /Network Canvas Studio worker started.*"version":"\d+\.\d+\.\d+/,
         );
         // Reachable on the loopback first, so a refusal below is the bind and
         // not a listener that never came up.
@@ -412,12 +418,14 @@ describe.skipIf(!db)('the worker entrypoint', () => {
 
       try {
         await worker.waitForOutput(
-          /Network Canvas Studio worker \d+\.\d+\.\d+.* started/,
+          /Network Canvas Studio worker started.*"version":"\d+\.\d+\.\d+/,
         );
 
         const jobId = await enqueueAsApplication(applied.db, 'sign-in-email', {
-          email: 'researcher@example.org',
-          url: 'https://studio.example.org/api/auth/magic-link/verify?token=abc',
+          email: Redacted.make('researcher@example.org'),
+          url: Redacted.make(
+            'https://studio.example.org/api/auth/magic-link/verify?token=abc',
+          ),
         });
 
         // `active` is the child holding the job: the handler is inside the send
@@ -496,7 +504,7 @@ describe.skipIf(!db)('the worker entrypoint', () => {
 
       try {
         await worker.waitForOutput(
-          /Network Canvas Studio worker \d+\.\d+\.\d+.* started/,
+          /Network Canvas Studio worker started.*"version":"\d+\.\d+\.\d+/,
         );
 
         const jobId = await enqueueAsApplication(
@@ -507,7 +515,7 @@ describe.skipIf(!db)('the worker entrypoint', () => {
 
         await worker.waitForOutput(
           new RegExp(
-            `denied-attempts-summary ${jobId} attempt 1: no rate limit store is configured`,
+            `no rate limit store is configured.*"queue":"denied-attempts-summary","job_id":"${jobId}","attempt":1`,
           ),
           SETTLE_WAIT_MS,
         );
@@ -543,11 +551,12 @@ describe.skipIf(!db)('the worker entrypoint', () => {
     }
   });
 
-  it('refuses a database this build did not create', async () => {
+  it('waits, not ready, on a database with no schema rather than exiting', async () => {
     if (!db) throw new Error('unreachable: probe guaranteed a database');
-    // Outside development a stale or absent schema is an answer, not a
-    // transient failure — the same verdict the web process boots on, reached
-    // through the same schema gate (src/platform/schema-gate.ts).
+    // Outside development too (#1901): an upgrade starts the new image before
+    // `migrate` runs, so a missing schema is something to wait for, through
+    // the same schema gate the web process uses (src/platform/schema-gate.ts).
+    // That it opens again is `boot-refusals.test.ts`.
     const empty = await createScratchDatabase(db);
     // A port of its own: on the default 3001 it refuses the *port* rather than
     // the database.
@@ -557,9 +566,16 @@ describe.skipIf(!db)('the worker entrypoint', () => {
       WORKER_HEALTH_PORT: String(healthPort),
     });
     try {
-      const { code } = await worker.exited;
-      expect(code).toBe(1);
-      expect(worker.output()).toMatch(/The database has no Studio schema/);
+      await Promise.race([
+        worker.waitForOutput(/The database has no Studio schema/),
+        worker.exited.then(({ code }) => {
+          throw new Error(`the worker exited ${code}:\n${worker.output()}`);
+        }),
+      ]);
+      const waiting = await readReadiness(healthPort);
+      expect(waiting.status).toBe(503);
+      expect(waiting.body.checks.jobs).toBe('failed: not started');
+      expect(worker.child.exitCode).toBeNull();
     } finally {
       worker.child.kill('SIGKILL');
       await empty.dispose();

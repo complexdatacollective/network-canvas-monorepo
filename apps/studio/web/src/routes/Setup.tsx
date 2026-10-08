@@ -1,5 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
+import { Redacted } from 'effect';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import type { MessageDescriptor } from '@codaco/app-i18n/messages';
@@ -177,12 +178,12 @@ export default function Setup() {
             let completed: SuccessOf<StudioRpcsType, 'setup.complete'>;
             try {
               completed = await rpcCall('setup.complete', {
-                token: text(values.token),
+                token: Redacted.make(text(values.token)),
                 instanceName: text(values.instanceName),
                 owner: {
-                  name: text(values.ownerName),
-                  email: text(values.email),
-                  password: text(values.password),
+                  name: Redacted.make(text(values.ownerName)),
+                  email: Redacted.make(text(values.email)),
+                  password: Redacted.make(text(values.password)),
                 },
               });
             } catch (error) {

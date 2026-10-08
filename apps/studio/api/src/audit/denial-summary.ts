@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { Effect } from 'effect';
+import { Effect, Redacted } from 'effect';
 import type { SqlError } from 'effect/sql';
 
 import type { NotFound } from '@codaco/studio-contract/schema/errors';
@@ -14,8 +14,8 @@ import { append, lockedTeamLabel, lockTeam } from './store.ts';
 
 export type DeniedAuditActor = {
   readonly userId: string;
-  readonly name: string;
-  readonly email: string;
+  readonly name: Redacted.Redacted;
+  readonly email: Redacted.Redacted;
 };
 
 export type DeniedAuditSummaryWrite = {
@@ -45,9 +45,11 @@ export const appendDeniedAuditSummary: (
           outcome: 'denied',
           actorKind: 'user',
           actorId: write.actor.userId,
-          actorLabel: (write.actor.name.trim() || write.actor.email).slice(
-            0,
-            320,
+          actorLabel: Redacted.make(
+            (
+              Redacted.value(write.actor.name).trim() ||
+              Redacted.value(write.actor.email)
+            ).slice(0, 320),
           ),
           subjectType: null,
           subjectId: null,

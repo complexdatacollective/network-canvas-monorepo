@@ -1,3 +1,4 @@
+import { Redacted } from 'effect';
 import { v4 as uuid } from 'uuid';
 
 import type {
@@ -34,8 +35,8 @@ export type WriteOutcome<T> = Readonly<{
  */
 const LOCAL_PRESENCE = {
   userId: 'architect-local',
-  displayName: 'This device',
-} as const;
+  displayName: Redacted.make('This device'),
+};
 
 /**
  * A one-consumer queue an event source pushes into and a generator drains.
@@ -286,7 +287,12 @@ export class ProtocolRevisions {
       };
       this.#sections.set(id, { document, revision });
       changed.set(id, revision);
-      this.#publish({ type: 'revision', sectionId: id, revision, document });
+      this.#publish({
+        type: 'revision',
+        sectionId: id,
+        revision,
+        document: Redacted.make(document),
+      });
     }
     return changed;
   }

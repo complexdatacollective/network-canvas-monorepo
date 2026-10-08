@@ -1,6 +1,6 @@
 import { BlockList, isIPv4, isIPv6 } from 'node:net';
 
-import { Context, Effect, Option } from 'effect';
+import { Context, Effect, Option, Redacted } from 'effect';
 import { HttpRouter, HttpServerRequest } from 'effect/http';
 
 import { Environment } from '../../env.ts';
@@ -28,9 +28,10 @@ import { Environment } from '../../env.ts';
 /** What a request whose peer address cannot be read is counted against. */
 export const UNKNOWN_ADDRESS = 'unknown';
 
-export class ClientAddress extends Context.Service<ClientAddress, string>()(
-  '@studio/ClientAddress',
-) {}
+export class ClientAddress extends Context.Service<
+  ClientAddress,
+  Redacted.Redacted
+>()('@studio/ClientAddress') {}
 
 /**
  * `::ffff:198.51.100.7` and `198.51.100.7` are the same client, and a limit
@@ -64,18 +65,23 @@ function familyOf(address: string): 'ipv4' | 'ipv6' | null {
  * collapse to that proxy's own address and limits get stricter. Refusing the
  * boot would make a typo in a comma-separated list an outage.
  */
+export type TrustedProxies = {
+  readonly list: BlockList | undefined;
+  readonly rejected: number;
+};
+
 export function createTrustedProxies(
   entries: readonly string[] | undefined,
-): BlockList | undefined {
-  if (!entries || entries.length === 0) return undefined;
+): TrustedProxies {
+  if (!entries || entries.length === 0) return { list: undefined, rejected: 0 };
   const list = new BlockList();
-  const rejected: string[] = [];
+  let rejected = 0;
   for (const entry of entries) {
     const slash = entry.lastIndexOf('/');
     const address = normalize(slash === -1 ? entry : entry.slice(0, slash));
     const family = familyOf(address);
     if (!family) {
-      rejected.push(entry);
+      rejected += 1;
       continue;
     }
     if (slash === -1) {
@@ -85,18 +91,12 @@ export function createTrustedProxies(
     const prefix = Number(entry.slice(slash + 1));
     const maxBits = family === 'ipv4' ? 32 : 128;
     if (!Number.isInteger(prefix) || prefix < 0 || prefix > maxBits) {
-      rejected.push(entry);
+      rejected += 1;
       continue;
     }
     list.addSubnet(address, prefix, family);
   }
-  if (rejected.length > 0) {
-    // oxlint-disable-next-line no-console -- configuration diagnostics
-    console.warn(
-      `TRUSTED_PROXIES entries are not addresses or CIDR ranges and are ignored: ${rejected.join(', ')}. Requests through them are limited by the proxy's own address.`,
-    );
-  }
-  return list;
+  return { list, rejected };
 }
 
 function isTrusted(list: BlockList, address: string): boolean {
@@ -144,17 +144,26 @@ export const ClientAddressLive = HttpRouter.middleware<{
 }>()(
   Effect.gen(function* () {
     const env = yield* Environment;
-    const trustedProxies = createTrustedProxies(env.trustedProxies);
+    const { list: trustedProxies, rejected } = createTrustedProxies(
+      env.trustedProxies,
+    );
+    if (rejected > 0) {
+      yield* Effect.logWarning(
+        'TRUSTED_PROXIES entries that are not addresses or CIDR ranges are ignored; requests through them are limited by the proxy’s own address',
+      ).pipe(Effect.annotateLogs({ rejected_entries: rejected }));
+    }
     return (httpEffect) =>
       Effect.gen(function* () {
         const request = yield* HttpServerRequest.HttpServerRequest;
         return yield* Effect.provideService(
           httpEffect,
           ClientAddress,
-          resolveClientAddress(
-            request.remoteAddress,
-            request.headers['x-forwarded-for'],
-            trustedProxies,
+          Redacted.make(
+            resolveClientAddress(
+              request.remoteAddress,
+              request.headers['x-forwarded-for'],
+              trustedProxies,
+            ),
           ),
         );
       });

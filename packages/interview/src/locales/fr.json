@@ -160,6 +160,7 @@
   "interview.interfaces.discardChanges": "Abandonner les modifications",
   "interview.interfaces.discardChangesDescription": "Ce formulaire contient des données non valides et ne peut donc pas être enregistré. Si vous continuez, il sera réinitialisé et vos modifications seront perdues. Voulez-vous abandonner vos modifications ?",
   "interview.interfaces.discardChangesTitle": "Abandonner les modifications ?",
+  "interview.interfaces.discardOvertakenEditDescription": "Annuler ou Rétablir a modifié une réponse pendant que vous la modifiiez. Votre modification n’a donc pas été enregistrée. Pour la conserver, modifiez de nouveau cette réponse. Si vous continuez, votre modification sera perdue.",
   "interview.interfaces.dragToReposition": "Faire glisser pour repositionner",
   "interview.interfaces.drawEdge": "Tracer un lien",
   "interview.interfaces.drawingControls": "Commandes de dessin",

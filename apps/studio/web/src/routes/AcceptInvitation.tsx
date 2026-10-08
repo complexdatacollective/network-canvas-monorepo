@@ -1,6 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
-import { Option } from 'effect';
+import { Option, Redacted } from 'effect';
 import { useState, type ReactNode } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
@@ -251,7 +251,7 @@ export default function AcceptInvitation(props: { invitationId: string }) {
             </ScreenHeading>
             <Paragraph role="status">
               {intl.formatMessage(messages.joined, {
-                teamName: accepted.teamName,
+                teamName: Redacted.value(accepted.teamName),
                 role: roleLabel(intl, accepted.role),
               })}
             </Paragraph>

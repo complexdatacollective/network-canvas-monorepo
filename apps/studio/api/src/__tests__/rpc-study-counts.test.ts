@@ -9,7 +9,7 @@
 // `study_id` predicate entirely.
 import { randomUUID } from 'node:crypto';
 
-import { Effect, Option } from 'effect';
+import { Effect, Option, Redacted } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { StudyId } from '@codaco/studio-contract/schema/ids';
@@ -26,6 +26,7 @@ import { readEnv } from '../env.ts';
 import { authServiceStub } from './support/auth.ts';
 import {
   openTestDatabase,
+  ownerAffected,
   ownerRows,
   type TestDatabaseRuntime,
   testDb,
@@ -43,11 +44,19 @@ const SEEDING_TIMEOUT_MS = 180_000;
 const PRINCIPAL: SessionPrincipal = {
   kind: 'user',
   userId: 'counts-user',
-  email: 'counts@example.com',
+  email: Redacted.make('counts@example.com'),
   emailVerified: true,
-  name: 'Counting Researcher',
+  name: Redacted.make('Counting Researcher'),
   locale: null,
   sessionId: 'counts-session',
+};
+
+const MEMBER: SessionPrincipal = {
+  ...PRINCIPAL,
+  userId: 'counts-member-user',
+  email: Redacted.make('counts-member@example.com'),
+  name: Redacted.make('Counting Member'),
+  sessionId: 'counts-member-session',
 };
 
 type SeededStudy = { id: string; teamId: string; protocolId: string | null };
@@ -99,12 +108,31 @@ describe.skipIf(!testDb)('studies.counts', () => {
     );
     otherTeamStudy = other[0]!;
 
-    // The same person under two team roles: the visibility rule (#1257) is a
+    // Two people under two team roles: the visibility rule (#1257) is a
     // property of the role, and it is the role that decides whether a count
     // exists for them at all.
-    const memberOf = (role: string) =>
+    for (const [who, role] of [
+      [PRINCIPAL, 'admin'],
+      [MEMBER, 'member'],
+    ] as const) {
+      await database.run(
+        ownerAffected(
+          `INSERT INTO "user" (id, name, email, "emailVerified")
+           VALUES ($1, $2, $3, true)`,
+          [who.userId, Redacted.value(who.name), Redacted.value(who.email)],
+        ),
+      );
+      await database.run(
+        ownerAffected(
+          `INSERT INTO team_members (id, team_id, user_id, role)
+           VALUES ($1, $2, $3, $4)`,
+          [`${who.userId}-member`, memberTeamId, who.userId, role],
+        ),
+      );
+    }
+    const memberOf = (who: SessionPrincipal, role: string) =>
       authServiceStub({
-        getSession: () => Effect.succeedSome(PRINCIPAL),
+        getSession: () => Effect.succeedSome(who),
         getMembership: (_userId, teamId) =>
           Effect.succeed(
             Option.fromNullishOr(teamId === memberTeamId ? { role } : null),
@@ -113,13 +141,13 @@ describe.skipIf(!testDb)('studies.counts', () => {
       });
     client = await createRpcClient(
       createStudio(readEnv(), {
-        auth: memberOf('admin'),
+        auth: memberOf(PRINCIPAL, 'admin'),
         services: database.services,
       }),
     );
     ungrantedClient = await createRpcClient(
       createStudio(readEnv(), {
-        auth: memberOf('member'),
+        auth: memberOf(MEMBER, 'member'),
         services: database.services,
       }),
     );

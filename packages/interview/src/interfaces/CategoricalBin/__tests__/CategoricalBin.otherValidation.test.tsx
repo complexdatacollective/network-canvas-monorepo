@@ -27,6 +27,7 @@ import {
 
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import type { ProtocolPayload } from '../../../contract/types';
+import { interviewCatalogSource } from '../../../i18n/catalog';
 import { InterviewI18nProvider } from '../../../i18n/InterviewI18nProvider';
 import protocol from '../../../store/modules/protocol';
 import session, { type SessionState } from '../../../store/modules/session';
@@ -401,6 +402,14 @@ async function waitForDialogToClose() {
     { timeout: 10_000 },
   );
 }
+
+// Loaded before anything renders, as a host loads a language before it
+// mounts an interview, so renders in these languages are synchronous.
+beforeAll(async () => {
+  await Promise.all(
+    ['es'].map((locale) => interviewCatalogSource.load(locale)),
+  );
+});
 
 describe('CategoricalBin other-input honours codebook validation', () => {
   it('rejects an empty entry and an entry over maxLength when the codebook requires the field', async () => {

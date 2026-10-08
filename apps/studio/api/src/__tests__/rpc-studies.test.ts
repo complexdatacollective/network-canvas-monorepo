@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { Effect, Option } from 'effect';
+import { Effect, Option, Redacted, Schema } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
@@ -9,6 +9,10 @@ import {
   StudyId,
   TeamId,
 } from '@codaco/studio-contract/schema/ids';
+import {
+  StudyDetail,
+  StudySummary,
+} from '@codaco/studio-contract/schema/study';
 
 import { createStudio } from '../app.ts';
 import type { SessionPrincipal } from '../auth/service.ts';
@@ -45,9 +49,9 @@ function researcher(slug: string, teamId: TeamId, role: string): Researcher {
     principal: {
       kind: 'user',
       userId: `rpc-studies-${slug}-user`,
-      email: `rpc-studies-${slug}@example.com`,
+      email: Redacted.make(`rpc-studies-${slug}@example.com`),
       emailVerified: true,
-      name: `RPC Studies ${slug}`,
+      name: Redacted.make(`RPC Studies ${slug}`),
       locale: null,
       sessionId: `rpc-studies-${slug}-session`,
     },
@@ -87,7 +91,11 @@ describe.skipIf(!testDb)('the studies RPC', () => {
         ownerAffected(
           `INSERT INTO "user" (id, name, email, "emailVerified")
            VALUES ($1, $2, $3, true)`,
-          [who.principal.userId, who.principal.name, who.principal.email],
+          [
+            who.principal.userId,
+            Redacted.value(who.principal.name),
+            Redacted.value(who.principal.email),
+          ],
         ),
       );
       await database.run(
@@ -156,7 +164,7 @@ describe.skipIf(!testDb)('the studies RPC', () => {
       studyId: StudyId.make(randomUUID()),
       protocolId: ProtocolId.make(randomUUID()),
       draftId: DraftId.make(randomUUID()),
-      name,
+      name: Redacted.make(name),
     };
     await expect(
       asClient(ADMIN).call(asClient(ADMIN).rpc('studies.create', input)),
@@ -325,12 +333,13 @@ describe.skipIf(!testDb)('the studies RPC', () => {
       asClient(ADMIN).rpc('studies.list', { teamId: TEAM_ID }),
     );
     // Newest first, which is the order the composite index is declared in.
-    expect(forAdmin.map((study) => study.name)).toEqual([
+    expect(forAdmin.map((study) => Redacted.value(study.name))).toEqual([
       'Unshared study',
       'Shared study',
       'Audited study',
     ]);
-    expect(forAdmin.find((study) => study.id === shared.studyId)).toEqual({
+    const sharedRow = forAdmin.find((study) => study.id === shared.studyId);
+    expect(sharedRow && Schema.encodeSync(StudySummary)(sharedRow)).toEqual({
       id: shared.studyId,
       name: 'Shared study',
       state: 'draft',
@@ -358,11 +367,10 @@ describe.skipIf(!testDb)('the studies RPC', () => {
 
     // No teamId in the input: a cold navigation to `/study/$studyId` has none
     // to send, so the server derives it (§6.3).
-    await expect(
-      asClient(ADMIN).call(
-        asClient(ADMIN).rpc('studies.get', { studyId: shared.studyId }),
-      ),
-    ).resolves.toEqual({
+    const resolved = await asClient(ADMIN).call(
+      asClient(ADMIN).rpc('studies.get', { studyId: shared.studyId }),
+    );
+    expect(Schema.encodeSync(StudyDetail)(resolved)).toEqual({
       teamId: TEAM_ID,
       study: expect.objectContaining({
         id: shared.studyId,
@@ -398,13 +406,47 @@ describe.skipIf(!testDb)('the studies RPC', () => {
     );
   });
 
+  it('records whether the study collects participant analytics', async () => {
+    const byDefault = await createStudy('Analytics by default');
+    const input = {
+      teamId: TEAM_ID,
+      studyId: StudyId.make(randomUUID()),
+      protocolId: ProtocolId.make(randomUUID()),
+      draftId: DraftId.make(randomUUID()),
+      name: Redacted.make('Analytics off'),
+      participantAnalytics: false,
+    };
+    await asClient(ADMIN).call(asClient(ADMIN).rpc('studies.create', input));
+
+    expect(
+      await ownerQuery(
+        `SELECT id, settings FROM studies WHERE id IN ($1, $2) ORDER BY name`,
+        [byDefault.studyId, input.studyId],
+      ),
+    ).toEqual([
+      { id: byDefault.studyId, settings: { participantAnalytics: true } },
+      { id: input.studyId, settings: { participantAnalytics: false } },
+    ]);
+
+    const refused = await expectRpcFailure(
+      asClient(ADMIN).callExit(
+        asClient(ADMIN).rpc('studies.create', {
+          ...input,
+          participantAnalytics: true,
+        }),
+      ),
+      'StudyCommandError',
+    );
+    expect(refused.code).toBe('CONFLICT');
+  });
+
   it('refuses study creation by a team Member and records the denial', async () => {
     const input = {
       teamId: TEAM_ID,
       studyId: StudyId.make(randomUUID()),
       protocolId: ProtocolId.make(randomUUID()),
       draftId: DraftId.make(randomUUID()),
-      name: 'Must not be created',
+      name: Redacted.make('Must not be created'),
     };
     const refused = await expectRpcFailure(
       asClient(MEMBER).callExit(asClient(MEMBER).rpc('studies.create', input)),

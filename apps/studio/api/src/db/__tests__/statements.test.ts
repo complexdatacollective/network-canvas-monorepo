@@ -3,7 +3,7 @@ import { Effect } from 'effect';
 import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { renderSchemaDdl } from '../../../scripts/render-schema-ddl.ts';
+import { renderSchemaStatements } from '../../../scripts/apply.ts';
 import {
   openTestDatabase,
   ownerRows,
@@ -84,6 +84,19 @@ $body$ LANGUAGE plpgsql;`;
     expect(splitStatements('/* nothing; here */')).toEqual([]);
   });
 
+  // #1901 FX-7: Postgres ends a `--` comment at a carriage return too, so a
+  // statement after a CR-only line break is a statement of its own.
+  it('ends a line comment at a carriage return, as Postgres does', () => {
+    expect(splitStatements('-- note\rCOMMIT;\nSELECT 1;')).toEqual([
+      '-- note\rCOMMIT',
+      'SELECT 1',
+    ]);
+    expect(splitStatements('select 1 -- one\r; select 2;')).toEqual([
+      'select 1 -- one',
+      'select 2',
+    ]);
+  });
+
   it('drops empty fragments and keeps an unterminated tail', () => {
     expect(splitStatements('select 1')).toEqual(['select 1']);
     expect(splitStatements('select 1;;select 2')).toEqual([
@@ -136,13 +149,13 @@ $body$ LANGUAGE plpgsql;`;
   it(
     'cuts every rendered schema statement into at least one command',
     async () => {
-      const ddl = await renderSchemaDdl();
-      const drizzleCount = ddl.statements.length - SIDECARS.length;
+      const statements = await renderSchemaStatements();
+      const drizzleCount = statements.length - SIDECARS.length;
 
       expect(drizzleCount).toBeGreaterThan(0);
-      expect(ddl.statements.slice(drizzleCount)).toEqual(SIDECARS);
+      expect(statements.slice(drizzleCount)).toEqual(SIDECARS);
 
-      const drizzleSplits = ddl.statements
+      const drizzleSplits = statements
         .slice(0, drizzleCount)
         .map((statement) => splitStatements(statement).length);
       expect(drizzleSplits.filter((count) => count !== 1)).toEqual([]);

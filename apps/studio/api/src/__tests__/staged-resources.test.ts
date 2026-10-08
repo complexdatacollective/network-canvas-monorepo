@@ -1,8 +1,9 @@
 // A roster is refused at staging when it holds a character no export can
 // carry, with a code and a place the editor words itself, or when the
 // interview could not load it, so a caller other than the editor cannot stage
-// one either.
-import { Schema } from 'effect';
+// one either. Staging consults `rosterRefusal` before it stores any bytes;
+// the RPC suites cover the staging itself.
+import { Redacted, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -10,23 +11,18 @@ import {
   StagedResourceSchema,
 } from '@codaco/protocol-builder-core/contract/schemas';
 
-import { StagedResources } from '../protocol-builder/resources.ts';
+import { rosterRefusal } from '../protocol-builder/resources.ts';
 
 const BELL = String.fromCharCode(7);
-
-function staging() {
-  let next = 0;
-  return new StagedResources(() => `resource-${++next}`);
-}
 
 function roster(source: string, text: string) {
   return {
     kind: 'content' as const,
     contentKind: 'network' as const,
-    name: source,
-    source,
+    name: Redacted.make(source),
+    source: Redacted.make(source),
     contentType: source.endsWith('.csv') ? 'text/csv' : 'application/json',
-    bytes: new TextEncoder().encode(text),
+    bytes: Redacted.make(new TextEncoder().encode(text)),
   };
 }
 
@@ -59,11 +55,9 @@ describe('staging a roster', () => {
       1,
     ],
   ])(
-    'refuses a roster with an unsupported character in %s, and stages nothing',
+    'refuses a roster with an unsupported character in %s',
     async (_, request, problem, total) => {
-      const resources = staging();
-
-      const outcome = await resources.stage('request', request);
+      const outcome = await rosterRefusal(request);
 
       expect(outcome).toEqual({
         status: 'failed',
@@ -74,13 +68,11 @@ describe('staging a roster', () => {
           detail: { code: 'roster-characters', problem, total },
         },
       });
-      expect(resources.descriptors()).toEqual([]);
     },
   );
 
   it('answers the refusal in a shape the contract carries to the editor', async () => {
-    const outcome = await staging().stage(
-      'request',
+    const outcome = await rosterRefusal(
       roster('people.csv', `name\nGr${BELL}ace\n`),
     );
 
@@ -89,44 +81,23 @@ describe('staging a roster', () => {
     ).toEqual(outcome);
   });
 
-  it('stages a roster with nothing to refuse', async () => {
-    const resources = staging();
-
-    const outcome = await resources.stage(
-      'request',
-      roster('people.csv', 'name,age\nAda,36\n'),
-    );
-
-    expect(outcome).toMatchObject({
-      status: 'ok',
-      data: { descriptor: { id: 'resource-1', kind: 'network' } },
-    });
+  it('refuses nothing in a roster with nothing to refuse', async () => {
+    expect(
+      await rosterRefusal(roster('people.csv', 'name,age\nAda,36\n')),
+    ).toBeUndefined();
   });
 
   it('does not read a file that is not a roster as one', async () => {
-    const outcome = await staging().stage('request', {
+    const outcome = await rosterRefusal({
       kind: 'content',
       contentKind: 'image',
-      name: 'photo.png',
-      source: 'photo.png',
+      name: Redacted.make('photo.png'),
+      source: Redacted.make('photo.png'),
       contentType: 'image/png',
-      bytes: new Uint8Array([7, 7, 7]),
+      bytes: Redacted.make(new Uint8Array([7, 7, 7])),
     });
 
-    expect(outcome.status).toBe('ok');
-  });
-
-  it('stages a retried request once when both arrive while the file is read', async () => {
-    const resources = staging();
-    const request = roster('people.csv', 'name\nAda\n');
-
-    const [first, second] = await Promise.all([
-      resources.stage('request', request),
-      resources.stage('request', request),
-    ]);
-
-    expect(second).toEqual(first);
-    expect(resources.descriptors()).toHaveLength(1);
+    expect(outcome).toBeUndefined();
   });
 });
 
@@ -185,23 +156,17 @@ describe('staging a roster the interview could not load', () => {
       ),
       'the roster\'s attribute names "caf\u00e9" and "cafe\u0301" are the same name written two ways',
     ],
-  ])(
-    'refuses a roster with %s, and stages nothing',
-    async (_, request, message) => {
-      const resources = staging();
+  ])('refuses a roster with %s', async (_, request, message) => {
+    const outcome = await rosterRefusal(request);
 
-      const outcome = await resources.stage('request', request);
-
-      expect(outcome).toEqual({
-        status: 'failed',
-        failure: { reason: 'invalid-content', message, retryable: false },
-      });
-      expect(resources.descriptors()).toEqual([]);
-    },
-  );
+    expect(outcome).toEqual({
+      status: 'failed',
+      failure: { reason: 'invalid-content', message, retryable: false },
+    });
+  });
 
   it('reads a file whose name says nothing by its media type', async () => {
-    const outcome = await staging().stage('request', {
+    const outcome = await rosterRefusal({
       ...roster('people', 'caf\u00e9,cafe\u0301\nAda,36\n'),
       contentType: 'text/csv; charset=utf-8',
     });
@@ -213,17 +178,11 @@ describe('staging a roster the interview could not load', () => {
     });
   });
 
-  it('stages a roster whose headings are in any language, decomposed or not', async () => {
-    const resources = staging();
-
-    const outcome = await resources.stage(
-      'request',
-      roster('people.csv', 'cafe\u0301,\u540d\u524d\nAda,36\n'),
-    );
-
-    expect(outcome).toMatchObject({
-      status: 'ok',
-      data: { descriptor: { id: 'resource-1', kind: 'network' } },
-    });
+  it('accepts a roster whose headings are in any language, decomposed or not', async () => {
+    expect(
+      await rosterRefusal(
+        roster('people.csv', 'cafe\u0301,\u540d\u524d\nAda,36\n'),
+      ),
+    ).toBeUndefined();
   });
 });

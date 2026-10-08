@@ -28,6 +28,7 @@
   "protocolValidation.migrationNotes.schema6.sociogramAutomaticLayout": "在社会关系图界面中启用自动节点定位功能。",
   "protocolValidation.migrationNotes.schema7.alterCountLimits": "新增在姓名生成器阶段指定他者数量下限和上限的功能。",
   "protocolValidation.migrationNotes.schema7.categoricalSkipLogic": "新增用于处理有序属性和分类属性的跳过逻辑选项。",
+  "protocolValidation.migrationNotes.schema8.additionalAttributesBoolean": "姓名生成器提示的 `additionalAttributes` 必须引用布尔属性。访谈会在节点加入该提示时设置每个属性，并在节点移出时清除它；因此若引用非布尔属性，在其他地方收集到的值会先被真/假覆盖，随后被清除。引用非布尔属性的条目将被移除。",
   "protocolValidation.migrationNotes.schema8.anonymisationInterface": "新的实验性界面：“匿名化界面”。允许参与者对敏感或可识别身份的信息进行加密，使研究人员无法读取。默认不启用。详情请联系团队。",
   "protocolValidation.migrationNotes.schema8.automaticLayoutBoolean": "社会关系图和叙事界面的 `automaticLayout` 行为现在是一个简单的布尔值（此前为 `'{ enabled }'`）；现有值会被展平。叙事界面首次获得此行为；该行为仅在显式启用时生效，因此现有叙事阶段会保留手动设定的静态位置。",
   "protocolValidation.migrationNotes.schema8.categoricalArrays": "分类属性的值现在以所选选项值的数组形式存储。现有的单值分类筛选和跳过逻辑规则操作数（`is exactly`、`is not`、`includes`、`excludes`）会被包装为单元素数组以保持一致。",

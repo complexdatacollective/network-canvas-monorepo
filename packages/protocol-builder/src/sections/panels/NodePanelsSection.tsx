@@ -1,3 +1,4 @@
+import { Redacted } from 'effect';
 import {
   type ComponentType,
   useCallback,
@@ -409,7 +410,7 @@ const panelSource = (
   const stagedResource = staged.find((resource) => resource.id === dataSource);
   return stagedResource === undefined
     ? undefined
-    : { name: stagedResource.name, kind: stagedResource.kind };
+    : { name: Redacted.value(stagedResource.name), kind: stagedResource.kind };
 };
 
 /**
