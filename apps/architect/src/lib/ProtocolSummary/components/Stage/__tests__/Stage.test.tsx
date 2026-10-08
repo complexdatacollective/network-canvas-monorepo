@@ -22,7 +22,7 @@ const renderStage = (type: string) =>
     >
       <Stage
         id="stage"
-        label="A stage"
+        label={{ en: 'A stage' }}
         stageNumber={1}
         type={type}
         configuration={{}}
