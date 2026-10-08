@@ -227,4 +227,63 @@ describe('useStoredProtocolMigration', () => {
     await waitFor(() => expect(result.current).toBe('settled'));
     expect(migrateStoredProtocols).toHaveBeenCalledTimes(2);
   });
+
+  // A lock/unlock cycle while a sweep is still running starts a second sweep
+  // before the first has resolved. Only the sweep for the current unlocked
+  // session may report: the earlier one's result is about rows read under the
+  // previous key, whichever order the two resolve in.
+  it.each([
+    ['the current sweep resolves first', ['current', 'stale'] as const],
+    ['the superseded sweep resolves first', ['stale', 'current'] as const],
+  ])(
+    'reports only the current sweep when two overlap and %s',
+    async (_label, order) => {
+      const sweeps = {
+        stale: Promise.withResolvers<StoredProtocolMigrationResult>(),
+        current: Promise.withResolvers<StoredProtocolMigrationResult>(),
+      };
+      migrateStoredProtocols
+        .mockReturnValueOnce(sweeps.stale.promise)
+        .mockReturnValueOnce(sweeps.current.promise);
+      const { result, rerender } = renderHook(
+        ({ enabled }: { enabled: boolean }) =>
+          useStoredProtocolMigration(enabled),
+        { initialProps: { enabled: true } },
+      );
+      const failure = renderHook(() => ({
+        stale: useStoredProtocolMigrationFailure('hash-Stale Study'),
+        current: useStoredProtocolMigrationFailure('hash-Current Study'),
+      }));
+
+      rerender({ enabled: false });
+      rerender({ enabled: true });
+      expect(migrateStoredProtocols).toHaveBeenCalledTimes(2);
+
+      const results = {
+        stale: failed('Stale Study'),
+        current: failed('Current Study'),
+      };
+      for (const which of order) {
+        await act(async () => {
+          sweeps[which].resolve(results[which]);
+          await sweeps[which].promise;
+        });
+      }
+
+      await waitFor(() => expect(result.current).toBe('settled'));
+      expect(toastAdd).toHaveBeenCalledTimes(1);
+      expect(toastAdd).toHaveBeenCalledWith(
+        expect.objectContaining({
+          description: renderedMessage(
+            'Current Study could not be migrated to the current schema. Its interviews cannot be continued, though their responses remain on the data screen. Repair it in Architect and import it again to start new interviews.',
+          ),
+        }),
+      );
+      expect(failure.result.current).toEqual({
+        stale: undefined,
+        current: 'protocol',
+      });
+      act(() => recordStoredProtocolMigrationFailures([]));
+    },
+  );
 });
