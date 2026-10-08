@@ -1,8 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
-
-import { type ContentFormat, createContentFormat } from './contentFormat';
+import { type ContentFormat, contentFormatFor } from './contentFormat';
 import { useContentLocale } from './ProtocolLocalizationProvider';
 
 /**
@@ -10,6 +8,5 @@ import { useContentLocale } from './ProtocolLocalizationProvider';
  * participant is reading the protocol in (see `useContentLocale`).
  */
 export function useContentFormat(): ContentFormat {
-  const locale = useContentLocale();
-  return useMemo(() => createContentFormat(locale), [locale]);
+  return contentFormatFor(useContentLocale());
 }
