@@ -36,7 +36,8 @@ vi.mock('@mapbox/search-js-react', () => ({
 
 // Make the debounce synchronous so a typed query reaches `suggest` without
 // fake timers fighting userEvent's own scheduling.
-vi.mock('es-toolkit', () => ({
+vi.mock('es-toolkit', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('es-toolkit')>()),
   debounce: (fn: (...args: unknown[]) => unknown) => {
     const wrapped = (...args: unknown[]) => fn(...args);
     wrapped.cancel = vi.fn();
@@ -47,6 +48,7 @@ vi.mock('es-toolkit', () => ({
 import type { Map as MapboxMap } from 'mapbox-gl/esm';
 
 import { InterviewI18nProvider } from '../../../i18n/InterviewI18nProvider';
+import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
 import GeospatialSearch from '../GeospatialSearch';
 
 // jsdom has neither, and fresco-ui's Collection/ScrollArea construct both on
@@ -74,10 +76,10 @@ const mockMap = { flyTo } as unknown as MapboxMap;
 const setup = () => {
   const user = userEvent.setup();
   const view = render(
-    <>
+    <TestProtocolLocalization>
       <GeospatialSearch accessToken="test-token" map={mockMap} />
       <button type="button">Zoom In</button>
-    </>,
+    </TestProtocolLocalization>,
   );
 
   return {
@@ -120,7 +122,9 @@ describe('GeospatialSearch', () => {
   describe('live built-in locale', () => {
     const localizedTree = (locale: string) => (
       <InterviewI18nProvider requestedLocale={locale}>
-        <GeospatialSearch accessToken="test-token" map={mockMap} />
+        <TestProtocolLocalization>
+          <GeospatialSearch accessToken="test-token" map={mockMap} />
+        </TestProtocolLocalization>
       </InterviewI18nProvider>
     );
 

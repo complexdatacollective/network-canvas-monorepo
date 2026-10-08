@@ -41,12 +41,12 @@ stages }`, so a translation change produces a new hash. Languages have no
 
 Schema 9:
 
-- The v8 to v9 migration keeps existing names as they are. It marks the
-  protocol's text as written in English, tagged plainly as `en` rather than a
-  regional variant, since older protocols never recorded a language: it adds
-  `localization: { defaultLocale: 'en', locales: ['en'] }` and wraps every
-  participant-facing string as `{ en: <text> }`, escaped as an ICU literal
-  message. Codebook node types, edge types and variables get a `label` taken
+- The v8 to v9 migration keeps existing names as they are. It records the
+  protocol's text as English, since older protocols never recorded a language:
+  it adds `localization: { defaultLocale: 'en', locales: ['en'] }` and wraps
+  every participant-facing string as `{ en: <text> }`, escaped as an ICU literal
+  message. Validation refuses the undetermined language `und` (and `und-*`
+  tags) as a declared language, as the default, and as a localized-string key. Codebook node types, edge types and variables get a `label` taken
   from their name, or from their codebook ID when the name is empty: a node
   or edge type's label is wrapped like any other text, and a variable's stays
   plain text. A Narrative preset's `highlight` list of variable IDs becomes a
@@ -55,10 +55,10 @@ Schema 9:
   no caption, or an empty one, gets its attribute's name (or its ID) as one,
   escaped so that markdown shows it as written, and wrapped the same way. An
   empty optional text that schema 9 requires to be non-empty is removed, as are
-  Network Composer scale end labels that were not strings. Its two migration
-  notes tell researchers what the new version allows, and to check the
-  protocol's default language in Architect and, if the protocol is not in
-  English, relabel it as the right language, which keeps the existing text.
+  Network Composer scale end labels that were not strings. Its migration notes
+  tell researchers what the new version allows, and that the text is recorded
+  as English, so they should confirm the default language and change it in
+  Architect if the protocol is written in another one.
 - Schema 8 still refuses names outside `a-z`, `A-Z`, digits and `. _ - :`, with
   a message that says so. `VersionlessProtocolSchema`, the version 8 body
   without its `schemaVersion`, is now exported.

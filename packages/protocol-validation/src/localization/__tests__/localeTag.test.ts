@@ -1,9 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { canonicalizeLocale, isCanonicalLocale } from '../localeTag.ts';
+import {
+  canonicalizeLocale,
+  isCanonicalLocale,
+  isUndeterminedLocale,
+} from '../localeTag.ts';
 
 describe('canonicalizeLocale', () => {
-  it.each(['en-US', 'es', 'zh-Hant-TW', 'und', 'en-x-foo', 'qaa'])(
+  it.each(['en-US', 'es', 'zh-Hant-TW', 'en-x-foo', 'qaa'])(
     'keeps the canonical tag %s',
     (tag) => {
       expect(canonicalizeLocale(tag)).toBe(tag);
@@ -14,7 +18,7 @@ describe('canonicalizeLocale', () => {
     ['en-us', 'en-US'],
     ['EN-US', 'en-US'],
     ['zh-hant-tw', 'zh-Hant-TW'],
-    ['UND', 'und'],
+    ['ZH-hans', 'zh-Hans'],
     ['en-X-FOO', 'en-x-foo'],
     ['iw', 'he'],
     ['in', 'id'],
@@ -43,7 +47,7 @@ describe('canonicalizeLocale', () => {
 });
 
 describe('isCanonicalLocale', () => {
-  it.each(['en-US', 'es', 'zh-Hant-TW', 'und', 'en-x-foo'])(
+  it.each(['en-US', 'es', 'zh-Hant-TW', 'en-x-foo'])(
     'accepts the canonical tag %s',
     (tag) => {
       expect(isCanonicalLocale(tag)).toBe(true);
@@ -66,6 +70,22 @@ describe('isCanonicalLocale', () => {
     'rejects the malformed value %j',
     (value) => {
       expect(isCanonicalLocale(value)).toBe(false);
+    },
+  );
+});
+
+describe('isUndeterminedLocale', () => {
+  it.each(['und', 'UND', 'und-Latn', 'und-x-foo'])(
+    'recognizes the undetermined language %s',
+    (tag) => {
+      expect(isUndeterminedLocale(tag)).toBe(true);
+    },
+  );
+
+  it.each(['en', 'en-US', 'zh-Hant-TW', 'unk', 'undo', 'en-und', 'qaa'])(
+    'does not mistake %s for it',
+    (tag) => {
+      expect(isUndeterminedLocale(tag)).toBe(false);
     },
   );
 });

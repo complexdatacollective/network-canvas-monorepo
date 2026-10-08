@@ -243,22 +243,22 @@ async function buildSession(payload: PreviewPayload): Promise<SessionPayload> {
   };
 }
 /**
- * The interview re-created from the session so far with another stated
- * language. The step is the host's and stays put; the prompt reached within it
- * is not part of what the interview reports, so the stage restarts at its first
- * prompt, as a resumed interview does.
+ * The interview re-created from the session so far with no stated language,
+ * so that the languages it is asked to show take effect. The step is the
+ * host's and stays put; the prompt reached within it is not part of what the
+ * interview reports, so the stage restarts at its first prompt, as a resumed
+ * interview does.
  */
-function withLocalePreference(
+function withoutLocalePreference(
   payload: InterviewPayload,
   latestSession: SessionSnapshot | null,
-  localePreference: LocaleTag | null,
 ): InterviewPayload {
   return {
     protocol: payload.protocol,
     session: {
       ...(latestSession ?? payload.session),
       promptIndex: 0,
-      localePreference,
+      localePreference: null,
       localeOptions: payload.session.localeOptions,
     },
   };
@@ -422,14 +422,13 @@ export function PreviewHost() {
   const changePreviewLocale = (locale: LocaleTag) => {
     setStatedLocale(locale);
     if (heldPreferenceRef.current === null) return;
-    // The interview's store holds a preference, which would outrank the
-    // requested languages. Only a new payload can clear it: re-create the
-    // interview from the session so far.
+    // The interview's store holds a preference stated by a language chooser
+    // stage, which requested languages cannot override and only a new payload
+    // can clear: re-create the interview from the session so far.
     heldPreferenceRef.current = null;
     const latestSession = latestSessionRef.current;
     setInterviewPayload(
-      (current) =>
-        current && withLocalePreference(current, latestSession, null),
+      (current) => current && withoutLocalePreference(current, latestSession),
     );
     setInterviewRun((run) => run + 1);
   };

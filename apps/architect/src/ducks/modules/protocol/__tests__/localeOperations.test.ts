@@ -11,13 +11,13 @@ import {
 
 import {
   addLocales,
+  changeLocale,
   getLocaleRemovalImpact,
   type LocaleOperationResult,
-  relabelDefaultLocale,
-  relabelledLocale,
   removeLocale,
   rewriteLocalizedStrings,
   setDefaultLocale,
+  movedLocale,
   setTranslation,
   withoutLocale,
 } from '../localeOperations';
@@ -74,15 +74,15 @@ const protocolIn = (
   ],
 });
 
-const migrated = () =>
+const monolingual = () =>
   protocolIn(
     { defaultLocale: 'en', locales: ['en'] },
     {
-      stage: { en: 'Bienvenue' },
-      title: { en: 'Bonjour' },
-      nodeType: { en: 'Personne' },
-      variable: 'Proximité',
-      options: [{ en: 'Proche' }, { en: 'Éloigné' }],
+      stage: { en: 'Welcome' },
+      title: { en: 'Hello' },
+      nodeType: { en: 'Person' },
+      variable: 'Closeness',
+      options: [{ en: 'Close' }, { en: 'Distant' }],
     },
   );
 
@@ -136,6 +136,16 @@ describe('addLocales', () => {
       reason: 'invalid-tag',
     });
   });
+
+  it.each(['und', 'UND', 'und-Latn'])(
+    'never introduces the undetermined language %s',
+    (tag) => {
+      expect(addLocales(bilingual(), [tag])).toEqual({
+        ok: false,
+        reason: 'invalid-tag',
+      });
+    },
+  );
 
   it('refuses a language that is declared already, however it is written', () => {
     expect(addLocales(bilingual(), ['FR'])).toEqual({
@@ -251,23 +261,26 @@ describe('rewriteLocalizedStrings', () => {
     );
   });
 
-  it('moves translations in one language to another, keeping the rest', () => {
+  it('moves translations written in one language to another, keeping their order', () => {
     const [stage] = rewriteLocalizedStrings(
       {
         stages: [
           {
             type: 'Information',
-            label: { en: 'Bienvenue', de: 'Willkommen' },
-            title: { de: 'Hallo' },
+            label: { en: 'Welcome', fr: 'Bienvenue' },
+            title: { fr: 'Bonjour' },
             items: [],
           },
         ],
       },
-      relabelledLocale('en', 'fr'),
+      movedLocale('en', 'es'),
     ).stages;
 
-    expect(stage?.label).toEqual({ fr: 'Bienvenue', de: 'Willkommen' });
-    expect(stage?.title).toEqual({ de: 'Hallo' });
+    expect(Object.entries(stage?.label ?? {})).toEqual([
+      ['es', 'Welcome'],
+      ['fr', 'Bienvenue'],
+    ]);
+    expect(stage?.title).toEqual({ fr: 'Bonjour' });
   });
 
   it('answers with the same document when nothing changes', () => {
@@ -291,102 +304,87 @@ describe('setDefaultLocale', () => {
   });
 });
 
-describe('relabelDefaultLocale', () => {
-  it('relabels a migrated protocol’s text as another language in a single step', async () => {
-    const protocol = protocolOf(relabelDefaultLocale(migrated(), 'fr'));
+describe('changeLocale', () => {
+  it('records a language\u2019s text as another language in a single step', async () => {
+    const protocol = protocolOf(changeLocale(monolingual(), 'en', 'es'));
 
     expect(protocol.localization).toEqual({
-      defaultLocale: 'fr',
-      locales: ['fr'],
+      defaultLocale: 'es',
+      locales: ['es'],
     });
     expect(textOf(protocol)).toEqual({
-      stage: { fr: 'Bienvenue' },
-      title: { fr: 'Bonjour' },
-      nodeType: { fr: 'Personne' },
-      variable: 'Proximité',
-      options: [{ fr: 'Proche' }, { fr: 'Éloigné' }],
+      stage: { es: 'Welcome' },
+      title: { es: 'Hello' },
+      nodeType: { es: 'Person' },
+      variable: 'Closeness',
+      options: [{ es: 'Close' }, { es: 'Distant' }],
     });
     expect((await validateProtocol(protocol)).success).toBe(true);
   });
 
-  it('relabels every text in the default language, wherever the protocol holds it', () => {
-    const protocol = protocolOf(relabelDefaultLocale(migrated(), 'fr'));
-
+  it('canonicalizes the tag it is given', () => {
     expect(
-      collectLocalizedStrings(protocol).every(
-        (hit) => Object.keys(hit.value).join() === 'fr',
-      ),
-    ).toBe(true);
-    expect(collectLocalizedStrings(protocol)).toHaveLength(
-      collectLocalizedStrings(migrated()).length,
-    );
-  });
-
-  it('keeps the other languages and their translations where they are', () => {
-    const protocol = protocolOf(relabelDefaultLocale(bilingual(), 'en-GB'));
-
-    expect(protocol.localization).toEqual({
-      defaultLocale: 'en-GB',
-      locales: ['en-GB', 'fr'],
-    });
-    expect(textOf(protocol).stage).toEqual({
-      'en-GB': 'Welcome',
-      'fr': 'Bienvenue',
-    });
-    expect(textOf(protocol).options).toEqual([
-      { 'en-GB': 'Close', 'fr': 'Proche' },
-      { 'en-GB': 'Distant' },
-    ]);
-  });
-
-  it('relabels only the default language', () => {
-    const frenchDefault = protocolOf(setDefaultLocale(bilingual(), 'fr'));
-    const protocol = protocolOf(relabelDefaultLocale(frenchDefault, 'fr-CA'));
-
-    expect(protocol.localization).toEqual({
-      defaultLocale: 'fr-CA',
-      locales: ['en', 'fr-CA'],
-    });
-    expect(textOf(protocol).stage).toEqual({
-      'en': 'Welcome',
-      'fr-CA': 'Bienvenue',
-    });
-  });
-
-  it('records the new language by its canonical tag', () => {
-    expect(
-      protocolOf(relabelDefaultLocale(migrated(), 'PT-br')).localization,
+      protocolOf(changeLocale(monolingual(), 'en', ' PT-br ')).localization,
     ).toEqual({ defaultLocale: 'pt-BR', locales: ['pt-BR'] });
   });
 
-  it('never merges the default language into another of the protocol’s languages', () => {
-    expect(relabelDefaultLocale(bilingual(), 'fr')).toEqual({
+  it('moves one language of several without touching the others or the default', () => {
+    const protocol = protocolOf(changeLocale(bilingual(), 'fr', 'de'));
+
+    expect(protocol.localization).toEqual({
+      defaultLocale: 'en',
+      locales: ['en', 'de'],
+    });
+    expect(textOf(protocol).stage).toEqual({ en: 'Welcome', de: 'Bienvenue' });
+    expect(textOf(protocol).options).toEqual([
+      { en: 'Close', de: 'Proche' },
+      { en: 'Distant' },
+    ]);
+  });
+
+  it('moves the default with the language it names', () => {
+    const protocol = protocolOf(changeLocale(bilingual(), 'en', 'es'));
+
+    expect(protocol.localization).toEqual({
+      defaultLocale: 'es',
+      locales: ['es', 'fr'],
+    });
+  });
+
+  it('refuses a language the protocol does not declare', () => {
+    expect(changeLocale(bilingual(), 'de', 'es')).toEqual({
+      ok: false,
+      reason: 'not-declared',
+    });
+  });
+
+  it('never merges a language into one the protocol already has', () => {
+    expect(changeLocale(bilingual(), 'en', 'fr')).toEqual({
       ok: false,
       reason: 'already-declared',
     });
-    expect(relabelDefaultLocale(bilingual(), 'en')).toEqual({
+    expect(changeLocale(bilingual(), 'en', 'FR')).toEqual({
       ok: false,
       reason: 'already-declared',
     });
   });
 
-  it('never overwrites a translation already stored under the new language', () => {
-    const stray = migrated();
-    const [stage] = stray.stages;
-    if (stage) stage.label = { en: 'Bienvenue', fr: 'Ancien' };
-
-    expect(relabelDefaultLocale(stray, 'fr')).toEqual({
+  it('refuses to change a language to itself', () => {
+    expect(changeLocale(bilingual(), 'en', 'en')).toEqual({
       ok: false,
       reason: 'already-declared',
     });
   });
 
-  it('refuses a tag that is not a language', () => {
-    expect(relabelDefaultLocale(migrated(), 'not a tag')).toEqual({
-      ok: false,
-      reason: 'invalid-tag',
-    });
-  });
+  it.each(['und', 'und-Latn', 'not a tag', ''])(
+    'refuses %j, which names no language',
+    (tag) => {
+      expect(changeLocale(monolingual(), 'en', tag)).toEqual({
+        ok: false,
+        reason: 'invalid-tag',
+      });
+    },
+  );
 });
 
 describe('setTranslation', () => {

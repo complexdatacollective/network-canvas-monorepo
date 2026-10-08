@@ -22,11 +22,9 @@ type LocalizedMarkdownProps = Omit<
  * Protocol-authored markdown: the message is formatted in the language it
  * resolves to, and the formatted text is then rendered as markdown.
  *
- * Text in the unspecified language (`und`) renders straight into the
- * surrounding content, exactly as untranslated protocol text always has. Text
- * in a named language needs an element to carry its `lang` and `dir`; that
- * block keeps the space below it that its last paragraph would otherwise have
- * given the content that follows.
+ * The text needs an element to carry its `lang` and `dir`; that block keeps
+ * the space below it that its last paragraph would otherwise have given the
+ * content that follows.
  */
 export function LocalizedMarkdown({
   value,
@@ -37,12 +35,7 @@ export function LocalizedMarkdown({
     <RenderMarkdown
       {...markdownOptions}
       render={
-        typeof text === 'string' ? undefined : (
-          <div
-            {...presentationalTextProps(text)}
-            className="not-last:mb-[1em]"
-          />
-        )
+        <div {...presentationalTextProps(text)} className="not-last:mb-[1em]" />
       }
     >
       {presentationalTextValue(text)}

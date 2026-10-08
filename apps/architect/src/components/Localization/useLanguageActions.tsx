@@ -14,14 +14,14 @@ import {
 import { useAppDispatch, useAppStore } from '~/ducks/hooks';
 import {
   addProtocolLocales,
-  relabelProtocolDefaultLocale,
+  changeProtocolLocale,
   removeProtocolLocale,
 } from '~/ducks/modules/activeProtocol';
 import {
   getLocaleRemovalImpact,
   type LocaleRemovalImpact,
   type LocalizedStringRewrite,
-  relabelledLocale,
+  movedLocale,
   withoutLocale,
 } from '~/ducks/modules/protocol/localeOperations';
 import { getProtocol } from '~/selectors/protocol';
@@ -56,49 +56,42 @@ const messages = defineMessages({
     defaultMessage: 'Languages',
     description: 'Label of the searchable list of languages to add.',
   },
-  relabelTitle: {
-    id: 'architect.localization.languageActions.relabelTitle',
-    defaultMessage: 'Relabel the {language} text',
+  changeTitle: {
+    id: 'architect.localization.languageActions.changeTitle',
+    defaultMessage: 'Change {language} to a different language',
     description:
-      'Title of the dialog that marks every text written in the protocol’s default language as written in another language. language is the current default language’s name.',
+      'Title of the dialog that records the text of one protocol language as another language. language is the name of the language being changed.',
   },
-  relabelDescription: {
-    id: 'architect.localization.languageActions.relabelDescription',
+  changeDescription: {
+    id: 'architect.localization.languageActions.changeDescription',
     defaultMessage:
-      'Use this when the text marked as {language} is really written in another language, as it can be in a protocol upgraded from an earlier version of Network Canvas, whose text was assumed to be English. Every text marked as {language} will be marked as the language you choose, which becomes the default language. Nothing is translated or deleted.',
+      'Use this when the text recorded as {language} is really written in another language, for example in a protocol upgraded from an older version. Every {language} translation is recorded as the language you choose instead. Nothing is translated or deleted.',
     description:
-      'Explanation in the dialog that marks every text written in the protocol’s default language as written in another language: when to use it and what it does. language is the current default language’s name.',
+      'Explanation in the dialog that records the text of one protocol language as another language. language is the name of the language being changed.',
   },
   languageLabel: {
     id: 'architect.localization.languageActions.languageLabel',
     defaultMessage: 'Language',
     description:
-      'Label of the list of languages in the dialog that marks the text of the protocol’s default language as written in another language.',
-  },
-  relabelHint: {
-    id: 'architect.localization.languageActions.relabelHint',
-    defaultMessage:
-      'The protocol’s other languages are not listed. To make one of them the default instead, choose it as the default language.',
-    description:
-      'Hint under the list of languages in the dialog that marks the text of the protocol’s default language as written in another language, shown when the protocol has other languages. Those languages cannot be chosen, because their translations would collide.',
+      'Label of the list of languages in the dialog that records the text of a protocol language as another language.',
   },
   chooseALanguage: {
     id: 'architect.localization.languageActions.chooseALanguage',
     defaultMessage: 'Choose a language',
     description:
-      'Placeholder of the list of languages that the text of the protocol’s default language can be marked as.',
+      'Placeholder of the list of languages that the text of a protocol language can be recorded as.',
   },
   chooseOne: {
     id: 'architect.localization.languageActions.chooseOne',
     defaultMessage: 'Choose a language.',
     description:
-      'Error when the dialog that marks the text of the protocol’s default language as written in another language is submitted without a language.',
+      'Error when the dialog that records the text of a protocol language as another language is submitted without a language.',
   },
-  relabelSubmit: {
-    id: 'architect.localization.languageActions.relabelSubmit',
-    defaultMessage: 'Relabel text',
+  changeSubmit: {
+    id: 'architect.localization.languageActions.changeSubmit',
+    defaultMessage: 'Change language',
     description:
-      'Submit button of the dialog that marks every text written in the protocol’s default language as written in another language.',
+      'Submit button of the dialog that records the text of a protocol language as another language.',
   },
   removeTitle: {
     id: 'architect.localization.languageActions.removeTitle',
@@ -221,31 +214,25 @@ export const useLanguageActions = (
   }, [availableChoices, declared, dispatch, finalFocus, intl, openDialog]);
 
   /**
-   * Marks the text of the default language as written in another language,
-   * one the protocol does not have yet, without translating anything.
+   * Records the text of `from` as another language: every translation, the
+   * declaration and the default move together to the language chosen.
    */
-  const relabelDefaultLanguage = useCallback(
-    async (returnFocus?: ReturnFocus) => {
-      if (!protocol || !declared) return;
-      const from = protocol.localization.defaultLocale;
+  const changeLanguage = useCallback(
+    async (from: LocaleTag, returnFocus?: ReturnFocus) => {
+      if (!declared) return;
       const language = languageName(from);
       const values = await openDialog({
         type: 'form',
-        title: intl.formatMessage(messages.relabelTitle, { language }),
-        description: intl.formatMessage(messages.relabelDescription, {
+        title: intl.formatMessage(messages.changeTitle, { language }),
+        description: intl.formatMessage(messages.changeDescription, {
           language,
         }),
-        submitLabel: intl.formatMessage(messages.relabelSubmit),
+        submitLabel: intl.formatMessage(messages.changeSubmit),
         finalFocus: focusAfter(returnFocus),
         children: (
           <Field<typeof NativeSelectField>
             name="language"
             label={intl.formatMessage(messages.languageLabel)}
-            hint={
-              declared.length > 1
-                ? intl.formatMessage(messages.relabelHint)
-                : undefined
-            }
             component={NativeSelectField}
             placeholder={intl.formatMessage(messages.chooseALanguage)}
             options={availableChoices(declared).map((choice) => ({
@@ -259,25 +246,23 @@ export const useLanguageActions = (
       if (!values) return;
       const tag = values.language;
       if (typeof tag !== 'string') return;
-      dispatch(relabelProtocolDefaultLocale({ locale: tag }));
-      // The language as the protocol now records it, which is the tag after
-      // canonicalisation; unchanged if the change was refused.
-      const to = getProtocol(store.getState())?.localization.defaultLocale;
-      if (to !== undefined && to !== from) {
-        rewriteDraft?.(relabelledLocale(from, to));
-      }
+      const before = declaredNow() ?? [];
+      dispatch(changeProtocolLocale({ from, to: tag }));
+      // The language as the protocol now declares it, which is the tag after
+      // canonicalisation, and nothing at all if the change was refused.
+      const to = declaredNow()?.find((locale) => !before.includes(locale));
+      if (to !== undefined) rewriteDraft?.(movedLocale(from, to));
     },
     [
       availableChoices,
       declared,
+      declaredNow,
       dispatch,
       focusAfter,
       intl,
       languageName,
       openDialog,
-      protocol,
       rewriteDraft,
-      store,
     ],
   );
 
@@ -316,10 +301,5 @@ export const useLanguageActions = (
     ],
   );
 
-  return {
-    addLanguages,
-    relabelDefaultLanguage,
-    removeLanguage,
-    removalImpact,
-  };
+  return { addLanguages, changeLanguage, removeLanguage, removalImpact };
 };

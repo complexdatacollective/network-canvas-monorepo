@@ -158,12 +158,6 @@ describe('selectProtocolLocale', () => {
     expect(selectProtocolLocale([], french)).toBe('fr');
   });
 
-  it('selects und for a protocol whose only locale is und', () => {
-    const unidentified = { defaultLocale: 'und', locales: ['und'] };
-    expect(selectProtocolLocale(['en-US', 'es'], unidentified)).toBe('und');
-    expect(selectProtocolLocale([], unidentified)).toBe('und');
-  });
-
   it('lets an earlier regional preference beat a later exact match', () => {
     expect(selectProtocolLocale(['es-MX', 'en'], bilingual)).toBe('es');
   });

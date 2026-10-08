@@ -45,13 +45,6 @@ const protocol: CurrentProtocol = {
   stages: [{ id: STAGE_ID, type: 'LanguageChooser', label: LABEL }],
 };
 
-// Upgraded from schema 8, so its text was taken to be English.
-const migrated: CurrentProtocol = {
-  ...protocol,
-  localization: { defaultLocale: 'en', locales: ['en'] },
-  stages: [{ id: STAGE_ID, type: 'LanguageChooser', label: { en: LABEL.en } }],
-};
-
 const target = { sectionId: sectionId({ kind: 'stage', stageId: STAGE_ID }) };
 
 const renderHeader = () => <StageEditorHeader stageId={STAGE_ID} />;
@@ -260,27 +253,22 @@ describe('the language chooser’s languages in Architect', () => {
     expect(savedStage(store)?.label).toEqual({ en: LABEL.en });
   });
 
-  it('relabels the default language in the open stage too, keeping its unsaved text', async () => {
-    const { store, name } = await openEditor(migrated);
+  it('changes the language of a language’s text in the open stage too', async () => {
+    const { store } = await openEditor();
     globalThis.__architectDialogMocks.openDialog.mockResolvedValueOnce({
-      language: 'en-GB',
+      language: 'es',
     });
 
-    await userEvent.clear(name);
-    await userEvent.type(name, 'Pick a language');
     await userEvent.click(
-      screen.getByRole('button', { name: 'Relabel default language' }),
-    );
-
-    await waitFor(() =>
-      expect(savedStage(store)?.label).toEqual({ 'en-GB': LABEL.en }),
-    );
-    await waitFor(() =>
-      expect(readStageDraft().stage?.label).toEqual({
-        'en-GB': 'Pick a language',
+      within(rowOf('French')).getByRole('button', {
+        name: 'Change French to a different language',
       }),
     );
-    expect(readStageDraft().dirty).toBe(true);
+
+    const changed = { en: LABEL.en, es: LABEL.fr };
+    await waitFor(() => expect(savedStage(store)?.label).toEqual(changed));
+    await waitFor(() => expect(readStageDraft().stage?.label).toEqual(changed));
+    await waitFor(() => expect(readStageDraft().dirty).toBe(false));
   });
 
   it('saves a stage edited across a language’s removal as a valid protocol', async () => {

@@ -151,6 +151,33 @@ describe('NewSessionForm offline warning', () => {
     expect(createSession).not.toHaveBeenCalled();
   });
 
+  it('refuses to start an interview on a current protocol held back with its interviews', () => {
+    const protocol = makeProtocol([]);
+    act(() => {
+      recordStoredProtocolMigrationFailures([
+        {
+          name: protocol.name,
+          hash: protocol.hash,
+          reason: 'one interview could not be migrated',
+          kind: 'sessions',
+          sessions: [{ id: 'late', reason: 'invalid' }],
+        },
+      ]);
+    });
+    try {
+      render(<Harness protocol={protocol} />);
+
+      expect(
+        screen.getByText(
+          /Some interviews recorded with this protocol could not be updated/,
+        ),
+      ).toBeInTheDocument();
+      expect(screen.queryByLabelText(/Case ID/)).not.toBeInTheDocument();
+    } finally {
+      act(() => recordStoredProtocolMigrationFailures([]));
+    }
+  });
+
   it('tells apart a protocol whose interviews could not be updated', () => {
     const protocol = { ...makeProtocol([]), schemaVersion: 8 };
     const { unmount } = render(<Harness protocol={protocol} />);

@@ -519,21 +519,54 @@ describe('migrateProtocolsToCompatibleVersion', () => {
       expect(prisma.interview.update).not.toHaveBeenCalled();
     });
 
-    it('are not touched when the protocol is already at the compatible version', async () => {
+    it('are not touched when the protocol is already at the compatible version and conformant', async () => {
       const prisma = makeMockPrisma();
-      const legacyShaped = makeV7Protocol();
+      prisma.protocol.findMany.mockResolvedValue([v8PedigreeRow('cm-p')]);
+      await migrateProtocolsToCompatibleVersion(
+        prisma as unknown as Parameters<
+          typeof migrateProtocolsToCompatibleVersion
+        >[0],
+      );
+      const written = prisma.protocol.update.mock.calls[0]?.[0] as {
+        data: { stages: unknown; codebook: unknown; localization: unknown };
+      };
+      const current = makeMockPrisma();
+      current.protocol.findMany.mockResolvedValue([
+        {
+          ...v8PedigreeRow('cm-current'),
+          schemaVersion: COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
+          stages: written.data.stages,
+          codebook: written.data.codebook,
+          localization: written.data.localization,
+        },
+      ]);
+
+      await migrateProtocolsToCompatibleVersion(
+        current as unknown as Parameters<
+          typeof migrateProtocolsToCompatibleVersion
+        >[0],
+      );
+
+      expect(current.protocol.update).not.toHaveBeenCalled();
+      expect(current.interview.findMany).not.toHaveBeenCalled();
+    });
+
+    // A protocol numbered with the compatible version but still in an older
+    // shape is rewritten through the migration chain, which can convert a
+    // pre-redesign Family Pedigree, insert its introduction stage and change
+    // the pedigree's stage record. Its interviews have to cross the same
+    // rewrite.
+    it('are migrated with a protocol at the compatible version that is normalized', async () => {
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      const prisma = makeMockPrisma();
       prisma.protocol.findMany.mockResolvedValue([
         {
-          id: 'cm-current',
-          assets: [],
-          name: 'Current.netcanvas',
+          ...v8PedigreeRow('cm-mislabelled'),
           schemaVersion: COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
-          stages: legacyShaped.stages,
-          codebook: legacyShaped.codebook,
-          experiments: null,
-          description: legacyShaped.description,
-          lastModified: new Date(legacyShaped.lastModified),
         },
+      ]);
+      prisma.interview.findMany.mockResolvedValueOnce([
+        makeV8PedigreeInterview('int-at-pedigree', 1),
       ]);
 
       await migrateProtocolsToCompatibleVersion(
@@ -542,7 +575,46 @@ describe('migrateProtocolsToCompatibleVersion', () => {
         >[0],
       );
 
-      expect(prisma.interview.findMany).not.toHaveBeenCalled();
+      expect(prisma.protocol.update).toHaveBeenCalledTimes(1);
+      expect(prisma.interview.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { protocolId: 'cm-mislabelled' } }),
+      );
+      expect(prisma.interview.update).toHaveBeenCalledWith({
+        where: { id: 'int-at-pedigree' },
+        data: expect.objectContaining({
+          currentStep: 2,
+          stageMetadata: { 2: { framing: 'gendered' } },
+        }),
+      });
+      logSpy.mockRestore();
+    });
+
+    it('fail the whole migration when a normalized protocol has one that cannot be migrated', async () => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      const prisma = makeMockPrisma();
+      prisma.protocol.findMany.mockResolvedValue([
+        {
+          ...v8PedigreeRow('cm-mislabelled'),
+          schemaVersion: COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
+        },
+      ]);
+      prisma.interview.findMany.mockResolvedValueOnce([
+        {
+          ...makeV8PedigreeInterview('int-damaged', 1),
+          stageMetadata: { 7: { notAStageRecord: true } },
+        },
+      ]);
+
+      await expect(
+        migrateProtocolsToCompatibleVersion(
+          prisma as unknown as Parameters<
+            typeof migrateProtocolsToCompatibleVersion
+          >[0],
+        ),
+      ).rejects.toThrow(/int-damaged/);
+      errorSpy.mockRestore();
+      logSpy.mockRestore();
     });
   });
 

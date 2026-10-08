@@ -49,10 +49,10 @@ const messages = defineMessages({
 });
 
 /**
- * Stage-list note naming the languages some text is not translated into. It
- * does not stop the protocol being saved or used.
+ * Stage-list note naming the languages some of the protocol's text is not
+ * translated into. It does not stop the protocol being saved or used.
  *
- * The note can be dismissed, because a protocol may be translated in part on
+ * It can be dismissed, because a protocol may be translated in part on
  * purpose. The dismissal is remembered with the number of translations missing
  * at that moment, so the note returns once there are more.
  */

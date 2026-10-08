@@ -119,7 +119,13 @@ if (failures.length > 0) {
   next stage that survived. A stage inserted before the session's own is not
   visited retroactively (a session on a pedigree resumes on the pedigree, not
   on a new introduction inserted before it), and a session at the finish
-  position stays there. The record of a removed stage is dropped.
+  position stays there. The record of a removed stage is dropped. A step's
+  own session step runs after this and may set a different resume position
+  when the old interface had not yet shown the session what the inserted
+  stage now holds: the 8 → 9 step resumes a session left on a Family
+  Pedigree the participant had not started at the Information stage its
+  introduction screen became, because the schema 8 pedigree showed that
+  screen whenever it opened with no family on it.
 - **Stages without ids.** Schema 9 requires a unique id on every stage, but an
   older protocol may lack one. When a step keeps the number of stages, every
   stage is taken to have stayed where it was (no step reorders stages). When a

@@ -901,17 +901,17 @@ describe('PreviewHost', () => {
 
     it('lists every language the protocol declares, each named in itself', async () => {
       const control = await openPreview(
-        makeProtocol({ defaultLocale: 'en', locales: ['en', 'fr'] }),
+        makeProtocol({ defaultLocale: 'en', locales: ['en', 'fr', 'ar'] }),
       );
 
       const options = within(control).getAllByRole('option');
-      expect(options.map((option) => option.textContent)).toEqual([
-        getLocaleMetadata('en').label,
-        getLocaleMetadata('fr').label,
-      ]);
+      expect(options.map((option) => option.textContent)).toEqual(
+        ['en', 'fr', 'ar'].map((locale) => getLocaleMetadata(locale).label),
+      );
       expect(options.map((option) => option.getAttribute('lang'))).toEqual([
         'en',
         'fr',
+        'ar',
       ]);
       expect(control).toBeEnabled();
     });

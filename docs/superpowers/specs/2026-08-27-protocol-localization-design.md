@@ -1,7 +1,7 @@
 # Protocol Localization and Locale Resolution Design
 
 **Status:** Implemented on `feat/protocol-localization`. This document
-reflects the implementation as of 7 October 2026. The design reviewed on
+reflects the implementation as of 8 October 2026. The design reviewed on
 2026-08-27 was revised during implementation; see Revisions.
 
 **Scope:** Protocol schema 9, protocol-authored participant-facing strings,
@@ -76,9 +76,9 @@ where the repository records one.
     metadata column keeps its name and a variable that would print under it is
     written as `networkCanvasInterviewLocale_2`, with a `column-renamed`
     warning (§11.2).
-12. **Studio stores new protocols as `und`.** A protocol created in Studio
-    declares the undetermined language because Studio does not yet ask which
-    language the researcher is writing in (§8.7).
+12. **Studio stores new protocols as English.** A protocol created in Studio
+    declares `en` because Studio does not yet ask which language the
+    researcher is writing in (§8.7).
 13. **Attribute labels are plain text, and Narrative highlights carry their own
     localized labels.** The proposal gave every codebook variable a localized
     `label`. The product owner revised this: participants never read an
@@ -126,6 +126,28 @@ where the repository records one.
       and remove languages, make one the default, and change a language from
       the Language Chooser stage's editor, as well as on the Languages page.
       It is the same list, with the same operations and refusals (§8.2, §9.1).
+16. **A protocol always has a real language; there is no unspecified language.**
+    The proposal migrated schema-8 text to the undetermined language `und`,
+    because the migration cannot know what language old text is written in. The
+    product owner ruled on 8 October 2026 that a schema-9 protocol always has a
+    real language, since Studio never exports protocols back to Architect and
+    the migration can simply give every protocol a default. This changes four
+    things:
+    - **The migration declares English.** It sets
+      `localization: { defaultLocale: "en", locales: ["en"] }` and records every
+      migrated text under `en` (§10.1). Its migration note says that the text
+      is recorded as English and can be changed in Architect.
+    - **Schema validation refuses `und`.** A protocol cannot declare it as a
+      language or the default, and a localized string cannot have a key for it
+      (§5.2). Nothing special-cases it at runtime, in exports, or in the hosts.
+    - **Changing a language is a general action.** The Languages page lets the
+      researcher change which language any language's text is recorded as, for a
+      protocol whose migrated text was really written in Spanish, or one made in
+      the wrong language. The "Identify language" notice and alert are gone
+      (§9.1).
+    - **No `und` anywhere.** Stored protocols, Fresco's database default,
+      interview data, exports, templates and fixtures contain `en` where they
+      would have had `und`.
 
 ## 1. Summary
 
@@ -313,8 +335,9 @@ Validation requirements:
   suggested canonical value. Architect canonicalizes before it writes.
 - Both language-only tags (`es`) and language-region tags (`es-MX`) are valid
   and may coexist.
-- `und` is valid and reserved for content whose source language is genuinely
-  unknown, including automatic migration of schema-8 strings to schema 9.
+- `und`, the tag for an undetermined language, is refused, with or without
+  subtags (`und-Latn`), as a locale, as the default, and as a localized-string
+  key. A protocol is always written in a real language (revision 16).
 - The order of `locales` is not significant. It is not a fallback order, no
   interface lists the languages in it, and `hashProtocol` sorts the locales
   before hashing, so two protocols that differ only in that order have the
@@ -690,10 +713,6 @@ changed by a language the participant's browser lists, which the note says.
   older `textInfo` accessor, then maximize the locale and use a small tested
   set of Unicode right-to-left script codes. Unknowns fall back to `ltr` for
   layout and `dir="auto"` may be used on leaf text.
-- `und` has no name of its own: `Intl.DisplayNames` calls it "root", which
-  means nothing to a participant. The Interview provider replaces that label
-  with "Unspecified language" in the interface language, and Studio's editor
-  (protocol-builder) does the same wherever it names a language.
 
 Display-name spelling is presentation-only and may vary with the JavaScript
 runtime. It is never validated, persisted, or hashed. Direction fallback is
@@ -711,8 +730,7 @@ directions for the initial render and the Language Chooser rather than calling
 `Intl.DisplayNames` again during hydration. It sorts the options alphabetically
 by label, collated for the interface language, so the Language Chooser lists
 them the same way whatever order the host passed them in. It throws only if
-the set of option locales differs from the declaration, and it replaces only
-the `und` label. Locale-option metadata is ephemeral presentation data: it is
+the set of option locales differs from the declaration. Locale-option metadata is ephemeral presentation data: it is
 neither stored with the interview nor included in protocol identity.
 
 Architect lists a protocol's languages the same way, alphabetically by their
@@ -816,9 +834,7 @@ type PresentationalText =
 
 Interview adapters convert `ResolvedLocalizedString` to this shape for field
 labels, hints, option labels, scalar endpoints, Network Composer endpoints,
-and roster details. Text resolved in `und` stays a plain string, so it keeps
-the surrounding language as protocol text always has, rather than telling
-assistive technology that its language is unknown. Fresco UI components unwrap
+and roster details. Fresco UI components unwrap
 `text` wherever a primitive string is operationally required, while the nearest
 visible text element or native option receives `lang` and `dir`.
 Markdown-capable labels retain their current rendering behavior inside that
@@ -934,8 +950,7 @@ It can appear anywhere, more than once.
   list is alphabetical by the languages' own names, collated for the language of
   the interview's built-in interface (§8.3); the protocol's stored order has no
   effect on it. Each option is labeled with the language's own name and carries
-  its own `lang` and `dir`; the `und` option is labeled "Unspecified language" in
-  the interface language. The language currently shown is selected. Arrow keys move focus
+  its own `lang` and `dir`. The language currently shown is selected. Arrow keys move focus
   through the list, and Enter or Space chooses the focused language.
 - Choosing another language calls `setLocale`. The protocol text and the
   built-in interface text switch at once, the network, prompt position, and form
@@ -964,8 +979,7 @@ language:
   `localePreference` as the stored choice and `requestedLocales` as the browser
   languages. A stated preference decides only when the interface has that
   language. Otherwise the first requested language the interface has wins, and
-  `en` applies when none does. A stated `und` is skipped, because best fit reads
-  `und` as English.
+  `en` applies when none does.
 - Preferences are matched one at a time with best fit, and Chinese is matched by
   script, as in §6.2.
 - The result is never stored. Each Shell owns its formatter, so one interview's
@@ -1004,7 +1018,7 @@ tab that replaces the whole row.
 ### 8.5 Fresco (Next.js)
 
 - Prisma `Protocol` gains a required JSON `localization` column that defaults to
-  `{"defaultLocale":"und","locales":["und"]}`, the declaration every migrated
+  `{"defaultLocale":"en","locales":["en"]}`, the declaration every migrated
   protocol carries. Protocol import persists `protocol.localization`, and the
   read layer parses it with the schema's localization schema. The additive
   migration `20261005120000_add_protocol_localization_and_interview_locale`
@@ -1059,8 +1073,8 @@ preview window is open and is never saved. It passes the chosen language as the
 first requested language, so the Shell keeps the step, the answers, and unsaved
 input. A language stated on a Language Chooser stage moves the menu. A stored
 preference outranks requested languages, so when the running interview holds
-one, or the author picks `und`, the preview re-creates the interview from the
-session so far with the new preference. A new payload, such as a restart,
+one, the preview re-creates the interview from the session so far with the new
+preference. A new payload, such as a restart,
 resets the choice. Because the preview runs the Interview runtime's own
 resolver, it reproduces every fallback that a warning reports. The preview
 also shows what a participant with the author's own browser languages would see,
@@ -1076,7 +1090,7 @@ Studio's sectioned protocol store treats `localization` as protocol-level
 settings. `sectionizeProtocol` writes it into the settings section;
 `SettingsSectionSchema` validates it for schema 9; and assembly, structural
 diff, draft migration, and publishing round-trip it without projection or loss.
-A protocol created in Studio declares `{ defaultLocale: "und", locales: ["und"] }`,
+A protocol created in Studio declares `{ defaultLocale: "en", locales: ["en"] }`,
 as one migrated from schema 8 does, because Studio does not yet ask which
 language the researcher is writing in.
 
@@ -1107,8 +1121,7 @@ Studio's own message catalogs are separate work.
   locale returned by the resolver.
 - The nearest practical text container receives `lang` and `dir`; when a
   string falls back, those attributes describe the fallback language, not the
-  selected protocol locale. Text resolved in `und` carries neither, so it keeps
-  the surrounding language.
+  selected protocol locale.
 - The stage container takes the direction of the translation shown. The Shell
   root keeps the interface language and direction, because built-in text is in
   the interface language and protocol text carries its own `lang`.
@@ -1133,8 +1146,8 @@ Architect adds a Languages page, linked from the project navigation at
 - translation coverage by language, as translated and missing counts with a
   progress bar;
 - a list of missing translations that can be filtered by language; and
-- relabelling the default language, which is how a protocol migrated from
-  schema 8, taken to be English, is marked as the language it is written in.
+- changing a language: recording the text of any language as another, which is
+  how a researcher corrects a migrated protocol whose text is not English.
 
 Languages have no order, so the page has no way to reorder them. The default
 language matters because it is the starting language when the browser lists none
@@ -1144,16 +1157,16 @@ languages is alphabetical, and the order in which the file happens to store them
 has no effect on what participants see.
 
 A new protocol asks which language it is written in and declares exactly that
-language. A protocol migrated from schema 8 declares English (`en`). Architect
-has no mode for `und`: a protocol made in Studio declares it, but stays in
-Studio.
+language. A protocol migrated from schema 8 starts as English, and the
+researcher changes that here if it is not.
 
 The Language Chooser stage editor (§8.2) shows the same list of languages and
 manages them with the same operations and refusals as this page: adding,
-making one the default, relabelling the default, and removing one.
+making one the default, changing a language, and removing one.
 
 Adding a language writes only the declaration. It deliberately does not clone
 default strings, so the protocol remains valid and warnings appear immediately.
+`und` cannot be added or chosen.
 
 Removing a language is an atomic destructive edit. Architect shows how many
 translations will be removed, asks for confirmation, removes that key from every
@@ -1161,17 +1174,19 @@ localized string, and updates the declaration. It is refused for the default
 until another default is chosen, and refused if it would leave any localized
 string with no translation.
 
-Relabelling the default language canonicalizes the new tag and atomically
-moves the default's declaration entry, `defaultLocale` and every matching
-localized-string key (found with `collectLocalizedStrings`) to it. A collision
-with an existing language is refused rather than merged, since a text
-translated into both would lose a translation; choosing another existing
-language as the default is `setDefaultLocale`'s job.
+Changing a language canonicalizes the new tag and atomically moves the
+declaration entry and every matching localized-string key. If the old tag is
+`defaultLocale`, the same edit updates `defaultLocale` to the new tag. A
+collision with an existing language is refused rather than merged, and so is a
+tag that names no language, such as `und`. The Languages page offers it on every
+language's row, with a dialog that lists the languages the protocol does not
+have yet; the Language Chooser stage editor offers the same.
 
 Every language operation (`addLocales`, `removeLocale`, `setDefaultLocale`,
-`relabelDefaultLocale`) is a single draft edit: one undo step, and nothing
+`changeLocale`) is a single draft edit: one undo step, and nothing
 is written when any part is refused. A refusal names its reason: `invalid-tag`,
-`already-declared`, `not-declared`, `default-locale`, or `would-empty`.
+`already-declared`, `not-declared`, `default-locale`, or
+`would-empty`.
 
 ### 9.2 Localized fields
 
@@ -1221,8 +1236,8 @@ researcher has written.
 Coverage warnings are owned by the actual field when editing that field. Global
 aggregation is added to `selectors/issues.ts`, whose existing contract already
 represents valid-but-probably-unintended protocol issues
-(`getLocalizationCoverage`, `getMissingTranslationGroups`,
-`getHasMissingTranslations`, and `getHasUnspecifiedLanguage`). The Languages
+(`getLocalizationCoverage`, `getMissingTranslationGroups`, and
+`getHasMissingTranslations`). The Languages
 page and project navigation summarize warnings, and they do not duplicate
 field-owned validation errors.
 
@@ -1239,10 +1254,7 @@ Warnings are grouped to avoid presenting thousands of flat messages:
   for each. For a language with no translation the note reads "Not translated
   yet. Shown in {language}." when the text is shown in a closely related
   language, which no other browser language can change, and otherwise adds
-  "unless the participant's browser also lists a language that has it"; and
-- unspecified language: when the protocol still declares `und`, the Languages
-  page and an alert ask the researcher to identify the language, and the project
-  navigation tab carries a warning for screen readers.
+  "unless the participant's browser also lists a language that has it".
 
 Download/export remains allowed with warnings. Architect should require only
 normal schema validity, not complete translation coverage.
@@ -1257,28 +1269,30 @@ chosen language, and falls back to the default if the chosen language is removed
 
 ### 10.1 Automatic, lossless rule
 
-The migration cannot know the language of arbitrary schema-8 text. It must not
-guess English from the product's history or the device locale. It therefore:
+The migration cannot know the language of arbitrary schema-8 text, but a
+schema-9 protocol always has a real language (revision 16). It gives every
+protocol a default, English, without looking at the device locale, and the
+researcher changes it in Architect if it is wrong. It therefore:
 
-1. adds `localization: { defaultLocale: "und", locales: ["und"] }`;
-2. wraps every participant-facing schema-8 string as `{ "und": message }`, where
+1. adds `localization: { defaultLocale: "en", locales: ["en"] }`;
+2. wraps every participant-facing schema-8 string as `{ "en": message }`, where
    `message` is the old text escaped as an ICU literal message;
 3. leaves out an empty optional field where schema 9 requires non-empty text,
    preserves an empty value where the schema-8 field accepted it as data, and
    wraps an empty required field so that validation reports what schema 8
    already rejected;
 4. adds a `label` to every node type and edge type from the existing stable
-   `name` as `{ "und": name }`, and to every variable, including ego variables,
+   `name` as `{ "en": name }`, and to every variable, including ego variables,
    as the plain `name`, using the codebook key when the name is missing or
    empty;
 5. turns each id in a Narrative preset's `highlight` list into
-   `{ variable, label }`, the label being `{ "und": name }` from the variable's
+   `{ variable, label }`, the label being `{ "en": name }` from the variable's
    name on the stage subject's node type, or the id when that name is missing
    or empty, since schema 8 showed the name in the preset switcher;
 6. gives a Network Composer form field with a missing or empty `label` one
    taken from its attribute's name on the stage's node type or the edge's
    type, or the variable id when that name is missing or empty, escaped as
-   markdown that shows it as written and wrapped as `{ "und": message }`, since
+   markdown that shows it as written and wrapped as `{ "en": message }`, since
    schema 8 showed the attribute's name there;
 7. drops a Network Composer scale end label that is not a string, because the
    interview only ever rendered string labels there;
@@ -1287,8 +1301,8 @@ guess English from the product's history or the device locale. It therefore:
 9. preserves option values, ids, references, stage count and order, codebook
    keys, and collected answer shapes; and
 10. records two migration notes: what the new version allows in attribute
-    names, and that the text was taken to be English, so the researcher
-    should check the default language and relabel it in Architect if needed.
+    names, and that the text is now recorded as English and can be changed on
+    Architect's Languages page.
 
 This obeys the migration invariants already documented in the migration
 chain: stages are not added, removed, or reordered, and collected values do
@@ -1299,7 +1313,7 @@ metadata, so it shares one inventory with validation and the warning analyser.
 
 Known English first-party protocols and templates are authored directly as
 schema 9 in their canonical sources with `en-US`, rather than being committed as
-`und`: the bundled templates, the sample protocol, the development protocol, and
+migrated schema 8: the bundled templates, the sample protocol, the development protocol, and
 the end-to-end protocols. The development protocol is also translated into
 Spanish (`es`) and opens with a Language Chooser stage. The documentation
 downloads are not converted; they keep their original schema versions and
@@ -1324,7 +1338,7 @@ automatic migration.
   did before. Language lives on the session row (§8.4), so the migration has no
   language record to create.
 - Fresco's additive database migration initializes the protocol `localization`
-  column to the `und` declaration, and its deploy-time protocol migration
+  column to the `en` declaration, and its deploy-time protocol migration
   rewrites stored schema-7/8 protocols to schema 9 (§8.5).
 - Studio's draft migration and section round trip add and retain localization
   in the settings section (§8.7).
@@ -1349,8 +1363,7 @@ and last-modified metadata remain excluded.
 ### 11.2 Data export
 
 The language last shown is research metadata. `InterviewExportInput` gains
-`locale: string | null`, a BCP 47 tag (`und` for a protocol whose language is
-unspecified), or `null` when the host has not recorded one. Both hosts pass the
+`locale: string | null`, a BCP 47 tag, or `null` when the host has not recorded one. Both hosts pass the
 session's stored `locale`.
 
 - `@codaco/shared-consts` names the session field `interviewLocale` and the
@@ -1399,8 +1412,8 @@ language does not change analysis schema.
   record would otherwise drop that entry unseen.
 - A message that does not parse as ICU, or that contains a placeholder or
   formatting, is a validation error, so the runtime only formats literal text.
-- Locale removal and relabelling the default language are atomic protocol
-  edits with collision checks.
+- Locale removal and changing a language are atomic protocol edits with
+  collision checks.
 - Language changes are validated where they could otherwise corrupt data. The
   Shell refuses a language the protocol does not declare, and Fresco's
   unauthenticated locale endpoint rejects one before it can enter persistence or
@@ -1421,7 +1434,7 @@ language does not change analysis schema.
 
 ### 13.1 Protocol-validation
 
-- Canonical and invalid locale tags, aliases, casing, duplicates, `und`, and
+- Canonical and invalid locale tags, aliases, casing, duplicates, the refused `und`, and
   language/region coexistence.
 - Localization declaration default membership. The order of `locales` is not
   checked and decides nothing.
@@ -1496,8 +1509,7 @@ language does not change analysis schema.
   position, or form answers, and reach the host through the locale-change
   handler once per change and in order, never through general sync.
 - Interface language negotiation: a stated preference decides only when the
-  interface has it, a stated `und` is skipped, and preferences are matched one
-  at a time.
+  interface has it, and preferences are matched one at a time.
 - Chromium, Firefox, and WebKit interface-matrix scenarios cover the built-in
   language following the browser's languages, an incomplete translation with
   fallback, and an RTL locale.
@@ -1519,7 +1531,8 @@ language does not change analysis schema.
 - Incomplete localized strings save successfully and appear as warnings.
 - Undeclared keys and empty localized strings fail loudly.
 - Coverage aggregation, grouping, language filter, and navigation to the field.
-- Relabelling the default language.
+- Changing a language: its text, the declaration and the default move together;
+  a language the protocol has, one it does not declare and `und` are refused.
 - A blank translation removes that translation; a required field refuses a
   string with none.
 - The shared editing language moves every localized field together and falls
@@ -1544,7 +1557,7 @@ language does not change analysis schema.
   `Intl.DisplayNames` results and proves the serialized server `localeOptions`
   keep initial markup identical.
 - Fresco's deploy-time migration brings stored schema-7/8 protocols to schema 9
-  with the `und` declaration and the new hash, and leaves a row it cannot
+  with the `en` declaration and the new hash, and leaves a row it cannot
   migrate in place.
 - Studio settings-section validation plus sectionize, assemble, diff, migrate,
   and publish round-trip of the root declaration, plus a successful schema-9

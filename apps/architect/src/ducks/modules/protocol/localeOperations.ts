@@ -4,6 +4,7 @@ import {
   canonicalizeLocale,
   collectLocalizedStrings,
   type CurrentProtocol,
+  isUndeterminedLocale,
   type LocaleTag,
   type LocalizedString,
   type LocalizedStringHit,
@@ -12,10 +13,8 @@ import {
 import { withTranslation } from '~/utils/localizedText';
 
 export type LocaleOperationFailure =
-  /** Not a well-formed BCP 47 language tag. */
+  /** Not a well-formed BCP 47 language tag, or the undetermined language. */
   | 'invalid-tag'
-  /** The language is already one of the protocol's. Relabelling never merges
-   * one language into another. */
   | 'already-declared'
   | 'not-declared'
   /** The default language cannot be removed until another is the default. */
@@ -53,8 +52,8 @@ export const withoutLocale =
     return rest;
   };
 
-/** Marks the translation written as `from` as written in `to`. */
-export const relabelledLocale =
+/** Moves the translation written in `from` to `to`, keeping its text. */
+export const movedLocale =
   (from: LocaleTag, to: LocaleTag): LocalizedStringRewrite =>
   (value) =>
     Object.hasOwn(value, from)
@@ -115,7 +114,9 @@ const resolveNewLocale = (
   | { ok: true; locale: LocaleTag }
   | { ok: false; reason: LocaleOperationFailure } => {
   const locale = canonicalizeLocale(tag.trim());
-  if (locale === undefined) return { ok: false, reason: 'invalid-tag' };
+  if (locale === undefined || isUndeterminedLocale(locale)) {
+    return { ok: false, reason: 'invalid-tag' };
+  }
   if (isDeclared(protocol, locale)) {
     return { ok: false, reason: 'already-declared' };
   }
@@ -289,41 +290,30 @@ export const setLocalizedString = (
 };
 
 /**
- * Says that the text written in the default language is really written in
- * `tag`, as when a protocol upgraded from schema 8, which was taken to be
- * English, is in fact in French. The default language's declaration and every
- * translation in it move to the new tag together, in one protocol edit, and
- * nothing is translated or deleted.
- *
- * A language the protocol already has is refused rather than merged into: a
- * text translated into both would have to lose one of its translations. To
- * make another of the protocol's languages the default, `setDefaultLocale`
- * does that without relabelling anything.
+ * Says that the text recorded as `from` is really written in `tag`: the
+ * declaration entry and every translation move to the new tag together, and
+ * the default follows when it is `from`. Nothing is translated or deleted.
+ * A language the protocol already has is never merged into, so a tag it
+ * declares is refused.
  */
-export const relabelDefaultLocale = (
+export const changeLocale = (
   protocol: CurrentProtocol,
+  from: LocaleTag,
   tag: string,
 ): LocaleOperationResult => {
+  if (!isDeclared(protocol, from)) return fail('not-declared');
   const resolved = resolveNewLocale(protocol, tag);
   if (!resolved.ok) return fail(resolved.reason);
-  const from = protocol.localization.defaultLocale;
   const to = resolved.locale;
-  // A translation already stored under the new tag, which only a protocol
-  // that validation has not seen can hold, would be overwritten.
-  if (
-    collectLocalizedStrings(protocol).some((hit) =>
-      Object.hasOwn(hit.value, to),
-    )
-  ) {
-    return fail('already-declared');
-  }
+  const { localization } = protocol;
   return {
     ok: true,
     protocol: {
-      ...rewriteLocalizedStrings(protocol, relabelledLocale(from, to)),
+      ...rewriteLocalizedStrings(protocol, movedLocale(from, to)),
       localization: {
-        defaultLocale: to,
-        locales: protocol.localization.locales.map((declared) =>
+        defaultLocale:
+          localization.defaultLocale === from ? to : localization.defaultLocale,
+        locales: localization.locales.map((declared) =>
           declared === from ? to : declared,
         ),
       },

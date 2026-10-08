@@ -49,13 +49,6 @@ In Architect:
   is a warning and never an error. A language can't be removed while it is the
   default, or while it holds the only translation of some text, and its delete
   button says why.
-- Relabel default language, beside the choice of default, marks every text in
-  the default language as written in another language and makes that language
-  the default, without translating or deleting anything, as one step that undo
-  takes back. Use it when a protocol's text is really in another language, such
-  as an upgraded protocol that was assumed to be English, or to change to a
-  regional variant. Only languages the protocol doesn't have yet are offered:
-  to make another of its languages the default, choose it as the default.
 - A translation table shows every text participants see beside its
   translation into each of the protocol's languages, one column per language.
   Open translation table, on the Languages page and in the Language Chooser's
@@ -79,8 +72,9 @@ In Architect:
   every missing translation.
 - A new protocol asks which languages participants can take it in, and,
   when you choose more than one, which of them is the default. A protocol
-  upgraded from an earlier version is marked as written in English; if it is
-  written in another language, relabel its default language.
+  upgraded from an earlier version is recorded as written in English, and each
+  language's row has a button that changes which language its text is
+  recorded as, for a protocol that is really written in another language.
 - Once a protocol has more than one language, each text field in the stage
   editors has a language menu that shows which languages its text still needs.
   All the menus switch together, so you can work through a stage in one
@@ -103,8 +97,8 @@ In Architect:
   Information interface and the Language Chooser. The Language Chooser's
   editor lists the languages participants will be offered, which is every
   language the protocol is written in, and manages them the same way as the
-  Languages page: you can add languages, choose or relabel the default, and
-  remove one, under the same rules.
+  Languages page: you can add languages, choose the default, and remove one,
+  under the same rules.
 - A preview opens in the language a participant with your browser would see,
   rather than in Architect's own language. A "Preview language" menu above it
   switches the interview to any of the protocol's languages while the preview
@@ -115,7 +109,7 @@ In Interviewer and Fresco:
 - Each interview records the language the participant chose and the language
   they last saw. Exported ego data has a `networkCanvasInterviewLocale` column
   (CSV) and an `nc:interviewLocale` attribute (GraphML) holding the language
-  last shown, or `und` for a protocol whose language is unspecified.
+  last shown.
 - Interviewer's new interview form no longer asks for a language, and the
   confirmation at the end of an interview follows the interview's language.
 - Fresco reads the participant's browser languages from their request, so the

@@ -38,8 +38,13 @@ vi.mock('../recordCrypto', async (importOriginal) => {
 // Import AFTER the mock so sessions.ts binds the wrapped encryptSession.
 const { db } = await import('../db');
 const { setSessionDek } = await import('../sessionKey');
-const { createSession, getSession, setSessionLocale, updateSession } =
-  await import('../sessions');
+const {
+  createSession,
+  getSession,
+  SessionProtocolChangedError,
+  setSessionLocale,
+  updateSession,
+} = await import('../sessions');
 
 async function makeDek(): Promise<CryptoKey> {
   return crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, false, [
@@ -84,7 +89,11 @@ describe('updateSession against concurrent writers', () => {
     setSessionDek(null);
   });
 
-  it('commits the freshest protocolHash when a migration repointed it mid-write', async () => {
+  // The launch migration (possibly in another tab) can move a session to its
+  // migrated protocol while this tab's write is between its read and its
+  // commit. A write naming only part of the session's protocol-bound state
+  // cannot be applied to the migrated data, so it is refused.
+  it('refuses a partial write when a migration moved the session mid-write, and leaves the migrated row alone', async () => {
     const created = await createSession({
       protocolHash: 'old-hash',
       protocolName: 'Study',
@@ -93,17 +102,115 @@ describe('updateSession against concurrent writers', () => {
     });
 
     const pause = pauseNextEncrypt();
-    const pending = updateSession(created.id, { currentStep: 3 });
+    const pending = updateSession(
+      created.id,
+      { currentStep: 3 },
+      { protocolHash: 'old-hash' },
+    );
     await pause.reached;
-    // The sweep (another tab) repoints the session while the update is
-    // suspended between its read and its commit.
     await db.sessions.update(created.id, { protocolHash: 'new-hash' });
+    const migrated = await db.sessions.get(created.id);
     pause.release();
-    await pending;
+
+    await expect(pending).rejects.toBeInstanceOf(SessionProtocolChangedError);
+    expect(await db.sessions.get(created.id)).toEqual(migrated);
+  });
+
+  it('refuses a partial write computed against a protocol the session had already left', async () => {
+    const created = await createSession({
+      protocolHash: 'old-hash',
+      protocolName: 'Study',
+      caseId: 'case-1',
+      initialNetwork: network,
+    });
+    await db.sessions.update(created.id, { protocolHash: 'new-hash' });
+    const migrated = await db.sessions.get(created.id);
+
+    for (const patch of [
+      { currentStep: 3 },
+      { progress: 50 },
+      { resumeStageOverrideIndex: undefined },
+      { network },
+    ]) {
+      await expect(
+        updateSession(created.id, patch, { protocolHash: 'old-hash' }),
+      ).rejects.toBeInstanceOf(SessionProtocolChangedError);
+    }
+    expect(await db.sessions.get(created.id)).toEqual(migrated);
+  });
+
+  // A write of the session's whole state is complete in the old protocol's
+  // schema, so it is kept under the hash it was computed against, and the
+  // next launch carries it across the migration again.
+  it('stores a whole-state write under the protocol it was computed against when the session has moved', async () => {
+    const created = await createSession({
+      protocolHash: 'old-hash',
+      protocolName: 'Study',
+      caseId: 'case-1',
+      initialNetwork: network,
+    });
+    await db.sessions.update(created.id, { protocolHash: 'new-hash' });
+    const answered: NcNetwork = {
+      ...network,
+      nodes: [
+        {
+          [entityPrimaryKeyProperty]: 'node-1',
+          type: 'person',
+          [entityAttributesProperty]: {},
+        },
+      ],
+    };
+
+    await updateSession(
+      created.id,
+      { network: answered, stageMetadata: undefined, currentStep: 2 },
+      { protocolHash: 'old-hash' },
+    );
+
+    expect((await db.sessions.get(created.id))?.protocolHash).toBe('old-hash');
+    const back = await getSession(created.id);
+    expect(back?.network).toEqual(answered);
+    expect(back?.currentStep).toBe(2);
+  });
+
+  it('applies a write naming nothing protocol-bound whichever protocol the session belongs to', async () => {
+    const created = await createSession({
+      protocolHash: 'old-hash',
+      protocolName: 'Study',
+      caseId: 'case-1',
+      initialNetwork: network,
+    });
+    await db.sessions.update(created.id, { protocolHash: 'new-hash' });
+
+    await updateSession(
+      created.id,
+      { exportedAt: '2026-01-05T00:00:00.000Z' },
+      { protocolHash: 'old-hash' },
+    );
 
     const row = await db.sessions.get(created.id);
     expect(row?.protocolHash).toBe('new-hash');
+    expect(row?.exportedAt).toBe('2026-01-05T00:00:00.000Z');
+  });
+
+  it('applies a write computed against the protocol the session belongs to as before', async () => {
+    const created = await createSession({
+      protocolHash: 'hash',
+      protocolName: 'Study',
+      caseId: 'case-1',
+      initialNetwork: network,
+    });
+
+    await updateSession(
+      created.id,
+      { currentStep: 3, progress: 40 },
+      { protocolHash: 'hash' },
+    );
+
+    const row = await db.sessions.get(created.id);
+    expect(row?.protocolHash).toBe('hash');
     expect(row?.currentStep).toBe(3);
+    expect(row?.progress).toBe(40);
   });
 
   it('does not resurrect a session deleted mid-write', async () => {
@@ -115,7 +222,11 @@ describe('updateSession against concurrent writers', () => {
     });
 
     const pause = pauseNextEncrypt();
-    const pending = updateSession(created.id, { currentStep: 3 });
+    const pending = updateSession(
+      created.id,
+      { currentStep: 3 },
+      { protocolHash: 'old-hash' },
+    );
     await pause.reached;
     await db.sessions.delete(created.id);
     pause.release();
@@ -140,18 +251,22 @@ describe('updateSession against concurrent writers', () => {
     });
 
     const pause = pauseNextEncrypt();
-    const pending = updateSession(created.id, {
-      network: {
-        ...network,
-        nodes: [
-          {
-            [entityPrimaryKeyProperty]: 'node-1',
-            type: 'person',
-            [entityAttributesProperty]: {},
-          },
-        ],
+    const pending = updateSession(
+      created.id,
+      {
+        network: {
+          ...network,
+          nodes: [
+            {
+              [entityPrimaryKeyProperty]: 'node-1',
+              type: 'person',
+              [entityAttributesProperty]: {},
+            },
+          ],
+        },
       },
-    });
+      { protocolHash: 'hash' },
+    );
     await pause.reached;
 
     // The hydration read, issued while the write is suspended between its
@@ -250,7 +365,11 @@ describe('setSessionLocale', () => {
     const created = await createStudySession();
 
     const pause = pauseNextEncrypt();
-    const pending = updateSession(created.id, { currentStep: 2 });
+    const pending = updateSession(
+      created.id,
+      { currentStep: 2 },
+      { protocolHash: 'hash' },
+    );
     await pause.reached;
 
     let settled = false;
@@ -282,7 +401,11 @@ describe('setSessionLocale', () => {
     const created = await createStudySession();
 
     const pause = pauseNextEncrypt();
-    const pending = updateSession(created.id, { currentStep: 3 });
+    const pending = updateSession(
+      created.id,
+      { currentStep: 3 },
+      { protocolHash: 'hash' },
+    );
     await pause.reached;
     // Another tab's write lands between this update's read and its commit.
     await db.sessions.update(created.id, {

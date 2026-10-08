@@ -283,7 +283,7 @@ How each language is chosen:
   `defaultLocale`.
 - **Interface language.** `[localePreference, ...requestedLocales]` is matched
   in order against the built-in languages, and the first fit wins; otherwise
-  `en`. A `localePreference` of `und` is skipped.
+  `en`.
 
 Requests match by best fit, one at a time, so `es-MX` matches a declared `es`,
 `pt-PT` a declared `pt-BR`, and `zh-TW` a declared `zh-Hant`. The matching uses
@@ -346,10 +346,7 @@ same order whatever the host passes. `Shell` throws only if the set of
 languages differs from the declaration. The host derives them rather than the
 package so a server-rendered host serialises the exact labels it rendered:
 display names vary between JavaScript runtimes, and deriving them again on the
-client would break hydration. A protocol that records no language (one made in
-Studio, for example) uses the tag `und`, which the chooser shows as an
-unspecified language. A protocol migrated from schema 8 declares English
-(`en`).
+client would break hydration.
 
 ##### Outside `Shell`
 

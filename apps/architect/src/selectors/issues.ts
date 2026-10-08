@@ -28,7 +28,7 @@ import { getAssetManifest, getCodebook, getProtocol } from './protocol';
  * Currently covers:
  *  - Unused resources (assets in the manifest that are never referenced)
  *  - Unused variables (codebook variables that are never referenced)
- *  - Missing translations and text whose language is not yet identified
+ *  - Missing translations (text with no translation in a protocol language)
  */
 
 export type UnusedSummary = {

@@ -3,13 +3,14 @@ import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-s
 import {
   type CurrentProtocol,
   hashProtocol,
+  type MigratedSession,
   migrateProtocolWithSessions,
-  type SessionMigrationResult,
+  type PersistedSession,
   type SessionMigrator,
   validateProtocol,
 } from '@codaco/protocol-validation';
 
-import { db } from './db';
+import { db, type StoredProtocolMigrationRecord } from './db';
 import {
   decryptAsset,
   decryptProtocol,
@@ -22,7 +23,7 @@ import {
   type StoredProtocolRow,
   type StoredSessionRow,
 } from './recordCrypto';
-import type { StoredProtocol, StoredSession } from './types';
+import type { StoredProtocol } from './types';
 
 // Bring stored protocols up to the schema version this build's interview
 // runtime executes (`COMPATIBLE_PROTOCOL_SCHEMA_VERSION`, read from the
@@ -157,6 +158,7 @@ const sourceUnchanged = (
  */
 class SessionsNotMigratedError extends Error {
   readonly sessions: UnmigratedSession[];
+  readonly protocolName: string;
 
   constructor(name: string, sessions: UnmigratedSession[]) {
     super(
@@ -164,6 +166,7 @@ class SessionsNotMigratedError extends Error {
     );
     this.name = 'SessionsNotMigratedError';
     this.sessions = sessions;
+    this.protocolName = name;
   }
 }
 
@@ -188,17 +191,36 @@ type MigratedSessionRows = {
   rows: StoredSessionRow[];
 };
 
-/** Decrypts one stored session and runs it through the session migrator. A
+/**
+ * Carries one session's payload onto the target protocol: the migrated
+ * payload, or `null` when nothing it holds changed. A session migrator
+ * (`carryWith`), or a replay of several in turn (`replayMigrations`).
+ */
+type CarrySession = (
+  session: PersistedSession,
+) =>
+  | { success: true; migrated: MigratedSession | null }
+  | { success: false; error: unknown };
+
+const carryWith =
+  (migrateSession: SessionMigrator): CarrySession =>
+  (session) => {
+    const result = migrateSession(session);
+    if (!result.success) return { success: false, error: result.error };
+    return { success: true, migrated: result.changed ? result.session : null };
+  };
+
+/** Decrypts one stored session and carries it onto the target protocol. A
  * session that cannot be decrypted is reported like one that cannot be
  * migrated. */
 async function migrateSessionRow(
   row: StoredSessionRow,
-  migrateSession: SessionMigrator,
+  carry: CarrySession,
 ): Promise<
   | {
       success: true;
       record: DecryptedSessionRecord;
-      result: Extract<SessionMigrationResult, { success: true }>;
+      migrated: MigratedSession | null;
     }
   | { success: false; error: unknown }
 > {
@@ -208,22 +230,94 @@ async function migrateSessionRow(
   } catch (error) {
     return { success: false, error };
   }
-  const result = migrateSession({
+  const result = carry({
     network: record.network,
     stageMetadata: record.stageMetadata,
     currentStep: record.currentStep,
   });
   return result.success
-    ? { success: true, record, result }
+    ? { success: true, record, migrated: result.migrated }
     : { success: false, error: result.error };
 }
 
 /**
- * Every session of the protocol, migrated, or `SessionsNotMigratedError`
+ * The row to write for a session carried onto the protocol stored under
+ * `hash`, whose stages are `stages`: its migrated network, stage metadata and
+ * resume position (re-encrypted only when the migration changed them), and,
+ * for an unfinished session, its progress re-derived as the engine reports it
+ * for that position in those stages. Progress is a share of the protocol's
+ * stage count, so it moves whenever the stages do, even when nothing the
+ * session holds had to change. A finished session's progress stands.
+ */
+async function carriedSessionRow(
+  row: StoredSessionRow,
+  record: DecryptedSessionRecord,
+  migrated: MigratedSession | null,
+  hash: string,
+  stages: CurrentProtocol['stages'],
+): Promise<StoredSessionRow> {
+  const currentStep = migrated?.currentStep ?? row.currentStep;
+  const progress =
+    record.finishedAt === null
+      ? { progress: getInterviewProgress(stages, currentStep).progress }
+      : {};
+  // Progress is a plaintext field, so an otherwise unchanged session keeps
+  // its stored ciphertext.
+  if (!migrated) return { ...row, protocolHash: hash, ...progress };
+  return encryptSession({
+    ...record,
+    protocolHash: hash,
+    network: migrated.network,
+    stageMetadata: migrated.stageMetadata,
+    currentStep,
+    ...progress,
+  });
+}
+
+/**
+ * The sessions `read`, each carried onto the protocol stored under `hash` by
+ * `carryFor(session)` and ready to write, or `SessionsNotMigratedError`
  * naming each one that could not be. Every session is tried, so the report is
  * complete.
  */
 async function migrateSessionRows(
+  read: readonly StoredSessionRow[],
+  carryFor: (row: StoredSessionRow) => CarrySession,
+  hash: string,
+  stages: CurrentProtocol['stages'],
+  name: string,
+): Promise<StoredSessionRow[]> {
+  const rows: StoredSessionRow[] = [];
+  const unmigrated: UnmigratedSession[] = [];
+  // Sequential, like the asset re-keying: one session's network at a time.
+  for (const row of read) {
+    const migration = await migrateSessionRow(row, carryFor(row));
+    if (!migration.success) {
+      unmigrated.push({
+        id: row.id,
+        reason: describeSessionFailure(migration.error),
+      });
+      continue;
+    }
+    // Nothing will be written once one session has failed.
+    if (unmigrated.length > 0) continue;
+    rows.push(
+      await carriedSessionRow(
+        row,
+        migration.record,
+        migration.migrated,
+        hash,
+        stages,
+      ),
+    );
+  }
+  if (unmigrated.length > 0)
+    throw new SessionsNotMigratedError(name, unmigrated);
+  return rows;
+}
+
+/** A protocol's sessions as read, and carried across its migration. */
+async function migrateProtocolSessions(
   previousHash: string,
   hash: string,
   migrateSession: SessionMigrator,
@@ -234,43 +328,8 @@ async function migrateSessionRows(
     .where('protocolHash')
     .equals(previousHash)
     .toArray();
-  const rows: StoredSessionRow[] = [];
-  const unmigrated: UnmigratedSession[] = [];
-  // Sequential, like the asset re-keying: one session's network at a time.
-  for (const row of read) {
-    const migration = await migrateSessionRow(row, migrateSession);
-    if (!migration.success) {
-      unmigrated.push({
-        id: row.id,
-        reason: describeSessionFailure(migration.error),
-      });
-      continue;
-    }
-    // Nothing will be written once one session has failed.
-    if (unmigrated.length > 0) continue;
-    const { record, result } = migration;
-    if (!result.changed) {
-      rows.push({ ...row, protocolHash: hash });
-      continue;
-    }
-    const { network, stageMetadata, currentStep } = result.session;
-    const migrated: StoredSession = {
-      ...record,
-      protocolHash: hash,
-      network,
-      stageMetadata,
-      currentStep,
-      // The stored progress was reported against the old stage count; an
-      // in-progress session's moved position is re-derived as the engine
-      // would report it. A finished session's progress stands.
-      ...(currentStep !== record.currentStep && record.finishedAt === null
-        ? { progress: getInterviewProgress(stages, currentStep).progress }
-        : {}),
-    };
-    rows.push(await encryptSession(migrated));
-  }
-  if (unmigrated.length > 0)
-    throw new SessionsNotMigratedError(name, unmigrated);
+  const carry = carryWith(migrateSession);
+  const rows = await migrateSessionRows(read, () => carry, hash, stages, name);
   return { read, rows };
 }
 
@@ -366,7 +425,7 @@ async function migrateStoredProtocolRow(
   if (hash === previousHash) {
     // The sessions still change: a migration that leaves the structure alone
     // can re-spell what a session holds.
-    const sessions = await migrateSessionRows(
+    const sessions = await migrateProtocolSessions(
       previousHash,
       hash,
       migrateSession,
@@ -416,7 +475,7 @@ async function migrateStoredProtocolRow(
   }
   // Sessions first: if one cannot be migrated nothing is written, so the
   // assets, which can be large, are not re-encrypted for nothing.
-  const sessions = await migrateSessionRows(
+  const sessions = await migrateProtocolSessions(
     previousHash,
     hash,
     migrateSession,
@@ -448,10 +507,13 @@ async function migrateStoredProtocolRow(
       // The durable re-keying record: a writer still running the pre-update
       // bundle can restore `previousHash` onto a session after this commit,
       // and the next launch's heal pass follows this record to repair it.
+      // It keeps the replaced row, so the heal pass can carry such a
+      // session's data across this same migration.
       await db.protocolMigrations.put({
         previousHash,
         hash,
         migratedAt: new Date().toISOString(),
+        source: { row, toVersion: validated.schemaVersion },
       });
       // The migrated sessions carry the new hash; a session written since
       // they were read aborts the commit, and the next launch tries again.
@@ -472,46 +534,228 @@ async function migrateStoredProtocolRow(
 }
 
 /**
- * Repoint any session still referencing a superseded protocol hash.
- *
- * The commit-time guard in `updateSession` protects writers running THIS
- * bundle, but a tab still executing the pre-update bundle writes sessions
- * unconditionally — and the PWA deliberately lets an interview tab keep its
- * old bundle while other tabs update. Such a late write can restore a hash
- * the migration deleted. Every launch therefore follows the durable
- * re-keying records and repairs whatever a legacy writer left behind.
+ * The re-keying records from `start` to the hash its protocol is stored
+ * under now, in order. A protocol migrated more than once leaves a chain of
+ * records. The bound guards against a corrupt cycle looping.
  */
-async function healSupersededSessionReferences(): Promise<void> {
-  const records = await db.protocolMigrations.toArray();
-  if (records.length === 0) return;
-  const forward = new Map(
-    records.map((record) => [record.previousHash, record.hash]),
+function followMigrations(
+  records: ReadonlyMap<string, StoredProtocolMigrationRecord>,
+  start: string,
+): { hops: StoredProtocolMigrationRecord[]; hash: string } {
+  const hops: StoredProtocolMigrationRecord[] = [];
+  let hash = start;
+  for (let hop = 0; hop <= records.size; hop += 1) {
+    const record = records.get(hash);
+    if (record === undefined) break;
+    hops.push(record);
+    hash = record.hash;
+  }
+  return { hops, hash };
+}
+
+/**
+ * The superseded hashes whose chain of re-keying records leads to `hash`:
+ * the records to delete with the protocol stored under it.
+ */
+export function supersededHashesOf(
+  records: readonly StoredProtocolMigrationRecord[],
+  hash: string,
+): string[] {
+  const byPreviousHash = new Map(
+    records.map((record) => [record.previousHash, record]),
   );
-  // A protocol migrated more than once leaves a chain of records; follow it
-  // to the live hash. The bound guards against a corrupt cycle looping.
-  const terminal = (start: string): string => {
-    let current = start;
-    for (let hop = 0; hop <= forward.size; hop += 1) {
-      const next = forward.get(current);
-      if (next === undefined) return current;
-      current = next;
+  return records
+    .map((record) => record.previousHash)
+    .filter(
+      (previousHash) =>
+        followMigrations(byPreviousHash, previousHash).hash === hash,
+    );
+}
+
+/**
+ * The session migrator of the migration a record describes, rebuilt from the
+ * protocol row it replaced; `null` for a record from before sessions were
+ * migrated, whose migration repointed sessions without changing them.
+ */
+async function recordedSessionMigrator(
+  record: StoredProtocolMigrationRecord,
+): Promise<SessionMigrator | null> {
+  if (!record.source) return null;
+  const stored = await decryptProtocol(record.source.row);
+  return migrateProtocolWithSessions(stored.protocol, record.source.toVersion, {
+    name: stored.name,
+  }).migrateSession;
+}
+
+/**
+ * Carries a session across each migration in `hops` in turn, as each carried
+ * the sessions it found when it ran. A migration that cannot be rebuilt fails
+ * every session that has to cross it.
+ */
+async function replayMigrations(
+  hops: readonly StoredProtocolMigrationRecord[],
+  migrators: Map<string, Promise<SessionMigrator | null>>,
+): Promise<CarrySession> {
+  const steps: (SessionMigrator | null)[] = [];
+  try {
+    for (const hop of hops) {
+      const migrator =
+        migrators.get(hop.previousHash) ?? recordedSessionMigrator(hop);
+      migrators.set(hop.previousHash, migrator);
+      steps.push(await migrator);
     }
-    return current;
+  } catch (error) {
+    return () => ({ success: false, error });
+  }
+  return (session) => {
+    let current: PersistedSession = session;
+    let migrated: MigratedSession | null = null;
+    for (const step of steps) {
+      if (!step) continue;
+      const result = step(current);
+      if (!result.success) return { success: false, error: result.error };
+      current = result.session;
+      if (result.changed || migrated) migrated = result.session;
+    }
+    return { success: true, migrated };
   };
-  await db.transaction('rw', db.sessions, async () => {
-    for (const previousHash of forward.keys()) {
-      const sessionIds = await db.sessions
-        .where('protocolHash')
-        .equals(previousHash)
-        .primaryKeys();
-      if (sessionIds.length === 0) continue;
-      const hash = terminal(previousHash);
-      await db.sessions
-        .where('id')
-        .anyOf(sessionIds)
-        .modify({ protocolHash: hash });
+}
+
+/**
+ * Carry the sessions `read`, each written back under a superseded hash, onto
+ * the protocol their chain of re-keying records leads to, `hash` — all of
+ * them or none, like the migration itself.
+ */
+async function healSessionsOnto(
+  hash: string,
+  read: readonly StoredSessionRow[],
+  records: ReadonlyMap<string, StoredProtocolMigrationRecord>,
+): Promise<void> {
+  const target = await db.protocols.get(hash);
+  // The protocol was deleted: there is nothing to carry the sessions onto,
+  // so they stay where they are.
+  if (!target) return;
+  const { name, protocol } = await decryptProtocol(target);
+
+  const migrators = new Map<string, Promise<SessionMigrator | null>>();
+  const carries = new Map<string, CarrySession>();
+  for (const start of new Set(read.map((row) => row.protocolHash))) {
+    carries.set(
+      start,
+      await replayMigrations(followMigrations(records, start).hops, migrators),
+    );
+  }
+  const rows = await migrateSessionRows(
+    read,
+    (row) => {
+      const carry = carries.get(row.protocolHash);
+      if (!carry) throw new Error(`No migration path for ${row.id}.`);
+      return carry;
+    },
+    hash,
+    protocol.stages,
+    name,
+  );
+
+  // Guarded like the migration's own commit: a write in the gap wins, and
+  // the next launch tries again.
+  await db.transaction('rw', db.protocols, db.sessions, async () => {
+    if (!sourceUnchanged(await db.protocols.get(hash), target)) {
+      throw new SourceChangedError(name);
     }
+    for (const row of read) {
+      if (!sessionUnchanged(await db.sessions.get(row.id), row)) {
+        throw new SourceChangedError(name);
+      }
+    }
+    await db.sessions.bulkPut(rows);
   });
+}
+
+/**
+ * Carry any session still referencing a superseded protocol hash across the
+ * migrations that superseded it.
+ *
+ * A tab still executing the pre-update bundle writes sessions
+ * unconditionally — and the PWA deliberately lets an interview tab keep its
+ * old bundle while other tabs update. Such a late write restores a hash the
+ * migration deleted, together with data in that protocol's schema. A tab
+ * running a bundle with `updateSession`'s write basis does the same on
+ * purpose: it stores a whole-state write under the protocol it was computed
+ * against, and refuses a partial one. Every
+ * launch therefore follows the durable re-keying records and replays each
+ * migration's session migrator over whatever a legacy writer left behind:
+ * no session may point at a protocol whose schema its data has not been
+ * migrated to.
+ *
+ * Healing is all or nothing per protocol, like the migration: if one late
+ * session cannot be carried, none is, and the protocol is reported in the
+ * returned failures (`kind: 'sessions'`) — which leaves it unavailable, so
+ * none of its interviews runs until every one can.
+ */
+async function healSupersededSessions(): Promise<
+  FailedStoredProtocolMigration[]
+> {
+  const records = new Map(
+    (await db.protocolMigrations.toArray()).map((record) => [
+      record.previousHash,
+      record,
+    ]),
+  );
+  // The late sessions, by the hash of the protocol they belong to now.
+  const late = new Map<string, StoredSessionRow[]>();
+  for (const previousHash of records.keys()) {
+    const rows = await db.sessions
+      .where('protocolHash')
+      .equals(previousHash)
+      .toArray();
+    if (rows.length === 0) continue;
+    const { hash } = followMigrations(records, previousHash);
+    late.set(hash, [...(late.get(hash) ?? []), ...rows]);
+  }
+
+  const failed: FailedStoredProtocolMigration[] = [];
+  for (const [hash, read] of late) {
+    try {
+      await healSessionsOnto(hash, read, records);
+    } catch (cause) {
+      if (cause instanceof SourceChangedError) continue;
+      if (cause instanceof SessionsNotMigratedError) {
+        failed.push(reportFailure(cause.protocolName, hash, cause));
+        continue;
+      }
+      // No other signal: these sessions stay under their superseded hash for
+      // this launch, and the next launch retries. Only the console says why.
+      // oxlint-disable-next-line no-console -- only diagnostic for a healing failure that is otherwise silently retried
+      console.error('Could not heal superseded session references', cause);
+    }
+  }
+  return failed;
+}
+
+/** The failure entry for a protocol left unchanged, logged with its cause. */
+function reportFailure(
+  name: string,
+  hash: string,
+  cause: unknown,
+): FailedStoredProtocolMigration {
+  const sessions =
+    cause instanceof SessionsNotMigratedError ? cause.sessions : [];
+  // `reason` is only `cause.message`, not the full error/stack — the console
+  // call is the only place that survives for debugging.
+  // oxlint-disable-next-line no-console -- keeps the full error/stack; `reason` only carries the message string
+  console.error(
+    `Could not migrate stored protocol "${name}"`,
+    cause,
+    ...(sessions.length > 0 ? [sessions] : []),
+  );
+  return {
+    name,
+    hash,
+    reason: describeFailure(cause),
+    kind: cause instanceof SessionsNotMigratedError ? 'sessions' : 'protocol',
+    sessions,
+  };
 }
 
 /**
@@ -532,13 +776,16 @@ export async function migrateStoredProtocols(): Promise<StoredProtocolMigrationR
   // Heal first, and on every launch — the legacy write this repairs can land
   // long after the migration that re-keyed the protocol.
   try {
-    await healSupersededSessionReferences();
+    failed.push(...(await healSupersededSessions()));
   } catch (cause) {
     // No other signal: this healing step is silently skipped for this launch,
     // and the next launch retries it. Only the console records why.
     // oxlint-disable-next-line no-console -- only diagnostic for a healing-step failure that is otherwise silently skipped
     console.error('Could not heal superseded session references', cause);
   }
+  // A protocol whose late sessions could not be healed is left exactly as it
+  // is, so it is not migrated either.
+  const unhealed = new Set(failed.map((entry) => entry.hash));
 
   let outdatedIds: string[];
   try {
@@ -547,7 +794,10 @@ export async function migrateStoredProtocols(): Promise<StoredProtocolMigrationR
     // protocol in memory to answer a question about one field of each.
     const ids: string[] = [];
     await db.protocols.each((row) => {
-      if (row.schemaVersion < COMPATIBLE_PROTOCOL_SCHEMA_VERSION) {
+      if (
+        row.schemaVersion < COMPATIBLE_PROTOCOL_SCHEMA_VERSION &&
+        !unhealed.has(row.hash)
+      ) {
         ids.push(row.id);
       }
     });
@@ -581,25 +831,7 @@ export async function migrateStoredProtocols(): Promise<StoredProtocolMigrationR
         // nothing was changed. The next launch sweep re-evaluates it.
         continue;
       }
-      const name = row?.name ?? id;
-      const sessions =
-        cause instanceof SessionsNotMigratedError ? cause.sessions : [];
-      // `failed.reason` below is only `cause.message`, not the full error/stack
-      // — the console call is the only place that survives for debugging.
-      // oxlint-disable-next-line no-console -- keeps the full error/stack; `failed.reason` only carries the message string
-      console.error(
-        `Could not migrate stored protocol "${name}"`,
-        cause,
-        ...(sessions.length > 0 ? [sessions] : []),
-      );
-      failed.push({
-        name,
-        hash: row?.hash ?? id,
-        reason: describeFailure(cause),
-        kind:
-          cause instanceof SessionsNotMigratedError ? 'sessions' : 'protocol',
-        sessions,
-      });
+      failed.push(reportFailure(row?.name ?? id, row?.hash ?? id, cause));
     }
   }
 

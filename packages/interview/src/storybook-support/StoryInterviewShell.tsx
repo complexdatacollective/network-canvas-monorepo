@@ -43,11 +43,10 @@ type RawSyntheticPayload = {
   };
 };
 
-// Stories built without translations are written in one language that nobody
-// named.
-const UNSPECIFIED_LOCALIZATION: InterviewPayload['protocol']['localization'] = {
-  defaultLocale: 'und',
-  locales: ['und'],
+// Stories built without translations are written in English only.
+const DEFAULT_LOCALIZATION: InterviewPayload['protocol']['localization'] = {
+  defaultLocale: 'en',
+  locales: ['en'],
 };
 
 // Stories render the protocol's default language and the English interface
@@ -99,7 +98,7 @@ function buildPayload(raw: RawSyntheticPayload): {
     }
   }
 
-  const localization = protocol.localization ?? UNSPECIFIED_LOCALIZATION;
+  const localization = protocol.localization ?? DEFAULT_LOCALIZATION;
 
   // SessionState expects ISO date strings (Redux refuses non-serializable
   // values). SyntheticInterview emits live Date objects, so coerce here.

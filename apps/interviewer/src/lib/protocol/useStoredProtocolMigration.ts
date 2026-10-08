@@ -140,7 +140,9 @@ export function useStoredProtocolMigration(
   // every effect twice) re-attaches to the same run instead of either starting
   // a second one or waiting forever on a result it is never told about.
   const run = useRef<Promise<StoredProtocolMigrationResult> | null>(null);
-  const notified = useRef(false);
+  // The sweep whose result has been reported in toasts, so the effect
+  // instances attached to one sweep (StrictMode attaches two) toast once.
+  const notified = useRef<Promise<StoredProtocolMigrationResult> | null>(null);
 
   // `useToast()` returns a fresh object every render, so it cannot be an effect
   // dependency without re-running the sweep on every render. Hold it in a ref
@@ -164,8 +166,9 @@ export function useStoredProtocolMigration(
   useEffect(() => {
     if (!enabled) {
       // Locking drops the session key, so the next unlock has to look again.
+      // Clearing the sweep also retires it: a result it delivers from here on
+      // is about rows read under the previous key, and reports nothing.
       run.current = null;
-      notified.current = false;
       return;
     }
 
@@ -182,12 +185,18 @@ export function useStoredProtocolMigration(
         return { migrated: [], failed: [] };
       })
       .then((result) => {
+        // Every effect of a sweep's result is conditional on that sweep still
+        // being the current one. A lock/unlock cycle while it ran started
+        // another sweep (or none yet), and a superseded sweep resolving late,
+        // in either order, must neither overwrite the current failures nor
+        // take the current sweep's notices.
+        if (run.current !== sweep) return;
         recordStoredProtocolMigrationFailures(result.failed);
         // Toasts are an app-level side effect of the sweep itself, not of this
-        // component's lifetime, so they are reported once per run regardless of
-        // whether this effect instance is still the live one.
-        if (!notified.current) {
-          notified.current = true;
+        // component's lifetime, so they are reported once per sweep regardless
+        // of whether this effect instance is still the live one.
+        if (notified.current !== sweep) {
+          notified.current = sweep;
           if (result.migrated.length > 0) {
             toastRef.current.add({
               ...migratedToast(result.migrated.map((entry) => entry.name)),

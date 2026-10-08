@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from 'react';
 
+import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
 import type { FailedStoredProtocolMigration } from '~/lib/db/migrateStoredProtocols';
 
 /**
@@ -31,6 +32,32 @@ function subscribe(listener: () => void) {
   return () => {
     listeners.delete(listener);
   };
+}
+
+/** The latest sweep's failure for the protocol stored under `hash`, for code
+ * outside React (see `useStoredProtocolMigrationFailure`). */
+export function getStoredProtocolMigrationFailure(
+  hash: string,
+): StoredProtocolMigrationFailureKind | undefined {
+  return failures.get(hash);
+}
+
+/**
+ * Whether a stored protocol can run interviews: it is at the runtime's schema
+ * version, and the latest sweep left nothing of it un-updated. A protocol can
+ * be at the runtime's version and still be held back — when interviews a
+ * pre-update tab wrote back under a hash it superseded could not be carried
+ * onto it, nothing of it was changed, and none of its interviews runs until
+ * every one can (`kind: 'sessions'`).
+ */
+export function canRunStoredProtocol(
+  protocol: { schemaVersion: number },
+  failure: StoredProtocolMigrationFailureKind | undefined,
+): boolean {
+  return (
+    protocol.schemaVersion === COMPATIBLE_PROTOCOL_SCHEMA_VERSION &&
+    failure === undefined
+  );
 }
 
 /**

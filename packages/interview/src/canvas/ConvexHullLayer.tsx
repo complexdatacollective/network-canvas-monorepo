@@ -9,6 +9,7 @@ import type {
 } from '@codaco/protocol-validation';
 import { entityPrimaryKeyProperty, type NcNode } from '@codaco/shared-consts';
 
+import { compareAsText } from '../utils/compareCodeUnits';
 import { getGroupKeys } from './groupMembership';
 import type { CanvasStoreApi } from './useCanvasStore';
 
@@ -55,9 +56,7 @@ function buildColorIndexResolver(
   }
 
   const extraIndex = new Map<VariableOptionValue, number>();
-  const sortedExtras = [...extraValues].toSorted((a, b) =>
-    String(a).localeCompare(String(b)),
-  );
+  const sortedExtras = [...extraValues].toSorted(compareAsText);
   sortedExtras.forEach((value, i) => {
     extraIndex.set(value, categoricalOptions.length + 1 + i);
   });

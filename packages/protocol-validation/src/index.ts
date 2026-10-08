@@ -66,6 +66,7 @@ export {
 } from './localization/localePreferences.ts';
 export {
   canonicalizeLocale,
+  isUndeterminedLocale,
   type LocaleTag,
   type LocalizationDeclaration,
 } from './localization/localeTag.ts';

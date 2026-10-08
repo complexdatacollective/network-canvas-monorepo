@@ -2,6 +2,7 @@
 import 'fake-indexeddb/auto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { getInterviewProgress } from '@codaco/interview';
 import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
 import {
   type CurrentProtocol,
@@ -17,6 +18,7 @@ import {
 
 import { db } from '../db';
 import { migrateStoredProtocols } from '../migrateStoredProtocols';
+import { deleteProtocol } from '../protocols';
 import {
   decryptAsset,
   decryptProtocol,
@@ -26,6 +28,7 @@ import {
   encryptSession,
 } from '../recordCrypto';
 import { setSessionDek } from '../sessionKey';
+import { updateSession } from '../sessions';
 import type { StoredProtocol, StoredSession } from '../types';
 
 async function makeDek(): Promise<CryptoKey> {
@@ -221,7 +224,8 @@ function v8PedigreeDocument(): Record<string, unknown> {
 }
 
 // A session at the pedigree, as the schema 8 interview recorded it once the
-// pedigree was finalized: its stage record keyed by the pedigree's index.
+// pedigree was finalized: its stage record keyed by the pedigree's index. It
+// has a relative on it, so it had passed the pedigree's introduction.
 function v8PedigreeSession(id: string, protocolHash: string): StoredSession {
   return {
     ...storedSession(id, protocolHash),
@@ -237,17 +241,49 @@ function v8PedigreeSession(id: string, protocolHash: string): StoredSession {
           stageId: 'family',
           promptIDs: [],
         },
+        {
+          [entityPrimaryKeyProperty]: 'mother-1',
+          type: 'person',
+          [entityAttributesProperty]: { is_ego: false, name: 'Ana' },
+          stageId: 'family',
+          promptIDs: [],
+        },
       ],
     },
     stageMetadata: {
       1: {
         isNetworkCommitted: true,
         edgeIdVersion: 1,
-        nodes: [{ id: 'ego-1', label: '', isEgo: true }],
+        nodes: [
+          { id: 'ego-1', label: '', isEgo: true },
+          { id: 'mother-1', label: 'Ana', isEgo: false },
+        ],
         edges: [],
         selectedFraming: 'gamete',
       },
     } as unknown as StoredSession['stageMetadata'],
+  };
+}
+
+// The pedigree study with a second screen before the pedigree, so a session
+// can be part-way through (stage 1) while the v8 → v9 migration inserts the
+// introduction stage after its position (before the pedigree, now stage 2).
+function v8PedigreeDocumentWithPreamble(): Record<string, unknown> {
+  const document = v8PedigreeDocument();
+  const [welcome, ...rest] = document.stages as unknown[];
+  return {
+    ...document,
+    stages: [
+      welcome,
+      {
+        id: 'about',
+        type: 'Information',
+        label: 'About',
+        title: 'About',
+        items: [{ id: 'about-text', type: 'text', content: 'About' }],
+      },
+      ...rest,
+    ],
   };
 }
 
@@ -383,10 +419,78 @@ describe.each([
     // The pedigree moved from stage 1 to 2, and its record with it.
     expect(session.currentStep).toBe(2);
     expect(session.stageMetadata).toEqual({ 2: { framing: 'gamete' } });
-    expect(session.network.nodes).toHaveLength(1);
+    expect(session.network.nodes).toHaveLength(2);
     // Progress re-derived for the moved position (stage 2 of 4 + finish).
     expect(session.progress).not.toBe(33);
     expect(session.lastUpdatedAt).toBe('2026-01-02T00:00:00.000Z');
+  });
+
+  // Progress is a share of the protocol's stages, so a migration that changes
+  // how many there are changes every unfinished session's progress, even when
+  // nothing the session holds has to move.
+  it('re-derives the progress of every unfinished session against the migrated stages', async () => {
+    await seedProtocol(
+      storedRow('old-hash', 'Pedigree Study', v8PedigreeDocumentWithPreamble()),
+    );
+    // Stage 1 of 4 stages plus the finish stage.
+    const before = getInterviewProgress(
+      v8PedigreeDocumentWithPreamble().stages as { type: string }[],
+      1,
+    ).progress;
+    // Nothing in this session moves: it is before the inserted stage and
+    // holds no stage records.
+    await db.sessions.put(
+      await encryptSession({
+        ...storedSession('untouched', 'old-hash'),
+        currentStep: 1,
+        progress: before,
+      }),
+    );
+    // This one's pedigree record moves with the pedigree, but its position
+    // does not.
+    const pedigree = v8PedigreeSession('records-moved', 'old-hash');
+    await db.sessions.put(
+      await encryptSession({
+        ...pedigree,
+        currentStep: 1,
+        progress: before,
+        stageMetadata: {
+          2: pedigree.stageMetadata?.[1],
+        } as StoredSession['stageMetadata'],
+      }),
+    );
+    // A finished session's progress stands.
+    await db.sessions.put(
+      await encryptSession({
+        ...storedSession('finished', 'old-hash'),
+        currentStep: 1,
+        progress: 100,
+        finishedAt: '2026-01-03T00:00:00.000Z',
+      }),
+    );
+
+    const result = await migrateStoredProtocols();
+
+    expect(result.failed).toEqual([]);
+    const row = await db.protocols.get(result.migrated[0]?.hash ?? '');
+    if (!row) throw new Error('expected the migrated protocol');
+    const { protocol } = await decryptProtocol(row);
+    expect(protocol.stages).toHaveLength(5);
+    const after = getInterviewProgress(protocol.stages, 1).progress;
+    expect(after).not.toBe(before);
+
+    const untouched = await decryptSession(
+      (await db.sessions.get('untouched'))!,
+    );
+    expect(untouched.currentStep).toBe(1);
+    expect(untouched.progress).toBe(after);
+    const moved = await decryptSession(
+      (await db.sessions.get('records-moved'))!,
+    );
+    expect(moved.currentStep).toBe(1);
+    expect(Object.keys(moved.stageMetadata ?? {})).toEqual(['3']);
+    expect(moved.progress).toBe(after);
+    expect((await db.sessions.get('finished'))?.progress).toBe(100);
   });
 
   it('leaves the protocol and all its sessions as stored when one session cannot be migrated, and tries again at the next launch', async () => {
@@ -581,20 +685,32 @@ describe.each([
     expect(record?.hash).toBe(newHash);
   });
 
-  it('heals a session a legacy writer pointed back at a superseded hash', async () => {
-    // A tab still running the pre-update bundle wrote the session AFTER the
-    // migration deleted its protocol row: its updateSession predates the
-    // commit-time hash guard, so the stale hash landed. The next launch
-    // follows the durable record — including a chain of them — and repairs.
+  it('repoints a session written back under a hash superseded before sessions were migrated', async () => {
+    // Records written by Interviewer 8.3 and earlier keep no source row:
+    // those migrations repointed every session without changing it, so
+    // healing a late write across them does the same — including along a
+    // chain of them.
     await db.protocolMigrations.bulkPut([
       { previousHash: 'dead', hash: 'mid', migratedAt: '2026-01-01' },
       { previousHash: 'mid', hash: 'live', migratedAt: '2026-02-01' },
     ]);
+    const current = migrateProtocol(
+      v7Document(),
+      COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
+      { name: 'Alpha Study' },
+    );
+    await seedProtocol({
+      ...storedRow('live', 'Alpha Study', v7Document()),
+      schemaVersion: current.schemaVersion,
+      codebook: current.codebook,
+      protocol: current,
+    });
     await seedSession('stale-session', 'dead');
     await seedSession('healthy-session', 'live');
 
-    await migrateStoredProtocols();
+    const result = await migrateStoredProtocols();
 
+    expect(result.failed).toEqual([]);
     const sessions = await db.sessions.toArray();
     expect(sessions.find((s) => s.id === 'stale-session')?.protocolHash).toBe(
       'live',
@@ -602,6 +718,168 @@ describe.each([
     expect(sessions.find((s) => s.id === 'healthy-session')?.protocolHash).toBe(
       'live',
     );
+  });
+
+  it('leaves a session under a superseded hash when the protocol it leads to was deleted', async () => {
+    await db.protocolMigrations.put({
+      previousHash: 'dead',
+      hash: 'deleted',
+      migratedAt: '2026-01-01',
+    });
+    await seedSession('orphan', 'dead');
+
+    await expect(migrateStoredProtocols()).resolves.toEqual({
+      migrated: [],
+      failed: [],
+    });
+    expect((await db.sessions.get('orphan'))?.protocolHash).toBe('dead');
+  });
+
+  // A tab still running the pre-update bundle can write a session after the
+  // migration committed, restoring the superseded hash together with the
+  // schema 8 payload it holds in memory. Healing must carry that payload
+  // across the same migration, not only repoint it.
+  it('migrates a session a legacy writer wrote back under a superseded hash', async () => {
+    await seedProtocol(
+      storedRow('old-hash', 'Pedigree Study', v8PedigreeDocument()),
+    );
+    const first = await migrateStoredProtocols();
+    const hash = first.migrated[0]?.hash;
+    if (!hash) throw new Error('expected the protocol to migrate');
+
+    // The late write: the pre-update tab's whole session, old hash and all.
+    await db.sessions.put(
+      await encryptSession(v8PedigreeSession('late', 'old-hash')),
+    );
+
+    const second = await migrateStoredProtocols();
+
+    expect(second.failed).toEqual([]);
+    const row = await db.sessions.get('late');
+    if (!row) throw new Error('expected the session to survive');
+    expect(row.protocolHash).toBe(hash);
+    const session = await decryptSession(row);
+    expect(session.currentStep).toBe(2);
+    expect(session.stageMetadata).toEqual({ 2: { framing: 'gamete' } });
+    const protocolRow = await db.protocols.get(hash);
+    if (!protocolRow) throw new Error('expected the migrated protocol');
+    expect(session.progress).toBe(
+      getInterviewProgress(
+        (await decryptProtocol(protocolRow)).protocol.stages,
+        2,
+      ).progress,
+    );
+  });
+
+  // The same late write from a tab running this build: `updateSession` is
+  // told which protocol its whole-state write was computed against, stores
+  // it under that hash rather than the migrated one, and the next launch
+  // carries it across the migration.
+  it('migrates a whole-state write a stale tab of this build made after the migration', async () => {
+    await seedProtocol(
+      storedRow('old-hash', 'Pedigree Study', v8PedigreeDocument()),
+    );
+    const stale = v8PedigreeSession('s1', 'old-hash');
+    await db.sessions.put(await encryptSession(stale));
+    const first = await migrateStoredProtocols();
+    const hash = first.migrated[0]?.hash;
+    if (!hash) throw new Error('expected the protocol to migrate');
+
+    await updateSession(
+      's1',
+      {
+        network: stale.network,
+        stageMetadata: stale.stageMetadata,
+        currentStep: 1,
+      },
+      { protocolHash: 'old-hash' },
+    );
+    expect((await db.sessions.get('s1'))?.protocolHash).toBe('old-hash');
+
+    const second = await migrateStoredProtocols();
+
+    expect(second.failed).toEqual([]);
+    const row = await db.sessions.get('s1');
+    if (!row) throw new Error('expected the session to survive');
+    expect(row.protocolHash).toBe(hash);
+    const session = await decryptSession(row);
+    expect(session.currentStep).toBe(2);
+    expect(session.stageMetadata).toEqual({ 2: { framing: 'gamete' } });
+  });
+
+  it('leaves late-written sessions under their superseded hash, and reports the protocol, when one of them cannot be migrated', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    await seedProtocol(
+      storedRow('old-hash', 'Pedigree Study', v8PedigreeDocument()),
+    );
+    const first = await migrateStoredProtocols();
+    const hash = first.migrated[0]?.hash;
+    if (!hash) throw new Error('expected the protocol to migrate');
+
+    await db.sessions.put(
+      await encryptSession(v8PedigreeSession('late-ok', 'old-hash')),
+    );
+    await db.sessions.put(
+      await encryptSession({
+        ...v8PedigreeSession('late-damaged', 'old-hash'),
+        stageMetadata: {
+          1: { isNetworkCommitted: true },
+          7: { notAStageRecord: true },
+        },
+      } as unknown as StoredSession),
+    );
+    const before = {
+      protocols: await db.protocols.toArray(),
+      sessions: await db.sessions.toArray(),
+    };
+
+    const second = await migrateStoredProtocols();
+
+    expect(second.failed).toEqual([
+      {
+        name: 'Pedigree Study',
+        hash,
+        kind: 'sessions',
+        reason: expect.stringContaining('left unchanged') as unknown,
+        sessions: [
+          {
+            id: 'late-damaged',
+            reason: expect.stringContaining(
+              'Migrated session is invalid',
+            ) as unknown,
+          },
+        ],
+      },
+    ]);
+    expect({
+      protocols: await db.protocols.toArray(),
+      sessions: await db.sessions.toArray(),
+    }).toEqual(before);
+
+    // Every launch tries again, and heals them together once all can be.
+    await db.sessions.delete('late-damaged');
+    const third = await migrateStoredProtocols();
+    expect(third.failed).toEqual([]);
+    expect((await db.sessions.get('late-ok'))?.protocolHash).toBe(hash);
+    errorSpy.mockRestore();
+  });
+
+  it('deletes the re-keying records, and the rows they keep, with the protocol they lead to', async () => {
+    await seedProtocol(
+      storedRow('old-hash', 'Pedigree Study', v8PedigreeDocument()),
+    );
+    await seedProtocol(storedRow('other-hash', 'Alpha Study', v7Document()));
+    const result = await migrateStoredProtocols();
+    const pedigree = result.migrated.find((m) => m.name === 'Pedigree Study');
+    if (!pedigree) throw new Error('expected the protocol to migrate');
+    expect(
+      (await db.protocolMigrations.get('old-hash'))?.source?.row.hash,
+    ).toBe('old-hash');
+
+    await deleteProtocol(pedigree.hash);
+
+    expect(await db.protocolMigrations.get('old-hash')).toBeUndefined();
+    expect(await db.protocolMigrations.get('other-hash')).toBeDefined();
   });
 
   it('leaves a protocol it cannot migrate untouched and carries on with the rest', async () => {

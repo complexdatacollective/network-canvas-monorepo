@@ -13,7 +13,10 @@ import useSortedNodeList, {
   getSortedNodeList,
 } from '../../hooks/useSortedNodeList';
 import { useStageSelector } from '../../hooks/useStageSelector';
-import { useResolvePresentationalText } from '../../localization/ProtocolLocalizationProvider';
+import {
+  useContentLocale,
+  useResolvePresentationalText,
+} from '../../localization/ProtocolLocalizationProvider';
 import {
   getAllVariableUUIDsByEntity,
   makeGetCodebookVariableById,
@@ -71,6 +74,7 @@ export function useCategoricalBins() {
   } = prompt;
 
   const toPresentationalText = useResolvePresentationalText();
+  const locale = useContentLocale();
   const codebookVariables = useSelector(getAllVariableUUIDsByEntity);
   const getVariableDefinition = useStageSelector(makeGetCodebookVariableById);
   const variableDefinition = getVariableDefinition(activePromptVariable);
@@ -114,6 +118,7 @@ export function useCategoricalBins() {
       nodes,
       binSortOrder,
       codebookVariables,
+      locale,
     );
 
     return {
@@ -136,6 +141,7 @@ export function useCategoricalBins() {
       otherNodes,
       binSortOrder,
       codebookVariables,
+      locale,
     );
 
     bins.push({

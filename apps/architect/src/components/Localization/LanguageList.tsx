@@ -1,4 +1,4 @@
-import { Check, Plus, Table2, Trash2 } from 'lucide-react';
+import { Check, Pencil, Plus, Table2, Trash2 } from 'lucide-react';
 import { type MouseEvent, useId, useMemo, useRef } from 'react';
 import { useSelector } from 'react-redux';
 import { Link, useLocation } from 'wouter';
@@ -94,11 +94,11 @@ const messages = defineMessages({
     defaultMessage: 'Default',
     description: 'Badge marking the default language of a protocol.',
   },
-  relabelDefault: {
-    id: 'architect.localization.languageList.relabelDefault',
-    defaultMessage: 'Relabel default language',
+  changeLanguage: {
+    id: 'architect.localization.languageList.changeLanguage',
+    defaultMessage: 'Change {language} to a different language',
     description:
-      'Button beside the choice of the protocol’s default language. It opens a dialog that marks every text written in the default language as written in another language, for a protocol whose text is in a different language than it says, such as one upgraded from an earlier version and assumed to be English. Nothing is translated.',
+      'Accessible name and tooltip of the edit button in a protocol language’s row. It opens a dialog that records the text of that language as another language, for text recorded under the wrong one. language is the language name.',
   },
   removeLanguage: {
     id: 'architect.localization.languageList.removeLanguage',
@@ -192,13 +192,8 @@ export const ProtocolLanguages = ({ draft }: ProtocolLanguagesProps) => {
   const coverage = useSelector(getLocalizationCoverage);
   const languageName = useLanguageName();
   const addButtonRef = useRef<HTMLButtonElement>(null);
-  const relabelButtonRef = useRef<HTMLButtonElement>(null);
-  const {
-    addLanguages,
-    relabelDefaultLanguage,
-    removeLanguage,
-    removalImpact,
-  } = useLanguageActions(addButtonRef, draft);
+  const { addLanguages, changeLanguage, removeLanguage, removalImpact } =
+    useLanguageActions(addButtonRef, draft);
   const locales = protocol?.localization.locales ?? EMPTY_LOCALES;
   const sortedLocales = useMemo(
     () => sortByLanguageName(locales, languageName, intl.locale),
@@ -232,41 +227,24 @@ export const ProtocolLanguages = ({ draft }: ProtocolLanguagesProps) => {
 
   return (
     <>
-      {/* The default language is chosen, or its text relabelled, here. The
-          field sits in a wrapper of its own, so its spacing for a following
-          field does not part it from the button. */}
-      <div className="mb-4 flex flex-col items-start gap-3">
-        {locales.length > 1 && (
-          <div className="w-full">
-            <UnconnectedField
-              name="default-language"
-              label={intl.formatMessage(messages.defaultLanguage)}
-              hint={intl.formatMessage(messages.defaultLanguageHint)}
-              component={NativeSelectField}
-              options={sortedLocales.map((locale) => ({
-                value: locale,
-                label: languageName(locale),
-              }))}
-              value={protocol.localization.defaultLocale}
-              onChange={(locale) => {
-                if (typeof locale === 'string') {
-                  dispatch(setProtocolDefaultLocale({ locale }));
-                }
-              }}
-            />
-          </div>
-        )}
-        <Button
-          ref={relabelButtonRef}
-          size="sm"
-          variant="link"
-          onClick={() =>
-            void relabelDefaultLanguage(() => relabelButtonRef.current)
-          }
-        >
-          {intl.formatMessage(messages.relabelDefault)}
-        </Button>
-      </div>
+      {locales.length > 1 && (
+        <UnconnectedField
+          name="default-language"
+          label={intl.formatMessage(messages.defaultLanguage)}
+          hint={intl.formatMessage(messages.defaultLanguageHint)}
+          component={NativeSelectField}
+          options={sortedLocales.map((locale) => ({
+            value: locale,
+            label: languageName(locale),
+          }))}
+          value={protocol.localization.defaultLocale}
+          onChange={(locale) => {
+            if (typeof locale === 'string') {
+              dispatch(setProtocolDefaultLocale({ locale }));
+            }
+          }}
+        />
+      )}
       <ul className="divide-outline flex flex-col divide-y">
         {sortedLocales.map((locale) => {
           const entry = coverageByLocale.get(locale);
@@ -279,6 +257,7 @@ export const ProtocolLanguages = ({ draft }: ProtocolLanguagesProps) => {
               strandedCount={
                 removalImpacts.get(locale)?.strandedStrings.length ?? 0
               }
+              onChange={(returnFocus) => changeLanguage(locale, returnFocus)}
               onRemove={(returnFocus) => removeLanguage(locale, returnFocus)}
             />
           );
@@ -312,6 +291,7 @@ type LanguageRowProps = {
   entry: LocaleCoverage;
   total: number;
   strandedCount: number;
+  onChange: (returnFocus: ReturnFocus) => Promise<void>;
   onRemove: (returnFocus: ReturnFocus) => Promise<void>;
 };
 
@@ -319,10 +299,12 @@ const LanguageRow = ({
   entry,
   total,
   strandedCount,
+  onChange,
   onRemove,
 }: LanguageRowProps) => {
   const intl = useAppIntl();
   const languageName = useLanguageName();
+  const changeButtonRef = useRef<HTMLButtonElement>(null);
   const removeButtonRef = useRef<HTMLButtonElement>(null);
   const removalReasonId = useId();
   const { locale, isDefault, translated, missing } = entry;
@@ -392,6 +374,25 @@ const LanguageRow = ({
           </div>
         )}
       </div>
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <IconButton
+              ref={changeButtonRef}
+              variant="text"
+              color="dynamic"
+              aria-label={intl.formatMessage(messages.changeLanguage, {
+                language,
+              })}
+              icon={<Pencil aria-hidden />}
+              onClick={() => void onChange(() => changeButtonRef.current)}
+            />
+          }
+        />
+        <TooltipContent side="left" className="max-w-64">
+          {intl.formatMessage(messages.changeLanguage, { language })}
+        </TooltipContent>
+      </Tooltip>
       {/* An unavailable button stays focusable (aria-disabled rather than
           disabled), so its reason reaches keyboard and pointer users as a
           tooltip and screen readers as its description. */}

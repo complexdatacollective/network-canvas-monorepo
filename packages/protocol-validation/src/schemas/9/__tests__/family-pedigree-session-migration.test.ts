@@ -82,6 +82,77 @@ describe('migrationV8toV9 session step', () => {
       );
     });
 
+    // The schema 8 interview showed a pedigree's introduction as the first
+    // step of the setup questions it opened whenever the participant had no
+    // family on the pedigree yet, and kept no record of how far through those
+    // questions they were. Such a session had not yet passed the
+    // introduction, so it resumes on the stage the introduction became.
+    describe('on a pedigree the participant had not started', () => {
+      const unstarted = (
+        nodes: Fields[] = [],
+        stageMetadata: Fields = {},
+      ): PersistedSession => ({
+        network: {
+          ego: { _uid: 'network-ego', attributes: {} },
+          nodes,
+          edges: [],
+        },
+        stageMetadata,
+        currentStep: PEDIGREE_INDEX,
+      });
+
+      it('resumes at its introduction', () => {
+        const result = migrated(migrateSession(unstarted()));
+        expect(result.currentStep).toBe(PEDIGREE_INDEX);
+        expect(protocol.stages[result.currentStep]?.id).toBe(
+          'family-pedigree-introduction',
+        );
+      });
+
+      it('resumes at its introduction after a reset', () => {
+        expect(
+          migrated(
+            migrateSession(
+              unstarted([], {
+                [PEDIGREE_INDEX]: { isNetworkCommitted: false },
+              }),
+            ),
+          ).currentStep,
+        ).toBe(PEDIGREE_INDEX);
+      });
+
+      it('resumes at its introduction when only the participant is on it', () => {
+        const [participant] = pedigreePeople;
+        expect(
+          migrated(migrateSession(unstarted([structuredClone(participant!)])))
+            .currentStep,
+        ).toBe(PEDIGREE_INDEX);
+      });
+
+      // Without a membership list, schema 8 showed every person of the
+      // pedigree's type on it, so a relative named on an earlier stage meant
+      // the setup questions were not shown.
+      it('stays on the pedigree when an earlier stage put someone on it', () => {
+        expect(
+          migrated(
+            migrateSession(
+              unstarted([{ ...structuredClone(friend), stageId: 'earlier' }]),
+            ),
+          ).currentStep,
+        ).toBe(PEDIGREE_INDEX + 1);
+      });
+
+      it('does not count someone of another type', () => {
+        expect(
+          migrated(
+            migrateSession(
+              unstarted([{ ...structuredClone(friend), type: 'place' }]),
+            ),
+          ).currentStep,
+        ).toBe(PEDIGREE_INDEX);
+      });
+    });
+
     it('moves one stage on after it', () => {
       expect(resumeAt(9)).toBe(10);
       expect(protocol.stages[resumeAt(9)]?.id).toBe('socio-exchanges');

@@ -3,7 +3,6 @@ import { useId } from 'react';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import SelectField from '@codaco/fresco-ui/form/fields/Select/Native';
-import type { PresentationalText } from '@codaco/fresco-ui/PresentationalText';
 import {
   type LocaleMetadata,
   type LocaleTag,
@@ -39,11 +38,6 @@ export default function PreviewToolbar({
 }: PreviewToolbarProps) {
   const intl = useAppIntl();
   const selectId = useId();
-  const optionLabel = (option: LocaleMetadata): PresentationalText => ({
-    text: option.label,
-    lang: option.locale,
-    dir: option.direction,
-  });
 
   return (
     <header className="border-outline bg-surface text-surface-contrast flex shrink-0 flex-wrap items-center justify-end gap-x-3 gap-y-1 border-b px-4 py-2">
@@ -60,7 +54,11 @@ export default function PreviewToolbar({
           intl.locale,
         ).map((option) => ({
           value: option.locale,
-          label: optionLabel(option),
+          label: {
+            text: option.label,
+            lang: option.locale,
+            dir: option.direction,
+          },
         }))}
         value={value}
         // A protocol with one language has nothing to switch to; the control

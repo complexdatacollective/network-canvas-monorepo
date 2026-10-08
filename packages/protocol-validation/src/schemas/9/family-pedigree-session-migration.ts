@@ -430,6 +430,80 @@ const schema8StageById = (protocol: unknown, id: unknown) => {
 };
 
 /**
+ * Resumes a session left on a converted pedigree the participant had not yet
+ * started at the Information stage its introduction screen became.
+ *
+ * The framework resumes a session on the stage it was on, not on a stage
+ * inserted before it. A schema 8 introduction screen was not before the
+ * pedigree, though: it was the first of the setup questions the pedigree
+ * opened whenever it mounted with no family on it, and the interview kept no
+ * record of how far through those questions the participant was. A session
+ * that left the pedigree in that state would have been shown the
+ * introduction again, so it has not passed it.
+ *
+ * "No family on it", as the schema 8 interview decided it on mounting: no
+ * person, other than the participant, among the session network's people of
+ * the pedigree's person type — only those on its stage record's membership
+ * list (`nodes`) when the record has one, as the pedigree drew only those.
+ * Without a list, a person of that type named on an earlier stage counted.
+ * And no relative in the record itself: the one schema 8 path that wrote a
+ * family only to the record (see the header) left a participant who had
+ * built their family, which `migrateFamilyPedigreeSessionRecords` now writes
+ * to the network, so they resume on the pedigree with it. This runs before
+ * that translation, so it reads the session as schema 8 left it.
+ */
+export const resumeUnstartedPedigreeAtIntroduction = (
+  session: {
+    network: SessionNetwork;
+    stageMetadata: Fields;
+    currentStep: number;
+  },
+  protocol: unknown,
+  schema8Protocol: unknown,
+) => {
+  const stages = asRecord(protocol).stages;
+  if (!Array.isArray(stages)) return;
+  const { currentStep } = session;
+  const pedigree: unknown = stages[currentStep];
+  if (!isRecord(pedigree) || pedigree.type !== 'FamilyPedigree') return;
+  const schema8Stage = schema8StageById(schema8Protocol, pedigree.id);
+  if (!schema8Stage) return;
+  // The introduction this conversion inserted is the stage just before the
+  // pedigree that schema 8 did not have.
+  const introduction: unknown = stages[currentStep - 1];
+  const schema8Stages = asRecord(schema8Protocol).stages;
+  if (
+    !isRecord(introduction) ||
+    introduction.type !== 'Information' ||
+    (Array.isArray(schema8Stages) &&
+      schema8Stages.some(
+        (stage: unknown) => isRecord(stage) && stage.id === introduction.id,
+      ))
+  ) {
+    return;
+  }
+
+  const nodeConfig = asRecord(schema8Stage.nodeConfig);
+  const personType = nodeConfig.type;
+  const egoAttribute = stringOrUndefined(nodeConfig.egoVariable);
+  const members = asRecord(session.stageMetadata[String(currentStep)]).nodes;
+  const memberIds = Array.isArray(members)
+    ? new Set(members.map((member: unknown) => asRecord(member).id))
+    : undefined;
+  const hasFamily =
+    session.network.nodes.some(
+      (node) =>
+        node.type === personType &&
+        (memberIds === undefined || memberIds.has(node._uid)) &&
+        (egoAttribute === undefined ||
+          attributesOf(node)[egoAttribute] !== true),
+    ) ||
+    (Array.isArray(members) &&
+      members.some((member: unknown) => asRecord(member).isEgo !== true));
+  if (!hasFamily) session.currentStep = currentStep - 1;
+};
+
+/**
  * Translates every schema 8 Family Pedigree record in a session whose stage
  * records already sit at their schema 9 indices, and brings the family each
  * converted pedigree draws into the shape the redesigned interface writes.

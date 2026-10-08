@@ -10,6 +10,6 @@ export const useLanguageName = () => {
   const intl = useAppIntl();
   return useCallback(
     (locale: LocaleTag) => describeLanguage(locale, intl.locale).name,
-    [intl],
+    [intl.locale],
   );
 };

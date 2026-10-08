@@ -5,7 +5,7 @@ import { CURRENT_SCHEMA_VERSION, type Protocol } from '../../index.ts';
 import migrationV7toV8 from '../migration.ts';
 import { V8OutputSchema } from './v8-output-schema.ts';
 
-// The schema 9 output wraps participant copy in English, the migrated locale.
+// The schema 9 output wraps participant copy in English.
 const en = (text: string) => ({ en: text });
 
 /**

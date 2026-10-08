@@ -30,48 +30,6 @@ const trilingual: CurrentProtocol = {
   ],
 };
 
-// Upgraded from schema 8, so its text was taken to be English, though it is
-// written in French.
-const migrated: CurrentProtocol = {
-  ...trilingual,
-  localization: { defaultLocale: 'en', locales: ['en'] },
-  stages: [
-    {
-      id: 'welcome',
-      type: 'Information',
-      label: { en: 'Bienvenue' },
-      title: { en: 'Bonjour' },
-      items: [],
-    },
-  ],
-};
-
-type DialogOptions = {
-  title?: unknown;
-  description?: unknown;
-  submitLabel?: unknown;
-  finalFocus?: unknown;
-  children?: unknown;
-};
-
-/** The props of the language field the relabel dialog asks with. */
-const relabelFieldProps = (options: DialogOptions | undefined) => {
-  const field = options?.children;
-  if (
-    typeof field !== 'object' ||
-    field === null ||
-    !('props' in field) ||
-    typeof field.props !== 'object' ||
-    field.props === null
-  ) {
-    throw new Error('The dialog asks for no language');
-  }
-  return field.props as {
-    hint?: unknown;
-    options?: { value: string; label: string }[];
-  };
-};
-
 const DEFAULT_REASON =
   'To remove the default language, make another language the default first.';
 const STRANDED_REASON =
@@ -139,14 +97,14 @@ describe('LanguageList', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('gives each language one control, which removes it and is named for it', () => {
+  it('gives each language two controls, which change and remove it and are named for it', () => {
     renderLanguageList();
 
     expect(
       within(rowOf('German'))
         .getAllByRole('button')
         .map((button) => button.getAttribute('aria-label')),
-    ).toEqual(['Remove German']);
+    ).toEqual(['Change German to a different language', 'Remove German']);
     expect(screen.queryByRole('menu')).not.toBeInTheDocument();
   });
 
@@ -267,63 +225,80 @@ describe('LanguageList', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('relabels the default language’s text as another language, in one change', async () => {
-    const { store } = renderLanguageList(migrated);
+  it('records the text of a language as another language from that language’s row', async () => {
+    const { store } = renderLanguageList();
     const { openDialog } = globalThis.__architectDialogMocks;
-    openDialog.mockResolvedValueOnce({ language: 'fr' });
-
-    const relabel = screen.getByRole('button', {
-      name: 'Relabel default language',
-    });
-    fireEvent.click(relabel);
-
-    await vi.waitFor(() => expect(openDialog).toHaveBeenCalledOnce());
-    const options: DialogOptions | undefined = openDialog.mock.lastCall?.[0];
-    expect(options).toMatchObject({
-      title: 'Relabel the English text',
-      submitLabel: 'Relabel text',
-    });
-    expect(options?.description).toEqual(
-      expect.stringContaining('Nothing is translated or deleted.'),
-    );
-    expect(relabelFieldProps(options).hint).toBeUndefined();
-    await vi.waitFor(() =>
-      expect(getProtocol(store.getState())?.localization).toEqual({
-        defaultLocale: 'fr',
-        locales: ['fr'],
-      }),
-    );
-    expect(getProtocol(store.getState())?.stages[0]).toMatchObject({
-      label: { fr: 'Bienvenue' },
-      title: { fr: 'Bonjour' },
-    });
-    expect(within(rowOf('French')).getByText('Default')).toBeVisible();
-
-    const { finalFocus } = options ?? {};
-    if (typeof finalFocus !== 'function') throw new Error('No finalFocus');
-    expect(finalFocus()).toBe(relabel);
-  });
-
-  it('offers only languages the protocol does not have, and says how to choose one it has', async () => {
-    renderLanguageList();
-    const { openDialog } = globalThis.__architectDialogMocks;
-    openDialog.mockResolvedValueOnce(null);
+    openDialog.mockResolvedValueOnce({ language: 'es' });
 
     fireEvent.click(
-      screen.getByRole('button', { name: 'Relabel default language' }),
+      within(rowOf('German')).getByRole('button', {
+        name: 'Change German to a different language',
+      }),
     );
 
     await vi.waitFor(() => expect(openDialog).toHaveBeenCalledOnce());
-    const field = relabelFieldProps(openDialog.mock.lastCall?.[0]);
-    const offered = field.options?.map(({ value }) => value) ?? [];
-    expect(offered).not.toEqual([]);
-    expect(offered).not.toContain('en');
-    expect(offered).not.toContain('fr');
-    expect(offered).not.toContain('de');
-    expect(offered).toContain('es');
-    expect(field.hint).toBe(
-      'The protocol’s other languages are not listed. To make one of them the default instead, choose it as the default language.',
+    expect(openDialog.mock.lastCall?.[0]).toMatchObject({
+      title: 'Change German to a different language',
+      submitLabel: 'Change language',
+    });
+    await vi.waitFor(() =>
+      expect(getProtocol(store.getState())?.localization).toEqual({
+        defaultLocale: 'en',
+        locales: ['en', 'fr', 'es'],
+      }),
     );
+    expect(getProtocol(store.getState())?.stages[0]?.label).toEqual({
+      en: 'Welcome',
+      fr: 'Bienvenue',
+    });
+    expect(rowOf('Spanish')).toBeInTheDocument();
+  });
+
+  it('moves the translations and the default with the language changed', async () => {
+    const { store } = renderLanguageList();
+    globalThis.__architectDialogMocks.openDialog.mockResolvedValueOnce({
+      language: 'es',
+    });
+
+    fireEvent.click(
+      within(rowOf('English')).getByRole('button', {
+        name: 'Change English to a different language',
+      }),
+    );
+
+    await vi.waitFor(() =>
+      expect(getProtocol(store.getState())?.localization).toEqual({
+        defaultLocale: 'es',
+        locales: ['es', 'fr', 'de'],
+      }),
+    );
+    expect(getProtocol(store.getState())?.stages[0]?.label).toEqual({
+      es: 'Welcome',
+      fr: 'Bienvenue',
+    });
+  });
+
+  it('offers only languages the protocol does not have yet', async () => {
+    renderLanguageList();
+    const { openDialog } = globalThis.__architectDialogMocks;
+    openDialog.mockResolvedValueOnce(undefined);
+
+    fireEvent.click(
+      within(rowOf('German')).getByRole('button', {
+        name: 'Change German to a different language',
+      }),
+    );
+
+    await vi.waitFor(() => expect(openDialog).toHaveBeenCalledOnce());
+    const { children } = openDialog.mock.lastCall?.[0] ?? {};
+    const { options } = (
+      children as { props: { options: { value: string }[] } }
+    ).props;
+    expect(options.length).toBeGreaterThan(0);
+    for (const declared of ['en', 'fr', 'de']) {
+      expect(options.map(({ value }) => value)).not.toContain(declared);
+    }
+    expect(options.map(({ value }) => value)).not.toContain('und');
   });
 
   it('explains which translation participants see under the heading', () => {
@@ -381,7 +356,7 @@ describe('LanguageList', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('offers the translation table and a choice of default only once there are two languages, and relabelling always', () => {
+  it('offers the translation table and a choice of default only once there are two languages', () => {
     renderLanguageList({
       ...trilingual,
       localization: { defaultLocale: 'en', locales: ['en'] },
@@ -396,9 +371,6 @@ describe('LanguageList', () => {
     ).not.toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: 'Add languages' }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole('button', { name: 'Relabel default language' }),
     ).toBeInTheDocument();
   });
 });

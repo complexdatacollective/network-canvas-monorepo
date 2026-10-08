@@ -1691,9 +1691,21 @@
     "defaultMessage": "Add languages",
     "description": "Title of the dialog that adds languages to a protocol."
   },
+  "architect.localization.languageActions.changeDescription": {
+    "defaultMessage": "Use this when the text recorded as {language} is really written in another language, for example in a protocol upgraded from an older version. Every {language} translation is recorded as the language you choose instead. Nothing is translated or deleted.",
+    "description": "Explanation in the dialog that records the text of one protocol language as another language. language is the name of the language being changed."
+  },
+  "architect.localization.languageActions.changeSubmit": {
+    "defaultMessage": "Change language",
+    "description": "Submit button of the dialog that records the text of a protocol language as another language."
+  },
+  "architect.localization.languageActions.changeTitle": {
+    "defaultMessage": "Change {language} to a different language",
+    "description": "Title of the dialog that records the text of one protocol language as another language. language is the name of the language being changed."
+  },
   "architect.localization.languageActions.chooseALanguage": {
     "defaultMessage": "Choose a language",
-    "description": "Placeholder of the list of languages that the text of the protocol’s default language can be marked as."
+    "description": "Placeholder of the list of languages that the text of a protocol language can be recorded as."
   },
   "architect.localization.languageActions.chooseAtLeastOne": {
     "defaultMessage": "Choose at least one language.",
@@ -1705,11 +1717,11 @@
   },
   "architect.localization.languageActions.chooseOne": {
     "defaultMessage": "Choose a language.",
-    "description": "Error when the dialog that marks the text of the protocol’s default language as written in another language is submitted without a language."
+    "description": "Error when the dialog that records the text of a protocol language as another language is submitted without a language."
   },
   "architect.localization.languageActions.languageLabel": {
     "defaultMessage": "Language",
-    "description": "Label of the list of languages in the dialog that marks the text of the protocol’s default language as written in another language."
+    "description": "Label of the list of languages in the dialog that records the text of a protocol language as another language."
   },
   "architect.localization.languageActions.languageOption": {
     "defaultMessage": "{name} ({tag})",
@@ -1731,22 +1743,6 @@
     "defaultMessage": "No language matches your search.",
     "description": "Shown when a language search finds nothing."
   },
-  "architect.localization.languageActions.relabelDescription": {
-    "defaultMessage": "Use this when the text marked as {language} is really written in another language, as it can be in a protocol upgraded from an earlier version of Network Canvas, whose text was assumed to be English. Every text marked as {language} will be marked as the language you choose, which becomes the default language. Nothing is translated or deleted.",
-    "description": "Explanation in the dialog that marks every text written in the protocol’s default language as written in another language: when to use it and what it does. language is the current default language’s name."
-  },
-  "architect.localization.languageActions.relabelHint": {
-    "defaultMessage": "The protocol’s other languages are not listed. To make one of them the default instead, choose it as the default language.",
-    "description": "Hint under the list of languages in the dialog that marks the text of the protocol’s default language as written in another language, shown when the protocol has other languages. Those languages cannot be chosen, because their translations would collide."
-  },
-  "architect.localization.languageActions.relabelSubmit": {
-    "defaultMessage": "Relabel text",
-    "description": "Submit button of the dialog that marks every text written in the protocol’s default language as written in another language."
-  },
-  "architect.localization.languageActions.relabelTitle": {
-    "defaultMessage": "Relabel the {language} text",
-    "description": "Title of the dialog that marks every text written in the protocol’s default language as written in another language. language is the current default language’s name."
-  },
   "architect.localization.languageActions.removeConfirm": {
     "defaultMessage": "Remove language",
     "description": "Confirm button that removes a language from a protocol."
@@ -1766,6 +1762,10 @@
   "architect.localization.languageList.addLanguages": {
     "defaultMessage": "Add languages",
     "description": "Button that opens the dialog for adding languages."
+  },
+  "architect.localization.languageList.changeLanguage": {
+    "defaultMessage": "Change {language} to a different language",
+    "description": "Accessible name and tooltip of the edit button in a protocol language’s row. It opens a dialog that records the text of that language as another language, for text recorded under the wrong one. language is the language name."
   },
   "architect.localization.languageList.coverage": {
     "defaultMessage": "{translated, number} of {total, number} texts translated",
@@ -1810,10 +1810,6 @@
   "architect.localization.languageList.openTable": {
     "defaultMessage": "Open translation table",
     "description": "Link under the list of protocol languages to the translation table, which shows every participant-facing text beside its translation into each language."
-  },
-  "architect.localization.languageList.relabelDefault": {
-    "defaultMessage": "Relabel default language",
-    "description": "Button beside the choice of the protocol’s default language. It opens a dialog that marks every text written in the default language as written in another language, for a protocol whose text is in a different language than it says, such as one upgraded from an earlier version and assumed to be English. Nothing is translated."
   },
   "architect.localization.languageList.removeLanguage": {
     "defaultMessage": "Remove {language}",
