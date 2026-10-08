@@ -1361,6 +1361,9 @@ describe('NetworkComposer saving edits in the order they were made', () => {
     act(() => {
       fireEvent.click(screen.getByRole('button', { name: /delete/i }));
     });
+    // Shown as gone, and so out of reach, while the deletion waits its turn.
+    expect(aliceExists()).toBe(true);
+    expect(screen.queryByRole('button', { name: /alice/i })).toBeNull();
     saving.release();
     await allSaved();
     await waitFor(() => expect(aliceExists()).toBe(false));

@@ -96,6 +96,35 @@ describe('createUndoStore record', () => {
     expect(store.getState().future.map((c) => c.label)).toEqual(['a']);
   });
 
+  it.each([
+    ['records nothing', () => null],
+    [
+      'is refused',
+      () => {
+        throw new Error('refused');
+      },
+    ],
+  ])(
+    'leaves earlier steps alone for an undo asked for while a change that %s is being made',
+    async (_, outcome) => {
+      const store = createUndoStore();
+      const log: string[] = [];
+      await store.getState().record(async () => cmd(log, 'a'));
+      const change = deferred();
+
+      const recording = store.getState().record(async () => {
+        await change.promise;
+        return outcome();
+      });
+      const undoing = store.getState().undo();
+      change.resolve();
+      await Promise.allSettled([recording, undoing]);
+
+      expect(log).toEqual([]);
+      expect(store.getState().past.map((c) => c.label)).toEqual(['a']);
+    },
+  );
+
   it('makes a change asked for while an undo is being made once the undo is done', async () => {
     const store = createUndoStore();
     const log: string[] = [];

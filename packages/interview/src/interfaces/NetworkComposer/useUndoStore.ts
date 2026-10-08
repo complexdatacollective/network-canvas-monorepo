@@ -74,6 +74,10 @@ export const createUndoStore = (limit = 50) =>
       return chain;
     };
 
+    // The changes asked for and not yet made, oldest first, each marked once
+    // it records a step.
+    const pendingChanges: { recorded: boolean }[] = [];
+
     const addStep = (command: UndoCommand) => {
       set((state) => {
         const previous = state.past[state.past.length - 1];
@@ -101,19 +105,30 @@ export const createUndoStore = (limit = 50) =>
       recording: 0,
 
       record: (change) => {
+        const pendingChange = { recorded: false };
+        pendingChanges.push(pendingChange);
         set((state) => ({ recording: state.recording + 1 }));
         return enqueue(async () => {
           try {
             const command = await change();
-            if (command) addStep(command);
+            if (command) {
+              addStep(command);
+              pendingChange.recorded = true;
+            }
           } finally {
+            pendingChanges.splice(pendingChanges.indexOf(pendingChange), 1);
             set((state) => ({ recording: state.recording - 1 }));
           }
         });
       },
 
-      undo: () =>
-        enqueue(async () => {
+      undo: () => {
+        // An undo asked for while changes are being made is for the newest of
+        // them, so it does nothing if that change records nothing, as when it
+        // is refused, instead of undoing an earlier step.
+        const forChange = pendingChanges.at(-1);
+        return enqueue(async () => {
+          if (forChange && !forChange.recorded) return;
           const { past } = get();
           const command = past[past.length - 1];
           if (!command) return;
@@ -122,7 +137,8 @@ export const createUndoStore = (limit = 50) =>
             past: state.past.slice(0, -1),
             future: [command, ...state.future],
           }));
-        }),
+        });
+      },
 
       redo: () =>
         enqueue(async () => {

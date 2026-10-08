@@ -3,7 +3,7 @@
 import { Toggle } from '@base-ui/react/toggle';
 import { ToggleGroup } from '@base-ui/react/toggle-group';
 import { AnimatePresence, useReducedMotion } from 'motion/react';
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -112,8 +112,48 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
     ? 'AUTOMATIC'
     : 'MANUAL';
 
-  const nodes = useStageSelector(getNetworkNodesForType);
-  const edges = useStageSelector(getNetworkEdges);
+  // People and relationships whose deletion has been asked for. A deletion
+  // waits its turn in the history, so until it is made they are shown as
+  // gone, and cannot be selected again.
+  const [deleting, setDeleting] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
+  const storedNodes = useStageSelector(getNetworkNodesForType);
+  const storedEdges = useStageSelector(getNetworkEdges);
+  const nodes = useMemo(
+    () =>
+      deleting.size === 0
+        ? storedNodes
+        : storedNodes.filter(
+            (node) => !deleting.has(node[entityPrimaryKeyProperty]),
+          ),
+    [storedNodes, deleting],
+  );
+  const edges = useMemo(
+    () =>
+      deleting.size === 0
+        ? storedEdges
+        : storedEdges.filter(
+            (edge) =>
+              !deleting.has(edge[entityPrimaryKeyProperty]) &&
+              !deleting.has(edge.from) &&
+              !deleting.has(edge.to),
+          ),
+    [storedEdges, deleting],
+  );
+  const deleteEntities = useCallback(
+    (ids: readonly string[], remove: () => Promise<void>) => {
+      setDeleting((current) => new Set([...current, ...ids]));
+      void remove().finally(() => {
+        setDeleting((current) => {
+          const next = new Set(current);
+          for (const id of ids) next.delete(id);
+          return next;
+        });
+      });
+    },
+    [],
+  );
 
   const codebook = useSelector(getCodebook);
   const nodeLabel =
@@ -423,15 +463,16 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
           deselectDeleted,
         } = composerStore.getState();
         if (nodeIds.size > 0) {
-          void actions.deleteNodesById([...nodeIds]);
+          const ids = [...nodeIds];
+          deleteEntities(ids, () => actions.deleteNodesById(ids));
           deselectDeleted();
         } else if (edgeId !== null) {
-          void actions.deleteEdgeById(edgeId);
+          deleteEntities([edgeId], () => actions.deleteEdgeById(edgeId));
           deselectDeleted();
         }
       }
     },
-    [composerStore, undoStore, actions],
+    [composerStore, undoStore, actions, deleteEntities],
   );
 
   const handleToggleAutomaticLayout = useCallback(
@@ -771,9 +812,9 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
             }
             onDelete={(id) => {
               if (editor.kind === 'node') {
-                void actions.deleteNodeById(id);
+                deleteEntities([id], () => actions.deleteNodeById(id));
               } else {
-                void actions.deleteEdgeById(id);
+                deleteEntities([id], () => actions.deleteEdgeById(id));
               }
               composerStore.getState().deselectDeleted();
             }}
