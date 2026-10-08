@@ -161,9 +161,14 @@ export function mapInterviewPayload(
         getLocaleMetadata(locale),
       ),
     },
+    // Named field by field rather than spread from the row: the row also holds
+    // the original upload's storage key and URL, which the asset route serves
+    // without authentication, so spreading it would hand every holder of an
+    // interview link the original .netcanvas archive.
     protocol: {
-      ...protocol,
       ...storedProtocol.data,
+      id: protocol.id,
+      name: protocol.name,
       schemaVersion,
       hash: protocol.hash,
       description: protocol.description ?? undefined,

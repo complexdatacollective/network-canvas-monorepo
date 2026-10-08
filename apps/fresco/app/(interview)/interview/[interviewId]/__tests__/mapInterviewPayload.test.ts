@@ -340,6 +340,11 @@ function makeFinishedSource(): NonNullable<GetInterviewByIdQuery> {
     // key's value, and the URL that opens a file.
     protocol: {
       ...source.protocol,
+      // The original upload, which the asset route serves without
+      // authentication: no view may carry where it is stored.
+      originalFileKey: 'ORIGINAL_FILE_KEY_SECRET',
+      originalFileUrl:
+        'https://files.example/ORIGINAL_FILE_URL_SECRET.netcanvas',
       assets: [
         {
           key: 'asset-key-1',
@@ -416,9 +421,48 @@ const ANSWER_MARKERS = [
   'stageMetadata',
   'APIKEY_SECRET',
   'ASSET_URL_SECRET',
+  'ORIGINAL_FILE_KEY_SECRET',
+  'ORIGINAL_FILE_URL_SECRET',
+];
+
+const ORIGINAL_FILE_MARKERS = [
+  'ORIGINAL_FILE_KEY_SECRET',
+  'ORIGINAL_FILE_URL_SECRET',
+  'originalFileKey',
+  'originalFileUrl',
 ];
 
 describe('mapInterviewForViewer', () => {
+  // The protocol's original upload is never part of an interview, finished or
+  // not, for any viewer: its storage key and URL open the whole .netcanvas
+  // archive without authentication.
+  it.each([
+    { finished: false, researcher: false, freezeCompletedInterviews: true },
+    { finished: false, researcher: true, freezeCompletedInterviews: false },
+    { finished: true, researcher: false, freezeCompletedInterviews: false },
+    { finished: true, researcher: true, freezeCompletedInterviews: true },
+    { finished: true, researcher: true, freezeCompletedInterviews: false },
+  ])(
+    'never sends where the original upload is stored (finished=$finished, researcher=$researcher, freezing=$freezeCompletedInterviews)',
+    ({ finished, ...viewer }) => {
+      const finishedSource = makeFinishedSource();
+      const source = finished
+        ? finishedSource
+        : {
+            ...finishedSource,
+            finishTime: null,
+            finishStageId: null,
+            finishOutcome: null,
+          };
+      const sent = JSON.stringify(
+        SuperJSON.serialize(viewReady(source, viewer)),
+      );
+      for (const marker of ORIGINAL_FILE_MARKERS) {
+        expect(sent).not.toContain(marker);
+      }
+    },
+  );
+
   it.each([
     { researcher: false, freezeCompletedInterviews: true },
     { researcher: false, freezeCompletedInterviews: false },
