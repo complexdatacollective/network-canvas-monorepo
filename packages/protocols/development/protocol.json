@@ -5,6 +5,14 @@
   },
   "stages": [
     {
+      "id": "language-chooser",
+      "type": "LanguageChooser",
+      "label": {
+        "en-US": "Language",
+        "es": "Idioma"
+      }
+    },
+    {
       "id": "anonymisation-interface",
       "label": {
         "en-US": "Anonymisation Interface",
@@ -1714,14 +1722,6 @@
           "inheritancePattern": "autosomalDominant"
         }
       ]
-    },
-    {
-      "id": "language-chooser",
-      "type": "LanguageChooser",
-      "label": {
-        "en-US": "Language",
-        "es": "Idioma"
-      }
     }
   ],
   "codebook": {
