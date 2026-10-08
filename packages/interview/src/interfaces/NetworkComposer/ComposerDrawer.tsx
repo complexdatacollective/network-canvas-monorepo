@@ -7,11 +7,6 @@ import { commonMessages } from '@codaco/app-i18n/common';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import CloseButton from '@codaco/fresco-ui/CloseButton';
 import { usePortalContainer } from '@codaco/fresco-ui/PortalContainer';
-import {
-  type PresentationalText,
-  presentationalTextProps,
-  presentationalTextValue,
-} from '@codaco/fresco-ui/PresentationalText';
 
 import { interfaceMessages } from '../messages';
 
@@ -19,7 +14,7 @@ type ComposerDrawerProps = {
   open: boolean;
   /** Called whenever the drawer requests to close (Escape, close button). */
   onClose: () => void;
-  title: PresentationalText;
+  title: string;
   children: ReactNode;
 };
 
@@ -129,11 +124,8 @@ export default function ComposerDrawer({
               className="focusable hover:bg-primary/40 absolute inset-y-0 left-0 z-10 w-1.5 cursor-ew-resize touch-none select-none"
             />
             <div className="flex shrink-0 items-center justify-between gap-2 border-b border-current/10 p-4 pl-6">
-              <Drawer.Title
-                className="truncate text-lg font-semibold"
-                {...presentationalTextProps(title)}
-              >
-                {presentationalTextValue(title)}
+              <Drawer.Title className="truncate text-lg font-semibold">
+                {title}
               </Drawer.Title>
               <Drawer.Close
                 render={

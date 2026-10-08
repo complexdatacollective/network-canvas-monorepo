@@ -8,15 +8,11 @@ import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import type { ValidationContext } from '@codaco/fresco-ui/form/store/types';
-import {
-  presentationalTextProps,
-  presentationalTextValue,
-} from '@codaco/fresco-ui/PresentationalText';
 import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
 
 import { runtimeMessages } from '../i18n/runtimeMessages';
 import { usePassphrase } from '../interfaces/Anonymisation/usePassphrase';
-import { useResolvePresentationalText } from '../localization/ProtocolLocalizationProvider';
+import { useResolveLocalizedString } from '../localization/ProtocolLocalizationProvider';
 import ProtocolField, { type ProtocolFieldDefinition } from './ProtocolField';
 
 type ProtocolFormFieldProps = {
@@ -57,13 +53,13 @@ function UnavailableAnswer({
   onReplace: () => void;
 }) {
   const intl = useAppIntl();
-  const toPresentationalText = useResolvePresentationalText();
+  const resolve = useResolveLocalizedString();
   const { encryptionUnavailable, lockedNotice } = usePassphrase();
 
   return (
     <UnconnectedField
       name={field.variable}
-      label={toPresentationalText(field.label)}
+      label={resolve(field.label).text}
       hint={
         <AppMessage
           message={
@@ -105,9 +101,9 @@ export default function ProtocolFormField({
   validationContext,
 }: ProtocolFormFieldProps) {
   const [replacing, setReplacing] = useState(false);
-  const toPresentationalText = useResolvePresentationalText();
+  const resolve = useResolveLocalizedString();
   const authoredHint =
-    field.hint === undefined ? undefined : toPresentationalText(field.hint);
+    field.hint === undefined ? undefined : resolve(field.hint).text;
 
   if (unavailable && !replacing) {
     return (
@@ -122,11 +118,7 @@ export default function ProtocolFormField({
         hint={
           <>
             {authoredHint !== undefined && (
-              <RenderMarkdown
-                render={<span {...presentationalTextProps(authoredHint)} />}
-              >
-                {presentationalTextValue(authoredHint)}
-              </RenderMarkdown>
+              <RenderMarkdown render={<span />}>{authoredHint}</RenderMarkdown>
             )}
             <p>
               <AppMessage

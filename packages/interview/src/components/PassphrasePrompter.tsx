@@ -1,5 +1,6 @@
 'use client';
 
+import { useDirection } from '@base-ui/react/direction-provider';
 import {
   AnimatePresence,
   motion,
@@ -40,6 +41,7 @@ export default function PassphrasePrompter({
   className,
 }: PassphrasePrompterProps) {
   const intl = useAppIntl();
+  const isRtl = useDirection() === 'rtl';
   const { showPassphrasePrompter, passphraseChosen, encryptionUnavailable } =
     usePassphrase();
   // No passphrase can open a refused header, so none is offered, whatever
@@ -115,7 +117,9 @@ export default function PassphrasePrompter({
               technology does not meet the same text twice. */}
           <TooltipContent
             aria-hidden="true"
-            side={orientation === 'vertical' ? 'right' : 'top'}
+            side={
+              orientation === 'vertical' ? (isRtl ? 'left' : 'right') : 'top'
+            }
             className="max-w-[min(var(--available-width),var(--container-md))]"
           >
             <AppMessage message={messages.passphraseNeeded} />

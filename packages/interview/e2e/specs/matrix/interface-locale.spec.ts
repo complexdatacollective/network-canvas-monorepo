@@ -42,8 +42,10 @@ matrixTest(
       document.documentElement.lang = 'fr';
       window.__test.setRequestedLocales(['es-MX']);
     });
+    // The Shell carries the protocol's language (SyntheticInterview declares
+    // en-US only); the built-in text alone follows the browser.
     const main = page.locator('main[data-theme-interview]');
-    await expect(main).toHaveAttribute('lang', 'es');
+    await expect(main).toHaveAttribute('lang', 'en-US');
     await expect(
       page.getByRole('heading', { name: authoredTitle }),
     ).toBeVisible();
@@ -60,7 +62,6 @@ matrixTest(
     ).toBeVisible();
     await expect(input).toBeFocused();
     await page.evaluate(() => window.__test.setRequestedLocales(['en-GB']));
-    await expect(main).toHaveAttribute('lang', 'en-GB');
     await expect(
       page.getByText('You must answer this question before continuing.', {
         exact: true,
@@ -77,7 +78,10 @@ matrixTest(
     });
     await context.setOffline(true);
     await page.evaluate(() => window.__test.setRequestedLocales(['es']));
-    await expect(main).toHaveAttribute('lang', 'es');
+    await expect(
+      page.getByRole('button', { name: 'Siguiente paso' }),
+    ).toBeVisible();
+    await expect(main).toHaveAttribute('lang', 'en-US');
     await expect(input).toHaveValue(answer);
     expect(await handle.evaluate((element) => element.isConnected)).toBe(true);
     const after = await page.evaluate(() => {
@@ -106,9 +110,9 @@ matrixTest(
     await page.evaluate(() =>
       window.__test.setRequestedLocales(['malformed_locale']),
     );
-    await expect(main).toHaveAttribute('lang', 'en');
     await expect(
       page.getByRole('heading', { name: 'Finish Interview', exact: true }),
     ).toBeVisible();
+    await expect(main).toHaveAttribute('lang', 'en-US');
   },
 );

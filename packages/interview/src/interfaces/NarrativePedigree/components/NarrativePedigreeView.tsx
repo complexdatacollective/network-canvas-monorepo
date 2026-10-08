@@ -18,10 +18,6 @@ import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import { Button } from '@codaco/fresco-ui/Button';
 import Icon from '@codaco/fresco-ui/Icon';
 import Node, { type NodeShape } from '@codaco/fresco-ui/Node';
-import {
-  type PresentationalText,
-  presentationalTextValue,
-} from '@codaco/fresco-ui/PresentationalText';
 import { ResizableFlexPanel } from '@codaco/fresco-ui/ResizableFlexPanel';
 import { SegmentedToolbar } from '@codaco/fresco-ui/SegmentedToolbar';
 import { cx } from '@codaco/fresco-ui/utils/cva';
@@ -32,7 +28,7 @@ import { useNodeMeasurement } from '../../../hooks/useNodeMeasurement';
 import { useStageSelector } from '../../../hooks/useStageSelector';
 import {
   useLocalizedString,
-  useResolvePresentationalText,
+  useResolveLocalizedString,
 } from '../../../localization/ProtocolLocalizationProvider';
 import {
   getActiveSession,
@@ -78,7 +74,7 @@ type NarrativeStage = StageProps<'NarrativePedigree'>['stage'];
 type Disease = NarrativeStage['diseases'][number];
 type ResolvedDisease = Omit<Disease, 'color' | 'label'> & {
   color: string;
-  label: PresentationalText;
+  label: string;
 };
 
 const NODE_COLOR_VARIABLES = {
@@ -129,7 +125,7 @@ export default function NarrativePedigreeView({
   stage,
 }: NarrativePedigreeViewProps) {
   const intl = useAppIntl();
-  const toPresentationalText = useResolvePresentationalText();
+  const resolve = useResolveLocalizedString();
   const stageLabel = useLocalizedString(stage.label).text;
   // Architect stores the selected node palette entry as a typed protocol
   // reference. SVG and inline CSS need the corresponding theme variable, so
@@ -139,10 +135,10 @@ export default function NarrativePedigreeView({
     () =>
       stage.diseases.map((disease) => ({
         ...disease,
-        label: toPresentationalText(disease.label),
+        label: resolve(disease.label).text,
         color: resolveDiseaseColor(disease.color),
       })),
-    [stage.diseases, toPresentationalText],
+    [stage.diseases, resolve],
   );
 
   const sourceSelector = useMemo(
@@ -375,7 +371,7 @@ export default function NarrativePedigreeView({
         displayedStatusesByDisease.get(disease.id)?.get(personId) ?? 'unknown';
       const statusText = getStatusLabel(status, intl);
       return intl.formatMessage(messages.diseaseStatus, {
-        condition: presentationalTextValue(disease.label),
+        condition: disease.label,
         status: statusText,
       });
     });
@@ -607,9 +603,7 @@ export default function NarrativePedigreeView({
     );
   };
 
-  const selectedDiseaseLabel = selectedDisease
-    ? presentationalTextValue(selectedDisease.label)
-    : null;
+  const selectedDiseaseLabel = selectedDisease ? selectedDisease.label : null;
   const focalLabel =
     focalId === null ? null : spokenLabelFor(focalId) || focalId;
 

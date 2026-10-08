@@ -1,15 +1,10 @@
 'use client';
 
 import { Button } from '@codaco/fresco-ui/Button';
-import {
-  type PresentationalText,
-  presentationalTextProps,
-  presentationalTextValue,
-} from '@codaco/fresco-ui/PresentationalText';
 
 export type GroupVariable = {
   id: string;
-  options: { value: string; label: PresentationalText }[];
+  options: { value: string; label: string }[];
 };
 
 export type ActiveGroup = { variable: string; value: string };
@@ -57,9 +52,7 @@ export default function GroupPicker({
               className="inline-block size-3 shrink-0 rounded-full"
               style={{ backgroundColor: `var(--cat-${index + 1})` }}
             />
-            <span {...presentationalTextProps(option.label)}>
-              {presentationalTextValue(option.label)}
-            </span>
+            {option.label}
           </Button>
         );
       })}

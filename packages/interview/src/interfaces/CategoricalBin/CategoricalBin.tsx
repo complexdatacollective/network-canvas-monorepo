@@ -9,10 +9,6 @@ import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import type { ValidationContext } from '@codaco/fresco-ui/form/store/types';
 import UINode from '@codaco/fresco-ui/Node';
-import {
-  type PresentationalText,
-  presentationalTextValue,
-} from '@codaco/fresco-ui/PresentationalText';
 import type { Stage } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
@@ -34,7 +30,7 @@ import {
 } from '../../forms/writeSubmissionResult';
 import useReadyForNextStage from '../../hooks/useReadyForNextStage';
 import { useStageSelector } from '../../hooks/useStageSelector';
-import { useResolvePresentationalText } from '../../localization/ProtocolLocalizationProvider';
+import { useResolveLocalizedString } from '../../localization/ProtocolLocalizationProvider';
 import {
   getValidationContext,
   selectValidationMetadataForVariable,
@@ -99,7 +95,7 @@ type OtherResponseProps = Pick<
 > & {
   node: NcNode;
   variable: string;
-  label: PresentationalText;
+  label: string;
   validationProps: ReturnType<typeof validationPropsFor>;
 };
 
@@ -131,7 +127,7 @@ function OtherResponse({
     [variable],
     nodeId,
   );
-  const labelText = presentationalTextValue(label);
+  const labelText = label;
 
   // Context-dependent rules (unique, sameAs, differentFrom,
   // greaterThanVariable, etc.) resolve against the entity being edited and
@@ -292,7 +288,7 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
     });
     return false;
   };
-  const toPresentationalText = useResolvePresentationalText();
+  const resolve = useResolveLocalizedString();
 
   const handleDropNode = async (node: NcNode, binIndex: number) => {
     const nodeId = node[entityPrimaryKeyProperty];
@@ -321,7 +317,7 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
     // proves otherVariablePrompt exists whenever otherVariable is set.
     if (bin.isOther && prompt.otherVariable !== undefined) {
       const { otherVariable, otherVariablePrompt } = prompt;
-      const otherPromptLabel = toPresentationalText(otherVariablePrompt);
+      const otherPromptLabel = resolve(otherVariablePrompt).text;
 
       // An answer that would be encrypted is not asked for until it could be
       // saved.

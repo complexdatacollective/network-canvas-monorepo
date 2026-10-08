@@ -179,15 +179,28 @@ function liveStore() {
   return store;
 }
 
+// The built-in Next button's name, in the language of the catalog it came from.
+const nextStep = { es: 'Siguiente paso', en: 'Next Step' };
+
 describe('Shell interview languages', () => {
   it.each([
-    { requested: ['ja', 'es-MX'], ui: 'es', title: titles.ja },
-    { requested: ['en-GB'], ui: 'en-GB', title: titles.en },
-    { requested: ['not_a_locale'], ui: 'en', title: titles.en },
-    { requested: [], ui: 'en', title: titles.en },
+    {
+      requested: ['ja', 'es-MX'],
+      lang: 'ja',
+      next: nextStep.es,
+      title: titles.ja,
+    },
+    { requested: ['en-GB'], lang: 'en', next: nextStep.en, title: titles.en },
+    {
+      requested: ['not_a_locale'],
+      lang: 'en',
+      next: nextStep.en,
+      title: titles.en,
+    },
+    { requested: [], lang: 'en', next: nextStep.en, title: titles.en },
   ])(
     "negotiates both languages from the browser's languages $requested",
-    async ({ requested, ui, title }) => {
+    async ({ requested, lang, next, title }) => {
       render(
         <Shell
           {...handlers}
@@ -197,17 +210,19 @@ describe('Shell interview languages', () => {
         />,
       );
       await expectVisibleHeading(title);
-      expect(screen.getByRole('main')).toHaveAttribute('lang', ui);
+      const region = screen.getByRole('main');
+      expect(region).toHaveAttribute('lang', lang);
+      expect(within(region).getByRole('button', { name: next })).toBeVisible();
       expect(observed.mounts).toBe(1);
     },
   );
 
   it.each([
-    { preference: 'es', ui: 'es', title: titles.es },
-    { preference: 'ja', ui: 'es', title: titles.ja },
+    { preference: 'es', next: nextStep.es, title: titles.es },
+    { preference: 'ja', next: nextStep.es, title: titles.ja },
   ])(
-    'shows the stated preference $preference, and uses it for the interface only when the interface has it',
-    async ({ preference, ui, title }) => {
+    'shows the stated preference $preference, and uses it for built-in text only when a catalog has it',
+    async ({ preference, next, title }) => {
       render(
         <Shell
           {...handlers}
@@ -217,11 +232,13 @@ describe('Shell interview languages', () => {
         />,
       );
       await expectVisibleHeading(title);
-      expect(screen.getByRole('main')).toHaveAttribute('lang', ui);
+      const region = screen.getByRole('main');
+      expect(region).toHaveAttribute('lang', preference);
+      expect(within(region).getByRole('button', { name: next })).toBeVisible();
     },
   );
 
-  it('lays the stage out in the direction of the translation shown while keeping the interface language', async () => {
+  it('sets the interview language and direction once, for the whole Shell', async () => {
     render(
       <Shell
         {...handlers}
@@ -232,14 +249,38 @@ describe('Shell interview languages', () => {
     );
     const region = screen.getByRole('main');
     await expectVisibleHeading(titles.ar, region);
-    expect(region).toHaveAttribute('lang', 'en');
-    expect(region).toHaveAttribute('dir', 'ltr');
-    expect(document.getElementById('stage')).toHaveAttribute('dir', 'rtl');
+    expect(region).toHaveAttribute('lang', 'ar');
+    expect(region).toHaveAttribute('dir', 'rtl');
     expect(document.getElementById('stage')).not.toHaveAttribute('lang');
+    expect(document.getElementById('stage')).not.toHaveAttribute('dir');
+    // No Arabic catalog: the built-in text falls back to English.
     expect(
       within(region).getByRole('button', { name: 'Next Step' }),
     ).toBeVisible();
   });
+
+  it.each([
+    { requested: ['ar'], back: 'chevron-right', next: 'chevron-left' },
+    { requested: ['en'], back: 'chevron-left', next: 'chevron-right' },
+  ])(
+    'points the horizontal Back and Next arrows along the interview direction ($requested)',
+    async ({ requested, back, next }) => {
+      render(
+        <Shell
+          {...handlers}
+          payload={payload}
+          requestedLocales={requested}
+          navigationOrientation="horizontal"
+          disableAnalytics
+        />,
+      );
+      const region = screen.getByRole('main');
+      const arrow = (name: string) =>
+        within(region).getByRole('button', { name }).querySelector('svg');
+      expect(arrow('Previous Step')).toHaveClass(`lucide-${back}`);
+      expect(arrow('Next Step')).toHaveClass(`lucide-${next}`);
+    },
+  );
 
   it('uses its own supported languages and catalogs, independently of the host document', async () => {
     render(

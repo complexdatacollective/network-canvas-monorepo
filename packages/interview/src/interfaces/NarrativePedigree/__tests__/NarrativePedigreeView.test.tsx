@@ -1057,7 +1057,7 @@ describe('NarrativePedigreeView — no dimming without a focal person', () => {
 });
 
 describe('NarrativePedigreeView — localized condition labels', () => {
-  it('shows a condition label in the participant language with its lang and dir', async () => {
+  it('shows a condition label in the participant language with no language of its own', async () => {
     const arabicLabel = 'داء هنتنغتون';
     const stage = makeNarrativeStage();
     const firstDisease = stage.diseases[0];
@@ -1080,8 +1080,7 @@ describe('NarrativePedigreeView — localized condition labels', () => {
     const conditionButton = await screen.findByRole('button', {
       name: arabicLabel,
     });
-    expect(
-      conditionButton.querySelector('span[lang="ar"][dir="rtl"]'),
-    ).toHaveTextContent(arabicLabel);
+    expect(conditionButton.closest('[lang], [dir]')).toBeNull();
+    expect(conditionButton.querySelector('[lang], [dir]')).toBeNull();
   });
 });

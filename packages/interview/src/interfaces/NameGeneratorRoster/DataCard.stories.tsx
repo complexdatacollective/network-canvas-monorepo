@@ -7,7 +7,7 @@ import type { VariableValue } from '@codaco/shared-consts';
 import DataCard, { type DataCardDetail } from './DataCard';
 
 // Stories write details as label → value pairs; the card takes an ordered
-// array so each label can carry its own language and direction.
+// array.
 const toDetails = (
   record: Record<string, VariableValue | undefined>,
 ): DataCardDetail[] =>
@@ -33,7 +33,7 @@ const meta = {
     details: {
       control: 'object',
       description:
-        'An ordered array of `{ id, label, value }` entries to render as a description list below the title. `label` is a plain string or `{ text, lang, dir }`; `value` is a `VariableValue | undefined`',
+        'An ordered array of `{ id, label, value }` entries to render as a description list below the title. `label` is a string; `value` is a `VariableValue | undefined`',
     },
   },
   args: {
@@ -104,30 +104,6 @@ export const ManyDetailTypes: Story = {
   },
   render: (args) => (
     <div className="max-w-lg">
-      <DataCard {...args} />
-    </div>
-  ),
-};
-
-/**
- * A detail label written in a different language and direction from the
- * interface carries its own `lang` and `dir`, so right-to-left text reads in
- * order and assistive technology pronounces it correctly.
- */
-export const DetailLabelInAnotherLanguage: Story = {
-  args: {
-    label: 'Moses Crist',
-    details: [
-      {
-        id: 'age',
-        label: { text: 'العمر', lang: 'ar', dir: 'rtl' },
-        value: 34,
-      },
-      { id: 'location', label: 'Location', value: 'New Haven' },
-    ],
-  },
-  render: (args) => (
-    <div className="max-w-md">
       <DataCard {...args} />
     </div>
   ),
