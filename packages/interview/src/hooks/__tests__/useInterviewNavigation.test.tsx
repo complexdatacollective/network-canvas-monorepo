@@ -888,4 +888,61 @@ describe('useInterviewNavigation waiting for writes begun on the stage', () => {
     );
     expect(onStepChange).toHaveBeenLastCalledWith(2, expect.anything());
   });
+
+  type Navigation = ReturnType<typeof useInterviewNavigation>;
+  it.each<
+    [string, (navigation: Navigation) => Promise<unknown>, number, number]
+  >([
+    ['forward', (navigation) => navigation.moveForward(), 0, 1],
+    ['back', (navigation) => navigation.moveBackward(), 2, 1],
+    ['to a menu target', (navigation) => navigation.goToStage(2), 0, 2],
+  ])(
+    'stays when an answer still being stored is refused, going %s, and goes when asked again',
+    async (_direction, navigate, from, to) => {
+      const { result, onStepChange, store } = renderTrackingWrites(
+        makeStages(3),
+        from,
+      );
+      store.dispatch(updateEgo.pending('w1', declined));
+
+      let moving: Promise<unknown> = Promise.resolve();
+      act(() => {
+        moving = navigate(result.current);
+      });
+      await act(async () => {
+        store.dispatch(
+          updateEgo.rejected(new Error('refused'), 'w1', declined),
+        );
+        await moving;
+      });
+      expect(onStepChange).not.toHaveBeenCalled();
+
+      await act(async () => {
+        await navigate(result.current);
+      });
+      expect(onStepChange).toHaveBeenLastCalledWith(to, expect.anything());
+    },
+  );
+
+  it('stays when an answer the stage begins storing as it is left is refused', async () => {
+    const { result, onStepChange, store } = renderTrackingWrites(makeStages(3));
+    act(() => {
+      result.current.registerBeforeNext(() => {
+        store.dispatch(updateEgo.pending('w1', declined));
+        return true;
+      });
+    });
+
+    let moving: Promise<unknown> = Promise.resolve();
+    act(() => {
+      moving = result.current.moveForward();
+    });
+    await queuedWorkRuns();
+    await act(async () => {
+      store.dispatch(updateEgo.rejected(new Error('refused'), 'w1', declined));
+      await moving;
+    });
+
+    expect(onStepChange).not.toHaveBeenCalled();
+  });
 });

@@ -11,17 +11,19 @@ export default function useOneAtATime<Args extends unknown[], Result>(
   run: (...args: Args) => Promise<Result>,
 ): {
   run: (...args: Args) => Promise<Result>;
-  // Resolves once every call made so far has settled, or is undefined when
+  // The latest call, which settles after every earlier one, or undefined when
   // none is waiting or running.
-  settled: () => Promise<void> | undefined;
+  latest: () => Promise<Result> | undefined;
 } {
   const previous = useRef<Promise<unknown>>(Promise.resolve());
+  const latestCall = useRef<Promise<Result>>(undefined);
   const unsettled = useRef(0);
 
   const runInOrder = useCallback(
     (...args: Args) => {
       unsettled.current += 1;
       const call = previous.current.then(() => run(...args));
+      latestCall.current = call;
       previous.current = call
         .catch(() => undefined)
         .finally(() => {
@@ -32,13 +34,10 @@ export default function useOneAtATime<Args extends unknown[], Result>(
     [run],
   );
 
-  const settled = useCallback(
-    () =>
-      unsettled.current > 0
-        ? previous.current.then(() => undefined)
-        : undefined,
+  const latest = useCallback(
+    () => (unsettled.current > 0 ? latestCall.current : undefined),
     [],
   );
 
-  return { run: runInOrder, settled };
+  return { run: runInOrder, latest };
 }

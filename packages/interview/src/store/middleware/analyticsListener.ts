@@ -14,6 +14,7 @@ import {
   deleteEdge,
   deleteNode,
   removeNodeFromPrompt,
+  restoreNode,
 } from '../modules/session';
 import { setPassphrase, setPassphraseInvalid } from '../modules/ui';
 import type { AppDispatch, RootState } from '../store';
@@ -72,6 +73,18 @@ export function createAnalyticsListenerMiddleware({
           edge_type: edge.type,
         });
       }
+    },
+  });
+
+  // Undo and redo put a removed node back as it was. It is reported as added
+  // again, as its removal was reported.
+  startAppListening({
+    actionCreator: restoreNode,
+    effect: (action) => {
+      tracker.track('node_added', {
+        node_id: action.payload._uid,
+        node_type: action.payload.type,
+      });
     },
   });
 

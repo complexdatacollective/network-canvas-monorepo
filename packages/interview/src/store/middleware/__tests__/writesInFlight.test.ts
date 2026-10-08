@@ -1,4 +1,4 @@
-import { configureStore, createAction } from '@reduxjs/toolkit';
+import { configureStore, createAction, type Reducer } from '@reduxjs/toolkit';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -10,10 +10,12 @@ import { createWritesInFlightMiddleware } from '../writesInFlight';
 
 const patch = { set: { agrees: true }, unset: [] };
 
-function makeStore() {
+const unchanged: Reducer<number> = (state = 0) => state;
+
+function makeStore(reducer = unchanged) {
   const { middleware, writesSettled } = createWritesInFlightMiddleware();
   const store = configureStore({
-    reducer: { unchanged: (state = 0) => state },
+    reducer: { session: reducer },
     middleware: (getDefault) =>
       getDefault({ serializableCheck: false }).concat(middleware),
   });
@@ -21,7 +23,7 @@ function makeStore() {
 }
 
 // Whether `promise` has settled once everything already queued has run.
-async function hasSettled(promise: Promise<void> | undefined) {
+async function hasSettled(promise: Promise<unknown> | undefined) {
   let settled = false;
   void promise?.finally(() => {
     settled = true;
@@ -45,18 +47,47 @@ describe('writes in flight', () => {
     expect(await hasSettled(settling)).toBe(false);
 
     store.dispatch(updateEgo.fulfilled(patch, 'w1', patch));
-    expect(await hasSettled(settling)).toBe(true);
+    await expect(settling).resolves.toBe(true);
     expect(writesSettled()).toBeUndefined();
   });
 
-  it('settles once the write begun has been refused', async () => {
+  it('settles once the write begun has been refused, saying so', async () => {
     const { store, writesSettled } = makeStore();
     store.dispatch(updateEgo.pending('w1', patch));
     const settling = writesSettled();
 
     store.dispatch(updateEgo.rejected(new Error('refused'), 'w1', patch));
 
-    expect(await hasSettled(settling)).toBe(true);
+    await expect(settling).resolves.toBe(false);
+    expect(writesSettled()).toBeUndefined();
+  });
+
+  it('says a write was refused when another begun with it was stored', async () => {
+    const { store, writesSettled } = makeStore();
+    store.dispatch(updateEgo.pending('w1', patch));
+    store.dispatch(updateEgo.pending('w2', patch));
+    const settling = writesSettled();
+
+    store.dispatch(updateEgo.rejected(new Error('refused'), 'w1', patch));
+    store.dispatch(updateEgo.fulfilled(patch, 'w2', patch));
+
+    await expect(settling).resolves.toBe(false);
+  });
+
+  it('settles a write whose outcome the store throws on, as not stored', async () => {
+    const throwsOnStore: Reducer<number> = (state = 0, action) => {
+      if (updateEgo.fulfilled.match(action)) throw new Error('duplicate');
+      return state;
+    };
+    const { store, writesSettled } = makeStore(throwsOnStore);
+    store.dispatch(updateEgo.pending('w1', patch));
+    const settling = writesSettled();
+
+    expect(() =>
+      store.dispatch(updateEgo.fulfilled(patch, 'w1', patch)),
+    ).toThrow('duplicate');
+
+    await expect(settling).resolves.toBe(false);
     expect(writesSettled()).toBeUndefined();
   });
 
@@ -71,7 +102,7 @@ describe('writes in flight', () => {
     expect(await hasSettled(settling)).toBe(false);
 
     store.dispatch(updateEgo.fulfilled(patch, 'w2', patch));
-    expect(await hasSettled(settling)).toBe(true);
+    await expect(settling).resolves.toBe(true);
     expect(writesSettled()).toBeDefined();
   });
 
@@ -96,7 +127,7 @@ describe('writes in flight', () => {
     expect(settling).toBeDefined();
 
     await write;
-    expect(await hasSettled(settling)).toBe(true);
+    await expect(settling).resolves.toBe(true);
     expect(interview.writesSettled()).toBeUndefined();
   });
 });

@@ -13,6 +13,7 @@ import session, {
   deleteEdge,
   deleteNode,
   removeNodeFromPrompt,
+  restoreNode,
 } from '../../modules/session';
 import ui, { setPassphrase, setPassphraseInvalid } from '../../modules/ui';
 import { createAnalyticsListenerMiddleware } from '../analyticsListener';
@@ -105,6 +106,22 @@ describe('analyticsListener — global entity events', () => {
     expect(calls.filter(([name]) => name === 'edge_created')).toEqual([
       ['edge_created', { edge_id: expect.any(String), edge_type: 'knows' }],
     ]);
+  });
+
+  it('emits node_added when undo or redo restores a removed node', () => {
+    const tracker = makeTracker();
+    const store = buildStore(tracker);
+    store.dispatch(
+      restoreNode({
+        _uid: 'node-1',
+        type: 'person',
+        [entityAttributesProperty]: {},
+      }),
+    );
+    expect(tracker.track).toHaveBeenCalledWith('node_added', {
+      node_id: 'node-1',
+      node_type: 'person',
+    });
   });
 
   it('emits node_removed on deleteNode', () => {

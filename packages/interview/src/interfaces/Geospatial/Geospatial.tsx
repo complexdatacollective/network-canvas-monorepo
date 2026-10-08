@@ -186,12 +186,13 @@ export default function GeospatialInterface({
     isAttributeEncrypted(isEnabled, variables, promptVariable) &&
     (!passphrase || passphraseInvalid);
 
+  // Whether the location was stored. A location that is not is reported here.
   const saveLocationValue = useCallback(
     async (value: string | null, selectionKind: 'search' | 'pin') => {
       const variable = currentPrompt.variable;
-      if (!variable) return;
+      if (!variable) return true;
       const activeNode = stageNodes[navState.activeIndex];
-      if (!activeNode) return;
+      if (!activeNode) return true;
       const nodeId = activeNode[entityPrimaryKeyProperty];
 
       if (value !== null && locationLocked) {
@@ -203,7 +204,7 @@ export default function GeospatialInterface({
           variant: 'info',
           anchor: 'forward',
         });
-        return;
+        return false;
       }
 
       if (value !== null) {
@@ -224,6 +225,7 @@ export default function GeospatialInterface({
           anchor: 'forward',
         });
       }
+      return !failure;
     },
     [
       updateNode,
@@ -241,7 +243,7 @@ export default function GeospatialInterface({
   // A location that takes longer to save, as a protected one can, never lands
   // after one picked later. Every outcome of a save, including a refusal, is
   // reported inside it.
-  const { run: saveLocationInOrder, settled: locationsSaved } =
+  const { run: saveLocationInOrder, latest: latestLocationSaved } =
     useOneAtATime(saveLocationValue);
   const setLocationValue = useCallback(
     (value: string | null, selectionKind: 'search' | 'pin' = 'pin') => {
@@ -410,11 +412,9 @@ export default function GeospatialInterface({
 
   // Picks still waiting their turn to be saved have not reached the store, so
   // the stage is left only once they have, and the next stage is chosen with
-  // them.
-  const leaveStage = () => {
-    const saving = locationsSaved();
-    return saving ? saving.then(() => true) : true;
-  };
+  // them. When the latest is refused the stage stays, so the participant sees
+  // why and can pick again.
+  const leaveStage = () => latestLocationSaved() ?? true;
 
   const beforeNext = (direction: Direction, intent: NavigationIntent) => {
     // Leave the stage if there are no nodes

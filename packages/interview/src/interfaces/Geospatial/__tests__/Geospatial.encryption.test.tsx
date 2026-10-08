@@ -300,6 +300,31 @@ describe('Geospatial saving locations in the order they were picked', () => {
       readStoredLocation(store.getState().session.network.nodes[0]),
     ).resolves.toBe('outside-selectable-areas');
   });
+
+  it('stays on the stage when the location being saved as it is left is refused', async () => {
+    const { store, selectArea, leave } = renderGeospatial('pw');
+    const begunBefore = encryptionGate.begun;
+    let release: () => void = () => undefined;
+    encryptionGate.held = new Promise((resolve) => {
+      release = resolve;
+    });
+
+    await selectArea();
+    await waitFor(() => expect(encryptionGate.begun).toBe(begunBefore + 1));
+    const leaving = leave();
+    // The passphrase is replaced while the location is being protected, so
+    // the location is refused.
+    act(() => {
+      store.dispatch(setPassphrase('another-passphrase'));
+    });
+    release();
+
+    let allowed: boolean | undefined;
+    await act(async () => {
+      allowed = await leaving;
+    });
+    expect(allowed).toBe(false);
+  });
 });
 
 describe('Geospatial showing an encrypted location', () => {

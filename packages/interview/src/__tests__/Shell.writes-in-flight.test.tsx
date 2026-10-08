@@ -121,42 +121,59 @@ function liveStore() {
   return store;
 }
 
+const declined = { set: { agrees: false }, unset: [] };
+
+async function renderShell() {
+  render(
+    <Shell
+      payload={payload}
+      onSync={() => Promise.resolve()}
+      onFinish={() => Promise.resolve()}
+      onRequestAsset={() => Promise.resolve('')}
+      analytics={{ installationId: 'test', hostApp: 'test' }}
+      disableAnalytics
+      flags={{ isE2E: true }}
+    />,
+    { wrapper: WithoutMotion },
+  );
+  const next = await screen.findByRole('button', { name: 'Next Step' });
+  return { next, store: liveStore() };
+}
+
+const shownStage = () =>
+  screen.getByTestId('stage').getAttribute('data-stage-interface');
+
 describe('Shell leaving a stage with a write under way', () => {
   it('chooses the next stage with an answer still being stored', async () => {
-    render(
-      <Shell
-        payload={payload}
-        onSync={() => Promise.resolve()}
-        onFinish={() => Promise.resolve()}
-        onRequestAsset={() => Promise.resolve('')}
-        analytics={{ installationId: 'test', hostApp: 'test' }}
-        disableAnalytics
-        flags={{ isE2E: true }}
-      />,
-      { wrapper: WithoutMotion },
-    );
-    const next = await screen.findByRole('button', { name: 'Next Step' });
-    const store = liveStore();
-    const declined = { set: { agrees: false }, unset: [] };
+    const { next, store } = await renderShell();
     act(() => {
       store.dispatch(updateEgo.pending('w1', declined));
     });
 
     await userEvent.setup().click(next);
     await act(() => new Promise((resolve) => setTimeout(resolve, 100)));
-    expect(screen.getByTestId('stage')).toHaveAttribute(
-      'data-stage-interface',
-      'first-stage',
-    );
+    expect(shownStage()).toBe('first-stage');
 
     act(() => {
       store.dispatch(updateEgo.fulfilled(declined, 'w1', declined));
     });
-    await waitFor(() =>
-      expect(screen.getByTestId('stage')).toHaveAttribute(
-        'data-stage-interface',
-        'last-stage',
-      ),
-    );
+    await waitFor(() => expect(shownStage()).toBe('last-stage'));
+  });
+
+  it('stays on the stage when an answer still being stored is refused', async () => {
+    const { next, store } = await renderShell();
+    act(() => {
+      store.dispatch(updateEgo.pending('w1', declined));
+    });
+
+    await userEvent.setup().click(next);
+    act(() => {
+      store.dispatch(updateEgo.rejected(new Error('refused'), 'w1', declined));
+    });
+    await act(() => new Promise((resolve) => setTimeout(resolve, 100)));
+    expect(shownStage()).toBe('first-stage');
+
+    await userEvent.setup().click(next);
+    await waitFor(() => expect(shownStage()).toBe('agreed-stage'));
   });
 });
