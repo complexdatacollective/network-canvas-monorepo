@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
+  createDefaultFinishSessionStage,
   type CurrentProtocol,
   DEFAULT_FINISH_SESSION_TEXT,
   ProtocolValidationError,
@@ -191,6 +192,35 @@ describe('userActions', () => {
           outcome: 'completed',
         },
       ]);
+    });
+  });
+
+  // A protocol has exactly one finish stage, so one that arrives with a
+  // second is refused rather than opened.
+  describe('opening a protocol with two finish stages', () => {
+    it('refuses it, naming the rule', async () => {
+      const actual = await vi.importActual<
+        typeof import('@codaco/protocol-validation')
+      >('@codaco/protocol-validation');
+      validateProtocol.mockImplementation(actual.validateProtocol);
+      const localization = { defaultLocale: 'en', locales: ['en'] };
+      const protocol: CurrentProtocol = {
+        ...makeProtocol(),
+        stages: [
+          createDefaultFinishSessionStage({ id: 'finish', localization }),
+          createDefaultFinishSessionStage({ id: 'finish-2', localization }),
+        ],
+      };
+
+      const result = await runThunk(openBundledTemplate({ protocol }));
+
+      expect(result.payload).toEqual({
+        status: 'validation-error',
+        message: expect.stringContaining(
+          'A protocol has exactly one finish stage',
+        ),
+      });
+      expect(setActiveProtocol).not.toHaveBeenCalled();
     });
   });
 

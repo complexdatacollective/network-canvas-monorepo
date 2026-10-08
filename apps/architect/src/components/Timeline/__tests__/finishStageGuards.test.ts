@@ -57,10 +57,15 @@ describe('Timeline finish stage guards', () => {
     ).toBeNull();
   });
 
-  it('accepts an order that leaves an imported protocol no worse than it was', () => {
-    const imported = [intro, finish, names];
+  // The finish stage cannot be moved at all: not by dragging or arrowing it,
+  // and not by moving another stage past it.
+  it('refuses every order that moves the finish stage', () => {
+    const outOfPlace = [intro, finish, names];
     expect(
-      getFinishStageReorderWarning(imported, [intro, names, finish]),
-    ).toBeNull();
+      getFinishStageReorderWarning(outOfPlace, [intro, names, finish]),
+    ).not.toBeNull();
+    expect(
+      getFinishStageReorderWarning(outOfPlace, [finish, intro, names]),
+    ).not.toBeNull();
   });
 });

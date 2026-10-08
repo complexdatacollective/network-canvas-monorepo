@@ -64,6 +64,7 @@ import {
   lockProtocolDraft,
 } from '../protocol/commands.ts';
 import {
+  addsSecondFinishStage,
   advanceDraftManifest,
   creationIndex,
   fenceDraftLeases,
@@ -1085,10 +1086,28 @@ export const create = Effect.fn('protocolBuilder.create')(function* (
           );
         }
         const stages = stageList(order.document);
+        const types = yield* loadStageTypes(teamId, head, stages);
+        // A protocol has exactly one finish stage.
+        if (addsSecondFinishStage(types, timelineStageOf(created))) {
+          return unchanged<Published<CreateOutcome>>({
+            outcome: {
+              status: 'invalidShape',
+              sectionId: target,
+              issues: [
+                {
+                  path: ['type'],
+                  message:
+                    'A protocol has exactly one finish stage, and this one already has it.',
+                },
+              ],
+            },
+            events: [],
+          });
+        }
         // Never after the finish stage, where no participant could reach it:
         // a position at or past it, or none, puts the stage just before it.
         const at = creationIndex(
-          yield* loadStageTypes(teamId, head, stages),
+          types,
           timelineStageOf(created),
           input.position === undefined
             ? stages.length

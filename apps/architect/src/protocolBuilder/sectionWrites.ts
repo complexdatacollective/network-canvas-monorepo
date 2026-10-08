@@ -31,10 +31,14 @@ import {
   updateTypeAsync,
 } from '~/ducks/modules/protocol/codebook';
 import { commitStage } from '~/ducks/modules/protocol/commitStage';
-import { actionCreators as stageActionCreators } from '~/ducks/modules/protocol/stages';
+import {
+  isLastFinishStage,
+  actionCreators as stageActionCreators,
+} from '~/ducks/modules/protocol/stages';
 import { getAssetManifest, getProtocol } from '~/selectors/protocol';
 
 import type { ArchitectStore } from './architectStore.ts';
+import { STAGE_ORDER_SECTION } from './protocolSections.ts';
 
 /**
  * `updateType` reads a type id for `node` and `edge` only; the ego definition
@@ -286,6 +290,22 @@ export async function deleteStageSection(
           stageId,
         );
   if (remaining.length > 0) return { status: 'referenced', remaining };
+  // The interview has to end at a finish stage, so the last one stays. The
+  // contract has no refusal of its own for that, and the stage order naming
+  // the stage is the reference that is not taken out, so it is the one the
+  // refusal names, as Studio's host does.
+  const stages = protocol?.stages ?? [];
+  if (isLastFinishStage(stages, stageId)) {
+    return {
+      status: 'referenced',
+      remaining: [
+        {
+          sectionId: STAGE_ORDER_SECTION,
+          path: ['stages', stages.findIndex(({ id }) => id === stageId)],
+        },
+      ],
+    };
+  }
   await store.dispatch(stageActionCreators.deleteStage(stageId)).unwrap();
   return { status: 'deleted' };
 }

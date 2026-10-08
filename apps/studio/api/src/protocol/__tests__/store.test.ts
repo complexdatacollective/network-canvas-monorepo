@@ -433,17 +433,14 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
       });
     });
 
-    it('puts a finish stage where it is asked to go', async () => {
+    it('refuses a second finish stage, and keeps the draft as it was', async () => {
       const { draftId } = await create(baseProtocol());
-      await run(
-        addStage(TEST_TEAM_ID, { draftId, stage: finish('secondFinish') }),
-      );
-      expect(await stageIds(draftId)).toEqual([
-        'nameGenerator1',
-        'sociogram1',
-        'finish',
-        'secondFinish',
-      ]);
+      const before = await run(getDraftSections(TEST_TEAM_ID, draftId));
+      await expect(
+        run(addStage(TEST_TEAM_ID, { draftId, stage: finish('secondFinish') })),
+      ).rejects.toThrow(/exactly one finish stage/);
+      const after = await run(getDraftSections(TEST_TEAM_ID, draftId));
+      expect(after.headManifestHash).toBe(before.headManifestHash);
     });
 
     it('refuses to remove the only finish stage, and keeps the draft as it was', async () => {
@@ -454,19 +451,6 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
       ).rejects.toThrow(/only finish stage/);
       const after = await run(getDraftSections(TEST_TEAM_ID, draftId));
       expect(after.headManifestHash).toBe(before.headManifestHash);
-    });
-
-    it('removes a finish stage while another remains', async () => {
-      const { draftId } = await create(baseProtocol());
-      await run(
-        addStage(TEST_TEAM_ID, { draftId, stage: finish('secondFinish') }),
-      );
-      await run(removeStage(TEST_TEAM_ID, { draftId, stageId: 'finish' }));
-      expect(await stageIds(draftId)).toEqual([
-        'nameGenerator1',
-        'sociogram1',
-        'secondFinish',
-      ]);
     });
 
     it('refuses a move that puts a stage after it, and allows one that does not', async () => {

@@ -1368,6 +1368,34 @@ describe("Architect's in-process protocol-builder host", () => {
     expect(stageIds(store)).toContain('geospatial-1');
   });
 
+  // The interview has to end at a finish stage, so its only one stays; the
+  // refusal names the stage order, the reference that is not taken out.
+  it('refuses to delete the stage that ends the interview', async () => {
+    const { store, client } = openProtocol();
+    const finishIndex = stageIds(store).indexOf('finish');
+    expect(finishIndex).toBe(stageIds(store).length - 1);
+
+    const { error, isSuccess } = await safe(
+      client.call('Delete', {
+        protocolId: PROTOCOL_ID,
+        sectionId: sectionId({ kind: 'stage', stageId: 'finish' }),
+      }),
+    );
+
+    expect(isSuccess).toBe(false);
+    expect(error).toEqual(
+      new ReferencesRemain({
+        remaining: [
+          {
+            sectionId: sectionId({ kind: 'stageOrder' }),
+            path: ['stages', finishIndex],
+          },
+        ],
+      }),
+    );
+    expect(stageIds(store)).toContain('finish');
+  });
+
   it('creates the ego codebook a protocol does not have yet', async () => {
     const { store, client } = openProtocol({ withEgo: false });
     expect(getProtocol(store.getState())?.codebook.ego).toBeUndefined();

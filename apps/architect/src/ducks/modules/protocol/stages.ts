@@ -53,17 +53,33 @@ export const isLastFinishStage = (
 };
 
 /**
- * Where a stage being created is inserted when it is not itself a finish
- * stage: never after a finish stage, where no participant could reach it. A
- * position at or past the first finish stage puts it just before that stage.
+ * Whether an order moves a finish stage from where it is. The stage that ends
+ * the interview stays where it is: it cannot be moved, and no stage can be
+ * moved past it, which would move it too.
+ */
+export const movesFinishStage = (
+  committedStages: readonly Pick<Stage, 'id' | 'type'>[],
+  proposedStages: readonly Pick<Stage, 'id' | 'type'>[],
+) =>
+  committedStages.some(
+    (stage, index) =>
+      stage.type === 'FinishSession' &&
+      proposedStages.findIndex(({ id }) => id === stage.id) !== index,
+  );
+
+/**
+ * Where a stage being created is inserted: never after a finish stage, where
+ * no participant could reach it. A position at or past the first finish stage
+ * puts it just before that stage. A finish stage itself goes at the end; a
+ * protocol that already has one gets no second (see `commitStage`).
  */
 export const creationIndex = (
   stages: readonly Pick<Stage, 'type'>[],
   stage: Pick<Stage, 'type'>,
   index: number | undefined,
 ) => {
+  if (isFinishSessionStage(stage)) return stages.length;
   const requested = index ?? stages.length;
-  if (isFinishSessionStage(stage)) return requested;
   const firstFinish = stages.findIndex(isFinishSessionStage);
   return firstFinish === -1 ? requested : Math.min(requested, firstFinish);
 };
@@ -204,11 +220,13 @@ const stagesSlice = createSlice({
         return;
       }
 
-      // The interview ends at its finish stage: a move that would leave a
-      // stage after it, or the interview ending anywhere else, is refused.
+      // The interview ends at its finish stage: a move of the finish stage,
+      // or one that would leave a stage after it or the interview ending
+      // anywhere else, is refused.
       if (
+        movesFinishStage(state, reorderedStages) ||
         findTimelineStructureProblems(reorderedStages).length >
-        findTimelineStructureProblems(state).length
+          findTimelineStructureProblems(state).length
       ) {
         return;
       }
@@ -243,6 +261,10 @@ const stagesSlice = createSlice({
         const { stageId, stage, index } = action.payload;
 
         if (!stageId) {
+          // A protocol has exactly one finish stage.
+          if (isFinishSessionStage(stage) && state.some(isFinishSessionStage)) {
+            return;
+          }
           state.splice(
             creationIndex(state, stage, index),
             0,

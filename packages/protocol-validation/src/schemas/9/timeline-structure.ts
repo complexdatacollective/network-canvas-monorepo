@@ -1,11 +1,17 @@
 /**
  * The structural rules a protocol's stage list must keep: every route through
- * the interview ends at a finish stage, and every stage is on some route.
+ * the interview ends at a finish stage, every stage is on some route, and a
+ * protocol has exactly one finish stage.
  *
  * The timeline is a straight line until branching lands (#1694), so both rules
  * take their linear form here: the last stage is a finish stage, and nothing
  * follows a finish stage. Branching generalises them to every path through the
  * timeline without a schema change; callers read the problems, not the rule.
+ *
+ * One finish stage per protocol is a rule of its own for now, rather than
+ * something left to follow from the other two: a second finish stage is
+ * reported as a second finish stage, not as an unreachable one. Branching may
+ * lift it, since different routes can end at different finish stages.
  */
 
 type StageLike = Readonly<{ type: string }>;
@@ -32,6 +38,13 @@ export type TimelineStructureProblem =
       stageIndex: number;
       /** The finish stage every route ends at before this one. */
       finishStageIndex: number;
+    }>
+  | Readonly<{
+      /** A finish stage after the first: a protocol has exactly one. */
+      kind: 'second-finish';
+      stageIndex: number;
+      /** The protocol's first finish stage. */
+      finishStageIndex: number;
     }>;
 
 export const findTimelineStructureProblems = (
@@ -49,7 +62,9 @@ export const findTimelineStructureProblems = (
 
   for (let index = firstFinishIndex + 1; index < stages.length; index += 1) {
     problems.push({
-      kind: 'unreachable',
+      kind: isFinishSessionStage(stages[index])
+        ? 'second-finish'
+        : 'unreachable',
       stageIndex: index,
       finishStageIndex: firstFinishIndex,
     });

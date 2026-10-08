@@ -142,6 +142,26 @@ describe('protocol.stages', () => {
         expect(reducer(withFinish, test.moveStage(0, 3))).toEqual(withFinish);
       });
 
+      it('never moves the finish stage, even towards the end', () => {
+        const outOfPlace = [mockStages[0]!, finish, ...mockStages.slice(1)];
+        expect(reducer(outOfPlace, test.moveStage(1, 3))).toEqual(outOfPlace);
+      });
+
+      it('never adds a second finish stage', () => {
+        for (const index of [undefined, 0, 3, 4]) {
+          expect(
+            reducer(
+              withFinish,
+              commitStage({
+                stageId: null,
+                stage: { ...finish, id: 'finish-2' },
+                index,
+              }),
+            ),
+          ).toEqual(withFinish);
+        }
+      });
+
       it('moves stages around before the finish stage', () => {
         expect(ids(reducer(withFinish, test.moveStage(0, 2)))).toEqual([
           '9',

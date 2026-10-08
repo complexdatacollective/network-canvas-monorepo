@@ -96,3 +96,23 @@ describe('New Stage screen capability filters', () => {
     expect(offeredInterfaces()).toContain('Per Alter Form');
   });
 });
+
+// A protocol is created with its finish stage and keeps exactly that one, so
+// the researcher is never offered another, under any filter or search.
+describe('New Stage screen and the finish stage', () => {
+  it('never offers the Finish Screen', () => {
+    renderScreen({ encryptedVariables: true });
+
+    expect(
+      screen.queryByRole('button', { name: 'Finish Screen' }),
+    ).not.toBeInTheDocument();
+    expect(getInterfaceTypes().map(({ type }) => type)).not.toContain(
+      'FinishSession',
+    );
+
+    fireEvent.click(capabilityFilter('Utilities'));
+    expect(
+      screen.queryByRole('button', { name: 'Finish Screen' }),
+    ).not.toBeInTheDocument();
+  });
+});

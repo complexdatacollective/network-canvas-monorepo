@@ -389,6 +389,81 @@ test('refuses to delete the stage that ends the interview', async ({
   expect(after.map(({ id }) => id)).toEqual(before.map(({ id }) => id));
 });
 
+// The finish stage stays where it is: it cannot be moved itself, and no stage
+// can be moved past it.
+test('refuses to move the stage that ends the interview', async ({
+  architectPage,
+  seed,
+}) => {
+  const { protocol, assets } = loadAllInterfacesFixture();
+  await seed(protocol, { name: 'All Interfaces', assets });
+  await gotoProtocol(architectPage);
+
+  const before = stagesOf(await readProtocolJson(architectPage));
+  const finish = before.at(-1);
+  const beforeFinish = before.at(-2);
+  if (finish?.type !== 'FinishSession' || !beforeFinish) {
+    throw new Error('fixture does not end at a FinishSession stage');
+  }
+
+  const timeline = new Timeline(architectPage);
+  const guardDialog = architectPage.getByRole('dialog', {
+    name: 'Cannot move stage',
+  });
+
+  await timeline.openControl(finish.label).focus();
+  await timeline.openControl(finish.label).press('ArrowUp');
+  await expect(guardDialog).toContainText(
+    'The stage that ends the interview has to stay at the end of the protocol.',
+  );
+  await acknowledgeRefusal(guardDialog);
+
+  await timeline.openControl(beforeFinish.label).focus();
+  await timeline.openControl(beforeFinish.label).press('ArrowDown');
+  await acknowledgeRefusal(guardDialog);
+
+  await settleAfterRefusal(architectPage, editDescription(architectPage));
+  const after = stagesOf(await readProtocolJson(architectPage));
+  expect(after.map(({ id }) => id)).toEqual(before.map(({ id }) => id));
+});
+
+// No add control places a stage after the finish stage: the last insertion
+// point sits above it, and the trailing add control inserts before it.
+test('adds new stages before the stage that ends the interview', async ({
+  architectPage,
+  seed,
+}) => {
+  const { protocol, assets } = loadAllInterfacesFixture();
+  await seed(protocol, { name: 'All Interfaces', assets });
+  await gotoProtocol(architectPage);
+
+  const stages = stagesOf(await readProtocolJson(architectPage));
+  const finish = stages.at(-1);
+  if (finish?.type !== 'FinishSession') {
+    throw new Error('fixture does not end at a FinishSession stage');
+  }
+  const finishIndex = stages.length - 1;
+
+  const timeline = new Timeline(architectPage);
+  await expect(timeline.insertButtons()).toHaveCount(stages.length);
+  await expect(timeline.insertButtons().last()).toHaveAccessibleName(
+    `Add stage here, before stage ${stages.length}: ${finish.label}`,
+  );
+
+  await timeline.addNewStageButton().click();
+  await architectPage
+    .getByRole('searchbox', { name: 'Search interfaces' })
+    .fill('Information');
+  await architectPage
+    .getByRole('button', { name: 'Information', exact: true })
+    .click();
+  await architectPage.waitForURL(
+    new RegExp(
+      `/protocol/stage/new\\?type=Information&insertAtIndex=${finishIndex}$`,
+    ),
+  );
+});
+
 test('deletes a leaf stage after confirming the destructive dialog', async ({
   architectPage,
   seed,

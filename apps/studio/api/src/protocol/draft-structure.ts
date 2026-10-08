@@ -180,17 +180,26 @@ export const loadStageTypes: (
  * Where a stage being created goes, following Architect's rule: a stage that
  * is not itself a finish stage is never put after a finish stage, where no
  * participant could reach it, so a position at or past the first finish stage
- * — or no position at all — puts it just before that stage.
+ * — or no position at all — puts it just before that stage. A finish stage
+ * goes at the end; a draft that already has one gets no second
+ * (`addsSecondFinishStage`).
  */
 export const creationIndex = (
   stages: readonly TimelineStage[],
   stage: TimelineStage,
   requested: number,
 ): number => {
-  if (isFinishSessionStage(stage)) return requested;
+  if (isFinishSessionStage(stage)) return stages.length;
   const firstFinish = stages.findIndex(isFinishSessionStage);
   return firstFinish === -1 ? requested : Math.min(requested, firstFinish);
 };
+
+/** Whether creating `stage` would give the protocol a second finish stage:
+ * a protocol has exactly one. */
+export const addsSecondFinishStage = (
+  stages: readonly TimelineStage[],
+  stage: TimelineStage,
+): boolean => isFinishSessionStage(stage) && stages.some(isFinishSessionStage);
 
 /**
  * Whether removing this stage would leave the interview with no finish stage
@@ -387,11 +396,14 @@ export const addStage: (
       reason: `stage index ${requested} out of range`,
     });
   }
-  const index = creationIndex(
-    yield* loadStageTypes(teamId, head, order),
-    timelineStageOf(params.stage),
-    requested,
-  );
+  const types = yield* loadStageTypes(teamId, head, order);
+  const created = timelineStageOf(params.stage);
+  if (addsSecondFinishStage(types, created)) {
+    return yield* new DraftStructureError({
+      reason: 'a protocol has exactly one finish stage, and this draft has one',
+    });
+  }
+  const index = creationIndex(types, created, requested);
   const newOrder = [...order];
   newOrder.splice(index, 0, stageId);
   yield* fenceDraftLeases(teamId, params.draftId, [orderId, id]);

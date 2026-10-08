@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { migrateProtocol } from '../../../migration/migrate-protocol.ts';
+import {
+  migrateProtocol,
+  migrateProtocolWithSessions,
+} from '../../../migration/migrate-protocol.ts';
 import { createBaseProtocol } from '../../../utils/test-utils.ts';
 import {
   createDefaultFinishSessionStage,
@@ -109,7 +112,7 @@ describe('timeline structure', () => {
 
   it('refuses every stage after a finish stage as unreachable', () => {
     expect(
-      issues([information('a'), finish(), information('b'), finish('f2')]),
+      issues([information('a'), finish(), information('b'), information('c')]),
     ).toEqual([
       {
         path: ['stages', 2],
@@ -124,6 +127,30 @@ describe('timeline structure', () => {
     ]);
   });
 
+  it('a protocol has exactly one finish stage', () => {
+    expect(issues([information('a'), finish(), finish('f2')])).toEqual([
+      {
+        path: ['stages', 2],
+        message:
+          'A protocol has exactly one finish stage, but this is a second one: the first is at position 2.',
+      },
+    ]);
+    expect(
+      issues([information('a'), finish(), information('b'), finish('f2')]),
+    ).toEqual([
+      {
+        path: ['stages', 2],
+        message:
+          'This stage comes after the finish stage at position 2, so no participant can reach it.',
+      },
+      {
+        path: ['stages', 3],
+        message:
+          'A protocol has exactly one finish stage, but this is a second one: the first is at position 2.',
+      },
+    ]);
+  });
+
   it('reports problems by stage index without validating the stages', () => {
     expect(
       findTimelineStructureProblems([
@@ -131,6 +158,12 @@ describe('timeline structure', () => {
         { type: 'Information' },
       ]),
     ).toEqual([{ kind: 'unreachable', stageIndex: 1, finishStageIndex: 0 }]);
+    expect(
+      findTimelineStructureProblems([
+        { type: 'FinishSession' },
+        { type: 'FinishSession' },
+      ]),
+    ).toEqual([{ kind: 'second-finish', stageIndex: 1, finishStageIndex: 0 }]);
   });
 });
 
@@ -151,6 +184,28 @@ describe('v8 to v9 migration', () => {
     expect(
       migrated.stages.filter((stage) => stage.type === 'FinishSession'),
     ).toHaveLength(1);
+  });
+
+  // The engine used to show its own finish screen one place past the last
+  // stage; the appended finish stage takes that place, so a session that was
+  // there, or anywhere before it, resumes where it was.
+  it('resumes a session that was on the old finish screen at the finish stage', () => {
+    const document = schema8();
+    const { protocol, migrateSession } = migrateProtocolWithSessions(document);
+    const finishIndex = protocol.stages.length - 1;
+    expect(protocol.stages[finishIndex]?.type).toBe('FinishSession');
+    const at = (currentStep: number) => {
+      const result = migrateSession({
+        network: { ego: { _uid: 'ego', attributes: {} }, nodes: [], edges: [] },
+        stageMetadata: {},
+        currentStep,
+      });
+      if (!result.success) throw result.error;
+      return result.session.currentStep;
+    };
+    expect(at(document.stages.length)).toBe(finishIndex);
+    expect(at(document.stages.length + 3)).toBe(finishIndex);
+    expect(at(0)).toBe(0);
   });
 
   it('gives the finish stage an id no schema 8 stage holds', () => {

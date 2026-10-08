@@ -21,14 +21,16 @@ ended early. That outcome is saved with each interview and exported.
 - Schema 9 adds the `FinishSession` stage type, with a stage name, a heading
   (`title`), text (`content`) and an `outcome` of `completed`, `ineligible` or
   `terminated`. It has no skip logic.
-- Every schema 9 protocol must end with a finish stage. Validation refuses a
-  protocol with no stages, one whose last stage is not a finish stage, and any
-  stage after a finish stage. `findTimelineStructureProblems` reports the same
-  problems for a list of stages without validating the stages themselves.
+- Every schema 9 protocol must end with a finish stage, and has exactly one.
+  Validation refuses a protocol with no stages, one whose last stage is not a
+  finish stage, any stage after a finish stage, and a second finish stage.
+  `findTimelineStructureProblems` reports the same problems for a list of
+  stages without validating the stages themselves.
 - The v8 to v9 migration appends a finish stage, with id `finish` (or the
   next free `finish-2`, `finish-3`, …), outcome `completed`, and the text the
   interview has always shown there, in English under the protocol's default
-  language. Its notes say so.
+  language. Its notes say so. A recorded interview that was on the old
+  finish screen resumes on the new finish stage.
 - `createDefaultFinishSessionStage`, `defaultFinishSessionText`,
   `defaultFinishSessionFields`, `hasDefaultFinishSessionText` and
   `withDefaultFinishSessionTranslation` supply that text in English, German,
@@ -66,8 +68,9 @@ ended early. That outcome is saved with each interview and exported.
 - A new protocol starts with a finish stage, in each of its languages that
   Network Canvas has text for. The Finish Screen has its own editor, for its
   heading, text and outcome.
-- The last finish stage can't be deleted, and the timeline won't place a stage
-  after it. New stages are added before it.
+- The finish stage can't be deleted or moved, and the timeline won't place a
+  stage after it. New stages are added before it, and a protocol never gains a
+  second one.
 - Adding a language fills in the finish stage's text in that language while
   its heading and text are still the text Network Canvas supplied.
 - Finishing a preview shows the interview's completed state, with a button to

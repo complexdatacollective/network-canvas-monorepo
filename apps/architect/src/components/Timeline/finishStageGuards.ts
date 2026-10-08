@@ -3,7 +3,10 @@ import {
   findTimelineStructureProblems,
   type Stage,
 } from '@codaco/protocol-validation';
-import { isLastFinishStage } from '~/ducks/modules/protocol/stages';
+import {
+  isLastFinishStage,
+  movesFinishStage,
+} from '~/ducks/modules/protocol/stages';
 
 const messages = defineMessages({
   cannotDeleteStage: {
@@ -54,17 +57,18 @@ export const getFinishStageDeleteWarning = (
     : null;
 
 /**
- * Why a proposed order is refused, when it would leave a stage after the
- * stage that ends the interview, or the interview ending anywhere else. An
- * order is only refused for problems it adds, so a protocol imported in a
- * shape that already has one can still be reordered into a better one.
+ * Why a proposed order is refused, when it would move the stage that ends the
+ * interview, leave a stage after it, or have the interview end anywhere else.
+ * Apart from moving the finish stage, an order is only refused for problems
+ * it adds.
  */
 export const getFinishStageReorderWarning = (
   committedStages: readonly TimelineStage[],
   proposedStages: readonly TimelineStage[],
 ): TimelineWarning | null =>
+  movesFinishStage(committedStages, proposedStages) ||
   findTimelineStructureProblems(proposedStages).length >
-  findTimelineStructureProblems(committedStages).length
+    findTimelineStructureProblems(committedStages).length
     ? {
         title: createMessageError(messages.cannotMoveStage),
         description: createMessageError(messages.finishStageStaysLast),
