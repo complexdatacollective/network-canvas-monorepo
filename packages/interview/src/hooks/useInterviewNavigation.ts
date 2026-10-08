@@ -39,6 +39,16 @@ import type {
 import useReadyForNextStage from './useReadyForNextStage';
 import { useStageSelector } from './useStageSelector';
 
+// A write the stage started without waiting for it, as protecting an answer
+// can take a while, may be refused, and may decide what comes next. So the
+// participant moves on from what they see, to another step of the stage,
+// another prompt or another stage, only once the writes under way when they
+// asked have been stored, and to another prompt or stage only once any the
+// stage's handlers then began have been stored too. When one is refused they
+// stay, so they see why and can try again.
+const allStored = async (writes: Promise<boolean> | undefined) =>
+  (await writes) ?? true;
+
 export default function useInterviewNavigation(
   initialStageOverrideIndex?: number,
   reviewMode = false,
@@ -162,20 +172,6 @@ export default function useInterviewNavigation(
     [],
   ) as RegisterBeforeNext;
 
-  // A write the stage started without waiting for it, as protecting an answer
-  // can take a while, may decide which stage comes next. So a stage is left
-  // only once the writes under way when the participant asked to move on, and
-  // any the stage's handlers then began, have been stored. When one is
-  // refused the stage stays, so the participant sees why and can try again.
-  const writesBegunStored = useCallback(
-    async (underWayWhenAsked: Promise<boolean> | undefined) => {
-      const storedBefore = (await underWayWhenAsked) ?? true;
-      const storedSince = (await writesSettled()) ?? true;
-      return storedBefore && storedSince;
-    },
-    [writesSettled],
-  );
-
   /**
    * Before navigation is allowed, we iterate all registered beforeNext handlers
    * in insertion order. If any returns false, navigation is blocked. If any
@@ -213,12 +209,19 @@ export default function useInterviewNavigation(
   const moveForward = useCallback(async () => {
     setForceNavigationDisabled(true);
     setHasAttemptedStageNavigation(true);
-    const writesUnderWay = writesSettled();
 
     try {
+      if (!(await allStored(writesSettled()))) {
+        setReviewBoundaryReached(false);
+        return;
+      }
       const stageAllowsNavigation = await canNavigate('forwards', 'step');
 
       if (!stageAllowsNavigation) {
+        setReviewBoundaryReached(false);
+        return;
+      }
+      if (!(await allStored(writesSettled()))) {
         setReviewBoundaryReached(false);
         return;
       }
@@ -232,10 +235,6 @@ export default function useInterviewNavigation(
       // From this point on we are definitely navigating stages
       // Read after beforeNext handlers finish: form submission can update the
       // network, which can immediately change the active route.
-      if (!(await writesBegunStored(writesUnderWay))) {
-        setReviewBoundaryReached(false);
-        return;
-      }
       const navigation = getNavigableStages(
         interviewStore.getState(),
         currentStepRef.current,
@@ -264,16 +263,18 @@ export default function useInterviewNavigation(
     reviewMode,
     setStep,
     interviewStore,
-    writesBegunStored,
     writesSettled,
   ]);
 
   const moveBackward = useCallback(async () => {
     setForceNavigationDisabled(true);
     setHasAttemptedStageNavigation(true);
-    const writesUnderWay = writesSettled();
 
     try {
+      if (!(await allStored(writesSettled()))) {
+        setReviewBoundaryReached(false);
+        return;
+      }
       const stageAllowsNavigation = await canNavigate('backwards', 'step');
 
       if (!stageAllowsNavigation) {
@@ -282,12 +283,12 @@ export default function useInterviewNavigation(
       }
 
       setReviewBoundaryReached(false);
+      if (!(await allStored(writesSettled()))) return;
       if (stageAllowsNavigation !== 'FORCE' && !isFirstPrompt) {
         dispatch(updatePrompt(promptIndex - 1));
         return;
       }
 
-      if (!(await writesBegunStored(writesUnderWay))) return;
       const navigation = getNavigableStages(
         interviewStore.getState(),
         currentStepRef.current,
@@ -315,7 +316,6 @@ export default function useInterviewNavigation(
     registerBeforeNext,
     protocolStages,
     interviewStore,
-    writesBegunStored,
     writesSettled,
   ]);
 
@@ -350,6 +350,7 @@ export default function useInterviewNavigation(
           }
         }
 
+        if (!(await allStored(writesUnderWay))) return;
         const stageAllowsNavigation = await canNavigate(direction, 'jump');
         if (!stageAllowsNavigation) {
           return;
@@ -357,7 +358,7 @@ export default function useInterviewNavigation(
 
         // Re-check after beforeNext handlers: saving the current screen may
         // have made this target locally hidden or bypassed by a new route.
-        if (!(await writesBegunStored(writesUnderWay))) return;
+        if (!(await allStored(writesSettled()))) return;
         const targetAvailability = getStageAvailabilityMap(
           interviewStore.getState(),
         )[targetIndex];
@@ -389,7 +390,6 @@ export default function useInterviewNavigation(
       registerBeforeNext,
       setStep,
       interviewStore,
-      writesBegunStored,
       writesSettled,
     ],
   );

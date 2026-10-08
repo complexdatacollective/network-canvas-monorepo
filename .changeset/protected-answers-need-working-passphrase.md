@@ -42,24 +42,31 @@ answers; other interviews work as before.
   were made. Before, an earlier answer that took longer to protect could be
   saved last and replace the later one, and an answer put back while an
   earlier one was still being protected could be lost.
-- Leaving a stage, finishing or closing the interview waits for answers
-  still being protected, including answers still waiting for an earlier one
-  to be saved, so they are kept and the next stage is chosen with them. When
-  one of them cannot be saved, the stage is not left and the interview is not
-  finished or closed, so the participant sees why and can try again. Before,
-  a location picked or a name added just before pressing Next could be lost,
-  and an answer still being protected could be left out of the stage that
-  came next and of the interview handed back when finishing or closing.
+- Leaving a stage, moving to the next or previous question on a stage (or
+  to the next person on the map), finishing or closing the interview waits
+  for answers still being protected, including answers still waiting for an
+  earlier one to be saved and names still being checked, so they are kept
+  and the next stage is chosen with them. When one of them cannot be saved,
+  the participant stays where they are and the interview is not finished or
+  closed, so they see why and can try again. The confirmation to close the
+  interview stays open while it waits, and cancelling it keeps the interview
+  open. Before, a location picked or a name added just before pressing Next
+  could be lost or kept under the wrong question, and an answer still being
+  protected could be left out of the stage that came next and of the
+  interview handed back when finishing or closing.
 - Replacing a protected answer with an unprotected one no longer leaves the
   answer unreadable.
 - Saving a form no longer erases a protected answer the form could not show.
   Before, an answer saved without the details needed to read it appeared
   empty, and saving the form after changing any other answer deleted it. Now
   it is kept unless the participant enters a new answer in its place.
-- The passphrase prompt cannot be closed while it checks a passphrase, and the
-  form for adding or editing a person cannot be closed while it saves. Before,
-  either could be closed and still take effect afterwards, and pressing
-  Finished again during a save could add the same person twice.
+- The passphrase prompt cannot be closed while it checks a passphrase, the
+  form for adding or editing a person cannot be closed while it saves, and
+  the field for adding a name in the Network Composer or on a name generator
+  stays open while it checks and adds a name. Before, any of them could be
+  closed and still take effect afterwards, a name that could not be added was
+  lost, and pressing Finished again during a save could add the same person
+  twice.
 - Browsers and password managers no longer offer to save or fill in the
   passphrase.
 - The category "other" question shows a protected name as it was entered,
@@ -96,7 +103,9 @@ answers; other interviews work as before.
   a name that must not repeat reads only everyone else's. Another protected
   answer that cannot be read no longer stops the question being checked. If
   the answers it compares with cannot be read, the question says so and asks
-  for the passphrase instead of accepting the answer.
+  for the passphrase instead of accepting the answer. A question that waits
+  for those answers to be read compares with them as they are once the wait
+  is over, including a person added meanwhile.
 - Answers being typed are kept when the passphrase is replaced with one that
   cannot read them. The Network Composer's side panel, the questions asked
   about each person or relationship, and the form for adding or editing a

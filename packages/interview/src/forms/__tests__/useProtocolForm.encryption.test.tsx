@@ -1,5 +1,5 @@
 import { configureStore } from '@reduxjs/toolkit';
-import { renderHook, waitFor } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import { isValidElement, type ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { describe, expect, it } from 'vitest';
@@ -23,7 +23,10 @@ import type { ProtocolPayload } from '../../contract/types';
 import { runtimeMessages } from '../../i18n/runtimeMessages';
 import { generateSecureAttributes } from '../../interfaces/Anonymisation/utils';
 import protocol from '../../store/modules/protocol';
-import session, { type SessionState } from '../../store/modules/session';
+import session, {
+  restoreNode,
+  type SessionState,
+} from '../../store/modules/session';
 import ui, { setPassphrase } from '../../store/modules/ui';
 import useProtocolForm from '../useProtocolForm';
 
@@ -197,17 +200,10 @@ function validationContextOf(fieldComponents: ReactNode) {
   return isRecord(validationContext) ? validationContext : undefined;
 }
 
-/** The value the first field's validators see for a stored person. */
-function validatedValue(
-  fieldComponents: ReactNode,
-  variable: string,
-  nodeId = NODE_ID,
-) {
-  const validationContext = validationContextOf(fieldComponents);
-  if (!validationContext || !isRecord(validationContext.network)) {
-    return undefined;
-  }
-  const { nodes } = validationContext.network;
+/** A stored person's value in a network the validators compare with. */
+function valueIn(network: unknown, variable: string, nodeId = NODE_ID) {
+  if (!isRecord(network)) return undefined;
+  const { nodes } = network;
   if (!Array.isArray(nodes)) return undefined;
   const node: unknown = nodes.find(
     (candidate: unknown) =>
@@ -217,6 +213,19 @@ function validatedValue(
     return undefined;
   }
   return node[entityAttributesProperty][variable];
+}
+
+/** The value the first field's validators see for a stored person. */
+function validatedValue(
+  fieldComponents: ReactNode,
+  variable: string,
+  nodeId = NODE_ID,
+) {
+  return valueIn(
+    validationContextOf(fieldComponents)?.network,
+    variable,
+    nodeId,
+  );
 }
 
 /** What a validation run of the first field gets from `resolveNetwork`. */
@@ -336,6 +345,20 @@ describe('useProtocolForm validating against encrypted values', () => {
       validationContextOf(result.current.fieldComponents)?.resolveNetwork,
     ).toBeUndefined();
     expect(store.getState().ui.showPassphrasePrompter).toBe(false);
+  });
+
+  it('compares with a person added while the comparison waited for decryption', async () => {
+    const store = makeStore([await encryptedNode()], PASSPHRASE);
+    const bob = await encryptedNode({ [NAME_VAR]: 'Bob' }, { id: 'node-2' });
+    const { result } = renderForm(store, NAME_VAR);
+
+    const resolving = resolvedNetwork(result.current.fieldComponents);
+    act(() => {
+      store.dispatch(restoreNode(bob));
+    });
+    const resolved = await resolving;
+
+    expect(valueIn(resolved, NAME_VAR, 'node-2')).toBe('Bob');
   });
 
   it("compares `unique` with everyone else's answers, not the edited person's own", async () => {

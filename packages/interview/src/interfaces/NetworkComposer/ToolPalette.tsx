@@ -34,7 +34,11 @@ import GroupPicker, {
   type ActiveGroup,
   type GroupVariable,
 } from './GroupPicker';
-import { type ComposerStoreApi, useComposerStore } from './useComposerStore';
+import {
+  type ComposerStoreApi,
+  type ComposerTool,
+  useComposerStore,
+} from './useComposerStore';
 import { type UndoStoreApi, useUndoStore } from './useUndoStore';
 
 type EdgeEntry = {
@@ -125,6 +129,14 @@ export default function ToolPalette({
 
   const { setActiveTool } = composerStore.getState();
 
+  // While a name is being checked and added, its field stays open, as a form
+  // does while it is submitted, so a refusal is shown, and the name kept,
+  // where it was entered.
+  const [addingName, setAddingName] = useState(false);
+  const chooseTool = (tool: ComposerTool) => {
+    if (!addingName) setActiveTool(tool);
+  };
+
   // The lock decides what the add-node popover opens on. A field already
   // shown is held until the popover next opens, so a name being typed when the
   // passphrase stops working is kept; adding it is then refused, with the
@@ -170,7 +182,7 @@ export default function ToolPalette({
           aria-label={intl.formatMessage(interfaceMessages.select)}
           icon={<SelectIcon />}
           pressed={activeTool.kind === 'select'}
-          onPressedChange={() => setActiveTool({ kind: 'select' })}
+          onPressedChange={() => chooseTool({ kind: 'select' })}
         />
 
         {/* Adding a node opens a name field next to this button. Closing the
@@ -178,6 +190,7 @@ export default function ToolPalette({
         <ToolbarPopover
           open={addNodeOpen}
           onOpenChange={(open) => {
+            if (addingName) return;
             if (open) setNameFieldHeld(false);
             setActiveTool(open ? { kind: 'addNode' } : { kind: 'select' });
           }}
@@ -194,6 +207,7 @@ export default function ToolPalette({
               entityLabel={nodeLabel}
               targetVariable={quickAddTargetVariable}
               onCreate={onAddNode}
+              onAddingChange={setAddingName}
               validationContext={quickAddValidationContext}
               {...quickAddValidationProps}
             />
@@ -218,7 +232,7 @@ export default function ToolPalette({
             <DropdownMenuRadioGroup
               value={activeEdgeType}
               onValueChange={(edgeType) =>
-                setActiveTool({ kind: 'edge', edgeType })
+                chooseTool({ kind: 'edge', edgeType })
               }
             >
               {edges.map(({ edgeType, label }) => (
@@ -252,6 +266,7 @@ export default function ToolPalette({
               variable={groupVariable}
               active={activeGroup}
               onSelect={(variable, value) => {
+                if (addingName) return;
                 onSelectGroup(variable, value);
                 setGroupsOpen(false);
               }}

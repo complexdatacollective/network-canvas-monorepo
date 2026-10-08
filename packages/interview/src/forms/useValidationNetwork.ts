@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useCallback, useMemo, useRef } from 'react';
 import { useSelector } from 'react-redux';
 
 import { createMessageError } from '@codaco/app-i18n/messages';
@@ -145,8 +145,9 @@ const unavailable = (message: string) => () =>
  * neither block validation nor flag the passphrase. Until they are decrypted,
  * `resolveNetwork` stands in: a validation run waits for the decryption, or
  * fails with the reason when no working passphrase is in force, so a value is
- * never checked against ciphertext. For every other form it is the network as
- * stored.
+ * never checked against ciphertext. It compares with the network as it is
+ * once the wait is over, since people can be added or changed elsewhere on
+ * the stage meanwhile. For every other form it is the network as stored.
  */
 export function useValidationNetwork(
   { codebook, network }: { codebook: Codebook; network: NcNetwork },
@@ -171,20 +172,39 @@ export function useValidationNetwork(
   const othersRead = useMemo(() => fromKey(othersKey), [othersKey]);
   const currentRead = useMemo(() => fromKey(currentKey), [currentKey]);
 
-  const otherNodes = useMemo(() => {
-    if (othersRead.length === 0 || subjectType === undefined) return NO_NODES;
-    return network.nodes.filter(
-      (node) => node.type === subjectType && node._uid !== currentEntityId,
-    );
-  }, [othersRead, subjectType, currentEntityId, network.nodes]);
-  const currentNodes = useMemo(() => {
-    if (currentRead.length === 0 || currentEntityId === undefined) {
-      return NO_NODES;
-    }
-    return network.nodes.filter(
-      (node) => node.type === subjectType && node._uid === currentEntityId,
-    );
-  }, [currentRead, subjectType, currentEntityId, network.nodes]);
+  const latestNetwork = useRef(network);
+  latestNetwork.current = network;
+
+  const selectOthers = useCallback(
+    (nodes: NcNode[]) => {
+      if (othersRead.length === 0 || subjectType === undefined) {
+        return NO_NODES;
+      }
+      return nodes.filter(
+        (node) => node.type === subjectType && node._uid !== currentEntityId,
+      );
+    },
+    [othersRead, subjectType, currentEntityId],
+  );
+  const selectCurrent = useCallback(
+    (nodes: NcNode[]) => {
+      if (currentRead.length === 0 || currentEntityId === undefined) {
+        return NO_NODES;
+      }
+      return nodes.filter(
+        (node) => node.type === subjectType && node._uid === currentEntityId,
+      );
+    },
+    [currentRead, subjectType, currentEntityId],
+  );
+  const otherNodes = useMemo(
+    () => selectOthers(network.nodes),
+    [selectOthers, network.nodes],
+  );
+  const currentNodes = useMemo(
+    () => selectCurrent(network.nodes),
+    [selectCurrent, network.nodes],
+  );
 
   const decryptedOthers = useDecryptedNodes(otherNodes, othersRead);
   const decryptedCurrent = useDecryptedNodes(currentNodes, currentRead);
@@ -227,34 +247,36 @@ export function useValidationNetwork(
         ),
       };
     }
-    return {
-      network,
-      resolveNetwork: async () => {
-        const decrypt = (nodes: NcNode[], reads: string[]) =>
-          decryptNodes(
-            nodes,
-            reads,
-            scope,
-            getCodebookVariablesForNodeType,
-            isEnabled,
-          );
-        const plaintextNodes = await Promise.all([
-          decrypt(otherNodes, othersRead),
-          decrypt(currentNodes, currentRead),
-        ]).catch(() => {
-          throw new Error(createMessageError(runtimeMessages.decryptRetry));
-        });
-        return withPlaintextNodes(network, plaintextNodes.flat());
-      },
+    const decrypt = (nodes: NcNode[], reads: string[]) =>
+      decryptNodes(
+        nodes,
+        reads,
+        scope,
+        getCodebookVariablesForNodeType,
+        isEnabled,
+      );
+    // Values already decrypted come back from the scope's cache, so going
+    // round again after a change costs only the values that changed.
+    const resolveLatest = async (): Promise<NcNetwork> => {
+      const checkedAgainst = latestNetwork.current;
+      const plaintextNodes = await Promise.all([
+        decrypt(selectOthers(checkedAgainst.nodes), othersRead),
+        decrypt(selectCurrent(checkedAgainst.nodes), currentRead),
+      ]).catch(() => {
+        throw new Error(createMessageError(runtimeMessages.decryptRetry));
+      });
+      if (latestNetwork.current !== checkedAgainst) return resolveLatest();
+      return withPlaintextNodes(checkedAgainst, plaintextNodes.flat());
     };
+    return { network, resolveNetwork: resolveLatest };
   }, [
     status,
     network,
     plaintextOthers,
     plaintextCurrent,
-    otherNodes,
+    selectOthers,
     othersRead,
-    currentNodes,
+    selectCurrent,
     currentRead,
     scope,
     getCodebookVariablesForNodeType,

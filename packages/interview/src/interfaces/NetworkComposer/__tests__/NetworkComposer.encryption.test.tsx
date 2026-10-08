@@ -1308,6 +1308,91 @@ describe('NetworkComposer validating an encrypted name', () => {
     expect(store.getState().ui.showPassphrasePrompter).toBe(false);
   });
 
+  const GROUP_VAR = 'var-group';
+  const groupedVariables: Record<string, Variable> = {
+    ...uniqueNameVariables,
+    [GROUP_VAR]: {
+      name: 'team',
+      type: 'categorical',
+      options: [{ value: 'red', label: 'Team Red' }],
+    },
+  };
+  const groupedStage: StageProps<'NetworkComposer'>['stage'] = {
+    ...stage,
+    convexHullVariable: asEntityAttributeReference(GROUP_VAR),
+  };
+
+  // Submits `name` while the stored names are still being decrypted, so it
+  // is checked only once `release` is called.
+  async function submitWhileDecrypting(name: string) {
+    let release: () => void = () => undefined;
+    decryptionGate.held = new Promise((resolve) => {
+      release = resolve;
+    });
+    const store = makeStore(
+      [await makeEncryptedNode()],
+      true,
+      true,
+      groupedVariables,
+      groupedStage,
+    );
+    renderComposer(store, groupedStage);
+
+    fireEvent.click(screen.getByRole('button', { name: /add node/i }));
+    const input = await screen.findByRole('textbox', { name: /name/i });
+    await act(async () => {
+      fireEvent.change(input, { target: { value: name } });
+      fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' });
+    });
+    return { store, input, release };
+  }
+
+  it('keeps the field open while a name is checked and added', async () => {
+    const { store, input, release } = await submitWhileDecrypting('Bob');
+    try {
+      await act(async () => {
+        fireEvent.keyDown(input, { key: 'Escape', code: 'Escape' });
+      });
+      fireEvent.click(screen.getByRole('button', { name: /^select$/i }));
+      fireEvent.click(screen.getByRole('button', { name: /groups/i }));
+      fireEvent.click(await screen.findByRole('button', { name: /team red/i }));
+      expect(input).toBeInTheDocument();
+
+      await act(async () => release());
+      await waitFor(() =>
+        expect(store.getState().session.network.nodes).toHaveLength(2),
+      );
+      expect(input).toBeInTheDocument();
+    } finally {
+      release();
+      decryptionGate.held = undefined;
+    }
+  });
+
+  it.each([
+    ['stored once the person is added', 'Bob', true],
+    ['not stored when the name is refused', 'Alice', false],
+  ])(
+    'counts a name being checked as being saved, %s',
+    async (_outcome, name, stored) => {
+      const { store, release } = await submitWhileDecrypting(name);
+      try {
+        const settling = store.writesSettled();
+        expect(settling).toBeDefined();
+
+        await act(async () => release());
+        let allStored: boolean | undefined;
+        await act(async () => {
+          allStored = await settling;
+        });
+        expect(allStored).toBe(stored);
+      } finally {
+        release();
+        decryptionGate.held = undefined;
+      }
+    },
+  );
+
   it('waits for the stored names before checking one submitted while they are being decrypted', async () => {
     let release: () => void = () => undefined;
     decryptionGate.held = new Promise((resolve) => {

@@ -13,7 +13,7 @@ import { entityAttributesProperty } from '@codaco/shared-consts';
 import { CurrentStepProvider } from '../../contexts/CurrentStepContext';
 import { createWritesInFlightMiddleware } from '../../store/middleware/writesInFlight';
 import protocol from '../../store/modules/protocol';
-import session, { updateEgo } from '../../store/modules/session';
+import session, { updateEgo, updatePrompt } from '../../store/modules/session';
 import ui from '../../store/modules/ui';
 import { WritesInFlightProvider } from '../../store/WritesInFlightContext';
 import useInterviewNavigation from '../useInterviewNavigation';
@@ -24,6 +24,7 @@ type TestStage = {
   label: string;
   items: never[];
   skipLogic?: SkipLogic;
+  prompts?: { id: string; text: string }[];
 };
 
 const makeStages = (count: number): TestStage[] =>
@@ -949,4 +950,151 @@ describe('useInterviewNavigation waiting for writes begun on the stage', () => {
 
     expect(onStepChange).not.toHaveBeenCalled();
   });
+
+  // One stage asking two questions, then a second stage.
+  const twoPrompts = () => {
+    const stages = makeStages(2);
+    stages[0]!.prompts = [
+      { id: 'p1', text: 'First question' },
+      { id: 'p2', text: 'Second question' },
+    ];
+    return stages;
+  };
+
+  it.each<
+    [string, (navigation: Navigation) => Promise<unknown>, number, number]
+  >([
+    ['forward', (navigation) => navigation.moveForward(), 0, 1],
+    ['back', (navigation) => navigation.moveBackward(), 1, 0],
+  ])(
+    'moves to the %s prompt only once an answer still being stored is stored',
+    async (_direction, navigate, from, to) => {
+      const { result, onStepChange, store } =
+        renderTrackingWrites(twoPrompts());
+      act(() => {
+        store.dispatch(updatePrompt(from));
+      });
+      store.dispatch(updateEgo.pending('w1', declined));
+
+      let moving: Promise<unknown> = Promise.resolve();
+      act(() => {
+        moving = navigate(result.current);
+      });
+      await queuedWorkRuns();
+      expect(store.getState().session.promptIndex).toBe(from);
+
+      await act(async () => {
+        store.dispatch(updateEgo.fulfilled(declined, 'w1', declined));
+        await moving;
+      });
+      expect(store.getState().session.promptIndex).toBe(to);
+      expect(onStepChange).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each<
+    [string, (navigation: Navigation) => Promise<unknown>, number, number]
+  >([
+    ['forward', (navigation) => navigation.moveForward(), 0, 1],
+    ['back', (navigation) => navigation.moveBackward(), 1, 0],
+  ])(
+    'stays on the prompt when an answer still being stored is refused, going %s, and moves when asked again',
+    async (_direction, navigate, from, to) => {
+      const { result, store } = renderTrackingWrites(twoPrompts());
+      act(() => {
+        store.dispatch(updatePrompt(from));
+      });
+      store.dispatch(updateEgo.pending('w1', declined));
+
+      let moving: Promise<unknown> = Promise.resolve();
+      act(() => {
+        moving = navigate(result.current);
+      });
+      await act(async () => {
+        store.dispatch(
+          updateEgo.rejected(new Error('refused'), 'w1', declined),
+        );
+        await moving;
+      });
+      expect(store.getState().session.promptIndex).toBe(from);
+
+      await act(async () => {
+        await navigate(result.current);
+      });
+      expect(store.getState().session.promptIndex).toBe(to);
+    },
+  );
+
+  it.each<[string, (navigation: Navigation) => Promise<unknown>, number]>([
+    ['forward', (navigation) => navigation.moveForward(), 0],
+    ['back', (navigation) => navigation.moveBackward(), 1],
+  ])(
+    'stays on the prompt, going %s, when an answer the stage begins storing as it moves on is refused',
+    async (_direction, navigate, from) => {
+      const { result, store } = renderTrackingWrites(twoPrompts());
+      act(() => {
+        store.dispatch(updatePrompt(from));
+        result.current.registerBeforeNext(() => {
+          store.dispatch(updateEgo.pending('w1', declined));
+          return true;
+        });
+      });
+
+      let moving: Promise<unknown> = Promise.resolve();
+      act(() => {
+        moving = navigate(result.current);
+      });
+      await queuedWorkRuns();
+      await act(async () => {
+        store.dispatch(
+          updateEgo.rejected(new Error('refused'), 'w1', declined),
+        );
+        await moving;
+      });
+
+      expect(store.getState().session.promptIndex).toBe(from);
+    },
+  );
+
+  it.each<[string, (navigation: Navigation) => Promise<unknown>]>([
+    ['forward', (navigation) => navigation.moveForward()],
+    ['back', (navigation) => navigation.moveBackward()],
+  ])(
+    'takes no step within the stage, going %s, until an answer still being stored is stored, and none when it is refused',
+    async (_direction, navigate) => {
+      const { result, store } = renderTrackingWrites(makeStages(3), 1);
+      // A stage that moves between its own steps, as the map moves from one
+      // person to the next.
+      const steps: string[] = [];
+      act(() => {
+        result.current.registerBeforeNext((direction) => {
+          steps.push(direction);
+          return false;
+        });
+      });
+      store.dispatch(updateEgo.pending('w1', declined));
+      store.dispatch(updateEgo.pending('w2', declined));
+
+      let moving: Promise<unknown> = Promise.resolve();
+      act(() => {
+        moving = navigate(result.current);
+      });
+      await queuedWorkRuns();
+      expect(steps).toEqual([]);
+
+      await act(async () => {
+        store.dispatch(updateEgo.fulfilled(declined, 'w1', declined));
+        store.dispatch(
+          updateEgo.rejected(new Error('refused'), 'w2', declined),
+        );
+        await moving;
+      });
+      expect(steps).toEqual([]);
+
+      await act(async () => {
+        await navigate(result.current);
+      });
+      expect(steps).toHaveLength(1);
+    },
+  );
 });

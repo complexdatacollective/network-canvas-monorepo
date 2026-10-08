@@ -199,6 +199,48 @@ describe('Shell leaving a stage with a write under way', () => {
 });
 
 describe('Shell closing the interview with a write under way', () => {
+  const exitConfirmation = () =>
+    screen.queryByRole('dialog', { name: 'Exit this interview?' });
+
+  it('keeps the confirmation open until an answer still being stored is stored, then exits', async () => {
+    const onExit = vi.fn();
+    const { store } = await renderShell(onExit);
+    act(() => {
+      store.dispatch(updateEgo.pending('w1', declined));
+    });
+
+    await exitInterview();
+    await act(() => new Promise((resolve) => setTimeout(resolve, 100)));
+    expect(onExit).not.toHaveBeenCalled();
+    expect(exitConfirmation()).not.toBeNull();
+
+    act(() => {
+      store.dispatch(updateEgo.fulfilled(declined, 'w1', declined));
+    });
+    await waitFor(() => expect(onExit).toHaveBeenCalledTimes(1));
+  });
+
+  it('stays open when the participant cancels while an answer is still being stored', async () => {
+    const onExit = vi.fn();
+    const { store } = await renderShell(onExit);
+    act(() => {
+      store.dispatch(updateEgo.pending('w1', declined));
+    });
+
+    await exitInterview();
+    const dialog = exitConfirmation();
+    if (!dialog) throw new Error('the confirmation closed');
+    await userEvent
+      .setup()
+      .click(within(dialog).getByRole('button', { name: 'Cancel' }));
+    act(() => {
+      store.dispatch(updateEgo.fulfilled(declined, 'w1', declined));
+    });
+    await act(() => new Promise((resolve) => setTimeout(resolve, 100)));
+
+    expect(onExit).not.toHaveBeenCalled();
+  });
+
   it('stays open when an answer still being stored is refused', async () => {
     const onExit = vi.fn();
     const { store } = await renderShell(onExit);

@@ -1,5 +1,11 @@
 import { configureStore } from '@reduxjs/toolkit';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Provider } from 'react-redux';
 import { describe, expect, it, vi } from 'vitest';
@@ -26,6 +32,7 @@ import session, {
   type SessionState,
 } from '../../../../store/modules/session';
 import ui, { setPassphrase } from '../../../../store/modules/ui';
+import { WritesInFlightProvider } from '../../../../store/WritesInFlightContext';
 import type { StageProps } from '../../../../types';
 import { generateSecureAttributes } from '../../../Anonymisation/utils';
 import QuickNodeForm from '../QuickNodeForm';
@@ -173,6 +180,7 @@ function renderQuickNodeForm({
   existingNodes,
   encrypted,
   addNode,
+  trackWrite = () => undefined,
 }: {
   validation?: Validation;
   omitComponent?: boolean;
@@ -182,6 +190,7 @@ function renderQuickNodeForm({
   addNode: (
     attributes: NcNode[typeof entityAttributesProperty],
   ) => Promise<FormSubmissionResult>;
+  trackWrite?: (stored: Promise<boolean>) => void;
 }) {
   const store = configureStore({
     reducer: { session, protocol, ui },
@@ -201,13 +210,18 @@ function renderQuickNodeForm({
 
   render(
     <Provider store={store}>
-      <CurrentStepProvider currentStep={0} onStepChange={vi.fn()}>
-        <QuickNodeForm
-          disabled={false}
-          targetVariable={TARGET_VARIABLE}
-          addNode={addNode}
-        />
-      </CurrentStepProvider>
+      <WritesInFlightProvider
+        writesSettled={() => undefined}
+        trackWrite={trackWrite}
+      >
+        <CurrentStepProvider currentStep={0} onStepChange={vi.fn()}>
+          <QuickNodeForm
+            disabled={false}
+            targetVariable={TARGET_VARIABLE}
+            addNode={addNode}
+          />
+        </CurrentStepProvider>
+      </WritesInFlightProvider>
     </Provider>,
   );
 
@@ -402,5 +416,89 @@ describe('QuickNodeForm with an encrypted target variable', () => {
 
     await waitFor(() => expect(input).toHaveAttribute('aria-invalid', 'true'));
     expect(addNode).not.toHaveBeenCalled();
+  });
+});
+
+describe('QuickNodeForm while a name is being added', () => {
+  const plainNode = (name: string): NcNode => ({
+    [entityPrimaryKeyProperty]: 'existing-node',
+    type: NODE_TYPE,
+    [entityAttributesProperty]: { [TARGET_VARIABLE]: name },
+  });
+
+  // An add that waits until `finish` says how it went.
+  function heldAdd() {
+    let finish: (result: FormSubmissionResult) => void = () => undefined;
+    const addNode = vi.fn(
+      () =>
+        new Promise<FormSubmissionResult>((resolve) => {
+          finish = resolve;
+        }),
+    );
+    return {
+      addNode,
+      finish: (result: FormSubmissionResult) => finish(result),
+    };
+  }
+
+  it.each([
+    ['stored once the person is added', { success: true }, true],
+    [
+      'not stored when the person could not be added',
+      { success: false },
+      false,
+    ],
+  ])(
+    'counts the name as being saved from Enter, %s',
+    async (_outcome, result, stored) => {
+      const tracked: Promise<boolean>[] = [];
+      const { addNode, finish } = heldAdd();
+      renderQuickNodeForm({
+        addNode,
+        trackWrite: (write) => tracked.push(write),
+      });
+
+      const input = await openField();
+      await userEvent.type(input, 'Bob');
+      fireEvent.submit(input.closest('form')!);
+      expect(tracked).toHaveLength(1);
+
+      await waitFor(() => expect(addNode).toHaveBeenCalled());
+      await act(async () => finish(result));
+      expect(await tracked[0]).toBe(stored);
+    },
+  );
+
+  it('counts a name it refuses as not saved', async () => {
+    const tracked: Promise<boolean>[] = [];
+    const addNode = vi.fn(saved);
+    renderQuickNodeForm({
+      validation: { unique: true },
+      existingNodes: [plainNode('Alice')],
+      addNode,
+      trackWrite: (write) => tracked.push(write),
+    });
+
+    const input = await openField();
+    await userEvent.type(input, 'Alice');
+    fireEvent.submit(input.closest('form')!);
+    expect(tracked).toHaveLength(1);
+
+    expect(await tracked[0]).toBe(false);
+    expect(addNode).not.toHaveBeenCalled();
+  });
+
+  it('keeps the field open, and the name, while the name is being added', async () => {
+    const { addNode, finish } = heldAdd();
+    renderQuickNodeForm({ addNode });
+
+    const input = await openField();
+    await userEvent.type(input, 'Bob');
+    fireEvent.submit(input.closest('form')!);
+    await waitFor(() => expect(addNode).toHaveBeenCalled());
+    fireEvent.click(screen.getByTestId('quick-add-toggle'));
+
+    await act(async () => finish({ success: false }));
+    expect(screen.getByTestId('quick-add-input')).toHaveValue('Bob');
   });
 });
