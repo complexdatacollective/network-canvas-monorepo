@@ -41,8 +41,6 @@ describe('interview-owned interface locale negotiation', () => {
 
   it('falls through to the browser when the interface lacks the stated language', () => {
     expect(resolveInterviewLocale(['es'], 'ar')).toBe('es');
-    expect(resolveInterviewLocale(['es'], 'und')).toBe('es');
-    expect(resolveInterviewLocale(['es'], 'und-Latn')).toBe('es');
     expect(resolveInterviewLocale(['es'], 'not_a_locale')).toBe('es');
     expect(resolveInterviewLocale([], 'ar')).toBe('en');
   });

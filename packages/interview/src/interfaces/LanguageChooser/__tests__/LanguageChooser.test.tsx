@@ -293,28 +293,6 @@ describe('LanguageChooser', () => {
     ).toHaveAttribute('aria-selected', 'true');
   });
 
-  it('names the unspecified language in the interface language', async () => {
-    renderChooser({
-      payload: makePayload({
-        localization: { defaultLocale: 'und', locales: ['und', 'fr'] },
-      }),
-    });
-    const user = userEvent.setup();
-    const group = await languageGroup();
-
-    const unspecified = within(group).getByText('Unspecified language');
-    expect(languageOf(unspecified)).toBe(screen.getByRole('main'));
-    expect(
-      within(group).getByRole('option', { name: 'Unspecified language' }),
-    ).toHaveAttribute('aria-selected', 'true');
-
-    await user.click(within(group).getByRole('option', { name: label('fr') }));
-
-    expect(
-      await within(group).findByRole('option', { name: 'Langue non précisée' }),
-    ).toHaveAttribute('aria-selected', 'false');
-  });
-
   it('shows only the heading and the languages', async () => {
     renderChooser();
     await languageGroup();

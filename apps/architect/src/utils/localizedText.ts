@@ -9,12 +9,6 @@ import {
 
 export type ProtocolLocalization = CurrentProtocol['localization'];
 
-/**
- * The language migrated content is marked with until its author says which
- * language it is written in. Never offered for new content.
- */
-export const UNSPECIFIED_LOCALE = 'und';
-
 export type ResolvedText = {
   text: string;
   /** The translation the text came from, for its `lang` and `dir`. */

@@ -156,22 +156,4 @@ describe('StagesMenu screen names', () => {
     expect(fallback).toHaveAttribute('lang', 'en');
     expect(fallback).toHaveAttribute('dir', 'ltr');
   });
-
-  it('gives a name in the unspecified language no language of its own', () => {
-    renderMenu({
-      localization: { defaultLocale: 'und', locales: ['und'] },
-      stages: [
-        {
-          id: 'only',
-          type: 'Information',
-          label: { und: 'Welcome' },
-          items: [],
-        },
-      ],
-    });
-
-    const name = screen.getByText('Welcome');
-    expect(name).not.toHaveAttribute('lang');
-    expect(name).not.toHaveAttribute('dir');
-  });
 });

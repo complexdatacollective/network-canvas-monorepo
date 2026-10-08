@@ -6,7 +6,7 @@ import createTimeline, { timelineActions } from '~/ducks/middleware/timeline';
 import activeProtocol, {
   actionCreators,
   addProtocolLocales,
-  identifyProtocolLocale,
+  changeProtocolLocale,
   removeProtocolLocale,
   setActiveProtocol,
   setProtocolDefaultLocale,
@@ -29,16 +29,16 @@ const makeStore = () =>
 
 type Store = ReturnType<typeof makeStore>;
 
-const migratedProtocol = (): CurrentProtocol => ({
-  name: 'Migrated study',
+const englishProtocol = (): CurrentProtocol => ({
+  name: 'English study',
   schemaVersion: 9,
-  localization: { defaultLocale: 'und', locales: ['und'] },
+  localization: { defaultLocale: 'en', locales: ['en'] },
   assetManifest: {},
   codebook: {
     node: {
       person: {
         name: 'Person',
-        label: { und: 'Person' },
+        label: { en: 'Person' },
         color: 'node-color-seq-1',
         shape: { default: 'circle' },
       },
@@ -50,8 +50,8 @@ const migratedProtocol = (): CurrentProtocol => ({
     {
       id: 'welcome',
       type: 'Information',
-      label: { und: 'Welcome' },
-      title: { und: 'Hello' },
+      label: { en: 'Welcome' },
+      title: { en: 'Hello' },
       items: [],
     },
   ],
@@ -73,42 +73,41 @@ describe('protocol language reducers and undo', () => {
 
   beforeEach(() => {
     store = makeStore();
-    store.dispatch(setActiveProtocol(migratedProtocol()));
+    store.dispatch(setActiveProtocol(englishProtocol()));
   });
 
-  it('identifies migrated text as a language in one undo step', () => {
+  it('changes the language text is recorded as in one undo step', () => {
     const before = pastLength(store);
 
-    store.dispatch(identifyProtocolLocale({ locale: 'en' }));
+    store.dispatch(changeProtocolLocale({ from: 'en', to: 'es' }));
 
     expect(pastLength(store)).toBe(before + 1);
     expect(presentOf(store).localization).toEqual({
-      defaultLocale: 'en',
-      locales: ['en'],
+      defaultLocale: 'es',
+      locales: ['es'],
     });
-    expect(stageLabel(store)).toEqual({ en: 'Welcome' });
+    expect(stageLabel(store)).toEqual({ es: 'Welcome' });
     expect(presentOf(store).codebook.node?.person?.label).toEqual({
-      en: 'Person',
+      es: 'Person',
     });
 
     store.dispatch(timelineActions.undo());
 
-    expect(presentOf(store)).toEqual(migratedProtocol());
+    expect(presentOf(store)).toEqual(englishProtocol());
   });
 
-  it('renames no language once the unidentified one is identified', () => {
-    store.dispatch(identifyProtocolLocale({ locale: 'en' }));
-    const identified = presentOf(store);
+  it('refuses to change a language into one the protocol already has', () => {
+    store.dispatch(addProtocolLocales({ locales: ['fr'] }));
+    const present = presentOf(store);
     const before = pastLength(store);
 
-    store.dispatch(identifyProtocolLocale({ locale: 'en-GB' }));
+    store.dispatch(changeProtocolLocale({ from: 'en', to: 'fr' }));
 
     expect(pastLength(store)).toBe(before);
-    expect(presentOf(store)).toBe(identified);
+    expect(presentOf(store)).toBe(present);
   });
 
   it('undoes adding, changing the default and removing one step at a time', () => {
-    store.dispatch(identifyProtocolLocale({ locale: 'en' }));
     const english = presentOf(store);
 
     store.dispatch(addProtocolLocales({ locales: ['fr', 'de'] }));
@@ -134,7 +133,6 @@ describe('protocol language reducers and undo', () => {
   });
 
   it('removes a language from every string in the same step that undeclares it', () => {
-    store.dispatch(identifyProtocolLocale({ locale: 'en' }));
     store.dispatch(addProtocolLocales({ locales: ['fr'] }));
     store.dispatch(
       actionCreators.updateProtocol({
@@ -161,9 +159,10 @@ describe('protocol language reducers and undo', () => {
     const before = pastLength(store);
     const present = presentOf(store);
 
-    store.dispatch(removeProtocolLocale({ locale: 'und' }));
+    store.dispatch(removeProtocolLocale({ locale: 'fr' }));
     store.dispatch(addProtocolLocales({ locales: ['und'] }));
-    store.dispatch(identifyProtocolLocale({ locale: 'und' }));
+    store.dispatch(changeProtocolLocale({ from: 'en', to: 'und' }));
+    store.dispatch(changeProtocolLocale({ from: 'fr', to: 'de' }));
     store.dispatch(addProtocolLocales({ locales: ['not a tag'] }));
     store.dispatch(setProtocolDefaultLocale({ locale: 'de' }));
 
@@ -172,7 +171,6 @@ describe('protocol language reducers and undo', () => {
   });
 
   it('adds a translation in one undo step that redo replays', () => {
-    store.dispatch(identifyProtocolLocale({ locale: 'en' }));
     store.dispatch(addProtocolLocales({ locales: ['fr'] }));
     const untranslated = presentOf(store);
     const before = pastLength(store);
@@ -197,7 +195,6 @@ describe('protocol language reducers and undo', () => {
   });
 
   it('records nothing for a refused translation', () => {
-    store.dispatch(identifyProtocolLocale({ locale: 'en' }));
     store.dispatch(addProtocolLocales({ locales: ['fr'] }));
     const before = pastLength(store);
     const present = presentOf(store);
@@ -229,7 +226,6 @@ describe('protocol language reducers and undo', () => {
   });
 
   it('replaces every translation of a text in one undo step that redo replays', () => {
-    store.dispatch(identifyProtocolLocale({ locale: 'en' }));
     store.dispatch(addProtocolLocales({ locales: ['fr'] }));
     const untranslated = presentOf(store);
     const before = pastLength(store);
@@ -253,7 +249,6 @@ describe('protocol language reducers and undo', () => {
   });
 
   it('records nothing for a refused set of translations', () => {
-    store.dispatch(identifyProtocolLocale({ locale: 'en' }));
     store.dispatch(addProtocolLocales({ locales: ['fr'] }));
     const before = pastLength(store);
     const present = presentOf(store);

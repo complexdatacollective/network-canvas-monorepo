@@ -595,7 +595,6 @@
   "protocolBuilder.localization.missingTranslation": "缺少翻譯",
   "protocolBuilder.localization.notTranslated": "尚未翻譯為 {language}。使用 {language} 的參與者會看到 {fallback} 文字。",
   "protocolBuilder.localization.notTranslatedUnlessBrowserLists": "尚未翻譯為 {language}。使用 {language} 的參與者會看到 {fallback} 文字，除非其瀏覽器也列出了一種有此文字的語言。",
-  "protocolBuilder.localization.unspecifiedLanguage": "未指定語言",
   "protocolBuilder.localizedTextNames.diseasePosition": "疾病 {position, number}",
   "protocolBuilder.localizedTextNames.fieldPosition": "欄位 {position, number}",
   "protocolBuilder.localizedTextNames.itemPosition": "項目 {position, number}",

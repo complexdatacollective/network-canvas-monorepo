@@ -18,7 +18,6 @@ import { useProtocolAccessMode } from '~/hooks/useProtocolAccessMode';
 import { type MessageConfig, formatConfig } from '~/i18n/formatConfig';
 import {
   getHasMissingTranslations,
-  getHasUnspecifiedLanguage,
   getHasUnusedAssets,
   getHasUnusedVariables,
   getHasVariableRoleConflicts,
@@ -96,12 +95,6 @@ const finalMessages = defineMessages({
     defaultMessage: 'has unused attributes',
     description: 'Researcher-facing Architect control or feedback.',
   },
-  unspecifiedLanguageWarning: {
-    id: 'architect.projectNav.projectNav.unspecifiedLanguageWarning',
-    defaultMessage: 'has text in a language that has not been identified',
-    description:
-      'Screen-reader warning on the Languages tab when a protocol still has text marked as an unspecified language.',
-  },
   translationsWarning: {
     id: 'architect.projectNav.projectNav.translationsWarning',
     defaultMessage: 'has missing translations',
@@ -144,7 +137,6 @@ const ProjectNav = () => {
   const hasUnusedAssets = useSelector(getHasUnusedAssets);
   const hasUnusedVariables = useSelector(getHasUnusedVariables);
   const hasVariableRoleConflicts = useSelector(getHasVariableRoleConflicts);
-  const hasUnspecifiedLanguage = useSelector(getHasUnspecifiedLanguage);
   const hasMissingTranslations = useSelector(getHasMissingTranslations);
 
   // Per-tab warning descriptions, keyed by href. A defined value renders a
@@ -159,11 +151,9 @@ const ProjectNav = () => {
     '/protocol/codebook': hasUnusedVariables
       ? intl.formatMessage(finalMessages.attributesWarning)
       : undefined,
-    '/protocol/localization': hasUnspecifiedLanguage
-      ? intl.formatMessage(finalMessages.unspecifiedLanguageWarning)
-      : hasMissingTranslations
-        ? intl.formatMessage(finalMessages.translationsWarning)
-        : undefined,
+    '/protocol/localization': hasMissingTranslations
+      ? intl.formatMessage(finalMessages.translationsWarning)
+      : undefined,
   };
 
   const breadcrumbItems: BreadcrumbItem[] = [
