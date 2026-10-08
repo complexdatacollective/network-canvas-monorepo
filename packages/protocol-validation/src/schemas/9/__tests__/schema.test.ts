@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { withFinishStage } from '../../../__tests__/finishStage.ts';
 import { migrateProtocol } from '../../../migration/migrate-protocol.ts';
 import { createBaseProtocol, localized } from '../../../utils/test-utils.ts';
 import ProtocolSchemaV8 from '../../8/schema.ts';
@@ -63,9 +64,10 @@ const issuePaths = (result: {
 
 describe('Schema 9 attribute names', () => {
   it('accepts the base protocol', () => {
-    expect(ProtocolSchemaV9.safeParse(protocolWithNames({})).success).toBe(
-      true,
-    );
+    expect(
+      ProtocolSchemaV9.safeParse(withFinishStage(protocolWithNames({})))
+        .success,
+    ).toBe(true);
   });
 
   it.each([
@@ -84,7 +86,9 @@ describe('Schema 9 attribute names', () => {
       edge: { duration: name },
       ego: { egoName: name },
     });
-    expect(ProtocolSchemaV9.safeParse(protocol).success).toBe(true);
+    expect(ProtocolSchemaV9.safeParse(withFinishStage(protocol)).success).toBe(
+      true,
+    );
   });
 
   it.each([
@@ -99,7 +103,7 @@ describe('Schema 9 attribute names', () => {
     ['lone surrogate', 'name\uD800'],
   ])('rejects a name with a %s', (_description, name) => {
     const result = ProtocolSchemaV9.safeParse(
-      protocolWithNames({ node: { name } }),
+      withFinishStage(protocolWithNames({ node: { name } })),
     );
     expect(issuePaths(result)).toContain(
       'codebook.node.person.variables.name.name',
@@ -108,7 +112,9 @@ describe('Schema 9 attribute names', () => {
 
   it('still rejects two attributes of one entity with the same name', () => {
     const result = ProtocolSchemaV9.safeParse(
-      protocolWithNames({ node: { name: '名前', age: '名前' } }),
+      withFinishStage(
+        protocolWithNames({ node: { name: '名前', age: '名前' } }),
+      ),
     );
     expect(result.success).toBe(false);
   });
@@ -116,26 +122,28 @@ describe('Schema 9 attribute names', () => {
   it('keeps attribute record keys to the id alphabet', () => {
     const base = protocolWithNames({});
     const { person } = base.codebook.node;
-    const result = ProtocolSchemaV9.safeParse({
-      ...base,
-      codebook: {
-        ...base.codebook,
-        node: {
-          ...base.codebook.node,
-          person: {
-            ...person,
-            variables: {
-              ...person.variables,
-              'nombre completo': {
-                name: 'Nombre completo',
-                label: 'Nombre completo',
-                type: 'text',
+    const result = ProtocolSchemaV9.safeParse(
+      withFinishStage({
+        ...base,
+        codebook: {
+          ...base.codebook,
+          node: {
+            ...base.codebook.node,
+            person: {
+              ...person,
+              variables: {
+                ...person.variables,
+                'nombre completo': {
+                  name: 'Nombre completo',
+                  label: 'Nombre completo',
+                  type: 'text',
+                },
               },
             },
           },
         },
-      },
-    });
+      }),
+    );
     expect(result.success).toBe(false);
   });
 });
@@ -158,7 +166,9 @@ describe('Schema 8 attribute names', () => {
       'first name',
     );
     expect(migrated.codebook.ego?.variables?.egoName?.name).toBe('Age (years)');
-    expect(ProtocolSchemaV9.safeParse(migrated).success).toBe(true);
+    expect(ProtocolSchemaV9.safeParse(withFinishStage(migrated)).success).toBe(
+      true,
+    );
   });
 });
 
@@ -167,7 +177,7 @@ const protocolWithPassphraseRules = (validation: {
   maxLength?: number;
 }) => {
   const base = createBaseProtocol();
-  return {
+  return withFinishStage({
     ...base,
     stages: [
       ...base.stages,
@@ -182,7 +192,7 @@ const protocolWithPassphraseRules = (validation: {
         validation,
       },
     ],
-  };
+  });
 };
 
 describe('Schema 9 passphrase length rules', () => {
@@ -203,7 +213,9 @@ describe('Schema 9 passphrase length rules', () => {
       minLength: 9,
       maxLength: 6,
     });
-    const stageIndex = protocol.stages.length - 1;
+    const stageIndex = protocol.stages.findIndex(
+      ({ type }) => type === 'Anonymisation',
+    );
 
     expect(issuePaths(ProtocolSchemaV9.safeParse(protocol))).toEqual([
       `stages.${stageIndex}.validation.minLength`,

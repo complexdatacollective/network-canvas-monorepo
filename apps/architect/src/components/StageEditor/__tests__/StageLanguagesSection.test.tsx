@@ -42,7 +42,17 @@ const protocol: CurrentProtocol = {
   localization: { defaultLocale: 'en', locales: ['en', 'fr', 'de'] },
   assetManifest: {},
   codebook: { node: {}, edge: {}, ego: {} },
-  stages: [{ id: STAGE_ID, type: 'LanguageChooser', label: LABEL }],
+  stages: [
+    { id: STAGE_ID, type: 'LanguageChooser', label: LABEL },
+    {
+      id: 'finish',
+      type: 'FinishSession',
+      label: { en: 'Finish', fr: 'Fin' },
+      title: { en: 'All done', fr: 'Terminé' },
+      content: { en: 'Thank you.', fr: 'Merci.' },
+      outcome: 'completed',
+    },
+  ],
 };
 
 const target = { sectionId: sectionId({ kind: 'stage', stageId: STAGE_ID }) };

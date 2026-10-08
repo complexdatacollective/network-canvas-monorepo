@@ -22,10 +22,10 @@ import { Timeline } from '../pageobjects/timeline.js';
  * exercises the real dialog → `onFinish` → teardown sequence, and only a real
  * browser can show where focus ends up after Base UI tears the dialog down.
  *
- * Two stages, both `Information`: the second exists so the first "Next Step"
- * lands on a real stage rather than the engine's appended finish stage, i.e.
- * so the spec proves the finish stage is reached by finishing the protocol
- * rather than by starting on it.
+ * Two `Information` stages before the protocol's own finish stage: the second
+ * exists so the first "Next Step" lands on a real stage rather than the finish
+ * stage, i.e. so the spec proves the finish stage is reached by finishing the
+ * protocol rather than by starting on it.
  */
 const STAGE_LABEL = 'Welcome';
 
@@ -63,15 +63,23 @@ function twoScreenProtocol(): CurrentProtocol {
           },
         ],
       },
+      {
+        id: 'finish',
+        type: 'FinishSession',
+        label: { en: 'Finish' },
+        title: { en: 'All done' },
+        content: { en: 'Thank you for your time.' },
+        outcome: 'completed',
+      },
     ],
   });
 }
 
 /**
  * Seed the protocol, open its first stage, launch the preview, and walk it to
- * the engine's appended finish stage. `exact` on the Finish locator matters:
- * the stage's own heading, the confirmation's title and its confirm action are
- * all "Finish Interview", while the stage's button is the bare "Finish".
+ * the protocol's finish stage. `exact` on the Finish locator matters: the
+ * confirmation's title and its confirm action are "Finish Interview", while
+ * the stage's button is the bare "Finish".
  */
 async function previewToFinishStage(
   architectPage: Page,
@@ -88,9 +96,9 @@ async function previewToFinishStage(
     exact: true,
   });
 
-  await expect(
-    preview.getByRole('heading', { name: 'Finish Interview' }),
-  ).toHaveCount(0);
+  await expect(preview.getByRole('heading', { name: 'All done' })).toHaveCount(
+    0,
+  );
   await nextStep.click();
   await nextStep.click();
   await expect(finishButton).toBeVisible();
@@ -115,34 +123,28 @@ test('finishing a preview reports completion, prevents a repeat, and can be rest
   await expect(dialog).toBeVisible();
   await dialog.getByRole('button', { name: 'Finish Interview' }).click();
 
-  // 1. The completed state exists and replaces the interview, so Finish cannot
-  //    be confirmed a second time.
-  const completionHeading = preview.getByRole('heading', {
-    name: 'Preview finished',
-  });
+  // 1. The completed state replaces the interview: the protocol's own
+  //    closing text, the notice that the answers can no longer change, and
+  //    nothing that would confirm Finish a second time or step back.
+  const completionHeading = preview.getByRole('heading', { name: 'All done' });
   await expect(completionHeading).toBeVisible();
+  await expect(preview.getByText('Thank you for your time.')).toBeVisible();
+  await expect(
+    preview.getByText(
+      'This interview is finished, and its answers can no longer be changed.',
+    ),
+  ).toBeVisible();
   await expect(finishButton).toHaveCount(0);
   await expect(nextStep).toHaveCount(0);
+  await expect(preview.getByTestId('previous-button')).toHaveCount(0);
 
-  // 2. It says what happened to the responses, and that sentence is wired to
-  //    the focused heading as its description — a bare heading would announce
-  //    only "Preview finished, heading level 1".
-  const describedBy = await completionHeading.getAttribute('aria-describedby');
-  expect(describedBy).toBeTruthy();
-  // Attribute selector, not `#id`: an id is free to contain characters a CSS
-  // id selector would have to escape.
-  await expect(preview.locator(`[id="${describedBy}"]`)).toContainText(
-    'Nothing was saved',
-  );
-
-  // 3. Focus lands on that heading and STAYS there. The re-check is
-  //    deliberately gated on elapsed wall-clock time, not on a condition: the
-  //    Shell (which contains the DialogProvider) unmounts in the same commit
-  //    that renders this screen, so every "the dialog is gone" oracle is
-  //    already true at 0 ms and would wait for nothing. What could still steal
-  //    focus is Base UI's own deferred focus return, which fires a frame or
-  //    more after close — so the only way to catch it is to let time pass.
-  //    The re-check reads document.activeElement once rather than using
+  // 2. Focus lands on that heading and STAYS there. The re-check is
+  //    deliberately gated on elapsed wall-clock time, not on a condition:
+  //    every "the dialog is gone" oracle is already true once the completed
+  //    state renders and would wait for nothing. What could still steal focus
+  //    is Base UI's own deferred focus return, which fires a frame or more
+  //    after close — so the only way to catch it is to let time pass. The
+  //    re-check reads document.activeElement once rather than using
   //    `toBeFocused`, whose retries would forgive focus that left and came
   //    back.
   await expect(completionHeading).toBeFocused();
@@ -151,7 +153,7 @@ test('finishing a preview reports completion, prevents a repeat, and can be rest
     await completionHeading.evaluate((el) => el === document.activeElement),
   ).toBe(true);
 
-  // 4. The offered next action really restarts the preview: a run of the same
+  // 3. The completed state's one action really restarts the preview: a run of the same
   //    protocol, back at the stage Architect launched (the first screen's own
   //    copy, which the second screen does not share). That the restarted run
   //    carries a genuinely new session — not the finished one revived — is

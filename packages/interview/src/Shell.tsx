@@ -17,7 +17,7 @@ import {
 } from 'react';
 import { Provider, useSelector } from 'react-redux';
 
-import { useLocaleLoadFailure } from '@codaco/app-i18n/react';
+import { AppMessage, useLocaleLoadFailure } from '@codaco/app-i18n/react';
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import { DndStoreProvider } from '@codaco/fresco-ui/dnd/dnd';
 import LocaleLoadFailureToast from '@codaco/fresco-ui/LocaleLoadFailureToast';
@@ -39,10 +39,16 @@ import { GeospatialOfflineIndicator } from './components/GeospatialOfflineIndica
 import Navigation, { TEXT_SCALE_OPTIONS } from './components/Navigation';
 import StageErrorBoundary from './components/StageErrorBoundary';
 import { CurrentStepProvider } from './contexts/CurrentStepContext';
+import {
+  type InterviewCompletion,
+  InterviewCompletionProvider,
+  useInterviewCompletion,
+} from './contexts/InterviewCompletionContext';
 import { StageMetadataProvider } from './contexts/StageMetadataContext';
 import { ContractProvider } from './contract/context';
 import type {
   AssetRequestHandler,
+  CompletedAction,
   FinishHandler,
   InterviewAnalyticsMetadata,
   InterviewerFlags,
@@ -55,13 +61,15 @@ import useInterviewNavigation from './hooks/useInterviewNavigation';
 import useMediaQuery from './hooks/useMediaQuery';
 import type { InterviewCatalog } from './i18n/catalog';
 import { InterviewI18nProvider } from './i18n/InterviewI18nProvider';
+import { navigationMessages } from './i18n/navigationMessages';
+import { CompletedInterview } from './interfaces/FinishSession/FinishSession';
 import {
   ProtocolLocalizationProvider,
   useProtocolLocale,
 } from './localization/ProtocolLocalizationProvider';
 import { getLocalePreference, getRecordedLocale } from './selectors/session';
 import { getLastAvailableAuthoredStageIndex } from './selectors/skip-logic';
-import { getProtocolLocalization } from './store/modules/protocol';
+import { getProtocolLocalization, getStages } from './store/modules/protocol';
 import { recordLocale, setLocalePreference } from './store/modules/session';
 import { store, useAppDispatch, type RootState } from './store/store';
 import { SyncFlushProvider } from './store/SyncFlushContext';
@@ -110,18 +118,7 @@ function snapTextScale(scale: number | undefined): number {
   );
 }
 
-function Interview({
-  onExit,
-  hideNavigation = false,
-  navigationOrientation: orientationProp,
-  navigationClassnames,
-  allowStageNavigation,
-  allowUserScaling,
-  initialTextScale,
-  onTextScaleChange,
-  initialStageOverrideIndex,
-  reviewMode,
-}: {
+type InterviewProps = {
   onExit?: () => void;
   hideNavigation?: boolean;
   navigationOrientation?: NavigationOrientation;
@@ -132,6 +129,158 @@ function Interview({
   onTextScaleChange?: (scale: number) => void;
   initialStageOverrideIndex?: number;
   reviewMode?: boolean;
+};
+
+type TextScaleStyle = CSSProperties & { '--interview-text-scale': number };
+
+/**
+ * A finished interview shows its completed state; a review of one shows its
+ * stages, because reading them is what a review is for. A review of a
+ * protocol with no stage before its finish stage has nothing to show, so it
+ * shows the finish stage's text, read-only, without the Finish button.
+ *
+ * The participant's text size is held here, above both, so it carries from
+ * the interview into its completed state.
+ */
+function Interview(props: InterviewProps) {
+  const { initialTextScale, onTextScaleChange } = props;
+  const { completion } = useInterviewCompletion();
+  const stages = useSelector(getStages);
+  const [textScale, setTextScale] = useState(() =>
+    snapTextScale(initialTextScale),
+  );
+  const handleTextScaleChange = useCallback(
+    (scale: number) => {
+      setTextScale(scale);
+      onTextScaleChange?.(scale);
+    },
+    [onTextScaleChange],
+  );
+  const textScaleStyle: TextScaleStyle = {
+    '--interview-text-scale': textScale,
+  };
+
+  if (props.reviewMode === true) {
+    const hasReviewableStage =
+      stages.length > 0 && stages[0]?.type !== 'FinishSession';
+    if (!hasReviewableStage) {
+      // Nothing to review and no navigation: the host's exit is the only way
+      // out, so it is offered here in place of the completed-state actions.
+      const { onExit } = props;
+      return (
+        <CompletedShell
+          stageId={undefined}
+          focusOnMount={false}
+          notice={false}
+          textScaleStyle={textScaleStyle}
+          actions={
+            onExit
+              ? [
+                  {
+                    label: (
+                      <AppMessage message={navigationMessages.exitReview} />
+                    ),
+                    onAction: onExit,
+                  },
+                ]
+              : undefined
+          }
+        />
+      );
+    }
+  } else if (completion) {
+    return (
+      <CompletedShell
+        stageId={completion.stageId}
+        focusOnMount={completion.finishedHere}
+        notice
+        textScaleStyle={textScaleStyle}
+      />
+    );
+  }
+  return (
+    <ActiveInterview
+      {...props}
+      textScale={textScale}
+      onTextScaleChange={handleTextScaleChange}
+    />
+  );
+}
+
+/**
+ * A finished interview, opened again or just finished: the finish stage it
+ * ended at, in its completed state. There is no navigation, so there is no
+ * way back into the interview.
+ */
+function CompletedShell({
+  stageId,
+  focusOnMount,
+  notice,
+  textScaleStyle,
+  actions,
+}: {
+  stageId: string | null | undefined;
+  focusOnMount: boolean;
+  notice: boolean;
+  textScaleStyle: TextScaleStyle;
+  actions?: readonly CompletedAction[];
+}) {
+  const { metadata: interviewLocale } = useProtocolLocale();
+  const stages = useSelector(getStages);
+  const finishStages = stages.filter(
+    (candidate) => candidate.type === 'FinishSession',
+  );
+  // The stage the host recorded, or, for an interview finished before finish
+  // stages were recorded, the last one: where a linear interview ends.
+  const stage =
+    finishStages.find((candidate) => candidate.id === stageId) ??
+    finishStages.at(-1);
+
+  return (
+    <ThemedRegion
+      theme="interview"
+      lang={interviewLocale.locale}
+      dir={interviewLocale.direction}
+      render={
+        <main
+          style={textScaleStyle}
+          className="shell-type-ramp relative flex size-full flex-1 overflow-hidden"
+        />
+      }
+    >
+      <DirectionProvider direction={interviewLocale.direction}>
+        <div
+          className="relative flex size-full flex-col items-center justify-center pt-[env(safe-area-inset-top)]"
+          id="stage"
+          data-interview-completed=""
+        >
+          <CompletedInterview
+            stage={stage}
+            focusOnMount={focusOnMount}
+            notice={notice}
+            actions={actions}
+          />
+        </div>
+        <LanguageUnavailableNotice />
+      </DirectionProvider>
+    </ThemedRegion>
+  );
+}
+
+function ActiveInterview({
+  onExit,
+  hideNavigation = false,
+  navigationOrientation: orientationProp,
+  navigationClassnames,
+  allowStageNavigation,
+  allowUserScaling,
+  textScale,
+  onTextScaleChange,
+  initialStageOverrideIndex,
+  reviewMode,
+}: InterviewProps & {
+  textScale: number;
+  onTextScaleChange: (scale: number) => void;
 }) {
   const { metadata: interviewLocale } = useProtocolLocale();
   const {
@@ -176,21 +325,12 @@ function Interview({
     orientationProp ?? (prefersHorizontalNav ? 'horizontal' : 'vertical');
   const isHorizontalNav = navigationOrientation === 'horizontal';
 
-  // Participant-chosen multiplier applied on top of the viewport ramp below.
-  // Owned here so it survives stage navigation; hosts opt in via
-  // `allowUserScaling` and may persist it across remounts (e.g. the
-  // Interviewer's lock screen) with `initialTextScale`/`onTextScaleChange`.
-  const [textScale, setTextScale] = useState(() =>
-    snapTextScale(initialTextScale),
-  );
-  const handleTextScaleChange = useCallback(
-    (scale: number) => {
-      setTextScale(scale);
-      onTextScaleChange?.(scale);
-    },
-    [onTextScaleChange],
-  );
-  const textScaleStyle: CSSProperties & { '--interview-text-scale': number } = {
+  // The participant-chosen multiplier, applied on top of the viewport ramp
+  // below, is owned by `Interview` so it survives stage navigation and carries
+  // into the completed state; hosts opt in via `allowUserScaling` and may
+  // persist it across remounts (e.g. the Interviewer's lock screen) with
+  // `initialTextScale`/`onTextScaleChange`.
+  const textScaleStyle: TextScaleStyle = {
     '--interview-text-scale': textScale,
   };
 
@@ -298,7 +438,7 @@ function Interview({
                 reviewMode={reviewMode}
                 allowUserScaling={allowUserScaling}
                 textScale={textScale}
-                onTextScaleChange={handleTextScaleChange}
+                onTextScaleChange={onTextScaleChange}
               />
             )}
             {/*
@@ -465,9 +605,24 @@ type ShellProps = {
   finishConfirmationDescription?: ReactNode;
   onExit?: () => void;
   /**
-   * Adapt the Shell for reviewing an existing interview: stop at the final
-   * authored stage, use review-specific exit messaging, and suppress interview
-   * analytics. The host remains responsible for supplying non-persisting sync
+   * The actions offered on the completed state of a finished interview, such
+   * as Interviewer's "Exit", in order; the first is the primary one. The
+   * completed state is shown when the payload's session is finished, and as
+   * soon as the participant finishes.
+   */
+  completedActions?: readonly CompletedAction[];
+  /**
+   * Open a finished interview as an unfinished one, at its stages and open to
+   * changes, instead of in its completed state, and keep recording a change of
+   * its language. For a host that lets a finished interview be edited: Fresco
+   * passes it when completed interviews are not frozen. The payload then has
+   * to carry the interview's answers, which the completed state never needs.
+   */
+  openFinishedAsActive?: boolean;
+  /**
+   * Adapt the Shell for reviewing an existing interview: show its stages even
+   * when it is finished, stop before its finish stage, use review-specific
+   * exit messaging, and suppress interview analytics. The host remains responsible for supplying non-persisting sync
    * and finish handlers.
    */
   reviewMode?: boolean;
@@ -530,6 +685,8 @@ const Shell = ({
   disableAnalytics = false,
   finishConfirmationDescription,
   onExit,
+  completedActions,
+  openFinishedAsActive = false,
   reviewMode,
   hideNavigation,
   navigationOrientation,
@@ -579,9 +736,11 @@ const Shell = ({
         onProtocolLocaleChange: stableOnProtocolLocaleChange,
         isDevelopment: flags?.isDevelopment,
         tracker: trackerHolder,
+        openFinishedAsActive,
       }),
     [
       payload,
+      openFinishedAsActive,
       stableOnSync,
       stableOnProtocolLocaleChange,
       flags?.isDevelopment,
@@ -648,11 +807,35 @@ const Shell = ({
     trackerRef.current = next;
   }, []);
 
+  // A finished session opens in its completed state, at the finish stage the
+  // host recorded, unless the host opens it as an unfinished one.
+  const initialCompletion = useMemo<InterviewCompletion | null>(
+    () =>
+      payload.session.finishTime === null || openFinishedAsActive
+        ? null
+        : {
+            stageId: payload.session.finishStageId ?? null,
+            finishedHere: false,
+          },
+    [
+      payload.session.finishTime,
+      payload.session.finishStageId,
+      openFinishedAsActive,
+    ],
+  );
+
   const reviewEntry = useMemo(() => {
+    // A review stops before the finish stage, so a step at or past it enters
+    // at the last stage the review can show.
+    const finishIndex = payload.protocol.stages.findIndex(
+      (stage) => stage.type === 'FinishSession',
+    );
+    const reviewEnd =
+      finishIndex === -1 ? payload.protocol.stages.length : finishIndex;
     if (
       reviewMode !== true ||
       currentStep === undefined ||
-      currentStep < payload.protocol.stages.length
+      currentStep < reviewEnd
     ) {
       return {
         currentStep,
@@ -664,7 +847,7 @@ const Shell = ({
       payload.protocol.stages,
       payload.session.network,
     );
-    const hasAuthoredStage = payload.protocol.stages.length > 0;
+    const hasAuthoredStage = reviewEnd > 0;
 
     return {
       currentStep: lastAvailableStage ?? 0,
@@ -716,29 +899,38 @@ const Shell = ({
                   flags={flags}
                   finishConfirmationDescription={finishConfirmationDescription}
                 >
-                  <CurrentStepProvider
-                    currentStep={reviewEntry.currentStep}
-                    onStepChange={onStepChange}
+                  <InterviewCompletionProvider
+                    // A new payload is a new interview.
+                    key={payload.session.id}
+                    initialCompletion={initialCompletion}
+                    completedActions={completedActions}
+                    // A finished interview never records a language change.
+                    onComplete={reduxStore.markFinished}
                   >
-                    <Interview
-                      onExit={onExit}
-                      hideNavigation={hideNavigation}
-                      navigationOrientation={navigationOrientation}
-                      navigationClassnames={navigationClassnames}
-                      allowStageNavigation={
-                        allowStageNavigation &&
-                        (currentStep === undefined ||
-                          onStepChange !== undefined)
-                      }
-                      allowUserScaling={allowUserScaling}
-                      initialTextScale={initialTextScale}
-                      onTextScaleChange={onTextScaleChange}
-                      initialStageOverrideIndex={
-                        reviewEntry.initialStageOverrideIndex
-                      }
-                      reviewMode={reviewMode}
-                    />
-                  </CurrentStepProvider>
+                    <CurrentStepProvider
+                      currentStep={reviewEntry.currentStep}
+                      onStepChange={onStepChange}
+                    >
+                      <Interview
+                        onExit={onExit}
+                        hideNavigation={hideNavigation}
+                        navigationOrientation={navigationOrientation}
+                        navigationClassnames={navigationClassnames}
+                        allowStageNavigation={
+                          allowStageNavigation &&
+                          (currentStep === undefined ||
+                            onStepChange !== undefined)
+                        }
+                        allowUserScaling={allowUserScaling}
+                        initialTextScale={initialTextScale}
+                        onTextScaleChange={onTextScaleChange}
+                        initialStageOverrideIndex={
+                          reviewEntry.initialStageOverrideIndex
+                        }
+                        reviewMode={reviewMode}
+                      />
+                    </CurrentStepProvider>
+                  </InterviewCompletionProvider>
                 </ContractProvider>
               </WritesInFlightProvider>
             </SyncFlushProvider>

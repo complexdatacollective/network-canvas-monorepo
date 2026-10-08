@@ -11,6 +11,7 @@ import { categoricalBinStage } from './categorical-bin.ts';
 import { dyadCensusStage } from './dyad-census.ts';
 import { egoFormStage } from './ego-form.ts';
 import { familyPedigreeStage } from './family-pedigree.ts';
+import { finishSessionStage } from './finish-session.ts';
 import { geospatialStage } from './geospatial.ts';
 import { informationStage } from './information.ts';
 import { languageChooserStage } from './language-chooser.ts';
@@ -33,6 +34,7 @@ export * from './categorical-bin.ts';
 export * from './dyad-census.ts';
 export * from './ego-form.ts';
 export * from './family-pedigree.ts';
+export * from './finish-session.ts';
 export * from './geospatial.ts';
 export * from './information.ts';
 export * from './name-generator.ts';
@@ -68,6 +70,7 @@ const stageSchemas = [
   geospatialStage,
   narrativePedigreeStage,
   languageChooserStage,
+  finishSessionStage,
 ] as const;
 
 // Combine all stage types

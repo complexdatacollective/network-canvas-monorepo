@@ -495,10 +495,13 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
     'disconnect',
   ],
   FinishSession: [
-    // Synthetic, engine-appended stage — not in the protocol schema, not
-    // protocol-authorable.
     'stage.type',
     'stage.id',
+    'label',
+    'interviewScript',
+    'title',
+    'content',
+    'outcome',
     'confirm-dialog.copy',
     'confirm-dialog.destructive-focus',
     'onFinish.confirm-calls-handler',
@@ -512,9 +515,11 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
     'stagesMenu-exclusion',
     'back-navigation-network-intact',
     'analytics.interview_finished', // dead e2e: host sets disableAnalytics=true
-    // NOTE: no `skipLogic` — FinishSession is engine-appended, has no schema
-    // definition, and is absent from the stageSchema union, so an author cannot
-    // attach skipLogic to it (and semantically you cannot skip the finish).
+    'completed-state.after-finish',
+    'completed-state.on-open',
+    'completed-state.unrecorded-finish',
+    // NOTE: no `skipLogic` — the schema refuses it on a finish stage, since
+    // every route through the interview ends at one.
     // stage-config-schema-support.test.ts enforces this.
   ],
   Geospatial: [

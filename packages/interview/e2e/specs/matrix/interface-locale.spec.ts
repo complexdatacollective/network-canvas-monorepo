@@ -97,8 +97,13 @@ matrixTest(
       fullPage: true,
     });
     await page.getByRole('button', { name: 'Siguiente paso' }).click();
+    // The finish stage's heading is the protocol's own text, in the protocol's
+    // language; only its built-in Finish control follows the browser.
     await expect(
-      page.getByRole('heading', { name: 'Finalizar entrevista', exact: true }),
+      page.getByRole('heading', { name: 'Finish Interview', exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole('button', { name: 'Finalizar', exact: true }),
     ).toBeVisible();
     await expect
       .poll(async () => {
@@ -111,7 +116,7 @@ matrixTest(
       window.__test.setRequestedLocales(['malformed_locale']),
     );
     await expect(
-      page.getByRole('heading', { name: 'Finish Interview', exact: true }),
+      page.getByRole('button', { name: 'Finish', exact: true }),
     ).toBeVisible();
     await expect(main).toHaveAttribute('lang', 'en-US');
   },

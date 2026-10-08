@@ -4,6 +4,7 @@ import {
 } from '@codaco/protocol-validation';
 
 import { expect, gotoProtocol, test } from '../fixtures/architect-test.js';
+import { emptyProtocol } from '../fixtures/seed.js';
 import { readStageJson } from '../helpers/read-store.js';
 import {
   dismissAttributeWindow,
@@ -148,6 +149,7 @@ function conflictProtocol(): CurrentProtocol {
           },
         ],
       },
+      ...emptyProtocol().stages,
     ],
   });
 }

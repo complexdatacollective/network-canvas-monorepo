@@ -3,6 +3,7 @@ import type {
   ComponentType,
   EdgeColorReference,
   FilterOperator,
+  FinishOutcome,
   Item,
   LocaleTag,
   LocalizedString,
@@ -357,6 +358,9 @@ export type StageEntry = {
   nodeForm?: { fields: NetworkComposerFormFieldEntry[] };
   networkComposerEdges?: NetworkComposerEdgeEntry[];
   convexHullVariable?: string;
+  // FinishSession (its `title` is the shared `title` above)
+  content?: TextInput;
+  outcome?: FinishOutcome;
 };
 
 /** The person-node attribute ids a FamilyPedigree stage binds. */

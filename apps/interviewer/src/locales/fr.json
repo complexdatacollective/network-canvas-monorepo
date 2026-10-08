@@ -124,8 +124,6 @@
   "interviewer.interview.theProtocolThisInterviewUsesCouldNot": "Le protocole utilisé par cet entretien n’a pas pu être mis à jour pour fonctionner avec cette version de l’application : cet entretien ne peut donc pas être poursuivi. Ses réponses restent disponibles dans l’écran des données. Pour commencer de nouveaux entretiens, réparez le protocole dans Architect et importez-le à nouveau.",
   "interviewer.interview.thisInterviewMayHaveBeenDeletedOr": "Cet entretien a peut-être été supprimé, ou le protocole qu’il utilisait n’est plus installé.",
   "interviewer.interviewComplete.exit": "Quitter",
-  "interviewer.interviewComplete.interviewComplete": "Entretien terminé",
-  "interviewer.interviewComplete.thankYouThisInterviewIsFinishedAnd": "Merci. Cet entretien est terminé et ses réponses ne peuvent plus être modifiées. Veuillez rendre l’appareil à la personne responsable de l’étude.",
   "interviewer.language.automatic": "Automatique (navigateur)",
   "interviewer.language.failed": "La langue a été modifiée pour cette session, mais la préférence n’a pas pu être enregistrée. Votre navigateur bloque peut-être le stockage sur l’appareil.",
   "interviewer.language.hint": "Choisissez la langue utilisée par Interviewer sur cet appareil. Les entretiens s’affichent dans la langue du navigateur de la personne participante ou dans celle qu’elle choisit pendant l’entretien.",

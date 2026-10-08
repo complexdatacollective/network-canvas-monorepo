@@ -109,7 +109,7 @@ function composerStage(options: {
   id?: string;
   nodeFields?: ComposerField[];
   edgeFields?: ComposerField[];
-}): Stage {
+}): Extract<Stage, { type: 'NetworkComposer' }> {
   return {
     id: options.id ?? 'composer-1',
     type: 'NetworkComposer',
@@ -133,7 +133,9 @@ function composerStage(options: {
   };
 }
 
-function alterFormStage(variable: string): Stage {
+function alterFormStage(
+  variable: string,
+): Extract<Stage, { type: 'AlterForm' }> {
   return {
     id: 'ordinary-form',
     type: 'AlterForm',

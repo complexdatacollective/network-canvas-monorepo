@@ -29,6 +29,15 @@
 // listed under "reconciled", so anything else in those files is still a
 // difference.
 //
+// An upgrade from a release that predates finish outcomes adds where each
+// interview ended — the interview API's finishStageId and finishOutcome and the
+// ego CSV's networkCanvasFinishOutcome column — and leaves them empty for every
+// interview that already existed, because nothing recorded where those
+// interviews ended. Only that empty value is reconciled: an outcome appearing
+// on an interview finished before the upgrade would be invented data, and stays
+// a difference. GraphML writes nc:finishOutcome only when there is an outcome,
+// so it has nothing to reconcile.
+//
 // Usage: node diff-exports.mjs <baselineDir> <currentDir> --work <dir> [--out <file>]
 import { spawnSync } from 'node:child_process';
 import {
@@ -43,7 +52,10 @@ import {
 import { join, relative, resolve } from 'node:path';
 
 import { escapeMessageText } from '../../../../packages/protocol-validation/src/localization/messageSyntax.ts';
-import { ncInterviewLocaleProperty } from '../../../../packages/shared-consts/src/export-process.ts';
+import {
+  ncFinishOutcomeProperty,
+  ncInterviewLocaleProperty,
+} from '../../../../packages/shared-consts/src/export-process.ts';
 
 const DIFF_EXCERPT_LINES = 60;
 
@@ -249,6 +261,58 @@ const upgradedProtocol = (baseline, current) => {
     : null;
 };
 
+// The fields an upgrade adds to an interview as null, because nothing
+// recorded them before it: where an interview finished before the upgrade
+// ended. Only a null is reconciled — see the header.
+const FINISH_FIELDS = ['finishStageId', 'finishOutcome'];
+
+/**
+ * `item` with every finish field the baseline item lacks and the upgrade added
+ * as null removed, and the removals counted in `tally`.
+ */
+function withoutAddedFinishFields(baselineItem, item, tally) {
+  const restored = { ...item };
+  for (const field of FINISH_FIELDS) {
+    if (field in item && !(field in baselineItem) && item[field] === null) {
+      delete restored[field];
+      tally[field] = (tally[field] ?? 0) + 1;
+    }
+  }
+  return restored;
+}
+
+const finishFieldDifferences = (tally, noun) =>
+  FINISH_FIELDS.filter((field) => tally[field]).map(
+    (field) => `${noun(tally[field])} ${field} added as null`,
+  );
+
+/**
+ * The interview collection: each interview gains the finish fields as null.
+ * Interviews are paired with the baseline's by id, so one that exists on only
+ * one side is compared as it stands.
+ */
+function reconcileInterviewCollection(baseline, current) {
+  const baselineById = new Map(
+    baseline.data.filter(isRecord).map((item) => [item.id, item]),
+  );
+  const tally = {};
+  const data = current.data.map((item) => {
+    const baselineItem = isRecord(item) ? baselineById.get(item.id) : undefined;
+    return baselineItem
+      ? withoutAddedFinishFields(baselineItem, item, tally)
+      : item;
+  });
+  const differences = finishFieldDifferences(
+    tally,
+    (count) => `${count} interview(s):`,
+  );
+  if (differences.length === 0) return null;
+  return {
+    text: `${JSON.stringify(normalizeJsonDeep({ ...current, data }), null, 2)}\n`,
+    differences,
+  };
+}
+
 function reconcileInterviewJson(baselineText, currentText) {
   let baseline;
   let current;
@@ -258,9 +322,17 @@ function reconcileInterviewJson(baselineText, currentText) {
   } catch {
     return null;
   }
+  if (Array.isArray(baseline?.data) && Array.isArray(current?.data))
+    return reconcileInterviewCollection(baseline, current);
   if (!isRecord(baseline?.data) || !isRecord(current?.data)) return null;
   const differences = [];
-  const data = { ...current.data };
+  const finishTally = {};
+  const data = withoutAddedFinishFields(
+    baseline.data,
+    current.data,
+    finishTally,
+  );
+  differences.push(...finishFieldDifferences(finishTally, () => 'interview'));
   for (const field of ['locale', 'localePreference']) {
     const value = data[field];
     if (
@@ -299,16 +371,30 @@ function reconcileInterviewJson(baselineText, currentText) {
   };
 }
 
+// Columns an upgrade adds to the ego CSV, with the values each may hold in
+// it: the interview's recorded language, empty until it is recorded; and its
+// finish outcome, empty for every interview finished before the upgrade (see
+// the header).
+const ADDED_CSV_COLUMNS = [
+  { name: ncInterviewLocaleProperty, accepts: isLanguageTag },
+  { name: ncFinishOutcomeProperty, accepts: () => false },
+];
+
 function reconcileCsv(baselineText, currentText) {
   const baselineHeader = splitCsvRow(
     baselineText.split('\n')[0]?.replace(/\r$/, '') ?? '',
   ).map(unquote);
   const lines = currentText.split('\n');
   const header = splitCsvRow(lines[0]?.replace(/\r$/, '') ?? '').map(unquote);
-  const column = header.indexOf(ncInterviewLocaleProperty);
-  if (column === -1 || baselineHeader.includes(ncInterviewLocaleProperty))
-    return null;
-  const values = new Set();
+  const added = ADDED_CSV_COLUMNS.flatMap(({ name, accepts }) => {
+    const column = header.indexOf(name);
+    return column === -1 || baselineHeader.includes(name)
+      ? []
+      : [{ name, accepts, column, values: new Set() }];
+  });
+  if (added.length === 0) return null;
+  // Removed right to left, so each index still points at its own column.
+  const removalOrder = added.toSorted((a, b) => b.column - a.column);
   const rows = [];
   for (const [index, line] of lines.entries()) {
     if (line === '') {
@@ -316,22 +402,26 @@ function reconcileCsv(baselineText, currentText) {
       continue;
     }
     const ending = line.endsWith('\r') ? '\r' : '';
-    const cells = splitCsvRow(line.slice(0, line.length - ending.length));
+    let cells = splitCsvRow(line.slice(0, line.length - ending.length));
     // A row that does not split into the header's columns cannot have its
-    // column removed safely, so the file is compared as it stands.
+    // columns removed safely, so the file is compared as it stands.
     if (cells.length !== header.length) return null;
     if (index > 0) {
-      const value = unquote(cells[column]);
-      if (value !== '' && !isLanguageTag(value)) return null;
-      if (value !== '') values.add(value);
+      for (const { accepts, column, values } of added) {
+        const value = unquote(cells[column]);
+        if (value !== '' && !accepts(value)) return null;
+        if (value !== '') values.add(value);
+      }
     }
-    rows.push(`${cells.toSpliced(column, 1).join(',')}${ending}`);
+    for (const { column } of removalOrder) cells = cells.toSpliced(column, 1);
+    rows.push(`${cells.join(',')}${ending}`);
   }
   return {
     text: rows.join('\n'),
-    differences: [
-      `the ${ncInterviewLocaleProperty} column (${values.size === 0 ? 'empty in every row' : [...values].join(', ')})`,
-    ],
+    differences: added.map(
+      ({ name, values }) =>
+        `the ${name} column (${values.size === 0 ? 'empty in every row' : [...values].join(', ')})`,
+    ),
   };
 }
 

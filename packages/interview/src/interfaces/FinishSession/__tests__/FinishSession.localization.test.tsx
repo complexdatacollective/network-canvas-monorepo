@@ -7,13 +7,23 @@ import { AnimationProvider } from '@codaco/fresco-ui/AnimationProvider';
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import { getLocaleMetadata } from '@codaco/protocol-validation';
 
-import { ContractProvider } from '../../contract/context';
-import type { FinishHandler, InterviewPayload } from '../../contract/types';
-import { interviewCatalogSource } from '../../i18n/catalog';
-import { InterviewI18nProvider } from '../../i18n/InterviewI18nProvider';
-import { store as createStore } from '../../store/store';
-import { SyncFlushProvider } from '../../store/SyncFlushContext';
+import { ContractProvider } from '../../../contract/context';
+import type { FinishHandler, InterviewPayload } from '../../../contract/types';
+import { interviewCatalogSource } from '../../../i18n/catalog';
+import { InterviewI18nProvider } from '../../../i18n/InterviewI18nProvider';
+import { ProtocolLocalizationProvider } from '../../../localization/ProtocolLocalizationProvider';
+import { store as createStore } from '../../../store/store';
+import { SyncFlushProvider } from '../../../store/SyncFlushContext';
 import FinishSession from '../FinishSession';
+
+const finishStage = {
+  id: 'finish',
+  type: 'FinishSession',
+  label: { en: 'Finish' },
+  title: { en: 'All *done*' },
+  content: { en: 'Thank you for **taking part**.' },
+  outcome: 'ineligible',
+} as const;
 
 const payload = {
   session: {
@@ -36,7 +46,7 @@ const payload = {
     localization: { defaultLocale: 'en', locales: ['en'] },
     codebook: { ego: { variables: {} }, node: {}, edge: {} },
     assets: [],
-    stages: [],
+    stages: [finishStage],
   },
 } satisfies InterviewPayload;
 
@@ -58,7 +68,11 @@ beforeAll(() => {
   globalThis.BASE_UI_ANIMATIONS_DISABLED = true;
 });
 
-function makeView(flush: () => Promise<boolean>, onFinish: FinishHandler) {
+function makeView(
+  flush: () => Promise<boolean>,
+  onFinish: FinishHandler,
+  stage: Parameters<typeof FinishSession>[0]['stage'] = finishStage,
+) {
   const store = createStore(payload, {
     onSync: () => Promise.resolve(),
     onProtocolLocaleChange: () => Promise.resolve(),
@@ -66,18 +80,34 @@ function makeView(flush: () => Promise<boolean>, onFinish: FinishHandler) {
   return (locale: string) => (
     <AnimationProvider disableAnimations reducedMotion="always">
       <InterviewI18nProvider requestedLocale={locale}>
-        <Provider store={store}>
-          <ContractProvider
-            onFinish={onFinish}
-            onRequestAsset={() => Promise.resolve('')}
-          >
-            <SyncFlushProvider flush={flush}>
-              <DialogProvider>
-                <FinishSession />
-              </DialogProvider>
-            </SyncFlushProvider>
-          </ContractProvider>
-        </Provider>
+        <ProtocolLocalizationProvider
+          localization={payload.protocol.localization}
+          localeOptions={payload.session.localeOptions}
+          requestedLocales={['en']}
+          localePreference={null}
+          recordedLocale={null}
+          onLocalePreferenceChange={() => undefined}
+          onLocaleRecorded={() => undefined}
+        >
+          <Provider store={store}>
+            <ContractProvider
+              onFinish={onFinish}
+              onRequestAsset={() => Promise.resolve('')}
+            >
+              <SyncFlushProvider flush={flush}>
+                <DialogProvider>
+                  <FinishSession
+                    stage={stage}
+                    getNavigationHelpers={() => ({
+                      moveForward: () => undefined,
+                      moveBackward: () => undefined,
+                    })}
+                  />
+                </DialogProvider>
+              </SyncFlushProvider>
+            </ContractProvider>
+          </Provider>
+        </ProtocolLocalizationProvider>
       </InterviewI18nProvider>
     </AnimationProvider>
   );
@@ -106,7 +136,7 @@ describe('FinishSession localized recoverable failures', () => {
         }
         return true;
       });
-      const finish = vi.fn<FinishHandler>(async (_id, signal) => {
+      const finish = vi.fn<FinishHandler>(async (_id, _finish, signal) => {
         order.push('finish');
         abortStatesAtFinish.push(signal.aborted);
         if (failure === 'finish' && !rejected) {
@@ -162,6 +192,7 @@ describe('FinishSession localized recoverable failures', () => {
       );
       expect(finish).toHaveBeenLastCalledWith(
         'finish-locale-session',
+        { stageId: 'finish', outcome: 'ineligible' },
         expect.any(AbortSignal),
       );
       expect(abortStatesAtFinish).toEqual(
@@ -173,7 +204,7 @@ describe('FinishSession localized recoverable failures', () => {
   it('cannot be cancelled while the host finishes, and aborts the signal it passes the host when torn down', async () => {
     const flush = vi.fn(() => Promise.resolve(true));
     const finish = vi.fn<FinishHandler>(
-      (_id, signal) =>
+      (_id, _finish, signal) =>
         new Promise((resolve) => {
           signal.addEventListener('abort', () => resolve(), { once: true });
         }),
@@ -188,7 +219,7 @@ describe('FinishSession localized recoverable failures', () => {
       }),
     );
     await waitFor(() => expect(finish).toHaveBeenCalledTimes(1));
-    const signal = finish.mock.lastCall?.[1];
+    const signal = finish.mock.lastCall?.[2];
     expect(signal).toBeInstanceOf(AbortSignal);
     expect(flush).toHaveBeenCalledTimes(1);
 
@@ -281,5 +312,17 @@ describe('FinishSession localized recoverable failures', () => {
     });
 
     expect(finish).not.toHaveBeenCalled();
+  });
+
+  it('renders without closing text, as a preview of a protocol still being written does', () => {
+    render(
+      makeView(
+        () => Promise.resolve(true),
+        () => Promise.resolve(),
+        { ...finishStage, label: {}, title: {}, content: {} },
+      )('en'),
+    );
+    expect(screen.queryByRole('heading')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Finish' })).toBeEnabled();
   });
 });

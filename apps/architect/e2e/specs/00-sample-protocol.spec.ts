@@ -233,10 +233,9 @@ test.describe.serial('sample protocol built from scratch', () => {
     // the protocol's languages: the sample is written in `en-US`, and every
     // editor saves its text under the default language.
     await seedProtocol(page, {
-      ...emptyProtocol(),
+      ...emptyProtocol(canonicalLocalization()),
       name: s('name'),
       experiments: {},
-      localization: canonicalLocalization(),
     });
     await gotoProtocol(page);
   });
@@ -1107,7 +1106,9 @@ test.describe.serial('sample protocol built from scratch', () => {
     test.setTimeout(30_000);
     const built = await readProtocolJson(
       page,
-      (protocol) => protocol.stages.length === 30,
+      // The 30 stages built here, before the finish stage the protocol was
+      // created with.
+      (protocol) => protocol.stages.length === 31,
     );
 
     // The built protocol must be schema-valid in its own right — the

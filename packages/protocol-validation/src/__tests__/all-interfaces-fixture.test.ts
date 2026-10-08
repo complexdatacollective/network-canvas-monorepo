@@ -18,7 +18,7 @@ const fixturePath = path.resolve(
   '../../../protocols/e2e/all-interfaces/protocol.json',
 );
 
-const EXPECTED_STAGE_TYPE_COUNT = 20;
+const EXPECTED_STAGE_TYPE_COUNT = 21;
 
 describe('all-interfaces e2e fixture', () => {
   it(`is a valid schema-${CURRENT_SCHEMA_VERSION} protocol`, async () => {

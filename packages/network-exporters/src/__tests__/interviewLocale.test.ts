@@ -75,6 +75,7 @@ const interview = (
   finishTime: new Date('2025-01-02'),
   protocolHash: 'protocol-1',
   locale,
+  finishOutcome: 'completed',
   network: {
     nodes: [
       {
@@ -159,6 +160,7 @@ describe('an export of sessions held in different interview languages', () => {
       'APP_VERSION',
       'COMMIT_HASH',
       'networkCanvasInterviewLocale',
+      'networkCanvasFinishOutcome',
       'interviewLocale',
       'INTERVIEW_LOCALE',
       'networkCanvasInterviewLocale_2',

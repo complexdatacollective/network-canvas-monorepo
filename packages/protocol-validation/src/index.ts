@@ -44,10 +44,12 @@ import {
   validateNames,
 } from './utils/validateExternalData.ts';
 import validateProtocol, {
+  FINISH_STAGE_TEXT_MISSING,
   formatProtocolValidationIssues,
   ProtocolValidationError,
   type ProtocolValidationIssue,
   type ProtocolValidationResult,
+  type ValidateProtocolOptions,
 } from './validation/validate-protocol.ts';
 
 export {
@@ -139,6 +141,27 @@ export {
   type LocalizedString,
   type LocalizedStringFormat,
 } from './schemas/9/localized-string.ts';
+// The finish stage text Network Canvas supplies, written into a protocol by
+// the v8 → v9 migration and by Architect.
+export {
+  createDefaultFinishSessionStage,
+  DEFAULT_FINISH_SESSION_TEXT,
+  defaultFinishSessionFields,
+  defaultFinishSessionText,
+  type FinishSessionText,
+  hasDefaultFinishSessionText,
+  withDefaultFinishSessionTranslation,
+} from './schemas/9/finish-session-defaults.ts';
+export {
+  findFinishStageTextProblems,
+  type FinishStageTextField,
+  type FinishStageTextProblem,
+} from './schemas/9/finish-stage-text.ts';
+export {
+  findTimelineStructureProblems,
+  isFinishSessionStage,
+  type TimelineStructureProblem,
+} from './schemas/9/timeline-structure.ts';
 export {
   INHERITANCE_PATTERNS,
   type InheritancePattern,
@@ -204,6 +227,7 @@ export {
   type ExtractedAssets,
   extractProtocol,
   extractProtocolFromZip,
+  FINISH_STAGE_TEXT_MISSING,
   findCollidingAttributeNames,
   formatProtocolValidationIssues,
   getAssetMimeType,
@@ -226,6 +250,7 @@ export {
   type ProtocolValidationIssue,
   type ProtocolValidationResult,
   type StageReferenceHit,
+  type ValidateProtocolOptions,
   validateNames,
   validateProtocol,
 };

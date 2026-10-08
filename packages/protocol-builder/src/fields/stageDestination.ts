@@ -20,7 +20,11 @@ const englishIntl = createAppIntl({ locale: 'en' });
  * reasoned about and tested without assembling whole stage documents, and the
  * package's protocol read model satisfies it directly.
  */
-export type DestinationStage = Readonly<{ id: string; label: string }>;
+export type DestinationStage = Readonly<{
+  id: string;
+  label: string;
+  type?: string;
+}>;
 
 /**
  * Where the stage being edited sits, or will sit, in the interview.
@@ -316,7 +320,8 @@ const stageOptionLabel = (
  * Where the interview may continue from here.
  *
  * Only later stages are offered: the interview runs forwards, and a skip that
- * pointed backwards would be a loop rather than a route.
+ * pointed backwards would be a loop rather than a route. Finish stages are
+ * offered once, as ending the interview.
  *
  * A destination the stage currently holds that is NOT among them is added at
  * the end, disabled. Leaving it out would make the control fall back to its
@@ -338,6 +343,9 @@ export function stageDestinationOptions(
 
   stages.forEach((stage, index) => {
     if (!isLaterStage(index, placement)) return;
+    // A finish stage is reached by ending the interview, which is offered
+    // below; offering it as a stage too would name one route twice.
+    if (stage.type === 'FinishSession') return;
     options.push({
       value: `${STAGE_ROUTE_PREFIX}${stage.id}`,
       label: stageOptionLabel(stage, index, placement, intl),

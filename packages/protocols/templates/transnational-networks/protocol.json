@@ -1124,6 +1124,26 @@
         "concentricCircles": 4,
         "skewedTowardCenter": true
       }
+    },
+    {
+      "id": "finish",
+      "type": "FinishSession",
+      "label": {
+        "en-US": "Finish Interview",
+        "es": "Finalizar entrevista",
+        "hu": "Interjú befejezése"
+      },
+      "title": {
+        "en-US": "Finish Interview",
+        "es": "Finalizar entrevista",
+        "hu": "Interjú befejezése"
+      },
+      "content": {
+        "en-US": "You have reached the end of the interview. If you are satisfied with the information you have entered, you may finish the interview now.",
+        "es": "Ha llegado al final de la entrevista. Si está conforme con la información que ha introducido, ya puede finalizar la entrevista.",
+        "hu": "Elérte az interjú végét. Ha elégedett az Ön által megadott információkkal, most befejezheti az interjút."
+      },
+      "outcome": "completed"
     }
   ]
 }

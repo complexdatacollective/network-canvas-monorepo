@@ -1,4 +1,8 @@
-import type { CurrentProtocol, LocaleTag } from '@codaco/protocol-validation';
+import type {
+  CurrentProtocol,
+  FinishOutcome,
+  LocaleTag,
+} from '@codaco/protocol-validation';
 import type { NcNetwork, StageMetadata } from '@codaco/shared-consts';
 
 export type StoredAssetType =
@@ -38,12 +42,21 @@ export type StoredSession = {
   startedAt: string;
   lastUpdatedAt: string;
   finishedAt: string | null;
+  // The finish stage the participant finished at, and that stage's outcome.
+  // Written only by `markSessionFinished` and cleared by
+  // `markSessionUnfinished`, always together with `finishedAt`. Optional so a
+  // session finished before finish stages were recorded reads as unknown
+  // (`undefined` or `null`); such sessions are never backfilled. Both are
+  // encrypted with the network: the outcome follows from the participant's
+  // answers.
+  finishStageId?: string | null;
+  finishOutcome?: FinishOutcome | null;
   exportedAt: string | null;
   currentStep: number;
   // Participant-facing progress (0–100) reported by @codaco/interview via
   // onStepChange. Optional so pre-existing rows (undefined) read as 0 until the
-  // session is next advanced. The interview engine owns this value (it accounts
-  // for the appended finish stage); the host must not re-derive it.
+  // session is next advanced. The interview engine owns this value; the host
+  // must not re-derive it.
   progress?: number;
   // A one-visit override set when marking an interview unfinished cannot find
   // an authored stage that is currently available. Navigation clears it.

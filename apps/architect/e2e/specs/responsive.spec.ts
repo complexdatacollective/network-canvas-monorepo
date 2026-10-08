@@ -397,6 +397,7 @@ const EDITOR_TYPES_UNDER_TEST = [
   'NetworkComposer',
   'Geospatial',
   'LanguageChooser',
+  'FinishSession',
 ] as const;
 
 for (const viewport of VIEWPORTS) {
@@ -589,13 +590,16 @@ const MAXIMAL_DESCRIPTION =
 function protocolWithStages(): CurrentProtocol {
   return {
     ...emptyProtocol(),
-    stages: [1, 2, 3].map((index) => ({
-      id: `info-${index}`,
-      label: { en: `Information ${index}` },
-      type: 'Information',
-      title: { en: `Information ${index}` },
-      items: [],
-    })),
+    stages: [
+      ...[1, 2, 3].map((index) => ({
+        id: `info-${index}`,
+        label: { en: `Information ${index}` },
+        type: 'Information' as const,
+        title: { en: `Information ${index}` },
+        items: [],
+      })),
+      ...emptyProtocol().stages,
+    ],
   };
 }
 

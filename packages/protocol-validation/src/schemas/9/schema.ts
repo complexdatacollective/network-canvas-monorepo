@@ -60,6 +60,7 @@ import { ProtocolLocalizationSchema } from './localized-string.ts';
 import { type Prompt, type Stage, stageSchema } from './stages/index.ts';
 import { findDuplicateDiseaseLabels } from './stages/narrative-pedigree.ts';
 import type { ComposerFormField } from './stages/network-composer.ts';
+import { findTimelineStructureProblems } from './timeline-structure.ts';
 import {
   ComponentTypes,
   NON_RENDERABLE_VARIABLE_TYPES,
@@ -664,6 +665,43 @@ const ProtocolSchema = z
           message: `Stages contain duplicate ID "${duplicateStageId}"`,
           path: [],
         });
+      }
+
+      // Every route ends at a finish stage, every stage is on a route, and a
+      // protocol has exactly one finish stage.
+      for (const problem of findTimelineStructureProblems(stages)) {
+        switch (problem.kind) {
+          case 'empty':
+            ctx.addIssue({
+              code: 'custom' as const,
+              message:
+                'A protocol must have at least one stage: a finish stage to end the interview.',
+              path: [],
+            });
+            break;
+          case 'no-finish':
+            ctx.addIssue({
+              code: 'custom' as const,
+              message:
+                'The interview must end with a finish stage, but it ends after this stage.',
+              path: [problem.stageIndex],
+            });
+            break;
+          case 'unreachable':
+            ctx.addIssue({
+              code: 'custom' as const,
+              message: `This stage comes after the finish stage at position ${problem.finishStageIndex + 1}, so no participant can reach it.`,
+              path: [problem.stageIndex],
+            });
+            break;
+          case 'second-finish':
+            ctx.addIssue({
+              code: 'custom' as const,
+              message: `A protocol has exactly one finish stage, but this is a second one: the first is at position ${problem.finishStageIndex + 1}.`,
+              path: [problem.stageIndex],
+            });
+            break;
+        }
       }
     }),
     schemaVersion: z.literal(9),

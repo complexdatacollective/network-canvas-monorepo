@@ -40,7 +40,9 @@ const access = (teamId: Team) => unsafeMakeTeamAccess(teamId, 'owner');
  * statement returned and not its command tag.
  */
 const FINALIZE_SQL = `UPDATE interview_sessions
-   SET status = 'completed', completed_at = now() WHERE id = $1
+   SET status = 'completed', completed_at = now(),
+       finish_stage_id = 'finish', finish_outcome = 'completed'
+   WHERE id = $1
    RETURNING id`;
 
 type Row = Record<string, unknown>;
@@ -678,8 +680,10 @@ describe.skipIf(!testDb)('network schema', () => {
               ];
               const insertCompleted = `INSERT INTO interview_sessions
                    (id, study_id, team_id, wave_id,
-                    protocol_version_id, ego_uid, status, completed_at)
-                 VALUES ($1, $2, $3, $4, $5, $6, 'completed', now())`;
+                    protocol_version_id, ego_uid, status, completed_at,
+                    finish_stage_id, finish_outcome)
+                 VALUES ($1, $2, $3, $4, $5, $6, 'completed', now(),
+                         'finish', 'completed')`;
 
               const orphan = randomUUID();
               expect(
@@ -857,8 +861,9 @@ describe.skipIf(!testDb)('network schema', () => {
                 yield* sql.unsafe(
                   `INSERT INTO interview_sessions
                      (id, study_id, team_id, wave_id, protocol_version_id, ego_uid,
-                      status, completed_at)
-                   VALUES ($1, $2, $3, $4, $5, 'ego_1', 'completed', now())`,
+                      status, completed_at, finish_stage_id, finish_outcome)
+                   VALUES ($1, $2, $3, $4, $5, 'ego_1', 'completed', now(),
+                           'finish', 'completed')`,
                   [sessionId, studyId, TEAM_A, waveId, versionOf[TEAM_A]],
                 );
                 yield* sql.unsafe(SNAPSHOT_SQL, [sessionId]);

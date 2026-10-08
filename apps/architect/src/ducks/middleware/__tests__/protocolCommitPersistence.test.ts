@@ -2,6 +2,7 @@ import { combineReducers, configureStore } from '@reduxjs/toolkit';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
+  createDefaultFinishSessionStage,
   type CurrentProtocol,
   ProtocolValidationError,
 } from '@codaco/protocol-validation';
@@ -157,6 +158,36 @@ describe('validated protocol commit persistence', () => {
 
     expect(validateProtocol).toHaveBeenCalledTimes(1);
     expect(putStoredProtocol).toHaveBeenCalledTimes(1);
+  });
+
+  // A new protocol in a language Network Canvas supplies no closing text for
+  // starts with an empty finish stage. Editing it must still commit and save:
+  // only downloading it waits for the text.
+  it('writes a commit to a protocol whose finish stage has no text yet', async () => {
+    const actual = await vi.importActual<
+      typeof import('@codaco/protocol-validation')
+    >('@codaco/protocol-validation');
+    const store = makeStore();
+    const localization = { defaultLocale: 'ja', locales: ['ja'] };
+    store.dispatch(setActiveProtocolId('p1'));
+    store.dispatch(
+      setActiveProtocol({
+        ...makeProtocol(),
+        localization,
+        stages: [createDefaultFinishSessionStage({ id: 'end', localization })],
+      }),
+    );
+    await waitForEffects();
+    putStoredProtocol.mockClear();
+    validateProtocol.mockImplementation(actual.validateProtocol);
+
+    store.dispatch(updateProtocolDescription({ description: 'edited' }));
+    await waitForEffects();
+
+    expect(validateProtocol).toHaveBeenCalledTimes(1);
+    expect(putStoredProtocol).toHaveBeenCalledTimes(1);
+    expect(takeProtocolValidationDialogEvents()).toEqual([]);
+    expect(store.getState().activeProtocol.present?.description).toBe('edited');
   });
 
   it('fails closed when protocol validation rejects unexpectedly', async () => {

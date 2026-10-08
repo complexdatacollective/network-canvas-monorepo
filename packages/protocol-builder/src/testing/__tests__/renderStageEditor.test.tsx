@@ -661,9 +661,11 @@ const destinationOptions = (): string[] => {
 };
 
 /** The stages the interview may continue at, as the researcher will see them. */
+// The fixture ends at its finish stage, which is offered as ending the
+// interview rather than as a stage.
 const stagesFrom = (index: number, displaced: number): string[] =>
   fixtureStageLabels()
-    .slice(index)
+    .slice(index, -1)
     .map(
       (label, offset) => `Stage ${index + offset + 1 + displaced} — ${label}`,
     );

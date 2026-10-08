@@ -158,9 +158,14 @@ describe('migrationV8toV9 session step', () => {
       expect(protocol.stages[resumeAt(9)]?.id).toBe('socio-exchanges');
     });
 
+    // The engine's own finish screen, one place past the last stage, is now
+    // the finish stage the migration appends.
     it('keeps a finished session on the finish stage', () => {
       const stagesBefore = (ecoGeneticTemplate.stages as unknown[]).length;
-      expect(resumeAt(stagesBefore)).toBe(protocol.stages.length);
+      expect(resumeAt(stagesBefore)).toBe(protocol.stages.length - 1);
+      expect(protocol.stages[resumeAt(stagesBefore)]?.type).toBe(
+        'FinishSession',
+      );
     });
   });
 

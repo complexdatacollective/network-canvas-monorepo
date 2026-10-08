@@ -1,12 +1,14 @@
 import { Redacted, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
+import { FINISH_OUTCOMES } from '@codaco/protocol-validation';
 import { NcNetworkSchema } from '@codaco/shared-consts';
 
 import {
   AnalyticsInput,
   FinishInput,
   FinishResult,
+  FinishUnrecognised,
   InterviewNetwork,
   LinkUnavailable,
   NetworkEdge,
@@ -106,7 +108,16 @@ describe('the participant payloads', () => {
     ],
     ['SyncResult', SyncResult, { revision: '8', applied: true }],
     ['SyncResult', SyncResult, { revision: '8', applied: false }],
-    ['FinishInput', FinishInput, { holderEpoch: 2, revision: '9' }],
+    [
+      'FinishInput',
+      FinishInput,
+      {
+        holderEpoch: 2,
+        revision: '9',
+        stageId: 'finish',
+        outcome: 'completed',
+      },
+    ],
     ['FinishResult', FinishResult, { state: 'completed' }],
     [
       'SessionPayload without analytics',
@@ -236,6 +247,35 @@ describe('the participant payloads', () => {
   });
 });
 
+describe('a finish', () => {
+  const finish = {
+    holderEpoch: 2,
+    revision: '9',
+    stageId: 'finish',
+    outcome: 'completed',
+  };
+  const decodes = (value: unknown) =>
+    Schema.decodeUnknownExit(FinishInput)(value)._tag === 'Success';
+
+  it.each(FINISH_OUTCOMES)('carries the outcome %s', (outcome) => {
+    expect(roundTrips(FinishInput, { ...finish, outcome })).toEqual({
+      ...finish,
+      outcome,
+    });
+  });
+
+  it.each([
+    ['an outcome the protocol schema does not declare', { outcome: 'quit' }],
+    ['no outcome', { outcome: undefined }],
+    ['no finish stage', { stageId: undefined }],
+    ['an empty finish stage', { stageId: '' }],
+    ['an over-long finish stage', { stageId: 's'.repeat(129) }],
+  ])('refuses %s', (_name, change) => {
+    expect(decodes(finish)).toBe(true);
+    expect(decodes({ ...finish, ...change })).toBe(false);
+  });
+});
+
 describe('the participant errors', () => {
   it.each([
     ['SessionEnded', SessionEnded, new SessionEnded({ state: 'completed' })],
@@ -254,6 +294,7 @@ describe('the participant errors', () => {
       SessionOutOfDate,
       new SessionOutOfDate({ revision: '4' }),
     ],
+    ['FinishUnrecognised', FinishUnrecognised, new FinishUnrecognised({})],
   ] as const)('%s round-trips', (_name, schema, error) => {
     const decoded = Schema.decodeUnknownSync(schema)(
       Schema.encodeSync(schema)(error as never),

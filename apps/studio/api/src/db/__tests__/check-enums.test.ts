@@ -2,6 +2,7 @@ import { is } from 'drizzle-orm';
 import { getTableConfig, PgDialect, PgTable } from 'drizzle-orm/pg-core';
 import { describe, expect, it } from 'vitest';
 
+import { FINISH_OUTCOMES } from '@codaco/protocol-validation';
 import * as account from '@codaco/studio-contract/schema/account';
 import * as audit from '@codaco/studio-contract/schema/audit';
 import * as ids from '@codaco/studio-contract/schema/ids';
@@ -47,6 +48,7 @@ const TIED: Record<string, readonly string[]> = {
   audit_events_actor_kind_check: audit.AUDIT_ACTOR_KINDS,
   team_invitation_deliveries_role_check: team.TEAM_ROLES,
   interview_sessions_status_check: participant.PARTICIPANT_SESSION_STATUSES,
+  interview_sessions_finish_check: FINISH_OUTCOMES,
 };
 
 const DECLARED_ONLY_HERE = new Set([

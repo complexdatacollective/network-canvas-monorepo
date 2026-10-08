@@ -5,7 +5,11 @@ import { contentHash } from '@codaco/studio-sync/apply';
 import { assembleProtocolSections } from '@codaco/studio-sync/protocol-document';
 import { validateSection } from '@codaco/studio-sync/section-validation';
 
-import { sectionizeProtocol } from '../sectionize.ts';
+import {
+  emptyProtocol,
+  NEW_PROTOCOL_FINISH_STAGE_ID,
+  sectionizeProtocol,
+} from '../sectionize.ts';
 import { versionContentHash } from '../version-hash.ts';
 import { FIXTURES, baseProtocol, readFixtureProtocol } from './helpers.ts';
 
@@ -68,6 +72,29 @@ describe('sectionize/assemble round trip', () => {
   });
 });
 
+describe('a new protocol', () => {
+  // A schema 9 interview has to end at a finish stage, so a protocol with no
+  // stages at all is not one validation admits.
+  it('starts with the supplied finish stage and validates', async () => {
+    const protocol = emptyProtocol('New study');
+    expect(protocol.stages).toEqual([
+      expect.objectContaining({
+        id: NEW_PROTOCOL_FINISH_STAGE_ID,
+        type: 'FinishSession',
+        outcome: 'completed',
+      }),
+    ]);
+    const validated = await validateProtocol(protocol);
+    expect(
+      validated.success,
+      JSON.stringify(validated.error?.issues ?? [], null, 2),
+    ).toBe(true);
+    expect(sectionizeProtocol(protocol).stageOrder).toEqual({
+      stages: [NEW_PROTOCOL_FINISH_STAGE_ID],
+    });
+  });
+});
+
 describe('golden hashes', () => {
   // Pinned digests: a change to canonical serialization, the taxonomy, or the
   // version-hash recipe fails here before it invalidates stored content hashes.
@@ -83,13 +110,14 @@ describe('golden hashes', () => {
         "codebook:edge:knows": "96ba2dfdd02dc597536433e6debfbdaec16f3ffc1738b0377515198ddaa30193",
         "codebook:node:person": "508208bef9a636733579c7062b00429e206a0410d991a505b5da78b4be9c3fd9",
         "settings": "62eb33d43a79ad953fb8d44150ef3d9388bcecb0ec4ba390695b52cdaf43f3ae",
+        "stage:finish": "e2e80c038d6149119cad43526aed81e266e8d3ddf665cc23d44454ea96746600",
         "stage:nameGenerator1": "da989aa0f95cc6223c4ae6e1e8eecd53698a900bae557d0dae58ba43948f9511",
         "stage:sociogram1": "f20a610875c24d940f59bd6d68d52e3b0453fe778d1a4af9a3a09a7926b0e3a9",
-        "stageOrder": "491ca26e923314c49ae7caba154c45712202c684d50a7f6b959267bd75e3a400",
+        "stageOrder": "db26c1d9b0a06b6f2eaa8ffbc16226398ec945d3ce6168f4ad1d174e0621aa57",
       }
     `);
     expect(versionContentHash(sectionHashes)).toMatchInlineSnapshot(
-      `"51bdcfc218096795c910804bbbc5841736961ef7293e6f92e2f88bafeef8d9dc"`,
+      `"30219d03e9cb44e083dfb955bb5ac6de1af47a5b2f2b886fc4a0c4983bd8b851"`,
     );
   });
 });

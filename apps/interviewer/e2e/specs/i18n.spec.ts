@@ -224,8 +224,11 @@ test.describe('a Spanish browser', () => {
     await interviewNav.quickAddNode('Irene');
     await interviewNav.next();
     await interviewNav.next();
+    // The finish stage's title is the protocol's own text, which this protocol
+    // has only in English; the Finish button and its confirmation are the
+    // interview's, in its interface language.
     const finishHeading = page.getByRole('heading', {
-      name: 'Finalizar entrevista',
+      name: 'Finish Interview',
       exact: true,
     });
     await expect(finishHeading).toBeVisible();

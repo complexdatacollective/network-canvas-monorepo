@@ -229,7 +229,7 @@ You can now share this URL with participants to allow them to self-enroll in the
 
 You may want to limit the number of interviews that a participant can complete for a given protocol. For this reason, Fresco includes this as an option you can enable on the settings page.
 
-If you enable this option, each participant will only be able to submit a single completed interview for each protocol (although they may have multiple incomplete interviews). Once a participant has completed an interview, attempting to start a new interview or to resume any other in-progress interview will be prevented. This applies to both unique participant URLs and anonymous participant URLs.
+If you enable this option, each participant will only be able to submit a single completed interview for each protocol (although they may have multiple incomplete interviews). Once a participant has completed an interview, attempting to start a new interview or to resume any other in-progress interview will instead show the finished interview's completed state, with your [Finish Screen](/en/design-protocols/interface-documentation/finish-screen)'s heading and text and a notice that the interview is finished. This applies to both unique participant URLs and anonymous participant URLs.
 
 To enable this feature:
 
@@ -238,7 +238,7 @@ To enable this feature:
 
 <TipBox danger>
 
-We prioritized privacy and security when designing this feature, meaning that we do not conduct sophisticated tracking of participants. Instead, we use the participant identifier (if available) and a cookie to determine when a participant has submitted an interview.
+We prioritized privacy and security when designing this feature, meaning that we do not conduct sophisticated tracking of participants. Instead, we use the participant identifier (if available) and a cookie to determine when a participant has submitted an interview. The cookie holds the id of the finished interview, and scripts running in the page can't read it. A participant whose cookie names a finished interview of the same protocol is sent back to that interview's completed state.
 
 This means that if you enable anonymous recruitment and a participant clears their cookies, they will be able to submit another interview.
 
@@ -248,7 +248,7 @@ If you require more robust tracking, you should consider using unique participan
 
 ### Freeze completed interviews
 
-By default, Fresco freezes completed interviews: once a participant finishes an interview, the submitted data can no longer be altered. If a participant returns to the URL of an interview they have already finished and makes further changes, those changes are silently rejected, protecting your finished data from accidental or intentional changes after submission.
+By default, Fresco freezes completed interviews: once a participant finishes an interview, the submitted data can no longer be altered. A participant who returns to the URL of an interview they have already finished sees its completed state: your Finish Screen's heading and text, and a notice that the interview is finished and its answers can no longer be changed. There is no way to move through the interview from there, and no button, so participants close the window. Any change that is somehow still sent is silently rejected, protecting your finished data from accidental or intentional changes after submission.
 
 If you would prefer that a re-opened interview keep syncing further changes back to your data, you can turn this setting off.
 
@@ -279,6 +279,8 @@ To disable the warning:
 Once you have sent out URLs to participants and they begin to complete interviews, you can monitor the progress of those interviews using the interviews page in the dashboard and the main dashboard activity feed.
 
 The **interviews page** provides an overview of all interviews in the study. Each row corresponds to one interview, with columns for the **Participant Identifier**, **Protocol Name**, **Started** date, **Updated** date, **Progress**, **Network** (the number of nodes and edges captured so far), and **Export Status**. From this page you can also export data from the interviews.
+
+**Progress** is the stage the participant has reached out of the protocol's stages. Your protocol's [Finish Screen](/en/design-protocols/interface-documentation/finish-screen) counts as a stage, so a participant is at 100% only once they have finished the interview.
 
 ### Finding and filtering interviews
 

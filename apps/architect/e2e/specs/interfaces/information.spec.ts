@@ -86,6 +86,7 @@ const INFORMATION_WITH_IMAGE_ITEM = (): CurrentProtocol => ({
         },
       ],
     },
+    ...emptyProtocol().stages,
   ],
 });
 

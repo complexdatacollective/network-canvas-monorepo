@@ -49,7 +49,17 @@ const makeStore = () => {
         name: 'Resources test',
         schemaVersion: 9,
         localization: { defaultLocale: 'en', locales: ['en'] },
-        stages: [],
+        // Schema 9 requires the finish stage that ends the interview.
+        stages: [
+          {
+            id: 'finish',
+            type: 'FinishSession',
+            label: { en: 'Finish' },
+            title: { en: 'All done' },
+            content: { en: 'Thank you.' },
+            outcome: 'completed',
+          },
+        ],
         codebook: {},
         assetManifest: {
           [MISSING]: {

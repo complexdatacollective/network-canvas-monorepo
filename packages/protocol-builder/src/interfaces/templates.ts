@@ -61,6 +61,9 @@ const INTERFACE_TEMPLATES: Partial<
     },
     background: DEFAULT_CIRCLES_BACKGROUND,
   },
+  FinishSession: {
+    outcome: 'completed',
+  },
   NarrativePedigree: {
     sourceStageId: '',
     diseases: [],

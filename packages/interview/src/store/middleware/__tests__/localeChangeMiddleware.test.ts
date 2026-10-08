@@ -13,15 +13,22 @@ import sessionReducer, {
 } from '../../modules/session';
 import { createLocaleChangeMiddleware } from '../localeChangeMiddleware';
 
-function createTestStore(onProtocolLocaleChange: ProtocolLocaleChangeHandler) {
-  const localeChange = createLocaleChangeMiddleware({ onProtocolLocaleChange });
+function createTestStore(
+  onProtocolLocaleChange: ProtocolLocaleChangeHandler,
+  finishTime: string | null = null,
+  openFinishedAsActive = false,
+) {
+  const localeChange = createLocaleChangeMiddleware({
+    onProtocolLocaleChange,
+    openFinishedAsActive,
+  });
   const store = configureStore({
     reducer: { session: sessionReducer },
     preloadedState: {
       session: {
         id: 'interview-1',
         startTime: '2026-01-01T00:00:00.000Z',
-        finishTime: null,
+        finishTime,
         exportTime: null,
         lastUpdated: '2026-01-01T00:00:00.000Z',
         network: createInitialNetwork(),
@@ -32,7 +39,11 @@ function createTestStore(onProtocolLocaleChange: ProtocolLocaleChangeHandler) {
     middleware: (getDefaultMiddleware) =>
       getDefaultMiddleware().concat(localeChange.middleware),
   });
-  return { store, settled: localeChange.settled };
+  return {
+    store,
+    settled: localeChange.settled,
+    markFinished: localeChange.markFinished,
+  };
 }
 
 const drainMicrotasks = () => new Promise((resolve) => setTimeout(resolve, 0));
@@ -145,6 +156,63 @@ describe('localeChangeMiddleware', () => {
     expect(handler).toHaveBeenLastCalledWith('interview-1', {
       locale: 'fr',
       localePreference: 'fr',
+    });
+  });
+
+  it('reports nothing for an interview opened finished', async () => {
+    const handler = vi
+      .fn<ProtocolLocaleChangeHandler>()
+      .mockResolvedValue(undefined);
+    const { store, settled } = createTestStore(
+      handler,
+      '2026-01-02T00:00:00.000Z',
+    );
+
+    store.dispatch(recordLocale('es'));
+    store.dispatch(setLocalePreference('fr'));
+    await settled();
+
+    expect(store.getState().session.locale).toBe('fr');
+    expect(handler).not.toHaveBeenCalled();
+  });
+
+  it('reports changes to a finished interview the host opens to be edited, until it is finished again', async () => {
+    const handler = vi
+      .fn<ProtocolLocaleChangeHandler>()
+      .mockResolvedValue(undefined);
+    const { store, settled, markFinished } = createTestStore(
+      handler,
+      '2026-01-02T00:00:00.000Z',
+      true,
+    );
+
+    store.dispatch(recordLocale('es'));
+    markFinished();
+    store.dispatch(recordLocale('fr'));
+    await settled();
+
+    expect(handler).toHaveBeenCalledTimes(1);
+    expect(handler).toHaveBeenCalledWith('interview-1', {
+      locale: 'es',
+      localePreference: null,
+    });
+  });
+
+  it('reports nothing once the interview is finished', async () => {
+    const handler = vi
+      .fn<ProtocolLocaleChangeHandler>()
+      .mockResolvedValue(undefined);
+    const { store, settled, markFinished } = createTestStore(handler);
+
+    store.dispatch(recordLocale('es'));
+    markFinished();
+    store.dispatch(recordLocale('fr'));
+    await settled();
+
+    expect(handler).toHaveBeenCalledTimes(1);
+    expect(handler).toHaveBeenCalledWith('interview-1', {
+      locale: 'es',
+      localePreference: null,
     });
   });
 });

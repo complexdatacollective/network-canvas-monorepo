@@ -1426,6 +1426,132 @@ describe("Architect's in-process protocol-builder host", () => {
     expect(stageIds(store)).toContain('geospatial-1');
   });
 
+  // The interview has to end at a finish stage, so its only one stays; the
+  // refusal names the stage order, the reference that is not taken out.
+  it('refuses to delete the stage that ends the interview', async () => {
+    const { store, client } = openProtocol();
+    const finishIndex = stageIds(store).indexOf('finish');
+    expect(finishIndex).toBe(stageIds(store).length - 1);
+
+    const { error, isSuccess } = await safe(
+      client.call('Delete', {
+        protocolId: PROTOCOL_ID,
+        sectionId: sectionId({ kind: 'stage', stageId: 'finish' }),
+      }),
+    );
+
+    expect(isSuccess).toBe(false);
+    expect(error).toEqual(
+      new ReferencesRemain({
+        remaining: [
+          {
+            sectionId: sectionId({ kind: 'stageOrder' }),
+            path: ['stages', finishIndex],
+          },
+        ],
+      }),
+    );
+    expect(stageIds(store)).toContain('finish');
+  });
+
+  // A protocol always ends at its one finish stage, so a submit never turns a
+  // stage into one or the finish stage into something else, and a create
+  // never adds a second one.
+  it.each([
+    {
+      direction: 'the finish stage into another kind of stage',
+      stageId: 'finish',
+      rewrite: (document: Readonly<Record<string, unknown>>) => ({
+        id: document.id,
+        type: 'Information',
+        label: { [FIXTURE_LANGUAGE]: 'No longer the end' },
+        title: { [FIXTURE_LANGUAGE]: 'No longer the end' },
+        items: [],
+      }),
+    },
+    {
+      direction: 'another stage into a second finish stage',
+      stageId: 'information-1',
+      rewrite: (document: Readonly<Record<string, unknown>>) => ({
+        id: document.id,
+        type: 'FinishSession',
+        label: { [FIXTURE_LANGUAGE]: 'A second end' },
+        title: { [FIXTURE_LANGUAGE]: 'A second end' },
+        content: { [FIXTURE_LANGUAGE]: 'Thank you.' },
+        outcome: 'completed',
+      }),
+    },
+  ])(
+    'refuses a submit that changes $direction',
+    async ({ stageId, rewrite }) => {
+      const { store, client } = openProtocol();
+      const target = sectionId({ kind: 'stage', stageId });
+      const before = getProtocol(store.getState())?.stages;
+      const held = await client.call('AcquireLock', {
+        protocolId: PROTOCOL_ID,
+        sectionId: target,
+      });
+
+      const { error, isSuccess } = await safe(
+        client.call('Submit', {
+          protocolId: PROTOCOL_ID,
+          requestId: nextRequestId(),
+          sectionId: target,
+          document: Redacted.make(rewrite(Redacted.value(held.document))),
+          revision: held.revision,
+        }),
+      );
+
+      expect(isSuccess).toBe(false);
+      expect(error).toEqual(
+        new InvalidShape({
+          sectionId: target,
+          issues: [
+            {
+              path: ['type'],
+              message:
+                'A stage cannot be changed into the finish stage, or the finish stage into another kind of stage.',
+            },
+          ],
+        }),
+      );
+      expect(getProtocol(store.getState())?.stages).toEqual(before);
+    },
+  );
+
+  it('refuses to create a second finish stage', async () => {
+    const { store, client } = openProtocol();
+    const before = getProtocol(store.getState())?.stages;
+
+    const { error, isSuccess } = await safe(
+      client.call('Create', {
+        protocolId: PROTOCOL_ID,
+        requestId: nextRequestId(),
+        kind: 'stage',
+        document: Redacted.make({
+          type: 'FinishSession',
+          label: { [FIXTURE_LANGUAGE]: 'A second end' },
+          title: { [FIXTURE_LANGUAGE]: 'A second end' },
+          content: { [FIXTURE_LANGUAGE]: 'Thank you.' },
+          outcome: 'completed',
+        }),
+      }),
+    );
+
+    expect(isSuccess).toBe(false);
+    expect(error).toBeInstanceOf(InvalidShape);
+    expect(error).toMatchObject({
+      issues: [
+        {
+          path: ['type'],
+          message:
+            'A protocol has exactly one finish stage, and this one already has it.',
+        },
+      ],
+    });
+    expect(getProtocol(store.getState())?.stages).toEqual(before);
+  });
+
   it('creates the ego codebook a protocol does not have yet', async () => {
     const { store, client } = openProtocol({ withEgo: false });
     expect(getProtocol(store.getState())?.codebook.ego).toBeUndefined();

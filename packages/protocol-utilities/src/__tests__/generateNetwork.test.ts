@@ -1487,7 +1487,33 @@ describe('generateNetwork', () => {
       });
 
       expect(droppedOut).toBe(false);
-      expect(currentStep).toBe(stages.length);
+      expect(currentStep).toBe(stages.length - 1);
+    });
+
+    it('rests a completed interview on its finish stage, not one past it', () => {
+      const finish = {
+        id: 'finish',
+        type: 'FinishSession' as const,
+        label: { en: 'Finish' },
+        title: { en: 'All done' },
+        content: { en: 'Thank you.' },
+        outcome: 'completed' as const,
+      };
+      const stages = [
+        makeTypedNameGeneratorStage('ng-1', 'node-type-1'),
+        makeTypedNameGeneratorStage('ng-2', 'node-type-1'),
+        finish,
+      ];
+
+      const { droppedOut, currentStep } = generateNetwork({
+        codebook: makeCodebook(),
+        stages,
+        seed: 42,
+      });
+
+      expect(droppedOut).toBe(false);
+      expect(currentStep).toBe(2);
+      expect(stages[currentStep]).toBe(finish);
     });
 
     it('a large dropOutFactor forces an early drop-out', () => {

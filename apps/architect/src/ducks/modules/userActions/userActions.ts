@@ -1,8 +1,10 @@
 import { type Dispatch } from '@reduxjs/toolkit';
+import { v4 as uuid } from 'uuid';
 import { navigate } from 'wouter/use-browser-location';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import {
+  createDefaultFinishSessionStage,
   type CurrentProtocol,
   type ExtractedAsset,
   extractProtocolFromZip,
@@ -30,6 +32,7 @@ import {
 } from '~/utils/beforeUnloadGuard';
 import {
   downloadProtocolAsNetcanvas,
+  MissingFinishStageTextError,
   UnresolvedAssetsError,
 } from '~/utils/bundleProtocol';
 import {
@@ -390,8 +393,11 @@ export const openLocalNetcanvas = createAppAsyncThunk(
       const migratedProtocol = migrationResult.protocol;
 
       // Validate the protocol
+      // As a draft: Architect is where a protocol missing its closing text
+      // gets it written, so it opens like any other.
       const validationResult = await validateProtocol(
         migratedProtocol as CurrentProtocol,
+        { draft: true },
       );
 
       if (!validationResult.success) {
@@ -577,7 +583,9 @@ export const createNetcanvas = createAppAsyncThunk(
       description,
       schemaVersion: APP_SCHEMA_VERSION,
       localization,
-      stages: [],
+      // A new protocol starts with the screen that ends the interview, with
+      // the closing text Network Canvas supplies in each of its languages.
+      stages: [createDefaultFinishSessionStage({ id: uuid(), localization })],
       codebook: {
         node: {},
         edge: {},
@@ -620,7 +628,9 @@ export const openBundledTemplate = createAppAsyncThunk(
     setImportInProgress(true);
     try {
       const finalProtocol = name ? { ...protocol, name } : protocol;
-      const validationResult = await validateProtocol(finalProtocol);
+      const validationResult = await validateProtocol(finalProtocol, {
+        draft: true,
+      });
 
       if (!validationResult.success) {
         trackImportValidationFailure('bundled', validationResult.error);
@@ -700,10 +710,20 @@ export const exportNetcanvas = createAppAsyncThunk(
     } catch (error) {
       // Returned rather than rethrown because `.unwrap()` gives the caller a
       // serialized copy of the error, not the instance — the class is gone by
-      // the time a dialog could ask about it. The resource names are what the
-      // researcher needs, so they travel as data.
+      // the time a dialog could ask about it. The resource names, and what
+      // the finish stage is missing, are what the researcher needs, so they
+      // travel as data.
       if (error instanceof UnresolvedAssetsError) {
-        return { status: 'unresolved-assets', assetNames: error.assetNames };
+        return {
+          status: 'unresolved-assets',
+          assetNames: error.assetNames,
+        } as const;
+      }
+      if (error instanceof MissingFinishStageTextError) {
+        return {
+          status: 'missing-finish-stage-text',
+          problem: error.problem,
+        } as const;
       }
       throw error;
     } finally {

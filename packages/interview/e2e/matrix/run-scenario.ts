@@ -32,10 +32,26 @@ export async function installScenario(
       ...(result.session.stageMetadata != null
         ? { stageMetadata: result.session.stageMetadata }
         : {}),
+      ...(scenario.finished
+        ? {
+            finishedAt: {
+              stageId:
+                scenario.finished === 'recorded'
+                  ? (result.protocol.stages.findLast(
+                      (stage) => stage.type === 'FinishSession',
+                    )?.id ?? null)
+                  : null,
+            },
+          }
+        : {}),
     },
   );
   ctx.interview.interviewId = interviewId;
-  await ctx.interview.goto(result.currentStep);
+  if (scenario.finished) {
+    await ctx.interview.gotoFinished(result.currentStep);
+  } else {
+    await ctx.interview.goto(result.currentStep);
+  }
 }
 
 export function defineScenarioTests(suite: InterfaceScenarios): void {

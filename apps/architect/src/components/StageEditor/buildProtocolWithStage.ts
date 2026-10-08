@@ -1,6 +1,7 @@
 import { v1 as uuid } from 'uuid';
 
 import type { CurrentProtocol, Stage } from '@codaco/protocol-validation';
+import { creationIndex } from '~/ducks/modules/protocol/stages';
 import prune from '~/utils/prune';
 
 /**
@@ -27,15 +28,17 @@ export function buildProtocolWithStage(
 
   // For new stages, generate a temp ID for validation/preview
   const stageWithId = stageId ? prunedStage : { ...prunedStage, id: uuid() };
+  // Where a save would put it: a new stage never lands after the finish stage.
+  const insertAt = creationIndex(protocol.stages, prunedStage, insertAtIndex);
 
   return {
     ...protocol,
     stages: stageId
       ? protocol.stages.map((s) => (s.id === stageId ? stageWithId : s))
       : [
-          ...protocol.stages.slice(0, insertAtIndex ?? protocol.stages.length),
+          ...protocol.stages.slice(0, insertAt),
           stageWithId,
-          ...protocol.stages.slice(insertAtIndex ?? protocol.stages.length),
+          ...protocol.stages.slice(insertAt),
         ],
   };
 }

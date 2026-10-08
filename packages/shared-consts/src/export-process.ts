@@ -7,6 +7,7 @@ export const ncTypeProperty = 'networkCanvasType';
 export const ncProtocolNameProperty = 'networkCanvasProtocolName';
 export const ncCaseProperty = 'networkCanvasCaseID';
 export const ncInterviewLocaleProperty = 'networkCanvasInterviewLocale';
+export const ncFinishOutcomeProperty = 'networkCanvasFinishOutcome';
 export const ncSessionProperty = 'networkCanvasSessionID';
 export const ncUUIDProperty = 'networkCanvasUUID';
 export const ncSourceUUID = 'networkCanvasSourceUUID';

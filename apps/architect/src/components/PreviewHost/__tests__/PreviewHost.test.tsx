@@ -17,6 +17,7 @@ import {
   vi,
 } from 'vitest';
 
+import { createAppIntl } from '@codaco/app-i18n/messages';
 import { AppI18nProvider } from '@codaco/app-i18n/react';
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
@@ -67,6 +68,12 @@ vi.mock('@codaco/interview', async () => {
             <span data-testid="shell-finish-description">
               {props.finishConfirmationDescription}
             </span>
+            {props.completedActions?.map((action, index) => (
+              // eslint-disable-next-line react/no-array-index-key
+              <button key={index} onClick={action.onAction}>
+                {action.label}
+              </button>
+            ))}
           </actual.InterviewI18nProvider>
         </div>
       );
@@ -1043,20 +1050,24 @@ describe('PreviewHost', () => {
   });
 
   /**
-   * Issue #1398: the Shell was handed a `noopFinish`, so confirming Finish
-   * Interview closed the dialog back onto the identical Finish screen — no
-   * completed state, no next action, and Finish repeatable forever.
+   * A finished preview shows the interview's own completed state, as a
+   * participant would see it, with starting the preview again as its one
+   * action.
    *
    * The Shell is mocked in this file, so these drive the contract's `onFinish`
-   * directly. What the real dialog does either side of that call (its copy,
-   * where focus lands once Base UI tears it down, and that Finish is gone
-   * afterwards) is `e2e/specs/preview-finish.spec.ts`.
+   * and `completedActions` directly. What the real Shell does with them (the
+   * completed state, where focus lands, and that Finish is gone afterwards) is
+   * `e2e/specs/preview-finish.spec.ts`.
    */
   describe('finishing the preview', () => {
     async function finishInterview() {
       const { onFinish, payload } = lastShellProps();
       await act(async () => {
-        await onFinish(payload.session.id, new AbortController().signal);
+        await onFinish(
+          payload.session.id,
+          { stageId: 'finish', outcome: 'completed' },
+          new AbortController().signal,
+        );
       });
       return payload.session.id;
     }
@@ -1068,35 +1079,43 @@ describe('PreviewHost', () => {
       return finishInterview();
     }
 
-    it('replaces the interview with a completed state the finish cannot repeat', async () => {
+    it('records nothing on finishing, and leaves the interview to show its completed state', async () => {
       await mountFinishedPreview();
 
+      // The Shell stays: its completed state replaces the Finish screen, so a
+      // second confirmation is unreachable without a screen of Architect's own.
+      expect(screen.getByTestId('shell-mounted')).toBeInTheDocument();
       expect(
-        screen.getByRole('heading', { name: /preview finished/i }),
-      ).toBeInTheDocument();
-      // The Finish screen and its button live inside the Shell, so unmounting
-      // it is what makes a second confirmation unreachable.
-      expect(screen.queryByTestId('shell-mounted')).not.toBeInTheDocument();
+        screen.queryByRole('heading', { name: /preview finished/i }),
+      ).not.toBeInTheDocument();
     });
 
-    it('moves focus to the completion heading and describes it with what happened to the responses', async () => {
-      await mountFinishedPreview();
-
-      const heading = screen.getByRole('heading', {
-        name: /preview finished/i,
-      });
-      // The Finish button the researcher activated unmounted with the Shell,
-      // so without this focus would be left on <body>.
-      expect(heading).toHaveFocus();
-
-      // A focused bare heading announces only its own text. The sentence that
-      // matters — that nothing was saved — has to reach the accessible
-      // description to be spoken with it.
-      const describedBy = heading.getAttribute('aria-describedby') ?? '';
-      expect(describedBy).not.toBe('');
-      expect(document.getElementById(describedBy)).toHaveTextContent(
-        /nothing was saved/i,
-      );
+    it('offers starting the preview again as the completed state’s action, in the interview’s language', async () => {
+      const languages = vi
+        .spyOn(navigator, 'languages', 'get')
+        .mockReturnValue(['es-MX']);
+      try {
+        render(<PreviewHost />);
+        postPayload(openerStub, makePayload());
+        await screen.findByTestId('shell-mounted');
+        expect(lastShellProps().completedActions).toHaveLength(1);
+        const spanish = createAppIntl({
+          locale: 'es',
+          messages: await architectCatalogSource.load('es'),
+        }).formatMessage({
+          id: 'architect.previewHost.previewHost.startThePreviewAgain',
+          defaultMessage: 'Start the preview again',
+          description:
+            'Visible text in components / PreviewHost / PreviewHost.',
+        });
+        expect(spanish).not.toBe('Start the preview again');
+        // The Shell changes language once its own Spanish catalog has loaded.
+        expect(
+          await screen.findByRole('button', { name: spanish }),
+        ).toBeInTheDocument();
+      } finally {
+        languages.mockRestore();
+      }
     });
 
     it('asks the finish confirmation to state that a preview is never saved', async () => {
@@ -1227,15 +1246,11 @@ describe('PreviewHost', () => {
       );
 
       // The restart re-runs the handshake rather than reviving the finished
-      // run, and shows neither the completed screen nor the spent interview
-      // while it waits.
+      // run, and does not show the finished interview while it waits.
       expect(openerStub.postMessage).toHaveBeenCalledWith(
         { type: 'preview:ready' },
         window.location.origin,
       );
-      expect(
-        screen.queryByRole('heading', { name: /preview finished/i }),
-      ).not.toBeInTheDocument();
       expect(screen.queryByTestId('shell-mounted')).not.toBeInTheDocument();
 
       postPayload(openerStub, makePayload());
@@ -1248,9 +1263,6 @@ describe('PreviewHost', () => {
       postPayload(openerStub, makePayload());
       await screen.findByTestId('shell-mounted');
       await finishInterview();
-      expect(
-        screen.getByRole('heading', { name: /preview finished/i }),
-      ).toBeInTheDocument();
 
       Object.defineProperty(window, 'opener', {
         value: null,
@@ -1261,9 +1273,7 @@ describe('PreviewHost', () => {
       // "Start the preview again" needs an opener to hand the payload back, so
       // a completed run must not keep offering it after Architect has gone.
       expect(screen.getByText(/preview has ended/i)).toBeInTheDocument();
-      expect(
-        screen.queryByRole('heading', { name: /preview finished/i }),
-      ).not.toBeInTheDocument();
+      expect(screen.queryByTestId('shell-mounted')).not.toBeInTheDocument();
       expect(
         screen.queryByRole('button', { name: /start the preview again/i }),
       ).not.toBeInTheDocument();

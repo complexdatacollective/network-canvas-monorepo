@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
+import { withFinishStage } from '../../../__tests__/finishStage.ts';
 import { collectEntityAttributeReferences } from '../../../utils/collectEntityAttributeReferences.ts';
 import { localized, localizedOptions } from '../../../utils/test-utils.ts';
 import { getEntityAttributeReferenceDescriptor } from '../entity-attribute-reference.ts';
@@ -128,7 +129,7 @@ const protocolWith = (stages: Stage[]) => ({
 });
 
 const issueMessagesAt = (protocol: unknown, path: (string | number)[]) => {
-  const result = ProtocolSchemaV9.safeParse(protocol);
+  const result = ProtocolSchemaV9.safeParse(withFinishStage(protocol));
   if (result.success) return [];
   return result.error.issues
     .filter((issue) => issue.path.join('.') === path.join('.'))
@@ -172,7 +173,7 @@ describe('stage subjects resolve during collection', () => {
         ['stages', 1, 'diseases', 0, 'attribute'].join('.'),
     );
     expect(hit?.subject).toEqual({ entity: 'node', type: 'family_member' });
-    const result = ProtocolSchemaV9.safeParse(protocol);
+    const result = ProtocolSchemaV9.safeParse(withFinishStage(protocol));
     expect(
       result.success ? [] : result.error.issues.map((issue) => issue.message),
     ).toEqual([]);
@@ -228,7 +229,7 @@ describe('stage subjects resolve during collection', () => {
         },
       }),
     ]);
-    const result = ProtocolSchemaV9.safeParse(protocol);
+    const result = ProtocolSchemaV9.safeParse(withFinishStage(protocol));
     expect(
       result.success ? [] : result.error.issues.map((issue) => issue.message),
     ).toEqual([]);

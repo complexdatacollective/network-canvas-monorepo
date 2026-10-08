@@ -5,6 +5,7 @@ import {
   type ElementType,
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react';
@@ -25,7 +26,7 @@ import {
   type UnavailableStage,
 } from '../selectors/skip-logic';
 import { calculateProgress, getInterviewProgress } from '../selectors/utils';
-import { getProtocolStages } from '../store/modules/protocol';
+import { getStages } from '../store/modules/protocol';
 import { transitionStage, updatePrompt } from '../store/modules/session';
 import type { RootState } from '../store/store';
 import { useWritesSettled } from '../store/WritesInFlightContext';
@@ -114,10 +115,18 @@ export default function useInterviewNavigation(
   );
   const stageCount = useSelector(getStageCount);
   const promptCount = useStageSelector(getPromptCount);
-  // The raw protocol stages (without the appended FinishSession stage). Passed
-  // to getInterviewProgress to compute the participant-facing progress meta
-  // handed back to the host via onStepChange.
-  const protocolStages = useSelector(getProtocolStages);
+  // Passed to getInterviewProgress to compute the participant-facing progress
+  // meta handed back to the host via onStepChange.
+  const protocolStages = useSelector(getStages);
+  // A review stops before the interview's finish stage: finishing is not
+  // something a review can do. Nothing follows a finish stage, so the first
+  // one is where the reviewable stages end.
+  const reviewEnd = useMemo(() => {
+    const finishIndex = protocolStages.findIndex(
+      (candidate) => candidate.type === 'FinishSession',
+    );
+    return finishIndex === -1 ? protocolStages.length : finishIndex;
+  }, [protocolStages]);
 
   const [forcedStep, setForcedStep] = useState<number | null>(() =>
     initialStageOverrideIndex === currentStep
@@ -244,7 +253,7 @@ export default function useInterviewNavigation(
         currentStepRef.current,
       );
       const nextStep = navigation.nextValidStageIndex;
-      if (reviewMode && nextStep >= protocolStages.length) {
+      if (reviewMode && nextStep >= reviewEnd) {
         setReviewBoundaryReached(true);
         return;
       }
@@ -264,6 +273,7 @@ export default function useInterviewNavigation(
     promptIndex,
     registerBeforeNext,
     protocolStages,
+    reviewEnd,
     reviewMode,
     setStep,
     interviewStore,
@@ -331,6 +341,9 @@ export default function useInterviewNavigation(
       if (targetIndex === currentStep || currentStep !== displayedStep) {
         return;
       }
+      // A review never reaches a finish stage: finishing is not something a
+      // review can do.
+      if (reviewMode && targetIndex >= reviewEnd) return;
 
       setForceNavigationDisabled(true);
       setHasAttemptedStageNavigation(true);
@@ -392,6 +405,8 @@ export default function useInterviewNavigation(
       displayedStep,
       protocolStages,
       registerBeforeNext,
+      reviewEnd,
+      reviewMode,
       setStep,
       interviewStore,
       writesSettled,
@@ -439,7 +454,7 @@ export default function useInterviewNavigation(
       currentAvailability: currentNavigation.currentAvailability,
       previousValidStageIndex: currentNavigation.previousValidStageIndex,
       nextValidStageIndex: currentNavigation.nextValidStageIndex,
-    }) >= protocolStages.length
+    }) >= reviewEnd
   ) {
     setForcedStep(currentStep);
   }
@@ -454,7 +469,7 @@ export default function useInterviewNavigation(
         previousValidStageIndex: currentNavigation.previousValidStageIndex,
         nextValidStageIndex: currentNavigation.nextValidStageIndex,
       });
-      if (reviewMode && recoveryStep >= protocolStages.length) {
+      if (reviewMode && recoveryStep >= reviewEnd) {
         // Already pinned during render; nowhere to recover to.
         return;
       }
@@ -466,6 +481,7 @@ export default function useInterviewNavigation(
     currentStep,
     forcedStep,
     protocolStages,
+    reviewEnd,
     reviewMode,
   ]);
 
@@ -483,14 +499,14 @@ export default function useInterviewNavigation(
   const isReviewRecoveryBoundary =
     reviewMode &&
     !displayedNavigation.isCurrentStepValid &&
-    displayedRecoveryStep >= protocolStages.length;
+    displayedRecoveryStep >= reviewEnd;
   const canRenderDisplayedStage =
     displayedNavigation.isCurrentStepValid ||
     displayedStep === forcedStep ||
     isReviewRecoveryBoundary;
   const isAtReviewEnd =
     reviewMode &&
-    currentNavigation.nextValidStageIndex >= protocolStages.length &&
+    currentNavigation.nextValidStageIndex >= reviewEnd &&
     isLastPrompt;
 
   return {

@@ -276,6 +276,146 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
     expect(listed.sectionIds).toContain(created.sectionId);
   });
 
+  it('puts a created stage in front of the finish stage, wherever it was asked to go', async () => {
+    const before = await call(
+      ADA,
+      host.rpc('GetSection', { protocolId, sectionId: STAGE_ORDER }),
+    );
+    const orderBefore = Redacted.value(before.document).stages;
+    if (!Array.isArray(orderBefore))
+      throw new Error('stageOrder is not a list');
+    expect(orderBefore.at(-1)).toBe('finish');
+
+    const unplaced = await createStage(ADA, 'Created with no position');
+    const pastTheEnd = await call(
+      ADA,
+      host.rpc('Create', {
+        protocolId,
+        requestId: randomUUID(),
+        kind: 'stage',
+        document: Redacted.make({
+          type: 'Information',
+          label: enUS('Created past the end'),
+          title: enUS('Created past the end'),
+          items: [],
+        }),
+        position: orderBefore.length + 5,
+      }),
+    );
+
+    const order = await call(
+      ADA,
+      host.rpc('GetSection', { protocolId, sectionId: STAGE_ORDER }),
+    );
+    expect(Redacted.value(order.document).stages).toEqual([
+      ...orderBefore.slice(0, -1),
+      unplaced.sectionId.slice('stage:'.length),
+      pastTheEnd.sectionId.slice('stage:'.length),
+      'finish',
+    ]);
+  });
+
+  it('refuses to delete the only finish stage, naming its place in the stage order', async () => {
+    const before = await call(
+      ADA,
+      host.rpc('GetSection', { protocolId, sectionId: STAGE_ORDER }),
+    );
+    const orderBefore = Redacted.value(before.document).stages;
+    if (!Array.isArray(orderBefore))
+      throw new Error('stageOrder is not a list');
+
+    const error = await expectRpcFailure(
+      callExit(
+        ADA,
+        host.rpc('Delete', { protocolId, sectionId: stageSection('finish') }),
+      ),
+      'ReferencesRemain',
+    );
+    expect(error.remaining).toEqual([
+      {
+        sectionId: 'stageOrder',
+        path: ['stages', orderBefore.indexOf('finish')],
+      },
+    ]);
+    const after = await call(
+      ADA,
+      host.rpc('GetSection', { protocolId, sectionId: STAGE_ORDER }),
+    );
+    expect(Redacted.value(after.document).stages).toEqual(orderBefore);
+    expect(after.revision).toEqual(before.revision);
+  });
+
+  // A protocol always ends at its one finish stage, so a submit never turns a
+  // stage into one or the finish stage into something else.
+  it.each([
+    {
+      direction: 'the finish stage into another kind of stage',
+      stageId: () => 'finish',
+      rewrite: (document: Readonly<Record<string, unknown>>) => ({
+        id: document.id,
+        type: 'Information',
+        label: enUS('No longer the end'),
+        title: enUS('No longer the end'),
+        items: [],
+      }),
+    },
+    {
+      direction: 'another stage into a second finish stage',
+      stageId: () => reference.stageId,
+      rewrite: (document: Readonly<Record<string, unknown>>) => ({
+        id: document.id,
+        type: 'FinishSession',
+        label: enUS('A second end'),
+        title: enUS('A second end'),
+        content: enUS('Thank you.'),
+        outcome: 'completed',
+      }),
+    },
+  ])(
+    'refuses a submit that changes $direction',
+    async ({ stageId, rewrite }) => {
+      const sectionId = stageSection(stageId());
+      const held = await call(
+        ADA,
+        host.rpc('AcquireLock', { protocolId, sectionId }),
+      );
+      if (held.lock !== 'held')
+        throw new Error('the section was already taken');
+      try {
+        const error = await expectRpcFailure(
+          callExit(
+            ADA,
+            host.rpc('Submit', {
+              protocolId,
+              requestId: randomUUID(),
+              sectionId,
+              document: Redacted.make(rewrite(Redacted.value(held.document))),
+              revision: held.revision,
+            }),
+          ),
+          'InvalidShape',
+        );
+        expect(error.issues).toEqual([
+          {
+            path: ['type'],
+            message:
+              'A stage cannot be changed into the finish stage, or the finish stage into another kind of stage.',
+          },
+        ]);
+        const read = await call(
+          ADA,
+          host.rpc('GetSection', { protocolId, sectionId }),
+        );
+        expect(Redacted.value(read.document)).toEqual(
+          Redacted.value(held.document),
+        );
+        expect(read.revision).toEqual(held.revision);
+      } finally {
+        await call(ADA, host.rpc('ReleaseLock', { protocolId, sectionId }));
+      }
+    },
+  );
+
   it('refuses a refactor whose sections another editor holds, naming them', async () => {
     const sectionId = stageSection(reference.stageId);
     const held = await call(

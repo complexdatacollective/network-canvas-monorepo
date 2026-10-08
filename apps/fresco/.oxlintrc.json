@@ -56,12 +56,6 @@
       }
     },
     {
-      // Deleted by the finish-stage rework, which replaces it with a localised
-      // completion screen. Remove this entry together with the file.
-      "files": ["app/(interview)/interview/_components/InterviewCompleted.tsx"],
-      "rules": { "formatjs/no-literal-string-in-jsx": "off" }
-    },
-    {
       "files": [
         "**/*.test.*",
         "**/*.stories.*",

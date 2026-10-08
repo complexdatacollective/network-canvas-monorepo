@@ -29,6 +29,7 @@ export const AWAITING = [
   'CategoricalBin',
   'DyadCensus',
   'FamilyPedigree',
+  'FinishSession',
   'Geospatial',
   'LanguageChooser',
   'NameGenerator',

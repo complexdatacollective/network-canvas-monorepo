@@ -56,7 +56,17 @@ function makeProtocol(stageOverrides: Partial<Stage> = {}): CurrentProtocol {
       ego: {},
     },
     assetManifest: {},
-    stages: [stage],
+    stages: [
+      stage,
+      {
+        id: 'finish',
+        type: 'FinishSession',
+        label: localized('Finish'),
+        title: localized('All done'),
+        content: localized('Thank you.'),
+        outcome: 'completed',
+      },
+    ],
   };
 }
 
@@ -143,8 +153,30 @@ describe('buildProtocolWithStage', () => {
 
     const built = buildProtocolWithStage(protocol, newStage, null, 0);
 
-    expect(built.stages).toHaveLength(2);
+    expect(built.stages).toHaveLength(3);
     expect(built.stages[0]?.id).toBeTruthy();
     expect(built.stages[1]?.id).toBe(STAGE_ID);
+    expect(built.stages[2]?.id).toBe('finish');
+  });
+
+  it('puts a new stage before the finish stage, where a save would put it', () => {
+    const newStage = {
+      type: 'Information',
+      label: { en: 'Intro' },
+    } as unknown as Stage;
+
+    for (const insertAt of [undefined, 2]) {
+      const built = buildProtocolWithStage(
+        makeProtocol(),
+        newStage,
+        null,
+        insertAt,
+      );
+      expect(built.stages.map(({ type }) => type)).toEqual([
+        'NameGenerator',
+        'Information',
+        'FinishSession',
+      ]);
+    }
   });
 });

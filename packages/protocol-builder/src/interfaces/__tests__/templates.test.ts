@@ -88,6 +88,12 @@ describe('getInterfaceTemplate', () => {
       showAtRiskStatuses: false,
     });
   });
+
+  it('starts a finish screen as completed', () => {
+    expect(getInterfaceTemplate('FinishSession')).toEqual({
+      outcome: 'completed',
+    });
+  });
 });
 
 /**
@@ -120,6 +126,9 @@ const STILL_NEEDED: Readonly<Record<string, readonly string[]>> = {
     'prompt',
     'subject',
   ],
+  // Its closing text is supplied when Architect adds it to a protocol, in
+  // each of the protocol's languages; the template holds only the outcome.
+  FinishSession: ['content', 'title'],
   Geospatial: ['mapOptions', 'prompts', 'subject'],
   Information: ['items', 'title'],
   // Its choices are the protocol's own languages, so a name is all it needs.
@@ -184,8 +193,10 @@ describe('a new stage given nothing but a name', () => {
    * Stated once, plainly, because it is what a reader of the list above would
    * otherwise have to work out by scanning it. The day another interface can
    * be saved straight from its template, this fails and someone reads the
-   * list. The language chooser is the one exception: it has nothing to
-   * configure beyond its name.
+   * list. The language chooser is the exception: it has nothing to configure
+   * beyond its name. (A finish screen is never made from its template:
+   * Architect adds it to a new protocol with the closing text Network Canvas
+   * supplies.)
    */
   it('is a saveable stage only for the language chooser', () => {
     const saveable = STAGE_TYPES.filter(

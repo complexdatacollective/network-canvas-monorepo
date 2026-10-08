@@ -133,6 +133,7 @@ export function nodeVariablesWrittenOnCreation(
     case 'DyadCensus':
     case 'EgoForm':
     case 'FamilyPedigree':
+    case 'FinishSession':
     case 'Geospatial':
     case 'Information':
     case 'LanguageChooser':
@@ -186,6 +187,7 @@ function nodeVariablesWrittenOnExisting(stage: Stage): Set<string> {
     case 'DyadCensus':
     case 'EgoForm':
     case 'FamilyPedigree':
+    case 'FinishSession':
     case 'Information':
     case 'LanguageChooser':
     case 'NameGenerator':

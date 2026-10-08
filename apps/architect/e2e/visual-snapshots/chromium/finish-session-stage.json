@@ -1,0 +1,14 @@
+{
+  "content": {
+    "en": "This study is not looking for more people like you."
+  },
+  "id": "id-1",
+  "label": {
+    "en": "Not eligible"
+  },
+  "outcome": "ineligible",
+  "title": {
+    "en": "Thank you for your interest"
+  },
+  "type": "FinishSession"
+}

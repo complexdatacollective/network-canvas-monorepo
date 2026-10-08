@@ -155,6 +155,24 @@ in the ego CSV and reported once per protocol as a `column-renamed` warning in
 unchanged, and GraphML never renames one, because the language is an attribute
 of the graph rather than a key.
 
+### How an interview ended
+
+Each interview is exported with the outcome of the finish stage it ended at,
+taken from `InterviewExportInput.finishOutcome`: `completed`, `ineligible` or
+`terminated`. `null` means the interview is not finished, or was finished
+before finish outcomes were recorded.
+
+- **CSV**: the ego file has a `networkCanvasFinishOutcome` column, written
+  after `networkCanvasInterviewLocale`. The cell is empty when the outcome is
+  `null`.
+- **GraphML**: the `<graph>` element has an `nc:finishOutcome` attribute,
+  omitted when the outcome is `null`.
+
+As with the language, only the printed name `networkCanvasFinishOutcome` is
+reserved: a variable whose column would have that name is written as
+`networkCanvasFinishOutcome_2` and reported as a `column-renamed` warning, and a
+variable named `finishOutcome` is exported unchanged.
+
 ---
 
 ## Public surface
@@ -210,6 +228,7 @@ export const PrismaInterviewRepository = Layer.succeed(InterviewRepository, {
         protocolHash: row.protocolHash,
         // The language last shown, or null if the runtime never reported one
         locale: row.locale,
+        finishOutcome: row.finishOutcome,
       }));
 
       return inputs;

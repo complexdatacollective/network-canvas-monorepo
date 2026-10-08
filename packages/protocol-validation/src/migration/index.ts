@@ -45,12 +45,15 @@
  * - `migrationV7toV8` drops EgoForm / AlterForm / AlterEdgeForm stages left
  *   with no fields (v8 requires at least one).
  * - `migrationV8toV9` inserts an Information stage before a Family Pedigree
- *   that had an introduction screen (schema 9's pedigree has none).
+ *   that had an introduction screen (schema 9's pedigree has none), and
+ *   appends a finish stage in place of the engine's own finish screen.
  *
  * Steps that declare a session step:
  * - `migrationV8toV9`: the redesigned pedigree keeps a different stage
  *   record, which its session step translates
- *   (schemas/9/family-pedigree-session-migration.ts).
+ *   (schemas/9/family-pedigree-session-migration.ts); and a session on the
+ *   engine's old finish screen, which the framework keeps past the last
+ *   stage, resumes at the appended finish stage.
  *
  * One exception predates session migrations and is not repaired by one:
  * `migrationV7toV8` coerces boolean and fractional ordinal/categorical option

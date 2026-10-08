@@ -154,7 +154,7 @@ describe('importProtocolFromFile error reporting', () => {
       shape: { default: 'circle' },
     };
     const bytes = await buildArchive({
-      'protocol.json': `{"schemaVersion":${COMPATIBLE_PROTOCOL_SCHEMA_VERSION},"name":"Proto","description":"","localization":{"defaultLocale":"en","locales":["en"]},"stages":[],"codebook":{"node":{"__proto__":${JSON.stringify(nodeType)}},"edge":{},"ego":{}},"assetManifest":{}}`,
+      'protocol.json': `{"schemaVersion":${COMPATIBLE_PROTOCOL_SCHEMA_VERSION},"name":"Proto","description":"","localization":{"defaultLocale":"en","locales":["en"]},"stages":[{"id":"finish","type":"FinishSession","label":{"en":"Finish"},"title":{"en":"Finish"},"content":{"en":"Thank you."},"outcome":"completed"}],"codebook":{"node":{"__proto__":${JSON.stringify(nodeType)}},"edge":{},"ego":{}},"assetManifest":{}}`,
     });
 
     const result = await importProtocolFromFile(asFile(bytes));

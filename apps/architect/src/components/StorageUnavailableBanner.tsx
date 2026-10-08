@@ -12,6 +12,11 @@ import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
 import { getStorageUnavailable } from '~/ducks/modules/app';
 import { exportNetcanvas } from '~/ducks/modules/userActions/userActions';
+
+import {
+  FinishStageTextRefusal,
+  FinishStageTextRefusalTitle,
+} from './FinishStageTextAlert';
 const messages = defineMessages({
   thisProtocolIsnTBeingSavedOn: {
     id: 'architect.storageUnavailableBanner.thisProtocolIsnTBeingSavedOn',
@@ -86,6 +91,25 @@ const StorageUnavailableBanner = () => {
             void dispatch(exportNetcanvas())
               .unwrap()
               .then((result) => {
+                if (result.status === 'missing-finish-stage-text') {
+                  void openDialog({
+                    type: 'acknowledge',
+                    intent: 'destructive',
+                    title: createElement(FinishStageTextRefusalTitle),
+                    description: createElement(FinishStageTextRefusal, {
+                      problem: result.problem,
+                    }),
+                    actions: {
+                      primary: {
+                        label: createElement(AppMessage, {
+                          message: messages.oK,
+                        }),
+                        value: true,
+                      },
+                    },
+                  });
+                  return;
+                }
                 if (result.status !== 'unresolved-assets') return;
                 void openDialog({
                   type: 'acknowledge',

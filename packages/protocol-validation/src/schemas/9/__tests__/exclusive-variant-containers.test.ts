@@ -11,6 +11,7 @@
  */
 import { describe, expect, it } from 'vitest';
 
+import { withFinishStage } from '../../../__tests__/finishStage.ts';
 import { createBaseProtocol, localized } from '../../../utils/test-utils.ts';
 import {
   AMBIGUOUS_VARIANT_CONTAINERS,
@@ -129,7 +130,9 @@ describe('the exclusive-variant containers of a stage document', () => {
     const base = createBaseProtocol();
     // The protocol these hybrids are made out of, so that a refusal below is
     // the mixture being refused and not the fixture.
-    expect(ProtocolSchemaV9.safeParse(base).success).toBe(true);
+    expect(ProtocolSchemaV9.safeParse(withFinishStage(base)).success).toBe(
+      true,
+    );
     const hybrid = {
       ...base,
       stages: base.stages.map((stage) =>
@@ -139,12 +142,16 @@ describe('the exclusive-variant containers of a stage document', () => {
       ),
     };
 
-    expect(ProtocolSchemaV9.safeParse(hybrid).success).toBe(false);
+    expect(ProtocolSchemaV9.safeParse(withFinishStage(hybrid)).success).toBe(
+      false,
+    );
   });
 
   it('refuses a skip-logic destination carrying both variants', () => {
     const base = createBaseProtocol();
-    expect(ProtocolSchemaV9.safeParse(base).success).toBe(true);
+    expect(ProtocolSchemaV9.safeParse(withFinishStage(base)).success).toBe(
+      true,
+    );
     const hybrid = {
       ...base,
       stages: base.stages.map((stage, index) =>
@@ -169,7 +176,9 @@ describe('the exclusive-variant containers of a stage document', () => {
       ),
     };
 
-    expect(ProtocolSchemaV9.safeParse(hybrid).success).toBe(false);
+    expect(ProtocolSchemaV9.safeParse(withFinishStage(hybrid)).success).toBe(
+      false,
+    );
   });
 });
 

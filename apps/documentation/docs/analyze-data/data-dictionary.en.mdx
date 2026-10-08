@@ -162,8 +162,8 @@ the files together:
 
 - The **ego file** begins with `networkCanvasEgoUUID`, `networkCanvasCaseID`,
   `networkCanvasSessionID`, `networkCanvasProtocolName`, `sessionStart`,
-  `sessionFinish`, `sessionExported`, `APP_VERSION`, `COMMIT_HASH`, and
-  `networkCanvasInterviewLocale`, followed by your ego variables. Session
+  `sessionFinish`, `sessionExported`, `APP_VERSION`, `COMMIT_HASH`,
+  `networkCanvasInterviewLocale`, and `networkCanvasFinishOutcome`, followed by your ego variables. Session
   timestamps are ISO 8601 strings.
 - **Alter files** begin with `nodeID` (a sequential number unique within the
   export), `networkCanvasEgoUUID` (the join key to the ego file), and
@@ -188,6 +188,23 @@ element.
 
 The column is in every ego file, even when every cell is empty. See
 [Interview language](/en/analyze-data/data-export#interview-language) for more.
+
+### How the interview ended
+
+`networkCanvasFinishOutcome` holds how the interview ended: the outcome chosen
+on the protocol's Finish Screen. GraphML files record the same value in the
+`nc:finishOutcome` attribute of the `<graph>` element.
+
+| Value        | Meaning                                                                                                                                                            |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `completed`  | The participant reached the normal end of the interview.                                                                                                           |
+| `ineligible` | The participant did not qualify for the study.                                                                                                                     |
+| `terminated` | The interview ended early for another reason, such as a distress or safety stop.                                                                                   |
+| Empty (CSV)  | No outcome was recorded, for example for an interview finished before your app recorded the outcome, or one that isn't finished. GraphML leaves the attribute out. |
+
+The column is in every ego file, even when every cell is empty. See
+[How the interview ended](/en/analyze-data/data-export#how-the-interview-ended)
+for more.
 
 ## Column names
 

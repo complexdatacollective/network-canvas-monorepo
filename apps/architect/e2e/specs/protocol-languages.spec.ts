@@ -15,8 +15,11 @@ import { readProtocolJson } from '../helpers/read-store.js';
  * (`/protocol/localization?table=open`), where its texts are translated.
  *
  * Seeded with one English stage holding three texts (its name, its heading and
- * one text block), so there is something to count and translate once a second
- * language joins.
+ * one text block), then the finish stage every protocol ends with, holding
+ * three more (its name, heading and text), so there is something to count and
+ * translate once a second language joins. The finish stage's text is the
+ * researcher's own, not the text Network Canvas supplies, so adding a language
+ * translates none of it.
  */
 const STAGE_NAME = 'Welcome';
 
@@ -25,6 +28,9 @@ const STAGE_TEXT_ROWS = [
   'Stage name',
   'Page content › Page heading',
   'Page content › Item 1 › Content',
+  'Stage name',
+  'Closing screen › Heading',
+  'Closing screen › Text',
 ];
 
 function englishProtocol(): CurrentProtocol {
@@ -44,8 +50,21 @@ function englishProtocol(): CurrentProtocol {
           },
         ],
       },
+      {
+        id: 'finish',
+        type: 'FinishSession',
+        label: { en: 'End' },
+        title: { en: 'All done' },
+        content: { en: 'Thanks again.' },
+        outcome: 'completed',
+      },
     ],
   });
+}
+
+function finishContent(protocol: CurrentProtocol) {
+  const stage = protocol.stages.at(-1);
+  return stage?.type === 'FinishSession' ? stage.content : undefined;
 }
 
 function welcomeTitle(protocol: CurrentProtocol) {
@@ -105,12 +124,18 @@ function translationTable(page: Page): Locator {
 }
 
 /**
- * The text box holding a first-stage text's translation into a language. A
- * formatted text's cell has one only while it has focus.
+ * The text box holding a text's translation into a language, on the first
+ * stage unless another is named. A formatted text's cell has one only while it
+ * has focus.
  */
-function translationCell(page: Page, row: string, language: string): Locator {
+function translationCell(
+  page: Page,
+  row: string,
+  language: string,
+  stage = 1,
+): Locator {
   return translationTable(page).getByRole('textbox', {
-    name: new RegExp(`^Stage 1 .*\\b${row} ${language}$`),
+    name: new RegExp(`^Stage ${stage} .*\\b${row} ${language}$`),
   });
 }
 
@@ -138,7 +163,7 @@ test('adds a language, keeps the default language from being removed, translates
   await expect(languageRows(page)).toHaveCount(1);
   await expect(english).toContainText('English');
   await expect(english.getByText('Default', { exact: true })).toBeVisible();
-  await expect(english).toContainText('3 of 3 texts translated');
+  await expect(english).toContainText('6 of 6 texts translated');
   // With nothing to translate into, there is no translation table.
   const openTable = page.getByRole('link', {
     name: 'Open translation table',
@@ -173,7 +198,7 @@ test('adds a language, keeps the default language from being removed, translates
 
   const french = languageRow(page, 'fr');
   await expect(french).toContainText('French');
-  await expect(french).toContainText('0 of 3 texts translated');
+  await expect(french).toContainText('0 of 6 texts translated');
   await expect(french.getByText('Default', { exact: true })).toHaveCount(0);
   await expect(
     french.getByText('Missing translations', { exact: true }),
@@ -257,7 +282,7 @@ test('adds a language, keeps the default language from being removed, translates
   // Nor can English, though it is no longer the default: its texts exist in
   // no other language yet.
   const strandedReason =
-    '3 texts exist only in English. Translate them into another language before removing English.';
+    '6 texts exist only in English. Translate them into another language before removing English.';
   await expect(removeEnglish).toBeDisabled();
   await expect(removeEnglish).toHaveAccessibleDescription(strandedReason);
   await removeEnglish.hover();
@@ -283,7 +308,7 @@ test('adds a language, keeps the default language from being removed, translates
   await expect(page).toHaveURL(
     /\/protocol\/localization\?table=open&missing=fr$/,
   );
-  await expect(page.getByText('Showing 3 of 3 texts')).toBeVisible();
+  await expect(page.getByText('Showing 6 of 6 texts')).toBeVisible();
   const table = translationTable(page);
   await expect(table.locator('th[scope="row"]')).toHaveText(STAGE_TEXT_ROWS);
   // A stage is headed by its position, its name in the default language and
@@ -310,13 +335,22 @@ test('adds a language, keeps the default language from being removed, translates
   await page.keyboard.press('Enter');
   await expect(translationCell(page, 'Content', 'French')).toBeFocused();
   await page.keyboard.type('Merci de votre participation.');
+  await page.keyboard.press('Enter');
+  await expect(translationCell(page, 'Stage name', 'French', 2)).toBeFocused();
+  await page.keyboard.type('Fin');
+  await page.keyboard.press('Enter');
+  await expect(translationCell(page, 'Heading', 'French', 2)).toBeFocused();
+  await page.keyboard.type('Terminé');
+  await page.keyboard.press('Enter');
+  await expect(translationCell(page, 'Text', 'French', 2)).toBeFocused();
+  await page.keyboard.type('Merci encore.');
   await page.keyboard.press('Control+Enter');
   await expect(
     table.getByRole('columnheader', { name: /^French/ }),
-  ).toContainText('3 of 3 translated');
+  ).toContainText('6 of 6 translated');
   await expect(table.locator('th[scope="row"]')).toHaveText(STAGE_TEXT_ROWS);
   const translated = await readProtocolJson(page, (protocol) =>
-    Object.hasOwn(welcomeContent(protocol) ?? {}, 'fr'),
+    Object.hasOwn(finishContent(protocol) ?? {}, 'fr'),
   );
   expect(translated.stages[0]?.label).toEqual({
     en: STAGE_NAME,
@@ -344,7 +378,7 @@ test('adds a language, keeps the default language from being removed, translates
   await expect(translationTableDialog(page)).toBeHidden();
   await expect(page).toHaveURL(/\/protocol\/localization$/);
   await expect(openTable).toBeFocused();
-  await expect(french).toContainText('3 of 3 texts translated');
+  await expect(french).toContainText('6 of 6 texts translated');
   await expect(
     french.getByText('Missing translations', { exact: true }),
   ).toHaveCount(0);
@@ -390,6 +424,7 @@ function chooserProtocol(): CurrentProtocol {
     localization: { defaultLocale: 'en', locales: ['en', 'fr', 'es'] },
     stages: [
       { id: 'choose-language', type: 'LanguageChooser', label: CHOOSER_LABEL },
+      ...emptyProtocol().stages,
     ],
   });
 }
@@ -514,7 +549,7 @@ test('opens the translation table on every missing translation from the protocol
   await expect(textsToShow(page).locator('option:checked')).toHaveText(
     'Missing in any shown language',
   );
-  await expect(page.getByText('Showing 3 of 3 texts')).toBeVisible();
+  await expect(page.getByText('Showing 6 of 6 texts')).toBeVisible();
 
   // The filter is kept in the address, and every text has a row without it.
   await textsToShow(page).selectOption({ label: 'All texts' });

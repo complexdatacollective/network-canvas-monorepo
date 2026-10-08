@@ -25,28 +25,29 @@ describe('computeInterviewProgress', () => {
     ).toBe(100);
   });
 
-  it('divides by stageCount + 1 to match the package, which appends a finish stage', () => {
-    // @codaco/interview indexes currentStep against [...protocolStages, finish],
-    // so the true step total is stageCount + 1.
+  it('divides by stageCount to match the package, whose finish stages are protocol stages', () => {
+    // @codaco/interview indexes currentStep against the protocol's own stages,
+    // finish stages included, so the step total is stageCount.
     expect(
       computeInterviewProgress({
         finishTime: null,
         currentStep: 1,
-        stageCount: 3,
+        stageCount: 4,
       }),
     ).toBe(25);
   });
 
-  it('reports an unfinished interview parked on the finish screen below 100%', () => {
-    // currentStep === stageCount means the participant reached the appended
-    // finish screen but has not finished; finishTime is the only 100% signal.
+  it('reports an unfinished interview waiting on its finish stage below 100%', () => {
+    // currentStep === stageCount - 1 means the participant reached the last
+    // stage, the finish stage, but has not finished; finishTime is the only
+    // 100% signal.
     expect(
       computeInterviewProgress({
         finishTime: null,
-        currentStep: 12,
+        currentStep: 11,
         stageCount: 12,
       }),
-    ).toBeCloseTo((12 / 13) * 100);
+    ).toBeCloseTo((11 / 12) * 100);
   });
 
   it('returns 0 for a not-started interview', () => {

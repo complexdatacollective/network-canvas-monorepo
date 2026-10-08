@@ -52,6 +52,7 @@ The CSV export creates separate files for each entity type in your protocol:
   - Ego-level variables you collected
   - Session metadata (start time, finish time, protocol name, etc.)
   - The language the interview was shown in (see [Interview language](#interview-language))
+  - How the interview ended (see [How the interview ended](#how-the-interview-ended))
   - Network Canvas identifiers (ego UUID, case ID, session ID)
 
 **Example structure:**
@@ -188,6 +189,8 @@ The schema `nc-types.xsd` defines these attributes, and `graphml+netcanvas.xsd` 
 
 The `<graph>` element also has an `nc:interviewLocale` attribute, which records the language the interview was shown in. It is left out when no language was recorded. See [Interview language](#interview-language).
 
+It also has an `nc:finishOutcome` attribute, which records how the interview ended. It is left out when no outcome was recorded. See [How the interview ended](#how-the-interview-ended).
+
 **Ego attributes:** Ego data is stored using the standard GraphML mechanism for attaching data to the graph itself, so no schema extension is needed. Each ego attribute is declared with a `<key>` element whose `for` attribute is set to `graph`, rather than `node` or `edge`:
 
 ```xml
@@ -242,7 +245,7 @@ CSV files keep every answer exactly as it was entered, so use the CSV export if 
 
 Every export records the language each interview was shown in. If your protocol is written in more than one language (see [Translating Your Protocol](/en/design-protocols/translating-your-protocol)), this tells you which version of your questions each participant answered.
 
-- **CSV:** the ego file has a `networkCanvasInterviewLocale` column. It comes after `APP_VERSION` and `COMMIT_HASH`, and before your ego variables.
+- **CSV:** the ego file has a `networkCanvasInterviewLocale` column. It comes after `APP_VERSION` and `COMMIT_HASH`, and before `networkCanvasFinishOutcome` (see [How the interview ended](#how-the-interview-ended)) and your ego variables.
 - **GraphML:** the `<graph>` element has an `nc:interviewLocale` attribute.
 
 The value is a language code, such as `en`, `es-MX` or `zh-Hans`. It is the language of your protocol's text, not of the app's own buttons and menus. If the language changed during the interview, for example because the participant picked another one on a [Language Chooser](/en/design-protocols/interface-documentation/language-chooser) stage, the value is the language the interview was last shown in.
@@ -252,6 +255,25 @@ Protocols made before Network Canvas recorded which language a protocol is writt
 The CSV cell is empty, and the GraphML attribute is left out, when no language was recorded for the interview. This happens for interviews started before your app recorded the interview language, if they haven't been opened since. The CSV column is always there, even when every cell is empty, so your files have the same columns whichever language each interview used.
 
 Because the export writes this column itself, Architect won't let an ego variable be named `networkCanvasInterviewLocale`. If an older protocol already has one, the export writes that variable as `networkCanvasInterviewLocale_2` and shows the "Some columns were given new names" warning. A variable named `interviewLocale` is exported unchanged.
+
+### How the interview ended
+
+Every export records how each interview ended: the outcome you chose on the protocol's [Finish Screen](/en/design-protocols/interface-documentation/finish-screen). Participants never see it.
+
+- **CSV:** the ego file has a `networkCanvasFinishOutcome` column. It comes right after `networkCanvasInterviewLocale`.
+- **GraphML:** the `<graph>` element has an `nc:finishOutcome` attribute.
+
+The value is one of:
+
+| Value        | Meaning                                                                                                                           |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------- |
+| `completed`  | The participant reached the normal end of the interview.                                                                          |
+| `ineligible` | The participant did not qualify for the study.                                                                                    |
+| `terminated` | The interview ended early for another reason, such as a distress or safety stop. This is the **Ended early** choice in Architect. |
+
+The CSV cell is empty, and the GraphML attribute is left out, when no outcome was recorded. This happens for interviews that were finished before your app recorded the outcome, and for interviews that haven't been finished. The CSV column is always there, even when every cell is empty.
+
+Because the export writes this column itself, Architect won't let an ego variable be named `networkCanvasFinishOutcome`. If an older protocol already has one, the export writes that variable as `networkCanvasFinishOutcome_2` and shows the "Some columns were given new names" warning. A variable named `finishOutcome` is exported unchanged.
 
 ### How export files are named
 
@@ -386,6 +408,7 @@ These identifiers allow you to:
 - `sessionExported` - Export timestamp
 - `networkCanvasProtocolName` - Protocol used
 - `networkCanvasInterviewLocale` - The language the interview was shown in (see [Interview language](#interview-language))
+- `networkCanvasFinishOutcome` - How the interview ended (see [How the interview ended](#how-the-interview-ended))
 
 ## Data structure details
 

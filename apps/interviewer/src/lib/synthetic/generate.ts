@@ -43,6 +43,17 @@ export async function generateSyntheticSessions(
 
   const externalData = await loadRosterNodesForStages(protocol);
 
+  // A synthetic session runs straight through, so a completed one ends at the
+  // protocol's last finish stage.
+  const finishStage = protocol.protocol.stages.findLast(
+    (stage) => stage.type === 'FinishSession',
+  );
+  const finished = () => ({
+    finishedAt: new Date().toISOString(),
+    finishStageId: finishStage?.id ?? null,
+    finishOutcome: finishStage?.outcome ?? null,
+  });
+
   const genOptions = {
     codebook: protocol.codebook,
     stages: protocol.protocol.stages,
@@ -83,7 +94,7 @@ export async function generateSyntheticSessions(
             stageMetadata === null || stageMetadata === undefined
               ? undefined
               : StageMetadataSchema.parse(stageMetadata),
-          finishedAt: droppedOut ? null : new Date().toISOString(),
+          ...(droppedOut ? { finishedAt: null } : finished()),
         },
         { protocolHash },
       );
@@ -118,7 +129,7 @@ export async function generateSyntheticSessions(
                 stageMetadata === null || stageMetadata === undefined
                   ? undefined
                   : StageMetadataSchema.parse(stageMetadata),
-              finishedAt: new Date().toISOString(),
+              ...finished(),
             },
             { protocolHash },
           );

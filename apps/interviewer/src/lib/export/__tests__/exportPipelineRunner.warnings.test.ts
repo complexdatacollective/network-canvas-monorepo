@@ -41,6 +41,7 @@ const session: InterviewExportInput = {
   participantIdentifier: 'P-7',
   startTime: new Date(0),
   finishTime: null,
+  finishOutcome: null,
   network: {
     nodes: [
       {

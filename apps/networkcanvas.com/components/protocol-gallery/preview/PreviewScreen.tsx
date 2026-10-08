@@ -1,4 +1,4 @@
-import type { ReactNode, Ref } from 'react';
+import type { ReactNode } from 'react';
 
 import Spinner from '@codaco/fresco-ui/Spinner';
 import Heading from '@codaco/fresco-ui/typography/Heading';
@@ -10,27 +10,16 @@ import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
  */
 export function PreviewMessageScreen({
   heading,
-  headingRef,
-  describedById,
   children,
   actions,
 }: {
   heading: string;
-  headingRef?: Ref<HTMLHeadingElement>;
-  describedById?: string;
   children: ReactNode;
   actions?: ReactNode;
 }) {
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center gap-4 p-8 text-center">
-      <Heading
-        ref={headingRef}
-        tabIndex={headingRef ? -1 : undefined}
-        aria-describedby={describedById}
-        level="h1"
-        variant="section-heading"
-        margin="none"
-      >
+      <Heading level="h1" variant="section-heading" margin="none">
         {heading}
       </Heading>
       <div className="max-w-prose">{children}</div>

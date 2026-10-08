@@ -3233,6 +3233,9 @@ importers:
       '@codaco/protocol-builder-core':
         specifier: workspace:^
         version: link:../protocol-builder-core
+      '@codaco/protocol-validation':
+        specifier: workspace:^
+        version: link:../protocol-validation
       '@codaco/studio-sync':
         specifier: workspace:^
         version: link:../studio-sync

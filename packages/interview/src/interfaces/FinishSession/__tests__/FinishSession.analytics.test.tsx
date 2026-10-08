@@ -7,13 +7,23 @@ import { AnimationProvider } from '@codaco/fresco-ui/AnimationProvider';
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import { getLocaleMetadata } from '@codaco/protocol-validation';
 
-import { AnalyticsContext } from '../../analytics/AnalyticsContext';
-import { ContractProvider } from '../../contract/context';
-import type { FinishHandler, InterviewPayload } from '../../contract/types';
-import { InterviewI18nProvider } from '../../i18n/InterviewI18nProvider';
-import { store as createStore } from '../../store/store';
-import { SyncFlushProvider } from '../../store/SyncFlushContext';
+import { AnalyticsContext } from '../../../analytics/AnalyticsContext';
+import { ContractProvider } from '../../../contract/context';
+import type { FinishHandler, InterviewPayload } from '../../../contract/types';
+import { InterviewI18nProvider } from '../../../i18n/InterviewI18nProvider';
+import { ProtocolLocalizationProvider } from '../../../localization/ProtocolLocalizationProvider';
+import { store as createStore } from '../../../store/store';
+import { SyncFlushProvider } from '../../../store/SyncFlushContext';
 import FinishSession from '../FinishSession';
+
+const finishStage = {
+  id: 'finish',
+  type: 'FinishSession',
+  label: { en: 'Finish' },
+  title: { en: 'All done' },
+  content: { en: 'Thank you for taking part.' },
+  outcome: 'completed',
+} as const;
 
 const payload = {
   session: {
@@ -51,6 +61,7 @@ const payload = {
         title: { en: 'Two' },
         items: [],
       },
+      finishStage,
     ],
   },
 } satisfies InterviewPayload;
@@ -75,20 +86,36 @@ function renderFinish(onFinish: FinishHandler) {
   render(
     <AnimationProvider disableAnimations reducedMotion="always">
       <InterviewI18nProvider requestedLocale="en">
-        <Provider store={store}>
-          <AnalyticsContext.Provider value={tracker}>
-            <ContractProvider
-              onFinish={onFinish}
-              onRequestAsset={() => Promise.resolve('')}
-            >
-              <SyncFlushProvider flush={() => Promise.resolve(true)}>
-                <DialogProvider>
-                  <FinishSession />
-                </DialogProvider>
-              </SyncFlushProvider>
-            </ContractProvider>
-          </AnalyticsContext.Provider>
-        </Provider>
+        <ProtocolLocalizationProvider
+          localization={payload.protocol.localization}
+          localeOptions={payload.session.localeOptions}
+          requestedLocales={['en']}
+          localePreference={null}
+          recordedLocale={null}
+          onLocalePreferenceChange={() => undefined}
+          onLocaleRecorded={() => undefined}
+        >
+          <Provider store={store}>
+            <AnalyticsContext.Provider value={tracker}>
+              <ContractProvider
+                onFinish={onFinish}
+                onRequestAsset={() => Promise.resolve('')}
+              >
+                <SyncFlushProvider flush={() => Promise.resolve(true)}>
+                  <DialogProvider>
+                    <FinishSession
+                      stage={finishStage}
+                      getNavigationHelpers={() => ({
+                        moveForward: () => undefined,
+                        moveBackward: () => undefined,
+                      })}
+                    />
+                  </DialogProvider>
+                </SyncFlushProvider>
+              </ContractProvider>
+            </AnalyticsContext.Provider>
+          </Provider>
+        </ProtocolLocalizationProvider>
       </InterviewI18nProvider>
     </AnimationProvider>,
   );
@@ -112,7 +139,8 @@ describe('FinishSession analytics', () => {
 
     await waitFor(() => {
       expect(finishedCalls(tracker)).toEqual([
-        ['interview_finished', { stage_count: 2 }],
+        // Every stage the protocol defines, its finish stage included.
+        ['interview_finished', { stage_count: 3 }],
       ]);
     });
   });

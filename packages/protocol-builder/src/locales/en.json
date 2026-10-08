@@ -1659,6 +1659,58 @@
     "defaultMessage": "Interactive preview",
     "description": "Accessible name and heading of the half of the form-field dialog that shows the question as the participant will meet it."
   },
+  "protocolBuilder.finishSession.closingDescription": {
+    "defaultMessage": "Write what participants read at the end of the interview. They finish the interview from this screen, and see this text again whenever the finished interview is opened.",
+    "description": "Description of the closing-screen section."
+  },
+  "protocolBuilder.finishSession.closingTitle": {
+    "defaultMessage": "Closing screen",
+    "description": "Heading of the section where a researcher writes what a participant reads on the screen that ends the interview."
+  },
+  "protocolBuilder.finishSession.headingLabel": {
+    "defaultMessage": "Heading",
+    "description": "Label of the field holding the heading at the top of the screen that ends the interview."
+  },
+  "protocolBuilder.finishSession.outcomeCompleted": {
+    "defaultMessage": "Completed",
+    "description": "Outcome option: the interview ended normally. Exported as the value \"completed\"."
+  },
+  "protocolBuilder.finishSession.outcomeCompletedDescription": {
+    "defaultMessage": "The participant reached the normal end of the interview.",
+    "description": "Explanation under the \"Completed\" outcome option."
+  },
+  "protocolBuilder.finishSession.outcomeDescription": {
+    "defaultMessage": "Choose how an interview that ends here is recorded. The outcome is saved with the interview and included in data exports. Participants never see it.",
+    "description": "Description of the outcome section."
+  },
+  "protocolBuilder.finishSession.outcomeIneligible": {
+    "defaultMessage": "Ineligible",
+    "description": "Outcome option: the interview ended because the participant did not qualify for the study. Exported as the value \"ineligible\"."
+  },
+  "protocolBuilder.finishSession.outcomeIneligibleDescription": {
+    "defaultMessage": "The participant did not qualify for the study.",
+    "description": "Explanation under the \"Ineligible\" outcome option."
+  },
+  "protocolBuilder.finishSession.outcomeLabel": {
+    "defaultMessage": "How the interview ended",
+    "description": "Label of the choice between the ways an interview that ends on this screen can be recorded as having ended."
+  },
+  "protocolBuilder.finishSession.outcomeTerminated": {
+    "defaultMessage": "Ended early",
+    "description": "Outcome option: the interview was ended early for a reason the protocol decides, such as a distress or safety stop. Exported as the value \"terminated\"."
+  },
+  "protocolBuilder.finishSession.outcomeTerminatedDescription": {
+    "defaultMessage": "The interview ended early for another reason, such as a distress or safety stop.",
+    "description": "Explanation under the \"Ended early\" outcome option."
+  },
+  "protocolBuilder.finishSession.outcomeTitle": {
+    "defaultMessage": "Outcome",
+    "description": "Heading of the section where a researcher chooses how an interview that ends on this screen is recorded as having ended."
+  },
+  "protocolBuilder.finishSession.textLabel": {
+    "defaultMessage": "Text",
+    "description": "Label of the field holding the text a participant reads on the screen that ends the interview."
+  },
   "protocolBuilder.formFields.addLabel": {
     "defaultMessage": "Create new form field",
     "description": "Button that opens the dialog for adding one more question to a form. Whole rather than a generic \"Add\", because a stage editor shows several lists at once."
@@ -2242,6 +2294,10 @@
   "protocolBuilder.interface.familyPedigree": {
     "defaultMessage": "Family Pedigree",
     "description": "Researcher-facing interface name. Interface for recording a family genealogy. Not a protocol-authored stage label."
+  },
+  "protocolBuilder.interface.finishSession": {
+    "defaultMessage": "Finish Screen",
+    "description": "Researcher-facing interface name. The screen that ends the interview, where the participant reads closing text and finishes the interview. Not a protocol-authored stage label."
   },
   "protocolBuilder.interface.geospatial": {
     "defaultMessage": "Geospatial Interface",

@@ -1,4 +1,4 @@
-import type { Codebook } from '@codaco/protocol-validation';
+import type { Codebook, FinishOutcome } from '@codaco/protocol-validation';
 import type {
   NcEdge,
   NcNetwork,
@@ -7,6 +7,7 @@ import type {
   codebookHashProperty,
   edgeExportIDProperty,
   egoProperty,
+  finishOutcomeProperty,
   interviewLocaleProperty,
   ncSourceUUID,
   ncTargetUUID,
@@ -34,6 +35,7 @@ export type SessionVariables = {
   [protocolName]: string;
   [codebookHashProperty]: string;
   [interviewLocaleProperty]: string | null;
+  [finishOutcomeProperty]: FinishOutcome | null;
   [sessionExportTimeProperty]: string;
   [sessionStartTimeProperty]: string | undefined;
   [sessionFinishTimeProperty]: string | undefined;
@@ -89,4 +91,10 @@ export type InterviewExportInput = {
    * when the runtime never reported one.
    */
   locale: string | null;
+  /**
+   * How the interview ended: the outcome of the finish stage it ended at, or
+   * `null` for an interview that is not finished, or was finished before
+   * finish outcomes were recorded.
+   */
+  finishOutcome: FinishOutcome | null;
 };

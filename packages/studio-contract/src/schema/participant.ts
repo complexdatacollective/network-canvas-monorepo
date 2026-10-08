@@ -1,5 +1,7 @@
 import { Schema } from 'effect';
 
+import { FINISH_OUTCOMES } from '@codaco/protocol-validation';
+
 import { LinkToken, SessionToken, StudyId } from './ids.ts';
 import { DecimalSequence, NonNegativeInt } from './primitives.ts';
 import { problemFields } from './problem.ts';
@@ -181,9 +183,22 @@ export const SyncResult = Schema.Struct({
   applied: Schema.Boolean,
 });
 
+/**
+ * How the interview ended, as the finish stage it ended at declares: one of
+ * the protocol schema's finish outcomes.
+ */
+export const FinishOutcome = Schema.Literals(FINISH_OUTCOMES);
+
+/**
+ * Where the interview ended: the finish stage the participant confirmed Finish
+ * on, and the outcome that stage declares. The server records both only when
+ * they are the protocol's own finish stage and its outcome.
+ */
 export const FinishInput = Schema.Struct({
   holderEpoch: NonNegativeInt,
   revision: DecimalSequence,
+  stageId: NetworkIdentifier,
+  outcome: FinishOutcome,
 });
 
 export const FinishResult = Schema.Struct({
@@ -215,6 +230,16 @@ export class SessionOutOfDate extends Schema.TaggedError<SessionOutOfDate>()(
     revision: DecimalSequence,
   },
   { httpApiStatus: 409 },
+) {}
+
+/**
+ * A finish that names a stage other than the protocol's finish stage, or an
+ * outcome other than the one that stage declares. Nothing is recorded.
+ */
+export class FinishUnrecognised extends Schema.TaggedError<FinishUnrecognised>()(
+  'FinishUnrecognised',
+  problemFields('Finish unrecognised', 422),
+  { httpApiStatus: 422 },
 ) {}
 
 export class LinkUnavailable extends Schema.TaggedError<LinkUnavailable>()(

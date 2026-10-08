@@ -164,6 +164,14 @@ function makePayload(id: string): InterviewPayload {
           ],
           behaviours: { minNodes: 1 },
         },
+        {
+          id: `${id}-finish`,
+          type: 'FinishSession',
+          label: { en: 'Finish' },
+          title: { en: 'Finish' },
+          content: { en: 'The end.' },
+          outcome: 'completed',
+        },
       ],
     },
   };

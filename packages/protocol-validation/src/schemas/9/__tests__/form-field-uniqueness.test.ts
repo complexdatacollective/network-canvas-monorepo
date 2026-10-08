@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { withFinishStage } from '../../../__tests__/finishStage.ts';
 import {
   createBaseProtocol,
   localized,
@@ -157,7 +158,9 @@ describe('form field variable uniqueness', () => {
 
   it('rejects the duplicate through whole-protocol validation', () => {
     const result = ProtocolSchemaV9.safeParse(
-      pedigreeProtocol([field('age', 'Age?'), field('age', 'Age again?')]),
+      withFinishStage(
+        pedigreeProtocol([field('age', 'Age?'), field('age', 'Age again?')]),
+      ),
     );
     expect(result.success).toBe(false);
     expect(
@@ -170,20 +173,22 @@ describe('form field variable uniqueness', () => {
 
   it('accepts an AlterForm whose fields are distinct', () => {
     const protocol = createBaseProtocol();
-    const result = ProtocolSchemaV9.safeParse({
-      ...protocol,
-      stages: [
-        ...protocol.stages,
-        {
-          id: 'af1',
-          type: 'AlterForm',
-          label: localized('Alter form'),
-          subject: { entity: 'node', type: 'person' },
-          introductionPanel: { title: localized('T'), text: localized('X') },
-          form: { fields: [field('name', 'Name?'), field('age', 'Age?')] },
-        },
-      ],
-    });
+    const result = ProtocolSchemaV9.safeParse(
+      withFinishStage({
+        ...protocol,
+        stages: [
+          ...protocol.stages,
+          {
+            id: 'af1',
+            type: 'AlterForm',
+            label: localized('Alter form'),
+            subject: { entity: 'node', type: 'person' },
+            introductionPanel: { title: localized('T'), text: localized('X') },
+            form: { fields: [field('name', 'Name?'), field('age', 'Age?')] },
+          },
+        ],
+      }),
+    );
     expect(result.success).toBe(true);
   });
 
@@ -196,7 +201,7 @@ describe('form field variable uniqueness', () => {
     ];
     const protocol = pedigreeProtocol(fields);
 
-    const result = ProtocolSchemaV9.safeParse(protocol);
+    const result = ProtocolSchemaV9.safeParse(withFinishStage(protocol));
     const flaggedBySchema = (result.error?.issues ?? [])
       .filter(
         (issue) =>
@@ -208,20 +213,22 @@ describe('form field variable uniqueness', () => {
 
   it('rejects an AlterForm that repeats a variable', () => {
     const protocol = createBaseProtocol();
-    const result = ProtocolSchemaV9.safeParse({
-      ...protocol,
-      stages: [
-        ...protocol.stages,
-        {
-          id: 'af1',
-          type: 'AlterForm',
-          label: localized('Alter form'),
-          subject: { entity: 'node', type: 'person' },
-          introductionPanel: { title: localized('T'), text: localized('X') },
-          form: { fields: [field('name', 'Name?'), field('name', 'Again?')] },
-        },
-      ],
-    });
+    const result = ProtocolSchemaV9.safeParse(
+      withFinishStage({
+        ...protocol,
+        stages: [
+          ...protocol.stages,
+          {
+            id: 'af1',
+            type: 'AlterForm',
+            label: localized('Alter form'),
+            subject: { entity: 'node', type: 'person' },
+            introductionPanel: { title: localized('T'), text: localized('X') },
+            form: { fields: [field('name', 'Name?'), field('name', 'Again?')] },
+          },
+        ],
+      }),
+    );
     expect(result.success).toBe(false);
   });
 });

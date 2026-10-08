@@ -4,11 +4,13 @@ import {
   canonicalizeLocale,
   collectLocalizedStrings,
   type CurrentProtocol,
+  isFinishSessionStage,
   isUndeterminedLocale,
   type LocaleTag,
   type LocalizedString,
   type LocalizedStringHit,
   messageText,
+  withDefaultFinishSessionTranslation,
 } from '@codaco/protocol-validation';
 import { withTranslation } from '~/utils/localizedText';
 
@@ -124,8 +126,10 @@ const resolveNewLocale = (
 };
 
 /**
- * Declares new languages. Nothing is translated: the new languages show as
- * missing translations until they are written.
+ * Declares new languages. Nothing is translated, with one exception: a finish
+ * stage whose closing text is still the text Network Canvas supplies gets that
+ * text in each new language it is supplied in. Everything else shows as a
+ * missing translation until it is written.
  */
 export const addLocales = (
   protocol: CurrentProtocol,
@@ -138,10 +142,24 @@ export const addLocales = (
     if (added.includes(resolved.locale)) return fail('already-declared');
     added.push(resolved.locale);
   }
+  const { defaultLocale } = protocol.localization;
   return {
     ok: true,
     protocol: {
       ...protocol,
+      stages: protocol.stages.map((stage) =>
+        isFinishSessionStage(stage)
+          ? added.reduce(
+              (translated, locale) =>
+                withDefaultFinishSessionTranslation(
+                  translated,
+                  locale,
+                  defaultLocale,
+                ),
+              stage,
+            )
+          : stage,
+      ),
       localization: {
         ...protocol.localization,
         locales: [...protocol.localization.locales, ...added],

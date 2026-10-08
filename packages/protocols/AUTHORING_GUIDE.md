@@ -32,7 +32,7 @@ node packages/protocol-validation/scripts/cli.js <path-to-your-protocol.json>; e
   "localization": { "defaultLocale": "en-US", "locales": ["en-US"] }, // REQUIRED (see §2.1)
   "lastModified": "2026-06-15T00:00:00.000Z", // optional ISO datetime
   "codebook": { … },              // REQUIRED (see §3)
-  "stages": [ … ],                // REQUIRED array (see §5)
+  "stages": [ … ],                // REQUIRED array; the last stage must be a FinishSession (see §5)
   "experiments": {},              // optional; schema 9 defines no experiments yet
   "assetManifest": { … }          // optional — OMIT IT (see §6)
 }
@@ -233,6 +233,27 @@ Required keys per stage type used by these templates:
     "id": "language-chooser",
     "type": "LanguageChooser",
     "label": { "en-US": "Language", "es": "Idioma" }
+  }
+  ```
+- **FinishSession** (REQUIRED): every protocol must end with exactly one, as its **last** stage.
+  Validation refuses a protocol with no stages, one whose last stage is not a `FinishSession`,
+  and any stage placed after one. No `subject`, no `skipLogic` (it is refused), and no prompts.
+  Fields: `title` and `content` (both required, non-empty localized markdown strings; `title` allows
+  only inline emphasis and strong) and `outcome`, one of `"completed"` (the participant reached the
+  normal end), `"ineligible"` (did not qualify for the study) or `"terminated"` (the interview ended
+  early for another reason, such as a distress or safety stop). The outcome is never shown to
+  participants; it is recorded with the interview and exported. A skip-logic destination of
+  `"finish"` goes to the first finish stage after the stage that owns the rule, which is this one.
+  ```jsonc
+  {
+    "id": "finish",
+    "type": "FinishSession",
+    "label": { "en-US": "Finish Interview" },
+    "title": { "en-US": "Finish Interview" },
+    "content": {
+      "en-US": "You have reached the end of the interview. If you are satisfied with the information you have entered, you may finish the interview now.",
+    },
+    "outcome": "completed"
   }
   ```
 

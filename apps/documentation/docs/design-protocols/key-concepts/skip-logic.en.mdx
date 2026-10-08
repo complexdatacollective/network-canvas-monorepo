@@ -77,14 +77,17 @@ Think carefully about the logical implications of your join operator when changi
 
 By default, hiding a stage continues the interview at the next stage whose own
 skip logic allows it to be shown. You can instead choose a specific later stage
-or the interview finish screen in the **When this stage is skipped** field.
+or the [Finish Screen](/en/design-protocols/interface-documentation/finish-screen) that ends the interview in the **When this stage is skipped** field.
 
 The destination belongs to the stage that may be hidden. For example, suppose
 an Ego Form records consent and the rest of the interview should be bypassed
 when consent is not given. Add the consent rule to the first stage after the
 consent form, then choose **End the interview** as that stage's destination.
-This routes to the normal finish screen, where the interview is completed using
-the usual confirmation flow.
+This routes to the Finish Screen, where the interview is completed using the
+usual confirmation flow. Every protocol ends with a Finish Screen, and the
+destination goes to the first one after the stage that owns the rule. A Finish
+Screen can't have skip logic itself, because every route through the interview
+ends there.
 
 Only forward destinations are available. When a destination is used, every
 stage between the hidden stage and the destination is bypassed. The destination

@@ -3,6 +3,7 @@ import { v4 as uuid } from 'uuid';
 import {
   EdgeDefinitionSchema,
   EgoDefinitionSchema,
+  isFinishSessionStage,
   NodeDefinitionSchema,
   stageSchema,
   type CurrentProtocol,
@@ -31,10 +32,14 @@ import {
   updateTypeAsync,
 } from '~/ducks/modules/protocol/codebook';
 import { commitStage } from '~/ducks/modules/protocol/commitStage';
-import { actionCreators as stageActionCreators } from '~/ducks/modules/protocol/stages';
+import {
+  isLastFinishStage,
+  actionCreators as stageActionCreators,
+} from '~/ducks/modules/protocol/stages';
 import { getAssetManifest, getProtocol } from '~/selectors/protocol';
 
 import type { ArchitectStore } from './architectStore.ts';
+import { STAGE_ORDER_SECTION } from './protocolSections.ts';
 
 /**
  * `updateType` reads a type id for `node` and `edge` only; the ego definition
@@ -140,6 +145,22 @@ function submitStage(
 ): SectionWrite {
   const parsed = stageSchema.safeParse(document);
   if (!parsed.success) return refuseParse(parsed.error);
+  // A protocol always ends at its one finish stage, so a stage is never
+  // rewritten into one or out of one: the first would leave it two, the second
+  // none. The reducer would write either, and the protocol would then fail
+  // validation, so it is refused here, as Studio's host refuses it.
+  const current = getProtocol(store.getState())?.stages.find(
+    ({ id }) => id === stageId,
+  );
+  if (
+    current !== undefined &&
+    isFinishSessionStage(current) !== isFinishSessionStage(parsed.data)
+  ) {
+    return refuse(
+      'A stage cannot be changed into the finish stage, or the finish stage into another kind of stage.',
+      ['type'],
+    );
+  }
   store.dispatch(commitStage({ stageId, stage: parsed.data }));
   return { status: 'written' };
 }
@@ -286,6 +307,22 @@ export async function deleteStageSection(
           stageId,
         );
   if (remaining.length > 0) return { status: 'referenced', remaining };
+  // The interview has to end at a finish stage, so the last one stays. The
+  // contract has no refusal of its own for that, and the stage order naming
+  // the stage is the reference that is not taken out, so it is the one the
+  // refusal names, as Studio's host does.
+  const stages = protocol?.stages ?? [];
+  if (isLastFinishStage(stages, stageId)) {
+    return {
+      status: 'referenced',
+      remaining: [
+        {
+          sectionId: STAGE_ORDER_SECTION,
+          path: ['stages', stages.findIndex(({ id }) => id === stageId)],
+        },
+      ],
+    };
+  }
   await store.dispatch(stageActionCreators.deleteStage(stageId)).unwrap();
   return { status: 'deleted' };
 }
@@ -309,6 +346,20 @@ export async function createSection(
     const parsed = stageSchema.safeParse({ ...document, id: stageId });
     if (!parsed.success)
       return { ...refuseParse(parsed.error), sectionId: target };
+    // A protocol has exactly one finish stage. The reducer drops a second one
+    // and says nothing, so it is refused here, as Studio's host refuses it.
+    if (
+      isFinishSessionStage(parsed.data) &&
+      (getProtocol(store.getState())?.stages ?? []).some(isFinishSessionStage)
+    ) {
+      return {
+        ...refuse(
+          'A protocol has exactly one finish stage, and this one already has it.',
+          ['type'],
+        ),
+        sectionId: target,
+      };
+    }
     store.dispatch(
       commitStage({
         stageId: null,

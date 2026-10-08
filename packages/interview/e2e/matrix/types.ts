@@ -36,6 +36,12 @@ export type ScenarioDefinition = {
   /** install synth.getNetwork() as the starting network (default false) */
   seedNetwork?: boolean;
   /**
+   * open the interview as already finished: at the protocol's finish stage
+   * (`recorded`), or with no finish stage recorded, as an interview finished
+   * before finish stages existed was (`unrecorded`)
+   */
+  finished?: 'recorded' | 'unrecorded';
+  /**
    * store the seeded network's encrypted answers in the schema 8 format, with
    * no encryption header (needs seedNetwork)
    */

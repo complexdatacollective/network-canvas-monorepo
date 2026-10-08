@@ -268,6 +268,7 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
       'nameGenerator1',
       'info1',
       'sociogram1',
+      'finish',
     ]);
   });
 
@@ -312,6 +313,7 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
       'transactionalInfo',
       'nameGenerator1',
       'sociogram1',
+      'finish',
     ]);
   });
 
@@ -378,6 +380,7 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
     };
     expect(document.stages.map((stage) => stage.id)).toEqual([
       'nameGenerator1',
+      'finish',
     ]);
     const row = await store.rows(`SELECT 1 FROM sections WHERE hash = $1`, [
       removedHash,
@@ -387,6 +390,107 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
     await expect(
       run(removeStage(TEST_TEAM_ID, { draftId, stageId: 'sociogram1' })),
     ).rejects.toThrow(DraftStructureError);
+  });
+
+  describe('the finish stage the interview ends at', () => {
+    const info = (id: string) => ({
+      id,
+      type: 'Information',
+      label: { en: id },
+      title: { en: id },
+      items: [],
+    });
+    const finish = (id: string) => ({
+      id,
+      type: 'FinishSession',
+      label: { en: 'Finish' },
+      title: { en: 'Thank you' },
+      content: { en: 'Done.' },
+      outcome: 'completed',
+    });
+    const stageIds = async (draftId: string) =>
+      (
+        (await run(getDraftDocument(TEST_TEAM_ID, draftId))) as {
+          stages: { id: string }[];
+        }
+      ).stages.map((stage) => stage.id);
+
+    it('puts a stage added with no position, or one past it, in front of it', async () => {
+      const { draftId } = await create(baseProtocol());
+      await run(addStage(TEST_TEAM_ID, { draftId, stage: info('appended') }));
+      await run(
+        addStage(TEST_TEAM_ID, { draftId, stage: info('atTheEnd'), index: 4 }),
+      );
+      expect(await stageIds(draftId)).toEqual([
+        'nameGenerator1',
+        'sociogram1',
+        'appended',
+        'atTheEnd',
+        'finish',
+      ]);
+      expect(await run(validateDraft(TEST_TEAM_ID, draftId))).toEqual({
+        valid: true,
+      });
+    });
+
+    it('refuses a second finish stage, and keeps the draft as it was', async () => {
+      const { draftId } = await create(baseProtocol());
+      const before = await run(getDraftSections(TEST_TEAM_ID, draftId));
+      await expect(
+        run(addStage(TEST_TEAM_ID, { draftId, stage: finish('secondFinish') })),
+      ).rejects.toThrow(/exactly one finish stage/);
+      const after = await run(getDraftSections(TEST_TEAM_ID, draftId));
+      expect(after.headManifestHash).toBe(before.headManifestHash);
+    });
+
+    it('refuses to remove the only finish stage, and keeps the draft as it was', async () => {
+      const { draftId } = await create(baseProtocol());
+      const before = await run(getDraftSections(TEST_TEAM_ID, draftId));
+      await expect(
+        run(removeStage(TEST_TEAM_ID, { draftId, stageId: 'finish' })),
+      ).rejects.toThrow(/only finish stage/);
+      const after = await run(getDraftSections(TEST_TEAM_ID, draftId));
+      expect(after.headManifestHash).toBe(before.headManifestHash);
+    });
+
+    it('refuses a move that puts a stage after it, and allows one that does not', async () => {
+      const { draftId } = await create(baseProtocol());
+      const head = await run(getDraftSections(TEST_TEAM_ID, draftId));
+      for (const [stageId, toIndex] of [
+        ['finish', 1],
+        ['sociogram1', 2],
+      ] as const) {
+        await expect(
+          run(
+            moveStage(TEST_TEAM_ID, {
+              draftId,
+              stageId,
+              toIndex,
+              expectedRevision: head.headSeq,
+            }),
+          ),
+        ).rejects.toThrow(/after the finish stage/);
+      }
+      expect(await stageIds(draftId)).toEqual([
+        'nameGenerator1',
+        'sociogram1',
+        'finish',
+      ]);
+
+      await run(
+        moveStage(TEST_TEAM_ID, {
+          draftId,
+          stageId: 'sociogram1',
+          toIndex: 0,
+          expectedRevision: head.headSeq,
+        }),
+      );
+      expect(await stageIds(draftId)).toEqual([
+        'sociogram1',
+        'nameGenerator1',
+        'finish',
+      ]);
+    });
   });
 
   it('adds and removes codebook entities', async () => {

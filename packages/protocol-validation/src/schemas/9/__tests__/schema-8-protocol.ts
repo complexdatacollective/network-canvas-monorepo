@@ -81,8 +81,13 @@ export const asSchema8Protocol = (
     delete definition.label;
   }
   for (const stage of document.stages) highlightIds(stage);
+  // Schema 8 has neither stage type: the interview chose no language, and
+  // added its own finish screen.
   document.stages = document.stages.filter(
-    (stage) => isRecord(stage) && stage.type !== 'LanguageChooser',
+    (stage) =>
+      isRecord(stage) &&
+      stage.type !== 'LanguageChooser' &&
+      stage.type !== 'FinishSession',
   );
   delete document.localization;
   document.schemaVersion = 8;

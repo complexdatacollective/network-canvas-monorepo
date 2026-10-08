@@ -4,6 +4,7 @@ import {
   getInterviewProgress,
   getLastAvailableAuthoredStageIndex,
   type ProtocolLocaleChange,
+  type SessionFinish,
 } from '@codaco/interview';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import type { NcNetwork } from '@codaco/shared-consts';
@@ -14,6 +15,9 @@ import {
   decryptSessionRecord,
   encryptSession,
   type StoredSessionRow,
+  prepareSessionFinish,
+  withoutSessionFinish,
+  withSessionFinish,
 } from './recordCrypto';
 import type {
   SessionQueryParams,
@@ -33,8 +37,7 @@ function deriveStatusKind(session: StoredSessionRow): SessionStatusKind {
   return 'in-progress';
 }
 
-// The interview engine reports participant-facing progress (which accounts for
-// the appended finish stage) via onStepChange; we persist it on the session and
+// The interview engine reports participant-facing progress via onStepChange; we persist it on the session and
 // read it straight back here. A finished session is always 100% — `progress`
 // may not have been persisted for the finish step, so `finishedAt` is the
 // authoritative completion signal.
@@ -508,17 +511,44 @@ export function setSessionLocale(
   });
 }
 
-export function markSessionFinished(id: string): Promise<void> {
+// Records the finish the participant confirmed: when, at which finish stage,
+// and that stage's outcome. The stage id and outcome are encrypted with the
+// network, so this needs the key, like any write of answers.
+//
+// The finish is encrypted before the write and then applied to the row as it
+// stands inside the transaction, changing nothing else, so a launch-time
+// migration another tab made in the meantime is kept: its network, stage
+// metadata, resume position and protocol hash all stay as it wrote them.
+// Stage ids survive a migration, so the recorded finish stage still names
+// the same stage.
+export function markSessionFinished(
+  id: string,
+  finish: SessionFinish,
+): Promise<void> {
   return enqueueSessionMutation(id, async () => {
-    const existing = await db.sessions.get(id);
-    if (!existing) return;
-    // Only plaintext index fields change; spread preserves `_enc` — no key
-    // needed.
-    await db.sessions.put({
-      ...existing,
-      finishedAt: new Date().toISOString(),
-      lastUpdatedAt: new Date().toISOString(),
-    });
+    // A row whose storage changed between encrypted and plaintext while the
+    // finish was being prepared is prepared again.
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const existingRow = await db.sessions.get(id);
+      if (!existingRow) return;
+      const prepared = await prepareSessionFinish(existingRow, finish);
+      const recorded = await db.transaction('rw', db.sessions, async () => {
+        const latest = await db.sessions.get(id);
+        // A session deleted in the gap stays deleted.
+        if (!latest) return true;
+        const updated = withSessionFinish(latest, prepared);
+        if (!updated) return false;
+        const now = new Date().toISOString();
+        await db.sessions.put({
+          ...updated,
+          finishedAt: now,
+          lastUpdatedAt: now,
+        });
+        return true;
+      });
+      if (recorded) return;
+    }
+    throw new Error(`Could not record the finish of interview ${id}`);
   });
 }
 
@@ -557,8 +587,10 @@ export function markSessionUnfinished(
       }
 
       const now = new Date().toISOString();
+      // The finish stage and outcome belong to the finish being undone, so
+      // they go with it.
       await db.sessions.put({
-        ...latest,
+        ...withoutSessionFinish(latest),
         finishedAt: null,
         currentStep,
         progress,

@@ -53,8 +53,23 @@ async function quickAdd(page: Page, name: string): Promise<void> {
   await expect(page.getByRole('option', { name })).toBeVisible();
 }
 
+// Studio's own page for a session that had already finished when the link
+// was opened.
 const finishedNotice = (page: Page) =>
   page.getByRole('heading', { name: "You've finished this interview" });
+
+// The interview's completed state: finishing keeps the interview on screen,
+// showing the protocol's closing text and the interview's finished notice.
+async function expectCompletedInterview(page: Page): Promise<void> {
+  await expect(page.locator('[data-interview-completed]')).toBeVisible();
+  await expect(
+    page.getByText(
+      'This interview is finished, and its answers can no longer be changed.',
+    ),
+  ).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Finish' })).toHaveCount(0);
+  await expect(finishedNotice(page)).toHaveCount(0);
+}
 
 async function interviewToFinish(page: Page, link: string): Promise<void> {
   await page.goto(`/enter/${link}`);
@@ -88,7 +103,7 @@ async function interviewToFinish(page: Page, link: string): Promise<void> {
   await page.getByRole('button', { name: 'Finish' }).click();
   const dialog = page.getByRole('dialog');
   await dialog.getByRole('button', { name: 'Finish Interview' }).click();
-  await expect(finishedNotice(page)).toBeVisible();
+  await expectCompletedInterview(page);
 }
 
 test.describe('a participant on the built stack', () => {

@@ -1,7 +1,17 @@
+import { z } from 'zod';
+
 import { type StageType, stageSchema } from '@codaco/protocol-validation';
 
 /** The two keys the editing session owns, which are never a section's. */
 const IDENTITY_KEYS: readonly string[] = Object.freeze(['id', 'type']);
+
+/**
+ * A key the schema declares only to refuse it — a finish stage's `skipLogic`
+ * — can never be configured, so no editor owns it.
+ */
+const isRefusedKey = (schema: z.ZodType): boolean =>
+  (schema instanceof z.ZodOptional ? schema.unwrap() : schema) instanceof
+  z.ZodNever;
 
 /**
  * Every key the protocol schema declares for one interface, asked of the
@@ -24,7 +34,12 @@ export function schemaKeysFor(stageType: StageType): string[] {
   if (option === undefined) {
     throw new Error(`The protocol schema has no "${stageType}" stage.`);
   }
-  return Object.keys(option.shape)
+  const shape: Record<string, z.ZodType> = option.shape;
+  return Object.keys(shape)
     .filter((key) => !IDENTITY_KEYS.includes(key))
+    .filter((key) => {
+      const keySchema = shape[key];
+      return keySchema === undefined || !isRefusedKey(keySchema);
+    })
     .toSorted();
 }

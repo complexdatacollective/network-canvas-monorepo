@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { withFinishStage } from '../../../__tests__/finishStage.ts';
 import { createBaseProtocol, localized } from '../../../utils/test-utils.ts';
 import {
   type FilterOperator,
@@ -75,9 +76,9 @@ const protocolWithRulesOn = (
 };
 
 const issuesOf = (protocol: unknown) =>
-  (ProtocolSchemaV9.safeParse(protocol).error?.issues ?? []).map(
-    ({ path, message }) => ({ path: path.join('.'), message }),
-  );
+  (
+    ProtocolSchemaV9.safeParse(withFinishStage(protocol)).error?.issues ?? []
+  ).map(({ path, message }) => ({ path: path.join('.'), message }));
 
 const refusal = (path: string) => ({
   path,

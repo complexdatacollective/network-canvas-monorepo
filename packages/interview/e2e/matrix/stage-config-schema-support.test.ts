@@ -18,9 +18,10 @@ import { sharedSuiteClaims } from './shared-claims.js';
  * CurrentProtocolSchema inside buildSyntheticPayload), extract the stage config
  * for the suite's interfaceType, then re-parse that config — unmodified, then
  * with a minimal skipLogic, then with a minimal filter — against the matching
- * member of the `stageSchema` discriminated union. Non-authorable interface
- * types (engine-appended stages with no schema definition, e.g. FinishSession,
- * and the synthetic CrossCutting suite) carry neither key by construction.
+ * member of the `stageSchema` discriminated union. The synthetic CrossCutting
+ * suite has no schema stage definition, so it carries neither key by
+ * construction. FinishSession is authorable but refuses skip logic: every route
+ * through the interview ends at a finish stage.
  */
 
 // A minimal, shape-valid FilterInput (type-level EXISTS rule). The stage schema
@@ -213,14 +214,14 @@ describe('stage config schema support (skipLogic / filter)', () => {
     ).toEqual([]);
   });
 
-  it('every authorable stage type accepts stage-level skipLogic', () => {
+  it('every authorable stage type but the finish stage accepts stage-level skipLogic', () => {
     const rejecting = matrix
       .filter((r) => r.authorable && !r.acceptsSkipLogic)
       .map((r) => r.interfaceType);
     expect(
       rejecting,
-      `authorable stage types that unexpectedly REJECT skipLogic: ${rejecting.join(', ')}`,
-    ).toEqual([]);
+      `authorable stage types that REJECT skipLogic: ${rejecting.join(', ')}`,
+    ).toEqual(['FinishSession']);
   });
 
   it('filter acceptance is consistent with the stage schema defining a filter key', () => {
@@ -238,12 +239,9 @@ describe('stage config schema support (skipLogic / filter)', () => {
 
   it('non-authorable interface types carry neither skipLogic nor filter', () => {
     const nonAuthorable = matrix.filter((r) => !r.authorable);
-    // FinishSession (engine-appended) and CrossCutting (synthetic suite) have
-    // no schema stage definition, so an author cannot attach either key.
-    expect(nonAuthorable.map((r) => r.interfaceType).toSorted()).toEqual([
-      'CrossCutting',
-      'FinishSession',
-    ]);
+    // CrossCutting (synthetic suite) has no schema stage definition, so an
+    // author cannot attach either key.
+    expect(nonAuthorable.map((r) => r.interfaceType)).toEqual(['CrossCutting']);
     for (const row of nonAuthorable) {
       expect(row.acceptsSkipLogic).toBe(false);
       expect(row.acceptsFilter).toBe(false);

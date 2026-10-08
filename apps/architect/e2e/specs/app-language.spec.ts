@@ -219,8 +219,12 @@ test('authors an Information stage in Spanish and changes built-in preview langu
   await finish
     .getByRole('button', { name: 'Finalizar entrevista', exact: true })
     .click();
+  // The completed state's built-in notice follows the interview's language
+  // too.
   await expect(
-    preview.getByRole('heading', { name: 'Preview finished' }),
+    preview.getByText(
+      'Esta entrevista ha finalizado y ya no se pueden cambiar sus respuestas.',
+    ),
   ).toBeVisible();
   expect(await readProtocolJson(page)).toEqual(beforeSwitch);
   await preview.close();
@@ -349,6 +353,7 @@ test('formats printed attribute order and updates linked-list grammar live while
           })),
         },
       },
+      ...emptyProtocol().stages,
     ],
   });
   await seed(protocol);

@@ -123,9 +123,22 @@ model Interview {
   // The protocol language last shown, recorded for exports and never used to
   // choose one. Null until the interview first reports it.
   locale           String?
+  // The finish stage the interview ended at, and the outcome that stage
+  // declares, recorded with finishTime. Both stay null for an interview that is
+  // not finished, and for one finished before finish stages were recorded.
+  finishStageId    String?
+  finishOutcome    FinishOutcome?
 
   @@index(fields: [protocolId])
   @@index([participantId])
+}
+
+// How an interview ended. Mirrors FinishOutcomeSchema in
+// @codaco/protocol-validation.
+enum FinishOutcome {
+  completed
+  ineligible
+  terminated
 }
 
 model Participant {

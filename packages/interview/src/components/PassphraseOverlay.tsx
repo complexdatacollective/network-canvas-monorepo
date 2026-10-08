@@ -20,7 +20,7 @@ import PassphraseCheckStatus from '../interfaces/Anonymisation/PassphraseCheckSt
 import { protocolPassphraseLengthRules } from '../interfaces/Anonymisation/passphraseRules';
 import { usePassphrase } from '../interfaces/Anonymisation/usePassphrase';
 import { interfaceMessages } from '../interfaces/messages';
-import { getProtocolStages } from '../store/modules/protocol';
+import { getStages } from '../store/modules/protocol';
 import Overlay from './Overlay';
 
 type PassphraseOverlayProps = {
@@ -61,7 +61,7 @@ const PassphraseDialog = ({
   // Closed mid-check and opened again, the dialog would offer a second
   // passphrase while the first is still being checked.
   const checking = useFormStore((state) => state.isSubmitting);
-  const stages = useSelector(getProtocolStages);
+  const stages = useSelector(getStages);
   const formId = useId();
   const lengthRules = choosing ? protocolPassphraseLengthRules(stages) : {};
 

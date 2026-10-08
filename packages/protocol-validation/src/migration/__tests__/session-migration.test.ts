@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { withFinishStage } from '../../__tests__/finishStage.ts';
 import { SessionMigrationError } from '../errors.ts';
 import {
   createMigration,
@@ -136,7 +137,7 @@ describe('session migration', () => {
       schemaVersion: 9,
       name: 'Current',
       codebook: {},
-      stages: [],
+      stages: withFinishStage({ stages: [] }).stages,
       localization: { defaultLocale: 'en', locales: ['en'] },
       experiments: {},
     });
@@ -268,7 +269,11 @@ describe('migrationV7toV8 stage positions', () => {
       9,
       { name: 'Forms' },
     );
-    expect(protocol.stages.map((stage) => stage.id)).toEqual(['first', 'last']);
+    expect(protocol.stages.map((stage) => stage.id)).toEqual([
+      'first',
+      'last',
+      'finish',
+    ]);
 
     const result = migrateSession(
       session({

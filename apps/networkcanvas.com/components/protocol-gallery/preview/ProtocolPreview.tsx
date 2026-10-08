@@ -2,11 +2,13 @@
 
 import { useTranslations } from 'next-intl';
 import { useSearchParams } from 'next/navigation';
-import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+import { useAppIntl } from '@codaco/app-i18n/react';
 import Button from '@codaco/fresco-ui/Button';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import {
+  type CompletedAction,
   type FinishHandler,
   type InterviewPayload,
   Shell,
@@ -16,6 +18,7 @@ import {
   type AssetUrlOwner,
   createAssetUrlOwner,
 } from '@codaco/interview/contract';
+import { defaultLocale, isLocale, type Locale } from '~/lib/i18n/locales';
 import {
   createPreviewPayload,
   installPreviewProtocol,
@@ -31,9 +34,18 @@ export type PreviewWave = {
   protocolPath: string;
 };
 
+/**
+ * The completed state's action labels in every site language, so they can be
+ * shown in the interview's language rather than the page's.
+ */
+export type CompletionLabels = Readonly<
+  Record<Locale, Readonly<{ restart: string; backToProtocol: string }>>
+>;
+
 export type ProtocolPreviewProps = {
   waves: PreviewWave[];
   backHref: string;
+  completionLabels: CompletionLabels;
 };
 
 type PreviewFailure = PreviewInstallFailure | 'unavailable';
@@ -58,7 +70,25 @@ async function fetchProtocolBytes(path: string): Promise<Uint8Array> {
   return new Uint8Array(await response.arrayBuffer());
 }
 
-export function ProtocolPreview({ waves, backHref }: ProtocolPreviewProps) {
+// Rendered inside the Shell, whose interface language is the interview's own
+// and can change while it runs (a language chooser, the visitor's choice). The
+// interview's English is US English, the site's default.
+function InterviewLanguageLabel({
+  labels,
+  name,
+}: {
+  labels: CompletionLabels;
+  name: keyof CompletionLabels[Locale];
+}) {
+  const { locale } = useAppIntl();
+  return labels[isLocale(locale) ? locale : defaultLocale][name];
+}
+
+export function ProtocolPreview({
+  waves,
+  backHref,
+  completionLabels,
+}: ProtocolPreviewProps) {
   const t = useTranslations('ProtocolGallery.preview');
   const wave = useWave(waves);
 
@@ -68,12 +98,8 @@ export function ProtocolPreview({ waves, backHref }: ProtocolPreviewProps) {
     readonly string[] | null
   >(null);
   const [failure, setFailure] = useState<PreviewFailure | null>(null);
-  const [finished, setFinished] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const [currentStep, setCurrentStep] = useState(0);
-
-  const finishedHeadingRef = useRef<HTMLHeadingElement>(null);
-  const finishedDescriptionId = useId();
 
   // The install lives in a ref as well as state so the asset resolver, which
   // the Shell holds for its lifetime, reads the current one without being
@@ -106,7 +132,6 @@ export function ProtocolPreview({ waves, backHref }: ProtocolPreviewProps) {
     setPayload(null);
     setRequestedLocales(null);
     setFailure(null);
-    setFinished(false);
     setCurrentStep(0);
 
     const load = async () => {
@@ -137,10 +162,6 @@ export function ProtocolPreview({ waves, backHref }: ProtocolPreviewProps) {
     };
   }, [wave, attempt]);
 
-  useEffect(() => {
-    if (finished) finishedHeadingRef.current?.focus();
-  }, [finished]);
-
   const onRequestAsset = useCallback(async (assetId: string) => {
     ownerRef.current ??= createAssetUrlOwner();
     return ownerRef.current.resolve({
@@ -156,16 +177,37 @@ export function ProtocolPreview({ waves, backHref }: ProtocolPreviewProps) {
     });
   }, []);
 
-  const onFinish = useCallback<FinishHandler>(async () => {
-    setFinished(true);
-  }, []);
+  // Nothing is recorded, so finishing always succeeds and the Shell shows the
+  // protocol's own completed state: its finish stage's text and the notice.
+  const onFinish = useCallback<FinishHandler>(async () => {}, []);
 
-  const restart = () => {
-    if (!install) return;
-    setFinished(false);
-    setCurrentStep(0);
-    setPayload(createPreviewPayload(install));
-  };
+  // Offered on that completed state, in the interview's language like the rest
+  // of it. Starting again is a new session, so the Shell starts a new interview
+  // rather than reopening the finished one.
+  const completedActions = useMemo<readonly CompletedAction[]>(
+    () => [
+      {
+        label: (
+          <InterviewLanguageLabel labels={completionLabels} name="restart" />
+        ),
+        onAction: () => {
+          if (!install) return;
+          setCurrentStep(0);
+          setPayload(createPreviewPayload(install));
+        },
+      },
+      {
+        label: (
+          <InterviewLanguageLabel
+            labels={completionLabels}
+            name="backToProtocol"
+          />
+        ),
+        onAction: () => window.location.assign(backHref),
+      },
+    ],
+    [completionLabels, install, backHref],
+  );
 
   const backAction = (
     <Button asChild color="default">
@@ -198,28 +240,6 @@ export function ProtocolPreview({ waves, backHref }: ProtocolPreviewProps) {
     );
   }
 
-  if (finished) {
-    return (
-      <PreviewMessageScreen
-        heading={t('finishedHeading')}
-        headingRef={finishedHeadingRef}
-        describedById={finishedDescriptionId}
-        actions={
-          <>
-            <Button color="primary" onClick={restart}>
-              {t('restart')}
-            </Button>
-            {backAction}
-          </>
-        }
-      >
-        <Paragraph id={finishedDescriptionId} margin="none">
-          {t('finishedDescription')}
-        </Paragraph>
-      </PreviewMessageScreen>
-    );
-  }
-
   if (!payload || !requestedLocales) {
     return <PreviewLoadingScreen label={t('loading')} />;
   }
@@ -236,6 +256,7 @@ export function ProtocolPreview({ waves, backHref }: ProtocolPreviewProps) {
         onFinish={onFinish}
         onRequestAsset={onRequestAsset}
         finishConfirmationDescription={t('finishConfirmation')}
+        completedActions={completedActions}
         flags={{ isDevelopment: process.env.NODE_ENV === 'development' }}
         allowStageNavigation
         allowUserScaling

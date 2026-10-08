@@ -3,6 +3,7 @@ import {
   ChartNoAxesColumnIncreasing,
   Dna,
   FileUser,
+  Flag,
   GitCompare,
   GitFork,
   IdCard,
@@ -51,6 +52,7 @@ export const STAGE_TYPE_COLORS: Record<StageType, PaletteColor> = {
   Information: 'platinum-dark',
   Anonymisation: 'cyber-grape',
   LanguageChooser: 'charcoal',
+  FinishSession: 'navy-taupe',
 };
 
 /**
@@ -80,6 +82,7 @@ export const STAGE_TYPE_ICONS: Record<StageType, LucideIcon> = {
   Information: Info,
   Anonymisation: KeyRound,
   LanguageChooser: Languages,
+  FinishSession: Flag,
 };
 
 /**

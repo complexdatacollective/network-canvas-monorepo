@@ -15,18 +15,31 @@ type LocaleChangeMiddlewareState = { session: SessionSnapshot };
  * Hands every change to the session's locale fields to the host's
  * `ProtocolLocaleChangeHandler`, once per change, one call at a time.
  *
+ * Except for a finished interview: whoever opens one later — the participant
+ * on another device, or a researcher in a browser set to another language —
+ * still sees it in their own language, but the language it was taken in,
+ * which exports read, is never overwritten. That covers a session opened
+ * already finished (`finishTime`) and one finished in this Shell
+ * (`markFinished`). A host that opens a finished interview as an unfinished
+ * one, to be edited (`openFinishedAsActive`), still has its language changes
+ * recorded until it is finished again.
+ *
  * `settled` resolves once every call made so far has finished, so a flush can
  * wait for the locale write as well as the session write.
  */
 export const createLocaleChangeMiddleware = ({
   onProtocolLocaleChange,
+  openFinishedAsActive = false,
 }: {
   onProtocolLocaleChange: ProtocolLocaleChangeHandler;
+  openFinishedAsActive?: boolean;
 }): {
   middleware: Middleware<Record<string, never>, LocaleChangeMiddlewareState>;
   settled: () => Promise<void>;
+  markFinished: () => void;
 } => {
   let queue: Promise<void> = Promise.resolve();
+  let finishedHere = false;
 
   const middleware: Middleware<
     Record<string, never>,
@@ -34,9 +47,12 @@ export const createLocaleChangeMiddleware = ({
   > = (store) => (next) => (action: unknown) => {
     const before = store.getState().session;
     const result = next(action);
-    const { id, locale, localePreference } = store.getState().session;
+    const { id, locale, localePreference, finishTime } =
+      store.getState().session;
 
     if (
+      finishedHere ||
+      (finishTime !== null && !openFinishedAsActive) ||
       locale === null ||
       (locale === before.locale && localePreference === before.localePreference)
     ) {
@@ -56,5 +72,11 @@ export const createLocaleChangeMiddleware = ({
     return result;
   };
 
-  return { middleware, settled: () => queue };
+  return {
+    middleware,
+    settled: () => queue,
+    markFinished: () => {
+      finishedHere = true;
+    },
+  };
 };

@@ -64,6 +64,7 @@ type Answer<Tag extends keyof StudioHandlers> = (
 const STAGE_A = '11111111-1111-4111-8111-111111111111';
 const STAGE_B = '22222222-2222-4222-8222-222222222222';
 const STAGE_C = '33333333-3333-4333-8333-333333333333';
+const FINISH = '44444444-4444-4444-8444-444444444444';
 const queryDraft = vi.hoisted(() => vi.fn<Answer<'protocols.draft'>>());
 const addInformationStage = vi.fn<Answer<'protocols.addInformationStage'>>();
 const moveStage = vi.fn<Answer<'protocols.moveStage'>>();
@@ -130,6 +131,24 @@ const HOST_SECTIONS: Readonly<Record<string, SectionDoc>> = {
   [`stage:${STAGE_A}`]: {
     ...DRAFT_SECTIONS[`stage:${STAGE_A}`],
     label: enUS('Welcome, from the host'),
+  },
+};
+
+/**
+ * The host's protocol as schema 9 requires it, ending at a finish stage — the
+ * shape validation admits. The fixture above leaves it out, because what those
+ * tests check is drawn the same either way.
+ */
+const ENDS_AT_FINISH: Readonly<Record<string, SectionDoc>> = {
+  ...HOST_SECTIONS,
+  stageOrder: { stages: [STAGE_A, STAGE_B, FINISH] },
+  [`stage:${FINISH}`]: {
+    id: FINISH,
+    type: 'FinishSession',
+    label: enUS('Finish'),
+    title: enUS('Thank you'),
+    content: enUS('The interview is complete.'),
+    outcome: 'completed',
   },
 };
 
@@ -340,7 +359,9 @@ async function collaboratorRenamesScreen(
 }
 
 /** The stage order, put back as it should be, by a collaborator's submit. */
-async function collaboratorRepairsStageOrder(): Promise<void> {
+async function collaboratorRepairsStageOrder(
+  stages: readonly string[],
+): Promise<void> {
   const client = collaborator();
   const held = await client.rpcCall('AcquireLock', {
     protocolId: DRAFT.protocol.id,
@@ -350,7 +371,7 @@ async function collaboratorRepairsStageOrder(): Promise<void> {
     protocolId: DRAFT.protocol.id,
     requestId: nextRequestId(),
     sectionId: STAGE_ORDER,
-    document: Redacted.make({ stages: [STAGE_A, STAGE_B] }),
+    document: Redacted.make({ stages }),
     revision: held.revision,
   });
   await client.rpcCall('ReleaseLock', {
@@ -1005,6 +1026,30 @@ describe('Studio editor shell', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Refresh order' }));
     await waitFor(() => expect(moveUp).toBeEnabled());
   });
+
+  it('offers no move that would put a screen after the finish stage', async () => {
+    // The interview ends at its finish stage, and the server refuses a move
+    // that leaves a screen after it, as Architect does.
+    await seedHost(ENDS_AT_FINISH);
+    renderEditor();
+    const finishUp = await screen.findByRole('button', {
+      name: 'Move Finish up',
+    });
+
+    expect(finishUp).toBeDisabled();
+    expect(
+      screen.getByRole('button', { name: 'Move Finish down' }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole('button', { name: 'Move Follow-up down' }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole('button', { name: 'Move Follow-up up' }),
+    ).toBeEnabled();
+    expect(
+      screen.getByRole('button', { name: 'Move Welcome, from the host down' }),
+    ).toBeEnabled();
+  });
 });
 
 /**
@@ -1273,8 +1318,8 @@ describe('what a collaborator changes', () => {
     // catch — and Studio's draft query answers with a consistent protocol, so
     // a panel drawn from that one reports nothing here at all.
     await seedHost({
-      ...HOST_SECTIONS,
-      stageOrder: { stages: [STAGE_A, STAGE_B, 'no-such-stage'] },
+      ...ENDS_AT_FINISH,
+      stageOrder: { stages: [STAGE_A, STAGE_B, FINISH, 'no-such-stage'] },
     });
     renderEditor();
     await screen.findByRole('button', { name: 'Follow-upInformation' });
@@ -1289,7 +1334,7 @@ describe('what a collaborator changes', () => {
     // And it is checked again against what the channel delivers, so the
     // researcher is not left reading a problem a collaborator has fixed.
     await act(async () => {
-      await collaboratorRepairsStageOrder();
+      await collaboratorRepairsStageOrder([STAGE_A, STAGE_B, FINISH]);
     });
 
     expect(

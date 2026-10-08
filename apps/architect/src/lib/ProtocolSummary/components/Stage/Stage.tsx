@@ -7,6 +7,7 @@ import Heading from '@codaco/fresco-ui/typography/Heading';
 import StageTypeImage from '@codaco/protocol-builder/interfaces/StageTypeImage';
 import type {
   FamilyPedigreeNominationPrompt,
+  FinishOutcome,
   FramingSetting,
   Item,
   LocalizedString,
@@ -30,6 +31,7 @@ import DataSource from './DataSource';
 import FamilyPedigree from './FamilyPedigree';
 import FamilyTreeVariables from './FamilyTreeVariables';
 import Filter from './Filter';
+import FinishScreen from './FinishScreen';
 import Form from './Form';
 import InterviewScript from './InterviewScript';
 import IntroductionPanel from './IntroductionPanel';
@@ -155,6 +157,9 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
   const title = configuration.title as LocalizedString | undefined;
   const items = configuration.items as Item[] | undefined;
   const interviewScript = configuration.interviewScript as string | undefined;
+  // FinishSession
+  const content = configuration.content as LocalizedString | undefined;
+  const outcome = configuration.outcome as FinishOutcome | undefined;
   // Legacy FamilyTreeCensus fields (kept for backward compatibility with old protocols)
   const edgeType = configuration.edgeType as
     | {
@@ -412,6 +417,9 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
           explanationText={explanationText ?? null}
           validation={validation ?? null}
         />
+      )}
+      {type === 'FinishSession' && (
+        <FinishScreen content={content ?? null} outcome={outcome ?? null} />
       )}
       <InterviewScript interviewScript={interviewScript ?? null} />
     </div>

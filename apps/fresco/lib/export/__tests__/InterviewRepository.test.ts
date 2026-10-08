@@ -36,12 +36,17 @@ const network = {
 const row = (
   participant: { identifier: string; label: string | null },
   networkValue: unknown = network,
+  finish: {
+    finishTime: Date | null;
+    finishOutcome: 'completed' | 'ineligible' | 'terminated' | null;
+  } = { finishTime: null, finishOutcome: null },
 ) => ({
   id: 'interview-1',
   participant,
   startTime: new Date('2026-01-01'),
-  finishTime: null,
+  ...finish,
   network: networkValue,
+  locale: null,
   protocol: { hash: 'protocol-hash' },
 });
 
@@ -83,6 +88,38 @@ describe('PrismaInterviewRepository', () => {
     const inputs = await getForExport(['interview-1']);
 
     expect(inputs[0]?.participantIdentifier).toBe('P002');
+  });
+
+  it('exports the outcome a finished interview recorded', async () => {
+    mockGetInterviewsForExport.mockResolvedValue([
+      row({ identifier: 'P005', label: null }, network, {
+        finishTime: new Date('2026-01-02'),
+        finishOutcome: 'ineligible',
+      }),
+    ]);
+
+    const inputs = await getForExport(['interview-1']);
+
+    expect(inputs[0]?.finishOutcome).toBe('ineligible');
+  });
+
+  it.each([
+    ['an unfinished interview', null],
+    [
+      'an interview finished before outcomes were recorded',
+      new Date('2026-01-02'),
+    ],
+  ])('exports a null outcome for %s', async (_case, finishTime) => {
+    mockGetInterviewsForExport.mockResolvedValue([
+      row({ identifier: 'P006', label: null }, network, {
+        finishTime,
+        finishOutcome: null,
+      }),
+    ]);
+
+    const inputs = await getForExport(['interview-1']);
+
+    expect(inputs[0]?.finishOutcome).toBeNull();
   });
 
   it('normalizes legacy null attributes before export', async () => {

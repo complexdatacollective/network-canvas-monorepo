@@ -18,7 +18,7 @@ const STORAGE_KEY = '__e2e_test_state';
 type InterviewEntry = {
   protocolId: string;
   participantId: string;
-  session: SessionSnapshot;
+  session: SessionSnapshot & { finishStageId?: string | null };
 };
 
 type SerializableState = {
@@ -115,6 +115,8 @@ export function setAssetUrl(assetId: string, url: string): void {
 export type SessionSeed = {
   network?: SessionSnapshot['network'];
   stageMetadata?: SessionSnapshot['stageMetadata'];
+  /** Open the interview as already finished, at this finish stage. */
+  finishedAt?: { stageId: string | null };
 };
 
 export function createInterview(
@@ -127,10 +129,11 @@ export function createInterview(
   // Shell owns its state in Redux — getNetworkState reads from that live
   // store, not from this snapshot. The step is NOT part of the session:
   // the host derives it from the URL (?step=) and passes it as a Shell prop.
-  const session: SessionSnapshot = {
+  const session: InterviewEntry['session'] = {
     id,
     startTime: new Date().toISOString(),
-    finishTime: null,
+    finishTime: seed?.finishedAt ? new Date().toISOString() : null,
+    ...(seed?.finishedAt ? { finishStageId: seed.finishedAt.stageId } : {}),
     exportTime: null,
     lastUpdated: new Date().toISOString(),
     network: seed?.network ?? createInitialNetwork(),

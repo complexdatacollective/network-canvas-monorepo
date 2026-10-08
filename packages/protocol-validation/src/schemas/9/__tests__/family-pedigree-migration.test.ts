@@ -479,6 +479,7 @@ describe('v8 to v9 Family Pedigree migration', () => {
         'pedigree-introduction',
         'pedigree',
         'goodbye',
+        'finish',
       ]);
       expect(stageById(migrated, 'pedigree-introduction')).toEqual({
         id: 'pedigree-introduction',
@@ -558,6 +559,7 @@ describe('v8 to v9 Family Pedigree migration', () => {
         'pedigree-introduction-2',
         'pedigree-introduction-3',
         'pedigree',
+        'finish',
       ]);
     });
 
@@ -589,7 +591,7 @@ describe('v8 to v9 Family Pedigree migration', () => {
       if (introScreen === undefined) delete pedigree.introScreen;
       else pedigree.introScreen = introScreen;
       const migrated = migrateValid(schema8Protocol([pedigree]));
-      expect(stageIds(migrated)).toEqual(['pedigree']);
+      expect(stageIds(migrated)).toEqual(['pedigree', 'finish']);
     });
   });
 
@@ -933,6 +935,7 @@ describe('v8 to v9 Family Pedigree migration', () => {
           relativesNotRecordedAttribute: 'relativesNotRecorded',
         },
       },
+      expect.objectContaining({ type: 'FinishSession', id: 'finish' }),
     ]);
   });
 
@@ -960,7 +963,10 @@ describe('v8 to v9 Family Pedigree migration', () => {
       ...schema8Protocol([]),
       stages: [converted],
     });
-    expect(stagesOf(again)).toEqual([converted]);
+    expect(stagesOf(again)).toEqual([
+      converted,
+      expect.objectContaining({ type: 'FinishSession' }),
+    ]);
   });
 
   describe('the released CEGRM template', () => {
@@ -993,6 +999,7 @@ describe('v8 to v9 Family Pedigree migration', () => {
         'socio-roles',
         'narrative-cegrm',
         'information-close',
+        'finish',
       ]);
       expect(pedigreeOf(migrated)).toMatchObject({
         subject: { entity: 'node', type: 'person' },

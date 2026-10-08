@@ -148,6 +148,7 @@ function Host({
           requestedLocales={serializedRequest}
           installationId="test-installation"
           disableAnalytics
+          view="active"
           catalog={interviewCatalog}
         />
       </ParticipantLayout>

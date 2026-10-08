@@ -321,6 +321,15 @@ const FIXTURE_MAXIMAL_STAGES: MaximalStage[] = [
     fields: fixtureMaximal('language-chooser-1', EVERY_STAGE),
   },
   {
+    // Every stage may carry skip logic but this one: every route through the
+    // interview ends at a finish stage.
+    interfaceName: 'FinishSession',
+    type: 'FinishSession',
+    fields: fixtureMaximal('finish', {
+      interviewScript: EVERY_STAGE.interviewScript,
+    }),
+  },
+  {
     interfaceName: 'Sociogram',
     type: 'Sociogram',
     fields: fixtureMaximal('sociogram-1', {

@@ -124,8 +124,6 @@
   "interviewer.interview.theProtocolThisInterviewUsesCouldNot": "此访谈使用的协议无法更新以适配此版本的应用，因此无法继续此访谈。其回答仍可在数据页面查看。如需开始新访谈，请在 Architect 中修复该协议并重新导入。",
   "interviewer.interview.thisInterviewMayHaveBeenDeletedOr": "此访谈可能已被删除，或其使用的协议已不再安装。",
   "interviewer.interviewComplete.exit": "退出",
-  "interviewer.interviewComplete.interviewComplete": "访谈已完成",
-  "interviewer.interviewComplete.thankYouThisInterviewIsFinishedAnd": "谢谢。此访谈已结束，其回答无法再更改。请将设备交还给研究人员。",
   "interviewer.language.automatic": "自动（跟随浏览器）",
   "interviewer.language.failed": "本次会话的语言已更改，但无法保存该偏好设置。您的浏览器可能阻止了设备存储。",
   "interviewer.language.hint": "选择 Interviewer 在此设备上使用的语言。访谈会使用参与者浏览器的语言，或参与者在访谈中选择的语言。",

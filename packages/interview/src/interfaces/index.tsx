@@ -18,7 +18,7 @@ import CategoricalBin from './CategoricalBin/CategoricalBin';
 import DyadCensus from './DyadCensus/DyadCensus';
 import EgoForm from './EgoForm/EgoForm';
 import FamilyPedigree from './FamilyPedigree/FamilyPedigree';
-import FinishSession from './FinishSession';
+import FinishSession from './FinishSession/FinishSession';
 import Geospatial from './Geospatial/Geospatial';
 import Information from './Information/Information';
 import LanguageChooser from './LanguageChooser/LanguageChooser';
@@ -46,9 +46,7 @@ const NotFoundInterface = ({ interfaceType }: { interfaceType: string }) => (
   </Surface>
 );
 
-type InterfaceType = StageType | 'FinishSession';
-
-const getInterface = (interfaceType: InterfaceType) => {
+const getInterface = (interfaceType: StageType) => {
   switch (interfaceType) {
     case 'NameGenerator':
       return NameGenerator;

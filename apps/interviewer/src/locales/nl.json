@@ -124,8 +124,6 @@
   "interviewer.interview.theProtocolThisInterviewUsesCouldNot": "Het protocol dat dit interview gebruikt, kon niet worden bijgewerkt voor deze versie van de app, waardoor dit interview niet kan worden voortgezet. De antwoorden blijven beschikbaar in het gegevensscherm. Herstel het protocol in Architect en importeer het opnieuw om nieuwe interviews te starten.",
   "interviewer.interview.thisInterviewMayHaveBeenDeletedOr": "Dit interview is mogelijk verwijderd, of het protocol dat het gebruikte is niet meer geïnstalleerd.",
   "interviewer.interviewComplete.exit": "Afsluiten",
-  "interviewer.interviewComplete.interviewComplete": "Interview voltooid",
-  "interviewer.interviewComplete.thankYouThisInterviewIsFinishedAnd": "Bedankt. Dit interview is voltooid en de antwoorden kunnen niet meer worden gewijzigd. Geef het apparaat terug aan de onderzoeker.",
   "interviewer.language.automatic": "Automatisch (browser)",
   "interviewer.language.failed": "De taal is voor deze sessie gewijzigd, maar de voorkeur kon niet worden opgeslagen. Mogelijk blokkeert je browser de opslag op het apparaat.",
   "interviewer.language.hint": "Kies de taal die Interviewer op dit apparaat gebruikt. Interviews volgen de browsertaal van de deelnemer, of de taal die de deelnemer tijdens het interview kiest.",

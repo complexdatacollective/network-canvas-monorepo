@@ -118,6 +118,51 @@ function readStoredNodeCount(
   );
 }
 
+type StoredFinish = {
+  finishedAt: string | null;
+  finishStageId: unknown;
+  finishOutcome: unknown;
+};
+
+// Reads the stored session's finish fields straight from IndexedDB. Vault mode
+// is 'none' in this suite, so they are plaintext on the row. Returns null only
+// when the row is absent; a failed read rejects.
+function readStoredFinish(
+  page: Page,
+  sessionId: string,
+): Promise<StoredFinish | null> {
+  return page.evaluate(
+    (id) =>
+      new Promise<StoredFinish | null>((resolve, reject) => {
+        const req = indexedDB.open('interviewer');
+        req.onerror = () => reject(new Error('indexedDB.open failed'));
+        req.onsuccess = () => {
+          const get = req.result
+            .transaction('sessions', 'readonly')
+            .objectStore('sessions')
+            .get(id);
+          get.onerror = () => reject(new Error('sessions.get failed'));
+          get.onsuccess = () => {
+            const row = get.result as
+              | {
+                  finishedAt: string | null;
+                  finishStageId?: unknown;
+                  finishOutcome?: unknown;
+                }
+              | undefined;
+            if (!row) return resolve(null);
+            resolve({
+              finishedAt: row.finishedAt,
+              finishStageId: row.finishStageId,
+              finishOutcome: row.finishOutcome,
+            });
+          };
+        };
+      }),
+    sessionId,
+  );
+}
+
 async function connectNodes(
   page: Page,
   fromLabel: string,
@@ -176,17 +221,51 @@ test.describe('conducting an interview', () => {
       await interviewNav.next();
 
       // FinishSession stage.
+      const sessionId = /\/interview\/([^/?#]+)/.exec(page.url())?.[1] ?? '';
       await interviewNav.finish();
 
-      // App renders InterviewComplete.
-      await expect(page.getByTestId('interview-complete')).toBeVisible();
+      // The interview shows its completed state in place: the finish stage's
+      // own text, the built-in notice, no Finish button, and the app's Exit.
       await expect(
-        page.getByRole('heading', { name: 'Interview complete' }),
+        page.getByText(
+          'This interview is finished, and its answers can no longer be changed.',
+        ),
       ).toBeVisible();
+      await expect(
+        page.getByRole('heading', { name: 'Finish Interview' }),
+      ).toBeVisible();
+      await expect(
+        page.getByRole('button', { name: 'Finish', exact: true }),
+      ).toHaveCount(0);
+      await expect(page).toHaveURL(new RegExp(`/interview/${sessionId}$`));
+      // The finish is stored with the stage it happened at and its outcome.
+      await expect
+        .poll(() => readStoredFinish(page, sessionId))
+        .toEqual({
+          finishedAt: expect.any(String),
+          finishStageId: 'finish',
+          finishOutcome: 'completed',
+        });
       await capture('interview-complete');
 
-      await page.getByTestId('interview-complete-exit').click();
+      await page.getByRole('button', { name: 'Exit', exact: true }).click();
       await expect(page).toHaveURL(/\/(data)?$/);
+
+      // Opening it again, without asking to review it, shows the same
+      // completed state.
+      await page.goto(`/interview/${sessionId}`);
+      await expect(
+        page.getByText(
+          'This interview is finished, and its answers can no longer be changed.',
+        ),
+      ).toBeVisible();
+      await expect(
+        page.getByRole('heading', { name: 'Finish Interview' }),
+      ).toBeVisible();
+      await expect(
+        page.getByRole('button', { name: 'Exit', exact: true }),
+      ).toBeVisible();
+      await expect(page.getByText('Read-only review')).toHaveCount(0);
     },
   );
 

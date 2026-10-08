@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
+import { withFinishStage } from '../../../__tests__/finishStage.ts';
 import { escapeMessageText } from '../../../localization/messageSyntax.ts';
 import { localized } from '../../../utils/test-utils.ts';
 import { VersionedProtocolSchema } from '../../index.ts';
@@ -256,7 +257,17 @@ describe('schema version boundary', () => {
     schemaVersion: 9,
     localization: { defaultLocale: 'en', locales: ['en'] },
     codebook: {},
-    stages: [informationStage(label, text)],
+    stages: [
+      informationStage(label, text),
+      {
+        id: 'finish',
+        type: 'FinishSession',
+        label,
+        title: text,
+        content: text,
+        outcome: 'completed',
+      },
+    ],
   });
 
   it('accepts localized copy through the versioned schema', () => {
@@ -269,7 +280,9 @@ describe('schema version boundary', () => {
 
   it('rejects plain-string copy in schema 9', () => {
     expect(
-      ProtocolSchemaV9.safeParse(schema9Protocol('Welcome', 'Hello')).success,
+      ProtocolSchemaV9.safeParse(
+        withFinishStage(schema9Protocol('Welcome', 'Hello')),
+      ).success,
     ).toBe(false);
   });
 

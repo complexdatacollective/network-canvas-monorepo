@@ -29,6 +29,7 @@ const mkSession = (
   },
   protocolHash: hash,
   locale: null,
+  finishOutcome: 'completed',
 });
 
 const protocol = (hash: string): ProtocolExportInput => ({

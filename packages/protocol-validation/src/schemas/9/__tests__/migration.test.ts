@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { withFinishStage } from '../../../__tests__/finishStage.ts';
 import { MigrationResultInvalidError } from '../../../migration/errors.ts';
 import {
   getMigrationInfo,
@@ -115,10 +116,10 @@ describe('The experiments setting', () => {
   });
 
   it('is accepted by schema 9', () => {
-    const protocol = {
+    const protocol = withFinishStage({
       ...protocolWithEncryptedName({}),
       schemaVersion: 9,
-    };
+    });
 
     expect(ProtocolSchemaV9.safeParse(protocol).success).toBe(true);
   });
@@ -150,7 +151,9 @@ describe('The experiments setting', () => {
   it('is not needed by schema 9 to keep an attribute encrypted', () => {
     const protocol = protocolWithEncryptedName(undefined);
     expect(
-      ProtocolSchemaV9.safeParse({ ...protocol, schemaVersion: 9 }).success,
+      ProtocolSchemaV9.safeParse(
+        withFinishStage({ ...protocol, schemaVersion: 9 }),
+      ).success,
     ).toBe(true);
   });
 });
@@ -204,10 +207,9 @@ describe('Migrating passphrase length rules from schema 8 to 9', () => {
   ])('keeps %j, which a passphrase can meet', (validation) => {
     const migrated = migrateProtocol(schema8WithPassphraseRules(validation), 9);
 
-    expect(migrated.stages.at(-1)).toMatchObject({
-      type: 'Anonymisation',
-      validation,
-    });
+    expect(
+      migrated.stages.find(({ type }) => type === 'Anonymisation'),
+    ).toMatchObject({ validation });
   });
 
   it('says so in the migration notes', () => {
@@ -390,6 +392,7 @@ describe('Migrating rules on encrypted attributes from schema 8 to 9', () => {
             panels: [{ filter: { rules: [] } }],
           },
           { filter: { rules: [] } },
+          { type: 'FinishSession' },
         ],
       });
       expect(() => migrateProtocol(document, 9)).toThrow(

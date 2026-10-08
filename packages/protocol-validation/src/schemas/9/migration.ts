@@ -16,6 +16,7 @@ import {
   resumeUnstartedPedigreeAtIntroduction,
 } from './family-pedigree-session-migration.ts';
 import { TypeLevelOperators } from './filters/filter.ts';
+import { defaultFinishSessionFields } from './finish-session-defaults.ts';
 import { ProtocolLocalizationSchema } from './localized-string.ts';
 import ProtocolSchemaV9 from './schema.ts';
 
@@ -259,6 +260,71 @@ const addComposerCaptions = (protocol: unknown) => {
   }
 };
 
+// The id the appended finish stage takes, unless a schema 8 stage already
+// has it. Deterministic, so migrating one document twice gives one result.
+const FINISH_STAGE_ID = 'finish';
+
+const finishStageId = (stages: unknown): string => {
+  const taken = new Set(
+    Array.isArray(stages)
+      ? stages.flatMap((stage) =>
+          isRecord(stage) && typeof stage.id === 'string' ? [stage.id] : [],
+        )
+      : [],
+  );
+  let id = FINISH_STAGE_ID;
+  for (let suffix = 2; taken.has(id); suffix += 1) {
+    id = `${FINISH_STAGE_ID}-${suffix}`;
+  }
+  return id;
+};
+
+/**
+ * Schema 8 ended every interview with a built-in screen the runtime added.
+ * Schema 9 makes that screen a stage, so every migrated protocol gains one at
+ * the end, carrying the text that screen showed, recorded in the protocol's
+ * default language.
+ */
+/**
+ * A session the framework left past the last stage, where the interview
+ * engine's own finish screen used to be, resumes on the finish stage the
+ * migration appended in its place.
+ */
+const resumeAtAppendedFinishStage = (
+  session: { currentStep: number },
+  after: unknown,
+) => {
+  const stages =
+    typeof after === 'object' && after !== null && 'stages' in after
+      ? after.stages
+      : undefined;
+  if (!Array.isArray(stages) || stages.length === 0) return;
+  session.currentStep = Math.min(session.currentStep, stages.length - 1);
+};
+
+/**
+ * A document that already ends at its finish stage keeps it: Fresco's deploy
+ * normalization re-runs this migration over rows stored at schema 9, and a
+ * second finish stage would make every such row invalid.
+ */
+const endsAtFinishStage = (stages: unknown): boolean => {
+  if (!Array.isArray(stages)) return false;
+  const last: unknown = stages.at(-1);
+  return isRecord(last) && last.type === 'FinishSession';
+};
+
+/**
+ * The finish stage the migration appends, with the supplied text in each of
+ * the protocol's languages that has it: English for a schema 8 document, which
+ * is recorded as English, and a schema 9 document's own languages otherwise.
+ */
+const finishStageFor = (stages: unknown, locales: readonly string[]) => ({
+  id: finishStageId(stages),
+  type: 'FinishSession' as const,
+  ...defaultFinishSessionFields(locales),
+  outcome: 'completed' as const,
+});
+
 type SiteChange =
   | { kind: 'set'; value: unknown }
   | { kind: 'remove' }
@@ -367,7 +433,8 @@ const migrationV8toV9 = createMigration({
 - The old Family Pedigree could write each person's relationship to the participant as English text. The redesigned interface records it in a categorical attribute with fixed values that do not depend on language, which a text attribute cannot hold, so a converted stage records no relationship. To keep recording it, for example to filter later stages to the participant's parents, choose or create a categorical attribute for it in the Family Pedigree stage in Architect. The old attribute stays in the codebook with any answers already recorded, but is no longer filled in.
 - The converted Family Pedigree does not ask about gender identity. Where it uses gendered words such as mother or sister, they follow each person's sex assigned at birth.
 - Additional person fields on a Family Pedigree that collected the name or sex assigned at birth are removed, because the redesigned interface asks every person for both itself. The old interface never showed a field for the name. Answers already recorded are kept.
-- A Family Pedigree cannot be converted if two of its answers use the same attribute: two nomination prompts, a nomination prompt and an additional person field, or the name and another answer. Each now needs an attribute of its own. Give each its own attribute in the version of Architect that made the protocol, then upgrade it.`,
+- A Family Pedigree cannot be converted if two of its answers use the same attribute: two nomination prompts, a nomination prompt and an additional person field, or the name and another answer. Each now needs an attribute of its own. Give each its own attribute in the version of Architect that made the protocol, then upgrade it.
+- The screen that ends the interview is now a Finish Screen stage at the end of your protocol, so you can change its heading and text and translate them like the rest of your protocol. It starts with the text the interview has always shown there.`,
   migrate: ({ experiments, ...doc }) => {
     const migrated = structuredClone(doc);
     const localization = localizationOf(migrated);
@@ -402,6 +469,12 @@ const migrationV8toV9 = createMigration({
 
     return {
       ...migrated,
+      stages: endsAtFinishStage(migrated.stages)
+        ? migrated.stages
+        : [
+            ...(Array.isArray(migrated.stages) ? migrated.stages : []),
+            finishStageFor(migrated.stages, localization.locales),
+          ],
       ...(experiments !== undefined && {
         experiments: withoutEncryptedVariables(experiments),
       }),
@@ -416,7 +489,13 @@ const migrationV8toV9 = createMigration({
   // seen the introduction, so it resumes on the new stage instead. The
   // redesigned pedigree keeps a different stage record, which is translated
   // without losing anything the participant recorded.
+  //
+  // The finish stage this step appends is the screen the interview engine
+  // used to add after the last stage. The framework keeps a session that was
+  // on that screen past the end of the stages, so it resumes on the finish
+  // stage instead.
   migrateSession: (session, { before, after }) => {
+    resumeAtAppendedFinishStage(session, after);
     resumeUnstartedPedigreeAtIntroduction(session, after, before);
     migrateFamilyPedigreeSessionRecords(session, after, before);
     return session;

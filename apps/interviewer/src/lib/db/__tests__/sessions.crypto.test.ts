@@ -105,6 +105,22 @@ type InformationStage = Extract<
   { type: 'Information' }
 >;
 
+type FinishStage = Extract<
+  NonNullable<CurrentProtocol['stages'][number]>,
+  { type: 'FinishSession' }
+>;
+
+const finishStage: FinishStage = {
+  id: 'finish',
+  type: 'FinishSession',
+  label: { en: 'Finish' },
+  title: { en: 'Finish' },
+  content: { en: 'Thank you.' },
+  outcome: 'completed',
+};
+
+const finish = { stageId: 'finish', outcome: 'completed' } as const;
+
 function informationStage(id: string): InformationStage {
   return {
     id,
@@ -120,6 +136,7 @@ const authoredStages: CurrentProtocol['stages'] = [
   informationStage('stage-1'),
   informationStage('stage-2'),
   informationStage('stage-3'),
+  finishStage,
 ];
 
 const stagesWithFinishRoute: CurrentProtocol['stages'] = [
@@ -134,6 +151,7 @@ const stagesWithFinishRoute: CurrentProtocol['stages'] = [
   },
   informationStage('stage-2'),
   informationStage('stage-3'),
+  finishStage,
 ];
 
 const stagesWithNoActiveAuthoredStage: CurrentProtocol['stages'] = [
@@ -148,6 +166,7 @@ const stagesWithNoActiveAuthoredStage: CurrentProtocol['stages'] = [
   informationStage('stage-1'),
   informationStage('stage-2'),
   informationStage('stage-3'),
+  finishStage,
 ];
 
 describe('sessions repo — encryption at boundary', () => {
@@ -444,7 +463,7 @@ describe('sessions repo — status reflects completion, not export (#764)', () =
       caseId: 'case-1',
       initialNetwork,
     });
-    await markSessionFinished(created.id);
+    await markSessionFinished(created.id, finish);
     await markSessionsExported([created.id]);
 
     const list = await listSessions();
@@ -471,7 +490,7 @@ describe('sessions repo — status reflects completion, not export (#764)', () =
       { currentStep: 4, progress: 100 },
       { protocolHash: 'h1' },
     );
-    await markSessionFinished(created.id);
+    await markSessionFinished(created.id, finish);
     await markSessionsExported([created.id]);
 
     await markSessionUnfinished(created.id, authoredStages, {
@@ -502,7 +521,7 @@ describe('sessions repo — status reflects completion, not export (#764)', () =
       { currentStep: 4, progress: 100 },
       { protocolHash: 'h1' },
     );
-    await markSessionFinished(created.id);
+    await markSessionFinished(created.id, finish);
 
     await markSessionUnfinished(created.id, stagesWithFinishRoute, {
       protocolHash: 'h1',
@@ -527,7 +546,7 @@ describe('sessions repo — status reflects completion, not export (#764)', () =
       { currentStep: 4, progress: 100 },
       { protocolHash: 'h1' },
     );
-    await markSessionFinished(created.id);
+    await markSessionFinished(created.id, finish);
 
     await markSessionUnfinished(created.id, stagesWithNoActiveAuthoredStage, {
       protocolHash: 'h1',
@@ -552,7 +571,7 @@ describe('sessions repo — status reflects completion, not export (#764)', () =
       { currentStep: 4, progress: 100 },
       { protocolHash: 'h1' },
     );
-    await markSessionFinished(created.id);
+    await markSessionFinished(created.id, finish);
     await db.sessions.update(created.id, { protocolHash: 'h2' });
     const migrated = await db.sessions.get(created.id);
 
@@ -582,6 +601,130 @@ describe('sessions repo — status reflects completion, not export (#764)', () =
     const session = await getSession(created.id);
     expect(session?.currentStep).toBe(2);
     expect(session?.progress).toBe(60);
+  });
+});
+
+describe('sessions repo — finish stage and outcome', () => {
+  beforeEach(async () => {
+    await db.sessions.clear();
+    setSessionDek(await makeDek());
+  });
+  afterEach(async () => {
+    await db.sessions.clear();
+    setSessionDek(null);
+  });
+
+  async function createStudySession() {
+    return createSession({
+      protocolHash: 'h1',
+      protocolName: 'Study',
+      caseId: 'case-1',
+      initialNetwork,
+    });
+  }
+
+  it('records the finish stage and its outcome with the finish time', async () => {
+    const created = await createStudySession();
+
+    await markSessionFinished(created.id, {
+      stageId: 'finish-ineligible',
+      outcome: 'ineligible',
+    });
+
+    const session = await getSession(created.id);
+    expect(session?.finishedAt).not.toBeNull();
+    expect(session?.finishStageId).toBe('finish-ineligible');
+    expect(session?.finishOutcome).toBe('ineligible');
+    expect(session?.network).toEqual(initialNetwork);
+  });
+
+  it('stores the finish stage and outcome encrypted, never in plaintext', async () => {
+    const created = await createStudySession();
+
+    await markSessionFinished(created.id, {
+      stageId: 'finish-terminated',
+      outcome: 'terminated',
+    });
+
+    const raw = await db.sessions.get(created.id);
+    expect(raw?.finishedAt).not.toBeNull();
+    expect(raw?._enc?.finish).toBeDefined();
+    expect(raw?.finishStageId).toBeUndefined();
+    expect(raw?.finishOutcome).toBeUndefined();
+    expect(JSON.stringify(raw)).not.toContain('terminated');
+  });
+
+  it('keeps the finish stage and outcome through a later write', async () => {
+    const created = await createStudySession();
+    await markSessionFinished(created.id, finish);
+
+    await updateSession(
+      created.id,
+      { network: initialNetwork },
+      { protocolHash: 'h1' },
+    );
+
+    const session = await getSession(created.id);
+    expect(session?.finishStageId).toBe('finish');
+    expect(session?.finishOutcome).toBe('completed');
+  });
+
+  it('clears the finish time, stage and outcome together when marked unfinished', async () => {
+    const created = await createStudySession();
+    await markSessionFinished(created.id, finish);
+
+    await markSessionUnfinished(created.id, authoredStages, {
+      protocolHash: 'h1',
+    });
+
+    const raw = await db.sessions.get(created.id);
+    expect(raw?._enc?.finish).toBeUndefined();
+    const session = await getSession(created.id);
+    expect(session?.finishedAt).toBeNull();
+    expect(session?.finishStageId ?? null).toBeNull();
+    expect(session?.finishOutcome ?? null).toBeNull();
+
+    // Finishing again records the new finish, not a remnant of the old one.
+    await markSessionFinished(created.id, {
+      stageId: 'finish-ineligible',
+      outcome: 'ineligible',
+    });
+    const refinished = await getSession(created.id);
+    expect(refinished?.finishStageId).toBe('finish-ineligible');
+    expect(refinished?.finishOutcome).toBe('ineligible');
+  });
+
+  it('reads a session finished before outcomes were recorded as unknown', async () => {
+    const created = await createStudySession();
+    // A finish written by an earlier version: the time alone.
+    await db.sessions.update(created.id, {
+      finishedAt: '2026-01-02T00:00:00.000Z',
+    });
+
+    const session = await getSession(created.id);
+    expect(session?.finishedAt).toBe('2026-01-02T00:00:00.000Z');
+    expect(session?.finishStageId ?? null).toBeNull();
+    expect(session?.finishOutcome ?? null).toBeNull();
+  });
+
+  it('records and clears the finish in plaintext when no key is in use', async () => {
+    setSessionDek(null);
+    const created = await createStudySession();
+
+    await markSessionFinished(created.id, finish);
+    const raw = await db.sessions.get(created.id);
+    expect(raw?._enc).toBeUndefined();
+    expect(raw?.finishStageId).toBe('finish');
+    expect(raw?.finishOutcome).toBe('completed');
+    expect((await getSession(created.id))?.finishOutcome).toBe('completed');
+
+    await markSessionUnfinished(created.id, authoredStages, {
+      protocolHash: 'h1',
+    });
+    const reopened = await db.sessions.get(created.id);
+    expect(reopened?.finishedAt).toBeNull();
+    expect(reopened).not.toHaveProperty('finishStageId');
+    expect(reopened).not.toHaveProperty('finishOutcome');
   });
 });
 

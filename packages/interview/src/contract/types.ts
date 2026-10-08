@@ -1,5 +1,8 @@
+import type { ReactNode } from 'react';
+
 import type {
   CurrentProtocol,
+  FinishOutcome,
   LocaleMetadata,
   LocaleTag,
 } from '@codaco/protocol-validation';
@@ -84,6 +87,14 @@ export type SessionSnapshot = {
  */
 export type SessionPayload = SessionSnapshot & {
   localeOptions: readonly LocaleMetadata[];
+  /**
+   * The finish stage a finished interview ended at, as the host recorded it
+   * from `FinishHandler`. A finished interview (`finishTime` set) opens on
+   * this stage in its completed state. `null` for an interview that is not
+   * finished, or one finished before finish stages were recorded, which opens
+   * on the protocol's last finish stage instead. Absent reads as `null`.
+   */
+  finishStageId?: string | null;
 };
 
 export type InterviewPayload = {
@@ -143,21 +154,46 @@ export type ProtocolLocaleChangeHandler = (
   change: ProtocolLocaleChange,
 ) => Promise<void>;
 
+/**
+ * Where and how an interview ended: the finish stage the participant finished
+ * at, and the outcome that stage declares. Hosts persist both with the finish
+ * time; exporters write the outcome as session metadata.
+ */
+export type SessionFinish = Readonly<{
+  stageId: string;
+  outcome: FinishOutcome;
+}>;
+
+/**
+ * Called when the participant confirms Finish on a finish stage, after the
+ * engine has flushed pending writes. Once it resolves, the interview shows its
+ * completed state; the host does not navigate away.
+ */
 export type FinishHandler = (
   interviewId: string,
+  finish: SessionFinish,
   signal: AbortSignal,
 ) => Promise<void>;
+
+/**
+ * An action a host offers on a finished interview's completed state, such as
+ * Interviewer's "Exit". The label is shown in the interview's interface
+ * language, so a host resolving its own message must resolve it in that
+ * language.
+ */
+export type CompletedAction = Readonly<{
+  label: ReactNode;
+  onAction: () => void;
+}>;
 
 export type AssetRequestHandler = (assetId: string) => Promise<string>;
 
 /**
  * Participant-facing progress for the step the package is moving to. `progress`
  * is the 0–100 value shown in the interview's own progress bar (see
- * `getInterviewProgress`); `totalSteps` is the true number of steps including
- * the synthetic FinishSession stage the package appends (so it is one greater
- * than the protocol's stage count). Hosts should persist/display these directly
- * rather than re-deriving progress from the bare step index, which requires
- * knowing about the appended finish stage.
+ * `getInterviewProgress`); `totalSteps` is the protocol's stage count, finish
+ * stage included. Hosts should persist/display these directly rather than
+ * re-deriving progress from the bare step index.
  */
 export type StepChangeMeta = {
   progress: number;

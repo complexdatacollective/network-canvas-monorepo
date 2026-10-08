@@ -119,6 +119,17 @@ export const nonBlankText = () =>
 export const localizedString = (
   content: z.ZodString,
   format: LocalizedStringFormat,
+  {
+    mayBeEmpty = false,
+  }: {
+    /**
+     * Allow a string with no translation at all. Only for text something
+     * else stops a protocol from leaving its editor without: the finish
+     * stage's heading and text, which a new protocol in a language Network
+     * Canvas supplies none for starts without (`findFinishStageTextProblems`).
+     */
+    mayBeEmpty?: boolean;
+  } = {},
 ) =>
   z
     .record(
@@ -130,7 +141,7 @@ export const localizedString = (
     )
     .superRefine((value, ctx) => {
       const locales = Object.keys(value);
-      if (locales.length === 0) {
+      if (locales.length === 0 && !mayBeEmpty) {
         ctx.addIssue({
           code: 'custom',
           message: 'Text must have at least one translation.',

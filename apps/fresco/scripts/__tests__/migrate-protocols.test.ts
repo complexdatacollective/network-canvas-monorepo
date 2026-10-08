@@ -1,7 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
-import { hashProtocol, migrateProtocol } from '@codaco/protocol-validation';
+import {
+  DEFAULT_FINISH_SESSION_TEXT,
+  hashProtocol,
+  migrateProtocol,
+} from '@codaco/protocol-validation';
 import {
   buildAssetManifest,
   InterviewMigrationFailedError,
@@ -1342,6 +1346,23 @@ function inFrenchAndGerman(value: unknown): unknown {
   );
 }
 
+/**
+ * Rewrites every English-only text in a migrated protocol as Japanese text, a
+ * language Network Canvas supplies no closing text for.
+ */
+function inJapanese(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(inJapanese);
+  if (typeof value !== 'object' || value === null) return value;
+  const entries = Object.entries(value);
+  const [only] = entries;
+  if (entries.length === 1 && only?.[0] === 'en') {
+    return { ja: `${String(only[1])} (ja)` };
+  }
+  return Object.fromEntries(
+    entries.map(([key, child]) => [key, inJapanese(child)]),
+  );
+}
+
 describe('languages in the deploy migration', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -1388,6 +1409,104 @@ describe('languages in the deploy migration', () => {
     expect(written).toHaveProperty('data.localization', localization);
     expect(written).toHaveProperty('data.codebook', codebook);
     expect(written).toHaveProperty('data.stages', stages);
+    // The row already ends at its finish stage, and keeps it as its only one,
+    // in its own languages.
+    const writtenStages = stages as { type: string }[];
+    const finishStages = writtenStages.filter(
+      (stage) => stage.type === 'FinishSession',
+    );
+    expect(finishStages).toHaveLength(1);
+    expect(writtenStages.at(-1)).toBe(finishStages[0]);
+  });
+
+  it('gives a row at the compatible version without a finish stage one in its own languages', async () => {
+    const atEncryptionVersion = migrateProtocol(
+      { ...makeV7ProtocolWithEncryptedName(), name: 'Bilingual' },
+      8,
+      { name: 'Bilingual' },
+    );
+    const current = migrateProtocol(
+      atEncryptionVersion,
+      COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
+      { name: 'Bilingual' },
+    );
+    const localization = { defaultLocale: 'fr', locales: ['fr', 'de'] };
+    const codebook = inFrenchAndGerman(current.codebook);
+    const stages = (
+      inFrenchAndGerman(current.stages) as { type: string }[]
+    ).filter((stage) => stage.type !== 'FinishSession');
+    const prisma = makeMockPrisma();
+    prisma.protocol.findMany.mockResolvedValue([
+      {
+        id: 'cm-bilingual-unfinished',
+        assets: [],
+        name: 'Bilingual.netcanvas',
+        schemaVersion: COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
+        stages: structuredClone(stages),
+        codebook: structuredClone(codebook),
+        localization: structuredClone(localization),
+      },
+    ]);
+
+    await runMigration(prisma);
+
+    const written = onlyWrite(prisma);
+    expect(written).toHaveProperty('data.localization', localization);
+    expect(written).toHaveProperty('data.stages', [
+      ...stages,
+      expect.objectContaining({
+        type: 'FinishSession',
+        title: {
+          fr: DEFAULT_FINISH_SESSION_TEXT.fr.title,
+          de: DEFAULT_FINISH_SESSION_TEXT.de.title,
+        },
+        content: {
+          fr: DEFAULT_FINISH_SESSION_TEXT.fr.content,
+          de: DEFAULT_FINISH_SESSION_TEXT.de.content,
+        },
+      }),
+    ]);
+  });
+
+  it('leaves in place a row that would come out with a finish stage with no text', async () => {
+    const warnSpy = vi
+      .spyOn(console, 'warn')
+      .mockImplementation(() => undefined);
+    const atEncryptionVersion = migrateProtocol(
+      { ...makeV7ProtocolWithEncryptedName(), name: 'Japanese' },
+      8,
+      { name: 'Japanese' },
+    );
+    const current = migrateProtocol(
+      atEncryptionVersion,
+      COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
+      { name: 'Japanese' },
+    );
+    const stages = (inJapanese(current.stages) as { type: string }[]).filter(
+      (stage) => stage.type !== 'FinishSession',
+    );
+    const prisma = makeMockPrisma();
+    prisma.protocol.findMany.mockResolvedValue([
+      {
+        id: 'cm-japanese-unfinished',
+        assets: [],
+        name: 'Japanese.netcanvas',
+        schemaVersion: COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
+        stages,
+        codebook: inJapanese(current.codebook),
+        localization: { defaultLocale: 'ja', locales: ['ja'] },
+      },
+    ]);
+
+    await expect(runMigration(prisma)).resolves.toBeUndefined();
+
+    expect(prisma.protocol.update).not.toHaveBeenCalled();
+    const warned = warnSpy.mock.calls.map((call) => String(call[0])).join(' ');
+    expect(warned).toMatch(/Japanese\.netcanvas/);
+    expect(warned).toMatch(
+      /has no heading in the protocol's default language \(ja\)/,
+    );
+    warnSpy.mockRestore();
   });
 });
 

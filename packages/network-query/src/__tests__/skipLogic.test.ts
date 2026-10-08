@@ -92,9 +92,20 @@ describe('resolveSkipLogicDestinationIndex', () => {
     ).toBe(2);
   });
 
-  it('resolves finish to the one-past-the-end index', () => {
+  it('resolves finish to the one-past-the-end index when no finish stage follows', () => {
     expect(
       resolveSkipLogicDestinationIndex({ type: 'finish' }, stages, 1),
+    ).toBe(3);
+  });
+
+  it('resolves finish to the first finish stage after the owning stage', () => {
+    const withFinish = [
+      ...stages,
+      { id: 'thanks', type: 'FinishSession' },
+      { id: 'later', type: 'FinishSession' },
+    ];
+    expect(
+      resolveSkipLogicDestinationIndex({ type: 'finish' }, withFinish, 1),
     ).toBe(3);
   });
 

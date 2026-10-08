@@ -1,6 +1,9 @@
 import type { Page } from '@playwright/test';
 
-import type { CurrentProtocol } from '@codaco/protocol-validation';
+import {
+  createDefaultFinishSessionStage,
+  type CurrentProtocol,
+} from '@codaco/protocol-validation';
 
 export type SeedAsset = {
   assetId: string;
@@ -140,17 +143,24 @@ export async function seedProtocol(
   return id;
 }
 
-// A minimal empty current-schema protocol for create-from-scratch specs. Built
-// to satisfy `CurrentProtocolSchema` directly (all five fields are the schema's
-// only required top-level keys; `codebook`'s `node`/`edge`/`ego` are all
-// optional) rather than asserting, so a schema drift here is a real type
-// error instead of a silently-stale cast.
-export function emptyProtocol(): CurrentProtocol {
+// A minimal current-schema protocol for create-from-scratch specs: what
+// Architect's New Protocol makes, a protocol holding only the finish stage
+// that ends the interview. Built to satisfy `CurrentProtocolSchema` directly
+// (all five fields are the schema's only required top-level keys;
+// `codebook`'s `node`/`edge`/`ego` are all optional) rather than asserting, so
+// a schema drift here is a real type error instead of a silently-stale cast.
+// A stage created in it goes before the finish stage, so it is stage 0.
+export function emptyProtocol(
+  localization: CurrentProtocol['localization'] = {
+    defaultLocale: 'en',
+    locales: ['en'],
+  },
+): CurrentProtocol {
   return {
     name: 'E2E Protocol',
     schemaVersion: 9,
-    localization: { defaultLocale: 'en', locales: ['en'] },
+    localization,
     codebook: {},
-    stages: [],
+    stages: [createDefaultFinishSessionStage({ id: 'finish', localization })],
   };
 }

@@ -10,8 +10,8 @@ import type { StageOfType } from './context.ts';
  * LanguageChooser, records a session setting rather than network data, or, for
  * the synthetic network, is a FamilyPedigree, whose interface builds the
  * participant's family tree itself and which the generator does not
- * fabricate — so it
- * creates no entity and writes no attribute onto one.
+ * fabricate, or, like a FinishSession, ends the interview — so it creates no
+ * entity and writes no attribute onto one.
  *
  * This list is the dispatch's own record of that decision rather than a second
  * opinion about it: `generateNetwork` narrows these stages away before its
@@ -40,6 +40,7 @@ export const CONTENT_STAGE_TYPES = [
   'FamilyPedigree',
   'NarrativePedigree',
   'LanguageChooser',
+  'FinishSession',
 ] as const satisfies readonly Stage['type'][];
 
 type ContentStageType = (typeof CONTENT_STAGE_TYPES)[number];

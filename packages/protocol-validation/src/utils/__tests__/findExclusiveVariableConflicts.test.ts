@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { withFinishStage } from '../../__tests__/finishStage.ts';
 import {
   GENDER_IDENTITY_OPTIONS,
   GENDER_IDENTITY_TERMS,
@@ -115,7 +116,7 @@ describe('findExclusiveVariableConflicts', () => {
   it('reports nothing for a well-formed pedigree', () => {
     const protocol = protocolWith([familyPedigree()]);
     expect(findExclusiveVariableConflicts(protocol)).toEqual([]);
-    const result = ProtocolSchemaV9.safeParse(protocol);
+    const result = ProtocolSchemaV9.safeParse(withFinishStage(protocol));
     expect(result.success ? null : result.error.issues).toBeNull();
   });
 
@@ -144,7 +145,7 @@ describe('findExclusiveVariableConflicts', () => {
       },
     ]);
     expect(findExclusiveVariableConflicts(protocol)).toEqual([]);
-    const result = ProtocolSchemaV9.safeParse(protocol);
+    const result = ProtocolSchemaV9.safeParse(withFinishStage(protocol));
     expect(result.success ? null : result.error.issues).toBeNull();
   });
 
@@ -173,7 +174,9 @@ describe('findExclusiveVariableConflicts', () => {
     expect(conflicts.map((conflict) => conflict.path)).toEqual([
       ['stages', 1, 'prompts', 0, 'highlight', 'variable'],
     ]);
-    expect(ProtocolSchemaV9.safeParse(protocol).success).toBe(false);
+    expect(ProtocolSchemaV9.safeParse(withFinishStage(protocol)).success).toBe(
+      false,
+    );
   });
 
   it('reports a form field bound to the participant marker', () => {
@@ -197,7 +200,9 @@ describe('findExclusiveVariableConflicts', () => {
       'familyPedigree.nodeConfiguration.egoAttribute',
     );
     expect(conflicts[0]?.variableName).toBe('is_ego');
-    expect(ProtocolSchemaV9.safeParse(protocol).success).toBe(false);
+    expect(ProtocolSchemaV9.safeParse(withFinishStage(protocol)).success).toBe(
+      false,
+    );
   });
 
   it('accepts two FamilyPedigree stages that share one node type and its structural slots', () => {
@@ -213,7 +218,9 @@ describe('findExclusiveVariableConflicts', () => {
       }),
     ]);
     expect(findExclusiveVariableConflicts(protocol)).toEqual([]);
-    expect(ProtocolSchemaV9.safeParse(protocol).success).toBe(true);
+    expect(ProtocolSchemaV9.safeParse(withFinishStage(protocol)).success).toBe(
+      true,
+    );
   });
 
   it('reports one variable claimed by two DIFFERENT exclusive slots', () => {
@@ -340,7 +347,7 @@ describe('findExclusiveVariableConflicts', () => {
         },
       },
     };
-    const result = ProtocolSchemaV9.safeParse(protocol);
+    const result = ProtocolSchemaV9.safeParse(withFinishStage(protocol));
     expect(result.success).toBe(false);
     expect(
       result.error?.issues.some((issue) =>

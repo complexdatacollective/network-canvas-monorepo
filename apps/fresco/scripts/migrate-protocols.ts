@@ -6,6 +6,7 @@ import {
   hashProtocol,
   migrateProtocolWithSessions,
   type SessionMigrator,
+  validateProtocol,
 } from '@codaco/protocol-validation';
 import { Prisma } from '~/lib/db/generated/client';
 
@@ -479,6 +480,18 @@ async function normalizeNonConformantProtocol(
     TARGET_SCHEMA_VERSION,
     { name: cleanName },
   );
+
+  // Held to what an import of the same protocol is held to, not only to the
+  // schema: the schema lets a protocol still being written leave its finish
+  // stage without text, which a row in a language Network Canvas supplies no
+  // closing text for would come out with, and participants would finish on
+  // an empty screen. Refused here, the caller leaves the row in place.
+  const validation = await validateProtocol(migrated);
+  if (!validation.success) {
+    throw new Error(
+      `the normalized protocol would not be accepted on import: ${validation.error.message}`,
+    );
+  }
 
   // The hash is derived from stages + codebook only, so re-normalizing gives
   // the same hash the import flow would now compute for this protocol.

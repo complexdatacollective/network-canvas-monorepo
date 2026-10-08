@@ -43,8 +43,9 @@ describe('the creation signal a new stage carries', () => {
 
     await screen.findByRole('combobox', { name: /When this stage is skipped/ });
     // Every fixture stage is later than one inserted at position 0, and each
-    // is numbered as it will be once this stage exists.
-    expect(destinations()).toHaveLength(fixtureStageIds().length + 2);
+    // is numbered as it will be once this stage exists. The fixture's finish
+    // stage is offered as ending the interview rather than as a stage.
+    expect(destinations()).toHaveLength(fixtureStageIds().length + 1);
     expect(destinations()[1]).toMatch(/^Stage 2 — /);
   });
 

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { withFinishStage } from '../../../../__tests__/finishStage.ts';
 import { findExclusiveVariableConflicts } from '../../../../utils/findExclusiveVariableConflicts.ts';
 import { localized, localizedOptions } from '../../../../utils/test-utils.ts';
 import {
@@ -261,18 +262,22 @@ describe('familyPedigreeStage', () => {
 
 describe('FamilyPedigree in a whole protocol', () => {
   it('accepts a stage bound to correctly shaped codebook variables', () => {
-    const result = ProtocolSchemaV9.safeParse(protocolWith(base));
+    const result = ProtocolSchemaV9.safeParse(
+      withFinishStage(protocolWith(base)),
+    );
     expect(result.success ? null : result.error.issues).toBeNull();
   });
 
   it('accepts gender identity words for an option the attribute no longer has', () => {
     const result = ProtocolSchemaV9.safeParse(
-      protocolWith(
-        base,
-        localizedOptions([
-          { value: 'woman', label: 'Woman' },
-          { value: 'man', label: 'Man' },
-        ]),
+      withFinishStage(
+        protocolWith(
+          base,
+          localizedOptions([
+            { value: 'woman', label: 'Woman' },
+            { value: 'man', label: 'Man' },
+          ]),
+        ),
       ),
     );
     expect(result.success ? null : result.error.issues).toBeNull();
@@ -282,7 +287,7 @@ describe('FamilyPedigree in a whole protocol', () => {
     const { genderIdentity: _omitted, ...nodeConfiguration } =
       base.nodeConfiguration;
     const result = ProtocolSchemaV9.safeParse(
-      protocolWith({ ...base, nodeConfiguration }),
+      withFinishStage(protocolWith({ ...base, nodeConfiguration })),
     );
     expect(result.success ? null : result.error.issues).toBeNull();
   });
@@ -301,14 +306,16 @@ describe('FamilyPedigree in a whole protocol', () => {
 
   it('requires each nomination prompt attribute to be a boolean', () => {
     const withNomination = (attribute: string) =>
-      ProtocolSchemaV9.safeParse({
-        ...protocolWith({
-          ...base,
-          nominationPrompts: [
-            { id: 'heart', text: localized('Who?'), attribute },
-          ],
+      ProtocolSchemaV9.safeParse(
+        withFinishStage({
+          ...protocolWith({
+            ...base,
+            nominationPrompts: [
+              { id: 'heart', text: localized('Who?'), attribute },
+            ],
+          }),
         }),
-      });
+      );
     const accepted = withNomination('hd');
     expect(accepted.success ? null : accepted.error.issues).toBeNull();
     expect(withNomination('name').success).toBe(false);
@@ -321,10 +328,12 @@ describe('FamilyPedigree in a whole protocol', () => {
   it('requires each additional person field to name an attribute with a component', () => {
     const withField = (variable: string) =>
       ProtocolSchemaV9.safeParse(
-        protocolWith({
-          ...base,
-          form: { fields: [{ variable, prompt: localized('Tell us') }] },
-        }),
+        withFinishStage(
+          protocolWith({
+            ...base,
+            form: { fields: [{ variable, prompt: localized('Tell us') }] },
+          }),
+        ),
       );
     // `hd` is a boolean with no input control.
     const refused = withField('hd');
@@ -343,7 +352,7 @@ describe('FamilyPedigree in a whole protocol', () => {
     protocol: ReturnType<typeof protocolWith>,
     path: (string | number)[],
   ) => {
-    const result = ProtocolSchemaV9.safeParse(protocol);
+    const result = ProtocolSchemaV9.safeParse(withFinishStage(protocol));
     return result.success
       ? []
       : result.error.issues
@@ -437,10 +446,13 @@ describe('FamilyPedigree in a whole protocol', () => {
     ];
 
     it('accepts a categorical attribute carrying exactly the fixed values, or none', () => {
-      expect(ProtocolSchemaV9.safeParse(withRelationship('rel')).success).toBe(
-        true,
-      );
-      expect(ProtocolSchemaV9.safeParse(protocolWith(base)).success).toBe(true);
+      expect(
+        ProtocolSchemaV9.safeParse(withFinishStage(withRelationship('rel')))
+          .success,
+      ).toBe(true);
+      expect(
+        ProtocolSchemaV9.safeParse(withFinishStage(protocolWith(base))).success,
+      ).toBe(true);
     });
 
     it('refuses an attribute whose options are not the fixed values, or that is not categorical', () => {
@@ -452,7 +464,8 @@ describe('FamilyPedigree in a whole protocol', () => {
         ),
       );
       expect(
-        ProtocolSchemaV9.safeParse(withRelationship('relText')).success,
+        ProtocolSchemaV9.safeParse(withFinishStage(withRelationship('relText')))
+          .success,
       ).toBe(false);
     });
 
@@ -468,7 +481,9 @@ describe('FamilyPedigree in a whole protocol', () => {
         ),
       );
       const sharedWithSex = withRelationship('sab');
-      expect(ProtocolSchemaV9.safeParse(sharedWithSex).success).toBe(false);
+      expect(
+        ProtocolSchemaV9.safeParse(withFinishStage(sharedWithSex)).success,
+      ).toBe(false);
     });
   });
 
@@ -504,7 +519,7 @@ describe('FamilyPedigree in a whole protocol', () => {
       const { genderIdentity: _omitted, ...nodeConfiguration } =
         base.nodeConfiguration;
       const result = ProtocolSchemaV9.safeParse(
-        twoStages({ ...second, nodeConfiguration }),
+        withFinishStage(twoStages({ ...second, nodeConfiguration })),
       );
       expect(result.success ? null : result.error.issues).toBeNull();
     });
@@ -524,6 +539,8 @@ describe('FamilyPedigree in a whole protocol', () => {
     expect(conflicts.map((conflict) => conflict.path)).toEqual([
       ['stages', 0, 'form', 'fields', 0, 'variable'],
     ]);
-    expect(ProtocolSchemaV9.safeParse(protocol).success).toBe(false);
+    expect(ProtocolSchemaV9.safeParse(withFinishStage(protocol)).success).toBe(
+      false,
+    );
   });
 });

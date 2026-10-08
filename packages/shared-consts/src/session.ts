@@ -9,3 +9,5 @@ export const sessionFinishTimeProperty = 'sessionFinish';
 export const sessionExportTimeProperty = 'sessionExported';
 export const codebookHashProperty = 'codebookHash';
 export const interviewLocaleProperty = 'interviewLocale';
+// How the interview ended: the outcome of the finish stage it ended at.
+export const finishOutcomeProperty = 'finishOutcome';

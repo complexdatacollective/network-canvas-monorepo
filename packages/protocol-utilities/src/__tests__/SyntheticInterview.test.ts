@@ -3153,3 +3153,65 @@ describe('LanguageChooser stage', () => {
     expect(network.edges).toEqual([]);
   });
 });
+
+describe('FinishSession stage', () => {
+  it('ends a protocol built without one at a finish stage with the supplied text', () => {
+    const synth = new SyntheticInterview();
+    synth.setLocalization({ defaultLocale: 'en', locales: ['en', 'es'] });
+    synth.addInformationStage({ title: 'Welcome' });
+
+    const { stages } = expectValid(synth);
+    expect(stages).toHaveLength(2);
+    expect(stages[1]).toEqual({
+      id: 'finish',
+      type: 'FinishSession',
+      label: { en: 'Finish Interview', es: 'Finalizar entrevista' },
+      title: { en: 'Finish Interview', es: 'Finalizar entrevista' },
+      content: {
+        en: 'You have reached the end of the interview. If you are satisfied with the information you have entered, you may finish the interview now.',
+        es: 'Has llegado al final de la entrevista. Si estás conforme con la información que has introducido, puedes finalizar la entrevista ahora.',
+      },
+      outcome: 'completed',
+    });
+  });
+
+  it('writes English under a default language with no supplied text', () => {
+    const synth = new SyntheticInterview();
+    synth.setLocalization({ defaultLocale: 'ja', locales: ['ja'] });
+
+    const stage = expectValid(synth).stages.at(-1);
+    expect(stage).toMatchObject({
+      type: 'FinishSession',
+      title: { ja: 'Finish Interview' },
+    });
+  });
+
+  it('keeps a finish stage the fixture adds, and adds no second one', () => {
+    const synth = new SyntheticInterview();
+    synth.addInformationStage({ title: 'Welcome' });
+    synth.addFinishSessionStage({
+      title: 'Not eligible',
+      content: 'Thank you for your time.',
+      outcome: 'ineligible',
+    });
+
+    const { stages } = expectValid(synth);
+    expect(stages).toHaveLength(2);
+    expect(stages[1]).toMatchObject({
+      type: 'FinishSession',
+      label: { 'en-US': 'Not eligible' },
+      title: { 'en-US': 'Not eligible' },
+      content: { 'en-US': 'Thank you for your time.' },
+      outcome: 'ineligible',
+    });
+  });
+
+  it('adds nothing to the generated network', () => {
+    const synth = new SyntheticInterview();
+    synth.addFinishSessionStage();
+
+    const network = synth.getNetwork();
+    expect(network.nodes).toEqual([]);
+    expect(network.edges).toEqual([]);
+  });
+});

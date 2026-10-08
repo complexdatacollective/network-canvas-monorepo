@@ -8,6 +8,7 @@ export { default as useOnline } from './hooks/useOnline';
 // Public types
 export type {
   AssetRequestHandler,
+  CompletedAction,
   FinishHandler,
   InterviewAnalyticsMetadata,
   InterviewerFlags,
@@ -16,6 +17,7 @@ export type {
   ProtocolLocaleChangeHandler,
   ProtocolPayload,
   ResolvedAsset,
+  SessionFinish,
   SessionPayload,
   SessionSnapshot,
   StepChangeHandler,

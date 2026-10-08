@@ -80,6 +80,7 @@ const interview = (id: string, suffix: string): InterviewExportInput => ({
   finishTime: new Date('2025-01-02'),
   protocolHash: 'protocol-1',
   locale: null,
+  finishOutcome: 'completed',
   network: {
     nodes: [
       {

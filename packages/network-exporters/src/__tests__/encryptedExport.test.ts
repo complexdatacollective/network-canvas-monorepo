@@ -123,6 +123,7 @@ const interview = (
   participantIdentifier: 'case-1',
   startTime: new Date('2025-01-01'),
   finishTime: new Date('2025-01-02'),
+  finishOutcome: 'completed',
   protocolHash: 'protocol-1',
   locale: null,
   network: {
@@ -356,6 +357,7 @@ const recordedInterview: InterviewExportInput = {
   participantIdentifier: 'case-1',
   startTime: new Date('2025-01-01'),
   finishTime: new Date('2025-01-02'),
+  finishOutcome: 'completed',
   protocolHash: 'protocol-1',
   locale: null,
   network: {

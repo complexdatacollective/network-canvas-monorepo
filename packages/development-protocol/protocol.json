@@ -1670,6 +1670,23 @@
           "inheritancePattern": "autosomalDominant"
         }
       ]
+    },
+    {
+      "id": "finish",
+      "type": "FinishSession",
+      "label": {
+        "en-US": "Finish Interview",
+        "es": "Finalizar entrevista"
+      },
+      "title": {
+        "en-US": "Finish Interview",
+        "es": "Finalizar entrevista"
+      },
+      "content": {
+        "en-US": "You have reached the end of the interview. If you are satisfied with the information you have entered, you may finish the interview now.",
+        "es": "Has llegado al final de la entrevista. Si estás conforme con la información que has introducido, puedes finalizar la entrevista ahora."
+      },
+      "outcome": "completed"
     }
   ],
   "codebook": {

@@ -1,0 +1,16 @@
+- main:
+  - heading "All done" [level=1]:
+    - text: ""
+    - emphasis: done
+  - paragraph:
+    - text: Thank you for
+    - strong: taking part
+    - text: .
+  - paragraph: You may now close this window.
+  - button "Finish"
+  - navigation:
+    - button "Settings"
+    - button "Previous Step"
+    - progressbar "Progress indicator": x
+    - button "Next Step" [disabled]
+  - region "Interview notifications"

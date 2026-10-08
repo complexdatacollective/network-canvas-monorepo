@@ -278,7 +278,10 @@ function StageEditorActions({
       return;
     }
 
-    const validationResult = await validateProtocol(previewProtocol);
+    // As a draft: a preview runs in Architect and hands nothing out.
+    const validationResult = await validateProtocol(previewProtocol, {
+      draft: true,
+    });
     if (!validationResult.success) {
       void openDialog({
         type: 'acknowledge',
@@ -431,7 +434,7 @@ function PreviewValidity({
         if (!cancelled) onSettled(false);
         return;
       }
-      void validateProtocol(wip)
+      void validateProtocol(wip, { draft: true })
         .then((result) => {
           if (!cancelled) onSettled(result.success);
         })

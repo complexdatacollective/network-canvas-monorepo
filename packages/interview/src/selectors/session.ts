@@ -85,7 +85,7 @@ export const getCurrentStage = createSelector(
 
 /**
  * Returns the subject for the current stage, or `null` for subjectless stages
- * (Information, Anonymisation, LanguageChooser, the appended finish stage).
+ * (Information, Anonymisation, LanguageChooser, FinishSession).
  *
  * This selector must never throw because Redux dispatches trigger synchronous
  * subscription notifications. During stage transitions, components from the

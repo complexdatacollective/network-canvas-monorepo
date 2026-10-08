@@ -11,6 +11,7 @@ const STAGE_TYPE_COVERAGE = {
   DyadCensus: true,
   EgoForm: true,
   FamilyPedigree: true,
+  FinishSession: true,
   Geospatial: true,
   Information: true,
   LanguageChooser: true,

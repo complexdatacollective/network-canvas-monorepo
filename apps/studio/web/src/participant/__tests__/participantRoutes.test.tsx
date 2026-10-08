@@ -79,6 +79,15 @@ const sessionPayload = (stageIndex: number, analytics = false) => ({
         title: { en: 'Welcome to the study' },
         items: [],
       },
+      // Schema 9 ends every interview at a finish stage of the protocol's own.
+      {
+        id: 'finish',
+        type: 'FinishSession',
+        label: { en: 'Finish' },
+        title: { en: 'Thank you' },
+        content: { en: 'The interview is complete.' },
+        outcome: 'terminated',
+      },
     ],
   }),
 });
@@ -277,8 +286,12 @@ describe('opening a participant link', () => {
   });
 });
 
+/** The interview's own notice under a finished interview's closing text. */
+const FINISHED_NOTICE =
+  'This interview is finished, and its answers can no longer be changed.';
+
 describe('the interview session', () => {
-  it('finishes from the runtime’s own finish stage and shows the finished notice', async () => {
+  it('finishes from the protocol’s finish stage and shows its completed state in place', async () => {
     const harness = installParticipantHarness({
       ...readsSession(1),
       'participant.finish': () => Effect.succeed({ state: 'completed' }),
@@ -298,16 +311,28 @@ describe('the interview session', () => {
       await within(dialog).findByRole('button', { name: 'Finish Interview' }),
     );
 
-    const finished = await screen.findByRole('heading', {
-      name: "You've finished this interview",
-    });
+    // The interview stays mounted and shows its completed state: the finish
+    // stage's own closing text and the interview's finished notice, not
+    // Studio's generic notice in place of the interview.
+    await screen.findByText(FINISHED_NOTICE);
     await waitFor(() => {
-      expect(finished).toHaveFocus();
+      expect(screen.getByRole('heading', { name: 'Thank you' })).toHaveFocus();
     });
+    expect(
+      screen.queryByRole('button', { name: 'Finish' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('heading', { name: "You've finished this interview" }),
+    ).not.toBeInTheDocument();
     await waitFor(() => {
       expect(harness.calls.at(-1)).toEqual({
         tag: 'participant.finish',
-        payload: { holderEpoch: 2, revision: '5' },
+        payload: {
+          holderEpoch: 2,
+          revision: '5',
+          stageId: 'finish',
+          outcome: 'terminated',
+        },
       });
     });
   });
@@ -350,9 +375,7 @@ describe('participant analytics', () => {
     fireEvent.click(
       await within(dialog).findByRole('button', { name: 'Finish Interview' }),
     );
-    await screen.findByRole('heading', {
-      name: "You've finished this interview",
-    });
+    await screen.findByText(FINISHED_NOTICE);
   };
 
   it('sends the runtime’s events to Studio, unidentified, when the session allows it', async () => {

@@ -94,6 +94,7 @@ test('keeps history to saved changes while a stage editor is open', async ({
           },
         ],
       },
+      ...emptyProtocol().stages,
     ],
   });
   await gotoProtocol(architectPage);

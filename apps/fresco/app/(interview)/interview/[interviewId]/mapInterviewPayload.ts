@@ -1,4 +1,5 @@
 import {
+  createInitialNetwork,
   isValidAssetType,
   type InterviewPayload,
   type ResolvedAsset,
@@ -26,6 +27,68 @@ type MappedInterview =
       unreadable: 'session' | 'protocol';
       error: unknown;
     };
+
+type ReadableInterview = Extract<MappedInterview, { success: true }>;
+
+type ViewedInterview =
+  | (ReadableInterview & { view: InterviewView })
+  | Extract<MappedInterview, { success: false }>;
+
+/**
+ * How a request opens an interview, decided on the server.
+ *
+ * - `active`: an unfinished interview, at its stages.
+ * - `editable-finished`: a finished interview, at its stages and open to
+ *   changes, for a researcher while completed interviews are not frozen.
+ * - `completed`: a finished interview's completed state, from a payload that
+ *   holds none of the interview's answers and none of the protocol's
+ *   resources. Nothing in this view may be written back: its network is
+ *   empty, so a write would erase the stored one.
+ */
+export type InterviewView = 'active' | 'editable-finished' | 'completed';
+
+/**
+ * The interview a request is shown, chosen here on the server so that nothing
+ * the browser sends can ask for more.
+ *
+ * - An unfinished interview opens as it is, to anyone with its link.
+ * - A finished interview opens on its completed state, from a payload with
+ *   none of the interview's answers: no network and no stage metadata. Nor
+ *   does it carry the protocol's resources, whose entries can hold API keys
+ *   and whose URLs open the files: the completed state shows only the finish
+ *   stage's text. Only the protocol's design, where the interview ended, and
+ *   its language go to the browser. Before finish stages, a participant who opened a finished
+ *   interview was sent to a page with no interview on it at all.
+ * - A researcher opening a finished interview while completed interviews are
+ *   not frozen gets it in full, to change, as before finish stages.
+ */
+export function mapInterviewForViewer(
+  source: NonNullable<GetInterviewByIdQuery>,
+  {
+    researcher,
+    freezeCompletedInterviews,
+  }: { researcher: boolean; freezeCompletedInterviews: boolean },
+): ViewedInterview {
+  const mapped = mapInterviewPayload(source);
+  // Unreadable stored data opens nothing, finished or not.
+  if (!mapped.success) return mapped;
+  if (source.finishTime === null) {
+    return { ...mapped, view: 'active' };
+  }
+  if (researcher && !freezeCompletedInterviews) {
+    return { ...mapped, view: 'editable-finished' };
+  }
+  const { stageMetadata: _stageMetadata, ...session } = mapped.payload.session;
+  return {
+    ...mapped,
+    payload: {
+      protocol: { ...mapped.payload.protocol, assets: [] },
+      session: { ...session, network: createInitialNetwork() },
+    },
+    assetUrls: {},
+    view: 'completed',
+  };
+}
 
 export function mapInterviewPayload(
   source: NonNullable<GetInterviewByIdQuery>,
@@ -84,6 +147,10 @@ export function mapInterviewPayload(
       id: session.id,
       startTime: session.startTime.toISOString(),
       finishTime: session.finishTime?.toISOString() ?? null,
+      // Where a finished interview ended, so it opens on that finish stage's
+      // completed state. Null for an unfinished interview, and for one
+      // finished before finish stages were recorded.
+      finishStageId: session.finishStageId,
       exportTime: session.exportTime?.toISOString() ?? null,
       lastUpdated: session.lastUpdated.toISOString(),
       network: stored.data.network,
@@ -94,9 +161,14 @@ export function mapInterviewPayload(
         getLocaleMetadata(locale),
       ),
     },
+    // Named field by field rather than spread from the row: the row also holds
+    // the original upload's storage key and URL, which the asset route serves
+    // without authentication, so spreading it would hand every holder of an
+    // interview link the original .netcanvas archive.
     protocol: {
-      ...protocol,
       ...storedProtocol.data,
+      id: protocol.id,
+      name: protocol.name,
       schemaVersion,
       hash: protocol.hash,
       description: protocol.description ?? undefined,

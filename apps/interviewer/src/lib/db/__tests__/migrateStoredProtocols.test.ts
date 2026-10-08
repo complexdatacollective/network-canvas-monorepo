@@ -417,7 +417,10 @@ describe.each([
     // Every session moved with it, and nothing else about them changed.
     const sessions = await db.sessions.toArray();
     expect(sessions.map((s) => s.protocolHash)).toEqual([row.hash, row.hash]);
-    expect(sessions.map((s) => s.currentStep)).toEqual([2, 2]);
+    // The document has no stages, so each session was past the end, where the
+    // engine's own finish screen was; it resumes on the finish stage the
+    // migration appends there.
+    expect(sessions.map((s) => s.currentStep)).toEqual([0, 0]);
 
     // Assets are keyed by protocol hash, so they move too — re-encrypted under
     // their new id, since the id is the ciphertext's authenticated data.
@@ -504,7 +507,8 @@ describe.each([
     const row = await db.protocols.get(result.migrated[0]?.hash ?? '');
     if (!row) throw new Error('expected the migrated protocol');
     const { protocol } = await decryptProtocol(row);
-    expect(protocol.stages).toHaveLength(5);
+    // Four stages, the inserted introduction, and the appended finish stage.
+    expect(protocol.stages).toHaveLength(6);
     const after = getInterviewProgress(protocol.stages, 1).progress;
     expect(after).not.toBe(before);
 

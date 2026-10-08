@@ -25,6 +25,7 @@ import type { SyntheticPayloadResult } from '../helpers/synthetic-payload.js';
 export type SessionSeed = {
   network?: SessionPayload['network'];
   stageMetadata?: SessionPayload['stageMetadata'];
+  finishedAt?: { stageId: string | null };
 };
 
 type InstalledProtocol = {

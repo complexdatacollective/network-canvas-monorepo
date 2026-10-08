@@ -101,7 +101,7 @@ const messages = defineMessages({
     id: 'studio.participant.finishedHeading',
     defaultMessage: "You've finished this interview",
     description:
-      'Heading a participant sees after finishing their interview, and whenever they reopen it afterwards.',
+      'Heading a participant sees in place of an interview that was already finished, such as when they open its link again. Finishing in the interview itself shows the closing screen of the interview instead.',
   },
   finishedMessage: {
     id: 'studio.participant.finishedMessage',
