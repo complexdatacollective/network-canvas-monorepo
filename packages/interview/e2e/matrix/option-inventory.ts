@@ -437,6 +437,7 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
     'nodeConfiguration.sexAssignedAtBirthAttribute',
     'nodeConfiguration.egoAttribute',
     'nodeConfiguration.egoAttribute=createdOnFirstVisit',
+    'nodeConfiguration.relationshipToParticipantAttribute',
     'edgeConfiguration.type',
     'edgeConfiguration.kindAttribute=partner',
     'edgeConfiguration.kindAttribute=biological',

@@ -1163,6 +1163,63 @@ export const FamilyInProgress: Story = {
   },
 };
 
+/**
+ * From parents, siblings and children upwards, each of the participant's
+ * biological children needs their other biological parent: the participant
+ * has added both parents, said they have no siblings, and added a daughter on
+ * their own. The list asks for her other parent, and the stage cannot be left
+ * until she has one. A "Don't know" parent would do; that parent's own family
+ * is never asked for.
+ */
+export const EachChildNeedsTheirOtherBiologicalParent: Story = {
+  args: { requirement: 'firstDegree', enforcement: 'required' },
+  render: (args) => (
+    <PedigreeStory
+      {...settings(args)}
+      family={{
+        people: [
+          {
+            id: 'ego',
+            name: 'Sarietha',
+            gender: 'woman',
+            sex: 'female',
+            ego: true,
+            notRecorded: ['noSiblings'],
+          },
+          { id: 'julie', name: 'Julie', gender: 'woman', sex: 'female' },
+          { id: 'rob', name: 'Rob', gender: 'man', sex: 'male' },
+          { id: 'mia', name: 'Mia', gender: 'woman', sex: 'female' },
+        ],
+        links: [
+          { from: 'julie', to: 'rob', kind: 'partner' },
+          { from: 'julie', to: 'ego', kind: 'biological', carrier: true },
+          { from: 'rob', to: 'ego', kind: 'biological' },
+          { from: 'ego', to: 'mia', kind: 'biological', carrier: true },
+        ],
+      }}
+    />
+  ),
+  play: async (context) => {
+    await expectPeople(4)(context);
+    const canvas = within(context.canvasElement);
+    const body = within(context.canvasElement.ownerDocument.body);
+
+    // Required: Next does not leave the family, and pins open the list of
+    // what is still needed.
+    await userEvent.click(canvas.getByTestId('next-button'));
+    await waitFor(
+      () =>
+        expect(
+          body.getByRole('button', {
+            name: 'Add another biological parent for “Mia”',
+          }),
+        ).toBeVisible(),
+      { timeout: 5000 },
+    );
+    await expect(canvas.getByTestId('pedigree-canvas')).toBeInTheDocument();
+  },
+};
+
 // ---------------------------------------------------------------------------
 // Scenarios from the standardized pedigree nomenclature papers: Bennett et al.
 // (2008), "Standardized human pedigree nomenclature: update and assessment of

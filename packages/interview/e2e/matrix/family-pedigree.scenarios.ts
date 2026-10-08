@@ -63,6 +63,8 @@ type PedigreeOptions = {
    * one; an Information stage, or an Information stage and then an
    * Anonymisation stage, otherwise. An Information stage always follows it. */
   before?: 'information' | 'anonymisation';
+  /** Records each person's relationship to the participant. */
+  recordRelationshipToParticipant?: boolean;
 };
 
 type Seed = {
@@ -72,6 +74,9 @@ type Seed = {
   gender?: string;
   isEgo?: boolean;
   relativesNotRecorded?: string[];
+  /** A relationship to the participant already recorded (needs
+   * `recordRelationshipToParticipant`). */
+  relationship?: string;
 };
 
 /**
@@ -115,6 +120,7 @@ function scaffold(options: PedigreeOptions = {}) {
     genderIdentities: options.genderIdentities,
     completeness: options.completeness,
     nominationPrompts: options.nominationPrompts,
+    recordRelationshipToParticipant: options.recordRelationshipToParticipant,
   });
   const nickname = options.encryptedFormField
     ? people.addVariable({
@@ -163,6 +169,10 @@ function scaffold(options: PedigreeOptions = {}) {
       fp.relativesNotRecorded === undefined
         ? {}
         : { [fp.relativesNotRecorded]: seed.relativesNotRecorded }),
+      ...(seed.relationship === undefined ||
+      fp.relationshipToParticipant === undefined
+        ? {}
+        : { [fp.relationshipToParticipant]: [seed.relationship] }),
     });
   const relate = (
     from: string,
@@ -556,6 +566,57 @@ function siblingPartnerChildAndGeneratedLabels(): ScenarioDefinition {
           .map((label) => named(label)?.[PK] ?? label)
           .toSorted(),
       );
+    },
+  };
+}
+
+/**
+ * The stage records each person's relationship to the participant as it is
+ * left, worked out from the family drawn: a child added here is a child, the
+ * parents are parents, and the participant has none. Someone who held a value
+ * but is no longer connected to the participant has it cleared, so a later
+ * filter never finds a stale relative.
+ */
+function relationshipToParticipantRecorded(): ScenarioDefinition {
+  const { synth, fp, person, relate, parents } = scaffold({
+    recordRelationshipToParticipant: true,
+  });
+  person('ego', {
+    isEgo: true,
+    name: 'Ari',
+    sex: 'intersex',
+    gender: 'nonBinary',
+    relationship: 'child',
+  });
+  person('mum', { name: 'Julie', sex: 'female', gender: 'woman' });
+  person('dad', { name: 'Rob', sex: 'male', gender: 'man' });
+  person('former', { name: 'Kim', sex: 'female', relationship: 'sibling' });
+  relate('mum', 'dad', 'partner');
+  parents('mum', 'dad', 'ego');
+
+  return {
+    id: 'relationship-to-participant-recorded',
+    covers: ['nodeConfiguration.relationshipToParticipantAttribute'],
+    seedNetwork: true,
+    build: () => synth,
+    run: async (ctx) => {
+      const { page } = ctx;
+      const relationship = fp.relationshipToParticipant ?? '';
+
+      await addRelativeOf(page, 'You', 'child');
+      await describe(page, { name: 'Mia', gender: 'Woman', sex: 'Female' });
+      await submitPanel(page, 'Add to family');
+      await expect(member(page, 'Mia')).toBeVisible();
+
+      await leaveForward(ctx);
+      const network = await networkOf(ctx);
+      const relationshipOf = (name: string) =>
+        nodeNamed(network, fp.name, name)?.[ATTR][relationship];
+      expect(relationshipOf('Julie')).toEqual(['parent']);
+      expect(relationshipOf('Rob')).toEqual(['parent']);
+      expect(relationshipOf('Mia')).toEqual(['child']);
+      expect(relationshipOf('Ari')).toBeUndefined();
+      expect(relationshipOf('Kim')).toBeUndefined();
     },
   };
 }
@@ -1049,7 +1110,8 @@ function completenessGrandparentsRequired(): ScenarioDefinition {
 
 /**
  * The participant with parents, maternal grandparents and an aunt, a sister
- * and a son, every group the narrower scopes ask about answered. Second
+ * and a son with his other parent, every group the narrower scopes ask about
+ * answered. Second
  * degree asks for the sister's and son's children; third degree also for the
  * aunt's (first cousins).
  */
@@ -1090,6 +1152,9 @@ function extendedScope(
   parents('dadsMum', 'dadsDad', 'dad');
   parents('mum', 'dad', 'sister');
   relate('ego', 'son', 'biological');
+  // Leo's other biological parent, whose own family is never asked for.
+  person('leosMum', { name: 'Sam', gender: 'woman', sex: 'female' });
+  relate('leosMum', 'son', 'biological', { carrier: true });
 
   const cousinsItem =
     'Add biological children for “May”, or say they have none';
@@ -1702,5 +1767,6 @@ export const familyPedigreeScenarios: InterfaceScenarios = {
     relationshipKindsDrawn(),
     encryptedNames(),
     encryptedFormField(),
+    relationshipToParticipantRecorded(),
   ],
 };
