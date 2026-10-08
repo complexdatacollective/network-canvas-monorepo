@@ -470,7 +470,7 @@ describe('v8 to v9 localization migration', () => {
       const field = alterField(document);
       setAt(document, [...field, 'prompt'], blank);
 
-      expect(promptOf(document, field)).toEqual({ und: 'Nickname' });
+      expect(promptOf(document, field)).toEqual({ en: 'Nickname' });
     });
 
     it('does so in an ego form, using the ego attribute', () => {
@@ -478,7 +478,7 @@ describe('v8 to v9 localization migration', () => {
       const field = egoField(document);
       setAt(document, [...field, 'prompt'], ' ');
 
-      expect(promptOf(document, field)).toEqual({ und: 'EgoName' });
+      expect(promptOf(document, field)).toEqual({ en: 'EgoName' });
     });
 
     it('does so in a name generator form', () => {
@@ -486,7 +486,7 @@ describe('v8 to v9 localization migration', () => {
       const field = fieldPath(document, 'nameGenerator', ['form']);
       setAt(document, [...field, 'prompt'], ' ');
 
-      expect(promptOf(document, field)).toEqual({ und: 'Name' });
+      expect(promptOf(document, field)).toEqual({ en: 'Name' });
     });
 
     it('does so in an edge form, using the attribute of the edge type', () => {
@@ -494,7 +494,7 @@ describe('v8 to v9 localization migration', () => {
       const field = fieldPath(document, 'alterEdgeForm', ['form']);
       setAt(document, [...field, 'prompt'], ' ');
 
-      expect(promptOf(document, field)).toEqual({ und: 'Note' });
+      expect(promptOf(document, field)).toEqual({ en: 'Note' });
     });
 
     it('does so in the form of a pedigree person', () => {
@@ -503,7 +503,7 @@ describe('v8 to v9 localization migration', () => {
       const field = [...stage, 'nodeConfig', 'form', 0];
       setAt(document, [...field, 'prompt'], ' ');
 
-      expect(promptOf(document, field)).toEqual({ und: 'BirthYear' });
+      expect(promptOf(document, field)).toEqual({ en: 'BirthYear' });
     });
 
     it('keeps a prompt with text in it, spaces around the text included', () => {
@@ -511,7 +511,7 @@ describe('v8 to v9 localization migration', () => {
       const field = alterField(document);
       setAt(document, [...field, 'prompt'], '  Nickname?  ');
 
-      expect(promptOf(document, field)).toEqual({ und: '  Nickname?  ' });
+      expect(promptOf(document, field)).toEqual({ en: '  Nickname?  ' });
     });
 
     it('uses the attribute id when the attribute has no name or is missing', () => {
@@ -529,10 +529,10 @@ describe('v8 to v9 localization migration', () => {
 
       const migrated = migrateStep(document);
       expect(getAt(migrated, [...named, 'prompt'])).toEqual({
-        und: 'nickname',
+        en: 'nickname',
       });
       expect(getAt(migrated, [...missing, 'prompt'])).toEqual({
-        und: 'removed',
+        en: 'removed',
       });
     });
 
@@ -547,7 +547,7 @@ describe('v8 to v9 localization migration', () => {
       );
 
       expect(getAt(migrateStep(document), [...field, 'prompt'])).toEqual({
-        und: escapeMessageText('\\*first\\_name\\* {nick}'),
+        en: escapeMessageText('\\*first\\_name\\* {nick}'),
       });
     });
 
@@ -578,7 +578,7 @@ describe('v8 to v9 localization migration', () => {
       setAt(document, [...field, 'label'], '   ');
 
       expect(getAt(migrateProtocol(document, 9), [...field, 'label'])).toEqual({
-        und: 'Nickname',
+        en: 'Nickname',
       });
     });
   });
