@@ -780,7 +780,10 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   // A complete checklist tells the interview the stage is ready, which marks
   // the Next button.
   const { updateReady } = useReadyForNextStage();
-  const checklistComplete = progress !== null && progress.items.length === 0;
+  const checklistComplete =
+    progress !== null &&
+    progress.items.length === 0 &&
+    !(participantFraming && chosenFraming === undefined);
   useEffect(() => {
     updateReady(checklistComplete);
   }, [updateReady, checklistComplete]);
@@ -882,7 +885,19 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     return true;
   };
 
+  // The stage is not left while an answer it requires is missing: the
+  // completeness requirement (above), and, when the participant chooses the
+  // wording, their choice, which the saved labels are written in. Going on
+  // without it opens the choice again. Going back is not held up, and saves
+  // no labels: they are saved in the chosen words when the participant
+  // next leaves.
+  const framingUnanswered = participantFraming && chosenFraming === undefined;
   useBeforeNext(async (direction) => {
+    if (framingUnanswered) {
+      if (direction === 'backwards') return true;
+      setFramingOpen(true);
+      return false;
+    }
     if (!completeEnoughToLeave(direction)) return false;
     return saveGeneratedLabels(direction);
   });

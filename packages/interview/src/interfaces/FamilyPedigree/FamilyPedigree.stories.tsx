@@ -1032,6 +1032,41 @@ export const ParticipantChoosesFraming: Story = {
 };
 
 /**
+ * The stage leaves the framing to the participant, and they press Next
+ * before choosing. They stay on the stage, with the choice open, until they
+ * have chosen; the labels saved on leaving are then in the words chosen,
+ * never in the words used while no choice was made.
+ */
+export const TheFramingMustBeChosenBeforeLeaving: Story = {
+  args: { framing: 'participantPreference', requirement: 'none' },
+  render: (args) => (
+    <PedigreeStory
+      {...settings(args)}
+      family={unnamedParents}
+      followedByPeopleList
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
+    await canvas.findByTestId('pedigree-canvas');
+    await userEvent.click(canvas.getByTestId('next-button'));
+    // Still on the stage, asked how to describe the family.
+    await body.findByText(FRAMING_TITLE, {}, { timeout: 5000 });
+    await expect(canvas.queryByText(PEOPLE_PROMPT)).toBeNull();
+    await expect(canvas.getByTestId('pedigree-canvas')).toBeInTheDocument();
+
+    await userEvent.click(
+      body.getByRole('option', { name: /Mother, father, sister, brother/ }),
+    );
+    await waitFor(() => expect(body.queryByText(FRAMING_TITLE)).toBeNull());
+    await leaveForPeopleList(canvasElement);
+    await expect(await canvas.findByText('Mother')).toBeInTheDocument();
+    await expect(canvas.queryByText('Egg parent')).toBeNull();
+  },
+};
+
+/**
  * Once chosen, the words can be changed from the toolbar at any time.
  * Choosing applies at once and closes the popover.
  */
