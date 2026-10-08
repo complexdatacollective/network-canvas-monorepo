@@ -15,7 +15,10 @@ CI. Name an integration branch `integration/<name>`; schema-version branches
 (`schema-<n>`, such as `schema-9`) are covered too. The trigger is a branch
 pattern (`pull_request: branches: [main, 'integration/**', 'schema-*']` in
 `.github/workflows/ci-and-release.yml`), so a new branch that follows the
-convention needs no workflow change.
+convention needs no workflow change. GitHub reads the workflow from the pull
+request's merge with its base, so the integration branch itself must contain
+this trigger: cut a new one from `main`, and merge the change into an older one
+before expecting CI on its pull requests.
 
 A pull request into an integration branch gets full CI but no merge queue and no
 required checks, because the rulesets target only `main`: `quality` is advisory
