@@ -56,6 +56,7 @@ const SECTION_LIST_EDITORS: SectionListEditorCase[] = [
       'Prompt',
       'Person attributes',
       'Ask about gender identity',
+      'Record each person’s relationship to the participant',
       'Relationships',
       'Wording',
       'Additional person fields',

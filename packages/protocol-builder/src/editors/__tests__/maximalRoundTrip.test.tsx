@@ -1,7 +1,10 @@
 import { screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import type { StageType } from '@codaco/protocol-validation';
+import {
+  PEDIGREE_RELATIONSHIPS_TO_PARTICIPANT,
+  type StageType,
+} from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import { stageEditorRegistry } from '../../stageEditorRegistry.ts';
@@ -73,6 +76,12 @@ type MaximalStage = Readonly<{
   /** Names the case, and is what a failure reports. */
   interfaceName: string;
   type: StageType;
+  /**
+   * The fixture stage this one stands in for, where opening it as a stage of
+   * its own would clash with that one: a second Family Pedigree may not
+   * manage the gender identity attribute the fixture's pedigree manages.
+   */
+  stageId?: string;
   /** Every key this interface's schema offers, filled in. */
   fields: SectionDoc;
   /**
@@ -415,8 +424,14 @@ const FIXTURE_MAXIMAL_STAGES: MaximalStage[] = [
   {
     interfaceName: 'FamilyPedigree',
     type: 'FamilyPedigree',
+    stageId: 'family-pedigree-1',
     fields: fixtureMaximal('family-pedigree-1', {
       ...EVERY_STAGE,
+      nodeConfiguration: {
+        ...(loadFixtureStage('family-pedigree-1').fields
+          .nodeConfiguration as SectionDoc),
+        relationshipToParticipantAttribute: 'fm_relationship',
+      },
       form: {
         fields: [
           {
@@ -452,6 +467,14 @@ const FIXTURE_MAXIMAL_STAGES: MaximalStage[] = [
         },
         relativesNotRecorded: RELATIVES_NOT_RECORDED_VARIABLE,
         has_heart_disease: { name: 'has_heart_disease', type: 'boolean' },
+        fm_relationship: {
+          name: 'fm_relationship',
+          type: 'categorical',
+          options: PEDIGREE_RELATIONSHIPS_TO_PARTICIPANT.map((value) => ({
+            value,
+            label: { 'en-US': value },
+          })),
+        },
       }),
   },
   {
@@ -526,10 +549,16 @@ describe('a maximal stage of each interface', () => {
 
   it.each(EVERY_MAXIMAL_STAGE)(
     '$interfaceName: is fully editable, and saves every key unchanged',
-    async ({ type, fields, settle, prepare, unowned = [] }) => {
+    async ({ type, stageId, fields, settle, prepare, unowned = [] }) => {
       // No registry passed: every interface is claimed by the package's own,
       // so the dispatcher finding the editor is part of what the case shows.
-      const harness = renderStageEditor({ stage: { type, fields } });
+      const harness = renderStageEditor({
+        stage: {
+          ...(stageId === undefined ? {} : { id: stageId }),
+          type,
+          fields,
+        },
+      });
       prepare?.(harness);
       await (settle ?? stageName)();
       // Every section registers its fields on mount, and the outline is built

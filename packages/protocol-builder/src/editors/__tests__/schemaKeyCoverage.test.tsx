@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import type { StageType } from '@codaco/protocol-validation';
+import {
+  PEDIGREE_RELATIONSHIPS_TO_PARTICIPANT,
+  type StageType,
+} from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import type { StageEditorComponent } from '../../stage-editor-contract.ts';
@@ -46,6 +49,8 @@ const RELATIVES_NOT_RECORDED_ATTRIBUTE = 'relativesNotRecorded';
 
 /** The boolean attribute the maximal pedigree's nomination prompt records. */
 const NOMINATION_ATTRIBUTE = 'has_heart_disease';
+/** The relationship to the participant, with the interface's fixed values. */
+const RELATIONSHIP_ATTRIBUTE = 'fm_relationship';
 
 const FAMILY_PEDIGREE_FIELDS: SectionDoc = {
   label: { 'en-US': 'Family Pedigree' },
@@ -68,6 +73,7 @@ const FAMILY_PEDIGREE_FIELDS: SectionDoc = {
     },
     sexAssignedAtBirthAttribute: 'sexAssignedAtBirth',
     egoAttribute: 'is_ego',
+    relationshipToParticipantAttribute: RELATIONSHIP_ATTRIBUTE,
   },
   edgeConfiguration: {
     type: 'family_edge',
@@ -108,6 +114,12 @@ const MEMBER_FORM_ATTRIBUTE = 'fm_occupation';
 
 type MaximalStage = Readonly<{
   stageType: StageType;
+  /**
+   * The fixture stage this one stands in for. Opened as a stage of its own,
+   * it would bind the gender identity attribute the fixture's pedigree
+   * already manages, which only one stage may.
+   */
+  stageId: string;
   editor: StageEditorComponent;
   fields: SectionDoc;
   /**
@@ -137,6 +149,7 @@ type MaximalStage = Readonly<{
 const MAXIMAL: readonly MaximalStage[] = [
   {
     stageType: 'FamilyPedigree',
+    stageId: 'family-pedigree-1',
     editor: familyPedigreeEditor,
     fields: FAMILY_PEDIGREE_FIELDS,
   },
@@ -144,7 +157,7 @@ const MAXIMAL: readonly MaximalStage[] = [
 
 describe.each(MAXIMAL)(
   'a $stageType stage holding every key its schema declares',
-  ({ stageType, editor, fields, unowned = [] }: MaximalStage) => {
+  ({ stageType, stageId, editor, fields, unowned = [] }: MaximalStage) => {
     /**
      * The stage above is the schema's key list, spelled as a stage. A key
      * added to this interface fails here first, with the key named, rather
@@ -165,7 +178,7 @@ describe.each(MAXIMAL)(
      */
     it('is edited by a section, and saved back exactly as it arrived', async () => {
       const harness = renderStageEditor({
-        stage: { type: stageType, fields },
+        stage: { id: stageId, type: stageType, fields },
         editor,
       });
       addFamilyMemberVariables(harness, {
@@ -180,6 +193,15 @@ describe.each(MAXIMAL)(
           name: NOMINATION_ATTRIBUTE,
           label: NOMINATION_ATTRIBUTE,
           type: 'boolean',
+        },
+        [RELATIONSHIP_ATTRIBUTE]: {
+          name: RELATIONSHIP_ATTRIBUTE,
+          label: RELATIONSHIP_ATTRIBUTE,
+          type: 'categorical',
+          options: PEDIGREE_RELATIONSHIPS_TO_PARTICIPANT.map((value) => ({
+            value,
+            label: { 'en-US': value },
+          })),
         },
       });
 

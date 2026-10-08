@@ -107,6 +107,7 @@ const SLOT_INVENT_LABEL_IDS = [
   'protocolBuilder.pedigree.kindCreateLabel',
   'protocolBuilder.pedigree.nameCreateLabel',
   'protocolBuilder.pedigree.nominationVariableCreateLabel',
+  'protocolBuilder.pedigree.relationshipToParticipantCreateLabel',
   'protocolBuilder.pedigree.relativesNotRecordedCreateLabel',
   'protocolBuilder.pedigree.sexAssignedAtBirthCreateLabel',
 ] as const;
