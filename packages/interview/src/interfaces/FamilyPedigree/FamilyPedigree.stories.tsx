@@ -2178,6 +2178,64 @@ export const ARecommendationIsShownAgainWhenItGrows: Story = {
   },
 };
 
+/** With one biological parent recorded, the first press recommends adding
+ * the other; removing that parent leaves both to add, which is more than the
+ * list showed, so the next press shows it again. */
+export const RemovingTheOnlyParentShowsTheRecommendationAgain: Story = {
+  args: { requirement: 'parents', enforcement: 'recommended' },
+  render: (args) => (
+    <PedigreeStory
+      {...settings(args)}
+      followedByPeopleList
+      family={{
+        people: [
+          {
+            id: 'ego',
+            name: 'Ella',
+            gender: 'woman',
+            sex: 'female',
+            ego: true,
+          },
+          { id: 'mum', name: 'Rachel', gender: 'woman', sex: 'female' },
+        ],
+        links: [{ from: 'mum', to: 'ego', kind: 'biological', carrier: true }],
+      }}
+    />
+  ),
+  play: async (context) => {
+    await expectPeople(2)(context);
+    const { canvasElement } = context;
+    const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
+    const recommendations = () =>
+      body.queryByRole('region', { name: /^Before you continue/ });
+
+    await userEvent.click(canvas.getByTestId('next-button'));
+    await waitFor(() =>
+      expect(recommendations(), 'listed on the first press').not.toBeNull(),
+    );
+
+    await userEvent.click(canvas.getByRole('button', { name: /^Rachel/ }));
+    await userEvent.click(
+      await body.findByRole('button', { name: 'Remove from family' }),
+    );
+    const dialog = await body.findByRole('dialog', { name: 'Remove Rachel?' });
+    await userEvent.click(
+      within(dialog).getByRole('button', { name: 'Remove from family' }),
+    );
+    await expectPeople(1)(context);
+    await waitFor(() => expect(recommendations()).toBeNull());
+
+    await userEvent.click(canvas.getByTestId('next-button'));
+    await waitFor(() =>
+      expect(recommendations(), 'listed again').not.toBeNull(),
+    );
+    await expect(canvas.queryByText(PEOPLE_PROMPT)).toBeNull();
+
+    await leaveForPeopleList(canvasElement);
+  },
+};
+
 const panelOf = (canvasElement: HTMLElement) =>
   canvasElement.ownerDocument.querySelector(
     '[data-testid="pedigree-person-panel"]',
