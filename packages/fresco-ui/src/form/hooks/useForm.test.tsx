@@ -11,6 +11,7 @@ import Field from '../Field/Field';
 import FieldNamespace from '../FieldNamespace';
 import InputField from '../fields/InputField';
 import FormStoreProvider from '../store/formStoreProvider';
+import type { FormSubmissionResult, FormSubmitHandler } from '../store/types';
 import { focusFirstError } from '../utils/focusFirstError';
 import { useForm } from './useForm';
 import useFormStore from './useFormStore';
@@ -326,5 +327,224 @@ describe('useForm invalid-submit focus', () => {
     expect(
       document.activeElement?.closest('[data-field-name="first"]'),
     ).not.toBeNull();
+  });
+});
+
+/**
+ * A submit that arrived while an earlier one was still running validated and
+ * called `onSubmit` again, so an async save stored the same thing twice.
+ * `SubmitButton` and fields disable themselves while submitting, but nothing
+ * else did: `requestSubmit()`, a submit control that is not `SubmitButton`, or
+ * Enter in an input that is not a `Field` all reached the handler again.
+ */
+describe('useForm while a submission is in flight', () => {
+  function deferredSubmit() {
+    const pending: {
+      resolve: (result: FormSubmissionResult) => void;
+      reject: (error: Error) => void;
+    }[] = [];
+    const onSubmit = vi.fn(
+      () =>
+        new Promise<FormSubmissionResult>((resolve, reject) => {
+          pending.push({ resolve, reject });
+        }),
+    );
+    return {
+      onSubmit,
+      resolveNext: (result: FormSubmissionResult) =>
+        act(async () => {
+          pending.shift()?.resolve(result);
+        }),
+      rejectNext: () =>
+        act(async () => {
+          pending.shift()?.reject(new Error('Save failed'));
+        }),
+    };
+  }
+
+  function Harness({
+    onSubmit,
+    required = false,
+  }: {
+    onSubmit: FormSubmitHandler;
+    required?: boolean;
+  }) {
+    const { formProps } = useForm({ onSubmit });
+    const isSubmitting = useFormStore((state) => state.isSubmitting);
+    // What `ResetFormWhenClosed` calls when its dialog closes.
+    const resetForm = useFormStore((state) => state.resetForm);
+
+    return (
+      <>
+        <form
+          id="guarded-form"
+          aria-label="Guarded"
+          noValidate
+          onSubmit={formProps.onSubmit}
+        >
+          <Field
+            name="name"
+            label="Name"
+            component={InputField}
+            required={required}
+            initialValue={required ? undefined : 'Ada'}
+          />
+        </form>
+        {/* Not a SubmitButton, so nothing disables it while submitting. */}
+        <button type="submit" form="guarded-form">
+          Save from outside
+        </button>
+        <button type="button" onClick={resetForm}>
+          Reset form
+        </button>
+        <output data-testid="submitting">{String(isSubmitting)}</output>
+      </>
+    );
+  }
+
+  function renderHarness(props: Parameters<typeof Harness>[0]) {
+    render(
+      <FormStoreProvider>
+        <Harness {...props} />
+      </FormStoreProvider>,
+    );
+    return {
+      form: screen.getByRole<HTMLFormElement>('form', { name: 'Guarded' }),
+      outsideButton: screen.getByRole('button', { name: 'Save from outside' }),
+    };
+  }
+
+  // A macrotask lets every pending microtask run, so a submission the guard
+  // let through has finished validating and reached `onSubmit` by now.
+  const drainMicrotasks = () =>
+    act(() => new Promise<void>((resolve) => setTimeout(resolve, 0)));
+
+  const waitForSubmissionToFinish = () =>
+    waitFor(() => {
+      expect(screen.getByTestId('submitting')).toHaveTextContent('false');
+    });
+
+  it('calls onSubmit once for submits that arrive while it is still running', async () => {
+    const { onSubmit, resolveNext } = deferredSubmit();
+    const { form, outsideButton } = renderHarness({ onSubmit });
+
+    // Two in quick succession: the second lands while the first validates.
+    act(() => form.requestSubmit());
+    fireEvent.click(outsideButton);
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalledTimes(1);
+    });
+
+    // More while onSubmit itself is pending. An ignored submit is still
+    // cancelled, so a native form never falls through to navigating.
+    act(() => form.requestSubmit());
+    fireEvent.click(outsideButton);
+    expect(fireEvent.submit(form)).toBe(false);
+    await drainMicrotasks();
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+
+    await resolveNext({ success: true });
+    await waitForSubmissionToFinish();
+    await drainMicrotasks();
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+  });
+
+  // Resetting the store clears `isSubmitting`, but the submission it started
+  // is still running, so a second one must not start beside it — and the
+  // form keeps saying so, rather than offering a submit that does nothing.
+  it('stays submitting, and ignores submits, when reset while its submission is still running', async () => {
+    const { onSubmit, resolveNext } = deferredSubmit();
+    const { form, outsideButton } = renderHarness({ onSubmit });
+
+    act(() => form.requestSubmit());
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalledTimes(1);
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Reset form' }));
+    expect(screen.getByTestId('submitting')).toHaveTextContent('true');
+    expect(screen.getByRole('textbox', { name: 'Name' })).toBeDisabled();
+
+    act(() => form.requestSubmit());
+    fireEvent.click(outsideButton);
+    await drainMicrotasks();
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+
+    // Once the original settles, the form is idle and takes the next submit.
+    await resolveNext({ success: true });
+    await waitForSubmissionToFinish();
+    act(() => form.requestSubmit());
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  it('accepts a new submit once the submission has finished', async () => {
+    const { onSubmit, resolveNext } = deferredSubmit();
+    const { form, outsideButton } = renderHarness({ onSubmit });
+
+    act(() => form.requestSubmit());
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalledTimes(1);
+    });
+    await resolveNext({ success: true });
+    await waitForSubmissionToFinish();
+
+    fireEvent.click(outsideButton);
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  it.each([
+    {
+      outcome: 'returns errors',
+      finish: (submit: ReturnType<typeof deferredSubmit>) =>
+        submit.resolveNext({
+          success: false,
+          formErrors: [],
+          fieldErrors: { name: ['Name is already taken'] },
+        }),
+    },
+    {
+      outcome: 'throws',
+      finish: (submit: ReturnType<typeof deferredSubmit>) =>
+        submit.rejectNext(),
+    },
+  ])('accepts a new submit after onSubmit $outcome', async ({ finish }) => {
+    const submit = deferredSubmit();
+    const { form } = renderHarness({ onSubmit: submit.onSubmit });
+
+    act(() => form.requestSubmit());
+    await waitFor(() => {
+      expect(submit.onSubmit).toHaveBeenCalledTimes(1);
+    });
+    await finish(submit);
+    await waitForSubmissionToFinish();
+
+    act(() => form.requestSubmit());
+    await waitFor(() => {
+      expect(submit.onSubmit).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  it('accepts a new submit after client validation rejects one', async () => {
+    const { onSubmit } = deferredSubmit();
+    const { form } = renderHarness({ onSubmit, required: true });
+
+    act(() => form.requestSubmit());
+    expect(
+      await screen.findByText(/must answer this question/),
+    ).toBeInTheDocument();
+    await waitForSubmissionToFinish();
+    expect(onSubmit).not.toHaveBeenCalled();
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Name' }), {
+      target: { value: 'Ada' },
+    });
+    act(() => form.requestSubmit());
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalledTimes(1);
+    });
   });
 });
