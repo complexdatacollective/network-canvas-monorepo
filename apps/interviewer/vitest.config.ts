@@ -138,6 +138,7 @@ export default defineConfig({
             '@codaco/fresco-ui > zustand/shallow',
             '@codaco/fresco-ui > zustand/vanilla',
             '@codaco/interview > @reduxjs/toolkit',
+            '@codaco/interview > @use-gesture/react',
             '@codaco/interview > concaveman',
             '@codaco/interview > csvtojson',
             '@codaco/interview > html-to-image',
