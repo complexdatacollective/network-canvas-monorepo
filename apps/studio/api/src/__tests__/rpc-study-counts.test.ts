@@ -9,7 +9,7 @@
 // `study_id` predicate entirely.
 import { randomUUID } from 'node:crypto';
 
-import { Effect, Option } from 'effect';
+import { Effect, Option, Redacted } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { StudyId } from '@codaco/studio-contract/schema/ids';
@@ -44,9 +44,9 @@ const SEEDING_TIMEOUT_MS = 180_000;
 const PRINCIPAL: SessionPrincipal = {
   kind: 'user',
   userId: 'counts-user',
-  email: 'counts@example.com',
+  email: Redacted.make('counts@example.com'),
   emailVerified: true,
-  name: 'Counting Researcher',
+  name: Redacted.make('Counting Researcher'),
   locale: null,
   sessionId: 'counts-session',
 };
@@ -54,8 +54,8 @@ const PRINCIPAL: SessionPrincipal = {
 const MEMBER: SessionPrincipal = {
   ...PRINCIPAL,
   userId: 'counts-member-user',
-  email: 'counts-member@example.com',
-  name: 'Counting Member',
+  email: Redacted.make('counts-member@example.com'),
+  name: Redacted.make('Counting Member'),
   sessionId: 'counts-member-session',
 };
 
@@ -119,7 +119,7 @@ describe.skipIf(!testDb)('studies.counts', () => {
         ownerAffected(
           `INSERT INTO "user" (id, name, email, "emailVerified")
            VALUES ($1, $2, $3, true)`,
-          [who.userId, who.name, who.email],
+          [who.userId, Redacted.value(who.name), Redacted.value(who.email)],
         ),
       );
       await database.run(

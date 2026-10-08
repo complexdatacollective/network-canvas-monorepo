@@ -7,6 +7,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
+import { Redacted } from 'effect';
 import type pg from 'pg';
 import { afterAll, describe, expect, it } from 'vitest';
 
@@ -218,7 +219,7 @@ describe.skipIf(!db)('the migrate command', () => {
       const subscriptionId = randomUUID();
       const secret = testCipher(testKeyring(['other-1'])).sealWebhookSecret(
         { teamId: team, subscriptionId },
-        'whsec-migrate',
+        Redacted.make('whsec-migrate'),
       );
       await scratch.admin.query(
         `INSERT INTO webhook_subscriptions

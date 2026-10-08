@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { Effect, Option } from 'effect';
+import { Effect, Option, Redacted } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
@@ -43,9 +43,9 @@ const draftId = () => DraftId.make(randomUUID());
 const PRINCIPAL: SessionPrincipal = {
   kind: 'user',
   userId: 'user-1',
-  email: 'researcher@example.com',
+  email: Redacted.make('researcher@example.com'),
   emailVerified: true,
-  name: 'Researcher',
+  name: Redacted.make('Researcher'),
   locale: null,
   sessionId: 'session-1',
 };
@@ -65,7 +65,11 @@ describe.skipIf(!testDb)('team-scoped procedures', () => {
       ownerAffected(
         `INSERT INTO "user" (id, name, email, "emailVerified")
          VALUES ($1, $2, $3, true)`,
-        [PRINCIPAL.userId, PRINCIPAL.name, PRINCIPAL.email],
+        [
+          PRINCIPAL.userId,
+          Redacted.value(PRINCIPAL.name),
+          Redacted.value(PRINCIPAL.email),
+        ],
       ),
     );
     for (const teamId of ['team-a', 'team-b']) {
@@ -106,7 +110,7 @@ describe.skipIf(!testDb)('team-scoped procedures', () => {
     const created = await client.call(
       client.rpc('protocols.create', {
         teamId: TEAM_A,
-        name: 'Spine Proof',
+        name: Redacted.make('Spine Proof'),
         protocolId: protocolId(),
         draftId: draftId(),
       }),
@@ -116,7 +120,7 @@ describe.skipIf(!testDb)('team-scoped procedures', () => {
     );
     expect(listed.map((protocol) => protocol.id)).toContain(created.protocolId);
     const row = listed.find((protocol) => protocol.id === created.protocolId)!;
-    expect(row.name).toBe('Spine Proof');
+    expect(Redacted.value(row.name)).toBe('Spine Proof');
     expect(row.draftId).toBe(created.draftId);
     expect(row.createdAt).toBeInstanceOf(Date);
   });
@@ -125,7 +129,7 @@ describe.skipIf(!testDb)('team-scoped procedures', () => {
     const created = await client.call(
       client.rpc('protocols.create', {
         teamId: TEAM_A,
-        name: 'Editor proof',
+        name: Redacted.make('Editor proof'),
         protocolId: protocolId(),
         draftId: draftId(),
       }),
@@ -160,7 +164,10 @@ describe.skipIf(!testDb)('team-scoped procedures', () => {
     );
 
     const opened = await client.call(client.rpc('protocols.draft', scope));
-    expect(opened.sections.stageOrder).toEqual({ stages: [stageB, stageA] });
+    const openedOrder = opened.sections.stageOrder;
+    expect(openedOrder && Redacted.value(openedOrder)).toEqual({
+      stages: [stageB, stageA],
+    });
     const staleMove = await expectRpcFailure(
       client.callExit(
         client.rpc('protocols.moveStage', {
@@ -205,7 +212,7 @@ describe.skipIf(!testDb)('team-scoped procedures', () => {
         ownerAffected(
           `INSERT INTO "user" (id, name, email, "emailVerified")
            VALUES ($1, $2, $3, true)`,
-          [userId, PRINCIPAL.name, `${userId}@example.com`],
+          [userId, Redacted.value(PRINCIPAL.name), `${userId}@example.com`],
         ),
       );
       await database.run(
@@ -259,7 +266,7 @@ describe.skipIf(!testDb)('team-scoped procedures', () => {
     const created = await client.call(
       client.rpc('protocols.create', {
         teamId: TEAM_A,
-        name: 'A-only protocol',
+        name: Redacted.make('A-only protocol'),
         protocolId: protocolId(),
         draftId: draftId(),
       }),

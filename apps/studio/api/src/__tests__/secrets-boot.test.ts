@@ -47,7 +47,7 @@ const ENTRYPOINTS = [
     'src/index.ts',
     /Schema current and keyring verified; serving\./,
   ],
-  ['the worker', 'src/worker.ts', /Network Canvas Studio worker \S+ started/],
+  ['the worker', 'src/worker.ts', /Network Canvas Studio worker started/],
 ] as const;
 
 describe.skipIf(!db)('refusing to boot without the keys in use', () => {

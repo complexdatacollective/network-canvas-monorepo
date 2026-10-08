@@ -22,7 +22,7 @@ import {
   HttpServerLive,
   RedactedHeadersLive,
 } from '../platform/http-server.ts';
-import { LoggerLive } from '../platform/logger.ts';
+import { LoggerLive, LogLevelLive } from '../platform/logger.ts';
 import { MaintenanceState } from '../platform/maintenance-state.ts';
 import { SchemaStatus } from '../platform/schema-gate.ts';
 import { TracingLive } from '../platform/tracing.ts';
@@ -45,8 +45,11 @@ function Serve(studio: Studio, checks: HealthChecks) {
   const Listening = Layer.effectDiscard(
     Effect.gen(function* () {
       const server = yield* HttpServer.HttpServer;
-      yield* Effect.log(
-        `Network Canvas Studio ${STUDIO_VERSION} listening on ${HttpServer.formatAddress(server.address)}`,
+      yield* Effect.log('Network Canvas Studio listening on its address').pipe(
+        Effect.annotateLogs({
+          version: STUDIO_VERSION,
+          address: HttpServer.formatAddress(server.address),
+        }),
       );
     }),
   );
@@ -160,7 +163,9 @@ const ServeProgramLayer = (refusal: Deferred.Deferred<never, BootRefusal>) =>
       return env.db ? withDatabase(env, env.db, refusal) : withoutDatabase(env);
     }),
   ).pipe(
-    Layer.provide(Layer.mergeAll(LoggerLive, TracingLive('serve'))),
+    Layer.provide(
+      Layer.mergeAll(LoggerLive, LogLevelLive, TracingLive('serve')),
+    ),
     Layer.provide(Environment.layer),
   );
 

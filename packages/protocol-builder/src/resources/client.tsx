@@ -1,4 +1,4 @@
-import { Array as Arr } from 'effect';
+import { Array as Arr, Redacted } from 'effect';
 import {
   createContext,
   useContext,
@@ -310,10 +310,10 @@ function buildResourceClient(deps: ClientDeps): ResourceClient {
           request: {
             kind: 'content',
             contentKind: request.kind,
-            name: request.name,
-            source: request.source,
+            name: Redacted.make(request.name),
+            source: Redacted.make(request.source),
             contentType: request.contentType,
-            bytes: request.bytes,
+            bytes: Redacted.make(request.bytes),
           },
         });
         if (result.status !== 'ok') return result;
@@ -327,7 +327,11 @@ function buildResourceClient(deps: ClientDeps): ResourceClient {
           protocolId,
           editId,
           requestId: request.requestId,
-          request: { kind: 'secret', name: request.name, value: request.value },
+          request: {
+            kind: 'secret',
+            name: Redacted.make(request.name),
+            value: Redacted.make(request.value),
+          },
         });
         if (result.status !== 'ok') return result;
         const { descriptor } = result.data;

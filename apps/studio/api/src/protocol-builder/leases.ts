@@ -1,7 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
 import {
-  type Cause,
   Clock,
   Context,
   Effect,
@@ -146,11 +145,6 @@ export class Leases extends Context.Service<
 
       const closed = Effect.map(socketClosure(triggers), Option.isSome);
 
-      const logFailure = (message: string) =>
-        Effect.catchCause((cause: Cause.Cause<unknown>) =>
-          Effect.logWarning(message, cause),
-        );
-
       const holdsSocket = (owner: string) =>
         [...sockets.values()].some(
           ({ registration }) => ownerKey(registration.session) === owner,
@@ -221,10 +215,20 @@ export class Leases extends Context.Service<
                 lockWaits.set(draftId, waits);
                 // One wait is ordinary contention; several in a row leave the
                 // leases a tick or two from lapsing.
-                const message = `Renewing protocol-builder connections waited too long for a lock (${waits} in a row); the next tick retries`;
-                yield* waits < LOCK_WAITS_BEFORE_WARNING
-                  ? Effect.logInfo(message)
-                  : Effect.logWarning(message);
+                yield* (
+                  waits < LOCK_WAITS_BEFORE_WARNING
+                    ? Effect.logInfo(
+                        'Renewing protocol-builder connections waited too long for a lock; the next tick retries',
+                      )
+                    : Effect.logWarning(
+                        'Renewing protocol-builder connections waited too long for a lock; the next tick retries',
+                      )
+                ).pipe(
+                  Effect.annotateLogs({
+                    draft_id: draftId,
+                    waits_in_a_row: waits,
+                  }),
+                );
                 return;
               }
               lockWaits.delete(draftId);
@@ -235,8 +239,11 @@ export class Leases extends Context.Service<
               for (const missing of pass.value.missing) {
                 yield* reconnect(missing).pipe(
                   withDatabase,
-                  logFailure(
-                    'Re-recording a protocol-builder connection failed',
+                  Effect.catchCause((cause) =>
+                    Effect.logWarning(
+                      'Re-recording a protocol-builder connection failed',
+                      cause,
+                    ),
                   ),
                 );
               }
@@ -280,7 +287,9 @@ export class Leases extends Context.Service<
       };
 
       yield* tick.pipe(
-        catchLoopDefect('Renewing protocol-builder leases failed'),
+        catchLoopDefect((cause) =>
+          Effect.logError('Renewing protocol-builder leases failed', cause),
+        ),
         Effect.schedule(Schedule.spaced(RENEW_INTERVAL_MS)),
         Effect.forkScoped,
       );
@@ -321,7 +330,11 @@ export class Leases extends Context.Service<
                 Effect.map(Clock.currentTimeMillis, (at) => at < deadline),
             });
           }).pipe(Effect.withSpan('protocolBuilder.graceElapsed'));
-        }).pipe(logFailure('Releasing a stranded lease owner failed'));
+        }).pipe(
+          Effect.catchCause((cause) =>
+            Effect.logWarning('Releasing a stranded lease owner failed', cause),
+          ),
+        );
 
       const startGrace = (
         session: ProtocolBuilderSession,
@@ -356,7 +369,14 @@ export class Leases extends Context.Service<
           sockets.delete(key);
           yield* socket.lock
             .withPermit(withDatabase(expireConnection(registration)))
-            .pipe(logFailure('Expiring a protocol-builder connection failed'));
+            .pipe(
+              Effect.catchCause((cause) =>
+                Effect.logWarning(
+                  'Expiring a protocol-builder connection failed',
+                  cause,
+                ),
+              ),
+            );
           yield* startGrace(registration.session, onReleased);
         }).pipe(Effect.withSpan('protocolBuilder.disconnect'));
 
@@ -427,7 +447,14 @@ export class Leases extends Context.Service<
           if (current !== undefined) {
             contacts.set(owner, { ...current, contactedAt: at });
           }
-        }).pipe(logFailure('Recording protocol-builder contact failed'));
+        }).pipe(
+          Effect.catchCause((cause) =>
+            Effect.logWarning(
+              'Recording protocol-builder contact failed',
+              cause,
+            ),
+          ),
+        );
 
       return Leases.of({ connect, contact });
     }),

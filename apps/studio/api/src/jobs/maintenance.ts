@@ -1,4 +1,4 @@
-import { Cause, Duration, Effect, Layer, MutableRef, Option } from 'effect';
+import { Duration, Effect, Layer, MutableRef, Option } from 'effect';
 
 import { MaintenanceTriggers } from '../http/middleware/maintenance.ts';
 import { JobWorker } from './worker.ts';
@@ -44,10 +44,10 @@ export const JobMaintenanceGate = {
           if (previous?.fetching !== fetching) {
             yield* worker.setFetching(fetching);
           }
-          if (detail !== null) {
+          if (Option.isSome(closure)) {
             yield* Effect.logWarning(
-              `${detail}: the job worker has stopped claiming jobs on every queue`,
-            );
+              'the deployment is closed: the job worker has stopped claiming jobs on every queue',
+            ).pipe(Effect.annotateLogs({ trigger: closure.value.trigger }));
             return;
           }
           if (previous !== null) {
@@ -60,7 +60,8 @@ export const JobMaintenanceGate = {
         const guarded = tick.pipe(
           Effect.catchCause((cause) =>
             Effect.logError(
-              `the job maintenance gate failed to read whether the deployment is open: ${Cause.pretty(cause)}`,
+              'the job maintenance gate failed to read whether the deployment is open',
+              cause,
             ),
           ),
         );

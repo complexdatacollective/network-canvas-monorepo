@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-import { Cause, Context, Effect, Exit, Option } from 'effect';
+import { Cause, Context, Effect, Exit, Option, Redacted } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
@@ -43,9 +43,9 @@ const OTHER_TEAM = 'pb-session-other-team';
 const RESEARCHER: SessionPrincipal = {
   kind: 'user',
   userId: 'pb-session-user',
-  email: 'pb-session@example.com',
+  email: Redacted.make('pb-session@example.com'),
   emailVerified: true,
-  name: 'Session Researcher',
+  name: Redacted.make('Session Researcher'),
   locale: null,
   sessionId: 'pb-session-cookie-session',
 };
@@ -53,8 +53,8 @@ const RESEARCHER: SessionPrincipal = {
 const MEMBER: SessionPrincipal = {
   ...RESEARCHER,
   userId: 'pb-session-member',
-  email: 'pb-session-member@example.com',
-  name: 'Session Member',
+  email: Redacted.make('pb-session-member@example.com'),
+  name: Redacted.make('Session Member'),
   sessionId: 'pb-session-member-session',
 };
 
@@ -117,7 +117,7 @@ describe.skipIf(!testDb)('opening a protocol-builder session', () => {
         ownerAffected(
           `INSERT INTO "user" (id, name, email, "emailVerified")
            VALUES ($1, $2, $3, true)`,
-          [who.userId, who.name, who.email],
+          [who.userId, Redacted.value(who.name), Redacted.value(who.email)],
         ),
       );
       await database.run(

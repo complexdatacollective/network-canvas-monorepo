@@ -1,5 +1,5 @@
 import { EffectDrizzleQueryError } from 'drizzle-orm/effect-core';
-import { Cause, Effect, Predicate } from 'effect';
+import { Cause, Effect, type LogLevel, Predicate } from 'effect';
 import { SqlError } from 'effect/sql';
 
 import { TENANT_ROLES } from '@codaco/studio-sync/rls';
@@ -148,6 +148,23 @@ export function deepestMessage(value: unknown): string | undefined {
   return deepest;
 }
 
+const failedReadingLevel = (cause: Cause.Cause<unknown>): LogLevel.Severity =>
+  isMissingRole(cause) ? 'Debug' : 'Warn';
+
+export const failureCodes = (failure: unknown): Record<string, string> => {
+  const error = Cause.isCause(failure) ? Cause.squash(failure) : failure;
+  const type =
+    Predicate.hasProperty(error, '_tag') && Predicate.isString(error._tag)
+      ? error._tag
+      : error instanceof Error
+        ? error.name
+        : typeof error;
+  const state = sqlState(error);
+  return state === undefined
+    ? { error_type: type }
+    : { error_type: type, sql_state: state };
+};
+
 /**
  * What a reading taken on a timer logs when it fails: one line naming the
  * failure, with the stack at debug, not the stack in the line. A process that
@@ -157,13 +174,12 @@ export function deepestMessage(value: unknown): string | undefined {
  * reading, each carrying a stack trace (#1901).
  */
 export const logFailedReading = (
-  message: string,
+  log: (level: LogLevel.Severity) => Effect.Effect<void>,
   cause: Cause.Cause<unknown>,
-): Effect.Effect<void> => {
-  const reason = deepestMessage(Cause.squash(cause)) ?? 'unknown failure';
-  const line = `${message}: ${reason}`;
-  return Effect.andThen(
-    isMissingRole(cause) ? Effect.logDebug(line) : Effect.logWarning(line),
-    Effect.logDebug(Cause.pretty(cause)),
+): Effect.Effect<void> =>
+  Effect.andThen(
+    log(failedReadingLevel(cause)).pipe(
+      Effect.annotateLogs(failureCodes(cause)),
+    ),
+    Effect.logDebug('The failed reading’s cause', cause),
   );
-};

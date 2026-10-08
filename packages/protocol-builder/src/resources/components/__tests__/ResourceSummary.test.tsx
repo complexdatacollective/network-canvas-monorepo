@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import { Redacted } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import type { ResourceInspection } from '../../types.ts';
@@ -12,9 +13,9 @@ function image(
     descriptor: {
       id: 'image',
       kind: 'image',
-      name: 'portrait.png',
+      name: Redacted.make('portrait.png'),
       status,
-      source,
+      source: Redacted.make(source),
       byteLength: 2048,
       contentType: 'image/png',
     },

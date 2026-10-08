@@ -1,4 +1,4 @@
-import { Effect, Predicate } from 'effect';
+import { Effect, Predicate, Redacted } from 'effect';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { ChunkOf } from '@codaco/effect-query/types';
@@ -112,12 +112,14 @@ describe('the harness', () => {
   it('signs the suite in as a researcher its handlers can read', async () => {
     const harness = installRpcHarness({
       'account.updateLocale': () =>
-        Effect.map(Principal, (principal) => ({ locale: principal.email })),
+        Effect.map(Principal, (principal) => ({
+          locale: Redacted.value(principal.email),
+        })),
     });
 
     await expect(
       rpcCall('account.updateLocale', { locale: null }),
-    ).resolves.toEqual({ locale: HARNESS_PRINCIPAL.email });
+    ).resolves.toEqual({ locale: Redacted.value(HARNESS_PRINCIPAL.email) });
 
     expect(harness.calls).toEqual([
       { tag: 'account.updateLocale', payload: { locale: null } },

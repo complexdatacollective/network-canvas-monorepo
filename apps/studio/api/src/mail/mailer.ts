@@ -1,4 +1,4 @@
-import { Context, Effect, Layer, Schema } from 'effect';
+import { Console, Context, Effect, Layer, Redacted, Schema } from 'effect';
 
 import type { TeamRole } from '@codaco/studio-contract/schema/team';
 import type { DeploymentMode } from '@codaco/studio-contract/surfaces';
@@ -27,21 +27,24 @@ export class MailFailed extends Schema.TaggedError<MailFailed>()('MailFailed', {
   }
 }
 
-export type MagicLinkInput = { email: string; url: string };
+export type MagicLinkInput = {
+  email: Redacted.Redacted;
+  url: Redacted.Redacted;
+};
 
 export type TeamInvitationInput = {
-  email: string;
+  email: Redacted.Redacted;
   expiresAt: Date;
-  invitationUrl: string;
-  inviterLabel: string;
+  invitationUrl: Redacted.Redacted;
+  inviterLabel: Redacted.Redacted;
   messageId: string;
   role: TeamRole;
-  teamLabel: string;
+  teamLabel: Redacted.Redacted;
 };
 
 export type UpdateNoticeInput = {
-  email: string;
-  name: string;
+  email: Redacted.Redacted;
+  name: Redacted.Redacted;
   version: string;
   notesUrl: string;
   /**
@@ -71,12 +74,16 @@ export class Mailer extends Context.Service<
     Mailer,
     Mailer.of({
       sendMagicLink: ({ email, url }) =>
-        Effect.log(`Magic link for ${email}: ${url}`),
+        Console.log(
+          `Magic link for ${Redacted.value(email)}: ${Redacted.value(url)}`,
+        ),
       sendTeamInvitation: ({ email, invitationUrl, teamLabel }) =>
-        Effect.log(`Invitation to ${teamLabel} for ${email}: ${invitationUrl}`),
+        Console.log(
+          `Invitation to ${Redacted.value(teamLabel)} for ${Redacted.value(email)}: ${Redacted.value(invitationUrl)}`,
+        ),
       sendUpdateNotice: ({ email, version, notesUrl }) =>
-        Effect.log(
-          `Studio ${version} is available; notice for ${email}: ${notesUrl}`,
+        Console.log(
+          `Studio ${version} is available; notice for ${Redacted.value(email)}: ${notesUrl}`,
         ),
     }),
   );

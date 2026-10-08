@@ -8,7 +8,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
-import { Effect } from 'effect';
+import { Effect, Redacted } from 'effect';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { Me } from '@codaco/studio-contract/schema/account';
@@ -76,9 +76,9 @@ vi.mock('../../lib/auth.ts', () => ({
 
 const ME: Me = {
   userId: 'user-1',
-  email: 'researcher@example.org',
+  email: Redacted.make('researcher@example.org'),
   emailVerified: true,
-  name: 'Researcher',
+  name: Redacted.make('Researcher'),
   locale: null,
   teams: [{ teamId: TeamId.make('team-a'), role: 'owner' }],
 };
@@ -100,7 +100,7 @@ const INVITATION_ID = '00000000-0000-4000-8000-000000000123';
 const ACCEPTED = {
   invitationId: TeamInvitationId.make(INVITATION_ID),
   teamId: TeamId.make('team-a'),
-  teamName: 'Alpha research team',
+  teamName: Redacted.make('Alpha research team'),
   memberId: MemberId.make('member-a'),
   role: 'admin',
   status: 'accepted',

@@ -1,6 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { Effect, Schema, Stream } from 'effect';
+import { Effect, Redacted, Schema, Stream } from 'effect';
 import { Component, StrictMode, useState, type ReactNode } from 'react';
 import { describe, expect, it } from 'vitest';
 
@@ -13,6 +13,7 @@ import {
 } from '@codaco/studio-sync/taxonomy';
 
 import { ProtocolBuilder } from '../../ProtocolBuilder.tsx';
+import { revealed } from '../../testing/host/__tests__/revealed.ts';
 import {
   createInMemoryHost,
   type HandlerOverrides,
@@ -105,7 +106,10 @@ describe('the protocol state layer', () => {
       protocolId: host.protocolId,
       requestId: nextRequestId(),
       sectionId: INFORMATION,
-      document: { ...held.document, label: 'Renamed by Grace' },
+      document: Redacted.make({
+        ...Redacted.value(held.document),
+        label: 'Renamed by Grace',
+      }),
       revision: held.revision,
     });
 
@@ -140,7 +144,10 @@ describe('the protocol state layer', () => {
       protocolId: host.protocolId,
       requestId: nextRequestId(),
       sectionId: INFORMATION,
-      document: { ...held.document, label: 'Written while disconnected' },
+      document: Redacted.make({
+        ...Redacted.value(held.document),
+        label: 'Written while disconnected',
+      }),
       revision: held.revision,
     });
 
@@ -185,7 +192,10 @@ describe('the protocol state layer', () => {
       protocolId: host.protocolId,
       requestId: nextRequestId(),
       sectionId: INFORMATION,
-      document: { ...held.document, label: 'Renamed by Grace' },
+      document: Redacted.make({
+        ...Redacted.value(held.document),
+        label: 'Renamed by Grace',
+      }),
       revision: held.revision,
     });
     await waitFor(() => {
@@ -239,7 +249,10 @@ describe('the protocol state layer', () => {
       protocolId: host.protocolId,
       requestId: nextRequestId(),
       sectionId: INFORMATION,
-      document: { ...held.document, label: 'Renamed by Grace' },
+      document: Redacted.make({
+        ...Redacted.value(held.document),
+        label: 'Renamed by Grace',
+      }),
       revision: held.revision,
     });
     await collaborator.rpcCall('ReleaseLock', {
@@ -318,12 +331,12 @@ describe('the protocol state layer', () => {
       protocolId: host.protocolId,
       requestId: nextRequestId(),
       kind: 'codebookNode',
-      document: {
+      document: Redacted.make({
         name: 'Place',
         color: 'node-color-seq-3',
         shape: { default: 'circle' },
         variables: {},
-      },
+      }),
     });
     await waitFor(() => {
       expect(watched.applied()).toContain(created);
@@ -368,7 +381,9 @@ describe('the protocol state layer', () => {
     // The refusal that lands is about the section this editor left; applying
     // it would tell the researcher the ego form is somebody else's.
     await waitFor(() => {
-      expect(host.store.holderOf(EGO_FORM)?.displayName).toBe('Ada');
+      expect(revealed(host.store.holderOf(EGO_FORM))).toMatchObject({
+        displayName: 'Ada',
+      });
     });
     expect(screen.getByLabelText('lock').textContent).toBe('yours');
   });
@@ -409,7 +424,9 @@ describe('the protocol state layer', () => {
     await waitFor(() => {
       expect(host.store.holderOf(INFORMATION)).toBeUndefined();
     });
-    expect(host.store.holderOf(EGO_FORM)?.displayName).toBe('Ada');
+    expect(revealed(host.store.holderOf(EGO_FORM))).toMatchObject({
+      displayName: 'Ada',
+    });
   });
 
   it('says a section is unavailable when its acquire is refused', async () => {
@@ -479,10 +496,10 @@ describe('the protocol state layer', () => {
       request: {
         kind: 'content',
         contentKind: 'image',
-        name: 'Portrait',
-        source: 'portrait.png',
+        name: Redacted.make('Portrait'),
+        source: Redacted.make('portrait.png'),
         contentType: 'image/png',
-        bytes: new Uint8Array([1, 2, 3]),
+        bytes: Redacted.make(new Uint8Array([1, 2, 3])),
       },
     });
     if (staged.status !== 'ok') throw new Error('staging failed');
@@ -524,10 +541,10 @@ describe('the protocol state layer', () => {
       request: {
         kind: 'content',
         contentKind: 'image',
-        name: 'Portrait',
-        source: 'portrait.png',
+        name: Redacted.make('Portrait'),
+        source: Redacted.make('portrait.png'),
         contentType: 'image/png',
-        bytes: new Uint8Array([1, 2, 3]),
+        bytes: Redacted.make(new Uint8Array([1, 2, 3])),
       },
     });
     if (staged.status !== 'ok') throw new Error('staging failed');
@@ -711,7 +728,10 @@ function PromotingEditor({
               }
               setPromoted(
                 (result.promoted ?? [])
-                  .map((resource) => `${resource.name}: ${resource.status}`)
+                  .map(
+                    (resource) =>
+                      `${Redacted.value(resource.name)}: ${resource.status}`,
+                  )
                   .join(', '),
               );
             },
@@ -790,7 +810,7 @@ function faultyAcquire(
           : {
               lock: 'held' as const,
               revision: answer.revision,
-              get document(): SectionDoc {
+              get document(): Redacted.Redacted<SectionDoc> {
                 throw new Error('bug reading the acquired document');
               },
             },
@@ -924,7 +944,9 @@ function Lock({ id }: Readonly<{ id: ProtocolSectionId }>) {
           ? 'acquiring'
           : access === 'unavailable'
             ? 'unavailable'
-            : (holder?.displayName ?? 'someone')}
+            : holder === undefined
+              ? 'someone'
+              : Redacted.value(holder.displayName)}
     </output>
   );
 }

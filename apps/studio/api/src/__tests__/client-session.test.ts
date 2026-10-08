@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { Effect, Layer, Option, Predicate, Schema } from 'effect';
+import { Effect, Layer, Option, Predicate, Redacted, Schema } from 'effect';
 import * as HttpRouter from 'effect/http/HttpRouter';
 import * as Rpc from 'effect/rpc/Rpc';
 import * as RpcGroup from 'effect/rpc/RpcGroup';
@@ -24,9 +24,9 @@ const REJECTED = 'no';
 const PRINCIPAL: SessionPrincipal = {
   kind: 'user',
   userId: 'client-session-user',
-  email: 'client-session@example.com',
+  email: Redacted.make('client-session@example.com'),
   emailVerified: true,
-  name: 'Tab Researcher',
+  name: Redacted.make('Tab Researcher'),
   locale: null,
   sessionId: 'client-session-session',
 };

@@ -1,4 +1,4 @@
-import { Cause, Effect, type Context as ServiceContext } from 'effect';
+import { Effect, type Context as ServiceContext } from 'effect';
 import type { SqlClient } from 'effect/sql';
 
 import { SOCIAL_PROVIDERS } from '@codaco/studio-contract/schema/status';
@@ -66,14 +66,13 @@ export function createStudio(
       UntenantedScope.open(readInstallation()).pipe(
         Effect.provide(services),
         Effect.catchCause((cause) =>
-          Effect.sync(() => {
-            // oxlint-disable-next-line no-console -- server-side failure diagnostics
-            console.error(
-              'Could not read the installation row for status:',
-              Cause.pretty(cause),
-            );
-            return null;
-          }),
+          Effect.as(
+            Effect.logError(
+              'Could not read the installation row for status',
+              cause,
+            ),
+            null,
+          ),
         ),
       ),
     );

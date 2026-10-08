@@ -10,6 +10,8 @@ import {
   Layer,
   ManagedRuntime,
   Option,
+  Redacted,
+  Schema,
   Stream,
 } from 'effect';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -31,7 +33,10 @@ import {
   SectionNotFound,
   SectionsLocked,
 } from '@codaco/protocol-builder-core/contract/errors';
-import type { ProtocolEvent } from '@codaco/protocol-builder-core/contract/schemas';
+import {
+  ResourceDescriptorSchema,
+  type ProtocolEvent,
+} from '@codaco/protocol-builder-core/contract/schemas';
 import {
   CurrentProtocolSchema,
   type ExtractedAsset,
@@ -69,6 +74,8 @@ vi.mock('~/utils/assetUtils', async (importOriginal) => ({
 }));
 
 const PROTOCOL_ID = 'library-row-1';
+
+const encodeDescriptor = Schema.encodeSync(ResourceDescriptorSchema);
 
 /** What an editor calls the tab holding the saved copy, when it is not this one. */
 const OTHER_TAB = 'Another tab';
@@ -147,10 +154,10 @@ async function importResource(
     request: {
       kind: 'content',
       contentKind: 'image',
-      name: 'A photograph',
-      source: 'photo.png',
+      name: Redacted.make('A photograph'),
+      source: Redacted.make('photo.png'),
       contentType: 'image/png',
-      bytes: new Uint8Array([1, 2, 3]),
+      bytes: Redacted.make(new Uint8Array([1, 2, 3])),
     },
   });
   if (staged.status !== 'ok') throw new Error('staging failed');
@@ -258,7 +265,10 @@ describe("Architect's in-process protocol-builder host", () => {
       protocolId: PROTOCOL_ID,
       requestId: nextRequestId(),
       sectionId: INFORMATION,
-      document: { ...held.document, label: 'Renamed by the editor' },
+      document: Redacted.make({
+        ...Redacted.value(held.document),
+        label: 'Renamed by the editor',
+      }),
       revision: held.revision,
     });
 
@@ -271,7 +281,10 @@ describe("Architect's in-process protocol-builder host", () => {
     expect(revisions).toHaveLength(1);
     expect(revisions[0]?.event.sectionId).toBe(INFORMATION);
     expect(revisions[0]?.event.revision).toEqual(revision);
-    expect(revisions[0]?.event.document?.label).toBe('Renamed by the editor');
+    const written = revisions[0]?.event.document;
+    expect(written && Redacted.value(written).label).toBe(
+      'Renamed by the editor',
+    );
   });
 
   it('refuses a submit from an editor that never took the lock', async () => {
@@ -286,7 +299,10 @@ describe("Architect's in-process protocol-builder host", () => {
         protocolId: PROTOCOL_ID,
         requestId: nextRequestId(),
         sectionId: INFORMATION,
-        document: { ...before.document, label: 'Renamed without the lock' },
+        document: Redacted.make({
+          ...Redacted.value(before.document),
+          label: 'Renamed without the lock',
+        }),
         revision: before.revision,
       }),
     );
@@ -307,13 +323,13 @@ describe("Architect's in-process protocol-builder host", () => {
       protocolId: PROTOCOL_ID,
       sectionId: INFORMATION,
     });
-    const { id: _id, ...withoutId } = template.document;
+    const { id: _id, ...withoutId } = Redacted.value(template.document);
 
     const created = await client.call('Create', {
       protocolId: PROTOCOL_ID,
       requestId: nextRequestId(),
       kind: 'stage',
-      document: { ...withoutId, label: 'A created stage' },
+      document: Redacted.make({ ...withoutId, label: 'A created stage' }),
       position: 0,
     });
 
@@ -329,7 +345,7 @@ describe("Architect's in-process protocol-builder host", () => {
       sectionId: created.sectionId,
     });
 
-    expect(order.document.stages).toEqual(stageIds(store));
+    expect(Redacted.value(order.document).stages).toEqual(stageIds(store));
     expect(stageIds(store)[0]).toBe(stageId);
     // The stage and the pointer to it move together: a pointer registered by a
     // second dispatch would carry a later sequence, and one never registered
@@ -350,7 +366,10 @@ describe("Architect's in-process protocol-builder host", () => {
       protocolId: PROTOCOL_ID,
       requestId: nextRequestId(),
       sectionId: INFORMATION,
-      document: { ...held.document, label: 'Before the drop' },
+      document: Redacted.make({
+        ...Redacted.value(held.document),
+        label: 'Before the drop',
+      }),
       revision: held.revision,
     });
     await waitFor(
@@ -369,7 +388,10 @@ describe("Architect's in-process protocol-builder host", () => {
       protocolId: PROTOCOL_ID,
       requestId: nextRequestId(),
       sectionId: EGO_FORM,
-      document: { ...second.document, label: 'After the drop' },
+      document: Redacted.make({
+        ...Redacted.value(second.document),
+        label: 'After the drop',
+      }),
       revision: second.revision,
     });
 
@@ -380,7 +402,10 @@ describe("Architect's in-process protocol-builder host", () => {
     );
     const replayed = revisionsOf(resumed.seen);
     expect(replayed.map((entry) => entry.event.sectionId)).toEqual([EGO_FORM]);
-    expect(replayed[0]?.event.document?.label).toBe('After the drop');
+    const replayedDocument = replayed[0]?.event.document;
+    expect(replayedDocument && Redacted.value(replayedDocument).label).toBe(
+      'After the drop',
+    );
 
     const reached = replayed[0]?.cursor;
     expect(reached).toBeDefined();
@@ -400,17 +425,20 @@ describe("Architect's in-process protocol-builder host", () => {
       protocolId: PROTOCOL_ID,
       requestId: nextRequestId(),
       sectionId: INFORMATION,
-      document: { ...held.document, label: 'One step' },
+      document: Redacted.make({
+        ...Redacted.value(held.document),
+        label: 'One step',
+      }),
       revision: held.revision,
     });
     expect(undoDepth(store)).toBe(1);
 
-    const { id: _id, ...withoutId } = held.document;
+    const { id: _id, ...withoutId } = Redacted.value(held.document);
     await client.call('Create', {
       protocolId: PROTOCOL_ID,
       requestId: nextRequestId(),
       kind: 'stage',
-      document: { ...withoutId, label: 'Also one step' },
+      document: Redacted.make({ ...withoutId, label: 'Also one step' }),
       position: 0,
     });
     expect(undoDepth(store)).toBe(2);
@@ -434,13 +462,13 @@ describe("Architect's in-process protocol-builder host", () => {
       protocolId: PROTOCOL_ID,
       requestId: nextRequestId(),
       sectionId: PERSON,
-      document: {
+      document: Redacted.make({
         ...committed,
         variables: {
           ...committed?.variables,
           spare: { name: 'spare', type: 'text', component: 'Text' },
         },
-      },
+      }),
       revision: held.revision,
     });
     expect(personVariables(store).spare).toBeDefined();
@@ -530,7 +558,10 @@ describe("Architect's in-process protocol-builder host", () => {
       protocolId: PROTOCOL_ID,
       requestId: nextRequestId(),
       sectionId: INFORMATION,
-      document: { ...held.document, label: 'Written by the second client' },
+      document: Redacted.make({
+        ...Redacted.value(held.document),
+        label: 'Written by the second client',
+      }),
       revision: held.revision,
     });
 
@@ -543,7 +574,11 @@ describe("Architect's in-process protocol-builder host", () => {
         protocolId: PROTOCOL_ID,
         requestId: nextRequestId(),
         sectionId: EGO_FORM,
-        document: { id: 'ego-form-1', type: 'EgoForm', label: 'No lock here' },
+        document: Redacted.make({
+          id: 'ego-form-1',
+          type: 'EgoForm',
+          label: 'No lock here',
+        }),
         revision: held.revision,
       }),
     );
@@ -566,10 +601,10 @@ describe("Architect's in-process protocol-builder host", () => {
       request: {
         kind: 'content',
         contentKind: 'image',
-        name: 'A photograph',
-        source: 'photo.png',
+        name: Redacted.make('A photograph'),
+        source: Redacted.make('photo.png'),
         contentType: 'image/png',
-        bytes: new Uint8Array([1, 2, 3]),
+        bytes: Redacted.make(new Uint8Array([1, 2, 3])),
       },
     });
 
@@ -657,7 +692,10 @@ describe("Architect's in-process protocol-builder host", () => {
         protocolId: PROTOCOL_ID,
         requestId: nextRequestId(),
         sectionId: INFORMATION,
-        document: { ...held.document, label: 'Promotes another edit’s file' },
+        document: Redacted.make({
+          ...Redacted.value(held.document),
+          label: 'Promotes another edit’s file',
+        }),
         revision: held.revision,
         promote: { editId: OTHER_EDIT, resourceIds: [id] },
       }),
@@ -726,10 +764,10 @@ describe("Architect's in-process protocol-builder host", () => {
           request: {
             kind: 'content',
             contentKind: 'image',
-            name: 'A second photograph',
-            source: 'other.png',
+            name: Redacted.make('A second photograph'),
+            source: Redacted.make('other.png'),
             contentType: 'image/png',
-            bytes: new Uint8Array([4, 5, 6]),
+            bytes: Redacted.make(new Uint8Array([4, 5, 6])),
           },
         }),
       ),
@@ -779,10 +817,10 @@ describe("Architect's in-process protocol-builder host", () => {
       request: {
         kind: 'content',
         contentKind: 'image',
-        name: 'Nook',
-        source: 'nook.png',
+        name: Redacted.make('Nook'),
+        source: Redacted.make('nook.png'),
         contentType: 'image/png',
-        bytes,
+        bytes: Redacted.make(bytes),
       },
     });
 
@@ -803,8 +841,11 @@ describe("Architect's in-process protocol-builder host", () => {
       status: 'staged',
     });
     if (listed.status !== 'ok') throw new Error('listing failed');
-    expect(staged.data.descriptor.source).toBe('nook.png');
-    expect(listed.data.resources).toContainEqual(
+    const stagedSource = staged.data.descriptor.source;
+    expect(stagedSource && Redacted.value(stagedSource)).toBe('nook.png');
+    expect(
+      listed.data.resources.map((entry) => encodeDescriptor(entry)),
+    ).toContainEqual(
       expect.objectContaining({ id, name: 'Nook', source: 'nook.png' }),
     );
 
@@ -820,7 +861,7 @@ describe("Architect's in-process protocol-builder host", () => {
       revision: held.revision,
       promote: { editId: EDIT, resourceIds: [id] },
     });
-    expect(written.promoted).toEqual([
+    expect(written.promoted?.map((entry) => encodeDescriptor(entry))).toEqual([
       expect.objectContaining({ id, status: 'committed', source }),
     ]);
     const committed = await client.call('ResourcesList', {
@@ -828,9 +869,9 @@ describe("Architect's in-process protocol-builder host", () => {
       status: 'committed',
     });
     if (committed.status !== 'ok') throw new Error('listing failed');
-    expect(committed.data.resources).toContainEqual(
-      expect.objectContaining({ id, source }),
-    );
+    expect(
+      committed.data.resources.map((entry) => encodeDescriptor(entry)),
+    ).toContainEqual(expect.objectContaining({ id, source }));
   });
 
   /**
@@ -847,7 +888,10 @@ describe("Architect's in-process protocol-builder host", () => {
       protocolId: PROTOCOL_ID,
       requestId: nextRequestId(),
       sectionId: INFORMATION,
-      document: { ...held.document, label: 'Saved without a promotion' },
+      document: Redacted.make({
+        ...Redacted.value(held.document),
+        label: 'Saved without a promotion',
+      }),
       revision: held.revision,
     };
     const written = await client.call('Submit', submitted);
@@ -860,12 +904,12 @@ describe("Architect's in-process protocol-builder host", () => {
       protocolId: PROTOCOL_ID,
       requestId: nextRequestId(),
       kind: 'stage' as const,
-      document: {
+      document: Redacted.make({
         type: 'Information',
         label: 'Made without a promotion',
         title: 'Made without a promotion',
         items: [],
-      },
+      }),
     };
     const created = await client.call('Create', creating);
     const afterFirst = stageIds(store);
@@ -897,7 +941,10 @@ describe("Architect's in-process protocol-builder host", () => {
       protocolId: PROTOCOL_ID,
       requestId: nextRequestId(),
       sectionId: INFORMATION,
-      document: { ...held.document, label: 'Names the photograph' },
+      document: Redacted.make({
+        ...Redacted.value(held.document),
+        label: 'Names the photograph',
+      }),
       revision: held.revision,
       promote: { editId: EDIT, resourceIds: [id] },
     });
@@ -928,7 +975,10 @@ describe("Architect's in-process protocol-builder host", () => {
         protocolId: PROTOCOL_ID,
         requestId: nextRequestId(),
         sectionId: INFORMATION,
-        document: { ...held.document, label: 'Renamed beside a bad promotion' },
+        document: Redacted.make({
+          ...Redacted.value(held.document),
+          label: 'Renamed beside a bad promotion',
+        }),
         revision: held.revision,
         promote: { editId: EDIT, resourceIds: ['never-staged'] },
       }),
@@ -966,7 +1016,10 @@ describe("Architect's in-process protocol-builder host", () => {
       protocolId: PROTOCOL_ID,
       requestId,
       sectionId: INFORMATION,
-      document: { ...held.document, label: 'Saved once' },
+      document: Redacted.make({
+        ...Redacted.value(held.document),
+        label: 'Saved once',
+      }),
       revision: held.revision,
       promote,
     });
@@ -980,7 +1033,10 @@ describe("Architect's in-process protocol-builder host", () => {
       protocolId: PROTOCOL_ID,
       requestId,
       sectionId: INFORMATION,
-      document: { ...held.document, label: 'Saved once' },
+      document: Redacted.make({
+        ...Redacted.value(held.document),
+        label: 'Saved once',
+      }),
       revision: held.revision,
       promote,
     });
@@ -1005,12 +1061,12 @@ describe("Architect's in-process protocol-builder host", () => {
         protocolId: PROTOCOL_ID,
         requestId: nextRequestId(),
         kind: 'stage',
-        document: {
+        document: Redacted.make({
           type: 'Information',
           label: 'Refused',
           title: 'Refused',
           items: [],
-        },
+        }),
       }),
     );
 
@@ -1042,7 +1098,10 @@ describe("Architect's in-process protocol-builder host", () => {
         protocolId: PROTOCOL_ID,
         requestId: nextRequestId(),
         sectionId: INFORMATION,
-        document: { ...held.document, label: 'Renamed beside a promotion' },
+        document: Redacted.make({
+          ...Redacted.value(held.document),
+          label: 'Renamed beside a promotion',
+        }),
         revision: held.revision,
         promote: { editId: EDIT, resourceIds: [id] },
       }),
@@ -1073,13 +1132,16 @@ describe("Architect's in-process protocol-builder host", () => {
       protocolId: PROTOCOL_ID,
       sectionId: INFORMATION,
     });
-    const { id: _id, ...withoutId } = template.document;
+    const { id: _id, ...withoutId } = Redacted.value(template.document);
 
     const created = await client.call('Create', {
       protocolId: PROTOCOL_ID,
       requestId: nextRequestId(),
       kind: 'stage',
-      document: { ...withoutId, label: 'Carries the photograph' },
+      document: Redacted.make({
+        ...withoutId,
+        label: 'Carries the photograph',
+      }),
       promote: { editId: EDIT, resourceIds: [id] },
     });
 
@@ -1104,12 +1166,12 @@ describe("Architect's in-process protocol-builder host", () => {
     const { store, client } = openProtocol();
     const id = await importResource(client);
     const promote = { editId: EDIT, resourceIds: [id] as const };
-    const document = {
+    const document = Redacted.make({
       type: 'Information',
       label: 'Made once',
       title: 'Made once',
       items: [],
-    };
+    });
     const requestId = nextRequestId();
     const created = await client.call('Create', {
       protocolId: PROTOCOL_ID,
@@ -1144,12 +1206,12 @@ describe("Architect's in-process protocol-builder host", () => {
         protocolId: PROTOCOL_ID,
         requestId: nextRequestId(),
         kind: 'stage',
-        document: {
+        document: Redacted.make({
           type: 'Information',
           label: 'Never made',
           title: 'Never made',
           items: [],
-        },
+        }),
         promote: { editId: EDIT, resourceIds: ['never-staged'] },
       }),
     );
@@ -1186,7 +1248,7 @@ describe("Architect's in-process protocol-builder host", () => {
     });
     // A pointer left behind, or a stage left out of the order, is a protocol
     // that cannot be assembled at all.
-    expect(order.document.stages).toEqual(stageIds(store));
+    expect(Redacted.value(order.document).stages).toEqual(stageIds(store));
     expect(order.revision.sequence).toBe(deleted.revision.sequence);
     const { error } = await safe(
       client.call('GetSection', {
@@ -1266,8 +1328,8 @@ describe("Architect's in-process protocol-builder host", () => {
       protocolId: PROTOCOL_ID,
       requestId: nextRequestId(),
       sectionId: INFORMATION,
-      document: {
-        ...held.document,
+      document: Redacted.make({
+        ...Redacted.value(held.document),
         skipLogic: {
           action: 'SKIP',
           filter: {
@@ -1277,7 +1339,7 @@ describe("Architect's in-process protocol-builder host", () => {
           },
           destination: { type: 'stage', stageId: 'geospatial-1' },
         },
-      },
+      }),
       revision: held.revision,
     });
     await client.call('ReleaseLock', {
@@ -1315,11 +1377,11 @@ describe("Architect's in-process protocol-builder host", () => {
       protocolId: PROTOCOL_ID,
       requestId: nextRequestId(),
       kind: 'codebookEgo',
-      document: {
+      document: Redacted.make({
         variables: {
           ego_age: { name: 'ego_age', type: 'number', component: 'Number' },
         },
-      },
+      }),
     });
 
     // Adding the first ego attribute is what creates the section, and there is
@@ -1336,16 +1398,21 @@ describe("Architect's in-process protocol-builder host", () => {
       protocolId: PROTOCOL_ID,
       requestId: nextRequestId(),
       kind: 'codebookEdge',
-      document: { name: 'Edge', color: 'edge-color-seq-2', variables: {} },
+      document: Redacted.make({
+        name: 'Edge',
+        color: 'edge-color-seq-2',
+        variables: {},
+      }),
     });
     const held = await client.call('AcquireLock', {
       protocolId: PROTOCOL_ID,
       sectionId: created.sectionId,
     });
-    const withScale = (options: readonly unknown[]) => ({
-      ...held.document,
-      variables: { f: { name: 'f', type: 'ordinal', options } },
-    });
+    const withScale = (options: readonly unknown[]) =>
+      Redacted.make({
+        ...Redacted.value(held.document),
+        variables: { f: { name: 'f', type: 'ordinal', options } },
+      });
 
     const refused = await safe(
       client.call('Submit', {
@@ -1385,7 +1452,7 @@ describe("Architect's in-process protocol-builder host", () => {
         protocolId: PROTOCOL_ID,
         requestId: nextRequestId(),
         kind: 'codebookEgo',
-        document: { variables: {} },
+        document: Redacted.make({ variables: {} }),
       }),
     );
 
@@ -1413,7 +1480,10 @@ describe("Architect's in-process protocol-builder host", () => {
       protocolId: PROTOCOL_ID,
       requestId: nextRequestId(),
       sectionId: INFORMATION,
-      document: { ...held.document, label: 'Saved after the stream ended' },
+      document: Redacted.make({
+        ...Redacted.value(held.document),
+        label: 'Saved after the stream ended',
+      }),
       revision: held.revision,
     });
     expect(written.revision.sequence).toBeGreaterThan(held.revision.sequence);
@@ -1449,7 +1519,10 @@ describe("Architect's in-process protocol-builder host", () => {
         protocolId: PROTOCOL_ID,
         requestId: nextRequestId(),
         sectionId: INFORMATION,
-        document: { ...held.document, label: 'Saved after the release' },
+        document: Redacted.make({
+          ...Redacted.value(held.document),
+          label: 'Saved after the release',
+        }),
         revision: held.revision,
       }),
     );
@@ -1497,13 +1570,21 @@ describe("Architect's in-process protocol-builder host", () => {
       protocolId: PROTOCOL_ID,
       editId: EDIT,
       requestId: 'named-secret',
-      request: { kind: 'secret', name: 'Mapbox token', value: 'pk.named' },
+      request: {
+        kind: 'secret',
+        name: Redacted.make('Mapbox token'),
+        value: Redacted.make('pk.named'),
+      },
     });
     const unnamed = await client.call('ResourcesStage', {
       protocolId: PROTOCOL_ID,
       editId: EDIT,
       requestId: 'unnamed-secret',
-      request: { kind: 'secret', name: 'Another token', value: 'pk.unnamed' },
+      request: {
+        kind: 'secret',
+        name: Redacted.make('Another token'),
+        value: Redacted.make('pk.unnamed'),
+      },
     });
     if (named.status !== 'ok' || unnamed.status !== 'ok') {
       throw new Error('staging failed');
@@ -1517,7 +1598,10 @@ describe("Architect's in-process protocol-builder host", () => {
       protocolId: PROTOCOL_ID,
       requestId: nextRequestId(),
       sectionId: INFORMATION,
-      document: { ...held.document, label: 'Names one of two secrets' },
+      document: Redacted.make({
+        ...Redacted.value(held.document),
+        label: 'Names one of two secrets',
+      }),
       revision: held.revision,
       promote: { editId: EDIT, resourceIds: [named.data.descriptor.id] },
     });
@@ -1549,7 +1633,8 @@ describe("Architect's in-process protocol-builder host", () => {
       editId: EDIT,
       resourceId: named.data.descriptor.id,
     });
-    expect(inspected.status === 'ok' && inspected.data.value).toBe('pk.named');
+    const inspectedValue = inspected.status === 'ok' && inspected.data.value;
+    expect(inspectedValue && Redacted.value(inspectedValue)).toBe('pk.named');
   });
 
   it('takes nothing from the last protocol into the next one opened', async () => {
@@ -1574,12 +1659,15 @@ describe("Architect's in-process protocol-builder host", () => {
       protocolId: next,
       sectionId: INFORMATION,
     });
-    const { id: _id, ...withoutId } = template.document;
+    const { id: _id, ...withoutId } = Redacted.value(template.document);
     const created = await client.call('Create', {
       protocolId: next,
       requestId: nextRequestId(),
       kind: 'stage',
-      document: { ...withoutId, label: 'Added in the protocol opened next' },
+      document: Redacted.make({
+        ...withoutId,
+        label: 'Added in the protocol opened next',
+      }),
     });
 
     const ref = parseSectionId(created.sectionId);
@@ -1613,10 +1701,10 @@ describe("Architect's in-process protocol-builder host", () => {
         request: {
           kind: 'content',
           contentKind: 'image',
-          name: 'A photograph',
-          source: 'photo.png',
+          name: Redacted.make('A photograph'),
+          source: Redacted.make('photo.png'),
           contentType: 'image/png',
-          bytes: new Uint8Array([7, 7, 7]),
+          bytes: Redacted.make(new Uint8Array([7, 7, 7])),
         },
       });
       expect(staged).toMatchObject({
@@ -1654,10 +1742,10 @@ describe("Architect's in-process protocol-builder host", () => {
 
       expect(opened.lock).toBe('readOnly');
       if (opened.lock !== 'readOnly') return;
-      expect(opened.holder.displayName).toBe(OTHER_TAB);
+      expect(Redacted.value(opened.holder.displayName)).toBe(OTHER_TAB);
       // The document still arrives: a demoted tab shows the researcher the
       // stage, it just cannot write it.
-      expect(opened.document.id).toBe('information-1');
+      expect(Redacted.value(opened.document).id).toBe('information-1');
     });
 
     it('refuses a submit raised by an editor opened before the demotion', async () => {
@@ -1673,16 +1761,18 @@ describe("Architect's in-process protocol-builder host", () => {
           protocolId: PROTOCOL_ID,
           requestId: nextRequestId(),
           sectionId: INFORMATION,
-          document: { ...held.document, label: 'Saved by a demoted tab' },
+          document: Redacted.make({
+            ...Redacted.value(held.document),
+            label: 'Saved by a demoted tab',
+          }),
           revision: held.revision,
         }),
       );
 
       expect(isSuccess).toBe(false);
       expect(error).toBeInstanceOf(NotLockHolder);
-      expect(error).toMatchObject({
-        holder: { displayName: OTHER_TAB },
-      });
+      const holder = error instanceof NotLockHolder ? error.holder : undefined;
+      expect(holder && Redacted.value(holder.displayName)).toBe(OTHER_TAB);
       expect(stageLabel(store, 'information-1')).not.toBe(
         'Saved by a demoted tab',
       );
@@ -1695,7 +1785,7 @@ describe("Architect's in-process protocol-builder host", () => {
         protocolId: PROTOCOL_ID,
         sectionId: INFORMATION,
       });
-      const { id: _id, ...withoutId } = template.document;
+      const { id: _id, ...withoutId } = Redacted.value(template.document);
       store.dispatch(setProtocolLockState('reclaim-blocked'));
 
       const { error, isSuccess } = await safe(
@@ -1703,16 +1793,23 @@ describe("Architect's in-process protocol-builder host", () => {
           protocolId: PROTOCOL_ID,
           requestId: nextRequestId(),
           kind: 'stage',
-          document: { ...withoutId, label: 'Added by a demoted tab' },
+          document: Redacted.make({
+            ...withoutId,
+            label: 'Added by a demoted tab',
+          }),
           position: 0,
         }),
       );
 
       expect(isSuccess).toBe(false);
       expect(error).toBeInstanceOf(SectionsLocked);
-      expect(error).toMatchObject({
-        blocked: [{ holder: { displayName: OTHER_TAB } }],
-      });
+      expect(
+        error instanceof SectionsLocked
+          ? error.blocked.map(
+              ({ holder }) => holder && Redacted.value(holder.displayName),
+            )
+          : [],
+      ).toEqual([OTHER_TAB]);
       expect(stageIds(store)).toEqual(before);
     });
 
@@ -1761,10 +1858,10 @@ describe("Architect's in-process protocol-builder host", () => {
         request: {
           kind: 'content',
           contentKind: 'image',
-          name: 'A photograph',
-          source: 'photo.png',
+          name: Redacted.make('A photograph'),
+          source: Redacted.make('photo.png'),
           contentType: 'image/png',
-          bytes: new Uint8Array([1, 2, 3]),
+          bytes: Redacted.make(new Uint8Array([1, 2, 3])),
         },
       });
 
@@ -1796,12 +1893,12 @@ describe("Architect's in-process protocol-builder host", () => {
           protocolId: PROTOCOL_ID,
           requestId: nextRequestId(),
           kind: 'stage',
-          document: {
+          document: Redacted.make({
             type: 'Information',
             label: 'Refused',
             title: 'Refused',
             items: [],
-          },
+          }),
         }),
       );
 
@@ -1905,7 +2002,10 @@ describe("Architect's in-process protocol-builder host", () => {
         protocolId: PROTOCOL_ID,
         requestId: nextRequestId(),
         sectionId: INFORMATION,
-        document: { ...held.document, label: 'Written after a defect' },
+        document: Redacted.make({
+          ...Redacted.value(held.document),
+          label: 'Written after a defect',
+        }),
         revision: held.revision,
       });
 

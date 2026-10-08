@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { Effect, Exit, Option } from 'effect';
+import { Effect, Exit, Option, Redacted } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
@@ -61,9 +61,9 @@ describe.skipIf(!testDb)(
       const principal: SessionPrincipal = {
         kind: 'user',
         userId: `rpc-protocol-reauth-${slug}-user`,
-        email: `rpc-protocol-reauth-${slug}@example.com`,
+        email: Redacted.make(`rpc-protocol-reauth-${slug}@example.com`),
         emailVerified: true,
-        name: `RPC Protocol Reauth ${slug}`,
+        name: Redacted.make(`RPC Protocol Reauth ${slug}`),
         locale: null,
         sessionId: `rpc-protocol-reauth-${slug}-session`,
       };
@@ -72,7 +72,11 @@ describe.skipIf(!testDb)(
         ownerAffected(
           `INSERT INTO "user" (id, name, email, "emailVerified")
          VALUES ($1, $2, $3, true)`,
-          [principal.userId, principal.name, principal.email],
+          [
+            principal.userId,
+            Redacted.value(principal.name),
+            Redacted.value(principal.email),
+          ],
         ),
       );
       await database.run(
@@ -109,7 +113,7 @@ describe.skipIf(!testDb)(
         studyId: StudyId.make(randomUUID()),
         protocolId: ProtocolId.make(randomUUID()),
         draftId: DraftId.make(randomUUID()),
-        name,
+        name: Redacted.make(name),
       };
       await admin.client.call(admin.client.rpc('studies.create', input));
       return {
@@ -177,7 +181,8 @@ describe.skipIf(!testDb)(
       const draft = await admin.client.call(
         admin.client.rpc('protocols.draft', { teamId: TEAM_ID, ...study }),
       );
-      return draft.sections.stageOrder;
+      const order = draft.sections.stageOrder;
+      return order === undefined ? undefined : Redacted.value(order);
     };
 
     beforeAll(async () => {

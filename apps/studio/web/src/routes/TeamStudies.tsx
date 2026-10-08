@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useRouter } from '@tanstack/react-router';
+import { Redacted } from 'effect';
 import { useRef, useState } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
@@ -261,7 +262,7 @@ export default function TeamStudies({ teamId: teamParam }: { teamId: string }) {
                     to="/study/$studyId"
                     params={{ studyId: study.id }}
                   >
-                    {study.name}
+                    {Redacted.value(study.name)}
                   </Link>
                   <div className="flex flex-wrap items-center gap-2">
                     <Badge {...stateBadge(study.state)}>
@@ -385,7 +386,10 @@ export default function TeamStudies({ teamId: teamParam }: { teamId: string }) {
                   // are exactly what the procedure takes, so a retry cannot
                   // send them against a different team than the one they were
                   // minted for.
-                  const created = await createStudy.mutateAsync(attempt);
+                  const created = await createStudy.mutateAsync({
+                    ...attempt,
+                    name: Redacted.make(attempt.name),
+                  });
                   if (creationAttempt.current === attempt) {
                     creationAttempt.current = undefined;
                   }

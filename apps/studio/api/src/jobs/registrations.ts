@@ -71,8 +71,8 @@ export const JobHandlersLive: Layer.Layer<
     // mail job into a dead letter (#1895).
     if (env.mail === undefined || env.mail.kind === 'refuse') {
       yield* Effect.logError(
-        `No mail transport is configured: ${MAIL_QUEUES.join(' and ')} jobs will queue until one is. Set SMTP_URL and EMAIL_FROM on the worker.`,
-      );
+        'No mail transport is configured: mail jobs will queue until one is. Set SMTP_URL and EMAIL_FROM on the worker.',
+      ).pipe(Effect.annotateLogs({ queues: MAIL_QUEUES }));
       return;
     }
 

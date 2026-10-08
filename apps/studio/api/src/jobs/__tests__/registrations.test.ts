@@ -82,6 +82,7 @@ function workerEnv(
     devDefaults: true,
     telemetry: false,
     telemetryEndpoint: undefined,
+    logLevel: 'Info',
     deploymentMode: 'self-hosted',
     seedAdminPassword: undefined,
   };
@@ -192,11 +193,13 @@ describe.skipIf(!testDb)('the worker’s handler registrations', () => {
             }),
           );
 
-          const refusals = logs.messages.filter((message) =>
+          const refusals = logs.records.filter(({ message }) =>
             message.includes('No mail transport is configured'),
           );
           assert.strictEqual(refusals.length, 1);
-          assert.match(refusals[0]!, /invitation-delivery and sign-in-email/);
+          assert.deepStrictEqual(refusals[0]?.annotations, {
+            queues: ['invitation-delivery', 'sign-in-email'],
+          });
         }).pipe(Effect.provide(logs.layer));
       },
     );

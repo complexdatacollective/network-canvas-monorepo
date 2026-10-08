@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import { assert } from '@effect/vitest';
-import { Cause, Effect, Exit, Layer, Schema } from 'effect';
+import { Cause, Effect, Exit, Layer, Redacted, Schema } from 'effect';
 import { describe, it } from 'vitest';
 
 import { AuditActor } from '@codaco/studio-contract/middleware/audit-actor';
@@ -20,9 +20,9 @@ import { createAuditedProtocol } from '../commands.ts';
 const PRINCIPAL = Principal.of({
   kind: 'user',
   userId: Schema.decodeSync(UserId)('protocol-command-owner'),
-  email: 'protocol-command-owner@example.com',
+  email: Redacted.make('protocol-command-owner@example.com'),
   emailVerified: true,
-  name: 'Protocol Command Owner',
+  name: Redacted.make('Protocol Command Owner'),
   locale: null,
   sessionId: 'protocol-command-owner-session',
 });
@@ -43,7 +43,7 @@ describe('audited protocol commands', () => {
         createAuditedProtocol(
           unsafeMakeTeamAccess('protocol-command-team', 'owner'),
           {
-            name: '   ',
+            name: Redacted.make('   '),
             protocolId: randomUUID(),
             draftId: randomUUID(),
           },

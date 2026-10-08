@@ -1,5 +1,6 @@
 import { act, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { Redacted } from 'effect';
 import { expect, it, vi } from 'vitest';
 
 import Field from '@codaco/fresco-ui/form/Field/Field';
@@ -397,7 +398,9 @@ const INTERLEAVINGS: readonly Interleaving[] = [
           withResourceProcedures(host, {
             stage: (input) => {
               sources.push(
-                input.request.kind === 'content' ? input.request.source : '',
+                input.request.kind === 'content'
+                  ? Redacted.value(input.request.source)
+                  : '',
               );
               if (!refuse) return host.adapter.rpcCall('ResourcesStage', input);
               refuse = false;
@@ -669,7 +672,9 @@ const INTERLEAVINGS: readonly Interleaving[] = [
           withResourceProcedures(host, {
             stage: async (input) => {
               sources.push(
-                input.request.kind === 'content' ? input.request.source : '',
+                input.request.kind === 'content'
+                  ? Redacted.value(input.request.source)
+                  : '',
               );
               await staging.promise;
               return host.adapter.rpcCall('ResourcesStage', input);
@@ -947,10 +952,10 @@ const INTERLEAVINGS: readonly Interleaving[] = [
         request: {
           kind: 'content',
           contentKind: 'image',
-          name: 'thrown.png',
-          source: 'thrown.png',
+          name: Redacted.make('thrown.png'),
+          source: Redacted.make('thrown.png'),
           contentType: 'image/png',
-          bytes: bytesOf('png'),
+          bytes: Redacted.make(bytesOf('png')),
         },
       });
       if (staged.status !== 'ok') throw new Error('the image was not staged');
@@ -982,7 +987,9 @@ function stagingsInto(
   return withResourceProcedures(host, {
     stage: (input) => {
       sources.push(
-        input.request.kind === 'content' ? input.request.source : '',
+        input.request.kind === 'content'
+          ? Redacted.value(input.request.source)
+          : '',
       );
       return host.adapter.rpcCall('ResourcesStage', input);
     },

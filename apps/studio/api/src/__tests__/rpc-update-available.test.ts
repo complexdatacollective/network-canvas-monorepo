@@ -5,7 +5,7 @@
 // are about the decision the handler makes on top of it, so the read is
 // replaced by a value the test chooses and everything else — the contract, the
 // handler, the owner lookup — is the real thing.
-import { Effect, Layer } from 'effect';
+import { Effect, Layer, Redacted } from 'effect';
 import { RpcTest } from 'effect/rpc';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -50,9 +50,9 @@ const principalFor = (userId: string): Principal['Service'] =>
   Principal.of({
     kind: 'user',
     userId: UserId.make(userId),
-    email: `${userId}@example.org`,
+    email: Redacted.make(`${userId}@example.org`),
     emailVerified: true,
-    name: userId,
+    name: Redacted.make(userId),
     locale: null,
     sessionId: `${userId}-session`,
   });

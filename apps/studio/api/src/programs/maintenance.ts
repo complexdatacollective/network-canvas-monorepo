@@ -8,7 +8,7 @@ import {
 } from '../db/deployment-state.ts';
 import { MaintenanceScope } from '../db/tenant.ts';
 import { Environment } from '../env.ts';
-import { LoggerLive } from '../platform/logger.ts';
+import { LoggerLive, LogLevelLive } from '../platform/logger.ts';
 import { TracingLive } from '../platform/tracing.ts';
 import { STUDIO_VERSION } from '../version.ts';
 import { reportingRefusals } from './command.ts';
@@ -111,7 +111,7 @@ const maintenance = Effect.fnUntraced(function* (args: ReadonlyArray<string>) {
 export const MaintenanceProgram = (args: ReadonlyArray<string>) =>
   maintenance(args).pipe(
     Effect.provide(
-      Layer.mergeAll(LoggerLive, TracingLive('maintenance')).pipe(
+      Layer.mergeAll(LoggerLive, LogLevelLive, TracingLive('maintenance')).pipe(
         Layer.provideMerge(Environment.layer),
       ),
     ),

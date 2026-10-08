@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import { and, eq } from 'drizzle-orm';
-import { Effect, Schema } from 'effect';
+import { Effect, Redacted, Schema } from 'effect';
 import type { SqlError } from 'effect/sql';
 
 import type { AuditActor } from '@codaco/studio-contract/middleware/audit-actor';
@@ -74,7 +74,7 @@ const STUDY_EVENT = {
 const insertStudy: (input: {
   studyId: string;
   teamId: string;
-  name: string;
+  name: Redacted.Redacted;
   protocolId: string;
   participantAnalytics: boolean;
 }) => Effect.Effect<
@@ -84,7 +84,7 @@ const insertStudy: (input: {
 > = Effect.fn('study.store.insertStudy')(function* (input: {
   studyId: string;
   teamId: string;
-  name: string;
+  name: Redacted.Redacted;
   protocolId: string;
   participantAnalytics: boolean;
 }) {
@@ -96,7 +96,7 @@ const insertStudy: (input: {
     .values({
       id: input.studyId,
       teamId: input.teamId,
-      name: input.name,
+      name: Redacted.value(input.name),
       protocolId: input.protocolId,
       settings: studySettings(input),
     })
@@ -123,7 +123,7 @@ const insertStudy: (input: {
     );
   const row = existing[0];
   if (
-    row?.name === input.name &&
+    row?.name === Redacted.value(input.name) &&
     row.protocolId === input.protocolId &&
     participantAnalyticsEnabled(row.settings) === input.participantAnalytics
   ) {
@@ -160,7 +160,7 @@ const insertCreatorGrant: (input: {
 export const createAuditedStudy: (
   access: TeamAccess,
   input: {
-    name: string;
+    name: Redacted.Redacted;
     studyId: string;
     protocolId: string;
     draftId: string;
@@ -183,7 +183,7 @@ export const createAuditedStudy: (
 > = Effect.fn('study.create')(function* (
   access: TeamAccess,
   input: {
-    name: string;
+    name: Redacted.Redacted;
     studyId: string;
     protocolId: string;
     draftId: string;
@@ -191,7 +191,11 @@ export const createAuditedStudy: (
   },
 ) {
   const studyName = yield* Effect.sync(() =>
-    Schema.decodeUnknownSync(StudyName)(input.name).trim(),
+    Redacted.make(
+      Redacted.value(
+        Schema.decodeUnknownSync(StudyName)(Redacted.value(input.name)),
+      ).trim(),
+    ),
   );
   const cipher = yield* SecretsCipher;
 
@@ -230,7 +234,7 @@ export const createAuditedStudy: (
 
         // The protocol line first: `studies.protocol_id` references it.
         const protocol = yield* createProtocol(access.teamId, cipher, {
-          protocol: emptyProtocol(studyName),
+          protocol: emptyProtocol(Redacted.value(studyName)),
           protocolId: input.protocolId,
           draftId: input.draftId,
         });
@@ -272,7 +276,7 @@ export const createAuditedStudy: (
 
 const studyCreated = (
   studyId: string,
-  studyName: string,
+  studyName: Redacted.Redacted,
   study: Extract<InsertedStudy, { created: true }>,
   protocol: { protocolId: string; draftId: string },
 ) =>
@@ -292,7 +296,7 @@ const studyCreated = (
 
 const protocolCreated = (
   protocol: { protocolId: string; draftId: string },
-  studyName: string,
+  studyName: Redacted.Redacted,
 ) =>
   ({
     eventVersion: 1,

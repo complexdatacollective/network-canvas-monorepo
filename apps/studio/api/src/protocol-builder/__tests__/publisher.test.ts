@@ -11,6 +11,7 @@ import {
   Option,
   Predicate,
   Queue,
+  Redacted,
   Scope,
   Stream,
   type Tracer,
@@ -305,7 +306,7 @@ describe.skipIf(!testDb)('the protocol-builder relay', () => {
     await suite.adaRpc.call(
       suite.adaRpc.rpc('protocols.create', {
         teamId: TeamId.make(TEAM_ID),
-        name,
+        name: Redacted.make(name),
         protocolId: id,
         draftId: DraftId.make(randomUUID()),
       }),
@@ -408,12 +409,12 @@ describe.skipIf(!testDb)('the protocol-builder relay', () => {
             protocolId: suite.egolessProtocolId,
             requestId: randomUUID(),
             kind: 'stage',
-            document: {
+            document: Redacted.make({
               type: 'Information',
               label: 'Past the bound',
               title: 'Past the bound',
               items: [],
-            },
+            }),
           }),
         );
         await until(
@@ -542,12 +543,12 @@ describe.skipIf(!testDb)('the protocol-builder relay', () => {
             protocolId: suite.egolessProtocolId,
             requestId: randomUUID(),
             kind: 'stage',
-            document: {
+            document: Redacted.make({
               type: 'Information',
               label: 'Watched',
               title: 'Watched',
               items: [],
-            },
+            }),
           }),
         );
         await until(
@@ -784,12 +785,12 @@ describe.skipIf(!testDb)('the protocol-builder relay', () => {
             protocolId: suite.egolessProtocolId,
             requestId: randomUUID(),
             kind: 'stage',
-            document: {
+            document: Redacted.make({
               type: 'Information',
               label: 'Polled beside an unreadable draft',
               title: 'Polled beside an unreadable draft',
               items: [],
-            },
+            }),
           }),
         );
         await until(

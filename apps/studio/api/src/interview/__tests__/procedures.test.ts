@@ -1,13 +1,16 @@
 import { createHash, randomUUID } from 'node:crypto';
 
-import { Context, Effect, Exit, Schema } from 'effect';
+import { Context, Effect, Exit, Redacted, Schema } from 'effect';
 import { RpcClient } from 'effect/rpc';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import { PARTICIPANT_SESSION_HEADER } from '@codaco/studio-contract/middleware/session';
 import { LinkToken } from '@codaco/studio-contract/schema/ids';
-import type { SyncInput } from '@codaco/studio-contract/schema/participant';
+import {
+  SessionPayload,
+  type SyncInput,
+} from '@codaco/studio-contract/schema/participant';
 
 import { authServiceStub } from '../../__tests__/support/auth.ts';
 import {
@@ -56,7 +59,7 @@ type Fixture = {
   readonly participantId: string | null;
   readonly participantCode: string | null;
   readonly linkId: string;
-  readonly linkToken: string;
+  readonly linkToken: Redacted.Redacted;
 };
 
 const seed = (mode: 'managed' | 'anonymous' = 'managed') =>
@@ -160,8 +163,8 @@ const syncInput = (
   revision,
   stageIndex: 1,
   stageId: 'stage-1',
-  network: network(nodeIds, edges),
-  stageMetadata: { 'stage-1': { seen: true } },
+  network: Redacted.make(network(nodeIds, edges)),
+  stageMetadata: Redacted.make({ 'stage-1': { seen: true } }),
 });
 
 describe.skipIf(!testDb)('the participant procedures', () => {
@@ -212,37 +215,44 @@ describe.skipIf(!testDb)('the participant procedures', () => {
   const exec = (text: string, params: ReadonlyArray<unknown> = []) =>
     database.run(ownerAffected(text, params));
 
-  const redeem = (linkToken: string) =>
+  const redeem = (linkToken: Redacted.Redacted) =>
     client.callExit(
       client.rpc('participant.redeem', {
-        linkToken: Schema.decodeSync(LinkToken)(linkToken),
+        linkToken: Schema.decodeSync(LinkToken)(Redacted.value(linkToken)),
       }),
     );
-  const redeemed = async (linkToken: string) => {
+  const redeemed = async (linkToken: Redacted.Redacted) => {
     const exit = await redeem(linkToken);
     if (Exit.isFailure(exit))
       throw new Error(`redeem failed: ${String(exit.cause)}`);
     return exit.value;
   };
   const asParticipant = <A, E, R>(
-    token: string,
+    token: Redacted.Redacted,
     effect: Effect.Effect<A, E, R>,
-  ) => RpcClient.withHeaders(effect, { [PARTICIPANT_SESSION_HEADER]: token });
-  const readSession = (token: string, holderId = 'page-a') =>
+  ) =>
+    RpcClient.withHeaders(effect, {
+      [PARTICIPANT_SESSION_HEADER]: Redacted.value(token),
+    });
+  const readSession = (token: Redacted.Redacted, holderId = 'page-a') =>
     client.callExit(
       asParticipant(token, client.rpc('participant.session', { holderId })),
     );
-  const opened = async (token: string, holderId = 'page-a') => {
+  const opened = async (token: Redacted.Redacted, holderId = 'page-a') => {
     const exit = await readSession(token, holderId);
     if (Exit.isFailure(exit))
       throw new Error(`session failed: ${String(exit.cause)}`);
     return exit.value;
   };
-  const sync = (token: string, input: typeof SyncInput.Type) =>
+  const sync = (token: Redacted.Redacted, input: typeof SyncInput.Type) =>
     client.callExit(
       asParticipant(token, client.rpc('participant.sync', input)),
     );
-  const finish = (token: string, holderEpoch: number, revision: string) =>
+  const finish = (
+    token: Redacted.Redacted,
+    holderEpoch: number,
+    revision: string,
+  ) =>
     client.callExit(
       asParticipant(
         token,
@@ -283,7 +293,9 @@ describe.skipIf(!testDb)('the participant procedures', () => {
       const second = await redeemed(f.linkToken);
 
       expect(second.sessionId).toBe(first.sessionId);
-      expect(second.sessionToken).not.toBe(first.sessionToken);
+      expect(Redacted.value(second.sessionToken)).not.toBe(
+        Redacted.value(first.sessionToken),
+      );
       expect(first.anonymous).toBe(false);
       await expectRpcFailure(readSession(first.sessionToken), 'Unauthorized');
       expect((await opened(second.sessionToken)).session.id).toBe(
@@ -322,14 +334,18 @@ describe.skipIf(!testDb)('the participant procedures', () => {
 
     it('refuses an unknown, malformed or foreign-team link as unauthorized', async () => {
       const f = await fixture();
-      const secret = f.linkToken.slice(f.linkToken.lastIndexOf('.') + 1);
+      const linkToken = Redacted.value(f.linkToken);
+      const secret = linkToken.slice(linkToken.lastIndexOf('.') + 1);
       await expectRpcFailure(
         redeem(mintSessionToken(f.teamId).token),
         'Unauthorized',
       );
-      await expectRpcFailure(redeem('not-a-link-token-at-all'), 'Unauthorized');
       await expectRpcFailure(
-        redeem(`${uniqueTeamId('nowhere')}.${secret}`),
+        redeem(Redacted.make('not-a-link-token-at-all')),
+        'Unauthorized',
+      );
+      await expectRpcFailure(
+        redeem(Redacted.make(`${uniqueTeamId('nowhere')}.${secret}`)),
         'Unauthorized',
       );
       expect(await auditEvents(f.teamId)).toEqual([]);
@@ -452,11 +468,14 @@ describe.skipIf(!testDb)('the participant procedures', () => {
           id: sessionId,
           finishTime: null,
           exportTime: null,
-          network: { nodes: [], edges: [] },
-          stageMetadata: {},
         },
       });
-      const protocol = session.protocol as {
+      expect(Redacted.value(session.session.network)).toMatchObject({
+        nodes: [],
+        edges: [],
+      });
+      expect(Redacted.value(session.session.stageMetadata)).toEqual({});
+      const protocol = Redacted.value(session.protocol) as {
         id: string;
         assets: unknown[];
         schemaVersion: number;
@@ -554,10 +573,10 @@ describe.skipIf(!testDb)('the participant procedures', () => {
       expect(resumed.revision).toBe('1');
       expect(resumed.stageIndex).toBe(1);
       expect(resumed.stageId).toBe('stage-1');
-      expect(resumed.session.stageMetadata).toEqual({
+      expect(Redacted.value(resumed.session.stageMetadata)).toEqual({
         'stage-1': { seen: true },
       });
-      expect(resumed.session.network).toEqual(
+      expect(Redacted.value(resumed.session.network)).toEqual(
         network(['n1', 'n2', 'n3'], [['n1', 'n2']]),
       );
     });
@@ -857,9 +876,12 @@ describe.skipIf(!testDb)('participant analytics', () => {
   });
 
   const asParticipant = <A, E, R>(
-    token: string,
+    token: Redacted.Redacted,
     effect: Effect.Effect<A, E, R>,
-  ) => RpcClient.withHeaders(effect, { [PARTICIPANT_SESSION_HEADER]: token });
+  ) =>
+    RpcClient.withHeaders(effect, {
+      [PARTICIPANT_SESSION_HEADER]: Redacted.value(token),
+    });
 
   const begin = async (participantAnalytics?: boolean) => {
     const f = await database.run(seed());
@@ -873,7 +895,7 @@ describe.skipIf(!testDb)('participant analytics', () => {
     }
     const redeemed = await client.call(
       client.rpc('participant.redeem', {
-        linkToken: Schema.decodeSync(LinkToken)(f.linkToken),
+        linkToken: Schema.decodeSync(LinkToken)(Redacted.value(f.linkToken)),
       }),
     );
     const session = await client.call(
@@ -886,7 +908,7 @@ describe.skipIf(!testDb)('participant analytics', () => {
   };
 
   const send = (
-    token: string,
+    token: Redacted.Redacted,
     events: { event: string; properties: Record<string, unknown> }[],
   ) =>
     client.callExit(
@@ -906,7 +928,9 @@ describe.skipIf(!testDb)('participant analytics', () => {
   it('tells the page to report usability events', async () => {
     const { session } = await begin();
     expect(session.analytics).toBe(true);
-    expect(JSON.stringify(session)).not.toContain(installationId);
+    expect(
+      JSON.stringify(Schema.encodeSync(SessionPayload)(session)),
+    ).not.toContain(installationId);
   });
 
   it('tells the page not to report when the study turned participant analytics off', async () => {
@@ -924,7 +948,7 @@ describe.skipIf(!testDb)('participant analytics', () => {
     );
     const redeemed = await client.call(
       client.rpc('participant.redeem', {
-        linkToken: Schema.decodeSync(LinkToken)(f.linkToken),
+        linkToken: Schema.decodeSync(LinkToken)(Redacted.value(f.linkToken)),
       }),
     );
     const session = await client.call(

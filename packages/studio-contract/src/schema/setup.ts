@@ -5,14 +5,17 @@ import { Email, NonBlankString } from './primitives.ts';
 export const InstanceName = NonBlankString(120, 'Instance name');
 
 export const CompleteSetupInput = Schema.Struct({
-  token: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(256)),
+  token: Schema.RedactedFromValue(
+    Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(256)),
+  ),
   instanceName: InstanceName,
   owner: Schema.Struct({
-    name: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(320)),
+    name: Schema.RedactedFromValue(
+      Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(320)),
+    ),
     email: Email,
-    password: Schema.String.check(
-      Schema.isMinLength(8),
-      Schema.isMaxLength(128),
+    password: Schema.RedactedFromValue(
+      Schema.String.check(Schema.isMinLength(8), Schema.isMaxLength(128)),
     ),
   }),
 });

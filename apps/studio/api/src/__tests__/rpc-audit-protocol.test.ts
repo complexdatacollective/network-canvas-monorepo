@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { Effect, Exit, Option } from 'effect';
+import { Effect, Exit, Option, Redacted } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
@@ -39,9 +39,9 @@ const TEAM_ID = TeamId.make(uniqueTeamId('rpc-audit-protocol-team'));
 const PRINCIPAL: SessionPrincipal = {
   kind: 'user',
   userId: 'rpc-audit-protocol-owner-user',
-  email: 'rpc-audit-protocol-owner@example.com',
+  email: Redacted.make('rpc-audit-protocol-owner@example.com'),
   emailVerified: true,
-  name: 'RPC Audit Protocol Owner',
+  name: Redacted.make('RPC Audit Protocol Owner'),
   locale: null,
   sessionId: 'rpc-audit-protocol-owner-session',
 };
@@ -65,7 +65,11 @@ describe.skipIf(!testDb)('audited protocol RPC', () => {
       ownerRows(
         `INSERT INTO "user" (id, name, email, "emailVerified")
          VALUES ($1, $2, $3, true)`,
-        [PRINCIPAL.userId, PRINCIPAL.name, PRINCIPAL.email],
+        [
+          PRINCIPAL.userId,
+          Redacted.value(PRINCIPAL.name),
+          Redacted.value(PRINCIPAL.email),
+        ],
       ),
     );
     await database.run(
@@ -106,7 +110,7 @@ describe.skipIf(!testDb)('audited protocol RPC', () => {
     const stageA = StageId.make(randomUUID());
     const stageB = StageId.make(randomUUID());
     const scope = { teamId: TEAM_ID, protocolId, draftId };
-    const createInput = { ...scope, name: 'Audited protocol' };
+    const createInput = { ...scope, name: Redacted.make('Audited protocol') };
 
     await expect(
       client.call(client.rpc('protocols.create', createInput)),
@@ -184,7 +188,10 @@ describe.skipIf(!testDb)('audited protocol RPC', () => {
       protocolId,
       requestId: randomUUID(),
       sectionId,
-      document: { ...held.document, label: 'Secret value' },
+      document: Redacted.make({
+        ...Redacted.value(held.document),
+        label: 'Secret value',
+      }),
       revision: held.revision,
     };
     const committed = await builder.call(
@@ -288,7 +295,10 @@ describe.skipIf(!testDb)('audited protocol RPC', () => {
     const stageId = StageId.make(randomUUID());
     const scope = { teamId: TEAM_ID, protocolId, draftId };
     await client.call(
-      client.rpc('protocols.create', { ...scope, name: 'Rollback protocol' }),
+      client.rpc('protocols.create', {
+        ...scope,
+        name: Redacted.make('Rollback protocol'),
+      }),
     );
     await client.call(
       client.rpc('protocols.addInformationStage', { ...scope, stageId }),
@@ -319,7 +329,10 @@ describe.skipIf(!testDb)('audited protocol RPC', () => {
       protocolId,
       requestId: randomUUID(),
       sectionId,
-      document: { ...held.document, label: 'Must roll back' },
+      document: Redacted.make({
+        ...Redacted.value(held.document),
+        label: 'Must roll back',
+      }),
       revision: held.revision,
     };
     try {
@@ -377,9 +390,9 @@ describe.skipIf(!testDb)('audited protocol RPC', () => {
     const actor: SessionPrincipal = {
       kind: 'user',
       userId: actorId,
-      email: 'rpc-audit-revoked@example.com',
+      email: Redacted.make('rpc-audit-revoked@example.com'),
       emailVerified: true,
-      name: 'Revoked protocol member',
+      name: Redacted.make('Revoked protocol member'),
       locale: null,
       sessionId: 'rpc-audit-revoked-session',
     };
@@ -387,7 +400,7 @@ describe.skipIf(!testDb)('audited protocol RPC', () => {
       ownerRows(
         `INSERT INTO "user" (id, name, email, "emailVerified")
          VALUES ($1, $2, $3, true)`,
-        [actor.userId, actor.name, actor.email],
+        [actor.userId, Redacted.value(actor.name), Redacted.value(actor.email)],
       ),
     );
     await database.run(
@@ -430,7 +443,7 @@ describe.skipIf(!testDb)('audited protocol RPC', () => {
               teamId: TEAM_ID,
               protocolId,
               draftId,
-              name: 'Must not be created',
+              name: Redacted.make('Must not be created'),
             }),
           );
           yield* Effect.promise(() => middlewareAuthorized);

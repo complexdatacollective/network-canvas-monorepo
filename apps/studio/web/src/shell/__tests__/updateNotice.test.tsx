@@ -2,7 +2,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryHistory, RouterProvider } from '@tanstack/react-router';
 import { render, screen, waitFor, within } from '@testing-library/react';
-import { Effect } from 'effect';
+import { Effect, Redacted } from 'effect';
 import { describe, expect, it, vi } from 'vitest';
 
 import { Forbidden, RateLimited } from '@codaco/studio-contract/schema/errors';
@@ -238,9 +238,9 @@ describe('the update notice in the app shell', () => {
       'me': () =>
         Effect.succeed({
           userId: 'user-1',
-          email: 'researcher@example.org',
+          email: Redacted.make('researcher@example.org'),
           emailVerified: true,
-          name: 'Researcher',
+          name: Redacted.make('Researcher'),
           locale: null,
           teams: [],
         }),
@@ -280,9 +280,9 @@ describe('the update notice on the no-team screen', () => {
       'me': () =>
         Effect.succeed({
           userId: 'user-1',
-          email: 'owner@example.org',
+          email: Redacted.make('owner@example.org'),
           emailVerified: true,
-          name: 'Owner',
+          name: Redacted.make('Owner'),
           locale: null,
           teams: [],
         }),

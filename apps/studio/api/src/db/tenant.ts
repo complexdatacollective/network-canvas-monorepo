@@ -8,6 +8,7 @@ import {
   unsafeMakeTeamAccess,
 } from '@codaco/studio-sync/tenant';
 
+import { recordRequestTeam } from '../platform/request-team.ts';
 import {
   Database,
   type DatabaseService,
@@ -88,6 +89,7 @@ const openOn = <A, E, R>(
             // Before anything reads, so no statement in the body can run
             // unstamped. The role is the connection's own (`client.ts`).
             if (teamId !== null) {
+              yield* recordRequestTeam(teamId);
               yield* service.sql`select set_config(${TEAM_GUC}, ${teamId}, true)`;
             }
             return yield* body;

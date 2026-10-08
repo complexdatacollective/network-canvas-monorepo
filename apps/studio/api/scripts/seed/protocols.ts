@@ -8,7 +8,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-import { Effect } from 'effect';
+import { Effect, Redacted } from 'effect';
 
 import type { CurrentProtocol, Stage } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
@@ -266,10 +266,10 @@ export const seedStagedSecret = Effect.fnUntraced(function* (
       descriptor: {
         id: seedUuid(),
         kind: 'apikey',
-        name: 'Staged map token',
+        name: Redacted.make('Staged map token'),
         status: 'staged',
       },
-      value,
+      value: Redacted.make(value),
     },
   );
   return value;

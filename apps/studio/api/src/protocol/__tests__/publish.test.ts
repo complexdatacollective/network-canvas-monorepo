@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm';
-import { Effect } from 'effect';
+import { Effect, Redacted } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { SYNC_TABLES } from '@codaco/studio-sync/schema';
@@ -401,9 +401,9 @@ describe.skipIf(!storeDb)('publishDraft', () => {
               teamId: TEST_TEAM_ID,
               protocolId,
               assetId,
-            }),
+            }).pipe(Effect.map((key) => key && Redacted.value(key))),
           ),
-        ).resolves.toBe(value);
+        ).resolves.toBe(Redacted.value(value));
       }
       const [pins] = await store.rows<{ pins: number }>(
         `SELECT count(*)::int AS pins FROM version_sections WHERE version_id = $1`,

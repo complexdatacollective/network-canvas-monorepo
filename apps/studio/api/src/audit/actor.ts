@@ -1,4 +1,4 @@
-import { Context, Effect } from 'effect';
+import { Context, Effect, Redacted } from 'effect';
 
 import { AuditActor } from '@codaco/studio-contract/middleware/audit-actor';
 import { Principal } from '@codaco/studio-contract/middleware/authenticated';
@@ -9,7 +9,11 @@ export const userAuditActor = (
   AuditActor.of({
     kind: 'user',
     id: principal.userId,
-    label: (principal.name.trim() || principal.email).slice(0, 320),
+    label: Redacted.make(
+      (
+        Redacted.value(principal.name).trim() || Redacted.value(principal.email)
+      ).slice(0, 320),
+    ),
   });
 
 export const provideCaller =

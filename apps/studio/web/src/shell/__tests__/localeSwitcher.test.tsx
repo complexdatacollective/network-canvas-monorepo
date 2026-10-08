@@ -9,7 +9,7 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
-import { Effect } from 'effect';
+import { Effect, Redacted } from 'effect';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { Me } from '@codaco/studio-contract/schema/account';
@@ -74,9 +74,9 @@ vi.mock('../../lib/auth.ts', () => ({
 function me(): Me {
   return {
     userId: 'user-1',
-    email: 'researcher@example.org',
+    email: Redacted.make('researcher@example.org'),
     emailVerified: true,
-    name: 'Researcher',
+    name: Redacted.make('Researcher'),
     locale: fixtures.meLocale,
     teams: [{ teamId: TeamId.make('team-a'), role: 'owner' }],
   };

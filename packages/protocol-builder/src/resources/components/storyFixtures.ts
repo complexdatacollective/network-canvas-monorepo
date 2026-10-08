@@ -1,4 +1,4 @@
-import { Effect } from 'effect';
+import { Effect, Redacted } from 'effect';
 
 import type { StageType } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
@@ -265,9 +265,11 @@ export function createStoryHost(options: StoryHostOptions = {}): StoryHost {
               status: 'ok' as const,
               data: {
                 ...resolved.data,
-                url: resolved.data.url.replace(
-                  'data:application/octet-stream;',
-                  `data:${contentType};`,
+                url: Redacted.make(
+                  Redacted.value(resolved.data.url).replace(
+                    'data:application/octet-stream;',
+                    `data:${contentType};`,
+                  ),
                 ),
               },
             };

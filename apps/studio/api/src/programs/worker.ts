@@ -23,7 +23,7 @@ import { JobHandlersLive } from '../jobs/registrations.ts';
 import { JobWorker } from '../jobs/worker.ts';
 import { MailerLive } from '../mail/live.ts';
 import { WorkerHealthServerLive } from '../platform/http-server.ts';
-import { LoggerLive } from '../platform/logger.ts';
+import { LoggerLive, LogLevelLive } from '../platform/logger.ts';
 import { MaintenanceState } from '../platform/maintenance-state.ts';
 import { SchemaStatus } from '../platform/schema-gate.ts';
 import { TracingLive } from '../platform/tracing.ts';
@@ -118,8 +118,8 @@ function workerWith(db: DbEnv) {
           const worker = yield* JobWorker;
           const database = yield* MaintenanceDatabase;
           yield* Ref.set(started, Option.some({ worker, database }));
-          yield* Effect.log(
-            `Network Canvas Studio worker ${STUDIO_VERSION} started`,
+          yield* Effect.log('Network Canvas Studio worker started').pipe(
+            Effect.annotateLogs({ version: STUDIO_VERSION }),
           );
         }),
       );
@@ -184,7 +184,9 @@ const WorkerProgramLayer = Layer.unwrap(
     return workerWith(db);
   }),
 ).pipe(
-  Layer.provide(Layer.mergeAll(LoggerLive, TracingLive('worker'))),
+  Layer.provide(
+    Layer.mergeAll(LoggerLive, LogLevelLive, TracingLive('worker')),
+  ),
   Layer.provide(Environment.layerWithMail),
 );
 

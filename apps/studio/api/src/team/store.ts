@@ -1,5 +1,5 @@
 import { and, eq, or, sql } from 'drizzle-orm';
-import { Effect } from 'effect';
+import { Effect, Redacted } from 'effect';
 import type { SqlError } from 'effect/sql';
 
 import type { TeamRole } from '@codaco/studio-contract/schema/team';
@@ -24,13 +24,13 @@ export type LockedMember = {
   id: string;
   userId: string;
   role: string;
-  name: string;
-  email: string;
+  name: Redacted.Redacted;
+  email: Redacted.Redacted;
 };
 
 export type TeamInvitation = {
   id: string;
-  email: string;
+  email: Redacted.Redacted;
   role: string | null;
   status: string;
   expiresAt: Date;
@@ -52,6 +52,25 @@ const memberColumns = {
   name: user.name,
   email: user.email,
 } as const;
+
+const lockedMember = (row: {
+  id: string;
+  userId: string;
+  role: string;
+  name: string;
+  email: string;
+}): LockedMember => ({
+  ...row,
+  name: Redacted.make(row.name),
+  email: Redacted.make(row.email),
+});
+
+const withPrivateEmail = <Row extends { email: string }>(
+  row: Row,
+): Omit<Row, 'email'> & { email: Redacted.Redacted } => ({
+  ...row,
+  email: Redacted.make(row.email),
+});
 
 export const findInvitationTeam: (
   invitationId: string,
@@ -99,9 +118,12 @@ export const lockActorAndTarget: (input: {
     )
     .orderBy(teamMembers.id)
     .for('update', { of: teamMembers });
+  const members = rows.map(lockedMember);
   return {
-    actor: rows.find((member) => member.userId === input.actorUserId) ?? null,
-    target: rows.find((member) => member.id === input.targetMemberId) ?? null,
+    actor:
+      members.find((member) => member.userId === input.actorUserId) ?? null,
+    target:
+      members.find((member) => member.id === input.targetMemberId) ?? null,
   };
 }, sqlErrorsOnly);
 
@@ -125,7 +147,8 @@ export const lockActor: (
         ),
       )
       .for('update', { of: teamMembers });
-    return rows[0] ?? null;
+    const row = rows[0];
+    return row === undefined ? null : lockedMember(row);
   }, sqlErrorsOnly);
 
 /**
@@ -180,10 +203,10 @@ export const updateMemberRole: (input: {
 
 export const hasMemberWithEmail: (
   teamId: string,
-  email: string,
+  email: Redacted.Redacted,
 ) => Effect.Effect<boolean, SqlError.SqlError, Transaction> = Effect.fn(
   'team.store.hasMemberWithEmail',
-)(function* (teamId: string, email: string) {
+)(function* (teamId: string, email: Redacted.Redacted) {
   const { tx } = yield* Transaction;
   const rows = yield* tx
     .select({ present: sql<number>`1` })
@@ -192,7 +215,7 @@ export const hasMemberWithEmail: (
     .where(
       and(
         eq(teamMembers.team_id, teamId),
-        sql`lower(${user.email}) = ${email}`,
+        sql`lower(${user.email}) = ${Redacted.value(email)}`,
       ),
     )
     .limit(1);
@@ -201,10 +224,10 @@ export const hasMemberWithEmail: (
 
 export const hasLivePendingInvitation: (
   teamId: string,
-  email: string,
+  email: Redacted.Redacted,
 ) => Effect.Effect<boolean, SqlError.SqlError, Transaction> = Effect.fn(
   'team.store.hasLivePendingInvitation',
-)(function* (teamId: string, email: string) {
+)(function* (teamId: string, email: Redacted.Redacted) {
   const { tx } = yield* Transaction;
   const rows = yield* tx
     .select({ present: sql<number>`1` })
@@ -212,7 +235,7 @@ export const hasLivePendingInvitation: (
     .where(
       and(
         eq(teamInvitations.team_id, teamId),
-        sql`lower(${teamInvitations.email}) = ${email}`,
+        sql`lower(${teamInvitations.email}) = ${Redacted.value(email)}`,
         eq(teamInvitations.status, 'pending'),
         sql`${teamInvitations.expires_at} > clock_timestamp()`,
       ),
@@ -244,7 +267,7 @@ export const countLivePendingInvitations: (
 export const createInvitation: (input: {
   id: string;
   teamId: string;
-  email: string;
+  email: Redacted.Redacted;
   role: TeamRole;
   inviterId: string;
 }) => Effect.Effect<TeamInvitation, SqlError.SqlError, Transaction> = Effect.fn(
@@ -252,7 +275,7 @@ export const createInvitation: (input: {
 )(function* (input: {
   id: string;
   teamId: string;
-  email: string;
+  email: Redacted.Redacted;
   role: TeamRole;
   inviterId: string;
 }) {
@@ -262,7 +285,7 @@ export const createInvitation: (input: {
     .values({
       id: input.id,
       team_id: input.teamId,
-      email: input.email,
+      email: Redacted.value(input.email),
       role: input.role,
       status: 'pending',
       expires_at: sql`clock_timestamp() + INTERVAL '48 hours'`,
@@ -279,27 +302,30 @@ export const createInvitation: (input: {
   if (row === undefined) {
     return yield* Effect.die(new Error('invitation insert returned no row'));
   }
-  return row;
+  return withPrivateEmail(row);
 }, sqlErrorsOnly);
 
 export const readInvitationLabel: (
   teamId: string,
   invitationId: string,
-) => Effect.Effect<string | null, SqlError.SqlError, Transaction> = Effect.fn(
-  'team.store.readInvitationLabel',
-)(function* (teamId: string, invitationId: string) {
-  const { tx } = yield* Transaction;
-  const rows = yield* tx
-    .select({ email: teamInvitations.email })
-    .from(teamInvitations)
-    .where(
-      and(
-        eq(teamInvitations.team_id, teamId),
-        eq(teamInvitations.id, invitationId),
-      ),
-    );
-  return rows[0]?.email ?? null;
-}, sqlErrorsOnly);
+) => Effect.Effect<Redacted.Redacted | null, SqlError.SqlError, Transaction> =
+  Effect.fn('team.store.readInvitationLabel')(function* (
+    teamId: string,
+    invitationId: string,
+  ) {
+    const { tx } = yield* Transaction;
+    const rows = yield* tx
+      .select({ email: teamInvitations.email })
+      .from(teamInvitations)
+      .where(
+        and(
+          eq(teamInvitations.team_id, teamId),
+          eq(teamInvitations.id, invitationId),
+        ),
+      );
+    const row = rows[0];
+    return row === undefined ? null : Redacted.make(row.email);
+  }, sqlErrorsOnly);
 
 /**
  * `nowait`: the delivery handler holds this row for its SMTP call, and a cancel
@@ -339,7 +365,8 @@ export const lockInvitation: (
   const rows = yield* options.nowait
     ? selection.for('update', { noWait: true })
     : selection.for('update');
-  return rows[0] ?? null;
+  const row = rows[0];
+  return row === undefined ? null : withPrivateEmail(row);
 }, sqlErrorsOnly);
 
 export const lockMembershipSet: (
@@ -358,9 +385,10 @@ export const lockMembershipSet: (
       .where(eq(teamMembers.team_id, teamId))
       .orderBy(teamMembers.id)
       .for('update', { of: teamMembers });
+    const existing = rows.find((member) => member.userId === userId);
     return {
       count: rows.length,
-      existing: rows.find((member) => member.userId === userId) ?? null,
+      existing: existing === undefined ? null : lockedMember(existing),
     };
   }, sqlErrorsOnly);
 

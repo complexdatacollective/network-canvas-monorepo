@@ -1,4 +1,12 @@
-import { Effect, Exit, Layer, Logger, type LogLevel, Option } from 'effect';
+import {
+  Effect,
+  Exit,
+  Layer,
+  Logger,
+  type LogLevel,
+  Option,
+  Redacted,
+} from 'effect';
 import { beforeAll, describe, expect, it } from 'vitest';
 
 import type { ProtocolSectionId } from '@codaco/studio-sync/taxonomy';
@@ -1176,10 +1184,10 @@ describe.skipIf(!testDb)('the lease keeper', () => {
           request: {
             kind: 'content',
             contentKind: 'image',
-            name: 'A photograph',
-            source: 'photo.png',
+            name: Redacted.make('A photograph'),
+            source: Redacted.make('photo.png'),
             contentType: 'image/png',
-            bytes: new Uint8Array([137, 80, 78, 71]),
+            bytes: Redacted.make(new Uint8Array([137, 80, 78, 71])),
           },
         }),
       );

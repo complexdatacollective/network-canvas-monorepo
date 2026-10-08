@@ -1,4 +1,5 @@
 import {
+  LogLevel,
   Predicate,
   Result,
   Schema,
@@ -239,6 +240,20 @@ export const EnvironmentSchema = Schema.Struct({
       'Unset ⇒ true. Set to `false` to opt an instance out. It does not govern the update check (#1901), which is not configurable and is blocked at the firewall instead.',
     example: 'true',
   }),
+
+  STUDIO_LOG_LEVEL: variable(
+    Schema.Literals(LogLevel.values).annotate(
+      refuses(`must be one of ${LogLevel.values.join(', ')}`),
+    ),
+    {
+      group: 'Process',
+      summary:
+        'The least severe log level this instance writes and exports, using Effect’s level names. The researcher web app logs at the same level.',
+      deployment:
+        'Unset ⇒ `Info`. `Debug` or `Trace` while investigating a problem; `None` writes nothing.',
+      example: 'Info',
+    },
+  ),
 
   OTEL_EXPORTER_OTLP_ENDPOINT: variable(HttpUrl, {
     group: 'Process',

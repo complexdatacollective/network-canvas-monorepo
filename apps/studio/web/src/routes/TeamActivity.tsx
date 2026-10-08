@@ -1,5 +1,6 @@
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { getRouteApi, Link } from '@tanstack/react-router';
+import { Redacted } from 'effect';
 import { useMemo, useState } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
@@ -517,16 +518,17 @@ const FILTER_OPTIONS_STALE_MS = 5 * 60 * 1000;
 
 function actorText(
   intl: IntlShape,
-  actor: AuditActorFilter & { label: string },
+  actor: AuditActorFilter & { label: Redacted.Redacted },
 ): string {
+  const label = Redacted.value(actor.label);
   const kind = ACTOR_KIND_LABELS[actor.kind];
-  if (kind === undefined) return actor.label;
+  if (kind === undefined) return label;
   // An actor with no name of its own is named by its kind alone, rather than
   // by a parenthetical hanging off an empty string.
-  return actor.label === ''
+  return label === ''
     ? intl.formatMessage(kind)
     : intl.formatMessage(messages.actorWithKind, {
-        name: actor.label,
+        name: label,
         kind: intl.formatMessage(kind),
       });
 }
@@ -611,15 +613,16 @@ export default function TeamActivity() {
   }, [filterOptions.data, applied.eventType]);
 
   const actorOptions = useMemo(() => {
-    const byToken = new Map<string, AuditActorFilter & { label: string }>(
-      filterOptions.data?.actors.map((actor) => [actorToken(actor), actor]),
-    );
+    const byToken = new Map<
+      string,
+      AuditActorFilter & { label: Redacted.Redacted }
+    >(filterOptions.data?.actors.map((actor) => [actorToken(actor), actor]));
     if (applied.actor !== null && !byToken.has(actorToken(applied.actor))) {
       // Nothing but the applied pair is known here, so the id stands in for
       // the name; actorText names an actor with no id by its kind alone.
       byToken.set(actorToken(applied.actor), {
         ...applied.actor,
-        label: applied.actor.id ?? '',
+        label: Redacted.make(applied.actor.id ?? ''),
       });
     }
     return [...byToken.entries()].map(([value, actor]) => ({
@@ -908,6 +911,8 @@ export default function TeamActivity() {
             <TableBody>
               {items.map((event) => {
                 const target = event.subject ?? event.resource;
+                const targetLabel =
+                  target?.label && Redacted.value(target.label);
                 return (
                   <TableRow key={event.id}>
                     <TableCell>
@@ -935,7 +940,7 @@ export default function TeamActivity() {
                     </TableCell>
                     <TableCell>
                       {/* eslint-disable-next-line formatjs/no-literal-string-in-jsx -- the em dash is locale-neutral typography, not copy */}
-                      {target?.label ?? target?.id ?? '—'}
+                      {targetLabel ?? target?.id ?? '—'}
                     </TableCell>
                     <TableCell>
                       <Badge {...OUTCOME_BADGE_PROPS[event.outcome]}>
@@ -1009,7 +1014,7 @@ function ActivityEventDetail(props: { teamId: TeamId; eventId: AuditEventId }) {
   }
 
   const event = detail.data;
-  const detailEntries = Object.entries(event.details);
+  const detailEntries = Object.entries(Redacted.value(event.details));
   const fields: { label: string; value: string }[] = [
     {
       label: intl.formatMessage(messages.detailTime),
@@ -1039,7 +1044,10 @@ function ActivityEventDetail(props: { teamId: TeamId; eventId: AuditEventId }) {
           {
             label: intl.formatMessage(messages.detailSubject),
             value: intl.formatMessage(messages.entityWithType, {
-              name: event.subject.label ?? event.subject.id ?? '',
+              name:
+                (event.subject.label && Redacted.value(event.subject.label)) ??
+                event.subject.id ??
+                '',
               type: event.subject.type,
             }),
           },
@@ -1050,7 +1058,11 @@ function ActivityEventDetail(props: { teamId: TeamId; eventId: AuditEventId }) {
           {
             label: intl.formatMessage(messages.detailResource),
             value: intl.formatMessage(messages.entityWithType, {
-              name: event.resource.label ?? event.resource.id ?? '',
+              name:
+                (event.resource.label &&
+                  Redacted.value(event.resource.label)) ??
+                event.resource.id ??
+                '',
               type: event.resource.type,
             }),
           },
@@ -1071,7 +1083,10 @@ function ActivityEventDetail(props: { teamId: TeamId; eventId: AuditEventId }) {
         version: String(event.eventVersion),
       }),
     },
-    { label: intl.formatMessage(messages.detailTeam), value: event.teamLabel },
+    {
+      label: intl.formatMessage(messages.detailTeam),
+      value: Redacted.value(event.teamLabel),
+    },
     {
       label: intl.formatMessage(messages.detailSequence),
       value: event.sequence,

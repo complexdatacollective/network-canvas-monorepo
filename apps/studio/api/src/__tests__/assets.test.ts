@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { request as httpRequest } from 'node:http';
 
-import { Effect, Exit, Option } from 'effect';
+import { Effect, Exit, Option, Redacted } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { MAX_UPLOAD_BYTES } from '@codaco/studio-contract/limits';
@@ -34,9 +34,9 @@ const reachable = await storeReachable();
 const PRINCIPAL: SessionPrincipal = {
   kind: 'user',
   userId: 'user-1',
-  email: 'researcher@example.com',
+  email: Redacted.make('researcher@example.com'),
   emailVerified: true,
-  name: 'Researcher',
+  name: Redacted.make('Researcher'),
   locale: null,
   sessionId: 'session-1',
 };

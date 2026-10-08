@@ -10,7 +10,7 @@
 // the server strips it at the write boundary and seals it here, and only an
 // assembly for a participant session or a researcher preview opens one.
 import { and, eq, sql } from 'drizzle-orm';
-import { Effect } from 'effect';
+import { Effect, Redacted } from 'effect';
 import type { SqlError } from 'effect/sql';
 
 import type { SectionDoc } from '@codaco/studio-sync/apply';
@@ -34,7 +34,7 @@ const protocolAssetKeys = PROTOCOL_TABLES.protocolAssetKeys;
 export const ASSET_KEY_PLACEHOLDER = 'studio-asset-key';
 
 /** Keyed by the asset's manifest id, which is its id in `protocol_asset_keys`. */
-export type AssetKeyValues = Map<string, string>;
+export type AssetKeyValues = Map<string, Redacted.Redacted>;
 
 /** The protocol line a set of asset keys belongs to. */
 export type ProtocolAssetScope = { teamId: string; protocolId: string };
@@ -78,7 +78,7 @@ export function stripAssetKeyValues(assetsDoc: SectionDoc): {
     const { value, ...rest } = entry;
     doc[assetId] = rest;
     if (typeof value === 'string' && value.length > 0) {
-      values.set(assetId, value);
+      values.set(assetId, Redacted.make(value));
     }
   }
   return { doc: doc ?? assetsDoc, values };
@@ -213,29 +213,32 @@ export const sealAssetKeys: (
 export const openAssetKey: (
   cipher: SecretsCipherApi,
   identity: ProtocolAssetScope & { assetId: string },
-) => Effect.Effect<string | undefined, SqlError.SqlError, Transaction> =
-  Effect.fn('protocol.store.openAssetKey')(function* (
-    cipher: SecretsCipherApi,
-    identity: ProtocolAssetScope & { assetId: string },
-  ) {
-    const { tx } = yield* Transaction;
-    const rows = yield* tx
-      .select({
-        ciphertext: protocolAssetKeys.ciphertext,
-        keyId: protocolAssetKeys.keyId,
-      })
-      .from(protocolAssetKeys)
-      .where(
-        and(
-          eq(protocolAssetKeys.teamId, identity.teamId),
-          eq(protocolAssetKeys.protocolId, identity.protocolId),
-          eq(protocolAssetKeys.assetId, identity.assetId),
-        ),
-      );
-    const row = rows[0];
-    if (row === undefined) return undefined;
-    return cipher.openAssetKey(identity, {
-      ciphertext: row.ciphertext,
-      keyId: row.keyId,
-    });
-  }, sqlErrorsOnly);
+) => Effect.Effect<
+  Redacted.Redacted | undefined,
+  SqlError.SqlError,
+  Transaction
+> = Effect.fn('protocol.store.openAssetKey')(function* (
+  cipher: SecretsCipherApi,
+  identity: ProtocolAssetScope & { assetId: string },
+) {
+  const { tx } = yield* Transaction;
+  const rows = yield* tx
+    .select({
+      ciphertext: protocolAssetKeys.ciphertext,
+      keyId: protocolAssetKeys.keyId,
+    })
+    .from(protocolAssetKeys)
+    .where(
+      and(
+        eq(protocolAssetKeys.teamId, identity.teamId),
+        eq(protocolAssetKeys.protocolId, identity.protocolId),
+        eq(protocolAssetKeys.assetId, identity.assetId),
+      ),
+    );
+  const row = rows[0];
+  if (row === undefined) return undefined;
+  return cipher.openAssetKey(identity, {
+    ciphertext: row.ciphertext,
+    keyId: row.keyId,
+  });
+}, sqlErrorsOnly);

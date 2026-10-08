@@ -15,6 +15,11 @@ import {
 import { sqlErrorsOnly } from '../db/errors.ts';
 import { Transaction } from '../db/tenant.ts';
 import { PROTOCOL_BUILDER_TABLES } from './schema.ts';
+import {
+  descriptorOf,
+  storedDescriptor,
+  type StoredResourceDescriptor,
+} from './stored-shapes.ts';
 
 const { protocolWriteReceipts } = PROTOCOL_BUILDER_TABLES;
 
@@ -40,7 +45,7 @@ type ReceiptRow = {
   revisionSeq: bigint;
   revisionHash: string;
   createdSectionId: string | null;
-  promoted: ResourceDescriptor[] | null;
+  promoted: StoredResourceDescriptor[] | null;
 };
 
 function toReceipt(row: ReceiptRow): WriteReceipt {
@@ -51,7 +56,9 @@ function toReceipt(row: ReceiptRow): WriteReceipt {
       : {
           createdSection: makeSectionId(parseSectionId(row.createdSectionId)),
         }),
-    ...(row.promoted === null ? {} : { promoted: row.promoted }),
+    ...(row.promoted === null
+      ? {}
+      : { promoted: row.promoted.map((stored) => descriptorOf(stored)) }),
   };
 }
 
@@ -102,7 +109,9 @@ export const recordWriteReceipt: (
       revisionSeq: receipt.revision.sequence,
       revisionHash: receipt.revision.contentHash,
       createdSectionId: receipt.createdSection ?? null,
-      promoted: receipt.promoted ?? null,
+      promoted:
+        receipt.promoted?.map((descriptor) => storedDescriptor(descriptor)) ??
+        null,
     })
     // Without `.returning()` the check below reads `undefined` and fires on
     // every write.

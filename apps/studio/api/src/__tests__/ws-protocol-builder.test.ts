@@ -15,6 +15,7 @@ import {
   MutableRef,
   Option,
   Predicate,
+  Redacted,
   Scope,
   Stream,
 } from 'effect';
@@ -79,9 +80,9 @@ function researcher(slug: string): SessionPrincipal {
   return {
     kind: 'user',
     userId: `pb-ws-${slug}-user`,
-    email: `pb-ws-${slug}@example.com`,
+    email: Redacted.make(`pb-ws-${slug}@example.com`),
     emailVerified: true,
-    name: `Socket Researcher ${slug}`,
+    name: Redacted.make(`Socket Researcher ${slug}`),
     locale: null,
     sessionId: `pb-ws-${slug}-session`,
   };
@@ -288,7 +289,12 @@ describe.skipIf(!testDb || !env.auth)(
             protocolId,
             requestId: randomUUID(),
             kind: 'stage',
-            document: { type: 'Information', label, title: label, items: [] },
+            document: Redacted.make({
+              type: 'Information',
+              label,
+              title: label,
+              items: [],
+            }),
           }),
         )
         .then((created) => created.sectionId);
@@ -304,7 +310,7 @@ describe.skipIf(!testDb || !env.auth)(
           ownerAffected(
             `INSERT INTO "user" (id, name, email, "emailVerified")
              VALUES ($1, $2, $3, true)`,
-            [who.userId, who.name, who.email],
+            [who.userId, Redacted.value(who.name), Redacted.value(who.email)],
           ),
         );
         await database.run(
@@ -402,12 +408,12 @@ describe.skipIf(!testDb || !env.auth)(
           protocolId,
           requestId: randomUUID(),
           kind: 'stage',
-          document: {
+          document: Redacted.make({
             type: 'Information',
             label: 'Made over the socket',
             title: 'Made over the socket',
             items: [],
-          },
+          }),
         }),
       );
 
@@ -466,7 +472,9 @@ describe.skipIf(!testDb || !env.auth)(
       const theirs = lockHolder(watch.events, 'stageOrder');
       expect(own?.sessionId).toBeDefined();
       expect(theirs?.userId).toBe(ADA.userId);
-      expect(theirs?.displayName).toBe(ADA.name);
+      expect(theirs && Redacted.value(theirs.displayName)).toBe(
+        Redacted.value(ADA.name),
+      );
       expect(theirs?.mode).toBe('editing');
       expect(theirs?.sectionId).toBe('stageOrder');
       expect(theirs?.sessionId).not.toBe(own?.sessionId);
@@ -540,10 +548,10 @@ describe.skipIf(!testDb || !env.auth)(
           protocolId,
           requestId: randomUUID(),
           sectionId,
-          document: {
-            ...resumed.document,
+          document: Redacted.make({
+            ...Redacted.value(resumed.document),
             label: 'Renamed after the reconnect',
-          },
+          }),
           revision: resumed.revision,
         }),
       );
@@ -553,7 +561,9 @@ describe.skipIf(!testDb || !env.auth)(
       const read = await second.run(
         second.client('GetSection', { protocolId, sectionId }),
       );
-      expect(read.document.label).toBe('Renamed after the reconnect');
+      expect(Redacted.value(read.document).label).toBe(
+        'Renamed after the reconnect',
+      );
       await second.run(second.client('ReleaseLock', { protocolId, sectionId }));
       await watched.stop();
     });
@@ -574,7 +584,9 @@ describe.skipIf(!testDb || !env.auth)(
       expect(behind.lock).toBe('readOnly');
       if (behind.lock !== 'readOnly') throw new Error('unreachable');
       expect(behind.holder.userId).toBe(ADA.userId);
-      expect(behind.holder.displayName).toBe(ADA.name);
+      expect(Redacted.value(behind.holder.displayName)).toBe(
+        Redacted.value(ADA.name),
+      );
     });
 
     it('owns a lock by the tab its upgrade names', async () => {
@@ -758,10 +770,10 @@ describe.skipIf(!testDb || !env.auth)(
           request: {
             kind: 'content',
             contentKind: 'image',
-            name: 'A large picture',
-            source: 'large.png',
+            name: Redacted.make('A large picture'),
+            source: Redacted.make('large.png'),
             contentType: 'image/png',
-            bytes,
+            bytes: Redacted.make(bytes),
           },
         }),
       );
@@ -777,7 +789,7 @@ describe.skipIf(!testDb || !env.auth)(
       );
       expect(preview.status).toBe('ok');
       if (preview.status !== 'ok') return;
-      const [, encoded = ''] = preview.data.url.split(',');
+      const [, encoded = ''] = Redacted.value(preview.data.url).split(',');
       expect(Buffer.from(encoded, 'base64').equals(Buffer.from(bytes))).toBe(
         true,
       );
@@ -811,10 +823,10 @@ describe.skipIf(!testDb || !env.auth)(
             request: {
               kind: 'content',
               contentKind: 'image',
-              name: 'Too large',
-              source: 'too-large.png',
+              name: Redacted.make('Too large'),
+              source: Redacted.make('too-large.png'),
               contentType: 'image/png',
-              bytes: new Uint8Array(2 * 1024 * 1024),
+              bytes: Redacted.make(new Uint8Array(2 * 1024 * 1024)),
             },
           }),
         );
@@ -929,7 +941,10 @@ describe.skipIf(!testDb || !env.auth)(
             protocolId,
             requestId: randomUUID(),
             sectionId,
-            document: { ...acquired.value.document, label: 'Written' },
+            document: Redacted.make({
+              ...Redacted.value(acquired.value.document),
+              label: 'Written',
+            }),
             revision: acquired.value.revision,
           }),
         );
@@ -938,7 +953,7 @@ describe.skipIf(!testDb || !env.auth)(
       const read = await ada.run(
         ada.client('GetSection', { protocolId, sectionId }),
       );
-      steps.push(read.document.label);
+      steps.push(Redacted.value(read.document).label);
       steps.push(
         outcome(
           await ada.runExit(

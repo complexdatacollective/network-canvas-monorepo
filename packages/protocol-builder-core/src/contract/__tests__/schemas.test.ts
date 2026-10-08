@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { Exit, Schema } from 'effect';
+import { Exit, Redacted, Schema } from 'effect';
 import * as RpcSchema from 'effect/rpc/RpcSchema';
 import { describe, expect, expectTypeOf, it } from 'vitest';
 
@@ -64,6 +64,19 @@ const contentRequest = (
   },
 });
 
+const stagedContent = (source: string, bytes?: Uint8Array<ArrayBuffer>) => {
+  const wire = contentRequest(source, bytes);
+  return {
+    ...wire,
+    request: {
+      ...wire.request,
+      name: Redacted.make(wire.request.name),
+      source: Redacted.make(wire.request.source),
+      bytes: Redacted.make(wire.request.bytes),
+    },
+  };
+};
+
 describe('a revision sequence on the wire', () => {
   it('survives JSON as a decimal string, past the float range', () => {
     const sequence = 9_007_199_254_740_993n;
@@ -94,13 +107,14 @@ describe('a revision sequence on the wire', () => {
 
 describe("a staged file's bytes on the wire", () => {
   it('survive JSON as base64', () => {
-    const input = contentRequest('photo.png');
+    const input = stagedContent('photo.png');
     const { wire, decoded } = overJson(StageResourceInputSchema, input);
     expect(wire).toMatchObject({ request: { bytes: 'AQL6' } });
     expect(decoded.request.kind).toBe('content');
     if (decoded.request.kind === 'content') {
-      expect(decoded.request.bytes).toBeInstanceOf(Uint8Array);
-      expect([...decoded.request.bytes]).toEqual([1, 2, 250]);
+      const decodedBytes = Redacted.value(decoded.request.bytes);
+      expect(decodedBytes).toBeInstanceOf(Uint8Array);
+      expect([...decodedBytes]).toEqual([1, 2, 250]);
     }
   });
 
@@ -108,11 +122,12 @@ describe("a staged file's bytes on the wire", () => {
     const bytes = new Uint8Array(256 * 1024).map((_, i) => (i * 31) % 256);
     const { decoded } = overJson(
       StageResourceInputSchema,
-      contentRequest('large.png', bytes),
+      stagedContent('large.png', bytes),
     );
-    expect(decoded.request.kind === 'content' && decoded.request.bytes).toEqual(
-      bytes,
-    );
+    expect(
+      decoded.request.kind === 'content' &&
+        Redacted.value(decoded.request.bytes),
+    ).toEqual(bytes);
   });
 });
 

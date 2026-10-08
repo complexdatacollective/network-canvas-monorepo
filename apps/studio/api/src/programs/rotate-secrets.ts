@@ -2,7 +2,7 @@ import { Console, Effect, Layer, Schema } from 'effect';
 
 import { MaintenanceDatabase } from '../db/client.ts';
 import { Environment } from '../env.ts';
-import { LoggerLive } from '../platform/logger.ts';
+import { LoggerLive, LogLevelLive } from '../platform/logger.ts';
 import { TracingLive } from '../platform/tracing.ts';
 import { rotateSecrets as rotate } from '../secrets/rotate.ts';
 import { Keyring, SecretsCipher } from '../secrets/services.ts';
@@ -68,9 +68,11 @@ const rotateSecrets = Effect.gen(function* () {
 
 export const RotateSecretsProgram = rotateSecrets.pipe(
   Effect.provide(
-    Layer.mergeAll(LoggerLive, TracingLive('rotate-secrets')).pipe(
-      Layer.provideMerge(Environment.layer),
-    ),
+    Layer.mergeAll(
+      LoggerLive,
+      LogLevelLive,
+      TracingLive('rotate-secrets'),
+    ).pipe(Layer.provideMerge(Environment.layer)),
   ),
   // Outside the environment, so a refusal to read it is printed too.
   reportingRefusals,

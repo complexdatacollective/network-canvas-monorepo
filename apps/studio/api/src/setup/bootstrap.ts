@@ -1,7 +1,7 @@
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 
 import { and, eq, isNull, sql } from 'drizzle-orm';
-import { Effect } from 'effect';
+import { Console, Effect, Redacted } from 'effect';
 import type { SqlError } from 'effect/sql';
 
 import { sqlErrorsOnly } from '../db/errors.ts';
@@ -27,7 +27,7 @@ const TOKEN_BYTES = 32;
 
 export type BootstrapTokenOutcome =
   /** The token, for the one moment it exists outside the operator's terminal. */
-  | { kind: 'issued'; token: string }
+  | { kind: 'issued'; token: Redacted.Redacted }
   /** Someone already owns this instance; nothing was written. */
   | { kind: 'owned' };
 
@@ -70,8 +70,8 @@ export const readInstallationId: () => Effect.Effect<
   return rows[0]?.installationId ?? null;
 }, sqlErrorsOnly);
 
-export function hashBootstrapToken(token: string): string {
-  return createHash('sha256').update(token).digest('hex');
+export function hashBootstrapToken(token: Redacted.Redacted): string {
+  return createHash('sha256').update(Redacted.value(token)).digest('hex');
 }
 
 /**
@@ -82,7 +82,7 @@ export function hashBootstrapToken(token: string): string {
  * with no outstanding token refuses everything.
  */
 export function bootstrapTokenMatches(
-  presented: string,
+  presented: Redacted.Redacted,
   storedHash: string | null,
 ): boolean {
   if (storedHash === null) return false;
@@ -111,7 +111,7 @@ export const issueBootstrapToken: () => Effect.Effect<
     .onConflictDoNothing({ target: installation.id })
     .returning({ id: installation.id });
 
-  const token = randomBytes(TOKEN_BYTES).toString('base64url');
+  const token = Redacted.make(randomBytes(TOKEN_BYTES).toString('base64url'));
   // `.returning()` is what makes the `owned` branch real: without it the
   // builder answers with the driver's own result object.
   const armed = yield* tx
@@ -145,8 +145,8 @@ const RULE = '─'.repeat(72);
 export function printBootstrapToken(
   outcome: BootstrapTokenOutcome,
   publicUrl?: string,
-): void {
-  if (outcome.kind === 'owned') return;
+): Effect.Effect<void> {
+  if (outcome.kind === 'owned') return Effect.void;
   const destination = publicUrl
     ? `${publicUrl.replace(/\/+$/, '')}/setup`
     : '/setup on this instance';
@@ -154,7 +154,7 @@ export function printBootstrapToken(
     RULE,
     'FIRST-RUN SETUP TOKEN',
     '',
-    `  ${outcome.token}`,
+    `  ${Redacted.value(outcome.token)}`,
     '',
     `Open ${destination} and enter it to create the first owner`,
     'account and name this instance.',
@@ -163,6 +163,5 @@ export function printBootstrapToken(
     'new one; once an owner exists, no token is issued and setup is closed.',
     RULE,
   ];
-  // oxlint-disable-next-line no-console -- the operator-facing output this exists to produce
-  console.log(lines.join('\n'));
+  return Console.log(lines.join('\n'));
 }

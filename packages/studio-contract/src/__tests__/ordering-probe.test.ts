@@ -4,7 +4,7 @@
  */
 
 import { it } from '@effect/vitest';
-import { Effect, Exit, Layer, Schema } from 'effect';
+import { Effect, Exit, Layer, Redacted, Schema } from 'effect';
 import { Rpc, RpcGroup, RpcMiddleware, RpcTest } from 'effect/rpc';
 import { describe, expect } from 'vitest';
 
@@ -21,9 +21,9 @@ class TeamAdministration extends RpcMiddleware.Service<
 const PROBE_PRINCIPAL = Principal.of({
   kind: 'user',
   userId: UserId.make('probe-user'),
-  email: 'probe@example.org',
+  email: Redacted.make('probe@example.org'),
   emailVerified: true,
-  name: 'Probe Researcher',
+  name: Redacted.make('Probe Researcher'),
   locale: null,
   sessionId: 'probe-session',
 });
@@ -36,7 +36,7 @@ const AuthenticatedLayer = Layer.succeed(Authenticated, (effect) =>
       AuditActor.of({
         kind: 'user',
         id: 'probe-user',
-        label: 'Probe Researcher',
+        label: Redacted.make('Probe Researcher'),
       }),
     ),
   ),

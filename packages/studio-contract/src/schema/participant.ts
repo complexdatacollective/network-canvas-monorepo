@@ -71,8 +71,8 @@ export const InterviewSession = Schema.Struct({
   finishTime: Schema.Null,
   exportTime: Schema.Null,
   lastUpdated: Schema.String,
-  network: InterviewNetwork,
-  stageMetadata: StageMetadata,
+  network: Schema.RedactedFromValue(InterviewNetwork),
+  stageMetadata: Schema.RedactedFromValue(StageMetadata),
 });
 
 export const RedeemInput = Schema.Struct({
@@ -96,7 +96,7 @@ export const SessionPayload = Schema.Struct({
   stageIndex: NonNegativeInt,
   stageId: Schema.NullOr(NetworkIdentifier),
   session: InterviewSession,
-  protocol: Schema.Unknown,
+  protocol: Schema.RedactedFromValue(Schema.Unknown),
   analytics: Schema.Boolean,
 });
 
@@ -137,8 +137,8 @@ export const SyncInput = Schema.Struct({
   revision: DecimalSequence,
   stageIndex: NonNegativeInt,
   stageId: Schema.NullOr(NetworkIdentifier),
-  network: InterviewNetwork,
-  stageMetadata: StageMetadata,
+  network: Schema.RedactedFromValue(InterviewNetwork),
+  stageMetadata: Schema.RedactedFromValue(StageMetadata),
 });
 
 /**
