@@ -4,7 +4,6 @@ import { expect, waitFor } from 'storybook/test';
 import SuperJSON from 'superjson';
 
 import { SyntheticInterview } from '@codaco/protocol-utilities';
-import type { VariableOption } from '@codaco/protocol-validation';
 
 import StoryInterviewShell from '../../storybook-support/StoryInterviewShell';
 
@@ -85,15 +84,17 @@ function buildOptions(
   longLabels: boolean,
   labelSet: LabelSet,
 ) {
-  const options: VariableOption[] = [];
+  // Plain-string labels: SyntheticInterview writes them in the protocol's
+  // declared default language.
+  const options: { label: string; value: number }[] = [];
 
   if (hasMissingValue) {
-    options.push({ label: { en: 'N/A' }, value: -1 });
+    options.push({ label: 'N/A', value: -1 });
   }
 
   if (labelSet === 'markdown') {
     MARKDOWN_CATEGORY_LABELS.forEach((label, i) => {
-      options.push({ label: { en: label }, value: i });
+      options.push({ label, value: i });
     });
     return options;
   }
@@ -101,9 +102,7 @@ function buildOptions(
   if (labelSet === 'sentences') {
     for (let i = 0; i < categoryCount; i++) {
       options.push({
-        label: {
-          en: SENTENCE_CATEGORY_LABELS[i % SENTENCE_CATEGORY_LABELS.length]!,
-        },
+        label: SENTENCE_CATEGORY_LABELS[i % SENTENCE_CATEGORY_LABELS.length]!,
         value: i + 1,
       });
     }
@@ -114,7 +113,7 @@ function buildOptions(
     // The survey set is a fixed instrument; its own length decides the bin
     // count, so `categoryCount` does not apply.
     SURVEY_CATEGORY_LABELS.forEach((label, i) => {
-      options.push({ label: { en: label }, value: i });
+      options.push({ label, value: i });
     });
     return options;
   }
@@ -124,7 +123,7 @@ function buildOptions(
       longLabels && i === 0
         ? LONG_CATEGORY_LABEL
         : (CATEGORY_LABELS[i] ?? `Category ${i + 1}`);
-    options.push({ label: { en: label }, value: i + 1 });
+    options.push({ label, value: i + 1 });
   }
 
   return options;
