@@ -171,7 +171,7 @@ describe.skipIf(!storeDb)('migrateStoredVersionToDraft', () => {
     return run(getDraftDocument(TEST_TEAM_ID, migration.draftId));
   }
 
-  it('keeps a stored v8 version’s attributes encrypted when its experiments turned encryption on', async () => {
+  it('keeps a stored v8 version’s attributes encrypted when its experiments turned encryption on, and keeps its experiments without that one', async () => {
     // Values already collected for them are ciphertext.
     const { versionId } = await seedVersion(
       v8EncryptedSections({ encryptedVariables: true }),
@@ -183,29 +183,39 @@ describe.skipIf(!storeDb)('migrateStoredVersionToDraft', () => {
       'codebook.node.person.variables.personName.encrypted',
       true,
     );
-    expect(document).not.toHaveProperty('experiments');
+    expect(document.experiments).toStrictEqual({});
   });
 
-  it.each([
-    ['absent', undefined],
-    ['off', { encryptedVariables: false }],
-  ])(
-    'unmarks a stored v8 version’s encrypted attributes when encryption was %s',
-    async (_description, experiments) => {
-      const { versionId } = await seedVersion(v8EncryptedSections(experiments));
+  async function expectEncryptionUnmarked(versionId: string) {
+    const document = await migratedDraftOf(versionId);
 
-      const document = await migratedDraftOf(versionId);
+    expect(document).toHaveProperty(
+      'codebook.node.person.variables.personName.type',
+      'text',
+    );
+    expect(document).not.toHaveProperty(
+      'codebook.node.person.variables.personName.encrypted',
+    );
+    return document;
+  }
 
-      expect(document).toHaveProperty(
-        'codebook.node.person.variables.personName.type',
-        'text',
-      );
-      expect(document).not.toHaveProperty(
-        'codebook.node.person.variables.personName.encrypted',
-      );
-      expect(document).not.toHaveProperty('experiments');
-    },
-  );
+  it('unmarks a stored v8 version’s encrypted attributes when encryption was off, and keeps its experiments', async () => {
+    const { versionId } = await seedVersion(
+      v8EncryptedSections({ encryptedVariables: false }),
+    );
+
+    const document = await expectEncryptionUnmarked(versionId);
+
+    expect(document.experiments).toStrictEqual({});
+  });
+
+  it('unmarks a stored v8 version’s encrypted attributes when it had no experiments, and adds none', async () => {
+    const { versionId } = await seedVersion(v8EncryptedSections(undefined));
+
+    const document = await expectEncryptionUnmarked(versionId);
+
+    expect(document).not.toHaveProperty('experiments');
+  });
 
   it('branches an editable current-schema draft from a stored v7 version', async () => {
     const { protocolId, versionId } = await seedVersion(V7_SECTIONS);

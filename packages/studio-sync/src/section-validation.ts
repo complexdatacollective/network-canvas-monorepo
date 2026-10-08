@@ -7,6 +7,7 @@ import {
   CurrentProtocolSchema,
   EdgeDefinitionSchema,
   EgoDefinitionSchema,
+  ExperimentsSchema,
   NodeDefinitionSchema,
   assetSchema,
   stageSchema,
@@ -20,6 +21,7 @@ export const SettingsSectionSchema = z.strictObject({
   name: z.string().min(1),
   description: z.string().optional(),
   localization: CurrentProtocolSchema.shape.localization,
+  experiments: ExperimentsSchema.optional(),
   lastModified: z.string().datetime().optional(),
   schemaVersion: z.literal(CURRENT_SCHEMA_VERSION),
 });
