@@ -102,7 +102,12 @@ Encrypted answers are now protected in a new way:
   answers, or asks before discarding answers that can't be saved, as going
   back from any other person does. Leaving a Network Composer stage saves a
   change in its side panel that hadn't been saved yet, and asks before
-  discarding one that is invalid or couldn't be saved.
+  discarding one that is invalid or couldn't be saved. Closing the side panel,
+  tapping another person, relationship or the background, choosing another
+  tool or selecting with the lasso now does the same, so a change made just
+  before is no longer lost, and keeping a change keeps the panel open on it.
+  Deleting the person or relationship discards its change without asking, and
+  closing the panel after an undo keeps the answer the undo put back.
 - Leaving a stage, moving to the next or previous question on a stage (or to
   the next person on the map), finishing or closing the interview waits for
   answers still being encrypted, so they are kept and the next stage is

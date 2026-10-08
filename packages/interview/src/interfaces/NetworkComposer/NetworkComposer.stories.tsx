@@ -289,7 +289,9 @@ export const BackgroundImage: Story = {
   render: () => <NetworkComposerStoryWrapper buildFn={buildBackgroundImage} />,
 };
 
-const buildValidatedAge = () => {
+const validatedAgeInterview = (
+  people: { id: string; name: string; position: { x: number; y: number } }[],
+) => {
   const { si, nt, quickAddVar, layoutVar, friendship } =
     createComposerInterview(12);
   si.addInformationStage({ title: 'Welcome', text: 'Before the main stage.' });
@@ -307,13 +309,25 @@ const buildValidatedAge = () => {
     },
   });
   stage.addEdgeType({ type: friendship.id });
-  si.addManualNode(stage.id, nt.id, 'alice', {
-    [quickAddVar.id]: 'Alice',
-    [layoutVar.id]: { x: 0.4, y: 0.4 },
-  });
+  for (const { id, name, position } of people) {
+    si.addManualNode(stage.id, nt.id, id, {
+      [quickAddVar.id]: name,
+      [layoutVar.id]: position,
+    });
+  }
   si.addInformationStage({ title: 'Complete', text: 'After the main stage.' });
   return si;
 };
+
+const alice = { id: 'alice', name: 'Alice', position: { x: 0.4, y: 0.4 } };
+
+const buildValidatedAge = () => validatedAgeInterview([alice]);
+
+const buildValidatedAges = () =>
+  validatedAgeInterview([
+    alice,
+    { id: 'bob', name: 'Bob', position: { x: 0.65, y: 0.6 } },
+  ]);
 
 /**
  * Leaving the stage with an edit in the drawer saves it, even one made too
@@ -343,6 +357,53 @@ export const LeavingWithAnInvalidEdit: Story = {
       await screen.findByRole('spinbutton', { name: /age/i }),
     ).toHaveValue(500);
     await expect(canvas.queryByText('After the main stage.')).toBeNull();
+  },
+};
+
+/**
+ * Moving off a person never drops an edit in the drawer. Closing the drawer,
+ * or tapping someone else, first saves the edit, even one made too recently
+ * for the autosave. An edit that cannot be saved, such as an age outside its
+ * limits, is not dropped without a word: the participant is asked whether to
+ * discard it, and keeping it keeps the drawer open on it.
+ */
+export const UnsavedEditInDrawer: Story = {
+  render: () => <NetworkComposerStoryWrapper buildFn={buildValidatedAges} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const discardDialog = { name: 'Discard changes?' };
+    await userEvent.click(
+      await canvas.findByRole('button', { name: 'Alice' }, { timeout: 10_000 }),
+    );
+
+    const age = await screen.findByRole('spinbutton', { name: /age/i });
+    await userEvent.clear(age);
+    await userEvent.type(age, '500');
+    await userEvent.click(screen.getByRole('button', { name: 'Close' }));
+
+    await expect(
+      await screen.findByRole('dialog', discardDialog),
+    ).toHaveTextContent(/invalid data/);
+    await userEvent.click(screen.getByRole('button', { name: 'Keep changes' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', discardDialog)).toBeNull(),
+    );
+    await expect(screen.getByRole('spinbutton', { name: /age/i })).toHaveValue(
+      500,
+    );
+
+    await userEvent.clear(screen.getByRole('spinbutton', { name: /age/i }));
+    await userEvent.type(
+      screen.getByRole('spinbutton', { name: /age/i }),
+      '34',
+    );
+    await userEvent.click(canvas.getByRole('button', { name: 'Bob' }));
+    await expect(screen.queryByRole('dialog', discardDialog)).toBeNull();
+
+    await userEvent.click(canvas.getByRole('button', { name: 'Alice' }));
+    await waitFor(() =>
+      expect(screen.getByRole('spinbutton', { name: /age/i })).toHaveValue(34),
+    );
   },
 };
 

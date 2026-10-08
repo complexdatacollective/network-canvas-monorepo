@@ -85,13 +85,16 @@ vi.mock('../../Anonymisation/encryptionFormat', async (importOriginal) => {
 });
 
 // Holds back the result of the next encryption while `held` is set, so a
-// test can make an earlier save slower than a later one. Counts every
-// encryption begun and ended, so a test can wait for all of them.
+// test can make an earlier save slower than a later one, and refuses every
+// encryption begun while `failing` is set. Counts every encryption begun and
+// ended, so a test can wait for all of them.
 const encryptionGate = vi.hoisted(() => {
-  const gate: { held?: Promise<void>; begun: number; ended: number } = {
-    begun: 0,
-    ended: 0,
-  };
+  const gate: {
+    held?: Promise<void>;
+    failing: boolean;
+    begun: number;
+    ended: number;
+  } = { failing: false, begun: 0, ended: 0 };
   return gate;
 });
 vi.mock('../../Anonymisation/utils', async (importOriginal) => {
@@ -105,7 +108,9 @@ vi.mock('../../Anonymisation/utils', async (importOriginal) => {
       encryptionGate.begun += 1;
       const held = encryptionGate.held;
       encryptionGate.held = undefined;
+      const failing = encryptionGate.failing;
       try {
+        if (failing) throw new Error('Encryption refused');
         const result = await actual.generateSecureAttributes(...args);
         await held;
         return result;
@@ -675,6 +680,7 @@ describe('NetworkComposer validating an encrypted name', () => {
 describe('NetworkComposer saving edits in the order they were made', () => {
   afterEach(() => {
     encryptionGate.held = undefined;
+    encryptionGate.failing = false;
   });
 
   function holdNextEncryption() {
@@ -732,4 +738,37 @@ describe('NetworkComposer saving edits in the order they were made', () => {
       expect(screen.getByLabelText(/notes/i)).toHaveValue(latest);
     },
   );
+
+  it('keeps the drawer open on an answer put back until it is saved, and asks when it cannot be', async () => {
+    const store = await makeStore({ nodes: [await makeEncryptedNode()] });
+    const notesInput = await openAlice(store);
+    const earlier = holdNextEncryption();
+
+    fireEvent.change(notesInput, { target: { value: 'Old friend' } });
+    await waitFor(() => expect(earlier.begun()).toBe(true), {
+      timeout: 2000,
+    });
+    encryptionGate.failing = true;
+    fireEvent.change(notesInput, { target: { value: 'Met at work' } });
+    // Long enough for the autosave to ask for the answer put back.
+    await act(() => new Promise((resolve) => setTimeout(resolve, 600)));
+    act(() => {
+      fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    });
+    earlier.release();
+
+    expect(
+      await screen.findByRole('dialog', { name: 'Discard changes?' }),
+    ).toHaveTextContent('An error occurred while submitting the form.');
+    fireEvent.click(screen.getByRole('button', { name: 'Keep changes' }));
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', { name: 'Discard changes?' }),
+      ).toBeNull(),
+    );
+    expect(screen.getByLabelText(/notes/i)).toHaveValue('Met at work');
+    expect(
+      await readStored(store.getState().session.network.nodes[0], NOTES_VAR),
+    ).toBe('Old friend');
+  });
 });

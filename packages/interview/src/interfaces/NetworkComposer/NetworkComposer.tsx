@@ -484,14 +484,14 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
         const {
           selectedNodeIds: nodeIds,
           selectedEdgeId: edgeId,
-          clearSelection,
+          deselectDeleted,
         } = composerStore.getState();
         if (nodeIds.size > 0) {
           actions.deleteNodesById([...nodeIds]);
-          clearSelection();
+          deselectDeleted();
         } else if (edgeId !== null) {
           actions.deleteEdgeById(edgeId);
-          clearSelection();
+          deselectDeleted();
         }
       }
     },
@@ -846,8 +846,9 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
               } else {
                 actions.deleteEdgeById(id);
               }
-              composerStore.getState().clearSelection();
+              composerStore.getState().deselectDeleted();
             }}
+            guardDraft={composerStore.getState().guardDraft}
           />
         )}
       </ComposerDrawer>
