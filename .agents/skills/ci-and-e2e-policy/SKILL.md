@@ -24,7 +24,12 @@ A pull request into an integration branch gets full CI but no merge queue and no
 required checks, because the rulesets target only `main`: `quality` is advisory
 there, and the pull request merges when its author decides. `push` stays
 `[main]`, so no release, publish, deploy or mirror job ever runs for an
-integration base. Chromatic stays `main`-only: its zero-snapshot statuses exist
+integration base. One branch can back pull requests into several bases, so
+nothing that remembers earlier runs, reports or release PRs may key on the
+branch alone: runs are titled `PR #<n> → <base> · <title>` (the workflow's
+`run-name`) and are matched on that title, Pages reports are keyed by pull
+request number, and a generated release branch counts as a release PR only when
+it targets `main`. Chromatic stays `main`-only: its zero-snapshot statuses exist
 to satisfy required contexts that only `main` has.
 
 #### Storybook interaction tests
