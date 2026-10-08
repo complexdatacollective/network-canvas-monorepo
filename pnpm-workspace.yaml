@@ -40,7 +40,7 @@ catalog:
   '@capacitor/ios': ^8.5.2
   '@capacitor/share': ^8.0.2
   '@capawesome/capacitor-file-picker': ^8.1.0
-  '@chromatic-com/storybook': ^5.3.1
+  '@chromatic-com/storybook': ^5.4.0
   # Every `@effect/*` entry must be the exact version `effect` is pinned to
   # below; the ecosystem ships one version number for all of them.
   '@effect/sql-pg': 4.0.0
