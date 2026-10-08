@@ -55,11 +55,22 @@ const variants = {
   },
 };
 
+type ContainerCustom = Readonly<{
+  orientation: 'vertical' | 'horizontal';
+  isRtl: boolean;
+}>;
+
+// A vertical rail slides in from the screen edge it sits against: the left in
+// a left-to-right interview, the right in a right-to-left one.
+const offscreen = ({ orientation, isRtl }: ContainerCustom) => ({
+  x: orientation === 'vertical' ? (isRtl ? '100%' : '-100%') : 0,
+  y: orientation === 'horizontal' ? '100%' : 0,
+});
+
 const containerVariants = {
-  initial: (orientation: 'vertical' | 'horizontal') => ({
+  initial: (custom: ContainerCustom) => ({
     opacity: 0,
-    x: orientation === 'vertical' ? '-100%' : 0,
-    y: orientation === 'horizontal' ? '100%' : 0,
+    ...offscreen(custom),
   }),
   animate: () => ({
     opacity: 1,
@@ -72,10 +83,9 @@ const containerVariants = {
       damping: 20,
     },
   }),
-  exit: (orientation: 'vertical' | 'horizontal') => ({
+  exit: (custom: ContainerCustom) => ({
     opacity: 0,
-    x: orientation === 'vertical' ? '-100%' : 0,
-    y: orientation === 'horizontal' ? '100%' : 0,
+    ...offscreen(custom),
     transition: { when: 'afterChildren' },
   }),
 };
@@ -356,7 +366,7 @@ const Navigation = ({
         shadow="xs"
         noContainer
         variants={containerVariants}
-        custom={orientation}
+        custom={{ orientation, isRtl } satisfies ContainerCustom}
         initial="initial"
         animate="animate"
         exit="exit"
