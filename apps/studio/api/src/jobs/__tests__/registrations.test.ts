@@ -7,7 +7,9 @@ import { ownerRows, testDb } from '../../__tests__/support/database.ts';
 import { MaintenanceDatabase } from '../../db/client.ts';
 import { MaintenanceScope } from '../../db/tenant.ts';
 import { type DbEnv, Environment, type StudioEnv } from '../../env.ts';
+import { knownInstallation } from '../../platform/__tests__/support/installation.ts';
 import { collectLogs } from '../../platform/__tests__/support/logs.ts';
+import { Analytics } from '../../platform/analytics.ts';
 import { RateLimitStore } from '../../rate-limit/store.ts';
 import { ObjectStore } from '../../storage/object-store.ts';
 import { STUDIO_VERSION } from '../../version.ts';
@@ -31,6 +33,7 @@ import {
 } from './support.ts';
 
 const WORKED = [
+  'analytics-delivery',
   'protocol-store-gc',
   'denied-attempts-summary',
   'update-check',
@@ -104,6 +107,8 @@ describe.skipIf(!testDb)('the worker’s handler registrations', () => {
         },
       }),
       DeniedAttemptsStore.layer.pipe(Layer.provide(RateLimitStore.layerAbsent)),
+      Analytics.layerRecording,
+      knownInstallation('installation-1'),
     ).pipe(Layer.provideMerge(layerDeliveryHarness)),
   )('over Studio and the queue', (suite) => {
     const registered = (overrides: {

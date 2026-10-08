@@ -23,6 +23,9 @@ import {
   unsafeMakeTeamAccess,
 } from '../../db/tenant.ts';
 import { RequestId } from '../../http/middleware/request-id.ts';
+import { Jobs } from '../../jobs/jobs.ts';
+import { JOB_SCHEMA } from '../../jobs/queues.ts';
+import { Analytics } from '../../platform/analytics.ts';
 import {
   audited,
   type AuditEvents,
@@ -96,6 +99,8 @@ const denied = () =>
 const Harness = Layer.mergeAll(
   TestDatabaseLive,
   AuditSignal.layerRecording,
+  Analytics.layerDisabled,
+  Jobs.layer({ schema: JOB_SCHEMA }),
   Layer.succeed(Principal, principal),
   Layer.succeed(AuditActor, userAuditActor(principal)),
   Layer.succeed(RequestId, RequestId.of(REQUEST_ID)),

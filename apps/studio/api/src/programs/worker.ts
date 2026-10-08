@@ -23,6 +23,7 @@ import { jobsCheck } from '../jobs/readiness.ts';
 import { JobHandlersLive } from '../jobs/registrations.ts';
 import { JobWorker } from '../jobs/worker.ts';
 import { MailerLive } from '../mail/live.ts';
+import { Analytics } from '../platform/analytics.ts';
 import {
   ServerTelemetryLive,
   WorkerHealthServerLive,
@@ -157,6 +158,7 @@ function workerWith(db: DbEnv) {
         Layer.provide(MaintenanceState.layerMaintenance),
         Layer.provide(JobQueueMetrics.layer()),
         Layer.provide(JobHandlersLive),
+        Layer.provide(Analytics.layerFromEnvironment),
         // The update check's manifest fetch, which contacts the one host
         // `update/manifest.ts` names.
         Layer.provide(FetchHttpClient.layer),

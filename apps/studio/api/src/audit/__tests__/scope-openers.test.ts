@@ -170,6 +170,11 @@ const OPENERS: Record<string, { count: number; why: string }> = {
       count: 1,
       why: 'the magic-link hook enqueueing a sign-in mail in a transaction of its own, because better-auth calls it outside any adapter transaction; it belongs to no team, and `Jobs.enqueue` requires a transaction',
     },
+  [`${SERVER}/src/auth/service.ts › auth.recordAccountUsage › UntenantedScope.open`]:
+    {
+      count: 1,
+      why: 'better-auth’s after-commit hook for a new account or session enqueueing its usage event in a transaction of its own; the hook runs only once the account or session has committed, the rows belong to no team, and `Jobs.enqueue` requires a transaction',
+    },
   [`${SERVER}/src/auth/service.ts › UntenantedScope.open`]: {
     count: 1,
     why: "`AuthService`'s two membership reads over `team_members` (the `pinned` helper both go through), read-only and policy-free; the scope is there because both reads require `Transaction`",

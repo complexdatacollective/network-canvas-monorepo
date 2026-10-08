@@ -2,6 +2,7 @@
 import { AnimatePresence, motion } from 'motion/react';
 import type { ComponentProps } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useSelector } from 'react-redux';
 
 import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
@@ -17,6 +18,7 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
+import { codebookTypeIndex } from '../../analytics/codebookTypeIndex';
 import { useTrack } from '../../analytics/useTrack';
 import NodeDrawer from '../../components/NodeDrawer';
 import PassphraseRecovery from '../../components/PassphraseRecovery';
@@ -46,6 +48,7 @@ import {
   getNodeTypeDefinition,
   resolveNodeShape,
 } from '../../selectors/session';
+import { getCodebook } from '../../store/modules/protocol';
 import { updateNode } from '../../store/modules/session';
 import { useAppDispatch } from '../../store/store';
 import { useInterviewToast } from '../../toast/useInterviewToast';
@@ -173,6 +176,7 @@ function OtherResponseNode({
 const CategoricalBin = (_props: CategoricalBinStageProps) => {
   const [expandedBinIndex, setExpandedBinIndex] = useState<number | null>(null);
   const track = useTrack();
+  const codebook = useSelector(getCodebook);
   const previousExpandedRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -278,13 +282,13 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
       if (previousIndex === undefined) {
         track('node_binned', {
           node_id: nodeId,
-          node_type: node.type,
+          node_type_index: codebookTypeIndex(codebook, 'node', node.type),
           bin_index: binIndex,
         });
       } else if (previousIndex !== binIndex) {
         track('node_rebinned', {
           node_id: nodeId,
-          node_type: node.type,
+          node_type_index: codebookTypeIndex(codebook, 'node', node.type),
           from_bin_index: previousIndex,
           to_bin_index: binIndex,
         });

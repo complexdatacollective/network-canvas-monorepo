@@ -29,6 +29,8 @@ import type { Database } from '../db/client.ts';
 import { sqlErrorsOnly, sqlErrorsOnlyBeside } from '../db/errors.ts';
 import { type TeamAccess, Transaction } from '../db/tenant.ts';
 import type { RequestId } from '../http/middleware/request-id.ts';
+import type { Jobs } from '../jobs/jobs.ts';
+import type { Analytics } from '../platform/analytics.ts';
 import { emptyProtocol } from '../protocol/sectionize.ts';
 import { createProtocol, type ProtocolStoreError } from '../protocol/store.ts';
 import { SecretsCipher } from '../secrets/services.ts';
@@ -178,6 +180,8 @@ export const createAuditedStudy: (
   | AuditActor
   | RequestId
   | AuditSignal
+  | Analytics
+  | Jobs
   | SecretsCipher
   | DeniedAttempts
 > = Effect.fn('study.create')(function* (
