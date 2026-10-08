@@ -12,6 +12,10 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
 } from '@codaco/fresco-ui/DropdownMenu';
+import {
+  getMarkdownLabelText,
+  RenderMarkdown,
+} from '@codaco/fresco-ui/RenderMarkdown';
 
 import { messages } from '../messages';
 import {
@@ -120,12 +124,12 @@ export default function ConnectMenu({
                     { kind: 'parent', ...parentChoice, ...option },
                     intl.formatMessage(messages.connectedParentAnnouncement, {
                       relationship: label,
-                      kind: kindLabel,
+                      kind: getMarkdownLabelText(kindLabel),
                     }),
                   )
                 }
               >
-                {kindLabel}
+                <RenderMarkdown>{kindLabel}</RenderMarkdown>
               </DropdownMenuItem>
             );
           })}

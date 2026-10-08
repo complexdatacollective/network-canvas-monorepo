@@ -13,6 +13,8 @@ import {
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH,
 } from '../family-pedigree-values.ts';
 import { localizedString } from '../localized-string.ts';
+import ProtocolSchemaV9 from '../schema.ts';
+import { completeProtocol } from './complete-localized-protocol.ts';
 
 const labelSchema = localizedString(z.string().min(1), 'markdown');
 
@@ -141,5 +143,56 @@ describe('supplied Family Pedigree option labels', () => {
       en: 'Female',
       es: 'Femenino',
     });
+  });
+});
+
+describe('a Family Pedigree answer label', () => {
+  const withSexLabel = (label: Record<string, string>) => {
+    const protocol = completeProtocol();
+    const sex = protocol.codebook.node.relative.variables.sex;
+    return {
+      ...protocol,
+      codebook: {
+        ...protocol.codebook,
+        node: {
+          ...protocol.codebook.node,
+          relative: {
+            ...protocol.codebook.node.relative,
+            variables: {
+              ...protocol.codebook.node.relative.variables,
+              sex: {
+                ...sex,
+                options: sex.options.map((option) =>
+                  option.value === 'intersex' ? { ...option, label } : option,
+                ),
+              },
+            },
+          },
+        },
+      },
+    };
+  };
+
+  it('may be reworded', () => {
+    expect(
+      ProtocolSchemaV9.safeParse(withSexLabel({ en: 'Intersex variation' }))
+        .success,
+    ).toBe(true);
+  });
+
+  it('cannot be blank, because participants choose from it', () => {
+    const result = ProtocolSchemaV9.safeParse(withSexLabel({ en: '  ' }));
+    expect(result.success).toBe(false);
+    expect(result.error?.issues.map((issue) => issue.path)).toContainEqual([
+      'codebook',
+      'node',
+      'relative',
+      'variables',
+      'sex',
+      'options',
+      2,
+      'label',
+      'en',
+    ]);
   });
 });

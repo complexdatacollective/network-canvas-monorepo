@@ -568,13 +568,13 @@ export const interfaceMessages = defineMessages({
     id: 'interview.interfaces.zoomIn',
     defaultMessage: 'Zoom in',
     description:
-      'Accessible name of the geospatial map button that increases magnification. Keeps the existing title capitalization.',
+      'Accessible name of the map and family pedigree buttons that increase magnification. Sentence case.',
   },
   zoomOut: {
     id: 'interview.interfaces.zoomOut',
     defaultMessage: 'Zoom out',
     description:
-      'Accessible name of the geospatial map button that decreases magnification. Keeps the existing title capitalization.',
+      'Accessible name of the map and family pedigree buttons that decrease magnification. Sentence case.',
   },
   recenterMap: {
     id: 'interview.interfaces.recenterMap',

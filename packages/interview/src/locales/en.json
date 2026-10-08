@@ -913,11 +913,11 @@
   },
   "interview.interfaces.zoomIn": {
     "defaultMessage": "Zoom in",
-    "description": "Accessible name of the geospatial map button that increases magnification. Keeps the existing title capitalization."
+    "description": "Accessible name of the map and family pedigree buttons that increase magnification. Sentence case."
   },
   "interview.interfaces.zoomOut": {
     "defaultMessage": "Zoom out",
-    "description": "Accessible name of the geospatial map button that decreases magnification. Keeps the existing title capitalization."
+    "description": "Accessible name of the map and family pedigree buttons that decrease magnification. Sentence case."
   },
   "interview.language.chooseLanguage": {
     "defaultMessage": "Choose a language",

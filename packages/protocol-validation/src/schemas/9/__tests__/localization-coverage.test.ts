@@ -84,6 +84,8 @@ const EXPECTED_SITES: readonly ExpectedSite[] = [
   site([...personVariable('flag'), 'options', 0, 'label'], 'markdown', true),
   site([...personVariable('flag'), 'options', 1, 'label'], 'markdown', true),
   site(['codebook', 'node', 'relative', 'label'], 'plain', true),
+  // The answers a Family Pedigree asks for, which participants choose from,
+  // so none may be blank.
   ...Array.from({ length: 5 }, (_, index) =>
     site(
       [
@@ -97,7 +99,6 @@ const EXPECTED_SITES: readonly ExpectedSite[] = [
         'label',
       ],
       'markdown',
-      true,
     ),
   ),
   site(['codebook', 'edge', 'knows', 'label'], 'plain', true),
@@ -125,7 +126,6 @@ const EXPECTED_SITES: readonly ExpectedSite[] = [
         'label',
       ],
       'markdown',
-      true,
     ),
   ),
 
