@@ -92,9 +92,12 @@ framing carries over. A `requireGrandparents` boundary becomes a `completeness`
 setting, with a new `relativesNotRecorded` attribute. An `introScreen` becomes
 an Information stage inserted just before the pedigree. That stage takes the
 pedigree's skip logic, and skips that jumped to the pedigree now jump to it.
-Because inserting a stage moves later stages' positions, an interview already
-in progress on such a protocol resumes one stage early after its protocol is
-migrated in place. `requireChildrenContributors`, `relationshipVariable` and
+Interviews recorded against a migrated protocol are migrated with it: each
+stage's metadata and the resume position follow their stage, so an interview
+in progress resumes where its participant left it. A schema 8 pedigree's
+stage metadata becomes the new shape, keeping the participant's framing and
+"no children" answer, and writing to the network any people and relationships
+that were only held in it. `requireChildrenContributors`, `relationshipVariable` and
 `gameteRoleVariable` are dropped; their attributes stay in the codebook. The
 migration notes describe all of this to researchers.
 
