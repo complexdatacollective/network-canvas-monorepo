@@ -1,0 +1,12 @@
+{
+  "version": "0004_job_correlation",
+  "ordinal": 4,
+  "fingerprint": "ef5c73ec1c06f80aa7029c9e46c16784194d0375d0bfa3170dbb058a188623d5",
+  "drops": [],
+  "artefacts": {
+    "delta.sql": "6c2a3973f259d38a888efbd6c6539942a3608ea2e18687800e3fdf93491b8664",
+    "sidecars.sql": "c79b2857c9ce36da4118cfd26d5ba747a3eab8597826ef09ea01f1c630058b8d",
+    "snapshot.json": "40ae4c746e31cbcc8e425f928224087c97b0b0fb915036ba99ef5ee1c6115933"
+  },
+  "combined": "f710762afc40002b274575ac1e793360af3359e360c0c6321d634f58b246bd2a"
+}

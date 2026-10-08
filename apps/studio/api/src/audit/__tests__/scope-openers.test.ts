@@ -137,8 +137,25 @@ const OPENERS: Record<string, { count: number; why: string }> = {
     why: '`studio-api migrate` applying the schema DDL as the owner; no team exists at this layer',
   },
   [`${SERVER}/src/programs/migrate.ts › OwnerScope.open`]: {
+    count: 2,
+    why: 'issuing the `/setup` bootstrap token, which only the owner may write, and reading the installation id the command’s telemetry is stamped with, read-only',
+  },
+  [`${SERVER}/src/programs/maintenance.ts › maintenance › MaintenanceScope.open`]:
+    {
+      count: 1,
+      why: 'reading the installation id the command’s telemetry is stamped with, read-only; the row belongs to no team',
+    },
+  [`${SERVER}/src/programs/rotate-secrets.ts › MaintenanceScope.open`]: {
     count: 1,
-    why: 'issuing the `/setup` bootstrap token, which only the owner may write',
+    why: 'reading the installation id the command’s telemetry is stamped with, read-only; the row belongs to no team',
+  },
+  [`${SERVER}/src/programs/serve.ts › UntenantedScope.open`]: {
+    count: 1,
+    why: 'reading the installation id the server’s telemetry is stamped with, read-only and retried until the row exists; it belongs to no team',
+  },
+  [`${SERVER}/src/programs/worker.ts › MaintenanceScope.open`]: {
+    count: 1,
+    why: 'reading the installation id the worker’s telemetry is stamped with, read-only and retried until the row exists; it belongs to no team',
   },
   [`${SERVER}/src/jobs/clock.ts › MaintenanceScope.open`]: {
     count: 1,

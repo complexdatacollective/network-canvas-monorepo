@@ -14,7 +14,7 @@ import { Environment } from '../env.ts';
 import { RequestId } from '../http/middleware/request-id.ts';
 import { RequestTeam } from './request-team.ts';
 
-const correlationOf = (
+export const correlationOf = (
   context: Context.Context<never>,
 ): Record<string, string> => {
   const keys: Record<string, string> = {};

@@ -17,10 +17,17 @@ import {
   Schedule,
   Schema,
   Semaphore,
+  type Tracer,
 } from 'effect';
+import { Headers, HttpTraceContext } from 'effect/http';
 import type { SqlClient, SqlError } from 'effect/sql';
 
-import type { JobPayload, JobQueueName } from '@codaco/studio-sync/jobs';
+import {
+  JOB_PAYLOAD_PARSE_OPTIONS,
+  JobCorrelationSchema,
+  type JobPayload,
+  type JobQueueName,
+} from '@codaco/studio-sync/jobs';
 
 import { MaintenanceDatabase } from '../db/client.ts';
 import { MaintenanceScope, Transaction } from '../db/tenant.ts';
@@ -140,6 +147,7 @@ type ClaimedRow = FrozenPolicy & {
   readonly id: string;
   readonly payload: unknown;
   readonly attempts: number;
+  readonly correlation: unknown;
 };
 
 type ExpiredRow = FrozenPolicy & {
@@ -313,7 +321,7 @@ const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
             FOR UPDATE SKIP LOCKED
           LIMIT 1
        )
-      RETURNING id, payload, attempts,
+      RETURNING id, payload, attempts, correlation,
                 retry_limit, retry_delay, retry_backoff, retry_delay_max`;
     return rows[0];
   });
@@ -431,7 +439,8 @@ const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
       INSERT INTO ${table(sql)}.jobs
         (queue, payload, state, policy, attempts, singleton_key,
          retry_limit, retry_delay, retry_backoff, retry_delay_max,
-         expire_in_seconds, run_at, keep_until, created_at, dead_letter_of)
+         expire_in_seconds, run_at, keep_until, created_at, dead_letter_of,
+         correlation)
       SELECT ${deadLetter},
              payload,
              'created',
@@ -446,7 +455,8 @@ const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
              ${DateTime.toDate(now)},
              ${DateTime.toDate(keepUntil)},
              ${DateTime.toDate(now)},
-             id
+             id,
+             correlation
         FROM ${table(sql)}.jobs
        WHERE id = ${jobId}
       ON CONFLICT DO NOTHING
@@ -503,7 +513,12 @@ const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
           payload: claimed.payload,
           attempt: claimed.attempts,
           finalAttempt: claimed.attempts > claimed.retry_limit,
-        }),
+        }).pipe(
+          Effect.withSpan('JobWorker.handle', {
+            attributes: { queue, attempt: claimed.attempts },
+            parent: Option.getOrUndefined(enqueuingSpan(claimed.correlation)),
+          }),
+        ),
       );
 
       const settledAt = yield* clock.now;
@@ -779,6 +794,7 @@ const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
           const enqueued = yield* Effect.exit(
             jobs.enqueue(row.queue, decoded.value, {
               singletonKey: row.name,
+              correlate: false,
             }),
           );
           if (Exit.isFailure(enqueued)) {
@@ -1036,6 +1052,18 @@ export const backoffSeconds = Effect.fnUntraced(function* (
     ? delay
     : Math.min(declaration.retryDelayMax, delay);
 });
+
+const decodeCorrelation = Schema.decodeUnknownOption(
+  JobCorrelationSchema,
+  JOB_PAYLOAD_PARSE_OPTIONS,
+);
+
+const enqueuingSpan = (
+  correlation: unknown,
+): Option.Option<Tracer.ExternalSpan> =>
+  Option.flatMap(decodeCorrelation(correlation), ({ traceparent }) =>
+    HttpTraceContext.w3c(Headers.fromRecordUnsafe({ traceparent })),
+  );
 
 const describe = (error: unknown): string =>
   (deepestMessage(error) ?? String(error)).slice(0, MAX_ERROR_LENGTH);
