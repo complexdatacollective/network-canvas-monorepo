@@ -2,6 +2,7 @@ import type { IntlShape, MessageDescriptor } from '@codaco/app-i18n/messages';
 import type { FramingId } from '@codaco/protocol-validation';
 import type { VariableValue } from '@codaco/shared-consts';
 
+import { readOwnProperty } from '../../utils/ownProperty';
 import { formatPersonLabel, labelFamily, type PersonLabel } from './kinship';
 import { messages } from './messages';
 import {
@@ -139,7 +140,7 @@ export function labelWrites(
   for (const [personId, label] of labels) {
     const person = family.byId.get(personId);
     if (!person) continue;
-    const stored = person.attributes[nameAttribute];
+    const stored = readOwnProperty(person.attributes, nameAttribute);
     const text =
       typeof stored === 'string' ? stored : decryptedNames.get(personId);
     if (stored !== undefined && text === label) held.set(personId, stored);

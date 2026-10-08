@@ -10,6 +10,7 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
+import { readOwnProperty } from '../../utils/ownProperty';
 import { decryptData } from '../Anonymisation/utils';
 
 /** A name as the interview's encryption stores it: ciphertext, with the salt
@@ -31,8 +32,9 @@ export function encryptedNameOf(
   node: NcNode,
   nameAttribute: string,
 ): EncryptedName | undefined {
-  const secure = node[entitySecureAttributesMeta]?.[nameAttribute];
-  const data = node[entityAttributesProperty][nameAttribute];
+  const secureMeta = node[entitySecureAttributesMeta];
+  const secure = secureMeta && readOwnProperty(secureMeta, nameAttribute);
+  const data = readOwnProperty(node[entityAttributesProperty], nameAttribute);
   if (!secure || !isNumberArray(data)) return undefined;
   return { data, secureAttributes: { iv: secure.iv, salt: secure.salt } };
 }

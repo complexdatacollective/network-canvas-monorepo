@@ -64,6 +64,7 @@ import {
 } from '../../store/modules/session';
 import { useAppDispatch } from '../../store/store';
 import type { Direction, StageProps } from '../../types';
+import { readOwnProperty } from '../../utils/ownProperty';
 import { usePassphrase } from '../Anonymisation/usePassphrase';
 import { pedigreeFraming } from '../pedigree-common/framing';
 import {
@@ -195,7 +196,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   );
   const isNominated = (person: Person) =>
     nomination !== undefined &&
-    person.attributes[nomination.attribute] === true;
+    readOwnProperty(person.attributes, nomination.attribute) === true;
   // A prompt limited to one sex at birth leaves out people recorded as the
   // other; anyone whose sex at birth is not known either way can be chosen.
   const canNominate = (person: Person) => {
@@ -825,7 +826,10 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       );
       // The value as stored, which encryption may have turned to ciphertext.
       const written = updateNode.fulfilled.match(result)
-        ? result.payload.attributePatch.set[config.nameAttribute]
+        ? readOwnProperty(
+            result.payload.attributePatch.set,
+            config.nameAttribute,
+          )
         : undefined;
       if (written !== undefined) record[personId] = nameFingerprint(written);
     }
@@ -1112,7 +1116,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     const { mode } = panel;
     closePanel();
     // A typed name is shown at once, while its ciphertext is decrypted.
-    const typedName = result.set[config.nameAttribute];
+    const typedName = readOwnProperty(result.set, config.nameAttribute);
 
     if (mode.kind === 'edit') {
       if (typeof typedName === 'string') {
@@ -1123,7 +1127,9 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
           nodeId: mode.person.id,
           attributePatch: {
             set: result.set,
-            unset: result.unset.filter((variable) => !(variable in result.set)),
+            unset: result.unset.filter(
+              (variable) => !Object.hasOwn(result.set, variable),
+            ),
           },
           currentStep,
         }),

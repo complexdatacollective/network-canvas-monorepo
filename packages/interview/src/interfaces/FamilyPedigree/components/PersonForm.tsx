@@ -42,6 +42,7 @@ import {
   validationPropsFor,
 } from '../../../selectors/forms';
 import { getCodebookVariablesForSubjectType } from '../../../selectors/protocol';
+import { readOwnProperty, writeOwnProperty } from '../../../utils/ownProperty';
 import { RELATIVES_NOT_RECORDED } from '../completeness';
 import { messages } from '../messages';
 import {
@@ -265,9 +266,9 @@ export default function PersonForm({
     if (!person) return undefined;
     const values: Record<string, FieldValue> = {};
     for (const field of formFields) {
-      const value = person.attributes[field.variable];
+      const value = readOwnProperty(person.attributes, field.variable);
       if (value !== null && value !== undefined) {
-        values[field.variable] = value;
+        writeOwnProperty(values, field.variable, value);
       }
     }
     return values;
@@ -287,7 +288,7 @@ export default function PersonForm({
       ...(asksName ? [config.nameAttribute] : []),
       ...(config.genderIdentity ? [config.genderIdentity.attribute] : []),
       config.sexAssignedAtBirthAttribute,
-    ].filter((variable) => !(variable in set));
+    ].filter((variable) => !Object.hasOwn(set, variable));
 
     // "No" and "Don't know" are recorded; "Yes" leaves the question to the
     // siblings or children the participant goes on to add.
@@ -315,7 +316,7 @@ export default function PersonForm({
       if (askAbout.children) {
         answer(ROLE.hasChildren, RELATIVES_NOT_RECORDED.children);
       }
-      set[notRecordedAttribute] = recorded;
+      writeOwnProperty(set, notRecordedAttribute, recorded);
     }
 
     if (formFields.length > 0) {
@@ -324,7 +325,9 @@ export default function PersonForm({
         formFields.map((field) => field.variable),
       );
       if (patch.success) {
-        Object.assign(set, patch.patch.set);
+        for (const [variable, value] of Object.entries(patch.patch.set)) {
+          writeOwnProperty(set, variable, value);
+        }
         unset.push(...patch.patch.unset);
       }
     }
@@ -763,16 +766,19 @@ function readOwnDetails(
   config: PedigreeConfig,
 ): PersonDetails {
   const details: PersonDetails = {};
-  const name = asString(values[config.nameAttribute])?.trim();
-  if (name) details[config.nameAttribute] = name;
+  const name = asString(readOwnProperty(values, config.nameAttribute))?.trim();
+  if (name) writeOwnProperty(details, config.nameAttribute, name);
   if (config.genderIdentity) {
-    const gender = asOption(values[config.genderIdentity.attribute]);
+    const { attribute } = config.genderIdentity;
+    const gender = asOption(readOwnProperty(values, attribute));
     if (gender !== undefined && gender !== '') {
-      details[config.genderIdentity.attribute] = [gender];
+      writeOwnProperty(details, attribute, [gender]);
     }
   }
-  const sex = asString(values[config.sexAssignedAtBirthAttribute]);
-  if (sex) details[config.sexAssignedAtBirthAttribute] = [sex];
+  const sex = asString(
+    readOwnProperty(values, config.sexAssignedAtBirthAttribute),
+  );
+  if (sex) writeOwnProperty(details, config.sexAssignedAtBirthAttribute, [sex]);
   return details;
 }
 

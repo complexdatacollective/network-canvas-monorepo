@@ -19,6 +19,8 @@ import {
   type VariableValue,
 } from '@codaco/shared-consts';
 
+import { readOwnProperty } from '../../utils/ownProperty';
+
 /**
  * The codebook bindings a FamilyPedigree stage writes through, flattened out of
  * the stage definition.
@@ -216,7 +218,8 @@ export function readFamily(
     .filter((node) => node.type === config.personType)
     .map((node) => {
       const attributes = node[entityAttributesProperty];
-      const recorded = attributes[config.nameAttribute];
+      const attribute = (key: string) => readOwnProperty(attributes, key);
+      const recorded = attribute(config.nameAttribute);
       const id = node[entityPrimaryKeyProperty];
       const isGenerated = holdsGeneratedLabel(generatedLabels, id, recorded);
       // Anything but text in a text attribute is ciphertext: an encrypted
@@ -231,15 +234,15 @@ export function readFamily(
         !isGenerated && recorded !== undefined && text === undefined;
       const genderIdentityConfig = config.genderIdentity;
       const genderIdentity = genderIdentityConfig
-        ? readOption(attributes[genderIdentityConfig.attribute])
+        ? readOption(attribute(genderIdentityConfig.attribute))
         : undefined;
       const sexAssignedAtBirth = readCategorical(
-        attributes[config.sexAssignedAtBirthAttribute],
+        attribute(config.sexAssignedAtBirthAttribute),
         PEDIGREE_SEX_ASSIGNED_AT_BIRTH,
       );
       return {
         id,
-        isEgo: attributes[config.egoAttribute] === true,
+        isEgo: attribute(config.egoAttribute) === true,
         name,
         hasUnreadableName,
         genderIdentity,
@@ -253,7 +256,7 @@ export function readFamily(
         sexAssignedAtBirth,
         relativesNotRecorded: readCategoricalSet(
           config.relativesNotRecordedAttribute
-            ? attributes[config.relativesNotRecordedAttribute]
+            ? attribute(config.relativesNotRecordedAttribute)
             : undefined,
           PEDIGREE_RELATIVES_NOT_RECORDED,
         ),
@@ -267,8 +270,9 @@ export function readFamily(
     if (edge.type !== config.relationshipType) continue;
     if (!byId.has(edge.from) || !byId.has(edge.to)) continue;
     const attributes = edge[entityAttributesProperty];
+    const attribute = (key: string) => readOwnProperty(attributes, key);
     const kind = readCategorical(
-      attributes[config.kindAttribute],
+      attribute(config.kindAttribute),
       PEDIGREE_RELATIONSHIP_KINDS,
     );
     if (!kind) continue;
@@ -278,9 +282,9 @@ export function readFamily(
       target: edge.to,
       kind,
       isGestationalCarrier:
-        attributes[config.gestationalCarrierAttribute] === true,
+        attribute(config.gestationalCarrierAttribute) === true,
       // A partnership is current unless recorded otherwise.
-      isCurrentPartner: attributes[config.currentPartnerAttribute] !== false,
+      isCurrentPartner: attribute(config.currentPartnerAttribute) !== false,
     });
   }
 
@@ -374,7 +378,9 @@ export function missingDetailsFor(
     missing.push('sexAssignedAtBirth');
   }
   for (const variable of requiredFormVariables) {
-    if (isEmpty(person.attributes[variable])) missing.push({ variable });
+    if (isEmpty(readOwnProperty(person.attributes, variable))) {
+      missing.push({ variable });
+    }
   }
   return missing;
 }

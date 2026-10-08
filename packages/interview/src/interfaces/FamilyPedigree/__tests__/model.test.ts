@@ -221,6 +221,59 @@ describe('readFamily', () => {
   });
 });
 
+describe('readFamily with an attribute named __proto__', () => {
+  // `CodebookIdSchema` admits `__proto__`, and a plain object answers a read
+  // of it with Object.prototype when it holds no such value of its own.
+  const protoConfig = {
+    ...config,
+    nameAttribute: '__proto__',
+    relativesNotRecordedAttribute: 'constructor',
+  };
+
+  test('reads a person with no name as unnamed, not as an unreadable name', () => {
+    const family = readFamily(
+      [person('ego', { isEgo: true })],
+      [],
+      protoConfig,
+    );
+    expect(family.byId.get('ego')).toMatchObject({
+      name: undefined,
+      hasUnreadableName: false,
+      relativesNotRecorded: [],
+    });
+  });
+
+  test('reads a name stored under it', () => {
+    const family = readFamily(
+      [person('ego', Object.fromEntries([['__proto__', 'Ada']]))],
+      [],
+      protoConfig,
+    );
+    expect(family.byId.get('ego')?.name).toBe('Ada');
+  });
+
+  test('finds a required field under it missing until it is answered', () => {
+    const family = readFamily(
+      [
+        person('a', { gender: ['man'], sex: ['male'] }),
+        person('b', {
+          gender: ['man'],
+          sex: ['male'],
+          ...Object.fromEntries([['__proto__', 40]]),
+        }),
+      ],
+      [],
+      config,
+    );
+    expect(
+      missingDetailsFor(family.byId.get('a')!, ['__proto__'], config),
+    ).toEqual([{ variable: '__proto__' }]);
+    expect(
+      missingDetailsFor(family.byId.get('b')!, ['__proto__'], config),
+    ).toEqual([]);
+  });
+});
+
 describe('readFamily with encrypted names', () => {
   const ciphertext = [181, 22, 9, 240, 77, 3, 145, 61, 200, 18];
 

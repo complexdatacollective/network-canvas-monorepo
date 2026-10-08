@@ -2,6 +2,7 @@ import type { IntlShape } from '@codaco/app-i18n/messages';
 import type { VariableValue } from '@codaco/shared-consts';
 
 import { resolveInterviewIntl } from '../../../i18n/resolveIntl';
+import { readOwnProperty } from '../../../utils/ownProperty';
 import { messages } from '../messages';
 
 export type Status =
@@ -58,7 +59,7 @@ export function affectedSet(
 ): Set<string> {
   const result = new Set<string>();
   for (const person of people) {
-    if (person.attributes[diseaseAttribute] === true) {
+    if (readOwnProperty(person.attributes, diseaseAttribute) === true) {
       result.add(person.id);
     }
   }

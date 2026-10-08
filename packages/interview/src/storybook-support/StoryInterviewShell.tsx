@@ -160,11 +160,18 @@ const StoryInterviewShell = (props: {
   /** Receives the session each time the interview writes it, so a story can
    * check what was stored. */
   onSync?: SyncHandler;
+  /** Changes the payload once it is parsed, for what SuperJSON cannot carry
+   * (such as an attribute id `__proto__`, which it refuses). */
+  preparePayload?: (payload: InterviewPayload) => InterviewPayload;
 }) => {
+  const { preparePayload } = props;
   const { payload, initialStep, assetUrls } = useMemo(() => {
     const raw = SuperJSON.parse<RawSyntheticPayload>(props.rawPayload);
-    return buildPayload(raw);
-  }, [props.rawPayload]);
+    const built = buildPayload(raw);
+    return preparePayload
+      ? { ...built, payload: preparePayload(built.payload) }
+      : built;
+  }, [props.rawPayload, preparePayload]);
 
   const [currentStep, setCurrentStep] = useState<number>(
     props.initialStep ?? initialStep,

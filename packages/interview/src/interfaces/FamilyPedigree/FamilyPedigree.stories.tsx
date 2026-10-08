@@ -97,6 +97,10 @@ type StoryOptions = {
 
 /** What only the story's shell takes: how the interview is hosted. */
 type ShellOptions = {
+  /** Files one attribute under the id `__proto__`, which the codebook
+   * admits: the name, or the Age field of `withFormFields`. Renamed once
+   * the shell has parsed the payload, as SuperJSON refuses the key. */
+  protoAttribute?: 'name' | 'age';
   /** Receives the session each time the interview writes it. */
   onSync?: SyncHandler;
 };
@@ -256,6 +260,7 @@ function PedigreeStory({
   followedByPeopleList,
   followedByNameForm,
   encryptedNames,
+  protoAttribute,
   onSync,
 }: StoryOptions & ShellOptions) {
   const rawPayload = useMemo(
@@ -292,6 +297,27 @@ function PedigreeStory({
     ],
   );
 
+  // The attribute filed under `__proto__`, found in the protocol the payload
+  // holds, and renamed wherever its id is used.
+  const preparePayload = useMemo(() => {
+    if (!protoAttribute) return undefined;
+    const { protocol } =
+      SuperJSON.parse<ReturnType<typeof buildInterview>>(rawPayload);
+    const pedigree = protocol.stages.find(
+      (candidate) => candidate.type === 'FamilyPedigree',
+    );
+    if (pedigree?.type !== 'FamilyPedigree') return undefined;
+    const id =
+      protoAttribute === 'name'
+        ? pedigree.nodeConfiguration.nameAttribute
+        : pedigree.form?.fields[0]?.variable;
+    if (id === undefined) return undefined;
+    return <Payload,>(payload: Payload): Payload =>
+      JSON.parse(
+        JSON.stringify(payload).replaceAll(JSON.stringify(id), '"__proto__"'),
+      ) as Payload;
+  }, [protoAttribute, rawPayload]);
+
   return (
     <div className="flex h-dvh w-full">
       {/* Changing the story's settings builds a new interview, so the
@@ -301,6 +327,7 @@ function PedigreeStory({
         key={rawPayload}
         rawPayload={rawPayload}
         onSync={onSync}
+        preparePayload={preparePayload}
         // The passphrase is entered from the side of the screen.
         navigationOrientation={encryptedNames ? 'vertical' : undefined}
       />
@@ -2302,6 +2329,110 @@ export const EncryptedNames: Story = {
     await expect(
       await body.findByRole('textbox', { name: /^Name/ }),
     ).toHaveValue('Bea');
+  },
+};
+
+/** The value each person holds under the attribute id `__proto__`, in the
+ * session last written: their own property, never the prototype's. */
+const protoValues = () =>
+  (lastSynced?.network.nodes ?? []).flatMap((node) => {
+    const attributes = node[entityAttributesProperty];
+    return Object.hasOwn(attributes, '__proto__')
+      ? [Object.getOwnPropertyDescriptor(attributes, '__proto__')?.value]
+      : [];
+  });
+
+/**
+ * The codebook admits `__proto__` as an attribute id. Bound to the name, a
+ * name typed for a new relative is recorded and shown, and opens in the
+ * name question again.
+ */
+export const NameAttributeNamedProto: Story = {
+  args: { requirement: 'none' },
+  render: (args) => (
+    <PedigreeStory
+      {...settings(args)}
+      protoAttribute="name"
+      onSync={recordSession}
+      family={{
+        people: [
+          { id: 'ego', gender: 'nonBinary', sex: 'intersex', ego: true },
+        ],
+        links: [],
+      }}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    lastSynced = undefined;
+    const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
+
+    await userEvent.hover(await canvas.findByRole('button', { name: /^You/ }));
+    await userEvent.click(await canvas.findByTestId('pedigree-menu-parent'));
+    await userEvent.type(
+      await body.findByRole('textbox', { name: /^Name/ }),
+      'Julie',
+    );
+    await userEvent.click(await body.findByRole('radio', { name: 'Woman' }));
+    await userEvent.click(await body.findByRole('radio', { name: 'Female' }));
+    await userEvent.click(
+      await body.findByRole('button', { name: 'Add to family' }),
+    );
+    await waitFor(() => expect(panelOf(canvasElement)).toBeNull());
+
+    await waitFor(() => expect(protoValues()).toContain('Julie'));
+    await userEvent.click(
+      await canvas.findByRole('button', { name: /^Julie/ }),
+    );
+    await expect(
+      await body.findByRole('textbox', { name: /^Name/ }),
+    ).toHaveValue('Julie');
+  },
+};
+
+/**
+ * The same, for one of the researcher's own fields: an age given for a
+ * relative is recorded, and opens in the question again.
+ */
+export const FormFieldNamedProto: Story = {
+  args: { requirement: 'none' },
+  render: (args) => (
+    <PedigreeStory
+      {...settings(args)}
+      withFormFields
+      protoAttribute="age"
+      onSync={recordSession}
+      family={{
+        people: [
+          { id: 'ego', gender: 'nonBinary', sex: 'intersex', ego: true },
+          { id: 'dad', name: 'Rob', gender: 'man', sex: 'male' },
+        ],
+        links: [{ from: 'dad', to: 'ego', kind: 'biological' }],
+      }}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    lastSynced = undefined;
+    const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
+
+    await userEvent.click(await canvas.findByRole('button', { name: /^Rob/ }));
+    await waitFor(() => expect(panelOf(canvasElement)).not.toBeNull());
+    const panel = within(panelOf(canvasElement) as HTMLElement);
+    await userEvent.type(
+      await panel.findByRole('spinbutton', { name: /Age/ }),
+      '61',
+    );
+    const [living] = await panel.findAllByRole('radio', { name: 'Yes' });
+    await userEvent.click(living!);
+    await userEvent.click(await body.findByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(panelOf(canvasElement)).toBeNull());
+
+    await waitFor(() => expect(protoValues()).toEqual([61]));
+    await userEvent.click(await canvas.findByRole('button', { name: /^Rob/ }));
+    await expect(
+      await body.findByRole('spinbutton', { name: /Age/ }),
+    ).toHaveValue(61);
   },
 };
 
