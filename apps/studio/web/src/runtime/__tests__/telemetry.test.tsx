@@ -3,17 +3,22 @@ import { fileURLToPath } from 'node:url';
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, renderHook, waitFor } from '@testing-library/react';
-import { Effect } from 'effect';
+import { Effect, Schema } from 'effect';
 import type { Rolldown } from 'vite';
 import { build } from 'vite';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { InstanceStatus } from '@codaco/studio-contract/schema/status';
-import type { ErrorReport } from '@codaco/studio-contract/schema/telemetry';
+import { ErrorReport } from '@codaco/studio-contract/schema/telemetry';
 
 import { ResearcherErrorTelemetry } from '../../lib/errorTelemetry.ts';
 import { installRpcHarness, type RpcHarness } from '../../test/rpcHarness.ts';
-import { type SendReport, useErrorTelemetry } from '../telemetry.ts';
+import {
+  type SendReport,
+  startErrorTelemetry,
+  type TelemetryTarget,
+  useErrorTelemetry,
+} from '../telemetry.ts';
 
 const WEB_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 
@@ -180,6 +185,60 @@ describe('browser error reporting', () => {
         colno: 5,
       },
     ]);
+  });
+});
+
+const pageTarget = (): TelemetryTarget & EventTarget =>
+  Object.assign(new EventTarget(), {
+    location: { origin: window.location.origin },
+  });
+
+const raiseOn = (target: EventTarget, error: Error) => {
+  target.dispatchEvent(new ErrorEvent('error', { error }));
+};
+
+describe('the browser report budget and payload', () => {
+  it('sends a report whose anonymous frames still satisfy the contract', async () => {
+    const sent: ErrorReport[] = [];
+    const target = pageTarget();
+    const stop = startErrorTelemetry(
+      'researcher',
+      async (report) => {
+        sent.push(report);
+      },
+      target,
+    );
+    const error = new TypeError('anonymous');
+    error.stack = [
+      'TypeError: anonymous',
+      `    at ${window.location.origin}/assets/index-abc123.js:10:5`,
+      `@${window.location.origin}/assets/chunk-def456.js:3:4`,
+    ].join('\n');
+    raiseOn(target, error);
+    stop();
+    await Promise.resolve();
+    expect(sent).toHaveLength(1);
+    const decoded = Schema.decodeUnknownSync(ErrorReport)(sent[0]);
+    expect(decoded.frames.map((frame) => frame.function)).toEqual([
+      '<anonymous>',
+      '<anonymous>',
+    ]);
+  });
+
+  it('keeps one budget of ten reports for the page across remounts', () => {
+    let sent = 0;
+    const target = pageTarget();
+    const send: SendReport = async () => {
+      sent += 1;
+    };
+    for (let mount = 0; mount < 3; mount += 1) {
+      const stop = startErrorTelemetry('participant', send, target);
+      for (let error = 0; error < 6; error += 1) {
+        raiseOn(target, new Error('again'));
+      }
+      stop();
+    }
+    expect(sent).toBe(10);
   });
 });
 

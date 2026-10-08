@@ -8,6 +8,8 @@ export const REPORTED_ERROR_TYPE = /^[A-Za-z][\w.]{0,99}$/;
 
 export const REPORTED_FUNCTION_NAME = /^[\w$.<>[\] -]{1,200}$/;
 
+export const ANONYMOUS_FUNCTION = '<anonymous>';
+
 export const REPORTED_BUNDLE_PATH = /^\/assets\/[\w.-]{1,200}\.m?js$/;
 
 export const REPORTED_CHUNK_ID = /^[\w-]{1,128}$/;

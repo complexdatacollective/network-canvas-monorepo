@@ -7,6 +7,7 @@ import { useEffect } from 'react';
 import { RPC_PATH } from '@codaco/studio-contract/rpc/studio';
 import { TelemetryRpcs } from '@codaco/studio-contract/rpc/telemetry';
 import {
+  ANONYMOUS_FUNCTION,
   type ErrorReport,
   MAX_REPORTED_FRAMES,
   REPORTED_BUNDLE_PATH,
@@ -88,7 +89,7 @@ const bundleFrame = (
         frame.function !== undefined &&
         REPORTED_FUNCTION_NAME.test(frame.function)
           ? frame.function
-          : '?',
+          : ANONYMOUS_FUNCTION,
       lineno: frame.lineno,
       colno: frame.colno,
       ...(chunkId !== undefined && REPORTED_CHUNK_ID.test(chunkId)
@@ -135,15 +136,30 @@ const sendReport: SendReport = (report) =>
     ).pipe(Effect.provide(ReportProtocol), Effect.ignore),
   );
 
-function startErrorTelemetry(
+export type TelemetryTarget = Pick<
+  Window,
+  'addEventListener' | 'removeEventListener'
+> & { readonly location: Pick<Location, 'origin'> };
+
+const budgets = new WeakMap<TelemetryTarget, { remaining: number }>();
+
+const budgetOf = (target: TelemetryTarget): { remaining: number } => {
+  const known = budgets.get(target);
+  if (known !== undefined) return known;
+  const fresh = { remaining: MAX_REPORTS_PER_PAGE };
+  budgets.set(target, fresh);
+  return fresh;
+};
+
+export function startErrorTelemetry(
   surface: ReportingSurface,
   send: SendReport = sendReport,
-  target: Window = window,
+  target: TelemetryTarget = window,
 ): () => void {
-  let remaining = MAX_REPORTS_PER_PAGE;
+  const budget = budgetOf(target);
   const report = (error: unknown) => {
-    if (remaining <= 0) return;
-    remaining -= 1;
+    if (budget.remaining <= 0) return;
+    budget.remaining -= 1;
     send(errorReport(error, surface, target.location.origin)).catch(
       () => undefined,
     );
