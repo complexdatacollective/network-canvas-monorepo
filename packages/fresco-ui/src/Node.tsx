@@ -68,7 +68,7 @@ const nodeVariants = cva({
     'focusable relative inline-flex items-center justify-center focus-visible:outline-offset-6',
     'aspect-square min-w-0 shrink-0',
     'text-(--ink)',
-    '[--base:var(--node-1)] [--dark:oklch(from_var(--base)_calc(l-0.05)_c_h)] [--ink:contrast-color(var(--base))]',
+    '[--base:var(--node-1)] [--dark:oklch(from_var(--base)_calc(l-0.05)_c_h)] [--ink:var(--node-1-contrast)]',
   ],
   variants: {
     size: {
@@ -100,7 +100,8 @@ const nodeVariants = cva({
         'outline-node-7 [--base:var(--node-7)] [--ink:var(--node-7-contrast)]',
       'node-color-seq-8':
         'outline-node-8 [--base:var(--node-8)] [--ink:var(--node-8-contrast)]',
-      'custom': '', // Custom color - set via style prop
+      'custom':
+        '[--ink:var(--color-white)] supports-[color:contrast-color(red)]:[--ink:contrast-color(var(--base))]', // Custom color - set via style prop
     },
     disabled: {
       true: 'pointer-events-none saturate-50',
