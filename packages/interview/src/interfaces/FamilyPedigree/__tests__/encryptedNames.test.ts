@@ -1,6 +1,10 @@
 import { describe, expect, test } from 'vitest';
 
-import { encryptedValueOf, NameDecryptor } from '../encryptedNames';
+import {
+  decryptValues,
+  encryptedValueOf,
+  NameDecryptor,
+} from '../encryptedNames';
 import { encryptedPerson, person } from './fixtures';
 
 const PASSPHRASE = 'correct horse battery staple';
@@ -23,6 +27,21 @@ describe('encryptedValueOf', () => {
     expect(
       encryptedValueOf(person('orphan', { name: [1, 2, 3] }), 'name'),
     ).toBe(undefined);
+  });
+});
+
+describe('decryptValues', () => {
+  test('decrypts each encrypted value asked for, and leaves text alone', async () => {
+    const bea = await encryptedPerson('bea', 'Bea', PASSPHRASE, {
+      nickname: 'Bee',
+    });
+    const values = await decryptValues(bea, ['name', 'nickname'], PASSPHRASE);
+    expect(values && Object.fromEntries(values)).toEqual({ name: 'Bea' });
+  });
+
+  test('is null when the passphrase cannot decrypt one of them', async () => {
+    const bea = await encryptedPerson('bea', 'Bea', PASSPHRASE);
+    expect(await decryptValues(bea, ['name'], 'wrong passphrase')).toBeNull();
   });
 });
 
