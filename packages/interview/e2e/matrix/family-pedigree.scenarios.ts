@@ -30,6 +30,8 @@ const ATTR = entityAttributesProperty;
 const PK = entityPrimaryKeyProperty;
 
 const PROMPT = 'Add the members of your family.';
+/** The researcher's own question, encrypted, when a scaffold adds it. */
+const NICKNAME = 'Nickname';
 const BEFORE_TITLE = 'Before your family';
 const AFTER_TITLE = 'After your family';
 
@@ -54,6 +56,9 @@ type PedigreeOptions = {
   }[];
   /** Encrypts the name attribute with the participant's passphrase. */
   encryptedNames?: boolean;
+  /** Adds a text field, Nickname, encrypted with the participant's
+   * passphrase (the name is encrypted only with `encryptedNames`). */
+  encryptedFormField?: boolean;
   /** What comes before the pedigree. The pedigree is the first stage without
    * one; an Information stage, or an Information stage and then an
    * Anonymisation stage, otherwise. An Information stage always follows it. */
@@ -78,7 +83,7 @@ type Seed = {
  */
 function scaffold(options: PedigreeOptions = {}) {
   const synth = new SyntheticInterview();
-  if (options.encryptedNames)
+  if (options.encryptedNames || options.encryptedFormField)
     synth.setExperiments({ encryptedVariables: true });
   if (options.before) {
     synth.addInformationStage({
@@ -111,6 +116,21 @@ function scaffold(options: PedigreeOptions = {}) {
     completeness: options.completeness,
     nominationPrompts: options.nominationPrompts,
   });
+  const nickname = options.encryptedFormField
+    ? people.addVariable({
+        name: 'nickname',
+        type: 'text',
+        component: 'Text',
+        encrypted: true,
+      }).id
+    : undefined;
+  if (nickname) {
+    fp.addFormField({
+      component: 'Text',
+      variable: nickname,
+      prompt: NICKNAME,
+    });
+  }
   people.setShape({
     default: 'diamond',
     dynamic: {
@@ -165,7 +185,7 @@ function scaffold(options: PedigreeOptions = {}) {
   /** The pedigree's step: its index among the stages. */
   const step = options.before === 'anonymisation' ? 2 : options.before ? 1 : 0;
 
-  return { synth, fp, step, person, relate, parents };
+  return { synth, fp, step, person, relate, parents, nickname };
 }
 
 /** A person on the canvas, by their accessible name. */
@@ -1274,6 +1294,64 @@ function nominationPrompts(): ScenarioDefinition {
 }
 
 /**
+ * A change of sex at birth withdraws the nominations it rules out. The
+ * participant, intersex, is selected for a prompt limited to people assigned
+ * female at birth; back on the family, their sex at birth is changed to
+ * male, which sets that prompt's attribute to false, and the prompt then
+ * leaves them out.
+ */
+function sexChangeWithdrawsNomination(): ScenarioDefinition {
+  const scaffolded = scaffold({
+    nominationPrompts: [
+      {
+        text: OVARIAN,
+        variableName: 'ovarianCancer',
+        onlyForSexAssignedAtBirth: 'female',
+      },
+    ],
+  });
+  const { synth, fp } = scaffolded;
+  seedDescribedParents(scaffolded);
+  const [ovarian] = fp.nominations;
+
+  return {
+    id: 'sex-change-withdraws-nomination',
+    covers: ['nominationPrompts[].onlyForSexAssignedAtBirth=withdrawnOnChange'],
+    seedNetwork: true,
+    build: () => synth,
+    run: async (ctx) => {
+      const { page, interview } = ctx;
+      const ariFlag = async () =>
+        nodeNamed(await networkOf(ctx), fp.name, 'Ari')?.[ATTR][ovarian ?? ''];
+      const you = member(page, 'You');
+
+      await interview.nextButton.click();
+      await expect(page.getByRole('heading', { name: OVARIAN })).toBeVisible();
+      await expect(you).toBeEnabled();
+      await you.click();
+      await expect(you).toHaveAttribute('aria-pressed', 'true');
+      await expect.poll(ariFlag).toBe(true);
+
+      await page.getByTestId('previous-button').click();
+      await expect(page.getByRole('heading', { name: PROMPT })).toBeVisible();
+      await you.click();
+      await expect(panel(page)).toBeVisible();
+      await panel(page)
+        .getByRole('radiogroup', { name: /^Sex assigned at birth/ })
+        .getByRole('radio', { name: 'Male', exact: true })
+        .click();
+      await submitPanel(page, 'Save');
+      await expect.poll(ariFlag).toBe(false);
+
+      await interview.nextButton.click();
+      await expect(page.getByRole('heading', { name: OVARIAN })).toBeVisible();
+      await expect(you).toBeDisabled();
+      await expect(you).toHaveAttribute('aria-pressed', 'false');
+    },
+  };
+}
+
+/**
  * Connecting and disconnecting people already shown. Tom is recorded only as
  * Rachel's partner, so that partnership cannot be removed: he would leave the
  * family tree. The connect tool makes him the participant's adoptive parent,
@@ -1535,6 +1613,74 @@ function encryptedNames(): ScenarioDefinition {
   };
 }
 
+/**
+ * The study encrypts one of its own questions, but not names. Until the
+ * participant enters their passphrase nobody can be added or changed: the
+ * add menu does not open, and a notice under the family says why and asks
+ * for it. Once it is entered, an answer to that question is stored
+ * encrypted while the name is stored as typed, and the answer opens
+ * decrypted in the question again.
+ */
+function encryptedFormField(): ScenarioDefinition {
+  const scaffolded = scaffold({ encryptedFormField: true });
+  const { synth, fp, nickname } = scaffolded;
+  seedDescribedParents(scaffolded);
+
+  return {
+    id: 'encrypted-form-field',
+    covers: ['form.fields[].variable=encrypted'],
+    slow: true,
+    seedNetwork: true,
+    build: () => synth,
+    run: async (ctx) => {
+      const { page } = ctx;
+      const notice = page.getByTestId('pedigree-passphrase-notice');
+      await expect(
+        notice.getByText(
+          'Enter your passphrase to add or change people in your family.',
+          { exact: true },
+        ),
+      ).toBeVisible();
+      await member(page, 'You').hover();
+      await expect(page.getByTestId('pedigree-menu-sibling')).toHaveCount(0);
+
+      await notice.getByRole('button', { name: 'Enter passphrase' }).click();
+      const overlay = page.getByRole('dialog', {
+        name: 'Enter your Passphrase',
+      });
+      await overlay
+        .getByRole('textbox', { name: 'Passphrase' })
+        .fill('correct-horse-battery');
+      await overlay.getByRole('button', { name: 'Submit passphrase' }).click();
+      await expect(notice).toHaveCount(0);
+
+      await addRelativeOf(page, 'You', 'sibling');
+      await describe(page, { name: 'Bea', gender: 'Woman', sex: 'Female' });
+      await panel(page).getByRole('textbox', { name: NICKNAME }).fill('Bee');
+      await submitPanel(page, 'Add to family');
+      await expect(member(page, 'Bea')).toBeVisible();
+
+      const isCiphertext = (value: unknown) =>
+        Array.isArray(value) && value.every((item) => typeof item === 'number');
+      await expect
+        .poll(async () => {
+          const bea = nodeNamed(await networkOf(ctx), fp.name, 'Bea');
+          return isCiphertext(bea?.[ATTR][nickname ?? '']);
+        })
+        .toBe(true);
+      const network = await networkOf(ctx);
+      expect(
+        network.nodes.some((node) => node[ATTR][nickname ?? ''] === 'Bee'),
+      ).toBe(false);
+
+      await member(page, 'Bea').click();
+      await expect(
+        panel(page).getByRole('textbox', { name: NICKNAME }),
+      ).toHaveValue('Bee');
+    },
+  };
+}
+
 export const familyPedigreeScenarios: InterfaceScenarios = {
   interfaceType: 'FamilyPedigree',
   scenarios: [
@@ -1551,8 +1697,10 @@ export const familyPedigreeScenarios: InterfaceScenarios = {
     extendedScope('thirdDegree'),
     formFieldsMissingDetails(),
     nominationPrompts(),
+    sexChangeWithdrawsNomination(),
     connectAndDisconnect(),
     relationshipKindsDrawn(),
     encryptedNames(),
+    encryptedFormField(),
   ],
 };
