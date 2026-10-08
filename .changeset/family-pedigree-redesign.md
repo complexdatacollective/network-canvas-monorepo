@@ -40,7 +40,25 @@ birth.
   can't be removed.
 - Completeness settings can require, or recommend, that a minimum part of the
   family is recorded, along with every required detail about each person,
-  before the participant continues.
+  before the participant continues. From the parents, siblings and children
+  scope upwards, each of the participant's biological children needs their
+  other biological parent; an unnamed parent counts, and that parent's own
+  family is not required.
+- Which gamete each genetic parent gave is never asked. One shared rule
+  derives it from sex assigned at birth (by elimination where one parent is
+  neither female nor male), and the kinship words and the genetics engine
+  both read it.
+- No addition gives anyone more than two genetic parents, or two of one sex
+  assigned at birth: a placeholder parent is biological only while a genetic
+  place is open, and "also parent of" links carry the anchor link's kind and
+  carrier. Full siblings need the same parents.
+- A stage can record each person's relationship to the participant (parent,
+  half sibling, cousin and so on) so later stages can filter on it. It is
+  worked out from the family drawn every time the participant leaves the
+  stage, given to everyone connected to the participant but never the
+  participant, and cleared from anyone no longer connected.
+- The stage is not left forwards until the participant has chosen its
+  wording, when the stage lets them choose.
 - Nomination prompts ask the participant to select the relatives a question
   applies to, and can leave out people recorded with one sex assigned at
   birth.
@@ -67,7 +85,11 @@ has:
   (`{ attribute, terms }`). Its `terms` give the kinship words
   (`PEDIGREE_GENDER_WORDS`) that each gender identity option takes. The
   options of a gender identity attribute that a pedigree binds can be edited
-  only from that stage, though any stage may still record answers to it.
+  only from that stage, though any stage may still record answers to it, and
+  only one stage may manage them: two stages binding the same gender identity
+  attribute are refused. `relationshipToParticipantAttribute` (optional) is a
+  categorical attribute with the fixed `PEDIGREE_RELATIONSHIPS_TO_PARTICIPANT`
+  values, which only the pedigree may write.
 - `edgeConfiguration`: the family edge type, with `kindAttribute`
   (categorical, with the fixed `PEDIGREE_RELATIONSHIP_KINDS` options), and
   `gestationalCarrierAttribute` and `currentPartnerAttribute` (both boolean).
@@ -109,7 +131,10 @@ partner", and carry the gestational carrier flag as true or false, as the
 redesigned stage writes them. A person with no sex at birth recorded who gave
 an egg or a sperm, by schema 8's gamete role, is recorded as female or male.
 `requireChildrenContributors`, `relationshipVariable` and
-`gameteRoleVariable` are dropped; their attributes stay in the codebook. Node
+`gameteRoleVariable` are dropped; their attributes stay in the codebook. The
+old relationship attribute held English text, so a converted stage records no
+relationship to the participant until a categorical attribute is chosen for
+it. Node
 form fields collecting the name or sex at birth attribute are left out, since
 the stage asks both itself. A pedigree whose answers share an attribute (two
 nomination prompts, a nomination prompt and a node form field, or the name
@@ -119,7 +144,11 @@ naming the attribute. The migration notes describe all of this to researchers.
 **In Architect**, the stage editor configures the new stage. It has a
 setting that gives person symbols a shape for each sex assigned at birth or
 gender identity, and edits a gender identity attribute's options together
-with their kinship words. Architect offers and summarises the Narrative
+with their kinship words. The gender identity picker rules out an attribute
+whose options another stage manages. Recording each person's relationship to
+the participant is switched on in the person attributes, which creates an
+attribute with the fixed values labelled in the researcher's language, and
+the protocol summary lists it. Architect offers and summarises the Narrative
 Pedigree again, and won't let a Family Pedigree's person type change while a
 Narrative Pedigree reads it. The Colored Eco-Genetic Relationship Map template
 marks the people named in "People in your life" with a `non_kin` attribute,

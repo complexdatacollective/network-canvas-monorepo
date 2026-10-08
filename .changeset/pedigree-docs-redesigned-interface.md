@@ -6,7 +6,10 @@ The Family Pedigree interface page describes the redesigned interface. It
 covers how participants add and describe relatives, who the stage draws,
 generated labels and encrypted names, the person and relationship attributes
 the stage records, the wording, completeness and nomination prompt settings,
-and where a person's symbol comes from.
+and where a person's symbol comes from. It states the rule that derives which
+parent gave the egg or the sperm, and when it is unknown, and describes the
+optional relationship-to-the-participant attribute, its values and how to
+filter on it.
 
 The Narrative Pedigree page describes the interface as it reads the redesigned
 Family Pedigree. It explains that sex-linked inheritance follows sex assigned
