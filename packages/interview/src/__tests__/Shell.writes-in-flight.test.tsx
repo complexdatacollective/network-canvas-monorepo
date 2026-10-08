@@ -75,7 +75,7 @@ const payload = {
     codebook: {
       ego: {
         variables: {
-          agrees: { name: 'Agrees', label: 'Agrees', type: 'boolean' },
+          agrees: { name: 'agrees', label: 'Agrees', type: 'boolean' },
         },
       },
       node: {},
@@ -145,9 +145,9 @@ async function renderShell(onExit?: () => void) {
   render(
     <Shell
       payload={payload}
-      requestedLocales={['en']}
       onSync={() => Promise.resolve()}
       onProtocolLocaleChange={() => Promise.resolve()}
+      requestedLocales={[]}
       onFinish={() => Promise.resolve()}
       onRequestAsset={() => Promise.resolve('')}
       analytics={{ installationId: 'test', hostApp: 'test' }}

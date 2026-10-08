@@ -10,6 +10,7 @@ import {
   type Codebook,
   type FormField,
   type Variable,
+  VARIABLE_REFERENCE_VALIDATIONS,
 } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
@@ -22,28 +23,83 @@ import { CurrentStepProvider } from '../../contexts/CurrentStepContext';
 import type { ProtocolPayload } from '../../contract/types';
 import { runtimeMessages } from '../../i18n/runtimeMessages';
 import { TestProtocolLocalization } from '../../interfaces/__tests__/TestProtocolLocalization';
+import {
+  encryptionFor,
+  unlockWith,
+} from '../../interfaces/Anonymisation/__tests__/encryptionFixtures';
 import { generateSecureAttributes } from '../../interfaces/Anonymisation/utils';
 import protocol from '../../store/modules/protocol';
 import session, {
   restoreNode,
   type SessionState,
 } from '../../store/modules/session';
-import ui, { setPassphrase } from '../../store/modules/ui';
+import ui from '../../store/modules/ui';
 import useProtocolForm from '../useProtocolForm';
 
 const NODE_TYPE = 'person';
 const NAME_VAR = 'name';
 const NICKNAME_VAR = 'nickname';
 const NOTES_VAR = 'notes';
-const SECRET_VAR = 'secret';
-const PET_TYPE = 'pet';
 const NODE_ID = 'node-1';
 const PASSPHRASE = 'protocol form passphrase';
 
+const nameReference = asEntityAttributeReference(NAME_VAR);
+
+// The variable whose validation uses each rule to name the encrypted name. A
+// valid protocol can only name it with `sameAs` or `differentFrom` (the others
+// need a number, date or scalar), but every rule that names a variable reads
+// that variable's stored value, so each is covered.
+const variableNamingNameBy: Record<
+  (typeof VARIABLE_REFERENCE_VALIDATIONS)[number],
+  string
+> = {
+  sameAs: 'confirm-name',
+  differentFrom: NICKNAME_VAR,
+  greaterThanVariable: 'greater',
+  lessThanVariable: 'less',
+  greaterThanOrEqualToVariable: 'at-least',
+  lessThanOrEqualToVariable: 'at-most',
+};
+
 const variables: Record<string, Variable> = {
+  [variableNamingNameBy.sameAs]: {
+    name: 'confirm_name',
+    label: 'confirm_name',
+    type: 'text',
+    component: 'Text',
+    validation: { sameAs: nameReference },
+  },
+  [variableNamingNameBy.greaterThanVariable]: {
+    name: 'greater',
+    label: 'greater',
+    type: 'number',
+    component: 'Number',
+    validation: { greaterThanVariable: nameReference },
+  },
+  [variableNamingNameBy.lessThanVariable]: {
+    name: 'less',
+    label: 'less',
+    type: 'number',
+    component: 'Number',
+    validation: { lessThanVariable: nameReference },
+  },
+  [variableNamingNameBy.greaterThanOrEqualToVariable]: {
+    name: 'at_least',
+    label: 'at_least',
+    type: 'number',
+    component: 'Number',
+    validation: { greaterThanOrEqualToVariable: nameReference },
+  },
+  [variableNamingNameBy.lessThanOrEqualToVariable]: {
+    name: 'at_most',
+    label: 'at_most',
+    type: 'number',
+    component: 'Number',
+    validation: { lessThanOrEqualToVariable: nameReference },
+  },
   [NAME_VAR]: {
     name: 'name',
-    label: 'Name',
+    label: 'name',
     type: 'text',
     component: 'Text',
     encrypted: true,
@@ -51,56 +107,45 @@ const variables: Record<string, Variable> = {
   },
   [NICKNAME_VAR]: {
     name: 'nickname',
-    label: 'Nickname',
+    label: 'nickname',
     type: 'text',
     component: 'Text',
-    validation: { differentFrom: asEntityAttributeReference(NAME_VAR) },
+    validation: { differentFrom: nameReference },
   },
   [NOTES_VAR]: {
     name: 'notes',
-    label: 'Notes',
+    label: 'notes',
     type: 'text',
     component: 'Text',
-  },
-  [SECRET_VAR]: {
-    name: 'secret',
-    label: 'Secret',
-    type: 'text',
-    component: 'Text',
-    encrypted: true,
   },
 };
 
-const petVariables: Record<string, Variable> = {
+// The variables as a protocol re-imported without its encryption declares
+// them: the name the interview stored encrypted is no longer marked.
+const unmarkedVariables: Record<string, Variable> = {
+  ...variables,
   [NAME_VAR]: {
     name: 'name',
-    label: 'Name',
+    label: 'name',
     type: 'text',
     component: 'Text',
-    encrypted: true,
+    validation: { unique: true },
   },
 };
 
-const codebook: Codebook = {
+const codebookWith = (nodeVariables: Record<string, Variable>): Codebook => ({
   node: {
     [NODE_TYPE]: {
       name: 'Person',
       label: { en: 'Person' },
       color: 'node-color-seq-1',
       shape: { default: 'circle' },
-      variables,
-    },
-    [PET_TYPE]: {
-      name: 'Pet',
-      label: { en: 'Pet' },
-      color: 'node-color-seq-2',
-      shape: { default: 'square' },
-      variables: petVariables,
+      variables: nodeVariables,
     },
   },
   edge: {},
   ego: { variables: {} },
-};
+});
 
 function fieldFor(variable: string): FormField[] {
   return [
@@ -111,32 +156,33 @@ function fieldFor(variable: string): FormField[] {
   ];
 }
 
+/**
+ * The stored person, with their name encrypted for `boundTo`: their own id
+ * unless the ciphertext was written for someone else.
+ */
 async function encryptedNode(
-  attributes: Record<string, string> = { [NAME_VAR]: 'Alice' },
-  {
-    id = NODE_ID,
-    type = NODE_TYPE,
-    passphrase = PASSPHRASE,
-  }: { id?: string; type?: string; passphrase?: string } = {},
+  boundTo = NODE_ID,
+  { id = NODE_ID, name = 'Alice' } = {},
 ): Promise<NcNode> {
   const { encryptedAttributes, secureAttributes } =
     await generateSecureAttributes(
-      attributes,
-      type === PET_TYPE ? petVariables : variables,
-      passphrase,
+      { [NAME_VAR]: name },
+      variables,
+      (await encryptionFor(PASSPHRASE)).key,
+      boundTo,
     );
   return {
     [entityPrimaryKeyProperty]: id,
-    type,
+    type: NODE_TYPE,
     [entityAttributesProperty]: encryptedAttributes,
     [entitySecureAttributesMeta]: secureAttributes,
   };
 }
 
-function makeStore(
+async function makeStore(
   nodes: NcNode[],
-  passphrase: string | null,
-  encryptionEnabled = true,
+  unlocked: boolean,
+  nodeVariables = variables,
 ) {
   const sessionState: SessionState = {
     id: 'session',
@@ -144,9 +190,9 @@ function makeStore(
     finishTime: null,
     exportTime: null,
     lastUpdated: '2026-01-01T00:00:00.000Z',
-    promptIndex: 0,
     localePreference: null,
     locale: null,
+    promptIndex: 0,
     network: {
       ego: {
         [entityPrimaryKeyProperty]: 'ego',
@@ -154,6 +200,7 @@ function makeStore(
       },
       nodes,
       edges: [],
+      encryption: (await encryptionFor(PASSPHRASE)).header,
     },
   };
   const protocolState: ProtocolPayload = {
@@ -164,18 +211,14 @@ function makeStore(
     name: 'Encrypted form protocol',
     schemaVersion: 9,
     localization: { defaultLocale: 'en', locales: ['en'] },
-    experiments: { encryptedVariables: encryptionEnabled },
-    codebook,
+    codebook: codebookWith(nodeVariables),
     stages: [
       {
         id: 'stage-1',
         type: 'NameGenerator',
         label: { en: 'Name the people you know' },
         subject: { entity: 'node', type: NODE_TYPE },
-        form: {
-          title: { en: 'Add a person' },
-          fields: fieldFor(NOTES_VAR),
-        },
+        form: { title: { en: 'Add a person' }, fields: fieldFor(NOTES_VAR) },
         prompts: [{ id: 'prompt-1', text: { en: 'Name the people you know' } }],
       },
     ],
@@ -186,12 +229,12 @@ function makeStore(
     middleware: (getDefaultMiddleware) =>
       getDefaultMiddleware({ serializableCheck: false }),
   });
-  if (passphrase) store.dispatch(setPassphrase(passphrase));
+  if (unlocked) await unlockWith(store, PASSPHRASE);
   return store;
 }
 
 function renderForm(
-  store: ReturnType<typeof makeStore>,
+  store: Awaited<ReturnType<typeof makeStore>>,
   variable: string,
   currentEntityId?: string,
 ) {
@@ -216,17 +259,8 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
 
-function validationContextOf(fieldComponents: ReactNode) {
-  const element = Array.isArray(fieldComponents)
-    ? fieldComponents[0]
-    : fieldComponents;
-  if (!isValidElement(element) || !isRecord(element.props)) return undefined;
-  const { validationContext } = element.props;
-  return isRecord(validationContext) ? validationContext : undefined;
-}
-
-/** A stored person's value in a network the validators compare with. */
-function valueIn(network: unknown, variable: string, nodeId = NODE_ID) {
+/** A stored person as they are in a network the validators compare with. */
+function nodeIn(network: unknown, nodeId = NODE_ID) {
   if (!isRecord(network)) return undefined;
   const { nodes } = network;
   if (!Array.isArray(nodes)) return undefined;
@@ -237,40 +271,57 @@ function valueIn(network: unknown, variable: string, nodeId = NODE_ID) {
   if (!isRecord(node) || !isRecord(node[entityAttributesProperty])) {
     return undefined;
   }
-  return node[entityAttributesProperty][variable];
+  return { [entityAttributesProperty]: node[entityAttributesProperty] };
 }
 
-/** The value the first field's validators see for a stored person. */
-function validatedValue(
-  fieldComponents: ReactNode,
-  variable: string,
-  nodeId = NODE_ID,
-) {
-  return valueIn(
-    validationContextOf(fieldComponents)?.network,
-    variable,
-    nodeId,
-  );
+/** The stored person as the first field's validators see them. */
+function validatedNode(fieldComponents: ReactNode) {
+  const element = Array.isArray(fieldComponents)
+    ? fieldComponents[0]
+    : fieldComponents;
+  if (!isValidElement(element) || !isRecord(element.props)) return undefined;
+  const { validationContext } = element.props;
+  if (!isRecord(validationContext)) return undefined;
+  return nodeIn(validationContext.network);
 }
 
-/** What a validation run of the first field gets from `resolveNetwork`. */
-async function resolvedNetwork(fieldComponents: ReactNode): Promise<unknown> {
-  const resolveNetwork = validationContextOf(fieldComponents)?.resolveNetwork;
-  if (typeof resolveNetwork !== 'function') {
-    throw new Error('Expected the field to resolve its network');
+/** Waits for the network the first field's validators would compare with. */
+async function resolveValidatedNetwork(fieldComponents: ReactNode) {
+  const element = Array.isArray(fieldComponents)
+    ? fieldComponents[0]
+    : fieldComponents;
+  if (!isValidElement(element) || !isRecord(element.props)) {
+    throw new Error('Expected a field');
   }
-  const resolved: unknown = await resolveNetwork();
-  return resolved;
+  const { validationContext } = element.props;
+  if (
+    !isRecord(validationContext) ||
+    typeof validationContext.resolveNetwork !== 'function'
+  ) {
+    throw new Error('Expected the validation to resolve its network');
+  }
+  return validationContext.resolveNetwork();
 }
+
+/** The value the first field's validators see for the stored person. */
+function validatedValue(fieldComponents: ReactNode, variable: string) {
+  return validatedNode(fieldComponents)?.[entityAttributesProperty][variable];
+}
+
+const comparisons: [string, string, string | undefined][] = [
+  ['`unique` on an encrypted variable', NAME_VAR, undefined],
+  ...VARIABLE_REFERENCE_VALIDATIONS.map((rule): [string, string, string] => [
+    `\`${rule}\` naming an encrypted variable`,
+    variableNamingNameBy[rule],
+    NODE_ID,
+  ]),
+];
 
 describe('useProtocolForm validating against encrypted values', () => {
-  it.each([
-    ['`unique` on an encrypted variable', NAME_VAR, undefined],
-    ['`differentFrom` naming an encrypted variable', NICKNAME_VAR, NODE_ID],
-  ])(
+  it.each(comparisons)(
     'compares %s with the plaintext of the stored value',
     async (_rule, variable, currentEntityId) => {
-      const store = makeStore([await encryptedNode()], PASSPHRASE);
+      const store = await makeStore([await encryptedNode()], true);
       const { result } = renderForm(store, variable, currentEntityId);
 
       await waitFor(() => {
@@ -281,186 +332,158 @@ describe('useProtocolForm validating against encrypted values', () => {
     },
   );
 
-  it('fails validation with the reason, rather than comparing with ciphertext, until a passphrase is entered', async () => {
-    const store = makeStore([await encryptedNode()], null);
-    const { result } = renderForm(store, NICKNAME_VAR, NODE_ID);
-
-    await expect(
-      resolvedNetwork(result.current.fieldComponents),
-    ).rejects.toThrow(
-      createMessageError(runtimeMessages.protectedAnswersNotSaved),
-    );
-    expect(store.getState().ui.showPassphrasePrompter).toBe(true);
-  });
-
-  it('fails validation with the reason when the passphrase cannot decrypt the compared values', async () => {
-    const store = makeStore([await encryptedNode()], 'not the passphrase');
-    const { result } = renderForm(store, NICKNAME_VAR, NODE_ID);
-
-    await expect(
-      resolvedNetwork(result.current.fieldComponents),
-    ).rejects.toThrow(createMessageError(runtimeMessages.decryptRetry));
-    await waitFor(() =>
-      expect(store.getState().ui.passphraseInvalid).toBe(true),
-    );
-    await expect(
-      resolvedNetwork(result.current.fieldComponents),
-    ).rejects.toThrow(createMessageError(runtimeMessages.decryptRetry));
-  });
-
-  it('compares with the values its rules need when other saved values cannot be decrypted', async () => {
-    const store = makeStore(
-      [
-        await encryptedNode(),
-        // Saved under another passphrase: an answer no rule here compares
-        // with, and a pet, whose names are not the people's.
-        await encryptedNode(
-          { [SECRET_VAR]: 'kept to themselves' },
-          { id: 'node-2', passphrase: 'an older passphrase' },
-        ),
-        await encryptedNode(
-          { [NAME_VAR]: 'Rex' },
-          { id: 'pet-1', type: PET_TYPE, passphrase: 'an older passphrase' },
-        ),
-      ],
-      PASSPHRASE,
-    );
-    const { result } = renderForm(store, NAME_VAR);
-
-    await waitFor(() => {
-      expect(validatedValue(result.current.fieldComponents, NAME_VAR)).toBe(
-        'Alice',
-      );
-    });
-    expect(
-      validationContextOf(result.current.fieldComponents)?.resolveNetwork,
-    ).toBeUndefined();
-    expect(store.getState().ui.passphraseInvalid).toBe(false);
-  });
-
-  it("reads a rule's named variable only on the person being edited", async () => {
-    const store = makeStore(
-      [
-        await encryptedNode(),
-        await encryptedNode(
-          { [NAME_VAR]: 'Bob' },
-          { id: 'node-2', passphrase: 'an older passphrase' },
-        ),
-      ],
-      PASSPHRASE,
-    );
-    const { result } = renderForm(store, NICKNAME_VAR, NODE_ID);
-
-    await waitFor(() => {
-      expect(validatedValue(result.current.fieldComponents, NAME_VAR)).toBe(
-        'Alice',
-      );
-    });
-    expect(
-      validationContextOf(result.current.fieldComponents)?.resolveNetwork,
-    ).toBeUndefined();
-    expect(store.getState().ui.passphraseInvalid).toBe(false);
-  });
-
-  it("reads nobody's stored answer for a rule that names a variable on a new person", async () => {
-    const store = makeStore([await encryptedNode()], null);
-    const { result } = renderForm(store, NICKNAME_VAR);
-
-    expect(
-      validationContextOf(result.current.fieldComponents)?.resolveNetwork,
-    ).toBeUndefined();
-    expect(store.getState().ui.showPassphrasePrompter).toBe(false);
-  });
-
   it('compares with a person added while the comparison waited for decryption', async () => {
-    const store = makeStore([await encryptedNode()], PASSPHRASE);
-    const bob = await encryptedNode({ [NAME_VAR]: 'Bob' }, { id: 'node-2' });
+    const store = await makeStore([await encryptedNode()], true);
+    const bob = await encryptedNode('node-2', { id: 'node-2', name: 'Bob' });
     const { result } = renderForm(store, NAME_VAR);
 
-    const resolving = resolvedNetwork(result.current.fieldComponents);
+    const resolving = resolveValidatedNetwork(result.current.fieldComponents);
     act(() => {
       store.dispatch(restoreNode(bob));
     });
     const resolved = await resolving;
 
-    expect(valueIn(resolved, NAME_VAR, 'node-2')).toBe('Bob');
-  });
-
-  it('reads the compared values again with a passphrase entered while the comparison waited', async () => {
-    const store = makeStore([await encryptedNode()], PASSPHRASE);
-    const { result } = renderForm(store, NICKNAME_VAR, NODE_ID);
-
-    const resolving = resolvedNetwork(result.current.fieldComponents);
-    act(() => {
-      store.dispatch(setPassphrase('a passphrase entered meanwhile'));
+    expect(nodeIn(resolved, 'node-2')?.[entityAttributesProperty]).toEqual({
+      [NAME_VAR]: 'Bob',
     });
-
-    await expect(resolving).rejects.toThrow(
-      createMessageError(runtimeMessages.decryptRetry),
-    );
   });
 
-  it('compares with the values that a passphrase entered while the comparison waited can read', async () => {
-    const store = makeStore([await encryptedNode()], 'not the passphrase');
-    const { result } = renderForm(store, NICKNAME_VAR, NODE_ID);
-
-    const resolving = resolvedNetwork(result.current.fieldComponents);
-    act(() => {
-      store.dispatch(setPassphrase(PASSPHRASE));
-    });
-
-    expect(valueIn(await resolving, NAME_VAR)).toBe('Alice');
-  });
-
-  it("compares `unique` with everyone else's answers, not the edited person's own", async () => {
-    const store = makeStore(
-      [
-        await encryptedNode(
-          { [NAME_VAR]: 'Alice' },
-          { passphrase: 'an older passphrase' },
-        ),
-        await encryptedNode({ [NAME_VAR]: 'Bob' }, { id: 'node-2' }),
-      ],
-      PASSPHRASE,
-    );
-    const { result } = renderForm(store, NAME_VAR, NODE_ID);
+  it('leaves out a stored value its key cannot read, rather than comparing with its ciphertext', async () => {
+    const store = await makeStore([await encryptedNode('elsewhere')], true);
+    const { result } = renderForm(store, NAME_VAR);
 
     await waitFor(() => {
       expect(
-        validatedValue(result.current.fieldComponents, NAME_VAR, 'node-2'),
-      ).toBe('Bob');
+        validatedNode(result.current.fieldComponents)?.[
+          entityAttributesProperty
+        ],
+      ).toEqual({});
     });
-    expect(
-      validationContextOf(result.current.fieldComponents)?.resolveNetwork,
-    ).toBeUndefined();
-    expect(store.getState().ui.passphraseInvalid).toBe(false);
+    expect(store.getState().ui.showPassphrasePrompter).toBe(false);
   });
+
+  it.each(comparisons)(
+    'fails %s, asking for the passphrase, while the key is not in force, never using its ciphertext',
+    async (_rule, variable, currentEntityId) => {
+      const store = await makeStore([await encryptedNode()], false);
+      const { result } = renderForm(store, variable, currentEntityId);
+
+      expect(
+        validatedNode(result.current.fieldComponents)?.[
+          entityAttributesProperty
+        ],
+      ).toEqual({});
+      await expect(
+        resolveValidatedNetwork(result.current.fieldComponents),
+      ).rejects.toThrow(
+        createMessageError(runtimeMessages.protectedAnswersNotChecked),
+      );
+      expect(result.current.passphraseNeeded).toBe(true);
+      expect(store.getState().ui.showPassphrasePrompter).toBe(true);
+    },
+  );
+
+  // The stored answers each rule reads: `unique` reads the others', and a rule
+  // naming another variable reads the edited person's, so a new person's reads
+  // none.
+  const comparisonsReadingNoEncryptedValue: [
+    string,
+    string,
+    string | undefined,
+  ][] = [
+    ['`unique` on the edited person’s own encrypted value', NAME_VAR, NODE_ID],
+    ...VARIABLE_REFERENCE_VALIDATIONS.map(
+      (rule): [string, string, undefined] => [
+        `\`${rule}\` for a new person, though someone else’s value is encrypted`,
+        variableNamingNameBy[rule],
+        undefined,
+      ],
+    ),
+    ...VARIABLE_REFERENCE_VALIDATIONS.map((rule): [string, string, string] => [
+      `\`${rule}\` for a person whose value is not encrypted, though someone else’s is`,
+      variableNamingNameBy[rule],
+      'node-2',
+    ]),
+  ];
+
+  it.each(comparisonsReadingNoEncryptedValue)(
+    'needs no passphrase for %s',
+    async (_rule, variable, currentEntityId) => {
+      const node = await encryptedNode();
+      const store = await makeStore(
+        [
+          node,
+          {
+            [entityPrimaryKeyProperty]: 'node-2',
+            type: NODE_TYPE,
+            [entityAttributesProperty]: { [NAME_VAR]: 'Bob' },
+          },
+        ],
+        false,
+      );
+      const { result } = renderForm(store, variable, currentEntityId);
+
+      expect(result.current.passphraseNeeded).toBe(false);
+      expect(validatedValue(result.current.fieldComponents, NAME_VAR)).toBe(
+        node[entityAttributesProperty][NAME_VAR],
+      );
+      await expect(
+        resolveValidatedNetwork(result.current.fieldComponents),
+      ).rejects.toThrow('Expected the validation to resolve its network');
+      expect(store.getState().ui.showPassphrasePrompter).toBe(false);
+    },
+  );
+
+  it.each(comparisons)(
+    'compares %s with the plaintext of a value its record says is encrypted, though the codebook no longer marks it',
+    async (_rule, variable, currentEntityId) => {
+      const store = await makeStore(
+        [await encryptedNode()],
+        true,
+        unmarkedVariables,
+      );
+      const { result } = renderForm(store, variable, currentEntityId);
+
+      await waitFor(() => {
+        expect(validatedValue(result.current.fieldComponents, NAME_VAR)).toBe(
+          'Alice',
+        );
+      });
+    },
+  );
+
+  it.each(comparisons)(
+    'fails %s, asking for the passphrase, while the key is not in force, though the codebook no longer marks the value encrypted',
+    async (_rule, variable, currentEntityId) => {
+      const store = await makeStore(
+        [await encryptedNode()],
+        false,
+        unmarkedVariables,
+      );
+      const { result } = renderForm(store, variable, currentEntityId);
+
+      expect(
+        validatedNode(result.current.fieldComponents)?.[
+          entityAttributesProperty
+        ],
+      ).toEqual({});
+      await expect(
+        resolveValidatedNetwork(result.current.fieldComponents),
+      ).rejects.toThrow(
+        createMessageError(runtimeMessages.protectedAnswersNotChecked),
+      );
+      expect(store.getState().ui.showPassphrasePrompter).toBe(true);
+    },
+  );
 
   it('leaves a form that compares with no encrypted value on the stored network', async () => {
     const node = await encryptedNode();
-    const store = makeStore([node], null);
+    const store = await makeStore([node], false);
     const { result } = renderForm(store, NOTES_VAR, NODE_ID);
 
     expect(validatedValue(result.current.fieldComponents, NAME_VAR)).toBe(
       node[entityAttributesProperty][NAME_VAR],
     );
-    expect(
-      validationContextOf(result.current.fieldComponents)?.resolveNetwork,
-    ).toBeUndefined();
-    expect(store.getState().ui.showPassphrasePrompter).toBe(false);
-  });
-
-  it('compares with the stored values, without asking for a passphrase, while the experiment is off', async () => {
-    const node = await encryptedNode();
-    const store = makeStore([node], null, false);
-    const { result } = renderForm(store, NAME_VAR);
-
-    expect(validatedValue(result.current.fieldComponents, NAME_VAR)).toBe(
-      node[entityAttributesProperty][NAME_VAR],
-    );
-    expect(
-      validationContextOf(result.current.fieldComponents)?.resolveNetwork,
-    ).toBeUndefined();
     expect(store.getState().ui.showPassphrasePrompter).toBe(false);
   });
 });

@@ -152,6 +152,12 @@ function getNetworkState(): SessionSnapshot['network'] | undefined {
   return window.__interviewStore?.getState().session.network;
 }
 
+// Reads the session as the host last persisted it (sessionStorage), not the
+// running interview's live state: what a resumed interview mounts from.
+function getStoredSession(interviewId: string): SessionSnapshot | undefined {
+  return restoreState().interviews.get(interviewId)?.session;
+}
+
 // Bumped by remountInterview; App keys Shell on it.
 let mountGeneration = 0;
 
@@ -162,8 +168,8 @@ export function getMountGeneration(): number {
 /**
  * Unmounts the running interview and mounts it again from the session it
  * holds now, as a host does when a participant leaves and later resumes:
- * answers are kept, and nothing that lived only in memory — the passphrase
- * among it — survives. (A page reload cannot stand in for this: onSync is a
+ * answers are kept, and nothing that lived only in memory — the encryption
+ * key among it — survives. (A page reload cannot stand in for this: onSync is a
  * no-op here, so a reload would discard the answers too.)
  */
 function remountInterview(interviewId: string): void {
@@ -229,6 +235,7 @@ export function installTestHooks(): void {
     setAssetUrl,
     createInterview,
     getNetworkState,
+    getStoredSession,
     remountInterview,
     reset,
     setFinishBehavior,

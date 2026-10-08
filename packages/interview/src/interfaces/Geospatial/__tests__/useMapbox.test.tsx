@@ -246,6 +246,15 @@ function TestHarness({
   return <div data-testid="map" ref={mapContainerRef} />;
 }
 
+// useMapbox reads the protocol language, so the harness needs one.
+function EnglishHarness(props: Parameters<typeof TestHarness>[0]) {
+  return (
+    <TestProtocolLocalization localization={ENGLISH_ONLY}>
+      <TestHarness {...props} />
+    </TestProtocolLocalization>
+  );
+}
+
 beforeEach(() => {
   observerInstances = [];
   rafCallbacks = [];
@@ -360,6 +369,129 @@ describe('useMapbox built-in locale changes', () => {
     rerender(tree('en-GB'));
     expect(canvas).toHaveAccessibleName('Map');
     expect(MapConstructor).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('useMapbox highlighted area', () => {
+  // The layer colours are resolved through a canvas, which jsdom lacks.
+  beforeEach(() => {
+    const getContext = vi
+      .spyOn(HTMLCanvasElement.prototype, 'getContext')
+      .mockReturnValue(null);
+    return () => getContext.mockRestore();
+  });
+
+  const highlights = (value: string) =>
+    ['selection', ['==', 'id', value]] as const;
+
+  it('stops highlighting once no readable location is saved for the person shown', () => {
+    const { rerender } = render(
+      <EnglishHarness
+        mapOptions={baseMapOptions}
+        initialSelectionValue="tract-a"
+      />,
+    );
+    act(() => {
+      mapEvents.fire('load');
+    });
+    expect(mapInstance.setFilter).toHaveBeenLastCalledWith(
+      ...highlights('tract-a'),
+    );
+
+    rerender(<EnglishHarness mapOptions={baseMapOptions} />);
+
+    expect(mapInstance.setFilter).toHaveBeenLastCalledWith(...highlights(''));
+  });
+
+  it('never restores an earlier location while tiles are still loading', () => {
+    // Mapbox reports its style as not loaded while any tile is loading.
+    mapInstance.isStyleLoaded.mockReturnValue(false);
+    const { rerender } = render(
+      <EnglishHarness
+        mapOptions={baseMapOptions}
+        initialSelectionValue="tract-a"
+      />,
+    );
+    act(() => {
+      mapEvents.fire('load');
+      mapEvents.fire('styledata');
+    });
+    expect(mapInstance.setFilter).toHaveBeenLastCalledWith(
+      ...highlights('tract-a'),
+    );
+
+    rerender(<EnglishHarness mapOptions={baseMapOptions} />);
+    expect(mapInstance.setFilter).toHaveBeenLastCalledWith(...highlights(''));
+
+    act(() => {
+      mapEvents.fire('styledata');
+    });
+    expect(mapInstance.setFilter).toHaveBeenLastCalledWith(...highlights(''));
+  });
+
+  it('highlights a picked area only once the pick is saved', () => {
+    const onSelectionChange = vi.fn();
+    const { rerender } = render(
+      <EnglishHarness
+        mapOptions={baseMapOptions}
+        onSelectionChange={onSelectionChange}
+      />,
+    );
+    act(() => {
+      mapEvents.fire('load');
+    });
+
+    act(() => {
+      mapEvents.fire('click', 'layerToSelect', {
+        features: [{ properties: { id: 'tract-b' } }],
+      });
+    });
+
+    expect(onSelectionChange).toHaveBeenCalledWith('tract-b');
+    expect(mapInstance.setFilter).not.toHaveBeenCalledWith(
+      ...highlights('tract-b'),
+    );
+
+    rerender(
+      <EnglishHarness
+        mapOptions={baseMapOptions}
+        initialSelectionValue="tract-b"
+        onSelectionChange={onSelectionChange}
+      />,
+    );
+
+    expect(mapInstance.setFilter).toHaveBeenLastCalledWith(
+      ...highlights('tract-b'),
+    );
+  });
+
+  it('highlights the saved location again once the map is rebuilt', () => {
+    const { rerender } = render(
+      <EnglishHarness
+        mapOptions={baseMapOptions}
+        initialSelectionValue="tract-a"
+      />,
+    );
+    act(() => {
+      mapEvents.fire('load');
+    });
+
+    rerender(
+      <EnglishHarness
+        mapOptions={{ ...baseMapOptions, targetFeatureProperty: 'name' }}
+        initialSelectionValue="tract-a"
+      />,
+    );
+    expect(MapConstructor).toHaveBeenCalledTimes(2);
+
+    act(() => {
+      mapEvents.fire('load');
+    });
+    expect(mapInstance.setFilter).toHaveBeenLastCalledWith('selection', [
+      '==',
+      'name',
+      'tract-a',
+    ]);
   });
 });
 

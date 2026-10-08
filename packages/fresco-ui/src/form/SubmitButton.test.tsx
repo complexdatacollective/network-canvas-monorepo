@@ -56,7 +56,7 @@ describe('SubmitButton', () => {
     expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled();
   });
 
-  it('stays disabled while submitting even when a caller passes disabled={false}', async () => {
+  it('shows its spinner while submitting, in place of an icon of its own', async () => {
     let finishSubmit: () => void = () => undefined;
     const submitted = new Promise<void>((resolve) => {
       finishSubmit = resolve;
@@ -70,6 +70,34 @@ describe('SubmitButton', () => {
             return { success: true as const };
           }}
         >
+          <SubmitButton icon={<svg data-testid="own-icon" />}>
+            Save
+          </SubmitButton>
+        </FormWithoutProvider>
+      </FormStoreProvider>,
+    );
+
+    const button = screen.getByRole('button', { name: 'Save' });
+    expect(screen.getByTestId('own-icon')).toBeInTheDocument();
+    expect(button.querySelector('.animate-spin')).toBeNull();
+
+    fireEvent.click(button);
+
+    await waitFor(() => {
+      expect(button.querySelector('.animate-spin')).not.toBeNull();
+    });
+    expect(screen.queryByTestId('own-icon')).toBeNull();
+
+    finishSubmit();
+
+    expect(await screen.findByTestId('own-icon')).toBeInTheDocument();
+    expect(button.querySelector('.animate-spin')).toBeNull();
+  });
+
+  it('stays disabled while submitting, whatever a caller passes as disabled', async () => {
+    render(
+      <FormStoreProvider>
+        <FormWithoutProvider onSubmit={() => new Promise<never>(() => {})}>
           <SubmitButton disabled={false}>Save</SubmitButton>
         </FormWithoutProvider>
       </FormStoreProvider>,
@@ -81,36 +109,9 @@ describe('SubmitButton', () => {
     fireEvent.click(button);
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Save' })).toHaveAttribute(
-        'aria-busy',
-        'true',
-      );
+      expect(button).toHaveAttribute('aria-busy', 'true');
     });
-    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
-
-    finishSubmit();
-
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Save' })).toHaveAttribute(
-        'aria-busy',
-        'false',
-      );
-    });
-    expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled();
-  });
-
-  it('stays disabled while idle when a caller passes disabled={true}', () => {
-    render(
-      <FormStoreProvider>
-        <FormWithoutProvider onSubmit={() => ({ success: true as const })}>
-          <SubmitButton disabled>Save</SubmitButton>
-        </FormWithoutProvider>
-      </FormStoreProvider>,
-    );
-
-    const button = screen.getByRole('button', { name: 'Save' });
     expect(button).toBeDisabled();
-    expect(button).toHaveAttribute('aria-busy', 'false');
   });
 
   it('renames itself only when a caller opts in with submittingText', async () => {

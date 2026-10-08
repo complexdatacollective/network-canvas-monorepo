@@ -31,6 +31,7 @@ import { useValidationNetwork } from '../../forms/useValidationNetwork';
 import { rejectedWriteMessage } from '../../forms/writeSubmissionResult';
 import { useNodeMeasurement } from '../../hooks/useNodeMeasurement';
 import { useStageSelector } from '../../hooks/useStageSelector';
+import { runtimeMessages } from '../../i18n/runtimeMessages';
 import { useResolveLocalizedString } from '../../localization/ProtocolLocalizationProvider';
 import {
   getValidationContext,
@@ -49,7 +50,6 @@ import { updateNode, updateStageMetadata } from '../../store/modules/session';
 import { useAppDispatch } from '../../store/store';
 import { useInterviewToast } from '../../toast/useInterviewToast';
 import type { StageProps } from '../../types';
-import { isAttributeEncrypted } from '../Anonymisation/isAttributeEncrypted';
 import type { PassphraseNoticeStatus } from '../Anonymisation/PassphraseNotice';
 import { usePassphrase } from '../Anonymisation/usePassphrase';
 import { useProtectedFormValues } from '../Anonymisation/useProtectedFormValues';
@@ -91,6 +91,7 @@ type DrawerEditor = {
   form: ComposerForm | undefined;
   subject: Subject;
   attributes: NcNode[typeof entityAttributesProperty];
+  unavailable?: readonly string[];
   passphraseStatus?: PassphraseNoticeStatus;
 };
 
@@ -165,11 +166,11 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
     stage.nodeForm?.fields ?? [],
   );
   const baseValidationContext = useStageSelector(getValidationContext);
-  const quickAddValidationNetwork = useValidationNetwork(
+  // A new person, so the rules read only the others' stored answers.
+  const { context: quickAddValidationNetwork } = useValidationNetwork(
     baseValidationContext,
     baseValidationContext.stageSubject,
     [stage.quickAdd],
-    // A new person, so the rules read only the others' stored answers.
     undefined,
   );
   const quickAddValidationContext: ValidationContext | undefined =
@@ -183,21 +184,16 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
       : undefined;
 
   // Names added here, and values edited in the drawer, are stored encrypted
-  // when their variables are marked encrypted, which needs a working
-  // passphrase.
-  const { passphrase, passphraseInvalid, requirePassphrase, isEnabled } =
-    usePassphrase();
-  const quickAddEncrypted = isAttributeEncrypted(
-    isEnabled,
-    stageVariables,
-    stage.quickAdd,
-  );
+  // when their variables are marked encrypted, which needs the interview's
+  // key to be in force.
+  const quickAddEncrypted = !!stageVariables[stage.quickAdd]?.encrypted;
   const writesEncrypted =
     quickAddEncrypted ||
-    (stage.nodeForm?.fields ?? []).some((field) =>
-      isAttributeEncrypted(isEnabled, stageVariables, field.variable),
+    (stage.nodeForm?.fields ?? []).some(
+      (field) => !!stageVariables[field.variable]?.encrypted,
     );
-  const addNodeLocked = quickAddEncrypted && (!passphrase || passphraseInvalid);
+  const { unlocked, requirePassphrase } = usePassphrase();
+  const addNodeLocked = quickAddEncrypted && !unlocked;
   const { showToast } = useInterviewToast();
 
   useEffect(() => {
@@ -654,13 +650,13 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
   // no form to edit (it then shows an empty state).
   const currentEditor: DrawerEditor | null = (() => {
     if (selectedNode !== null) {
-      const attributes =
-        selectedNodeValues.status === 'ready'
-          ? selectedNodeValues.values
-          : NO_ATTRIBUTES;
+      const ready =
+        selectedNodeValues.status === 'ready' ? selectedNodeValues : undefined;
+      const attributes = ready?.values ?? NO_ATTRIBUTES;
       const rawName = attributes[stage.quickAdd];
-      const title =
-        typeof rawName === 'string' && rawName.trim() !== ''
+      const title = ready?.unavailable.includes(stage.quickAdd)
+        ? intl.formatMessage(runtimeMessages.answerUnavailable)
+        : typeof rawName === 'string' && rawName.trim() !== ''
           ? rawName
           : nodeLabel;
       return {
@@ -670,6 +666,7 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
         form: stage.nodeForm,
         subject: stage.subject,
         attributes,
+        unavailable: ready?.unavailable,
         passphraseStatus: selectedNodePassphraseStatus,
       };
     }
@@ -822,6 +819,7 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
             form={editor.form}
             subject={editor.subject}
             attributes={editor.attributes}
+            unavailable={editor.unavailable}
             passphraseStatus={editor.passphraseStatus}
             onSave={(id, data) =>
               editor.kind === 'node'

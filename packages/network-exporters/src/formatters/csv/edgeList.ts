@@ -14,7 +14,6 @@ import {
 import type { SessionWithResequencedIDs } from '../../input';
 import type { ExportOptions } from '../../options';
 import type { ExportWarning } from '../../output';
-import { getEntityAttributes } from '../../utils/general';
 import { planTypedColumns } from './columns';
 import {
   csvEOL,
@@ -39,19 +38,11 @@ export function* edgeListRows(
   exportOptions: ExportOptions,
   reportWarning: (warning: ExportWarning) => void,
 ): Generator<string, void, void> {
-  const columns = planTypedColumns(
-    'edge',
-    codebook.edge,
-    network.edges.map((edge) => ({
-      type: edge.type,
-      attributes: getEntityAttributes(edge),
-    })),
-    {
-      exportOptions,
-      protocolName: network.sessionVariables[protocolName],
-      reportWarning,
-    },
-  );
+  const columns = planTypedColumns('edge', codebook.edge, network.edges, {
+    exportOptions,
+    protocolName: network.sessionVariables[protocolName],
+    reportWarning,
+  });
 
   yield (
     [...BUILT_IN_HEADERS, ...columns.map(({ header }) => header)]
@@ -60,7 +51,6 @@ export function* edgeListRows(
   );
 
   for (const edge of network.edges) {
-    const attributes = getEntityAttributes(edge);
     yield (
       [
         edge[edgeExportIDProperty],
@@ -70,7 +60,7 @@ export function* edgeListRows(
         edge[entityPrimaryKeyProperty],
         edge[ncSourceUUID],
         edge[ncTargetUUID],
-        ...columns.map(({ cells }) => cells.get(edge.type)?.(attributes)),
+        ...columns.map(({ cells }) => cells.get(edge.type)?.(edge)),
       ]
         .map((value) => String(sanitizeCellValue(value) ?? ''))
         .join(',') + csvEOL

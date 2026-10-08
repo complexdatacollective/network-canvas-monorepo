@@ -6,7 +6,6 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import Field from '@codaco/fresco-ui/form/Field/Field';
-import type { FieldProps } from '@codaco/fresco-ui/form/Field/types';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import type { ValidationContext } from '@codaco/fresco-ui/form/store/types';
 import UINode from '@codaco/fresco-ui/Node';
@@ -19,22 +18,18 @@ import {
 
 import { useTrack } from '../../analytics/useTrack';
 import NodeDrawer from '../../components/NodeDrawer';
-import PassphraseRecovery from '../../components/PassphraseRecovery';
+import PassphraseEntry from '../../components/PassphraseEntry';
 import Prompts from '../../components/Prompts';
 import { usePrompts } from '../../components/Prompts/usePrompts';
 import { useCurrentStep } from '../../contexts/CurrentStepContext';
 import { buildVariableLabels } from '../../forms/buildVariableLabels';
-import {
-  savingNeedsPassphrase,
-  useValidationNetwork,
-} from '../../forms/useValidationNetwork';
+import { useValidationNetwork } from '../../forms/useValidationNetwork';
 import {
   writeFailureMessage,
   writeSubmissionResult,
 } from '../../forms/writeSubmissionResult';
 import useReadyForNextStage from '../../hooks/useReadyForNextStage';
 import { useStageSelector } from '../../hooks/useStageSelector';
-import { runtimeMessages } from '../../i18n/runtimeMessages';
 import { useResolveLocalizedString } from '../../localization/ProtocolLocalizationProvider';
 import {
   getValidationContext,
@@ -51,7 +46,6 @@ import { updateNode } from '../../store/modules/session';
 import { useAppDispatch } from '../../store/store';
 import { useInterviewToast } from '../../toast/useInterviewToast';
 import type { StageProps } from '../../types';
-import { isAttributeEncrypted } from '../Anonymisation/isAttributeEncrypted';
 import { useNodeLabel } from '../Anonymisation/useNodeLabel';
 import { usePassphrase } from '../Anonymisation/usePassphrase';
 import { interfaceMessages } from '../messages';
@@ -95,79 +89,108 @@ type CategoricalBinPrompts = Extract<
   { type: 'CategoricalBin' }
 >['prompts'][number];
 
-// Queued dialog children subscribe themselves, so the placeholder and fallback
-// label follow a locale switch while the participant keeps their entered answer.
-function OtherResponseField({
-  baseValidationContext,
-  currentEntityId,
-  label,
-  ...props
-}: Omit<FieldProps<typeof InputField>, 'label' | 'validationContext'> & {
-  baseValidationContext: ReturnType<typeof getValidationContext>;
-  currentEntityId: string;
+type OtherResponseProps = Pick<
+  ComponentProps<typeof UINode>,
+  'color' | 'shape'
+> & {
+  node: NcNode;
+  variable: string;
   label: string;
-}) {
+  validationProps: ReturnType<typeof validationPropsFor>;
+};
+
+/**
+ * The "other" dialog's question about the person dropped. Queued dialog
+ * children subscribe themselves, so the placeholder and fallback label follow
+ * a locale switch while the participant keeps their entered answer, and the
+ * stored answers the question's rules compare with are read as they are now.
+ * When reading them needs the passphrase, it is asked for here: the
+ * navigation can't be reached while the dialog is open.
+ */
+function OtherResponse({
+  node,
+  color,
+  shape,
+  variable,
+  label,
+  validationProps,
+}: OtherResponseProps) {
   const intl = useAppIntl();
-  const { stageSubject } = baseValidationContext;
-  const validationNetwork = useValidationNetwork(
+  const nodeId = node[entityPrimaryKeyProperty];
+  // Base pieces of the validation context useProtocolForm builds for every
+  // other Field (codebook + network + this stage's subject), scoped to the
+  // dropped node via currentEntityId.
+  const baseValidationContext = useStageSelector(getValidationContext);
+  const { context: validationNetwork, passphraseNeeded } = useValidationNetwork(
     baseValidationContext,
-    stageSubject,
-    [props.name],
-    currentEntityId,
+    baseValidationContext.stageSubject,
+    [variable],
+    nodeId,
   );
+  const labelText = label;
+
   // Context-dependent rules (unique, sameAs, differentFrom,
-  // greaterThanVariable, etc.) resolve against the entity being edited and the
-  // live network — mirror useProtocolForm's ValidationContext, scoped to the
-  // dropped node via currentEntityId so e.g. `unique` excludes the node's own
-  // previous value and `differentFrom`/`sameAs` can read a sibling attribute
-  // already recorded on this same node. stageSubject is only ever null for
-  // stage types that carry no subject at all
-  // (Information/Anonymisation/NarrativePedigree); CategoricalBin
-  // always has a node subject, so the undefined fallback is defensive only.
+  // greaterThanVariable, etc.) resolve against the entity being edited and
+  // the live network — mirror useProtocolForm's ValidationContext, scoped
+  // to this dropped node via currentEntityId so e.g. `unique` excludes the
+  // node's own previous value and `differentFrom`/`sameAs` can read a
+  // sibling attribute already recorded on this same node.
+  // stageSubject is only ever null for stage types that carry no subject
+  // at all (Information/Anonymisation/NarrativePedigree);
+  // CategoricalBin always has a node subject, so the undefined fallback
+  // here is defensive only.
   const validationContext = useMemo<ValidationContext | undefined>(
     () =>
-      stageSubject
+      baseValidationContext.stageSubject
         ? {
             codebook: baseValidationContext.codebook,
             ...validationNetwork,
-            stageSubject,
-            currentEntityId,
+            stageSubject: baseValidationContext.stageSubject,
+            currentEntityId: nodeId,
             // …and the same comparison rule must word its error the same way
             // here as it does in a form. The one variable this dialog asks
             // about has exactly one piece of authored, participant-facing
-            // text — the prompt rendered as the field's label. The node's own
-            // label is deliberately not a source: it is the name the
-            // participant typed, not something the researcher authored.
+            // text — the prompt rendered as the field's label below. The
+            // node's own label is deliberately not a source: it is the name
+            // the participant typed, not something the researcher authored.
             variableLabels: buildVariableLabels([
-              { variable: props.name, label },
+              { variable, label: labelText },
             ]),
           }
         : undefined,
-    [
-      baseValidationContext.codebook,
-      validationNetwork,
-      stageSubject,
-      currentEntityId,
-      props.name,
-      label,
-    ],
+    [baseValidationContext, validationNetwork, nodeId, variable, labelText],
   );
+
   return (
-    <Field
-      {...props}
-      label={label}
-      validationContext={validationContext}
-      placeholder={intl.formatMessage(interfaceMessages.responsePlaceholder)}
-    />
+    <>
+      <PassphraseEntry needed={passphraseNeeded} />
+      <div className="flex items-start gap-4">
+        <div className="shrink-0">
+          <OtherResponseNode node={node} color={color} shape={shape} />
+        </div>
+        <Field
+          label={label}
+          component={InputField}
+          name={variable}
+          nameMode="opaque"
+          placeholder={intl.formatMessage(
+            interfaceMessages.responsePlaceholder,
+          )}
+          {...validationProps}
+          validationContext={validationContext}
+          autoFocus
+        />
+      </div>
+    </>
   );
 }
 
+// Labelled as everywhere else the person is shown, so a protected name is
+// decrypted rather than shown as stored.
 function OtherResponseNode({
   node,
   ...props
-}: Omit<ComponentProps<typeof UINode>, 'label'> & {
-  node: NcNode;
-}) {
+}: Omit<ComponentProps<typeof UINode>, 'label'> & { node: NcNode }) {
   return <UINode {...props} label={useNodeLabel(node)} />;
 }
 
@@ -248,14 +271,8 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
   const nodeColor = useStageSelector(getNodeColorSelector);
   const nodeTypeDefinition = useStageSelector(getNodeTypeDefinition);
   const stageVariables = useStageSelector(getCodebookVariablesForSubjectType);
-  // Base pieces of the validation context useProtocolForm builds for every
-  // other Field (codebook + network + this stage's subject); the dialog's
-  // field scopes it to the specific dropped node.
-  const baseValidationContext = useStageSelector(getValidationContext);
-  const resolve = useResolveLocalizedString();
   const intl = useAppIntl();
-  const { passphrase, passphraseInvalid, requirePassphrase, isEnabled } =
-    usePassphrase();
+  const { unlocked, requirePassphrase, lockedNotice } = usePassphrase();
   const { showToast } = useInterviewToast();
 
   // A refused write leaves the person where they were; say why.
@@ -271,6 +288,7 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
     });
     return false;
   };
+  const resolve = useResolveLocalizedString();
 
   const handleDropNode = async (node: NcNode, binIndex: number) => {
     const nodeId = node[entityPrimaryKeyProperty];
@@ -303,15 +321,10 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
 
       // An answer that would be encrypted is not asked for until it could be
       // saved.
-      if (
-        isAttributeEncrypted(isEnabled, stageVariables, otherVariable) &&
-        (!passphrase || passphraseInvalid)
-      ) {
+      if (stageVariables[otherVariable]?.encrypted && !unlocked) {
         requirePassphrase();
         showToast({
-          description: intl.formatMessage(
-            runtimeMessages.protectedAnswersLocked,
-          ),
+          description: intl.formatMessage(lockedNotice),
           variant: 'info',
           anchor: 'forward',
         });
@@ -335,40 +348,21 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
         type: 'form',
         title: <AppMessage message={interfaceMessages.specifyOther} />,
         children: (
-          <>
-            {savingNeedsPassphrase(
-              stageVariables,
-              [otherVariable],
-              isEnabled,
-              nodeId,
-            ) && <PassphraseRecovery />}
-            <div className="flex items-start gap-4">
-              <div className="shrink-0">
-                <OtherResponseNode
-                  node={node}
-                  color={nodeColor}
-                  shape={
-                    nodeTypeDefinition
-                      ? resolveNodeShape(
-                          nodeTypeDefinition.shape,
-                          node[entityAttributesProperty],
-                        )
-                      : undefined
-                  }
-                />
-              </div>
-              <OtherResponseField
-                label={otherPromptLabel}
-                component={InputField}
-                name={otherVariable}
-                nameMode="opaque"
-                {...otherValidationProps}
-                baseValidationContext={baseValidationContext}
-                currentEntityId={nodeId}
-                autoFocus
-              />
-            </div>
-          </>
+          <OtherResponse
+            node={node}
+            color={nodeColor}
+            shape={
+              nodeTypeDefinition
+                ? resolveNodeShape(
+                    nodeTypeDefinition.shape,
+                    node[entityAttributesProperty],
+                  )
+                : undefined
+            }
+            variable={otherVariable}
+            label={otherPromptLabel}
+            validationProps={otherValidationProps}
+          />
         ),
         intent: 'default',
         // Saving inside the dialog means a refused save keeps it open with

@@ -235,7 +235,7 @@ export class InterviewFixture {
   /**
    * Leave the interview and resume it, as a participant returning later
    * would: the host remounts it from the session it holds, so answers are
-   * kept and the in-memory passphrase is not. The step is kept too.
+   * kept and the in-memory encryption key is not. The step is kept too.
    */
   async resume(): Promise<void> {
     if (!this.interviewId) {

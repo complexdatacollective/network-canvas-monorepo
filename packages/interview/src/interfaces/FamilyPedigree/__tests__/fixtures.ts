@@ -7,6 +7,7 @@ import {
   type VariableValue,
 } from '@codaco/shared-consts';
 
+import { encryptionFor } from '../../Anonymisation/__tests__/encryptionFixtures';
 import { generateSecureAttributes } from '../../Anonymisation/utils';
 import type { PedigreeConfig } from '../model';
 
@@ -48,8 +49,8 @@ export const person = (
   [entityAttributesProperty]: attributes,
 });
 
-/** A person whose name is stored encrypted with the passphrase, as the
- * interview writes an encrypted name attribute. */
+/** A person whose name is stored encrypted with the key of the passphrase,
+ * as the interview writes an encrypted name attribute. */
 export async function encryptedPerson(
   id: string,
   name: string,
@@ -68,7 +69,8 @@ export async function encryptedPerson(
           encrypted: true,
         },
       },
-      passphrase,
+      (await encryptionFor(passphrase)).key,
+      id,
     );
   return {
     ...person(id, { ...attributes, ...encryptedAttributes }),

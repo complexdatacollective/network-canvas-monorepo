@@ -108,7 +108,7 @@ describe('Protocol Migrations', () => {
         name: 'Test Protocol',
       });
       expect(migrated.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
-      expect(migrated).toHaveProperty('experiments');
+      expect(migrated.experiments).toEqual({});
     });
 
     it('preserves existing data during migration', () => {
@@ -272,7 +272,7 @@ describe('Protocol Migrations', () => {
         name: 'Test Protocol',
       });
       expect(migrated.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
-      expect(migrated).toHaveProperty('experiments');
+      expect(migrated.experiments).toEqual({});
     });
 
     it('handles validation errors gracefully', () => {
@@ -321,7 +321,7 @@ describe('Protocol Migrations', () => {
         name: 'Test Protocol',
       });
       expect(migrated.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
-      expect(migrated).toHaveProperty('experiments');
+      expect(migrated.experiments).toEqual({});
       expect(migrated.name).toBe('Test Protocol');
     });
 

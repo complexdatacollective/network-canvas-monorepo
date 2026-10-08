@@ -34,7 +34,6 @@ import useBeforeNext from '../../hooks/useBeforeNext';
 import useReadyForNextStage from '../../hooks/useReadyForNextStage';
 import useSavesInOrder from '../../hooks/useSavesInOrder';
 import { useStageSelector } from '../../hooks/useStageSelector';
-import { runtimeMessages } from '../../i18n/runtimeMessages';
 import { getCodebookVariablesForSubjectType } from '../../selectors/protocol';
 import { getNetworkNodesForType } from '../../selectors/session';
 import type { AttributePatch } from '../../store/entityAttributePatch';
@@ -42,7 +41,6 @@ import { updateNode as updateNodeAction } from '../../store/modules/session';
 import type { RootState } from '../../store/store';
 import { useInterviewToast } from '../../toast/useInterviewToast';
 import type { Direction, NavigationIntent, StageProps } from '../../types';
-import { isAttributeEncrypted } from '../Anonymisation/isAttributeEncrypted';
 import { usePassphrase } from '../Anonymisation/usePassphrase';
 import { useProtectedFormValues } from '../Anonymisation/useProtectedFormValues';
 import { interfaceMessages } from '../messages';
@@ -179,16 +177,12 @@ export default function GeospatialInterface({
   const track = useTrack();
   const { showToast } = useInterviewToast();
   const variables = useStageSelector(getCodebookVariablesForSubjectType);
-  const { passphrase, passphraseInvalid, requirePassphrase, isEnabled } =
-    usePassphrase();
+  const { unlocked, requirePassphrase, lockedNotice } = usePassphrase();
   const promptVariable = currentPrompt.variable;
   // A location this prompt would encrypt is only taken once it could be saved.
   const locationLocked =
-    !!promptVariable &&
-    isAttributeEncrypted(isEnabled, variables, promptVariable) &&
-    (!passphrase || passphraseInvalid);
+    !!promptVariable && !!variables[promptVariable]?.encrypted && !unlocked;
 
-  // Whether the location was stored. A location that is not is reported here.
   const saveLocationValue = useCallback(
     async (value: string | null, selectionKind: 'search' | 'pin') => {
       const variable = currentPrompt.variable;
@@ -200,9 +194,7 @@ export default function GeospatialInterface({
       if (value !== null && locationLocked) {
         requirePassphrase();
         showToast({
-          description: intl.formatMessage(
-            runtimeMessages.protectedAnswersLocked,
-          ),
+          description: intl.formatMessage(lockedNotice),
           variant: 'info',
           anchor: 'forward',
         });
@@ -236,15 +228,14 @@ export default function GeospatialInterface({
       currentPrompt.variable,
       locationLocked,
       requirePassphrase,
+      lockedNotice,
       showToast,
       intl,
       track,
     ],
   );
 
-  // A location that takes longer to save, as a protected one can, never lands
-  // after one picked later. Every outcome of a save, including a refusal, is
-  // reported inside it.
+  // Every outcome of the save, including a refusal, is reported inside it.
   const saveLocationInOrder = useSavesInOrder(saveLocationValue, isStored);
   const setLocationValue = useCallback(
     (value: string | null, selectionKind: 'search' | 'pin' = 'pin') => {

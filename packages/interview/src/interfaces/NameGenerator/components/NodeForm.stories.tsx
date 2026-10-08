@@ -3,7 +3,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { icons } from 'lucide-react';
 import type { ComponentProps } from 'react';
 import { Provider } from 'react-redux';
-import { expect, fn, screen, userEvent, waitFor, within } from 'storybook/test';
+import { fn } from 'storybook/test';
 
 import type { FormSubmissionResult } from '@codaco/fresco-ui/form/store/types';
 import {
@@ -15,7 +15,6 @@ import {
   entityPrimaryKeyProperty,
 } from '@codaco/shared-consts';
 
-import uiReducer from '../../../store/modules/ui';
 import NodeForm from './NodeForm';
 
 const customIconOptions = ['add-a-person', 'add-a-place'];
@@ -276,9 +275,6 @@ const createMockStore = (
     codebook: mockProtocol.codebook,
     stages: mockProtocol.stages, // This MUST be an array for the getStages selector
     assets: [], // Ensure assets is an array
-    experiments: {
-      encryptedVariables: false,
-    },
   };
 
   const mockSessionState = {
@@ -292,7 +288,7 @@ const createMockStore = (
       session: (state: unknown = mockSessionState): unknown => state,
       protocol: (state: unknown = mockProtocolState): unknown => state,
       form: (state: unknown = {}): unknown => state,
-      ui: uiReducer,
+      ui: (state: unknown = {}): unknown => state,
     },
     preloadedState: {
       protocol: mockProtocolState,
@@ -702,93 +698,5 @@ export const ToggleButtonGroupWithInitialValue: Story = {
           'This story shows a ToggleButtonGroup with a pre-selected value. The form is pre-populated with "Email" as the selected communication preference.',
       },
     },
-  },
-};
-
-const STORY_PASSPHRASE = 'correct horse battery staple';
-const protectedProtocol = buildMockProtocol('add-a-person');
-const { person } = protectedProtocol.codebook.node;
-
-export const TakesThePassphraseInsideTheForm: Story = {
-  args: {
-    selectedNode: null,
-    form: basicForm,
-    disabled: false,
-  },
-  parameters: {
-    reduxState: {
-      protocol: {
-        id: 'test-protocol-id',
-        codebook: {
-          node: {
-            person: {
-              ...person,
-              variables: {
-                ...person.variables,
-                name: { ...person.variables.name, encrypted: true },
-              },
-            },
-          },
-        },
-        stages: protectedProtocol.stages,
-        assets: [],
-        experiments: { encryptedVariables: true },
-      },
-      ui: {
-        passphrase: STORY_PASSPHRASE,
-        passphraseEntry: 1,
-        passphraseInvalid: true,
-        showPassphrasePrompter: false,
-      },
-    },
-    docs: {
-      description: {
-        story:
-          "A form that saves answers protected by the passphrase, open while the passphrase in force has been found not to work. The navigation's prompter cannot be reached while the form is open, so the form offers the prompt itself: it opens over the form, and the form keeps what was entered.",
-      },
-    },
-  },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await userEvent.click(
-      await canvas.findByRole('button', { name: 'Add a person' }),
-    );
-    const form = await screen.findByRole('dialog', {
-      name: basicForm.title.en,
-    });
-    const name = within(form).getByRole('textbox', { name: /their name/ });
-    await userEvent.type(name, 'Alice');
-
-    await userEvent.click(
-      within(form).getByRole('button', { name: 'Enter your Passphrase' }),
-    );
-    const prompt = await screen.findByRole('dialog', {
-      name: 'Enter your Passphrase',
-    });
-    // The label also carries a visual required marker.
-    const field = within(prompt).getByLabelText(/^Passphrase/, {
-      selector: 'input',
-    });
-    await waitFor(() => expect(field).toHaveFocus());
-    await userEvent.type(field, STORY_PASSPHRASE);
-    await userEvent.click(
-      within(prompt).getByRole('button', { name: 'Submit passphrase' }),
-    );
-
-    await waitFor(() =>
-      expect(
-        screen.queryByRole('dialog', { name: 'Enter your Passphrase' }),
-      ).not.toBeInTheDocument(),
-    );
-    await expect(
-      within(form).queryByRole('button', { name: 'Enter your Passphrase' }),
-    ).not.toBeInTheDocument();
-    await expect(name).toHaveValue('Alice');
-    // Back on the save the passphrase was needed for.
-    await waitFor(() =>
-      expect(
-        within(form).getByRole('button', { name: 'Finished' }),
-      ).toHaveFocus(),
-    );
   },
 };

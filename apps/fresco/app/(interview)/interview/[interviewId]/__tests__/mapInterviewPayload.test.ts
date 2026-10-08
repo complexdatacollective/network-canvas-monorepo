@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
 import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
+import {
+  networkWithEncryptionHeader,
+  schema8EncryptedNetwork,
+} from '~/lib/__tests__/encryptedNetworks';
 import type { GetInterviewByIdQuery } from '~/queries/interviews';
 
 import { mapInterviewPayload } from '../mapInterviewPayload';
@@ -245,7 +249,8 @@ describe('mapInterviewPayload', () => {
 
     it('hands the client the protocol it read', () => {
       const codebook = { node: {}, edge: {}, ego: { variables: {} } };
-      const experiments = { encryptedVariables: true };
+      // Schema 9 declares no experiments; the setting is kept, empty.
+      const experiments = {};
 
       const { payload } = mapReady(
         makeSource(
@@ -271,5 +276,22 @@ describe('mapInterviewPayload', () => {
 
       expect(payload.protocol.experiments).toEqual({});
     });
+  });
+
+  it.each([
+    {
+      label: 'the encryption header and IV-only values',
+      stored: networkWithEncryptionHeader,
+    },
+    {
+      label: 'schema 8 values without a header',
+      stored: schema8EncryptedNetwork,
+    },
+  ])('hands the interview a network with $label unchanged', ({ stored }) => {
+    const { payload } = mapReady(
+      makeSource(COMPATIBLE_PROTOCOL_SCHEMA_VERSION, { network: stored }),
+    );
+
+    expect(payload.session.network).toStrictEqual(stored);
   });
 });

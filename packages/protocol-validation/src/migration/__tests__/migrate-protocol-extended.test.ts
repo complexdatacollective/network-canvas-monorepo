@@ -204,11 +204,23 @@ describe('Protocol Migration - Extended Tests', () => {
         stages: [],
       };
 
-      const migrated = migrateProtocol(v7Doc, undefined, {
+      const migrated = migrateProtocol(v7Doc, 8, {
         name: 'Test Protocol',
       });
 
       expect(migrated).toHaveProperty('experiments');
+      expect(migrated.experiments).toEqual({});
+    });
+
+    it('should keep the experiments field during v8 to v9 migration', () => {
+      const v7Doc = {
+        schemaVersion: 7,
+        codebook: { node: {}, edge: {}, ego: {} },
+        stages: [],
+      };
+
+      const migrated = migrateProtocol(v7Doc, 9, { name: 'Test Protocol' });
+
       expect(migrated.experiments).toEqual({});
     });
 

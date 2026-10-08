@@ -3,6 +3,8 @@ import {
   type ExportColumnEntity,
   type ExportColumnOrigin,
   type LayoutColumnAxis,
+  type NcEgo,
+  type NcEntity,
   neutralizeCsvFormula,
   reservedExportColumns,
   toCanonicalText,
@@ -11,11 +13,14 @@ import {
 
 import type { ExportOptions } from '../../options';
 import type { ExportWarning } from '../../output';
-import { getOwn, isCategoricalOptionSelected } from '../../utils/general';
+import { isEncryptedAttribute } from '../../utils/encryptedAttribute';
+import {
+  getEntityAttributes,
+  getOwn,
+  isCategoricalOptionSelected,
+} from '../../utils/general';
 
-type Attributes = Readonly<Record<string, unknown>>;
-
-type ReadCell = (attributes: Attributes) => unknown;
+type ReadCell = (entity: NcEntity) => unknown;
 
 /** A column of a CSV file's variables, and how a row's cell is read. */
 type CsvColumn = {
@@ -33,8 +38,8 @@ type CsvEntityType = Readonly<{
   /** The node or edge type's name. The ego has none. */
   name?: string;
   variables: Readonly<Record<string, Variable>> | undefined;
-  /** The attributes of every entity of the type in the file. */
-  attributes: readonly Attributes[];
+  /** Every entity of the type in the file. */
+  entities: readonly NcEntity[];
 }>;
 
 const layoutCoordinate = (
@@ -90,18 +95,20 @@ const variableCell =
     origin: ExportColumnOrigin,
     exportOptions: ExportOptions,
   ): ReadCell =>
-  (attributes) => {
+  (row) => {
+    const attributes = getEntityAttributes(row);
     if (!Object.hasOwn(attributes, variableId)) return undefined;
     const data = attributes[variableId];
+    const encrypted = isEncryptedAttribute(row, variableId, variable);
     switch (origin.kind) {
       case 'name':
-        return variable.encrypted ? 'ENCRYPTED' : data;
+        return encrypted ? 'ENCRYPTED' : data;
       case 'option':
-        return variable.encrypted
+        return encrypted
           ? 'ENCRYPTED'
           : isCategoricalOptionSelected(data, origin.value);
       case 'layout':
-        if (variable.encrypted) {
+        if (encrypted) {
           return origin.axis === 'x' || origin.axis === 'y'
             ? 'ENCRYPTED'
             : undefined;
@@ -150,8 +157,8 @@ const planCsvColumns = (
   }
 
   const undeclared = new Set<string>();
-  for (const attributes of type.attributes) {
-    for (const attribute of Object.keys(attributes)) {
+  for (const row of type.entities) {
+    for (const attribute of Object.keys(getEntityAttributes(row))) {
       if (!getOwn(type.variables, attribute)) undeclared.add(attribute);
     }
   }
@@ -159,7 +166,10 @@ const planCsvColumns = (
     claims.push({
       column: attribute,
       owner: attribute,
-      cell: (attributes) => getOwn(attributes, attribute),
+      cell: (row) =>
+        isEncryptedAttribute(row, attribute, undefined)
+          ? 'ENCRYPTED'
+          : getOwn(getEntityAttributes(row), attribute),
     });
   }
 
@@ -201,10 +211,10 @@ const planCsvColumns = (
 /** The ego's variable columns. */
 export const planEgoColumns = (
   variables: Readonly<Record<string, Variable>> | undefined,
-  attributes: Attributes,
+  ego: NcEgo,
   context: CsvColumnContext,
 ): CsvColumn[] =>
-  planCsvColumns('ego', { variables, attributes: [attributes] }, context);
+  planCsvColumns('ego', { variables, entities: [ego] }, context);
 
 /** A column of a file of nodes or edges, read for each row by its type. */
 type CsvTypedColumn = {
@@ -212,7 +222,7 @@ type CsvTypedColumn = {
   readonly cells: ReadonlyMap<string, ReadCell>;
 };
 
-type TypedEntity = Readonly<{ type: string; attributes: Attributes }>;
+type TypedEntity = NcEntity & Readonly<{ type: string }>;
 
 /**
  * The variable columns of a file of nodes or of edges. Each type's columns are
@@ -236,18 +246,18 @@ export const planTypedColumns = (
   entities: readonly TypedEntity[],
   context: CsvColumnContext,
 ): CsvTypedColumn[] => {
-  const attributesByType = new Map<string, Attributes[]>();
-  for (const { type, attributes } of entities) {
-    const existing = attributesByType.get(type);
+  const entitiesByType = new Map<string, TypedEntity[]>();
+  for (const row of entities) {
+    const existing = entitiesByType.get(row.type);
     if (existing) {
-      existing.push(attributes);
+      existing.push(row);
     } else {
-      attributesByType.set(type, [attributes]);
+      entitiesByType.set(row.type, [row]);
     }
   }
-  if (attributesByType.size === 0) {
+  if (entitiesByType.size === 0) {
     for (const type of Object.keys(definitions ?? {})) {
-      attributesByType.set(type, []);
+      entitiesByType.set(type, []);
     }
   }
 
@@ -255,14 +265,14 @@ export const planTypedColumns = (
     string,
     { header: string; cells: Map<string, ReadCell> }
   >();
-  for (const [type, attributes] of attributesByType) {
+  for (const [type, typeEntities] of entitiesByType) {
     const definition = getOwn(definitions, type);
     for (const { header, cell } of planCsvColumns(
       entity,
       {
         name: definition?.name ?? type,
         variables: definition?.variables,
-        attributes,
+        entities: typeEntities,
       },
       context,
     )) {

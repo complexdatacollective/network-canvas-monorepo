@@ -929,27 +929,37 @@ describe('useInterviewNavigation waiting for writes begun on the stage', () => {
     },
   );
 
-  it('stays when an answer the stage begins storing as it is left is refused', async () => {
-    const { result, onStepChange, store } = renderTrackingWrites(makeStages(3));
-    act(() => {
-      result.current.registerBeforeNext(() => {
-        store.dispatch(updateEgo.pending('w1', declined));
-        return true;
+  it.each<[string, (navigation: Navigation) => Promise<unknown>]>([
+    ['forward', (navigation) => navigation.moveForward()],
+    ['to a menu target', (navigation) => navigation.goToStage(2)],
+  ])(
+    'stays, going %s, when an answer the stage begins storing as it is left is refused',
+    async (_direction, navigate) => {
+      const { result, onStepChange, store } = renderTrackingWrites(
+        makeStages(3),
+      );
+      act(() => {
+        result.current.registerBeforeNext(() => {
+          store.dispatch(updateEgo.pending('w1', declined));
+          return true;
+        });
       });
-    });
 
-    let moving: Promise<unknown> = Promise.resolve();
-    act(() => {
-      moving = result.current.moveForward();
-    });
-    await queuedWorkRuns();
-    await act(async () => {
-      store.dispatch(updateEgo.rejected(new Error('refused'), 'w1', declined));
-      await moving;
-    });
+      let moving: Promise<unknown> = Promise.resolve();
+      act(() => {
+        moving = navigate(result.current);
+      });
+      await queuedWorkRuns();
+      await act(async () => {
+        store.dispatch(
+          updateEgo.rejected(new Error('refused'), 'w1', declined),
+        );
+        await moving;
+      });
 
-    expect(onStepChange).not.toHaveBeenCalled();
-  });
+      expect(onStepChange).not.toHaveBeenCalled();
+    },
+  );
 
   // One stage asking two questions, then a second stage.
   const twoPrompts = () => {

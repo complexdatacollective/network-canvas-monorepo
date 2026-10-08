@@ -57,8 +57,8 @@ type ToolPaletteProps = {
   quickAddTargetVariable: string;
   onAddNode: (name: string) => Promise<boolean>;
   /**
-   * The name would be stored encrypted and no working passphrase is in force,
-   * so the add-node field opens on an explanation instead.
+   * The name would be stored encrypted and the interview's key is not in
+   * force, so the add-node field opens on an explanation instead.
    */
   addNodeLocked: boolean;
   /** Validation props derived from quickAddTargetVariable's codebook definition. */
@@ -137,14 +137,7 @@ export default function ToolPalette({
     if (!addingName) setActiveTool(tool);
   };
 
-  // The lock decides what the add-node popover opens on. A field already
-  // shown is held until the popover next opens, so a name being typed when the
-  // passphrase stops working is kept; adding it is then refused, with the
-  // reason shown.
   const addNodeOpen = activeTool.kind === 'addNode';
-  const [nameFieldHeld, setNameFieldHeld] = useState(false);
-  if (addNodeOpen && !addNodeLocked && !nameFieldHeld) setNameFieldHeld(true);
-  const showNameField = !addNodeLocked || nameFieldHeld;
 
   const activeEdgeType =
     activeTool.kind === 'edge' ? activeTool.edgeType : undefined;
@@ -191,7 +184,6 @@ export default function ToolPalette({
           open={addNodeOpen}
           onOpenChange={(open) => {
             if (addingName) return;
-            if (open) setNameFieldHeld(false);
             setActiveTool(open ? { kind: 'addNode' } : { kind: 'select' });
           }}
           trigger={
@@ -202,7 +194,9 @@ export default function ToolPalette({
             />
           }
         >
-          {showNameField ? (
+          {addNodeLocked ? (
+            <PassphraseNotice status="locked" className="w-72" />
+          ) : (
             <AddNodeInput
               entityLabel={nodeLabel}
               targetVariable={quickAddTargetVariable}
@@ -211,8 +205,6 @@ export default function ToolPalette({
               validationContext={quickAddValidationContext}
               {...quickAddValidationProps}
             />
-          ) : (
-            <PassphraseNotice status="locked" className="w-72" />
           )}
         </ToolbarPopover>
 

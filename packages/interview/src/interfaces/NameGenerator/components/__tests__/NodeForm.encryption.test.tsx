@@ -18,23 +18,18 @@ import { CurrentStepProvider } from '../../../../contexts/CurrentStepContext';
 import { writeSubmissionResult } from '../../../../forms/writeSubmissionResult';
 import { InterviewI18nProvider } from '../../../../i18n/InterviewI18nProvider';
 import { addNode as addSessionNode } from '../../../../store/modules/session';
-import {
-  setPassphrase,
-  setPassphraseInvalid,
-} from '../../../../store/modules/ui';
 import { TestProtocolLocalization } from '../../../__tests__/TestProtocolLocalization';
 import {
   createEncryptionStore,
   encryptedVariables,
+  encryptionFor,
   makeEncryptedPerson,
-  makePlainPerson,
   NODE_TYPE,
+  unlockWith,
 } from '../../../Anonymisation/__tests__/encryptionFixtures';
-import { isNumberArray } from '../../../Anonymisation/decryptionScope';
-import {
-  decryptData,
-  generateSecureAttributes,
-} from '../../../Anonymisation/utils';
+import { readEncryptedAttribute } from '../../../Anonymisation/decryptionScope';
+import { decryptValue } from '../../../Anonymisation/encryptionFormat';
+import { writesEncryptedValue } from '../../../Anonymisation/utils';
 import NodeForm from '../NodeForm';
 
 vi.mock('../../../../hooks/useCelebrate', () => ({
@@ -53,18 +48,31 @@ beforeAll(() => {
   vi.stubGlobal('IntersectionObserver', StubObserver);
 });
 
-async function renderEditing(
-  node: NcNode | Promise<NcNode>,
-  passphrase?: string,
-  encryptionEnabled = true,
-  variables?: Record<string, Variable>,
-) {
-  const selected = await node;
-  const store = createEncryptionStore([selected], undefined, variables, {
-    encryptionEnabled,
-  });
-  if (passphrase) store.dispatch(setPassphrase(passphrase));
+async function renderNodeForm({
+  selected,
+  unlocked = false,
+  stored = selected ? [selected] : [],
+  stages,
+  variables = encryptedVariables,
+}: {
+  /** The person being edited; none for a form adding a new one. */
+  selected: NcNode | null;
+  unlocked?: boolean;
+  /** Everyone in the interview, by default only the person being edited. */
+  stored?: NcNode[];
+  stages?: Parameters<typeof createEncryptionStore>[1];
+  variables?: Record<string, Variable>;
+}) {
+  const { header } = await encryptionFor('pw');
+  const store = createEncryptionStore(stored, stages, variables, { header });
+  if (unlocked) await unlockWith(store, 'pw');
   const onClose = vi.fn();
+
+  // Every time the passphrase is asked for, not only the latest state.
+  let prompts = 0;
+  store.subscribe(() => {
+    if (store.getState().ui.showPassphrasePrompter) prompts += 1;
+  });
 
   const [stage] = store.getState().protocol.stages;
   if (stage?.type !== 'NameGenerator') {
@@ -77,7 +85,8 @@ async function renderEditing(
         addSessionNode({
           type: NODE_TYPE,
           attributeData: attributes,
-          useEncryption: encryptionEnabled,
+          // As the name generator decides it.
+          useEncryption: writesEncryptedValue(attributes, variables),
           currentStep: 0,
         }),
       ),
@@ -102,191 +111,59 @@ async function renderEditing(
   );
   const { rerender } = render(tree());
 
-  return { store, onClose, rerender: () => rerender(tree()) };
+  return {
+    store,
+    onClose,
+    rerender: () => rerender(tree()),
+    prompts: () => prompts,
+  };
 }
 
-/**
- * Enters `passphrase` through the prompt the open dialog offers, and waits
- * for that prompt to close.
- */
-async function reenterPassphrase(
-  user: ReturnType<typeof userEvent.setup>,
-  passphrase: string,
-) {
-  await user.click(
-    within(screen.getByRole('dialog', { name: 'Add a person' })).getByRole(
-      'button',
-      { name: 'Enter your Passphrase' },
-    ),
-  );
-  const prompt = await screen.findByRole('dialog', {
-    name: 'Enter your Passphrase',
-  });
-  await user.type(
-    within(prompt).getByLabelText(/^Passphrase/, { selector: 'input' }),
-    passphrase,
-  );
-  await user.click(
-    within(prompt).getByRole('button', { name: 'Submit passphrase' }),
-  );
-  await waitFor(() =>
-    expect(
-      screen.queryByRole('dialog', { name: 'Enter your Passphrase' }),
-    ).toBeNull(),
-  );
+/** A ciphertext written for another person fails to decrypt for this one. */
+async function unreadablePerson(): Promise<NcNode> {
+  const elsewhere = await makeEncryptedPerson('elsewhere', 'Alice', 'pw');
+  return { ...elsewhere, [entityPrimaryKeyProperty]: 'n1' };
 }
 
-const storedName = (node: NcNode | undefined) => {
-  const data = node?.[entityAttributesProperty].name;
-  const secureAttributes = node?.[entitySecureAttributesMeta]?.name;
-  return { data, secureAttributes };
-};
+/** The plaintext of a node's stored name, which must be bound to its id. */
+async function storedName(node: NcNode | undefined) {
+  const stored = node
+    ? readEncryptedAttribute(node, 'name', encryptedVariables)
+    : undefined;
+  if (stored?.status !== 'encrypted') {
+    throw new Error('Expected the name to be stored encrypted');
+  }
+  expect(stored.value.nodeId).toBe(node?.[entityPrimaryKeyProperty]);
+  const { key } = await encryptionFor('pw');
+  return decryptValue(key, stored.value, stored.value);
+}
 
 describe('NodeForm editing a person with an encrypted answer', () => {
   it('opens on the decrypted answer, and saves the change encrypted', async () => {
-    const { store, onClose } = await renderEditing(
-      makeEncryptedPerson('n1', 'Alice', 'pw'),
-      'pw',
-    );
+    const { store, onClose } = await renderNodeForm({
+      selected: await makeEncryptedPerson('n1', 'Alice', 'pw'),
+      unlocked: true,
+    });
     const user = userEvent.setup();
 
     const name = await screen.findByRole('textbox', { name: 'Name' });
     expect(name).toHaveValue('Alice');
-    expect(
-      screen.queryByRole('button', { name: 'Enter your Passphrase' }),
-    ).toBeNull();
 
     await user.clear(name);
     await user.type(name, 'Alicia');
     await user.click(screen.getByRole('button', { name: 'Finished' }));
 
     await waitFor(() => expect(onClose).toHaveBeenCalled());
-    const { data, secureAttributes } = storedName(
-      store.getState().session.network.nodes[0],
-    );
-    expect(isNumberArray(data)).toBe(true);
-    if (!isNumberArray(data)) throw new Error('Expected a stored ciphertext');
-    if (!secureAttributes)
-      throw new Error('Expected secure-attribute metadata');
-    await expect(decryptData({ secureAttributes, data }, 'pw')).resolves.toBe(
-      'Alicia',
-    );
-  });
-
-  it('keeps the dialog and the answers open, and says so, when the save is refused', async () => {
-    const { store, onClose } = await renderEditing(
-      makeEncryptedPerson('n1', 'Alice', 'pw'),
-      'pw',
-    );
-    const user = userEvent.setup();
-
-    const name = await screen.findByRole('textbox', { name: 'Name' });
-    await user.clear(name);
-    await user.type(name, 'Alicia');
-    const before = store.getState().session.network;
-
-    act(() => {
-      store.dispatch(setPassphraseInvalid(true));
-    });
-    await user.click(screen.getByRole('button', { name: 'Finished' }));
-
-    expect(
-      await screen.findByText(/Your answers have not been saved/),
-    ).toBeInTheDocument();
-    expect(screen.getByRole('textbox', { name: 'Name' })).toHaveValue('Alicia');
-    expect(onClose).not.toHaveBeenCalled();
-    expect(store.getState().session.network).toBe(before);
-  });
-
-  it('takes the passphrase again from inside the dialog, then saves the kept answers', async () => {
-    const { store, onClose } = await renderEditing(
-      makeEncryptedPerson('n1', 'Alice', 'pw'),
-      'pw',
-    );
-    const user = userEvent.setup();
-
-    const name = await screen.findByRole('textbox', { name: 'Name' });
-    await user.clear(name);
-    await user.type(name, 'Alicia');
-    act(() => {
-      store.dispatch(setPassphraseInvalid(true));
-    });
-    await user.click(screen.getByRole('button', { name: 'Finished' }));
-    expect(
-      await screen.findByText(/Your answers have not been saved/),
-    ).toBeInTheDocument();
-
-    await reenterPassphrase(user, 'pw');
-
-    expect(store.getState().ui.passphraseInvalid).toBe(false);
-    expect(screen.getByRole('textbox', { name: 'Name' })).toHaveValue('Alicia');
-    await user.click(screen.getByRole('button', { name: 'Finished' }));
-
-    await waitFor(() => expect(onClose).toHaveBeenCalled());
-    const { data, secureAttributes } = storedName(
-      store.getState().session.network.nodes[0],
-    );
-    if (!isNumberArray(data)) throw new Error('Expected a stored ciphertext');
-    if (!secureAttributes)
-      throw new Error('Expected secure-attribute metadata');
-    await expect(decryptData({ secureAttributes, data }, 'pw')).resolves.toBe(
-      'Alicia',
-    );
-  });
-
-  it('hides an edit in progress, saving none of it, through a passphrase that cannot read it, then saves it once the right one is back', async () => {
-    const { store, onClose } = await renderEditing(
-      makeEncryptedPerson('n1', 'Alice', 'pw'),
-      'pw',
-    );
-    const user = userEvent.setup();
-
-    const name = await screen.findByRole('textbox', { name: 'Name' });
-    await user.clear(name);
-    await user.type(name, 'Alicia');
-    const before = store.getState().session.network;
-
-    act(() => {
-      store.dispatch(setPassphrase('another passphrase'));
-    });
-    const dialog = screen.getByRole('dialog', { name: 'Add a person' });
-    expect(
-      await within(dialog).findByText(
-        /enter your passphrase to see and change/i,
-      ),
-    ).toBeInTheDocument();
-    expect(screen.queryByRole('textbox', { name: 'Name' })).toBeNull();
-    expect(
-      within(dialog).getByRole('button', { name: 'Finished' }),
-    ).toBeDisabled();
-    expect(onClose).not.toHaveBeenCalled();
-    expect(store.getState().session.network).toBe(before);
-
-    act(() => {
-      store.dispatch(setPassphrase('pw'));
-    });
-    expect(await screen.findByRole('textbox', { name: 'Name' })).toHaveValue(
-      'Alicia',
-    );
-    await user.click(screen.getByRole('button', { name: 'Finished' }));
-
-    await waitFor(() => expect(onClose).toHaveBeenCalled());
-    const { data, secureAttributes } = storedName(
-      store.getState().session.network.nodes[0],
-    );
-    if (!isNumberArray(data)) throw new Error('Expected a stored ciphertext');
-    if (!secureAttributes)
-      throw new Error('Expected secure-attribute metadata');
-    await expect(decryptData({ secureAttributes, data }, 'pw')).resolves.toBe(
-      'Alicia',
-    );
+    await expect(
+      storedName(store.getState().session.network.nodes[0]),
+    ).resolves.toBe('Alicia');
   });
 
   it('keeps an edit in progress through a re-render and an unrelated change to the interview', async () => {
-    const { store, rerender } = await renderEditing(
-      makeEncryptedPerson('n1', 'Alice', 'pw'),
-      'pw',
-    );
+    const { store, rerender } = await renderNodeForm({
+      selected: await makeEncryptedPerson('n1', 'Alice', 'pw'),
+      unlocked: true,
+    });
     const user = userEvent.setup();
 
     const name = await screen.findByRole('textbox', { name: 'Name' });
@@ -309,165 +186,220 @@ describe('NodeForm editing a person with an encrypted answer', () => {
     expect(screen.getByRole('textbox', { name: 'Name' })).toHaveValue('Alicia');
   });
 
-  it('does not open, and flags the passphrase, when it cannot decrypt the answer', async () => {
-    const { store, onClose } = await renderEditing(
-      makeEncryptedPerson('n1', 'Alice', 'pw'),
-      'wrong',
-    );
-
-    await waitFor(() =>
-      expect(store.getState().ui.passphraseInvalid).toBe(true),
-    );
-    await waitFor(() => expect(onClose).toHaveBeenCalled());
-    expect(screen.queryByRole('textbox', { name: 'Name' })).toBeNull();
-  });
-
-  it('does not open without a passphrase, and asks for one', async () => {
-    const { store, onClose } = await renderEditing(
-      makeEncryptedPerson('n1', 'Alice', 'pw'),
-    );
-
-    await waitFor(() => expect(onClose).toHaveBeenCalled());
-    expect(store.getState().ui.showPassphrasePrompter).toBe(true);
-    expect(screen.queryByRole('textbox', { name: 'Name' })).toBeNull();
-  });
-
-  it('opens without the unreadable answer when its encryption metadata is missing', async () => {
-    const encrypted = await makeEncryptedPerson('n1', 'Alice', 'pw');
-    await renderEditing(
-      {
-        [entityPrimaryKeyProperty]: encrypted[entityPrimaryKeyProperty],
-        type: encrypted.type,
-        [entityAttributesProperty]: encrypted[entityAttributesProperty],
-      },
-      'pw',
-    );
+  it('shows an answer its key cannot read as unavailable, asks for no passphrase, and keeps it when the form is finished', async () => {
+    const person = await unreadablePerson();
+    const { store, onClose, prompts } = await renderNodeForm({
+      selected: person,
+      unlocked: true,
+    });
+    const user = userEvent.setup();
 
     const name = await screen.findByRole('textbox', { name: 'Name' });
-    expect(name).toHaveValue('');
-    expect(screen.getByRole('spinbutton', { name: 'Age' })).toHaveValue(40);
-  });
+    expect(name).toHaveValue('Answer unavailable');
+    expect(name).toHaveAttribute('readonly');
+    expect(name).toHaveAccessibleDescription(/cannot be shown here/);
+    const age = screen.getByRole('spinbutton', { name: 'Age' });
+    expect(age).toHaveValue(40);
+    expect(onClose).not.toHaveBeenCalled();
 
-  it('removes an answer the participant clears', async () => {
-    const { store, onClose } = await renderEditing(
-      makeEncryptedPerson('n1', 'Alice', 'pw'),
-      'pw',
-    );
-    const user = userEvent.setup();
-
-    await user.clear(await screen.findByRole('spinbutton', { name: 'Age' }));
-    await user.click(screen.getByRole('button', { name: 'Finished' }));
-
-    await waitFor(() => expect(onClose).toHaveBeenCalled());
-    const [saved] = store.getState().session.network.nodes;
-    expect(saved?.[entityAttributesProperty]).not.toHaveProperty('age');
-  });
-
-  it('keeps the unreadable answer when the person is saved with another answer changed', async () => {
-    const encrypted = await makeEncryptedPerson('n1', 'Alice', 'pw');
-    const storedCiphertext = encrypted[entityAttributesProperty].name;
-    const { store, onClose } = await renderEditing(
-      {
-        [entityPrimaryKeyProperty]: encrypted[entityPrimaryKeyProperty],
-        type: encrypted.type,
-        [entityAttributesProperty]: encrypted[entityAttributesProperty],
-      },
-      'pw',
-    );
-    const user = userEvent.setup();
-
-    const age = await screen.findByRole('spinbutton', { name: 'Age' });
     await user.clear(age);
     await user.type(age, '41');
     await user.click(screen.getByRole('button', { name: 'Finished' }));
 
     await waitFor(() => expect(onClose).toHaveBeenCalled());
     const [saved] = store.getState().session.network.nodes;
-    expect(saved?.[entityAttributesProperty].age).toBe(41);
-    expect(saved?.[entityAttributesProperty].name).toEqual(storedCiphertext);
-  });
-});
-
-describe('NodeForm with the encrypted-variables experiment off', () => {
-  it('opens on the stored answer and saves the change as plaintext without a passphrase', async () => {
-    const { store, onClose } = await renderEditing(
-      makePlainPerson('n1', 'Alice'),
-      undefined,
-      false,
+    expect(saved?.[entityAttributesProperty]).toEqual({
+      ...person[entityAttributesProperty],
+      age: 41,
+    });
+    expect(saved?.[entitySecureAttributesMeta]).toEqual(
+      person[entitySecureAttributesMeta],
     );
+    expect(prompts()).toBe(0);
+  });
+
+  it('saves a new answer over one its key cannot read', async () => {
+    const { store, onClose } = await renderNodeForm({
+      selected: await unreadablePerson(),
+      unlocked: true,
+    });
+    const user = userEvent.setup();
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Enter a new answer' }),
+    );
+    const name = screen.getByRole('textbox', { name: 'Name' });
+    expect(name).toHaveValue('');
+    await user.type(name, 'Alicia');
+    await user.click(screen.getByRole('button', { name: 'Finished' }));
+
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+    await expect(
+      storedName(store.getState().session.network.nodes[0]),
+    ).resolves.toBe('Alicia');
+  });
+
+  it('does not open without a passphrase, and asks for one', async () => {
+    const { store, onClose } = await renderNodeForm({
+      selected: await makeEncryptedPerson('n1', 'Alice', 'pw'),
+    });
+
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+    expect(store.getState().ui.showPassphrasePrompter).toBe(true);
+    expect(screen.queryByRole('textbox', { name: 'Name' })).toBeNull();
+  });
+
+  it('shows an answer whose encryption metadata is missing as unavailable, and keeps it when the form is finished', async () => {
+    const encrypted = await makeEncryptedPerson('n1', 'Alice', 'pw');
+    const { store, onClose } = await renderNodeForm({
+      selected: {
+        [entityPrimaryKeyProperty]: encrypted[entityPrimaryKeyProperty],
+        type: encrypted.type,
+        [entityAttributesProperty]: encrypted[entityAttributesProperty],
+      },
+      unlocked: true,
+    });
     const user = userEvent.setup();
 
     const name = await screen.findByRole('textbox', { name: 'Name' });
-    expect(name).toHaveValue('Alice');
-    expect(store.getState().ui.showPassphrasePrompter).toBe(false);
+    expect(name).toHaveValue('Answer unavailable');
+    expect(screen.getByRole('spinbutton', { name: 'Age' })).toHaveValue(40);
+
+    await user.click(screen.getByRole('button', { name: 'Finished' }));
+
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+    expect(
+      store.getState().session.network.nodes[0]?.[entityAttributesProperty],
+    ).toEqual(encrypted[entityAttributesProperty]);
+  });
+});
+
+describe('NodeForm adding a person with an encrypted answer', () => {
+  it('keeps the dialog and the answers open, and says so, when the save is refused', async () => {
+    const { store, onClose } = await renderNodeForm({ selected: null });
+    const user = userEvent.setup();
+    const before = store.getState().session.network;
+
+    await user.click(screen.getByRole('button', { name: 'Add a person' }));
+    const name = await screen.findByRole('textbox', { name: 'Name' });
+    await user.type(name, 'Alicia');
+    await user.click(screen.getByRole('button', { name: 'Finished' }));
+
+    expect(
+      await screen.findByText(/Your answers have not been saved/),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'Name' })).toHaveValue('Alicia');
+    expect(onClose).not.toHaveBeenCalled();
+    expect(store.getState().session.network).toBe(before);
+  });
+});
+
+// A form asking only for a nickname, which is not encrypted, that must differ
+// from the person's name, which is.
+const nicknameVariables: Record<string, Variable> = {
+  ...encryptedVariables,
+  nickname: {
+    name: 'nickname',
+    label: 'nickname',
+    type: 'text',
+    component: 'Text',
+    validation: { differentFrom: asEntityAttributeReference('name') },
+  },
+};
+
+const nicknameStages: Parameters<typeof createEncryptionStore>[1] = [
+  {
+    id: 'stage-1',
+    type: 'NameGenerator',
+    label: { en: 'Name generator' },
+    subject: { entity: 'node', type: NODE_TYPE },
+    form: {
+      title: { en: 'Add a person' },
+      fields: [
+        {
+          variable: asEntityAttributeReference('nickname'),
+          prompt: { en: 'Nickname' },
+        },
+      ],
+    },
+    prompts: [{ id: 'prompt-1', text: { en: 'Name people' } }],
+  },
+];
+
+describe('NodeForm whose answer is checked against a protected one', () => {
+  it('takes the passphrase inside the form, then checks and saves the answer', async () => {
+    const { store, onClose } = await renderNodeForm({
+      selected: await makeEncryptedPerson('n1', 'Alice', 'pw'),
+      stages: nicknameStages,
+      variables: nicknameVariables,
+    });
+    const user = userEvent.setup();
+
+    const nickname = await screen.findByRole('textbox', { name: 'Nickname' });
+    await user.type(nickname, 'Ali');
+    await user.click(screen.getByRole('button', { name: 'Finished' }));
+    await waitFor(() =>
+      expect(nickname).toHaveAccessibleDescription(
+        /checked against answers protected by your passphrase/,
+      ),
+    );
+
+    const form = screen.getByRole('dialog', { name: 'Add a person' });
+    await user.click(
+      within(form).getByRole('button', { name: 'Enter your Passphrase' }),
+    );
+    const prompt = await screen.findByRole('dialog', {
+      name: 'Enter your Passphrase',
+    });
+    await user.type(
+      within(prompt).getByLabelText(/^Passphrase/, { selector: 'input' }),
+      'pw',
+    );
+    await user.click(
+      within(prompt).getByRole('button', { name: 'Submit passphrase' }),
+    );
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Finished' })).toHaveFocus(),
+    );
+    expect(
+      within(form).queryByRole('button', { name: 'Enter your Passphrase' }),
+    ).toBeNull();
+    expect(nickname).toHaveValue('Ali');
+
+    await user.click(screen.getByRole('button', { name: 'Finished' }));
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+    expect(
+      store.getState().session.network.nodes[0]?.[entityAttributesProperty]
+        .nickname,
+    ).toBe('Ali');
+  });
+
+  it('asks for no passphrase for a new person, whose own name is not stored', async () => {
+    const { store, onClose } = await renderNodeForm({
+      selected: null,
+      stored: [await makeEncryptedPerson('n1', 'Alice', 'pw')],
+      stages: nicknameStages,
+      variables: nicknameVariables,
+    });
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole('button', { name: 'Add a person' }));
+    const nickname = await screen.findByRole('textbox', { name: 'Nickname' });
     expect(
       screen.queryByRole('button', { name: 'Enter your Passphrase' }),
     ).toBeNull();
 
-    await user.clear(name);
-    await user.type(name, 'Alicia');
-    await user.click(screen.getByRole('button', { name: 'Finished' }));
-
-    await waitFor(() => expect(onClose).toHaveBeenCalled());
-    const { data, secureAttributes } = storedName(
-      store.getState().session.network.nodes[0],
-    );
-    expect(data).toBe('Alicia');
-    expect(secureAttributes).toBeUndefined();
-  });
-});
-
-describe('NodeForm comparing a plaintext answer with a protected one', () => {
-  // The name is not protected, but must differ from the nickname, which is
-  // and is not on the form.
-  const comparedVariables: Record<string, Variable> = {
-    ...encryptedVariables,
-    name: {
-      name: 'name',
-      label: 'name',
-      type: 'text',
-      component: 'Text',
-      validation: { differentFrom: asEntityAttributeReference('nickname') },
-    },
-  };
-
-  it('takes the passphrase the check needs from inside the dialog, then saves the kept answers', async () => {
-    const { encryptedAttributes, secureAttributes } =
-      await generateSecureAttributes(
-        { name: 'Alice', nickname: 'Ally', age: 40 },
-        comparedVariables,
-        'pw',
-      );
-    const { store, onClose } = await renderEditing(
-      {
-        [entityPrimaryKeyProperty]: 'n1',
-        type: NODE_TYPE,
-        [entityAttributesProperty]: encryptedAttributes,
-        [entitySecureAttributesMeta]: secureAttributes,
-      },
-      undefined,
-      true,
-      comparedVariables,
-    );
-    const user = userEvent.setup();
-
-    const name = await screen.findByRole('textbox', { name: 'Name' });
-    await user.clear(name);
-    await user.type(name, 'Alicia');
-    await user.click(screen.getByRole('button', { name: 'Finished' }));
-    expect(
-      await screen.findAllByText(/Your answers have not been saved/),
-    ).not.toHaveLength(0);
-    expect(onClose).not.toHaveBeenCalled();
-
-    await reenterPassphrase(user, 'pw');
-    expect(screen.getByRole('textbox', { name: 'Name' })).toHaveValue('Alicia');
+    await user.type(nickname, 'Alice');
     await user.click(screen.getByRole('button', { name: 'Finished' }));
 
     await waitFor(() => expect(onClose).toHaveBeenCalled());
     expect(
-      store.getState().session.network.nodes[0]?.[entityAttributesProperty]
-        .name,
-    ).toBe('Alicia');
+      store
+        .getState()
+        .session.network.nodes.map(
+          (node) => node[entityAttributesProperty].nickname,
+        ),
+    ).toEqual([undefined, 'Alice']);
   });
 });

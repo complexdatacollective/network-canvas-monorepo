@@ -34,6 +34,7 @@ import {
 import type { ProtocolEvent } from '@codaco/protocol-builder-core/contract/schemas';
 import {
   CurrentProtocolSchema,
+  type Experiments,
   type ExtractedAsset,
 } from '@codaco/protocol-validation';
 import allInterfaces from '@codaco/protocols/e2e/all-interfaces/protocol.json';
@@ -88,6 +89,7 @@ const nextRequestId = (): string => `write-${++writes}`;
 const INFORMATION = sectionId({ kind: 'stage', stageId: 'information-1' });
 const EGO_FORM = sectionId({ kind: 'stage', stageId: 'ego-form-1' });
 const PERSON = sectionId({ kind: 'codebookNode', typeId: 'person' });
+const SETTINGS = sectionId({ kind: 'settings' });
 
 /** The language the all-interfaces protocol is written in. */
 const FIXTURE_LANGUAGE = 'en-US';
@@ -122,13 +124,17 @@ async function safe(
 }
 
 const openProtocol = (
-  options: Readonly<{ withEgo?: boolean }> = {},
+  options: Readonly<{ withEgo?: boolean; experiments?: Experiments }> = {},
 ): OpenProtocol => {
   const store = configureStore({ reducer: rootReducer });
   store.dispatch(setActiveProtocolId(PROTOCOL_ID));
   // Parsed rather than cast: a fixture that stopped being a schema-8 protocol
   // would otherwise reach the router as one and fail somewhere less obvious.
-  const protocol = CurrentProtocolSchema.parse(allInterfaces);
+  const parsed = CurrentProtocolSchema.parse(allInterfaces);
+  const protocol =
+    options.experiments === undefined
+      ? parsed
+      : { ...parsed, experiments: options.experiments };
   const { ego: _ego, ...codebook } = protocol.codebook;
   store.dispatch(
     setActiveProtocol(
@@ -484,6 +490,38 @@ describe("Architect's in-process protocol-builder host", () => {
     expect(result.changedSections).toEqual([PERSON]);
     expect(personVariables(store).spare).toBeUndefined();
     expect(personVariables(store).name).toBeDefined();
+  });
+
+  it('keeps the experiments setting through a settings write, and clears it when the write leaves it out', async () => {
+    const { store, client } = openProtocol({ experiments: {} });
+    const held = await client.call('AcquireLock', {
+      protocolId: PROTOCOL_ID,
+      sectionId: SETTINGS,
+    });
+    expect(held.document).toHaveProperty('experiments', {});
+
+    const renamed = await client.call('Submit', {
+      protocolId: PROTOCOL_ID,
+      requestId: nextRequestId(),
+      sectionId: SETTINGS,
+      document: { ...held.document, name: 'Renamed' },
+      revision: held.revision,
+    });
+    expect(getProtocol(store.getState())).toMatchObject({
+      name: 'Renamed',
+      experiments: {},
+    });
+
+    // The section is written whole, so a write without the setting clears it.
+    const { experiments: _cleared, ...withoutExperiments } = held.document;
+    await client.call('Submit', {
+      protocolId: PROTOCOL_ID,
+      requestId: nextRequestId(),
+      sectionId: SETTINGS,
+      document: { ...withoutExperiments, name: 'Renamed' },
+      revision: renamed.revision,
+    });
+    expect(getProtocol(store.getState())?.experiments).toBeUndefined();
   });
 
   /**

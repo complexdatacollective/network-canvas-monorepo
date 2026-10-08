@@ -10,6 +10,8 @@ import { AnimationProvider } from '@codaco/fresco-ui/AnimationProvider';
 import type {
   AssetRequestHandler,
   InterviewPayload,
+  ProtocolPayload,
+  SessionSnapshot,
   StepChangeHandler,
 } from '@codaco/interview';
 import { Shell } from '@codaco/interview';
@@ -166,13 +168,13 @@ export default function App() {
   );
 }
 
-type MountedInterviewProps = Pick<InterviewPayload, 'protocol'> & {
-  /** The session as the host holds it; the Shell is given its languages too. */
-  session: Omit<InterviewPayload['session'], 'localeOptions'>;
+type MountedInterviewProps = {
+  session: SessionSnapshot;
+  protocol: ProtocolPayload;
 } & Pick<
-    ComponentProps<typeof Shell>,
-    'requestedLocales' | 'allowStageNavigation' | 'currentStep' | 'onStepChange'
-  >;
+  ComponentProps<typeof Shell>,
+  'requestedLocales' | 'allowStageNavigation' | 'currentStep' | 'onStepChange'
+>;
 
 function MountedInterview({
   session,

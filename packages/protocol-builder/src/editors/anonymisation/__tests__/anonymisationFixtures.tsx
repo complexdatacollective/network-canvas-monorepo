@@ -158,3 +158,40 @@ export const alreadyProtecting =
     });
     return host.adapter;
   };
+
+/** A finished node rule comparing one `person` attribute's answers. */
+export const personRule = (id: string, attribute: string): SectionDoc => ({
+  id,
+  type: 'node',
+  options: { type: 'person', attribute, operator: 'EXACTLY', value: 'Ada' },
+});
+
+/** A node rule asking only whether one `person` attribute was answered. */
+export const answeredRule = (id: string, attribute: string): SectionDoc => ({
+  id,
+  type: 'node',
+  options: { type: 'person', attribute, operator: 'EXISTS' },
+});
+
+/**
+ * Other stages of the protocol, revised by a COLLABORATOR before the editor
+ * opens: each entry's fields replace the ones that stage already has. `inner`
+ * is the adapter the rest of the fixture would have used, so a protocol seeded
+ * as already protecting something can carry rules too.
+ */
+export const withStageFields =
+  (
+    stages: Readonly<Record<string, SectionDoc>>,
+    inner: (host: InMemoryHost) => ProtocolBuilderAdapter = (host) =>
+      host.adapter,
+  ) =>
+  (host: InMemoryHost): ProtocolBuilderAdapter => {
+    for (const [stageId, fields] of Object.entries(stages)) {
+      const section = sectionId({ kind: 'stage', stageId });
+      host.store.applyAsCollaborator(section, {
+        ...host.store.read(section).document,
+        ...fields,
+      });
+    }
+    return inner(host);
+  };

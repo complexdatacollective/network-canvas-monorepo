@@ -1022,7 +1022,6 @@ export const alterFormScenarios: InterfaceScenarios = {
       currentStep: 1,
       build: () => {
         const synth = new SyntheticInterview();
-        synth.setExperiments({ encryptedVariables: true });
         const person = synth.addNodeType({ name: 'Person' });
         const secret = person.addVariable({
           id: 'secret',

@@ -11,7 +11,13 @@ const variables = {
   nickname: { name: 'Nickname', type: 'text', component: 'Text' },
 };
 
-function ValidationEditorProof({ seed }: Readonly<{ seed?: ValidationMap }>) {
+function ValidationEditorProof({
+  seed,
+  ruleHints,
+}: Readonly<{
+  seed?: ValidationMap;
+  ruleHints?: Readonly<Record<string, string>>;
+}>) {
   const [validation, setValidation] = useState<ValidationMap>(
     seed ?? { required: true, minValue: 0 },
   );
@@ -32,6 +38,7 @@ function ValidationEditorProof({ seed }: Readonly<{ seed?: ValidationMap }>) {
         allVariables={variables}
         value={validation}
         onChange={setValidation}
+        {...(ruleHints === undefined ? {} : { ruleHints })}
       />
     </main>
   );
@@ -91,5 +98,28 @@ export const OneOnOneOffInEachGroup: Story = {
       await expect(on[0]?.closest('[class*="bg-(--rule-bg)"]')).not.toBeNull();
       await expect(off[0]?.closest('[class*="bg-(--rule-bg)"]')).toBeNull();
     }
+  },
+};
+
+/**
+ * A host's own guidance beneath a rule, for something it knows about the rule
+ * that the editor cannot: the passphrase rules use it to say what minimum
+ * applies when none is set. It is read on the rule it names — switched on or
+ * off — and on no other row.
+ */
+export const GuidanceOnARule: Story = {
+  args: {
+    seed: { minValue: 0 },
+    ruleHints: { maxValue: 'Leave this off to allow any value.' },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await expect(
+      canvas.getByRole('switch', { name: 'Maximum value' }),
+    ).toHaveAccessibleDescription('Leave this off to allow any value.');
+    await expect(
+      canvas.getByRole('switch', { name: 'Minimum value' }),
+    ).toHaveAccessibleDescription('');
   },
 };

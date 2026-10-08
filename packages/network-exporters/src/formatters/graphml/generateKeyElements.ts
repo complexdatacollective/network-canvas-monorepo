@@ -13,6 +13,7 @@ import {
 
 import type { EdgeWithResequencedID, NodeWithResequencedID } from '../../input';
 import type { ExportOptions } from '../../options';
+import { isEncryptedAttribute } from '../../utils/encryptedAttribute';
 import { getEntityAttributes, getOwn } from '../../utils/general';
 import { resolveAttrNames } from './attrNames';
 import { createDocumentFragment, getGraphMLTypeForKey, sha1 } from './helpers';
@@ -145,6 +146,15 @@ const getGraphMLTypeForVariable = (
   variableId: string,
   entities: readonly GraphMLEntity[],
 ): string => {
+  // The marker written in place of an encrypted value is text, whatever the
+  // variable's own type.
+  if (
+    entities.some((entity) =>
+      isEncryptedAttribute(entity, variableId, variable),
+    )
+  ) {
+    return 'string';
+  }
   switch (variable.type) {
     case 'boolean':
     case 'categorical':

@@ -36,11 +36,9 @@ import {
   actionPlusBadgeVariants,
   actionPlusIconClass,
 } from '../../../components/actionButtonVariants';
-import PassphraseRecovery from '../../../components/PassphraseRecovery';
+import PassphraseEntry from '../../../components/PassphraseEntry';
 import { useCurrentStep } from '../../../contexts/CurrentStepContext';
-import { formValuesToAttributePatch } from '../../../forms/formValuesToAttributePatch';
 import useProtocolForm from '../../../forms/useProtocolForm';
-import { savingNeedsPassphrase } from '../../../forms/useValidationNetwork';
 import { writeSubmissionResult } from '../../../forms/writeSubmissionResult';
 import { useCelebrate } from '../../../hooks/useCelebrate';
 import { useStageSelector } from '../../../hooks/useStageSelector';
@@ -52,8 +50,6 @@ import { getPromptAdditionalAttributes } from '../../../selectors/session';
 import type { AttributePatch } from '../../../store/entityAttributePatch';
 import { updateNode as updateNodeAction } from '../../../store/modules/session';
 import { useAppDispatch } from '../../../store/store';
-import PassphraseNotice from '../../Anonymisation/PassphraseNotice';
-import { usePassphrase } from '../../Anonymisation/usePassphrase';
 import { useProtectedFormValues } from '../../Anonymisation/useProtectedFormValues';
 import { interfaceMessages } from '../../messages';
 
@@ -159,55 +155,31 @@ const NodeForm = (props: NodeFormProps) => {
     },
   };
 
-  // An edited person's encrypted answers are decrypted before the form opens.
-  // Once their form has been shown, a passphrase that cannot read them only
-  // hides it, keeping what was entered until it can be shown, and saved,
-  // again; before then, the form does not open.
+  // An edited person's encrypted answers are decrypted before the form opens,
+  // and the form does not open at all until the passphrase has been entered.
   const editing = useProtectedFormValues(selectedNode, form.fields, variables);
-  const selectedNodeId = selectedNode?.[entityPrimaryKeyProperty];
-  const [shownFor, setShownFor] = useState<string>();
-  if (show && editing.status === 'ready' && shownFor !== selectedNodeId) {
-    setShownFor(selectedNodeId);
-  }
-  if (!show && shownFor !== undefined) {
-    setShownFor(undefined);
-  }
-  const editingShown =
-    selectedNodeId !== undefined && shownFor === selectedNodeId;
-  const editingHidden = editingShown && editing.status !== 'ready';
-  const editingLocked =
-    selectedNode !== null && editing.status === 'locked' && !editingShown;
+  const editingLocked = selectedNode !== null && editing.status === 'locked';
   useEffect(() => {
     if (!editingLocked) return;
     setShow(false);
     onClose();
   }, [editingLocked, onClose]);
 
-  const initialValues =
-    selectedNode && editing.status === 'ready' ? editing.values : undefined;
+  const edited =
+    selectedNode && editing.status === 'ready' ? editing : undefined;
 
-  const { isEnabled } = usePassphrase();
-  const offersPassphrase = savingNeedsPassphrase(
-    variables,
-    form.fields.map((field) => field.variable),
-    isEnabled,
-    selectedNodeId,
-  );
-
-  const { fieldComponents, coerceValues } = useProtocolForm({
-    fields: form.fields,
-    autoFocus: true,
-    initialValues,
-    currentEntityId: selectedNode?.[entityPrimaryKeyProperty],
-  });
+  const { fieldComponents, toAttributePatch, passphraseNeeded } =
+    useProtocolForm({
+      fields: form.fields,
+      autoFocus: true,
+      initialValues: edited?.values,
+      currentEntityId: selectedNode?.[entityPrimaryKeyProperty],
+      unavailableVariables: edited?.unavailable,
+    });
 
   const handleSubmit: FormSubmitHandler = useCallback(
     async (values) => {
-      const patchResult = formValuesToAttributePatch(
-        coerceValues(values),
-        form.fields.map((field) => field.variable),
-        initialValues ?? {},
-      );
+      const patchResult = toAttributePatch(values);
 
       if (!patchResult.success) {
         return {
@@ -238,9 +210,7 @@ const NodeForm = (props: NodeFormProps) => {
       return { success: true };
     },
     [
-      coerceValues,
-      form.fields,
-      initialValues,
+      toAttributePatch,
       selectedNode,
       addNode,
       newNodeAttributes,
@@ -290,7 +260,7 @@ const NodeForm = (props: NodeFormProps) => {
         </motion.div>
       </AnimatePresence>
       <Dialog
-        open={show && (editing.status === 'ready' || editingShown)}
+        open={show && editing.status === 'ready'}
         title={<LocalizedText value={form.title} render={<span />} />}
         closeDialog={handleClose}
         dismissible={!submitting}
@@ -301,7 +271,7 @@ const NodeForm = (props: NodeFormProps) => {
             form="node-form"
             aria-label={intl.formatMessage(interfaceMessages.finished)}
             color="primary"
-            disabled={submitting || editingHidden}
+            disabled={submitting}
           >
             {intl.formatMessage(interfaceMessages.finished)}
           </Button>
@@ -313,15 +283,8 @@ const NodeForm = (props: NodeFormProps) => {
           className="phone-landscape:min-w-sm desktop:min-w-md w-full"
         >
           <SubmittingObserver onChange={setSubmitting} />
-          {offersPassphrase && <PassphraseRecovery />}
-          {editingHidden && (
-            <PassphraseNotice
-              status={editing.status === 'pending' ? 'pending' : 'locked'}
-            />
-          )}
-          <div hidden={editingHidden} className="contents">
-            {fieldComponents}
-          </div>
+          <PassphraseEntry needed={passphraseNeeded} />
+          {fieldComponents}
         </Form>
       </Dialog>
     </>

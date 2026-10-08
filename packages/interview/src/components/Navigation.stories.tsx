@@ -4,7 +4,6 @@ import SuperJSON from 'superjson';
 
 import { SyntheticInterview } from '@codaco/protocol-utilities';
 
-import { expectMaskedPassphraseField } from '../storybook-support/expectMaskedPassphraseField';
 import StoryInterviewShell from '../storybook-support/StoryInterviewShell';
 import { TEXT_SCALE_OPTIONS } from './Navigation';
 
@@ -448,19 +447,7 @@ function buildEncryptedNamePayload(): string {
     text: 'Thank you for taking part.',
   });
 
-  const payload = si.getInterviewPayload({ currentStep: 1 });
-
-  // This schema still gates encryption behind the protocol's
-  // `encryptedVariables` experiment. It is switched on in the payload itself,
-  // not through the synthetic builder, so nothing here depends on the
-  // experiment once encrypted attributes no longer need it.
-  return SuperJSON.stringify({
-    ...payload,
-    protocol: {
-      ...payload.protocol,
-      experiments: { encryptedVariables: true },
-    },
-  });
+  return SuperJSON.stringify(si.getInterviewPayload({ currentStep: 1 }));
 }
 
 let encryptedNamePayload: string | undefined;
@@ -613,18 +600,19 @@ const enterPassphraseAndAddPerson = async (canvasElement: HTMLElement) => {
 
   await userEvent.keyboard('{Enter}');
 
+  // No passphrase has been chosen in this interview yet, so the prompter asks
+  // for one to be chosen and confirmed.
   const passphraseDialog = await canvas.findByRole('dialog', {
-    name: /enter your passphrase/i,
+    name: /choose a passphrase/i,
   });
-  // Where the field falls back to a password input it has no ARIA role, so it
-  // is found by its label, which also carries a visual required marker.
-  const passphraseField = within(passphraseDialog).getByLabelText(
-    /^Passphrase/,
-    { selector: 'input' },
-  );
-  await expectMaskedPassphraseField(passphraseField);
+  const passphraseField =
+    within(passphraseDialog).getByLabelText(/^passphrase/i);
   await waitFor(() => expect(passphraseField).toHaveFocus());
   await userEvent.type(passphraseField, 'correct horse battery');
+  await userEvent.type(
+    within(passphraseDialog).getByLabelText(/^confirm passphrase/i),
+    'correct horse battery',
+  );
   await userEvent.click(
     within(passphraseDialog).getByRole('button', {
       name: /submit passphrase/i,

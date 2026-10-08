@@ -5,6 +5,8 @@ import {
   type TypedStartListening,
 } from '@reduxjs/toolkit';
 
+import { entityPrimaryKeyProperty } from '@codaco/shared-consts';
+
 import type { Tracker } from '../../analytics/tracker';
 import {
   addEdge,
@@ -16,7 +18,7 @@ import {
   removeNodeFromPrompt,
   restoreNode,
 } from '../modules/session';
-import { setPassphrase, setPassphraseInvalid } from '../modules/ui';
+import { encryptionUnlocked, passphraseRejected } from '../modules/ui';
 import type { AppDispatch, RootState } from '../store';
 
 type AnalyticsListenerArgs = {
@@ -56,14 +58,10 @@ export function createAnalyticsListenerMiddleware({
   // relationship as the single adds do.
   startAppListening({
     actionCreator: addNodesAndEdges.fulfilled,
-    effect: (action, listenerApi) => {
-      const before =
-        listenerApi.getOriginalState().session.network?.nodes.length ?? 0;
-      const added =
-        listenerApi.getState().session.network?.nodes.slice(before) ?? [];
-      for (const node of added) {
+    effect: (action) => {
+      for (const node of action.payload.nodes) {
         tracker.track('node_added', {
-          node_id: node._uid,
+          node_id: node.nodeId,
           node_type: node.type,
         });
       }
@@ -82,7 +80,7 @@ export function createAnalyticsListenerMiddleware({
     actionCreator: restoreNode,
     effect: (action) => {
       tracker.track('node_added', {
-        node_id: action.payload._uid,
+        node_id: action.payload[entityPrimaryKeyProperty],
         node_type: action.payload.type,
       });
     },
@@ -134,20 +132,19 @@ export function createAnalyticsListenerMiddleware({
     },
   });
 
-  // Anonymisation. The passphrase value itself is never sent.
+  // Anonymisation. Neither the passphrase nor anything derived from it is
+  // sent.
   startAppListening({
-    actionCreator: setPassphrase,
+    actionCreator: encryptionUnlocked,
     effect: () => {
       tracker.track('passphrase_set');
     },
   });
 
   startAppListening({
-    actionCreator: setPassphraseInvalid,
-    effect: (action) => {
-      if (action.payload) {
-        tracker.track('passphrase_validation_failed');
-      }
+    actionCreator: passphraseRejected,
+    effect: () => {
+      tracker.track('passphrase_validation_failed');
     },
   });
 

@@ -15,6 +15,7 @@ import {
   migrateFamilyPedigreeSessionRecords,
   resumeUnstartedPedigreeAtIntroduction,
 } from './family-pedigree-session-migration.ts';
+import { TypeLevelOperators } from './filters/filter.ts';
 import ProtocolSchemaV9 from './schema.ts';
 
 // Schema 8 never recorded the language its copy was written in, and a schema 9
@@ -28,6 +29,50 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 const inDefaultLocale = (text: string) => ({
   [DEFAULT_LOCALE]: escapeMessageText(text),
 });
+
+// Under schema 8 the runtime encrypted an attribute marked `encrypted` only
+// while `experiments.encryptedVariables` was on; otherwise it stored the
+// plaintext. Schema 9 always encrypts, so a protocol migrated with the
+// experiment off loses the mark, and an interview already under way goes on
+// storing its answers as plaintext, as it did before.
+const removeEncryptedMarks = (codebook: unknown) => {
+  if (!isRecord(codebook) || !isRecord(codebook.node)) return;
+  for (const type of Object.values(codebook.node)) {
+    if (!isRecord(type) || !isRecord(type.variables)) continue;
+    for (const variable of Object.values(type.variables)) {
+      if (isRecord(variable)) Reflect.deleteProperty(variable, 'encrypted');
+    }
+  }
+};
+
+// Schema 9 keeps `experiments` for features released within it, but
+// encrypted attributes are no longer one of them.
+const withoutEncryptedVariables = (experiments: unknown) => {
+  if (!isRecord(experiments)) return experiments;
+  const { encryptedVariables: _released, ...remaining } = experiments;
+  return remaining;
+};
+
+// Schema 9 refuses an Anonymisation stage whose minimum passphrase length is
+// above its maximum: no passphrase meets both, so a participant could never
+// choose one. Both lengths go, as the 7 to 8 migration does with an inverted
+// codebook pair, and the interview's default minimum applies instead.
+const removeContradictoryPassphraseRules = (protocol: unknown) => {
+  if (!isRecord(protocol) || !Array.isArray(protocol.stages)) return;
+  for (const stage of protocol.stages) {
+    if (!isRecord(stage) || stage.type !== 'Anonymisation') continue;
+    const { validation } = stage;
+    if (!isRecord(validation)) continue;
+    const { minLength, maxLength } = validation;
+    if (
+      typeof minLength === 'number' &&
+      typeof maxLength === 'number' &&
+      minLength > maxLength
+    ) {
+      Reflect.deleteProperty(stage, 'validation');
+    }
+  }
+};
 
 const nameOrKey = (definition: unknown, key: string) => {
   const name = isRecord(definition) ? definition.name : undefined;
@@ -75,6 +120,62 @@ const subjectVariables = (
   return isRecord(definition) && isRecord(definition.variables)
     ? definition.variables
     : {};
+};
+
+// Whether a rule compares the value of an encrypted node attribute. A rule
+// that only asks whether the attribute is answered still works on one.
+const comparesEncryptedAttribute = (codebook: unknown, rule: unknown) => {
+  if (!isRecord(rule) || rule.type !== 'node' || !isRecord(rule.options)) {
+    return false;
+  }
+  const { type, attribute, operator } = rule.options;
+  if (typeof type !== 'string' || typeof attribute !== 'string') return false;
+  if (TypeLevelOperators.safeParse(operator).success) return false;
+  const variables = subjectVariables(codebook, 'node', { type });
+  const variable = variables[attribute];
+  return isRecord(variable) && variable.encrypted === true;
+};
+
+// Removes a filter's rules that compare an encrypted attribute, and says
+// whether that left it with none. A filter that already had no rules is not
+// this step's to remove.
+const emptiedOfEncryptedComparisons = (codebook: unknown, filter: unknown) => {
+  if (!isRecord(filter) || !Array.isArray(filter.rules)) return false;
+  const rules = filter.rules.filter(
+    (rule: unknown) => !comparesEncryptedAttribute(codebook, rule),
+  );
+  if (rules.length === filter.rules.length) return false;
+  filter.rules = rules;
+  return rules.length === 0;
+};
+
+// Schema 9 refuses a rule that compares an encrypted attribute's value: rules
+// are checked without the participant's passphrase, so under schema 8 such a
+// rule only ever compared the ciphertext. A filter this leaves with no rules
+// goes, and so does skip logic left with none. An external-data panel reads
+// the researcher's own unencrypted rows, so its rules stay.
+const removeEncryptedAttributeComparisons = (protocol: unknown) => {
+  if (!isRecord(protocol) || !Array.isArray(protocol.stages)) return;
+  const { codebook } = protocol;
+  for (const stage of protocol.stages) {
+    if (!isRecord(stage)) continue;
+    if (emptiedOfEncryptedComparisons(codebook, stage.filter)) {
+      Reflect.deleteProperty(stage, 'filter');
+    }
+    if (
+      isRecord(stage.skipLogic) &&
+      emptiedOfEncryptedComparisons(codebook, stage.skipLogic.filter)
+    ) {
+      Reflect.deleteProperty(stage, 'skipLogic');
+    }
+    if (!Array.isArray(stage.panels)) continue;
+    for (const panel of stage.panels) {
+      if (!isRecord(panel) || panel.dataSource !== 'existing') continue;
+      if (emptiedOfEncryptedComparisons(codebook, panel.filter)) {
+        Reflect.deleteProperty(panel, 'filter');
+      }
+    }
+  }
 };
 
 /**
@@ -236,6 +337,9 @@ const migrationV8toV9 = createMigration({
   notes: `- Attribute names can now use letters from any language, as well as spaces and punctuation. Existing attribute names are not changed.
 - Text that participants see is now recorded as English, because older protocols do not record which language they use. After upgrading, confirm the protocol's default language: if your protocol is written in another language, change it on the Languages page in Architect.
 - A form field whose question was empty or contained only spaces now uses the name of its attribute as the question, because every question must contain some text.
+- Encrypted attributes are no longer experimental: the Anonymisation interface is always available, and an attribute marked as encrypted is always encrypted. If this protocol marked attributes as encrypted without turning on the experimental "Encrypted Attributes" feature, those attributes are no longer marked, so they keep being collected without encryption.
+- If an Anonymisation stage required a minimum passphrase length longer than its maximum, no participant could choose a passphrase, so both lengths are removed and the default minimum length applies.
+- Skip logic and filters can no longer compare the answers to an encrypted attribute. Rules are checked without the participant's passphrase, so under schema 8 a rule like this only ever compared the encrypted text, never the answer. These rules are removed. Rules that only check whether an encrypted attribute is answered still work, so they are kept. Skip logic left with no rules is removed, so its stage now always appears: a stage that was shown only when a removed rule matched may never have appeared under schema 8. A filter left with no rules is removed, so it no longer limits what its stage or panel shows. Where other rules remain, they may now match differently: if all rules had to match, they now match at least as often as before; if any one rule could match, at most as often. Check the stages that used the removed rules. Rules in a panel that lists people from an external data file are kept, because that data is not encrypted.
 - Family Pedigree stages are converted to the redesigned Family Pedigree. If a stage had an introduction screen, the screen becomes an Information stage just before the pedigree, which is skipped whenever the pedigree is skipped.
 - The Family Pedigree answers for sex assigned at birth and for the kind of each relationship keep the values already recorded, but their labels change to the wording of the redesigned interface. A nomination prompt with the ID "pedigree", which is now reserved, is given a new ID.
 - The old Family Pedigree always required two of the participant's parents. A converted Family Pedigree requires both of the participant's biological parents or, where it required recording grandparents, the family up to the grandparents, which also includes siblings, children, the other biological parent of each of the participant's children, aunts and uncles. Where it recommended recording grandparents, it now recommends recording the family up to the grandparents, so recording both parents becomes a recommendation rather than a requirement, because a stage has only one completeness setting. Only biological parents and gamete donors now count as parents; the old interface also counted adoptive parents and surrogates.
@@ -245,8 +349,13 @@ const migrationV8toV9 = createMigration({
 - The converted Family Pedigree does not ask about gender identity. Where it uses gendered words such as mother or sister, they follow each person's sex assigned at birth.
 - Additional person fields on a Family Pedigree that collected the name or sex assigned at birth are removed, because the redesigned interface asks every person for both itself. The old interface never showed a field for the name. Answers already recorded are kept.
 - A Family Pedigree cannot be converted if two of its answers use the same attribute: two nomination prompts, a nomination prompt and an additional person field, or the name and another answer. Each now needs an attribute of its own. Give each its own attribute in the version of Architect that made the protocol, then upgrade it.`,
-  migrate: (doc) => {
+  migrate: ({ experiments, ...doc }) => {
     const migrated = structuredClone(doc);
+    if (!isRecord(experiments) || experiments.encryptedVariables !== true) {
+      removeEncryptedMarks(migrated.codebook);
+    }
+    removeContradictoryPassphraseRules(migrated);
+    removeEncryptedAttributeComparisons(migrated);
     // Before the codebook labels and the localization pass, so the attribute
     // and stage the conversion adds are labelled and localized with the rest.
     migrateFamilyPedigreeStages(migrated);
@@ -273,6 +382,9 @@ const migrationV8toV9 = createMigration({
 
     return {
       ...migrated,
+      ...(experiments !== undefined && {
+        experiments: withoutEncryptedVariables(experiments),
+      }),
       schemaVersion: 9 as const,
       localization: {
         defaultLocale: DEFAULT_LOCALE,

@@ -224,14 +224,14 @@ test.describe.serial('sample protocol built from scratch', () => {
     escapedMapbox = await installMapboxMocks(context);
     page = await context.newPage();
     editor = new StageEditor(page);
-    // `experiments: {}` is seeded because it is UNWRITABLE through the
-    // running editor (ExperimentsPage can only ever write an
-    // `encryptedVariables` boolean; only the v7→v8 migration emits `{}`).
-    // Every activeProtocol reducer spreads state, so the seeded key
-    // survives all subsequent edits. The name is seeded (the seed fixture
-    // requires one); the description is authored through the UI in the
-    // first test. So are the protocol's languages: the sample is written in
-    // `en-US`, and every editor saves its text under the default language.
+    // `experiments: {}` is seeded because nothing in the running editor
+    // writes it: schema 9 defines no experiments, so Architect has no page
+    // for them, and only the v7→v8 migration emits `{}`. Every
+    // activeProtocol reducer spreads state, so the seeded key survives all
+    // subsequent edits. The name is seeded (the seed fixture requires one);
+    // the description is authored through the UI in the first test. So are
+    // the protocol's languages: the sample is written in `en-US`, and every
+    // editor saves its text under the default language.
     await seedProtocol(page, {
       ...emptyProtocol(),
       name: s('name'),

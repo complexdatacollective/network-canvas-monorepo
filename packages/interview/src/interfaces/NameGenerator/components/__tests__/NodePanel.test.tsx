@@ -8,6 +8,10 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
+import type { usePassphrase } from '../../../Anonymisation/usePassphrase';
+
+type Passphrase = ReturnType<typeof usePassphrase>;
+
 const externalDataMock = vi.fn();
 
 vi.mock('../../../../hooks/useExternalData', () => ({
@@ -39,21 +43,26 @@ vi.mock('../../../../selectors/protocol', () => ({
   getCodebookVariablesForSubjectType: 'getCodebookVariablesForSubjectType',
 }));
 
-const passphraseState: {
-  passphrase: string | null;
-  passphraseInvalid: boolean;
-  isEnabled: boolean;
-} = { passphrase: null, passphraseInvalid: false, isEnabled: true };
+const passphraseState = { unlocked: false, refused: false };
 const requirePassphrase = vi.fn();
 
-vi.mock('../../../Anonymisation/usePassphrase', () => ({
-  usePassphrase: () => ({
-    passphrase: passphraseState.passphrase,
-    passphraseInvalid: passphraseState.passphraseInvalid,
-    isEnabled: passphraseState.isEnabled,
-    requirePassphrase,
-  }),
-}));
+vi.mock('../../../Anonymisation/usePassphrase', async () => {
+  const { runtimeMessages } = await import('../../../../i18n/runtimeMessages');
+  return {
+    usePassphrase: (): Passphrase => ({
+      unlocked: passphraseState.unlocked,
+      passphraseChosen: true,
+      encryptionUnavailable: passphraseState.refused,
+      lockedNotice: passphraseState.refused
+        ? runtimeMessages.protectedAnswersUnavailable
+        : runtimeMessages.protectedAnswersLocked,
+      unlock: vi.fn<Passphrase['unlock']>(),
+      submitPassphrase: vi.fn<Passphrase['submitPassphrase']>(),
+      requirePassphrase,
+      showPassphrasePrompter: false,
+    }),
+  };
+});
 
 vi.mock('../../../../selectors/name-generator', () => ({
   getPanelNodes: () => panelNodesSelector,
@@ -237,9 +246,8 @@ describe('NodePanel external data with encrypted values', () => {
     cleanup();
     vi.clearAllMocks();
     delete stageVariables.name;
-    passphraseState.passphrase = null;
-    passphraseState.passphraseInvalid = false;
-    passphraseState.isEnabled = true;
+    passphraseState.unlocked = false;
+    passphraseState.refused = false;
   });
 
   it('asks for the passphrase and holds the rows back until one is entered', () => {
@@ -250,28 +258,20 @@ describe('NodePanel external data with encrypted values', () => {
     expect(screen.getByText(/enter your passphrase/i)).toBeTruthy();
   });
 
-  it('holds the rows back while the passphrase is not working', () => {
-    passphraseState.passphrase = 'secret';
-    passphraseState.passphraseInvalid = true;
+  it('says protected answers cannot be shown or saved, holding the rows back, under a header no passphrase can open', () => {
+    passphraseState.refused = true;
 
     renderPanel();
 
-    expect(requirePassphrase).toHaveBeenCalled();
     expect(screen.queryByTestId('node-list')).toBeNull();
-    expect(screen.getByText(/enter your passphrase/i)).toBeTruthy();
+    expect(screen.getByRole('status')).toHaveTextContent(
+      /cannot be shown or saved in this interview/,
+    );
+    expect(screen.queryByText(/enter your passphrase/i)).toBeNull();
   });
 
   it('offers the rows once the passphrase has been entered', () => {
-    passphraseState.passphrase = 'secret';
-
-    renderPanel();
-
-    expect(requirePassphrase).not.toHaveBeenCalled();
-    expect(screen.getByTestId('node-list').textContent).toBe('1');
-  });
-
-  it('offers the rows without a passphrase while the experiment is off', () => {
-    passphraseState.isEnabled = false;
+    passphraseState.unlocked = true;
 
     renderPanel();
 

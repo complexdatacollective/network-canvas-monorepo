@@ -57,9 +57,6 @@ const mockProtocol = {
       ],
     },
   ],
-  experiments: {
-    encryptedVariables: false,
-  },
   assets: [],
 };
 
@@ -82,9 +79,6 @@ const createMockStore = () => {
     codebook: mockProtocol.codebook,
     stages: mockProtocol.stages,
     assets: [],
-    experiments: {
-      encryptedVariables: false,
-    },
   };
 
   const mockSessionState = {
@@ -93,8 +87,7 @@ const createMockStore = () => {
   };
 
   const mockUiState = {
-    passphrase: null as string | null,
-    passphraseInvalid: false,
+    encryptionKeyId: null,
     showPassphrasePrompter: false,
   };
 

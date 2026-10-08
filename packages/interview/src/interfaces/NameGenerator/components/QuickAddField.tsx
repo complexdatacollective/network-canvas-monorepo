@@ -6,7 +6,6 @@ import { AnimatePresence, motion } from 'motion/react';
 import {
   type ReactNode,
   useCallback,
-  useContext,
   useEffect,
   useRef,
   useState,
@@ -19,16 +18,9 @@ import {
 } from '@codaco/app-i18n/react';
 import type { ValidationPropsCatalogue } from '@codaco/fresco-ui/form/Field/types';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
-import { FormWithoutProvider } from '@codaco/fresco-ui/form/Form';
 import { useField } from '@codaco/fresco-ui/form/hooks/useField';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
-import FormStoreProvider, {
-  FormStoreContext,
-} from '@codaco/fresco-ui/form/store/formStoreProvider';
-import type {
-  FormSubmitHandler,
-  ValidationContext,
-} from '@codaco/fresco-ui/form/store/types';
+import type { ValidationContext } from '@codaco/fresco-ui/form/store/types';
 import Icon, { type InterviewerIconName } from '@codaco/fresco-ui/Icon';
 import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
 import {
@@ -63,7 +55,6 @@ import {
   getPromptAdditionalAttributes,
   resolveNodeShape,
 } from '../../../selectors/session';
-import { useTrackWrite } from '../../../store/WritesInFlightContext';
 import { interfaceMessages } from '../../messages';
 
 function convertToNodeColor(color: NodeColorSequence): string {
@@ -97,11 +88,14 @@ type QuickAddFieldProps = {
   disabled: boolean;
   onShowInput?: () => void;
   /**
-   * Adds a person with the name entered, resolving whether they were added.
-   * The field clears for the next name only when this says so; a name it
-   * refuses stays, with the reason shown.
+   * Monotonically increasing count of successful parent submissions.
+   *
+   * QuickNodeForm supplies this because adding a node updates the live
+   * validation context before the form finishes submitting. That update
+   * re-registers the field and can reset `meta.isValid`, so the field cannot
+   * infer submission success from its post-submit validation state.
    */
-  onAdd: FormSubmitHandler;
+  successfulSubmissionCount?: number;
   /**
    * Context required for context-dependent validations like unique, sameAs,
    * etc. — forwarded to useField exactly as Field forwards it.
@@ -111,20 +105,12 @@ type QuickAddFieldProps = {
 
 const renderEnterKey = (chunks: ReactNode[]) => <kbd>{chunks}</kbd>;
 
-export default function QuickAddField(props: QuickAddFieldProps) {
-  return (
-    <FormStoreProvider>
-      <QuickAddForm {...props} />
-    </FormStoreProvider>
-  );
-}
-
-function QuickAddForm({
+export default function QuickAddField({
   placeholder,
   name: targetVariable,
   disabled,
   onShowInput,
-  onAdd,
+  successfulSubmissionCount,
   validationContext,
   ...validationProps
 }: QuickAddFieldProps) {
@@ -145,76 +131,76 @@ function QuickAddForm({
     ...validationProps,
   });
 
-  const storeApi = useContext(FormStoreContext);
-  const trackWrite = useTrackWrite();
   const isFormSubmitting = useFormStore((state) => state.isSubmitting);
   const pathOperations = useFormStore((state) => state.pathOperations);
   const resetFormField = useFormStore((state) => state.resetField);
   const wasSubmittingRef = useRef(false);
-  // Whether the submission under way has added the person. Only the add's own
-  // answer sets it: a name its rules refuse never reaches the add.
-  const addedRef = useRef(false);
+  const explicitSuccessPendingRef = useRef(false);
+  const previousSuccessfulSubmissionCountRef = useRef(
+    successfulSubmissionCount,
+  );
 
   const inputRef = useRef<HTMLInputElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const circleRef = useRef<HTMLDivElement>(null);
   const celebrate = useCelebrate(circleRef, { particles: true });
 
-  const handleSubmit: FormSubmitHandler = async (values) => {
-    const result = await onAdd(values);
-    if (result.success) {
-      addedRef.current = true;
-      // A fresh entry rather than a new, invalid blank value: resetting
-      // restores the initial value and clears dirty/blurred/error state
-      // without running required validation.
-      if (pathOperations) {
-        pathOperations.resetField([targetVariable]);
-      } else {
-        resetFormField(targetVariable);
-      }
-      setSubmissionCount((count) => count + 1);
-      setShowErrors(false);
-      celebrate();
+  const resetAfterSuccessfulSubmission = useCallback(() => {
+    // A successful write starts a fresh entry rather than entering a new,
+    // invalid blank value. Resetting restores the field's initial value and
+    // clears its dirty/blurred/error state without running required validation.
+    if (pathOperations) {
+      pathOperations.resetField([targetVariable]);
+    } else {
+      resetFormField(targetVariable);
     }
-    return result;
-  };
+    setSubmissionCount((count) => count + 1);
+    setShowErrors(false);
+    celebrate();
+  }, [pathOperations, resetFormField, targetVariable, celebrate]);
 
-  // Each submission counts as a save under way from the moment it starts,
-  // while the name is still being checked, so leaving the stage waits for it.
-  // Its start and end are read from the store updates that make them, not from
-  // a later render, so they always bracket the add's answer.
   useEffect(() => {
-    if (!storeApi) return;
-    let settle: ((stored: boolean) => void) | undefined;
-    const unsubscribe = storeApi.subscribe((state, previous) => {
-      if (state.isSubmitting === previous.isSubmitting) return;
-      if (state.isSubmitting) {
-        addedRef.current = false;
-        trackWrite(
-          new Promise<boolean>((resolve) => {
-            settle = resolve;
-          }),
-        );
-        return;
-      }
-      settle?.(addedRef.current);
-      settle = undefined;
-      if (!addedRef.current) setShowErrors(true);
-    });
-    return () => {
-      unsubscribe();
-      settle?.(false);
-    };
-  }, [storeApi, trackWrite]);
+    if (
+      successfulSubmissionCount === undefined ||
+      successfulSubmissionCount === previousSuccessfulSubmissionCountRef.current
+    ) {
+      return;
+    }
 
-  // The input is disabled while a name is added, so focus returns to it once
-  // the submission is over.
+    previousSuccessfulSubmissionCountRef.current = successfulSubmissionCount;
+    explicitSuccessPendingRef.current = true;
+    resetAfterSuccessfulSubmission();
+  }, [successfulSubmissionCount, resetAfterSuccessfulSubmission]);
+
+  // Reset field (but stay open) when form submission succeeds, or show
+  // validation errors on failed submission attempts. Standalone consumers
+  // (stories and focused tests) fall back to observing the submitting state.
   useEffect(() => {
+    // Detect transition from submitting to not submitting
     if (wasSubmittingRef.current && !isFormSubmitting) {
+      if (explicitSuccessPendingRef.current) {
+        explicitSuccessPendingRef.current = false;
+      } else if (
+        successfulSubmissionCount === undefined &&
+        meta.isValid &&
+        fieldProps.value
+      ) {
+        // Standalone QuickAddField consumers do not have a parent success
+        // counter. Preserve the original inference for them.
+        resetAfterSuccessfulSubmission();
+      } else {
+        setShowErrors(true);
+      }
       inputRef.current?.focus();
     }
     wasSubmittingRef.current = isFormSubmitting;
-  }, [isFormSubmitting]);
+  }, [
+    isFormSubmitting,
+    meta.isValid,
+    fieldProps.value,
+    resetAfterSuccessfulSubmission,
+    successfulSubmissionCount,
+  ]);
 
   const handleChange = useCallback(
     (value: string | undefined) => {
@@ -304,184 +290,180 @@ function QuickAddForm({
   }, [checked, submissionCount, fieldProps.value]);
 
   return (
-    <FormWithoutProvider onSubmit={handleSubmit}>
-      <motion.div className="relative flex items-center gap-4">
-        <AnimatePresence>
-          {checked && (
-            <MotionSurface
-              noContainer
-              className="w-96 rounded-full shadow-xl"
-              initial={{ opacity: 0, x: '15%' }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: '15%' }}
-            >
-              <Tooltip open={showErrors && !!meta.errors?.length}>
-                <TooltipTrigger render={<div className="w-full" />}>
-                  <Tooltip open={showTooltip && !showErrors}>
-                    <TooltipTrigger render={<div className="w-full" />}>
-                      <InputField
-                        ref={inputRef}
-                        type="text"
-                        autoFocus
-                        placeholder={placeholder}
-                        aria-label={inputLabel}
-                        id={id}
-                        name={targetVariable}
-                        data-testid="quick-add-input"
-                        {...fieldProps}
-                        className="w-full"
-                        value={fieldProps.value as string}
-                        onChange={handleChange}
-                        onBlur={handleBlur}
-                      />
-                    </TooltipTrigger>
-                    <TooltipContent
-                      align="center"
-                      className="max-w-md text-sm"
-                      sideOffset={25}
-                    >
-                      <AppMessage
-                        message={
-                          canAddMultiple
-                            ? interfaceMessages.quickAddMultipleInstructions
-                            : interfaceMessages.quickAddInstructions
-                        }
-                        values={{ kbd: renderEnterKey }}
-                      />
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipTrigger>
-                <TooltipContent
-                  side="bottom"
-                  align="center"
-                  className="bg-destructive text-destructive-contrast [&_svg_path]:fill-destructive max-w-md text-sm"
-                  sideOffset={10}
-                >
-                  {meta.errors?.[0] && (
-                    <Paragraph margin="none">
-                      <AppErrorMessage error={meta.errors[0]} />
-                    </Paragraph>
-                  )}
-                </TooltipContent>
-              </Tooltip>
-            </MotionSurface>
-          )}
-        </AnimatePresence>
-        <Toggle
-          pressed={checked}
-          onPressedChange={(pressed) => {
-            if (pressed) {
-              showInput();
-            } else if (!isFormSubmitting) {
-              // While a name is being checked and added the field stays open,
-              // so a refusal is shown, and the name kept, where it was entered.
-              resetField();
-            }
-          }}
-          disabled={disabled}
-          render={
-            <button
-              type="button"
-              ref={buttonRef}
-              aria-label={
-                checked
-                  ? intl.formatMessage(interfaceMessages.quickAddInput)
-                  : undefined
-              }
-              className="focusable relative aspect-square size-28 rounded-full"
-              data-testid="quick-add-toggle"
-            >
-              <motion.div
-                ref={circleRef}
-                data-toggle-circle
-                className={cx(
-                  actionCircleVariants(),
-                  'relative aspect-square size-28 transition-[background-color,filter,border-radius,rotate,scale] duration-300',
-                  checked && nodeShape !== 'circle' && 'rounded',
-                  checked &&
-                    nodeShape === 'diamond' &&
-                    'scale-[0.85] rotate-45',
-                  disabled ? 'cursor-not-allowed saturate-0' : 'cursor-pointer',
+    <motion.div className="relative flex items-center gap-4">
+      <AnimatePresence>
+        {checked && (
+          <MotionSurface
+            noContainer
+            className="w-96 rounded-full shadow-xl"
+            initial={{ opacity: 0, x: '15%' }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: '15%' }}
+          >
+            <Tooltip open={showErrors && !!meta.errors?.length}>
+              <TooltipTrigger render={<div className="w-full" />}>
+                <Tooltip open={showTooltip && !showErrors}>
+                  <TooltipTrigger render={<div className="w-full" />}>
+                    <InputField
+                      ref={inputRef}
+                      type="text"
+                      autoFocus
+                      placeholder={placeholder}
+                      aria-label={inputLabel}
+                      id={id}
+                      name={targetVariable}
+                      data-testid="quick-add-input"
+                      {...fieldProps}
+                      className="w-full"
+                      value={fieldProps.value as string}
+                      onChange={handleChange}
+                      onBlur={handleBlur}
+                    />
+                  </TooltipTrigger>
+                  <TooltipContent
+                    align="center"
+                    className="max-w-md text-sm"
+                    sideOffset={25}
+                  >
+                    <AppMessage
+                      message={
+                        canAddMultiple
+                          ? interfaceMessages.quickAddMultipleInstructions
+                          : interfaceMessages.quickAddInstructions
+                      }
+                      values={{ kbd: renderEnterKey }}
+                    />
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipTrigger>
+              <TooltipContent
+                side="bottom"
+                align="center"
+                className="bg-destructive text-destructive-contrast [&_svg_path]:fill-destructive max-w-md text-sm"
+                sideOffset={10}
+              >
+                {meta.errors?.[0] && (
+                  <Paragraph margin="none">
+                    <AppErrorMessage error={meta.errors[0]} />
+                  </Paragraph>
                 )}
-                style={{
-                  backgroundColor: checked
-                    ? `var(--${convertToNodeColor(nodeColor)})`
-                    : 'var(--primary)',
-                }}
-              >
-                <AnimatePresence mode="popLayout" initial={false}>
-                  {checked ? (
-                    <motion.div
-                      key="check"
-                      initial={{ y: '-100%' }}
-                      animate={{ y: 0 }}
-                      exit={{ y: '-100%' }}
-                      className={cx(
-                        'flex h-full w-full items-center justify-center',
-                        // Counter-rotate content inside the rotated diamond,
-                        // mirroring the Node component's treatment.
-                        nodeShape === 'diamond' && 'scale-[1.176] -rotate-45',
-                      )}
-                    >
-                      {fieldProps.value ? (
-                        // This live preview has no fit ladder, so it opts into
-                        // emergency breaking to keep the input inside the shape
-                        // while it is being typed.
-                        <span
-                          className={labelVariants({
-                            className: 'wrap-anywhere',
-                          })}
-                        >
-                          {truncateNodeLabel(fieldProps.value as string)}
-                        </span>
-                      ) : (
-                        <div className="flex items-center gap-1.5">
-                          {[0, 1, 2].map((i) => (
-                            <motion.div
-                              key={i}
-                              className="size-2.5 rounded-full bg-white"
-                              animate={{ y: [0, -6, 0] }}
-                              transition={{
-                                duration: 0.6,
-                                repeat: Number.POSITIVE_INFINITY,
-                                delay: i * 0.15,
-                                ease: 'easeInOut',
-                              }}
-                            />
-                          ))}
-                        </div>
-                      )}
-                    </motion.div>
-                  ) : (
-                    <motion.div
-                      key="plus"
-                      initial={{ y: '100%' }}
-                      animate={{ y: 0 }}
-                      exit={{ y: '100%' }}
-                      className="flex h-full items-center justify-center"
-                    >
-                      <Icon
-                        name={icon as InterviewerIconName}
-                        className={actionIconClass}
-                      />
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </motion.div>
-              <motion.div
-                className={actionPlusBadgeVariants()}
-                animate={
-                  !checked || meta.isValid
-                    ? { scale: 1, opacity: 1, rotate: 0 }
-                    : { scale: 0, opacity: 0, rotate: 180 }
-                }
-              >
-                <Plus className={actionPlusIconClass} />
-              </motion.div>
-            </button>
+              </TooltipContent>
+            </Tooltip>
+          </MotionSurface>
+        )}
+      </AnimatePresence>
+      <Toggle
+        pressed={checked}
+        onPressedChange={(pressed) => {
+          if (pressed) {
+            showInput();
+          } else if (!isFormSubmitting) {
+            // While a name is being checked and added the field stays open,
+            // so a refusal is shown, and the name kept, where it was entered.
+            resetField();
           }
-        />
-      </motion.div>
-    </FormWithoutProvider>
+        }}
+        disabled={disabled}
+        render={
+          <button
+            type="button"
+            ref={buttonRef}
+            aria-label={
+              checked
+                ? intl.formatMessage(interfaceMessages.quickAddInput)
+                : undefined
+            }
+            className="focusable relative aspect-square size-28 rounded-full"
+            data-testid="quick-add-toggle"
+          >
+            <motion.div
+              ref={circleRef}
+              data-toggle-circle
+              className={cx(
+                actionCircleVariants(),
+                'relative aspect-square size-28 transition-[background-color,filter,border-radius,rotate,scale] duration-300',
+                checked && nodeShape !== 'circle' && 'rounded',
+                checked && nodeShape === 'diamond' && 'scale-[0.85] rotate-45',
+                disabled ? 'cursor-not-allowed saturate-0' : 'cursor-pointer',
+              )}
+              style={{
+                backgroundColor: checked
+                  ? `var(--${convertToNodeColor(nodeColor)})`
+                  : 'var(--primary)',
+              }}
+            >
+              <AnimatePresence mode="popLayout" initial={false}>
+                {checked ? (
+                  <motion.div
+                    key="check"
+                    initial={{ y: '-100%' }}
+                    animate={{ y: 0 }}
+                    exit={{ y: '-100%' }}
+                    className={cx(
+                      'flex h-full w-full items-center justify-center',
+                      // Counter-rotate content inside the rotated diamond,
+                      // mirroring the Node component's treatment.
+                      nodeShape === 'diamond' && 'scale-[1.176] -rotate-45',
+                    )}
+                  >
+                    {fieldProps.value ? (
+                      // This live preview has no fit ladder, so it opts into
+                      // emergency breaking to keep the input inside the shape
+                      // while it is being typed.
+                      <span
+                        className={labelVariants({
+                          className: 'wrap-anywhere',
+                        })}
+                      >
+                        {truncateNodeLabel(fieldProps.value as string)}
+                      </span>
+                    ) : (
+                      <div className="flex items-center gap-1.5">
+                        {[0, 1, 2].map((i) => (
+                          <motion.div
+                            key={i}
+                            className="size-2.5 rounded-full bg-white"
+                            animate={{ y: [0, -6, 0] }}
+                            transition={{
+                              duration: 0.6,
+                              repeat: Number.POSITIVE_INFINITY,
+                              delay: i * 0.15,
+                              ease: 'easeInOut',
+                            }}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="plus"
+                    initial={{ y: '100%' }}
+                    animate={{ y: 0 }}
+                    exit={{ y: '100%' }}
+                    className="flex h-full items-center justify-center"
+                  >
+                    <Icon
+                      name={icon as InterviewerIconName}
+                      className={actionIconClass}
+                    />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
+            <motion.div
+              className={actionPlusBadgeVariants()}
+              animate={
+                !checked || meta.isValid
+                  ? { scale: 1, opacity: 1, rotate: 0 }
+                  : { scale: 0, opacity: 0, rotate: 180 }
+              }
+            >
+              <Plus className={actionPlusIconClass} />
+            </motion.div>
+          </button>
+        }
+      />
+    </motion.div>
   );
 }

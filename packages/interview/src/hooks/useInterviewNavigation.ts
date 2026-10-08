@@ -39,9 +39,6 @@ import type {
 import useReadyForNextStage from './useReadyForNextStage';
 import { useStageSelector } from './useStageSelector';
 
-type CurrentInterfaceProps = Omit<StageProps, 'stage'> & {
-  stage: ReturnType<typeof getCurrentStage>;
-};
 // A write the stage started without waiting for it, as protecting an answer
 // can take a while, may be refused, and may decide what comes next. So the
 // participant moves on from what they see, to another step of the stage,
@@ -51,6 +48,10 @@ type CurrentInterfaceProps = Omit<StageProps, 'stage'> & {
 // stay, so they see why and can try again.
 const allStored = async (writes: Promise<boolean> | undefined) =>
   (await writes) ?? true;
+
+type CurrentInterfaceProps = Omit<StageProps, 'stage'> & {
+  stage: ReturnType<typeof getCurrentStage>;
+};
 
 export default function useInterviewNavigation(
   initialStageOverrideIndex?: number,

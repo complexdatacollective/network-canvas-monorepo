@@ -16,13 +16,13 @@ import type {
 } from '../contract/types';
 import { createAnalyticsListenerMiddleware } from './middleware/analyticsListener';
 import { createLocaleChangeMiddleware } from './middleware/localeChangeMiddleware';
-import { createLoggerMiddleware } from './middleware/logger';
+import { createInterviewLogger } from './middleware/logger';
 import { createSyncMiddleware } from './middleware/syncMiddleware';
 import { createWritesInFlightMiddleware } from './middleware/writesInFlight';
 import protocol from './modules/protocol';
 import session from './modules/session';
 import ui from './modules/ui';
-import { createSecretRedactors } from './redactSecrets';
+import { createEncryptedValueRedaction } from './redactEncryptedValues';
 
 const rootReducer = combineReducers({
   session,
@@ -58,8 +58,7 @@ export const store = (
   // the host, and the result says whether every write under way was stored,
   // so finishing or closing can stay when one was refused. While the page
   // unloads there is no time to wait for them. Exports read the recorded
-  // locale, so whatever ends the session waits for the locale write as well
-  // as the session write.
+  // locale, so this waits for the locale write as well as the session write.
   const flushSync = async (flushOptions?: { unloading?: boolean }) => {
     const settling = flushOptions?.unloading ? undefined : writesSettled();
     const stored = (await settling) ?? true;
@@ -70,7 +69,9 @@ export const store = (
   const analyticsMiddleware = createAnalyticsListenerMiddleware({
     tracker,
   }).middleware;
-  const redactors = createSecretRedactors(protocolPayload);
+  // The protocol, and so which variables are encrypted, never changes during
+  // an interview.
+  const redaction = createEncryptedValueRedaction(protocolPayload.codebook);
 
   // Object.assign rather than a cast so the store's inferred type (dispatch
   // thunk overloads included) survives alongside the added functions.
@@ -83,26 +84,25 @@ export const store = (
             ignoredActions: ['dialogs/addDialog', 'dialogs/open/pending'],
           },
         }).concat(
-          ...(options.isDevelopment ? [createLoggerMiddleware(redactors)] : []),
+          ...(options.isDevelopment ? [createInterviewLogger(redaction)] : []),
           writesInFlightMiddleware,
           syncMiddleware,
           localeChangeMiddleware,
           analyticsMiddleware,
           ...(options.extraMiddleware ?? []),
         ),
+      // Anyone with the extension could otherwise read an interview's state
+      // and actions in a production build.
+      devTools: options.isDevelopment
+        ? {
+            actionSanitizer: redaction.action,
+            stateSanitizer: redaction.state,
+          }
+        : false,
       preloadedState: {
         session: omit(sessionPayload, ['localeOptions']),
         protocol: protocolPayload,
       },
-      // Redux Toolkit turns DevTools on unless told otherwise, which would
-      // show a production interview's passphrase to anyone running the
-      // extension.
-      devTools: options.isDevelopment
-        ? {
-            actionSanitizer: redactors.redactAction,
-            stateSanitizer: redactors.redactState,
-          }
-        : false,
     }),
     { flushSync, writesSettled, trackWrite },
   );

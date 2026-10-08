@@ -1,6 +1,7 @@
 'use client';
 
 import { useId } from 'react';
+import { useSelector } from 'react-redux';
 
 import { createMessageError } from '@codaco/app-i18n/messages';
 import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
@@ -15,42 +16,54 @@ import type { FormSubmitHandler } from '@codaco/fresco-ui/form/store/types';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 
 import { runtimeMessages as messages } from '../i18n/runtimeMessages';
+import PassphraseCheckStatus from '../interfaces/Anonymisation/PassphraseCheckStatus';
+import { protocolPassphraseLengthRules } from '../interfaces/Anonymisation/passphraseRules';
 import { usePassphrase } from '../interfaces/Anonymisation/usePassphrase';
+import { interfaceMessages } from '../interfaces/messages';
+import { getProtocolStages } from '../store/modules/protocol';
 import Overlay from './Overlay';
 
 type PassphraseOverlayProps = {
   show: boolean;
+  /** Whether no passphrase has been chosen yet, so this one becomes it. */
+  choosing: boolean;
   onAccepted: () => void;
   onClose: () => void;
+  /** Where focus goes once the overlay has closed. */
   finalFocus?: DialogProps['finalFocus'];
 };
 
 /**
- * Asks for the passphrase and puts it in force, if it unlocks what the
- * interview already holds. Opened from inside another modal, it is nested in
- * that modal and stays usable over it. Each opening starts empty: what was
- * typed, and why it was turned away, go when the overlay closes.
+ * The dialog that takes the interview's passphrase, opened from the
+ * navigation's prompter or from inside a modal form that needs it.
+ *
+ * Each opening starts empty: what was typed, and why it was turned away, go
+ * as soon as the overlay closes rather than when its exit animation ends.
  */
 export default function PassphraseOverlay(props: PassphraseOverlayProps) {
   return (
     <FormStoreProvider>
       <ResetFormWhenClosed open={props.show} />
-      <PassphraseOverlayContent {...props} />
+      <PassphraseDialog {...props} />
     </FormStoreProvider>
   );
 }
 
-function PassphraseOverlayContent({
+const PassphraseDialog = ({
   show,
+  choosing,
   onAccepted,
   onClose,
   finalFocus,
-}: PassphraseOverlayProps) {
+}: PassphraseOverlayProps) => {
   const intl = useAppIntl();
-  // Closing while a passphrase is being checked would still put it in force.
-  const isSubmitting = useFormStore((state) => state.isSubmitting);
-  const { passphraseInvalid, submitPassphrase } = usePassphrase();
+  const { submitPassphrase } = usePassphrase();
+  // Closed mid-check and opened again, the dialog would offer a second
+  // passphrase while the first is still being checked.
+  const checking = useFormStore((state) => state.isSubmitting);
+  const stages = useSelector(getProtocolStages);
   const formId = useId();
+  const lengthRules = choosing ? protocolPassphraseLengthRules(stages) : {};
 
   const onSubmitForm: FormSubmitHandler = async ({ passphrase }) => {
     if (typeof passphrase !== 'string') {
@@ -60,8 +73,8 @@ function PassphraseOverlayContent({
       };
     }
 
-    // A passphrase that cannot unlock what is already saved is turned away
-    // here, with the reason under the field, rather than being put in force.
+    // A passphrase that does not match the one chosen for this interview is
+    // turned away here, with the reason under the field.
     if (!(await submitPassphrase(passphrase))) {
       return {
         success: false,
@@ -78,10 +91,12 @@ function PassphraseOverlayContent({
   return (
     <Overlay
       show={show}
-      title={intl.formatMessage(messages.enterPassphrase)}
+      title={intl.formatMessage(
+        choosing ? messages.choosePassphrase : messages.enterPassphrase,
+      )}
       onClose={onClose}
+      dismissible={!checking}
       finalFocus={finalFocus}
-      dismissible={!isSubmitting}
       footer={
         <SubmitButton form={formId}>
           <AppMessage message={messages.submitPassphrase} />
@@ -89,19 +104,20 @@ function PassphraseOverlayContent({
       }
     >
       <div className="flex flex-col">
-        {passphraseInvalid && (
-          <p className="bg-accent/50 rounded p-6 text-white">
-            <AppMessage message={messages.decryptFailed} />
-          </p>
-        )}
         <p>
-          <AppMessage message={messages.passphraseHelp} />
+          <AppMessage
+            message={
+              choosing ? messages.choosePassphraseHelp : messages.passphraseHelp
+            }
+          />
         </p>
         <FormWithoutProvider
           id={formId}
           className="mt-6"
           onSubmit={onSubmitForm}
         >
+          {/* The passphrase protects this one interview's answers, so a
+              password manager must not offer to save it as a site login. */}
           <Field
             component={PasswordField}
             name="passphrase"
@@ -110,9 +126,25 @@ function PassphraseOverlayContent({
             required
             autoFocus
             suppressPasswordManager
+            {...lengthRules}
           />
+          {choosing && (
+            <Field
+              component={PasswordField}
+              name="passphrase-2"
+              label={intl.formatMessage(interfaceMessages.confirmPassphrase)}
+              placeholder={intl.formatMessage(
+                interfaceMessages.reenterPassphrase,
+              )}
+              required
+              suppressPasswordManager
+              sameAs="passphrase"
+              {...lengthRules}
+            />
+          )}
         </FormWithoutProvider>
+        <PassphraseCheckStatus />
       </div>
     </Overlay>
   );
-}
+};

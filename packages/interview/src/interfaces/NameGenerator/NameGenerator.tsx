@@ -42,7 +42,6 @@ import {
 import { useAppDispatch } from '../../store/store';
 import { useInterviewToast } from '../../toast/useInterviewToast';
 import type { StageProps } from '../../types';
-import { isAttributeEncrypted } from '../Anonymisation/isAttributeEncrypted';
 import { usePassphrase } from '../Anonymisation/usePassphrase';
 import { writesEncryptedValue } from '../Anonymisation/utils';
 import { interfaceMessages } from '../messages';
@@ -72,7 +71,7 @@ const NameGenerator = (props: NameGeneratorProps) => {
   const interfaceRef = useRef<HTMLDivElement>(null);
 
   const { isLastPrompt, promptIndex } = usePrompts();
-  const { requirePassphrase, passphrase, passphraseInvalid, isEnabled } =
+  const { requirePassphrase, unlocked, encryptionUnavailable } =
     usePassphrase();
   const { showToast } = useInterviewToast();
 
@@ -93,25 +92,29 @@ const NameGenerator = (props: NameGeneratorProps) => {
   const { currentStep } = useCurrentStep();
 
   const useEncryption = useMemo(() => {
-    const isEncrypted = (variableId: string) =>
-      isAttributeEncrypted(isEnabled, codebookForNodeType, variableId);
-
-    if (Object.keys(newNodeAttributes).some(isEncrypted)) {
+    if (
+      Object.keys(newNodeAttributes).some(
+        (variableId) => codebookForNodeType[variableId]?.encrypted,
+      )
+    ) {
       return true;
     }
 
     // Check if the quickAdd variable or form has an encrypted variable
     if (stage.type === 'NameGeneratorQuickAdd') {
-      return isEncrypted(stage.quickAdd);
+      return !!codebookForNodeType[stage.quickAdd]?.encrypted;
     }
 
     // Check if the form has any variables that are encrypted
     if (stage.type === 'NameGenerator') {
-      return stage.form.fields.some((field) => isEncrypted(field.variable));
+      const formVariables = stage.form.fields.map((field) => field.variable);
+      return formVariables.some(
+        (variable) => codebookForNodeType[variable]?.encrypted,
+      );
     }
 
     return false;
-  }, [stage, codebookForNodeType, newNodeAttributes, isEnabled]);
+  }, [stage, codebookForNodeType, newNodeAttributes]);
 
   useEffect(() => {
     if (useEncryption) {
@@ -119,9 +122,9 @@ const NameGenerator = (props: NameGeneratorProps) => {
     }
   }, [useEncryption, requirePassphrase]);
 
-  // Answers this stage would encrypt can only be taken once a passphrase that
-  // works is in force.
-  const encryptionLocked = useEncryption && (!passphrase || passphraseInvalid);
+  // Answers this stage would encrypt can only be taken once the interview's
+  // passphrase has been entered.
+  const encryptionLocked = useEncryption && !unlocked;
 
   const addNodeToPrompt = useCallback(
     (
@@ -159,17 +162,13 @@ const NameGenerator = (props: NameGeneratorProps) => {
           attributeData: attributes,
           // Decided per node rather than by the stage's own fields: a node
           // from a panel's external data can carry encrypted values too.
-          useEncryption: writesEncryptedValue(
-            attributes,
-            codebookForNodeType,
-            isEnabled,
-          ),
+          useEncryption: writesEncryptedValue(attributes, codebookForNodeType),
           allowUnknownAttributes: options?.allowUnknownAttributes,
           modelData: options?.modelData,
           currentStep,
         }),
       ),
-    [dispatch, stage.subject.type, codebookForNodeType, isEnabled, currentStep],
+    [dispatch, stage.subject.type, codebookForNodeType, currentStep],
   );
 
   const addNode = useCallback(
@@ -183,6 +182,7 @@ const NameGenerator = (props: NameGeneratorProps) => {
     minNodes,
     maxNodes,
     isLastPrompt,
+    writesEncrypted: useEncryption,
   });
 
   /**
@@ -206,8 +206,7 @@ const NameGenerator = (props: NameGeneratorProps) => {
     };
     if (
       encryptionLocked ||
-      (writesEncryptedValue(attributes, codebookForNodeType, isEnabled) &&
-        (!passphrase || passphraseInvalid))
+      (writesEncryptedValue(attributes, codebookForNodeType) && !unlocked)
     ) {
       requirePassphrase();
       return;
@@ -230,17 +229,19 @@ const NameGenerator = (props: NameGeneratorProps) => {
   };
 
   // When a node is tapped, trigger editing. The form decrypts what it shows,
-  // and is not opened at all while answers it would encrypt could not be saved.
+  // and is not opened at all while answers it would encrypt could not be saved
+  // until a passphrase is entered. Where none ever could be, it opens with
+  // those questions shown as unavailable, so the rest can still be changed.
   const handleSelectNode = useCallback(
     (node: NcNode) => {
       if (!form) return;
-      if (encryptionLocked) {
+      if (encryptionLocked && !encryptionUnavailable) {
         requirePassphrase();
         return;
       }
       setSelectedNode(node);
     },
-    [form, encryptionLocked, requirePassphrase],
+    [form, encryptionLocked, encryptionUnavailable, requirePassphrase],
   );
 
   const clearSelectedNode = useCallback(() => setSelectedNode(null), []);

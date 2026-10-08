@@ -37,9 +37,10 @@ import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalizati
 import CategoricalBin from '../CategoricalBin';
 import { getCatBinDropTargetId } from '../components/CategoricalBinItem';
 
-const { celebrate, track } = vi.hoisted(() => ({
+const { celebrate, track, captureException } = vi.hoisted(() => ({
   celebrate: vi.fn(),
   track: vi.fn(),
+  captureException: vi.fn(),
 }));
 
 vi.mock('../../../hooks/useCelebrate', () => ({
@@ -48,6 +49,7 @@ vi.mock('../../../hooks/useCelebrate', () => ({
 
 vi.mock('../../../analytics/useTrack', () => ({
   useTrack: () => track,
+  useCaptureException: () => captureException,
 }));
 
 class StubResizeObserver {

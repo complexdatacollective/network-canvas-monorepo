@@ -207,7 +207,6 @@ describe('ProtocolRouteGuard', () => {
     '/protocol/localization',
     '/protocol/summary',
     '/protocol/stage/new',
-    '/protocol/experiments',
   ])('blocks %s when no protocol is open', (path) => {
     mockLocation.mockReturnValue(path);
 

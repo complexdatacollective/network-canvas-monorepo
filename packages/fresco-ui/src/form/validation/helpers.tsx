@@ -153,11 +153,13 @@ export function makeValidationFunction(
               network: await validationContext.resolveNetwork(),
             };
           } catch (error) {
-            // A rejection carrying a message error (see `createMessageError`)
-            // says why the network is unavailable, and that reason is shown.
+            // A host that can say why the network is unavailable rejects with
+            // a message error, which the field shows, in the participant's
+            // language, in place of the generic failure.
             const reason =
-              error instanceof Error
-                ? formatMessageError(error.message, helperIntl(intl))
+              error instanceof Error &&
+              formatMessageError(error.message, helperIntl(intl)) !== undefined
+                ? error.message
                 : undefined;
             ctx.addIssue({
               code: 'custom',

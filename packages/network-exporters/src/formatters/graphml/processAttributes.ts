@@ -10,10 +10,10 @@ import {
 
 import type { EdgeWithResequencedID, NodeWithResequencedID } from '../../input';
 import type { ExportOptions } from '../../options';
+import { isEncryptedAttribute } from '../../utils/encryptedAttribute';
 import {
   getEntityAttributes,
   getOwn,
-  hasEncryptedValue,
   isCategoricalOptionSelected,
 } from '../../utils/general';
 import {
@@ -64,7 +64,7 @@ function processAttributes(
 
   for (const [key, value] of Object.entries(entityAttributes)) {
     const codebookEntry = getOwn(variables, key);
-    const variableIsEncrypted = hasEncryptedValue(entity, key);
+    const encrypted = isEncryptedAttribute(entity, key, codebookEntry);
 
     if (!codebookEntry) {
       const externalKey = keyIds.external.get(key);
@@ -73,7 +73,7 @@ function processAttributes(
       }
       createDomDataElement(
         externalKey,
-        variableIsEncrypted ? 'ENCRYPTED' : stringifyValue(value),
+        encrypted ? 'ENCRYPTED' : stringifyValue(value),
       );
       continue;
     }
@@ -91,11 +91,9 @@ function processAttributes(
       return { id, origin };
     });
 
-    // Only a value saved as ciphertext is marked: a plaintext answer is
-    // exported whatever the codebook asks for now. An encrypted value is never
-    // exported, and a layout variable writes the marker for its coordinates
-    // only.
-    if (variableIsEncrypted) {
+    if (encrypted) {
+      // An encrypted value is never exported. A layout variable writes the
+      // marker for its coordinates only.
       for (const { id, origin } of columns) {
         if (
           origin.kind !== 'layout' ||

@@ -1,8 +1,6 @@
 {
   "name": "Development Protocol",
-  "experiments": {
-    "encryptedVariables": true
-  },
+  "experiments": {},
   "stages": [
     {
       "id": "language-chooser",
@@ -942,32 +940,7 @@
             "create": "friend_edge_type"
           }
         }
-      ],
-      "filter": {
-        "join": "AND",
-        "rules": [
-          {
-            "type": "node",
-            "options": {
-              "type": "person_node_type",
-              "operator": "NOT",
-              "attribute": "name_variable",
-              "value": "John"
-            },
-            "id": "6091efec-3ef1-4680-810f-d68f69441384"
-          },
-          {
-            "type": "node",
-            "options": {
-              "type": "person_node_type",
-              "operator": "NOT",
-              "attribute": "name_variable",
-              "value": "William"
-            },
-            "id": "69593513-dbb9-48b8-a588-92d74d416bf7"
-          }
-        ]
-      }
+      ]
     },
     {
       "id": "sociogram2",
@@ -1201,22 +1174,7 @@
           },
           "variable": "4ccba4e2-a246-46ee-a3ff-1c70fb4c449c"
         }
-      ],
-      "filter": {
-        "join": "AND",
-        "rules": [
-          {
-            "type": "node",
-            "options": {
-              "type": "person_node_type",
-              "operator": "NOT",
-              "attribute": "name_variable",
-              "value": "William"
-            },
-            "id": "e7cbcb30-5d01-4c23-ae76-4ac0d6e1c7f2"
-          }
-        ]
-      }
+      ]
     },
     {
       "id": "alter-form-1",
@@ -1565,16 +1523,6 @@
         "filter": {
           "join": "OR",
           "rules": [
-            {
-              "type": "node",
-              "id": "15218241538622",
-              "options": {
-                "type": "person_node_type",
-                "attribute": "name_variable",
-                "operator": "EXACTLY",
-                "value": "Dee"
-              }
-            },
             {
               "type": "ego",
               "id": "15218241553253",

@@ -7,8 +7,8 @@ type OverlayProps = {
   title: string;
   footer?: React.ReactNode;
   className?: string;
+  dismissible?: boolean;
   finalFocus?: DialogProps['finalFocus'];
-  dismissible?: DialogProps['dismissible'];
 };
 
 const Overlay = (props: OverlayProps) => {
@@ -19,8 +19,8 @@ const Overlay = (props: OverlayProps) => {
     title,
     footer,
     className,
-    finalFocus,
     dismissible,
+    finalFocus,
   } = props;
 
   return (
@@ -30,8 +30,8 @@ const Overlay = (props: OverlayProps) => {
       title={title}
       className={className}
       footer={footer}
-      finalFocus={finalFocus}
       dismissible={dismissible}
+      finalFocus={finalFocus}
     >
       {children}
     </Dialog>

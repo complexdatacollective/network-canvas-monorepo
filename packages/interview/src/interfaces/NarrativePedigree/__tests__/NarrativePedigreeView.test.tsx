@@ -15,6 +15,7 @@ import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
   type NcEdge,
+  type NcEncryptionHeader,
   type NcNode,
   type VariableValue,
 } from '@codaco/shared-consts';
@@ -26,6 +27,8 @@ import session from '../../../store/modules/session';
 import ui from '../../../store/modules/ui';
 import type { StageProps } from '../../../types';
 import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
+import { encryptionFor } from '../../Anonymisation/__tests__/encryptionFixtures';
+import { installEncryptionKey } from '../../Anonymisation/unlockEncryption';
 import { encryptedPerson } from '../../FamilyPedigree/__tests__/fixtures';
 
 const exportSnapshotMock =
@@ -266,8 +269,11 @@ type StoreOptions = {
   /** The framing the participant chose on the source stage. */
   chosenFraming?: FramingId;
   network?: { nodes: NcNode[]; edges: NcEdge[] };
-  /** Store names encrypted, and the passphrase entered so far. */
-  encryption?: { passphrase: string | null };
+  /**
+   * Store names encrypted, in an interview protected by this header, with
+   * the key of its passphrase in force once the passphrase has been entered.
+   */
+  encryption?: { header: NcEncryptionHeader; key?: CryptoKey };
 };
 
 function makeStore({
@@ -277,31 +283,34 @@ function makeStore({
   network = { nodes, edges },
   encryption,
 }: StoreOptions = {}) {
-  return configureStore({
+  const store = configureStore({
     reducer: { protocol, session, ui },
     preloadedState: {
       protocol: {
         localization: { defaultLocale: 'en', locales: ['en'] },
         codebook: makeCodebook(encryption !== undefined),
-        experiments: { encryptedVariables: encryption !== undefined },
         stages: [{ ...sourceStage, framing: sourceFraming }, narrativeStage],
         assets: [],
       } as never,
       session: {
         id: 'test-session',
-        network: { ...network, ego: { [entityAttributesProperty]: {} } },
+        network: {
+          ...network,
+          ego: { [entityAttributesProperty]: {} },
+          ...(encryption ? { encryption: encryption.header } : {}),
+        },
         stageMetadata: chosenFraming ? { 0: { framing: chosenFraming } } : {},
       } as never,
       ui: {
         FORM_IS_READY: false,
-        passphrase: encryption?.passphrase ?? null,
-        passphraseEntry: 0,
+        encryptionKeyId: null,
         showPassphrasePrompter: false,
-        passphraseInvalid: false,
       },
     },
     middleware: (g) => g({ serializableCheck: false }),
   });
+  if (encryption?.key) installEncryptionKey(store, encryption.key);
+  return store;
 }
 
 function renderView(options: StoreOptions = {}, locale = 'en') {
@@ -489,7 +498,7 @@ describe('NarrativePedigreeView — encrypted names', () => {
   it('asks for the passphrase, and describes the person by how they are related until it is entered', async () => {
     const { store } = renderView({
       network: await encryptedNetwork(),
-      encryption: { passphrase: null },
+      encryption: { header: (await encryptionFor('secret')).header },
     });
     expect(
       await screen.findByRole('button', { name: 'Focus on Father' }),
@@ -498,13 +507,14 @@ describe('NarrativePedigreeView — encrypted names', () => {
   });
 
   it('shows the decrypted name once the passphrase is entered', async () => {
-    renderView({
+    const { store } = renderView({
       network: await encryptedNetwork(),
-      encryption: { passphrase: 'secret' },
+      encryption: await encryptionFor('secret'),
     });
     expect(
       await screen.findByRole('button', { name: 'Focus on David' }),
     ).toBeInTheDocument();
+    expect(store.getState().ui.showPassphrasePrompter).toBe(false);
   });
 });
 

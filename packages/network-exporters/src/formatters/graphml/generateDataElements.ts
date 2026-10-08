@@ -17,7 +17,8 @@ import {
 
 import type { EdgeWithResequencedID, NodeWithResequencedID } from '../../input';
 import type { ExportOptions } from '../../options';
-import { getOwn, hasEncryptedValue } from '../../utils/general';
+import { isEncryptedAttribute } from '../../utils/encryptedAttribute';
+import { getOwn } from '../../utils/general';
 import { getNodeLabelAttribute } from '../../utils/getNodeLabelAttribute';
 import { createDataElement, createDocumentFragment } from './helpers';
 import type { GraphMLKeyIds } from './keyIds';
@@ -140,7 +141,13 @@ function generateDataElementsForEntity(
   );
 
   if (labelAttribute) {
-    if (hasEncryptedValue(node, labelAttribute)) {
+    if (
+      isEncryptedAttribute(
+        node,
+        labelAttribute,
+        getOwn(codebookDefinition?.variables, labelAttribute),
+      )
+    ) {
       domElement.appendChild(createDataElement({ key: 'label' }, 'Encrypted'));
     } else {
       const labelValue = node[entityAttributesProperty][labelAttribute];

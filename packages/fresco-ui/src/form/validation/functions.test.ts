@@ -2,7 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { z } from 'zod/mini';
 
 import { createCatalogSource } from '@codaco/app-i18n/locales';
-import { createAppIntl, createMessageError } from '@codaco/app-i18n/messages';
+import {
+  createAppIntl,
+  createMessageError,
+  formatMessageError,
+} from '@codaco/app-i18n/messages';
 import type { StageSubject } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
@@ -2116,9 +2120,9 @@ describe('Validation Functions', () => {
       }
     });
 
-    it('shows the reason a rejection gives as a message error', async () => {
+    it('fails with the reason it rejects with, when that is a message error', async () => {
       const reason = createMessageError({
-        id: 'test.resolveNetwork.reason',
+        id: 'test.validation.networkLocked',
         defaultMessage: 'Enter your passphrase, then try again.',
       });
       const validate = makeValidationFunction({
@@ -2134,8 +2138,14 @@ describe('Validation Functions', () => {
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error.issues.map((issue) => issue.message)).toEqual([
-          'Enter your passphrase, then try again.',
+          reason,
         ]);
+        expect(
+          formatMessageError(
+            result.error.issues[0]?.message ?? '',
+            createAppIntl({ locale: 'en' }),
+          ),
+        ).toBe('Enter your passphrase, then try again.');
       }
     });
   });

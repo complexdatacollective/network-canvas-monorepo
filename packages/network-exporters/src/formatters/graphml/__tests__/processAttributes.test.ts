@@ -142,8 +142,8 @@ describe('processAttributes', () => {
     });
   });
 
-  describe('encrypted values', () => {
-    const codebookWithName = (encrypted: boolean): Codebook => ({
+  describe('encrypted variables', () => {
+    const codebook: Codebook = {
       node: {
         person: {
           name: 'person',
@@ -155,85 +155,52 @@ describe('processAttributes', () => {
               name: 'name',
               label: 'Name',
               type: 'text',
-              encrypted,
+              encrypted: true,
             },
+            'city-uuid': { name: 'city', label: 'City', type: 'text' },
           },
         },
       },
-    });
+    };
+    const ciphertext = [201, 17, 93, 4, 250, 66, 128, 7, 33, 180, 2, 99];
 
-    it('exports a value saved as ciphertext as ENCRYPTED, though the codebook no longer asks for encryption', async () => {
-      const node: NodeWithResequencedID = {
-        [entityPrimaryKeyProperty]: '1',
-        [egoProperty]: 'ego-1',
-        [nodeExportIDProperty]: 1,
-        type: 'person',
-        [entityAttributesProperty]: {
-          'name-uuid': [12, 34, 56],
-          'external-uuid': [78, 90],
-        },
-        [entitySecureAttributesMeta]: {
-          'name-uuid': { iv: [1], salt: [2] },
-          'external-uuid': { iv: [3], salt: [4] },
-        },
-      };
+    it.each([
+      {
+        label: 'metadata without a salt',
+        metadata: { iv: [15, 243, 77, 120] },
+      },
+      {
+        label: 'schema 8 metadata with a salt',
+        metadata: { iv: [15, 243, 77, 120], salt: [44, 130, 213, 61] },
+      },
+    ])(
+      'writes the marker in place of the ciphertext, with $label',
+      async ({ metadata }) => {
+        const node: NodeWithResequencedID = {
+          [entityPrimaryKeyProperty]: '1',
+          [egoProperty]: 'ego-1',
+          [nodeExportIDProperty]: 1,
+          type: 'person',
+          [entityAttributesProperty]: {
+            'name-uuid': ciphertext,
+            'city-uuid': 'Lisbon',
+          },
+          [entitySecureAttributesMeta]: { 'name-uuid': metadata },
+        };
 
-      const codebook = codebookWithName(false);
-      const keyIds = await keyIdsFor(codebook, node);
-      const result = await processAttributes(
-        node,
-        codebook,
-        mockExportOptions,
-        keyIds,
-      );
+        const result = processAttributes(
+          node,
+          codebook,
+          mockExportOptions,
+          await keyIdsFor(codebook, node),
+        );
+        const values = Object.values(getDataElements(result));
 
-      expect(getDataElements(result)).toEqual({
-        'name-uuid': 'ENCRYPTED',
-        [keyIds.external.get('external-uuid') ?? '']: 'ENCRYPTED',
-      });
-    });
-
-    it('exports a value saved as plaintext as itself, though the codebook now asks for encryption', async () => {
-      const node: NodeWithResequencedID = {
-        [entityPrimaryKeyProperty]: '1',
-        [egoProperty]: 'ego-1',
-        [nodeExportIDProperty]: 1,
-        type: 'person',
-        [entityAttributesProperty]: { 'name-uuid': 'Alice' },
-      };
-
-      const codebook = codebookWithName(true);
-      const result = await processAttributes(
-        node,
-        codebook,
-        mockExportOptions,
-        await keyIdsFor(codebook, node),
-      );
-
-      expect(getDataElements(result)).toEqual({ 'name-uuid': 'Alice' });
-    });
-
-    it('exports a plaintext value as itself, though metadata from an encrypted value it replaced was left with it', async () => {
-      const node: NodeWithResequencedID = {
-        [entityPrimaryKeyProperty]: '1',
-        [egoProperty]: 'ego-1',
-        [nodeExportIDProperty]: 1,
-        type: 'person',
-        [entityAttributesProperty]: { 'name-uuid': 'Alice' },
-        [entitySecureAttributesMeta]: {
-          'name-uuid': { iv: [1], salt: [2] },
-        },
-      };
-
-      const codebook = codebookWithName(true);
-      const result = await processAttributes(
-        node,
-        codebook,
-        mockExportOptions,
-        await keyIdsFor(codebook, node),
-      );
-
-      expect(getDataElements(result)).toEqual({ 'name-uuid': 'Alice' });
-    });
+        expect(values).toHaveLength(2);
+        expect(values).toContain('ENCRYPTED');
+        expect(values).toContain('Lisbon');
+        expect(values.join('')).not.toContain(ciphertext.join(','));
+      },
+    );
   });
 });

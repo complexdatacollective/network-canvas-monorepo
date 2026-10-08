@@ -77,6 +77,35 @@ function brokenV7Document(): Record<string, unknown> {
   };
 }
 
+// A v8 protocol that marks its person's name `encrypted`, stored with the
+// `experiments` it was imported with.
+function v8DocumentWithEncryptedName(
+  experiments: Record<string, unknown> | undefined,
+): Record<string, unknown> {
+  const { experiments: _seeded, ...v8 } = migrateProtocol(
+    {
+      schemaVersion: 7,
+      codebook: {
+        node: {
+          person: {
+            name: 'Person',
+            color: 'node-color-seq-1',
+            variables: {
+              name: { name: 'Name', type: 'text', encrypted: true },
+            },
+          },
+        },
+        edge: {},
+        ego: {},
+      },
+      stages: [],
+    },
+    8,
+    { name: 'Alpha Study' },
+  );
+  return { ...v8, ...(experiments !== undefined ? { experiments } : {}) };
+}
+
 // A stored row's `protocol` is typed `CurrentProtocol` while its
 // `schemaVersion` is deliberately widened to `number` — a row below the current
 // version holds a document of that lower version, which is precisely the state
@@ -953,5 +982,76 @@ describe.each([
       migrated: [],
       failed: [],
     });
+  });
+});
+
+describe('migrateStoredProtocols — encrypted attributes of a schema 8 protocol', () => {
+  const NAME_ENCRYPTED = ['node', 'person', 'variables', 'name', 'encrypted'];
+
+  beforeEach(async () => {
+    await clearAll();
+    setSessionDek(null);
+  });
+  afterEach(clearAll);
+
+  async function migrateEncryptedNameProtocol(
+    experiments: Record<string, unknown> | undefined,
+  ): Promise<StoredProtocol> {
+    const document = v8DocumentWithEncryptedName(experiments);
+    const hash = hashProtocol(asStoredDocument(document));
+    await seedProtocol(storedRow(hash, 'Alpha Study', document));
+    await seedSession('s1', hash);
+
+    const result = await migrateStoredProtocols();
+
+    expect(result.failed).toEqual([]);
+    expect(result.migrated).toHaveLength(1);
+    const rows = await db.protocols.toArray();
+    expect(rows).toHaveLength(1);
+    const row = rows[0];
+    if (!row) throw new Error('expected a migrated protocol row');
+    const stored = await decryptProtocol(row);
+    expect(stored.protocol.schemaVersion).toBe(
+      COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
+    );
+    expect((await db.sessions.get('s1'))?.protocolHash).toBe(stored.hash);
+    return stored;
+  }
+
+  function expectUnmarked(stored: StoredProtocol) {
+    expect(stored.protocol.codebook).not.toHaveProperty(NAME_ENCRYPTED);
+    expect(stored.protocol.codebook).toHaveProperty(
+      ['node', 'person', 'variables', 'name', 'type'],
+      'text',
+    );
+  }
+
+  it('keeps an attribute encrypted when the protocol had encryption on, and keeps its experiments without that one', async () => {
+    const stored = await migrateEncryptedNameProtocol({
+      encryptedVariables: true,
+    });
+
+    expect(stored.protocol.codebook).toHaveProperty(NAME_ENCRYPTED, true);
+    expect(stored.protocol.experiments).toStrictEqual({});
+  });
+
+  it.each([
+    ['empty experiments', {}],
+    ['encryption off', { encryptedVariables: false }],
+  ])(
+    'unmarks an encrypted attribute when the protocol had %s, and keeps its experiments',
+    async (_label, experiments) => {
+      const stored = await migrateEncryptedNameProtocol(experiments);
+
+      expectUnmarked(stored);
+      expect(stored.protocol.experiments).toStrictEqual({});
+    },
+  );
+
+  it('unmarks an encrypted attribute when the protocol had no experiments, and adds none', async () => {
+    const stored = await migrateEncryptedNameProtocol(undefined);
+
+    expectUnmarked(stored);
+    expect(stored.protocol).not.toHaveProperty('experiments');
   });
 });

@@ -31,7 +31,8 @@ const SecureAttributesMeta = Schema.Record(
   Schema.String,
   Schema.Struct({
     iv: Schema.Array(Schema.Number),
-    salt: Schema.Array(Schema.Number),
+    // Only a value collected under schema 8 carries its own salt.
+    salt: Schema.optional(Schema.Array(Schema.Number)),
   }),
 );
 

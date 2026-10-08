@@ -6,30 +6,35 @@ import { shallow } from 'zustand/shallow';
 import type { Variable } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
-  entityPrimaryKeyProperty,
   type NcEdge,
   type NcNode,
   type VariableValue,
 } from '@codaco/shared-consts';
 
 import {
-  type DecryptionScope,
   decryptInScope,
   type EncryptedValue,
-  getEncryptedValue,
-  isNumberArray,
-  readCachedPlaintext,
+  readCachedOutcome,
+  readEncryptedAttribute,
+  type UnreadableReason,
 } from './decryptionScope';
-import { isAttributeEncrypted } from './isAttributeEncrypted';
 import { useDecryptionScope } from './useDecryptionScope';
 import { usePassphrase } from './usePassphrase';
+import { useReportUnreadable } from './useReportUnreadable';
 
 type ProtectedFormValues =
-  | { status: 'ready'; values: Record<string, VariableValue> }
+  | {
+      status: 'ready';
+      values: Record<string, VariableValue>;
+      /**
+       * The questions whose stored answer can never be shown. Each is left
+       * out of `values`, and must be left as it is stored unless the
+       * participant gives a new answer.
+       */
+      unavailable: readonly string[];
+    }
   | { status: 'pending' }
-  | { status: 'locked'; reason: 'passphrase-needed' | 'passphrase-invalid' };
-
-type ScopedEntity = { scope: DecryptionScope; entityId: string };
+  | { status: 'locked' };
 
 const isNode = (entity: NcNode | NcEdge): entity is NcNode =>
   !('from' in entity);
@@ -52,13 +57,17 @@ function useSameWhileUnchanged<T extends object>(next: T): T {
  * answer decrypted, or why the form must not be shown yet. With no `entity`
  * (a form for a new one) there is nothing to decrypt.
  *
- * A form with an encrypted question is locked until a working passphrase is in
- * force, whether or not that question has been answered yet: without one its
- * stored answer cannot be shown, and a new answer could not be saved.
+ * A form with an encrypted question is locked until the interview's key is in
+ * force, whether or not that question has been answered yet: without it the
+ * stored answer cannot be shown, and a new answer could not be saved. So is a
+ * form holding an answer stored encrypted under a question the codebook no
+ * longer encrypts, until that answer can be shown. An answer that can never be
+ * read is left out of the values, named in `unavailable`, and reported.
  *
- * A form already open under the passphrase in force stays open if that
- * passphrase is later found not to work, so answers being entered are kept;
- * saving them is refused, with the reason shown, until it is re-entered.
+ * When no passphrase can ever put the key in force (a refused encryption
+ * header), the form is not locked, since nothing could unlock it: every
+ * encrypted question, and every question holding an encrypted answer, is
+ * unavailable instead, answered or not, and the rest of the form stays usable.
  */
 export function useProtectedFormValues(
   entity: NcNode | NcEdge | null,
@@ -66,46 +75,29 @@ export function useProtectedFormValues(
   variables: Record<string, Variable>,
 ): ProtectedFormValues {
   const scope = useDecryptionScope();
-  const {
-    passphraseInvalid,
-    requirePassphrase,
-    setPassphraseInvalid,
-    isEnabled,
-  } = usePassphrase();
+  const { requirePassphrase, encryptionUnavailable } = usePassphrase();
+  const reportUnreadable = useReportUnreadable();
   const [, rerender] = useReducer((count: number) => count + 1, 0);
-  const [openedFor, setOpenedFor] = useState<ScopedEntity>();
-  const [failedFor, setFailedFor] = useState<ScopedEntity>();
 
-  const protectedFields = useMemo(
-    () =>
-      fields
-        .map((field) => field.variable)
-        .filter((variable) =>
-          isAttributeEncrypted(isEnabled, variables, variable),
-        ),
-    [fields, variables, isEnabled],
+  const savesEncrypted = useMemo(
+    () => fields.some(({ variable }) => variables[variable]?.encrypted),
+    [fields, variables],
   );
 
-  const encrypted = useMemo(() => {
+  const stored = useMemo(() => {
     if (!entity || !isNode(entity)) return [];
-    return protectedFields.flatMap(
-      (variable): { variable: string; value: EncryptedValue }[] => {
-        const value = getEncryptedValue(entity, variable, variables, isEnabled);
-        return value ? [{ variable, value }] : [];
-      },
-    );
-  }, [entity, protectedFields, variables, isEnabled]);
-
-  const entityId = entity?.[entityPrimaryKeyProperty];
-  const isFor = (marker: ScopedEntity | undefined) =>
-    scope !== undefined &&
-    marker?.scope === scope &&
-    marker.entityId === entityId;
+    return fields.flatMap(({ variable }) => {
+      const attribute = readEncryptedAttribute(entity, variable, variables);
+      return attribute ? [{ variable, attribute }] : [];
+    });
+  }, [entity, fields, variables]);
 
   const locked =
     entity !== null &&
-    protectedFields.length > 0 &&
-    (!scope || isFor(failedFor) || (passphraseInvalid && !isFor(openedFor)));
+    !scope &&
+    !encryptionUnavailable &&
+    (savesEncrypted ||
+      stored.some(({ attribute }) => attribute.status === 'encrypted'));
 
   useEffect(() => {
     if (locked) requirePassphrase();
@@ -125,60 +117,75 @@ export function useProtectedFormValues(
     }
   }
 
-  // Ciphertext with no metadata to decrypt it can never be shown, and must
-  // not reach a form as if it were an answer.
-  for (const variable of protectedFields) {
-    if (isNumberArray(values[variable])) delete values[variable];
-  }
-
-  // Plaintext is read from the passphrase's decryption scope on every render,
-  // so it is gone from these values as soon as that passphrase is.
-  let missing = false;
-  if (scope && !locked) {
-    for (const { variable, value } of encrypted) {
-      const plaintext = readCachedPlaintext(scope, value);
-      if (plaintext === undefined) {
-        missing = true;
-      } else {
-        values[variable] = plaintext;
-      }
+  // Plaintext is read from the key's decryption scope on every render, so it
+  // is gone from these values as soon as that key is. Ciphertext never reaches
+  // the form as if it were an answer.
+  const pending: EncryptedValue[] = [];
+  const unreadable = new Set<UnreadableReason>();
+  const unavailable: string[] = [];
+  const markUnavailable = (variable: string) => {
+    if (!unavailable.includes(variable)) unavailable.push(variable);
+  };
+  if (encryptionUnavailable) {
+    for (const { variable } of fields) {
+      if (variables[variable]?.encrypted) markUnavailable(variable);
     }
   }
+  for (const { variable, attribute } of stored) {
+    delete values[variable];
+    if (attribute.status === 'unreadable') {
+      unreadable.add(attribute.reason);
+      markUnavailable(variable);
+      continue;
+    }
+    if (!scope) {
+      if (encryptionUnavailable) markUnavailable(variable);
+      continue;
+    }
+    const outcome = readCachedOutcome(scope, attribute.value);
+    if (!outcome) {
+      pending.push(attribute.value);
+    } else if (outcome.readable) {
+      values[variable] = outcome.plaintext;
+    } else {
+      unreadable.add('decryption-failed');
+      markUnavailable(variable);
+    }
+  }
+  const missing = pending.length > 0;
+
+  // Runs after every commit, since outcomes arrive in the scope rather than
+  // through props; each reason is reported only once per interview.
+  useEffect(() => {
+    for (const reason of unreadable) reportUnreadable(reason);
+  });
 
   useEffect(() => {
-    if (!scope || locked || !missing || entityId === undefined) return;
+    if (!scope || !missing) return;
 
     let current = true;
-    Promise.all(encrypted.map(({ value }) => decryptInScope(scope, value)))
-      .then(() => {
-        if (current) rerender();
-      })
-      .catch(() => {
-        if (!current) return;
-        setFailedFor({ scope, entityId });
-        setPassphraseInvalid(true);
-      });
+    void Promise.all(
+      stored.flatMap(({ attribute }) =>
+        attribute.status === 'encrypted'
+          ? [decryptInScope(scope, attribute.value)]
+          : [],
+      ),
+    ).then(() => {
+      if (current) rerender();
+    });
     return () => {
       current = false;
     };
-  }, [scope, locked, missing, encrypted, entityId, setPassphraseInvalid]);
-
-  const ready =
-    protectedFields.length > 0 && scope !== undefined && !locked && !missing;
-  useEffect(() => {
-    if (ready && scope && entityId !== undefined) {
-      setOpenedFor({ scope, entityId });
-    }
-  }, [ready, scope, entityId]);
+  }, [scope, missing, stored]);
 
   const stableValues = useSameWhileUnchanged(values);
+  const stableUnavailable = useSameWhileUnchanged(unavailable);
 
-  if (locked) {
-    return {
-      status: 'locked',
-      reason: scope ? 'passphrase-invalid' : 'passphrase-needed',
-    };
-  }
+  if (locked) return { status: 'locked' };
   if (missing) return { status: 'pending' };
-  return { status: 'ready', values: stableValues };
+  return {
+    status: 'ready',
+    values: stableValues,
+    unavailable: stableUnavailable,
+  };
 }

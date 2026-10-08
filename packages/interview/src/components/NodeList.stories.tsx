@@ -65,9 +65,6 @@ const mockProtocol = {
       ],
     },
   ],
-  experiments: {
-    encryptedVariables: false,
-  },
   assets: [],
 };
 
@@ -85,8 +82,7 @@ const mockSession = {
 };
 
 const mockUiState = {
-  passphrase: null as string | null,
-  passphraseInvalid: false,
+  encryptionKeyId: null,
   showPassphrasePrompter: false,
 };
 

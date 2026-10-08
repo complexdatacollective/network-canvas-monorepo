@@ -14,7 +14,7 @@ export const decodeSecureAttributes = Schema.decodeUnknownSync(
       Schema.String,
       Schema.Struct({
         iv: Schema.Array(Schema.Number),
-        salt: Schema.Array(Schema.Number),
+        salt: Schema.optional(Schema.Array(Schema.Number)),
       }),
     ),
   ),
@@ -23,7 +23,7 @@ export const decodeSecureAttributes = Schema.decodeUnknownSync(
 type SecureAttributes = Readonly<
   Record<
     string,
-    { readonly iv: readonly number[]; readonly salt: readonly number[] }
+    { readonly iv: readonly number[]; readonly salt?: readonly number[] }
   >
 >;
 

@@ -5,6 +5,7 @@ import {
   egoProperty,
   entityAttributesProperty,
   entityPrimaryKeyProperty,
+  entitySecureAttributesMeta,
   ncUUIDProperty,
   nodeExportIDProperty,
   protocolName,
@@ -179,4 +180,63 @@ describe('attributeListRows', () => {
     expect(rows[0]).toContain('externalAttribute');
     expect(rows[1]).toContain('external value');
   });
+
+  it.each([
+    { label: 'metadata without a salt', metadata: { iv: [15, 243, 77, 120] } },
+    {
+      label: 'schema 8 metadata with a salt',
+      metadata: { iv: [15, 243, 77, 120], salt: [44, 130, 213, 61] },
+    },
+  ])(
+    'writes the marker in place of an encrypted value, with $label',
+    ({ metadata }) => {
+      const codebook = {
+        node: {
+          'mock-node-type': {
+            name: 'person',
+            label: { en: 'Person' },
+            color: 'node-color-seq-1',
+            shape: { default: 'circle' },
+            variables: {
+              'v-name': {
+                name: 'name',
+                label: 'Name',
+                type: 'text',
+                encrypted: true,
+              },
+              'v-city': { name: 'city', label: 'City', type: 'text' },
+            },
+          },
+        },
+      } satisfies Codebook;
+      const ciphertext = [201, 17, 93, 4, 250, 66, 128, 7, 33, 180, 2, 99];
+      const network = makeNetwork([
+        {
+          [nodeExportIDProperty]: 1,
+          [egoProperty]: 'ego-1',
+          [entityPrimaryKeyProperty]: 'uid-1',
+          type: 'mock-node-type',
+          [entityAttributesProperty]: {
+            'v-name': ciphertext,
+            'v-city': 'Lisbon',
+          },
+          [entitySecureAttributesMeta]: { 'v-name': metadata },
+        },
+      ]);
+
+      const [header, row] = Array.from(
+        attributeListRows(
+          network,
+          codebook,
+          mockExportOptions,
+          () => undefined,
+        ),
+      );
+
+      expect(header).toBe(
+        `${nodeExportIDProperty},${egoProperty},${ncUUIDProperty},name,city\r\n`,
+      );
+      expect(row).toBe('1,ego-1,uid-1,ENCRYPTED,Lisbon\r\n');
+    },
+  );
 });
