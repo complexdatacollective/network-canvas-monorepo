@@ -172,7 +172,8 @@ const FinishSession = ({ stage }: StageProps<'FinishSession'>) => {
  * one. There is no way back into the interview from here.
  *
  * `stage` is absent only for a protocol with no finish stage, which a
- * validated protocol cannot be; the notice is then shown alone.
+ * validated protocol cannot be; the notice is then shown alone, and takes
+ * focus as it does when the stage has no heading.
  *
  * `notice` is off for a review of an interview with nothing before its finish
  * stage: it shows the finish stage's text read-only, but the interview is not
@@ -190,6 +191,9 @@ export function CompletedInterview({
   const { completedAction } = useInterviewCompletion();
   const headingRef = useRef<HTMLHeadingElement>(null);
   const noticeRef = useRef<HTMLDivElement>(null);
+  // Focus goes to the heading when there is one, and to the notice otherwise:
+  // no finish stage, or one whose heading is not written yet.
+  const hasHeading = stage !== undefined && !isUnwritten(stage.title);
 
   // Finishing unmounts the Finish button and its dialog together, which would
   // drop focus on the document. The completed state takes it instead, so a
@@ -205,7 +209,7 @@ export function CompletedInterview({
       {notice && (
         <Alert
           ref={noticeRef}
-          tabIndex={stage ? undefined : -1}
+          tabIndex={hasHeading ? undefined : -1}
           variant="success"
           density="compact"
         >

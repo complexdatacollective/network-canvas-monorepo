@@ -218,6 +218,33 @@ describe('Shell completed state', () => {
     );
   });
 
+  // An Architect preview of a protocol whose finish stage has no heading yet
+  // (a new protocol in a language with no supplied closing text).
+  it('puts focus on the notice when the finish stage has no heading', async () => {
+    const payload = makePayload(null);
+    const untitled = {
+      ...payload,
+      protocol: {
+        ...payload.protocol,
+        stages: [information, { ...finishStage, title: {} }],
+      },
+    };
+    renderShell({ payload: untitled, currentStep: 1 });
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole('button', { name: 'Finish' }));
+    const dialog = await screen.findByRole('dialog');
+    await user.click(
+      within(dialog).getByRole('button', { name: 'Finish Interview' }),
+    );
+
+    const notice = await screen.findByText(NOTICE);
+    expect(screen.queryByRole('heading', { level: 1 })).toBeNull();
+    await waitFor(() =>
+      expect(notice.closest('[tabindex="-1"]')).toHaveFocus(),
+    );
+  });
+
   it('stays on the finish stage when the host could not record the finish', async () => {
     const onFinish = vi.fn<FinishHandler>(() =>
       Promise.reject(new Error('offline')),

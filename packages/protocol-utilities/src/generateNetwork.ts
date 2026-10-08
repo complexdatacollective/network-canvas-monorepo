@@ -4,7 +4,11 @@ import {
   isStageSkipped,
   resolveSkipLogicDestinationIndex,
 } from '@codaco/network-query';
-import type { Stage, StructuralCodebook } from '@codaco/protocol-validation';
+import {
+  isFinishSessionStage,
+  type Stage,
+  type StructuralCodebook,
+} from '@codaco/protocol-validation';
 import type { NcNetwork, NcNode } from '@codaco/shared-consts';
 
 import { reservePromptFixedValues } from './generateNetwork/attributes.ts';
@@ -328,8 +332,13 @@ export function generateNetwork(
     markStageInProgress(ctx, draft, inProgressStage);
   }
 
+  // A completed interview rests on the finish stage it ended at, where a
+  // participant's finished interview is recorded. A list without one (only a
+  // fragment of a protocol, as tests pass) rests on its last stage.
   if (!droppedOut) {
-    currentStep = totalStages;
+    const finishIndex = stages.findLastIndex(isFinishSessionStage);
+    currentStep =
+      finishIndex === -1 ? Math.max(totalStages - 1, 0) : finishIndex;
   }
 
   return {

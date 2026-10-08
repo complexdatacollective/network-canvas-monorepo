@@ -63,7 +63,10 @@ ended early. That outcome is saved with each interview and exported.
   the interview is finished, so the language it was taken in, which exports
   read, is kept.
 - A finish stage with no heading or text, which only an Architect preview of a
-  protocol still being written can have, shows the Finish button alone.
+  protocol still being written can have, shows the Finish button alone, and
+  its completed state puts focus on the finished notice.
+- `generateNetwork` leaves a completed synthetic interview on its finish
+  stage, rather than one step past the last stage.
 - Skip logic that skips to the finish goes to the first finish stage after the
   stage that owns the rule.
 
