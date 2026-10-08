@@ -1037,35 +1037,33 @@ describe('the create row while the codebook write is in flight', () => {
   });
 
   /**
-   * The window is dismissible while the write is out — Architect's create
-   * never held the researcher there either — so a refusal can arrive about a
-   * name they have already walked away from. There is no window left to say it
-   * in, and the next one they open is about a different name: a refusal kept
-   * across the close would stand over whatever they type there, which is the
-   * "sentence the researcher cannot read about the name it was written for"
-   * the reason was moved into the window to prevent, one step later.
+   * The window cannot be dismissed while the write is out: the codebook takes
+   * the attribute whatever happens to the window, so letting the researcher
+   * walk away would look like calling the create off. A refusal therefore
+   * always lands in the window it is about, beside the name it refuses.
    */
-  it('drops a refusal that lands after the window was dismissed', async () => {
+  it('holds the window open while the write is out, and shows a refusal there', async () => {
     const control = mountControl();
-    await askFor(control, 'nominated_early');
+    const dialog = await askFor(control, 'nominated_early');
 
     await control.user.keyboard('{Escape}');
-    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(screen.getByRole('dialog')).toBe(dialog);
+
     control.answerWith({
       status: 'refused',
       message: 'Robin is currently editing a section needed for this change.',
     });
 
-    await control.user.click(
-      screen.getByRole('button', { name: 'Select attribute' }),
-    );
-    const reopened = await screen.findByRole('dialog');
-    const searchBox = within(reopened).getByRole('searchbox', {
-      name: 'Find or create an attribute',
-    });
-    expect(within(reopened).queryByRole('alert')).toBeNull();
-    expect(searchBox).toHaveValue('');
-    expect(searchBox).toBeEnabled();
+    expect(
+      await within(dialog).findByText(
+        'Robin is currently editing a section needed for this change.',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).getByRole('searchbox', {
+        name: 'Find or create an attribute',
+      }),
+    ).toHaveValue('nominated_early');
   });
 });
 
