@@ -470,56 +470,6 @@ describe('FamilyPedigree in a whole protocol', () => {
       const sharedWithSex = withRelationship('sab');
       expect(ProtocolSchemaV9.safeParse(sharedWithSex).success).toBe(false);
     });
-
-    // Each stage works the relationships out from its own family and clears
-    // them from everyone else of the type, so a second stage recording them
-    // in the same attribute would clear the first stage's family.
-    describe('recorded by one stage', () => {
-      const { genderIdentity: _omitted, ...withoutGender } =
-        base.nodeConfiguration;
-      const stageRecording = (
-        id: string,
-        label: string,
-        attribute: string,
-      ) => ({
-        ...base,
-        id,
-        label: localized(label),
-        nodeConfiguration: {
-          ...withoutGender,
-          ...(id === 'fp1'
-            ? { genderIdentity: base.nodeConfiguration.genderIdentity }
-            : {}),
-          relationshipToParticipantAttribute: attribute,
-        },
-      });
-      const twoStages = (second: string) => ({
-        ...protocolWith(base),
-        stages: [
-          stageRecording('fp1', 'Family Pedigree', 'rel'),
-          stageRecording('fp2', 'Family again', second),
-        ],
-      });
-      const at = (protocol: ReturnType<typeof twoStages>, stageIndex: number) =>
-        issuesAt(protocol, [
-          'stages',
-          stageIndex,
-          'nodeConfiguration',
-          'relationshipToParticipantAttribute',
-        ]);
-
-      it('refuses two Family Pedigree stages recording relationships in one attribute, each naming the other', () => {
-        const protocol = twoStages('rel');
-        const reason =
-          "each works out every person's relationship to the participant from its own family, and clears it from anyone outside that family";
-        expect(at(protocol, 1)).toEqual([
-          `The stage "Family Pedigree" also uses attribute "Relationship" here, but only one stage may, because ${reason}. Choose another attribute.`,
-        ]);
-        expect(at(protocol, 0)).toEqual([
-          `The stage "Family again" also uses attribute "Relationship" here, but only one stage may, because ${reason}. Choose another attribute.`,
-        ]);
-      });
-    });
   });
 
   describe('gender identity options managed by one stage', () => {
@@ -543,10 +493,10 @@ describe('FamilyPedigree in a whole protocol', () => {
           'attribute',
         ]);
       expect(at(1)).toEqual([
-        'The stage "Family Pedigree" also uses attribute "Gender" here, but only one stage may, because each decides the kinship words each of its options takes. Choose another attribute.',
+        'The options of attribute "Gender" are also managed by the stage "Family Pedigree", but only one stage may manage them, because each decides the kinship words each option takes. Choose another attribute.',
       ]);
       expect(at(0)).toEqual([
-        'The stage "Family again" also uses attribute "Gender" here, but only one stage may, because each decides the kinship words each of its options takes. Choose another attribute.',
+        'The options of attribute "Gender" are also managed by the stage "Family again", but only one stage may manage them, because each decides the kinship words each option takes. Choose another attribute.',
       ]);
     });
 

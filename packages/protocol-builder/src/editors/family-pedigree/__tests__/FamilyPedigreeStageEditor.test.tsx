@@ -1,4 +1,4 @@
-import { act, screen, waitFor, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
@@ -8,7 +8,6 @@ import {
   PEDIGREE_RELATIVES_NOT_RECORDED_OPTIONS,
 } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
-import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import {
   attributeField,
@@ -1946,88 +1945,6 @@ describe('recording the relationship to the participant', () => {
       ['Step-parent', 'stepParent'],
     ]);
     expect(rows.at(-1)).toEqual(['Other relative', 'otherRelative']);
-  });
-
-  /** The fixture's own pedigree stage, saved recording relationships in
-   * `fm_relationship`, as a collaborator's save would arrive. */
-  const recordInFixtureStage = (harness: StageEditorHarness) => {
-    const id = sectionId({ kind: 'stage', stageId: 'family-pedigree-1' });
-    const saved = harness.protocolSections()[id];
-    if (saved === undefined) throw new Error('No fixture pedigree stage');
-    act(() => {
-      harness.host.store.applyAsCollaborator(id, {
-        ...saved,
-        nodeConfiguration: {
-          ...nodeConfigurationOf(saved),
-          relationshipToParticipantAttribute: 'fm_relationship',
-        },
-      });
-    });
-  };
-
-  // Each stage works the relationships out from its own family and clears
-  // them from everyone else of the type, so one stage records them in an
-  // attribute.
-  it('is not offered an attribute another stage records relationships in', async () => {
-    const harness = openNewStage();
-    await harness.user.click(
-      await screen.findByRole('radio', { name: 'family member' }),
-    );
-    addFamilyMemberVariables(harness, {
-      fm_relationship: RELATIONSHIP_VARIABLE,
-      fm_otherRelationship: {
-        ...RELATIONSHIP_VARIABLE,
-        name: 'fm_otherRelationship',
-      },
-    });
-    recordInFixtureStage(harness);
-
-    await switchOn(harness);
-    await screen.findByText(LABEL, { selector: FIELD_LABEL });
-    await awaitOfferedAttributes(
-      harness.user,
-      attributeField(LABEL),
-      (offered) => {
-        expect(offered).toContain('fm_otherRelationship');
-        expect(offered).not.toContain('fm_relationship');
-      },
-    );
-  });
-
-  it('refuses an attribute another stage records relationships in, naming that stage', async () => {
-    const seeded = loadFixtureStage('family-pedigree-1');
-    const { genderIdentity: _shared, ...nodeConfiguration } =
-      nodeConfigurationOf(seeded.fields);
-    const harness = renderStageEditor({
-      stage: {
-        id: 'family-pedigree-2',
-        type: 'FamilyPedigree',
-        fields: {
-          ...seeded.fields,
-          label: 'Family again',
-          nodeConfiguration: {
-            ...nodeConfiguration,
-            relationshipToParticipantAttribute: 'fm_relationship',
-          },
-        },
-      },
-      editor: familyPedigreeEditor,
-    });
-    addFamilyMemberVariables(harness, {
-      fm_relationship: RELATIONSHIP_VARIABLE,
-    });
-    recordInFixtureStage(harness);
-    await harness.opened();
-
-    expect(
-      await within(attributeField(LABEL)).findByText(
-        /The “Family Pedigree” stage already records relationships to the participant in this attribute/,
-      ),
-    ).toBeVisible();
-    expect(await harness.submit()).toBeNull();
-    expect(
-      harness.outline().find((section) => section.title === TITLE)?.state,
-    ).toBe('Has a problem');
   });
 
   it('keeps the bound attribute out of the additional fields', async () => {

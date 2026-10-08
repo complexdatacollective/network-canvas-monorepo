@@ -11,7 +11,6 @@ import {
   type EntityTypeReferenceHit,
   findExclusiveVariableSlots,
   findInterfaceOwnedOptionBindings,
-  findSingleStageBindings,
   findStageManagedOptionBindings,
   findVariableRoleConflicts,
   INTERFACE_OWNED_OPTION_SETS,
@@ -113,12 +112,6 @@ export type StageManagedOptionOwner = Readonly<{
 export type StageManagedOptionMap = Readonly<
   Record<string, readonly StageManagedOptionOwner[]>
 >;
-
-/**
- * The stages that bind one variable at a slot only one stage may bind it at,
- * by the variable's key. See `SingleStageSlotDescriptor`.
- */
-export type SingleStageMap = StageManagedOptionMap;
 
 type VariableOption = Readonly<{ value: string }>;
 
@@ -322,17 +315,11 @@ export function buildInterfaceOwnedOptionMap(
   return Object.freeze(Object.fromEntries(map));
 }
 
-/** The stages binding each variable, by the variable's key. */
-function stagesByVariable(
-  bindings: readonly Readonly<{
-    subject: Parameters<typeof normalizeSubject>[0];
-    variableId: string;
-    stageId: string;
-    stageLabel: string;
-  }>[],
-): Readonly<Record<string, readonly StageManagedOptionOwner[]>> {
+export function buildStageManagedOptionMap(
+  context: ProtocolBuilderProtocolContext,
+): StageManagedOptionMap {
   const map = new Map<string, StageManagedOptionOwner[]>();
-  for (const binding of bindings) {
+  for (const binding of findStageManagedOptionBindings(protocolFrom(context))) {
     const subject = normalizeSubject(binding.subject);
     if (subject === undefined) continue;
     const key = variableRoleKey(subject, binding.variableId);
@@ -350,20 +337,6 @@ function stagesByVariable(
       [...map].map(([key, owners]) => [key, Object.freeze(owners)]),
     ),
   );
-}
-
-export function buildStageManagedOptionMap(
-  context: ProtocolBuilderProtocolContext,
-): StageManagedOptionMap {
-  return stagesByVariable(
-    findStageManagedOptionBindings(protocolFrom(context)),
-  );
-}
-
-export function buildSingleStageMap(
-  context: ProtocolBuilderProtocolContext,
-): SingleStageMap {
-  return stagesByVariable(findSingleStageBindings(protocolFrom(context)));
 }
 
 /**
@@ -400,13 +373,13 @@ export const stageManagedOptionsLock = (
 };
 
 /**
- * The labels of the saved stages OTHER than `stageId` that bind a variable at
- * a slot only one stage may bind it at (the protocol refuses the rest), so a
- * stage choosing a variable for such a slot may take only one this answers
- * with nothing for.
+ * The labels of the saved stages OTHER than `stageId` that manage a variable's
+ * option list. Only one stage may manage it (the protocol refuses the rest),
+ * so a stage choosing a variable for such a slot may take only one this
+ * answers with nothing for.
  */
-export const singleStageHoldersElsewhere = (
-  map: SingleStageMap,
+export const stageManagersElsewhere = (
+  map: StageManagedOptionMap,
   subject: CodebookSubject,
   variableId: string,
   stageId: string,

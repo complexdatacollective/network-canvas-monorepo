@@ -3,9 +3,7 @@ import { useCallback } from 'react';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { FAMILY_PEDIGREE_SLOTS } from '@codaco/protocol-validation';
 
-import SlotVariableField, {
-  type SingleStageWords,
-} from '../../../fields/SlotVariableField.tsx';
+import SlotVariableField from '../../../fields/SlotVariableField.tsx';
 import BuilderSection, {
   type SectionCapability,
 } from '../../../sections/BuilderSection.tsx';
@@ -14,17 +12,6 @@ import {
   NODE_CONFIGURATION_PATHS,
   usePedigreeDraftBindings,
 } from './pedigreeSlots.ts';
-
-/**
- * One stage records the relationships in an attribute: each works them out
- * from its own family and clears them from everyone outside it.
- */
-const RELATIONSHIP_TO_PARTICIPANT_SINGLE_STAGE: SingleStageWords =
-  Object.freeze({
-    optionLabel: messages.relationshipToParticipantElsewhereOptionLabel,
-    note: messages.relationshipToParticipantElsewhereNote,
-    refusal: messages.relationshipToParticipantElsewhereRefusal,
-  });
 
 /**
  * Switching the recording off removes the binding from the stage; the
@@ -52,8 +39,7 @@ const RELATIONSHIP_TO_PARTICIPANT_CAPABILITY: SectionCapability = Object.freeze(
  * and one created here is seeded with exactly those values, labelled in the
  * researcher's language for them to translate. The interface writes it
  * itself, so it is an exclusive slot: no form field or other answer may
- * collect it. And only one stage may record it: an attribute another stage
- * records relationships in is ruled out, as the protocol refuses it.
+ * collect it.
  */
 export default function RelationshipToParticipantSection() {
   const intl = useAppIntl();
@@ -87,7 +73,6 @@ export default function RelationshipToParticipantSection() {
           ownedOptionLabel={optionLabel}
           draftConflicting={validatedPersonVariables}
           draftSlotMap={draftWriterMap}
-          singleStage={RELATIONSHIP_TO_PARTICIPANT_SINGLE_STAGE}
         />
       )}
     </BuilderSection>

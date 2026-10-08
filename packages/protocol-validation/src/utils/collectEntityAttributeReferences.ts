@@ -8,7 +8,6 @@ import {
   type AttributeWriterUsage,
   type ExclusiveSlotDescriptor,
   type InterfaceOwnedOptionSetKey,
-  type SingleStageSlotDescriptor,
   type StageManagedOptionsDescriptor,
   type SubjectResolution,
 } from '../schemas/9/entity-attribute-reference.ts';
@@ -43,7 +42,6 @@ export type EntityAttributeReferenceHit = {
   exclusive?: ExclusiveSlotDescriptor;
   ownedOptions?: InterfaceOwnedOptionSetKey;
   stageManagedOptions?: StageManagedOptionsDescriptor;
-  singleStage?: SingleStageSlotDescriptor;
 };
 
 export type EntityTypeReferenceHit = {
@@ -304,7 +302,6 @@ const walk = (
           exclusive: attributeDescriptor.exclusive,
           ownedOptions: attributeDescriptor.ownedOptions,
           stageManagedOptions: attributeDescriptor.stageManagedOptions,
-          singleStage: attributeDescriptor.singleStage,
         },
       ];
     }

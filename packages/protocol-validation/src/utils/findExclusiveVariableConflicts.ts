@@ -1,7 +1,6 @@
 import type {
   ExclusiveSlotDescriptor,
   InterfaceOwnedOptionSetKey,
-  SingleStageSlotDescriptor,
   StageManagedOptionsDescriptor,
 } from '../schemas/9/entity-attribute-reference.ts';
 import {
@@ -216,12 +215,11 @@ export const findInterfaceOwnedOptionBindings = (
   return bindings;
 };
 
-/** A stage that binds a variable at a slot that carries a per-stage
- * descriptor, with the stage's id and label. */
-type StageBinding<Descriptor> = {
+export type StageManagedOptionBinding = {
   subject: ReferenceSubject;
   variableId: string;
-  descriptor: Descriptor;
+  /** See `StageManagedOptionsDescriptor`. */
+  descriptor: StageManagedOptionsDescriptor;
   /** The stage that binds the variable at this slot. */
   stageId: string;
   /**
@@ -232,13 +230,15 @@ type StageBinding<Descriptor> = {
   path: (string | number)[];
 };
 
-/** See `StageManagedOptionsDescriptor`. */
-export type StageManagedOptionBinding =
-  StageBinding<StageManagedOptionsDescriptor>;
-
-/** See `SingleStageSlotDescriptor`. */
-export type SingleStageBinding = StageBinding<SingleStageSlotDescriptor>;
-
+/**
+ * Every stage that binds a variable whose OPTION LIST that stage manages (see
+ * `StageManagedOptionsDescriptor`), with the stage's id and label. A variable
+ * several stages bind has one binding per stage, and the protocol schema
+ * refuses each of them: one stage manages a variable's options. Ownership is derived here from the stages, never stored in the
+ * codebook, so removing the stage (or unbinding the variable) releases the
+ * options. Architect's option editors read this to lock the options everywhere
+ * but the owning stage's editor.
+ */
 /** A stage label's text in the protocol's default language. */
 const stageLabelText = (label: unknown, localization: unknown): string => {
   if (typeof label === 'string') return label;
@@ -254,22 +254,19 @@ const stageLabelText = (label: unknown, localization: unknown): string => {
   return first ?? '';
 };
 
-/** Every stage reference whose descriptor `pick` finds, with its stage. */
-const findStageBindings = <Descriptor>(
+export const findStageManagedOptionBindings = (
   protocol: unknown,
-  hits: readonly EntityAttributeReferenceHit[] | undefined,
-  pick: (hit: EntityAttributeReferenceHit) => Descriptor | undefined,
-): StageBinding<Descriptor>[] => {
+  hits?: readonly EntityAttributeReferenceHit[],
+): StageManagedOptionBinding[] => {
   const protocolRecord = asRecord(protocol);
   if (!protocolRecord) return [];
   const stages = Array.isArray(protocolRecord.stages)
     ? protocolRecord.stages
     : [];
 
-  const bindings: StageBinding<Descriptor>[] = [];
+  const bindings: StageManagedOptionBinding[] = [];
   for (const hit of hits ?? collectEntityAttributeReferences(protocolRecord)) {
-    const descriptor = pick(hit);
-    if (descriptor === undefined) continue;
+    if (!hit.stageManagedOptions) continue;
     const subject = toReferenceSubject(hit.subject);
     if (!subject) continue;
     if (hit.path[0] !== 'stages') continue;
@@ -279,7 +276,7 @@ const findStageBindings = <Descriptor>(
     bindings.push({
       subject,
       variableId: hit.variableId,
-      descriptor,
+      descriptor: hit.stageManagedOptions,
       stageId: stage.id,
       stageLabel: stageLabelText(stage.label, protocolRecord.localization),
       path: hit.path,
@@ -287,29 +284,3 @@ const findStageBindings = <Descriptor>(
   }
   return bindings;
 };
-
-/**
- * Every stage that binds a variable whose OPTION LIST that stage manages (see
- * `StageManagedOptionsDescriptor`), with the stage's id and label. Ownership
- * is derived here from the stages, never stored in the codebook, so removing
- * the stage (or unbinding the variable) releases the options. Architect's
- * option editors read this to lock the options everywhere but the owning
- * stage's editor.
- */
-export const findStageManagedOptionBindings = (
-  protocol: unknown,
-  hits?: readonly EntityAttributeReferenceHit[],
-): StageManagedOptionBinding[] =>
-  findStageBindings(protocol, hits, (hit) => hit.stageManagedOptions);
-
-/**
- * Every stage that binds a variable at a slot only one stage may bind it at
- * (see `SingleStageSlotDescriptor`), with the stage's id and label. The
- * protocol schema refuses every binding another stage shares, and Architect
- * rules such a variable out of the slot's picker.
- */
-export const findSingleStageBindings = (
-  protocol: unknown,
-  hits?: readonly EntityAttributeReferenceHit[],
-): SingleStageBinding[] =>
-  findStageBindings(protocol, hits, (hit) => hit.singleStage);

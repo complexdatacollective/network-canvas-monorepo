@@ -4331,18 +4331,6 @@
     "defaultMessage": "Saves how each person is related to the participant, such as parent, sibling or cousin, so that later stages can filter or skip on it. The interview works it out from the family the participant draws; it is never asked.",
     "description": "Explains what recording the relationship to the participant does. A filter or skip logic in a later stage can only test a person’s own attributes, which is why the relationship is saved as one. It is updated every time the participant leaves the stage."
   },
-  "protocolBuilder.pedigree.relationshipToParticipantElsewhereNote": {
-    "defaultMessage": "{count, plural, one {The {stageLabels} stage already records relationships to the participant in this attribute. Each stage works them out from the family drawn in it and clears them from everyone else, so only one stage may record them in an attribute. Choose another attribute, or stop recording relationships here.} other {The stages {stageLabels} already record relationships to the participant in this attribute. Each stage works them out from the family drawn in it and clears them from everyone else, so only one stage may record them in an attribute. Choose another attribute, or stop recording relationships here.}}",
-    "description": "Shown under the relationship-to-the-participant attribute control of a Family Pedigree stage when another such stage already saves relationships in the attribute it holds. A stage is one step of an interview. stageLabels is the researcher’s own name for each of those steps, already in quotation marks and separated by commas, and is not translated here. count is how many steps record relationships in it."
-  },
-  "protocolBuilder.pedigree.relationshipToParticipantElsewhereOptionLabel": {
-    "defaultMessage": "{attributeName} — another stage records relationships in it",
-    "description": "Name of the option standing for an attribute that another Family Pedigree stage already saves each person’s relationship to the participant in, so this stage cannot use it. Shown in the list beside the attributes that can still be chosen. attributeName is the codebook name of the attribute, which is not translated."
-  },
-  "protocolBuilder.pedigree.relationshipToParticipantElsewhereRefusal": {
-    "defaultMessage": "\"{attributeName}\" cannot be used here, because another stage already records relationships to the participant in it, and only one stage may. Choose another attribute.",
-    "description": "Refusal shown under the relationship-to-the-participant attribute control of a Family Pedigree stage when the attribute picked already holds the relationships another such stage records. attributeName is the codebook name of the attribute, which is not translated."
-  },
   "protocolBuilder.pedigree.relationshipToParticipantHint": {
     "defaultMessage": "The interface sets this attribute’s options: parent, sibling, cousin and so on, naming neither gender nor side of the family. Everyone connected to the participant is given one; the participant is not. To show a later stage only first-degree biological relatives, for example, filter on parent, donor, sibling, child and donor-conceived child.",
     "description": "Guidance under the relationship-to-the-participant attribute control. The option values are fixed by the interface; their labels can be translated in the codebook. Donor-conceived child is a child conceived with the person as a gamete donor."

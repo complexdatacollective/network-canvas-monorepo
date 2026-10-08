@@ -11,10 +11,7 @@ import {
 } from '@codaco/protocol-validation';
 
 import GenderIdentityWordsSummaryField from '../../../fields/GenderIdentityWordsSummaryField.tsx';
-import SlotVariableField, {
-  type SingleStageWords,
-} from '../../../fields/SlotVariableField.tsx';
-import { slotVariableMessages } from '../../../fields/slotVariableMessages.ts';
+import SlotVariableField from '../../../fields/SlotVariableField.tsx';
 import { useStageEditorForm } from '../../../form/stageEditorContext.ts';
 import { useStageValue } from '../../../form/stageFormHooks.ts';
 import { localizedFromText } from '../../../localization/localizedText.ts';
@@ -43,13 +40,6 @@ import {
  * schema accepts a pedigree with none, but not one holding only the words, or
  * only the attribute.
  */
-/** One stage manages an attribute's options, and keeps their words. */
-const GENDER_IDENTITY_SINGLE_STAGE: SingleStageWords = Object.freeze({
-  optionLabel: slotVariableMessages.managedElsewhereOptionLabel,
-  note: slotVariableMessages.managedElsewhereNote,
-  refusal: slotVariableMessages.managedElsewhereRefusal,
-});
-
 const GENDER_IDENTITY_CAPABILITY: SectionCapability = Object.freeze({
   fields: [NODE_CONFIGURATION_PATHS.genderIdentity],
   confirmClear: {
@@ -251,7 +241,7 @@ export default function GenderIdentitySection() {
             draftConflicting={validatedPersonVariables}
             draftBoundElsewhere={otherAnswerVariables.genderIdentity}
             draftSlotMap={draftSlotMap}
-            singleStage={GENDER_IDENTITY_SINGLE_STAGE}
+            managesOptions
           />
           {genderOptions !== undefined &&
             typeof genderVariableId === 'string' && (

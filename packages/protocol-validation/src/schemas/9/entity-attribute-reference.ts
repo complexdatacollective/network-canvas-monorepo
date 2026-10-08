@@ -64,36 +64,13 @@ export type InterfaceOwnedOptionSetKey =
  * stage that binds the variable at such a slot, and Architect shows them
  * read-only everywhere else. Only one stage may manage a variable's options:
  * each managing stage keeps its own copy of what the options mean, and an
- * options edit made from one stage cannot rewrite another's, so every such
- * slot is also a `SingleStageSlotDescriptor`. This is NOT write
+ * options edit made from one stage cannot rewrite another's, so the protocol
+ * refuses every stage that shares a variable's options with another. This is NOT write
  * exclusivity and is independent of `exclusive`: other stages stay free to
  * WRITE the variable (a categorical bin assigning it, a form field asking
  * it). Ownership is derived from the stages that bind the variable, never
  * stored in the codebook. See `findStageManagedOptionBindings`.
  */
-/**
- * Declares a slot at which only ONE stage may bind a given variable: each
- * stage binding it decides something about the variable from its own
- * configuration — what its options mean (the Family Pedigree's kinship words
- * for each gender identity), or what it holds for every entity of the type
- * (the pedigree's relationship to the participant, worked out from the
- * stage's own family and cleared from everyone outside it) — so a second
- * stage would silently contradict the first. The protocol refuses every
- * stage that shares such a binding, naming the others, and Architect rules
- * the variable out of the slot's picker.
- *
- * This is NOT write exclusivity (`exclusive`): it limits how many stages bind
- * the variable at this slot, not what else may write it.
- */
-export type SingleStageSlotDescriptor = {
-  /**
-   * Researcher-facing reason a second stage would contradict the first, as
-   * the whole clause completing "because …" ("each decides the kinship words
-   * each of its options takes").
-   */
-  reason: string;
-};
-
 export type StageManagedOptionsDescriptor = {
   /**
    * Researcher-facing description of what the stage decides about the
@@ -154,8 +131,6 @@ export type EntityAttributeReferenceDescriptor = {
   ownedOptions?: InterfaceOwnedOptionSetKey;
   /** See `StageManagedOptionsDescriptor`. */
   stageManagedOptions?: StageManagedOptionsDescriptor;
-  /** See `SingleStageSlotDescriptor`. */
-  singleStage?: SingleStageSlotDescriptor;
 };
 
 export const entityAttributeReference = (

@@ -191,27 +191,6 @@ export const familyPedigreeMessages = defineMessages({
     description:
       'Button that confirms switching off the gender identity question and discarding the attribute and words chosen for it.',
   },
-  relationshipToParticipantElsewhereOptionLabel: {
-    id: 'protocolBuilder.pedigree.relationshipToParticipantElsewhereOptionLabel',
-    defaultMessage:
-      '{attributeName} — another stage records relationships in it',
-    description:
-      'Name of the option standing for an attribute that another Family Pedigree stage already saves each person’s relationship to the participant in, so this stage cannot use it. Shown in the list beside the attributes that can still be chosen. attributeName is the codebook name of the attribute, which is not translated.',
-  },
-  relationshipToParticipantElsewhereNote: {
-    id: 'protocolBuilder.pedigree.relationshipToParticipantElsewhereNote',
-    defaultMessage:
-      '{count, plural, one {The {stageLabels} stage already records relationships to the participant in this attribute. Each stage works them out from the family drawn in it and clears them from everyone else, so only one stage may record them in an attribute. Choose another attribute, or stop recording relationships here.} other {The stages {stageLabels} already record relationships to the participant in this attribute. Each stage works them out from the family drawn in it and clears them from everyone else, so only one stage may record them in an attribute. Choose another attribute, or stop recording relationships here.}}',
-    description:
-      'Shown under the relationship-to-the-participant attribute control of a Family Pedigree stage when another such stage already saves relationships in the attribute it holds. A stage is one step of an interview. stageLabels is the researcher’s own name for each of those steps, already in quotation marks and separated by commas, and is not translated here. count is how many steps record relationships in it.',
-  },
-  relationshipToParticipantElsewhereRefusal: {
-    id: 'protocolBuilder.pedigree.relationshipToParticipantElsewhereRefusal',
-    defaultMessage:
-      '"{attributeName}" cannot be used here, because another stage already records relationships to the participant in it, and only one stage may. Choose another attribute.',
-    description:
-      'Refusal shown under the relationship-to-the-participant attribute control of a Family Pedigree stage when the attribute picked already holds the relationships another such stage records. attributeName is the codebook name of the attribute, which is not translated.',
-  },
   relationshipToParticipantTitle: {
     id: 'protocolBuilder.pedigree.relationshipToParticipantTitle',
     defaultMessage: 'Record each person’s relationship to the participant',
