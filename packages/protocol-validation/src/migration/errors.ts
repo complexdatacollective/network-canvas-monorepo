@@ -68,3 +68,40 @@ export class ValidationError extends MigrationError {
     this.name = 'ValidationError';
   }
 }
+
+/**
+ * Why one stored session could not be carried across a protocol migration.
+ *
+ * - `invalid-session`: what the host passed is not a session at all (no
+ *   network with node, edge and ego records, metadata that is not keyed by
+ *   stage, a stage position that is not a whole number).
+ * - `step-failed`: a session step threw. `version` is the schema version the
+ *   failing step migrates from, and the step's own error is kept on `cause`.
+ * - `invalid-result`: the migrated session does not satisfy the current
+ *   session schema. A session that was already damaged before the migration
+ *   ends here too, because its source version has no schema to check it with.
+ *
+ * Returned, never thrown, by a session migrator: one bad session is the host's
+ * to report and leave in place, and must not abort the protocol migration it
+ * belongs to.
+ */
+export type SessionMigrationFailure =
+  | 'invalid-session'
+  | 'step-failed'
+  | 'invalid-result';
+
+export class SessionMigrationError extends MigrationError {
+  readonly reason: SessionMigrationFailure;
+  readonly version: SchemaVersion | undefined;
+
+  constructor(
+    reason: SessionMigrationFailure,
+    message: string,
+    options?: { cause?: unknown; version?: SchemaVersion },
+  ) {
+    super(message, { cause: options?.cause });
+    this.name = 'SessionMigrationError';
+    this.reason = reason;
+    this.version = options?.version;
+  }
+}

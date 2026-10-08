@@ -82,6 +82,7 @@ export {
   MigrationChain,
   type ProtocolMigration as Migration,
   protocolMigrations,
+  type SessionMigrationStep,
 } from './migration/index.ts';
 export * from './migration/errors.ts';
 export {
@@ -90,9 +91,18 @@ export {
   type MigrationInfo,
   type MigrationNote,
   migrateProtocol,
+  migrateProtocolWithSessions,
+  type ProtocolWithSessionMigrator,
   ProtocolMigrator,
   protocolMigrator,
 } from './migration/migrate-protocol.ts';
+export type {
+  MigratedSession,
+  PersistedSession,
+  SessionDocument,
+  SessionMigrationResult,
+  SessionMigrator,
+} from './migration/session.ts';
 
 // Export schema types and constants (Protocol, Codebook, etc)
 export * from './schemas/index.ts';
