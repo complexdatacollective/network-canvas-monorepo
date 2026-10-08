@@ -262,6 +262,7 @@
   "interview.interfaces.drawingControls": "Zeichenwerkzeuge",
   "interview.interfaces.editingTools": "Bearbeitungswerkzeuge",
   "interview.interfaces.emptyRoster": "In dieser Liste gibt es nichts hinzuzufügen.",
+  "interview.interfaces.emptyValue": "Kein Wert",
   "interview.interfaces.enableDrawing": "Zeichnen aktivieren",
   "interview.interfaces.entityName": "Name für {entityLabel}",
   "interview.interfaces.equalSplit": "Gleiche Aufteilung",
