@@ -15,7 +15,6 @@ import type { ProtocolSectionId } from '@codaco/studio-sync/taxonomy';
 
 import { blockedHolders } from './codebook/writes.ts';
 import { getInterfaceTemplate } from './interfaces/templates.ts';
-import { useProtocolLocalization } from './localization/ProtocolLocalization.tsx';
 import { useStagedResources } from './resources/client.tsx';
 import {
   createStageIdentity,
@@ -230,19 +229,9 @@ function CreatingStage({
   // Settled once, so a create edits one stage under one id from its first
   // keystroke even though the host mints the id it finally lands under.
   const identity = useMemo(() => createStageIdentity(stageType), [stageType]);
-  // A form takes its starting values once, and the template's copy is written
-  // in the protocol's default language, so there is no create form to draw
-  // until the protocol's languages are known.
-  const localization = useProtocolLocalization();
   const committedFields = useMemo(
-    () =>
-      localization === undefined
-        ? undefined
-        : Object.freeze({
-            ...getInterfaceTemplate(stageType, localization),
-            ...extraFields,
-          }),
-    [extraFields, localization, stageType],
+    () => Object.freeze({ ...getInterfaceTemplate(stageType), ...extraFields }),
+    [extraFields, stageType],
   );
   const creation = useMemo(() => ({ position }), [position]);
 

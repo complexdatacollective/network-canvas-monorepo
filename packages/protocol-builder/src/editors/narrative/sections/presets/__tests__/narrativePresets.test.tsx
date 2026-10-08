@@ -240,8 +240,8 @@ describe('an attribute something else already collects', () => {
 /**
  * What another INTERFACE writes, offered to the pickers that only read it.
  *
- * A Family Pedigree derives its ego marker from the tree the participant
- * draws and claims that attribute outright, so no other stage may write it.
+ * A Family Pedigree sets its participant marker itself and claims that
+ * attribute outright, so no other stage may write it.
  * Highlighting by it writes nothing — it is the reason the pedigree records
  * the marker at all — and a narrative stage over the pedigree's own node type
  * is where a researcher goes to show the participant inside their family.

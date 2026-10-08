@@ -17,11 +17,13 @@ import {
   hasUnvalidatedUse,
   hasValidatedUse,
   interfaceOwnedPickIssue,
+  type ExclusiveVariableSlotMap,
   type WriterClass,
 } from '../codebook/variableRoles.ts';
 import {
   crossClassConflictMessage,
   crossClassPickIssue,
+  variableDisplayName,
 } from '../codebook/variableValidation.ts';
 import { binMessages } from '../editors/ordinal-bin/sections/binMessages.ts';
 import { useStageEditorForm } from '../form/stageEditorContext.ts';
@@ -36,6 +38,8 @@ import AttributeValueFields, {
 } from '../sections/AttributeValueFields.tsx';
 import { useCreateAttributeForSlot } from '../sections/create-variable/useCreateAttributeForSlot.ts';
 import { useProtocolContext } from '../state/protocolContext.ts';
+import { slotVariableMessages } from './slotVariableMessages.ts';
+import { draftBoundElsewhereIssue } from './slotVariableWiring.ts';
 import VariablePickerField from './VariablePickerField.tsx';
 
 const asString = (value: unknown): string | undefined =>
@@ -100,6 +104,30 @@ export type BinAttributeFieldProps = Readonly<{
    * one a categorical bin adds for everything else.
    */
   extraBins?: number;
+  /**
+   * Attributes the stage's own UNSAVED draft already claims in the opposite
+   * writer class, and the exclusive claims it has made.
+   *
+   * For a stage whose other sections bind attributes in the same edit as this
+   * prompt is written: the role map excludes the stage being edited, so a
+   * binding made a moment ago is invisible to it until the stage is saved. The
+   * stage holds the draft (`usePedigreeDraftBindings`), and these carry it in.
+   */
+  draftConflicting?: readonly string[];
+  draftSlotMap?: ExclusiveVariableSlotMap;
+  /**
+   * Attributes the stage's own draft already binds to its OTHER answers, in
+   * either writer class, so that no two of them share an attribute.
+   */
+  draftBoundElsewhere?: readonly string[];
+  /**
+   * Whether the answers the attribute offers are edited beneath the picker.
+   * `false` for a slot that only needs the attribute named: a yes-or-no
+   * attribute set on whoever the participant selects is never shown to them as
+   * a question, so labels for its two answers would be controls that change
+   * nothing anyone reads. The row then has no list to commit either.
+   */
+  editsValues?: boolean;
 }>;
 
 /**
@@ -121,6 +149,10 @@ export default function BinAttributeField({
   optionLimit,
   optionLimitDescription,
   extraBins = 0,
+  draftConflicting,
+  draftSlotMap,
+  draftBoundElsewhere,
+  editsValues = true,
 }: BinAttributeFieldProps) {
   const intl = useAppIntl();
   const { identity } = useStageEditorForm();
@@ -167,13 +199,32 @@ export default function BinAttributeField({
     // interface owns is a different matter and stays on offer — sorting family
     // members by sex is legitimate authoring — with its values shown read-only
     // below.
-    return excludeInterfaceOwned(
+    const withoutDraftConflicts = withoutConflicts.filter(
+      (option) =>
+        option.value === picked ||
+        (draftConflicting?.includes(option.value) !== true &&
+          draftBoundElsewhere?.includes(option.value) !== true),
+    );
+    const withoutSavedOwners = excludeInterfaceOwned(
       buildExclusiveVariableSlotMap(protocolContext),
       subject,
-      withoutConflicts,
+      withoutDraftConflicts,
       keep,
     );
-  }, [allVariables, identity.id, picked, protocolContext, slot, subject]);
+    return draftSlotMap === undefined
+      ? withoutSavedOwners
+      : excludeInterfaceOwned(draftSlotMap, subject, withoutSavedOwners, keep);
+  }, [
+    allVariables,
+    draftBoundElsewhere,
+    draftConflicting,
+    draftSlotMap,
+    identity.id,
+    picked,
+    protocolContext,
+    slot,
+    subject,
+  ]);
 
   // Counted from the list the researcher is LOOKING at. The values are edited
   // inline in this dialog and saving closes it, so a warning counted from the
@@ -210,11 +261,13 @@ export default function BinAttributeField({
           (`sections/OrdinalBinPrompts/PromptFields.tsx`'s "Attribute options").
           Read-only where an interface owns the list. Written to the codebook
           attribute by this row's own save. */}
-      <AttributeValueFields
-        subject={subject}
-        variableId={picked}
-        optionsField={attributeOptionsFieldFor(slot.name)}
-      />
+      {editsValues && (
+        <AttributeValueFields
+          subject={subject}
+          variableId={picked}
+          optionsField={attributeOptionsFieldFor(slot.name)}
+        />
+      )}
       {optionLimit !== undefined &&
         optionLimitDescription !== undefined &&
         drawn > optionLimit && (
@@ -251,6 +304,9 @@ export function binAttributePickIssue({
   slot,
   variableId,
   openedOnVariableId,
+  draftConflicting,
+  draftSlotMap,
+  draftBoundElsewhere,
 }: Readonly<{
   protocolContext: ProtocolBuilderProtocolContext;
   excludedStageId: string;
@@ -258,6 +314,10 @@ export function binAttributePickIssue({
   slot: BinAttributeSlot;
   variableId: string;
   openedOnVariableId: string;
+  /** See `BinAttributeFieldProps`: what the stage's own draft has claimed. */
+  draftConflicting?: readonly string[];
+  draftSlotMap?: ExclusiveVariableSlotMap;
+  draftBoundElsewhere?: readonly string[];
 }>): string | undefined {
   if (subject === undefined || variableId === '') return undefined;
 
@@ -279,9 +339,33 @@ export function binAttributePickIssue({
   });
   if (conflict !== undefined) return conflict;
 
-  return interfaceOwnedPickIssue(
+  // The same escape for the draft's opposite-class claims, for the same
+  // reason: a pick the researcher did not change in this edit is not one they
+  // introduced.
+  if (
+    variableId !== openedOnVariableId &&
+    draftConflicting?.includes(variableId) === true
+  ) {
+    return createMessageError(slotVariableMessages.draftFormCollectsRefusal, {
+      attributeName: variableDisplayName(allVariables, variableId),
+    });
+  }
+  if (variableId !== openedOnVariableId) {
+    const boundElsewhere = draftBoundElsewhereIssue(
+      draftBoundElsewhere,
+      variableId,
+      allVariables,
+    );
+    if (boundElsewhere !== undefined) return boundElsewhere;
+  }
+
+  const savedOwnerIssue = interfaceOwnedPickIssue(
     buildExclusiveVariableSlotMap(protocolContext),
     subject,
     variableId,
   );
+  if (savedOwnerIssue !== undefined || draftSlotMap === undefined) {
+    return savedOwnerIssue;
+  }
+  return interfaceOwnedPickIssue(draftSlotMap, subject, variableId);
 }

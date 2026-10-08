@@ -51,15 +51,17 @@ Schema 9:
   or edge type's label is wrapped like any other text, and a variable's stays
   plain text. A Narrative preset's `highlight` list of variable IDs becomes a
   list of `{ variable, label }`, each label taken from the variable's name (or
-  its ID) and wrapped as `{ en: <text> }`. A form field with no
-  caption, or an empty or blank one (a Network Composer field's `label`, or
-  any other form field's `prompt`), gets its attribute's name (or its ID) as
-  one, escaped so that markdown shows it as written, and wrapped the same way.
-  An empty optional text that schema 9 requires to be non-empty is removed, as
-  are Network Composer scale end labels that were not strings. Its three
-  migration notes tell researchers what the new version allows, that the text
-  is recorded as English and can be changed in Architect, and which empty
+  its ID) and wrapped as `{ en: <text> }`. A form field with no caption, or an
+  empty or blank one (a Network Composer field's `label`, or any other form
+  field's `prompt`), gets its attribute's name (or its ID) as one, escaped so
+  that markdown shows it as written, and wrapped the same way. An empty
+  optional text that schema 9 requires to be non-empty is removed, as are
+  Network Composer scale end labels that were not strings. Its migration notes
+  tell researchers what the new version allows, that the text is recorded as
+  English, so they should confirm the default language and change it in
+  Architect if the protocol is written in another one, and which empty
   questions were filled in.
+
 - Schema 8 still refuses names outside `a-z`, `A-Z`, digits and `. _ - :`, with
   a message that says so. `VersionlessProtocolSchema`, the version 8 body
   without its `schemaVersion`, is now exported.

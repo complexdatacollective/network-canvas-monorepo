@@ -1,43 +1,46 @@
 import { describe, expect, it } from 'vitest';
 
-import { createBaseProtocol, localized } from '../../../utils/test-utils.ts';
+import {
+  createBaseProtocol,
+  localized,
+  localizedOptions,
+} from '../../../utils/test-utils.ts';
 import { FormSchema, TitlelessFormSchema } from '../common/index.ts';
+import {
+  PEDIGREE_RELATIONSHIP_KIND_OPTIONS,
+  PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
+} from '../family-pedigree-values.ts';
 import ProtocolSchemaV9 from '../schema.ts';
 import { familyPedigreeStage } from '../stages/family-pedigree.ts';
+import {
+  GENDER_IDENTITY_OPTIONS,
+  GENDER_IDENTITY_TERMS,
+} from './pedigreeGenderFixtures.ts';
 
 const field = (variable: string, prompt: string) => ({
   variable,
   prompt: localized(prompt),
 });
 
-// Mirrors `narrative-pedigree.test.ts`'s pedigree fixture: FamilyPedigree
-// declares no top-level subject, so `nodeConfig.form` is the one form surface
-// that never passes through FormSchema/TitlelessFormSchema.
 const pedigreeStage = (form?: ReturnType<typeof field>[]) => ({
   id: 'fp1',
   label: localized('Family Pedigree'),
   type: 'FamilyPedigree' as const,
-  nodeConfig: {
-    type: 'person',
-    nodeLabelVariable: 'name',
-    egoVariable: 'isEgo',
-    relationshipVariable: 'relationship',
-    biologicalSexVariable: 'bioSex',
-    ...(form ? { form } : {}),
+  subject: { entity: 'node' as const, type: 'person' },
+  prompt: localized('Build your family'),
+  nodeConfiguration: {
+    nameAttribute: 'name',
+    genderIdentity: { attribute: 'gender', terms: GENDER_IDENTITY_TERMS },
+    sexAssignedAtBirthAttribute: 'sab',
+    egoAttribute: 'isEgo',
   },
-  edgeConfig: {
+  edgeConfiguration: {
     type: 'knows',
-    relationshipTypeVariable: 'relType',
-    isActiveVariable: 'isActive',
-    isGestationalCarrierVariable: 'isGc',
-    gameteRoleVariable: 'gameteRole',
+    kindAttribute: 'kind',
+    gestationalCarrierAttribute: 'carrier',
+    currentPartnerAttribute: 'current',
   },
-  censusPrompt: localized('Build your family'),
-  framing: { mode: 'fixed' as const, value: 'gamete' as const },
-  boundaries: {
-    requireGrandparents: 'off' as const,
-    requireChildrenContributors: 'off' as const,
-  },
+  ...(form ? { form: { fields: form } } : {}),
 });
 
 const pedigreeProtocol = (form?: ReturnType<typeof field>[]) => {
@@ -52,20 +55,18 @@ const pedigreeProtocol = (form?: ReturnType<typeof field>[]) => {
           ...protocol.codebook.node.person,
           variables: {
             ...protocol.codebook.node.person.variables,
-            isEgo: {
-              name: 'IsEgo',
-              label: 'IsEgo',
-              type: 'boolean',
+            isEgo: { name: 'IsEgo', label: 'IsEgo', type: 'boolean' },
+            gender: {
+              name: 'Gender',
+              label: 'Gender',
+              type: 'categorical',
+              options: GENDER_IDENTITY_OPTIONS,
             },
-            relationship: {
-              name: 'Relationship',
-              label: 'Relationship',
-              type: 'text',
-            },
-            bioSex: {
-              name: 'BioSex',
-              label: 'BioSex',
-              type: 'text',
+            sab: {
+              name: 'Sab',
+              label: 'Sab',
+              type: 'categorical',
+              options: localizedOptions(PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS),
             },
           },
         },
@@ -76,22 +77,14 @@ const pedigreeProtocol = (form?: ReturnType<typeof field>[]) => {
           ...protocol.codebook.edge.knows,
           variables: {
             ...protocol.codebook.edge.knows.variables,
-            relType: {
-              name: 'RelType',
-              label: 'RelType',
-              type: 'text',
+            kind: {
+              name: 'Kind',
+              label: 'Kind',
+              type: 'categorical',
+              options: localizedOptions(PEDIGREE_RELATIONSHIP_KIND_OPTIONS),
             },
-            isActive: {
-              name: 'IsActive',
-              label: 'IsActive',
-              type: 'boolean',
-            },
-            isGc: { name: 'IsGc', label: 'IsGc', type: 'boolean' },
-            gameteRole: {
-              name: 'GameteRole',
-              label: 'GameteRole',
-              type: 'text',
-            },
+            carrier: { name: 'Carrier', label: 'Carrier', type: 'boolean' },
+            current: { name: 'Current', label: 'Current', type: 'boolean' },
           },
         },
       },
@@ -141,20 +134,20 @@ describe('form field variable uniqueness', () => {
     ]);
   });
 
-  it('rejects a FamilyPedigree nodeConfig.form that names one variable twice', () => {
+  it('rejects a FamilyPedigree form that names one variable twice', () => {
     const result = familyPedigreeStage.safeParse(
       pedigreeStage([field('age', 'Age?'), field('age', 'Age again?')]),
     );
     expect(result.success).toBe(false);
     expect(result.error?.issues.map((issue) => issue.path)).toContainEqual([
-      'nodeConfig',
       'form',
+      'fields',
       1,
       'variable',
     ]);
   });
 
-  it('accepts a FamilyPedigree nodeConfig.form with distinct variables', () => {
+  it('accepts a FamilyPedigree form with distinct variables', () => {
     expect(
       familyPedigreeStage.safeParse(
         pedigreeStage([field('age', 'Age?'), field('category', 'Category?')]),

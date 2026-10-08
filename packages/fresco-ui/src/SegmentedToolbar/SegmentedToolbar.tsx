@@ -696,6 +696,9 @@ export function ToolbarMenu({
       <DropdownMenuTrigger render={triggerWithRef} />
       <DropdownMenuContent
         {...contentProps}
+        // It opens over the toolbar, which casts its own shadow; a stronger
+        // one keeps it reading as the higher surface.
+        className={cx('shadow-(--effect-shadow-lg)', contentProps?.className)}
         side={
           contentProps?.side ??
           (orientation === 'vertical' ? 'right' : 'bottom')
@@ -728,6 +731,9 @@ export function ToolbarPopover({
       <PopoverTrigger render={triggerWithRef} />
       <PopoverContent
         {...contentProps}
+        // It opens over the toolbar, which casts its own shadow; a stronger
+        // one keeps it reading as the higher surface.
+        className={cx('shadow-(--effect-shadow-lg)', contentProps?.className)}
         side={
           contentProps?.side ??
           (orientation === 'vertical' ? 'right' : 'bottom')

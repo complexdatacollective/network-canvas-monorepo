@@ -63,20 +63,6 @@ const protocol = {
         { id: 'i2', type: 'asset', content: 'information-asset' },
       ],
     },
-    {
-      id: 'ped',
-      type: 'FamilyPedigree',
-      introScreen: {
-        items: [
-          {
-            id: 'ii1',
-            type: 'text',
-            content: localized('Introductory words.'),
-          },
-          { id: 'ii2', type: 'asset', content: 'intro-asset' },
-        ],
-      },
-    },
   ],
 };
 
@@ -90,7 +76,6 @@ describe('collectAssetReferences', () => {
     expect(assetIdsIn(protocol)).toEqual([
       'background-asset',
       'information-asset',
-      'intro-asset',
       'map-data-asset',
       'panel-asset',
       'roster-asset',
@@ -113,7 +98,6 @@ describe('collectAssetReferences', () => {
       'token-asset': 'stages.3.mapOptions.tokenAssetId',
       'map-data-asset': 'stages.3.mapOptions.dataSourceAssetId',
       'information-asset': 'stages.4.items.1.content',
-      'intro-asset': 'stages.5.introScreen.items.1.content',
     });
   });
 
@@ -134,7 +118,6 @@ describe('collectAssetReferences', () => {
    */
   it('reads an item body as an asset only on the asset branch', () => {
     expect(assetIdsIn(protocol)).not.toContain('Some words about the study.');
-    expect(assetIdsIn(protocol)).not.toContain('Introductory words.');
   });
 
   it('finds nothing in a protocol that names no assets', () => {

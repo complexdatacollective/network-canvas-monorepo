@@ -1,0 +1,100 @@
+'use client';
+
+import { Drawer } from '@base-ui/react/drawer';
+import type { ReactNode, Ref } from 'react';
+
+import { commonMessages } from '@codaco/app-i18n/common';
+import { useAppIntl } from '@codaco/app-i18n/react';
+import CloseButton from '@codaco/fresco-ui/CloseButton';
+import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
+import { usePortalContainer } from '@codaco/fresco-ui/PortalContainer';
+
+type PersonDrawerProps = {
+  open: boolean;
+  /** Changes for every opening, so each starts with an empty form. */
+  formKey: string;
+  onClose: () => void;
+  /** Called once the closing animation has finished. */
+  onClosed?: () => void;
+  /** Where focus returns when the panel closes. */
+  returnFocus: () => HTMLElement | null;
+  title: string;
+  children: ReactNode;
+  footer: ReactNode;
+  /** The panel itself, to measure how much of the screen it covers. */
+  popupRef?: Ref<HTMLDivElement>;
+};
+
+/**
+ * The side panel a family member is added or described in. A modal Base UI
+ * drawer from the inline end of the screen: focus moves into it, is trapped
+ * there, and returns to the family tree when it closes.
+ */
+export default function PersonDrawer({
+  open,
+  formKey,
+  onClose,
+  onClosed,
+  returnFocus,
+  title,
+  children,
+  footer,
+  popupRef,
+}: PersonDrawerProps) {
+  const intl = useAppIntl();
+  const portalContainer = usePortalContainer();
+
+  return (
+    <Drawer.Root
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen) onClose();
+      }}
+      onOpenChangeComplete={(nextOpen) => {
+        if (!nextOpen) onClosed?.();
+      }}
+      swipeDirection="right"
+    >
+      <Drawer.Portal container={portalContainer ?? undefined}>
+        <Drawer.Viewport className="pointer-events-none fixed inset-y-0 right-0 w-full max-w-md">
+          <Drawer.Popup
+            ref={popupRef}
+            finalFocus={() => returnFocus()}
+            className={[
+              'bg-surface-1 publish-colors text-text elevation-high pointer-events-auto absolute inset-0 flex flex-col',
+              'transition-transform duration-300 ease-out',
+              '[transform:translateX(var(--drawer-swipe-movement-x,0px))]',
+              'data-[starting-style]:[transform:translateX(100%)]',
+              'data-[ending-style]:[transform:translateX(100%)]',
+            ].join(' ')}
+            data-testid="pedigree-person-panel"
+          >
+            <div className="flex shrink-0 items-center justify-between gap-2 border-b border-current/10 p-4 pl-6">
+              <Drawer.Title className="text-lg font-semibold">
+                {title}
+              </Drawer.Title>
+              <Drawer.Close
+                render={
+                  <CloseButton
+                    aria-label={intl.formatMessage(commonMessages.close)}
+                  />
+                }
+              />
+            </div>
+            {/* The form's store is keyed per opening, inside the drawer: the
+                drawer itself stays mounted, so opening it is a change it can
+                animate. The footer's submit button sits within the store. */}
+            <FormStoreProvider key={formKey}>
+              <div className="min-h-0 flex-1 overflow-y-auto p-6">
+                {children}
+              </div>
+              <div className="flex shrink-0 flex-wrap items-center justify-end gap-3 border-t border-current/10 p-4">
+                {footer}
+              </div>
+            </FormStoreProvider>
+          </Drawer.Popup>
+        </Drawer.Viewport>
+      </Drawer.Portal>
+    </Drawer.Root>
+  );
+}

@@ -4,6 +4,7 @@ import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-s
 import { hashProtocol, migrateProtocol } from '@codaco/protocol-validation';
 import {
   buildAssetManifest,
+  InterviewMigrationFailedError,
   migrateProtocolsToCompatibleVersion,
 } from '~/scripts/migrate-protocols';
 
@@ -57,6 +58,10 @@ type MockPrisma = {
     update: ReturnType<typeof vi.fn>;
     findFirst: ReturnType<typeof vi.fn>;
   };
+  interview: {
+    findMany: ReturnType<typeof vi.fn>;
+    update: ReturnType<typeof vi.fn>;
+  };
 };
 
 function makeMockPrisma(): MockPrisma {
@@ -66,6 +71,196 @@ function makeMockPrisma(): MockPrisma {
       update: vi.fn().mockResolvedValue({}),
       findFirst: vi.fn().mockResolvedValue(null),
     },
+    interview: {
+      findMany: vi.fn().mockResolvedValue([]),
+      update: vi.fn().mockResolvedValue({}),
+    },
+  };
+}
+
+/**
+ * A minimal schema 8 protocol whose Family Pedigree (stage 1) has an
+ * introduction screen, which the v8 → v9 migration turns into a stage of its
+ * own, inserted before the pedigree.
+ */
+function makeV8PedigreeProtocol() {
+  const sexOptions = [
+    { value: 'female', label: 'Female' },
+    { value: 'male', label: 'Male' },
+    {
+      value: 'intersex',
+      label: 'Intersex or a variation in sex characteristics',
+    },
+    { value: 'unknown', label: 'Don’t know' },
+    { value: 'preferNotToSay', label: 'Prefer not to say' },
+  ];
+  return {
+    schemaVersion: 8,
+    description: 'Pedigree protocol',
+    lastModified: '2026-01-01T00:00:00.000Z',
+    codebook: {
+      node: {
+        person: {
+          name: 'Person',
+          color: 'node-color-seq-1',
+          icon: 'add-a-person',
+          shape: { default: 'circle' },
+          variables: {
+            name: { name: 'name', type: 'text', component: 'Text' },
+            is_ego: { name: 'is_ego', type: 'boolean', component: 'Toggle' },
+            relationship_to_ego: {
+              name: 'relationship_to_ego',
+              type: 'text',
+              component: 'Text',
+            },
+            biologicalSex: {
+              name: 'biologicalSex',
+              type: 'categorical',
+              options: sexOptions,
+            },
+          },
+        },
+      },
+      edge: {
+        family_relationship: {
+          name: 'Family relationship',
+          color: 'edge-color-seq-1',
+          variables: {
+            relationshipType: {
+              name: 'relationshipType',
+              type: 'categorical',
+              options: [
+                { value: 'biological', label: 'Biological' },
+                { value: 'social', label: 'Social' },
+                { value: 'donor', label: 'Donor' },
+                { value: 'surrogate', label: 'Surrogate' },
+                { value: 'adoptive', label: 'Adoptive' },
+                { value: 'partner', label: 'Partner' },
+              ],
+            },
+            isActive: { name: 'isActive', type: 'boolean' },
+            isGestationalCarrier: {
+              name: 'isGestationalCarrier',
+              type: 'boolean',
+            },
+            gameteRole: {
+              name: 'gameteRole',
+              type: 'categorical',
+              options: [
+                { value: 'egg', label: 'Egg' },
+                { value: 'sperm', label: 'Sperm' },
+              ],
+            },
+          },
+        },
+      },
+      ego: { variables: {} },
+    },
+    stages: [
+      {
+        id: 'welcome',
+        type: 'Information',
+        label: 'Welcome',
+        title: 'Welcome',
+        items: [{ id: 'welcome-text', type: 'text', content: 'Welcome' }],
+      },
+      {
+        id: 'family',
+        type: 'FamilyPedigree',
+        label: 'Family',
+        introScreen: {
+          items: [{ id: 'intro', type: 'text', content: 'Your family.' }],
+        },
+        nodeConfig: {
+          type: 'person',
+          nodeLabelVariable: 'name',
+          egoVariable: 'is_ego',
+          relationshipVariable: 'relationship_to_ego',
+          biologicalSexVariable: 'biologicalSex',
+        },
+        edgeConfig: {
+          type: 'family_relationship',
+          relationshipTypeVariable: 'relationshipType',
+          isActiveVariable: 'isActive',
+          isGestationalCarrierVariable: 'isGestationalCarrier',
+          gameteRoleVariable: 'gameteRole',
+        },
+        framing: { mode: 'participantChoice' },
+        censusPrompt: 'Who is in your family?',
+      },
+      {
+        id: 'closing',
+        type: 'Information',
+        label: 'Closing',
+        title: 'Closing',
+        items: [{ id: 'closing-text', type: 'text', content: 'Thank you' }],
+      },
+    ],
+  };
+}
+
+const pedigreeNode = (id: string, attributes: Record<string, unknown>) => ({
+  _uid: id,
+  type: 'person',
+  attributes,
+  promptIDs: [],
+  stageId: 'family',
+});
+
+/** An interview finalized past the pedigree, as schema 8 recorded it. */
+function makeV8PedigreeInterview(id: string, currentStep: number) {
+  const nodes = [
+    pedigreeNode('ego-1', { is_ego: true, biologicalSex: ['female'] }),
+    pedigreeNode('mother-1', { is_ego: false, biologicalSex: ['female'] }),
+  ];
+  const edges = [
+    {
+      _uid: 'edge-1',
+      type: 'family_relationship',
+      from: 'mother-1',
+      to: 'ego-1',
+      attributes: { relationshipType: ['biological'], gameteRole: ['egg'] },
+    },
+  ];
+  return {
+    id,
+    network: { ego: { _uid: 'network-ego', attributes: {} }, nodes, edges },
+    stageMetadata: {
+      1: {
+        isNetworkCommitted: true,
+        edgeIdVersion: 1,
+        nodes: [
+          { id: 'ego-1', label: '', isEgo: true },
+          { id: 'mother-1', label: 'Mother', isEgo: false },
+        ],
+        edges: [
+          {
+            id: 'edge-1',
+            from: 'mother-1',
+            to: 'ego-1',
+            attributes: edges[0]?.attributes,
+          },
+        ],
+        noChildrenAffirmed: false,
+        selectedFraming: 'gendered',
+      },
+    },
+    currentStep,
+  };
+}
+
+function v8PedigreeRow(id: string) {
+  const v8 = makeV8PedigreeProtocol();
+  return {
+    id,
+    assets: [],
+    name: 'Pedigree.netcanvas',
+    schemaVersion: 8,
+    stages: v8.stages,
+    codebook: v8.codebook,
+    experiments: {},
+    description: v8.description,
+    lastModified: new Date(v8.lastModified),
   };
 }
 
@@ -191,6 +386,236 @@ describe('migrateProtocolsToCompatibleVersion', () => {
     const importHash = hashProtocol(importMigrated);
 
     expect(dbHash).toBe(importHash);
+  });
+
+  describe('the interviews of a migrated protocol', () => {
+    it('are migrated with it: stage records and resume position follow their stages', async () => {
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      const prisma = makeMockPrisma();
+      prisma.protocol.findMany.mockResolvedValue([v8PedigreeRow('cm-p')]);
+      prisma.interview.findMany.mockResolvedValueOnce([
+        makeV8PedigreeInterview('int-at-pedigree', 1),
+        makeV8PedigreeInterview('int-after-pedigree', 2),
+      ]);
+
+      await migrateProtocolsToCompatibleVersion(
+        prisma as unknown as Parameters<
+          typeof migrateProtocolsToCompatibleVersion
+        >[0],
+      );
+
+      expect(prisma.interview.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { protocolId: 'cm-p' } }),
+      );
+      // Stage 1 is now the pedigree's introduction; the pedigree is stage 2.
+      expect(prisma.interview.update).toHaveBeenCalledTimes(2);
+      expect(prisma.interview.update).toHaveBeenNthCalledWith(1, {
+        where: { id: 'int-at-pedigree' },
+        data: expect.objectContaining({
+          currentStep: 2,
+          stageMetadata: { 2: { framing: 'gendered' } },
+        }),
+      });
+      expect(prisma.interview.update).toHaveBeenNthCalledWith(2, {
+        where: { id: 'int-after-pedigree' },
+        data: expect.objectContaining({ currentStep: 3 }),
+      });
+      // Migrated, not normalized: the protocol is a valid schema 8 one.
+      const logged = logSpy.mock.calls.map((call) => String(call[0])).join(' ');
+      expect(logged).toMatch(
+        /Migrated "Pedigree\.netcanvas".*2 interviews migrated/,
+      );
+      logSpy.mockRestore();
+    });
+
+    it('fails the whole migration when one interview cannot be migrated, naming every failed interview', async () => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const prisma = makeMockPrisma();
+      prisma.protocol.findMany.mockResolvedValue([
+        v8PedigreeRow('cm-p'),
+        { ...v8PedigreeRow('cm-q'), name: 'Second.netcanvas' },
+      ]);
+      prisma.interview.findMany
+        .mockResolvedValueOnce([
+          {
+            id: 'int-broken',
+            network: null,
+            stageMetadata: null,
+            currentStep: 0,
+          },
+          makeV8PedigreeInterview('int-ok', 2),
+        ])
+        .mockResolvedValueOnce([
+          makeV8PedigreeInterview('int-fine', 1),
+          {
+            ...makeV8PedigreeInterview('int-bad-metadata', 1),
+            stageMetadata: [],
+          },
+        ]);
+
+      const run = migrateProtocolsToCompatibleVersion(
+        prisma as unknown as Parameters<
+          typeof migrateProtocolsToCompatibleVersion
+        >[0],
+      );
+      await expect(run).rejects.toBeInstanceOf(InterviewMigrationFailedError);
+      const error = (await run.catch(
+        (caught: unknown) => caught,
+      )) as InterviewMigrationFailedError;
+
+      // Every protocol was tried, so the report is complete.
+      expect(error.failures).toEqual([
+        {
+          interviewId: 'int-broken',
+          protocolId: 'cm-p',
+          protocolName: 'Pedigree.netcanvas',
+          reason: expect.stringContaining('no network') as unknown,
+        },
+        {
+          interviewId: 'int-bad-metadata',
+          protocolId: 'cm-q',
+          protocolName: 'Second.netcanvas',
+          reason: expect.stringContaining('not keyed by stage') as unknown,
+        },
+      ]);
+      expect(error.message).toMatch(/^2 interviews could not be migrated/);
+      expect(error.message).toMatch(/Nothing was changed/);
+      expect(error.message).toContain(
+        '- interview int-broken of protocol "Pedigree.netcanvas" (id=cm-p): ',
+      );
+      expect(error.message).toContain(
+        '- interview int-bad-metadata of protocol "Second.netcanvas" (id=cm-q): ',
+      );
+      // Thrown, not tolerated, so setup-database's transaction rolls back
+      // whatever was written before the failure was found.
+      expect(prisma.interview.update).not.toHaveBeenCalledWith(
+        expect.objectContaining({ where: { id: 'int-ok' } }),
+      );
+      errorSpy.mockRestore();
+    });
+
+    it('does not rewrite an interview the migration leaves as it was', async () => {
+      const prisma = makeMockPrisma();
+      prisma.protocol.findMany.mockResolvedValue([v8PedigreeRow('cm-p')]);
+      prisma.interview.findMany.mockResolvedValueOnce([
+        {
+          id: 'int-untouched',
+          network: {
+            ego: { _uid: 'network-ego', attributes: {} },
+            nodes: [],
+            edges: [],
+          },
+          stageMetadata: null,
+          currentStep: 0,
+        },
+      ]);
+
+      await migrateProtocolsToCompatibleVersion(
+        prisma as unknown as Parameters<
+          typeof migrateProtocolsToCompatibleVersion
+        >[0],
+      );
+
+      expect(prisma.interview.update).not.toHaveBeenCalled();
+    });
+
+    it('are not touched when the protocol is already at the compatible version and conformant', async () => {
+      const prisma = makeMockPrisma();
+      prisma.protocol.findMany.mockResolvedValue([v8PedigreeRow('cm-p')]);
+      await migrateProtocolsToCompatibleVersion(
+        prisma as unknown as Parameters<
+          typeof migrateProtocolsToCompatibleVersion
+        >[0],
+      );
+      const written = prisma.protocol.update.mock.calls[0]?.[0] as {
+        data: { stages: unknown; codebook: unknown; localization: unknown };
+      };
+      const current = makeMockPrisma();
+      current.protocol.findMany.mockResolvedValue([
+        {
+          ...v8PedigreeRow('cm-current'),
+          schemaVersion: COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
+          stages: written.data.stages,
+          codebook: written.data.codebook,
+          localization: written.data.localization,
+        },
+      ]);
+
+      await migrateProtocolsToCompatibleVersion(
+        current as unknown as Parameters<
+          typeof migrateProtocolsToCompatibleVersion
+        >[0],
+      );
+
+      expect(current.protocol.update).not.toHaveBeenCalled();
+      expect(current.interview.findMany).not.toHaveBeenCalled();
+    });
+
+    // A protocol numbered with the compatible version but still in an older
+    // shape is rewritten through the migration chain, which can convert a
+    // pre-redesign Family Pedigree, insert its introduction stage and change
+    // the pedigree's stage record. Its interviews have to cross the same
+    // rewrite.
+    it('are migrated with a protocol at the compatible version that is normalized', async () => {
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      const prisma = makeMockPrisma();
+      prisma.protocol.findMany.mockResolvedValue([
+        {
+          ...v8PedigreeRow('cm-mislabelled'),
+          schemaVersion: COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
+        },
+      ]);
+      prisma.interview.findMany.mockResolvedValueOnce([
+        makeV8PedigreeInterview('int-at-pedigree', 1),
+      ]);
+
+      await migrateProtocolsToCompatibleVersion(
+        prisma as unknown as Parameters<
+          typeof migrateProtocolsToCompatibleVersion
+        >[0],
+      );
+
+      expect(prisma.protocol.update).toHaveBeenCalledTimes(1);
+      expect(prisma.interview.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { protocolId: 'cm-mislabelled' } }),
+      );
+      expect(prisma.interview.update).toHaveBeenCalledWith({
+        where: { id: 'int-at-pedigree' },
+        data: expect.objectContaining({
+          currentStep: 2,
+          stageMetadata: { 2: { framing: 'gendered' } },
+        }),
+      });
+      logSpy.mockRestore();
+    });
+
+    it('fail the whole migration when a normalized protocol has one that cannot be migrated', async () => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      const prisma = makeMockPrisma();
+      prisma.protocol.findMany.mockResolvedValue([
+        {
+          ...v8PedigreeRow('cm-mislabelled'),
+          schemaVersion: COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
+        },
+      ]);
+      prisma.interview.findMany.mockResolvedValueOnce([
+        {
+          ...makeV8PedigreeInterview('int-damaged', 1),
+          stageMetadata: { 7: { notAStageRecord: true } },
+        },
+      ]);
+
+      await expect(
+        migrateProtocolsToCompatibleVersion(
+          prisma as unknown as Parameters<
+            typeof migrateProtocolsToCompatibleVersion
+          >[0],
+        ),
+      ).rejects.toThrow(/int-damaged/);
+      errorSpy.mockRestore();
+      logSpy.mockRestore();
+    });
   });
 
   it('leaves an unmigratable protocol in place without failing the deployment', async () => {

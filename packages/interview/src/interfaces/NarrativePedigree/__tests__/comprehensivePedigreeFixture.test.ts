@@ -12,15 +12,9 @@ import { buildComprehensivePedigree } from '../comprehensivePedigreeFixture';
 // SyntheticInterview.getNetwork() fills any UNSET node attribute with a random
 // faker value for count-based nodes; the fixture seeds every person via
 // addManualNode (which leaves unset attributes neutral, boolean -> false) so ego
-// identity and disease status stay deterministic across seeds.
-const EGO_VAR = 'isEgo';
-const HD_VAR = 'hasHuntingtons';
-const CF_VAR = 'hasCysticFibrosis';
-const HAEM_VAR = 'hasHaemophilia';
-const XLH_VAR = 'hasHypophosphataemia';
-const YHL_VAR = 'hasYLinkedHearingLoss';
-const MITO_VAR = 'hasMitochondrialMyopathy';
-
+// identity and disease status stay deterministic across seeds. Attributes are
+// found by the Narrative Pedigree's disease ids and the Family Pedigree's
+// participant marker.
 const SEEDS = [1, 2, 3, 4];
 
 describe('pedigree demonstration protocols', () => {
@@ -48,11 +42,35 @@ describe('pedigree demonstration protocols', () => {
 
 describe('comprehensive pedigree — deterministic synthetic data', () => {
   for (const seed of SEEDS) {
-    const persons = buildComprehensivePedigree(seed).getNetwork().nodes;
+    const si = buildComprehensivePedigree(seed);
+    const persons = si.getNetwork().nodes;
+    const { stages } = si.getProtocol();
+    const source = stages.find((stage) => stage.type === 'FamilyPedigree');
+    const narrative = stages.find(
+      (stage) => stage.type === 'NarrativePedigree',
+    );
+    const EGO_VAR =
+      source?.type === 'FamilyPedigree'
+        ? source.nodeConfiguration.egoAttribute
+        : '';
+    const attributeOf = (disease: string) =>
+      (narrative?.type === 'NarrativePedigree'
+        ? narrative.diseases.find((candidate) => candidate.id === disease)
+            ?.attribute
+        : undefined) ?? '';
+    const HD_VAR = attributeOf('huntingtons');
+    const CF_VAR = attributeOf('cysticFibrosis');
+    const HAEM_VAR = attributeOf('haemophilia');
+    const XLH_VAR = attributeOf('hypophosphataemia');
+    const YHL_VAR = attributeOf('yLinkedHearingLoss');
+    const MITO_VAR = attributeOf('mitochondrial');
 
     const idsWith = (variable: string) =>
       persons
-        .filter((n) => n[entityAttributesProperty][variable] === true)
+        .filter(
+          (n) =>
+            variable !== '' && n[entityAttributesProperty][variable] === true,
+        )
         .map((n) => n[entityPrimaryKeyProperty])
         .sort();
 

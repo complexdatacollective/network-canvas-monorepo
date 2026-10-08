@@ -105,8 +105,6 @@ export function findUnnamedControls(snapshot: string): string[] {
  * hiding what is still wrong.
  */
 const KNOWN_UNNAMED_CONTROLS: Readonly<Record<string, readonly string[]>> = {
-  // FamilyPedigree's unnamed focal-person control now uses the localized
-  // "You" fallback. All three former checklist/boundary exceptions are gone.
   // EgoForm's relative date pickers also carry names. The regenerated corpus
   // records them, and this audit rejects any newly unnamed control before a
   // snapshot update can absorb it.

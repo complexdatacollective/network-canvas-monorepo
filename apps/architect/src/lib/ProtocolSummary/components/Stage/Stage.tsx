@@ -6,10 +6,12 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import StageTypeImage from '@codaco/protocol-builder/interfaces/StageTypeImage';
 import type {
-  FamilyPedigreeStageDefinition,
+  FamilyPedigreeNominationPrompt,
+  FramingSetting,
   Item,
   LocalizedString,
   Panel,
+  PedigreeCompletenessScope,
 } from '@codaco/protocol-validation';
 import { summaryMessages } from '~/lib/ProtocolSummary/summaryMessages';
 
@@ -25,6 +27,7 @@ import {
 import Anonymisation from './Anonymisation';
 import Behaviours from './Behaviours';
 import DataSource from './DataSource';
+import FamilyPedigree from './FamilyPedigree';
 import FamilyTreeVariables from './FamilyTreeVariables';
 import Filter from './Filter';
 import Form from './Form';
@@ -33,7 +36,7 @@ import IntroductionPanel from './IntroductionPanel';
 import Items from './Items';
 import MapOptions from './MapOptions';
 import NameGenerationStep from './NameGenerationStep';
-import NominationPrompts from './NominationPrompts';
+import NarrativePedigree from './NarrativePedigree';
 import PageHeading from './PageHeading';
 import Panels from './Panels';
 import Presets from './Presets';
@@ -187,12 +190,57 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
         };
       }
     | undefined;
-  // FamilyPedigree: the attribute nomination steps asked after the family is
-  // built. (`diseaseNominationStep` was the legacy FamilyTreeCensus key; no
-  // current schema stage carries it, so it is not read here.)
-  const nominationPrompts = configuration.nominationPrompts as
-    | FamilyPedigreeStageDefinition['nominationPrompts']
+  // FamilyPedigree
+  const pedigreePrompt =
+    type === 'FamilyPedigree'
+      ? ((configuration.prompt as LocalizedString | undefined) ?? null)
+      : null;
+  const nodeConfiguration = configuration.nodeConfiguration as
+    | {
+        nameAttribute?: string;
+        genderIdentity?: {
+          attribute?: string;
+          terms?: { value: string | number; words: string }[];
+        };
+        sexAssignedAtBirthAttribute?: string;
+        egoAttribute?: string;
+        relationshipToParticipantAttribute?: string;
+      }
     | undefined;
+  const edgeConfiguration = configuration.edgeConfiguration as
+    | {
+        type?: string;
+        kindAttribute?: string;
+        gestationalCarrierAttribute?: string;
+        currentPartnerAttribute?: string;
+      }
+    | undefined;
+  const completeness = configuration.completeness as
+    | {
+        scope?: PedigreeCompletenessScope;
+        enforcement?: 'required' | 'recommended';
+        relativesNotRecordedAttribute?: string;
+      }
+    | undefined;
+  const framing = configuration.framing as FramingSetting | undefined;
+  const nominationPrompts = configuration.nominationPrompts as
+    | FamilyPedigreeNominationPrompt[]
+    | undefined;
+  // NarrativePedigree
+  const narrativePedigree =
+    type === 'NarrativePedigree'
+      ? {
+          sourceStageId: String(configuration.sourceStageId ?? ''),
+          showAtRiskStatuses: configuration.showAtRiskStatuses === true,
+          diseases: (configuration.diseases ?? []) as {
+            id: string;
+            label: LocalizedString;
+            color: string;
+            attribute: string;
+            inheritancePattern: string;
+          }[],
+        }
+      : null;
   // Anonymisation
   const explanationText = configuration.explanationText as
     | {
@@ -347,9 +395,18 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
         nodeSexVariable={nodeSexVariable}
         nodeIsEgoVariable={nodeIsEgoVariable}
       />
+      <FamilyPedigree
+        personType={subject?.type ?? null}
+        prompt={pedigreePrompt}
+        nodeConfiguration={nodeConfiguration ?? null}
+        edgeConfiguration={edgeConfiguration ?? null}
+        completeness={completeness ?? null}
+        framing={framing ?? null}
+        nominationPrompts={nominationPrompts ?? null}
+      />
+      {narrativePedigree && <NarrativePedigree {...narrativePedigree} />}
       <ScaffoldingStep scaffoldingStep={scaffoldingStep ?? null} />
       <NameGenerationStep nameGenerationStep={nameGenerationStep ?? null} />
-      <NominationPrompts nominationPrompts={nominationPrompts ?? null} />
       <Anonymisation
         explanationText={explanationText ?? null}
         validation={validation ?? null}

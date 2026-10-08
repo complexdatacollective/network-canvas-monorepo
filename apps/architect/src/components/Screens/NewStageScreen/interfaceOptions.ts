@@ -31,7 +31,7 @@ const descriptionMessages = defineMessages({
   FamilyPedigree: {
     id: 'architect.interface.description.FamilyPedigree',
     defaultMessage:
-      'An interface for collecting family pedigrees, allowing for the capture of complex family relationships and attributes as well as hereditary disease information.',
+      'An interface where participants draw their family: they select a person and add that person’s parents, siblings, partners or children, describing each new person as they go.',
     description:
       'Description of the interview interface in the New Stage chooser.',
   },
@@ -320,8 +320,8 @@ const INTERFACE_DEFINITIONS: InterfaceDefinition[] = [
   },
   {
     category: CATEGORIES.GENERATORS,
-    // Captures node attributes (sex, form fields, nomination flags) and edge
-    // attributes (relationship type, active status, carrier/gamete roles).
+    // Captures node attributes (name, gender, sex, form fields) and edge
+    // attributes (relationship kind, gestational carrier, current partner).
     tags: [
       TAGS.CREATE_NODES,
       TAGS.CREATE_EDGES,

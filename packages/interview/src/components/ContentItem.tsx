@@ -319,16 +319,15 @@ type ContentItemProps = {
   /**
    * Elements permitted in a text item's markdown. Defaults to the full
    * section set used by the Information interface; contexts embedded beneath
-   * their own heading (e.g. the FamilyPedigree intro dialog) pass a
-   * restricted set.
+   * their own heading pass a restricted set.
    */
   allowedTextElements?: string[];
 };
 
 /**
  * Renders one content item (text or asset) from the Information content-item
- * model, shared by the Information interface and the FamilyPedigree intro
- * screen.
+ * model, shared by the Information interface and any screen embedding its
+ * items.
  */
 export default function ContentItem({
   item,

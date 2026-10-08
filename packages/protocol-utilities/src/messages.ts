@@ -189,20 +189,6 @@ export const constraintReasonMessages = defineMessages({
     description:
       'Researcher-facing explanation and repair guidance when synthetic interview data cannot be generated: incompatibleDateControls.',
   },
-  inheritancePatterns: {
-    id: 'protocolUtilities.constraint.inheritancePatterns',
-    defaultMessage:
-      'Narrative pedigree stages assign different inheritance patterns to the same disease attribute. Use a consistent inheritance pattern.',
-    description:
-      'Researcher-facing explanation and repair guidance when synthetic interview data cannot be generated: inheritancePatterns.',
-  },
-  pedigreeFixedValue: {
-    id: 'protocolUtilities.constraint.pedigreeFixedValue',
-    defaultMessage:
-      'A validation rule rejects a fixed value required by the family pedigree data model. Adjust the rule to permit the required value.',
-    description:
-      'Researcher-facing explanation and repair guidance when synthetic interview data cannot be generated: pedigreeFixedValue.',
-  },
 }) satisfies Record<ConstraintReasonCode, MessageDescriptor>;
 
 /** Optional localized UI surface; generation itself stays locale-independent. */

@@ -123,16 +123,20 @@ export function computeMitochondrial(
   );
 
   // (2) Transmitting seeds: every affected female plus every mtDNA-line ancestor
-  // reached above (an mtDNA ancestor is an egg-cytoplasm source, i.e. female).
-  // From each, mtDNA flows DOWN to the children it is the mtDNA source for.
+  // reached above (an mtDNA ancestor is an egg-cytoplasm source). Anyone known
+  // to have given an egg is a source too, whatever their recorded sex: mtDNA
+  // follows the egg, so an intersex parent who gave one passes it on. From
+  // each, mtDNA flows DOWN to the children it is the mtDNA source for.
+  const isMitochondrialSource = (id: string) =>
+    resolveSex(id) === 'female' || graph.mitochondrialChildrenOf(id).length > 0;
   const transmittingFemaleSeeds = new Set<string>();
   for (const id of affected) {
-    if (resolveSex(id) === 'female') {
+    if (isMitochondrialSource(id)) {
       transmittingFemaleSeeds.add(id);
     }
   }
   for (const id of maternalAncestors) {
-    if (resolveSex(id) === 'female') {
+    if (isMitochondrialSource(id)) {
       transmittingFemaleSeeds.add(id);
     }
   }

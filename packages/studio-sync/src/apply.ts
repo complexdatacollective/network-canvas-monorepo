@@ -16,13 +16,13 @@ export type SectionDoc = Record<string, unknown>;
  *
  * A string is a top-level key, exactly as it has always been. An array is a
  * path of object keys reaching a value NESTED inside the document — the list a
- * Family Pedigree keeps at `nodeConfig.form`, say — so that such a list can be
+ * Family Pedigree keeps at `form.fields`, say — so that such a list can be
  * edited with `insertItem`/`removeItem`/`moveItem` rather than being replaced
  * wholesale, and a collaborator's client can replay one row's arrival onto a
  * list that has since changed.
  *
  * Two forms rather than one dotted string, because a dot is a legal character
- * in a document key: `"nodeConfig.form"` cannot say which of the two it means.
+ * in a document key: `"form.fields"` cannot say which of the two it means.
  * A consumer written before nested addressing would read it as a top-level key
  * of that name and write the list somewhere the document does not keep one,
  * without complaining — and commands are kept in the command log and replayed,
@@ -116,7 +116,7 @@ const heldAt = (parent: SectionDoc, segment: string): unknown =>
  * The object a path's next segment is read from or written into.
  *
  * A missing container is created on the way to a write, because writing to
- * `nodeConfig.form` in a document with no `nodeConfig` means the same thing as
+ * `form.fields` in a document with no `form` means the same thing as
  * writing to a top-level key that is not there yet. Anything else — a string, a
  * number, a LIST — is refused: replacing it would silently throw away whatever
  * the document actually holds there, and a list is the positional addressing

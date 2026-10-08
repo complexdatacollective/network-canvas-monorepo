@@ -29,10 +29,7 @@ type SectionListEditorCase = Readonly<{
  * A table derived from the section list would agree with it whatever it said,
  * including after a section was dropped or two of them swapped. These are the
  * outline entries a researcher reads down the side of the stage, so the
- * expected list is the interface as they meet it — which is also why the
- * pedigree has one more of them than it has sections: its node configuration
- * asks two questions, what a family member IS and what is asked about one, and
- * the outline names both.
+ * expected list is the interface as they meet it.
  */
 const SECTION_LIST_EDITORS: SectionListEditorCase[] = [
   {
@@ -55,25 +52,27 @@ const SECTION_LIST_EDITORS: SectionListEditorCase[] = [
     stageId: 'family-pedigree-1',
     editor: familyPedigreeStageEditor,
     sections: [
-      'Pedigree framing',
-      'Pedigree boundaries',
-      'Family member data',
-      'Form configuration',
-      'Relationship data',
-      'Introduction screen',
-      'Family-building prompt',
+      'Node setup',
+      'Prompt',
+      'Person attributes',
+      'Ask about gender identity',
+      'Record each person’s relationship to the participant',
+      'Relationships',
+      'Wording',
+      'Additional person fields',
+      'Completeness',
       'Nomination prompts',
       'Skip logic',
       'Interviewer guidance',
     ],
     ownedKeys: [
-      'boundaries',
-      'censusPrompt',
-      'edgeConfig',
+      'edgeConfiguration',
       'framing',
       'label',
-      'nodeConfig',
+      'nodeConfiguration',
       'nominationPrompts',
+      'prompt',
+      'subject',
     ],
   },
 ];

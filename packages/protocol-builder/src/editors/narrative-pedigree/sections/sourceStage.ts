@@ -1,6 +1,9 @@
 import type { LocalizedString, Stage } from '@codaco/protocol-validation';
 
-import { stagePlacement } from '../../../fields/stageDestination.ts';
+import {
+  stageNumber,
+  stagePlacement,
+} from '../../../fields/stageDestination.ts';
 import type { ProtocolBuilderProtocolContext } from '../../../protocol-context.ts';
 
 export type SourceStageOption = Readonly<{
@@ -91,12 +94,10 @@ export function resolveSourceStages(
           {
             value: stage.id,
             label: stage.label,
-            // One higher than today's for every stage a new stage is about
-            // to be inserted in front of — which is none of these, since
-            // they all precede it. Said the same way regardless, so the
-            // numbers here and the ones the destination control shows are
-            // the same numbers.
-            position: index + 1 + (placement.isNew ? 1 : 0),
+            // Numbered as the destination control numbers stages, so the
+            // two read the same: these all precede the stage being edited,
+            // so a new stage inserted after them does not move them.
+            position: stageNumber(index, placement),
           },
         ]
       : [],
@@ -139,7 +140,8 @@ export function sourceStageNodeType(
 ): string | undefined {
   const stage = sourceStageOf(context, sourceStageId);
   if (stage === undefined) return undefined;
-  const nodeType = stage.nodeConfig.type;
+  // The Family Pedigree's people are its stage subject.
+  const nodeType = stage.subject.type;
   return typeof nodeType === 'string' ? nodeType : undefined;
 }
 
@@ -179,9 +181,9 @@ export function sourceStageRecordedVariables(
     prompts.flatMap((prompt: unknown) =>
       typeof prompt === 'object' &&
       prompt !== null &&
-      'variable' in prompt &&
-      typeof prompt.variable === 'string'
-        ? [prompt.variable]
+      'attribute' in prompt &&
+      typeof prompt.attribute === 'string'
+        ? [prompt.attribute]
         : [],
     ),
   );
@@ -208,8 +210,10 @@ export function diseaseMarksNobody(
   if (typeof row !== 'object' || row === null || Array.isArray(row)) {
     return false;
   }
-  const variable: unknown = Reflect.get(row, 'variable');
+  const attribute: unknown = Reflect.get(row, 'attribute');
   return (
-    typeof variable === 'string' && variable !== '' && !recorded.has(variable)
+    typeof attribute === 'string' &&
+    attribute !== '' &&
+    !recorded.has(attribute)
   );
 }

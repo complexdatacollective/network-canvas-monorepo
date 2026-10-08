@@ -14,9 +14,9 @@ import { LocalizedRichTextField } from './LocalizedStringField.tsx';
 const EXPLANATION_FIELD = 'explanationText.body';
 const EXPLANATION_LABEL = 'Explanation';
 
-/** The one question a family pedigree asks while the family is being built. */
-const CENSUS_FIELD = 'censusPrompt';
-const CENSUS_LABEL = 'Census prompt';
+/** The instruction a family pedigree shows while the family is being drawn. */
+const CENSUS_FIELD = 'prompt';
+const CENSUS_LABEL = 'Prompt text';
 
 const ANONYMISATION = sectionId({ kind: 'stage', stageId: 'anonymisation-1' });
 
@@ -48,7 +48,7 @@ const censusPrompt = (
     name={CENSUS_FIELD}
     component={LocalizedRichTextField}
     label={CENSUS_LABEL}
-    hint="Shown throughout the family-building phase, so it should describe the whole task rather than one step of it."
+    hint="Shown to the participant above the canvas for the whole stage."
     placeholder="Enter your prompt..."
     singleLine
     required={REQUIRED}
@@ -188,9 +188,13 @@ export const OneLineOnly: Story = {
     const canvas = within(canvasElement);
     await awaitPassiveEffects();
 
+    const box = await canvas.findByRole('textbox', { name: CENSUS_LABEL });
+    await expect(box).toHaveAttribute('aria-multiline', 'false');
+    // A prompt is one line of VALUE, not a one-line-tall box: it keeps the
+    // tall editing area. Only `compact` fields shrink to the toolbar's height.
     await expect(
-      await canvas.findByRole('textbox', { name: CENSUS_LABEL }),
-    ).toHaveAttribute('aria-multiline', 'false');
+      box.parentElement?.getBoundingClientRect().height,
+    ).toBeGreaterThanOrEqual(120);
     await expect(
       canvas.queryByRole('button', { name: 'Heading 1' }),
     ).toBeNull();

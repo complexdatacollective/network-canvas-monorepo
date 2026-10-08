@@ -144,7 +144,7 @@ export const surrogacyWithSibling: PedigreeInput = {
 
 /**
  * Two intermarrying sibships whose union descends asymmetrically — a distilled
- * form of the comprehensive NarrativePedigree gen-II/III structure.
+ * form of a comprehensive three-generation family.
  *
  *   gg1(0) ⚭ gg2(1)
  *      |         |

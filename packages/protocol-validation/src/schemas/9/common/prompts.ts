@@ -275,10 +275,3 @@ export const geospatialPromptSchema = promptSchema.extend({
     usage: 'unvalidatedAttribute',
   }),
 });
-
-export const familyPedigreeNominationPromptSchema = promptSchema.extend({
-  variable: entityAttributeReference({
-    subject: 'stageSubject',
-    usage: 'unvalidatedAttribute',
-  }),
-});

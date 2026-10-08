@@ -74,7 +74,7 @@ const messages = defineMessages({
   defaultLanguageHint: {
     id: 'architect.localization.languageList.defaultLanguageHint',
     defaultMessage:
-      'Participants see a text in this language when it has no translation in a language they use.',
+      'Participants see text in this language when it has no translation in a language they use.',
     description:
       'Hint under the list that chooses the protocol’s default language, saying what the default language does.',
   },

@@ -17,7 +17,7 @@ import {
   useAskStageHasAnyValue,
   useClearStageValue,
 } from '../../form/stageFormHooks.ts';
-import { getInterfaceDefaults } from '../../interfaces/templates.ts';
+import { getInterfaceTemplate } from '../../interfaces/templates.ts';
 import type { StageFormDraft } from '../../stageDocument.ts';
 import { useOnResearcherChange } from '../researcherChange.ts';
 import {
@@ -115,7 +115,7 @@ export function useSubjectChangeDiscards(): () => boolean {
   const { storeApi, committedFields, identity } = useStageEditorForm();
   const hasAnyValue = useAskStageHasAnyValue();
   return useCallback(() => {
-    const template = getInterfaceDefaults(identity.type);
+    const template = getInterfaceTemplate(identity.type);
     return hasAnyValue(
       heldStageKeys(storeApi, committedFields).filter(
         (key) =>
@@ -149,7 +149,7 @@ export function useResetStageOnSubjectChange(): void {
   const clearStageValue = useClearStageValue();
 
   useOnResearcherChange('subject', (subject) => {
-    const template = getInterfaceDefaults(identity.type);
+    const template = getInterfaceTemplate(identity.type);
     const resets = subjectDependentResets(
       heldStageKeys(storeApi, committedFields),
       template,

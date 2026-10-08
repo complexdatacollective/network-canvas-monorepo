@@ -73,7 +73,7 @@ export type AttributeEscalation = Readonly<{
   /**
    * The title the escalation dialog carries, which is the slot's own words for
    * inventing its attribute ("Create a new position attribute", …). Whole
-   * rather than generic: a pedigree editor binds eight slots and a shared
+   * rather than generic: an editor that binds many slots and a shared
    * title would not say which of them the open dialog is for.
    */
   title: string;

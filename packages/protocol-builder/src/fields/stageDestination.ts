@@ -289,12 +289,13 @@ const isLaterStage = (index: number, placement: StagePlacement): boolean =>
   placement.isNew ? index >= placement.index : index > placement.index;
 
 /**
- * The number the researcher will see against this stage once the stage being
- * edited exists — which is one higher than today's for every stage a new
- * stage is about to be inserted in front of.
+ * The number the researcher will see against the stage at `index` once the
+ * stage being edited exists, counting from one: one higher than today's for a
+ * stage a new stage is about to be inserted in front of, and today's for every
+ * stage before it.
  */
-const stageNumber = (index: number, placement: StagePlacement): number =>
-  index + 1 + (placement.isNew ? 1 : 0);
+export const stageNumber = (index: number, placement: StagePlacement): number =>
+  index + 1 + (isLaterStage(index, placement) && placement.isNew ? 1 : 0);
 
 const stageOptionLabel = (
   stage: DestinationStage,

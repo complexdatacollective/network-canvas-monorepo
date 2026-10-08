@@ -508,7 +508,7 @@ test('applies one history operation per activation for a codebook change', async
   // records the locus at /protocol/codebook (VariablePill.tsx).
   await architectPage
     .getByRole('button', {
-      name: 'Edit attribute name: biologicalSex',
+      name: 'Edit attribute name: sexAssignedAtBirth',
       exact: true,
     })
     .click();
@@ -519,10 +519,10 @@ test('applies one history operation per activation for a codebook change', async
   });
   await variableEditor
     .getByRole('textbox', { name: 'Attribute name' })
-    .fill('biologicalSexRenamed');
+    .fill('sexAssignedAtBirthRenamed');
   await variableEditor.getByRole('button', { name: 'Save Changes' }).click();
   await readProtocolJson(architectPage, (current) =>
-    JSON.stringify(current.codebook).includes('biologicalSexRenamed'),
+    JSON.stringify(current.codebook).includes('sexAssignedAtBirthRenamed'),
   );
 
   await architectPage.getByRole('link', { name: 'Resources' }).click();
@@ -533,14 +533,14 @@ test('applies one history operation per activation for a codebook change', async
   await readProtocolJson(
     architectPage,
     (current) =>
-      !JSON.stringify(current.codebook).includes('biologicalSexRenamed'),
+      !JSON.stringify(current.codebook).includes('sexAssignedAtBirthRenamed'),
   );
 
   // Same-page redo: reapplies without moving the researcher.
   await toolbar.redo();
   await expect(architectPage).toHaveURL(/\/protocol\/codebook$/);
   await readProtocolJson(architectPage, (current) =>
-    JSON.stringify(current.codebook).includes('biologicalSexRenamed'),
+    JSON.stringify(current.codebook).includes('sexAssignedAtBirthRenamed'),
   );
 });
 

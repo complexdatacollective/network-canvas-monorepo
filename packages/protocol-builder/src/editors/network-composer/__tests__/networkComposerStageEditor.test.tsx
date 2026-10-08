@@ -6,10 +6,7 @@ import {
   attributeField,
   chooseAttributeById,
 } from '../../../testing/attributePicker.ts';
-import {
-  fixtureLocalization,
-  loadFixtureStage,
-} from '../../../testing/protocolFixture.ts';
+import { loadFixtureStage } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import {
   expectOpenedAsANewStage,
@@ -21,8 +18,6 @@ import {
   nodeFormFieldsOf,
 } from './composerFixtures.tsx';
 
-const FIXTURE_LOCALIZATION = fixtureLocalization();
-
 const openFixture = () =>
   renderStageEditor({ stageId: 'network-composer-1', editor: composerEditor });
 
@@ -32,7 +27,7 @@ const openNewStage = () =>
     stage: {
       id: 'network-composer-new',
       type: 'NetworkComposer',
-      fields: getInterfaceTemplate('NetworkComposer', FIXTURE_LOCALIZATION),
+      fields: getInterfaceTemplate('NetworkComposer'),
     },
     editor: composerEditor,
   });

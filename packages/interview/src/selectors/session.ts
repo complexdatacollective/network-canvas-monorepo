@@ -4,13 +4,17 @@ import { filter, includes } from 'es-toolkit/compat';
 
 import type { NodeColorSequence, NodeShape } from '@codaco/fresco-ui/Node';
 import { filter as customFilter } from '@codaco/network-query';
-import type {
-  Codebook,
-  EdgeColor,
-  NodeDefinition,
-  StageSubject,
-  VariableOption,
-  VariableOptions,
+import {
+  type Codebook,
+  type EdgeColor,
+  FAMILY_PEDIGREE_BUILD_PROMPT_ID,
+  type FamilyPedigreeNominationPrompt,
+  type LocalizedString,
+  type NodeDefinition,
+  type Prompt,
+  type StageSubject,
+  type VariableOption,
+  type VariableOptions,
 } from '@codaco/protocol-validation';
 import {
   type EntityPrimaryKey,
@@ -97,7 +101,6 @@ export const getStageSubject = createSelector(getCurrentStage, (stage) => {
     stage.type === 'LanguageChooser' ||
     stage.type === 'Information' ||
     stage.type === 'Anonymisation' ||
-    stage.type === 'FamilyPedigree' ||
     // NarrativePedigree has no stage subject: it reads the captured pedigree
     // from the shared network filtered to its source FamilyPedigree stage's
     // node/edge types, so it owns no subject of its own.
@@ -135,17 +138,39 @@ export const getPromptIndex = createSelector(
   (session) => session?.promptIndex ?? 0,
 );
 
-export const getPrompts = createSelector(getCurrentStage, (stage) => {
-  if (!stage) {
+/**
+ * A prompt the session steps through: one of a stage's own, or, on a family
+ * pedigree, the step that builds the family or a nomination prompt.
+ */
+type SessionPrompt =
+  | Prompt
+  | { id: typeof FAMILY_PEDIGREE_BUILD_PROMPT_ID; text: LocalizedString }
+  | FamilyPedigreeNominationPrompt;
+
+export const getPrompts = createSelector(
+  getCurrentStage,
+  (stage): SessionPrompt[] | null => {
+    if (!stage) {
+      return null;
+    }
+
+    if ('prompts' in stage) {
+      return stage.prompts;
+    }
+
+    // The family pedigree's own prompt builds the family; each nomination
+    // prompt after it is asked of the family once drawn. Together they are the
+    // stage's prompts, which navigation steps through.
+    if (stage.type === 'FamilyPedigree') {
+      return [
+        { id: FAMILY_PEDIGREE_BUILD_PROMPT_ID, text: stage.prompt },
+        ...(stage.nominationPrompts ?? []),
+      ];
+    }
+
     return null;
-  }
-
-  if ('prompts' in stage) {
-    return stage.prompts;
-  }
-
-  return null;
-});
+  },
+);
 
 const stagePromptIds = createSelector(getPrompts, (prompts) => {
   if (!prompts) {

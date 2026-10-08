@@ -5,101 +5,255 @@ navOrder: 7
 
 <InterfaceSummary type="FamilyPedigree">
 
-<InterfaceMeta type="Name Generator, Edge Generator, Name Interpreter" creates="Nodes and edges representing family relationships, with attribute data" usesprompts="true">
+<InterfaceMeta type="Name Generator, Edge Generator, Name Interpreter" creates="People and the family relationships between them, with attribute data" usesprompts="true">
 
 </InterfaceMeta>
 
 </InterfaceSummary>
 
-The Family Pedigree is a specialized interface designed for collecting family network data. It provides a structured, visual approach that allows participants to build their family tree by creating family members (nodes) and defining the relationships between them (edges).
+The Family Pedigree is an interface for collecting family network data. The participant draws their family as a family tree on a single canvas. They start as the only person on it, add each person's parents, siblings, partners and children, and describe each new person as they go. The interface lays the tree out for them.
 
-Unlike other name generators, the Family Pedigree uses a multi-step process that guides participants through building the structure of their family tree before adding detailed information about each family member.
+Each family member is saved as a person of the type you choose for the stage, and each relationship as a connection of the relationship type you choose, together with the attributes described below.
 
-## Scaffolding Step
+The canvas shows the participant's family: the participant, and everyone connected to them through the stage's relationships, however indirectly. Other stages can add people of the same person type who are not family, such as friends or colleagues. They are not drawn on the canvas and the stage never changes them, even if another stage tied them to the participant with a different kind of connection, except to clear a [relationship to the participant](#relationship-to-the-participant) it recorded while they were family. They are not given labels, not counted towards [completeness](#completeness), and cannot be selected for a [nomination prompt](#nomination-prompts). Everything the participant adds on the canvas is connected to them, so nobody they draw leaves the family.
 
-In the scaffolding step, participants build the basic structure of their family tree. They add family members as nodes and define the relationships between them using a visual tree-building interface. The interface automatically positions nodes based on family relationships.
+## How participants build their family
 
-Configure this step with:
+### The prompt
 
-- **Prompt Text**: Instructions shown to participants explaining how to build their family tree
-- **Quick Start Modal**: Optionally show a form that allows participants to quickly scaffold a start to their family tree
+The prompt you write appears above the canvas while the participant draws their family. Use it to invite them to add the people in their family, and to tell them how. If you add [nomination prompts](#nomination-prompts), they follow once the family is drawn, one at a time.
 
-## Name Generation Step
+### The canvas
 
-In this step, participants add information about each family member. A configurable form allows you to collect specific attributes for each node.
+The participant can drag the canvas to pan it, and zoom with the mouse wheel, by pinching, with the + and − keys, or with the zoom buttons in the toolbar. A **Show the whole family** button fits the whole tree on screen. The arrow keys move between the people on the canvas.
 
-Configure this step with:
+Each person is labelled inside their symbol. The participant is labelled "You", and anyone else is labelled with their name. A family member the participant has not named is labelled by how they are related to the participant, using the stage's [wording](#wording): "Maternal grandmother", "Sperm parent" or "Cousin's son". Where several unnamed people would share a label, each is told apart by a relative, as in "Sister (partner of Tom)", or else numbered in the order they were added. These are the labels saved as their names when the participant leaves the stage (see [Name](#name)), so later stages show each person as the canvas did. A person who is recorded as adopted is drawn between brackets.
 
-- **Prompt Text**: Instructions explaining the task
-- **Form Title**: The heading displayed on the form (e.g., "Add personal information")
-- **Form Fields**: Add fields to collect specific attributes about each family member
+### Adding relatives
 
-<TipBox>
+Four buttons appear around a person while the mouse is over them, while keyboard focus is on them, or, on a touch screen, after they are tapped and their details panel is closed. They are also showing around the participant when the participant is alone on the canvas. The buttons add a **Parent** (above), a **Sibling** (to the left), a **Partner** (to the right) or a **Child** (below).
 
-Include a variable called "name" in your form fields so that [node labeling](/en/design-protocols/key-concepts/node-labelling) works correctly and family members are displayed with meaningful labels.
+Choosing one opens a side panel, where the participant describes the new person. The new person is drawn on the canvas while the panel is open. **Add to family** saves them, and **Cancel** discards them.
 
-</TipBox>
+When a new relationship needs people who are not yet on the canvas, the interface adds them without a name, for the participant to fill in later. For example, adding a sibling to someone who has no parents on the canvas also adds an egg parent and a sperm parent (or a biological mother and a biological father, with the everyday wording) for the participant to fill in later. An unnamed person added this way is recorded as female or male at birth only when that follows from whether they gave the egg or the sperm, and is never given a gender identity.
 
-## Family Pedigree Variables
+### Describing a person
 
-The Family Pedigree requires specific variables to store family tree data. These variables are used internally by the interface to manage the tree structure and visual representation.
+Selecting a person with a click, a tap, or the Enter or Space key opens their details in the side panel. The panel shows, in this order:
 
-### Node Variables
+1. **About this person**: the person's name, their gender identity if the stage asks about it, and their sex assigned at birth. The name is optional, even when the name attribute is required. The participant is not asked their own name, because they are shown as "You", so in their own panel this section is headed "About you" and has only gender identity and sex assigned at birth. Gender identity and sex assigned at birth are required questions. Gender identity offers the options you define, and sex assigned at birth offers female, male, intersex, don't know and prefer not to say.
+2. How the person is related to the others. When adding a person, this is how they are related to the person they are being added to: for a parent, the kind of parent and whether they carried the pregnancy; for a partner, whether the partnership is current; for a child, who the other parent is, whether the child is biological, adopted or a step-child, and for a biological child who carried the pregnancy; for a sibling, which parents they share. When editing a person, it is their existing partnerships and parents. If the stage has a [completeness requirement](#completeness), the panel also asks whether the person has siblings and children, where none are recorded.
+3. **More about this person** ("More about you" in the participant's own panel): any [additional person fields](#additional-person-fields) you have added.
 
-Biological sex is recorded for **every** person — the participant and each relative — in a single node variable.
+The kinds of parent a participant can choose are biological, adoptive, step or social, egg or sperm donor, and surrogate. The interface rules out answers that contradict each other. No more than two people (biological parents or donors) can be recorded as someone's genetic parents, and they cannot both be recorded as female at birth or both as male at birth. Someone recorded as male at birth cannot be recorded as having carried a pregnancy.
 
-| Variable                    | Type                                                                | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| --------------------------- | ------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Biological Sex              | Categorical (female, male, intersex, don't know, prefer not to say) | The sex each person was recorded as **at birth**. This is deliberately distinct from gender identity, and is asked with sensitive, opt-out wording. It is required for sex-linked inheritance (X-linked, Y-linked, mitochondrial) in a linked [Narrative Pedigree](/en/design-protocols/interface-documentation/narrative-pedigree) stage. Only "female" and "male" drive sex-linked transmission; "intersex", "don't know", and "prefer not to say" are stored and treated as uncertainty rather than guessed. |
-| Relationship to Participant | Text                                                                | Stores each person's relationship to the participant (e.g., mother, uncle, daughter). Automatically calculated by the interface from the tree structure.                                                                                                                                                                                                                                                                                                                                                        |
-| Ego Identifier              | Boolean                                                             | Identifies which node represents the participant (ego). Can be used in later-stage filtering to exclude the participant from attribute collection.                                                                                                                                                                                                                                                                                                                                                              |
+A person other than the participant can be removed from the panel with **Remove from family**, which also removes their connections to other people. Anyone connected to the participant only through that person would no longer be part of the family, so they are removed too: the confirmation names them before anything is removed.
 
-### Edge Variables
+### Connecting people already on the canvas
 
-| Variable            | Type                                                                  | Description                                                                                                                                                                                    |
-| ------------------- | --------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Relationship Type   | Categorical (biological, social, donor, surrogate, adoptive, partner) | The type of relationship between two people. Only **biological** and **donor** relationships pass conditions on genetically; social, adoptive, surrogate, and partner relationships do not.    |
-| Relationship Active | Boolean                                                               | Whether a partnership is current or past.                                                                                                                                                      |
-| Gestational Carrier | Boolean                                                               | Marks a parent relationship where that person carried the pregnancy (a gestational carrier or surrogate).                                                                                      |
-| Gamete Role         | Categorical (egg, sperm)                                              | Which gamete a biological or donor parent contributed. This also lets the Narrative Pedigree resolve a parent's biological sex when it was not recorded directly (egg → female, sperm → male). |
+The toolbar has three tools. **Add and edit** is the default and does everything described above. With **Connect**, the participant selects one person and then another, and a menu asks how they are related: partners, former partners, or one as the parent of the other and, if so, which kind of parent. With **Disconnect**, they select two people who are connected and confirm; both people stay on the canvas and only the connection between them is removed. A connection that is the only link between the participant and someone cannot be removed, because that person would leave the family: the participant is told who, and can connect them another way first. A pair of people can have at most one connection.
+
+### Nomination prompts
+
+While a nomination prompt is showing, the family can no longer be changed. The participant selects everyone the question applies to, and selects a person again to deselect them. The tools and the add buttons are not shown, and the participant can still pan and zoom.
+
+## Configuring the stage
+
+The stage editor in Architect has a section for each part of this. Start by choosing the **Node type** the people are, which is the person type in your codebook. While a [Narrative Pedigree](/en/design-protocols/interface-documentation/narrative-pedigree) stage draws this stage's family, the node type cannot be changed.
+
+### Prompt
+
+The text shown above the canvas while the participant draws their family. Say how to add relatives, for example: "Let's map out your family. Tap or click a person to add their details, and hover over them (or tap them) to add their relatives."
+
+### Person attributes
+
+Choose the attributes of the person type that the interface records about every family member. For each, you can pick an existing attribute or create a new one from the picker.
+
+| Attribute                                  | Type                                                                      | What it holds                                                                                                                                                                  |
+| ------------------------------------------ | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Name                                       | Text                                                                      | The person's name, typed in the side panel, or the label the interface gives a person the participant leaves unnamed. See [Name](#name).                                       |
+| Sex assigned at birth                      | Categorical (female, male, intersex, don't know, prefer not to say)       | The sex the person was assigned at birth. The interface sets this attribute's options, and they cannot be changed.                                                             |
+| Gender identity (optional)                 | Categorical (your own options)                                            | How the person describes their gender. Asked only when **Ask about gender identity** is switched on.                                                                           |
+| Participant marker                         | Boolean                                                                   | True on the participant's own person and blank on everyone else. The interface sets it itself.                                                                                 |
+| Relationship to the participant (optional) | Categorical (the values listed [below](#relationship-to-the-participant)) | How each family member is related to the participant, worked out by the interface. Recorded only when **Record each person's relationship to the participant** is switched on. |
+
+#### Name
+
+The interface labels a person by their name when they have one, and a person who has been named is never labelled with a kinship word. The participant is always labelled "You", and is not asked their own name.
+
+A participant may not know a relative's name, so they can always leave it blank. When they leave the stage, the interface saves a label as the name of everyone they left unnamed, including any unnamed parents it added, so that later stages can show who is who. The label is the person's kinship word in the participant's language and the stage's [wording](#wording), such as "Maternal grandmother". Labels are distinct from each other and from every typed name: where two people would share a word, each is told apart by a relative, as in "Sister (partner of Tom)", or else numbered, as in "Sister 2". If the participant comes back to the stage, those people are unnamed again: their labels follow the family as it changes, and are saved afresh when the participant leaves. A name given to one of them on a later stage, such as a form, is theirs and is kept. The participant is never given a label, and any name their own person already holds from elsewhere in the interview is left as it is.
+
+The name attribute's validation rules apply to the names the participant types, and you can set them in the **Validation** section under the name control. If the attribute is unique, a typed name cannot repeat another typed name of a person of the stage's type. If it is required, every person still ends up with a name, because the interface fills in anyone left unnamed, so a blank name is allowed and is not a missing detail. Saved labels are not checked against the other rules, such as a maximum length.
+
+If your study encrypts the name attribute, the participant is asked for their passphrase when they reach the stage. Until they enter it, they cannot add or change people, and anyone with an encrypted name is shown by how they are related to the participant. The same happens if the passphrase does not unlock the names already saved. Names the participant types, and the labels saved for anyone left unnamed, are stored encrypted with that passphrase.
+
+#### Sex assigned at birth
+
+The interface uses sex assigned at birth to name biological parents and donors, to work out who could have carried a pregnancy, to check that a child's two biological parents are possible, to choose everyday kinship words when gender identity is not asked, and to limit a nomination prompt to one sex assigned at birth. It is asked separately from gender identity.
 
 <KeyConcept title="Why sex is recorded at birth">
 
-Family-history and inheritance work depends on the sex a person was recorded as at birth, because it determines how sex-linked conditions are passed on — this is separate from how a person describes their gender. The interface asks the question sensitively, always offers "don't know" and "prefer not to say", and never guesses: any answer other than female or male is carried through as uncertainty.
+Family-history and inheritance work depends on the sex a person was assigned at birth, because it determines how sex-linked conditions are passed on. This is separate from how a person describes their gender. The interface always offers "Don't know" and "Prefer not to say", and treats any answer other than female or male as not known either way: a nomination prompt limited to one sex does not exclude them, and they are named by the gamete they gave only when that follows from their partner in conceiving a child (see below). A [Narrative Pedigree](/en/design-protocols/interface-documentation/narrative-pedigree) stage reads it to trace X-linked and Y-linked conditions.
 
 </KeyConcept>
 
-<TipBox>
+#### Which parent gave the egg or the sperm
 
-When selecting variables, the interface will only show compatible variables from your codebook. This interface requires categorical variables with specific options. Creating a new variable will automatically configure the required options.
+The interface never asks which gamete a biological parent or donor gave. It works it out from sex assigned at birth, by one rule that the kinship words and the [Narrative Pedigree](/en/design-protocols/interface-documentation/narrative-pedigree) both follow. For each of a child's genetic parents (biological parents and donors):
 
-</TipBox>
+1. A parent recorded female at birth gave the egg, and one recorded male gave the sperm. Sex assigned at birth decides this, whatever the person's gender identity: a trans man recorded female at birth gave the egg.
+2. A parent recorded intersex, don't know or prefer not to say, or not yet answered, gave the other gamete when the child's other genetic parent is recorded female or male. Paired with a parent recorded male, an intersex parent gave the egg.
+3. Otherwise the gamete is not known: when a child has a single genetic parent who is neither female nor male at birth, or two genetic parents who are both neither.
 
-## Disease Nomination Step (Optional)
+Because a child has at most two genetic parents, at most one recorded female at birth and one recorded male, the rule never finds two eggs or two sperm.
 
-If enabled, this step allows participants to identify family members who have experienced specific health conditions or diseases. Each prompt:
-
-- Asks about a specific condition using customizable prompt text
-- Stores responses in a boolean variable on each node
-- Allows participants to identify which family members are affected by highlighting nodes where the variable value is true
+The model cannot record some families exactly. A gamete the participant knows but whose giver's sex is not known (for example an anonymous sperm donor recorded as "don't know", where the child's other genetic parent is not recorded female or male either) is recorded as not known. A rare difference of sex development where someone recorded female or male at birth gave the other gamete cannot be recorded as such; recording their sex at birth as intersex lets the rule work out their gamete instead. Mitochondrial donation, which involves three genetic contributors, cannot be drawn.
 
 <TipBox>
 
-The boolean variable each prompt records is exactly what a [Narrative Pedigree](/en/design-protocols/interface-documentation/narrative-pedigree) stage reads to draw who is affected and to infer inheritance. Pair the two stages when you want to visualize how a condition runs through the family.
+If you analyse the family with software that reads a pedigree file with "father" and "mother" columns, such as the PED format used for linkage and segregation analysis, those columns mean the sperm-giver and the egg-giver. Fill them from the gamete worked out by this rule, not from gender identity, and leave them unknown where the rule does.
 
 </TipBox>
+
+#### Gender identity
+
+A new stage asks about gender identity. Turn **Ask about gender identity** off if your study does not need it. When it is on:
+
+- The participant is asked each person's gender identity in the side panel.
+- You choose a categorical attribute to hold the answer and define its options. When you create a new attribute, Architect suggests Woman, Man, Non-binary, A different identity, Don't know and Prefer not to say, which you can edit.
+- For each option, you choose the kinship words a person with that option takes. Feminine words are mother, sister, daughter, grandmother, aunt and niece. Masculine words are father, brother, son, grandfather, uncle and nephew. Neutral words are parent, sibling, child, grandparent and parent's sibling. An option you mark **Not known** takes neutral words, except that a biological parent whose gamete is known (see [Which parent gave the egg or the sperm](#which-parent-gave-the-egg-or-the-sperm)) is called a biological mother if they gave the egg or a biological father if they gave the sperm.
+- The options belong to this stage, because it decides the words each one takes. They can only be edited from this stage, and are read-only everywhere else in Architect. Only one stage can manage an attribute's options, so another Family Pedigree stage cannot use the same gender identity attribute: its own words would not follow an edit made here. Give each stage that asks about gender identity its own attribute, or switch the question off on the others.
+
+When it is off, the question is not asked, and the everyday kinship words follow each person's sex assigned at birth instead: female takes feminine words, male takes masculine words, and anyone else takes neutral words.
+
+#### Participant marker
+
+The marker is true on the participant's own person and blank, not false, on everyone else. Use it in a [stage filter](/en/design-protocols/key-concepts/network-filtering) to keep the participant out of later stages that ask about their relatives, or to tell them apart in exports and analysis. Because it is blank on everyone else, filter on "is not" true rather than on false.
+
+#### Relationship to the participant
+
+Later stages can only filter or skip on a person's own attributes, so a family member's relationship to the participant is not available to them unless it is saved on each person. Switch on **Record each person's relationship to the participant** and choose a categorical attribute to hold it. When you create a new attribute, Architect fills in the options with labels in your language, which you can translate; their values are fixed, and an attribute with other options cannot be chosen. The interface writes the attribute itself, so no form field or other answer can collect it, and it is never asked.
+
+The interview works the relationship out from the family the participant has drawn each time they leave the stage, forwards or back. Everyone connected to the participant is given one; the participant is not. Anyone who held a relationship but is no longer connected to the participant, for example because the participant removed the person who connected them, has it cleared, so a filter never finds a stale relative. The values name neither gender nor side of the family:
+
+| Value                                                              | Who it describes                                                                                          |
+| ------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------- |
+| `parent`, `child`, `sibling`                                       | A biological parent or child, and a full sibling (both biological parents shared)                         |
+| `halfSibling`                                                      | A sibling who shares one biological parent                                                                |
+| `donor`, `donorConceivedChild`                                     | An egg or sperm donor, and a child conceived with the participant as donor                                |
+| `surrogate`, `surrogacyChild`                                      | Someone who carried the participant without giving a gamete, and a child the participant carried that way |
+| `adoptiveParent`, `adoptiveChild`, `adoptiveSibling`               | Related through adoption (an adoptive sibling shares no biological parent)                                |
+| `stepParent`, `stepChild`, `stepSibling`                           | A step or social parent, their child, and a parent's partner's child                                      |
+| `partner`, `formerPartner`                                         | A current and a former partner                                                                            |
+| `grandparent`, `greatGrandparent`, `grandchild`, `greatGrandchild` | Relatives two or three generations away                                                                   |
+| `parentsSibling`, `grandparentsSibling`, `siblingsChild`, `cousin` | Aunts and uncles, great-aunts and great-uncles, nieces and nephews, and first cousins                     |
+| `parentInLaw`, `siblingInLaw`, `childInLaw`                        | A partner's parent, a partner's sibling or a sibling's partner, and a child's partner                     |
+| `otherRelative`                                                    | Anyone connected more distantly, or in a way none of the other values names                               |
+
+Someone related to the participant in more than one way gets one value: the closest biological tie first (`parent`, `child`, `sibling`, then `donor`, `donorConceivedChild` and `halfSibling`), then adoptive ties, then partners, then biological relatives further out, then surrogacy, step and in-law ties, and `otherRelative` last. So a parent's sister who donated the egg is a `donor`, and a grandmother who also carried the participant is a `grandparent`.
+
+For example, to show a later stage only the participant's first-degree biological relatives, filter on the relationship being `parent`, `donor`, `sibling`, `child` or `donorConceivedChild`.
+
+The relationship is not encrypted, even when the study encrypts names, because only text attributes can be encrypted.
+
+#### How each person's symbol is drawn
+
+A person's symbol in the interview comes from the shape setting of the person type in the codebook, under **Node appearance**: a default shape and, optionally, shapes mapped from an attribute. The interface does not draw sex or gender in any other way, and with no mapping everyone has the default shape.
+
+The **Symbols** choice at the end of the Person attributes section sets this mapping in one click, following standard pedigree nomenclature:
+
+- **Sex assigned at birth** draws female as a circle, male as a square, and everyone else as a diamond.
+- **Gender identity**, offered while the stage asks about gender identity, draws options that take feminine words as a circle, options that take masculine words as a square, and everyone else as a diamond.
+- **Set in the codebook** leaves the symbols to the codebook, and says what the codebook draws. Choosing it over one of the other two removes the mapping, so everyone has the default shape.
+
+With either of the first two, a person with no answer is drawn as a diamond. The selected option always reflects the codebook as it is. A mapping set by hand in the codebook, or one that follows another attribute, shows as **Set in the codebook**, and Architect asks before replacing it. If you change the gender identity options or their kinship words after drawing symbols from them, a note under the label says the symbols are out of date and offers **Update symbols**.
+
+The choice changes the codebook straight away, not when you save the stage. Because the shape belongs to the person type, the change applies wherever people of that type are drawn in the interview, on other stages too. You can still edit the mapping in the codebook afterwards.
+
+### Relationships
+
+Choose the **Relationship edge type**: the type of connection that every partnership and parent-child relationship is saved as. Changing it clears the attributes below from the stage, because they belong to the type; the attributes themselves stay in the codebook. Siblings are not recorded directly: two people are siblings when they share a parent.
+
+Then choose the attributes the interface writes on each relationship.
+
+| Attribute           | Type                                                                                               | What it holds                                                                                                                                                                                |
+| ------------------- | -------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Relationship kind   | Categorical (partner, biological parent, adoptive parent, step or social parent, donor, surrogate) | What kind of relationship it is. A parent relationship runs from the parent to the child. The interface sets this attribute's options, and they cannot be changed.                           |
+| Gestational carrier | Boolean                                                                                            | True on the parent relationship of whoever carried the pregnancy (a surrogate, or a biological parent who did), and false on every other parent relationship. It is not set on partnerships. |
+| Current partner     | Boolean                                                                                            | True when a partnership is current, and false when it has ended. It is set on every partnership and on nothing else.                                                                         |
+
+The interface writes these attributes itself. A filter or skip logic can read them.
+
+### Wording
+
+Choose the kinship words used for family members the participant has not named. People who are named are shown by name. The wording changes what participants read, and the words in the labels saved for people the participant leaves unnamed (see [Name](#name)). It adds no other data to the export.
+
+| Choice                               | What participants read                                                                                                                                                                                                                                                                                                                          |
+| ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Everyday kinship words** (default) | Words such as mother, father, sister, brother, aunt and uncle. A person's words come from their gender identity when the stage asks about it, and from their sex assigned at birth when it does not.                                                                                                                                            |
+| **Egg parent and sperm parent**      | A biological parent is called the egg parent or the sperm parent, going by the gamete they gave (see [Which parent gave the egg or the sperm](#which-parent-gave-the-egg-or-the-sperm)), and a parent whose gamete is not known is called a parent. Every other relative gets a neutral word, such as grandparent, sibling or parent's sibling. |
+| **Let the participant choose**       | Participants choose between the two sets of words when they first reach the stage, using a control in the toolbar, and can change their choice at any time. Until they choose, the egg parent and sperm parent words are used.                                                                                                                  |
+
+When the participant chooses, their choice is kept with the interview session. It is not exported.
+
+### Additional person fields
+
+Optionally ask more about each family member. These fields come last in the side panel, after the interface's own questions about the person and how they are related. Participants answer them for every person they add, and for themselves, so keep them short.
+
+Fields are set up like the fields of other forms: each pairs an attribute with a prompt and an optional hint. See [Forms](/en/design-protocols/key-concepts/forms). A field cannot collect an attribute the interface already records itself, which means the person attributes above and the attributes of any nomination prompts. If the codebook marks a field's attribute as required, the participant must answer it, and with a completeness requirement switched on a person who has not answered it counts as missing a detail.
+
+### Completeness
+
+Optionally check that participants have recorded a minimum part of their family, and every required detail about each person, before they continue. Switched off, participants can continue with whatever they have drawn.
+
+Choose **Relatives to record**. Each choice includes the ones before it:
+
+1. **Both biological parents**: every person has two biological parents, so an unknown parent is still added to the family.
+2. **Parents, siblings and children**: the participant's first-degree relatives, and the other biological parent of each of the participant's biological children. An unnamed parent added for a child, by choosing **Someone not shown yet**, counts, and that parent's own family is not asked for.
+3. **Three generations**: adds grandparents, and aunts and uncles on both sides.
+4. **All second-degree relatives**: adds nieces, nephews and grandchildren.
+5. **Three generations, to first cousins**: adds first cousins.
+
+Only biological relatives count, so an adopted child does not satisfy "children". Biological parents are the people who gave the egg or the sperm, so donors count, but a surrogate does not. A participant can account for siblings and children by saying that a person has none or that they do not know. Those answers are kept in the **Relatives not recorded** attribute, a categorical attribute whose options the interface sets.
+
+The required details about each person are their sex assigned at birth, their gender identity when the stage asks about it, and any additional person field whose attribute the codebook marks as required. They apply to everyone in the family, including people the interface added without a name. A name is never a required detail.
+
+Choose **When the family is incomplete**:
+
+- **Required**: participants cannot continue until the required relatives and details are recorded.
+- **Recommended**: participants are shown what is missing but may continue.
+
+A checklist in the toolbar shows what is still needed and takes the participant to where each item is resolved. Whether or not you set a completeness requirement, a warning appears next to any person whose required details are missing.
+
+### Nomination prompts
+
+Optionally ask questions about the whole family once it is drawn, such as "Who in your family has had heart disease?". Each prompt has:
+
+- the question the participant reads;
+- a boolean attribute. The interface sets it to true on everyone the participant selects, and to false on anyone they select and then deselect. Everyone else is left blank. It cannot be the participant marker or another attribute the interface sets itself;
+- optionally, a limit on **Who can be selected**: anyone, anyone except people assigned male at birth, or anyone except people assigned female at birth. Use a limit for a condition that only people of one sex can have. People recorded as the other sex cannot be selected, but everyone else can, including people whose sex assigned at birth is intersex, don't know, prefer not to say, or not yet answered.
+
+Participants answer the prompts in the order you list them, after they have drawn their family.
+
+The attribute each prompt records is what a [Narrative Pedigree](/en/design-protocols/interface-documentation/narrative-pedigree) stage reads to draw who has a condition and to infer how it is inherited. Pair the two stages when you want to show how a condition runs through the family.
 
 ## Best Practices
 
 <GoodPractice>
 
-Ensure you collect a value for a variable called `name` on your form, so that [node labeling](/en/design-protocols/key-concepts/node-labelling) works correctly.
+Tell participants how to add relatives in your prompt. The add buttons appear when the participant hovers over a person, or after they tap a person and close their details, and a participant who has not been told may not find them.
 
 </GoodPractice>
 
 <GoodPractice>
 
-Use the Disease Nomination Step for collecting health condition data rather than adding boolean fields to the name generation form. This dedicated step provides a more intuitive interface for participants to identify affected family members.
+Use a nomination prompt when you want to know which relatives a condition applies to. The participant looks over the whole family and selects everyone it applies to, instead of answering the same question for each person one at a time.
+
+</GoodPractice>
+
+<GoodPractice>
+
+Check how much family history your analysis needs before you set a completeness requirement. Required completeness asks for more of every participant, and a participant who knows little about their relatives cannot continue until each missing person is added or answered.
 
 </GoodPractice>
 
@@ -107,6 +261,12 @@ Use the Disease Nomination Step for collecting health condition data rather than
 
 <BadPractice>
 
-Resist the urge to create long forms with many items. Since participants will complete this form for each family member, shorter forms reduce response burden and encourage more complete family trees.
+Resist the urge to create long forms with many items. Participants answer the additional person fields for every family member, so shorter forms reduce response burden and encourage more complete family trees.
+
+</BadPractice>
+
+<BadPractice>
+
+Avoid reading how people are related from their names or kinship words. A label saved for an unnamed person is worded for the participant, in their language and the stage's wording, and a named person has no kinship word saved at all. To analyse or filter on how people are related, switch on [Relationship to the participant](#relationship-to-the-participant), which records a fixed value on everyone in the family.
 
 </BadPractice>

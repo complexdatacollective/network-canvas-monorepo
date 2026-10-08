@@ -1,0 +1,26 @@
+- main:
+  - status:
+    - heading "Add the members of your family." [level=2]
+  - region "Your family":
+    - button "Julie"
+    - button "Rob"
+    - button "You"
+  - status:
+    - text: "Information:"
+    - paragraph: Enter your passphrase to add or change people in your family.
+    - button "Enter passphrase"
+  - toolbar "Family tree tools":
+    - group "What clicking a person does":
+      - button "Add and edit" [disabled] [pressed]
+      - button "Connect" [disabled]
+      - button "Disconnect" [disabled]
+    - separator
+    - button "Zoom out"
+    - button "Zoom in"
+    - button "Show the whole family"
+  - navigation:
+    - button "Previous Step" [disabled]
+    - button "Enter your Passphrase": 🔑
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

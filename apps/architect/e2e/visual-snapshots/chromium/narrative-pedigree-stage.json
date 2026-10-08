@@ -1,13 +1,13 @@
 {
   "diseases": [
     {
+      "attribute": "hasConditionX",
       "color": "node-color-seq-1",
       "id": "id-1",
       "inheritancePattern": "autosomalDominant",
       "label": {
         "en": "Condition X"
-      },
-      "variable": "hasConditionX"
+      }
     }
   ],
   "id": "id-2",

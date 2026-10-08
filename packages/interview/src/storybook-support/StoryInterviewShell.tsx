@@ -14,6 +14,7 @@ import {
   type ResolvedAsset,
   Shell,
   type StepChangeHandler,
+  type SyncHandler,
 } from '..';
 
 // SyntheticInterview emits assets as plain objects whose `url` field
@@ -155,11 +156,21 @@ const StoryInterviewShell = (props: {
   allowUserScaling?: boolean;
   reviewMode?: boolean;
   initialStep?: number;
+  /** Receives the session each time the interview writes it, so a story can
+   * check what was stored. */
+  onSync?: SyncHandler;
+  /** Changes the payload once it is parsed, for what SuperJSON cannot carry
+   * (such as an attribute id `__proto__`, which it refuses). */
+  preparePayload?: (payload: InterviewPayload) => InterviewPayload;
 }) => {
+  const { preparePayload } = props;
   const { payload, initialStep, assetUrls } = useMemo(() => {
     const raw = SuperJSON.parse<RawSyntheticPayload>(props.rawPayload);
-    return buildPayload(raw);
-  }, [props.rawPayload]);
+    const built = buildPayload(raw);
+    return preparePayload
+      ? { ...built, payload: preparePayload(built.payload) }
+      : built;
+  }, [props.rawPayload, preparePayload]);
 
   const [currentStep, setCurrentStep] = useState<number>(
     props.initialStep ?? initialStep,
@@ -181,7 +192,11 @@ const StoryInterviewShell = (props: {
     [assetUrls],
   );
 
-  const onSync = useCallback(() => Promise.resolve(), []);
+  const { onSync: onSyncProp } = props;
+  const onSync = useCallback<SyncHandler>(
+    (...args) => onSyncProp?.(...args) ?? Promise.resolve(),
+    [onSyncProp],
+  );
   const onProtocolLocaleChange = useCallback(() => Promise.resolve(), []);
   const onFinish = useCallback(() => Promise.resolve(), []);
 

@@ -20,32 +20,21 @@ export type SubjectEntity = 'node' | 'edge' | 'ego';
  *
  * Read from the live draft rather than the committed stage, so a type the
  * researcher has just chosen (or just created) takes effect without saving.
- *
- * `typePath` is for the stages that name their entity type somewhere other
- * than `subject`, holding a bare type id rather than a subject object — a
- * Family Pedigree names its node type at `nodeConfig.type`. The schema says
- * the same thing about those stages in its own terms
- * (`withStageSubjectResolution({ from: 'stagePath', path: [...] })`), and a
- * section handed the wrong place to look would draw a picker from an empty
- * codebook rather than fail.
  */
 export function useStageSubject(
   entity: SubjectEntity,
-  typePath?: string,
 ): CodebookSubject | undefined {
-  const value = useStageValue(typePath ?? 'subject');
+  const value = useStageValue('subject');
 
   return useMemo(() => {
     if (entity === 'ego') return { entity: 'ego' };
     const type =
-      typePath === undefined
-        ? typeof value === 'object' && value !== null
-          ? Reflect.get(value, 'type')
-          : undefined
-        : value;
+      typeof value === 'object' && value !== null
+        ? Reflect.get(value, 'type')
+        : undefined;
     if (typeof type !== 'string' || type === '') return undefined;
     return entity === 'node'
       ? { entity: 'node', type }
       : { entity: 'edge', type };
-  }, [entity, typePath, value]);
+  }, [entity, value]);
 }
