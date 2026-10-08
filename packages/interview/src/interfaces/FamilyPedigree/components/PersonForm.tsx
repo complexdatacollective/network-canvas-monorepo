@@ -66,6 +66,7 @@ import {
   fullSiblingsOf,
   geneticParentSexes,
   geneticParentsPossible,
+  hasCarrier,
   holdsGeneratedLabel,
   isGeneticKind,
   openGeneticParentSlots,
@@ -1028,6 +1029,7 @@ function ParentFields({
   const intl = useAppIntl();
   const values = useFormValue([
     ROLE.parentKind,
+    ROLE.carriedPregnancy,
     ROLE.partnerId,
     ROLE.alsoParentOf,
   ]);
@@ -1046,12 +1048,7 @@ function ParentFields({
   const existingParents = primaryParentsOf(family, anchor.id);
   // One person carried the pregnancy at most; once someone has, the new
   // parent cannot have too.
-  const anchorHasCarrier = family.links.some(
-    (link) =>
-      link.kind !== 'partner' &&
-      link.target === anchor.id &&
-      link.isGestationalCarrier,
-  );
+  const anchorHasCarrier = hasCarrier(family, anchor.id);
   // Nor can a parent recorded as male at birth.
   const canCarry = !anchorHasCarrier && couldCarryPregnancy(sexAssignedAtBirth);
   // A genetic parent provided the egg or the sperm, which another genetic
@@ -1072,13 +1069,7 @@ function ParentFields({
   const siblingPossible = (siblingId: string) =>
     isGeneticKind(parentKind)
       ? canBeGeneticParentOf(siblingId)
-      : parentKind !== 'surrogate' ||
-        !family.links.some(
-          (link) =>
-            link.kind !== 'partner' &&
-            link.target === siblingId &&
-            link.isGestationalCarrier,
-        );
+      : parentKind !== 'surrogate' || !hasCarrier(family, siblingId);
   const chosenSiblings = asStringArray(values[ROLE.alsoParentOf]);
 
   // Answers made impossible by a later one — the new parent's sex at birth,
@@ -1095,6 +1086,45 @@ function ParentFields({
   useEffect(() => {
     if (siblingsDropped) setFieldValue(ROLE.alsoParentOf, keptRef.current);
   }, [siblingsDropped, setFieldValue]);
+
+  // A new biological parent who could have carried a pregnancy is asked
+  // whether they did for everyone they are added as a parent of who has
+  // nobody recorded as carrying theirs: one question, whose answer is
+  // recorded for each of them. It is about the anchor while the anchor has
+  // nobody, and otherwise about the siblings chosen who have nobody. While
+  // nobody is left to ask about, an answer given is taken back.
+  const siblingsWithoutCarrier = keptSiblings.filter(
+    (id) => !hasCarrier(family, id),
+  );
+  const asksCarried =
+    parentKind === 'biological' &&
+    couldCarryPregnancy(sexAssignedAtBirth) &&
+    (!anchorHasCarrier || siblingsWithoutCarrier.length > 0);
+  const carriedAnswered = values[ROLE.carriedPregnancy] !== undefined;
+  useEffect(() => {
+    if (!asksCarried && carriedAnswered) {
+      setFieldValue(ROLE.carriedPregnancy, undefined);
+    }
+  }, [asksCarried, carriedAnswered, setFieldValue]);
+  const [onlySibling] = siblingsWithoutCarrier;
+  const carriedField = asksCarried && (
+    <Field
+      component={BooleanField}
+      name={ROLE.carriedPregnancy}
+      label={
+        anchorHasCarrier
+          ? intl.formatMessage(messages.carriedSiblingsPregnancyLabel, {
+              count: siblingsWithoutCarrier.length,
+              isYou:
+                onlySibling !== undefined && family.byId.get(onlySibling)?.isEgo
+                  ? 'true'
+                  : 'false',
+              name: onlySibling === undefined ? '' : displayName(onlySibling),
+            })
+          : intl.formatMessage(messages.carriedPregnancyLabel)
+      }
+    />
+  );
 
   // The defaults assume the new parent belongs with the anchor's other
   // parents — as their partner, and as the parent of the anchor's full
@@ -1144,13 +1174,7 @@ function ParentFields({
         required
         initialValue="biological"
       />
-      {parentKind === 'biological' && canCarry && (
-        <Field
-          component={BooleanField}
-          name={ROLE.carriedPregnancy}
-          label={intl.formatMessage(messages.carriedPregnancyLabel)}
-        />
-      )}
+      {!anchorHasCarrier && carriedField}
       {raises && existingParents.length > 0 && (
         <Field
           component={RadioGroupField}
@@ -1184,6 +1208,7 @@ function ParentFields({
           {...siblingsDefault.answering}
         />
       )}
+      {anchorHasCarrier && carriedField}
     </>
   );
 }

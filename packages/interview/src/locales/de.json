@@ -20,6 +20,7 @@
   "interview.familyPedigree.cancel": "Abbrechen",
   "interview.familyPedigree.canvasLabel": "Ihre Familie",
   "interview.familyPedigree.carriedPregnancyLabel": "Hat dieser Elternteil das Kind ausgetragen?",
+  "interview.familyPedigree.carriedSiblingsPregnancyLabel": "{count, plural, =1 {{isYou, select, true {Hat dieser Elternteil Sie ausgetragen?} other {Hat dieser Elternteil „{name}“ ausgetragen?}}} other {Hat dieser Elternteil jede der # oben ausgewählten Personen ausgetragen, bei denen noch niemand als austragende Person erfasst ist?}}",
   "interview.familyPedigree.carrierLabel": "Wer hat das Kind ausgetragen?",
   "interview.familyPedigree.carrierUnknown": "Jemand anderes, oder ich weiß es nicht",
   "interview.familyPedigree.childKind.adoptive": "Ein adoptiertes Kind",

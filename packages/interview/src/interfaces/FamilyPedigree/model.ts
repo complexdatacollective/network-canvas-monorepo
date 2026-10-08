@@ -312,7 +312,7 @@ function parentLinksOf(family: Family, personId: string) {
 }
 
 /** Whether someone is recorded as having carried the person's pregnancy. */
-function hasCarrier(family: Family, personId: string): boolean {
+export function hasCarrier(family: Family, personId: string): boolean {
   return parentLinksOf(family, personId).some(
     (link) => link.isGestationalCarrier,
   );
@@ -420,6 +420,9 @@ export type AddRelativeRequest =
   | {
       relation: 'parent';
       parentKind: PedigreeParentKind;
+      /** A biological parent carried the pregnancy of the anchor and of each
+       * sibling chosen, among those with nobody else recorded as carrying
+       * theirs. */
       carriedPregnancy: boolean;
       /** An existing parent of the anchor who is this parent's partner. */
       partnerId: string | null;
@@ -518,24 +521,19 @@ export function planAddRelative({
       const carried =
         kind === 'surrogate' ||
         (kind === 'biological' && request.carriedPregnancy);
-      links.push({
-        source: newPersonId,
-        target: anchorId,
-        kind,
-        isGestationalCarrier: carried,
-      });
-      // The new parent is the same parent to each sibling chosen: the same
-      // kind, and the same record of carrying the pregnancy, except where a
-      // sibling already has someone recorded as carrying theirs (one person
-      // carries a pregnancy). The form offers a surrogate only to siblings
-      // with no carrier, since a surrogate carried the pregnancy by
-      // definition.
-      for (const siblingId of request.alsoParentOf) {
+      // The new parent is the same parent to the anchor and to each sibling
+      // chosen: the same kind, and the same record of carrying the
+      // pregnancy, except for anyone who already has someone recorded as
+      // carrying theirs (one person carries a pregnancy). The form asks
+      // about carrying whenever one of them has nobody recorded, and offers
+      // a surrogate only to people with no carrier, since a surrogate
+      // carried the pregnancy by definition.
+      for (const childId of [anchorId, ...request.alsoParentOf]) {
         links.push({
           source: newPersonId,
-          target: siblingId,
+          target: childId,
           kind,
-          isGestationalCarrier: carried && !hasCarrier(family, siblingId),
+          isGestationalCarrier: carried && !hasCarrier(family, childId),
         });
       }
       if (request.partnerId && PRIMARY_PARENT_KINDS.has(kind)) {

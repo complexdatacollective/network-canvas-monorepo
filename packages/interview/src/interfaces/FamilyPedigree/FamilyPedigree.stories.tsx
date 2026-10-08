@@ -1276,6 +1276,101 @@ export const ChoosingTheAnswerFilledInKeepsIt: Story = {
 };
 
 /**
+ * A surrogate carried Jun; his brother Sam has nobody recorded as carrying
+ * him. Jun's new mother, a biological parent, is not asked whether she
+ * carried Jun, but once Sam is chosen as her child too she is asked whether
+ * she was pregnant with him, and the answer is recorded for Sam alone. An
+ * answer a later one makes impossible is taken back.
+ */
+export const ANewParentIsAskedAboutCarryingSiblings: Story = {
+  args: { requirement: 'none' },
+  render: (args) => (
+    <PedigreeStory
+      {...settings(args)}
+      onSync={recordSession}
+      family={{
+        people: [
+          { id: 'ego', name: 'Jun', gender: 'man', sex: 'male', ego: true },
+          { id: 'dad', name: 'Dev', gender: 'man', sex: 'male' },
+          { id: 'surrogate', name: 'Asha', gender: 'woman', sex: 'female' },
+          { id: 'sam', name: 'Sam', gender: 'man', sex: 'male' },
+        ],
+        links: [
+          { from: 'dad', to: 'ego', kind: 'biological' },
+          { from: 'surrogate', to: 'ego', kind: 'surrogate', carrier: true },
+          { from: 'dad', to: 'sam', kind: 'biological' },
+        ],
+      }}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    lastSynced = undefined;
+    const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
+
+    await userEvent.hover(await canvas.findByRole('button', { name: /^You/ }));
+    await userEvent.click(await canvas.findByTestId('pedigree-menu-parent'));
+    await userEvent.type(
+      await body.findByRole('textbox', { name: /^Name/ }),
+      'Mei',
+    );
+    await userEvent.click(await body.findByRole('radio', { name: 'Woman' }));
+    await userEvent.click(await body.findByRole('radio', { name: 'Female' }));
+    const alsoParentOf = await body.findByRole('group', {
+      name: /^Are they also the parent of/,
+    });
+    const sam = within(alsoParentOf).getByRole('checkbox', { name: 'Sam' });
+    const carriedSam = () =>
+      body.queryByRole('radiogroup', {
+        name: /^Was this parent pregnant with “Sam”\?/,
+      });
+    // Not asked about Jun, whose carrier is recorded.
+    await expect(
+      body.queryByRole('radiogroup', {
+        name: /^Did this parent carry the pregnancy\?/,
+      }),
+    ).toBeNull();
+
+    // Sam, Jun's full brother, is chosen already, and asked about; not
+    // chosen, he is not.
+    await waitFor(() => expect(sam).toBeChecked());
+    await waitFor(() => expect(carriedSam()).not.toBeNull());
+    await userEvent.click(sam);
+    await waitFor(() => expect(carriedSam()).toBeNull());
+    await userEvent.click(sam);
+    await waitFor(() => expect(carriedSam()).not.toBeNull());
+    const yes = () =>
+      within(carriedSam() as HTMLElement).getByRole('radio', { name: 'Yes' });
+    await userEvent.click(yes());
+
+    // Recorded as male at birth, she could not have been pregnant, nor a
+    // genetic parent beside the father, so her kind of parent and Sam are
+    // taken back with the answer. Female again, a biological parent of Sam
+    // again, she is asked again.
+    await userEvent.click(body.getByRole('radio', { name: 'Male' }));
+    await waitFor(() => expect(carriedSam()).toBeNull());
+    await userEvent.click(body.getByRole('radio', { name: 'Female' }));
+    await userEvent.click(
+      body.getByRole('radio', { name: 'Biological parent' }),
+    );
+    await waitFor(() => expect(sam).not.toBeChecked());
+    await userEvent.click(sam);
+    await waitFor(() => expect(carriedSam()).not.toBeNull());
+    await expect(yes()).not.toBeChecked();
+    await userEvent.click(yes());
+
+    await userEvent.click(
+      await body.findByRole('button', { name: 'Add to family' }),
+    );
+    await waitFor(() => expect(panelOf(canvasElement)).toBeNull());
+    await waitFor(() => expect(idInSession('Mei')).toBeDefined());
+    const mei = idInSession('Mei') ?? '';
+    await waitFor(() => expect(carriedInSession(mei, 'sam')).toBe(true));
+    await expect(carriedInSession(mei, 'ego')).toBe(false);
+  },
+};
+
+/**
  * Ella's birth mother Rachel is recorded. Her father, added as a biological
  * parent, is assumed to be Rachel's partner, as is a stepfather: either
  * raised Ella with her.

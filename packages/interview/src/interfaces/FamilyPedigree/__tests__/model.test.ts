@@ -443,6 +443,47 @@ describe('planAddRelative', () => {
     ]);
   });
 
+  test('a parent who carried siblings is recorded only for those with nobody recorded', () => {
+    // A surrogate carried the anchor; Sam, the anchor's sibling, has nobody
+    // recorded, and Kim already has a carrier.
+    const family = readFamily(
+      [
+        person('ego'),
+        person('surrogate', { sex: ['female'] }),
+        person('sam'),
+        person('kim'),
+        person('kimsCarrier', { sex: ['female'] }),
+        person('dad', { sex: ['male'] }),
+      ],
+      [
+        link('surrogate', 'ego', 'surrogate', { carrier: true }),
+        link('dad', 'ego', 'biological'),
+        link('dad', 'sam', 'biological'),
+        link('dad', 'kim', 'biological'),
+        link('kimsCarrier', 'kim', 'surrogate', { carrier: true }),
+      ],
+      config,
+    );
+    const result = plan(family, 'ego', {
+      relation: 'parent',
+      parentKind: 'biological',
+      carriedPregnancy: true,
+      partnerId: null,
+      partnershipCurrent: true,
+      alsoParentOf: ['sam', 'kim'],
+    });
+    expect(
+      result.links.map((planned) => [
+        planned.target,
+        planned.isGestationalCarrier,
+      ]),
+    ).toEqual([
+      ['ego', false],
+      ['sam', true],
+      ['kim', false],
+    ]);
+  });
+
   test('a donor is never partnered and never carries', () => {
     const family = readFamily(
       [person('ego', { isEgo: true }), person('mum', { sex: ['female'] })],

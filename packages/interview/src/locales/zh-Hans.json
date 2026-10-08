@@ -20,6 +20,7 @@
   "interview.familyPedigree.cancel": "取消",
   "interview.familyPedigree.canvasLabel": "您的家庭",
   "interview.familyPedigree.carriedPregnancyLabel": "是否由这位家长怀孕？",
+  "interview.familyPedigree.carriedSiblingsPregnancyLabel": "{count, plural, =1 {{isYou, select, true {您是由这位家长怀孕生下的吗？} other {“{name}”是由这位家长怀孕生下的吗？}}} other {上面选中的、尚未记录由谁怀孕的 # 人，是否都由这位家长怀孕生下？}}",
   "interview.familyPedigree.carrierLabel": "由谁怀孕？",
   "interview.familyPedigree.carrierUnknown": "其他人，或我不知道",
   "interview.familyPedigree.childKind.adoptive": "养子女",

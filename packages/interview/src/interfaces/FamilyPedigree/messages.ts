@@ -311,6 +311,13 @@ export const messages = defineMessages({
     description:
       'Yes/no question in the side panel for adding a biological parent: whether they were pregnant with the child.',
   },
+  carriedSiblingsPregnancyLabel: {
+    id: 'interview.familyPedigree.carriedSiblingsPregnancyLabel',
+    defaultMessage:
+      '{count, plural, =1 {{isYou, select, true {Was this parent pregnant with you?} other {Was this parent pregnant with “{name}”?}}} other {Was this parent pregnant with each of the # people chosen above who have nobody recorded as having carried them?}}',
+    description:
+      'Yes/no question in the side panel for adding a biological parent. It is asked when the person the parent is added for already has someone recorded as having carried their pregnancy, about the people chosen in “Are they also the parent of…” who have nobody recorded yet. count is how many such people there are; name is the one person’s name, or how they are related to the participant when unnamed; isYou is true when that person is the participant. It may be left unanswered.',
+  },
   yes: {
     id: 'interview.familyPedigree.yes',
     defaultMessage: 'Yes',

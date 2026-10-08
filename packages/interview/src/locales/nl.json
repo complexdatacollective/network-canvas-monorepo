@@ -20,6 +20,7 @@
   "interview.familyPedigree.cancel": "Annuleren",
   "interview.familyPedigree.canvasLabel": "Je familie",
   "interview.familyPedigree.carriedPregnancyLabel": "Heeft deze ouder de zwangerschap gedragen?",
+  "interview.familyPedigree.carriedSiblingsPregnancyLabel": "{count, plural, =1 {{isYou, select, true {Was deze ouder zwanger van jou?} other {Was deze ouder zwanger van “{name}”?}}} other {Was deze ouder zwanger van elk van de # hierboven gekozen personen voor wie nog niet is vastgelegd wie de zwangerschap droeg?}}",
   "interview.familyPedigree.carrierLabel": "Wie heeft de zwangerschap gedragen?",
   "interview.familyPedigree.carrierUnknown": "Iemand anders, of ik weet het niet",
   "interview.familyPedigree.childKind.adoptive": "Een geadopteerd kind",
