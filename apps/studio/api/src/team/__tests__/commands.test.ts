@@ -48,6 +48,7 @@ import {
 } from '../../db/tenant.ts';
 import { RequestId } from '../../http/middleware/request-id.ts';
 import { Jobs, RecordedJobs } from '../../jobs/jobs.ts';
+import { Analytics } from '../../platform/analytics.ts';
 import {
   acceptTeamInvitation,
   cancelTeamInvitation,
@@ -128,6 +129,7 @@ const Harness = Layer.mergeAll(
   TestDatabaseLive,
   AuditSignal.layerRecording,
   Jobs.layerRecording,
+  Analytics.layerDisabled,
   testDeniedAttempts,
 );
 

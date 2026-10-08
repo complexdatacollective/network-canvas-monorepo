@@ -1,5 +1,3 @@
-import { createHash } from 'node:crypto';
-
 import { Effect, Predicate } from 'effect';
 
 import { POSTHOG_APP_PROPS } from '@codaco/shared-consts';
@@ -10,7 +8,11 @@ import type {
 } from '@codaco/studio-contract/schema/participant';
 
 import { TenantScope } from '../db/tenant.ts';
-import { Analytics, type AnalyticsCapture } from '../platform/analytics.ts';
+import {
+  Analytics,
+  type AnalyticsCapture,
+  participantDistinctId,
+} from '../platform/analytics.ts';
 import { enforceRateLimit } from '../rate-limit/enforce.ts';
 import { readInstallationId } from '../setup/bootstrap.ts';
 import { participantAnalyticsEnabled } from '../study/settings.ts';
@@ -41,9 +43,6 @@ type ForwardingConfig = {
   readonly installationId: string;
   readonly distinctId: string;
 };
-
-const participantDistinctId = (installationId: string, sessionId: string) =>
-  `participant:${createHash('sha256').update(`${installationId}:${sessionId}`).digest('hex').slice(0, 32)}`;
 
 export const participantAnalyticsConfig = Effect.fn(
   'interview.participantAnalyticsConfig',

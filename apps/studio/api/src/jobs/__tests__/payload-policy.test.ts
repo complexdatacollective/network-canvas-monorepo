@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { runInNewContext } from 'node:vm';
 
-import { Effect, Exit, Schema } from 'effect';
+import { Effect, Exit, Schema, type SchemaAST } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -138,6 +138,82 @@ describe('job payload policy', () => {
     expect(codecAdmits(queue, 'not-a-payload')).toBe(false);
     expect(codecAdmits(queue, new Map())).toBe(false);
     expect(codecAdmits(queue, new Date(0))).toBe(false);
+  });
+});
+
+const FREE_TEXT = [
+  'Ada Lovelace',
+  'researcher@example.org',
+  'https://studio.example.org/study',
+];
+
+const leavesOf = (ast: SchemaAST.AST): SchemaAST.AST[] => {
+  switch (ast._tag) {
+    case 'Objects':
+      return ast.propertySignatures.flatMap(({ type }) => leavesOf(type));
+    case 'Arrays':
+      return [...ast.elements, ...ast.rest].flatMap(leavesOf);
+    case 'Union':
+      return ast.types.flatMap(leavesOf);
+    default:
+      return [ast];
+  }
+};
+
+describe('the usage event queue', () => {
+  it('is the one queue that carries usage events', () => {
+    expect(
+      Object.entries(JOB_PAYLOAD_POLICY)
+        .filter(([, policy]) => policy.kind === 'usage-event')
+        .map(([queue]) => queue),
+    ).toEqual(['analytics-delivery']);
+    expect(
+      Object.keys(JOB_PAYLOAD_SCHEMAS['analytics-delivery'].fields),
+    ).toEqual(['usage']);
+  });
+
+  it('declares every value as a fixed code, a number, a boolean or a minted identifier', () => {
+    const leaves = leavesOf(JOB_PAYLOAD_SCHEMAS['analytics-delivery'].ast);
+    expect(leaves.length).toBeGreaterThan(20);
+    for (const leaf of leaves) {
+      expect(['Literal', 'Number', 'Boolean', 'String']).toContain(leaf._tag);
+      if (leaf._tag !== 'String') continue;
+      const field = Schema.make<typeof Schema.String>(leaf);
+      expect(admits(field, randomUUID())).toBe(true);
+      for (const text of FREE_TEXT) {
+        expect(admits(field, text), text).toBe(false);
+      }
+    }
+  });
+
+  it('refuses an interface type no protocol schema declares', () => {
+    const committed = {
+      usage: {
+        event: 'protocol_draft_committed',
+        occurredAt: Date.UTC(2026, 9, 8),
+        accountId: 'account-1',
+        teamId: 'team-1',
+        protocolId: randomUUID(),
+        interfaceTypes: ['Information'],
+        operationCount: 1,
+      },
+    };
+    expect(codecAdmits('analytics-delivery', committed)).toBe(true);
+    expect(
+      codecAdmits('analytics-delivery', {
+        usage: { ...committed.usage, interfaceTypes: ['person'] },
+      }),
+    ).toBe(false);
+    expect(
+      codecAdmits('analytics-delivery', {
+        usage: { ...committed.usage, teamName: 'Ada Lovelace' },
+      }),
+    ).toBe(false);
+    expect(
+      codecAdmits('analytics-delivery', {
+        usage: { ...committed.usage, accountId: 'researcher@example.org' },
+      }),
+    ).toBe(false);
   });
 });
 
