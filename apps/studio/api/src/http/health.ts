@@ -1,10 +1,11 @@
-import { Cause, Duration, Effect, type Layer, Record } from 'effect';
+import { Cause, Duration, Effect, type Layer, Option, Record } from 'effect';
 import { HttpRouter, HttpServerResponse } from 'effect/http';
 import type { SqlClient } from 'effect/sql';
 
 import { deepestMessage, isMissingRole } from '../db/errors.ts';
 import { databaseAlive } from '../db/readiness.ts';
 import { checkSchemaEffect, type SchemaState } from '../db/schema.ts';
+import { WebSocketDrain } from '../platform/ws-drain.ts';
 
 export type CheckVerdict = 'ok' | 'degraded';
 
@@ -90,11 +91,36 @@ export const readiness: (checks: HealthChecks) => Effect.Effect<Readiness> =
     return { status, checks: results };
   });
 
+/**
+ * A draining replica answers `/readyz` with 503 so a load balancer stops
+ * routing to it. This is best-effort: the window lasts only as long as the
+ * drain, which ends at once with no sockets open and after `DRAIN_TIMEOUT` at
+ * most, and the multi-replica override's Traefik health check probes
+ * `/healthz` (the base compose stack has none), so it is advisory for other
+ * load balancers. The worker serves these routes without a
+ * `WebSocketDrain`.
+ */
 export function HealthRoutes(
   checks: HealthChecks,
 ): Layer.Layer<never, never, HttpRouter.HttpRouter> {
   return HttpRouter.use((router) =>
     Effect.gen(function* () {
+      // Optional so the worker needs none; the web process relies on `Serve`
+      // (programs/serve.ts) providing `WebSocketDrain.layer` beneath `Routes`.
+      // Without it, `/readyz` would silently never report draining.
+      const drain = yield* Effect.serviceOption(WebSocketDrain);
+      const draining = Option.match(drain, {
+        onNone: () => Effect.succeed(false),
+        onSome: (service) => service.draining,
+      });
+      const verdict = Effect.gen(function* () {
+        const result = yield* readiness(checks);
+        if (!(yield* draining)) return result;
+        return {
+          status: 'failing',
+          checks: { ...result.checks, draining: 'failed: draining' },
+        } satisfies Readiness;
+      });
       yield* router.add(
         'GET',
         '/healthz',
@@ -103,7 +129,7 @@ export function HealthRoutes(
       yield* router.add(
         'GET',
         '/readyz',
-        Effect.map(readiness(checks), (result) =>
+        Effect.map(verdict, (result) =>
           HttpServerResponse.jsonUnsafe(result, {
             status: result.status === 'failing' ? 503 : 200,
           }),

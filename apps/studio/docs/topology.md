@@ -113,7 +113,7 @@ flowchart LR
         webrule{{"everything else, including /<br>priority 10"}}
     end
 
-    apisvc["<b>api</b> :3000"]
+    apisvc["<b>api</b> :3000<br>one server per replica"]
     websvc["<b>web</b> :80"]
 
     browser --> health
@@ -133,7 +133,15 @@ flowchart LR
 Four things this picture is drawn to make unmissable:
 
 - **`/ws` is a `Path`, not a `PathPrefix`** — it is one endpoint. Traefik
-  proxies the WebSocket upgrade with no further configuration.
+  proxies the WebSocket upgrade with no further configuration. With more than
+  one `api` replica, each upgrade is balanced to any healthy one and stays on it
+  for the life of that connection; there are no sticky sessions, because an
+  editor who reconnects to another replica finds their locks and their
+  staged files there. The replicas are the `servers` of the `api` service
+  (`traefik-api-servers` in the compose file), which carries a health check on
+  `/healthz` — whether the process is alive, not `/readyz`, so a replica that is
+  draining stays in rotation until it stops
+  ([running more than one API](./self-host/run.md#running-more-than-one-api)).
 - **`/healthz` and `/readyz` carry no middleware**, deliberately and at the
   highest priority. An upgrade script and the container runtime must read the
   real status and the named failing check; a maintenance page in front of these

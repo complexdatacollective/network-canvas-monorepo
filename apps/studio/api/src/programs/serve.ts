@@ -27,6 +27,7 @@ import { MaintenanceState } from '../platform/maintenance-state.ts';
 import { SchemaStatus } from '../platform/schema-gate.ts';
 import { TracingLive } from '../platform/tracing.ts';
 import { WebSocketDrain } from '../platform/ws-drain.ts';
+import { Doorbell, doorbellCheck } from '../protocol-builder/doorbell.ts';
 import { RateLimiter } from '../rate-limit/limiter.ts';
 import { RateLimitStore } from '../rate-limit/store.ts';
 import type { StudioServices } from '../rpc/deps.ts';
@@ -76,6 +77,7 @@ function withDatabase(
       const auth = yield* AuthService;
       const objectStore = yield* ObjectStore;
       const triggers = yield* MaintenanceTriggers;
+      const doorbell = yield* Doorbell;
 
       const services = yield* Effect.context<StudioServices>();
 
@@ -90,9 +92,11 @@ function withDatabase(
         ...studio.checks,
         schema: schemaCheck(status.read),
         maintenance: maintenanceCheck(triggers),
+        doorbell: doorbellCheck(env, doorbell),
       });
     }),
   ).pipe(
+    Layer.provide(Doorbell.layer),
     // Listening does not wait for the schema or the keyring: an upgrade starts
     // this process before `migrate` runs, and it answers closed meanwhile.
     // `BootChecks` runs both in the background and holds the gate closed
@@ -128,9 +132,13 @@ function withoutDatabase(env: StudioEnv) {
         auth: yield* AuthService,
         objectStore: yield* ObjectStore,
       });
-      return Serve(studio, studio.checks);
+      return Serve(studio, {
+        ...studio.checks,
+        doorbell: doorbellCheck(env, yield* Doorbell),
+      });
     }),
   ).pipe(
+    Layer.provide(Doorbell.layer),
     Layer.provide(MaintenanceTriggers.layerOpen),
     Layer.provide(ObjectStoreLive),
     Layer.provide(AuthService.layerFromEnvironment),

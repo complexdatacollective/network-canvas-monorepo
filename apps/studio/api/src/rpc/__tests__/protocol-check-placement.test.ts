@@ -166,7 +166,7 @@ const ALONE = `the scope opened around ${CHECK} does nothing else`;
 /** These sites gate work outside the database, with no transaction to share. */
 const STANDALONE_CHECKS: Record<string, string> = {
   'protocol-builder/host.ts › protocolBuilder.authorizeCaller':
-    'gates live watch events and staged resources, which are held in memory',
+    'gates live watch events, which are held in memory',
 };
 
 const placementProblems = (source: string): string[] =>
@@ -221,6 +221,10 @@ describe('the protocol reachability check', () => {
       'protocol-builder/host.ts › protocolBuilder.submit',
       'protocol-builder/host.ts › protocolBuilder.create',
       'protocol-builder/host.ts › protocolBuilder.refactor',
+      'protocol-builder/resources.ts',
+      'protocol-builder/resources.ts',
+      'protocol-builder/resources.ts',
+      'protocol-builder/resources.ts',
       'protocol/commands.ts › protocol.addInformationStage',
       'protocol/commands.ts › protocol.moveStage',
       'rpc/handlers/protocols.ts',

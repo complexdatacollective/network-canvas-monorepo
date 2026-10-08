@@ -9,7 +9,11 @@ import {
 } from '@azure/storage-blob';
 
 import type { AzureBlobEnv } from '../../env/resolve.ts';
-import { fromBackend, type ObjectStore } from '../object-store.ts';
+import {
+  type BackendOptions,
+  fromBackend,
+  type ObjectStore,
+} from '../object-store.ts';
 
 // The Azure Blob Storage implementation of the object-store port (#2077), for
 // institutions whose cloud is Azure, which has no S3 API. The only module that
@@ -19,6 +23,11 @@ import { fromBackend, type ObjectStore } from '../object-store.ts';
 // `DefaultAzureCredential`, which needs the Storage Blob Data Contributor role
 // on the container and no account key. A connection string is the fallback
 // for development (Azurite) and for hosts outside Azure.
+//
+// It has no `copy`. A server-side copy authenticates its source separately
+// from the request, and the SDK documents only Shared Key (a connection
+// string) for a source in the same account, not a managed identity's token,
+// so promotion reads the staged blob and writes the asset instead.
 
 const PIPELINE: StoragePipelineOptions = {
   // The S3 client's default attempt count, so neither provider holds a
@@ -63,7 +72,10 @@ function containerClient(env: AzureBlobEnv): ContainerClient {
   return service.getContainerClient(env.container);
 }
 
-function make(env: AzureBlobEnv): ObjectStore['Service'] {
+function make(
+  env: AzureBlobEnv,
+  options: BackendOptions = {},
+): ObjectStore['Service'] {
   const container = containerClient(env);
 
   return fromBackend({
@@ -101,6 +113,27 @@ function make(env: AzureBlobEnv): ObjectStore['Service'] {
             mediaType: found.contentType,
           };
         }),
+    remove: (key, abortSignal) =>
+      container.getBlockBlobClient(key).deleteIfExists({ abortSignal }),
+    list: async (prefix, cursor, abortSignal) => {
+      const page = await container
+        .listBlobsFlat({ prefix, abortSignal })
+        .byPage({
+          continuationToken: cursor,
+          maxPageSize: options.listPageSize,
+        })
+        .next();
+      if (page.done === true) return { objects: [], next: undefined };
+      const next = page.value.continuationToken;
+      return {
+        objects: page.value.segment.blobItems.map((blob) => ({
+          key: blob.name,
+          lastModified: blob.properties.lastModified,
+        })),
+        // The last page carries an empty token rather than none.
+        next: next === undefined || next === '' ? undefined : next,
+      };
+    },
     probe: (abortSignal) => container.getProperties({ abortSignal }),
     isNotFound,
   });

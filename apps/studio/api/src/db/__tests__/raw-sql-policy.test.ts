@@ -361,6 +361,10 @@ const ALLOWLIST: Record<string, { count: number; why: string }> = {
     count: 1,
     why: '`INSERT … SELECT` over its own target table, freezing the manifest row through `to_jsonb(m)`',
   },
+  [`${SERVER}/protocol-builder/connections.ts › protocolBuilder.lockTimeout`]: {
+    count: 1,
+    why: '`SET LOCAL lock_timeout`, which bounds the lock waits of a liveness pass, a connect and a grace’s release, and has no builder path',
+  },
   [`${SYNC}/server.ts`]: {
     count: 2,
     why: "`current_setting('transaction_isolation')` (no FROM), and the built `sectionExists` query executed as the same SQL it embeds in an `EXISTS`",
@@ -368,6 +372,10 @@ const ALLOWLIST: Record<string, { count: number; why: string }> = {
   [`${SERVER}/__tests__/support/database.ts`]: {
     count: 17,
     why: 'the scratch-schema harness: create, apply, grant and drop, and the one-statement fixtures and oracles every suite shares — as the owner, a tenant, the maintenance role, and under the erasure marker',
+  },
+  [`${SERVER}/__tests__/support/protocol-builder-suite.ts`]: {
+    count: 6,
+    why: '`holdRow`’s BEGIN, team pin, held statement, backend pid and ROLLBACK on a connection of its own, standing in for another replica’s transaction, and `blockedBehind`’s `pg_locks` probe of the backends waiting on it',
   },
   [`${SERVER}/interview/__tests__/fixture.ts`]: {
     count: 11,

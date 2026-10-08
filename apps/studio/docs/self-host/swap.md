@@ -9,7 +9,7 @@ service. Three are set in `.env`; the fourth is a routing table.
 | Object store           | `S3_ENDPOINT` and the four other `S3_*`                                      | `garage`, `garage-init`, their two configs, the volume, and the `depends_on` entries naming them |
 | Object store, on Azure | `STUDIO_OBJECT_STORE=azure-blob` and the `AZURE_STORAGE_*`; empty the `S3_*` | the same as above                                                                                |
 | Rate-limit store       | `REDIS_URL`                                                                  | the `valkey` service and the `depends_on` entries naming it                                      |
-| Ingress                | reproduce the routing table below                                            | the `traefik` service, the `traefik-dynamic` config and the published ports                      |
+| Ingress                | reproduce the routing table below                                            | the `traefik` service, its two configs and the published ports                                   |
 
 Deleting the replaced service is tidying, not part of the swap: each of the
 three elements defaults to the stack's own service, so setting its variables
@@ -86,10 +86,23 @@ request.
 Studio addresses the bucket **path-style** (`<endpoint>/<bucket>/<key>`), so the
 endpoint is the service address and not a per-bucket hostname.
 
+The access key needs read, write, delete and list on the bucket: on AWS,
+`s3:GetObject`, `s3:PutObject`, `s3:DeleteObject` and `s3:ListBucket`
+([which goes where](./requirements.md#s3-compatible-stores)). Delete and list
+are for files an author adds while editing a stage, which wait in the bucket
+under `staging/` until the stage is saved or cancelled. A key that cannot
+delete still lets authors add files and save, but the API refuses to discard
+a staged file, and staged files stay in the bucket for good. The API logs a
+warning for each one it could not delete after a save or once its tab has
+gone, and the worker logs one for each abandoned file on every hourly run.
+If the bucket keeps versions, add the lifecycle rule
+[the requirements](./requirements.md#an-object-store) describe.
+
 Then delete the `garage` and `garage-init` services, the `garage-config` and
 `garage-init` configs, the `garage-data` volume, and the `depends_on` entries
-naming them — `garage` in `api` and `worker`, `garage-init` in `migrate` — the two `GARAGE_*` variables are read only by those
-containers. Your provider's own mirroring or versioning replaces the volume
+naming them — `garage` in `api` and `worker`, `garage-init` in `migrate` —
+the two `GARAGE_*` variables are read only by those containers. Your
+provider's own mirroring or versioning replaces the volume
 copy in [Back up and restore](./backup.md).
 
 This swap is exercised in CI by `apps/studio/stack-test`, variant
@@ -141,8 +154,13 @@ az storage container create \
 
 With the account URL, Studio signs in as the **managed identity** of the
 machine it runs on — the virtual machine, or the Container App — so there is
-no account key anywhere in `.env`. Give that identity the **Storage Blob Data
-Contributor** role on the one container, not on the whole account:
+no account key anywhere in `.env`. Both processes that touch the container, the
+API and the worker, sign in as it, and between them they read, write, **delete
+and list** blobs: the API deletes staged files once a stage is saved or
+cancelled, and the worker lists and deletes the abandoned ones. Give that
+identity the **Storage Blob Data Contributor** role on the one container, not
+on the whole account. That role already includes delete and
+list, so an identity set up for an earlier release needs no change:
 
 ```bash
 # The identity's principal id. For a Container App, use
@@ -189,7 +207,9 @@ Delete the `garage` and `garage-init` services, the `garage-config` and
 naming them (`garage` in `api` and `worker`, `garage-init` in `migrate`),
 exactly as for a managed bucket — and ignore the two
 `GARAGE_*` variables. Blob versioning or object replication on the account
-replaces the volume copy in [Back up and restore](./backup.md).
+replaces the volume copy in [Back up and restore](./backup.md). With
+versioning on, add the lifecycle rule for `staging/` that
+[the requirements](./requirements.md#an-object-store) describe.
 
 As with the other swaps, this is tidying rather than part of the swap: until
 you delete them, the stack's Garage runs empty and `garage-init` sees
@@ -199,8 +219,9 @@ that `STUDIO_OBJECT_STORE` is not `s3` and exits without bootstrapping it, so
 This swap is exercised in CI by `apps/studio/stack-test`, variant
 `external-bucket-azure`: the stack runs against Azurite, Microsoft's Blob
 Storage emulator, on another network, serving an account of its own and
-signed in to with a connection string, with the `S3_*` values emptied and `garage` and `garage-init` gone — and is held to the
-same assertions as every other variant, including writing an asset through
+signed in to with a connection string, with the `S3_*` values emptied and
+`garage` and `garage-init` gone — and is held to the same assertions as every
+other variant, including writing an asset through
 `/storage` and reading it back.
 
 ## An external Redis
@@ -225,9 +246,11 @@ on the store you gave it.
 ## The ingress
 
 The one swap that is not a variable, because Traefik holds a routing table
-rather than an address. Delete the `traefik` service, the `traefik-dynamic`
-config and the published ports, publish `web` and `api` where your proxy can
-reach them, and reproduce this table exactly.
+rather than an address. Delete the `traefik` service, its two configs
+(`traefik-dynamic` and `traefik-api-servers`) and the published ports, publish
+`web` and `api` where your proxy can reach them, and reproduce this table
+exactly. If you run [more than one `api`](./run.md#running-more-than-one-api),
+list every replica as a server; no replica needs to be preferred over another.
 
 ### The routing table
 

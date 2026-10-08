@@ -56,11 +56,12 @@ test('the upgrade guide carries the block the lane executes, in the sequence the
   assert.deepEqual(lines, [
     'docker compose run --rm --no-deps api maintenance on',
     '# wait until /readyz names maintenance mode — see step 2',
-    'docker compose stop api worker',
+    "docker compose stop $(docker compose config --services | grep '^api') worker",
     '# take your backup now — see ./backup.md',
     'docker compose pull',
-    'docker compose up -d web api worker',
+    "docker compose up -d web $(docker compose config --services | grep '^api') worker",
     'docker compose run --rm migrate',
+    '# wait until every api replica reports its schema ok — see step 6',
     'docker compose run --rm --no-deps api maintenance off',
   ]);
 });
@@ -85,7 +86,10 @@ test('the restore block ends by reopening the instance, after starting the relea
     lines.at(-1),
     'docker compose run --rm --no-deps api maintenance off',
   );
-  assert.equal(lines.at(-2), 'docker compose up -d web api worker');
+  assert.equal(
+    lines.at(-2),
+    "docker compose up -d web $(docker compose config --services | grep '^api') worker",
+  );
   assert.ok(lines.some((line) => line.includes('pg_restore')));
   // Run by the lane as one script: nothing in it may need a real hostname.
   assert.ok(lines.every((line) => !/\bstudio\.example\.org\b/.test(line)));
@@ -103,13 +107,13 @@ const ready = (reason) =>
 const tick = (ts, readyStatus, readyBody, probeStatus, probeKind) =>
   [ts, readyStatus, readyBody, probeStatus, probeKind].join('\t');
 
-// The guide's sequence as upgrade.sh records it, less the two steps the
-// oracle never reads (the /readyz wait and `pull`).
+// The guide's sequence as upgrade.sh records it, less the three steps the
+// oracle never reads (the two waits and `pull`).
 const SEQUENCE = [
   'docker compose run --rm --no-deps api maintenance on',
-  'docker compose stop api worker',
+  "docker compose stop $(docker compose config --services | grep '^api') worker",
   'backup (docs/self-host/backup.md)',
-  'docker compose up -d web api worker',
+  "docker compose up -d web $(docker compose config --services | grep '^api') worker",
   'docker compose run --rm migrate',
   'docker compose run --rm --no-deps api maintenance off',
 ];
@@ -317,7 +321,7 @@ test('a probe without the page is refused, except while web itself is replaced',
 // release closed. Here the first reading naming maintenance mode comes inside
 // the stop (4000-5800) — within the close bound, but after the api it reads
 // may already be the one Traefik answers for.
-test('a window first seen closed only after stop api worker started is refused', () => {
+test('a window first seen closed only after the stop started is refused', () => {
   const overrides = {};
   for (let ts = 2250; ts < 4250; ts += 250) {
     overrides[ts] = tick(ts, '503', ready(REASONS.starting), '503', 'page');
@@ -325,7 +329,7 @@ test('a window first seen closed only after stop api worker started is refused',
   const late = analyse(observation(overrides));
   assert.equal(late.ok, false);
   assert.deepEqual(late.failures, [
-    'the observer did not see the old release name maintenance mode before stop api worker',
+    'the observer did not see the old release name maintenance mode before the stop',
   ]);
 
   // The same observation, closed at 3750 instead — before the stop — passes.
@@ -333,7 +337,7 @@ test('a window first seen closed only after stop api worker started is refused',
   assert.deepEqual(analyse(observation(overrides)).failures, []);
 });
 
-// Seen in every lane run while `stop api worker` has `api` down, through the
+// Seen in every lane run while the `stop` has `api` down, through the
 // backup and `pull`: Traefik's error middleware gives the probe the page with
 // 503, and `/readyz` — which no page sits in front of — Traefik's own bare
 // 502. That is the answer the rule already accepts, so the stopped api gets no
@@ -347,7 +351,7 @@ test('a stopped api is closed when the probe gets the page, and refused when it 
   assert.deepEqual(paged.failures, []);
   assert.equal(
     paged.evidence.steps[1].command,
-    'docker compose stop api worker',
+    "docker compose stop $(docker compose config --services | grep '^api') worker",
   );
   assert.deepEqual(paged.evidence.steps[1].probeKind, { page: 8 });
 

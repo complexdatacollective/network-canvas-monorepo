@@ -1,4 +1,4 @@
-import { Clock, Context, Effect, Layer, Option } from 'effect';
+import { Context, Effect, Layer, Option } from 'effect';
 import type * as Headers from 'effect/http/Headers';
 
 import { ProtocolNotFound } from '@codaco/protocol-builder-core/contract/errors';
@@ -24,9 +24,8 @@ import { principalOf } from '../rpc/authenticated.ts';
 import { requestIdOrMint } from '../rpc/bridge.ts';
 import { transportHeaders } from '../rpc/request-headers.ts';
 import { SecretsCipher } from '../secrets/services.ts';
-import { sessionOwner, type ProtocolBuilderSession } from './host.ts';
-import { IDLE_MS, Leases } from './leases.ts';
-import { StagedImports } from './resources.ts';
+import { type ProtocolBuilderSession } from './host.ts';
+import { Leases } from './leases.ts';
 import { resolveProtocolSession } from './tenancy.ts';
 
 /**
@@ -112,8 +111,36 @@ export const stillSignedIn = Effect.fnUntraced(function* (
   }
 });
 
-export const ownerPrefix = (session: ProtocolBuilderSession): string =>
-  `${session.draftId}\u0000${sessionOwner(session)}\u0000`;
+/**
+ * The caller's session on the protocol, by their memberships as they stand.
+ * Charges no rate limit and records no contact, so a watch can ask it again
+ * on its own timer.
+ */
+export const resolveSession = Effect.fn('protocolBuilder.resolveSession')(
+  function* (
+    protocolId: string,
+  ): Effect.fn.Return<
+    ProtocolBuilderSession,
+    ProtocolNotFound,
+    HostCaller | AuthService | Database | SecretsCipher
+  > {
+    const caller = yield* HostCaller;
+    const principal = yield* callerPrincipal;
+    const auth = yield* AuthService;
+    const memberships = yield* auth.listMemberships(principal.userId);
+    const session = yield* resolveProtocolSession({
+      protocolId,
+      principal,
+      requestId: yield* requestIdOrMint,
+      connectionId: caller.connectionId,
+      clientSessionId: caller.clientSessionId,
+      memberships,
+      cipher: yield* SecretsCipher,
+    }).pipe(Effect.orDie);
+    if (session === null) return yield* new ProtocolNotFound({ protocolId });
+    return session;
+  },
+);
 
 /**
  * The team's budget is charged only once the team is known, so a stranger
@@ -124,35 +151,12 @@ export const openSession = Effect.fn('protocolBuilder.openSession')(function* (
 ): Effect.fn.Return<
   ProtocolBuilderSession,
   ProtocolNotFound,
-  | HostCaller
-  | AuthService
-  | RateLimiter
-  | Database
-  | SecretsCipher
-  | Leases
-  | StagedImports
+  HostCaller | AuthService | RateLimiter | Database | SecretsCipher | Leases
 > {
-  const caller = yield* HostCaller;
   const principal = yield* callerPrincipal;
   yield* charge('rpc_user', principal.userId);
-  const auth = yield* AuthService;
-  const memberships = yield* auth.listMemberships(principal.userId);
-  const session = yield* resolveProtocolSession({
-    protocolId,
-    principal,
-    requestId: yield* requestIdOrMint,
-    connectionId: caller.connectionId,
-    clientSessionId: caller.clientSessionId,
-    memberships,
-    cipher: yield* SecretsCipher,
-  }).pipe(Effect.orDie);
-  if (session === null) return yield* new ProtocolNotFound({ protocolId });
+  const session = yield* resolveSession(protocolId);
   yield* charge('rpc_team', session.access.teamId);
-  const leases = yield* Leases;
-  const staged = yield* StagedImports;
-  yield* leases.touch(sessionOwner(session));
-  yield* staged.touch(ownerPrefix(session));
-  const now = yield* Clock.currentTimeMillis;
-  yield* staged.expire(now - IDLE_MS, leases.connected);
+  yield* (yield* Leases).contact(session);
   return session;
 });

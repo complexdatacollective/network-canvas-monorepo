@@ -9,6 +9,7 @@ import { MaintenanceScope } from '../../db/tenant.ts';
 import { type DbEnv, Environment, type StudioEnv } from '../../env.ts';
 import { collectLogs } from '../../platform/__tests__/support/logs.ts';
 import { RateLimitStore } from '../../rate-limit/store.ts';
+import { ObjectStore } from '../../storage/object-store.ts';
 import { STUDIO_VERSION } from '../../version.ts';
 import {
   layerRecordingHttp,
@@ -111,6 +112,7 @@ describe.skipIf(!testDb)('the worker’s handler registrations', () => {
         Layer.provide(
           Layer.succeed(Environment, workerEnv(testDb!, overrides)),
         ),
+        Layer.provide(Layer.succeed(ObjectStore, ObjectStore.absent)),
         Layer.provideMerge(layerWorker()),
       );
 

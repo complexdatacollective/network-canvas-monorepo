@@ -32,6 +32,18 @@ export type AssetKeyIdentity = {
 };
 
 /**
+ * `protocol_staged_resources`: an `apikey` a protocol-builder editor staged
+ * and has not submitted yet. The owner is the staging caller's session owner,
+ * so a key staged by one tab never opens under another's row.
+ */
+export type StagedSecretIdentity = {
+  teamId: string;
+  draftId: string;
+  owner: string;
+  resourceId: string;
+};
+
+/**
  * better-auth's `account` token columns. The column is part of the identity so
  * that an access token cannot be moved into the refresh-token column of its
  * own row — provider and account alone would not separate the three.
@@ -80,6 +92,17 @@ export type SecretsCipherApi = {
   /** Returns `sealed` unchanged when it is already under the current key. */
   resealAssetKey(
     identity: AssetKeyIdentity,
+    sealed: SealedSecret,
+  ): SealedSecret;
+
+  sealStagedSecret(identity: StagedSecretIdentity, value: string): SealedSecret;
+  openStagedSecret(
+    identity: StagedSecretIdentity,
+    sealed: StoredSecret,
+  ): string;
+  /** Returns `sealed` unchanged when it is already under the current key. */
+  resealStagedSecret(
+    identity: StagedSecretIdentity,
     sealed: SealedSecret,
   ): SealedSecret;
 
@@ -143,6 +166,16 @@ export function createSecretsCipher(
     ];
   }
 
+  function stagedSecretIdentity(identity: StagedSecretIdentity): string[] {
+    return [
+      'staged-secret',
+      identity.teamId,
+      identity.draftId,
+      identity.owner,
+      identity.resourceId,
+    ];
+  }
+
   function oauthIdentity(identity: OAuthTokenIdentity): string[] {
     return ['oauth', identity.providerId, identity.accountId, identity.column];
   }
@@ -202,6 +235,18 @@ export function createSecretsCipher(
         : seal(
             assetKeyIdentity(identity),
             openSecret(keyring, assetKeyIdentity(identity), sealed),
+          ),
+
+    sealStagedSecret: (identity, value) =>
+      seal(stagedSecretIdentity(identity), value),
+    openStagedSecret: (identity, sealed) =>
+      openSecret(keyring, stagedSecretIdentity(identity), sealed),
+    resealStagedSecret: (identity, sealed) =>
+      sealed.keyId === keyring.currentId
+        ? sealed
+        : seal(
+            stagedSecretIdentity(identity),
+            openSecret(keyring, stagedSecretIdentity(identity), sealed),
           ),
 
     sealOAuthToken,

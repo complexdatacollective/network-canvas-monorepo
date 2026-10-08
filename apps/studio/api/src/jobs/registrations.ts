@@ -7,6 +7,7 @@ import { JOB_SCHEDULES, type JobQueueName } from '@codaco/studio-sync/jobs';
 import { type MaintenanceDatabase } from '../db/client.ts';
 import { Environment } from '../env.ts';
 import { type Mailer } from '../mail/mailer.ts';
+import type { ObjectStore } from '../storage/object-store.ts';
 import { deniedAttemptsSummary } from './handlers/denied-attempts-summary.ts';
 import type { DeniedAttemptsStore } from './handlers/denied-attempts/store.ts';
 import { invitationDelivery } from './handlers/invitation-delivery.ts';
@@ -38,6 +39,7 @@ export const JobHandlersLive: Layer.Layer<
   | Environment
   | DeniedAttemptsStore
   | HttpClient.HttpClient
+  | ObjectStore
 > = Layer.effectDiscard(
   Effect.gen(function* () {
     const worker = yield* JobWorker;

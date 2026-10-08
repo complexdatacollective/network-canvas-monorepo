@@ -1,91 +1,34 @@
-import { Context, Effect, Layer, Ref, type Scope } from 'effect';
+import { Context, Effect, Layer } from 'effect';
+import type { SqlError } from 'effect/sql';
 
-import type { Presence as PresenceValue } from '@codaco/protocol-builder-core/contract/schemas';
+import { Database } from '../db/client.ts';
+import { setSocketMode } from './connections.ts';
+import type { ProtocolBuilderSession } from './host.ts';
 
-type Present = ReadonlyMap<string, ReadonlyMap<string, PresenceValue>>;
-
-const withEntry = (
-  present: Present,
-  draftId: string,
-  presence: PresenceValue,
-): Present =>
-  new Map(present).set(
-    draftId,
-    new Map(present.get(draftId)).set(presence.sessionId, presence),
-  );
-
+/**
+ * What a socket shows its colleagues. A watch's connection row is its
+ * presence: joining and leaving are `Leases.connect`'s, and every replica's
+ * relay lists who is present from those rows.
+ */
 export class Presence extends Context.Service<
   Presence,
   {
-    readonly join: (
-      draftId: string,
-      presence: PresenceValue,
-    ) => Effect.Effect<void, never, Scope.Scope>;
-    readonly put: (
-      draftId: string,
-      presence: PresenceValue,
-    ) => Effect.Effect<void>;
-    readonly leave: (draftId: string, sessionId: string) => Effect.Effect<void>;
+    /** Records the mode of the tab's watches from the leases it holds now. */
     readonly setMode: (
-      draftId: string,
-      sessionId: string,
-      mode: PresenceValue['mode'],
-      sectionId?: PresenceValue['sectionId'],
-    ) => Effect.Effect<void>;
-    readonly list: (
-      draftId: string,
-    ) => Effect.Effect<ReadonlyArray<PresenceValue>>;
+      session: ProtocolBuilderSession,
+    ) => Effect.Effect<void, SqlError.SqlError>;
   }
 >()('@studio/Presence') {
-  static readonly layer: Layer.Layer<Presence> = Layer.effect(
+  static readonly layer: Layer.Layer<Presence, never, Database> = Layer.effect(
     Presence,
     Effect.gen(function* () {
-      const present = yield* Ref.make<Present>(new Map());
+      const database = yield* Database;
+      const withDatabase = Effect.provideService(Database, database);
 
-      const put = (draftId: string, presence: PresenceValue) =>
-        Ref.update(present, (current) => withEntry(current, draftId, presence));
+      const setMode = (session: ProtocolBuilderSession) =>
+        withDatabase(setSocketMode(session));
 
-      const leave = (draftId: string, sessionId: string) =>
-        Ref.update(present, (current) => {
-          const inDraft = current.get(draftId);
-          if (inDraft?.has(sessionId) !== true) return current;
-          const remaining = new Map(inDraft);
-          remaining.delete(sessionId);
-          const next = new Map(current);
-          if (remaining.size === 0) next.delete(draftId);
-          else next.set(draftId, remaining);
-          return next;
-        });
-
-      const join = (draftId: string, presence: PresenceValue) =>
-        Effect.acquireRelease(put(draftId, presence), () =>
-          leave(draftId, presence.sessionId),
-        );
-
-      const setMode = (
-        draftId: string,
-        sessionId: string,
-        mode: PresenceValue['mode'],
-        sectionId?: PresenceValue['sectionId'],
-      ) =>
-        Ref.update(present, (current) => {
-          const was = current.get(draftId)?.get(sessionId);
-          if (was === undefined) return current;
-          return withEntry(current, draftId, {
-            sessionId: was.sessionId,
-            userId: was.userId,
-            displayName: was.displayName,
-            mode,
-            ...(sectionId === undefined ? {} : { sectionId }),
-          });
-        });
-
-      const list = (draftId: string) =>
-        Ref.get(present).pipe(
-          Effect.map((current) => [...(current.get(draftId)?.values() ?? [])]),
-        );
-
-      return Presence.of({ join, put, leave, setMode, list });
+      return Presence.of({ setMode });
     }),
   );
 }
